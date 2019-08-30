@@ -121,7 +121,7 @@ def tracks(im, bbox, bboxcolor='green', caption=None, captioncolor='red'):
     plt.autoscale(tight=True)
     plt.axis('image')
     plt.set_cmap('gray')
-    plt.hold(True)
+    #plt.hold(True)
 
     if caption is None:
         caption = ['det']*len(bbox)
@@ -159,7 +159,7 @@ def imbbox(img, xmin, ymin, xmax, ymax, bboxcaption=None, figure=None, bboxcolor
     if do_imshow == True:
         #plt.clf()
         imshow(img, colormap=colormap, figure=figure, do_updateplot=False)
-        plt.hold(True)
+        #plt.hold(True)
 
     # (x,y) bounding box is right and down, swap to right and up for plot
     # clip_on clips anything outside the image
@@ -220,7 +220,7 @@ def imdetection(img, imdetlist, figure=None, bboxcolor='green', colormap=None, d
             textcolor_ = textcolor
 
         fig = imbbox(img=img, xmin=im.bbox.xmin, ymin=im.bbox.ymin, xmax=im.bbox.xmax, ymax=im.bbox.ymax, bboxcaption=bboxcaption, do_imshow=do_imshow, do_updateplot=do_updateplot, figure=fig, colormap=colormap, bboxcolor=bboxcolor_, facecolor=facecolor, facealpha=facealpha, textcolor=textcolor_, textfacecolor=textfacecolor, fontsize=fontsize, captionoffset=captionoffset)
-    plt.hold(False)
+    #plt.hold(False)
     pause(0.00001)
     return fig
 
@@ -242,10 +242,10 @@ def precision_recall(y_precision, x_recall, title=None):
 def imframe(img, fr, color='b', markersize=10, label=None, figure=None):
     if figure is not None:
         fig = plt.figure(figure)
-        plt.hold(True)
+        #plt.hold(True)
     else:
         fig = plt.figure()
-        plt.hold(True)
+        #plt.hold(True)
 
     figure = plt.gcf().number
 
@@ -276,9 +276,9 @@ def imframe(img, fr, color='b', markersize=10, label=None, figure=None):
         a.get_yaxis().set_visible(False)
 
     plt.autoscale(tight=True)
-    plt.hold(True)
+    #plt.hold(True)
     plt.plot(fr[:,0],fr[:,1],'%s.' % color, markersize=markersize, axes=ax)
-    plt.hold(False)
+    #plt.hold(False)
     #ax = plt.axes([0,0,1,1])
     #ax.axis('off')
     if label is not None:
@@ -295,17 +295,17 @@ def imframe(img, fr, color='b', markersize=10, label=None, figure=None):
 def frame(fr, im=None, color='b.', markersize=10, figure=None, caption=None):
     if figure is not None:
         fig = plt.figure(figure)
-        plt.hold(True)
+        #plt.hold(True)
     else:
         fig = plt.figure()
         plt.clf()
-        plt.hold(True)
+        #plt.hold(True)
 
     ax = plt.axes([0,0,1,1])
     #b = plt.imshow(im, cmap=cm.gray)
-    plt.hold(True)
+    #plt.hold(True)
     plt.plot(fr[:,0],fr[:,1],color)
-    plt.hold(False)
+    #plt.hold(False)
     plt.axis('off');
     plt.draw()
     #return plt

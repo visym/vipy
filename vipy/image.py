@@ -796,7 +796,7 @@ class ImageCategory(Image):
 class ImageDetection(ImageCategory):
     def __init__(self, filename=None, url=None, category=None,
                  ignore=False, fetch=True, attributes=None, xmin=float('nan'),
-                 xmax=float('nan'), ymin=float('nan'), ymax=float('nan'),
+                 xmax=float('nan'), ymin=float('nan'), ymax=float('nan'), width=None, height=None,
                  bbox=None):
         # ImageCategory class inheritance
         super(ImageDetection, self).__init__(filename=filename,
@@ -808,10 +808,15 @@ class ImageDetection(ImageCategory):
 
         if bbox is not None:
             self.bbox = bbox
-        else:
+        elif width is None and height is None:
             self.bbox = BoundingBox(xmin=float(xmin), ymin=float(ymin),
                                     xmax=float(xmax), ymax=float(ymax))
-
+        elif width is not None and height is not None:
+            self.bbox = BoundingBox(xmin=float(xmin), ymin=float(ymin),
+                                    width=float(width), height=float(height))
+        else:
+            raise ValueError('invalid parameterization')
+            
     def __repr__(self):
         # str_dirty = ", dirty" if self._isdirty else ""
         if self.isloaded():
