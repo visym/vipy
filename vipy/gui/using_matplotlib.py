@@ -324,6 +324,6 @@ def show_imgdir(imgdir):
 
 def colorlist():
     """Return a list of named colors"""
-    colorlist = [str(name) for (name, hex) in matplotlib.colors.cnames.iteritems()]
+    colorlist = [str(name) for (name, hex) in matplotlib.colors.cnames.items()]
     primarycolorlist = ['green','blue','red','cyan','orange', 'yellow','violet']
     return primarycolorlist + [c for c in colorlist if c not in primarycolorlist]

@@ -1,11 +1,11 @@
 import os
 # import csv
-from vipy.show import imshow, imbbox
+from vipy.show import imshow, imbbox, savefig
 from vipy.util import isnumpy, quietprint, isurl, islist, \
-    fileext, tempimage, mat2gray, imwrite, imwritejet, imwritegray
+    fileext, tempimage, mat2gray, imwrite, imwritejet, imwritegray, tmpjpg
 from vipy.geometry import BoundingBox, similarity_imtransform, \
     similarity_imtransform2D, imtransform, imtransform2D
-from vipy import viset
+import vipy.viset.download
 import urllib.request
 import urllib.error
 import urllib.parse
@@ -191,7 +191,7 @@ class Image(object):
                 quietprint('[vipy.image.download]: '
                            'downloading "%s" to "%s" ' %
                            (self._url, self._filename), verbosity=1)
-                viset.download.download(self._url,
+                vipy.viset.download.download(self._url,
                                         self._filename,
                                         verbose=False,
                                         timeout=timeout,
@@ -378,6 +378,11 @@ class Image(object):
         self.flush()
         self._filename = filename
         return self
+
+    def savefig(self, filename=None):
+        f = filename if filename is not None else tmpjpg()
+        savefig(filename=f)
+        return f
 
     def imwritegray(self, filename):
         return imwritegray(self.grayscale().data, filename)

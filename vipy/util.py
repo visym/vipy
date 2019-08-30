@@ -17,6 +17,7 @@ import scipy.io
 import shelve
 #from . import math
 import re
+import uuid
 
 import dill
 import builtins
@@ -840,8 +841,12 @@ def temppickle():
 
 
 def tempjpg():
-    """Create a temporary JPG file"""
+    """Create a temporary JPG file in system temp directory"""
     return tempimage('jpg')
+
+def tmpjpg():
+    """Create a temporary JPG file in /tmp"""
+    return '/tmp/%s.jpg' % uuid.uuid4().hex
 
 
 def tempcsv():

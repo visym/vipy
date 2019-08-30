@@ -1,6 +1,6 @@
 from vipy.image import ImageCategory
 from vipy.show import imdetection, colorlist, savefig
-from vipy.util import tolist, quietprint, imwrite, imread
+from vipy.util import tolist, quietprint, imwrite, imread, tmpjpg
 from copy import deepcopy
 import numpy as np
 import matplotlib.transforms
@@ -35,7 +35,7 @@ class SceneDetection(ImageCategory):
             str_file = ''            
         str_category = "%scategory='%s'" % (', ' if len(str_file)>0 else '', self._category)
         str_objects = ", objects=%d" % len(self.objectlist)
-        return str('<strpy.scenedetection: %s%s%s%s>' % (str_file, str_category, str_size, str_objects))
+        return str('<vipy.scenedetection: %s%s%s%s>' % (str_file, str_category, str_size, str_objects))
 
     def __len__(self):
         return len(self.objectlist)
@@ -53,7 +53,7 @@ class SceneDetection(ImageCategory):
     
     def show(self, category=None, figure=None, do_caption=True, fontsize=10, boxalpha=0.25, captionlist=None, categoryColor=None, captionoffset=(0,0), outfile=None):
         """Show a subset of object categores in current image"""
-        quietprint('[strpy.scenedetection][%s]: displaying scene' % (self.__repr__()), verbosity=2)                                            
+        quietprint('[vipy.scenedetection][%s]: displaying scene' % (self.__repr__()), verbosity=2)                                            
         valid_categories = sorted(self.categories() if category is None else tolist(category))
         valid_detections = [im for im in self.objectlist if im.category() in valid_categories]        
         if categoryColor is None:
@@ -65,8 +65,9 @@ class SceneDetection(ImageCategory):
             savefig(outfile, figure)
         return self
 
-    def savefig(self, outfile, category=None, figure=None, do_caption=True, fontsize=10, boxalpha=0.25, captionlist=None, categoryColor=None, captionoffset=(0,0), dpi=200):
+    def savefig(self, outfile=None, category=None, figure=None, do_caption=True, fontsize=10, boxalpha=0.25, captionlist=None, categoryColor=None, captionoffset=(0,0), dpi=200):
         """Show a subset of object categores in current image and save to the given file"""
+        outfile = outfile if outfile is not None else tmpjpg()
         self.show(category, figure, do_caption, fontsize, boxalpha, captionlist, categoryColor, captionoffset)
         savefig(outfile, figure, dpi=dpi, bbox_inches='tight', pad_inches=0)
         return self
