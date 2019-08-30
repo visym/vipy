@@ -20,9 +20,9 @@ class Dropbox():
         flow = dropboxapi.client.DropboxOAuth2FlowNoRedirect(self._app_key, self._app_secret)
 
         authorize_url = flow.start()
-        print '1. Go to: ' + authorize_url
-        print '2. Click "Allow" (you might have to log in first)'
-        print '3. Copy the authorization code.'
+        print('1. Go to: ' + authorize_url)
+        print('2. Click "Allow" (you might have to log in first)')
+        print('3. Copy the authorization code.')
         code = raw_input("Enter the authorization code here: ").strip()
 
         # This will fail if the user enters an invalid authorization code
@@ -33,7 +33,7 @@ class Dropbox():
     def put(self, filename, folder=None, verbose=True):
         client = dropbox.client.DropboxClient(self._access_token)
         if verbose:
-            print 'linked account: ', client.account_info()
+            print('linked account: ', client.account_info())
 
         if folder is None:
             dropbox_path = '/'+path.basename(filename)
@@ -43,11 +43,11 @@ class Dropbox():
         f = open(filename)
         response = client.put_file(dropbox_path, f)
         if verbose:
-            print 'uploaded: ', response
+            print('uploaded: ', response)
 
         folder_metadata = client.metadata('/')
         if verbose:
-            print 'metadata: ', folder_metadata
+            print('metadata: ', folder_metadata)
 
         share = client.share(dropbox_path, short_url=False)
 
@@ -65,6 +65,6 @@ class Dropbox():
         out = open(cachefile, 'w')
         out.write(f.read())
         out.close()
-        print metadata
+        print(metadata)
         return cachefile
 

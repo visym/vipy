@@ -2,7 +2,7 @@
 import sklearn.metrics
 import numpy as np
 import matplotlib.pyplot as plt
-from strpy.bobo.util import quietprint, seq, groupby
+from vipy.util import seq, groupby
 from scipy.interpolate import interp1d
 
 def cumulative_match_characteristic(similarityMatrix, gtMatrix):
@@ -82,7 +82,7 @@ def plot_cmc(rank=None, tdr=None, similarityMatrix=None, truthMatrix=None, label
     plt.gcf().set_tight_layout(True)
 
     if outfile is not None:
-        quietprint('[bobo.metric.plot_cmc]: saving "%s"' % outfile)
+        print('[bobo.metric.plot_cmc]: saving "%s"' % outfile)
         plt.savefig(outfile)
 
     else:
@@ -159,7 +159,7 @@ def savefig(outfile, figure=None):
         plt.figure(figure)
     else:
         plt.figure()
-    quietprint('[bobo.metric.savefig]: saving "%s"' % outfile, 2)
+    print('[bobo.metric.savefig]: saving "%s"' % outfile)
     plt.savefig(outfile)
     return outfile
 
@@ -220,7 +220,7 @@ def plot_roc(y_true=None, y_pred=None, fpr=None, tpr=None, label=None, title=Non
 
 
     if outfile is not None:
-        quietprint('[bobo.metric.plot_roc]: saving "%s"' % outfile)
+        print('[bobo.metric.plot_roc]: saving "%s"' % outfile)
         plt.savefig(outfile)
     else:
         plt.show()

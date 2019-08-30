@@ -3,7 +3,6 @@ import flickrapi
 import flickrapi.shorturl
 import urllib
 import os
-import urllib2
 import re
 import random
 import math

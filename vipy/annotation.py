@@ -1,9 +1,9 @@
 """Annotation tools for ground truthing vision datasets"""
 
 import urllib
-from nltk.corpus import wordnet 
+
 import os
-import urllib2
+#import urllib2
 import re
 import random
 import math
@@ -118,8 +118,8 @@ def basicgooglesearch(tag, n_imgs):
         user_agent = random.choice(common_user_agents)
         headers = {'User-Agent':user_agent}
                      
-        search_request = urllib2.Request(url % (tag.replace(' ','+'), k), None, headers)
-        search_results = urllib2.urlopen(search_request)
+        search_request = urllib.request.Request(url % (tag.replace(' ','+'), k), None, headers)
+        search_results = urllib.request.urlopen(search_request)
         search_data = search_results.read()
 
         # FIXME: use gstatic.com URLs instead of .jpg
@@ -134,8 +134,8 @@ def googlesearch(tag):
     url = 'https://www.google.com/search?tbm=isch&q=%s' % tag.replace(' ','+')
     user_agent = random.choice(common_user_agents)
     headers = {'User-Agent':user_agent}
-    search_request = urllib2.Request(url,None,headers)
-    search_results = urllib2.urlopen(search_request)
+    search_request = urllib.request.Request(url,None,headers)
+    search_results = urllib.request.urlopen(search_request)
     search_data = search_results.read()
 
     # FIXME: support for gstatic.com URLs
@@ -144,7 +144,8 @@ def googlesearch(tag):
     imlist = [im[0] for im in imlist if len(im) > 0]
     imlist_clean = [im for im in imlist if im.find('File:') == -1]
 
-    imlist = [re.findall(ur'^http[s]?://.*gstatic.*?"[ ,]', ('http'+d).decode('utf-8'), re.UNICODE) for d in datalist]  # unicode double quote?
+    #imlist = [re.findall(ur'^http[s]?://.*gstatic.*?"[ ,]', ('http'+d).decode('utf-8'), re.UNICODE) for d in datalist]  # unicode double quote?
+    raise('commented out previous line, needs debugging for python3')
     imlist = [im[0][:-2] for im in imlist if len(im) > 0]
     imlist2_clean = [im for im in imlist if im.find('File:') == -1]    
     return imlist_clean + imlist2_clean
@@ -154,6 +155,7 @@ def googlesearch(tag):
 def basic_level_categories():
     # nltk.download(), install wordnet in /Users/jebyrne/.nltk, 
     # set NLTK_DATA environment variable to /Users/jebyrne/.nltk
+    from nltk.corpus import wordnet     
     nouns = []
     allowed_lexnames = ['noun.animal', 'noun.artifact', 'noun.body', 'noun.food', 'noun.object', 'noun.plant']
     for synset in list(wordnet.all_synsets('n')):
@@ -162,8 +164,8 @@ def basic_level_categories():
             #print synset.lemma_names  # synonyms
             #nouns.append(synset.name)      
     nouns.sort()
-    print nouns
-    print len(nouns)
+    print(nouns)
+    print(len(nouns))
 
 
 # A synset is a synonym set for cognitively equivalent words

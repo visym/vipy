@@ -1,6 +1,6 @@
 import importlib
 
-BACKEND = importlib.import_module('strpy.bobo.gui.using_matplotlib')
+BACKEND = importlib.import_module('vipy.gui.using_matplotlib')
 #BACKEND = importlib.import_module('bobo.gui.using_opencv')  # segfaults with multiprocessing.  why?
 
 def backend(using='pygame'):

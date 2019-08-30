@@ -1,8 +1,7 @@
-from strpy.bobo.image import ImageCategory
-from strpy.bobo.show import imdetection, colorlist, savefig
-from strpy.bobo.util import tolist, quietprint, imwrite, imread
+from vipy.image import ImageCategory
+from vipy.show import imdetection, colorlist, savefig
+from vipy.util import tolist, quietprint, imwrite, imread
 from copy import deepcopy
-from strpy.bobo.cache import Cache, CacheError
 import numpy as np
 import matplotlib.transforms
 

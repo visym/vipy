@@ -1,12 +1,12 @@
 import os
 # import csv
-from strpy.bobo.show import imshow, imbbox
-from strpy.bobo.util import isnumpy, quietprint, isurl, islist, \
+from vipy.show import imshow, imbbox
+from vipy.util import isnumpy, quietprint, isurl, islist, \
     fileext, tempimage, mat2gray, imwrite, imwritejet, imwritegray
 # from strpy.bobo.util import isstring, tempcsv, istuple, remkdir, filetail
-from strpy.bobo.geometry import BoundingBox, similarity_imtransform, \
+from vipy.geometry import BoundingBox, similarity_imtransform, \
     similarity_imtransform2D, imtransform, imtransform2D
-from strpy.bobo import viset
+from vipy import viset
 import urllib.request
 import urllib.error
 import urllib.parse

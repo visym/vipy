@@ -1,12 +1,11 @@
 import urllib
-import urllib2
 import sys
 import os
 import datetime
 import json
-from strpy.bobo.util import remkdir, imlist, dirlist
+from vipy.util import remkdir, imlist, dirlist
 import numpy as np
-import strpy.bobo.annotation
+import vipy.annotation
 
 
 def count(outdir):
@@ -30,12 +29,12 @@ def facebookprofile(fbid, outdir='./imgs', cleanup=True, hierarchical=False, red
     url = "http://graph.facebook.com/picture?id=" + str(fbid) + "&width=800"
     if not os.path.exists(outfile) or redownload:
         try:
-            print '[facebookprofile.download]: Downloading "%s" to "%s"' % (url, outfile) 
+            print('[facebookprofile.download]: Downloading "%s" to "%s"' % (url, outfile))
             
-            user_agent = np.random.choice(bobo.annotation.common_user_agents)
+            user_agent = np.random.choice(vipy.annotation.common_user_agents)
             headers = {'User-Agent':user_agent}                     
-            req = urllib2.Request(url, None, headers)
-            imgfile = urllib2.urlopen(req)
+            req = urllib.request.Request(url, None, headers)
+            imgfile = urllib.request.urlopen(req)
             total_size = int(imgfile.info().getheader('Content-Length').strip())
             downloaded = 0
             CHUNK = 256 * 10240
@@ -51,19 +50,19 @@ def facebookprofile(fbid, outdir='./imgs', cleanup=True, hierarchical=False, red
             
             s = os.path.getsize(outfile)
             if cleanup and (s < 11000 or s == 10626 or s == 10491):
-                print '[facebookprofile.download]: deleting invalid file "%s"' % outfile
+                print('[facebookprofile.download]: deleting invalid file "%s"' % outfile)
                 os.remove(outfile)
 
-        except urllib2.HTTPError, e:
-            print '[fb_image.download]: Skipping "%s"' % (url)            
-            print "HTTP Error:",e.code , url
+        except (urllib.request.HTTPError, e):
+            print('[fb_image.download]: Skipping "%s"' % (url))
+            print("HTTP Error:",e.code , url)
             #return False
-        except urllib2.URLError, e:
-            print '[fb_image.download]: Skipping "%s"' % (url)            
-            print "URL Error:",e.reason , url
+        except (urllib.request.URLError, e):
+            print('[fb_image.download]: Skipping "%s"' % (url))
+            print("URL Error:",e.reason , url)
             #return False
         except KeyboardInterrupt:
             raise
         except:
-            print "UNKNOWN ERROR"
+            print("UNKNOWN ERROR")
             #raise

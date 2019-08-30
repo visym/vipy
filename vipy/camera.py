@@ -10,7 +10,7 @@ import tempfile
 #import multiprocessing
 import signal 
 import sys
-from strpy.bobo.util import imresize, tempimage
+from vipy.util import imresize, tempimage
 
 
 
@@ -53,7 +53,7 @@ class Webcam(Camera):
         k = 0
         while not self.CAM.grab():
             k = k + 1
-            print '[webcam.camera][%d/%d]: invalid grab' % (k, 100)
+            #print '[webcam.camera][%d/%d]: invalid grab' % (k, 100)
             if k > 100:
                 raise ValueError('Invalid Frame')                
                 
@@ -71,7 +71,7 @@ class Webcam(Camera):
             im = cv2.cvtColor(im, cv2.COLOR_BGR2GRAY)
         if self.FRAMERATE:
             self.TOC = timeit.default_timer()
-            print '[bobo.camera]: frame rate = ' + str(round(1.0/(self.TOC-self.TIC),1)) + ' Hz'
+            print('[bobo.camera]: frame rate = ' + str(round(1.0/(self.TOC-self.TIC),1)) + ' Hz')
             self.TIC = self.TOC
         return im
 

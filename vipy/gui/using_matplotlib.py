@@ -11,7 +11,7 @@ import sys
 from matplotlib import pyplot as plt
 import matplotlib.cm as cm
 import numpy as np
-from strpy.bobo.util import islist, temppng, mat2gray
+from vipy.util import islist, temppng, mat2gray
 import cv2
 import os
 import sys

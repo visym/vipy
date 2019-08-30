@@ -1,12 +1,13 @@
 """Annotation tools for downloading videos from youtube"""
 
-from strpy.bobo.annotation import common_user_agents
+from vipy.annotation import common_user_agents
 import os
-import urllib2, ssl
+import ssl
+import urllib
 import json
 import re
 import random
-from strpy.bobo.util import tofilename, remkdir, filepath, filebase, isurl
+from vipy.util import tofilename, remkdir, filepath, filebase, isurl
 
 def dailymotion(tag):
     pass
@@ -17,19 +18,19 @@ def vine(user_id, outdir=None, video_limit=None):
 
     user_agent = random.choice(common_user_agents)
     headers = {'User-Agent':user_agent}
-    search_request = urllib2.Request(url, None, headers)
+    search_request = urllib.request.Request(url, None, headers)
     try:
-        search_results = urllib2.urlopen(search_request)
+        search_results = urllib.request.urlopen(search_request)
     except:
-        print '[bobo.videosearch.vine]: Error on URL: %s' % (url)
+        print('[bobo.videosearch.vine]: Error on URL: %s' % (url))
         return ([None], [None])
     search_data = search_results.read()
     data = json.loads(search_data)
     try:
         # https://github.com/starlock/vino/wiki/API-Reference#response-6
         vidlist = [rec['videoUrl'] for rec in data['data']['records']]
-    except KeyError, what:
-        print '[bobo.videosearch.vine]: Key error on parse: %s' % (what)
+    except (KeyError, what):
+        print('[bobo.videosearch.vine]: Key error on parse: %s' % (what))
         return ([None], [None])
 
     vidlist = list(set(vidlist))  # unique
@@ -44,13 +45,13 @@ def isactiveyoutuber(username):
     url = 'http://www.youtube.com/user/%s/videos' % username
     user_agent = random.choice(common_user_agents)
     headers = {'User-Agent':user_agent}
-    search_request = urllib2.Request(url, None, headers)
+    search_request = urllib.request.Request(url, None, headers)
     try:
         gcontext = ssl.SSLContext(ssl.PROTOCOL_TLSv1) # to avoid [SSL: CERTIFICATE_VERIFY_FAILED] exception
-        search_results = urllib2.urlopen(search_request, context=gcontext)
+        search_results = urllib.request.urlopen(search_request, context=gcontext)
     except AttributeError:
         try:
-            search_results = urllib2.urlopen(search_request)
+            search_results = urllib.request.urlopen(search_request)
         except:
             return False
     except:
@@ -67,12 +68,12 @@ def youtubeuser(tag, n_pages=1):
     for k in range(0, n_pages):
         user_agent = random.choice(common_user_agents)
         headers = {'User-Agent':user_agent}
-        search_request = urllib2.Request(url % (tag.replace(' ','+'), k+1), None, headers)
+        search_request = urllib.request.Request(url % (tag.replace(' ','+'), k+1), None, headers)
         try:
             gcontext = ssl.SSLContext(ssl.PROTOCOL_TLSv1) # to avoid [SSL: CERTIFICATE_VERIFY_FAILED] exception
-            search_results = urllib2.urlopen(search_request, context=gcontext)
+            search_results = urllib.request.urlopen(search_request, context=gcontext)
         except AttributeError:
-            search_results = urllib2.urlopen(search_request)
+            search_results = urllib.request.urlopen(search_request)
         links = BeautifulSoup(search_results.read()).findAll("a")
         for link in links:
             if len(link['href']) > 6 and '/user/' == link['href'][0:6]:
@@ -91,24 +92,24 @@ def youtube(tag, n_pages=1, outdir=None, channel=False, video_limit=None, expect
         user_agent = random.choice(common_user_agents)
         headers = {'User-Agent':user_agent}
         if channel:
-            search_request = urllib2.Request(url % (tag.replace(' ','+')), None, headers)
+            search_request = urllib.request.Request(url % (tag.replace(' ','+')), None, headers)
         else:
-            search_request = urllib2.Request(url % (tag.replace(' ','+'), k+1), None, headers)
+            search_request = urllib.request.Request(url % (tag.replace(' ','+'), k+1), None, headers)
         try:
             gcontext = ssl.SSLContext(ssl.PROTOCOL_TLSv1) # to avoid [SSL: CERTIFICATE_VERIFY_FAILED] exception
-            search_results = urllib2.urlopen(search_request, context=gcontext)
+            search_results = urllib.request.urlopen(search_request, context=gcontext)
         except AttributeError:
-            search_results = urllib2.urlopen(search_request)
+            search_results = urllib.request.urlopen(search_request)
         except:
-            print '[bobo.videosearch.youtube]: URL 404: %s' % (url % (tag.replace(' ','+')))
+            print('[bobo.videosearch.youtube]: URL 404: %s' % (url % (tag.replace(' ','+'))))
             url = 'http://www.youtube.com/channel/%s/videos'
-            search_request = urllib2.Request(url % (tag.replace(' ','+')), None, headers)
+            search_request = urllib.request.Request(url % (tag.replace(' ','+')), None, headers)
             try:
-                search_results = urllib2.urlopen(search_request, context=gcontext)
+                search_results = urllib.request.urlopen(search_request, context=gcontext)
             except AttributeError:
-                search_results = urllib2.urlopen(search_request)
+                search_results = urllib.request.urlopen(search_request)
             except:
-                print '[bobo.videosearch.youtube]: URL 404: %s' % (url % (tag.replace(' ','+')))
+                print('[bobo.videosearch.youtube]: URL 404: %s' % (url % (tag.replace(' ','+'))))
                 return ([None], [None])
         search_data = search_results.read()
         
@@ -118,7 +119,7 @@ def youtube(tag, n_pages=1, outdir=None, channel=False, video_limit=None, expect
         if expected_vid_list is not None:
             new_list = [v for v in expected_vid_list if v in vidlist]
             if len(new_list) == len(expected_vid_list):
-                print 'YOUTUBE: PREVIOUS USER CHECK WAS GOOD: %s' % tag
+                print('YOUTUBE: PREVIOUS USER CHECK WAS GOOD: %s' % tag)
                 return new_list
             else:
                 return []
@@ -136,8 +137,8 @@ def liveleak(tag, n_pages=1, outdir=None):
         user_agent = random.choice(common_user_agents)
         headers = {'User-Agent':user_agent}
 
-        search_request = urllib2.Request(url % (tag.replace(' ','+'), k+1), None, headers)
-        search_results = urllib2.urlopen(search_request)
+        search_request = urllib.request.Request(url % (tag.replace(' ','+'), k+1), None, headers)
+        search_results = urllib.request.urlopen(search_request)
         search_data = search_results.read()
 
         datalist = search_data.split('href="http://www.liveleak.com/view?')
@@ -156,15 +157,15 @@ def ustream(tag, n_pages=1, outdir=None):
         user_agent = random.choice(common_user_agents)
         headers = {'User-Agent':user_agent}
 
-        search_request = urllib2.Request(url % (tag.replace(' ','+')), None, headers)
-        search_results = urllib2.urlopen(search_request)
+        search_request = urllib.request.Request(url % (tag.replace(' ','+')), None, headers)
+        search_results = urllib.request.urlopen(search_request)
         search_data = search_results.read()
 
         datalist = search_data.split('href="/recorded/')
         vidlist.extend(['http://www.ustream.tv/recorded/%s' % vid.split('"')[0] for vid in datalist if 'DOCTYPE' not in vid.split('"')[0]])
     vidlist = list(set(vidlist))  # unique
 
-    print vidlist
+    print(vidlist)
     if outdir is not None:
         download(vidlist, os.path.join(remkdir(outdir), 'ustream_'+tofilename(tag)+'_%04d.mp4'))
     return(vidlist)
@@ -181,9 +182,9 @@ def download(vidlist, outfile, skip=False, writeurlfiles=True, max_filesize='350
             except TypeError:
                 # Allow caller to explicitly name file
                 vidfile = outfile
-            print '[bobo.youtube.download]: exporting "%s" to "%s"' % (v, vidfile)
+            print('[bobo.youtube.download]: exporting "%s" to "%s"' % (v, vidfile))
             erno = os.system('youtube-dl "%s" -o %s --max-filesize %s --no-check-certificate' % (v, vidfile, max_filesize))  # must be on path
-            print 'youtube-dl returned %d' % erno
+            print('youtube-dl returned %d' % erno)
             if os.path.isfile(vidfile):
                 vidfiles.append(vidfile)
                 successes += 1
@@ -193,14 +194,14 @@ def download(vidlist, outfile, skip=False, writeurlfiles=True, max_filesize='350
                         f.write(v + '\n')
             elif remove_parts and os.path.isfile(vidfile + '.part'):
                 partfile = vidfile + '.part'
-                print '[bobo.youtube.download]: removing partial file: %s' % partfile
+                print('[bobo.youtube.download]: removing partial file: %s' % partfile)
                 os.remove(partfile)
             if video_limit is not None and successes == video_limit:
                 break
         except Exception as exception:
-            print exception
+            print(exception)
             # http://rg3.github.io/youtube-dl/supportedsites.html
-            print '[bobo.youtube.download]: download failed - skipping'
+            print('[bobo.youtube.download]: download failed - skipping')
         else:
             if skip and erno: #use this if every video on a page fails
                 break

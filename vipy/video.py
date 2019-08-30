@@ -1,6 +1,6 @@
 import os
-from strpy.bobo.util import isnumpy, quietprint, isstring, isvideo, tempcsv, imlist, remkdir, filepath, filebase
-from strpy.bobo.image import Image, ImageCategory, ImageDetection
+from vipy.util import isnumpy, quietprint, isstring, isvideo, tempcsv, imlist, remkdir, filepath, filebase
+from vipy.image import Image, ImageCategory, ImageDetection
 import copy
 import cv2  
 #import cv # FIXME: videocapture will not work

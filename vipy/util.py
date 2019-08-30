@@ -28,6 +28,10 @@ import cv2
 from itertools import groupby as itertools_groupby
 
 
+def quietprint(x, level):
+    """FIXME"""
+    print(x)
+
 def rowvectorize(X):
     """Convert a 1D numpy array to a 2D row vector of size (1,N)"""
     return X.reshape((1, X. size)) if X.ndim == 1 else X
