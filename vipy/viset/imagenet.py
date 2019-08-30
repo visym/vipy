@@ -1,7 +1,6 @@
 import numpy as np
-import bobo.app
-from bobo.util import load, save, csvlist, dirlist, imlist, readcsv, filebase, imwrite, remkdir, temppng, writecsv, filepath, fileext, filetail, islist
-from bobo.image import ImageDetection, ImageCategory
+from vipy.util import load, save, csvlist, dirlist, imlist, readcsv, filebase, imwrite, remkdir, temppng, writecsv, filepath, fileext, filetail, islist
+from vipy.image import ImageDetection, ImageCategory
 import os
 import copy
 

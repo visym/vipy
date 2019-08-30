@@ -3,7 +3,6 @@ import os
 from vipy.show import imshow, imbbox
 from vipy.util import isnumpy, quietprint, isurl, islist, \
     fileext, tempimage, mat2gray, imwrite, imwritejet, imwritegray
-# from strpy.bobo.util import isstring, tempcsv, istuple, remkdir, filetail
 from vipy.geometry import BoundingBox, similarity_imtransform, \
     similarity_imtransform2D, imtransform, imtransform2D
 from vipy import viset
@@ -14,7 +13,6 @@ import http.client as httplib
 import cv2
 import copy
 import numpy as np
-# import strpy.bobo.viset.download
 import shutil
 
 # FIX <urlopen error [SSL: CERTIFICATE_VERIFY_FAILED] certificate
@@ -88,7 +86,7 @@ class Image(object):
             str_url = ''
         else:
             str_url = "url='%s', " % str(self._url)
-        return str('<strpy.image: %s%s%s>' % (str_url, str_file, str_size))
+        return str('<vipy.image: %s%s%s>' % (str_url, str_file, str_size))
 
     def tonumpy(self, ignoreErrors=False, asRaw=False, fetch=True):
         """load image, and return a numpy array and flush the underlying
@@ -110,15 +108,15 @@ class Image(object):
 
             # Download file
             if self._filename is not None and os.path.isfile(self._filename):
-                quietprint('[strpy.image]: loading "%s" ' %
+                quietprint('[vipy.image]: loading "%s" ' %
                            self._filename, verbosity=3)
             elif self._url is not None and fetch is True:
-                quietprint('[strpy.image]: loading "%s" ' %
+                quietprint('[vipy.image]: loading "%s" ' %
                            self._url, verbosity=3)
                 if self._doFetch is True:
                     self.download(ignoreErrors=ignoreErrors)
             else:
-                raise IOError('[strpy.image][WARNING]: No image to load %s' %
+                raise IOError('[vipy.image][WARNING]: No image to load %s' %
                               str(self))
 
             # Load file to numpy array
@@ -134,7 +132,7 @@ class Image(object):
                                        if asRaw else cv2.imread(self._filename)
             if self.data is None:
                 if fileext(self._filename) == '.gif':
-                    quietprint('[strpy.image][WARNING]: IO error - could '
+                    quietprint('[vipy.image][WARNING]: IO error - could '
                                'not load "%s" using opencv, '
                                'falling back on PIL ' %
                                self._filename, 1)
@@ -153,7 +151,7 @@ class Image(object):
 
         except IOError:
             if self._ignoreErrors or ignoreErrors:
-                quietprint('[strpy.image][WARNING]: IO error - '
+                quietprint('[vipy.image][WARNING]: IO error - '
                            'Invalid image file, url or invalid write '
                            'permissions "%s" ' %
                            self.filename(), True)
@@ -166,7 +164,7 @@ class Image(object):
 
         except Exception:
             if self._ignoreErrors or ignoreErrors:
-                quietprint('[strpy.image][WARNING]: '
+                quietprint('[vipy.image][WARNING]: '
                            'load error for image "%s"' %
                            self.filename(), verbosity=2)
                 self.data = None
@@ -183,14 +181,14 @@ class Image(object):
     def download(self, ignoreErrors=False, timeout=10):
         """Download URL to provided filename"""
         if self._url is None or not isurl(str(self._url)):
-            raise ValueError('[strpy.image.download][ERROR]: '
+            raise ValueError('[vipy.image.download][ERROR]: '
                              'Invalid URL "%s" ' % self._url)
         if self._filename is None:
             self._filename = tempimage(fileext(self._url))
         try:
             url_scheme = urllib.parse.urlparse(self._url)[0]
             if url_scheme in ['http', 'https']:
-                quietprint('[strpy.image.download]: '
+                quietprint('[vipy.image.download]: '
                            'downloading "%s" to "%s" ' %
                            (self._url, self._filename), verbosity=1)
                 viset.download.download(self._url,
@@ -201,7 +199,7 @@ class Image(object):
                                         username=self._urluser,
                                         password=self._urlpassword)
             elif url_scheme == 'file':
-                quietprint('[strpy.image.download]: copying "%s" to "%s" ' %
+                quietprint('[vipy.image.download]: copying "%s" to "%s" ' %
                            (self._url, self._filename), verbosity=2)
                 shutil.copyfile(self._url, self._filename)
             elif url_scheme == 'hdfs':
@@ -216,7 +214,7 @@ class Image(object):
                 urllib.error.URLError,
                 urllib.error.HTTPError):
             if self._ignoreErrors or ignoreErrors:
-                quietprint('[strpy.image][WARNING]: download failed - '
+                quietprint('[vipy.image][WARNING]: download failed - '
                            'ignoring image', 1)
                 self.data = None
             else:
@@ -224,7 +222,7 @@ class Image(object):
 
         except IOError:
             if self._ignoreErrors or ignoreErrors:
-                quietprint('[strpy.image][WARNING]: IO error - '
+                quietprint('[vipy.image][WARNING]: IO error - '
                            'Invalid image file, url or '
                            'invalid write permissions "%s" ' %
                            self.filename(), True)
@@ -237,7 +235,7 @@ class Image(object):
 
         except Exception:
             if self._ignoreErrors or ignoreErrors:
-                quietprint('[strpy.image][WARNING]: '
+                quietprint('[vipy.image][WARNING]: '
                            'load error for image "%s"' %
                            self.filename(), verbosity=2)
             else:
@@ -256,14 +254,14 @@ class Image(object):
 
     def show(self, ignoreErrors=False, colormap=None, figure=None, flip=True):
         if self.load(ignoreErrors=ignoreErrors) is not None:
-            quietprint('[strpy.image][%s]: displaying image' %
+            quietprint('[vipy.image][%s]: displaying image' %
                        (self.__repr__()), verbosity=2)
             if self.iscolor():
                 if colormap == 'gray':
                     imshow(self.clone().grayscale().rgb().data, figure=figure)
                 else:
                     if colormap is not None:
-                        quietprint('[strpy.image][%s]: '
+                        quietprint('[vipy.image][%s]: '
                                    'ignoring colormap for color image' %
                                    (self.__repr__()), verbosity=2)
 
@@ -358,7 +356,7 @@ class Image(object):
 #    def savein(self, dirname):
 #        newfile = os.path.join(dirname, filetail(self.filename()))
 #        remkdir(dirname)
-#        quietprint('[strpy.image]: saving "%s"' % newfile)
+#        quietprint('[vipy.image]: saving "%s"' % newfile)
 #        if self.load().ndim == 3:
 #            # if opened with PIL
 #            # cv2.imwrite(newfile, cv2.cvtColor(self.load(),
@@ -430,7 +428,7 @@ class Image(object):
                 scale = float(rows)/float(self.height())
             else:
                 scale = float(cols)/float(self.width())
-            quietprint('[strpy.image][%s]: scale=%1.2f' %
+            quietprint('[vipy.image][%s]: scale=%1.2f' %
                        (self.__repr__(), scale), verbosity=2)
             # OpenCV decimation introduces artifacts using cubic
             # interp, INTER_AREA is recommended according to the
@@ -440,7 +438,7 @@ class Image(object):
                                    fx=scale, fy=scale,
                                    interpolation=interp_method)
         else:
-            quietprint('[strpy.image][%s]: resize=(%d,%d)' %
+            quietprint('[vipy.image][%s]: resize=(%d,%d)' %
                        (self.__repr__(), rows, cols), verbosity=2)
             try:
                 interp_method = cv2.INTER_AREA if (
@@ -461,7 +459,7 @@ class Image(object):
 
     def rescale(self, scale=1):
         """Scale the image buffer by the given factor - NOT idemponent"""
-        quietprint('[strpy.image][%s]: scale=%1.2f to (%d,%d)' %
+        quietprint('[vipy.image][%s]: scale=%1.2f to (%d,%d)' %
                    (self.__repr__(), scale, scale*self.width(),
                     scale*self.height()), verbosity=2)
         # OpenCV decimation introduces artifacts using cubic interp ,
@@ -522,7 +520,7 @@ class Image(object):
                                    xmax=bbox[2], ymax=bbox[3])
 
             bbox = bbox.imclip(self.load())  # FIXME
-            quietprint('[strpy.image][%s]: cropping "%s"' %
+            quietprint('[vipy.image][%s]: cropping "%s"' %
                        (self.__repr__(), str(bbox)), verbosity=2)
             bbox = bbox.imclip(self.load())
             # assumed numpy
@@ -533,7 +531,7 @@ class Image(object):
 
     def fliplr(self):
         """Mirror the image buffer about the vertical axis - Not idemponent"""
-        quietprint('[strpy.image][%s]: fliplr' %
+        quietprint('[vipy.image][%s]: fliplr' %
                    (self.__repr__()), verbosity=2)
         self.data = np.fliplr(self.load())
         self._isdirty = True
@@ -541,7 +539,7 @@ class Image(object):
 
     def raw(self, normalized=True):
         """Load the image as a raw image buffer"""
-        quietprint('[strpy.image][%s]: loading raw imagery data' %
+        quietprint('[vipy.image][%s]: loading raw imagery data' %
                    (self.__repr__()), verbosity=2)
         self.data = self.load(asRaw=True)
         return self
@@ -549,7 +547,7 @@ class Image(object):
     def grayscale(self):
         """Convert the image buffer to grayscale"""
         if self.load().ndim == 3:
-            quietprint('[strpy.image][%s]: converting to grayscale' %
+            quietprint('[vipy.image][%s]: converting to grayscale' %
                        (self.__repr__()), verbosity=3)
             self.data = cv2.cvtColor(self.load(), cv2.COLOR_BGR2GRAY)
             self._isdirty = True
@@ -559,12 +557,12 @@ class Image(object):
     def rgb(self):
         """Convert the image buffer to RGB"""
         if self.load().ndim == 3:
-            quietprint('[strpy.image][%s]: converting bgr to rgb' %
+            quietprint('[vipy.image][%s]: converting bgr to rgb' %
                        (self.__repr__()), verbosity=2)
             # opencv BGR to RGB
             self.data = cv2.cvtColor(self.load(), cv2.COLOR_BGR2RGB)
         elif self.load().ndim == 2:
-            quietprint('[strpy.image][%s]: converting gray to rgb' %
+            quietprint('[vipy.image][%s]: converting gray to rgb' %
                        (self.__repr__()), verbosity=2)
             self.data = cv2.cvtColor(self.load(), cv2.COLOR_GRAY2RGB)
         self._isdirty = True
@@ -574,14 +572,14 @@ class Image(object):
     def hsv(self):
         """Convert the image buffer to HSV color space"""
         if self.iscolor():
-            quietprint('[strpy.image][%s]: converting to hsv' %
+            quietprint('[vipy.image][%s]: converting to hsv' %
                        (self.__repr__()), verbosity=2)
             # opencv BGR (assumed) to HSV
             self.data = cv2.cvtColor(self.load(), cv2.COLOR_BGR2HSV)
             self._isdirty = True
             self.setattribute('colorspace', 'hsv')
         else:
-            quietprint('[strpy.image][%s]: converting grayscale to hsv' %
+            quietprint('[vipy.image][%s]: converting grayscale to hsv' %
                        (self.__repr__()), verbosity=2)
             # grayscale -> RGB -> HSV (HACK)
             self.data = cv2.cvtColor(self.rgb().load(), cv2.COLOR_RGB2HSV)
@@ -594,7 +592,7 @@ class Image(object):
             self.data = self.load()
             self.data = cv2.cvtColor(self.load(), cv2.COLOR_RGB2BGR)
         elif self.load().ndim == 2:
-            quietprint('[strpy.image][%s]: converting gray to bgr' %
+            quietprint('[vipy.image][%s]: converting gray to bgr' %
                        (self.__repr__()), verbosity=2)
             self.data = cv2.cvtColor(self.load(), cv2.COLOR_GRAY2BGR)
         self.setattribute('colorspace', 'bgr')
@@ -604,7 +602,7 @@ class Image(object):
     def float(self, scale=None):
         """Convert the image buffer to float32"""
         if self.load().dtype != np.float32:
-            quietprint('[strpy.image][%s]: converting to float32' %
+            quietprint('[vipy.image][%s]: converting to float32' %
                        (self.__repr__()), verbosity=2)
             self.data = np.float32(self.load())
         if scale is not None:
@@ -616,7 +614,7 @@ class Image(object):
         if scale is not None:
             self.data = self.load() * scale
         if self.load().dtype != np.uint8:
-            quietprint('[strpy.image][%s]: converting to uint8' %
+            quietprint('[vipy.image][%s]: converting to uint8' %
                        (self.__repr__()), verbosity=2)
             self.data = np.uint8(self.load())
         return self
@@ -624,7 +622,7 @@ class Image(object):
     def preprocess(self, scale=1.0/255.0):
         """Preprocess the image buffer by converting to grayscale, convert to
         float, then rescaling [0,255], [0,1] - Not idemponent."""
-        quietprint('[strpy.image][%s]: preprocessing' %
+        quietprint('[vipy.image][%s]: preprocessing' %
                    (self.__repr__()), verbosity=2)
         self = self.grayscale().float()
         self.data = scale*self.data
@@ -641,7 +639,7 @@ class Image(object):
 
     def mat2gray(self, min=None, max=None):
         """Convert the image buffer so that [min,max] -> [0,1]"""
-        quietprint('[strpy.image][%s]: contrast equalization' %
+        quietprint('[vipy.image][%s]: contrast equalization' %
                    (self.__repr__()), verbosity=2)
         self.data = mat2gray(np.float32(self.load()), min, max)
         self._isdirty = True
@@ -650,7 +648,7 @@ class Image(object):
     def transform2D(self, txy=(0, 0), r=0, s=1):
         """Transform the image buffer using a 2D similarity transform - Not
         idemponent."""
-        quietprint('[strpy.image][%s]: transform2D' %
+        quietprint('[vipy.image][%s]: transform2D' %
                    (self.__repr__()), verbosity=2)
         self.load()
         c = (self.data.shape[1] / 2, self.data.shape[0] / 2)
@@ -663,7 +661,7 @@ class Image(object):
     def transform(self, A):
         """Transform the image buffer using the supplied affine transformation
         - Not idemponent."""
-        quietprint('[strpy.image][%s]: transform' %
+        quietprint('[vipy.image][%s]: transform' %
                    (self.__repr__()), verbosity=2)
         self.data = imtransform(self.load(), A)
         return self
@@ -746,7 +744,7 @@ class ImageCategory(Image):
                 str(self._url), str(self._filename))
 
         str_category = ", category='%s'" % self._category
-        return str('<strpy.imagecategory: %s%s%s>' % (str_file,
+        return str('<vipy.imagecategory: %s%s%s>' % (str_file,
                                                       str_category, str_size))
 
     def __eq__(self, other):
@@ -838,7 +836,7 @@ class ImageDetection(ImageCategory):
             else:
                 str_file = ", filename='%s'" % (str(self._filename))
 
-        return str('<strpy.imagedetection: %s%s%s%s>' % (
+        return str('<vipy.imagedetection: %s%s%s%s>' % (
             str_category, str_detection, str_file, str_size))
 
     def __hash__(self):

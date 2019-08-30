@@ -28,7 +28,7 @@ import cv2
 from itertools import groupby as itertools_groupby
 
 
-def quietprint(x, level):
+def quietprint(x, verbosity=None):
     """FIXME"""
     print(x)
 
