@@ -70,7 +70,7 @@ class SceneDetection(ImageCategory):
         outfile = outfile if outfile is not None else tmpjpg()
         self.show(category, figure, do_caption, fontsize, boxalpha, captionlist, categoryColor, captionoffset)
         savefig(outfile, figure, dpi=dpi, bbox_inches='tight', pad_inches=0)
-        return self
+        return outfile
 
     def objects(self, objectlist=None):
         if objectlist is None:
