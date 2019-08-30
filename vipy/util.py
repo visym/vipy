@@ -9,13 +9,13 @@ from time import gmtime, strftime, localtime
 import sys
 import csv
 import hashlib
-import strpy.bobo.viset
+#import vipy.viset
 import shutil
 import json
 
 import scipy.io
 import shelve
-from . import math
+#from . import math
 import re
 
 import dill
@@ -26,15 +26,6 @@ import cv2
 # import cv2.cv as cv  # FIXME: some legacy functions will fail
 
 from itertools import groupby as itertools_groupby
-
-
-if 'BOBO_VERBOSITY' not in globals():
-    global BOBO_VERBOSITY
-    BOBO_VERBOSITY = os.environ.get('JANUS_VERBOSITY')
-    if BOBO_VERBOSITY is None:
-        BOBO_VERBOSITY = 2
-    else:
-        BOBO_VERBOSITY = int(BOBO_VERBOSITY)
 
 
 def rowvectorize(X):
@@ -492,13 +483,6 @@ def ispickle(filename):
         fileext(filename).lower() in ['.pk', '.pkl']
 
 
-def setverbosity(v):
-    """FIXME: this is broken with spark, since workers do not get copy of
-    this global"""
-    global BOBO_VERBOSITY
-    BOBO_VERBOSITY = v  # GLOBAL!
-
-
 def ndmax(A):
     return np.unravel_index(A.argmax(), A.shape)
 
@@ -925,14 +909,6 @@ class Stopwatch(object):
         self.start = time.time()
         self.last = self.start
         return self
-
-
-def quietprint(mystr, verbosity=1):
-    """Unified entry point for logging and console messages. Print
-    anything with verbosity greater than verbosity. Verbosity is set via
-    environment variable JANUS_VERBOSITY or bobo.util.setverbosity()"""
-    if (verbosity <= BOBO_VERBOSITY):  # GLOBAL!
-        print(mystr)
 
 
 def isfile(path):
