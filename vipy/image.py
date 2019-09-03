@@ -352,24 +352,6 @@ class Image(object):
     def isloaded(self):
         return self.data is not None
 
-
-#    def savein(self, dirname):
-#        newfile = os.path.join(dirname, filetail(self.filename()))
-#        remkdir(dirname)
-#        quietprint('[vipy.image]: saving "%s"' % newfile)
-#        if self.load().ndim == 3:
-#            # if opened with PIL
-#            # cv2.imwrite(newfile, cv2.cvtColor(self.load(),
-#            #             cv2.COLOR_BGR2RGB))
-#            cv2.imwrite(newfile, self.load())
-#        else:
-#            cv2.imwrite(newfile, self.load())
-#        self.url = newfile
-#        self._cachekey = newfile
-#        self._isdirty = False
-#        self.data = None  # force reload
-#        return self
-
     def saveas(self, filename):
         if self.load().ndim == 3:
             self.imwrite(filename)
@@ -417,6 +399,7 @@ class Image(object):
 
     def hasattribute(self, key):
         return self.attributes is not None and key in self.attributes
+
 
     # MODIFY IMAGE ---------------------------------------------------------
     def clone(self):
@@ -491,28 +474,52 @@ class Image(object):
         """Pad image using np.pad constant"""
         if self.load().ndim == 3:
             pad_width = ((dx, dx), (dy, dy), (0, 0))
-            constant_values = (0, 0, 0)
         else:
             pad_width = ((dx, dx), (dy, dy))
-            constant_values = (0, 0)
         self.data = np.pad(self.load(),
                            pad_width=pad_width,
                            mode='constant',
-                           constant_values=constant_values)
+                           constant_values=0)        
         self._isdirty = True
         return self
 
     def meanpad(self, dx, dy):
         """Pad image using np.pad constant where constant is image mean"""
-        mu = self.mean()
+        #mu = self.mean()
         if self.load().ndim == 3:
             pad_size = ((dx, dx), (dy, dy), (0, 0))
-            constant_values = tuple([(x, y) for (x, y) in zip(mu, mu)])
+            #constant_values = tuple([(x, y) for (x, y) in zip(mu, mu)])
         else:
-            constant_values = ((mu, mu), (mu, mu))
+            #constant_values = ((mu, mu), (mu, mu))
             pad_size = ((dx, dx), (dy, dy))
-        self.data = np.pad(self.load(), pad_size, mode='constant',
-                           constant_values=constant_values)
+        self.data = np.pad(self.load(), pad_size, mode='mean')
+        self._isdirty = True
+        return self
+
+
+    def minsquare(self):
+        """Crop image of size (HxW) to (min(H,W), min(H,W))"""
+        img = self.load()
+        S = np.min(img.shape[0:2])
+        self.data = self.data[0:S,0:S,:]
+        self._isdirty = True
+        return self
+
+    def maxsquare(self):
+        """Crop image of size (HxW) to (max(H,W), max(H,W)) with zeropadding"""
+        img = self.load()
+        S = np.max(img.shape)
+        self.data = np.pad(self.load(), ((0,S-self.height()), (0,S-self.width()), (0,0)), mode='constant')
+        self.data = self.data[0:S,0:S,:]
+        self._isdirty = True
+        return self
+
+    def maxsquare_with_meanpad(self):
+        """Crop image of size (HxW) to (max(H,W), max(H,W)) with zeropadding"""
+        img = self.load()
+        S = np.max(img.shape)
+        self.data = np.pad(self.load(), ((0,S-self.height()), (0,S-self.width()), (0,0)), mode='mean')
+        self.data = self.data[0:S,0:S,:]
         self._isdirty = True
         return self
 
@@ -669,6 +676,21 @@ class Image(object):
         quietprint('[vipy.image][%s]: transform' %
                    (self.__repr__()), verbosity=2)
         self.data = imtransform(self.load(), A)
+        return self
+
+    def gain(self, g):
+        self.data = np.multiply(self.load(), g)
+        self._isdirty = True
+        return self
+
+    def bias(self, b):
+        self.data = self.load() + b
+        self._isdirty = True
+        return self
+
+    def imrange(self):
+        self.data = np.minimum(np.maximum(self.load(), 0), 255)
+        self._isdirty = True
         return self
 
     def map(self, f):
