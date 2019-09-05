@@ -7,8 +7,8 @@ import matplotlib.transforms
 
 class SceneDetection(ImageCategory):
 
-    def __init__(self, filename=None, url=None, category='scene', ignore=False, fetch=True, attributes=None, objects=None):
-        super(SceneDetection, self).__init__(filename=filename, url=url, ignore=ignore, fetch=fetch, attributes=attributes, category=category)   # ImageCategory class inheritance        
+    def __init__(self, filename=None, url=None, category='scene', ignore=False, fetch=True, attributes=None, objects=None, array=None):
+        super(SceneDetection, self).__init__(filename=filename, url=url, ignore=ignore, fetch=fetch, attributes=attributes, category=category, array=array)   # ImageCategory class inheritance        
         self.objectlist = []
         self.filename(filename)  # override filename only        
         if filename is not None and objects is not None and len(objects) > 0:
@@ -18,7 +18,7 @@ class SceneDetection(ImageCategory):
             self.__dict__ = objects[0].__dict__.copy()  # shallow copy of all object attributes
             self.url(url) # override url only
         else:
-            super(SceneDetection, self).__init__(filename=filename, url=url, ignore=ignore, fetch=fetch, attributes=attributes, category=category)   # ImageCategory class inheritance                   
+            super(SceneDetection, self).__init__(filename=filename, url=url, ignore=ignore, fetch=fetch, attributes=attributes, category=category, array=array)   # ImageCategory class inheritance                   
 
         if objects is not None and len(objects)>0:
             #self.__dict__ = objects[0].__dict__.copy()  # shallow copy of all object attributes

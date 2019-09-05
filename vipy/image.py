@@ -26,7 +26,7 @@ if hasattr(ssl, '_create_unverified_context'):
 class Image(object):
     """Standard class for images"""
     def __init__(self, filename=None, url=None, ignore=False,
-                 fetch=True, attributes=None):
+                 fetch=True, attributes=None, array=None):
         # # Private attributes
         # ignore errors during load? (useful for skipping broken links
         # if download fails)
@@ -59,7 +59,7 @@ class Image(object):
             self._filename = filename
 
         # Public attributes
-        self.data = None      # Loaded image data
+        self.data = array      # Loaded image data
         self.attributes = attributes  # useful image attributes
 
     def __str__(self):
@@ -96,6 +96,7 @@ class Image(object):
         return img
 
     def loader(self, f):
+        """Lambda function to load an image filename to a numpy array"""
         self._loader = f
         return self
 
@@ -349,6 +350,15 @@ class Image(object):
             self._urlsha1 = sha1  # file integrity
         return self
 
+    def uri(self):
+        """Return the URI of the image object, either the URL or the filename, raise exception if neither defined"""
+        if self._url is not None:
+            return self._url
+        elif self._filename is not None:
+            return self._filename
+        else:
+            raise ValueError('No URI defined')
+
     def isloaded(self):
         return self.data is not None
 
@@ -559,8 +569,8 @@ class Image(object):
     def grayscale(self):
         """Convert the image buffer to grayscale"""
         if self.load().ndim == 3:
-            quietprint('[vipy.image][%s]: converting to grayscale' %
-                       (self.__repr__()), verbosity=3)
+            #quietprint('[vipy.image][%s]: converting to grayscale' %
+            #           (self.__repr__()), verbosity=3)
             self.data = cv2.cvtColor(self.load(), cv2.COLOR_BGR2GRAY)
             self._isdirty = True
             self.setattribute('colorspace', 'gray')
@@ -569,13 +579,13 @@ class Image(object):
     def rgb(self):
         """Convert the image buffer to RGB"""
         if self.load().ndim == 3:
-            quietprint('[vipy.image][%s]: converting bgr to rgb' %
-                       (self.__repr__()), verbosity=2)
+            #quietprint('[vipy.image][%s]: converting bgr to rgb' %
+            #           (self.__repr__()), verbosity=2)
             # opencv BGR to RGB
             self.data = cv2.cvtColor(self.load(), cv2.COLOR_BGR2RGB)
         elif self.load().ndim == 2:
-            quietprint('[vipy.image][%s]: converting gray to rgb' %
-                       (self.__repr__()), verbosity=2)
+            #quietprint('[vipy.image][%s]: converting gray to rgb' %
+            #           (self.__repr__()), verbosity=2)
             self.data = cv2.cvtColor(self.load(), cv2.COLOR_GRAY2RGB)
         self._isdirty = True
         self.setattribute('colorspace', 'rgb')
@@ -584,15 +594,15 @@ class Image(object):
     def hsv(self):
         """Convert the image buffer to HSV color space"""
         if self.iscolor():
-            quietprint('[vipy.image][%s]: converting to hsv' %
-                       (self.__repr__()), verbosity=2)
+            #quietprint('[vipy.image][%s]: converting to hsv' %
+            #           (self.__repr__()), verbosity=2)
             # opencv BGR (assumed) to HSV
             self.data = cv2.cvtColor(self.load(), cv2.COLOR_BGR2HSV)
             self._isdirty = True
             self.setattribute('colorspace', 'hsv')
         else:
-            quietprint('[vipy.image][%s]: converting grayscale to hsv' %
-                       (self.__repr__()), verbosity=2)
+            #quietprint('[vipy.image][%s]: converting grayscale to hsv' %
+            #           (self.__repr__()), verbosity=2)
             # grayscale -> RGB -> HSV (HACK)
             self.data = cv2.cvtColor(self.rgb().load(), cv2.COLOR_RGB2HSV)
         return self
@@ -604,8 +614,8 @@ class Image(object):
             self.data = self.load()
             self.data = cv2.cvtColor(self.load(), cv2.COLOR_RGB2BGR)
         elif self.load().ndim == 2:
-            quietprint('[vipy.image][%s]: converting gray to bgr' %
-                       (self.__repr__()), verbosity=2)
+            #quietprint('[vipy.image][%s]: converting gray to bgr' %
+            #           (self.__repr__()), verbosity=2)
             self.data = cv2.cvtColor(self.load(), cv2.COLOR_GRAY2BGR)
         self.setattribute('colorspace', 'bgr')
         self._isdirty = True
@@ -614,8 +624,8 @@ class Image(object):
     def float(self, scale=None):
         """Convert the image buffer to float32"""
         if self.load().dtype != np.float32:
-            quietprint('[vipy.image][%s]: converting to float32' %
-                       (self.__repr__()), verbosity=2)
+            #quietprint('[vipy.image][%s]: converting to float32' %
+            #           (self.__repr__()), verbosity=2)
             self.data = np.float32(self.load())
         if scale is not None:
             self.data = self.data * scale
@@ -626,8 +636,8 @@ class Image(object):
         if scale is not None:
             self.data = self.load() * scale
         if self.load().dtype != np.uint8:
-            quietprint('[vipy.image][%s]: converting to uint8' %
-                       (self.__repr__()), verbosity=2)
+            #quietprint('[vipy.image][%s]: converting to uint8' %
+            #           (self.__repr__()), verbosity=2)
             self.data = np.uint8(self.load())
         return self
 
@@ -744,13 +754,14 @@ class Image(object):
 
 class ImageCategory(Image):
     def __init__(self, filename=None, url=None, category=None,
-                 ignore=False, fetch=True, attributes=None):
+                 ignore=False, fetch=True, attributes=None, array=None):
         # Image class inheritance
         super(ImageCategory, self).__init__(filename=filename,
                                             url=url,
                                             ignore=ignore,
                                             fetch=fetch,
-                                            attributes=attributes)
+                                            attributes=attributes,
+                                            array=array)
         self._category = category
 
     def __repr__(self):
