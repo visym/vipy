@@ -3,31 +3,65 @@ sys.path.append('..')  # FIXME: relative import
 from vipy.image import ImageDetection, Image, ImageCategory
 
 def run():
-    # Empty constructor should raise exception
+    # Empty constructor should not raise exception
+    im = Image()
+    print('Empty Constructor: PASSED')
+
+    # Non-existant filename should not raise exception
+    im = Image(filename='myfile')
+    print('Filename Constructor: PASSED')
+
+    # Malformed URL should raise exception
     try:
-        im = Image()
+        im = Image(url='myurl')
         raise
     except:
-        print('Empty Constructor: PASSED')
+        print('Malformed URL constructor: PASSED')
 
-    # Ambiguous constructor should raise exception
+    # Valid URL but not image should raise exception
     try:
-        im = Image(filename='myfile', url='myurl')
+        im = Image(url='http://visym.com')
         raise
     except:
-        print('Ambiguous Constructor: PASSED')
+        print('Image URL constructor: PASSED')
 
-    # URL constructor
+    # Valid URL and file to save it
+    im = Image(url='http://visym.com/myfile.jpg', filename='/my/file/path')
+    print('URL and filename constructor: PASSED')
+
+    # URL object
     im = Image(url='https://upload.wikimedia.org/wikipedia/commons/thumb/2/23/Bubo_virginianus_06.jpg/1920px-Bubo_virginianus_06.jpg')
-    print(im)
-    print(len(im))
+    print('  Image __desc__: %s' % im)
+    print('  Image length: %d' %  len(im))
+    im.download()
+    print('  Image __desc__: %s' % im)
     im.load()
-    print('URL: PASSED')
+    print('  Image __desc__: %s' % im)
+    print('URL download: PASSED')
 
-    # Filename constructor
+    # Invalid URL with ignore
+    im = Image(url='https://a_bad_url.jpg')
+    print('  Image __desc__: %s' % im)
+    im.load(ignoreErrors=False)
+    print('  Image __desc__: %s' % im)
+    print('Invalid URL download: PASSED')
+
+    # URL with filename 
+    im = Image(url='https://upload.wikimedia.org/wikipedia/commons/thumb/2/23/Bubo_virginianus_06.jpg/1920px-Bubo_virginianus_06.jpg', filename='/tmp/myfile.jpg')
+    print('  Image __desc__: %s' % im)
+    print('  Image length: %d' %  len(im))
+    im.download()
+    print('  Image __desc__: %s' % im)
+    im.load()
+    print('  Image __desc__: %s' % im)
+    print('URL with filename download: PASSED')
+
+    # Filename object
     im = ImageDetection(filename='jebyrne.jpg', xmin=100, ymin=100, width=700, height=1000, category='face')
-    im.show(figure=1)
-    im.crop().show()
+    print('Image __desc__: %s' % im)
+    #im.show(figure=1)
+    im.crop()
+    print('Image __desc__: %s' % im)
     print('Filename: PASSED')
 
 

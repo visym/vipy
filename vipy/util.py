@@ -675,6 +675,10 @@ def isurl(path):
     """Is a path a URL?"""
     return urlparse(path).scheme != ""
 
+def isimageurl(path):
+    """Is a path a URL with image extension?"""
+    return urlparse(path).scheme != "" and isimg(path)
+
 
 def islist(x):
     """Is an object a python list"""
