@@ -983,6 +983,9 @@ def splitextension(filename):
     return (os.path.join(head, base), ext)  # for consistency with splitext
 
 
+def hasextension(filename):
+    return fileext(filename) is not None
+
 def fileext(filename):
     """Given filename /a/b/c.ext return .ext"""
     (head, tail) = os.path.split(filename)

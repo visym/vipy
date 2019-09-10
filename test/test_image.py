@@ -7,7 +7,7 @@ def run():
     im = Image()
     print('Empty Constructor: PASSED')
 
-    # Non-existant filename should not raise exception
+    # Non-existant filename should not raise exception during constructor (only during load)
     im = Image(filename='myfile')
     print('Filename Constructor: PASSED')
 
@@ -18,14 +18,11 @@ def run():
     except:
         print('Malformed URL constructor: PASSED')
 
-    # Valid URL but not image should raise exception
-    try:
-        im = Image(url='http://visym.com')
-        raise
-    except:
-        print('Image URL constructor: PASSED')
+    # Valid URL should not raise exception (even if it is not an image extension)
+    im = Image(url='http://visym.com')
+    print('Image URL constructor: PASSED')
 
-    # Valid URL and file to save it
+    # Valid URL and filename to save it
     im = Image(url='http://visym.com/myfile.jpg', filename='/my/file/path')
     print('URL and filename constructor: PASSED')
 
@@ -38,6 +35,13 @@ def run():
     im.load()
     print('  Image __desc__: %s' % im)
     print('URL download: PASSED')
+
+    # Valid URL but without an image extension 
+    im = Image(url='http://bit.ly/great_horned_owl')
+    print('  Image __desc__: %s' % im)
+    im.load()
+    print('  Image __desc__: %s' % im)
+
 
     # Invalid URL with ignore
     im = Image(url='https://a_bad_url.jpg')
@@ -63,7 +67,6 @@ def run():
     im.crop()
     print('Image __desc__: %s' % im)
     print('Filename: PASSED')
-
 
     # Array constructor
     

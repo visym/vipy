@@ -1,7 +1,7 @@
 import os
 from vipy.show import imshow, imbbox, savefig
 from vipy.util import isnumpy, quietprint, isurl, isimageurl, islist, \
-    fileext, tempimage, mat2gray, imwrite, imwritejet, imwritegray, tmpjpg
+    fileext, tempimage, mat2gray, imwrite, imwritejet, imwritegray, tmpjpg, tempjpg
 from vipy.geometry import BoundingBox, similarity_imtransform, \
     similarity_imtransform2D, imtransform, imtransform2D
 import vipy.viset.download
@@ -37,7 +37,7 @@ class Image(object):
         # Initialization
         self._filename = filename
         if url is not None:
-            assert isimageurl(url), 'Invalid URL'
+            assert isurl(url), 'Invalid URL'
         self._url = url
         if array is not None:
             assert isnumpy(array), 'Invalid Array'
@@ -86,8 +86,10 @@ class Image(object):
 
             # Download URL to filename
             if self._url is not None:
-                if self._filename is None:
+                if self._filename is None and isimageurl(self._url):
                     self._filename = tempimage(fileext(self._url))
+                elif self._filename is None:
+                    self._filename = tempjpg()  # guess .jpg
                 self.download(ignoreErrors=ignoreErrors)
 
             # Load filename to numpy array
@@ -145,7 +147,7 @@ class Image(object):
 
     def download(self, ignoreErrors=False, timeout=10):
         """Download URL to filename provided by constructor, or to temp filename"""
-        if self._url is None or not isimageurl(str(self._url)):
+        if self._url is None or not isurl(str(self._url)):
             raise ValueError('[vipy.image.download][ERROR]: '
                              'Invalid URL "%s" ' % self._url)
         if self._filename is None:
@@ -312,6 +314,9 @@ class Image(object):
         self._filename = filename
         return self
 
+    def savetmp(self):
+        return self.saveas(tempjpg())
+
     def savefig(self, filename=None):
         f = filename if filename is not None else tmpjpg()
         savefig(filename=f)
@@ -334,7 +339,7 @@ class Image(object):
         return self.attributes is not None and key in self.attributes
 
     def hasurl(self):
-        return self._url is not None and isimageurl(self._url)
+        return self._url is not None and isurl(self._url)
 
     def hasfilename(self):
         return self._filename is not None and os.path.exists(self._filename)

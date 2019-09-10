@@ -7,8 +7,8 @@ import matplotlib.transforms
 
 class SceneDetection(ImageCategory):
 
-    def __init__(self, filename=None, url=None, category='scene', ignore=False, fetch=True, attributes=None, objects=None, array=None):
-        super(SceneDetection, self).__init__(filename=filename, url=url, ignore=ignore, fetch=fetch, attributes=attributes, category=category, array=array)   # ImageCategory class inheritance        
+    def __init__(self, filename=None, url=None, category='scene', attributes=None, objects=None, array=None):
+        super(SceneDetection, self).__init__(filename=filename, url=url, attributes=attributes, category=category, array=array)   # ImageCategory class inheritance        
         self.objectlist = []
         self.filename(filename)  # override filename only        
         if filename is not None and objects is not None and len(objects) > 0:
@@ -18,7 +18,7 @@ class SceneDetection(ImageCategory):
             self.__dict__ = objects[0].__dict__.copy()  # shallow copy of all object attributes
             self.url(url) # override url only
         else:
-            super(SceneDetection, self).__init__(filename=filename, url=url, ignore=ignore, fetch=fetch, attributes=attributes, category=category, array=array)   # ImageCategory class inheritance                   
+            super(SceneDetection, self).__init__(filename=filename, url=url, attributes=attributes, category=category, array=array)   # ImageCategory class inheritance                   
 
         if objects is not None and len(objects)>0:
             #self.__dict__ = objects[0].__dict__.copy()  # shallow copy of all object attributes
@@ -26,13 +26,14 @@ class SceneDetection(ImageCategory):
         self.category(category)
     
     def __repr__(self):
-        str_size = ", height=%d, width=%d, color='%s'" % (self.data.shape[0], self.data.shape[1], 'gray' if self.data.ndim==2 else 'color') if self.isloaded() else ""
-        if self.isvalid():
-            str_file = "filename='%s'" % self._filename
-        elif self.url() is not None:
-            str_file = "url='%s'" % self.url()
-        else:
-            str_file = ''            
+        str_size = ", height=%d, width=%d, color='%s'" % (self._array.shape[0], self._array.shape[1], 'gray' if self._array.ndim==2 else 'color') if self.isloaded() else ""
+        #if self.invalid():  # FIXME
+        #    str_file = "filename='%s'" % self._filename
+        #elif self.url() is not None:
+        #    str_file = "url='%s'" % self.url()
+        #else:
+        #    str_file = ''            
+        str_file = ''
         str_category = "%scategory='%s'" % (', ' if len(str_file)>0 else '', self._category)
         str_objects = ", objects=%d" % len(self.objectlist)
         return str('<vipy.scenedetection: %s%s%s%s>' % (str_file, str_category, str_size, str_objects))
@@ -53,14 +54,14 @@ class SceneDetection(ImageCategory):
     
     def show(self, category=None, figure=None, do_caption=True, fontsize=10, boxalpha=0.25, captionlist=None, categoryColor=None, captionoffset=(0,0), outfile=None):
         """Show a subset of object categores in current image"""
-        quietprint('[vipy.scenedetection][%s]: displaying scene' % (self.__repr__()), verbosity=2)                                            
+        #quietprint('[vipy.scenedetection][%s]: displaying scene' % (self.__repr__()), verbosity=2)                                            
         valid_categories = sorted(self.categories() if category is None else tolist(category))
         valid_detections = [im for im in self.objectlist if im.category() in valid_categories]        
         if categoryColor is None:
             colors = colorlist()
             categoryColor = dict([(c, colors[k]) for (k, c) in enumerate(valid_categories)])
         detection_color = [categoryColor[im.category()] for im in valid_detections]
-        imdetection(self.rgb().data, valid_detections, bboxcolor=detection_color, textcolor=detection_color, figure=figure, do_caption=do_caption, facealpha=boxalpha, fontsize=fontsize, captionlist=captionlist, captionoffset=captionoffset)
+        imdetection(self.rgb()._array, valid_detections, bboxcolor=detection_color, textcolor=detection_color, figure=figure, do_caption=do_caption, facealpha=boxalpha, fontsize=fontsize, captionlist=captionlist, captionoffset=captionoffset)
         if outfile is not None:
             savefig(outfile, figure)
         return self
