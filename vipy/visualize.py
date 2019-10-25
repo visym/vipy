@@ -10,7 +10,7 @@ from collections import defaultdict
 import time
 
 
-def montage(imset, m, n, aspectratio=1, crop=False, skip=True, grayscale=True, do_plot=False, figure=None, border=0, border_bgr=(128,128,128), do_flush=False, verbose=False):
+def montage(imset, m, n, rows=None, cols=None, aspectratio=1, crop=False, skip=True, grayscale=True, do_plot=False, figure=None, border=0, border_bgr=(128,128,128), do_flush=False, verbose=False):
     """Montage image of images of size (m,n), such that montage has given aspect ratio.  Pass in iterable of imagedetection objects which is used to montage rowwise"""
     import PIL
 
@@ -21,6 +21,9 @@ def montage(imset, m, n, aspectratio=1, crop=False, skip=True, grayscale=True, d
         x = int(round((aspectratio*N-M)/(1+aspectratio)))
         N = N - x
         M = M + x
+    elif rows is not None and cols is not None:
+        N = rows
+        M = cols
     padding = (M+1) * border
     size = (M * m + padding, N * n + padding)
     bc = border_bgr
@@ -43,21 +46,21 @@ def montage(imset, m, n, aspectratio=1, crop=False, skip=True, grayscale=True, d
                         if skip == False:
                             print('[janus.visualize.montage] using original image')
                             if grayscale:
-                                im = imset[k].grayscale().resize(n,m).data                                                
+                                im = imset[k].grayscale().resize(n,m)._array                                                
                             else:
-                                im = imset[k].resize(n,m).data
+                                im = imset[k].resize(n,m)._array
                         else:
                             raise
                     else:
                         if grayscale:
-                            im = imset[k].grayscale().crop(imset[k].bbox).resize(n,m).data
+                            im = imset[k].grayscale().crop(imset[k].bbox).resize(n,m)._array
                         else:
-                            im = imset[k].crop(imset[k].bbox).resize(n,m).data
+                            im = imset[k].crop(imset[k].bbox).resize(n,m)._array
                 else:
                     if grayscale:
-                        im = imset[k].grayscale().resize(n,m).data  # m=width, n=height
+                        im = imset[k].grayscale().resize(n,m)._array  # m=width, n=height
                     else:
-                        im = imset[k].resize(n,m).data
+                        im = imset[k].resize(n,m)._array
        
                 if im.dtype == np.float32:
                     if im.max() <= 1.0:
@@ -87,7 +90,7 @@ def montage(imset, m, n, aspectratio=1, crop=False, skip=True, grayscale=True, d
 
     if do_plot is True:
         im = Image('')
-        im.data = I
+        im._array = I
         # HACK: float(0-255) graycale images display incorrectly
         if grayscale:
             im.preprocess().rgb().show(figure=figure)
