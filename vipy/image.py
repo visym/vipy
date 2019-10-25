@@ -266,6 +266,9 @@ class Image(object):
     def buffer(self, data=None):
         return self.array(data)
 
+    def tonumpy(self):
+        return self.array()
+
     def filename(self, newfile=None):
         """Image Filename"""
         if newfile is None:
@@ -390,9 +393,10 @@ class Image(object):
 
     def rescale(self, scale=1):
         """Scale the image buffer by the given factor - NOT idemponent"""
-        quietprint('[vipy.image][%s]: scale=%1.2f to (%d,%d)' %
-                   (self.__repr__(), scale, scale*self.width(),
-                    scale*self.height()), verbosity=2)
+        #quietprint('[vipy.image][%s]: scale=%1.2f to (%d,%d)' %
+        #           (self.__repr__(), scale, scale*self.width(),
+        #            scale*self.height()), verbosity=2)
+
         # OpenCV decimation introduces artifacts using cubic interp ,
         # INTER_AREA is recommended according to the OpenCV docs
         interp_method = cv2.INTER_AREA if scale < 1.0 else cv2.INTER_CUBIC
@@ -402,6 +406,12 @@ class Image(object):
         if dtype == np.float32 or dtype == np.float64:
             np.clip(self._array, 0.0, 1.0, out=self._array)
         return self
+
+    def maxdim(self, dim):
+        return self.rescale(float(dim) / float(np.maximum(self.height(), self.width())))
+
+    def mindim(self, dim):
+        return self.rescale(float(dim) / float(np.minimum(self.height(), self.width())))
 
     def pad(self, dx, dy, mode='edge'):
         """Pad image using np.pad mode"""
@@ -483,6 +493,12 @@ class Image(object):
         self._array = np.fliplr(self.load())
         return self
 
+
+    def normalize(self):
+        """Convert image to float32 with [min,max] = [0,1]"""
+        self._array = (self.load().astype(np.float32) - float(self.min())) / float(self.max()-self.min())
+        return self
+
     def raw(self, normalized=True):
         """Load the image as a raw image buffer"""
         quietprint('[vipy.image][%s]: loading raw imagery data' %
@@ -498,6 +514,10 @@ class Image(object):
             self._array = cv2.cvtColor(self.load(), cv2.COLOR_BGR2GRAY)
             self.setattribute('colorspace', 'gray')
         return self
+
+    def greyscale(self):
+        """Convert the image buffer to grayscale"""
+        return self.grayscale()
 
     def rgb(self):
         """Convert the image buffer to RGB"""
@@ -877,6 +897,7 @@ class ImageDetection(ImageCategory):
         self = super(ImageDetection, self).rescale(scale)
         self.bbox = self.bbox.rescale(scale)
         return self
+
 
     def resize(self, cols=None, rows=None):
         """Resize image buffer and bounding box"""
