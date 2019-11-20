@@ -1,4 +1,5 @@
 import os
+import PIL
 from vipy.show import imshow, imbbox, savefig
 from vipy.util import isnumpy, quietprint, isurl, isimageurl, islist, \
     fileext, tempimage, mat2gray, imwrite, imwritejet, imwritegray, tmpjpg, tempjpg, imresize, imrescale, bgr2gray, gray2rgb, bgr2rgb, rgb2bgr, gray2hsv, bgr2hsv
@@ -14,6 +15,8 @@ import copy
 import numpy as np
 import shutil
 import io
+
+
 
 # FIX <urlopen error [SSL: CERTIFICATE_VERIFY_FAILED] certificate
 # verify failed (_ssl.c:581)>
@@ -101,7 +104,7 @@ class Image(object):
                 self._array = self._loader(self._filename)
             else:
                 # BGR color order!
-                self._array = np.array(PIL.Image.Open(self._filename))[:,:,::-1]  
+                self._array = np.array(PIL.Image.open(self._filename))[:,:,::-1]  
                 #self._array = cv2.imread(self._filename,
                 #                       cv2.CV_LOAD_IMAGE_UNCHANGED) \
                 #                       if asRaw else cv2.imread(self._filename)
@@ -112,7 +115,6 @@ class Image(object):
                     #           'not load "%s" using opencv, '
                     #           'falling back on PIL ' %
                     #           self._filename, 1)
-                    import PIL
                     # Convert .gif to luminance (grayscale) and export
                     # as numpy array
                     self._array = np.array(

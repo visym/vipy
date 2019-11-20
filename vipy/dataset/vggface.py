@@ -1,6 +1,6 @@
 import numpy as np
-from strpy.bobo.util import load, save, csvlist, txtlist, dirlist, imlist, readcsv, filebase, imwrite, remkdir, temppng, writecsv, filepath, loadmat
-from strpy.bobo.image import ImageDetection, Image
+from vipy.util import load, save, csvlist, txtlist, dirlist, imlist, readcsv, filebase, imwrite, remkdir, temppng, writecsv, filepath, loadmat
+from vipy.image import ImageDetection, Image
 import os
 import copy
 
