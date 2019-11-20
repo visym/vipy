@@ -1,6 +1,6 @@
 from scipy.signal import gaussian, convolve2d
 import numpy as np
-import cv2
+import cv2  # optional
 
 class SSIM(object):
     """Structural similarity (SSIM) index """

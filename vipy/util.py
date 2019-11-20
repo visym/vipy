@@ -23,8 +23,8 @@ import dill
 import builtins
 import pickle as cPickle
 
-import cv2
-# import cv2.cv as cv  # FIXME: some legacy functions will fail
+import PIL
+import matplotlib.pyplot as plt
 
 from itertools import groupby as itertools_groupby
 
@@ -154,7 +154,8 @@ def imwritejet(img, imfile=None):
 
     if isnumpy(img):
         if img.ndim == 2:
-            cv2.imwrite(imfile, rgb2bgr(gray2jet(img)))
+            cm = plt.get_cmap('gist_rainbow')
+            PIL.Image.fromarray(np.uint8(255*cm(img)[:,:,:3])).save(imfile)
         else:
             raise ValueError('Input must be a 2D numpy array')
     else:
@@ -169,10 +170,10 @@ def imwritegray(img, imfile=None):
     if isnumpy(img):
         if img.dtype == np.dtype('uint8'):
             # Assume that uint8 is in the range [0,255]
-            cv2.imwrite(imfile, img)
+            PIL.Image.fromarray(img).save(imfile)
         elif img.dtype == np.dtype('float32'):
             # Convert [0,1.0] to uint8 [0,255]
-            cv2.imwrite(imfile, np.uint8(img*255.0))
+            PIL.Image.fromarray(np.uint8(img*255.0)).save(imfile)
         else:
             raise ValueError('Unsupported datatype - '
                              'Numpy array must be uint8 or float32')
@@ -202,18 +203,18 @@ def imwrite(img, imfile=None, writeas=None):
         if img.ndim != 3:
             raise ValueError('numpy array must be 3D')
         if img.dtype == np.dtype('uint8'):
-            cv2.imwrite(imfile, rgb2bgr(img))  # convert to BGR
+            PIL.Image.fromarray(rgb2bgr(img)).save(imfile) # convert to BGR
         elif img.dtype == np.dtype('float32'):
             # convert to uint8 then BGR
-            cv2.imwrite(imfile, rgb2bgr(np.uint8(255.0*img)))
+            PIL.Image.fromarray(rgb2bgr(np.uint8(255.0*img))).save(imfile) 
     elif writeas in ['bgr']:
         if img.ndim != 3:
             raise ValueError('numpy array must be 3D')
         if img.dtype == np.dtype('uint8'):
-            cv2.imwrite(imfile, img)  # convert to BGR
+            PIL.Image.fromarray(img).save(imfile) # convert to BGR
         elif img.dtype == np.dtype('float32'):
             # convert to uint8 then BGR
-            cv2.imwrite(imfile, (np.uint8(255.0*img)))
+            PIL.Image.fromarray(np.uint8(255.0*img)).save(imfile) 
     else:
         raise ValueError('unsupported writeas')
 
@@ -272,6 +273,7 @@ def rand(m=1, n=1, d=1):
 def loadh5(filename):
     """Load an HDF5 file"""
     if ishdf5(filename):
+        import h5py
         f = h5py.File(filename, 'r')
         obj = f[filebase(filename)].value  # FIXME: lazy evaluation?
         return obj
@@ -680,6 +682,11 @@ def isimageurl(path):
     return urlparse(path).scheme != "" and isimg(path)
 
 
+def checkerboard(m=8,n=256):
+    """m=number of square by column, n=size of final image"""
+    return np.array(PIL.Image.fromarray(np.uint8(255*np.random.rand(m,m,3))).resize((n,n), PIL.Image.NEAREST))
+
+
 def islist(x):
     """Is an object a python list"""
     return type(x) is list
@@ -790,22 +797,30 @@ def isxml(path):
 #    return imgrey
 
 
-def gray2bgr(im_gray):
-    """Wrapper for opencv color conversion grayscale to color BGR (opencv
-    format)"""
-    return cv2.cvtColor(im_gray, cv2.COLOR_GRAY2BGR)
+def bgr2gray(im_bgr):
+    """Wrapper for opencv color conversion grayscale to color BGR """
+    return np.array(PIL.Image.fromarray(im_bgr).convert('L'))
 
+def gray2bgr(im_gray):
+    """Wrapper for opencv color conversion grayscale to color BGR """
+    return np.array(PIL.Image.fromarray(im_gray, mode='F').convert('RGB'))[:,:,::-1]  # Gray -> RGB -> BGR
+
+def gray2rgb(im_gray):    
+    return bgr2rgb(gray2bgr(im_gray))
 
 def bgr2rgb(im_bgr):
-    """Wrapper for opencv color conversion color BGR (opencv format) to
-    color RGB"""
-    return cv2.cvtColor(im_bgr, cv2.COLOR_BGR2RGB)
+    """Wrapper for opencv color conversion color BGR to color RGB"""
+    return np.array(im_bgr)[:,:,::-1] 
 
+def bgr2hsv(im_bgr):
+    return np.array(PIL.Image.fromarray(bgr2rgb(im_bgr)).convert('HSV'))  # BGR -> RGB -> HSV
 
+def gray2hsv(im_gray):    
+    return np.array(PIL.Image.fromarray(gray2rgb(im_gray)).convert('HSV'))  # Gray -> RGB -> HSV
+    
 def rgb2bgr(im_rgb):
-    """Wrapper for opencv color conversion color RGB to color BGR (opencv
-    format)"""
-    return cv2.cvtColor(im_rgb, cv2.COLOR_RGB2BGR)
+    """Wrapper for opencv color conversion color RGB to color BGR """
+    return np.array(im_rgb)[:,:,::-1] 
 
 
 def isarchive(filename):
@@ -881,13 +896,15 @@ def mktemp(ext):
 def imread(imfile):
     """Wrapper for opencv imread. Note that color images are imported as
     BGR!"""
-    return cv2.imread(imfile)
+    return np.array(PIL.Image.open(imfile))[:,:,::-1]
 
 
-def imresize(im, scale):
-    """Wrapper for opencv imresize"""
-    return cv2.resize(im, (0, 0), fx=scale, fy=scale,
-                      interpolation=cv2.cv.CV_INTER_LINEAR)
+def imrescale(im, scale):
+    (m,n) = (im.shape[0], im.shape[1])
+    return np.array(PIL.Image.fromarray(im).resize((scale*m, scale*n), PIL.Image.BILINEAR))
+
+def imresize(im, rows, cols):
+    return np.array(PIL.Image.fromarray(im).resize((rows, cols), PIL.Image.BILINEAR))
 
 
 def touch(filename, mystr=''):

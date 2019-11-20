@@ -1,7 +1,7 @@
 import os
 from vipy.show import imshow, imbbox, savefig
 from vipy.util import isnumpy, quietprint, isurl, isimageurl, islist, \
-    fileext, tempimage, mat2gray, imwrite, imwritejet, imwritegray, tmpjpg, tempjpg
+    fileext, tempimage, mat2gray, imwrite, imwritejet, imwritegray, tmpjpg, tempjpg, imresize, imrescale, bgr2gray, gray2rgb, bgr2rgb, rgb2bgr, gray2hsv, bgr2hsv
 from vipy.geometry import BoundingBox, similarity_imtransform, \
     similarity_imtransform2D, imtransform, imtransform2D
 import vipy.viset.download
@@ -9,10 +9,11 @@ import urllib.request
 import urllib.error
 import urllib.parse
 import http.client as httplib
-import cv2
+#import cv2
 import copy
 import numpy as np
 import shutil
+import io
 
 # FIX <urlopen error [SSL: CERTIFICATE_VERIFY_FAILED] certificate
 # verify failed (_ssl.c:581)>
@@ -69,7 +70,7 @@ class Image(object):
         elif self._url is not None and self._filename is not None:
             return str("<vipy.image: url='%s', filename='%s'>" % (str(self._url), str(self._filename)))
         else:            
-            raise  # should never get here
+            raise ValueError('vipy.image.Image must be constructed with an input')  # should never get here
 
     def loader(self, f):
         """Lambda function to load an image filename to a numpy array"""
@@ -100,9 +101,11 @@ class Image(object):
                 self._array = self._loader(self._filename)
             else:
                 # BGR color order!
-                self._array = cv2.imread(self._filename,
-                                       cv2.CV_LOAD_IMAGE_UNCHANGED) \
-                                       if asRaw else cv2.imread(self._filename)
+                self._array = np.array(PIL.Image.Open(self._filename))[:,:,::-1]  
+                #self._array = cv2.imread(self._filename,
+                #                       cv2.CV_LOAD_IMAGE_UNCHANGED) \
+                #                       if asRaw else cv2.imread(self._filename)
+
             if self._array is None:
                 if fileext(self._filename) == '.gif':
                     #quietprint('[vipy.image][WARNING]: IO error - could '
@@ -348,6 +351,15 @@ class Image(object):
         return self._filename is not None and os.path.exists(self._filename)
 
 
+    def stats(self):
+        x = self._array.flatten()
+        print('Channels: %d' % len(self._array))
+        print('Shape: %s' % str(self._array.shape))
+        print('min: %d' % np.min(x))
+        print('max: %d' % np.max(x))
+        print('mean: %d' % np.mean(x))
+        print('std: %d' % np.std(x))
+
     # MODIFY IMAGE ---------------------------------------------------------
     def clone(self):
         """Create deep copy of image object"""
@@ -368,20 +380,24 @@ class Image(object):
             # OpenCV decimation introduces artifacts using cubic
             # interp, INTER_AREA is recommended according to the
             # OpenCV docs
-            interp_method = cv2.INTER_AREA if scale < 1.0 else cv2.INTER_CUBIC
-            self._array = cv2.resize(self.load(), dsize=(0, 0),
-                                   fx=scale, fy=scale,
-                                   interpolation=interp_method)
+            #interp_method = cv2.INTER_AREA if scale < 1.0 else cv2.INTER_CUBIC            
+            #self._array = cv2.resize(self.load(), dsize=(0, 0),
+            #                       fx=scale, fy=scale,
+            #                       interpolation=interp_method)
+            self._array = imrescale(self.load(), scale)
+            
         else:
             quietprint('[vipy.image][%s]: resize=(%d,%d)' %
                        (self.__repr__(), rows, cols), verbosity=2)
             try:
-                interp_method = cv2.INTER_AREA if (
-                    rows < self.height() or
-                    cols < self.width()) else cv2.INTER_CUBIC
+                #interp_method = cv2.INTER_AREA if (
+                #    rows < self.height() or
+                #    cols < self.width()) else cv2.INTER_CUBIC
                 # fixed bug since opencv takes x and y not rows, cols
-                self._array = cv2.resize(self.load(), dsize=(cols, rows),
-                                       interpolation=interp_method)
+                #self._array = cv2.resize(self.load(), dsize=(cols, rows),
+                #                       interpolation=interp_method)
+                self._array = imresize(self.load(), rows, cols)
+
             except:
                 print(self)  # DEBUGGING
                 raise
@@ -399,9 +415,11 @@ class Image(object):
 
         # OpenCV decimation introduces artifacts using cubic interp ,
         # INTER_AREA is recommended according to the OpenCV docs
-        interp_method = cv2.INTER_AREA if scale < 1.0 else cv2.INTER_CUBIC
-        self._array = cv2.resize(self.load(), dsize=(0, 0),
-                               fx=scale, fy=scale, interpolation=interp_method)
+        #interp_method = cv2.INTER_AREA if scale < 1.0 else cv2.INTER_CUBIC
+        #self._array = cv2.resize(self.load(), dsize=(0, 0),
+        #                       fx=scale, fy=scale, interpolation=interp_method)
+        self._array = imrescale(self.load(), scale)
+
         dtype = self._array.dtype
         if dtype == np.float32 or dtype == np.float64:
             np.clip(self._array, 0.0, 1.0, out=self._array)
@@ -511,7 +529,8 @@ class Image(object):
         if self.load().ndim == 3:
             #quietprint('[vipy.image][%s]: converting to grayscale' %
             #           (self.__repr__()), verbosity=3)
-            self._array = cv2.cvtColor(self.load(), cv2.COLOR_BGR2GRAY)
+            #self._array = cv2.cvtColor(self.load(), cv2.COLOR_BGR2GRAY)
+            self._array = bgr2gray(self.load())
             self.setattribute('colorspace', 'gray')
         return self
 
@@ -525,11 +544,13 @@ class Image(object):
             #quietprint('[vipy.image][%s]: converting bgr to rgb' %
             #           (self.__repr__()), verbosity=2)
             # opencv BGR to RGB
-            self._array = cv2.cvtColor(self.load(), cv2.COLOR_BGR2RGB)
+            #self._array = cv2.cvtColor(self.load(), cv2.COLOR_BGR2RGB)
+            self._array = bgr2rgb(self.load())
         elif self.load().ndim == 2:
             #quietprint('[vipy.image][%s]: converting gray to rgb' %
             #           (self.__repr__()), verbosity=2)
-            self._array = cv2.cvtColor(self.load(), cv2.COLOR_GRAY2RGB)
+            #self._array = cv2.cvtColor(self.load(), cv2.COLOR_GRAY2RGB)
+            self._array = gray2rgb(self.load())
         self.setattribute('colorspace', 'rgb')
         return self
 
@@ -539,25 +560,29 @@ class Image(object):
             #quietprint('[vipy.image][%s]: converting to hsv' %
             #           (self.__repr__()), verbosity=2)
             # opencv BGR (assumed) to HSV
-            self._array = cv2.cvtColor(self.load(), cv2.COLOR_BGR2HSV)
+            #self._array = cv2.cvtColor(self.load(), cv2.COLOR_BGR2HSV)
+            self._array = bgr2hsv(self.load())
             self.setattribute('colorspace', 'hsv')
         else:
             #quietprint('[vipy.image][%s]: converting grayscale to hsv' %
             #           (self.__repr__()), verbosity=2)
             # grayscale -> RGB -> HSV (HACK)
-            self._array = cv2.cvtColor(self.rgb().load(), cv2.COLOR_RGB2HSV)
+            #self._array = cv2.cvtColor(self.rgb().load(), cv2.COLOR_RGB2HSV)
+            self._array = gray2hsv(self.load())
         return self
 
     def bgr(self):
         """Convert the image buffer to BGR color format"""
         if self.load().ndim == 3:
             # Loaded by opencv, so assumed BGR order
-            self._array = self.load()
-            self._array = cv2.cvtColor(self.load(), cv2.COLOR_RGB2BGR)
+            #self._array = self.load()
+            #self._array = cv2.cvtColor(self.load(), cv2.COLOR_RGB2BGR)
+            self._array = self.load()[:,:,::-1]
         elif self.load().ndim == 2:
             #quietprint('[vipy.image][%s]: converting gray to bgr' %
             #           (self.__repr__()), verbosity=2)
-            self._array = cv2.cvtColor(self.load(), cv2.COLOR_GRAY2BGR)
+            #self._array = cv2.cvtColor(self.load(), cv2.COLOR_GRAY2BGR)
+            self._array = gray2bgr(self.load())
         self.setattribute('colorspace', 'bgr')
         return self
 
@@ -681,8 +706,13 @@ class Image(object):
 
     def html(self, alt=None):
         im = self.clone().rgb()
-        ret, data = cv2.imencode('.png', im._array)
-        b = data.tobytes().encode('base64')
+        #ret, data = cv2.imencode('.png', im._array)
+        #b = data.tobytes().encode('base64')
+
+        buf = io.BytesIO()
+        PIL.Image.frombuffer(im).save(buf, format='JPEG')
+        b = buf.getvalue().encpde('base64')
+
         alt_text = alt if alt is not None else im.filename()
         return '<img src="data:image/png;base64,%s" alt="%s" />' % (b,
                                                                     alt_text)

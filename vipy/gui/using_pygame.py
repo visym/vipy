@@ -11,6 +11,7 @@ import signal
 from time import sleep
 import matplotlib.cm as cm 
 
+raise ValueError('PyGame backend not supported')
 
 # Window state
 IMG = None
@@ -22,6 +23,8 @@ def _sigint_handler(signum, frame):
     sys.stdout.flush()
     pygame.quit()
     sys.exit()
+
+
 
 # FIXME:can do one ctrl-c in ipython, but not two due to opencv and pygame reinitialization segfault
 # this segfault makes pygame currently unusable as a general gui solution

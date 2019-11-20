@@ -9,6 +9,7 @@ from bobo.util import temppng
 
 
 # FIXME: rewrite me to remove broken multiprocessing event queues
+raise ValueError('OpenCV backend not supported')
 
 
 WINDOWSTATE = {'focus':None, 'windows':{}}

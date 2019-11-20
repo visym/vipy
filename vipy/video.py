@@ -2,8 +2,6 @@ import os
 from vipy.util import isnumpy, quietprint, isstring, isvideo, tempcsv, imlist, remkdir, filepath, filebase
 from vipy.image import Image, ImageCategory, ImageDetection
 import copy
-import cv2  
-#import cv # FIXME: videocapture will not work
 import numpy as np
 
 class Video(object):
@@ -220,6 +218,7 @@ class VideoDetection(VideoCategory):
 
 class VideoCapture(object):
     """ Wraps OpenCV VideoCapture in a generator"""
+    import cv2 
     def __init__(self, url, do_msec=False):
         """Takes a url, filename, or device id that produces video"""
         self.url = url

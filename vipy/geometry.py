@@ -1,5 +1,5 @@
 import numpy as np
-import cv2
+import cv2  # optional
 import math
 import numpy.linalg
 import scipy.spatial

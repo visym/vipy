@@ -1,5 +1,4 @@
-
-import flickrapi
+import flickrapi  # optional
 import flickrapi.shorturl
 import urllib
 import os
