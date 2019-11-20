@@ -1,8 +1,7 @@
 import os
-from bobo.util import remkdir, isstring, quietprint, filetail, dirlist, imlist
-from bobo.image import ImageDetection
-from bobo.geometry import BoundingBox
-import bobo.app
+from vipy.util import remkdir, isstring, quietprint, filetail, dirlist, imlist
+from vipy.image import ImageDetection
+from vipy.geometry import BoundingBox
 import numpy as np
 
 
@@ -16,7 +15,7 @@ URL_PAIRS_DEV_TEST = 'http://vis-www.cs.umass.edu/lfw/pairsDevTest.txt'
 URL_PAIRS_VIEW2 = 'http://vis-www.cs.umass.edu/lfw/pairs.txt'
 
 class LFW(object):
-    def __init__(self, datadir=bobo.app.datadir(), cache_root=bobo.app.janusCache(), funneled=None, bbox_size=(125,150)):
+    def __init__(self, datadir, cache_root, funneled=None, bbox_size=(125,150)):
         self.datadir = datadir
         if funneled == None:
             self.lfwdir = os.path.join(self.datadir, 'lfw')

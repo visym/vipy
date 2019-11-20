@@ -1,5 +1,4 @@
 import numpy as np
-import cv2  # optional
 import math
 import numpy.linalg
 import scipy.spatial
@@ -22,6 +21,7 @@ def apply_homography(H,p):
 
 def similarity_imtransform2D(c=(0,0), r=0, s=1):
     # cv2 rotation is in degrees
+    import cv2
     deg = r * 180. / math.pi
     A = cv2.getRotationMatrix2D(c, deg, s)
     return A
@@ -49,9 +49,11 @@ def random_affine_imtransform(txy=((0,0),(0,0)), r=(0,0), sx=(1,1), sy=(1,1), kx
                               ky=uniform_random_in_range(ky))
 
 def imtransform2D(im, A):
+    import cv2
     return cv2.warpAffine(im, A, (im.shape[1], im.shape[0]))
 
 def imtransform(im, A):
+    import cv2
     # cv2.warpPerspective(src, M, dsize[, dst[, flags[, borderMode[, borderValue]]]]) -> dst
     return cv2.warpPerspective(im, A, (im.shape[1], im.shape[0]))
 
@@ -277,7 +279,7 @@ class BoundingBox():
         # new_x and new_y are the offsets of the original bounding box in the new bounding box.
         # Can use this to use an extracted chip in place of a full image when we're cropping something
         # with dilation.
-        return self, old_x - self.xmin, old_y - self.ymin
+        return self
 
     def dilate_height(self, scale=1):
         """Change scale of bounding box in y direction keeping centroid constant"""

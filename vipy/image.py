@@ -5,7 +5,7 @@ from vipy.util import isnumpy, quietprint, isurl, isimageurl, islist, \
     fileext, tempimage, mat2gray, imwrite, imwritejet, imwritegray, tmpjpg, tempjpg, imresize, imrescale, bgr2gray, gray2rgb, bgr2rgb, rgb2bgr, gray2hsv, bgr2hsv
 from vipy.geometry import BoundingBox, similarity_imtransform, \
     similarity_imtransform2D, imtransform, imtransform2D
-import vipy.viset.download
+import vipy.dataset.download
 import urllib.request
 import urllib.error
 import urllib.parse
@@ -163,7 +163,7 @@ class Image(object):
                 #quietprint('[vipy.image.download]: '
                 #           'downloading "%s" to "%s" ' %
                 #           (self._url, self._filename), verbosity=1)
-                vipy.viset.download.download(self._url,
+                vipy.dataset.download.download(self._url,
                                         self._filename,
                                         verbose=False,
                                         timeout=timeout,
@@ -256,6 +256,9 @@ class Image(object):
 
     def height(self):
         return self.load().shape[0]
+
+    def shape(self):
+        return self.tonumpy().shape
 
     def array(self, data=None):
         if data is None:
@@ -957,6 +960,11 @@ class ImageDetection(ImageCategory):
             self.bbox = BoundingBox(xmin=0, ymin=0,
                                     xmax=self.width(), ymax=self.height())
         return self
+
+    def centercrop(self, bbwidth, bbheight):
+        (W,H) = (self.width(), self.height())
+        self.bbox = BoundingBox(xcentroid=W/2.0, ycentroid=H/2.0, width=bbwidth, height=bbheight)
+        return self.crop()
 
     def clip(self, border=0):
         self.bbox = self.bbox.intersection(

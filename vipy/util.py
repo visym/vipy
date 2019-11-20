@@ -900,8 +900,8 @@ def imread(imfile):
 
 
 def imrescale(im, scale):
-    (m,n) = (im.shape[0], im.shape[1])
-    return np.array(PIL.Image.fromarray(im).resize((scale*m, scale*n), PIL.Image.BILINEAR))
+    (height, width) = (im.shape[0], im.shape[1])
+    return np.array(PIL.Image.fromarray(im).resize((int(np.round(scale*width)), int(np.round(scale*height))), PIL.Image.BILINEAR))
 
 def imresize(im, rows, cols):
     return np.array(PIL.Image.fromarray(im).resize((rows, cols), PIL.Image.BILINEAR))

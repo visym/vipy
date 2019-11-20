@@ -1,7 +1,6 @@
 import os
-from bobo.util import remkdir, dirlist, imlist, filebase, readcsv, writecsv
-from bobo.image import ImageDetection
-import bobo.app
+from vipy.util import remkdir, dirlist, imlist, filebase, readcsv, writecsv
+from vipy.image import ImageDetection
 import json
 import numpy as np
 
@@ -43,8 +42,8 @@ class MF2(object):
         
 
 class Megaface(object):
-    def __init__(self, datadir=None):
-        self.datadir = bobo.app.datadir() if datadir is None else datadir
+    def __init__(self, datadir):
+        self.datadir = datadir
 
     def __repr__(self):
         return str('<viset.megaface: %s>' % self.datadir)

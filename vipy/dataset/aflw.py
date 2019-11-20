@@ -1,8 +1,7 @@
 import os
-from bobo.cache import Cache
 import sqlite3
 import csv
-from bobo.image import ImageDetection
+from vipy.image import ImageDetection
 import bobo.app
 import numpy as np
 import janus.visualize

@@ -86,4 +86,8 @@ class VGGFace(object):
                 im = im.boundingbox(dilate=0.875)  # central 224x224
                 takelist.append(im)
         return takelist
-        
+
+    def by_subject(self, wordnetid):
+        d = os.path.join(self.datadir, 'images', wordnetid)
+        for f in imlist(d):
+            yield ImageDetection(filename=f, category=filebase(d))
