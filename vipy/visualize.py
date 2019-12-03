@@ -8,11 +8,11 @@ from vipy.video import VideoDetection
 from vipy.show import savefig
 from collections import defaultdict
 import time
+import PIL
 
 
 def montage(imset, m, n, rows=None, cols=None, aspectratio=1, crop=False, skip=True, grayscale=True, do_plot=False, figure=None, border=0, border_bgr=(128,128,128), do_flush=False, verbose=False):
     """Montage image of images of size (m,n), such that montage has given aspect ratio.  Pass in iterable of imagedetection objects which is used to montage rowwise"""
-    import PIL
 
     n_imgs = len(imset)
     M = int(np.ceil(np.sqrt(n_imgs)))

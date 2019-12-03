@@ -25,6 +25,7 @@ import pickle as cPickle
 
 import PIL
 import matplotlib.pyplot as plt
+import uuid
 
 from itertools import groupby as itertools_groupby
 
@@ -219,6 +220,12 @@ def imwrite(img, imfile=None, writeas=None):
         raise ValueError('unsupported writeas')
 
     return imfile
+
+
+def savetemp(img):
+    f = '/tmp/%s.png' % uuid.uuid1().hex
+    PIL.Image.fromarray(img.astype(np.uint8)).save(f)
+    return f
 
 
 def gray2jet(img):

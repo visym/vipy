@@ -277,6 +277,12 @@ class Image(object):
     def tonumpy(self):
         return self.array()
 
+    def numpy(self):
+        return self.tonumpy()
+
+    def pil(self):
+        return PIL.Image.fromarray(self.tonumpy())
+
     def filename(self, newfile=None):
         """Image Filename"""
         if newfile is None:
@@ -380,8 +386,9 @@ class Image(object):
                 scale = float(rows)/float(self.height())
             else:
                 scale = float(cols)/float(self.width())
-            quietprint('[vipy.image][%s]: scale=%1.2f' %
-                       (self.__repr__(), scale), verbosity=2)
+            #quietprint('[vipy.image][%s]: scale=%1.2f' %
+            #           (self.__repr__(), scale), verbosity=2)
+
             # OpenCV decimation introduces artifacts using cubic
             # interp, INTER_AREA is recommended according to the
             # OpenCV docs
@@ -392,8 +399,8 @@ class Image(object):
             self._array = imrescale(self.load(), scale)
             
         else:
-            quietprint('[vipy.image][%s]: resize=(%d,%d)' %
-                       (self.__repr__(), rows, cols), verbosity=2)
+            #quietprint('[vipy.image][%s]: resize=(%d,%d)' %
+            #           (self.__repr__(), rows, cols), verbosity=2)
             try:
                 #interp_method = cv2.INTER_AREA if (
                 #    rows < self.height() or
