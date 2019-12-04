@@ -14,7 +14,7 @@ setup(
         "scikit-learn",
         "matplotlib",    
         "dill",
-        "pillow==5.4.1",
+        "pillow==6.2.0",
     ],
     keywords = ['vision', 'learning', 'ML', 'CV'], 
     classifiers = [],
