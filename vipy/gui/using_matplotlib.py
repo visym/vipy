@@ -12,7 +12,6 @@ from matplotlib import pyplot as plt
 import matplotlib.cm as cm
 import numpy as np
 from vipy.util import islist, temppng, mat2gray
-import cv2
 import os
 import sys
 
@@ -310,17 +309,6 @@ def frame(fr, im=None, color='b.', markersize=10, figure=None, caption=None):
     plt.draw()
     #return plt
 
-def show_imgdir(imgdir):
-    # >>> nsd.show_imgdir("C:\\jebyrne\\penn\\datasets\\altoids")
-    print('Displaying imagery from directory ' + imgdir)
-    imglist = glob.glob(os.path.join(imgdir,'*.jpg'))
-    for f in imglist:
-        img = cv.LoadImage(f)
-        thumbnail = cv.CreateMat(img.height / 8, img.width / 8, cv.CV_8UC3)
-        cv.Resize(img, thumbnail)
-        cv.NamedWindow('display')
-        cv.ShowImage('display', thumbnail)
-        cv.WaitKey(1)  # 1ms
 
 def colorlist():
     """Return a list of named colors"""
