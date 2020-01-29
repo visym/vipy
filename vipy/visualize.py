@@ -12,7 +12,7 @@ import PIL
 
 
 def montage(imset, m, n, rows=None, cols=None, aspectratio=1, crop=False, skip=True, grayscale=True, do_plot=False, figure=None, border=0, border_bgr=(128,128,128), do_flush=False, verbose=False):
-    """Montage image of images of size (m,n), such that montage has given aspect ratio.  Pass in iterable of imagedetection objects which is used to montage rowwise"""
+    """Montage image of images of size (m,n), such that montage has given aspect ratio  or is exactly (rows x cols).  Pass in iterable of imagedetection objects which is used to montage rowwise"""
 
     n_imgs = len(imset)
     M = int(np.ceil(np.sqrt(n_imgs)))

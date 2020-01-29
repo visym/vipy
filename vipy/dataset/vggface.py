@@ -11,7 +11,7 @@ class VGGFaceURL(object):
         self._subjects = None
         
     def __repr__(self):
-        return str('<viset.vggfaceurl: %s>' % self.datadir)
+        return str('<vipy.dataset.vggfaceurl: %s>' % self.datadir)
 
     def subjects(self):
         if self._subjects is None:
@@ -45,7 +45,7 @@ class VGGFace(object):
         self._subjects = None
         
     def __repr__(self):
-        return str('<viset.vggface: %s>' % self.datadir)
+        return str('<vipy.dataset.vggface: %s>' % self.datadir)
 
     def subjects(self):
         if self._subjects is None:
@@ -91,3 +91,5 @@ class VGGFace(object):
         d = os.path.join(self.datadir, 'images', wordnetid)
         for f in imlist(d):
             yield ImageDetection(filename=f, category=filebase(d))
+
+
