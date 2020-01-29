@@ -16,7 +16,7 @@ The git sequence to delete a tag
 
  create ~/.pypirc following https://packaging.python.org/guides/migrating-to-pypi-org/#uploading
  edit setup.py to point to new version
- python setup.py register -r pypi
- python setup.py sdist upload -r pypi
+ python3 setup.py register -r pypi
+ python3 setup.py sdist upload -r pypi
 
 
