@@ -90,7 +90,7 @@ def montage(imset, m, n, rows=None, cols=None, aspectratio=1, crop=False, skip=T
 
     if do_plot is True:
         im = Image('')
-        im.array() = I
+        im = im.array(I)
         # HACK: float(0-255) graycale images display incorrectly
         if grayscale:
             im.preprocess().rgb().show(figure=figure)

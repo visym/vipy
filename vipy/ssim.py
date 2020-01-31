@@ -1,10 +1,11 @@
 from scipy.signal import gaussian, convolve2d
 import numpy as np
-import cv2  # optional
+try_import('cv2', 'opencv-python'); import cv2  # optional
+
 
 class SSIM(object):
     """Structural similarity (SSIM) index """
-    """Z. Wang, A. Bovik, H. Sheikh, E. Simoncelli, "Image quality assessment: from error visibility to structural similarity". IEEE Transactions on Image Processing. 13 (4): 600–612""".
+    """Z. Wang, A. Bovik, H. Sheikh, E. Simoncelli, "Image quality assessment: from error visibility to structural similarity". IEEE Transactions on Image Processing. 13 (4): 600–612"""
     def __init__(self, do_alignment=True, min_matches_for_alignment=10, num_matches_for_alignment=500, K1=0.01, K2=0.03):
         self.do_alignment = do_alignment
         self.min_matches_for_alignment = min_matches_for_alignment
@@ -121,8 +122,8 @@ def demo(imfile):
     img1_rotation = cv2.warpAffine(img1, R, (num_cols, num_rows))
     img2 = img1_rotation
 
-    print 'Structural similarity score (aligned): %f' % SSIM(do_alignment=True).ssim(img1, img2)
-    print 'Structural similarity score (unaligned): %f' % SSIM(do_alignment=False).ssim(img1, img2)
+    print('Structural similarity score (aligned): %f' % SSIM(do_alignment=True).ssim(img1, img2))
+    print('Structural similarity score (unaligned): %f' % SSIM(do_alignment=False).ssim(img1, img2))
     
     return (img1, img2)
 

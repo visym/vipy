@@ -1,12 +1,15 @@
-import dropbox  # optional
 import os
 from os import path
-import urlparse
+import urllib.parse as urlparse
+from vipy.util import try_import
 
 class Dropbox():
-    _access_token = os.environ.get('BOBO_DROPBOX_ACCESS_TOKEN')
-    _app_key = os.environ.get('BOBO_DROPBOX_APP_KEY')
-    _app_secret = os.environ.get('BOBO_DROPBOX_APP_SECRET_KEY')
+    try_import('dropbox')
+    import dropbox  # optional    
+    
+    _access_token = os.environ.get('DROPBOX_ACCESS_TOKEN')
+    _app_key = os.environ.get('DROPBOX_APP_KEY')
+    _app_secret = os.environ.get('DROPBOX_APP_SECRET_KEY')
 
     # save access token to cache
     # http://stackoverflow.com/questions/10549326/python-dropbox-api-save-token-file

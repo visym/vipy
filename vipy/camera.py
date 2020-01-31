@@ -1,18 +1,16 @@
 import glob
 import os
-import cv2  # optional
-#import cv2.cv as cv  # FIXME
 import numpy
 import urllib
 import timeit
 import time
 import tempfile
-#import multiprocessing
 import signal 
 import sys
 from vipy.util import imresize, tempimage
 
-
+try_import("cv2", "opencv-python")
+import cv2 
 
 class Camera(object):
     CAM = None
@@ -25,6 +23,8 @@ class Camera(object):
     
 class Webcam(Camera):
     def __init__(self, framerate=False, resize=1, grey=False, url=0):
+
+        
         self.CAM = cv2.VideoCapture(url)
         if not self.CAM.isOpened():
             self.CAM.open(url)
@@ -103,3 +103,34 @@ class Ipcam(Camera):
         urllib.urlretrieve(self.CAM, self.TMPFILE)
         return cv2.imread(self.TMPFILE)  # numpy
   
+class VideoCapture(object):
+    """ Wraps OpenCV VideoCapture in a generator"""
+    def __init__(self, url, do_msec=False):
+        """Takes a url, filename, or device id that produces video"""
+        self.url = url
+        self.do_msec = do_msec
+        # Grab video metadata
+        self.cap = cv2.VideoCapture(self.url)
+        self.num_frames = self.cap.get(cv.CV_CAP_PROP_FRAME_COUNT)
+        self.fps = self.cap.get(cv.CV_CAP_PROP_FPS)
+        # Release file until we start iteration
+        self.cap = self.cap.release()
+
+    def __iter__(self):
+        """Yields frames from the video source"""
+        if self.cap is None:
+            self.cap = cv2.VideoCapture(self.url)
+            self.num_frames = self.cap.get(cv.CV_CAP_PROP_FRAME_COUNT)
+            self.fps = self.cap.get(cv.CV_CAP_PROP_FPS)
+        ret = True
+        try:
+            while ret:
+                ret, frame = self.cap.read()
+                if ret:
+                    if self.do_msec:
+                        msec = self.cap.get(cv.CV_CAP_PROP_POS_MSEC)
+                        yield msec, frame
+                    else:
+                        yield frame
+        finally:
+            self.cap = self.cap.release()

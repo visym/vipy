@@ -27,12 +27,12 @@ from itertools import groupby as itertools_groupby
 import importlib
 
 
-def try_import(package):
+def try_import(package, pipname=None):
     """Show a helpful error message for missing optional packages"""
     try:
         importlib.import_module(package)
     except:
-        raise ImportError('Missing package -  Run "pip install %s"' % package)
+        raise ImportError('Missing package %s -  Run "pip install %s" ' % (package, package if pipname is None else pipname))
     
 def quietprint(x, verbosity=None):
     """FIXME"""

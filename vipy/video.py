@@ -216,35 +216,3 @@ class VideoDetection(VideoCategory):
     
 
 
-class VideoCapture(object):
-    """ Wraps OpenCV VideoCapture in a generator"""
-    import cv2 
-    def __init__(self, url, do_msec=False):
-        """Takes a url, filename, or device id that produces video"""
-        self.url = url
-        self.do_msec = do_msec
-        # Grab video metadata
-        self.cap = cv2.VideoCapture(self.url)
-        self.num_frames = self.cap.get(cv.CV_CAP_PROP_FRAME_COUNT)
-        self.fps = self.cap.get(cv.CV_CAP_PROP_FPS)
-        # Release file until we start iteration
-        self.cap = self.cap.release()
-
-    def __iter__(self):
-        """Yields frames from the video source"""
-        if self.cap is None:
-            self.cap = cv2.VideoCapture(self.url)
-            self.num_frames = self.cap.get(cv.CV_CAP_PROP_FRAME_COUNT)
-            self.fps = self.cap.get(cv.CV_CAP_PROP_FPS)
-        ret = True
-        try:
-            while ret:
-                ret, frame = self.cap.read()
-                if ret:
-                    if self.do_msec:
-                        msec = self.cap.get(cv.CV_CAP_PROP_POS_MSEC)
-                        yield msec, frame
-                    else:
-                        yield frame
-        finally:
-            self.cap = self.cap.release()
