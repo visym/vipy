@@ -213,7 +213,7 @@ def imdetection(img, detlist, figure=None, bboxcolor='green', colormap=None, do_
         else:
             textcolor_ = textcolor
 
-        fig = imbbox(img=img, xmin=det.xmin, ymin=det.ymin, xmax=det.xmax, ymax=det.ymax, bboxcaption=bboxcaption, do_imshow=do_imshow, do_updateplot=do_updateplot, figure=fig, colormap=colormap, bboxcolor=bboxcolor_, facecolor=facecolor, facealpha=facealpha, textcolor=textcolor_, textfacecolor=textfacecolor, fontsize=fontsize, captionoffset=captionoffset)
+        fig = imbbox(img=img, xmin=det.xmin(), ymin=det.ymin(), xmax=det.xmax(), ymax=det.ymax(), bboxcaption=bboxcaption, do_imshow=do_imshow, do_updateplot=do_updateplot, figure=fig, colormap=colormap, bboxcolor=bboxcolor_, facecolor=facecolor, facealpha=facealpha, textcolor=textcolor_, textfacecolor=textfacecolor, fontsize=fontsize, captionoffset=captionoffset)
     #plt.hold(False)
     pause(0.00001)
     return fig

@@ -33,9 +33,15 @@ def try_import(package, pipname=None):
         importlib.import_module(package)
     except:
         raise ImportError('Missing package %s -  Run "pip install %s" ' % (package, package if pipname is None else pipname))
+
+def count_images_in_subdirectories(indir):
+    """Count the total number of images in indir/subdir1, indir/subdir2, ..."""
+    num_files = 0
+    for d in dirlist(outdir):
+        num_files += len(imlist(d))
+    return num_files
     
 def quietprint(x, verbosity=None):
-    """FIXME"""
     print(x)
 
 def rowvectorize(X):
@@ -85,7 +91,7 @@ def groupby(inset, keyfunc):
     return itertools_groupby(sorted(inset, key=keyfunc), keyfunc)
 
 
-def bobo_groupby(inset, keyfunc):
+def vipy_groupby(inset, keyfunc):
     """groupby on unsorted inset"""
     return groupby(inset, keyfunc)
 
@@ -167,9 +173,11 @@ def imwritejet(img, imfile=None):
         raise ValueError('Input must be numpy array')
     return imfile
 
-
+def isuint8(img):
+    return isnumpy(img) and img.dtype == np.dtype('uint8')
+    
 def imwritegray(img, imfile=None):
-    """Write a floating point grayscale numpy image as [0,255] grayscale"""
+    """Write a floating point grayscale numpy image in [0,1] as [0,255] grayscale"""
     if imfile is None:
         imfile = temppng()
     if isnumpy(img):
@@ -177,7 +185,7 @@ def imwritegray(img, imfile=None):
             # Assume that uint8 is in the range [0,255]
             PIL.Image.fromarray(img).save(imfile)
         elif img.dtype == np.dtype('float32'):
-            # Convert [0,1.0] to uint8 [0,255]
+            # Convert [0, 1.0] to uint8 [0,255]
             PIL.Image.fromarray(np.uint8(img*255.0)).save(imfile)
         else:
             raise ValueError('Unsupported datatype - '
@@ -260,75 +268,29 @@ def seq(start, stop, step=1):
     else:
         return([])
 
-
-def single(M):
-    """Matlab replacement for typecasting numpy array to single precision"""
-    return M.astype(np.float32)
-
-
-def randn(m, n):
-    """Return a float32 numpy array of size (mxn)"""
-    return np.random.randn(m, n).astype(np.float32)
-
-
-def rand(m=1, n=1, d=1):
-    """Return a float32 numpy array of size (mxn)"""
-    if m == 1 and n == 1 and d == 1:
-        return np.random.rand()
-    elif d == 1:
-        return np.random.rand(m, n).astype(np.float32)
-    else:
-        return np.random.rand(m, n, d).astype(np.float32)
-
-
 def loadh5(filename):
     """Load an HDF5 file"""
     if ishdf5(filename):
-        import h5py
+        try_import('h5py'); import h5py
         f = h5py.File(filename, 'r')
         obj = f[filebase(filename)].value  # FIXME: lazy evaluation?
         return obj
     else:
         raise ValueError('Invalid HDF5 file "%s" ' % filename)
 
-
-def unshelve(infile, keys=None):
-    """Load an object associated with a dictionary key.  Legacy code only"""
-    s = shelve.open(infile, flag='r')
-    vardict = {}
-    if keys is None:
-        # quietprint('[bobo.util.load]: loading all variables from "%s"' %
-        #            (infile))
-        keys = list(s.keys())  # FIXME: why does not not pick up all keys?
-        for k in tolist(keys):
-            vardict[k] = s[k]
-        s.close()
-        return vardict  # dictionary of all keys
-    else:
-        # quietprint('[bobo.util.save]: loading variables "%s" from "%s"' %
-        #            (str(keys), infile))
-        outlist = []
-        for k in tolist(keys):
-            outlist.append(s[k])
-        s.close()
-        return tuple(outlist)  # tuple of requested keys
-
-
 def savemat(outfile, vardict):
     """Write a dictionary to .mat file"""
     scipy.io.savemat(outfile, vardict)
     return outfile
 
-
 def loadmat(infile):
     """Read a dictionary to .mat file"""
     return scipy.io.loadmat(infile)
 
-
 def loadmat73(matfile, keys=None):
     """Matlab 7.3 format, keys should be a list of keys to access HDF5
     file as f[key1][key2]...  Returned as numpy array"""
-    import h5py
+    try_import('h5py'); import h5py
     f = h5py.File(matfile, 'r')
     if keys is None:
         return f
@@ -336,7 +298,6 @@ def loadmat73(matfile, keys=None):
         for k in keys:
             f = f[k]
         return np.array(f)
-
 
 def saveas(vars, outfile=None, type='dill'):
     """Save variables as a dill pickled file"""
@@ -394,8 +355,7 @@ def fastload(infile):
 
 
 def loadyaml(yamlfile):
-    """Load a numpy array from YAML file exported from OpenCV and
-    bobo_util_savemat (bobo.h)"""
+    """Load a numpy array from YAML file exported from OpenCV"""
     return np.squeeze(np.array(cv.Load(yamlfile)))
 
 
@@ -427,17 +387,14 @@ def matrix2yaml(yamlfile, mtxlist, mtxname=None):
     with open(yamlfile, 'w') as f:
         f.write('%YAML:1.0\n')
         for (m, mname) in zip(mtxlist, mtxname):
-            # print '[bobo.util.matrix2yaml]: mname=%s' % mname
-            # print '[bobo.util.matrix2yaml]: m=';  print m
             _write_matrix(f, m, mname)
 
     return yamlfile
 
 
 def saveyaml(yamlfile, mat):
-    """Save a numpy array to YAML file importable by OpenCV and
-    bobo_util_loadmat (bobo.h)"""
-
+    """Save a numpy array to YAML file importable by OpenCV"""
+    
     def _write_matrix(f, M):
         f.write('    mtx_01: !!opencv-matrix\n')
         f.write('       rows: %d\n' % M.shape[0])
@@ -472,16 +429,6 @@ def tofilename(s, hyphen=True):
     if hyphen:
         s = str.replace(s, '-', '_')
     return "".join(x for x in s if x in valid_chars)
-
-
-def viset(visetname):
-    """Dynamically import requested vision dataset module"""
-    try:
-        obj = __import__("bobo.viset.%s" % visetname, fromlist=["bobo.viset"])
-    except ImportError:
-        raise
-        # raise ValueError('Undefined viset "%s"' % visetname)
-    return obj
 
 
 def isexe(filename):
@@ -704,20 +651,20 @@ def islist(x):
 
 
 def isimageobject(x):
-    """Is an object a bobo.image class Image, ImageCategory, ImageDetection?"""
-    return (str(type(x)) in ["<class 'bobo.image.Image'>",
-                             "<class 'bobo.image.ImageCategory'>",
-                             "<class 'bobo.image.ImageDetection'>",
-                             "<class 'bobo.video.Video'>",
-                             "<class 'bobo.video.VideoCategory'>",
-                             "<class 'bobo.video.VideoDetection'>"])
+    """Is an object a vipy.image class Image, ImageCategory, ImageDetection?"""
+    return (str(type(x)) in ["<class 'vipy.image.Image'>",
+                             "<class 'vipy.image.ImageCategory'>",
+                             "<class 'vipy.image.ImageDetection'>",
+                             "<class 'vipy.video.Video'>",
+                             "<class 'vipy.video.VideoCategory'>",
+                             "<class 'vipy.video.VideoDetection'>"])
 
 
 def isvideotype(x):
-    """Is an object a bobo.video class Video, VideoCategory, VideoDetection?"""
-    return (str(type(x)) in ["<class 'bobo.video.Video'>",
-                             "<class 'bobo.video.VideoCategory'>",
-                             "<class 'bobo.video.VideoDetection'>"])
+    """Is an object a vipy.video class Video, VideoCategory, VideoDetection?"""
+    return (str(type(x)) in ["<class 'vipy.video.Video'>",
+                             "<class 'vipy.video.VideoCategory'>",
+                             "<class 'vipy.video.VideoDetection'>"])
 
 
 def istuple(x):
@@ -785,43 +732,25 @@ def isxml(path):
     else:
         return False
 
-# deprecated
-
-# def iplimage2numpy(im):
-#     mat = np.asarray(cv.GetMat(im))
-#     mat = mat.astype(np.uint8)  # force unsigned char for ctypes
-#     return mat
-
-# def opencv2numpy(im):
-#     return iplimage2numpy(im)
-
-# def numpy2iplimage(im):
-#     return(cv.fromarray(im))
-
-# def numpy2opencv(im):
-#     return numpy2iplimage(im)
-
-# def bgr2grey(im_bgr):
-#    """Convert opencv BGR color image to grayscale"""
-#    imgrey = cv.CreateImage(cv.GetSize(im_bgr), cv.IPL_DEPTH_8U, 1)
-#    cv.CvtColor(im_bgr, imgrey, cv.CV_BGR2GRAY)
-#    return imgrey
-
 
 def bgr2gray(im_bgr):
-    """Wrapper for opencv color conversion grayscale to color BGR """
+    """Wrapper for numpy uint8 BGR image to uint8 numpy grayscale"""
     return np.array(PIL.Image.fromarray(im_bgr).convert('L'))
 
 def gray2bgr(im_gray):
-    """Wrapper for opencv color conversion grayscale to color BGR """
+    """Wrapper for numpy float32 gray image to uint8 numpy BGR"""    
     return np.array(PIL.Image.fromarray(im_gray, mode='F').convert('RGB'))[:,:,::-1]  # Gray -> RGB -> BGR
 
 def gray2rgb(im_gray):    
     return bgr2rgb(gray2bgr(im_gray))
 
 def bgr2rgb(im_bgr):
-    """Wrapper for opencv color conversion color BGR to color RGB"""
+    """Wrapper for numpy BGR uint8 to numpy RGB uint8"""
     return np.array(im_bgr)[:,:,::-1] 
+
+def rgb2bgr(im_rgb):
+    """same as bgr2rgb"""
+    return bgr2rgb(im_rgb)
 
 def bgr2hsv(im_bgr):
     return np.array(PIL.Image.fromarray(bgr2rgb(im_bgr)).convert('HSV'))  # BGR -> RGB -> HSV
@@ -829,9 +758,6 @@ def bgr2hsv(im_bgr):
 def gray2hsv(im_gray):    
     return np.array(PIL.Image.fromarray(gray2rgb(im_gray)).convert('HSV'))  # Gray -> RGB -> HSV
     
-def rgb2bgr(im_rgb):
-    """Wrapper for opencv color conversion color RGB to color BGR """
-    return np.array(im_rgb)[:,:,::-1] 
 
 
 def isarchive(filename):
@@ -924,6 +850,8 @@ def touch(filename, mystr=''):
     f.write(str(mystr))
     f.close()
 
+def isboundingbox(obj):
+    return isinstance(obj, vipy.geometry.BoundingBox)
 
 class Stopwatch(object):
     """Return elapsed system time in seconds between calls to enter and exit"""
@@ -957,10 +885,9 @@ def isfile(path):
     return os.path.isfile(str(path))
 
 
-def isstring(obj):
+def isstring(s):
     """Is an object a python string or unicode string?"""
-    return (str(type(obj)) in ['<type \'str\'>', '<type \'unicode\'>'])
-
+    return isinstance(s, str)  # python3
 
 def timestamp():
     """Return date and time string in form DDMMMYY_HHMMSS"""
@@ -1053,107 +980,8 @@ def linuxversion():
 
 
 def imcrop(img, bbox):
-    """Crop a 2D or 3D numpy image given a bobo.geometry.BoundingBox"""
-    return img[bbox.xmin:bbox.xmax, bbox.ymin:bbox.ymax]
+    """Crop a 2D or 3D numpy image given a vipy.geometry.BoundingBox"""
+    return img[bbox.xmin():bbox.xmax(), bbox.ymin():bbox.ymax()]
 
 
-def signsqrt(x):
-    """Return the signed square root of elements in x"""
-    return np.multiply(np.sign(x), np.sqrt(np.abs(x)))
 
-
-def lower_bound(haystack, needle, lo=0, hi=None, cmp=None, key=None):
-    """lower_bound(haystack, needle[, lo = 0[, hi = None[, cmp = None[, key = None]]]]) => n
-
-Find \var{needle} via a binary search on \var{haystack}.  Returns the
-index of the first match if \var{needle} is found, else a negative
-value \var{N} is returned indicating the index where \var{needle}
-belongs with the formula "-\var{N}-1".
-
-\var{haystack} - the ordered, indexable sequence to search.
-\var{needle} - the value to locate in \var{haystack}.
-\var{lo} and \var{hi} - the range in \var{haystack} to search.
-\var{cmp} - the cmp function used to order the \var{haystack} items.
-\var{key} - the key function used to extract keys from the elements.
-
-######################################################################
-#  Written by Kevin L. Sitze on 2011-02-04
-#  This code may be used pursuant to the MIT License.
-#  http://code.activestate.com/recipes/577565-binary-search-function/
-######################################################################
-"""
-    if cmp is None:
-        cmp = builtins.cmp
-    if key is None:
-        key = lambda x: x
-    if lo < 0:
-        raise ValueError('lo cannot be negative')
-    if hi is None:
-        hi = len(haystack)
-
-    val = None
-    while lo < hi:
-        mid = (lo + hi) >> 1
-        val = cmp(key(haystack[mid]), needle)
-        if val < 0:
-            lo = mid + 1
-        else:
-            hi = mid
-    if val is None:
-        return -1
-    elif val == 0:
-        return lo
-    elif lo >= len(haystack):
-        return -1 - lo
-    elif cmp(key(haystack[lo]), needle) == 0:
-        return lo
-    else:
-        return -1 - lo
-
-
-def upper_bound(haystack, needle, lo=0, hi=None, cmp=None, key=None):
-    """upper_bound(haystack, needle[, lo = 0[, hi = None[, cmp = None[, key = None]]]]) => n
-
-Find \var{needle} via a binary search on \var{haystack}.  Returns the
-non-negative index \var{N} of the element that immediately follows the
-last match of \var{needle} if \var{needle} is found, else a negative
-value \var{N} is returned indicating the index where \var{needle}
-belongs with the formula "-\var{N}-1".
-
-\var{haystack} - the ordered, indexable sequence to search.
-\var{needle} - the value to locate in \var{haystack}.
-\var{lo} and \var{hi} - the range in \var{haystack} to search.
-\var{cmp} - the cmp function used to order the \var{haystack} items.
-\var{key} - the key function used to extract keys from the elements.
-
-######################################################################
-#  Written by Kevin L. Sitze on 2011-02-04
-#  This code may be used pursuant to the MIT License.
-#  http://code.activestate.com/recipes/577565-binary-search-function/
-######################################################################
-"""
-    if cmp is None:
-        cmp = builtins.cmp
-    if key is None:
-        key = lambda x: x
-    if lo < 0:
-        raise ValueError('lo cannot be negative')
-    if hi is None:
-        hi = len(haystack)
-
-    val = None
-    while lo < hi:
-        mid = (lo + hi) >> 1
-        val = cmp(key(haystack[mid]), needle)
-        if val > 0:
-            hi = mid
-        else:
-            lo = mid + 1
-    if val is None:
-        return -1
-    elif val == 0:
-        return lo
-    elif lo > 0 and cmp(key(haystack[lo - 1]), needle) == 0:
-        return lo
-    else:
-        return -1 - lo

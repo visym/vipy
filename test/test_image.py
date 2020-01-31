@@ -1,6 +1,7 @@
 import sys
 sys.path.append('..')  # FIXME: relative import
-from vipy.image import ImageDetection, Image, ImageCategory
+from vipy.image import ImageDetection, Image, ImageCategory, Scene
+from vipy.object import Detection
 
 def run():
     # Empty constructor should not raise exception
@@ -41,12 +42,12 @@ def run():
     print('  Image __desc__: %s' % im)
     im.load()
     print('  Image __desc__: %s' % im)
-
-
+    print('URL download (without image extension): PASSED')
+    
     # Invalid URL with ignore
     im = Image(url='https://a_bad_url.jpg')
     print('  Image __desc__: %s' % im)
-    im.load(ignoreErrors=False)
+    im.load(ignoreErrors=True)
     print('  Image __desc__: %s' % im)
     print('Invalid URL download: PASSED')
 
@@ -69,8 +70,26 @@ def run():
     print('Filename: PASSED')
 
     # Array constructor
-    
 
+    # Scene
+    im = Scene()
+    print('Empty Constructor: PASSED')
+
+    im = Scene(url='https://upload.wikimedia.org/wikipedia/commons/thumb/2/23/Bubo_virginianus_06.jpg/1920px-Bubo_virginianus_06.jpg').load()
+    print('URL: PASSED')
+
+    im = im.objects([Detection('obj1',50,100,300,300), Detection('obj2',600,600,400,400)])
+    im.show(outfile='test_scene.jpg')
+
+    # Image conversion
+    im = ImageDetection(filename='jebyrne.jpg', xmin=100, ymin=100, width=700, height=1000, category='face')
+    im.rgb()
+    im.bgr()
+    im.hsv()    
+    im.gray()
+    im.float()
+    print('Image conversion: PASSED')
+    
 if __name__ == "__main__":
     run()
 

@@ -3,7 +3,8 @@ import math
 import numpy.linalg
 import scipy.spatial
 from itertools import product
-
+from vipy.util import try_import, istuple, isnumpy
+from vipy.math import isnumber
 
 def covariance_to_ellipse(cov):
     """2x2 covariance matrix to rotated bounding box"""
@@ -20,7 +21,7 @@ def apply_homography(H,p):
     return dehomogenize(H*homogenize(p))
 
 def similarity_imtransform2D(c=(0,0), r=0, s=1):
-    # cv2 rotation is in degrees
+    try_import(cv2, 'opencv-python')
     import cv2
     deg = r * 180. / math.pi
     A = cv2.getRotationMatrix2D(c, deg, s)
@@ -49,12 +50,11 @@ def random_affine_imtransform(txy=((0,0),(0,0)), r=(0,0), sx=(1,1), sy=(1,1), kx
                               ky=uniform_random_in_range(ky))
 
 def imtransform2D(im, A):
-    import cv2
+    try_import(cv2, 'opencv-python'); import cv2    
     return cv2.warpAffine(im, A, (im.shape[1], im.shape[0]))
 
 def imtransform(im, A):
-    import cv2
-    # cv2.warpPerspective(src, M, dsize[, dst[, flags[, borderMode[, borderValue]]]]) -> dst
+    try_import(cv2, 'opencv-python'); import cv2        
     return cv2.warpPerspective(im, A, (im.shape[1], im.shape[0]))
 
 def frame_to_bbox(fr):
@@ -72,73 +72,100 @@ def normalize(x):
     return x / (np.linalg.norm(x.astype(np.float64))+1E-16)
 
 
-
-
 class BoundingBox():
+    """Core bounding box class with flexible constructors in this priority order:
+          (xmin,ymin,xmax,ymax)
+          (xmin,ymin,width,height)
+          (centroid[0],centroid[1],width,height)
+          (xcentroid,ycentroid,width,height)
+          bounding rectangle of binary mask image"""
     def __init__(self, xmin=None, ymin=None, xmax=None, ymax=None, centroid=None, xcentroid=None, ycentroid=None, width=None, height=None, mask=None):
 
         if xmin is not None and ymin is not None and xmax is not None and ymax is not None:
-            self.xmin = float(xmin)
-            self.ymin = float(ymin)
-            self.xmax = float(xmax)
-            self.ymax = float(ymax)
+            if not (isnumber(xmin) and isnumber(ymin) and isnumber(xmax) and isnumber(ymax)):
+                raise ValueError('Box coordinates must be integers or floats')
+            self._xmin = float(xmin)
+            self._ymin = float(ymin)
+            self._xmax = float(xmax)
+            self._ymax = float(ymax)
         elif xmin is not None and ymin is not None and width is not None and height is not None:
-            self.xmin = float(xmin)
-            self.ymin = float(ymin)
-            self.xmax = self.xmin + float(width)
-            self.ymax = self.ymin + float(height)
+            if not (isnumber(xmin) and isnumber(ymin) and isnumber(width) and isnumber(height)):
+                raise ValueError('Box coordinates must be integers or floats')            
+            self._xmin = float(xmin)
+            self._ymin = float(ymin)
+            self._xmax = self._xmin + float(width)
+            self._ymax = self._ymin + float(height)
         elif centroid is not None and width is not None and height is not None:
-            self.xmin = float(centroid[0]) - float(width)/2.0
-            self.ymin = float(centroid[1]) - float(height)/2.0
-            self.xmax = float(centroid[0]) + float(width)/2.0
-            self.ymax = float(centroid[1]) + float(height)/2.0                                                
+            if not (istuple(centroid) and len(centroid) == 2 and isnumber(centroid[0]) and isnumber(centroid[1]) and isnumber(width) and isnumber(height)):
+                raise ValueError('Invalid box coordinates')
+            self._xmin = float(centroid[0]) - float(width)/2.0
+            self._ymin = float(centroid[1]) - float(height)/2.0
+            self._xmax = float(centroid[0]) + float(width)/2.0
+            self._ymax = float(centroid[1]) + float(height)/2.0                                                
         elif xcentroid is not None and ycentroid is not None and width is not None and height is not None:
-            self.xmin = float(xcentroid) - float(width)/2.0
-            self.ymin = float(ycentroid) - float(height)/2.0
-            self.xmax = float(xcentroid) + float(width)/2.0
-            self.ymax = float(ycentroid) + float(height)/2.0                                                
+            if not (isnumber(xcentroid) and isnumber(ycentroid) and isnumber(width) and isnumber(height)):
+                raise ValueError('Box coordinates must be integers or floats')                        
+            self._xmin = float(xcentroid) - float(width)/2.0
+            self._ymin = float(ycentroid) - float(height)/2.0
+            self._xmax = float(xcentroid) + float(width)/2.0
+            self._ymax = float(ycentroid) + float(height)/2.0                                                
         elif mask is not None:
-            # Convex hull of non-zero pixels in a mask image
+            # Bounding rectangle of non-zero pixels in a binary mask image
+            if not isnumpy(mask) or np.sum(mask)==0:
+                raise ValueError('Mask input must be numpy array with at least one non-zero entry')            
             imx = np.sum(mask, axis=0)
             imy = np.sum(mask, axis=1)            
-            self.xmin = np.argwhere(imx > 0)[0]
-            self.ymin = np.argwhere(imy > 0)[0]
-            self.xmax = np.argwhere(imx > 0)[-1]
-            self.ymax = np.argwhere(imy > 0)[-1]
+            self._xmin = np.argwhere(imx > 0)[0]
+            self._ymin = np.argwhere(imy > 0)[0]
+            self._xmax = np.argwhere(imx > 0)[-1]
+            self._ymax = np.argwhere(imy > 0)[-1]
         else:
             raise ValueError('invalid constructor input')
 
     def clone(self):
-        return BoundingBox(xmin=self.xmin, xmax=self.xmax, ymin=self.ymin, ymax=self.ymax)
+        return BoundingBox(xmin=self._xmin, xmax=self._xmax, ymin=self._ymin, ymax=self._ymax)
         
     def __eq__(self, other):
         """Bounding box equality"""
-        return self.xmin==other.xmin and self.xmax==other.xmax and self.ymin==other.ymin and self.ymax==other.ymax
+        return self.xmin()==other.xmin() and self.xmax()==other.xmax() and self.ymin()==other.ymin() and self.ymax()==other.ymax()
 
     def __neq__(self, other):
         """Bounding box non-equality"""
         return not self.__eq__(other)
 
     def __repr__(self):
-        xmin = '%1.1f' % float(self.xmin) if not np.isnan(self.xmin) else 'nan'
-        ymin = '%1.1f' % float(self.ymin) if not np.isnan(self.ymin) else 'nan'
-        xmax = '%1.1f' % float(self.xmax) if not np.isnan(self.xmax) else 'nan'
-        ymax = '%1.1f' % float(self.ymax) if not np.isnan(self.ymax) else 'nan'                
-        return str('<vipy.boundingbox: xmin=%s, ymin=%s, xmax=%s, ymax=%s>'% (xmin, ymin, xmax, ymax))
+        return str('<vipy.geometry.boundingbox: xmin=%s, ymin=%s, width=%s, height=%s>'% (self.xmin(), self.ymin(), self.width(), self.height()))
 
     def __str__(self):
         return self.__repr__()
 
+    def xmin(self):
+        """x coordinate of upper left corner of box, x-axis is image column"""
+        return self._xmin
+    
+    def ymin(self):
+        """y coordinate of upper left corner of box, y-axis is image row"""        
+        return self._ymin
+    
+    def xmax(self):
+        """x coordinate of lower right corner of box, x-axis is image column"""        
+        return self._xmax
+    
+    def ymax(self):
+        """y coordinate of lower right corner of box, y-axis is image row"""                
+        return self._ymax       
+    
     def invalid(self):
-        is_undefined = np.isnan(self.xmin) or np.isnan(self.ymin) or np.isnan(self.xmax) or np.isnan(self.ymax)
-        is_degenerate =  ((self.xmax-self.xmin)<1) or ((self.ymax-self.ymin)<1) or (self.xmin >= self.xmax) or (self.ymin >= self.ymax)
+        """Is the box a valid bounding box?"""
+        is_undefined = np.isnan(self._xmin) or np.isnan(self._ymin) or np.isnan(self._xmax) or np.isnan(self._ymax)
+        is_degenerate =  ((self._xmax-self._xmin)<1) or ((self._ymax-self._ymin)<1) or (self._xmin >= self._xmax) or (self._ymin >= self._ymax)
         return is_undefined or is_degenerate
 
     def translate(self, dx=0, dy=0):
-        self.xmin = self.xmin + dx
-        self.ymin = self.ymin + dy
-        self.xmax = self.xmax + dx
-        self.ymax = self.ymax + dy
+        self._xmin = self._xmin + dx
+        self._ymin = self._ymin + dy
+        self._xmax = self._xmax + dx
+        self._ymax = self._ymax + dy
         return self
 
     def valid(self):
@@ -146,30 +173,33 @@ class BoundingBox():
 
     def isvalid(self):
         return self.valid()
-            
+
+    def isdegenerate(self):
+        return self.invalid()
+    
     def width(self):
-        return self.xmax - self.xmin
+        return self._xmax - self._xmin
 
     def setwidth(self, w):
         if w <= 0:
             raise ValueError('invalid width')
-        self.xmax += (w - self.width()) / 2.0
-        self.xmin -= (w - self.width()) / 2.0        
+        self._xmax += (w - self.width()) / 2.0
+        self._xmin -= (w - self.width()) / 2.0        
         return self
     
     def setheight(self, h):
         if h <= 0:
             raise ValueError('invalid height')
-        self.ymax += (h - self.height()) / 2.0
-        self.ymin -= (h - self.height()) / 2.0        
+        self._ymax += (h - self.height()) / 2.0
+        self._ymin -= (h - self.height()) / 2.0        
         return self
         
     def height(self):
-        return self.ymax - self.ymin
+        return self._ymax - self._ymin
     
     def centroid(self):
         """(x,y) tuple of centroid"""
-        return [self.xmin + (float(self.width())/2.0), self.ymin + (float(self.height())/2.0)]
+        return [self._xmin + (float(self.width())/2.0), self._ymin + (float(self.height())/2.0)]
             
     def x_centroid(self):
         return self.centroid()[0]
@@ -181,33 +211,31 @@ class BoundingBox():
         return self.width() * self.height()
 
     def to_xywh(self):
-        """Convert corners to (x,y,width,height) format"""
-        return [self.xmin, self.ymin, self.width(), self.height()]
+        """Return bounding box corners as [x,y,width,height] format"""
+        return [self._xmin, self._ymin, self.width(), self.height()]
 
     def dx(self, bb):
-        return bb.xmin - self.xmin
+        """Offset bounding box by same xmin as provided box"""
+        return bb._xmin - self._xmin
 
     def dy(self, bb):
-        return bb.ymin - self.ymin
+        """Offset bounding box by ymin of provided box"""        
+        return bb._ymin - self._ymin
 
     def sqdist(self, bb):
-        """Squared distance between upper left corners of two bounding boxes"""
+        """Squared Euclidean distance between upper left corners of two bounding boxes"""
         return np.power(self.dx(bb), 2.0) + np.power(self.dy(bb), 2.0)
 
     def dist(self, bb):
         """Distance between centroids of two bounding boxes"""
         return np.sqrt(np.sum(np.square(np.array(bb.centroid()) - np.array(self.centroid()))))
     
-    def islabel(self, label):
-        return self.label.lower() == label.lower()
-    
-    def overlap(self, bb):
+    def iou(self, bb):
         """area of intersection / area of union"""
-        """NOTE: this is poorly named and should be changed"""
-        if bb.invalid() or self.invalid():
+        if bb is None or bb.invalid() or self.invalid():
             return 0.0
-        w = min(self.xmax, bb.xmax) - max(self.xmin, bb.xmin);
-        h = min(self.ymax, bb.ymax) - max(self.ymin, bb.ymin);
+        w = min(self.xmax(), bb.xmax()) - max(self.xmin(), bb.xmin());
+        h = min(self.ymax(), bb.ymax()) - max(self.ymin(), bb.ymin());
         if ((w < 0) or (h < 0)):
             iou = 0;   # invalid (no overlap)
         else:
@@ -216,18 +244,12 @@ class BoundingBox():
             iou = area_intersection / area_union;
         return iou;
 
-    def iou(self, bb):
-        """area of intersection / area of union"""
-        if bb is None:
-            return 0.0
-        return self.overlap(bb)
-
     def area_of_intersection(self, bb):
         """area of intersection"""
         if bb.invalid() or self.invalid():
             return 0.0
-        w = min(self.xmax, bb.xmax) - max(self.xmin, bb.xmin);
-        h = min(self.ymax, bb.ymax) - max(self.ymin, bb.ymin);
+        w = min(self.xmax(), bb.xmax()) - max(self.xmin(), bb.xmin());
+        h = min(self.ymax(), bb.ymax()) - max(self.ymin(), bb.ymin());
         if ((w < 0) or (h < 0)):
             aoi = 0;   # invalid (no overlap)
         else:
@@ -240,111 +262,121 @@ class BoundingBox():
 
     def intersection(self, bb):
         """Intersection of two bounding boxes"""
-        self.xmin = max(bb.xmin, self.xmin)
-        self.ymin = max(bb.ymin, self.ymin)
-        self.xmax = min(bb.xmax, self.xmax)
-        self.ymax = min(bb.ymax, self.ymax)
+        self._xmin = max(bb.xmin(), self.xmin())
+        self._ymin = max(bb.ymin(), self.ymin())
+        self._xmax = min(bb.xmax(), self.xmax())
+        self._ymax = min(bb.ymax(), self.ymax())
         return self
                     
     def union(self, bb):
         """Union of two bounding boxes"""
-        self.xmin = min(bb.xmin, self.xmin)
-        self.ymin = min(bb.ymin, self.ymin)
-        self.xmax = max(bb.xmax, self.xmax)
-        self.ymax = max(bb.ymax, self.ymax)
+        self._xmin = min(bb.xmin(), self.xmin())
+        self._ymin = min(bb.ymin(), self.ymin())
+        self._xmax = max(bb.xmax(), self.xmax())
+        self._ymax = max(bb.ymax(), self.ymax())
         return self
         
     def inside(self, p):
-        return (p[0] >= self.xmin) and (p[1] >= self.ymin) and (p[0] <= self.xmax) and (p[1] <= self.ymax)
+        """Is the 2D point p=(x,y) inside the bounding box?"""
+        return (p[0] >= self._xmin) and (p[1] >= self._ymin) and (p[0] <= self._xmax) and (p[1] <= self._ymax)
 
     def dilate(self, scale=1):
         """Change scale of bounding box keeping centroid constant"""
         w = self.width()
         h = self.height()
         c = self.centroid()
-        old_x = self.xmin
-        old_y = self.ymin
+        old_x = self._xmin
+        old_y = self._ymin
         new_x = (float(w)/2.0) * scale
         new_y = (float(h)/2.0) * scale
-        self.xmin = c[0] - new_x
-        self.ymin = c[1] - new_y
-        self.xmax = c[0] + new_x
-        self.ymax = c[1] + new_y
-        # new_x and new_y are the offsets of the original bounding box in the new bounding box.
-        # Can use this to use an extracted chip in place of a full image when we're cropping something
-        # with dilation.
+        self._xmin = c[0] - new_x
+        self._ymin = c[1] - new_y
+        self._xmax = c[0] + new_x
+        self._ymax = c[1] + new_y
         return self
 
     def dilate_height(self, scale=1):
         """Change scale of bounding box in y direction keeping centroid constant"""
         h = self.height()
         c = self.centroid()
-        self.ymin = c[1]-(float(h)/2.0)*scale
-        self.ymax = c[1]+(float(h)/2.0)*scale
+        self._ymin = c[1]-(float(h)/2.0)*scale
+        self._ymax = c[1]+(float(h)/2.0)*scale
         return self
 
     def dilate_width(self, scale=1):
         """Change scale of bounding box in x direction keeping centroid constant"""
         w = self.width()
         c = self.centroid()
-        self.xmin = c[0]-(float(w)/2.0)*scale
-        self.xmax = c[0]+(float(w)/2.0)*scale
+        self._xmin = c[0]-(float(w)/2.0)*scale
+        self._xmax = c[0]+(float(w)/2.0)*scale
         return self
 
     def dilate_topheight(self, scale=1):
         """Change scale of bounding box in positive y direction only, changing centroid"""
         h = self.height()
         c = self.centroid()
-        self.ymin = c[1]-(float(h)/2.0)*scale
+        self._ymin = c[1]-(float(h)/2.0)*scale
         return self
 
     def rescale(self, scale=1):
-        self.xmin = scale * self.xmin
-        self.ymin = scale * self.ymin
-        self.xmax = scale * self.xmax
-        self.ymax = scale * self.ymax                        
+        """Multiply the box corners by a scale factor"""
+        self._xmin = scale * self._xmin
+        self._ymin = scale * self._ymin
+        self._xmax = scale * self._xmax
+        self._ymax = scale * self._ymax                        
         return self
 
     def imscale(self, im):
+        """Given a vipy.image, scale the box to be within [0,1], relative to height and width of image"""
         w = (1.0 / float(im.width()))
         h = (1.0 / float(im.height()))
-        self.xmin = w * self.xmin
-        self.ymin = h * self.ymin
-        self.xmax = w * self.xmax
-        self.ymax = h * self.ymax                        
+        self._xmin = w * self._xmin
+        self._ymin = h * self._ymin
+        self._xmax = w * self._xmax
+        self._ymax = h * self._ymax                        
         return self
     
     def maxsquare(self):
+        """Set the bounding box to be square by dilating the minimum dimension, keeping centroid constant"""
         w = max(self.width(), self.height())
         h = max(self.height(), self.width())
         c = self.centroid()
-        self.xmin = c[0]-(float(w)/2.0)
-        self.ymin = c[1]-(float(h)/2.0)
-        self.xmax = c[0]+(float(w)/2.0)
-        self.ymax = c[1]+(float(h)/2.0)
+        self._xmin = c[0]-(float(w)/2.0)
+        self._ymin = c[1]-(float(h)/2.0)
+        self._xmax = c[0]+(float(w)/2.0)
+        self._ymax = c[1]+(float(h)/2.0)
         return self
         
     def imclip(self, img):
-        """Clip bounding box to image rectangle"""
+        """Clip bounding box to image rectangle [0,0,W,H]"""
         self.intersection(BoundingBox(xmin=0, ymin=0, xmax=img.shape[1], ymax=img.shape[0]))
         return self
         
     def convexhull(self, fr):
-        self.xmin = np.min(fr[:,0])
-        self.ymin = np.min(fr[:,1])
-        self.xmax = np.max(fr[:,0])
-        self.ymax = np.max(fr[:,1])
+        """Given a set of points [[x1,y1],[x2,xy],...], return the bounding rectangle"""
+        self._xmin = np.min(fr[:,0])
+        self._ymin = np.min(fr[:,1])
+        self._xmax = np.max(fr[:,0])
+        self._ymax = np.max(fr[:,1])
         return self
 
     def aspectratio(self):
-        return float(self.height()) / float(self.width())
+        """Return the aspect ratio (width/height) of the box"""
+        return float(self.width()) / float(self.height())
 
     def shape(self):
+        """Return the (height, width) tuple for the box shape"""
         return (self.height(), self.width())
 
     def mindimension(self):
-        return np.min(self.shape)
+        """Return min(width, height)"""
+        return np.min(self.shape())
 
+    def to_ellipse(self):
+        (xcenter,ycenter) = self.centroid()
+        return Ellipse(self.width()/2.0, self.height()/2.0, xcenter, ycenter,0)
+    
+    
 class Ellipse():
     def __init__(self, semi_major, semi_minor, xcenter, ycenter, phi):
         """Ellipse parameterization, for length of semimajor (half width of ellipse) and semiminor axis (half height), center point and angle phi in radians"""
@@ -387,17 +419,14 @@ class Ellipse():
         a_r = bbox.area()
         c = (self.area() / a_r) ** 0.5
         bbox2 = bbox.clone().dilate(c)
-        # print 'start area bbox: %f' % bbox.area()
-        # print 'end   area bbox: %f' % bbox2.area()
-        # print 'area ellipse   : %f' % self.area()
         return bbox2
 
-    def inside(self, p, y=None):
+    def inside(self, x, y=None):
         """Return true if a point p=(x,y) is inside the ellipse"""
+        p = (x,y) if y is not None else x
         if (self.phi != 0):
             raise ValueError('FIXME: inside only supported for phi=0')
-        (x,y) = p if y is None else (p,y)
-        return ((np.square(x - self.center_x) / np.square(self.major)) + (np.square(y - self.center_y) / np.square(self.minor))) <= 1
+        return ((np.square(p[0] - self.center_x) / np.square(self.major)) + (np.square(p[1] - self.center_y) / np.square(self.minor))) <= 1
 
     def mask(self):
         """Return a binary mask of size equal to the bounding box such that the pixels correspond to the interior of the ellipse"""
@@ -408,6 +437,3 @@ class Ellipse():
             print (x,y)
         return img
 
-def bbox_to_ellipse(bb):
-    (xcenter,ycenter) = bb.centroid()
-    return Ellipse(bb.width()/2.0, bb.height()/2.0, xcenter,ycenter,0)

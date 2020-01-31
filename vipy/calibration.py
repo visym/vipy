@@ -9,7 +9,6 @@ def checkerboard(dx=16, dy=16, nrows=8, ncols=8):
         img = np.vstack( (img, row) ) if img is not None else row
     return img.astype(np.float32)
 
-
 def tile(T, nrows=16, ncols=16):
     """Create a 2D tile pattern with texture T repeated (M,N) times"""
     img = None
@@ -18,13 +17,14 @@ def tile(T, nrows=16, ncols=16):
         img = np.vstack( (img, row) ) if img is not None else row
     return img.astype(np.float32)
 
-
 def greenblock(dx, dy):
+    """Create a green color numpy image of size (dx,dx)"""
     img = np.zeros( (dx,dy,3) )
     img[:,:,1] = 1.0
     return img;
 
 def redblock(dx, dy):
+    """Create a red color numpy image of size (dx,dx)"""
     img = np.zeros( (dx,dy,3) )
     img[:,:,0] = 1.0
     return img;
@@ -41,7 +41,6 @@ def bayer(dx, dy, M=16, N=16):
                    np.hstack([blueblock(dx,dy), greenblock(dx,dy), blueblock(dx,dy), greenblock(dx,dy)]), 
                    np.hstack([greenblock(dx,dy), redblock(dx,dy), greenblock(dx,dy), redblock(dx,dy)])])         
     return tile(T, M, N)
-
 
 def dots(dx=16, dy=16, nrows=8, ncols=8):
     """Create a sequence of dots with strides (dx, dy) and image of size (dx*ncols,dy*nrows)"""

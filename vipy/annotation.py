@@ -4,10 +4,8 @@ import re
 import random
 import math
 from vipy.util import try_import, isurl
+import tempfile
 
-
-# https://techblog.willshouse.com/2012/01/03/most-common-user-agents/
-# Updated 2015/08/12
 common_user_agents = [
     'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_10_4) AppleWebKit/600.7.12 (KHTML, like Gecko) Version/8.0.7 Safari/600.7.12',
     'Mozilla/5.0 (Windows NT 6.1; WOW64; rv:39.0) Gecko/20100101 Firefox/39.0',
@@ -127,6 +125,7 @@ def basicgooglesearch(tag, n_imgs):
 
 
 def googlesearch(tag):
+    """Return a list of image URLs from google image search associated with the provided tag"""
     url = 'https://www.google.com/search?tbm=isch&q=%s' % tag.replace(' ','+')
     user_agent = random.choice(common_user_agents)
     headers = {'User-Agent':user_agent}
@@ -152,11 +151,12 @@ def googlesearch(tag):
 
 
 def basic_level_categories():
-    os.environ['NLTK_DATA'] = '/tmp'        
+    """Return a list of nouns from wordnet that can be used as an initial list of basic level object categories"""
+    os.environ['NLTK_DATA'] = tempfile.gettempdir()
     try_import('nltk')
     import nltk
-    print('[vipy.annotation.basic_level_categories]: Downloading wordnet to "/tmp"')
-    nltk.download('wordnet', '/tmp')
+    print('[vipy.annotation.basic_level_categories]: Downloading wordnet to "%s"' % tempfile.gettempdir())
+    nltk.download('wordnet', tempfile.gettempdir())
 
     from nltk.corpus import wordnet    
     nouns = []
@@ -167,3 +167,54 @@ def basic_level_categories():
     nouns.sort()
     return nouns
 
+def facebookprofilerange(fbid, numid, outdir='./imgs', cleanup=True, hierarchical=False, redownload=False):
+    for x in range(fbid, fbid+numid):
+        facebookprofile(x, outdir, cleanup, hierarchical, redownload)
+
+def facebookprofile(fbid, outdir='./imgs', cleanup=True, hierarchical=False, redownload=False):
+    if hierarchical:
+        subdir = remkdir(os.path.join(outdir, str(int(float(fbid)/1E4)))) # 10000 images per directory
+        outfile = os.path.join(subdir, '%d.jpg' % int(fbid))  # outdir/1000/10000001.jpg
+    else:
+        outfile = os.path.join(outdir, '%d.jpg' % int(fbid))
+        
+    url = "http://graph.facebook.com/picture?id=" + str(fbid) + "&width=800"
+    if not os.path.exists(outfile) or redownload:
+        try:
+            print('[facebookprofile.download]: Downloading "%s" to "%s"' % (url, outfile))
+            
+            user_agent = np.random.choice(vipy.annotation.common_user_agents)
+            headers = {'User-Agent':user_agent}                     
+            req = urllib.request.Request(url, None, headers)
+            imgfile = urllib.request.urlopen(req)
+            total_size = int(imgfile.info().getheader('Content-Length').strip())
+            downloaded = 0
+            CHUNK = 256 * 10240
+            with open(outfile, 'wb') as fp:
+                while True:
+                    chunk = imgfile.read(CHUNK)
+                    downloaded += len(chunk)
+                    #print math.floor( (downloaded / total_size) * 100 )
+                    if not chunk: break
+                    fp.write(chunk)
+                        
+            #urllib.urlretrieve(url, outfile)
+            
+            s = os.path.getsize(outfile)
+            if cleanup and (s < 11000 or s == 10626 or s == 10491):
+                print('[facebookprofile.download]: deleting invalid file "%s"' % outfile)
+                os.remove(outfile)
+
+        except (urllib.request.HTTPError, e):
+            print('[fb_image.download]: Skipping "%s"' % (url))
+            print("HTTP Error:",e.code , url)
+            #return False
+        except (urllib.request.URLError, e):
+            print('[fb_image.download]: Skipping "%s"' % (url))
+            print("URL Error:",e.reason , url)
+            #return False
+        except KeyboardInterrupt:
+            raise
+        except:
+            print("UNKNOWN ERROR")
+            #raise

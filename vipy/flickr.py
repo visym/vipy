@@ -1,10 +1,13 @@
-import flickrapi  # optional
-import flickrapi.shorturl
 import urllib
 import os
 import re
 import random
 import math
+from vipy.util import try_import
+
+try_import('flickrapi')
+import flickrapi  # optional
+import flickrapi.shorturl  # optionsl
 
 flickr_api_key = os.environ.get('FLICKR_API_KEY')
 #flickr = flickrapi.FlickrAPI(flickrapikey, flickrapisecret)

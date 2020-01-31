@@ -1,6 +1,4 @@
-"""Helpers to download and extract archives"""
-
-# Adapted for viset from original authors below
+# Adapted for vipy.dataset from original authors below
 # 
 # Authors: Nicolas Pinto <pinto@rowland.harvard.edu>
 #          Nicolas Poilvert <poilvert@rowland.harvard.edu>
@@ -40,13 +38,10 @@ def verify_sha1(filename, sha1):
 
 def verify_md5(filename, md5):
     data = open(filename, 'rb').read()
-    if md5 != hashlib.md5(data).hexdigest():
-        raise IOError("File '%s': invalid md5 hash! You may want to delete "
-                      "this corrupted file..." % filename)
-
+    return (md5 == hashlib.md5(data).hexdigest())
 
 def download(url, output_filename, sha1=None, verbose=True, md5=None, timeout=None, username=None, password=None):
-    """Downloads file at `url` and write it in `output_dirname`"""
+    """Downloads file at `url` and write it in `output_filename`"""
     if timeout == None:
         timeout = 10
 
@@ -67,7 +62,7 @@ def download(url, output_filename, sha1=None, verbose=True, md5=None, timeout=No
     dl_size = 0
 
     if verbose:
-        print("[bobo.cache]: Downloading '%s' to '%s'" % (url, output_filename))
+        print("[vipy.dataset.download]: Downloading '%s' to '%s'" % (url, output_filename))
         
     # display  progress only if we know the length
     if 'content-length' in page_info and verbose:
@@ -82,10 +77,12 @@ def download(url, output_filename, sha1=None, verbose=True, md5=None, timeout=No
             percent = min(100, 100. * dl_size / file_size)
             status = r"Progress: %20d kilobytes [%4.1f%%]" \
                     % (dl_size, percent)
-            status = status + chr(8) * (len(status) + 1) 
-            print(status, end=' ') # space instead of newline
-            sys.stdout.flush()
-        print('')
+            status = status + chr(8) * (len(status) + 1)
+            if verbose:
+                print(status, end=' ') # space instead of newline
+                sys.stdout.flush()
+        if verbose:
+            print('')
     else:
         while True:
             buffer = page.read(block_size)
@@ -96,20 +93,23 @@ def download(url, output_filename, sha1=None, verbose=True, md5=None, timeout=No
             #percent = min(100, 100. * dl_size / file_size)
             status = r"Progress: %20d kilobytes" \
                     % (dl_size)
-            status = status + chr(8) * (len(status) + 1) 
-            print(status, end=' ') # space instead of newline
-            sys.stdout.flush()
-        print('')
+            status = status + chr(8) * (len(status) + 1)
+            if verbose:
+                print(status, end=' ') # space instead of newline
+                sys.stdout.flush()
+        if verbose:
+            print('')
         #output_file.write(page.read())
 
     output_file.close()
 
     if sha1 is not None:
         if not verify_sha1(output_filename, sha1):
-            raise IOError('invalid sha1')
+            raise IOError('invalid sha1 for "%s"' % output_filename)
 
     if md5 is not None:
-        verify_md5(output_filename, md5)
+        if not verify_md5(output_filename, md5):
+            raise IOError('invalid md5 for "%s"' % output_filename)            
 
 
 def extract(archive_filename, output_dirname, sha1=None, verbose=True):
@@ -123,7 +123,7 @@ def extract(archive_filename, output_dirname, sha1=None, verbose=True):
     * non-tar .bz2
     """
     if verbose:
-        print("[bobo.cache]: Extracting '%s' to '%s'" % (archive_filename, output_dirname))
+        print("[vipy.dataset.download.extract]: Extracting '%s' to '%s'" % (archive_filename, output_dirname))
     if sha1 is not None:
         if verbose:
             print(" SHA-1 verification...")

@@ -20,7 +20,7 @@ pip install numpy scipy scikit-learn matplotlib dill pillow==5.4.1
 
 Optional
 ```python
-pip install dropbox flickrapi opencv-python ipython h5py nltk
+pip install dropbox flickrapi opencv-python ipython h5py nltk bs4 youtube-dl
 ```
 
 

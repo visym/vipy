@@ -1,9 +1,9 @@
-"""Key metrics for analysis of bobo applications"""
 import sklearn.metrics
 import numpy as np
 import matplotlib.pyplot as plt
 from vipy.util import seq, groupby
 from scipy.interpolate import interp1d
+
 
 def cumulative_match_characteristic(similarityMatrix, gtMatrix):
     """CMC curve for probe x gallery similarity matrix (larger is more similar) and ground truth match matrix (one +1 per row, rest zeros)"""
@@ -146,22 +146,6 @@ def fpr_at_tpr(y_true, y_pred, at=0.85):
     f = interp1d(tpr, fpr)  # FIXME: kind='cubic' is singular?
     return f(at)
 
-
-def clearfig(figure=None):
-    plt.figure(figure)
-    plt.clf()
-
-def figure(f):
-    return plt.figure(f)
-
-def savefig(outfile, figure=None):
-    if figure is not None:
-        plt.figure(figure)
-    else:
-        plt.figure()
-    print('[bobo.metric.savefig]: saving "%s"' % outfile)
-    plt.savefig(outfile)
-    return outfile
 
 def plot_roc(y_true=None, y_pred=None, fpr=None, tpr=None, label=None, title=None, outfile=None, figure=None, hold=False, logx=False, style=None, fontsize=None, xlabel='False Positive Rate', ylabel='True Positive Rate', legendSwap=False, errorbars=None):
     """http://scikit-learn.org/stable/auto_examples/plot_roc.html"""
