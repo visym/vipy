@@ -7,7 +7,7 @@ import time
 import tempfile
 import signal 
 import sys
-from vipy.util import imresize, tempimage
+from vipy.util import imresize, tempimage, try_import
 
 try_import("cv2", "opencv-python")
 import cv2 
