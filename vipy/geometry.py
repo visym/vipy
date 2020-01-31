@@ -75,7 +75,7 @@ def normalize(x):
 
 
 class BoundingBox():
-    def __init__(self, xmin=None, ymin=None, xmax=None, ymax=None, centroid=None, xcentroid=None, ycentroid=None, width=None, height=None, label=None, score=None, mask=None):
+    def __init__(self, xmin=None, ymin=None, xmax=None, ymax=None, centroid=None, xcentroid=None, ycentroid=None, width=None, height=None, mask=None):
 
         if xmin is not None and ymin is not None and xmax is not None and ymax is not None:
             self.xmin = float(xmin)
@@ -106,16 +106,10 @@ class BoundingBox():
             self.xmax = np.argwhere(imx > 0)[-1]
             self.ymax = np.argwhere(imy > 0)[-1]
         else:
-            self.xmin = float('nan')
-            self.ymin = float('nan')
-            self.xmax = float('nan')
-            self.ymax = float('nan')
-
-        self.label = label
-        self.score = score
+            raise ValueError('invalid constructor input')
 
     def clone(self):
-        return BoundingBox(xmin=self.xmin, xmax=self.xmax, ymin=self.ymin, ymax=self.ymax, label=self.label, score=self.score)
+        return BoundingBox(xmin=self.xmin, xmax=self.xmax, ymin=self.ymin, ymax=self.ymax)
         
     def __eq__(self, other):
         """Bounding box equality"""
@@ -130,7 +124,7 @@ class BoundingBox():
         ymin = '%1.1f' % float(self.ymin) if not np.isnan(self.ymin) else 'nan'
         xmax = '%1.1f' % float(self.xmax) if not np.isnan(self.xmax) else 'nan'
         ymax = '%1.1f' % float(self.ymax) if not np.isnan(self.ymax) else 'nan'                
-        return str('<strpy.boundingbox: xmin=%s, ymin=%s, xmax=%s, ymax=%s>'% (xmin, ymin, xmax, ymax))
+        return str('<vipy.boundingbox: xmin=%s, ymin=%s, xmax=%s, ymax=%s>'% (xmin, ymin, xmax, ymax))
 
     def __str__(self):
         return self.__repr__()
@@ -361,7 +355,7 @@ class Ellipse():
         self.phi = phi
 
     def __repr__(self):
-        return str('<strpy.geometry.ellipse: semimajor=%s, semiminor=%s, xcenter=%s, ycenter=%s, phi=%s (rad)>'% (self.major, self.minor, self.center_x, self.center_y, self.phi))
+        return str('<vipy.geometry.ellipse: semimajor=%s, semiminor=%s, xcenter=%s, ycenter=%s, phi=%s (rad)>'% (self.major, self.minor, self.center_x, self.center_y, self.phi))
 
 
     def area(self):

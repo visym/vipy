@@ -46,21 +46,21 @@ def montage(imset, m, n, rows=None, cols=None, aspectratio=1, crop=False, skip=T
                         if skip == False:
                             print('[janus.visualize.montage] using original image')
                             if grayscale:
-                                im = imset[k].grayscale().resize(n,m)._array                                                
+                                im = imset[k].grayscale().resize(n,m).array()
                             else:
-                                im = imset[k].resize(n,m)._array
+                                im = imset[k].resize(n,m).array()
                         else:
                             raise
                     else:
                         if grayscale:
-                            im = imset[k].grayscale().crop(imset[k].bbox).resize(n,m)._array
+                            im = imset[k].grayscale().crop(imset[k].bbox).resize(n,m).array()
                         else:
-                            im = imset[k].crop(imset[k].bbox).resize(n,m)._array
+                            im = imset[k].crop(imset[k].bbox).resize(n,m).array()
                 else:
                     if grayscale:
-                        im = imset[k].grayscale().resize(n,m)._array  # m=width, n=height
+                        im = imset[k].grayscale().resize(n,m).array()  # m=width, n=height
                     else:
-                        im = imset[k].resize(n,m)._array
+                        im = imset[k].resize(n,m).array()
        
                 if im.dtype == np.float32:
                     if im.max() <= 1.0:
@@ -90,7 +90,7 @@ def montage(imset, m, n, rows=None, cols=None, aspectratio=1, crop=False, skip=T
 
     if do_plot is True:
         im = Image('')
-        im._array = I
+        im.array() = I
         # HACK: float(0-255) graycale images display incorrectly
         if grayscale:
             im.preprocess().rgb().show(figure=figure)

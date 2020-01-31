@@ -15,7 +15,6 @@ import copy
 import numpy as np
 import shutil
 import io
-#import cv2
 
 
 # FIX <urlopen error [SSL: CERTIFICATE_VERIFY_FAILED] certificate
@@ -86,7 +85,7 @@ class Image(object):
         try:
             # Return previously loaded image
             if self._array is not None:
-                return self._array
+                return self
 
             # Download URL to filename
             if self._url is not None:
@@ -105,16 +104,10 @@ class Image(object):
             else:
                 # BGR color order!
                 self._array = np.array(PIL.Image.open(self._filename))[:,:,::-1]  
-                #self._array = cv2.imread(self._filename,
-                #                       cv2.CV_LOAD_IMAGE_UNCHANGED) \
-                #                       if asRaw else cv2.imread(self._filename)
-
+                assert(self.isgrey() or self.iscolor())
+                
             if self._array is None:
                 if fileext(self._filename) == '.gif':
-                    #quietprint('[vipy.image][WARNING]: IO error - could '
-                    #           'not load "%s" using opencv, '
-                    #           'falling back on PIL ' %
-                    #           self._filename, 1)
                     # Convert .gif to luminance (grayscale) and export
                     # as numpy array
                     self._array = np.array(
@@ -148,13 +141,8 @@ class Image(object):
             else:
                 raise
 
-        return self._array
-
-    def read(self):
-        """Read from an image file to a numpy array, and return the image object"""
-        self.load()
         return self
-    
+
     def download(self, ignoreErrors=False, timeout=10):
         """Download URL to filename provided by constructor, or to temp filename"""
         if self._url is None or not isurl(str(self._url)):
@@ -165,9 +153,6 @@ class Image(object):
         try:
             url_scheme = urllib.parse.urlparse(self._url)[0]
             if url_scheme in ['http', 'https']:
-                #quietprint('[vipy.image.download]: '
-                #           'downloading "%s" to "%s" ' %
-                #           (self._url, self._filename), verbosity=1)
                 vipy.dataset.download.download(self._url,
                                         self._filename,
                                         verbose=False,
@@ -176,8 +161,6 @@ class Image(object):
                                         username=self._urluser,
                                         password=self._urlpassword)
             elif url_scheme == 'file':
-                #quietprint('[vipy.image.download]: copying "%s" to "%s" ' %
-                #           (self._url, self._filename), verbosity=2)
                 shutil.copyfile(self._url, self._filename)
             elif url_scheme == 'hdfs':
                 raise NotImplementedError('FIXME: support for '
@@ -230,8 +213,6 @@ class Image(object):
 
     def show(self, colormap=None, figure=None, flip=True):
         assert self.isloaded(), 'Image not loaded'
-        #quietprint('[vipy.image][%s]: displaying image' %
-        #           (self.__repr__()), verbosity=2)
         if self.iscolor():
             if colormap == 'gray':
                 imshow(self.clone().grayscale().rgb()._array, figure=figure)
@@ -250,17 +231,20 @@ class Image(object):
         return 'image'
 
     def iscolor(self):
-        return self.load().ndim == 3
+        return self.load().array().ndim == 3 and self.load().array().shape[2] == 3
 
+    def isgrey(self):
+        return self.load().array().ndim == 2 or (self.load().array().ndim == 3 and self.load().array().shape[2] == 1)
+                       
     def filesize(self):
         assert self.hasfilename(), 'Invalid image filename'
         return os.path.getsize(self._filename)
 
     def width(self):
-        return self.load().shape[1]
+        return self.load().array().shape[1]
 
     def height(self):
-        return self.load().shape[0]
+        return self.load().array().shape[0]
 
     def shape(self):
         return self.tonumpy().shape
@@ -328,8 +312,8 @@ class Image(object):
             raise ValueError('No URI defined')
 
     def saveas(self, filename, writeas=None):
-        if self.load().ndim == 3:
-            imwrite(self.load(), filename, writeas=writeas)
+        if self.load().array().ndim == 3:
+            imwrite(self.load().array(), filename, writeas=writeas)
         else:
             imwritegray(self.grayscale()._array, filename)
         self.flush()
@@ -369,7 +353,7 @@ class Image(object):
 
     def stats(self):
         x = self._array.flatten()
-        print('Channels: %d' % len(self._array))
+        print('Channels: %d' % self._array.shape[2])
         print('Shape: %s' % str(self._array.shape))
         print('min: %d' % np.min(x))
         print('max: %d' % np.max(x))
@@ -391,32 +375,12 @@ class Image(object):
                 scale = float(rows)/float(self.height())
             else:
                 scale = float(cols)/float(self.width())
-            #quietprint('[vipy.image][%s]: scale=%1.2f' %
-            #           (self.__repr__(), scale), verbosity=2)
-
-            # OpenCV decimation introduces artifacts using cubic
-            # interp, INTER_AREA is recommended according to the
-            # OpenCV docs
-            #interp_method = cv2.INTER_AREA if scale < 1.0 else cv2.INTER_CUBIC            
-            #self._array = cv2.resize(self.load(), dsize=(0, 0),
-            #                       fx=scale, fy=scale,
-            #                       interpolation=interp_method)
-            self._array = imrescale(self.load(), scale)
+            self._array = imrescale(self.load().array(), scale)
             
         else:
-            #quietprint('[vipy.image][%s]: resize=(%d,%d)' %
-            #           (self.__repr__(), rows, cols), verbosity=2)
             try:
-                #interp_method = cv2.INTER_AREA if (
-                #    rows < self.height() or
-                #    cols < self.width()) else cv2.INTER_CUBIC
-                # fixed bug since opencv takes x and y not rows, cols
-                #self._array = cv2.resize(self.load(), dsize=(cols, rows),
-                #                       interpolation=interp_method)
-                self._array = imresize(self.load(), rows, cols)
-
+                self._array = imresize(self.load().array(), rows, cols)
             except:
-                print(self)  # DEBUGGING
                 raise
 
         dtype = self._array.dtype
@@ -426,16 +390,7 @@ class Image(object):
 
     def rescale(self, scale=1):
         """Scale the image buffer by the given factor - NOT idemponent"""
-        #quietprint('[vipy.image][%s]: scale=%1.2f to (%d,%d)' %
-        #           (self.__repr__(), scale, scale*self.width(),
-        #            scale*self.height()), verbosity=2)
-
-        # OpenCV decimation introduces artifacts using cubic interp ,
-        # INTER_AREA is recommended according to the OpenCV docs
-        #interp_method = cv2.INTER_AREA if scale < 1.0 else cv2.INTER_CUBIC
-        #self._array = cv2.resize(self.load(), dsize=(0, 0),
-        #                       fx=scale, fy=scale, interpolation=interp_method)
-        self._array = imrescale(self.load(), scale)
+        self._array = imrescale(self.load().array(), scale)
 
         dtype = self._array.dtype
         if dtype == np.float32 or dtype == np.float64:
@@ -450,19 +405,19 @@ class Image(object):
 
     def pad(self, dx, dy, mode='edge'):
         """Pad image using np.pad mode"""
-        self._array = np.pad(self.load(),
+        self._array = np.pad(self.load().array(),
                            ((dx, dx), (dy, dy), (0, 0)) if
-                           self.load().ndim == 3 else ((dx, dx), (dy, dy)),
+                           self.load().array().ndim == 3 else ((dx, dx), (dy, dy)),
                            mode=mode)
         return self
 
     def zeropad(self, dx, dy):
         """Pad image using np.pad constant"""
-        if self.load().ndim == 3:
+        if self.load().array().ndim == 3:
             pad_width = ((dx, dx), (dy, dy), (0, 0))
         else:
             pad_width = ((dx, dx), (dy, dy))
-        self._array = np.pad(self.load(),
+        self._array = np.pad(self.load().array(),
                            pad_width=pad_width,
                            mode='constant',
                            constant_values=0)        
@@ -471,36 +426,36 @@ class Image(object):
     def meanpad(self, dx, dy):
         """Pad image using np.pad constant where constant is image mean"""
         #mu = self.mean()
-        if self.load().ndim == 3:
+        if self.load().array().ndim == 3:
             pad_size = ((dx, dx), (dy, dy), (0, 0))
             #constant_values = tuple([(x, y) for (x, y) in zip(mu, mu)])
         else:
             #constant_values = ((mu, mu), (mu, mu))
             pad_size = ((dx, dx), (dy, dy))
-        self._array = np.pad(self.load(), pad_size, mode='mean')
+        self._array = np.pad(self.load().array(), pad_size, mode='mean')
         return self
 
 
     def minsquare(self):
         """Crop image of size (HxW) to (min(H,W), min(H,W))"""
-        img = self.load()
+        img = self.load().array()
         S = np.min(img.shape[0:2])
         self._array = self._array[0:S,0:S,:]
         return self
 
     def maxsquare(self):
         """Crop image of size (HxW) to (max(H,W), max(H,W)) with zeropadding"""
-        img = self.load()
+        img = self.load().array()
         S = np.max(img.shape)
-        self._array = np.pad(self.load(), ((0,S-self.height()), (0,S-self.width()), (0,0)), mode='constant')
+        self._array = np.pad(self.load().array(), ((0,S-self.height()), (0,S-self.width()), (0,0)), mode='constant')
         self._array = self._array[0:S,0:S,:]
         return self
 
     def maxsquare_with_meanpad(self):
         """Crop image of size (HxW) to (max(H,W), max(H,W)) with zeropadding"""
-        img = self.load()
+        img = self.load().array()
         S = np.max(img.shape)
-        self._array = np.pad(self.load(), ((0,S-self.height()), (0,S-self.width()), (0,0)), mode='mean')
+        self._array = np.pad(self.load().array(), ((0,S-self.height()), (0,S-self.width()), (0,0)), mode='mean')
         self._array = self._array[0:S,0:S,:]
         return self
 
@@ -512,12 +467,12 @@ class Image(object):
                 bbox = BoundingBox(xmin=bbox[0], ymin=bbox[1],
                                    xmax=bbox[2], ymax=bbox[3])
 
-            bbox = bbox.imclip(self.load())  # FIXME
+            bbox = bbox.imclip(self.load().array())  # FIXME
             #quietprint('[vipy.image][%s]: cropping "%s"' %
             #           (self.__repr__(), str(bbox)), verbosity=2)
-            bbox = bbox.imclip(self.load())
+            bbox = bbox.imclip(self.load().array())
             # assumed numpy
-            self._array = self.load()[int(bbox.ymin):int(bbox.ymax),
+            self._array = self.load().array()[int(bbox.ymin):int(bbox.ymax),
                                     int(bbox.xmin):int(bbox.xmax)]
         return self
 
@@ -525,13 +480,13 @@ class Image(object):
         """Mirror the image buffer about the vertical axis - Not idemponent"""
         quietprint('[vipy.image][%s]: fliplr' %
                    (self.__repr__()), verbosity=2)
-        self._array = np.fliplr(self.load())
+        self._array = np.fliplr(self.load().array())
         return self
 
 
     def normalize(self):
         """Convert image to float32 with [min,max] = [0,1]"""
-        self._array = (self.load().astype(np.float32) - float(self.min())) / float(self.max()-self.min())
+        self._array = (self.load().array().astype(np.float32) - float(self.min())) / float(self.max()-self.min())
         return self
 
     def raw(self, normalized=True):
@@ -543,11 +498,8 @@ class Image(object):
 
     def grayscale(self):
         """Convert the image buffer to grayscale"""
-        if self.load().ndim == 3:
-            #quietprint('[vipy.image][%s]: converting to grayscale' %
-            #           (self.__repr__()), verbosity=3)
-            #self._array = cv2.cvtColor(self.load(), cv2.COLOR_BGR2GRAY)
-            self._array = bgr2gray(self.load())
+        if self.load().array().ndim == 3:
+            self._array = bgr2gray(self.load().array())
             self.setattribute('colorspace', 'gray')
         return self
 
@@ -557,58 +509,35 @@ class Image(object):
 
     def rgb(self):
         """Convert the image buffer to RGB"""
-        if self.load().ndim == 3:
-            #quietprint('[vipy.image][%s]: converting bgr to rgb' %
-            #           (self.__repr__()), verbosity=2)
-            # opencv BGR to RGB
-            #self._array = cv2.cvtColor(self.load(), cv2.COLOR_BGR2RGB)
-            self._array = bgr2rgb(self.load())
-        elif self.load().ndim == 2:
-            #quietprint('[vipy.image][%s]: converting gray to rgb' %
-            #           (self.__repr__()), verbosity=2)
-            #self._array = cv2.cvtColor(self.load(), cv2.COLOR_GRAY2RGB)
-            self._array = gray2rgb(self.load())
+        if self.load().array().ndim == 3:
+            self._array = bgr2rgb(self.load().array())
+        elif self.load().array().ndim == 2:
+            self._array = gray2rgb(self.load().array())
         self.setattribute('colorspace', 'rgb')
         return self
 
     def hsv(self):
         """Convert the image buffer to HSV color space"""
         if self.iscolor():
-            #quietprint('[vipy.image][%s]: converting to hsv' %
-            #           (self.__repr__()), verbosity=2)
-            # opencv BGR (assumed) to HSV
-            #self._array = cv2.cvtColor(self.load(), cv2.COLOR_BGR2HSV)
-            self._array = bgr2hsv(self.load())
+            self._array = bgr2hsv(self.load().array())
             self.setattribute('colorspace', 'hsv')
         else:
-            #quietprint('[vipy.image][%s]: converting grayscale to hsv' %
-            #           (self.__repr__()), verbosity=2)
-            # grayscale -> RGB -> HSV (HACK)
-            #self._array = cv2.cvtColor(self.rgb().load(), cv2.COLOR_RGB2HSV)
-            self._array = gray2hsv(self.load())
+            self._array = gray2hsv(self.load().array())
         return self
 
     def bgr(self):
         """Convert the image buffer to BGR color format"""
-        if self.load().ndim == 3:
-            # Loaded by opencv, so assumed BGR order
-            #self._array = self.load()
-            #self._array = cv2.cvtColor(self.load(), cv2.COLOR_RGB2BGR)
-            self._array = self.load()[:,:,::-1]
-        elif self.load().ndim == 2:
-            #quietprint('[vipy.image][%s]: converting gray to bgr' %
-            #           (self.__repr__()), verbosity=2)
-            #self._array = cv2.cvtColor(self.load(), cv2.COLOR_GRAY2BGR)
-            self._array = gray2bgr(self.load())
+        if self.load().array().ndim == 3:
+            self._array = self.load().array()[:,:,::-1]
+        elif self.load().array().ndim == 2:
+            self._array = gray2bgr(self.load().array())
         self.setattribute('colorspace', 'bgr')
         return self
 
     def float(self, scale=None):
         """Convert the image buffer to float32"""
-        if self.load().dtype != np.float32:
-            #quietprint('[vipy.image][%s]: converting to float32' %
-            #           (self.__repr__()), verbosity=2)
-            self._array = np.float32(self.load())
+        if self.load().array().dtype != np.float32:
+            self._array = np.float32(self.load().array())
         if scale is not None:
             self._array = self._array * scale
         return self
@@ -616,11 +545,9 @@ class Image(object):
     def uint8(self, scale=None):
         """Convert the image buffer to uint8"""
         if scale is not None:
-            self._array = self.load() * scale
-        if self.load().dtype != np.uint8:
-            #quietprint('[vipy.image][%s]: converting to uint8' %
-            #           (self.__repr__()), verbosity=2)
-            self._array = np.uint8(self.load())
+            self._array = self.load().array() * scale
+        if self.load().array().dtype != np.uint8:
+            self._array = np.uint8(self.load().array())
         return self
 
     def preprocess(self, scale=1.0/255.0):
@@ -633,19 +560,19 @@ class Image(object):
         return self
 
     def min(self):
-        return np.min(self.load().flatten())
+        return np.min(self.load().array().flatten())
 
     def max(self):
-        return np.max(self.load().flatten())
+        return np.max(self.load().array().flatten())
 
     def mean(self):
-        return np.mean(self.load(), axis=(0, 1)).flatten()
+        return np.mean(self.load().array(), axis=(0, 1)).flatten()
 
     def mat2gray(self, min=None, max=None):
         """Convert the image buffer so that [min,max] -> [0,1]"""
         quietprint('[vipy.image][%s]: contrast equalization' %
                    (self.__repr__()), verbosity=2)
-        self._array = mat2gray(np.float32(self.load()), min, max)
+        self._array = mat2gray(np.float32(self.load().array()), min, max)
         return self
 
     def transform2D(self, txy=(0, 0), r=0, s=1):
@@ -653,7 +580,7 @@ class Image(object):
         idemponent."""
         quietprint('[vipy.image][%s]: transform2D' %
                    (self.__repr__()), verbosity=2)
-        self.load()
+        self.load().array()
         c = (self._array.shape[1] / 2, self._array.shape[0] / 2)
         M = similarity_imtransform2D(c=c, r=r, s=s)
         self._array = imtransform2D(self._array, M)
@@ -666,19 +593,19 @@ class Image(object):
         - Not idemponent."""
         quietprint('[vipy.image][%s]: transform' %
                    (self.__repr__()), verbosity=2)
-        self._array = imtransform(self.load(), A)
+        self._array = imtransform(self.load().array(), A)
         return self
 
     def gain(self, g):
-        self._array = np.multiply(self.load(), g)
+        self._array = np.multiply(self.load().array(), g)
         return self
 
     def bias(self, b):
-        self._array = self.load() + b
+        self._array = self.load().array() + b
         return self
 
     def imrange(self):
-        self._array = np.minimum(np.maximum(self.load(), 0), 255)
+        self._array = np.minimum(np.maximum(self.load().array(), 0), 255)
         return self
 
     def map(self, f):
@@ -687,7 +614,7 @@ class Image(object):
         return f(self)
 
     def drawbox(self, bbox, border=None, color=None, alpha=None, beta=None):
-        self.load()
+        self.load().array()
         dtype = self._array.dtype
 
         border = 2 if border is None else border
@@ -1037,6 +964,6 @@ class ImageDetection(ImageCategory):
     def setzero(self, bbox=None):
         """Set all image values within the bounding box to zero"""
         bbox = self.bbox if bbox is None else bbox
-        self.load()[int(bbox.ymin):int(bbox.ymax),
+        self.load().array()[int(bbox.ymin):int(bbox.ymax),
                     int(bbox.xmin):int(bbox.xmax)] = 0
         return self

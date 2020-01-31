@@ -183,28 +183,23 @@ def imbbox(img, xmin, ymin, xmax, ymax, bboxcaption=None, figure=None, bboxcolor
     pause(0.00001)
     return plt.gcf().number
 
-def imdetection(img, imdetlist, figure=None, bboxcolor='green', colormap=None, do_caption=True, facecolor='white', facealpha=0.5, textcolor='green', textfacecolor='white', captionlist=None, fontsize=10, captionoffset=(0,0)):
-    """Show bounding boxes from a list of ImageDetections on the same image, plotted in list order with optional captions """
-
-    # try imdetlist.sort(key=(lambda im: im.attributes['RawDetectionProbability']))
-    # try captionlist = [im.attributes['RawDetectionProbability'] for im in imdetlist]
-    # color = {'face':'red', 'vehicle':'blue', 'person':'green'}
-    # bboxcolor = [color[im.category()] for im in detlist]
+def imdetection(img, detlist, figure=None, bboxcolor='green', colormap=None, do_caption=True, facecolor='white', facealpha=0.5, textcolor='green', textfacecolor='white', captionlist=None, fontsize=10, captionoffset=(0,0)):
+    """Show bounding boxes from a list of vipy.object.Detections on the same image, plotted in list order with optional captions """
 
     # Empty?
-    if len(imdetlist) == 0:
+    if len(detlist) == 0:
         imshow(img, figure=figure, colormap=colormap, do_updateplot=True)
         return figure
 
     # Valid detections
     fig = figure
-    for (k,im) in enumerate(imdetlist):
+    for (k,det) in enumerate(detlist):
         do_imshow = True if k==0 else False  # first image only
-        do_updateplot = True if k==(len(imdetlist)-1) else False  # last image only
+        do_updateplot = True if k==(len(detlist)-1) else False  # last image only
         if do_caption and captionlist is not None:
             bboxcaption = str(captionlist[k])
         elif do_caption:
-            bboxcaption = str(im.category())
+            bboxcaption = str(det.category())
         else:
             bboxcaption = None
 
@@ -218,7 +213,7 @@ def imdetection(img, imdetlist, figure=None, bboxcolor='green', colormap=None, d
         else:
             textcolor_ = textcolor
 
-        fig = imbbox(img=img, xmin=im.bbox.xmin, ymin=im.bbox.ymin, xmax=im.bbox.xmax, ymax=im.bbox.ymax, bboxcaption=bboxcaption, do_imshow=do_imshow, do_updateplot=do_updateplot, figure=fig, colormap=colormap, bboxcolor=bboxcolor_, facecolor=facecolor, facealpha=facealpha, textcolor=textcolor_, textfacecolor=textfacecolor, fontsize=fontsize, captionoffset=captionoffset)
+        fig = imbbox(img=img, xmin=det.xmin, ymin=det.ymin, xmax=det.xmax, ymax=det.ymax, bboxcaption=bboxcaption, do_imshow=do_imshow, do_updateplot=do_updateplot, figure=fig, colormap=colormap, bboxcolor=bboxcolor_, facecolor=facecolor, facealpha=facealpha, textcolor=textcolor_, textfacecolor=textfacecolor, fontsize=fontsize, captionoffset=captionoffset)
     #plt.hold(False)
     pause(0.00001)
     return fig

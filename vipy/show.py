@@ -1,16 +1,6 @@
 import importlib
 
 BACKEND = importlib.import_module('vipy.gui.using_matplotlib')
-#BACKEND = importlib.import_module('bobo.gui.using_opencv')  # segfaults with multiprocessing.  why?
-
-def backend(using='pygame'):
-    global BACKEND
-    BACKEND = importlib.import_module('bobo.gui.using_%s' % using)
-    if using == 'pygame':
-        figure()  # need figure before opencv camera otherwise segfault. Why?
-    
-def using(using_='pygame'):
-    backend(using_)
 
 def pause(sec=1):
     BACKEND.pause(sec)
@@ -23,9 +13,6 @@ def close(title=None):
 
 def closeall():
     return BACKEND.closeall()
-    
-#def fullscreen():
-#    BACKEND.fullscreen()
     
 def imshow(im, handle=None, colormap=None, figure=None, do_updateplot=True):    
     return BACKEND.imshow(im, handle, colormap, figure=figure, do_updateplot=do_updateplot)
@@ -78,9 +65,9 @@ def disparity(disp, maxdisparity=None):
 def impolygon(im, poly, color='green'):
     return BACKEND.impolygon(im, poly, color)
 
-def imdetection(img, imdetlist, figure=None, bboxcolor='green', facecolor='white', facealpha=0.5, colormap=None, do_caption=True, captionlist=None, fontsize=10, textcolor='green', captionoffset=(0,0)):
-    """Show a list of ImageDetections overlayed on img.  Image must be RGB (not BGR!) or grayscale"""
-    return BACKEND.imdetection(img, imdetlist, figure=figure, bboxcolor=bboxcolor, colormap=colormap, do_caption=do_caption, facecolor=facecolor, facealpha=facealpha, captionlist=captionlist, fontsize=fontsize, textcolor=textcolor, captionoffset=captionoffset)
+def imdetection(img, detlist, figure=None, bboxcolor='green', facecolor='white', facealpha=0.5, colormap=None, do_caption=True, captionlist=None, fontsize=10, textcolor='green', captionoffset=(0,0)):
+    """Show a list of vipy.object.Detections overlayed on img.  Image must be RGB (not BGR!) or grayscale"""
+    return BACKEND.imdetection(img, detlist, figure=figure, bboxcolor=bboxcolor, colormap=colormap, do_caption=do_caption, facecolor=facecolor, facealpha=facealpha, captionlist=captionlist, fontsize=fontsize, textcolor=textcolor, captionoffset=captionoffset)
 
 def colorlist():
     return BACKEND.colorlist()

@@ -12,24 +12,28 @@ import hashlib
 #import vipy.viset
 import shutil
 import json
-
 import scipy.io
 import shelve
 #from . import math
 import re
 import uuid
-
 import dill
 import builtins
 import pickle as cPickle
-
 import PIL
 import matplotlib.pyplot as plt
 import uuid
-
 from itertools import groupby as itertools_groupby
+import importlib
 
 
+def try_import(package):
+    """Show a helpful error message for missing optional packages"""
+    try:
+        importlib.import_module(package)
+    except:
+        raise ImportError('Missing package -  Run "pip install %s"' % package)
+    
 def quietprint(x, verbosity=None):
     """FIXME"""
     print(x)
