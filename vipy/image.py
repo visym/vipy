@@ -1,5 +1,6 @@
 import os
 import PIL
+import PIL.Image
 from vipy.show import imshow, imbbox, savefig
 from vipy.util import isnumpy, quietprint, isurl, isimageurl, islist, \
     fileext, tempimage, mat2gray, imwrite, imwritejet, imwritegray, tmpjpg, tempjpg, imresize, imrescale, bgr2gray, gray2rgb, bgr2rgb, rgb2bgr, gray2hsv, bgr2hsv
@@ -10,12 +11,11 @@ import urllib.request
 import urllib.error
 import urllib.parse
 import http.client as httplib
-#import cv2
 import copy
 import numpy as np
 import shutil
 import io
-
+#import cv2
 
 
 # FIX <urlopen error [SSL: CERTIFICATE_VERIFY_FAILED] certificate
@@ -150,6 +150,11 @@ class Image(object):
 
         return self._array
 
+    def read(self):
+        """Read from an image file to a numpy array, and return the image object"""
+        self.load()
+        return self
+    
     def download(self, ignoreErrors=False, timeout=10):
         """Download URL to filename provided by constructor, or to temp filename"""
         if self._url is None or not isurl(str(self._url)):
