@@ -2,7 +2,7 @@ import argparse
 import base64
 import csv
 import os
-from bobo.util import remkdir, dirlist, imlist, writecsv, readcsv
+from vipy.util import remkdir, dirlist, imlist, writecsv, readcsv
 
 def extract(tsvfile, outdir):
     """https://github.com/cmusatyalab/openface/blob/master/data/ms-celeb-1m/extract.py"""

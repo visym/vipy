@@ -2,17 +2,22 @@ from vipy.geometry import BoundingBox
 
 class Detection(BoundingBox):
     """Represent a single bounding box with a label and confidence for an object detection in a scene"""
-    def __init__(self, label, xmin=None, ymin=None, width=None, height=None, xmax=None, ymax=None, confidence=None):
-        super(Detection, self).__init__(xmin=xmin, ymin=ymin, width=width, height=height, xmax=xmax, ymax=ymax)
+    def __init__(self, label='object', xmin=None, ymin=None, width=None, height=None, xmax=None, ymax=None, confidence=None, xcentroid=None, ycentroid=None):
+        super(Detection, self).__init__(xmin=xmin, ymin=ymin, width=width, height=height, xmax=xmax, ymax=ymax, xcentroid=xcentroid, ycentroid=ycentroid)
         self._label = str(label)
         self._confidence = float(confidence) if confidence is not None else confidence        
         
     def __repr__(self):
-        if self._confidence is None:
-            return str('<vipy.object.Detection: label=%s, xmin=%s, ymin=%s, width=%s, height=%s>'% (self._label, str(self.xmin), str(self.ymin), str(self.height()), str(self.width())))
-        else:
-            return str('<vipy.object.Detection: label=%s, conf=%1.3f, xmin=%s, ymin=%s, width=%s, height=%s>'% (self._label, self._confidence, str(self.xmin), str(self.ymin), str(self.height()), str(self.width())))            
-
+        strlist = []
+        if self.category() is not None: 
+            strlist.append('category="%s"' % self.category())
+        if self.isvalid():
+            strlist.append('bbox=(xmin=%1.1f,ymin=%1.1f,xmax=%1.1f,ymax=%1.1f)' %
+                           (self.bbox.xmin(), self.bbox.ymin(),self.bbox.xmax(), self.bbox.ymax()))
+        if self._confidence is not None:
+            strlist.append('conf=%1.3f')
+        return str('<vipy.object.detection: %s>' % (', '.join(strlist)))
+            
     def __str__(self):
         return self.__repr__()
 

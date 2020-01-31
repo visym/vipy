@@ -551,6 +551,9 @@ def readlist(infile):
         list_of_rows = [r for r in f.readlines()]
     return list_of_rows
 
+def readtxt(infile):
+    """Read a text file one string per row"""
+    return readlist(infile)
 
 def writecsv(list_of_tuples, outfile, mode='w', separator=','):
     """Write list of tuples to an output csv file with each list element

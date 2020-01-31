@@ -64,24 +64,19 @@ class Image(object):
         return 1
 
     def __repr__(self):
+        strlist = []
         if self.isloaded():
-            return str('<vipy.image: height=%d, width=%d, color=%s>' % (
-                self._array.shape[0], self._array.shape[1],
-                str(self.getattribute('colorspace'))))
-        elif self._filename is not None and self._url is None:
-            return str("<vipy.image: filename='%s'>" % str(self._filename))
-        elif self._url is not None and self._filename is None:
-            return str("<vipy.image: url='%s'>" % str(self._url))
-        elif self._url is not None and self._filename is not None:
-            return str("<vipy.image: url='%s', filename='%s'>" % (str(self._url), str(self._filename)))
-        else:            
-            raise ValueError('vipy.image.Image must be constructed with an input')  # should never get here
+            strlist.append("height=%d, width=%d, color='%s'" % (self._array.shape[0], self._array.shape[1], self.attributes['colorspace']))
+        if self.hasfilename():
+            strlist.append('filename="%s"' % self.filename())
+        if self.hasurl(): 
+            strlist.append('url="%s"' % self.url())
+        return str('<vipy.image: %s>' % (', '.join(strlist)))
 
     def loader(self, f):
         """Lambda function to load an unsupported image filename to a numpy array"""
         self._loader = f
         return self
-
 
     def load(self, ignoreErrors=False):
         """Load image to cached private '_array' attribute and return Image object"""
@@ -148,6 +143,8 @@ class Image(object):
 
     def download(self, ignoreErrors=False, timeout=10):
         """Download URL to filename provided by constructor, or to temp filename"""
+        if self._url is None and self._filename is not None:
+            return self
         if self._url is None or not isurl(str(self._url)):
             raise ValueError('[vipy.image.download][ERROR]: '
                              'Invalid URL "%s" ' % self._url)
@@ -214,16 +211,15 @@ class Image(object):
     def isloaded(self):
         return self._array is not None
 
-    def show(self, colormap=None, figure=None, flip=True):
-        assert self.isloaded(), 'Image not loaded'
+    def show(self, colormap=None, figure=None):
+        assert self.load().isloaded(), 'Image not loaded'
         if self.iscolor():
             if colormap == 'gray':
                 imshow(self.clone().grayscale().rgb()._array, figure=figure)
             else:
                 imshow(self.clone().rgb()._array, figure=figure)
         else:
-            imshow(self._array, colormap=colormap,
-                   figure=figure, do_updateplot=flip)
+            imshow(self._array, colormap=colormap, figure=figure)
         return self
 
     def imagesc(self):
@@ -482,10 +478,6 @@ class Image(object):
         self._array = np.fliplr(self.load().array())
         return self
 
-
-
-
-
     def _colorspace(self, to):
         self.load()
         if self.attributes['colorspace'] == to:
@@ -683,24 +675,16 @@ class ImageCategory(Image):
         self._category = category
 
     def __repr__(self):
+        strlist = []
         if self.isloaded():
-            str_size = ", height=%d, width=%d, color='%s'" % (
-                self._array.shape[0], self._array.shape[1],
-                str(self.getattribute('colorspace')))
-        else:
-            str_size = ""
-        if self._url is None:
-            if self._filename is None:
-                str_file = ""
-            else:
-                str_file = "filename='%s'" % str(self._filename)
-        else:
-            str_file = "url='%s', filename='%s'" % (
-                str(self._url), str(self._filename))
-
-        str_category = ", category='%s'" % self._category
-        return str('<vipy.imagecategory: %s%s%s>' % (str_file,
-                                                      str_category, str_size))
+            strlist.append("height=%d, width=%d, color='%s'" % (self._array.shape[0], self._array.shape[1], self.attributes['colorspace']))
+        if self.hasfilename():
+            strlist.append('filename="%s"' % self.filename())
+        if self.hasurl(): 
+            strlist.append('url="%s"' % self.url())
+        if self.category() is not None: 
+            strlist.append('category="%s"' % self.category())
+        return str('<vipy.imagecategory: %s>' % (', '.join(strlist)))
 
     def __eq__(self, other):
         return self._category.lower() == other._category.lower()
@@ -771,31 +755,20 @@ class ImageDetection(ImageCategory):
             raise ValueError('invalid ImageDetection constructor')
             
     def __repr__(self):
+        strlist = []
         if self.isloaded():
-            str_size = ", height=%d, width=%d, color='%s'" % (
-                self._array.shape[0],
-                self._array.shape[1],
-                self.getattribute('colorspace'))
-        else:
-            str_size = ""
-        str_category = "category='%s'" % self.category()
-        str_detection = (", bbox=(xmin=%1.1f,ymin=%1.1f,"
-                         "xmax=%1.1f,ymax=%1.1f)" % (
-                             self.bbox.xmin(), self.bbox.ymin(),
-                             self.bbox.xmax(), self.bbox.ymax()))
-        str_url = "url='%s', " % str(self._url)
-        if self._url is not None:
-            str_file = ", url='%s', filename='%s'" % (str(self._url),
-                                                      str(self._filename))
-        else:
-            if self.filename is None:
-                str_file = ''
-            else:
-                str_file = ", filename='%s'" % (str(self._filename))
-
-        return str('<vipy.imagedetection: %s%s%s%s>' % (
-            str_category, str_detection, str_file, str_size))
-
+            strlist.append("height=%d, width=%d, color='%s'" % (self._array.shape[0], self._array.shape[1], self.attributes['colorspace']))
+        if self.hasfilename():
+            strlist.append('filename="%s"' % self.filename())
+        if self.hasurl(): 
+            strlist.append('url="%s"' % self.url())
+        if self.category() is not None: 
+            strlist.append('category="%s"' % self.category())
+        if self.bbox.isvalid():
+            strlist.append('bbox=(xmin=%1.1f,ymin=%1.1f,xmax=%1.1f,ymax=%1.1f)' %
+                           (self.bbox.xmin(), self.bbox.ymin(),self.bbox.xmax(), self.bbox.ymax()))
+        return str('<vipy.imagedetection: %s>' % (', '.join(strlist)))
+            
     def __hash__(self):
         return hash(self.__repr__())
 
@@ -981,7 +954,7 @@ class ImageDetection(ImageCategory):
 
 class Scene(ImageCategory):
     """A scene is an ImageCategory with one or more object detections"""
-    def __init__(self, filename=None, url=None, category='scene', attributes=None, objects=None, array=None):
+    def __init__(self, filename=None, url=None, category=None, attributes=None, objects=None, array=None):
         super(Scene, self).__init__(filename=filename, url=url, attributes=attributes, category=category, array=array)   # ImageCategory class inheritance        
         self._objectlist = []
         self.filename(filename)  # override filename only        
@@ -1000,11 +973,18 @@ class Scene(ImageCategory):
         self.category(category)
     
     def __repr__(self):
-        str_size = ", height=%d, width=%d, color='%s'" % (self._array.shape[0], self._array.shape[1], 'gray' if self._array.ndim==2 else 'color') if self.isloaded() else ""
-        str_file = ''
-        str_category = "%scategory='%s'" % (', ' if len(str_file)>0 else '', self._category)
-        str_objects = ", objects=%d" % len(self._objectlist)
-        return str('<vipy.scenedetection: %s%s%s%s>' % (str_file, str_category, str_size, str_objects))
+        strlist = []
+        if self.isloaded():
+            strlist.append("height=%d, width=%d, color='%s'" % (self._array.shape[0], self._array.shape[1], self.attributes['colorspace']))
+        if self.hasfilename():
+            strlist.append('filename="%s"' % self.filename())
+        if self.hasurl(): 
+            strlist.append('url=%s' % self.url())
+        if self.category() is not None:
+            strlist.append('category=%s' % self.category())
+        if len(self.objects()) > 0:
+            strlist.append('objects=%d' % len(self.objects()))
+        return str('<vipy.scene: %s>' % (', '.join(strlist)))
 
     def __len__(self):
         return len(self._objectlist)
