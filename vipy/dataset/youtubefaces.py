@@ -1,8 +1,7 @@
 import os
 from glob import glob
-from vipy.util import remkdir, isstring, quietprint, islist, tolist, loadmat
+from vipy.util import remkdir, isstring, quietprint, islist, tolist, loadmat, dirlist, imlist, filetail
 from vipy.image import ImageDetection, ImageCategory
-from vipy.video import VideoDetection
 
 
 URL='http://www.cslab.openu.ac.il/download/wolftau/YouTubeFaces.tar.gz'
@@ -14,13 +13,24 @@ class YouTubeFaces(object):
         if not os.path.isdir(os.path.join(self.datadir, 'frame_images_DB')):
             raise ValueError('Download YouTubeFaces dataset with "wget %s -O %s; cd %s; tar zxvf YouTubeFaces.tar.gz", and initialize with YouTubeFace(datadir="%s/YouTubeFaces")' % (URL, os.path.join(self.datadir, 'YouTubeFaces.tar.gz'), self.datadir, self.datadir))
 
-        self._parsed = parsed  # user saved output from self.parse for optional caching
-
         
     def __repr__(self):
         return str('<viset.youtubefaces: %s>' % self.ytfdir)
+
+    def subjects(self):
+        return os.listdir(os.path.join(self.ytfdir, 'descriptors_DB'))
+
+    def videos(self, subject):
+        videos = {}
+        for d in dirlist(os.path.join(self.ytfdir, 'frame_images_DB', subject)):
+            k_videoindex = filetail(d)
+            videos[k_videoindex] = []
+            for f in imlist(d):
+                videos[k_videoindex].append(ImageCategory(filename=f, category=subject))
+            videos[k_videoindex] = sorted(videos[k_videoindex], key=lambda im: im.filename())
+        return videos
     
-    def parse(self, max_num_subjects=None):
+    def parse(self, subject):
         """Parse youtubefaces into a list of ImageDetections"""
         
         # Write images and annotations
@@ -37,7 +47,7 @@ class YouTubeFaces(object):
         imlist = []
         categorydir = os.path.join(self.ytfdir, 'frame_images_DB')
         for i,infilename in enumerate(glob('%s/*labeled_faces.txt'%categorydir)):
-            if max_num_subjects and max_num_subjects == i: break
+            #if max_num_subjects and max_num_subjects == i: break
             print('[vipy.dataset.youtubefaces:] parsing "%s" ' % infilename)
             with open(infilename, 'r') as infile:
                 for line in infile:

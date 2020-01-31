@@ -4,7 +4,11 @@ from vipy.image import Image, ImageCategory, ImageDetection
 import copy
 import numpy as np
 
-class Video(object):
+#https://github.com/kkroening/ffmpeg-python/issues/246
+# put ffmpeg on all cluster machines
+
+
+class VideoFrames(object):
     """Requires FFMPEG on the path for video files"""
     def __init__(self, frames=None, filenames=None, frameDirectory=None, attributes=None, startframe=0, videofile=None, rot90clockwise=False, rot270clockwise=False, framerate=2):
         if frames is not None:
@@ -37,7 +41,7 @@ class Video(object):
         self.attributes = attributes
         
     def __repr__(self):
-        return str('<strpy.video: frames=%d>' % (len(self._framelist)))
+        return str('<strpy.videoframes: frames=%d>' % (len(self._framelist)))
     
     def __iter__(self):
         for im in self._framelist[self._startframe:]:
@@ -73,11 +77,11 @@ class Video(object):
             self.attributes[key] = value
         return self
 
-    def show(self, figure=1, colormap=None, do_flush=True):
+    def show(self, figure=1, colormap=None, do_flush=False):
         for im in self:  # use iterator
             im.show(figure=figure, colormap=colormap)
-            #if do_flush:
-            #    im.flush()  # flush after showing to avoid running out of memory
+            if do_flush:
+                im.flush()  # flush after showing to avoid running out of memory
         return self
     
     def play(self, figure=1, colormap=None):
@@ -102,117 +106,8 @@ class Video(object):
         return np.all([im.isvalid() for im in self._framelist])
 
     
-class VideoCategory(Video):    
-    def __init__(self, frames=None, filenames=None, frameDirectory=None, attributes=None, startframe=0, category=None, videofile=None, rot90clockwise=False, rot270clockwise=False, framerate=2):
-        if frames is not None and len(frames) > 0:
-            self._framelist = frames
-            self._category = frames[0].category()
-        elif videofile is not None:
-            imdir = remkdir(os.path.join(filepath(videofile), '.'+filebase(videofile)), flush=True)
-            impattern = os.path.join(imdir, '%08d.png')
-            if rot90clockwise:
-                cmd = 'ffmpeg -i "%s" -vf "transpose=1, fps=%d" -f image2 "%s"' % (videofile, framerate, impattern)  # 90 degrees clockwise
-            elif rot270clockwise:
-                cmd = 'ffmpeg -i "%s" -vf "transpose=2, fps=%d" -f image2 "%s"' % (videofile, framerate, impattern)  # 270 degrees clockwise
-            else:
-                cmd = 'ffmpeg -i "%s" -vf fps=%d -f image2 "%s"' % (videofile, framerate, impattern)
-            print('[VideoCategory]: Exporting frames using "%s" ' % cmd)
-            os.system(cmd)  # HACK
-            self._framelist = [ImageCategory(filename=imfile, category=category) for imfile in imlist(imdir)]
-            self._videofile = videofile
-        elif filenames is not None and len(filenames) > 0:
-            self._framelist = [ImageCategory(filename=imfile, category=category) for imfile in filenames]
-        elif frameDirectory is not None:
-            if not os.path.isdir(frameDirectory):
-                raise ValueError('Invalid frames directory "%s"' % frameDirectory)
-            self._framelist = [ImageCategory(filename=imfile, category=category) for imfile in imlist(frameDirectory)]
-        else:
-            self._framelist = []
-            
-        self._startframe = startframe
+class VideoCategory(Video):
+    pass
 
-        if category is not None:
-            self.category(category)
-        
-        # Public
-        self.attributes = attributes
-        
-    def __repr__(self):
-        return str('<strpy.videocategory: frames=%d, category="%s">' % (len(self), self._category))
-                    
-    def __eq__(self, other):
-        return self._category.lower() == other._category.lower()
-
-    def __ne__(self, other):
-        return self._category.lower() != other._category.lower()
-
-    def is_(self, other):
-        return self.__eq__(other)
-
-    def is_not(self, other):
-        return self.__ne__(other)
-            
-    def __hash__(self):
-        return hash(self._category.lower())                
-
-    def iscategory(self, newcategory):
-        return (self._category.lower() == newcategory.lower())
-
-    def ascategory(self, newcategory):
-        return self.category(newcategory)
-    
-    def category(self, newcategory=None):
-        if newcategory is None:
-            return self._category
-        else:
-            self._category = newcategory
-            self.map(lambda im: im.category(newcategory))
-            return self
-
-    
-class VideoDetection(VideoCategory):
-    def __init__(self, frames=None, filenames=None, frameDirectory=None, attributes=None, startframe=0, category=None, boundingboxes=None, rectlist=None, videofile=None, rot90clockwise=False, rot270clockwise=False, framerate=2):
-        # Public
-        self.attributes = attributes
-        
-        if frames is not None and len(frames) > 0:
-            self._framelist = frames
-            self._category = frames[0].category()
-            self.attributes = frames[0].attributes
-        elif videofile is not None:
-            imdir = remkdir(os.path.join(filepath(videofile), '.'+filebase(videofile)), flush=True)
-            impattern = os.path.join(imdir, '%08d.png')
-            if rot90clockwise:
-                cmd = 'ffmpeg -i "%s" -vf "transpose=1, fps=%d" -f image2 "%s"' % (videofile, framerate, impattern)  # 90 degrees clockwise
-            elif rot270clockwise:
-                cmd = 'ffmpeg -i "%s" -vf "transpose=2, fps=%d" -f image2 "%s"' % (videofile, framerate, impattern)  # 270 degrees clockwise
-            else:
-                cmd = 'ffmpeg -i "%s" -vf fps=%d -f image2 "%s"' % (videofile, framerate, impattern)
-            print('[VideoCategory]: Exporting frames using "%s" ' % cmd)
-            os.system(cmd)  # HACK
-            self._framelist = [ImageDetection(filename=imfile, category=category) for imfile in imlist(imdir)]
-            self._videofile = videofile
-            
-        elif filenames is not None:
-            self._framelist = [ImageDetection(filename=imfile, category=category) for imfile in filenames]
-        elif frameDirectory is not None:
-            if not os.path.isdir(frameDirectory):
-                raise ValueError('Invalid frames directory "%s"' % frameDirectory)
-            self._framelist = [ImageDetection(filename=imfile, category=category) for imfile in imlist(frameDirectory)]
-            
-        if boundingboxes is not None:
-            self._framelist = [im.boundingbox(bb) for (im,bb) in zip(self._framelist, boundingboxes)]
-        elif rectlist is not None:
-            self._framelist = [im.boundingbox(xmin=r[0], ymin=r[1], xmax=r[2], ymax=r[3]) for (im,r) in zip(self._framelist, rectlist)]
-            
-        self._startframe = startframe
-
-        if category is not None:
-            self.category(category)
-        
-                                
-    def __repr__(self):
-        return str('<strpy.videodetection: frames=%d, category="%s">' % (len(self), str(self.category())))
-    
-
-
+class VideoDetection(Video):
+    pass
