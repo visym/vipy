@@ -4,7 +4,6 @@ from vipy.util import remkdir, imlist, filetail
 import shutil
 from vipy.util import istuple, islist, isnumpy, quietprint, remkdir, filebase, filetail
 from vipy.image import Image
-from vipy.video import VideoDetection
 from vipy.show import savefig
 from collections import defaultdict
 import time
