@@ -60,7 +60,12 @@ class Track(object):
         return np.max(self._frames)
 
     def _interpolate(self, k):
-        pass
+        """Linear bounding box interpolation at frame=k given observed boxes (x,y,w,h) at observed frames"""
+        (xmin, ymin, width, height) = zip(*[bb.to_xywh() for bb in boxes])
+        return vipy.object.Detection(xmin=np.interp(k, self._frames, xmin),
+                                     ymin=np.interp(k, self._frames, ymin),
+                                     width=np.interp(k, self._frames, width),
+                                     height=np.interp(k, self._frames, height))                                     
 
     def category(self, label=None):
         if label is not None:

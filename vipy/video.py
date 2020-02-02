@@ -238,6 +238,7 @@ class Video(object):
         return self._array
     
     def resize(self, width, height):
+        """Do we keep track of clips?"""
         pass
 
     
