@@ -5,7 +5,6 @@ import vipy.geometry
 import vipy.image
 import vipy.linalg
 import vipy.math
-import vipy.metrics
 import vipy.object
 import vipy.show
 import vipy.util

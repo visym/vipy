@@ -1,8 +1,8 @@
-import sklearn.metrics
 import numpy as np
 import matplotlib.pyplot as plt
 from vipy.util import seq, groupby
 from scipy.interpolate import interp1d
+try_import('sklearn', 'scikit-learn'); import sklearn.metrics    
 
 
 def cumulative_match_characteristic(similarityMatrix, gtMatrix):

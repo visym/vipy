@@ -1,2 +1,3 @@
-recursive-include vipy *.py
+include *.md *.py *.jpg
+recursive-include vipy *.py *.jpg
 

@@ -15,12 +15,12 @@ Installation
 
 Required
 ```python
-pip install numpy scipy scikit-learn matplotlib dill pillow==5.4.1
+pip install numpy scipy matplotlib dill pillow
 ```
 
 Optional
 ```python
-pip install dropbox flickrapi opencv-python ipython h5py nltk bs4 youtube-dl
+pip install opencv-python ipython h5py nltk bs4 youtube-dl scikit-learn flickrapi dropbox
 ```
 
 
