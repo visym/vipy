@@ -20,6 +20,7 @@ setup(
         "matplotlib",    
         "dill",
         "pillow",
+        "ffmpeg-python"
     ],
     keywords = ['vision', 'learning', 'ML', 'CV'], 
     classifiers = [

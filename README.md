@@ -15,7 +15,7 @@ Installation
 
 Required
 ```python
-pip install numpy scipy matplotlib dill pillow
+pip install numpy scipy matplotlib dill pillow ffmpeg-python
 ```
 
 Optional

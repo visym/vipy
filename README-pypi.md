@@ -18,7 +18,7 @@ To delete a tag in the repo
    git push origin :refs/tags/X.Y.Z
 ```
 
-## PyPI
+## PyPI distribution
 
 * edit setup.py to update "version" and "download_url" to reference version X.Y.Z
 * create ~/.pypirc following https://packaging.python.org/guides/migrating-to-pypi-org/#uploading
@@ -28,14 +28,13 @@ python3 setup.py sdist upload -r pypi
 ```
 
 
-## Local installation
-
-* edit setup.py to update "version" and "download_url" to reference version X.Y.Z
-* create ~/.pypirc following https://packaging.python.org/guides/migrating-to-pypi-org/#uploading
+## Local installation (virtualenv)
 
 ```bash
-python3 setup.py sdist upload -r pypi
+cd /path/to/vipy
+pip install -e .
 ```
+
 
 
 
