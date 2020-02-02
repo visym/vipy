@@ -31,7 +31,7 @@ if hasattr(ssl, '_create_unverified_context'):
 
 class Image(object):
     """Vipy class for images"""
-    def __init__(self, filename=None, url=None, array=None, attributes=None):
+    def __init__(self, filename=None, url=None, array=None, colorspace=None, attributes=None):
         # Private attributes
         self._ignoreErrors = False  # ignore errors during fetch (broken links)
         self._urluser = None      # basic authentication set with url() method
@@ -52,7 +52,10 @@ class Image(object):
 
         # Public attributes: passed in as a dictionary
         self.attributes = attributes if attributes is not None else {'colorspace':str(None)}
-
+        if colorspace is not None:
+            assert colorspace in set(['rgb', 'rgba', 'bgr', 'bgra', 'hsv', 'grey', 'gray', 'float'])
+            self.attributes['colorspace'] = colorspace
+        
     def __str__(self):
         return self.__repr__()
 

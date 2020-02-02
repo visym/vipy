@@ -181,17 +181,21 @@ class BoundingBox():
         return self._xmax - self._xmin
 
     def setwidth(self, w):
+        """Set new width keeping centroid constant"""        
         if w <= 0:
             raise ValueError('invalid width')
-        self._xmax += (w - self.width()) / 2.0
-        self._xmin -= (w - self.width()) / 2.0        
+        worig = self.width()        
+        self._xmax += (w - worig) / 2.0
+        self._xmin -= (w - worig) / 2.0        
         return self
     
     def setheight(self, h):
+        """Set new height keeping centroid constant"""
         if h <= 0:
             raise ValueError('invalid height')
-        self._ymax += (h - self.height()) / 2.0
-        self._ymin -= (h - self.height()) / 2.0        
+        horig = self.height()
+        self._ymax += (h - horig) / 2.0
+        self._ymin -= (h - horig) / 2.0        
         return self
         
     def height(self):
@@ -311,13 +315,26 @@ class BoundingBox():
         self._xmax = c[0]+(float(w)/2.0)*scale
         return self
 
-    def dilate_topheight(self, scale=1):
-        """Change scale of bounding box in positive y direction only, changing centroid"""
-        h = self.height()
-        c = self.centroid()
-        self._ymin = c[1]-(float(h)/2.0)*scale
+    def top(self, dy):
+        """Make top of box taller (closer to top of image) by an offset dy"""
+        self._ymin = self._ymin - dy
         return self
 
+    def bottom(self, dy):
+        """Make bottom of box taller (closer to bottom of image) by an offset dy"""
+        self._ymax = self._ymax + dy
+        return self
+
+    def left(self, dx):
+        """Make left of box wider (closer to left side of image) by an offset dx"""
+        self._xmin = self._xmin - dx
+        return self
+
+    def right(self, dx):
+        """Make right of box wider (closer to right side of image) by an offset dx"""
+        self._xmax = self._xmax + dx
+        return self
+    
     def rescale(self, scale=1):
         """Multiply the box corners by a scale factor"""
         self._xmin = scale * self._xmin
@@ -410,7 +427,7 @@ class Ellipse():
         self.center_y *= scale
         return self
 
-    def estimate_boundingbox(self):
+    def boundingbox(self):
         """ Estimate an equivalent bounding box based on scaling to a common area.
         Note, this does not factor in rotation.
         (c*l)*(c*w) = a_e  --> c = \sqrt(a_e / a_r) """
@@ -434,6 +451,5 @@ class Ellipse():
         img = np.zeros( (H,W) )
         for (y,x) in product(range(0,H), range(0,W)):
             img[y,x] = self.inside(x,y)
-            print (x,y)
         return img
 

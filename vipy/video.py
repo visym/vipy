@@ -1,10 +1,14 @@
 import os
-from vipy.util import isnumpy, quietprint, isstring, isvideo, tempcsv, imlist, remkdir, filepath, filebase, tempMP4
+from vipy.util import isnumpy, quietprint, isstring, isvideo, tempcsv, imlist, remkdir, filepath, filebase, tempMP4, isurl, isvideourl, templike
 from vipy.image import Image, ImageCategory, ImageDetection
 import vipy.downloader
 import copy
 import numpy as np
 import ffmpeg
+import urllib.request
+import urllib.error
+import urllib.parse
+import http.client as httplib
 
 
 class Scene(object):
@@ -24,13 +28,18 @@ class Scene(object):
     def activityclip(self, k):
         return Scene()
 
+    def clip(self):
+        pass
+        
     
 class Video(object):
     def __init__(self, url=None, filename=None, startframe=0, framerate=30, rot90cw=False, rot90ccw=False, attributes=None):
+        self._ignoreErrors = False
         self._url = url
         self._filename = filename
         self._framerate = framerate
         self._array = None
+        self.attributes = attributes if attributes is not None else {}
         
         if url is not None:
             assert isurl(url), 'Invalid URL "%s" ' % url
@@ -40,19 +49,18 @@ class Video(object):
     def __repr__(self):
         strlist = []
         if self.isloaded():
-            strlist.append("height=%d, width=%d, color='%s'" % (self._array.shape[0], self._array.shape[1], self.attributes['colorspace']))
+            strlist.append("height=%d, width=%d, frames=%d" % (self._array[0].shape[0], self._array[0].shape[1], len(self._array)))
         if self.hasfilename():
             strlist.append('filename="%s"' % self.filename())
         if self.hasurl(): 
             strlist.append('url="%s"' % self.url())
-        return str('<vipy.image: %s>' % (', '.join(strlist)))
+        return str('<vipy.video: %s>' % (', '.join(strlist)))
 
     def __len__(self):
         """Number of frames"""
-        return 1
+        return len(self._array) if self.isloaded() else 0
 
     def __getitem__(self, k):
-        self.load()
         if k >= 0 and k < len(self):
             return self._array[k]
         else:
@@ -63,6 +71,33 @@ class Video(object):
         for im in self._array[self._startframe:]:
             yield im
 
+    def url(self, url=None, username=None, password=None, sha1=None, ignoreUrlErrors=None):
+        """Image URL and URL download properties"""
+        if url is None and username is None and password is None:
+            return self._url
+        if url is not None:
+            # set filename and return object
+            self.flush()
+            self._filename = None
+            self._url = url
+        if username is not None:
+            self._urluser = username  # basic authentication
+        if password is not None:
+            self._urlpassword = password  # basic authentication
+        if sha1 is not None:
+            self._urlsha1 = sha1  # file integrity
+        if ignoreUrlErrors is not None:
+            self._ignoreErrors = ignoreUrlErrors
+        return self
+            
+    def isloaded(self):
+        return self._array is not None
+
+    def hasfilename(self):
+        return self._filename is not None and os.path.exists(self._filename)
+
+    def hasurl(self):
+        return self._url is not None and isurl(self._url)    
 
     def tonumpy(self):
         return self.array()
@@ -71,7 +106,6 @@ class Video(object):
         return self.tonumpy()
 
     def flush(self):
-        """Remove cached numpy array"""
         self._array = None
         return self
 
@@ -98,8 +132,8 @@ class Video(object):
         if self._filename is None:
             if 'VIPY_CACHE' in os.environ:
                 self._filename = os.path.join(remkdir(os.environ['VIPY_CACHE']), filetail(self._url))
-            elif isimageurl(self._url):
-                self._filename = tempimage(fileext(self._url))
+            elif isvideourl(self._url):
+                self._filename = templike(self._url)
             else:
                 self._filename = tempMP4()  # guess MP4 for URLs with no file extension
 
@@ -110,9 +144,9 @@ class Video(object):
                                          self._filename,
                                          verbose=verbose,
                                          timeout=timeout,
-                                         sha1=self._urlsha1,
-                                         username=self._urluser,
-                                         password=self._urlpassword)
+                                         sha1=None,
+                                         username=None,
+                                         password=None)
             elif url_scheme == 'file':
                 shutil.copyfile(self._url, self._filename)
             else:
@@ -148,42 +182,51 @@ class Video(object):
         self.flush()
         return self
 
-
-        
     def shape(self):
+        probe = ffmpeg.probe(self.filename())
         video_stream = next((stream for stream in probe['streams'] if stream['codec_type'] == 'video'), None)
         width = int(video_stream['width'])
         height = int(video_stream['height'])
         return (width, height)
     
     def load(self):
-        # Download video from URL and save to file (define cache)
-        # Load file into memory as an array of numpy frames
-
-        probe = ffmpeg.probe(self.filename())
-        
-        
-        (out, err) = ffmpeg.input('in.mp4') \
+        (width, height) = self.shape()
+        (out, err) = ffmpeg.input(self.filename()) \
                            .output('pipe:', format='rawvideo', pix_fmt='rgb24') \
                            .run(capture_stdout=True)
-
         self._array = np.frombuffer(out, np.uint8).reshape([-1, height, width, 3])
-
-        self._array = None
         return self
 
     def clip(self, startframe, endframe):
-        self._array = self._array[startframe:endframe]
-        # Update activities and objects
-        self.activities = [a.offset(startframe) for a in self.activities]
-        self.objects = None
+        """Load a video clip betweeen start and end frames"""
+        assert(startframe < endframe)
+        (width, height) = self.shape()        
+        (out, err) = ffmpeg.input(self.filename()) \
+                           .trim(start_frame=startframe, end_frame=endframe) \
+                           .setpts ('PTS-STARTPTS') \
+                           .output('pipe:', format='rawvideo', pix_fmt='rgb24') \
+                           .run(capture_stdout=True)
+        self._array = np.frombuffer(out, np.uint8).reshape([-1, height, width, 3])
         return self
-
+    
     def pptx(self, outfile):
         pass
 
-    def saveas(self, outfile):
-        pass
+    def saveas(self, outfile, framerate=30, vcodec='libx264'):
+        (n, height, width, channels) = self._array.shape
+        process = ffmpeg.input('pipe:', format='rawvideo', pix_fmt='rgb24', s='{}x{}'.format(width, height)) \
+                        .output(outfile, pix_fmt='yuv420p', vcodec=vcodec, r=framerate) \
+                        .overwrite_output() \
+                        .global_args('-loglevel', 'error') \
+                        .run_async(pipe_stdin=True)
+        
+        for frame in self._array:
+            process.stdin.write(frame.astype(np.uint8).tobytes())
+
+        process.stdin.close()
+        process.wait()
+        return outfile
+
 
     def show(self):
         pass

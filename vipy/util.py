@@ -642,6 +642,10 @@ def isimageurl(path):
     """Is a path a URL with image extension?"""
     return urlparse(path).scheme != "" and isimg(path)
 
+def isvideourl(path):
+    """Is a path a URL with image extension?"""
+    return urlparse(path).scheme != "" and isvideo(path)
+
 
 def checkerboard(m=8,n=256):
     """m=number of square by column, n=size of final image"""
@@ -693,6 +697,15 @@ def isimg(path):
     else:
         return False
 
+def isvideo(path):
+    """Is an object an image with a supported image extension
+    ['.mp4','.mov']"""
+    (filename, ext) = os.path.splitext(path)
+    if ext.lower() in ['.mp4', '.mov']:
+        return True
+    else:
+        return False
+    
 def isimgfile(path):
     """Convenience function for isimg"""
     return isimg(path)
@@ -794,6 +807,12 @@ def isarchive(filename):
             return False
 
 def tempfilename(suffix):
+    fd, path = tempfile.mkstemp(suffix)
+    os.close(fd)
+    return path
+
+def templike(filename):
+    suffix = fileext(filename)
     fd, path = tempfile.mkstemp(suffix)
     os.close(fd)
     return path
