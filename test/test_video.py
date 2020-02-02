@@ -2,11 +2,11 @@ import os
 import numpy as np
 from vipy.video import Video
 from vipy.util import tempjpg, tempdir
-from vipy.videosearch import 
+import vipy.videosearch 
 
 def run():    
     # Common Parameters
-    mp4url = None
+    mp4url = vipy.videosearch.youtube(1)
 
     
 

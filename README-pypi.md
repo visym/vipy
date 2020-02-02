@@ -20,7 +20,7 @@ To delete a tag in the repo
 
 ## PyPI distribution
 
-* edit setup.py to update "version" and "download_url" to reference version X.Y.Z
+* Edit vipy/version.py to update the version number to match the tag
 * create ~/.pypirc following https://packaging.python.org/guides/migrating-to-pypi-org/#uploading
 
 ```bash

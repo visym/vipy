@@ -2,7 +2,11 @@ import vipy.video
 from vipy.util import isvideofile, isjsonfile, readjson
 from vipy.downloader import download
 
+def dataset():
+    pass
 
+def montage():
+    
 def consent(videofile):
     pass
     
