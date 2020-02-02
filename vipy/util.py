@@ -684,7 +684,7 @@ def tolist(x):
 
 
 def isimg(path):
-    """Is an object an image with a known image extension
+    """Is an object an image with a supported image extension
     ['.jpg','.jpeg','.png','.tif','.tiff','.pgm','.ppm','.gif','.bmp']?"""
     (filename, ext) = os.path.splitext(path)
     if ext.lower() in ['.jpg', '.jpeg', '.png', '.tif', '.tiff',
@@ -693,6 +693,22 @@ def isimg(path):
     else:
         return False
 
+def isimgfile(path):
+    """Convenience function for isimg"""
+    return isimg(path)
+
+def isimagefile(path):
+    """Convenience function for isimg"""
+    return isimg(path)
+
+def isgif(path):
+    return hasextension(path) and fileext(path).lower() == '.gif'
+
+def isjpeg(path):
+    return hasextension(path) and fileext(path).lower() == '.jpg' or fileext(path).lower() == '.jpeg'
+
+def isjpg(path):
+    return isjpeg(path)
 
 def iscsv(path):
     """Is a file a CSV file extension?"""
@@ -803,6 +819,10 @@ def tempjpg():
     """Create a temporary JPG file in system temp directory"""
     return tempimage('jpg')
 
+def tempMP4():
+    """Create a temporary MP4 file in system temp directory"""
+    return tempimage('mp4')
+
 def tmpjpg():
     """Create a temporary JPG file in /tmp"""
     return '/tmp/%s.jpg' % uuid.uuid4().hex
@@ -832,7 +852,10 @@ def mktemp(ext):
     """Create a temporary file with extension .ext"""
     return tempfilename(suffix='.' + ext)
 
-
+def tempdir():
+    """Wrapper around tempfile, because I can never remember the syntax"""
+    return tempfile.gettempdir()
+    
 def imread(imfile):
     """Wrapper for opencv imread. Note that color images are imported as
     BGR!"""
@@ -942,6 +965,7 @@ def splitextension(filename):
 
 
 def hasextension(filename):
+    """Does the provided filename have a file extension (e.g. /path/to/file.ext) or not (e.g. /path/to/file)"""
     return fileext(filename) is not None
 
 def fileext(filename):

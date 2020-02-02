@@ -1,38 +1,10 @@
 import os
-from vipy.util import isnumpy, quietprint, isstring, isvideo, tempcsv, imlist, remkdir, filepath, filebase
+from vipy.util import isnumpy, quietprint, isstring, isvideo, tempcsv, imlist, remkdir, filepath, filebase, tempMP4
 from vipy.image import Image, ImageCategory, ImageDetection
+import vipy.downloader
 import copy
 import numpy as np
-
-#https://github.com/kkroening/ffmpeg-python/issues/246
-# put ffmpeg on all cluster machines
-
-#need ActivityDetection, ActivityClassification
-#raw video with ffmpeg support
-#activities are associated with one or more objects and have a start and end time
-#a video may have no detections
-#a video may only have a classificatiojn (consent video)
-#we will want to run face and object detectors on these videos
-#we will want to clip videos
-#we will want to stabilize videos
-#resize videos
-#extract single frame at activity
-#save videos
-#show frames of video
-#each frame should have one or more activities and one or more objects
-#each activity should have one or more objects
-#individual activities should be accessible as a clip
-#does a frame contain an activity
-#all frames that contain an activity
-#we want to track and filter boxes
-#export refined json
-#read video metadata
-#save an overlay video
-#preprocess clips for torch
-#constructor should not take JSON file input
-
-#an object can have more than one class (identity and face) instance (my face on tuesday), identity (my face), category (face), attribute (adjectives, gender)
-#verbs can also have attributes 
+import ffmpeg
 
 
 class Scene(object):
@@ -90,11 +62,113 @@ class Video(object):
         self.load()
         for im in self._array[self._startframe:]:
             yield im
+
+
+    def tonumpy(self):
+        return self.array()
+
+    def numpy(self):
+        return self.tonumpy()
+
+    def flush(self):
+        """Remove cached numpy array"""
+        self._array = None
+        return self
+
+    def reload(self):
+        return self.flush().load()
+
+    def filename(self, newfile=None):
+        """Video Filename"""
+        if newfile is None:
+            return self._filename
+        else:
+            # set filename and return object
+            self.flush()
+            self._filename = newfile
+            self._url = None
+            return self
+
+    def download(self, ignoreErrors=False, timeout=10, verbose=False):
+        """Download URL to filename provided by constructor, or to temp filename"""
+        if self._url is None and self._filename is not None:
+            return self
+        if self._url is None or not isurl(str(self._url)):
+            raise ValueError('[vipy.video.download][ERROR]: Invalid URL "%s" ' % self._url)        
+        if self._filename is None:
+            if 'VIPY_CACHE' in os.environ:
+                self._filename = os.path.join(remkdir(os.environ['VIPY_CACHE']), filetail(self._url))
+            elif isimageurl(self._url):
+                self._filename = tempimage(fileext(self._url))
+            else:
+                self._filename = tempMP4()  # guess MP4 for URLs with no file extension
+
+        try:
+            url_scheme = urllib.parse.urlparse(self._url)[0]
+            if url_scheme in ['http', 'https']:
+                vipy.downloader.download(self._url,
+                                         self._filename,
+                                         verbose=verbose,
+                                         timeout=timeout,
+                                         sha1=self._urlsha1,
+                                         username=self._urluser,
+                                         password=self._urlpassword)
+            elif url_scheme == 'file':
+                shutil.copyfile(self._url, self._filename)
+            else:
+                raise NotImplementedError(
+                    'Invalid URL scheme "%s" for URL "%s"' %
+                    (url_scheme, self._url))
+
+        except (httplib.BadStatusLine,
+                urllib.error.URLError,
+                urllib.error.HTTPError):
+            if self._ignoreErrors or ignoreErrors:
+                warnings.warn('[vipy.video][WARNING]: download failed - Ignoring Video')
+                self._array = None
+            else:
+                raise
+
+        except IOError:
+            if self._ignoreErrors or ignoreErrors:
+                warnings.warn('[vipy.video][WARNING]: IO error - Invalid video file, url or invalid write permissions "%s" - Ignoring video' % self.filename())
+                self._array = None
+            else:
+                raise
+
+        except KeyboardInterrupt:
+            raise
+
+        except Exception:
+            if self._ignoreErrors or ignoreErrors:
+                warnings.warn('[vipy.video][WARNING]: load error for video "%s"' % self.filename())
+            else:
+                raise
+            
+        self.flush()
+        return self
+
+
         
+    def shape(self):
+        video_stream = next((stream for stream in probe['streams'] if stream['codec_type'] == 'video'), None)
+        width = int(video_stream['width'])
+        height = int(video_stream['height'])
+        return (width, height)
     
     def load(self):
         # Download video from URL and save to file (define cache)
         # Load file into memory as an array of numpy frames
+
+        probe = ffmpeg.probe(self.filename())
+        
+        
+        (out, err) = ffmpeg.input('in.mp4') \
+                           .output('pipe:', format='rawvideo', pix_fmt='rgb24') \
+                           .run(capture_stdout=True)
+
+        self._array = np.frombuffer(out, np.uint8).reshape([-1, height, width, 3])
+
         self._array = None
         return self
 
@@ -104,6 +178,9 @@ class Video(object):
         self.activities = [a.offset(startframe) for a in self.activities]
         self.objects = None
         return self
+
+    def pptx(self, outfile):
+        pass
 
     def saveas(self, outfile):
         pass

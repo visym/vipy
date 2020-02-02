@@ -1,6 +1,7 @@
 # Import all subpackages
 import vipy.annotation
 import vipy.calibration
+import vipy.downloader
 import vipy.geometry
 import vipy.image
 import vipy.linalg

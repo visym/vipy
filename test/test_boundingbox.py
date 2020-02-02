@@ -1,7 +1,6 @@
-import sys
-sys.path.append('..')  # FIXME: relative import
-from vipy.geometry import BoundingBox
 import numpy as np
+from vipy.geometry import BoundingBox
+
 
 def run():
     try:
