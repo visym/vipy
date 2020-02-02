@@ -209,9 +209,6 @@ class Video(object):
         self._array = np.frombuffer(out, np.uint8).reshape([-1, height, width, 3])
         return self
     
-    def pptx(self, outfile):
-        pass
-
     def saveas(self, outfile, framerate=30, vcodec='libx264'):
         (n, height, width, channels) = self._array.shape
         process = ffmpeg.input('pipe:', format='rawvideo', pix_fmt='rgb24', s='{}x{}'.format(width, height)) \
@@ -228,8 +225,12 @@ class Video(object):
         return outfile
 
 
-    def show(self):
+    def pptx(self, outfile):
         pass
+    
+    def show(self):
+        f = self.saveas(tempMP4())
+        os.system("ffplay %s" % f)
 
     def torch(self):
         pass

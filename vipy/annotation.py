@@ -152,9 +152,8 @@ def googlesearch(tag):
 
 def basic_level_categories():
     """Return a list of nouns from wordnet that can be used as an initial list of basic level object categories"""
+    try_import('nltk'); import nltk    
     os.environ['NLTK_DATA'] = tempfile.gettempdir()
-    try_import('nltk')
-    import nltk
     print('[vipy.annotation.basic_level_categories]: Downloading wordnet to "%s"' % tempfile.gettempdir())
     nltk.download('wordnet', tempfile.gettempdir())
 
@@ -166,6 +165,16 @@ def basic_level_categories():
             nouns.append(str(synset.lemmas()[0].name()).lower())
     nouns.sort()
     return nouns
+
+def verbs():
+    """Return a list of verbs from verbnet that can be used to define a set of activities"""
+    try_import('nltk'); import nltk    
+    os.environ['NLTK_DATA'] = tempfile.gettempdir()
+    print('[vipy.annotation.verbs]: Downloading verbnet to "%s"' % tempfile.gettempdir())
+    nltk.download('verbnet', tempfile.gettempdir())
+    from nltk.corpus import verbnet
+    return verbnet.lemmas()
+
 
 def facebookprofilerange(fbid, numid, outdir='./imgs', cleanup=True, hierarchical=False, redownload=False):
     for x in range(fbid, fbid+numid):

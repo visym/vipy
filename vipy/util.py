@@ -73,6 +73,9 @@ def keymin(d):
         if v == vmin:
             return k
 
+def isjsonfile(filename):
+    return hasextension(filename) and fileext(filename).lower() == '.json'    
+
 
 def writejson(d, outfile):
     with open(outfile, 'w') as f:
@@ -698,14 +701,18 @@ def isimg(path):
         return False
 
 def isvideo(path):
-    """Is an object an image with a supported image extension
+    """Is an object an image with a supported video extension
     ['.mp4','.mov']"""
     (filename, ext) = os.path.splitext(path)
     if ext.lower() in ['.mp4', '.mov']:
         return True
     else:
         return False
-    
+
+def isvideofile(path):
+    """Equivalent to isvideo()"""
+    return isvideo(path)
+
 def isimgfile(path):
     """Convenience function for isimg"""
     return isimg(path)
