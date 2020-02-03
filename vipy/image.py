@@ -635,12 +635,13 @@ class Image(object):
 
 class ImageCategory(Image):
     def __init__(self, filename=None, url=None, category=None,
-                 attributes=None, array=None):
+                 attributes=None, array=None, colorspace=None):
         # Image class inheritance
         super(ImageCategory, self).__init__(filename=filename,
                                             url=url,
                                             attributes=attributes,
-                                            array=array)
+                                            array=array,
+                                            colorspace=colorspace)
         self._category = category
 
     def __repr__(self):
@@ -704,13 +705,15 @@ class ImageCategory(Image):
 class ImageDetection(ImageCategory):
     def __init__(self, filename=None, url=None, category=None, attributes=None,
                  xmin=None, xmax=None, ymin=None, ymax=None,
-                 width=None, height=None, bbox=None):
+                 width=None, height=None, bbox=None, array=None, colorspace=None):
         
         # ImageCategory class inheritance
         super(ImageDetection, self).__init__(filename=filename,
                                              url=url,
                                              attributes=attributes,
-                                             category=category)
+                                             category=category,
+                                             array=array,
+                                             colorspace=colorspace)
 
         # Construction options
         if bbox is not None:            

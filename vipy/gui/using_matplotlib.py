@@ -23,12 +23,12 @@ plt.ion()
 plt.show()
 #matplotlib.rc('text', usetex=True)  # requires latex installed
 
-def savefig(filename=None, handle=None, pad_inches=0, dpi=None, bbox_inches='tight'):
+def savefig(filename=None, handle=None, pad_inches=0, dpi=None, bbox_inches='tight', format=None):
     if handle is not None:
         plt.figure(handle)
     if filename is None:
         filename = temppng()
-    plt.savefig(filename, pad_inches=pad_inches, dpi=dpi, bbox_inches=bbox_inches)
+    plt.savefig(filename, pad_inches=pad_inches, dpi=dpi, bbox_inches=bbox_inches, format=format)
     return filename
 
 def figure(handle=None):
@@ -139,9 +139,6 @@ def tracks(im, bbox, bboxcolor='green', caption=None, captioncolor='red'):
             plt.text(xmin, ymin, cap, bbox=dict(facecolor='white', edgecolor='g',alpha=1), fontsize=10)
 
     plt.draw()
-
-
-
 
 
 def imbbox(img, xmin, ymin, xmax, ymax, bboxcaption=None, figure=None, bboxcolor='green', facecolor='white', facealpha=0.5, textcolor='black', textfacecolor='white', do_updateplot=True, do_imshow=True, colormap='gray', fontsize=10, captionoffset=(0,0)):

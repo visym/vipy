@@ -1,6 +1,7 @@
 import os
 from vipy.util import isnumpy, quietprint, isstring, isvideo, tempcsv, imlist, remkdir, filepath, filebase, tempMP4, isurl, isvideourl, templike
 from vipy.image import Image, ImageCategory, ImageDetection
+from vipy.show import savefig
 import vipy.downloader
 import copy
 import numpy as np
@@ -9,7 +10,7 @@ import urllib.request
 import urllib.error
 import urllib.parse
 import http.client as httplib
-
+import io
 
 class Scene(object):
     def __init__(self, video, activities=None, tracks=None, attributes=None):    
@@ -25,21 +26,57 @@ class Scene(object):
     def saveas(self, outfile):
         pass
 
-    def activityclip(self, k):
-        return Scene()
-
     def clip(self):
         pass
-        
+
+    def show(self):
+        for im in imframes:
+            buf = io.BytesIO()
+            im.show(figure=1)
+            savefig(buf, format='png')
+
+
+class Track(object):
+    def __init__(self, video, tracks):
+        self._video = video
+        self._tracks = tracks
+
+    def __repr__(self):
+        strlist = []
+        if self._video.hasfilename():
+            strlist.append('filename="%s"' % self._video.filename())
+        if self._video.hasurl(): 
+            strlist.append('url="%s"' % self._video.url())
+        return str('<vipy.video.Track: %s>' % (', '.join(strlist)))
     
+    def frame(self, k):
+        t = self._tracks[k]
+        return ImageDetection(array=self._video[k], colorspace='rgb', category=t.category(), bbox=t)
+
+    def track(self):
+        for k in range(0, len(self._video)):
+            yield self.frame(k)
+            
+    def show(self):
+        for im in self.track():
+            print(im)
+            im.show(figure=1)            
+            buf = io.BytesIO()
+            savefig('/tmp/out.png', format='png')
+            #print
+            #print(np.frombuffer(buf.getbuffer(), dtype=np.uint8).reshape( (im.width(), im.height(), 3) ))
+    
+            
 class Video(object):
-    def __init__(self, url=None, filename=None, startframe=0, framerate=30, rot90cw=False, rot90ccw=False, attributes=None):
+    def __init__(self, url=None, filename=None, startframe=0, endframe=None, framerate=30, rot90cw=False, rot90ccw=False, attributes=None):
         self._ignoreErrors = False
         self._url = url
         self._filename = filename
         self._framerate = framerate
         self._array = None
         self.attributes = attributes if attributes is not None else {}
+        self._startframe = startframe
+        self._endframe = endframe
         
         if url is not None:
             assert isurl(url), 'Invalid URL "%s" ' % url

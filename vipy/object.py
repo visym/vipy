@@ -30,12 +30,13 @@ class Detection(BoundingBox):
 
 
 class Track(object):
+
     """Represent many bounding boxes of an instance through time"""
     def __init__(self, label, frames, boxes, confidence=None, attributes=None):
         self._label = label
         self._frames = frames
         self._boxes = boxes
-        assert all([isinstance(bb, Detection) for bb in boxes]), "Bounding boxes must be vipy.object.Detection objects"
+        assert all([isinstance(bb, BoundingBox) for bb in boxes]), "Bounding boxes must be vipy.geometry.BoundingBox objects"
         assert all([bb.isvalid() for bb in boxes]), "Invalid bounding boxes"
 
     def __repr__(self):
@@ -47,12 +48,16 @@ class Track(object):
         return str('<vipy.object.track: %s>' % (', '.join(strlist)))
         
     def __getitem__(self, k):
-        self.load()
         if k >= self.startframe() and k < self.endframe():
             return self._interpolate(k)
         else:
             raise ValueError('Invalid frame index %d ' % k)
 
+    def __iter__(self):
+        for k in range(self._startframe, self._endframe):
+            yield (k,self._interpolate(k))
+        
+        
     def startframe(self):
         return np.min(self._frames)
 
@@ -61,11 +66,12 @@ class Track(object):
 
     def _interpolate(self, k):
         """Linear bounding box interpolation at frame=k given observed boxes (x,y,w,h) at observed frames"""
-        (xmin, ymin, width, height) = zip(*[bb.to_xywh() for bb in boxes])
-        return vipy.object.Detection(xmin=np.interp(k, self._frames, xmin),
-                                     ymin=np.interp(k, self._frames, ymin),
-                                     width=np.interp(k, self._frames, width),
-                                     height=np.interp(k, self._frames, height))                                     
+        (xmin, ymin, width, height) = zip(*[bb.to_xywh() for bb in self._boxes])
+        return Detection(label=self._label,
+                         xmin=np.interp(k, self._frames, xmin),
+                         ymin=np.interp(k, self._frames, ymin),
+                         width=np.interp(k, self._frames, width),
+                         height=np.interp(k, self._frames, height))                                     
 
     def category(self, label=None):
         if label is not None:

@@ -20,7 +20,7 @@ def imshow(im, handle=None, colormap=None, figure=None, do_updateplot=True):
 def imagesc(im, handle=None, colormap=None):    
     return BACKEND.imagesc(im, handle, colormap)
     
-def imbbox(im, xmin, ymin, xmax, ymax, bboxcaption=None, colormap=None, figure=None, do_updateplot=True):    
+def imbbox(im, xmin, ymin, xmax, ymax, bboxcaption=None, colormap=None, figure=None, do_updateplot=True):
     return BACKEND.imbbox(im, xmin, ymin, xmax, ymax, bboxcaption, colormap=colormap, figure=figure, do_updateplot=do_updateplot)
             
 def rectangle(bbox, color='green', caption=None, filled=False, linewidth=1):
@@ -50,8 +50,8 @@ def scatter(fr, im=None, color='green'):
 def text(ij, caption, color):    
     BACKEND.text(ij, caption, color)
 
-def savefig(filename=None, figure=None, pad_inches=0, bbox_inches='tight', dpi=None):
-    return BACKEND.savefig(filename, figure, pad_inches=pad_inches, dpi=dpi, bbox_inches=bbox_inches)
+def savefig(filename=None, figure=None, pad_inches=0, bbox_inches='tight', dpi=None, format=None):
+    return BACKEND.savefig(filename, figure, pad_inches=pad_inches, dpi=dpi, bbox_inches=bbox_inches, format=format)
 
 def opticalflow(im, flow):
     return BACKEND.opticalflow(im, flow)
