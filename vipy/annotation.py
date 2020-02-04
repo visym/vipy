@@ -3,7 +3,7 @@ import os
 import re
 import random
 import math
-from vipy.util import try_import, isurl
+from vipy.util import try_import, isurl, remkdir
 import tempfile
 
 common_user_agents = [
@@ -153,7 +153,8 @@ def googlesearch(tag):
 def basic_level_categories():
     """Return a list of nouns from wordnet that can be used as an initial list of basic level object categories"""
     try_import('nltk'); import nltk    
-    os.environ['NLTK_DATA'] = tempfile.gettempdir()
+    nltkdir = remkdir(os.path.join(os.environ['VIPY_CACHE'], 'nltk')) if 'VIPY_CACHE' in os.environ else tempfile.gettempdir()
+    os.environ['NLTK_DATA'] = nltkdir
     print('[vipy.annotation.basic_level_categories]: Downloading wordnet to "%s"' % tempfile.gettempdir())
     nltk.download('wordnet', tempfile.gettempdir())
 
@@ -169,7 +170,8 @@ def basic_level_categories():
 def verbs():
     """Return a list of verbs from verbnet that can be used to define a set of activities"""
     try_import('nltk'); import nltk    
-    os.environ['NLTK_DATA'] = tempfile.gettempdir()
+    nltkdir = remkdir(os.path.join(os.environ['VIPY_CACHE'], 'nltk')) if 'VIPY_CACHE' in os.environ else tempfile.gettempdir()
+    os.environ['NLTK_DATA'] = nltkdir
     print('[vipy.annotation.verbs]: Downloading verbnet to "%s"' % tempfile.gettempdir())
     nltk.download('verbnet', tempfile.gettempdir())
     from nltk.corpus import verbnet
