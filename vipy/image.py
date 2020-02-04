@@ -314,6 +314,10 @@ class Image(object):
     def saveastmp(self):
         """Save current buffer to temp JPEG filename and return filename"""
         return self.saveas(tempjpg())
+    def savetmp(self):
+        """Save current buffer to temp JPEG filename and return filename"""
+        return self.saveas(tempjpg())
+
 
     def savefig(self, filename=None):
         """Save figure output from self.show() to provided filename and return filename"""
@@ -394,7 +398,7 @@ class Image(object):
         return self
 
     def zeropad(self, dx, dy):
-        """Pad image using np.pad constant"""
+        """Pad image using np.pad constant by adding dx on both left and right, and dy on top and bottom"""
         if self.iscolor():
             pad_width = ((dx, dx), (dy, dy), (0, 0))
         else:
