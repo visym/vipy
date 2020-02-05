@@ -1,5 +1,5 @@
 import os
-from vipy.util import isnumpy, quietprint, isstring, isvideo, tempcsv, imlist, remkdir, filepath, filebase, tempMP4, isurl, isvideourl, templike
+from vipy.util import isnumpy, quietprint, isstring, isvideo, tempcsv, imlist, remkdir, filepath, filebase, tempMP4, isurl, isvideourl, templike, tempjpg
 from vipy.image import Image, ImageCategory, ImageDetection
 from vipy.show import savefig, figure
 import vipy.downloader
@@ -37,57 +37,34 @@ class Scene(object):
             savefig(buf, format='png')
 
 
-class Track(object):
-    def __init__(self, video, tracks):
-        self._video = video
-        self._tracks = tracks
-
-    def __repr__(self):
-        strlist = []
-        if self._video.hasfilename():
-            strlist.append('filename="%s"' % self._video.filename())
-        if self._video.hasurl(): 
-            strlist.append('url="%s"' % self._video.url())
-        return str('<vipy.video.Track: %s>' % (', '.join(strlist)))
-    
-    def frame(self, k):
-        t = self._tracks[k]
-        return ImageDetection(array=self._video[k], colorspace='rgb', category=t.category(), bbox=t)
-
-    def track(self):
-        for k in range(0, len(self._video)):
-            yield self.frame(k)
-            
-    def show(self):
-        import matplotlib.pyplot as plt
-        (W, H) = (None, None)
-        for im in self.track():
-            print(im)
-            im.show(figure=1)
-            if W is None or H is None:
-                (W,H) = plt.figure(1).canvas.get_width_height()                        
-            
-            buf = io.BytesIO()
-            plt.figure(1).canvas.print_raw(buf)
-            img = np.frombuffer(buf.getvalue(), dtype=np.uint8).reshape( (H, W, 4))
-            print(Image(array=img, colorspace='rgba').saveas('/Users/jba3139/Desktop/vipy.png'))
-        return self
-            
 class Video(object):
-    def __init__(self, url=None, filename=None, startframe=0, endframe=None, framerate=30, rot90cw=False, rot90ccw=False, attributes=None):
+    def __init__(self, url=None, filename=None, framerate=30, rot90cw=False, rot90ccw=False, attributes=None, width=None, height=None):
         self._ignoreErrors = False
         self._url = url
         self._filename = filename
         self._framerate = framerate
         self._array = None
         self.attributes = attributes if attributes is not None else {}
-        self._startframe = startframe
-        self._endframe = endframe
+        self._startframe = None
+        self._endframe = None
         
         if url is not None:
             assert isurl(url), 'Invalid URL "%s" ' % url
         assert filename is not None or url is not None, 'Invalid constructor'
+
+        if self._filename is None:
+            if 'VIPY_CACHE' in os.environ:
+                self._filename = os.path.join(remkdir(os.environ['VIPY_CACHE']), filetail(self._url))
+            elif isvideourl(self._url):
+                self._filename = templike(self._url)
+            else:
+                self._filename = tempMP4()  # guess MP4 for URLs with no file extension
         
+        self._ffmpeg = ffmpeg.input(self.filename(), r=framerate)
+        if rot90cw:
+            self.rot90cw()
+        if rot90ccw:
+            self.rot90ccw()
         
     def __repr__(self):
         strlist = []
@@ -114,8 +91,6 @@ class Video(object):
         for im in self._array[self._startframe:]:
             yield im
 
-
-            
     def url(self, url=None, username=None, password=None, sha1=None, ignoreUrlErrors=None):
         """Image URL and URL download properties"""
         if url is None and username is None and password is None:
@@ -151,7 +126,8 @@ class Video(object):
         return self.tonumpy()
 
     def flush(self):
-        self._array = None
+        self._array = None 
+        self._ffmpeg = ffmpeg.input(self.filename(), r=self._framerate)
         return self
 
     def reload(self):
@@ -174,13 +150,6 @@ class Video(object):
             return self
         if self._url is None or not isurl(str(self._url)):
             raise ValueError('[vipy.video.download][ERROR]: Invalid URL "%s" ' % self._url)        
-        if self._filename is None:
-            if 'VIPY_CACHE' in os.environ:
-                self._filename = os.path.join(remkdir(os.environ['VIPY_CACHE']), filetail(self._url))
-            elif isvideourl(self._url):
-                self._filename = templike(self._url)
-            else:
-                self._filename = tempMP4()  # guess MP4 for URLs with no file extension
 
         try:
             url_scheme = urllib.parse.urlparse(self._url)[0]
@@ -228,35 +197,86 @@ class Video(object):
         return self
 
     def shape(self):
-        probe = ffmpeg.probe(self.filename())
-        video_stream = next((stream for stream in probe['streams'] if stream['codec_type'] == 'video'), None)
-        width = int(video_stream['width'])
-        height = int(video_stream['height'])
-        return (width, height)
-    
-    def load(self):
-        (width, height) = self.shape()
-        (out, err) = ffmpeg.input(self.filename()) \
-                           .output('pipe:', format='rawvideo', pix_fmt='rgb24') \
-                           .run(capture_stdout=True)
+        """Return (height, width) of the frames once they are loaded through the filters"""
+        if not self.isloaded():
+            raise ValueError('Cannot introspect shape until the file is loaded')
+        return (self._array.shape[1], self._array.shape[2])  
+
+    def width(self):
+        return self.shape()[1]
+
+    def height(self):
+        return self.shape()[0]
+
+    def thumbnail(self, outfile=None, verbose=False):
+        """First frame of filtered video, saved to temp file, return vipy.image.Image object"""
+        im = Image(filename=tempjpg() if outfile is None else outfile)
+        (out, err) = self._ffmpeg.output(im.filename(), vframes=1)\
+                                 .overwrite_output()\
+                                 .global_args('-loglevel', 'debug' if verbose else 'error') \
+                                 .run(capture_stdout=True, capture_stderr=True)
+        return im
+        
+    def load(self, verbose=False):
+        """Load a video using ffmpeg, applying the requested filter chain"""
+        if self.isloaded():
+            return self
+        
+        # Generate single frame thumbnail to get frame sizes
+        (height, width) = self.thumbnail().shape()
+            
+        (out, err) = self._ffmpeg.output('pipe:', format='rawvideo', pix_fmt='rgb24') \
+                                 .global_args('-loglevel', 'debug' if verbose else 'error') \
+                                 .run(capture_stdout=True)
         self._array = np.frombuffer(out, np.uint8).reshape([-1, height, width, 3])
         return self
 
+
     def clip(self, startframe, endframe):
         """Load a video clip betweeen start and end frames"""
-        assert(startframe < endframe)
-        (width, height) = self.shape()        
-        (out, err) = ffmpeg.input(self.filename()) \
-                           .trim(start_frame=startframe, end_frame=endframe) \
-                           .setpts ('PTS-STARTPTS') \
-                           .output('pipe:', format='rawvideo', pix_fmt='rgb24') \
-                           .run(capture_stdout=True)
-        self._array = np.frombuffer(out, np.uint8).reshape([-1, height, width, 3])
+        assert startframe < endframe and startframe >= 0, "Invalid start and end frames" 
+        assert not self.isloaded(), "Filters can only be applied prior to loading the video"               
+        self._ffmpeg = self._ffmpeg.trim(start_frame=startframe, end_frame=endframe) \
+                                   .setpts ('PTS-STARTPTS')
+        return self
+    
+    def trim(self, startframe, endframe):
+        """Alias for clip"""
+        return self.clip(startframe, endframe)
+
+    def rot90cw(self):
+        assert not self.isloaded(), "Filters can only be applied prior to loading the video"
+        self._ffmpeg = self._ffmpeg.filter('transpose', 1)
+        return self
+
+    def rot90ccw(self):
+        assert not self.isloaded(), "Filters can only be applied prior to loading the video"
+        self._ffmpeg = self._ffmpeg.filter('transpose', 2)        
+        return self
+    
+    def rescale(self, s):
+        assert not self.isloaded(), "Filters can only be applied prior to loading the video"        
+        self._ffmpeg = self._ffmpeg.filter('scale', 'iw*%1.2f' % s, 'ih*%1.2f' % s)
+        return self
+        
+    def resize(self, rows=None, cols=None):
+        if rows is None and cols is None:
+            return self 
+        assert not self.isloaded(), "Filters can only be applied prior to loading the video"               
+        self._ffmpeg = self._ffmpeg.filter('scale', cols if cols is not None else -1, rows if rows is not None else -1)
+        return self
+
+    def framerate(self, fps):
+        assert not self.isloaded(), "Filters can only be applied prior to loading the video"
+        self._ffmpeg = self._ffmpeg.filter('fps', fps=fps, round='up')
         return self
     
     def saveas(self, outfile, framerate=30, vcodec='libx264'):
+        """Save numpy buffer in self._array to a video"""
+        assert self.isloaded(), "Video must be loaded prior to saveas"
         (n, height, width, channels) = self._array.shape
         process = ffmpeg.input('pipe:', format='rawvideo', pix_fmt='rgb24', s='{}x{}'.format(width, height)) \
+                        .filter('scale', -2, height) \
                         .output(outfile, pix_fmt='yuv420p', vcodec=vcodec, r=framerate) \
                         .overwrite_output() \
                         .global_args('-loglevel', 'error') \
@@ -270,6 +290,12 @@ class Video(object):
         return outfile
 
 
+    def greyscale(self):
+        pass
+
+    def rgb(self):
+        pass
+    
     def pptx(self, outfile):
         pass
     
@@ -280,12 +306,60 @@ class Video(object):
     def torch(self):
         pass
 
-    def numpy(self):
-        return self._array
+    def clone(self):
+        return copy.deepcopy(self)    
+
+
+
+class Track(Video):
+    def __init__(self, url=None, filename=None, framerate=30, rot90cw=False, rot90ccw=False, attributes=None, track=None):
+        super(Track, self).__init__(url=url, filename=filename, framerate=framerate, rot90cw=rot90cw, rot90ccw=rot90ccw, attributes=attributes)
+        self._track = track
+
+    def __repr__(self):
+        strlist = []
+        if self.isloaded():
+            strlist.append("height=%d, width=%d, frames=%d" % (self._array[0].shape[0], self._array[0].shape[1], len(self._array)))        
+        if self.hasfilename():
+            strlist.append('filename="%s"' % self.filename())
+        if self.hasurl(): 
+            strlist.append('url="%s"' % self.url())
+        if self._track is not None:
+            strlist.append('keyframes="%s"' % str(self._track.keyframes()))
+        return str('<vipy.video.Track: %s>' % (', '.join(strlist)))
+
+    def __getitem__(self, k):
+        self.load()
+        if k >= 0 and k < len(self):
+            t = self._track[k]
+            return ImageDetection(array=self._array[k], colorspace='rgb', category=t.category(), bbox=t)            
+        else:
+            raise ValueError('Invalid frame index %d ' % k)
     
-    def resize(self, width, height):
-        """Do we keep track of clips?"""
-        pass
+    def __iter__(self):
+        self.load()
+        for k in range(0, len(self)):
+            yield self.__getitem__(k)
+        
+    def show(self):
+        assert self.isloaded(), "Show requires that the video is loaded"
+        vid = self.load().clone()
+        import matplotlib.pyplot as plt
+        import PIL.Image
+        (W, H) = (None, None)
+        for (k,im) in enumerate(vid):
+            print(im)
+            im.show(figure=1)
+            if W is None or H is None:
+                (W,H) = plt.figure(1).canvas.get_width_height()                        
+            
+            buf = io.BytesIO()
+            plt.figure(1).canvas.print_raw(buf)
+            img = np.frombuffer(buf.getvalue(), dtype=np.uint8).reshape( (H, W, 4))
+            vid._array[k] = np.array(PIL.Image.fromarray(img).convert('RGB')).copy()
+
+        vid.saveas('/Users/jba3139/Desktop/vipy.mp4')
+        return self
 
     
     

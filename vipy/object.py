@@ -14,7 +14,7 @@ class Detection(BoundingBox):
             strlist.append('category="%s"' % self.category())
         if self.isvalid():
             strlist.append('bbox=(xmin=%1.1f,ymin=%1.1f,xmax=%1.1f,ymax=%1.1f)' %
-                           (self.bbox.xmin(), self.bbox.ymin(),self.bbox.xmax(), self.bbox.ymax()))
+                           (self.xmin(), self.ymin(),self.xmax(), self.ymax()))
         if self._confidence is not None:
             strlist.append('conf=%1.3f')
         return str('<vipy.object.detection: %s>' % (', '.join(strlist)))
@@ -48,16 +48,19 @@ class Track(object):
         return str('<vipy.object.track: %s>' % (', '.join(strlist)))
         
     def __getitem__(self, k):
-        if k >= self.startframe() and k < self.endframe():
-            return self._interpolate(k)
-        else:
-            raise ValueError('Invalid frame index %d ' % k)
+        return self._interpolate(k)
 
     def __iter__(self):
         for k in range(self._startframe, self._endframe):
             yield (k,self._interpolate(k))
         
-        
+    def __len__(self):
+        return len(self._frames)
+
+    def keyframes(self):
+        """Return keyframes where there are track observations"""
+        return self._frames
+    
     def startframe(self):
         return np.min(self._frames)
 
@@ -65,7 +68,7 @@ class Track(object):
         return np.max(self._frames)
 
     def _interpolate(self, k):
-        """Linear bounding box interpolation at frame=k given observed boxes (x,y,w,h) at observed frames"""
+        """Linear bounding box interpolation at frame=k given observed boxes (x,y,w,h) at observed frames, with repeated endpoints"""
         (xmin, ymin, width, height) = zip(*[bb.to_xywh() for bb in self._boxes])
         return Detection(label=self._label,
                          xmin=np.interp(k, self._frames, xmin),
@@ -83,4 +86,5 @@ class Track(object):
     def during(self, k):
         return k>=self.startframe() and k<self.endframe()
 
-    
+    def map(self, f):
+        self._boxes = [f(bb) for bb in self._boxes]

@@ -304,7 +304,7 @@ class Image(object):
             raise ValueError('No URI defined')
 
     def saveas(self, filename, writeas=None):
-        """Save current buffer to new filename and return filename"""
+        """Save current buffer (not including drawing overlays) to new filename and return filename"""
         if self.attributes['colorspace'] in ['gray']:
             imwritegray(self.grayscale()._array, filename)            
         elif self.attributes['colorspace'] != 'float':
@@ -322,7 +322,7 @@ class Image(object):
 
 
     def savefig(self, filename=None):
-        """Save figure output from self.show() to provided filename and return filename"""
+        """Save figure output from self.show() with drawing overlays to provided filename and return filename"""
         f = filename if filename is not None else tempjpg()
         return savefig(filename=f)
 
@@ -373,7 +373,7 @@ class Image(object):
             self.rescale(scale)
             
         else:
-            self._array = np.array(self.load().pil().resize((rows, cols), PIL.Image.BILINEAR))
+            self._array = np.array(self.load().pil().resize((cols, rows), PIL.Image.BILINEAR))
 
         return self
 
@@ -392,21 +392,21 @@ class Image(object):
         return self.rescale(float(dim) / float(np.minimum(self.height(), self.width())))
 
     def pad(self, dx, dy, mode='edge'):
-        """Pad image using np.pad mode"""
+        """Pad image using np.pad mode, dx=padwidth, dy=padheight"""
         self._array = np.pad(self.load().array(),
-                           ((dx, dx), (dy, dy), (0, 0)) if
-                           self.load().array().ndim == 3 else ((dx, dx), (dy, dy)),
+                           ((dy, dy), (dx, dx), (0, 0)) if
+                           self.load().array().ndim == 3 else ((dy, dy), (dx, dx)),
                            mode=mode)
         return self
 
-    def zeropad(self, dx, dy):
+    def zeropad(self, padwidth, padheight):
         """Pad image using np.pad constant by adding dx on both left and right, and dy on top and bottom"""
         if self.iscolor():
-            pad_width = ((dx, dx), (dy, dy), (0, 0))
+            pad_shape = ((padheight, padheight), (padwidth, padwidth), (0, 0))
         else:
-            pad_width = ((dx, dx), (dy, dy))
+            pad_shape = ((padheight, padheight), (padwidth, padwidth))
         self._array = np.pad(self.load().array(),
-                           pad_width=pad_width,
+                           pad_width=pad_shape,
                            mode='constant',
                            constant_values=0)        
         return self
@@ -415,11 +415,9 @@ class Image(object):
         """Pad image using np.pad constant where constant is image mean"""
         #mu = self.mean()
         if self.load().array().ndim == 3:
-            pad_size = ((dx, dx), (dy, dy), (0, 0))
-            #constant_values = tuple([(x, y) for (x, y) in zip(mu, mu)])
+            pad_size = ((dy, dy), (dx, dx), (0, 0))
         else:
-            #constant_values = ((mu, mu), (mu, mu))
-            pad_size = ((dx, dx), (dy, dy))
+            pad_size = ((dy, dy), (dx, dx))
         self._array = np.pad(self.load().array(), pad_size, mode='mean')
         return self
 
@@ -937,8 +935,11 @@ class Scene(ImageCategory):
         else:
             super(Scene, self).__init__(filename=filename, url=url, attributes=attributes, category=category, array=array)   # ImageCategory class inheritance                   
 
-        if objects is not None and len(objects)>0:
+        if objects is not None:
+            if not (isinstance(self._objectlist, list) and all([isinstance(bb, vipy.object.Detection) for bb in objects])):
+                raise ValueError("Invalid object list")
             self._objectlist = objects
+
         self.category(category)
     
     def __repr__(self):
@@ -973,9 +974,11 @@ class Scene(ImageCategory):
 
     def resize(self, cols=None, rows=None):
         """Resize image buffer and all bounding boxes"""
-        (sx,sy) = ( (self.width() / float(cols)) if cols is not None else 1.0, (self.height() / float(rows)) if rows is not None else 1.0)
+        sx = (float(cols)/self.width()) if cols is not None else 1.0
+        sy = (float(rows)/self.height()) if rows is not None else 1.0
         self = super(ImageCategory, self).resize(cols, rows)
         self._objectlist = [bb.scalex(sx).scaley(sy) for bb in self._objectlist]
+        print(self._objectlist)
         return self
 
     def fliplr(self):
@@ -989,10 +992,10 @@ class Scene(ImageCategory):
         self._objectlist = [bb.dilate(s) for bb in self._objectlist]                
         return self
 
-    def zeropad(self, dx, dy):
-        """Zero pad image and update bounding box offsets"""
-        self = super(ImageDetection, self).zeropad(dx, dy)
-        self._objectlist = [bb.translate(dx, dy) for bb in self._objectlist]
+    def zeropad(self, padwidth, padheight):
+        """Zero pad image with padwidth cols before and after and padheight rows before and after, then update bounding box offsets"""
+        self = super(ImageCategory, self).zeropad(padwidth, padheight)
+        self._objectlist = [bb.translate(padwidth, padheight) for bb in self._objectlist]
         return self
 
     def mask(self, W=None, H=None):
@@ -1012,6 +1015,7 @@ class Scene(ImageCategory):
         return immask
     
     def append(self, imdet):
+        assert isinstance(imdet, Detection), "Invalid input"
         self._objectlist.append(imdet)
         return self
     
@@ -1040,6 +1044,7 @@ class Scene(ImageCategory):
         if objectlist is None:
             return self._objectlist
         else:
+            assert isinstance(objectlist, list) and all([isinstance(bb, vipy.object.Detection) for bb in objectlist]), "Invalid object list"                        
             s = self.clone()
             s._objectlist = objectlist
             return s

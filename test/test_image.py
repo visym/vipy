@@ -4,7 +4,7 @@ from vipy.image import ImageDetection, Image, ImageCategory, Scene
 from vipy.object import Detection
 from vipy.util import tempjpg, tempdir
 
-def run():
+def image():
     
     # Common Parameters
     jpegurl = 'https://upload.wikimedia.org/wikipedia/commons/thumb/2/23/Bubo_virginianus_06.jpg/1920px-Bubo_virginianus_06.jpg'
@@ -21,10 +21,11 @@ def run():
     print('Filename Constructor: PASSED')
 
     # Malformed URL should raise exception
+    im = None
     try:
-        im = Image(url='myurl')
-        assert(False)
+        im = Image(url='myurl');  assert(False)
     except:
+        assert im is None
         print('Malformed URL constructor: PASSED')
 
     # Valid URL should not raise exception (even if it is not an image extension)
@@ -79,7 +80,7 @@ def run():
     print('URL with cache download: PASSED')
                
     # Filename object
-    im = ImageDetection(filename='jebyrne.jpg', xmin=100, ymin=100, width=700, height=1000, category='face')
+    im = ImageDetection(filename='jebyrne.jpg', xmin=100, ymin=100, bbwidth=700, bbheight=1000, category='face')
     print('Image __desc__: %s' % im)
     im.crop()
     print('Image __desc__: %s' % im)
@@ -106,8 +107,18 @@ def run():
 
     # Resize
     f = tempjpg()
-    im = Image(filename='jebyrne.jpg').load().resize(16,16).saveas(f)
-    assert Image(filename=f).shape() == (16,16)
+    im = Image(filename='jebyrne.jpg').load().resize(cols=16,rows=8).saveas(f)
+    assert Image(filename=f).shape() == (8,16)
+    assert Image(filename=f).width() == 16
+    assert Image(filename=f).height() == 8
+    im = Image(filename='jebyrne.jpg').load().resize(16,8).saveas(f)
+    assert Image(filename=f).shape() == (8,16)
+    assert Image(filename=f).width() == 16
+    assert Image(filename=f).height() == 8
+    im = Image(filename='jebyrne.jpg').load()
+    (h,w) = im.shape()
+    im = im.resize(rows=16)
+    assert im.shape() == (16,int((w/float(h))*16.0))
     print('Image.resize: PASSED')        
 
     # Rescale
@@ -156,45 +167,73 @@ def run():
     print('Greyscale image conversion: PASSED')
     
     # Image colormaps
-    im = ImageDetection(filename='jebyrne.jpg', xmin=100, ymin=100, width=200, height=200, category='face').crop()
+    im = ImageDetection(filename='jebyrne.jpg', xmin=100, ymin=100, bbwidth=200, bbheight=200, category='face').crop()
     im.rgb().jet().bone().hot().rainbow()
     print('Image colormaps: PASSED')
 
     # Image detections
-    im = ImageDetection(filename='jebyrne.jpg', xmin=100, ymin=100, width=200, height=200, category='face').crop()
+    im = ImageDetection(filename='jebyrne.jpg', xmin=100, ymin=100, bbwidth=200, bbheight=200, category='face').crop()
     assert(im.shape() == (200,200))
     assert(im.bbox.width() == im.width() and im.bbox.height() == im.height() and im.bbox.xmin()==0 and im.bbox.ymin()==0)
-    im = ImageDetection(filename='jebyrne.jpg', xmin=100, ymin=100, width=200, height=200, category='face')
+    im = ImageDetection(filename='jebyrne.jpg', xmin=100, ymin=100, bbwidth=200, bbheight=200, category='face')
     im = im.rescale(0.5)
     assert(im.bbox.width() == 100 and im.bbox.height() == 100)
 
     # Image detections - invalid box
-    im = ImageDetection(filename='jebyrne.jpg', xmin=100, ymin=100, width=200, height=-200, category='face')
+    im = ImageDetection(filename='jebyrne.jpg', xmin=100, ymin=100, bbwidth=200, bbheight=-200, category='face')
     assert im.invalid()
     print('ImageDetection invalid box: PASSED')
     try:
-        im.crop(); assert(False)
+        FLAG=False; im.crop(); FLAG=True; assert (False)
     except:
+        assert FLAG is False        
         print('ImageDetection invalid box crop: PASSED')        
-    im = ImageDetection(filename='jebyrne.jpg', xmin=100000, ymin=100000, width=200, height=200, category='face')
+    im = ImageDetection(filename='jebyrne.jpg', xmin=100000, ymin=100000, bbwidth=200, bbheight=200, category='face')
     assert im.boxclip().bbox is None
     print('ImageDetection invalid imagebox: PASSED')            
-    
-    # Scene
+
+
+def scene():
     im = Scene()
     print('Empty Scene Constructor: PASSED')
 
-    im = Scene(url='https://upload.wikimedia.org/wikipedia/commons/thumb/2/23/Bubo_virginianus_06.jpg/1920px-Bubo_virginianus_06.jpg').load()
-    print('URL: PASSED')
+    im = None
+    try:
+        im = Scene(objects='a bad type'); assert(False);
+    except:
+        assert (im is None)
+    try:
+        im = Scene(objects=['a bad type']);  assert(False);
+    except:
+        assert (im is None)    
+    im = Scene(objects=[Detection('obj1',0,0,0,0), Detection('obj2',0,0,0,0)])        
+    print('Invalid object type Constructor: PASSED')
 
-    outfile = tempjpg()
+    assert sorted(im.categories()) == ['obj1', 'obj2']
+    print('Scene.categories: PASSED')    
+    
+    im = Scene(url='https://upload.wikimedia.org/wikipedia/commons/thumb/2/23/Bubo_virginianus_06.jpg/1920px-Bubo_virginianus_06.jpg').load()
+    print('Scene.url: PASSED')
     im = im.rescale(0.5).objects([Detection('obj1',20,50,100,100), Detection('obj2',300,300,200,200)])
-    im.show(outfile=outfile)
-    print('Show outfile ("%s"): PASSED' % outfile)
+    print('Scene.rescale: PASSED')
+
+    outfile = im.show(outfile=tempjpg())
+    outfile = im.show().savefig(tempjpg())
+    print('Scene.show().savefig() ("%s"): PASSED' % outfile)
+    
+    im = im.resize(1000,100)
+    outfile = im.show().savefig(tempjpg())
+    print('Scene.resize() ("%s"): PASSED' % outfile)    
+
+    (h,w) = im.shape()
+    im.zeropad(padwidth=100,padheight=200)    
+    assert (im.width() == w+200 and im.height()==h+400 and im.numpy()[0,0,0] == 0)
+    print('Scene.zeropad: PASSED')
     
     
 if __name__ == "__main__":
-    run()
+    image()
+    scene()
 
 
 
