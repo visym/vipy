@@ -4,7 +4,7 @@ import PIL.Image
 from vipy.show import imshow, imbbox, savefig, colorlist
 from vipy.util import isnumpy, quietprint, isurl, isimageurl, islist, \
     fileext, tempimage, mat2gray, imwrite, imwritejet, imwritegray, \
-    tempjpg, imresize, imrescale, filetail, isimagefile, remkdir
+    tempjpg, imresize, imrescale, filetail, isimagefile, remkdir, hasextension
 from vipy.geometry import BoundingBox, similarity_imtransform, \
     similarity_imtransform2D, imtransform, imtransform2D
 import vipy.downloader
@@ -106,10 +106,12 @@ class Image(object):
                 elif self.isgrey():
                     self.setattribute('colorspace', 'grey')                                        
                 else:
-                    raise ValueError('unknown colorspace')
-                    
+                    raise ValueError('unknown colorspace')                    
+            elif hasextension(self._filename):
+                raise ValueError('Non-standard image extensions require a custom loader')
             else:
-                raise ValueError('Must define a customer loader for non-standard image extensions')
+                # Attempting to open it anyway, may be an image file without an extension. Cross your fingers ... 
+                self._array = np.array(PIL.Image.open(self._filename))  # RGB order!                
 
         except IOError:
             if self._ignoreErrors or ignoreErrors:
@@ -202,10 +204,10 @@ class Image(object):
     def isloaded(self):
         return self._array is not None
 
-    def show(self, colormap=None, figure=None):
-        """Display image as RGB"""
+    def show(self, figure=None):
+        """Display image on screen in provided figure number (clone and convert to RGB colorspace to show)"""
         assert self.load().isloaded(), 'Image not loaded'
-        imshow(self.clone().rgb().numpy(), figure=figure)
+        imshow(self.clone().rgb().numpy(), figure=figure)  
         return self
 
     def channels(self):
@@ -235,7 +237,7 @@ class Image(object):
         return self.load().array().shape[0]
 
     def shape(self):
-        return self.load().numpy().shape
+        return (self.load().height(), self.width())
 
     def array(self, np_array=None):
         """Replace self._array with provided numpy array"""
@@ -254,7 +256,7 @@ class Image(object):
         return self.array(data)
 
     def tonumpy(self):
-        return self.array()
+        return self.load().array()
 
     def numpy(self):
         return self.tonumpy()
@@ -377,7 +379,7 @@ class Image(object):
 
     def rescale(self, scale=1):
         """Scale the image buffer by the given factor - NOT idemponent"""
-        (height, width, channels) = self.load().shape()
+        (height, width) = self.load().shape()
         self._array = np.array(self.pil().resize((int(np.round(scale*width)), int(np.round(scale*height))), PIL.Image.BILINEAR))
         return self
 
@@ -421,6 +423,13 @@ class Image(object):
         self._array = np.pad(self.load().array(), pad_size, mode='mean')
         return self
 
+    def boxclip(self):
+        """Clip bounding box to the image rectangle, and delete bbox if outside image rectangle.  Requires image load"""
+        (W,H) = self.load().shape()
+        if self.bbox.intersection(BoundingBox(xmin=0, ymin=0, xmax=W-1, ymax=H-1), strict=False).isdegenerate():
+            warnings.warn("Degenerate bounding box does not intersect image - Deleting")
+            self.bbox = None
+        return self
 
     def minsquare(self):
         """Crop image of size (HxW) to (min(H,W), min(H,W))"""
@@ -448,7 +457,7 @@ class Image(object):
     def crop(self, bbox, pad='mean'):
         """Crop the image buffer using the supplied bounding box object - NOT
         idemponent."""
-        assert isinstance(bbox, BoundingBox), "Invalid bounding box"
+        assert isinstance(bbox, BoundingBox) and bbox.valid(), "Invalid bounding box"
         bbox = bbox.imclip(self.load().array())  
         self._array = self.array()[int(bbox.ymin()):int(bbox.ymax()),
                                    int(bbox.xmin()):int(bbox.xmax())]
@@ -468,8 +477,13 @@ class Image(object):
             img = self.load().array()  # any type
             self._array = np.array(img).astype(np.float32)  # typecast to float32
         elif self.attributes['colorspace'] in ['gray', 'grey']:
-            img = self.load().array()  # single channel float32 [0,1]
-            self._array = np.array(PIL.Image.fromarray(255.0*img, mode='F').convert('RGB'))  # float32 gray [0,1] -> float32 gray [0,255] -> uint8 RGB
+            img = self.load().array()  # single channel float32 [0,1] or single channel uint8 [0,255]
+            if img.dtype is np.dtype(np.float32): 
+                self._array = np.array(PIL.Image.fromarray(255.0*img, mode='F').convert('RGB'))  # float32 gray [0,1] -> float32 gray [0,255] -> uint8 RGB
+            elif img.dtype is np.dtype(np.uint8):
+                self._array = np.array(PIL.Image.fromarray(img, mode='L').convert('RGB'))  # uint8 gray [0,255] -> uint8 RGB
+            else:
+                raise ValueError('unsupported datatype for greyscale image')
             self.attributes['colorspace'] = 'rgb'            
             self._colorspace(to)
         elif self.attributes['colorspace'] == 'rgba':
@@ -748,22 +762,24 @@ class ImageDetection(ImageCategory):
     def __hash__(self):
         return hash(self.__repr__())
 
-    def show(self, ignoreErrors=False, colormap=None, figure=None, flip=True):
+    def show(self, ignoreErrors=False, figure=None):
         if self.load(ignoreErrors=ignoreErrors) is not None:
-            if self.bbox.valid() and self.bbox.shape() != self._array.shape[0:2]:
+            if self.bbox.invalid():
+                warnings.warn('Ignoring invalid bounding box "%s"' % str(self.bbox))                
+            elif self.bbox.valid() and self.bbox.hasoverlap(self.array()) and self.bbox.shape() != self._array.shape[0:2]:
+                self.boxclip()  # crop bbox to image rectangle for valid overlay image
                 imbbox(self.clone().rgb()._array, self.bbox.xmin(),
                        self.bbox.ymin(), self.bbox.xmax(), self.bbox.ymax(),
-                       bboxcaption=self.category(), colormap=colormap,
-                       figure=figure, do_updateplot=flip)
+                       bboxcaption=self.category(),
+                       figure=figure)
             else:
-                super(ImageDetection, self).show(figure=figure,
-                                                 colormap=colormap, flip=flip)
+                # Do not display the box if the box is degenerate or equal to the image rectangle
+                super(ImageDetection, self).show(figure=figure)
         return self
 
     def boundingbox(self, xmin=None, xmax=None, ymin=None, ymax=None,
                     bbox=None, width=None, height=None, dilate=None,
-                    xcentroid=None, ycentroid=None, dilate_topheight=None):
-        
+                    xcentroid=None, ycentroid=None, dilate_topheight=None):        
         if xmin is None and xmax is None and \
            ymin is None and ymax is None and \
            bbox is None and \
@@ -821,8 +837,7 @@ class ImageDetection(ImageCategory):
     def resize(self, cols=None, rows=None):
         """Resize image buffer and bounding box"""
         self = super(ImageDetection, self).resize(cols, rows)
-        self.bbox = BoundingBox(xmin=0, ymin=0,
-                                xmax=self.width(), ymax=self.height())
+        self.bbox = BoundingBox(xmin=0, ymin=0, xmax=self.width(), ymax=self.height())
         return self
 
     def fliplr(self):
@@ -849,15 +864,6 @@ class ImageDetection(ImageCategory):
         (W,H) = (self.width(), self.height())
         self.bbox = BoundingBox(xcentroid=W/2.0, ycentroid=H/2.0, width=bbwidth, height=bbheight)
         return self.crop()
-
-    def clip(self, border=0):
-        self.bbox = self.bbox.intersection(
-            BoundingBox(
-                xmin=border,
-                ymin=border,
-                xmax=self.width()-border,
-                ymax=self.height()-border))
-        return self
 
     def maxsquare(self):
         """Return a square bounding box centered at current centroid"""
@@ -923,16 +929,13 @@ class Scene(ImageCategory):
         self._objectlist = []
         self.filename(filename)  # override filename only        
         if filename is not None and objects is not None and len(objects) > 0:
-            #self.__dict__ = objects[0].__dict__.copy()  # shallow copy of all object attributes
             self.filename(filename)  # override filename only
         elif url is not None and objects is not None and len(objects)>0:
-            #self.__dict__ = objects[0].__dict__.copy()  # shallow copy of all object attributes
             self.url(url) # override url only
         else:
             super(Scene, self).__init__(filename=filename, url=url, attributes=attributes, category=category, array=array)   # ImageCategory class inheritance                   
 
         if objects is not None and len(objects)>0:
-            #self.__dict__ = objects[0].__dict__.copy()  # shallow copy of all object attributes
             self._objectlist = objects
         self.category(category)
     
@@ -965,15 +968,15 @@ class Scene(ImageCategory):
         return self
     
     def show(self, category=None, figure=None, do_caption=True, fontsize=10, boxalpha=0.25, captionlist=None, categoryColor=None, captionoffset=(0,0), outfile=None):
-        """Show scene detection with an optional subset of categories"""
-        #quietprint('[vipy.scenedetection][%s]: displaying scene' % (self.__repr__()), verbosity=2)                                            
+        """Show scene detection with an optional subset of categories"""        
         valid_categories = sorted(self.categories() if category is None else tolist(category))
-        valid_detections = [im for im in self._objectlist if im.category() in valid_categories]        
+        valid_detections = [obj for obj in self._objectlist if obj.category() in valid_categories]
+        valid_detections = [obj.imclip(self.numpy()) for obj in self._objectlist if obj.hasoverlap(self.numpy())]
         if categoryColor is None:
             colors = colorlist()
             categoryColor = dict([(c, colors[k]) for (k, c) in enumerate(valid_categories)])
         detection_color = [categoryColor[im.category()] for im in valid_detections]
-        vipy.show.imdetection(self.rgb()._array, valid_detections, bboxcolor=detection_color, textcolor=detection_color, figure=figure, do_caption=do_caption, facealpha=boxalpha, fontsize=fontsize, captionlist=captionlist, captionoffset=captionoffset)
+        vipy.show.imdetection(self.clone().rgb()._array, valid_detections, bboxcolor=detection_color, textcolor=detection_color, figure=figure, do_caption=do_caption, facealpha=boxalpha, fontsize=fontsize, captionlist=captionlist, captionoffset=captionoffset)
         if outfile is not None:
             savefig(outfile, figure)
         return self

@@ -264,12 +264,14 @@ class BoundingBox():
         """Fraction of this bounding box covered by other bbox"""
         return self.area_of_intersection(bb) / float(self.area())
 
-    def intersection(self, bb):
-        """Intersection of two bounding boxes"""
+    def intersection(self, bb, strict=True):
+        """Intersection of two bounding boxes, throw an error on degeneracy if strict"""
         self._xmin = max(bb.xmin(), self.xmin())
         self._ymin = max(bb.ymin(), self.ymin())
         self._xmax = min(bb.xmax(), self.xmax())
         self._ymax = min(bb.ymax(), self.ymax())
+        if strict and self.isdegenerate():
+            raise ValueError('Degenerate intersection')
         return self
                     
     def union(self, bb):
@@ -344,7 +346,7 @@ class BoundingBox():
         return self
 
     def imscale(self, im):
-        """Given a vipy.image, scale the box to be within [0,1], relative to height and width of image"""
+        """Given a vipy.image object im, scale the box to be within [0,1], relative to height and width of image"""
         w = (1.0 / float(im.width()))
         h = (1.0 / float(im.height()))
         self._xmin = w * self._xmin
@@ -363,12 +365,21 @@ class BoundingBox():
         self._xmax = c[0]+(float(w)/2.0)
         self._ymax = c[1]+(float(h)/2.0)
         return self
+
+    def hasoverlap(self, img):
+        """Does the bounding box intersect with the provided image rectangle?"""
+        return self.area_of_intersection(BoundingBox(xmin=0, ymin=0, xmax=img.shape[1]-1, ymax=img.shape[0]-1)) > 0
         
     def imclip(self, img):
-        """Clip bounding box to image rectangle [0,0,W,H]"""
-        self.intersection(BoundingBox(xmin=0, ymin=0, xmax=img.shape[1], ymax=img.shape[0]))
+        """Clip bounding box to image rectangle [0,0,W-1,H-1], throw an exception on an invalid box"""
+        self.intersection(BoundingBox(xmin=0, ymin=0, xmax=img.shape[1]-1, ymax=img.shape[0]-1))
         return self
-        
+
+    def imclipshape(self, W, H):
+        """Clip bounding box to image rectangle [0,0,W-1,H-1], throw an exception on an invalid box"""
+        self.intersection(BoundingBox(xmin=0, ymin=0, xmax=W-1, ymax=H-1))
+        return self
+    
     def convexhull(self, fr):
         """Given a set of points [[x1,y1],[x2,xy],...], return the bounding rectangle"""
         self._xmin = np.min(fr[:,0])

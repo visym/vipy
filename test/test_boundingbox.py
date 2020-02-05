@@ -39,6 +39,15 @@ def run():
     assert bb1.to_xywh() == [50.0, 50.0, 50.0, 50.0]
     print('Box.intersection: PASSED')
 
+    bb2 = BoundingBox(xmin=200, ymin=200, width=100, height=100)    
+    try:
+        bb1.intersection(bb2)
+        raise
+    except:
+        bb1.intersection(bb2, strict=False)
+        print('Box.intersection degeneracy: PASSED')        
+        
+    
     bb = BoundingBox(xmin=0, ymin=0, width=100, height=100)
     bb.translate(10,20)
     assert bb.to_xywh() == [10.0, 20.0, 100.0, 100.0]

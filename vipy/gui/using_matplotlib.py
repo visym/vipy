@@ -9,19 +9,27 @@ import sys
 #         pass  # linux headless
 
 from matplotlib import pyplot as plt
-import matplotlib.cm as cm
 import numpy as np
-from vipy.util import islist, temppng, mat2gray
+from vipy.util import islist, temppng
 import os
 import sys
 
 
 FIGHANDLE = {}
-
-matplotlib.rcParams['toolbar']= 'None'
+matplotlib.rcParams['toolbar'] = 'None'
 plt.ion()
 plt.show()
-#matplotlib.rc('text', usetex=True)  # requires latex installed
+
+# Optional latex strings in captions
+try:
+    from distutils.spawn import find_executable
+    if not find_executable('latex'):
+        raise
+    matplotlib.rc('text', usetex=True)  # requires latex installed
+except:
+    pass  # ignored if latex is not installed
+
+
 
 def savefig(filename=None, handle=None, pad_inches=0, dpi=None, bbox_inches='tight', format=None):
     if handle is not None:
@@ -31,67 +39,46 @@ def savefig(filename=None, handle=None, pad_inches=0, dpi=None, bbox_inches='tig
     plt.savefig(filename, pad_inches=pad_inches, dpi=dpi, bbox_inches=bbox_inches, format=format)
     return filename
 
-def figure(handle=None):
+def figure(fignum=None):
     if handle is not None:
-        plt.figure(handle)
+        plt.figure(fignum)
     else:
         plt.figure()
     return plt
+
+def close(fignum):
+    global FIGHANDLE;
+    if fignum in FIGHANDLE:
+        FIGHANDLE.pop(fignum, None);
+        return plt.close(fignum)
+    else:
+        return None
 
 def closeall():
     global FIGHANDLE;  FIGHANDLE = {};
     return plt.close('all')
 
-def imagesc(img, title=None, colormap=None):
-    imshow(mat2gray(img), title, colormap=colormap)
+def _imshow_tight(img, figure=None, do_updateplot=True):
+    """Helper function to show an image in a figure window"""
+    dpi = 100.0
+    fig = plt.figure(figure, dpi=dpi, figsize=(img.shape[1]/dpi, img.shape[0]/dpi))
+    plt.clf()
 
-def _imshow(img, title=None, colormap=None, do_updateplot=True, figure=None):
-    # Short pause needed to show fig
-    # See http://stackoverflow.com/questions/12670101/matplotlib-ion-function-fails-to-be-interactive
-    if figure is not None:
-        fig = plt.figure(figure)
-        plt.clf()
-    else:
-        fig = plt.gcf()
-        plt.clf()
-
-    ax = plt.Axes(fig, [0., 0., 1., 1.], frameon=False)
+    # Tight axes
+    ax = plt.Axes(fig, [0., 0., 1.0, 1.0], frameon=False)
     fig.add_axes(ax)
-
-    plt.axis('off')
-    ax.set_axis_off()
     for a in plt.gcf().axes:
         a.get_xaxis().set_visible(False)
-        a.get_yaxis().set_visible(False)
-
-    if colormap in ['grey', 'gray', 'grayscale', 'greyscale']:
-        cmap=cm.Greys_r
-        imh = plt.imshow(img, animated=True, interpolation='nearest', cmap=cmap)
-    elif colormap is not None:
-        imh = plt.imshow(np.uint8(255.0*img), animated=True, interpolation='nearest', cmap=plt.get_cmap(colormap))
-    else:
-        imh = plt.imshow(img, animated=True, interpolation='nearest')
-    plt.autoscale(tight=True)
-    plt.axis('image')
-    #plt.gcf().set_tight_layout(True)  # gives warning
-    if title is not None:
-        plt.title(title)
-
-    if do_updateplot:
-        #plt.pause(0.00001)
-        try:
-            plt.gcf().canvas.flush_events()
-        except:
-            pass
-        plt.draw()
-        plt.show()
-
+        a.get_yaxis().set_visible(False)    
+    imh = plt.imshow(img, animated=True, interpolation='nearest', aspect='equal')    
     return imh
 
-def imshow(img, title=None, colormap=None, do_updateplot=True, figure=None):
+
+def imshow(img, figure=None, do_updateplot=True):
+    """Show an image in a figure window, reuse previous figure if it is still visible and is the same shape"""
     global FIGHANDLE
-    if figure in FIGHANDLE.keys() and FIGHANDLE[figure].get_size() == img.shape[0:2]:
-        # Delete all polygon and text overlays from previous drawing
+    if figure in plt.get_fignums() and figure in FIGHANDLE and FIGHANDLE[figure].get_size() == img.shape[0:2]:
+        # Delete all polygon and text overlays from previous drawing        
         FIGHANDLE[figure].set_data(img)
         for c in plt.gca().get_children():
             if 'Text' in c.__repr__() or 'Polygon' in c.__repr__() or 'Circle' in c.__repr__() or 'Line' in c.__repr__() or  'Patch' in c.__repr__():
@@ -103,64 +90,23 @@ def imshow(img, title=None, colormap=None, do_updateplot=True, figure=None):
             plt.draw()
             plt.show()
     else:
-        FIGHANDLE[figure] = _imshow(img, title=title, colormap=colormap, do_updateplot=do_updateplot, figure=figure)
-    pause(0.00001)  # flush
+        FIGHANDLE[figure] = _imshow_tight(img, do_updateplot=do_updateplot, figure=figure)
+    plt.pause(0.00001)  # flush
     return figure
 
 
-def pause(sec=0.0001):
-    plt.pause(sec)
+def imbbox(img, xmin, ymin, xmax, ymax, bboxcaption=None, figure=None, bboxcolor='green', facecolor='white', facealpha=0.5, textcolor='black', textfacecolor='white', do_updateplot=True, do_imshow=True, fontsize=10, captionoffset=(0,0)):
+    """Draw bounding box on an image"""
 
-def tracks(im, bbox, bboxcolor='green', caption=None, captioncolor='red'):
-    plt.clf()
-    # Short pause needed to show fig
-    # See http://stackoverflow.com/questions/12670101/matplotlib-ion-function-fails-to-be-interactive
-    plt.pause(0.0001)
-    plt.imshow(im)
-    plt.autoscale(tight=True)
-    plt.axis('image')
-    plt.set_cmap('gray')
-    #plt.hold(True)
-
-    if caption is None:
-        caption = ['det']*len(bbox)
-    elif not islist(caption):
-        caption = [caption]*len(bbox)
-
-    for (bb, cap) in zip(bbox, caption):
-        # (x,y) bounding box is right and down, swap to right and up for plot
-        xmin = bb[0]
-        ymin = bb[1]
-        xmax = bb[0]+bb[2]
-        ymax = bb[1]+bb[3]
-        plt.axvspan(xmin, xmax, ymin=1-np.float32(float(ymax)/float(im.shape[0])), ymax=1-np.float32(float(ymin)/float(im.shape[0])), edgecolor='g', facecolor='white', linewidth=3, fill=True, alpha=0.5, label='test')
-
-        if cap is not None:
-            plt.text(xmin, ymin, cap, bbox=dict(facecolor='white', edgecolor='g',alpha=1), fontsize=10)
-
-    plt.draw()
-
-
-def imbbox(img, xmin, ymin, xmax, ymax, bboxcaption=None, figure=None, bboxcolor='green', facecolor='white', facealpha=0.5, textcolor='black', textfacecolor='white', do_updateplot=True, do_imshow=True, colormap='gray', fontsize=10, captionoffset=(0,0)):
-    """Draw bounding box"""
-    if figure is not None:
-        plt.figure(figure)
-    else:
-        plt.figure()
-    figure = plt.gcf().number
-
-    # Short pause needed to show fig
-    # See http://stackoverflow.com/questions/12670101/matplotlib-ion-function-fails-to-be-interactive
-
+    # Optionally update the underlying image to quickly add more polygons
     if do_imshow == True:
-        #plt.clf()
-        imshow(img, colormap=colormap, figure=figure, do_updateplot=False)
-        #plt.hold(True)
+        imshow(img, figure=figure, do_updateplot=False)
 
     # (x,y) bounding box is right and down, swap to right and up for plot
     # clip_on clips anything outside the image
     plt.axvspan(xmin, xmax, ymin=1.0-np.float32(float(ymax)/float(img.shape[0])), ymax=1-np.float32(float(ymin)/float(img.shape[0])), edgecolor=bboxcolor, facecolor=facecolor, linewidth=3, fill=True, alpha=facealpha, label=None, capstyle='round', joinstyle='bevel', clip_on=True)
 
+    # Text string
     if bboxcaption is not None:
         # clip_on clips anything outside the image
         plt.text(xmin+captionoffset[0], ymin+captionoffset[1], bboxcaption, color=textcolor, bbox=dict(facecolor=textfacecolor, edgecolor=textcolor, alpha=1, boxstyle='round'), fontsize=fontsize, clip_on=True)
@@ -176,16 +122,15 @@ def imbbox(img, xmin, ymin, xmax, ymax, bboxcaption=None, figure=None, bboxcolor
         #plt.draw()
         #plt.show()
 
-
-    pause(0.00001)
+    plt.pause(0.00001)
     return plt.gcf().number
 
-def imdetection(img, detlist, figure=None, bboxcolor='green', colormap=None, do_caption=True, facecolor='white', facealpha=0.5, textcolor='green', textfacecolor='white', captionlist=None, fontsize=10, captionoffset=(0,0)):
+def imdetection(img, detlist, figure=None, bboxcolor='green', do_caption=True, facecolor='white', facealpha=0.5, textcolor='green', textfacecolor='white', captionlist=None, fontsize=10, captionoffset=(0,0)):
     """Show bounding boxes from a list of vipy.object.Detections on the same image, plotted in list order with optional captions """
 
     # Empty?
     if len(detlist) == 0:
-        imshow(img, figure=figure, colormap=colormap, do_updateplot=True)
+        imshow(img, figure=figure, do_updateplot=True)
         return figure
 
     # Valid detections
@@ -210,27 +155,14 @@ def imdetection(img, detlist, figure=None, bboxcolor='green', colormap=None, do_
         else:
             textcolor_ = textcolor
 
-        fig = imbbox(img=img, xmin=det.xmin(), ymin=det.ymin(), xmax=det.xmax(), ymax=det.ymax(), bboxcaption=bboxcaption, do_imshow=do_imshow, do_updateplot=do_updateplot, figure=fig, colormap=colormap, bboxcolor=bboxcolor_, facecolor=facecolor, facealpha=facealpha, textcolor=textcolor_, textfacecolor=textfacecolor, fontsize=fontsize, captionoffset=captionoffset)
+        fig = imbbox(img=img, xmin=det.xmin(), ymin=det.ymin(), xmax=det.xmax(), ymax=det.ymax(), bboxcaption=bboxcaption, do_imshow=do_imshow, do_updateplot=do_updateplot, figure=fig, bboxcolor=bboxcolor_, facecolor=facecolor, facealpha=facealpha, textcolor=textcolor_, textfacecolor=textfacecolor, fontsize=fontsize, captionoffset=captionoffset)
     #plt.hold(False)
-    pause(0.00001)
+    plt.pause(0.00001)
     return fig
 
 
-def precision_recall(y_precision, x_recall, title=None):
-    plt.clf()
-    plt.plot(x_recall, y_precision, label='Precision-Recall curve')
-    plt.xlabel('Recall')
-    plt.ylabel('Precision')
-    plt.ylim([0.0, 1.0])
-    plt.xlim([0.0, 1.0])
-    if title is not None:
-        plt.title(title)
-    plt.legend(loc="lower left")
-    plt.draw()
-
-
-
 def imframe(img, fr, color='b', markersize=10, label=None, figure=None):
+    """Show a scatterplot of fr=[[x1,y1],[x2,y2]...] 2D points overlayed on an image"""    
     if figure is not None:
         fig = plt.figure(figure)
         #plt.hold(True)
@@ -279,11 +211,12 @@ def imframe(img, fr, color='b', markersize=10, label=None, figure=None):
 
     #plt.draw()
 
-    pause(0.00001)
+    plt.pause(0.00001)
     return plt
 
 
 def frame(fr, im=None, color='b.', markersize=10, figure=None, caption=None):
+    """Show a scatterplot of fr=[[x1,y1],[x2,y2]...] 2D points"""
     if figure is not None:
         fig = plt.figure(figure)
         #plt.hold(True)

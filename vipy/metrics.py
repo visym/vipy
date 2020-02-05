@@ -82,7 +82,7 @@ def plot_cmc(rank=None, tdr=None, similarityMatrix=None, truthMatrix=None, label
     plt.gcf().set_tight_layout(True)
 
     if outfile is not None:
-        print('[bobo.metric.plot_cmc]: saving "%s"' % outfile)
+        print('[vipy.metric.plot_cmc]: saving "%s"' % outfile)
         plt.savefig(outfile)
 
     else:
@@ -204,7 +204,7 @@ def plot_roc(y_true=None, y_pred=None, fpr=None, tpr=None, label=None, title=Non
 
 
     if outfile is not None:
-        print('[bobo.metric.plot_roc]: saving "%s"' % outfile)
+        print('[vipy.metric.plot_roc]: saving "%s"' % outfile)
         plt.savefig(outfile)
     else:
         plt.show()
@@ -260,7 +260,7 @@ def plot_confusion_matrix(truthMatrix=None, similarityMatrix=None, y=None, yhat=
     #plt.tight_layout()
 
     if outfile is not None:
-        quietprint('[bobo.metric.plot_confusion_matrix]: saving "%s"' % outfile)
+        quietprint('[vipy.metric.plot_confusion_matrix]: saving "%s"' % outfile)
         #plt.gcf().set_size_inches(8, 8)
         plt.savefig(outfile, dpi=600)
     else:
@@ -298,11 +298,12 @@ def plot_pr(precision, recall, title=None, label='Precision-Recall', outfile=Non
     plt.grid(True)
 
     if outfile is not None:
-        quietprint('[bobo.metric.plot_pr]: saving "%s"' % outfile)
+        quietprint('[vipy.metric.plot_pr]: saving "%s"' % outfile)
         plt.savefig(outfile)
     else:
         plt.show()
 
+        
 def plot_ap(ap, categories, title=None, outfile=None):
     """Plot Average-Precision bar chart using matplotlib, with optional figure save"""
     plt.bar(range(1,len(ap)+1), height=ap, width=0.8, bottom=None, hold=None)
@@ -314,7 +315,7 @@ def plot_ap(ap, categories, title=None, outfile=None):
     if title is not None:
         plt.title('%s' % (title))
     if outfile is not None:
-        quietprint('[bobo.metric.plot_ap]: saving "%s"' % outfile)
+        quietprint('[vipy.metric.plot_ap]: saving "%s"' % outfile)
         plt.savefig(outfile)
     else:
         plt.show()
@@ -338,7 +339,7 @@ def histogram(freq, categories, title=None, outfile=None, figure=None):
     if title is not None:
         plt.title('%s' % (title))
     if outfile is not None:
-        quietprint('[bobo.metric.histogram]: saving "%s"' % outfile)
+        quietprint('[vipy.metric.histogram]: saving "%s"' % outfile)
         plt.savefig(outfile)
     else:
         plt.show()

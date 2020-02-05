@@ -1,7 +1,7 @@
 import os
 from vipy.util import isnumpy, quietprint, isstring, isvideo, tempcsv, imlist, remkdir, filepath, filebase, tempMP4, isurl, isvideourl, templike
 from vipy.image import Image, ImageCategory, ImageDetection
-from vipy.show import savefig
+from vipy.show import savefig, figure
 import vipy.downloader
 import copy
 import numpy as np
@@ -11,6 +11,7 @@ import urllib.error
 import urllib.parse
 import http.client as httplib
 import io
+
 
 class Scene(object):
     def __init__(self, video, activities=None, tracks=None, attributes=None):    
@@ -29,7 +30,7 @@ class Scene(object):
     def clip(self):
         pass
 
-    def show(self):
+    def show(self):                
         for im in imframes:
             buf = io.BytesIO()
             im.show(figure=1)
@@ -58,14 +59,19 @@ class Track(object):
             yield self.frame(k)
             
     def show(self):
+        import matplotlib.pyplot as plt
+        (W, H) = (None, None)
         for im in self.track():
             print(im)
-            im.show(figure=1)            
+            im.show(figure=1)
+            if W is None or H is None:
+                (W,H) = plt.figure(1).canvas.get_width_height()                        
+            
             buf = io.BytesIO()
-            savefig('/tmp/out.png', format='png')
-            #print
-            #print(np.frombuffer(buf.getbuffer(), dtype=np.uint8).reshape( (im.width(), im.height(), 3) ))
-    
+            plt.figure(1).canvas.print_raw(buf)
+            img = np.frombuffer(buf.getvalue(), dtype=np.uint8).reshape( (H, W, 4))
+            print(Image(array=img, colorspace='rgba').saveas('/Users/jba3139/Desktop/vipy.png'))
+        return self
             
 class Video(object):
     def __init__(self, url=None, filename=None, startframe=0, endframe=None, framerate=30, rot90cw=False, rot90ccw=False, attributes=None):
@@ -108,6 +114,8 @@ class Video(object):
         for im in self._array[self._startframe:]:
             yield im
 
+
+            
     def url(self, url=None, username=None, password=None, sha1=None, ignoreUrlErrors=None):
         """Image URL and URL download properties"""
         if url is None and username is None and password is None:

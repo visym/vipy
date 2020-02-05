@@ -10,6 +10,7 @@ def run():
     jpegurl = 'https://upload.wikimedia.org/wikipedia/commons/thumb/2/23/Bubo_virginianus_06.jpg/1920px-Bubo_virginianus_06.jpg'
     gifurl = 'https://upload.wikimedia.org/wikipedia/commons/thumb/2/2c/Rotating_earth_%28large%29.gif/200px-Rotating_earth_%28large%29.gif'
     pngurl = 'https://upload.wikimedia.org/wikipedia/commons/thumb/4/47/PNG_transparency_demonstration_1.png/560px-PNG_transparency_demonstration_1.png'
+    greyfile = 'jebyrne_grey.jpg'
     
     # Empty constructor should not raise exception
     im = Image()
@@ -22,7 +23,7 @@ def run():
     # Malformed URL should raise exception
     try:
         im = Image(url='myurl')
-        raise
+        assert(False)
     except:
         print('Malformed URL constructor: PASSED')
 
@@ -106,7 +107,7 @@ def run():
     # Resize
     f = tempjpg()
     im = Image(filename='jebyrne.jpg').load().resize(16,16).saveas(f)
-    assert Image(filename=f).shape() == (16,16,3)
+    assert Image(filename=f).shape() == (16,16)
     print('Image.resize: PASSED')        
 
     # Rescale
@@ -133,21 +134,27 @@ def run():
     # Image colorspace conversion
     im = Image(filename='jebyrne.jpg').resize(200,200)
     print(im.rgb())
-    assert(im.shape() == (200,200,3))
+    assert(im.shape() == (200,200) and im.channels() == 3)
     print(im.bgr())
-    assert(im.shape() == (200,200,3))    
+    assert(im.shape() == (200,200) and im.channels() == 3)    
     print(im.rgba())
-    assert(im.shape() == (200,200,4))        
+    assert(im.shape() == (200,200) and im.channels() == 4)        
     print(im.hsv())
-    assert(im.shape() == (200,200,3))            
+    assert(im.shape() == (200,200) and im.channels() == 3)            
     print(im.bgra())
-    assert(im.shape() == (200,200,4))                
+    assert(im.shape() == (200,200) and im.channels() == 4)                
     print(im.gray())
-    assert(im.shape() == (200,200))                    
+    assert(im.shape() == (200,200) and im.channels() == 1)                    
     print(im.float())
-    assert(im.shape() == (200,200))                    
+    assert(im.shape() == (200,200) and im.channels() == 1)                    
     print('Image conversion: PASSED')
 
+    # Image colorspace conversion
+    im = Image(filename='jebyrne_grey.jpg').load()
+    assert im.attributes['colorspace'] == 'grey'
+    assert im.max() == 255
+    print('Greyscale image conversion: PASSED')
+    
     # Image colormaps
     im = ImageDetection(filename='jebyrne.jpg', xmin=100, ymin=100, width=200, height=200, category='face').crop()
     im.rgb().jet().bone().hot().rainbow()
@@ -155,11 +162,23 @@ def run():
 
     # Image detections
     im = ImageDetection(filename='jebyrne.jpg', xmin=100, ymin=100, width=200, height=200, category='face').crop()
-    assert(im.shape() == (200,200,3))
+    assert(im.shape() == (200,200))
     assert(im.bbox.width() == im.width() and im.bbox.height() == im.height() and im.bbox.xmin()==0 and im.bbox.ymin()==0)
     im = ImageDetection(filename='jebyrne.jpg', xmin=100, ymin=100, width=200, height=200, category='face')
     im = im.rescale(0.5)
     assert(im.bbox.width() == 100 and im.bbox.height() == 100)
+
+    # Image detections - invalid box
+    im = ImageDetection(filename='jebyrne.jpg', xmin=100, ymin=100, width=200, height=-200, category='face')
+    assert im.invalid()
+    print('ImageDetection invalid box: PASSED')
+    try:
+        im.crop(); assert(False)
+    except:
+        print('ImageDetection invalid box crop: PASSED')        
+    im = ImageDetection(filename='jebyrne.jpg', xmin=100000, ymin=100000, width=200, height=200, category='face')
+    assert im.boxclip().bbox is None
+    print('ImageDetection invalid imagebox: PASSED')            
     
     # Scene
     im = Scene()
@@ -169,14 +188,9 @@ def run():
     print('URL: PASSED')
 
     outfile = tempjpg()
-    im = im.objects([Detection('obj1',50,100,300,300), Detection('obj2',600,600,400,400)])
+    im = im.rescale(0.5).objects([Detection('obj1',20,50,100,100), Detection('obj2',300,300,200,200)])
     im.show(outfile=outfile)
     print('Show outfile ("%s"): PASSED' % outfile)
-
-
-    
-    
-
     
     
 if __name__ == "__main__":
