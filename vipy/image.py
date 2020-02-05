@@ -723,7 +723,7 @@ class ImageCategory(Image):
 class ImageDetection(ImageCategory):
     def __init__(self, filename=None, url=None, category=None, attributes=None,
                  xmin=None, xmax=None, ymin=None, ymax=None,
-                 width=None, height=None, bbox=None, array=None, colorspace=None):
+                 bbwidth=None, bbheight=None, bbox=None, array=None, colorspace=None):
         
         # ImageCategory class inheritance
         super(ImageDetection, self).__init__(filename=filename,
@@ -734,6 +734,7 @@ class ImageDetection(ImageCategory):
                                              colorspace=colorspace)
 
         # Construction options
+        (width,height) = (bbwidth,bbheight)
         if bbox is not None:            
             assert isinstance(bbox, BoundingBox), "Invalid bounding box"            
             self.bbox = bbox
@@ -742,7 +743,8 @@ class ImageDetection(ImageCategory):
         elif xmin is not None and ymin is not None and width is not None and height is not None:
             self.bbox = BoundingBox(xmin=xmin, ymin=ymin, width=width, height=height)
         else:
-            raise ValueError('invalid ImageDetection constructor')
+            # Empty box to be updated with boundingbox() method
+            self.bbox = BoundingBox(xmin=0, ymin=0, width=0, height=0)
             
     def __repr__(self):
         strlist = []
@@ -962,6 +964,52 @@ class Scene(ImageCategory):
     
     def __getitem__(self, k):        
         return self._objectlist[k]
+
+    def rescale(self, scale=1):
+        """Rescale image buffer and all bounding boxes - Not idemponent"""
+        self = super(ImageCategory, self).rescale(scale)
+        self._objectlist = [bb.rescale(scale) for bb in self._objectlist]
+        return self
+
+    def resize(self, cols=None, rows=None):
+        """Resize image buffer and all bounding boxes"""
+        (sx,sy) = ( (self.width() / float(cols)) if cols is not None else 1.0, (self.height() / float(rows)) if rows is not None else 1.0)
+        self = super(ImageCategory, self).resize(cols, rows)
+        self._objectlist = [bb.scalex(sx).scaley(sy) for bb in self._objectlist]
+        return self
+
+    def fliplr(self):
+        """Mirror buffer and all bounding box around vertical axis"""
+        self = super(ImageDetection, self).fliplr()
+        self._objectlist = [bb.fliplr(self.numpy()) for bb in self._objectlist]        
+        return self
+
+    def dilate(self, s):
+        """Dilate all bounding boxes by scale factor"""
+        self._objectlist = [bb.dilate(s) for bb in self._objectlist]                
+        return self
+
+    def zeropad(self, dx, dy):
+        """Zero pad image and update bounding box offsets"""
+        self = super(ImageDetection, self).zeropad(dx, dy)
+        self._objectlist = [bb.translate(dx, dy) for bb in self._objectlist]
+        return self
+
+    def mask(self, W=None, H=None):
+        """Return a binary array of the same size as the image (or using the
+        provided image width and height (W,H) size to avoid an image load),
+        with ones inside the bounding box"""
+        if (W is None or H is None):
+            (H, W) = (int(np.round(self.height())),
+                      int(np.round(self.width())))
+        immask = np.zeros((H, W)).astype(np.uint8)
+        for bb in self._objectlist:
+            (ymin, ymax, xmin, xmax) = (int(np.round(bb.ymin())),
+                                        int(np.round(bb.ymax())),
+                                        int(np.round(bb.xmin())),
+                                        int(np.round(bb.xmax())))
+            immask[ymin:ymax, xmin:xmax] = 1
+        return immask
     
     def append(self, imdet):
         self._objectlist.append(imdet)

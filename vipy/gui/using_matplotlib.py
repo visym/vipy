@@ -17,7 +17,8 @@ import sys
 
 FIGHANDLE = {}
 matplotlib.rcParams['toolbar'] = 'None'
-plt.ion()
+
+plt.ion()  
 plt.show()
 
 # Optional latex strings in captions
@@ -88,10 +89,9 @@ def imshow(img, figure=None, do_updateplot=True):
                     pass
         if do_updateplot:
             plt.draw()
-            plt.show()
+            plt.show()  
     else:
         FIGHANDLE[figure] = _imshow_tight(img, do_updateplot=do_updateplot, figure=figure)
-    plt.pause(0.00001)  # flush
     return figure
 
 
@@ -100,7 +100,7 @@ def imbbox(img, xmin, ymin, xmax, ymax, bboxcaption=None, figure=None, bboxcolor
 
     # Optionally update the underlying image to quickly add more polygons
     if do_imshow == True:
-        imshow(img, figure=figure, do_updateplot=False)
+        imh = imshow(img, figure=figure, do_updateplot=False)
 
     # (x,y) bounding box is right and down, swap to right and up for plot
     # clip_on clips anything outside the image
@@ -115,14 +115,12 @@ def imbbox(img, xmin, ymin, xmax, ymax, bboxcaption=None, figure=None, bboxcolor
     if do_updateplot == True:
         #plt.pause(0.00001)
         try:
-            plt.gcf().canvas.flush_events()
+            plt.gcf().canvas.flush_events()  
         except:
             pass
+        plt.draw()
+        plt.show()
 
-        #plt.draw()
-        #plt.show()
-
-    plt.pause(0.00001)
     return plt.gcf().number
 
 def imdetection(img, detlist, figure=None, bboxcolor='green', do_caption=True, facecolor='white', facealpha=0.5, textcolor='green', textfacecolor='white', captionlist=None, fontsize=10, captionoffset=(0,0)):
@@ -155,9 +153,9 @@ def imdetection(img, detlist, figure=None, bboxcolor='green', do_caption=True, f
         else:
             textcolor_ = textcolor
 
-        fig = imbbox(img=img, xmin=det.xmin(), ymin=det.ymin(), xmax=det.xmax(), ymax=det.ymax(), bboxcaption=bboxcaption, do_imshow=do_imshow, do_updateplot=do_updateplot, figure=fig, bboxcolor=bboxcolor_, facecolor=facecolor, facealpha=facealpha, textcolor=textcolor_, textfacecolor=textfacecolor, fontsize=fontsize, captionoffset=captionoffset)
-    #plt.hold(False)
-    plt.pause(0.00001)
+        fig = imbbox(img=img, xmin=det.xmin(), ymin=det.ymin(), xmax=det.xmax(), ymax=det.ymax(), bboxcaption=bboxcaption, do_imshow=do_imshow, do_updateplot=do_updateplot,
+                     figure=fig, bboxcolor=bboxcolor_, facecolor=facecolor, facealpha=facealpha, textcolor=textcolor_, textfacecolor=textfacecolor, fontsize=fontsize, captionoffset=captionoffset)
+
     return fig
 
 
@@ -165,14 +163,12 @@ def imframe(img, fr, color='b', markersize=10, label=None, figure=None):
     """Show a scatterplot of fr=[[x1,y1],[x2,y2]...] 2D points overlayed on an image"""    
     if figure is not None:
         fig = plt.figure(figure)
-        #plt.hold(True)
     else:
         fig = plt.figure()
-        #plt.hold(True)
 
     figure = plt.gcf().number
 
-    plt.pause(0.00001)
+    #plt.pause(0.00001)
     #fig = plt.figure(np.floor(np.random.rand()*50))
     plt.clf()
 
@@ -199,9 +195,8 @@ def imframe(img, fr, color='b', markersize=10, label=None, figure=None):
         a.get_yaxis().set_visible(False)
 
     plt.autoscale(tight=True)
-    #plt.hold(True)
     plt.plot(fr[:,0],fr[:,1],'%s.' % color, markersize=markersize, axes=ax)
-    #plt.hold(False)
+
     #ax = plt.axes([0,0,1,1])
     #ax.axis('off')
     if label is not None:
@@ -211,7 +206,7 @@ def imframe(img, fr, color='b', markersize=10, label=None, figure=None):
 
     #plt.draw()
 
-    plt.pause(0.00001)
+    #plt.pause(0.00001)
     return plt
 
 
@@ -219,17 +214,13 @@ def frame(fr, im=None, color='b.', markersize=10, figure=None, caption=None):
     """Show a scatterplot of fr=[[x1,y1],[x2,y2]...] 2D points"""
     if figure is not None:
         fig = plt.figure(figure)
-        #plt.hold(True)
     else:
         fig = plt.figure()
         plt.clf()
-        #plt.hold(True)
 
     ax = plt.axes([0,0,1,1])
     #b = plt.imshow(im, cmap=cm.gray)
-    #plt.hold(True)
     plt.plot(fr[:,0],fr[:,1],color)
-    #plt.hold(False)
     plt.axis('off');
     plt.draw()
     #return plt

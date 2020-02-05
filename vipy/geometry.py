@@ -345,6 +345,32 @@ class BoundingBox():
         self._ymax = scale * self._ymax                        
         return self
 
+    def scalex(self, scale=1):
+        """Multiply the box corners in the x dimension by a scale factor"""
+        self._xmin = scale * self._xmin
+        self._xmax = scale * self._xmax
+        return self
+
+    def scaley(self, scale=1):
+        """Multiply the box corners in the y dimension by a scale factor"""
+        self._ymin = scale * self._ymin
+        self._ymax = scale * self._ymax
+        return self
+    
+    def resize(self, width, height):
+        """Change the aspect ratio width and height of the box"""
+        self.setwidth(width)
+        self.setheigh(height)
+        return self
+
+    def fliplr(self, img):
+        """Flip the box left/right consistent with fliplr of the provided img"""
+        assert isnumpy(img), "Invalid image input"
+        (x,y,w,h) = self.to_xywh()
+        self._xmin = img.shape[1] - xmax
+        self._xmax = self._xmin + w
+
+        
     def imscale(self, im):
         """Given a vipy.image object im, scale the box to be within [0,1], relative to height and width of image"""
         w = (1.0 / float(im.width()))
@@ -368,10 +394,12 @@ class BoundingBox():
 
     def hasoverlap(self, img):
         """Does the bounding box intersect with the provided image rectangle?"""
+        assert isnumpy(img), "Invalid image input"        
         return self.area_of_intersection(BoundingBox(xmin=0, ymin=0, xmax=img.shape[1]-1, ymax=img.shape[0]-1)) > 0
         
     def imclip(self, img):
         """Clip bounding box to image rectangle [0,0,W-1,H-1], throw an exception on an invalid box"""
+        assert isnumpy(img), "Invalid image input"        
         self.intersection(BoundingBox(xmin=0, ymin=0, xmax=img.shape[1]-1, ymax=img.shape[0]-1))
         return self
 
