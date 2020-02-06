@@ -383,7 +383,7 @@ class Scene(Video):
             if W is None or H is None:
                 (W,H) = plt.figure(1).canvas.get_width_height()  # fast
             buf = io.BytesIO()
-            plt.figure(1).canvas.print_raw(buf)
+            plt.figure(1).canvas.print_raw(buf)  # fast
             img = np.frombuffer(buf.getvalue(), dtype=np.uint8).reshape( (H, W, 4))
             vid._array.append(np.array(PIL.Image.fromarray(img).convert('RGB')))
         plt.close(1)
@@ -393,6 +393,6 @@ class Scene(Video):
             vid.saveas(outfile)
         return self
 
-    def play(self, outfile=None):
+    def annotate(self, outfile):
         self.show(outfile)
         return outfile
