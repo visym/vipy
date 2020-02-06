@@ -10,9 +10,11 @@ import time
 import PIL
 
 
-def montage(imset, m, n, rows=None, cols=None, aspectratio=1, crop=False, skip=True, grayscale=True, do_plot=False, figure=None, border=0, border_bgr=(128,128,128), do_flush=False, verbose=False):
-    """Montage image of images of size (m,n), such that montage has given aspect ratio  or is exactly (rows x cols).  Pass in iterable of imagedetection objects which is used to montage rowwise"""
+def montage(imset, gridrows, gridcols, imgrows=None, imgcols=None, aspectratio=1, crop=False, skip=True, do_plot=False, figure=None, border=0, border_bgr=(128,128,128), do_flush=False, verbose=False):
+    """Montage image of images of grid size (gridrows,gridcols), such that montage has given aspect ratio  or is exactly (rows x cols).  Pass in iterable of imagedetection objects which is used to montage rowwise"""
 
+    (m,n) = (gridrows, gridcols)
+    (rows,cols) = (imgrows, imgcols)
     n_imgs = len(imset)
     M = int(np.ceil(np.sqrt(n_imgs)))
     N = M
@@ -26,12 +28,7 @@ def montage(imset, m, n, rows=None, cols=None, aspectratio=1, crop=False, skip=T
     padding = (M+1) * border
     size = (M * m + padding, N * n + padding)
     bc = border_bgr
-    if grayscale:
-        if islist(bc) or istuple(bc) or isnumpy(bc):
-            bc = np.mean(bc)
-        I = np.array(PIL.Image.new(mode='L', size=size, color=bc))
-    else:
-        I = np.array(PIL.Image.new(mode='RGB', size=size, color=bc))
+    I = np.array(PIL.Image.new(mode='RGB', size=size, color=bc))
     k = 0
     for j in range(N):
         for i in range(M):
@@ -41,37 +38,23 @@ def montage(imset, m, n, rows=None, cols=None, aspectratio=1, crop=False, skip=T
             try:
                 if crop:
                     if not imset[k].bbox.valid():
-                        print('[janus.visualize.montage] invalid bounding box "%s" ' % str(imset[k].bbox))
+                        print('[vipy.visualize.montage] invalid bounding box "%s" ' % str(imset[k].bbox))
                         if skip == False:
-                            print('[janus.visualize.montage] using original image')
-                            if grayscale:
-                                im = imset[k].grayscale().resize(n,m).array()
-                            else:
-                                im = imset[k].resize(n,m).array()
+                            print('[vipy.visualize.montage] using original image')
+                            im = imset[k].rgb().resize(n,m).array()
                         else:
                             raise
                     else:
-                        if grayscale:
-                            im = imset[k].grayscale().crop(imset[k].bbox).resize(n,m).array()
-                        else:
-                            im = imset[k].crop(imset[k].bbox).resize(n,m).array()
+                        im = imset[k].rgb().crop().resize(n,m).array()
                 else:
-                    if grayscale:
-                        im = imset[k].grayscale().resize(n,m).array()  # m=width, n=height
-                    else:
-                        im = imset[k].resize(n,m).array()
+                    im = imset[k].rgb().resize(n,m).array()
        
-                if im.dtype == np.float32:
-                    if im.max() <= 1.0:
-                        im *= 255.0
-                    im = im.astype(np.uint8)
-
                 I[sliceN:sliceN + n, sliceM:sliceM + m] = im
                 
             except KeyboardInterrupt:
                 raise
             except:
-                print('[janus.visualize.montage] skipping...')
+                print('[vipy.visualize.montage] skipping...')
                 if skip:
                     pass
                 else:
@@ -80,21 +63,16 @@ def montage(imset, m, n, rows=None, cols=None, aspectratio=1, crop=False, skip=T
             if do_flush:
                 imset[k].flush()  # clear memory
             if verbose and ((k % 100) == 0):
-                print('[janus.visualize.montage][%d/%d] processing...' % (k, n_imgs))
+                print('[vipy.visualize.montage][%d/%d] processing...' % (k, n_imgs))
             
             k += 1
 
     if k == 0:
-        print('[janus.visualize.montage] Warning: No images were processed')
+        print('[vipy.visualize.montage] Warning: No images were processed')
 
     if do_plot is True:
-        im = Image('')
-        im = im.array(I)
-        # HACK: float(0-255) graycale images display incorrectly
-        if grayscale:
-            im.preprocess().rgb().show(figure=figure)
-        else:
-            im.show(figure=figure)
+        im = Image(array=I, colorspace='rgb')
+        im.show(figure=figure)
 
     return I       
 

@@ -4,7 +4,8 @@ import PIL.Image
 from vipy.show import imshow, imbbox, savefig, colorlist
 from vipy.util import isnumpy, quietprint, isurl, isimageurl, islist, \
     fileext, tempimage, mat2gray, imwrite, imwritejet, imwritegray, \
-    tempjpg, imresize, imrescale, filetail, isimagefile, remkdir, hasextension
+    tempjpg, imresize, imrescale, filetail, isimagefile, remkdir, hasextension, \
+    try_import
 from vipy.geometry import BoundingBox, similarity_imtransform, \
     similarity_imtransform2D, imtransform, imtransform2D
 import vipy.downloader
@@ -99,10 +100,10 @@ class Image(object):
                 self.setattribute('colorspace', 'float')
             elif isimagefile(self._filename):
                 self._array = np.array(PIL.Image.open(self._filename))  # RGB order!
-                if self.iscolor():
+                if self.istransparent():
+                    self.setattribute('colorspace', 'rgba')  # must be before iscolor()
+                elif self.iscolor():
                     self.setattribute('colorspace', 'rgb')
-                elif self.istransparent():
-                    self.setattribute('colorspace', 'rgba')
                 elif self.isgrey():
                     self.setattribute('colorspace', 'grey')                                        
                 else:
@@ -264,10 +265,6 @@ class Image(object):
     def pil(self):
         return PIL.Image.fromarray(self.tonumpy())
 
-    def torch(self):
-        try_import('torch, torchvision');  import torch, torchvision
-        return torch.from_numpy(self.tonumpy())
-        
     def filename(self, newfile=None):
         """Image Filename"""
         if newfile is None:
@@ -413,10 +410,14 @@ class Image(object):
 
     def zeropad(self, padwidth, padheight):
         """Pad image using np.pad constant by adding dx on both left and right, and dy on top and bottom"""
+        if not isinstance(padwidth, tuple):
+            padwidth = (padwidth, padwidth)
+        if not isinstance(padheight, tuple):
+            padheight = (padheight, padheight)            
         if self.iscolor():
-            pad_shape = ((padheight, padheight), (padwidth, padwidth), (0, 0))
+            pad_shape = (padheight, padwidth, (0, 0))
         else:
-            pad_shape = ((padheight, padheight), (padwidth, padwidth))
+            pad_shape = (padheight, padwidth)
         self._array = np.pad(self.load().array(),
                            pad_width=pad_shape,
                            mode='constant',
@@ -448,12 +449,17 @@ class Image(object):
         self._array = self._array[0:S,0:S,:]
         return self
 
+    def centersquare(self):
+        """Crop image of size (NxN) in the center"""
+        """FIXME: this is off by one"""
+        n = int(np.min(self.shape()))
+        return self.crop(BoundingBox(xcentroid=int(self.width()/2.0), ycentroid=int(self.height()/2.0), width=n, height=n)).resize(n,n)
+        
     def maxsquare(self):
         """Crop image of size (HxW) to (max(H,W), max(H,W)) with zeropadding"""
-        img = self.load().array()
-        S = np.max(img.shape)
-        self._array = np.pad(self.load().array(), ((0,S-self.height()), (0,S-self.width()), (0,0)), mode='constant')
-        self._array = self._array[0:S,0:S,:]
+        S = np.max(self.shape())
+        self.zeropad( (0, S-self.width()), (0, S-self.height()))
+        self._array = self._array[0:S,0:S,:] if self.channels() != 1 else  self._array[0:S,0:S]
         return self
 
     def maxsquare_with_meanpad(self):
@@ -1061,3 +1067,41 @@ class Scene(ImageCategory):
         return list(set([obj.category() for obj in self._objectlist]))
     
     
+class Batch(object):
+    def __init__(self, imlist):        
+        """Create a batch of homogeneous vipy.image objects that can be operated on with a single function call"""
+        assert isinstance(imlist, list) and all([isinstance(im, Image) for im in imlist]), "Invalid input"
+        self._imlist = imlist
+
+    def __repr__(self):
+        return '<vipy.image.Batch: type="%s", batchsize=%d>' % (type(self._imlist[0]), len(self))
+
+    def __len__(self):
+        return len(self._imlist)
+    
+    def __getitem__(self, k):
+        return self._imlist[k]
+    
+    def list(self, imlist_=None):
+        if imlist_ is None:
+            return self._imlist
+        else:
+            self._imlist = imlist_
+        return self
+        
+    def __getattr__(self, attr):
+        """Call the same method on all Image objects.  The called method must return the image object."""
+        assert hasattr(self._imlist[0], attr), "Invalid attribute"
+        assert attr not in set(['show', 'saveas', 'savefig', 'mask']), "Invalid attribute"
+        assert attr[0:2] != 'is' and attr[0:3] != 'has', "Invalid attribute"
+        return lambda *args, **kw: self.list([getattr(im,attr)(*args, **kw) for im in self._imlist])
+
+    def torch(self):
+        try_import('torch');  import torch
+        
+        """Convert the batch of N HxWxC images to a NxCxHxW torch tensor"""
+        return torch.from_numpy(np.vstack([np.expand_dims(im.rgb().numpy(),0) for im in self._imlist]).transpose(0,3,1,2))
+    
+        
+        
+        

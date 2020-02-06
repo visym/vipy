@@ -105,10 +105,10 @@ class BoundingBox():
         elif xcentroid is not None and ycentroid is not None and width is not None and height is not None:
             if not (isnumber(xcentroid) and isnumber(ycentroid) and isnumber(width) and isnumber(height)):
                 raise ValueError('Box coordinates must be integers or floats')                        
-            self._xmin = float(xcentroid) - float(width)/2.0
-            self._ymin = float(ycentroid) - float(height)/2.0
-            self._xmax = float(xcentroid) + float(width)/2.0
-            self._ymax = float(ycentroid) + float(height)/2.0                                                
+            self._xmin = float(xcentroid) - (float(width)/2.0)
+            self._ymin = float(ycentroid) - (float(height)/2.0)
+            self._xmax = float(xcentroid) + (float(width)/2.0)
+            self._ymax = float(ycentroid) + (float(height)/2.0)                                                
         elif mask is not None:
             # Bounding rectangle of non-zero pixels in a binary mask image
             if not isnumpy(mask) or np.sum(mask)==0:
@@ -177,6 +177,14 @@ class BoundingBox():
         is_degenerate =  ((self._xmax-self._xmin)<1) or ((self._ymax-self._ymin)<1) or (self._xmin >= self._xmax) or (self._ymin >= self._ymax)
         return is_undefined or is_degenerate
 
+    def int(self):
+        """Convert corners to integer with rounding"""
+        self._xmin = int(np.round(self._xmin))
+        self._ymin = int(np.round(self._ymin))
+        self._xmax = int(np.round(self._xmax))
+        self._ymax = int(np.round(self._ymax))
+        return self
+    
     def translate(self, dx=0, dy=0):
         self._xmin = self._xmin + dx
         self._ymin = self._ymin + dy

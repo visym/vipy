@@ -639,15 +639,21 @@ def mdlist(m, n):
 
 def isurl(path):
     """Is a path a URL?"""
-    return urlparse(path).scheme != ""
-
+    try:
+        result = urlparse(path)
+        return all([result.scheme, result.netloc, result.path]) and \
+            '<' not in path and '>' not in path and '"' not in path
+            
+    except:
+        return False
+    
 def isimageurl(path):
     """Is a path a URL with image extension?"""
-    return urlparse(path).scheme != "" and isimg(path)
+    return isurl(path) and isimg(path)
 
 def isvideourl(path):
     """Is a path a URL with image extension?"""
-    return urlparse(path).scheme != "" and isvideo(path)
+    return isurl(path) and isvideo(path)
 
 
 def checkerboard(m=8,n=256):

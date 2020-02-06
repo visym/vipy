@@ -104,25 +104,6 @@ common_user_agents = [
     ]
 
 
-def basicgooglesearch(tag, n_imgs):
-    url = 'https://www.google.com/search?q=%s&safe=off&sout=1&tbm=isch&start=%d&sa=N' 
-    fulllist = []
-    for k in range(0, int(n_imgs), 20):
-        user_agent = random.choice(common_user_agents)
-        headers = {'User-Agent':user_agent}
-                     
-        search_request = urllib.request.Request(url % (tag.replace(' ','+'), k), None, headers)
-        search_results = urllib.request.urlopen(search_request)
-        search_data = str(search_results.read())
-
-        # FIXME: use gstatic.com URLs instead of .jpg
-        datalist = search_data.split('http');
-        imlist = [re.findall("^http[s]?://.*\.(?:jpg|gif|png)", 'http'+d) for d in datalist]
-        imlist = [im[0] for im in imlist if len(im) > 0]
-        imlist_clean = [im for im in imlist if im.find('File:') == -1]
-        fulllist.append(imlist_clean)
-    return fulllist
-
 
 def googlesearch(tag):
     """Return a list of image URLs from google image search associated with the provided tag"""
@@ -138,15 +119,7 @@ def googlesearch(tag):
     imlist = [re.findall("^http[s]?://.*\.(?:jpg|gif|png)", str('http'+d)) for d in datalist]
     imlist = [im[0] for im in imlist if len(im) > 0]
     imlist_clean = [im for im in imlist if im.find('File:') == -1]
-
-    #imlist = [re.findall(ur'^http[s]?://.*gstatic.*?"[ ,]', ('http'+d).decode('utf-8'), re.UNICODE) for d in datalist]  # unicode double quote?
-    ##raise('commented out previous line, needs debugging for python3')
-    #imlist = [im[0][:-2] for im in imlist if len(im) > 0]
-    #imlist2_clean = [im for im in imlist if im.find('File:') == -1]
-    imlist2_clean = []
-    
-    imlist = [imlist_clean + imlist2_clean]
-    return [url for url in imlist_clean+imlist2_clean if isurl(url)]
+    return [url for url in imlist_clean if isurl(url) and 'gb/images/silhouette' not in url]
 
 
 
