@@ -66,6 +66,9 @@ class Video(object):
             raise ValueError('Invalid frame index %d ' % k)
 
     def __iter__(self):
+        """Streaming video access for large videos that will not fit into memory"""
+        # https://github.com/kkroening/ffmpeg-python/blob/master/examples/README.md
+        # FIXME: https://github.com/kkroening/ffmpeg-python/issues/78
         self.load()
         for im in self._array[self._startframe:]:
             yield im
