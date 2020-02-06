@@ -2,6 +2,7 @@ import os
 from vipy.util import isnumpy, quietprint, isstring, isvideo, tempcsv, imlist, remkdir, filepath, filebase, tempMP4, isurl, isvideourl, templike, tempjpg
 from vipy.image import Image, ImageCategory, ImageDetection
 from vipy.show import savefig, figure
+import vipy.image
 import vipy.downloader
 import copy
 import numpy as np
@@ -11,30 +12,8 @@ import urllib.error
 import urllib.parse
 import http.client as httplib
 import io
-
-
-class Scene(object):
-    def __init__(self, video, activities=None, tracks=None, attributes=None):    
-        pass
-
-    def __getitem__(self, k):
-        self.load()
-        if k >= 0 and k < len(self):
-            return vipy.image.Scene()
-        else:
-            raise ValueError('Invalid frame index %d ' % k)
-
-    def saveas(self, outfile):
-        pass
-
-    def clip(self):
-        pass
-
-    def show(self):                
-        for im in imframes:
-            buf = io.BytesIO()
-            im.show(figure=1)
-            savefig(buf, format='png')
+import matplotlib.pyplot as plt
+import PIL.Image
 
 
 class Video(object):
@@ -270,7 +249,12 @@ class Video(object):
         assert not self.isloaded(), "Filters can only be applied prior to loading the video"
         self._ffmpeg = self._ffmpeg.filter('fps', fps=fps, round='up')
         return self
-    
+
+    def crop(self, bb):
+        assert isinstance(bb, vipy.geometry.BoundingBox), "Invalid input"
+        self._ffmpeg = self._ffmpeg.crop(bb.xmin(), bb.ymin(), bb.width(), bb.height())
+        return self
+        
     def saveas(self, outfile, framerate=30, vcodec='libx264'):
         """Save numpy buffer in self._array to a video"""
         assert self.isloaded(), "Video must be loaded prior to saveas"
@@ -311,11 +295,18 @@ class Video(object):
 
 
 
-class Track(Video):
-    def __init__(self, url=None, filename=None, framerate=30, rot90cw=False, rot90ccw=False, attributes=None, track=None):
-        super(Track, self).__init__(url=url, filename=filename, framerate=framerate, rot90cw=rot90cw, rot90ccw=rot90ccw, attributes=attributes)
-        self._track = track
+class Scene(Video):
+    def __init__(self, url=None, filename=None, framerate=30, rot90cw=False, rot90ccw=False, attributes=None, tracks=None, activities=None):
+        super(Scene, self).__init__(url=url, filename=filename, framerate=framerate, rot90cw=rot90cw, rot90ccw=rot90ccw, attributes=attributes)
 
+        if tracks is not None:
+            assert isinstance(tracks, list) and all([isinstance(t, vipy.object.Track) for t in tracks]), "Invalid input"            
+        self._tracks = tracks
+
+        if activities is not None:
+            assert isinstance(activities, list) and all([isinstance(a, vipy.activity.Activity) for a in activities]), "Invalid input"
+        self._activities = activities
+            
     def __repr__(self):
         strlist = []
         if self.isloaded():
@@ -324,15 +315,16 @@ class Track(Video):
             strlist.append('filename="%s"' % self.filename())
         if self.hasurl(): 
             strlist.append('url="%s"' % self.url())
-        if self._track is not None:
-            strlist.append('keyframes="%s"' % str(self._track.keyframes()))
-        return str('<vipy.video.Track: %s>' % (', '.join(strlist)))
+        if self._tracks is not None:
+            strlist.append('tracks=%d' % len(self._tracks))
+        if self._activities is not None:
+            strlist.append('activities=%d' % len(self._activities))
+        return str('<vipy.video.scene: %s>' % (', '.join(strlist)))
 
     def __getitem__(self, k):
         self.load()
         if k >= 0 and k < len(self):
-            t = self._track[k]
-            return ImageDetection(array=self._array[k], colorspace='rgb', category=t.category(), bbox=t)            
+            return vipy.image.Scene(array=self._array[k], colorspace='rgb', objects=[t[k] for t in self._tracks])
         else:
             raise ValueError('Invalid frame index %d ' % k)
     
@@ -340,124 +332,67 @@ class Track(Video):
         self.load()
         for k in range(0, len(self)):
             yield self.__getitem__(k)
+
+    def trim(self, startframe, endframe):
+        super(Scene, self).trim(startframe, endframe)
+        self._tracks = [t.offset(dt=-startframe) for t in self._tracks]        
+        return self
+
+    def crop(self, bb):
+        assert isinstance(bb, vipy.geometry.BoundingBox), "Invalid input"
+        super(Scene, self).crop(bb)
+        self._tracks = [t.offset(dx=-bb.xmin(), dy=-bb.ymin()) for t in self._tracks]                
+        return self
         
-    def show(self):
+    def rot90ccw(self):
+        (H,W) = self.thumbnail().load().shape()  # yuck, need to get image dimensions before filter        
+        self._tracks = [t.rot90ccw(H,W) for t in self._tracks]
+        super(Scene, self).rot90ccw()        
+        return self
+
+    def rot90cw(self):
+        (H,W) = self.thumbnail().load().shape()  # yuck, need to get image dimensions before filter
+        self._tracks = [t.rot90cw(H,W) for t in self._tracks]
+        super(Scene, self).rot90cw()        
+        return self
+
+    def resize(self, rows=None, cols=None):
+        assert rows is not None or cols is not None, "Invalid input"
+        (H,W) = self.thumbnail().load().shape()  # yuck, need to get image dimensions before filter
+        sx = rows/float(H) if rows is not None else cols/float(W)
+        sy = cols/float(W) if cols is not None else rows/float(H)        
+        self._tracks = [t.scalex(sx) for t in self._tracks]
+        self._tracks = [t.scaley(sy) for t in self._tracks]                
+        super(Scene, self).resize(rows, cols)
+        return self
+
+    def rescale(self, s):
+        (H,W) = self.thumbnail().load().shape()  # yuck, need to get image dimensions before filter
+        self._tracks = [t.rescale(s) for t in self._tracks]
+        super(Scene, self).rescale(s)
+        return self    
+        
+    def show(self, outfile=None):
         assert self.isloaded(), "Show requires that the video is loaded"
-        vid = self.load().clone()
-        import matplotlib.pyplot as plt
-        import PIL.Image
+        vid = self.load().clone()  # to save a new array
+        vid._array = []
         (W, H) = (None, None)
-        for (k,im) in enumerate(vid):
-            print(im)
+        plt.close(1)
+        for (k,im) in enumerate(self.__iter__()):
             im.show(figure=1)
             if W is None or H is None:
-                (W,H) = plt.figure(1).canvas.get_width_height()                        
-            
+                (W,H) = plt.figure(1).canvas.get_width_height()  # fast
             buf = io.BytesIO()
             plt.figure(1).canvas.print_raw(buf)
             img = np.frombuffer(buf.getvalue(), dtype=np.uint8).reshape( (H, W, 4))
-            vid._array[k] = np.array(PIL.Image.fromarray(img).convert('RGB')).copy()
-
-        vid.saveas('/Users/jba3139/Desktop/vipy.mp4')
-        return self
-
-    
-    
-class VideoFrames(object):
-    """Requires FFMPEG on the path for video files"""
-    def __init__(self, frames=None, filenames=None, frameDirectory=None, attributes=None, startframe=0, videofile=None, rot90clockwise=False, rot270clockwise=False, framerate=2):
-        if frames is not None:
-            self._framelist = frames
-        elif videofile is not None:
-            imdir = remkdir(os.path.join(filepath(videofile), '.'+filebase(videofile)), flush=True)
-            impattern = os.path.join(imdir, '%08d.png')
-            if rot90clockwise:
-                cmd = 'ffmpeg -i "%s" -vf "transpose=1, fps=%d" -f image2 "%s"' % (videofile, framerate, impattern)  # 90 degrees clockwise
-            elif rot270clockwise:
-                cmd = 'ffmpeg -i "%s" -vf "transpose=2, fps=%d" -f image2 "%s"' % (videofile, framerate, impattern)  # 270 degrees clockwise
-            else:
-                cmd = 'ffmpeg -i "%s" -vf fps=%d -f image2 "%s"' % (videofile, framerate, impattern)
-            print('[vipy.video.VideoFrames]: Exporting frames using "%s" ' % cmd)
-            os.system(cmd)  # HACK
-            self._framelist = [Image(filename=imfile) for imfile in imlist(imdir)]
-            self._videofile = videofile            
-        elif filenames is not None:
-            self._framelist = [Image(filename=imfile) for imfile in filenames]
-        elif frameDirectory is not None:
-            if not os.path.isdir(frameDirectory):
-                raise ValueError('Invalid frames directory "%s"' % frameDirectory)
-            self._framelist = [Image(filename=imfile) for imfile in imlist(frameDirectory)]
-        else:
-            self._framelist = []
-            
-        self._startframe = startframe
-
-        # Public
-        self.attributes = attributes
+            vid._array.append(np.array(PIL.Image.fromarray(img).convert('RGB')))
+        plt.close(1)
         
-    def __repr__(self):
-        return str('<vipy.videoframes: frames=%d>' % (len(self._framelist)))
-    
-    def __iter__(self):
-        for im in self._framelist[self._startframe:]:
-            yield im
-    
-    def __len__(self):
-        return len(self._framelist)
-            
-    def __getitem__(self, k):
-        if k >= 0 and k < len(self._framelist) and len(self._framelist) > 0:
-            return self._framelist[k]
-        else:
-            raise ValueError('Invalid frame index %d ' % k)
-
-    def mediatype(self):
-        return 'video'
-
-    def append(self, im):
-        self._framelist.append(im)
-        return self
-    
-    def frames(self, newframes=None):
-        if newframes is None:
-            return self._framelist
-        else:
-            self._framelist = newframes
-            return self
-
-    def setattribute(self, key, value):
-        if self.attributes is None:
-            self.attributes = {key:value}
-        else:
-            self.attributes[key] = value
+        vid._array = np.array(vid._array)
+        if outfile is not None:
+            vid.saveas(outfile)
         return self
 
-    def show(self, figure=1, colormap=None, do_flush=False):
-        for im in self:  # use iterator
-            im.show(figure=figure, colormap=colormap)
-            if do_flush:
-                im.flush()  # flush after showing to avoid running out of memory
-        return self
-    
-    def play(self, figure=1, colormap=None):
-        return self.show(figure, colormap)
-            
-    def map(self, f):
-        self._framelist = [f(im) for im in self._framelist]
-        return self
-
-    def filter(self, f):
-        self._framelist = [im for im in self._framelist if f(im)]
-        return self
-    
-    def clone(self):
-        return copy.deepcopy(self)
-
-    def flush(self):
-        self._framelist = [im.flush() for im in self._framelist]
-        return self
-
-    def isvalid(self):
-        return np.all([im.isvalid() for im in self._framelist])
-
-    
+    def play(self, outfile=None):
+        self.show(outfile)
+        return outfile

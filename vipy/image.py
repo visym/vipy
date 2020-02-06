@@ -528,14 +528,16 @@ class Image(object):
             img = self.load().array()  # float32
             if np.max(img)>1 or np.min(img)<0:
                 raise ValueError('Float image must be rescaled to the range float32 [0,1] prior to conversion')
-            if self.channels() != 3 or self.channels() != 1: 
+            if not self.channels() in [1,3]:
                 raise ValueError('Float image must be single channel or three channel RGB in the range float32 [0,1] prior to conversion')                       
             if self.channels() == 3:  # assumed RGB
                 self._array = (1.0/255.0)*np.array(PIL.Image.fromarray(np.uint8(255*self.array())).convert('L')).astype(np.float32) # float32 RGB [0,1] -> float32 gray [0,1]
             self.attributes['colorspace'] = 'gray'            
             self._colorspace(to)
+        elif self.attributes['colorspace'] is None:
+            raise ValueError('Colorspace must be set during construction to allow for colorspace conversion')
         else:
-            raise ValueError('unsupported colorspace')
+            raise ValueError('unsupported colorspace "%s"' % self.attributes['colorspace'])
         self.attributes['colorspace'] = to
         return self
     
@@ -924,24 +926,15 @@ class ImageDetection(ImageCategory):
 
 class Scene(ImageCategory):
     """A scene is an ImageCategory with one or more object detections"""
-    def __init__(self, filename=None, url=None, category=None, attributes=None, objects=None, array=None):
-        super(Scene, self).__init__(filename=filename, url=url, attributes=attributes, category=category, array=array)   # ImageCategory class inheritance        
+    def __init__(self, filename=None, url=None, category=None, attributes=None, objects=None, array=None, colorspace=None):
+        super(Scene, self).__init__(filename=filename, url=url, attributes=attributes, category=category, array=array, colorspace=colorspace)   # ImageCategory class inheritance        
         self._objectlist = []
-        self.filename(filename)  # override filename only        
-        if filename is not None and objects is not None and len(objects) > 0:
-            self.filename(filename)  # override filename only
-        elif url is not None and objects is not None and len(objects)>0:
-            self.url(url) # override url only
-        else:
-            super(Scene, self).__init__(filename=filename, url=url, attributes=attributes, category=category, array=array)   # ImageCategory class inheritance                   
 
         if objects is not None:
             if not (isinstance(self._objectlist, list) and all([isinstance(bb, vipy.object.Detection) for bb in objects])):
                 raise ValueError("Invalid object list")
             self._objectlist = objects
 
-        self.category(category)
-    
     def __repr__(self):
         strlist = []
         if self.isloaded():

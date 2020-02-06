@@ -154,6 +154,22 @@ class BoundingBox():
     def ymax(self):
         """y coordinate of lower right corner of box, y-axis is image row"""                
         return self._ymax       
+
+    def upperleft(self):
+        """Return the (x,y) upper left corner coordinate of the box"""
+        return (self.xmin(), self.ymin())
+
+    def lowerleft(self):
+        """Return the (x,y) lower left corner coordinate of the box"""
+        return (self.xmin(), self.ymax())
+    
+    def upperright(self):
+        """Return the (x,y) upper right corner coordinate of the box"""
+        return (self.xmax(), self.ymin())
+
+    def lowerright(self):
+        """Return the (x,y) lower right corner coordinate of the box"""
+        return (self.xmax(), self.ymax())
     
     def invalid(self):
         """Is the box a valid bounding box?"""
@@ -167,7 +183,10 @@ class BoundingBox():
         self._xmax = self._xmax + dx
         self._ymax = self._ymax + dy
         return self
-
+    def offset(self, dx=0, dy=0):
+        """Alias for translate"""
+        return self.translate(dx, dy)
+    
     def valid(self):
         return not self.invalid()
 
@@ -214,10 +233,21 @@ class BoundingBox():
     def area(self):
         return self.width() * self.height()
 
-    def to_xywh(self):
+    def to_xywh(self, xywh=None):
         """Return bounding box corners as [x,y,width,height] format"""
-        return [self._xmin, self._ymin, self.width(), self.height()]
+        if xywh is None:
+            return [self._xmin, self._ymin, self.width(), self.height()]
+        else:
+            self._xmin = xywh[0]
+            self._ymin = xywh[1]
+            self._xmax = self._xmin + xywh[2]
+            self._ymax = self._ymin + xywh[3]
+            return self
 
+    def xywh(self, xywh_=None):
+        """Alias for to_xywh"""
+        return self.to_xywh(xywh_)
+    
     def dx(self, bb):
         """Offset bounding box by same xmin as provided box"""
         return bb._xmin - self._xmin
@@ -363,6 +393,18 @@ class BoundingBox():
         self.setheigh(height)
         return self
 
+    def rot90cw(self, H, W):
+        """Rotate a bounding box such that if an image of size (H,W) is rotated 90 deg clockwise, the boxes align"""
+        (x,y,w,h) = self.xywh()
+        (blx, bly) = self.lowerleft()        
+        return self.xywh( (H-bly, blx, h, w) )
+
+    def rot90ccw(self, H, W):
+        """Rotate a bounding box such that if an image of size (H,W) is rotated 90 deg clockwise, the boxes align"""
+        (x,y,w,h) = self.xywh()
+        (urx, ury) = self.upperright()        
+        return self.xywh( (ury, W-urx, h, w) )
+    
     def fliplr(self, img):
         """Flip the box left/right consistent with fliplr of the provided img"""
         assert isnumpy(img), "Invalid image input"

@@ -86,5 +86,42 @@ class Track(object):
     def during(self, k):
         return k>=self.startframe() and k<self.endframe()
 
-    def map(self, f):
-        self._boxes = [f(bb) for bb in self._boxes]
+    def offset(self, dt=0, dx=0, dy=0):
+        self._boxes = [bb.offset(dx, dy) for bb in self._boxes]
+        self._frames = list(np.array(self._frames) + dt)
+        return self
+        
+    def rescale(self, s):
+        """Rescale track boxes by scale factor s"""
+        self._boxes = [bb.rescale(s) for bb in self._boxes]
+        return self
+    def scale(self, s):
+        """Alias for rescale"""
+        return self.rescale(s)
+
+    def scalex(self, sx):
+        """Rescale track boxes by scale factor sx"""
+        self._boxes = [bb.scalex(sx) for bb in self._boxes]
+        return self
+    def scaley(self, sy):
+        """Rescale track boxes by scale factor sx"""
+        self._boxes = [bb.scaley(sy) for bb in self._boxes]
+        return self
+        
+    
+    def dilate(self, s):
+        """Dilate track boxes by scale factor s"""
+        self._boxes = [bb.dilate(s) for bb in self._boxes]
+        return self
+
+    def rot90cw(self, H, W):
+        """Rotate an image with (H,W)=shape 90 degrees clockwise and update all boxes to be consistent"""
+        self._boxes = [bb.rot90cw(H, W) for bb in self._boxes]
+        return self
+
+    def rot90ccw(self, H, W):
+        """Rotate an image with (H,W)=shape 90 degrees clockwise and update all boxes to be consistent"""
+        self._boxes = [bb.rot90ccw(H, W) for bb in self._boxes]
+        return self
+    
+    

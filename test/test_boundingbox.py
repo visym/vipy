@@ -1,6 +1,6 @@
 import numpy as np
 from vipy.geometry import BoundingBox
-
+from vipy.image import ImageDetection
 
 def run():
     try:
@@ -114,6 +114,20 @@ def run():
     assert bb.to_xywh() == [0,0,100,100]
     print('Box.convexhull: PASSED')    
 
+    img = ImageDetection(array=np.zeros( (128,256) )).boundingbox(xmin=10,ymin=20,width=30,height=40).mask()
+    im = ImageDetection(array=np.float32(img), colorspace='float').boundingbox(xmin=10,ymin=20,width=30,height=40)
+    assert np.sum(img) == np.sum(im.crop().array())
+    
+    bb = BoundingBox(xmin=10, ymin=20, width=30, height=40).rot90cw(128, 256)
+    im = ImageDetection(array=np.float32(np.rot90(img,3)), bbox=bb, colorspace='float')
+    assert np.sum(img) == np.sum(im.crop().array())
+
+    bb = BoundingBox(xmin=10, ymin=20, width=30, height=40).rot90ccw(128, 256)
+    im = ImageDetection(array=np.rot90(img,1), bbox=bb)
+    assert np.sum(img) == np.sum(im.crop().array())
+    print('Box.rot90: PASSED')
+    
+    
 if __name__ == "__main__":
     run()
 

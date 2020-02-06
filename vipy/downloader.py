@@ -70,7 +70,7 @@ def download(url, output_filename, sha1=None, verbose=True, md5=None, timeout=No
     dl_size = 0
 
     if verbose:
-        print("[vipy.dataset.download]: Downloading '%s' to '%s'" % (url, output_filename))
+        print("[vipy.downloader]: Downloading '%s' to '%s'" % (url, output_filename))
         
     # display  progress only if we know the length
     if 'content-length' in page_info and verbose:
@@ -131,7 +131,7 @@ def unpack(archive_filename, output_dirname, sha1=None, verbose=True):
     * non-tar .bz2
     """
     if verbose:
-        print("[vipy.dataset.download.extract]: Extracting '%s' to '%s'" % (archive_filename, output_dirname))
+        print("[vipy.downloader.extract]: Extracting '%s' to '%s'" % (archive_filename, output_dirname))
     if sha1 is not None:
         if verbose:
             print(" SHA-1 verification...")
