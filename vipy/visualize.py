@@ -10,11 +10,11 @@ import time
 import PIL
 
 
-def montage(imset, gridrows, gridcols, imgrows=None, imgcols=None, aspectratio=1, crop=False, skip=True, do_plot=False, figure=None, border=0, border_bgr=(128,128,128), do_flush=False, verbose=False):
+def montage(imset, imgheight, imgwidth, gridrows=None, gridcols=None, aspectratio=1, crop=False, skip=True, do_plot=False, figure=None, border=0, border_bgr=(128,128,128), do_flush=False, verbose=False):
     """Montage image of images of grid size (gridrows,gridcols), such that montage has given aspect ratio  or is exactly (rows x cols).  Pass in iterable of imagedetection objects which is used to montage rowwise"""
 
-    (m,n) = (gridrows, gridcols)
-    (rows,cols) = (imgrows, imgcols)
+    (m,n) = (imgheight, imgwidth)
+    (rows,cols) = (gridrows, gridcols)
     n_imgs = len(imset)
     M = int(np.ceil(np.sqrt(n_imgs)))
     N = M
