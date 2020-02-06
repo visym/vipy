@@ -116,7 +116,8 @@ class Image(object):
 
         except IOError:
             if self._ignoreErrors or ignoreErrors:
-                warnings.warn('[vipy.image][WARNING]: IO error - Invalid image file, url or invalid write permissions "%s" - Ignoring. ' % self.filename())
+                if verbose is True:
+                    warnings.warn('[vipy.image][WARNING]: IO error "%s" -> "%s" - Ignoring. ' % (self.url(), self.filename()))
                 self._array = None
             else:
                 raise
@@ -126,7 +127,8 @@ class Image(object):
 
         except Exception:
             if self._ignoreErrors or ignoreErrors:
-                warnings.warn('[vipy.image][WARNING]: Load error for image "%s" - Ignoring' % self.filename())
+                if verbose is True:
+                    warnings.warn('[vipy.image][WARNING]: Load error for image "%s" - Ignoring' % self.filename())
                 self._array = None
             else:
                 raise
@@ -170,14 +172,16 @@ class Image(object):
                 urllib.error.URLError,
                 urllib.error.HTTPError):
             if self._ignoreErrors or ignoreErrors:
-                warnings.warn('[vipy.image][WARNING]: download failed - Ignoring image')
+                if verbose is True:
+                    warnings.warn('[vipy.image][WARNING]: download failed - Ignoring image')
                 self._array = None
             else:
                 raise
 
         except IOError:
             if self._ignoreErrors or ignoreErrors:
-                warnings.warn('[vipy.image][WARNING]: IO error - Invalid image file, url or invalid write permissions "%s" - Ignoring image' % self.filename())
+                if verbose:
+                    warnings.warn('[vipy.image][WARNING]: IO error downloading "%s" -> "%s" - Ignoring' % (self.url(), self.filename()))
                 self._array = None
             else:
                 raise
@@ -187,7 +191,8 @@ class Image(object):
 
         except Exception:
             if self._ignoreErrors or ignoreErrors:
-                warnings.warn('[vipy.image][WARNING]: load error for image "%s"' % self.filename())
+                if verbose:
+                    warnings.warn('[vipy.image][WARNING]: load error for image "%s"' % self.filename())
             else:
                 raise
             
