@@ -210,10 +210,10 @@ class Image(object):
     def isloaded(self):
         return self._array is not None
 
-    def show(self, figure=None):
-        """Display image on screen in provided figure number (clone and convert to RGB colorspace to show)"""
+    def show(self, figure=None, nowindow=False):
+        """Display image on screen in provided figure number (clone and convert to RGB colorspace to show), return object"""
         assert self.load().isloaded(), 'Image not loaded'
-        imshow(self.clone().rgb().numpy(), figure=figure)  
+        imshow(self.clone().rgb().numpy(), figure=figure, nowindow=nowindow)
         return self
 
     def channels(self):
@@ -328,7 +328,8 @@ class Image(object):
 
 
     def savefig(self, filename=None):
-        """Save figure output from self.show() with drawing overlays to provided filename and return filename"""
+        """Save last figure output from self.show() with drawing overlays to provided filename and return filename"""
+        self.show(figure=None, nowindow=True)
         f = filename if filename is not None else tempjpg()
         return savefig(filename=f)
 
@@ -787,19 +788,19 @@ class ImageDetection(ImageCategory):
     def __hash__(self):
         return hash(self.__repr__())
 
-    def show(self, ignoreErrors=False, figure=None):
-        if self.load(ignoreErrors=ignoreErrors) is not None:
-            if self.bbox.invalid():
-                warnings.warn('Ignoring invalid bounding box "%s"' % str(self.bbox))                
-            elif self.bbox.valid() and self.bbox.hasoverlap(self.array()) and self.bbox.shape() != self._array.shape[0:2]:
-                self.boxclip()  # crop bbox to image rectangle for valid overlay image
-                imbbox(self.clone().rgb()._array, self.bbox.xmin(),
-                       self.bbox.ymin(), self.bbox.xmax(), self.bbox.ymax(),
-                       bboxcaption=self.category(),
-                       figure=figure)
-            else:
-                # Do not display the box if the box is degenerate or equal to the image rectangle
-                super(ImageDetection, self).show(figure=figure)
+    def show(self, figure=None, nowindow=False):
+        self.load()
+        if self.bbox.invalid():
+            warnings.warn('Ignoring invalid bounding box "%s"' % str(self.bbox))                
+        if self.bbox.valid() and self.bbox.hasoverlap(self.array()) and self.bbox.shape() != self._array.shape[0:2]:
+            self.boxclip()  # crop bbox to image rectangle for valid overlay image
+            imbbox(self.clone().rgb()._array, self.bbox.xmin(),
+                   self.bbox.ymin(), self.bbox.xmax(), self.bbox.ymax(),
+                   bboxcaption=self.category(),
+                   fignum=figure, nowindow=nowindow)
+        else:
+            # Do not display the box if the box is degenerate or equal to the image rectangle
+            super(ImageDetection, self).show(figure=figure, nowindow=nowindow)
         return self
 
     def boundingbox(self, xmin=None, xmax=None, ymin=None, ymax=None,
@@ -970,7 +971,7 @@ class Scene(ImageCategory):
             strlist.append('category=%s' % self.category())
         if len(self.objects()) > 0:
             strlist.append('objects=%d' % len(self.objects()))
-        return str('<vipy.scene: %s>' % (', '.join(strlist)))
+        return str('<vipy.image.scene: %s>' % (', '.join(strlist)))
 
     def __len__(self):
         return len(self._objectlist)
@@ -1035,7 +1036,7 @@ class Scene(ImageCategory):
         self._objectlist.append(imdet)
         return self
     
-    def show(self, category=None, figure=None, do_caption=True, fontsize=10, boxalpha=0.25, captionlist=None, categoryColor=None, captionoffset=(0,0), outfile=None):
+    def show(self, category=None, figure=None, do_caption=True, fontsize=10, boxalpha=0.25, captionlist=None, categoryColor=None, captionoffset=(0,0), nowindow=False):
         """Show scene detection with an optional subset of categories"""        
         valid_categories = sorted(self.categories() if category is None else tolist(category))
         valid_detections = [obj for obj in self._objectlist if obj.category() in valid_categories]
@@ -1044,15 +1045,13 @@ class Scene(ImageCategory):
             colors = colorlist()
             categoryColor = dict([(c, colors[k]) for (k, c) in enumerate(valid_categories)])
         detection_color = [categoryColor[im.category()] for im in valid_detections]
-        vipy.show.imdetection(self.clone().rgb()._array, valid_detections, bboxcolor=detection_color, textcolor=detection_color, figure=figure, do_caption=do_caption, facealpha=boxalpha, fontsize=fontsize, captionlist=captionlist, captionoffset=captionoffset)
-        if outfile is not None:
-            savefig(outfile, figure)
+        vipy.show.imdetection(self.clone().rgb()._array, valid_detections, bboxcolor=detection_color, textcolor=detection_color, fignum=figure, do_caption=do_caption, facealpha=boxalpha, fontsize=fontsize, captionlist=captionlist, captionoffset=captionoffset, nowindow=nowindow)
         return self
 
     def savefig(self, outfile=None, category=None, figure=None, do_caption=True, fontsize=10, boxalpha=0.25, captionlist=None, categoryColor=None, captionoffset=(0,0), dpi=200):
         """Show a subset of object categores in current image and save to the given file"""
         outfile = outfile if outfile is not None else tempjpg()
-        self.show(category, figure, do_caption, fontsize, boxalpha, captionlist, categoryColor, captionoffset)
+        self.show(category, figure, do_caption, fontsize, boxalpha, captionlist, categoryColor, captionoffset, nowindow=True)
         savefig(outfile, figure, dpi=dpi, bbox_inches='tight', pad_inches=0)
         return outfile
 
@@ -1107,6 +1106,17 @@ class Batch(object):
         """Convert the batch of N HxWxC images to a NxCxHxW torch tensor"""
         return torch.from_numpy(np.vstack([np.expand_dims(im.rgb().numpy(),0) for im in self._imlist]).transpose(0,3,1,2))
     
-        
+def RandomImage(rows=None, cols=None):
+    rows = np.random.randint(128, 1024) if rows is None else rows
+    cols = np.random.randint(128, 1024) if cols is None else cols         
+    return Image(array=np.uint8(255*np.random.rand(rows, cols, 3)), colorspace='rgb')
+
+def RandomImageDetection(rows=None, cols=None):
+    rows = np.random.randint(128, 1024) if rows is None else rows
+    cols = np.random.randint(128, 1024) if cols is None else cols     
+    return ImageDetection(array=np.uint8(255*np.random.rand(rows, cols, 3)), colorspace='rgb', category='RandomImageDetection',
+                          xmin=np.random.randint(0,cols), ymin=np.random.randint(0,rows),
+                          bbwidth=np.random.randint(16,cols), bbheight=np.random.randint(16,rows))
+
         
         

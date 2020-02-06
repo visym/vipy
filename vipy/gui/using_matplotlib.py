@@ -18,8 +18,8 @@ import sys
 FIGHANDLE = {}
 matplotlib.rcParams['toolbar'] = 'None'
 
-plt.ion()  
-plt.show()
+#plt.ion()    # TESTING
+#plt.show()   # TESTING
 
 # Optional latex strings in captions
 try:
@@ -31,17 +31,25 @@ except:
     pass  # ignored if latex is not installed
 
 
+def show(fignum):
+    plt.ion()
+    plt.draw()
+    plt.show()
 
-def savefig(filename=None, handle=None, pad_inches=0, dpi=None, bbox_inches='tight', format=None):
-    if handle is not None:
-        plt.figure(handle)
+def noshow(fignum):
+    closeall()
+    plt.ioff()
+    
+def savefig(filename=None, fignum=None, pad_inches=0, dpi=None, bbox_inches='tight', format=None):
+    if fignum is not None:
+        plt.figure(fignum)
     if filename is None:
         filename = temppng()
     plt.savefig(filename, pad_inches=pad_inches, dpi=dpi, bbox_inches=bbox_inches, format=format)
     return filename
 
 def figure(fignum=None):
-    if handle is not None:
+    if fignum is not None:
         plt.figure(fignum)
     else:
         plt.figure()
@@ -59,10 +67,10 @@ def closeall():
     global FIGHANDLE;  FIGHANDLE = {};
     return plt.close('all')
 
-def _imshow_tight(img, figure=None, do_updateplot=True):
+def _imshow_tight(img, fignum=None):
     """Helper function to show an image in a figure window"""
     dpi = 100.0
-    fig = plt.figure(figure, dpi=dpi, figsize=(img.shape[1]/dpi, img.shape[0]/dpi))
+    fig = plt.figure(fignum, dpi=dpi, figsize=(img.shape[1]/dpi, img.shape[0]/dpi))
     plt.clf()
 
     # Tight axes
@@ -72,70 +80,70 @@ def _imshow_tight(img, figure=None, do_updateplot=True):
         a.get_xaxis().set_visible(False)
         a.get_yaxis().set_visible(False)    
     imh = plt.imshow(img, animated=True, interpolation='nearest', aspect='equal')    
-    return imh
+    return (fig.number, imh)
 
 
-def imshow(img, figure=None, do_updateplot=True):
-    """Show an image in a figure window, reuse previous figure if it is still visible and is the same shape"""
+def imshow(img, fignum=None):
+    """Show an image in a figure window (optionally visible), reuse previous figure if it is the same shape"""
     global FIGHANDLE
-    if figure in plt.get_fignums() and figure in FIGHANDLE and FIGHANDLE[figure].get_size() == img.shape[0:2]:
+    if fignum in plt.get_fignums() and fignum in FIGHANDLE and FIGHANDLE[fignum].get_size() == img.shape[0:2]:
         # Delete all polygon and text overlays from previous drawing        
-        FIGHANDLE[figure].set_data(img)
+        FIGHANDLE[fignum].set_data(img)
         for c in plt.gca().get_children():
             if 'Text' in c.__repr__() or 'Polygon' in c.__repr__() or 'Circle' in c.__repr__() or 'Line' in c.__repr__() or  'Patch' in c.__repr__():
                 try:
                     c.remove()
                 except:
                     pass
-        if do_updateplot:
-            plt.draw()
-            plt.show()  
+        #if not nowindow:
+        #    plt.draw()
+        #    plt.show()  
     else:
-        FIGHANDLE[figure] = _imshow_tight(img, do_updateplot=do_updateplot, figure=figure)
-    return figure
+        (fignum, imh) = _imshow_tight(img, fignum=fignum)
+        FIGHANDLE[fignum] = imh
+    return fignum
 
 
-def imbbox(img, xmin, ymin, xmax, ymax, bboxcaption=None, figure=None, bboxcolor='green', facecolor='white', facealpha=0.5, textcolor='black', textfacecolor='white', do_updateplot=True, do_imshow=True, fontsize=10, captionoffset=(0,0)):
-    """Draw bounding box on an image"""
+def boundingbox(img, xmin, ymin, xmax, ymax, bboxcaption=None, fignum=None, bboxcolor='green', facecolor='white', facealpha=0.5, textcolor='black', textfacecolor='white', fontsize=10, captionoffset=(0,0)):
+    """Draw a captioned bounding box on a previously shown image"""
 
     # Optionally update the underlying image to quickly add more polygons
-    if do_imshow == True:
-        imh = imshow(img, figure=figure, do_updateplot=False)
+    #if do_imshow == True:
+    #    imh = imshow(img, figure=figure, do_updateplot=False)
 
     # (x,y) bounding box is right and down, swap to right and up for plot
     # clip_on clips anything outside the image
+    plt.figure(fignum)
     plt.axvspan(xmin, xmax, ymin=1.0-np.float32(float(ymax)/float(img.shape[0])), ymax=1-np.float32(float(ymin)/float(img.shape[0])), edgecolor=bboxcolor, facecolor=facecolor, linewidth=3, fill=True, alpha=facealpha, label=None, capstyle='round', joinstyle='bevel', clip_on=True)
 
     # Text string
     if bboxcaption is not None:
         # clip_on clips anything outside the image
         plt.text(xmin+captionoffset[0], ymin+captionoffset[1], bboxcaption, color=textcolor, bbox=dict(facecolor=textfacecolor, edgecolor=textcolor, alpha=1, boxstyle='round'), fontsize=fontsize, clip_on=True)
-
+    
     # Update plot only for final bbox if displaying a lot
-    if do_updateplot == True:
-        #plt.pause(0.00001)
-        try:
-            plt.gcf().canvas.flush_events()  
-        except:
-            pass
-        plt.draw()
-        plt.show()
+    #if not nowindow:
+    #    #plt.pause(0.00001)
+    #    try:
+    #        plt.gcf().canvas.flush_events()  
+    #    except:
+    #        pass
+    #    plt.draw()
+    #    plt.show()
 
-    return plt.gcf().number
+    return fignum
 
-def imdetection(img, detlist, figure=None, bboxcolor='green', do_caption=True, facecolor='white', facealpha=0.5, textcolor='green', textfacecolor='white', captionlist=None, fontsize=10, captionoffset=(0,0)):
+def imdetection(img, detlist, fignum=None, bboxcolor='green', do_caption=True, facecolor='white', facealpha=0.5, textcolor='green', textfacecolor='white', captionlist=None, fontsize=10, captionoffset=(0,0)):
     """Show bounding boxes from a list of vipy.object.Detections on the same image, plotted in list order with optional captions """
 
-    # Empty?
-    if len(detlist) == 0:
-        imshow(img, figure=figure, do_updateplot=True)
-        return figure
-
+    # Create image
+    fignum = imshow(img, fignum=fignum)
+    
     # Valid detections
-    fig = figure
+    fighandle = None
     for (k,det) in enumerate(detlist):
-        do_imshow = True if k==0 else False  # first image only
-        do_updateplot = True if k==(len(detlist)-1) else False  # last image only
+        #do_imshow = True if k==0 else False  # first image only
+        #do_updateplot = True if k==(len(detlist)-1) else False  # last image only
         if do_caption and captionlist is not None:
             bboxcaption = str(captionlist[k])
         elif do_caption:
@@ -153,10 +161,10 @@ def imdetection(img, detlist, figure=None, bboxcolor='green', do_caption=True, f
         else:
             textcolor_ = textcolor
 
-        fig = imbbox(img=img, xmin=det.xmin(), ymin=det.ymin(), xmax=det.xmax(), ymax=det.ymax(), bboxcaption=bboxcaption, do_imshow=do_imshow, do_updateplot=do_updateplot,
-                     figure=fig, bboxcolor=bboxcolor_, facecolor=facecolor, facealpha=facealpha, textcolor=textcolor_, textfacecolor=textfacecolor, fontsize=fontsize, captionoffset=captionoffset)
+        fighandle = boundingbox(img, xmin=det.xmin(), ymin=det.ymin(), xmax=det.xmax(), ymax=det.ymax(), bboxcaption=bboxcaption,
+                                fignum=fignum, bboxcolor=bboxcolor_, facecolor=facecolor, facealpha=facealpha, textcolor=textcolor_, textfacecolor=textfacecolor, fontsize=fontsize, captionoffset=captionoffset)
 
-    return fig
+    return fignum
 
 
 def imframe(img, fr, color='b', markersize=10, label=None, figure=None):

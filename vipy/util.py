@@ -640,10 +640,8 @@ def mdlist(m, n):
 def isurl(path):
     """Is a path a URL?"""
     try:
-        result = urlparse(path)
-        return all([result.scheme, result.netloc, result.path]) and \
-            '<' not in path and '>' not in path and '"' not in path
-            
+        return urlparse(path).scheme != "" and \
+            '<' not in path and '>' not in path and '"' not in path            
     except:
         return False
     

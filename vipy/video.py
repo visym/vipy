@@ -98,11 +98,14 @@ class Video(object):
     def hasurl(self):
         return self._url is not None and isurl(self._url)    
 
+    def array(self):
+        return self._array
+        
     def tonumpy(self):
-        return self.array()
+        return self._array
 
     def numpy(self):
-        return self.tonumpy()
+        return self._array
 
     def flush(self):
         self._array = None 
@@ -214,7 +217,7 @@ class Video(object):
     def clip(self, startframe, endframe):
         """Load a video clip betweeen start and end frames"""
         assert startframe < endframe and startframe >= 0, "Invalid start and end frames" 
-        assert not self.isloaded(), "Filters can only be applied prior to loading the video"               
+        assert not self.isloaded(), "Filters can only be applied prior to loading, flush() the video first then reload"               
         self._ffmpeg = self._ffmpeg.trim(start_frame=startframe, end_frame=endframe) \
                                    .setpts ('PTS-STARTPTS')
         return self
@@ -224,29 +227,29 @@ class Video(object):
         return self.clip(startframe, endframe)
 
     def rot90cw(self):
-        assert not self.isloaded(), "Filters can only be applied prior to loading the video"
+        assert not self.isloaded(), "Filters can only be applied prior to loading, flush() the video first then reload"
         self._ffmpeg = self._ffmpeg.filter('transpose', 1)
         return self
 
     def rot90ccw(self):
-        assert not self.isloaded(), "Filters can only be applied prior to loading the video"
+        assert not self.isloaded(), "Filters can only be applied prior to loading, flush() the video first then reload"
         self._ffmpeg = self._ffmpeg.filter('transpose', 2)        
         return self
     
     def rescale(self, s):
-        assert not self.isloaded(), "Filters can only be applied prior to loading the video"        
+        assert not self.isloaded(), "Filters can only be applied prior to loading, flush() the video first then reload"        
         self._ffmpeg = self._ffmpeg.filter('scale', 'iw*%1.2f' % s, 'ih*%1.2f' % s)
         return self
         
     def resize(self, rows=None, cols=None):
         if rows is None and cols is None:
             return self 
-        assert not self.isloaded(), "Filters can only be applied prior to loading the video"               
+        assert not self.isloaded(), "Filters can only be applied prior to loading, flush() the video first then reload"               
         self._ffmpeg = self._ffmpeg.filter('scale', cols if cols is not None else -1, rows if rows is not None else -1)
         return self
 
     def framerate(self, fps):
-        assert not self.isloaded(), "Filters can only be applied prior to loading the video"
+        assert not self.isloaded(), "Filters can only be applied prior to loading, flush() the video first then reload"
         self._ffmpeg = self._ffmpeg.filter('fps', fps=fps, round='up')
         return self
 
@@ -372,14 +375,14 @@ class Scene(Video):
         super(Scene, self).rescale(s)
         return self    
         
-    def show(self, outfile=None):
-        assert self.isloaded(), "Show requires that the video is loaded"
-        vid = self.load().clone()  # to save a new array
+    def annotate(self, outfile):
+        assert self.isloaded(), "load() before annotate()"
+        vid = self.load().clone()  # to save a new array        
         vid._array = []
         (W, H) = (None, None)
         plt.close(1)
         for (k,im) in enumerate(self.__iter__()):
-            im.show(figure=1)
+            imh = im.show(figure=1, nowindow=True)  # sets figure dimensions, does not display window
             if W is None or H is None:
                 (W,H) = plt.figure(1).canvas.get_width_height()  # fast
             buf = io.BytesIO()
@@ -389,10 +392,4 @@ class Scene(Video):
         plt.close(1)
         
         vid._array = np.array(vid._array)
-        if outfile is not None:
-            vid.saveas(outfile)
-        return self
-
-    def annotate(self, outfile):
-        self.show(outfile)
-        return outfile
+        return vid.saveas(outfile)

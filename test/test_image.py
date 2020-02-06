@@ -217,8 +217,8 @@ def scene():
     im = im.rescale(0.5).objects([Detection('obj1',20,50,100,100), Detection('obj2',300,300,200,200)])
     print('Scene.rescale: PASSED')
 
-    outfile = im.show(outfile=tempjpg())
-    outfile = im.show().savefig(tempjpg())
+    outfile = im.show(nowindow=True)
+    outfile = im.savefig(tempjpg())
     print('Scene.show().savefig() ("%s"): PASSED' % outfile)
     
     im = im.resize(1000,100)
