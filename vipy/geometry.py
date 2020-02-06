@@ -286,6 +286,10 @@ class BoundingBox():
             iou = area_intersection / area_union;
         return iou;
 
+    def intersection_over_union(self, bb):
+        """Alias for iou"""
+        return self.iou(bb)
+    
     def area_of_intersection(self, bb):
         """area of intersection"""
         if bb.invalid() or self.invalid():

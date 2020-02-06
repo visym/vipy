@@ -224,7 +224,11 @@ class Video(object):
     
     def trim(self, startframe, endframe):
         """Alias for clip"""
-        return self.clip(startframe, endframe)
+        assert startframe < endframe and startframe >= 0, "Invalid start and end frames" 
+        assert not self.isloaded(), "Filters can only be applied prior to loading, flush() the video first then reload"               
+        self._ffmpeg = self._ffmpeg.trim(start_frame=startframe, end_frame=endframe) \
+                                   .setpts ('PTS-STARTPTS')
+        return self
 
     def rot90cw(self):
         assert not self.isloaded(), "Filters can only be applied prior to loading, flush() the video first then reload"
@@ -341,6 +345,12 @@ class Scene(Video):
         self._tracks = [t.offset(dt=-startframe) for t in self._tracks]        
         return self
 
+    def clip(self, startframe, endframe):
+        """Alias for trim"""
+        super(Scene, self).trim(startframe, endframe)
+        self._tracks = [t.offset(dt=-startframe) for t in self._tracks]        
+        return self
+    
     def crop(self, bb):
         assert isinstance(bb, vipy.geometry.BoundingBox), "Invalid input"
         super(Scene, self).crop(bb)
@@ -376,6 +386,7 @@ class Scene(Video):
         return self    
         
     def annotate(self, outfile):
+        """Generate a video visualization of all annotated objects and activities in the video, at the resolution and framerate of the underlying video, save as outfile"""
         assert self.isloaded(), "load() before annotate()"
         vid = self.load().clone()  # to save a new array        
         vid._array = []
