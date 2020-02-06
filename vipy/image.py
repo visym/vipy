@@ -260,10 +260,14 @@ class Image(object):
 
     def numpy(self):
         return self.tonumpy()
-
+    
     def pil(self):
         return PIL.Image.fromarray(self.tonumpy())
 
+    def torch(self):
+        try_import('torch, torchvision');  import torch, torchvision
+        return torch.from_numpy(self.tonumpy())
+        
     def filename(self, newfile=None):
         """Image Filename"""
         if newfile is None:
@@ -383,12 +387,20 @@ class Image(object):
         self._array = np.array(self.pil().resize((int(np.round(scale*width)), int(np.round(scale*height))), PIL.Image.BILINEAR))
         return self
 
+    def maxside(self, dim):
+        """Resize image preserving aspect ratio so that maximum dimension of bounding box = dim"""
+        return self.rescale(float(dim) / float(np.maximum(self.bbox.height(), self.bbox.width())))
+    
+    def minside(self, dim):
+        """Resize image preserving aspect ratio so that minimum dimension of bounding box = dim"""
+        return self.rescale(float(dim) / float(np.minimummum(self.bbox.height(), self.bbox.width())))
+        
     def maxdim(self, dim):
-        """Resize image preserving aspect ratio so that maximum dimension=dim"""
+        """Resize image preserving aspect ratio so that maximum dimension of image = dim"""
         return self.rescale(float(dim) / float(np.maximum(self.height(), self.width())))
 
     def mindim(self, dim):
-        """Resize image preserving aspect ratio so that minimum dimension=dim"""        
+        """Resize image preserving aspect ratio so that minimum dimension of image = dim"""        
         return self.rescale(float(dim) / float(np.minimum(self.height(), self.width())))
 
     def pad(self, dx, dy, mode='edge'):
@@ -423,7 +435,7 @@ class Image(object):
 
     def boxclip(self):
         """Clip bounding box to the image rectangle, and delete bbox if outside image rectangle.  Requires image load"""
-        (W,H) = self.load().shape()
+        (H,W) = self.load().shape()
         if self.bbox.intersection(BoundingBox(xmin=0, ymin=0, xmax=W-1, ymax=H-1), strict=False).isdegenerate():
             warnings.warn("Degenerate bounding box does not intersect image - Deleting")
             self.bbox = None
