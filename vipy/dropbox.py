@@ -4,8 +4,6 @@ import urllib.parse as urlparse
 from vipy.util import try_import
 
 class Dropbox():
-    try_import('dropbox')
-    import dropbox  # optional    
     
     _access_token = os.environ.get('DROPBOX_ACCESS_TOKEN')
     _app_key = os.environ.get('DROPBOX_APP_KEY')
@@ -16,6 +14,9 @@ class Dropbox():
     # should we put keys in this file?  everyone will use it
     
     def __init__(self):
+        try_import('dropbox')
+        import dropbox  # optional    
+        
         if self._access_token is None:
             self.link()
     

@@ -1,6 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
-from vipy.util import seq, groupby
+from vipy.util import seq, groupby, try_import
 from scipy.interpolate import interp1d
 try_import('sklearn', 'scikit-learn'); import sklearn.metrics    
 

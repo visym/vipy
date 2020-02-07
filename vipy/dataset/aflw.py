@@ -39,7 +39,7 @@ LANDMARKS_3D = np.array([[-57.0899, 37.2398, 47.1156],
 
 
 class AFLW(object):
-    def __init__(self, datadir)
+    def __init__(self, datadir):
         self.datadir = remkdir(datadir)
         if not os.path.isdir(os.path.join(self.datadir)):
             raise ValueError('Download AFLW dataset manually to "%s" ' % self.datadir)

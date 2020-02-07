@@ -1,12 +1,13 @@
 from scipy.signal import gaussian, convolve2d
 import numpy as np
-try_import('cv2', 'opencv-python'); import cv2  # optional
 
 
 class SSIM(object):
     """Structural similarity (SSIM) index """
     """Z. Wang, A. Bovik, H. Sheikh, E. Simoncelli, "Image quality assessment: from error visibility to structural similarity". IEEE Transactions on Image Processing. 13 (4): 600–612"""
     def __init__(self, do_alignment=True, min_matches_for_alignment=10, num_matches_for_alignment=500, K1=0.01, K2=0.03):
+        try_import('cv2', 'opencv-python'); import cv2  # optional
+        
         self.do_alignment = do_alignment
         self.min_matches_for_alignment = min_matches_for_alignment
         self.num_matches_for_alignment = num_matches_for_alignment

@@ -9,9 +9,6 @@ import signal
 import sys
 from vipy.util import imresize, tempimage, try_import
 
-try_import("cv2", "opencv-python")
-import cv2 
-
 class Camera(object):
     CAM = None
     FRAMERATE = False
@@ -23,6 +20,9 @@ class Camera(object):
     
 class Webcam(Camera):
     def __init__(self, framerate=False, resize=1, grey=False, url=0):
+
+        try_import("cv2", "opencv-python")
+        import cv2 
 
         
         self.CAM = cv2.VideoCapture(url)

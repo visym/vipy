@@ -41,5 +41,9 @@ def dashboard():
 # video ffplay command
 # dataset archival
 # video transformations
+# payments manager
+# bulk email manager
+# baseline training
+# dataset prep
 
 
