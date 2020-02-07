@@ -370,8 +370,12 @@ class Image(object):
             im._array = self._array.copy()
         return im
 
-    def resize(self, cols=None, rows=None):
+    def resize(self, cols=None, rows=None, width=None, height=None):
         """Resize the image buffer to (rows x cols) with bilinear interpolation.  If rows or cols is provided, rescale image maintaining aspect ratio"""
+        assert not (cols is not None and width is not None), "Define either width or cols"
+        assert not (rows is not None and height is not None), "Define either height or rows"
+        rows = rows if height is None else height
+        cols = cols if width is None else width        
         if cols is None or rows is None:
             if cols is None:
                 scale = float(rows)/float(self.height())

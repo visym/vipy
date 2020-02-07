@@ -4,24 +4,20 @@ import vipy.downloader
 from vipy.video import VideoCategory
 import numpy as np
 
-
-
-
 class Kinetics700(object):
     def __init__(self, datadir):
         """Kinetics, provide a datadir='/path/to/store/kinetics' """
-        self.datadir = remkdir(datadir)        
+        self.datadir = remkdir(datadir)
         self._url = 'https://storage.googleapis.com/deepmind-media/Datasets/kinetics700.tar.gz'
         self._name = 'Kinetics700'
-        if not os.path.exists(os.path.join(self.datadir, self._name)):
-            print('[vipy.dataset.%s]: Call download() to download and unpack dataset')
         
     def __repr__(self):
-        return str('<vipy.dataset.%s: %s>' % (self._name, self.datadir))
+        return str('<vipy.dataset.%s: "%s/%s">' % (self._name, self.datadir, self._name))
 
-    def download(self):
-        vipy.downloader.download_and_unpack(self._url, self.datadir)
-
+    def download(self, verbose=True):
+        vipy.downloader.download_and_unpack(self._url, self.datadir, verbose=verbose)
+        return self
+        
     def _dataset(self, jsonfile):
         fps = 30   # is thie correct?
         return [VideoCategory(url=v['url'],

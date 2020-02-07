@@ -14,7 +14,7 @@ class HMDB(object):
         self.datadir = remkdir(datadir)
         
     def __repr__(self):
-        return str('<vipy.dataset.hmdb: %s>' % self.datadir)
+        return str('<vipy.dataset.hmdb: "%s">' % self.datadir)
 
     def download_and_unpack(self):
         #vipy.downloader.download(URL, os.path.join(self.datadir, filetail(URL)))

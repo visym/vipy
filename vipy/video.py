@@ -1,5 +1,6 @@
 import os
-from vipy.util import isnumpy, quietprint, isstring, isvideo, tempcsv, imlist, remkdir, filepath, filebase, tempMP4, isurl, isvideourl, templike, tempjpg, filetail, tempdir, isyoutubeurl, toextension
+from vipy.util import isnumpy, quietprint, isstring, isvideo, tempcsv, imlist, remkdir, filepath, filebase, tempMP4, isurl, \
+                      isvideourl, templike, tempjpg, filetail, tempdir, isyoutubeurl, toextension, try_import
 from vipy.image import Image, ImageCategory, ImageDetection
 from vipy.show import savefig, figure
 import vipy.image
@@ -65,6 +66,8 @@ class Video(object):
     def __getitem__(self, k):
         if k >= 0 and k < len(self):
             return Image(array=self._array[k], colorspace='rgb')
+        elif not self.isloaded():
+            raise ValueError('Video not loaded, load() before indexing')        
         else:
             raise ValueError('Invalid frame index %d ' % k)
 
@@ -98,6 +101,16 @@ class Video(object):
     def isloaded(self):
         return self._array is not None
 
+    def channels(self):
+        """Return integer number of color channels"""
+        return 1 if self.load().array().ndim == 3 else self.load().array().shape[3]
+
+    def iscolor(self):
+        return self.channels() == 3
+
+    def isgrayscale(self):
+        return self.channels() == 1
+        
     def hasfilename(self):
         return self._filename is not None and os.path.exists(self._filename)
 
@@ -311,8 +324,12 @@ class Video(object):
         os.system("ffplay %s" % f)
 
     def torch(self):
-        pass
-
+        try_import('torch');  import torch
+        
+        """Convert the batch of N HxWxC images to a NxCxHxW torch tensor"""
+        frames = self._array if self.iscolor() else np.expand_dims(self._array, 3)
+        return torch.from_numpy(frames.transpose(0,3,1,2))
+        
     def clone(self):
         return copy.deepcopy(self)    
 
@@ -348,6 +365,8 @@ class Scene(Video):
         self.load()
         if k >= 0 and k < len(self):
             return vipy.image.Scene(array=self._array[k], colorspace='rgb', objects=[t[k] for t in self._tracks])
+        elif not self.isloaded():
+            raise ValueError('Video not loaded, load() before indexing')
         else:
             raise ValueError('Invalid frame index %d ' % k)
     

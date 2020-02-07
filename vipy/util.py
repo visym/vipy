@@ -981,7 +981,7 @@ def remkdir(path, flush=False):
     elif flush is True:
         shutil.rmtree(path)
         os.makedirs(path)
-    return path
+    return os.path.abspath(os.path.expanduser(path))
 
 
 def toextension(filename, newext):
