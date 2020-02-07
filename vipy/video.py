@@ -249,14 +249,16 @@ class Video(object):
         """Load a video clip betweeen start and end frames"""
         assert startframe <= endframe and startframe >= 0, "Invalid start and end frames (%s, %s)" % (str(startframe), str(endframe)) 
         assert not self.isloaded(), "Filters can only be applied prior to loading, flush() the video first then reload"               
-        self._ffmpeg = self._ffmpeg.trim(start_frame=startframe, end_frame=endframe)
+        self._ffmpeg = self._ffmpeg.trim(start_frame=startframe, end_frame=endframe)\
+                                   .setpts ('PTS-STARTPTS')  # reset timestamp to 0 after trim filter
         return self
     
     def trim(self, startframe, endframe):
         """Alias for clip"""
         assert startframe <= endframe and startframe >= 0, "Invalid start and end frames" 
         assert not self.isloaded(), "Filters can only be applied prior to loading, flush() the video first then reload"               
-        self._ffmpeg = self._ffmpeg.trim(start_frame=startframe, end_frame=endframe)
+        self._ffmpeg = self._ffmpeg.trim(start_frame=startframe, end_frame=endframe)\
+                                   .setpts ('PTS-STARTPTS')  # reset timestamp to 0 after trim filter
         return self
 
     def rot90cw(self):
