@@ -8,6 +8,7 @@ URL: https://github.com/visym/vipy/
 Requirements
 -------------------
 python 3.*
+
 ffmpeg (optional)
 
 
