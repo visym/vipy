@@ -1,11 +1,10 @@
 import os
 import numpy as np
-from bobo.util import remkdir
+from vipy.util import remkdir
 import gzip, struct
 from array import array
-from bobo.image import Image, ImageCategory
+from vipy.image import Image, ImageCategory
 from itertools import product, combinations
-from bobo.app import setverbosity
 
 TRAIN_IMG_URL = 'http://yann.lecun.com/exdb/mnist/train-images-idx3-ubyte.gz'
 TRAIN_IMG_SHA1 =  '6c95f4b05d2bf285e1bfb0e7960c31bd3b3f8a7d'
@@ -21,10 +20,9 @@ class MNIST(object):
         """download URLS above to outdir, then run export()"""        
         self.outdir = remkdir(outdir)
         if not self._downloaded():
-            print '[viset.mnist]: downloading MNIST to "%s"' % self.outdir
-            setverbosity(1)                        
+            print('[vipy.dataset.mnist]: downloading MNIST to "%s"' % self.outdir)
             self._wget()
-            print '[viset.mnist]: exporting MNIST to "%s"' % self.outdir            
+            print('[vipy.dataset.mnist]: exporting MNIST to "%s"' % self.outdir)
             self._export()
 
     def _downloaded(self):
@@ -132,7 +130,7 @@ class MNIST(object):
                 img = np.asarray(array("B", gzfile.read(rows*cols)).tolist()).reshape( (rows, cols) ).astype(np.uint8)
                 im = Image().array(img).resize(rows=32).saveas(os.path.join(self.outdir, 'train', '%06d.png' % k))
                 if (k % 10000) == 0:
-                    print '[viset.mnist][%d/%d]: exporting training images to "%s"' % (k, 60000, os.path.join(self.outdir, 'train'))
+                    print('[vipy.dataset.mnist][%d/%d]: exporting training images to "%s"' % (k, 60000, os.path.join(self.outdir, 'train')))
     
         with gzip.open(test_img_file, 'rb') as gzfile:
             magic, size, rows, cols = struct.unpack(">IIII", gzfile.read(16))
@@ -143,7 +141,7 @@ class MNIST(object):
                 img = np.asarray(array("B", gzfile.read(rows*cols)).tolist()).reshape( (rows, cols) ).astype(np.uint8)
                 im = Image().array(img).resize(rows=32).saveas(os.path.join(self.outdir, 'test', '%06d.png' % k))
                 if (k % 10000) == 0:            
-                    print '[viset.mnist][%d/%d]: exporting testing images to "%s"' % (k, 10000, os.path.join(self.outdir, 'test'))
+                    print('[vipy.dataset.mnist][%d/%d]: exporting testing images to "%s"' % (k, 10000, os.path.join(self.outdir, 'test')))
         
         # Cleanup    
         return self

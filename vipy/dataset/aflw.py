@@ -2,10 +2,8 @@ import os
 import sqlite3
 import csv
 from vipy.image import ImageDetection
-import bobo.app
 import numpy as np
-import janus.visualize
-from bobo.show import savefig
+
 
 SCHEMA = ['FILENAME', 'FACE_X', 'FACE_Y', 'FACE_WIDTH', 'FACE_HEIGHT',
           'LeftBrowLeftCorner_X', 'LeftBrowLeftCorner_Y', 'LeftBrowCenter_X', 'LeftBrowCenter_Y', 'LeftBrowRightCorner_X', 'LeftBrowRightCorner_Y',
@@ -40,35 +38,16 @@ LANDMARKS_3D = np.array([[-57.0899, 37.2398, 47.1156],
 
 
 class AFLW(object):
-    def __init__(self, datadir=None, sparkContext=None):
-        self.datadir = bobo.app.datadir() if datadir is None else datadir        
+    def __init__(self, datadir, sparkContext=None):
+        self.datadir = ddatadir        
         if not os.path.isdir(os.path.join(self.datadir)):
             raise ValueError('Download AFLW dataset manually to "%s" ' % self.datadir)
         self.sparkContext = sparkContext
 
     def __repr__(self):
-        return str('<viset.aflw: %s>' % self.datadir)
+        return str('<vipy.dataset.aflw: %s>' % self.datadir)
 
     
-    def rdd(self):
-        self.sparkContext = bobo.app.init('viset_aflw') if self.sparkContext is None else self.sparkContext                                    
-        csvfile = os.path.join(self.datadir, 'aflw.csv')
-        datadir = self.datadir
-        
-        # Parse CSV file based on protocol, all non-detection properties go in attributes dictionary
-        return (self.sparkContext.textFile(csvfile)
-                    .map(lambda row: row.encode('utf-8').split(',')) # CSV to list of row elements
-                    .filter(lambda x: x[0][0] != '#')  # hack to ignore comments
-                    .map(lambda x: ImageDetection(filename=os.path.join(datadir, x[0]), category='face',
-                                                    xmin=float(x[1]) if len(x[1]) > 0 else float('nan'),
-                                                    ymin=float(x[2]) if len(x[2]) > 0 else float('nan'),                                          
-                                                    xmax = float(x[1])+float(x[3]) if ((len(x[1])>0) and (len(x[3])>0)) else float('nan'),
-                                                    ymax = float(x[2])+float(x[4]) if ((len(x[2])>0) and (len(x[4])>0)) else float('nan'),
-                                                    attributes={k:v for (k,v) in zip(SCHEMA,x)})))  # Parse row 
-
-    def stream(self):
-        return self.rdd.collect()
-
     def dataset(self):
         csvfile = os.path.join(self.datadir, 'aflw.csv')
         with open(csvfile, 'r') as f:
@@ -117,19 +96,13 @@ class AFLW(object):
                 annoDict['FACE_HEIGHT'] = facerect[3]
     
                 row = [annoDict[key] if key in annoDict.keys() else '' for key in SCHEMA]
-                print '[viset.aflw]: exporting %d points for face "%s" ' % (len(ptsQuery), faceid)
+                print('[vipy.dataset.aflw]: exporting %d points for face "%s" ' % (len(ptsQuery), faceid))
                 f.writerow(row)
                 
         db.close()
         return self
 
 
-def montage(aflw):
-    dataset = [Image(f) for f in imlist(outdir)]
-    im = janus.visualize.montage(dataset, 128,128, crop=False, grayscale=False)
-    print 'writing aflw_montage.png'
-    cv2.imwrite('aflw_montage.png', im)
-    
 def landmarks(im):
     """Return 21x2 frame array of landmark positions in 1-21 order, NaN if occluded"""
     return np.float32(np.array([im.attributes[key] if len(im.attributes[key])>0 else np.float32('nan') for key in SCHEMA[5:]])).reshape(21, 2)  
@@ -139,20 +112,3 @@ def eyes_nose_chin(self, im):
     fr = landmarks(im)
     return fr[[8-1, 11-1, 15-1, 21-1],:]  # left eye center, right eye center, nose center  (AFLW annotation, 1-indexed)
 
-def show(im, figure=None):
-    lm = landmarks(im)
-    k_valid = np.argwhere(~np.isnan(lm).any(axis=1)).ravel().tolist()
-    valid_landmarks = lm[k_valid]
-    bbox = im.bbox.convexhull(valid_landmarks).maxsquare().dilate(1.1)
-    imc = im.grayscale().crop(bbox).resize(rows=128)
-    scale = float(128.0) / float(bbox.height())
-    scaled_valid_landmarks = np.array([(scale*(x-bbox.xmin), scale*(y-bbox.ymin)) for (x,y) in valid_landmarks])
-    bobo.show.imframe(imc.load(), scaled_valid_landmarks, 'b', markersize=30, label=None, figure=figure)
-    
-def montage(aflw):
-    imlist = aflw.stream()
-    for im in imlist:
-        show(im, figure=1)
-        im.filename(savefig())
-
-    return janus.visualize.montage(imlist, 128,128, crop=False, grayscale=False)

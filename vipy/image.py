@@ -213,7 +213,7 @@ class Image(object):
     def show(self, figure=None, nowindow=False):
         """Display image on screen in provided figure number (clone and convert to RGB colorspace to show), return object"""
         assert self.load().isloaded(), 'Image not loaded'
-        imshow(self.clone().rgb().numpy(), figure=figure, nowindow=nowindow)
+        imshow(self.clone().rgb().numpy(), fignum=figure, nowindow=nowindow)
         return self
 
     def channels(self):

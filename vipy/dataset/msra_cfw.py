@@ -1,37 +1,20 @@
 import os
 import csv
-import bobo.util
-from bobo.util import remkdir, quietprint, filetail, fileext
-from bobo.image import ImageCategory
-import bobo.app
+from vipy.util import remkdir, filetail, fileext
+from vipy.image import ImageCategory
 
 class CelebrityFacesInTheWild(object):
-    def __init__(self, datadir=None):
-        self.datadir = bobo.app.datadir() if datadir is None else datadir
+    def __init__(self, datadir):
+        self.datadir = datadir
         self.imdir = os.path.join(self.datadir, 'msra_cfw')
 
-        raise ValueError("FIXME")
         if not os.path.isfile(os.path.join(self.imdir, 'dev_urls.txt')):
             raise ValueError('Download PubFig dev_urls.txt manually and save to "%s" ' % self.imdir)
-        
-        
+                
     def __repr__(self):
-        return str('<viset.cfw: %s>' % self.imdir)
+        return str('<vipy.dataset.cfw: %s>' % self.imdir)
 
 
-
-    def rdd(sparkContext, ignore=True, fetch=True):
-        """Create a resilient distributed dataset"""
-        quietprint("[bobo.viset.msra_cfw]: Creating spark RDD for viset '%s'" % VISET)        
-        csvfile = os.path.join(CACHE.root(), VISET, '%s.csv' % VISET)            
-        if not os.path.isfile(csvfile):
-            csvfile = export()
-    
-        # Parse CSV into RDD stream of ImageCategory objects
-        return (sparkContext.textFile(csvfile)  # RDD of textfile lines
-                .map(lambda row: row.encode('utf-8').split())  # CSV to list
-                .map(lambda x: ImageCategory(url=x[0], key=os.path.join(VISET, x[2], x[1]),  category=x[2], ignore=ignore, fetch=fetch)))  # List to image category 
-        
     def export():
         # Output file
         outfile = os.path.join(CACHE.root(), VISET, '%s.csv' % VISET)
@@ -43,7 +26,7 @@ class CelebrityFacesInTheWild(object):
             for (idx_category, category) in enumerate(os.listdir(categorydir)):
                 label = bobo.util.tofilename(category)
                 if not bobo.util.is_hiddenfile(category):
-                    print '[viset.library.msra_cfw]: exporting "%s"' % label
+                    print('[vipy.dataset.cfw]: exporting "%s"' % label)
             
                     imdir = os.path.join(categorydir, category)        
                     txtfile = os.path.join(imdir, 'info.txt')
@@ -58,7 +41,7 @@ class CelebrityFacesInTheWild(object):
                                 ext = fileext(row[0])
                                 csvfile.write('%s %s %s\n' % (row[0].strip(), '%s_%07d%s' % (label, k_img, ext if ext is not None and len(ext)==4 else ''), label))
                             else:
-                                print 'skipping "%s"' % line 
+                                print('skipping "%s"' % line)
                             k_img += 1
 
         return outfile

@@ -26,7 +26,6 @@ def extract(tsvfile, outdir):
 
 
 def export(tsvfile, tsvnames, outdir, csvfile):
-
     csvlist = []
     d_mid_to_name = {x[0]:x[1] for x in readcsv(tsvnames, separator='\t')}
     with open(tsvfile, 'r') as tsvF:
@@ -42,6 +41,6 @@ def export(tsvfile, tsvnames, outdir, csvfile):
                 
             csvlist.append( (savePath, d_mid_to_name[MID]) )
             if i % 100 == 0:
-                print "[msceleb.csv][%d]: Extracting CSV (%s,%s,%s)" % (i,savePath,MID,d_mid_to_name[MID])
+                print("[msceleb.csv][%d]: Extracting CSV (%s,%s,%s)" % (i,savePath,MID,d_mid_to_name[MID]))
 
-    print writecsv(csvlist, csvfile)
+    print(writecsv(csvlist, csvfile))
