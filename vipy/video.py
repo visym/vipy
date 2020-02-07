@@ -41,7 +41,7 @@ class Video(object):
             if 'VIPY_CACHE' in os.environ:
                 self._filename = os.path.join(remkdir(os.environ['VIPY_CACHE']), filetail(self._filename))
         
-        self._ffmpeg = ffmpeg.input(self.filename(), r=framerate)
+        self._ffmpeg = None
         if rot90cw:
             self.rot90cw()
         if rot90ccw:
@@ -127,7 +127,6 @@ class Video(object):
             return self._filename
         else:
             # set filename and return object
-            self.flush()
             self._filename = newfile
             self._url = None
             return self
@@ -147,6 +146,7 @@ class Video(object):
                     for ext in ['mkv', 'mp4', 'webm']:
                         f = '%s.%s' % (self.filename(), ext)
                         if os.path.exists(f):
+                            os.symlink(f, self.filename())  # for ffmpeg-python filters, yuck
                             self.filename(f)
                     if not self.hasfilename():
                         raise ValueError('Downloaded file not found "%s.*"' % self.filename())
@@ -189,7 +189,6 @@ class Video(object):
                 warnings.warn('[vipy.video][WARNING]: load error for video "%s"' % self.filename())
             else:
                 raise
-        self.flush()  # FIXME: this removes the clipping filter
         return self
 
     def shape(self):
