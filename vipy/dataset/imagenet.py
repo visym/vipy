@@ -4,13 +4,15 @@ from vipy.image import ImageDetection, ImageCategory
 import os
 import copy
 
+URL = 'http://image-net.org/challenges/LSVRC/2012/dd31405981ef5f776aa17412e1f0c112/ILSVRC2012_img_train.tar'
 
 class ImageNet(object):
-    def __init__(self, datadir='/proj/janus3/ILSVRC2015'):
+    def __init__(self, datadir):
+        """Provide datadir=/path/to/ILSVRC2012"""
         self.datadir = datadir 
         
     def __repr__(self):
-        return str('<viset.imagenet: %s>' % self.datadir)
+        return str('<vipy.dataset.imagenet: %s>' % self.datadir)
 
     def _parse_loc(self, imageset='train'):
         """ImageNet localization, imageset = {train, val}"""
@@ -30,8 +32,8 @@ class ImageNet(object):
             objlist = d['annotation']['object'] if islist(d['annotation']['object']) else [d['annotation']['object']]
             for obj in objlist:
                 yield ImageDetection(filename=imfile, category=obj['name'],
-                                        xmin=int(obj['bndbox']['xmin']), ymin=int(obj['bndbox']['ymin']),
-                                        xmax=int(obj['bndbox']['xmax']), ymax=int(obj['bndbox']['ymax']))
+                                     xmin=int(obj['bndbox']['xmin']), ymin=int(obj['bndbox']['ymin']),
+                                     xmax=int(obj['bndbox']['xmax']), ymax=int(obj['bndbox']['ymax']))
 
     def classes(self):
         return list(set([im.category() for im in self._parse_cls('val')]))

@@ -22,8 +22,6 @@ class MNIST(object):
         if not self._downloaded():
             print('[vipy.dataset.mnist]: downloading MNIST to "%s"' % self.outdir)
             self._wget()
-            print('[vipy.dataset.mnist]: exporting MNIST to "%s"' % self.outdir)
-            self._export()
 
     def _downloaded(self):
         gzip_downloaded = (os.path.exists(os.path.join(self.outdir, 'train-images-idx3-ubyte.gz')) and
@@ -65,62 +63,9 @@ class MNIST(object):
             return numpy.reshape(image, (rows,cols))
 		
     def trainset(self):
-        y_train = self._labels(os.path.join(self.outdir, 'train-labels-idx1-ubyte.gz')).tolist() 
-        return [ImageCategory(filename=os.path.join(self.outdir, 'train', '%06d.png' % k), category=str(y)) for (k, y) in enumerate(y_train) if k <= 0.9*len(y_train)]
-
-    def subset(self, dataset, N=256):
-        """Balanced subset"""
-        D = {int(c):[im for im in dataset if im.category()==str(c)] for c in self.categories()}
-        V = []
-        for c in self.categories():
-            V = V + (np.random.choice(D[c], np.ceil(N/10.0))).tolist()
-        np.random.shuffle(V)
-        return V[0:N]
-        
-    def validationset(self, N=None):
-        y_val = self._labels(os.path.join(self.outdir, 'train-labels-idx1-ubyte.gz')).tolist() 
-        return [ImageCategory(filename=os.path.join(self.outdir, 'train', '%06d.png' % k), category=str(y)) for (k, y) in enumerate(y_val) if k > 0.9*len(y_val)]
-                                            
-    def categories(self):
-        return range(0,10)
-    
-    def pairs(self, dataset, N=1E6):
-        """Balanced set of randomly selected N positive and negative pairs given dataset"""
-        D = {int(c):[im for im in dataset if im.category()==str(c)] for c in self.categories()}
-        M = np.maximum(N, 256)
-        T = []
-        for (p,q) in combinations(self.categories(), 2):  # 45 category combinations 
-            T = T + zip(*(np.random.choice(D[q], size=np.ceil(M/(45*4))), np.random.choice(D[p], size=np.ceil(M/(45*4)))))  # different (p,q)
-            T = T + zip(*(np.random.choice(D[p], size=np.ceil(M/(45*4))), np.random.choice(D[q], size=np.ceil(M/(45*4)))))  # different (q,p)
-            T = T + zip(*(np.random.choice(D[p], size=np.ceil(M/(45*4))), np.random.choice(D[p], size=np.ceil(M/(45*4)))))  # same (p,p)
-            T = T + zip(*(np.random.choice(D[q], size=np.ceil(M/(45*4))), np.random.choice(D[q], size=np.ceil(M/(45*4)))))  # same (q,q)
-        return T[0:int(N)]
-
-    def triplets(self, dataset, N=1E6):
-        """Balanced set of randomly selected N positive and negative pairs given dataset"""
-        D = {int(c):[im for im in dataset if im.category()==str(c)] for c in self.categories()}
-        M = np.maximum(N, 256)
-        T = []
-        for (p,q) in combinations(self.categories(), 2):  # 45 category combinations 
-            T = T + zip(*(np.random.choice(D[p], size=np.ceil(M/(45*2))), np.random.choice(D[p], size=np.ceil(M/(45*2))), np.random.choice(D[q], size=np.ceil(M/(45*2)))))  # (p,p,q)
-            T = T + zip(*(np.random.choice(D[q], size=np.ceil(M/(45*2))), np.random.choice(D[q], size=np.ceil(M/(45*2))), np.random.choice(D[p], size=np.ceil(M/(45*2)))))  # different (q,q,p)
-        return T[0:int(N)]
-        
-    def testset(self):
-        y_test = self._labels(os.path.join(self.outdir, 't10k-labels-idx1-ubyte.gz')).tolist() 
-        return [ImageCategory(filename=os.path.join(self.outdir, 'test', '%06d.png' % k), category=str(y)) for (k, y) in enumerate(y_test)]
-
-    def dataset(self):
-        return (self.trainset(), self.validationset(), self.testset())
-    
-    def _export(self):
-        # Fetch data necessary to initial construction (do not gunzip!)
-        test_img_file = os.path.join(self.outdir, 't10k-images-idx3-ubyte.gz')
-        train_img_file = os.path.join(self.outdir, 'train-images-idx3-ubyte.gz')
-        
-        # Write dataset as 28x28 PNG
-        remkdir(os.path.join(self.outdir, 'train'))
-        remkdir(os.path.join(self.outdir, 'test'))        
+        y_train = self._labels(os.path.join(self.outdir, 'train-labels-idx1-ubyte.gz')).tolist()
+        x_train = []
+        train_img_file = os.path.join(self.outdir, 'train-images-idx3-ubyte.gz')        
         with gzip.open(train_img_file, 'rb') as gzfile:
             magic, size, rows, cols = struct.unpack(">IIII", gzfile.read(16))
             if magic != 2051:
@@ -128,22 +73,23 @@ class MNIST(object):
 
             for k in range(60000):
                 img = np.asarray(array("B", gzfile.read(rows*cols)).tolist()).reshape( (rows, cols) ).astype(np.uint8)
-                im = Image().array(img).resize(rows=32).saveas(os.path.join(self.outdir, 'train', '%06d.png' % k))
-                if (k % 10000) == 0:
-                    print('[vipy.dataset.mnist][%d/%d]: exporting training images to "%s"' % (k, 60000, os.path.join(self.outdir, 'train')))
-    
+                x_train.append(img)
+        
+        return (y_train, np.array(x_train))
+
+    def testset(self):
+        y_test = self._labels(os.path.join(self.outdir, 't10k-labels-idx1-ubyte.gz')).tolist()
+        x_test = []
+        test_img_file = os.path.join(self.outdir, 't10k-images-idx3-ubyte.gz')        
         with gzip.open(test_img_file, 'rb') as gzfile:
             magic, size, rows, cols = struct.unpack(">IIII", gzfile.read(16))
             if magic != 2051:
                 raise ValueError('Magic number mismatch, expected 2051, got %d' % magic)
-                
+
             for k in range(10000):
                 img = np.asarray(array("B", gzfile.read(rows*cols)).tolist()).reshape( (rows, cols) ).astype(np.uint8)
-                im = Image().array(img).resize(rows=32).saveas(os.path.join(self.outdir, 'test', '%06d.png' % k))
-                if (k % 10000) == 0:            
-                    print('[vipy.dataset.mnist][%d/%d]: exporting testing images to "%s"' % (k, 10000, os.path.join(self.outdir, 'test')))
+                x_test.append(img)
         
-        # Cleanup    
-        return self
-    
-    
+        return (y_test, np.array(x_test))
+
+        

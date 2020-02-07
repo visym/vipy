@@ -438,6 +438,10 @@ def isexe(filename):
     """Is the file an executable binary?"""
     return os.path.isfile(filename) and os.access(filename, os.X_OK)
 
+def isinstalled(cmd):
+    """Is the command is available on the path"""
+    return shutil.which(cmd) is not None
+
 
 def ispkl(filename):
     """Is the file a pickle archive file"""
@@ -706,9 +710,9 @@ def isimg(path):
 
 def isvideo(path):
     """Is an object an image with a supported video extension
-    ['.mp4','.mov']"""
+    ['.mp4','.mov', 'avi']"""
     (filename, ext) = os.path.splitext(path)
-    if ext.lower() in ['.mp4', '.mov']:
+    if ext.lower() in ['.mp4', '.mov', 'avi']:
         return True
     else:
         return False

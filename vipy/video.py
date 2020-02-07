@@ -267,7 +267,7 @@ class Video(object):
         
     def saveas(self, outfile, framerate=30, vcodec='libx264'):
         """Save numpy buffer in self._array to a video"""
-        assert self.isloaded(), "Video must be loaded prior to saveas"
+        assert self.isloaded(), "Video must be loaded prior to calling saveas()"
         (n, height, width, channels) = self._array.shape
         process = ffmpeg.input('pipe:', format='rawvideo', pix_fmt='rgb24', s='{}x{}'.format(width, height)) \
                         .filter('scale', -2, height) \
@@ -407,3 +407,29 @@ class Scene(Video):
         
         vid._array = np.array(vid._array)
         return vid.saveas(outfile)
+
+
+class VideoCategory(Video):
+    def __init__(self, url=None, filename=None, framerate=30, rot90cw=False, rot90ccw=False, attributes=None, category=None):
+        super(VideoCategory, self).__init__(url=url, filename=filename, framerate=framerate, rot90cw=rot90cw, rot90ccw=rot90ccw, attributes=attributes)
+        self._category = category
+
+    def __repr__(self):
+        strlist = []
+        if self.isloaded():
+            strlist.append("height=%d, width=%d, frames=%d" % (self._array[0].shape[0], self._array[0].shape[1], len(self._array)))        
+        if self.hasfilename():
+            strlist.append('filename="%s"' % self.filename())
+        if self.hasurl(): 
+            strlist.append('url="%s"' % self.url())
+        if self._category is not None:
+            strlist.append('category="%s"' % self.category())
+        return str('<vipy.video.VideoCategory: %s>' % (', '.join(strlist)))
+
+    def category(self, c=None):
+        if c is None:
+            return self._category
+        else:
+            self._category = c
+            return self
+    

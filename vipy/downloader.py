@@ -163,20 +163,15 @@ def download_and_unpack(url, output_dirname, sha1=None, verbose=True):
     archive_basename = path.basename(url)
     archive_filename = path.join(output_dirname, archive_basename)
     download(url, archive_filename, sha1=sha1, verbose=verbose)
-    extract(archive_filename, output_dirname, sha1=sha1, verbose=verbose)
+    extract(archive_filename, output_dirname, verbose=verbose)
 
-def download_unpack_cleanup(url, output_dirname, sha1=None, verbose=True):
+def download_unpack_and_cleanup(url, output_dirname, sha1=None, verbose=True):
     download_and_extract(url, output_dirname, sha1, verbose)
     os.remove(path.join(output_dirname, path.basename(url)))
 
 def unpack_and_cleanup(archive_filename, output_dirname, sha1=None, verbose=True):
     download_and_extract(url, output_dirname, sha1, verbose)
     os.remove(path.join(output_dirname, path.basename(url)))
-
-def cache_and_extract(url, output_dirname, sha1=None, verbose=True):
-    if not isfile(path.join(output_dirname, path.basename(url))):
-        download_and_extract(url, output_dirname, sha1, verbose)
-
 
 
 class ArchiveException(Exception):
