@@ -46,7 +46,8 @@ class Video(object):
             self.rot90cw()
         if rot90ccw:
             self.rot90ccw()
-        
+            
+            
     def __repr__(self):
         strlist = []
         if self.isloaded():
@@ -188,8 +189,7 @@ class Video(object):
                 warnings.warn('[vipy.video][WARNING]: load error for video "%s"' % self.filename())
             else:
                 raise
-            
-        self.flush()
+        self.flush()  # FIXME: this removes the clipping filter
         return self
 
     def shape(self):
@@ -225,8 +225,7 @@ class Video(object):
             print('[vipy.video.load]: Loading "%s"' % self.filename())
             
         # Generate single frame thumbnail to get frame sizes
-        (height, width) = self.thumbnail(verbose=verbosity>1).shape()
-            
+        (height, width) = self.thumbnail(verbose=verbosity>1).shape()            
         (out, err) = self._ffmpeg.output('pipe:', format='rawvideo', pix_fmt='rgb24') \
                                  .global_args('-loglevel', 'debug' if verbosity>1 else 'error') \
                                  .run(capture_stdout=True)
