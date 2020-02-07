@@ -1,4 +1,6 @@
-import urllib.request, urllib.parse, urllib.error
+import urllib.request
+import urllib.parse
+import urllib.error
 from urllib.parse import urlparse
 from os import chmod
 import os.path
@@ -9,12 +11,10 @@ from time import gmtime, strftime, localtime
 import sys
 import csv
 import hashlib
-#import vipy.viset
 import shutil
 import json
 import scipy.io
 import shelve
-#from . import math
 import re
 import uuid
 import dill
@@ -34,15 +34,18 @@ def try_import(package, pipname=None):
     except:
         raise ImportError('Missing package %s -  Run "pip install %s" ' % (package, package if pipname is None else pipname))
 
+
 def count_images_in_subdirectories(indir):
     """Count the total number of images in indir/subdir1, indir/subdir2, ..."""
     num_files = 0
     for d in dirlist(outdir):
         num_files += len(imlist(d))
     return num_files
-    
+
+
 def quietprint(x, verbosity=None):
     print(x)
+
 
 def rowvectorize(X):
     """Convert a 1D numpy array to a 2D row vector of size (1,N)"""
@@ -176,9 +179,11 @@ def imwritejet(img, imfile=None):
         raise ValueError('Input must be numpy array')
     return imfile
 
+
 def isuint8(img):
     return isnumpy(img) and img.dtype == np.dtype('uint8')
-    
+
+
 def imwritegray(img, imfile=None):
     """Write a floating point grayscale numpy image in [0,1] as [0,255] grayscale"""
     if imfile is None:
@@ -219,7 +224,7 @@ def imwrite(img, imfile=None, writeas=None):
         if img.ndim != 3:
             raise ValueError('numpy array must be 3D')
         if img.dtype == np.dtype('uint8'):
-            PIL.Image.fromarray(rgb2bgr(img)).save(imfile) # convert to BGR
+            PIL.Image.fromarray(rgb2bgr(img)).save(imfile)  # convert to BGR
         elif img.dtype == np.dtype('float32'):
             # convert to uint8 then BGR
             PIL.Image.fromarray(rgb2bgr(np.uint8(255.0*img))).save(imfile) 
@@ -227,7 +232,7 @@ def imwrite(img, imfile=None, writeas=None):
         if img.ndim != 3:
             raise ValueError('numpy array must be 3D')
         if img.dtype == np.dtype('uint8'):
-            PIL.Image.fromarray(img).save(imfile) # convert to BGR
+            PIL.Image.fromarray(img).save(imfile)  # convert to BGR
         elif img.dtype == np.dtype('float32'):
             # convert to uint8 then BGR
             PIL.Image.fromarray(np.uint8(255.0*img)).save(imfile) 
@@ -271,6 +276,7 @@ def seq(start, stop, step=1):
     else:
         return([])
 
+    
 def loadh5(filename):
     """Load an HDF5 file"""
     if ishdf5(filename):
@@ -281,14 +287,17 @@ def loadh5(filename):
     else:
         raise ValueError('Invalid HDF5 file "%s" ' % filename)
 
+    
 def savemat(outfile, vardict):
     """Write a dictionary to .mat file"""
     scipy.io.savemat(outfile, vardict)
     return outfile
 
+
 def loadmat(infile):
     """Read a dictionary to .mat file"""
     return scipy.io.loadmat(infile)
+
 
 def loadmat73(matfile, keys=None):
     """Matlab 7.3 format, keys should be a list of keys to access HDF5
@@ -302,6 +311,7 @@ def loadmat73(matfile, keys=None):
             f = f[k]
         return np.array(f)
 
+    
 def saveas(vars, outfile=None, type='dill'):
     """Save variables as a dill pickled file"""
     outfile = temppickle() if outfile is None else outfile
@@ -788,27 +798,32 @@ def bgr2gray(im_bgr):
     """Wrapper for numpy uint8 BGR image to uint8 numpy grayscale"""
     return np.array(PIL.Image.fromarray(im_bgr).convert('L'))
 
+
 def gray2bgr(im_gray):
     """Wrapper for numpy float32 gray image to uint8 numpy BGR"""    
     return np.array(PIL.Image.fromarray(im_gray, mode='F').convert('RGB'))[:,:,::-1]  # Gray -> RGB -> BGR
 
+
 def gray2rgb(im_gray):    
     return bgr2rgb(gray2bgr(im_gray))
+
 
 def bgr2rgb(im_bgr):
     """Wrapper for numpy BGR uint8 to numpy RGB uint8"""
     return np.array(im_bgr)[:,:,::-1] 
 
+
 def rgb2bgr(im_rgb):
     """same as bgr2rgb"""
     return bgr2rgb(im_rgb)
 
+
 def bgr2hsv(im_bgr):
     return np.array(PIL.Image.fromarray(bgr2rgb(im_bgr)).convert('HSV'))  # BGR -> RGB -> HSV
 
+
 def gray2hsv(im_gray):    
     return np.array(PIL.Image.fromarray(gray2rgb(im_gray)).convert('HSV'))  # Gray -> RGB -> HSV
-    
 
 
 def isarchive(filename):
@@ -953,6 +968,7 @@ def isstring(s):
     """Is an object a python string or unicode string?"""
     return isinstance(s, str)  # python3
 
+
 def timestamp():
     """Return date and time string in form DDMMMYY_HHMMSS"""
     return str.upper(strftime("%d%b%y_%I%M%S%p", localtime()))
@@ -1008,6 +1024,7 @@ def hasextension(filename):
     """Does the provided filename have a file extension (e.g. /path/to/file.ext) or not (e.g. /path/to/file)"""
     return fileext(filename) is not None
 
+
 def fileext(filename):
     """Given filename /a/b/c.ext return .ext"""
     (head, tail) = os.path.split(filename)
@@ -1049,6 +1066,3 @@ def linuxversion():
 def imcrop(img, bbox):
     """Crop a 2D or 3D numpy image given a vipy.geometry.BoundingBox"""
     return img[bbox.xmin():bbox.xmax(), bbox.ymin():bbox.ymax()]
-
-
-

@@ -22,6 +22,7 @@ import matplotlib.transforms
 import matplotlib.pyplot as plt
 import warnings
 
+
 # FIX <urlopen error [SSL: CERTIFICATE_VERIFY_FAILED] certificate
 # verify failed (_ssl.c:581)>
 # http://stackoverflow.com/questions/27835619/ssl-certificate-verify-failed-error
@@ -61,7 +62,7 @@ class Image(object):
         return self.__repr__()
 
     def __iter__(self):
-        """Yield single image for consistency with videos and templates"""
+        """Yield single image for consistency with videos"""
         yield self
 
     def __len__(self):
@@ -612,12 +613,15 @@ class Image(object):
     def jet(self):
         """Apply jet colormap to greyscale image and save as RGB"""
         return self._apply_colormap('jet')
+    
     def rainbow(self):
         """Apply rainbow colormap to greyscale image and convert to RGB"""        
         return self._apply_colormap('gist_rainbow')
+    
     def hot(self):
         """Apply hot colormap to greyscale image and convert to RGB"""                
         return self._apply_colormap('hot')
+    
     def bone(self):
         """Apply bone colormap to greyscale image and convert to RGB"""                        
         return self._apply_colormap('bone')
@@ -625,11 +629,13 @@ class Image(object):
     def greyscale(self):
         """Equivalent to grayscale()"""
         return self.grayscale()
+    
     def grey(self):
-        """Equivalent to grayscale()"""
+        """Alias for grayscale()"""
         return self.grayscale()
+    
     def gray(self):
-        """Equivalent to grayscale()"""
+        """Alias for grayscale()"""
         return self.grayscale()
 
     def saturate(self, min, max):
