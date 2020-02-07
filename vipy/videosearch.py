@@ -122,9 +122,10 @@ def download(vidurl, vidfile, skip=False, writeurlfile=True, max_filesize='350m'
         raise ImportError('Missing youtube-dl - Run "pip install youtube-dl" ')
     
     try:
-        print('[vipy.videosearch.download]: exporting "%s" to "%s"' % (vidurl, vidfile))
-        erno = os.system('youtube-dl "%s" -o %s --max-filesize %s --no-check-certificate' % (vidurl, vidfile, max_filesize))  # must be on path
-        print('youtube-dl returned %d' % erno)
+        print('[vipy.videosearch.download]: saving "%s" to "%s"' % (vidurl, vidfile))
+        erno = os.system('youtube-dl -q "%s" -o %s --max-filesize %s --no-check-certificate' % (vidurl, vidfile, max_filesize))  # must be on path
+        if erno != 0:
+            raise ValueError('youtube-dl returned %d' % erno)
         if os.path.isfile(vidfile):
             if writeurlfile:
                 urlfile = os.path.join(filepath(vidfile), '%s.url' % filebase(vidfile))

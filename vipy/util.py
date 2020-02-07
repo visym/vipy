@@ -657,6 +657,10 @@ def isvideourl(path):
     """Is a path a URL with image extension?"""
     return isurl(path) and isvideo(path)
 
+def isyoutubeurl(path):
+    """Is a path a youtube URL?"""
+    return isurl(path) and 'youtube.com' in path
+
 
 def checkerboard(m=8,n=256):
     """m=number of square by column, n=size of final image"""
@@ -710,9 +714,9 @@ def isimg(path):
 
 def isvideo(path):
     """Is an object an image with a supported video extension
-    ['.mp4','.mov', 'avi']"""
+    ['.mp4','.mov', 'avi', 'mkv', 'webm']"""
     (filename, ext) = os.path.splitext(path)
-    if ext.lower() in ['.mp4', '.mov', 'avi']:
+    if ext.lower() in ['.mp4', '.mov', 'avi', 'mkv', 'webm']:
         return True
     else:
         return False
@@ -982,6 +986,8 @@ def remkdir(path, flush=False):
 
 def toextension(filename, newext):
     """Convert myfile.ext to myfile.new.  Newext does not contain a period."""
+    if '.' in newext:
+        newext = newext.split('.')[1]
     (filename, oldext) = splitextension(filename)
     return filename + '.' + str(newext)
 

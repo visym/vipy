@@ -1,5 +1,5 @@
 import os
-from vipy.util import isnumpy, quietprint, isstring, isvideo, tempcsv, imlist, remkdir, filepath, filebase, tempMP4, isurl, isvideourl, templike, tempjpg
+from vipy.util import isnumpy, quietprint, isstring, isvideo, tempcsv, imlist, remkdir, filepath, filebase, tempMP4, isurl, isvideourl, templike, tempjpg, filetail, tempdir, isyoutubeurl, toextension
 from vipy.image import Image, ImageCategory, ImageDetection
 from vipy.show import savefig, figure
 import vipy.image
@@ -32,12 +32,14 @@ class Video(object):
         assert filename is not None or url is not None, 'Invalid constructor'
 
         if self._filename is None:
-            if 'VIPY_CACHE' in os.environ:
-                self._filename = os.path.join(remkdir(os.environ['VIPY_CACHE']), filetail(self._url))
-            elif isvideourl(self._url):
+            if isvideourl(self._url):
                 self._filename = templike(self._url)
+            elif isyoutubeurl(self._url):
+                self._filename = os.path.join(tempdir(), '%s' % self._url.split('?')[1])
             else:
-                self._filename = tempMP4()  # guess MP4 for URLs with no file extension
+                self._filename = tempMP4()  # guess MP4 for URLs with no file extension            
+            if 'VIPY_CACHE' in os.environ:
+                self._filename = os.path.join(remkdir(os.environ['VIPY_CACHE']), filetail(self._filename))
         
         self._ffmpeg = ffmpeg.input(self.filename(), r=framerate)
         if rot90cw:
@@ -61,7 +63,7 @@ class Video(object):
 
     def __getitem__(self, k):
         if k >= 0 and k < len(self):
-            return self._array[k]
+            return Image(array=self._array[k], colorspace='rgb')
         else:
             raise ValueError('Invalid frame index %d ' % k)
 
@@ -138,7 +140,16 @@ class Video(object):
 
         try:
             url_scheme = urllib.parse.urlparse(self._url)[0]
-            if url_scheme in ['http', 'https']:
+            if isyoutubeurl(self._url):
+                vipy.videosearch.download(self._url, self._filename, writeurlfile=False, skip=ignoreErrors)
+                if not self.hasfilename():
+                    for ext in ['mkv', 'mp4', 'webm']:
+                        f = '%s.%s' % (self.filename(), ext)
+                        if os.path.exists(f):
+                            self.filename(f)
+                    if not self.hasfilename():
+                        raise ValueError('Downloaded file not found "%s.*"' % self.filename())
+            elif url_scheme in ['http', 'https']:
                 vipy.downloader.download(self._url,
                                          self._filename,
                                          verbose=verbose,
@@ -202,16 +213,22 @@ class Video(object):
                                  .run(capture_stdout=True, capture_stderr=True)
         return im
         
-    def load(self, verbose=False):
-        """Load a video using ffmpeg, applying the requested filter chain"""
+    def load(self, verbosity=1, ignoreErrors=False):
+        """Load a video using ffmpeg, applying the requested filter chain.  If verbosity=2. then ffmpeg console output will be displayed"""
         if self.isloaded():
             return self
-        
+        elif not self.hasfilename() and not self.isloaded():
+            self.download()
+        if not self.hasfilename() and ignoreErrors:
+            print('[vipy.video.load]: Video file not found  "%s" - Ignoring' % self.filename())
+        if verbosity > 0:
+            print('[vipy.video.load]: Loading "%s"' % self.filename())
+            
         # Generate single frame thumbnail to get frame sizes
-        (height, width) = self.thumbnail().shape()
+        (height, width) = self.thumbnail(verbose=verbosity>1).shape()
             
         (out, err) = self._ffmpeg.output('pipe:', format='rawvideo', pix_fmt='rgb24') \
-                                 .global_args('-loglevel', 'debug' if verbose else 'error') \
+                                 .global_args('-loglevel', 'debug' if verbosity>1 else 'error') \
                                  .run(capture_stdout=True)
         self._array = np.frombuffer(out, np.uint8).reshape([-1, height, width, 3])
         return self
@@ -219,7 +236,7 @@ class Video(object):
 
     def clip(self, startframe, endframe):
         """Load a video clip betweeen start and end frames"""
-        assert startframe < endframe and startframe >= 0, "Invalid start and end frames" 
+        assert startframe <= endframe and startframe >= 0, "Invalid start and end frames (%s, %s)" % (str(startframe), str(endframe)) 
         assert not self.isloaded(), "Filters can only be applied prior to loading, flush() the video first then reload"               
         self._ffmpeg = self._ffmpeg.trim(start_frame=startframe, end_frame=endframe) \
                                    .setpts ('PTS-STARTPTS')
@@ -410,10 +427,14 @@ class Scene(Video):
 
 
 class VideoCategory(Video):
-    def __init__(self, url=None, filename=None, framerate=30, rot90cw=False, rot90ccw=False, attributes=None, category=None):
+    def __init__(self, url=None, filename=None, framerate=30, rot90cw=False, rot90ccw=False, attributes=None, category=None, startframe=None, endframe=None):
         super(VideoCategory, self).__init__(url=url, filename=filename, framerate=framerate, rot90cw=rot90cw, rot90ccw=rot90ccw, attributes=attributes)
         self._category = category
-
+        if startframe is not None and endframe is not None:
+            self._startframe = startframe
+            self._endframe = endframe
+            self.clip(startframe, endframe)
+        
     def __repr__(self):
         strlist = []
         if self.isloaded():
@@ -424,6 +445,8 @@ class VideoCategory(Video):
             strlist.append('url="%s"' % self.url())
         if self._category is not None:
             strlist.append('category="%s"' % self.category())
+        if not self.isloaded() and self._startframe is not None:
+            strlist.append('clip=(%d,%d)' % (self._startframe, self._endframe))
         return str('<vipy.video.VideoCategory: %s>' % (', '.join(strlist)))
 
     def category(self, c=None):
