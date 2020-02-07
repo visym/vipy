@@ -71,7 +71,7 @@ class Webcam(Camera):
             im = cv2.cvtColor(im, cv2.COLOR_BGR2GRAY)
         if self.FRAMERATE:
             self.TOC = timeit.default_timer()
-            print('[bobo.camera]: frame rate = ' + str(round(1.0/(self.TOC-self.TIC),1)) + ' Hz')
+            print('[vipy.camera]: frame rate = ' + str(round(1.0/(self.TOC-self.TIC),1)) + ' Hz')
             self.TIC = self.TOC
         return im
 

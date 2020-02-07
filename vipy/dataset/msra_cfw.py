@@ -1,6 +1,6 @@
 import os
 import csv
-from vipy.util import remkdir, filetail, fileext
+from vipy.util import remkdir, filetail, fileext, tofilename, is_hiddenfile
 from vipy.image import ImageCategory
 
 class CelebrityFacesInTheWild(object):
@@ -24,8 +24,8 @@ class CelebrityFacesInTheWild(object):
         k_img = 0
         with open(outfile,'w') as csvfile:
             for (idx_category, category) in enumerate(os.listdir(categorydir)):
-                label = bobo.util.tofilename(category)
-                if not bobo.util.is_hiddenfile(category):
+                label = tofilename(category)
+                if not is_hiddenfile(category):
                     print('[vipy.dataset.cfw]: exporting "%s"' % label)
             
                     imdir = os.path.join(categorydir, category)        
