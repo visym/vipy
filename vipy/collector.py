@@ -48,3 +48,10 @@ def dashboard():
 # consent montage with audio
 
 
+# client = boto3.client( 
+#   ...:     's3', 
+#   ...:     # Hard coded strings as credentials, not recommended. 
+#   ...:     aws_access_key_id=os.environ['VIPY_AWS_ACCESS_KEY_ID'], 
+#   ...:     aws_secret_access_key=os.environ['VIPY_AWS_SECRET_ACCESS_KEY'])
+
+ 

@@ -321,9 +321,8 @@ class Video(object):
     def pptx(self, outfile):
         pass
     
-    def show(self):
-        f = self.saveas(tempMP4())
-        os.system("ffplay %s" % f)
+    def play(self):
+        os.system("ffplay %s" % self.load().filename())
 
     def torch(self):
         try_import('torch');  import torch
@@ -450,7 +449,7 @@ class VideoCategory(Video):
         if startframe is not None and endframe is not None:
             self._startframe = startframe
             self._endframe = endframe
-            self.trim(startframe, endframe)  # FIXME: why is startframe not being respected for youtube videos?
+            self.trim(startframe, endframe) 
         
     def __repr__(self):
         strlist = []
