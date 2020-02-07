@@ -1,6 +1,7 @@
 import os
 import sqlite3
 import csv
+from vipy.util import remkdir
 from vipy.image import ImageDetection
 import numpy as np
 
@@ -38,11 +39,10 @@ LANDMARKS_3D = np.array([[-57.0899, 37.2398, 47.1156],
 
 
 class AFLW(object):
-    def __init__(self, datadir, sparkContext=None):
-        self.datadir = ddatadir        
+    def __init__(self, datadir)
+        self.datadir = remkdir(datadir)
         if not os.path.isdir(os.path.join(self.datadir)):
             raise ValueError('Download AFLW dataset manually to "%s" ' % self.datadir)
-        self.sparkContext = sparkContext
 
     def __repr__(self):
         return str('<vipy.dataset.aflw: %s>' % self.datadir)
