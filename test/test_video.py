@@ -41,23 +41,23 @@ def scene():
     assert v.width() == h and v.height() == w
     print('Video.rot90cw: PASSED')        
 
-    v = vid.clone().trim(0,10).rescale(0.5).load(verbose=False)
+    v = vid.clone().trim(0,10).rescale(0.5).load(verbosity=0)
     assert(v.height()*2 == h and v.width()*2 == w)
     print('Video.rescale: PASSED')    
 
-    v = vid.clone().trim(0,200).rot90cw().resize(rows=200).load(verbose=False)
+    v = vid.clone().trim(0,200).rot90cw().resize(rows=200).load(verbosity=0)
     assert(v.height() == 200)
     print('Video.resize: PASSED')    
     v.annotate('/Users/jba3139/Desktop/vipy.mp4')
     print('Video.annotate: PASSED')
 
-    v = vid.clone().trim(150,200).rot90cw().resize(rows=200).load(verbose=False)
+    v = vid.clone().trim(150,200).rot90cw().resize(rows=200).load(verbosity=0)
     assert(v.height() == 200)
     v.annotate('/Users/jba3139/Desktop/vipy.mp4')    
     print('Video.resize: PASSED')    
 
 
-    v = vid.clone().trim(150,200).rot90cw().resize(rows=200).crop(BoundingBox(xmin=0, ymin=0, width=10, height=20)).load(verbose=False)
+    v = vid.clone().trim(150,200).rot90cw().resize(rows=200).crop(BoundingBox(xmin=0, ymin=0, width=10, height=20)).load(verbosity=0)
     assert(v.height() == 20)
     print('Video.crop: PASSED')    
     #v.play('/Users/jba3139/Desktop/vipy.mp4')

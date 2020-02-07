@@ -41,7 +41,7 @@ class Video(object):
             if 'VIPY_CACHE' in os.environ:
                 self._filename = os.path.join(remkdir(os.environ['VIPY_CACHE']), filetail(self._filename))
         
-        self._ffmpeg = None
+        self._ffmpeg = ffmpeg.input(self.filename(), r=self._framerate)
         if rot90cw:
             self.rot90cw()
         if rot90ccw:
@@ -236,16 +236,14 @@ class Video(object):
         """Load a video clip betweeen start and end frames"""
         assert startframe <= endframe and startframe >= 0, "Invalid start and end frames (%s, %s)" % (str(startframe), str(endframe)) 
         assert not self.isloaded(), "Filters can only be applied prior to loading, flush() the video first then reload"               
-        self._ffmpeg = self._ffmpeg.trim(start_frame=startframe, end_frame=endframe) \
-                                   .setpts ('PTS-STARTPTS')
+        self._ffmpeg = self._ffmpeg.trim(start_frame=startframe, end_frame=endframe)
         return self
     
     def trim(self, startframe, endframe):
         """Alias for clip"""
-        assert startframe < endframe and startframe >= 0, "Invalid start and end frames" 
+        assert startframe <= endframe and startframe >= 0, "Invalid start and end frames" 
         assert not self.isloaded(), "Filters can only be applied prior to loading, flush() the video first then reload"               
-        self._ffmpeg = self._ffmpeg.trim(start_frame=startframe, end_frame=endframe) \
-                                   .setpts ('PTS-STARTPTS')
+        self._ffmpeg = self._ffmpeg.trim(start_frame=startframe, end_frame=endframe)
         return self
 
     def rot90cw(self):
@@ -431,7 +429,7 @@ class VideoCategory(Video):
         if startframe is not None and endframe is not None:
             self._startframe = startframe
             self._endframe = endframe
-            self.clip(startframe, endframe)
+            self.trim(startframe, endframe)
         
     def __repr__(self):
         strlist = []
