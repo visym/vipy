@@ -16,8 +16,8 @@ class HMDB(object):
     def __repr__(self):
         return str('<vipy.dataset.hmdb: "%s">' % self.datadir)
 
-    def download_and_unpack(self):
-        #vipy.downloader.download(URL, os.path.join(self.datadir, filetail(URL)))
+    def download(self):
+        vipy.downloader.download(URL, os.path.join(self.datadir, filetail(URL)))
         self._unpack(os.path.join(self.datadir, filetail(URL)), self.datadir)
             
     def dataset(self):
