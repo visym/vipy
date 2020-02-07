@@ -20,7 +20,7 @@ pip install numpy scipy matplotlib dill pillow ffmpeg-python
 
 Optional
 ```python
-pip install opencv-python ipython h5py nltk bs4 youtube-dl scikit-learn flickrapi dropbox torch
+pip install opencv-python ipython h5py nltk bs4 youtube-dl scikit-learn dropbox torch
 ```
 
 Contact
