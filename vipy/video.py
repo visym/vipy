@@ -18,7 +18,7 @@ import PIL.Image
 
 
 class Video(object):
-    def __init__(self, url=None, filename=None, framerate=30, rot90cw=False, rot90ccw=False, attributes=None, width=None, height=None):
+    def __init__(self, filename=None, url=None, framerate=30, rot90cw=False, rot90ccw=False, attributes=None, width=None, height=None):
         self._ignoreErrors = False
         self._url = url
         self._filename = filename
@@ -114,6 +114,9 @@ class Video(object):
     def hasfilename(self):
         return self._filename is not None and os.path.exists(self._filename)
 
+    def isdownloaded(self):
+        return self._filename is not None and os.path.exists(self._filename)
+    
     def hasurl(self):
         return self._url is not None and isurl(self._url)    
 
@@ -293,22 +296,32 @@ class Video(object):
         self._ffmpeg = self._ffmpeg.crop(bb.xmin(), bb.ymin(), bb.width(), bb.height())
         return self
         
-    def saveas(self, outfile, framerate=30, vcodec='libx264'):
-        """Save numpy buffer in self._array to a video"""
-        assert self.isloaded(), "Video must be loaded prior to calling saveas()"
-        (n, height, width, channels) = self._array.shape
-        process = ffmpeg.input('pipe:', format='rawvideo', pix_fmt='rgb24', s='{}x{}'.format(width, height)) \
-                        .filter('scale', -2, height) \
-                        .output(outfile, pix_fmt='yuv420p', vcodec=vcodec, r=framerate) \
+    def saveas(self, outfile, framerate=30, vcodec='libx264', verbose=False):
+        """Save video to new output file, either numpy buffer in self._array if loaded, or filter chain if not loaded"""
+        if self.isloaded():
+            (n, height, width, channels) = self._array.shape
+            process = ffmpeg.input('pipe:', format='rawvideo', pix_fmt='rgb24', s='{}x{}'.format(width, height)) \
+                            .filter('scale', -2, height) \
+                            .output(outfile, pix_fmt='yuv420p', vcodec=vcodec, r=framerate) \
+                            .overwrite_output() \
+                            .global_args('-loglevel', 'error') \
+                            .run_async(pipe_stdin=True)
+            
+            for frame in self._array:
+                process.stdin.write(frame.astype(np.uint8).tobytes())
+                
+            process.stdin.close()
+            process.wait()
+        elif self.isdownloaded():
+            self._ffmpeg.output(outfile, pix_fmt='yuv420p', vcodec=vcodec, r=framerate) \
                         .overwrite_output() \
-                        .global_args('-loglevel', 'error') \
-                        .run_async(pipe_stdin=True)
-        
-        for frame in self._array:
-            process.stdin.write(frame.astype(np.uint8).tobytes())
-
-        process.stdin.close()
-        process.wait()
+                        .global_args('-loglevel', 'error' if not verbose else 'debug') \
+                        .run()
+        elif self.hasurl():
+            raise ValueError('Input video url "%s" not downloaded, call download() first' % self.url())
+        else:
+            raise ValueError('Input video file not found "%s"' % self.filename())
+                
         return outfile
 
 
@@ -322,7 +335,9 @@ class Video(object):
         pass
     
     def play(self):
-        os.system("ffplay %s" % self.load().filename())
+        if not self.isdownloaded():
+            self.download()
+        os.system("ffplay %s" % self.filename())
 
     def torch(self):
         try_import('torch');  import torch
@@ -337,7 +352,7 @@ class Video(object):
 
 
 class Scene(Video):
-    def __init__(self, url=None, filename=None, framerate=30, rot90cw=False, rot90ccw=False, attributes=None, tracks=None, activities=None):
+    def __init__(self, filename=None, url=None, framerate=30, rot90cw=False, rot90ccw=False, attributes=None, tracks=None, activities=None):
         super(Scene, self).__init__(url=url, filename=filename, framerate=framerate, rot90cw=rot90cw, rot90ccw=rot90ccw, attributes=attributes)
 
         if tracks is not None:
@@ -443,7 +458,7 @@ class Scene(Video):
 
 
 class VideoCategory(Video):
-    def __init__(self, url=None, filename=None, framerate=30, rot90cw=False, rot90ccw=False, attributes=None, category=None, startframe=None, endframe=None):
+    def __init__(self, filename=None, url=None, framerate=30, rot90cw=False, rot90ccw=False, attributes=None, category=None, startframe=None, endframe=None):
         super(VideoCategory, self).__init__(url=url, filename=filename, framerate=framerate, rot90cw=rot90cw, rot90ccw=rot90ccw, attributes=attributes)
         self._category = category
         if startframe is not None and endframe is not None:

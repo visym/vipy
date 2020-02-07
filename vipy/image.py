@@ -1082,10 +1082,12 @@ class Scene(ImageCategory):
     
     
 class Batch(object):
-    def __init__(self, imlist):        
+    def __init__(self, imlist, seed=None):        
         """Create a batch of homogeneous vipy.image objects that can be operated on with a single function call"""
         assert isinstance(imlist, list) and all([isinstance(im, Image) for im in imlist]), "Invalid input"
         self._imlist = imlist
+        if seed is not None:
+            np.random.seed(seed)  # for repeatable take            
 
     def __repr__(self):
         return '<vipy.image.Batch: type="%s", batchsize=%d>' % (type(self._imlist[0]), len(self))
@@ -1102,7 +1104,19 @@ class Batch(object):
         else:
             self._imlist = imlist_
         return self
-        
+
+    def map(self, f):
+        pass
+
+    def filter(self, f):
+        pass
+
+    def reduce(self, f):
+        pass
+    
+    def take(self, n):
+        return np.random.choice(self._imlist, n)
+    
     def __getattr__(self, attr):
         """Call the same method on all Image objects.  The called method must return the image object."""
         assert hasattr(self._imlist[0], attr), "Invalid attribute"
@@ -1110,16 +1124,17 @@ class Batch(object):
         assert attr[0:2] != 'is' and attr[0:3] != 'has', "Invalid attribute"
         return lambda *args, **kw: self.list([getattr(im,attr)(*args, **kw) for im in self._imlist])
 
-    def torch(self):
-        try_import('torch');  import torch
-        
+    def torch(self):        
         """Convert the batch of N HxWxC images to a NxCxHxW torch tensor"""
+        try_import('torch');  import torch        
         return torch.from_numpy(np.vstack([np.expand_dims(im.rgb().numpy(),0) for im in self._imlist]).transpose(0,3,1,2))
+
     
 def RandomImage(rows=None, cols=None):
     rows = np.random.randint(128, 1024) if rows is None else rows
     cols = np.random.randint(128, 1024) if cols is None else cols         
     return Image(array=np.uint8(255*np.random.rand(rows, cols, 3)), colorspace='rgb')
+
 
 def RandomImageDetection(rows=None, cols=None):
     rows = np.random.randint(128, 1024) if rows is None else rows

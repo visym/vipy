@@ -28,7 +28,6 @@ def dashboard():
 # im.dict() export
 # ffmpeg clip fix on youtube videos
 # collector JSON and video URL import
-# boto S3 credentials
 # S3 URL support
 # dynamoDB access (internal)
 # gateway API (external)
@@ -37,7 +36,7 @@ def dashboard():
 # test coverage
 # dashboard
 # box filtering
-# stabilization
+# stabilization (client)
 # video ffplay command
 # dataset archival
 # video transformations
@@ -46,6 +45,21 @@ def dashboard():
 # baseline training
 # dataset prep
 # consent montage with audio
+# parallel batch
+# vipy.video.Frames
+# heatmaps: https://eatsleepdata.com/how-to-generate-a-geographical-heatmap-with-python/
+# object detectors
+# demographics statistics
+# upload rates, collection rates per activity
+# consent@visym.com
+# consensus verification management
+# consensus question management
+# sorting by worst and best rated video
+# new project configuration
+# collector leaderboards
+# local VIA integration for refinement, vs. matplotlib callbacks in existing GUI?
+#    since we do not need to create the rectangles, only refine them maybe the matplotlib GUI is good enough?
+#    but there may be a lot of rectangles.  how can I quickly fix it?
 
 
 # client = boto3.client( 
