@@ -25,7 +25,7 @@ pip install opencv-python ipython h5py nltk bs4 youtube-dl scikit-learn flickrap
 
 Contact
 -------------------
-Jeffrey Byrne <jeff@visym.com>
+Jeffrey Byrne <<jeff@visym.com>>
 
 
 
