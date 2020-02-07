@@ -1,7 +1,8 @@
 import os
+import numpy as np
 from vipy.util import remkdir, isstring, quietprint, filetail, dirlist, imlist, readcsv
 from vipy.image import ImageCategory
-import numpy as np
+import vipy.downloader
 
 
 URL = 'http://vis-www.cs.umass.edu/lfw/lfw.tgz'
@@ -13,11 +14,12 @@ URL_PAIRS_VIEW2 = 'http://vis-www.cs.umass.edu/lfw/pairs.txt'
 class LFW(object):    
     def __init__(self, datadir):
         """Datadir contains the unpacked contents of LFW from $URL -> /path/to/lfw"""
-        self.lfwdir = datadir
+        self.lfwdir = os.path.join(remkdir(datadir), 'lfw')
  
-        if not os.path.isdir(os.path.join(self.lfwdir, 'AJ_Cook')):
-            raise ValueError("Download url '%s' and unpack this tarball to $datadir.  The subject names should be in subdirectories $datadir/firstname_lastname" % URL)
-        
+    def download(self, verbose=True):
+        vipy.downloader.download_and_unpack(URL, self.lfwdir, verbose=verbose)
+        return self
+    
     def __repr__(self):
         return str("<vipy.dataset.lfw: '%s'>" % self.lfwdir)
 
@@ -30,6 +32,10 @@ class LFW(object):
         fnames = imlist(os.path.join(self.lfwdir, subject))
         return [ImageCategory(category=subject, filename=f) for f in fnames]
 
+    def dataset(self):
+        return [ImageCategory(category=s, filename=f) for s in self.subjects() for f in imlist(os.path.join(self.lfwdir, s))]        
+            
+        return 
     def dictionary(self):
         """List of all Images of all subjects"""
         return {s:self.subject_images(s) for s in self.subjects()}

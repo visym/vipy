@@ -18,6 +18,7 @@ class ActivityNet(object):
 
     def download(self):
         vipy.downloader.download(URL, os.path.join(self.datadir, filetail(URL)))
+        return self
 
     def dataset(self):
         fps = 30.0  # is this right?
