@@ -271,9 +271,9 @@ class BoundingBox():
         return self.width() * self.height()
 
     def to_xywh(self, xywh=None):
-        """Return bounding box corners as [x,y,width,height] format"""
+        """Return bounding box corners as (x,y,width,height) tuple"""
         if xywh is None:
-            return [self._xmin, self._ymin, self.width(), self.height()]
+            return tuple([self._xmin, self._ymin, self.width(), self.height()])
         else:
             assert len(xywh) == 4, "Invalid input"
             self._xmin = xywh[0]
@@ -360,6 +360,7 @@ class BoundingBox():
 
     def dilate(self, scale=1):
         """Change scale of bounding box keeping centroid constant"""
+        assert isnumber(scale), "Invalid input"
         w = self.width()
         h = self.height()
         c = self.centroid()
@@ -373,7 +374,7 @@ class BoundingBox():
         self._ymax = c[1] + new_y
         return self
 
-    def dilate_height(self, scale=1):
+    def dilate_height(self, scale=1):        
         """Change scale of bounding box in y direction keeping centroid constant"""
         h = self.height()
         c = self.centroid()

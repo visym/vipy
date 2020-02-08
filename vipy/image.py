@@ -708,7 +708,7 @@ class ImageCategory(Image):
         return str('<vipy.imagecategory: %s>' % (', '.join(strlist)))
 
     def __eq__(self, other):
-        return self._category.lower() == other._category.lower()
+        return self._category.lower() == other._category.lower() if isinstance(other, ImageCategory) else False
 
     def __ne__(self, other):
         return self._category.lower() != other._category.lower()
@@ -756,7 +756,7 @@ class ImageCategory(Image):
 class ImageDetection(ImageCategory):
     def __init__(self, filename=None, url=None, category=None, attributes=None,
                  xmin=None, xmax=None, ymin=None, ymax=None,
-                 bbwidth=None, bbheight=None, bbox=None, array=None, colorspace=None):
+                 width=None, bbwidth=None, height=None, bbheight=None, bbox=None, array=None, colorspace=None):
         
         # ImageCategory class inheritance
         super(ImageDetection, self).__init__(filename=filename,
@@ -767,7 +767,7 @@ class ImageDetection(ImageCategory):
                                              colorspace=colorspace)
 
         # Construction options
-        (width,height) = (bbwidth,bbheight)
+        (width, height) = (bbwidth if bbwidth is not None else width, bbheight if bbheight is not None else height)
         if bbox is not None:            
             assert isinstance(bbox, BoundingBox), "Invalid bounding box"            
             self.bbox = bbox
@@ -793,11 +793,17 @@ class ImageDetection(ImageCategory):
             strlist.append('bbox=(xmin=%1.1f,ymin=%1.1f,xmax=%1.1f,ymax=%1.1f)' %
                            (self.bbox.xmin(), self.bbox.ymin(),self.bbox.xmax(), self.bbox.ymax()))
         return str('<vipy.imagedetection: %s>' % (', '.join(strlist)))
-            
+
+    def __eq__(self, other):
+        return self._category.lower() == other._category.lower() and self.bbox == other.bbox if isinstance(other, ImageDetection) else False
+    
     def __hash__(self):
         return hash(self.__repr__())
 
     def show(self, figure=None, nowindow=False):
+        """Show the ImageDetection in the provided figure number"""
+        if figure is not None:
+            assert isinstance(figure, int) and figure > 0, "Invalid figure number, provide an integer > 0"
         self.load()
         if self.bbox.invalid():
             warnings.warn('Ignoring invalid bounding box "%s"' % str(self.bbox))                
@@ -814,12 +820,11 @@ class ImageDetection(ImageCategory):
 
     def boundingbox(self, xmin=None, xmax=None, ymin=None, ymax=None,
                     bbox=None, width=None, height=None, dilate=None,
-                    xcentroid=None, ycentroid=None, dilate_topheight=None):        
-        if xmin is None and xmax is None and \
-           ymin is None and ymax is None and \
-           bbox is None and \
-           width is None and height is None and \
-           dilate is None and dilate_topheight is None:
+                    xcentroid=None, ycentroid=None):
+        """Modify the bounding box using the provided parameters, or return the box if no parameters provided"""
+        if (xmin is None and xmax is None and ymin is None and ymax is None and 
+            bbox is None and width is None and height is None and 
+            dilate is None and xcentroid is None and ycentroid is None):
             return self.bbox
         elif (xmin is not None and xmax is not None and
               ymin is not None and ymax is not None):
@@ -829,27 +834,25 @@ class ImageDetection(ImageCategory):
             self.bbox = bbox
         elif (xmin is not None and ymin is not None and
               width is not None and height is not None):
-            self.bbox = BoundingBox(xmin=xmin, ymin=ymin,width=width,height=height)
+            self.bbox = BoundingBox(xmin=xmin, ymin=ymin, width=width, height=height)
         elif (xcentroid is not None and ycentroid is not None and
               width is not None and height is not None):
             self.bbox = BoundingBox(xcentroid=xcentroid,
                                     ycentroid=ycentroid,
                                     width=width,
                                     height=height)
-        elif (dilate is None and dilate_topheight is None):
-            raise ValueError('Invalid bounding box - Either rect coordinates '
-                             'or bbox object must be provided')
+        elif (dilate is None):
+            raise ValueError('Invalid bounding box')
 
-        if dilate_topheight is not None:
-            self.bbox.dilate_topheight(dilate_topheight)
         if dilate is not None:
             self.bbox.dilate(dilate)
+            
         return self
 
 
     def invalid(self, flush=False):
-        return self.bbox.invalid() or not super(ImageDetection, self).isvalid(
-            flush=flush)
+        """An ImageDetection is invalid when the box is invalid"""
+        return self.bbox.invalid()
 
     def isinterior(self, W=None, H=None, flush=False):
         """Is the bounding box fully within the image rectangle?  Use provided
@@ -871,17 +874,15 @@ class ImageDetection(ImageCategory):
 
     def resize(self, cols=None, rows=None):
         """Resize image buffer and bounding box"""
+        self.bbox.scalex(cols / float(self.width()))
+        self.bbox.scaley(rows / float(self.height()))
         self = super(ImageDetection, self).resize(cols, rows)
-        self.bbox = BoundingBox(xmin=0, ymin=0, xmax=self.width(), ymax=self.height())
         return self
 
     def fliplr(self):
         """Mirror buffer and bounding box around vertical axis"""
-        self = super(ImageDetection, self).fliplr() 
-        xmin = self.bbox.xmin()
-        xmax = self.bbox.xmax()
-        self.bbox._xmin = self.width() - xmax
-        self.bbox._xmax = self.bbox.xmin() + (xmax-xmin)
+        self.bbox.fliplr(width=self.width())        
+        self = super(ImageDetection, self).fliplr()
         return self
 
     def crop(self, bbox=None):

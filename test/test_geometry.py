@@ -5,6 +5,7 @@ import vipy.geometry
 import vipy.linalg
 from test_vipy import TestFailed
 
+
 def geometry():
     C = vipy.linalg.random_positive_semidefinite_matrix(2)
     assert vipy.geometry.covariance_to_ellipse(C).shape == (3,)
@@ -85,7 +86,7 @@ def boundingbox():
 
     assert BoundingBox(centroid=(0,0), width=10, height=20) == BoundingBox(xmin=-5, ymin=-10, width=10, height=20)
     assert BoundingBox(xmin=10, ymin=20, xmax=30, ymax=40) != BoundingBox(xmin=-5, ymin=-10, width=10, height=20)    
-    print('[test_geometry.boundingbox]: equality PASSED')        
+    print('[test_geometry.boundingbox]: equivalence PASSED')        
     
     try:
         bb = BoundingBox(mask=np.zeros( (10,10) ))        
