@@ -1079,3 +1079,8 @@ def linuxversion():
 def imcrop(img, bbox):
     """Crop a 2D or 3D numpy image given a vipy.geometry.BoundingBox"""
     return img[bbox.xmin():bbox.xmax(), bbox.ymin():bbox.ymax()]
+
+
+class Failed(Exception):
+   """Raised when unit test fails to throw an exception"""
+   pass

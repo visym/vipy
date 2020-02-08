@@ -2,7 +2,7 @@ import os
 import sys
 
 
-def run():
+def test_import():
     import vipy
     import vipy.activity
     import vipy.annotation
@@ -45,7 +45,8 @@ def run():
     import vipy.dataset.msra_cfw
     import vipy.dataset.vggface2
     print('[test_import]: PASSED')
+
     
 if __name__ == "__main__":
-    run()
+    test_import()
 

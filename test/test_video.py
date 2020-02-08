@@ -3,7 +3,7 @@ import numpy as np
 import vipy.video
 import vipy.videosearch
 import vipy.object
-from vipy.util import tempjpg, tempdir
+from vipy.util import tempjpg, tempdir, Failed
 from vipy.geometry import BoundingBox
 import pdb
 from vipy.dataset.kinetics import Kinetics400
@@ -11,26 +11,31 @@ from vipy.dataset.activitynet import ActivityNet
 from vipy.dataset.lfw import LFW
 
 
-def datasets():
-    d = Kinetics400('/tmp/kinetics').download().trainset()
-    v = d[0].load()[0].resize(rows=256).saveas('kinetics.jpg')
-    d = ActivityNet('/tmp/activitynet').download().dataset()
-    v = d[0].load()[0].saveas('activitynet.jpg')
-    d = LFW('/tmp/lfw').dataset()
-    d[0].saveas('lfw.jpg')
+def test_datasets():
+    #d = Kinetics400('/tmp/kinetics').download().trainset()
+    #v = d[0].load()[0].resize(rows=256).saveas('kinetics.jpg')
+    #d = ActivityNet('/tmp/activitynet').download().dataset()
+    #v = d[0].load()[0].saveas('activitynet.jpg')
+    #d = LFW('/tmp/lfw').download().dataset()
+    #d[0].saveas('lfw.jpg')
     print('Video.datasets: PASSED')
+
     
-def video():    
+def test_video():    
     # Common Parameters
     mp4url = vipy.videosearch.youtube('owl',1)
     
     # Empty constructor
     try:
         v = vipy.video.Video()
+        raise Failed()
+    except Failed:
+        raise
     except:
         print('Empty constructor: PASSED')
 
-def scene():
+        
+def test_scene():
     mp4file = 'Video.mp4'    
     vid = vipy.video.Scene(filename=mp4file, tracks=[vipy.object.Track('person', frames=[0,200], boxes=[BoundingBox(xmin=0,ymin=0,width=200,height=400), BoundingBox(xmin=0,ymin=0,width=400,height=100)]),
                                                      vipy.object.Track('vehicle', frames=[0,200], boxes=[BoundingBox(xmin=100,ymin=200,width=300,height=400), BoundingBox(xmin=400,ymin=300,width=200,height=100)])])    
@@ -73,10 +78,7 @@ def scene():
 
 
 if __name__ == "__main__":
-    datasets()    
-    video()
-    scene()
-
-
-
+    test_datasets()    
+    test_video()
+    test_scene()
 

@@ -3,10 +3,10 @@ from vipy.geometry import BoundingBox
 from vipy.image import ImageDetection
 import vipy.geometry
 import vipy.linalg
-from test_vipy import TestFailed
+from vipy.util import Failed
 
 
-def geometry():
+def test_geometry():
     C = vipy.linalg.random_positive_semidefinite_matrix(2)
     assert vipy.geometry.covariance_to_ellipse(C).shape == (3,)
     print('[test_geometry.cov_to_ellipse]: passed')
@@ -18,16 +18,16 @@ def geometry():
     try:
         p = np.random.rand(4,2)            
         vipy.geometry.dehomogenize(p)
-        raise TestFailed()
-    except TestFailed:
+        raise Failed()
+    except Failed:
         raise
     except:
         pass
     try:
         p = np.random.rand(4,3)                    
         vipy.geometry.homogenize(p)
-        raise TestFailed()
-    except TestFailed:
+        raise Failed()
+    except Failed:
         raise
     except:
         pass    
@@ -37,8 +37,8 @@ def geometry():
     vipy.geometry.apply_homography(np.random.rand(3,3), np.random.rand(2,1))
     try:
         vipy.geometry.apply_homography(np.random.rand(3,3), np.random.rand(1,3))
-        raise TestFailed()
-    except TestFailed:
+        raise Failed()
+    except Failed:
         raise
     except:
         pass    
@@ -57,33 +57,33 @@ def geometry():
     print('[test_geometry.normalize]: passed')    
 
     
-def boundingbox():
+def test_boundingbox():
     # Constructors
     try:
         bb = BoundingBox()
-        raise TestFailed()
-    except TestFailed:
+        raise Failed()
+    except Failed:
         raise
     except:
         pass
     try:
         bb = BoundingBox(xmin=0)
-        raise TestFailed()
-    except TestFailed:
+        raise Failed()
+    except Failed:
         raise
     except:
         pass
     try:
         bb = BoundingBox(xmin=0, ymin=0, xcentroid=0, ycentroid=0)
-        raise TestFailed()
-    except TestFailed:
+        raise Failed()
+    except Failed:
         raise
     except:
         pass
     try:
         bb = BoundingBox(xmin=0, width=0, xcentroid=0, ycentroid=0)
-        raise TestFailed()
-    except TestFailed:
+        raise Failed()
+    except Failed:
         raise
     except:
         pass    
@@ -113,8 +113,8 @@ def boundingbox():
     
     try:
         bb = BoundingBox(mask=np.zeros( (10,10) ))        
-        raise TestFailed()
-    except TestFailed:
+        raise Failed()
+    except Failed:
         raise
     except:
         print('[test_geometry.boundingbox]: Degenerate mask constructor: PASSED')        
@@ -161,8 +161,8 @@ def boundingbox():
     bb2 = BoundingBox(xmin=200, ymin=200, width=100, height=100)    
     try:
         bb1.intersection(bb2)
-        raise TestFailed()
-    except TestFailed:
+        raise Failed()
+    except Failed:
         raise
     except:
         bb1.intersection(bb2, strict=False)
@@ -261,8 +261,8 @@ def boundingbox():
     assert BoundingBox(xmin=-10, ymin=-10, width=30, height=40).imclipshape(128,256) == BoundingBox(xmin=0, ymin=0, width=20, height=30)    
     try:
         BoundingBox(xmin=-100, ymin=-100, width=30, height=40).imclip(np.zeros( (128,256) ))
-        TestFailed()
-    except TestFailed:
+        Failed()
+    except Failed:
         raise
     except:
         print('[test_geometry.boundingbox.imclip]: PASSED')    
@@ -279,7 +279,7 @@ def boundingbox():
     print('[test_geometry.boundingbox.mindim]: PASSED')    
 
 
-def ellipse():
+def test_ellipse():
     e = BoundingBox(xmin=-20, ymin=-10, width=30, height=40).ellipse()
 
     assert e.inside( (10,10) )
@@ -293,10 +293,11 @@ def ellipse():
     img = e.mask()
     assert img.dtype == bool
     print('[test_geometry.ellipse.mask]: PASSED')
+
     
 if __name__ == "__main__":
-    geometry()
-    boundingbox()
-    ellipse()
+    test_geometry()
+    test_boundingbox()
+    test_ellipse()
 
 

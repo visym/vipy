@@ -3,11 +3,10 @@ import numpy as np
 import vipy.image
 from vipy.image import ImageDetection, Image, ImageCategory, Scene
 from vipy.object import Detection
-from vipy.util import tempjpg, tempdir
-from test_vipy import TestFailed
+from vipy.util import tempjpg, tempdir, Failed
 from vipy.geometry import BoundingBox
 
-def image():
+def test_image():
     
     # Common Parameters
     jpegurl = 'https://upload.wikimedia.org/wikipedia/commons/thumb/2/23/Bubo_virginianus_06.jpg/1920px-Bubo_virginianus_06.jpg'
@@ -28,8 +27,8 @@ def image():
     im = None
     try:
         im = Image(url='myurl');
-        raise TestFailed()
-    except TestFailed:
+        raise Failed()
+    except Failed:
         raise
     except:
         print('[test_image.image]: Malformed URL constructor: PASSED')
@@ -226,7 +225,7 @@ def image():
     print('[test_image.image]: RandomImageDetection PASSED')                        
 
 
-def imagedetection():
+def test_imagedetection():
     # Constructors
     im = ImageDetection()
     im.__repr__()
@@ -239,8 +238,8 @@ def imagedetection():
     im = ImageDetection(filename='jebyrne.jpg', category='face', bbox=BoundingBox(0,0,100,100))
     try:
         im = ImageDetection(filename='jebyrne.jpg', category='face', bbox='a_bad_type')
-        raise TestFailed()
-    except TestFailed:
+        raise Failed()
+    except Failed:
         raise
     except:
         print('[test_image.imagedetection]: bounding box constructor PASSED')
@@ -248,8 +247,8 @@ def imagedetection():
     im = ImageDetection(filename='jebyrne.jpg', category='face', xmin=-1, ymin=-2, ymax=10, xmax=20)
     try:
         im = ImageDetection(filename='jebyrne.jpg', category='face', xmin='a_bad_type', ymin=-2, ymax=10, xmax=20)        
-        raise TestFailed()
-    except TestFailed:
+        raise Failed()
+    except Failed:
         raise
     except:
         print('[test_image.imagedetection]: (xmin,ymin,xmax,ymax) bounding box constructor PASSED')
@@ -259,8 +258,8 @@ def imagedetection():
     print('[test_image.imagedetection]: invalid box: PASSED')
     try:
         im.crop();
-        raise TestFailed()
-    except TestFailed:
+        raise Failed()
+    except Failed:
         raise
     except:
         print('[test_image.imagedetection]: invalid box crop: PASSED')        
@@ -279,8 +278,8 @@ def imagedetection():
     assert im.boundingbox(xmin=-1, ymin=-2, ymax=10, xmax=20).boundingbox(dilate=1.5).bbox == BoundingBox(xmin=-1, ymin=-2, ymax=10, xmax=20).dilate(1.5)    
     try:
         im.boundingbox(xmin=1)
-        raise TestFailed()
-    except TestFailed:
+        raise Failed()
+    except Failed:
         raise
     except:
         print('[test_image.imagedetection]: boundingbox() methods PASSED')
@@ -375,22 +374,22 @@ def imagedetection():
     assert np.sum(ImageDetection(array=img, xmin=0, ymin=0, width=2, height=3).mask(10,10)) == 6    
     print('[test_image.imagedetection]: mask  PASSED')
     
-def scene():
+def test_scene():
     im = Scene()
     print('[test_image.scene]:Empty Scene Constructor: PASSED')
 
     im = None
     try:
         im = Scene(objects='a bad type');
-        raise TestFailed()
-    except TestFailed:
+        raise Failed()
+    except Failed:
         raise
     except:
         pass
     try:
         im = Scene(objects=['a bad type']);
-        raise TestFailed()
-    except TestFailed:
+        raise Failed()
+    except Failed:
         raise
     except:
         pass
@@ -420,9 +419,9 @@ def scene():
     
     
 if __name__ == "__main__":
-    imagedetection()
-    image()    
-    scene()
+    test_imagedetection()
+    test_image()    
+    test_scene()
 
 
 
