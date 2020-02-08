@@ -15,6 +15,7 @@ if __name__ == "__main__":
 
    import test_image   
    test_image.image()
+   test_image.imagedetection()   
    test_image.scene()    
 
    import test_video

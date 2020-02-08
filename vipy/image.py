@@ -20,7 +20,7 @@ import io
 import matplotlib.transforms
 import matplotlib.pyplot as plt
 import warnings
-
+import base64
 
 # FIX <urlopen error [SSL: CERTIFICATE_VERIFY_FAILED] certificate
 # verify failed (_ssl.c:581)>
@@ -243,8 +243,18 @@ class Image(object):
         return self.load().array().shape[0]
 
     def shape(self):
+        """Return the (height, width) or equivalently (rows, cols) of the image"""
         return (self.load().height(), self.width())
 
+    def centroid(self):
+        """Return the real valued center pixel of the image (col=x,row=y)"""
+        return (self.load().width()/2.0, self.height()/2.0)
+
+    def centerpixel(self):
+        """Return the integer valued center pixel of the image (col=i,row=j)"""
+        c = np.round(self.centroid())
+        return (int(c[0]), int(c[1]))
+    
     def array(self, np_array=None):
         """Replace self._array with provided numpy array"""
         if np_array is None:
@@ -419,7 +429,7 @@ class Image(object):
         return self
 
     def zeropad(self, padwidth, padheight):
-        """Pad image using np.pad constant by adding dx on both left and right, and dy on top and bottom"""
+        """Pad image using np.pad constant by adding padwidth on both left and right , or padwidth=(left,right) for different pre/postpadding,, and padheight on top and bottom or padheight=(top,bottom) for different pre/post padding"""
         if not isinstance(padwidth, tuple):
             padwidth = (padwidth, padwidth)
         if not isinstance(padheight, tuple):
@@ -436,7 +446,6 @@ class Image(object):
 
     def meanpad(self, dx, dy):
         """Pad image using np.pad constant where constant is image mean"""
-        #mu = self.mean()
         if self.load().array().ndim == 3:
             pad_size = ((dy, dy), (dx, dx), (0, 0))
         else:
@@ -447,42 +456,34 @@ class Image(object):
     def boxclip(self):
         """Clip bounding box to the image rectangle, and delete bbox if outside image rectangle.  Requires image load"""
         (H,W) = self.load().shape()
-        if self.bbox.intersection(BoundingBox(xmin=0, ymin=0, xmax=W-1, ymax=H-1), strict=False).isdegenerate():
+        if self.bbox.intersection(BoundingBox(xmin=0, ymin=0, xmax=W, ymax=H), strict=False).isdegenerate():
             warnings.warn("Degenerate bounding box does not intersect image - Deleting")
             self.bbox = None
         return self
 
     def minsquare(self):
-        """Crop image of size (HxW) to (min(H,W), min(H,W))"""
-        img = self.load().array()
-        S = np.min(img.shape[0:2])
-        self._array = self._array[0:S,0:S,:]
-        return self
+        """Crop image of size (HxW) to (min(H,W), min(H,W)), keeping upper left corner constant"""
+        S = np.min(self.load().shape())
+        return self.crop(BoundingBox(xmin=0, ymin=0, width=S, height=S))
 
-    def centersquare(self):
-        """Crop image of size (NxN) in the center"""
-        """FIXME: this is off by one"""
-        n = int(np.min(self.shape()))
-        return self.crop(BoundingBox(xcentroid=int(self.width()/2.0), ycentroid=int(self.height()/2.0), width=n, height=n)).resize(n,n)
-        
     def maxsquare(self):
-        """Crop image of size (HxW) to (max(H,W), max(H,W)) with zeropadding"""
-        S = np.max(self.shape())
-        self.zeropad( (0, S-self.width()), (0, S-self.height()))
-        self._array = self._array[0:S,0:S,:] if self.channels() != 1 else  self._array[0:S,0:S]
-        return self
-
+        """Crop image of size (HxW) to (max(H,W), max(H,W)) with zeropadding, keeping upper left corner constant"""
+        S = np.max(self.load().shape())
+        return self.zeropad(S,S).crop(BoundingBox(0, 0, width=S, height=S))
+                         
+    def centersquare(self):
+        """Crop image of size (NxN) in the center, such that N=min(width,height)"""
+        """FIXME: this is off by one?"""
+        N = int(np.min(self.shape()))
+        return self.crop(BoundingBox(xcentroid=self.width()/2.0, ycentroid=self.height()/2.0, width=N, height=N))
+        
     def maxsquare_with_meanpad(self):
         """Crop image of size (HxW) to (max(H,W), max(H,W)) with zeropadding"""
-        img = self.load().array()
-        S = np.max(img.shape)
-        self._array = np.pad(self.load().array(), ((0,S-self.height()), (0,S-self.width()), (0,0)), mode='mean')
-        self._array = self._array[0:S,0:S,:]
-        return self
-
+        S = np.max(self.load().shape())
+        return self.meanpad(S,S).crop(BoundingBox(0, 0, width=S, height=S))
+        
     def crop(self, bbox, pad='mean'):
-        """Crop the image buffer using the supplied bounding box object - NOT
-        idemponent."""
+        """Crop the image buffer using the supplied bounding box object, clipping the box to the image rectangle"""
         assert isinstance(bbox, BoundingBox) and bbox.valid(), "Invalid bounding box"
         bbox = bbox.imclip(self.load().array())  
         self._array = self.array()[int(bbox.ymin()):int(bbox.ymax()),
@@ -658,6 +659,9 @@ class Image(object):
     def mean(self):
         return np.mean(self.load().array(), axis=(0, 1)).flatten()
 
+    def sum(self):
+        return np.sum(self.load().array().flatten())
+    
     def mat2gray(self, min=None, max=None):
         """Convert the image buffer so that [min,max] -> [0,1]"""
         self._colorspace('float')
@@ -675,12 +679,11 @@ class Image(object):
         return self
 
     def html(self, alt=None):
-        im = self.clone().rgb()
         buf = io.BytesIO()
-        PIL.Image.frombuffer(im).save(buf, format='JPEG')
-        b = buf.getvalue().encpde('base64')
+        self.clone().rgb().pil().save(buf, format='JPEG')
+        b = base64.b64encode(buf.getvalue())
 
-        alt_text = alt if alt is not None else im.filename()
+        alt_text = alt if alt is not None else self.filename()
         return '<img src="data:image/png;base64,%s" alt="%s" />' % (b, alt_text)
 
 
@@ -756,7 +759,9 @@ class ImageCategory(Image):
 class ImageDetection(ImageCategory):
     def __init__(self, filename=None, url=None, category=None, attributes=None,
                  xmin=None, xmax=None, ymin=None, ymax=None,
-                 width=None, bbwidth=None, height=None, bbheight=None, bbox=None, array=None, colorspace=None):
+                 width=None, bbwidth=None, height=None, bbheight=None,
+                 bbox=None, array=None, colorspace=None,
+                 xcentroid=None, ycentroid=None):
         
         # ImageCategory class inheritance
         super(ImageDetection, self).__init__(filename=filename,
@@ -775,6 +780,8 @@ class ImageDetection(ImageCategory):
             self.bbox = BoundingBox(xmin=xmin, ymin=ymin, xmax=xmax, ymax=ymax)
         elif xmin is not None and ymin is not None and width is not None and height is not None:
             self.bbox = BoundingBox(xmin=xmin, ymin=ymin, width=width, height=height)
+        elif xcentroid is not None and ycentroid is not None and width is not None and height is not None:
+            self.bbox = BoundingBox(xcentroid=xcentroid, ycentroid=ycentroid, width=width, height=height)            
         else:
             # Empty box to be updated with boundingbox() method
             self.bbox = BoundingBox(xmin=0, ymin=0, width=0, height=0)
@@ -886,26 +893,27 @@ class ImageDetection(ImageCategory):
         return self
 
     def crop(self, bbox=None):
-        """Crop image and update bounding box"""
+        """Crop image using stored or provided bounding box, then set the bounding box equal to the image rectangle"""
         if bbox is not None:
             assert isinstance(bbox, BoundingBox), "Invalid bounding box"                    
-        self = super(ImageDetection, self).crop(
-            bbox=self.bbox if bbox is None else bbox)
-        if self.bbox is not None:
-            self.bbox = BoundingBox(xmin=0, ymin=0,
-                                    xmax=self.width(), ymax=self.height())
+        self = super(ImageDetection, self).crop(bbox=self.bbox if bbox is None else bbox)
+        self.bbox = BoundingBox(xmin=0, ymin=0, xmax=self.width(), ymax=self.height())
         return self
 
-    def centercrop(self, bbwidth, bbheight):
-        (W,H) = (self.width(), self.height())
-        self.bbox = BoundingBox(xcentroid=W/2.0, ycentroid=H/2.0, width=bbwidth, height=bbheight)
-        return self.crop()
-
-    def maxsquare(self):
-        """Return a square bounding box centered at current centroid"""
-        self.bbox = self.bbox.maxsquare()
+    def centersquare(self, width, height):
+        """Set a square bounding box of dimension min(width,height), centered on centroid"""
+        (W,H) = (width, height)
+        return self.boundingbox(xcentroid=W/2.0, ycentroid=H/2.0, width=W, height=H)
+    
+    def centercrop(self, width, height):
+        """Crop the image with a centercrop of dimension (width,height)"""
+        return self.centersquare(width, height).crop()
+    
+    def minsquare(self):
+        """Set a square bounding box centered at current centroid, such that the box dim=min(bbwidth, bbheight), do not crop the image"""
+        self.bbox = self.bbox.minsquare()
         return self
-
+    
     def dilate(self, s):
         """Dilate bounding box by scale factor"""
         self.bbox = self.bbox.dilate(s)
@@ -919,8 +927,9 @@ class ImageDetection(ImageCategory):
         return self
 
     def zeropad(self, dx, dy):
-        """Pad image using np.pad constant"""
+        """Pad image with dx zeros at the left, dx zeros at right, dy zeros at the top, dy zeros at the bottom, update box accordingly"""
         # image class inheritance
+        assert dx>=0 and dy>=0, "Invalid input"
         self = super(ImageDetection, self).zeropad(dx, dy)
         self.bbox = self.bbox.translate(dx, dy)
         return self
@@ -936,16 +945,13 @@ class ImageDetection(ImageCategory):
     def mask(self, W=None, H=None):
         """Return a binary array of the same size as the image (or using the
         provided image width and height (W,H) size to avoid an image load),
-        with ones inside the bounding box"""
+        with ones inside the bounding box, do not modify this image or this bounding box"""
         if (W is None or H is None):
             (H, W) = (int(np.round(self.height())),
                       int(np.round(self.width())))
         immask = np.zeros((H, W)).astype(np.uint8)
-        (ymin, ymax, xmin, xmax) = (int(np.round(self.bbox.ymin())),
-                                    int(np.round(self.bbox.ymax())),
-                                    int(np.round(self.bbox.xmin())),
-                                    int(np.round(self.bbox.xmax())))
-        immask[ymin:ymax, xmin:xmax] = 1
+        bb = self.bbox.clone().imclip(immask).int()
+        immask[bb.ymin():bb.ymax(), bb.xmin():bb.xmax()] = 1
         return immask
 
     def setzero(self, bbox=None):
@@ -1140,7 +1146,7 @@ def RandomImageDetection(rows=None, cols=None):
     rows = np.random.randint(128, 1024) if rows is None else rows
     cols = np.random.randint(128, 1024) if cols is None else cols     
     return ImageDetection(array=np.uint8(255*np.random.rand(rows, cols, 3)), colorspace='rgb', category='RandomImageDetection',
-                          xmin=np.random.randint(0,cols), ymin=np.random.randint(0,rows),
+                          xmin=np.random.randint(0,cols-16), ymin=np.random.randint(0,rows-16),
                           bbwidth=np.random.randint(16,cols), bbheight=np.random.randint(16,rows))
 
         

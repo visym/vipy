@@ -186,8 +186,7 @@ def isuint8(img):
 
 def isnumber(x):
     """Is the input a python type of a number or a string containing a number?"""
-    return isinstance(x, (int, float)) or (isstring(x) and isfloat(x))
-
+    return isinstance(x, (int, float)) or (isnumpy(x) and np.isscalar(x)) or (isstring(x) and isfloat(x)) 
 
 def isfloat(x):
     """Is the input a float or a string that can be converted to float?"""

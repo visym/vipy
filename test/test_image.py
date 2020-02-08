@@ -165,102 +165,43 @@ def image():
     print(im.float())
     assert(im.shape() == (200,200) and im.channels() == 1)                    
     print('[test_image.image]: Image conversion: PASSED')
-
-    # Image colorspace conversion
     im = Image(filename='jebyrne_grey.jpg').load()
     assert im.attributes['colorspace'] == 'grey'
     assert im.max() == 255
     print('[test_image.image]: Greyscale image conversion: PASSED')
+
+    # Crops
+    imorig = Image(filename='jebyrne_grey.jpg').load()
+    (H,W) = im.shape()
+    (x,y) = im.centerpixel()
+    assert imorig.clone().maxsquare().shape() == (np.maximum(W,H), np.maximum(W,H)) and imorig.array()[0,0] == im.array()[0,0]
+    assert imorig.minsquare().shape() == (np.minimum(W,H), np.minimum(W,H)) and imorig.array()[0,0] == im.array()[0,0]
+    assert imorig.centersquare().shape() == (np.minimum(W,H), np.minimum(W,H)) and imorig.array()[x,y] == im.array()[x,y]   
+    print('[test_image.image]: crops PASSED')
+
+    # Pixel operations
+    im = Image(filename='jebyrne_grey.jpg').load()
+    im.min()
+    im.max()
+    im.mean()
+    im.intensity()
+    im.saturate(0, 0.5)
+    im.mat2gray()
+    im.gain(1)
+    im.bias(2)
+    print('[test_image.image]: greylevel transformations  PASSED')            
+
+    # Image conversion
+    im = Image(filename='jebyrne.jpg').load()    
+    im.pil()
+    im.numpy()
+    im.html()
+    print('[test_image.image]: image conversions  PASSED')
     
     # Image colormaps
     im = ImageDetection(filename='jebyrne.jpg', xmin=100, ymin=100, bbwidth=200, bbheight=200, category='face').crop()
     im.rgb().jet().bone().hot().rainbow()
-    print('[test_image.image]: Image colormaps: PASSED')
-
-    # ImageDetection
-    im = ImageDetection()
-    im.__repr__()
-    assert im.category() is None and im.bbox.xywh() == (0,0,0,0)
-    print('[test_image.image] Empty ImageDetection constructor PASSED')
-    im = ImageDetection(category='test', xmin=0, ymin=0, width=200, height=200)
-    print('[test_image.image] Empty filename ImageDetection constructor PASSED')
-    print('[test_image.image] Empty bounding box ImageDetection constructor PASSED')
-
-    im = ImageDetection(filename='jebyrne.jpg', category='face', bbox=BoundingBox(0,0,100,100))
-    try:
-        im = ImageDetection(filename='jebyrne.jpg', category='face', bbox='a_bad_type')
-        raise TestFailed()
-    except TestFailed:
-        raise
-    except:
-        print('[test_image.image] ImageDetection bounding box constructor PASSED')
-
-    im = ImageDetection(filename='jebyrne.jpg', category='face', xmin=-1, ymin=-2, ymax=10, xmax=20)
-    try:
-        im = ImageDetection(filename='jebyrne.jpg', category='face', xmin='a_bad_type', ymin=-2, ymax=10, xmax=20)        
-        raise TestFailed()
-    except TestFailed:
-        raise
-    except:
-        print('[test_image.image] ImageDetection (xmin,ymin,xmax,ymax) bounding box constructor PASSED')
-
-
-    # Image detections - invalid box
-    im = ImageDetection(filename='jebyrne.jpg', xmin=100, ymin=100, bbwidth=200, bbheight=-200, category='face')
-    assert im.invalid()
-    print('[test_image.image]: ImageDetection invalid box: PASSED')
-    try:
-        im.crop();
-        raise TestFailed()
-    except TestFailed:
-        raise
-    except:
-        print('[test_image.image]: ImageDetection invalid box crop: PASSED')        
-    im = ImageDetection(filename='jebyrne.jpg', xmin=100000, ymin=100000, bbwidth=200, bbheight=200, category='face')
-    assert im.boxclip().bbox is None
-    print('[test_image.image]: ImageDetection invalid imagebox: PASSED')            
-
-    
-    im = ImageDetection(filename='jebyrne.jpg', category='face', xmin=-1, ymin=-2, ymax=10, xmax=20)
-    assert im.boundingbox() == BoundingBox(-1, -2, 20, 10)
-    assert not im.boundingbox(xmin=0, ymin=0, width=10, height=20) == BoundingBox(0,0,width=10, height=20)
-    assert im.boundingbox(xmin=0, ymin=0, width=10, height=20).bbox == BoundingBox(0,0,width=10, height=20)    
-    assert im.boundingbox(bbox=BoundingBox(1,2,3,4)).bbox == BoundingBox(1,2,3,4)
-    assert im.boundingbox(bbox=BoundingBox(xcentroid=1,ycentroid=2,width=3,height=4)).bbox == BoundingBox(xcentroid=1,ycentroid=2,width=3,height=4)
-    assert im.boundingbox(xmin=-1, ymin=-2, ymax=10, xmax=20).boundingbox(dilate=1.5).bbox == BoundingBox(xmin=-1, ymin=-2, ymax=10, xmax=20).dilate(1.5)
-    assert im.boundingbox(xmin=-1, ymin=-2, ymax=10, xmax=20).boundingbox(dilate=1.5).bbox == BoundingBox(xmin=-1, ymin=-2, ymax=10, xmax=20).dilate(1.5)    
-    try:
-        im.boundingbox(xmin=1)
-        raise TestFailed()
-    except TestFailed:
-        raise
-    except:
-        print('[test_image.image] ImageDetection.boundingbox()  PASSED')
-    
-    
-    im = ImageDetection(filename='jebyrne.jpg', xmin=100, ymin=100, xmax=200, ymax=200, category='face').crop()    
-    im = ImageDetection(filename='jebyrne.jpg', xmin=100, ymin=100, bbwidth=200, bbheight=200, category='face').crop()
-    assert(im.shape() == (200,200))
-    assert(im.bbox.width() == im.width() and im.bbox.height() == im.height() and im.bbox.xmin()==0 and im.bbox.ymin()==0)
-    print('[test_image.image] ImageDetection crop  PASSED')
-    
-    im = ImageDetection(filename='jebyrne.jpg', xmin=100, ymin=100, bbwidth=200, bbheight=200, category='face')
-    im = im.rescale(0.5)
-    assert(im.bbox.width() == 100 and im.bbox.height() == 100)
-    print('[test_image.image] ImageDetection rescale  PASSED')
-
-    im = ImageDetection(filename='jebyrne.jpg', xmin=100, ymin=100, width=200, height=300, category='face')
-    im = im.resize(cols=int(im.width()//2.0), rows=int(im.height()//2.0))
-    assert(im.bbox.width() == 100 and im.bbox.height() == 150)
-    print('[test_image.image] ImageDetection resize  PASSED')
-    
-    im = ImageDetection(array=np.zeros( (10,10) ), xmin=100, ymin=100, xmax=200, ymax=200, category='face')
-    assert not im.isinterior()
-    assert not im.isinterior(10,10)    
-    print('[test_image.image] ImageDetection interior  PASSED')
-    
-
-    
+    print('[test_image.image]: Image colormaps: PASSED')            
     
     # Image category
     im = ImageCategory(filename='jebyrne.jpg', category='face')
@@ -275,8 +216,7 @@ def image():
     print('[test_image.image]: ImageCategory category conversion PASSED')    
     im.score(1.0)
     im.probability(1.0)
-    
-    
+        
     # Random images
     im = vipy.image.RandomImage(128,256)
     assert im.shape() == (128, 256)
@@ -285,6 +225,155 @@ def image():
     assert im.clone().crop().width() == im.bbox.imclipshape(W=256,H=128).width()
     print('[test_image.image]: RandomImageDetection PASSED')                        
 
+
+def imagedetection():
+    # Constructors
+    im = ImageDetection()
+    im.__repr__()
+    assert im.category() is None and im.bbox.xywh() == (0,0,0,0)
+    print('[test_image.imagedetection]: Empty ImageDetection constructor PASSED')
+    im = ImageDetection(category='test', xmin=0, ymin=0, width=200, height=200)
+    print('[test_image.imagedetection]: Empty filename ImageDetection constructor PASSED')
+    print('[test_image.imagedetection]: Empty bounding box ImageDetection constructor PASSED')
+
+    im = ImageDetection(filename='jebyrne.jpg', category='face', bbox=BoundingBox(0,0,100,100))
+    try:
+        im = ImageDetection(filename='jebyrne.jpg', category='face', bbox='a_bad_type')
+        raise TestFailed()
+    except TestFailed:
+        raise
+    except:
+        print('[test_image.imagedetection]: bounding box constructor PASSED')
+
+    im = ImageDetection(filename='jebyrne.jpg', category='face', xmin=-1, ymin=-2, ymax=10, xmax=20)
+    try:
+        im = ImageDetection(filename='jebyrne.jpg', category='face', xmin='a_bad_type', ymin=-2, ymax=10, xmax=20)        
+        raise TestFailed()
+    except TestFailed:
+        raise
+    except:
+        print('[test_image.imagedetection]: (xmin,ymin,xmax,ymax) bounding box constructor PASSED')
+
+    im = ImageDetection(filename='jebyrne.jpg', xmin=100, ymin=100, bbwidth=200, bbheight=-200, category='face')
+    assert im.invalid()
+    print('[test_image.imagedetection]: invalid box: PASSED')
+    try:
+        im.crop();
+        raise TestFailed()
+    except TestFailed:
+        raise
+    except:
+        print('[test_image.imagedetection]: invalid box crop: PASSED')        
+    im = ImageDetection(filename='jebyrne.jpg', xmin=100000, ymin=100000, bbwidth=200, bbheight=200, category='face')
+    assert im.boxclip().bbox is None
+    print('[test_image.imagedetection]: invalid imagebox: PASSED')            
+
+    # boundingbox() methods
+    im = ImageDetection(filename='jebyrne.jpg', category='face', xmin=-1, ymin=-2, ymax=10, xmax=20)
+    assert im.boundingbox() == BoundingBox(-1, -2, 20, 10)
+    assert not im.boundingbox(xmin=0, ymin=0, width=10, height=20) == BoundingBox(0,0,width=10, height=20)
+    assert im.boundingbox(xmin=0, ymin=0, width=10, height=20).bbox == BoundingBox(0,0,width=10, height=20)    
+    assert im.boundingbox(bbox=BoundingBox(1,2,3,4)).bbox == BoundingBox(1,2,3,4)
+    assert im.boundingbox(bbox=BoundingBox(xcentroid=1,ycentroid=2,width=3,height=4)).bbox == BoundingBox(xcentroid=1,ycentroid=2,width=3,height=4)
+    assert im.boundingbox(xmin=-1, ymin=-2, ymax=10, xmax=20).boundingbox(dilate=1.5).bbox == BoundingBox(xmin=-1, ymin=-2, ymax=10, xmax=20).dilate(1.5)
+    assert im.boundingbox(xmin=-1, ymin=-2, ymax=10, xmax=20).boundingbox(dilate=1.5).bbox == BoundingBox(xmin=-1, ymin=-2, ymax=10, xmax=20).dilate(1.5)    
+    try:
+        im.boundingbox(xmin=1)
+        raise TestFailed()
+    except TestFailed:
+        raise
+    except:
+        print('[test_image.imagedetection]: boundingbox() methods PASSED')
+    
+    # Crop
+    im = ImageDetection(filename='jebyrne.jpg', xmin=100, ymin=100, bbwidth=200, bbheight=200, category='face').crop()
+    assert(im.shape() == (200,200))
+    assert(im.bbox.width() == im.width() and im.bbox.height() == im.height() and im.bbox.xmin()==0 and im.bbox.ymin()==0)
+    im = ImageDetection(filename='jebyrne.jpg')
+    (H,W) = im.shape()
+    im = im.boundingbox(xmin=0, ymin=0, width=W, height=H).crop()
+    assert(im.shape() == (H,W))
+    print('[test_image.imagedetection]: crop  PASSED')
+
+    # Rescale
+    im = ImageDetection(filename='jebyrne.jpg', xmin=100, ymin=100, bbwidth=200, bbheight=200, category='face')
+    im = im.rescale(0.5)
+    assert(im.bbox.width() == 100 and im.bbox.height() == 100)
+    print('[test_image.imagedetection]: rescale  PASSED')
+
+    # Resize
+    im = ImageDetection(filename='jebyrne.jpg', xmin=100, ymin=100, width=200, height=300, category='face')
+    im = im.resize(cols=int(im.width()//2.0), rows=int(im.height()//2.0))
+    assert(im.bbox.width() == 100 and im.bbox.height() == 150)
+    print('[test_image.imagedetection]: resize  PASSED')
+
+    # Isinterior
+    im = ImageDetection(array=np.zeros( (10,10) ), xmin=100, ymin=100, xmax=200, ymax=200, category='face')
+    assert not im.isinterior()
+    assert not im.isinterior(10,10)    
+    print('[test_image.imagedetection]: interior  PASSED')
+
+    # Fliplr
+    img = np.random.rand(10,20)
+    im = ImageDetection(array=img, xmin=0, ymin=0, xmax=5, ymax=10) 
+    assert not im.isinterior()
+    assert np.allclose(im.clone().fliplr().crop().array(), np.fliplr(im.crop().array()))
+    print('[test_image.imagedetection]: fliplr  PASSED')
+
+    # Centercrop
+    img = np.random.rand(10,20)
+    im = ImageDetection(array=img, xmin=0, ymin=0, xmax=5, ymax=10)
+    assert im.centercrop(1,2).shape() == (2,1)
+    assert im.boundingbox().xywh() == (0,0,1,2)    
+    print('[test_image.imagedetection]: centercrop PASSED')
+
+    # Dilate
+    im = ImageDetection(array=img, xmin=1, ymin=0, width=3, height=4)
+    assert im.clone().dilate(2).bbox == BoundingBox(centroid=im.bbox.centroid(), width=6, height=8) and img.shape[0] == im.height()
+    print('[test_image.imagedetection]: dilate PASSED')
+
+    # Pad
+    img = np.random.rand(20,40)    
+    im = ImageDetection(array=img, xmin=0, ymin=0, width=40, height=20)
+    assert np.allclose(im.clone().zeropad(10,10).crop().array(), img) and (im.clone().zeropad(10,20).shape() == (20+20*2, 40+10*2))
+    img = np.random.rand(20,40)    
+    im = ImageDetection(array=img, xmin=0, ymin=0, width=40, height=20)
+    assert np.allclose(im.clone().meanpad(10,10).crop().array(), img) and (im.clone().meanpad(10,20).shape() == (20+20*2, 40+10*2))
+    print('[test_image.imagedetection]: pad  PASSED')
+
+    # Boxclip
+    img = np.random.rand(20,10,3)    
+    im = ImageDetection(array=img, xmin=0, ymin=0, width=10, height=20)
+    assert im.clone().boxclip().bbox.xywh() == (0,0,10,20)
+    im = ImageDetection(array=img, xmin=0, ymin=0, width=10, height=200)
+    assert im.clone().boxclip().bbox.xywh() == (0,0,10,20)
+    im = ImageDetection(array=img, xmin=100, ymin=200, width=10, height=200)
+    assert im.clone().boxclip().bbox is None
+    im = ImageDetection(array=img, xmin=-1, ymin=-2, width=100, height=200)
+    assert im.clone().boxclip().bbox.xywh() == (0,0,10,20)    
+    im = ImageDetection(array=img, xmin=1, ymin=1, width=9, height=9)
+    assert im.clone().boxclip().bbox.xywh() == (1,1,9,9)    
+    print('[test_image.imagedetection]: boxclip  PASSED')
+
+    # Square crops
+    img = np.random.rand(20,10,3)
+    assert ImageDetection(array=img, xmin=0, ymin=0, width=10, height=10).minsquare().crop().shape() == (10,10)
+    print('[test_image.imagedetection]: minsquare  PASSED')    
+    img = np.random.rand(21,9,3)    
+    assert ImageDetection(array=img, xmin=0, ymin=0, width=9, height=21).centersquare(9,9).crop().shape() == (9,9)
+    img = np.random.rand(10,11,3)    
+    assert ImageDetection(array=img, xmin=0, ymin=0, width=11, height=10).centersquare(10,10).crop().shape() == (10,10)
+    print('[test_image.imagedetection]: centersquare  PASSED')    
+
+    # Setzero
+    img = np.random.rand(20,10,3)
+    assert ImageDetection(array=img, xmin=0, ymin=0, width=2, height=3).setzero().crop().sum() == 0
+    print('[test_image.imagedetection]: setzero  PASSED')
+
+    # Mask
+    assert np.sum(ImageDetection(array=img, xmin=-1, ymin=-2, width=2, height=3).mask(10,10)) == 1
+    assert np.sum(ImageDetection(array=img, xmin=0, ymin=0, width=2, height=3).mask(10,10)) == 6    
+    print('[test_image.imagedetection]: mask  PASSED')
     
 def scene():
     im = Scene()
@@ -331,7 +420,8 @@ def scene():
     
     
 if __name__ == "__main__":
-    image()
+    imagedetection()
+    image()    
     scene()
 
 

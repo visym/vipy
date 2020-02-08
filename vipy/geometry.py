@@ -3,7 +3,6 @@ import numpy as np
 import scipy.spatial
 from itertools import product
 from vipy.util import try_import, istuple, isnumpy, isnumber
-from vipy.math import isnumber
 from vipy.linalg import columnvector, rowvector
 
 
@@ -45,7 +44,7 @@ def similarity_transform_2x3(c=(0,0), r=0, s=1):
 
 
 def similarity_transform(txy=(0,0), r=0, s=1):
-    """Return a 3x3 similarity transformation with translation txy=(x,y), rotation r (radians, scale=s"""
+    """Return a 3x3 similarity transformation with translation tuple txy=(x,y), rotation r (radians, scale=s"""
     assert istuple(txy) and len(txy)==2 and isnumber(r) and isnumber(s), "Invalid input"    
     R = np.mat([[np.cos(r), -np.sin(r), 0], [np.sin(r), np.cos(r), 0], [0,0,1]])
     S = np.mat([[s,0,0], [0, s, 0], [0,0,1]])
@@ -64,7 +63,7 @@ def affine_transform(txy=(0,0), r=0, sx=1, sy=1, kx=0, ky=0):
 
 
 def random_affine_transform(txy=((0,1),(0,1)), r=(0,1), sx=(0.1,1), sy=(0.1,1), kx=(0.1,1), ky=(0.1,1)):
-    """Return a random 3x3 affine transformation matrix for the provided ranges"""
+    """Return a random 3x3 affine transformation matrix for the provided ranges, inputs must be tuples"""
     assert istuple(txy) and istuple(txy[0]) and istuple(txy[1]) and istuple(r) and istuple(sx) and istuple(sy) and istuple(kx) and istuple(ky), "Invalid input"
     uniform_random_in_range = lambda t: np.random.uniform(t[0], t[1])
     return affine_transform(txy=(uniform_random_in_range(txy[0]), uniform_random_in_range(txy[1])),
@@ -122,7 +121,7 @@ class BoundingBox():
             self._xmax = self._xmin + float(width)
             self._ymax = self._ymin + float(height)
         elif centroid is not None and width is not None and height is not None:
-            if not (istuple(centroid) and len(centroid) == 2 and isnumber(centroid[0]) and isnumber(centroid[1]) and isnumber(width) and isnumber(height)):
+            if not (len(centroid) == 2 and isnumber(centroid[0]) and isnumber(centroid[1]) and isnumber(width) and isnumber(height)):
                 raise ValueError('Invalid box coordinates')
             self._xmin = float(centroid[0]) - float(width)/2.0
             self._ymin = float(centroid[1]) - float(height)/2.0
@@ -449,13 +448,13 @@ class BoundingBox():
         return self.xywh( (ury, W-urx, h, w) )
     
     def fliplr(self, img=None, width=None):
-        """Flip the box left/right consistent with fliplr of the provided img, or the image width"""
+        """Flip the box left/right consistent with fliplr of the provided img (or consistent with the image width)"""
         if img is not None:
             assert isnumpy(img), "Invalid image input"
             width = img.shape[1]
         else:
             assert isnumber(width), "Invalid width"
-        (x,y,w,h) = self.to_xywh()
+        (x,y,w,h) = self.xywh()
         self._xmin = width - self._xmax
         self._xmax = self._xmin + w
         return self
@@ -471,16 +470,27 @@ class BoundingBox():
         return self
     
     def maxsquare(self):
-        """Set the bounding box to be square by dilating the minimum dimension, keeping centroid constant"""
-        w = max(self.width(), self.height())
-        h = max(self.height(), self.width())
-        c = self.centroid()
-        self._xmin = c[0]-(float(w)/2.0)
-        self._ymin = c[1]-(float(h)/2.0)
-        self._xmax = c[0]+(float(w)/2.0)
-        self._ymax = c[1]+(float(h)/2.0)
+        """Set the bounding box to be square by setting width and height to the maximum dimension of the box, keeping centroid constant"""
+        if self.width() != self.height():
+            dim = float(max(self.width(), self.height()))
+            c = self.centroid()
+            self._xmin = c[0]-(dim/2.0)
+            self._ymin = c[1]-(dim/2.0)
+            self._xmax = c[0]+(dim/2.0)
+            self._ymax = c[1]+(dim/2.0)
         return self
 
+    def minsquare(self):
+        """Set the bounding box to be square by setting width and height to the minimum dimension of the box, keeping centroid constant"""
+        if self.width() != self.height():
+            dim = float(min(self.width(), self.height()))
+            c = self.centroid()
+            self._xmin = c[0]-(dim/2.0)
+            self._ymin = c[1]-(dim/2.0)
+            self._xmax = c[0]+(dim/2.0)
+            self._ymax = c[1]+(dim/2.0)
+        return self
+    
     def hasoverlap(self, img):
         """Does the bounding box intersect with the provided image rectangle?"""
         assert isnumpy(img), "Invalid image input"        
@@ -494,7 +504,7 @@ class BoundingBox():
         else:
             assert width is not None and height is not None, "Invalid width and height - both must be provided"
             assert isnumber(width) and isnumber(height), "Invalid width and height - both must be numbers"
-        self.intersection(BoundingBox(xmin=0, ymin=0, xmax=width-1, ymax=height-1))
+        self.intersection(BoundingBox(xmin=0, ymin=0, xmax=width, ymax=height))
         return self
 
     def imclipshape(self, W, H):

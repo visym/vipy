@@ -58,14 +58,37 @@ def geometry():
 
     
 def boundingbox():
+    # Constructors
     try:
         bb = BoundingBox()
         raise TestFailed()
     except TestFailed:
         raise
     except:
-        print('[test_geometry.boundingbox]: Empty constructor: PASSED')
-
+        pass
+    try:
+        bb = BoundingBox(xmin=0)
+        raise TestFailed()
+    except TestFailed:
+        raise
+    except:
+        pass
+    try:
+        bb = BoundingBox(xmin=0, ymin=0, xcentroid=0, ycentroid=0)
+        raise TestFailed()
+    except TestFailed:
+        raise
+    except:
+        pass
+    try:
+        bb = BoundingBox(xmin=0, width=0, xcentroid=0, ycentroid=0)
+        raise TestFailed()
+    except TestFailed:
+        raise
+    except:
+        pass    
+    print('[test_geometry.boundingbox]: Degenerate constructors: PASSED')
+        
     str(BoundingBox(xmin=0, ymin=0, width=10, height=10.2))
     print('[test_geometry.boundingbox]: __str__ PASSED')
 
@@ -100,7 +123,7 @@ def boundingbox():
     assert bb.isdegenerate()
     print('[test_geometry.boundingbox]: Invalid box: PASSED')
 
-
+    # Corners
     bb = BoundingBox(xmin=10, ymin=20, width=100, height=200)
     assert bb.xmin() == 10
     assert bb.ymin() == 20
@@ -113,12 +136,25 @@ def boundingbox():
     assert bb.lowerleft() == (10, 20+200)
     assert bb.lowerright() == (10+100, 20+200)            
     print('[test_geometry.boundingbox.corners]: PASSED')
+
+    bb = BoundingBox(xmin=0, ymin=0, width=100, height=100)
+    bb.setheight(20)
+    bb.setwidth(40)
+    assert bb.to_xywh() == (30.0, 40.0, 40.0, 20)
+    print('[test_geometry.boundingbox.setheight]: PASSED')
+    print('[test_geometry.boundingbox.setwidth]: PASSED')    
+
+    bb = BoundingBox(centroid=(10,10), width=1, height=1)
+    assert bb.centroid() == [10,10]
+    print('[test_geometry.boundingbox.centroid]: PASSED')
+
     
+    # Intersection
     bb1 = BoundingBox(xmin=0, ymin=0, width=100, height=100)
     bb2 = BoundingBox(xmin=50, ymin=50, width=100, height=100)
     bb1.intersection(bb2)
-    assert bb1.to_xywh() == [50.0, 50.0, 50.0, 50.0]
-    assert bb1.xywh() == [50.0, 50.0, 50.0, 50.0]    
+    assert bb1.to_xywh() == (50.0, 50.0, 50.0, 50.0)
+    assert bb1.xywh() == (50.0, 50.0, 50.0, 50.0) 
     print('[test_geometry.boundingbox.intersection]: PASSED')
     print('[test_geometry.boundingbox.xwyh]: PASSED')    
 
@@ -132,23 +168,11 @@ def boundingbox():
         bb1.intersection(bb2, strict=False)
         print('[test_geometry.boundingbox]: intersection degeneracy: PASSED')        
         
-    
+    # Translation
     bb = BoundingBox(xmin=0, ymin=0, width=100, height=100)
     bb.translate(10,20)
-    assert bb.to_xywh() == [10.0, 20.0, 100.0, 100.0]
+    assert bb.to_xywh() == (10.0, 20.0, 100.0, 100.0)
     print('[test_geometry.boundingbox]: translate: PASSED')
-
-    bb = BoundingBox(xmin=0, ymin=0, width=100, height=100)
-    bb.setheight(20)
-    bb.setwidth(40)
-    assert bb.to_xywh() == [30.0, 40.0, 40.0, 20]
-    print('[test_geometry.boundingbox.setheight]: PASSED')
-    print('[test_geometry.boundingbox.setwidth]: PASSED')    
-
-    bb = BoundingBox(centroid=(10,10), width=1, height=1)
-    assert bb.centroid() == [10,10]
-    print('[test_geometry.boundingbox.centroid]: PASSED')
-    
     bb1 = BoundingBox(xmin=0, ymin=0, width=100, height=100)
     bb2 = BoundingBox(xmin=50, ymin=60, width=100, height=100)
     bb1.dx(bb2)
@@ -157,26 +181,30 @@ def boundingbox():
     print('[test_geometry.boundingbox.dx]: PASSED')
     print('[test_geometry.boundingbox.dy]: PASSED')    
 
+    # Dist
     assert(bb1.dist(bb2) == np.sqrt(50*50 + 60*60))
     print('[test_geometry.boundingbox.dist]: PASSED')        
 
+    # IoU
     bb1 = BoundingBox(xmin=0, ymin=0, width=100, height=100)
     bb2 = BoundingBox(xmin=50, ymin=50, width=50, height=50)
     assert bb1.iou(bb2) == ((50.0*50.0)/(100.0*100.0))
     assert bb1.intersection_over_union(bb2) == ((50.0*50.0)/(100.0*100.0))    
     print('[test_geometry.boundingbox.iou]: PASSED')
 
+    # Inside
     assert bb1.inside((0,25)) and not bb1.inside( (-10,0) ) and bb1.inside( (99,99) )
     print('[test_geometry.boundingbox.inside]: PASSED')
 
+    # Typecast
     assert isinstance(bb1.int().xmin(), int)    
     print('[test_geometry.boundingbox.int]: PASSED')
 
-    
+    # Dilation
     bb = BoundingBox(xmin=0, ymin=0, width=100, height=100).dilate(2.0)
     assert bb.width() == 200 and bb.height() == 200 and bb.centroid() == [50,50]
     print('[test_geometry.boundingbox.dilate]: PASSED')
-
+    
     bb = BoundingBox(xmin=0, ymin=0, width=100, height=100).dilate_height(3.0)
     assert bb.width() == 100 and bb.height() == 300 and bb.centroid() == [50,50]
     print('[test_geometry.boundingbox.dilate_height]: PASSED')
@@ -186,28 +214,28 @@ def boundingbox():
     print('[test_geometry.boundingbox.dilate_width]: PASSED')
 
     bb = BoundingBox(xmin=1, ymin=1, width=1, height=1).top(1.0).bottom(1.0).left(1.0).right(1.0)
-    assert bb.to_xywh() == [0,0,3,3]
+    assert bb.to_xywh() == (0,0,3,3)
     print('[test_geometry.boundingbox.top]: PASSED')
     print('[test_geometry.boundingbox.bottom]: PASSED')
     print('[test_geometry.boundingbox.left]: PASSED')
     print('[test_geometry.boundingbox.right]: PASSED')    
-    
+
+    # Transformations
     bb = BoundingBox(xmin=1, ymin=1, width=1, height=1).rescale(2.5)
-    assert bb.to_xywh() == [2.5,2.5,2.5,2.5]
+    assert bb.to_xywh() == (2.5,2.5,2.5,2.5)
     print('[test_geometry.boundingbox.rescale]: PASSED')    
  
     bb = BoundingBox(xmin=10, ymin=20, width=30, height=40).maxsquare()
-    assert bb.to_xywh() == [5,20,40,40]
+    assert bb.to_xywh() == (5,20,40,40)
     print('[test_geometry.boundingbox.maxsquare]: PASSED')    
 
     bb = BoundingBox(xmin=0, ymin=0, width=0, height=0).convexhull(np.array([ [0,0],[100,100],[50,50] ]))
-    assert bb.to_xywh() == [0,0,100,100]
+    assert bb.to_xywh() == (0,0,100,100)
     print('[test_geometry.boundingbox.convexhull]: PASSED')    
 
     img = ImageDetection(array=np.zeros( (128,256) )).boundingbox(xmin=10,ymin=20,width=30,height=40).mask()
     im = ImageDetection(array=np.float32(img), colorspace='float').boundingbox(xmin=10,ymin=20,width=30,height=40)
     assert np.sum(img) == np.sum(im.crop().array())
-    
     bb = BoundingBox(xmin=10, ymin=20, width=30, height=40).rot90cw(128, 256)
     im = ImageDetection(array=np.float32(np.rot90(img,3)), bbox=bb, colorspace='float')
     assert np.sum(img) == np.sum(im.crop().array())
