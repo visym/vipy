@@ -6,14 +6,14 @@ from vipy.object import Detection
 from vipy.util import tempjpg, tempdir, Failed
 from vipy.geometry import BoundingBox
 
+# Common Parameters
+jpegurl = 'https://upload.wikimedia.org/wikipedia/commons/thumb/2/23/Bubo_virginianus_06.jpg/1920px-Bubo_virginianus_06.jpg'
+gifurl = 'https://upload.wikimedia.org/wikipedia/commons/thumb/2/2c/Rotating_earth_%28large%29.gif/200px-Rotating_earth_%28large%29.gif'
+pngurl = 'https://upload.wikimedia.org/wikipedia/commons/thumb/4/47/PNG_transparency_demonstration_1.png/560px-PNG_transparency_demonstration_1.png'
+greyfile = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'jebyrne_grey.jpg')
+rgbfile = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'jebyrne.jpg')
+
 def test_image():
-    
-    # Common Parameters
-    jpegurl = 'https://upload.wikimedia.org/wikipedia/commons/thumb/2/23/Bubo_virginianus_06.jpg/1920px-Bubo_virginianus_06.jpg'
-    gifurl = 'https://upload.wikimedia.org/wikipedia/commons/thumb/2/2c/Rotating_earth_%28large%29.gif/200px-Rotating_earth_%28large%29.gif'
-    pngurl = 'https://upload.wikimedia.org/wikipedia/commons/thumb/4/47/PNG_transparency_demonstration_1.png/560px-PNG_transparency_demonstration_1.png'
-    greyfile = 'jebyrne_grey.jpg'
-    rgbfile = 'jebyrne.jpg'    
     
     # Empty constructor should not raise exception
     im = Image()
@@ -85,14 +85,14 @@ def test_image():
     print('[test_image.image]: URL with cache download: PASSED')
                
     # Filename object
-    im = ImageDetection(filename='jebyrne.jpg', xmin=100, ymin=100, bbwidth=700, bbheight=1000, category='face')
+    im = ImageDetection(filename=rgbfile, xmin=100, ymin=100, bbwidth=700, bbheight=1000, category='face')
     print('[test_image.image]: Image __desc__: %s' % im)
     im.crop()
     print('[test_image.image]: Image __desc__: %s' % im)
     print('[test_image.image]: Filename: PASSED')
 
     # Clone
-    im = Image(filename='jebyrne.jpg').load()
+    im = Image(filename=rgbfile).load()
     imb = im
     im._array = im._array + 1  # modify array
     np.testing.assert_array_equal(imb.numpy(), im.numpy())  # share buffer
@@ -101,26 +101,26 @@ def test_image():
     print('[test_image.image]: Image.clone: PASSED')    
 
     # Saveas
-    im = Image(filename='jebyrne.jpg').load()
+    im = Image(filename=rgbfile).load()
     f = tempjpg()    
     assert im.saveas(f) == f and os.path.exists(f)
     print('[test_image.image]: Image.saveas: PASSED')        
 
     # Stats
-    im = Image(filename='jebyrne.jpg').load().stats()
+    im = Image(filename=rgbfile).load().stats()
     print('[test_image.image]: Image.stats: PASSED')        
 
     # Resize
     f = tempjpg()
-    im = Image(filename='jebyrne.jpg').load().resize(cols=16,rows=8).saveas(f)
+    im = Image(filename=rgbfile).load().resize(cols=16,rows=8).saveas(f)
     assert Image(filename=f).shape() == (8,16)
     assert Image(filename=f).width() == 16
     assert Image(filename=f).height() == 8
-    im = Image(filename='jebyrne.jpg').load().resize(16,8).saveas(f)
+    im = Image(filename=rgbfile).load().resize(16,8).saveas(f)
     assert Image(filename=f).shape() == (8,16)
     assert Image(filename=f).width() == 16
     assert Image(filename=f).height() == 8
-    im = Image(filename='jebyrne.jpg').load()
+    im = Image(filename=rgbfile).load()
     (h,w) = im.shape()
     im = im.resize(rows=16)
     assert im.shape() == (16,int((w/float(h))*16.0))
@@ -128,11 +128,11 @@ def test_image():
 
     # Rescale
     f = tempjpg()
-    im = Image(filename='jebyrne.jpg').load().resize(rows=8).saveas(f)
+    im = Image(filename=rgbfile).load().resize(rows=8).saveas(f)
     assert Image(filename=f).height() == 8
-    im = Image(filename='jebyrne.jpg').load().resize(cols=8).saveas(f)
+    im = Image(filename=rgbfile).load().resize(cols=8).saveas(f)
     assert Image(filename=f).width() == 8
-    im = Image(filename='jebyrne.jpg').load().maxdim(256).saveas(f)
+    im = Image(filename=rgbfile).load().maxdim(256).saveas(f)
     assert np.max(Image(filename=f).shape()) == 256
     print('[test_image.image]: Image.rescale: PASSED')        
 
@@ -148,7 +148,7 @@ def test_image():
     print('[test_image.image]: PNG: PASSED')
 
     # Image colorspace conversion
-    im = Image(filename='jebyrne.jpg').resize(200,200)
+    im = Image(filename=rgbfile).resize(200,200)
     print(im.rgb())
     assert(im.shape() == (200,200) and im.channels() == 3)
     print(im.bgr())
@@ -164,13 +164,13 @@ def test_image():
     print(im.float())
     assert(im.shape() == (200,200) and im.channels() == 1)                    
     print('[test_image.image]: Image conversion: PASSED')
-    im = Image(filename='jebyrne_grey.jpg').load()
+    im = Image(filename=greyfile).load()
     assert im.attributes['colorspace'] == 'grey'
     assert im.max() == 255
     print('[test_image.image]: Greyscale image conversion: PASSED')
 
     # Crops
-    imorig = Image(filename='jebyrne_grey.jpg').load()
+    imorig = Image(filename=greyfile).load()
     (H,W) = im.shape()
     (x,y) = im.centerpixel()
     assert imorig.clone().maxsquare().shape() == (np.maximum(W,H), np.maximum(W,H)) and imorig.array()[0,0] == im.array()[0,0]
@@ -179,7 +179,7 @@ def test_image():
     print('[test_image.image]: crops PASSED')
 
     # Pixel operations
-    im = Image(filename='jebyrne_grey.jpg').load()
+    im = Image(filename=greyfile).load()
     im.min()
     im.max()
     im.mean()
@@ -191,19 +191,19 @@ def test_image():
     print('[test_image.image]: greylevel transformations  PASSED')            
 
     # Image conversion
-    im = Image(filename='jebyrne.jpg').load()    
+    im = Image(filename=rgbfile).load()    
     im.pil()
     im.numpy()
     im.html()
     print('[test_image.image]: image conversions  PASSED')
     
     # Image colormaps
-    im = ImageDetection(filename='jebyrne.jpg', xmin=100, ymin=100, bbwidth=200, bbheight=200, category='face').crop()
+    im = ImageDetection(filename=rgbfile, xmin=100, ymin=100, bbwidth=200, bbheight=200, category='face').crop()
     im.rgb().jet().bone().hot().rainbow()
     print('[test_image.image]: Image colormaps: PASSED')            
     
     # Image category
-    im = ImageCategory(filename='jebyrne.jpg', category='face')
+    im = ImageCategory(filename=rgbfile, category='face')
     assert im.load().category() == 'face'
     print('[test_image.image]: ImageCategory constructor PASSED')                
     assert ImageCategory(category='1') == ImageCategory(category='1')
@@ -235,25 +235,25 @@ def test_imagedetection():
     print('[test_image.imagedetection]: Empty filename ImageDetection constructor PASSED')
     print('[test_image.imagedetection]: Empty bounding box ImageDetection constructor PASSED')
 
-    im = ImageDetection(filename='jebyrne.jpg', category='face', bbox=BoundingBox(0,0,100,100))
+    im = ImageDetection(filename=rgbfile, category='face', bbox=BoundingBox(0,0,100,100))
     try:
-        im = ImageDetection(filename='jebyrne.jpg', category='face', bbox='a_bad_type')
+        im = ImageDetection(filename=rgbfile, category='face', bbox='a_bad_type')
         raise Failed()
     except Failed:
         raise
     except:
         print('[test_image.imagedetection]: bounding box constructor PASSED')
 
-    im = ImageDetection(filename='jebyrne.jpg', category='face', xmin=-1, ymin=-2, ymax=10, xmax=20)
+    im = ImageDetection(filename=rgbfile, category='face', xmin=-1, ymin=-2, ymax=10, xmax=20)
     try:
-        im = ImageDetection(filename='jebyrne.jpg', category='face', xmin='a_bad_type', ymin=-2, ymax=10, xmax=20)        
+        im = ImageDetection(filename=rgbfile, category='face', xmin='a_bad_type', ymin=-2, ymax=10, xmax=20)        
         raise Failed()
     except Failed:
         raise
     except:
         print('[test_image.imagedetection]: (xmin,ymin,xmax,ymax) bounding box constructor PASSED')
 
-    im = ImageDetection(filename='jebyrne.jpg', xmin=100, ymin=100, bbwidth=200, bbheight=-200, category='face')
+    im = ImageDetection(filename=rgbfile, xmin=100, ymin=100, bbwidth=200, bbheight=-200, category='face')
     assert im.invalid()
     print('[test_image.imagedetection]: invalid box: PASSED')
     try:
@@ -263,12 +263,12 @@ def test_imagedetection():
         raise
     except:
         print('[test_image.imagedetection]: invalid box crop: PASSED')        
-    im = ImageDetection(filename='jebyrne.jpg', xmin=100000, ymin=100000, bbwidth=200, bbheight=200, category='face')
+    im = ImageDetection(filename=rgbfile, xmin=100000, ymin=100000, bbwidth=200, bbheight=200, category='face')
     assert im.boxclip().bbox is None
     print('[test_image.imagedetection]: invalid imagebox: PASSED')            
 
     # boundingbox() methods
-    im = ImageDetection(filename='jebyrne.jpg', category='face', xmin=-1, ymin=-2, ymax=10, xmax=20)
+    im = ImageDetection(filename=rgbfile, category='face', xmin=-1, ymin=-2, ymax=10, xmax=20)
     assert im.boundingbox() == BoundingBox(-1, -2, 20, 10)
     assert not im.boundingbox(xmin=0, ymin=0, width=10, height=20) == BoundingBox(0,0,width=10, height=20)
     assert im.boundingbox(xmin=0, ymin=0, width=10, height=20).bbox == BoundingBox(0,0,width=10, height=20)    
@@ -285,23 +285,23 @@ def test_imagedetection():
         print('[test_image.imagedetection]: boundingbox() methods PASSED')
     
     # Crop
-    im = ImageDetection(filename='jebyrne.jpg', xmin=100, ymin=100, bbwidth=200, bbheight=200, category='face').crop()
+    im = ImageDetection(filename=rgbfile, xmin=100, ymin=100, bbwidth=200, bbheight=200, category='face').crop()
     assert(im.shape() == (200,200))
     assert(im.bbox.width() == im.width() and im.bbox.height() == im.height() and im.bbox.xmin()==0 and im.bbox.ymin()==0)
-    im = ImageDetection(filename='jebyrne.jpg')
+    im = ImageDetection(filename=rgbfile)
     (H,W) = im.shape()
     im = im.boundingbox(xmin=0, ymin=0, width=W, height=H).crop()
     assert(im.shape() == (H,W))
     print('[test_image.imagedetection]: crop  PASSED')
 
     # Rescale
-    im = ImageDetection(filename='jebyrne.jpg', xmin=100, ymin=100, bbwidth=200, bbheight=200, category='face')
+    im = ImageDetection(filename=rgbfile, xmin=100, ymin=100, bbwidth=200, bbheight=200, category='face')
     im = im.rescale(0.5)
     assert(im.bbox.width() == 100 and im.bbox.height() == 100)
     print('[test_image.imagedetection]: rescale  PASSED')
 
     # Resize
-    im = ImageDetection(filename='jebyrne.jpg', xmin=100, ymin=100, width=200, height=300, category='face')
+    im = ImageDetection(filename=rgbfile, xmin=100, ymin=100, width=200, height=300, category='face')
     im = im.resize(cols=int(im.width()//2.0), rows=int(im.height()//2.0))
     assert(im.bbox.width() == 100 and im.bbox.height() == 150)
     print('[test_image.imagedetection]: resize  PASSED')
