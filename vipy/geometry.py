@@ -1,75 +1,101 @@
-import numpy as np
 import math
-import numpy.linalg
+import numpy as np
 import scipy.spatial
 from itertools import product
-from vipy.util import try_import, istuple, isnumpy
+from vipy.util import try_import, istuple, isnumpy, isnumber
 from vipy.math import isnumber
+from vipy.linalg import columnvector, rowvector
+
 
 def covariance_to_ellipse(cov):
-    """2x2 covariance matrix to rotated bounding box"""
-    (d,V) = numpy.linalg.eig(cov)
-    return (d[0], d[1], math.atan2(V[1,0],V[0,0]))  # (major_axis_len, minor_axis_len, angle_in_radians)
+    """2x2 covariance matrix to ellipse (major_axis_length, minor_axis_length, angle_in_radians)"""
+    assert isnumpy(cov) and cov.shape == (2,2), "Invalid input"
+    (d,V) = np.linalg.eig(cov)
+    return np.array( (d[0], d[1], math.atan2(V[1,0], V[0,0])) )  # (major_axis_len, minor_axis_len, angle_in_radians)
+
 
 def dehomogenize(p):
-    return np.float32(p[0:-1, :]) / np.float32(p[-1,:])
+    """Convert 3x1 homogenous point (x,y,h) to 2x1 non-homogenous point (x/h, y/h)"""
+    assert isnumpy(p) and p.shape[0] == 3, "Invalid input"
+    p = columnvector(p) if p.ndim == 1 else p    
+    return p[0:-1, :] / p[-1,:]
+
 
 def homogenize(p):
-    return np.float32(np.vstack( (p, np.ones((1,p.shape[1]))) ))
+    """Convert 2xN non-homogenous points (x,y) to 3xN non-homogenous point (x, y, 1)"""
+    assert isnumpy(p) and p.shape[0] == 2, "Invalid input"
+    p = columnvector(p) if p.ndim == 1 else p
+    return np.vstack( (p, np.ones_like(p[-1])) )
+
 
 def apply_homography(H,p):
-    return dehomogenize(H*homogenize(p))
+    """Apply a 3x3 homography H to non-homogenous point p and return a transformed point \hat{p}"""
+    assert isnumpy(H) and isnumpy(p) and H.shape == (3,3) and p.shape[0] == 2, "Invalid input"            
+    return dehomogenize(np.dot(H, homogenize(p)))
 
-def similarity_imtransform2D(c=(0,0), r=0, s=1):
-    try_import(cv2, 'opencv-python')
-    import cv2
+
+def similarity_transform_2x3(c=(0,0), r=0, s=1):
+    """Return a 2x3 similarity transform with rotation r (radians), scale s and origin c=(x,y)"""
+    assert istuple(c) and len(c)==2 and isnumber(r) and isnumber(s), "Invalid input"
     deg = r * 180. / math.pi
-    A = cv2.getRotationMatrix2D(c, deg, s)
-    return A
+    a = s*np.cos(r)
+    b = s*np.sin(r)
+    (x,y) = (c[0], c[1])
+    return np.array( [[a, b, (1-a)*x - b*y], [-b, a, b*x + (1-a)*y]] )
 
-def similarity_imtransform(txy=(0,0), r=0, s=1):
+
+def similarity_transform(txy=(0,0), r=0, s=1):
+    """Return a 3x3 similarity transformation with translation txy=(x,y), rotation r (radians, scale=s"""
+    assert istuple(txy) and len(txy)==2 and isnumber(r) and isnumber(s), "Invalid input"    
     R = np.mat([[np.cos(r), -np.sin(r), 0], [np.sin(r), np.cos(r), 0], [0,0,1]])
     S = np.mat([[s,0,0], [0, s, 0], [0,0,1]])
     T = np.mat([[0,0,txy[0]], [0,0,txy[1]], [0,0,0]])
     return S*R + T  # composition
 
 
-def affine_imtransform(txy=(0,0), r=0, sx=1, sy=1, kx=0, ky=0):
+def affine_transform(txy=(0,0), r=0, sx=1, sy=1, kx=0, ky=0):
+    """Compose and return a 3x3 affine transformation for translation txy=(0,0), rotation r (radians), scalex=sx, scaley=sy, shearx=kx, sheary=ky"""
+    assert istuple(txy) and len(txy)==2 and isnumber(r) and isnumber(sx) and isnumber(sy) and isnumber(kx) and isnumber(ky), "Invalid input"        
     R = np.mat([[np.cos(r), -np.sin(r), 0], [np.sin(r), np.cos(r), 0], [0,0,1]])
     S = np.mat([[sx,0,0], [0, sy, 0], [0,0,1]])
     K = np.mat([[1,ky,0], [kx,1,0], [0,0,1]])
     T = np.mat([[0,0,txy[0]], [0,0,txy[1]], [0,0,0]])
     return K*S*R + T  # composition
 
-def random_affine_imtransform(txy=((0,0),(0,0)), r=(0,0), sx=(1,1), sy=(1,1), kx=(0,0), ky=(0,0)):
-    return affine_imtransform(txy=(uniform_random_in_range(txy[0]), uniform_random_in_range(txy[1])),
-                              r=uniform_random_in_range(r),
-                              sx=uniform_random_in_range(sx),
-                              sy=uniform_random_in_range(sy),
-                              kx=uniform_random_in_range(kx),
-                              ky=uniform_random_in_range(ky))
 
-def imtransform2D(im, A):
-    try_import(cv2, 'opencv-python'); import cv2    
-    return cv2.warpAffine(im, A, (im.shape[1], im.shape[0]))
+def random_affine_transform(txy=((0,1),(0,1)), r=(0,1), sx=(0.1,1), sy=(0.1,1), kx=(0.1,1), ky=(0.1,1)):
+    """Return a random 3x3 affine transformation matrix for the provided ranges"""
+    assert istuple(txy) and istuple(txy[0]) and istuple(txy[1]) and istuple(r) and istuple(sx) and istuple(sy) and istuple(kx) and istuple(ky), "Invalid input"
+    uniform_random_in_range = lambda t: np.random.uniform(t[0], t[1])
+    return affine_transform(txy=(uniform_random_in_range(txy[0]), uniform_random_in_range(txy[1])),
+                            r=uniform_random_in_range(r),
+                            sx=uniform_random_in_range(sx),
+                            sy=uniform_random_in_range(sy),
+                            kx=uniform_random_in_range(kx),
+                            ky=uniform_random_in_range(ky))
 
-def imtransform(im, A):
-    try_import(cv2, 'opencv-python'); import cv2        
-    return cv2.warpPerspective(im, A, (im.shape[1], im.shape[0]))
+def imtransform(img, A):
+    """Transform an numpy array image (MxNx3) following the affine or similiarity transformation A"""
+    assert isnumpy(img) and isnumpy(A), "invalid input"        
+    try_import(cv2, 'opencv-python'); import cv2
+    if A.shape == (2,3):
+        return cv2.warpAffine(im, A, (im.shape[1], im.shape[0]))
+    else:
+        return cv2.warpPerspective(im, A, (im.shape[1], im.shape[0]))
 
-def frame_to_bbox(fr):
-    """ bbox = [ (xmin,ymin,width,height), ... ] """
-    return [ (x[0]-x[2]/2, x[1]-x[2]/2, x[0]+x[2]/2, x[1]+x[2]/2) for x in fr]
-
-def sub2ind(i, j, rows):
-    return (i*rows + j)
 
 def sqdist(d_obs, d_ref):
-    """Given d_obs of size (MxD) ad d_ref of size (NxD) return (MxN) matrix of pairwise euclidean distances"""
+    """Given numpy array d_obs of size (MxD) ad d_ref of size (NxD) return (MxN) matrix of pairwise euclidean distances"""
+    assert isnumpy(d_obs) and isnumpy(d_ref), "invalid input"    
+    if d_obs.shape[0] > 1000 or d_ref.shape[0] > 1000:
+        warnings.warn('Large pairwise distance, this may take a while')
     return scipy.spatial.distance.cdist(np.array(d_obs), np.array(d_ref), 'euclidean')  # small number of descriptors only
 
-def normalize(x):
-    return x / (np.linalg.norm(x.astype(np.float64))+1E-16)
+
+def normalize(x, eps=1E-16):
+    """Given a vector x, return the vector unit normalized as float64"""
+    assert isnumpy(x), "Invalid input"
+    return x / (np.linalg.norm(x.astype(np.float64))+eps)
 
 
 class BoundingBox():
@@ -171,12 +197,6 @@ class BoundingBox():
         """Return the (x,y) lower right corner coordinate of the box"""
         return (self.xmax(), self.ymax())
     
-    def invalid(self):
-        """Is the box a valid bounding box?"""
-        is_undefined = np.isnan(self._xmin) or np.isnan(self._ymin) or np.isnan(self._xmax) or np.isnan(self._ymax)
-        is_degenerate =  ((self._xmax-self._xmin)<1) or ((self._ymax-self._ymin)<1) or (self._xmin >= self._xmax) or (self._ymin >= self._ymax)
-        return is_undefined or is_degenerate
-
     def int(self):
         """Convert corners to integer with rounding"""
         self._xmin = int(np.round(self._xmin))
@@ -186,20 +206,28 @@ class BoundingBox():
         return self
     
     def translate(self, dx=0, dy=0):
+        """Translate the bounding box by dx in x and dy in y"""
         self._xmin = self._xmin + dx
         self._ymin = self._ymin + dy
         self._xmax = self._xmax + dx
         self._ymax = self._ymax + dy
         return self
+    
     def offset(self, dx=0, dy=0):
         """Alias for translate"""
         return self.translate(dx, dy)
+
+    def invalid(self):
+        """Is the box a valid bounding box?"""
+        is_undefined = np.isnan(self._xmin) or np.isnan(self._ymin) or np.isnan(self._xmax) or np.isnan(self._ymax)
+        is_degenerate =  ((self._xmax-self._xmin)<1) or ((self._ymax-self._ymin)<1) or (self._xmin >= self._xmax) or (self._ymin >= self._ymax)
+        return is_undefined or is_degenerate
     
     def valid(self):
         return not self.invalid()
 
     def isvalid(self):
-        return self.valid()
+        return not self.invalid()
 
     def isdegenerate(self):
         return self.invalid()
@@ -239,6 +267,7 @@ class BoundingBox():
         return self.centroid()[1]
         
     def area(self):
+        """Return the area=width*height of the bounding box"""
         return self.width() * self.height()
 
     def to_xywh(self, xywh=None):
@@ -246,6 +275,7 @@ class BoundingBox():
         if xywh is None:
             return [self._xmin, self._ymin, self.width(), self.height()]
         else:
+            assert len(xywh) == 4, "Invalid input"
             self._xmin = xywh[0]
             self._ymin = xywh[1]
             self._xmax = self._xmin + xywh[2]
@@ -307,7 +337,7 @@ class BoundingBox():
         return self.area_of_intersection(bb) / float(self.area())
 
     def intersection(self, bb, strict=True):
-        """Intersection of two bounding boxes, throw an error on degeneracy if strict"""
+        """Intersection of two bounding boxes, throw an error on degeneracy of intersection result (if strict=True)"""
         self._xmin = max(bb.xmin(), self.xmin())
         self._ymin = max(bb.ymin(), self.ymin())
         self._xmax = min(bb.xmax(), self.xmax())
@@ -417,13 +447,17 @@ class BoundingBox():
         (urx, ury) = self.upperright()        
         return self.xywh( (ury, W-urx, h, w) )
     
-    def fliplr(self, img):
-        """Flip the box left/right consistent with fliplr of the provided img"""
-        assert isnumpy(img), "Invalid image input"
+    def fliplr(self, img=None, width=None):
+        """Flip the box left/right consistent with fliplr of the provided img, or the image width"""
+        if img is not None:
+            assert isnumpy(img), "Invalid image input"
+            width = img.shape[1]
+        else:
+            assert isnumber(width), "Invalid width"
         (x,y,w,h) = self.to_xywh()
-        self._xmin = img.shape[1] - xmax
+        self._xmin = width - self._xmax
         self._xmax = self._xmin + w
-
+        return self
         
     def imscale(self, im):
         """Given a vipy.image object im, scale the box to be within [0,1], relative to height and width of image"""
@@ -451,16 +485,20 @@ class BoundingBox():
         assert isnumpy(img), "Invalid image input"        
         return self.area_of_intersection(BoundingBox(xmin=0, ymin=0, xmax=img.shape[1]-1, ymax=img.shape[0]-1)) > 0
         
-    def imclip(self, img):
-        """Clip bounding box to image rectangle [0,0,W-1,H-1], throw an exception on an invalid box"""
-        assert isnumpy(img), "Invalid image input"        
-        self.intersection(BoundingBox(xmin=0, ymin=0, xmax=img.shape[1]-1, ymax=img.shape[0]-1))
+    def imclip(self, img=None, width=None, height=None):
+        """Clip bounding box to image rectangle [0,0,width-1,height-1], throw an exception on an invalid box"""
+        if img is not None:
+            assert isnumpy(img), "Invalid image input"
+            (height, width) = (img.shape[0], img.shape[1])
+        else:
+            assert width is not None and height is not None, "Invalid width and height - both must be provided"
+            assert isnumber(width) and isnumber(height), "Invalid width and height - both must be numbers"
+        self.intersection(BoundingBox(xmin=0, ymin=0, xmax=width-1, ymax=height-1))
         return self
 
     def imclipshape(self, W, H):
         """Clip bounding box to image rectangle [0,0,W-1,H-1], throw an exception on an invalid box"""
-        self.intersection(BoundingBox(xmin=0, ymin=0, xmax=W-1, ymax=H-1))
-        return self
+        return self.imclip(width=W, height=H)
     
     def convexhull(self, fr):
         """Given a set of points [[x1,y1],[x2,xy],...], return the bounding rectangle"""
@@ -482,66 +520,80 @@ class BoundingBox():
         """Return min(width, height)"""
         return np.min(self.shape())
 
-    def to_ellipse(self):
+    def mindim(self):
+        """Return min(width, height)"""
+        return np.min(self.shape())
+    
+    def ellipse(self):
+        """Convert the boundingbox to a vipy.geometry.Ellipse object"""
         (xcenter,ycenter) = self.centroid()
-        return Ellipse(self.width()/2.0, self.height()/2.0, xcenter, ycenter,0)
+        return Ellipse(self.width()/2.0, self.height()/2.0, xcenter, ycenter, 0)
     
     
 class Ellipse():
     def __init__(self, semi_major, semi_minor, xcenter, ycenter, phi):
         """Ellipse parameterization, for length of semimajor (half width of ellipse) and semiminor axis (half height), center point and angle phi in radians"""
-        self.major = semi_major
-        self.minor = semi_minor
-        self.center_x = xcenter
-        self.center_y = ycenter
-        self.phi = phi
+        self._major = semi_major
+        self._minor = semi_minor
+        self._xcenter = xcenter
+        self._ycenter = ycenter
+        self._phi = phi
 
     def __repr__(self):
-        return str('<vipy.geometry.ellipse: semimajor=%s, semiminor=%s, xcenter=%s, ycenter=%s, phi=%s (rad)>'% (self.major, self.minor, self.center_x, self.center_y, self.phi))
-
+        return str('<vipy.geometry.ellipse: semimajor=%s, semiminor=%s, xcenter=%s, ycenter=%s, phi=%s (rad)>'% (self._major, self._minor, self._xcenter, self._ycenter, self._phi))
 
     def area(self):
-        return math.pi * self.major * self.minor
+        """Area of ellipse"""
+        return math.pi * self._major * self._minor
 
     def center(self):
-        return (int(self.center_x), int(self.center_y))
+        """Return centroid"""
+        return (self._xcenter, self._ycenter)
 
+    def centroid(self):
+        """Alias for center"""
+        return self.center()
+    
     def axes(self):
-        return (int(self.major), int(self.minor))
+        """Return the (major,minor) axis lengths"""
+        return (self._major, self._minor)
 
     def angle(self):
-        """in degrees"""
-        return int(self.phi * 180 / math.pi)
+        """Return the angle phi (in degrees)"""
+        return (self._phi * 180 / math.pi)
 
     def rescale(self, scale):
-        self.major *= scale
-        self.minor *= scale
-        self.center_x *= scale
-        self.center_y *= scale
+        """Scale ellipse by scale factor"""
+        assert isnumber(scale), "Invalid input"
+        self._major *= scale
+        self._minor *= scale
+        self._xcenter *= scale
+        self._ycenter *= scale
         return self
 
     def boundingbox(self):
         """ Estimate an equivalent bounding box based on scaling to a common area.
         Note, this does not factor in rotation.
         (c*l)*(c*w) = a_e  --> c = \sqrt(a_e / a_r) """
-
-        bbox = BoundingBox(width=2*self.major, height=2*self.minor, xcentroid=self.center_x, ycentroid=self.center_y)
+        assert self._phi == 0, "This function does not currently factor in rotation"
+        
+        bbox = BoundingBox(width=2*self._major, height=2*self._minor, xcentroid=self._xcenter, ycentroid=self._ycenter)
         a_r = bbox.area()
         c = (self.area() / a_r) ** 0.5
         bbox2 = bbox.clone().dilate(c)
         return bbox2
 
     def inside(self, x, y=None):
-        """Return true if a point p=(x,y) is inside the ellipse"""
+        """Return true if a point p=(x,y) is inside the ellipse"""        
         p = (x,y) if y is not None else x
-        if (self.phi != 0):
-            raise ValueError('FIXME: inside only supported for phi=0')
-        return ((np.square(p[0] - self.center_x) / np.square(self.major)) + (np.square(p[1] - self.center_y) / np.square(self.minor))) <= 1
+        assert len(p) == 2, "Invalid input"
+        assert self._phi == 0, "inside only currently supported for phi=0"
+        return ((np.square(p[0] - self._xcenter) / np.square(self._major)) + (np.square(p[1] - self._ycenter) / np.square(self._minor))) <= 1
 
     def mask(self):
         """Return a binary mask of size equal to the bounding box such that the pixels correspond to the interior of the ellipse"""
-        (H,W) = (int(np.round(2*self.minor)), int(np.round(2*self.major)))
-        img = np.zeros( (H,W) )
+        (H,W) = (int(np.round(2*self._minor)), int(np.round(2*self._major)))
+        img = np.zeros( (H,W), dtype=bool )
         for (y,x) in product(range(0,H), range(0,W)):
             img[y,x] = self.inside(x,y)
         return img

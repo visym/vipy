@@ -297,7 +297,7 @@ class Video(object):
         return self
         
     def saveas(self, outfile, framerate=30, vcodec='libx264', verbose=False):
-        """Save video to new output file, either numpy buffer in self._array if loaded, or filter chain if not loaded"""
+        """Save video to new output video file, from either numpy buffer in self._array after calling load(), or by applying filter chain if not loaded"""
         if self.isloaded():
             (n, height, width, channels) = self._array.shape
             process = ffmpeg.input('pipe:', format='rawvideo', pix_fmt='rgb24', s='{}x{}'.format(width, height)) \

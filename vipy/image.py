@@ -6,8 +6,7 @@ from vipy.util import isnumpy, quietprint, isurl, isimageurl, islist, \
     fileext, tempimage, mat2gray, imwrite, imwritejet, imwritegray, \
     tempjpg, imresize, imrescale, filetail, isimagefile, remkdir, hasextension, \
     try_import
-from vipy.geometry import BoundingBox, similarity_imtransform, \
-    similarity_imtransform2D, imtransform, imtransform2D
+from vipy.geometry import BoundingBox
 import vipy.downloader
 import urllib.request
 import urllib.error

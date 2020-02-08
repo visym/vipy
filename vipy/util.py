@@ -184,6 +184,20 @@ def isuint8(img):
     return isnumpy(img) and img.dtype == np.dtype('uint8')
 
 
+def isnumber(x):
+    """Is the input a python type of a number or a string containing a number?"""
+    return isinstance(x, (int, float)) or (isstring(x) and isfloat(x))
+
+
+def isfloat(x):
+    """Is the input a float or a string that can be converted to float?"""
+    try:
+        float(x)
+        return True
+    except ValueError:
+        return False
+
+    
 def imwritegray(img, imfile=None):
     """Write a floating point grayscale numpy image in [0,1] as [0,255] grayscale"""
     if imfile is None:
