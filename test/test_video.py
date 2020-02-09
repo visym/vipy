@@ -11,13 +11,13 @@ from vipy.dataset.activitynet import ActivityNet
 from vipy.dataset.lfw import LFW
 
 
-def test_datasets():
+def _test_datasets():
     d = Kinetics400('/tmp/kinetics').download().trainset()
     v = d[0].load()[0].resize(rows=256).saveas('kinetics.jpg')
-    # d = ActivityNet('/tmp/activitynet').download().dataset()
-    # v = d[0].load()[0].saveas('activitynet.jpg')
-    # d = LFW('/tmp/lfw').download().dataset()
-    #  d[0].saveas('lfw.jpg')
+    d = ActivityNet('/tmp/activitynet').download().dataset()
+    v = d[0].load()[0].saveas('activitynet.jpg')
+    d = LFW('/tmp/lfw').download().dataset()
+    d[0].saveas('lfw.jpg')
     print('Video.datasets: PASSED')
 
 
@@ -76,6 +76,6 @@ def test_scene():
 
 
 if __name__ == "__main__":
-    test_datasets()
+    _test_datasets()
     test_video()
     test_scene()

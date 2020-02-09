@@ -3,7 +3,7 @@ import numpy as np
 import vipy.image
 from vipy.image import ImageDetection, Image, ImageCategory, Scene
 from vipy.object import Detection
-from vipy.util import tempjpg, tempdir, Failed
+from vipy.util import tempjpg, temppng, tempdir, Failed
 from vipy.geometry import BoundingBox
 
 # Common Parameters
@@ -103,7 +103,7 @@ def test_image():
 
     # Saveas
     im = Image(filename=rgbfile).load()
-    f = tempjpg()
+    f = temppng()
     assert im.saveas(f) == f and os.path.exists(f)
     print('[test_image.image]: Image.saveas: PASSED')
 
@@ -112,7 +112,7 @@ def test_image():
     print('[test_image.image]: Image.stats: PASSED')
 
     # Resize
-    f = tempjpg()
+    f = temppng()
     im = Image(filename=rgbfile).load().resize(cols=16,rows=8).saveas(f)
     assert Image(filename=f).shape() == (8,16)
     assert Image(filename=f).width() == 16
@@ -128,7 +128,7 @@ def test_image():
     print('[test_image.image]: Image.resize: PASSED')
 
     # Rescale
-    f = tempjpg()
+    f = temppng()
     im = Image(filename=rgbfile).load().resize(rows=8).saveas(f)
     assert Image(filename=f).height() == 8
     im = Image(filename=rgbfile).load().resize(cols=8).saveas(f)
@@ -407,11 +407,11 @@ def test_scene():
     print('[test_image.scene]:Scene.rescale: PASSED')
 
     outfile = im.show(nowindow=True)
-    outfile = im.savefig(tempjpg())
+    outfile = im.savefig(temppng())
     print('[test_image.scene]:Scene.show().savefig() ("%s"): PASSED' % outfile)
 
     im = im.resize(1000,100)
-    outfile = im.show().savefig(tempjpg())
+    outfile = im.show().savefig(temppng())
     print('[test_image.scene]:Scene.resize() ("%s"): PASSED' % outfile)
 
     (h,w) = im.shape()
