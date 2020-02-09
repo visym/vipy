@@ -35,7 +35,7 @@ def test_video():
         print('Empty constructor: PASSED')
 
 
-def test_scene():
+def _test_scene():
     mp4file = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'Video.mp4')
     vid = vipy.video.Scene(filename=mp4file, tracks=[vipy.object.Track('person', frames=[0,200], boxes=[BoundingBox(xmin=0,ymin=0,width=200,height=400), BoundingBox(xmin=0,ymin=0,width=400,height=100)]),
                                                      vipy.object.Track('vehicle', frames=[0,200], boxes=[BoundingBox(xmin=100,ymin=200,width=300,height=400), BoundingBox(xmin=400,ymin=300,width=200,height=100)])])
@@ -78,4 +78,4 @@ def test_scene():
 if __name__ == "__main__":
     _test_datasets()
     test_video()
-    test_scene()
+    _test_scene()

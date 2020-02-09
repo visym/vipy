@@ -42,7 +42,6 @@ def test_import():
     import vipy.dataset.kinetics
     import vipy.dataset.lfw
     import vipy.dataset.mnist
-    import vipy.dataset.msra_cfw
     import vipy.dataset.vggface2
     print('[test_import]: PASSED')
 
