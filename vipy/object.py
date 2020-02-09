@@ -1,16 +1,18 @@
 import numpy as np
 from vipy.geometry import BoundingBox
 
+
 class Detection(BoundingBox):
     """Represent a single bounding box with a label and confidence for an object detection"""
+
     def __init__(self, label='object', xmin=None, ymin=None, width=None, height=None, xmax=None, ymax=None, confidence=None, xcentroid=None, ycentroid=None):
         super(Detection, self).__init__(xmin=xmin, ymin=ymin, width=width, height=height, xmax=xmax, ymax=ymax, xcentroid=xcentroid, ycentroid=ycentroid)
         self._label = str(label)
-        self._confidence = float(confidence) if confidence is not None else confidence        
-        
+        self._confidence = float(confidence) if confidence is not None else confidence
+
     def __repr__(self):
         strlist = []
-        if self.category() is not None: 
+        if self.category() is not None:
             strlist.append('category="%s"' % self.category())
         if self.isvalid():
             strlist.append('bbox=(xmin=%1.1f,ymin=%1.1f,xmax=%1.1f,ymax=%1.1f)' %
@@ -18,7 +20,7 @@ class Detection(BoundingBox):
         if self._confidence is not None:
             strlist.append('conf=%1.3f')
         return str('<vipy.object.detection: %s>' % (', '.join(strlist)))
-            
+
     def __str__(self):
         return self.__repr__()
 
@@ -32,6 +34,7 @@ class Detection(BoundingBox):
 class Track(object):
 
     """Represent many bounding boxes of an instance through time"""
+
     def __init__(self, label, frames, boxes, confidence=None, attributes=None):
         self._label = label
         self._frames = frames
@@ -41,26 +44,26 @@ class Track(object):
 
     def __repr__(self):
         strlist = []
-        if self.category() is not None: 
+        if self.category() is not None:
             strlist.append('category="%s"' % self.category())
         strlist.append('frame=[%d,%d]' % (self.startframe, self.endframe))
         strlist.append('obs=%d' % len(self._frames))
         return str('<vipy.object.track: %s>' % (', '.join(strlist)))
-        
+
     def __getitem__(self, k):
         return self._interpolate(k)
 
     def __iter__(self):
         for k in range(self._startframe, self._endframe):
             yield (k,self._interpolate(k))
-        
+
     def __len__(self):
         return len(self._frames)
 
     def keyframes(self):
         """Return keyframes where there are track observations"""
         return self._frames
-    
+
     def startframe(self):
         return np.min(self._frames)
 
@@ -74,7 +77,7 @@ class Track(object):
                          xmin=np.interp(k, self._frames, xmin),
                          ymin=np.interp(k, self._frames, ymin),
                          width=np.interp(k, self._frames, width),
-                         height=np.interp(k, self._frames, height))                                     
+                         height=np.interp(k, self._frames, height))
 
     def category(self, label=None):
         if label is not None:
@@ -84,17 +87,18 @@ class Track(object):
             return self._label
 
     def during(self, k):
-        return k>=self.startframe() and k<self.endframe()
+        return k >= self.startframe() and k < self.endframe()
 
     def offset(self, dt=0, dx=0, dy=0):
         self._boxes = [bb.offset(dx, dy) for bb in self._boxes]
         self._frames = list(np.array(self._frames) + dt)
         return self
-        
+
     def rescale(self, s):
         """Rescale track boxes by scale factor s"""
         self._boxes = [bb.rescale(s) for bb in self._boxes]
         return self
+
     def scale(self, s):
         """Alias for rescale"""
         return self.rescale(s)
@@ -103,12 +107,12 @@ class Track(object):
         """Rescale track boxes by scale factor sx"""
         self._boxes = [bb.scalex(sx) for bb in self._boxes]
         return self
+
     def scaley(self, sy):
         """Rescale track boxes by scale factor sx"""
         self._boxes = [bb.scaley(sy) for bb in self._boxes]
         return self
-        
-    
+
     def dilate(self, s):
         """Dilate track boxes by scale factor s"""
         self._boxes = [bb.dilate(s) for bb in self._boxes]
@@ -123,5 +127,3 @@ class Track(object):
         """Rotate an image with (H,W)=shape 90 degrees clockwise and update all boxes to be consistent"""
         self._boxes = [bb.rot90ccw(H, W) for bb in self._boxes]
         return self
-    
-    

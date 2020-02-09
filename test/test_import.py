@@ -23,7 +23,7 @@ def test_import():
     import vipy.video
     import vipy.videosearch
     import vipy.visualize
-    import vipy.gui.using_matplotlib    
+    import vipy.gui.using_matplotlib
     import vipy.dataset.aflw
     import vipy.dataset.caltech256
     import vipy.dataset.ethzshapes
@@ -46,7 +46,6 @@ def test_import():
     import vipy.dataset.vggface2
     print('[test_import]: PASSED')
 
-    
+
 if __name__ == "__main__":
     test_import()
-

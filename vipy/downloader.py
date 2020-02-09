@@ -1,5 +1,5 @@
 # Adapted for vipy.downloader from original authors below
-# 
+#
 # Authors: Nicolas Pinto <pinto@rowland.harvard.edu>
 #          Nicolas Poilvert <poilvert@rowland.harvard.edu>
 # License: BSD 3 clause
@@ -9,26 +9,24 @@
 # http://pypi.python.org/pypi/python-archive/0.1
 # http://code.google.com/p/python-archive/
 
-#import socket
-#socket.setdefaulttimeout(15)  # do not set globally?
-import urllib.request, urllib.error, urllib.parse
+# import socket
+# socket.setdefaulttimeout(15)  # do not set globally?
+import urllib.request
+import urllib.error
+import urllib.parse
 import base64
 from urllib.request import urlopen
 from os import path
 import hashlib
-import sys
 from vipy.util import isfile
-import os
-# FIXME: Remove once bz2 is included in CentOS7 vendor baseline release
-try:
-    import bz2
-except:
-    pass
-
 import os
 import tarfile
 import zipfile
 import sys
+try:
+    import bz2  # FIXME: Remove once bz2 is included in CentOS7 vendor baseline release?
+except:
+    pass
 
 
 def generate_sha1(filepath):
@@ -40,17 +38,20 @@ def generate_sha1(filepath):
         f.close()
     return sha1.hexdigest()
 
+
 def verify_sha1(filename, sha1):
     data = open(filename, 'rb').read()
     return (sha1 == hashlib.sha1(data).hexdigest())
+
 
 def verify_md5(filename, md5):
     data = open(filename, 'rb').read()
     return (md5 == hashlib.md5(data).hexdigest())
 
+
 def download(url, output_filename, sha1=None, verbose=True, md5=None, timeout=None, username=None, password=None):
     """Downloads file at `url` and write it in `output_filename`"""
-    if timeout == None:
+    if timeout is None:
         timeout = 10
 
     if username is None and password is None:
@@ -58,9 +59,9 @@ def download(url, output_filename, sha1=None, verbose=True, md5=None, timeout=No
     else:
         request = urllib.request.Request(url)
         base64string = base64.encodestring('%s:%s' % (username, password)).replace('\n', '')
-        request.add_header("Authorization", "Basic %s" % base64string)   
-        page = urllib.request.urlopen(request, timeout=timeout)        
-        
+        request.add_header("Authorization", "Basic %s" % base64string)
+        page = urllib.request.urlopen(request, timeout=timeout)
+
     page_info = page.info()
 
     output_file = open(output_filename, 'wb+')  # will raise IOError exception on invalid permissions
@@ -71,7 +72,7 @@ def download(url, output_filename, sha1=None, verbose=True, md5=None, timeout=No
 
     if verbose:
         print("[vipy.downloader]: Downloading '%s' to '%s'" % (url, output_filename))
-        
+
     # display  progress only if we know the length
     if 'content-length' in page_info and verbose:
         # file size in Kilobytes
@@ -84,10 +85,10 @@ def download(url, output_filename, sha1=None, verbose=True, md5=None, timeout=No
             output_file.write(buffer)
             percent = min(100, 100. * dl_size / file_size)
             status = r"Progress: %20d kilobytes [%4.1f%%]" \
-                    % (dl_size, percent)
+                % (dl_size, percent)
             status = status + chr(8) * (len(status) + 1)
             if verbose:
-                print(status, end=' ') # space instead of newline
+                print(status, end=' ')  # space instead of newline
                 sys.stdout.flush()
         if verbose:
             print('')
@@ -98,16 +99,16 @@ def download(url, output_filename, sha1=None, verbose=True, md5=None, timeout=No
                 break
             dl_size += block_size / 1024
             output_file.write(buffer)
-            #percent = min(100, 100. * dl_size / file_size)
+            # percent = min(100, 100. * dl_size / file_size)
             status = r"Progress: %20d kilobytes" \
-                    % (dl_size)
+                % (dl_size)
             status = status + chr(8) * (len(status) + 1)
             if verbose:
-                print(status, end=' ') # space instead of newline
+                print(status, end=' ')  # space instead of newline
                 sys.stdout.flush()
         if verbose:
             print('')
-        #output_file.write(page.read())
+        # output_file.write(page.read())
 
     output_file.close()
 
@@ -117,7 +118,7 @@ def download(url, output_filename, sha1=None, verbose=True, md5=None, timeout=No
 
     if md5 is not None:
         if not verify_md5(output_filename, md5):
-            raise IOError('invalid md5 for "%s"' % output_filename)            
+            raise IOError('invalid md5 for "%s"' % output_filename)
 
 
 def unpack(archive_filename, output_dirname, sha1=None, verbose=True):
@@ -147,11 +148,10 @@ def unpack(archive_filename, output_dirname, sha1=None, verbose=True):
                 pass
             else:
                 with open(base, 'wb') as outputfile, bz2.BZ2File(archive_filename, 'rb') as bz2_file:
-                    data=bz2_file.read()
+                    data = bz2_file.read()
                     outputfile.write(data)
         else:
             raise
-
 
 
 def download_and_unpack(url, output_dirname, sha1=None, verbose=True):
@@ -165,9 +165,11 @@ def download_and_unpack(url, output_dirname, sha1=None, verbose=True):
     download(url, archive_filename, sha1=sha1, verbose=verbose)
     extract(archive_filename, output_dirname, verbose=verbose)
 
+
 def download_unpack_and_cleanup(url, output_dirname, sha1=None, verbose=True):
     download_and_extract(url, output_dirname, sha1, verbose)
     os.remove(path.join(output_dirname, path.basename(url)))
+
 
 def unpack_and_cleanup(archive_filename, output_dirname, sha1=None, verbose=True):
     download_and_extract(url, output_dirname, sha1, verbose)
@@ -273,7 +275,7 @@ class TarArchive(ExtractInterface, BaseArchive):
     def get_members(self):
         return self._archive.getmembers()
 
-    
+
 class ZipArchive(ExtractInterface, BaseArchive):
 
     def __init__(self, filename):
@@ -296,4 +298,3 @@ extension_map = {
     '.tz2': TarArchive,
     '.zip': ZipArchive,
 }
-        

@@ -1,5 +1,3 @@
-import os
-import csv
 from vipy.util import remkdir, filetail, videolist
 import vipy.downloader
 import vipy.video
@@ -18,19 +16,20 @@ SHA1 = ['a3e81537271a0ab4576591774baa38c2d97b7e3a',
         'd3b81261aa822ef63d0d1523f945bfaff27814d2']
 LABELS = ['walking','jogging','running','boxing','handwaving','handclapping']
 
+
 class KTHActions(object):
     def __init__(self, datadir):
         """KTH ACtions dataset, provide a datadir='/path/to/store/kthactions' """
         self.datadir = remkdir(datadir)
-        
+
     def __repr__(self):
         return str('<vipy.dataset.kthactions: %s>' % self.datadir)
 
     def split(self):
-        trainPeople = ['person02','person03','person05','person06','person07','person08','person09','person10','person22']            
+        trainPeople = ['person02','person03','person05','person06','person07','person08','person09','person10','person22']
         videos = self.dataset()
         trainset = [vid for vid in videos if filetail(vid.filename()).split('_')[0] in trainPeople]
-        testset = [vid for vid in videos if filetail(vid.filename()).split('_')[0] not in trainPeople]        
+        testset = [vid for vid in videos if filetail(vid.filename()).split('_')[0] not in trainPeople]
         return (trainset, testset)
 
     def download_and_unpack(self):
@@ -40,7 +39,3 @@ class KTHActions(object):
 
     def dataset(self):
         return [vipy.video.VideoCategory(filename=f, category=f.split('_')[1]) for f in videolist(self.datadir)]
-
-
-        
-

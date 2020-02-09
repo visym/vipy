@@ -47,68 +47,66 @@ class AFLW(object):
     def __repr__(self):
         return str('<vipy.dataset.aflw: %s>' % self.datadir)
 
-    
     def dataset(self):
         csvfile = os.path.join(self.datadir, 'aflw.csv')
         with open(csvfile, 'r') as f:
             for x in f.readline().split(','):
                 if x[0][0] != '#':
-                    im = ImageDetection(filename=os.path.join(datadir, x[0]), category='face',
-                                                    xmin=float(x[1]) if len(x[1]) > 0 else float('nan'),
-                                                    ymin=float(x[2]) if len(x[2]) > 0 else float('nan'),                                          
-                                                    xmax = float(x[1])+float(x[3]) if ((len(x[1])>0) and (len(x[3])>0)) else float('nan'),
-                                                    ymax = float(x[2])+float(x[4]) if ((len(x[2])>0) and (len(x[4])>0)) else float('nan'),
-                                                    attributes={k:v for (k,v) in zip(SCHEMA,x)})  # Parse row
-                    yield im        
+                    im = ImageDetection(filename=os.path.join(self.datadir, x[0]), category='face',
+                                        xmin=float(x[1]) if len(x[1]) > 0 else float('nan'),
+                                        ymin=float(x[2]) if len(x[2]) > 0 else float('nan'),
+                                        xmax=float(x[1]) + float(x[3]) if ((len(x[1]) > 0) and (len(x[3]) > 0)) else float('nan'),
+                                        ymax=float(x[2]) + float(x[4]) if ((len(x[2]) > 0) and (len(x[4]) > 0)) else float('nan'),
+                                        attributes={k:v for (k,v) in zip(SCHEMA,x)})  # Parse row
+                    yield im
 
-    
     def export(self):
         """Export sqlite database file to aflw.csv"""
         dbfile = os.path.join(self.datadir, 'data', 'aflw.sqlite')
         db = sqlite3.connect(dbfile)
         cursor = db.cursor()
-    
+
         outfile = os.path.join(self.datadir, 'aflw.csv')
         with open(outfile, 'wb') as csvfile:
-            f = csv.writer(csvfile, delimiter=',', quotechar='|', quoting=csv.QUOTE_MINIMAL)        
-            f.writerow([s if k>0 else '#'+s for (k,s) in enumerate(SCHEMA)])  # comment first line 
-            faceidQuery = cursor.execute('SELECT face_id FROM Faces').fetchall();
+            f = csv.writer(csvfile, delimiter=',', quotechar='|', quoting=csv.QUOTE_MINIMAL)
+            f.writerow([s if k > 0 else '#' + s for (k,s) in enumerate(SCHEMA)])  # comment first line
+            faceidQuery = cursor.execute('SELECT face_id FROM Faces').fetchall()
             for faceid in faceidQuery:
                 faceid = faceid[0]
                 fileidQuery = cursor.execute('SELECT file_id FROM Faces WHERE face_id = "%s"' % str(faceid))
                 fileid = str(fileidQuery.fetchone()[0])
-                
-                imgDataQuery = cursor.execute('SELECT db_id,filepath,width,height FROM FaceImages where file_id = "%s"' % str(fileid));
+
+                imgDataQuery = cursor.execute('SELECT db_id,filepath,width,height FROM FaceImages where file_id = "%s"' % str(fileid))
                 imgData = imgDataQuery.fetchall()
-        
-                facerect = cursor.execute('SELECT x,y,w,h FROM FaceRect WHERE face_id = "%s"' % str(faceid)).fetchone();
-                
+
+                facerect = cursor.execute('SELECT x,y,w,h FROM FaceRect WHERE face_id = "%s"' % str(faceid)).fetchone()
+
                 ptsQuery = cursor.execute('SELECT descr,FeatureCoords.x,FeatureCoords.y FROM FeatureCoords,FeatureCoordTypes WHERE face_id = "%s" AND FeatureCoords.feature_id = FeatureCoordTypes.feature_id' % (str(faceid))).fetchall()
                 annoDict = {}
                 for pts in ptsQuery:
                     annoDict['%s_X' % str(pts[0])] = pts[1]
-                    annoDict['%s_Y' % str(pts[0])] = pts[2]                
-    
+                    annoDict['%s_Y' % str(pts[0])] = pts[2]
+
                 annoDict['FILENAME'] = os.path.join('data','flickr', imgData[0][1])
                 annoDict['FACE_X'] = facerect[0]
                 annoDict['FACE_Y'] = facerect[1]
                 annoDict['FACE_WIDTH'] = facerect[2]
                 annoDict['FACE_HEIGHT'] = facerect[3]
-    
+
                 row = [annoDict[key] if key in annoDict.keys() else '' for key in SCHEMA]
                 print('[vipy.dataset.aflw]: exporting %d points for face "%s" ' % (len(ptsQuery), faceid))
                 f.writerow(row)
-                
+
         db.close()
         return self
 
 
 def landmarks(im):
     """Return 21x2 frame array of landmark positions in 1-21 order, NaN if occluded"""
-    return np.float32(np.array([im.attributes[key] if len(im.attributes[key])>0 else np.float32('nan') for key in SCHEMA[5:]])).reshape(21, 2)  
+    return np.float32(np.array([im.attributes[key] if len(im.attributes[key]) > 0 else np.float32('nan') for key in SCHEMA[5:]])).reshape(21, 2)
+
 
 def eyes_nose_chin(self, im):
     """Return 4x2 frame array of left eye, right eye nose chin"""
     fr = landmarks(im)
-    return fr[[8-1, 11-1, 15-1, 21-1],:]  # left eye center, right eye center, nose center  (AFLW annotation, 1-indexed)
-
+    return fr[[8 - 1, 11 - 1, 15 - 1, 21 - 1],:]  # left eye center, right eye center, nose center  (AFLW annotation, 1-indexed)

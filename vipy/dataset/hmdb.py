@@ -1,5 +1,4 @@
 import os
-import csv
 from vipy.video import VideoCategory
 from vipy.util import remkdir, filetail, isvideo, isinstalled
 import vipy.downloader
@@ -12,14 +11,14 @@ class HMDB(object):
     def __init__(self, datadir):
         """Human motion dataset, provide a datadir='/path/to/store/hmdb' """
         self.datadir = remkdir(datadir)
-        
+
     def __repr__(self):
         return str('<vipy.dataset.hmdb: "%s">' % self.datadir)
 
     def download(self):
         vipy.downloader.download(URL, os.path.join(self.datadir, filetail(URL)))
         self._unpack(os.path.join(self.datadir, filetail(URL)), self.datadir)
-            
+
     def dataset(self):
         """Return a list of VideoCategory objects"""
         vidlist = []
@@ -34,16 +33,11 @@ class HMDB(object):
         """Require unrar on command line"""
         if not isinstalled('unrar'):
             raise ValueError('Unpacking requires the unrar utility on the command line')
-        os.system('unrar e %s %s' % (rarfile, outdir))                            
+        os.system('unrar e %s %s' % (rarfile, outdir))
         for (idx_category, rarfile) in enumerate(os.listdir(outdir)):
-            (category, ext) = os.path.splitext(rarfile)    
+            (category, ext) = os.path.splitext(rarfile)
             if not os.path.isdir(os.path.join(outdir,category)):
                 os.mkdir(os.path.join(outdir, category))
-                os.mkdir(os.path.join(outdir, category, 'export'))        
+                os.mkdir(os.path.join(outdir, category, 'export'))
                 cmd = 'unrar e %s %s' % (os.path.join(outdir,rarfile), os.path.join(outdir,category))
                 os.system(cmd)
-                #for (idx_video, avifile) in enumerate(os.listdir(os.path.join(outdir, category))):
-                #    os.system('mv \'%s\' %s' % (avifile, '%s_%04d.avi' % (category, idx_video)))
-
-            
-        

@@ -5,6 +5,8 @@ import random
 import math
 from vipy.util import try_import, isurl, remkdir
 import tempfile
+import numpy as np
+
 
 common_user_agents = [
     'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_10_4) AppleWebKit/600.7.12 (KHTML, like Gecko) Version/8.0.7 Safari/600.7.12',
@@ -101,8 +103,7 @@ common_user_agents = [
     'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_9_5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/44.0.2403.89 Safari/537.36',
     'Mozilla/5.0 (Windows NT 6.1; WOW64; rv:40.0) Gecko/20100101 Firefox/40.0',
     'Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/43.0.2357.124 Safari/537.36',
-    ]
-
+]
 
 
 def googlesearch(tag):
@@ -115,23 +116,22 @@ def googlesearch(tag):
     search_data = str(search_results.read())
 
     # FIXME: support for gstatic.com URLs
-    datalist = search_data.split('http');
-    imlist = [re.findall("^http[s]?://.*\.(?:jpg|gif|png)", str('http'+d)) for d in datalist]
+    datalist = search_data.split('http')
+    imlist = [re.findall("^http[s]?://.*\.(?:jpg|gif|png)", str('http' + d)) for d in datalist]
     imlist = [im[0] for im in imlist if len(im) > 0]
     imlist_clean = [im for im in imlist if im.find('File:') == -1]
     return [url for url in imlist_clean if isurl(url) and 'gb/images/silhouette' not in url]
 
 
-
 def basic_level_categories():
     """Return a list of nouns from wordnet that can be used as an initial list of basic level object categories"""
-    try_import('nltk'); import nltk    
+    try_import('nltk'); import nltk
     nltkdir = remkdir(os.path.join(os.environ['VIPY_CACHE'], 'nltk')) if 'VIPY_CACHE' in os.environ else tempfile.gettempdir()
     os.environ['NLTK_DATA'] = nltkdir
     print('[vipy.annotation.basic_level_categories]: Downloading wordnet to "%s"' % tempfile.gettempdir())
     nltk.download('wordnet', tempfile.gettempdir())
 
-    from nltk.corpus import wordnet    
+    from nltk.corpus import wordnet
     nouns = []
     allowed_lexnames = ['noun.animal', 'noun.artifact', 'noun.body', 'noun.food', 'noun.object', 'noun.plant']
     for synset in list(wordnet.all_synsets('n')):
@@ -140,9 +140,10 @@ def basic_level_categories():
     nouns.sort()
     return nouns
 
+
 def verbs():
     """Return a list of verbs from verbnet that can be used to define a set of activities"""
-    try_import('nltk'); import nltk    
+    try_import('nltk'); import nltk
     nltkdir = remkdir(os.path.join(os.environ['VIPY_CACHE'], 'nltk')) if 'VIPY_CACHE' in os.environ else tempfile.gettempdir()
     os.environ['NLTK_DATA'] = nltkdir
     print('[vipy.annotation.verbs]: Downloading verbnet to "%s"' % tempfile.gettempdir())
@@ -152,23 +153,24 @@ def verbs():
 
 
 def facebookprofilerange(fbid, numid, outdir='./imgs', cleanup=True, hierarchical=False, redownload=False):
-    for x in range(fbid, fbid+numid):
+    for x in range(fbid, fbid + numid):
         facebookprofile(x, outdir, cleanup, hierarchical, redownload)
+
 
 def facebookprofile(fbid, outdir='./imgs', cleanup=True, hierarchical=False, redownload=False):
     if hierarchical:
-        subdir = remkdir(os.path.join(outdir, str(int(float(fbid)/1E4)))) # 10000 images per directory
+        subdir = remkdir(os.path.join(outdir, str(int(float(fbid) / 1E4))))  # 10000 images per directory
         outfile = os.path.join(subdir, '%d.jpg' % int(fbid))  # outdir/1000/10000001.jpg
     else:
         outfile = os.path.join(outdir, '%d.jpg' % int(fbid))
-        
+
     url = "http://graph.facebook.com/picture?id=" + str(fbid) + "&width=800"
     if not os.path.exists(outfile) or redownload:
         try:
             print('[facebookprofile.download]: Downloading "%s" to "%s"' % (url, outfile))
-            
-            user_agent = np.random.choice(vipy.annotation.common_user_agents)
-            headers = {'User-Agent':user_agent}                     
+
+            user_agent = np.random.choice(common_user_agents)
+            headers = {'User-Agent':user_agent}
             req = urllib.request.Request(url, None, headers)
             imgfile = urllib.request.urlopen(req)
             total_size = int(imgfile.info().getheader('Content-Length').strip())
@@ -178,27 +180,23 @@ def facebookprofile(fbid, outdir='./imgs', cleanup=True, hierarchical=False, red
                 while True:
                     chunk = imgfile.read(CHUNK)
                     downloaded += len(chunk)
-                    #print math.floor( (downloaded / total_size) * 100 )
-                    if not chunk: break
+                    # print math.floor( (downloaded / total_size) * 100 )
+                    if not chunk:
+                        break
                     fp.write(chunk)
-                        
-            #urllib.urlretrieve(url, outfile)
-            
+
+            # urllib.urlretrieve(url, outfile)
+
             s = os.path.getsize(outfile)
             if cleanup and (s < 11000 or s == 10626 or s == 10491):
                 print('[facebookprofile.download]: deleting invalid file "%s"' % outfile)
                 os.remove(outfile)
 
-        except (urllib.request.HTTPError, e):
+        except (urllib.request.HTTPError):
             print('[fb_image.download]: Skipping "%s"' % (url))
-            print("HTTP Error:",e.code , url)
-            #return False
-        except (urllib.request.URLError, e):
+        except (urllib.request.URLError):
             print('[fb_image.download]: Skipping "%s"' % (url))
-            print("URL Error:",e.reason , url)
-            #return False
         except KeyboardInterrupt:
             raise
         except:
-            print("UNKNOWN ERROR")
-            #raise
+            raise

@@ -3,23 +3,22 @@ from os import path
 import urllib.parse as urlparse
 from vipy.util import try_import
 
-class Dropbox():
-    
-    _access_token = os.environ.get('DROPBOX_ACCESS_TOKEN')
-    _app_key = os.environ.get('DROPBOX_APP_KEY')
-    _app_secret = os.environ.get('DROPBOX_APP_SECRET_KEY')
 
-    # save access token to cache
-    # http://stackoverflow.com/questions/10549326/python-dropbox-api-save-token-file
-    # should we put keys in this file?  everyone will use it
-    
+class Dropbox():
+
+    _access_token = os.environ.get('VIPY_DROPBOX_ACCESS_TOKEN')
+    _app_key = os.environ.get('VIPY_DROPBOX_APP_KEY')
+    _app_secret = os.environ.get('VIPY_DROPBOX_APP_SECRET_KEY')
+
     def __init__(self):
+        raise ValueError('FIXME: this uses an older version of dropbox')
+
         try_import('dropbox')
-        import dropbox  # optional    
-        
+        import dropbox  # optional
+
         if self._access_token is None:
             self.link()
-    
+
     def link(self):
         flow = dropboxapi.client.DropboxOAuth2FlowNoRedirect(self._app_key, self._app_secret)
 
@@ -40,9 +39,9 @@ class Dropbox():
             print('linked account: ', client.account_info())
 
         if folder is None:
-            dropbox_path = '/'+path.basename(filename)
+            dropbox_path = '/' + path.basename(filename)
         else:
-            dropbox_path = '/'+str(folder)+'/'+path.basename(filename)
+            dropbox_path = '/' + str(folder) + '/' + path.basename(filename)
 
         f = open(filename)
         response = client.put_file(dropbox_path, f)
@@ -58,17 +57,15 @@ class Dropbox():
         # https://www.dropbox.com/help/201/en
         p = urlparse.urlparse(share['url'])
         public_url = urlparse.urlunsplit(('http','dl.dropboxusercontent.com',p[2],None,None))
-        #public_url = public_url + '?dl=1'
+        # public_url = public_url + '?dl=1'
         return public_url
-    
+
     def get(self, filename):
         client = dropbox.client.DropboxClient(self._access_token)
-        f, metadata = client.get_file_and_metadata('/'+filename)
-        #cachefile = cache.cachefile(filename)
+        f, metadata = client.get_file_and_metadata('/' + filename)
         cachefile = filename
         out = open(cachefile, 'w')
         out.write(f.read())
         out.close()
         print(metadata)
         return cachefile
-

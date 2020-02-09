@@ -1,8 +1,8 @@
-import argparse
 import base64
 import csv
 import os
-from vipy.util import remkdir, dirlist, imlist, writecsv, readcsv
+from vipy.util import remkdir, writecsv, readcsv
+
 
 def extract(tsvfile, outdir):
     """https://github.com/cmusatyalab/openface/blob/master/data/ms-celeb-1m/extract.py"""
@@ -14,13 +14,13 @@ def extract(tsvfile, outdir):
 
             saveDir = os.path.join(outdir, MID)
             savePath = os.path.join(saveDir, "{}-{}.jpg".format(imgSearchRank, faceID))
-            
+
             remkdir(saveDir)
             with open(savePath, 'wb') as f:
                 f.write(data)
-                
+
             i += 1
-                
+
             if i % 1000 == 0:
                 print("Extracted {} images.".format(i))
 
@@ -36,10 +36,10 @@ def export(tsvfile, tsvnames, outdir, csvfile):
 
             saveDir = os.path.join(outdir, MID)
             savePath = os.path.join(saveDir, "{}-{}.jpg".format(imgSearchRank, faceID))
-            
+
             i += 1
-                
-            csvlist.append( (savePath, d_mid_to_name[MID]) )
+
+            csvlist.append((savePath, d_mid_to_name[MID]))
             if i % 100 == 0:
                 print("[msceleb.csv][%d]: Extracting CSV (%s,%s,%s)" % (i,savePath,MID,d_mid_to_name[MID]))
 

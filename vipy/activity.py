@@ -11,7 +11,7 @@ class Activity(object):
         if objects is not None:
             assert isinstance(objects, list) and all([isinstance(x, vipy.object.Detection) for x in objects]), "Invalid object list"
         self._attributes = attributes
-            
+
     def __repr__(self):
         return str('<vipy.activity: category="%s", frames=(%d,%d), objects=%s>' % (self.category(), self.startframe(), self.endframe(), str(set([x.category() for x in self.objects()]))))
 
@@ -41,4 +41,3 @@ class Activity(object):
     def offset(self, dt):
         self._startframe = self._startframe - dt
         return self
-        

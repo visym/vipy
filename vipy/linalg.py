@@ -1,5 +1,4 @@
 import numpy as np
-import scipy.sparse
 from vipy.util import isnumber
 
 
@@ -11,21 +10,21 @@ def random_positive_semidefinite_matrix(N):
 
 
 def column_stochastic(X):
-    X = X.astype(np.float32)    
+    X = X.astype(np.float32)
     x = np.sum(X, axis=0)
-    return X / (1E-16 + x.reshape( (1, x.size) ))
+    return X / (1E-16 + x.reshape((1, x.size)))
 
 
 def row_stochastic(X):
     X = X.astype(np.float32)
     x = np.sum(X, axis=1)
-    return X / (1E-16 + x.reshape( (x.size, 1) ))
+    return X / (1E-16 + x.reshape((x.size, 1)))
 
 
 def rowstochastic(X):
     X = X.astype(np.float32)
     x = X.sum(axis=1)
-    return X / (1E-16 + x.reshape( (x.size, 1) ))
+    return X / (1E-16 + x.reshape((x.size, 1)))
 
 
 def bistochastic(X, numIterations=10):
@@ -38,28 +37,28 @@ def bistochastic(X, numIterations=10):
 
 def rectangular_bistochastic(X, numIterations=10):
     """Sinkhorn normalization for rectangular matrices"""
-    r = np.ones( (X.shape[0],1) )
+    r = np.ones((X.shape[0],1))
     for k in range(0, int(numIterations)):
         c = 1.0 / (X.transpose().dot(r) + 1E-16)
         r = 1.0 / (X.dot(c) + 1E-16)
-    return np.multiply(np.multiply(r, X), c.transpose())  # diag(r) * X * diag(c) 
+    return np.multiply(np.multiply(r, X), c.transpose())  # diag(r) * X * diag(c)
 
 
 def row_normalized(X):
     for (k,x) in enumerate(X):
-        X[k,:] = x / (np.linalg.norm(x.astype(np.float64))+1E-16)
+        X[k,:] = x / (np.linalg.norm(x.astype(np.float64)) + 1E-16)
     return(X)
 
 
 def row_ssqrt(X):
     for (k,x) in enumerate(X):
-        x_L1 = x / (np.sum(np.abs(x.astype(np.float64)))+1E-16)  # L1 normalized
-        X[k,:] = np.multiply(np.sign(x_L1), np.sqrt(np.abs(x_L1))) # signed square root
+        x_L1 = x / (np.sum(np.abs(x.astype(np.float64))) + 1E-16)  # L1 normalized
+        X[k,:] = np.multiply(np.sign(x_L1), np.sqrt(np.abs(x_L1)))  # signed square root
     return(X)
-    
+
 
 def normalize(x):
-    return x / (np.linalg.norm(x.astype(np.float64))+1E-16)
+    return x / (np.linalg.norm(x.astype(np.float64)) + 1E-16)
 
 
 def vectorize(X):
@@ -70,7 +69,7 @@ def vectorize(X):
 def columnvector(x):
     """Convert a tuple with N elements to an Nx1 column vector"""
     z = vectorize(x)
-    return z.reshape( (z.size, 1) )
+    return z.reshape((z.size, 1))
 
 
 def columnize(x):
@@ -78,11 +77,10 @@ def columnize(x):
 
 
 def rowvector(x):
-    """Convert a tuple with N elements to an 1xN row vector"""    
+    """Convert a tuple with N elements to an 1xN row vector"""
     z = vectorize(x)
-    return z.reshape( (1, z.size) )
+    return z.reshape((1, z.size))
 
 
 def poweroftwo(x):
     return x > 1 and ((x & (x - 1)) == 0)
-

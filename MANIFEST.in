@@ -1,3 +1,2 @@
-include LICENSE *.md *.py *.jpg
-recursive-include vipy *.py *.jpg
-
+include LICENSE * .md * .py * .jpg
+recursive - include vipy * .py * .jpg

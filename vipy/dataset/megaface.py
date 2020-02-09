@@ -5,25 +5,24 @@ import json
 import numpy as np
 
 
-
 class MF2(object):
     def __init__(self, datadir='/proj/janus3/megaface'):
-        self.datadir = datadir
+        self.datadir = remkdir(datadir)
 
     def __repr__(self):
-        return str('<vipy.dataset.megaface: %s>' % self.datadir)
+        return str('<vipy.dataset.megaface: "%s">' % self.datadir)
 
     def _trainset(self):
         """Save a csv file containing each image on a line for Megaface_Challenge_1M_disjoint_LOOSE.tar.gz"""
         outfile = os.path.join(self.datadir, 'Megaface_Challenge_1M_disjoint_LOOSE.csv')
         subdir = os.path.join(self.datadir, 'Megaface_Challenge_1M_disjoint_LOOSE')
-        D =  dirlist(subdir)
+        D = dirlist(subdir)
         filelist = []
         for (k,d) in enumerate(D):
             print('[MF2.trainset][%d/%d]: creating image list for "%s"' % (k, len(D), d))
             for f in imlist(d):
                 filelist.append((f, filebase(d)))
-        return writecsv(filelist, outfile);
+        return writecsv(filelist, outfile)
 
     def tinyset(self, size=1000):
         """Return the first (size) image objects in the trainset"""
@@ -37,9 +36,9 @@ class MF2(object):
             print('[MF2.tinyset][%d/%d]: importing "%s"' % (k, size, f))
             outlist = outlist + [ImageDetection(filename=os.path.join(self.datadir, f), category=filebase(f))]
             if k > size:
-                break 
+                break
         return outlist
-        
+
 
 class Megaface(object):
     def __init__(self, datadir):
@@ -59,7 +58,7 @@ class Megaface(object):
             outfile = os.path.join(self.datadir, 'megaface.csv')
             with open(outfile, 'w') as csv:
                 subdir = os.path.join(self.datadir, 'FlickrFinal2')
-                D =  dirlist(subdir)
+                D = dirlist(subdir)
                 for (k,d) in enumerate(D):
                     print('[megaface.dataset][%d/%d]: creating image list for "%s"' % (k, len(D), d))
                     for sd in dirlist(d):
@@ -76,6 +75,5 @@ class Megaface(object):
             A = self._attributes(os.path.join(self.datadir, f))
             outlist = outlist + [ImageDetection(filename=os.path.join(self.datadir, f), category=filebase(f)).boundingbox(xmin=A['bounding_box']['x'], ymin=A['bounding_box']['y'], width=A['bounding_box']['width'], height=A['bounding_box']['height'])]
             if k > size:
-                break 
+                break
         return outlist
-    

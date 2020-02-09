@@ -22,7 +22,6 @@ import builtins
 import pickle as cPickle
 import PIL
 import matplotlib.pyplot as plt
-import uuid
 from itertools import groupby as itertools_groupby
 import importlib
 
@@ -76,8 +75,9 @@ def keymin(d):
         if v == vmin:
             return k
 
+
 def isjsonfile(filename):
-    return hasextension(filename) and fileext(filename).lower() == '.json'    
+    return hasextension(filename) and fileext(filename).lower() == '.json'
 
 
 def writejson(d, outfile):
@@ -110,7 +110,7 @@ def groupbyasdict(inset, keyfunc):
 def softmax(x, temperature=1.0):
     """Row-wise softmax"""
     assert x.ndim == 2
-    z = np.exp((x-np.max(x, axis=1).reshape(x.shape[0], 1)) / temperature)
+    z = np.exp((x - np.max(x, axis=1).reshape(x.shape[0], 1)) / temperature)
     return z / np.sum(z, axis=1).reshape(x.shape[0], 1)
 
 
@@ -140,7 +140,7 @@ def chunklist(inlist, num_chunks):
     """Convert list into a list of lists of length num_chunks each element
     is a list containing a sequential chunk of the original list"""
     (m, n) = (num_chunks, int(np.ceil(float(len(inlist)) / float(num_chunks))))
-    return [inlist[i*n:min(i*n + n, len(inlist))] for i in range(0, m)]
+    return [inlist[i * n:min(i * n + n, len(inlist))] for i in range(0, m)]
 
 
 def chunklistbysize(inlist, size_per_chunk):
@@ -159,8 +159,8 @@ def chunklistWithOverlap(inlist, size_per_chunk, overlap_per_chunk):
     size_per_chunk"""
     assert size_per_chunk >= 1 and overlap_per_chunk >= 0 and \
         size_per_chunk > overlap_per_chunk
-    return [inlist[i:i+size_per_chunk] for i in range(
-        0, len(inlist), size_per_chunk-overlap_per_chunk)]
+    return [inlist[i:i + size_per_chunk] for i in range(
+        0, len(inlist), size_per_chunk - overlap_per_chunk)]
 
 
 def imwritejet(img, imfile=None):
@@ -172,7 +172,7 @@ def imwritejet(img, imfile=None):
     if isnumpy(img):
         if img.ndim == 2:
             cm = plt.get_cmap('gist_rainbow')
-            PIL.Image.fromarray(np.uint8(255*cm(img)[:,:,:3])).save(imfile)
+            PIL.Image.fromarray(np.uint8(255 * cm(img)[:,:,:3])).save(imfile)
         else:
             raise ValueError('Input must be a 2D numpy array')
     else:
@@ -186,7 +186,8 @@ def isuint8(img):
 
 def isnumber(x):
     """Is the input a python type of a number or a string containing a number?"""
-    return isinstance(x, (int, float)) or (isnumpy(x) and np.isscalar(x)) or (isstring(x) and isfloat(x)) 
+    return isinstance(x, (int, float)) or (isnumpy(x) and np.isscalar(x)) or (isstring(x) and isfloat(x))
+
 
 def isfloat(x):
     """Is the input a float or a string that can be converted to float?"""
@@ -196,7 +197,7 @@ def isfloat(x):
     except ValueError:
         return False
 
-    
+
 def imwritegray(img, imfile=None):
     """Write a floating point grayscale numpy image in [0,1] as [0,255] grayscale"""
     if imfile is None:
@@ -207,7 +208,7 @@ def imwritegray(img, imfile=None):
             PIL.Image.fromarray(img).save(imfile)
         elif img.dtype == np.dtype('float32'):
             # Convert [0, 1.0] to uint8 [0,255]
-            PIL.Image.fromarray(np.uint8(img*255.0)).save(imfile)
+            PIL.Image.fromarray(np.uint8(img * 255.0)).save(imfile)
         else:
             raise ValueError('Unsupported datatype - '
                              'Numpy array must be uint8 or float32')
@@ -240,7 +241,7 @@ def imwrite(img, imfile=None, writeas=None):
             PIL.Image.fromarray(rgb2bgr(img)).save(imfile)  # convert to BGR
         elif img.dtype == np.dtype('float32'):
             # convert to uint8 then BGR
-            PIL.Image.fromarray(rgb2bgr(np.uint8(255.0*img))).save(imfile) 
+            PIL.Image.fromarray(rgb2bgr(np.uint8(255.0 * img))).save(imfile)
     elif writeas in ['bgr']:
         if img.ndim != 3:
             raise ValueError('numpy array must be 3D')
@@ -248,7 +249,7 @@ def imwrite(img, imfile=None, writeas=None):
             PIL.Image.fromarray(img).save(imfile)  # convert to BGR
         elif img.dtype == np.dtype('float32'):
             # convert to uint8 then BGR
-            PIL.Image.fromarray(np.uint8(255.0*img)).save(imfile) 
+            PIL.Image.fromarray(np.uint8(255.0 * img)).save(imfile)
     else:
         raise ValueError('unsupported writeas')
 
@@ -265,14 +266,14 @@ def gray2jet(img):
     """[0,1] grayscale to [0.255] RGB"""
     import matplotlib.pyplot as plt
     jet = plt.get_cmap('jet')
-    return np.uint8(255.0*jet(img)[:, :, 0:3])
+    return np.uint8(255.0 * jet(img)[:, :, 0:3])
 
 
 def jet(n, bgr=False):
     """jet colormap"""
     from matplotlib import cm
     cmap = cm.get_cmap('jet', n)
-    rgb = np.uint8(255*cmap(np.arange(n)))
+    rgb = np.uint8(255 * cmap(np.arange(n)))
     return rgb if bgr is False else np.fliplr(rgb)
 
 
@@ -283,13 +284,13 @@ def is_hiddenfile(filename):
 
 def seq(start, stop, step=1):
     """Equivalent to matlab [start:step:stop]"""
-    n = int(round((stop - start)/float(step)))
+    n = int(round((stop - start) / float(step)))
     if n > 1:
-        return([start + step*i for i in range(n+1)])
+        return([start + step * i for i in range(n + 1)])
     else:
         return([])
 
-    
+
 def loadh5(filename):
     """Load an HDF5 file"""
     if ishdf5(filename):
@@ -300,7 +301,7 @@ def loadh5(filename):
     else:
         raise ValueError('Invalid HDF5 file "%s" ' % filename)
 
-    
+
 def savemat(outfile, vardict):
     """Write a dictionary to .mat file"""
     scipy.io.savemat(outfile, vardict)
@@ -324,7 +325,7 @@ def loadmat73(matfile, keys=None):
             f = f[k]
         return np.array(f)
 
-    
+
 def saveas(vars, outfile=None, type='dill'):
     """Save variables as a dill pickled file"""
     outfile = temppickle() if outfile is None else outfile
@@ -397,11 +398,11 @@ def matrix2yaml(yamlfile, mtxlist, mtxname=None):
         datastr = ''
         for (k, x) in enumerate(M.flatten()):
             datastr += '%.6e' % x
-            if (k+1 == M.size):
+            if (k + 1 == M.size):
                 f.write(datastr)
                 break
             datastr += ', '
-            if ((k+1) % 4) == 0:
+            if ((k + 1) % 4) == 0:
                 f.write(datastr + '\n           ')
                 datastr = ''
         f.write(']\n')
@@ -420,7 +421,7 @@ def matrix2yaml(yamlfile, mtxlist, mtxname=None):
 
 def saveyaml(yamlfile, mat):
     """Save a numpy array to YAML file importable by OpenCV"""
-    
+
     def _write_matrix(f, M):
         f.write('    mtx_01: !!opencv-matrix\n')
         f.write('       rows: %d\n' % M.shape[0])
@@ -430,11 +431,11 @@ def saveyaml(yamlfile, mat):
         datastr = ''
         for (k, x) in enumerate(M.flatten()):
             datastr += '%.6e' % x
-            if (k+1 == M.size):
+            if (k + 1 == M.size):
                 f.write(datastr)
                 break
             datastr += ', '
-            if ((k+1) % 4) == 0:
+            if ((k + 1) % 4) == 0:
                 f.write(datastr + '\n           ')
                 datastr = ''
 
@@ -460,6 +461,7 @@ def tofilename(s, hyphen=True):
 def isexe(filename):
     """Is the file an executable binary?"""
     return os.path.isfile(filename) and os.access(filename, os.X_OK)
+
 
 def isinstalled(cmd):
     """Is the command is available on the path"""
@@ -562,8 +564,8 @@ def extlist(indir, ext):
     the provided extension (with the prepended dot)"""
     return [os.path.abspath(os.path.join(indir, item))
             for item in os.listdir(indir)
-            if fileext(item) is not None and
-            (fileext(item).lower() == ext.lower())]
+            if fileext(item) is not None
+            and (fileext(item).lower() == ext.lower())]
 
 
 def writelist(mylist, outfile, mode='w'):
@@ -581,9 +583,11 @@ def readlist(infile):
         list_of_rows = [r for r in f.readlines()]
     return list_of_rows
 
+
 def readtxt(infile):
     """Read a text file one string per row"""
     return readlist(infile)
+
 
 def writecsv(list_of_tuples, outfile, mode='w', separator=','):
     """Write list of tuples to an output csv file with each list element
@@ -593,7 +597,7 @@ def writecsv(list_of_tuples, outfile, mode='w', separator=','):
         for u in list_of_tuples:
             n = len(u)
             for (k, v) in enumerate(u):
-                if (k+1) < n:
+                if (k + 1) < n:
                     f.write(str(v) + separator)
                 else:
                     f.write(str(v) + '\n')
@@ -653,32 +657,35 @@ def mat2gray(img, min=None, max=None):
     """Convert numpy array to float32 with 1.0=max and 0=min"""
     immin = np.min(img) if min is None else min
     immax = np.max(img) if max is None else max
-    if (immax-immin) > 0:
-        return (np.float32(img) - immin) / (immax-immin)
+    if (immax - immin) > 0:
+        return (np.float32(img) - immin) / (immax - immin)
     else:
         return img
 
 
 def mdlist(m, n):
     """Preallocate 2D list of size MxN"""
-    return [[None]*n for i in range(m)]
+    return [[None] * n for i in range(m)]
 
 
 def isurl(path):
     """Is a path a URL?"""
     try:
         return urlparse(path).scheme != "" and \
-            '<' not in path and '>' not in path and '"' not in path            
+            '<' not in path and '>' not in path and '"' not in path
     except:
         return False
-    
+
+
 def isimageurl(path):
     """Is a path a URL with image extension?"""
     return isurl(path) and isimg(path)
 
+
 def isvideourl(path):
     """Is a path a URL with image extension?"""
     return isurl(path) and isvideo(path)
+
 
 def isyoutubeurl(path):
     """Is a path a youtube URL?"""
@@ -687,7 +694,7 @@ def isyoutubeurl(path):
 
 def checkerboard(m=8,n=256):
     """m=number of square by column, n=size of final image"""
-    return np.array(PIL.Image.fromarray(np.uint8(255*np.random.rand(m,m,3))).resize((n,n), PIL.Image.NEAREST))
+    return np.array(PIL.Image.fromarray(np.uint8(255 * np.random.rand(m,m,3))).resize((n,n), PIL.Image.NEAREST))
 
 
 def islist(x):
@@ -735,35 +742,33 @@ def isimg(path):
     else:
         return False
 
-def isvideo(path):
-    """Is an object an image with a supported video extension
-    ['.mp4','.mov', 'avi', 'mkv', 'webm']"""
-    (filename, ext) = os.path.splitext(path)
-    if ext.lower() in ['.mp4', '.mov', 'avi', 'mkv', 'webm']:
-        return True
-    else:
-        return False
 
 def isvideofile(path):
     """Equivalent to isvideo()"""
     return isvideo(path)
 
+
 def isimgfile(path):
     """Convenience function for isimg"""
     return isimg(path)
+
 
 def isimagefile(path):
     """Convenience function for isimg"""
     return isimg(path)
 
+
 def isgif(path):
     return hasextension(path) and fileext(path).lower() == '.gif'
+
 
 def isjpeg(path):
     return hasextension(path) and fileext(path).lower() == '.jpg' or fileext(path).lower() == '.jpeg'
 
+
 def isjpg(path):
     return isjpeg(path)
+
 
 def iscsv(path):
     """Is a file a CSV file extension?"""
@@ -776,9 +781,9 @@ def iscsv(path):
 
 def isvideo(path):
     """Is a file a video with a known video extension
-    ['.avi','.mp4','.mov','.wmv','.mpg']?"""
+    ['.avi','.mp4','.mov','.wmv','.mpg', 'mkv', 'webm']?"""
     (filename, ext) = os.path.splitext(path)
-    if ext.lower() in ['.avi', '.mp4', '.mov', '.wmv', 'mpg']:
+    if ext.lower() in ['.avi','.mp4','.mov','.wmv','.mpg', 'mkv', 'webm']:
         return True
     else:
         return False
@@ -813,17 +818,17 @@ def bgr2gray(im_bgr):
 
 
 def gray2bgr(im_gray):
-    """Wrapper for numpy float32 gray image to uint8 numpy BGR"""    
+    """Wrapper for numpy float32 gray image to uint8 numpy BGR"""
     return np.array(PIL.Image.fromarray(im_gray, mode='F').convert('RGB'))[:,:,::-1]  # Gray -> RGB -> BGR
 
 
-def gray2rgb(im_gray):    
+def gray2rgb(im_gray):
     return bgr2rgb(gray2bgr(im_gray))
 
 
 def bgr2rgb(im_bgr):
     """Wrapper for numpy BGR uint8 to numpy RGB uint8"""
-    return np.array(im_bgr)[:,:,::-1] 
+    return np.array(im_bgr)[:,:,::-1]
 
 
 def rgb2bgr(im_rgb):
@@ -835,7 +840,7 @@ def bgr2hsv(im_bgr):
     return np.array(PIL.Image.fromarray(bgr2rgb(im_bgr)).convert('HSV'))  # BGR -> RGB -> HSV
 
 
-def gray2hsv(im_gray):    
+def gray2hsv(im_gray):
     return np.array(PIL.Image.fromarray(gray2rgb(im_gray)).convert('HSV'))  # Gray -> RGB -> HSV
 
 
@@ -853,16 +858,19 @@ def isarchive(filename):
         else:
             return False
 
+
 def tempfilename(suffix):
     fd, path = tempfile.mkstemp(suffix)
     os.close(fd)
     return path
+
 
 def templike(filename):
     suffix = fileext(filename)
     fd, path = tempfile.mkstemp(suffix)
     os.close(fd)
     return path
+
 
 def tempimage(ext='jpg'):
     """Create a temporary image with the given extension"""
@@ -885,9 +893,11 @@ def tempjpg():
     """Create a temporary JPG file in system temp directory"""
     return tempimage('jpg')
 
+
 def tempMP4():
     """Create a temporary MP4 file in system temp directory"""
     return tempimage('mp4')
+
 
 def tmpjpg():
     """Create a temporary JPG file in /tmp"""
@@ -918,10 +928,12 @@ def mktemp(ext):
     """Create a temporary file with extension .ext"""
     return tempfilename(suffix='.' + ext)
 
+
 def tempdir():
     """Wrapper around tempfile, because I can never remember the syntax"""
     return tempfile.gettempdir()
-    
+
+
 def imread(imfile):
     """Wrapper for opencv imread. Note that color images are imported as
     BGR!"""
@@ -930,7 +942,8 @@ def imread(imfile):
 
 def imrescale(im, scale):
     (height, width) = (im.shape[0], im.shape[1])
-    return np.array(PIL.Image.fromarray(im).resize((int(np.round(scale*width)), int(np.round(scale*height))), PIL.Image.BILINEAR))
+    return np.array(PIL.Image.fromarray(im).resize((int(np.round(scale * width)), int(np.round(scale * height))), PIL.Image.BILINEAR))
+
 
 def imresize(im, rows, cols):
     return np.array(PIL.Image.fromarray(im).resize((rows, cols), PIL.Image.BILINEAR))
@@ -942,11 +955,14 @@ def touch(filename, mystr=''):
     f.write(str(mystr))
     f.close()
 
+
 def isboundingbox(obj):
     return isinstance(obj, vipy.geometry.BoundingBox)
 
+
 class Stopwatch(object):
     """Return elapsed system time in seconds between calls to enter and exit"""
+
     def __init__(self):
         self.reset()
 
@@ -1026,7 +1042,7 @@ def splitextension(filename):
     (head, tail) = os.path.split(filename)
     try:
         (base, ext) = str.split(tail, '.', 1)  # for .tar.gz
-        ext = '.'+ext
+        ext = '.' + ext
     except:
         base = tail
         ext = None
@@ -1046,7 +1062,7 @@ def fileext(filename):
         if len(parts) == 3:
             ext = '.%s.%s' % (parts[1], parts[2])  # # tar.gz
         else:
-            ext = '.'+parts[1]
+            ext = '.' + parts[1]
 
     except:
         base = tail
@@ -1082,5 +1098,5 @@ def imcrop(img, bbox):
 
 
 class Failed(Exception):
-   """Raised when unit test fails to throw an exception"""
-   pass
+    """Raised when unit test fails to throw an exception"""
+    pass
