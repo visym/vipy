@@ -20,8 +20,8 @@ To delete a tag in the repo
 
 # PyPI distribution
 
-* Edit vipy / version.py to update the version number to match the tag
-* create ~ / .pypirc following https: // packaging.python.org / guides / migrating - to - pypi - org/  # uploading
+* Edit vipy/version.py to update the version number to match the tag
+* create ~/.pypirc following https://packaging.python.org/guides/migrating-to-pypi-org/  # uploading
 
 ```bash
 python3 setup.py sdist upload - r pypi
@@ -31,6 +31,6 @@ python3 setup.py sdist upload - r pypi
 # Local installation (virtualenv)
 
 ```bash
-cd / path / to / vipy
+cd /path/to/vipy
 pip install - e .
 ```
