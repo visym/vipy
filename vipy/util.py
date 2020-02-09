@@ -31,7 +31,7 @@ def try_import(package, pipname=None):
     try:
         importlib.import_module(package)
     except:
-        raise ImportError('Missing package %s -  Run "pip install %s" ' % (package, package if pipname is None else pipname))
+        raise ImportError('Optional package "%s" not installed -  Run "pip install %s" ' % (package, package if pipname is None else pipname))
 
 
 def count_images_in_subdirectories(indir):

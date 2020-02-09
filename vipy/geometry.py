@@ -155,7 +155,7 @@ class BoundingBox():
 
     def __eq__(self, other):
         """Bounding box equality"""
-        return self.xmin() == other.xmin() and self.xmax() == other.xmax() and self.ymin() == other.ymin() and self.ymax() == other.ymax()
+        return isinstance(other, BoundingBox) and self.xywh() == other.xywh()
 
     def __neq__(self, other):
         """Bounding box non-equality"""
@@ -494,10 +494,15 @@ class BoundingBox():
             self._ymax = c[1] + (dim / 2.0)
         return self
 
-    def hasoverlap(self, img):
+    def hasoverlap(self, img=None, width=None, height=None):
         """Does the bounding box intersect with the provided image rectangle?"""
-        assert isnumpy(img), "Invalid image input"
-        return self.area_of_intersection(BoundingBox(xmin=0, ymin=0, xmax=img.shape[1] - 1, ymax=img.shape[0] - 1)) > 0
+        if img is not None:
+            assert isnumpy(img), "Invalid image input"
+            (width, height) = (img.shape[1], img.shape[0])
+        else:
+            assert width is not None and height is not None, "Invalid width and height - both must be provided"
+            assert isnumber(width) and isnumber(height), "Invalid width and height - both must be numbers"
+        return self.area_of_intersection(BoundingBox(xmin=0, ymin=0, width=width, height=height)) > 0
 
     def imclip(self, img=None, width=None, height=None):
         """Clip bounding box to image rectangle [0,0,width-1,height-1], throw an exception on an invalid box"""
@@ -507,7 +512,7 @@ class BoundingBox():
         else:
             assert width is not None and height is not None, "Invalid width and height - both must be provided"
             assert isnumber(width) and isnumber(height), "Invalid width and height - both must be numbers"
-        self.intersection(BoundingBox(xmin=0, ymin=0, xmax=width, ymax=height))
+        self.intersection(BoundingBox(xmin=0, ymin=0, width=width, height=height))
         return self
 
     def imclipshape(self, W, H):

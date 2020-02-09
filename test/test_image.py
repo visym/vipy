@@ -5,17 +5,19 @@ from vipy.image import ImageDetection, Image, ImageCategory, Scene
 from vipy.object import Detection
 from vipy.util import tempjpg, temppng, tempdir, Failed
 from vipy.geometry import BoundingBox
+import PIL.Image
+
 
 # Common Parameters
 jpegurl = 'https://upload.wikimedia.org/wikipedia/commons/thumb/2/23/Bubo_virginianus_06.jpg/1920px-Bubo_virginianus_06.jpg'
 gifurl = 'https://upload.wikimedia.org/wikipedia/commons/thumb/2/2c/Rotating_earth_%28large%29.gif/200px-Rotating_earth_%28large%29.gif'
 pngurl = 'https://upload.wikimedia.org/wikipedia/commons/thumb/4/47/PNG_transparency_demonstration_1.png/560px-PNG_transparency_demonstration_1.png'
-greyfile = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'jebyrne_grey.jpg')
-rgbfile = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'jebyrne.jpg')
+greyfile = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'face_grey.jpg')
+rgbfile = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'face_rgb.jpg')
+rgbafile = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'face_rgba.png')
 
-
+                        
 def test_image():
-
     # Empty constructor should not raise exception
     im = Image()
     print('[test_image.image]: Empty Constructor: PASSED')
@@ -85,102 +87,139 @@ def test_image():
     assert os.environ['VIPY_CACHE'] in im.filename()
     print('[test_image.image]: URL with cache download: PASSED')
 
+    # Image file formats
+    for imgfile in [rgbfile, greyfile, rgbafile]:
+        _test_image_fileformat(imgfile)
+        
+
+def _test_image_fileformat(imgfile):
     # Filename object
-    im = ImageDetection(filename=rgbfile, xmin=100, ymin=100, bbwidth=700, bbheight=1000, category='face')
-    print('[test_image.image]: Image __desc__: %s' % im)
+    im = ImageDetection(filename=imgfile, xmin=100, ymin=100, bbwidth=700, height=1000, category='face')
+    print('[test_image.image]["%s"]:  Image __desc__: %s' % (im, imgfile))
     im.crop()
-    print('[test_image.image]: Image __desc__: %s' % im)
-    print('[test_image.image]: Filename: PASSED')
+    print('[test_image.image]["%s"]:  Image __desc__: %s' % (im, imgfile))
+    print('[test_image.image]["%s"]:  Filename: PASSED' % imgfile)
 
     # Clone
-    im = Image(filename=rgbfile).load()
+    im = Image(filename=imgfile).load()
     imb = im
     im._array = im._array + 1  # modify array
     np.testing.assert_array_equal(imb.numpy(), im.numpy())  # share buffer
     imc = im.clone().flush().load()
     assert(np.any(im.numpy() != imc.numpy()))  # does not share buffer
-    print('[test_image.image]: Image.clone: PASSED')
+    print('[test_image.image]["%s"]:  Image.clone: PASSED' % imgfile)
 
     # Saveas
-    im = Image(filename=rgbfile).load()
+    im = Image(filename=imgfile).load()
     f = temppng()
     assert im.saveas(f) == f and os.path.exists(f)
-    print('[test_image.image]: Image.saveas: PASSED')
+    print('[test_image.image]["%s"]:  Image.saveas: PASSED' % imgfile)
 
     # Stats
-    im = Image(filename=rgbfile).load().stats()
-    print('[test_image.image]: Image.stats: PASSED')
+    im = Image(filename=imgfile).load().stats()
+    print('[test_image.image]["%s"]:  Image.stats: PASSED' % imgfile)
 
     # Resize
     f = temppng()
-    im = Image(filename=rgbfile).load().resize(cols=16,rows=8).saveas(f)
+    im = Image(filename=imgfile).load().resize(cols=16,rows=8).saveas(f)
     assert Image(filename=f).shape() == (8,16)
     assert Image(filename=f).width() == 16
     assert Image(filename=f).height() == 8
-    im = Image(filename=rgbfile).load().resize(16,8).saveas(f)
+    im = Image(filename=imgfile).load().resize(16,8).saveas(f)
     assert Image(filename=f).shape() == (8,16)
     assert Image(filename=f).width() == 16
     assert Image(filename=f).height() == 8
-    im = Image(filename=rgbfile).load()
+    im = Image(filename=imgfile).load()
     (h,w) = im.shape()
     im = im.resize(rows=16)
     assert im.shape() == (16,int((w / float(h)) * 16.0))
-    print('[test_image.image]: Image.resize: PASSED')
+    print('[test_image.image]["%s"]:  Image.resize: PASSED' % imgfile)
 
     # Rescale
     f = temppng()
-    im = Image(filename=rgbfile).load().resize(rows=8).saveas(f)
+    im = Image(filename=imgfile).load().resize(rows=8).saveas(f)
     assert Image(filename=f).height() == 8
-    im = Image(filename=rgbfile).load().resize(cols=8).saveas(f)
+    im = Image(filename=imgfile).load().resize(cols=8).saveas(f)
     assert Image(filename=f).width() == 8
-    im = Image(filename=rgbfile).load().maxdim(256).saveas(f)
+    im = Image(filename=imgfile).load().maxdim(256).saveas(f)
     assert np.max(Image(filename=f).shape()) == 256
-    print('[test_image.image]: Image.rescale: PASSED')
+    print('[test_image.image]["%s"]:  Image.rescale: PASSED' % imgfile)
 
     # GIF
     im = Image(url=gifurl)
     im.download(verbose=True)
     assert im.shape() == (200,200)
-    print('[test_image.image]: GIF: PASSED')
+    print('[test_image.image]["%s"]:  GIF: PASSED' % imgfile)
 
     # Transparent PNG
     im = Image(url=pngurl)
     im.load(verbose=True)
-    print('[test_image.image]: PNG: PASSED')
+    assert im.colorspace() == 'rgba'
+    print('[test_image.image]["%s"]:  PNG: PASSED' % imgfile)
 
     # Image colorspace conversion
-    im = Image(filename=rgbfile).resize(200,200)
-    print(im.rgb())
+    im = Image(filename=imgfile).resize(200,200)
+    print(im.rgb()) 
+    assert im.colorspace() == 'rgb'
     assert(im.shape() == (200,200) and im.channels() == 3)
+    assert im.array().dtype == np.uint8
+    
+    print(im.luminance()) 
+    assert im.colorspace() == 'lum'   
+    assert(im.shape() == (200,200) and im.channels() == 1)
+    assert im.array().dtype == np.uint8
+    
     print(im.bgr())
+    assert im.colorspace() == 'bgr'    
     assert(im.shape() == (200,200) and im.channels() == 3)
+    assert im.array().dtype == np.uint8
+    
     print(im.rgba())
+    assert im.colorspace() == 'rgba'    
     assert(im.shape() == (200,200) and im.channels() == 4)
+    assert im.array().dtype == np.uint8
+    
     print(im.hsv())
+    assert im.colorspace() == 'hsv'    
     assert(im.shape() == (200,200) and im.channels() == 3)
-    print(im.bgra())
+    assert im.array().dtype == np.uint8
+    
+    print(im.bgra()) 
+    assert im.colorspace() == 'bgra'   
     assert(im.shape() == (200,200) and im.channels() == 4)
-    print(im.gray())
+    assert im.array().dtype == np.uint8
+    
+    print(im.gray()) 
+    assert im.colorspace() in ['grey', 'gray']
     assert(im.shape() == (200,200) and im.channels() == 1)
+    assert im.array().dtype == np.float32
+    
     print(im.float())
+    assert im.colorspace() == 'float'       
     assert(im.shape() == (200,200) and im.channels() == 1)
-    print('[test_image.image]: Image conversion: PASSED')
-    im = Image(filename=greyfile).load()
-    assert im.attributes['colorspace'] == 'grey'
-    assert im.max() == 255
-    print('[test_image.image]: Greyscale image conversion: PASSED')
+    assert im.array().dtype == np.float32
+    
+    print('[test_image.image]["%s"]:  Image conversion: PASSED' % imgfile)
+    im = Image(filename=imgfile).load().grey()
+    assert im.colorspace() == 'grey'
+    assert im.max() == 1.0
+    print('[test_image.image]["%s"]:  Greyscale image conversion: PASSED' % imgfile)
 
     # Crops
-    imorig = Image(filename=greyfile).load()
-    (H,W) = im.shape()
+    imorig = Image(filename=imgfile).load().lum()
+    (H,W) = imorig.shape()
+    im = imorig.clone().maxsquare()
+    assert im.shape() == (np.maximum(W,H), np.maximum(W,H)) and imorig.array()[0,0] == im.array()[0,0]
+    im = imorig.clone().minsquare()    
+    assert im.shape() == (np.minimum(W,H), np.minimum(W,H)) and imorig.array()[0,0] == im.array()[0,0]
+    im = imorig.clone().centersquare()
+    (xo,yo) = imorig.centerpixel() 
     (x,y) = im.centerpixel()
-    assert imorig.clone().maxsquare().shape() == (np.maximum(W,H), np.maximum(W,H)) and imorig.array()[0,0] == im.array()[0,0]
-    assert imorig.minsquare().shape() == (np.minimum(W,H), np.minimum(W,H)) and imorig.array()[0,0] == im.array()[0,0]
-    assert imorig.centersquare().shape() == (np.minimum(W,H), np.minimum(W,H)) and imorig.array()[x,y] == im.array()[x,y]
-    print('[test_image.image]: crops PASSED')
+    assert im.shape() == (np.minimum(W,H), np.minimum(W,H)) and imorig.array()[yo,xo] == im.array()[y,x]
+    print('[test_image.image]["%s"]:  crops PASSED' % imgfile)
 
     # Pixel operations
-    im = Image(filename=greyfile).load()
+    im = Image(filename=imgfile).load()
     im.min()
     im.max()
     im.mean()
@@ -189,42 +228,43 @@ def test_image():
     im.mat2gray()
     im.gain(1)
     im.bias(2)
-    print('[test_image.image]: greylevel transformations  PASSED')
+    print('[test_image.image]["%s"]:  greylevel transformations  PASSED' % imgfile)
 
     # Image conversion
-    im = Image(filename=rgbfile).load()
+    im = Image(filename=imgfile).load()
     im.pil()
     im.numpy()
     im.html()
-    print('[test_image.image]: image conversions  PASSED')
+    im.torch()
+    print('[test_image.image]["%s"]:  image conversions  PASSED' % imgfile)
 
     # Image colormaps
-    im = ImageDetection(filename=rgbfile, xmin=100, ymin=100, bbwidth=200, bbheight=200, category='face').crop()
+    im = ImageDetection(filename=imgfile, xmin=100, ymin=100, bbwidth=200, bbheight=200, category='face').crop()
     im.rgb().jet().bone().hot().rainbow()
-    print('[test_image.image]: Image colormaps: PASSED')
+    print('[test_image.image]["%s"]:  Image colormaps: PASSED' % imgfile)
 
     # Image category
-    im = ImageCategory(filename=rgbfile, category='face')
+    im = ImageCategory(filename=imgfile, category='face')
     assert im.load().category() == 'face'
-    print('[test_image.image]: ImageCategory constructor PASSED')
+    print('[test_image.image]["%s"]:  ImageCategory constructor PASSED' % imgfile)
     assert ImageCategory(category='1') == ImageCategory(category='1')
     assert ImageCategory(category='1') != ImageCategory(category='2')
-    print('[test_image.image]: ImageCategory equivalence PASSED')
+    print('[test_image.image]["%s"]:  ImageCategory equivalence PASSED' % imgfile)
     assert ImageCategory(category='1').iscategory('1')
     assert not ImageCategory(category='1').iscategory('2')
     assert ImageCategory(category='1').ascategory('2').iscategory('2')
-    print('[test_image.image]: ImageCategory category conversion PASSED')
+    print('[test_image.image]["%s"]:  ImageCategory category conversion PASSED' % imgfile)
     im.score(1.0)
     im.probability(1.0)
 
     # Random images
     im = vipy.image.RandomImage(128,256)
     assert im.shape() == (128, 256)
-    print('[test_image.image]: RandomImage PASSED')
+    print('[test_image.image]["%s"]:  RandomImage PASSED' % imgfile)
     im = vipy.image.RandomImageDetection(128,256)
     assert im.clone().crop().width() == im.bbox.imclipshape(W=256,H=128).width()
-    print('[test_image.image]: RandomImageDetection PASSED')
-
+    print('[test_image.image]["%s"]:  RandomImageDetection PASSED' % imgfile)
+    
 
 def test_imagedetection():
     # Constructors
@@ -377,6 +417,7 @@ def test_imagedetection():
 
 
 def test_scene():
+    # Constructors
     im = Scene()
     print('[test_image.scene]:Empty Scene Constructor: PASSED')
 
@@ -398,29 +439,111 @@ def test_scene():
     im = Scene(objects=[Detection('obj1',0,0,0,0), Detection('obj2',0,0,0,0)])
     print('[test_image.scene]:Invalid object type Constructor: PASSED')
 
-    assert sorted(im.categories()) == ['obj1', 'obj2']
-    print('[test_image.scene]:Scene.categories: PASSED')
-
     im = Scene(url='https://upload.wikimedia.org/wikipedia/commons/thumb/2/23/Bubo_virginianus_06.jpg/1920px-Bubo_virginianus_06.jpg').load()
-    print('[test_image.scene]:Scene.url: PASSED')
-    im = im.rescale(0.5).objects([Detection('obj1',20,50,100,100), Detection('obj2',300,300,200,200)])
-    print('[test_image.scene]:Scene.rescale: PASSED')
+    print('[test_image.scene] url constructor: PASSED')
 
-    outfile = im.show(nowindow=True)
+    f = im.filename()
+    im = Scene(filename=f).load()
+    print('[test_image.scene]: filename constructor: PASSED')
+
+    f = im.filename()
+    im = Scene(url='https://upload.wikimedia.org/wikipedia/commons/thumb/2/23/Bubo_virginianus_06.jpg/1920px-Bubo_virginianus_06.jpg', filename=f).load()
+    assert im.filename() == f
+    print('[test_image.scene]: url and filename constructor: PASSED')
+
+    # Test Scene
+    (H,W) = im.shape()
+    im = im.objects([Detection('obj1',20,50,100,100), Detection('obj2',300,300,200,200)])
+    im.append(Detection('obj3',W +1,H +1,200,200))   # invalid box outside image rectancle
+    im.append(Detection('obj4',W -100,H -200,1000,2000))   # invalid box partially outside image rectangle    
+
+    
+    # Visualizations
+    im.__repr__()
+    print('[test_image.scene]:  __repr__  PASSED')    
+
+    assert len(im) == 4
+    print('[test_image.scene]:  __len__  PASSED')
+
+    for obj in im:
+        print(obj)
+    print('[test_image.scene] __iter__: PASSED')
+
+    print(im[0])
+    print(im[1])
+    try:
+        im[5]
+        Failed()
+    except Failed:
+        raise
+    except:
+        print('[test_image.scene] __getitem__: PASSED')
+
+    outfile = im.rescale(0.25).show(nowindow=True)
     outfile = im.savefig(temppng())
-    print('[test_image.scene]:Scene.show().savefig() ("%s"): PASSED' % outfile)
+    print('[test_image.scene]:  show() PASSED')
+    print('[test_image.scene]:  savefig() PASSED')    
 
-    im = im.resize(1000,100)
-    outfile = im.show().savefig(temppng())
-    print('[test_image.scene]:Scene.resize() ("%s"): PASSED' % outfile)
 
+    # Transformations
+    imorig = im.clone()
+    (H,W) = imorig.shape()
+    im = im.rescale(1.0)
+    assert im.shape() == (H, W)
+    assert np.allclose(im.mask(), np.array(PIL.Image.fromarray(imorig.mask(), 'L').resize( (int(W), int(H)), PIL.Image.NEAREST)))
+    (H,W) = imorig.shape()
+    im = im.rescale(0.5)
+    assert im.shape() == (H /2, W /2)
+    imm = Image(array=im.mask() *255, colorspace='lum')
+    imm2 = Image(array=np.array(PIL.Image.fromarray(imorig.mask(), 'L').resize( (int(W /2), int(H /2)), PIL.Image.NEAREST)) *255, colorspace='lum')
+    assert np.allclose(imm.array(), imm2.array(), rtol=1)    
+    print('[test_image.scene]  rescale() PASSED')
+
+    im = imorig.clone().resize(int(W /2), int(H /2))
+    assert im.shape() == (H /2, W /2)
+    imm = Image(array=im.mask() *255, colorspace='lum')
+    imm2 = Image(array=np.array(PIL.Image.fromarray(imorig.mask(), 'L').resize( (int(W /2), int(H /2)), PIL.Image.NEAREST)) *255, colorspace='lum')
+    assert np.allclose(imm.array(), imm2.array(), rtol=1)        
+    print('[test_image.scene]: resize() PASSED')
+
+    im = imorig.clone().fliplr()
+    assert im.shape() == (H, W)
+    imm = Image(array=im.mask() *255, colorspace='lum')
+    imm2 = Image(array=np.array(PIL.Image.fromarray(np.fliplr(imorig.mask()), 'L')) *255, colorspace='lum')
+    assert np.allclose(imm.array(), imm2.array(), rtol=1)        
+    print('[test_image.scene]: fliplr() PASSED')
+
+    imorigclip = imorig.clone().clip()
+    im = imorigclip.clone().clip()
     (h,w) = im.shape()
-    im.zeropad(padwidth=100,padheight=200)
+    im.zeropad(padwidth=100, padheight=200)
     assert (im.width() == w + 200 and im.height() == h + 400 and im.numpy()[0,0,0] == 0)
+    imm = Image(array=im.mask() *255, colorspace='lum')
+    imm2 = Image(array=np.array(PIL.Image.fromarray(np.pad(imorigclip.mask(),
+                                                           pad_width=((200,200),(100,100)),
+                                                           mode='constant',
+                                                           constant_values=0), 'L')) *255, colorspace='lum')
+    assert np.allclose(imm.array(), imm2.array(), rtol=1)    
+    im = imorigclip.clone().clip()
+    (h,w) = im.shape()
+    im.zeropad((0,100), (0,200))
+    assert (im.width() == w + 100 and im.height() == h + 200 and im.numpy()[0,0,0] != 0)
+    imm = Image(array=im.mask() *255, colorspace='lum')
+    imm2 = Image(array=np.array(PIL.Image.fromarray(np.pad(imorigclip.mask(),
+                                                           pad_width=((0,200),(0,100)),
+                                                           mode='constant',
+                                                           constant_values=0), 'L')) *255, colorspace='lum')
+    assert np.allclose(imm.array(), imm2.array(), rtol=1)                
     print('[test_image.scene]:Scene.zeropad: PASSED')
 
+    # Categories    
+    assert sorted(imorig.categories()) == ['obj1', 'obj2', 'obj3', 'obj4']
+    assert sorted(im.categories()) == ['obj1', 'obj2', 'obj4']    
+    print('[test_image.scene]:Scene.categories: PASSED')
 
+    
+    
 if __name__ == "__main__":
-    test_imagedetection()
     test_image()
+    test_imagedetection()    
     test_scene()

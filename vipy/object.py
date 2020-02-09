@@ -21,6 +21,9 @@ class Detection(BoundingBox):
             strlist.append('conf=%1.3f')
         return str('<vipy.object.detection: %s>' % (', '.join(strlist)))
 
+    def __eq__(self, other):
+        return isinstance(other, Detection) and xywh() == other.xywh() and self.category() == other.category()
+
     def __str__(self):
         return self.__repr__()
 
@@ -32,7 +35,6 @@ class Detection(BoundingBox):
 
 
 class Track(object):
-
     """Represent many bounding boxes of an instance through time"""
 
     def __init__(self, label, frames, boxes, confidence=None, attributes=None):
