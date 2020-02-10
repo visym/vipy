@@ -17,19 +17,19 @@ mp4url = 'https://www.youtube.com/watch?v=PYOSKYWg-5E'
 
 def _test_dataset():
     d = Kinetics400('/tmp/kinetics').download().trainset()
-    v = d[0].crop().load()[0].resize(rows=256).saveas('kinetics.jpg')
+    v = d[0].trim(0, 10).load()[0].resize(rows=256).saveas('kinetics.jpg')
     print('[test_datasets]:  Kinetics400 PASSED')
     
     d = Kinetics600('/tmp/kinetics').download().trainset()
-    v = d[1].crop().load()[0].resize(rows=256).saveas('kinetics.jpg')
+    v = d[1].trim(0, 10).load()[0].resize(rows=256).saveas('kinetics.jpg')
     print('[test_datasets]:  Kinetics600 PASSED')
     
     d = Kinetics700('/tmp/kinetics').download().trainset()
-    v = d[2].crop().load()[0].rescale(0.5).saveas('kinetics.jpg')
+    v = d[2].trim(0, 10).load()[0].rescale(0.5).saveas('kinetics.jpg')
     print('[test_datasets]:  Kinetics700 PASSED')
     
     d = ActivityNet('/tmp/activitynet').download().dataset()
-    v = d[0].crop().load()
+    v = d[0].trim(0, 10).load()
     print('[test_datasets]:  ActivityNet  PASSED')
     
     d = LFW('/tmp/lfw').download().dataset()
@@ -112,19 +112,18 @@ def test_video():
     v.__repr__()
     print('[test_video.video]: __repr__  PASSED')    
     
-    # Downloader
-    v = vipy.video.Video(url='http://visym.com/out.mp4').load(ignoreErrors=True)
-    print('[test_video.video]: download ignoreErrors  PASSED')            
-
     
 def _test_scene():
 
+    # Downloader
+    v = vipy.video.Video(url='http://visym.com/out.mp4').load(ignoreErrors=True)
+    print('[test_video.video]: download ignoreErrors  PASSED')                
     v = vipy.video.Scene(url=mp4url).trim(0,100).load()
     print('[test_video.scene: download  PASSED')        
-
     for im in v:
         assert im.shape() == v.shape()
-    print('[test_video.scene]: __iter__  PASSED')                    
+    print('[test_video.scene]: __iter__  PASSED')
+    
     
     vid = vipy.video.Scene(filename=mp4file, tracks=[vipy.object.Track('person', frames=[0,200], boxes=[BoundingBox(xmin=0,ymin=0,width=200,height=400), BoundingBox(xmin=0,ymin=0,width=400,height=100)]),
                                                      vipy.object.Track('vehicle', frames=[0,200], boxes=[BoundingBox(xmin=100,ymin=200,width=300,height=400), BoundingBox(xmin=400,ymin=300,width=200,height=100)])])

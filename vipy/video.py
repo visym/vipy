@@ -36,8 +36,6 @@ class Video(object):
     If a filename is provided to the constructor, then that filename will be used instead of a temp or cached filename.
     URLs can be defined as an absolute URL to a video file, or to a site supported by 'youtube-dl' (https://ytdl-org.github.io/youtube-dl/supportedsites.html)
 
-    >>> vid = 
-
     >>> vid = vipy.video.Video(array=frames, colorspace='rgb')
     
     The input 'frames' is an NxHxWx3 numpy array corresponding to an N-length list of HxWx3 uint8 numpy array which is a single frame of pre-loaded video
@@ -416,16 +414,22 @@ class Video(object):
 
 
 class Scene(Video):
+    """ vipy.video.Scene class
+    """
+    
+    
     def __init__(self, filename=None, url=None, framerate=30, attributes=None, tracks=None, activities=None):
         super(Scene, self).__init__(url=url, filename=filename, framerate=framerate, attributes=attributes)
 
+        self._tracks = []
         if tracks is not None:
             assert isinstance(tracks, list) and all([isinstance(t, vipy.object.Track) for t in tracks]), "Invalid input"
-        self._tracks = tracks
+            self._tracks = tracks
 
+        self._activities = []
         if activities is not None:
             assert isinstance(activities, list) and all([isinstance(a, vipy.activity.Activity) for a in activities]), "Invalid input"
-        self._activities = activities
+            self._activities = activities
 
     def __repr__(self):
         strlist = []
@@ -435,9 +439,9 @@ class Scene(Video):
             strlist.append('filename="%s"' % self.filename())
         if self.hasurl():
             strlist.append('url="%s"' % self.url())
-        if self._tracks is not None:
+        if len(self._tracks) > 0:
             strlist.append('tracks=%d' % len(self._tracks))
-        if self._activities is not None:
+        if len(self._activities) > 0:
             strlist.append('activities=%d' % len(self._activities))
         return str('<vipy.video.scene: %s>' % (', '.join(strlist)))
 
@@ -456,6 +460,7 @@ class Scene(Video):
             yield self.__getitem__(k)
 
     def trim(self, startframe, endframe):
+        """FIXME: the startframe and endframe should be set by the constructor if no arguments since this is set by the annotator"""
         super(Scene, self).trim(startframe, endframe)
         self._tracks = [t.offset(dt=-startframe) for t in self._tracks]
         return self
@@ -524,8 +529,8 @@ class Scene(Video):
 
 
 class VideoCategory(Video):
-    def __init__(self, filename=None, url=None, framerate=30, rot90cw=False, rot90ccw=False, attributes=None, category=None, startframe=None, endframe=None):
-        super(VideoCategory, self).__init__(url=url, filename=filename, framerate=framerate, rot90cw=rot90cw, rot90ccw=rot90ccw, attributes=attributes)
+    def __init__(self, filename=None, url=None, framerate=30, attributes=None, category=None, startframe=None, endframe=None):
+        super(VideoCategory, self).__init__(url=url, filename=filename, framerate=framerate, attributes=attributes)
         self._category = category
         if startframe is not None and endframe is not None:
             self._startframe = startframe

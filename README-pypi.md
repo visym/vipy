@@ -8,7 +8,7 @@ To create a tag in the repo
     git commit -am "message"
     git push
     git tag X.Y.Z -m "vipy-X.Y.Z"
-    git push -tags origin master
+    git push --tags origin master
 ```
 
 To delete a tag in the repo
