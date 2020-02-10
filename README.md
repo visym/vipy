@@ -9,11 +9,11 @@ VIPY provides:
 
 * Representation of videos with labeled activities and objects that can be resized, clipped, rotated, scaled and cropped
 * Representation of images with object bounding boxes that can be manipulated as easily as editing an image
-* Clean visualization of labeled images and videos 
+* Clean visualization of annotated images and videos 
 * Lazy loading of images and videos suitable for distributed procesing (e.g. spark, dask)
 * Straightforward integration into machine learning toolchains (e.g. torch, numpy)
 * Fluent interface for chaining operations on videos and images
-* Dataset download, unpack and import (e.g. ActivityNet, Kinetics700)
+* Dataset download, unpack and import (e.g. ActivityNet, Kinetics)
 * Video and image web search tools with URL downloading and caching
 
 
@@ -30,12 +30,12 @@ Installation
 pip install vipy
 ```
 
-This package has the following dependencies
+This package has the following required dependencies
 ```python
 pip install numpy scipy matplotlib dill pillow ffmpeg-python
 ```
 
-Optional
+Optional dependencies
 ```python
 pip install opencv-python ipython h5py nltk bs4 youtube-dl scikit-learn dropbox torch
 ```
