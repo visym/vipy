@@ -385,9 +385,12 @@ def test_imagedetection():
     print('[test_image.imagedetection]: rescale  PASSED')
 
     # Resize
-    im = ImageDetection(filename=rgbfile, xmin=100, ymin=100, width=200, height=300, category='face')
-    im = im.resize(cols=int(im.width() // 2.0), rows=int(im.height() // 2.0))
+    imorig = ImageDetection(filename=rgbfile, xmin=100, ymin=100, width=200, height=300, category='face')
+    im = imorig.clone().resize(cols=int(imorig.width() // 2.0), rows=int(imorig.height() // 2.0))
     assert(im.bbox.width() == 100 and im.bbox.height() == 150)
+    (H,W) = imorig.shape()
+    im = imorig.clone().resize(cols=100)
+    assert(im.crop().width() == int(np.round(200*(100.0/W))))
     print('[test_image.imagedetection]: resize  PASSED')
 
     # Isinterior
@@ -403,9 +406,17 @@ def test_imagedetection():
     assert np.allclose(im.clone().fliplr().crop().array(), np.fliplr(im.crop().array()))
     print('[test_image.imagedetection]: fliplr  PASSED')
 
-    # Centercrop
+    # Square crops
     img = np.random.rand(10,20).astype(np.float32)
     im = ImageDetection(array=img, xmin=0, ymin=0, xmax=5, ymax=10)
+    imorig = im.clone()    
+    (x,y,w,h) = im.bbox.xywh()
+    (xc,yc) = im.centroid()  # box centroid
+    assert im.clone().minsquare().bbox.shape() == (min(w,h),min(w,h))
+    assert im.clone().minsquare().bbox.centroid() == (xc,yc)
+    assert im.clone().maxsquare().bbox.shape() == (max(w,h),max(w,h))
+    assert im.clone().maxsquare().bbox.centroid() == (xc,yc)
+    im = imorig.clone().minsquare()    
     assert im.centercrop(1,2).shape() == (2,1)
     assert im.boundingbox().xywh() == (0,0,1,2)
     print('[test_image.imagedetection]: centercrop PASSED')

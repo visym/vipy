@@ -17,19 +17,19 @@ mp4url = 'https://www.youtube.com/watch?v=PYOSKYWg-5E'
 
 def _test_dataset():
     d = Kinetics400('/tmp/kinetics').download().trainset()
-    v = d[0].trim(0, 10).load()[0].resize(rows=256).saveas('kinetics.jpg')
+    v = d[0].load()[0].resize(rows=256).saveas('kinetics.jpg')
     print('[test_datasets]:  Kinetics400 PASSED')
     
     d = Kinetics600('/tmp/kinetics').download().trainset()
-    v = d[1].trim(0, 10).load()[0].resize(rows=256).saveas('kinetics.jpg')
+    v = d[1].load()[0].resize(rows=256).saveas('kinetics.jpg')
     print('[test_datasets]:  Kinetics600 PASSED')
     
     d = Kinetics700('/tmp/kinetics').download().trainset()
-    v = d[2].trim(0, 10).load()[0].rescale(0.5).saveas('kinetics.jpg')
+    v = d[2].load()[0].rescale(0.5).saveas('kinetics.jpg')
     print('[test_datasets]:  Kinetics700 PASSED')
     
     d = ActivityNet('/tmp/activitynet').download().dataset()
-    v = d[0].trim(0, 10).load()
+    v = d[0].load()
     print('[test_datasets]:  ActivityNet  PASSED')
     
     d = LFW('/tmp/lfw').download().dataset()

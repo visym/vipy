@@ -56,7 +56,7 @@ class Video(object):
         # Input
         if url is not None:
             assert isurl(url), 'Invalid URL "%s" ' % url
-            self.url(url)            
+            self.url(url)
         if filename is not None:
             self.filename(filename)
         else:
@@ -74,7 +74,7 @@ class Video(object):
             
         # Transformations
         self._ffmpeg = ffmpeg.input(self.filename(), r=self._framerate)
-            
+        
     def __repr__(self):
         strlist = []
         if self.isloaded():
@@ -132,7 +132,8 @@ class Video(object):
             return self._url
         if url is not None:
             # set filename and return object
-            self.flush()
+            if self.isloaded():
+                self.flush()
             self._filename = None
             self._url = url
         if username is not None:
@@ -200,7 +201,6 @@ class Video(object):
         else:
             # set filename and return object
             self._filename = newfile
-            self._url = None
             return self
 
     def download(self, ignoreErrors=False, timeout=10, verbose=False):

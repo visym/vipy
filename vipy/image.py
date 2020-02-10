@@ -537,6 +537,8 @@ class Image(object):
             pad_shape = (padheight, padwidth, (0, 0))
         else:
             pad_shape = (padheight, padwidth)
+
+        assert all([x>=0 for x in padheight]) and all([x>=0 for x in padwidth]), "padding must be positive"
         self._array = np.pad(self.load().array(),
                              pad_width=pad_shape,
                              mode='constant',
@@ -568,8 +570,9 @@ class Image(object):
     def maxsquare(self):
         """Crop image of size (HxW) to (max(H,W), max(H,W)) with zeropadding, keeping upper left corner constant"""
         S = np.max(self.load().shape())
-        dS = np.maximum(S - self.width(), self.height())
-        return self.zeropad((0,dS), (0,dS)).crop(BoundingBox(0, 0, width=S, height=S))
+        dW = S - self.width()
+        dH = S - self.height()
+        return self.zeropad((0,dW), (0,dH)).crop(BoundingBox(0, 0, width=S, height=S))
 
     def centersquare(self):
         """Crop image of size (NxN) in the center, such that N=min(width,height)"""
@@ -999,6 +1002,10 @@ class ImageDetection(ImageCategory):
 
         return self
 
+    def centroid(self):
+        """Return the real valued centroid (col=x, rowy) of the bounding box, not the image - use centerpixel() for the center pixel in the image"""
+        return self.bbox.centroid()
+
     def invalid(self, flush=False):
         """An ImageDetection is invalid when the box is invalid"""
         return self.bbox.invalid()
@@ -1019,10 +1026,18 @@ class ImageDetection(ImageCategory):
         return self
 
     def resize(self, cols=None, rows=None):
-        """Resize image buffer and bounding box"""
-        self.bbox.scalex(cols / float(self.width()))
-        self.bbox.scaley(rows / float(self.height()))
-        self = super(ImageDetection, self).resize(cols, rows)
+        """Resize image buffer and bounding box so that the image buffer is size (height=cols, width=row).  If only cols or rows is provided, then scale the image appropriately"""
+        assert cols is not None or rows is not None, "Invalid input"
+        sx = (float(cols) / self.width()) if cols is not None else 1.0
+        sy = (float(rows) / self.height()) if rows is not None else 1.0
+        sx = sx if sx != 1.0 else sy
+        sy = sy if sy != 1.0 else sx        
+        self.bbox.scalex(sx)
+        self.bbox.scaley(sy)
+        if sx == sy:
+            self = super(ImageDetection, self).rescale(sx)  # FIXME: if we call resize here, inheritance is screweed up
+        else:
+            self = super(ImageDetection, self).resize(cols, rows)
         return self
 
     def fliplr(self):
@@ -1053,6 +1068,11 @@ class ImageDetection(ImageCategory):
         self.bbox = self.bbox.minsquare()
         return self
 
+    def maxsquare(self):
+        """Set a square bounding box centered at current centroid, such that the box dim=max(bbwidth, bbheight), do not crop the image"""
+        self.bbox = self.bbox.maxsquare()
+        return self
+    
     def dilate(self, s):
         """Dilate bounding box by scale factor"""
         self.bbox = self.bbox.dilate(s)
@@ -1066,11 +1086,10 @@ class ImageDetection(ImageCategory):
         return self
 
     def zeropad(self, dx, dy):
-        """Pad image with dx zeros at the left, dx zeros at right, dy zeros at the top, dy zeros at the bottom, update box accordingly"""
+        """Pad image with dx=(leftpadwidth,rightpadwidth) or dx=bothpadwidth to zeropad left and right, dy=(toppadheight,bottompadheight) or dy=bothpadheight to zeropad top and bottom"""
         # image class inheritance
-        assert dx >= 0 and dy >= 0, "Invalid input"
         self = super(ImageDetection, self).zeropad(dx, dy)
-        self.bbox = self.bbox.translate(dx, dy)
+        self.bbox = self.bbox.translate(dx if not isinstance(dx, tuple) else dx[0], dy if not isinstance(dy, tuple) else dy[0])
         return self
 
     def meanpad(self, dx, dy):

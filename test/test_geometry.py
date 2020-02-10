@@ -144,7 +144,7 @@ def test_boundingbox():
     print('[test_geometry.boundingbox.setwidth]: PASSED')
 
     bb = BoundingBox(centroid=(10,10), width=1, height=1)
-    assert bb.centroid() == [10,10]
+    assert bb.centroid() == (10,10)
     print('[test_geometry.boundingbox.centroid]: PASSED')
 
     # Intersection
@@ -200,11 +200,11 @@ def test_boundingbox():
 
     # Dilation
     bb = BoundingBox(xmin=0, ymin=0, width=100, height=100).dilate(2.0)
-    assert bb.width() == 200 and bb.height() == 200 and bb.centroid() == [50,50]
+    assert bb.width() == 200 and bb.height() == 200 and bb.centroid() == (50,50)
     print('[test_geometry.boundingbox.dilate]: PASSED')
 
     bb = BoundingBox(xmin=0, ymin=0, width=100, height=100).dilate_height(3.0)
-    assert bb.width() == 100 and bb.height() == 300 and bb.centroid() == [50,50]
+    assert bb.width() == 100 and bb.height() == 300 and bb.centroid() == (50,50)
     print('[test_geometry.boundingbox.dilate_height]: PASSED')
 
     bb = BoundingBox(xmin=0, ymin=0, width=100, height=100).dilate_width(1.1)

@@ -259,8 +259,8 @@ class BoundingBox():
         return self._ymax - self._ymin
 
     def centroid(self):
-        """(x,y) tuple of centroid"""
-        return [self._xmin + (float(self.width()) / 2.0), self._ymin + (float(self.height()) / 2.0)]
+        """(x,y) tuple of centroid position of bounding box"""
+        return (self._xmin + (float(self.width()) / 2.0), self._ymin + (float(self.height()) / 2.0))
 
     def x_centroid(self):
         return self.centroid()[0]
