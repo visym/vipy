@@ -279,13 +279,14 @@ class Image(object):
         return self.channels() == 3 or self.channels() == 4
 
     def colorspace(self, colorspace=None):
-        """Return the colorspace as a string in ['rgb', 'rgba', 'bgr', 'bgra', 'hsv', 'float', 'grey', 'lum']"""
+        """Return or set the colorspace as ['rgb', 'rgba', 'bgr', 'bgra', 'hsv', 'float', 'grey', 'lum']"""
         if colorspace is None:
             return self._colorspace
         else:
-            assert str(colorspace).lower() in ['rgb', 'rgba', 'bgr', 'bgra', 'hsv', 'float', 'grey', 'gray', 'lum']
+            assert str(colorspace).lower() in ['rgb', 'rgba', 'bgr', 'bgra', 'hsv', 'float', 'grey', 'gray', 'lum'], "Invalid colorspace '%s'. Allowable is ['rgb', 'rgba', 'bgr', 'bgra', 'hsv', 'float', 'grey', 'gray', 'lum']" % colorspace 
             img = self.array()
             if self.isloaded():
+                colorspace = str(colorspace).lower()
                 if self.array().dtype == np.float32:
                     assert colorspace in ['float', 'grey', 'gray'], "Invalid colorspace '%s' for float32 array()" % colorspace
                 elif self.array().dtype == np.uint8:

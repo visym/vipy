@@ -706,17 +706,14 @@ def isimageobject(x):
     """Is an object a vipy.image class Image, ImageCategory, ImageDetection?"""
     return (str(type(x)) in ["<class 'vipy.image.Image'>",
                              "<class 'vipy.image.ImageCategory'>",
-                             "<class 'vipy.image.ImageDetection'>",
-                             "<class 'vipy.video.Video'>",
-                             "<class 'vipy.video.VideoCategory'>",
-                             "<class 'vipy.video.VideoDetection'>"])
+                             "<class 'vipy.image.ImageDetection'>"])
 
 
 def isvideotype(x):
-    """Is an object a vipy.video class Video, VideoCategory, VideoDetection?"""
+    """Is an object a vipy.video class Video, VideoCategory, Scene?"""
     return (str(type(x)) in ["<class 'vipy.video.Video'>",
                              "<class 'vipy.video.VideoCategory'>",
-                             "<class 'vipy.video.VideoDetection'>"])
+                             "<class 'vipy.video.Scene'>"])
 
 
 def istuple(x):

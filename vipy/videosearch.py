@@ -95,7 +95,7 @@ def youtube(tag, n_pages=1, channel=False, video_limit=None, expected_vid_list=N
                 return new_list
             else:
                 return []
-    vidlist = list(set(vidlist))  # unique
+    vidlist = [v for v in set(vidlist) if isurl(v)]   # unique valid URLs
     return(vidlist)
 
 
