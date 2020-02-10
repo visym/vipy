@@ -30,7 +30,40 @@ if hasattr(ssl, '_create_unverified_context'):
 
 
 class Image(object):
-    """Vipy class for images"""
+    """vipy.image.Image class
+    
+    The vipy image class provides a fluent, lazy interface for representing, transforming and visualizing images.
+    The following constructors are supported:
+
+    >>> im = vipy.image.Image(filename="/path/to/image.ext")
+    
+        All image file formats that are readable by PIL are supported here.
+
+    >>> im = vipy.image.Image(url="http://domain.com/path/to/image.ext")
+    
+        The image will be downloaded from the provided url and saved to a temporary filename.
+        The environment variable VIPY_CACHE controls the location of the directory used for saving images, otherwise this will be saved to the system temp directory.
+
+    >>> im = vipy.image.Image(url="http://domain.com/path/to/image.ext", filename="/path/to/new/image.ext")
+
+        The image will be downloaded from the provided url and saved to the provided filename.
+        The url() method provides optional basic authentication set for username and password
+
+    >>> im = vipy.image.Image(array=img, colorspace='rgb')
+
+        The image will be constructed from a provided numpy array 'img', with an associated colorspace.  The numpy array and colorspace can be one of the following combinations:
+
+            'rgb': uint8, three channel (red, green, blue)
+            'rgba':  uint8, four channel (rgb + alpha)
+            'bgr': uint8, three channel (blue, green, red), such as is returned from cv2.imread()
+            'bgra':  uint8, four channel
+            'hsv':  uint8, three channel (hue, saturation, value)
+            'lum;:  uint8, one channel, luminance (8 bit grey level)
+            'grey':  float32, one channel in range [0,1] (32 bit intensity)
+            'float':  float32, any channel in range [-inf, +inf]
+
+        The most general colorspace is 'float' which is used to manipulate images prior to network encoding, such as applying bias. 
+    """
 
     def __init__(self, filename=None, url=None, array=None, colorspace=None, attributes=None):
         # Private attributes
@@ -41,7 +74,9 @@ class Image(object):
         self._filename = None   # Local filename
         self._url = None        # URL to download
         self._loader = None     # lambda function to load an image, set with loader() method
-
+        self._array = None
+        self._colorspace = None
+        
         # Initialization
         self._filename = filename
         if url is not None:
@@ -49,13 +84,15 @@ class Image(object):
         self._url = url
         if array is not None:
             assert isnumpy(array), 'Invalid Array'
-        self._array = array
-
+        self.array(array)
+        self.colorspace(colorspace)
+        
         # Public attributes: passed in as a dictionary
-        self.attributes = attributes if attributes is not None else {'colorspace':None}
-        if colorspace is not None:
-            self.colorspace(colorspace)
-        self.attributes['colorspace'] = colorspace
+        self.attributes = {} 
+        if attributes is not None:
+            assert isinstance(attributes, dict), "Attributes must be dictionary"
+            self.attributes = attributes
+
 
     def __str__(self):
         return self.__repr__()
@@ -71,7 +108,7 @@ class Image(object):
     def __repr__(self):
         strlist = []
         if self.isloaded():
-            strlist.append("height=%d, width=%d, color='%s'" % (self._array.shape[0], self._array.shape[1], self.attributes['colorspace']))
+            strlist.append("height=%d, width=%d, color='%s'" % (self._array.shape[0], self._array.shape[1], self.colorspace()))
         if self.hasfilename():
             strlist.append('filename="%s"' % self.filename())
         if self.hasurl():
@@ -82,10 +119,10 @@ class Image(object):
         """Return a python dictionary containing the relevant serialized attributes of the Image() object"""
         d = {}
         if self.isloaded():
-            d['height'] = self._array.shape[0]
-            d['width'] = self._array.shape[1]
+            d['height'] = self.height()
+            d['width'] = self.width()
             d['channels'] = self.channels()
-            d['colorspace'] = self.attributes['colorspace']
+            d['colorspace'] = self.colorspace()
         if self.hasfilename():
             d['filename'] = self.filename()
         if self.hasurl():
@@ -241,13 +278,32 @@ class Image(object):
         """Color images are three channel or four channel with transparency, float32 or uint8"""
         return self.channels() == 3 or self.channels() == 4
 
-    def colorspace(self, colorspace_=None):
+    def colorspace(self, colorspace=None):
         """Return the colorspace as a string in ['rgb', 'rgba', 'bgr', 'bgra', 'hsv', 'float', 'grey', 'lum']"""
-        if colorspace_ is None:
-            return self.attributes['colorspace']
+        if colorspace is None:
+            return self._colorspace
         else:
-            assert str(colorspace_).lower() in ['rgb', 'rgba', 'bgr', 'bgra', 'hsv', 'float', 'grey', 'gray', 'lum']
-            self.attributes['colorspace'] = str(colorspace_).lower()
+            assert str(colorspace).lower() in ['rgb', 'rgba', 'bgr', 'bgra', 'hsv', 'float', 'grey', 'gray', 'lum']
+            img = self.array()
+            if self.isloaded():
+                if self.array().dtype == np.float32:
+                    assert colorspace in ['float', 'grey', 'gray'], "Invalid colorspace '%s' for float32 array()" % colorspace
+                elif self.array().dtype == np.uint8:
+                    assert colorspace in  ['rgb', 'rgba', 'bgr', 'bgra', 'hsv', 'lum'], "Invalid colorspace '%s' for uint8 array(). Allowable is ['rgb', 'rgba', 'bgr', 'bgra', 'hsv', 'lum']" % colorspace
+                else:
+                    raise ValueError('unupported array() datatype "%s".  Allowable is [np.float32, np.uint8]' % colorspace)  # should never get here as long as array() is used to set _array
+                if self.channels() == 1:
+                    assert colorspace in ['float', 'grey', 'gray', 'lum'], "Invalid colorspace '%s; for single channel array.  Allowable is ['float', 'grey', 'gray', 'lum']" % colorspace
+                elif self.channels() == 3:
+                    assert colorspace in ['float', 'rgb', 'bgr', 'hsv'], "Invalid colorspace '%s; for three channel array. Allowable is ['float', 'rgb', 'bgr', 'hsv']" % colorspace
+                elif self.channels() == 4:
+                    assert colorspace in ['float', 'rgba', 'bgra'], "Invalid colorspace '%s; for four channel array. Allowable is ['float', 'rgba', 'bgra']" % colorspace                    
+                elif colorspace is not 'float':
+                    raise ValueError("Invalid colorspace '%s' for image channels=%d, type=%s" % (colorspace, self.channels(), str(self.array().dtype)))
+                if colorspace in ['grey', 'gray']:
+                    assert self.max() <= 1 and self.min() >= 0, "Colorspace 'grey' image must be np.float32 in range [0,1].  Use colorspace 'lum' for np.uint8 in range [0,255], or colorspace 'float' for unconstrained np.float32 [-inf, +inf]"
+                    colorspace = 'grey'  # standardize
+            self._colorspace = str(colorspace).lower()
             return self
 
     def istransparent(self):
@@ -291,12 +347,14 @@ class Image(object):
         if np_array is None:
             return self._array
         elif isnumpy(np_array):
+            assert np_array.dtype == np.float32 or np_array.dtype == np.uint8, "Invalid input - array() must be type uint8 or float32"
             self._array = np.copy(np_array)
             self._filename = None
             self._url = None
+            self.colorspace(None)  # must be set with colorspace() before conversion
             return self
         else:
-            raise ValueError('Invalid numpy array')
+            raise ValueError('Invalid input - array() must be numpy array')
 
     def buffer(self, data=None):
         """Alias for array()"""
@@ -361,9 +419,9 @@ class Image(object):
 
     def saveas(self, filename, writeas=None):
         """Save current buffer (not including drawing overlays) to new filename and return filename"""
-        if self.attributes['colorspace'] in ['gray']:
+        if self.colorspace() in ['gray']:
             imwritegray(self.grayscale()._array, filename)
-        elif self.attributes['colorspace'] != 'float':
+        elif self.colorspace() != 'float':
             imwrite(self.load().array(), filename, writeas=writeas)
         else:
             raise ValueError('Convert float image to RGB or gray first')
@@ -536,7 +594,7 @@ class Image(object):
         self._array = np.fliplr(self.load().array())
         return self
 
-    def _colorspace(self, to):
+    def _convert(self, to):
         """Supported colorspaces are rgb, rgbab, bgr, bgra, hsv, grey, lum, float"""
         to = to if to != 'gray' else 'grey'  # standardize 'gray' -> 'grey' internally
         self.load()
@@ -550,12 +608,12 @@ class Image(object):
             assert img.dtype == np.uint8
             self._array = np.array(PIL.Image.fromarray(img, mode='L').convert('RGB'))  # uint8 luminance [0,255] -> uint8 RGB
             self.colorspace('rgb')
-            self._colorspace(to)
+            self._convert(to)
         elif self.colorspace() in ['gray', 'grey']:
             img = self.load().array()  # single channel float32 [0,1]
             self._array = np.array(PIL.Image.fromarray(255.0 * img, mode='F').convert('RGB'))  # float32 gray [0,1] -> float32 gray [0,255] -> uint8 RGB
             self.colorspace('rgb')
-            self._colorspace(to)
+            self._convert(to)
         elif self.colorspace() == 'rgba':
             img = self.load().array()  # uint8 RGBA
             if to == 'bgra':
@@ -566,7 +624,7 @@ class Image(object):
             else:
                 self._array = self._array[:,:,0:-1]  # uint8 RGBA -> uint8 RGB
                 self.colorspace('rgb')
-                self._colorspace(to)
+                self._convert(to)
         elif self.colorspace() == 'rgb':
             img = self.load().array()  # uint8 RGB
             if to in ['grey', 'gray']:
@@ -586,18 +644,18 @@ class Image(object):
             img = self.load().array()  # uint8 BGR
             self._array = np.array(img)[:,:,::-1]  # uint8 BGR -> uint8 RGB
             self.colorspace('rgb')
-            self._colorspace(to)
+            self._convert(to)
         elif self.colorspace() == 'bgra':
             img = self.load().array()  # uint8 BGRA
             self._array = np.array(img)[:,:,::-1]  # uint8 BGRA -> uint8 ARGB
             self._array = self._array[:,:,[1,2,3,0]]  # uint8 ARGB -> uint8 RGBA
             self.colorspace('rgba')
-            self._colorspace(to)
+            self._convert(to)
         elif self.colorspace() == 'hsv':
             img = self.load().array()  # uint8 HSV
             self._array = np.array(PIL.Image.fromarray(img, mode='HSV').convert('RGB'))  # uint8 HSV -> uint8 RGB
             self.colorspace('rgb')
-            self._colorspace(to)
+            self._convert(to)
         elif self.colorspace() == 'float':
             img = self.load().array()  # float32
             if np.max(img) > 1 or np.min(img) < 0:
@@ -607,7 +665,7 @@ class Image(object):
             if self.channels() == 3:  # assumed RGB
                 self._array = (1.0 / 255.0) * np.array(PIL.Image.fromarray(np.uint8(255 * self.array())).convert('L')).astype(np.float32)  # float32 RGB [0,1] -> float32 gray [0,1]
             self.colorspace('grey')
-            self._colorspace(to)
+            self._convert(to)
         elif self.colorspace() is None:
             raise ValueError('Colorspace must be initialized by constructor or colorspace() to allow for colorspace conversion')
         else:
@@ -618,33 +676,31 @@ class Image(object):
 
     def rgb(self):
         """Convert the image buffer to three channel RGB uint8 colorspace"""
-        return self._colorspace('rgb')
+        return self._convert('rgb')
 
     def rgba(self):
         """Convert the image buffer to four channel RGBA uint8 colorspace"""
-        return self._colorspace('rgba')
+        return self._convert('rgba')
 
     def hsv(self):
         """Convert the image buffer to three channel HSV uint8 colorspace"""
-        return self._colorspace('hsv')
+        return self._convert('hsv')
 
     def bgr(self):
         """Convert the image buffer to three channel BGR uint8 colorspace"""
-        return self._colorspace('bgr')
+        return self._convert('bgr')
 
     def bgra(self):
         """Convert the image buffer to four channel BGR uint8 colorspace"""
-        return self._colorspace('bgra')
+        return self._convert('bgra')
 
-    def float(self, scale=None):
+    def float(self):
         """Convert the image buffer to float32"""
-        self._colorspace('float')
-        self._array = self._array * scale if scale is not None else self._array
-        return self
+        return self._convert('float')
 
     def greyscale(self):
         """Convert the image buffer to single channel grayscale float32 in range [0,1]"""
-        return self._colorspace('gray')
+        return self._convert('gray')
 
     def grayscale(self):
         """Alias for greyscale()"""
@@ -660,11 +716,11 @@ class Image(object):
 
     def luminance(self):
         """Convert the image buffer to single channel uint8 in range [0,255] corresponding to the luminance component"""
-        return self._colorspace('lum')
+        return self._convert('lum')
 
     def lum(self):
         """Alias for luminance()"""
-        return self._colorspace('lum')
+        return self._convert('lum')
 
     def _apply_colormap(self, cm):
         """Convert an image to greyscale, then convert to RGB image with matplotlib colormap"""
@@ -693,15 +749,12 @@ class Image(object):
 
     def saturate(self, min, max):
         """Saturate the image buffer to be clipped between [min,max], types of min/max are specified by _array type"""
-        img = self.load().array()
-        self._array = np.minimum(np.maximum(self.load().array(), min), max)
-        return self
+        return self.array(np.minimum(np.maximum(self.load().array(), min), max))
 
     def intensity(self):
-        """Convert image to float32 with [min,max] to range [0,1]"""
-        self._colorspace('float')
-        self._array = (self.load().array().astype(np.float32) - float(self.min())) / float(self.max() - self.min())
-        return self
+        """Convert image to float32 with [min,max] to range [0,1], force colormap to be 'float' """
+        self.array((self.load().float().array()) - float(self.min()) / float(self.max() - self.min()))
+        return self.colorspace('float')
 
     def min(self):
         return np.min(self.load().array().flatten())
@@ -710,26 +763,31 @@ class Image(object):
         return np.max(self.load().array().flatten())
 
     def mean(self):
-        return np.mean(self.load().array(), axis=(0, 1)).flatten()
+        """Mean over all pixels"""
+        return np.mean(self.load().array().flatten())
 
+    def meanchannel(self):
+        """Mean per channel over all pixels"""
+        return np.mean(self.load().array(), axis=(0, 1)).flatten()
+    
     def sum(self):
         return np.sum(self.load().array().flatten())
 
     def mat2gray(self, min=None, max=None):
-        """Convert the image buffer so that [min,max] -> [0,1]"""
-        self._colorspace('float')
-        self._array = mat2gray(np.float32(self.load().array()), min, max)
+        """Convert the image buffer so that [min,max] -> [0,1], forces conversion to 'float' colorspace"""
+        self.array(mat2gray(np.float32(self.load().float().array()), min, max))
+        return self.colorspace('float')
         return self
 
     def gain(self, g):
-        """Multiply gain to image array"""
-        self._array = np.multiply(self.load().float().array(), g)
-        return self
+        """Elementwise multiply gain to image array, Gain should be broadcastable to array().  This forces the colospace to 'float'"""
+        self.array(np.multiply(self.load().float().array(), g))
+        return self.colorspace('float')
 
     def bias(self, b):
-        """Add a bias to the image array"""
-        self._array = self.load().float().array() + b
-        return self
+        """Add a bias to the image array.  Bias should be broadcastable to array().  This forces the colorspace to 'float'"""
+        self.array(self.load().float().array() + b)
+        return self.colorspace('float')
 
     def html(self, alt=None):
         buf = io.BytesIO()
@@ -741,7 +799,19 @@ class Image(object):
 
 
 class ImageCategory(Image):
-    def __init__(self, filename=None, url=None, category=None,
+    """vipy ImageCategory class
+
+    This class provides a representation of a vipy.image.Image with a category. 
+
+    Valid constructors include all provided by vipy.image.Image with the additional kwarg 'category' (or alias 'label')
+
+    >>> im = vipy.image.ImageCategory(filename='/path/to/dog_image.ext', category='dog')
+    >>> im = vipy.image.ImageCategory(url='http://path/to/dog_image.ext', category='dog')
+    >>> im = vipy.image.ImageCategory(array=dog_img, colorspace='rgb', category='dog')
+
+    """
+    
+    def __init__(self, filename=None, url=None, category=None, label=None,
                  attributes=None, array=None, colorspace=None):
         # Image class inheritance
         super(ImageCategory, self).__init__(filename=filename,
@@ -749,12 +819,13 @@ class ImageCategory(Image):
                                             attributes=attributes,
                                             array=array,
                                             colorspace=colorspace)
-        self._category = category
+        assert not (category is not None and label is not None), "Define either category or label kwarg, not both"
+        self._category = category if category is not None else label
 
     def __repr__(self):
         strlist = []
         if self.isloaded():
-            strlist.append("height=%d, width=%d, color='%s'" % (self._array.shape[0], self._array.shape[1], self.attributes['colorspace']))
+            strlist.append("height=%d, width=%d, color='%s'" % (self.height(), self.width(), self.colorspace()))
         if self.hasfilename():
             strlist.append('filename="%s"' % self.filename())
         if self.hasurl():
@@ -778,19 +849,18 @@ class ImageCategory(Image):
     def __hash__(self):
         return hash(self._category.lower())
 
-    def iscategory(self, category):
-        return (self._category.lower() == category.lower())
-
-    def ascategory(self, newcategory):
-        return self.category(newcategory)
-
     def category(self, newcategory=None):
+        """Return or update the category"""
         if newcategory is None:
             return self._category
         else:
             self._category = newcategory
             return self
 
+    def label(self, newlabel=None):
+        """Alias for category"""
+        return self.category(newlabel)
+    
     def score(self, newscore=None):
         """Real valued score for categorization, larger is better"""
         if newscore is None:
@@ -810,6 +880,21 @@ class ImageCategory(Image):
 
 
 class ImageDetection(ImageCategory):
+    """vipy.image.ImageDetection class
+
+    This class provides a representation of a vipy.image.Image with a category and a vipy.geometry.BoundingBox
+
+    Valid constructors include all provided by vipy.image.Image with the additional kwarg 'category' (or alias 'label'), and BoundingBox coordinates
+
+    >>> im = vipy.image.ImageDetection(filename='/path/to/dog_image.ext', category='dog', xmin=0, ymin=0, width=100, height=100)
+    >>> im = vipy.image.ImageDetection(filename='/path/to/dog_image.ext', category='dog', xmin=0, ymin=0, xmax=100, ymax=100)
+    >>> im = vipy.image.ImageDetection(filename='/path/to/dog_image.ext', category='dog', xcentroid=50, ycentroid=50, width=100, height=100)
+    >>> im = vipy.image.ImageDetection(filename='/path/to/dog_image.ext', category='dog', bbox=vipy.geometry.BoundingBox(xmin=0, ymin=0, width=100, height=100))
+    >>> im = vipy.image.ImageCategory(url='http://path/to/dog_image.ext', category='dog').boundingbox(xmin=0, ymin=0, width=100, height=100)
+    >>> im = vipy.image.ImageCategory(array=dog_img, colorspace='rgb', category='dog',  xmin=0, ymin=0, width=100, height=100)
+
+    """
+    
     def __init__(self, filename=None, url=None, category=None, attributes=None,
                  xmin=None, xmax=None, ymin=None, ymax=None,
                  width=None, bbwidth=None, height=None, bbheight=None,
@@ -825,7 +910,7 @@ class ImageDetection(ImageCategory):
                                              colorspace=colorspace)
 
         # Construction options
-        (width, height) = (bbwidth if bbwidth is not None else width, bbheight if bbheight is not None else height)
+        (width, height) = (bbwidth if bbwidth is not None else width, bbheight if bbheight is not None else height)  # alias
         if bbox is not None:
             assert isinstance(bbox, BoundingBox), "Invalid bounding box"
             self.bbox = bbox
@@ -835,14 +920,18 @@ class ImageDetection(ImageCategory):
             self.bbox = BoundingBox(xmin=xmin, ymin=ymin, width=width, height=height)
         elif xcentroid is not None and ycentroid is not None and width is not None and height is not None:
             self.bbox = BoundingBox(xcentroid=xcentroid, ycentroid=ycentroid, width=width, height=height)
-        else:
+        elif (xmin is None and xmax is None and ymin is None and ymax is None and
+              width is None and bbwidth is None and height is None and bbheight is None and
+              bbox is None and xcentroid is None and ycentroid is None):
             # Empty box to be updated with boundingbox() method
             self.bbox = BoundingBox(xmin=0, ymin=0, width=0, height=0)
+        else:
+            raise ValueError('Incomplete constructor')
 
     def __repr__(self):
         strlist = []
         if self.isloaded():
-            strlist.append("height=%d, width=%d, color='%s'" % (self._array.shape[0], self._array.shape[1], self.attributes['colorspace']))
+            strlist.append("height=%d, width=%d, color='%s'" % (self.height(), self.width(), self.colorspace()))
         if self.hasfilename():
             strlist.append('filename="%s"' % self.filename())
         if self.hasurl():
@@ -914,9 +1003,7 @@ class ImageDetection(ImageCategory):
         return self.bbox.invalid()
 
     def isinterior(self, W=None, H=None, flush=False):
-        """Is the bounding box fully within the image rectangle?  Use provided
-        image width and height (W,H) to avoid lots of reloads in some
-        conditions"""
+        """Is the bounding box fully within the image rectangle?  Use provided image width and height (W,H) to avoid lots of reloads in some conditions"""
         (W, H) = (W if W is not None else self.width(),
                   H if H is not None else self.height())
         if flush:
@@ -1017,8 +1104,16 @@ class ImageDetection(ImageCategory):
 
 
 class Scene(ImageCategory):
-    """A scene is an ImageCategory with one or more object detections"""
+    """vipy.image.Scene class
 
+    This class provides a representation of a vipy.image.ImageCategory with one or more vipy.object.Detections.  The goal of this class is to provide a unified representation for all objects in a scene.
+
+    Valid constructors include all provided by vipy.image.Image with the additional kwarg 'objects' 
+
+    >>> im = vipy.image.Scene(filename='/path/to/city_image.ext', category='city', objects=[vipy.object.Detection(category='vehicle', xmin=0, ymin=0, width=100, height=100)])
+    >>> im = vipy.image.Scene(filename='/path/to/city_image.ext', category='city').objects([vipy.object.Detection(category='vehicle', xmin=0, ymin=0, width=100, height=100)])
+
+    """
     def __init__(self, filename=None, url=None, category=None, attributes=None, objects=None, array=None, colorspace=None):
         super(Scene, self).__init__(filename=filename, url=url, attributes=attributes, category=category, array=array, colorspace=colorspace)   # ImageCategory class inheritance
         self._objectlist = []
@@ -1034,7 +1129,7 @@ class Scene(ImageCategory):
     def __repr__(self):
         strlist = []
         if self.isloaded():
-            strlist.append("height=%d, width=%d, color='%s'" % (self._array.shape[0], self._array.shape[1], self.attributes['colorspace']))
+            strlist.append("height=%d, width=%d, color='%s'" % (self.height(), self.width(), self.colorspace()))
         if self.hasfilename():
             strlist.append('filename="%s"' % self.filename())
         if self.hasurl():
@@ -1109,6 +1204,7 @@ class Scene(ImageCategory):
         return immask
 
     def append(self, imdet):
+        """Append the provided vipy.object.Detection object to the scene object list"""
         assert isinstance(imdet, vipy.object.Detection), "Invalid input"
         self._objectlist.append(imdet)
         return self
@@ -1126,7 +1222,7 @@ class Scene(ImageCategory):
         return self
 
     def savefig(self, outfile=None, category=None, figure=None, do_caption=True, fontsize=10, boxalpha=0.25, captionlist=None, categoryColor=None, captionoffset=(0,0), dpi=200):
-        """Show a subset of object categores in current image and save to the given file"""
+        """Save show() output to given file without popping up a window"""
         outfile = outfile if outfile is not None else tempjpg()
         self.show(category, figure, do_caption, fontsize, boxalpha, captionlist, categoryColor, captionoffset, nowindow=True)
         savefig(outfile, figure, dpi=dpi, bbox_inches='tight', pad_inches=0)
@@ -1149,6 +1245,18 @@ class Scene(ImageCategory):
 
 
 class Batch(object):
+    """vipy.image.Batch class
+
+    This class provides a representation of a set of vipy.image objects.  All of the object types must be the same.  If so, then an operation on the batch is performed on each of the elements in the batch.
+
+    Valid constructors
+
+    >>> imb = vipy.image.Batch([Image(filename='img_%06d.png' % k for k in range(0,100)])
+    >>> imb.rgb()  # convert all elements in batch to RGB
+    >>> imb = vipy.image.Batch([ImageDetection(filename='img_%06d.png' % k, category=c, bbox=bb) for (k,c,bb) in zip(range(0,100), labels, boxes)])
+    >>> imb.crop()  # Crop all elements in batch 
+
+    """    
     def __init__(self, imlist, seed=None):
         """Create a batch of homogeneous vipy.image objects that can be operated on with a single function call"""
         assert isinstance(imlist, list) and all([isinstance(im, Image) for im in imlist]), "Invalid input"
@@ -1172,6 +1280,10 @@ class Batch(object):
             self._imlist = imlist_
         return self
 
+    def __iter__(self):
+        for im in self._imlist:
+            yield im
+            
     def map(self, f):
         pass
 

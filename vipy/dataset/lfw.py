@@ -15,7 +15,7 @@ URL_PAIRS_VIEW2 = 'http://vis-www.cs.umass.edu/lfw/pairs.txt'
 class LFW(object):
     def __init__(self, datadir):
         """Datadir contains the unpacked contents of LFW from $URL -> /path/to/lfw"""
-        self.lfwdir = os.path.join(remkdir(datadir), 'lfw')
+        self.lfwdir = remkdir(os.path.join(remkdir(datadir), 'lfw', 'lfw'))
 
     def download(self, verbose=True):
         vipy.downloader.download_and_unpack(URL, self.lfwdir, verbose=verbose)
@@ -35,8 +35,6 @@ class LFW(object):
 
     def dataset(self):
         return [ImageCategory(category=s, filename=f) for s in self.subjects() for f in imlist(os.path.join(self.lfwdir, s))]
-
-        return
 
     def dictionary(self):
         """List of all Images of all subjects"""

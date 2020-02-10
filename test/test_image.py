@@ -87,6 +87,38 @@ def test_image():
     assert os.environ['VIPY_CACHE'] in im.filename()
     print('[test_image.image]: URL with cache download: PASSED')
 
+    # Array objects
+    Image(array=np.zeros( (10,10,3), dtype=np.uint8 ), colorspace='rgb')
+    Image(array=np.zeros( (10,10,3), dtype=np.uint8 ), colorspace='bgr')
+    Image(array=np.zeros( (10,10,3), dtype=np.uint8 ), colorspace='hsv')
+    Image(array=np.zeros( (10,10,1), dtype=np.uint8 ), colorspace='lum')    
+    Image(array=np.zeros( (10,10,3), dtype=np.uint8 ), colorspace='rgb')    
+    Image(array=np.zeros( (10,10,4), dtype=np.uint8 ), colorspace='rgba')
+    Image(array=np.zeros( (10,10,4), dtype=np.uint8 ), colorspace='bgra')        
+    Image(array=np.random.randn(10,10,10).astype(np.float32), colorspace='float')
+    Image(array=np.random.rand(10,10,1).astype(np.float32), colorspace='grey')    
+    try:
+        Image(array=np.zeros( (10,10) )) 
+        Failed()  # np.float32 unallowed
+    except Failed:
+        raise
+    except:
+        pass
+    try:
+        Image(array=np.zeros( (10,10,3), dtype=np.float32), colorspace='rgb')  
+        Failed()  # rgb image must be uint8
+    except Failed:
+        raise
+    except:
+        pass
+    try:
+        Image(array=2*np.random.rand(10,10).astype(np.float32), colorspace='grey')  
+        Failed()  # grey image must be [0,1] float32
+    except Failed:
+        raise
+    except:
+        pass
+        
     # Image file formats
     for imgfile in [rgbfile, greyfile, rgbafile]:
         _test_image_fileformat(imgfile)
@@ -243,6 +275,10 @@ def _test_image_fileformat(imgfile):
     im.rgb().jet().bone().hot().rainbow()
     print('[test_image.image]["%s"]:  Image colormaps: PASSED' % imgfile)
 
+    # Image exporter
+    im.dict()
+    print('[test_image.image]["%s"]:  dictionary: PASSED' % imgfile)
+    
     # Image category
     im = ImageCategory(filename=imgfile, category='face')
     assert im.load().category() == 'face'
@@ -250,13 +286,21 @@ def _test_image_fileformat(imgfile):
     assert ImageCategory(category='1') == ImageCategory(category='1')
     assert ImageCategory(category='1') != ImageCategory(category='2')
     print('[test_image.image]["%s"]:  ImageCategory equivalence PASSED' % imgfile)
-    assert ImageCategory(category='1').iscategory('1')
-    assert not ImageCategory(category='1').iscategory('2')
-    assert ImageCategory(category='1').ascategory('2').iscategory('2')
-    print('[test_image.image]["%s"]:  ImageCategory category conversion PASSED' % imgfile)
+    assert ImageCategory(category='1').category() == '1'
+    assert ImageCategory(label='1').label() == '1'    
+    assert not ImageCategory(category='1').category == '2'
+    assert ImageCategory(category='1').category('2').label() == '2' 
     im.score(1.0)
     im.probability(1.0)
-
+    try:
+        ImageCategory(category='1', label='2')
+        Failed()
+    except Failed:
+        raise
+    except:
+        pass
+    print('[test_image.image]["%s"]:  ImageCategory category conversion PASSED' % imgfile)    
+    
     # Random images
     im = vipy.image.RandomImage(128,256)
     assert im.shape() == (128, 256)
@@ -264,7 +308,6 @@ def _test_image_fileformat(imgfile):
     im = vipy.image.RandomImageDetection(128,256)
     assert im.clone().crop().width() == im.bbox.imclipshape(W=256,H=128).width()
     print('[test_image.image]["%s"]:  RandomImageDetection PASSED' % imgfile)
-    
 
 def test_imagedetection():
     # Constructors
@@ -348,20 +391,20 @@ def test_imagedetection():
     print('[test_image.imagedetection]: resize  PASSED')
 
     # Isinterior
-    im = ImageDetection(array=np.zeros((10,10)), xmin=100, ymin=100, xmax=200, ymax=200, category='face')
+    im = ImageDetection(array=np.zeros((10,10), dtype=np.float32), xmin=100, ymin=100, xmax=200, ymax=200, category='face')
     assert not im.isinterior()
     assert not im.isinterior(10,10)
     print('[test_image.imagedetection]: interior  PASSED')
 
     # Fliplr
-    img = np.random.rand(10,20)
+    img = np.random.rand(10,20).astype(np.float32)
     im = ImageDetection(array=img, xmin=0, ymin=0, xmax=5, ymax=10)
     assert not im.isinterior()
     assert np.allclose(im.clone().fliplr().crop().array(), np.fliplr(im.crop().array()))
     print('[test_image.imagedetection]: fliplr  PASSED')
 
     # Centercrop
-    img = np.random.rand(10,20)
+    img = np.random.rand(10,20).astype(np.float32)
     im = ImageDetection(array=img, xmin=0, ymin=0, xmax=5, ymax=10)
     assert im.centercrop(1,2).shape() == (2,1)
     assert im.boundingbox().xywh() == (0,0,1,2)
@@ -373,16 +416,16 @@ def test_imagedetection():
     print('[test_image.imagedetection]: dilate PASSED')
 
     # Pad
-    img = np.random.rand(20,40)
+    img = np.random.rand(20,40).astype(np.float32)
     im = ImageDetection(array=img, xmin=0, ymin=0, width=40, height=20)
     assert np.allclose(im.clone().zeropad(10,10).crop().array(), img) and (im.clone().zeropad(10,20).shape() == (20 + 20 * 2, 40 + 10 * 2))
-    img = np.random.rand(20,40)
+    img = np.random.rand(20,40).astype(np.float32)
     im = ImageDetection(array=img, xmin=0, ymin=0, width=40, height=20)
     assert np.allclose(im.clone().meanpad(10,10).crop().array(), img) and (im.clone().meanpad(10,20).shape() == (20 + 20 * 2, 40 + 10 * 2))
     print('[test_image.imagedetection]: pad  PASSED')
 
     # Boxclip
-    img = np.random.rand(20,10,3)
+    img = np.random.rand(20,10,3).astype(np.float32)
     im = ImageDetection(array=img, xmin=0, ymin=0, width=10, height=20)
     assert im.clone().boxclip().bbox.xywh() == (0,0,10,20)
     im = ImageDetection(array=img, xmin=0, ymin=0, width=10, height=200)
@@ -396,17 +439,17 @@ def test_imagedetection():
     print('[test_image.imagedetection]: boxclip  PASSED')
 
     # Square crops
-    img = np.random.rand(20,10,3)
+    img = np.random.rand(20,10,3).astype(np.float32)
     assert ImageDetection(array=img, xmin=0, ymin=0, width=10, height=10).minsquare().crop().shape() == (10,10)
     print('[test_image.imagedetection]: minsquare  PASSED')
-    img = np.random.rand(21,9,3)
+    img = np.random.rand(21,9,3).astype(np.float32)
     assert ImageDetection(array=img, xmin=0, ymin=0, width=9, height=21).centersquare(9,9).crop().shape() == (9,9)
-    img = np.random.rand(10,11,3)
+    img = np.random.rand(10,11,3).astype(np.float32)
     assert ImageDetection(array=img, xmin=0, ymin=0, width=11, height=10).centersquare(10,10).crop().shape() == (10,10)
     print('[test_image.imagedetection]: centersquare  PASSED')
 
     # Setzero
-    img = np.random.rand(20,10,3)
+    img = np.random.rand(20,10,3).astype(np.float32)
     assert ImageDetection(array=img, xmin=0, ymin=0, width=2, height=3).setzero().crop().sum() == 0
     print('[test_image.imagedetection]: setzero  PASSED')
 
@@ -534,16 +577,26 @@ def test_scene():
                                                            mode='constant',
                                                            constant_values=0), 'L')) *255, colorspace='lum')
     assert np.allclose(imm.array(), imm2.array(), rtol=1)                
-    print('[test_image.scene]:Scene.zeropad: PASSED')
+    print('[test_image.scene]: zeropad PASSED')
 
     # Categories    
     assert sorted(imorig.categories()) == ['obj1', 'obj2', 'obj3', 'obj4']
     assert sorted(im.categories()) == ['obj1', 'obj2', 'obj4']    
-    print('[test_image.scene]:Scene.categories: PASSED')
+    print('[test_image.scene]: categories PASSED')
 
     
+def test_batch():
+    imb = vipy.image.Batch([ImageDetection(filename='face_rgb.jpg', category='face', bbox=vipy.geometry.BoundingBox(0,0,100,100)) for k in range(0,100)])
+    imb.crop()
+    assert len(imb) == 100
+    for im in imb:
+        assert im.shape() == (100,100)
+    assert np.array(imb.torch()).shape == (100,3,100,100)
+    print('[test_image.batch]: vipy.image.Batch PASSED')
+
     
 if __name__ == "__main__":
     test_image()
     test_imagedetection()    
     test_scene()
+    test_batch()    

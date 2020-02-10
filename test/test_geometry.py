@@ -231,7 +231,7 @@ def test_boundingbox():
     assert bb.to_xywh() == (0,0,100,100)
     print('[test_geometry.boundingbox.convexhull]: PASSED')
 
-    img = ImageDetection(array=np.zeros((128,256))).boundingbox(xmin=10,ymin=20,width=30,height=40).mask()
+    img = ImageDetection(array=np.zeros((128,256), dtype=np.float32)).boundingbox(xmin=10,ymin=20,width=30,height=40).mask()
     im = ImageDetection(array=np.float32(img), colorspace='float').boundingbox(xmin=10,ymin=20,width=30,height=40)
     assert np.sum(img) == np.sum(im.crop().array())
     bb = BoundingBox(xmin=10, ymin=20, width=30, height=40).rot90cw(128, 256)
@@ -245,20 +245,20 @@ def test_boundingbox():
     print('[test_geometry.boundingbox.rot90ccw]: PASSED')
 
     bb = BoundingBox(xmin=10, ymin=20, width=30, height=40)
-    img = ImageDetection(array=np.zeros((128,256))).boundingbox(bbox=bb).mask()
+    img = ImageDetection(array=np.zeros((128,256), dtype=np.float32)).boundingbox(bbox=bb).mask()
     bb = bb.fliplr(img)
     im = ImageDetection(array=np.fliplr(img), bbox=bb)
     assert np.sum(img) == np.sum(im.crop().array())
     print('[test_geometry.boundingbox.fliplr]: PASSED')
 
-    assert BoundingBox(xmin=-10, ymin=-10, width=30, height=40).hasoverlap(np.zeros((128,256)))
-    assert not BoundingBox(xmin=1000, ymin=1000, width=30, height=40).hasoverlap(np.zeros((128,256)))
+    assert BoundingBox(xmin=-10, ymin=-10, width=30, height=40).hasoverlap(np.zeros((128,256), dtype=np.float32))
+    assert not BoundingBox(xmin=1000, ymin=1000, width=30, height=40).hasoverlap(np.zeros((128,256), dtype=np.float32))
     print('[test_geometry.boundingbox.hasoverlap]: PASSED')
 
-    assert BoundingBox(xmin=-10, ymin=-10, width=30, height=40).imclip(np.zeros((128,256))) == BoundingBox(xmin=0, ymin=0, width=20, height=30)
+    assert BoundingBox(xmin=-10, ymin=-10, width=30, height=40).imclip(np.zeros((128,256), dtype=np.float32)) == BoundingBox(xmin=0, ymin=0, width=20, height=30)
     assert BoundingBox(xmin=-10, ymin=-10, width=30, height=40).imclipshape(128,256) == BoundingBox(xmin=0, ymin=0, width=20, height=30)
     try:
-        BoundingBox(xmin=-100, ymin=-100, width=30, height=40).imclip(np.zeros((128,256)))
+        BoundingBox(xmin=-100, ymin=-100, width=30, height=40).imclip(np.zeros((128,256), dtype=np.float32))
         Failed()
     except Failed:
         raise
