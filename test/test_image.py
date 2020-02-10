@@ -586,7 +586,7 @@ def test_scene():
 
     
 def test_batch():
-    imb = vipy.image.Batch([ImageDetection(filename='face_rgb.jpg', category='face', bbox=vipy.geometry.BoundingBox(0,0,100,100)) for k in range(0,100)])
+    imb = vipy.image.Batch([ImageDetection(filename=rgbfile, category='face', bbox=vipy.geometry.BoundingBox(0,0,100,100)) for k in range(0,100)])
     imb.crop()
     assert len(imb) == 100
     for im in imb:

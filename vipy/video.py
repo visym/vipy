@@ -25,10 +25,11 @@ class Video(object):
         self._filename = filename
         self._framerate = framerate
         self._array = None
-        self.attributes = attributes if attributes is not None else {}
         self._startframe = None
         self._endframe = None
-
+        self._colorspace = NOne
+        self.attributes = attributes if attributes is not None else {}
+        
         if url is not None:
             assert isurl(url), 'Invalid URL "%s" ' % url
         assert filename is not None or url is not None, 'Invalid constructor'
