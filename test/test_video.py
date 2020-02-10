@@ -91,7 +91,6 @@ def test_video():
     except:
         pass
 
-    
     # Valid URL should not raise exception (even if it is not an image extension)
     im = vipy.video.Video(url='http://visym.com')
     print('[test_video.video]: Image URL constructor  PASSED')
@@ -112,8 +111,6 @@ def test_video():
     v = vipy.video.Video(array=np.random.rand(5,10,10,1).astype(np.uint8), colorspace='lum')
     v.__repr__()
     print('[test_video.video]: __repr__  PASSED')    
-
-
     
     # Downloader
     v = vipy.video.Video(url='http://visym.com/out.mp4').load(ignoreErrors=True)
