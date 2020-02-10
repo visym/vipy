@@ -30,12 +30,12 @@ Installation
 pip install vipy
 ```
 
-Required dependencies
+This package has the following dependencies
 ```python
 pip install numpy scipy matplotlib dill pillow ffmpeg-python
 ```
 
-Optional dependencies
+Optional
 ```python
 pip install opencv-python ipython h5py nltk bs4 youtube-dl scikit-learn dropbox torch
 ```
