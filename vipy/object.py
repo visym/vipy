@@ -5,9 +5,10 @@ from vipy.geometry import BoundingBox
 class Detection(BoundingBox):
     """Represent a single bounding box with a label and confidence for an object detection"""
 
-    def __init__(self, label='object', xmin=None, ymin=None, width=None, height=None, xmax=None, ymax=None, confidence=None, xcentroid=None, ycentroid=None):
+    def __init__(self, label=None, xmin=None, ymin=None, width=None, height=None, xmax=None, ymax=None, confidence=None, xcentroid=None, ycentroid=None, category=None):
         super(Detection, self).__init__(xmin=xmin, ymin=ymin, width=width, height=height, xmax=xmax, ymax=ymax, xcentroid=xcentroid, ycentroid=ycentroid)
-        self._label = str(label)
+        assert not (label is not None and category is not None), "Constructor requires either label or category kwargs, not both"
+        self._label = category if category is not None else label
         self._confidence = float(confidence) if confidence is not None else confidence
 
     def __repr__(self):

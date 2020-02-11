@@ -1183,11 +1183,17 @@ class Scene(ImageCategory):
         return self
 
     def resize(self, cols=None, rows=None):
-        """Resize image buffer and all bounding boxes"""
+        """Resize image buffer to (height=rows, width=cols) and transform all bounding boxes accordingly.  If cols or rows is None, then scale isotropically"""
+        assert cols is not None or rows is not None, "Invalid input"
         sx = (float(cols) / self.width()) if cols is not None else 1.0
         sy = (float(rows) / self.height()) if rows is not None else 1.0
-        self = super(ImageCategory, self).resize(cols, rows)
-        self._objectlist = [bb.scalex(sx).scaley(sy) for bb in self._objectlist]
+        sx = sx if sx != 1.0 else sy
+        sy = sy if sy != 1.0 else sx        
+        self._objectlist = [bb.scalex(sx).scaley(sy) for bb in self._objectlist]        
+        if sx == sy:
+            self = super(Scene, self).rescale(sx)  # FIXME: if we call resize here, inheritance is screweed up
+        else:
+            self = super(Scene, self).resize(cols, rows)
         return self
 
     def fliplr(self):

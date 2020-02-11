@@ -549,15 +549,22 @@ def test_scene():
     im = im.rescale(0.5)
     assert im.shape() == (H /2, W /2)
     imm = Image(array=im.mask() *255, colorspace='lum')
-    imm2 = Image(array=np.array(PIL.Image.fromarray(imorig.mask(), 'L').resize( (int(W /2), int(H /2)), PIL.Image.NEAREST)) *255, colorspace='lum')
+    imm2 = Image(array=np.array(PIL.Image.fromarray(imorig.mask(), 'L').resize( (int(W /2), int(H /2)), PIL.Image.NEAREST))*255, colorspace='lum')
     assert np.allclose(imm.array(), imm2.array(), rtol=1)    
     print('[test_image.scene]  rescale() PASSED')
 
     im = imorig.clone().resize(int(W /2), int(H /2))
-    assert im.shape() == (H /2, W /2)
-    imm = Image(array=im.mask() *255, colorspace='lum')
-    imm2 = Image(array=np.array(PIL.Image.fromarray(imorig.mask(), 'L').resize( (int(W /2), int(H /2)), PIL.Image.NEAREST)) *255, colorspace='lum')
+    assert im.shape() == (H/2, W/2)
+    imm = Image(array=im.mask()*255, colorspace='lum')
+    imm2 = Image(array=np.array(PIL.Image.fromarray(imorig.mask(), 'L').resize( (int(W /2), int(H /2)), PIL.Image.NEAREST))*255, colorspace='lum')
+    assert np.allclose(imm.array(), imm2.array(), rtol=1)
+
+    im = imorig.clone().resize(rows=int(H /2))
+    assert im.shape() == (H/2, W/2)
+    imm = Image(array=im.mask()*255, colorspace='lum')
+    imm2 = Image(array=np.array(PIL.Image.fromarray(imorig.mask(), 'L').resize( (int(W /2), int(H /2)), PIL.Image.NEAREST))*255, colorspace='lum')
     assert np.allclose(imm.array(), imm2.array(), rtol=1)        
+    
     print('[test_image.scene]: resize() PASSED')
 
     im = imorig.clone().fliplr()
