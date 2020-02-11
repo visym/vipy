@@ -16,8 +16,8 @@ class Detection(BoundingBox):
         if self.category() is not None:
             strlist.append('category="%s"' % self.category())
         if self.isvalid():
-            strlist.append('bbox=(xmin=%1.1f, ymin=%1.1f, xmax=%1.1f, ymax=%1.1f)' %
-                           (self.xmin(), self.ymin(),self.xmax(), self.ymax()))
+            strlist.append('bbox=(xmin=%1.1f, ymin=%1.1f, width=%1.1f, height=%1.1f)' %
+                           (self.xmin(), self.ymin(),self.width(), self.height()))
         if self._confidence is not None:
             strlist.append('conf=%1.3f')
         return str('<vipy.object.detection: %s>' % (', '.join(strlist)))

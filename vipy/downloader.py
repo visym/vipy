@@ -28,6 +28,13 @@ try:
 except:
     pass
 
+# FIX <urlopen error [SSL: CERTIFICATE_VERIFY_FAILED] certificate
+# verify failed (_ssl.c:581)>
+# http://stackoverflow.com/questions/27835619/ssl-certificate-verify-failed-error
+import ssl
+if hasattr(ssl, '_create_unverified_context'):
+    ssl._create_default_https_context = ssl._create_unverified_context
+
 
 def generate_sha1(filepath):
     sha1 = hashlib.sha1()

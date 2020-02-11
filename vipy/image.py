@@ -21,13 +21,6 @@ import matplotlib.pyplot as plt
 import warnings
 import base64
 
-# FIX <urlopen error [SSL: CERTIFICATE_VERIFY_FAILED] certificate
-# verify failed (_ssl.c:581)>
-# http://stackoverflow.com/questions/27835619/ssl-certificate-verify-failed-error
-import ssl
-if hasattr(ssl, '_create_unverified_context'):
-    ssl._create_default_https_context = ssl._create_unverified_context
-
 
 class Image(object):
     """vipy.image.Image class
@@ -264,12 +257,6 @@ class Image(object):
     def isloaded(self):
         return self._array is not None
 
-    def show(self, figure=None, nowindow=False):
-        """Display image on screen in provided figure number (clone and convert to RGB colorspace to show), return object"""
-        assert self.load().isloaded(), 'Image not loaded'
-        imshow(self.clone().rgb().numpy(), fignum=figure, nowindow=nowindow)
-        return self
-
     def channels(self):
         """Return integer number of color channels"""
         return 1 if self.load().array().ndim == 2 else self.load().array().shape[2]
@@ -277,35 +264,6 @@ class Image(object):
     def iscolor(self):
         """Color images are three channel or four channel with transparency, float32 or uint8"""
         return self.channels() == 3 or self.channels() == 4
-
-    def colorspace(self, colorspace=None):
-        """Return or set the colorspace as ['rgb', 'rgba', 'bgr', 'bgra', 'hsv', 'float', 'grey', 'lum']"""
-        if colorspace is None:
-            return self._colorspace
-        else:
-            assert str(colorspace).lower() in ['rgb', 'rgba', 'bgr', 'bgra', 'hsv', 'float', 'grey', 'gray', 'lum'], "Invalid colorspace '%s'. Allowable is ['rgb', 'rgba', 'bgr', 'bgra', 'hsv', 'float', 'grey', 'gray', 'lum']" % colorspace 
-            img = self.array()
-            if self.isloaded():
-                colorspace = str(colorspace).lower()
-                if self.array().dtype == np.float32:
-                    assert colorspace in ['float', 'grey', 'gray'], "Invalid colorspace '%s' for float32 array()" % colorspace
-                elif self.array().dtype == np.uint8:
-                    assert colorspace in  ['rgb', 'rgba', 'bgr', 'bgra', 'hsv', 'lum'], "Invalid colorspace '%s' for uint8 array(). Allowable is ['rgb', 'rgba', 'bgr', 'bgra', 'hsv', 'lum']" % colorspace
-                else:
-                    raise ValueError('unupported array() datatype "%s".  Allowable is [np.float32, np.uint8]' % colorspace)  # should never get here as long as array() is used to set _array
-                if self.channels() == 1:
-                    assert colorspace in ['float', 'grey', 'gray', 'lum'], "Invalid colorspace '%s; for single channel array.  Allowable is ['float', 'grey', 'gray', 'lum']" % colorspace
-                elif self.channels() == 3:
-                    assert colorspace in ['float', 'rgb', 'bgr', 'hsv'], "Invalid colorspace '%s; for three channel array. Allowable is ['float', 'rgb', 'bgr', 'hsv']" % colorspace
-                elif self.channels() == 4:
-                    assert colorspace in ['float', 'rgba', 'bgra'], "Invalid colorspace '%s; for four channel array. Allowable is ['float', 'rgba', 'bgra']" % colorspace                    
-                elif colorspace != 'float':
-                    raise ValueError("Invalid colorspace '%s' for image channels=%d, type=%s" % (colorspace, self.channels(), str(self.array().dtype)))
-                if colorspace in ['grey', 'gray']:
-                    assert self.max() <= 1 and self.min() >= 0, "Colorspace 'grey' image must be np.float32 in range [0,1].  Use colorspace 'lum' for np.uint8 in range [0,255], or colorspace 'float' for unconstrained np.float32 [-inf, +inf]"
-                    colorspace = 'grey'  # standardize
-            self._colorspace = str(colorspace).lower()
-            return self
 
     def istransparent(self):
         """Color images are three channel or four channel with transparency, float32 or uint8"""
@@ -408,39 +366,45 @@ class Image(object):
         if ignoreUrlErrors is not None:
             self._ignoreErrors = ignoreUrlErrors
         return self
+    
+    def colorspace(self, colorspace=None):
+        """Return or set the colorspace as ['rgb', 'rgba', 'bgr', 'bgra', 'hsv', 'float', 'grey', 'lum']"""
+        if colorspace is None:
+            return self._colorspace
+        else:
+            assert str(colorspace).lower() in ['rgb', 'rgba', 'bgr', 'bgra', 'hsv', 'float', 'grey', 'gray', 'lum'], "Invalid colorspace '%s'. Allowable is ['rgb', 'rgba', 'bgr', 'bgra', 'hsv', 'float', 'grey', 'gray', 'lum']" % colorspace 
+            img = self.array()
+            if self.isloaded():
+                colorspace = str(colorspace).lower()
+                if self.array().dtype == np.float32:
+                    assert colorspace in ['float', 'grey', 'gray'], "Invalid colorspace '%s' for float32 array()" % colorspace
+                elif self.array().dtype == np.uint8:
+                    assert colorspace in  ['rgb', 'rgba', 'bgr', 'bgra', 'hsv', 'lum'], "Invalid colorspace '%s' for uint8 array(). Allowable is ['rgb', 'rgba', 'bgr', 'bgra', 'hsv', 'lum']" % colorspace
+                else:
+                    raise ValueError('unupported array() datatype "%s".  Allowable is [np.float32, np.uint8]' % colorspace)  # should never get here as long as array() is used to set _array
+                if self.channels() == 1:
+                    assert colorspace in ['float', 'grey', 'gray', 'lum'], "Invalid colorspace '%s; for single channel array.  Allowable is ['float', 'grey', 'gray', 'lum']" % colorspace
+                elif self.channels() == 3:
+                    assert colorspace in ['float', 'rgb', 'bgr', 'hsv'], "Invalid colorspace '%s; for three channel array. Allowable is ['float', 'rgb', 'bgr', 'hsv']" % colorspace
+                elif self.channels() == 4:
+                    assert colorspace in ['float', 'rgba', 'bgra'], "Invalid colorspace '%s; for four channel array. Allowable is ['float', 'rgba', 'bgra']" % colorspace                    
+                elif colorspace != 'float':
+                    raise ValueError("Invalid colorspace '%s' for image channels=%d, type=%s" % (colorspace, self.channels(), str(self.array().dtype)))
+                if colorspace in ['grey', 'gray']:
+                    assert self.max() <= 1 and self.min() >= 0, "Colorspace 'grey' image must be np.float32 in range [0,1].  Use colorspace 'lum' for np.uint8 in range [0,255], or colorspace 'float' for unconstrained np.float32 [-inf, +inf]"
+                    colorspace = 'grey'  # standardize
+            self._colorspace = str(colorspace).lower()
+            return self
 
     def uri(self):
         """Return the URI of the image object, either the URL or the filename, raise exception if neither defined"""
-        if self._url is not None:
-            return self._url
-        elif self._filename is not None:
-            return self._filename
+        if self.hasurl():
+            return self.url()
+        elif self.hasfilename():
+            return self.filename()
         else:
             raise ValueError('No URI defined')
 
-    def saveas(self, filename, writeas=None):
-        """Save current buffer (not including drawing overlays) to new filename and return filename"""
-        if self.colorspace() in ['gray']:
-            imwritegray(self.grayscale()._array, filename)
-        elif self.colorspace() != 'float':
-            imwrite(self.load().array(), filename, writeas=writeas)
-        else:
-            raise ValueError('Convert float image to RGB or gray first')
-        return filename
-
-    def saveastmp(self):
-        """Save current buffer to temp JPEG filename and return filename"""
-        return self.saveas(tempjpg())
-
-    def savetmp(self):
-        """Save current buffer to temp JPEG filename and return filename"""
-        return self.saveas(tempjpg())
-
-    def savefig(self, filename=None):
-        """Save last figure output from self.show() with drawing overlays to provided filename and return filename"""
-        self.show(figure=None, nowindow=True)
-        f = filename if filename is not None else tempjpg()
-        return savefig(filename=f)
 
     def setattribute(self, key, value):
         if self.attributes is None:
@@ -464,14 +428,6 @@ class Image(object):
     def hasfilename(self):
         return self._filename is not None and os.path.exists(self._filename)
 
-    def stats(self):
-        print(self)
-        print('  Channels: %d' % self.channels())
-        print('  Shape: %s' % str(self.shape()))
-        print('  min: %d' % self.min())
-        print('  max: %d' % self.max())
-        print('  mean: %s' % str(self.mean()))
-
     def clone(self):
         """Create deep copy of image object"""
         im = copy.deepcopy(self)
@@ -479,6 +435,7 @@ class Image(object):
             im._array = self._array.copy()
         return im
 
+    # Spatial transformations
     def resize(self, cols=None, rows=None, width=None, height=None):
         """Resize the image buffer to (rows x cols) with bilinear interpolation.  If rows or cols is provided, rescale image maintaining aspect ratio"""
         assert not (cols is not None and width is not None), "Define either width or cols"
@@ -511,7 +468,7 @@ class Image(object):
         """Resize image preserving aspect ratio so that minimum dimension of image = dim"""
         return self.rescale(float(dim) / float(np.minimum(self.height(), self.width())))
 
-    def pad(self, dx, dy, mode='edge'):
+    def _pad(self, dx, dy, mode='edge'):
         """Pad image using np.pad mode, dx=padwidth, dy=padheight"""
         self._array = np.pad(self.load().array(),
                              ((dy, dy), (dx, dx), (0, 0)) if
@@ -537,52 +494,51 @@ class Image(object):
                              constant_values=0)
         return self
 
-    def meanpad(self, dx, dy):
-        """Pad image using np.pad constant where constant is image mean"""
-        if self.load().array().ndim == 3:
-            pad_size = ((dy, dy), (dx, dx), (0, 0))
+    def meanpad(self, padwidth, padheight):
+        """Pad image using np.pad constant=image mean by adding padwidth on both left and right , or padwidth=(left,right) for different pre/postpadding,, and padheight on top and bottom or padheight=(top,bottom) for different pre/post padding"""        
+        if not isinstance(padwidth, tuple):
+            padwidth = (padwidth, padwidth)
+        if not isinstance(padheight, tuple):
+            padheight = (padheight, padheight)
+        if self.iscolor():
+            pad_shape = (padheight, padwidth, (0, 0))
         else:
-            pad_size = ((dy, dy), (dx, dx))
-        self._array = np.pad(self.load().array(), pad_size, mode='mean')
-        return self
+            pad_shape = (padheight, padwidth)
 
-    def boxclip(self):
-        """Clip bounding box to the image rectangle, and delete bbox if outside image rectangle.  Requires image load"""
-        (H,W) = self.load().shape()
-        if self.bbox.intersection(BoundingBox(xmin=0, ymin=0, xmax=W, ymax=H), strict=False).isdegenerate():
-            warnings.warn("Degenerate bounding box does not intersect image - Deleting")
-            self.bbox = None
+        assert all([x>=0 for x in padheight]) and all([x>=0 for x in padwidth]), "padding must be positive"
+        mu = self.meanchannel()  
+        self._array = np.pad(self.load().array(),
+                             pad_width=pad_shape,
+                             mode='constant',
+                             constant_values=mu)
         return self
 
     def minsquare(self):
         """Crop image of size (HxW) to (min(H,W), min(H,W)), keeping upper left corner constant"""
         S = np.min(self.load().shape())
-        return self.crop(BoundingBox(xmin=0, ymin=0, width=S, height=S))
+        return self._crop(BoundingBox(xmin=0, ymin=0, width=S, height=S))
 
     def maxsquare(self):
         """Crop image of size (HxW) to (max(H,W), max(H,W)) with zeropadding, keeping upper left corner constant"""
         S = np.max(self.load().shape())
         dW = S - self.width()
         dH = S - self.height()
-        return self.zeropad((0,dW), (0,dH)).crop(BoundingBox(0, 0, width=S, height=S))
+        return self.zeropad((0,dW), (0,dH))._crop(BoundingBox(0, 0, width=S, height=S))
 
     def centersquare(self):
-        """Crop image of size (NxN) in the center, such that N=min(width,height)"""
-        """FIXME: this is off by one?"""
+        """Crop image of size (NxN) in the center, such that N=min(width,height), keeping the image centroid constant"""
         N = int(np.min(self.shape()))
-        return self.crop(BoundingBox(xcentroid=self.width() / 2.0, ycentroid=self.height() / 2.0, width=N, height=N))
+        return self._crop(BoundingBox(xcentroid=self.width() / 2.0, ycentroid=self.height() / 2.0, width=N, height=N))
 
-    def maxsquare_with_meanpad(self):
-        """Crop image of size (HxW) to (max(H,W), max(H,W)) with zeropadding"""
-        S = np.max(self.load().shape())
-        return self.meanpad(S,S).crop(BoundingBox(0, 0, width=S, height=S))
-
-    def crop(self, bbox, pad='mean'):
+    def _crop(self, bbox):
         """Crop the image buffer using the supplied bounding box object, clipping the box to the image rectangle"""
-        assert isinstance(bbox, BoundingBox) and bbox.valid(), "Invalid bounding box"
-        bbox = bbox.imclip(self.load().array())
-        self._array = self.array()[int(bbox.ymin()):int(bbox.ymax()),
-                                   int(bbox.xmin()):int(bbox.xmax())]
+        assert isinstance(bbox, BoundingBox) and bbox.valid(), "Invalid vipy.geometry.BoundingBox() input"""
+        bbox = bbox.imclip(self.load().array(), strict=False)
+        if not bbox.isdegenerate():
+            self._array = self.array()[int(bbox.ymin()):int(bbox.ymax()),
+                                       int(bbox.xmin()):int(bbox.xmax())]
+        else:
+            warnings.warn('BoundingBox for crop() does not intersect image rectangle - Ignoring')
         return self
 
     def fliplr(self):
@@ -590,6 +546,7 @@ class Image(object):
         self._array = np.fliplr(self.load().array())
         return self
 
+    # Color conversion
     def _convert(self, to):
         """Supported colorspaces are rgb, rgbab, bgr, bgra, hsv, grey, lum, float"""
         to = to if to != 'gray' else 'grey'  # standardize 'gray' -> 'grey' internally
@@ -752,6 +709,32 @@ class Image(object):
         self.array((self.load().float().array()) - float(self.min()) / float(self.max() - self.min()))
         return self.colorspace('float')
 
+    def mat2gray(self, min=None, max=None):
+        """Convert the image buffer so that [min,max] -> [0,1], forces conversion to 'float' colorspace"""
+        self.array(mat2gray(np.float32(self.load().float().array()), min, max))
+        return self.colorspace('float')
+        return self
+
+    def gain(self, g):
+        """Elementwise multiply gain to image array, Gain should be broadcastable to array().  This forces the colospace to 'float'"""
+        self.array(np.multiply(self.load().float().array(), g))
+        return self.colorspace('float')
+
+    def bias(self, b):
+        """Add a bias to the image array.  Bias should be broadcastable to array().  This forces the colorspace to 'float'"""
+        self.array(self.load().float().array() + b)
+        return self.colorspace('float')
+    
+    # Image statistics
+    def stats(self):
+        print(self)
+        print('  Channels: %d' % self.channels())
+        print('  Shape: %s' % str(self.shape()))
+        print('  min: %d' % self.min())
+        print('  max: %d' % self.max())
+        print('  mean: %s' % str(self.mean()))
+        print('  channel mean: %s' % str(self.meanchannel()))        
+    
     def min(self):
         return np.min(self.load().array().flatten())
 
@@ -769,30 +752,46 @@ class Image(object):
     def sum(self):
         return np.sum(self.load().array().flatten())
 
-    def mat2gray(self, min=None, max=None):
-        """Convert the image buffer so that [min,max] -> [0,1], forces conversion to 'float' colorspace"""
-        self.array(mat2gray(np.float32(self.load().float().array()), min, max))
-        return self.colorspace('float')
+    # Image export
+    def show(self, figure=None, nowindow=False):
+        """Display image on screen in provided figure number (clone and convert to RGB colorspace to show), return object"""
+        assert self.load().isloaded(), 'Image not loaded'
+        imshow(self.clone().rgb().numpy(), fignum=figure, nowindow=nowindow)
         return self
+    
+    def saveas(self, filename, writeas=None):
+        """Save current buffer (not including drawing overlays) to new filename and return filename"""
+        if self.colorspace() in ['gray']:
+            imwritegray(self.grayscale()._array, filename)
+        elif self.colorspace() != 'float':
+            imwrite(self.load().array(), filename, writeas=writeas)
+        else:
+            raise ValueError('Convert float image to RGB or gray first')
+        return filename
 
-    def gain(self, g):
-        """Elementwise multiply gain to image array, Gain should be broadcastable to array().  This forces the colospace to 'float'"""
-        self.array(np.multiply(self.load().float().array(), g))
-        return self.colorspace('float')
+    def saveastmp(self):
+        """Save current buffer to temp JPEG filename and return filename"""
+        return self.saveas(tempjpg())
 
-    def bias(self, b):
-        """Add a bias to the image array.  Bias should be broadcastable to array().  This forces the colorspace to 'float'"""
-        self.array(self.load().float().array() + b)
-        return self.colorspace('float')
+    def savetmp(self):
+        """Save current buffer to temp JPEG filename and return filename"""
+        return self.saveas(tempjpg())
 
     def html(self, alt=None):
+        """Export a base64 encoding of the image suitable for embedding in an html page"""
         buf = io.BytesIO()
         self.clone().rgb().pil().save(buf, format='JPEG')
         b = base64.b64encode(buf.getvalue())
 
         alt_text = alt if alt is not None else self.filename()
         return '<img src="data:image/png;base64,%s" alt="%s" />' % (b, alt_text)
-
+    
+    def savefig(self, filename=None):
+        """Save last figure output from self.show() with drawing overlays to provided filename and return filename"""
+        self.show(figure=None, nowindow=True)
+        f = filename if filename is not None else tempjpg()
+        return savefig(filename=f)
+    
 
 class ImageCategory(Image):
     """vipy ImageCategory class
@@ -878,7 +877,7 @@ class ImageCategory(Image):
 class ImageDetection(ImageCategory):
     """vipy.image.ImageDetection class
 
-    This class provides a representation of a vipy.image.Image with a category and a vipy.geometry.BoundingBox
+    This class provides a representation of a vipy.image.Image with an object detection with a category and a vipy.geometry.BoundingBox
 
     Valid constructors include all provided by vipy.image.Image with the additional kwarg 'category' (or alias 'label'), and BoundingBox coordinates
 
@@ -935,8 +934,8 @@ class ImageDetection(ImageCategory):
         if self.category() is not None:
             strlist.append('category="%s"' % self.category())
         if self.bbox.isvalid():
-            strlist.append('bbox=(xmin=%1.1f,ymin=%1.1f,xmax=%1.1f,ymax=%1.1f)' %
-                           (self.bbox.xmin(), self.bbox.ymin(),self.bbox.xmax(), self.bbox.ymax()))
+            strlist.append('bbox=(xmin=%1.1f, ymin=%1.1f, width=%1.1f, height=%1.1f)' %
+                           (self.bbox.xmin(), self.bbox.ymin(),self.bbox.width(), self.bbox.height()))
         return str('<vipy.imagedetection: %s>' % (', '.join(strlist)))
 
     def __eq__(self, other):
@@ -944,24 +943,6 @@ class ImageDetection(ImageCategory):
 
     def __hash__(self):
         return hash(self.__repr__())
-
-    def show(self, figure=None, nowindow=False):
-        """Show the ImageDetection in the provided figure number"""
-        if figure is not None:
-            assert isinstance(figure, int) and figure > 0, "Invalid figure number, provide an integer > 0"
-        self.load()
-        if self.bbox.invalid():
-            warnings.warn('Ignoring invalid bounding box "%s"' % str(self.bbox))
-        if self.bbox.valid() and self.bbox.hasoverlap(self.array()) and self.bbox.shape() != self._array.shape[0:2]:
-            self.boxclip()  # crop bbox to image rectangle for valid overlay image
-            imbbox(self.clone().rgb()._array, self.bbox.xmin(),
-                   self.bbox.ymin(), self.bbox.xmax(), self.bbox.ymax(),
-                   bboxcaption=self.category(),
-                   fignum=figure, nowindow=nowindow)
-        else:
-            # Do not display the box if the box is degenerate or equal to the image rectangle
-            super(ImageDetection, self).show(figure=figure, nowindow=nowindow)
-        return self
 
     def boundingbox(self, xmin=None, xmax=None, ymin=None, ymax=None,
                     bbox=None, width=None, height=None, dilate=None,
@@ -994,25 +975,30 @@ class ImageDetection(ImageCategory):
 
         return self
 
-    def centroid(self):
-        """Return the real valued centroid (col=x, rowy) of the bounding box, not the image - use centerpixel() for the center pixel in the image"""
-        return self.bbox.centroid()
-
-    def invalid(self, flush=False):
+    def invalid(self):
         """An ImageDetection is invalid when the box is invalid"""
         return self.bbox.invalid()
 
     def isinterior(self, W=None, H=None, flush=False):
-        """Is the bounding box fully within the image rectangle?  Use provided image width and height (W,H) to avoid lots of reloads in some conditions"""
+        """Is the bounding box fully within the image rectangle?  Use provided image width and height (W,H) to avoid lots of reloads in some conditions, or flush the image buffer when done"""
         (W, H) = (W if W is not None else self.width(),
                   H if H is not None else self.height())
         if flush:
             self.flush()
         return (self.bbox.xmin() >= 0 and self.bbox.ymin() >= 0
-                and self.bbox.xmax() < W and self.bbox.ymax() < H)
+                and self.bbox.xmax() <= W and self.bbox.ymax() <= H)
+    
+    # Spatial transformations
+    def imclip(self):
+        """Clip bounding box to the image rectangle, and delete bbox if outside image rectangle.  Requires image load"""
+        (H,W) = self.load().shape()
+        if self.bbox.intersection(BoundingBox(xmin=0, ymin=0, xmax=W, ymax=H), strict=False).isdegenerate():
+            warnings.warn("Degenerate bounding box does not intersect image - Deleting")
+            self.bbox = None
+        return self
 
     def rescale(self, scale=1):
-        """Rescale image buffer and bounding box - Not idemponent"""
+        """Rescale image buffer and bounding box"""
         self = super(ImageDetection, self).rescale(scale)
         self.bbox = self.bbox.rescale(scale)
         return self
@@ -1027,7 +1013,7 @@ class ImageDetection(ImageCategory):
         self.bbox.scalex(sx)
         self.bbox.scaley(sy)
         if sx == sy:
-            self = super(ImageDetection, self).rescale(sx)  # FIXME: if we call resize here, inheritance is screweed up
+            self = super(ImageDetection, self).rescale(sx)  # Warning: method resolution order for multi-inheritance
         else:
             self = super(ImageDetection, self).resize(cols, rows)
         return self
@@ -1038,39 +1024,26 @@ class ImageDetection(ImageCategory):
         self = super(ImageDetection, self).fliplr()
         return self
 
-    def crop(self, bbox=None):
-        """Crop image using stored or provided bounding box, then set the bounding box equal to the image rectangle"""
-        if bbox is not None:
-            assert isinstance(bbox, BoundingBox), "Invalid bounding box"
-        self = super(ImageDetection, self).crop(bbox=self.bbox if bbox is None else bbox)
+    def crop(self):
+        """Crop image using stored bounding box, then set the bounding box equal to the new image rectangle"""
+        self = super(ImageDetection, self)._crop(self.bbox)
         self.bbox = BoundingBox(xmin=0, ymin=0, xmax=self.width(), ymax=self.height())
         return self
 
-    def centersquare(self, width, height):
-        """Set a square bounding box of dimension min(width,height), centered on centroid"""
-        (W,H) = (width, height)
-        return self.boundingbox(xcentroid=W / 2.0, ycentroid=H / 2.0, width=W, height=H)
+    def mindim(self, dim):
+        """Resize image preserving aspect ratio so that minimum dimension of image = dim"""
+        self = super(ImageDetection, self).mindim(dim)  # calls self.rescale() which will update boxes
 
-    def centercrop(self, width, height):
-        """Crop the image with a centercrop of dimension (width,height)"""
-        return self.centersquare(width, height).crop()
-  
-    def maxside(self, dim):
-        """Resize image preserving aspect ratio so that maximum dimension of bounding box = dim"""
-        return self.rescale(float(dim) / float(np.maximum(self.bbox.height(), self.bbox.width())))
+    def maxdim(self, dim):
+        """Resize image preserving aspect ratio so that maximum dimension of image = dim"""        
+        return super(ImageDetection, self).maxdim(dim)  # calls self.rescale() will will update boxes
 
-    def minside(self, dim):
-        """Resize image preserving aspect ratio so that minimum dimension of bounding box = dim"""
-        return self.rescale(float(dim) / float(np.minimum(self.bbox.height(), self.bbox.width())))
-  
-    def minsquare(self):
-        """Set a square bounding box centered at current centroid, such that the box dim=min(bbwidth, bbheight), do not crop the image"""
-        self.bbox = self.bbox.minsquare()
-        return self
-
-    def maxsquare(self):
-        """Set a square bounding box centered at current centroid, such that the box dim=max(bbwidth, bbheight), do not crop the image"""
-        self.bbox = self.bbox.maxsquare()
+    def centersquare(self):
+        """Crop image of size (NxN) in the center, such that N=min(width,height), keeping the image centroid constant, new bounding box may be degenerate"""
+        (H,W) = self.shape()
+        self = super(ImageDetection, self).centersquare()
+        (dy, dx) = ((H - self.height())/2.0, (W - self.width())/2.0)        
+        self.bbox.translate(-dx, -dy)
         return self
     
     def dilate(self, s):
@@ -1078,26 +1051,41 @@ class ImageDetection(ImageCategory):
         self.bbox = self.bbox.dilate(s)
         return self
 
-    def pad(self, dx, dy, mode='edge'):
+    def _pad(self, dx, dy, mode='edge'):
         """Pad image using np.pad mode"""
-        # image class inheritance
-        self = super(ImageDetection, self).pad(dx, dy, mode)
-        self.bbox = self.bbox.translate(dx, dy)
+        self = super(ImageDetection, self)._pad(dx, dy, mode)
+        self.bbox = self.bbox.translate(dx if not isinstance(dx, tuple) else dx[0], dy if not isinstance(dy, tuple) else dy[0])        
         return self
 
     def zeropad(self, dx, dy):
         """Pad image with dx=(leftpadwidth,rightpadwidth) or dx=bothpadwidth to zeropad left and right, dy=(toppadheight,bottompadheight) or dy=bothpadheight to zeropad top and bottom"""
-        # image class inheritance
         self = super(ImageDetection, self).zeropad(dx, dy)
         self.bbox = self.bbox.translate(dx if not isinstance(dx, tuple) else dx[0], dy if not isinstance(dy, tuple) else dy[0])
         return self
 
     def meanpad(self, dx, dy):
-        """Pad image using np.pad constant where constant is the RGB mean per
-        image"""
-        # image class inheritance
+        """Pad image using np.pad constant where constant is the RGB mean per image"""
         self = super(ImageDetection, self).meanpad(dx, dy)
-        self.bbox = self.bbox.translate(dx, dy)
+        self.bbox = self.bbox.translate(dx if not isinstance(dx, tuple) else dx[0], dy if not isinstance(dy, tuple) else dy[0])        
+        return self
+        
+    # Image export    
+    def show(self, figure=None, nowindow=False):
+        """Show the ImageDetection in the provided figure number"""
+        if figure is not None:
+            assert isinstance(figure, int) and figure > 0, "Invalid figure number, provide an integer > 0"
+        self.load()
+        if self.bbox.invalid():
+            warnings.warn('Ignoring invalid bounding box "%s"' % str(self.bbox))
+        if self.bbox.valid() and self.bbox.hasoverlap(self.array()) and self.bbox.shape() != self._array.shape[0:2]:
+            self.boxclip()  # crop bbox to image rectangle for valid overlay image
+            imbbox(self.clone().rgb()._array, self.bbox.xmin(),
+                   self.bbox.ymin(), self.bbox.xmax(), self.bbox.ymax(),
+                   bboxcaption=self.category(),
+                   fignum=figure, nowindow=nowindow)
+        else:
+            # Do not display the box if the box is degenerate or equal to the image rectangle
+            super(ImageDetection, self).show(figure=figure, nowindow=nowindow)
         return self
 
     def mask(self, W=None, H=None):
@@ -1128,7 +1116,7 @@ class Scene(ImageCategory):
 
     This class provides a representation of a vipy.image.ImageCategory with one or more vipy.object.Detections.  The goal of this class is to provide a unified representation for all objects in a scene.
 
-    Valid constructors include all provided by vipy.image.Image with the additional kwarg 'objects' 
+    Valid constructors include all provided by vipy.image.Image() and vipy.image.ImageCategory() with the additional kwarg 'objects', which is a list of vipy.object.Detections()
 
     >>> im = vipy.image.Scene(filename='/path/to/city_image.ext', category='city', objects=[vipy.object.Detection(category='vehicle', xmin=0, ymin=0, width=100, height=100)])
     >>> im = vipy.image.Scene(filename='/path/to/city_image.ext', category='city').objects([vipy.object.Detection(category='vehicle', xmin=0, ymin=0, width=100, height=100)])
@@ -1171,8 +1159,28 @@ class Scene(ImageCategory):
         obj = self._objectlist[k]
         return (ImageDetection(array=self.array(), filename=self.filename(), url=self.url(), colorspace=self.colorspace(), bbox=obj, category=obj.category()))
 
-    def clip(self):
-        """Clip all bounding boxes to the image rectangle, rejecting those boxes that are degenerate or outside the image"""
+    def append(self, imdet):
+        """Append the provided vipy.object.Detection object to the scene object list"""
+        assert isinstance(imdet, vipy.object.Detection), "Invalid input"
+        self._objectlist.append(imdet)
+        return self
+
+    def objects(self, objectlist=None):
+        if objectlist is None:
+            return self._objectlist
+        else:
+            assert isinstance(objectlist, list) and all([isinstance(bb, vipy.object.Detection) for bb in objectlist]), "Invalid object list"
+            s = self.clone()
+            s._objectlist = objectlist
+            return s
+
+    def categories(self):
+        """Return list of unique object categories in scene"""
+        return list(set([obj.category() for obj in self._objectlist]))        
+    
+    # Spatial transformation
+    def imclip(self):
+        """Clip all bounding boxes to the image rectangle, silently rejecting those boxes that are degenerate or outside the image"""
         self._objectlist = [bb.imclip(self.numpy()) for bb in self._objectlist if bb.hasoverlap(self.numpy())]
         return self
 
@@ -1199,7 +1207,7 @@ class Scene(ImageCategory):
     def centersquare(self):
         """Crop the image of size (H,W) to be centersquare (min(H,W), min(H,W)) preserving center, and update bounding boxes"""
         (H,W) = self.shape()
-        self = super(Scene, self).centersquare()
+        self = super(ImageCategory, self).centersquare()
         (dy, dx) = ((H - self.height())/2.0, (W - self.width())/2.0)
         self._objectlist = [bb.translate(-dx, -dy) for bb in self._objectlist]
         return self
@@ -1223,6 +1231,44 @@ class Scene(ImageCategory):
         self._objectlist = [bb.translate(dx, dy) for bb in self._objectlist]
         return self
 
+    def meanpad(self, dim):
+        """Mean pad (image color mean) image with padwidth cols before and after and padheight rows before and after, then update bounding box offsets"""
+        self = super(ImageCategory, self).meanpad(padwidth, padheight)
+        dx = padwidth[0] if isinstance(padwidth, tuple) and len(padwidth) == 2 else padwidth
+        dy = padheight[0] if isinstance(padheight, tuple) and len(padheight) == 2 else padheight
+        self._objectlist = [bb.translate(dx, dy) for bb in self._objectlist]
+        return self
+    
+    def rot90cw(self):
+        """Rotate the scene 90 degrees clockwise, and update objects"""
+        (H,W) = self.shape()        
+        self.array(np.rot90(self.numpy(), 3))
+        self._objectlist = [bb.rot90cw(H, W) for bb in self._objectlist]
+        return self
+
+    def rot90ccw(self):
+        """Rotate the scene 90 degrees counterclockwise, and update objects"""
+        (H,W) = self.shape()
+        self.array(np.rot90(self.numpy(), 1))
+        self._objectlist = [bb.rot90ccw(H, W) for bb in self._objectlist]
+        return self
+
+    def maxdim(self, dim):
+        """Resize scene preserving aspect ratio so that maximum dimension of image = dim, update all objects"""
+        return super(ImageCategory, self).maxdim(dim)  # will call self.rescale() which will update boxes
+
+    def mindim(self, dim):
+        """Resize scene preserving aspect ratio so that minimum dimension of image = dim, update all objects"""
+        return super(ImageCategory, self).mindim(dim)  # will call self.rescale() which will update boxes
+
+    def crop(self, bbox):
+        """Crop the image buffer using the supplied bounding box object, clipping the box to the image rectangle, update all scene objects"""        
+        self = super(ImageCategory, self)._crop(bbox)        
+        (dx, dy) = (bbox.xmin(), bbox.ymin())
+        self._objectlist = [bb.translate(-dx, -dy) for bb in self._objectlist]
+        return self
+        
+    # Image export
     def mask(self, W=None, H=None):
         """Return a binary array of the same size as the image (or using the
         provided image width and height (W,H) size to avoid an image load),
@@ -1237,11 +1283,6 @@ class Scene(ImageCategory):
                 immask[bbm.ymin():bbm.ymax(), bbm.xmin():bbm.xmax()] = 1
         return immask
 
-    def append(self, imdet):
-        """Append the provided vipy.object.Detection object to the scene object list"""
-        assert isinstance(imdet, vipy.object.Detection), "Invalid input"
-        self._objectlist.append(imdet)
-        return self
 
     def show(self, category=None, figure=None, do_caption=True, fontsize=10, boxalpha=0.25, captionlist=None, categoryColor=None, captionoffset=(0,0), nowindow=False):
         """Show scene detection with an optional subset of categories"""
@@ -1261,36 +1302,6 @@ class Scene(ImageCategory):
         self.show(category, figure, do_caption, fontsize, boxalpha, captionlist, categoryColor, captionoffset, nowindow=True)
         savefig(outfile, figure, dpi=dpi, bbox_inches='tight', pad_inches=0)
         return outfile
-
-    def objects(self, objectlist=None):
-        if objectlist is None:
-            return self._objectlist
-        else:
-            assert isinstance(objectlist, list) and all([isinstance(bb, vipy.object.Detection) for bb in objectlist]), "Invalid object list"
-            s = self.clone()
-            s._objectlist = objectlist
-            return s
-
-    def clone(self):
-        return deepcopy(self)
-
-    def categories(self):
-        """Return list of all object categories in scene"""
-        return list(set([obj.category() for obj in self._objectlist]))
-
-    def rot90cw(self):
-        """Rotate the scene 90 degrees clockwise, and update objects"""
-        (H,W) = self.shape()        
-        self.array(np.rot90(self.numpy(), 3))
-        self._objectlist = [bb.rot90cw(H, W) for bb in self._objectlist]
-        return self
-
-    def rot90ccw(self):
-        """Rotate the scene 90 degrees counterclockwise, and update objects"""
-        (H,W) = self.shape()
-        self.array(np.rot90(self.numpy(), 1))
-        self._objectlist = [bb.rot90ccw(H, W) for bb in self._objectlist]
-        return self
 
     
 class Batch(object):

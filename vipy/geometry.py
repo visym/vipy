@@ -105,9 +105,11 @@ class BoundingBox():
           (xmin,ymin,width,height)
           (centroid[0],centroid[1],width,height)
           (xcentroid,ycentroid,width,height)
+          xywh=(xmin,ymin,width,height)
+          ulbr=(xmin,ymin,xmax,ymax)
           bounding rectangle of binary mask image"""
 
-    def __init__(self, xmin=None, ymin=None, xmax=None, ymax=None, centroid=None, xcentroid=None, ycentroid=None, width=None, height=None, mask=None):
+    def __init__(self, xmin=None, ymin=None, xmax=None, ymax=None, centroid=None, xcentroid=None, ycentroid=None, width=None, height=None, mask=None, xywh=None, ulbr=None):
 
         if xmin is not None and ymin is not None and xmax is not None and ymax is not None:
             if not (isnumber(xmin) and isnumber(ymin) and isnumber(xmax) and isnumber(ymax)):
@@ -137,6 +139,10 @@ class BoundingBox():
             self._ymin = float(ycentroid) - (float(height) / 2.0)
             self._xmax = float(xcentroid) + (float(width) / 2.0)
             self._ymax = float(ycentroid) + (float(height) / 2.0)
+        elif xywh is not None:
+            self.xywh(xywh)
+        elif ulbr is not None:
+            self.ulbr(ulbr)
         elif mask is not None:
             # Bounding rectangle of non-zero pixels in a binary mask image
             if not isnumpy(mask) or np.sum(mask) == 0:
@@ -277,7 +283,7 @@ class BoundingBox():
         if xywh is None:
             return tuple([self._xmin, self._ymin, self.width(), self.height()])
         else:
-            assert len(xywh) == 4, "Invalid input"
+            assert len(xywh) == 4, "Invalid (xmin,ymin,width,height) input"
             self._xmin = xywh[0]
             self._ymin = xywh[1]
             self._xmax = self._xmin + xywh[2]
@@ -288,6 +294,22 @@ class BoundingBox():
         """Alias for to_xywh"""
         return self.to_xywh(xywh_)
 
+    def ulbr(self, ulbr=None):
+        """Return bounding box corners as upper left, bottom right (xmin, ymin, xmax, ymax)"""
+        if ulbr is None:
+            return (self.xmin(), self.ymin(), self.xmax(), self.ymax())            
+        else:
+            assert len(ulbr) == 4, "Invalid (xmin,ymin,xmax,ymax) input"
+            self._xmin = ulbr[0]
+            self._ymin = ulbr[1]
+            self._xmax = ulbr[2]
+            self._ymax = ulbr[3]
+            return self
+
+    def to_ulbr(self, ulbr=None):
+        """Alias for ulbr()"""
+        return self.ulbr(ulbr)
+    
     def dx(self, bb):
         """Offset bounding box by same xmin as provided box"""
         return bb._xmin - self._xmin
@@ -306,6 +328,7 @@ class BoundingBox():
 
     def iou(self, bb):
         """area of intersection / area of union"""
+        assert isinstance(bb, BoundingBox), "Invalid BoundingBox() input"
         if bb is None or bb.invalid() or self.invalid():
             return 0.0
         w = min(self.xmax(), bb.xmax()) - max(self.xmin(), bb.xmin())
@@ -324,6 +347,7 @@ class BoundingBox():
 
     def area_of_intersection(self, bb):
         """area of intersection"""
+        assert isinstance(bb, BoundingBox), "Invalid BoundingBox() input"                
         if bb.invalid() or self.invalid():
             return 0.0
         w = min(self.xmax(), bb.xmax()) - max(self.xmin(), bb.xmin())
@@ -335,11 +359,12 @@ class BoundingBox():
         return aoi
 
     def cover(self, bb):
-        """Fraction of this bounding box covered by other bbox"""
+        """Fraction of this bounding box covered by other bbox"""        
         return self.area_of_intersection(bb) / float(self.area())
 
     def intersection(self, bb, strict=True):
         """Intersection of two bounding boxes, throw an error on degeneracy of intersection result (if strict=True)"""
+        assert isinstance(bb, BoundingBox), "Invalid BoundingBox() input"                
         self._xmin = max(bb.xmin(), self.xmin())
         self._ymin = max(bb.ymin(), self.ymin())
         self._xmax = min(bb.xmax(), self.xmax())
@@ -358,6 +383,7 @@ class BoundingBox():
 
     def inside(self, p):
         """Is the 2D point p=(x,y) inside the bounding box?"""
+        assert len(p) == 2, "Invalid 2D point=(x,y) input"""
         return (p[0] >= self._xmin) and (p[1] >= self._ymin) and (p[0] <= self._xmax) and (p[1] <= self._ymax)
 
     def dilate(self, scale=1):
@@ -453,7 +479,7 @@ class BoundingBox():
     def fliplr(self, img=None, width=None):
         """Flip the box left/right consistent with fliplr of the provided img (or consistent with the image width)"""
         if img is not None:
-            assert isnumpy(img), "Invalid image input"
+            assert isnumpy(img), "Invalid numpy image input"
             width = img.shape[1]
         else:
             assert isnumber(width), "Invalid width"
@@ -504,15 +530,15 @@ class BoundingBox():
             assert isnumber(width) and isnumber(height), "Invalid width and height - both must be numbers"
         return self.area_of_intersection(BoundingBox(xmin=0, ymin=0, width=width, height=height)) > 0
 
-    def imclip(self, img=None, width=None, height=None):
-        """Clip bounding box to image rectangle [0,0,width-1,height-1], throw an exception on an invalid box"""
+    def imclip(self, img=None, width=None, height=None, strict=True):
+        """Clip bounding box to image rectangle [0,0,width-1,height-1], throw an exception on an invalid box if strict=True"""
         if img is not None:
-            assert isnumpy(img), "Invalid image input"
+            assert isnumpy(img), "Invalid numpy image input"
             (height, width) = (img.shape[0], img.shape[1])
         else:
             assert width is not None and height is not None, "Invalid width and height - both must be provided"
             assert isnumber(width) and isnumber(height), "Invalid width and height - both must be numbers"
-        self.intersection(BoundingBox(xmin=0, ymin=0, width=width, height=height))
+        self.intersection(BoundingBox(xmin=0, ymin=0, width=width, height=height), strict=strict)
         return self
 
     def imclipshape(self, W, H):

@@ -348,7 +348,7 @@ def test_imagedetection():
     except:
         print('[test_image.imagedetection]: invalid box crop: PASSED')
     im = ImageDetection(filename=rgbfile, xmin=100000, ymin=100000, bbwidth=200, bbheight=200, category='face')
-    assert im.boxclip().bbox is None
+    assert im.imclip().bbox is None
     print('[test_image.imagedetection]: invalid imagebox: PASSED')
 
     # boundingbox() methods
@@ -394,15 +394,17 @@ def test_imagedetection():
     print('[test_image.imagedetection]: resize  PASSED')
 
     # Isinterior
-    im = ImageDetection(array=np.zeros((10,10), dtype=np.float32), xmin=100, ymin=100, xmax=200, ymax=200, category='face')
+    im = ImageDetection(array=np.zeros((10,20), dtype=np.float32), xmin=100, ymin=100, xmax=200, ymax=200, category='face')
     assert not im.isinterior()
-    assert not im.isinterior(10,10)
+    assert not im.isinterior(20,10)
+    im = ImageDetection(array=np.zeros((10,20), dtype=np.float32), xmin=0, ymin=0, width=20, height=10)
+    assert im.isinterior()
     print('[test_image.imagedetection]: interior  PASSED')
 
     # Fliplr
     img = np.random.rand(10,20).astype(np.float32)
     im = ImageDetection(array=img, xmin=0, ymin=0, xmax=5, ymax=10)
-    assert not im.isinterior()
+    assert im.isinterior()
     assert np.allclose(im.clone().fliplr().crop().array(), np.fliplr(im.crop().array()))
     print('[test_image.imagedetection]: fliplr  PASSED')
 
@@ -411,15 +413,24 @@ def test_imagedetection():
     im = ImageDetection(array=img, xmin=0, ymin=0, xmax=5, ymax=10)
     imorig = im.clone()    
     (x,y,w,h) = im.bbox.xywh()
-    (xc,yc) = im.centroid()  # box centroid
-    assert im.clone().minsquare().bbox.shape() == (min(w,h),min(w,h))
-    assert im.clone().minsquare().bbox.centroid() == (xc,yc)
-    assert im.clone().maxsquare().bbox.shape() == (max(w,h),max(w,h))
+    (xc,yc) = im.boundingbox().centroid()  # box centroid
+    assert im.clone().minsquare().bbox.shape() == (10, 5)
+    assert im.clone().minsquare().shape() == (10, 10)    
+    assert im.clone().minsquare().bbox.centroid() == (xc, yc)
+    assert im.clone().maxsquare().bbox.shape() == (10, 5)
+    assert im.clone().maxsquare().shape() == (20,20)    
     assert im.clone().maxsquare().bbox.centroid() == (xc,yc)
-    im = imorig.clone().minsquare()    
-    assert im.centercrop(1,2).shape() == (2,1)
-    assert im.boundingbox().xywh() == (0,0,1,2)
-    print('[test_image.imagedetection]: centercrop PASSED')
+    assert im.clone().centersquare().shape() == (10,10)
+    assert im.clone().centersquare().boundingbox().xywh() == (-5,0,5,10)
+    img = np.random.rand(20,10,3).astype(np.float32)
+    assert ImageDetection(array=img, xmin=0, ymin=0, width=10, height=10).minsquare().crop().shape() == (10,10)
+    img = np.random.rand(21,9,3).astype(np.float32)
+    assert ImageDetection(array=img, xmin=0, ymin=0, width=9, height=21).centersquare().crop().shape() == (9,9)
+    img = np.random.rand(10,11,3).astype(np.float32)
+    assert ImageDetection(array=img, xmin=0, ymin=0, width=11, height=10).centersquare().crop().shape() == (10,10)
+    print('[test_image.imagedetection]: minsquare PASSED')
+    print('[test_image.imagedetection]: maxsquare PASSED')
+    print('[test_image.imagedetection]: centersquare PASSED')                  
 
     # Dilate
     im = ImageDetection(array=img, xmin=1, ymin=0, width=3, height=4)
@@ -433,31 +444,26 @@ def test_imagedetection():
     img = np.random.rand(20,40).astype(np.float32)
     im = ImageDetection(array=img, xmin=0, ymin=0, width=40, height=20)
     assert np.allclose(im.clone().meanpad(10,10).crop().array(), img) and (im.clone().meanpad(10,20).shape() == (20 + 20 * 2, 40 + 10 * 2))
+    imorig = ImageDetection(array=img, xmin=0, ymin=0, width=40, height=20)
+    im = imorig.clone().meanpad( (0,10), (0,20) )
+    assert np.allclose(imorig.clone().meanpad( (0,10), (0,20) ).crop().array(), img) and (imorig.clone().meanpad( (0,10), (0,20) ).shape() == (20 + 20, 10 + 40)) and img[0,0] == im.array()[0,0] and im.array()[-1,-1] != 0
+    im = imorig.clone().zeropad( (0,10), (0,20) )
+    assert np.allclose(imorig.clone().zeropad( (0,10), (0,20) ).crop().array(), img) and (imorig.clone().zeropad( (0,10), (0,20) ).shape() == (20 + 20, 10 + 40)) and img[0,0] == im.array()[0,0] and im.array()[-1,-1] == 0
     print('[test_image.imagedetection]: pad  PASSED')
 
-    # Boxclip
+    # imclip
     img = np.random.rand(20,10,3).astype(np.float32)
     im = ImageDetection(array=img, xmin=0, ymin=0, width=10, height=20)
-    assert im.clone().boxclip().bbox.xywh() == (0,0,10,20)
+    assert im.clone().imclip().bbox.xywh() == (0,0,10,20)
     im = ImageDetection(array=img, xmin=0, ymin=0, width=10, height=200)
-    assert im.clone().boxclip().bbox.xywh() == (0,0,10,20)
+    assert im.clone().imclip().bbox.xywh() == (0,0,10,20)
     im = ImageDetection(array=img, xmin=100, ymin=200, width=10, height=200)
-    assert im.clone().boxclip().bbox is None
+    assert im.clone().imclip().bbox is None
     im = ImageDetection(array=img, xmin=-1, ymin=-2, width=100, height=200)
-    assert im.clone().boxclip().bbox.xywh() == (0,0,10,20)
+    assert im.clone().imclip().bbox.xywh() == (0,0,10,20)
     im = ImageDetection(array=img, xmin=1, ymin=1, width=9, height=9)
-    assert im.clone().boxclip().bbox.xywh() == (1,1,9,9)
-    print('[test_image.imagedetection]: boxclip  PASSED')
-
-    # Square crops
-    img = np.random.rand(20,10,3).astype(np.float32)
-    assert ImageDetection(array=img, xmin=0, ymin=0, width=10, height=10).minsquare().crop().shape() == (10,10)
-    print('[test_image.imagedetection]: minsquare  PASSED')
-    img = np.random.rand(21,9,3).astype(np.float32)
-    assert ImageDetection(array=img, xmin=0, ymin=0, width=9, height=21).centersquare(9,9).crop().shape() == (9,9)
-    img = np.random.rand(10,11,3).astype(np.float32)
-    assert ImageDetection(array=img, xmin=0, ymin=0, width=11, height=10).centersquare(10,10).crop().shape() == (10,10)
-    print('[test_image.imagedetection]: centersquare  PASSED')
+    assert im.clone().imclip().bbox.xywh() == (1,1,9,9)
+    print('[test_image.imagedetection]: imclip  PASSED')
 
     # Setzero
     img = np.random.rand(20,10,3).astype(np.float32)
@@ -574,8 +580,8 @@ def test_scene():
     assert np.allclose(imm.array(), imm2.array(), rtol=1)        
     print('[test_image.scene]: fliplr() PASSED')
 
-    imorigclip = imorig.clone().clip()
-    im = imorigclip.clone().clip()
+    imorigclip = imorig.clone().imclip()
+    im = imorigclip.clone().imclip()
     (h,w) = im.shape()
     im.zeropad(padwidth=100, padheight=200)
     assert (im.width() == w + 200 and im.height() == h + 400 and im.numpy()[0,0,0] == 0)
@@ -585,7 +591,7 @@ def test_scene():
                                                            mode='constant',
                                                            constant_values=0), 'L')) *255, colorspace='lum')
     assert np.allclose(imm.array(), imm2.array(), rtol=1)    
-    im = imorigclip.clone().clip()
+    im = imorigclip.clone().imclip()
     (h,w) = im.shape()
     im.zeropad((0,100), (0,200))
     assert (im.width() == w + 100 and im.height() == h + 200 and im.numpy()[0,0,0] != 0)
@@ -614,13 +620,27 @@ def test_scene():
     im = Scene(filename=rgbfile).resize(200, 300).objects([Detection('obj1',50,0,100,20)])    
     imrot = im.clone().rot90cw()
     assert imrot.width() == 300 and imrot.height() == 200
-    assert imrot[0].crop().width() == 20 and imrot[0].crop().height() == 100
+    assert imrot[0].boundingbox().width() == 20 and imrot[0].boundingbox().height() == 100
     assert np.allclose(imrot.array(), np.rot90(im.array(), 3))
     imrot = im.clone().rot90ccw()
     assert imrot.width() == 300 and imrot.height() == 200
-    assert imrot[0].crop().width() == 20 and imrot[0].crop().height() == 100
+    assert imrot[0].boundingbox().width() == 20 and imrot[0].boundingbox().height() == 100
     assert np.allclose(imrot.array(), np.rot90(im.array(), 1))
     print('[test_image.scene]: rot90 PASSED')    
+
+    # mindim
+    im = Scene(filename=rgbfile).resize(200, 400).objects([Detection('obj1',xmin=50,ymin=0,width=100,height=20)])    
+    im = im.mindim(100)
+    assert im.width() == 100 and im.height() == 200
+    assert im[0].boundingbox().width() == 50 and im[0].boundingbox().height() == 10
+    print('[test_image.scene]: mindim PASSED')
+
+    # maxdim
+    im = Scene(filename=rgbfile).resize(200, 400).objects([Detection('obj1',xmin=50,ymin=0,width=100,height=20)])
+    im = im.maxdim(100)
+    assert im.width() == 50 and im.height() == 100
+    assert im[0].boundingbox().width() == 25 and im[0].boundingbox().height() == 5
+    print('[test_image.scene]: maxdim PASSED')
 
     
 def test_batch():

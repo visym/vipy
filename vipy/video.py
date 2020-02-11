@@ -416,8 +416,7 @@ class Video(object):
 class Scene(Video):
     """ vipy.video.Scene class
     """
-    
-    
+        
     def __init__(self, filename=None, url=None, framerate=30, attributes=None, tracks=None, activities=None):
         super(Scene, self).__init__(url=url, filename=filename, framerate=framerate, attributes=attributes)
 
@@ -529,6 +528,8 @@ class Scene(Video):
 
 
 class VideoCategory(Video):
+    """vipy.video.VideoCategory class
+    """
     def __init__(self, filename=None, url=None, framerate=30, attributes=None, category=None, startframe=None, endframe=None):
         super(VideoCategory, self).__init__(url=url, filename=filename, framerate=framerate, attributes=attributes)
         self._category = category
