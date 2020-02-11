@@ -1078,7 +1078,7 @@ class ImageDetection(ImageCategory):
         if self.bbox.invalid():
             warnings.warn('Ignoring invalid bounding box "%s"' % str(self.bbox))
         if self.bbox.valid() and self.bbox.hasoverlap(self.array()) and self.bbox.shape() != self._array.shape[0:2]:
-            self.boxclip()  # crop bbox to image rectangle for valid overlay image
+            self.imclip()  # crop bbox to image rectangle for valid overlay image
             imbbox(self.clone().rgb()._array, self.bbox.xmin(),
                    self.bbox.ymin(), self.bbox.xmax(), self.bbox.ymax(),
                    bboxcaption=self.category(),
