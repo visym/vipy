@@ -50,7 +50,8 @@ class Track(object):
         strlist = []
         if self.category() is not None:
             strlist.append('category="%s"' % self.category())
-        strlist.append('frame=[%d,%d]' % (self.startframe(), self.endframe()))
+        if self.endframe() - self.startframe() > 0:
+            strlist.append('startframe=%d, endframe=%d' % (self.startframe(), self.endframe()))
         strlist.append('keyframes=%d' % len(self._frames))
         return str('<vipy.object.track: %s>' % (', '.join(strlist)))
 
