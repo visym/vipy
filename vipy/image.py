@@ -1197,11 +1197,11 @@ class Scene(ImageCategory):
         return self
 
     def centersquare(self):
-        """Crop the image to be centersquare, and update bounding boxes"""
+        """Crop the image of size (H,W) to be centersquare (min(H,W), min(H,W)) preserving center, and update bounding boxes"""
         (H,W) = self.shape()
         self = super(Scene, self).centersquare()
-        (dy, dx) = (H - self.height(), W - self.width())
-        self._objectlist = [bb.translate(dx, dy) for bb in self._objectlist]
+        (dy, dx) = ((H - self.height())/2.0, (W - self.width())/2.0)
+        self._objectlist = [bb.translate(-dx, -dy) for bb in self._objectlist]
         return self
     
     def fliplr(self):
@@ -1275,6 +1275,7 @@ class Scene(ImageCategory):
         return deepcopy(self)
 
     def categories(self):
+        """Return list of all object categories in scene"""
         return list(set([obj.category() for obj in self._objectlist]))
 
 

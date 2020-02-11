@@ -510,7 +510,8 @@ def test_scene():
     im = im.objects([Detection('obj1',20,50,100,100), Detection('obj2',300,300,200,200)])
     im.append(Detection('obj3',W +1,H +1,200,200))   # invalid box outside image rectancle
     im.append(Detection('obj4',W -100,H -200,1000,2000))   # invalid box partially outside image rectangle    
-
+    imscene = im.clone()
+    
     
     # Visualizations
     im.__repr__()
@@ -597,15 +598,16 @@ def test_scene():
     print('[test_image.scene]: zeropad PASSED')
 
     # Centersquare
-    imorig = Scene(filename=rgbfile).resize(200, 100).objects([Detection('obj1',50,0,100,100)])
-    im = imorig.clone().centersquare()
-    assert im.width() == im.height() and im.width() == 100 and im[0].bbox.xywh == (0,0,100,100)
+    im2 = Scene(filename=rgbfile).resize(200, 100).objects([Detection('obj1',50,0,100,100)])
+    im = im2.clone().centersquare()
+    assert im.width() == im.height() and im.width() == 100 and im[0].bbox.xywh() == (0,0,100,100)
     print('[test_image.scene]: centersquare PASSED')    
-
     
     # Categories    
-    assert sorted(imorig.categories()) == ['obj1', 'obj2', 'obj3', 'obj4']
-    assert sorted(im.categories()) == ['obj1', 'obj2', 'obj4']    
+    assert sorted(imscene.categories()) == ['obj1', 'obj2', 'obj3', 'obj4']
+    im = imscene.clone()
+    im._objectlist[0].translate(1000)  # outside image rectangle
+    assert sorted(im.categories()) == ['obj1', 'obj2', 'obj3', 'obj4']    
     print('[test_image.scene]: categories PASSED')
 
     
