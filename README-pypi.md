@@ -32,5 +32,5 @@ python3 setup.py sdist upload -r pypi
 
 ```bash
 cd /path/to/vipy
-pip install - e .
+pip install -e .
 ```
