@@ -503,14 +503,6 @@ class Image(object):
         self._array = np.array(self.pil().resize((int(np.round(scale * width)), int(np.round(scale * height))), PIL.Image.BILINEAR))
         return self
 
-    def maxside(self, dim):
-        """Resize image preserving aspect ratio so that maximum dimension of bounding box = dim"""
-        return self.rescale(float(dim) / float(np.maximum(self.bbox.height(), self.bbox.width())))
-
-    def minside(self, dim):
-        """Resize image preserving aspect ratio so that minimum dimension of bounding box = dim"""
-        return self.rescale(float(dim) / float(np.minimummum(self.bbox.height(), self.bbox.width())))
-
     def maxdim(self, dim):
         """Resize image preserving aspect ratio so that maximum dimension of image = dim"""
         return self.rescale(float(dim) / float(np.maximum(self.height(), self.width())))
@@ -1062,7 +1054,15 @@ class ImageDetection(ImageCategory):
     def centercrop(self, width, height):
         """Crop the image with a centercrop of dimension (width,height)"""
         return self.centersquare(width, height).crop()
+  
+    def maxside(self, dim):
+        """Resize image preserving aspect ratio so that maximum dimension of bounding box = dim"""
+        return self.rescale(float(dim) / float(np.maximum(self.bbox.height(), self.bbox.width())))
 
+    def minside(self, dim):
+        """Resize image preserving aspect ratio so that minimum dimension of bounding box = dim"""
+        return self.rescale(float(dim) / float(np.minimum(self.bbox.height(), self.bbox.width())))
+  
     def minsquare(self):
         """Set a square bounding box centered at current centroid, such that the box dim=min(bbwidth, bbheight), do not crop the image"""
         self.bbox = self.bbox.minsquare()
@@ -1278,7 +1278,21 @@ class Scene(ImageCategory):
         """Return list of all object categories in scene"""
         return list(set([obj.category() for obj in self._objectlist]))
 
+    def rot90cw(self):
+        """Rotate the scene 90 degrees clockwise, and update objects"""
+        (H,W) = self.shape()        
+        self.array(np.rot90(self.numpy(), 3))
+        self._objectlist = [bb.rot90cw(H, W) for bb in self._objectlist]
+        return self
 
+    def rot90ccw(self):
+        """Rotate the scene 90 degrees counterclockwise, and update objects"""
+        (H,W) = self.shape()
+        self.array(np.rot90(self.numpy(), 1))
+        self._objectlist = [bb.rot90ccw(H, W) for bb in self._objectlist]
+        return self
+
+    
 class Batch(object):
     """vipy.image.Batch class
 

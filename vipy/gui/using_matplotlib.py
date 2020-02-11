@@ -18,6 +18,10 @@ except:
     pass  # ignored if latex is not installed
 
 
+def flush():
+    plt.pause(0.001)
+
+    
 def show(fignum):
     plt.ion()
     plt.draw()
@@ -90,6 +94,8 @@ def imshow(img, fignum=None):
                 except:
                     pass
     else:
+        if fignum in plt.get_fignums() and fignum in FIGHANDLE:
+            close(fignum)
         (fignum, imh) = _imshow_tight(img, fignum=fignum)
         FIGHANDLE[fignum] = imh
     return fignum

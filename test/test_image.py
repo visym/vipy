@@ -610,6 +610,18 @@ def test_scene():
     assert sorted(im.categories()) == ['obj1', 'obj2', 'obj3', 'obj4']    
     print('[test_image.scene]: categories PASSED')
 
+    # rot90
+    im = Scene(filename=rgbfile).resize(200, 300).objects([Detection('obj1',50,0,100,20)])    
+    imrot = im.clone().rot90cw()
+    assert imrot.width() == 300 and imrot.height() == 200
+    assert imrot[0].crop().width() == 20 and imrot[0].crop().height() == 100
+    assert np.allclose(imrot.array(), np.rot90(im.array(), 3))
+    imrot = im.clone().rot90ccw()
+    assert imrot.width() == 300 and imrot.height() == 200
+    assert imrot[0].crop().width() == 20 and imrot[0].crop().height() == 100
+    assert np.allclose(imrot.array(), np.rot90(im.array(), 1))
+    print('[test_image.scene]: rot90 PASSED')    
+
     
 def test_batch():
     imb = vipy.image.Batch([ImageDetection(filename=rgbfile, category='face', bbox=vipy.geometry.BoundingBox(0,0,100,100)) for k in range(0,100)])
