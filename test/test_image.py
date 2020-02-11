@@ -564,7 +564,6 @@ def test_scene():
     imm = Image(array=im.mask()*255, colorspace='lum')
     imm2 = Image(array=np.array(PIL.Image.fromarray(imorig.mask(), 'L').resize( (int(W /2), int(H /2)), PIL.Image.NEAREST))*255, colorspace='lum')
     assert np.allclose(imm.array(), imm2.array(), rtol=1)        
-    
     print('[test_image.scene]: resize() PASSED')
 
     im = imorig.clone().fliplr()
@@ -597,6 +596,13 @@ def test_scene():
     assert np.allclose(imm.array(), imm2.array(), rtol=1)                
     print('[test_image.scene]: zeropad PASSED')
 
+    # Centersquare
+    imorig = Scene(filename=rgbfile).resize(200, 100).objects([Detection('obj1',50,0,100,100)])
+    im = imorig.clone().centersquare()
+    assert im.width() == im.height() and im.width() == 100 and im[0].bbox.xywh == (0,0,100,100)
+    print('[test_image.scene]: centersquare PASSED')    
+
+    
     # Categories    
     assert sorted(imorig.categories()) == ['obj1', 'obj2', 'obj3', 'obj4']
     assert sorted(im.categories()) == ['obj1', 'obj2', 'obj4']    

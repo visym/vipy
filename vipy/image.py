@@ -1188,7 +1188,7 @@ class Scene(ImageCategory):
         sx = (float(cols) / self.width()) if cols is not None else 1.0
         sy = (float(rows) / self.height()) if rows is not None else 1.0
         sx = sx if sx != 1.0 else sy
-        sy = sy if sy != 1.0 else sx        
+        sy = sy if sy != 1.0 else sx       
         self._objectlist = [bb.scalex(sx).scaley(sy) for bb in self._objectlist]        
         if sx == sy:
             self = super(Scene, self).rescale(sx)  # FIXME: if we call resize here, inheritance is screweed up
@@ -1196,6 +1196,14 @@ class Scene(ImageCategory):
             self = super(Scene, self).resize(cols, rows)
         return self
 
+    def centersquare(self):
+        """Crop the image to be centersquare, and update bounding boxes"""
+        (H,W) = self.shape()
+        self = super(Scene, self).centersquare()
+        (dy, dx) = (H - self.height(), W - self.width())
+        self._objectlist = [bb.translate(dx, dy) for bb in self._objectlist]
+        return self
+    
     def fliplr(self):
         """Mirror buffer and all bounding box around vertical axis"""
         self._objectlist = [bb.fliplr(self.numpy()) for bb in self._objectlist]
