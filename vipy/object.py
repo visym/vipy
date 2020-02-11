@@ -38,35 +38,43 @@ class Detection(BoundingBox):
 class Track(object):
     """Represent many bounding boxes of an instance through time"""
 
-    def __init__(self, label, frames, boxes, confidence=None, attributes=None):
+    def __init__(self, label, frames, boxes, confidence=None, attributes=None, framerate=None):
         self._label = label
         self._frames = frames
         self._boxes = boxes
         assert all([isinstance(bb, BoundingBox) for bb in boxes]), "Bounding boxes must be vipy.geometry.BoundingBox objects"
         assert all([bb.isvalid() for bb in boxes]), "Invalid bounding boxes"
-
+        self._framerate = framerate
+        
     def __repr__(self):
         strlist = []
         if self.category() is not None:
             strlist.append('category="%s"' % self.category())
-        strlist.append('frame=[%d,%d]' % (self.startframe, self.endframe))
-        strlist.append('obs=%d' % len(self._frames))
+        strlist.append('frame=[%d,%d]' % (self.startframe(), self.endframe()))
+        strlist.append('keyframes=%d' % len(self._frames))
         return str('<vipy.object.track: %s>' % (', '.join(strlist)))
 
     def __getitem__(self, k):
         return self._interpolate(k)
 
     def __iter__(self):
-        for k in range(self._startframe, self._endframe):
-            yield (k,self._interpolate(k))
+        for k in range(self/startframe(), self.endframe()):
+            yield self._interpolate(k)
 
     def __len__(self):
         return len(self._frames)
 
     def keyframes(self):
-        """Return keyframes where there are track observations"""
+        """Return keyframe frame indexes where there are track observations"""
         return self._frames
 
+    def framerate(self, fps):
+        """Resample keyframes from known original framerate set by constructor to be new framerate fps"""
+        assert self._framerate is not None, "Framerate conversion requires that the framerate is known for current keyframes.  This must be provided to the vipy.object.Track() constructor."
+        self._frames = [int(np.round(f*(fps/float(self._framerate)))) for f in self._frames]
+        self._framerate = fps
+        return self
+        
     def startframe(self):
         return np.min(self._frames)
 

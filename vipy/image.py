@@ -990,11 +990,10 @@ class ImageDetection(ImageCategory):
     
     # Spatial transformations
     def imclip(self):
-        """Clip bounding box to the image rectangle, and delete bbox if outside image rectangle.  Requires image load"""
+        """Clip bounding box to the image rectangle, and ignore bbox if outside image rectangle.  Requires image load"""
         (H,W) = self.load().shape()
         if self.bbox.intersection(BoundingBox(xmin=0, ymin=0, xmax=W, ymax=H), strict=False).isdegenerate():
-            warnings.warn("Degenerate bounding box does not intersect image - Deleting")
-            self.bbox = None
+            warnings.warn("Degenerate bounding box does not intersect image - Ignoring")
         return self
 
     def rescale(self, scale=1):

@@ -1,6 +1,6 @@
 import os
 from vipy.util import remkdir, tempMP4, isurl, \
-    isvideourl, templike, tempjpg, filetail, tempdir, isyoutubeurl, try_import, isnumpy
+    isvideourl, templike, tempjpg, filetail, tempdir, isyoutubeurl, try_import, isnumpy, temppng
 from vipy.image import Image
 import vipy.image
 import vipy.downloader
@@ -42,13 +42,13 @@ class Video(object):
     Note that the video transformations (clip, resize, rescale, rotate) are only available prior to load(), and the array() is assumed immutable after load().
 
     """
-    def __init__(self, filename=None, url=None, framerate=30, attributes=None, array=None, colorspace=None):
+    def __init__(self, filename=None, url=None, framerate=None, attributes=None, array=None, colorspace=None):
         self._url = None
         self._filename = None
-        self._framerate = framerate
         self._array = None
         self._colorspace = None
         self._ffmpeg = None
+        self._framerate = None
         
         self.attributes = attributes if attributes is not None else {}
         assert filename is not None or url is not None or array is not None, 'Invalid constructor - Requires "filename", "url" or "array"'
@@ -73,8 +73,11 @@ class Video(object):
             self.colorspace(colorspace)
             
         # Transformations
-        self._ffmpeg = ffmpeg.input(self.filename(), r=self._framerate)
-        
+        self._ffmpeg = ffmpeg.input(self.filename())        
+        if framerate is not None:
+            self.framerate(framerate)
+            self._framerate = framerate
+            
     def __repr__(self):
         strlist = []
         if self.isloaded():
@@ -83,6 +86,8 @@ class Video(object):
             strlist.append('filename="%s"' % self.filename())
         if self.hasurl():
             strlist.append('url="%s"' % self.url())
+        if self._framerate is not None:
+            strlist.append('fps=%s' % str(self._framerate))
         return str('<vipy.video: %s>' % (', '.join(strlist)))
 
     def __len__(self):
@@ -107,6 +112,19 @@ class Video(object):
         for k in range(0, len(self)):
             yield self.__getitem__(k)
 
+    def take(self, n):
+        """Return n frames from the clip uniformly spaced as numpy array"""
+        assert self.isloaded(), "Load() is required before take()"""
+        dt = int(np.round(len(self._array) / float(n)))  # stride
+        return self._array[::dt][0:n]
+
+    def framerate(self, fps):
+        """Change the input framerate for the video and update frame indexes for all annotations"""
+        assert not self.isloaded(), "Filters can only be applied prior to loading; flush() the video first"        
+        self._ffmpeg = self._ffmpeg.filter('fps', fps=fps, round='up')
+        self._framerate = fps
+        return self
+            
     def colorspace(self, colorspace=None):
         """Return or set the colorspace as ['rgb', 'bgr', 'lum', 'float']"""
         if colorspace is None:
@@ -188,7 +206,7 @@ class Video(object):
 
     def flush(self):
         self._array = None
-        self._ffmpeg = ffmpeg.input(self.filename(), r=self._framerate)
+        self._ffmpeg = ffmpeg.input(self.filename())  # restore, no other filters
         return self
 
     def reload(self):
@@ -277,7 +295,7 @@ class Video(object):
         """Height (rows) in pixels of the video, can only be introspected after load()"""        
         return self.shape()[0]
 
-    def thumbnail(self, outfile=None, verbose=False):
+    def _preview(self, outfile=None, verbose=False):
         """Return first frame of filtered video, saved to temp file, return vipy.image.Image object.  This is useful for previewing the frame shape of a complex filter chain."""
         im = Image(filename=tempjpg() if outfile is None else outfile)
         (out, err) = self._ffmpeg.output(im.filename(), vframes=1)\
@@ -298,8 +316,8 @@ class Video(object):
         if verbosity > 0:
             print('[vipy.video.load]: Loading "%s"' % self.filename())
 
-        # Generate single frame thumbnail to get frame sizes
-        imthumb = self.thumbnail(verbose=verbosity > 1)
+        # Generate single frame _preview to get frame sizes
+        imthumb = self._preview(verbose=verbosity > 1)
         (height, width, channels) = (imthumb.height(), imthumb.width(), imthumb.channels())
         (out, err) = self._ffmpeg.output('pipe:', format='rawvideo', pix_fmt='rgb24') \
                                  .global_args('-loglevel', 'debug' if verbosity > 1 else 'error') \
@@ -311,7 +329,7 @@ class Video(object):
     def clip(self, startframe, endframe):
         """Load a video clip betweeen start and end frames"""
         assert startframe <= endframe and startframe >= 0, "Invalid start and end frames (%s, %s)" % (str(startframe), str(endframe))
-        assert not self.isloaded(), "Filters can only be applied prior to loading, flush() the video first then reload"
+        assert not self.isloaded(), "Filters can only be applied prior to loading; flush() the video first"
         self._ffmpeg = self._ffmpeg.trim(start_frame=startframe, end_frame=endframe)\
                                    .setpts('PTS-STARTPTS')  # reset timestamp to 0 after trim filter
         return self
@@ -319,26 +337,26 @@ class Video(object):
     def trim(self, startframe, endframe):
         """Alias for clip"""
         assert startframe <= endframe and startframe >= 0, "Invalid start and end frames"
-        assert not self.isloaded(), "Filters can only be applied prior to loading, flush() the video first then reload"
+        assert not self.isloaded(), "Filters can only be applied prior to loading; flush() the video first then reload"
         self._ffmpeg = self._ffmpeg.trim(start_frame=startframe, end_frame=endframe)\
                                    .setpts('PTS-STARTPTS')  # reset timestamp to 0 after trim filter
         return self
 
     def rot90cw(self):
         """Rotate the video 90 degrees clockwise, can only be applied prior to load()"""
-        assert not self.isloaded(), "Filters can only be applied prior to loading, flush() the video first then reload"
+        assert not self.isloaded(), "Filters can only be applied prior to loading; flush() the video first then reload"
         self._ffmpeg = self._ffmpeg.filter('transpose', 1)
         return self
 
     def rot90ccw(self):
         """Rotate the video 90 degrees counter-clockwise, can only be applied prior to load()"""        
-        assert not self.isloaded(), "Filters can only be applied prior to loading, flush() the video first then reload"
+        assert not self.isloaded(), "Filters can only be applied prior to loading; flush() the video first then reload"
         self._ffmpeg = self._ffmpeg.filter('transpose', 2)
         return self
 
     def rescale(self, s):
         """Rescale the video by factor s, such that the new dimensions are (s*H, s*W), can only be applied prior load()"""
-        assert not self.isloaded(), "Filters can only be applied prior to loading, flush() the video first then reload"
+        assert not self.isloaded(), "Filters can only be applied prior to loading; flush() the video first then reload"
         self._ffmpeg = self._ffmpeg.filter('scale', 'iw*%1.2f' % s, 'ih*%1.2f' % s)
         return self
 
@@ -346,14 +364,8 @@ class Video(object):
         """Resize the video to be (rows, cols), can only be applied prior to load()"""
         if rows is None and cols is None:
             return self
-        assert not self.isloaded(), "Filters can only be applied prior to loading, flush() the video first then reload"
+        assert not self.isloaded(), "Filters can only be applied prior to loading; flush() the video first then reload"
         self._ffmpeg = self._ffmpeg.filter('scale', cols if cols is not None else -1, rows if rows is not None else -1)
-        return self
-
-    def framerate(self, fps):
-        """Change the framerate during import, can only be applied prior to load()"""
-        assert not self.isloaded(), "Filters can only be applied prior to loading, flush() the video first then reload"
-        self._ffmpeg = self._ffmpeg.filter('fps', fps=fps, round='up')
         return self
 
     def crop(self, bb):
@@ -398,15 +410,19 @@ class Video(object):
         """Play the saved video filename using the system 'ffplay'"""
         if not self.isdownloaded():
             self.download()
-        os.system("ffplay %s" % self.filename())
+        cmd = "ffplay %s" % self.filename()
+        print('[vipy.video.play]: %s' % cmd)
+        os.system(cmd)
+        return self
 
-    def torch(self):
+    def torch(self, take=None):
         """Convert the loaded video to an NxCxHxW torch tensor"""
         try_import('torch'); import torch
 
         """Convert the batch of N HxWxC images to a NxCxHxW torch tensor"""
         frames = self._array if self.iscolor() else np.expand_dims(self._array, 3)
-        return torch.from_numpy(frames.transpose(0,3,1,2))
+        t = torch.from_numpy(frames.transpose(0,3,1,2))
+        return t if take is None else t[::int(np.round(len(t)/float(take)))][0:take]
 
     def clone(self):
         """Copy the video object"""
@@ -417,8 +433,8 @@ class Scene(Video):
     """ vipy.video.Scene class
     """
         
-    def __init__(self, filename=None, url=None, framerate=30, attributes=None, tracks=None, activities=None):
-        super(Scene, self).__init__(url=url, filename=filename, framerate=framerate, attributes=attributes)
+    def __init__(self, filename=None, url=None, framerate=None, attributes=None, tracks=None, activities=None):
+        super(Scene, self).__init__(url=url, filename=filename, framerate=None, attributes=attributes)
 
         self._tracks = []
         if tracks is not None:
@@ -430,6 +446,9 @@ class Scene(Video):
             assert isinstance(activities, list) and all([isinstance(a, vipy.activity.Activity) for a in activities]), "Invalid input"
             self._activities = activities
 
+        if framerate is not None:
+            self.framerate(framerate)
+            
     def __repr__(self):
         strlist = []
         if self.isloaded():
@@ -438,6 +457,8 @@ class Scene(Video):
             strlist.append('filename="%s"' % self.filename())
         if self.hasurl():
             strlist.append('url="%s"' % self.url())
+        if self._framerate is not None:
+            strlist.append('fps=%s' % str(self._framerate))            
         if len(self._tracks) > 0:
             strlist.append('tracks=%d' % len(self._tracks))
         if len(self._activities) > 0:
@@ -458,6 +479,26 @@ class Scene(Video):
         for k in range(0, len(self)):
             yield self.__getitem__(k)
 
+    def framerate(self, fps):
+        """Change the input framerate for the video and update frame indexes for all annotations"""
+        assert not self.isloaded(), "Filters can only be applied prior to loading; flush() the video first"        
+        self._ffmpeg = self._ffmpeg.filter('fps', fps=fps, round='up')
+        self._tracks = [t.framerate(fps) for t in self._tracks]
+        self._framerate = fps
+        return self
+
+    def objects(self):
+        """Return a list of objects in the video scene"""
+        return self._tracks
+
+    def tracks(self):
+        """Alias for objects"""
+        return self._tracks
+    
+    def thumbnail(self, outfile=None, frame=0):
+        """Return annotated frame of video, save annotation visualization to provided outfile"""
+        return self.__getitem__(frame).savefig(outfile if outfile is not None else temppng())
+            
     def trim(self, startframe, endframe):
         """FIXME: the startframe and endframe should be set by the constructor if no arguments since this is set by the annotator"""
         super(Scene, self).trim(startframe, endframe)
@@ -478,13 +519,13 @@ class Scene(Video):
         return self
 
     def rot90ccw(self):
-        (H,W) = self.thumbnail().load().shape()  # yuck, need to get image dimensions before filter
+        (H,W) = self._preview().load().shape()  # yuck, need to get image dimensions before filter
         self._tracks = [t.rot90ccw(H,W) for t in self._tracks]
         super(Scene, self).rot90ccw()
         return self
 
     def rot90cw(self):
-        (H,W) = self.thumbnail().load().shape()  # yuck, need to get image dimensions before filter
+        (H,W) = self._preview().load().shape()  # yuck, need to get image dimensions before filter
         self._tracks = [t.rot90cw(H,W) for t in self._tracks]
         super(Scene, self).rot90cw()
         return self
@@ -492,7 +533,7 @@ class Scene(Video):
     def resize(self, rows=None, cols=None):
         """Resize the video to (rows, cols), preserving the aspect ratio if only rows or cols is provided"""
         assert rows is not None or cols is not None, "Invalid input"
-        (H,W) = self.thumbnail().load().shape()  # yuck, need to get image dimensions before filter
+        (H,W) = self._preview().load().shape()  # yuck, need to get image dimensions before filter
         sy = rows / float(H) if rows is not None else cols / float(W)
         sx = cols / float(W) if cols is not None else rows / float(H)
         self._tracks = [t.scalex(sx) for t in self._tracks]
@@ -500,8 +541,18 @@ class Scene(Video):
         super(Scene, self).resize(rows, cols)
         return self
 
+    def mindim(self, dim):
+        """Resize the video so that the minimum of (width,height)=dim, preserving aspect ratio"""
+        (H,W) = self._preview().load().shape()  # yuck, need to get image dimensions before filter
+        return self.resize(cols=dim) if W<H else self.resize(rows=dim)
+
+    def maxdim(self, dim):
+        """Resize the video so that the maximum of (width,height)=dim, preserving aspect ratio"""
+        (H,W) = self._preview().load().shape()  # yuck, need to get image dimensions before filter
+        return self.resize(cols=dim) if W>H else self.resize(rows=dim)
+    
     def rescale(self, s):
-        (H,W) = self.thumbnail().load().shape()  # yuck, need to get image dimensions before filter
+        (H,W) = self._preview().load().shape()  # yuck, need to get image dimensions before filter
         self._tracks = [t.rescale(s) for t in self._tracks]
         super(Scene, self).rescale(s)
         return self

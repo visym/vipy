@@ -187,6 +187,10 @@ def _test_scene():
     assert im[0].bbox.width() == 400 and im[1].bbox.width() == 200
     print('[test_video.scene]: frame interpolation  PASSED')
 
+    # Thumbnail
+    v = vid.clone().thumbnail()
+    assert os.path.exists(v)
+    print('[test_video.scene]: thumbnail ("%s")  PASSED' % v)
     
 if __name__ == "__main__":
     test_video()

@@ -347,8 +347,8 @@ def test_imagedetection():
         raise
     except:
         print('[test_image.imagedetection]: invalid box crop: PASSED')
+
     im = ImageDetection(filename=rgbfile, xmin=100000, ymin=100000, bbwidth=200, bbheight=200, category='face')
-    assert im.imclip().bbox is None
     print('[test_image.imagedetection]: invalid imagebox: PASSED')
 
     # boundingbox() methods
@@ -458,7 +458,6 @@ def test_imagedetection():
     im = ImageDetection(array=img, xmin=0, ymin=0, width=10, height=200)
     assert im.clone().imclip().bbox.xywh() == (0,0,10,20)
     im = ImageDetection(array=img, xmin=100, ymin=200, width=10, height=200)
-    assert im.clone().imclip().bbox is None
     im = ImageDetection(array=img, xmin=-1, ymin=-2, width=100, height=200)
     assert im.clone().imclip().bbox.xywh() == (0,0,10,20)
     im = ImageDetection(array=img, xmin=1, ymin=1, width=9, height=9)
