@@ -132,8 +132,8 @@ def test_boundingbox():
     assert bb.ymax() == 20 + 200
     assert bb.upperleft() == (10,20)
     assert bb.upperright() == (10 + 100, 20)
-    assert bb.lowerleft() == (10, 20 + 200)
-    assert bb.lowerright() == (10 + 100, 20 + 200)
+    assert bb.bottomleft() == (10, 20 + 200)
+    assert bb.bottomright() == (10 + 100, 20 + 200)
     print('[test_geometry.boundingbox.corners]: PASSED')
 
     bb = BoundingBox(xmin=0, ymin=0, width=100, height=100)
@@ -276,7 +276,10 @@ def test_boundingbox():
     print('[test_geometry.boundingbox.mindimension]: PASSED')
     print('[test_geometry.boundingbox.mindim]: PASSED')
 
-
+    BoundingBox(xmin=-20, ymin=-10, width=30, height=40).dict()
+    print('[test_geometry.boundingbox]: dict PASSED')
+    
+    
 def test_ellipse():
     e = BoundingBox(xmin=-20, ymin=-10, width=30, height=40).ellipse()
 

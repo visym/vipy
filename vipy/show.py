@@ -45,11 +45,11 @@ def imbbox(img, xmin, ymin, xmax, ymax, bboxcaption=None, fignum=None, nowindow=
     return h
 
 
-def imdetection(img, detlist, fignum=None, bboxcolor='green', facecolor='white', facealpha=0.5, do_caption=True, captionlist=None, fontsize=10, textcolor='green', captionoffset=(0,0), nowindow=False):
-    """Show a list of vipy.object.Detections overlayed on img.  Image must be RGB (not BGR!) or grayscale"""
+def imdetection(img, detlist, fignum=None, bboxcolor='green', facecolor='white', facealpha=0.5, do_caption=True, fontsize=10, textcolor='green', textfacecolor='white', textfacealpha=1.0, captionoffset=(0,0), nowindow=False):
+    """Show a list of vipy.object.Detections overlayed on img.  Image must be RGB"""
     if nowindow:
         noshow(fignum)
-    h = BACKEND.imdetection(img, detlist, fignum=fignum, bboxcolor=bboxcolor, do_caption=do_caption, facecolor=facecolor, facealpha=facealpha, captionlist=captionlist, fontsize=fontsize, textcolor=textcolor, captionoffset=captionoffset)
+    h = BACKEND.imdetection(img, detlist, fignum=fignum, bboxcolor=bboxcolor, do_caption=do_caption, facecolor=facecolor, facealpha=facealpha, fontsize=fontsize, textcolor=textcolor, captionoffset=captionoffset, textfacecolor=textfacecolor, textfacealpha=textfacealpha)
     if not nowindow:
         show(fignum)
         BACKEND.flush()                

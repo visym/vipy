@@ -156,6 +156,13 @@ class BoundingBox():
         else:
             raise ValueError('invalid constructor input')
 
+    def dict(self):
+        return {'xmin':self.xmin(), 'ymin':self.ymin(), 'width':self.width(), 'height':self.height(),
+                'xmax':self.xmax(), 'ymax':self.ymax(), 'xywh':self.xywh(), 'ulbr':self.ulbr(),
+                'xcentroid':self.xcentroid(), 'ycentroid':self.ycentroid(), 'centroid':self.centroid(),
+                'upperleft':self.upperleft(), 'bottomleft':self.bottomleft(), 'upperright':self.upperright(),
+                'bottomright':self.bottomright(), 'area':self.area()}
+        
     def clone(self):
         return BoundingBox(xmin=self._xmin, xmax=self._xmax, ymin=self._ymin, ymax=self._ymax)
 
@@ -193,7 +200,7 @@ class BoundingBox():
         """Return the (x,y) upper left corner coordinate of the box"""
         return (self.xmin(), self.ymin())
 
-    def lowerleft(self):
+    def bottomleft(self):
         """Return the (x,y) lower left corner coordinate of the box"""
         return (self.xmin(), self.ymax())
 
@@ -201,7 +208,7 @@ class BoundingBox():
         """Return the (x,y) upper right corner coordinate of the box"""
         return (self.xmax(), self.ymin())
 
-    def lowerright(self):
+    def bottomright(self):
         """Return the (x,y) lower right corner coordinate of the box"""
         return (self.xmax(), self.ymax())
 
@@ -271,9 +278,17 @@ class BoundingBox():
     def x_centroid(self):
         return self.centroid()[0]
 
+    def xcentroid(self):
+        """Alias for x_centroid()"""
+        return self.centroid()[0]
+   
     def y_centroid(self):
         return self.centroid()[1]
 
+    def ycentroid(self):
+        """Alias for y_centroid()"""
+        return self.centroid()[1]
+    
     def area(self):
         """Return the area=width*height of the bounding box"""
         return self.width() * self.height()
@@ -467,7 +482,7 @@ class BoundingBox():
     def rot90cw(self, H, W):
         """Rotate a bounding box such that if an image of size (H,W) is rotated 90 deg clockwise, the boxes align"""
         (x,y,w,h) = self.xywh()
-        (blx, bly) = self.lowerleft()
+        (blx, bly) = self.bottomleft()
         return self.xywh((H - bly, blx, h, w))
 
     def rot90ccw(self, H, W):
@@ -587,6 +602,9 @@ class Ellipse():
     def __repr__(self):
         return str('<vipy.geometry.ellipse: semimajor=%s, semiminor=%s, xcenter=%s, ycenter=%s, phi=%s (rad)>' % (self._major, self._minor, self._xcenter, self._ycenter, self._phi))
 
+    def dict(self):
+        return {'semimajor':self._major, 'semiminor':self._minor, 'xcenter':self._xcenter, 'ycenter':self._ycenter, 'phi':self._phi}
+    
     def area(self):
         """Area of ellipse"""
         return math.pi * self._major * self._minor

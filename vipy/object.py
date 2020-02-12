@@ -28,6 +28,9 @@ class Detection(BoundingBox):
     def __str__(self):
         return self.__repr__()
 
+    def dict(self):
+        return {'category':self.category(), 'boundingbox':super(Detection, self).dict()}
+    
     def category(self):
         return self._label
 
@@ -42,8 +45,11 @@ class Track(object):
         self._label = label
         self._frames = frames
         self._boxes = boxes
+        assert isinstance(frames, tuple) or isinstance(frames, list), "Frames must be tuple or list"
+        assert isinstance(boxes, tuple) or isinstance(boxes, list), "Boxes must be tuple or list"        
         assert all([isinstance(bb, BoundingBox) for bb in boxes]), "Bounding boxes must be vipy.geometry.BoundingBox objects"
         assert all([bb.isvalid() for bb in boxes]), "Invalid bounding boxes"
+        assert len(frames) == len(boxes), "Boxes and frames must be the same length, there must be one frame per box"
         self._framerate = framerate
         
     def __repr__(self):
@@ -65,6 +71,10 @@ class Track(object):
     def __len__(self):
         return len(self._frames)
 
+    def dict(self):
+        return {'category':self.category(), 'keyframes':self._frames, 'framerate':self._framerate, 
+                'boundingbox':[bb.dict() for bb in self._boxes]}
+    
     def keyframes(self):
         """Return keyframe frame indexes where there are track observations"""
         return self._frames

@@ -123,7 +123,7 @@ def test_image():
     for imgfile in [rgbfile, greyfile, rgbafile]:
         _test_image_fileformat(imgfile)
         
-
+            
 def _test_image_fileformat(imgfile):
     # Filename object
     im = ImageDetection(filename=imgfile, xmin=100, ymin=100, bbwidth=700, height=1000, category='face')
@@ -309,6 +309,10 @@ def _test_image_fileformat(imgfile):
     assert im.clone().crop().width() == im.bbox.imclipshape(W=256,H=128).width()
     print('[test_image.image]["%s"]:  RandomImageDetection PASSED' % imgfile)
 
+    d = vipy.image.RandomImageDetection(128,256).dict()
+    assert isinstance(d, dict)
+    print('[test_image.image]["%s"]:  dict PASSED' % imgfile)
+    
 def test_imagedetection():
     # Constructors
     im = ImageDetection()
@@ -474,6 +478,9 @@ def test_imagedetection():
     assert np.sum(ImageDetection(array=img, xmin=0, ymin=0, width=2, height=3).mask(10,10)) == 6
     print('[test_image.imagedetection]: mask  PASSED')
 
+    # Dict
+    assert isinstance(ImageDetection(array=img, xmin=0, ymin=0, width=2, height=3).dict(), dict)
+    print('[test_image.imagedetection]: dict  PASSED')    
 
 def test_scene():
     # Constructors
@@ -641,6 +648,9 @@ def test_scene():
     assert im[0].boundingbox().width() == 25 and im[0].boundingbox().height() == 5
     print('[test_image.scene]: maxdim PASSED')
 
+    # DIct 
+    assert isinstance(im.dict(), dict)
+    print('[test_image.scene]: dict PASSED')
     
 def test_batch():
     imb = vipy.image.Batch([ImageDetection(filename=rgbfile, category='face', bbox=vipy.geometry.BoundingBox(0,0,100,100)) for k in range(0,100)])
@@ -651,6 +661,8 @@ def test_batch():
     assert np.array(imb.torch()).shape == (100,3,100,100)
     print('[test_image.batch]: vipy.image.Batch PASSED')
 
+    assert isinstance(imb.dict(), dict)
+    print('[test_image.batch]: dict PASSED')
     
 if __name__ == "__main__":
     test_image()

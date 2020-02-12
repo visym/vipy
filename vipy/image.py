@@ -7,6 +7,7 @@ from vipy.util import isnumpy, isurl, isimageurl, \
     tempjpg, filetail, isimagefile, remkdir, hasextension, \
     try_import, tolist
 from vipy.geometry import BoundingBox
+import vipy.object
 import vipy.downloader
 import urllib.request
 import urllib.error
@@ -110,17 +111,21 @@ class Image(object):
 
     def dict(self):
         """Return a python dictionary containing the relevant serialized attributes of the Image() object"""
-        d = {}
+        d = {'filename':self.filename(),
+             'url':self.url(),
+             'attributes':self.attributes,
+             'height':None,
+             'width':None,
+             'channels':None,
+             'colorspace':None,
+             'array':None}
         if self.isloaded():
             d['height'] = self.height()
             d['width'] = self.width()
             d['channels'] = self.channels()
             d['colorspace'] = self.colorspace()
-        if self.hasfilename():
-            d['filename'] = self.filename()
-        if self.hasurl():
-            d['url'] = self.url()
-        return d
+            d['array'] = self.array()
+        return {'image':d}
 
     def loader(self, f):
         """Lambda function to load an unsupported image filename to a numpy array"""
@@ -844,6 +849,11 @@ class ImageCategory(Image):
     def __hash__(self):
         return hash(self._category.lower())
 
+    def dict(self):
+        d = super(ImageCategory, self).dict()
+        d['category'] = self.category()
+        return d
+    
     def category(self, newcategory=None):
         """Return or update the category"""
         if newcategory is None:
@@ -944,6 +954,11 @@ class ImageDetection(ImageCategory):
     def __hash__(self):
         return hash(self.__repr__())
 
+    def dict(self):
+        d = super(ImageCategory, self).dict()
+        d['boundingbox'] = self.bbox.dict()
+        return d
+    
     def boundingbox(self, xmin=None, xmax=None, ymin=None, ymax=None,
                     bbox=None, width=None, height=None, dilate=None,
                     xcentroid=None, ycentroid=None):
@@ -1158,6 +1173,11 @@ class Scene(ImageCategory):
         obj = self._objectlist[k]
         return (ImageDetection(array=self.array(), filename=self.filename(), url=self.url(), colorspace=self.colorspace(), bbox=obj, category=obj.category()))
 
+    def dict(self):
+        d = super(Scene, self).dict()
+        d['objects'] = [obj.dict() for obj in self.objects()]
+        return d
+    
     def append(self, imdet):
         """Append the provided vipy.object.Detection object to the scene object list"""
         assert isinstance(imdet, vipy.object.Detection), "Invalid input"
@@ -1283,22 +1303,23 @@ class Scene(ImageCategory):
         return immask
 
 
-    def show(self, category=None, figure=None, do_caption=True, fontsize=10, boxalpha=0.25, captionlist=None, categoryColor=None, captionoffset=(0,0), nowindow=False):
+    def show(self, categories=None, figure=None, do_caption=True, fontsize=10, boxalpha=0.25, categoryColor=None, captionoffset=(0,0), nowindow=False, textfacecolor='white', textfacealpha=0.8):
         """Show scene detection with an optional subset of categories"""
-        valid_categories = sorted(self.categories() if category is None else tolist(category))
+        valid_categories = sorted(self.categories() if categories is None else tolist(categories))
         valid_detections = [obj for obj in self._objectlist if obj.category() in valid_categories]
         valid_detections = [obj.imclip(self.numpy()) for obj in self._objectlist if obj.hasoverlap(self.numpy())]
         if categoryColor is None:
             colors = colorlist()
             categoryColor = dict([(c, colors[k]) for (k, c) in enumerate(valid_categories)])
         detection_color = [categoryColor[im.category()] for im in valid_detections]
-        vipy.show.imdetection(self.clone().rgb()._array, valid_detections, bboxcolor=detection_color, textcolor=detection_color, fignum=figure, do_caption=do_caption, facealpha=boxalpha, fontsize=fontsize, captionlist=captionlist, captionoffset=captionoffset, nowindow=nowindow)
+        vipy.show.imdetection(self.clone().rgb()._array, valid_detections, bboxcolor=detection_color, textcolor=detection_color, fignum=figure, do_caption=do_caption, facealpha=boxalpha, fontsize=fontsize,
+                              captionoffset=captionoffset, nowindow=nowindow, textfacecolor=textfacecolor, textfacealpha=textfacealpha)
         return self
 
-    def savefig(self, outfile=None, category=None, figure=None, do_caption=True, fontsize=10, boxalpha=0.25, captionlist=None, categoryColor=None, captionoffset=(0,0), dpi=200):
+    def savefig(self, outfile=None, categories=None, figure=None, do_caption=True, fontsize=10, boxalpha=0.25, categoryColor=None, captionoffset=(0,0), dpi=200, textfacecolor='white', textfacealpha=0.8):
         """Save show() output to given file without popping up a window"""
         outfile = outfile if outfile is not None else tempjpg()
-        self.show(category, figure, do_caption, fontsize, boxalpha, captionlist, categoryColor, captionoffset, nowindow=True)
+        self.show(categories=categories, figure=figure, do_caption=do_caption, fontsize=fontsize, boxalpha=boxalpha, categoryColor=categoryColor, captionoffset=captionoffset, nowindow=True, textfacecolor=textfacecolor, textfacealpha=textfacealpha)
         savefig(outfile, figure, dpi=dpi, bbox_inches='tight', pad_inches=0)
         return outfile
 
@@ -1332,6 +1353,9 @@ class Batch(object):
     def __getitem__(self, k):
         return self._imlist[k]
 
+    def dict(self):
+        return {'batch':[d.dict() for d in self._imlist]}
+        
     def list(self, imlist_=None):
         if imlist_ is None:
             return self._imlist
@@ -1380,3 +1404,12 @@ def RandomImageDetection(rows=None, cols=None):
     return ImageDetection(array=np.uint8(255 * np.random.rand(rows, cols, 3)), colorspace='rgb', category='RandomImageDetection',
                           xmin=np.random.randint(0,cols - 16), ymin=np.random.randint(0,rows - 16),
                           bbwidth=np.random.randint(16,cols), bbheight=np.random.randint(16,rows))
+
+def RandomScene(rows=None, cols=None):
+    im = RandomImage(rows, cols)
+    (rows, cols) = im.shape()
+    ims = Scene(array=im.array(), colorspace='rgb', category='scene', objects=[vipy.object.Detection('obj%d' % k, xmin=np.random.randint(0,cols - 16), ymin=np.random.randint(0,rows - 16),
+                                                                                   width=np.random.randint(16,cols), height=np.random.randint(16,rows))
+                                                             for k in range(0,16)])
+    return ims
+    

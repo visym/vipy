@@ -2,6 +2,7 @@ import os
 from vipy.util import remkdir, tempMP4, isurl, \
     isvideourl, templike, tempjpg, filetail, tempdir, isyoutubeurl, try_import, isnumpy, temppng
 from vipy.image import Image
+import vipy.geometry
 import vipy.image
 import vipy.downloader
 import copy
@@ -112,6 +113,19 @@ class Video(object):
         for k in range(0, len(self)):
             yield self.__getitem__(k)
 
+    def dict(self):
+        video = {'filename':self.filename(),
+                 'url':self.url(),
+                 'ffmpeg':str(self._ffmpeg.output('dummyfile').compile()),
+                 'height':self.height(),
+                 'width':self.width(),
+                 'channels':self.channels(),
+                 'colorspace':self.colorspace(),
+                 'framerate':self._framerate,
+                 'attributes':self.attributes,
+                 'array':self.array()}
+        return {'video':video}
+             
     def take(self, n):
         """Return n frames from the clip uniformly spaced as numpy array"""
         assert self.isloaded(), "Load() is required before take()"""
@@ -428,13 +442,51 @@ class Video(object):
         """Copy the video object"""
         return copy.deepcopy(self)
 
+    
+class VideoCategory(Video):
+    """vipy.video.VideoCategory class
+    """
+    def __init__(self, filename=None, url=None, framerate=30, attributes=None, category=None, startframe=None, endframe=None, array=None, colorspace=None):
+        super(VideoCategory, self).__init__(url=url, filename=filename, framerate=framerate, attributes=attributes, array=array, colorspace=colorspace)
+        self._category = category
+        if startframe is not None and endframe is not None:
+            self._startframe = startframe
+            self._endframe = endframe
+            self.trim(startframe, endframe)
 
-class Scene(Video):
+    def __repr__(self):
+        strlist = []
+        if self.isloaded():
+            strlist.append("height=%d, width=%d, frames=%d" % (self._array[0].shape[0], self._array[0].shape[1], len(self._array)))
+        if self.hasfilename():
+            strlist.append('filename="%s"' % self.filename())
+        if self.hasurl():
+            strlist.append('url="%s"' % self.url())
+        if self._category is not None:
+            strlist.append('category="%s"' % self.category())
+        if not self.isloaded() and self._startframe is not None:
+            strlist.append('clip=(%d,%d)' % (self._startframe, self._endframe))
+        return str('<vipy.video.VideoCategory: %s>' % (', '.join(strlist)))
+
+    def dict(self):
+        d = super(VideoCategory, self).dict()
+        d['category'] = self.category()
+        return d
+    
+    def category(self, c=None):
+        if c is None:
+            return self._category
+        else:
+            self._category = c
+            return self
+    
+
+class Scene(VideoCategory):
     """ vipy.video.Scene class
     """
         
-    def __init__(self, filename=None, url=None, framerate=None, attributes=None, tracks=None, activities=None):
-        super(Scene, self).__init__(url=url, filename=filename, framerate=None, attributes=attributes)
+    def __init__(self, filename=None, url=None, framerate=None, attributes=None, tracks=None, activities=None, array=None, colorspace=None, category=None):
+        super(Scene, self).__init__(url=url, filename=filename, framerate=None, attributes=attributes, array=array, colorspace=colorspace, category=category)
 
         self._tracks = []
         if tracks is not None:
@@ -479,6 +531,13 @@ class Scene(Video):
         for k in range(0, len(self)):
             yield self.__getitem__(k)
 
+    def dict(self):
+        d = super(Scene, self).dict()
+        d['category'] = self.category()
+        d['tracks'] = [t.dict() for t in self._tracks]
+        d['activities'] = [a.dict() for t in self._activities]
+        return d
+        
     def framerate(self, fps):
         """Change the input framerate for the video and update frame indexes for all annotations"""
         assert not self.isloaded(), "Filters can only be applied prior to loading; flush() the video first"        
@@ -577,35 +636,22 @@ class Scene(Video):
         vid._array = np.array(vid._array)
         return vid.saveas(outfile)
 
+    
+def RandomVideo(rows=None, cols=None):
+    rows = np.random.randint(256, 1024) if rows is None else rows
+    cols = np.random.randint(256, 1024) if cols is None else cols
+    return Video(array=np.uint8(255 * np.random.rand(16, rows, cols, 3)), colorspace='rgb')
 
-class VideoCategory(Video):
-    """vipy.video.VideoCategory class
-    """
-    def __init__(self, filename=None, url=None, framerate=30, attributes=None, category=None, startframe=None, endframe=None):
-        super(VideoCategory, self).__init__(url=url, filename=filename, framerate=framerate, attributes=attributes)
-        self._category = category
-        if startframe is not None and endframe is not None:
-            self._startframe = startframe
-            self._endframe = endframe
-            self.trim(startframe, endframe)
 
-    def __repr__(self):
-        strlist = []
-        if self.isloaded():
-            strlist.append("height=%d, width=%d, frames=%d" % (self._array[0].shape[0], self._array[0].shape[1], len(self._array)))
-        if self.hasfilename():
-            strlist.append('filename="%s"' % self.filename())
-        if self.hasurl():
-            strlist.append('url="%s"' % self.url())
-        if self._category is not None:
-            strlist.append('category="%s"' % self.category())
-        if not self.isloaded() and self._startframe is not None:
-            strlist.append('clip=(%d,%d)' % (self._startframe, self._endframe))
-        return str('<vipy.video.VideoCategory: %s>' % (', '.join(strlist)))
+def RandomScene(rows=None, cols=None):
+    v = RandomVideo(rows, cols)
+    (rows, cols) = v.shape()
+    ims = Scene(array=v.array(), colorspace='rgb', category='scene',
+                tracks=[vipy.object.Track('obj%d' % k, frames=[0,np.random.randint(100)], boxes=[vipy.geometry.BoundingBox(xmin=np.random.randint(0,cols - 16), ymin=np.random.randint(0,rows - 16),
+                                                                                                                            width=np.random.randint(16,cols//2), height=np.random.randint(16,rows//2)),
+                                                                                                  vipy.geometry.BoundingBox(xmin=np.random.randint(0,cols - 16), ymin=np.random.randint(0,rows - 16),
+                                                                                                                            width=np.random.randint(16,cols//2), height=np.random.randint(16,rows//2))])
+                        for k in range(0,32)])
+    return ims
+    
 
-    def category(self, c=None):
-        if c is None:
-            return self._category
-        else:
-            self._category = c
-            return self
