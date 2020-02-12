@@ -318,7 +318,7 @@ class Video(object):
                                  .run(capture_stdout=True, capture_stderr=True)
         return im
 
-    def load(self, verbosity=1, ignoreErrors=False):
+    def load(self, verbosity=1, ignoreErrors=False, startframe=None, endframe=None, rotation=None, rescale=None, mindim=None):
         """Load a video using ffmpeg, applying the requested filter chain.  If verbosity=2. then ffmpeg console output will be displayed. If ignoreErrors=True, then download errors are warned and skipped"""
         if self.isloaded():
             return self
@@ -330,6 +330,23 @@ class Video(object):
         if verbosity > 0:
             print('[vipy.video.load]: Loading "%s"' % self.filename())
 
+        # Increase filter chain from load() kwargs
+        assert (startframe is not None and startframe is not None) or (startframe is None and endframe is None), "(startframe, endframe) must both be provided"
+        if startframe is not None and endframe is not None:   
+            self.trim(startframe, endframe)  # trim first
+        assert not (rescale is not None and mindim is not None), "mindim and rescale cannot both be provided, choose one or the other, or neither"            
+        if mindim is not None:
+            self.mindim(mindim)   # resize second
+        if rescale is not None:
+            self.rescale(rescale)      
+        if rotation is not None:  
+            if rotation == 'rot90cw':
+                self.rot90cw()  # rotate third
+            elif rotation == 'rot90ccw':
+                self.rot90ccw()
+            else:
+                raise ValueError("rotation must be one of ['rot90ccw', 'rot90cw']")
+    
         # Generate single frame _preview to get frame sizes
         imthumb = self._preview(verbose=verbosity > 1)
         (height, width, channels) = (imthumb.height(), imthumb.width(), imthumb.channels())

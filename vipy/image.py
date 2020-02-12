@@ -21,6 +21,7 @@ import io
 import matplotlib.pyplot as plt
 import warnings
 import base64
+import types
 
 
 class Image(object):
@@ -313,9 +314,7 @@ class Image(object):
         elif isnumpy(np_array):
             assert np_array.dtype == np.float32 or np_array.dtype == np.uint8, "Invalid input - array() must be type uint8 or float32"
             self._array = np.copy(np_array)
-            self._filename = None
-            self._url = None
-            self.colorspace(None)  # must be set with colorspace() before conversion
+            self.colorspace(None)  # must be set with colorspace() after array() but before _convert()
             return self
         else:
             raise ValueError('Invalid input - array() must be numpy array')
@@ -796,8 +795,19 @@ class Image(object):
         self.show(figure=None, nowindow=True)
         f = filename if filename is not None else tempjpg()
         return savefig(filename=f)
-    
 
+    def map(self, func):
+        """Apply lambda function to our numpy array img, such that newimg=f(img), then replace newimg -> self.array().  The output of this lambda function must be a numpy array and if the channels or dtype changes, the colorspace is set to 'float'"""
+        assert isinstance(func, types.LambdaType), "Input must be lambda function (e.g. f = lambda img: 255.0-img)"
+        oldimg = self.array()
+        newimg = func(self.array())
+        assert isnumpy(newimg), "Lambda function output must be numpy array"
+        self.array(newimg)  # copy new image
+        if newimg.dtype != oldimg.dtype or newimg.shape != oldimg.shape:
+            self.colorspace('float')  # unknown colorspace after transformation, set generic
+        return self
+    
+                
 class ImageCategory(Image):
     """vipy ImageCategory class
 
@@ -883,7 +893,11 @@ class ImageCategory(Image):
             self.setattribute('RawDetectionProbability', newprob)
             return self
 
-
+    def vimage(self):
+        """Downgrade vipy.image.ImageCategory() to vipy.image.Image() object, array() is shared"""
+        return Image(filename=self.filename(), url=self.url(), attributes=self.attributes, array=self.array(), colorspace=self.colorspace())
+    
+    
 class ImageDetection(ImageCategory):
     """vipy.image.ImageDetection class
 

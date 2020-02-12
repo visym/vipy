@@ -312,6 +312,14 @@ def _test_image_fileformat(imgfile):
     d = vipy.image.RandomImageDetection(128,256).dict()
     assert isinstance(d, dict)
     print('[test_image.image]["%s"]:  dict PASSED' % imgfile)
+
+    # Map
+    im = vipy.image.RandomImage(128,256)
+    im2 = im.clone().map(lambda img: np.float32(img)+1.0)
+    assert np.allclose(np.float32(im.array())+1.0, im2.array())
+    print('[test_image.image]["%s"]:  map PASSED' % imgfile)
+
+    
     
 def test_imagedetection():
     # Constructors

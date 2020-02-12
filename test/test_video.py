@@ -128,6 +128,44 @@ def _test_scene():
     vid = vipy.video.Scene(filename=mp4file, tracks=[vipy.object.Track('person', frames=[0,200], boxes=[BoundingBox(xmin=0,ymin=0,width=200,height=400), BoundingBox(xmin=0,ymin=0,width=400,height=100)]),
                                                      vipy.object.Track('vehicle', frames=[0,200], boxes=[BoundingBox(xmin=100,ymin=200,width=300,height=400), BoundingBox(xmin=400,ymin=300,width=200,height=100)])])
 
+    # Loader
+    try:
+        v = vid.clone().load(startframe=0)
+        Failed()
+    except Failed:
+        raise
+    except:
+        pass
+    try:
+        v = vid.clone().load(endframe=0)
+        Failed()
+    except Failed:
+        raise
+    except:
+        pass
+    try:
+        v = vid.clone().load(mindim=1, rescale=1)
+        Failed()
+    except Failed:
+        raise
+    except:
+        pass
+    try:
+        v = vid.clone().load(rotation='an_invalid_string')
+        Failed()
+    except Failed:
+        raise
+    except:
+        pass
+
+    v = vid.clone().load(startframe=0, endframe=10)
+    assert len(v) == 10
+    assert np.allclose(vid.clone().load(startframe=0, endframe=10, rotation='rot90ccw').array(), vid.clone().clip(0,10).rot90ccw().load().array())
+    assert np.allclose(vid.clone().load(startframe=1, endframe=11, rotation='rot90cw').array(), vid.clone().clip(1,11).rot90cw().load().array())
+    assert np.allclose(vid.clone().load(startframe=2, endframe=12, mindim=10).array(), vid.clone().clip(2,12).mindim(10).load().array())
+    assert np.allclose(vid.clone().load(startframe=3, endframe=12, rescale=0.2).array(), vid.clone().clip(3,12).rescale(0.2).load().array())
+    print('[test_video.scene]:  load: PASSED')
+    
     v = vid.clone().trim(0,10).load()
     assert len(v) == 10
     v.flush().trim(10,20).load()
