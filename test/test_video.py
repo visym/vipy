@@ -229,6 +229,12 @@ def _test_scene():
     v = vid.clone().thumbnail()
     assert os.path.exists(v)
     print('[test_video.scene]: thumbnail ("%s")  PASSED' % v)
+
+    # Map
+    v = vid.clone().map(lambda img: img*0)
+    assert (np.sum(v.array().flatten()) == 0)
+    print('[test_video.scene]: map ("%s")  PASSED' % v)
+    
     
 if __name__ == "__main__":
     test_video()

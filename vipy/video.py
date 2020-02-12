@@ -489,9 +489,17 @@ class Video(object):
         return copy.deepcopy(self)
 
     def map(self, func):
-        """Apply lambda function to the loaded numpy array img, changes pixels not shape"""
+        """Apply lambda function to the loaded numpy array img, changes pixels not shape
+        
+        Lambda function must have the following signature:
+            * newimg = func(img)
+            * img: HxWxC numpy array for a single frame of video
+            * newimg:  HxWxC modified numpy array for this frame.  Change only the pixels, not the shape
+
+        The lambda function will be applied to every frame in the video in frame index order.
+        """
         assert isinstance(func, types.LambdaType), "Input must be lambda function with np.array() input and np.array() output"
-        oldimgs = self.array()
+        oldimgs = self.load().array()
         self.array(np.apply_along_axis(func, 0, self._array))   # FIXME: in-place operation?
         if (any([oldimg.dtype != newimg.dtype for (oldimg, newimg) in zip(oldimgs, self.array())]) or
             any([oldimg.shape != newimg.shape for (oldimg, newimg) in zip(oldimgs, self.array())])):            
