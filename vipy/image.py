@@ -215,6 +215,8 @@ class Image(object):
                                          password=self._urlpassword)
             elif url_scheme == 'file':
                 shutil.copyfile(self._url, self._filename)
+            elif url_scheme == 's3':
+                raise NotImplementedError('S3 support is in development')                
             else:
                 raise NotImplementedError(
                     'Invalid URL scheme "%s" for URL "%s"' %
@@ -306,23 +308,23 @@ class Image(object):
         """Return the integer valued center pixel coordinates of the image (col=i,row=j)"""
         c = np.round(self.centroid())
         return (int(c[0]), int(c[1]))
-
-    def array(self, np_array=None):
+    
+    def array(self, np_array=None, copy=False):
         """Replace self._array with provided numpy array"""
         if np_array is None:
             return self._array
         elif isnumpy(np_array):
             assert np_array.dtype == np.float32 or np_array.dtype == np.uint8, "Invalid input - array() must be type uint8 or float32"
-            self._array = np.copy(np_array)
+            self._array = np.copy(np_array) if copy else np_array  # reference or copy
             self.colorspace(None)  # must be set with colorspace() after array() but before _convert()
             return self
         else:
             raise ValueError('Invalid input - array() must be numpy array')
 
-    def buffer(self, data=None):
-        """Alias for array()"""
-        return self.array(data)
-
+    def fromarray(self, data):
+        """Alias for array(data, copy=True), set new array() with a numpy array copy"""
+        return self.array(data, copy=True)
+    
     def tonumpy(self):
         """Alias for numpy()"""
         return self.load().array()
@@ -799,15 +801,15 @@ class Image(object):
     def map(self, func):
         """Apply lambda function to our numpy array img, such that newimg=f(img), then replace newimg -> self.array().  The output of this lambda function must be a numpy array and if the channels or dtype changes, the colorspace is set to 'float'"""
         assert isinstance(func, types.LambdaType), "Input must be lambda function (e.g. f = lambda img: 255.0-img)"
-        oldimg = self.array()
-        newimg = func(self.array())
+        oldimg = self.array()  # reference
+        newimg = func(self.array())  # in-place
+        print(newimg)
         assert isnumpy(newimg), "Lambda function output must be numpy array"
-        self.array(newimg)  # copy new image
+        self.array(newimg)  # reference
         if newimg.dtype != oldimg.dtype or newimg.shape != oldimg.shape:
             self.colorspace('float')  # unknown colorspace after transformation, set generic
         return self
-    
-                
+                    
 class ImageCategory(Image):
     """vipy ImageCategory class
 

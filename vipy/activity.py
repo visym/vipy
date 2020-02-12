@@ -9,7 +9,7 @@ class Activity(object):
         self._label = label
         self._objectlist = objects
         if objects is not None:
-            assert isinstance(objects, list) and all([isinstance(x, vipy.object.Detection) for x in objects]), "Invalid object list"
+            assert isinstance(objects, list) and all([isinstance(x, vipy.object.Track) for x in objects]), "Invalid object list - Must be a list of vipy.object.Track()"
         self._attributes = attributes
 
     def __repr__(self):
