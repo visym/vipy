@@ -262,6 +262,15 @@ def _test_scene():
     for im in v.numpy():
         im[:,:] = 0
     assert np.sum(v.array().flatten()) == 0
+    v = vipy.video.Video(mp4file).clip(0,10).load()
+    for im in v.numpy():
+        im[:,:] = 0
+    assert np.sum(v.array().flatten()) == 0
+    v = vipy.video.Video(mp4file).clip(0,10).load()
+    for im in v:
+        img = im.numpy()
+        img[:,:] = 0
+    assert np.sum(v.array().flatten()) == 0
     print('[test_video.scene]: mutable iterator  PASSED')    
 
     # Scene iterator
