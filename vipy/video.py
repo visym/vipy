@@ -111,8 +111,10 @@ class Video(object):
         # https://github.com/kkroening/ffmpeg-python/blob/master/examples/README.md
         # FIXME: https://github.com/kkroening/ffmpeg-python/issues/78
         self.load()
-        for k in range(0, len(self)):
-            yield self.__getitem__(k)
+        self._array = np.copy(self._array) if not self._array.flags['WRITEABLE'] else self._array  # triggers copy
+        with np.nditer(self._array, op_flags=['readwrite']) as it:
+            for k in range(0, len(self)):
+                yield self.__getitem__(k)
 
     def dict(self):
         video = {'filename':self.filename(),
@@ -200,17 +202,22 @@ class Video(object):
     def hasurl(self):
         return self._url is not None and isurl(self._url)
 
-    def array(self, array=None):
+    def array(self, array=None, copy=False):
         if array is None:
             return self._array
         elif isnumpy(array):
             assert array.dtype == np.float32 or array.dtype == np.uint8, "Invalid input - array() must be type uint8 or float32"
             assert array.ndim == 4, "Invalid input array() must be of shape NxHxWxC, for N frames, of size HxW with C channels"
-            self._array = np.copy(array)
+            self._array = np.copy(array) if copy else array
+            self._array.setflags(write=True)  # mutable iterators
             self.colorspace(None)  # must be set with colorspace() after array() before _convert()
         else:
             raise ValueError('Invalid input - array() must be numpy array')            
 
+    def fromarray(self, array):
+        """Alias for self.array(..., copy=True), which forces the new array to be a copy"""
+        return self.array(array, copy=True)
+    
     def tonumpy(self):
         return self._array
 
@@ -363,7 +370,7 @@ class Video(object):
         (out, err) = self._ffmpeg.output('pipe:', format='rawvideo', pix_fmt='rgb24') \
                                  .global_args('-loglevel', 'debug' if verbosity > 1 else 'error') \
                                  .run(capture_stdout=True)
-        self._array = np.frombuffer(out, np.uint8).reshape([-1, height, width, channels])
+        self._array = np.frombuffer(out, np.uint8).reshape([-1, height, width, channels])  # read-only
         self.colorspace('rgb' if channels == 3 else 'lum')
         return self
 

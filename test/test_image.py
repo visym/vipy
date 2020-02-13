@@ -118,10 +118,23 @@ def test_image():
         raise
     except:
         pass
-        
+
+    # Shared array
+    img = np.random.rand(2,2).astype(np.float32)
+    im = vipy.image.Image(array=img)
+    img[0,0] = 0
+    assert im.array()[0,0] == 0    
+    img = np.random.rand(2,2).astype(np.float32)
+    im = vipy.image.Image().fromarray(img)
+    img[0,0] = 0
+    assert im.array()[0,0] != 0
+    print('[test_image]: array by reference  PASSED')
+    
+    
     # Image file formats
     for imgfile in [rgbfile, greyfile, rgbafile]:
         _test_image_fileformat(imgfile)
+
         
             
 def _test_image_fileformat(imgfile):

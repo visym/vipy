@@ -40,7 +40,8 @@ def _test_dataset():
 def test_video():
     # Common Parameters
     urls = vipy.videosearch.youtube('owl',1)
-    assert isurl(urls[0])
+    if len(urls) > 0:
+        assert isurl(urls[0])
     print('[test_video.video]: videosearch   PASSED')
     
     # Empty constructor
@@ -231,10 +232,38 @@ def _test_scene():
     print('[test_video.scene]: thumbnail ("%s")  PASSED' % v)
 
     # Map
-    v = vid.clone().map(lambda img: img*0)
+    v = vid.clone().clip(0,10).map(lambda img: img*0)
     assert (np.sum(v.array().flatten()) == 0)
     print('[test_video.scene]: map ("%s")  PASSED' % v)
     
+    # Shared array
+    img = np.random.rand(2,2,2,3).astype(np.float32)
+    v = vipy.video.Video(array=img)
+    img[0,:,:,:] = 0
+    assert np.sum(v.array()[0]) == 0
+    img = np.random.rand(2,2,2,3).astype(np.float32)    
+    v = v.array(img, copy=False)
+    img[0,:,:,:] = 0    
+    assert np.sum(v.array()[0]) == 0
+    img = np.random.rand(2,2,2,3).astype(np.float32)        
+    v = v.fromarray(img)
+    img[0,:,:,:] = 0
+    assert np.sum(v.array()[0]) != 0    
+    print('[test_video.scene]: array by reference  PASSED')
+
+    # Mutable iterator
+    frames = np.random.rand(2,2,2,3).astype(np.float32)
+    v = vipy.video.Video(array=frames)
+    for im in v:
+        im.numpy()[:,:] = 0
+    assert np.sum(v.array().flatten()) == 0
+    frames = np.random.rand(2,2,2,3).astype(np.float32)
+    v = vipy.video.Video(array=frames)
+    for im in v.numpy():
+        im[:,:] = 0
+    assert np.sum(v.array().flatten()) == 0
+    print('[test_video.scene]: mutable iterator  PASSED')    
+
     
 if __name__ == "__main__":
     test_video()
