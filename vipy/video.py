@@ -99,7 +99,7 @@ class Video(object):
     def __getitem__(self, k):
         """Return the kth frame as an vipy.image object"""
         if k >= 0 and k < len(self):
-            return Image(array=self._array[k], colorspace='rgb')
+            return Image(array=self._array[k], colorspace=self.colorspace())
         elif not self.isloaded():
             raise ValueError('Video not loaded, load() before indexing')
         else:
@@ -211,6 +211,7 @@ class Video(object):
             self._array = np.copy(array) if copy else array
             self._array.setflags(write=True)  # mutable iterators
             self.colorspace(None)  # must be set with colorspace() after array() before _convert()
+            return self
         else:
             raise ValueError('Invalid input - array() must be numpy array')            
 
