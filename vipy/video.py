@@ -659,18 +659,31 @@ class Scene(VideoCategory):
             yield self.__getitem__(k)
         self._currentframe = None
             
-    def add(self, obj):
-        """Add the object obj to the scene"""
+    def add(self, obj, category=None):
+        """Add the object obj to the scene.  
+        
+        This function is used to incrementally build up a scene frame by frame.  Obj can be one of the following types:
+
+            * obj = vipy.object.Detection(), this must be called from within a frame iterator (e.g. for im in video) to get the current frame index
+            * obj = vipy.object.Track()  
+            * obj = vipy.object.Activity()
+            * obj = [xmin, ymin, width, height], with associated category kwarg, this must be called from within a frame iterator to get the current frame index
+        
+        """
         if isinstance(obj, vipy.object.Detection):
-            assert self._currentframe is not None, "add() for vipy.object.Detection() must be added during frame iteration"
+            assert self._currentframe is not None, "add() for vipy.object.Detection() must be added during frame iteration (e.g. for im in video: )"
             t = vipy.object.Track(category=obj.category(), frames=[self._currentframe], boxes=[obj], boundary='strict')
             self._tracks.append(t)
         elif isinstance(obj, vipy.object.Track):
             self._tracks.append(obj)
         elif isinstance(obj, vipy.object.Activity):
             self._activities.append(obj)
+        elif (istuple(obj) or islist(obj)) and len(obj) == 4 and isnumber(obj[0]):
+            assert self._currentframe is not None, "add() for obj=xywh must be added during frame iteration (e.g. for im in video: )"
+            t = vipy.object.Track(category=category, frames=[self._currentframe], boxes=[vipy.geometry.BoundingBox(xywh=obj)], boundary='strict')
+            self._tracks.append(t)            
         else:
-            raise ValueError('Undefined object type "%s" to be added to scene - Supported types are ["vipy.object.Detection", "vipy.object.Track", "vipy.object.Activity"]' % str(type(obj)))
+            raise ValueError('Undefined object type "%s" to be added to scene - Supported types are obj in ["vipy.object.Detection", "vipy.object.Track", "vipy.object.Activity", "[xmin, ymin, width, height]"]' % str(type(obj)))
         
         
     def dict(self):
