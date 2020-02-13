@@ -327,11 +327,13 @@ class Image(object):
     
     def tonumpy(self):
         """Alias for numpy()"""
-        return self.load().array()
+        return self.numpy()
 
     def numpy(self):
-        """Convert vipy.image.Image to numpy array"""
-        return self.load().array()
+        """Convert vipy.image.Image to numpy array, returns writeable array"""
+        self.load()
+        self._array = np.copy(self._array) if not self._array.flags['WRITEABLE'] else self._array  # triggers copy         
+        return self._array
 
     def pil(self):
         """Convert vipy.image.Image to PIL Image"""

@@ -218,9 +218,13 @@ class Video(object):
         return self.array(array, copy=True)
     
     def tonumpy(self):
+        """Alias for numpy()"""
+        return self.numpy()
         return self._array
 
     def numpy(self):
+        """Convert the video to a numpy array"""
+        self._array = np.copy(self._array) if not self._array.flags['WRITEABLE'] else self._array  # triggers copy 
         return self._array
 
     def flush(self):
