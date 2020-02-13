@@ -105,7 +105,8 @@ def boundingbox(img, xmin, ymin, xmax, ymax, bboxcaption=None, fignum=None, bbox
     """Draw a captioned bounding box on a previously shown image"""
     plt.figure(fignum)
     lw = 3  # pull in the boxes by linewidth so that they do not overhang the figure
-    plt.axvspan(xmin, xmax-lw, ymin=1.0 - np.float32((float(ymax)) / float(img.shape[0])), ymax=1 - np.float32((float(ymin)-lw) / float(img.shape[0])), edgecolor=bboxcolor, facecolor=facecolor, linewidth=lw, fill=True, alpha=facealpha, label=None, capstyle='round', joinstyle='bevel', clip_on=True)
+    (H,W) = (img.shape[0], img.shape[1])
+    plt.axvspan(max(xmin, lw/2), min(xmax, W-lw/2), ymin=1.0 - np.float32(float(min(ymax, H-lw/2)) / float(H)), ymax=1-np.float32(float(max(ymin, lw/2)) / float(H)), edgecolor=bboxcolor, facecolor=facecolor, linewidth=lw, fill=True, alpha=facealpha, label=None, capstyle='round', joinstyle='bevel', clip_on=True)
 
     # Text string
     if bboxcaption is not None:

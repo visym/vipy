@@ -9,7 +9,7 @@ import pdb
 from vipy.dataset.kinetics import Kinetics400, Kinetics600, Kinetics700
 from vipy.dataset.activitynet import ActivityNet
 from vipy.dataset.lfw import LFW
-
+from vipy.object import Detection, Track, Activity
 
 mp4file = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'Video.mp4')
 mp4url = 'https://www.youtube.com/watch?v=PYOSKYWg-5E'
@@ -264,6 +264,12 @@ def _test_scene():
     assert np.sum(v.array().flatten()) == 0
     print('[test_video.scene]: mutable iterator  PASSED')    
 
+    # Scene iterator
+    frames = np.random.rand(2,2,2,3).astype(np.float32)
+    v = vipy.video.Scene(array=frames)
+    for im in v:
+        v.add(Detection(0, 0, 0, 100, 100))
+        v.add(Track(1, [1], [BoundingBox(0,0,1,1)]))
     
 if __name__ == "__main__":
     test_video()

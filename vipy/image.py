@@ -103,7 +103,7 @@ class Image(object):
     def __repr__(self):
         strlist = []
         if self.isloaded():
-            strlist.append("height=%d, width=%d, color='%s'" % (self._array.shape[0], self._array.shape[1], self.colorspace()))
+            strlist.append("height=%d, width=%d, color=%s" % (self._array.shape[0], self._array.shape[1], self.colorspace()))
         if self.hasfilename():
             strlist.append('filename="%s"' % self.filename())
         if self.hasurl():
@@ -837,7 +837,7 @@ class ImageCategory(Image):
     def __repr__(self):
         strlist = []
         if self.isloaded():
-            strlist.append("height=%d, width=%d, color='%s'" % (self.height(), self.width(), self.colorspace()))
+            strlist.append("height=%d, width=%d, color=%s" % (self.height(), self.width(), self.colorspace()))
         if self.hasfilename():
             strlist.append('filename="%s"' % self.filename())
         if self.hasurl():
@@ -952,7 +952,7 @@ class ImageDetection(ImageCategory):
     def __repr__(self):
         strlist = []
         if self.isloaded():
-            strlist.append("height=%d, width=%d, color='%s'" % (self.height(), self.width(), self.colorspace()))
+            strlist.append("height=%d, width=%d, color=%s" % (self.height(), self.width(), self.colorspace()))
         if self.hasfilename():
             strlist.append('filename="%s"' % self.filename())
         if self.hasurl():
@@ -1167,7 +1167,7 @@ class Scene(ImageCategory):
     def __repr__(self):
         strlist = []
         if self.isloaded():
-            strlist.append("height=%d, width=%d, color='%s'" % (self.height(), self.width(), self.colorspace()))
+            strlist.append("height=%d, width=%d, color=%s" % (self.height(), self.width(), self.colorspace()))
         if self.hasfilename():
             strlist.append('filename="%s"' % self.filename())
         if self.hasurl():
@@ -1326,7 +1326,7 @@ class Scene(ImageCategory):
         valid_detections = [obj.imclip(self.numpy()) for obj in self._objectlist if obj.hasoverlap(self.numpy())]
         if categoryColor is None:
             colors = colorlist()
-            categoryColor = dict([(c, colors[k]) for (k, c) in enumerate(valid_categories)])
+            categoryColor = dict([(c, colors[k % len(colors)]) for (k, c) in enumerate(valid_categories)])
         detection_color = [categoryColor[im.category()] for im in valid_detections]
         vipy.show.imdetection(self.clone().rgb()._array, valid_detections, bboxcolor=detection_color, textcolor=detection_color, fignum=figure, do_caption=do_caption, facealpha=boxalpha, fontsize=fontsize,
                               captionoffset=captionoffset, nowindow=nowindow, textfacecolor=textfacecolor, textfacealpha=textfacealpha)
