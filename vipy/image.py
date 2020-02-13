@@ -5,7 +5,8 @@ from vipy.show import imshow, imbbox, savefig, colorlist
 from vipy.util import isnumpy, isurl, isimageurl, \
     fileext, tempimage, mat2gray, imwrite, imwritegray, \
     tempjpg, filetail, isimagefile, remkdir, hasextension, \
-    try_import, tolist
+    try_import, tolist, islistoflists, istupleoftuples, isstring, \
+    istuple, islist, isnumber
 from vipy.geometry import BoundingBox
 import vipy.object
 import vipy.downloader
@@ -805,7 +806,6 @@ class Image(object):
         assert isinstance(func, types.LambdaType), "Input must be lambda function (e.g. f = lambda img: 255.0-img)"
         oldimg = self.array()  # reference
         newimg = func(self.array())  # in-place
-        print(newimg)
         assert isnumpy(newimg), "Lambda function output must be numpy array"
         self.array(newimg)  # reference
         if newimg.dtype != oldimg.dtype or newimg.shape != oldimg.shape:
@@ -1152,17 +1152,39 @@ class Scene(ImageCategory):
 
     >>> im = vipy.image.Scene(filename='/path/to/city_image.ext', category='city', objects=[vipy.object.Detection(category='vehicle', xmin=0, ymin=0, width=100, height=100)])
     >>> im = vipy.image.Scene(filename='/path/to/city_image.ext', category='city').objects([vipy.object.Detection(category='vehicle', xmin=0, ymin=0, width=100, height=100)])
+    >>> im = vipy.image.Scene(filename='/path/to/city_image.ext', category='office', boxlabels='face', xywh=[0,0,100,100])
+    >>> im = vipy.image.Scene(filename='/path/to/city_image.ext', category='office', boxlabels='face', xywh=[[0,0,100,100], [100,100,200,200]])
+    >>> im = vipy.image.Scene(filename='/path/to/city_image.ext', category='office', boxlabels=['face', 'desk'] xywh=[[0,0,100,100], [200,200,300,300]])
 
     """
-    def __init__(self, filename=None, url=None, category=None, attributes=None, objects=None, array=None, colorspace=None):
+    def __init__(self, filename=None, url=None, category=None, attributes=None, objects=None, xywh=None, boxlabels=None, array=None, colorspace=None):
         super(Scene, self).__init__(filename=filename, url=url, attributes=attributes, category=category, array=array, colorspace=colorspace)   # ImageCategory class inheritance
         self._objectlist = []
 
         if objects is not None:
             if not (isinstance(self._objectlist, list) and all([isinstance(bb, vipy.object.Detection) for bb in objects])):
-                raise ValueError("Invalid object list")
+                raise ValueError("Invalid object list - Input must be [vipy.object.Detection(), ...]")
             self._objectlist = objects
 
+        detlist = []
+        if xywh is not None:
+            if (islistoflists(xywh) or istupleoftuples(xywh)) and all([len(bb)==4 for bb in xywh]):
+                detlist = [vipy.object.Detection(category=None, xywh=bb) for bb in xywh]
+            elif (islist(xywh) or istuple(xywh)) and len(xywh)==4 and all([isnumber(bb) for bb in xywh]):
+                detlist = [vipy.object.Detection(category=None, xywh=xywh)]
+            else:
+                raise ValueError("Invalid xywh list - Input must be [[x1,y1,w1,h1], ...")            
+        if boxlabels is not None:
+            if isstring(boxlabels):
+                label = boxlabels
+                detlist = [d.category(label) for d in detlist]
+            elif (istuple(boxlabels) or islist(boxlabels)) and len(boxlabels) == len(xywh):
+                detlist = [d.category(label) for (d,label) in zip(detlist, boxlabels)]
+            else:
+                raise ValueError("Invalid boxlabels list - len(boxlabels) must be len(xywh) with corresponding labels for each xywh box  [label1, label2, ...]")
+
+        self._objectlist = self._objectlist + detlist
+        
     def __eq__(self, other):
         return isinstance(other, Scene) and all([obj1 == obj2 for (obj1, obj2) in zip(self, other)])
 

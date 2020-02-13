@@ -702,6 +702,16 @@ def islist(x):
     return type(x) is list
 
 
+def islistoflists(x):
+    """Is an object a python list of lists x=[[1,2], [3,4]]"""
+    return type(x) is list and type(x[0]) is list
+
+
+def istupleoftuples(x):
+    """Is an object a python list of lists x=[[1,2], [3,4]]"""
+    return type(x) is tuple and type(x[0]) is tuple
+
+
 def isimageobject(x):
     """Is an object a vipy.image class Image, ImageCategory, ImageDetection?"""
     return (str(type(x)) in ["<class 'vipy.image.Image'>",

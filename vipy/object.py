@@ -5,8 +5,8 @@ from vipy.geometry import BoundingBox
 class Detection(BoundingBox):
     """Represent a single bounding box with a label and confidence for an object detection"""
 
-    def __init__(self, label=None, xmin=None, ymin=None, width=None, height=None, xmax=None, ymax=None, confidence=None, xcentroid=None, ycentroid=None, category=None):
-        super(Detection, self).__init__(xmin=xmin, ymin=ymin, width=width, height=height, xmax=xmax, ymax=ymax, xcentroid=xcentroid, ycentroid=ycentroid)
+    def __init__(self, label=None, xmin=None, ymin=None, width=None, height=None, xmax=None, ymax=None, confidence=None, xcentroid=None, ycentroid=None, category=None, xywh=None):
+        super(Detection, self).__init__(xmin=xmin, ymin=ymin, width=width, height=height, xmax=xmax, ymax=ymax, xcentroid=xcentroid, ycentroid=ycentroid, xywh=xywh)
         assert not (label is not None and category is not None), "Constructor requires either label or category kwargs, not both"
         self._label = category if category is not None else label
         self._confidence = float(confidence) if confidence is not None else confidence
@@ -31,11 +31,15 @@ class Detection(BoundingBox):
     def dict(self):
         return {'category':self.category(), 'boundingbox':super(Detection, self).dict()}
     
-    def category(self):
-        return self._label
+    def category(self, category=None):
+        if category is None:
+            return self._label
+        else:
+            self._label = category
+            return self
 
     def label(self):
-        return self._label
+        return self.category()
 
 
 class Track(object):

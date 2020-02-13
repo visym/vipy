@@ -503,6 +503,7 @@ def test_imagedetection():
     assert isinstance(ImageDetection(array=img, xmin=0, ymin=0, width=2, height=3).dict(), dict)
     print('[test_image.imagedetection]: dict  PASSED')    
 
+    
 def test_scene():
     # Constructors
     im = Scene()
@@ -538,7 +539,34 @@ def test_scene():
     assert im.filename() == f
     print('[test_image.scene]: url and filename constructor: PASSED')
 
+    im = Scene(array=np.random.rand(3,3,3).astype(np.float32), xywh=[1,2,3,4])
+    assert len(im) == 1 and im.objects()[0].category() == None
+    im = Scene(array=np.random.rand(3,3,3).astype(np.float32), boxlabels='face', xywh=[1,2,3,4])
+    assert len(im) == 1 and im.objects()[0].category() == 'face'
+    im = Scene(array=np.random.rand(3,3,3).astype(np.float32), xywh=[[1,2,3,4],[1,2,3,4]])
+    assert len(im) == 2 and im.objects()[0].category() == None
+    im = Scene(array=np.random.rand(3,3,3).astype(np.float32), boxlabels='face', xywh=[[1,2,3,4],[1,2,3,4]])
+    assert len(im) == 2 and im.objects()[0].category() == 'face'
+    im = Scene(array=np.random.rand(3,3,3).astype(np.float32), boxlabels=['face1','face2'], xywh=[[1,2,3,4],[1,2,3,4]])
+    assert len(im) == 2 and im.objects()[1].category() == 'face2'
+    try:
+        im = Scene(array=np.random.rand(3,3,3).astype(np.float32), boxlabels=['face1','face2'])        
+        raise Failed()
+    except Failed:
+        raise
+    except:
+        pass
+    try:
+        im = Scene(array=np.random.rand(3,3,3).astype(np.float32), boxlabels=['face1','face2'], xywh=[1,2,3,4])        
+        raise Failed()
+    except Failed:
+        raise
+    except:
+        pass
+    print('[test_image.scene]: xywh constructor: PASSED')    
+    
     # Test Scene
+    im = Scene(url='https://upload.wikimedia.org/wikipedia/commons/thumb/2/23/Bubo_virginianus_06.jpg/1920px-Bubo_virginianus_06.jpg', filename=f).load()    
     (H,W) = im.shape()
     im = im.objects([Detection('obj1',20,50,100,100), Detection('obj2',300,300,200,200)])
     im.append(Detection('obj3',W +1,H +1,200,200))   # invalid box outside image rectancle
@@ -669,7 +697,7 @@ def test_scene():
     assert im[0].boundingbox().width() == 25 and im[0].boundingbox().height() == 5
     print('[test_image.scene]: maxdim PASSED')
 
-    # DIct 
+    # Dict
     assert isinstance(im.dict(), dict)
     print('[test_image.scene]: dict PASSED')
     
@@ -687,6 +715,7 @@ def test_batch():
     
 if __name__ == "__main__":
     test_image()
-    test_imagedetection()    
-    test_scene()
-    test_batch()    
+    test_imagedetection()
+    test_scene()    
+    test_batch()
+    

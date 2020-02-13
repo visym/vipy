@@ -125,7 +125,7 @@ def imdetection(img, detlist, fignum=None, bboxcolor='green', do_caption=True, f
     # Valid detections
     for (k,det) in enumerate(detlist):
         if do_caption:
-            bboxcaption = str(det.category())
+            bboxcaption = det.category()
         else:
             bboxcaption = None
 
