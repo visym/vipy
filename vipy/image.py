@@ -811,7 +811,8 @@ class Image(object):
         if newimg.dtype != oldimg.dtype or newimg.shape != oldimg.shape:
             self.colorspace('float')  # unknown colorspace after transformation, set generic
         return self
-                    
+
+    
 class ImageCategory(Image):
     """vipy ImageCategory class
 
@@ -1342,24 +1343,23 @@ class Scene(ImageCategory):
                 immask[bbm.ymin():bbm.ymax(), bbm.xmin():bbm.xmax()] = 1
         return immask
 
-
-    def show(self, categories=None, figure=None, do_caption=True, fontsize=10, boxalpha=0.25, categoryColor=None, captionoffset=(0,0), nowindow=False, textfacecolor='white', textfacealpha=0.8):
+    def show(self, categories=None, figure=None, do_caption=True, fontsize=10, boxalpha=0.25, d_category2color={'person':'green', 'vehicle':'blue', 'object':'red'}, captionoffset=(0,0), nowindow=False, textfacecolor='white', textfacealpha=0.8):
         """Show scene detection with an optional subset of categories"""
         valid_categories = sorted(self.categories() if categories is None else tolist(categories))
         valid_detections = [obj for obj in self._objectlist if obj.category() in valid_categories]
         valid_detections = [obj.imclip(self.numpy()) for obj in self._objectlist if obj.hasoverlap(self.numpy())]
-        if categoryColor is None:
-            colors = colorlist()
-            categoryColor = dict([(c, colors[k % len(colors)]) for (k, c) in enumerate(valid_categories)])
-        detection_color = [categoryColor[im.category()] for im in valid_detections]
+        colors = colorlist()
+        d_allcategory2color = {str(c).lower():colors[hash(c) % len(colors)] for c in valid_categories}  # consistent color mapping
+        d_allcategory2color.update(d_category2color)        
+        detection_color = [d_allcategory2color[str(im.category()).lower()] for im in valid_detections]
         vipy.show.imdetection(self.clone().rgb()._array, valid_detections, bboxcolor=detection_color, textcolor=detection_color, fignum=figure, do_caption=do_caption, facealpha=boxalpha, fontsize=fontsize,
                               captionoffset=captionoffset, nowindow=nowindow, textfacecolor=textfacecolor, textfacealpha=textfacealpha)
         return self
 
-    def savefig(self, outfile=None, categories=None, figure=None, do_caption=True, fontsize=10, boxalpha=0.25, categoryColor=None, captionoffset=(0,0), dpi=200, textfacecolor='white', textfacealpha=0.8):
+    def savefig(self, outfile=None, categories=None, figure=None, do_caption=True, fontsize=10, boxalpha=0.25, d_category2color={'Person':'green', 'Vehicle':'blue', 'Object':'red'}, captionoffset=(0,0), dpi=200, textfacecolor='white', textfacealpha=0.8):
         """Save show() output to given file without popping up a window"""
         outfile = outfile if outfile is not None else tempjpg()
-        self.show(categories=categories, figure=figure, do_caption=do_caption, fontsize=fontsize, boxalpha=boxalpha, categoryColor=categoryColor, captionoffset=captionoffset, nowindow=True, textfacecolor=textfacecolor, textfacealpha=textfacealpha)
+        self.show(categories=categories, figure=figure, do_caption=do_caption, fontsize=fontsize, boxalpha=boxalpha, d_category2color=d_category2color, captionoffset=captionoffset, nowindow=True, textfacecolor=textfacecolor, textfacealpha=textfacealpha)
         savefig(outfile, figure, dpi=dpi, bbox_inches='tight', pad_inches=0)
         return outfile
 
