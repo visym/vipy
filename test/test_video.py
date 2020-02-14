@@ -126,8 +126,8 @@ def _test_scene():
     print('[test_video.scene]: __iter__  PASSED')
     
     
-    vid = vipy.video.Scene(filename=mp4file, tracks=[vipy.object.Track(category='person', frames=[0,200], boxes=[BoundingBox(xmin=0,ymin=0,width=200,height=400), BoundingBox(xmin=0,ymin=0,width=400,height=100)]),
-                                                     vipy.object.Track(category='vehicle', frames=[0,200], boxes=[BoundingBox(xmin=100,ymin=200,width=300,height=400), BoundingBox(xmin=400,ymin=300,width=200,height=100)])])
+    vid = vipy.video.Scene(filename=mp4file, tracks=[vipy.object.Track(category='person', keyframes=[0,200], boxes=[BoundingBox(xmin=0,ymin=0,width=200,height=400), BoundingBox(xmin=0,ymin=0,width=400,height=100)]),
+                                                     vipy.object.Track(category='vehicle', keyframes=[0,200], boxes=[BoundingBox(xmin=100,ymin=200,width=300,height=400), BoundingBox(xmin=400,ymin=300,width=200,height=100)])])
 
     # Loader
     try:
@@ -278,15 +278,24 @@ def _test_scene():
     v = vipy.video.Scene(array=frames)
     for im in v:
         v.add(Detection(0, 0, 0, 100, 100))
-        v.add(Track(category=1, frames=[1], boxes=[BoundingBox(0,0,1,1)]))
+        v.add(Track(category=1, keyframes=[1], boxes=[BoundingBox(0,0,1,1)]))
         v.add([1,2,3,4], category='test')
     print('[test_video.scene]: scene iterator  PASSED')
     
     # Random scenes
     v = vipy.video.RandomVideo(64,64,64)
     v = vipy.video.RandomScene(64,64,64)
-    v = vipy.video.RandomSceneActivity(64,64,64) 
+    vorig = vipy.video.RandomSceneActivity(64,64,64)
+    print(vorig[0])
+    print(vorig[0][0])
     print('[test_video.scene]: random scene  PASSED')
+
+    # Video scenes
+    v = vipy.video.RandomSceneActivity(64,64,64)
+    vorig = v.clone().flush().filename('Video.mp4')
+    assert vorig.clone().clip(50,100)[0] == vorig.clone()[50]
+    print('[test_video.scene]: video scenes  PASSED')    
+    
     
 if __name__ == "__main__":
     test_video()

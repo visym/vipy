@@ -1187,7 +1187,8 @@ class Scene(ImageCategory):
         self._objectlist = self._objectlist + detlist
         
     def __eq__(self, other):
-        return isinstance(other, Scene) and all([obj1 == obj2 for (obj1, obj2) in zip(self, other)])
+        """Scene equality requires equality of all objects in the scene, assumes a total order of objects"""
+        return isinstance(other, Scene) and len(self)==len(other) and all([obj1 == obj2 for (obj1, obj2) in zip(self, other)])
 
     def __repr__(self):
         strlist = []
@@ -1204,13 +1205,16 @@ class Scene(ImageCategory):
         return str('<vipy.image.scene: %s>' % (', '.join(strlist)))
 
     def __len__(self):
+        """The length of a scene is equal to the number of objects present in the scene"""
         return len(self._objectlist)
 
     def __iter__(self):
+        """Iterate over each ImageDetection() in the scene"""
         for (k, im) in enumerate(self._objectlist):
             yield self.__getitem__(k)
 
     def __getitem__(self, k):
+        """Return the kth object in the scene as an ImageDetection"""
         obj = self._objectlist[k]
         return (ImageDetection(array=self.array(), filename=self.filename(), url=self.url(), colorspace=self.colorspace(), bbox=obj, category=obj.category()))
 
@@ -1236,7 +1240,7 @@ class Scene(ImageCategory):
 
     def categories(self):
         """Return list of unique object categories in scene"""
-        return list(set([obj.category() for obj in self._objectlist]))        
+        return list(set([obj.category() for obj in self._objectlist]))
     
     # Spatial transformation
     def imclip(self):
@@ -1343,23 +1347,25 @@ class Scene(ImageCategory):
                 immask[bbm.ymin():bbm.ymax(), bbm.xmin():bbm.xmax()] = 1
         return immask
 
-    def show(self, categories=None, figure=None, do_caption=True, fontsize=10, boxalpha=0.25, d_category2color={'person':'green', 'vehicle':'blue', 'object':'red'}, captionoffset=(0,0), nowindow=False, textfacecolor='white', textfacealpha=0.8):
+    def show(self, categories=None, figure=None, do_caption=True, fontsize=10, boxalpha=0.25, d_category2color={'Person':'green', 'Vehicle':'blue', 'Object':'red'}, captionoffset=(0,0), nowindow=False, textfacecolor='white', textfacealpha=0.8, shortlabel=True):
         """Show scene detection with an optional subset of categories"""
-        valid_categories = sorted(self.categories() if categories is None else tolist(categories))
-        valid_detections = [obj for obj in self._objectlist if obj.category() in valid_categories]
-        valid_detections = [obj.imclip(self.numpy()) for obj in self._objectlist if obj.hasoverlap(self.numpy())]
+        valid_categories = sorted(self.categories() if categories is None else tolist(categories))  # subset of categories to show
+        valid_detections = [obj for obj in self._objectlist if obj.category() in valid_categories]  # subset of detections with valid category
+        valid_detections = [obj.imclip(self.numpy()) for obj in self._objectlist if obj.hasoverlap(self.numpy())]  # Within image rectangle
         colors = colorlist()
-        d_allcategory2color = {str(c).lower():colors[hash(c) % len(colors)] for c in valid_categories}  # consistent color mapping
-        d_allcategory2color.update(d_category2color)        
-        detection_color = [d_allcategory2color[str(im.category()).lower()] for im in valid_detections]
-        vipy.show.imdetection(self.clone().rgb()._array, valid_detections, bboxcolor=detection_color, textcolor=detection_color, fignum=figure, do_caption=do_caption, facealpha=boxalpha, fontsize=fontsize,
+        d_categories2color = {c:colors[hash(c) % len(colors)] for c in valid_categories}  # consistent color mapping
+        d_categories2color.update(d_category2color)   # Requested color mapping
+        detection_color = [d_categories2color[im.category()] for im in valid_detections]
+        valid_detections = [obj.clone().category(obj.shortlabel()) for obj in valid_detections] if shortlabel else valid_detections  # Display name
+        imdisplay = self.clone().rgb() if self.colorspace() != 'rgb' else self  # convert to RGB for show() if necessary
+        vipy.show.imdetection(imdisplay._array, valid_detections, bboxcolor=detection_color, textcolor=detection_color, fignum=figure, do_caption=do_caption, facealpha=boxalpha, fontsize=fontsize,
                               captionoffset=captionoffset, nowindow=nowindow, textfacecolor=textfacecolor, textfacealpha=textfacealpha)
         return self
 
-    def savefig(self, outfile=None, categories=None, figure=None, do_caption=True, fontsize=10, boxalpha=0.25, d_category2color={'person':'green', 'vehicle':'blue', 'object':'red'}, captionoffset=(0,0), dpi=200, textfacecolor='white', textfacealpha=0.8):
+    def savefig(self, outfile=None, categories=None, figure=None, do_caption=True, fontsize=10, boxalpha=0.25, d_category2color={'person':'green', 'vehicle':'blue', 'object':'red'}, captionoffset=(0,0), dpi=200, textfacecolor='white', textfacealpha=0.8, shortlabel=True):
         """Save show() output to given file without popping up a window"""
         outfile = outfile if outfile is not None else tempjpg()
-        self.show(categories=categories, figure=figure, do_caption=do_caption, fontsize=fontsize, boxalpha=boxalpha, d_category2color=d_category2color, captionoffset=captionoffset, nowindow=True, textfacecolor=textfacecolor, textfacealpha=textfacealpha)
+        self.show(categories=categories, figure=figure, do_caption=do_caption, fontsize=fontsize, boxalpha=boxalpha, d_category2color=d_category2color, captionoffset=captionoffset, nowindow=True, textfacecolor=textfacecolor, textfacealpha=textfacealpha, shortlabel=shortlabel)
         savefig(outfile, figure, dpi=dpi, bbox_inches='tight', pad_inches=0)
         return outfile
 
