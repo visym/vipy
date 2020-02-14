@@ -103,7 +103,11 @@ class Image(object):
     def __len__(self):
         """Images have length 1 always"""
         return 1
-
+    
+    def __array__(self):
+        """Called on np.array(self) for custom array container, (requires numpy >=1.16)"""
+        return self.numpy()
+    
     def __repr__(self):
         strlist = []
         if self.isloaded():
