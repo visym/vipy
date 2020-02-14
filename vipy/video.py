@@ -106,15 +106,18 @@ class Video(object):
 
     def __iter__(self):
         """Iterate over frames, yielding vipy.image.Image object for each frame"""
-        # FIXME: Streaming video access for large videos that will not fit into memory
-        # https://github.com/kkroening/ffmpeg-python/blob/master/examples/README.md
-        # FIXME: https://github.com/kkroening/ffmpeg-python/issues/78
         self.load()
         self._array = np.copy(self._array) if not self._array.flags['WRITEABLE'] else self._array  # triggers copy
         with np.nditer(self._array, op_flags=['readwrite']) as it:
             for k in range(0, len(self)):
                 yield self.__getitem__(k)
 
+    def stream(self):
+        # FIXME: Streaming video access for large videos that will not fit into memory
+        # https://github.com/kkroening/ffmpeg-python/blob/master/examples/README.md
+        # FIXME: https://github.com/kkroening/ffmpeg-python/issues/78
+        raise NotImplementedError('Streaming video access for large videos that will not fit into memory - Try clip() first')
+        
     def __array__(self):
         """Called on np.array(self) for custom array container, (requires numpy >=1.16)"""
         return self.numpy()

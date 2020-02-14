@@ -467,9 +467,13 @@ class Image(object):
 
         else:
             self._array = np.array(self.load().pil().resize((cols, rows), PIL.Image.BILINEAR))
-
         return self
 
+    def resize_like(self, im):
+        """Resize image buffer to be the same size as the provided vipy.image.Image()"""
+        assert isinstance(im, Image), "Invalid input - Must be vipy.image.Image()"
+        return self.resize(im.width(), im.height())
+    
     def rescale(self, scale=1):
         """Scale the image buffer by the given factor - NOT idemponent"""
         (height, width) = self.load().shape()
@@ -549,10 +553,10 @@ class Image(object):
     def _crop(self, bbox):
         """Crop the image buffer using the supplied bounding box object, clipping the box to the image rectangle"""
         assert isinstance(bbox, BoundingBox) and bbox.valid(), "Invalid vipy.geometry.BoundingBox() input"""
-        bbox = bbox.imclip(self.load().array(), strict=False)
+        bbox = bbox.imclip(self.load().array(), strict=False).int()
         if not bbox.isdegenerate():
-            self._array = self.array()[int(bbox.ymin()):int(bbox.ymax()),
-                                       int(bbox.xmin()):int(bbox.xmax())]
+            self._array = self.array()[bbox.ymin():bbox.ymax(),
+                                       bbox.xmin():bbox.xmax()]
         else:
             warnings.warn('BoundingBox for crop() does not intersect image rectangle - Ignoring')
         return self
@@ -1067,6 +1071,7 @@ class ImageDetection(ImageCategory):
             self = super(ImageDetection, self).resize(cols, rows)
         return self
 
+    
     def fliplr(self):
         """Mirror buffer and bounding box around vertical axis"""
         self.bbox.fliplr(width=self.width())
@@ -1151,14 +1156,24 @@ class ImageDetection(ImageCategory):
         return immask
 
     def setzero(self, bbox=None):
-        """Set all image values within the bounding box (or provided bbox) to zero"""
+        """Set all image values within the bounding box (or provided bbox) to zero, triggers load()"""
         if bbox is not None:
-            assert isinstance(bbox, BoundingBox), "Invalid bounding box"
+            assert isinstance(bbox, BoundingBox), "Invalid bounding box - Must be vipy.geometry.BoundingBox() "
         bbox = self.bbox if bbox is None else bbox
         self.load().array()[int(bbox.ymin()):int(bbox.ymax()),
                             int(bbox.xmin()):int(bbox.xmax())] = 0
         return self
 
+    def replace(self, img):
+        """Set all image values within the bounding box equal to the provided img, triggers load() and imclip()"""
+        self.load().imclip()
+        if not (isnumpy(img) and img.shape == (self.bbox.int().height(), self.bbox.width(), self.channels()) and (img.dtype == self.array().dtype)):
+            import pdb; pdb.set_trace()
+        assert isnumpy(img) and img.shape == (self.bbox.int().height(), self.bbox.width(), self.channels()) and (img.dtype == self.array().dtype),  "Invalid replacement image - Must be same shape as box and same type as img"
+        self.array()[int(self.bbox.ymin()):int(self.bbox.ymax()),
+                     int(self.bbox.xmin()):int(self.bbox.xmax())] = img
+        return self
+    
 
 class Scene(ImageCategory):
     """vipy.image.Scene class
