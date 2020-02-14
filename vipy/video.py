@@ -647,7 +647,7 @@ class Scene(VideoCategory):
     def __getitem__(self, k):
         if self.load().isloaded() and k >= 0 and k < len(self):
             d_id2name = {t._id:t.shortlabel() for t in self.tracks}
-            d_id2name.update( {t._id:a.shortlabel() for t in self.tracks for a in self.activities if a.hastrack(t) and a.during(k)} )
+            d_id2name.update( {t._id:a.shortlabel() for t in self.tracks for a in self.activities if a.hastrack(t.id()) and a.during(k)} )
             framedets = [t[k].category(d_id2name[t._id]) for t in self.tracks if t[k] is not None]  # track boundary interpolation
             return vipy.image.Scene(array=self._array[k], colorspace=self.colorspace(), objects=framedets)  
         elif not self.isloaded():
@@ -722,6 +722,7 @@ class Scene(VideoCategory):
         assert not self.isloaded(), "Filters can only be applied prior to loading; flush() the video first"        
         self._ffmpeg = self._ffmpeg.filter('fps', fps=fps, round='up')
         self.tracks = [t.framerate(fps) for t in self.tracks]
+        self.activities = [a.framerate(fps) for a in self.activities]        
         self._framerate = fps
         return self
 
@@ -832,10 +833,10 @@ class Scene(VideoCategory):
     
 def RandomVideo(rows=None, cols=None, frames=None):
     """Return a random loaded vipy.video.video, useful for unit testing"""
-    assert rows>32 and cols>32 and frames>32
     rows = np.random.randint(256, 1024) if rows is None else rows
     cols = np.random.randint(256, 1024) if cols is None else cols
     frames = np.random.randint(32, 256) if frames is None else frames
+    assert rows>32 and cols>32 and frames>32    
     return Video(array=np.uint8(255 * np.random.rand(frames, rows, cols, 3)), colorspace='rgb')
 
 
@@ -852,7 +853,7 @@ def RandomScene(rows=None, cols=None, frames=None):
                                        vipy.geometry.BoundingBox(xmin=np.random.randint(0,cols - 16), ymin=np.random.randint(0,rows - 16),
                                                                  width=np.random.randint(16,cols//2), height=np.random.randint(16,rows//2))]) for k in range(0,32)]
 
-    activities = [vipy.object.Activity(label='activity%d' % k, shortlabel='a%d' % k, subject=tracks[np.random.randint(32)], objects=[tracks[np.random.randint(32)]], startframe=np.random.randint(50,100), endframe=np.random.randint(100,150)) for k in range(0,32)]   
+    activities = [vipy.object.Activity(label='activity%d' % k, shortlabel='a%d' % k, subjectid=tracks[np.random.randint(32)].id(), objectids=[tracks[np.random.randint(32)].id()], startframe=np.random.randint(50,100), endframe=np.random.randint(100,150)) for k in range(0,32)]   
     ims = Scene(array=v.array(), colorspace='rgb', category='scene', tracks=tracks, activities=activities)
 
     return ims
@@ -871,7 +872,7 @@ def RandomSceneActivity(rows=None, cols=None, frames=256):
                                        vipy.geometry.BoundingBox(xmin=np.random.randint(0,cols - 16), ymin=np.random.randint(0,rows - 16),
                                                                  width=np.random.randint(16,cols//2), height=np.random.randint(16,rows//2))]) for k in range(0,3)]
 
-    activities = [vipy.object.Activity(label='Person Carrying', shortlabel='Carry', subject=tracks[0], objects=[tracks[1]], startframe=np.random.randint(20,50), endframe=np.random.randint(70,100))]   
+    activities = [vipy.object.Activity(label='Person Carrying', shortlabel='Carry', subjectid=tracks[0].id(), objectids=[tracks[1].id()], startframe=np.random.randint(20,50), endframe=np.random.randint(70,100))]   
     ims = Scene(array=v.array(), colorspace='rgb', category='scene', tracks=tracks, activities=activities)
 
     return ims

@@ -1,5 +1,6 @@
 import numpy as np
 from vipy.geometry import BoundingBox
+from vipy.util import isstring
 import uuid
 
 
@@ -32,7 +33,7 @@ class Detection(BoundingBox):
         return self.__repr__()
 
     def dict(self):
-        return {'id':self._id, 'category':self.category(), 'boundingbox':super(Detection, self).dict()}
+        return {'id':self._id, 'label':self.category(), 'shortlabel':self.shortlabel() ,'boundingbox':super(Detection, self).dict()}
     
     def category(self, category=None):
         if category is None:
@@ -54,6 +55,9 @@ class Detection(BoundingBox):
         """Alias for category"""
         return self.category(label)
 
+    def id(self):
+        return self._id
+    
 
 class Track(object):
     """Represent many labeled bounding boxes of an instance through time, as observed at finite times, with interpolation between observations"""
@@ -102,7 +106,7 @@ class Track(object):
         return len(self._keyframes)
 
     def dict(self):
-        return {'id':self._id, 'category':self.category(), 'keyframes':self._keyframes, 'framerate':self._framerate, 
+        return {'id':self._id, 'label':self.category(), 'shortlabel':self.shortlabel(), 'keyframes':self._keyframes, 'framerate':self._framerate, 
                 'boundingbox':[bb.dict() for bb in self._keyboxes]}
 
     def add(self, frame, box):
@@ -202,30 +206,43 @@ class Track(object):
         self._keyboxes = [bb.rot90ccw(H, W) for bb in self._keyboxes]
         return self
 
+    def id(self):
+        return self._id
+
 
 class Activity(object):
-    def __init__(self, startframe, endframe, label=None, category=None, subject=None, objects=None, attributes=None, shortlabel=None):
+    """vipy.object.Activity class
+    
+    This represents a (Subject, Verb, Object) activity where a subject performs a verb on one or more objects. Person/Subject Entering/Verb Vehicle/Object.
+    The activity occurs at a given (startframe, endframe), where these frame indexes are extracted at the provided framerate.
+    All subjects and objects are passed by reference with a globally unique track ID, for the tracks involved with the activity. 
+    The category of the activity is the Verb, as the nouns are implied by the track IDs.
+    The shortlabel defines the string shown on the visualization video.  
+
+    """
+    def __init__(self, startframe, endframe, framerate=None, label=None, category=None, subjectid=None, objectids=None, attributes=None, shortlabel=None):
         assert not (label is not None and category is not None), "Constructor requires either label or category kwargs, not both"        
         self._id = uuid.uuid1().hex
         self._startframe = startframe
         self._endframe = endframe
+        self._framerate = framerate
         self._label = category if category is not None else label        
         self._shortlabel = self._label if shortlabel is None else shortlabel
-        self._subject = subject
-        self._objects = objects
-        if objects is not None:
-            assert isinstance(objects, list) and all([isinstance(x, Track) for x in objects]), "Invalid object list - Must be a list [vipy.object.Track(), ...]"
-        if subject is not None:
-            assert isinstance(subject, Track), "Invalid subject - Must be a vipy.object.Track()"            
+        self._subjectid = subjectid
+        self._objectids = objectids
+        if objectids is not None:
+            assert isinstance(objectids, list) and all([isstring(x) for x in objectids]), "Invalid objectid list - Must be a list of track IDs"
+        if subjectid is not None:
+            assert isstring(subjectid), "Invalid subject - Must be a track ID"            
         self._attributes = attributes
         
     def __repr__(self):
-        return str('<vipy.activity: category="%s", frames=(%d,%d), objects=%s>' % (self.category(), self.startframe(), self.endframe(), str(set([x.category() for x in self.objects()]))))
+        return str('<vipy.activity: category="%s", frames=(%d,%d), objects=%s>' % (self.category(), self.startframe(), self.endframe(), str(set([x.category() for x in self.objectids()]))))
 
     def dict(self):
-        return {'id':self._id, 'category':self.category(), 'startframe':self._startframe, 'endframe':self._endframe, 'attributes':self._attributes,
-                'subject':self._subject.dict() if self._subject is not None else None,
-                'objects':[obj.dict() for obj in self._objects] if self._objects is not None else None}
+        return {'id':self._id, 'label':self.category(), 'shortlabel':self.shortlabel(), 'startframe':self._startframe, 'endframe':self._endframe, 'attributes':self._attributes, 'framerate':self._framerate,
+                'subjectid':self._subjectid,
+                'objectids':[o for o in self._objectids]}
     
     def startframe(self):
         return self._startframe
@@ -233,6 +250,13 @@ class Activity(object):
     def endframe(self):
         return self._endframe
 
+    def framerate(self, fps):
+        """Resample (startframe, endframe) from known original framerate set by constructor to be new framerate fps"""        
+        assert self._framerate is not None, "Framerate conversion requires that the framerate is known for current activities.  This must be provided to the vipy.object.Activity() constructor."
+        (self._startframe, self._endframe) = [int(np.round(f*(fps/float(self._framerate)))) for f in (self._startframe, self._endframe)]
+        self._framerate = fps
+        return self
+    
     def category(self, label=None):
         if label is not None:
             self._label = label
@@ -253,24 +277,24 @@ class Activity(object):
         else:
             return self._shortlabel
         
-    def objects(self, objects=None):
-        if objects is not None:
-            self._objects = objects
+    def objectids(self, objectids=None):
+        if objectids is not None:
+            self._objectids = objectids
             return self
         else:
-            return self._objects
+            return self._objectids
 
-    def subject(self, subject=None):
-        if subject is not None:
-            self._subject = subject
+    def subjectid(self, subjectid=None):
+        if subjectid is not None:
+            self._subjectid = subjectid
             return self
         else:
-            return self._subject
+            return self._subjectid
 
-    def hastrack(self, t):
+    def hastrack(self, trackid):
         """Is the track part of the activity?"""
-        assert isinstance(t, Track) or isinstance(t, Detection), "Invalid input - Must be a vipy.object.Track()"
-        return (self._subject is not None and self._subject._id == t._id) or (self._objects is not None and any([obj._id == t._id for obj in self._objects]))
+        assert isstring(trackid), "Invalid input - Must be a vipy.object.Track().id()"
+        return (self._subjectid is not None and self._subjectid == trackid) or (self._objectids is not None and any([oid == trackid for oid in self._objectids]))
             
     def during(self, frame):
         return int(frame) >= self._startframe and int(frame) <= self._endframe

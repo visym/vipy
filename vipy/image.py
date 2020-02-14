@@ -1356,7 +1356,7 @@ class Scene(ImageCategory):
                               captionoffset=captionoffset, nowindow=nowindow, textfacecolor=textfacecolor, textfacealpha=textfacealpha)
         return self
 
-    def savefig(self, outfile=None, categories=None, figure=None, do_caption=True, fontsize=10, boxalpha=0.25, d_category2color={'Person':'green', 'Vehicle':'blue', 'Object':'red'}, captionoffset=(0,0), dpi=200, textfacecolor='white', textfacealpha=0.8):
+    def savefig(self, outfile=None, categories=None, figure=None, do_caption=True, fontsize=10, boxalpha=0.25, d_category2color={'person':'green', 'vehicle':'blue', 'object':'red'}, captionoffset=(0,0), dpi=200, textfacecolor='white', textfacealpha=0.8):
         """Save show() output to given file without popping up a window"""
         outfile = outfile if outfile is not None else tempjpg()
         self.show(categories=categories, figure=figure, do_caption=do_caption, fontsize=fontsize, boxalpha=boxalpha, d_category2color=d_category2color, captionoffset=captionoffset, nowindow=True, textfacecolor=textfacecolor, textfacealpha=textfacealpha)
