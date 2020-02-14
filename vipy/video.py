@@ -115,6 +115,10 @@ class Video(object):
             for k in range(0, len(self)):
                 yield self.__getitem__(k)
 
+    def __array__(self):
+        """Called on np.array(self) for custom array container, (requires numpy >=1.16)"""
+        return self.numpy()
+                
     def dict(self):
         video = {'filename':self.filename(),
                  'url':self.url(),
@@ -221,10 +225,10 @@ class Video(object):
     def tonumpy(self):
         """Alias for numpy()"""
         return self.numpy()
-        return self._array
 
     def numpy(self):
-        """Convert the video to a numpy array"""
+        """Convert the video to a numpy array, triggers a load()"""
+        self.load()
         self._array = np.copy(self._array) if not self._array.flags['WRITEABLE'] else self._array  # triggers copy 
         return self._array
 
@@ -500,10 +504,11 @@ class Video(object):
         return self.play()
     
     def torch(self, take=None):
-        """Convert the loaded video to an NxCxHxW torch tensor"""
+        """Convert the loaded video to an NxCxHxW torch tensor, forces a load()"""
         try_import('torch'); import torch
 
         """Convert the batch of N HxWxC images to a NxCxHxW torch tensor"""
+        self.load()
         frames = self._array if self.iscolor() else np.expand_dims(self._array, 3)
         t = torch.from_numpy(frames.transpose(0,3,1,2))
         return t if take is None else t[::int(np.round(len(t)/float(take)))][0:take]
