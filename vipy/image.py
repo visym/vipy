@@ -89,6 +89,9 @@ class Image(object):
             assert isinstance(attributes, dict), "Attributes must be dictionary"
             self.attributes = attributes
 
+    def __eq__(self, other):
+        """Images are equivalent if they have the same filename, url and array"""
+        return isinstance(other, Image) and other.filename()==self.filename() and other.url()==self.url() and np.all(other.array() == self.array())
 
     def __str__(self):
         return self.__repr__()

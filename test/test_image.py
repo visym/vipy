@@ -87,6 +87,14 @@ def test_image():
     assert os.environ['VIPY_CACHE'] in im.filename()
     print('[test_image.image]: URL with cache download: PASSED')
 
+    # Equality
+    im = Image(array=np.zeros( (10,10,3), dtype=np.uint8 ), colorspace='rgb')
+    assert im == im
+    im2 = im.clone()
+    im2._array[0,0] = 1
+    assert im != im2
+    print('[test_image.image]: equality  PASSED')    
+    
     # Array objects
     Image(array=np.zeros( (10,10,3), dtype=np.uint8 ), colorspace='rgb')
     Image(array=np.zeros( (10,10,3), dtype=np.uint8 ), colorspace='bgr')
