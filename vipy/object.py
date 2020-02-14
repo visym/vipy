@@ -237,7 +237,7 @@ class Activity(object):
         self._attributes = attributes
         
     def __repr__(self):
-        return str('<vipy.activity: category="%s", frames=(%d,%d), objects=%s>' % (self.category(), self.startframe(), self.endframe(), str(set([x.category() for x in self.objectids()]))))
+        return str('<vipy.activity: category="%s", frames=(%d,%d), objects=%s>' % (self.category(), self.startframe(), self.endframe(), (1 if self._subjectid is not None else 0) + len(set(self.objectids()))))
 
     def dict(self):
         return {'id':self._id, 'label':self.category(), 'shortlabel':self.shortlabel(), 'startframe':self._startframe, 'endframe':self._endframe, 'attributes':self._attributes, 'framerate':self._framerate,
