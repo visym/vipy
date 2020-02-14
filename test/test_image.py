@@ -154,6 +154,14 @@ def _test_image_fileformat(imgfile):
     assert(np.any(im.numpy() != imc.numpy()))  # does not share buffer
     print('[test_image.image]["%s"]:  Image.clone: PASSED' % imgfile)
 
+    # Downgrade
+    im = ImageDetection(filename=imgfile, xmin=100, ymin=100, bbwidth=700, height=1000, category='face')    
+    imd = im.detection()
+    assert imd.xywh() == im.boundingbox().xywh()
+    imd = im.image()
+    assert imd.shape() == im.shape()
+    print('[test_image.image]["%s"]:  ImageDetection downgrade  PASSED' % imgfile)    
+    
     # Saveas
     im = Image(filename=imgfile).load()
     f = temppng()

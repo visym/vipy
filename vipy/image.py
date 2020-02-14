@@ -901,6 +901,10 @@ class ImageCategory(Image):
     def vimage(self):
         """Downgrade vipy.image.ImageCategory() to vipy.image.Image() object, array() is shared"""
         return Image(filename=self.filename(), url=self.url(), attributes=self.attributes, array=self.array(), colorspace=self.colorspace())
+
+    def image(self):
+        """Alias for vimage"""
+        return self.vimage()
     
     
 class ImageDetection(ImageCategory):
@@ -968,6 +972,7 @@ class ImageDetection(ImageCategory):
         return str('<vipy.imagedetection: %s>' % (', '.join(strlist)))
 
     def __eq__(self, other):
+        """ImageDetection equality is defined as equivalent categories and boxes (not pixels)"""
         return self._category.lower() == other._category.lower() and self.bbox == other.bbox if isinstance(other, ImageDetection) else False
 
     def __hash__(self):
@@ -977,7 +982,11 @@ class ImageDetection(ImageCategory):
         d = super(ImageCategory, self).dict()
         d['boundingbox'] = self.bbox.dict()
         return d
-    
+
+    def detection(self):
+        """Downgrade to vipy.object.Detection() object"""
+        return vipy.object.Detection(category=self.category(), xywh=self.boundingbox().xywh(), attributes=self.attributes)
+
     def boundingbox(self, xmin=None, xmax=None, ymin=None, ymax=None,
                     bbox=None, width=None, height=None, dilate=None,
                     xcentroid=None, ycentroid=None):
