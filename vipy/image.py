@@ -1215,7 +1215,7 @@ class Scene(ImageCategory):
         if self.hasurl():
             strlist.append('url=%s' % self.url())
         if self.category() is not None:
-            strlist.append('category=%s' % self.category())
+            strlist.append('category="%s"' % self.category())
         if len(self.objects()) > 0:
             strlist.append('objects=%d' % len(self.objects()))
         return str('<vipy.image.scene: %s>' % (', '.join(strlist)))

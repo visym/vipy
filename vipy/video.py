@@ -451,7 +451,10 @@ class Video(object):
         return self
 
     def saveas(self, outfile, framerate=30, vcodec='libx264', verbose=False):
-        """Save video to new output video file, from either numpy buffer in self._array after calling load(), or by applying filter chain if not loaded"""
+        """Save video to new output video file.  This function does not draw boxes, it saves pixels to a new video file.
+        If self.array() is loaded, then export the contents of self._array to the video file
+        If self.array() is not loaded, and there exists a valid video file, apply the filter chain directly to the input video
+        """
         if self.isloaded():
             # Save numpy() from load() to video
             (n, height, width, channels) = self._array.shape
@@ -486,7 +489,7 @@ class Video(object):
         pass
 
     def play(self, verbose=True):
-        """Play the saved video filename using the system 'ffplay', if there is no filename, then saveas(tempMP4())"""
+        """Play the saved video filename in self.filename() using the system 'ffplay', if there is no filename, try to download it or try saveas(tempMP4())"""
         if not self.isdownloaded():
             self.download()
         if not self.hasfilename():
@@ -555,7 +558,7 @@ class VideoCategory(Video):
             strlist.append('filename="%s"' % self.filename())
         if self.hasurl():
             strlist.append('url="%s"' % self.url())
-        if self._category is not None:
+        if self.category() is not None:
             strlist.append('category="%s"' % self.category())
         if not self.isloaded() and self._startframe is not None:
             strlist.append('clip=(%d,%d)' % (self._startframe, self._endframe))
@@ -644,6 +647,8 @@ class Scene(VideoCategory):
             strlist.append('url="%s"' % self.url())
         if self._framerate is not None:
             strlist.append('fps=%s' % str(self._framerate))            
+        if self.category() is not None:
+            strlist.append('category="%s"' % self.category())
         if len(self.tracks) > 0:
             strlist.append('objects=%d' % len(self.tracks))
         if len(self.activities) > 0:
@@ -662,7 +667,7 @@ class Scene(VideoCategory):
                         if 'activity' not in d.attributes:
                             d.attributes['activity'] = []                            
                         d.attributes['activity'].append(a)  # for activity correspondence
-            return vipy.image.Scene(array=self._array[k], colorspace=self.colorspace(), objects=dets)  
+            return vipy.image.Scene(array=self._array[k], colorspace=self.colorspace(), objects=dets, category=self.category())  
         elif not self.isloaded():
             raise ValueError('Video not loaded; load() before indexing')
         else:
@@ -816,7 +821,8 @@ class Scene(VideoCategory):
         return self
 
     def annotate(self, outfile=None):
-        """Generate a video visualization of all annotated objects and activities in the video, at the resolution and framerate of the underlying video, save as outfile"""
+        """Generate a video visualization of all annotated objects and activities in the video, at the resolution and framerate of the underlying video, save as outfile.
+        This function does not play the video, it only generates an annotation video.  Use show() to annotation and play."""
         assert self.isloaded(), "Call load() before annotate()"
         vid = self.load().clone()  # to save a new array
         outfile = outfile if outfile is not None else tempMP4()        
@@ -835,7 +841,7 @@ class Scene(VideoCategory):
         return vid.saveas(outfile)
 
     def show(self, outfile=None, verbose=True):
-        """Generate an annotation video saved to outfile (or tempfile if outfile=None) and show it using ffplay"""
+        """Generate an annotation video saved to outfile (or tempfile if outfile=None) and show it using ffplay when it is done exporting"""
         outfile = tempMP4() if outfile is None else outfile
         if verbose:
             print('[vipy.video.show]: Generating annotation video "%s" ...' % outfile)
@@ -879,7 +885,7 @@ def RandomSceneActivity(rows=None, cols=None, frames=256):
     """Return a random loaded vipy.video.Scene, useful for unit testing"""    
     v = RandomVideo(rows, cols, frames)
     (rows, cols) = v.shape()
-    tracks = [vipy.object.Track(label=['Person','Vehicle','Object'][k], shortlabel='track%d' % k,
+    tracks = [vipy.object.Track(label=['Person','Vehicle','Object'][k], shortlabel='track%d' % k, boundary='strict', 
                                 keyframes=[0, np.random.randint(50,100), np.random.randint(50,150)],
                                 boxes=[vipy.geometry.BoundingBox(xmin=np.random.randint(0,cols - 16), ymin=np.random.randint(0,rows - 16),
                                                                  width=np.random.randint(16,cols//2), height=np.random.randint(16,rows//2)),
