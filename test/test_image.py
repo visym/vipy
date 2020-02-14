@@ -511,8 +511,8 @@ def test_imagedetection():
     print('[test_image.imagedetection]: setzero  PASSED')
 
     # Mask
-    assert np.sum(ImageDetection(array=img, xmin=-1, ymin=-2, width=2, height=3).mask(10,10)) == 1
-    assert np.sum(ImageDetection(array=img, xmin=0, ymin=0, width=2, height=3).mask(10,10)) == 6
+    assert np.sum(ImageDetection(array=img, xmin=-1, ymin=-2, width=2, height=3).rectangular_mask(10,10)) == 1
+    assert np.sum(ImageDetection(array=img, xmin=0, ymin=0, width=2, height=3).rectangular_mask(10,10)) == 6
     print('[test_image.imagedetection]: mask  PASSED')
 
     # Dict
@@ -622,32 +622,32 @@ def test_scene():
     (H,W) = imorig.shape()
     im = im.rescale(1.0)
     assert im.shape() == (H, W)
-    assert np.allclose(im.mask(), np.array(PIL.Image.fromarray(imorig.mask(), 'L').resize( (int(W), int(H)), PIL.Image.NEAREST)))
+    assert np.allclose(im.rectangular_mask(), np.array(PIL.Image.fromarray(imorig.rectangular_mask(), 'L').resize( (int(W), int(H)), PIL.Image.NEAREST)))
     (H,W) = imorig.shape()
     im = im.rescale(0.5)
     assert im.shape() == (H /2, W /2)
-    imm = Image(array=im.mask() *255, colorspace='lum')
-    imm2 = Image(array=np.array(PIL.Image.fromarray(imorig.mask(), 'L').resize( (int(W /2), int(H /2)), PIL.Image.NEAREST))*255, colorspace='lum')
+    imm = Image(array=im.rectangular_mask() *255, colorspace='lum')
+    imm2 = Image(array=np.array(PIL.Image.fromarray(imorig.rectangular_mask(), 'L').resize( (int(W /2), int(H /2)), PIL.Image.NEAREST))*255, colorspace='lum')
     assert np.allclose(imm.array(), imm2.array(), rtol=1)    
     print('[test_image.scene]  rescale() PASSED')
 
     im = imorig.clone().resize(int(W /2), int(H /2))
     assert im.shape() == (H/2, W/2)
-    imm = Image(array=im.mask()*255, colorspace='lum')
-    imm2 = Image(array=np.array(PIL.Image.fromarray(imorig.mask(), 'L').resize( (int(W /2), int(H /2)), PIL.Image.NEAREST))*255, colorspace='lum')
+    imm = Image(array=im.rectangular_mask()*255, colorspace='lum')
+    imm2 = Image(array=np.array(PIL.Image.fromarray(imorig.rectangular_mask(), 'L').resize( (int(W /2), int(H /2)), PIL.Image.NEAREST))*255, colorspace='lum')
     assert np.allclose(imm.array(), imm2.array(), rtol=1)
 
     im = imorig.clone().resize(rows=int(H /2))
     assert im.shape() == (H/2, W/2)
-    imm = Image(array=im.mask()*255, colorspace='lum')
-    imm2 = Image(array=np.array(PIL.Image.fromarray(imorig.mask(), 'L').resize( (int(W /2), int(H /2)), PIL.Image.NEAREST))*255, colorspace='lum')
+    imm = Image(array=im.rectangular_mask()*255, colorspace='lum')
+    imm2 = Image(array=np.array(PIL.Image.fromarray(imorig.rectangular_mask(), 'L').resize( (int(W /2), int(H /2)), PIL.Image.NEAREST))*255, colorspace='lum')
     assert np.allclose(imm.array(), imm2.array(), rtol=1)        
     print('[test_image.scene]: resize() PASSED')
 
     im = imorig.clone().fliplr()
     assert im.shape() == (H, W)
-    imm = Image(array=im.mask() *255, colorspace='lum')
-    imm2 = Image(array=np.array(PIL.Image.fromarray(np.fliplr(imorig.mask()), 'L')) *255, colorspace='lum')
+    imm = Image(array=im.rectangular_mask() *255, colorspace='lum')
+    imm2 = Image(array=np.array(PIL.Image.fromarray(np.fliplr(imorig.rectangular_mask()), 'L')) *255, colorspace='lum')
     assert np.allclose(imm.array(), imm2.array(), rtol=1)        
     print('[test_image.scene]: fliplr() PASSED')
 
@@ -656,8 +656,8 @@ def test_scene():
     (h,w) = im.shape()
     im.zeropad(padwidth=100, padheight=200)
     assert (im.width() == w + 200 and im.height() == h + 400 and im.numpy()[0,0,0] == 0)
-    imm = Image(array=im.mask() *255, colorspace='lum')
-    imm2 = Image(array=np.array(PIL.Image.fromarray(np.pad(imorigclip.mask(),
+    imm = Image(array=im.rectangular_mask() *255, colorspace='lum')
+    imm2 = Image(array=np.array(PIL.Image.fromarray(np.pad(imorigclip.rectangular_mask(),
                                                            pad_width=((200,200),(100,100)),
                                                            mode='constant',
                                                            constant_values=0), 'L')) *255, colorspace='lum')
@@ -666,8 +666,8 @@ def test_scene():
     (h,w) = im.shape()
     im.zeropad((0,100), (0,200))
     assert (im.width() == w + 100 and im.height() == h + 200 and im.numpy()[0,0,0] != 0)
-    imm = Image(array=im.mask() *255, colorspace='lum')
-    imm2 = Image(array=np.array(PIL.Image.fromarray(np.pad(imorigclip.mask(),
+    imm = Image(array=im.rectangular_mask() *255, colorspace='lum')
+    imm2 = Image(array=np.array(PIL.Image.fromarray(np.pad(imorigclip.rectangular_mask(),
                                                            pad_width=((0,200),(0,100)),
                                                            mode='constant',
                                                            constant_values=0), 'L')) *255, colorspace='lum')

@@ -1133,7 +1133,7 @@ class ImageDetection(ImageCategory):
             super(ImageDetection, self).show(figure=figure, nowindow=nowindow)
         return self
 
-    def mask(self, W=None, H=None):
+    def rectangular_mask(self, W=None, H=None):
         """Return a binary array of the same size as the image (or using the
         provided image width and height (W,H) size to avoid an image load),
         with ones inside the bounding box, do not modify this image or this bounding box"""
@@ -1345,7 +1345,7 @@ class Scene(ImageCategory):
         return self
         
     # Image export
-    def mask(self, W=None, H=None):
+    def rectangular_mask(self, W=None, H=None):
         """Return a binary array of the same size as the image (or using the
         provided image width and height (W,H) size to avoid an image load),
         with ones inside the bounding box"""
@@ -1440,7 +1440,7 @@ class Batch(object):
     def __getattr__(self, attr):
         """Call the same method on all Image objects.  The called method must return the image object."""
         assert hasattr(self._imlist[0], attr), "Invalid attribute"
-        assert attr not in set(['show', 'saveas', 'savefig', 'mask']), "Invalid attribute"
+        assert attr not in set(['show', 'saveas', 'savefig', 'rectangular_mask']), "Invalid attribute"
         assert attr[0:2] != 'is' and attr[0:3] != 'has', "Invalid attribute"
         return lambda *args, **kw: self.list([getattr(im,attr)(*args, **kw) for im in self._imlist])
 
