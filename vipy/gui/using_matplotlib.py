@@ -199,7 +199,7 @@ def colorlist():
               set(['whitesmoke', 'gainsboro', 'w', 'floralwhite', 'lightgoldenrodyellow', 'ghostwhite', 'white', 'mistyrose',
                    'seashell', 'ivory', 'honeydew', 'azure', 'lavenderblush', 'beige', 'mintcream', 'lightcyan',
                    'snow', 'gainsboro', 'linen', 'antiquewhite', 'papayawhip', 'oldlace', 'cornsilk', 'palegoldenrod',
-                   'lightyellow', 'aliceblue', 'yellow', 'sandybrown', 'orange', 'moccasin'])]  # https://matplotlib.org/3.1.0/gallery/color/named_colors.html
+                   'lightyellow', 'aliceblue', 'yellow', 'sandybrown', 'orange', 'moccasin', 'bisque'])]  # https://matplotlib.org/3.1.0/gallery/color/named_colors.html
     colors = [x for x in colors if 'light' not in x]
     return colors
 

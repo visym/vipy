@@ -47,7 +47,7 @@ class Detection(BoundingBox):
 
     def dict(self):
         return {'id':self._id, 'label':self.category(), 'shortlabel':self.shortlabel() ,'boundingbox':super(Detection, self).dict(),
-                'attributes':{k:(v.dict() if isinstance(v, Track) or isinstance(v, Activity) else v) for (k,v) in self.attributes.items()},
+                'attributes':self.attributes,  # these may be arbitrary user defined objects
                 'confidence':self._confidence}
     
     def category(self, category=None):
@@ -296,7 +296,7 @@ class Activity(object):
 
     def dict(self):
         return {'id':self._id, 'label':self.category(), 'shortlabel':self.shortlabel(), 'startframe':self._startframe, 'endframe':self._endframe, 'attributes':self.attributes, 'framerate':self._framerate,
-                'objectids':[o for o in self._objectids]}
+                'trackids':[o for o in self._objectids]}
     
     def startframe(self):
         return self._startframe

@@ -1147,7 +1147,7 @@ class ImageDetection(ImageCategory):
         return immask
 
     def setzero(self, bbox=None):
-        """Set all image values within the bounding box to zero"""
+        """Set all image values within the bounding box (or provided bbox) to zero"""
         if bbox is not None:
             assert isinstance(bbox, BoundingBox), "Invalid bounding box"
         bbox = self.bbox if bbox is None else bbox
@@ -1228,7 +1228,7 @@ class Scene(ImageCategory):
     def __getitem__(self, k):
         """Return the kth object in the scene as an ImageDetection"""
         obj = self._objectlist[k]
-        return (ImageDetection(array=self.array(), filename=self.filename(), url=self.url(), colorspace=self.colorspace(), bbox=obj, category=obj.category()))
+        return (ImageDetection(array=self.array(), filename=self.filename(), url=self.url(), colorspace=self.colorspace(), bbox=obj, category=obj.category(), attributes=obj.attributes))
 
     def dict(self):
         d = super(Scene, self).dict()
