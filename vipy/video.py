@@ -45,7 +45,7 @@ class Video(object):
     Note that the video transformations (clip, resize, rescale, rotate) are only available prior to load(), and the array() is assumed immutable after load().
 
     """
-    def __init__(self, filename=None, url=None, framerate=None, attributes=None, array=None, colorspace=None):
+    def __init__(self, filename=None, url=None, framerate=None, attributes=None, array=None, colorspace=None, startframe=None, endframe=None, startsec=None, endsec=None):
         self._url = None
         self._filename = None
         self._array = None
@@ -56,7 +56,13 @@ class Video(object):
         self.attributes = attributes if attributes is not None else {}
         assert filename is not None or url is not None or array is not None, 'Invalid constructor - Requires "filename", "url" or "array"'
 
-        # Input
+        # Constructor clips
+        assert (startframe is not None and endframe is not None) or (startframe is None and endframe is None), "Invalid input - (startframe,endframe) are both required"
+        assert (startsec is not None and endsec is not None) or (startsec is None and endsec is None), "Invalid input - (startsec,endsec) are both required"        
+        (self._startframe, self._endframe) = (startframe, endframe)
+        (self._startsec, self._endsec) = (startsec, endsec)
+        
+        # Input filenames
         if url is not None:
             assert isurl(url), 'Invalid URL "%s" ' % url
             self.url(url)
@@ -69,16 +75,18 @@ class Video(object):
                 self._filename = os.path.join(tempdir(), '%s' % self._url.split('?')[1])
             if 'VIPY_CACHE' in os.environ and self._filename is not None:
                 self._filename = os.path.join(remkdir(os.environ['VIPY_CACHE']), filetail(self._filename))
-        if array is not None:
-            self.array(array)
-            self.colorspace(colorspace)
-            
+
         # Video filter chain
-        self._ffmpeg = ffmpeg.input(self.filename())        
+        self.flush()  
         if framerate is not None:
             self.framerate(framerate)
             self._framerate = framerate
-            
+
+        # Array input (must come after flush())
+        if array is not None:
+            self.array(array)
+            self.colorspace(colorspace)
+                    
     def __repr__(self):
         strlist = []
         if self.isloaded():
@@ -112,6 +120,11 @@ class Video(object):
             for k in range(0, len(self)):
                 yield self.__getitem__(k)
 
+    def probe(self):
+        """Run ffprobe on the filename and return the result as a JSON file"""
+        assert self.hasfilename(), "Invalid video file '%s' for ffprobe" % self.filename() 
+        return ffmpeg.probe(self.filename())
+    
     def stream(self):
         # FIXME: Streaming video access for large videos that will not fit into memory
         # https://github.com/kkroening/ffmpeg-python/blob/master/examples/README.md
@@ -236,9 +249,14 @@ class Video(object):
         return self._array
 
     def flush(self):
+        """Flush the video buffer and restore video filters to the defaults set by constructor"""
         self._array = None
         self._ffmpeg = ffmpeg.input(self.filename())  # restore, no other filters
-        return self
+        if self._startframe is not None and self._endframe is not None:
+            self.clip(self._startframe, self._endframe)
+        if self._startsec is not None and self._endsec is not None:
+            self.cliptime(self._startsec, self._endsec)
+        return self        
 
     def reload(self):
         return self.flush().load()
@@ -250,7 +268,7 @@ class Video(object):
         else:
             # set filename and return object
             self._filename = newfile
-            self.flush()  # update self._ffmpeg object
+            self.flush()   # need to flush to update ffmpeg.input() node with new filename 
             return self
 
     def download(self, ignoreErrors=False, timeout=10, verbose=False):
@@ -272,6 +290,7 @@ class Video(object):
                         if os.path.exists(f):
                             os.symlink(f, self.filename())  # file extension not known until download(), symlink for caching
                             self.filename(f)
+                            
                     if not self.hasfilename():
                         raise ValueError('Downloaded file not found "%s.*"' % self.filename())
             elif url_scheme in ['http', 'https']:
@@ -368,7 +387,7 @@ class Video(object):
         # Increase filter chain from load() kwargs
         assert (startframe is not None and startframe is not None) or (startframe is None and endframe is None), "(startframe, endframe) must both be provided"
         if startframe is not None and endframe is not None:   
-            self.trim(startframe, endframe)  # trim first
+            self.clip(startframe, endframe)  # clip first
         assert not (rescale is not None and mindim is not None), "mindim and rescale cannot both be provided, choose one or the other, or neither"            
         if mindim is not None:
             self.mindim(mindim)   # resize second
@@ -391,23 +410,23 @@ class Video(object):
         self._array = np.frombuffer(out, np.uint8).reshape([-1, height, width, channels])  # read-only
         self.colorspace('rgb' if channels == 3 else 'lum')
         return self
-
+    
     def clip(self, startframe, endframe):
-        """Load a video clip betweeen start and end frames"""
+        """Load a video clip betweeen start and end frames, should be initialized by constructor to avoid chaining clips(), which will work but not set __repr__ correctly"""
         assert startframe <= endframe and startframe >= 0, "Invalid start and end frames (%s, %s)" % (str(startframe), str(endframe))
         assert not self.isloaded(), "Filters can only be applied prior to loading; flush() the video first"
         self._ffmpeg = self._ffmpeg.trim(start_frame=startframe, end_frame=endframe)\
                                    .setpts('PTS-STARTPTS')  # reset timestamp to 0 after trim filter
         return self
 
-    def trim(self, startframe, endframe):
-        """Alias for clip"""
-        assert startframe <= endframe and startframe >= 0, "Invalid start and end frames"
-        assert not self.isloaded(), "Filters can only be applied prior to loading; flush() the video first then reload"
-        self._ffmpeg = self._ffmpeg.trim(start_frame=startframe, end_frame=endframe)\
+    def cliptime(self, startsecs, endsecs):
+        """Load a video clip betweeen start seconds and end seconds, should be initialized by constructor, which will work but will not set __repr__ correctly"""
+        assert startsecs <= endsecs and startsecs >= 0, "Invalid start and end seconds (%s, %s)" % (str(startsecs), str(endsecs))
+        assert not self.isloaded(), "Filters can only be applied prior to loading; flush() the video first"
+        self._ffmpeg = self._ffmpeg.trim(start=startsecs, end=endsecs)\
                                    .setpts('PTS-STARTPTS')  # reset timestamp to 0 after trim filter
         return self
-
+    
     def rot90cw(self):
         """Rotate the video 90 degrees clockwise, can only be applied prior to load()"""
         assert not self.isloaded(), "Filters can only be applied prior to loading; flush() the video first then reload"
@@ -453,7 +472,7 @@ class Video(object):
         self._ffmpeg = self._ffmpeg.crop(bb.xmin(), bb.ymin(), bb.width(), bb.height())
         return self
 
-    def saveas(self, outfile, framerate=30, vcodec='libx264', verbose=False):
+    def saveas(self, outfile, framerate=25, vcodec='libx264', verbose=False):
         """Save video to new output video file.  This function does not draw boxes, it saves pixels to a new video file.
         If self.array() is loaded, then export the contents of self._array to the video file
         If self.array() is not loaded, and there exists a valid video file, apply the filter chain directly to the input video
@@ -493,21 +512,22 @@ class Video(object):
 
     def play(self, verbose=True):
         """Play the saved video filename in self.filename() using the system 'ffplay', if there is no filename, try to download it or try saveas(tempMP4())"""
+        f = self.filename()
         if not self.isdownloaded():
-            self.download()
+            f = self.download().filename()            
         if not self.hasfilename():
             if verbose:
                 print('[vipy.video.play]: Saving video to temporary file "%s"' % f)            
             f = self.saveas(tempMP4())
-        cmd = "ffplay %s" % f
+        cmd = "ffplay %s" % f            
         if verbose:
             print('[vipy.video.play]: Executing "%s"' % cmd)
         os.system(cmd)
         return self
 
     def show(self):
-        """Alias for play()"""
-        return self.play()
+        """Export loaded video to tempfile and play()"""
+        return os.system('ffplay %s' % self.saveas(tempMP4()))
     
     def torch(self, take=None):
         """Convert the loaded video to an NxCxHxW torch tensor, forces a load()"""
@@ -544,15 +564,16 @@ class Video(object):
     
 class VideoCategory(Video):
     """vipy.video.VideoCategory class
-    """
-    def __init__(self, filename=None, url=None, framerate=30, attributes=None, category=None, startframe=None, endframe=None, array=None, colorspace=None):
-        super(VideoCategory, self).__init__(url=url, filename=filename, framerate=framerate, attributes=attributes, array=array, colorspace=colorspace)
-        self._category = category
-        if startframe is not None and endframe is not None:
-            self._startframe = startframe
-            self._endframe = endframe
-            self.trim(startframe, endframe)
 
+    A VideoCategory is a video with associated category, such as an activity class.  This class includes all of the constructors of vipy.video.Video 
+    along with the ability to extract a clip based on frames or seconds.
+
+    """
+    def __init__(self, filename=None, url=None, framerate=25, attributes=None, category=None, array=None, colorspace=None, startframe=None, endframe=None, startsec=None, endsec=None):
+        super(VideoCategory, self).__init__(url=url, filename=filename, framerate=framerate, attributes=attributes, array=array, colorspace=colorspace,
+                                            startframe=startframe, endframe=endframe, startsec=startsec, endsec=endsec)
+        self._category = category                
+        
     def __repr__(self):
         strlist = []
         if self.isloaded():
@@ -565,6 +586,8 @@ class VideoCategory(Video):
             strlist.append('category="%s"' % self.category())
         if not self.isloaded() and self._startframe is not None:
             strlist.append('clip=(%d,%d)' % (self._startframe, self._endframe))
+        if not self.isloaded() and self._startsec is not None:
+            strlist.append('cliptime=(%1.2f,%1.2f)' % (self._startsec, self._endsec))
         return str('<vipy.video.VideoCategory: %s>' % (', '.join(strlist)))
 
     def dict(self):
@@ -578,8 +601,8 @@ class VideoCategory(Video):
         else:
             self._category = c
             return self
-    
 
+    
 class Scene(VideoCategory):
     """ vipy.video.Scene class
 
@@ -620,8 +643,10 @@ class Scene(VideoCategory):
 
     """
         
-    def __init__(self, filename=None, url=None, framerate=None, array=None, colorspace=None, category=None, tracks=None, activities=None, attributes=None):
-        super(Scene, self).__init__(url=url, filename=filename, framerate=None, attributes=attributes, array=array, colorspace=colorspace, category=category)
+    def __init__(self, filename=None, url=None, framerate=None, array=None, colorspace=None, category=None, tracks=None, activities=None,
+                 attributes=None, startframe=None, endframe=None, startsec=None, endsec=None):
+        super(Scene, self).__init__(url=url, filename=filename, framerate=None, attributes=attributes, array=array, colorspace=colorspace,
+                                    category=category, startframe=startframe, endframe=endframe, startsec=startsec, endsec=endsec)
 
         self.tracks = {}
         if tracks is not None:
@@ -649,7 +674,11 @@ class Scene(VideoCategory):
         if self.hasurl():
             strlist.append('url="%s"' % self.url())
         if self._framerate is not None:
-            strlist.append('fps=%s' % str(self._framerate))            
+            strlist.append('fps=%s' % str(self._framerate))
+        if not self.isloaded() and self._startframe is not None:
+            strlist.append('clip=(%d,%d)' % (self._startframe, self._endframe))
+        if not self.isloaded() and self._startsec is not None:
+            strlist.append('cliptime=(%1.2f,%1.2f)' % (self._startsec, self._endsec))            
         if self.category() is not None:
             strlist.append('category="%s"' % self.category())
         if len(self.tracks) > 0:
@@ -756,20 +785,16 @@ class Scene(VideoCategory):
         """Return annotated frame of video, save annotation visualization to provided outfile"""
         return self.__getitem__(frame).savefig(outfile if outfile is not None else temppng())
             
-    def trim(self, startframe, endframe):
-        """FIXME: the startframe and endframe should be set by the constructor if no arguments since this is set by the annotator"""
-        super(Scene, self).trim(startframe, endframe)
+    def clip(self, startframe, endframe):
+        """Clip the video to between (startframe, endframe).  This should really only be initialized by constructor, will work but will not set __repr__ correctly"""
+        super(Scene, self).clip(startframe, endframe)
         self.tracks = {k:t.offset(dt=-startframe) for (k,t) in self.tracks.items()}
         self.activities = {k:a.offset(dt=-startframe) for (k,a) in self.activities.items()}        
         return self
 
-    def clip(self, startframe, endframe):
-        """Alias for trim"""
-        super(Scene, self).trim(startframe, endframe)
-        self.tracks = {k:t.offset(dt=-startframe) for (k,t) in self.tracks.items()}
-        self.activities = {k:a.offset(dt=-startframe) for (k,a) in self.activities.items()}                
-        return self
-
+    def cliptime(self, startsec, endsec):
+        raise NotImplementedError('use clip() instead')
+    
     def crop(self, bb):
         """Crop the video using the supplied box, update tracks relative to crop, tracks may be outside the image rectangle"""
         assert not self.isloaded(), "Filters can only be applied prior to loading; flush() the video first then reload"                

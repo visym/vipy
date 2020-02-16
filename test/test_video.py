@@ -119,7 +119,7 @@ def _test_scene():
     # Downloader
     v = vipy.video.Video(url='http://visym.com/out.mp4').load(ignoreErrors=True)
     print('[test_video.video]: download ignoreErrors  PASSED')                
-    v = vipy.video.Scene(url=mp4url).trim(0,100).load()
+    v = vipy.video.Scene(url=mp4url).clip(0,100).load()
     print('[test_video.scene: download  PASSED')        
     for im in v:
         assert im.shape() == v.shape()
@@ -167,50 +167,50 @@ def _test_scene():
     assert np.allclose(vid.clone().load(startframe=3, endframe=12, rescale=0.2).array(), vid.clone().clip(3,12).rescale(0.2).load().array())
     print('[test_video.scene]:  load: PASSED')
     
-    v = vid.clone().trim(0,10).load()
+    v = vid.clone().clip(0,10).load()
     assert len(v) == 10
-    v.flush().trim(10,20).load()
+    v.flush().clip(10,20).load()
     assert len(v) == 10
     print('[test_video.scene]:  trim: PASSED')
 
     (h,w) = v.shape()
-    v = vid.clone().trim(0,10).rot90ccw().load()
+    v = vid.clone().clip(0,10).rot90ccw().load()
     assert v.width() == h and v.height() == w and len(v) == 10
     assert [im.crop().height() for im in v[0]] == [200, 300]
     print('[test_video.scene]: rot90ccw  PASSED')
 
-    v = vid.clone().trim(0,10).rot90cw().load()
+    v = vid.clone().clip(0,10).rot90cw().load()
     assert v.width() == h and v.height() == w and len(v) == 10
     assert [im.crop().height() for im in v[0]] == [200, 300]    
     print('[test_video.scene]: rot90cw  PASSED')
 
-    v = vid.clone().trim(0,10).rescale(0.5).load(verbosity=0)
+    v = vid.clone().clip(0,10).rescale(0.5).load(verbosity=0)
     assert v.height() * 2 == h and v.width() * 2 == w and len(v) == 10
     assert [im.crop().height() for im in v[0]] == [200, 200]
     assert [im.crop().width() for im in v[0]] == [100, 150]        
     print('[test_video.scene]: rescale  PASSED')
 
-    (H,W) = vid.clone().trim(0,200).load(verbosity=0).shape()
-    v = vid.clone().trim(0,200).resize(cols=100).load(verbosity=0)    
+    (H,W) = vid.clone().clip(0,200).load(verbosity=0).shape()
+    v = vid.clone().clip(0,200).resize(cols=100).load(verbosity=0)    
     assert v.width() == 100 and len(v) == 200
     assert np.allclose([im.bbox.height() for im in v[0]], [400*(100.0/W), 400*(100.0/W)])
     assert np.allclose([im.bbox.width() for im in v[0]], [200*(100.0/W), 300*(100.0/W)])
     print('[test_video.scene]: resize isotropic  PASSED')
     
-    v = vid.clone().resize(cols=100, rows=100).trim(0,11).load(verbosity=0)    
+    v = vid.clone().resize(cols=100, rows=100).clip(0,11).load(verbosity=0)    
     assert v.width() == 100 and v.height() == 100 and len(v) == 11
     assert np.allclose([im.bbox.height() for im in v[0]], [400*(100.0/H), 400*(100.0/H)])
     assert np.allclose([im.bbox.width() for im in v[0]], [200*(100.0/W), 300*(100.0/W)])    
     print('[test_video.scene]: resize anisotropic   PASSED')
     
-    v = vid.clone().trim(0,200).rot90cw().resize(rows=200).load(verbosity=0)
+    v = vid.clone().clip(0,200).rot90cw().resize(rows=200).load(verbosity=0)
     assert v.height() == 200 and len(v) == 200
     print('[test_video.scene]: rotate and resize  PASSED')
     
     v.annotate('vipy.mp4')
     print('[test_video.scene]: annotate  PASSED')
 
-    v = vid.clone().trim(150,200).rot90cw().resize(rows=200).load(verbosity=0)
+    v = vid.clone().clip(150,200).rot90cw().resize(rows=200).load(verbosity=0)
     assert v.height() == 200 and len(v) == 50
     print('[test_video.scene]: trim, rotate, resize  PASSED')
 
