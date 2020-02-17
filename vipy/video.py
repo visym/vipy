@@ -376,8 +376,10 @@ class Video(object):
         """
         if self.isloaded():
             return self
-        elif not self.hasfilename() and not self.isloaded():
+        elif not self.hasfilename() and self.hasurl():
             self.download(ignoreErrors=ignoreErrors)
+        elif not self.hasfilename():
+            raise ValueError('Invalid input - load() requires a valid URL, filename or array')
         if not self.hasfilename() and ignoreErrors:
             print('[vipy.video.load]: Video file "%s" not found - Ignoring' % self.filename())
             return self
@@ -645,16 +647,17 @@ class Scene(VideoCategory):
         
     def __init__(self, filename=None, url=None, framerate=None, array=None, colorspace=None, category=None, tracks=None, activities=None,
                  attributes=None, startframe=None, endframe=None, startsec=None, endsec=None):
+
+        self.tracks = {}
+        self.activities = {}        
         super(Scene, self).__init__(url=url, filename=filename, framerate=None, attributes=attributes, array=array, colorspace=colorspace,
                                     category=category, startframe=startframe, endframe=endframe, startsec=startsec, endsec=endsec)
 
-        self.tracks = {}
         if tracks is not None:
             tracks = tracks if isinstance(tracks, list) or isinstance(tracks, tuple) else [tracks]  # canonicalize
             assert all([isinstance(t, vipy.object.Track) for t in tracks]), "Invalid track input; tracks=[vipy.object.Track(), ...]"
             self.tracks = {t.id():t for t in tracks}
 
-        self.activities = {}
         if activities is not None:
             activities = activities if isinstance(activities, list) or isinstance(activities, tuple) else [activities]  # canonicalize            
             assert all([isinstance(a, vipy.object.Activity) for a in activities]), "Invalid activity input; activities=[vipy.object.Activity(), ...]"
@@ -681,9 +684,9 @@ class Scene(VideoCategory):
             strlist.append('cliptime=(%1.2f,%1.2f)' % (self._startsec, self._endsec))            
         if self.category() is not None:
             strlist.append('category="%s"' % self.category())
-        if len(self.tracks) > 0:
+        if self.hastracks():
             strlist.append('objects=%d' % len(self.tracks))
-        if len(self.activities) > 0:
+        if self.hasactivities():
             strlist.append('activities=%d' % len(self.activities))
         return str('<vipy.video.scene: %s>' % (', '.join(strlist)))
 
@@ -712,7 +715,13 @@ class Scene(VideoCategory):
             self._currentframe = k            
             yield self.__getitem__(k)
         self._currentframe = None
-            
+
+    def hasactivities(self):
+        return len(self.activities) > 0
+
+    def hastracks(self):
+        return len(self.tracks) > 0
+
     def add(self, obj, category=None, attributes=None):
         """Add the object obj to the scene, and return an index to this object for future updates
         
@@ -777,10 +786,6 @@ class Scene(VideoCategory):
         self._framerate = fps
         return self
 
-    def tracks(self):
-        """Return a dictionary of tracked object instances in the video scene"""        
-        return self.tracks
-    
     def thumbnail(self, outfile=None, frame=0):
         """Return annotated frame of video, save annotation visualization to provided outfile"""
         return self.__getitem__(frame).savefig(outfile if outfile is not None else temppng())
