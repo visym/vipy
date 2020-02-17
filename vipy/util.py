@@ -676,6 +676,9 @@ def isurl(path):
     except:
         return False
 
+def shortuuid(n=16):
+    return hashlib.sha256(uuid.uuid1().hex.encode('utf-8')).hexdigest()[0:n] 
+
 
 def isimageurl(path):
     """Is a path a URL with image extension?"""
@@ -867,16 +870,12 @@ def isarchive(filename):
 
 
 def tempfilename(suffix):
-    fd, path = tempfile.mkstemp(suffix)
-    os.close(fd)
-    return path
+    """Create a temporary filename $TEMPDIR/$UUID.suffix, suffix should include the dot such as suffix='.jpg', """
+    return os.path.join(tempfile.gettempdir(), '%s%s' % (shortuuid(), suffix))
 
 
 def templike(filename):
-    suffix = fileext(filename)
-    fd, path = tempfile.mkstemp(suffix)
-    os.close(fd)
-    return path
+    return tempfilename(fileext(filename))
 
 
 def tempimage(ext='jpg'):
@@ -903,7 +902,7 @@ def tempjpg():
 
 def tempMP4():
     """Create a temporary MP4 file in system temp directory"""
-    return tempimage('mp4')
+    return tempfilename(suffix='.mp4')
 
 
 def tmpjpg():

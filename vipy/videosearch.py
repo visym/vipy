@@ -120,7 +120,7 @@ def download(vidurl, vidfile, skip=False, writeurlfile=True, max_filesize='350m'
     """Use youtube-dl to download a list of video URLs to video files"""
 
     if shutil.which('youtube-dl') is None:
-        raise ImportError('Missing youtube-dl - Run "pip install youtube-dl" ')
+        raise ImportError('Optional package "youtube-dl" not installed -  Run "pip install youtube-dl"')
 
     try:
         print('[vipy.videosearch.download]: saving "%s" to "%s"' % (vidurl, vidfile))
