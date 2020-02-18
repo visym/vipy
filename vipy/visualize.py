@@ -9,12 +9,29 @@ import time
 import PIL
 
 
-def montage(imset, imgheight, imgwidth, gridrows=None, gridcols=None, aspectratio=1, crop=False, skip=True, do_plot=False, figure=None, border=0, border_bgr=(128,128,128), do_flush=False, verbose=False):
-    """Montage image of images of grid size (gridrows,gridcols), such that montage has given aspect ratio  or is exactly (rows x cols).  Pass in iterable of imagedetection objects which is used to montage rowwise"""
+def montage(imlist, imgheight, imgwidth, gridrows=None, gridcols=None, aspectratio=1, crop=False, skip=True, border=0, border_bgr=(128,128,128), do_flush=False, verbose=False):
+    """Create a montage image from the of provided list of vipy.image.Image objects.
+
+       Inputs:
+         * imlist: iterable of vipy.image.Image objects which is used to montage rowwise
+         * (imgheight, imgwidth):  the size of each individual image in the grid
+         * (gridrows, gridheight):  The number of images per row, and number of images per column.  This defines the montage shape.
+         * aspectratio.  This is an optional parameter which defines the shape of the montage without specifying the gridrows, gridcols input
+         * crop=[True|False]:  Whether the vipy.image.Image objects should call crop(), which will trigger a load
+         * skip=[True|False]:  Whether images should be skipped on failure to load(), useful for lazy downloading
+         * border:  a border of size in pixels surrounding each image in the grid
+         * border_bgr:  the border color in a bgr color tuple (b, g, r) in [0,255], uint8
+         * do_flush=[True|False]:  flush the loaded images as garbage collection for large montages
+         * verbose=[True|False]:  display optional verbose messages
+
+       Outputs:
+         * Return the img_montage which is of size (gridrows*(imgheight + 2*border), gridcols*(imgwidth+2*border)), the type is specificed by the imlist input
+    
+    """
 
     (m,n) = (imgheight, imgwidth)
     (rows,cols) = (gridrows, gridcols)
-    n_imgs = len(imset)
+    n_imgs = len(imlist)
     M = int(np.ceil(np.sqrt(n_imgs)))
     N = M
     if aspectratio != 1:
@@ -36,17 +53,17 @@ def montage(imset, imgheight, imgwidth, gridrows=None, gridcols=None, aspectrati
             sliceM, sliceN = i * (m + border) + border, j * (n + border) + border
             try:
                 if crop:
-                    if imset[k].bbox.valid() is False:
-                        print('[vipy.visualize.montage] invalid bounding box "%s" ' % str(imset[k].bbox))
+                    if imlist[k].bbox.valid() is False:
+                        print('[vipy.visualize.montage] invalid bounding box "%s" ' % str(imlist[k].bbox))
                         if skip is False:
                             print('[vipy.visualize.montage] using original image')
-                            im = imset[k].rgb().resize(n,m).array()
+                            im = imlist[k].rgb().resize(n,m).array()
                         else:
                             raise
                     else:
-                        im = imset[k].rgb().crop().resize(n,m).array()
+                        im = imlist[k].rgb().crop().resize(n,m).array()
                 else:
-                    im = imset[k].rgb().resize(n,m).array()
+                    im = imlist[k].rgb().resize(n,m).array()
 
                 img_montage[sliceN:sliceN + n, sliceM:sliceM + m] = im
 
@@ -60,7 +77,7 @@ def montage(imset, imgheight, imgwidth, gridrows=None, gridcols=None, aspectrati
                     raise
 
             if do_flush:
-                imset[k].flush()  # clear memory
+                imlist[k].flush()  # clear memory
             if verbose and ((k % 100) == 0):
                 print('[vipy.visualize.montage][%d/%d] processing...' % (k, n_imgs))
 
@@ -68,10 +85,6 @@ def montage(imset, imgheight, imgwidth, gridrows=None, gridcols=None, aspectrati
 
     if k == 0:
         print('[vipy.visualize.montage] Warning: No images were processed')
-
-    if do_plot is True:
-        im = Image(array=img_montage, colorspace='rgb')
-        im.show(figure=figure)
 
     return img_montage
 

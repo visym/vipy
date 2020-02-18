@@ -10,7 +10,7 @@ class Kinetics700(object):
         """Kinetics, provide a datadir='/path/to/store/kinetics' """
         self.datadir = remkdir(datadir)
         self._url = 'https://storage.googleapis.com/deepmind-media/Datasets/kinetics700.tar.gz'
-        self._name = 'Kinetics700'
+        self._name = 'kinetics700'
 
     def __repr__(self):
         return str('<vipy.dataset.%s: "%s/%s">' % (self._name, self.datadir, self._name))
@@ -47,7 +47,7 @@ class Kinetics600(Kinetics700):
         """Kinetics, provide a datadir='/path/to/store/kinetics' """
         self.datadir = remkdir(datadir)
         self._url = 'https://storage.googleapis.com/deepmind-media/Datasets/kinetics600.tar.gz'
-        self._name = 'Kinetics600'
+        self._name = 'kinetics600'
 
 
 class Kinetics400(Kinetics700):
@@ -55,4 +55,4 @@ class Kinetics400(Kinetics700):
         """Kinetics, provide a datadir='/path/to/store/kinetics' """
         self.datadir = remkdir(datadir)
         self._url = 'https://storage.googleapis.com/deepmind-media/Datasets/kinetics400.tar.gz'
-        self._name = 'Kinetics400'
+        self._name = 'kinetics400'
