@@ -550,6 +550,10 @@ class Image(object):
         N = int(np.min(self.shape()))
         return self._crop(BoundingBox(xcentroid=self.width() / 2.0, ycentroid=self.height() / 2.0, width=N, height=N))
 
+    def centercrop(self, height, width):
+        """Crop image of size (height x width) in the center, keeping the image centroid constant"""
+        return self._crop(BoundingBox(xcentroid=self.width() / 2.0, ycentroid=self.height() / 2.0, width=width, height=height))
+
     def _crop(self, bbox):
         """Crop the image buffer using the supplied bounding box object, clipping the box to the image rectangle"""
         assert isinstance(bbox, BoundingBox) and bbox.valid(), "Invalid vipy.geometry.BoundingBox() input"""
@@ -1086,7 +1090,7 @@ class ImageDetection(ImageCategory):
 
     def mindim(self, dim):
         """Resize image preserving aspect ratio so that minimum dimension of image = dim"""
-        self = super(ImageDetection, self).mindim(dim)  # calls self.rescale() which will update boxes
+        return super(ImageDetection, self).mindim(dim)  # calls self.rescale() which will update boxes
 
     def maxdim(self, dim):
         """Resize image preserving aspect ratio so that maximum dimension of image = dim"""        
