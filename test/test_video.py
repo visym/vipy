@@ -3,7 +3,7 @@ import numpy as np
 import vipy.video
 import vipy.videosearch
 import vipy.object
-from vipy.util import tempjpg, tempdir, Failed, isurl
+from vipy.util import tempjpg, tempdir, Failed, isurl, rmdir
 from vipy.geometry import BoundingBox
 import pdb
 from vipy.dataset.kinetics import Kinetics400, Kinetics600, Kinetics700
@@ -13,28 +13,6 @@ from vipy.object import Detection, Track, Activity
 
 mp4file = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'Video.mp4')
 mp4url = 'https://www.youtube.com/watch?v=PYOSKYWg-5E'
-
-
-def _test_dataset():
-    d = Kinetics400('/tmp/kinetics').download().trainset()
-    v = d[0].load()[0].resize(rows=256).saveas('kinetics.jpg')
-    print('[test_datasets]:  Kinetics400 PASSED')
-    
-    d = Kinetics600('/tmp/kinetics').download().trainset()
-    v = d[1].load()[0].resize(rows=256).saveas('kinetics.jpg')
-    print('[test_datasets]:  Kinetics600 PASSED')
-    
-    d = Kinetics700('/tmp/kinetics').download().trainset()
-    v = d[2].load()[0].rescale(0.5).saveas('kinetics.jpg')
-    print('[test_datasets]:  Kinetics700 PASSED')
-    
-    d = ActivityNet('/tmp/activitynet').download().dataset()
-    v = d[0].load()
-    print('[test_datasets]:  ActivityNet  PASSED')
-    
-    d = LFW('/tmp/lfw').download().dataset()
-    d[0].saveas('lfw.jpg')
-    print('Video.datasets: PASSED')
 
 
 def test_video():
@@ -300,4 +278,3 @@ def _test_scene():
 if __name__ == "__main__":
     test_video()
     _test_scene()
-    _test_dataset()    

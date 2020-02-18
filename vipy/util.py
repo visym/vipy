@@ -134,7 +134,7 @@ def rmdir(indir):
     exists)"""
     if os.path.exists(indir) and os.path.isdir(indir):
         shutil.rmtree(indir)
-
+    return indir
 
 def chunklist(inlist, num_chunks):
     """Convert list into a list of lists of length num_chunks each element
