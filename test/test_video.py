@@ -10,6 +10,8 @@ from vipy.dataset.kinetics import Kinetics400, Kinetics600, Kinetics700
 from vipy.dataset.activitynet import ActivityNet
 from vipy.dataset.lfw import LFW
 from vipy.object import Detection, Track, Activity
+import shutil
+
 
 mp4file = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'Video.mp4')
 mp4url = 'https://www.youtube.com/watch?v=PYOSKYWg-5E'
@@ -273,8 +275,28 @@ def _test_scene():
     vorig = v.clone().flush().filename('Video.mp4')
     assert vorig.clone().clip(50,100)[0] == vorig.clone()[50]
     print('[test_video.scene]: video scenes  PASSED')    
-    
-    
+
+    # Activityclip
+    v = vipy.video.RandomSceneActivity(64,64,64)
+    activitylength = [len(a) for a in v.activities()]
+    assert all([len(c.activities())==1 for c in v.activityclip()])    
+    assert all([len(a)==al for (c,al) in zip(v.activityclip(padframes=0), activitylength) for a in c.activities()])
+    try:
+        v.activityclip(padframes=2)  # will result in startframe < 0
+        Failed()
+    except Failed:
+        raise
+    except:
+        pass
+    print('[test_video.scene]: activityclip  PASSED')    
+
+    # Saveas 
+    shutil.copy('Video.mp4', '/tmp/Video.mp4')
+    v = vipy.video.Video(filename='/tmp/Video.mp4', startframe=0, endframe=10)
+    v.save()
+    assert v.hasfilename() and os.path.getsize('Video.mp4') != os.path.getsize(v.filename())
+    print('[test_video.scene]: saveas()  PASSED')    
+
 if __name__ == "__main__":
     test_video()
     _test_scene()
