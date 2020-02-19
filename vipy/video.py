@@ -715,7 +715,9 @@ class Scene(VideoCategory):
             for d in dets:
                 for (aid, a) in self._activities.items():
                     if a.hastrack(d.attributes['track']) and a.during(k):
-                        # Short label is displayed as "Noun Verb" during activity (e.g. Person Carry, Object Carry)
+                        # Shortlabel is displayed as "Noun Verb" during activity (e.g. Person Carry, Object Carry)
+                        # Category is set to activity label during activity (e.g. all tracks in this activity have same color)
+                        d.category(a.category())  # category label defines colors, see d.attributes['track'] for original labels 
                         d.shortlabel('%s %s' % (d.shortlabel(), a.shortlabel()))  # see d.attributes['track'] for original labels
                         if 'activity' not in d.attributes:
                             d.attributes['activity'] = []                            

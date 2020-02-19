@@ -25,6 +25,7 @@ import matplotlib.pyplot as plt
 from itertools import groupby as itertools_groupby
 import importlib
 import pathlib
+import socket
 
 
 def try_import(package, pipname=None):
@@ -380,6 +381,15 @@ def load(infile):
     return loadas(infile, type='dill')
 
 
+def scpsave(infile):
+    return 'scp://%s:%s' % (socket.gethostname(), save(infile))
+
+
+def scpload(url):
+    import vipy.downloader
+    return load(vipy.downloader.scp(url, templike(url)))
+
+                
 def save(vars, outfile=None, mode=None):
     """Save variables as a dill pickled file"""
     outfile = temppickle() if outfile is None else outfile
