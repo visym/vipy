@@ -119,12 +119,12 @@ def liveleak(tag, n_pages=1):
 def download(vidurl, vidfile, skip=False, writeurlfile=True, max_filesize='350m', remove_parts=True):
     """Use youtube-dl to download a list of video URLs to video files"""
 
-    if shutil.which('youtube-dl') is None:
+    ydl_exe = os.path.join(os.environ['VIRTUAL_ENV'], 'bin', 'youtube-dl') if 'VIRTUAL_ENV' in os.environ else shutil.which('youtube-dl') 
+    if not os.path.exists(ydl_exe):
         raise ImportError('Optional package "youtube-dl" not installed -  Run "pip install youtube-dl"')
-
     try:
         print('[vipy.videosearch.download]: saving "%s" to "%s"' % (vidurl, vidfile))
-        erno = os.system('youtube-dl -q "%s" -o %s --max-filesize %s --no-check-certificate' % (vidurl, vidfile, max_filesize))  # must be on path
+        erno = os.system('%s -q "%s" -o %s --max-filesize %s --no-check-certificate' % (ydl_exe, vidurl, vidfile, max_filesize))  # must be on path
         if erno != 0:
             raise ValueError('youtube-dl returned %d' % erno)
         if os.path.isfile(vidfile):
