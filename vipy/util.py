@@ -24,6 +24,8 @@ import PIL
 import matplotlib.pyplot as plt
 from itertools import groupby as itertools_groupby
 import importlib
+import pathlib
+import yaml
 
 
 def try_import(package, pipname=None):
@@ -32,6 +34,26 @@ def try_import(package, pipname=None):
         importlib.import_module(package)
     except:
         raise ImportError('Optional package "%s" not installed -  Run "pip install %s" ' % (package, package if pipname is None else pipname))
+
+
+def findyaml(basedir):
+    """Return a list of absolute paths to yaml files recursively discovered by walking the directory tree rooted at basedir"""
+    return [str(path.resolve()) for path in pathlib.Path(basedir).rglob('*.yml')]
+
+
+def findjson(basedir):
+    """Return a list of absolute paths to json files recursively discovered by walking the directory tree rooted at basedir"""
+    return [str(path.resolve()) for path in pathlib.Path(basedir).rglob('*.json')]
+
+def findvideo(basedir):
+    """Return a list of absolute paths to json files recursively discovered by walking the directory tree rooted at basedir"""
+    return [str(path.resolve()) for path in pathlib.Path(basedir).rglob('*') if isvideo(str(path.resolve()))]
+    
+
+def readyaml(yamlfile):
+    """Read a yaml file and return a parsed dictionary"""
+    with open(yamlfile, 'r') as f:
+        return yaml.load(f.read(), Loader=yaml.FullLoader)
 
 
 def count_images_in_subdirectories(indir):
@@ -381,12 +403,12 @@ def fastload(infile):
     return v
 
 
-def loadyaml(yamlfile):
+def load_opencv_yaml(yamlfile):
     """Load a numpy array from YAML file exported from OpenCV"""
     return np.squeeze(np.array(cv.Load(yamlfile)))
 
 
-def matrix2yaml(yamlfile, mtxlist, mtxname=None):
+def matrix_to_opencv_yaml(yamlfile, mtxlist, mtxname=None):
     """Write list of matrices to OpenCV yaml file format with given
     variable names"""
     def _write_matrix(f, M, mtxname):
@@ -419,7 +441,7 @@ def matrix2yaml(yamlfile, mtxlist, mtxname=None):
     return yamlfile
 
 
-def saveyaml(yamlfile, mat):
+def save_opencv_yaml(yamlfile, mat):
     """Save a numpy array to YAML file importable by OpenCV"""
 
     def _write_matrix(f, M):
@@ -790,7 +812,7 @@ def iscsv(path):
 
 
 def isvideo(path):
-    """Is a file a video with a known video extension
+    """Is a filename in path a video with a known video extension
     ['.avi','.mp4','.mov','.wmv','.mpg', 'mkv', 'webm']?"""
     (filename, ext) = os.path.splitext(path)
     if ext.lower() in ['.avi','.mp4','.mov','.wmv','.mpg', 'mkv', 'webm']:
@@ -1017,12 +1039,6 @@ def minutestamp():
 def datestamp():
     """Return date and time string in form DDMMMYY"""
     return str.upper(strftime("%d%b%y", localtime()))
-
-
-def print_update(status):
-    status = status + chr(8) * (len(status) + 1)
-    print((status,))  # space instead of newline
-    sys.stdout.flush()
 
 
 def remkdir(path, flush=False):

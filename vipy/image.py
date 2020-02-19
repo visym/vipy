@@ -1382,7 +1382,7 @@ class Scene(ImageCategory):
                 immask[bbm.ymin():bbm.ymax(), bbm.xmin():bbm.xmax()] = 1
         return immask
 
-    def show(self, categories=None, figure=None, do_caption=True, fontsize=10, boxalpha=0.25, d_category2color={'Person':'green', 'Vehicle':'blue', 'Object':'red'}, captionoffset=(0,0), nowindow=False, textfacecolor='white', textfacealpha=0.8, shortlabel=True):
+    def show(self, categories=None, figure=None, do_caption=True, fontsize=10, boxalpha=0.25, d_category2color={'Person':'green', 'Vehicle':'blue', 'Object':'red'}, captionoffset=(0,0), nowindow=False, textfacecolor='white', textfacealpha=1.0, shortlabel=True):
         """Show scene detection with an optional subset of categories"""
         valid_categories = sorted(self.categories() if categories is None else tolist(categories))  # subset of categories to show
         valid_detections = [obj for obj in self._objectlist if obj.category() in valid_categories]  # subset of detections with valid category
@@ -1397,7 +1397,7 @@ class Scene(ImageCategory):
                               captionoffset=captionoffset, nowindow=nowindow, textfacecolor=textfacecolor, textfacealpha=textfacealpha)
         return self
 
-    def savefig(self, outfile=None, categories=None, figure=None, do_caption=True, fontsize=10, boxalpha=0.25, d_category2color={'person':'green', 'vehicle':'blue', 'object':'red'}, captionoffset=(0,0), dpi=200, textfacecolor='white', textfacealpha=0.8, shortlabel=True):
+    def savefig(self, outfile=None, categories=None, figure=None, do_caption=True, fontsize=10, boxalpha=0.25, d_category2color={'person':'green', 'vehicle':'blue', 'object':'red'}, captionoffset=(0,0), dpi=200, textfacecolor='white', textfacealpha=1.0, shortlabel=True):
         """Save show() output to given file without popping up a window"""
         outfile = outfile if outfile is not None else tempjpg()
         self.show(categories=categories, figure=figure, do_caption=do_caption, fontsize=fontsize, boxalpha=boxalpha, d_category2color=d_category2color, captionoffset=captionoffset, nowindow=True, textfacecolor=textfacecolor, textfacealpha=textfacealpha, shortlabel=shortlabel)
