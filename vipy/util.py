@@ -25,7 +25,6 @@ import matplotlib.pyplot as plt
 from itertools import groupby as itertools_groupby
 import importlib
 import pathlib
-import yaml
 
 
 def try_import(package, pipname=None):
@@ -38,6 +37,7 @@ def try_import(package, pipname=None):
 
 def findyaml(basedir):
     """Return a list of absolute paths to yaml files recursively discovered by walking the directory tree rooted at basedir"""
+    try_import('yaml', 'pyyaml')
     return [str(path.resolve()) for path in pathlib.Path(basedir).rglob('*.yml')]
 
 
@@ -52,6 +52,7 @@ def findvideo(basedir):
 
 def readyaml(yamlfile):
     """Read a yaml file and return a parsed dictionary"""
+    try_import('yaml', 'pyyaml')
     with open(yamlfile, 'r') as f:
         return yaml.load(f.read(), Loader=yaml.FullLoader)
 
