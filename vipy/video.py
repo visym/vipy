@@ -305,6 +305,12 @@ class Video(object):
                 shutil.copyfile(self._url, self._filename)
             elif url_scheme == 's3':
                 raise NotImplementedError('S3 support is in development')
+            elif url_scheme == 'scp':                
+                if self.filename() is None:
+                    self.filename(templike(self._url))                    
+                    if 'VIPY_CACHE' in os.environ:
+                        self.filename(os.path.join(remkdir(os.environ['VIPY_CACHE']), filetail(self._url)))
+                vipy.downloader.scp(self._url, self.filename(), verbose=verbose)
             else:
                 raise NotImplementedError(
                     'Invalid URL scheme "%s" for URL "%s"' %

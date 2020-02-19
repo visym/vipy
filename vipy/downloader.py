@@ -18,7 +18,7 @@ import base64
 from urllib.request import urlopen
 from os import path
 import hashlib
-from vipy.util import isfile
+from vipy.util import isfile, try_import
 import os
 import tarfile
 import zipfile
@@ -27,6 +27,7 @@ try:
     import bz2  # FIXME: Remove once bz2 is included in CentOS7 vendor baseline release?
 except:
     pass
+
 
 # FIX <urlopen error [SSL: CERTIFICATE_VERIFY_FAILED] certificate
 # verify failed (_ssl.c:581)>
@@ -54,6 +55,31 @@ def verify_sha1(filename, sha1):
 def verify_md5(filename, md5):
     data = open(filename, 'rb').read()
     return (md5 == hashlib.md5(data).hexdigest())
+
+
+def scp(url, output_filename, verbose=True):
+    """Download using pre-installed SSH keys where hostname is formatted 'scp://hostname.com:/path/to/file.jpg' """        
+    try_import('paramiko', 'paramiko scp')
+    try_import('scp', 'paramiko scp')    
+    import paramiko
+    from scp import SCPClient
+        
+    assert 'scp://' in url, "Invalid URL"
+    (hostname, remote_filename) = url.split('scp://')[1].split(':')
+
+    if verbose:
+        print("[vipy.downloader]: Downloading '%s' to '%s'" % (url, output_filename))
+        
+    def progress(filename, size, sent):
+        sys.stdout.write("[vipy.downloader]: %s ... %.2f%%   \r" % (filename, float(sent)/float(size)*100) )
+    
+    ssh = paramiko.SSHClient()
+    ssh.load_system_host_keys()
+    ssh.connect(hostname)
+    scp = SCPClient(ssh.get_transport(), progress=progress if verbose else None)
+    scp.get(remote_filename, output_filename)
+    scp.close()
+    return output_filename
 
 
 def download(url, output_filename, sha1=None, verbose=True, md5=None, timeout=None, username=None, password=None):
