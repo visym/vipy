@@ -7,6 +7,7 @@ import re
 import random
 from vipy.annotation import common_user_agents
 from vipy.util import tofilename, remkdir, filepath, filebase, isurl, try_import
+import glob
 
 
 def isactiveyoutuber(username):
@@ -115,13 +116,15 @@ def liveleak(tag, n_pages=1):
 
 
 def download(vidurl, vidfile, skip=False, writeurlfile=True, max_filesize='350m', remove_parts=True):
-    """Use youtube-dl to download a list of video URLs to video files"""
+    """Use youtube-dl to download a video URL to a video file"""
 
     ydl_exe = os.path.join(filepath(sys.executable), 'youtube-dl')
     if not os.path.exists(ydl_exe):
         raise ImportError('Optional package "youtube-dl" not installed -  Run "pip install youtube-dl"')
     try:
         print('[vipy.videosearch.download]: saving "%s" to "%s"' % (vidurl, vidfile))
+        for f in glob.glob("%s*" % vidfile):
+            os.remove(f) 
         erno = os.system('%s -q "%s" -o %s --max-filesize %s --no-check-certificate' % (ydl_exe, vidurl, vidfile, max_filesize))  # must be on path
         if erno != 0:
             raise ValueError('youtube-dl returned %d' % erno)

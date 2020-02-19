@@ -86,7 +86,7 @@ class Mevadata_Public_01(object):
             vidlist.append(vid)
         return vidlist
 
-    def MEVA(self, verbose=True, stride=10):
+    def MEVA(self, verbose=True, stride=1):
         """Parse MEVA annotations from 'meva-data-repo/annotation/DIVA-phase-2/MEVA/meva-annotations/' into vipy.video.Scene()
         
         Kwiver packet format: https://gitlab.kitware.com/meva/meva-data-repo/blob/master/documents/KPF-specification-v4.pdf
@@ -96,6 +96,7 @@ class Mevadata_Public_01(object):
         d_videoname_to_path = {filebase(f):f for f in self._get_videos()}
         if verbose:
             num_yamlfiles = len(self._get_activities_yaml())
+            print('[vipy.dataset.meva]: Parsing %d YAML files, this will take a while because pure python YAML loader is slow...' % num_yamlfiles)
 
         vidlist = []
         for (k_fileindex, (act_yamlfile, geom_yamlfile, types_yamlfile)) in enumerate(zip(self._get_activities_yaml(), self._get_geom_yaml(), self._get_types_yaml())):
@@ -127,9 +128,10 @@ class Mevadata_Public_01(object):
 
             d_id1_to_track = {}
             d_geom_yaml = groupbyasdict([x['geom'] for x in geom_yaml if 'geom' in x], lambda v: v['id1'])
+            assert stride >= 1, "Invalid stride"
             for (id1, geom_yaml) in d_geom_yaml.items():
                 for (k_geom, v) in enumerate(geom_yaml):
-                    if k_geom > 0 and (k_geom < (len(geom_yaml)-stride)) and (k_geom % stride == 0):
+                    if stride > 1 and k_geom > 0 and (k_geom < (len(geom_yaml)-stride)) and (k_geom % stride == 0):
                         continue  # Use vipy track interpolation to speed up parsing
                     keyframe = v['ts0']
                     bb = [int(x) for x in v['g0'].split(' ')]
@@ -161,9 +163,4 @@ class Mevadata_Public_01(object):
                     vid.add(Activity(category=category, startframe=startframe, endframe=endframe, objectids=trackids, framerate=framerate, attributes={'src_status':v['act']['src_status']}))
             
             vidlist.append(vid)
-
-        annotated_clips = os.path.join(self.repodir, 'annotation', 'DIVA-phase-2', 'MEVA', 'meva-annotations', 'list-of-annotated-meva-clips.txt')
-        if os.path.exists(annotated_clips):
-            videonames = [x.strip() for x in readlist(annotated_clips) if x.strip() in d_videoname_to_path]
-            assert set(videonames) == set([filebase(v.filename()) for v in vidlist]), "list-of-annotated-meva-clips.txt mismatch"
         return vidlist

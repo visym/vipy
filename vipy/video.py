@@ -285,16 +285,14 @@ class Video(object):
         try:
             url_scheme = urllib.parse.urlparse(self._url)[0]
             if isyoutubeurl(self._url):
-                vipy.videosearch.download(self._url, self._filename, writeurlfile=False, skip=ignoreErrors)
-                if not self.hasfilename():
-                    for ext in ['mkv', 'mp4', 'webm']:
-                        f = '%s.%s' % (self.filename(), ext)
-                        if os.path.exists(f):
-                            os.symlink(f, self.filename())  # file extension not known until download(), symlink for caching
-                            self.filename(f)
+                vipy.videosearch.download(self._url, filefull(self._filename), writeurlfile=False, skip=ignoreErrors)
+                for ext in ['mkv', 'mp4', 'webm']:
+                    f = '%s.%s' % (self.filename(), ext)
+                    if os.path.exists(f):
+                        self.filename(f)
                             
-                    if not self.hasfilename():
-                        raise ValueError('Downloaded file not found "%s.*"' % self.filename())
+                if not self.hasfilename():
+                    raise ValueError('Downloaded file not found "%s.*"' % self.filename())
             elif url_scheme in ['http', 'https']:
                 vipy.downloader.download(self._url,
                                          self._filename,
@@ -508,6 +506,8 @@ class Video(object):
                         .global_args('-loglevel', 'error' if not verbose else 'debug') \
                         .run()
             if outfile == self.filename():
+                if os.path.exists(self.filename()):
+                    os.remove(self.filename())
                 shutil.move(tmpfile, self.filename())
         elif self.hasurl():
             raise ValueError('Input video url "%s" not downloaded, call download() first' % self.url())

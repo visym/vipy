@@ -54,7 +54,7 @@ def readyaml(yamlfile):
     try_import('yaml', 'pyyaml')
     import yaml
     with open(yamlfile, 'r') as f:
-        return yaml.load(f.read(), Loader=yaml.Loader)
+        return yaml.load(f.read(), Loader=yaml.Loader)  # yaml.CLoader is faster, but not installed via pip
 
 
 def count_images_in_subdirectories(indir):
