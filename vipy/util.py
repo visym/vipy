@@ -381,8 +381,14 @@ def load(infile):
     return loadas(infile, type='dill')
 
 
-def scpsave(infile):
-    return 'scp://%s:%s' % (socket.gethostname(), save(infile))
+def scpsave(v):
+    import vipy.image
+    import vipy.video
+    if (isinstance(v, vipy.image.Image) or isinstance(v, vipy.video.Video)) and v.hasfilename():        
+        vc = v.clone().url('scp://%s:%s' % (socket.gethostname(), v.filename()))
+        vc._filename = None
+        v = vc
+    return 'scp://%s:%s' % (socket.gethostname(), save(v))
 
 
 def scpload(url):
