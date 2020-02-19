@@ -37,7 +37,6 @@ def try_import(package, pipname=None):
 
 def findyaml(basedir):
     """Return a list of absolute paths to yaml files recursively discovered by walking the directory tree rooted at basedir"""
-    try_import('yaml', 'pyyaml')
     return [str(path.resolve()) for path in pathlib.Path(basedir).rglob('*.yml')]
 
 
@@ -51,10 +50,11 @@ def findvideo(basedir):
     
 
 def readyaml(yamlfile):
-    """Read a yaml file and return a parsed dictionary"""
+    """Read a yaml file and return a parsed dictionary, this is slow for large yaml files"""
     try_import('yaml', 'pyyaml')
+    import yaml
     with open(yamlfile, 'r') as f:
-        return yaml.load(f.read(), Loader=yaml.FullLoader)
+        return yaml.load(f.read(), Loader=yaml.Loader)
 
 
 def count_images_in_subdirectories(indir):

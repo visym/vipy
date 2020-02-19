@@ -518,7 +518,7 @@ class Video(object):
 
     def save(self):
         """Save the current video filter chain, overwriting the current filename()"""
-        return self.saveas(self.filename())
+        return self.saveas(self.filename() if self.filename() is not None else tempMP4())
 
     def pptx(self, outfile):
         """Export the video in a format that can be played by powerpoint"""

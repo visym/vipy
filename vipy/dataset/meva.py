@@ -1,5 +1,5 @@
 import os
-from vipy.util import remkdir, readjson, readyaml, findyaml, findvideo, filetail, findjson
+from vipy.util import remkdir, readjson, readyaml, findyaml, findvideo, filetail, findjson, filebase, readlist, groupbyasdict
 from vipy.video import VideoCategory, Scene
 from vipy.object import Track, Activity
 from vipy.geometry import BoundingBox
@@ -48,7 +48,10 @@ class Mevadata_Public_01(object):
         return sorted([x for x in findvideo(self.videodir)])
 
     def KF1_examples(self):
-        """MEVA annotation format: https://gitlab.kitware.com/meva/meva-data-repo/blob/master/documents/MEVA_Annotation_JSON.pdf
+        """Parse KF1-examples annotations from 'meva-data-repo/annotation/DIVA-phase-2/MEVA/KF1-examples' to list of vipy.video.Scene()
+
+        MEVA annotation format: https://gitlab.kitware.com/meva/meva-data-repo/blob/master/documents/MEVA_Annotation_JSON.pdf
+
         """
         d_videoname_to_path = {filetail(f):f for f in self._get_videos()}
         vidlist = []
@@ -83,40 +86,65 @@ class Mevadata_Public_01(object):
             vidlist.append(vid)
         return vidlist
 
-    def meva_annotations(self):
-        """Kwiver packet format: https://gitlab.kitware.com/meva/meva-data-repo/blob/master/documents/KPF-specification-v4.pdf
+    def MEVA(self, verbose=True, stride=10):
+        """Parse MEVA annotations from 'meva-data-repo/annotation/DIVA-phase-2/MEVA/meva-annotations/' into vipy.video.Scene()
+        
+        Kwiver packet format: https://gitlab.kitware.com/meva/meva-data-repo/blob/master/documents/KPF-specification-v4.pdf
+
         """
 
         d_videoname_to_path = {filebase(f):f for f in self._get_videos()}
+        if verbose:
+            num_yamlfiles = len(self._get_activities_yaml())
 
         vidlist = []
-        for (act_yamlfile, geom_yamlfile, types_yamlfile) in zip(self._get_activities_yaml(), self._get_geom_yaml(), self._get_types_yaml()):
+        for (k_fileindex, (act_yamlfile, geom_yamlfile, types_yamlfile)) in enumerate(zip(self._get_activities_yaml(), self._get_geom_yaml(), self._get_types_yaml())):
+            if verbose:
+                print('[vipy.dataset.meva][%d/%d]: Parsing "%s"' % (k_fileindex+1, num_yamlfiles, act_yamlfile))
             assert act_yamlfile.split('.')[:-2] == geom_yamlfile.split('.')[:-2], "Unmatched activity and geom yaml file"
             if 'meva-annotations' not in act_yamlfile:
                 continue
 
-            videoname = readyaml(types_yamlfile)[0]['meta']
-            vid = Scene(filename=d_videoname_to_path[videoname], framerate=None)
-            
+            # This is surprisingly slow...
+            types_yaml = readyaml(types_yamlfile)
+            geom_yaml = readyaml(geom_yamlfile)
+            act_yaml = readyaml(act_yamlfile)
+
+            assert len(set([types_yaml[0]['meta'], geom_yaml[0]['meta'], act_yaml[0]['meta']]))==1, "Mismatched video name for '%s'" % act_yamlfile
+            videoname = act_yaml[0]['meta']
+            if videoname not in d_videoname_to_path:
+                warnings.warn('Invalid video "%s" in "%s" - Ignoring' % (videoname, filebase(act_yamlfile)))
+                continue
+
+            # Parse
+            framerate = 30.0  # All videos are universally 30Hz (from Roddy)
+            vid = Scene(filename=d_videoname_to_path[videoname], framerate=framerate)
+
             d_id1_to_category = {}
-            for t in readyaml(types_yamlfile):
+            for t in types_yaml:
                 if 'types' in t:
                     d_id1_to_category[t['types']['id1']] = list(t['types']['cset3'].keys())[0]
 
-            d_trackid_to_track = {}
-            for v in readyaml(geom_yamlfile):
-                if 'geom' in v:
-                    keyframe = v['geom']['id1']['ts0']
-                    bb = [int(x) for x in v['geom']['id1']['g0'].split(' ')]
+            d_id1_to_track = {}
+            d_geom_yaml = groupbyasdict([x['geom'] for x in geom_yaml if 'geom' in x], lambda v: v['id1'])
+            for (id1, geom_yaml) in d_geom_yaml.items():
+                for (k_geom, v) in enumerate(geom_yaml):
+                    if k_geom > 0 and (k_geom < (len(geom_yaml)-stride)) and (k_geom % stride == 0):
+                        continue  # Use vipy track interpolation to speed up parsing
+                    keyframe = v['ts0']
+                    bb = [int(x) for x in v['g0'].split(' ')]
                     bbox = BoundingBox(xmin=bb[0], ymin=bb[1], xmax=bb[2], ymax=bb[3])
-                    if v['geom']['id1'] not in d_trackid_to_track:
-                        d_trackid_to_track[v['geom']['id1']] = Track(category=d_id1_to_category[v['geom']['id1']], framerate=None)
-                    d_trackid_to_track[v['geom']['id1']].add(keyframe=keyframe, box=bbox)
+                    if not bbox.isvalid():
+                        warnings.warn('Invalid bounding box: id1=%s, bbox="%s", file="%s" - Ignoring' % (str(v['id1']), str(bbox), filetail(geom_yamlfile)))
+                    elif v['id1'] not in d_id1_to_track:
+                        d_id1_to_track[v['id1']] = Track(category=d_id1_to_category[v['id1']], framerate=framerate, keyframes=[keyframe], boxes=[bbox])
+                    else:
+                        d_id1_to_track[v['id1']].add(keyframe=keyframe, box=bbox)
                 
-            for (k,v) in d_trackid_to_track.items():
+            for (k,v) in d_id1_to_track.items():
                 vid.add(v)
 
-            for v in readyaml(act_yamlfile):
+            for v in act_yaml:
                 if 'act' in v:
                     if 'act2' in v['act']:
                         category = list(v['act']['act2'].keys())[0]
@@ -124,12 +152,18 @@ class Mevadata_Public_01(object):
                         category = list(v['act']['act3'].keys())[0]
                     else:
                         raise ValueError('Invalid activity YAML - act2 or act3 must be specified')
-                    startframe = v['act']['timespan']['tsr0'][0]
-                    endframe = v['act']['timespan']['tsr0'][1]
+                    assert len(v['act']['timespan']) == 1, "Multi-span activities not parsed"
+                    startframe = int(v['act']['timespan'][0]['tsr0'][0])
+                    endframe = int(v['act']['timespan'][0]['tsr0'][1])
                     actorid = [x['id1'] for x in v['act']['actors']]
-                    trackids = [d_trackid_to_track[x] for x in actorid]
+                    trackids = [d_id1_to_track[x].id() for x in actorid]
 
-                    vid.add(Activity(category=category, startframe=startframe, endframe=endframe, objectids=trackids))
+                    vid.add(Activity(category=category, startframe=startframe, endframe=endframe, objectids=trackids, framerate=framerate, attributes={'src_status':v['act']['src_status']}))
             
             vidlist.append(vid)
+
+        annotated_clips = os.path.join(self.repodir, 'annotation', 'DIVA-phase-2', 'MEVA', 'meva-annotations', 'list-of-annotated-meva-clips.txt')
+        if os.path.exists(annotated_clips):
+            videonames = [x.strip() for x in readlist(annotated_clips) if x.strip() in d_videoname_to_path]
+            assert set(videonames) == set([filebase(v.filename()) for v in vidlist]), "list-of-annotated-meva-clips.txt mismatch"
         return vidlist

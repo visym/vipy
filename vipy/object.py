@@ -125,8 +125,8 @@ class Track(object):
         
         # Sorted increasing frame order
         (keyframes, boxes) = zip(*sorted([(f,bb) for (f,bb) in zip(keyframes, boxes)], key=lambda x: x[0]))
-        self._keyframes = keyframes
-        self._keyboxes = boxes
+        self._keyframes = list(keyframes)
+        self._keyboxes = list(boxes)
         
     def __repr__(self):
         strlist = []
@@ -155,11 +155,14 @@ class Track(object):
                 'boundingbox':[bb.dict() for bb in self._keyboxes], 'attributes':self.attributes}
 
     def add(self, keyframe, box):
-        """Add a new keyframe and associated box to track"""
+        """Add a new keyframe and associated box to track, preserve sorted order of keyframes"""
         assert isinstance(box, BoundingBox), "Invalud input - Box must be vipy.geometry.BoundingBox()"
         self._keyframes.append(keyframe)
         self._keyboxes.append(box)
-        (self._keyframes, self._keyboxes) = zip(*sorted([(f,bb) for (f,bb) in zip(self._keyframes, self._keyboxes)], key=lambda x: x[0]))        
+        if keyframe < self._keyframes[-2]:
+            (self._keyframes, self._keyboxes) = zip(*sorted([(f,bb) for (f,bb) in zip(self._keyframes, self._keyboxes)], key=lambda x: x[0]))        
+            self._keyframes = list(self._keyframes)
+            self._keyboxes = list(self._keyboxes)
         return self
         
     def keyframes(self):
@@ -280,6 +283,7 @@ class Activity(object):
     """
     def __init__(self, startframe, endframe, framerate=None, label=None, shortlabel=None, category=None, objectids=None, attributes=None):
         assert not (label is not None and category is not None), "Constructor requires either label or category kwargs, not both"        
+        assert startframe <= endframe, "Invalid input - startframe must occur before endframe"
         self._id = uuid.uuid1().hex
         self._startframe = startframe
         self._endframe = endframe
@@ -291,6 +295,10 @@ class Activity(object):
             assert isinstance(objectids, list) and all([isstring(x) for x in objectids]), "Invalid objectid list - Must be a list of track IDs"
         self.attributes = attributes if attributes is not None else {}            
         
+    def __len__(self):
+        """Return activity length in frames"""
+        return self.endframe() - self.startframe()
+
     def __repr__(self):
         return str('<vipy.activity: category="%s", frames=(%d,%d), objects=%s>' % (self.category(), self.startframe(), self.endframe(), len(set(self.objectids()))))
 
@@ -303,6 +311,9 @@ class Activity(object):
 
     def endframe(self):
         return self._endframe
+
+    def middleframe(self):
+        return int(np.round((self.endframe() - self.startframe()) / 2.0))
 
     def framerate(self, fps):
         """Resample (startframe, endframe) from known original framerate set by constructor to be new framerate fps"""        
@@ -352,3 +363,4 @@ class Activity(object):
     
     def id(self):
         return self._id
+
