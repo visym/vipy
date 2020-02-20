@@ -195,7 +195,7 @@ class Track(object):
                       height=np.interp(k, self._keyframes, height),
                       category=self.category(),
                       shortlabel=self.shortlabel())
-        d.attributes['track'] = self.clone()  # for correspondence of detections to tracks
+        d.attributes['trackid'] = self.id()  # for correspondence of detections to tracks
         return d if self._boundary == 'extend' else (None if not self.during(k) else d)
 
     def category(self, label=None):

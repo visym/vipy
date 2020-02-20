@@ -66,9 +66,10 @@ class Video(object):
         # Input filenames
         if url is not None:
             assert isurl(url), 'Invalid URL "%s" ' % url
-            self.url(url)
+            self._url = url
         if filename is not None:
-            self.filename(filename)
+            #self.filename(filename)
+            self._filename = filename
         else:
             if isvideourl(self._url):
                 self._filename = templike(self._url)
@@ -78,16 +79,24 @@ class Video(object):
                 self._filename = os.path.join(remkdir(os.environ['VIPY_CACHE']), filetail(self._filename))
 
         # Video filter chain
-        self.flush()  
+        self._ffmpeg = ffmpeg.input(self.filename())  # restore, no other filters
+        if self._startframe is not None and self._endframe is not None:
+            self.clip(self._startframe, self._endframe)
+        if self._startsec is not None and self._endsec is not None:
+            self.cliptime(self._startsec, self._endsec)
+            
         if framerate is not None:
             self.framerate(framerate)
             self._framerate = framerate
 
-        # Array input (must come after flush())
+        # Array input
         if array is not None:
             self.array(array)
             self.colorspace(colorspace)
-                    
+
+        # To restore on flush
+        self._checkpoint = self.clone()  
+        
     def __repr__(self):
         strlist = []
         if self.isloaded():
@@ -96,6 +105,8 @@ class Video(object):
             strlist.append('filename="%s"' % self.filename())
         if self.hasurl():
             strlist.append('url="%s"' % self.url())
+        if not self.isloaded() and self._startframe is not None:
+            strlist.append('clip=(%d,%d)' % (self._startframe + self._startframe_offset, self._endframe + self._endframe_offset))            
         if self._framerate is not None:
             strlist.append('fps=%s' % str(self._framerate))
         return str('<vipy.video: %s>' % (', '.join(strlist)))
@@ -157,7 +168,7 @@ class Video(object):
 
     def framerate(self, fps):
         """Change the input framerate for the video and update frame indexes for all annotations"""
-        assert not self.isloaded(), "Filters can only be applied prior to loading; flush() the video first"        
+        assert not self.isloaded(), "Filters can only be applied prior to load()"
         self._ffmpeg = self._ffmpeg.filter('fps', fps=fps, round='up')
         self._framerate = fps
         return self
@@ -181,16 +192,10 @@ class Video(object):
             self._colorspace = str(colorspace).lower()
         return self
 
-    def url(self, url=None, username=None, password=None, sha1=None):
+    def url(self, username=None, password=None, sha1=None):
         """Image URL and URL download properties"""
-        if url is None and username is None and password is None:
+        if username is None and password is None:
             return self._url
-        if url is not None:
-            # set filename and return object
-            if self.isloaded():
-                self.flush()
-            self._filename = None
-            self._url = url
         if username is not None:
             self._urluser = username  # basic authentication
         if password is not None:
@@ -249,16 +254,15 @@ class Video(object):
         self._array = np.copy(self._array) if not self._array.flags['WRITEABLE'] else self._array  # triggers copy 
         return self._array
 
+    def checkpoint(self):
+        """Save the state of the object to restore on flush"""
+        self._checkpoint = self.clone()
+        return self
+    
     def flush(self):
-        """Flush the video buffer and restore video filters to the defaults set by constructor"""
-        self._array = None
-        self._ffmpeg = ffmpeg.input(self.filename())  # restore, no other filters
-        if self._startframe is not None and self._endframe is not None:
-            self.clip(self._startframe, self._endframe)
-            (self._startframe_offset, self._endframe_offset) = (0, 0)
-        if self._startsec is not None and self._endsec is not None:
-            self.cliptime(self._startsec, self._endsec)
-        return self        
+        """Restore object to state set by constructor"""
+        self.__dict__ = self._checkpoint.__dict__
+        return self
 
     def reload(self):
         return self.flush().load()
@@ -268,12 +272,14 @@ class Video(object):
         if newfile is None:
             return self._filename
         else:
-            # set filename and return object
+            # Update ffmpeg filter chain with new input node filename
+            nodes = ffmpeg.nodes.get_stream_spec_nodes(self._ffmpeg)
+            sorted_nodes, outgoing_edge_maps = ffmpeg.dag.topo_sort(nodes)
+            sorted_nodes[0].__dict__['kwargs']['filename'] = newfile
             self._filename = newfile
-            self.flush()   # need to flush to update ffmpeg.input() node with new filename 
             return self
 
-    def download(self, ignoreErrors=False, timeout=10, verbose=False):
+    def download(self, ignoreErrors=False, timeout=10, verbose=True):
         """Download URL to filename provided by constructor, or to temp filename"""
         if self._url is None and self._filename is not None:
             return self
@@ -290,7 +296,7 @@ class Video(object):
                     f = '%s.%s' % (self.filename(), ext)
                     if os.path.exists(f):
                         self.filename(f)
-                            
+                        break    
                 if not self.hasfilename():
                     raise ValueError('Downloaded file not found "%s.*"' % self.filename())
             elif url_scheme in ['http', 'https']:
@@ -360,7 +366,9 @@ class Video(object):
         """Return first frame of filtered video, saved to temp file, return vipy.image.Image object.  This is useful for previewing the frame shape of a complex filter chain."""
         if self.isloaded():
             return self[0]
-        elif not self.hasfilename():
+        elif self.hasurl() and not self.hasfilename():
+            self.download(verbose=True)  
+        if not self.hasfilename():
             raise ValueError('Video file not found')
         im = Image(filename=tempjpg() if outfile is None else outfile)
         (out, err) = self._ffmpeg.output(im.filename(), vframes=1)\
@@ -369,9 +377,9 @@ class Video(object):
                                  .run(capture_stdout=True, capture_stderr=True)
         return im
 
-    def load(self, verbosity=1, ignoreErrors=False, startframe=None, endframe=None, rotation=None, rescale=None, mindim=None):
+    def load(self, verbose=False, ignoreErrors=False, startframe=None, endframe=None, rotation=None, rescale=None, mindim=None):
         """Load a video using ffmpeg, applying the requested filter chain.  
-           If verbosity=2. then ffmpeg console output will be displayed. 
+           If verbose=True. then ffmpeg console output will be displayed. 
            If ignoreErrors=True, then download errors are warned and skipped.
            Filter chains can be included at load time using the following kwargs:
                * (startframe=s, endframe=e) -> self.clip(s, e)
@@ -389,7 +397,7 @@ class Video(object):
         if not self.hasfilename() and ignoreErrors:
             print('[vipy.video.load]: Video file "%s" not found - Ignoring' % self.filename())
             return self
-        if verbosity > 0:
+        if verbose:
             print('[vipy.video.load]: Loading "%s"' % self.filename())
 
         # Increase filter chain from load() kwargs
@@ -410,10 +418,10 @@ class Video(object):
                 raise ValueError("rotation must be one of ['rot90ccw', 'rot90cw']")
     
         # Generate single frame _preview to get frame sizes
-        imthumb = self._preview(verbose=verbosity > 1)
+        imthumb = self._preview(verbose=verbose)
         (height, width, channels) = (imthumb.height(), imthumb.width(), imthumb.channels())
         (out, err) = self._ffmpeg.output('pipe:', format='rawvideo', pix_fmt='rgb24') \
-                                 .global_args('-loglevel', 'debug' if verbosity > 1 else 'error') \
+                                 .global_args('-loglevel', 'debug' if verbose else 'error') \
                                  .run(capture_stdout=True)
         self._array = np.frombuffer(out, np.uint8).reshape([-1, height, width, channels])  # read-only
         self.colorspace('rgb' if channels == 3 else 'lum')
@@ -422,7 +430,7 @@ class Video(object):
     def clip(self, startframe, endframe):
         """Load a video clip betweeen start and end frames"""
         assert startframe <= endframe and startframe >= 0, "Invalid start and end frames (%s, %s)" % (str(startframe), str(endframe))
-        assert not self.isloaded(), "Filters can only be applied prior to loading; flush() the video first"
+        assert not self.isloaded(), "Filters can only be applied prior to load()"
         self._ffmpeg = self._ffmpeg.trim(start_frame=startframe, end_frame=endframe)\
                                    .setpts('PTS-STARTPTS')  # reset timestamp to 0 after trim filter
         (self._startframe_offset, self._endframe_offset) = (self._startframe_offset+startframe, self._endframe_offset+endframe)
@@ -431,26 +439,26 @@ class Video(object):
     def cliptime(self, startsecs, endsecs):
         """Load a video clip betweeen start seconds and end seconds, should be initialized by constructor, which will work but will not set __repr__ correctly"""
         assert startsecs <= endsecs and startsecs >= 0, "Invalid start and end seconds (%s, %s)" % (str(startsecs), str(endsecs))
-        assert not self.isloaded(), "Filters can only be applied prior to loading; flush() the video first"
+        assert not self.isloaded(), "Filters can only be applied prior to load()"
         self._ffmpeg = self._ffmpeg.trim(start=startsecs, end=endsecs)\
                                    .setpts('PTS-STARTPTS')  # reset timestamp to 0 after trim filter
         return self
     
     def rot90cw(self):
         """Rotate the video 90 degrees clockwise, can only be applied prior to load()"""
-        assert not self.isloaded(), "Filters can only be applied prior to loading; flush() the video first then reload"
+        assert not self.isloaded(), "Filters can only be applied prior to load()"
         self._ffmpeg = self._ffmpeg.filter('transpose', 1)
         return self
 
     def rot90ccw(self):
         """Rotate the video 90 degrees counter-clockwise, can only be applied prior to load()"""        
-        assert not self.isloaded(), "Filters can only be applied prior to loading; flush() the video first then reload"
+        assert not self.isloaded(), "Filters can only be applied prior to load()"
         self._ffmpeg = self._ffmpeg.filter('transpose', 2)
         return self
 
     def rescale(self, s):
         """Rescale the video by factor s, such that the new dimensions are (s*H, s*W), can only be applied prior load()"""
-        assert not self.isloaded(), "Filters can only be applied prior to loading; flush() the video first then reload"
+        assert not self.isloaded(), "Filters can only be applied prior to load()"
         self._ffmpeg = self._ffmpeg.filter('scale', 'iw*%1.2f' % s, 'ih*%1.2f' % s)
         return self
 
@@ -458,30 +466,30 @@ class Video(object):
         """Resize the video to be (rows, cols), can only be applied prior to load()"""
         if rows is None and cols is None:
             return self
-        assert not self.isloaded(), "Filters can only be applied prior to loading; flush() the video first then reload"
+        assert not self.isloaded(), "Filters can only be applied prior to load()"
         self._ffmpeg = self._ffmpeg.filter('scale', cols if cols is not None else -1, rows if rows is not None else -1)
         return self
 
     def mindim(self, dim):
         """Resize the video so that the minimum of (width,height)=dim, preserving aspect ratio"""
-        assert not self.isloaded(), "Filters can only be applied prior to loading; flush() the video first then reload"        
+        assert not self.isloaded(), "Filters can only be applied prior to load()"
         (H,W) = self._preview().load().shape()  # yuck, need to get image dimensions before filter
         return self.resize(cols=dim) if W<H else self.resize(rows=dim)
 
     def maxdim(self, dim):
         """Resize the video so that the maximum of (width,height)=dim, preserving aspect ratio"""
-        assert not self.isloaded(), "Filters can only be applied prior to loading; flush() the video first then reload"        
+        assert not self.isloaded(), "Filters can only be applied prior to load()"
         (H,W) = self._preview().load().shape()  # yuck, need to get image dimensions before filter
         return self.resize(cols=dim) if W>H else self.resize(rows=dim)
     
     def crop(self, bb):
         """Spatially crop the video using the supplied vipy.geometry.BoundingBox, can only be applied prior to load()"""
-        assert not self.isloaded(), "Filters can only be applied prior to loading; flush() the video first then reload"
+        assert not self.isloaded(), "Filters can only be applied prior to load()"
         assert isinstance(bb, vipy.geometry.BoundingBox), "Invalid input"
         self._ffmpeg = self._ffmpeg.crop(bb.xmin(), bb.ymin(), bb.width(), bb.height())
         return self
 
-    def saveas(self, outfile, framerate=25, vcodec='libx264', verbose=False, ignoreErrors=False):
+    def saveas(self, outfile, framerate=30, vcodec='libx264', verbose=False, ignoreErrors=False):
         """Save video to new output video file.  This function does not draw boxes, it saves pixels to a new video file.
 
            * If self.array() is loaded, then export the contents of self._array to the video file
@@ -598,10 +606,11 @@ class VideoCategory(Video):
     along with the ability to extract a clip based on frames or seconds.
 
     """
-    def __init__(self, filename=None, url=None, framerate=25, attributes=None, category=None, array=None, colorspace=None, startframe=None, endframe=None, startsec=None, endsec=None):
+    def __init__(self, filename=None, url=None, framerate=30, attributes=None, category=None, array=None, colorspace=None, startframe=None, endframe=None, startsec=None, endsec=None):
         super(VideoCategory, self).__init__(url=url, filename=filename, framerate=framerate, attributes=attributes, array=array, colorspace=colorspace,
                                             startframe=startframe, endframe=endframe, startsec=startsec, endsec=endsec)
         self._category = category                
+        self._checkpoint = self.clone()  
         
     def __repr__(self):
         strlist = []
@@ -694,7 +703,8 @@ class Scene(VideoCategory):
             self.framerate(framerate)
             
         self._currentframe = None  # used during iteration only
-            
+        self._checkpoint = self.clone()  
+        
     def __repr__(self):
         strlist = []
         if self.isloaded():
@@ -723,7 +733,7 @@ class Scene(VideoCategory):
             dets = [t[k] for (tid,t) in self._tracks.items() if t[k] is not None]  # track interpolation with boundary handling
             for d in dets:
                 for (aid, a) in self._activities.items():
-                    if a.hastrack(d.attributes['track']['id']) and a.during(k):
+                    if a.hastrack(d.attributes['trackid']) and a.during(k):
                         # Shortlabel is displayed as "Noun Verb" during activity (e.g. Person Carry, Object Carry)
                         # Category is set to activity label during activity (e.g. all tracks in this activity have same color)
                         d.category(a.category())  # category label defines colors, see d.attributes['track'] for original labels 
@@ -828,7 +838,7 @@ class Scene(VideoCategory):
         
     def framerate(self, fps):
         """Change the input framerate for the video and update frame indexes for all annotations"""
-        assert not self.isloaded(), "Filters can only be applied prior to loading; flush() the video first"        
+        assert not self.isloaded(), "Filters can only be applied prior to load()"        
         self._ffmpeg = self._ffmpeg.filter('fps', fps=fps, round='up')
         self._tracks = {k:t.framerate(fps) for (k,t) in self._tracks.items()}
         self._activities = {k:a.framerate(fps) for (k,a) in self._activities.items()}        
@@ -855,21 +865,21 @@ class Scene(VideoCategory):
     
     def crop(self, bb):
         """Crop the video using the supplied box, update tracks relative to crop, tracks may be outside the image rectangle"""
-        assert not self.isloaded(), "Filters can only be applied prior to loading; flush() the video first then reload"                
+        assert not self.isloaded(), "Filters can only be applied prior to load()"
         assert isinstance(bb, vipy.geometry.BoundingBox), "Invalid input"
         super(Scene, self).crop(bb)
         self._tracks = {k:t.offset(dx=-bb.xmin(), dy=-bb.ymin()) for (k,t) in self._tracks.items()}
         return self
 
     def rot90ccw(self):
-        assert not self.isloaded(), "Filters can only be applied prior to loading; flush() the video first then reload"                
+        assert not self.isloaded(), "Filters can only be applied prior to load()"                
         (H,W) = self._preview().load().shape()  # yuck, need to get image dimensions before filter
         self._tracks = {k:t.rot90ccw(H,W) for (k,t) in self._tracks.items()}
         super(Scene, self).rot90ccw()
         return self
 
     def rot90cw(self):
-        assert not self.isloaded(), "Filters can only be applied prior to loading; flush() the video first then reload"                
+        assert not self.isloaded(), "Filters can only be applied prior to load()"                
         (H,W) = self._preview().load().shape()  # yuck, need to get image dimensions before filter
         self._tracks = {k:t.rot90cw(H,W) for (k,t) in self._tracks.items()}
         super(Scene, self).rot90cw()
@@ -877,7 +887,7 @@ class Scene(VideoCategory):
 
     def resize(self, rows=None, cols=None):
         """Resize the video to (rows, cols), preserving the aspect ratio if only rows or cols is provided"""
-        assert not self.isloaded(), "Filters can only be applied prior to loading; flush() the video first then reload"                
+        assert not self.isloaded(), "Filters can only be applied prior to load()"                
         assert rows is not None or cols is not None, "Invalid input"
         (H,W) = self._preview().load().shape()  # yuck, need to get image dimensions before filter
         sy = rows / float(H) if rows is not None else cols / float(W)
@@ -889,18 +899,18 @@ class Scene(VideoCategory):
 
     def mindim(self, dim):
         """Resize the video so that the minimum of (width,height)=dim, preserving aspect ratio"""
-        assert not self.isloaded(), "Filters can only be applied prior to loading; flush() the video first then reload"                
+        assert not self.isloaded(), "Filters can only be applied prior to load()"                
         (H,W) = self._preview().load().shape()  # yuck, need to get image dimensions before filter
         return self.resize(cols=dim) if W<H else self.resize(rows=dim)
 
     def maxdim(self, dim):
         """Resize the video so that the maximum of (width,height)=dim, preserving aspect ratio"""
-        assert not self.isloaded(), "Filters can only be applied prior to loading; flush() the video first then reload"                
+        assert not self.isloaded(), "Filters can only be applied prior to load()"                
         (H,W) = self._preview().load().shape()  # yuck, need to get image dimensions before filter
         return self.resize(cols=dim) if W>H else self.resize(rows=dim)
     
     def rescale(self, s):
-        assert not self.isloaded(), "Filters can only be applied prior to loading; flush() the video first then reload"                
+        assert not self.isloaded(), "Filters can only be applied prior to load()"                
         (H,W) = self._preview().load().shape()  # yuck, need to get image dimensions before filter
         self._tracks = {k:t.rescale(s) for (k,t) in self._tracks.items()}
         super(Scene, self).rescale(s)
@@ -915,7 +925,7 @@ class Scene(VideoCategory):
         assert self.isloaded(), "Load() failed"        
         outfile = outfile if outfile is not None else tempMP4()        
         plt.close(1)
-        imb = vipy.image.Batch(list(self.__iter__()), n_processes=n_processes)
+        imb = vipy.image.Batch(list(self.__iter__()), n_processes=n_processes)  # FIXME: speed up interpolation
         imgs = imb.savefig(figure=1)
         imb._close()
         plt.close(1)

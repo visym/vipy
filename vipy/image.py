@@ -27,6 +27,7 @@ import warnings
 import base64
 import types
 import hashlib
+from itertools import repeat
 
 
 class Image(object):
@@ -93,6 +94,9 @@ class Image(object):
             assert isinstance(attributes, dict), "Attributes must be dictionary"
             self.attributes = attributes
 
+        # Checkpoint
+        self._checkpoint = self.clone()
+            
     def __eq__(self, other):
         """Images are equivalent if they have the same filename, url and array"""
         return isinstance(other, Image) and other.filename()==self.filename() and other.url()==self.url() and np.all(other.array() == self.array())
@@ -262,14 +266,18 @@ class Image(object):
             else:
                 raise
 
-        self.flush()
         return self
 
     def flush(self):
-        """Remove cached numpy array"""
-        self._array = None
+        """Restore object to state set by constructor"""
+        self.__dict__ = self._checkpoint.__dict__
         return self
 
+    def checkpoint(self):
+        """Save the state of the object to restore on flush"""
+        self._checkpoint = self.clone()
+        return self
+    
     def reload(self):
         """Flush the image buffer to force reloading from file or URL"""
         return self.flush().load()
@@ -362,21 +370,13 @@ class Image(object):
         if newfile is None:
             return self._filename
         else:
-            # set filename and return object
-            self.flush()
             self._filename = newfile
-            self._url = None
             return self
 
-    def url(self, url=None, username=None, password=None, sha1=None, ignoreUrlErrors=None):
+    def url(self, username=None, password=None, sha1=None, ignoreUrlErrors=None):
         """Image URL and URL download properties"""
-        if url is None and username is None and password is None:
+        if username is None and password is None:
             return self._url
-        if url is not None:
-            # set filename and return object
-            self.flush()
-            self._filename = None
-            self._url = url
         if username is not None:
             self._urluser = username  # basic authentication
         if password is not None:
@@ -861,7 +861,8 @@ class ImageCategory(Image):
                                             colorspace=colorspace)
         assert not (category is not None and label is not None), "Define either category or label kwarg, not both"
         self._category = category if category is not None else label
-
+        self._checkpoint = self.clone()
+        
     def __repr__(self):
         strlist = []
         if self.isloaded():
@@ -978,6 +979,9 @@ class ImageDetection(ImageCategory):
         else:
             raise ValueError('Incomplete constructor')
 
+        # Checkpoint 
+        self._checkpoint = self.clone()
+        
     def __repr__(self):
         strlist = []
         if self.isloaded():
@@ -1224,6 +1228,7 @@ class Scene(ImageCategory):
                 raise ValueError("Invalid boxlabels list - len(boxlabels) must be len(xywh) with corresponding labels for each xywh box  [label1, label2, ...]")
 
         self._objectlist = self._objectlist + detlist
+        self._checkpoint = self.clone()
         
     def __eq__(self, other):
         """Scene equality requires equality of all objects in the scene, assumes a total order of objects"""
@@ -1430,59 +1435,54 @@ class Batch(object):
     """    
     @staticmethod
     def _batch_call(im, attr, args, kwargs):
+        assert isinstance(im, vipy.image.Image), "Invalid vipy.image.Image() object in batch"
         return getattr(im, attr)(*args, **kwargs)
 
-    def __init__(self, imlist, seed=None, n_processes=8):
-        """Create a batch of homogeneous vipy.image objects that can be operated on with a single function call"""
-        assert isinstance(imlist, list) and all([isinstance(im, Image) for im in imlist]), "Invalid input"
+    def __init__(self, imlist, n_processes=1):
+        """Create a batch of homogeneous vipy.image objects from an iterable that can be operated on with a single parallel function call"""
+        assert islist(imlist) and all([isinstance(im, vipy.image.Image) for im in imlist]), "Invalid input - Must be list of vipy.image.Image()"
         self._imlist = imlist
-        if seed is not None:
-            np.random.seed(seed)  # for repeatable take
         try:
             if platform.system() == 'Darwin':
                 mp.set_start_method('spawn')  # necessary for matplotlib on macosx
         except:
             pass  # can only set this once
-        self._pool = Pool(n_processes)
-            
-    def __repr__(self):
-        return '<vipy.image.Batch: type="%s", batchsize=%d>' % (type(self._imlist[0]), len(self))
+
+        self._pool = Pool(n_processes) if n_processes > 1 else None
 
     def __len__(self):
         return len(self._imlist)
 
-    def __getitem__(self, k):
-        return self._imlist[k]
-
-    def list(self, inputlist=None):
-        if inputlist is None:
-            return self._imlist
-        elif islist(inputlist) and isinstance(inputlist[0], vipy.image.Image):
-            self._imlist = inputlist
+    def __repr__(self):
+        return str('<vipy.image.Batch: type=%s, len=%d>' % (str(type(self._imlist[0])), len(self)))
+    
+    def _return(self, resultlist):
+        assert islist(resultlist), "Invalid input"
+        if isinstance(resultlist[0], vipy.image.Image):
+            self._imlist = resultlist
             return self
         else:
-            return inputlist
+            return resultlist
         
     def __iter__(self):
         for im in self._imlist:
             yield im
             
-    def take(self, n):
-        return np.random.choice(self._imlist, n)
-
     def __getattr__(self, attr):
         """Call the same method on all Image objects"""
-        assert hasattr(self._imlist[0], attr), "Invalid attribute"
-        assert attr[0:2] != 'is' and attr[0:3] != 'has', "Invalid attribute"
-        return lambda *args, **kw: (self.list(self._pool.starmap(self._batch_call, [(im,attr,args,kw) for im in self._imlist])))
-
+        if self.__dict__['_pool'] is not None:
+            return lambda *args, **kw: self._return(self.__dict__['_pool'].starmap(self._batch_call, zip(self._imlist, repeat(attr), repeat(args), repeat(kw))))
+        else:
+            return lambda *args, **kw: self._return([self._batch_call(im,attr,args,kw) for im in self._imlist])
+        
     def _close(self):
-        self._pool.terminate()
+        if self.__dict__['_pool'] is not None:
+            self.__dict__['_pool'].terminate()
 
     def torch(self):
         """Convert the batch of N HxWxC images to a NxCxHxW torch tensor"""
-        try_import('torch'); import torch
-        return torch.from_numpy(np.vstack([np.expand_dims(im.rgb().numpy(),0) for im in self._imlist]).transpose(0,3,1,2))
+        try_import('torch', 'torch');  import torch
+        return torch.cat(self.__getattr__('torch')())
 
 
 def RandomImage(rows=None, cols=None):
