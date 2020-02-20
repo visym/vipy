@@ -373,10 +373,10 @@ class Image(object):
             self._filename = newfile
             return self
 
-    def url(self, username=None, password=None, sha1=None, ignoreUrlErrors=None):
+    def url(self, url=None, username=None, password=None, sha1=None, ignoreUrlErrors=None):
         """Image URL and URL download properties"""
-        if username is None and password is None:
-            return self._url
+        if url is None:
+            self._url = url  # this does not change anything else, better to use constructor 
         if username is not None:
             self._urluser = username  # basic authentication
         if password is not None:
@@ -385,7 +385,10 @@ class Image(object):
             self._urlsha1 = sha1  # file integrity
         if ignoreUrlErrors is not None:
             self._ignoreErrors = ignoreUrlErrors
-        return self
+        if url is None and username is None and password is None and sha1 is None and ignoreUrlErrors is None:
+            return self._url
+        else:
+            return self
     
     def colorspace(self, colorspace=None):
         """Return or set the colorspace as ['rgb', 'rgba', 'bgr', 'bgra', 'hsv', 'float', 'grey', 'lum']"""
