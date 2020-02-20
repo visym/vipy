@@ -192,17 +192,20 @@ class Video(object):
             self._colorspace = str(colorspace).lower()
         return self
 
-    def url(self, username=None, password=None, sha1=None):
+    def url(self, url=None, username=None, password=None, sha1=None):
         """Image URL and URL download properties"""
-        if username is None and password is None:
-            return self._url
+        if url is not None:
+            self._url = url  # note that this does not change anything else, better to use the constructor for this
         if username is not None:
             self._urluser = username  # basic authentication
         if password is not None:
             self._urlpassword = password  # basic authentication
         if sha1 is not None:
             self._urlsha1 = sha1  # file integrity
-        return self
+        if url is None and username is None and password is None and sha1 is None:
+            return self._url
+        else:
+            return self
 
     def isloaded(self):
         """Return True if the video has been loaded"""
