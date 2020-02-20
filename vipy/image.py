@@ -269,7 +269,7 @@ class Image(object):
         return self
 
     def flush(self):
-        """Restore object to state set by constructor"""
+        """Restore object to state set by constructor or by checkpoint"""
         self.__dict__ = self._checkpoint.__dict__
         return self
 

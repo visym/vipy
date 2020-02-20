@@ -132,6 +132,11 @@ class Video(object):
             for k in range(0, len(self)):
                 yield self.__getitem__(k)
 
+    def checkpoint(self):
+        """Save the state of the object to restore on flush"""
+        self._checkpoint = self.clone()
+        return self
+                
     def probe(self):
         """Run ffprobe on the filename and return the result as a JSON file"""
         assert self.hasfilename(), "Invalid video file '%s' for ffprobe" % self.filename() 
