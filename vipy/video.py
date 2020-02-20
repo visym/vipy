@@ -904,19 +904,21 @@ class Scene(VideoCategory):
         vid = self.load().clone()  # to save a new array
         outfile = outfile if outfile is not None else tempMP4()        
         plt.close(1)
-        imgs = vipy.image.Batch(list(self.__iter__()), n_processes=n_processes).savefig(figure=1)
+        imb = vipy.image.Batch(list(self.__iter__()), n_processes=n_processes)
+        imgs = imb.savefig(figure=1)
+        imb._close()
         plt.close(1)
         vid._array = np.zeros( (len(self), imgs[0].shape[0], imgs[0].shape[1], self.channels()), dtype=np.uint8)  # allocate        
         for (k,img) in enumerate(imgs):
             vid._array[k,:,:,:] = np.array(PIL.Image.fromarray(img).convert('RGB'))
         return vid.saveas(outfile)
 
-    def show(self, outfile=None, verbose=True):
+    def show(self, outfile=None, verbose=True, n_processes=8):
         """Generate an annotation video saved to outfile (or tempfile if outfile=None) and show it using ffplay when it is done exporting"""
         outfile = tempMP4() if outfile is None else outfile
         if verbose:
             print('[vipy.video.show]: Generating annotation video "%s" ...' % outfile)
-        self.annotate(outfile)
+        self.annotate(outfile, n_processes=n_processes)
         cmd = "ffplay %s" % outfile
         if verbose:
             print('[vipy.video.show]: Executing "%s"' % cmd)

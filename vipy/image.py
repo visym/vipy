@@ -1,6 +1,8 @@
 import os
 import PIL
 import PIL.Image
+import platform
+import multiprocessing as mp
 from multiprocessing import Pool
 from vipy.show import imshow, imbbox, savefig, colorlist
 from vipy.util import isnumpy, isurl, isimageurl, \
@@ -24,6 +26,7 @@ import matplotlib.pyplot as plt
 import warnings
 import base64
 import types
+import hashlib
 
 
 class Image(object):
@@ -883,9 +886,6 @@ class ImageCategory(Image):
     def is_not(self, other):
         return self.__ne__(other)
 
-    def __hash__(self):
-        return hash(self._category.lower())
-
     def dict(self):
         d = super(ImageCategory, self).dict()
         d['category'] = self.category()
@@ -996,9 +996,6 @@ class ImageDetection(ImageCategory):
     def __eq__(self, other):
         """ImageDetection equality is defined as equivalent categories and boxes (not pixels)"""
         return self._category.lower() == other._category.lower() and self.bbox == other.bbox if isinstance(other, ImageDetection) else False
-
-    def __hash__(self):
-        return hash(self.__repr__())
 
     def dict(self):
         d = super(ImageCategory, self).dict()
@@ -1395,7 +1392,7 @@ class Scene(ImageCategory):
         valid_detections = [obj for obj in self._objectlist if obj.category() in valid_categories]  # subset of detections with valid category
         valid_detections = [obj.imclip(self.numpy()) for obj in self._objectlist if obj.hasoverlap(self.numpy())]  # Within image rectangle
         colors = colorlist()
-        d_categories2color = {c:colors[hash(c) % len(colors)] for c in valid_categories}  # consistent color mapping
+        d_categories2color = {c:colors[int(hashlib.sha1(c.encode('utf-8')).hexdigest(), 16) % len(colors)] for c in valid_categories}  # consistent color mapping
         d_categories2color.update(d_category2color)   # Requested color mapping
         detection_color = [d_categories2color[im.category()] for im in valid_detections]
         valid_detections = [obj.clone().category(obj.shortlabel()) for obj in valid_detections] if shortlabel else valid_detections  # Display name
@@ -1441,8 +1438,13 @@ class Batch(object):
         self._imlist = imlist
         if seed is not None:
             np.random.seed(seed)  # for repeatable take
+        try:
+            if platform.system() == 'Darwin':
+                mp.set_start_method('spawn')  # necessary for matplotlib on macosx
+        except:
+            pass  # can only set this once
         self._pool = Pool(n_processes)
-
+            
     def __repr__(self):
         return '<vipy.image.Batch: type="%s", batchsize=%d>' % (type(self._imlist[0]), len(self))
 
@@ -1473,6 +1475,9 @@ class Batch(object):
         assert hasattr(self._imlist[0], attr), "Invalid attribute"
         assert attr[0:2] != 'is' and attr[0:3] != 'has', "Invalid attribute"
         return lambda *args, **kw: (self.list(self._pool.starmap(self._batch_call, [(im,attr,args,kw) for im in self._imlist])))
+
+    def _close(self):
+        self._pool.terminate()
 
     def torch(self):
         """Convert the batch of N HxWxC images to a NxCxHxW torch tensor"""
