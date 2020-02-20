@@ -1,6 +1,7 @@
 import os
 import PIL
 import PIL.Image
+from multiprocessing import Pool
 from vipy.show import imshow, imbbox, savefig, colorlist
 from vipy.util import isnumpy, isurl, isimageurl, \
     fileext, tempimage, mat2gray, imwrite, imwritegray, \
@@ -810,11 +811,17 @@ class Image(object):
         alt_text = alt if alt is not None else self.filename()
         return '<img src="data:image/png;base64,%s" alt="%s" />' % (b, alt_text)
     
-    def savefig(self, filename=None):
+    def savefig(self, filename=None, figure=1):
         """Save last figure output from self.show() with drawing overlays to provided filename and return filename"""
-        self.show(figure=None, nowindow=True)
-        f = filename if filename is not None else tempjpg()
-        return savefig(filename=f)
+        self.show(figure=figure, nowindow=True)  # sets figure dimensions, does not display window
+        if filename is None:
+            (W,H) = plt.figure(1).canvas.get_width_height()  # fast
+            buf = io.BytesIO()
+            plt.figure(figure).canvas.print_raw(buf)  # fast
+            img = np.frombuffer(buf.getvalue(), dtype=np.uint8).reshape((H, W, 4))
+            return img
+        else:
+            return savefig(filename)
 
     def map(self, func):
         """Apply lambda function to our numpy array img, such that newimg=f(img), then replace newimg -> self.array().  The output of this lambda function must be a numpy array and if the channels or dtype changes, the colorspace is set to 'float'"""
@@ -1398,11 +1405,17 @@ class Scene(ImageCategory):
         return self
 
     def savefig(self, outfile=None, categories=None, figure=None, do_caption=True, fontsize=10, boxalpha=0.25, d_category2color={'person':'green', 'vehicle':'blue', 'object':'red'}, captionoffset=(0,0), dpi=200, textfacecolor='white', textfacealpha=1.0, shortlabel=True):
-        """Save show() output to given file without popping up a window"""
-        outfile = outfile if outfile is not None else tempjpg()
+        """Save show() output to given file or return bufferwithout popping up a window"""
         self.show(categories=categories, figure=figure, do_caption=do_caption, fontsize=fontsize, boxalpha=boxalpha, d_category2color=d_category2color, captionoffset=captionoffset, nowindow=True, textfacecolor=textfacecolor, textfacealpha=textfacealpha, shortlabel=shortlabel)
-        savefig(outfile, figure, dpi=dpi, bbox_inches='tight', pad_inches=0)
-        return outfile
+        if outfile is None:
+            (W,H) = plt.gcf().canvas.get_width_height()  # fast
+            buf = io.BytesIO()
+            plt.gcf().canvas.print_raw(buf)  # fast
+            img = np.frombuffer(buf.getvalue(), dtype=np.uint8).reshape((H, W, 4))
+            return img
+        else:
+            savefig(outfile, figure, dpi=dpi, bbox_inches='tight', pad_inches=0)
+            return outfile
 
     
 class Batch(object):
@@ -1418,12 +1431,17 @@ class Batch(object):
     >>> imb.crop()  # Crop all elements in batch 
 
     """    
-    def __init__(self, imlist, seed=None):
+    @staticmethod
+    def _batch_call(im, attr, args, kwargs):
+        return getattr(im, attr)(*args, **kwargs)
+
+    def __init__(self, imlist, seed=None, n_processes=8):
         """Create a batch of homogeneous vipy.image objects that can be operated on with a single function call"""
         assert isinstance(imlist, list) and all([isinstance(im, Image) for im in imlist]), "Invalid input"
         self._imlist = imlist
         if seed is not None:
             np.random.seed(seed)  # for repeatable take
+        self._pool = Pool(n_processes)
 
     def __repr__(self):
         return '<vipy.image.Batch: type="%s", batchsize=%d>' % (type(self._imlist[0]), len(self))
@@ -1434,38 +1452,27 @@ class Batch(object):
     def __getitem__(self, k):
         return self._imlist[k]
 
-    def dict(self):
-        return {'batch':[d.dict() for d in self._imlist]}
-        
-    def list(self, imlist_=None):
-        if imlist_ is None:
+    def list(self, inputlist=None):
+        if inputlist is None:
             return self._imlist
+        elif islist(inputlist) and isinstance(inputlist[0], vipy.image.Image):
+            self._imlist = inputlist
+            return self
         else:
-            self._imlist = imlist_
-        return self
-
+            return inputlist
+        
     def __iter__(self):
         for im in self._imlist:
             yield im
             
-    def map(self, f):
-        pass
-
-    def filter(self, f):
-        pass
-
-    def reduce(self, f):
-        pass
-
     def take(self, n):
         return np.random.choice(self._imlist, n)
 
     def __getattr__(self, attr):
-        """Call the same method on all Image objects.  The called method must return the image object."""
+        """Call the same method on all Image objects"""
         assert hasattr(self._imlist[0], attr), "Invalid attribute"
-        assert attr not in set(['show', 'saveas', 'savefig', 'rectangular_mask']), "Invalid attribute"
         assert attr[0:2] != 'is' and attr[0:3] != 'has', "Invalid attribute"
-        return lambda *args, **kw: self.list([getattr(im,attr)(*args, **kw) for im in self._imlist])
+        return lambda *args, **kw: (self.list(self._pool.starmap(self._batch_call, [(im,attr,args,kw) for im in self._imlist])))
 
     def torch(self):
         """Convert the batch of N HxWxC images to a NxCxHxW torch tensor"""

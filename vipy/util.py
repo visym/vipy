@@ -388,6 +388,11 @@ def scpsave(v):
         vc = v.clone().url('scp://%s:%s' % (socket.gethostname(), v.filename()))
         vc._filename = None
         v = vc
+    elif islist(v) and all([isinstance(vv, vipy.image.Image) or isinstance(vv, vipy.video.Video) for vv in v]):
+        vc = [vv.clone().url('scp://%s:%s' % (socket.gethostname(), vv.filename())) for vv in v]
+        for vv in vc:
+            vv._filename = None
+        v = vc
     return 'scp://%s:%s' % (socket.gethostname(), save(v))
 
 

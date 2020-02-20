@@ -103,7 +103,7 @@ class Track(object):
 
     """
 
-    def __init__(self, keyframes=None, boxes=None, category=None, label=None, confidence=None, framerate=None, interpolation='linear', boundary='extend', shortlabel=None, attributes=None):
+    def __init__(self, keyframes=None, boxes=None, category=None, label=None, confidence=None, framerate=None, interpolation='linear', boundary='strict', shortlabel=None, attributes=None):
         assert not (label is not None and category is not None), "Constructor requires either label or category kwargs, not both"
         assert isinstance(keyframes, tuple) or isinstance(keyframes, list), "Keyframes are required and must be tuple or list"
         assert isinstance(boxes, tuple) or isinstance(boxes, list), "Keyframe boundingboxes are required and must be tuple or list"
@@ -218,7 +218,7 @@ class Track(object):
             return self._shortlabel
 
     def during(self, k):
-        return k >= self.startframe() and k < self.endframe()
+        return k >= self.startframe() and k <= self.endframe()
 
     def offset(self, dt=0, dx=0, dy=0):
         self._keyboxes = [bb.offset(dx, dy) for bb in self._keyboxes]
@@ -313,7 +313,7 @@ class Activity(object):
         return self._endframe
 
     def middleframe(self):
-        return int(np.round((self.endframe() - self.startframe()) / 2.0))
+        return int(np.round((self.endframe() - self.startframe()) / 2.0)) + self.startframe()
 
     def framerate(self, fps):
         """Resample (startframe, endframe) from known original framerate set by constructor to be new framerate fps"""        

@@ -717,6 +717,7 @@ def test_scene():
     assert isinstance(im.dict(), dict)
     print('[test_image.scene]: dict PASSED')
     
+
 def test_batch():
     imb = vipy.image.Batch([ImageDetection(filename=rgbfile, category='face', bbox=vipy.geometry.BoundingBox(0,0,100,100)) for k in range(0,100)])
     imb.crop()
@@ -726,8 +727,6 @@ def test_batch():
     assert np.array(imb.torch()).shape == (100,3,100,100)
     print('[test_image.batch]: vipy.image.Batch PASSED')
 
-    assert isinstance(imb.dict(), dict)
-    print('[test_image.batch]: dict PASSED')
     
 if __name__ == "__main__":
     test_image()

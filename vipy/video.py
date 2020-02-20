@@ -736,17 +736,21 @@ class Scene(VideoCategory):
             yield self.__getitem__(k)
         self._currentframe = None
 
-    def tracks(self, tracks=None):
+    def tracks(self, tracks=None, id=None):
         if tracks is None:
             return list(self._tracks.values())
+        elif id is not None:
+            return self._tracks[id]
         else:
             assert all([isinstance(t, vipy.object.Track) for t in tolist(tracks)]), "Invalid input - Must be vipy.object.Track or list of vipy.object.Track"
             self._tracks = {t.id():t for t in tolist(tracks)}
             return self
 
-    def activities(self, activities=None):
+    def activities(self, activities=None, id=None):
         if activities is None:
             return list(self._activities.values())
+        elif id is not None:
+            return self._activities[id]
         else:
             assert all([isinstance(a, vipy.object.Activity) for a in tolist(activities)]), "Invalid input - Must be vipy.object.Activity or list of vipy.object.Activities"
             self._activities = {a.id:a for a in tolist(activities)} 
@@ -893,24 +897,18 @@ class Scene(VideoCategory):
         super(Scene, self).rescale(s)
         return self
 
-    def annotate(self, outfile=None):
+    def annotate(self, outfile=None, n_processes=8):
         """Generate a video visualization of all annotated objects and activities in the video, at the resolution and framerate of the underlying video, save as outfile.
         This function does not play the video, it only generates an annotation video.  Use show() to annotation and play."""
         assert self.isloaded(), "Call load() before annotate()"
         vid = self.load().clone()  # to save a new array
         outfile = outfile if outfile is not None else tempMP4()        
-        (W, H) = (None, None)
         plt.close(1)
-        for (k,im) in enumerate(self.__iter__()):
-            imh = im.show(figure=1, nowindow=True)  # sets figure dimensions, does not display window
-            if W is None or H is None:
-                (W,H) = plt.figure(1).canvas.get_width_height()  # fast
-                vid._array = np.zeros( (len(self), H, W,self.channels()), dtype=np.uint8)  # allocate
-            buf = io.BytesIO()
-            plt.figure(1).canvas.print_raw(buf)  # fast
-            img = np.frombuffer(buf.getvalue(), dtype=np.uint8).reshape((H, W, 4))
+        imgs = vipy.image.Batch(list(self.__iter__()), n_processes=n_processes).savefig(figure=1)
+        plt.close(1)
+        vid._array = np.zeros( (len(self), imgs[0].shape[0], imgs[0].shape[1], self.channels()), dtype=np.uint8)  # allocate        
+        for (k,img) in enumerate(imgs):
             vid._array[k,:,:,:] = np.array(PIL.Image.fromarray(img).convert('RGB'))
-        plt.close(1)
         return vid.saveas(outfile)
 
     def show(self, outfile=None, verbose=True):

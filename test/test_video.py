@@ -203,7 +203,8 @@ def _test_scene():
     # Bounding box interpolation
     for im in v:
         assert im.shape() == v.shape()
-    assert im[0].bbox.width() == 400 and im[1].bbox.width() == 200
+    assert len(im) == 0  # strict boundary by default
+    assert v[200][0].bbox.width() == 400 and v[200][1].bbox.width() == 200
     print('[test_video.scene]: frame interpolation  PASSED')
 
     # Thumbnail

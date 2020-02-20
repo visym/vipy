@@ -90,6 +90,7 @@ class Mevadata_Public_01(object):
         """Parse MEVA annotations from 'meva-data-repo/annotation/DIVA-phase-2/MEVA/meva-annotations/' into vipy.video.Scene()
         
         Kwiver packet format: https://gitlab.kitware.com/meva/meva-data-repo/blob/master/documents/KPF-specification-v4.pdf
+        Stride is an optional temporal step to skip bounding boxes annotated on every frame and use vipy.object.Track() linear interpolation between keyframes
 
         """
 
@@ -139,7 +140,7 @@ class Mevadata_Public_01(object):
                     if not bbox.isvalid():
                         warnings.warn('Invalid bounding box: id1=%s, bbox="%s", file="%s" - Ignoring' % (str(v['id1']), str(bbox), filetail(geom_yamlfile)))
                     elif v['id1'] not in d_id1_to_track:
-                        d_id1_to_track[v['id1']] = Track(category=d_id1_to_category[v['id1']], framerate=framerate, keyframes=[keyframe], boxes=[bbox])
+                        d_id1_to_track[v['id1']] = Track(category=d_id1_to_category[v['id1']], framerate=framerate, keyframes=[keyframe], boxes=[bbox], boundary='strict')
                     else:
                         d_id1_to_track[v['id1']].add(keyframe=keyframe, box=bbox)
                 
@@ -158,9 +159,9 @@ class Mevadata_Public_01(object):
                     startframe = int(v['act']['timespan'][0]['tsr0'][0])
                     endframe = int(v['act']['timespan'][0]['tsr0'][1])
                     actorid = [x['id1'] for x in v['act']['actors']]
-                    trackids = [d_id1_to_track[x].id() for x in actorid]
+                    objectids = [d_id1_to_track[x].id() for x in actorid]
 
-                    vid.add(Activity(category=category, startframe=startframe, endframe=endframe, objectids=trackids, framerate=framerate, attributes={'src_status':v['act']['src_status']}))
+                    vid.add(Activity(category=category, startframe=startframe, endframe=endframe, objectids=objectids, framerate=framerate, attributes={'src_status':v['act']['src_status']}))
             
             vidlist.append(vid)
         return vidlist
