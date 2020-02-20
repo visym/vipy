@@ -483,43 +483,52 @@ class Video(object):
 
     def saveas(self, outfile, framerate=25, vcodec='libx264', verbose=False, ignoreErrors=False):
         """Save video to new output video file.  This function does not draw boxes, it saves pixels to a new video file.
-        If self.array() is loaded, then export the contents of self._array to the video file
-        If self.array() is not loaded, and there exists a valid video file, apply the filter chain directly to the input video
-        If outfile==None or outfile==self.filename(), then overwrite the current filename 
+
+           * If self.array() is loaded, then export the contents of self._array to the video file
+           * If self.array() is not loaded, and there exists a valid video file, apply the filter chain directly to the input video
+           * If outfile==None or outfile==self.filename(), then overwrite the current filename 
+           * If ignoreErrors=True, then exit gracefully.  Useful for chaining download().saveas() on parallel dataset downloads
+
         """
-        if self.isloaded():
-            # Save numpy() from load() to video
-            (n, height, width, channels) = self._array.shape
-            process = ffmpeg.input('pipe:', format='rawvideo', pix_fmt='rgb24', s='{}x{}'.format(width, height)) \
-                            .filter('pad', 'ceil(iw/2)*2', 'ceil(ih/2)*2') \
-                            .output(outfile, pix_fmt='yuv420p', vcodec=vcodec, r=framerate) \
+        try:
+            if self.isloaded():
+                # Save numpy() from load() to video
+                (n, height, width, channels) = self._array.shape
+                process = ffmpeg.input('pipe:', format='rawvideo', pix_fmt='rgb24', s='{}x{}'.format(width, height)) \
+                                .filter('pad', 'ceil(iw/2)*2', 'ceil(ih/2)*2') \
+                                .output(outfile, pix_fmt='yuv420p', vcodec=vcodec, r=framerate) \
+                                .overwrite_output() \
+                                .global_args('-loglevel', 'error' if not verbose else 'debug') \
+                                .run_async(pipe_stdin=True)
+                
+                for frame in self._array:
+                    process.stdin.write(frame.astype(np.uint8).tobytes())
+                process.stdin.close()
+                process.wait()
+            
+            elif self.isdownloaded():
+                # Transcode the video file directly, do not load() then export
+                # Requires saving to a tmpfile if the output filename is the same as the input filename
+                tmpfile = '%s.tmp%s' % (filefull(outfile), fileext(outfile)) if outfile == self.filename() else outfile
+                self._ffmpeg.filter('pad', 'ceil(iw/2)*2', 'ceil(ih/2)*2') \
+                            .output(tmpfile, pix_fmt='yuv420p', vcodec=vcodec, r=framerate) \
                             .overwrite_output() \
                             .global_args('-loglevel', 'error' if not verbose else 'debug') \
-                            .run_async(pipe_stdin=True)
-
-            for frame in self._array:
-                process.stdin.write(frame.astype(np.uint8).tobytes())
-
-            process.stdin.close()
-            process.wait()
-        elif self.isdownloaded():
-            # Transcode the video file directly, do not load() then export
-            # Requires saving to a tmpfile if the output filename is the same as the input filename
-            tmpfile = '%s.tmp%s' % (filefull(outfile), fileext(outfile)) if outfile == self.filename() else outfile
-            self._ffmpeg.filter('pad', 'ceil(iw/2)*2', 'ceil(ih/2)*2') \
-                        .output(tmpfile, pix_fmt='yuv420p', vcodec=vcodec, r=framerate) \
-                        .overwrite_output() \
-                        .global_args('-loglevel', 'error' if not verbose else 'debug') \
-                        .run()
-            if outfile == self.filename():
-                if os.path.exists(self.filename()):
-                    os.remove(self.filename())
-                shutil.move(tmpfile, self.filename())
-        elif self.hasurl() and not ignoreErrors:
-            raise ValueError('Input video url "%s" not downloaded, call download() first' % self.url())
-        elif not ignoreErrors:
-            raise ValueError('Input video file not found "%s"' % self.filename())
-
+                            .run()
+                if outfile == self.filename():
+                    if os.path.exists(self.filename()):
+                        os.remove(self.filename())
+                    shutil.move(tmpfile, self.filename())
+            elif self.hasurl():
+                raise ValueError('Input video url "%s" not downloaded, call download() first' % self.url())
+            else:
+                raise ValueError('Input video file not found "%s"' % self.filename())
+        except Exception as e:
+            if ignoreErrors:
+                print('[vipy.video.saveas]:  Failed with error "%s" - Ignoring' % str(repr(e)))
+            else:
+                raise
+            
         return outfile
 
     def save(self, ignoreErrors=False):

@@ -93,6 +93,12 @@ def test_video():
     v.__repr__()
     print('[test_video.video]: __repr__  PASSED')    
     
+
+    # Saveas
+    v = vipy.video.Video(url=mp4url)
+    v.save(ignoreErrors=True)
+    print('[test_video.video]: saveas(ignoreErrors=True)  PASSED')        
+
     
 def _test_scene():
 
