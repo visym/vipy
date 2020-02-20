@@ -481,7 +481,7 @@ class Video(object):
         self._ffmpeg = self._ffmpeg.crop(bb.xmin(), bb.ymin(), bb.width(), bb.height())
         return self
 
-    def saveas(self, outfile, framerate=25, vcodec='libx264', verbose=False):
+    def saveas(self, outfile, framerate=25, vcodec='libx264', verbose=False, ignoreErrors=False):
         """Save video to new output video file.  This function does not draw boxes, it saves pixels to a new video file.
         If self.array() is loaded, then export the contents of self._array to the video file
         If self.array() is not loaded, and there exists a valid video file, apply the filter chain directly to the input video
@@ -515,16 +515,16 @@ class Video(object):
                 if os.path.exists(self.filename()):
                     os.remove(self.filename())
                 shutil.move(tmpfile, self.filename())
-        elif self.hasurl():
+        elif self.hasurl() and not ignoreErrors:
             raise ValueError('Input video url "%s" not downloaded, call download() first' % self.url())
-        else:
+        elif not ignoreErrors:
             raise ValueError('Input video file not found "%s"' % self.filename())
 
         return outfile
 
-    def save(self):
+    def save(self, ignoreErrors=False):
         """Save the current video filter chain, overwriting the current filename()"""
-        return self.saveas(self.filename() if self.filename() is not None else tempMP4())
+        return self.saveas(self.filename() if self.filename() is not None else tempMP4(), ignoreErrors=ignoreErrors)
 
     def pptx(self, outfile):
         """Export the video in a format that can be played by powerpoint"""
@@ -714,7 +714,7 @@ class Scene(VideoCategory):
             dets = [t[k] for (tid,t) in self._tracks.items() if t[k] is not None]  # track interpolation with boundary handling
             for d in dets:
                 for (aid, a) in self._activities.items():
-                    if a.hastrack(d.attributes['track']) and a.during(k):
+                    if a.hastrack(d.attributes['track']['id']) and a.during(k):
                         # Shortlabel is displayed as "Noun Verb" during activity (e.g. Person Carry, Object Carry)
                         # Category is set to activity label during activity (e.g. all tracks in this activity have same color)
                         d.category(a.category())  # category label defines colors, see d.attributes['track'] for original labels 
@@ -897,11 +897,13 @@ class Scene(VideoCategory):
         super(Scene, self).rescale(s)
         return self
 
-    def annotate(self, outfile=None, n_processes=8):
+    def annotate(self, outfile=None, n_processes=8, verbose=True):
         """Generate a video visualization of all annotated objects and activities in the video, at the resolution and framerate of the underlying video, save as outfile.
         This function does not play the video, it only generates an annotation video.  Use show() to annotation and play."""
-        assert self.isloaded(), "Call load() before annotate()"
+        if verbose:
+            print('[vipy.video.show]: Generating annotation video "%s" ...' % outfile)        
         vid = self.load().clone()  # to save a new array
+        assert self.isloaded(), "Load() failed"        
         outfile = outfile if outfile is not None else tempMP4()        
         plt.close(1)
         imb = vipy.image.Batch(list(self.__iter__()), n_processes=n_processes)
@@ -916,9 +918,7 @@ class Scene(VideoCategory):
     def show(self, outfile=None, verbose=True, n_processes=8):
         """Generate an annotation video saved to outfile (or tempfile if outfile=None) and show it using ffplay when it is done exporting"""
         outfile = tempMP4() if outfile is None else outfile
-        if verbose:
-            print('[vipy.video.show]: Generating annotation video "%s" ...' % outfile)
-        self.annotate(outfile, n_processes=n_processes)
+        self.annotate(outfile, n_processes=n_processes, verbose=verbose)
         cmd = "ffplay %s" % outfile
         if verbose:
             print('[vipy.video.show]: Executing "%s"' % cmd)
