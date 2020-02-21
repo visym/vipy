@@ -136,7 +136,7 @@ class Video(object):
                 yield self.__getitem__(k)
 
     def checkpoint(self, flush=False):
-        """Save the state of the object to restore on flush"""
+        """Save the state of the object to restore on flush, with an optionsl flush=True to remove the array() from the checkpoint and force a reload (useful for lazy loading)"""
         self._checkpoint = self.clone()
         self._array = None if flush else self._array
         return self
@@ -267,7 +267,7 @@ class Video(object):
         return self._array
     
     def flush(self):
-        """Restore object to state set by constructor"""
+        """Restore object to state set by constructor, or to last checkpoint()"""
         self.__dict__ = self._checkpoint.__dict__
         return self
 
