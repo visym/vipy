@@ -726,7 +726,8 @@ def test_scene():
     print('[test_image.scene]: dict PASSED')
     
 
-def test_batch():
+def _test_batch():
+    """Requires pathos"""
     imb = vipy.image.Batch([ImageDetection(filename=rgbfile, category='face', bbox=vipy.geometry.BoundingBox(0,0,100,100)) for k in range(0,100)])
     imb.crop()
     assert len(imb) == 100
