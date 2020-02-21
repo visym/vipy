@@ -2,6 +2,7 @@ import os
 import PIL
 import PIL.Image
 import platform
+import dill
 from vipy.show import imshow, imbbox, savefig, colorlist
 from vipy.util import isnumpy, isurl, isimageurl, \
     fileext, tempimage, mat2gray, imwrite, imwritegray, \
@@ -26,8 +27,10 @@ import base64
 import types
 import hashlib
 from itertools import repeat
-import multiprocessing as mp
-from multiprocessing import Pool
+#import multiprocessing as mp
+#from multiprocessing import Pool
+#import atexit
+import concurrent.futures as cf
 
 
 class Image(object):
@@ -1441,25 +1444,39 @@ class Batch(object):
     >>> imb = vipy.image.Batch([ImageDetection(filename='img_%06d.png' % k, category=c, bbox=bb) for (k,c,bb) in zip(range(0,100), labels, boxes)])
     >>> imb.crop()  # Crop all elements in batch 
 
-    """
-    
+    """    
     
     @staticmethod
     def _batch_call(im, attr, args, kwargs):
         return getattr(im, attr)(*args, **kwargs)
 
-    def __init__(self, objlist, n_processes=1):
-        """Create a batch of homogeneous vipy.image objects from an iterable that can be operated on with a single parallel function call"""
-        self._batchtype = vipy.image.Image
+    @staticmethod
+    def _batch_map(im, f_pkl):
+        return dill.loads(f_pkl)(im)
+
+    @staticmethod
+    def _batch_map_with_args(im, f_pkl, args):
+        return dill.loads(f_pkl)(im, *args)
+    
+    def __init__(self, objlist, n_processes=4, set_start_method=None, batchtype=Image):
+        """Create a batch of homogeneous vipy.image objects from an iterable that can be operated on with a single parallel function call
+        
+        When calling methods that require matplotlib, set_start_method='spawn' to avoid the errors:
+            `The process has forked and you cannot use this CoreFoundation functionality safely. You MUST exec().'
+        """
+        self._batchtype = batchtype
         assert islist(objlist) and all([isinstance(im, self._batchtype) for im in objlist]), "Invalid input - Must be list of vipy.image.Image()"
         self._objlist = objlist
-        try:
-            if platform.system() == 'Darwin':
-                mp.set_start_method('spawn')  # necessary for matplotlib on macosx
-        except:
-            pass  # can only set this once
+        if set_start_method is not None:
+            assert set_start_method in set(['spawn', 'fork', 'forkserver']), "Invalid set_start_method (https://docs.python.org/3/library/multiprocessing.html)"
+            try:
+                mp.set_start_method(set_start_method)  # 'spawn' necessary for matplotlib operations 
+            except:
+                pass  # can only set this once
         self._pool = Pool(n_processes) if n_processes > 1 else None
-
+        atexit.register(self.shutdown)
+        self._n_processes = n_processes
+        
     def __len__(self):
         return len(self._objlist)
 
@@ -1467,7 +1484,7 @@ class Batch(object):
         return str('<vipy.batch: type=%s, len=%d>' % (str(type(self._objlist[0])), len(self)))
     
     def batch(self, resultlist=None):
-        if resultlist is not None:
+        if resultlist is not None:            
             assert islist(resultlist), "Invalid input"
             if isinstance(resultlist[0], self._batchtype):
                 self._objlist = resultlist
@@ -1487,8 +1504,32 @@ class Batch(object):
             return lambda *args, **kw: self.batch(self.__dict__['_pool'].starmap(self._batch_call, zip(self._objlist, repeat(attr), repeat(args), repeat(kw))))
         else:
             return lambda *args, **kw: self.batch([self._batch_call(im, attr, args, kw) for im in self._objlist])
+
+    def map(self, f_lambda, args=None):
+        """Run the lambda function on each of the elements of the batch. 
         
-    def _close(self):
+        If args is provided, then this is a unique argument for the lambda function for each of the elements in the batch
+        
+        >>> iml = [vipy.image.RandomScene(512,512) for k in range(0,1000)]   
+        >>> imb = vipy.image.Batch(iml, n_processes=4) 
+        >>> imb.map(lambda im,f: im.saveas(f), args=[('/tmp/out%d.jpg'%k,) for k in range(0,1000)])  
+        >>> imb.map(lambda im: im.rgb())  # this is equivalent to imb.rgb()
+
+        """
+        
+        if self.__dict__['_pool'] is not None:
+            if args is not None:
+                assert islist(args) and len(args) == len(self._objlist), "Args must be a list of arguments, one for each element in batch"
+                return self.batch(self.__dict__['_pool'].starmap(self._batch_map_with_args, zip(self._objlist, repeat(dill.dumps(f_lambda)), args)))
+            else:
+                return self.batch(self.__dict__['_pool'].starmap(self._batch_map, zip(self._objlist, repeat(dill.dumps(f_lambda)))))
+        else:
+            if args is not None:
+                return self.batch([f_lambda(im, *a) for (im,a) in zip(self._objlist, args)])
+            else:
+                return self.batch([f_lambda(im) for im in self._objlist])            
+    
+    def shutdown(self):
         if self.__dict__['_pool'] is not None:
             self.__dict__['_pool'].terminate()
 

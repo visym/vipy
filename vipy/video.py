@@ -22,6 +22,7 @@ import types
 from itertools import repeat
 import multiprocessing as mp
 from multiprocessing import Pool
+import atexit
 
 
 class Video(object):
@@ -978,18 +979,11 @@ class Batch(vipy.image.Batch):
     >>> imb.load()  # load all elements in batch in parallel
 
     """    
-    def __init__(self, objlist, n_processes=1):
+    def __init__(self, objlist, n_processes=4, set_start_method=None):
         """Create a batch of homogeneous vipy.video objects from an iterable that can be operated on with a single parallel function call"""
-        self._batchtype = vipy.video.Video
-        assert islist(objlist) and all([isinstance(im, self._batchtype) for im in objlist]), "Invalid input - Must be list of vipy.video.Video()"
-        self._objlist = objlist
-        try:
-            mp.set_start_method('spawn')  # necessary for matplotlib on macosx
-        except:
-            pass  # can only set this once
-        self._pool = Pool(n_processes) if n_processes > 1 else None
+        super(Batch, self).__init__(objlist, n_processes, set_start_method, Video)
 
-
+        
 def RandomVideo(rows=None, cols=None, frames=None):
     """Return a random loaded vipy.video.video, useful for unit testing"""
     rows = np.random.randint(256, 1024) if rows is None else rows
