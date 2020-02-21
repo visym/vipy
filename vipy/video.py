@@ -583,9 +583,14 @@ class Video(object):
         t = torch.from_numpy(frames.transpose(0,3,1,2))
         return t if take is None else t[::int(np.round(len(t)/float(take)))][0:take]
 
-    def clone(self):
-        """Copy the video object"""
-        return copy.deepcopy(self)
+    def clone(self, flush=False):
+        """Create deep copy of video object, flushing the original buffer if requested and returning the cloned object.
+        Flushing is useful for distributed memory management to free the buffer from this object, and pass along a cloned 
+        object which can be used for encoding and will be garbage collected.
+        """
+        im = copy.deepcopy(self)
+        self._array = None if flush else self._array
+        return im
 
     def map(self, func):
         """Apply lambda function to the loaded numpy array img, changes pixels not shape

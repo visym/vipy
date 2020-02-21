@@ -452,11 +452,16 @@ class Image(object):
     def hasfilename(self):
         return self._filename is not None and os.path.exists(self._filename)
 
-    def clone(self):
-        """Create deep copy of image object"""
+    def clone(self, flush=False):
+        """Create deep copy of image object, flushing the original buffer if requested and returning the cloned object.
+        Flushing is useful for distributed memory management to free the buffer from this object, and pass along a cloned 
+        object which can be used for encoding and will be garbage collected.
+        """
         im = copy.deepcopy(self)
         if self._array is not None:
             im._array = self._array.copy()
+        if flush:
+            self._array = None
         return im
 
     # Spatial transformations
