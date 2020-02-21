@@ -19,10 +19,6 @@ import PIL.Image
 import warnings
 import shutil
 import types
-from itertools import repeat
-import multiprocessing as mp
-from multiprocessing import Pool
-import atexit
 
 
 class Video(object):
@@ -947,9 +943,9 @@ class Scene(VideoCategory):
         assert self.isloaded(), "Load() failed"        
         outfile = outfile if outfile is not None else tempMP4()        
         plt.close(1)
-        imb = vipy.image.Batch(list(self.__iter__()), n_processes=n_processes)  # FIXME: speed up interpolation
-        imgs = imb.savefig(figure=1)
-        imb._close()
+        videobatch = vipy.video.Batch([self.clone()], n_processes=n_processes, set_start_method='spawn') 
+        imgs = videobatch.map(lambda v,k: v[k].savefig(figure=1), args=[(k,) for k in range(0, len(self))])
+        imb.shutdown()
         plt.close(1)
         vid._array = np.zeros( (len(self), imgs[0].shape[0], imgs[0].shape[1], self.channels()), dtype=np.uint8)  # allocate        
         for (k,img) in enumerate(imgs):

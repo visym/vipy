@@ -27,10 +27,9 @@ import base64
 import types
 import hashlib
 from itertools import repeat
-#import multiprocessing as mp
-#from multiprocessing import Pool
-#import atexit
-import concurrent.futures as cf
+import multiprocessing as mp
+from multiprocessing import Pool
+import atexit
 
 
 class Image(object):
@@ -1457,7 +1456,10 @@ class Batch(object):
     @staticmethod
     def _batch_map_with_args(im, f_pkl, args):
         return dill.loads(f_pkl)(im, *args)
-    
+
+    def __del__(self):
+        self.shutdown()
+         
     def __init__(self, objlist, n_processes=4, set_start_method=None, batchtype=Image):
         """Create a batch of homogeneous vipy.image objects from an iterable that can be operated on with a single parallel function call
         
@@ -1467,7 +1469,7 @@ class Batch(object):
         self._batchtype = batchtype
         assert islist(objlist) and all([isinstance(im, self._batchtype) for im in objlist]), "Invalid input - Must be list of vipy.image.Image()"
         self._objlist = objlist
-        if set_start_method is not None:
+        if set_start_method is not None and n_processes > 1:
             assert set_start_method in set(['spawn', 'fork', 'forkserver']), "Invalid set_start_method (https://docs.python.org/3/library/multiprocessing.html)"
             try:
                 mp.set_start_method(set_start_method)  # 'spawn' necessary for matplotlib operations 
@@ -1481,7 +1483,7 @@ class Batch(object):
         return len(self._objlist)
 
     def __repr__(self):
-        return str('<vipy.batch: type=%s, len=%d>' % (str(type(self._objlist[0])), len(self)))
+        return str('<vipy.batch: type=%s, len=%d, procs=%d>' % (str(type(self._objlist[0])), len(self), self._n_processes))
     
     def batch(self, resultlist=None):
         if resultlist is not None:            
@@ -1500,11 +1502,15 @@ class Batch(object):
             
     def __getattr__(self, attr):
         """Call the same method on all Image objects"""
-        if self.__dict__['_pool'] is not None:
+        if self._n_processes > 1:
             return lambda *args, **kw: self.batch(self.__dict__['_pool'].starmap(self._batch_call, zip(self._objlist, repeat(attr), repeat(args), repeat(kw))))
         else:
             return lambda *args, **kw: self.batch([self._batch_call(im, attr, args, kw) for im in self._objlist])
 
+    def shutdown(self):
+        if self.__dict__['_pool'] is not None:
+            self.__dict__['_pool'].terminate()
+            
     def map(self, f_lambda, args=None):
         """Run the lambda function on each of the elements of the batch. 
         
@@ -1517,9 +1523,9 @@ class Batch(object):
 
         """
         
-        if self.__dict__['_pool'] is not None:
+        if self._n_processes > 1:
             if args is not None:
-                assert islist(args) and len(args) == len(self._objlist), "Args must be a list of arguments, one for each element in batch"
+                assert islist(args) and len(args) == len(self._objlist), "Args must be a list of arguments of length %d, one for each element in batch" % len(self._objlist)
                 return self.batch(self.__dict__['_pool'].starmap(self._batch_map_with_args, zip(self._objlist, repeat(dill.dumps(f_lambda)), args)))
             else:
                 return self.batch(self.__dict__['_pool'].starmap(self._batch_map, zip(self._objlist, repeat(dill.dumps(f_lambda)))))
@@ -1529,10 +1535,6 @@ class Batch(object):
             else:
                 return self.batch([f_lambda(im) for im in self._objlist])            
     
-    def shutdown(self):
-        if self.__dict__['_pool'] is not None:
-            self.__dict__['_pool'].terminate()
-
     def torch(self):
         """Convert the batch of N HxWxC images to a NxCxHxW torch tensor"""
         try_import('torch', 'torch');  import torch
