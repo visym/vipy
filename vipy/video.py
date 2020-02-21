@@ -934,7 +934,9 @@ class Scene(VideoCategory):
 
     def annotate(self, outfile=None, n_processes=1, verbose=True):
         """Generate a video visualization of all annotated objects and activities in the video, at the resolution and framerate of the underlying video, save as outfile.
-        This function does not play the video, it only generates an annotation video.  Use show() to annotation and play."""
+        This function does not play the video, it only generates an annotation video.  Use show() to annotation and play.
+        In general, this function should not be run on very long videos, as it requires loading the video framewise into memory, try running on clips instead.
+        """
         if verbose:
             print('[vipy.video.show]: Generating annotation video "%s" ...' % outfile)
             if not self.isloaded():
@@ -945,11 +947,9 @@ class Scene(VideoCategory):
         plt.close(1)
         videobatch = vipy.video.Batch([self.clone()], n_processes=n_processes, set_start_method='spawn') 
         imgs = videobatch.map(lambda v,k: v[k].savefig(figure=1), args=[(k,) for k in range(0, len(self))])
-        imb.shutdown()
+        videobatch.shutdown()
         plt.close(1)
-        vid._array = np.zeros( (len(self), imgs[0].shape[0], imgs[0].shape[1], self.channels()), dtype=np.uint8)  # allocate        
-        for (k,img) in enumerate(imgs):
-            vid._array[k,:,:,:] = np.array(PIL.Image.fromarray(img).convert('RGB'))
+        vid._array = np.stack([np.array(PIL.Image.fromarray(img).convert('RGB')) for img in imgs], axis=0)
         return vid.saveas(outfile)
 
     def show(self, outfile=None, verbose=True, n_processes=1):
