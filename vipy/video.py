@@ -19,6 +19,9 @@ import PIL.Image
 import warnings
 import shutil
 import types
+from itertools import repeat
+import multiprocessing as mp
+from multiprocessing import Pool
 
 
 class Video(object):
@@ -948,6 +951,31 @@ class Scene(VideoCategory):
         return self
     
     
+class Batch(vipy.image.Batch):
+    """vipy.video.Batch class
+
+    This class provides a representation of a set of vipy.video objects.  All of the object types must be the same.  If so, then an operation on the batch is performed on each of the elements in the batch.
+
+    Valid constructors
+
+    >>> imb = vipy.video.Batch([Image(filename='img_%06d.png' % k for k in range(0,100)])
+    >>> imb.rgb()  # convert all elements in batch to RGB
+    >>> imb.load()  # load all elements in batch in parallel
+
+    """    
+
+    def __init__(self, objlist, n_processes=1):
+        """Create a batch of homogeneous vipy.video objects from an iterable that can be operated on with a single parallel function call"""
+        self._batchtype = vipy.video.Video
+        assert islist(objlist) and all([isinstance(im, self._batchtype) for im in objlist]), "Invalid input - Must be list of vipy.video.Video()"
+        self._objlist = objlist
+        try:
+            mp.set_start_method('spawn')  # necessary for matplotlib on macosx
+        except:
+            pass  # can only set this once
+        self._pool = Pool(n_processes) if n_processes > 1 else None
+
+
 def RandomVideo(rows=None, cols=None, frames=None):
     """Return a random loaded vipy.video.video, useful for unit testing"""
     rows = np.random.randint(256, 1024) if rows is None else rows

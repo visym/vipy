@@ -2,8 +2,6 @@ import os
 import PIL
 import PIL.Image
 import platform
-import multiprocessing as mp
-from multiprocessing import Pool
 from vipy.show import imshow, imbbox, savefig, colorlist
 from vipy.util import isnumpy, isurl, isimageurl, \
     fileext, tempimage, mat2gray, imwrite, imwritegray, \
@@ -28,6 +26,8 @@ import base64
 import types
 import hashlib
 from itertools import repeat
+import multiprocessing as mp
+from multiprocessing import Pool
 
 
 class Image(object):
@@ -375,7 +375,7 @@ class Image(object):
 
     def url(self, url=None, username=None, password=None, sha1=None, ignoreUrlErrors=None):
         """Image URL and URL download properties"""
-        if url is None:
+        if url is not None:
             self._url = url  # this does not change anything else, better to use constructor 
         if username is not None:
             self._urluser = username  # basic authentication
@@ -1436,47 +1436,47 @@ class Batch(object):
     >>> imb.crop()  # Crop all elements in batch 
 
     """    
-    @staticmethod
-    def _batch_call(im, attr, args, kwargs):
-        assert isinstance(im, vipy.image.Image), "Invalid vipy.image.Image() object in batch"
+
+    def _batch_call(self, im, attr, args, kwargs):
+        assert isinstance(im, self._batchtype), "Invalid object in batch - must be %s" % str(self._batchtype)
         return getattr(im, attr)(*args, **kwargs)
 
-    def __init__(self, imlist, n_processes=1):
+    def __init__(self, objlist, n_processes=1):
         """Create a batch of homogeneous vipy.image objects from an iterable that can be operated on with a single parallel function call"""
-        assert islist(imlist) and all([isinstance(im, vipy.image.Image) for im in imlist]), "Invalid input - Must be list of vipy.image.Image()"
-        self._imlist = imlist
+        self._batchtype = vipy.image.Image
+        assert islist(objlist) and all([isinstance(im, self.batchtype) for im in objlist]), "Invalid input - Must be list of vipy.image.Image()"
+        self._objlist = objlist
         try:
             if platform.system() == 'Darwin':
                 mp.set_start_method('spawn')  # necessary for matplotlib on macosx
         except:
             pass  # can only set this once
-
         self._pool = Pool(n_processes) if n_processes > 1 else None
 
     def __len__(self):
-        return len(self._imlist)
+        return len(self._objlist)
 
     def __repr__(self):
-        return str('<vipy.image.Batch: type=%s, len=%d>' % (str(type(self._imlist[0])), len(self)))
+        return str('<vipy.batch: type=%s, len=%d>' % (str(type(self._objlist[0])), len(self)))
     
     def _return(self, resultlist):
         assert islist(resultlist), "Invalid input"
-        if isinstance(resultlist[0], vipy.image.Image):
-            self._imlist = resultlist
+        if isinstance(resultlist[0], self._batchtype):
+            self._objlist = resultlist
             return self
         else:
             return resultlist
         
     def __iter__(self):
-        for im in self._imlist:
+        for im in self._objlist:
             yield im
             
     def __getattr__(self, attr):
         """Call the same method on all Image objects"""
         if self.__dict__['_pool'] is not None:
-            return lambda *args, **kw: self._return(self.__dict__['_pool'].starmap(self._batch_call, zip(self._imlist, repeat(attr), repeat(args), repeat(kw))))
+            return lambda *args, **kw: self._return(self.__dict__['_pool'].starmap(self._batch_call, zip(self._objlist, repeat(attr), repeat(args), repeat(kw))))
         else:
-            return lambda *args, **kw: self._return([self._batch_call(im,attr,args,kw) for im in self._imlist])
+            return lambda *args, **kw: self._return([self._batch_call(im, attr, args, kw) for im in self._objlist])
         
     def _close(self):
         if self.__dict__['_pool'] is not None:
