@@ -293,9 +293,7 @@ def _test_scene():
 
     # Activityclip
     v = vipy.video.RandomSceneActivity(64,64,64)
-    v._array = None
-    v_filename = 'Video.mp4'
-    v.checkpoint()
+    v.filename('Video.mp4').checkpoint(flush=True)
     activitylength = [len(a) for a in v.activities()]
     assert all([len(c.activities())==1 for c in v.activityclip()])    
     assert all([len(a)==al for (c,al) in zip(v.activityclip(padframes=0), activitylength) for a in c.activities()])
