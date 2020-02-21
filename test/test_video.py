@@ -170,37 +170,37 @@ def _test_scene():
     assert [im.crop().height() for im in v[0]] == [200, 300]    
     print('[test_video.scene]: rot90cw  PASSED')
 
-    v = vid.clone().clip(0,10).rescale(0.5).load(verbosity=0)
+    v = vid.clone().clip(0,10).rescale(0.5).load(verbose=False)
     assert v.height() * 2 == h and v.width() * 2 == w and len(v) == 10
     assert [im.crop().height() for im in v[0]] == [200, 200]
     assert [im.crop().width() for im in v[0]] == [100, 150]        
     print('[test_video.scene]: rescale  PASSED')
 
-    (H,W) = vid.clone().clip(0,200).load(verbosity=0).shape()
-    v = vid.clone().clip(0,200).resize(cols=100).load(verbosity=0)    
+    (H,W) = vid.clone().clip(0,200).load(verbose=False).shape()
+    v = vid.clone().clip(0,200).resize(cols=100).load(verbose=False)    
     assert v.width() == 100 and len(v) == 200
     assert np.allclose([im.bbox.height() for im in v[0]], [400*(100.0/W), 400*(100.0/W)])
     assert np.allclose([im.bbox.width() for im in v[0]], [200*(100.0/W), 300*(100.0/W)])
     print('[test_video.scene]: resize isotropic  PASSED')
     
-    v = vid.clone().resize(cols=100, rows=100).clip(0,11).load(verbosity=0)    
+    v = vid.clone().resize(cols=100, rows=100).clip(0,11).load(verbose=False)    
     assert v.width() == 100 and v.height() == 100 and len(v) == 11
     assert np.allclose([im.bbox.height() for im in v[0]], [400*(100.0/H), 400*(100.0/H)])
     assert np.allclose([im.bbox.width() for im in v[0]], [200*(100.0/W), 300*(100.0/W)])    
     print('[test_video.scene]: resize anisotropic   PASSED')
     
-    v = vid.clone().clip(0,200).rot90cw().resize(rows=200).load(verbosity=0)
+    v = vid.clone().clip(0,200).rot90cw().resize(rows=200).load(verbose=False)
     assert v.height() == 200 and len(v) == 200
     print('[test_video.scene]: rotate and resize  PASSED')
     
     v.annotate('vipy.mp4')
     print('[test_video.scene]: annotate  PASSED')
 
-    v = vid.clone().clip(150,200).rot90cw().resize(rows=200).load(verbosity=0)
+    v = vid.clone().clip(150,200).rot90cw().resize(rows=200).load(verbose=False)
     assert v.height() == 200 and len(v) == 50
     print('[test_video.scene]: trim, rotate, resize  PASSED')
 
-    v = vid.clone().crop(BoundingBox(xmin=1, ymin=2, width=10, height=20)).load(verbosity=0)
+    v = vid.clone().crop(BoundingBox(xmin=1, ymin=2, width=10, height=20)).load(verbose=False)
     assert v.height() == 20 
     assert v[0][0].bbox.xmin() == -1 and v[0][0].bbox.ymin() == -2
     assert v[0][1].bbox.xmin() == 99 and v[0][1].bbox.ymin() == 198
