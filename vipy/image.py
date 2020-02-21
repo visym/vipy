@@ -275,8 +275,8 @@ class Image(object):
 
     def checkpoint(self, flush=False):
         """Save the state of the object to restore on flush"""
+        self._array = None if flush else self._array        
         self._checkpoint = self.clone()
-        self._array = None if flush else self._array
         return self
 
     def reload(self):
@@ -1436,16 +1436,17 @@ class Batch(object):
     >>> imb = vipy.image.Batch([ImageDetection(filename='img_%06d.png' % k, category=c, bbox=bb) for (k,c,bb) in zip(range(0,100), labels, boxes)])
     >>> imb.crop()  # Crop all elements in batch 
 
-    """    
-
-    def _batch_call(self, im, attr, args, kwargs):
-        assert isinstance(im, self._batchtype), "Invalid object in batch - must be %s" % str(self._batchtype)
+    """
+    
+    
+    @staticmethod
+    def _batch_call(im, attr, args, kwargs):
         return getattr(im, attr)(*args, **kwargs)
 
     def __init__(self, objlist, n_processes=1):
         """Create a batch of homogeneous vipy.image objects from an iterable that can be operated on with a single parallel function call"""
         self._batchtype = vipy.image.Image
-        assert islist(objlist) and all([isinstance(im, self.batchtype) for im in objlist]), "Invalid input - Must be list of vipy.image.Image()"
+        assert islist(objlist) and all([isinstance(im, self._batchtype) for im in objlist]), "Invalid input - Must be list of vipy.image.Image()"
         self._objlist = objlist
         try:
             if platform.system() == 'Darwin':
@@ -1460,13 +1461,16 @@ class Batch(object):
     def __repr__(self):
         return str('<vipy.batch: type=%s, len=%d>' % (str(type(self._objlist[0])), len(self)))
     
-    def _return(self, resultlist):
-        assert islist(resultlist), "Invalid input"
-        if isinstance(resultlist[0], self._batchtype):
-            self._objlist = resultlist
-            return self
+    def batch(self, resultlist=None):
+        if resultlist is not None:
+            assert islist(resultlist), "Invalid input"
+            if isinstance(resultlist[0], self._batchtype):
+                self._objlist = resultlist
+                return self
+            else:
+                return resultlist
         else:
-            return resultlist
+            return self._objlist
         
     def __iter__(self):
         for im in self._objlist:
@@ -1475,9 +1479,9 @@ class Batch(object):
     def __getattr__(self, attr):
         """Call the same method on all Image objects"""
         if self.__dict__['_pool'] is not None:
-            return lambda *args, **kw: self._return(self.__dict__['_pool'].starmap(self._batch_call, zip(self._objlist, repeat(attr), repeat(args), repeat(kw))))
+            return lambda *args, **kw: self.batch(self.__dict__['_pool'].starmap(self._batch_call, zip(self._objlist, repeat(attr), repeat(args), repeat(kw))))
         else:
-            return lambda *args, **kw: self._return([self._batch_call(im, attr, args, kw) for im in self._objlist])
+            return lambda *args, **kw: self.batch([self._batch_call(im, attr, args, kw) for im in self._objlist])
         
     def _close(self):
         if self.__dict__['_pool'] is not None:

@@ -102,6 +102,21 @@ def test_video():
     
 def _test_scene():
 
+    # Activityclip
+    v = vipy.video.RandomSceneActivity(64,64,64)
+    v.filename('Video.mp4').checkpoint(flush=True)
+    activitylength = [len(a) for a in v.activities()]
+    assert all([len(c.activities())==1 for c in v.activityclip()])    
+    assert all([len(a)==al for (c,al) in zip(v.activityclip(padframes=0), activitylength) for a in c.activities()])
+    try:
+        v.activityclip(padframes=2)  # will result in startframe < 0
+        Failed()
+    except Failed:
+        raise
+    except:
+        pass
+    print('[test_video.scene]: activityclip  PASSED')    
+    
     # Downloader
     v = vipy.video.Video(url='http://visym.com/out.mp4').load(ignoreErrors=True)
     print('[test_video.video]: download ignoreErrors  PASSED')                
@@ -291,20 +306,6 @@ def _test_scene():
     assert v1[0] == v2[50]
     print('[test_video.scene]: video scenes  PASSED')    
 
-    # Activityclip
-    v = vipy.video.RandomSceneActivity(64,64,64)
-    v.filename('Video.mp4').checkpoint(flush=True)
-    activitylength = [len(a) for a in v.activities()]
-    assert all([len(c.activities())==1 for c in v.activityclip()])    
-    assert all([len(a)==al for (c,al) in zip(v.activityclip(padframes=0), activitylength) for a in c.activities()])
-    try:
-        v.activityclip(padframes=2)  # will result in startframe < 0
-        Failed()
-    except Failed:
-        raise
-    except:
-        pass
-    print('[test_video.scene]: activityclip  PASSED')    
 
     # Saveas 
     shutil.copy('Video.mp4', '/tmp/Video.mp4')

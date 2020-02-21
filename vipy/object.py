@@ -359,6 +359,7 @@ class Activity(object):
 
     def offset(self, dt):
         self._startframe = self._startframe + dt
+        self._endframe = self._endframe + dt
         return self
     
     def id(self):

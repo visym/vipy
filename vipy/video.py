@@ -63,7 +63,6 @@ class Video(object):
         assert (startframe is not None and endframe is not None) or (startframe is None and endframe is None), "Invalid input - (startframe,endframe) are both required"
         assert (startsec is not None and endsec is not None) or (startsec is None and endsec is None), "Invalid input - (startsec,endsec) are both required"        
         (self._startframe, self._endframe) = (startframe, endframe)
-        (self._startframe_offset, self._endframe_offset) = (0, 0)
         (self._startsec, self._endsec) = (startsec, endsec)        
 
         # Input filenames
@@ -109,7 +108,7 @@ class Video(object):
         if self.hasurl():
             strlist.append('url="%s"' % self.url())
         if not self.isloaded() and self._startframe is not None:
-            strlist.append('clip=(%d,%d)' % (self._startframe + self._startframe_offset, self._endframe + self._endframe_offset))            
+            strlist.append('clip=(%d,%d)' % (self._startframe, self._endframe))
         if self._framerate is not None:
             strlist.append('fps=%s' % str(self._framerate))
         return str('<vipy.video: %s>' % (', '.join(strlist)))
@@ -137,8 +136,8 @@ class Video(object):
 
     def checkpoint(self, flush=False):
         """Save the state of the object to restore on flush, with an optionsl flush=True to remove the array() from the checkpoint and force a reload (useful for lazy loading)"""
+        self._array = None if flush else self._array                
         self._checkpoint = self.clone()
-        self._array = None if flush else self._array
         return self
                 
     def probe(self):
@@ -440,9 +439,8 @@ class Video(object):
         assert not self.isloaded(), "Filters can only be applied prior to load()"
         self._ffmpeg = self._ffmpeg.trim(start_frame=startframe, end_frame=endframe)\
                                    .setpts('PTS-STARTPTS')  # reset timestamp to 0 after trim filter
-        self._startframe = startframe if self._startframe is None else self._startframe
-        self._endframe = endframe if self._endframe is None else self._endframe        
-        (self._startframe_offset, self._endframe_offset) = (self._startframe_offset+startframe, self._endframe_offset+endframe)
+        self._startframe = startframe if self._startframe is None else self._startframe + startframe  # for __repr__ only
+        self._endframe = endframe if self._endframe is None else self._startframe + (endframe-startframe)  # for __repr__ only
         return self
 
     def cliptime(self, startsecs, endsecs):
@@ -632,7 +630,7 @@ class VideoCategory(Video):
         if self.category() is not None:
             strlist.append('category="%s"' % self.category())
         if not self.isloaded() and self._startframe is not None:
-            strlist.append('clip=(%d,%d)' % (self._startframe + self._startframe_offset, self._endframe + self._endframe_offset))
+            strlist.append('clip=(%d,%d)' % (self._startframe, self._endframe))
         if not self.isloaded() and self._startsec is not None:
             strlist.append('cliptime=(%1.2f,%1.2f)' % (self._startsec, self._endsec))
         return str('<vipy.video.VideoCategory: %s>' % (', '.join(strlist)))
@@ -725,7 +723,7 @@ class Scene(VideoCategory):
         if self._framerate is not None:
             strlist.append('fps=%s' % str(self._framerate))
         if not self.isloaded() and self._startframe is not None:
-            strlist.append('clip=(%d,%d)' % (self._startframe+self._startframe_offset, self._endframe+self._endframe_offset))
+            strlist.append('clip=(%d,%d)' % (self._startframe, self._endframe))
         if not self.isloaded() and self._startsec is not None:
             strlist.append('cliptime=(%1.2f,%1.2f)' % (self._startsec, self._endsec))            
         if self.category() is not None:
@@ -925,7 +923,7 @@ class Scene(VideoCategory):
         super(Scene, self).rescale(s)
         return self
 
-    def annotate(self, outfile=None, n_processes=8, verbose=True):
+    def annotate(self, outfile=None, n_processes=1, verbose=True):
         """Generate a video visualization of all annotated objects and activities in the video, at the resolution and framerate of the underlying video, save as outfile.
         This function does not play the video, it only generates an annotation video.  Use show() to annotation and play."""
         if verbose:
@@ -945,7 +943,7 @@ class Scene(VideoCategory):
             vid._array[k,:,:,:] = np.array(PIL.Image.fromarray(img).convert('RGB'))
         return vid.saveas(outfile)
 
-    def show(self, outfile=None, verbose=True, n_processes=8):
+    def show(self, outfile=None, verbose=True, n_processes=1):
         """Generate an annotation video saved to outfile (or tempfile if outfile=None) and show it using ffplay when it is done exporting"""
         outfile = tempMP4() if outfile is None else outfile
         self.annotate(outfile, n_processes=n_processes, verbose=verbose)
@@ -968,7 +966,6 @@ class Batch(vipy.image.Batch):
     >>> imb.load()  # load all elements in batch in parallel
 
     """    
-
     def __init__(self, objlist, n_processes=1):
         """Create a batch of homogeneous vipy.video objects from an iterable that can be operated on with a single parallel function call"""
         self._batchtype = vipy.video.Video
