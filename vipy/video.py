@@ -96,9 +96,6 @@ class Video(object):
             self.array(array)
             self.colorspace(colorspace)
 
-        # To restore on flush
-        self._checkpoint = self.clone()  
-        
     def __repr__(self):
         strlist = []
         if self.isloaded():
@@ -134,12 +131,6 @@ class Video(object):
             for k in range(0, len(self)):
                 yield self.__getitem__(k)
 
-    def checkpoint(self, flush=False):
-        """Save the state of the object to restore on flush, with an optionsl flush=True to remove the array() from the checkpoint and force a reload (useful for lazy loading)"""
-        self._array = None if flush else self._array                
-        self._checkpoint = self.clone()
-        return self
-                
     def probe(self):
         """Run ffprobe on the filename and return the result as a JSON file"""
         assert self.hasfilename(), "Invalid video file '%s' for ffprobe" % self.filename() 
@@ -200,8 +191,11 @@ class Video(object):
             self._colorspace = str(colorspace).lower()
         return self
 
-    def url(self, url=None, username=None, password=None, sha1=None):
+    def url(self, url=None, username=None, password=None, sha1=None, remove=False):
         """Image URL and URL download properties"""
+        if remove:
+            (self._url, self._urluser, self._urlpassword, self._urlsha1) = (None, None, None, None)
+            return self
         if url is not None:
             self._url = url  # note that this does not change anything else, better to use the constructor for this
         if username is not None:
@@ -265,25 +259,22 @@ class Video(object):
         self._array = np.copy(self._array) if not self._array.flags['WRITEABLE'] else self._array  # triggers copy 
         return self._array
     
-    def flush(self):
-        """Restore object to state set by constructor, or to last checkpoint()"""
-        self.__dict__ = self._checkpoint.__dict__
-        return self
-
     def reload(self):
-        return self.flush().load()
+        return self.clone(flush=True).load()
 
-    def filename(self, newfile=None):
+    def filename(self, newfile=None, remove=False):
         """Video Filename"""
-        if newfile is None:
+        if remove:
+            newfile = None
+        elif newfile is None:
             return self._filename
-        else:
-            # Update ffmpeg filter chain with new input node filename
-            nodes = ffmpeg.nodes.get_stream_spec_nodes(self._ffmpeg)
-            sorted_nodes, outgoing_edge_maps = ffmpeg.dag.topo_sort(nodes)
-            sorted_nodes[0].__dict__['kwargs']['filename'] = newfile
-            self._filename = newfile
-            return self
+        
+        # Update ffmpeg filter chain with new input node filename
+        nodes = ffmpeg.nodes.get_stream_spec_nodes(self._ffmpeg)
+        sorted_nodes, outgoing_edge_maps = ffmpeg.dag.topo_sort(nodes)
+        sorted_nodes[0].__dict__['kwargs']['filename'] = newfile
+        self._filename = newfile
+        return self
 
     def download(self, ignoreErrors=False, timeout=10, verbose=True):
         """Download URL to filename provided by constructor, or to temp filename"""
@@ -583,13 +574,30 @@ class Video(object):
         t = torch.from_numpy(frames.transpose(0,3,1,2))
         return t if take is None else t[::int(np.round(len(t)/float(take)))][0:take]
 
-    def clone(self, flush=False):
+    def clone(self, flushforward=False, flushbackward=False, flush=False):
         """Create deep copy of video object, flushing the original buffer if requested and returning the cloned object.
         Flushing is useful for distributed memory management to free the buffer from this object, and pass along a cloned 
         object which can be used for encoding and will be garbage collected.
+        
+            * flushforward: copy the object, and set the cloned object array() to None.  This flushes the video buffer for the clone, not the object
+            * flushbackward:  copy the object, and set the object array() to None.  This flushes the video buffer for the object, not the clone.
+            * flush:  set the object array() to None and clone the object.  This flushes the video buffer for both the clone and the object.
+
         """
-        im = copy.deepcopy(self)
-        self._array = None if flush else self._array
+        if flush or (flushforward and flushbackward):
+            self._array = None  # flushes buffer on object and clone
+            im = copy.deepcopy(self)  # object and clone are flushed
+        elif flushbackward:
+            im = copy.deepcopy(self)  # propagates _array to clone
+            self._array = None   # object flushed, clone not flushed
+        elif flushforward:
+            array = self._array;
+            self._array = None
+            im = copy.deepcopy(self)   # does not propagate _array to clone
+            self._array = array    # object not flushed
+            im._array = None   # clone flushed
+        else:
+            im = copy.deepcopy(self)            
         return im
 
     def map(self, func):
@@ -622,7 +630,6 @@ class VideoCategory(Video):
         super(VideoCategory, self).__init__(url=url, filename=filename, framerate=framerate, attributes=attributes, array=array, colorspace=colorspace,
                                             startframe=startframe, endframe=endframe, startsec=startsec, endsec=endsec)
         self._category = category                
-        self._checkpoint = self.clone()  
         
     def __repr__(self):
         strlist = []
@@ -715,7 +722,6 @@ class Scene(VideoCategory):
             self.framerate(framerate)
             
         self._currentframe = None  # used during iteration only
-        self._checkpoint = self.clone()  
         
     def __repr__(self):
         strlist = []
@@ -863,7 +869,8 @@ class Scene(VideoCategory):
 
     def activityclip(self, padframes=0):
         """Return a list of vipy.video.Scene() each clipped to be centered on an activity, with an optional padframes before and after.  The Scene() category is updated to be the activity"""
-        return [self.clone().checkpoint(flush=True).activities(a).clip(startframe=a.middleframe()-(len(a)//2)-padframes, endframe=a.middleframe()+(len(a)//2)+padframes).category(a.category()) for (k,a) in self.clone()._activities.items()]
+        vid = self.clone(flushforward=True)
+        return [vid.clone().activities(a).clip(startframe=a.middleframe()-(len(a)//2)-padframes, endframe=a.middleframe()+(len(a)//2)+padframes).category(a.category()) for (k,a) in vid._activities.items()]
 
     def clip(self, startframe, endframe):
         """Clip the video to between (startframe, endframe).  This clip is relative to cumulative clip() from the filter chain"""

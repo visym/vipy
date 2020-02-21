@@ -100,16 +100,32 @@ def test_video():
     print('[test_video.video]: saveas(ignoreErrors=True)  PASSED')        
 
     
+    # Clone
+    v = vipy.video.RandomVideo(64,64,64)
+    vc = v.clone()
+    assert np.allclose(vc._array, v._array)    
+    vc._array = 0
+    assert not np.allclose(vc._array, v._array)
+    vc = v.clone(flushforward=True)
+    assert vc._array is None and v._array is not None
+    vc = v.clone(flushbackward=True)
+    assert vc._array is not None and v._array is None
+    vc = v.clone(flush=True)
+    assert vc._array is None and v._array is None
+    print('[test_video.scene]: clone  PASSED')        
+
+    
 def _test_scene():
 
     # Activityclip
     v = vipy.video.RandomSceneActivity(64,64,64)
-    v.filename('Video.mp4').checkpoint(flush=True)
-    activitylength = [len(a) for a in v.activities()]
-    assert all([len(c.activities())==1 for c in v.activityclip()])    
-    assert all([len(a)==al for (c,al) in zip(v.activityclip(padframes=0), activitylength) for a in c.activities()])
+    vc = v.clone(flushforward=True).filename('Video.mp4')
+    assert vc._array is None and v._array is not None
+    activitylength = [len(a) for a in vc.activities()]
+    assert all([len(c.activities())==1 for c in vc.activityclip()])    
+    assert all([len(a)==al for (c,al) in zip(vc.activityclip(padframes=0), activitylength) for a in c.activities()])
     try:
-        v.activityclip(padframes=2)  # will result in startframe < 0
+        vc.activityclip(padframes=2)  # will result in startframe < 0
         Failed()
     except Failed:
         raise
@@ -170,8 +186,8 @@ def _test_scene():
     
     v = vid.clone().clip(0,10).load()
     assert len(v) == 10
-    v.flush().clip(10,20).load()
-    assert len(v) == 10
+    vc = v.clone(flushforward=True).clip(1,4).load()
+    assert len(vc) == 3
     print('[test_video.scene]:  trim: PASSED')
 
     (h,w) = v.shape()
@@ -291,14 +307,6 @@ def _test_scene():
     print(vorig[0])
     print(vorig[0][0])
     print('[test_video.scene]: random scene  PASSED')
-
-    # Flush
-    v = vipy.video.RandomSceneActivity(64,64,64)
-    vc = v.clone()
-    vc._array = 0
-    vc.flush()
-    assert np.allclose(vc._array, v._array)
-    print('[test_video.scene]: flush  PASSED')        
     
     # Video scenes
     v1 = vipy.video.Video('Video.mp4', startframe=50, endframe=100).load()

@@ -158,8 +158,16 @@ def _test_image_fileformat(imgfile):
     imb = im
     im._array = im._array + 1  # modify array
     np.testing.assert_array_equal(imb.numpy(), im.numpy())  # share buffer
-    imc = im.clone().flush().load()
-    assert(np.any(im.numpy() != imc.numpy()))  # does not share buffer
+    imc = im.clone()
+    np.testing.assert_array_equal(imc.numpy(), imb.numpy())  # share buffer
+    imc._array = imc._array + 2  # modify array
+    assert np.any(imc.numpy() != imb.numpy())  
+    imc = im.clone(flushforward=True)
+    assert(imc._array is None and im._array is not None)  
+    imc = im.clone(flushbackward=True)
+    assert(im._array is None and imc._array is not None)  
+    imc = im.clone(flush=True)
+    assert(im._array is None and imc._array is None)
     print('[test_image.image]["%s"]:  Image.clone: PASSED' % imgfile)
 
     # Downgrade

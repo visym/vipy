@@ -94,9 +94,6 @@ class Image(object):
             assert isinstance(attributes, dict), "Attributes must be dictionary"
             self.attributes = attributes
 
-        # Checkpoint
-        self._checkpoint = self.clone()
-            
     def __eq__(self, other):
         """Images are equivalent if they have the same filename, url and array"""
         return isinstance(other, Image) and other.filename()==self.filename() and other.url()==self.url() and np.all(other.array() == self.array())
@@ -268,20 +265,9 @@ class Image(object):
 
         return self
 
-    def flush(self):
-        """Restore object to state set by constructor or by checkpoint"""
-        self.__dict__ = self._checkpoint.__dict__
-        return self
-
-    def checkpoint(self, flush=False):
-        """Save the state of the object to restore on flush"""
-        self._array = None if flush else self._array        
-        self._checkpoint = self.clone()
-        return self
-
     def reload(self):
         """Flush the image buffer to force reloading from file or URL"""
-        return self.flush().load()
+        return self.clone(flush=True).load()
 
     def isloaded(self):
         return self._array is not None
@@ -357,27 +343,33 @@ class Image(object):
         return self._array
 
     def pil(self):
-        """Convert vipy.image.Image to PIL Image"""
+        """Convert vipy.image.Image to PIL Image, by reference"""
         return PIL.Image.fromarray(self.tonumpy())
 
     def torch(self):
-        """Convert the batch of 1 HxWxC images to a 1xCxHxW torch tensor"""
+        """Convert the batch of 1 HxWxC images to a 1xCxHxW torch tensor, by reference"""
         try_import('torch'); import torch
         img = self.numpy() if self.iscolor() else np.expand_dims(self.numpy(), 2)  # HxW -> HxWx1
         return torch.from_numpy(np.expand_dims(img,0).transpose(0,3,1,2))  # HxWxC -> 1xCxHxW
 
-    def filename(self, newfile=None):
+    def filename(self, newfile=None, remove=False):
         """Return or set image filename"""
-        if newfile is None:
+        if remove:
+            self._filename = None
+            return self
+        elif newfile is None:
             return self._filename
         else:
             self._filename = newfile
             return self
 
-    def url(self, url=None, username=None, password=None, sha1=None, ignoreUrlErrors=None):
+    def url(self, url=None, username=None, password=None, sha1=None, ignoreUrlErrors=None, remove=False):
         """Image URL and URL download properties"""
+        if remove:
+            self._url = None
+            return self
         if url is not None:
-            self._url = url  # this does not change anything else, better to use constructor 
+            self._url = url  # this does not change anything else (e.g. the associated filename), better to use constructor 
         if username is not None:
             self._urluser = username  # basic authentication
         if password is not None:
@@ -452,17 +444,32 @@ class Image(object):
     def hasfilename(self):
         return self._filename is not None and os.path.exists(self._filename)
 
-    def clone(self, flush=False):
-        """Create deep copy of image object, flushing the original buffer if requested and returning the cloned object.
+    def clone(self, flushforward=False, flushbackward=False, flush=False):
+        """Create deep copy of object, flushing the original buffer if requested and returning the cloned object.
         Flushing is useful for distributed memory management to free the buffer from this object, and pass along a cloned 
         object which can be used for encoding and will be garbage collected.
+        
+            * flushforward: copy the object, and set the cloned object array() to None.  This flushes the video buffer for the clone, not the object
+            * flushbackward:  copy the object, and set the object array() to None.  This flushes the video buffer for the object, not the clone.
+            * flush:  set the object array() to None and clone the object.  This flushes the video buffer for both the clone and the object.
+
         """
-        im = copy.deepcopy(self)
-        if self._array is not None:
-            im._array = self._array.copy()
-        if flush:
+        if flush or (flushforward and flushbackward):
+            self._array = None  # flushes buffer on object and clone
+            im = copy.deepcopy(self)  # object and clone are flushed
+        elif flushbackward:
+            im = copy.deepcopy(self)  # propagates _array to clone
+            self._array = None   # object flushed, clone not flushed
+        elif flushforward:
+            array = self._array;
             self._array = None
+            im = copy.deepcopy(self)   # does not propagate _array to clone
+            self._array = array    # object not flushed
+            im._array = None   # clone flushed
+        else:
+            im = copy.deepcopy(self)            
         return im
+    
 
     # Spatial transformations
     def resize(self, cols=None, rows=None, width=None, height=None):
@@ -870,7 +877,6 @@ class ImageCategory(Image):
                                             colorspace=colorspace)
         assert not (category is not None and label is not None), "Define either category or label kwarg, not both"
         self._category = category if category is not None else label
-        self._checkpoint = self.clone()
         
     def __repr__(self):
         strlist = []
@@ -988,9 +994,6 @@ class ImageDetection(ImageCategory):
         else:
             raise ValueError('Incomplete constructor')
 
-        # Checkpoint 
-        self._checkpoint = self.clone()
-        
     def __repr__(self):
         strlist = []
         if self.isloaded():
@@ -1054,12 +1057,10 @@ class ImageDetection(ImageCategory):
         """An ImageDetection is invalid when the box is invalid"""
         return self.bbox.invalid()
 
-    def isinterior(self, W=None, H=None, flush=False):
-        """Is the bounding box fully within the image rectangle?  Use provided image width and height (W,H) to avoid lots of reloads in some conditions, or flush the image buffer when done"""
+    def isinterior(self, W=None, H=None):
+        """Is the bounding box fully within the image rectangle?  Use provided image width and height (W,H) to avoid lots of reloads in some conditions"""
         (W, H) = (W if W is not None else self.width(),
                   H if H is not None else self.height())
-        if flush:
-            self.flush()
         return (self.bbox.xmin() >= 0 and self.bbox.ymin() >= 0
                 and self.bbox.xmax() <= W and self.bbox.ymax() <= H)
     
@@ -1237,7 +1238,6 @@ class Scene(ImageCategory):
                 raise ValueError("Invalid boxlabels list - len(boxlabels) must be len(xywh) with corresponding labels for each xywh box  [label1, label2, ...]")
 
         self._objectlist = self._objectlist + detlist
-        self._checkpoint = self.clone()
         
     def __eq__(self, other):
         """Scene equality requires equality of all objects in the scene, assumes a total order of objects"""
