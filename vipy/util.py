@@ -385,11 +385,11 @@ def scpsave(v):
     import vipy.image
     import vipy.video
     if (isinstance(v, vipy.image.Image) or isinstance(v, vipy.video.Video)) and v.hasfilename():        
-        vc = v.clone().url('scp://%s:%s' % (socket.gethostname(), v.filename()))
+        vc = v.clone().checkpoint().url('scp://%s:%s' % (socket.gethostname(), v.filename()))
         vc._filename = None
         v = vc
     elif islist(v) and all([isinstance(vv, vipy.image.Image) or isinstance(vv, vipy.video.Video) for vv in v]):
-        vc = [vv.clone().url('scp://%s:%s' % (socket.gethostname(), vv.filename())) for vv in v]
+        vc = [vv.clone().checkpoint().url('scp://%s:%s' % (socket.gethostname(), vv.filename())) for vv in v]
         for vv in vc:
             vv._filename = None
         v = vc

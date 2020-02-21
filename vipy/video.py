@@ -135,6 +135,12 @@ class Video(object):
             for k in range(0, len(self)):
                 yield self.__getitem__(k)
 
+    def checkpoint(self, flush=False):
+        """Save the state of the object to restore on flush"""
+        self._checkpoint = self.clone()
+        self._array = None if flush else self._array
+        return self
+                
     def probe(self):
         """Run ffprobe on the filename and return the result as a JSON file"""
         assert self.hasfilename(), "Invalid video file '%s' for ffprobe" % self.filename() 
@@ -259,11 +265,6 @@ class Video(object):
         self.load()
         self._array = np.copy(self._array) if not self._array.flags['WRITEABLE'] else self._array  # triggers copy 
         return self._array
-
-    def checkpoint(self):
-        """Save the state of the object to restore on flush"""
-        self._checkpoint = self.clone()
-        return self
     
     def flush(self):
         """Restore object to state set by constructor"""
@@ -439,6 +440,8 @@ class Video(object):
         assert not self.isloaded(), "Filters can only be applied prior to load()"
         self._ffmpeg = self._ffmpeg.trim(start_frame=startframe, end_frame=endframe)\
                                    .setpts('PTS-STARTPTS')  # reset timestamp to 0 after trim filter
+        self._startframe = startframe if self._startframe is None else self._startframe
+        self._endframe = endframe if self._endframe is None else self._endframe        
         (self._startframe_offset, self._endframe_offset) = (self._startframe_offset+startframe, self._endframe_offset+endframe)
         return self
 
@@ -857,7 +860,7 @@ class Scene(VideoCategory):
 
     def activityclip(self, padframes=0):
         """Return a list of vipy.video.Scene() each clipped to be centered on an activity, with an optional padframes before and after.  The Scene() category is updated to be the activity"""
-        return [self.clone().flush().clip(startframe=a.middleframe()-(len(a)//2)-padframes, endframe=a.middleframe()+(len(a)//2)+padframes).category(a.category()).activities(a) for (k,a) in self._activities.items()]
+        return [self.clone().checkpoint(flush=True).activities(a).clip(startframe=a.middleframe()-(len(a)//2)-padframes, endframe=a.middleframe()+(len(a)//2)+padframes).category(a.category()) for (k,a) in self.clone()._activities.items()]
 
     def clip(self, startframe, endframe):
         """Clip the video to between (startframe, endframe).  This clip is relative to cumulative clip() from the filter chain"""
@@ -926,7 +929,9 @@ class Scene(VideoCategory):
         """Generate a video visualization of all annotated objects and activities in the video, at the resolution and framerate of the underlying video, save as outfile.
         This function does not play the video, it only generates an annotation video.  Use show() to annotation and play."""
         if verbose:
-            print('[vipy.video.show]: Generating annotation video "%s" ...' % outfile)        
+            print('[vipy.video.show]: Generating annotation video "%s" ...' % outfile)
+            if not self.isloaded():
+                print('[vipy.video.show]: Loading video ...')  
         vid = self.load().clone()  # to save a new array
         assert self.isloaded(), "Load() failed"        
         outfile = outfile if outfile is not None else tempMP4()        

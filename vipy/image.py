@@ -269,15 +269,16 @@ class Image(object):
         return self
 
     def flush(self):
-        """Restore object to state set by constructor"""
+        """Restore object to state set by constructor or by checkpoint"""
         self.__dict__ = self._checkpoint.__dict__
         return self
 
-    def checkpoint(self):
+    def checkpoint(self, flush=False):
         """Save the state of the object to restore on flush"""
         self._checkpoint = self.clone()
+        self._array = None if flush else self._array
         return self
-    
+
     def reload(self):
         """Flush the image buffer to force reloading from file or URL"""
         return self.flush().load()
