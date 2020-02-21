@@ -27,8 +27,6 @@ import base64
 import types
 import hashlib
 from itertools import repeat
-import multiprocessing as mp
-from multiprocessing import Pool
 import atexit
 
 
@@ -1445,37 +1443,26 @@ class Batch(object):
 
     """    
     
-    @staticmethod
-    def _batch_call(im, attr, args, kwargs):
-        return getattr(im, attr)(*args, **kwargs)
-
-    @staticmethod
-    def _batch_map(im, f_pkl):
-        return dill.loads(f_pkl)(im)
-
-    @staticmethod
-    def _batch_map_with_args(im, f_pkl, args):
-        return dill.loads(f_pkl)(im, *args)
-
     def __del__(self):
         self.shutdown()
          
-    def __init__(self, objlist, n_processes=4, set_start_method=None, batchtype=Image):
+    def __init__(self, objlist, n_processes=4, set_start_method='fork', batchtype=Image):
         """Create a batch of homogeneous vipy.image objects from an iterable that can be operated on with a single parallel function call
         
         When calling methods that require matplotlib, set_start_method='spawn' to avoid the errors:
             `The process has forked and you cannot use this CoreFoundation functionality safely. You MUST exec().'
         """
+        try_import('pathos', 'pathos')
+        import pathos.multiprocessing as mp
+        import multiprocess.context as ctx
+        
         self._batchtype = batchtype
         assert islist(objlist) and all([isinstance(im, self._batchtype) for im in objlist]), "Invalid input - Must be list of vipy.image.Image()"
-        self._objlist = objlist
-        if set_start_method is not None and n_processes > 1:
+        self._objlist = objlist        
+        if n_processes > 1:
             assert set_start_method in set(['spawn', 'fork', 'forkserver']), "Invalid set_start_method (https://docs.python.org/3/library/multiprocessing.html)"
-            try:
-                mp.set_start_method(set_start_method)  # 'spawn' necessary for matplotlib operations 
-            except:
-                pass  # can only set this once
-        self._pool = Pool(n_processes) if n_processes > 1 else None
+            ctx._force_start_method(set_start_method)  # 'spawn' necessary for matplotlib operations
+        self._pool = mp.Pool(n_processes) if n_processes > 1 else None
         atexit.register(self.shutdown)
         self._n_processes = n_processes
         
@@ -1503,13 +1490,15 @@ class Batch(object):
     def __getattr__(self, attr):
         """Call the same method on all Image objects"""
         if self._n_processes > 1:
-            return lambda *args, **kw: self.batch(self.__dict__['_pool'].starmap(self._batch_call, zip(self._objlist, repeat(attr), repeat(args), repeat(kw))))
+            return lambda *args, **kw: self.batch(self.__dict__['_pool'].map(lambda im: getattr(im, attr)(*args, **kw), self._objlist))
         else:
-            return lambda *args, **kw: self.batch([self._batch_call(im, attr, args, kw) for im in self._objlist])
+            return lambda *args, **kw: self.batch([getattr(im, attr)(*args, **kw) for im in self._objlist])
 
     def shutdown(self):
         if self.__dict__['_pool'] is not None:
             self.__dict__['_pool'].terminate()
+            self.__dict__['_pool'].join()            
+            
             
     def map(self, f_lambda, args=None):
         """Run the lambda function on each of the elements of the batch. 
@@ -1525,13 +1514,22 @@ class Batch(object):
         
         if self._n_processes > 1:
             if args is not None:
-                assert islist(args) and len(args) == len(self._objlist), "Args must be a list of arguments of length %d, one for each element in batch" % len(self._objlist)
-                return self.batch(self.__dict__['_pool'].starmap(self._batch_map_with_args, zip(self._objlist, repeat(dill.dumps(f_lambda)), args)))
+                if len(self._objlist) > 1:
+                    assert islist(args) and len(list(args)) == len(self._objlist), "Args must be a list of arguments of length %d, one for each element in batch" % len(self._objlist)
+                    return self.batch(self.__dict__['_pool'].starmap(f_lambda, zip(self._objlist, args)))
+                else:
+                    assert islist(args), "Args must be a list"
+                    return self.batch(self.__dict__['_pool'].starmap(f_lambda, zip(repeat(self._objlist[0]), args)))
             else:
-                return self.batch(self.__dict__['_pool'].starmap(self._batch_map, zip(self._objlist, repeat(dill.dumps(f_lambda)))))
+                return self.batch(self.__dict__['_pool'].map(f_lambda, self._objlist))
         else:
             if args is not None:
-                return self.batch([f_lambda(im, *a) for (im,a) in zip(self._objlist, args)])
+                if len(self._objlist) > 1:                
+                    assert islist(args) and len(list(args)) == len(self._objlist), "Args must be a  list of arguments of length %d, one for each element in batch" % len(self._objlist)                
+                    return self.batch([f_lambda(im, *a) for (im,a) in zip(self._objlist, args)])
+                else:
+                    assert islist(args), "Args must be a list"                    
+                    return self.batch([f_lambda(self._objlist[0], a) for a in args])                    
             else:
                 return self.batch([f_lambda(im) for im in self._objlist])            
     

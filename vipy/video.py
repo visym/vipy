@@ -1,4 +1,5 @@
 import os
+import dill
 from vipy.util import remkdir, tempMP4, isurl, \
     isvideourl, templike, tempjpg, filetail, tempdir, isyoutubeurl, try_import, isnumpy, temppng, \
     istuple, islist, isnumber, tolist, filefull, fileext
@@ -19,6 +20,7 @@ import PIL.Image
 import warnings
 import shutil
 import types
+import platform
 
 
 class Video(object):
@@ -938,15 +940,17 @@ class Scene(VideoCategory):
         In general, this function should not be run on very long videos, as it requires loading the video framewise into memory, try running on clips instead.
         """
         if verbose:
-            print('[vipy.video.show]: Generating annotation video "%s" ...' % outfile)
+            print('[vipy.video.annotate]: Generating annotation video "%s" ...' % outfile)
             if not self.isloaded():
-                print('[vipy.video.show]: Loading video ...')  
+                print('[vipy.video.annotate]: Loading video ...')  
         vid = self.load().clone()  # to save a new array
         assert self.isloaded(), "Load() failed"        
-        outfile = outfile if outfile is not None else tempMP4()        
+        outfile = outfile if outfile is not None else tempMP4()
+        if verbose:
+                print('[vipy.video.annotate]: Annotating video ...')              
         plt.close(1)
-        videobatch = vipy.video.Batch([self.clone()], n_processes=n_processes, set_start_method='spawn') 
-        imgs = videobatch.map(lambda v,k: v[k].savefig(figure=1), args=[(k,) for k in range(0, len(self))])
+        videobatch = vipy.video.Batch([vid], n_processes=n_processes, set_start_method='spawn' if platform.system() in ['Darwin', 'Windows'] else 'fork')  # for matplotlib, yuck...
+        imgs = videobatch.map(lambda v,k: v[k].savefig(figure=1), args=[k for k in range(0, len(vid))])
         videobatch.shutdown()
         plt.close(1)
         vid._array = np.stack([np.array(PIL.Image.fromarray(img).convert('RGB')) for img in imgs], axis=0)
@@ -975,7 +979,7 @@ class Batch(vipy.image.Batch):
     >>> imb.load()  # load all elements in batch in parallel
 
     """    
-    def __init__(self, objlist, n_processes=4, set_start_method=None):
+    def __init__(self, objlist, n_processes=4, set_start_method='fork'):
         """Create a batch of homogeneous vipy.video objects from an iterable that can be operated on with a single parallel function call"""
         super(Batch, self).__init__(objlist, n_processes, set_start_method, Video)
 
