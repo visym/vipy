@@ -375,7 +375,7 @@ class Image(object):
 
     def url(self, url=None, username=None, password=None, sha1=None, ignoreUrlErrors=None):
         """Image URL and URL download properties"""
-        if url is None:
+        if url is not None:
             self._url = url  # this does not change anything else, better to use constructor 
         if username is not None:
             self._urluser = username  # basic authentication
