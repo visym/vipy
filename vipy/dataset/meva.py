@@ -7,7 +7,7 @@ import numpy as np
 import warnings
 
 class Mevadata_Public_01(object):
-    def __init__(self, videodir, repodir):
+    def __init__(self, videodir, repodir, n_processes=1):
         """mevadata-python-01:  http://mevadata.org"""
         self.videodir = videodir
         self.repodir = repodir
@@ -15,6 +15,8 @@ class Mevadata_Public_01(object):
         assert os.path.exists(os.path.join(self.videodir, 'drop-01')), "Invalid input - videodir must contain the drop-01, drop-02 and drop-03 subdirectories.  See http://mevadata.org/#getting-data"
         assert os.path.exists(os.path.join(self.repodir, 'annotation')), "Invalid input - repodir must contain the clone of https://gitlab.kitware.com/meva/meva-data-repo"
 
+        self._batch = Batch(['filenames'], n_processes=n_processes) if n_processes > 1 else None
+        
     def __repr__(self):
         return str('<vipy.dataset.meva: videos="%s", annotations="%s">' % (self.videodir, self.repodir))
 
@@ -32,6 +34,9 @@ class Mevadata_Public_01(object):
     def _get_activities_yaml(self):
         return sorted([x for x in findyaml(self.repodir) if 'activities.yml' in x])
 
+    def _read_yaml(self, filelist):
+        return self._batch.batch(filelist).map(lambda f: readyaml(f)) if self._batch is not None else [readyaml(f) for f in filelist]
+    
     def _get_geom_yaml(self):
         return sorted([x for x in findyaml(self.repodir) if 'geom.yml' in x])
 
@@ -99,18 +104,31 @@ class Mevadata_Public_01(object):
             num_yamlfiles = len(self._get_activities_yaml())
             print('[vipy.dataset.meva]: Parsing %d YAML files, this will take a while because pure python YAML loader is slow...' % num_yamlfiles)
 
+
+        # Parallel readyaml (otherwise this is surprisingly slow)
+        if verbose and self._batch is None:
+            print('[vipy.dataset.meva]: Reading yaml files is quite slow, consider parallel parsing with MEVA(n_processes=8, ...) ...')        
+        if verbose:
+            print('[vipy.dataset.meva]: Reading types yaml files ...')
+        types_yamlfiles = self._get_types_yaml()            
+        types_yamls = self._read_yaml(types_yamlfiles)
+        if verbose:
+            print('[vipy.dataset.meva]: Reading geom yaml files ...')        
+        geom_yamlfiles = self._get_geom_yaml()
+        geom_yamls = self._read_yaml(geom_yamlfiles)
+        if verbose:
+            print('[vipy.dataset.meva]: Reading act yaml files ...')                
+        act_yamlfiles = self._get_activities_yaml()
+        act_yamls = self._read_yaml(act_yamlfiles)
+
+        # Parse!
         vidlist = []
-        for (k_fileindex, (act_yamlfile, geom_yamlfile, types_yamlfile)) in enumerate(zip(self._get_activities_yaml(), self._get_geom_yaml(), self._get_types_yaml())):
+        for (k_fileindex, (act_yaml, act_yamlfile, geom_yaml, geom_yamlfile, types_yaml, types_yamlfile)) in enumerate(zip(act_yamls, act_yamlfiles, geom_yamls, geom_yamlfiles, types_yamls, types_yamlfiles)):
             if verbose:
                 print('[vipy.dataset.meva][%d/%d]: Parsing "%s"' % (k_fileindex+1, num_yamlfiles, act_yamlfile))
             assert act_yamlfile.split('.')[:-2] == geom_yamlfile.split('.')[:-2], "Unmatched activity and geom yaml file"
             if 'meva-annotations' not in act_yamlfile:
                 continue
-
-            # This is surprisingly slow...
-            types_yaml = readyaml(types_yamlfile)
-            geom_yaml = readyaml(geom_yamlfile)
-            act_yaml = readyaml(act_yamlfile)
 
             assert len(set([types_yaml[0]['meta'], geom_yaml[0]['meta'], act_yaml[0]['meta']]))==1, "Mismatched video name for '%s'" % act_yamlfile
             videoname = act_yaml[0]['meta']
