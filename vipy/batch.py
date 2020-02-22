@@ -99,7 +99,15 @@ class Batch(object):
                 return self.batch([self.__dict__['_client'].submit(f_lambda, obj, *a) for a in args])
         else:
             return self.batch(self.__dict__['_client'].map(f_lambda, self._objlist))
-    
+
+    def filter(self, f_lambda):
+        """Run the lambda function on each of the elements of the batch and filter based on the provided lambda  
+        """
+        c = self.__dict__['_client']        
+        is_filtered = self.batch(self.__dict__['_client'].map(f_lambda, self._objlist))
+        self._objlist = [obj for (f, obj) in zip(is_filtered, self._objlist) if f is True]
+        return self
+        
     def torch(self):
         """Convert the batch of N HxWxC images to a NxCxHxW torch tensor"""
         return torch.cat(self.map(lambda im: im.torch()))

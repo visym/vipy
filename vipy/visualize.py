@@ -25,7 +25,7 @@ def montage(imlist, imgheight, imgwidth, gridrows=None, gridcols=None, aspectrat
          * verbose=[True|False]:  display optional verbose messages
 
        Outputs:
-         * Return the img_montage which is of size (gridrows*(imgheight + 2*border), gridcols*(imgwidth+2*border)), the type is specificed by the imlist input
+         * Return a vipy.image.Image montage which is of size (gridrows*(imgheight + 2*border), gridcols*(imgwidth+2*border))
     
     """
 
@@ -86,7 +86,7 @@ def montage(imlist, imgheight, imgwidth, gridrows=None, gridcols=None, aspectrat
     if k == 0:
         print('[vipy.visualize.montage] Warning: No images were processed')
 
-    return img_montage
+    return Image(array=img_montage, colorspace=imlist[0].colorspace())
 
 
 def imagelist(list_of_image_files, outdir, title='Image Visualization', imagewidth=64):
