@@ -1,4 +1,5 @@
 # Import all subpackages
+import vipy.show  # matplotlib first
 import vipy.annotation
 import vipy.calibration
 import vipy.downloader
@@ -7,7 +8,6 @@ import vipy.image
 import vipy.linalg
 import vipy.math
 import vipy.object
-import vipy.show
 import vipy.util
 import vipy.version
 import vipy.video

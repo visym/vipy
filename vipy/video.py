@@ -110,8 +110,8 @@ class Video(object):
         return str('<vipy.video: %s>' % (', '.join(strlist)))
 
     def __len__(self):
-        """Number of frames when the video is loaded, otherwise None"""
-        return len(self._array) if self.isloaded() else None
+        """Number of frames when the video is loaded, otherwise 0"""
+        return len(self._array) if self.isloaded() else 0
 
     def __getitem__(self, k):
         """Return the kth frame as an vipy.image object"""
@@ -269,6 +269,7 @@ class Video(object):
             return self._filename
         
         # Update ffmpeg filter chain with new input node filename
+        newfile = os.path.abspath(os.path.expanduser(newfile))
         nodes = ffmpeg.nodes.get_stream_spec_nodes(self._ffmpeg)
         sorted_nodes, outgoing_edge_maps = ffmpeg.dag.topo_sort(nodes)
         sorted_nodes[0].__dict__['kwargs']['filename'] = newfile
@@ -393,7 +394,7 @@ class Video(object):
         if not self.hasfilename() and ignoreErrors:
             print('[vipy.video.load]: Video file "%s" not found - Ignoring' % self.filename())
             return self
-        if verbose:
+        if True:
             print('[vipy.video.load]: Loading "%s"' % self.filename())
 
         # Increase filter chain from load() kwargs
@@ -495,6 +496,8 @@ class Video(object):
            * If ignoreErrors=True, then exit gracefully.  Useful for chaining download().saveas() on parallel dataset downloads
 
         """
+        if True:
+                print('[vipy.video.saveas]: Saving video "%s" ...' % outfile)                      
         try:
             if self.isloaded():
                 # Save numpy() from load() to video
@@ -867,9 +870,14 @@ class Scene(VideoCategory):
         return self.__getitem__(frame).savefig(outfile if outfile is not None else temppng())
 
     def activityclip(self, padframes=0):
-        """Return a list of vipy.video.Scene() each clipped to be centered on an activity, with an optional padframes before and after.  The Scene() category is updated to be the activity"""
+        """Return a list of vipy.video.Scene() each clipped to be centered on a single activity, with an optional padframes before and after.  The Scene() category is updated to be the activity, and only the objects partifipating in the activity are included"""
         vid = self.clone(flushforward=True)
-        return [vid.clone().activities(a).clip(startframe=a.middleframe()-(len(a)//2)-padframes, endframe=a.middleframe()+(len(a)//2)+padframes).category(a.category()) for (k,a) in vid._activities.items()]
+        activities = vid.activities()
+        tracks = [[t for t in vid.tracks() if t.id() in set(a.objectids())] for a in activities]
+        vid._activities = {}  # for faster clone
+        vid._tracks = {}      # for faster clone
+        return [vid.clone().activities(a).tracks(t).clip(startframe=max(a.middleframe()-(len(a)//2)-padframes, 0),
+                                                         endframe=a.middleframe()+(len(a)//2)+padframes).category(a.category()) for (a,t) in zip(activities, tracks)]
 
     def clip(self, startframe, endframe):
         """Clip the video to between (startframe, endframe).  This clip is relative to cumulative clip() from the filter chain"""
@@ -948,12 +956,15 @@ class Scene(VideoCategory):
         outfile = outfile if outfile is not None else tempMP4()
         if verbose:
                 print('[vipy.video.annotate]: Annotating video ...')              
-        plt.close(1)
-        videobatch = vipy.video.Batch([vid], n_processes=n_processes, set_start_method='spawn' if platform.system() in ['Darwin', 'Windows'] else 'fork')  # for matplotlib, yuck...
-        imgs = videobatch.map(lambda v,k: v[k].savefig(figure=1), args=[k for k in range(0, len(vid))])
-        videobatch.shutdown()
-        plt.close(1)
-        vid._array = np.stack([np.array(PIL.Image.fromarray(img).convert('RGB')) for img in imgs], axis=0)
+        if n_processes > 1:
+            b = vipy.batch.Batch(vid, n_processes=n_processes)
+            print('[vipy.video.annotate.debug]: %s' % str(b))  # TESTING
+            imgs = b.map(lambda v,k: vipy.image.Image(array=v[k].savefig(), colorspace='rgba').rgb().numpy(), args=[(k,) for k in range(0, len(vid))])
+            vid._array = np.stack(imgs, axis=0)            
+            b.shutdown()                        
+        else:
+            imgs = [vid[k].savefig() for k in range(0, len(vid))]  # SLOW for large videos
+            vid._array = np.stack([np.array(PIL.Image.fromarray(img).convert('RGB')) for img in imgs], axis=0)            
         return vid.saveas(outfile)
 
     def show(self, outfile=None, verbose=True, n_processes=1):
@@ -967,23 +978,6 @@ class Scene(VideoCategory):
         return self
     
     
-class Batch(vipy.image.Batch):
-    """vipy.video.Batch class
-
-    This class provides a representation of a set of vipy.video objects.  All of the object types must be the same.  If so, then an operation on the batch is performed on each of the elements in the batch.
-
-    Valid constructors
-
-    >>> imb = vipy.video.Batch([Image(filename='img_%06d.png' % k for k in range(0,100)])
-    >>> imb.rgb()  # convert all elements in batch to RGB
-    >>> imb.load()  # load all elements in batch in parallel
-
-    """    
-    def __init__(self, objlist, n_processes=4, set_start_method='fork'):
-        """Create a batch of homogeneous vipy.video objects from an iterable that can be operated on with a single parallel function call"""
-        super(Batch, self).__init__(objlist, n_processes, set_start_method, Video)
-
-        
 def RandomVideo(rows=None, cols=None, frames=None):
     """Return a random loaded vipy.video.video, useful for unit testing"""
     rows = np.random.randint(256, 1024) if rows is None else rows

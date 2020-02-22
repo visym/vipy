@@ -280,6 +280,11 @@ def imwrite(img, imfile=None, writeas=None):
     return imfile
 
 
+def print_and_return(x):
+    print(x)
+    return x
+
+
 def savetemp(img):
     f = '/tmp/%s.png' % uuid.uuid1().hex
     PIL.Image.fromarray(img.astype(np.uint8)).save(f)

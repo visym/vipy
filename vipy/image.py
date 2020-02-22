@@ -830,14 +830,14 @@ class Image(object):
         alt_text = alt if alt is not None else self.filename()
         return '<img src="data:image/png;base64,%s" alt="%s" />' % (b, alt_text)
     
-    def savefig(self, filename=None, figure=1):
+    def savefig(self, filename=None):
         """Save last figure output from self.show() with drawing overlays to provided filename and return filename"""
-        self.show(figure=figure, nowindow=True)  # sets figure dimensions, does not display window
+        self.show(figure=1, nowindow=True)  # sets figure dimensions, does not display window
         if filename is None:
             (W,H) = plt.figure(1).canvas.get_width_height()  # fast
             buf = io.BytesIO()
-            plt.figure(figure).canvas.print_raw(buf)  # fast
-            img = np.frombuffer(buf.getvalue(), dtype=np.uint8).reshape((H, W, 4))
+            plt.figure(1).canvas.print_raw(buf)  # fast
+            img = np.frombuffer(buf.getvalue(), dtype=np.uint8).reshape((H, W, 4))  # RGBA
             return img
         else:
             return savefig(filename)
@@ -1429,115 +1429,6 @@ class Scene(ImageCategory):
             return outfile
 
     
-class Batch(object):
-    """vipy.image.Batch class
-
-    This class provides a representation of a set of vipy.image objects.  All of the object types must be the same.  If so, then an operation on the batch is performed on each of the elements in the batch.
-
-    Valid constructors
-
-    >>> imb = vipy.image.Batch([Image(filename='img_%06d.png' % k for k in range(0,100)])
-    >>> imb.rgb()  # convert all elements in batch to RGB
-    >>> imb = vipy.image.Batch([ImageDetection(filename='img_%06d.png' % k, category=c, bbox=bb) for (k,c,bb) in zip(range(0,100), labels, boxes)])
-    >>> imb.crop()  # Crop all elements in batch 
-
-    """    
-    
-    def __del__(self):
-        self.shutdown()
-         
-    def __init__(self, objlist, n_processes=4, set_start_method='fork', batchtype=Image):
-        """Create a batch of homogeneous vipy.image objects from an iterable that can be operated on with a single parallel function call
-        
-        When calling methods that require matplotlib, set_start_method='spawn' to avoid the errors:
-            `The process has forked and you cannot use this CoreFoundation functionality safely. You MUST exec().'
-        """
-        try_import('pathos', 'pathos')
-        import pathos.multiprocessing as mp
-        import multiprocess.context as ctx
-        
-        self._batchtype = batchtype
-        assert islist(objlist) and all([isinstance(im, self._batchtype) for im in objlist]), "Invalid input - Must be list of vipy.image.Image()"
-        self._objlist = objlist        
-        if n_processes > 1:
-            assert set_start_method in set(['spawn', 'fork', 'forkserver']), "Invalid set_start_method (https://docs.python.org/3/library/multiprocessing.html)"
-            ctx._force_start_method(set_start_method)  # 'spawn' necessary for matplotlib operations
-        self._pool = mp.Pool(n_processes) if n_processes > 1 else None
-        atexit.register(self.shutdown)
-        self._n_processes = n_processes
-        
-    def __len__(self):
-        return len(self._objlist)
-
-    def __repr__(self):
-        return str('<vipy.batch: type=%s, len=%d, procs=%d>' % (str(type(self._objlist[0])), len(self), self._n_processes))
-    
-    def batch(self, resultlist=None):
-        if resultlist is not None:            
-            assert islist(resultlist), "Invalid input"
-            if isinstance(resultlist[0], self._batchtype):
-                self._objlist = resultlist
-                return self
-            else:
-                return resultlist
-        else:
-            return self._objlist
-        
-    def __iter__(self):
-        for im in self._objlist:
-            yield im
-            
-    def __getattr__(self, attr):
-        """Call the same method on all Image objects"""
-        if self._n_processes > 1:
-            return lambda *args, **kw: self.batch(self.__dict__['_pool'].map(lambda im: getattr(im, attr)(*args, **kw), self._objlist))
-        else:
-            return lambda *args, **kw: self.batch([getattr(im, attr)(*args, **kw) for im in self._objlist])
-
-    def shutdown(self):
-        if self.__dict__['_pool'] is not None:
-            self.__dict__['_pool'].terminate()
-            self.__dict__['_pool'].join()            
-            
-            
-    def map(self, f_lambda, args=None):
-        """Run the lambda function on each of the elements of the batch. 
-        
-        If args is provided, then this is a unique argument for the lambda function for each of the elements in the batch
-        
-        >>> iml = [vipy.image.RandomScene(512,512) for k in range(0,1000)]   
-        >>> imb = vipy.image.Batch(iml, n_processes=4) 
-        >>> imb.map(lambda im,f: im.saveas(f), args=[('/tmp/out%d.jpg'%k,) for k in range(0,1000)])  
-        >>> imb.map(lambda im: im.rgb())  # this is equivalent to imb.rgb()
-
-        """
-        
-        if self._n_processes > 1:
-            if args is not None:
-                if len(self._objlist) > 1:
-                    assert islist(args) and len(list(args)) == len(self._objlist), "Args must be a list of arguments of length %d, one for each element in batch" % len(self._objlist)
-                    return self.batch(self.__dict__['_pool'].starmap(f_lambda, zip(self._objlist, args)))
-                else:
-                    assert islist(args), "Args must be a list"
-                    return self.batch(self.__dict__['_pool'].starmap(f_lambda, zip(repeat(self._objlist[0]), args)))
-            else:
-                return self.batch(self.__dict__['_pool'].map(f_lambda, self._objlist))
-        else:
-            if args is not None:
-                if len(self._objlist) > 1:                
-                    assert islist(args) and len(list(args)) == len(self._objlist), "Args must be a  list of arguments of length %d, one for each element in batch" % len(self._objlist)                
-                    return self.batch([f_lambda(im, *a) for (im,a) in zip(self._objlist, args)])
-                else:
-                    assert islist(args), "Args must be a list"                    
-                    return self.batch([f_lambda(self._objlist[0], a) for a in args])                    
-            else:
-                return self.batch([f_lambda(im) for im in self._objlist])            
-    
-    def torch(self):
-        """Convert the batch of N HxWxC images to a NxCxHxW torch tensor"""
-        try_import('torch', 'torch');  import torch
-        return torch.cat(self.__getattr__('torch')())
-
 
 def RandomImage(rows=None, cols=None):
     rows = np.random.randint(128, 1024) if rows is None else rows

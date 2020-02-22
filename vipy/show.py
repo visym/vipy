@@ -1,5 +1,9 @@
+import os
+import matplotlib
+if 'VIPY_BACKEND' in os.environ:
+    matplotlib.use(os.environ['VIPY_BACKEND'])
+    
 import importlib
-
 BACKEND = importlib.import_module('vipy.gui.using_matplotlib')
 
 
