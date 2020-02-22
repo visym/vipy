@@ -961,7 +961,7 @@ class Scene(VideoCategory):
             print('[vipy.video.annotate.debug]: %s' % str(b))  # TESTING
             imgs = b.map(lambda v,k: vipy.image.Image(array=v[k].savefig(), colorspace='rgba').rgb().numpy(), args=[(k,) for k in range(0, len(vid))])
             vid._array = np.stack(imgs, axis=0)            
-            b.shutdown()                        
+            # b.shutdown()   # FIXME: why does this timeout?
         else:
             imgs = [vid[k].savefig() for k in range(0, len(vid))]  # SLOW for large videos
             vid._array = np.stack([np.array(PIL.Image.fromarray(img).convert('RGB')) for img in imgs], axis=0)            

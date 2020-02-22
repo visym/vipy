@@ -130,7 +130,6 @@ tornado==6.0.3
 traitlets==4.3.3
 uritemplate==3.0.1
 urllib3==1.25.8
--e git+git@github.com:visym/vipy.git@967b501be3105f445f6203312247f449af2071fd#egg=vipy
 wcwidth==0.1.8
 webencodings==0.5.1
 widgetsnbextension==3.5.1
