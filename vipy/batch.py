@@ -92,11 +92,17 @@ class Batch(object):
     def __getattr__(self, attr):
         """Call the same method on all Image objects"""
         return lambda *args, **kw: self.batch(self.__dict__['_client'].map(lambda im: getattr(im, attr)(*args, **kw), self._objlist))
+
+    def product(self, f_lambda, args, async=False):
+        """Cartesian product of args and batch, returns an MxN list of N args applied to M batch elements.  Use this with extreme caution, as the memory requirements may be high."""
+        c = self.__dict__['_client']
+        futures = [[c.submit(f_lambda, im, *a) for im in self._objlist] for a in args])
+        return futures if async else wait(futures)
         
     def map(self, f_lambda, args=None):
         """Run the lambda function on each of the elements of the batch. 
         
-        If args is provided, then this is a unique argument for the lambda function for each of the elements in the batch
+        If args is provided, then this is a unique argument for the lambda function for each of the elements in the batch, or is broadcastable.
         
         >>> iml = [vipy.image.RandomScene(512,512) for k in range(0,1000)]   
         >>> imb = vipy.image.Batch(iml, n_processes=4) 

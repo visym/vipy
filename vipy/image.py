@@ -814,11 +814,11 @@ class Image(object):
         return filename
 
     def saveastmp(self):
-        """Save current buffer to temp JPEG filename and return filename"""
+        """Save current buffer to temp JPEG filename and return filename.  Alias for savetmp()"""
         return self.saveas(tempjpg())
 
     def savetmp(self):
-        """Save current buffer to temp JPEG filename and return filename"""
+        """Save current buffer to temp JPEG filename and return filename.   Alias for saveastmp()"""
         return self.saveas(tempjpg())
 
     def html(self, alt=None):
