@@ -1,13 +1,14 @@
 import os
 import sys
 import atexit
-from vipy.util import try_import, islist, tolist
+from vipy.util import try_import, islist, tolist, tempdir, remkdir
 from itertools import repeat
 try_import('dask', 'dask distributed torch')
 from dask.distributed import Client
 from dask.distributed import as_completed, wait
 try_import('torch', 'torch');  import torch
 import numpy as np
+import tempfile
 
 
 class Batch(object):
@@ -42,8 +43,14 @@ class Batch(object):
         self._batchtype = type(objlist[0])        
         assert all([isinstance(im, self._batchtype) for im in objlist]), "Invalid input - Must be homogeneous list of the same type"                
         self._objlist = objlist        
-        self._client = Client(name='vipy', scheduler_port=0, dashboard_address=None if not dashboard else ':0', processes=True, threads_per_worker=1, n_workers=n_processes, env={'VIPY_BACKEND':'Agg'})
-        self._n_processes = n_processes
+        self._client = Client(name='vipy', 
+                              scheduler_port=0, 
+                              dashboard_address=None if not dashboard else ':0', 
+                              processes=True, 
+                              threads_per_worker=1, 
+                              n_workers=n_processes, 
+                              env={'VIPY_BACKEND':'Agg'},
+                              local_directory=tempfile.mkdtemp())
         atexit.register(self.shutdown)        
         
     def __len__(self):
@@ -53,21 +60,30 @@ class Batch(object):
         self.shutdown()
         
     def __repr__(self):
-        return str('<vipy.batch: type=%s, len=%d, procs=%d>' % (str(self._batchtype), len(self), self._n_processes))
+        return str('<vipy.batch: type=%s, len=%d, procs=%d>' % (str(self._batchtype), len(self), self.n_processes()))
 
-    def batch(self, resultlist=None):
-        if resultlist is not None:            
-            assert islist(resultlist), "Invalid input"
-            #completedlist = [f.result() for f in as_completed(resultlist)]
-            wait(resultlist)
-            completedlist = [f.result() for f in resultlist]
+    def info(self):
+        return self._client.scheduler_info()
+
+    def n_processes(self):
+        return len(self.info()['workers'])
+
+    def batch(self, newlist=None):
+        if islist(newlist) and not hasattr(newlist[0], 'result'):
+            self._objlist = newlist
+            return self
+        elif islist(newlist) and hasattr(newlist[0], 'result'):
+            wait(newlist)
+            completedlist = [f.result() for f in newlist]
             if isinstance(completedlist[0], self._batchtype):
                 self._objlist = completedlist
                 return self
             else:
                 return completedlist
-        else:
+        elif newlist is None:
             return self._objlist
+        else:
+            raise ValueError('Invalid input - must be list')
         
     def __iter__(self):
         for im in self._objlist:

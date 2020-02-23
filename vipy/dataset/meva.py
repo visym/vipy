@@ -3,8 +3,10 @@ from vipy.util import remkdir, readjson, readyaml, findyaml, findvideo, filetail
 from vipy.video import VideoCategory, Scene
 from vipy.object import Track, Activity
 from vipy.geometry import BoundingBox
+from vipy.batch import Batch
 import numpy as np
 import warnings
+
 
 class Mevadata_Public_01(object):
     def __init__(self, videodir, repodir, n_processes=1):
@@ -18,7 +20,10 @@ class Mevadata_Public_01(object):
         self._batch = Batch(['filenames'], n_processes=n_processes) if n_processes > 1 else None
         
     def __repr__(self):
-        return str('<vipy.dataset.meva: videos="%s", annotations="%s">' % (self.videodir, self.repodir))
+        if self._batch is None:
+            return str('<vipy.dataset.meva: videos="%s", annotations="%s">' % (self.videodir, self.repodir))
+        else:
+            return str('<vipy.dataset.meva: videos="%s", annotations="%s", proc=%d>' % (self.videodir, self.repodir, self._batch.n_processes()))            
 
 
     def activities(self):
@@ -102,22 +107,21 @@ class Mevadata_Public_01(object):
         d_videoname_to_path = {filebase(f):f for f in self._get_videos()}
         if verbose:
             num_yamlfiles = len(self._get_activities_yaml())
-            print('[vipy.dataset.meva]: Parsing %d YAML files, this will take a while because pure python YAML loader is slow...' % num_yamlfiles)
-
+            print('[vipy.dataset.meva]: Loading %d YAML files (this takes a while)' % num_yamlfiles)
 
         # Parallel readyaml (otherwise this is surprisingly slow)
         if verbose and self._batch is None:
-            print('[vipy.dataset.meva]: Reading yaml files is quite slow, consider parallel parsing with MEVA(n_processes=8, ...) ...')        
+            print('[vipy.dataset.meva]: WARNING - Reading yaml files is quite slow, consider parallel parsing with MEVA(n_processes=8, ...) ...')
         if verbose:
-            print('[vipy.dataset.meva]: Reading types yaml files ...')
+            print('[vipy.dataset.meva]: ... types yaml files')
         types_yamlfiles = self._get_types_yaml()            
         types_yamls = self._read_yaml(types_yamlfiles)
         if verbose:
-            print('[vipy.dataset.meva]: Reading geom yaml files ...')        
+            print('[vipy.dataset.meva]: ... geom yaml files')        
         geom_yamlfiles = self._get_geom_yaml()
         geom_yamls = self._read_yaml(geom_yamlfiles)
         if verbose:
-            print('[vipy.dataset.meva]: Reading act yaml files ...')                
+            print('[vipy.dataset.meva]: ... activities yaml files')                
         act_yamlfiles = self._get_activities_yaml()
         act_yamls = self._read_yaml(act_yamlfiles)
 
