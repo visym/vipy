@@ -9,7 +9,7 @@ import time
 import PIL
 
 
-def montage(imlist, imgheight, imgwidth, gridrows=None, gridcols=None, aspectratio=1, crop=False, skip=True, border=0, border_bgr=(128,128,128), do_flush=False, verbose=False):
+def montage(imlist, imgheight, imgwidth, gridrows=None, gridcols=None, aspectratio=1, crop=False, skip=True, border=1, border_bgr=(128,128,128), do_flush=False, verbose=False):
     """Create a montage image from the of provided list of vipy.image.Image objects.
 
        Inputs:
@@ -77,7 +77,7 @@ def montage(imlist, imgheight, imgwidth, gridrows=None, gridcols=None, aspectrat
                     raise
 
             if do_flush:
-                imlist[k].flush()  # clear memory
+                imlist[k].clone(flush=True)  # clear memory
             if verbose and ((k % 100) == 0):
                 print('[vipy.visualize.montage][%d/%d] processing...' % (k, n_imgs))
 

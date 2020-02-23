@@ -1,3 +1,4 @@
+import os
 import matplotlib
 from matplotlib import pyplot as plt
 import numpy as np
@@ -10,12 +11,13 @@ matplotlib.rcParams['toolbar'] = 'None'
 
 # Optional latex strings in captions
 try:
-    from distutils.spawn import find_executable
-    if not find_executable('latex'):
-        raise
-    matplotlib.rc('text', usetex=True)  # requires latex installed
+    if 'VIPY_LATEX' in os.environ:
+        from distutils.spawn import find_executable
+        if not find_executable('latex'):
+            raise
+        matplotlib.rc('text', usetex=True)  # requires latex installed
 except:
-    pass  # ignored if latex is not installed
+    pass  # ignored if latex is not installed or not wanted
 
 
 def flush():

@@ -38,7 +38,6 @@ class Batch(object):
     def __init__(self, objlist, n_processes=4, dashboard=False):
         """Create a batch of homogeneous vipy.image objects from an iterable that can be operated on with a single parallel function call
         """
-
         objlist = tolist(objlist)
         self._batchtype = type(objlist[0])        
         assert all([isinstance(im, self._batchtype) for im in objlist]), "Invalid input - Must be homogeneous list of the same type"                
@@ -50,6 +49,7 @@ class Batch(object):
                               threads_per_worker=1, 
                               n_workers=n_processes, 
                               env={'VIPY_BACKEND':'Agg'},
+                              direct_to_workers=True,
                               local_directory=tempfile.mkdtemp())
         atexit.register(self.shutdown)        
         
@@ -73,7 +73,16 @@ class Batch(object):
             self._objlist = newlist
             return self
         elif islist(newlist) and hasattr(newlist[0], 'result'):
-            wait(newlist)
+            try:
+                wait(newlist)
+            except KeyboardInterrupt:
+                warnings.warn('[vipy.batch]: batch cannot be restarted after killing - Recreate Batch()')
+                self.shutdown()  # batch must be recreated after ctrl-c
+                return None  # is this the right way to handle this??
+            except:
+                warnings.warn('[vipy.batch]: batch cannot be restarted after exception - Recreate Batch()')                
+                self.shutdown()  # batch must be recreated after ctrl-c                
+                raise
             completedlist = [f.result() for f in newlist]
             if isinstance(completedlist[0], self._batchtype):
                 self._objlist = completedlist
@@ -91,13 +100,15 @@ class Batch(object):
             
     def __getattr__(self, attr):
         """Call the same method on all Image objects"""
+        assert self.__dict__['_client'] is not None, "Invalid Batch() - You must create a new Batch()"                                
         return lambda *args, **kw: self.batch(self.__dict__['_client'].map(lambda im: getattr(im, attr)(*args, **kw), self._objlist))
 
-    def product(self, f_lambda, args, wait=True):
+    def product(self, f_lambda, args, waiting=True):
         """Cartesian product of args and batch, returns an MxN list of N args applied to M batch elements.  Use this with extreme caution, as the memory requirements may be high."""
+        assert self.__dict__['_client'] is not None, "Invalid Batch() - You must create a new Batch()"                        
         c = self.__dict__['_client']
         futures = [c.submit(f_lambda, im, *a) for im in self._objlist for a in args]
-        return wait(futures) if wait else futures
+        return self.batch(futures) if waiting else futures
         
     def map(self, f_lambda, args=None):
         """Run the lambda function on each of the elements of the batch. 
@@ -110,11 +121,13 @@ class Batch(object):
         >>> imb.map(lambda im: im.rgb())  # this is equivalent to imb.rgb()
 
         """
+        assert self.__dict__['_client'] is not None, "Invalid Batch() - You must create a new Batch()"                
         c = self.__dict__['_client']        
         if args is not None:
             if len(self._objlist) > 1:
                 assert islist(args) and len(list(args)) == len(self._objlist), "args must be a list of arguments of length %d, one for each element in batch" % len(self._objlist)
-                return self.batch([c.submit(f_lambda, im, *a) for (im, a) in zip(self._objlist, args)])                
+                objlist = c.scatter(self._objlist)
+                return self.batch([c.submit(f_lambda, im, *a) for (im, a) in zip(objlist, args)])                
             else:
                 assert islist(args), "args must be a list"
                 obj = c.scatter(self._objlist[0], broadcast=True)
@@ -125,8 +138,10 @@ class Batch(object):
     def filter(self, f_lambda):
         """Run the lambda function on each of the elements of the batch and filter based on the provided lambda  
         """
-        c = self.__dict__['_client']        
-        is_filtered = self.batch(self.__dict__['_client'].map(f_lambda, self._objlist))
+        assert self.__dict__['_client'] is not None, "Invalid Batch() - You must create a new Batch()"        
+        c = self.__dict__['_client']
+        objlist = c.scatter(self._objlist)        
+        is_filtered = self.batch(self.__dict__['_client'].map(f_lambda, objlist))
         self._objlist = [obj for (f, obj) in zip(is_filtered, self._objlist) if f is True]
         return self
         
@@ -139,6 +154,8 @@ class Batch(object):
         return np.stack(self.map(lambda im: im.numpy()))
     
     def shutdown(self):
-        self._client.shutdown()        
+        self.__dict__['_client'].close()        
+        self.__dict__['_client'].shutdown()
+        self.__dict__['_client'] = None
     
 

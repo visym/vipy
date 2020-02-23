@@ -838,7 +838,7 @@ class Image(object):
             buf = io.BytesIO()
             plt.figure(1).canvas.print_raw(buf)  # fast
             img = np.frombuffer(buf.getvalue(), dtype=np.uint8).reshape((H, W, 4))  # RGBA
-            return img
+            return vipy.image.Image(array=img, colorspace='rgba')
         else:
             return savefig(filename)
 
@@ -1423,7 +1423,7 @@ class Scene(ImageCategory):
             buf = io.BytesIO()
             plt.gcf().canvas.print_raw(buf)  # fast
             img = np.frombuffer(buf.getvalue(), dtype=np.uint8).reshape((H, W, 4))
-            return img
+            return vipy.image.Image(array=img, colorspace='rgba')
         else:
             savefig(outfile, figure, dpi=dpi, bbox_inches='tight', pad_inches=0)
             return outfile

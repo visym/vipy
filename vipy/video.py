@@ -876,8 +876,9 @@ class Scene(VideoCategory):
         tracks = [[t for t in vid.tracks() if t.id() in set(a.objectids())] for a in activities]
         vid._activities = {}  # for faster clone
         vid._tracks = {}      # for faster clone
-        return [vid.clone().activities(a).tracks(t).clip(startframe=max(a.middleframe()-(len(a)//2)-padframes, 0),
-                                                         endframe=a.middleframe()+(len(a)//2)+padframes).category(a.category()) for (a,t) in zip(activities, tracks)]
+        padframes = padframes if istuple(padframes) else (padframes,padframes)
+        return [vid.clone().activities(a).tracks(t).clip(startframe=max(a.middleframe()-(len(a)//2)-padframes[0], 0),
+                                                         endframe=a.middleframe()+(len(a)//2)+padframes[1]).category(a.category()) for (a,t) in zip(activities, tracks)]
 
     def clip(self, startframe, endframe):
         """Clip the video to between (startframe, endframe).  This clip is relative to cumulative clip() from the filter chain"""
@@ -959,11 +960,11 @@ class Scene(VideoCategory):
         if n_processes > 1:
             b = vipy.batch.Batch(vid, n_processes=n_processes)
             print('[vipy.video.annotate.debug]: %s' % str(b))  # TESTING
-            imgs = b.map(lambda v,k: vipy.image.Image(array=v[k].savefig(), colorspace='rgba').rgb().numpy(), args=[(k,) for k in range(0, len(vid))])
+            imgs = b.map(lambda v,k: v[k].savefig().rgb().numpy(), args=[(k,) for k in range(0, len(vid))])
             vid._array = np.stack(imgs, axis=0)            
             # b.shutdown()   # FIXME: why does this timeout?
         else:
-            imgs = [vid[k].savefig() for k in range(0, len(vid))]  # SLOW for large videos
+            imgs = [vid[k].savefig().numpy() for k in range(0, len(vid))]  # SLOW for large videos
             vid._array = np.stack([np.array(PIL.Image.fromarray(img).convert('RGB')) for img in imgs], axis=0)            
         return vid.saveas(outfile)
 
