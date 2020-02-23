@@ -15,7 +15,11 @@ class Mevadata_Public_01(object):
         assert os.path.exists(os.path.join(self.videodir, 'drop-01')), "Invalid input - videodir must contain the drop-01, drop-02 and drop-03 subdirectories.  See http://mevadata.org/#getting-data"
         assert os.path.exists(os.path.join(self.repodir, 'annotation')), "Invalid input - repodir must contain the clone of https://gitlab.kitware.com/meva/meva-data-repo"
 
-        self._batch = Batch(['filenames'], n_processes=n_processes) if n_processes > 1 else None
+        if n_processes > 1:
+            from vipy.batch import Batch
+            self._batch = Batch(['filenames'], n_processes=n_processes)
+        else:
+            self._batch = None
         
     def __repr__(self):
         return str('<vipy.dataset.meva: videos="%s", annotations="%s">' % (self.videodir, self.repodir))
