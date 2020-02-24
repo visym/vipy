@@ -9,6 +9,7 @@ from dask.distributed import as_completed, wait
 try_import('torch', 'torch');  import torch
 import numpy as np
 import tempfile
+import warnings
 
 
 class Batch(object):
@@ -107,7 +108,8 @@ class Batch(object):
         """Cartesian product of args and batch, returns an MxN list of N args applied to M batch elements.  Use this with extreme caution, as the memory requirements may be high."""
         assert self.__dict__['_client'] is not None, "Invalid Batch() - You must create a new Batch()"                        
         c = self.__dict__['_client']
-        futures = [c.submit(f_lambda, im, *a) for im in self._objlist for a in args]
+        objlist = c.scatter(self._objlist)        
+        futures = [c.submit(f_lambda, im, *a) for im in objlist for a in args]
         return self.batch(futures) if waiting else futures
         
     def map(self, f_lambda, args=None):

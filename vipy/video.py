@@ -948,13 +948,13 @@ class Scene(VideoCategory):
         This function does not play the video, it only generates an annotation video.  Use show() to annotation and play.
         In general, this function should not be run on very long videos, as it requires loading the video framewise into memory, try running on clips instead.
         """
+        outfile = outfile if outfile is not None else tempMP4()        
         if verbose:
             print('[vipy.video.annotate]: Generating annotation video "%s" ...' % outfile)
             if not self.isloaded():
                 print('[vipy.video.annotate]: Loading video ...')  
         vid = self.load().clone()  # to save a new array
         assert self.isloaded(), "Load() failed"        
-        outfile = outfile if outfile is not None else tempMP4()
         if verbose:
                 print('[vipy.video.annotate]: Annotating video ...')              
         if n_processes > 1:

@@ -69,10 +69,10 @@ def montage(imlist, imgheight, imgwidth, gridrows=None, gridcols=None, aspectrat
 
             except KeyboardInterrupt:
                 raise
-            except:
-                print('[vipy.visualize.montage] skipping...')
+            except Exception as exception:
+                print('[vipy.visualize.montage][%d/%d]: skipping "%s"' % (k+1, len(imlist), str(imlist[k])))
                 if skip:
-                    pass
+                    print('[vipy.visualize.montage][%d/%d]: "%s"' % (k+1, len(imlist), str(exception)))
                 else:
                     raise
 
