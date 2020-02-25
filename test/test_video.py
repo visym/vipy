@@ -133,6 +133,13 @@ def _test_scene():
         pass
     print('[test_video.scene]: activityclip  PASSED')    
     
+    # Activitycrop
+    v = vipy.video.RandomSceneActivity(64,64,64)
+    vc = v.clone(flushforward=True).filename('Video.mp4')
+    assert vc._array is None and v._array is not None
+    a = vc.activitycrop()
+    print('[test_video.scene]: activitycrop  PASSED (exercise only)')        
+    
     # Downloader
     v = vipy.video.Video(url='http://visym.com/out.mp4').load(ignoreErrors=True)
     print('[test_video.video]: download ignoreErrors  PASSED')                
