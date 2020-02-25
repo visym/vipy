@@ -265,11 +265,10 @@ class Track(object):
     def clone(self):
         return copy.deepcopy(self)
 
-    def boundingbox(self, dilate=1.0):
+    def boundingbox(self):
         """The bounding box of a track is the smallest spatial box that contains all of the detections"""
         d = self._keyboxes[0].clone() if len(self._keyboxes) >= 1 else None
-        d = d.union(self._keyboxes[1:]) if len(self._keyboxes) >= 2 else d
-        return d.dilate(dilate) if d is not None else d
+        return d.union(self._keyboxes[1:]) if len(self._keyboxes) >= 2 else d
 
         
 class Activity(object):
@@ -284,11 +283,12 @@ class Activity(object):
     Valid constructors
 
     >>> t = vipy.object.Track(category='Person').add(...))
-    >>> a = vipy.object.Activity(startframe=0, endframe=10, category='Walking', objectids=[t.id()])
+    >>> a = vipy.object.Activity(startframe=0, endframe=10, category='Walking', tracks={t.id():t})
 
     """
-    def __init__(self, startframe, endframe, framerate=None, label=None, shortlabel=None, category=None, objectids=None, attributes=None):
-        assert not (label is not None and category is not None), "Constructor requires either label or category kwargs, not both"        
+    def __init__(self, startframe, endframe, framerate=None, label=None, shortlabel=None, category=None, tracks={}, attributes=None):
+        assert not (label is not None and category is not None), "Constructor requires either label or category kwargs, not both"
+        assert isinstance(tracks, dict), "Tracks must be a dictionary {trackid:vipy.object.Track()}"
         assert startframe <= endframe, "Invalid input - startframe must occur before endframe"
         self._id = uuid.uuid1().hex
         self._startframe = startframe
@@ -296,9 +296,8 @@ class Activity(object):
         self._framerate = framerate
         self._label = category if category is not None else label        
         self._shortlabel = self._label if shortlabel is None else shortlabel
-        self._objectids = objectids
-        if objectids is not None:
-            assert isinstance(objectids, list) and all([isstring(x) for x in objectids]), "Invalid objectid list - Must be a list of track IDs"
+        self._tracks = tracks
+        assert all([isstring(k) for (k,v) in tracks.items()]) and all([isinstance(v, Track) for (k,v) in tracks.items()]), "Invalid tracks - Must be a dictionary of {str(trackid):vipy.object.Track()}"
         self.attributes = attributes if attributes is not None else {}            
         
     def __len__(self):
@@ -306,15 +305,15 @@ class Activity(object):
         return self.endframe() - self.startframe()
 
     def __repr__(self):
-        return str('<vipy.activity: category="%s", frames=(%d,%d), objects=%s>' % (self.category(), self.startframe(), self.endframe(), len(set(self.objectids()))))
+        return str('<vipy.activity: category="%s", frames=(%d,%d), tracks=%s>' % (self.category(), self.startframe(), self.endframe(), len(set(self.tracks()))))
 
     def dict(self):
         return {'id':self._id, 'label':self.category(), 'shortlabel':self.shortlabel(), 'startframe':self._startframe, 'endframe':self._endframe, 'attributes':self.attributes, 'framerate':self._framerate,
-                'trackids':[o for o in self._objectids]}
+                'tracks':[t.dict() for (k,t) in self._tracks.items()]}
     
     def startframe(self):
         return self._startframe
-
+    
     def endframe(self):
         return self._endframe
 
@@ -347,18 +346,20 @@ class Activity(object):
         else:
             return self._shortlabel
         
-    def objectids(self, objectids=None):
-        if objectids is not None:
-            self._objectids = objectids
+    def tracks(self, tracks=None):
+        """Returns a track dictionary, tracks are referenced in the dictionary and are mutable"""
+        if tracks is not None:
+            assert isinstance(tracks, dict), "Tracks must be dictionary of {str(trackid):vipy.object.Track()}"
+            self._tracks = tracks
             return self
         else:
-            return self._objectids
+            return self._tracks
 
     def hastrack(self, track):
         """Is the track part of the activity?"""
         assert isstring(track) or isinstance(track, Track), "Invalid input - Must be a vipy.object.Track().id() or vipy.object.Track()"
         trackid = track.id() if isinstance(track, Track) else track
-        return (self._objectids is not None and any([oid == trackid for oid in self._objectids]))
+        return any([tid == trackid for tid in self._tracks.keys()])
             
     def during(self, frame):
         return int(frame) >= self._startframe and int(frame) <= self._endframe
@@ -371,3 +372,7 @@ class Activity(object):
     def id(self):
         return self._id
 
+    def boundingbox(self):
+        """The bounding box of an activity is the minimum bounding box for all tracks in the activity, or None of there are no boxes"""
+        boxes = [t.boundingbox() for (k,t) in self._tracks.items()]
+        return boxes[0].union(boxes[1:]) if len(boxes)>0 else None

@@ -14,12 +14,12 @@ from vipy.object import Detection, Track, Activity
 
 def _test_dataset():    
     rmdir('/tmp/kinetics')
-    d = Kinetics400('/tmp/kinetics').download().trainset()
+    d = Kinetics400('/tmp/kinetics').download().valset()
     v = d[0].load(verbose=True)[0].resize(rows=256).saveas('/tmp/kinetics.jpg')
     v = d[1].download(verbose=True).save()    
     print('[test_datasets]:  Kinetics400 PASSED')
     
-    d = Kinetics600('/tmp/kinetics').download().trainset()
+    d = Kinetics600('/tmp/kinetics').download().testset()
     v = d[1].load()[0].resize(rows=256).saveas('kinetics.jpg')
     print('[test_datasets]:  Kinetics600 PASSED')
     

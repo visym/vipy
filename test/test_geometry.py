@@ -196,6 +196,7 @@ def test_boundingbox():
     assert bb1.clone().union(bb2).xywh() == (0,0,4,5)    
     bb3 = BoundingBox(xmin=0, ymin=0, width=2, height=6)    
     assert bb1.clone().union([bb2,bb3]).xywh() == (0,0,4,6)
+    assert bb1.clone().union([]).xywh() == bb1.xywh()
     print('[test_geometry.boundingbox.union]: PASSED')
     
     # Inside

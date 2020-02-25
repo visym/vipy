@@ -130,6 +130,17 @@ class Video(object):
             for k in range(0, len(self)):
                 yield self.__getitem__(k)
 
+    def _update_ffmpeg(self, argname, argval):
+        nodes = ffmpeg.nodes.get_stream_spec_nodes(self._ffmpeg)
+        sorted_nodes, outgoing_edge_maps = ffmpeg.dag.topo_sort(nodes)
+        for n in sorted_nodes:
+            if argname in n.__dict__['kwargs']:
+                n.__dict__['kwargs'][argname] = argval
+                return self
+            else:
+                print(n.__dict__)
+        raise ValueError('invalid ffmpeg argument "%s" -> "%s"' % (argname, argval))
+                
     def probe(self):
         """Run ffprobe on the filename and return the result as a JSON file"""
         assert self.hasfilename(), "Invalid video file '%s' for ffprobe" % self.filename() 
@@ -260,7 +271,7 @@ class Video(object):
     
     def reload(self):
         return self.clone(flush=True).load()
-
+                       
     def filename(self, newfile=None, remove=False):
         """Video Filename"""
         if remove:
@@ -270,9 +281,7 @@ class Video(object):
         
         # Update ffmpeg filter chain with new input node filename
         newfile = os.path.abspath(os.path.expanduser(newfile))
-        nodes = ffmpeg.nodes.get_stream_spec_nodes(self._ffmpeg)
-        sorted_nodes, outgoing_edge_maps = ffmpeg.dag.topo_sort(nodes)
-        sorted_nodes[0].__dict__['kwargs']['filename'] = newfile
+        self._update_ffmpeg('filename', newfile)
         self._filename = newfile
         return self
 
@@ -778,22 +787,22 @@ class Scene(VideoCategory):
 
     def tracks(self, tracks=None, id=None):
         if tracks is None:
-            return list(self._tracks.values())
+            return self._tracks  # mutable
         elif id is not None:
             return self._tracks[id]
         else:
             assert all([isinstance(t, vipy.object.Track) for t in tolist(tracks)]), "Invalid input - Must be vipy.object.Track or list of vipy.object.Track"
-            self._tracks = {t.id():t for t in tolist(tracks)}
+            self._tracks = {t.id():t for t in tolist(tracks)}  # overwrite
             return self
 
     def activities(self, activities=None, id=None):
         if activities is None:
-            return list(self._activities.values())
+            return self._activities  # mutable
         elif id is not None:
             return self._activities[id]
         else:
             assert all([isinstance(a, vipy.object.Activity) for a in tolist(activities)]), "Invalid input - Must be vipy.object.Activity or list of vipy.object.Activities"
-            self._activities = {a.id:a for a in tolist(activities)} 
+            self._activities = {a.id:a for a in tolist(activities)}   # overwrite
             return self
     
     def hasactivities(self):
@@ -867,7 +876,7 @@ class Scene(VideoCategory):
         return self
 
     def thumbnail(self, outfile=None, frame=0):
-        """Return annotated frame of video, save annotation visualization to provided outfile"""
+        """Return annotated frame=k of video, save annotation visualization to provided outfile"""
         return self.__getitem__(frame).savefig(outfile if outfile is not None else temppng())
 
     def activityclip(self, padframes=0):
@@ -880,19 +889,15 @@ class Scene(VideoCategory):
         padframes = padframes if istuple(padframes) else (padframes,padframes)
         return [vid.clone().activities(a).tracks(t).clip(startframe=max(a.middleframe()-(len(a)//2)-padframes[0], 0),
                                                          endframe=a.middleframe()+(len(a)//2)+padframes[1]).category(a.category()) for (a,t) in zip(activities, tracks)]
-
+    
     def activitycrop(self, dilate=1.0):
         """Returns a list of vipy.videoScene() each spatially croppped to be the union of the objects performing the activity"""
         vid = self.clone(flushforward=True)
         activities = vid.activities()
         tracks = [[t for t in vid.tracks() if t.id() in set(a.objectids())] for a in activities]
-        boxes = [t[0].clone().union(t[1:]).dilate(dilate) for t in tracks]
         vid._activities = {}  # for faster clone
         vid._tracks = {}      # for faster clone
-        activitylist = [vid.clone().activities(a).tracks(t) for (a,t) in zip(activities, tracks)]
-
-        
-        pass
+        return [vid.clone().activities(a).tracks(t).crop(a.boundingbox().dilate(dilate)) for (a,t) in zip(activities, tracks)]        
         
     def clip(self, startframe, endframe):
         """Clip the video to between (startframe, endframe).  This clip is relative to cumulative clip() from the filter chain"""
@@ -994,11 +999,11 @@ class Scene(VideoCategory):
     
     
 def RandomVideo(rows=None, cols=None, frames=None):
-    """Return a random loaded vipy.video.video, useful for unit testing"""
+    """Return a random loaded vipy.video.video, useful for unit testing, minimum size (32x32x32)"""
     rows = np.random.randint(256, 1024) if rows is None else rows
     cols = np.random.randint(256, 1024) if cols is None else cols
     frames = np.random.randint(32, 256) if frames is None else frames
-    assert rows>32 and cols>32 and frames>32    
+    assert rows>32 and cols>32 and frames>=32    
     return Video(array=np.uint8(255 * np.random.rand(frames, rows, cols, 3)), colorspace='rgb')
 
 
@@ -1015,7 +1020,7 @@ def RandomScene(rows=None, cols=None, frames=None):
                                        vipy.geometry.BoundingBox(xmin=np.random.randint(0,cols - 16), ymin=np.random.randint(0,rows - 16),
                                                                  width=np.random.randint(16,cols//2), height=np.random.randint(16,rows//2))]) for k in range(0,32)]
 
-    activities = [vipy.object.Activity(label='activity%d' % k, shortlabel='a%d' % k, objectids=[tracks[np.random.randint(32)].id()], startframe=np.random.randint(50,100), endframe=np.random.randint(100,150)) for k in range(0,32)]   
+    activities = [vipy.object.Activity(label='activity%d' % k, shortlabel='a%d' % k, tracks={tracks[j].id():tracks[j] for j in [np.random.randint(32)]}, startframe=np.random.randint(50,100), endframe=np.random.randint(100,150)) for k in range(0,32)]   
     ims = Scene(array=v.array(), colorspace='rgb', category='scene', tracks=tracks, activities=activities)
 
     return ims
@@ -1034,7 +1039,7 @@ def RandomSceneActivity(rows=None, cols=None, frames=256):
                                        vipy.geometry.BoundingBox(xmin=np.random.randint(0,cols - 16), ymin=np.random.randint(0,rows - 16),
                                                                  width=np.random.randint(16,cols//2), height=np.random.randint(16,rows//2))]) for k in range(0,3)]
 
-    activities = [vipy.object.Activity(label='Person Carrying', shortlabel='Carry', objectids=[tracks[0].id(), tracks[1].id()], startframe=np.random.randint(20,50), endframe=np.random.randint(70,100))]   
+    activities = [vipy.object.Activity(label='Person Carrying', shortlabel='Carry', tracks={tracks[0].id():tracks[0], tracks[1].id():tracks[1]}, startframe=np.random.randint(20,50), endframe=np.random.randint(70,100))]   
     ims = Scene(array=v.array(), colorspace='rgb', category='scene', tracks=tracks, activities=activities)
 
     return ims

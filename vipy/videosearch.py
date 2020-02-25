@@ -5,7 +5,7 @@ import urllib
 import json
 import re
 import random
-from vipy.annotation import common_user_agents
+from vipy.useragent import common_user_agents, complete_user_agents
 from vipy.util import tofilename, remkdir, filepath, filebase, isurl, try_import
 import glob
 
@@ -118,7 +118,7 @@ def liveleak(tag, n_pages=1):
 def download(vidurl, vidfile, skip=False, writeurlfile=True, max_filesize='350m', remove_parts=True, verbose=False):
     """Use youtube-dl to download a video URL to a video file"""
 
-    user_agent = random.choice(common_user_agents)    
+    user_agent = random.choice(complete_user_agents)    
     ydl_exe = os.path.join(filepath(sys.executable), 'youtube-dl')
     if not os.path.exists(ydl_exe):
         raise ImportError('Optional package "youtube-dl" not installed -  Run "pip install youtube-dl"')
