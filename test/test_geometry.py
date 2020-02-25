@@ -190,7 +190,16 @@ def test_boundingbox():
     assert bb1.intersection_over_union(bb2) == ((50.0 * 50.0) / (100.0 * 100.0))
     print('[test_geometry.boundingbox.iou]: PASSED')
 
+    # Union
+    bb1 = BoundingBox(xmin=1, ymin=2, width=3, height=1)
+    bb2 = BoundingBox(xmin=0, ymin=0, width=2, height=5)
+    assert bb1.clone().union(bb2).xywh() == (0,0,4,5)    
+    bb3 = BoundingBox(xmin=0, ymin=0, width=2, height=6)    
+    assert bb1.clone().union([bb2,bb3]).xywh() == (0,0,4,6)
+    print('[test_geometry.boundingbox.union]: PASSED')
+    
     # Inside
+    bb1 = BoundingBox(xmin=0, ymin=0, width=100, height=100)
     assert bb1.inside((0,25)) and not bb1.inside((-10,0)) and bb1.inside((99,99))
     print('[test_geometry.boundingbox.inside]: PASSED')
 

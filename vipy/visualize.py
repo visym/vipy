@@ -41,8 +41,7 @@ def montage(imlist, imgheight, imgwidth, gridrows=None, gridcols=None, aspectrat
     elif rows is not None and cols is not None:
         N = rows
         M = cols
-    padding = (M + 1) * border
-    size = (M * m + padding, N * n + padding)
+    size = (M * m + ((M + 1) * border), N * n + ((N + 1) * border))
     bc = border_bgr
     img_montage = np.array(PIL.Image.new(mode='RGB', size=size, color=bc))
     k = 0

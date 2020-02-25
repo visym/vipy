@@ -2,7 +2,7 @@ import math
 import numpy as np
 import scipy.spatial
 from itertools import product
-from vipy.util import try_import, istuple, isnumpy, isnumber
+from vipy.util import try_import, istuple, isnumpy, isnumber, tolist
 from vipy.linalg import columnvector
 import warnings
 
@@ -389,11 +389,13 @@ class BoundingBox():
         return self
 
     def union(self, bb):
-        """Union of two bounding boxes"""
-        self._xmin = min(bb.xmin(), self.xmin())
-        self._ymin = min(bb.ymin(), self.ymin())
-        self._xmax = max(bb.xmax(), self.xmax())
-        self._ymax = max(bb.ymax(), self.ymax())
+        """Union of one or more bounding boxes with this box"""
+        bblist = tolist(bb)
+        assert all([isinstance(bb, BoundingBox) for bb in bblist]), "Invalid BoundingBox() input"
+        self._xmin = min([bb.xmin() for bb in bblist] + [self.xmin()])
+        self._ymin = min([bb.ymin() for bb in bblist] + [self.ymin()])
+        self._xmax = max([bb.xmax() for bb in bblist] + [self.xmax()])
+        self._ymax = max([bb.ymax() for bb in bblist] + [self.ymax()])
         return self
 
     def inside(self, p):

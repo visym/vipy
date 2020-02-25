@@ -19,12 +19,12 @@ class Kinetics700(object):
         vipy.downloader.download_and_unpack(self._url, self.datadir, verbose=verbose)
         return self
 
-    def _isdownloaded(self):
+    def isdownloaded(self):
         return (os.path.exists(os.path.join(self.datadir, 'kinetics700.tar.gz')) or
                 os.path.exists(os.path.join(self.datadir, self._name, 'train.json')))
     
     def _dataset(self, jsonfile):
-        assert self._isdownloaded(), "Dataset not downloaded.  download() first or manually download '%s' to '%s' and unpack the tarball there" % (self._url, self.datadir)
+        assert self.isdownloaded(), "Dataset not downloaded.  download() first or manually download '%s' to '%s' and unpack the tarball there" % (self._url, self.datadir)
         return [VideoCategory(url=v['url'],
                               filename=os.path.join(self.datadir, self._name, youtubeid),
                               category=v['annotations']['label'],

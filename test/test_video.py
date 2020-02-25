@@ -322,6 +322,26 @@ def _test_scene():
     assert v.hasfilename() and os.path.getsize('Video.mp4') != os.path.getsize(v.filename())
     print('[test_video.scene]: saveas()  PASSED')    
 
+
+def test_track():
+    t = Track(category=1, keyframes=[1,10], boxes=[BoundingBox(0,0,10,11), BoundingBox(1,1,11,12)])
+    assert t.boundingbox().xywh() == (0,0,11,12)
+    print('[test_video.track]: boundingbox()  PASSED')
+    
+    assert t.during(1) and t.during(10) and t.during(5)
+    assert not t.during(11)
+    print('[test_video.track]: during()  PASSED')    
+
+    t.dict()
+    print('[test_video.track]: dict()  PASSED')
+
+    for d in t:
+        assert d.width() == 10 and d.height() == 11
+    assert d.xmin() == 1 and d.ymin() == 1
+    print('[test_video.track]: interpolation  PASSED')
+    
+    
 if __name__ == "__main__":
     test_video()
+    test_track()
     _test_scene()

@@ -292,6 +292,7 @@ class Video(object):
                 for ext in ['mkv', 'mp4', 'webm']:
                     f = '%s.%s' % (self.filename(), ext)
                     if os.path.exists(f):
+                        os.symlink(f, self.filename())  # for future load()
                         self.filename(f)
                         break    
                 if not self.hasfilename():
@@ -880,6 +881,19 @@ class Scene(VideoCategory):
         return [vid.clone().activities(a).tracks(t).clip(startframe=max(a.middleframe()-(len(a)//2)-padframes[0], 0),
                                                          endframe=a.middleframe()+(len(a)//2)+padframes[1]).category(a.category()) for (a,t) in zip(activities, tracks)]
 
+    def activitycrop(self, dilate=1.0):
+        """Returns a list of vipy.videoScene() each spatially croppped to be the union of the objects performing the activity"""
+        vid = self.clone(flushforward=True)
+        activities = vid.activities()
+        tracks = [[t for t in vid.tracks() if t.id() in set(a.objectids())] for a in activities]
+        boxes = [t[0].clone().union(t[1:]).dilate(dilate) for t in tracks]
+        vid._activities = {}  # for faster clone
+        vid._tracks = {}      # for faster clone
+        activitylist = [vid.clone().activities(a).tracks(t) for (a,t) in zip(activities, tracks)]
+
+        
+        pass
+        
     def clip(self, startframe, endframe):
         """Clip the video to between (startframe, endframe).  This clip is relative to cumulative clip() from the filter chain"""
         super(Scene, self).clip(startframe, endframe)

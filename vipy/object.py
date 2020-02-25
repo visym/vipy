@@ -143,7 +143,7 @@ class Track(object):
 
     def __iter__(self):
         """Iterate over the track interpolating each frame from min(keyframes) to max(keyframes)"""
-        for k in range(self.startframe(), self.endframe()):
+        for k in range(self.startframe(), self.endframe()+1):
             yield self._linear_interpolation(k)
 
     def __len__(self):
@@ -156,7 +156,7 @@ class Track(object):
 
     def add(self, keyframe, box):
         """Add a new keyframe and associated box to track, preserve sorted order of keyframes"""
-        assert isinstance(box, BoundingBox), "Invalud input - Box must be vipy.geometry.BoundingBox()"
+        assert isinstance(box, BoundingBox), "Invalid input - Box must be vipy.geometry.BoundingBox()"
         self._keyframes.append(keyframe)
         self._keyboxes.append(box)
         if keyframe < self._keyframes[-2]:
@@ -265,7 +265,13 @@ class Track(object):
     def clone(self):
         return copy.deepcopy(self)
 
-    
+    def boundingbox(self, dilate=1.0):
+        """The bounding box of a track is the smallest spatial box that contains all of the detections"""
+        d = self._keyboxes[0].clone() if len(self._keyboxes) >= 1 else None
+        d = d.union(self._keyboxes[1:]) if len(self._keyboxes) >= 2 else d
+        return d.dilate(dilate) if d is not None else d
+
+        
 class Activity(object):
     """vipy.object.Activity class
     
