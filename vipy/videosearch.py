@@ -115,7 +115,7 @@ def liveleak(tag, n_pages=1):
     return(vidlist)
 
 
-def download(vidurl, vidfile, skip=False, writeurlfile=True, max_filesize='350m', remove_parts=True):
+def download(vidurl, vidfile, skip=False, writeurlfile=True, max_filesize='350m', remove_parts=True, verbose=False):
     """Use youtube-dl to download a video URL to a video file"""
 
     user_agent = random.choice(common_user_agents)    
@@ -125,8 +125,11 @@ def download(vidurl, vidfile, skip=False, writeurlfile=True, max_filesize='350m'
     try:
         print('[vipy.videosearch.download]: saving "%s" to "%s"' % (vidurl, vidfile))
         for f in glob.glob("%s*" % vidfile):
-            os.remove(f) 
-        erno = os.system('%s -q "%s" -o %s --max-filesize %s --no-check-certificate --user-agent="%s"' % (ydl_exe, vidurl, vidfile, max_filesize, user_agent))  # must be on path
+            os.remove(f)
+        cmd = '%s %s "%s" -o %s --max-filesize %s --no-check-certificate --user-agent="%s"' % (ydl_exe, '-q' if not verbose else '', vidurl, vidfile, max_filesize, user_agent)  # must be on path            
+        if verbose:
+            print('[vipy.videosearch.download]: executing "%s"' % cmd)
+        erno = os.system(cmd)
         if erno != 0:
             raise ValueError('youtube-dl returned %d' % erno)
         if os.path.isfile(vidfile):
