@@ -194,9 +194,9 @@ class Mevadata_Public_01(object):
                 startframe = int(v['act']['timespan'][0]['tsr0'][0])
                 endframe = int(v['act']['timespan'][0]['tsr0'][1])
                 actorid = [x['id1'] for x in v['act']['actors']]
-                objectids = [d_id1_to_track[x].id() for x in actorid]
+                tracks = {d_id1_to_track[aid].id():d_id1_to_track[aid] for aid in actorid}
                 vid.add(Activity(category=category, shortlabel=d_category_to_shortlabel[category],
-                                 startframe=startframe, endframe=endframe, objectids=objectids, framerate=framerate, attributes={'src_status':v['act']['src_status']}))
+                                 startframe=startframe, endframe=endframe, tracks=tracks, framerate=framerate, attributes={'src_status':v['act']['src_status']}))
             
         return vid
         

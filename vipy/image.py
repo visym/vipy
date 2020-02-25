@@ -1401,7 +1401,20 @@ class Scene(ImageCategory):
         return immask
 
     def show(self, categories=None, figure=None, do_caption=True, fontsize=10, boxalpha=0.25, d_category2color={'Person':'green', 'Vehicle':'blue', 'Object':'red'}, captionoffset=(0,0), nowindow=False, textfacecolor='white', textfacealpha=1.0, shortlabel=True):
-        """Show scene detection with an optional subset of categories"""
+        """Show scene detection with an optional subset of categories
+
+           * fontsize (int, string): Size of the font, fontsize=int for points, fontsize='NN:scaled' to scale the font relative to the image size
+           * figure (int): Figure number, show the image in the provided figure=int numbered window
+           * do_caption (book):  Show or do not show the text caption in the upper left of the box 
+           * boxalpha (float, [0,1]):  Set the text box background to be semi-transparent with an alpha
+           * d_category2color (dict):  Define a dictionary of required mapping of specific category() to box colors.  Non-specified categories are assigned a random color.
+           * caption_offset (int, int): The relative position of the caption to the upper right corner of the box.
+           * nowindow (bool):  Display or not display the image
+           * textfacecolor (str): One of the named colors from vipy.show.colorlist() for the color of the textbox background
+           * textfacealpha (float, [0,1]):  The textbox background transparency
+           * shortlabel (bool):  Whether to show the shortlabel or long category label in the caption
+
+        """
         valid_categories = sorted(self.categories() if categories is None else tolist(categories))  # subset of categories to show
         valid_detections = [obj for obj in self._objectlist if obj.category() in valid_categories]  # subset of detections with valid category
         valid_detections = [obj.imclip(self.numpy()) for obj in self._objectlist if obj.hasoverlap(self.numpy())]  # Within image rectangle
@@ -1411,7 +1424,8 @@ class Scene(ImageCategory):
         detection_color = [d_categories2color[im.category()] for im in valid_detections]
         valid_detections = [obj.clone().category(obj.shortlabel()) for obj in valid_detections] if shortlabel else valid_detections  # Display name
         imdisplay = self.clone().rgb() if self.colorspace() != 'rgb' else self  # convert to RGB for show() if necessary
-        vipy.show.imdetection(imdisplay._array, valid_detections, bboxcolor=detection_color, textcolor=detection_color, fignum=figure, do_caption=do_caption, facealpha=boxalpha, fontsize=fontsize,
+        fontsize_scaled = float(fontsize.split(':')[0])*(min(imdisplay.shape())/640.0) if isstring(fontsize) else fontsize
+        vipy.show.imdetection(imdisplay._array, valid_detections, bboxcolor=detection_color, textcolor=detection_color, fignum=figure, do_caption=do_caption, facealpha=boxalpha, fontsize=fontsize_scaled,
                               captionoffset=captionoffset, nowindow=nowindow, textfacecolor=textfacecolor, textfacealpha=textfacealpha)
         return self
 

@@ -882,8 +882,8 @@ class Scene(VideoCategory):
     def activityclip(self, padframes=0):
         """Return a list of vipy.video.Scene() each clipped to be centered on a single activity, with an optional padframes before and after.  The Scene() category is updated to be the activity, and only the objects partifipating in the activity are included"""
         vid = self.clone(flushforward=True)
-        activities = vid.activities()
-        tracks = [[t for t in vid.tracks() if t.id() in set(a.objectids())] for a in activities]
+        activities = vid.activities().values()
+        tracks = [ [t for (tid, t) in vid.tracks().items() if a.hastrack(t)] for a in activities]                         
         vid._activities = {}  # for faster clone
         vid._tracks = {}      # for faster clone
         padframes = padframes if istuple(padframes) else (padframes,padframes)
@@ -893,8 +893,8 @@ class Scene(VideoCategory):
     def activitycrop(self, dilate=1.0):
         """Returns a list of vipy.videoScene() each spatially croppped to be the union of the objects performing the activity"""
         vid = self.clone(flushforward=True)
-        activities = vid.activities()
-        tracks = [[t for t in vid.tracks() if t.id() in set(a.objectids())] for a in activities]
+        activities = vid.activities().values()
+        tracks = [ [t for (tid, t) in vid.tracks().items() if a.hastrack(t)] for a in activities]                 
         vid._activities = {}  # for faster clone
         vid._tracks = {}      # for faster clone
         return [vid.clone().activities(a).tracks(t).crop(a.boundingbox().dilate(dilate)) for (a,t) in zip(activities, tracks)]        

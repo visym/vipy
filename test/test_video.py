@@ -121,9 +121,9 @@ def _test_scene():
     v = vipy.video.RandomSceneActivity(64,64,64)
     vc = v.clone(flushforward=True).filename('Video.mp4')
     assert vc._array is None and v._array is not None
-    activitylength = [len(a) for a in vc.activities()]
+    activitylength = [len(a) for a in vc.activities().values()]
     assert all([len(c.activities())==1 for c in vc.activityclip()])    
-    assert all([len(a)==al for (c,al) in zip(vc.activityclip(padframes=0), activitylength) for a in c.activities()])
+    assert all([len(a)==al for (c,al) in zip(vc.activityclip(padframes=0), activitylength) for a in c.activities().values()])
     try:
         vc.activityclip(padframes=2)  # will result in startframe < 0
         Failed()
