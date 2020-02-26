@@ -165,10 +165,11 @@ class Mevadata_Public_01(object):
         d_geom_yaml = groupbyasdict([x['geom'] for x in geom_yaml if 'geom' in x], lambda v: v['id1'])
         assert stride >= 1, "Invalid stride"
         for (id1, geom_yaml) in d_geom_yaml.items():
+            geom_yaml = sorted(geom_yaml, key=lambda x: int(x['ts0']))  # increasing
             for (k_geom, v) in enumerate(geom_yaml):
-                if stride > 1 and k_geom > 0 and (k_geom < (len(geom_yaml)-stride)) and (k_geom % stride == 0):
+                if stride > 1 and k_geom > 0 and (k_geom < (len(geom_yaml)-stride)) and (k_geom % stride != 0):
                     continue  # Use vipy track interpolation to speed up parsing
-                keyframe = v['ts0']
+                keyframe = int(v['ts0'])
                 bb = [int(x) for x in v['g0'].split(' ')]
                 bbox = BoundingBox(xmin=bb[0], ymin=bb[1], xmax=bb[2], ymax=bb[3])
                 if not bbox.isvalid():
