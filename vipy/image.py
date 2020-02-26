@@ -472,7 +472,7 @@ class Image(object):
     
 
     # Spatial transformations
-    def resize(self, cols=None, rows=None, width=None, height=None):
+    def resize(self, cols=None, rows=None, width=None, height=None, interp=PIL.Image.BILINEAR):
         """Resize the image buffer to (rows x cols) with bilinear interpolation.  If rows or cols is provided, rescale image maintaining aspect ratio"""
         assert not (cols is not None and width is not None), "Define either width or cols"
         assert not (rows is not None and height is not None), "Define either height or rows"
@@ -486,27 +486,27 @@ class Image(object):
             self.rescale(scale)
 
         else:
-            self._array = np.array(self.load().pil().resize((cols, rows), PIL.Image.BILINEAR))
+            self._array = np.array(self.load().pil().resize((cols, rows), interp))
         return self
 
-    def resize_like(self, im):
+    def resize_like(self, im, interp=PIL.Image.BILINEAR):
         """Resize image buffer to be the same size as the provided vipy.image.Image()"""
         assert isinstance(im, Image), "Invalid input - Must be vipy.image.Image()"
-        return self.resize(im.width(), im.height())
+        return self.resize(im.width(), im.height(), interp=interp)
     
-    def rescale(self, scale=1):
+    def rescale(self, scale=1, interp=PIL.Image.BILINEAR):
         """Scale the image buffer by the given factor - NOT idemponent"""
         (height, width) = self.load().shape()
-        self._array = np.array(self.pil().resize((int(np.round(scale * width)), int(np.round(scale * height))), PIL.Image.BILINEAR))
+        self._array = np.array(self.pil().resize((int(np.round(scale * width)), int(np.round(scale * height))), interp))
         return self
 
-    def maxdim(self, dim):
+    def maxdim(self, dim, interp=PIL.Image.BILINEAR):
         """Resize image preserving aspect ratio so that maximum dimension of image = dim"""
-        return self.rescale(float(dim) / float(np.maximum(self.height(), self.width())))
+        return self.rescale(float(dim) / float(np.maximum(self.height(), self.width())), interp=interp)
 
-    def mindim(self, dim):
+    def mindim(self, dim, interp=PIL.Image.BILINEAR):
         """Resize image preserving aspect ratio so that minimum dimension of image = dim"""
-        return self.rescale(float(dim) / float(np.minimum(self.height(), self.width())))
+        return self.rescale(float(dim) / float(np.minimum(self.height(), self.width())), interp=interp)
 
     def _pad(self, dx, dy, mode='edge'):
         """Pad image using np.pad mode, dx=padwidth, dy=padheight"""
@@ -1072,13 +1072,13 @@ class ImageDetection(ImageCategory):
             warnings.warn("Degenerate bounding box does not intersect image - Ignoring")
         return self
 
-    def rescale(self, scale=1):
+    def rescale(self, scale=1, interp=PIL.Image.BILINEAR):
         """Rescale image buffer and bounding box"""
-        self = super(ImageDetection, self).rescale(scale)
+        self = super(ImageDetection, self).rescale(scale, interp=interp)
         self.bbox = self.bbox.rescale(scale)
         return self
 
-    def resize(self, cols=None, rows=None):
+    def resize(self, cols=None, rows=None, interp=PIL.Image.BILINEAR):
         """Resize image buffer and bounding box so that the image buffer is size (height=cols, width=row).  If only cols or rows is provided, then scale the image appropriately"""
         assert cols is not None or rows is not None, "Invalid input"
         sx = (float(cols) / self.width()) if cols is not None else 1.0
@@ -1088,9 +1088,9 @@ class ImageDetection(ImageCategory):
         self.bbox.scalex(sx)
         self.bbox.scaley(sy)
         if sx == sy:
-            self = super(ImageDetection, self).rescale(sx)  # Warning: method resolution order for multi-inheritance
+            self = super(ImageDetection, self).rescale(sx, interp=interp)  # Warning: method resolution order for multi-inheritance
         else:
-            self = super(ImageDetection, self).resize(cols, rows)
+            self = super(ImageDetection, self).resize(cols, rows, interp=interp)
         return self
 
     
@@ -1106,13 +1106,13 @@ class ImageDetection(ImageCategory):
         self.bbox = BoundingBox(xmin=0, ymin=0, xmax=self.width(), ymax=self.height())
         return self
 
-    def mindim(self, dim):
+    def mindim(self, dim, interp=PIL.Image.BILINEAR):
         """Resize image preserving aspect ratio so that minimum dimension of image = dim"""
-        return super(ImageDetection, self).mindim(dim)  # calls self.rescale() which will update boxes
+        return super(ImageDetection, self).mindim(dim, interp)  # calls self.rescale() which will update boxes
 
-    def maxdim(self, dim):
+    def maxdim(self, dim, interp=PIL.Image.BILINEAR):
         """Resize image preserving aspect ratio so that maximum dimension of image = dim"""        
-        return super(ImageDetection, self).maxdim(dim)  # calls self.rescale() will will update boxes
+        return super(ImageDetection, self).maxdim(dim, interp)  # calls self.rescale() will will update boxes
 
     def centersquare(self):
         """Crop image of size (NxN) in the center, such that N=min(width,height), keeping the image centroid constant, new bounding box may be degenerate"""
@@ -1307,13 +1307,13 @@ class Scene(ImageCategory):
         self._objectlist = [bb.imclip(self.numpy()) for bb in self._objectlist if bb.hasoverlap(self.numpy())]
         return self
 
-    def rescale(self, scale=1):
+    def rescale(self, scale=1, interp=PIL.Image.BILINEAR):
         """Rescale image buffer and all bounding boxes - Not idemponent"""
-        self = super(ImageCategory, self).rescale(scale)
+        self = super(ImageCategory, self).rescale(scale, interp=interp)
         self._objectlist = [bb.rescale(scale) for bb in self._objectlist]
         return self
 
-    def resize(self, cols=None, rows=None):
+    def resize(self, cols=None, rows=None, interp=PIL.Image.BILINEAR):
         """Resize image buffer to (height=rows, width=cols) and transform all bounding boxes accordingly.  If cols or rows is None, then scale isotropically"""
         assert cols is not None or rows is not None, "Invalid input"
         sx = (float(cols) / self.width()) if cols is not None else 1.0
@@ -1322,9 +1322,9 @@ class Scene(ImageCategory):
         sy = sy if sy != 1.0 else sx       
         self._objectlist = [bb.scalex(sx).scaley(sy) for bb in self._objectlist]        
         if sx == sy:
-            self = super(Scene, self).rescale(sx)  # FIXME: if we call resize here, inheritance is screweed up
+            self = super(Scene, self).rescale(sx, interp=interp)  # FIXME: if we call resize here, inheritance is screweed up
         else:
-            self = super(Scene, self).resize(cols, rows)
+            self = super(Scene, self).resize(cols, rows, interp=interp)
         return self
 
     def centersquare(self):
@@ -1376,13 +1376,13 @@ class Scene(ImageCategory):
         self._objectlist = [bb.rot90ccw(H, W) for bb in self._objectlist]
         return self
 
-    def maxdim(self, dim):
+    def maxdim(self, dim, interp=PIL.Image.BILINEAR):
         """Resize scene preserving aspect ratio so that maximum dimension of image = dim, update all objects"""
-        return super(ImageCategory, self).maxdim(dim)  # will call self.rescale() which will update boxes
+        return super(ImageCategory, self).maxdim(dim, interp)  # will call self.rescale() which will update boxes
 
-    def mindim(self, dim):
+    def mindim(self, dim, interp=PIL.Image.BILINEAR):
         """Resize scene preserving aspect ratio so that minimum dimension of image = dim, update all objects"""
-        return super(ImageCategory, self).mindim(dim)  # will call self.rescale() which will update boxes
+        return super(ImageCategory, self).mindim(dim, interp)  # will call self.rescale() which will update boxes
 
     def crop(self, bbox):
         """Crop the image buffer using the supplied bounding box object, clipping the box to the image rectangle, update all scene objects"""        
@@ -1416,12 +1416,12 @@ class Scene(ImageCategory):
                 immask[bbm.ymin():bbm.ymax(), bbm.xmin():bbm.xmax()] = 1
         return immask
 
-    def show(self, categories=None, figure=None, do_caption=True, fontsize=10, boxalpha=0.25, d_category2color={'Person':'green', 'Vehicle':'blue', 'Object':'red'}, captionoffset=(0,0), nowindow=False, textfacecolor='white', textfacealpha=1.0, shortlabel=True):
+    def show(self, categories=None, figure=None, nocaption=False, fontsize=10, boxalpha=0.25, d_category2color={'Person':'green', 'Vehicle':'blue', 'Object':'red'}, captionoffset=(0,0), nowindow=False, textfacecolor='white', textfacealpha=1.0, shortlabel=True):
         """Show scene detection with an optional subset of categories
 
            * fontsize (int, string): Size of the font, fontsize=int for points, fontsize='NN:scaled' to scale the font relative to the image size
            * figure (int): Figure number, show the image in the provided figure=int numbered window
-           * do_caption (book):  Show or do not show the text caption in the upper left of the box 
+           * nocaption (bool):  Show or do not show the text caption in the upper left of the box 
            * boxalpha (float, [0,1]):  Set the text box background to be semi-transparent with an alpha
            * d_category2color (dict):  Define a dictionary of required mapping of specific category() to box colors.  Non-specified categories are assigned a random color.
            * caption_offset (int, int): The relative position of the caption to the upper right corner of the box.
@@ -1441,13 +1441,13 @@ class Scene(ImageCategory):
         valid_detections = [obj.clone().category(obj.shortlabel()) for obj in valid_detections] if shortlabel else valid_detections  # Display name
         imdisplay = self.clone().rgb() if self.colorspace() != 'rgb' else self  # convert to RGB for show() if necessary
         fontsize_scaled = float(fontsize.split(':')[0])*(min(imdisplay.shape())/640.0) if isstring(fontsize) else fontsize
-        vipy.show.imdetection(imdisplay._array, valid_detections, bboxcolor=detection_color, textcolor=detection_color, fignum=figure, do_caption=do_caption, facealpha=boxalpha, fontsize=fontsize_scaled,
+        vipy.show.imdetection(imdisplay._array, valid_detections, bboxcolor=detection_color, textcolor=detection_color, fignum=figure, do_caption=(nocaption==False), facealpha=boxalpha, fontsize=fontsize_scaled,
                               captionoffset=captionoffset, nowindow=nowindow, textfacecolor=textfacecolor, textfacealpha=textfacealpha)
         return self
 
-    def savefig(self, outfile=None, categories=None, figure=None, do_caption=True, fontsize=10, boxalpha=0.25, d_category2color={'person':'green', 'vehicle':'blue', 'object':'red'}, captionoffset=(0,0), dpi=200, textfacecolor='white', textfacealpha=1.0, shortlabel=True):
+    def savefig(self, outfile=None, categories=None, figure=None, nocaption=False, fontsize=10, boxalpha=0.25, d_category2color={'person':'green', 'vehicle':'blue', 'object':'red'}, captionoffset=(0,0), dpi=200, textfacecolor='white', textfacealpha=1.0, shortlabel=True):
         """Save show() output to given file or return bufferwithout popping up a window"""
-        self.show(categories=categories, figure=figure, do_caption=do_caption, fontsize=fontsize, boxalpha=boxalpha, d_category2color=d_category2color, captionoffset=captionoffset, nowindow=True, textfacecolor=textfacecolor, textfacealpha=textfacealpha, shortlabel=shortlabel)
+        self.show(categories=categories, figure=figure, nocaption=nocaption, fontsize=fontsize, boxalpha=boxalpha, d_category2color=d_category2color, captionoffset=captionoffset, nowindow=True, textfacecolor=textfacecolor, textfacealpha=textfacealpha, shortlabel=shortlabel)
         if outfile is None:
             (W,H) = plt.gcf().canvas.get_width_height()  # fast
             buf = io.BytesIO()
