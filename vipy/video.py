@@ -972,7 +972,7 @@ class Scene(VideoCategory):
         super(Scene, self).rescale(s)
         return self
 
-    def annotate(self, outfile=None, n_processes=1, verbose=True):
+    def annotate(self, outfile=None, n_processes=1, verbose=True, fontsize=10):
         """Generate a video visualization of all annotated objects and activities in the video, at the resolution and framerate of the underlying video, save as outfile.
         This function does not play the video, it only generates an annotation video.  Use show() to annotation and play.
         In general, this function should not be run on very long videos, as it requires loading the video framewise into memory, try running on clips instead.
@@ -989,7 +989,7 @@ class Scene(VideoCategory):
         if n_processes > 1:
             b = vipy.batch.Batch(vid, n_processes=n_processes)
             print('[vipy.video.annotate.debug]: %s' % str(b))  # TESTING
-            imgs = b.map(lambda v,k: v[k].savefig().rgb().numpy(), args=[(k,) for k in range(0, len(vid))])
+            imgs = b.map(lambda v,k: v[k].savefig(fontsize=fontsize).rgb().numpy(), args=[(k,) for k in range(0, len(vid))])
             vid._array = np.stack(imgs, axis=0)            
             # b.shutdown()   # FIXME: why does this timeout?
         else:
