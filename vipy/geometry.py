@@ -399,9 +399,13 @@ class BoundingBox():
         return self
 
     def inside(self, p):
-        """Is the 2D point p=(x,y) inside the bounding box?"""
-        assert len(p) == 2, "Invalid 2D point=(x,y) input"""
-        return (p[0] >= self._xmin) and (p[1] >= self._ymin) and (p[0] <= self._xmax) and (p[1] <= self._ymax)
+        """Is the 2D point p=(x,y) or the boundingbox()=p inside this bounding box?"""
+        if isinstance(p, BoundingBox):
+            bb = p
+            return self.clone().intersection(bb) == bb
+        else:
+            assert len(p) == 2, "Invalid 2D point=(x,y) input"""
+            return (p[0] >= self._xmin) and (p[1] >= self._ymin) and (p[0] <= self._xmax) and (p[1] <= self._ymax)
 
     def dilate(self, scale=1):
         """Change scale of bounding box keeping centroid constant"""
@@ -547,8 +551,17 @@ class BoundingBox():
             assert isnumber(width) and isnumber(height), "Invalid width and height - both must be numbers"
         return self.area_of_intersection(BoundingBox(xmin=0, ymin=0, width=width, height=height)) > 0
 
+    def iminterior(self, W, H):
+        """Shift the bounding box so that it is the same shape but interior to the image rectangle, clip to the image rectangle if it is too big to fit"""
+        self.translate(dx=0 if self.xmin()>0 else -self.xmin(),
+                       dy=0 if self.ymin()>0 else -self.ymin())
+        self.translate(dx=0 if self.xmax()<W else -(W-self.xmax()),
+                       dy=0 if self.ymax()<H else -(H-self.ymax()))
+        self.imclipshape(W, H)
+        return self
+        
     def imclip(self, img=None, width=None, height=None, strict=True):
-        """Clip bounding box to image rectangle [0,0,width-1,height-1], throw an exception on an invalid box if strict=True"""
+        """Clip bounding box to image rectangle [0,0,width,height], throw an exception on an invalid box if strict=True"""
         if img is not None:
             assert isnumpy(img), "Invalid numpy image input"
             (height, width) = (img.shape[0], img.shape[1])

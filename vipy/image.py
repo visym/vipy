@@ -584,7 +584,7 @@ class Image(object):
         else:
             warnings.warn('BoundingBox for crop() does not intersect image rectangle - Ignoring')
         return self
-
+    
     def fliplr(self):
         """Mirror the image buffer about the vertical axis - Not idemponent"""
         self._array = np.fliplr(self.load().array())
@@ -1275,7 +1275,7 @@ class Scene(ImageCategory):
         d = super(Scene, self).dict()
         d['objects'] = [obj.dict() for obj in self.objects()]
         return d
-    
+
     def append(self, imdet):
         """Append the provided vipy.object.Detection object to the scene object list"""
         assert isinstance(imdet, vipy.object.Detection), "Invalid input"
@@ -1291,6 +1291,12 @@ class Scene(ImageCategory):
             s._objectlist = objectlist
             return s
 
+    def boundingbox(self):
+        """The boundingbox of a scene is the union of all BoundingBox"""
+        boxes = self.objects()
+        bb = boxes[0].clone() if len(boxes) >= 1 else None
+        return bb.union(boxes[1:]) if len(boxes) >= 2 else bb
+        
     def categories(self):
         """Return list of unique object categories in scene"""
         return list(set([obj.category() for obj in self._objectlist]))
@@ -1384,7 +1390,17 @@ class Scene(ImageCategory):
         (dx, dy) = (bbox.xmin(), bbox.ymin())
         self._objectlist = [bb.translate(-dx, -dy) for bb in self._objectlist]
         return self
-        
+
+    def padcrop(self, bbox):
+        """Crop the image buffer using the supplied bounding box object, zero padding if box is outside image rectangle, update all scene objects"""
+        self.zeropad(bbox.int().width(), bbox.int().height())
+        (dx, dy) = (bbox.width(), bbox.height())
+        bbox = bbox.translate(dx, dy)
+        self = super(ImageCategory, self)._crop(bbox)        
+        (dx, dy) = (bbox.xmin(), bbox.ymin())
+        self._objectlist = [bb.translate(-dx, -dy) for bb in self._objectlist]
+        return self
+    
     # Image export
     def rectangular_mask(self, W=None, H=None):
         """Return a binary array of the same size as the image (or using the

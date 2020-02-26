@@ -891,14 +891,24 @@ class Scene(VideoCategory):
                                                          endframe=a.middleframe()+(len(a)//2)+padframes[1]).category(a.category()) for (a,t) in zip(activities, tracks)]
     
     def activitycrop(self, dilate=1.0):
-        """Returns a list of vipy.videoScene() each spatially croppped to be the union of the objects performing the activity"""
+        """Returns a list of vipy.video.Scene() each spatially cropped to be the union of the objects performing the activity"""
         vid = self.clone(flushforward=True)
         activities = vid.activities().values()
         tracks = [ [t for (tid, t) in vid.tracks().items() if a.hastrack(t)] for a in activities]                 
         vid._activities = {}  # for faster clone
         vid._tracks = {}      # for faster clone
         return [vid.clone().activities(a).tracks(t).crop(a.boundingbox().dilate(dilate)) for (a,t) in zip(activities, tracks)]        
-        
+
+    def activitysquare(self, dilate=1.0):
+        """Returns a list of vipy.video.Scene() each spatially cropped to be the maxsquare of the union of the objects performing the activity"""
+        vid = self.clone(flushforward=True)
+        activities = vid.activities().values()
+        tracks = [ [t for (tid, t) in vid.tracks().items() if a.hastrack(t)] for a in activities]                 
+        vid._activities = {}  # for faster clone
+        vid._tracks = {}      # for faster clone
+        im = self._preview()  # for faster crop
+        return [vid.clone().activities(a).tracks(t).crop(a.boundingbox().dilate(dilate).maxsquare().iminterior(im.width(), im.height())) for (a,t) in zip(activities, tracks)]  
+    
     def clip(self, startframe, endframe):
         """Clip the video to between (startframe, endframe).  This clip is relative to cumulative clip() from the filter chain"""
         super(Scene, self).clip(startframe, endframe)
@@ -910,7 +920,7 @@ class Scene(VideoCategory):
         raise NotImplementedError('use clip() instead')
     
     def crop(self, bb):
-        """Crop the video using the supplied box, update tracks relative to crop, tracks may be outside the image rectangle"""
+        """Crop the video using the supplied box, update tracks relative to crop, bbox must be within the image rectangle (this is not checked)"""
         assert not self.isloaded(), "Filters can only be applied prior to load()"
         assert isinstance(bb, vipy.geometry.BoundingBox), "Invalid input"
         super(Scene, self).crop(bb)
