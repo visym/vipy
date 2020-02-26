@@ -1,6 +1,5 @@
 import os
 import sys
-import atexit
 from vipy.util import try_import, islist, tolist, tempdir, remkdir
 from itertools import repeat
 try_import('dask', 'dask distributed torch')
@@ -52,8 +51,6 @@ class Batch(object):
                               env={'VIPY_BACKEND':'Agg'},
                               direct_to_workers=True,
                               local_directory=tempfile.mkdtemp())
-        atexit.register(self.shutdown)        
-
 
     def __enter__(self):
         return self
@@ -164,8 +161,7 @@ class Batch(object):
     
     def shutdown(self):
         if self.__dict__['_client'] is not None:
-            # self.__dict__['_client'].shutdown()
-            self.__dict__['_client'].close()
+            self.__dict__['_client'].shutdown()
         self.__dict__['_client'] = None
     
 
