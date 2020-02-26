@@ -103,10 +103,10 @@ def imshow(img, fignum=None):
     return fignum
 
 
-def boundingbox(img, xmin, ymin, xmax, ymax, bboxcaption=None, fignum=None, bboxcolor='green', facecolor='white', facealpha=0.5, textcolor='black', textfacecolor='white', textfacealpha=1.0, fontsize=10, captionoffset=(0,0)):
+def boundingbox(img, xmin, ymin, xmax, ymax, bboxcaption=None, fignum=None, bboxcolor='green', facecolor='white', facealpha=0.5, textcolor='black', textfacecolor='white', textfacealpha=1.0, fontsize=10, captionoffset=(0,0), linewidth=3):
     """Draw a captioned bounding box on a previously shown image"""
     plt.figure(fignum)
-    lw = 3  # pull in the boxes by linewidth so that they do not overhang the figure
+    lw = linewidth  # pull in the boxes by linewidth so that they do not overhang the figure
     (H,W) = (img.shape[0], img.shape[1])
     plt.axvspan(max(xmin, lw/2), min(xmax, W-lw/2), ymin=1.0 - np.float32(float(min(ymax, H-lw/2)) / float(H)), ymax=1-np.float32(float(max(ymin, lw/2)) / float(H)), edgecolor=bboxcolor, facecolor=facecolor, linewidth=lw, fill=True, alpha=facealpha, label=None, capstyle='round', joinstyle='bevel', clip_on=True)
 

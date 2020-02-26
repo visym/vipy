@@ -263,7 +263,9 @@ class Mevadata_Public_01(object):
         if n_processes > 1:
             from vipy.batch import Batch
             batch = Batch(list(yamlfiles), n_processes=n_processes)
-            return batch.map(lambda tga: self._parse_video(d_videoname_to_path, d_category_to_shortlabel, tga[0], tga[1], tga[2], stride=stride, verbose=verbose))
+            videolist = batch.map(lambda tga: self._parse_video(d_videoname_to_path, d_category_to_shortlabel, tga[0], tga[1], tga[2], stride=stride, verbose=verbose))
+            batch.shutdown()
+            return videolist
         else:
             return [self._parse_video(d_videoname_to_path, d_category_to_shortlabel, t, g, a, stride=stride, verbose=verbose) for (t,g,a) in yamlfiles]
 

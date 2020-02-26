@@ -612,6 +612,11 @@ class Video(object):
             im = copy.deepcopy(self)            
         return im
 
+    def flush(self):
+        """Alias for clone(flush=True), returns self not clone"""
+        self.clone(flush=True)
+        return self
+
     def map(self, func):
         """Apply lambda function to the loaded numpy array img, changes pixels not shape
         
@@ -802,7 +807,7 @@ class Scene(VideoCategory):
             return self._activities[id]
         else:
             assert all([isinstance(a, vipy.object.Activity) for a in tolist(activities)]), "Invalid input - Must be vipy.object.Activity or list of vipy.object.Activities"
-            self._activities = {a.id:a for a in tolist(activities)}   # overwrite
+            self._activities = {a.id():a for a in tolist(activities)}   # overwrite
             return self
     
     def hasactivities(self):
@@ -992,7 +997,7 @@ class Scene(VideoCategory):
             print('[vipy.video.annotate.debug]: %s' % str(b))  # TESTING
             imgs = b.map(lambda v,k: v[k].savefig(fontsize=fontsize).rgb().numpy(), args=[(k,) for k in range(0, len(vid))])
             vid._array = np.stack(imgs, axis=0)            
-            # b.shutdown()   # FIXME: why does this timeout?
+            b.shutdown()   # FIXME: why does this timeout?
         else:
             imgs = [vid[k].savefig().numpy() for k in range(0, len(vid))]  # SLOW for large videos
             vid._array = np.stack([np.array(PIL.Image.fromarray(img).convert('RGB')) for img in imgs], axis=0)            

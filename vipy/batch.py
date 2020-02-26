@@ -156,7 +156,7 @@ class Batch(object):
         return np.stack(self.map(lambda im: im.numpy()))
     
     def shutdown(self):
-        self.__dict__['_client'].close()        
+        # self.__dict__['_client'].close()        
         self.__dict__['_client'].shutdown()
         self.__dict__['_client'] = None
     
