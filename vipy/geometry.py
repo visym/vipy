@@ -235,7 +235,7 @@ class BoundingBox():
     def invalid(self):
         """Is the box a valid bounding box?"""
         is_undefined = np.isnan(self._xmin) or np.isnan(self._ymin) or np.isnan(self._xmax) or np.isnan(self._ymax)
-        is_degenerate = ((self._xmax - self._xmin) < 1) or ((self._ymax - self._ymin) < 1) or (self._xmin >= self._xmax) or (self._ymin >= self._ymax)
+        is_degenerate = ((self._xmax - self._xmin) <= 0) or ((self._ymax - self._ymin) <= 0) or (self._xmin >= self._xmax) or (self._ymin >= self._ymax)
         return is_undefined or is_degenerate
 
     def valid(self):

@@ -53,6 +53,13 @@ class Batch(object):
                               direct_to_workers=True,
                               local_directory=tempfile.mkdtemp())
         atexit.register(self.shutdown)        
+
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, type, value, traceback):
+        self.shutdown()
         
     def __len__(self):
         return len(self._objlist)
@@ -77,11 +84,11 @@ class Batch(object):
             try:
                 wait(newlist)
             except KeyboardInterrupt:
-                warnings.warn('[vipy.batch]: batch cannot be restarted after killing - Recreate Batch()')
+                # warnings.warn('[vipy.batch]: batch cannot be restarted after killing - Recreate Batch()')
                 self.shutdown()  # batch must be recreated after ctrl-c
                 return None  # is this the right way to handle this??
             except:
-                warnings.warn('[vipy.batch]: batch cannot be restarted after exception - Recreate Batch()')                
+                # warnings.warn('[vipy.batch]: batch cannot be restarted after exception - Recreate Batch()')                
                 self.shutdown()  # batch must be recreated after ctrl-c                
                 raise
             completedlist = [f.result() for f in newlist]
@@ -101,12 +108,12 @@ class Batch(object):
             
     def __getattr__(self, attr):
         """Call the same method on all Image objects"""
-        assert self.__dict__['_client'] is not None, "Invalid Batch() - You must create a new Batch()"                                
+        assert self.__dict__['_client'] is not None, "Batch() must be reconstructed after shutdown"                                
         return lambda *args, **kw: self.batch(self.__dict__['_client'].map(lambda im: getattr(im, attr)(*args, **kw), self._objlist))
 
     def product(self, f_lambda, args, waiting=True):
         """Cartesian product of args and batch, returns an MxN list of N args applied to M batch elements.  Use this with extreme caution, as the memory requirements may be high."""
-        assert self.__dict__['_client'] is not None, "Invalid Batch() - You must create a new Batch()"                        
+        assert self.__dict__['_client'] is not None, "Batch() must be reconstructed after shutdown"                        
         c = self.__dict__['_client']
         objlist = c.scatter(self._objlist)        
         futures = [c.submit(f_lambda, im, *a) for im in objlist for a in args]
@@ -123,7 +130,7 @@ class Batch(object):
         >>> imb.map(lambda im: im.rgb())  # this is equivalent to imb.rgb()
 
         """
-        assert self.__dict__['_client'] is not None, "Invalid Batch() - You must create a new Batch()"                
+        assert self.__dict__['_client'] is not None, "Batch() must be reconstructed after shutdown"                
         c = self.__dict__['_client']        
         if args is not None:
             if len(self._objlist) > 1:
@@ -140,7 +147,7 @@ class Batch(object):
     def filter(self, f_lambda):
         """Run the lambda function on each of the elements of the batch and filter based on the provided lambda  
         """
-        assert self.__dict__['_client'] is not None, "Invalid Batch() - You must create a new Batch()"        
+        assert self.__dict__['_client'] is not None, "Batch() must be reconstructed after shutdown"        
         c = self.__dict__['_client']
         objlist = c.scatter(self._objlist)        
         is_filtered = self.batch(self.__dict__['_client'].map(f_lambda, objlist))
@@ -156,8 +163,9 @@ class Batch(object):
         return np.stack(self.map(lambda im: im.numpy()))
     
     def shutdown(self):
-        # self.__dict__['_client'].close()        
-        self.__dict__['_client'].shutdown()
+        if self.__dict__['_client'] is not None:
+            # self.__dict__['_client'].shutdown()
+            self.__dict__['_client'].close()
         self.__dict__['_client'] = None
     
 

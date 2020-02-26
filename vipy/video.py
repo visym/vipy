@@ -993,11 +993,10 @@ class Scene(VideoCategory):
                 print('[vipy.video.annotate]: Annotating video ...')              
         if n_processes > 1:
             import vipy.batch
-            b = vipy.batch.Batch(vid, n_processes=n_processes)
-            print('[vipy.video.annotate.debug]: %s' % str(b))  # TESTING
-            imgs = b.map(lambda v,k: v[k].savefig(fontsize=fontsize).rgb().numpy(), args=[(k,) for k in range(0, len(vid))])
+            with vipy.batch.Batch(vid, n_processes=n_processes) as b:
+                print('[vipy.video.annotate.debug]: %s' % str(b))  # TESTING
+                imgs = b.map(lambda v,k: v[k].savefig(fontsize=fontsize).rgb().numpy(), args=[(k,) for k in range(0, len(vid))])
             vid._array = np.stack(imgs, axis=0)            
-            b.shutdown()   # FIXME: why does this timeout?
         else:
             imgs = [vid[k].savefig().numpy() for k in range(0, len(vid))]  # SLOW for large videos
             vid._array = np.stack([np.array(PIL.Image.fromarray(img).convert('RGB')) for img in imgs], axis=0)            
