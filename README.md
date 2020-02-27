@@ -16,6 +16,8 @@ VIPY provides:
 * Dataset download, unpack and import (e.g. ActivityNet, Kinetics)
 * Video and image web search tools with URL downloading and caching
 
+[![VIPY MEVA dataset visualization](http://i3.ytimg.com/vi/_jixHQr5dK4/maxresdefault.jpg)](https://youtu.be/_jixHQr5dK4)
+
 
 Requirements
 -------------------
