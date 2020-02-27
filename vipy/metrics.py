@@ -318,16 +318,16 @@ def histogram(freq, categories, title=None, outfile=None, figure=None):
         plt.figure()
         plt.clf()
 
-    plt.bar(range(1,len(freq) + 1), height=freq, width=0.8, bottom=None, hold=None)
-    plt.gca().set_xticks(seq(1.4,len(freq) + 1))
-    plt.gca().set_xticklabels(categories, rotation=45)
-    plt.ylim([0.0, 1.1])
-    plt.ylabel('Frequency')
+    x = range(1, len(categories)+1)
+    plt.bar(x, height=freq, width=0.8, bottom=None)
+    plt.xticks(x, list(categories), rotation='vertical')
     plt.autoscale(tight=True)
+    # plt.ylabel('Frequency')
+    plt.subplots_adjust(bottom=0.75)  # tweak 
     if title is not None:
         plt.title('%s' % (title))
     if outfile is not None:
-        quietprint('[vipy.metric.histogram]: saving "%s"' % outfile)
         plt.savefig(outfile)
+        return outfile
     else:
         plt.show()

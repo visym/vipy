@@ -840,7 +840,7 @@ class Scene(VideoCategory):
                 t2 = scene.add( vipy.object.Track(...) )
 
                 # Update a previous track to add a keyframe
-                scene.track[t2].add( ... )
+                scene.track(t2).add( ... )
         
         This will keep track of the current frame in the video and add the objects in the appropriate place
 

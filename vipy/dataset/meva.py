@@ -1,12 +1,14 @@
 import os
-from vipy.util import remkdir, readjson, readyaml, findyaml, findvideo, filetail, findjson, filebase, readlist, groupbyasdict, save
+from vipy.util import remkdir, readjson, readyaml, findyaml, findvideo, filetail, findjson, filebase, readlist, groupbyasdict, save, flatlist, temppdf
 from vipy.video import VideoCategory, Scene
 from vipy.object import Track, Activity
 from vipy.geometry import BoundingBox
 from vipy.batch import Batch
+from vipy.show import colorlist
+import vipy.metrics
 import numpy as np
 import warnings
-
+import matplotlib.pyplot as plt        
 
 class Mevadata_Public_01(object):
     def __init__(self, videodir, repodir):
@@ -269,3 +271,68 @@ class Mevadata_Public_01(object):
         else:
             return [self._parse_video(d_videoname_to_path, d_category_to_shortlabel, t, g, a, stride=stride, verbose=verbose) for (t,g,a) in yamlfiles]
 
+        
+    def analysis(self, meva=None):
+        """Analyze the MEVA dataset to return helpful statistics and plots"""
+        
+        videos = self.MEVA(stride=20) if meva is None else meva
+        scenes = flatlist([m.activityclip() for m in meva if m is not None])
+        activities = flatlist([s.activities().values() for s in scenes])
+        tracks = flatlist([s.tracks().values() for s in scenes])
+
+        # Category distributions
+        d = {}
+        d['activity_categories'] = set([a.category() for a in activities])
+        d['object_categories'] = set([t.category() for t in tracks])
+        d['videos'] = set([v.filename() for v in videos if v is not None])
+        d['num_activities'] = sorted([(k,len(v)) for (k,v) in groupbyasdict(activities, lambda a: a.category()).items()], key=lambda x: x[1])
+
+        # Histogram of instances
+        (categories, freq) = zip(*reversed(d['num_activities']))
+        d['num_activities_histogram'] = vipy.metrics.histogram(freq, categories, outfile=temppdf())
+
+        # Scatterplot of box sizes
+        (x, y, category) = zip(*[(max([t.meanshape()[1] for t in a.tracks().values()]), max([t.meanshape()[0] for t in a.tracks().values()]), a.category()) for a in activities])
+        colors = colorlist()
+        d_category_to_color = {c:colors[k % len(colors)] for (k,c) in enumerate(category)}
+        plt.clf()
+        plt.figure()
+        plt.scatter(x, y, c=[d_category_to_color[c] for c in category])
+        plt.xlabel('bounding box (width)')
+        plt.ylabel('bounding box (height)')
+        plt.grid(True)
+        d['bounding_box_scatterplot'] = temppdf()
+        d['bounding_box_scatterplot_colors'] = d_category_to_color        
+        plt.savefig(d['bounding_box_scatterplot'])
+
+        # 2D histogram of box sixes
+        plt.clf()
+        plt.figure()
+        plt.hist2d(x, y, bins=10)
+        d['2D_bounding_box_histogram'] = temppdf()
+        plt.savefig(d['2D_bounding_box_histogram'])
+        
+        # Scatterplot of people and vehicles
+        plt.clf()
+        plt.figure()
+        d_category_to_color = {'person':'blue', 'vehicle':'green'}
+        for c in ['person', 'vehicle']:
+            (x, y) = zip(*[(t.meanshape()[1], t.meanshape()[0]) for t in tracks if t.category() == c])
+            plt.scatter(x, y, c=d_category_to_color[c], label=c)
+        plt.xlabel('bounding box (width)')
+        plt.ylabel('bounding box (height)')
+        plt.legend()
+        plt.grid(True)
+        d['object_bounding_box_scatterplot'] = temppdf()
+        plt.savefig(d['object_bounding_box_scatterplot'])
+        
+        # 2D histogram of people and vehicles
+        for c in ['person', 'vehicle']:
+            (x, y) = zip(*[(t.meanshape()[1], t.meanshape()[0]) for t in tracks if t.category() == c])
+            plt.clf()
+            plt.figure()
+            plt.hist2d(x, y, bins=10)
+            d['2D_%s_bounding_box_histogram' % c] = temppdf()
+            plt.savefig(d['2D_%s_bounding_box_histogram' % c])
+            
+        return d

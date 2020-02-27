@@ -976,7 +976,7 @@ def tempyaml():
 
 def temppdf():
     """Create a temporary PDF file"""
-    return tempfilename(suffix='.pdl')
+    return tempfilename(suffix='.pdf')
 
 
 def mktemp(ext):
