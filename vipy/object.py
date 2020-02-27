@@ -169,6 +169,10 @@ class Track(object):
         """Return keyframe frame indexes where there are track observations"""
         return self._keyframes
 
+    def meanshape(self):
+        """Return the mean (width,height) of the box during the track"""
+        return np.mean([bb.shape() for bb in self._keyboxes], axis=0)
+            
     def framerate(self, fps):
         """Resample keyframes from known original framerate set by constructor to be new framerate fps"""
         assert self._framerate is not None, "Framerate conversion requires that the framerate is known for current keyframes.  This must be provided to the vipy.object.Track() constructor."

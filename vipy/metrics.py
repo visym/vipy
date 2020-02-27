@@ -310,24 +310,26 @@ def plot_ap(ap, categories, title=None, outfile=None):
         plt.show()
 
 
-def histogram(freq, categories, title=None, outfile=None, figure=None):
-    """Plot histogram bar chart using matplotlib, with optional figure save"""
+def histogram(freq, categories, title=None, outfile=None, figure=None, ylabel='Frequency'):
+    """Plot histogram bar chart using matplotlib with vertical axis labels on x-axis,, with optional figure save"""
     if figure is not None:
         plt.figure(figure)
     else:
         plt.figure()
         plt.clf()
 
-    plt.bar(range(1,len(freq) + 1), height=freq, width=0.8, bottom=None, hold=None)
-    plt.gca().set_xticks(seq(1.4,len(freq) + 1))
-    plt.gca().set_xticklabels(categories, rotation=45)
-    plt.ylim([0.0, 1.1])
-    plt.ylabel('Frequency')
+    x = range(1, len(categories)+1)
+    plt.bar(x, height=freq, width=0.8, bottom=None)
+    plt.xticks(x, list(categories), rotation='vertical')
     plt.autoscale(tight=True)
+    if ylabel is not None:
+        plt.ylabel(ylabel)
+    plt.subplots_adjust(bottom=0.75)  # tweak
+    plt.tight_layout()    
     if title is not None:
         plt.title('%s' % (title))
     if outfile is not None:
-        quietprint('[vipy.metric.histogram]: saving "%s"' % outfile)
         plt.savefig(outfile)
+        return outfile
     else:
         plt.show()
