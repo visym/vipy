@@ -352,22 +352,24 @@ class Image(object):
         img = self.numpy() if self.iscolor() else np.expand_dims(self.numpy(), 2)  # HxW -> HxWx1
         return torch.from_numpy(np.expand_dims(img,0).transpose(0,3,1,2))  # HxWxC -> 1xCxHxW
 
-    def filename(self, newfile=None, remove=False):
+    def nofilename(self):
+        self._filename = None
+        return self
+
+    def filename(self, newfile=None):
         """Return or set image filename"""
-        if remove:
-            self._filename = None
-            return self
-        elif newfile is None:
+        if newfile is None:
             return self._filename
         else:
             self._filename = newfile
             return self
 
-    def url(self, url=None, username=None, password=None, sha1=None, ignoreUrlErrors=None, remove=False):
+    def nourl(self):
+        self._url = None
+        return self
+
+    def url(self, url=None, username=None, password=None, sha1=None, ignoreUrlErrors=None):
         """Image URL and URL download properties"""
-        if remove:
-            self._url = None
-            return self
         if url is not None:
             self._url = url  # this does not change anything else (e.g. the associated filename), better to use constructor 
         if username is not None:
@@ -906,7 +908,11 @@ class ImageCategory(Image):
         d = super(ImageCategory, self).dict()
         d['category'] = self.category()
         return d
-    
+
+    def nocategory(self):
+        self._category = None
+        return self
+
     def category(self, newcategory=None):
         """Return or update the category"""
         if newcategory is None:
@@ -1422,7 +1428,7 @@ class Scene(ImageCategory):
            * fontsize (int, string): Size of the font, fontsize=int for points, fontsize='NN:scaled' to scale the font relative to the image size
            * figure (int): Figure number, show the image in the provided figure=int numbered window
            * nocaption (bool):  Show or do not show the text caption in the upper left of the box 
-           * nocaption_withstring (list):  Do not show captions for those detection categories (or shortlabels) containing any of the provided strings
+           * nocaption_withstring (list):  Do not show captions for those detection categories (or shortlabels) containing any of the strings in the provided list
            * boxalpha (float, [0,1]):  Set the text box background to be semi-transparent with an alpha
            * d_category2color (dict):  Define a dictionary of required mapping of specific category() to box colors.  Non-specified categories are assigned a random color.
            * caption_offset (int, int): The relative position of the caption to the upper right corner of the box.
@@ -1440,7 +1446,7 @@ class Scene(ImageCategory):
         d_categories2color.update(d_category2color)   # Requested color mapping
         detection_color = [d_categories2color[im.category()] for im in valid_detections]
         valid_detections = [obj.clone().category(obj.shortlabel()) for obj in valid_detections] if shortlabel else valid_detections  # Display name
-        valid_detections = [d for d in valid_detections if not any([c in d.category() for c in tolist(nocaption_withstring)])]  
+        valid_detections = [d if not any([c in d.category() for c in tolist(nocaption_withstring)]) else d.nocategory() for d in valid_detections]
         imdisplay = self.clone().rgb() if self.colorspace() != 'rgb' else self  # convert to RGB for show() if necessary
         fontsize_scaled = float(fontsize.split(':')[0])*(min(imdisplay.shape())/640.0) if isstring(fontsize) else fontsize
         vipy.show.imdetection(imdisplay._array, valid_detections, bboxcolor=detection_color, textcolor=detection_color, fignum=figure, do_caption=(nocaption==False), facealpha=boxalpha, fontsize=fontsize_scaled,

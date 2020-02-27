@@ -201,11 +201,12 @@ class Video(object):
             self._colorspace = str(colorspace).lower()
         return self
 
-    def url(self, url=None, username=None, password=None, sha1=None, remove=False):
+    def nourl(self):
+        (self._url, self._urluser, self._urlpassword, self._urlsha1) = (None, None, None, None)
+        return self
+
+    def url(self, url=None, username=None, password=None, sha1=None):
         """Image URL and URL download properties"""
-        if remove:
-            (self._url, self._urluser, self._urlpassword, self._urlsha1) = (None, None, None, None)
-            return self
         if url is not None:
             self._url = url  # note that this does not change anything else, better to use the constructor for this
         if username is not None:
@@ -272,11 +273,14 @@ class Video(object):
     def reload(self):
         return self.clone(flush=True).load()
                        
-    def filename(self, newfile=None, remove=False):
+    def nofilename(self):
+        self._filename = None
+        self._update_ffmpeg('filename', None)
+        return self
+
+    def filename(self, newfile=None):
         """Video Filename"""
-        if remove:
-            newfile = None
-        elif newfile is None:
+        if newfile is None:
             return self._filename
         
         # Update ffmpeg filter chain with new input node filename

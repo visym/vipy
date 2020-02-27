@@ -49,7 +49,11 @@ class Detection(BoundingBox):
         return {'id':self._id, 'label':self.category(), 'shortlabel':self.shortlabel() ,'boundingbox':super(Detection, self).dict(),
                 'attributes':self.attributes,  # these may be arbitrary user defined objects
                 'confidence':self._confidence}
-    
+
+    def nocategory(self):
+        self._label = None
+        return self
+
     def category(self, category=None):
         """Update the category of the detection"""
         if category is None:
