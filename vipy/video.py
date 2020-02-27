@@ -776,6 +776,7 @@ class Scene(VideoCategory):
                         if 'activity' not in d.attributes:
                             d.attributes['activity'] = []                            
                         d.attributes['activity'].append(a)  # for activity correspondence
+            dets = sorted(dets, key=lambda d: d.shortlabel())   # layering in video is in alphabetical order of shortlabel
             return vipy.image.Scene(array=self._array[k], colorspace=self.colorspace(), objects=dets, category=self.category())  
         elif not self.isloaded():
             raise ValueError('Video not loaded; load() before indexing')
@@ -977,7 +978,7 @@ class Scene(VideoCategory):
         super(Scene, self).rescale(s)
         return self
 
-    def annotate(self, outfile=None, n_processes=1, verbose=True, fontsize=10, captionoffset=(0,0), textfacecolor='white', textfacealpha=1.0, shortlabel=True, boxalpha=0.25, d_category2color={'Person':'green', 'Vehicle':'blue', 'Object':'red'}, categories=None, nocaption=False):
+    def annotate(self, outfile=None, n_processes=1, verbose=True, fontsize=10, captionoffset=(0,0), textfacecolor='white', textfacealpha=1.0, shortlabel=True, boxalpha=0.25, d_category2color={'Person':'green', 'Vehicle':'blue', 'Object':'red'}, categories=None, nocaption=False, nocaption_withstring=[]):
         """Generate a video visualization of all annotated objects and activities in the video, at the resolution and framerate of the underlying video, save as outfile.
         This function does not play the video, it only generates an annotation video.  Use show() to annotation and play.
         In general, this function should not be run on very long videos, as it requires loading the video framewise into memory, try running on clips instead.
@@ -1003,7 +1004,8 @@ class Scene(VideoCategory):
                                                       boxalpha=boxalpha, 
                                                       d_category2color=d_category2color,
                                                       categories=categories, 
-                                                      nocaption=nocaption).rgb().numpy(), args=[(k,) for k in range(0, len(vid))])
+                                                      nocaption=nocaption,
+                                                      nocaption_withstring=nocaption_withstring).rgb().numpy(), args=[(k,) for k in range(0, len(vid))])
             vid._array = np.stack(imgs, axis=0)            
         else:
             imgs = [vid[k].savefig(fontsize=fontsize,
@@ -1014,11 +1016,12 @@ class Scene(VideoCategory):
                                    boxalpha=boxalpha,
                                    d_category2color=d_category2color,
                                    categories=categories,
-                                   nocaption=nocaption).numpy() for k in range(0, len(vid))]  # SLOW for large videos
+                                   nocaption=nocaption,
+                                   nocaption_withstring=nocaption_withstring).numpy() for k in range(0, len(vid))]  # SLOW for large videos
             vid._array = np.stack([np.array(PIL.Image.fromarray(img).convert('RGB')) for img in imgs], axis=0)            
         return vid.saveas(outfile)
 
-    def show(self, outfile=None, verbose=True, n_processes=1, fontsize=10, captionoffset=(0,0), textfacecolor='white', textfacealpha=1.0, shortlabel=True, boxalpha=0.25, d_category2color={'Person':'green', 'Vehicle':'blue', 'Object':'red'}, categories=None, nocaption=False):
+    def show(self, outfile=None, verbose=True, n_processes=1, fontsize=10, captionoffset=(0,0), textfacecolor='white', textfacealpha=1.0, shortlabel=True, boxalpha=0.25, d_category2color={'Person':'green', 'Vehicle':'blue', 'Object':'red'}, categories=None, nocaption=False, nocaption_withstring=[]):
         """Generate an annotation video saved to outfile (or tempfile if outfile=None) and show it using ffplay when it is done exporting"""
         outfile = tempMP4() if outfile is None else outfile
         self.annotate(outfile, 
@@ -1032,7 +1035,8 @@ class Scene(VideoCategory):
                       boxalpha=boxalpha,
                       d_category2color=d_category2color,
                       categories=categories,
-                      nocaption=nocaption)
+                      nocaption=nocaption, 
+                      nocaption_withstring=nocaption_withstring)
         cmd = "ffplay %s" % outfile
         if verbose:
             print('[vipy.video.show]: Executing "%s"' % cmd)

@@ -108,7 +108,8 @@ def boundingbox(img, xmin, ymin, xmax, ymax, bboxcaption=None, fignum=None, bbox
     plt.figure(fignum)
     lw = linewidth  # pull in the boxes by linewidth so that they do not overhang the figure
     (H,W) = (img.shape[0], img.shape[1])
-    plt.axvspan(max(xmin, lw/2), min(xmax, W-lw/2), ymin=1.0 - np.float32(float(min(ymax, H-lw/2)) / float(H)), ymax=1-np.float32(float(max(ymin, lw/2)) / float(H)), edgecolor=bboxcolor, facecolor=facecolor, linewidth=lw, fill=True, alpha=facealpha, label=None, capstyle='round', joinstyle='bevel', clip_on=True)
+    plt.axvspan(max(xmin, lw/2), min(xmax, W-lw/2), ymin=1.0 - np.float32(float(min(ymax, H-lw/2)) / float(H)), ymax=1-np.float32(float(max(ymin, lw/2)) / float(H)), edgecolor=bboxcolor, linewidth=lw, fill=False, alpha=0.6, label=None, capstyle='round', joinstyle='bevel', clip_on=True)   
+    plt.axvspan(max(xmin, lw/2), min(xmax, W-lw/2), ymin=1.0 - np.float32(float(min(ymax, H-lw/2)) / float(H)), ymax=1-np.float32(float(max(ymin, lw/2)) / float(H)), edgecolor=bboxcolor, facecolor=facecolor, linewidth=lw, fill=True, alpha=facealpha, label=None, clip_on=True, capstyle='round', joinstyle='bevel')
 
     # Text string
     if bboxcaption is not None:

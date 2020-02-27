@@ -1416,12 +1416,13 @@ class Scene(ImageCategory):
                 immask[bbm.ymin():bbm.ymax(), bbm.xmin():bbm.xmax()] = 1
         return immask
 
-    def show(self, categories=None, figure=None, nocaption=False, fontsize=10, boxalpha=0.25, d_category2color={'Person':'green', 'Vehicle':'blue', 'Object':'red'}, captionoffset=(0,0), nowindow=False, textfacecolor='white', textfacealpha=1.0, shortlabel=True):
+    def show(self, categories=None, figure=None, nocaption=False, nocaption_withstring=[], fontsize=10, boxalpha=0.25, d_category2color={'Person':'green', 'Vehicle':'blue', 'Object':'red'}, captionoffset=(0,0), nowindow=False, textfacecolor='white', textfacealpha=1.0, shortlabel=True):
         """Show scene detection with an optional subset of categories
 
            * fontsize (int, string): Size of the font, fontsize=int for points, fontsize='NN:scaled' to scale the font relative to the image size
            * figure (int): Figure number, show the image in the provided figure=int numbered window
            * nocaption (bool):  Show or do not show the text caption in the upper left of the box 
+           * nocaption_withstring (list):  Do not show captions for those detection categories (or shortlabels) containing any of the provided strings
            * boxalpha (float, [0,1]):  Set the text box background to be semi-transparent with an alpha
            * d_category2color (dict):  Define a dictionary of required mapping of specific category() to box colors.  Non-specified categories are assigned a random color.
            * caption_offset (int, int): The relative position of the caption to the upper right corner of the box.
@@ -1439,15 +1440,18 @@ class Scene(ImageCategory):
         d_categories2color.update(d_category2color)   # Requested color mapping
         detection_color = [d_categories2color[im.category()] for im in valid_detections]
         valid_detections = [obj.clone().category(obj.shortlabel()) for obj in valid_detections] if shortlabel else valid_detections  # Display name
+        valid_detections = [d for d in valid_detections if not any([c in d.category() for c in tolist(nocaption_withstring)])]  
         imdisplay = self.clone().rgb() if self.colorspace() != 'rgb' else self  # convert to RGB for show() if necessary
         fontsize_scaled = float(fontsize.split(':')[0])*(min(imdisplay.shape())/640.0) if isstring(fontsize) else fontsize
         vipy.show.imdetection(imdisplay._array, valid_detections, bboxcolor=detection_color, textcolor=detection_color, fignum=figure, do_caption=(nocaption==False), facealpha=boxalpha, fontsize=fontsize_scaled,
                               captionoffset=captionoffset, nowindow=nowindow, textfacecolor=textfacecolor, textfacealpha=textfacealpha)
         return self
 
-    def savefig(self, outfile=None, categories=None, figure=None, nocaption=False, fontsize=10, boxalpha=0.25, d_category2color={'person':'green', 'vehicle':'blue', 'object':'red'}, captionoffset=(0,0), dpi=200, textfacecolor='white', textfacealpha=1.0, shortlabel=True):
+    def savefig(self, outfile=None, categories=None, figure=None, nocaption=False, fontsize=10, boxalpha=0.25, d_category2color={'person':'green', 'vehicle':'blue', 'object':'red'}, captionoffset=(0,0), dpi=200, textfacecolor='white', textfacealpha=1.0, shortlabel=True, nocaption_withstring=[]):
         """Save show() output to given file or return bufferwithout popping up a window"""
-        self.show(categories=categories, figure=figure, nocaption=nocaption, fontsize=fontsize, boxalpha=boxalpha, d_category2color=d_category2color, captionoffset=captionoffset, nowindow=True, textfacecolor=textfacecolor, textfacealpha=textfacealpha, shortlabel=shortlabel)
+        self.show(categories=categories, figure=figure, nocaption=nocaption, fontsize=fontsize, boxalpha=boxalpha, 
+                  d_category2color=d_category2color, captionoffset=captionoffset, nowindow=True, textfacecolor=textfacecolor, 
+                  textfacealpha=textfacealpha, shortlabel=shortlabel, nocaption_withstring=nocaption_withstring)
         if outfile is None:
             (W,H) = plt.gcf().canvas.get_width_height()  # fast
             buf = io.BytesIO()
