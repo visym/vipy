@@ -291,7 +291,8 @@ class Mevadata_Public_01(object):
 
         # Histogram of instances
         (categories, freq) = zip(*reversed(d['num_activities']))
-        d['num_activities_histogram'] = vipy.metrics.histogram(freq, categories, outfile=totempdir('num_activities_histogram.pdf'), ylabel='Instances')
+        barcolors = ['blue' if not 'vehicle' in c else 'green' for c in categories]
+        d['num_activities_histogram'] = vipy.metrics.histogram(freq, categories, barcolors=barcolors, outfile=totempdir('num_activities_histogram.pdf'), ylabel='Instances')
 
         # Scatterplot of box sizes
         (x, y, category) = zip(*[(max([t.meanshape()[1] for t in a.tracks().values()]), max([t.meanshape()[0] for t in a.tracks().values()]), a.category()) for a in activities])
@@ -316,6 +317,8 @@ class Mevadata_Public_01(object):
         plt.clf()
         plt.figure()
         plt.hist2d(x, y, bins=10)
+        plt.xlabel('Bounding box (width)')
+        plt.ylabel('Bounding box (height)')        
         d['2D_bounding_box_histogram'] = totempdir('2D_bounding_box_histogram.pdf')
         plt.savefig(d['2D_bounding_box_histogram'])
         
@@ -325,8 +328,8 @@ class Mevadata_Public_01(object):
         plt.grid(True)        
         d_category_to_color = {'person':'blue', 'vehicle':'green'}
         for c in ['person', 'vehicle']:
-            (x, y) = zip(*[(t.meanshape()[1], t.meanshape()[0]) for t in tracks if t.category() == c])
-            plt.scatter(x, y, c=d_category_to_color[c], label=c)
+            (xc, yc) = zip(*[(t.meanshape()[1], t.meanshape()[0]) for t in tracks if t.category() == c])
+            plt.scatter(xc, yc, c=d_category_to_color[c], label=c)
         plt.xlabel('bounding box (width)')
         plt.ylabel('bounding box (height)')
         plt.axis([0, max(max(x),max(y)), 0, max(max(x),max(y))])                
@@ -340,6 +343,9 @@ class Mevadata_Public_01(object):
             plt.clf()
             plt.figure()
             plt.hist2d(x, y, bins=10)
+            plt.xlabel('Bounding box (width)')
+            plt.ylabel('Bounding box (height)')
+            
             d['2D_%s_bounding_box_histogram' % c] = totempdir('2D_%s_bounding_box_histogram.pdf' % c)
             plt.savefig(d['2D_%s_bounding_box_histogram' % c])
 
