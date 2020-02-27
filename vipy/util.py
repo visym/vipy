@@ -923,6 +923,11 @@ def tempfilename(suffix):
     return os.path.join(tempfile.gettempdir(), '%s%s' % (shortuuid(), suffix))
 
 
+def totempdir(filename):
+    """Convert a filename '/patj/to/filename.ext' to '/tempdir/filename.ext'"""
+    return os.path.join(tempfile.gettempdir(), filetail(filename))
+
+
 def templike(filename):
     return tempfilename(fileext(filename))
 

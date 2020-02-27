@@ -1,5 +1,5 @@
 import os
-from vipy.util import remkdir, readjson, readyaml, findyaml, findvideo, filetail, findjson, filebase, readlist, groupbyasdict, save, flatlist, temppdf
+from vipy.util import remkdir, readjson, readyaml, findyaml, findvideo, filetail, findjson, filebase, readlist, groupbyasdict, save, flatlist, isstring, totempdir
 from vipy.video import VideoCategory, Scene
 from vipy.object import Track, Activity
 from vipy.geometry import BoundingBox
@@ -8,7 +8,8 @@ from vipy.show import colorlist
 import vipy.metrics
 import numpy as np
 import warnings
-import matplotlib.pyplot as plt        
+import shutil
+
 
 class Mevadata_Public_01(object):
     def __init__(self, videodir, repodir):
@@ -272,8 +273,9 @@ class Mevadata_Public_01(object):
             return [self._parse_video(d_videoname_to_path, d_category_to_shortlabel, t, g, a, stride=stride, verbose=verbose) for (t,g,a) in yamlfiles]
 
         
-    def analysis(self, meva=None):
+    def analysis(self, meva=None, outdir=None):
         """Analyze the MEVA dataset to return helpful statistics and plots"""
+        import matplotlib.pyplot as plt        
         
         videos = self.MEVA(stride=20) if meva is None else meva
         scenes = flatlist([m.activityclip() for m in meva if m is not None])
@@ -289,7 +291,7 @@ class Mevadata_Public_01(object):
 
         # Histogram of instances
         (categories, freq) = zip(*reversed(d['num_activities']))
-        d['num_activities_histogram'] = vipy.metrics.histogram(freq, categories, outfile=temppdf())
+        d['num_activities_histogram'] = vipy.metrics.histogram(freq, categories, outfile=totempdir('num_activities_histogram.pdf'), ylabel='Instances')
 
         # Scatterplot of box sizes
         (x, y, category) = zip(*[(max([t.meanshape()[1] for t in a.tracks().values()]), max([t.meanshape()[0] for t in a.tracks().values()]), a.category()) for a in activities])
@@ -297,42 +299,53 @@ class Mevadata_Public_01(object):
         d_category_to_color = {c:colors[k % len(colors)] for (k,c) in enumerate(category)}
         plt.clf()
         plt.figure()
-        plt.scatter(x, y, c=[d_category_to_color[c] for c in category])
-        plt.xlabel('bounding box (width)')
-        plt.ylabel('bounding box (height)')
+        plt.subplot(111)
         plt.grid(True)
-        d['bounding_box_scatterplot'] = temppdf()
-        d['bounding_box_scatterplot_colors'] = d_category_to_color        
-        plt.savefig(d['bounding_box_scatterplot'])
+        d_category_to_boxsizes = groupbyasdict(zip(x,y,category), lambda xyc: xyc[2])
+        for c in categories:
+            (xc,yc) = zip(*[(xx,yy) for (xx,yy,cc) in d_category_to_boxsizes[c]])
+            plt.scatter(xc, yc, c=d_category_to_color[c], label=c)
+        plt.xlabel('Bounding box (width)')
+        plt.ylabel('Bounding box (height)')
+        plt.axis([0, max(max(x),max(y)), 0, max(max(x),max(y))])
+        lgd = plt.legend(bbox_to_anchor=(1.05, 1), loc='upper left', borderaxespad=0.)
+        d['bounding_box_scatterplot'] = totempdir('bounding_box_scatterplot.pdf')
+        plt.savefig(d['bounding_box_scatterplot'], bbox_extra_artists=(lgd,), bbox_inches='tight')
 
         # 2D histogram of box sixes
         plt.clf()
         plt.figure()
         plt.hist2d(x, y, bins=10)
-        d['2D_bounding_box_histogram'] = temppdf()
+        d['2D_bounding_box_histogram'] = totempdir('2D_bounding_box_histogram.pdf')
         plt.savefig(d['2D_bounding_box_histogram'])
         
-        # Scatterplot of people and vehicles
+        # Scatterplot of people and vehicles box sizes
         plt.clf()
         plt.figure()
+        plt.grid(True)        
         d_category_to_color = {'person':'blue', 'vehicle':'green'}
         for c in ['person', 'vehicle']:
             (x, y) = zip(*[(t.meanshape()[1], t.meanshape()[0]) for t in tracks if t.category() == c])
             plt.scatter(x, y, c=d_category_to_color[c], label=c)
         plt.xlabel('bounding box (width)')
         plt.ylabel('bounding box (height)')
+        plt.axis([0, max(max(x),max(y)), 0, max(max(x),max(y))])                
         plt.legend()
-        plt.grid(True)
-        d['object_bounding_box_scatterplot'] = temppdf()
+        d['object_bounding_box_scatterplot'] = totempdir('object_bounding_box_scatterplot.pdf')
         plt.savefig(d['object_bounding_box_scatterplot'])
         
-        # 2D histogram of people and vehicles
+        # 2D histogram of people and vehicles box sizes
         for c in ['person', 'vehicle']:
             (x, y) = zip(*[(t.meanshape()[1], t.meanshape()[0]) for t in tracks if t.category() == c])
             plt.clf()
             plt.figure()
             plt.hist2d(x, y, bins=10)
-            d['2D_%s_bounding_box_histogram' % c] = temppdf()
+            d['2D_%s_bounding_box_histogram' % c] = totempdir('2D_%s_bounding_box_histogram.pdf' % c)
             plt.savefig(d['2D_%s_bounding_box_histogram' % c])
-            
+
+        # Copy
+        if outdir is not None:
+            for (k,v) in d.items():
+                if isstring(v) and os.path.exists(v):
+                    shutil.copyfile(v, os.path.join(outdir, filetail(v))) 
         return d
