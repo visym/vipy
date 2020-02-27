@@ -113,7 +113,6 @@ def boundingbox(img, xmin, ymin, xmax, ymax, bboxcaption=None, fignum=None, bbox
     # Text string
     if bboxcaption is not None:
         # clip_on clips anything outside the image
-        #plt.text(xmin + captionoffset[0], ymin + captionoffset[1], bboxcaption, color=textcolor, bbox=dict(facecolor=textfacecolor, edgecolor=textcolor, alpha=textfacealpha, boxstyle='round'), fontsize=fontsize, clip_on=True)
         handle = plt.annotate(s=bboxcaption, xy=(xmin,ymin), xytext=(xmin+captionoffset[0], ymin+captionoffset[1]), xycoords='data', color=textcolor, bbox=dict(facecolor=textfacecolor, edgecolor=textcolor, alpha=textfacealpha, boxstyle='round'), fontsize=fontsize, clip_on=True)
 
     return fignum
@@ -202,7 +201,7 @@ def colorlist():
               set(['whitesmoke', 'gainsboro', 'w', 'floralwhite', 'lightgoldenrodyellow', 'ghostwhite', 'white', 'mistyrose',
                    'seashell', 'ivory', 'honeydew', 'azure', 'lavenderblush', 'beige', 'mintcream', 'lightcyan',
                    'snow', 'gainsboro', 'linen', 'antiquewhite', 'papayawhip', 'oldlace', 'cornsilk', 'palegoldenrod',
-                   'lightyellow', 'aliceblue', 'yellow', 'sandybrown', 'orange', 'moccasin', 'bisque'])]  # https://matplotlib.org/3.1.0/gallery/color/named_colors.html
+                   'lightyellow', 'aliceblue', 'yellow', 'sandybrown', 'orange', 'moccasin', 'bisque', 'peachpuff'])]  # https://matplotlib.org/3.1.0/gallery/color/named_colors.html
     colors = [x for x in colors if 'light' not in x]
     return colors
 
