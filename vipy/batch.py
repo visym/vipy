@@ -160,7 +160,7 @@ class Batch(object):
         return np.stack(self.map(lambda im: im.numpy()))
     
     def shutdown(self):
-        if self.__dict__['_client'] is not None:
+        if '_client' in self.__dict__ and self.__dict__['_client'] is not None:
             # This may still generate some concerning looking execeptions like: 'tornado.iostream.StreamClosedError: Stream is closed'
             # This is a bug with dask, and can be safely ignored ...
             self.__dict__['_client'].shutdown()
