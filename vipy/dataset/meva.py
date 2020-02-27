@@ -288,7 +288,8 @@ class Mevadata_Public_01(object):
         d['object_categories'] = set([t.category() for t in tracks])
         d['videos'] = set([v.filename() for v in videos if v is not None])
         d['num_activities'] = sorted([(k,len(v)) for (k,v) in groupbyasdict(activities, lambda a: a.category()).items()], key=lambda x: x[1])
-
+        d['video_density'] = sorted([(v.filename(),len(v.activities())) for v in videos if v is not None], key=lambda x: x[1])
+        
         # Histogram of instances
         (categories, freq) = zip(*reversed(d['num_activities']))
         barcolors = ['blue' if not 'vehicle' in c else 'green' for c in categories]
