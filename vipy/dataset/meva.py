@@ -309,6 +309,7 @@ class Mevadata_Public_01(object):
             plt.scatter(xc, yc, c=d_category_to_color[c], label=c)
         plt.xlabel('Bounding box (width)')
         plt.ylabel('Bounding box (height)')
+        plt.gca().set_axisbelow(True)                
         plt.axis([0, max(max(x),max(y)), 0, max(max(x),max(y))])
         lgd = plt.legend(bbox_to_anchor=(1.05, 1), loc='upper left', borderaxespad=0.)
         d['bounding_box_scatterplot'] = totempdir('bounding_box_scatterplot.pdf')
@@ -326,7 +327,7 @@ class Mevadata_Public_01(object):
         # Scatterplot of people and vehicles box sizes
         plt.clf()
         plt.figure()
-        plt.grid(True)        
+        plt.grid(True)
         d_category_to_color = {'person':'blue', 'vehicle':'green'}
         for c in ['person', 'vehicle']:
             (xc, yc) = zip(*[(t.meanshape()[1], t.meanshape()[0]) for t in tracks if t.category() == c])
@@ -335,6 +336,7 @@ class Mevadata_Public_01(object):
         plt.ylabel('bounding box (height)')
         plt.axis([0, max(max(x),max(y)), 0, max(max(x),max(y))])                
         plt.legend()
+        plt.gca().set_axisbelow(True)        
         d['object_bounding_box_scatterplot'] = totempdir('object_bounding_box_scatterplot.pdf')
         plt.savefig(d['object_bounding_box_scatterplot'])
         
