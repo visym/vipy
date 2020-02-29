@@ -795,6 +795,22 @@ class Scene(VideoCategory):
             yield self.__getitem__(k)
         self._currentframe = None
 
+    def frame(self, k):
+        """Alias for self[k]"""
+        return self.__getitem__(k)
+    
+    def quicklook(self, n=9, dilate=1.5, mindim=256, fontsize=10):
+        """Generate a montage of n uniformly spaced annotated frames centered on the union of the labeled boxes in the current frame to show the activity ocurring in this scene at a glance
+           Montage increases rowwise for n uniformly spaced frames, starting from frame zero and ending on the last frame
+        """
+        if not self.isloaded():
+            self.mindim(mindim).load()
+        framelist = [int(np.round(f)) for f in np.linspace(0, len(self)-1, n)]
+        imframes = [self.frame(k).padcrop(self.frame(k).boundingbox().maxsquare().dilate(dilate)).mindim(mindim, PIL.Image.NEAREST) if (self.frame(k).boundingbox() is not None) else
+                    self.frame(k) for k in framelist]
+        imframes = [im.savefig(fontsize=fontsize).rgb() for im in imframes]
+        return vipy.visualize.montage(imframes, imgwidth=mindim, imgheight=mindim)
+        
     def tracks(self, tracks=None, id=None):
         if tracks is None:
             return self._tracks  # mutable
