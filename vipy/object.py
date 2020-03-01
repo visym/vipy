@@ -384,3 +384,7 @@ class Activity(object):
         """The bounding box of an activity is the minimum bounding box for all tracks in the activity, or None of there are no boxes"""
         boxes = [t.boundingbox() for (k,t) in self._tracks.items()]
         return boxes[0].union(boxes[1:]) if len(boxes)>0 else None
+
+    def clone(self):
+        return copy.deepcopy(self)
+    

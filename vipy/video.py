@@ -807,7 +807,7 @@ class Scene(VideoCategory):
             self.mindim(mindim).load()
         framelist = [int(np.round(f)) for f in np.linspace(0, len(self)-1, n)]
         imframes = [self.frame(k).padcrop(self.frame(k).boundingbox().maxsquare().dilate(dilate)).mindim(mindim, PIL.Image.NEAREST) if (self.frame(k).boundingbox() is not None) else
-                    self.frame(k) for k in framelist]
+                    self.frame(k).maxsquare() for k in framelist]
         imframes = [im.savefig(fontsize=fontsize).rgb() for im in imframes]
         return vipy.visualize.montage(imframes, imgwidth=mindim, imgheight=mindim)
         
@@ -908,13 +908,13 @@ class Scene(VideoCategory):
     def activityclip(self, padframes=0):
         """Return a list of vipy.video.Scene() each clipped to be centered on a single activity, with an optional padframes before and after.  The Scene() category is updated to be the activity, and only the objects partifipating in the activity are included"""
         vid = self.clone(flushforward=True)
-        activities = vid.activities().values()
-        tracks = [ [t for (tid, t) in vid.tracks().items() if a.hastrack(t)] for a in activities]                         
+        activities = [a.clone() for a in vid.activities().values()]
+        tracks = [ [t.clone() for (tid, t) in vid.tracks().items() if a.hastrack(t)] for a in activities]                         
         vid._activities = {}  # for faster clone
         vid._tracks = {}      # for faster clone
         padframes = padframes if istuple(padframes) else (padframes,padframes)
-        return [vid.clone().activities(a).tracks(t).clip(startframe=max(a.middleframe()-(len(a)//2)-padframes[0], 0),
-                                                         endframe=a.middleframe()+(len(a)//2)+padframes[1]).category(a.category()) for (a,t) in zip(activities, tracks)]
+        return [vid.clone().activities(a).tracks(t).clip(startframe=max(a.startframe()-padframes[0], 0),
+                                                         endframe=(a.endframe()+padframes[1])).category(a.category()) for (a,t) in zip(activities, tracks)]
     
     def activitycrop(self, dilate=1.0):
         """Returns a list of vipy.video.Scene() each spatially cropped to be the union of the objects performing the activity"""
