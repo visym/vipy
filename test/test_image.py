@@ -113,6 +113,13 @@ def test_image():
     except:
         pass
     try:
+        Image(array=np.matrix( (10,10) ).astype(np.float32))
+        Failed()  # np.matrix unallowed
+    except Failed:
+        raise
+    except:
+        pass
+    try:
         Image(array=np.zeros( (10,10,3), dtype=np.float32), colorspace='rgb')  
         Failed()  # rgb image must be uint8
     except Failed:

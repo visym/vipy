@@ -846,8 +846,12 @@ def isvideo(path):
 
 
 def isnumpy(obj):
-    """Is a python object a numpy array?"""
+    """Is a python object a numpy object?"""
     return ('numpy' in str(type(obj)))
+
+def isnumpyarray(obj):
+    """Is a python object a numpy array?"""
+    return isnumpy(obj) and 'numpy.ndarray' in str(type(obj))
 
 
 def istextfile(path):

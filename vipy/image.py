@@ -3,12 +3,12 @@ import PIL
 import PIL.Image
 import platform
 import dill
-from vipy.show import imshow, imbbox, savefig, colorlist
+from vipy.show import imshow, imbbox, savefig, colorlist, closeall
 from vipy.util import isnumpy, isurl, isimageurl, \
     fileext, tempimage, mat2gray, imwrite, imwritegray, \
     tempjpg, filetail, isimagefile, remkdir, hasextension, \
     try_import, tolist, islistoflists, istupleoftuples, isstring, \
-    istuple, islist, isnumber
+    istuple, islist, isnumber, isnumpyarray
 from vipy.geometry import BoundingBox
 import vipy.object
 import vipy.downloader
@@ -320,13 +320,13 @@ class Image(object):
         """Replace self._array with provided numpy array"""
         if np_array is None:
             return self._array
-        elif isnumpy(np_array):
+        elif isnumpyarray(np_array):
             assert np_array.dtype == np.float32 or np_array.dtype == np.uint8, "Invalid input - array() must be type uint8 or float32"
             self._array = np.copy(np_array) if copy else np_array  # reference or copy
             self.colorspace(None)  # must be set with colorspace() after array() but before _convert()
             return self
         else:
-            raise ValueError('Invalid input - array() must be numpy array')
+            raise ValueError('Invalid input - array() must be numpy array and not "%s"' % (str(type(np_array))))
 
     def fromarray(self, data):
         """Alias for array(data, copy=True), set new array() with a numpy array copy"""
@@ -798,13 +798,18 @@ class Image(object):
     def sum(self):
         return np.sum(self.load().array().flatten())
 
-    # Image export
+    # Image visualization
+    def close(self):
+        closeall()
+        return self
+    
     def show(self, figure=None, nowindow=False):
         """Display image on screen in provided figure number (clone and convert to RGB colorspace to show), return object"""
         assert self.load().isloaded(), 'Image not loaded'
         imshow(self.clone().rgb().numpy(), fignum=figure, nowindow=nowindow)
         return self
-    
+
+    # Image export
     def saveas(self, filename, writeas=None):
         """Save current buffer (not including drawing overlays) to new filename and return filename"""
         if self.colorspace() in ['gray']:
