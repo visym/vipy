@@ -1048,7 +1048,33 @@ class Stopwatch(object):
         self.last = self.start
         return self
 
+    
+class Timer(object):
+    """Pretty print elapsed system time in seconds between calls to enter and exit
 
+       >>> with Timer():
+               some_code()
+       Elapsed: 1.234567 seconds
+
+       >>> with Timer('mylogging: %1.1fs'):
+               some_code()
+       mylogging: 1.2s
+
+    """
+    def __init__(self, sprintf='Elapsed: %1.6f seconds'):
+        self._sprintf = sprintf
+        try:
+            sprintf % 1.0
+        except:
+            raise ValueError('Printed display string must be a sprintf style string with a single number variable like "Elapsed: %1.6f"')
+                
+    def __enter__(self):
+        self.start = time.time()
+
+    def __exit__(self, *args):
+        print(self._sprintf % (time.time() - self.start))
+
+        
 def isfile(path):
     """Wrapper for os.path.isfile"""
     return os.path.isfile(str(path))

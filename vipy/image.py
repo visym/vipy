@@ -86,6 +86,9 @@ class Image(object):
         if array is not None:
             assert isnumpy(array), 'Invalid Array'
         self.array(array)
+
+        # Guess RGB colorspace if three channel uint8 if colorspace is not provided
+        colorspace = 'rgb' if (self.isloaded() and self.channels() == 3 and self._array.dtype == np.uint8 and colorspace is None) else colorspace
         self.colorspace(colorspace)
         
         # Public attributes: passed in as a dictionary
@@ -117,6 +120,8 @@ class Image(object):
         strlist = []
         if self.isloaded():
             strlist.append("height=%d, width=%d, color=%s" % (self._array.shape[0], self._array.shape[1], self.colorspace()))
+        if self.colorspace() == 'float':
+            strlist.append('channels=%d' % self.channels())
         if self.hasfilename():
             strlist.append('filename="%s"' % self.filename())
         if self.hasurl():
@@ -321,7 +326,7 @@ class Image(object):
         if np_array is None:
             return self._array
         elif isnumpyarray(np_array):
-            assert np_array.dtype == np.float32 or np_array.dtype == np.uint8, "Invalid input - array() must be type uint8 or float32"
+            assert np_array.dtype == np.float32 or np_array.dtype == np.uint8, "Invalid input - array() must be type uint8 or float32"            
             self._array = np.copy(np_array) if copy else np_array  # reference or copy
             self.colorspace(None)  # must be set with colorspace() after array() but before _convert()
             return self
@@ -605,11 +610,13 @@ class Image(object):
         elif self.colorspace() == 'lum':
             img = self.load().array()  # single channel, uint8 [0,255]
             assert img.dtype == np.uint8
+            img = np.squeeze(img, axis=2) if img.ndim == 3 and img.shape[2] == 1 else img  # remove singleton channel            
             self._array = np.array(PIL.Image.fromarray(img, mode='L').convert('RGB'))  # uint8 luminance [0,255] -> uint8 RGB
             self.colorspace('rgb')
             self._convert(to)
         elif self.colorspace() in ['gray', 'grey']:
             img = self.load().array()  # single channel float32 [0,1]
+            img = np.squeeze(img, axis=2) if img.ndim == 3 and img.shape[2] == 1 else img  # remove singleton channel                        
             self._array = np.array(PIL.Image.fromarray(255.0 * img, mode='F').convert('RGB'))  # float32 gray [0,1] -> float32 gray [0,255] -> uint8 RGB
             self.colorspace('rgb')
             self._convert(to)
@@ -658,12 +665,16 @@ class Image(object):
         elif self.colorspace() == 'float':
             img = self.load().array()  # float32
             if np.max(img) > 1 or np.min(img) < 0:
-                raise ValueError('Float image must be rescaled to the range float32 [0,1] prior to conversion')
+                warnings.warn('Float image will be rescaled with self.mat2gray() into the range float32 [0,1]')
+                img = self.mat2gray().array()
             if not self.channels() in [1,3]:
                 raise ValueError('Float image must be single channel or three channel RGB in the range float32 [0,1] prior to conversion')
             if self.channels() == 3:  # assumed RGB
-                self._array = (1.0 / 255.0) * np.array(PIL.Image.fromarray(np.uint8(255 * self.array())).convert('L')).astype(np.float32)  # float32 RGB [0,1] -> float32 gray [0,1]
-            self.colorspace('grey')
+                self._array = np.uint8(255 * self.array())   # float32 RGB [0,1] -> uint8 RGB [0,255]
+                self.colorspace('rgb')
+            else:
+                self._array = (1.0 / 255.0) * np.array(PIL.Image.fromarray(np.uint8(255 * self.array())).convert('L')).astype(np.float32)  # float32 RGB [0,1] -> float32 gray [0,1]                
+                self.colorspace('grey')
             self._convert(to)
         elif self.colorspace() is None:
             raise ValueError('Colorspace must be initialized by constructor or colorspace() to allow for colorspace conversion')
@@ -817,7 +828,7 @@ class Image(object):
         elif self.colorspace() != 'float':
             imwrite(self.load().array(), filename, writeas=writeas)
         else:
-            raise ValueError('Convert float image to RGB or gray first')
+            raise ValueError('Convert float image to RGB or gray first. Try self.mat2gray()')
         return filename
 
     def saveastmp(self):
