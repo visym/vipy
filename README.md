@@ -1,3 +1,5 @@
+[![PyPI version](https://badge.fury.io/py/vipy.svg)](https://badge.fury.io/py/vipy)
+
 Project
 -------------------
 VIPY: Visym Python Tools for Computer Vision and Machine Learning  
