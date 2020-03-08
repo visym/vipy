@@ -1,5 +1,5 @@
 import os
-from vipy.util import remkdir, readjson, readyaml, findyaml, findvideo, filetail, findjson, filebase, readlist, groupbyasdict, save, flatlist, isstring, totempdir
+from vipy.util import remkdir, readjson, readyaml, findyaml, findvideo, filetail, findjson, filebase, readlist, groupbyasdict, save, flatlist, isstring, tempdir
 from vipy.video import VideoCategory, Scene
 from vipy.object import Track, Activity
 from vipy.geometry import BoundingBox
@@ -100,18 +100,13 @@ class Mevadata_Public_01(object):
                                              'vehicle_u_turn':'Turning around'}
         
     def __repr__(self):
-        if self._batch is None:
-            return str('<vipy.dataset.meva: videos="%s", annotations="%s">' % (self.videodir, self.repodir))
-        else:
-            return str('<vipy.dataset.meva: videos="%s", annotations="%s", proc=%d>' % (self.videodir, self.repodir, self._batch.n_processes()))            
-
+        return str('<vipy.dataset.meva: videos="%s", annotations="%s">' % (self.videodir, self.repodir))
 
     def activities(self):
         """Return a list of activities"""
         # This list in the repo is outdated
         # return sorted(list(readjson(os.path.join(self.repodir, 'annotation', 'DIVA-phase-2', 'activity-index.json')).keys()))        
         return sorted(list(self._d_category_to_shortlabel.keys()))
-
 
     def activities_to_required_objects(self):
         """Return a dictionary of activity keys to set of required objects.  This is currently wrong."""
@@ -281,7 +276,8 @@ class Mevadata_Public_01(object):
         scenes = flatlist([m.activityclip() for m in meva if m is not None])
         activities = flatlist([s.activities().values() for s in scenes])
         tracks = flatlist([s.tracks().values() for s in scenes])
-
+        outdir = tempdir() if outdir is None else outdir
+        
         # Category distributions
         d = {}
         d['activity_categories'] = set([a.category() for a in activities])
@@ -293,7 +289,7 @@ class Mevadata_Public_01(object):
         # Histogram of instances
         (categories, freq) = zip(*reversed(d['num_activities']))
         barcolors = ['blue' if not 'vehicle' in c else 'green' for c in categories]
-        d['num_activities_histogram'] = vipy.metrics.histogram(freq, categories, barcolors=barcolors, outfile=totempdir('num_activities_histogram.pdf'), ylabel='Instances')
+        d['num_activities_histogram'] = vipy.metrics.histogram(freq, categories, barcolors=barcolors, outfile=os.path.join(outdir, 'num_activities_histogram.pdf'), ylabel='Instances')
 
         # Scatterplot of box sizes
         (x, y, category) = zip(*[(max([t.meanshape()[1] for t in a.tracks().values()]), max([t.meanshape()[0] for t in a.tracks().values()]), a.category()) for a in activities])
@@ -312,16 +308,38 @@ class Mevadata_Public_01(object):
         plt.gca().set_axisbelow(True)                
         plt.axis([0, max(max(x),max(y)), 0, max(max(x),max(y))])
         lgd = plt.legend(bbox_to_anchor=(1.05, 1), loc='upper left', borderaxespad=0.)
-        d['bounding_box_scatterplot'] = totempdir('bounding_box_scatterplot.pdf')
+        d['bounding_box_scatterplot'] = os.path.join(outdir, 'bounding_box_scatterplot.pdf')
         plt.savefig(d['bounding_box_scatterplot'], bbox_extra_artists=(lgd,), bbox_inches='tight')
 
+        # Separate scatterplots of box sizes
+        (x, y, category) = zip(*[(max([t.meanshape()[1] for t in a.tracks().values()]), max([t.meanshape()[0] for t in a.tracks().values()]), a.category()) for a in activities])
+        colors = colorlist()
+        d_category_to_color = {c:colors[k % len(colors)] for (k,c) in enumerate(category)}
+        d_category_to_boxsizes = groupbyasdict(zip(x,y,category), lambda xyc: xyc[2])
+        d['category_bounding_box_scatterplot'] = []
+        for c in categories:
+            plt.clf()
+            plt.figure()
+            plt.subplot(111)
+            plt.grid(True)            
+            (xc,yc) = zip(*[(xx,yy) for (xx,yy,cc) in d_category_to_boxsizes[c]])
+            plt.scatter(xc, yc, c=d_category_to_color[c], label=c)
+            plt.xlabel('Bounding box (width)')
+            plt.ylabel('Bounding box (height)')
+            plt.legend()            
+            plt.gca().set_axisbelow(True)                
+            plt.axis([0, max(max(x),max(y)), 0, max(max(x),max(y))])
+            filename = os.path.join(outdir, 'category_bounding_box_scatterplot_%s.pdf' % c)
+            d['category_bounding_box_scatterplot'].append(filename)
+            plt.savefig(filename)
+        
         # 2D histogram of box sixes
         plt.clf()
         plt.figure()
         plt.hist2d(x, y, bins=10)
         plt.xlabel('Bounding box (width)')
         plt.ylabel('Bounding box (height)')        
-        d['2D_bounding_box_histogram'] = totempdir('2D_bounding_box_histogram.pdf')
+        d['2D_bounding_box_histogram'] = os.path.join(outdir, '2D_bounding_box_histogram.pdf')
         plt.savefig(d['2D_bounding_box_histogram'])
         
         # Scatterplot of people and vehicles box sizes
@@ -337,7 +355,7 @@ class Mevadata_Public_01(object):
         plt.axis([0, max(max(x),max(y)), 0, max(max(x),max(y))])                
         plt.legend()
         plt.gca().set_axisbelow(True)        
-        d['object_bounding_box_scatterplot'] = totempdir('object_bounding_box_scatterplot.pdf')
+        d['object_bounding_box_scatterplot'] = os.path.join(outdir, 'object_bounding_box_scatterplot.pdf')
         plt.savefig(d['object_bounding_box_scatterplot'])
         
         # 2D histogram of people and vehicles box sizes
@@ -349,12 +367,7 @@ class Mevadata_Public_01(object):
             plt.xlabel('Bounding box (width)')
             plt.ylabel('Bounding box (height)')
             
-            d['2D_%s_bounding_box_histogram' % c] = totempdir('2D_%s_bounding_box_histogram.pdf' % c)
+            d['2D_%s_bounding_box_histogram' % c] = os.path.join(outdir, '2D_%s_bounding_box_histogram.pdf' % c)
             plt.savefig(d['2D_%s_bounding_box_histogram' % c])
 
-        # Copy
-        if outdir is not None:
-            for (k,v) in d.items():
-                if isstring(v) and os.path.exists(v):
-                    shutil.copyfile(v, os.path.join(outdir, filetail(v))) 
         return d
