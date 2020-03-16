@@ -323,27 +323,12 @@ class Video(object):
             elif url_scheme == 'file':
                 shutil.copyfile(self._url, self._filename)
             elif url_scheme == 's3':
-                assert 'VIPY_AWS_ACCESS_KEY_ID' in os.environ and 'VIPY_AWS_SECRET_ACCESS_KEY' in os.environ, \
-                    "AWS access keys not found - You need to create ENVIRONMENT variables ['VIPY_AWS_ACCESS_KEY_ID', 'VIPY_AWS_SECRET_ACCESS_KEY'] with S3 access credentials"   
-                try_import('boto3', 'boto3')
-                                
                 if self.filename() is None:
                     self.filename(totempdir(self._url))
                     if 'VIPY_CACHE' in os.environ:
                         self.filename(os.path.join(remkdir(os.environ['VIPY_CACHE']), filetail(self._url)))
-
-                import boto3                        
-                s3 = boto3.client('s3',
-                                  aws_access_key_id=os.environ['VIPY_AWS_ACCESS_KEY_ID'],
-                                  aws_secret_access_key=os.environ['VIPY_AWS_SECRET_ACCESS_KEY']
-                                 )
-
-                # url = 's3://BUCKETNAME.s3.amazonaws.com/OBJECTNAME.mp4'
-                url = urllib.parse.urlparse(self._url) 
-                bucket_name = url.netloc.split('.')[0]
-                object_name = filetail(self._url)
-                s3.download_file(bucket_name, object_name, self.filename())
-                
+                vipy.downloader.s3(self.url(), self.filename())
+                    
             elif url_scheme == 'scp':                
                 if self.filename() is None:
                     self.filename(templike(self._url))                    

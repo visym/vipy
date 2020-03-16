@@ -986,6 +986,11 @@ def tempyaml():
     return tempfilename(suffix='.yml')
 
 
+def tempjson():
+    """Create a temporary JSON file"""
+    return tempfilename(suffix='.json')
+
+
 def temppdf():
     """Create a temporary PDF file"""
     return tempfilename(suffix='.pdf')

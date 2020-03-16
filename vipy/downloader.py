@@ -27,6 +27,7 @@ try:
     import bz2  # FIXME: Remove once bz2 is included in CentOS7 vendor baseline release?
 except:
     pass
+from vipy.util import isS3url, filetail
 
 
 # FIX <urlopen error [SSL: CERTIFICATE_VERIFY_FAILED] certificate
@@ -81,6 +82,25 @@ def scp(url, output_filename, verbose=True):
     scp.close()
     return output_filename
 
+
+def s3(url, output_filename):
+    assert 'VIPY_AWS_ACCESS_KEY_ID' in os.environ and 'VIPY_AWS_SECRET_ACCESS_KEY' in os.environ, \
+        "AWS access keys not found - You need to create ENVIRONMENT variables ['VIPY_AWS_ACCESS_KEY_ID', 'VIPY_AWS_SECRET_ACCESS_KEY'] with S3 access credentials"   
+    try_import('boto3', 'boto3')
+    assert isS3url(url), "Invalid URL - Must be 's3://BUCKETNAME.s3.amazonaws.com/OBJECTNAME.ext'"
+    
+    import boto3                        
+    s3 = boto3.client('s3',
+                      aws_access_key_id=os.environ['VIPY_AWS_ACCESS_KEY_ID'],
+                      aws_secret_access_key=os.environ['VIPY_AWS_SECRET_ACCESS_KEY']
+    )
+    
+    # url = 's3://BUCKETNAME.s3.amazonaws.com/OBJECTNAME.mp4'
+    bucket_name = urllib.parse.urlparse(url).netloc.split('.')[0]
+    object_name = urllib.parse.urlparse(url).path[1:]
+    s3.download_file(bucket_name, object_name, output_filename)
+    return output_filename
+    
 
 def download(url, output_filename, sha1=None, verbose=True, md5=None, timeout=None, username=None, password=None):
     """Downloads file at `url` and write it in `output_filename`"""
