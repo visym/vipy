@@ -732,8 +732,13 @@ def isimageurl(path):
 
 
 def isvideourl(path):
-    """Is a path a URL with image extension?"""
+    """Is a path a URL with video extension?"""
     return isurl(path) and isvideo(path)
+
+
+def isS3url(path):
+    """Is a path a URL for an S3 object?"""
+    return isurl(path) and urlparse(path).scheme == 's3'
 
 
 def isyoutubeurl(path):
@@ -930,6 +935,7 @@ def totempdir(filename):
 
 
 def templike(filename):
+    """Create a new temporary filename with the same extension as filename"""
     return tempfilename(fileext(filename))
 
 
