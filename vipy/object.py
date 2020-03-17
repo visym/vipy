@@ -295,9 +295,9 @@ class Activity(object):
 
     """
     def __init__(self, startframe, endframe, framerate=None, label=None, shortlabel=None, category=None, tracks={}, attributes=None):
-        assert not (label is not None and category is not None), "Constructor requires either label or category kwargs, not both"
+        assert not (label is not None and category is not None), "ACtivity() Constructor requires either label or category kwargs, not both"
         assert isinstance(tracks, dict), "Tracks must be a dictionary {trackid:vipy.object.Track()}"
-        assert startframe <= endframe, "Invalid input - startframe must occur before endframe"
+        assert startframe <= endframe, "Invalid Activity() - startframe must occur before endframe"
         self._id = uuid.uuid1().hex
         self._startframe = startframe
         self._endframe = endframe
