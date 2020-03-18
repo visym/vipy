@@ -939,6 +939,14 @@ def templike(filename):
     return tempfilename(fileext(filename))
 
 
+def cached(filename):
+    """Create a new filename in the cache, or tempdir if not found"""
+    if 'VIPY_CACHE' in os.environ:
+        return os.path.join(remkdir(os.environ['VIPY_CACHE']), filetail(filename))
+    else:
+        return totempdir(filename)
+
+
 def tempimage(ext='jpg'):
     """Create a temporary image with the given extension"""
     if ext[0] == '.':

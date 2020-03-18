@@ -83,7 +83,7 @@ def scp(url, output_filename, verbose=True):
     return output_filename
 
 
-def s3(url, output_filename):
+def s3(url, output_filename, verbose=True):
     assert 'VIPY_AWS_ACCESS_KEY_ID' in os.environ and 'VIPY_AWS_SECRET_ACCESS_KEY' in os.environ, \
         "AWS access keys not found - You need to create ENVIRONMENT variables ['VIPY_AWS_ACCESS_KEY_ID', 'VIPY_AWS_SECRET_ACCESS_KEY'] with S3 access credentials"   
     try_import('boto3', 'boto3')
@@ -95,9 +95,12 @@ def s3(url, output_filename):
                       aws_secret_access_key=os.environ['VIPY_AWS_SECRET_ACCESS_KEY']
     )
     
-    # url = 's3://BUCKETNAME.s3.amazonaws.com/OBJECTNAME.mp4'
+    # url format: s3://BUCKETNAME.s3.amazonaws.com/OBJECTNAME.mp4
     bucket_name = urllib.parse.urlparse(url).netloc.split('.')[0]
     object_name = urllib.parse.urlparse(url).path[1:]
+
+    if verbose:
+        print('[vipy.downloader.s3]: Downloading "%s" -> "%s"' % (url, output_filename))
     s3.download_file(bucket_name, object_name, output_filename)
     return output_filename
     

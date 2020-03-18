@@ -327,7 +327,7 @@ class Video(object):
                     self.filename(totempdir(self._url))
                     if 'VIPY_CACHE' in os.environ:
                         self.filename(os.path.join(remkdir(os.environ['VIPY_CACHE']), filetail(self._url)))
-                vipy.downloader.s3(self.url(), self.filename())
+                vipy.downloader.s3(self.url(), self.filename(), verbose=verbose)
                     
             elif url_scheme == 'scp':                
                 if self.filename() is None:
