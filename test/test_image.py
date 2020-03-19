@@ -145,11 +145,12 @@ def test_image():
     assert im.array()[0,0] != 0
     print('[test_image]: array by reference  PASSED')
     
-    
+
     # Image file formats
     for imgfile in [rgbfile, greyfile, rgbafile]:
         _test_image_fileformat(imgfile)
 
+        
         
             
 def _test_image_fileformat(imgfile):
@@ -363,6 +364,20 @@ def _test_image_fileformat(imgfile):
     assert np.allclose(np.float32(im.array())+1.0, im2.array())
     print('[test_image.image]["%s"]:  map PASSED' % imgfile)
 
+    # interpolation 
+    im = vipy.image.RandomImage(128,256)
+    im.resize(256,256, interp='bilinear')
+    im.resize(256,256, interp='bicubic')
+    im.resize(256,256, interp='nearest')
+    try:
+        im.resize(256,256, interp='somethingelse')        
+        Failed()
+    except Failed:
+        raise
+    except:
+        pass
+    print('[test_image.image]["%s"]:  interpolation PASSED' % imgfile)    
+    
     
     
 def test_imagedetection():

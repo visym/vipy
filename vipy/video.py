@@ -839,7 +839,11 @@ class Scene(VideoCategory):
             assert all([isinstance(a, vipy.object.Activity) for a in tolist(activities)]), "Invalid input - Must be vipy.object.Activity or list of vipy.object.Activities"
             self._activities = {a.id():a for a in tolist(activities)}   # overwrite
             return self
-    
+
+    def categories(self):
+        """Return a set of all categories in all activities and tracks in this sccene"""
+        return set([a.category() for a in self.activities().values()]+[t.category() for t in self.tracks().values()])
+        
     def hasactivities(self):
         return len(self._activities) > 0
 
@@ -913,7 +917,7 @@ class Scene(VideoCategory):
     def thumbnail(self, outfile=None, frame=0):
         """Return annotated frame=k of video, save annotation visualization to provided outfile"""
         return self.__getitem__(frame).savefig(outfile if outfile is not None else temppng())
-
+        
     def activityclip(self, padframes=0):
         """Return a list of vipy.video.Scene() each clipped to be centered on a single activity, with an optional padframes before and after.  The Scene() category is updated to be the activity, and only the objects participating in the activity are included"""
         vid = self.clone(flushforward=True)

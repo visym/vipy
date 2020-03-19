@@ -478,8 +478,20 @@ class Image(object):
         return im
     
 
+    def _interp_string_to_pil_interpolation(self, interp):
+        """Internal function to convert interp string to interp object"""
+        assert interp in ['bilinear', 'bicubic', 'nearest'], "Invalid interp - Must be in ['bilinear', 'bicubic', 'nearest']"
+        if interp == 'bilinear':
+            return PIL.Image.BILINEAR
+        elif interp == 'bicubic':
+            return PIL.Image.BICUBIC
+        elif interp == 'nearest':
+            return PIL.Image.NEAREST
+        else:
+            raise  # should never get here
+        
     # Spatial transformations
-    def resize(self, cols=None, rows=None, width=None, height=None, interp=PIL.Image.BILINEAR):
+    def resize(self, cols=None, rows=None, width=None, height=None, interp='bilinear'):
         """Resize the image buffer to (rows x cols) with bilinear interpolation.  If rows or cols is provided, rescale image maintaining aspect ratio"""
         assert not (cols is not None and width is not None), "Define either width or cols"
         assert not (rows is not None and height is not None), "Define either height or rows"
@@ -493,25 +505,25 @@ class Image(object):
             self.rescale(scale)
 
         else:
-            self._array = np.array(self.load().pil().resize((cols, rows), interp))
+            self._array = np.array(self.load().pil().resize((cols, rows), self._interp_string_to_pil_interpolation(interp)))
         return self
 
-    def resize_like(self, im, interp=PIL.Image.BILINEAR):
+    def resize_like(self, im, interp='bilinear'):
         """Resize image buffer to be the same size as the provided vipy.image.Image()"""
         assert isinstance(im, Image), "Invalid input - Must be vipy.image.Image()"
         return self.resize(im.width(), im.height(), interp=interp)
     
-    def rescale(self, scale=1, interp=PIL.Image.BILINEAR):
+    def rescale(self, scale=1, interp='bilinear'):
         """Scale the image buffer by the given factor - NOT idemponent"""
         (height, width) = self.load().shape()
-        self._array = np.array(self.pil().resize((int(np.round(scale * width)), int(np.round(scale * height))), interp))
+        self._array = np.array(self.pil().resize((int(np.round(scale * width)), int(np.round(scale * height))), self._interp_string_to_pil_interpolation(interp)))
         return self
 
-    def maxdim(self, dim, interp=PIL.Image.BILINEAR):
+    def maxdim(self, dim, interp='bilinear'):
         """Resize image preserving aspect ratio so that maximum dimension of image = dim"""
         return self.rescale(float(dim) / float(np.maximum(self.height(), self.width())), interp=interp)
 
-    def mindim(self, dim, interp=PIL.Image.BILINEAR):
+    def mindim(self, dim, interp='bilinear'):
         """Resize image preserving aspect ratio so that minimum dimension of image = dim"""
         return self.rescale(float(dim) / float(np.minimum(self.height(), self.width())), interp=interp)
 
@@ -1095,13 +1107,13 @@ class ImageDetection(ImageCategory):
             warnings.warn("Degenerate bounding box does not intersect image - Ignoring")
         return self
 
-    def rescale(self, scale=1, interp=PIL.Image.BILINEAR):
+    def rescale(self, scale=1, interp='bilinear'):
         """Rescale image buffer and bounding box"""
         self = super(ImageDetection, self).rescale(scale, interp=interp)
         self.bbox = self.bbox.rescale(scale)
         return self
 
-    def resize(self, cols=None, rows=None, interp=PIL.Image.BILINEAR):
+    def resize(self, cols=None, rows=None, interp='bilinear'):
         """Resize image buffer and bounding box so that the image buffer is size (height=cols, width=row).  If only cols or rows is provided, then scale the image appropriately"""
         assert cols is not None or rows is not None, "Invalid input"
         sx = (float(cols) / self.width()) if cols is not None else 1.0
@@ -1129,13 +1141,13 @@ class ImageDetection(ImageCategory):
         self.bbox = BoundingBox(xmin=0, ymin=0, xmax=self.width(), ymax=self.height())
         return self
 
-    def mindim(self, dim, interp=PIL.Image.BILINEAR):
+    def mindim(self, dim, interp='bilinear'):
         """Resize image preserving aspect ratio so that minimum dimension of image = dim"""
-        return super(ImageDetection, self).mindim(dim, interp)  # calls self.rescale() which will update boxes
+        return super(ImageDetection, self).mindim(dim, interp=interp)  # calls self.rescale() which will update boxes
 
-    def maxdim(self, dim, interp=PIL.Image.BILINEAR):
+    def maxdim(self, dim, interp='bilinear'):
         """Resize image preserving aspect ratio so that maximum dimension of image = dim"""        
-        return super(ImageDetection, self).maxdim(dim, interp)  # calls self.rescale() will will update boxes
+        return super(ImageDetection, self).maxdim(dim, interp=interp)  # calls self.rescale() will will update boxes
 
     def centersquare(self):
         """Crop image of size (NxN) in the center, such that N=min(width,height), keeping the image centroid constant, new bounding box may be degenerate"""
@@ -1330,13 +1342,13 @@ class Scene(ImageCategory):
         self._objectlist = [bb.imclip(self.numpy()) for bb in self._objectlist if bb.hasoverlap(self.numpy())]
         return self
 
-    def rescale(self, scale=1, interp=PIL.Image.BILINEAR):
+    def rescale(self, scale=1, interp='bilinear'):
         """Rescale image buffer and all bounding boxes - Not idemponent"""
         self = super(ImageCategory, self).rescale(scale, interp=interp)
         self._objectlist = [bb.rescale(scale) for bb in self._objectlist]
         return self
 
-    def resize(self, cols=None, rows=None, interp=PIL.Image.BILINEAR):
+    def resize(self, cols=None, rows=None, interp='bilinear'):
         """Resize image buffer to (height=rows, width=cols) and transform all bounding boxes accordingly.  If cols or rows is None, then scale isotropically"""
         assert cols is not None or rows is not None, "Invalid input"
         sx = (float(cols) / self.width()) if cols is not None else 1.0
@@ -1399,13 +1411,13 @@ class Scene(ImageCategory):
         self._objectlist = [bb.rot90ccw(H, W) for bb in self._objectlist]
         return self
 
-    def maxdim(self, dim, interp=PIL.Image.BILINEAR):
+    def maxdim(self, dim, interp='bilinear'):
         """Resize scene preserving aspect ratio so that maximum dimension of image = dim, update all objects"""
-        return super(ImageCategory, self).maxdim(dim, interp)  # will call self.rescale() which will update boxes
+        return super(ImageCategory, self).maxdim(dim, interp=interp)  # will call self.rescale() which will update boxes
 
-    def mindim(self, dim, interp=PIL.Image.BILINEAR):
+    def mindim(self, dim, interp='bilinear'):
         """Resize scene preserving aspect ratio so that minimum dimension of image = dim, update all objects"""
-        return super(ImageCategory, self).mindim(dim, interp)  # will call self.rescale() which will update boxes
+        return super(ImageCategory, self).mindim(dim, interp=interp)  # will call self.rescale() which will update boxes
 
     def crop(self, bbox):
         """Crop the image buffer using the supplied bounding box object, clipping the box to the image rectangle, update all scene objects"""        
