@@ -84,7 +84,7 @@ class Image(object):
             assert isurl(url), 'Invalid URL'
         self._url = url
         if array is not None:
-            assert isnumpy(array), 'Invalid Array'
+            assert isnumpy(array), 'Invalid Array - Type "%s" must be np.array()' % (str(type(array)))
         self.array(array)
 
         # Guess RGB colorspace if three channel uint8 if colorspace is not provided
