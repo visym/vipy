@@ -357,6 +357,16 @@ class Image(object):
         img = self.numpy() if self.iscolor() else np.expand_dims(self.numpy(), 2)  # HxW -> HxWx1
         return torch.from_numpy(np.expand_dims(img,0).transpose(0,3,1,2))  # HxWxC -> 1xCxHxW
 
+    def fromtorch(self, x):
+        """Convert a 1xCxHxW torch.FloatTensor to HxWxC np.float32 numpy array(), returns new Image() instance with selected colorspace"""
+        try_import('torch'); import torch
+        assert isinstance(x, torch.Tensor), "Invalid input type '%s'- must be torch.Tensor" % (str(type(x)))
+        img = np.copy(np.squeeze(x.permute(2,3,1,0).detach().numpy()))  # 1xCxHxW -> HxWxC, copied
+        colorspace = 'float' if img.dtype == np.float32 else None
+        colorspace = 'rgb' if img.dtype == np.uint8 and img.shape[2] == 3 else colorspace  # assumed
+        colorspace = 'lum' if img.dtype == np.uint8 and img.shape[2] == 1 else colorspace        
+        return Image(array=img, colorspace=colorspace)
+    
     def nofilename(self):
         self._filename = None
         return self
