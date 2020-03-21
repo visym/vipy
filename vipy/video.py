@@ -1016,8 +1016,8 @@ class Scene(VideoCategory):
         return self
 
     def annotate(self, outfile=None, n_processes=1, verbose=True, fontsize=10, captionoffset=(0,0), textfacecolor='white', textfacealpha=1.0, shortlabel=True, boxalpha=0.25, d_category2color={'Person':'green', 'Vehicle':'blue', 'Object':'red'}, categories=None, nocaption=False, nocaption_withstring=[]):
-        """Generate a video visualization of all annotated objects and activities in the video, at the resolution and framerate of the underlying video, save as outfile.
-        This function does not play the video, it only generates an annotation video.  Use show() to annotation and play.
+        """Generate a video visualization of all annotated objects and activities in the video, at the resolution and framerate of the underlying video, save as outfile and return a new video object where the frames contain the overlay.
+        This function does not play the video, it only generates an annotation video.  Use show() which is equivalent to annotate().play()
         In general, this function should not be run on very long videos, as it requires loading the video framewise into memory, try running on clips instead.
         """
         outfile = outfile if outfile is not None else tempMP4()        
@@ -1055,8 +1055,9 @@ class Scene(VideoCategory):
                                    categories=categories,
                                    nocaption=nocaption,
                                    nocaption_withstring=nocaption_withstring).numpy() for k in range(0, len(vid))]  # SLOW for large videos
-            vid._array = np.stack([np.array(PIL.Image.fromarray(img).convert('RGB')) for img in imgs], axis=0)            
-        return vid.saveas(outfile)
+            vid._array = np.stack([np.array(PIL.Image.fromarray(img).convert('RGB')) for img in imgs], axis=0)
+        return vid.filename(vid.saveas(outfile))
+
 
     def show(self, outfile=None, verbose=True, n_processes=1, fontsize=10, captionoffset=(0,0), textfacecolor='white', textfacealpha=1.0, shortlabel=True, boxalpha=0.25, d_category2color={'Person':'green', 'Vehicle':'blue', 'Object':'red'}, categories=None, nocaption=False, nocaption_withstring=[]):
         """Generate an annotation video saved to outfile (or tempfile if outfile=None) and show it using ffplay when it is done exporting"""

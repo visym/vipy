@@ -94,7 +94,7 @@ def videomontage(vidlist, imgheight, imgwidth, gridrows=None, gridcols=None, asp
     if verbose:
         print('[vipy.visualize.videomontage]: Loading %d videos' % len(vidlist))
         
-    maxlength = max([len(v.mindim(min(imgheight, imgwidth)).load()) for v in vidlist])  # triggers load
+    maxlength = max([len(v.load()) for v in vidlist])  # triggers load, make sure that the vidlist videos have a reasonably small frames
     
     if verbose:
         print('[vipy.visualize.videomontage]: Maximum video length (frames) = %d' % (maxlength))
