@@ -450,7 +450,7 @@ class Video(object):
     def clip(self, startframe, endframe):
         """Load a video clip betweeen start and end frames"""
         assert startframe <= endframe and startframe >= 0, "Invalid start and end frames (%s, %s)" % (str(startframe), str(endframe))
-        assert not self.isloaded(), "Filters can only be applied prior to load()"
+        assert not self.isloaded(), "Filters can only be applied prior to load() - Try calling flush() first"
         self._ffmpeg = self._ffmpeg.trim(start_frame=startframe, end_frame=endframe)\
                                    .setpts('PTS-STARTPTS')  # reset timestamp to 0 after trim filter
         self._startframe = startframe if self._startframe is None else self._startframe + startframe  # for __repr__ only
@@ -460,26 +460,26 @@ class Video(object):
     def cliptime(self, startsecs, endsecs):
         """Load a video clip betweeen start seconds and end seconds, should be initialized by constructor, which will work but will not set __repr__ correctly"""
         assert startsecs <= endsecs and startsecs >= 0, "Invalid start and end seconds (%s, %s)" % (str(startsecs), str(endsecs))
-        assert not self.isloaded(), "Filters can only be applied prior to load()"
+        assert not self.isloaded(), "Filters can only be applied prior to load() - Try calling flush() first"
         self._ffmpeg = self._ffmpeg.trim(start=startsecs, end=endsecs)\
                                    .setpts('PTS-STARTPTS')  # reset timestamp to 0 after trim filter
         return self
     
     def rot90cw(self):
         """Rotate the video 90 degrees clockwise, can only be applied prior to load()"""
-        assert not self.isloaded(), "Filters can only be applied prior to load()"
+        assert not self.isloaded(), "Filters can only be applied prior to load() - Try calling flush() first"
         self._ffmpeg = self._ffmpeg.filter('transpose', 1)
         return self
 
     def rot90ccw(self):
         """Rotate the video 90 degrees counter-clockwise, can only be applied prior to load()"""        
-        assert not self.isloaded(), "Filters can only be applied prior to load()"
+        assert not self.isloaded(), "Filters can only be applied prior to load() - Try calling flush() first"
         self._ffmpeg = self._ffmpeg.filter('transpose', 2)
         return self
 
     def rescale(self, s):
         """Rescale the video by factor s, such that the new dimensions are (s*H, s*W), can only be applied prior load()"""
-        assert not self.isloaded(), "Filters can only be applied prior to load()"
+        assert not self.isloaded(), "Filters can only be applied prior to load() - Try calling flush() first"
         self._ffmpeg = self._ffmpeg.filter('scale', 'iw*%1.2f' % s, 'ih*%1.2f' % s)
         return self
 
@@ -487,25 +487,25 @@ class Video(object):
         """Resize the video to be (rows, cols), can only be applied prior to load()"""
         if rows is None and cols is None:
             return self
-        assert not self.isloaded(), "Filters can only be applied prior to load()"
+        assert not self.isloaded(), "Filters can only be applied prior to load() - Try calling flush() first"
         self._ffmpeg = self._ffmpeg.filter('scale', cols if cols is not None else -1, rows if rows is not None else -1)
         return self
 
     def mindim(self, dim):
         """Resize the video so that the minimum of (width,height)=dim, preserving aspect ratio"""
-        assert not self.isloaded(), "Filters can only be applied prior to load()"
+        assert not self.isloaded(), "Filters can only be applied prior to load() - Try calling flush() first"
         (H,W) = self._preview().load().shape()  # yuck, need to get image dimensions before filter
         return self.resize(cols=dim) if W<H else self.resize(rows=dim)
 
     def maxdim(self, dim):
         """Resize the video so that the maximum of (width,height)=dim, preserving aspect ratio"""
-        assert not self.isloaded(), "Filters can only be applied prior to load()"
+        assert not self.isloaded(), "Filters can only be applied prior to load() - Try calling flush() first"
         (H,W) = self._preview().load().shape()  # yuck, need to get image dimensions before filter
         return self.resize(cols=dim) if W>H else self.resize(rows=dim)
     
     def crop(self, bb):
         """Spatially crop the video using the supplied vipy.geometry.BoundingBox, can only be applied prior to load()"""
-        assert not self.isloaded(), "Filters can only be applied prior to load()"
+        assert not self.isloaded(), "Filters can only be applied prior to load() - Try calling flush() first"
         assert isinstance(bb, vipy.geometry.BoundingBox), "Invalid input"
         self._ffmpeg = self._ffmpeg.crop(bb.xmin(), bb.ymin(), bb.width(), bb.height())
         return self
@@ -815,7 +815,7 @@ class Scene(VideoCategory):
         if not self.isloaded():
             self.mindim(mindim).load()
         framelist = [int(np.round(f)) for f in np.linspace(0, len(self)-1, n)]
-        imframes = [self.frame(k).padcrop(self.frame(k).boundingbox().maxsquare().dilate(dilate)).mindim(mindim, PIL.Image.NEAREST) if (self.frame(k).boundingbox() is not None) else
+        imframes = [self.frame(k).padcrop(self.frame(k).boundingbox().maxsquare().dilate(dilate)).mindim(mindim, interp='nearest') if (self.frame(k).boundingbox() is not None) else
                     self.frame(k).maxsquare() for k in framelist]
         imframes = [im.savefig(fontsize=fontsize).rgb() for im in imframes]
         return vipy.visualize.montage(imframes, imgwidth=mindim, imgheight=mindim)
@@ -907,7 +907,7 @@ class Scene(VideoCategory):
         
     def framerate(self, fps):
         """Change the input framerate for the video and update frame indexes for all annotations"""
-        assert not self.isloaded(), "Filters can only be applied prior to load()"        
+        assert not self.isloaded(), "Filters can only be applied prior to load() - Try calling flush() first"        
         self._ffmpeg = self._ffmpeg.filter('fps', fps=fps, round='up')
         self._tracks = {k:t.framerate(fps) for (k,t) in self._tracks.items()}
         self._activities = {k:a.framerate(fps) for (k,a) in self._activities.items()}        
@@ -964,21 +964,21 @@ class Scene(VideoCategory):
     
     def crop(self, bb):
         """Crop the video using the supplied box, update tracks relative to crop, bbox must be within the image rectangle (this is not checked)"""
-        assert not self.isloaded(), "Filters can only be applied prior to load()"
+        assert not self.isloaded(), "Filters can only be applied prior to load() - Try calling flush() first"
         assert isinstance(bb, vipy.geometry.BoundingBox), "Invalid input"
         super(Scene, self).crop(bb)
         self._tracks = {k:t.offset(dx=-bb.xmin(), dy=-bb.ymin()) for (k,t) in self._tracks.items()}
         return self
 
     def rot90ccw(self):
-        assert not self.isloaded(), "Filters can only be applied prior to load()"                
+        assert not self.isloaded(), "Filters can only be applied prior to load() - Try calling flush() first"                
         (H,W) = self._preview().load().shape()  # yuck, need to get image dimensions before filter
         self._tracks = {k:t.rot90ccw(H,W) for (k,t) in self._tracks.items()}
         super(Scene, self).rot90ccw()
         return self
 
     def rot90cw(self):
-        assert not self.isloaded(), "Filters can only be applied prior to load()"                
+        assert not self.isloaded(), "Filters can only be applied prior to load() - Try calling flush() first"                
         (H,W) = self._preview().load().shape()  # yuck, need to get image dimensions before filter
         self._tracks = {k:t.rot90cw(H,W) for (k,t) in self._tracks.items()}
         super(Scene, self).rot90cw()
@@ -986,7 +986,7 @@ class Scene(VideoCategory):
 
     def resize(self, rows=None, cols=None):
         """Resize the video to (rows, cols), preserving the aspect ratio if only rows or cols is provided"""
-        assert not self.isloaded(), "Filters can only be applied prior to load()"                
+        assert not self.isloaded(), "Filters can only be applied prior to load() - Try calling flush() first"                
         assert rows is not None or cols is not None, "Invalid input"
         (H,W) = self._preview().load().shape()  # yuck, need to get image dimensions before filter
         sy = rows / float(H) if rows is not None else cols / float(W)
@@ -998,18 +998,18 @@ class Scene(VideoCategory):
 
     def mindim(self, dim):
         """Resize the video so that the minimum of (width,height)=dim, preserving aspect ratio"""
-        assert not self.isloaded(), "Filters can only be applied prior to load()"                
+        assert not self.isloaded(), "Filters can only be applied prior to load() - Try calling flush() first"                
         (H,W) = self._preview().load().shape()  # yuck, need to get image dimensions before filter
         return self.resize(cols=dim) if W<H else self.resize(rows=dim)
 
     def maxdim(self, dim):
         """Resize the video so that the maximum of (width,height)=dim, preserving aspect ratio"""
-        assert not self.isloaded(), "Filters can only be applied prior to load()"                
+        assert not self.isloaded(), "Filters can only be applied prior to load() - Try calling flush() first"                
         (H,W) = self._preview().load().shape()  # yuck, need to get image dimensions before filter
         return self.resize(cols=dim) if W>H else self.resize(rows=dim)
     
     def rescale(self, s):
-        assert not self.isloaded(), "Filters can only be applied prior to load()"                
+        assert not self.isloaded(), "Filters can only be applied prior to load() - Try calling flush() first"                
         (H,W) = self._preview().load().shape()  # yuck, need to get image dimensions before filter
         self._tracks = {k:t.rescale(s) for (k,t) in self._tracks.items()}
         super(Scene, self).rescale(s)

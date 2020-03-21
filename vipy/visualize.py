@@ -7,6 +7,7 @@ from vipy.show import savefig
 from collections import defaultdict
 import time
 import PIL
+import vipy.video
 
 
 def montage(imlist, imgheight, imgwidth, gridrows=None, gridcols=None, aspectratio=1, crop=False, skip=True, border=1, border_bgr=(128,128,128), do_flush=False, verbose=False):
@@ -87,6 +88,21 @@ def montage(imlist, imgheight, imgwidth, gridrows=None, gridcols=None, aspectrat
 
     return Image(array=img_montage, colorspace=imlist[0].colorspace())
 
+
+def videomontage(vidlist, imgheight, imgwidth, gridrows=None, gridcols=None, aspectratio=1, crop=False, skip=True, border=1, border_bgr=(128,128,128), do_flush=False, verbose=True):
+    """Generate a video montage for the provided videos by creating a image montage for every frame.  This loads every video into memory, so be careful with large montages!"""
+    if verbose:
+        print('[vipy.visualize.videomontage]: Loading %d videos' % len(vidlist))
+        
+    maxlength = max([len(v.mindim(min(imgheight, imgwidth)).load()) for v in vidlist])  # triggers load
+    
+    if verbose:
+        print('[vipy.visualize.videomontage]: Maximum video length (frames) = %d' % (maxlength))
+        
+    montagelist = [montage([v[k % len(v)].centercrop(imgheight, imgwidth) for v in vidlist], imgheight, imgwidth, gridrows, gridcols, aspectratio, crop, skip, border, border_bgr, do_flush, verbose=False)
+                   for k in range(0, maxlength)]
+    return vipy.video.Video(array=np.stack([im.array() for im in montagelist]), colorspace='rgb')
+    
 
 def imagelist(list_of_image_files, outdir, title='Image Visualization', imagewidth=64):
     """Given a list of image filenames wth absolute paths, copy to outdir, and create an index.html file that visualizes each"""

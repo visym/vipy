@@ -1136,10 +1136,10 @@ class ImageDetection(ImageCategory):
     def resize(self, cols=None, rows=None, interp='bilinear'):
         """Resize image buffer and bounding box so that the image buffer is size (height=cols, width=row).  If only cols or rows is provided, then scale the image appropriately"""
         assert cols is not None or rows is not None, "Invalid input"
-        sx = (float(cols) / self.width()) if cols is not None else 1.0
-        sy = (float(rows) / self.height()) if rows is not None else 1.0
-        sx = sx if sx != 1.0 else sy
-        sy = sy if sy != 1.0 else sx        
+        sx = (float(cols) / self.width()) if cols is not None else None
+        sy = (float(rows) / self.height()) if rows is not None else None
+        sx = sy if sx is None else sx
+        sy = sx if sy is None else sy
         self.bbox.scalex(sx)
         self.bbox.scaley(sy)
         if sx == sy:
@@ -1371,10 +1371,10 @@ class Scene(ImageCategory):
     def resize(self, cols=None, rows=None, interp='bilinear'):
         """Resize image buffer to (height=rows, width=cols) and transform all bounding boxes accordingly.  If cols or rows is None, then scale isotropically"""
         assert cols is not None or rows is not None, "Invalid input"
-        sx = (float(cols) / self.width()) if cols is not None else 1.0
-        sy = (float(rows) / self.height()) if rows is not None else 1.0
-        sx = sx if sx != 1.0 else sy
-        sy = sy if sy != 1.0 else sx       
+        sx = (float(cols) / self.width()) if cols is not None else None
+        sy = (float(rows) / self.height()) if rows is not None else None
+        sx = sy if sx is None else sx
+        sy = sx if sy is None else sy        
         self._objectlist = [bb.scalex(sx).scaley(sy) for bb in self._objectlist]        
         if sx == sy:
             self = super(Scene, self).rescale(sx, interp=interp)  # FIXME: if we call resize here, inheritance is screweed up
