@@ -3,7 +3,8 @@ import PIL
 import PIL.Image
 import platform
 import dill
-from vipy.show import imshow, imbbox, savefig, colorlist, closeall
+import vipy.show
+from vipy.show import imshow, imbbox, savefig, colorlist
 from vipy.util import isnumpy, isurl, isimageurl, \
     fileext, tempimage, mat2gray, imwrite, imwritegray, \
     tempjpg, filetail, isimagefile, remkdir, hasextension, \
@@ -832,9 +833,18 @@ class Image(object):
         return np.sum(self.load().array().flatten())
 
     # Image visualization
-    def close(self):
-        closeall()
+    def closeall(self):
+        """Close all open figure windows"""
+        vipy.show.closeall()
         return self
+    
+    def close(self, fignum=None):
+        """Close the requested figure number, or close all of fignum=None"""
+        if fignum is None:
+            return self.closeall()
+        else:
+            vipy.show.close(fignum)
+            return self
     
     def show(self, figure=None, nowindow=False):
         """Display image on screen in provided figure number (clone and convert to RGB colorspace to show), return object"""
