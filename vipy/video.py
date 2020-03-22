@@ -2,7 +2,7 @@ import os
 import dill
 from vipy.util import remkdir, tempMP4, isurl, \
     isvideourl, templike, tempjpg, filetail, tempdir, isyoutubeurl, try_import, isnumpy, temppng, \
-    istuple, islist, isnumber, tolist, filefull, fileext, isS3url, totempdir
+    istuple, islist, isnumber, tolist, filefull, fileext, isS3url, totempdir, flatlist
 from vipy.image import Image
 import vipy.geometry
 import vipy.image
@@ -507,6 +507,8 @@ class Video(object):
         """Spatially crop the video using the supplied vipy.geometry.BoundingBox, can only be applied prior to load()"""
         assert not self.isloaded(), "Filters can only be applied prior to load() - Try calling flush() first"
         assert isinstance(bb, vipy.geometry.BoundingBox), "Invalid input"
+        impreview = self._preview()  # to clip to image rectangle, required for ffmpeg
+        bb = bb.imclipshape(impreview.width(), impreview.height())
         self._ffmpeg = self._ffmpeg.crop(bb.xmin(), bb.ymin(), bb.width(), bb.height())
         return self
 
@@ -951,7 +953,11 @@ class Scene(VideoCategory):
         vid._tracks = {}      # for faster clone
         im = self._preview()  # for faster crop
         return [vid.clone().activities(a).tracks(t).crop(a.boundingbox().dilate(dilate).maxsquare().iminterior(im.width(), im.height())) for (a,t) in zip(activities, tracks)]  
-    
+
+    def activitytube(self, dilate=1.0, padframes=0):
+        """Return a list of vipy.video.Scene() each spatially cropped following activitycrop() and temporally cropped following activityclip()"""
+        return flatlist([a.activitycrop(dilate) for a in self.activityclip(padframes)])
+        
     def clip(self, startframe, endframe):
         """Clip the video to between (startframe, endframe).  This clip is relative to cumulative clip() from the filter chain"""
         super(Scene, self).clip(startframe, endframe)
@@ -963,10 +969,11 @@ class Scene(VideoCategory):
         raise NotImplementedError('use clip() instead')
     
     def crop(self, bb):
-        """Crop the video using the supplied box, update tracks relative to crop, bbox must be within the image rectangle (this is not checked)"""
+        """Crop the video using the supplied box, update tracks relative to crop, bbox is clipped to be within the image rectabnle, otherwise ffmpeg will throw an exception"""
         assert not self.isloaded(), "Filters can only be applied prior to load() - Try calling flush() first"
         assert isinstance(bb, vipy.geometry.BoundingBox), "Invalid input"
-        super(Scene, self).crop(bb)
+        (H,W) = self._preview().shape()  # to clip to image rectangle        
+        super(Scene, self).crop(bb.imclipshape(W,H))
         self._tracks = {k:t.offset(dx=-bb.xmin(), dy=-bb.ymin()) for (k,t) in self._tracks.items()}
         return self
 

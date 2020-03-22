@@ -99,7 +99,7 @@ def videomontage(vidlist, imgheight, imgwidth, gridrows=None, gridcols=None, asp
     if verbose:
         print('[vipy.visualize.videomontage]: Maximum video length (frames) = %d' % (maxlength))
         
-    montagelist = [montage([v[k % len(v)].centercrop(imgheight, imgwidth) for v in vidlist], imgheight, imgwidth, gridrows, gridcols, aspectratio, crop, skip, border, border_bgr, do_flush, verbose=False)
+    montagelist = [montage([v[k % len(v)].mindim(max(imgheight, imgwidth)).centercrop(imgheight, imgwidth) for v in vidlist], imgheight, imgwidth, gridrows, gridcols, aspectratio, crop, skip, border, border_bgr, do_flush, verbose=False)
                    for k in range(0, maxlength)]
     return vipy.video.Video(array=np.stack([im.array() for im in montagelist]), colorspace='rgb')
     
