@@ -354,8 +354,16 @@ def test_scene_union():
     (rows, cols) = vid.shape()
     track1 = vipy.object.Track(label='Person1').add(0, vipy.geometry.BoundingBox(10,20,30,40)).add(2, vipy.geometry.BoundingBox(20,30,40,50))
     track2 = vipy.object.Track(label='Person2').add(1, vipy.geometry.BoundingBox(10,20,30,40)).add(3, vipy.geometry.BoundingBox(30,40,50,60))
-    activity = vipy.object.Activity(label='act1', startframe=0, endframe=2).add(track1).add(track2)
+    activity = vipy.object.Activity(label='act1', startframe=0, endframe=3).add(track1).add(track2)
 
+    assert track1.boundingbox().ulbr() == (10,20,40,50)
+    assert track2.boundingbox().ulbr() == (10,20,50,60)
+    assert activity.boundingbox().ulbr() == vipy.geometry.BoundingBox(10,20,50,60).ulbr()
+    assert activity[0][0].ulbr() == vipy.geometry.BoundingBox(10,20,30,40).ulbr()
+    assert activity[3][0].ulbr() == vipy.geometry.BoundingBox(30,40,50,60).ulbr()                
+    assert activity[1][0].ulbr() == track1[1].ulbr()
+    assert activity[1][1].ulbr() == track2[1].ulbr()
+    
     # By reference
     assert activity.tracks()[track1.id()].category() == 'Person1'
     track1.category('PersonA')

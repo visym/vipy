@@ -230,6 +230,7 @@ class Track(object):
             return self._shortlabel
 
     def during(self, k):
+        """Is frame during the time interval (startframe, endframe) inclusive?"""        
         return k >= self.startframe() and k <= self.endframe()
 
     def offset(self, dt=0, dx=0, dy=0):
@@ -404,6 +405,7 @@ class Activity(object):
         return any([tid == trackid for tid in self._tracks.keys()])
             
     def during(self, frame):
+        """Is frame during the time interval (startframe, endframe) inclusive?"""
         return int(frame) >= self._startframe and int(frame) <= self._endframe
 
     def spatial_iou(self, other):
@@ -436,9 +438,9 @@ class Activity(object):
         return self._id
 
     def boundingbox(self):
-        """The bounding box of an activity is the smallest bounding box for all tracks in the activity, or None of there are no boxes""" 
-        boxes = [bb for k in range(self.startframe(), self.endframe()) for bb in self[k] if bb is not None]
-        return boxes[0].union(boxes[1:]) if len(boxes)>0 else None
+        """The bounding box of an activity is the smallest bounding box for all tracks in the activity (inclusive of start and endframes), or None of there are no boxes""" 
+        boxes = [bb for k in range(self.startframe(), self.endframe()+1) for bb in self[k] if bb is not None]
+        return boxes[0].clone().union(boxes[1:]).category(self.category()) if len(boxes)>0 else None
 
     def clone(self):
         return copy.deepcopy(self)
