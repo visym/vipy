@@ -284,7 +284,7 @@ class Track(object):
 
     def clip(self, startframe, endframe):
         """Clip a track to be within (startframe,endframe) with strict boundary handling"""
-        assert self._boundary is not 'strict' or (startframe >= self.startframe() and endframe <= self.endframe()), "Requested (startframe,endframe) of clip (%d,%d) must be within track (%d,%d)" % (startframe, endframe, self.startframe(), self.endframe())
+        assert self._boundary != 'strict' or (startframe >= self.startframe() and endframe <= self.endframe()), "Requested (startframe,endframe) of clip (%d,%d) must be within track (%d,%d)" % (startframe, endframe, self.startframe(), self.endframe())
         self.add(startframe, self[startframe])
         self.add(endframe, self[endframe])
         (self._keyframes, self._keyboxes) = zip(*[(f,bb) for (f,bb) in zip(self._keyframes, self._keyboxes) if f>=startframe and f<=endframe])        
