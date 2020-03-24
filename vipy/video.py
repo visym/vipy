@@ -970,7 +970,7 @@ class Scene(VideoCategory):
         raise NotImplementedError('use clip() instead')
     
     def crop(self, bb):
-        """Crop the video using the supplied box, update tracks relative to crop, bbox is clipped to be within the image rectabnle, otherwise ffmpeg will throw an exception"""
+        """Crop the video using the supplied box, update tracks relative to crop, bbox is clipped to be within the image rectangle, otherwise ffmpeg will throw an exception"""
         assert not self.isloaded(), "Filters can only be applied prior to load() - Try calling flush() first"
         assert isinstance(bb, vipy.geometry.BoundingBox), "Invalid input"
         (H,W) = self._preview().shape()  # to clip to image rectangle        

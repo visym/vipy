@@ -17,7 +17,7 @@ def montage(imlist, imgheight, imgwidth, gridrows=None, gridcols=None, aspectrat
          * imlist: iterable of vipy.image.Image objects which is used to montage rowwise
          * (imgheight, imgwidth):  the size of each individual image in the grid
          * (gridrows, gridheight):  The number of images per row, and number of images per column.  This defines the montage shape.
-         * aspectratio.  This is an optional parameter which defines the shape of the montage without specifying the gridrows, gridcols input
+         * aspectratio.  This is an optional parameter which defines the shape of the montage as (gridcols/gridrows) without specifying the gridrows, gridcols input
          * crop=[True|False]:  Whether the vipy.image.Image objects should call crop(), which will trigger a load
          * skip=[True|False]:  Whether images should be skipped on failure to load(), useful for lazy downloading
          * border:  a border of size in pixels surrounding each image in the grid

@@ -285,9 +285,11 @@ class Track(object):
 
     def clip(self, startframe, endframe):
         """Clip a track to be within (startframe,endframe) with strict boundary handling"""
-        assert self._boundary != 'strict' or (startframe >= self.startframe() and endframe <= self.endframe()), "Requested (startframe,endframe) of clip (%d,%d) must be within track (%d,%d)" % (startframe, endframe, self.startframe(), self.endframe())
-        self.add(startframe, self[startframe])
-        self.add(endframe, self[endframe])
+        #assert self._boundary != 'strict' or (startframe >= self.startframe() and endframe <= self.endframe()), "Requested (startframe,endframe) of clip (%d,%d) must be within track (%d,%d)" % (startframe, endframe, self.startframe(), self.endframe())
+        if self[startframe] is not None:
+            self.add(startframe, self[startframe])
+        if self[endframe] is not None:
+            self.add(endframe, self[endframe])
         (self._keyframes, self._keyboxes) = zip(*[(f,bb) for (f,bb) in zip(self._keyframes, self._keyboxes) if f>=startframe and f<=endframe])        
         self._boundary = 'strict'
         return self
@@ -439,8 +441,9 @@ class Activity(object):
 
     def boundingbox(self):
         """The bounding box of an activity is the smallest bounding box for all tracks in the activity (inclusive of start and endframes), or None of there are no boxes""" 
-        boxes = [bb for k in range(self.startframe(), self.endframe()+1) for bb in self[k] if bb is not None]
-        return boxes[0].clone().union(boxes[1:]).category(self.category()) if len(boxes)>0 else None
+        #boxes = [bb for k in range(self.startframe(), self.endframe()+1) for bb in self[k] if bb is not None]
+        boxes = [t.clone().clip(self.startframe(), self.endframe()+1).boundingbox() for (i,t) in self.tracks().items()]
+        return boxes[0].clone().union(boxes[1:]) if len(boxes)>0 else None
 
     def clone(self):
         return copy.deepcopy(self)
