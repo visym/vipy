@@ -558,8 +558,15 @@ def filepath(filename):
     return head
 
 
+def delpath(indir, filename):
+    """Return c/d.ext for filename /a/b/c/d.ext and indir /a/b"""
+    assert indir in filename, 'Path "%s" not found in filename "%s"' % (indir, filename)
+    indir = os.path.join(indir, '')  # /a/b -> /a/b/
+    return filename.split(indir)[1]
+
+    
 def newpath(filename, newdir):
-    """Return /a/b for filename /a/b/c.ext"""
+    """Return /d/e/c.ext for filename /a/b/c.ext and newdir /d/e/"""
     (head, tail) = os.path.split(filename)
     return os.path.join(newdir, tail)
 
@@ -786,9 +793,11 @@ def istuple(x):
 
 
 def tolist(x):
-    """Convert a python object to a singleton list if not already a list"""
+    """Convert a python tuple or singleton object to a list if not already a list """
     if type(x) is list:
         return x
+    elif type(x) is tuple:
+        return list(x)
     else:
         return [x]
 

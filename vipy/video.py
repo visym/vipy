@@ -749,7 +749,8 @@ class Scene(VideoCategory):
             activities = activities if isinstance(activities, list) or isinstance(activities, tuple) else [activities]  # canonicalize            
             assert all([isinstance(a, vipy.object.Activity) for a in activities]), "Invalid activity input; activities=[vipy.object.Activity(), ...]"
             self._activities = {a.id():a for a in activities}
-
+            self._tracks.update( {tid:t for (aid,a) in self._activities.items() for (tid,t) in a.tracks().items()} )
+            
         if framerate is not None:
             self.framerate(framerate)
             
@@ -1016,12 +1017,53 @@ class Scene(VideoCategory):
         return self.resize(cols=dim) if W>H else self.resize(rows=dim)
     
     def rescale(self, s):
+        """Spatially rescale the scene by a constant scale factor"""
         assert not self.isloaded(), "Filters can only be applied prior to load() - Try calling flush() first"                
         (H,W) = self._preview().load().shape()  # yuck, need to get image dimensions before filter
         self._tracks = {k:t.rescale(s) for (k,t) in self._tracks.items()}
         super(Scene, self).rescale(s)
         return self
 
+    def union(self, other, temporal_iou_threshold=0.5, spatial_iou_threshold=0.5, strict=True):
+        """Compute the union two scenes as the set of unique activities.  
+
+           A pair of activities is non-unique if they overlap spatially and temporally by a given IoU threshold.      
+  
+           Input:
+             -spatial_iou_threshold:  The intersection over union threshold for an activity bounding box (the union of all tracks within the activity) to be declared to be overlapping
+             -temporal_iou_threshold:  The intersection over uniion threshold for a temporal bounding box for a pair of activities to be declared overlapping
+             -strict:  REquire both scenes to share the same underlying video filename
+
+           Output:
+             -Updates this scene to include the non-overlapping activities from other           
+        """
+        
+        assert isinstance(other, Scene), "Invalid input - must be vipy.video.Scene() object and not type=%s" % str(type(other))
+        assert spatial_iou_threshold >= 0 and spatial_iou_threshold <= 1, "invalid spatial_iou_threshold, must be between [0,1]"
+        assert temporal_iou_threshold >= 0 and temporal_iou_threshold <= 1, "invalid temporal_iou_threshold, must be between [0,1]"        
+        if strict:
+            assert self.filename() == other.filename(), "Invalid input - Scenes must have the same underlying video.  Disable this with strict=False."
+
+        d_track_assignment = {}
+        for (i,ti) in self.tracks().items():
+            for (j,tj) in other.tracks().items():
+                if ti.category() == tj.category() and ti.iou(tj) > spatial_iou_threshold:
+                    d_track_assignment[j] = i
+        for (i, ti) in other.tracks().items():
+            if i not in d_track_assignment:
+                self.add(ti)
+                    
+        d_activity_assignment = {}
+        for (i,ai) in self.activities().items():
+            for (j,aj) in other.activities().items():
+                if ai.categories() == aj.categories() and ai.temporal_iou(aj) > temporal_iou_threshold and ai.spatial_iou(aj) > spatial_iou_threshold:
+                    d_activity_assignment[j] = i
+        for (j, aj) in other.activities().items():                    
+            if j not in d_activity_assignment:
+                self.add(aj)  # this groups the tracks in referenced in aj, and does not reassign tracks in the union
+                
+        return self
+    
     def annotate(self, outfile=None, n_processes=1, verbose=True, fontsize=10, captionoffset=(0,0), textfacecolor='white', textfacealpha=1.0, shortlabel=True, boxalpha=0.25, d_category2color={'Person':'green', 'Vehicle':'blue', 'Object':'red'}, categories=None, nocaption=False, nocaption_withstring=[]):
         """Generate a video visualization of all annotated objects and activities in the video, at the resolution and framerate of the underlying video, save as outfile and return a new video object where the frames contain the overlay.
         This function does not play the video, it only generates an annotation video.  Use show() which is equivalent to annotate().play()

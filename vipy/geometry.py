@@ -389,7 +389,7 @@ class BoundingBox():
         return self
 
     def union(self, bb):
-        """Union of one or more bounding boxes with this box"""
+        """Union of one or more bounding boxes with this box"""        
         bblist = tolist(bb)
         assert all([isinstance(bb, BoundingBox) for bb in bblist]), "Invalid BoundingBox() input"
         self._xmin = min([bb.xmin() for bb in bblist] + [self.xmin()])

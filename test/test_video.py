@@ -346,9 +346,50 @@ def test_track():
         assert d.width() == 10 and d.height() == 11
     assert d.xmin() == 1 and d.ymin() == 1
     print('[test_video.track]: interpolation  PASSED')
+
+    
+def test_scene_union():
+    
+    vid = vipy.video.RandomVideo(64,64,32)
+    (rows, cols) = vid.shape()
+    track1 = vipy.object.Track(label='Person1').add(0, vipy.geometry.BoundingBox(10,20,30,40)).add(2, vipy.geometry.BoundingBox(20,30,40,50))
+    track2 = vipy.object.Track(label='Person2').add(1, vipy.geometry.BoundingBox(10,20,30,40)).add(3, vipy.geometry.BoundingBox(30,40,50,60))
+    activity = vipy.object.Activity(label='act1', startframe=0, endframe=2).add(track1).add(track2)
+
+    # By reference
+    assert activity.tracks()[track1.id()].category() == 'Person1'
+    track1.category('PersonA')
+    assert activity.tracks()[track1.id()].category() == 'PersonA'    
+    assert 'PersonA' in activity.categories() 
+    track1.category('Person1')
+    
+    v = vipy.video.Scene(array=vid.array(), colorspace='rgb', category='scene', activities=[activity])
+    vu = v.clone().union(v)
+    assert len(vu.activities())==1
+
+    activity = vipy.object.Activity(label='act2', startframe=0, endframe=3).add(track1).add(track2)
+    v2 = vipy.video.Scene(array=v.array(), colorspace='rgb', category='scene', activities=[activity])
+    vu = v.clone().union(v2)
+    assert len(vu.activities())==2
+    assert vu.categories() == set(['act2', 'act1', 'Person1', 'Person2'])
+    
+    track3 = vipy.object.Track(label='Person3').add(1, vipy.geometry.BoundingBox(10,20,30,40)).add(3, vipy.geometry.BoundingBox(30,40,50,60))    
+    activity = vipy.object.Activity(label='act1', startframe=0, endframe=2).add(track1).add(track3)
+    v2 = vipy.video.Scene(array=vid.array(), colorspace='rgb', category='scene', activities=[activity])
+    vu = v.clone().union(v2)
+    assert len(vu.categories()) == 4
+
+    track3 = vipy.object.Track(label='Person3').add(0, vipy.geometry.BoundingBox(10,20,30,40)).add(2, vipy.geometry.BoundingBox(20,30,40,100))     
+    activity = vipy.object.Activity(label='act2', startframe=0, endframe=2).add(track1).add(track3)
+    v2 = vipy.video.Scene(array=v.array(), colorspace='rgb', category='scene', activities=[activity])
+    vu = v.clone().union(v2)
+    
+    assert len(vu.categories()) == 5
+    print('[test_video.track]: test_scene_union  PASSED')
     
     
 if __name__ == "__main__":
     test_video()
     test_track()
     _test_scene()
+    test_scene_union()

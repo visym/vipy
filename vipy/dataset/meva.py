@@ -1,5 +1,5 @@
 import os
-from vipy.util import remkdir, readjson, readyaml, findyaml, findvideo, filetail, findjson, filebase, readlist, groupbyasdict, save, flatlist, isstring, tempdir
+from vipy.util import remkdir, readjson, readyaml, findyaml, findvideo, filetail, findjson, filebase, readlist, groupbyasdict, save, flatlist, isstring, tempdir, readcsv, delpath
 from vipy.video import VideoCategory, Scene
 from vipy.object import Track, Activity
 from vipy.geometry import BoundingBox
@@ -98,10 +98,16 @@ class Mevadata_Public_01(object):
                                              'vehicle_turning_left':'Turning left',
                                              'vehicle_turning_right':'Turning right',
                                              'vehicle_u_turn':'Turning around'}
+
+        self._d_oldcategory_to_newcategory = {k:v for (k,v) in readcsv(os.path.join(self.repodir, 'documents', 'activity-name-mapping.csv'))[1:]}
+
         
     def __repr__(self):
         return str('<vipy.dataset.meva: videos="%s", annotations="%s">' % (self.videodir, self.repodir))
 
+    def categories(self):
+        return self.activities()
+    
     def activities(self):
         """Return a list of activities"""
         # This list in the repo is outdated
@@ -133,7 +139,8 @@ class Mevadata_Public_01(object):
         return sorted([x for x in findvideo(self.videodir)])
     
     def _parse_video(self, d_videoname_to_path, d_category_to_shortlabel, types_yamlfile, geom_yamlfile, act_yamlfile, stride=1, verbose=False):
-
+        """Reference: https://gitlab.kitware.com/meva/meva-data-repo/-/blob/master/documents/KPF-specification-v4.pdf"""
+        
         # Read YAML
         if verbose:
             print('[vipy.dataset.meva]: Parsing "%s"' % (act_yamlfile))
@@ -144,10 +151,10 @@ class Mevadata_Public_01(object):
         # Sanity check
         assert act_yamlfile.split('.')[:-2] == geom_yamlfile.split('.')[:-2], "Unmatched activity and geom yaml file"
         assert len(set([types_yaml[0]['meta'], geom_yaml[0]['meta'], act_yaml[0]['meta']]))==1, "Mismatched video name for '%s'" % act_yamlfile
-        videoname = act_yaml[0]['meta']
+        videoname = act_yaml[0]['meta'] if act_yaml[0]['meta'][-4:] != '.avi' else act_yaml[0]['meta'][0:-4]  # strip .avi 
         if videoname not in d_videoname_to_path:
             if verbose:
-                warnings.warn('Invalid video "%s" in "%s" - Ignoring' % (videoname, filebase(act_yamlfile)))
+                print('[vipy.dataset.meva]: Invalid MEVA video "%s" in "%s" - Ignoring' % (videoname, filebase(act_yamlfile)))
             return None
 
         # Parse
@@ -172,7 +179,7 @@ class Mevadata_Public_01(object):
                 bbox = BoundingBox(xmin=bb[0], ymin=bb[1], xmax=bb[2], ymax=bb[3])
                 if not bbox.isvalid():
                     if verbose:
-                        warnings.warn('Invalid bounding box: id1=%s, bbox="%s", file="%s" - Ignoring' % (str(v['id1']), str(bbox), filetail(geom_yamlfile)))
+                        print('[vipy.dataset.meva]: Invalid bounding box: id1=%s, bbox="%s", file="%s" - Ignoring' % (str(v['id1']), str(bbox), delpath(self.repodir, geom_yamlfile)))
                 elif v['id1'] not in d_id1_to_track:
                     d_id1_to_track[v['id1']] = Track(category=d_id1_to_category[v['id1']], framerate=framerate, keyframes=[keyframe], boxes=[bbox], boundary='strict')
                 else:
@@ -184,18 +191,43 @@ class Mevadata_Public_01(object):
         for v in act_yaml:
             if 'act' in v:
                 if 'act2' in v['act']:
-                    category = list(v['act']['act2'].keys())[0]
+                    act2 = v['act']['act2']
+                    if isinstance(act2, set):
+                        category = list(act2)[0]
+                    elif isinstance(act2, dict):
+                        category = list(act2.keys())[0]
+                    else:
+                        raise ValueError('YAML parsing error for "%s"' % str(act2))
                 elif 'act3' in v['act']:
-                    category = list(v['act']['act3'].keys())[0]
+                    act3 = v['act']['act3']
+                    if isinstance(act3, set):
+                        category = list(act3)[0]
+                    elif isinstance(act3, dict):
+                        category = list(act3.keys())[0]
+                    else:
+                        raise ValueError('YAML parsing error for "%s"' % str(act3))
                 else:
                     raise ValueError('Invalid activity YAML - act2 or act3 must be specified')
                 assert len(v['act']['timespan']) == 1, "Multi-span activities not parsed"
+
+                if category not in self.categories():
+                    if category in self._d_oldcategory_to_newcategory:
+                        category = self._d_oldcategory_to_newcategory[category]  # rationalize
+                    else:
+                        raise ValueError('undefined category "%s"' % category)
+                
                 startframe = int(v['act']['timespan'][0]['tsr0'][0])
                 endframe = int(v['act']['timespan'][0]['tsr0'][1])
                 actorid = [x['id1'] for x in v['act']['actors']]
-                tracks = {d_id1_to_track[aid].id():d_id1_to_track[aid] for aid in actorid}
-                vid.add(Activity(category=category, shortlabel=d_category_to_shortlabel[category],
-                                 startframe=startframe, endframe=endframe, tracks=tracks, framerate=framerate, attributes={'src_status':v['act']['src_status']}))
+
+                for aid in actorid:
+                    if not aid in d_id1_to_track:
+                        print('[vipy.dataset.meva]: ActorID %d referenced in activity yaml "%s" not found in geom yaml "%s" - Skipping' % (aid, delpath(self.repodir, act_yamlfile), delpath(self.repodir, geom_yamlfile)))
+                
+                tracks = {d_id1_to_track[aid].id():d_id1_to_track[aid] for aid in actorid if aid in d_id1_to_track}
+                if len(tracks) > 0:
+                    vid.add(Activity(category=category, shortlabel=d_category_to_shortlabel[category],
+                                     startframe=startframe, endframe=endframe, tracks=tracks, framerate=framerate, attributes={'act':v['act']}))
             
         return vid
         
