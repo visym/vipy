@@ -41,7 +41,7 @@ pip install numpy scipy matplotlib dill pillow ffmpeg-python
 
 Optional dependencies
 ```python
-pip install opencv-python ipython h5py nltk bs4 youtube-dl scikit-learn dropbox torch pyyaml dask distributed boto3
+pip install opencv-python ipython h5py nltk bs4 youtube-dl scikit-learn dropbox torch pyyaml dask distributed boto3 pytest
 ```
 
 Contact
