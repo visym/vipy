@@ -69,7 +69,7 @@ def test_image():
     print('[test_image.image]: Invalid URL download: PASSED')
 
     # URL with filename
-    im = Image(url=jpegurl, filename='/tmp/myfile.jpg')
+    im = Image(url=jpegurl, filename=tempjpg())
     print('[test_image.image]:   Image __desc__: %s' % im)
     print('[test_image.image]:   Image length: %d' % len(im))
     im.download()

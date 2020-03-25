@@ -3,7 +3,7 @@ import numpy as np
 import vipy.video
 import vipy.videosearch
 import vipy.object
-from vipy.util import tempjpg, tempdir, Failed, isurl, rmdir
+from vipy.util import tempjpg, tempdir, Failed, isurl, rmdir, totempdir
 from vipy.geometry import BoundingBox
 import pdb
 from vipy.dataset.kinetics import Kinetics400, Kinetics600, Kinetics700
@@ -322,9 +322,10 @@ def _test_scene():
     print('[test_video.scene]: video scenes  PASSED')    
 
 
-    # Saveas 
-    shutil.copy('Video.mp4', '/tmp/Video.mp4')
-    v = vipy.video.Video(filename='/tmp/Video.mp4', startframe=0, endframe=10)
+    # Saveas
+    outfile = totempdir('Video.mp4')
+    shutil.copy('Video.mp4', outfile)
+    v = vipy.video.Video(filename=outfile, startframe=0, endframe=10)
     v.save()
     assert v.hasfilename() and os.path.getsize('Video.mp4') != os.path.getsize(v.filename())
     print('[test_video.scene]: saveas()  PASSED')    
