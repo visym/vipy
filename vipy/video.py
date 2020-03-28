@@ -139,8 +139,6 @@ class Video(object):
             if argname in n.__dict__['kwargs']:
                 n.__dict__['kwargs'][argname] = argval
                 return self
-            else:
-                print(n.__dict__)
         raise ValueError('invalid ffmpeg argument "%s" -> "%s"' % (argname, argval))
                 
     def probe(self):
@@ -286,7 +284,7 @@ class Video(object):
             return self._filename
         
         # Update ffmpeg filter chain with new input node filename
-        newfile = os.path.abspath(os.path.expanduser(newfile))
+        newfile = os.path.normpath(os.path.abspath(os.path.expanduser(newfile)))
         self._update_ffmpeg('filename', newfile)
         self._filename = newfile
         return self
