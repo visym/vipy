@@ -59,13 +59,13 @@ class Video(object):
         assert filename is not None or url is not None or array is not None, 'Invalid constructor - Requires "filename", "url" or "array"'
 
         # FFMPEG installed?
-        self._ffmpeg_exe = shutil.which('ffmpeg'):
+        self._ffmpeg_exe = shutil.which('ffmpeg')
+        self._ffprobe_exe = shutil.which('ffprobe')        
         if self._ffmpeg_exe is None or not os.path.exists(self._ffmpeg_exe):
             warnings.warn('"ffmpeg" executable not found on path, this is required for vipy.video - Install from http://ffmpeg.org/download.html')
-        self._ffprobe_exe = shutil.which('ffprobe'):
-        if self._ffprobe_exe is None or not os.path.exists(self._ffprobe_exe):        
+        if self._ffprobe_exe is None or not os.path.exists(self._ffprobe_exe):
             warnings.warn('"ffprobe" executable not found on path, this is required for vipy.video - Install from http://ffmpeg.org/download.html')            
-                
+
         # Constructor clips
         assert (startframe is not None and endframe is not None) or (startframe is None and endframe is None), "Invalid input - (startframe,endframe) are both required"
         assert (startsec is not None and endsec is not None) or (startsec is None and endsec is None), "Invalid input - (startsec,endsec) are both required"        
