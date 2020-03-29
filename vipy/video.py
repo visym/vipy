@@ -285,7 +285,7 @@ class Video(object):
         
         # Update ffmpeg filter chain with new input node filename
         newfile = os.path.normpath(os.path.abspath(os.path.expanduser(newfile)))
-        self._update_ffmpeg('filename', newfile)
+        self._update_ffmpeg('filename', newfile.encode('unicode_escape'))  # escaped input
         self._filename = newfile
         return self
 
