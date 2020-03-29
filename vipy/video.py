@@ -58,6 +58,13 @@ class Video(object):
         self.attributes = attributes if attributes is not None else {}
         assert filename is not None or url is not None or array is not None, 'Invalid constructor - Requires "filename", "url" or "array"'
 
+        # FFMPEG installed?
+        self._ffmpeg_exe = shutil.which('ffmpeg')
+        if not os.path.exists(self._ffmpeg_exe):
+            raise ImportError('"ffmpeg" executable not found on path, this is required for vipy.video - See http://ffmpeg.org/download.html')
+        if not os.path.exists(shutil.which('ffprobe')):
+            raise ImportError('"ffprobe" executable not found on path, this is required for vipy.video - See http://ffmpeg.org/download.html')
+                
         # Constructor clips
         assert (startframe is not None and endframe is not None) or (startframe is None and endframe is None), "Invalid input - (startframe,endframe) are both required"
         assert (startsec is not None and endsec is not None) or (startsec is None and endsec is None), "Invalid input - (startsec,endsec) are both required"        
@@ -387,10 +394,22 @@ class Video(object):
         if not self.hasfilename():
             raise ValueError('Video file not found')
         im = Image(filename=tempjpg() if outfile is None else outfile)
+
+        # TESTING!
+        #(out, err) = self._ffmpeg.output(im.filename(), vframes=1)\
+        #                         .overwrite_output()\
+        #                         .global_args('-loglevel', 'debug' if verbose else 'error') \
+        #                         .run(capture_stdout=True, capture_stderr=True)
+
+        # TESTING
+        print('<GREG>')       
+        print(self._ffmpeg.output(im.filename(), vframes=1).overwrite_output().global_args('-loglevel', 'debug' if verbose else 'error').compile()) 
         (out, err) = self._ffmpeg.output(im.filename(), vframes=1)\
                                  .overwrite_output()\
                                  .global_args('-loglevel', 'debug' if verbose else 'error') \
-                                 .run(capture_stdout=True, capture_stderr=True)
+                                 .run(capture_stdout=True, capture_stderr=True)       
+        print('</GREG>')
+        
         if not im.hasfilename():
             raise ValueError('Video preview failed - Attempted to load the video and no preview frame was loaded.  This usually occurs for zero length clips.') 
         return im
@@ -971,8 +990,7 @@ class Scene(VideoCategory):
         """Crop the video using the supplied box, update tracks relative to crop, bbox is clipped to be within the image rectangle, otherwise ffmpeg will throw an exception"""
         assert not self.isloaded(), "Filters can only be applied prior to load() - Try calling flush() first"
         assert isinstance(bb, vipy.geometry.BoundingBox), "Invalid input"
-        (H,W) = self._preview().shape()  # to clip to image rectangle        
-        super(Scene, self).crop(bb.imclipshape(W,H))
+        super(Scene, self).crop(bb)  # will clip to image rectangle)
         self._tracks = {k:t.offset(dx=-bb.xmin(), dy=-bb.ymin()) for (k,t) in self._tracks.items()}
         return self
 

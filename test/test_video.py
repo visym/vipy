@@ -112,7 +112,7 @@ def test_video():
     assert vc._array is not None and v._array is None
     vc = v.clone(flush=True)
     assert vc._array is None and v._array is None
-    print('[test_video.scene]: clone  PASSED')        
+    print('[test_video.scene]: clone()  PASSED')        
 
     
 def _test_scene():
@@ -131,14 +131,14 @@ def _test_scene():
         raise
     except:
         pass
-    print('[test_video.scene]: activityclip  PASSED')    
+    print('[test_video.scene]: activityclip()  PASSED')    
     
     # Activitycrop
     v = vipy.video.RandomSceneActivity(64,64,64)
     vc = v.clone(flushforward=True).filename('Video.mp4')
     assert vc._array is None and v._array is not None
     a = vc.activitycrop()
-    print('[test_video.scene]: activitycrop  PASSED (exercise only)')        
+    print('[test_video.scene]: activitycrop()  PASSED - basic only')        
     
     # Downloader
     v = vipy.video.Video(url='http://visym.com/out.mp4').load(ignoreErrors=True)
