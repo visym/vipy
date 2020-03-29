@@ -59,11 +59,12 @@ class Video(object):
         assert filename is not None or url is not None or array is not None, 'Invalid constructor - Requires "filename", "url" or "array"'
 
         # FFMPEG installed?
-        self._ffmpeg_exe = shutil.which('ffmpeg')
-        if not os.path.exists(self._ffmpeg_exe):
-            raise ImportError('"ffmpeg" executable not found on path, this is required for vipy.video - See http://ffmpeg.org/download.html')
-        if not os.path.exists(shutil.which('ffprobe')):
-            raise ImportError('"ffprobe" executable not found on path, this is required for vipy.video - See http://ffmpeg.org/download.html')
+        self._ffmpeg_exe = shutil.which('ffmpeg'):
+        if self._ffmpeg_exe is None or not os.path.exists(self._ffmpeg_exe):
+            warnings.warn('"ffmpeg" executable not found on path, this is required for vipy.video - Install from http://ffmpeg.org/download.html')
+        self._ffprobe_exe = shutil.which('ffprobe'):
+        if self._ffprobe_exe is None or not os.path.exists(self._ffprobe_exe):        
+            warnings.warn('"ffprobe" executable not found on path, this is required for vipy.video - Install from http://ffmpeg.org/download.html')            
                 
         # Constructor clips
         assert (startframe is not None and endframe is not None) or (startframe is None and endframe is None), "Invalid input - (startframe,endframe) are both required"
@@ -395,20 +396,10 @@ class Video(object):
             raise ValueError('Video file not found')
         im = Image(filename=tempjpg() if outfile is None else outfile)
 
-        # TESTING!
-        #(out, err) = self._ffmpeg.output(im.filename(), vframes=1)\
-        #                         .overwrite_output()\
-        #                         .global_args('-loglevel', 'debug' if verbose else 'error') \
-        #                         .run(capture_stdout=True, capture_stderr=True)
-
-        # TESTING
-        print('<GREG>')       
-        print(self._ffmpeg.output(im.filename(), vframes=1).overwrite_output().global_args('-loglevel', 'debug' if verbose else 'error').compile()) 
         (out, err) = self._ffmpeg.output(im.filename(), vframes=1)\
                                  .overwrite_output()\
                                  .global_args('-loglevel', 'debug' if verbose else 'error') \
-                                 .run(capture_stdout=True, capture_stderr=True)       
-        print('</GREG>')
+                                 .run(capture_stdout=True, capture_stderr=True)
         
         if not im.hasfilename():
             raise ValueError('Video preview failed - Attempted to load the video and no preview frame was loaded.  This usually occurs for zero length clips.') 
