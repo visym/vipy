@@ -86,6 +86,8 @@ class Video(object):
                 self._filename = templike(self._url)
             elif isyoutubeurl(self._url):
                 self._filename = os.path.join(tempdir(), '%s' % self._url.split('?')[1])
+            else:
+                self._filename = os.path.join(tempdir(), '%s' % filetail(self._url))                
             if 'VIPY_CACHE' in os.environ and self._filename is not None:
                 self._filename = os.path.join(remkdir(os.environ['VIPY_CACHE']), filetail(self._filename))
 
