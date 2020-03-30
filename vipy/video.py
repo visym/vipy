@@ -77,9 +77,8 @@ class Video(object):
             assert isurl(url), 'Invalid URL "%s" ' % url
             self._url = url
         if filename is not None:
-            #self.filename(filename)
             self._filename = filename
-        else:
+        elif self._url is not None:
             if isS3url(self._url):
                 self._filename = totempdir(self._url)  # Preserve S3 Object ID
             elif isvideourl(self._url):
@@ -87,7 +86,7 @@ class Video(object):
             elif isyoutubeurl(self._url):
                 self._filename = os.path.join(tempdir(), '%s' % self._url.split('?')[1])
             else:
-                self._filename = os.path.join(tempdir(), '%s' % filetail(self._url))                
+                self._filename = totempdir(self._url)  
             if 'VIPY_CACHE' in os.environ and self._filename is not None:
                 self._filename = os.path.join(remkdir(os.environ['VIPY_CACHE']), filetail(self._filename))
 
@@ -320,7 +319,8 @@ class Video(object):
                         break    
                 if not self.hasfilename():
                     raise ValueError('Downloaded file not found "%s.*"' % self.filename())
-            elif url_scheme in ['http', 'https']:
+            
+            elif url_scheme in ['http', 'https'] and isvideourl(self._url):
                 vipy.downloader.download(self._url,
                                          self._filename,
                                          verbose=verbose,
@@ -328,6 +328,7 @@ class Video(object):
                                          sha1=None,
                                          username=None,
                                          password=None)
+                                
             elif url_scheme == 'file':
                 shutil.copyfile(self._url, self._filename)
             elif url_scheme == 's3':
@@ -343,6 +344,18 @@ class Video(object):
                     if 'VIPY_CACHE' in os.environ:
                         self.filename(os.path.join(remkdir(os.environ['VIPY_CACHE']), filetail(self._url)))
                 vipy.downloader.scp(self._url, self.filename(), verbose=verbose)
+ 
+            elif not isvideourl(self._url) and vipy.videosearch.is_downloadable_url(self._url):
+                vipy.videosearch.download(self._url, filefull(self._filename), writeurlfile=False, skip=ignoreErrors, verbose=verbose)
+                for ext in ['mkv', 'mp4', 'webm']:
+                    f = '%s.%s' % (self.filename(), ext)
+                    if os.path.exists(f):
+                        os.symlink(f, self.filename())  # for future load()
+                        self.filename(f)
+                        break    
+                if not self.hasfilename():
+                    raise ValueError('Downloaded filenot found "%s.*"' % self.filename())
+                
             else:
                 raise NotImplementedError(
                     'Invalid URL scheme "%s" for URL "%s"' %

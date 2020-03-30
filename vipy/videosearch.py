@@ -8,6 +8,8 @@ import random
 from vipy.useragent import common_user_agents, complete_user_agents
 from vipy.util import tofilename, remkdir, filepath, filebase, isurl, try_import
 import glob
+from subprocess import DEVNULL, STDOUT
+import subprocess
 
 
 def isactiveyoutuber(username):
@@ -49,6 +51,15 @@ def youtubeuser(tag, n_pages=1):
             if len(link['href']) > 6 and '/user/' == link['href'][0:6]:
                 userlist.append(str('http://www.youtube.com%s' % link['href']))
     return list(set(userlist))
+
+
+def is_downloadable_url(path):
+    """Check to see if youtube-dl can download the path, this requires exeecuting 'youtube-dl $URL -q -j' to see if the returncode is non-zero"""
+    ydl_exe = os.path.join(filepath(sys.executable), 'youtube-dl')
+    if not os.path.exists(ydl_exe):
+        raise ImportError('Optional package "youtube-dl" not installed -  Run "pip install youtube-dl"')
+    retcode = subprocess.call([ydl_exe, path, '-q', '-j'], stdout=DEVNULL, stderr=STDOUT) if isurl(path) else -1
+    return isurl(path) and retcode == 0
 
 
 def youtube(tag, n_pages=1, channel=False, video_limit=None, expected_vid_list=None):
@@ -128,7 +139,7 @@ def download(vidurl, vidfile, skip=False, writeurlfile=True, max_filesize='350m'
             os.remove(f)  # youtube-dl will not overwrite, so we force it
         cmd = '%s %s "%s" -o %s --max-filesize %s --no-check-certificate --user-agent="%s"' % (ydl_exe, '-q' if not verbose else '', vidurl, vidfile, max_filesize, user_agent)  # must be on path            
         if verbose:
-            print('[vipy.videosearch.download]: executing "%s"' % cmd)
+            print('[vipy.videosearch.download]: executing \'%s\'' % cmd)
         erno = os.system(cmd)
         if erno != 0:
             raise ValueError('youtube-dl returned %d' % erno)
