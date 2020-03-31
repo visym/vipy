@@ -178,7 +178,9 @@ class Image(object):
                 elif self.isluminance():
                     self.colorspace('lum')
                 else:
-                    raise ValueError('unknown colorspace "%s"' % str(self.colorspace()))
+                    warnings.warn('unknown colorspace for image "%s" - attempting to coerce to colorspace=float' % str(self._filename))
+                    self._array = np.float32(self._array)
+                    self.colorspace('float')                    
             elif hasextension(self._filename):
                 raise ValueError('Non-standard image extensions require a custom loader')
             else:
@@ -350,6 +352,9 @@ class Image(object):
 
     def pil(self):
         """Convert vipy.image.Image to PIL Image, by reference"""
+        if self.colorspace() == 'float':
+            warnings.warn('Coercing generic colorspace=float to colorspace=rgb for image transformation')
+            self.rgb()
         return PIL.Image.fromarray(self.tonumpy())
 
     def torch(self):
@@ -564,6 +569,12 @@ class Image(object):
                              constant_values=0)
         return self
 
+    def zeropadlike(self, width, height):
+        """Zero pad the image balancing the border so that the resulting image size is (width, height)"""
+        assert width >= self.width() and height >= self.height(), "Invalid input - final (width=%d, height=%d) must be greater than current image size (width=%d, height=%d)" % (width, height, self.width(), self.height())
+        return self.zeropad( (int(np.floor((width - self.width())/2)), int(np.ceil((width - self.width())/2))),
+                             (int(np.floor((height - self.height())/2)), int(np.ceil((height - self.height())/2))))
+                            
     def meanpad(self, padwidth, padheight):
         """Pad image using np.pad constant=image mean by adding padwidth on both left and right , or padwidth=(left,right) for different pre/postpadding,, and padheight on top and bottom or padheight=(top,bottom) for different pre/post padding"""        
         if not isinstance(padwidth, tuple):

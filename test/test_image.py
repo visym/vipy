@@ -520,6 +520,8 @@ def test_imagedetection():
     assert np.allclose(imorig.clone().meanpad( (0,10), (0,20) ).crop().array(), img) and (imorig.clone().meanpad( (0,10), (0,20) ).shape() == (20 + 20, 10 + 40)) and img[0,0] == im.array()[0,0] and im.array()[-1,-1] != 0
     im = imorig.clone().zeropad( (0,10), (0,20) )
     assert np.allclose(imorig.clone().zeropad( (0,10), (0,20) ).crop().array(), img) and (imorig.clone().zeropad( (0,10), (0,20) ).shape() == (20 + 20, 10 + 40)) and img[0,0] == im.array()[0,0] and im.array()[-1,-1] == 0
+    im = imorig.clone().zeropadlike(100, 110)
+    assert im.width() == 100 and im.height() == 110
     print('[test_image.imagedetection]: pad  PASSED')
 
     # imclip
