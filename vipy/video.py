@@ -836,19 +836,20 @@ class Scene(VideoCategory):
     
     def quicklook(self, n=9, dilate=1.5, mindim=256, fontsize=10):
         """Generate a montage of n uniformly spaced annotated frames centered on the union of the labeled boxes in the current frame to show the activity ocurring in this scene at a glance
-           Montage increases rowwise for n uniformly spaced frames, starting from frame zero and ending on the last frame
+           Montage increases rowwise for n uniformly spaced frames, starting from frame zero and ending on the last frame.  This quicklook is most useful when len(self.activities()==1)
+           for generating a quicklook from an activityclip()
         """
         if not self.isloaded():
             self.mindim(mindim).load()
         framelist = [int(np.round(f)) for f in np.linspace(0, len(self)-1, n)]
-        imframes = [self.frame(k).padcrop(self.frame(k).boundingbox().maxsquare().dilate(dilate)).mindim(mindim, interp='nearest') if (self.frame(k).boundingbox() is not None) else
-                    self.frame(k).maxsquare() for k in framelist]
+        imframes = [self.frame(k).padcrop(self.frame(k).boundingbox().dilate(dilate).imclipshape(self.width(), self.height()).maxsquare()).mindim(mindim, interp='nearest') if (self.frame(k).boundingbox() is not None) else
+                    self.frame(k).maxmatte() for k in framelist]  # letterbox or pillarbox
         imframes = [im.savefig(fontsize=fontsize).rgb() for im in imframes]
         return vipy.visualize.montage(imframes, imgwidth=mindim, imgheight=mindim)
-        
+    
     def tracks(self, tracks=None, id=None):
         if tracks is None:
-            return self._tracks  # mutable
+            return self._tracks  # mutable dict
         elif id is not None:
             return self._tracks[id]
         else:
@@ -858,7 +859,7 @@ class Scene(VideoCategory):
 
     def activities(self, activities=None, id=None):
         if activities is None:
-            return self._activities  # mutable
+            return self._activities  # mutable dict
         elif id is not None:
             return self._activities[id]
         else:
@@ -904,7 +905,7 @@ class Scene(VideoCategory):
         
         This will keep track of the current frame in the video and add the objects in the appropriate place
 
-        """
+        """        
         if isinstance(obj, vipy.object.Detection):
             assert self._currentframe is not None, "add() for vipy.object.Detection() must be added during frame iteration (e.g. for im in video: )"
             t = vipy.object.Track(category=obj.category(), keyframes=[self._currentframe], boxes=[obj], boundary='strict', attributes=obj.attributes)

@@ -606,6 +606,13 @@ class Image(object):
         dH = S - self.height()
         return self.zeropad((0,dW), (0,dH))._crop(BoundingBox(0, 0, width=S, height=S))
 
+    def maxmatte(self):
+        """Crop image of size (HxW) to (max(H,W), max(H,W)) with balanced zeropadding forming a letterbox with top/bottom matte or pillarbox with left/right matte"""
+        S = np.max(self.load().shape())
+        dW = S - self.width()
+        dH = S - self.height()
+        return self.zeropad((int(np.floor(dW//2)), int(np.ceil(dW//2))), (int(np.floor(dH//2)), int(np.ceil(dH//2))))._crop(BoundingBox(0, 0, width=S, height=S))
+    
     def centersquare(self):
         """Crop image of size (NxN) in the center, such that N=min(width,height), keeping the image centroid constant"""
         N = int(np.min(self.shape()))

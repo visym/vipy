@@ -3,7 +3,7 @@ import vipy.image
 
 
 def checkerboard(dx=16, dy=16, nrows=8, ncols=8):
-    """Create a 2D checkerboard pattern with squares of size (dx, dy) and image of size (dx*ncols,dy*nrows)"""
+    """Create a 2D checkerboard pattern with squares of size (dx, dy) and image of size (dx*ncols,dy*nrows) with black and white colors, return np.array"""
     img = None
     for i in range(0,nrows):
         row = np.hstack([float((j + i) % 2) * np.ones((dx,dy)) for j in range(0, ncols)])
@@ -12,8 +12,18 @@ def checkerboard(dx=16, dy=16, nrows=8, ncols=8):
 
 
 def color_checkerboard(dx=16, dy=16, nrows=8, ncols=8):
-    """Create a 2D color checkerboard pattern with squares of size (dx, dy) and image of size (dx*ncols,dy*nrows)"""
+    """Create a 2D color checkerboard pattern with squares of size (dx, dy) and image of size (dx*ncols,dy*nrows) with random colors", return np.array"""
     return vipy.image.Image(array=np.uint8(255*np.random.rand(nrows, ncols, 3)), colorspace='rgb').resize(dx*nrows, dy*ncols, interp='nearest').array()
+
+
+def testimage():
+    """Return an Image() object of a superb owl"""
+    return vipy.image.Image(url='https://upload.wikimedia.org/wikipedia/commons/thumb/9/90/Little_Owl-2.jpg/1920px-Little_Owl-2.jpg').mindim(512).centersquare()
+
+
+def testimg():
+    """Return a numpy array for a superb owl"""
+    return testimage().array()
 
 
 def tile(T, nrows=16, ncols=16):
