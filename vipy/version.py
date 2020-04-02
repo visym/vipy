@@ -14,6 +14,11 @@ def at_least_version(versionstring):
     return num(VERSION) >= num(versionstring)
 
 
+def is_at_least(versionstring):
+    """Synonym for at_least_version"""
+    return num(VERSION) >= num(versionstring)    
+
+
 def at_least_major_version(major):
     return MAJOR >= int(major)
 
