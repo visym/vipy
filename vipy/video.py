@@ -2,7 +2,7 @@ import os
 import dill
 from vipy.util import remkdir, tempMP4, isurl, \
     isvideourl, templike, tempjpg, filetail, tempdir, isyoutubeurl, try_import, isnumpy, temppng, \
-    istuple, islist, isnumber, tolist, filefull, fileext, isS3url, totempdir, flatlist
+    istuple, islist, isnumber, tolist, filefull, fileext, isS3url, totempdir, flatlist, tocache
 from vipy.image import Image
 import vipy.geometry
 import vipy.image
@@ -589,7 +589,7 @@ class Video(object):
 
     def save(self, ignoreErrors=False):
         """Save the current video filter chain, overwriting the current filename()"""
-        return self.saveas(self.filename() if self.filename() is not None else tempMP4(), ignoreErrors=ignoreErrors)
+        return self.saveas(self.filename() if self.filename() is not None else tocache(tempMP4()), ignoreErrors=ignoreErrors)
 
     def pptx(self, outfile):
         """Export the video in a format that can be played by powerpoint"""
@@ -603,7 +603,7 @@ class Video(object):
         if not self.hasfilename():
             if verbose:
                 print('[vipy.video.play]: Saving video to temporary file "%s"' % f)            
-            f = self.saveas(tempMP4())
+            f = self.saveas(tocache(tempMP4()))
         cmd = "ffplay %s" % f            
         if verbose:
             print('[vipy.video.play]: Executing "%s"' % cmd)
@@ -612,7 +612,7 @@ class Video(object):
 
     def show(self):
         """Export loaded video to tempfile and play()"""
-        return os.system('ffplay %s' % self.saveas(tempMP4()))
+        return os.system('ffplay %s' % self.saveas(tocache(tempMP4())))
     
     def torch(self, take=None):
         """Convert the loaded video to an NxCxHxW torch tensor, forces a load()"""
@@ -924,6 +924,12 @@ class Scene(VideoCategory):
             return t.id()
         else:
             raise ValueError('Undefined object type "%s" to be added to scene - Supported types are obj in ["vipy.object.Detection", "vipy.object.Track", "vipy.object.Activity", "[xmin, ymin, width, height]"]' % str(type(obj)))        
+
+    def clear(self):
+        """Remove all activities and tracks from this object"""
+        self._activities = {}
+        self._tracks = {}
+        return self
         
     def dict(self):
         d = super(Scene, self).dict()
@@ -1091,7 +1097,8 @@ class Scene(VideoCategory):
         This function does not play the video, it only generates an annotation video.  Use show() which is equivalent to annotate().play()
         In general, this function should not be run on very long videos, as it requires loading the video framewise into memory, try running on clips instead.
         """
-        outfile = outfile if outfile is not None else tempMP4()        
+        outfile = outfile if outfile is not None else tocache(tempMP4())
+        
         if verbose:
             print('[vipy.video.annotate]: Generating annotation video "%s" ...' % outfile)
             if not self.isloaded():
@@ -1132,7 +1139,7 @@ class Scene(VideoCategory):
 
     def show(self, outfile=None, verbose=True, n_processes=1, fontsize=10, captionoffset=(0,0), textfacecolor='white', textfacealpha=1.0, shortlabel=True, boxalpha=0.25, d_category2color={'Person':'green', 'Vehicle':'blue', 'Object':'red'}, categories=None, nocaption=False, nocaption_withstring=[]):
         """Generate an annotation video saved to outfile (or tempfile if outfile=None) and show it using ffplay when it is done exporting"""
-        outfile = tempMP4() if outfile is None else outfile
+        outfile = tocache(tempMP4()) if outfile is None else outfile
         self.annotate(outfile, 
                       n_processes=n_processes, 
                       verbose=verbose, 

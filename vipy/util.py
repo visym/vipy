@@ -28,6 +28,16 @@ import pathlib
 import socket
 
 
+def hascache():
+    """Is the VIPY_CACHE environment variable set?"""
+    return 'VIPY_CACHE' in os.environ
+
+
+def tocache(filename):
+    """If the VIPY_CACHE environment variable is set, then return the filename in the cache"""
+    return os.path.join(remkdir(os.environ['VIPY_CACHE']), filetail(filename)) if hascache() else filename
+
+
 def try_import(package, pipname=None):
     """Show a helpful error message for missing optional packages"""
     try:
