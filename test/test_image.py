@@ -18,6 +18,9 @@ rgbafile = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'face_rgba.p
 
                         
 def test_image():
+    assert vipy.version.is_at_least('0.7.0')
+    assert not vipy.version.is_at_least('1.0.0')
+    
     # Empty constructor should not raise exception
     im = Image()
     print('[test_image.image]: Empty Constructor: PASSED')

@@ -1042,7 +1042,6 @@ class Scene(VideoCategory):
     def rescale(self, s):
         """Spatially rescale the scene by a constant scale factor"""
         assert not self.isloaded(), "Filters can only be applied prior to load() - Try calling flush() first"                
-        (H,W) = self._preview().load().shape()  # yuck, need to get image dimensions before filter
         self._tracks = {k:t.rescale(s) for (k,t) in self._tracks.items()}
         super(Scene, self).rescale(s)
         return self
