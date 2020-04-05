@@ -35,7 +35,7 @@ def montage(imlist, imgheight, imgwidth, gridrows=None, gridcols=None, aspectrat
     n_imgs = len(imlist)
     M = int(np.ceil(np.sqrt(n_imgs)))
     N = M
-    if aspectratio != 1:
+    if aspectratio != 1 and aspectratio is not None:
         x = int(round((aspectratio * N - M) / (1 + aspectratio)))
         N = N - x
         M = M + x

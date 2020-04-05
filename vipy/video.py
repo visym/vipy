@@ -581,6 +581,7 @@ class Video(object):
                 raise ValueError('Input video file not found "%s"' % self.filename())
         except Exception as e:
             if ignoreErrors:
+                # useful for saving a large number of videos in parallel where some failed download
                 print('[vipy.video.saveas]:  Failed with error "%s" - Ignoring' % str(repr(e)))
             else:
                 raise

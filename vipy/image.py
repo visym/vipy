@@ -329,13 +329,57 @@ class Image(object):
         if np_array is None:
             return self._array
         elif isnumpyarray(np_array):
-            assert np_array.dtype == np.float32 or np_array.dtype == np.uint8, "Invalid input - array() must be type uint8 or float32"            
+            assert np_array.dtype == np.float32 or np_array.dtype == np.uint8, "Invalid input - array() must be type uint8 or float32 and not type='%s'" % (str(np_array.dtype))
             self._array = np.copy(np_array) if copy else np_array  # reference or copy
             self.colorspace(None)  # must be set with colorspace() after array() but before _convert()
             return self
         else:
             raise ValueError('Invalid input - array() must be numpy array and not "%s"' % (str(type(np_array))))
 
+    def channel(self, k):
+        """Return a cloned Image() object for the kth channel"""
+        assert k < self.channels(), "Requested channel=%d must be within valid channels=%d" % (k, self.channels())
+        assert self.channels() > 1, "Channel() only valid for multi-channel image"
+        im = self.clone().load()
+        im._array = im._array[:,:,k]
+        im._colorspace = 'lum'
+        return im
+
+    def red(self):
+        """Return red channel as a cloned Image() object"""
+        assert self.channels() >= 3, "Must be color image"
+        if self.colorspace() in ['rgb', 'rgba']:
+            return self.channel(0)
+        elif self.colorspace() in ['bgr', 'bgra']:
+            return self.channel(3)
+        else:
+            raise ValueError('Invalid colorspace "%s" does not contain red channel' % self.colorspace())
+
+    def green(self):
+        """Return green channel as a cloned Image() object"""
+        assert self.channels() >= 3, "Must be color image"
+        if self.colorspace() in ['rgb', 'rgba']:
+            return self.channel(1)
+        elif self.colorspace() in ['bgr', 'bgra']:
+            return self.channel(1)
+        else:
+            raise ValueError('Invalid colorspace "%s" does not contain red channel' % self.colorspace())
+
+    def blue(self):
+        """Return blue channel as a cloned Image() object"""
+        assert self.channels() >= 3, "Must be color image"
+        if self.colorspace() in ['rgb', 'rgba']:
+            return self.channel(2)
+        elif self.colorspace() in ['bgr', 'bgra']:
+            return self.channel(0)
+        else:
+            raise ValueError('Invalid colorspace "%s" does not contain red channel' % self.colorspace())                
+
+    def alpha(self):
+        """Return alpha (transparency) channel as a cloned Image() object"""
+        assert self.channels() == 4 and self.colorspace() in ['rgba', 'bgra'], "Must be four channnel color image"
+        return self.channel(3)
+        
     def fromarray(self, data):
         """Alias for array(data, copy=True), set new array() with a numpy array copy"""
         return self.array(data, copy=True)

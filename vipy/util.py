@@ -1086,6 +1086,10 @@ class Stopwatch(object):
         self.last = self.start
         return self
 
+    def duration(self):
+        """Time in seconds since last reset"""
+        return time.time() - self.start
+
     
 class Timer(object):
     """Pretty print elapsed system time in seconds between calls to enter and exit
