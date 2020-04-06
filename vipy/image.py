@@ -1385,6 +1385,7 @@ class Scene(ImageCategory):
 
     def __getitem__(self, k):
         """Return the kth object in the scene as an ImageDetection"""
+        assert isinstance(k, int), "Indexing by object in scene must be integer"
         obj = self._objectlist[k]
         return (ImageDetection(array=self.array(), filename=self.filename(), url=self.url(), colorspace=self.colorspace(), bbox=obj, category=obj.category(), attributes=obj.attributes))
 

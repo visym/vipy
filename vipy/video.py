@@ -126,6 +126,7 @@ class Video(object):
 
     def __getitem__(self, k):
         """Return the kth frame as an vipy.image object"""
+        assert isinstance(k, int), "Indexing video by frame must be integer"        
         if k >= 0 and k < len(self):
             return Image(array=self._array[k], colorspace=self.colorspace())
         elif not self.isloaded():
@@ -804,6 +805,7 @@ class Scene(VideoCategory):
 
     def __getitem__(self, k):
         """Return the vipy.image.Scene() for the vipy.video.Scene() interpolated at frame k"""
+        assert isinstance(k, int), "Indexing video by frame must be integer"                
         if self.load().isloaded() and k >= 0 and k < len(self):
             dets = [t[k] for (tid,t) in self._tracks.items() if t[k] is not None]  # track interpolation with boundary handling
             for d in dets:
