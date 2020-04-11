@@ -532,7 +532,7 @@ class Video(object):
         assert not self.isloaded(), "Filters can only be applied prior to load() - Try calling flush() first"
         assert isinstance(bb, vipy.geometry.BoundingBox), "Invalid input"
         impreview = self._preview()  # to clip to image rectangle, required for ffmpeg
-        bb = bb.imclipshape(impreview.width(), impreview.height())
+        bb = bb.imclipshape(impreview.width(), impreview.height()).int()
         self._ffmpeg = self._ffmpeg.crop(bb.xmin(), bb.ymin(), bb.width(), bb.height())
         return self
 
@@ -976,7 +976,7 @@ class Scene(VideoCategory):
         tracks = [ [t for (tid, t) in vid.tracks().items() if a.hastrack(t)] for a in activities]                 
         vid._activities = {}  # for faster clone
         vid._tracks = {}      # for faster clone
-        return [vid.clone().activities(a).tracks(t).crop(a.boundingbox().dilate(dilate)) for (a,t) in zip(activities, tracks)]        
+        return [vid.clone().activities(a).tracks(t).crop(a.boundingbox().dilate(dilate).int()) for (a,t) in zip(activities, tracks)]        
 
     def activitysquare(self, dilate=1.0):
         """Returns a list of vipy.video.Scene() each spatially cropped to be the maxsquare of the union of the objects performing the activity"""
@@ -986,7 +986,7 @@ class Scene(VideoCategory):
         vid._activities = {}  # for faster clone
         vid._tracks = {}      # for faster clone
         im = self._preview()  # for faster crop
-        return [vid.clone().activities(a).tracks(t).crop(a.boundingbox().dilate(dilate).maxsquare().iminterior(im.width(), im.height())) for (a,t) in zip(activities, tracks)]  
+        return [vid.clone().activities(a).tracks(t).crop(a.boundingbox().dilate(dilate).maxsquare().iminterior(im.width(), im.height()).int()) for (a,t) in zip(activities, tracks)]  
 
     def activitytube(self, dilate=1.0, padframes=0):
         """Return a list of vipy.video.Scene() each spatially cropped following activitycrop() and temporally cropped following activityclip()"""
