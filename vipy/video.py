@@ -955,11 +955,13 @@ class Scene(VideoCategory):
         return self.__getitem__(frame).savefig(outfile if outfile is not None else temppng())
         
     def activityclip(self, padframes=0):
-        """Return a list of vipy.video.Scene() each clipped to be centered on a single activity, with an optional padframes before and after.  The Scene() category is updated to be the activity, and only the objects participating in the activity are included"""
+        """Return a list of vipy.video.Scene() each clipped to be centered on a single activity, with an optional padframes before and after.  
+           The Scene() category is updated to be the activity, and only the objects participating in the activity are included.
+           Activities are returned ordered in the temporal order they appear in the video."""
         vid = self.clone(flushforward=True)
         if any([(a.endframe()-a.startframe()) <= 0 for a in vid.activities().values()]):
             warnings.warn('Filtering invalid activity clips with degenerate lengths: %s' % str([a for a in vid.activities().values() if (a.endframe()-a.startframe()) <= 0]))
-        activities = [a.clone() for a in vid.activities().values() if (a.endframe()-a.startframe()) > 0]   # only activities with at least one frame
+        activities = sorted([a.clone() for a in vid.activities().values() if (a.endframe()-a.startframe()) > 0], key=lambda a: a.startframe())   # only activities with at least one frame, sorted in temporal order
         tracks = [ [t.clone() for (tid, t) in vid.tracks().items() if a.hastrack(t)] for a in activities]                         
         vid._activities = {}  # for faster clone
         vid._tracks = {}      # for faster clone
@@ -968,9 +970,10 @@ class Scene(VideoCategory):
                                                          endframe=(a.endframe()+padframes[1])).category(a.category()) for (a,t) in zip(activities, tracks)]
     
     def activitycrop(self, dilate=1.0):
-        """Returns a list of vipy.video.Scene() each spatially cropped to be the union of the objects performing the activity"""
+        """Returns a list of vipy.video.Scene() each spatially cropped to be the union of the objects performing the activity.
+           Activities are returned ordered in the temporal order they appear in the video"""
         vid = self.clone(flushforward=True)
-        activities = vid.activities().values()
+        activities = sorted(vid.activities().values(), key=lambda a: a.startframe())  # temporal order 
         if any([(a.endframe()-a.startframe()) <= 0 for a in vid.activities().values()]):
             warnings.warn('Filtering invalid activity clips with degenerate lengths: %s' % str([a for a in vid.activities().values() if (a.endframe()-a.startframe()) <= 0]))            
         tracks = [ [t for (tid, t) in vid.tracks().items() if a.hastrack(t)] for a in activities]                 
@@ -979,9 +982,10 @@ class Scene(VideoCategory):
         return [vid.clone().activities(a).tracks(t).crop(a.boundingbox().dilate(dilate).int()) for (a,t) in zip(activities, tracks)]        
 
     def activitysquare(self, dilate=1.0):
-        """Returns a list of vipy.video.Scene() each spatially cropped to be the maxsquare of the union of the objects performing the activity"""
+        """Returns a list of vipy.video.Scene() each spatially cropped to be the maxsquare of the union of the objects performing the activity
+           Activities are returned ordered in the temporal order they appear in the video."""
         vid = self.clone(flushforward=True)
-        activities = vid.activities().values()
+        activities = sorted(vid.activities().values(), key=lambda a: a.startframe())  # temporal order
         tracks = [ [t for (tid, t) in vid.tracks().items() if a.hastrack(t)] for a in activities]                 
         vid._activities = {}  # for faster clone
         vid._tracks = {}      # for faster clone
