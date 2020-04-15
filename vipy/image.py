@@ -3,12 +3,13 @@ import PIL
 import PIL.Image
 import platform
 import dill
+import vipy.show
 from vipy.show import imshow, imbbox, savefig, colorlist
 from vipy.util import isnumpy, isurl, isimageurl, \
     fileext, tempimage, mat2gray, imwrite, imwritegray, \
     tempjpg, filetail, isimagefile, remkdir, hasextension, \
     try_import, tolist, islistoflists, istupleoftuples, isstring, \
-    istuple, islist, isnumber
+    istuple, islist, isnumber, isnumpyarray
 from vipy.geometry import BoundingBox
 import vipy.object
 import vipy.downloader
@@ -84,8 +85,11 @@ class Image(object):
             assert isurl(url), 'Invalid URL'
         self._url = url
         if array is not None:
-            assert isnumpy(array), 'Invalid Array'
+            assert isnumpy(array), 'Invalid Array - Type "%s" must be np.array()' % (str(type(array)))
         self.array(array)
+
+        # Guess RGB colorspace if three channel uint8 if colorspace is not provided
+        colorspace = 'rgb' if (self.isloaded() and self.channels() == 3 and self._array.dtype == np.uint8 and colorspace is None) else colorspace
         self.colorspace(colorspace)
         
         # Public attributes: passed in as a dictionary
@@ -117,6 +121,8 @@ class Image(object):
         strlist = []
         if self.isloaded():
             strlist.append("height=%d, width=%d, color=%s" % (self._array.shape[0], self._array.shape[1], self.colorspace()))
+        if self.colorspace() == 'float':
+            strlist.append('channels=%d' % self.channels())
         if self.hasfilename():
             strlist.append('filename="%s"' % self.filename())
         if self.hasurl():
@@ -172,7 +178,9 @@ class Image(object):
                 elif self.isluminance():
                     self.colorspace('lum')
                 else:
-                    raise ValueError('unknown colorspace "%s"' % str(self.colorspace()))
+                    warnings.warn('unknown colorspace for image "%s" - attempting to coerce to colorspace=float' % str(self._filename))
+                    self._array = np.float32(self._array)
+                    self.colorspace('float')                    
             elif hasextension(self._filename):
                 raise ValueError('Non-standard image extensions require a custom loader')
             else:
@@ -320,14 +328,58 @@ class Image(object):
         """Replace self._array with provided numpy array"""
         if np_array is None:
             return self._array
-        elif isnumpy(np_array):
-            assert np_array.dtype == np.float32 or np_array.dtype == np.uint8, "Invalid input - array() must be type uint8 or float32"
+        elif isnumpyarray(np_array):
+            assert np_array.dtype == np.float32 or np_array.dtype == np.uint8, "Invalid input - array() must be type uint8 or float32 and not type='%s'" % (str(np_array.dtype))
             self._array = np.copy(np_array) if copy else np_array  # reference or copy
             self.colorspace(None)  # must be set with colorspace() after array() but before _convert()
             return self
         else:
-            raise ValueError('Invalid input - array() must be numpy array')
+            raise ValueError('Invalid input - array() must be numpy array and not "%s"' % (str(type(np_array))))
 
+    def channel(self, k):
+        """Return a cloned Image() object for the kth channel"""
+        assert k < self.channels(), "Requested channel=%d must be within valid channels=%d" % (k, self.channels())
+        assert self.channels() > 1, "Channel() only valid for multi-channel image"
+        im = self.clone().load()
+        im._array = im._array[:,:,k]
+        im._colorspace = 'lum'
+        return im
+
+    def red(self):
+        """Return red channel as a cloned Image() object"""
+        assert self.channels() >= 3, "Must be color image"
+        if self.colorspace() in ['rgb', 'rgba']:
+            return self.channel(0)
+        elif self.colorspace() in ['bgr', 'bgra']:
+            return self.channel(3)
+        else:
+            raise ValueError('Invalid colorspace "%s" does not contain red channel' % self.colorspace())
+
+    def green(self):
+        """Return green channel as a cloned Image() object"""
+        assert self.channels() >= 3, "Must be color image"
+        if self.colorspace() in ['rgb', 'rgba']:
+            return self.channel(1)
+        elif self.colorspace() in ['bgr', 'bgra']:
+            return self.channel(1)
+        else:
+            raise ValueError('Invalid colorspace "%s" does not contain red channel' % self.colorspace())
+
+    def blue(self):
+        """Return blue channel as a cloned Image() object"""
+        assert self.channels() >= 3, "Must be color image"
+        if self.colorspace() in ['rgb', 'rgba']:
+            return self.channel(2)
+        elif self.colorspace() in ['bgr', 'bgra']:
+            return self.channel(0)
+        else:
+            raise ValueError('Invalid colorspace "%s" does not contain red channel' % self.colorspace())                
+
+    def alpha(self):
+        """Return alpha (transparency) channel as a cloned Image() object"""
+        assert self.channels() == 4 and self.colorspace() in ['rgba', 'bgra'], "Must be four channnel color image"
+        return self.channel(3)
+        
     def fromarray(self, data):
         """Alias for array(data, copy=True), set new array() with a numpy array copy"""
         return self.array(data, copy=True)
@@ -344,6 +396,9 @@ class Image(object):
 
     def pil(self):
         """Convert vipy.image.Image to PIL Image, by reference"""
+        if self.colorspace() == 'float':
+            warnings.warn('Coercing generic colorspace=float to colorspace=rgb for image transformation')
+            self.rgb()
         return PIL.Image.fromarray(self.tonumpy())
 
     def torch(self):
@@ -352,6 +407,16 @@ class Image(object):
         img = self.numpy() if self.iscolor() else np.expand_dims(self.numpy(), 2)  # HxW -> HxWx1
         return torch.from_numpy(np.expand_dims(img,0).transpose(0,3,1,2))  # HxWxC -> 1xCxHxW
 
+    def fromtorch(self, x):
+        """Convert a 1xCxHxW torch.FloatTensor to HxWxC np.float32 numpy array(), returns new Image() instance with selected colorspace"""
+        try_import('torch'); import torch
+        assert isinstance(x, torch.Tensor), "Invalid input type '%s'- must be torch.Tensor" % (str(type(x)))
+        img = np.copy(np.squeeze(x.permute(2,3,1,0).detach().numpy()))  # 1xCxHxW -> HxWxC, copied
+        colorspace = 'float' if img.dtype == np.float32 else None
+        colorspace = 'rgb' if img.dtype == np.uint8 and img.shape[2] == 3 else colorspace  # assumed
+        colorspace = 'lum' if img.dtype == np.uint8 and img.shape[2] == 1 else colorspace        
+        return Image(array=img, colorspace=colorspace)
+    
     def nofilename(self):
         self._filename = None
         return self
@@ -473,8 +538,20 @@ class Image(object):
         return im
     
 
+    def _interp_string_to_pil_interpolation(self, interp):
+        """Internal function to convert interp string to interp object"""
+        assert interp in ['bilinear', 'bicubic', 'nearest'], "Invalid interp - Must be in ['bilinear', 'bicubic', 'nearest']"
+        if interp == 'bilinear':
+            return PIL.Image.BILINEAR
+        elif interp == 'bicubic':
+            return PIL.Image.BICUBIC
+        elif interp == 'nearest':
+            return PIL.Image.NEAREST
+        else:
+            raise  # should never get here
+        
     # Spatial transformations
-    def resize(self, cols=None, rows=None, width=None, height=None, interp=PIL.Image.BILINEAR):
+    def resize(self, cols=None, rows=None, width=None, height=None, interp='bilinear'):
         """Resize the image buffer to (rows x cols) with bilinear interpolation.  If rows or cols is provided, rescale image maintaining aspect ratio"""
         assert not (cols is not None and width is not None), "Define either width or cols"
         assert not (rows is not None and height is not None), "Define either height or rows"
@@ -488,25 +565,25 @@ class Image(object):
             self.rescale(scale)
 
         else:
-            self._array = np.array(self.load().pil().resize((cols, rows), interp))
+            self._array = np.array(self.load().pil().resize((cols, rows), self._interp_string_to_pil_interpolation(interp)))
         return self
 
-    def resize_like(self, im, interp=PIL.Image.BILINEAR):
+    def resize_like(self, im, interp='bilinear'):
         """Resize image buffer to be the same size as the provided vipy.image.Image()"""
         assert isinstance(im, Image), "Invalid input - Must be vipy.image.Image()"
         return self.resize(im.width(), im.height(), interp=interp)
     
-    def rescale(self, scale=1, interp=PIL.Image.BILINEAR):
+    def rescale(self, scale=1, interp='bilinear'):
         """Scale the image buffer by the given factor - NOT idemponent"""
         (height, width) = self.load().shape()
-        self._array = np.array(self.pil().resize((int(np.round(scale * width)), int(np.round(scale * height))), interp))
+        self._array = np.array(self.pil().resize((int(np.round(scale * width)), int(np.round(scale * height))), self._interp_string_to_pil_interpolation(interp)))
         return self
 
-    def maxdim(self, dim, interp=PIL.Image.BILINEAR):
+    def maxdim(self, dim, interp='bilinear'):
         """Resize image preserving aspect ratio so that maximum dimension of image = dim"""
         return self.rescale(float(dim) / float(np.maximum(self.height(), self.width())), interp=interp)
 
-    def mindim(self, dim, interp=PIL.Image.BILINEAR):
+    def mindim(self, dim, interp='bilinear'):
         """Resize image preserving aspect ratio so that minimum dimension of image = dim"""
         return self.rescale(float(dim) / float(np.minimum(self.height(), self.width())), interp=interp)
 
@@ -536,6 +613,12 @@ class Image(object):
                              constant_values=0)
         return self
 
+    def zeropadlike(self, width, height):
+        """Zero pad the image balancing the border so that the resulting image size is (width, height)"""
+        assert width >= self.width() and height >= self.height(), "Invalid input - final (width=%d, height=%d) must be greater than current image size (width=%d, height=%d)" % (width, height, self.width(), self.height())
+        return self.zeropad( (int(np.floor((width - self.width())/2)), int(np.ceil((width - self.width())/2))),
+                             (int(np.floor((height - self.height())/2)), int(np.ceil((height - self.height())/2))))
+                            
     def meanpad(self, padwidth, padheight):
         """Pad image using np.pad constant=image mean by adding padwidth on both left and right , or padwidth=(left,right) for different pre/postpadding,, and padheight on top and bottom or padheight=(top,bottom) for different pre/post padding"""        
         if not isinstance(padwidth, tuple):
@@ -567,6 +650,13 @@ class Image(object):
         dH = S - self.height()
         return self.zeropad((0,dW), (0,dH))._crop(BoundingBox(0, 0, width=S, height=S))
 
+    def maxmatte(self):
+        """Crop image of size (HxW) to (max(H,W), max(H,W)) with balanced zeropadding forming a letterbox with top/bottom matte or pillarbox with left/right matte"""
+        S = np.max(self.load().shape())
+        dW = S - self.width()
+        dH = S - self.height()
+        return self.zeropad((int(np.floor(dW//2)), int(np.ceil(dW//2))), (int(np.floor(dH//2)), int(np.ceil(dH//2))))._crop(BoundingBox(0, 0, width=S, height=S))
+    
     def centersquare(self):
         """Crop image of size (NxN) in the center, such that N=min(width,height), keeping the image centroid constant"""
         N = int(np.min(self.shape()))
@@ -605,11 +695,13 @@ class Image(object):
         elif self.colorspace() == 'lum':
             img = self.load().array()  # single channel, uint8 [0,255]
             assert img.dtype == np.uint8
+            img = np.squeeze(img, axis=2) if img.ndim == 3 and img.shape[2] == 1 else img  # remove singleton channel            
             self._array = np.array(PIL.Image.fromarray(img, mode='L').convert('RGB'))  # uint8 luminance [0,255] -> uint8 RGB
             self.colorspace('rgb')
             self._convert(to)
         elif self.colorspace() in ['gray', 'grey']:
             img = self.load().array()  # single channel float32 [0,1]
+            img = np.squeeze(img, axis=2) if img.ndim == 3 and img.shape[2] == 1 else img  # remove singleton channel                        
             self._array = np.array(PIL.Image.fromarray(255.0 * img, mode='F').convert('RGB'))  # float32 gray [0,1] -> float32 gray [0,255] -> uint8 RGB
             self.colorspace('rgb')
             self._convert(to)
@@ -658,12 +750,16 @@ class Image(object):
         elif self.colorspace() == 'float':
             img = self.load().array()  # float32
             if np.max(img) > 1 or np.min(img) < 0:
-                raise ValueError('Float image must be rescaled to the range float32 [0,1] prior to conversion')
+                warnings.warn('Float image will be rescaled with self.mat2gray() into the range float32 [0,1]')
+                img = self.mat2gray().array()
             if not self.channels() in [1,3]:
                 raise ValueError('Float image must be single channel or three channel RGB in the range float32 [0,1] prior to conversion')
             if self.channels() == 3:  # assumed RGB
-                self._array = (1.0 / 255.0) * np.array(PIL.Image.fromarray(np.uint8(255 * self.array())).convert('L')).astype(np.float32)  # float32 RGB [0,1] -> float32 gray [0,1]
-            self.colorspace('grey')
+                self._array = np.uint8(255 * self.array())   # float32 RGB [0,1] -> uint8 RGB [0,255]
+                self.colorspace('rgb')
+            else:
+                self._array = (1.0 / 255.0) * np.array(PIL.Image.fromarray(np.uint8(255 * self.array())).convert('L')).astype(np.float32)  # float32 RGB [0,1] -> float32 gray [0,1]                
+                self.colorspace('grey')
             self._convert(to)
         elif self.colorspace() is None:
             raise ValueError('Colorspace must be initialized by constructor or colorspace() to allow for colorspace conversion')
@@ -798,13 +894,27 @@ class Image(object):
     def sum(self):
         return np.sum(self.load().array().flatten())
 
-    # Image export
+    # Image visualization
+    def closeall(self):
+        """Close all open figure windows"""
+        vipy.show.closeall()
+        return self
+    
+    def close(self, fignum=None):
+        """Close the requested figure number, or close all of fignum=None"""
+        if fignum is None:
+            return self.closeall()
+        else:
+            vipy.show.close(fignum)
+            return self
+    
     def show(self, figure=None, nowindow=False):
         """Display image on screen in provided figure number (clone and convert to RGB colorspace to show), return object"""
         assert self.load().isloaded(), 'Image not loaded'
         imshow(self.clone().rgb().numpy(), fignum=figure, nowindow=nowindow)
         return self
-    
+
+    # Image export
     def saveas(self, filename, writeas=None):
         """Save current buffer (not including drawing overlays) to new filename and return filename"""
         if self.colorspace() in ['gray']:
@@ -812,7 +922,7 @@ class Image(object):
         elif self.colorspace() != 'float':
             imwrite(self.load().array(), filename, writeas=writeas)
         else:
-            raise ValueError('Convert float image to RGB or gray first')
+            raise ValueError('Convert float image to RGB or gray first. Try self.mat2gray()')
         return filename
 
     def saveastmp(self):
@@ -840,6 +950,7 @@ class Image(object):
             buf = io.BytesIO()
             plt.figure(1).canvas.print_raw(buf)  # fast
             img = np.frombuffer(buf.getvalue(), dtype=np.uint8).reshape((H, W, 4))  # RGBA
+            plt.close(1)
             return vipy.image.Image(array=img, colorspace='rgba')
         else:
             return savefig(filename)
@@ -1078,19 +1189,19 @@ class ImageDetection(ImageCategory):
             warnings.warn("Degenerate bounding box does not intersect image - Ignoring")
         return self
 
-    def rescale(self, scale=1, interp=PIL.Image.BILINEAR):
+    def rescale(self, scale=1, interp='bilinear'):
         """Rescale image buffer and bounding box"""
         self = super(ImageDetection, self).rescale(scale, interp=interp)
         self.bbox = self.bbox.rescale(scale)
         return self
 
-    def resize(self, cols=None, rows=None, interp=PIL.Image.BILINEAR):
+    def resize(self, cols=None, rows=None, interp='bilinear'):
         """Resize image buffer and bounding box so that the image buffer is size (height=cols, width=row).  If only cols or rows is provided, then scale the image appropriately"""
         assert cols is not None or rows is not None, "Invalid input"
-        sx = (float(cols) / self.width()) if cols is not None else 1.0
-        sy = (float(rows) / self.height()) if rows is not None else 1.0
-        sx = sx if sx != 1.0 else sy
-        sy = sy if sy != 1.0 else sx        
+        sx = (float(cols) / self.width()) if cols is not None else None
+        sy = (float(rows) / self.height()) if rows is not None else None
+        sx = sy if sx is None else sx
+        sy = sx if sy is None else sy
         self.bbox.scalex(sx)
         self.bbox.scaley(sy)
         if sx == sy:
@@ -1112,13 +1223,13 @@ class ImageDetection(ImageCategory):
         self.bbox = BoundingBox(xmin=0, ymin=0, xmax=self.width(), ymax=self.height())
         return self
 
-    def mindim(self, dim, interp=PIL.Image.BILINEAR):
+    def mindim(self, dim, interp='bilinear'):
         """Resize image preserving aspect ratio so that minimum dimension of image = dim"""
-        return super(ImageDetection, self).mindim(dim, interp)  # calls self.rescale() which will update boxes
+        return super(ImageDetection, self).mindim(dim, interp=interp)  # calls self.rescale() which will update boxes
 
-    def maxdim(self, dim, interp=PIL.Image.BILINEAR):
+    def maxdim(self, dim, interp='bilinear'):
         """Resize image preserving aspect ratio so that maximum dimension of image = dim"""        
-        return super(ImageDetection, self).maxdim(dim, interp)  # calls self.rescale() will will update boxes
+        return super(ImageDetection, self).maxdim(dim, interp=interp)  # calls self.rescale() will will update boxes
 
     def centersquare(self):
         """Crop image of size (NxN) in the center, such that N=min(width,height), keeping the image centroid constant, new bounding box may be degenerate"""
@@ -1274,6 +1385,7 @@ class Scene(ImageCategory):
 
     def __getitem__(self, k):
         """Return the kth object in the scene as an ImageDetection"""
+        assert isinstance(k, int), "Indexing by object in scene must be integer"
         obj = self._objectlist[k]
         return (ImageDetection(array=self.array(), filename=self.filename(), url=self.url(), colorspace=self.colorspace(), bbox=obj, category=obj.category(), attributes=obj.attributes))
 
@@ -1313,19 +1425,19 @@ class Scene(ImageCategory):
         self._objectlist = [bb.imclip(self.numpy()) for bb in self._objectlist if bb.hasoverlap(self.numpy())]
         return self
 
-    def rescale(self, scale=1, interp=PIL.Image.BILINEAR):
+    def rescale(self, scale=1, interp='bilinear'):
         """Rescale image buffer and all bounding boxes - Not idemponent"""
         self = super(ImageCategory, self).rescale(scale, interp=interp)
         self._objectlist = [bb.rescale(scale) for bb in self._objectlist]
         return self
 
-    def resize(self, cols=None, rows=None, interp=PIL.Image.BILINEAR):
+    def resize(self, cols=None, rows=None, interp='bilinear'):
         """Resize image buffer to (height=rows, width=cols) and transform all bounding boxes accordingly.  If cols or rows is None, then scale isotropically"""
         assert cols is not None or rows is not None, "Invalid input"
-        sx = (float(cols) / self.width()) if cols is not None else 1.0
-        sy = (float(rows) / self.height()) if rows is not None else 1.0
-        sx = sx if sx != 1.0 else sy
-        sy = sy if sy != 1.0 else sx       
+        sx = (float(cols) / self.width()) if cols is not None else None
+        sy = (float(rows) / self.height()) if rows is not None else None
+        sx = sy if sx is None else sx
+        sy = sx if sy is None else sy        
         self._objectlist = [bb.scalex(sx).scaley(sy) for bb in self._objectlist]        
         if sx == sy:
             self = super(Scene, self).rescale(sx, interp=interp)  # FIXME: if we call resize here, inheritance is screweed up
@@ -1382,13 +1494,13 @@ class Scene(ImageCategory):
         self._objectlist = [bb.rot90ccw(H, W) for bb in self._objectlist]
         return self
 
-    def maxdim(self, dim, interp=PIL.Image.BILINEAR):
+    def maxdim(self, dim, interp='bilinear'):
         """Resize scene preserving aspect ratio so that maximum dimension of image = dim, update all objects"""
-        return super(ImageCategory, self).maxdim(dim, interp)  # will call self.rescale() which will update boxes
+        return super(ImageCategory, self).maxdim(dim, interp=interp)  # will call self.rescale() which will update boxes
 
-    def mindim(self, dim, interp=PIL.Image.BILINEAR):
+    def mindim(self, dim, interp='bilinear'):
         """Resize scene preserving aspect ratio so that minimum dimension of image = dim, update all objects"""
-        return super(ImageCategory, self).mindim(dim, interp)  # will call self.rescale() which will update boxes
+        return super(ImageCategory, self).mindim(dim, interp=interp)  # will call self.rescale() which will update boxes
 
     def crop(self, bbox):
         """Crop the image buffer using the supplied bounding box object, clipping the box to the image rectangle, update all scene objects"""        
@@ -1463,12 +1575,12 @@ class Scene(ImageCategory):
             buf = io.BytesIO()
             plt.gcf().canvas.print_raw(buf)  # fast
             img = np.frombuffer(buf.getvalue(), dtype=np.uint8).reshape((H, W, 4))
+            plt.close(plt.gcf())            
             return vipy.image.Image(array=img, colorspace='rgba')
         else:
             savefig(outfile, figure, dpi=dpi, bbox_inches='tight', pad_inches=0)
             return outfile
 
-    
 
 def RandomImage(rows=None, cols=None):
     rows = np.random.randint(128, 1024) if rows is None else rows

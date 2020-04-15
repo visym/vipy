@@ -6,7 +6,7 @@ Babel==2.8.0
 backcall==0.1.0
 bcrypt==3.1.7
 beautifulsoup4==4.8.2
-bleach==3.1.1
+bleach==3.1.4
 bokeh==1.4.0
 boto3==1.11.12
 botocore==1.14.12

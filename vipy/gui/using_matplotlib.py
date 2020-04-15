@@ -114,6 +114,7 @@ def boundingbox(img, xmin, ymin, xmax, ymax, bboxcaption=None, fignum=None, bbox
     # Text string
     if bboxcaption is not None:
         # clip_on clips anything outside the image
+        captionoffset = captionoffset if ymin > 15 else (captionoffset[0]+5, captionoffset[1]+15)  # move down a bit if near top of image
         handle = plt.annotate(s=bboxcaption, xy=(xmin,ymin), xytext=(xmin+captionoffset[0], ymin+captionoffset[1]), xycoords='data', color=textcolor, bbox=dict(facecolor=textfacecolor, edgecolor=textcolor, alpha=textfacealpha, boxstyle='round'), fontsize=fontsize, clip_on=True)
 
     return fignum

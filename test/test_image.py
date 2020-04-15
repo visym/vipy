@@ -18,6 +18,9 @@ rgbafile = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'face_rgba.p
 
                         
 def test_image():
+    assert vipy.version.is_at_least('0.7.0')
+    assert not vipy.version.is_at_least('1.0.0')
+    
     # Empty constructor should not raise exception
     im = Image()
     print('[test_image.image]: Empty Constructor: PASSED')
@@ -69,7 +72,7 @@ def test_image():
     print('[test_image.image]: Invalid URL download: PASSED')
 
     # URL with filename
-    im = Image(url=jpegurl, filename='/tmp/myfile.jpg')
+    im = Image(url=jpegurl, filename=tempjpg())
     print('[test_image.image]:   Image __desc__: %s' % im)
     print('[test_image.image]:   Image length: %d' % len(im))
     im.download()
@@ -113,6 +116,13 @@ def test_image():
     except:
         pass
     try:
+        Image(array=np.matrix( (10,10) ).astype(np.float32))
+        Failed()  # np.matrix unallowed
+    except Failed:
+        raise
+    except:
+        pass
+    try:
         Image(array=np.zeros( (10,10,3), dtype=np.float32), colorspace='rgb')  
         Failed()  # rgb image must be uint8
     except Failed:
@@ -138,11 +148,12 @@ def test_image():
     assert im.array()[0,0] != 0
     print('[test_image]: array by reference  PASSED')
     
-    
+
     # Image file formats
     for imgfile in [rgbfile, greyfile, rgbafile]:
         _test_image_fileformat(imgfile)
 
+        
         
             
 def _test_image_fileformat(imgfile):
@@ -356,6 +367,20 @@ def _test_image_fileformat(imgfile):
     assert np.allclose(np.float32(im.array())+1.0, im2.array())
     print('[test_image.image]["%s"]:  map PASSED' % imgfile)
 
+    # interpolation 
+    im = vipy.image.RandomImage(128,256)
+    im.resize(256,256, interp='bilinear')
+    im.resize(256,256, interp='bicubic')
+    im.resize(256,256, interp='nearest')
+    try:
+        im.resize(256,256, interp='somethingelse')        
+        Failed()
+    except Failed:
+        raise
+    except:
+        pass
+    print('[test_image.image]["%s"]:  interpolation PASSED' % imgfile)    
+    
     
     
 def test_imagedetection():
@@ -498,6 +523,8 @@ def test_imagedetection():
     assert np.allclose(imorig.clone().meanpad( (0,10), (0,20) ).crop().array(), img) and (imorig.clone().meanpad( (0,10), (0,20) ).shape() == (20 + 20, 10 + 40)) and img[0,0] == im.array()[0,0] and im.array()[-1,-1] != 0
     im = imorig.clone().zeropad( (0,10), (0,20) )
     assert np.allclose(imorig.clone().zeropad( (0,10), (0,20) ).crop().array(), img) and (imorig.clone().zeropad( (0,10), (0,20) ).shape() == (20 + 20, 10 + 40)) and img[0,0] == im.array()[0,0] and im.array()[-1,-1] == 0
+    im = imorig.clone().zeropadlike(100, 110)
+    assert im.width() == 100 and im.height() == 110
     print('[test_image.imagedetection]: pad  PASSED')
 
     # imclip

@@ -3,7 +3,7 @@ import numpy as np
 import vipy.video
 import vipy.videosearch
 import vipy.object
-from vipy.util import tempjpg, tempdir, Failed, isurl, rmdir
+from vipy.util import tempjpg, tempdir, Failed, isurl, rmdir, totempdir
 from vipy.geometry import BoundingBox
 import pdb
 from vipy.dataset.kinetics import Kinetics400, Kinetics600, Kinetics700
@@ -112,7 +112,7 @@ def test_video():
     assert vc._array is not None and v._array is None
     vc = v.clone(flush=True)
     assert vc._array is None and v._array is None
-    print('[test_video.scene]: clone  PASSED')        
+    print('[test_video.scene]: clone()  PASSED')        
 
     
 def _test_scene():
@@ -131,14 +131,14 @@ def _test_scene():
         raise
     except:
         pass
-    print('[test_video.scene]: activityclip  PASSED')    
+    print('[test_video.scene]: activityclip()  PASSED')    
     
     # Activitycrop
     v = vipy.video.RandomSceneActivity(64,64,64)
     vc = v.clone(flushforward=True).filename('Video.mp4')
     assert vc._array is None and v._array is not None
     a = vc.activitycrop()
-    print('[test_video.scene]: activitycrop  PASSED (exercise only)')        
+    print('[test_video.scene]: activitycrop()  PASSED - basic only')        
     
     # Downloader
     v = vipy.video.Video(url='http://visym.com/out.mp4').load(ignoreErrors=True)
@@ -322,9 +322,10 @@ def _test_scene():
     print('[test_video.scene]: video scenes  PASSED')    
 
 
-    # Saveas 
-    shutil.copy('Video.mp4', '/tmp/Video.mp4')
-    v = vipy.video.Video(filename='/tmp/Video.mp4', startframe=0, endframe=10)
+    # Saveas
+    outfile = totempdir('Video.mp4')
+    shutil.copy('Video.mp4', outfile)
+    v = vipy.video.Video(filename=outfile, startframe=0, endframe=10)
     v.save()
     assert v.hasfilename() and os.path.getsize('Video.mp4') != os.path.getsize(v.filename())
     print('[test_video.scene]: saveas()  PASSED')    
@@ -346,9 +347,58 @@ def test_track():
         assert d.width() == 10 and d.height() == 11
     assert d.xmin() == 1 and d.ymin() == 1
     print('[test_video.track]: interpolation  PASSED')
+
+    
+def test_scene_union():
+    
+    vid = vipy.video.RandomVideo(64,64,32)
+    (rows, cols) = vid.shape()
+    track1 = vipy.object.Track(label='Person1').add(0, vipy.geometry.BoundingBox(10,20,30,40)).add(2, vipy.geometry.BoundingBox(20,30,40,50))
+    track2 = vipy.object.Track(label='Person2').add(1, vipy.geometry.BoundingBox(10,20,30,40)).add(3, vipy.geometry.BoundingBox(30,40,50,60))
+    activity = vipy.object.Activity(label='act1', startframe=0, endframe=3).add(track1).add(track2)
+
+    assert track1.boundingbox().ulbr() == (10,20,40,50)
+    assert track2.boundingbox().ulbr() == (10,20,50,60)
+    assert activity.boundingbox().ulbr() == vipy.geometry.BoundingBox(10,20,50,60).ulbr()
+    assert activity[0][0].ulbr() == vipy.geometry.BoundingBox(10,20,30,40).ulbr()
+    assert activity[3][0].ulbr() == vipy.geometry.BoundingBox(30,40,50,60).ulbr()                
+    assert activity[1][0].ulbr() == track1[1].ulbr()
+    assert activity[1][1].ulbr() == track2[1].ulbr()
+    
+    # By reference
+    assert activity.tracks()[track1.id()].category() == 'Person1'
+    track1.category('PersonA')
+    assert activity.tracks()[track1.id()].category() == 'PersonA'    
+    assert 'PersonA' in activity.categories() 
+    track1.category('Person1')
+    
+    v = vipy.video.Scene(array=vid.array(), colorspace='rgb', category='scene', activities=[activity])
+    vu = v.clone().union(v)
+    assert len(vu.activities())==1
+
+    activity = vipy.object.Activity(label='act2', startframe=0, endframe=3).add(track1).add(track2)
+    v2 = vipy.video.Scene(array=v.array(), colorspace='rgb', category='scene', activities=[activity])
+    vu = v.clone().union(v2)
+    assert len(vu.activities())==2
+    assert vu.categories() == set(['act2', 'act1', 'Person1', 'Person2'])
+    
+    track3 = vipy.object.Track(label='Person3').add(1, vipy.geometry.BoundingBox(10,20,30,40)).add(3, vipy.geometry.BoundingBox(30,40,50,60))    
+    activity = vipy.object.Activity(label='act1', startframe=0, endframe=2).add(track1).add(track3)
+    v2 = vipy.video.Scene(array=vid.array(), colorspace='rgb', category='scene', activities=[activity])
+    vu = v.clone().union(v2)
+    assert len(vu.categories()) == 4
+
+    track3 = vipy.object.Track(label='Person3').add(0, vipy.geometry.BoundingBox(10,20,30,40)).add(2, vipy.geometry.BoundingBox(20,30,40,100))     
+    activity = vipy.object.Activity(label='act2', startframe=0, endframe=2).add(track1).add(track3)
+    v2 = vipy.video.Scene(array=v.array(), colorspace='rgb', category='scene', activities=[activity])
+    vu = v.clone().union(v2)
+    
+    assert len(vu.categories()) == 5
+    print('[test_video.track]: test_scene_union  PASSED')
     
     
 if __name__ == "__main__":
     test_video()
     test_track()
     _test_scene()
+    test_scene_union()

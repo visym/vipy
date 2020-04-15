@@ -28,6 +28,16 @@ import pathlib
 import socket
 
 
+def hascache():
+    """Is the VIPY_CACHE environment variable set?"""
+    return 'VIPY_CACHE' in os.environ
+
+
+def tocache(filename):
+    """If the VIPY_CACHE environment variable is set, then return the filename in the cache"""
+    return os.path.join(remkdir(os.environ['VIPY_CACHE']), filetail(filename)) if hascache() else filename
+
+
 def try_import(package, pipname=None):
     """Show a helpful error message for missing optional packages"""
     try:
@@ -558,8 +568,15 @@ def filepath(filename):
     return head
 
 
+def delpath(indir, filename):
+    """Return c/d.ext for filename /a/b/c/d.ext and indir /a/b"""
+    assert indir in filename, 'Path "%s" not found in filename "%s"' % (indir, filename)
+    indir = os.path.join(indir, '')  # /a/b -> /a/b/
+    return filename.split(indir)[1]
+
+    
 def newpath(filename, newdir):
-    """Return /a/b for filename /a/b/c.ext"""
+    """Return /d/e/c.ext for filename /a/b/c.ext and newdir /d/e/"""
     (head, tail) = os.path.split(filename)
     return os.path.join(newdir, tail)
 
@@ -732,8 +749,13 @@ def isimageurl(path):
 
 
 def isvideourl(path):
-    """Is a path a URL with image extension?"""
+    """Is a path a URL with video extension?"""
     return isurl(path) and isvideo(path)
+
+
+def isS3url(path):
+    """Is a path a URL for an S3 object?"""
+    return isurl(path) and urlparse(path).scheme == 's3'
 
 
 def isyoutubeurl(path):
@@ -781,9 +803,11 @@ def istuple(x):
 
 
 def tolist(x):
-    """Convert a python object to a singleton list if not already a list"""
+    """Convert a python tuple or singleton object to a list if not already a list """
     if type(x) is list:
         return x
+    elif type(x) is tuple:
+        return list(x)
     else:
         return [x]
 
@@ -846,8 +870,12 @@ def isvideo(path):
 
 
 def isnumpy(obj):
-    """Is a python object a numpy array?"""
+    """Is a python object a numpy object?"""
     return ('numpy' in str(type(obj)))
+
+def isnumpyarray(obj):
+    """Is a python object a numpy array?"""
+    return isnumpy(obj) and 'numpy.ndarray' in str(type(obj))
 
 
 def istextfile(path):
@@ -926,7 +954,16 @@ def totempdir(filename):
 
 
 def templike(filename):
+    """Create a new temporary filename with the same extension as filename"""
     return tempfilename(fileext(filename))
+
+
+def cached(filename):
+    """Create a new filename in the cache, or tempdir if not found"""
+    if 'VIPY_CACHE' in os.environ:
+        return os.path.join(remkdir(os.environ['VIPY_CACHE']), filetail(filename))
+    else:
+        return totempdir(filename)
 
 
 def tempimage(ext='jpg'):
@@ -974,6 +1011,11 @@ def temppkl():
 def tempyaml():
     """Create a temporary YAML file"""
     return tempfilename(suffix='.yml')
+
+
+def tempjson():
+    """Create a temporary JSON file"""
+    return tempfilename(suffix='.json')
 
 
 def temppdf():
@@ -1044,7 +1086,37 @@ class Stopwatch(object):
         self.last = self.start
         return self
 
+    def duration(self):
+        """Time in seconds since last reset"""
+        return time.time() - self.start
 
+    
+class Timer(object):
+    """Pretty print elapsed system time in seconds between calls to enter and exit
+
+       >>> with Timer():
+               some_code()
+       Elapsed: 1.234567 seconds
+
+       >>> with Timer('mylogging: %1.1fs'):
+               some_code()
+       mylogging: 1.2s
+
+    """
+    def __init__(self, sprintf='Elapsed: %1.6f seconds'):
+        self._sprintf = sprintf
+        try:
+            sprintf % 1.0
+        except:
+            raise ValueError('Printed display string must be a sprintf style string with a single number variable like "Elapsed: %1.6f"')
+                
+    def __enter__(self):
+        self.start = time.time()
+
+    def __exit__(self, *args):
+        print(self._sprintf % (time.time() - self.start))
+
+        
 def isfile(path):
     """Wrapper for os.path.isfile"""
     return os.path.isfile(str(path))

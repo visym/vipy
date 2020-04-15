@@ -108,29 +108,33 @@ class Track(object):
     """
 
     def __init__(self, keyframes=None, boxes=None, category=None, label=None, confidence=None, framerate=None, interpolation='linear', boundary='strict', shortlabel=None, attributes=None):
-        assert not (label is not None and category is not None), "Constructor requires either label or category kwargs, not both"
+        keyframes = [] if keyframes is None else keyframes
+        boxes = [] if boxes is None else boxes
+        
         assert isinstance(keyframes, tuple) or isinstance(keyframes, list), "Keyframes are required and must be tuple or list"
         assert isinstance(boxes, tuple) or isinstance(boxes, list), "Keyframe boundingboxes are required and must be tuple or list"
         assert all([isinstance(bb, BoundingBox) for bb in boxes]), "Keyframe bounding boxes must be vipy.geometry.BoundingBox objects"
-        assert all([bb.isvalid() for bb in boxes]), "All keyframe bounding boxes must be valid"
+        assert all([bb.isvalid() for bb in boxes]), "All keyframe bounding boxes must be valid"        
+        assert not (label is not None and category is not None), "Constructor requires either label or category kwargs, not both"                
         assert len(keyframes) == len(boxes), "Boxes and keyframes must be the same length, there must be a one to one mapping of frames to boxes"
         assert boundary in set(['extend', 'strict']), "Invalid interpolation boundary - Must be ['extend', 'strict']"
         assert interpolation in set(['linear']), "Invalid interpolation - Must be ['linear']"
-        
+                
         self._id = uuid.uuid1().hex
         self._label = category if category is not None else label
         self._shortlabel = self._label if shortlabel is None else shortlabel
-        self._keyframes = None
-        self._keyboxes = None
         self._framerate = framerate
         self._interpolation = interpolation
         self._boundary = boundary
         self.attributes = attributes if attributes is not None else {}        
+        self._keyframes = keyframes
+        self._keyboxes = boxes
         
         # Sorted increasing frame order
-        (keyframes, boxes) = zip(*sorted([(f,bb) for (f,bb) in zip(keyframes, boxes)], key=lambda x: x[0]))
-        self._keyframes = list(keyframes)
-        self._keyboxes = list(boxes)
+        if len(keyframes) > 0 and len(boxes) > 0:
+            (keyframes, boxes) = zip(*sorted([(f,bb) for (f,bb) in zip(keyframes, boxes)], key=lambda x: x[0]))
+            self._keyframes = list(keyframes)
+            self._keyboxes = list(boxes)
         
     def __repr__(self):
         strlist = []
@@ -163,7 +167,7 @@ class Track(object):
         assert isinstance(box, BoundingBox), "Invalid input - Box must be vipy.geometry.BoundingBox()"
         self._keyframes.append(keyframe)
         self._keyboxes.append(box)
-        if keyframe < self._keyframes[-2]:
+        if len(self._keyframes) > 1 and keyframe < self._keyframes[-2]:
             (self._keyframes, self._keyboxes) = zip(*sorted([(f,bb) for (f,bb) in zip(self._keyframes, self._keyboxes)], key=lambda x: x[0]))        
             self._keyframes = list(self._keyframes)
             self._keyboxes = list(self._keyboxes)
@@ -226,6 +230,7 @@ class Track(object):
             return self._shortlabel
 
     def during(self, k):
+        """Is frame during the time interval (startframe, endframe) inclusive?"""        
         return k >= self.startframe() and k <= self.endframe()
 
     def offset(self, dt=0, dx=0, dy=0):
@@ -274,11 +279,26 @@ class Track(object):
         return copy.deepcopy(self)
 
     def boundingbox(self):
-        """The bounding box of a track is the smallest spatial box that contains all of the detections"""
+        """The bounding box of a track is the smallest spatial box that contains all of the detections, or None if there are no detections"""
         d = self._keyboxes[0].clone() if len(self._keyboxes) >= 1 else None
-        return d.union(self._keyboxes[1:]) if len(self._keyboxes) >= 2 else d
+        return d.union(self._keyboxes[1:]) if (d is not None and len(self._keyboxes) >= 2) else d
 
-        
+    def clip(self, startframe, endframe):
+        """Clip a track to be within (startframe,endframe) with strict boundary handling"""
+        if self[startframe] is not None:
+            self.add(startframe, self[startframe])
+        if self[endframe] is not None:
+            self.add(endframe, self[endframe])
+        (self._keyframes, self._keyboxes) = zip(*[(f,bb) for (f,bb) in zip(self._keyframes, self._keyboxes) if f>=startframe and f<=endframe])        
+        self._boundary = 'strict'
+        return self
+
+    def iou(self, other):
+        """Compute the spatial IoU between two tracks as the mean IoU per frame in the range (self.startframe(), self.endframe())"""
+        assert isinstance(other, Track), "Invalid input - must be vipy.object.Track()"
+        return np.mean([self[k].iou(other[k]) if self.during(k) and other.during(k) else 0.0 for k in range(self.startframe(), self.endframe())])
+
+    
 class Activity(object):
     """vipy.object.Activity class
     
@@ -294,26 +314,32 @@ class Activity(object):
     >>> a = vipy.object.Activity(startframe=0, endframe=10, category='Walking', tracks={t.id():t})
 
     """
-    def __init__(self, startframe, endframe, framerate=None, label=None, shortlabel=None, category=None, tracks={}, attributes=None):
-        assert not (label is not None and category is not None), "Constructor requires either label or category kwargs, not both"
-        assert isinstance(tracks, dict), "Tracks must be a dictionary {trackid:vipy.object.Track()}"
-        assert startframe <= endframe, "Invalid input - startframe must occur before endframe"
+    def __init__(self, startframe, endframe, framerate=None, label=None, shortlabel=None, category=None, tracks=None, attributes=None):
+        assert not (label is not None and category is not None), "ACtivity() Constructor requires either label or category kwargs, not both"
+        assert tracks is None or isinstance(tracks, dict), "Tracks must be a dictionary {trackid:vipy.object.Track()}"
+        assert tracks is None or all([isstring(k) for (k,v) in tracks.items()]) and all([isinstance(v, Track) for (k,v) in tracks.items()]), "Invalid tracks - Must be a dictionary of {str(trackid):vipy.object.Track()}"        
+        assert startframe <= endframe, "Invalid Activity() - startframe must occur before endframe"
+        
         self._id = uuid.uuid1().hex
         self._startframe = startframe
         self._endframe = endframe
         self._framerate = framerate
         self._label = category if category is not None else label        
         self._shortlabel = self._label if shortlabel is None else shortlabel
-        self._tracks = tracks
-        assert all([isstring(k) for (k,v) in tracks.items()]) and all([isinstance(v, Track) for (k,v) in tracks.items()]), "Invalid tracks - Must be a dictionary of {str(trackid):vipy.object.Track()}"
+        self._tracks = tracks if tracks is not None else {}
+
         self.attributes = attributes if attributes is not None else {}            
         
     def __len__(self):
         """Return activity length in frames"""
         return self.endframe() - self.startframe()
 
+    def __getitem__(self, k):
+        """Return a list Detection() objects interpolated at frame k if during activity, otherwise return None"""
+        return [t[k] for (i,t) in self._tracks.items() if t[k] is not None] if self.during(k) else None
+    
     def __repr__(self):
-        return str('<vipy.activity: category="%s", frames=(%d,%d), tracks=%s>' % (self.category(), self.startframe(), self.endframe(), len(set(self.tracks()))))
+        return str('<vipy.activity: category="%s", frames=(%d,%d), tracks=%s>' % (self.category(), self.startframe(), self.endframe(), len(self.tracks())))
 
     def dict(self):
         return {'id':self._id, 'label':self.category(), 'shortlabel':self.shortlabel(), 'startframe':self._startframe, 'endframe':self._endframe, 'attributes':self.attributes, 'framerate':self._framerate,
@@ -345,6 +371,10 @@ class Activity(object):
     def label(self, label):
         """Alias for category"""
         return self.category(label)
+
+    def categories(self):
+        """Return a set of categories for the activities and objects in this activity"""
+        return set([self.category()] + [t.category() for t in self.tracks().values()])
         
     def shortlabel(self, label=None):
         """A optional shorter label string to show in the visualizations"""                
@@ -353,6 +383,12 @@ class Activity(object):
             return self
         else:
             return self._shortlabel
+
+    def add(self, track):
+        """Add the track by reference to the track list for this activity, so that if the track is changed externally it is reflected here"""
+        assert isinstance(track, Track), "Invalid input - must be vipy.object.Track"
+        self._tracks[track.id()] = track
+        return self
         
     def tracks(self, tracks=None):
         """Returns a track dictionary, tracks are referenced in the dictionary and are mutable"""
@@ -370,8 +406,30 @@ class Activity(object):
         return any([tid == trackid for tid in self._tracks.keys()])
             
     def during(self, frame):
+        """Is frame during the time interval (startframe, endframe) inclusive?"""
         return int(frame) >= self._startframe and int(frame) <= self._endframe
 
+    def spatial_iou(self, other):
+        """Return the mean spatial intersection over union of two activities as the mean spatial IoU for the union of tracks at each frame during (startframe, endframe)
+           Note that we cannot do the IoU of individual tracks because there is no way to correspond tracks within an activity, since an activity may have more than one 
+           track with the same category.  
+        """
+        assert isinstance(other, Activity), "Invalid input - must be vipy.object.Activity()"
+        return np.mean([bbi.union(self[k]).iou(bbj.union(other[k])) if (bbj is not None and bbi is not None) else 0.0 for k in range(self.startframe(), self.endframe()) for bbi in self[k] for bbj in other[k]])
+
+    def temporal_iou(self, other):
+        """Return the temporal intersection over union of two activities"""
+        assert isinstance(other, Activity), "Invalid input - must be vipy.object.Activity()"
+        t_start = min(self.startframe(), other.startframe())
+        t_end = max(self.endframe(), other.endframe())
+        t_union = float(t_end - t_start)
+        
+        t_start = max(self.startframe(), other.startframe())
+        t_end = min(self.endframe(), other.endframe())
+        t_intersection = float(t_end - t_start)
+        
+        return (t_intersection / t_union) if t_intersection > 0 else 0
+    
     def offset(self, dt):
         self._startframe = self._startframe + dt
         self._endframe = self._endframe + dt
@@ -381,6 +439,11 @@ class Activity(object):
         return self._id
 
     def boundingbox(self):
-        """The bounding box of an activity is the minimum bounding box for all tracks in the activity, or None of there are no boxes"""
-        boxes = [t.boundingbox() for (k,t) in self._tracks.items()]
-        return boxes[0].union(boxes[1:]) if len(boxes)>0 else None
+        """The bounding box of an activity is the smallest bounding box for all tracks in the activity (inclusive of start and endframes), or None of there are no boxes""" 
+        #boxes = [bb for k in range(self.startframe(), self.endframe()+1) for bb in self[k] if bb is not None]
+        boxes = [t.clone().clip(self.startframe(), self.endframe()+1).boundingbox() for (i,t) in self.tracks().items()]
+        return boxes[0].clone().union(boxes[1:]) if len(boxes)>0 else None
+
+    def clone(self):
+        return copy.deepcopy(self)
+    

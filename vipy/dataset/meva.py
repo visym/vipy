@@ -1,5 +1,5 @@
 import os
-from vipy.util import remkdir, readjson, readyaml, findyaml, findvideo, filetail, findjson, filebase, readlist, groupbyasdict, save, flatlist, isstring, totempdir
+from vipy.util import remkdir, readjson, readyaml, findyaml, findvideo, filetail, findjson, filebase, readlist, groupbyasdict, save, flatlist, isstring, tempdir, readcsv, delpath
 from vipy.video import VideoCategory, Scene
 from vipy.object import Track, Activity
 from vipy.geometry import BoundingBox
@@ -98,20 +98,21 @@ class Mevadata_Public_01(object):
                                              'vehicle_turning_left':'Turning left',
                                              'vehicle_turning_right':'Turning right',
                                              'vehicle_u_turn':'Turning around'}
+
+        self._d_oldcategory_to_newcategory = {k:v for (k,v) in readcsv(os.path.join(self.repodir, 'documents', 'activity-name-mapping.csv'))[1:]}
+
         
     def __repr__(self):
-        if self._batch is None:
-            return str('<vipy.dataset.meva: videos="%s", annotations="%s">' % (self.videodir, self.repodir))
-        else:
-            return str('<vipy.dataset.meva: videos="%s", annotations="%s", proc=%d>' % (self.videodir, self.repodir, self._batch.n_processes()))            
+        return str('<vipy.dataset.meva: videos="%s", annotations="%s">' % (self.videodir, self.repodir))
 
-
+    def categories(self):
+        return self.activities()
+    
     def activities(self):
         """Return a list of activities"""
         # This list in the repo is outdated
         # return sorted(list(readjson(os.path.join(self.repodir, 'annotation', 'DIVA-phase-2', 'activity-index.json')).keys()))        
         return sorted(list(self._d_category_to_shortlabel.keys()))
-
 
     def activities_to_required_objects(self):
         """Return a dictionary of activity keys to set of required objects.  This is currently wrong."""
@@ -138,7 +139,8 @@ class Mevadata_Public_01(object):
         return sorted([x for x in findvideo(self.videodir)])
     
     def _parse_video(self, d_videoname_to_path, d_category_to_shortlabel, types_yamlfile, geom_yamlfile, act_yamlfile, stride=1, verbose=False):
-
+        """Reference: https://gitlab.kitware.com/meva/meva-data-repo/-/blob/master/documents/KPF-specification-v4.pdf"""
+        
         # Read YAML
         if verbose:
             print('[vipy.dataset.meva]: Parsing "%s"' % (act_yamlfile))
@@ -149,10 +151,10 @@ class Mevadata_Public_01(object):
         # Sanity check
         assert act_yamlfile.split('.')[:-2] == geom_yamlfile.split('.')[:-2], "Unmatched activity and geom yaml file"
         assert len(set([types_yaml[0]['meta'], geom_yaml[0]['meta'], act_yaml[0]['meta']]))==1, "Mismatched video name for '%s'" % act_yamlfile
-        videoname = act_yaml[0]['meta']
+        videoname = act_yaml[0]['meta'] if act_yaml[0]['meta'][-4:] != '.avi' else act_yaml[0]['meta'][0:-4]  # strip .avi 
         if videoname not in d_videoname_to_path:
             if verbose:
-                warnings.warn('Invalid video "%s" in "%s" - Ignoring' % (videoname, filebase(act_yamlfile)))
+                print('[vipy.dataset.meva]: Invalid MEVA video "%s" in "%s" - Ignoring' % (videoname, filebase(act_yamlfile)))
             return None
 
         # Parse
@@ -177,7 +179,7 @@ class Mevadata_Public_01(object):
                 bbox = BoundingBox(xmin=bb[0], ymin=bb[1], xmax=bb[2], ymax=bb[3])
                 if not bbox.isvalid():
                     if verbose:
-                        warnings.warn('Invalid bounding box: id1=%s, bbox="%s", file="%s" - Ignoring' % (str(v['id1']), str(bbox), filetail(geom_yamlfile)))
+                        print('[vipy.dataset.meva]: Invalid bounding box: id1=%s, bbox="%s", file="%s" - Ignoring' % (str(v['id1']), str(bbox), delpath(self.repodir, geom_yamlfile)))
                 elif v['id1'] not in d_id1_to_track:
                     d_id1_to_track[v['id1']] = Track(category=d_id1_to_category[v['id1']], framerate=framerate, keyframes=[keyframe], boxes=[bbox], boundary='strict')
                 else:
@@ -189,18 +191,43 @@ class Mevadata_Public_01(object):
         for v in act_yaml:
             if 'act' in v:
                 if 'act2' in v['act']:
-                    category = list(v['act']['act2'].keys())[0]
+                    act2 = v['act']['act2']
+                    if isinstance(act2, set):
+                        category = list(act2)[0]
+                    elif isinstance(act2, dict):
+                        category = list(act2.keys())[0]
+                    else:
+                        raise ValueError('YAML parsing error for "%s"' % str(act2))
                 elif 'act3' in v['act']:
-                    category = list(v['act']['act3'].keys())[0]
+                    act3 = v['act']['act3']
+                    if isinstance(act3, set):
+                        category = list(act3)[0]
+                    elif isinstance(act3, dict):
+                        category = list(act3.keys())[0]
+                    else:
+                        raise ValueError('YAML parsing error for "%s"' % str(act3))
                 else:
                     raise ValueError('Invalid activity YAML - act2 or act3 must be specified')
                 assert len(v['act']['timespan']) == 1, "Multi-span activities not parsed"
+
+                if category not in self.categories():
+                    if category in self._d_oldcategory_to_newcategory:
+                        category = self._d_oldcategory_to_newcategory[category]  # rationalize
+                    else:
+                        raise ValueError('undefined category "%s"' % category)
+                
                 startframe = int(v['act']['timespan'][0]['tsr0'][0])
                 endframe = int(v['act']['timespan'][0]['tsr0'][1])
                 actorid = [x['id1'] for x in v['act']['actors']]
-                tracks = {d_id1_to_track[aid].id():d_id1_to_track[aid] for aid in actorid}
-                vid.add(Activity(category=category, shortlabel=d_category_to_shortlabel[category],
-                                 startframe=startframe, endframe=endframe, tracks=tracks, framerate=framerate, attributes={'src_status':v['act']['src_status']}))
+
+                for aid in actorid:
+                    if not aid in d_id1_to_track:
+                        print('[vipy.dataset.meva]: ActorID %d referenced in activity yaml "%s" not found in geom yaml "%s" - Skipping' % (aid, delpath(self.repodir, act_yamlfile), delpath(self.repodir, geom_yamlfile)))
+                
+                tracks = {d_id1_to_track[aid].id():d_id1_to_track[aid] for aid in actorid if aid in d_id1_to_track}
+                if len(tracks) > 0:
+                    vid.add(Activity(category=category, shortlabel=d_category_to_shortlabel[category],
+                                     startframe=startframe, endframe=endframe, tracks=tracks, framerate=framerate, attributes={'act':v['act']}))
             
         return vid
         
@@ -281,7 +308,8 @@ class Mevadata_Public_01(object):
         scenes = flatlist([m.activityclip() for m in meva if m is not None])
         activities = flatlist([s.activities().values() for s in scenes])
         tracks = flatlist([s.tracks().values() for s in scenes])
-
+        outdir = tempdir() if outdir is None else outdir
+        
         # Category distributions
         d = {}
         d['activity_categories'] = set([a.category() for a in activities])
@@ -293,7 +321,7 @@ class Mevadata_Public_01(object):
         # Histogram of instances
         (categories, freq) = zip(*reversed(d['num_activities']))
         barcolors = ['blue' if not 'vehicle' in c else 'green' for c in categories]
-        d['num_activities_histogram'] = vipy.metrics.histogram(freq, categories, barcolors=barcolors, outfile=totempdir('num_activities_histogram.pdf'), ylabel='Instances')
+        d['num_activities_histogram'] = vipy.metrics.histogram(freq, categories, barcolors=barcolors, outfile=os.path.join(outdir, 'num_activities_histogram.pdf'), ylabel='Instances')
 
         # Scatterplot of box sizes
         (x, y, category) = zip(*[(max([t.meanshape()[1] for t in a.tracks().values()]), max([t.meanshape()[0] for t in a.tracks().values()]), a.category()) for a in activities])
@@ -309,24 +337,47 @@ class Mevadata_Public_01(object):
             plt.scatter(xc, yc, c=d_category_to_color[c], label=c)
         plt.xlabel('Bounding box (width)')
         plt.ylabel('Bounding box (height)')
+        plt.gca().set_axisbelow(True)                
         plt.axis([0, max(max(x),max(y)), 0, max(max(x),max(y))])
         lgd = plt.legend(bbox_to_anchor=(1.05, 1), loc='upper left', borderaxespad=0.)
-        d['bounding_box_scatterplot'] = totempdir('bounding_box_scatterplot.pdf')
+        d['bounding_box_scatterplot'] = os.path.join(outdir, 'bounding_box_scatterplot.pdf')
         plt.savefig(d['bounding_box_scatterplot'], bbox_extra_artists=(lgd,), bbox_inches='tight')
 
+        # Separate scatterplots of box sizes
+        (x, y, category) = zip(*[(max([t.meanshape()[1] for t in a.tracks().values()]), max([t.meanshape()[0] for t in a.tracks().values()]), a.category()) for a in activities])
+        colors = colorlist()
+        d_category_to_color = {c:colors[k % len(colors)] for (k,c) in enumerate(category)}
+        d_category_to_boxsizes = groupbyasdict(zip(x,y,category), lambda xyc: xyc[2])
+        d['category_bounding_box_scatterplot'] = []
+        for c in categories:
+            plt.clf()
+            plt.figure()
+            plt.subplot(111)
+            plt.grid(True)            
+            (xc,yc) = zip(*[(xx,yy) for (xx,yy,cc) in d_category_to_boxsizes[c]])
+            plt.scatter(xc, yc, c=d_category_to_color[c], label=c)
+            plt.xlabel('Bounding box (width)')
+            plt.ylabel('Bounding box (height)')
+            plt.legend()            
+            plt.gca().set_axisbelow(True)                
+            plt.axis([0, max(max(x),max(y)), 0, max(max(x),max(y))])
+            filename = os.path.join(outdir, 'category_bounding_box_scatterplot_%s.pdf' % c)
+            d['category_bounding_box_scatterplot'].append(filename)
+            plt.savefig(filename)
+        
         # 2D histogram of box sixes
         plt.clf()
         plt.figure()
         plt.hist2d(x, y, bins=10)
         plt.xlabel('Bounding box (width)')
         plt.ylabel('Bounding box (height)')        
-        d['2D_bounding_box_histogram'] = totempdir('2D_bounding_box_histogram.pdf')
+        d['2D_bounding_box_histogram'] = os.path.join(outdir, '2D_bounding_box_histogram.pdf')
         plt.savefig(d['2D_bounding_box_histogram'])
         
         # Scatterplot of people and vehicles box sizes
         plt.clf()
         plt.figure()
-        plt.grid(True)        
+        plt.grid(True)
         d_category_to_color = {'person':'blue', 'vehicle':'green'}
         for c in ['person', 'vehicle']:
             (xc, yc) = zip(*[(t.meanshape()[1], t.meanshape()[0]) for t in tracks if t.category() == c])
@@ -335,7 +386,8 @@ class Mevadata_Public_01(object):
         plt.ylabel('bounding box (height)')
         plt.axis([0, max(max(x),max(y)), 0, max(max(x),max(y))])                
         plt.legend()
-        d['object_bounding_box_scatterplot'] = totempdir('object_bounding_box_scatterplot.pdf')
+        plt.gca().set_axisbelow(True)        
+        d['object_bounding_box_scatterplot'] = os.path.join(outdir, 'object_bounding_box_scatterplot.pdf')
         plt.savefig(d['object_bounding_box_scatterplot'])
         
         # 2D histogram of people and vehicles box sizes
@@ -347,12 +399,7 @@ class Mevadata_Public_01(object):
             plt.xlabel('Bounding box (width)')
             plt.ylabel('Bounding box (height)')
             
-            d['2D_%s_bounding_box_histogram' % c] = totempdir('2D_%s_bounding_box_histogram.pdf' % c)
+            d['2D_%s_bounding_box_histogram' % c] = os.path.join(outdir, '2D_%s_bounding_box_histogram.pdf' % c)
             plt.savefig(d['2D_%s_bounding_box_histogram' % c])
 
-        # Copy
-        if outdir is not None:
-            for (k,v) in d.items():
-                if isstring(v) and os.path.exists(v):
-                    shutil.copyfile(v, os.path.join(outdir, filetail(v))) 
         return d

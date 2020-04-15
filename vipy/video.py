@@ -2,7 +2,7 @@ import os
 import dill
 from vipy.util import remkdir, tempMP4, isurl, \
     isvideourl, templike, tempjpg, filetail, tempdir, isyoutubeurl, try_import, isnumpy, temppng, \
-    istuple, islist, isnumber, tolist, filefull, fileext
+    istuple, islist, isnumber, tolist, filefull, fileext, isS3url, totempdir, flatlist, tocache
 from vipy.image import Image
 import vipy.geometry
 import vipy.image
@@ -58,6 +58,14 @@ class Video(object):
         self.attributes = attributes if attributes is not None else {}
         assert filename is not None or url is not None or array is not None, 'Invalid constructor - Requires "filename", "url" or "array"'
 
+        # FFMPEG installed?
+        self._ffmpeg_exe = shutil.which('ffmpeg')
+        self._ffprobe_exe = shutil.which('ffprobe')        
+        if self._ffmpeg_exe is None or not os.path.exists(self._ffmpeg_exe):
+            warnings.warn('"ffmpeg" executable not found on path, this is required for vipy.video - Install from http://ffmpeg.org/download.html')
+        if self._ffprobe_exe is None or not os.path.exists(self._ffprobe_exe):
+            warnings.warn('"ffprobe" executable not found on path, this is required for vipy.video - Install from http://ffmpeg.org/download.html')            
+
         # Constructor clips
         assert (startframe is not None and endframe is not None) or (startframe is None and endframe is None), "Invalid input - (startframe,endframe) are both required"
         assert (startsec is not None and endsec is not None) or (startsec is None and endsec is None), "Invalid input - (startsec,endsec) are both required"        
@@ -69,13 +77,16 @@ class Video(object):
             assert isurl(url), 'Invalid URL "%s" ' % url
             self._url = url
         if filename is not None:
-            #self.filename(filename)
             self._filename = filename
-        else:
-            if isvideourl(self._url):
+        elif self._url is not None:
+            if isS3url(self._url):
+                self._filename = totempdir(self._url)  # Preserve S3 Object ID
+            elif isvideourl(self._url):
                 self._filename = templike(self._url)
             elif isyoutubeurl(self._url):
                 self._filename = os.path.join(tempdir(), '%s' % self._url.split('?')[1])
+            else:
+                self._filename = totempdir(self._url)  
             if 'VIPY_CACHE' in os.environ and self._filename is not None:
                 self._filename = os.path.join(remkdir(os.environ['VIPY_CACHE']), filetail(self._filename))
 
@@ -115,6 +126,7 @@ class Video(object):
 
     def __getitem__(self, k):
         """Return the kth frame as an vipy.image object"""
+        assert isinstance(k, int), "Indexing video by frame must be integer"        
         if k >= 0 and k < len(self):
             return Image(array=self._array[k], colorspace=self.colorspace())
         elif not self.isloaded():
@@ -137,8 +149,6 @@ class Video(object):
             if argname in n.__dict__['kwargs']:
                 n.__dict__['kwargs'][argname] = argval
                 return self
-            else:
-                print(n.__dict__)
         raise ValueError('invalid ffmpeg argument "%s" -> "%s"' % (argname, argval))
                 
     def probe(self):
@@ -284,7 +294,7 @@ class Video(object):
             return self._filename
         
         # Update ffmpeg filter chain with new input node filename
-        newfile = os.path.abspath(os.path.expanduser(newfile))
+        newfile = os.path.normpath(os.path.abspath(os.path.expanduser(newfile)))
         self._update_ffmpeg('filename', newfile)
         self._filename = newfile
         return self
@@ -310,7 +320,8 @@ class Video(object):
                         break    
                 if not self.hasfilename():
                     raise ValueError('Downloaded file not found "%s.*"' % self.filename())
-            elif url_scheme in ['http', 'https']:
+            
+            elif url_scheme in ['http', 'https'] and isvideourl(self._url):
                 vipy.downloader.download(self._url,
                                          self._filename,
                                          verbose=verbose,
@@ -318,16 +329,34 @@ class Video(object):
                                          sha1=None,
                                          username=None,
                                          password=None)
+                                
             elif url_scheme == 'file':
                 shutil.copyfile(self._url, self._filename)
             elif url_scheme == 's3':
-                raise NotImplementedError('S3 support is in development')
+                if self.filename() is None:
+                    self.filename(totempdir(self._url))
+                    if 'VIPY_CACHE' in os.environ:
+                        self.filename(os.path.join(remkdir(os.environ['VIPY_CACHE']), filetail(self._url)))
+                vipy.downloader.s3(self.url(), self.filename(), verbose=verbose)
+                    
             elif url_scheme == 'scp':                
                 if self.filename() is None:
                     self.filename(templike(self._url))                    
                     if 'VIPY_CACHE' in os.environ:
                         self.filename(os.path.join(remkdir(os.environ['VIPY_CACHE']), filetail(self._url)))
                 vipy.downloader.scp(self._url, self.filename(), verbose=verbose)
+ 
+            elif not isvideourl(self._url) and vipy.videosearch.is_downloadable_url(self._url):
+                vipy.videosearch.download(self._url, filefull(self._filename), writeurlfile=False, skip=ignoreErrors, verbose=verbose)
+                for ext in ['mkv', 'mp4', 'webm']:
+                    f = '%s.%s' % (self.filename(), ext)
+                    if os.path.exists(f):
+                        os.symlink(f, self.filename())  # for future load()
+                        self.filename(f)
+                        break    
+                if not self.hasfilename():
+                    raise ValueError('Downloaded filenot found "%s.*"' % self.filename())
+                
             else:
                 raise NotImplementedError(
                     'Invalid URL scheme "%s" for URL "%s"' %
@@ -382,10 +411,14 @@ class Video(object):
         if not self.hasfilename():
             raise ValueError('Video file not found')
         im = Image(filename=tempjpg() if outfile is None else outfile)
+
         (out, err) = self._ffmpeg.output(im.filename(), vframes=1)\
                                  .overwrite_output()\
                                  .global_args('-loglevel', 'debug' if verbose else 'error') \
                                  .run(capture_stdout=True, capture_stderr=True)
+        
+        if not im.hasfilename():
+            raise ValueError('Video preview failed - Attempted to load the video and no preview frame was loaded.  This usually occurs for zero length clips.') 
         return im
 
     def load(self, verbose=False, ignoreErrors=False, startframe=None, endframe=None, rotation=None, rescale=None, mindim=None):
@@ -441,7 +474,7 @@ class Video(object):
     def clip(self, startframe, endframe):
         """Load a video clip betweeen start and end frames"""
         assert startframe <= endframe and startframe >= 0, "Invalid start and end frames (%s, %s)" % (str(startframe), str(endframe))
-        assert not self.isloaded(), "Filters can only be applied prior to load()"
+        assert not self.isloaded(), "Filters can only be applied prior to load() - Try calling flush() first"
         self._ffmpeg = self._ffmpeg.trim(start_frame=startframe, end_frame=endframe)\
                                    .setpts('PTS-STARTPTS')  # reset timestamp to 0 after trim filter
         self._startframe = startframe if self._startframe is None else self._startframe + startframe  # for __repr__ only
@@ -451,26 +484,26 @@ class Video(object):
     def cliptime(self, startsecs, endsecs):
         """Load a video clip betweeen start seconds and end seconds, should be initialized by constructor, which will work but will not set __repr__ correctly"""
         assert startsecs <= endsecs and startsecs >= 0, "Invalid start and end seconds (%s, %s)" % (str(startsecs), str(endsecs))
-        assert not self.isloaded(), "Filters can only be applied prior to load()"
+        assert not self.isloaded(), "Filters can only be applied prior to load() - Try calling flush() first"
         self._ffmpeg = self._ffmpeg.trim(start=startsecs, end=endsecs)\
                                    .setpts('PTS-STARTPTS')  # reset timestamp to 0 after trim filter
         return self
     
     def rot90cw(self):
         """Rotate the video 90 degrees clockwise, can only be applied prior to load()"""
-        assert not self.isloaded(), "Filters can only be applied prior to load()"
+        assert not self.isloaded(), "Filters can only be applied prior to load() - Try calling flush() first"
         self._ffmpeg = self._ffmpeg.filter('transpose', 1)
         return self
 
     def rot90ccw(self):
         """Rotate the video 90 degrees counter-clockwise, can only be applied prior to load()"""        
-        assert not self.isloaded(), "Filters can only be applied prior to load()"
+        assert not self.isloaded(), "Filters can only be applied prior to load() - Try calling flush() first"
         self._ffmpeg = self._ffmpeg.filter('transpose', 2)
         return self
 
     def rescale(self, s):
         """Rescale the video by factor s, such that the new dimensions are (s*H, s*W), can only be applied prior load()"""
-        assert not self.isloaded(), "Filters can only be applied prior to load()"
+        assert not self.isloaded(), "Filters can only be applied prior to load() - Try calling flush() first"
         self._ffmpeg = self._ffmpeg.filter('scale', 'iw*%1.2f' % s, 'ih*%1.2f' % s)
         return self
 
@@ -478,26 +511,28 @@ class Video(object):
         """Resize the video to be (rows, cols), can only be applied prior to load()"""
         if rows is None and cols is None:
             return self
-        assert not self.isloaded(), "Filters can only be applied prior to load()"
+        assert not self.isloaded(), "Filters can only be applied prior to load() - Try calling flush() first"
         self._ffmpeg = self._ffmpeg.filter('scale', cols if cols is not None else -1, rows if rows is not None else -1)
         return self
 
     def mindim(self, dim):
         """Resize the video so that the minimum of (width,height)=dim, preserving aspect ratio"""
-        assert not self.isloaded(), "Filters can only be applied prior to load()"
+        assert not self.isloaded(), "Filters can only be applied prior to load() - Try calling flush() first"
         (H,W) = self._preview().load().shape()  # yuck, need to get image dimensions before filter
         return self.resize(cols=dim) if W<H else self.resize(rows=dim)
 
     def maxdim(self, dim):
         """Resize the video so that the maximum of (width,height)=dim, preserving aspect ratio"""
-        assert not self.isloaded(), "Filters can only be applied prior to load()"
+        assert not self.isloaded(), "Filters can only be applied prior to load() - Try calling flush() first"
         (H,W) = self._preview().load().shape()  # yuck, need to get image dimensions before filter
         return self.resize(cols=dim) if W>H else self.resize(rows=dim)
     
     def crop(self, bb):
         """Spatially crop the video using the supplied vipy.geometry.BoundingBox, can only be applied prior to load()"""
-        assert not self.isloaded(), "Filters can only be applied prior to load()"
+        assert not self.isloaded(), "Filters can only be applied prior to load() - Try calling flush() first"
         assert isinstance(bb, vipy.geometry.BoundingBox), "Invalid input"
+        impreview = self._preview()  # to clip to image rectangle, required for ffmpeg
+        bb = bb.imclipshape(impreview.width(), impreview.height()).int()
         self._ffmpeg = self._ffmpeg.crop(bb.xmin(), bb.ymin(), bb.width(), bb.height())
         return self
 
@@ -547,6 +582,7 @@ class Video(object):
                 raise ValueError('Input video file not found "%s"' % self.filename())
         except Exception as e:
             if ignoreErrors:
+                # useful for saving a large number of videos in parallel where some failed download
                 print('[vipy.video.saveas]:  Failed with error "%s" - Ignoring' % str(repr(e)))
             else:
                 raise
@@ -555,7 +591,7 @@ class Video(object):
 
     def save(self, ignoreErrors=False):
         """Save the current video filter chain, overwriting the current filename()"""
-        return self.saveas(self.filename() if self.filename() is not None else tempMP4(), ignoreErrors=ignoreErrors)
+        return self.saveas(self.filename() if self.filename() is not None else tocache(tempMP4()), ignoreErrors=ignoreErrors)
 
     def pptx(self, outfile):
         """Export the video in a format that can be played by powerpoint"""
@@ -569,7 +605,7 @@ class Video(object):
         if not self.hasfilename():
             if verbose:
                 print('[vipy.video.play]: Saving video to temporary file "%s"' % f)            
-            f = self.saveas(tempMP4())
+            f = self.saveas(tocache(tempMP4()))
         cmd = "ffplay %s" % f            
         if verbose:
             print('[vipy.video.play]: Executing "%s"' % cmd)
@@ -578,7 +614,7 @@ class Video(object):
 
     def show(self):
         """Export loaded video to tempfile and play()"""
-        return os.system('ffplay %s' % self.saveas(tempMP4()))
+        return os.system('ffplay %s' % self.saveas(tocache(tempMP4())))
     
     def torch(self, take=None):
         """Convert the loaded video to an NxCxHxW torch tensor, forces a load()"""
@@ -738,7 +774,8 @@ class Scene(VideoCategory):
             activities = activities if isinstance(activities, list) or isinstance(activities, tuple) else [activities]  # canonicalize            
             assert all([isinstance(a, vipy.object.Activity) for a in activities]), "Invalid activity input; activities=[vipy.object.Activity(), ...]"
             self._activities = {a.id():a for a in activities}
-
+            self._tracks.update( {tid:t for (aid,a) in self._activities.items() for (tid,t) in a.tracks().items()} )
+            
         if framerate is not None:
             self.framerate(framerate)
             
@@ -768,6 +805,7 @@ class Scene(VideoCategory):
 
     def __getitem__(self, k):
         """Return the vipy.image.Scene() for the vipy.video.Scene() interpolated at frame k"""
+        assert isinstance(k, int), "Indexing video by frame must be integer"                
         if self.load().isloaded() and k >= 0 and k < len(self):
             dets = [t[k] for (tid,t) in self._tracks.items() if t[k] is not None]  # track interpolation with boundary handling
             for d in dets:
@@ -795,9 +833,26 @@ class Scene(VideoCategory):
             yield self.__getitem__(k)
         self._currentframe = None
 
+    def frame(self, k):
+        """Alias for self[k]"""
+        return self.__getitem__(k)
+    
+    def quicklook(self, n=9, dilate=1.5, mindim=256, fontsize=10):
+        """Generate a montage of n uniformly spaced annotated frames centered on the union of the labeled boxes in the current frame to show the activity ocurring in this scene at a glance
+           Montage increases rowwise for n uniformly spaced frames, starting from frame zero and ending on the last frame.  This quicklook is most useful when len(self.activities()==1)
+           for generating a quicklook from an activityclip()
+        """
+        if not self.isloaded():
+            self.mindim(mindim).load()
+        framelist = [int(np.round(f)) for f in np.linspace(0, len(self)-1, n)]
+        imframes = [self.frame(k).padcrop(self.frame(k).boundingbox().dilate(dilate).imclipshape(self.width(), self.height()).maxsquare()).mindim(mindim, interp='nearest') if (self.frame(k).boundingbox() is not None) else
+                    self.frame(k).maxmatte() for k in framelist]  # letterbox or pillarbox
+        imframes = [im.savefig(fontsize=fontsize).rgb() for im in imframes]
+        return vipy.visualize.montage(imframes, imgwidth=mindim, imgheight=mindim)
+    
     def tracks(self, tracks=None, id=None):
         if tracks is None:
-            return self._tracks  # mutable
+            return self._tracks  # mutable dict
         elif id is not None:
             return self._tracks[id]
         else:
@@ -807,14 +862,18 @@ class Scene(VideoCategory):
 
     def activities(self, activities=None, id=None):
         if activities is None:
-            return self._activities  # mutable
+            return self._activities  # mutable dict
         elif id is not None:
             return self._activities[id]
         else:
             assert all([isinstance(a, vipy.object.Activity) for a in tolist(activities)]), "Invalid input - Must be vipy.object.Activity or list of vipy.object.Activities"
             self._activities = {a.id():a for a in tolist(activities)}   # overwrite
             return self
-    
+
+    def categories(self):
+        """Return a set of all categories in all activities and tracks in this sccene"""
+        return set([a.category() for a in self.activities().values()]+[t.category() for t in self.tracks().values()])
+        
     def hasactivities(self):
         return len(self._activities) > 0
 
@@ -849,7 +908,7 @@ class Scene(VideoCategory):
         
         This will keep track of the current frame in the video and add the objects in the appropriate place
 
-        """
+        """        
         if isinstance(obj, vipy.object.Detection):
             assert self._currentframe is not None, "add() for vipy.object.Detection() must be added during frame iteration (e.g. for im in video: )"
             t = vipy.object.Track(category=obj.category(), keyframes=[self._currentframe], boxes=[obj], boundary='strict', attributes=obj.attributes)
@@ -868,6 +927,12 @@ class Scene(VideoCategory):
             return t.id()
         else:
             raise ValueError('Undefined object type "%s" to be added to scene - Supported types are obj in ["vipy.object.Detection", "vipy.object.Track", "vipy.object.Activity", "[xmin, ymin, width, height]"]' % str(type(obj)))        
+
+    def clear(self):
+        """Remove all activities and tracks from this object"""
+        self._activities = {}
+        self._tracks = {}
+        return self
         
     def dict(self):
         d = super(Scene, self).dict()
@@ -878,7 +943,7 @@ class Scene(VideoCategory):
         
     def framerate(self, fps):
         """Change the input framerate for the video and update frame indexes for all annotations"""
-        assert not self.isloaded(), "Filters can only be applied prior to load()"        
+        assert not self.isloaded(), "Filters can only be applied prior to load() - Try calling flush() first"        
         self._ffmpeg = self._ffmpeg.filter('fps', fps=fps, round='up')
         self._tracks = {k:t.framerate(fps) for (k,t) in self._tracks.items()}
         self._activities = {k:a.framerate(fps) for (k,a) in self._activities.items()}        
@@ -888,37 +953,49 @@ class Scene(VideoCategory):
     def thumbnail(self, outfile=None, frame=0):
         """Return annotated frame=k of video, save annotation visualization to provided outfile"""
         return self.__getitem__(frame).savefig(outfile if outfile is not None else temppng())
-
+        
     def activityclip(self, padframes=0):
-        """Return a list of vipy.video.Scene() each clipped to be centered on a single activity, with an optional padframes before and after.  The Scene() category is updated to be the activity, and only the objects partifipating in the activity are included"""
+        """Return a list of vipy.video.Scene() each clipped to be centered on a single activity, with an optional padframes before and after.  
+           The Scene() category is updated to be the activity, and only the objects participating in the activity are included.
+           Activities are returned ordered in the temporal order they appear in the video."""
         vid = self.clone(flushforward=True)
-        activities = vid.activities().values()
-        tracks = [ [t for (tid, t) in vid.tracks().items() if a.hastrack(t)] for a in activities]                         
+        if any([(a.endframe()-a.startframe()) <= 0 for a in vid.activities().values()]):
+            warnings.warn('Filtering invalid activity clips with degenerate lengths: %s' % str([a for a in vid.activities().values() if (a.endframe()-a.startframe()) <= 0]))
+        activities = sorted([a.clone() for a in vid.activities().values() if (a.endframe()-a.startframe()) > 0], key=lambda a: a.startframe())   # only activities with at least one frame, sorted in temporal order
+        tracks = [ [t.clone() for (tid, t) in vid.tracks().items() if a.hastrack(t)] for a in activities]                         
         vid._activities = {}  # for faster clone
         vid._tracks = {}      # for faster clone
         padframes = padframes if istuple(padframes) else (padframes,padframes)
-        return [vid.clone().activities(a).tracks(t).clip(startframe=max(a.middleframe()-(len(a)//2)-padframes[0], 0),
-                                                         endframe=a.middleframe()+(len(a)//2)+padframes[1]).category(a.category()) for (a,t) in zip(activities, tracks)]
+        return [vid.clone().activities(a).tracks(t).clip(startframe=max(a.startframe()-padframes[0], 0),
+                                                         endframe=(a.endframe()+padframes[1])).category(a.category()) for (a,t) in zip(activities, tracks)]
     
     def activitycrop(self, dilate=1.0):
-        """Returns a list of vipy.video.Scene() each spatially cropped to be the union of the objects performing the activity"""
+        """Returns a list of vipy.video.Scene() each spatially cropped to be the union of the objects performing the activity.
+           Activities are returned ordered in the temporal order they appear in the video"""
         vid = self.clone(flushforward=True)
-        activities = vid.activities().values()
+        activities = sorted(vid.activities().values(), key=lambda a: a.startframe())  # temporal order 
+        if any([(a.endframe()-a.startframe()) <= 0 for a in vid.activities().values()]):
+            warnings.warn('Filtering invalid activity clips with degenerate lengths: %s' % str([a for a in vid.activities().values() if (a.endframe()-a.startframe()) <= 0]))            
         tracks = [ [t for (tid, t) in vid.tracks().items() if a.hastrack(t)] for a in activities]                 
         vid._activities = {}  # for faster clone
         vid._tracks = {}      # for faster clone
-        return [vid.clone().activities(a).tracks(t).crop(a.boundingbox().dilate(dilate)) for (a,t) in zip(activities, tracks)]        
+        return [vid.clone().activities(a).tracks(t).crop(a.boundingbox().dilate(dilate).int()) for (a,t) in zip(activities, tracks)]        
 
     def activitysquare(self, dilate=1.0):
-        """Returns a list of vipy.video.Scene() each spatially cropped to be the maxsquare of the union of the objects performing the activity"""
+        """Returns a list of vipy.video.Scene() each spatially cropped to be the maxsquare of the union of the objects performing the activity
+           Activities are returned ordered in the temporal order they appear in the video."""
         vid = self.clone(flushforward=True)
-        activities = vid.activities().values()
+        activities = sorted(vid.activities().values(), key=lambda a: a.startframe())  # temporal order
         tracks = [ [t for (tid, t) in vid.tracks().items() if a.hastrack(t)] for a in activities]                 
         vid._activities = {}  # for faster clone
         vid._tracks = {}      # for faster clone
         im = self._preview()  # for faster crop
-        return [vid.clone().activities(a).tracks(t).crop(a.boundingbox().dilate(dilate).maxsquare().iminterior(im.width(), im.height())) for (a,t) in zip(activities, tracks)]  
-    
+        return [vid.clone().activities(a).tracks(t).crop(a.boundingbox().dilate(dilate).maxsquare().iminterior(im.width(), im.height()).int()) for (a,t) in zip(activities, tracks)]  
+
+    def activitytube(self, dilate=1.0, padframes=0):
+        """Return a list of vipy.video.Scene() each spatially cropped following activitycrop() and temporally cropped following activityclip()"""
+        return flatlist([a.activitycrop(dilate) for a in self.activityclip(padframes)])
+        
     def clip(self, startframe, endframe):
         """Clip the video to between (startframe, endframe).  This clip is relative to cumulative clip() from the filter chain"""
         super(Scene, self).clip(startframe, endframe)
@@ -930,22 +1007,22 @@ class Scene(VideoCategory):
         raise NotImplementedError('use clip() instead')
     
     def crop(self, bb):
-        """Crop the video using the supplied box, update tracks relative to crop, bbox must be within the image rectangle (this is not checked)"""
-        assert not self.isloaded(), "Filters can only be applied prior to load()"
+        """Crop the video using the supplied box, update tracks relative to crop, bbox is clipped to be within the image rectangle, otherwise ffmpeg will throw an exception"""
+        assert not self.isloaded(), "Filters can only be applied prior to load() - Try calling flush() first"
         assert isinstance(bb, vipy.geometry.BoundingBox), "Invalid input"
-        super(Scene, self).crop(bb)
+        super(Scene, self).crop(bb)  # will clip to image rectangle)
         self._tracks = {k:t.offset(dx=-bb.xmin(), dy=-bb.ymin()) for (k,t) in self._tracks.items()}
         return self
 
     def rot90ccw(self):
-        assert not self.isloaded(), "Filters can only be applied prior to load()"                
+        assert not self.isloaded(), "Filters can only be applied prior to load() - Try calling flush() first"                
         (H,W) = self._preview().load().shape()  # yuck, need to get image dimensions before filter
         self._tracks = {k:t.rot90ccw(H,W) for (k,t) in self._tracks.items()}
         super(Scene, self).rot90ccw()
         return self
 
     def rot90cw(self):
-        assert not self.isloaded(), "Filters can only be applied prior to load()"                
+        assert not self.isloaded(), "Filters can only be applied prior to load() - Try calling flush() first"                
         (H,W) = self._preview().load().shape()  # yuck, need to get image dimensions before filter
         self._tracks = {k:t.rot90cw(H,W) for (k,t) in self._tracks.items()}
         super(Scene, self).rot90cw()
@@ -953,7 +1030,7 @@ class Scene(VideoCategory):
 
     def resize(self, rows=None, cols=None):
         """Resize the video to (rows, cols), preserving the aspect ratio if only rows or cols is provided"""
-        assert not self.isloaded(), "Filters can only be applied prior to load()"                
+        assert not self.isloaded(), "Filters can only be applied prior to load() - Try calling flush() first"                
         assert rows is not None or cols is not None, "Invalid input"
         (H,W) = self._preview().load().shape()  # yuck, need to get image dimensions before filter
         sy = rows / float(H) if rows is not None else cols / float(W)
@@ -965,29 +1042,70 @@ class Scene(VideoCategory):
 
     def mindim(self, dim):
         """Resize the video so that the minimum of (width,height)=dim, preserving aspect ratio"""
-        assert not self.isloaded(), "Filters can only be applied prior to load()"                
+        assert not self.isloaded(), "Filters can only be applied prior to load() - Try calling flush() first"                
         (H,W) = self._preview().load().shape()  # yuck, need to get image dimensions before filter
         return self.resize(cols=dim) if W<H else self.resize(rows=dim)
 
     def maxdim(self, dim):
         """Resize the video so that the maximum of (width,height)=dim, preserving aspect ratio"""
-        assert not self.isloaded(), "Filters can only be applied prior to load()"                
+        assert not self.isloaded(), "Filters can only be applied prior to load() - Try calling flush() first"                
         (H,W) = self._preview().load().shape()  # yuck, need to get image dimensions before filter
         return self.resize(cols=dim) if W>H else self.resize(rows=dim)
     
     def rescale(self, s):
-        assert not self.isloaded(), "Filters can only be applied prior to load()"                
-        (H,W) = self._preview().load().shape()  # yuck, need to get image dimensions before filter
+        """Spatially rescale the scene by a constant scale factor"""
+        assert not self.isloaded(), "Filters can only be applied prior to load() - Try calling flush() first"                
         self._tracks = {k:t.rescale(s) for (k,t) in self._tracks.items()}
         super(Scene, self).rescale(s)
         return self
 
+    def union(self, other, temporal_iou_threshold=0.5, spatial_iou_threshold=0.5, strict=True):
+        """Compute the union two scenes as the set of unique activities.  
+
+           A pair of activities is non-unique if they overlap spatially and temporally by a given IoU threshold.      
+  
+           Input:
+             -spatial_iou_threshold:  The intersection over union threshold for an activity bounding box (the union of all tracks within the activity) to be declared to be overlapping
+             -temporal_iou_threshold:  The intersection over uniion threshold for a temporal bounding box for a pair of activities to be declared overlapping
+             -strict:  REquire both scenes to share the same underlying video filename
+
+           Output:
+             -Updates this scene to include the non-overlapping activities from other           
+        """
+        
+        assert isinstance(other, Scene), "Invalid input - must be vipy.video.Scene() object and not type=%s" % str(type(other))
+        assert spatial_iou_threshold >= 0 and spatial_iou_threshold <= 1, "invalid spatial_iou_threshold, must be between [0,1]"
+        assert temporal_iou_threshold >= 0 and temporal_iou_threshold <= 1, "invalid temporal_iou_threshold, must be between [0,1]"        
+        if strict:
+            assert self.filename() == other.filename(), "Invalid input - Scenes must have the same underlying video.  Disable this with strict=False."
+
+        d_track_assignment = {}
+        for (i,ti) in self.tracks().items():
+            for (j,tj) in other.tracks().items():
+                if ti.category() == tj.category() and ti.iou(tj) > spatial_iou_threshold:
+                    d_track_assignment[j] = i
+        for (i, ti) in other.tracks().items():
+            if i not in d_track_assignment:
+                self.add(ti)
+                    
+        d_activity_assignment = {}
+        for (i,ai) in self.activities().items():
+            for (j,aj) in other.activities().items():
+                if ai.categories() == aj.categories() and ai.temporal_iou(aj) > temporal_iou_threshold and ai.spatial_iou(aj) > spatial_iou_threshold:
+                    d_activity_assignment[j] = i
+        for (j, aj) in other.activities().items():                    
+            if j not in d_activity_assignment:
+                self.add(aj)  # this groups the tracks in referenced in aj, and does not reassign tracks in the union
+                
+        return self
+    
     def annotate(self, outfile=None, n_processes=1, verbose=True, fontsize=10, captionoffset=(0,0), textfacecolor='white', textfacealpha=1.0, shortlabel=True, boxalpha=0.25, d_category2color={'Person':'green', 'Vehicle':'blue', 'Object':'red'}, categories=None, nocaption=False, nocaption_withstring=[]):
-        """Generate a video visualization of all annotated objects and activities in the video, at the resolution and framerate of the underlying video, save as outfile.
-        This function does not play the video, it only generates an annotation video.  Use show() to annotation and play.
+        """Generate a video visualization of all annotated objects and activities in the video, at the resolution and framerate of the underlying video, save as outfile and return a new video object where the frames contain the overlay.
+        This function does not play the video, it only generates an annotation video.  Use show() which is equivalent to annotate().play()
         In general, this function should not be run on very long videos, as it requires loading the video framewise into memory, try running on clips instead.
         """
-        outfile = outfile if outfile is not None else tempMP4()        
+        outfile = outfile if outfile is not None else tocache(tempMP4())
+        
         if verbose:
             print('[vipy.video.annotate]: Generating annotation video "%s" ...' % outfile)
             if not self.isloaded():
@@ -1022,12 +1140,13 @@ class Scene(VideoCategory):
                                    categories=categories,
                                    nocaption=nocaption,
                                    nocaption_withstring=nocaption_withstring).numpy() for k in range(0, len(vid))]  # SLOW for large videos
-            vid._array = np.stack([np.array(PIL.Image.fromarray(img).convert('RGB')) for img in imgs], axis=0)            
-        return vid.saveas(outfile)
+            vid._array = np.stack([np.array(PIL.Image.fromarray(img).convert('RGB')) for img in imgs], axis=0)
+        return vid.filename(vid.saveas(outfile))
+
 
     def show(self, outfile=None, verbose=True, n_processes=1, fontsize=10, captionoffset=(0,0), textfacecolor='white', textfacealpha=1.0, shortlabel=True, boxalpha=0.25, d_category2color={'Person':'green', 'Vehicle':'blue', 'Object':'red'}, categories=None, nocaption=False, nocaption_withstring=[]):
         """Generate an annotation video saved to outfile (or tempfile if outfile=None) and show it using ffplay when it is done exporting"""
-        outfile = tempMP4() if outfile is None else outfile
+        outfile = tocache(tempMP4()) if outfile is None else outfile
         self.annotate(outfile, 
                       n_processes=n_processes, 
                       verbose=verbose, 

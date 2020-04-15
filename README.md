@@ -1,3 +1,5 @@
+[![PyPI version](https://badge.fury.io/py/vipy.svg)](https://badge.fury.io/py/vipy)
+
 Project
 -------------------
 VIPY: Visym Python Tools for Computer Vision and Machine Learning  
@@ -15,6 +17,8 @@ VIPY provides:
 * Fluent interface for chaining operations on videos and images
 * Dataset download, unpack and import (e.g. ActivityNet, Kinetics)
 * Video and image web search tools with URL downloading and caching
+
+[![VIPY MEVA dataset visualization](http://i3.ytimg.com/vi/_jixHQr5dK4/maxresdefault.jpg)](https://youtu.be/_jixHQr5dK4)
 
 
 Requirements
@@ -37,7 +41,7 @@ pip install numpy scipy matplotlib dill pillow ffmpeg-python
 
 Optional dependencies
 ```python
-pip install opencv-python ipython h5py nltk bs4 youtube-dl scikit-learn dropbox torch pyyaml dask distributed
+pip install opencv-python torch ipython scikit-learn boto3 youtube-dl dask distributed h5py nltk bs4 dropbox pyyaml pytest
 ```
 
 Contact
