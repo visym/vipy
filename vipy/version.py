@@ -1,6 +1,6 @@
 MAJOR = 0
 MINOR = 8
-RELEASE = 1
+RELEASE = 2
 VERSION = '%d.%d.%d' % (MAJOR, MINOR, RELEASE)
 
 

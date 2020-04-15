@@ -12,9 +12,11 @@ def runningmean(X, n):
     return scipy.ndimage.uniform_filter1d(X.astype(np.float32), axis=0, size=n, mode='reflect')
 
 
-def find_closest_divisor(a, b):
-    """Return non-trivial integer divisor (bh) of (a) closest to (b) in abs(b-bh) such that a % bh == 0.  This uses exhaustive search, which is inefficient for large a."""
-    assert a>=b
+def find_closest_positive_divisor(a, b):
+    """Return non-trivial positive integer divisor (bh) of (a) closest to (b) in abs(b-bh) such that a % bh == 0.  This uses exhaustive search, which is inefficient for large a."""
+    assert a>0 and b>0
+    if a<=b:
+        return a
     for k in range(0, a-b+1):
         bh = b + k
         if bh>1 and a % bh == 0:

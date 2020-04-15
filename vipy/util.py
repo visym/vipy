@@ -799,14 +799,14 @@ def isvideotype(x):
 
 def istuple(x):
     """Is an object a python tuple?"""
-    return type(x) is tuple
+    return isinstance(x, tuple)
 
 
 def tolist(x):
     """Convert a python tuple or singleton object to a list if not already a list """
-    if type(x) is list:
+    if isinstance(x, list):
         return x
-    elif type(x) is tuple:
+    elif isinstance(x, tuple):        
         return list(x)
     else:
         return [x]
