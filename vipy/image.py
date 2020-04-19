@@ -917,6 +917,7 @@ class Image(object):
     # Image export
     def saveas(self, filename, writeas=None):
         """Save current buffer (not including drawing overlays) to new filename and return filename"""
+        assert filename is not None, 'Valid filename="/path/to/image.ext" must be provided'
         if self.colorspace() in ['gray']:
             imwritegray(self.grayscale()._array, filename)
         elif self.colorspace() != 'float':

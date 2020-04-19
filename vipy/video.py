@@ -837,16 +837,25 @@ class Scene(VideoCategory):
         """Alias for self[k]"""
         return self.__getitem__(k)
     
-    def quicklook(self, n=9, dilate=1.5, mindim=256, fontsize=10):
+    def quicklook(self, n=9, dilate=1.5, mindim=256, fontsize=10, context=False):
         """Generate a montage of n uniformly spaced annotated frames centered on the union of the labeled boxes in the current frame to show the activity ocurring in this scene at a glance
            Montage increases rowwise for n uniformly spaced frames, starting from frame zero and ending on the last frame.  This quicklook is most useful when len(self.activities()==1)
-           for generating a quicklook from an activityclip()
+           for generating a quicklook from an activityclip().
+        
+           Input:
+              -n:  Number of images in the quicklook
+              -dilate:  The dilation factor for the bounding box prior to crop for display
+              -mindim:  The minimum dimension of each of the elemnets in the montage
+              -fontsize:  The size of the font for the bounding box label
+              -context:  If true, replace the first and last frame in the montage with the full frame annotation, to help show the scale of the scene
         """
         if not self.isloaded():
             self.mindim(mindim).load()
         framelist = [int(np.round(f)) for f in np.linspace(0, len(self)-1, n)]
-        imframes = [self.frame(k).padcrop(self.frame(k).boundingbox().dilate(dilate).imclipshape(self.width(), self.height()).maxsquare()).mindim(mindim, interp='nearest') if (self.frame(k).boundingbox() is not None) else
-                    self.frame(k).maxmatte() for k in framelist]  # letterbox or pillarbox
+        imframes = [self.frame(k).maxmatte()  # letterbox or pillarbox
+                    if (self.frame(k).boundingbox() is None) or (context is True and (k == framelist[0] or k == framelist[-1])) else
+                    self.frame(k).padcrop(self.frame(k).boundingbox().dilate(dilate).imclipshape(self.width(), self.height()).maxsquare()).mindim(mindim, interp='nearest')
+                    for k in framelist]  
         imframes = [im.savefig(fontsize=fontsize).rgb() for im in imframes]
         return vipy.visualize.montage(imframes, imgwidth=mindim, imgheight=mindim)
     
