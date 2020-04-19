@@ -206,7 +206,7 @@ def imwritejet(img, imfile=None):
     if isnumpy(img):
         if img.ndim == 2:
             cm = plt.get_cmap('gist_rainbow')
-            PIL.Image.fromarray(np.uint8(255 * cm(img)[:,:,:3])).save(imfile)
+            PIL.Image.fromarray(np.uint8(255 * cm(img)[:,:,:3])).save(os.path.expanduser(imfile))
         else:
             raise ValueError('Input must be a 2D numpy array')
     else:
@@ -239,10 +239,10 @@ def imwritegray(img, imfile=None):
     if isnumpy(img):
         if img.dtype == np.dtype('uint8'):
             # Assume that uint8 is in the range [0,255]
-            PIL.Image.fromarray(img).save(imfile)
+            PIL.Image.fromarray(img).save(os.path.expanduser(imfile))
         elif img.dtype == np.dtype('float32'):
             # Convert [0, 1.0] to uint8 [0,255]
-            PIL.Image.fromarray(np.uint8(img * 255.0)).save(imfile)
+            PIL.Image.fromarray(np.uint8(img * 255.0)).save(os.path.expanduser(imfile))
         else:
             raise ValueError('Unsupported datatype - '
                              'Numpy array must be uint8 or float32')
@@ -264,6 +264,7 @@ def imwrite(img, imfile=None, writeas=None):
         else:
             writeas = 'bgr'
 
+    imfile = os.path.expanduser(imfile)
     if writeas in ['jet']:
         imwritejet(img, imfile)
     elif writeas in ['gray']:
