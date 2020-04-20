@@ -3,12 +3,12 @@ import sys
 from vipy.util import try_import, islist, tolist, tempdir, remkdir
 from itertools import repeat
 try_import('dask', 'dask distributed torch')
-from dask.distributed import Client
 from dask.distributed import as_completed, wait
 try_import('torch', 'torch');  import torch
 import numpy as np
 import tempfile
 import warnings
+import vipy.globals
 
 
 class Batch(object):
@@ -42,28 +42,14 @@ class Batch(object):
         self._batchtype = type(objlist[0])        
         assert all([isinstance(im, self._batchtype) for im in objlist]), "Invalid input - Must be homogeneous list of the same type"                
         self._objlist = objlist        
-        self._client = Client(name='vipy', 
-                              scheduler_port=0, 
-                              dashboard_address=None if not dashboard else ':0', 
-                              processes=True, 
-                              threads_per_worker=1, 
-                              n_workers=n_processes, 
-                              env={'VIPY_BACKEND':'Agg'},
-                              direct_to_workers=True,
-                              local_directory=tempfile.mkdtemp())
+        self._client = vipy.globals.dask(n_processes, dashboard).client()  # shutdown using vipy.globals.dask().shutdown(), or let python garbage collect it
 
     def __enter__(self):
         return self
 
-    def __exit__(self, type, value, traceback):
-        self.shutdown()
-        
     def __len__(self):
         return len(self._objlist)
 
-    def __del__(self):
-        self.shutdown()
-        
     def __repr__(self):
         return str('<vipy.batch: type=%s, len=%d, procs=%d>' % (str(self._batchtype), len(self), self.n_processes()))
 
@@ -82,11 +68,9 @@ class Batch(object):
                 wait(newlist)
             except KeyboardInterrupt:
                 # warnings.warn('[vipy.batch]: batch cannot be restarted after killing - Recreate Batch()')
-                self.shutdown()  # batch must be recreated after ctrl-c
                 return None  # is this the right way to handle this??
             except:
                 # warnings.warn('[vipy.batch]: batch cannot be restarted after exception - Recreate Batch()')                
-                self.shutdown()  # batch must be recreated after ctrl-c                
                 raise
             completedlist = [f.result() for f in newlist]
             if isinstance(completedlist[0], self._batchtype):
@@ -159,11 +143,3 @@ class Batch(object):
         """Convert the batch of N HxWxC images to a NxCxHxW torch tensor"""
         return np.stack(self.map(lambda im: im.numpy()))
     
-    def shutdown(self):
-        if '_client' in self.__dict__ and self.__dict__['_client'] is not None:
-            # This may still generate some concerning looking execeptions like: 'tornado.iostream.StreamClosedError: Stream is closed'
-            # This is a bug with dask, and can be safely ignored ...
-            self.__dict__['_client'].shutdown()
-        self.__dict__['_client'] = None
-    
-

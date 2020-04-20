@@ -7,7 +7,6 @@ from vipy.image import ImageDetection
 rgbfile = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'face_rgb.jpg')
 
 def test_batch():
-    """Requires pathos"""
     imb = vipy.batch.Batch([ImageDetection(filename=rgbfile, category='face', bbox=vipy.geometry.BoundingBox(0,0,100,100)) for k in range(0,100)])
     imb.crop()
     assert len(imb) == 100
