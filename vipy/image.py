@@ -490,12 +490,19 @@ class Image(object):
 
 
     def setattribute(self, key, value):
+        """Set element self.attributes[key]=value"""
         if self.attributes is None:
             self.attributes = {key: value}
         else:
             self.attributes[key] = value
         return self
 
+    def setattributes(self, newattr):
+        """Set many attributes at once by providing a dictionary to be merged with current attributes"""
+        assert isinstance(newattr, dict), "New attributes must be dictionary"
+        self.attributes.update(newattr)
+        return self
+    
     def getattribute(self, key):
         if self.attributes is not None and key in list(self.attributes.keys()):
             return self.attributes[key]
@@ -914,6 +921,12 @@ class Image(object):
         imshow(self.clone().rgb().numpy(), fignum=figure, nowindow=nowindow)
         return self
 
+    def save(self, filename):
+        """Save the current image to a new filename and return the image object"""
+        assert filename is not None, "Invalid filename - must be path to new image filename"
+        return self.filename(self.saveas(filename))
+        
+        
     # Image export
     def saveas(self, filename, writeas=None):
         """Save current buffer (not including drawing overlays) to new filename and return filename"""
@@ -932,17 +945,24 @@ class Image(object):
 
     def savetmp(self):
         """Save current buffer to temp JPEG filename and return filename.   Alias for saveastmp()"""
-        return self.saveas(tempjpg())
+        return self.saveastmp()
 
-    def html(self, alt=None):
+    def base64(self):
         """Export a base64 encoding of the image suitable for embedding in an html page"""
         buf = io.BytesIO()
         self.clone().rgb().pil().save(buf, format='JPEG')
-        b = base64.b64encode(buf.getvalue())
-
+        return base64.b64encode(buf.getvalue())
+        
+    def html(self, alt=None):
+        """Export a base64 encoding of the image suitable for embedding in an html page, enclosed in <img> tag
+           
+           Returns:
+              -string:  <img src="data:image/jpeg;charset=utf-8;base64,%s" alt="%s"> containing base64 encoded JPEG and alt text        
+        """
+        b = self.base64().decode('ascii')
         alt_text = alt if alt is not None else self.filename()
-        return '<img src="data:image/png;base64,%s" alt="%s" />' % (b, alt_text)
-    
+        return '<img src="data:image/jpeg;charset=utf-8;base64,%s" alt="%s">' % (b, alt_text)
+
     def savefig(self, filename=None):
         """Save last figure output from self.show() with drawing overlays to provided filename and return filename"""
         self.show(figure=1, nowindow=True)  # sets figure dimensions, does not display window

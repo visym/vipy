@@ -1,13 +1,15 @@
 import os
 import numpy as np
 import shutil
-from vipy.util import remkdir, imlist, filetail, istuple, islist, isnumpy, quietprint, filebase
+from vipy.util import remkdir, imlist, filetail, istuple, islist, isnumpy, quietprint, filebase, temphtml
 from vipy.image import Image
 from vipy.show import savefig
 from collections import defaultdict
 import time
 import PIL
 import vipy.video
+import webbrowser
+import pathlib
 
 
 def montage(imlist, imgheight, imgwidth, gridrows=None, gridcols=None, aspectratio=1, crop=False, skip=True, border=1, border_bgr=(128,128,128), do_flush=False, verbose=False):
@@ -104,6 +106,59 @@ def videomontage(vidlist, imgheight, imgwidth, gridrows=None, gridcols=None, asp
     return vipy.video.Video(array=np.stack([im.array() for im in montagelist]), colorspace='rgb')
     
 
+def tohtml(imlist, title='Image Visualization', mindim=1024, outfile=None, display=False, attributes=False):
+    """Given a list of vipy.image.Image objects, show the images along with the im.attributes() in a single standalone HTML file"""
+
+    # Create summary page to show precomputed images
+    k_divid = 0    
+    filename = outfile if outfile is not None else temphtml()
+    f = open(filename,'w')
+    f.write('<!DOCTYPE html>\n')
+    f.write('<html>\n')
+    f.write('<body>\n')
+    f.write('<div id="container" style="width:2400px">\n')
+    f.write('<div id="header">\n')
+    f.write('<h1 style="margin-bottom:0;">Title: %s</h1><br>\n' % title)
+    localtime = time.strftime("%Y-%m-%d %H:%M:%S",time.localtime(time.time()))
+    f.write('Summary HTML generated on %s<br>\n' % localtime)
+    f.write('Number of Images: %d<br>\n' % len(imlist))
+    f.write('</div>\n')
+    f.write('<br>\n')
+    f.write('<hr>\n')
+    f.write('<div id="%04d" style="float:left;">\n' % k_divid)
+    k_divid = k_divid + 1
+
+    # Generate images and html
+    for im in imlist:
+        # Prepare image
+        im = im.load().mindim(mindim)
+
+        # Write image as base64 encoded string
+        f.write('<p>\n</p>\n')
+        
+        if attributes and len(im.attributes) > 0:
+            for (k,v) in im.attributes.items():
+                f.write('%s: %s<br>\n' % (str(k), str(v)))
+        f.write('<br>\n')
+        f.write(im.html())
+        f.write('<p>\n</p>\n')
+        f.write('<hr>\n')
+        f.write('<p>\n</p>\n')
+
+    f.write('</div>\n')
+    f.write('</body>\n')
+    f.write('</html>\n')
+    f.close()
+
+    # Display?
+    if display:
+        url = pathlib.Path(filename).as_uri()
+        print('[vipy.visualize.tohtml]: Opening "%s" in default browser' % url)
+        webbrowser.open(url)
+        
+    return filename
+
+    
 def imagelist(list_of_image_files, outdir, title='Image Visualization', imagewidth=64):
     """Given a list of image filenames wth absolute paths, copy to outdir, and create an index.html file that visualizes each"""
     k_divid = 0

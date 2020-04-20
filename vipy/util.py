@@ -1003,6 +1003,10 @@ def tempcsv():
     """Create a temporary CSV file"""
     return tempfilename(suffix='.csv')
 
+def temphtml():
+    """Create a temporary HTMLfile"""
+    return tempfilename(suffix='.html')
+
 
 def temppkl():
     """Create a temporary pickle file"""
