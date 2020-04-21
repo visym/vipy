@@ -1151,41 +1151,24 @@ class Scene(VideoCategory):
         assert self.isloaded(), "Load() failed"        
         if verbose:
                 print('[vipy.video.annotate]: Annotating video ...')              
-        if vipy.globals.num_workers() > 1:
-            import vipy.batch
-            with vipy.batch.Batch(vid, n_processes=vipy.globals.num_workers()) as b:
-                print('[vipy.video.annotate.debug]: %s' % str(b))  # TESTING
-                imgs = b.map(lambda v,k: v[k].savefig(fontsize=fontsize, 
-                                                      captionoffset=captionoffset, 
-                                                      textfacecolor=textfacecolor, 
-                                                      textfacealpha=textfacealpha, 
-                                                      shortlabel=shortlabel, 
-                                                      boxalpha=boxalpha, 
-                                                      d_category2color=d_category2color,
-                                                      categories=categories, 
-                                                      nocaption=nocaption,
-                                                      nocaption_withstring=nocaption_withstring).rgb().numpy(), args=[(k,) for k in range(0, len(vid))])
-            vid._array = np.stack(imgs, axis=0)            
-        else:
-            imgs = [vid[k].savefig(fontsize=fontsize,
-                                   captionoffset=captionoffset,
-                                   textfacecolor=textfacecolor,
-                                   textfacealpha=textfacealpha,
-                                   shortlabel=shortlabel,
-                                   boxalpha=boxalpha,
-                                   d_category2color=d_category2color,
-                                   categories=categories,
-                                   nocaption=nocaption,
-                                   nocaption_withstring=nocaption_withstring).numpy() for k in range(0, len(vid))]  # SLOW for large videos
-            vid._array = np.stack([np.array(PIL.Image.fromarray(img).convert('RGB')) for img in imgs], axis=0)
+        imgs = [vid[k].savefig(fontsize=fontsize,
+                               captionoffset=captionoffset,
+                               textfacecolor=textfacecolor,
+                               textfacealpha=textfacealpha,
+                               shortlabel=shortlabel,
+                               boxalpha=boxalpha,
+                               d_category2color=d_category2color,
+                               categories=categories,
+                               nocaption=nocaption,
+                               nocaption_withstring=nocaption_withstring).numpy() for k in range(0, len(vid))]  # SLOW for large videos
+        vid._array = np.stack([np.array(PIL.Image.fromarray(img).convert('RGB')) for img in imgs], axis=0)
         return vid.filename(vid.saveas(outfile))
 
 
-    def show(self, outfile=None, verbose=True, n_processes=1, fontsize=10, captionoffset=(0,0), textfacecolor='white', textfacealpha=1.0, shortlabel=True, boxalpha=0.25, d_category2color={'Person':'green', 'Vehicle':'blue', 'Object':'red'}, categories=None, nocaption=False, nocaption_withstring=[]):
+    def show(self, outfile=None, verbose=True, fontsize=10, captionoffset=(0,0), textfacecolor='white', textfacealpha=1.0, shortlabel=True, boxalpha=0.25, d_category2color={'Person':'green', 'Vehicle':'blue', 'Object':'red'}, categories=None, nocaption=False, nocaption_withstring=[]):
         """Generate an annotation video saved to outfile (or tempfile if outfile=None) and show it using ffplay when it is done exporting"""
         outfile = tocache(tempMP4()) if outfile is None else outfile
         self.annotate(outfile, 
-                      n_processes=n_processes, 
                       verbose=verbose, 
                       fontsize=fontsize,
                       captionoffset=captionoffset,

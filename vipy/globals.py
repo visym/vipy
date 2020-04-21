@@ -2,13 +2,6 @@ import os
 import webbrowser
 import tempfile
 
-from vipy.util import try_import
-try_import('dask', 'dask distributed')
-import dask
-from dask.distributed import Client
-from dask.distributed import as_completed, wait
-from dask.config import set as dask_config_set
-
 
 GLOBAL = {'VERBOSE': True, 
           'DASK_CLIENT': None,
@@ -25,6 +18,13 @@ class Dask(object):
     def __init__(self, num_processes, dashboard=False):
         assert isinstance(num_processes, int) and num_processes >=2, "num_processes must be >= 2"
 
+        from vipy.util import try_import
+        try_import('dask', 'dask distributed')
+        import dask
+        from dask.distributed import Client
+        from dask.distributed import as_completed, wait
+        from dask.config import set as dask_config_set
+        
         dask_config_set({"distributed.comm.timeouts.tcp": "50s"})
         dask_config_set({"distributed.comm.timeouts.connect": "10s"})        
         self._num_processes = num_processes
