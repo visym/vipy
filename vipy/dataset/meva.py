@@ -9,6 +9,7 @@ import vipy.metrics
 import numpy as np
 import warnings
 import shutil
+import vipy.globals
 
 
 class Mevadata_Public_01(object):
@@ -272,7 +273,7 @@ class Mevadata_Public_01(object):
         return vidlist
 
 
-    def MEVA(self, stride=1, n_processes=1, verbose=True, n_videos=None, d_category_to_shortlabel=None):
+    def MEVA(self, stride=1, verbose=True, n_videos=None, d_category_to_shortlabel=None):
         """Parse MEVA annotations from 'meva-data-repo/annotation/DIVA-phase-2/MEVA/meva-annotations/' into vipy.video.Scene()
        
         Kwiver packet format: https://gitlab.kitware.com/meva/meva-data-repo/blob/master/documents/KPF-specification-v4.pdf
@@ -291,11 +292,9 @@ class Mevadata_Public_01(object):
         d_videoname_to_path = {filebase(f):f for f in self._get_videos()}
         yamlfiles = zip(self._get_types_yaml(), self._get_geom_yaml(), self._get_activities_yaml())
         yamlfiles = list(yamlfiles)[0:n_videos] if n_videos is not None else list(yamlfiles)
-        if n_processes > 1:
+        if vipy.globals.num_workers() > 1:
             from vipy.batch import Batch
-            with Batch(list(yamlfiles), n_processes=n_processes) as batch:
-                videolist = batch.map(lambda tga: self._parse_video(d_videoname_to_path, d_category_to_shortlabel, tga[0], tga[1], tga[2], stride=stride, verbose=verbose))
-            return videolist
+            return Batch(list(yamlfiles)).map(lambda tga: self._parse_video(d_videoname_to_path, d_category_to_shortlabel, tga[0], tga[1], tga[2], stride=stride, verbose=verbose))
         else:
             return [self._parse_video(d_videoname_to_path, d_category_to_shortlabel, t, g, a, stride=stride, verbose=verbose) for (t,g,a) in yamlfiles]
 

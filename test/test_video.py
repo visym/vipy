@@ -14,8 +14,7 @@ import shutil
 
 
 mp4file = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'Video.mp4')
-mp4url = 'https://www.youtube.com/watch?v=PYOSKYWg-5E'
-
+mp4url = 'https://www.youtube.com/watch?v=C0DPdy98e4c'
 
 def test_video():
     # Common Parameters

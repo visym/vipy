@@ -21,6 +21,7 @@ import warnings
 import shutil
 import types
 import platform
+from io import BytesIO
 
 
 class Video(object):
@@ -389,37 +390,38 @@ class Video(object):
         return self
 
     def shape(self):
-        """Return (height, width) of the frames, can only be introspected after load()"""
+        """Return (height, width) of the frames, requires loading a preview frame from the video if the video is not already loaded"""
         if not self.isloaded():
-            raise ValueError('Cannot introspect shape until the file is loaded')
+            im = self._preview()  # load a single frame of video 
+            return (im.width(), im.height())
         return (self._array.shape[1], self._array.shape[2])
 
     def width(self):
-        """Width (cols) in pixels of the video, can only be introspected after load()"""
+        """Width (cols) in pixels of the video for the current filter chain"""
         return self.shape()[1]
 
     def height(self):
-        """Height (rows) in pixels of the video, can only be introspected after load()"""        
+        """Height (rows) in pixels of the video for the current filter chain"""
         return self.shape()[0]
 
-    def _preview(self, outfile=None, verbose=False):
-        """Return first frame of filtered video, saved to temp file, return vipy.image.Image object.  This is useful for previewing the frame shape of a complex filter chain."""
+    def _preview(self, verbose=False):
+        """Return first frame of filtered video, saved to temp file, return vipy.image.Image object.  This is useful for previewing the frame shape of a complex filter chain without loading the whole video."""
         if self.isloaded():
             return self[0]
         elif self.hasurl() and not self.hasfilename():
             self.download(verbose=True)  
         if not self.hasfilename():
             raise ValueError('Video file not found')
-        im = Image(filename=tempjpg() if outfile is None else outfile)
 
-        (out, err) = self._ffmpeg.output(im.filename(), vframes=1)\
-                                 .overwrite_output()\
+        # Convert frame to JPEG and pipe to stdout
+        (out, err) = self._ffmpeg.output('pipe:', vframes=1, format='image2', vcodec='mjpeg')\
                                  .global_args('-loglevel', 'debug' if verbose else 'error') \
                                  .run(capture_stdout=True, capture_stderr=True)
-        
-        if not im.hasfilename():
+        try:
+            img = PIL.Image.open(BytesIO(out))
+        except:
             raise ValueError('Video preview failed - Attempted to load the video and no preview frame was loaded.  This usually occurs for zero length clips.') 
-        return im
+        return Image(array=np.array(img))
 
     def load(self, verbose=False, ignoreErrors=False, startframe=None, endframe=None, rotation=None, rescale=None, mindim=None):
         """Load a video using ffmpeg, applying the requested filter chain.  
@@ -1006,7 +1008,9 @@ class Scene(VideoCategory):
     
     def activitycrop(self, dilate=1.0):
         """Returns a list of vipy.video.Scene() each spatially cropped to be the union of the objects performing the activity.
-           Activities are returned ordered in the temporal order they appear in the video"""
+           Activities are returned ordered in the temporal order they appear in the video
+           Crop is guaranteed to be within the image rectangle, and if (framewidth, frameheight) is provided, this avoid triggering a load
+        """
         vid = self.clone(flushforward=True)
         activities = sorted(vid.activities().values(), key=lambda a: a.startframe())  # temporal order 
         if any([(a.endframe()-a.startframe()) <= 0 for a in vid.activities().values()]):
@@ -1014,20 +1018,22 @@ class Scene(VideoCategory):
         tracks = [ [t for (tid, t) in vid.tracks().items() if a.hastrack(t)] for a in activities]                 
         vid._activities = {}  # for faster clone
         vid._tracks = {}      # for faster clone
-        return [vid.clone().activities(a).tracks(t).crop(a.boundingbox().dilate(dilate).int()) for (a,t) in zip(activities, tracks)]        
+        (framewidth, frameheight) = (vid.width(), vid.height())  # for faster interior
+        return [vid.clone().activities(a).tracks(t).crop(a.boundingbox().dilate(dilate).iminterior(framewidth, frameheight).int()) for (a,t) in zip(activities, tracks)]        
 
     def activitysquare(self, dilate=1.0):
         """Returns a list of vipy.video.Scene() each spatially cropped to be the maxsquare of the union of the objects performing the activity
            Activities are returned ordered in the temporal order they appear in the video.
-           Square crops are guaranteed to be within the frame boundary without any padding.  This may introduce bounding box centroid offset at the frame boundary.
+           Square crops are guaranteed to be within the frame boundary with shape (framewidth, frameheight) without any padding.  This may introduce bounding box centroid offset at the frame boundary.
+           If (framewidthm frameheight) is not provided, then the video thumbnail must be extracted, triggering a load
         """
         vid = self.clone(flushforward=True)
         activities = sorted(vid.activities().values(), key=lambda a: a.startframe())  # temporal order
         tracks = [ [t for (tid, t) in vid.tracks().items() if a.hastrack(t)] for a in activities]                 
         vid._activities = {}  # for faster clone
-        vid._tracks = {}      # for faster clone
-        im = self._preview()  # for faster crop
-        return [vid.clone().activities(a).tracks(t).crop(a.boundingbox().dilate(dilate).maxsquare().iminterior(im.width(), im.height()).int()) for (a,t) in zip(activities, tracks)]  
+        vid._tracks = {}      # for faster clone        
+        (framewidth, frameheight) = (vid.width(), vid.height())  # for faster interior
+        return [vid.clone().activities(a).tracks(t).crop(a.boundingbox().dilate(dilate).maxsquare().iminterior(framewidth, frameheight).int()) for (a,t) in zip(activities, tracks)]  
 
     def activitytube(self, dilate=1.0, padframes=0):
         """Return a list of vipy.video.Scene() each spatially cropped following activitycrop() and temporally cropped following activityclip()"""

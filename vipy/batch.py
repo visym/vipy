@@ -42,7 +42,9 @@ class Batch(object):
         self._batchtype = type(objlist[0])        
         assert all([isinstance(im, self._batchtype) for im in objlist]), "Invalid input - Must be homogeneous list of the same type"                
         self._objlist = objlist        
-        self._client = vipy.globals.dask(n_processes, dashboard).client()  # shutdown using vipy.globals.dask().shutdown(), or let python garbage collect it
+        if vipy.globals.dask() is None or vipy.globals.num_workers() < n_processes:
+            vipy.globals.dask(num_processes=n_processes, dashboard=dashboard)
+        self._client = vipy.globals.dask().client()  # shutdown using vipy.globals.dask().shutdown(), or let python garbage collect it
 
     def __enter__(self):
         return self
@@ -70,8 +72,10 @@ class Batch(object):
             try:
                 wait(newlist)
             except KeyboardInterrupt:
-                # warnings.warn('[vipy.batch]: batch cannot be restarted after killing - Recreate Batch()')
-                return None  # is this the right way to handle this??
+                warnings.warn('[vipy.batch]: batch cannot be restarted after killing with ctrl-c - You must create a new Batch()')
+                vipy.globals.dask().shutdown()
+                self._client = None
+                return None  
             except:
                 # warnings.warn('[vipy.batch]: batch cannot be restarted after exception - Recreate Batch()')                
                 raise
