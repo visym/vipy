@@ -104,8 +104,53 @@ def videomontage(vidlist, imgheight, imgwidth, gridrows=None, gridcols=None, asp
     montagelist = [montage([v[k % len(v)].mindim(max(imgheight, imgwidth)).centercrop(imgheight, imgwidth) for v in vidlist], imgheight, imgwidth, gridrows, gridcols, aspectratio, crop, skip, border, border_bgr, do_flush, verbose=False)
                    for k in range(0, maxlength)]
     return vipy.video.Video(array=np.stack([im.array() for im in montagelist]), colorspace='rgb')
-    
 
+
+def urls(urllist, title='URL Visualization', imagewidth=1024, outfile=None, display=False):
+    # Create summary page to show precomputed images
+    k_divid = 0    
+    filename = outfile if outfile is not None else temphtml()
+    f = open(filename,'w')
+    f.write('<!DOCTYPE html>\n')
+    f.write('<html>\n')
+    f.write('<body>\n')
+    f.write('<div id="container" style="width:2400px">\n')
+    f.write('<div id="header">\n')
+    f.write('<h1 style="margin-bottom:0;">Title: %s</h1><br>\n' % title)
+    localtime = time.strftime("%Y-%m-%d %H:%M:%S",time.localtime(time.time()))
+    f.write('Summary HTML generated on %s<br>\n' % localtime)
+    f.write('Number of URLs: %d<br>\n' % len(urllist))
+    f.write('</div>\n')
+    f.write('<br>\n')
+    f.write('<hr>\n')
+    f.write('<div id="%04d" style="float:left;">\n' % k_divid)
+    k_divid = k_divid + 1
+
+    # Generate images and html
+    for url in urllist:
+        f.write('<p>\n</p>\n')
+        f.write('URL: <a href="%s">%s</a>\n' % (url, url))
+        f.write('<br>\n')        
+        f.write('<img src="%s" alt="image" width=%d/>\n' % (url, imagewidth))        
+        f.write('<p>\n</p>\n')
+        f.write('<hr>\n')
+        f.write('<p>\n</p>\n')
+
+    f.write('</div>\n')
+    f.write('</body>\n')
+    f.write('</html>\n')
+    f.close()
+
+    # Display?
+    if display:
+        url = pathlib.Path(filename).as_uri()
+        print('[vipy.visualize.urls]: Opening "%s" in default browser' % url)
+        webbrowser.open(url)
+        
+    return filename
+
+    
+    
 def tohtml(imlist, title='Image Visualization', mindim=1024, outfile=None, display=False, attributes=False):
     """Given a list of vipy.image.Image objects, show the images along with the im.attributes() in a single standalone HTML file"""
 
