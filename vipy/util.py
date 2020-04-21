@@ -632,6 +632,11 @@ def extlist(indir, ext):
             and (fileext(item).lower() == ext.lower())]
 
 
+def jsonlist(indir):
+    """return list of fJSON iles with absolute path in a directory"""
+    return extlist(indir, ext='.json')
+
+
 def writelist(mylist, outfile, mode='w'):
     """Write list of strings to an output file with each row an element of
     the list"""
@@ -1158,7 +1163,7 @@ def remkdir(path, flush=False):
 
 
 def toextension(filename, newext):
-    """Convert myfile.ext to myfile.new.  Newext does not contain a period."""
+    """Convert filenam='/path/to/myfile.ext' to /path/to/myfile.xyz, such that newext='xyz'"""
     if '.' in newext:
         newext = newext.split('.')[1]
     (filename, oldext) = splitextension(filename)
