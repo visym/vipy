@@ -35,7 +35,7 @@ class Batch(object):
 
     """    
              
-    def __init__(self, objlist, n_processes=4, dashboard=False):
+    def __init__(self, objlist, n_processes=2, dashboard=False):
         """Create a batch of homogeneous vipy.image objects from an iterable that can be operated on with a single parallel function call
         """
         objlist = tolist(objlist)
@@ -47,6 +47,9 @@ class Batch(object):
     def __enter__(self):
         return self
 
+    def __exit__(self, type, value, traceback):
+        return self
+    
     def __len__(self):
         return len(self._objlist)
 

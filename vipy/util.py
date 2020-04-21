@@ -69,7 +69,7 @@ def readyaml(yamlfile):
 
 
 def count_images_in_subdirectories(indir):
-    """Count the total number of images in indir/subdir1, indir/subdir2, ..."""
+    """Count the total number of images in indir/subdir1, indir/subdir2, go down only one level and no further..."""
     num_files = 0
     for d in dirlist(outdir):
         num_files += len(imlist(d))

@@ -1108,7 +1108,7 @@ class Scene(VideoCategory):
                 
         return self
     
-    def annotate(self, outfile=None, n_processes=1, verbose=True, fontsize=10, captionoffset=(0,0), textfacecolor='white', textfacealpha=1.0, shortlabel=True, boxalpha=0.25, d_category2color={'Person':'green', 'Vehicle':'blue', 'Object':'red'}, categories=None, nocaption=False, nocaption_withstring=[]):
+    def annotate(self, outfile=None, verbose=True, fontsize=10, captionoffset=(0,0), textfacecolor='white', textfacealpha=1.0, shortlabel=True, boxalpha=0.25, d_category2color={'Person':'green', 'Vehicle':'blue', 'Object':'red'}, categories=None, nocaption=False, nocaption_withstring=[]):
         """Generate a video visualization of all annotated objects and activities in the video, at the resolution and framerate of the underlying video, save as outfile and return a new video object where the frames contain the overlay.
         This function does not play the video, it only generates an annotation video.  Use show() which is equivalent to annotate().play()
         In general, this function should not be run on very long videos, as it requires loading the video framewise into memory, try running on clips instead.
@@ -1123,9 +1123,9 @@ class Scene(VideoCategory):
         assert self.isloaded(), "Load() failed"        
         if verbose:
                 print('[vipy.video.annotate]: Annotating video ...')              
-        if n_processes > 1:
+        if vipy.globals.num_workers() > 1:
             import vipy.batch
-            with vipy.batch.Batch(vid, n_processes=n_processes) as b:
+            with vipy.batch.Batch(vid, n_processes=vipy.globals.num_workers()) as b:
                 print('[vipy.video.annotate.debug]: %s' % str(b))  # TESTING
                 imgs = b.map(lambda v,k: v[k].savefig(fontsize=fontsize, 
                                                       captionoffset=captionoffset, 
