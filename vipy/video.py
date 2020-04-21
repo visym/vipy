@@ -616,15 +616,41 @@ class Video(object):
         """Export loaded video to tempfile and play()"""
         return os.system('ffplay %s' % self.saveas(tocache(tempMP4())))
     
-    def torch(self, take=None):
-        """Convert the loaded video to an NxCxHxW torch tensor, forces a load()"""
+    def torch(self, startframe=0, endframe=None, length=None, stride=None, take=None, takelength=None):
+        """Convert the loaded video of shape N HxWxC frames to an MxCxHxW torch tensor, forces a load().
+           Order of operations is (startframe, endframe) or (startframe, startframe+length) or (random_startframe, random_starframe+takelength), then stride or take.
+           Follows numpy slicing rules.
+        """
         try_import('torch'); import torch
-
-        """Convert the batch of N HxWxC images to a NxCxHxW torch tensor"""
         self.load()
         frames = self._array if self.iscolor() else np.expand_dims(self._array, 3)
-        t = torch.from_numpy(frames.transpose(0,3,1,2))
-        return t if take is None else t[::int(np.round(len(t)/float(take)))][0:take]
+        frames = frames[startframe:]
+        if endframe is not None:
+            assert length is None, "Cannot specify both endframe and length"                        
+            assert length is None, "Either end or len is specified"
+            assert endframe > startframe, "Endframe must be greater than start"
+            frames = frames[0:endframe-startframe]
+        if length is not None:
+            assert endframe is None, "Cannot specify both endframe and length"
+            assert length >= 0, "Length must be positive"
+            frames = frames[0:length]
+        if takelength is not None:
+            # Return a contiguous clip of length=takelength, with random startframe
+            assert endframe is None, "Cannot specify both endframe and takelength, or length and takelength"
+            assert length is None, "Cannot specify both length and takelength"
+            assert takelength <= len(frames), "Cannot take more frames then there are"
+            k = np.random.randint(len(frames)-takelength+1)
+            frames = frames[k:k+takelength]
+        if stride is not None:
+            assert take is None, "Cannot specify both take and stride"
+            assert stride >= 1, "Stride must be >= 1"
+            assert stride <= len(frames), "Stride must be <= len(frames)"            
+            frames = frames[::stride]
+        if take is not None:
+            # Uniformly sampled frames to result in len(frames)=take
+            assert stride is None, "Cannot specify both take and stride"
+            frames = frames[::int(np.round(len(frames)/float(take)))][0:take]
+        return torch.from_numpy(frames.transpose(0,3,1,2))
 
     def clone(self, flushforward=False, flushbackward=False, flush=False):
         """Create deep copy of video object, flushing the original buffer if requested and returning the cloned object.
@@ -992,7 +1018,9 @@ class Scene(VideoCategory):
 
     def activitysquare(self, dilate=1.0):
         """Returns a list of vipy.video.Scene() each spatially cropped to be the maxsquare of the union of the objects performing the activity
-           Activities are returned ordered in the temporal order they appear in the video."""
+           Activities are returned ordered in the temporal order they appear in the video.
+           Square crops are guaranteed to be within the frame boundary without any padding.  This may introduce bounding box centroid offset at the frame boundary.
+        """
         vid = self.clone(flushforward=True)
         activities = sorted(vid.activities().values(), key=lambda a: a.startframe())  # temporal order
         tracks = [ [t for (tid, t) in vid.tracks().items() if a.hastrack(t)] for a in activities]                 
