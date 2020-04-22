@@ -67,5 +67,7 @@ def dask(num_processes=None, dashboard=False):
     return GLOBAL['DASK_CLIENT']
 
 
-def num_workers():
+def num_workers(n=None):
+    if n is not None:
+        return dask(num_processes=n)
     return 1 if dask() is None else dask().num_processes()

@@ -10,7 +10,7 @@ from vipy.util import isnumpy, isurl, isimageurl, \
     tempjpg, filetail, isimagefile, remkdir, hasextension, \
     try_import, tolist, islistoflists, istupleoftuples, isstring, \
     istuple, islist, isnumber, isnumpyarray
-from vipy.geometry import BoundingBox
+from vipy.geometry import BoundingBox, imagebox
 import vipy.object
 import vipy.downloader
 import urllib.request
@@ -676,8 +676,8 @@ class Image(object):
     def _crop(self, bbox):
         """Crop the image buffer using the supplied bounding box object, clipping the box to the image rectangle"""
         assert isinstance(bbox, BoundingBox) and bbox.valid(), "Invalid vipy.geometry.BoundingBox() input"""
-        bbox = bbox.imclip(self.load().array(), strict=False).int()
-        if not bbox.isdegenerate():
+        if not bbox.isdegenerate() and bbox.hasoverlap(self.load().array()):
+            bbox = bbox.imclip(self.load().array()).int()
             self._array = self.array()[bbox.ymin():bbox.ymax(),
                                        bbox.xmin():bbox.xmax()]
         else:
@@ -1205,9 +1205,10 @@ class ImageDetection(ImageCategory):
     # Spatial transformations
     def imclip(self):
         """Clip bounding box to the image rectangle, and ignore bbox if outside image rectangle.  Requires image load"""
-        (H,W) = self.load().shape()
-        if self.bbox.intersection(BoundingBox(xmin=0, ymin=0, xmax=W, ymax=H), strict=False).isdegenerate():
-            warnings.warn("Degenerate bounding box does not intersect image - Ignoring")
+        if self.bbox.hasintersection(vipy.geometry.imagebox(self.shape())):
+            self.bbox.imclip(self.load().numpy())
+        else:
+            warnings.warn("Degenerate bounding box does not intersect image - Ignoring")            
         return self
 
     def rescale(self, scale=1, interp='bilinear'):
@@ -1431,9 +1432,9 @@ class Scene(ImageCategory):
             return s
 
     def boundingbox(self):
-        """The boundingbox of a scene is the union of all BoundingBox"""
+        """The boundingbox of a scene is the union of all BoundingBox, or the image box if no objects"""
         boxes = self.objects()
-        bb = boxes[0].clone() if len(boxes) >= 1 else None
+        bb = boxes[0].clone() if len(boxes) >= 1 else imagebox(self.shape())
         return bb.union(boxes[1:]) if len(boxes) >= 2 else bb
         
     def categories(self):

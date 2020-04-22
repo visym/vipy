@@ -12,9 +12,24 @@ import shutil
 import vipy.globals
 
 
-class Mevadata_Public_01(object):
-    def __init__(self, videodir, repodir):
-        """mevadata-python-01:  http://mevadata.org"""
+class KF1(object):
+    def __init__(self, videodir, repodir, contrib=False, stride=20, verbose=True, n_videos=None, d_category_to_shortlabel=None):
+        """Parse MEVA annotations (http://mevadata.org) for KNown Facility 1 dataset into vipy.video.Scene() objects
+       
+        Kwiver packet format: https://gitlab.kitware.com/meva/meva-data-repo/blob/master/documents/KPF-specification-v4.pdf
+        Inputs:
+          -videodir=str:  path to Directory containing 'drop-01' 
+          -repodir=str:  path to directory containing clone of https://gitlab.kitware.com/meva/meva-data-repo
+          -stride=int: the temporal stride in frames for importing bounding boxes, vipy will do linear interpoluation and boundary handling
+          -n_videos=int:  only return an integer number of videos, useful for debugging or for previewing dataset
+          -contrib=bool:  include the noisy contrib anntations from DIVA performers
+          -d_category_to_shortlabel is a dictionary mapping category names to a short displayed label on the video.  The standard for visualization is that 
+            tracked objects are displayed with their category label (e.g. 'Person', 'Vehicle'), and activities are labeled according to the set of objects that
+            performing the activity.  When an activity occurs, the set of objects are labeled with the same color as 'Noun Verbing' (e.g. 'Person Entering', 
+            'Person Reading', 'Vehicle Starting') where 'Verbing' is provided by the shortlabel.   This is optional, and will use the default mapping if None
+          -verbose=bool:  Parsing verbosity
+        """
+        
         self.videodir = videodir
         self.repodir = repodir
 
@@ -102,22 +117,39 @@ class Mevadata_Public_01(object):
 
         self._d_oldcategory_to_newcategory = {k:v for (k,v) in readcsv(os.path.join(self.repodir, 'documents', 'activity-name-mapping.csv'))[1:]}
 
+        d_category_to_shortlabel = d_category_to_shortlabel if d_category_to_shortlabel is not None else self._d_category_to_shortlabel
+        d_videoname_to_path = {filebase(f):f for f in self._get_videos()}
+        yamlfiles = zip(self._get_types_yaml(), self._get_geom_yaml(), self._get_activities_yaml())
+        yamlfiles = [y for y in yamlfiles if contrib is True or 'contrib' not in y[0]]
+        yamlfiles = list(yamlfiles)[0:n_videos] if n_videos is not None else list(yamlfiles)
+        if verbose:
+            print('[vipy.dataset.meva.KF1]: Loading %d YAML files' % len(yamlfiles))
+            if len(yamlfiles) > 100 and vipy.globals.num_workers() == 1: 
+                print('[vipy.dataset.meva.KF1]: This takes a while, consider setting vipy.globals.num_workers(8) for parallel parsing')
+
+        if vipy.globals.num_workers() > 1:
+            from vipy.batch import Batch
+            self._vidlist = Batch(list(yamlfiles)).map(lambda tga: self._parse_video(d_videoname_to_path, d_category_to_shortlabel, tga[0], tga[1], tga[2], stride=stride, verbose=verbose))
+        else:
+            self._vidlist = [self._parse_video(d_videoname_to_path, d_category_to_shortlabel, t, g, a, stride=stride, verbose=verbose) for (t,g,a) in yamlfiles]
+        self._vidlist = [v for v in self._vidlist if v is not None] 
         
+    def __getitem__(self, k):
+        return self._vidlist[k]
+
+    def __iter__(self):
+        for v in self._vidlist:
+            yield v
+
+    def __len__(self):
+        return len(self._vidlist)
+                
     def __repr__(self):
-        return str('<vipy.dataset.meva: videos="%s", annotations="%s">' % (self.videodir, self.repodir))
+        return str('<vipy.dataset.meva.KF1: videos=%d, videodir="%s", annotationdir="%s">' % (len(self), self.videodir, self.repodir))
 
-    def categories(self):
-        return self.activities()
-    
-    def activities(self):
-        """Return a list of activities"""
-        # This list in the repo is outdated
-        # return sorted(list(readjson(os.path.join(self.repodir, 'annotation', 'DIVA-phase-2', 'activity-index.json')).keys()))        
-        return sorted(list(self._d_category_to_shortlabel.keys()))
-
-    def activities_to_required_objects(self):
+    def _activities_to_required_objects(self):
         """Return a dictionary of activity keys to set of required objects.  This is currently wrong."""
-        warnings.warn('This mapping is currently wrong in the Kitware repository')
+        raise ValueError('This mapping is currently wrong in the Kitware repository')
         d = readjson(os.path.join(self.repodir, 'annotation', 'DIVA-phase-2', 'activity-index.json'))
         return {a:set([x.replace('Construction_Vehicle', 'Vehicle') for x in d[a]['objectTypes']]) for a in self.activities()}        
 
@@ -144,7 +176,7 @@ class Mevadata_Public_01(object):
         
         # Read YAML
         if verbose:
-            print('[vipy.dataset.meva]: Parsing "%s"' % (act_yamlfile))
+            print('[vipy.dataset.meva.KF1]: Parsing "%s"' % (act_yamlfile))
         geom_yaml = readyaml(geom_yamlfile)
         types_yaml = readyaml(types_yamlfile)
         act_yaml = readyaml(act_yamlfile)
@@ -155,13 +187,15 @@ class Mevadata_Public_01(object):
         videoname = act_yaml[0]['meta'] if act_yaml[0]['meta'][-4:] != '.avi' else act_yaml[0]['meta'][0:-4]  # strip .avi 
         if videoname not in d_videoname_to_path:
             if verbose:
-                print('[vipy.dataset.meva]: Invalid MEVA video "%s" in "%s" - Ignoring' % (videoname, filebase(act_yamlfile)))
+                print('[vipy.dataset.meva.KF1]: Invalid MEVA video "%s" in "%s" - Ignoring' % (videoname, filebase(act_yamlfile)))
             return None
 
-        # Parse
+        # Parse video
         framerate = 30.0  # All videos are universally 30Hz (from Roddy)
         vid = Scene(filename=d_videoname_to_path[videoname], framerate=framerate)
-        
+
+
+        # Parse tracks        
         d_id1_to_category = {}
         for t in types_yaml:
             if 'types' in t:
@@ -180,15 +214,20 @@ class Mevadata_Public_01(object):
                 bbox = BoundingBox(xmin=bb[0], ymin=bb[1], xmax=bb[2], ymax=bb[3])
                 if not bbox.isvalid():
                     if verbose:
-                        print('[vipy.dataset.meva]: Invalid bounding box: id1=%s, bbox="%s", file="%s" - Ignoring' % (str(v['id1']), str(bbox), delpath(self.repodir, geom_yamlfile)))
+                        print('[vipy.dataset.meva.KF1]: Invalid bounding box: id1=%s, bbox="%s", file="%s" - Ignoring' % (str(v['id1']), str(bbox), delpath(self.repodir, geom_yamlfile)))
                 elif v['id1'] not in d_id1_to_track:
                     d_id1_to_track[v['id1']] = Track(category=d_id1_to_category[v['id1']], framerate=framerate, keyframes=[keyframe], boxes=[bbox], boundary='strict')
                 else:
                     d_id1_to_track[v['id1']].add(keyframe=keyframe, box=bbox)
                 
+        # Add tracks to scene
         for (k,v) in d_id1_to_track.items():
-            vid.add(v)
+            try:
+                vid.add(v, rangecheck=True)  # throw exception if all tracks are outside the image rectangle
+            except Exception as e:
+                print('[vipy.dataset.meva.KF1]: track import error "%s" for trackid=%s, track=%s - SKIPPING' % (str(e), k, str(v)))
 
+        # Parse activities
         for v in act_yaml:
             if 'act' in v:
                 if 'act2' in v['act']:
@@ -223,88 +262,46 @@ class Mevadata_Public_01(object):
 
                 for aid in actorid:
                     if not aid in d_id1_to_track:
-                        print('[vipy.dataset.meva]: ActorID %d referenced in activity yaml "%s" not found in geom yaml "%s" - Skipping' % (aid, delpath(self.repodir, act_yamlfile), delpath(self.repodir, geom_yamlfile)))
+                        print('[vipy.dataset.meva.KF1]: ActorID %d referenced in activity yaml "%s" not found in geom yaml "%s" - Skipping' % (aid, delpath(self.repodir, act_yamlfile), delpath(self.repodir, geom_yamlfile)))
                 
+                # Add activity to scene
                 tracks = {d_id1_to_track[aid].id():d_id1_to_track[aid] for aid in actorid if aid in d_id1_to_track}
                 if len(tracks) > 0:
-                    vid.add(Activity(category=category, shortlabel=d_category_to_shortlabel[category],
-                                     startframe=startframe, endframe=endframe, tracks=tracks, framerate=framerate, attributes={'act':v['act']}))
+                    try:
+                        vid.add(Activity(category=category, shortlabel=d_category_to_shortlabel[category],
+                                         startframe=startframe, endframe=endframe, tracks=tracks, framerate=framerate, attributes={'act':v['act']}), rangecheck=True)
+                    except Exception as e:
+                        print('[vipy.dataset.meva.KF1]: activity import error "%s" for activity="%s" - SKIPPING' % (str(e), str(v)))
             
         return vid
-        
-    def KF1_examples(self):
-        """Parse KF1-examples annotations from 'meva-data-repo/annotation/DIVA-phase-2/MEVA/KF1-examples' to list of vipy.video.Scene()
-
-        MEVA annotation format: https://gitlab.kitware.com/meva/meva-data-repo/blob/master/documents/MEVA_Annotation_JSON.pdf
-
-        """
-        d_videoname_to_path = {filetail(f):f for f in self._get_videos()}
-        vidlist = []
-        for (activities_jsonfile, fileindex_jsonfile) in zip(self._get_activities_json(), self._get_fileindex_json()):
-            assert activities_jsonfile.split('.')[:-2] == fileindex_jsonfile.split('.')[:-2], "Unmatched activity and file-index json file"
-            if 'KF1-examples' not in activities_jsonfile or 'KF1-examples' not in fileindex_jsonfile:
-                continue
-            activities = readjson(activities_jsonfile)
-            fileindex = readjson(fileindex_jsonfile)
-            assert len(fileindex) == 1, "Fileindex contains more than one video"
-            
-            # Create Scene() object
-            videoname = tuple(fileindex.keys())[0]            
-            assert 'selected' in fileindex[videoname] and 1 in fileindex[videoname]['selected'].values() and 0 in fileindex[videoname]['selected'].values(), "Invalid fileindex '%s'" % fileindex_jsonfile
-            startframe = sorted([int(x) for x in fileindex[videoname]['selected'].keys()])[0]
-            endframe = sorted([int(x) for x in fileindex[videoname]['selected'].keys()])[1]
-            vid = Scene(filename=d_videoname_to_path[videoname], framerate=fileindex[videoname]['framerate'], startframe=startframe, endframe=endframe)
-
-            # Add activities
-            d = readjson(activities_jsonfile)
-            for a in d['activities']:
-                trackids = []
-                for obj in a['objects']:
-                    keyframes = sorted([int(k) for (k,x) in obj['localization'][videoname].items() if len(x)>0])
-                    boxes = [BoundingBox(xmin=bb['x'], ymin=bb['y'], width=bb['w'], height=bb['h']) for bb in [obj['localization'][videoname][str(k)]['boundingBox'] for k in keyframes]]
-                    t = Track(keyframes=keyframes, boxes=boxes, category=obj['objectType'], attributes=obj['objectID'], boundary='strict')
-                    trackids.append(vid.add(t))
-
-                startframe = sorted([int(x) for x in a['localization'][videoname].keys()])[0]
-                endframe = sorted([int(x) for x in a['localization'][videoname].keys()])[1]
-                vid.add(Activity(category=a['activity'], startframe=startframe, endframe=endframe, objectids=trackids, attributes={'activityID':a['activityID']}))                
-            vidlist.append(vid)
-        
-        return vidlist
 
 
-    def MEVA(self, stride=1, verbose=True, n_videos=None, d_category_to_shortlabel=None):
-        """Parse MEVA annotations from 'meva-data-repo/annotation/DIVA-phase-2/MEVA/meva-annotations/' into vipy.video.Scene()
-       
-        Kwiver packet format: https://gitlab.kitware.com/meva/meva-data-repo/blob/master/documents/KPF-specification-v4.pdf
-          * Stride is an optional temporal step to skip bounding boxes annotated on every frame and use vipy.object.Track() linear interpolation between keyframes
-          * d_category_to_shortlabel is a dictionary mapping category names to a short displayed label on the video.  The standard for visualization is that 
-            tracked objects are displayed with their category label (e.g. 'Person', 'Vehicle'), and activities are labeled according to the set of objects that
-            performing the activity.  When an activity occurs, the set of objects are labeled with the same color as 'Noun Verbing' (e.g. 'Person Entering', 
-            'Person Reading', 'Vehicle Starting') where 'Verbing' is provided by the shortlabel.  
+    def videos(self):
+        """Return list of activity videos"""
+        return [v for v in self._vidlist if v is not None]
 
-        """
-        if verbose:
-            num_yamlfiles = len(self._get_activities_yaml())
-            print('[vipy.dataset.meva]: Loading %d YAML files (this takes a while)' % num_yamlfiles)
+    def tolist(self):
+        return self.videos()
 
-        d_category_to_shortlabel = d_category_to_shortlabel if d_category_to_shortlabel is not None else self._d_category_to_shortlabel
-        d_videoname_to_path = {filebase(f):f for f in self._get_videos()}
-        yamlfiles = zip(self._get_types_yaml(), self._get_geom_yaml(), self._get_activities_yaml())
-        yamlfiles = list(yamlfiles)[0:n_videos] if n_videos is not None else list(yamlfiles)
+    def instances(self, padframes=0):
+        """Return list of activity instances"""
         if vipy.globals.num_workers() > 1:
-            from vipy.batch import Batch
-            return Batch(list(yamlfiles)).map(lambda tga: self._parse_video(d_videoname_to_path, d_category_to_shortlabel, tga[0], tga[1], tga[2], stride=stride, verbose=verbose))
+            return [a for A in Batch(self.videos()).activityclip(padframes=padframes) for a in A]
         else:
-            return [self._parse_video(d_videoname_to_path, d_category_to_shortlabel, t, g, a, stride=stride, verbose=verbose) for (t,g,a) in yamlfiles]
-
+            warnings.warn('Consider setting vipy.globals.num_workers()>1 to speed this up')
+            return [a for v in self.videos() for a in v.activityclip(padframes=padframes)]
         
-    def analysis(self, meva=None, outdir=None):
+
+    def categories(self):
+        """Return a list of activity categories"""
+        return sorted(list(self._d_category_to_shortlabel.keys()))
+        
+    def analysis(self, outdir=None):
         """Analyze the MEVA dataset to return helpful statistics and plots"""
         import matplotlib.pyplot as plt        
         
-        videos = self.MEVA(stride=20) if meva is None else meva
-        scenes = flatlist([m.activityclip() for m in meva if m is not None])
+        videos = self._vidlist
+        scenes = flatlist([m.activityclip() for m in videos if m is not None])
         activities = flatlist([s.activities().values() for s in scenes])
         tracks = flatlist([s.tracks().values() for s in scenes])
         outdir = tempdir() if outdir is None else outdir
