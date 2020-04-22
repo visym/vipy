@@ -392,9 +392,14 @@ class Video(object):
     def shape(self):
         """Return (height, width) of the frames, requires loading a preview frame from the video if the video is not already loaded"""
         if not self.isloaded():
-            im = self._preview()  # load a single frame of video 
-            return (im.width(), im.height())
-        return (self._array.shape[1], self._array.shape[2])
+            shapehash = hash(str(self._ffmpeg.output('dummyfile').compile()))
+            if not hasattr(self, '_shapehash') or shapehash != self._shapehash:
+                im = self._preview()  # ffmpeg chain changed, load a single frame of video 
+                self._shape = (im.height(), im.width())  # cache the shape
+                self._shapehash = shapehash
+            return self._shape
+        else:
+            return (self._array.shape[1], self._array.shape[2])
 
     def width(self):
         """Width (cols) in pixels of the video for the current filter chain"""
@@ -466,9 +471,14 @@ class Video(object):
         # Generate single frame _preview to get frame sizes
         imthumb = self._preview(verbose=verbose)
         (height, width, channels) = (imthumb.height(), imthumb.width(), imthumb.channels())
-        (out, err) = self._ffmpeg.output('pipe:', format='rawvideo', pix_fmt='rgb24') \
-                                 .global_args('-loglevel', 'debug' if verbose else 'error') \
-                                 .run(capture_stdout=True)
+        try:
+            (out, err) = self._ffmpeg.output('pipe:', format='rawvideo', pix_fmt='rgb24') \
+                                     .global_args('-loglevel', 'debug' if verbose else 'error') \
+                                     .run(capture_stdout=True, capture_stderr=True)
+        except ffmpeg.Error as e:
+            print('[vipy.video.load]:', e.stdout.decode('utf8'))
+            print('[vipy.video.load]:', e.stderr.decode('utf8'))
+            raise e            
         self._array = np.frombuffer(out, np.uint8).reshape([-1, height, width, channels])  # read-only
         self.colorspace('rgb' if channels == 3 else 'lum')
         return self
@@ -520,21 +530,23 @@ class Video(object):
     def mindim(self, dim):
         """Resize the video so that the minimum of (width,height)=dim, preserving aspect ratio"""
         assert not self.isloaded(), "Filters can only be applied prior to load() - Try calling flush() first"
-        (H,W) = self._preview().load().shape()  # yuck, need to get image dimensions before filter
+        (H,W) = self.shape()  # yuck, need to get image dimensions before filter
         return self.resize(cols=dim) if W<H else self.resize(rows=dim)
 
     def maxdim(self, dim):
         """Resize the video so that the maximum of (width,height)=dim, preserving aspect ratio"""
         assert not self.isloaded(), "Filters can only be applied prior to load() - Try calling flush() first"
-        (H,W) = self._preview().load().shape()  # yuck, need to get image dimensions before filter
+        (H,W) = self.shape()  # yuck, need to get image dimensions before filter
         return self.resize(cols=dim) if W>H else self.resize(rows=dim)
     
-    def crop(self, bb):
-        """Spatially crop the video using the supplied vipy.geometry.BoundingBox, can only be applied prior to load()"""
+    def crop(self, bb, rangecheck=True):
+        """Spatially crop the video using the supplied vipy.geometry.BoundingBox, can only be applied prior to load().
+           If strict=False, then we do not perform bounds checking on this bounding box
+        """
         assert not self.isloaded(), "Filters can only be applied prior to load() - Try calling flush() first"
         assert isinstance(bb, vipy.geometry.BoundingBox), "Invalid input"
-        impreview = self._preview()  # to clip to image rectangle, required for ffmpeg
-        bb = bb.imclipshape(impreview.width(), impreview.height()).int()
+        if rangecheck:
+            bb = bb.imclipshape(self.width(), self.height()).int()
         self._ffmpeg = self._ffmpeg.crop(bb.xmin(), bb.ymin(), bb.width(), bb.height())
         return self
 
@@ -917,7 +929,7 @@ class Scene(VideoCategory):
     def hastracks(self):
         return len(self._tracks) > 0
 
-    def add(self, obj, category=None, attributes=None):
+    def add(self, obj, category=None, attributes=None, rangecheck=True):
         """Add the object obj to the scene, and return an index to this object for future updates
         
         This function is used to incrementally build up a scene frame by frame.  Obj can be one of the following types:
@@ -949,17 +961,28 @@ class Scene(VideoCategory):
         if isinstance(obj, vipy.object.Detection):
             assert self._currentframe is not None, "add() for vipy.object.Detection() must be added during frame iteration (e.g. for im in video: )"
             t = vipy.object.Track(category=obj.category(), keyframes=[self._currentframe], boxes=[obj], boundary='strict', attributes=obj.attributes)
+            if rangecheck and not obj.hasoverlap(width=self.width(), height=self.height()):
+                raise ValueError("Track '%s' does not intersect with frame shape (%d, %d)" % (str(t), self.height(), self.width()))
             self._tracks[t.id()] = t
             return t.id()
         elif isinstance(obj, vipy.object.Track):
+            if rangecheck and not vipy.geometry.imagebox(self.shape()).inside(obj.boundingbox()):
+                obj = obj.imclip(self.width(), self.height())  # try to clip it, will throw exception if all are bad 
+                warnings.warn('Clipping track "%s" to image rectangle' % (str(obj)))
             self._tracks[obj.id()] = obj
             return obj.id()
         elif isinstance(obj, vipy.object.Activity):
+            if rangecheck and obj.startframe() >= obj.endframe():
+                raise ValueError("Activity '%s' has invalid (startframe, endframe)=(%d, %d)" % (str(obj), obj.startframe(), obj.endframe()))
             self._activities[obj.id()] = obj
+            # FIXME: check to see if activity has at least one track during activity
             return obj.id()
         elif (istuple(obj) or islist(obj)) and len(obj) == 4 and isnumber(obj[0]):
             assert self._currentframe is not None, "add() for obj=xywh must be added during frame iteration (e.g. for im in video: )"
             t = vipy.object.Track(category=category, keyframes=[self._currentframe], boxes=[vipy.geometry.BoundingBox(xywh=obj)], boundary='strict', attributes=attributes)
+            if rangecheck and not vipy.geometry.imagebox(self.shape()).inside(t.boundingbox()):
+                t = t.imclip(self.width(), self.height())  # try to clip it, will throw exception if all are bad 
+                warnings.warn('Clipping track "%s" to image rectangle' % (str(t)))
             self._tracks[t.id()] = t
             return t.id()
         else:
@@ -992,7 +1015,7 @@ class Scene(VideoCategory):
         return self.__getitem__(frame).savefig(outfile if outfile is not None else temppng())
         
     def activityclip(self, padframes=0):
-        """Return a list of vipy.video.Scene() each clipped to be centered on a single activity, with an optional padframes before and after.  
+        """Return a list of vipy.video.Scene() each clipped to be temporally centered on a single activity, with an optional padframes before and after.  
            The Scene() category is updated to be the activity, and only the objects participating in the activity are included.
            Activities are returned ordered in the temporal order they appear in the video."""
         vid = self.clone(flushforward=True)
@@ -1004,41 +1027,26 @@ class Scene(VideoCategory):
         vid._tracks = {}      # for faster clone
         padframes = padframes if istuple(padframes) else (padframes,padframes)
         return [vid.clone().activities(a).tracks(t).clip(startframe=max(a.startframe()-padframes[0], 0),
-                                                         endframe=(a.endframe()+padframes[1])).category(a.category()) for (a,t) in zip(activities, tracks)]
+                                                         endframe=(a.endframe()+padframes[1])).category(a.category()) for (a,t) in zip(activities, tracks) if len(t)>0]
     
-    def activitycrop(self, dilate=1.0):
-        """Returns a list of vipy.video.Scene() each spatially cropped to be the union of the objects performing the activity.
-           Activities are returned ordered in the temporal order they appear in the video
-           Crop is guaranteed to be within the image rectangle, and if (framewidth, frameheight) is provided, this avoid triggering a load
-        """
-        vid = self.clone(flushforward=True)
-        activities = sorted(vid.activities().values(), key=lambda a: a.startframe())  # temporal order 
-        if any([(a.endframe()-a.startframe()) <= 0 for a in vid.activities().values()]):
-            warnings.warn('Filtering invalid activity clips with degenerate lengths: %s' % str([a for a in vid.activities().values() if (a.endframe()-a.startframe()) <= 0]))            
-        tracks = [ [t for (tid, t) in vid.tracks().items() if a.hastrack(t)] for a in activities]                 
-        vid._activities = {}  # for faster clone
-        vid._tracks = {}      # for faster clone
-        (framewidth, frameheight) = (vid.width(), vid.height())  # for faster interior
-        return [vid.clone().activities(a).tracks(t).crop(a.boundingbox().dilate(dilate).iminterior(framewidth, frameheight).int()) for (a,t) in zip(activities, tracks)]        
+    def activitybox(self, dilate=1.0):
+        """The activitybox is the union of all activity bounding boxes in the video, which is the union of all tracks contributing to all activities.  This is most useful after activityclip()"""
+        boxes = [a.boundingbox().dilate(dilate) for a in self.activities().values()]
+        return boxes[0].union(boxes[1:]) if len(boxes) > 0 else BoundingBox(xmin=0, ymin=0, width=self.width(), height=self.height())
 
-    def activitysquare(self, dilate=1.0):
-        """Returns a list of vipy.video.Scene() each spatially cropped to be the maxsquare of the union of the objects performing the activity
-           Activities are returned ordered in the temporal order they appear in the video.
-           Square crops are guaranteed to be within the frame boundary with shape (framewidth, frameheight) without any padding.  This may introduce bounding box centroid offset at the frame boundary.
-           If (framewidthm frameheight) is not provided, then the video thumbnail must be extracted, triggering a load
-        """
-        vid = self.clone(flushforward=True)
-        activities = sorted(vid.activities().values(), key=lambda a: a.startframe())  # temporal order
-        tracks = [ [t for (tid, t) in vid.tracks().items() if a.hastrack(t)] for a in activities]                 
-        vid._activities = {}  # for faster clone
-        vid._tracks = {}      # for faster clone        
-        (framewidth, frameheight) = (vid.width(), vid.height())  # for faster interior
-        return [vid.clone().activities(a).tracks(t).crop(a.boundingbox().dilate(dilate).maxsquare().iminterior(framewidth, frameheight).int()) for (a,t) in zip(activities, tracks)]  
+    def activitycuboid(self, dilate=1.0, mindim=256, maxsquare=False):
+        """The activity cuboid is the fixed spatial crop corresponding to the activitybox, which contains all of the valid activities in the scene.  This is most useful after activityclip()"""
+        return self.crop(self.activitybox().dilate(dilate).maxsquareif(maxsquare)).mindim(mindim)  # crop triggers preview()
 
-    def activitytube(self, dilate=1.0, padframes=0):
-        """Return a list of vipy.video.Scene() each spatially cropped following activitycrop() and temporally cropped following activityclip()"""
-        return flatlist([a.activitycrop(dilate) for a in self.activityclip(padframes)])
-        
+    def activitytube(self, dilate=1.0, maxsquare=True, maxsize=256):
+        """The activity tube is an activity cuboid where the spatial box changes on every frame to track the activity.
+           This function does not perform any temporal clipping.  Use activityclip() first to split into individual activities.  
+           Crop is guaranteed to be within the image rectangle.  
+        """
+        self.activitycuboid(dilate=dilate, maxsquare=maxsquare).load()  # triggers preview
+        self._array = np.stack([im.crop(im.boundingbox().maxsquareif(maxsquare).dilate(dilate)).resize(maxsize, maxsize).numpy() for im in self])  # track interpolation
+        return self
+
     def clip(self, startframe, endframe):
         """Clip the video to between (startframe, endframe).  This clip is relative to cumulative clip() from the filter chain"""
         super(Scene, self).clip(startframe, endframe)
@@ -1049,24 +1057,24 @@ class Scene(VideoCategory):
     def cliptime(self, startsec, endsec):
         raise NotImplementedError('use clip() instead')
     
-    def crop(self, bb):
+    def crop(self, bb, rangecheck=True):
         """Crop the video using the supplied box, update tracks relative to crop, bbox is clipped to be within the image rectangle, otherwise ffmpeg will throw an exception"""
         assert not self.isloaded(), "Filters can only be applied prior to load() - Try calling flush() first"
         assert isinstance(bb, vipy.geometry.BoundingBox), "Invalid input"
-        super(Scene, self).crop(bb)  # will clip to image rectangle)
+        super(Scene, self).crop(bb, rangecheck=rangecheck)  # will clip to image rectangle, if requested
         self._tracks = {k:t.offset(dx=-bb.xmin(), dy=-bb.ymin()) for (k,t) in self._tracks.items()}
         return self
 
     def rot90ccw(self):
         assert not self.isloaded(), "Filters can only be applied prior to load() - Try calling flush() first"                
-        (H,W) = self._preview().load().shape()  # yuck, need to get image dimensions before filter
+        (H,W) = self.shape()  # yuck, need to get image dimensions before filter
         self._tracks = {k:t.rot90ccw(H,W) for (k,t) in self._tracks.items()}
         super(Scene, self).rot90ccw()
         return self
 
     def rot90cw(self):
         assert not self.isloaded(), "Filters can only be applied prior to load() - Try calling flush() first"                
-        (H,W) = self._preview().load().shape()  # yuck, need to get image dimensions before filter
+        (H,W) = self.shape()  # yuck, need to get image dimensions before filter
         self._tracks = {k:t.rot90cw(H,W) for (k,t) in self._tracks.items()}
         super(Scene, self).rot90cw()
         return self
@@ -1075,7 +1083,7 @@ class Scene(VideoCategory):
         """Resize the video to (rows, cols), preserving the aspect ratio if only rows or cols is provided"""
         assert not self.isloaded(), "Filters can only be applied prior to load() - Try calling flush() first"                
         assert rows is not None or cols is not None, "Invalid input"
-        (H,W) = self._preview().load().shape()  # yuck, need to get image dimensions before filter
+        (H,W) = self.shape()  # yuck, need to get image dimensions before filter
         sy = rows / float(H) if rows is not None else cols / float(W)
         sx = cols / float(W) if cols is not None else rows / float(H)
         self._tracks = {k:t.scalex(sx) for (k,t) in self._tracks.items()}
@@ -1086,13 +1094,13 @@ class Scene(VideoCategory):
     def mindim(self, dim):
         """Resize the video so that the minimum of (width,height)=dim, preserving aspect ratio"""
         assert not self.isloaded(), "Filters can only be applied prior to load() - Try calling flush() first"                
-        (H,W) = self._preview().load().shape()  # yuck, need to get image dimensions before filter
+        (H,W) = self.shape()  # yuck, need to get image dimensions before filter
         return self.resize(cols=dim) if W<H else self.resize(rows=dim)
 
     def maxdim(self, dim):
         """Resize the video so that the maximum of (width,height)=dim, preserving aspect ratio"""
         assert not self.isloaded(), "Filters can only be applied prior to load() - Try calling flush() first"                
-        (H,W) = self._preview().load().shape()  # yuck, need to get image dimensions before filter
+        (H,W) = self.shape()  # yuck, need to get image dimensions before filter
         return self.resize(cols=dim) if W>H else self.resize(rows=dim)
     
     def rescale(self, s):
