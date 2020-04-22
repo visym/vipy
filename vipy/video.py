@@ -900,6 +900,7 @@ class Scene(VideoCategory):
         return vipy.visualize.montage(imframes, imgwidth=mindim, imgheight=mindim)
     
     def tracks(self, tracks=None, id=None):
+        """Return mutable dictionary of tracks"""        
         if tracks is None:
             return self._tracks  # mutable dict
         elif id is not None:
@@ -909,7 +910,11 @@ class Scene(VideoCategory):
             self._tracks = {t.id():t for t in tolist(tracks)}  # overwrite
             return self
 
+    def tracklist(self):
+        return list(self._tracks.values())
+        
     def activities(self, activities=None, id=None):
+        """Return mutable dictionary of activities"""
         if activities is None:
             return self._activities  # mutable dict
         elif id is not None:
@@ -919,6 +924,9 @@ class Scene(VideoCategory):
             self._activities = {a.id():a for a in tolist(activities)}   # overwrite
             return self
 
+    def activitylist(self):
+        return list(self._activities.values())
+        
     def categories(self):
         """Return a set of all categories in all activities and tracks in this sccene"""
         return set([a.category() for a in self.activities().values()]+[t.category() for t in self.tracks().values()])
@@ -1028,24 +1036,31 @@ class Scene(VideoCategory):
         padframes = padframes if istuple(padframes) else (padframes,padframes)
         return [vid.clone().activities(a).tracks(t).clip(startframe=max(a.startframe()-padframes[0], 0),
                                                          endframe=(a.endframe()+padframes[1])).category(a.category()) for (a,t) in zip(activities, tracks) if len(t)>0]
-    
+
+    def trackbox(self, dilate=1.0):
+        """The trackbox is the union of all track bounding boxes in the video, or the image rectangle if there are no tracks"""
+        boxes = [t.boundingbox().dilate(dilate) for t in self.tracklist()]
+        return boxes[0].union(boxes[1:]) if len(boxes) > 0 else imagebox(self.shape())
+        
     def activitybox(self, dilate=1.0):
         """The activitybox is the union of all activity bounding boxes in the video, which is the union of all tracks contributing to all activities.  This is most useful after activityclip()"""
         boxes = [a.boundingbox().dilate(dilate) for a in self.activities().values()]
         return boxes[0].union(boxes[1:]) if len(boxes) > 0 else BoundingBox(xmin=0, ymin=0, width=self.width(), height=self.height())
 
-    def activitycuboid(self, dilate=1.0, mindim=256, maxsquare=False):
-        """The activity cuboid is the fixed spatial crop corresponding to the activitybox, which contains all of the valid activities in the scene.  This is most useful after activityclip()"""
-        return self.crop(self.activitybox().dilate(dilate).maxsquareif(maxsquare)).mindim(mindim)  # crop triggers preview()
+    def activitycuboid(self, dilate=1.0, maxdim=256, maxsquare=False):
+        """The activity cuboid is the fixed spatial crop corresponding to the activitybox, which contains all of the valid activities in the scene.  This is most useful after activityclip().
+           mindim is required since the crop can be tiny, and will not be processed by ffmpeg
+        """
+        return self.clone().crop(self.activitybox().dilate(dilate).maxsquareif(maxsquare).int()).maxdim(maxdim)  # crop triggers preview()
 
-    def activitytube(self, dilate=1.0, maxsquare=True, maxsize=256):
+    def activitytube(self, dilate=1.0, maxdim=256):
         """The activity tube is an activity cuboid where the spatial box changes on every frame to track the activity.
            This function does not perform any temporal clipping.  Use activityclip() first to split into individual activities.  
-           Crop is guaranteed to be within the image rectangle.  
+           Crop will be zeropadded to keep the object in the center of the tube.
         """
-        self.activitycuboid(dilate=dilate, maxsquare=maxsquare).load()  # triggers preview
-        self._array = np.stack([im.crop(im.boundingbox().maxsquareif(maxsquare).dilate(dilate)).resize(maxsize, maxsize).numpy() for im in self])  # track interpolation
-        return self
+        vid = self.activitycuboid(dilate=dilate, maxsquare=True).load()  # triggers preview
+        self._array = np.stack([im.padcrop(im.boundingbox().maxsquare().dilate(dilate).int()).resize(maxdim, maxdim).numpy() for im in vid])  # track interpolation
+        return vid
 
     def clip(self, startframe, endframe):
         """Clip the video to between (startframe, endframe).  This clip is relative to cumulative clip() from the filter chain"""

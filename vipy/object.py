@@ -459,7 +459,7 @@ class Activity(object):
         return boxes[0].clone().union(boxes[1:]) if len(boxes)>0 else None
 
     def imagebox(self, width, height):
-        """The image box of an activity is the smallest bounding box for all tracks in the activity (inclusive of start and endframes) that is within the image rectangle, or None if there are no boxes""" 
+        """The image box of an activity is the smallest bounding box for all tracks in the activity (inclusive of start and endframes) that is within the image rectangle (width, height), or None if there are no boxes""" 
         bb = self.boundingbox()
         return None if bb is None or not bb.hasoverlap(width=width, height=height) else bb.imclipshape(width, height)
 
