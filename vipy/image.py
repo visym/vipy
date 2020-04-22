@@ -689,6 +689,10 @@ class Image(object):
         self._array = np.fliplr(self.load().array())
         return self
 
+    def imagebox(self):
+        """Return the bounding box for the image rectangle"""
+        return BoundingBox(xmin=0, ymin=0, width=self.width(), height=self.height())
+    
     # Color conversion
     def _convert(self, to):
         """Supported colorspaces are rgb, rgbab, bgr, bgra, hsv, grey, lum, float"""
@@ -1432,9 +1436,9 @@ class Scene(ImageCategory):
             return s
 
     def boundingbox(self):
-        """The boundingbox of a scene is the union of all BoundingBox, or the image box if no objects"""
+        """The boundingbox of a scene is the union of all object bounding boxes, or None if there are no objects"""
         boxes = self.objects()
-        bb = boxes[0].clone() if len(boxes) >= 1 else imagebox(self.shape())
+        bb = boxes[0].clone() if len(boxes) >= 1 else None
         return bb.union(boxes[1:]) if len(boxes) >= 2 else bb
         
     def categories(self):
