@@ -122,8 +122,8 @@ class Video(object):
         return str('<vipy.video: %s>' % (', '.join(strlist)))
 
     def __len__(self):
-        """Number of frames when the video is loaded, otherwise 0"""
-        return len(self._array) if self.isloaded() else 0
+        """Number of frames in the video, triggers load."""
+        return len(self.load().array())
 
     def __getitem__(self, k):
         """Return the kth frame as an vipy.image object"""
@@ -630,41 +630,51 @@ class Video(object):
         """Export loaded video to tempfile and play()"""
         return os.system('ffplay %s' % self.saveas(tocache(tempMP4())))
     
-    def torch(self, startframe=0, endframe=None, length=None, stride=None, take=None, takelength=None):
+    def torch(self, startframe=0, endframe=None, length=None, stride=1, take=None, boundary='repeat', verbose=False):
         """Convert the loaded video of shape N HxWxC frames to an MxCxHxW torch tensor, forces a load().
            Order of operations is (startframe, endframe) or (startframe, startframe+length) or (random_startframe, random_starframe+takelength), then stride or take.
            Follows numpy slicing rules.
         """
         try_import('torch'); import torch
-        self.load()
-        frames = self._array if self.iscolor() else np.expand_dims(self._array, 3)
-        frames = frames[startframe:]
+        frames = self.load().array() if self.iscolor() else np.expand_dims(self.load().array(), 3)
+        assert boundary in ['repeat', 'strict'], "Invalid boundary mode - must be in ['repeat', 'strict']"
+
+        # Slice index (i=start, j=end, k=step)
+        (i,j,k) = (startframe, len(frames), stride)
+        if startframe == 'random':
+            assert length is not None, "Random start frame requires fixed length"
+            i = max(0, np.random.randint(len(frames)-length+1))
         if endframe is not None:
             assert length is None, "Cannot specify both endframe and length"                        
-            assert length is None, "Either end or len is specified"
-            assert endframe > startframe, "Endframe must be greater than start"
-            frames = frames[0:endframe-startframe]
+            assert endframe > startframe, "End frame must be greater than start frame"
+            (j,k) = (endframe-startframe+1, 1)
         if length is not None:
             assert endframe is None, "Cannot specify both endframe and length"
             assert length >= 0, "Length must be positive"
-            frames = frames[0:length]
-        if takelength is not None:
-            # Return a contiguous clip of length=takelength, with random startframe
-            assert endframe is None, "Cannot specify both endframe and takelength, or length and takelength"
-            assert length is None, "Cannot specify both length and takelength"
-            assert takelength <= len(frames), "Cannot take more frames then there are"
-            k = np.random.randint(len(frames)-takelength+1)
-            frames = frames[k:k+takelength]
-        if stride is not None:
+            (j,k) = (i+length, 1)
+        if stride != 1:
             assert take is None, "Cannot specify both take and stride"
             assert stride >= 1, "Stride must be >= 1"
-            assert stride <= len(frames), "Stride must be <= len(frames)"            
-            frames = frames[::stride]
+            k = stride
         if take is not None:
             # Uniformly sampled frames to result in len(frames)=take
-            assert stride is None, "Cannot specify both take and stride"
-            frames = frames[::int(np.round(len(frames)/float(take)))][0:take]
-        return torch.from_numpy(frames.transpose(0,3,1,2))
+            assert stride == 1, "Cannot specify both take and stride"
+            assert take <= len(frames), "Take must be less than the number of frames"
+            k = int(np.ceil(len(frames)/float(take)))
+
+        # Boundary handling
+        assert i >= 0, "Start frame must be >= 0"
+        assert i < j, "Start frame must be less then end frame"
+        assert k <= len(frames), "Stride must be <= len(frames)"            
+        if boundary == 'repeat' and j > len(frames):
+            for d in range(j-len(frames)):
+                frames = np.concatenate( (frames, np.expand_dims(frames[-1], 0) ))
+        assert j <= len(frames), "invalid slice=%s for frame shape=%s - try setting boundary='repeat'" % (str((i,j,k)), str(frames.shape))
+        if verbose:
+            print('[vipy.video.torch]: slice (start,end,step)=%s for frame shape (N,C,H,W)=%s' % (str((i,j,k)), str(frames.shape)))
+
+        # Slice and transpose to torch tensor axis ordering (NxCxHxW)
+        return torch.from_numpy(frames[i:j:k].transpose(0,3,1,2))
 
     def clone(self, flushforward=False, flushbackward=False, flush=False):
         """Create deep copy of video object, flushing the original buffer if requested and returning the cloned object.
