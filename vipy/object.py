@@ -1,6 +1,6 @@
 import numpy as np
 from vipy.geometry import BoundingBox
-from vipy.util import isstring
+from vipy.util import isstring, tolist
 import uuid
 import copy
 
@@ -107,10 +107,10 @@ class Track(object):
 
     """
 
-    def __init__(self, keyframes=None, boxes=None, category=None, label=None, confidence=None, framerate=None, interpolation='linear', boundary='strict', shortlabel=None, attributes=None):
-        keyframes = [] if keyframes is None else keyframes
-        boxes = [] if boxes is None else boxes
-        
+    def __init__(self, keyframes, boxes, category=None, label=None, confidence=None, framerate=None, interpolation='linear', boundary='strict', shortlabel=None, attributes=None):
+
+        keyframes = tolist(keyframes)
+        boxes = tolist(boxes)        
         assert isinstance(keyframes, tuple) or isinstance(keyframes, list), "Keyframes are required and must be tuple or list"
         assert isinstance(boxes, tuple) or isinstance(boxes, list), "Keyframe boundingboxes are required and must be tuple or list"
         assert all([isinstance(bb, BoundingBox) for bb in boxes]), "Keyframe bounding boxes must be vipy.geometry.BoundingBox objects"
@@ -165,6 +165,7 @@ class Track(object):
     def add(self, keyframe, box):
         """Add a new keyframe and associated box to track, preserve sorted order of keyframes"""
         assert isinstance(box, BoundingBox), "Invalid input - Box must be vipy.geometry.BoundingBox()"
+        assert box.isvalid(), "Invalid input - Box must be non-degenerate"
         self._keyframes.append(keyframe)
         self._keyboxes.append(box)
         if len(self._keyframes) > 1 and keyframe < self._keyframes[-2]:
@@ -298,7 +299,20 @@ class Track(object):
         assert isinstance(other, Track), "Invalid input - must be vipy.object.Track()"
         return np.mean([self[k].iou(other[k]) if self.during(k) and other.during(k) else 0.0 for k in range(self.startframe(), self.endframe())])
 
-    
+    def imclip(self, width, height):
+        """Clip the track to the image rectangle (width, height).  If a keybox is outside the image rectangle, remove it otherwise clip to the image rectangle. 
+           This operation can change the length of the track and the size of the keyboxes.  The result may be an empty track if the track is completely outside
+           the image rectangle, which results in an exception.
+        """
+        clipped = [(f, bb.imclip(width=width, height=height)) for (f,bb) in zip(self._keyframes, self._keyboxes) if bb.hasoverlap(width=width, height=height)]
+        if len(clipped) > 0:
+            (self._keyframes, self._keyboxes) = zip(*clipped)
+            (self._keyframes, self._keyboxes) = (list(self._keyframes), list(self._keyboxes))
+            return self
+        else:
+            raise ValueError('All key boxes for track outside image rectangle')
+
+
 class Activity(object):
     """vipy.object.Activity class
     
@@ -433,6 +447,7 @@ class Activity(object):
     def offset(self, dt):
         self._startframe = self._startframe + dt
         self._endframe = self._endframe + dt
+        self._tracks = {ti:t.offset(dt=dt) for (ti,t) in self._tracks.items()}
         return self
     
     def id(self):
@@ -440,9 +455,13 @@ class Activity(object):
 
     def boundingbox(self):
         """The bounding box of an activity is the smallest bounding box for all tracks in the activity (inclusive of start and endframes), or None of there are no boxes""" 
-        #boxes = [bb for k in range(self.startframe(), self.endframe()+1) for bb in self[k] if bb is not None]
         boxes = [t.clone().clip(self.startframe(), self.endframe()+1).boundingbox() for (i,t) in self.tracks().items()]
         return boxes[0].clone().union(boxes[1:]) if len(boxes)>0 else None
+
+    def imagebox(self, width, height):
+        """The image box of an activity is the smallest bounding box for all tracks in the activity (inclusive of start and endframes) that is within the image rectangle, or None if there are no boxes""" 
+        bb = self.boundingbox()
+        return None if bb is None or not bb.hasoverlap(width=width, height=height) else bb.imclipshape(width, height)
 
     def clone(self):
         return copy.deepcopy(self)
