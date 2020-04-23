@@ -53,7 +53,6 @@ class Dask(object):
         GLOBAL['DASK_CLIENT'] = None
         return self
 
-
     def client(self):
         return self._client
 
@@ -71,3 +70,7 @@ def num_workers(n=None):
     if n is not None:
         return dask(num_processes=n)
     return 1 if dask() is None else dask().num_processes()
+
+def max_workers():
+    import multiprocessing
+    return dask(num_processes=multiprocessing.cpu_count())

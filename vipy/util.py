@@ -170,6 +170,23 @@ def rmdir(indir):
         shutil.rmtree(indir)
     return indir
 
+def dividelist(inlist, fractions):
+    """Divide inlist into a list of lists such that the size of each sublist is the requseted fraction of the original list
+       
+       Input:
+         -inlist=list
+         -fractions=(0.1, 0.7, 0.2)   An iterable of fractions that must be non-negative and sum to one
+    """
+    assert all([f >= 0 and f <=1 for f in fractions])
+    assert np.sum(fractions) == 1
+    assert len(inlist) >= len(fractions)
+    N = np.int32(np.maximum(1, np.ceil(len(inlist)*np.array(fractions))))
+    outlist = []
+    for n in N:
+        outlist.append(inlist[0:n])
+        inlist = inlist[n:]
+    return outlist
+
 def chunklist(inlist, num_chunks):
     """Convert list into a list of lists of length num_chunks each element
     is a list containing a sequential chunk of the original list"""

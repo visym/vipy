@@ -290,7 +290,10 @@ class Track(object):
             self.add(startframe, self[startframe])
         if self[endframe] is not None:
             self.add(endframe, self[endframe])
-        (self._keyframes, self._keyboxes) = zip(*[(f,bb) for (f,bb) in zip(self._keyframes, self._keyboxes) if f>=startframe and f<=endframe])        
+        self._keyframes = [f for (f,bb) in zip(self._keyframes, self._keyboxes) if f>=startframe and f<=endframe]  # may be empty
+        self._keyboxes = [bb for (f,bb) in zip(self._keyframes, self._keyboxes) if f>=startframe and f<=endframe]  # may be empty
+        if len(self._keyframes) == 0 or len(self._keyboxes) == 0:
+            raise ValueError('Track does not contain any keyboxes within the requested frames (%d,%d)' % (startframe, endframe))
         self._boundary = 'strict'
         return self
 
@@ -329,11 +332,12 @@ class Activity(object):
 
     """
     def __init__(self, startframe, endframe, framerate=None, label=None, shortlabel=None, category=None, tracks=None, attributes=None):
-        assert not (label is not None and category is not None), "ACtivity() Constructor requires either label or category kwargs, not both"
+        assert not (label is not None and category is not None), "Activity() Constructor requires either label or category kwargs, not both"
+        assert startframe < endframe, "Start frame must be strictly less than end frame"
         assert tracks is None or isinstance(tracks, dict), "Tracks must be a dictionary {trackid:vipy.object.Track()}"
         assert tracks is None or all([isstring(k) for (k,v) in tracks.items()]) and all([isinstance(v, Track) for (k,v) in tracks.items()]), "Invalid tracks - Must be a dictionary of {str(trackid):vipy.object.Track()}"        
-        assert startframe <= endframe, "Invalid Activity() - startframe must occur before endframe"
-        
+        assert tracks is None or all([t.during(startframe) or t.during(endframe) for t in tracks.values()]), "All tracks must be be present when this activity occurs"
+    
         self._id = uuid.uuid1().hex
         self._startframe = startframe
         self._endframe = endframe
@@ -401,6 +405,7 @@ class Activity(object):
     def add(self, track):
         """Add the track by reference to the track list for this activity, so that if the track is changed externally it is reflected here"""
         assert isinstance(track, Track), "Invalid input - must be vipy.object.Track"
+        assert track.during(self.startframe()) or track.during(self.endframe()) or track.during(self.middleframe()), "The track must be present during the activity"
         self._tracks[track.id()] = track
         return self
         

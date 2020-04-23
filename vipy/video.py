@@ -550,17 +550,20 @@ class Video(object):
         self._ffmpeg = self._ffmpeg.crop(bb.xmin(), bb.ymin(), bb.width(), bb.height())
         return self
 
-    def saveas(self, outfile, framerate=30, vcodec='libx264', verbose=False, ignoreErrors=False):
+    def saveas(self, outfile=None, framerate=30, vcodec='libx264', verbose=False, ignoreErrors=False):
         """Save video to new output video file.  This function does not draw boxes, it saves pixels to a new video file.
 
            * If self.array() is loaded, then export the contents of self._array to the video file
            * If self.array() is not loaded, and there exists a valid video file, apply the filter chain directly to the input video
            * If outfile==None or outfile==self.filename(), then overwrite the current filename 
            * If ignoreErrors=True, then exit gracefully.  Useful for chaining download().saveas() on parallel dataset downloads
+           * Returns a new video object with this video filename, and a clean video filter chain
 
         """
+        outfile = tocache(tempMP4()) if outfile is None else outfile
+
         if True:
-                print('[vipy.video.saveas]: Saving video "%s" ...' % outfile)                      
+            print('[vipy.video.saveas]: Saving video "%s" ...' % outfile)                      
         try:
             if self.isloaded():
                 # Save numpy() from load() to video
@@ -601,34 +604,29 @@ class Video(object):
             else:
                 raise
             
-        return outfile
-
-    def save(self, ignoreErrors=False):
-        """Save the current video filter chain, overwriting the current filename()"""
-        return self.saveas(self.filename() if self.filename() is not None else tocache(tempMP4()), ignoreErrors=ignoreErrors)
+        return self.clone(flushforward=True, flushfilter=True).filename(outfile)
 
     def pptx(self, outfile):
         """Export the video in a format that can be played by powerpoint"""
         pass
 
     def play(self, verbose=True):
-        """Play the saved video filename in self.filename() using the system 'ffplay', if there is no filename, try to download it or try saveas(tempMP4())"""
-        f = self.filename()
-        if not self.isdownloaded():
-            f = self.download().filename()            
+        """Play the saved video filename in self.filename() using the system 'ffplay', if there is no filename, try to download it """
+        v = self
+        if not self.isdownloaded() and self.hasurl():
+            v = self.download()
         if not self.hasfilename():
-            if verbose:
-                print('[vipy.video.play]: Saving video to temporary file "%s"' % f)            
-            f = self.saveas(tocache(tempMP4()))
-        cmd = "ffplay %s" % f            
+            v = self.saveas()  # save to temporary video         
+        assert v.hasfilename(), "Video frames must be saved to file prior to play() - Try calling saveas() first"
+        cmd = "ffplay %s" % v.filename()
         if verbose:
             print('[vipy.video.play]: Executing "%s"' % cmd)
         os.system(cmd)
         return self
 
     def show(self):
-        """Export loaded video to tempfile and play()"""
-        return os.system('ffplay %s' % self.saveas(tocache(tempMP4())))
+        """Alias for play()"""
+        return self.play()
     
     def torch(self, startframe=0, endframe=None, length=None, stride=1, take=None, boundary='repeat', verbose=False):
         """Convert the loaded video of shape N HxWxC frames to an MxCxHxW torch tensor, forces a load().
@@ -676,7 +674,7 @@ class Video(object):
         # Slice and transpose to torch tensor axis ordering (NxCxHxW)
         return torch.from_numpy(frames[i:j:k].transpose(0,3,1,2))
 
-    def clone(self, flushforward=False, flushbackward=False, flush=False):
+    def clone(self, flushforward=False, flushbackward=False, flush=False, flushfilter=False):
         """Create deep copy of video object, flushing the original buffer if requested and returning the cloned object.
         Flushing is useful for distributed memory management to free the buffer from this object, and pass along a cloned 
         object which can be used for encoding and will be garbage collected.
@@ -684,23 +682,26 @@ class Video(object):
             * flushforward: copy the object, and set the cloned object array() to None.  This flushes the video buffer for the clone, not the object
             * flushbackward:  copy the object, and set the object array() to None.  This flushes the video buffer for the object, not the clone.
             * flush:  set the object array() to None and clone the object.  This flushes the video buffer for both the clone and the object.
-
+            * flushfilter:  Set the ffmpeg filter chain to the default in the new object, useful for saving new videos
+ 
         """
         if flush or (flushforward and flushbackward):
             self._array = None  # flushes buffer on object and clone
-            im = copy.deepcopy(self)  # object and clone are flushed
+            v = copy.deepcopy(self)  # object and clone are flushed
         elif flushbackward:
-            im = copy.deepcopy(self)  # propagates _array to clone
+            v = copy.deepcopy(self)  # propagates _array to clone
             self._array = None   # object flushed, clone not flushed
         elif flushforward:
             array = self._array;
             self._array = None
-            im = copy.deepcopy(self)   # does not propagate _array to clone
+            v = copy.deepcopy(self)   # does not propagate _array to clone
             self._array = array    # object not flushed
-            im._array = None   # clone flushed
+            v._array = None   # clone flushed
         else:
-            im = copy.deepcopy(self)            
-        return im
+            v = copy.deepcopy(self)            
+        if flushfilter:
+            v._ffmpeg = ffmpeg.input(v.filename())  # no other filters
+        return v
 
     def flush(self):
         """Alias for clone(flush=True), returns self not clone"""
@@ -1175,55 +1176,45 @@ class Scene(VideoCategory):
                 
         return self
     
-    def annotate(self, outfile=None, verbose=True, fontsize=10, captionoffset=(0,0), textfacecolor='white', textfacealpha=1.0, shortlabel=True, boxalpha=0.25, d_category2color={'Person':'green', 'Vehicle':'blue', 'Object':'red'}, categories=None, nocaption=False, nocaption_withstring=[]):
-        """Generate a video visualization of all annotated objects and activities in the video, at the resolution and framerate of the underlying video, save as outfile and return a new video object where the frames contain the overlay.
-        This function does not play the video, it only generates an annotation video.  Use show() which is equivalent to annotate().play()
+    def annotate(self, verbose=True, fontsize=10, captionoffset=(0,0), textfacecolor='white', textfacealpha=1.0, shortlabel=True, boxalpha=0.25, d_category2color={'Person':'green', 'Vehicle':'blue', 'Object':'red'}, categories=None, nocaption=False, nocaption_withstring=[]):
+        """Generate a video visualization of all annotated objects and activities in the video, at the resolution and framerate of the underlying video, pixels in this video will now contain the overlay
+        This function does not play the video, it only generates an annotation video frames.  Use show() which is equivalent to annotate().saveas().play()
         In general, this function should not be run on very long videos, as it requires loading the video framewise into memory, try running on clips instead.
         """
-        outfile = outfile if outfile is not None else tocache(tempMP4())
+        if verbose and not self.isloaded():
+            print('[vipy.video.annotate]: Loading video ...')  
+        
+        assert self.load().isloaded(), "Load() failed"
         
         if verbose:
-            print('[vipy.video.annotate]: Generating annotation video "%s" ...' % outfile)
-            if not self.isloaded():
-                print('[vipy.video.annotate]: Loading video ...')  
-        vid = self.load().clone()  # to save a new array
-        assert self.isloaded(), "Load() failed"        
-        if verbose:
-                print('[vipy.video.annotate]: Annotating video ...')              
-        imgs = [vid[k].savefig(fontsize=fontsize,
-                               captionoffset=captionoffset,
-                               textfacecolor=textfacecolor,
-                               textfacealpha=textfacealpha,
-                               shortlabel=shortlabel,
-                               boxalpha=boxalpha,
-                               d_category2color=d_category2color,
-                               categories=categories,
-                               nocaption=nocaption,
-                               nocaption_withstring=nocaption_withstring).numpy() for k in range(0, len(vid))]  # SLOW for large videos
-        vid._array = np.stack([np.array(PIL.Image.fromarray(img).convert('RGB')) for img in imgs], axis=0)
-        return vid.filename(vid.saveas(outfile))
+            print('[vipy.video.annotate]: Annotating video ...')              
+        imgs = [self[k].savefig(fontsize=fontsize,
+                                captionoffset=captionoffset,
+                                textfacecolor=textfacecolor,
+                                textfacealpha=textfacealpha,
+                                shortlabel=shortlabel,
+                                boxalpha=boxalpha,
+                                d_category2color=d_category2color,
+                                categories=categories,
+                                nocaption=nocaption,
+                                nocaption_withstring=nocaption_withstring).numpy() for k in range(0, len(self))]  # SLOW for large videos
+        self._array = np.stack([np.array(PIL.Image.fromarray(img).convert('RGB')) for img in imgs], axis=0)  # replace pixels with annotated pixels
+        return self
 
 
     def show(self, outfile=None, verbose=True, fontsize=10, captionoffset=(0,0), textfacecolor='white', textfacealpha=1.0, shortlabel=True, boxalpha=0.25, d_category2color={'Person':'green', 'Vehicle':'blue', 'Object':'red'}, categories=None, nocaption=False, nocaption_withstring=[]):
-        """Generate an annotation video saved to outfile (or tempfile if outfile=None) and show it using ffplay when it is done exporting"""
-        outfile = tocache(tempMP4()) if outfile is None else outfile
-        self.annotate(outfile, 
-                      verbose=verbose, 
-                      fontsize=fontsize,
-                      captionoffset=captionoffset,
-                      textfacecolor=textfacecolor,
-                      textfacealpha=textfacealpha,
-                      shortlabel=shortlabel,
-                      boxalpha=boxalpha,
-                      d_category2color=d_category2color,
-                      categories=categories,
-                      nocaption=nocaption, 
-                      nocaption_withstring=nocaption_withstring)
-        cmd = "ffplay %s" % outfile
-        if verbose:
-            print('[vipy.video.show]: Executing "%s"' % cmd)
-        os.system(cmd)
-        return self
+        """Generate an annotation video saved to outfile (or tempfile if outfile=None) and show it using ffplay when it is done exporting.  Do not modify the original video buffer"""
+        return self.clone().annotate(verbose=verbose, 
+                                     fontsize=fontsize,
+                                     captionoffset=captionoffset,
+                                     textfacecolor=textfacecolor,
+                                     textfacealpha=textfacealpha,
+                                     shortlabel=shortlabel,
+                                     boxalpha=boxalpha,
+                                     d_category2color=d_category2color,
+                                     categories=categories,
+                                     nocaption=nocaption, 
+                                     nocaption_withstring=nocaption_withstring).saveas(outfile).play()
     
     
 def RandomVideo(rows=None, cols=None, frames=None):
@@ -1249,10 +1240,8 @@ def RandomScene(rows=None, cols=None, frames=None):
                                                                  width=np.random.randint(16,cols//2), height=np.random.randint(16,rows//2))]) for k in range(0,32)]
 
     activities = [vipy.object.Activity(label='activity%d' % k, shortlabel='a%d' % k, tracks={tracks[j].id():tracks[j] for j in [np.random.randint(32)]}, startframe=np.random.randint(50,100), endframe=np.random.randint(100,150)) for k in range(0,32)]   
-    ims = Scene(array=v.array(), colorspace='rgb', category='scene', tracks=tracks, activities=activities)
+    return Scene(array=v.array(), colorspace='rgb', category='scene', tracks=tracks, activities=activities)
 
-    return ims
-    
 
 def RandomSceneActivity(rows=None, cols=None, frames=256):
     """Return a random loaded vipy.video.Scene, useful for unit testing"""    
