@@ -156,7 +156,12 @@ class Video(object):
         """Run ffprobe on the filename and return the result as a JSON file"""
         assert self.hasfilename(), "Invalid video file '%s' for ffprobe" % self.filename() 
         return ffmpeg.probe(self.filename())
-    
+
+    def print(self, prefix=''):
+        """Print the representation of the video - useful for debugging in long fluent chains"""
+        print(prefix+self.__repr__())
+        return self
+
     def stream(self):
         # FIXME: Streaming video access for large videos that will not fit into memory
         # https://github.com/kkroening/ffmpeg-python/blob/master/examples/README.md
@@ -299,6 +304,10 @@ class Video(object):
         self._update_ffmpeg('filename', newfile)
         self._filename = newfile
         return self
+
+    def filesize(self):
+        """Return the size in bytes of the filename(), None if the filename() is invalid"""
+        return os.path.getsize(self.filename()) if self.hasfilename() else None
 
     def download(self, ignoreErrors=False, timeout=10, verbose=True):
         """Download URL to filename provided by constructor, or to temp filename"""
@@ -476,8 +485,10 @@ class Video(object):
                                      .global_args('-loglevel', 'debug' if verbose else 'error') \
                                      .run(capture_stdout=True, capture_stderr=True)
         except ffmpeg.Error as e:
-            print('[vipy.video.load]:', e.stdout.decode('utf8'))
-            print('[vipy.video.load]:', e.stderr.decode('utf8'))
+            if verbose:
+                # FFMPEG is dispatched via subprocess.Open, which can generate a return code which is not reported here, often SIGSEGV
+                print('[vipy.video.load][ERROR]:', e.stdout.decode('utf8'))
+                print('[vipy.video.load][ERROR]:', e.stderr.decode('utf8'))
             raise e            
         self._array = np.frombuffer(out, np.uint8).reshape([-1, height, width, channels])  # read-only
         self.colorspace('rgb' if channels == 3 else 'lum')
@@ -513,6 +524,18 @@ class Video(object):
         self._ffmpeg = self._ffmpeg.filter('transpose', 2)
         return self
 
+    def fliplr(self):
+        """Rotate the video 90 degrees counter-clockwise, can only be applied prior to load()"""        
+        assert not self.isloaded(), "Filters can only be applied prior to load() - Try calling flush() first"
+        self._ffmpeg = self._ffmpeg.filter('hflip')
+        return self
+
+    def flipud(self):
+        """Rotate the video 90 degrees counter-clockwise, can only be applied prior to load()"""        
+        assert not self.isloaded(), "Filters can only be applied prior to load() - Try calling flush() first"
+        self._ffmpeg = self._ffmpeg.filter('vflip')
+        return self
+
     def rescale(self, s):
         """Rescale the video by factor s, such that the new dimensions are (s*H, s*W), can only be applied prior load()"""
         assert not self.isloaded(), "Filters can only be applied prior to load() - Try calling flush() first"
@@ -539,6 +562,21 @@ class Video(object):
         (H,W) = self.shape()  # yuck, need to get image dimensions before filter
         return self.resize(cols=dim) if W>H else self.resize(rows=dim)
     
+    def randomcrop(self, shape, withbox=False):
+        """Crop the video to shape=(H,W) with random position such that the crop contains only valid pixels, and optionally return the box"""
+        assert shape[0] <= self.height() and shape[1] <= self.width()  # triggers preview()
+        (xmin, ymin) = (np.random.randint(self.height()-shape[0]), np.random.randint(self.width()-shape[1]))
+        bb = vipy.geometry.BoundingBox(xmin=xmin, ymin=ymin, width=shape[1], height=shape[0])
+        self.crop(bb, rangecheck=False)
+        return self if not withbox else (self, bb)
+
+    def centercrop(self, shape, withbox=False):
+        """Crop the video to shape=(H,W) preserving the integer centroid position, and optionally return the box"""
+        assert shape[0] <= self.height() and shape[1] <= self.width()  # triggers preview()
+        bb = vipy.geometry.BoundingBox(xcentroid=self.width()/2.0, ycentroid=self.height()/2.0, width=shape[1], height=shape[0]).int()
+        self.crop(bb, rangecheck=False)
+        return self if not withbox else (self, bb)
+
     def crop(self, bb, rangecheck=True):
         """Spatially crop the video using the supplied vipy.geometry.BoundingBox, can only be applied prior to load().
            If strict=False, then we do not perform bounds checking on this bounding box
@@ -550,7 +588,7 @@ class Video(object):
         self._ffmpeg = self._ffmpeg.crop(bb.xmin(), bb.ymin(), bb.width(), bb.height())
         return self
 
-    def saveas(self, outfile=None, framerate=30, vcodec='libx264', verbose=False, ignoreErrors=False):
+    def saveas(self, outfile=None, framerate=30, vcodec='libx264', verbose=False, ignoreErrors=False, flush=False):
         """Save video to new output video file.  This function does not draw boxes, it saves pixels to a new video file.
 
            * If self.array() is loaded, then export the contents of self._array to the video file
@@ -558,11 +596,12 @@ class Video(object):
            * If outfile==None or outfile==self.filename(), then overwrite the current filename 
            * If ignoreErrors=True, then exit gracefully.  Useful for chaining download().saveas() on parallel dataset downloads
            * Returns a new video object with this video filename, and a clean video filter chain
+           * if flush=True, then flush this buffer right after saving the new video. This is useful for transcoding in parallel
 
         """
         outfile = tocache(tempMP4()) if outfile is None else outfile
 
-        if True:
+        if verbose:
             print('[vipy.video.saveas]: Saving video "%s" ...' % outfile)                      
         try:
             if self.isloaded():
@@ -595,17 +634,22 @@ class Video(object):
                     shutil.move(tmpfile, self.filename())
             elif self.hasurl():
                 raise ValueError('Input video url "%s" not downloaded, call download() first' % self.url())
-            else:
+            elif not self.isloaded():
+                raise ValueError('Input video not loaded - Try calling load() first')
+            elif not self.hasfilename():
                 raise ValueError('Input video file not found "%s"' % self.filename())
+            else: 
+                raise ValueError('saveas() failed')
         except Exception as e:
             if ignoreErrors:
                 # useful for saving a large number of videos in parallel where some failed download
-                print('[vipy.video.saveas]:  Failed with error "%s" - Ignoring' % str(repr(e)))
+                print('[vipy.video.saveas]:  Failed with error "%s" - Returning empty video' % str(repr(e)))
             else:
                 raise
-            
-        return self.clone(flushforward=True, flushfilter=True).filename(outfile)
 
+        # Return a new video, cloned from this video with the new video file, optionally flush the video we loaded before returning
+        return self.clone(flushforward=True, flushfilter=True, flushbackward=flush).filename(outfile)
+    
     def pptx(self, outfile):
         """Export the video in a format that can be played by powerpoint"""
         pass
@@ -628,10 +672,10 @@ class Video(object):
         """Alias for play()"""
         return self.play()
     
-    def torch(self, startframe=0, endframe=None, length=None, stride=1, take=None, boundary='repeat', verbose=False):
+    def torch(self, startframe=0, endframe=None, length=None, stride=1, take=None, boundary='repeat', verbose=False, withslice=False):
         """Convert the loaded video of shape N HxWxC frames to an MxCxHxW torch tensor, forces a load().
            Order of operations is (startframe, endframe) or (startframe, startframe+length) or (random_startframe, random_starframe+takelength), then stride or take.
-           Follows numpy slicing rules.
+           Follows numpy slicing rules.  Optionally return the slice used.
         """
         try_import('torch'); import torch
         frames = self.load().array() if self.iscolor() else np.expand_dims(self.load().array(), 3)
@@ -672,7 +716,8 @@ class Video(object):
             print('[vipy.video.torch]: slice (start,end,step)=%s for frame shape (N,C,H,W)=%s' % (str((i,j,k)), str(frames.shape)))
 
         # Slice and transpose to torch tensor axis ordering (NxCxHxW)
-        return torch.from_numpy(frames[i:j:k].transpose(0,3,1,2))
+        t = torch.from_numpy(frames[i:j:k].transpose(0,3,1,2))
+        return t if not withslice else (t, (i,j,k))
 
     def clone(self, flushforward=False, flushbackward=False, flush=False, flushfilter=False):
         """Create deep copy of video object, flushing the original buffer if requested and returning the cloned object.
@@ -687,13 +732,16 @@ class Video(object):
         """
         if flush or (flushforward and flushbackward):
             self._array = None  # flushes buffer on object and clone
+            self._shapehash = None
             v = copy.deepcopy(self)  # object and clone are flushed
         elif flushbackward:
             v = copy.deepcopy(self)  # propagates _array to clone
             self._array = None   # object flushed, clone not flushed
+            self._shapehash = None
         elif flushforward:
             array = self._array;
             self._array = None
+            self._shapehash = None
             v = copy.deepcopy(self)   # does not propagate _array to clone
             self._array = array    # object not flushed
             v._array = None   # clone flushed
@@ -701,6 +749,7 @@ class Video(object):
             v = copy.deepcopy(self)            
         if flushfilter:
             v._ffmpeg = ffmpeg.input(v.filename())  # no other filters
+            v._shapehash = None
         return v
 
     def flush(self):
@@ -724,6 +773,12 @@ class Video(object):
         if (any([oldimg.dtype != newimg.dtype for (oldimg, newimg) in zip(oldimgs, self.array())]) or
             any([oldimg.shape != newimg.shape for (oldimg, newimg) in zip(oldimgs, self.array())])):            
             self.colorspace('float')  # unknown colorspace after shape or type transformation, set generic
+        return self
+
+    def normalize(self, mean, std):
+        """Pixelwise whitening, triggers load()"""
+        self._array = (self.load()._array - np.array(mean).astype(np.float32)) / np.array(std).astype(np.float32)
+        self.colorspace('float')
         return self
 
     
@@ -1056,7 +1111,7 @@ class Scene(VideoCategory):
     def activitybox(self, dilate=1.0):
         """The activitybox is the union of all activity bounding boxes in the video, which is the union of all tracks contributing to all activities.  This is most useful after activityclip()"""
         boxes = [a.boundingbox().dilate(dilate) for a in self.activities().values()]
-        return boxes[0].union(boxes[1:]) if len(boxes) > 0 else BoundingBox(xmin=0, ymin=0, width=self.width(), height=self.height())
+        return boxes[0].union(boxes[1:]) if len(boxes) > 0 else vipy.geometry.BoundingBox(xmin=0, ymin=0, width=self.width(), height=self.height())
 
     def activitycuboid(self, dilate=1.0, maxdim=256, maxsquare=False):
         """The activity cuboid is the fixed spatial crop corresponding to the activitybox, which contains all of the valid activities in the scene.  This is most useful after activityclip().
@@ -1084,13 +1139,27 @@ class Scene(VideoCategory):
 
     def cliptime(self, startsec, endsec):
         raise NotImplementedError('use clip() instead')
-    
+            
     def crop(self, bb, rangecheck=True):
         """Crop the video using the supplied box, update tracks relative to crop, bbox is clipped to be within the image rectangle, otherwise ffmpeg will throw an exception"""
         assert not self.isloaded(), "Filters can only be applied prior to load() - Try calling flush() first"
         assert isinstance(bb, vipy.geometry.BoundingBox), "Invalid input"
         super(Scene, self).crop(bb, rangecheck=rangecheck)  # will clip to image rectangle, if requested
         self._tracks = {k:t.offset(dx=-bb.xmin(), dy=-bb.ymin()) for (k,t) in self._tracks.items()}
+        return self
+
+    def fliplr(self):
+        assert not self.isloaded(), "Filters can only be applied prior to load() - Try calling flush() first"                
+        (H,W) = self.shape()  # yuck, need to get image dimensions before filter
+        self._tracks = {k:t.fliplr(H,W) for (k,t) in self._tracks.items()}
+        super(Scene, self).fliplr()
+        return self
+
+    def flipud(self):
+        assert not self.isloaded(), "Filters can only be applied prior to load() - Try calling flush() first"                
+        (H,W) = self.shape()  # yuck, need to get image dimensions before filter
+        self._tracks = {k:t.flipud(H,W) for (k,t) in self._tracks.items()}
+        super(Scene, self).flipud()
         return self
 
     def rot90ccw(self):

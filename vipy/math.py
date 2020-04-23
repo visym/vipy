@@ -2,6 +2,12 @@ import numpy as np
 import scipy.ndimage
 
 
+def poweroftwo(x):
+    """Return the closest power of two smaller than the value"""
+    assert x>=2 
+    return int(np.power(2, int(np.floor(np.log2(x)/np.log2(2)))))
+
+
 def signsqrt(x):
     """Return the signed square root of elements in x"""
     return np.multiply(np.sign(x), np.sqrt(np.abs(x)))

@@ -28,6 +28,7 @@ import pathlib
 import socket
 
 
+
 def hascache():
     """Is the VIPY_CACHE environment variable set?"""
     return 'VIPY_CACHE' in os.environ

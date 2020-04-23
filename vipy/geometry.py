@@ -514,6 +514,18 @@ class BoundingBox():
         self._xmax = self._xmin + w
         return self
 
+    def flipud(self, img=None, height=None):
+        """Flip the box up/down consistent with flipud of the provided img (or consistent with the image height)"""
+        if img is not None:
+            assert isnumpy(img), "Invalid numpy image input"
+            height = img.shape[0]
+        else:
+            assert isnumber(height), "Invalid height"
+        (x,y,w,h) = self.xywh()
+        self._ymin = height - self._ymax
+        self._ymax = self._ymin + h
+        return self
+
     def imscale(self, im):
         """Given a vipy.image object im, scale the box to be within [0,1], relative to height and width of image"""
         w = (1.0 / float(im.width()))

@@ -1,6 +1,7 @@
 import os
 import webbrowser
 import tempfile
+import vipy.math
 
 
 GLOBAL = {'VERBOSE': True, 
@@ -71,6 +72,7 @@ def num_workers(n=None):
         return dask(num_processes=n)
     return 1 if dask() is None else dask().num_processes()
 
-def max_workers():
+def max_workers(pct=0.9):
+    """Set the maximum number of workers as the largest power of two <= 90% of the number of CPUs on the current system"""
     import multiprocessing
-    return dask(num_processes=multiprocessing.cpu_count())
+    return dask(num_processes=vipy.math.poweroftwo(pct*multiprocessing.cpu_count()))

@@ -243,6 +243,25 @@ def _test_scene():
     assert v[0][1].bbox.xmin() == 99 and v[0][1].bbox.ymin() == 198
     print('[test_video.scene]: crop  PASSED')
 
+    v = vid.clone().resize(256,256).randomcrop( (100,200)).load(verbose=False)
+    assert v.height() == 100  and v.width() == 200
+    print('[test_video.scene]: randomcrop  PASSED')
+
+    # If the video is not resized, this triggers SIGSEGV on ffmpeg, not sure why
+    v = vid.clone().resize(256,256).centercrop( (224,224)).load(verbose=False)
+    assert v.height() == 224  and v.width() == 224  
+    print('[test_video.scene]: centercrop  PASSED')
+
+    v = vid.clone().fliplr().load(verbose=False)
+    assert np.allclose(v[0].array(), np.fliplr(vid.load()[0].array()))
+    print('[test_video.scene]: fliplr PASSED')  # FIXME: unit test for Scene
+
+    v = vid.flush().clone().flipud().load(verbose=False)
+    assert np.allclose(v[0].array(), np.flipud(vid.load()[0].array()))
+    print('[test_video.scene]: flipud  PASSED')
+    vid.flush()
+
+
     # Bounding box interpolation
     for im in v:
         assert im.shape() == v.shape()
@@ -320,13 +339,12 @@ def _test_scene():
     assert v1[0] == v2[50]
     print('[test_video.scene]: video scenes  PASSED')    
 
-
     # Saveas
     outfile = totempdir('Video.mp4')
     shutil.copy('Video.mp4', outfile)
     v = vipy.video.Video(filename=outfile, startframe=0, endframe=10)
-    v.saveas()
-    assert v.hasfilename() and os.path.getsize('Video.mp4') != os.path.getsize(v.filename())
+    v2 = v.saveas()
+    assert v.hasfilename() and os.path.getsize('Video.mp4') != os.path.getsize(v2.filename()) and os.path.getsize('Video.mp4') == os.path.getsize(v.filename())
     print('[test_video.scene]: saveas()  PASSED')    
 
 

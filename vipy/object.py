@@ -273,6 +273,16 @@ class Track(object):
         self._keyboxes = [bb.rot90ccw(H, W) for bb in self._keyboxes]
         return self
 
+    def fliplr(self, H, W):
+        """Flip an image left and right (mirror about vertical axis)"""
+        self._keyboxes = [bb.fliplr(width=W) for bb in self._keyboxes]
+        return self
+
+    def flipud(self, H, W):
+        """Flip an image left and right (mirror about vertical axis)"""
+        self._keyboxes = [bb.flipud(height=H) for bb in self._keyboxes]
+        return self
+
     def id(self):
         return self._id
 
