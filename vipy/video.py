@@ -2,7 +2,7 @@ import os
 import dill
 from vipy.util import remkdir, tempMP4, isurl, \
     isvideourl, templike, tempjpg, filetail, tempdir, isyoutubeurl, try_import, isnumpy, temppng, \
-    istuple, islist, isnumber, tolist, filefull, fileext, isS3url, totempdir, flatlist, tocache
+    istuple, islist, isnumber, tolist, filefull, fileext, isS3url, totempdir, flatlist, tocache, premkdir
 from vipy.image import Image
 import vipy.geometry
 import vipy.image
@@ -598,8 +598,9 @@ class Video(object):
            * Returns a new video object with this video filename, and a clean video filter chain
            * if flush=True, then flush this buffer right after saving the new video. This is useful for transcoding in parallel
 
-        """
+        """        
         outfile = tocache(tempMP4()) if outfile is None else outfile
+        premkdir(outfile)  # create output directory for this file if not exists
 
         if verbose:
             print('[vipy.video.saveas]: Saving video "%s" ...' % outfile)                      
@@ -995,8 +996,12 @@ class Scene(VideoCategory):
         
     def categories(self):
         """Return a set of all categories in all activities and tracks in this sccene"""
-        return set([a.category() for a in self.activities().values()]+[t.category() for t in self.tracks().values()])
-        
+        return self.activity_categories().union(set([t.category() for t in self.tracks().values()]))
+
+    def activity_categories(self):
+        """Return a set of all activity categories in this sccene"""
+        return set([a.category() for a in self.activities().values()])
+                
     def hasactivities(self):
         return len(self._activities) > 0
 

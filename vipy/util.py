@@ -1170,6 +1170,7 @@ def datestamp():
     return str.upper(strftime("%d%b%y", localtime()))
 
 
+
 def remkdir(path, flush=False):
     """Create a given directory if not already exists"""
     if os.path.isdir(path) is False:
@@ -1178,6 +1179,11 @@ def remkdir(path, flush=False):
         shutil.rmtree(path)
         os.makedirs(path)
     return os.path.abspath(os.path.expanduser(path))
+
+
+def premkdir(filename):
+    """create directory /path/to/subdir if not exist for outfile=/path/to/subdir/file.ext"""
+    return remkdir(filepath(filename))
 
 
 def toextension(filename, newext):
