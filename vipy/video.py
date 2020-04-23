@@ -1070,7 +1070,9 @@ class Scene(VideoCategory):
            Crop will be zeropadded to keep the object in the center of the tube.
         """
         vid = self.activitycuboid(dilate=dilate, maxsquare=True).load()  # triggers preview
-        self._array = np.stack([im.padcrop(im.boundingbox().maxsquare().dilate(dilate).int()).resize(maxdim, maxdim).numpy() for im in vid])  # track interpolation
+        self._array = np.stack([im.padcrop(im.boundingbox().maxsquare().dilate(dilate).int()).resize(maxdim, maxdim).numpy() for im in vid if im.boundingbox() is not None])  # track interpolation, for frames with boxes only
+        if len(self._array) != len(vid):
+            warnings.warn('[vipy.videoe.activitytube]: Removed %d frames with no spatial bounding boxes' % (len(vid) - len(self._array)))
         return vid
 
     def clip(self, startframe, endframe):
@@ -1231,7 +1233,7 @@ def RandomScene(rows=None, cols=None, frames=None):
     v = RandomVideo(rows, cols, frames)
     (rows, cols) = v.shape()
     tracks = [vipy.object.Track(label='track%d' % k, shortlabel='t%d' % k,
-                                keyframes=[0, np.random.randint(50,100), np.random.randint(50,150)],
+                                keyframes=[0, np.random.randint(50,100), 150],
                                 boxes=[vipy.geometry.BoundingBox(xmin=np.random.randint(0,cols - 16), ymin=np.random.randint(0,rows - 16),
                                                                  width=np.random.randint(16,cols//2), height=np.random.randint(16,rows//2)),
                                        vipy.geometry.BoundingBox(xmin=np.random.randint(0,cols - 16), ymin=np.random.randint(0,rows - 16),
@@ -1239,7 +1241,7 @@ def RandomScene(rows=None, cols=None, frames=None):
                                        vipy.geometry.BoundingBox(xmin=np.random.randint(0,cols - 16), ymin=np.random.randint(0,rows - 16),
                                                                  width=np.random.randint(16,cols//2), height=np.random.randint(16,rows//2))]) for k in range(0,32)]
 
-    activities = [vipy.object.Activity(label='activity%d' % k, shortlabel='a%d' % k, tracks={tracks[j].id():tracks[j] for j in [np.random.randint(32)]}, startframe=np.random.randint(50,100), endframe=np.random.randint(100,150)) for k in range(0,32)]   
+    activities = [vipy.object.Activity(label='activity%d' % k, shortlabel='a%d' % k, tracks={tracks[j].id():tracks[j] for j in [np.random.randint(32)]}, startframe=np.random.randint(50,99), endframe=np.random.randint(100,150)) for k in range(0,32)]   
     return Scene(array=v.array(), colorspace='rgb', category='scene', tracks=tracks, activities=activities)
 
 

@@ -95,7 +95,7 @@ def test_video():
 
     # Saveas
     v = vipy.video.Video(url=mp4url)
-    v.save(ignoreErrors=True)
+    v.saveas(ignoreErrors=True)
     print('[test_video.video]: saveas(ignoreErrors=True)  PASSED')        
 
     
@@ -325,7 +325,7 @@ def _test_scene():
     outfile = totempdir('Video.mp4')
     shutil.copy('Video.mp4', outfile)
     v = vipy.video.Video(filename=outfile, startframe=0, endframe=10)
-    v.save()
+    v.saveas()
     assert v.hasfilename() and os.path.getsize('Video.mp4') != os.path.getsize(v.filename())
     print('[test_video.scene]: saveas()  PASSED')    
 
