@@ -65,7 +65,7 @@ class Video(object):
         if self._ffmpeg_exe is None or not os.path.exists(self._ffmpeg_exe):
             warnings.warn('"ffmpeg" executable not found on path, this is required for vipy.video - Install from http://ffmpeg.org/download.html')
         if self._ffprobe_exe is None or not os.path.exists(self._ffprobe_exe):
-            warnings.warn('"ffprobe" executable not found on path, this is required for vipy.video - Install from http://ffmpeg.org/download.html')            
+            warnings.warn('"ffprobe" executable not found on path, this is optional for vipy.video - Install from http://ffmpeg.org/download.html')            
 
         # Constructor clips
         assert (startframe is not None and endframe is not None) or (startframe is None and endframe is None), "Invalid input - (startframe,endframe) are both required"

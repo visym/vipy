@@ -103,7 +103,21 @@ def s3(url, output_filename, verbose=True):
         print('[vipy.downloader.s3]: Downloading "%s" -> "%s"' % (url, output_filename))
     s3.download_file(bucket_name, object_name, output_filename)
     return output_filename
-    
+
+
+def s3_bucket(bucket_name, object_name, output_filename, verbose=True):
+    """Thin wrapper for boto3"""
+    assert 'VIPY_AWS_ACCESS_KEY_ID' in os.environ and 'VIPY_AWS_SECRET_ACCESS_KEY' in os.environ, \
+        "AWS access keys not found - You need to create ENVIRONMENT variables ['VIPY_AWS_ACCESS_KEY_ID', 'VIPY_AWS_SECRET_ACCESS_KEY'] with S3 access credentials"   
+    try_import('boto3', 'boto3')
+    import boto3                        
+    s3 = boto3.client('s3',
+                      aws_access_key_id=os.environ['VIPY_AWS_ACCESS_KEY_ID'],
+                      aws_secret_access_key=os.environ['VIPY_AWS_SECRET_ACCESS_KEY']
+    )    
+    s3.download_file(bucket_name, object_name, output_filename)
+    return output_filename
+
 
 def download(url, output_filename, sha1=None, verbose=True, md5=None, timeout=None, username=None, password=None):
     """Downloads file at `url` and write it in `output_filename`"""
