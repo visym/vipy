@@ -963,8 +963,10 @@ class Scene(VideoCategory):
                     if (self.frame(k).boundingbox() is None) or (context is True and (k == framelist[0] or k == framelist[-1])) else
                     self.frame(k).padcrop(self.frame(k).boundingbox().dilate(dilate).imclipshape(self.width(), self.height()).maxsquare()).mindim(mindim, interp='nearest')
                     for k in framelist]  
-        imframes = [im.savefig(fontsize=fontsize).rgb() for im in imframes]
-        return vipy.visualize.montage(imframes, imgwidth=mindim, imgheight=mindim)
+        imframes = [im.savefig(fontsize=fontsize).rgb() for im in imframes]  # temp storage
+        m = vipy.visualize.montage(imframes, imgwidth=mindim, imgheight=mindim)
+        imframes = [os.remove(im.filename()) for im in imframes]  # cleanup
+        return m
     
     def tracks(self, tracks=None, id=None):
         """Return mutable dictionary of tracks"""        
