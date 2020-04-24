@@ -122,8 +122,8 @@ class Video(object):
         return str('<vipy.video: %s>' % (', '.join(strlist)))
 
     def __len__(self):
-        """Number of frames in the video, triggers load."""
-        return len(self.load().array())
+        """Number of frames in the video if loaded, else zero.  Do not automatically trigger a load, since this can interact in unexpected ways with other tools that depend on fast __len__()"""
+        return len(self.array()) if self.isloaded() else 0
 
     def __getitem__(self, k):
         """Return the kth frame as an vipy.image object"""
@@ -430,7 +430,7 @@ class Video(object):
         # Convert frame to JPEG and pipe to stdout
         (out, err) = self._ffmpeg.output('pipe:', vframes=1, format='image2', vcodec='mjpeg')\
                                  .global_args('-loglevel', 'debug' if verbose else 'error') \
-                                 .run(capture_stdout=True, capture_stderr=True)
+                                 .run(capture_stdout=True)  # do not capture_stderr, may hang subprocess due to 4k pipe limit
         try:
             img = PIL.Image.open(BytesIO(out))
         except:
@@ -480,16 +480,13 @@ class Video(object):
         # Generate single frame _preview to get frame sizes
         imthumb = self._preview(verbose=verbose)
         (height, width, channels) = (imthumb.height(), imthumb.width(), imthumb.channels())
-        try:
-            (out, err) = self._ffmpeg.output('pipe:', format='rawvideo', pix_fmt='rgb24') \
-                                     .global_args('-loglevel', 'debug' if verbose else 'error') \
-                                     .run(capture_stdout=True, capture_stderr=True)
-        except ffmpeg.Error as e:
-            if verbose:
-                # FFMPEG is dispatched via subprocess.Open, which can generate a return code which is not reported here, often SIGSEGV
-                print('[vipy.video.load][ERROR]:', e.stdout.decode('utf8'))
-                print('[vipy.video.load][ERROR]:', e.stderr.decode('utf8'))
-            raise e            
+
+        # Load the video:
+        #   FIXME:  this may hang on subprocess.communicate() if ffmpeg fills stdout too fast with parallel workers
+        #   https://docs.python.org/3/library/subprocess.html#subprocess.Popen.communicate
+        (out, err) = self._ffmpeg.output('pipe:', format='rawvideo', pix_fmt='rgb24') \
+                                 .global_args('-loglevel', 'debug' if verbose else 'error') \
+                                 .run(capture_stdout=True)  # do not capture_stderr, may hang subprocess
         self._array = np.frombuffer(out, np.uint8).reshape([-1, height, width, channels])  # read-only
         self.colorspace('rgb' if channels == 3 else 'lum')
         return self
@@ -613,8 +610,7 @@ class Video(object):
                                 .output(outfile, pix_fmt='yuv420p', vcodec=vcodec, r=framerate) \
                                 .overwrite_output() \
                                 .global_args('-loglevel', 'error' if not verbose else 'debug') \
-                                .run_async(pipe_stdin=True)
-                
+                                .run_async(pipe_stdin=True)                
                 for frame in self._array:
                     process.stdin.write(frame.astype(np.uint8).tobytes())
                 process.stdin.close()
