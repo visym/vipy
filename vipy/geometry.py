@@ -216,10 +216,15 @@ class BoundingBox():
 
     def int(self):
         """Convert corners to integer with rounding"""
+        (w,h) = (int(np.round(self.width())), int(np.round(self.height())))
         self._xmin = int(np.round(self._xmin))
         self._ymin = int(np.round(self._ymin))
         self._xmax = int(np.round(self._xmax))
         self._ymax = int(np.round(self._ymax))
+        if w != self.width():
+            self.right(w - self.width())  # preserve aspect ratio due to rounding by +/- right side of box 
+        if h != self.height():
+            self.bottom(h-self.height())  # preserve aspect ratio due to rounding by +/- bottom of box
         return self
 
     def translate(self, dx=0, dy=0):
@@ -248,6 +253,12 @@ class BoundingBox():
 
     def isdegenerate(self):
         return self.invalid()
+        
+    def isnonnegative(self):
+        return (self.xmin() >= 0 and
+                self.ymin() >= 0 and
+                self.xmax() >= 0 and
+                self.ymax() >= 0)
 
     def width(self):
         return self._xmax - self._xmin
@@ -487,7 +498,7 @@ class BoundingBox():
     def resize(self, width, height):
         """Change the aspect ratio width and height of the box"""
         self.setwidth(width)
-        self.setheigh(height)
+        self.setheight(height)
         return self
 
     def rot90cw(self, H, W):
@@ -549,6 +560,25 @@ class BoundingBox():
 
     def maxsquareif(self, do):
         return self.maxsquare() if do else self
+
+    def issquare(self):
+        return self.clone().int().height() == self.clone().int().width()
+
+    def iseven(self):
+        """Are all corners even number integers?"""
+        return (isinstance(self.xmin(), int) and self.xmin() % 2 == 0 and
+                isinstance(self.ymin(), int) and self.ymin() % 2 == 0 and
+                isinstance(self.xmax(), int) and self.xmax() % 2 == 0 and
+                isinstance(self.ymax(), int) and self.ymax() % 2 == 0)
+
+    def even(self):
+        """Force all corners to be even number integers"""
+        self.int()
+        self._xmin = (self._xmin // 2) * 2
+        self._ymin = (self._ymin // 2) * 2
+        self._xmax = (self._xmax // 2) * 2
+        self._ymax = (self._ymax // 2) * 2
+        return self
 
     def minsquare(self):
         """Set the bounding box to be square by setting width and height to the minimum dimension of the box, keeping centroid constant"""

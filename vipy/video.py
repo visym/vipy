@@ -152,9 +152,9 @@ class Video(object):
                 return self
         raise ValueError('invalid ffmpeg argument "%s" -> "%s"' % (argname, argval))
                
-    def _ffmpeg_commandline(self):
+    def _ffmpeg_commandline(self, f=None):
         """Return the ffmpeg command line string that will be used to process the video"""
-        cmd = self._ffmpeg.output('vipy_output.mp4').compile()
+        cmd = f.compile() if f is not None else self._ffmpeg.output('vipy_output.mp4').compile()
         for (k,c) in enumerate(cmd):
             if 'filter' in c:
                 cmd[k+1] = '"%s"' % str(cmd[k+1])
@@ -428,8 +428,8 @@ class Video(object):
         """Height (rows) in pixels of the video for the current filter chain"""
         return self.shape()[0]
 
-    def _preview(self, verbose=False):
-        """Return first frame of filtered video, saved to temp file, return vipy.image.Image object.  This is useful for previewing the frame shape of a complex filter chain without loading the whole video."""
+    def _preview(self, verbose=False, framenum=0):
+        """Return selected frame of filtered video, return vipy.image.Image object.  This is useful for previewing the frame shape of a complex filter chain without loading the whole video."""
         if self.isloaded():
             return self[0]
         elif self.hasurl() and not self.hasfilename():
@@ -437,15 +437,15 @@ class Video(object):
         if not self.hasfilename():
             raise ValueError('Video file not found')
 
-        # Convert frame to JPEG and pipe to stdout
-        try:        
-            (out, err) = self._ffmpeg.output('pipe:', vframes=1, format='image2', vcodec='mjpeg')\
-                                     .global_args('-loglevel', 'debug' if verbose else 'error') \
-                                     .run(capture_stdout=True)  # do not capture_stderr, may hang subprocess due to 4k pipe limit            
-            img = PIL.Image.open(BytesIO(out))
+        # Convert frame to PNG (not MJPEG!) and pipe to stdout
+        try:
+            f = self._ffmpeg.filter('select', 'gte(n,{})'.format(framenum))\
+                            .output('pipe:', vframes=1, format='image2', vcodec='png')\
+                            .global_args('-loglevel', 'debug' if verbose else 'error')
+            (out, err) = f.run(capture_stdout=True)  
         except Exception as e:
-            raise ValueError('[vipy.video.load]: Video preview failed with error "%s" for video "%s" with ffmpeg command "%s" - Try manually running ffmpeg to see errors' % (str(e), str(self), str(self._ffmpeg_commandline())))
-        return Image(array=np.array(img))
+            raise ValueError('[vipy.video.load]: Video preview failed for video "%s" with ffmpeg command "%s" - Try manually running ffmpeg to see errors' % (str(self), str(self._ffmpeg_commandline(f))))
+        return Image(array=np.array(PIL.Image.open(BytesIO(out))))
 
     def load(self, verbose=False, ignoreErrors=False, startframe=None, endframe=None, rotation=None, rescale=None, mindim=None):
         """Load a video using ffmpeg, applying the requested filter chain.  
@@ -495,11 +495,12 @@ class Video(object):
         #   FIXME:  this may hang on subprocess.communicate() if ffmpeg fills stdout too fast with parallel workers
         #   https://docs.python.org/3/library/subprocess.html#subprocess.Popen.communicate
         try:
-            (out, err) = self._ffmpeg.output('pipe:', format='rawvideo', pix_fmt='rgb24') \
-                                     .global_args('-loglevel', 'debug' if verbose else 'error') \
-                                     .run(capture_stdout=True)  # do not capture_stderr, may hang subprocess
+            f =  self._ffmpeg.output('pipe:', format='rawvideo', pix_fmt='rgb24') \
+                                     .global_args('-loglevel', 'debug' if verbose else 'error')
+            (out, err) = f.run(capture_stdout=True)
         except Exception as e:
-            raise ValueError('[vipy.video.load]: Load failed for video "%s" with ffmpeg command "%s" - Try load(verboseTrue) or manually running ffmpeg to see errors' % (str(self), str(self._ffmpeg_commandline())))
+            raise ValueError('[vipy.video.load]: Load failed for video "%s" with ffmpeg command "%s" - Try load(verbose=True) or manually running ffmpeg to see errors' % (str(self), str(self._ffmpeg_commandline(f))))
+
         self._array = np.frombuffer(out, np.uint8).reshape([-1, height, width, channels])  # read-only
         self.colorspace('rgb' if channels == 3 else 'lum')
         return self
@@ -576,26 +577,36 @@ class Video(object):
         """Crop the video to shape=(H,W) with random position such that the crop contains only valid pixels, and optionally return the box"""
         assert shape[0] <= self.height() and shape[1] <= self.width()  # triggers preview()
         (xmin, ymin) = (np.random.randint(self.height()-shape[0]), np.random.randint(self.width()-shape[1]))
-        bb = vipy.geometry.BoundingBox(xmin=xmin, ymin=ymin, width=shape[1], height=shape[0])
-        self.crop(bb, rangecheck=False)
+        bb = vipy.geometry.BoundingBox(xmin=xmin, ymin=ymin, width=shape[1], height=shape[0])  # may be outside frame
+        self.crop(bb, zeropad=True)
         return self if not withbox else (self, bb)
 
     def centercrop(self, shape, withbox=False):
         """Crop the video to shape=(H,W) preserving the integer centroid position, and optionally return the box"""
         assert shape[0] <= self.height() and shape[1] <= self.width()  # triggers preview()
-        bb = vipy.geometry.BoundingBox(xcentroid=self.width()/2.0, ycentroid=self.height()/2.0, width=shape[1], height=shape[0]).int()
-        self.crop(bb, rangecheck=False)
+        bb = vipy.geometry.BoundingBox(xcentroid=self.width()/2.0, ycentroid=self.height()/2.0, width=shape[1], height=shape[0]).int()  # may be outside frame
+        self.crop(bb, zeropad=True)  
         return self if not withbox else (self, bb)
 
-    def crop(self, bb, rangecheck=True):
+    def zeropad(self, padwidth, padheight):
+        """Zero pad the video with padwidth columns before and after, and padheight rows before and after"""
+        assert isinstance(padwidth, int) and isinstance(padheight, int)
+        self._ffmpeg = self._ffmpeg.filter('pad', 'iw+%d' % (2*padwidth), 'ih+%d' % (2*padheight), '%d'%padwidth, '%d'%padheight)
+        return self
+
+    def crop(self, bb, zeropad=True):
         """Spatially crop the video using the supplied vipy.geometry.BoundingBox, can only be applied prior to load().
            If strict=False, then we do not perform bounds checking on this bounding box
         """
         assert not self.isloaded(), "Filters can only be applied prior to load() - Try calling flush() first"
         assert isinstance(bb, vipy.geometry.BoundingBox), "Invalid input"
-        if rangecheck:
-            bb = bb.imclipshape(self.width(), self.height()).int()
-        self._ffmpeg = self._ffmpeg.crop(bb.xmin(), bb.ymin(), bb.width(), bb.height())
+        assert not bb.isdegenerate() and bb.isnonnegative() 
+        bb = bb.int()
+        if zeropad and bb != bb.clone().imclipshape(self.width(), self.height()):
+            # Crop outside the image rectangle will segfault ffmpeg, pad video first (if zeropad=False, then rangecheck will not occur!)
+            self.zeropad(bb.width(), bb.height())     # cannot be called in derived classes
+            bb = bb.offset(bb.width(), bb.height())   # Shift boundingbox by padding
+        self._ffmpeg = self._ffmpeg.filter('crop', '%d' % bb.width(), '%d' % bb.height(), '%d' % bb.xmin(), '%d' % bb.ymin())
         return self
 
     def saveas(self, outfile=None, framerate=30, vcodec='libx264', verbose=False, ignoreErrors=False, flush=False):
@@ -977,7 +988,7 @@ class Scene(VideoCategory):
         framelist = [int(np.round(f)) for f in np.linspace(0, len(self)-1, n)]
         imframes = [self.frame(k).maxmatte()  # letterbox or pillarbox
                     if (self.frame(k).boundingbox() is None) or (context is True and (k == framelist[0] or k == framelist[-1])) else
-                    self.frame(k).padcrop(self.frame(k).boundingbox().dilate(dilate).imclipshape(self.width(), self.height()).maxsquare()).mindim(mindim, interp='nearest')
+                    self.frame(k).padcrop(self.frame(k).boundingbox().dilate(dilate).imclipshape(self.width(), self.height()).maxsquare().int()).mindim(mindim, interp='nearest')
                     for k in framelist]  
         imframes = [im.savefig(fontsize=fontsize).rgb() for im in imframes]  # temp storage in memory
         return vipy.visualize.montage(imframes, imgwidth=mindim, imgheight=mindim)
@@ -1134,21 +1145,23 @@ class Scene(VideoCategory):
         boxes = [a.boundingbox().dilate(dilate) for a in self.activities().values()]
         return boxes[0].union(boxes[1:]) if len(boxes) > 0 else vipy.geometry.BoundingBox(xmin=0, ymin=0, width=self.width(), height=self.height())
 
-    def activitycuboid(self, dilate=1.0, maxdim=256, maxsquare=False):
-        """The activity cuboid is the fixed spatial crop corresponding to the activitybox, which contains all of the valid activities in the scene.  This is most useful after activityclip().
-           mindim is required since the crop can be tiny, and will not be processed by ffmpeg
+    def activitycuboid(self, dilate=1.0, maxdim=256, bb=None):
+        """The activity cuboid is the fixed square spatial crop corresponding to the activitybox (or supplied bounding box), which contains all of the valid activities in the scene.  This is most useful after activityclip().
+           square maxdim is required to be square since the crop can be tiny, and will not be encodable by ffmpeg for arbitrary sizes           
         """
-        return self.clone().crop(self.activitybox().dilate(dilate).maxsquareif(maxsquare).int()).maxdim(maxdim)  # crop triggers preview()
+        bb = self.activitybox() if bb is None else bb
+        assert bb is None or isinstance(bb, vipy.geometry.BoundingBox)
+        return self.clone().crop(bb.dilate(dilate).maxsquare().int(), zeropad=True).resize(maxdim, maxdim)  # crop triggers preview()
 
-    def activitytube(self, dilate=1.0, maxdim=256):
+    def activitytube(self, dilate=1.0, maxdim=256, bb=None):
         """The activity tube is an activity cuboid where the spatial box changes on every frame to track the activity.
            This function does not perform any temporal clipping.  Use activityclip() first to split into individual activities.  
            Crop will be zeropadded to keep the object in the center of the tube.
         """
-        vid = self.activitycuboid(dilate=dilate, maxsquare=True).load()  # triggers preview
+        vid = self.activitycuboid(dilate=dilate, maxdim=maxdim, bb=bb).load()  # triggers preview and load
         self._array = np.stack([im.padcrop(im.boundingbox().maxsquare().dilate(dilate).int()).resize(maxdim, maxdim).numpy() for im in vid if im.boundingbox() is not None])  # track interpolation, for frames with boxes only
         if len(self._array) != len(vid):
-            warnings.warn('[vipy.videoe.activitytube]: Removed %d frames with no spatial bounding boxes' % (len(vid) - len(self._array)))
+            warnings.warn('[vipy.video.activitytube]: Removed %d frames during activity with no spatial bounding boxes' % (len(vid) - len(self._array)))
         return vid
 
     def clip(self, startframe, endframe):
@@ -1161,12 +1174,23 @@ class Scene(VideoCategory):
     def cliptime(self, startsec, endsec):
         raise NotImplementedError('use clip() instead')
             
-    def crop(self, bb, rangecheck=True):
-        """Crop the video using the supplied box, update tracks relative to crop, bbox is clipped to be within the image rectangle, otherwise ffmpeg will throw an exception"""
+    def crop(self, bb, zeropad=True):
+        """Crop the video using the supplied box, update tracks relative to crop, video is zeropadded if box is outside frame rectangle"""
         assert not self.isloaded(), "Filters can only be applied prior to load() - Try calling flush() first"
         assert isinstance(bb, vipy.geometry.BoundingBox), "Invalid input"
-        super(Scene, self).crop(bb, rangecheck=rangecheck)  # will clip to image rectangle, if requested
+        bb = bb.int()
+        if zeropad and bb != bb.clone().imclipshape(self.width(), self.height()):
+            self.zeropad(bb.width(), bb.height())     
+            bb = bb.offset(bb.width(), bb.height())            
+        super(Scene, self).crop(bb, zeropad=False)  # range check handled here to correctly apply zeropad
         self._tracks = {k:t.offset(dx=-bb.xmin(), dy=-bb.ymin()) for (k,t) in self._tracks.items()}
+        return self
+
+    def zeropad(self, padwidth, padheight):
+        assert not self.isloaded(), "Filters can only be applied prior to load() - Try calling flush() first"
+        assert isinstance(padwidth, int) and isinstance(padheight, int)
+        super(Scene, self).zeropad(padwidth, padheight)  
+        self._tracks = {k:t.offset(dx=padwidth, dy=padheight) for (k,t) in self._tracks.items()}
         return self
 
     def fliplr(self):

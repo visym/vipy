@@ -136,7 +136,7 @@ def _test_scene():
     v = vipy.video.RandomSceneActivity(64,64,64)
     vc = v.clone(flushforward=True).filename('Video.mp4')
     assert vc._array is None and v._array is not None
-    a = vc.activitytube()
+    a = vc.activitytube(bb=vipy.geometry.BoundingBox(1,1,width=33, height=33))
     print('[test_video.scene]: activitytube()  PASSED - basic only')        
     
     # Downloader
@@ -243,6 +243,7 @@ def _test_scene():
     assert v[0][1].bbox.xmin() == 99 and v[0][1].bbox.ymin() == 198
     print('[test_video.scene]: crop  PASSED')
 
+
     v = vid.clone().resize(256,256).randomcrop( (100,200)).load(verbose=False)
     assert v.height() == 100  and v.width() == 200
     print('[test_video.scene]: randomcrop  PASSED')
@@ -261,13 +262,16 @@ def _test_scene():
     print('[test_video.scene]: flipud  PASSED')
     vid.flush()
 
+    v = vid.flush().clone().zeropad(32,64).load(verbose=False)
+    assert v.width() == vid.clone().width()+2*32 and v.height() == vid.clone().height()+2*64 and v.array()[0,0,0,0] == 0 and v.array()[1,-1,-1,-1] == 0
+    print('[test_video.scene]: zeropad  PASSED')
+    vid.flush()
 
-    # Bounding box interpolation
-    for im in v:
-        assert im.shape() == v.shape()
-    assert len(im) == 0  # strict boundary by default
-    assert v[200][0].bbox.width() == 400 and v[200][1].bbox.width() == 200
-    print('[test_video.scene]: frame interpolation  PASSED')
+    v = vid.flush().clone().resize(256,256).crop(BoundingBox(128,128,width=256,height=257))  
+    assert v.width() == 256 and v.height() == 257   
+    assert v.load().width() == 256 and v.height() == 257 and v.array()[0,-1,-1,-1] == 0  # load() shape to get the true video size
+    print('[test_video.scene]: padcrop PASSED')
+    vid.flush()
 
     # Thumbnail
     v = vid.clone().thumbnail()
