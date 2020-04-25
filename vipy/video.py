@@ -151,7 +151,18 @@ class Video(object):
                 n.__dict__['kwargs'][argname] = argval
                 return self
         raise ValueError('invalid ffmpeg argument "%s" -> "%s"' % (argname, argval))
-                
+               
+    def _ffmpeg_commandline(self):
+        """Return the ffmpeg command line string that will be used to process the video"""
+        cmd = self._ffmpeg.output('vipy_output.mp4').compile()
+        print(cmd)
+        for (k,c) in enumerate(cmd):
+            if 'filter' in c:
+                cmd[k+1] = '"%s"' % str(cmd[k+1])
+            if 'map' in c:
+                cmd[k+1] = '"%s"' % str(cmd[k+1])
+        return str(' ').join(cmd)
+
     def probe(self):
         """Run ffprobe on the filename and return the result as a JSON file"""
         assert self.hasfilename(), "Invalid video file '%s' for ffprobe" % self.filename() 
@@ -175,7 +186,7 @@ class Video(object):
     def dict(self):
         video = {'filename':self.filename(),
                  'url':self.url(),
-                 'ffmpeg':str(self._ffmpeg.output('dummyfile').compile()),
+                 'ffmpeg':self._ffmpeg_commandline(),
                  'height':self.height() if self.isloaded() else None,
                  'width':self.width() if self.isloaded() else None,
                  'channels':self.channels() if self.isloaded() else None,
@@ -457,7 +468,7 @@ class Video(object):
         if not self.hasfilename() and ignoreErrors:
             print('[vipy.video.load]: Video file "%s" not found - Ignoring' % self.filename())
             return self
-        if True:
+        if verbose:
             print('[vipy.video.load]: Loading "%s"' % self.filename())
 
         # Increase filter chain from load() kwargs
@@ -484,9 +495,14 @@ class Video(object):
         # Load the video:
         #   FIXME:  this may hang on subprocess.communicate() if ffmpeg fills stdout too fast with parallel workers
         #   https://docs.python.org/3/library/subprocess.html#subprocess.Popen.communicate
-        (out, err) = self._ffmpeg.output('pipe:', format='rawvideo', pix_fmt='rgb24') \
-                                 .global_args('-loglevel', 'debug' if verbose else 'error') \
-                                 .run(capture_stdout=True)  # do not capture_stderr, may hang subprocess
+        try:
+            (out, err) = self._ffmpeg.output('pipe:', format='rawvideo', pix_fmt='rgb24') \
+                                     .global_args('-loglevel', 'debug' if verbose else 'error') \
+                                     .run(capture_stdout=True)  # do not capture_stderr, may hang subprocess
+        except Exception as e:
+            print('[vipy.video.load]: Load failed for video "%s" with ffmpeg command "%s" - Try load(verboseTrue) or manually running ffmpeg to see errors' % (str(self), str(self._ffmpeg_commandline())))
+            if not ignoreErrors:
+                raise e
         self._array = np.frombuffer(out, np.uint8).reshape([-1, height, width, channels])  # read-only
         self.colorspace('rgb' if channels == 3 else 'lum')
         return self
@@ -669,7 +685,7 @@ class Video(object):
         """Alias for play()"""
         return self.play()
     
-    def torch(self, startframe=0, endframe=None, length=None, stride=1, take=None, boundary='repeat', verbose=False, withslice=False):
+    def torch(self, startframe=0, endframe=None, length=None, stride=1, take=None, boundary='repeat', order='nchw', verbose=False, withslice=False):
         """Convert the loaded video of shape N HxWxC frames to an MxCxHxW torch tensor, forces a load().
            Order of operations is (startframe, endframe) or (startframe, startframe+length) or (random_startframe, random_starframe+takelength), then stride or take.
            Follows numpy slicing rules.  Optionally return the slice used.
@@ -712,8 +728,15 @@ class Video(object):
         if verbose:
             print('[vipy.video.torch]: slice (start,end,step)=%s for frame shape (N,C,H,W)=%s' % (str((i,j,k)), str(frames.shape)))
 
-        # Slice and transpose to torch tensor axis ordering (NxCxHxW)
-        t = torch.from_numpy(frames[i:j:k].transpose(0,3,1,2))
+        # Slice and transpose to torch tensor axis ordering
+        t = torch.from_numpy(frames[i:j:k])
+        if order == 'nchw':
+            t = t.transpose(0,3,1,2)  # NxCxHxW
+        elif order == 'nhwc':
+            pass  # NxHxWxC  (native numpy order)
+        else:
+            raise ValueError("Invalid order = must be in ['nchw', 'nhwc']")
+            
         return t if not withslice else (t, (i,j,k))
 
     def clone(self, flushforward=False, flushbackward=False, flush=False, flushfilter=False):
