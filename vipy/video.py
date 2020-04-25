@@ -428,13 +428,13 @@ class Video(object):
             raise ValueError('Video file not found')
 
         # Convert frame to JPEG and pipe to stdout
-        (out, err) = self._ffmpeg.output('pipe:', vframes=1, format='image2', vcodec='mjpeg')\
-                                 .global_args('-loglevel', 'debug' if verbose else 'error') \
-                                 .run(capture_stdout=True)  # do not capture_stderr, may hang subprocess due to 4k pipe limit
-        try:
+        try:        
+            (out, err) = self._ffmpeg.output('pipe:', vframes=1, format='image2', vcodec='mjpeg')\
+                                     .global_args('-loglevel', 'debug' if verbose else 'error') \
+                                     .run(capture_stdout=True)  # do not capture_stderr, may hang subprocess due to 4k pipe limit            
             img = PIL.Image.open(BytesIO(out))
-        except:
-            raise ValueError('Video preview failed - Attempted to load the video and no preview frame was loaded.  This usually occurs for zero length clips.') 
+        except Exception as e:
+            raise ValueError('[vipy.video.load]: Video preview failed with error "%s" for video "%s" with ffmpeg command "%s" - Try manually running ffmpeg to see errors' % (str(e), str(self), str(self._ffmpeg_commandline())))
         return Image(array=np.array(img))
 
     def load(self, verbose=False, ignoreErrors=False, startframe=None, endframe=None, rotation=None, rescale=None, mindim=None):
