@@ -346,7 +346,7 @@ class Activity(object):
         assert startframe < endframe, "Start frame must be strictly less than end frame"
         assert tracks is None or isinstance(tracks, dict), "Tracks must be a dictionary {trackid:vipy.object.Track()}"
         assert tracks is None or all([isstring(k) for (k,v) in tracks.items()]) and all([isinstance(v, Track) for (k,v) in tracks.items()]), "Invalid tracks - Must be a dictionary of {str(trackid):vipy.object.Track()}"        
-        assert tracks is None or all([t.during(startframe) or t.during(endframe) for t in tracks.values()]), "All tracks must be be present when this activity occurs"
+        assert tracks is None or all([any([t.during(f) for f in range(startframe, endframe)]) for t in tracks.values()]), "All tracks must be be present in at least one frame when this activity occurs"
     
         self._id = uuid.uuid1().hex
         self._startframe = startframe
