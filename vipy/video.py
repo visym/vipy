@@ -252,13 +252,15 @@ class Video(object):
 
     def channels(self):
         """Return integer number of color channels"""
-        if not self.isloaded() or not hasattr(self, '_channels'):
+        if not self.isloaded():
             previewhash = hash(str(self._ffmpeg.output('dummyfile').compile()))
             if not hasattr(self, '_previewhash') or previewhash != self._previewhash:
                 im = self._preview()  # ffmpeg chain changed, load a single frame of video 
                 self._channels = im.channels()  # cache
                 self._previewhash = previewhash
-        return self._channels  # cached
+            return self._channels  # cached
+        else:
+            return 1 if self.load().array().ndim == 3 else self.load().array().shape[3]
 
     def iscolor(self):
         return self.channels() == 3
@@ -416,7 +418,7 @@ class Video(object):
 
     def shape(self):
         """Return (height, width) of the frames, requires loading a preview frame from the video if the video is not already loaded"""
-        if not self.isloaded() or not hasattr(self, '_shape'):
+        if not self.isloaded():
             previewhash = hash(str(self._ffmpeg.output('dummyfile').compile()))
             if not hasattr(self, '_previewhash') or previewhash != self._previewhash:
                 im = self._preview()  # ffmpeg chain changed, load a single frame of video 
