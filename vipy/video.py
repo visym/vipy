@@ -252,7 +252,13 @@ class Video(object):
 
     def channels(self):
         """Return integer number of color channels"""
-        return 1 if self.load().array().ndim == 3 else self.load().array().shape[3]
+        if not self.isloaded() or not hasattr(self._channels):
+            previewhash = hash(str(self._ffmpeg.output('dummyfile').compile()))
+            if not hasattr(self, '_previewhash') or previewhash != self._previewhash:
+                im = self._preview()  # ffmpeg chain changed, load a single frame of video 
+                self._channels = im.channels()  # cache
+                self._previewhash = previewhash
+        return self._channels  # cached
 
     def iscolor(self):
         return self.channels() == 3
@@ -410,12 +416,12 @@ class Video(object):
 
     def shape(self):
         """Return (height, width) of the frames, requires loading a preview frame from the video if the video is not already loaded"""
-        if not self.isloaded():
-            shapehash = hash(str(self._ffmpeg.output('dummyfile').compile()))
-            if not hasattr(self, '_shapehash') or shapehash != self._shapehash:
+        if not self.isloaded() or not hasattr(self._shape):
+            previewhash = hash(str(self._ffmpeg.output('dummyfile').compile()))
+            if not hasattr(self, '_previewhash') or previewhash != self._previewhash:
                 im = self._preview()  # ffmpeg chain changed, load a single frame of video 
                 self._shape = (im.height(), im.width())  # cache the shape
-                self._shapehash = shapehash
+                self._previewhash = previewhash
             return self._shape
         else:
             return (self._array.shape[1], self._array.shape[2])
@@ -760,16 +766,16 @@ class Video(object):
         """
         if flush or (flushforward and flushbackward):
             self._array = None  # flushes buffer on object and clone
-            self._shapehash = None
+            self._previewhash = None
             v = copy.deepcopy(self)  # object and clone are flushed
         elif flushbackward:
             v = copy.deepcopy(self)  # propagates _array to clone
             self._array = None   # object flushed, clone not flushed
-            self._shapehash = None
+            self._previewhash = None
         elif flushforward:
             array = self._array;
             self._array = None
-            self._shapehash = None
+            self._previewhash = None
             v = copy.deepcopy(self)   # does not propagate _array to clone
             self._array = array    # object not flushed
             v._array = None   # clone flushed
@@ -777,7 +783,7 @@ class Video(object):
             v = copy.deepcopy(self)            
         if flushfilter:
             v._ffmpeg = ffmpeg.input(v.filename())  # no other filters
-            v._shapehash = None
+            v._previewhash = None
         return v
 
     def flush(self):
