@@ -437,10 +437,10 @@ class Video(object):
         if not self.hasfilename():
             raise ValueError('Video file not found')
 
-        # Convert frame to PNG (not MJPEG!) and pipe to stdout
+        # Convert frame to mjpeg and pipe to stdout
         try:
             f = self._ffmpeg.filter('select', 'gte(n,{})'.format(framenum))\
-                            .output('pipe:', vframes=1, format='image2', vcodec='png')\
+                            .output('pipe:', vframes=1, format='image2', vcodec='mjpeg')\
                             .global_args('-loglevel', 'debug' if verbose else 'error')
             (out, err) = f.run(capture_stdout=True)  
         except Exception as e:
@@ -606,7 +606,7 @@ class Video(object):
             # Crop outside the image rectangle will segfault ffmpeg, pad video first (if zeropad=False, then rangecheck will not occur!)
             self.zeropad(bb.width(), bb.height())     # cannot be called in derived classes
             bb = bb.offset(bb.width(), bb.height())   # Shift boundingbox by padding
-        self._ffmpeg = self._ffmpeg.filter('crop', '%d' % bb.width(), '%d' % bb.height(), '%d' % bb.xmin(), '%d' % bb.ymin())
+        self._ffmpeg = self._ffmpeg.filter('crop', '%d' % bb.width(), '%d' % bb.height(), '%d' % bb.xmin(), '%d' % bb.ymin(), 0, 1)  # keep_aspect=False, exact=True
         return self
 
     def saveas(self, outfile=None, framerate=30, vcodec='libx264', verbose=False, ignoreErrors=False, flush=False):

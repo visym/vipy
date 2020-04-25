@@ -237,12 +237,9 @@ def _test_scene():
     assert v.height() == 200 and len(v) == 50
     print('[test_video.scene]: trim, rotate, resize  PASSED')
 
-    v = vid.clone().crop(BoundingBox(xmin=1, ymin=2, width=10, height=20)).load(verbose=False)
-    assert v.height() == 20 
-    assert v[0][0].bbox.xmin() == -1 and v[0][0].bbox.ymin() == -2
-    assert v[0][1].bbox.xmin() == 99 and v[0][1].bbox.ymin() == 198
+    v = vid.clone().crop(BoundingBox(xmin=32, ymin=32, width=128, height=128)).load(verbose=False)
+    assert v.height() == 128 
     print('[test_video.scene]: crop  PASSED')
-
 
     v = vid.clone().resize(256,256).randomcrop( (100,200)).load(verbose=False)
     assert v.height() == 100  and v.width() == 200
