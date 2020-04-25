@@ -155,7 +155,6 @@ class Video(object):
     def _ffmpeg_commandline(self):
         """Return the ffmpeg command line string that will be used to process the video"""
         cmd = self._ffmpeg.output('vipy_output.mp4').compile()
-        print(cmd)
         for (k,c) in enumerate(cmd):
             if 'filter' in c:
                 cmd[k+1] = '"%s"' % str(cmd[k+1])
@@ -500,9 +499,7 @@ class Video(object):
                                      .global_args('-loglevel', 'debug' if verbose else 'error') \
                                      .run(capture_stdout=True)  # do not capture_stderr, may hang subprocess
         except Exception as e:
-            print('[vipy.video.load]: Load failed for video "%s" with ffmpeg command "%s" - Try load(verboseTrue) or manually running ffmpeg to see errors' % (str(self), str(self._ffmpeg_commandline())))
-            if not ignoreErrors:
-                raise e
+            raise ValueError('[vipy.video.load]: Load failed for video "%s" with ffmpeg command "%s" - Try load(verboseTrue) or manually running ffmpeg to see errors' % (str(self), str(self._ffmpeg_commandline())))
         self._array = np.frombuffer(out, np.uint8).reshape([-1, height, width, channels])  # read-only
         self.colorspace('rgb' if channels == 3 else 'lum')
         return self
