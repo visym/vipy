@@ -703,8 +703,9 @@ class Video(object):
     
     def torch(self, startframe=0, endframe=None, length=None, stride=1, take=None, boundary='repeat', order='nchw', verbose=False, withslice=False):
         """Convert the loaded video of shape N HxWxC frames to an MxCxHxW torch tensor, forces a load().
-           Order of operations is (startframe, endframe) or (startframe, startframe+length) or (random_startframe, random_starframe+takelength), then stride or take.
-           Follows numpy slicing rules.  Optionally return the slice used.
+           Order of arguments is (startframe, endframe) or (startframe, startframe+length) or (random_startframe, random_starframe+takelength), then stride or take.
+           Follows numpy slicing rules.  Optionally return the slice used if withslice=True
+           Returns float tensor in the range [0,1] following torchvision.transforms.ToTensor()           
         """
         try_import('torch'); import torch
         frames = self.load().array() if self.iscolor() else np.expand_dims(self.load().array(), 3)
@@ -753,6 +754,11 @@ class Video(object):
         else:
             raise ValueError("Invalid order = must be in ['nchw', 'nhwc']")
             
+        # Scaling
+        if self.colorspace() != 'float':
+            t = (1.0/255.0)*t  # [0,255] -> [0,1]
+
+        # Return tensor or (tensor, slice)
         return t if not withslice else (t, (i,j,k))
 
     def clone(self, flushforward=False, flushbackward=False, flush=False, flushfilter=False):
@@ -790,7 +796,8 @@ class Video(object):
 
     def flush(self):
         """Alias for clone(flush=True), returns self not clone"""
-        self.clone(flush=True)
+        self._array = None  # flushes buffer on object and clone
+        self._previewhash = None
         return self
 
     def map(self, func):
@@ -811,9 +818,9 @@ class Video(object):
             self.colorspace('float')  # unknown colorspace after shape or type transformation, set generic
         return self
 
-    def normalize(self, mean, std):
-        """Pixelwise whitening, triggers load()"""
-        self._array = (self.load()._array - np.array(mean).astype(np.float32)) / np.array(std).astype(np.float32)
+    def normalize(self, mean, std, scale=1.0):
+        """Pixelwise whitening, out = ((scale*in) - mean) / std); triggers load()"""
+        self._array = (((scale*self.load()._array) - np.array(mean)) / np.array(std)).astype(np.float32)
         self.colorspace('float')
         return self
 
