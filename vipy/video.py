@@ -1161,12 +1161,12 @@ class Scene(VideoCategory):
         assert bb is None or isinstance(bb, vipy.geometry.BoundingBox)
         return self.clone().crop(bb.dilate(dilate).maxsquare().int(), zeropad=True).resize(maxdim, maxdim)  # crop triggers preview()
 
-    def activitytube(self, dilate=1.0, maxdim=256, bb=None):
+    def activitytube(self, dilate=1.0, maxdim=256):
         """The activity tube is an activity cuboid where the spatial box changes on every frame to track the activity.
            This function does not perform any temporal clipping.  Use activityclip() first to split into individual activities.  
            Crop will be zeropadded to keep the object in the center of the tube.
         """
-        vid = self.activitycuboid(dilate=dilate, maxdim=maxdim, bb=bb).load()  # triggers preview and load
+        vid = self.activitycuboid(dilate=dilate).load()  # triggers preview and load
         self._array = np.stack([im.padcrop(im.boundingbox().maxsquare().dilate(dilate).int()).resize(maxdim, maxdim).numpy() for im in vid if im.boundingbox() is not None])  # track interpolation, for frames with boxes only
         if len(self._array) != len(vid):
             warnings.warn('[vipy.video.activitytube]: Removed %d frames during activity with no spatial bounding boxes' % (len(vid) - len(self._array)))
