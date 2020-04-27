@@ -502,11 +502,11 @@ class Video(object):
         (height, width, channels) = (imthumb.height(), imthumb.width(), imthumb.channels())
 
         # Load the video:
-        #   FIXME:  this may hang on subprocess.communicate() if ffmpeg fills stdout too fast with parallel workers
-        #   https://docs.python.org/3/library/subprocess.html#subprocess.Popen.communicate
+        #   FIXME:  this may hang on subprocess.communicate() if ffmpeg fills stdout too fast with parallel workers?
+        #   https://trac.ffmpeg.org/ticket/6519, -cpuflags 0 otherwise random segfaults on crop
         try:
-            f =  self._ffmpeg.output('pipe:', format='rawvideo', pix_fmt='rgb24') \
-                                     .global_args('-loglevel', 'debug' if verbose else 'error')
+            f = self._ffmpeg.output('pipe:', format='rawvideo', pix_fmt='rgb24')\
+                            .global_args('-cpuflags', '0', '-loglevel', 'debug' if verbose else 'error')
             (out, err) = f.run(capture_stdout=True)
         except Exception as e:
             raise ValueError('[vipy.video.load]: Load failed for video "%s" with ffmpeg command "%s" - Try load(verbose=True) or manually running ffmpeg to see errors' % (str(self), str(self._ffmpeg_commandline(f))))

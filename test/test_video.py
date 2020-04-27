@@ -136,7 +136,9 @@ def _test_scene():
     v = vipy.video.RandomSceneActivity(64,64,64)
     vc = v.clone(flushforward=True).filename('Video.mp4')
     assert vc._array is None and v._array is not None
-    a = vc.activitytube(bb=vipy.geometry.BoundingBox(1,1,width=33, height=33))
+    a = vc.activitycuboid(bb=vipy.geometry.BoundingBox(1,1,width=33, height=33))
+    print('[test_video.scene]: activitycuboid()  PASSED - basic only')        
+    a = vc.activitytube()
     print('[test_video.scene]: activitytube()  PASSED - basic only')        
     
     # Downloader
