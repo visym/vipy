@@ -123,6 +123,8 @@ class Video(object):
 
     def __len__(self):
         """Number of frames in the video if loaded, else zero.  Do not automatically trigger a load, since this can interact in unexpected ways with other tools that depend on fast __len__()"""
+        if not self.isloaded():
+            warnings.warn('Load() video to see number of frames - Returning zero')  # should this just throw an exception?
         return len(self.array()) if self.isloaded() else 0
 
     def __getitem__(self, k):
