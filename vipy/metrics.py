@@ -310,26 +310,46 @@ def plot_ap(ap, categories, title=None, outfile=None):
         plt.show()
 
 
-def histogram(freq, categories, barcolors=None, title=None, outfile=None, figure=None, ylabel='Frequency'):
+def histogram(freq, categories, barcolors=None, title=None, outfile=None, figure=None, ylabel='Frequency', xrot='vertical'):
     """Plot histogram bar chart using matplotlib with vertical axis labels on x-axis,, with optional figure save"""
     if figure is not None:
         plt.figure(figure)
     else:
-        plt.figure()
+        plt.figure(1)
         plt.clf()
 
     x = range(1, len(categories)+1)
     plt.bar(x, height=freq, width=0.8, bottom=None, color=barcolors)
-    plt.xticks(x, list(categories), rotation='vertical')
+    plt.xticks(x, list(categories), rotation=xrot)
     plt.autoscale(tight=True)
     if ylabel is not None:
         plt.ylabel(ylabel)
     plt.subplots_adjust(bottom=0.75)  # tweak
-    plt.tight_layout()    
     if title is not None:
         plt.title('%s' % (title))
+    plt.tight_layout()            
     if outfile is not None:
         plt.savefig(outfile)
+        plt.clf()
+        return outfile
+    else:
+        plt.show()
+
+        
+def pie(sizes, labels, explode=None, outfile=None, shadow=False):
+    """Generate a matplotlib style pie chart with wedges with specified size and labels, with an optional outfile"""
+    plt.figure(1)
+    plt.clf()
+    
+    # pie = plt.pie(sizes, explode=explode, labels=labels, autopct='%1.1f%%', shadow=shadow, startangle=0)
+    pie = plt.pie(sizes, explode=explode, shadow=shadow, startangle=0)
+    plt.legend(labels)
+    plt.axis('equal')  # Equal aspect ratio ensures that pie is drawn as a circle.
+
+    plt.tight_layout()        
+    if outfile is not None:
+        plt.savefig(outfile)
+        plt.clf()        
         return outfile
     else:
         plt.show()
