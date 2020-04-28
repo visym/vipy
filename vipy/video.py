@@ -1038,6 +1038,25 @@ class Scene(VideoCategory):
     def activitylist(self):
         return list(self._activities.values())
         
+    def activityfilter(self, f):
+        """Apply boolean lambda function f to each activity and keep activity if function is true, remove activity if function is false
+        
+           Usage:  Filter out all activities longer than 128 frames 
+             vid = vid.activityfilter(lambda a: len(a)<128)
+
+           Usage:  Filter out activities with category in set
+             vid = vid.activityfilter(lambda a: a.category() in set(['category1', 'category2']))
+       
+        """
+        self._activities = {k:a for (k,a) in self._activities.items() if f(a)}
+        return self
+        
+    def activitymap(self, f):
+        """Apply lambda function f to each activity"""
+        self._activities = {k:f(a) for (k,a) in self._activities.items()}
+        assert all([isinstance(a, vipy.object.Activity) for a in self.actitvitylist()]), "Lambda function must return vipy.object.Activity"
+        return self
+
     def categories(self):
         """Return a set of all categories in all activities and tracks in this sccene"""
         return self.activity_categories().union(set([t.category() for t in self.tracks().values()]))
