@@ -599,6 +599,10 @@ def newpath(filename, newdir):
     (head, tail) = os.path.split(filename)
     return os.path.join(newdir, tail)
 
+def topath(filename, newdir):
+    """Alias for newpath"""
+    return newpath(filename, newdir)
+
 
 def filefull(f):
     """Return /a/b/c for filename /a/b/c.ext"""
