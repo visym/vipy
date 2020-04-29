@@ -457,6 +457,10 @@ class Video(object):
             raise ValueError('[vipy.video.load]: Video preview failed for video "%s" with ffmpeg command "%s" - Try manually running ffmpeg to see errors' % (str(self), str(self._ffmpeg_commandline(f))))
         return Image(array=np.array(PIL.Image.open(BytesIO(out))))
 
+    def thumbnail(self, outfile=None, frame=0):
+        """Return annotated frame=k of video, save annotation visualization to provided outfile"""
+        return self.__getitem__(frame).savefig(outfile if outfile is not None else temppng())
+    
     def load(self, verbose=False, ignoreErrors=False, startframe=None, endframe=None, rotation=None, rescale=None, mindim=None):
         """Load a video using ffmpeg, applying the requested filter chain.  
            If verbose=True. then ffmpeg console output will be displayed. 
@@ -1155,10 +1159,6 @@ class Scene(VideoCategory):
         self._activities = {k:a.framerate(fps) for (k,a) in self._activities.items()}        
         self._framerate = fps
         return self
-
-    def thumbnail(self, outfile=None, frame=0):
-        """Return annotated frame=k of video, save annotation visualization to provided outfile"""
-        return self.__getitem__(frame).savefig(outfile if outfile is not None else temppng())
         
     def activityclip(self, padframes=0):
         """Return a list of vipy.video.Scene() each clipped to be temporally centered on a single activity, with an optional padframes before and after.  
@@ -1377,6 +1377,10 @@ class Scene(VideoCategory):
                                      nocaption=nocaption, 
                                      nocaption_withstring=nocaption_withstring).saveas(outfile).play()
     
+    def thumbnail(self, outfile=None, frame=0, fontsize=10, nocaption=False, boxalpha=0.25, dpi=200, textfacecolor='white', textfacealpha=1.0):
+        """Return annotated frame=k of video, save annotation visualization to provided outfile"""
+        return self.__getitem__(frame).savefig(outfile if outfile is not None else temppng(), fontsize=fontsize, nocaption=nocaption, boxalpha=boxalpha, dpi=dpi, textfacecolor=textfacecolor, textfacealpha=textfacealpha)
+
     
 def RandomVideo(rows=None, cols=None, frames=None):
     """Return a random loaded vipy.video.video, useful for unit testing, minimum size (32x32x32)"""
