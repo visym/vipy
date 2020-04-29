@@ -451,7 +451,7 @@ class Video(object):
         try:
             f = self._ffmpeg.filter('select', 'gte(n,{})'.format(framenum))\
                             .output('pipe:', vframes=1, format='image2', vcodec='mjpeg')\
-                            .global_args('-loglevel', 'debug' if verbose else 'error')
+                            .global_args('-cpuflags', '0', '-loglevel', 'debug' if verbose else 'error')
             (out, err) = f.run(capture_stdout=True)  
         except Exception as e:
             raise ValueError('[vipy.video.load]: Video preview failed for video "%s" with ffmpeg command "%s" - Try manually running ffmpeg to see errors' % (str(self), str(self._ffmpeg_commandline(f))))
@@ -598,6 +598,10 @@ class Video(object):
         self.crop(bb, zeropad=True)  
         return self if not withbox else (self, bb)
 
+    def centersquare(self):
+        """Crop video of size (NxN) in the center, such that N=min(width,height), keeping the video centroid constant"""
+        return self.centercrop( (min(self.height(), self.width()), min(self.height(), self.width())))
+
     def zeropad(self, padwidth, padheight):
         """Zero pad the video with padwidth columns before and after, and padheight rows before and after"""
         assert isinstance(padwidth, int) and isinstance(padheight, int)
@@ -643,7 +647,7 @@ class Video(object):
                                 .filter('pad', 'ceil(iw/2)*2', 'ceil(ih/2)*2') \
                                 .output(outfile, pix_fmt='yuv420p', vcodec=vcodec, r=framerate) \
                                 .overwrite_output() \
-                                .global_args('-loglevel', 'error' if not verbose else 'debug') \
+                                .global_args('-cpuflags', '0', '-loglevel', 'error' if not verbose else 'debug') \
                                 .run_async(pipe_stdin=True)                
                 for frame in self._array:
                     process.stdin.write(frame.astype(np.uint8).tobytes())
@@ -657,7 +661,7 @@ class Video(object):
                 self._ffmpeg.filter('pad', 'ceil(iw/2)*2', 'ceil(ih/2)*2') \
                             .output(tmpfile, pix_fmt='yuv420p', vcodec=vcodec, r=framerate) \
                             .overwrite_output() \
-                            .global_args('-loglevel', 'error' if not verbose else 'debug') \
+                            .global_args('-cpuflags', '0', '-loglevel', 'error' if not verbose else 'debug') \
                             .run()
                 if outfile == self.filename():
                     if os.path.exists(self.filename()):
@@ -1054,7 +1058,7 @@ class Scene(VideoCategory):
     def activitymap(self, f):
         """Apply lambda function f to each activity"""
         self._activities = {k:f(a) for (k,a) in self._activities.items()}
-        assert all([isinstance(a, vipy.object.Activity) for a in self.actitvitylist()]), "Lambda function must return vipy.object.Activity"
+        assert all([isinstance(a, vipy.object.Activity) for a in self.activitylist()]), "Lambda function must return vipy.object.Activity"
         return self
 
     def categories(self):
@@ -1185,9 +1189,14 @@ class Scene(VideoCategory):
         """The activity cuboid is the fixed square spatial crop corresponding to the activitybox (or supplied bounding box), which contains all of the valid activities in the scene.  This is most useful after activityclip().
            square maxdim is required to be square since the crop can be tiny, and will not be encodable by ffmpeg for arbitrary sizes           
         """
-        bb = self.activitybox() if bb is None else bb
+        bb = self.activitybox().maxsquare() if bb is None else bb
         assert bb is None or isinstance(bb, vipy.geometry.BoundingBox)
-        return self.clone().crop(bb.dilate(dilate).maxsquare().int(), zeropad=True).resize(maxdim, maxdim)  # crop triggers preview()
+        return self.clone().crop(bb.dilate(dilate).int(), zeropad=True).resize(maxdim, maxdim)  # crop triggers preview()
+
+    def activitysquare(self, dilate=1.0, maxdim=256):
+        """The activity square is the largest square containing the bounding box that contains only valid pixels"""
+        bb = self.activitybox().maxsquare().dilate(dilate).int().iminterior(self.width(), self.height()).minsquare()
+        return self.activitycuboid(dilate=1.0, maxdim=maxdim, bb=bb)
 
     def activitytube(self, dilate=1.0, maxdim=256):
         """The activity tube is an activity cuboid where the spatial box changes on every frame to track the activity.

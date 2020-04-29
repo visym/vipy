@@ -647,7 +647,7 @@ def dirlist(indir):
 
 def extlist(indir, ext):
     """return list of files with absolute path in a directory that have
-    the provided extension (with the prepended dot)"""
+    the provided extension (with the prepended dot, ext='.mp4')"""
     return [os.path.abspath(os.path.join(indir, item))
             for item in os.listdir(indir)
             if fileext(item) is not None
@@ -1191,9 +1191,9 @@ def premkdir(filename):
 
 
 def toextension(filename, newext):
-    """Convert filenam='/path/to/myfile.ext' to /path/to/myfile.xyz, such that newext='xyz'"""
+    """Convert filenam='/path/to/myfile.ext' to /path/to/myfile.xyz, such that newext='xyz' or newext='.xyz'"""
     if '.' in newext:
-        newext = newext.split('.')[1]
+        newext = newext.split('.')[-1]
     (filename, oldext) = splitextension(filename)
     return filename + '.' + str(newext)
 
@@ -1215,21 +1215,26 @@ def hasextension(filename):
     return fileext(filename) is not None
 
 
-def fileext(filename):
-    """Given filename /a/b/c.ext return .ext"""
+def fileext(filename, multidot=True):
+    """Given filename /a/b/c.ext return '.ext', or /a/b/c.tar.gz return '.tar.gz'.   If multidot=False, then return '.gz'"""
     (head, tail) = os.path.split(filename)
     try:
         parts = str.rsplit(tail, '.', 2)
-        if len(parts) == 3:
-            ext = '.%s.%s' % (parts[1], parts[2])  # # tar.gz
+        if len(parts) == 3 and multidot:
+            ext = '.%s.%s' % (parts[1], parts[2])  # .tar.gz
+        elif len(parts) == 3 and not multidot:
+            ext = '.%s' % (parts[2])  # .gz            
         else:
-            ext = '.' + parts[1]
+            ext = '.' + parts[1]  # .mp4
 
     except:
         base = tail
         ext = None
     return ext
 
+def mediaextension(filename):
+    """Return '.mp4' for filename='/a/b/c.mp4'"""
+    return fileext(filename, multidot=False)
 
 def ismacosx():
     """Is the current platform MacOSX?"""
