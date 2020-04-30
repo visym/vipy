@@ -60,12 +60,15 @@ class Video(object):
         assert filename is not None or url is not None or array is not None, 'Invalid constructor - Requires "filename", "url" or "array"'
 
         # FFMPEG installed?
-        self._ffmpeg_exe = shutil.which('ffmpeg')
-        self._ffprobe_exe = shutil.which('ffprobe')        
-        if self._ffmpeg_exe is None or not os.path.exists(self._ffmpeg_exe):
+        ffmpeg_exe = shutil.which('ffmpeg')
+        ffprobe_exe = shutil.which('ffprobe')        
+        ffplay_exe = shutil.which('ffplay')        
+        if ffmpeg_exe is None or not os.path.exists(ffmpeg_exe):
             warnings.warn('"ffmpeg" executable not found on path, this is required for vipy.video - Install from http://ffmpeg.org/download.html')
-        if self._ffprobe_exe is None or not os.path.exists(self._ffprobe_exe):
+        if ffprobe_exe is None or not os.path.exists(ffprobe_exe):
             warnings.warn('"ffprobe" executable not found on path, this is optional for vipy.video - Install from http://ffmpeg.org/download.html')            
+        if ffplay_exe is None or not os.path.exists(ffplay_exe):
+            warnings.warn('"ffplay" executable not found on path, this is used for visualization and is optional for vipy.video - Install from http://ffmpeg.org/download.html')            
 
         # Constructor clips
         assert (startframe is not None and endframe is not None) or (startframe is None and endframe is None), "Invalid input - (startframe,endframe) are both required"
@@ -169,9 +172,10 @@ class Video(object):
         assert self.hasfilename(), "Invalid video file '%s' for ffprobe" % self.filename() 
         return ffmpeg.probe(self.filename())
 
-    def print(self, prefix=''):
+    def print(self, prefix='', verbose=True):
         """Print the representation of the video - useful for debugging in long fluent chains"""
-        print(prefix+self.__repr__())
+        if verbose:
+            print(prefix+self.__repr__())
         return self
 
     def stream(self):
@@ -1163,7 +1167,9 @@ class Scene(VideoCategory):
     def activityclip(self, padframes=0):
         """Return a list of vipy.video.Scene() each clipped to be temporally centered on a single activity, with an optional padframes before and after.  
            The Scene() category is updated to be the activity, and only the objects participating in the activity are included.
-           Activities are returned ordered in the temporal order they appear in the video."""
+           Activities are returned ordered in the temporal order they appear in the video.
+           The returned vipy.video.Scene() objects for each activityclip are clones of the video, with the video buffer flushed
+        """
         vid = self.clone(flushforward=True)
         if any([(a.endframe()-a.startframe()) <= 0 for a in vid.activities().values()]):
             warnings.warn('Filtering invalid activity clips with degenerate lengths: %s' % str([a for a in vid.activities().values() if (a.endframe()-a.startframe()) <= 0]))
