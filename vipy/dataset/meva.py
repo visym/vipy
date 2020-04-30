@@ -1,5 +1,5 @@
 import os
-from vipy.util import remkdir, readjson, readyaml, findyaml, findvideo, filetail, findjson, filebase, readlist, groupbyasdict, save, flatlist, isstring, tempdir, readcsv, delpath
+from vipy.util import remkdir, readjson, readyaml, findyaml, findvideo, filetail, findjson, filebase, readlist, groupbyasdict, save, flatlist, isstring, tempdir, readcsv, delpath, temphtml
 from vipy.video import VideoCategory, Scene
 from vipy.object import Track, Activity
 from vipy.geometry import BoundingBox
@@ -264,12 +264,12 @@ class KF1(object):
                     if not aid in d_id1_to_track:
                         print('[vipy.dataset.meva.KF1]: ActorID %d referenced in activity yaml "%s" not found in geom yaml "%s" - Skipping' % (aid, delpath(self.repodir, act_yamlfile), delpath(self.repodir, geom_yamlfile)))
                 
-                # Add activity to scene
+                # Add activity to scene:  include YAML file details in activity attributes for provenance if there are labeling bugs
                 tracks = {d_id1_to_track[aid].id():d_id1_to_track[aid] for aid in actorid if aid in d_id1_to_track}
                 if len(tracks) > 0:
                     try:
                         vid.add(Activity(category=category, shortlabel=d_category_to_shortlabel[category],
-                                         startframe=startframe, endframe=endframe, tracks=tracks, framerate=framerate, attributes={'act':v['act']}), rangecheck=True)
+                                         startframe=startframe, endframe=endframe, tracks=tracks, framerate=framerate, attributes={'act':v['act'], 'act_yaml':act_yamlfile, 'geom_yaml':geom_yamlfile}), rangecheck=True)
                     except Exception as e:
                         print('[vipy.dataset.meva.KF1]: activity import error "%s" for activity="%s" - SKIPPING' % (str(e), str(v)))
             
@@ -399,3 +399,11 @@ class KF1(object):
             plt.savefig(d['2D_%s_bounding_box_histogram' % c])
 
         return d
+
+    def review(self, outfile=None, mindim=512):        
+        """Generate a standalone HTML file containing quicklooks for each annotated activity in dataset, along with some helpful provenance information for where the annotation came from"""
+        quicklist = Batch(self._vidlist).map(lambda v: [(c.load().quicklook(), c.activitylist(), str(c.flush())) for c in v.mindim(512).activityclip()])
+        quicklooks = [imq for q in quicklist for (imq, activitylist, description) in q]  # for HTML display purposes
+        provenance = [{'clip':str(description), 'activity':str(a), 'category':a.category(), 'yamlfile':a.attributes['act_yaml']} for q in quicklist for (imq, activitylist, description) in q for a in activitylist]
+        (quicklooks, provenance) = zip(*sorted([(q,p) for (q,p) in zip(quicklooks, provenance)], key=lambda x: x[1]['category']))  # sorted in category order
+        return vipy.visualize.tohtml(quicklooks, provenance, title='MEVA-KF1 annotation quicklooks', outfile=outfile, mindim=mindim)
