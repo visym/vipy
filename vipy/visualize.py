@@ -10,6 +10,7 @@ import PIL
 import vipy.video
 import webbrowser
 import pathlib
+import html
 
 
 def montage(imlist, imgheight, imgwidth, gridrows=None, gridcols=None, aspectratio=1, crop=False, skip=True, border=1, border_bgr=(128,128,128), do_flush=False, verbose=False):
@@ -151,9 +152,11 @@ def urls(urllist, title='URL Visualization', imagewidth=1024, outfile=None, disp
 
     
     
-def tohtml(imlist, title='Image Visualization', mindim=1024, outfile=None, display=False, attributes=False):
-    """Given a list of vipy.image.Image objects, show the images along with the im.attributes() in a single standalone HTML file"""
+def tohtml(imlist, imdict=None, title='Image Visualization', mindim=1024, outfile=None, display=False):
+    """Given a list of vipy.image.Image objects, show the images along with the dictionary contents of imdict (one per image) in a single standalone HTML file"""
 
+    assert imdict is None or (len(imdict) == len(imlist) and isinstance(imdict[0], dict)), "imdict must be one dictionary per image"
+        
     # Create summary page to show precomputed images
     k_divid = 0    
     filename = outfile if outfile is not None else temphtml()
@@ -163,7 +166,7 @@ def tohtml(imlist, title='Image Visualization', mindim=1024, outfile=None, displ
     f.write('<body>\n')
     f.write('<div id="container" style="width:2400px">\n')
     f.write('<div id="header">\n')
-    f.write('<h1 style="margin-bottom:0;">Title: %s</h1><br>\n' % title)
+    f.write('<h1 style="margin-bottom:0;">%s</h1><br>\n' % title)
     localtime = time.strftime("%Y-%m-%d %H:%M:%S",time.localtime(time.time()))
     f.write('Summary HTML generated on %s<br>\n' % localtime)
     f.write('Number of Images: %d<br>\n' % len(imlist))
@@ -174,18 +177,17 @@ def tohtml(imlist, title='Image Visualization', mindim=1024, outfile=None, displ
     k_divid = k_divid + 1
 
     # Generate images and html
-    for im in imlist:
-        # Prepare image
-        im = im.load().mindim(mindim)
+    for (k,im) in enumerate(imlist):
+        # Write out associated dictionary (if provided)
+        f.write('<p>\n</p>\n')
+        if imdict is not None:
+            for (k,v) in imdict[k].items():
+                f.write('<b>%s</b>: %s<br>\n' % (html.escape(str(k)), html.escape(str(v))))
+        f.write('<br>\n')
 
         # Write image as base64 encoded string
-        f.write('<p>\n</p>\n')
-        
-        if attributes and len(im.attributes) > 0:
-            for (k,v) in im.attributes.items():
-                f.write('%s: %s<br>\n' % (str(k), str(v)))
-        f.write('<br>\n')
-        f.write(im.html())
+        im = im.load().mindim(mindim)
+        f.write(im.html())   # base-64 encoded image with img tag
         f.write('<p>\n</p>\n')
         f.write('<hr>\n')
         f.write('<p>\n</p>\n')
