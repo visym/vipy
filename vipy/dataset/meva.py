@@ -5,7 +5,6 @@ from vipy.object import Track, Activity
 from vipy.geometry import BoundingBox
 from vipy.batch import Batch
 from vipy.show import colorlist
-import vipy.metrics
 import numpy as np
 import warnings
 import shutil
@@ -299,6 +298,7 @@ class KF1(object):
     def analysis(self, outdir=None):
         """Analyze the MEVA dataset to return helpful statistics and plots"""
         import matplotlib.pyplot as plt        
+        import vipy.metrics
         
         videos = self._vidlist
         scenes = flatlist([m.activityclip() for m in videos if m is not None])
