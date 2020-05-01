@@ -402,7 +402,7 @@ class KF1(object):
 
     def review(self, outfile=None, mindim=512):        
         """Generate a standalone HTML file containing quicklooks for each annotated activity in dataset, along with some helpful provenance information for where the annotation came from"""
-        quicklist = Batch(self._vidlist).map(lambda v: [(c.load().quicklook(), c.activitylist(), str(c.flush())) for c in v.mindim(512).activityclip()])
+        quicklist = Batch(self._vidlist).map(lambda v: [(c.load().quicklook(context=True), c.activitylist(), str(c.flush())) for c in v.mindim(512).activityclip()])
         quicklooks = [imq for q in quicklist for (imq, activitylist, description) in q]  # for HTML display purposes
         provenance = [{'clip':str(description), 'activity':str(a), 'category':a.category(), 'yamlfile':a.attributes['act_yaml']} for q in quicklist for (imq, activitylist, description) in q for a in activitylist]
         (quicklooks, provenance) = zip(*sorted([(q,p) for (q,p) in zip(quicklooks, provenance)], key=lambda x: x[1]['category']))  # sorted in category order
