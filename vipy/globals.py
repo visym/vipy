@@ -4,7 +4,7 @@ import tempfile
 import vipy.math
 
 
-GLOBAL = {'VERBOSE': True, 
+GLOBAL = {'VERBOSE': False, 
           'DASK_CLIENT': None,
           'CACHE':None}
 
@@ -14,6 +14,12 @@ def cache(cachedir=None):
         os.environ['VIPY_CACHE'] = cachedir
     return os.environ['VIPY_CACHE'] if 'VIPY_CACHE' in os.environ else None
     
+
+def verbose(b=None):
+    if b is not None:
+        GLOBAL['VERBOSE'] = b
+    return GLOBAL['VERBOSE']
+
 
 class Dask(object):
     def __init__(self, num_processes, dashboard=False):

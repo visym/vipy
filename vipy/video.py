@@ -22,6 +22,7 @@ import shutil
 import types
 import platform
 from io import BytesIO
+import vipy.globals
 
 
 class Video(object):
@@ -442,7 +443,7 @@ class Video(object):
         """Height (rows) in pixels of the video for the current filter chain"""
         return self.shape()[0]
 
-    def _preview(self, verbose=False, framenum=0):
+    def _preview(self, framenum=0):
         """Return selected frame of filtered video, return vipy.image.Image object.  This is useful for previewing the frame shape of a complex filter chain without loading the whole video."""
         if self.isloaded():
             return self[0]
@@ -455,10 +456,13 @@ class Video(object):
         try:
             f = self._ffmpeg.filter('select', 'gte(n,{})'.format(framenum))\
                             .output('pipe:', vframes=1, format='image2', vcodec='mjpeg')\
-                            .global_args('-cpuflags', '0', '-loglevel', 'debug' if verbose else 'error')
-            (out, err) = f.run(capture_stdout=True)  
+                            .global_args('-cpuflags', '0', '-loglevel', 'debug' if vipy.globals.verbose() else 'error')
+            (out, err) = f.run(capture_stdout=True)            
         except Exception as e:
             raise ValueError('[vipy.video.load]: Video preview failed for video "%s" with ffmpeg command "%s" - Try manually running ffmpeg to see errors' % (str(self), str(self._ffmpeg_commandline(f))))
+
+        # [EXCEPTION]:  UnidentifiedImageError: cannot identify image file
+        #   -This may occur when the framerate of the video from ffprobe (tbr) does not match that passed to fps filter, resulting in a zero length image preview piped to stdout
         return Image(array=np.array(PIL.Image.open(BytesIO(out))))
 
     def thumbnail(self, outfile=None, frame=0):
@@ -506,15 +510,17 @@ class Video(object):
                 raise ValueError("rotation must be one of ['rot90ccw', 'rot90cw']")
     
         # Generate single frame _preview to get frame sizes
-        imthumb = self._preview(verbose=verbose)
+        imthumb = self._preview()
         (height, width, channels) = (imthumb.height(), imthumb.width(), imthumb.channels())
 
-        # Load the video:
-        #   FIXME:  this may hang on subprocess.communicate() if ffmpeg fills stdout too fast with parallel workers?
-        #   https://trac.ffmpeg.org/ticket/6519, -cpuflags 0 otherwise random segfaults on crop
+        # Load the video
+        # 
+        # [EXCEPTION]:  older ffmpeg versions may segfault on complex crop filter chains
+        #    -On some versions of ffmpeg setting -cpuflags=0 fixes it, but the right solution is to rebuild from the head (30APR20)
+        #
         try:
             f = self._ffmpeg.output('pipe:', format='rawvideo', pix_fmt='rgb24')\
-                            .global_args('-cpuflags', '0', '-loglevel', 'debug' if verbose else 'error')
+                            .global_args('-cpuflags', '0', '-loglevel', 'debug' if vipy.globals.verbose() else 'error')
             (out, err) = f.run(capture_stdout=True)
         except Exception as e:
             raise ValueError('[vipy.video.load]: Load failed for video "%s" with ffmpeg command "%s" - Try load(verbose=True) or manually running ffmpeg to see errors' % (str(self), str(self._ffmpeg_commandline(f))))
@@ -655,7 +661,7 @@ class Video(object):
                                 .filter('pad', 'ceil(iw/2)*2', 'ceil(ih/2)*2') \
                                 .output(outfile, pix_fmt='yuv420p', vcodec=vcodec, r=framerate) \
                                 .overwrite_output() \
-                                .global_args('-cpuflags', '0', '-loglevel', 'error' if not verbose else 'debug') \
+                                .global_args('-cpuflags', '0', '-loglevel', 'error' if not vipy.globals.verbose() else 'debug') \
                                 .run_async(pipe_stdin=True)                
                 for frame in self._array:
                     process.stdin.write(frame.astype(np.uint8).tobytes())
@@ -669,7 +675,7 @@ class Video(object):
                 self._ffmpeg.filter('pad', 'ceil(iw/2)*2', 'ceil(ih/2)*2') \
                             .output(tmpfile, pix_fmt='yuv420p', vcodec=vcodec, r=framerate) \
                             .overwrite_output() \
-                            .global_args('-cpuflags', '0', '-loglevel', 'error' if not verbose else 'debug') \
+                            .global_args('-cpuflags', '0', '-loglevel', 'error' if not vipy.globals.verbose() else 'debug') \
                             .run()
                 if outfile == self.filename():
                     if os.path.exists(self.filename()):
