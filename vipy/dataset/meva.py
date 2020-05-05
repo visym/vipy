@@ -124,7 +124,7 @@ class KF1(object):
         if verbose:
             print('[vipy.dataset.meva.KF1]: Loading %d YAML files' % len(yamlfiles))
             if len(yamlfiles) > 100 and vipy.globals.num_workers() == 1: 
-                print('[vipy.dataset.meva.KF1]: This takes a while, consider setting vipy.globals.num_workers(8) for parallel parsing')
+                print('[vipy.dataset.meva.KF1]: This takes a while since parsing YAML files in python is painfully slow, consider calling "vipy.globals.num_workers(8)" before loading the dataset for parallel parsing')
 
         if vipy.globals.num_workers() > 1:
             from vipy.batch import Batch
