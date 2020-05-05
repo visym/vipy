@@ -4,18 +4,21 @@ import tempfile
 import vipy.math
 
 
+# Global mutable dictionary
 GLOBAL = {'VERBOSE': False, 
           'DASK_CLIENT': None,
           'CACHE':None}
 
 
 def cache(cachedir=None):
+    """The cache is the location that URLs are downloaded to on your system.  This can be set here, or with the environment variable VIPY_CACHE"""
     if cachedir is not None:
         os.environ['VIPY_CACHE'] = cachedir
     return os.environ['VIPY_CACHE'] if 'VIPY_CACHE' in os.environ else None
     
 
 def verbose(b=None):
+    """The global verbosity level, only really used right now for FFMPEG messages"""
     if b is not None:
         GLOBAL['VERBOSE'] = b
     return GLOBAL['VERBOSE']
@@ -65,6 +68,7 @@ class Dask(object):
 
     
 def dask(num_processes=None, dashboard=False):
+    """Return the local Dask client, can be accessed globally for parallel processing"""
     if GLOBAL['DASK_CLIENT'] is None and num_processes is not None:
         GLOBAL['DASK_CLIENT'] = Dask(num_processes, dashboard=dashboard)        
     elif GLOBAL['DASK_CLIENT'] is not None and num_processes is not None and GLOBAL['DASK_CLIENT'].num_processes() != num_processes:
@@ -74,11 +78,13 @@ def dask(num_processes=None, dashboard=False):
 
 
 def num_workers(n=None):
+    """Create n parallel Dask processes.  This is used in conjunction with vipy.batch.Batch()"""
     if n is not None:
         return dask(num_processes=n)
     return 1 if dask() is None else dask().num_processes()
 
+
 def max_workers(pct=0.5):
-    """Set the maximum number of workers as the largest power of two <= 90% of the number of CPUs on the current system"""
+    """Set the maximum number of workers as the largest power of two <= pct% of the number of CPUs on the current system"""
     import multiprocessing
     return dask(num_processes=vipy.math.poweroftwo(pct*multiprocessing.cpu_count()))
