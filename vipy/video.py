@@ -423,6 +423,10 @@ class Video(object):
                 raise
         return self
 
+    def fetch(self):
+        """Download only if hasfilename() is not found"""
+        return self.download() if not self.hasfilename() else self
+
     def shape(self):
         """Return (height, width) of the frames, requires loading a preview frame from the video if the video is not already loaded"""
         if not self.isloaded():
@@ -820,6 +824,11 @@ class Video(object):
         self._previewhash = None
         return self
 
+    def flush_and_return(self, retval):
+        """Flush the video and return the parameter supplied, useful for long fluent chains"""
+        self.flush()
+        return retval
+
     def map(self, func):
         """Apply lambda function to the loaded numpy array img, changes pixels not shape
         
@@ -1216,10 +1225,10 @@ class Scene(VideoCategory):
            Crop will be zeropadded to keep the object in the center of the tube.
         """
         vid = self.activitycuboid(dilate=dilate).load()  # triggers preview and load
-        self._array = np.stack([im.padcrop(im.boundingbox().maxsquare().dilate(dilate).int()).resize(maxdim, maxdim).numpy() for im in vid if im.boundingbox() is not None])  # track interpolation, for frames with boxes only
-        if len(self._array) != len(vid):
-            warnings.warn('[vipy.video.activitytube]: Removed %d frames during activity with no spatial bounding boxes' % (len(vid) - len(self._array)))
-        return vid
+        frames = np.stack([im.padcrop(im.boundingbox().maxsquare().dilate(dilate).int()).resize(maxdim, maxdim).numpy() for im in vid if im.boundingbox() is not None])  # track interpolation, for frames with boxes only
+        if len(frames) != len(vid):
+            warnings.warn('[vipy.video.activitytube]: Removed %d frames during activity with no spatial bounding boxes' % (len(vid) - len(frames)))
+        return vid.array(frames)
 
     def clip(self, startframe, endframe):
         """Clip the video to between (startframe, endframe).  This clip is relative to cumulative clip() from the filter chain"""

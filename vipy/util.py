@@ -172,7 +172,8 @@ def rmdir(indir):
     return indir
 
 def dividelist(inlist, fractions):
-    """Divide inlist into a list of lists such that the size of each sublist is the requseted fraction of the original list
+    """Divide inlist into a list of lists such that the size of each sublist is the requseted fraction of the original list. 
+       This operation is deterministic and generates the same division in multiple calls.
        
        Input:
          -inlist=list
