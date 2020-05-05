@@ -162,9 +162,11 @@ class Video(object):
         """Return the ffmpeg command line string that will be used to process the video"""
         cmd = f.compile() if f is not None else self._ffmpeg.output('vipy_output.mp4').compile()
         for (k,c) in enumerate(cmd):
-            if 'filter' in c:
+            if c is None:
+                cmd[k] = str(c)
+            elif 'filter' in c:
                 cmd[k+1] = '"%s"' % str(cmd[k+1])
-            if 'map' in c:
+            elif 'map' in c:
                 cmd[k+1] = '"%s"' % str(cmd[k+1])
         return str(' ').join(cmd)
 
@@ -768,7 +770,7 @@ class Video(object):
         # Slice and transpose to torch tensor axis ordering
         t = torch.from_numpy(frames[i:j:k])
         if order == 'nchw':
-            t = t.transpose(0,3,1,2)  # NxCxHxW
+            t = t.permute(0,3,1,2)  # NxCxHxW
         elif order == 'nhwc':
             pass  # NxHxWxC  (native numpy order)
         else:
