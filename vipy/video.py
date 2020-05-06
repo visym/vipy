@@ -1204,27 +1204,32 @@ class Scene(VideoCategory):
         return boxes[0].union(boxes[1:]) if len(boxes) > 0 else imagebox(self.shape())
         
     def activitybox(self, dilate=1.0):
-        """The activitybox is the union of all activity bounding boxes in the video, which is the union of all tracks contributing to all activities.  This is most useful after activityclip()"""
+        """The activitybox is the union of all activity bounding boxes in the video, which is the union of all tracks contributing to all activities.  This is most useful after activityclip().
+           The activitybox is the smallest bounding box that contains all of the boxes from all of the tracks in all activities in this video.
+        """
         boxes = [a.boundingbox().dilate(dilate) for a in self.activities().values()]
         return boxes[0].union(boxes[1:]) if len(boxes) > 0 else vipy.geometry.BoundingBox(xmin=0, ymin=0, width=self.width(), height=self.height())
 
     def activitycuboid(self, dilate=1.0, maxdim=256, bb=None):
-        """The activity cuboid is the fixed square spatial crop corresponding to the activitybox (or supplied bounding box), which contains all of the valid activities in the scene.  This is most useful after activityclip().
-           square maxdim is required to be square since the crop can be tiny, and will not be encodable by ffmpeg for arbitrary sizes           
+        """The activitycuboid() is the fixed square spatial crop corresponding to the activitybox (or supplied bounding box), which contains all of the valid activities in the scene.  This is most useful after activityclip().
+           The activitycuboid() is a spatial crop of the video corresponding to the supplied boundingbox or the square activitybox().
+           This crop must be resized such that the maximum dimeimsnion is provided since the crop can be tiny and will not be encodable by ffmpeg
         """
-        bb = self.activitybox().maxsquare() if bb is None else bb
+        bb = self.activitybox().maxsquare() if bb is None else bb  
         assert bb is None or isinstance(bb, vipy.geometry.BoundingBox)
+        assert bb.issquare(), "Add support for non-square boxes"
         return self.clone().crop(bb.dilate(dilate).int(), zeropad=True).resize(maxdim, maxdim)  # crop triggers preview()
 
     def activitysquare(self, dilate=1.0, maxdim=256):
-        """The activity square is the largest square containing the bounding box that contains only valid pixels"""
+        """The activity square is the maxsquare activitybox that contains only valid (non-padded) pixels interior to the image"""
         bb = self.activitybox().maxsquare().dilate(dilate).int().iminterior(self.width(), self.height()).minsquare()
         return self.activitycuboid(dilate=1.0, maxdim=maxdim, bb=bb)
 
     def activitytube(self, dilate=1.0, maxdim=256):
-        """The activity tube is an activity cuboid where the spatial box changes on every frame to track the activity.
+        """The activitytube() is a sequence of crops where the spatial box changes on every frame to track the activity.  
+           The box in each frame is the square activitybox() for this video which is the union of boxes contributing to this activity.
            This function does not perform any temporal clipping.  Use activityclip() first to split into individual activities.  
-           Crop will be zeropadded to keep the object in the center of the tube.
+           Crops will be dilated and zeropadded if the box is outside the image rectangle.  All crops will be resized so that the maximum dimension is maxdim.
         """
         vid = self.activitycuboid(dilate=dilate).load()  # triggers preview and load
         frames = np.stack([im.padcrop(im.boundingbox().maxsquare().dilate(dilate).int()).resize(maxdim, maxdim).numpy() for im in vid if im.boundingbox() is not None])  # track interpolation, for frames with boxes only
