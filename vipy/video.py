@@ -545,14 +545,14 @@ class Video(object):
         self._endframe = endframe if self._endframe is None else self._startframe + (endframe-startframe)  # for __repr__ only
         return self
 
-    def cliptime(self, startsecs, endsecs):
+    def cliptime(self, startsec, endsec):
         """Load a video clip betweeen start seconds and end seconds, should be initialized by constructor, which will work but will not set __repr__ correctly"""
-        assert startsecs <= endsecs and startsecs >= 0, "Invalid start and end seconds (%s, %s)" % (str(startsecs), str(endsecs))
+        assert startsec <= endsec and startsec >= 0, "Invalid start and end seconds (%s, %s)" % (str(startsec), str(endsec))
         assert not self.isloaded(), "Filters can only be applied prior to load() - Try calling flush() first"
-        self._ffmpeg = self._ffmpeg.trim(start=startsecs, end=endsecs)\
+        self._ffmpeg = self._ffmpeg.trim(start=startsec, end=endsec)\
                                    .setpts('PTS-STARTPTS')  # reset timestamp to 0 after trim filter
-        self._startsecs = startsecs if self._startsecs is None else self._startsecs + startsecs  # for __repr__ only
-        self._endsecs = endsecs if self._endsecs is None else self._startsecs + (endsecs-startsecs)  # for __repr__ only
+        self._startsec = startsec if self._startsec is None else self._startsec + startsec  # for __repr__ only
+        self._endsec = endsec if self._endsec is None else self._startsec + (endsec-startsec)  # for __repr__ only
         return self
     
     def rot90cw(self):
