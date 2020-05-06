@@ -133,7 +133,7 @@ class Track(object):
         # Sorted increasing frame order
         if len(keyframes) > 0 and len(boxes) > 0:
             (keyframes, boxes) = zip(*sorted([(f,bb) for (f,bb) in zip(keyframes, boxes)], key=lambda x: x[0]))
-            self._keyframes = list(keyframes)
+            self._keyframes = [int(np.round(f)) for f in keyframes]  # coerce to int
             self._keyboxes = list(boxes)
         
     def __repr__(self):
@@ -178,6 +178,10 @@ class Track(object):
         """Return keyframe frame indexes where there are track observations"""
         return self._keyframes
 
+    def keyboxes(self):
+        """Return keyboxes where there are track observations"""
+        return self._keyboxes
+    
     def meanshape(self):
         """Return the mean (width,height) of the box during the track"""
         return np.mean([bb.shape() for bb in self._keyboxes], axis=0)

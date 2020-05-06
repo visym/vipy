@@ -1,5 +1,5 @@
 import os
-from vipy.util import filetail, remkdir, readjson
+from vipy.util import filetail, remkdir, readjson, groupbyasdict
 import vipy.downloader
 from vipy.video import VideoCategory, Video
 import numpy as np
@@ -12,8 +12,11 @@ URL = 'http://ec2-52-25-205-214.us-west-2.compute.amazonaws.com/files/activity_n
 class ActivityNet(object):
     def __init__(self, datadir):
         """Activitynet, provide a datadir='/path/to/store/activitynet' """
+        self._url = URL
         self.datadir = remkdir(datadir)
-
+        if not self._isdownloaded():
+            self.download()
+        
     def __repr__(self):
         return str('<vipy.dataset.activitynet: "%s">' % self.datadir)
 
@@ -49,4 +52,19 @@ class ActivityNet(object):
     def valset(self):
         return self._dataset('validation')
     
-    
+    def categories(self):
+        return set([v.category() for v in self.trainset()])
+
+    def analysis(self):
+        C = self.categories()
+        d_category_to_trainsize = {k:len(v) for (k,v) in groupbyasdict(self.trainset(), lambda x: x.category()).items()}
+
+        top10 = sorted([(k,v) for (k,v) in d_category_to_trainsize.items()], key=lambda x: x[1])[-10:]
+        print('top10 categories by number of instances in training set:')
+        print(top10)
+
+        bottom10 = sorted([(k,v) for (k,v) in d_category_to_trainsize.items()], key=lambda x: x[1])[0:10]
+        print('bottom-10 categories by number of instances in training set:')
+        print(bottom10)
+        
+        return d_category_to_trainsize

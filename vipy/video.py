@@ -74,8 +74,8 @@ class Video(object):
         # Constructor clips
         assert (startframe is not None and endframe is not None) or (startframe is None and endframe is None), "Invalid input - (startframe,endframe) are both required"
         assert (startsec is not None and endsec is not None) or (startsec is None and endsec is None), "Invalid input - (startsec,endsec) are both required"        
-        (self._startframe, self._endframe) = (startframe, endframe)
-        (self._startsec, self._endsec) = (startsec, endsec)        
+        (self._startframe, self._endframe) = (None, None)  # __repr__ only
+        (self._startsec, self._endsec) = (None, None)      # __repr__ only  
 
         # Input filenames
         if url is not None:
@@ -97,15 +97,15 @@ class Video(object):
 
         # Video filter chain
         self._ffmpeg = ffmpeg.input(self.filename())  # restore, no other filters
-        if self._startframe is not None and self._endframe is not None:
-            self.clip(self._startframe, self._endframe)
-        if self._startsec is not None and self._endsec is not None:
-            self.cliptime(self._startsec, self._endsec)
-            
         if framerate is not None:
             self.framerate(framerate)
-            self._framerate = framerate
-
+            self._framerate = framerate        
+        if startframe is not None and endframe is not None:
+            self.clip(startframe, endframe)  
+        if startsec is not None and endsec is not None:
+            (self._startsec, self._endsec) = (startsec, endsec)            
+            self.cliptime(startsec, endsec)
+            
         # Array input
         if array is not None:
             self.array(array)
@@ -547,6 +547,8 @@ class Video(object):
         assert not self.isloaded(), "Filters can only be applied prior to load() - Try calling flush() first"
         self._ffmpeg = self._ffmpeg.trim(start=startsecs, end=endsecs)\
                                    .setpts('PTS-STARTPTS')  # reset timestamp to 0 after trim filter
+        self._startsecs = startsecs if self._startsecs is None else self._startsecs + startsecs  # for __repr__ only
+        self._endsecs = endsecs if self._endsecs is None else self._startsecs + (endsecs-startsecs)  # for __repr__ only
         return self
     
     def rot90cw(self):
@@ -924,7 +926,7 @@ class Scene(VideoCategory):
  
     The inputs are lists of tracks and/or activities.  An object is a spatial bounding box with a category label.  A track is a spatiotemporal bounding 
     box with a category label, such that the box contains the same instance of an object.  An activity is one or more tracks with a start and end frame for an 
-    activity performed by the object instances.
+    activity performed by the object instances.  Track and activity timing must be relative to the start frame of the Scene() constructor.  
 
     """
         
@@ -933,23 +935,22 @@ class Scene(VideoCategory):
 
         self._tracks = {}
         self._activities = {}        
-        super(Scene, self).__init__(url=url, filename=filename, framerate=None, attributes=attributes, array=array, colorspace=colorspace,
+        super(Scene, self).__init__(url=url, filename=filename, framerate=framerate, attributes=attributes, array=array, colorspace=colorspace,
                                     category=category, startframe=startframe, endframe=endframe, startsec=startsec, endsec=endsec)
 
+        # Tracks must be defined relative to the clip specified by this constructor
         if tracks is not None:
             tracks = tracks if isinstance(tracks, list) or isinstance(tracks, tuple) else [tracks]  # canonicalize
             assert all([isinstance(t, vipy.object.Track) for t in tracks]), "Invalid track input; tracks=[vipy.object.Track(), ...]"
             self._tracks = {t.id():t for t in tracks}
 
+        # Activites must be defined relative to the clip specified by this constructor            
         if activities is not None:
             activities = activities if isinstance(activities, list) or isinstance(activities, tuple) else [activities]  # canonicalize            
             assert all([isinstance(a, vipy.object.Activity) for a in activities]), "Invalid activity input; activities=[vipy.object.Activity(), ...]"
             self._activities = {a.id():a for a in activities}
             self._tracks.update( {tid:t for (aid,a) in self._activities.items() for (tid,t) in a.tracks().items()} )
-            
-        if framerate is not None:
-            self.framerate(framerate)
-            
+
         self._currentframe = None  # used during iteration only
         
     def __repr__(self):
