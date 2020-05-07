@@ -12,7 +12,7 @@ import vipy.globals
 
 
 class KF1(object):
-    def __init__(self, videodir, repodir, contrib=False, stride=20, verbose=True, n_videos=None, d_category_to_shortlabel=None):
+    def __init__(self, videodir, repodir, contrib=False, stride=1, verbose=True, n_videos=None, d_category_to_shortlabel=None):
         """Parse MEVA annotations (http://mevadata.org) for KNown Facility 1 dataset into vipy.video.Scene() objects
        
         Kwiver packet format: https://gitlab.kitware.com/meva/meva-data-repo/blob/master/documents/KPF-specification-v4.pdf
@@ -402,6 +402,8 @@ class KF1(object):
 
     def review(self, outfile=None, mindim=512):        
         """Generate a standalone HTML file containing quicklooks for each annotated activity in dataset, along with some helpful provenance information for where the annotation came from"""
+        if vipy.globals.num_workers() == 1:
+            warnings.warn("Generating review HTML is very time consuming, consider setting vipy.global.num_workers(n) for n > 1 for parallel video processing")
         quicklist = Batch(self._vidlist).map(lambda v: [(c.load().quicklook(context=True), c.activitylist(), str(c.flush())) for c in v.mindim(512).activityclip()])
         quicklooks = [imq for q in quicklist for (imq, activitylist, description) in q]  # for HTML display purposes
         provenance = [{'clip':str(description), 'activity':str(a), 'category':a.category(), 'yamlfile':a.attributes['act_yaml']} for q in quicklist for (imq, activitylist, description) in q for a in activitylist]
