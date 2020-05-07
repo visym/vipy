@@ -1198,7 +1198,7 @@ class Scene(VideoCategory):
         vid._tracks = {}      # for faster clone
         padframes = padframes if istuple(padframes) else (padframes,padframes)
         return [vid.clone().activities(a).tracks(t).clip(startframe=max(a.startframe()-padframes[0], 0),
-                                                         endframe=(a.endframe()+padframes[1])).category(a.category()) for (a,t) in zip(activities, tracks) if len(t)>0]
+                                                         endframe=(a.endframe()+padframes[1])).category(a.category()) for (a,t) in zip(activities, tracks)]
 
     def trackbox(self, dilate=1.0):
         """The trackbox is the union of all track bounding boxes in the video, or the image rectangle if there are no tracks"""
