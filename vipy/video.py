@@ -49,7 +49,7 @@ class Video(object):
     Note that the video transformations (clip, resize, rescale, rotate) are only available prior to load(), and the array() is assumed immutable after load().
 
     """
-    def __init__(self, filename=None, url=None, framerate=None, attributes=None, array=None, colorspace=None, startframe=None, endframe=None, startsec=None, endsec=None):
+    def __init__(self, filename=None, url=None, framerate=30.0, attributes=None, array=None, colorspace=None, startframe=None, endframe=None, startsec=None, endsec=None):
         self._url = None
         self._filename = None
         self._array = None
@@ -668,7 +668,7 @@ class Video(object):
                 (n, height, width, channels) = self._array.shape
                 process = ffmpeg.input('pipe:', format='rawvideo', pix_fmt='rgb24', s='{}x{}'.format(width, height), r=framerate) \
                                 .filter('pad', 'ceil(iw/2)*2', 'ceil(ih/2)*2') \
-                                .output(outfile, pix_fmt='yuv420p', vcodec=vcodec) \
+                                .output(filename=outfile, pix_fmt='yuv420p', vcodec=vcodec) \
                                 .overwrite_output() \
                                 .global_args('-cpuflags', '0', '-loglevel', 'error' if not vipy.globals.verbose() else 'debug') \
                                 .run_async(pipe_stdin=True)                
@@ -682,7 +682,7 @@ class Video(object):
                 # Requires saving to a tmpfile if the output filename is the same as the input filename
                 tmpfile = '%s.tmp%s' % (filefull(outfile), fileext(outfile)) if outfile == self.filename() else outfile
                 self._ffmpeg.filter('pad', 'ceil(iw/2)*2', 'ceil(ih/2)*2') \
-                            .output(tmpfile, pix_fmt='yuv420p', vcodec=vcodec, r=framerate) \
+                            .output(filename=tmpfile, pix_fmt='yuv420p', vcodec=vcodec, r=framerate) \
                             .overwrite_output() \
                             .global_args('-cpuflags', '0', '-loglevel', 'error' if not vipy.globals.verbose() else 'debug') \
                             .run()
@@ -1198,7 +1198,7 @@ class Scene(VideoCategory):
         vid._tracks = {}      # for faster clone
         padframes = padframes if istuple(padframes) else (padframes,padframes)
         return [vid.clone().activities(a).tracks(t).clip(startframe=max(a.startframe()-padframes[0], 0),
-                                                         endframe=(a.endframe()+padframes[1])).category(a.category()) for (a,t) in zip(activities, tracks) if len(t)>0]
+                                                         endframe=(a.endframe()+padframes[1])).category(a.category()) for (a,t) in zip(activities, tracks)]
 
     def trackbox(self, dilate=1.0):
         """The trackbox is the union of all track bounding boxes in the video, or the image rectangle if there are no tracks"""
