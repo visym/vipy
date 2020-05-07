@@ -645,7 +645,7 @@ class Video(object):
         self._ffmpeg = self._ffmpeg.filter('crop', '%d' % bb.width(), '%d' % bb.height(), '%d' % bb.xmin(), '%d' % bb.ymin(), 0, 1)  # keep_aspect=False, exact=True
         return self
 
-    def saveas(self, outfile=None, framerate=30, vcodec='libx264', verbose=False, ignoreErrors=False, flush=False):
+    def saveas(self, outfile=None, framerate=None, vcodec='libx264', verbose=False, ignoreErrors=False, flush=False):
         """Save video to new output video file.  This function does not draw boxes, it saves pixels to a new video file.
 
            * If self.array() is loaded, then export the contents of self._array to the video file
@@ -654,20 +654,21 @@ class Video(object):
            * If ignoreErrors=True, then exit gracefully.  Useful for chaining download().saveas() on parallel dataset downloads
            * Returns a new video object with this video filename, and a clean video filter chain
            * if flush=True, then flush this buffer right after saving the new video. This is useful for transcoding in parallel
-
+           * framerate:  input framerate of the frames in the buffer, or the output framerate of the transcoded video.  If not provided, use framerate of source video
         """        
         outfile = tocache(tempMP4()) if outfile is None else outfile
         premkdir(outfile)  # create output directory for this file if not exists
-
+        framerate = framerate if framerate is not None else self._framerate
+        
         if verbose:
             print('[vipy.video.saveas]: Saving video "%s" ...' % outfile)                      
         try:
             if self.isloaded():
-                # Save numpy() from load() to video
+                # Save numpy() from load() to video, forcing to be even shape
                 (n, height, width, channels) = self._array.shape
-                process = ffmpeg.input('pipe:', format='rawvideo', pix_fmt='rgb24', s='{}x{}'.format(width, height)) \
+                process = ffmpeg.input('pipe:', format='rawvideo', pix_fmt='rgb24', s='{}x{}'.format(width, height), r=framerate) \
                                 .filter('pad', 'ceil(iw/2)*2', 'ceil(ih/2)*2') \
-                                .output(outfile, pix_fmt='yuv420p', vcodec=vcodec, r=framerate) \
+                                .output(outfile, pix_fmt='yuv420p', vcodec=vcodec) \
                                 .overwrite_output() \
                                 .global_args('-cpuflags', '0', '-loglevel', 'error' if not vipy.globals.verbose() else 'debug') \
                                 .run_async(pipe_stdin=True)                
