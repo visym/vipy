@@ -1232,7 +1232,8 @@ class Scene(VideoCategory):
            This function does not perform any temporal clipping.  Use activityclip() first to split into individual activities.  
            Crops will be dilated and zeropadded if the box is outside the image rectangle.  All crops will be resized so that the maximum dimension is maxdim.
         """
-        vid = self.activitycuboid(dilate=dilate).load()  # triggers preview and load
+        #vid = self.activitycuboid(dilate=dilate).load()  # triggers preview and load
+        vid = self.clone().load()  # triggers load        
         frames = np.stack([im.padcrop(im.boundingbox().maxsquare().dilate(dilate).int()).resize(maxdim, maxdim).numpy() for im in vid if im.boundingbox() is not None])  # track interpolation, for frames with boxes only
         if len(frames) != len(vid):
             warnings.warn('[vipy.video.activitytube]: Removed %d frames during activity with no spatial bounding boxes' % (len(vid) - len(frames)))
