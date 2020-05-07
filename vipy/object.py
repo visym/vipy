@@ -304,10 +304,12 @@ class Track(object):
             self.add(startframe, self[startframe])
         if self[endframe] is not None:
             self.add(endframe, self[endframe])
-        self._keyframes = [f for (f,bb) in zip(self._keyframes, self._keyboxes) if f>=startframe and f<=endframe]  # may be empty
-        self._keyboxes = [bb for (f,bb) in zip(self._keyframes, self._keyboxes) if f>=startframe and f<=endframe]  # may be empty
-        if len(self._keyframes) == 0 or len(self._keyboxes) == 0:
+        keyframes = [f for (f,bb) in zip(self._keyframes, self._keyboxes) if f>=startframe and f<=endframe]  # may be empty
+        keyboxes = [bb for (f,bb) in zip(self._keyframes, self._keyboxes) if f>=startframe and f<=endframe]  # may be empty
+        if len(keyframes) == 0 or len(keyboxes) == 0:
             raise ValueError('Track does not contain any keyboxes within the requested frames (%d,%d)' % (startframe, endframe))
+        self._keyframes = keyframes
+        self._keyboxes = keyboxes
         self._boundary = 'strict'
         return self
 
