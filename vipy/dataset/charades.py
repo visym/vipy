@@ -4,7 +4,8 @@ import vipy.downloader
 from vipy.video import VideoCategory, Video, Scene
 import numpy as np
 from vipy.object import Track, BoundingBox, Activity
-
+import vipy.visualize
+from vipy.batch import Batch
 
 URL_ANNOTATIONS = 'http://ai2-website.s3.amazonaws.com/data/Charades.zip'
 URL_DATA = 'http://ai2-website.s3.amazonaws.com/data/Charades_v1.zip'
@@ -33,12 +34,15 @@ class Charades(object):
             videoid = row[0]
             actions = row[-2]
             sceneloc = row[2]
-            v = Scene(filename=os.path.join(self.datadir, '%s.mp4' % videoid), category=sceneloc, framerate=30.0)
+            v = Scene(filename=os.path.join(self.datadir, '%s.mp4' % videoid), category=sceneloc)
+            fps = v.probe()['streams'][0]['avg_frame_rate']
+            fps = float(fps.split('/')[0]) / float(fps.split('/')[1])
+            v.framerate(fps)  # FIXME: better handling of time based clips to avoid ffprobe
             if len(actions) > 0:
                 for a in actions.split(';'):
                     (category, startsec, endsec) = a.split(' ')
                     try:
-                        v.add(Activity(category=d_index_to_category[category], startframe=float(startsec)*30, endframe=float(endsec)*30))
+                        v.add(Activity(category=d_index_to_category[category], startframe=float(startsec)*fps, endframe=float(endsec)*fps, attributes={'csvfile':row}))
                     except KeyboardInterrupt:
                         raise
                     except Exception as e:
@@ -55,3 +59,12 @@ class Charades(object):
     def testset(self):
         return self._dataset(os.path.join(self.annodir, 'Charades_v1_test.csv'))
 
+    def review(self, outfile=None, mindim=1024):
+        """Generate a standalone HTML file containing quicklooks for each annotated activity in the train set"""
+        T = self.trainset()
+        quicklist = Batch(T).map(lambda v: [(c.load().quicklook(n=25), c.activitylist(), str(c.flush().print())) for c in v.mindim(512).activityclip()])
+        quicklooks = [imq for q in quicklist for (imq, activitylist, description) in q]  # for HTML display purposes
+        provenance = [{'clip':str(description), 'activity':str(a), 'category':a.category(), 'train.csv':a.attributes['csvfile']} for q in quicklist for (imq, activitylist, description) in q for a in activitylist]
+        (quicklooks, provenance) = zip(*sorted([(q,p) for (q,p) in zip(quicklooks, provenance)], key=lambda x: x[1]['category']))  # sorted in category order
+        return vipy.visualize.tohtml(quicklooks, provenance, title='Charades trainset quicklooks', outfile=outfile, mindim=mindim)
+        
