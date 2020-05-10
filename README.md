@@ -15,7 +15,7 @@ VIPY provides:
 * Lazy loading of images and videos suitable for distributed procesing (e.g. spark, dask)
 * Straightforward integration into machine learning toolchains (e.g. torch, numpy)
 * Fluent interface for chaining operations on videos and images
-* Dataset download, unpack and import (e.g. ActivityNet, Kinetics)
+* Dataset download, unpack and import (e.g. Charades, AVA, ActivityNet, Kinetics)
 * Video and image web search tools with URL downloading and caching
 
 [![VIPY MEVA dataset visualization](http://i3.ytimg.com/vi/_jixHQr5dK4/maxresdefault.jpg)](https://youtu.be/_jixHQr5dK4)
