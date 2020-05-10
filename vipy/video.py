@@ -1089,8 +1089,12 @@ class Scene(VideoCategory):
         return self
 
     def categories(self):
-        """Return a set of all categories in all activities and tracks in this sccene"""
+        """Return a set of all categories in all activities and tracks in this scene"""
         return self.activity_categories().union(set([t.category() for t in self.tracks().values()]))
+
+    def labels(self, k):
+        """Return a set of labels associated with this scene at frame k"""
+        pass
 
     def activity_categories(self):
         """Return a set of all activity categories in this sccene"""
