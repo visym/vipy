@@ -55,7 +55,7 @@ class Video(object):
         self._array = None
         self._colorspace = None
         self._ffmpeg = None
-        self._framerate = None
+        self._framerate = framerate
         
         self.attributes = attributes if attributes is not None else {}
         assert filename is not None or url is not None or array is not None, 'Invalid constructor - Requires "filename", "url" or "array"'
@@ -122,7 +122,7 @@ class Video(object):
         if not self.isloaded() and self._startframe is not None:
             strlist.append('clip=(%d,%d)' % (self._startframe, self._endframe))
         if self._framerate is not None:
-            strlist.append('fps=%s' % str(self._framerate))
+            strlist.append('fps=%1.1f' % float(self._framerate))
         return str('<vipy.video: %s>' % (', '.join(strlist)))
 
     def __len__(self):
@@ -659,7 +659,7 @@ class Video(object):
         outfile = tocache(tempMP4()) if outfile is None else outfile
         premkdir(outfile)  # create output directory for this file if not exists
         framerate = framerate if framerate is not None else self._framerate
-        
+
         if verbose:
             print('[vipy.video.saveas]: Saving video "%s" ...' % outfile)                      
         try:
@@ -866,7 +866,7 @@ class VideoCategory(Video):
     along with the ability to extract a clip based on frames or seconds.
 
     """
-    def __init__(self, filename=None, url=None, framerate=30, attributes=None, category=None, array=None, colorspace=None, startframe=None, endframe=None, startsec=None, endsec=None):
+    def __init__(self, filename=None, url=None, framerate=30.0, attributes=None, category=None, array=None, colorspace=None, startframe=None, endframe=None, startsec=None, endsec=None):
         super(VideoCategory, self).__init__(url=url, filename=filename, framerate=framerate, attributes=attributes, array=array, colorspace=colorspace,
                                             startframe=startframe, endframe=endframe, startsec=startsec, endsec=endsec)
         self._category = category                
@@ -940,7 +940,7 @@ class Scene(VideoCategory):
 
     """
         
-    def __init__(self, filename=None, url=None, framerate=None, array=None, colorspace=None, category=None, tracks=None, activities=None,
+    def __init__(self, filename=None, url=None, framerate=30.0, array=None, colorspace=None, category=None, tracks=None, activities=None,
                  attributes=None, startframe=None, endframe=None, startsec=None, endsec=None):
 
         self._tracks = {}
@@ -972,7 +972,7 @@ class Scene(VideoCategory):
         if self.hasurl():
             strlist.append('url="%s"' % self.url())
         if self._framerate is not None:
-            strlist.append('fps=%s' % str(self._framerate))
+            strlist.append('fps=%1.1f' % float(self._framerate))
         if not self.isloaded() and self._startframe is not None:
             strlist.append('clip=(%d,%d)' % (self._startframe, self._endframe))
         if not self.isloaded() and self._startsec is not None:
@@ -989,17 +989,16 @@ class Scene(VideoCategory):
         """Return the vipy.image.Scene() for the vipy.video.Scene() interpolated at frame k"""
         assert isinstance(k, int), "Indexing video by frame must be integer"                
         if self.load().isloaded() and k >= 0 and k < len(self):
-            dets = [t[k] for (tid,t) in self._tracks.items() if t[k] is not None]  # track interpolation with boundary handling
+            dets = [t[k] for (tid,t) in self._tracks.items() if t[k] is not None]  # track interpolation (cloned) with boundary handling
             for d in dets:
-                for (aid, a) in self._activities.items():
+                for (aid, a) in sorted(self._activities.items(), key=lambda x: x[1].category()):  # in alphabetical activity order
                     if a.hastrack(d.attributes['trackid']) and a.during(k):
-                        # Shortlabel is displayed as "Noun Verb" during activity (e.g. Person Carry, Object Carry)
-                        # Category is set to activity label during activity (e.g. all tracks in this activity have same color)
-                        d.category(a.category())  # category label defines colors, see d.attributes['track'] for original labels 
+                        # Shortlabel is always displayed as "Noun Verbing" during activity (e.g. Person Carrying, Vehicle Turning)
+                        # If detection is associated with more than one activity, then this is "Noun Verbing1 Verbing2 ... "
                         d.shortlabel('%s %s' % (d.shortlabel(), a.shortlabel()))  # see d.attributes['track'] for original labels
                         if 'activity' not in d.attributes:
                             d.attributes['activity'] = []                            
-                        d.attributes['activity'].append(a)  # for activity correspondence
+                        d.attributes['activity'].append(a)  # for activity correspondence (if desired)
             dets = sorted(dets, key=lambda d: d.shortlabel())   # layering in video is in alphabetical order of shortlabel
             return vipy.image.Scene(array=self._array[k], colorspace=self.colorspace(), objects=dets, category=self.category())  
         elif not self.isloaded():
@@ -1011,14 +1010,27 @@ class Scene(VideoCategory):
         """Iterate over every frame of video yielding interpolated vipy.image.Scene() at the current frame"""
         self.load()
         for k in range(0, len(self)):
-            self._currentframe = k            
+            self._currentframe = k    # used only for incremental add()
             yield self.__getitem__(k)
         self._currentframe = None
 
     def frame(self, k):
-        """Alias for self[k]"""
+        """Alias for self.__getitem__[k]"""
         return self.__getitem__(k)
+
+    def frames(self):
+        """Alias for __iter__()"""
+        return self.__iter__()
     
+    def labeled_frames(self):
+        """Iterate over frames, yielding tuples (activity+object labelset, vipy.image.Scene())"""
+        self.load()
+        for k in range(0, len(self)):
+            self._currentframe = k    # used only for incremental add()
+            yield (self.labels(k), self.__getitem__(k))
+        self._currentframe = None
+        
+        
     def quicklook(self, n=9, dilate=1.5, mindim=256, fontsize=10, context=False):
         """Generate a montage of n uniformly spaced annotated frames centered on the union of the labeled boxes in the current frame to show the activity ocurring in this scene at a glance
            Montage increases rowwise for n uniformly spaced frames, starting from frame zero and ending on the last frame.  This quicklook is most useful when len(self.activities()==1)
@@ -1056,7 +1068,7 @@ class Scene(VideoCategory):
         return list(self._tracks.values())
         
     def activities(self, activities=None, id=None):
-        """Return mutable dictionary of activities"""
+        """Return mutable dictionary of activities.  All temporal alignment is relative to the current clip()."""
         if activities is None:
             return self._activities  # mutable dict
         elif id is not None:
@@ -1088,18 +1100,26 @@ class Scene(VideoCategory):
         assert all([isinstance(a, vipy.object.Activity) for a in self.activitylist()]), "Lambda function must return vipy.object.Activity"
         return self
 
+    def labels(self, k=None):
+        """Return a set of all object and activity labels in this scene, or at frame int(k)"""
+        return self.activitylabels(k).union(self.objectlabels(k))
+
     def categories(self):
-        """Return a set of all categories in all activities and tracks in this scene"""
-        return self.activity_categories().union(set([t.category() for t in self.tracks().values()]))
-
-    def labels(self, k):
-        """Return a set of labels associated with this scene at frame k"""
-        pass
-
+        """Alias for labels()"""
+        return self.labels()
+    
     def activity_categories(self):
-        """Return a set of all activity categories in this sccene"""
-        return set([a.category() for a in self.activities().values()])
-                
+        """Alias for activitylabels()"""
+        return self.activitylabels()        
+
+    def activitylabels(self, k=None):
+        """Return a set of all activity categories in this scene, or at frame k"""        
+        return set([a.category() for a in self.activities().values() if k is None or a.during(k)])
+    
+    def objectlabels(self, k=None):
+        """Return a set of all activity categories in this scene, or at frame k"""
+        return set([t.category() for t in self.tracks().values() if k is None or t.during(k)])        
+        
     def hasactivities(self):
         return len(self._activities) > 0
 
@@ -1191,18 +1211,20 @@ class Scene(VideoCategory):
         """Return a list of vipy.video.Scene() each clipped to be temporally centered on a single activity, with an optional padframes before and after.  
            The Scene() category is updated to be the activity, and only the objects participating in the activity are included.
            Activities are returned ordered in the temporal order they appear in the video.
-           The returned vipy.video.Scene() objects for each activityclip are clones of the video, with the video buffer flushed
+           The returned vipy.video.Scene() objects for each activityclip are clones of the video, with the video buffer flushed.
+           Each activityclip() is associated with each activity in the scene, and includes all other secondary activities that the objects in the primary activity also perform.  See activityclip().labels(). 
         """
         vid = self.clone(flushforward=True)
         if any([(a.endframe()-a.startframe()) <= 0 for a in vid.activities().values()]):
             warnings.warn('Filtering invalid activity clips with degenerate lengths: %s' % str([a for a in vid.activities().values() if (a.endframe()-a.startframe()) <= 0]))
-        activities = sorted([a.clone() for a in vid.activities().values() if (a.endframe()-a.startframe()) > 0], key=lambda a: a.startframe())   # only activities with at least one frame, sorted in temporal order
-        tracks = [ [t.clone() for (tid, t) in vid.tracks().items() if a.hastrack(t)] for a in activities]                         
+        primary_activities = sorted([a.clone() for a in vid.activities().values() if (a.endframe()-a.startframe()) > 0], key=lambda a: a.startframe())   # only activities with at least one frame, sorted in temporal order
+        tracks = [ [t.clone() for (tid, t) in vid.tracks().items() if a.hastrack(t)] for a in primary_activities]  # tracks associated with each primary activity (may be empty)
+        secondary_activities = [[sa.clone() for sa in primary_activities if pa.temporal_iou(sa)>0 and (len(T)==0 or any([sa.hastrack(t) for t in T]))] for (pa, T) in zip(primary_activities, tracks)]  # overlapping activities associated with each track (if any) in the primary activity
         vid._activities = {}  # for faster clone
         vid._tracks = {}      # for faster clone
         padframes = padframes if istuple(padframes) else (padframes,padframes)
-        return [vid.clone().activities(a).tracks(t).clip(startframe=max(a.startframe()-padframes[0], 0),
-                                                         endframe=(a.endframe()+padframes[1])).category(a.category()) for (a,t) in zip(activities, tracks)]
+        return [vid.clone().activities(sa).tracks(t).clip(startframe=max(pa.startframe()-padframes[0], 0),
+                                                         endframe=(pa.endframe()+padframes[1])).category(pa.category()) for (pa,sa,t) in zip(primary_activities, secondary_activities, tracks)]
 
     def trackbox(self, dilate=1.0):
         """The trackbox is the union of all track bounding boxes in the video, or the image rectangle if there are no tracks"""
@@ -1237,7 +1259,6 @@ class Scene(VideoCategory):
            This function does not perform any temporal clipping.  Use activityclip() first to split into individual activities.  
            Crops will be dilated and zeropadded if the box is outside the image rectangle.  All crops will be resized so that the maximum dimension is maxdim.
         """
-        #vid = self.activitycuboid(dilate=dilate).load()  # triggers preview and load
         vid = self.clone().load()  # triggers load        
         frames = np.stack([im.padcrop(im.boundingbox().maxsquare().dilate(dilate).int()).resize(maxdim, maxdim).numpy() for im in vid if im.boundingbox() is not None])  # track interpolation, for frames with boxes only
         if len(frames) != len(vid):
@@ -1245,11 +1266,11 @@ class Scene(VideoCategory):
         return vid.array(frames)
 
     def clip(self, startframe, endframe):
-        """Clip the video to between (startframe, endframe).  This clip is relative to cumulative clip() from the filter chain"""
-        super(Scene, self).clip(startframe, endframe)
-        self._tracks = {k:t.offset(dt=-startframe) for (k,t) in self._tracks.items()}
-        self._activities = {k:a.offset(dt=-startframe) for (k,a) in self._activities.items()}        
-        return self
+        """Clip the video to between (startframe, endframe).  This clip is relative to clip() shown by __repr__().  Return a clone of the video for idemponence"""
+        v = super(Scene, self.clone()).clip(startframe, endframe)  # clone for idemponence
+        v._tracks = {k:t.offset(dt=-startframe) for (k,t) in v._tracks.items()}   # track offset is performed here, not within activity
+        v._activities = {k:a.offset(dt=-startframe) for (k,a) in v._activities.items()}        
+        return v  
 
     def cliptime(self, startsec, endsec):
         raise NotImplementedError('use clip() instead')
@@ -1340,7 +1361,7 @@ class Scene(VideoCategory):
            Input:
              -spatial_iou_threshold:  The intersection over union threshold for an activity bounding box (the union of all tracks within the activity) to be declared to be overlapping
              -temporal_iou_threshold:  The intersection over uniion threshold for a temporal bounding box for a pair of activities to be declared overlapping
-             -strict:  REquire both scenes to share the same underlying video filename
+             -strict:  Require both scenes to share the same underlying video filename
 
            Output:
              -Updates this scene to include the non-overlapping activities from other           
@@ -1359,7 +1380,7 @@ class Scene(VideoCategory):
                     d_track_assignment[j] = i
         for (i, ti) in other.tracks().items():
             if i not in d_track_assignment:
-                self.add(ti)
+                self.add(ti)  # add tracks from other not already in this scene by assignment
                     
         d_activity_assignment = {}
         for (i,ai) in self.activities().items():
