@@ -1435,6 +1435,17 @@ class Scene(ImageCategory):
             s._objectlist = objectlist
             return s
 
+    def objectmap(self, f):
+        """Apply lambda function f to each object"""
+        self._objectlist = [f(obj)  for obj in self._objectlist]
+        assert all([isinstance(a, vipy.object.Detection) for a in self.objects()]), "Lambda function must return vipy.object.Detection"
+        return self
+
+    def objectfilter(self, f):
+        """Apply lambda function f to each object and keep if filter is True"""
+        self._objectlist = [obj for obj in self._objectlist if f(obj) is True]
+        return self
+    
     def boundingbox(self):
         """The boundingbox of a scene is the union of all object bounding boxes, or None if there are no objects"""
         boxes = self.objects()
@@ -1561,30 +1572,30 @@ class Scene(ImageCategory):
         return immask
 
     def show(self, categories=None, figure=None, nocaption=False, nocaption_withstring=[], fontsize=10, boxalpha=0.25, d_category2color={'Person':'green', 'Vehicle':'blue', 'Object':'red'}, captionoffset=(0,0), nowindow=False, textfacecolor='white', textfacealpha=1.0, shortlabel=True):
-        """Show scene detection with an optional subset of categories
+        """Show scene detection 
 
+           * categories [list]:  List of category (or shortlabel) names in the scene to show
            * fontsize (int, string): Size of the font, fontsize=int for points, fontsize='NN:scaled' to scale the font relative to the image size
            * figure (int): Figure number, show the image in the provided figure=int numbered window
            * nocaption (bool):  Show or do not show the text caption in the upper left of the box 
            * nocaption_withstring (list):  Do not show captions for those detection categories (or shortlabels) containing any of the strings in the provided list
            * boxalpha (float, [0,1]):  Set the text box background to be semi-transparent with an alpha
-           * d_category2color (dict):  Define a dictionary of required mapping of specific category() to box colors.  Non-specified categories are assigned a random color.
+           * d_category2color (dict):  Define a dictionary of required mapping of specific category() to box colors.  Non-specified categories are assigned a random named color from vipy.show.colorlist()
            * caption_offset (int, int): The relative position of the caption to the upper right corner of the box.
            * nowindow (bool):  Display or not display the image
            * textfacecolor (str): One of the named colors from vipy.show.colorlist() for the color of the textbox background
            * textfacealpha (float, [0,1]):  The textbox background transparency
-           * shortlabel (bool):  Whether to show the shortlabel or long category label in the caption
+           * shortlabel (bool):  Whether to show the shortlabel or the full category name in the caption
 
         """
-        valid_categories = sorted(self.categories() if categories is None else tolist(categories))  # subset of categories to show
-        valid_detections = [obj for obj in self._objectlist if obj.category() in valid_categories]  # subset of detections with valid category
-        valid_detections = [obj.imclip(self.numpy()) for obj in self._objectlist if obj.hasoverlap(self.numpy())]  # Within image rectangle
-        colors = colorlist()
-        d_categories2color = {c:colors[int(hashlib.sha1(c.encode('utf-8')).hexdigest(), 16) % len(colors)] for c in valid_categories}  # consistent color mapping
-        d_categories2color.update(d_category2color)   # Requested color mapping
-        detection_color = [d_categories2color[im.category()] for im in valid_detections]
-        valid_detections = [obj.clone().category(obj.shortlabel()) for obj in valid_detections] if shortlabel else valid_detections  # Display name
-        valid_detections = [d if not any([c in d.category() for c in tolist(nocaption_withstring)]) else d.nocategory() for d in valid_detections]
+        colors = colorlist()        
+        valid_detections = [obj.clone() for obj in self._objectlist if categories is None or obj.category() in tolist(categories)]  # Detections with valid category
+        valid_detections = [obj.imclip(self.numpy()) for obj in valid_detections if obj.hasoverlap(self.numpy())]  # Detections within image rectangle
+        valid_detections = [obj.category(obj.shortlabel()) for obj in valid_detections] if shortlabel else valid_detections  # Display name as shortlabel?               
+        valid_detections = [d if not any([c in d.category() for c in tolist(nocaption_withstring)]) else d.nocategory() for d in valid_detections]  # Detections requested to show without caption
+        d_categories2color = {d.category():colors[int(hashlib.sha1(d.category().split(' ')[-1].encode('utf-8')).hexdigest(), 16) % len(colors)] for d in valid_detections}   # consistent color mapping by category suffix (space separated)
+        d_categories2color.update(d_category2color)  # requested color mapping
+        detection_color = [d_categories2color[d.category()] for d in valid_detections]                
         imdisplay = self.clone().rgb() if self.colorspace() != 'rgb' else self  # convert to RGB for show() if necessary
         fontsize_scaled = float(fontsize.split(':')[0])*(min(imdisplay.shape())/640.0) if isstring(fontsize) else fontsize
         vipy.show.imdetection(imdisplay._array, valid_detections, bboxcolor=detection_color, textcolor=detection_color, fignum=figure, do_caption=(nocaption==False), facealpha=boxalpha, fontsize=fontsize_scaled,
@@ -1625,7 +1636,8 @@ def RandomScene(rows=None, cols=None):
     im = RandomImage(rows, cols)
     (rows, cols) = im.shape()
     ims = Scene(array=im.array(), colorspace='rgb', category='scene', objects=[vipy.object.Detection('obj%d' % k, xmin=np.random.randint(0,cols - 16), ymin=np.random.randint(0,rows - 16),
-                                                                                   width=np.random.randint(16,cols), height=np.random.randint(16,rows))
-                                                             for k in range(0,16)])
+                                                                                                     width=np.random.randint(16,cols), height=np.random.randint(16,rows))
+                                                                               for k in range(0,16)])
     return ims
     
+

@@ -55,7 +55,7 @@ class Video(object):
         self._array = None
         self._colorspace = None
         self._ffmpeg = None
-        self._framerate = None
+        self._framerate = framerate
         
         self.attributes = attributes if attributes is not None else {}
         assert filename is not None or url is not None or array is not None, 'Invalid constructor - Requires "filename", "url" or "array"'
@@ -659,7 +659,7 @@ class Video(object):
         outfile = tocache(tempMP4()) if outfile is None else outfile
         premkdir(outfile)  # create output directory for this file if not exists
         framerate = framerate if framerate is not None else self._framerate
-        
+
         if verbose:
             print('[vipy.video.saveas]: Saving video "%s" ...' % outfile)                      
         try:
@@ -866,7 +866,7 @@ class VideoCategory(Video):
     along with the ability to extract a clip based on frames or seconds.
 
     """
-    def __init__(self, filename=None, url=None, framerate=30, attributes=None, category=None, array=None, colorspace=None, startframe=None, endframe=None, startsec=None, endsec=None):
+    def __init__(self, filename=None, url=None, framerate=30.0, attributes=None, category=None, array=None, colorspace=None, startframe=None, endframe=None, startsec=None, endsec=None):
         super(VideoCategory, self).__init__(url=url, filename=filename, framerate=framerate, attributes=attributes, array=array, colorspace=colorspace,
                                             startframe=startframe, endframe=endframe, startsec=startsec, endsec=endsec)
         self._category = category                
@@ -940,7 +940,7 @@ class Scene(VideoCategory):
 
     """
         
-    def __init__(self, filename=None, url=None, framerate=None, array=None, colorspace=None, category=None, tracks=None, activities=None,
+    def __init__(self, filename=None, url=None, framerate=30.0, array=None, colorspace=None, category=None, tracks=None, activities=None,
                  attributes=None, startframe=None, endframe=None, startsec=None, endsec=None):
 
         self._tracks = {}
@@ -993,13 +993,11 @@ class Scene(VideoCategory):
             for d in dets:
                 for (aid, a) in self._activities.items():
                     if a.hastrack(d.attributes['trackid']) and a.during(k):
-                        # Shortlabel is displayed as "Noun Verb" during activity (e.g. Person Carry, Object Carry)
-                        # Category is set to activity label during activity (e.g. all tracks in this activity have same color)
-                        d.category(a.category())  # category label defines colors, see d.attributes['track'] for original labels 
+                        # Shortlabel is always displayed as "Noun Verbing" during activity (e.g. Person Carrying, Vehicle Turning)
                         d.shortlabel('%s %s' % (d.shortlabel(), a.shortlabel()))  # see d.attributes['track'] for original labels
                         if 'activity' not in d.attributes:
                             d.attributes['activity'] = []                            
-                        d.attributes['activity'].append(a)  # for activity correspondence
+                        d.attributes['activity'].append(a)  # for activity correspondence (if desired)
             dets = sorted(dets, key=lambda d: d.shortlabel())   # layering in video is in alphabetical order of shortlabel
             return vipy.image.Scene(array=self._array[k], colorspace=self.colorspace(), objects=dets, category=self.category())  
         elif not self.isloaded():
@@ -1011,14 +1009,27 @@ class Scene(VideoCategory):
         """Iterate over every frame of video yielding interpolated vipy.image.Scene() at the current frame"""
         self.load()
         for k in range(0, len(self)):
-            self._currentframe = k            
+            self._currentframe = k    # used only for incremental add()
             yield self.__getitem__(k)
         self._currentframe = None
 
     def frame(self, k):
-        """Alias for self[k]"""
+        """Alias for self.__getitem__[k]"""
         return self.__getitem__(k)
+
+    def frames(self):
+        """Alias for __iter__()"""
+        return self.__iter__()
     
+    def labeled_frames(self):
+        """Iterate over frames, yielding tuples (activity+object labelset, vipy.image.Scene())"""
+        self.load()
+        for k in range(0, len(self)):
+            self._currentframe = k    # used only for incremental add()
+            yield (self.activitylabels(k).union(self.objectlabels(k)), self.__getitem__(k))
+        self._currentframe = None
+        
+        
     def quicklook(self, n=9, dilate=1.5, mindim=256, fontsize=10, context=False):
         """Generate a montage of n uniformly spaced annotated frames centered on the union of the labeled boxes in the current frame to show the activity ocurring in this scene at a glance
            Montage increases rowwise for n uniformly spaced frames, starting from frame zero and ending on the last frame.  This quicklook is most useful when len(self.activities()==1)
@@ -1088,14 +1099,26 @@ class Scene(VideoCategory):
         assert all([isinstance(a, vipy.object.Activity) for a in self.activitylist()]), "Lambda function must return vipy.object.Activity"
         return self
 
-    def categories(self):
-        """Return a set of all categories in all activities and tracks in this sccene"""
-        return self.activity_categories().union(set([t.category() for t in self.tracks().values()]))
+    def labels(self):
+        """Return a set of all object and activity labels in this scene, or at frame int(k)"""
+        return self.activitylabels().union(self.objectlabels())
 
+    def categories(self):
+        """Alias for labels()"""
+        return self.labels(self)
+    
     def activity_categories(self):
-        """Return a set of all activity categories in this sccene"""
-        return set([a.category() for a in self.activities().values()])
-                
+        """Alias for activitylabels()"""
+        return self.activitylabels()        
+
+    def activitylabels(self, k=None):
+        """Return a set of all activity categories in this scene, or at frame k"""        
+        return set([a.category() for a in self.activities().values() if k is None or a.during(k)])
+    
+    def objectlabels(self, k=None):
+        """Return a set of all activity categories in this scene, or at frame k"""
+        return set([t.category() for t in self.tracks().values() if k is None or t.during(k)])        
+        
     def hasactivities(self):
         return len(self._activities) > 0
 
