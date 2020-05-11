@@ -35,6 +35,7 @@ class KF1(object):
         assert os.path.exists(os.path.join(self.videodir, 'drop-01')), "Invalid input - videodir must contain the drop-01, drop-02 and drop-03 subdirectories.  See http://mevadata.org/#getting-data"
         assert os.path.exists(os.path.join(self.repodir, 'annotation')), "Invalid input - repodir must contain the clone of https://gitlab.kitware.com/meva/meva-data-repo"
 
+        # Shortlabels are optional and used for showing labels on videos only
         self._d_category_to_shortlabel = {'person_abandons_package':'Abandoning',
                                           'person_closes_facility_door':'Closing',
                                           'person_closes_trunk':'Closing trunk',
@@ -72,48 +73,7 @@ class KF1(object):
                                           'vehicle_turns_left':'Turning left',
                                           'vehicle_turns_right':'Turning right',
                                           'vehicle_makes_u_turn':'Turning around'}
-        self._d_category_to_shortlabel = {k:v.lower() for (k,v) in self._d_category_to_shortlabel.items()}
-        
-        self._d_oldcategory_to_shortlabel = {'Closing_Trunk':'Closing',
-                                             'Open_Trunk':'Opening',
-                                             'Riding':'Riding',
-                                             'Talking':'Talking',
-                                             'person_talks_to_person':'Talking',                                          
-                                             'Transport_HeavyCarry':'Carrying',
-                                             'Unloading':'Unloading',
-                                             'abandon_package':'Abandoning',
-                                             'hand_interaction':'Using Hand',
-                                             'object_transfer':'Transferring',
-                                             'person_closes_facility_door':'Closing',
-                                             'person_closes_vehicle_door':'Closing',
-                                             'person_enters_through_structure':'Entering',
-                                             'person_enters_vehicle':'Entering',
-                                             'person_exits_through_structure':'Exiting',                                          
-                                             'person_exits_vehicle':'Exiting',
-                                             'person_laptop_interaction':'Interacting',
-                                             'person_loads_vehicle':'Loading',
-                                             'person_opens_facility_door':'Opening',
-                                             'person_opens_vehicle_door':'Opening',
-                                             'person_person_embrace':'Hugging',
-                                             'person_picks_up_object':'Picking up',
-                                             'person_purchasing':'Purchasing',
-                                             'person_reading_document':'Reading',
-                                             'person_sets_down_object':'Setting down',
-                                             'person_sitting_down':'Sitting',
-                                             'person_standing_up':'Standing',
-                                             'person_stands_up':'Standing',                                          
-                                             'specialized_talking_phone':'Talking',
-                                             'specialized_texting_phone':'Texting',    
-                                             'theft':'Theft',
-                                             'vehicle_drops_off_person':'Dropping off',
-                                             'vehicle_picks_up_person':'Picking up',
-                                             'vehicle_reversing':'Reversing', 
-                                             'vehicle_starting':'Starting',
-                                             'vehicle_stopping':'Stopping',
-                                             'vehicle_turning_left':'Turning left',
-                                             'vehicle_turning_right':'Turning right',
-                                             'vehicle_u_turn':'Turning around'}
-
+        self._d_category_to_shortlabel = {k:v.lower() for (k,v) in self._d_category_to_shortlabel.items()}        
         self._d_oldcategory_to_newcategory = {k:v for (k,v) in readcsv(os.path.join(self.repodir, 'documents', 'activity-name-mapping.csv'))[1:]}
 
         d_category_to_shortlabel = d_category_to_shortlabel if d_category_to_shortlabel is not None else self._d_category_to_shortlabel
@@ -126,13 +86,25 @@ class KF1(object):
             if len(yamlfiles) > 100 and vipy.globals.num_workers() == 1: 
                 print('[vipy.dataset.meva.KF1]: This takes a while since parsing YAML files in python is painfully slow, consider calling "vipy.globals.num_workers(8)" before loading the dataset for parallel parsing')
 
+        # Parallel video annotation
         if vipy.globals.num_workers() > 1:
             from vipy.batch import Batch
             self._vidlist = Batch(list(yamlfiles)).map(lambda tga: self._parse_video(d_videoname_to_path, d_category_to_shortlabel, tga[0], tga[1], tga[2], stride=stride, verbose=verbose))
         else:
             self._vidlist = [self._parse_video(d_videoname_to_path, d_category_to_shortlabel, t, g, a, stride=stride, verbose=verbose) for (t,g,a) in yamlfiles]
-        self._vidlist = [v for v in self._vidlist if v is not None] 
-        
+
+        # Merge activities and tracks across YAML files for same video, using temporal and spatial IoU association
+        self._vidlist = [v for v in self._vidlist if v is not None]
+        d_videofile_to_mergedvideo = {}
+        for (f, vidlist) in groupbyasdict(self._vidlist, lambda v: v.filename()).items():
+            if f not in d_videofile_to_mergedvideo:
+                d_videofile_to_mergedvideo[f] = vidlist[0]
+            for v in vidlist[1:]:
+                d_videofile_to_mergedvideo[f].union(v, temporal_iou_threshold=0.5, spatial_iou_threshold=0.5)
+
+        # Final deduped/merged videolist, one per video
+        self._vidlist = list(d_videofile_to_mergedvideo.values())                            
+            
     def __getitem__(self, k):
         return self._vidlist[k]
 

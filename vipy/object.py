@@ -468,7 +468,7 @@ class Activity(object):
     def offset(self, dt):
         self._startframe = self._startframe + dt
         self._endframe = self._endframe + dt
-        self._tracks = {ti:t.offset(dt=dt) for (ti,t) in self._tracks.items()}
+        #self._tracks = {ti:t.offset(dt=dt) for (ti,t) in self._tracks.items()}  # Assume that track owner will update tracks, we hold a mutable reference
         return self
     
     def id(self):
@@ -487,3 +487,10 @@ class Activity(object):
     def clone(self):
         return copy.deepcopy(self)
     
+    def temporalpad(self, df):
+        """Add a temporal pad of df frames before and after the activity.  The padded start frame may be negative."""
+        assert isinstance(df, int)
+        self._startframe -= df
+        self._endframe += df
+        return self
+
