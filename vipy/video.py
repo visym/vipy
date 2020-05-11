@@ -501,7 +501,7 @@ class Video(object):
         # Increase filter chain from load() kwargs
         assert (startframe is not None and startframe is not None) or (startframe is None and endframe is None), "(startframe, endframe) must both be provided"
         if startframe is not None and endframe is not None:   
-            self.clip(startframe, endframe)  # clip first
+            self = self.clip(startframe, endframe)  # clip first
         assert not (rescale is not None and mindim is not None), "mindim and rescale cannot both be provided, choose one or the other, or neither"            
         if mindim is not None:
             self.mindim(mindim)   # resize second
