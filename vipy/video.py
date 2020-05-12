@@ -1273,7 +1273,8 @@ class Scene(VideoCategory):
     def clip(self, startframe, endframe):
         """Clip the video to between (startframe, endframe).  This clip is relative to clip() shown by __repr__().  Return a clone of the video for idemponence"""
         v = super(Scene, self.clone()).clip(startframe, endframe)  # clone for idemponence
-        v._tracks = {k:t.offset(dt=-startframe) for (k,t) in v._tracks.items()}   # track offset is performed here, not within activity
+        v._tracks = {k:t.offset(dt=-startframe) for (k,t) in v._tracks.items()}   # track offset is performed here, not within activity, check that all tracks referenced in activity are here
+        assert all([tid in v._tracks for a in self.activitylist() for (tid,t) in a.tracks().items()]), "All tracks referenced in the activity must also be added to the scene so that clip can correctly trim both annotations and video"
         v._activities = {k:a.offset(dt=-startframe) for (k,a) in v._activities.items()}        
         return v  
 
