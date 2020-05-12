@@ -991,15 +991,16 @@ class Scene(VideoCategory):
         if self.load().isloaded() and k >= 0 and k < len(self):
             dets = [t[k] for (tid,t) in self._tracks.items() if t[k] is not None]  # track interpolation (cloned) with boundary handling
             for d in dets:
+                shortlabel = [(d.shortlabel(),'')]  # [(Noun, Verbing1), (Noun, Verbing2), ...]
                 for (aid, a) in sorted(self._activities.items(), key=lambda x: x[1].category()):  # in alphabetical activity order
                     if a.hastrack(d.attributes['trackid']) and a.during(k):
                         # Shortlabel is always displayed as "Noun Verbing" during activity (e.g. Person Carrying, Vehicle Turning)
-                        # If detection is associated with more than one activity, then this is "Noun Verbing1 Verbing2 (e.g. Person Entering Closing) ... "
-                        if a.shortlabel() not in d.shortlabel():  # activity captioned once
-                            d.shortlabel('%s %s' % (d.shortlabel(), a.shortlabel()))  
+                        # If detection is associated with more than one activity, then this is "Noun Verbing1 \n Noun Verbing2 (e.g. Person Entering\nPerson Closing) ... "
+                        shortlabel.append( (d.shortlabel(), a.shortlabel()) )
                         if 'activity' not in d.attributes:
                             d.attributes['activity'] = []                            
                         d.attributes['activity'].append(a)  # for activity correspondence (if desired)
+                d.shortlabel( '\n'.join([('%s %s' % (n,v)).strip() for (n,v) in sorted(set(shortlabel[0 if len(shortlabel)==1 else 1:]))]))  # sorted order in caption
             dets = sorted(dets, key=lambda d: d.shortlabel())   # layering in video is in alphabetical order of shortlabel
             return vipy.image.Scene(array=self._array[k], colorspace=self.colorspace(), objects=dets, category=self.category())  
         elif not self.isloaded():
