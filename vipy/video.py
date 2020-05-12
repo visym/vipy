@@ -1091,9 +1091,14 @@ class Scene(VideoCategory):
              vid = vid.activityfilter(lambda a: a.category() in set(['category1', 'category2']))
        
         """
-        self._activities = {k:a for (k,a) in self._activities.items() if f(a)}
+        self._activities = {k:a for (k,a) in self._activities.items() if f(a) == True}
         return self
         
+    def trackfilter(self, f):
+        """Apply lambda function f to each object and keep if filter is True"""
+        self._tracks = {k:t for (k,t) in self._tracks.items() if f(t) == True} 
+        return self
+
     def activitymap(self, f):
         """Apply lambda function f to each activity"""
         self._activities = {k:f(a) for (k,a) in self._activities.items()}
@@ -1373,24 +1378,22 @@ class Scene(VideoCategory):
         if strict:
             assert self.filename() == other.filename(), "Invalid input - Scenes must have the same underlying video.  Disable this with strict=False."
 
-        d_track_assignment = {}
+        # Dedupe
+        duplicateid = []
+        otherclone = other.clone()   # do not change other, make a copy
         for (i,ti) in self.tracks().items():
-            for (j,tj) in other.tracks().items():
-                if ti.category() == tj.category() and ti.iou(tj) > spatial_iou_threshold:
-                    d_track_assignment[j] = i
-        for (i, ti) in other.tracks().items():
-            if i not in d_track_assignment:
-                self.add(ti)  # add tracks from other not already in this scene by assignment
-                    
-        d_activity_assignment = {}
+            for (j,tj) in otherclone.tracks().items():
+                if ti.category() == tj.category() and ti.iou(tj) > spatial_iou_threshold:                    
+                    otherclone.activitymap(lambda a: a.replace(tj, ti))  # replace duplicate track
+                    otherclone.trackfilter(lambda t: t.id() != j)  # keep if not duplicate track
         for (i,ai) in self.activities().items():
-            for (j,aj) in other.activities().items():
+            for (j,aj) in otherclone.activities().items():
                 if ai.categories() == aj.categories() and ai.temporal_iou(aj) > temporal_iou_threshold and ai.spatial_iou(aj) > spatial_iou_threshold:
-                    d_activity_assignment[j] = i
-        for (j, aj) in other.activities().items():                    
-            if j not in d_activity_assignment:
-                self.add(aj)  # this groups the tracks in referenced in aj, and does not reassign tracks in the union
-                
+                    otherclone.activityfilter(lambda a: a.id() != j)  # keep if not duplicate activity
+
+        # Union
+        self.tracks().update(otherclone.tracks())
+        self.activities().update(otherclone.activities())
         return self
     
     def annotate(self, verbose=True, fontsize=10, captionoffset=(0,0), textfacecolor='white', textfacealpha=1.0, shortlabel=True, boxalpha=0.25, d_category2color={'Person':'green', 'Vehicle':'blue', 'Object':'red'}, categories=None, nocaption=False, nocaption_withstring=[]):

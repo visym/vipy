@@ -439,7 +439,15 @@ class Activity(object):
         assert isstring(track) or isinstance(track, Track), "Invalid input - Must be a vipy.object.Track().id() or vipy.object.Track()"
         trackid = track.id() if isinstance(track, Track) else track
         return any([tid == trackid for tid in self._tracks.keys()])
-            
+
+    def replace(self, oldtrack, newtrack):
+        """Replace oldtrack with newtrack if present in self._tracks."""
+        assert isinstance(oldtrack, Track) and isinstance(newtrack, Track), "Invalid input - must be vipy.object.Track"        
+        if oldtrack.id() in self._tracks:
+            self._tracks = {k:v for (k,v) in self._tracks.items() if k != oldtrack.id()}   # remove oldtrack
+            self._tracks.update( {newtrack.id():newtrack} )  # add newtrack
+        return self
+
     def during(self, frame):
         """Is frame during the time interval (startframe, endframe) inclusive?"""
         return int(frame) >= self._startframe and int(frame) <= self._endframe
