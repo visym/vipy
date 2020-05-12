@@ -232,7 +232,7 @@ class KF1(object):
                 
                 startframe = int(v['act']['timespan'][0]['tsr0'][0])
                 endframe = int(v['act']['timespan'][0]['tsr0'][1])
-                actorid = [x['id1'] for x in v['act']['actors']]  # actorid[0] has role of primary actor performing activity, other actorsid[1:] are secondary actors (e.g. bags, objects, other people)
+                actorid = [x['id1'] for x in v['act']['actors']]  
 
                 for aid in actorid:
                     if not aid in d_id1_to_track:

@@ -994,8 +994,8 @@ class Scene(VideoCategory):
                 for (aid, a) in sorted(self._activities.items(), key=lambda x: x[1].category()):  # in alphabetical activity order
                     if a.hastrack(d.attributes['trackid']) and a.during(k):
                         # Shortlabel is always displayed as "Noun Verbing" during activity (e.g. Person Carrying, Vehicle Turning)
-                        # If detection is associated with more than one activity, then this is "Noun Verbing1 Verbing2 ... "
-                        if a.shortlabel() not in d.shortlabel():  # displayed once
+                        # If detection is associated with more than one activity, then this is "Noun Verbing1 Verbing2 (e.g. Person Entering Closing) ... "
+                        if a.shortlabel() not in d.shortlabel():  # activity captioned once
                             d.shortlabel('%s %s' % (d.shortlabel(), a.shortlabel()))  
                         if 'activity' not in d.attributes:
                             d.attributes['activity'] = []                            
@@ -1224,13 +1224,13 @@ class Scene(VideoCategory):
         if any([(a.endframe()-a.startframe()) <= 0 for a in vid.activities().values()]):
             warnings.warn('Filtering invalid activity clips with degenerate lengths: %s' % str([a for a in vid.activities().values() if (a.endframe()-a.startframe()) <= 0]))
         primary_activities = sorted([a.clone() for a in vid.activities().values() if (a.endframe()-a.startframe()) > 0], key=lambda a: a.startframe())   # only activities with at least one frame, sorted in temporal order
-        tracks = [ [t.clone() for (tid, t) in vid.tracks().items() if a.hastrack(t)] for a in primary_activities]  # tracks associated with each primary activity (may be empty), first track is always actor performing primary activity
-        secondary_activities = [[sa.clone() for sa in primary_activities if (pa.temporal_iou(sa)>0 and (len(T)==0 or sa.hastrack(T[0])))] for (pa, T) in zip(primary_activities, tracks)]  # overlapping secondary activities also performed by this actor
+        tracks = [ [t.clone() for (tid, t) in vid.tracks().items() if a.hastrack(t)] for a in primary_activities]  # tracks associated with each primary activity (may be empty)
+        secondary_activities = [[sa.clone() for sa in primary_activities if (pa.temporal_iou(sa)>0 and pa.temporal_iou(sa)<1 and (len(T)==0 or any([sa.hastrack(t) for t in T])))] for (pa, T) in zip(primary_activities, tracks)]  # overlapping secondary activities that includes any track in the primary activity
         vid._activities = {}  # for faster clone
         vid._tracks = {}      # for faster clone
         padframes = padframes if istuple(padframes) else (padframes,padframes)
-        return [vid.clone().activities(sa).tracks(t).clip(startframe=max(pa.startframe()-padframes[0], 0),
-                                                         endframe=(pa.endframe()+padframes[1])).category(pa.category()) for (pa,sa,t) in zip(primary_activities, secondary_activities, tracks)]
+        return [vid.clone().activities([pa]+sa).tracks(t).clip(startframe=max(pa.startframe()-padframes[0], 0),
+                                                               endframe=(pa.endframe()+padframes[1])).category(pa.category()) for (pa,sa,t) in zip(primary_activities, secondary_activities, tracks)]
 
     def trackbox(self, dilate=1.0):
         """The trackbox is the union of all track bounding boxes in the video, or the image rectangle if there are no tracks"""
