@@ -445,12 +445,10 @@ class Activity(object):
         return int(frame) >= self._startframe and int(frame) <= self._endframe
 
     def spatial_iou(self, other):
-        """Return the mean spatial intersection over union of two activities as the mean spatial IoU for the union of tracks at each frame during (startframe, endframe)
-           Note that we cannot do the IoU of individual tracks because there is no way to correspond tracks within an activity, since an activity may have more than one 
-           track with the same category.  
-        """
+        """Return the mean spatial intersection over union of two activities as the mean spatial IoU for the framewise activity boundingbox()"""
         assert isinstance(other, Activity), "Invalid input - must be vipy.object.Activity()"
-        return np.mean([bbi.union(self[k]).iou(bbj.union(other[k])) if (bbj is not None and bbi is not None) else 0.0 for k in range(self.startframe(), self.endframe()) for bbi in self[k] for bbj in other[k]])
+        return np.mean([self.boundingbox(k).iou(other.boundingbox(k)) if (self.boundingbox(k) is not None and other.boundingbox(k) is not None) else 0.0
+                        for k in range(self.startframe(), self.endframe())])
 
     def temporal_iou(self, other):
         """Return the temporal intersection over union of two activities"""
@@ -474,10 +472,12 @@ class Activity(object):
     def id(self):
         return self._id
 
-    def boundingbox(self):
-        """The bounding box of an activity is the smallest bounding box for all tracks in the activity (inclusive of start and endframes), or None of there are no boxes""" 
-        boxes = [t.clone().clip(self.startframe(), self.endframe()+1).boundingbox() for (i,t) in self.tracks().items()]
-        return boxes[0].clone().union(boxes[1:]) if len(boxes)>0 else None
+    def boundingbox(self, frame=None):
+        """The bounding box of an activity is the smallest bounding box for all tracks in the activity (inclusive of start and endframes), or None of there are no boxes.
+           If frame=k, then return the boundingbox for the activity at frame k
+        """ 
+        boxes = [t.clone().clip(self.startframe(), self.endframe()+1).boundingbox() for (i,t) in self.tracks().items()] if frame is None else self.__getitem__(frame)
+        return boxes[0].clone().union(boxes[1:]) if boxes is not None and len(boxes)>0 else None
 
     def imagebox(self, width, height):
         """The image box of an activity is the smallest bounding box for all tracks in the activity (inclusive of start and endframes) that is within the image rectangle (width, height), or None if there are no boxes""" 
