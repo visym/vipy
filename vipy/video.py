@@ -1364,11 +1364,11 @@ class Scene(VideoCategory):
     def union(self, other, temporal_iou_threshold=0.5, spatial_iou_threshold=0.5, strict=True):
         """Compute the union two scenes as the set of unique activities.  
 
-           A pair of activities is non-unique if they overlap spatially and temporally by a given IoU threshold.      
+           A pair of activities or tracks are non-unique if they overlap spatially and temporally by a given IoU threshold.  Note that this does not merge tracks or activities.
   
            Input:
-             -spatial_iou_threshold:  The intersection over union threshold for an activity bounding box (the union of all tracks within the activity) to be declared to be overlapping
-             -temporal_iou_threshold:  The intersection over uniion threshold for a temporal bounding box for a pair of activities to be declared overlapping
+             -spatial_iou_threshold:  The intersection over union threshold for an activity bounding box (the union of all tracks within the activity) to be declared duplicates
+             -temporal_iou_threshold:  The intersection over union threshold for a temporal bounding box for a pair of activities to be declared duplicates
              -strict:  Require both scenes to share the same underlying video filename
 
            Output:

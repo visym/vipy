@@ -97,6 +97,9 @@ class KF1(object):
         self._vidlist = [v for v in self._vidlist if v is not None]
 
         # Merge and dedupe activities and tracks across YAML files for same video, using temporal and spatial IoU association
+        # The MEVA dataset is "activity-centric" so that each activity is labeled independenty.  There may be tracks in the dataset
+        # that are the same instance in the video, but are different track IDs in the dataset.  The result is disjoint activity labels in a non-disjoint activity in a video.  Yuck..
+        # Try to merge them.  This is experimental, since it tries to use IoU for merging, which does not work in general.  This requires global track correspondence.
         if merge:
             d_videofile_to_mergedvideo = {}
             for (f, vidlist) in groupbyasdict(self._vidlist, lambda v: v.filename()).items():
