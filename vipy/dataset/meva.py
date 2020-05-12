@@ -12,7 +12,7 @@ import vipy.globals
 
 
 class KF1(object):
-    def __init__(self, videodir, repodir, contrib=False, stride=1, verbose=True, n_videos=None, d_category_to_shortlabel=None):
+    def __init__(self, videodir, repodir, contrib=False, stride=1, verbose=True, n_videos=None, d_category_to_shortlabel=None, merge=False):
         """Parse MEVA annotations (http://mevadata.org) for KNown Facility 1 dataset into vipy.video.Scene() objects
        
         Kwiver packet format: https://gitlab.kitware.com/meva/meva-data-repo/blob/master/documents/KPF-specification-v4.pdf
@@ -27,6 +27,8 @@ class KF1(object):
             performing the activity.  When an activity occurs, the set of objects are labeled with the same color as 'Noun Verbing' (e.g. 'Person Entering', 
             'Person Reading', 'Vehicle Starting') where 'Verbing' is provided by the shortlabel.   This is optional, and will use the default mapping if None
           -verbose=bool:  Parsing verbosity
+          -merge:  deduplicate annotations for each video across YAML files by merging them by mean spatial IoU per track (>0.5) and temporal IoU (>0)
+
         """
         
         self.videodir = videodir
@@ -92,18 +94,19 @@ class KF1(object):
             self._vidlist = Batch(list(yamlfiles)).map(lambda tga: self._parse_video(d_videoname_to_path, d_category_to_shortlabel, tga[0], tga[1], tga[2], stride=stride, verbose=verbose))
         else:
             self._vidlist = [self._parse_video(d_videoname_to_path, d_category_to_shortlabel, t, g, a, stride=stride, verbose=verbose) for (t,g,a) in yamlfiles]
-
-        # Merge activities and tracks across YAML files for same video, using temporal and spatial IoU association
         self._vidlist = [v for v in self._vidlist if v is not None]
-        d_videofile_to_mergedvideo = {}
-        for (f, vidlist) in groupbyasdict(self._vidlist, lambda v: v.filename()).items():
-            if f not in d_videofile_to_mergedvideo:
-                d_videofile_to_mergedvideo[f] = vidlist[0]
-            for v in vidlist[1:]:
-                d_videofile_to_mergedvideo[f].union(v, temporal_iou_threshold=0.5, spatial_iou_threshold=0.5)
 
-        # Final deduped/merged videolist, one per video
-        self._vidlist = list(d_videofile_to_mergedvideo.values())                            
+        # Merge and dedupe activities and tracks across YAML files for same video, using temporal and spatial IoU association
+        if merge:
+            d_videofile_to_mergedvideo = {}
+            for (f, vidlist) in groupbyasdict(self._vidlist, lambda v: v.filename()).items():
+                if len(vidlist)>0 and f not in d_videofile_to_mergedvideo:
+                    d_videofile_to_mergedvideo[f] = vidlist[0]
+                for v in vidlist[1:]:
+                    d_videofile_to_mergedvideo[f].union(v, temporal_iou_threshold=0, spatial_iou_threshold=0.5)  # same category, any temporal overlap, stricter spatial overlap
+
+            # Final deduped/merged videolist, one per video
+            self._vidlist = list(d_videofile_to_mergedvideo.values())                            
             
     def __getitem__(self, k):
         return self._vidlist[k]
@@ -229,14 +232,14 @@ class KF1(object):
                 
                 startframe = int(v['act']['timespan'][0]['tsr0'][0])
                 endframe = int(v['act']['timespan'][0]['tsr0'][1])
-                actorid = [x['id1'] for x in v['act']['actors']]
+                actorid = [x['id1'] for x in v['act']['actors']]  # actorid[0] has role of primary actor performing activity, other actorsid[1:] are secondary actors (e.g. bags, objects, other people)
 
                 for aid in actorid:
                     if not aid in d_id1_to_track:
                         print('[vipy.dataset.meva.KF1]: ActorID %d referenced in activity yaml "%s" not found in geom yaml "%s" - Skipping' % (aid, delpath(self.repodir, act_yamlfile), delpath(self.repodir, geom_yamlfile)))
                 
                 # Add activity to scene:  include YAML file details in activity attributes for provenance if there are labeling bugs
-                tracks = {d_id1_to_track[aid].id():d_id1_to_track[aid] for aid in actorid if aid in d_id1_to_track}
+                tracks = {d_id1_to_track[aid].id():d_id1_to_track[aid] for aid in actorid if aid in d_id1_to_track}  # order preserving (python 3.6)
                 if len(tracks) > 0:
                     try:
                         vid.add(Activity(category=category, shortlabel=d_category_to_shortlabel[category],
