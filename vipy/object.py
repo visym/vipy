@@ -330,7 +330,7 @@ class Track(object):
         assert n is None or n >= 1
         assert dt >= 1
         dt = max(1, int(len(self)/n) if n is not None else dt)
-        frames = [self.startframe()] + list(range(self.startframe()+dt, self.endframee(), dt)) + [self.endframe()]
+        frames = [self.startframe()] + list(range(self.startframe()+dt, self.endframe(), dt)) + [self.endframe()]
         return np.mean(sorted([self[k].iou(other[k]) if (self.during(k) and other.during(k)) else 0.0 for k in frames])[-rank:])
 
     def percentileiou(self, other, percentile, dt=1, n=None):
@@ -494,7 +494,7 @@ class Activity(object):
         """Return the mean spatial intersection over union of two activities as the mean spatial IoU for the framewise activity boundingbox()"""
         assert isinstance(other, Activity), "Invalid input - must be vipy.object.Activity()"
         dt = max(1, int(len(self)/n) if n is not None else dt)
-        frames = [self.startframe()] + list(range(self.startframe()+dt, self.endframee(), dt)) + [self.endframe()]
+        frames = [self.startframe()] + list(range(self.startframe()+dt, self.endframe(), dt)) + [self.endframe()]
         return np.mean([self.boundingbox(k).iou(other.boundingbox(k)) if (self.boundingbox(k) is not None and other.boundingbox(k) is not None) else 0.0
                         for k in frames])
 
@@ -502,7 +502,7 @@ class Activity(object):
         """Return the max spatial intersection over union of two activities as the mean spatial IoU for the framewise activity boundingbox()"""
         assert isinstance(other, Activity), "Invalid input - must be vipy.object.Activity()"
         dt = max(1, int(len(self)/n) if n is not None else dt)
-        frames = [self.startframe()] + list(range(self.startframe()+dt, self.endframee(), dt)) + [self.endframe()]
+        frames = [self.startframe()] + list(range(self.startframe()+dt, self.endframe(), dt)) + [self.endframe()]
         return np.max([self.boundingbox(k).iou(other.boundingbox(k)) if (self.boundingbox(k) is not None and other.boundingbox(k) is not None) else 0.0
                        for k in frames])
 
