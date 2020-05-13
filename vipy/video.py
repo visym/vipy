@@ -821,6 +821,8 @@ class Video(object):
         if flushfilter:
             v._ffmpeg = ffmpeg.input(v.filename())  # no other filters
             v._previewhash = None
+            (self._startframe, self._endframe) = (None, None)
+            (self._startsec, self._endsec) = (None, None)
         return v
 
     def flush(self):
@@ -992,15 +994,16 @@ class Scene(VideoCategory):
             dets = [t[k] for (tid,t) in self._tracks.items() if t[k] is not None]  # track interpolation (cloned) with boundary handling
             for d in dets:
                 shortlabel = [(d.shortlabel(),'')]  # [(Noun, Verbing1), (Noun, Verbing2), ...]
-                for (aid, a) in sorted(self._activities.items(), key=lambda x: x[1].category()):  # in alphabetical activity order
+                for (aid, a) in self._activities.items():  # insertion order:  First activity is primary, next is secondary
                     if a.hastrack(d.attributes['trackid']) and a.during(k):
                         # Shortlabel is always displayed as "Noun Verbing" during activity (e.g. Person Carrying, Vehicle Turning)
-                        # If detection is associated with more than one activity, then this is "Noun Verbing1 \n Noun Verbing2 (e.g. Person Entering\nPerson Closing) ... "
-                        shortlabel.append( (d.shortlabel(), a.shortlabel()) )
+                        # If noun is associated with more than one activity, then this is shown as "Noun Verbing1\nNoun Verbing2", with a newline separator 
+                        if not any([a.shortlabel() == v for (n,v) in shortlabel]):
+                            shortlabel.append( (d.shortlabel(), a.shortlabel()) )
                         if 'activity' not in d.attributes:
                             d.attributes['activity'] = []                            
                         d.attributes['activity'].append(a)  # for activity correspondence (if desired)
-                d.shortlabel( '\n'.join([('%s %s' % (n,v)).strip() for (n,v) in sorted(set(shortlabel[0 if len(shortlabel)==1 else 1:]))]))  # sorted order in caption
+                d.shortlabel( '\n'.join([('%s %s' % (n,v)).strip() for (n,v) in shortlabel[0 if len(shortlabel)==1 else 1:]]))
             dets = sorted(dets, key=lambda d: d.shortlabel())   # layering in video is in alphabetical order of shortlabel
             return vipy.image.Scene(array=self._array[k], colorspace=self.colorspace(), objects=dets, category=self.category())  
         elif not self.isloaded():
@@ -1057,7 +1060,7 @@ class Scene(VideoCategory):
     
     def tracks(self, tracks=None, id=None):
         """Return mutable dictionary of tracks"""        
-        if tracks is None:
+        if tracks is None and id is None:
             return self._tracks  # mutable dict
         elif id is not None:
             return self._tracks[id]
@@ -1214,6 +1217,18 @@ class Scene(VideoCategory):
         self._framerate = fps
         return self
         
+    def activitysplit(self):
+        """Split the scene into k separate scenes, one for each activity.  This is equivalent to self.activityclip() where the returned videos are not clipped.  This is useful for union()"""
+        vid = self.clone(flushforward=True)
+        if any([(a.endframe()-a.startframe()) <= 0 for a in vid.activities().values()]):
+            warnings.warn('Filtering invalid activity with degenerate lengths: %s' % str([a for a in vid.activities().values() if (a.endframe()-a.startframe()) <= 0]))
+        primary_activities = sorted([a.clone() for a in vid.activities().values() if (a.endframe()-a.startframe()) > 0], key=lambda a: a.startframe())   # only activities with at least one frame, sorted in temporal order
+        tracks = [ [t.clone() for (tid, t) in vid.tracks().items() if a.hastrack(t)] for a in primary_activities]  # tracks associated with each primary activity (may be empty)
+        secondary_activities = [[sa.clone() for sa in primary_activities if (pa.temporal_iou(sa)>0 and pa.temporal_iou(sa)<1 and (len(T)==0 or any([sa.hastrack(t) for t in T])))] for (pa, T) in zip(primary_activities, tracks)]  # overlapping secondary activities that includes any track in the primary activity
+        vid._activities = {}  # for faster clone
+        vid._tracks = {}      # for faster clone
+        return [vid.clone().activities([pa]+sa).tracks(t) for (pa,sa,t) in zip(primary_activities, secondary_activities, tracks)]
+
     def activityclip(self, padframes=0):
         """Return a list of vipy.video.Scene() each clipped to be temporally centered on a single activity, with an optional padframes before and after.  
            The Scene() category is updated to be the activity, and only the objects participating in the activity are included.
@@ -1361,40 +1376,48 @@ class Scene(VideoCategory):
         super(Scene, self).rescale(s)
         return self
 
-    def union(self, other, temporal_iou_threshold=0.5, spatial_iou_threshold=0.5, strict=True):
+    def union(self, other, temporal_iou_threshold=0.5, spatial_iou_threshold=0.8, strict=True):
         """Compute the union two scenes as the set of unique activities.  
 
-           A pair of activities or tracks are non-unique if they overlap spatially and temporally by a given IoU threshold.  Note that this does not merge tracks or activities.
+           A pair of activities or tracks are non-unique if they overlap spatially and temporally by a given IoU threshold.  Merge overlapping tracks. 
   
            Input:
+             -Other: Scene or list of scenes for union
              -spatial_iou_threshold:  The intersection over union threshold for an activity bounding box (the union of all tracks within the activity) to be declared duplicates
              -temporal_iou_threshold:  The intersection over union threshold for a temporal bounding box for a pair of activities to be declared duplicates
              -strict:  Require both scenes to share the same underlying video filename
 
            Output:
-             -Updates this scene to include the non-overlapping activities from other           
+             -Updates this scene to include the non-overlapping activities from other.  By default, it takes the strict union of all activities and tracks. 
         """
-        
+        if isinstance(other, list):
+            for o in other:
+                self.union(o, temporal_iou_threshold, spatial_iou_threshold, strict)  # in-place update
+            return self
+
         assert isinstance(other, Scene), "Invalid input - must be vipy.video.Scene() object and not type=%s" % str(type(other))
         assert spatial_iou_threshold >= 0 and spatial_iou_threshold <= 1, "invalid spatial_iou_threshold, must be between [0,1]"
         assert temporal_iou_threshold >= 0 and temporal_iou_threshold <= 1, "invalid temporal_iou_threshold, must be between [0,1]"        
         if strict:
             assert self.filename() == other.filename(), "Invalid input - Scenes must have the same underlying video.  Disable this with strict=False."
-
-        # Dedupe
-        duplicateid = []
         otherclone = other.clone()   # do not change other, make a copy
+
+        # Merge tracks 
         for (i,ti) in self.tracks().items():
             for (j,tj) in otherclone.tracks().items():
-                if ti.category() == tj.category() and ti.iou(tj) > spatial_iou_threshold:                    
-                    otherclone.activitymap(lambda a: a.replace(tj, ti))  # replace duplicate track
-                    otherclone.trackfilter(lambda t: t.id() != j)  # keep if not duplicate track
+                if ti.category() == tj.category() and ti.maxiou(tj) > spatial_iou_threshold and ti.percentileiou(tj, 0.1) > 0.5:  # 10% of ti overlaps tj >0.5, and maximum overlap >threshold
+                    print('[vipy.video.union]: merging track "%s" -> "%s" for scene "%s"' % (str(ti), str(tj), str(self)))
+                    ti.average(tj)  # in place update to merge duplicate tracks
+                    otherclone.activitymap(lambda a: a.replace(tj, ti))  # replace duplicate track reference in activity
+                    otherclone.trackfilter(lambda t: t.id() != j)  # remove duplicate track
+
+        # Dedupe activities
         for (i,ai) in self.activities().items():
             for (j,aj) in otherclone.activities().items():
-                if ai.categories() == aj.categories() and ai.temporal_iou(aj) > temporal_iou_threshold and ai.spatial_iou(aj) > spatial_iou_threshold:
-                    otherclone.activityfilter(lambda a: a.id() != j)  # keep if not duplicate activity
+                if ai.categories() == aj.categories() and ai.temporal_iou(aj) > temporal_iou_threshold and ai.max_spatial_iou(aj) > spatial_iou_threshold:
+                    otherclone.activityfilter(lambda a: a.id() != j)  # remove duplicate activity
 
-        # Union
+        # Union of unique tracks/activities
         self.tracks().update(otherclone.tracks())
         self.activities().update(otherclone.activities())
         return self

@@ -655,6 +655,11 @@ class BoundingBox():
         (xcenter,ycenter) = self.centroid()
         return Ellipse(self.width() / 2.0, self.height() / 2.0, xcenter, ycenter, 0)
 
+    def average(self, other):
+        """Compute the average bounding box between self and other"""
+        assert isinstance(other, BoundingBox), "Invalid input - must be BoundingBox"
+        return self.ulbr(np.mean(np.vstack( (self.ulbr(), other.ulbr()) ), axis=0))
+
 
 class Ellipse():
     def __init__(self, semi_major, semi_minor, xcenter, ycenter, phi):

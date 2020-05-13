@@ -227,7 +227,7 @@ class Track(object):
         return self.category(label)
         
     def shortlabel(self, label=None):
-        """A optional shorter label string to show in the visualizations"""                
+        """A optional shorter label string to show as a caption in visualizations"""                
         if label is not None:
             self._shortlabel = label
             return self
@@ -318,6 +318,32 @@ class Track(object):
         assert isinstance(other, Track), "Invalid input - must be vipy.object.Track()"
         return np.mean([self[k].iou(other[k]) if self.during(k) and other.during(k) else 0.0 for k in range(self.startframe(), self.endframe())])
 
+    def maxiou(self, other):
+        """Compute the maximum spatial IoU between two tracks per frame in the range (self.startframe(), self.endframe())"""
+        return self.rankiou(other, rank=1)
+
+    def rankiou(self, other, rank):
+        """Compute the mean spatial IoU between two tracks per frame in the range (self.startframe(), self.endframe()) using only the top-k frame overlaps"""
+        assert rank >= 1 and rank <= len(self)
+        assert isinstance(other, Track), "Invalid input - must be vipy.object.Track()"
+        return np.mean(sorted([self[k].iou(other[k]) if (self.during(k) and other.during(k)) else 0.0 for k in range(self.startframe(), self.endframe())])[-rank:])
+
+    def percentileiou(self, other, percentile):
+        """Percentile iou returns rankiou for rank=percentile*len(self)"""
+        assert percentile > 0 and percentile <= 1
+        return self.rankiou(other, int(len(self)*percentile))
+
+    def average(self, other):
+        assert isinstance(other, Track), "Invalid input - must be vipy.object.Track()"
+        assert other.category() == self.category(), "Category mismatch"
+        T = self.clone()
+        T._keyframes = [k for k in range(self.startframe(), self.endframe())]  # dense sampling
+        T._keyboxes = [(self[k].average(other[k]) 
+                        if (self.during(k) and other.during(k)) else 
+                        (self[k] if self.during(k) and not other.during(k) else other[k]))
+                       for k in T._keyframes]  
+        return T  
+
     def imclip(self, width, height):
         """Clip the track to the image rectangle (width, height).  If a keybox is outside the image rectangle, remove it otherwise clip to the image rectangle. 
            This operation can change the length of the track and the size of the keyboxes.  The result may be an empty track if the track is completely outside
@@ -330,6 +356,13 @@ class Track(object):
             return self
         else:
             raise ValueError('All key boxes for track outside image rectangle')
+
+    def resample(self, dt):
+        """Resample the track using a stride of dt frames"""
+        assert dt >= 1 and dt < len(self)
+        frames =  list(range(self.startframe(), self.endframe(), dt)) + [self.endframe()]
+        (self._keyboxes, self._keyframes) = zip(*[(self[k], k) for k in frames])
+        return self
 
 
 class Activity(object):
@@ -457,6 +490,12 @@ class Activity(object):
         assert isinstance(other, Activity), "Invalid input - must be vipy.object.Activity()"
         return np.mean([self.boundingbox(k).iou(other.boundingbox(k)) if (self.boundingbox(k) is not None and other.boundingbox(k) is not None) else 0.0
                         for k in range(self.startframe(), self.endframe())])
+
+    def max_spatial_iou(self, other):
+        """Return the max spatial intersection over union of two activities as the mean spatial IoU for the framewise activity boundingbox()"""
+        assert isinstance(other, Activity), "Invalid input - must be vipy.object.Activity()"
+        return np.max([self.boundingbox(k).iou(other.boundingbox(k)) if (self.boundingbox(k) is not None and other.boundingbox(k) is not None) else 0.0
+                       for k in range(self.startframe(), self.endframe())])
 
     def temporal_iou(self, other):
         """Return the temporal intersection over union of two activities"""
