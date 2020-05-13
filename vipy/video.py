@@ -1376,7 +1376,7 @@ class Scene(VideoCategory):
         super(Scene, self).rescale(s)
         return self
 
-    def union(self, other, temporal_iou_threshold=0.5, spatial_iou_threshold=0.8, strict=True):
+    def union(self, other, temporal_iou_threshold=0.5, spatial_iou_threshold=0.8, strict=True, n=2):
         """Compute the union two scenes as the set of unique activities.  
 
            A pair of activities or tracks are non-unique if they overlap spatially and temporally by a given IoU threshold.  Merge overlapping tracks. 
@@ -1405,7 +1405,7 @@ class Scene(VideoCategory):
         # Merge tracks 
         for (i,ti) in self.tracks().items():
             for (j,tj) in otherclone.tracks().items():
-                if ti.category() == tj.category() and ti.maxiou(tj) > spatial_iou_threshold and ti.percentileiou(tj, 0.1) > 0.5:  # 10% of ti overlaps tj >0.5, and maximum overlap >threshold
+                if ti.category() == tj.category() and ti.maxiou(tj, n=n) > spatial_iou_threshold:  # maximum framewise overlap at 2 uniformly spaced sample points on track (plus endpoints) >threshold
                     print('[vipy.video.union]: merging track "%s" -> "%s" for scene "%s"' % (str(ti), str(tj), str(self)))
                     ti.average(tj)  # in place update to merge duplicate tracks
                     otherclone.activitymap(lambda a: a.replace(tj, ti))  # replace duplicate track reference in activity
@@ -1414,7 +1414,7 @@ class Scene(VideoCategory):
         # Dedupe activities
         for (i,ai) in self.activities().items():
             for (j,aj) in otherclone.activities().items():
-                if ai.categories() == aj.categories() and ai.temporal_iou(aj) > temporal_iou_threshold and ai.max_spatial_iou(aj) > spatial_iou_threshold:
+                if ai.categories() == aj.categories() and ai.temporal_iou(aj) > temporal_iou_threshold and ai.max_spatial_iou(aj, n=n) > spatial_iou_threshold:
                     otherclone.activityfilter(lambda a: a.id() != j)  # remove duplicate activity
 
         # Union of unique tracks/activities

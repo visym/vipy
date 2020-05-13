@@ -313,25 +313,30 @@ class Track(object):
         self._boundary = 'strict'
         return self
 
-    def iou(self, other):
+    def iou(self, other, dt=1, n=None):
         """Compute the spatial IoU between two tracks as the mean IoU per frame in the range (self.startframe(), self.endframe())"""
-        assert isinstance(other, Track), "Invalid input - must be vipy.object.Track()"
-        return np.mean([self[k].iou(other[k]) if self.during(k) and other.during(k) else 0.0 for k in range(self.startframe(), self.endframe())])
+        return self.rankiou(other, rank=len(self), dt=dt, n=n)
 
-    def maxiou(self, other):
-        """Compute the maximum spatial IoU between two tracks per frame in the range (self.startframe(), self.endframe())"""
-        return self.rankiou(other, rank=1)
+    def maxiou(self, other, dt=1, n=None):
+        """Compute the maximum spatial IoU between two tracks per frame in the range (self.startframe(), self.endframe())"""        
+        return self.rankiou(other, rank=1, dt=dt, n=n)
 
-    def rankiou(self, other, rank):
-        """Compute the mean spatial IoU between two tracks per frame in the range (self.startframe(), self.endframe()) using only the top-k frame overlaps"""
+    def rankiou(self, other, rank, dt=1, n=None):
+        """Compute the mean spatial IoU between two tracks per frame in the range (self.startframe(), self.endframe()) using only the top-k frame overlaps
+           Sample tracks at endpoints and n uniformly spaced frames or a stride of dt frames.
+        """
         assert rank >= 1 and rank <= len(self)
         assert isinstance(other, Track), "Invalid input - must be vipy.object.Track()"
-        return np.mean(sorted([self[k].iou(other[k]) if (self.during(k) and other.during(k)) else 0.0 for k in range(self.startframe(), self.endframe())])[-rank:])
+        assert n is None or n >= 1
+        assert dt >= 1
+        dt = max(1, int(len(self)/n) if n is not None else dt)
+        frames = [self.startframe()] + list(range(self.startframe()+dt, self.endframee(), dt)) + [self.endframe()]
+        return np.mean(sorted([self[k].iou(other[k]) if (self.during(k) and other.during(k)) else 0.0 for k in frames])[-rank:])
 
-    def percentileiou(self, other, percentile):
+    def percentileiou(self, other, percentile, dt=1, n=None):
         """Percentile iou returns rankiou for rank=percentile*len(self)"""
         assert percentile > 0 and percentile <= 1
-        return self.rankiou(other, max(1, int(len(self)*percentile)))
+        return self.rankiou(other, max(1, int(len(self)*percentile)), dt=dt, n=n)
 
     def average(self, other):
         assert isinstance(other, Track), "Invalid input - must be vipy.object.Track()"
@@ -485,17 +490,21 @@ class Activity(object):
         """Is frame during the time interval (startframe, endframe) inclusive?"""
         return int(frame) >= self._startframe and int(frame) <= self._endframe
 
-    def spatial_iou(self, other):
+    def spatial_iou(self, other, dt=1, n=None):
         """Return the mean spatial intersection over union of two activities as the mean spatial IoU for the framewise activity boundingbox()"""
         assert isinstance(other, Activity), "Invalid input - must be vipy.object.Activity()"
+        dt = max(1, int(len(self)/n) if n is not None else dt)
+        frames = [self.startframe()] + list(range(self.startframe()+dt, self.endframee(), dt)) + [self.endframe()]
         return np.mean([self.boundingbox(k).iou(other.boundingbox(k)) if (self.boundingbox(k) is not None and other.boundingbox(k) is not None) else 0.0
-                        for k in range(self.startframe(), self.endframe())])
+                        for k in frames])
 
-    def max_spatial_iou(self, other):
+    def max_spatial_iou(self, other, dt=1, n=None):
         """Return the max spatial intersection over union of two activities as the mean spatial IoU for the framewise activity boundingbox()"""
         assert isinstance(other, Activity), "Invalid input - must be vipy.object.Activity()"
+        dt = max(1, int(len(self)/n) if n is not None else dt)
+        frames = [self.startframe()] + list(range(self.startframe()+dt, self.endframee(), dt)) + [self.endframe()]
         return np.max([self.boundingbox(k).iou(other.boundingbox(k)) if (self.boundingbox(k) is not None and other.boundingbox(k) is not None) else 0.0
-                       for k in range(self.startframe(), self.endframe())])
+                       for k in frames])
 
     def temporal_iou(self, other):
         """Return the temporal intersection over union of two activities"""
