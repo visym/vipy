@@ -544,9 +544,10 @@ class Activity(object):
         return copy.deepcopy(self)
     
     def temporalpad(self, df):
-        """Add a temporal pad of df frames before and after the activity.  The padded start frame may be negative."""
-        assert isinstance(df, int)
-        self._startframe -= df
-        self._endframe += df
-        return self
+        """Add a temporal pad of df=(before,after) or df=pad frames to the start and end of the activity.  The padded start frame may be negative."""
+        assert isinstance(df, int) or isinstance(df, tuple) or isinstance(df, list), "Invalid input, must be (before, after) tuple or integer"
+        df = (df, df) if isinstance(df, int) else df
+        self._startframe -= df[0]
+        self._endframe += df[1] 
+        return self  
 
