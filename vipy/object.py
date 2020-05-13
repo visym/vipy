@@ -331,7 +331,7 @@ class Track(object):
     def percentileiou(self, other, percentile):
         """Percentile iou returns rankiou for rank=percentile*len(self)"""
         assert percentile > 0 and percentile <= 1
-        return self.rankiou(other, int(len(self)*percentile))
+        return self.rankiou(other, max(1, int(len(self)*percentile)))
 
     def average(self, other):
         assert isinstance(other, Track), "Invalid input - must be vipy.object.Track()"
