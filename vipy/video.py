@@ -1290,8 +1290,7 @@ class Scene(VideoCategory):
     def clip(self, startframe, endframe):
         """Clip the video to between (startframe, endframe).  This clip is relative to clip() shown by __repr__().  Return a clone of the video for idemponence"""
         v = super(Scene, self.clone()).clip(startframe, endframe)  # clone for idemponence
-        v._tracks = {k:t.offset(dt=-startframe) for (k,t) in v._tracks.items()}   # track offset is performed here, not within activity, check that all tracks referenced in activity are here
-        assert all([tid in v._tracks for a in self.activitylist() for (tid,t) in a.tracks().items()]), "All tracks referenced in the activity must also be added to the scene so that clip can correctly trim both annotations and video"
+        v._tracks = {k:t.offset(dt=-startframe) for (k,t) in v._tracks.items()}   # track offset is performed here, not within activity
         v._activities = {k:a.offset(dt=-startframe) for (k,a) in v._activities.items()}        
         return v  
 
@@ -1376,7 +1375,7 @@ class Scene(VideoCategory):
         super(Scene, self).rescale(s)
         return self
 
-    def union(self, other, temporal_iou_threshold=0.5, spatial_iou_threshold=0.8, strict=True, n=2):
+    def union(self, other, temporal_iou_threshold=0.5, spatial_iou_threshold=0.9, strict=True, n=2):
         """Compute the union two scenes as the set of unique activities.  
 
            A pair of activities or tracks are non-unique if they overlap spatially and temporally by a given IoU threshold.  Merge overlapping tracks. 
@@ -1390,36 +1389,33 @@ class Scene(VideoCategory):
            Output:
              -Updates this scene to include the non-overlapping activities from other.  By default, it takes the strict union of all activities and tracks. 
         """
-        if isinstance(other, list):
-            for o in other:
-                self.union(o, temporal_iou_threshold, spatial_iou_threshold, strict)  # in-place update
-            return self
+        for o in tolist(other):
+            assert isinstance(o, Scene), "Invalid input - must be vipy.video.Scene() object and not type=%s" % str(type(o))
+            assert spatial_iou_threshold >= 0 and spatial_iou_threshold <= 1, "invalid spatial_iou_threshold, must be between [0,1]"
+            assert temporal_iou_threshold >= 0 and temporal_iou_threshold <= 1, "invalid temporal_iou_threshold, must be between [0,1]"        
+            if strict:
+                assert self.filename() == o.filename(), "Invalid input - Scenes must have the same underlying video.  Disable this with strict=False."
+            otherclone = o.clone()   # do not change other, make a copy
 
-        assert isinstance(other, Scene), "Invalid input - must be vipy.video.Scene() object and not type=%s" % str(type(other))
-        assert spatial_iou_threshold >= 0 and spatial_iou_threshold <= 1, "invalid spatial_iou_threshold, must be between [0,1]"
-        assert temporal_iou_threshold >= 0 and temporal_iou_threshold <= 1, "invalid temporal_iou_threshold, must be between [0,1]"        
-        if strict:
-            assert self.filename() == other.filename(), "Invalid input - Scenes must have the same underlying video.  Disable this with strict=False."
-        otherclone = other.clone()   # do not change other, make a copy
+            # Merge tracks 
+            for (i,ti) in self.tracks().items():
+                for (j,tj) in otherclone.tracks().items():
+                    if ti.category() == tj.category() and ti.maxiou(tj, n=n) > spatial_iou_threshold:  # maximum framewise overlap at 2 uniformly spaced sample points on track (plus endpoints) >threshold
+                        print('[vipy.video.union]: merging track "%s" -> "%s" for scene "%s"' % (str(ti), str(tj), str(self)))
+                        self.tracks()[i] = ti.average(tj)  # merge duplicate tracks
+                        otherclone = otherclone.activitymap(lambda a: a.replace(tj, ti))  # replace duplicate track reference in activity
+                        otherclone = otherclone.trackfilter(lambda t: t.id() != j)  # remove duplicate track
 
-        # Merge tracks 
-        for (i,ti) in self.tracks().items():
-            for (j,tj) in otherclone.tracks().items():
-                if ti.category() == tj.category() and ti.maxiou(tj, n=n) > spatial_iou_threshold:  # maximum framewise overlap at 2 uniformly spaced sample points on track (plus endpoints) >threshold
-                    print('[vipy.video.union]: merging track "%s" -> "%s" for scene "%s"' % (str(ti), str(tj), str(self)))
-                    ti.average(tj)  # in place update to merge duplicate tracks
-                    otherclone.activitymap(lambda a: a.replace(tj, ti))  # replace duplicate track reference in activity
-                    otherclone.trackfilter(lambda t: t.id() != j)  # remove duplicate track
+            # Dedupe activities
+            for (i,ai) in self.activities().items():
+                for (j,aj) in otherclone.activities().items():
+                    if ai.categories() == aj.categories() and ai.temporal_iou(aj) > temporal_iou_threshold and ai.max_spatial_iou(aj, n=n) > spatial_iou_threshold:
+                        otherclone = otherclone.activityfilter(lambda a: a.id() != j)  # remove duplicate activity
 
-        # Dedupe activities
-        for (i,ai) in self.activities().items():
-            for (j,aj) in otherclone.activities().items():
-                if ai.categories() == aj.categories() and ai.temporal_iou(aj) > temporal_iou_threshold and ai.max_spatial_iou(aj, n=n) > spatial_iou_threshold:
-                    otherclone.activityfilter(lambda a: a.id() != j)  # remove duplicate activity
+            # Union of unique tracks/activities
+            self.tracks().update(otherclone.tracks())
+            self.activities().update(otherclone.activities())
 
-        # Union of unique tracks/activities
-        self.tracks().update(otherclone.tracks())
-        self.activities().update(otherclone.activities())
         return self
     
     def annotate(self, verbose=True, fontsize=10, captionoffset=(0,0), textfacecolor='white', textfacealpha=1.0, shortlabel=True, boxalpha=0.25, d_category2color={'Person':'green', 'Vehicle':'blue', 'Object':'red'}, categories=None, nocaption=False, nocaption_withstring=[]):

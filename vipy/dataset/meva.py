@@ -104,7 +104,7 @@ class KF1(object):
         #   in k or more frames by > 0.8
         if merge:
             print('[vipy.dataset.meva.KF1]: merging videos ...')
-            self._vidlist = [v[0].union(v[1:]) for (f, v) in groupbyasdict([a for vid in self._vidlist for a in vid.activitysplit()], lambda a: a.filename()).items()]
+            self._vidlist = [v[0].clone().union(v[1:]) for (f, v) in groupbyasdict([a for vid in self._vidlist for a in vid.activitysplit()], lambda s: s.filename()).items()]
         
     def __getitem__(self, k):
         return self._vidlist[k]

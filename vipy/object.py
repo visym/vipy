@@ -339,6 +339,7 @@ class Track(object):
         return self.rankiou(other, max(1, int(len(self)*percentile)), dt=dt, n=n)
 
     def average(self, other):
+        """Compute the average of two tracks by the framewise interpolated boxes"""
         assert isinstance(other, Track), "Invalid input - must be vipy.object.Track()"
         assert other.category() == self.category(), "Category mismatch"
         T = self.clone()
