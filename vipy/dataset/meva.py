@@ -100,8 +100,7 @@ class KF1(object):
         #   The MEVA dataset is "activity-centric" so that each activity is labeled independently.  There may be tracks in the dataset
         #   that are the same instance in the video, but are different track IDs in the dataset.  The result is disjoint activity labels 
         #   in a non-disjoint activity in a video.  Yuck..  Try to merge them.  This is experimental, since it tries to use IoU for merging, 
-        #   which does not work in general.  This requires global track correspondence.  We say that two tracks are the same if they overlap
-        #   in k or more frames by > 0.8
+        #   which does not work in general.  This requires global track correspondence.  
         if merge:
             print('[vipy.dataset.meva.KF1]: merging videos ...')
             self._vidlist = [v[0].clone().union(v[1:]) for (f, v) in groupbyasdict([a for vid in self._vidlist for a in vid.activitysplit()], lambda s: s.filename()).items()]
@@ -377,8 +376,8 @@ class KF1(object):
         """Generate a standalone HTML file containing quicklooks for each annotated activity in dataset, along with some helpful provenance information for where the annotation came from"""
         if vipy.globals.num_workers() == 1:
             warnings.warn("Generating review HTML is very time consuming, consider setting vipy.global.num_workers(n) for n > 1 for parallel video processing")
-        quicklist = Batch(self._vidlist).map(lambda v: [(c.load().quicklook(context=True), c.activitylist(), str(c.flush())) for c in v.mindim(512).activityclip()])
-        quicklooks = [imq for q in quicklist for (imq, activitylist, description) in q]  # for HTML display purposes
-        provenance = [{'clip':str(description), 'activity':str(a), 'category':a.category(), 'yamlfile':a.attributes['act_yaml']} for q in quicklist for (imq, activitylist, description) in q for a in activitylist]
+        quicklist = Batch(self._vidlist).map(lambda v: [(c.load().quicklook(context=True), c.flush()) for c in v.mindim(512).activityclip()])
+        quicklooks = [imq for q in quicklist for (imq, c) in q]  # for HTML display purposes
+        provenance = [{'clip':str(c), 'activities':str(';'.join([str(a) for a in c.activitylist()])), 'category':c.category(), 'yamlfile':c.activitylist()[0].attributes['act_yaml']} for q in quicklist for (imq, c) in q]
         (quicklooks, provenance) = zip(*sorted([(q,p) for (q,p) in zip(quicklooks, provenance)], key=lambda x: x[1]['category']))  # sorted in category order
         return vipy.visualize.tohtml(quicklooks, provenance, title='MEVA-KF1 annotation quicklooks', outfile=outfile, mindim=mindim)
