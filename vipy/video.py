@@ -428,9 +428,9 @@ class Video(object):
                 raise
         return self
 
-    def fetch(self):
+    def fetch(self, ignoreErrors=False):
         """Download only if hasfilename() is not found"""
-        return self.download() if not self.hasfilename() else self
+        return self.download(ignoreErrors=ignoreErrors) if not self.hasfilename() else self
 
     def shape(self):
         """Return (height, width) of the frames, requires loading a preview frame from the video if the video is not already loaded"""
