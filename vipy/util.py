@@ -663,6 +663,7 @@ def jsonlist(indir):
 def writelist(mylist, outfile, mode='w'):
     """Write list of strings to an output file with each row an element of
     the list"""
+    outfile = os.path.abspath(os.path.expanduser(outfile))
     with open(outfile, mode) as f:
         for s in mylist:
             f.write(str(s) + '\n')
