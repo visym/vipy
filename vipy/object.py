@@ -321,6 +321,10 @@ class Track(object):
         """Compute the maximum spatial IoU between two tracks per frame in the range (self.startframe(), self.endframe())"""        
         return self.rankiou(other, rank=1, dt=dt, n=n)
 
+    def endpointiou(self, other):
+        """Compute the maximum spatial IoU between two tracks at the endpoints (self.startframe(), self.endframe()) of this track.  useful for track continuation"""        
+        return np.max([self[f].iou(other[f]) if self.during(f) and other.during(f) else 0.0 for f in (self.startframe(), self.endframe())])
+        
     def rankiou(self, other, rank, dt=1, n=None):
         """Compute the mean spatial IoU between two tracks per frame in the range (self.startframe(), self.endframe()) using only the top-k frame overlaps
            Sample tracks at endpoints and n uniformly spaced frames or a stride of dt frames.
@@ -343,7 +347,7 @@ class Track(object):
         assert isinstance(other, Track), "Invalid input - must be vipy.object.Track()"
         assert other.category() == self.category(), "Category mismatch"
         T = self.clone()
-        T._keyframes = [k for k in range(self.startframe(), self.endframe())]  # dense sampling
+        T._keyframes = [k for k in range(min(self.startframe(), other.startframe()), max(self.endframe(), other.endframe()))]  # dense sampling
         T._keyboxes = [(self[k].average(other[k]) 
                         if (self.during(k) and other.during(k)) else 
                         (self[k] if self.during(k) and not other.during(k) else other[k]))
@@ -418,21 +422,33 @@ class Activity(object):
         return {'id':self._id, 'label':self.category(), 'shortlabel':self.shortlabel(), 'startframe':self._startframe, 'endframe':self._endframe, 'attributes':self.attributes, 'framerate':self._framerate,
                 'tracks':[t.dict() for (k,t) in self._tracks.items()]}
     
-    def startframe(self):
-        return self._startframe
+    def startframe(self, f=None):
+        if f is None:
+            return self._startframe
+        else:
+            self._startframe = f
+            return self
+
     
-    def endframe(self):
-        return self._endframe
+    def endframe(self, f=None):
+        if f is None:
+            return self._endframe
+        else:
+            self._endframe = f
+            return self
 
     def middleframe(self):
         return int(np.round((self.endframe() - self.startframe()) / 2.0)) + self.startframe()
 
-    def framerate(self, fps):
+    def framerate(self, fps=None):
         """Resample (startframe, endframe) from known original framerate set by constructor to be new framerate fps"""        
-        assert self._framerate is not None, "Framerate conversion requires that the framerate is known for current activities.  This must be provided to the vipy.object.Activity() constructor."
-        (self._startframe, self._endframe) = [int(np.round(f*(fps/float(self._framerate)))) for f in (self._startframe, self._endframe)]
-        self._framerate = fps
-        return self
+        if fps is None:
+            return self._framerate
+        else:
+            assert self._framerate is not None, "Framerate conversion requires that the framerate is known for current activities.  This must be provided to the vipy.object.Activity() constructor."
+            (self._startframe, self._endframe) = [int(np.round(f*(fps/float(self._framerate)))) for f in (self._startframe, self._endframe)]
+            self._framerate = fps
+            return self
     
     def category(self, label=None):
         if label is not None:
@@ -472,6 +488,16 @@ class Activity(object):
             return self
         else:
             return self._tracks
+
+    def trackids(self):
+        """Return a set of track IDs associated with this activity"""
+        return set(self._tracks.keys())
+
+    def hasoverlap(self, other):
+        return self.temporal_iou(other) > 0
+        
+    def isneighbor(self, other, framegate=10):
+        return self.temporal_iou(other.clone().temporalpad(framegate)) > 0 
 
     def hastrack(self, track):
         """Is the track part of the activity?"""
@@ -546,9 +572,8 @@ class Activity(object):
     
     def temporalpad(self, df):
         """Add a temporal pad of df=(before,after) or df=pad frames to the start and end of the activity.  The padded start frame may be negative."""
-        assert isinstance(df, int) or isinstance(df, tuple) or isinstance(df, list), "Invalid input, must be (before, after) tuple or integer"
-        df = (df, df) if isinstance(df, int) else df
-        self._startframe -= df[0]
-        self._endframe += df[1] 
+        df = (df, df) if not isinstance(df, tuple) else df
+        self._startframe -= int(df[0])
+        self._endframe += int(df[1])
         return self  
 
