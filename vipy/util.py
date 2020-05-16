@@ -672,7 +672,7 @@ def writelist(mylist, outfile, mode='w'):
 def readlist(infile):
     """Read each row of file as an element of the list"""
     with open(infile, 'r') as f:
-        list_of_rows = [r for r in f.readlines()]
+        list_of_rows = [r.strip() for r in f.readlines()]
     return list_of_rows
 
 
