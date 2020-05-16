@@ -210,12 +210,15 @@ class Video(object):
         dt = int(np.round(len(self._array) / float(n)))  # stride
         return self._array[::dt][0:n]
 
-    def framerate(self, fps):
+    def framerate(self, fps=None):
         """Change the input framerate for the video and update frame indexes for all annotations"""
-        assert not self.isloaded(), "Filters can only be applied prior to load()"
-        self._ffmpeg = self._ffmpeg.filter('fps', fps=fps, round='up')
-        self._framerate = fps
-        return self
+        if fps is None:
+            return self._framerate
+        else:
+            assert not self.isloaded(), "Filters can only be applied prior to load()"
+            self._ffmpeg = self._ffmpeg.filter('fps', fps=fps, round='up')
+            self._framerate = fps
+            return self
             
     def colorspace(self, colorspace=None):
         """Return or set the colorspace as ['rgb', 'bgr', 'lum', 'float']"""
@@ -1066,7 +1069,7 @@ class Scene(VideoCategory):
             return self._tracks[id]
         else:
             assert all([isinstance(t, vipy.object.Track) for t in tolist(tracks)]), "Invalid input - Must be vipy.object.Track or list of vipy.object.Track"
-            self._tracks = {t.id():t for t in tolist(tracks)}  # overwrite
+            self._tracks = {t.id():t for t in tolist(tracks)}  # insertion order preserved (python >=3.6)
             return self
 
     def tracklist(self):
@@ -1080,11 +1083,11 @@ class Scene(VideoCategory):
             return self._activities[id]
         else:
             assert all([isinstance(a, vipy.object.Activity) for a in tolist(activities)]), "Invalid input - Must be vipy.object.Activity or list of vipy.object.Activities"
-            self._activities = {a.id():a for a in tolist(activities)}   # overwrite
+            self._activities = {a.id():a for a in tolist(activities)}   # insertion order preserved (python >=3.6)
             return self
 
     def activitylist(self):
-        return list(self._activities.values())
+        return list(self._activities.values())  # insertion ordered (python >=3.6)
         
     def activityfilter(self, f):
         """Apply boolean lambda function f to each activity and keep activity if function is true, remove activity if function is false
@@ -1114,6 +1117,14 @@ class Scene(VideoCategory):
         """Return a set of all object and activity labels in this scene, or at frame int(k)"""
         return self.activitylabels(k).union(self.objectlabels(k))
 
+    def activitylabels(self, k=None):
+        """Return a set of all activity categories in this scene, or at frame k"""        
+        return set([a.category() for a in self.activities().values() if k is None or a.during(k)])
+    
+    def objectlabels(self, k=None):
+        """Return a set of all activity categories in this scene, or at frame k"""
+        return set([t.category() for t in self.tracks().values() if k is None or t.during(k)])        
+
     def categories(self):
         """Alias for labels()"""
         return self.labels()
@@ -1122,13 +1133,6 @@ class Scene(VideoCategory):
         """Alias for activitylabels()"""
         return self.activitylabels()        
 
-    def activitylabels(self, k=None):
-        """Return a set of all activity categories in this scene, or at frame k"""        
-        return set([a.category() for a in self.activities().values() if k is None or a.during(k)])
-    
-    def objectlabels(self, k=None):
-        """Return a set of all activity categories in this scene, or at frame k"""
-        return set([t.category() for t in self.tracks().values() if k is None or t.during(k)])        
         
     def hasactivities(self):
         return len(self._activities) > 0
@@ -1208,40 +1212,44 @@ class Scene(VideoCategory):
         d['activities'] = [a.dict() for a in self._activities.values()]
         return d
         
-    def framerate(self, fps):
+    def framerate(self, fps=None):
         """Change the input framerate for the video and update frame indexes for all annotations"""
-        assert not self.isloaded(), "Filters can only be applied prior to load() - Try calling flush() first"        
-        self._ffmpeg = self._ffmpeg.filter('fps', fps=fps, round='up')
-        self._tracks = {k:t.framerate(fps) for (k,t) in self._tracks.items()}
-        self._activities = {k:a.framerate(fps) for (k,a) in self._activities.items()}        
-        self._framerate = fps
-        return self
+        if fps is None:
+            return self._framerate
+        else:
+            assert not self.isloaded(), "Filters can only be applied prior to load() - Try calling flush() first"        
+            self._ffmpeg = self._ffmpeg.filter('fps', fps=fps, round='up')
+            self._tracks = {k:t.framerate(fps) for (k,t) in self._tracks.items()}
+            self._activities = {k:a.framerate(fps) for (k,a) in self._activities.items()}        
+            self._framerate = fps
+            return self
         
     def activitysplit(self):
-        """Split the scene into k separate scenes, one for each activity.  This is equivalent to self.activityclip() where the returned videos are not clipped.  This is useful for union()"""
+        """Split the scene into k separate scenes, one for each activity.  Do not include overlapping activities.  This is useful for union()"""
         vid = self.clone(flushforward=True)
         if any([(a.endframe()-a.startframe()) <= 0 for a in vid.activities().values()]):
             warnings.warn('Filtering invalid activity with degenerate lengths: %s' % str([a for a in vid.activities().values() if (a.endframe()-a.startframe()) <= 0]))
-        primary_activities = sorted([a.clone() for a in vid.activities().values() if (a.endframe()-a.startframe()) > 0], key=lambda a: a.startframe())   # only activities with at least one frame, sorted in temporal order
-        tracks = [ [t.clone() for (tid, t) in vid.tracks().items() if a.hastrack(t)] for a in primary_activities]  # tracks associated with each primary activity (may be empty)
-        secondary_activities = [[sa.clone() for sa in primary_activities if (pa.temporal_iou(sa)>0 and pa.temporal_iou(sa)<1 and (len(T)==0 or any([sa.hastrack(t) for t in T])))] for (pa, T) in zip(primary_activities, tracks)]  # overlapping secondary activities that includes any track in the primary activity
+        activities = sorted([a.clone() for a in vid.activities().values() if (a.endframe()-a.startframe()) > 0], key=lambda a: a.startframe())   # only activities with at least one frame, sorted in temporal order
+        tracks = [ [t.clone() for (tid, t) in vid.tracks().items() if a.hastrack(t)] for a in activities]  # tracks associated with each activity (may be empty)
         vid._activities = {}  # for faster clone
         vid._tracks = {}      # for faster clone
-        return [vid.clone().activities([pa]+sa).tracks(t) for (pa,sa,t) in zip(primary_activities, secondary_activities, tracks)]
+        return [vid.clone().activities(pa).tracks(t) for (pa,t) in zip(activities, tracks)]
 
-    def activityclip(self, padframes=0):
+    def activityclip(self, padframes=0, multilabel=True):
         """Return a list of vipy.video.Scene() each clipped to be temporally centered on a single activity, with an optional padframes before and after.  
            The Scene() category is updated to be the activity, and only the objects participating in the activity are included.
            Activities are returned ordered in the temporal order they appear in the video.
            The returned vipy.video.Scene() objects for each activityclip are clones of the video, with the video buffer flushed.
-           Each activityclip() is associated with each activity in the scene, and includes all other secondary activities that the objects in the primary activity also perform.  See activityclip().labels(). 
+           Each activityclip() is associated with each activity in the scene, and includes all other secondary activities that the objects in the primary activity also perform (if multilabel=True).  See activityclip().labels(). 
+           Calling activityclip() on activityclip(multilabel=True) can result in duplicate activities, due to the overlapping secondary activities being included in each clip.  Be careful. 
         """
         vid = self.clone(flushforward=True)
         if any([(a.endframe()-a.startframe()) <= 0 for a in vid.activities().values()]):
             warnings.warn('Filtering invalid activity clips with degenerate lengths: %s' % str([a for a in vid.activities().values() if (a.endframe()-a.startframe()) <= 0]))
         primary_activities = sorted([a.clone() for a in vid.activities().values() if (a.endframe()-a.startframe()) > 0], key=lambda a: a.startframe())   # only activities with at least one frame, sorted in temporal order
         tracks = [ [t.clone() for (tid, t) in vid.tracks().items() if a.hastrack(t)] for a in primary_activities]  # tracks associated with each primary activity (may be empty)
-        secondary_activities = [[sa.clone() for sa in primary_activities if (pa.temporal_iou(sa)>0 and pa.temporal_iou(sa)<1 and (len(T)==0 or any([sa.hastrack(t) for t in T])))] for (pa, T) in zip(primary_activities, tracks)]  # overlapping secondary activities that includes any track in the primary activity
+        secondary_activities = [[sa.clone() for sa in primary_activities if (sa.id() != pa.id() and pa.temporal_iou(sa)>0 and (len(T)==0 or any([sa.hastrack(t) for t in T])))] for (pa, T) in zip(primary_activities, tracks)]  # overlapping secondary activities that includes any track in the primary activity
+        secondary_activities = [sa if multilabel else [] for sa in secondary_activities]  
         vid._activities = {}  # for faster clone
         vid._tracks = {}      # for faster clone
         padframes = padframes if istuple(padframes) else (padframes,padframes)
@@ -1263,7 +1271,7 @@ class Scene(VideoCategory):
     def activitycuboid(self, dilate=1.0, maxdim=256, bb=None):
         """The activitycuboid() is the fixed square spatial crop corresponding to the activitybox (or supplied bounding box), which contains all of the valid activities in the scene.  This is most useful after activityclip().
            The activitycuboid() is a spatial crop of the video corresponding to the supplied boundingbox or the square activitybox().
-           This crop must be resized such that the maximum dimeimsnion is provided since the crop can be tiny and will not be encodable by ffmpeg
+           This crop must be resized such that the maximum dimension is provided since the crop can be tiny and will not be encodable by ffmpeg
         """
         bb = self.activitybox().maxsquare() if bb is None else bb  
         assert bb is None or isinstance(bb, vipy.geometry.BoundingBox)
@@ -1295,7 +1303,7 @@ class Scene(VideoCategory):
         return v  
 
     def cliptime(self, startsec, endsec):
-        raise NotImplementedError('use clip() instead')
+        raise NotImplementedError('FIXME: use clip() instead for now')
             
     def crop(self, bb, zeropad=True):
         """Crop the video using the supplied box, update tracks relative to crop, video is zeropadded if box is outside frame rectangle"""
@@ -1375,7 +1383,7 @@ class Scene(VideoCategory):
         super(Scene, self).rescale(s)
         return self
 
-    def union(self, other, temporal_iou_threshold=0.5, spatial_iou_threshold=0.9, strict=True, n=2):
+    def union(self, other, temporal_iou_threshold=0.5, spatial_iou_threshold=0.9, strict=True):
         """Compute the union two scenes as the set of unique activities.  
 
            A pair of activities or tracks are non-unique if they overlap spatially and temporally by a given IoU threshold.  Merge overlapping tracks. 
@@ -1400,7 +1408,7 @@ class Scene(VideoCategory):
             # Merge tracks 
             for (i,ti) in self.tracks().items():
                 for (j,tj) in otherclone.tracks().items():
-                    if ti.category() == tj.category() and ti.maxiou(tj, n=n) > spatial_iou_threshold:  # maximum framewise overlap at 2 uniformly spaced sample points on track (plus endpoints) >threshold
+                    if ti.category() == tj.category() and ti.endpointiou(tj) > spatial_iou_threshold:  # maximum framewise overlap at endpoints >threshold
                         print('[vipy.video.union]: merging track "%s" -> "%s" for scene "%s"' % (str(ti), str(tj), str(self)))
                         self.tracks()[i] = ti.average(tj)  # merge duplicate tracks
                         otherclone = otherclone.activitymap(lambda a: a.replace(tj, ti))  # replace duplicate track reference in activity
@@ -1409,7 +1417,7 @@ class Scene(VideoCategory):
             # Dedupe activities
             for (i,ai) in self.activities().items():
                 for (j,aj) in otherclone.activities().items():
-                    if ai.categories() == aj.categories() and ai.temporal_iou(aj) > temporal_iou_threshold and ai.max_spatial_iou(aj, n=n) > spatial_iou_threshold:
+                    if ai.categories() == aj.categories() and ai.trackids() == aj.trackids() and ai.temporal_iou(aj) > temporal_iou_threshold and ai.max_spatial_iou(aj, n=2) > spatial_iou_threshold:
                         otherclone = otherclone.activityfilter(lambda a: a.id() != j)  # remove duplicate activity
 
             # Union of unique tracks/activities
