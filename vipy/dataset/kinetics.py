@@ -11,7 +11,9 @@ class Kinetics700(object):
         self.datadir = remkdir(datadir)
         self._url = 'https://storage.googleapis.com/deepmind-media/Datasets/kinetics700.tar.gz'
         self._name = 'kinetics700'
-
+        if not self._isdownloaded():
+            self.download()
+        
     def __repr__(self):
         return str('<vipy.dataset.%s: "%s/%s">' % (self._name, self.datadir, self._name))
 
