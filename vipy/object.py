@@ -423,7 +423,7 @@ class Activity(object):
         return {'id':self._id, 'label':self.category(), 'shortlabel':self.shortlabel(), 'startframe':self._startframe, 'endframe':self._endframe, 'attributes':self.attributes, 'framerate':self._framerate,
                 'tracks':[t.dict() for (k,t) in self._tracks.items()]}
     
-    def actor(self, actorid=None):
+    def actorid(self, actorid=None):
         if actorid is None:
             return self._actorid
         else:
@@ -518,6 +518,8 @@ class Activity(object):
         if oldtrack.id() in self._tracks:
             self._tracks = {k:v for (k,v) in self._tracks.items() if k != oldtrack.id()}   # remove oldtrack
             self._tracks.update( {newtrack.id():newtrack} )  # add newtrack
+            if self.actorid() == oldtrack.id():
+                self.actorid(newtrack.id())
         return self
 
     def during(self, frame):
@@ -584,3 +586,14 @@ class Activity(object):
         self._endframe += int(df[1])
         return self  
 
+    def disjoint(self, other):
+        """Enforce disjoint activities with other by shifting the endframe or startframe of self to not overlap.
+           Other may be an Activity() or list of Activity()
+        """
+        for o in tolist(other):
+            assert isinstance(o, Activity), "Invalid input - must be vipy.object.Activity() or list of activities"       
+            assert not (o.during(self.startframe()) and o.during(self.endframe())), "Self cannot fully overlap other"
+            assert not (self.during(o.startframe()) and self.during(o.endframe())), "Other cannot fully overlap self"
+            if self.temporal_iou(o) > 0:
+                self.endframe(o.startframe()-1) if self.endframe()>o.startframe() else self.startframe(o.endframe()+1)
+        return self 

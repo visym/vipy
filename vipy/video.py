@@ -1309,7 +1309,7 @@ class Scene(VideoCategory):
            This function does not perform any temporal clipping.  Use activityclip() first to split into individual activities.  
            Crops will be optionally dilated, with zeropadding if the box is outside the image rectangle.  All crops will be resized so that the maximum dimension is maxdim (and square by default)
         """
-        assert self.hastrack(trackid), "Actortube requires a track ID in the scene"
+        assert self.hastrack(trackid), "Track ID %s not found - Actortube requires a track ID in the scene (tracks=%s)" % (str(trackid), str(self.tracks()))
         vid = self.clone().load()  # triggers load        
         t = vid.tracks(id=trackid)  # actor track
         frames = [im.padcrop(t[k].maxsquare().dilate(dilate).int()).resize(maxdim, maxdim) for (k,im) in enumerate(vid) if t.during(k)]  # track interpolation, for frames with boxes for this actor only
@@ -1317,7 +1317,7 @@ class Scene(VideoCategory):
             warnings.warn('[vipy.video.actortube]: Removed %d frames with no spatial bounding boxes for actorid "%s"' % (len(vid) - len(frames), trackid))
         vid._tracks = {ti:vipy.object.Track(keyframes=[f for (f,im) in enumerate(frames) for d in im.objects() if d.attributes['trackid'] == ti],
                                             boxes=[d for (f,im) in enumerate(frames) for d in im.objects() if d.attributes['trackid'] == ti],
-                                            category=t.category(), trackid=ti)
+                                            category=t.category(), trackid=ti)  # preserve trackid
                        for (k,(ti,t)) in enumerate(self._tracks.items())}  # replace tracks with boxes relative to tube
         vid.activitymap(lambda a: a.tracks( {ti:t for (ti,t) in vid._tracks.items() if a.hastrack(ti)} ))  # update activity tracks too (yuck..)
         return vid.array(np.stack([im.numpy() for im in frames]))
@@ -1453,7 +1453,8 @@ class Scene(VideoCategory):
             self.activities().update(otherclone.activities())
 
         return self
-    
+
+
     def annotate(self, verbose=True, fontsize=10, captionoffset=(0,0), textfacecolor='white', textfacealpha=1.0, shortlabel=True, boxalpha=0.25, d_category2color={'Person':'green', 'Vehicle':'blue', 'Object':'red'}, categories=None, nocaption=False, nocaption_withstring=[]):
         """Generate a video visualization of all annotated objects and activities in the video, at the resolution and framerate of the underlying video, pixels in this video will now contain the overlay
         This function does not play the video, it only generates an annotation video frames.  Use show() which is equivalent to annotate().saveas().play()
