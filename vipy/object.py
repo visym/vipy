@@ -155,8 +155,8 @@ class Track(object):
             yield self._linear_interpolation(k)
 
     def __len__(self):
-        """The length of a track is the total number of interpolated frames"""
-        return self.endframe() - self.startframe() + 1
+        """The length of a track is the total number of interpolated frames, or zero if degenerate"""
+        return max(0, self.endframe() - self.startframe() + 1)
 
     def dict(self):
         return {'id':self._id, 'label':self.category(), 'shortlabel':self.shortlabel(), 'keyframes':self._keyframes, 'framerate':self._framerate, 
@@ -409,8 +409,8 @@ class Activity(object):
         self.attributes = attributes if attributes is not None else {}            
         
     def __len__(self):
-        """Return activity length in frames"""
-        return self.endframe() - self.startframe()
+        """Return activity length in frames, or zero if degenerate"""
+        return max(0, self.endframe() - self.startframe())
 
     def __getitem__(self, k):
         """Return a list Detection() objects interpolated at frame k if during activity, otherwise return None"""
