@@ -586,14 +586,18 @@ class Activity(object):
         self._endframe += int(df[1])
         return self  
 
-    def disjoint(self, other):
+    def disjoint(self, other, strict=False):
         """Enforce disjoint activities with other by shifting the endframe or startframe of self to not overlap.
            Other may be an Activity() or list of Activity()
+           if strict=True, then throw an exception if other or self is fully contained with the other, resulting in degenerate activity after disjoint
         """
         for o in tolist(other):
             assert isinstance(o, Activity), "Invalid input - must be vipy.object.Activity() or list of activities"       
-            assert not (o.during(self.startframe()) and o.during(self.endframe())), "Self cannot fully overlap other"
-            assert not (self.during(o.startframe()) and self.during(o.endframe())), "Other cannot fully overlap self"
-            if self.temporal_iou(o) > 0:
-                self.endframe(o.startframe()-1) if self.endframe()>o.startframe() else self.startframe(o.endframe()+1)
-        return self 
+            if strict:
+                assert not (o.during(self.startframe()) and o.during(self.endframe())), "Self cannot fully overlap other"
+                assert not (self.during(o.startframe()) and self.during(o.endframe())), "Other cannot fully overlap self"
+            if o.during(self.endframe()):
+                self.endframe(o.startframe()-1)
+            if o.during(self.startframe()):
+                self.startframe(o.endframe()+1)
+        return self  # may be zero length now
