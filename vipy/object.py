@@ -107,7 +107,7 @@ class Track(object):
 
     """
 
-    def __init__(self, keyframes, boxes, category=None, label=None, confidence=None, framerate=None, interpolation='linear', boundary='strict', shortlabel=None, attributes=None):
+    def __init__(self, keyframes, boxes, category=None, label=None, confidence=None, framerate=None, interpolation='linear', boundary='strict', shortlabel=None, attributes=None, trackid=None):
 
         keyframes = tolist(keyframes)
         boxes = tolist(boxes)        
@@ -120,7 +120,7 @@ class Track(object):
         assert boundary in set(['extend', 'strict']), "Invalid interpolation boundary - Must be ['extend', 'strict']"
         assert interpolation in set(['linear']), "Invalid interpolation - Must be ['linear']"
                 
-        self._id = uuid.uuid1().hex
+        self._id = uuid.uuid1().hex if trackid is None else trackid
         self._label = category if category is not None else label
         self._shortlabel = self._label if shortlabel is None else shortlabel
         self._framerate = framerate

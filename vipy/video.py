@@ -1290,10 +1290,15 @@ class Scene(VideoCategory):
            Crops will be dilated and zeropadded if the box is outside the image rectangle.  All crops will be resized so that the maximum dimension is maxdim.
         """
         vid = self.clone().load()  # triggers load        
-        frames = np.stack([im.padcrop(im.boundingbox().maxsquare().dilate(dilate).int()).resize(maxdim, maxdim).numpy() for im in vid if im.boundingbox() is not None])  # track interpolation, for frames with boxes only
+        frames = [im.padcrop(im.boundingbox().maxsquare().dilate(dilate).int()).resize(maxdim, maxdim) for im in vid if im.boundingbox() is not None]  # track interpolation, for frames with boxes only
         if len(frames) != len(vid):
             warnings.warn('[vipy.video.activitytube]: Removed %d frames during activity with no spatial bounding boxes' % (len(vid) - len(frames)))
-        return vid.array(frames)
+        vid._tracks = {ti:vipy.object.Track(keyframes=[f for (f,im) in enumerate(frames) for d in im.objects() if d.attributes['trackid'] == ti],
+                                            boxes=[d for (f,im) in enumerate(frames) for d in im.objects() if d.attributes['trackid'] == ti],
+                                            category=t.category(), trackid=ti)
+                       for (k,(ti,t)) in enumerate(self._tracks.items())}  # replace tracks with boxes relative to tube
+        vid.activitymap(lambda a: a.tracks( {ti:t for (ti,t) in vid._tracks.items() if a.hastrack(ti)} ))  # update activity tracks too (yuck..)
+        return vid.array(np.stack([im.numpy() for im in frames]))
 
     def clip(self, startframe, endframe):
         """Clip the video to between (startframe, endframe).  This clip is relative to clip() shown by __repr__().  Return a clone of the video for idemponence"""
