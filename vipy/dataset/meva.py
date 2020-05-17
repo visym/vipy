@@ -12,7 +12,7 @@ import vipy.globals
 
 
 class KF1(object):
-    def __init__(self, videodir, repodir, contrib=False, stride=1, verbose=True, n_videos=None, d_category_to_shortlabel=None, merge=False):
+    def __init__(self, videodir, repodir, contrib=False, stride=1, verbose=True, n_videos=None, d_category_to_shortlabel=None, merge=False, actor=False):
         """Parse MEVA annotations (http://mevadata.org) for KNown Facility 1 dataset into vipy.video.Scene() objects
        
         Kwiver packet format: https://gitlab.kitware.com/meva/meva-data-repo/blob/master/documents/KPF-specification-v4.pdf
@@ -28,7 +28,7 @@ class KF1(object):
             'Person Reading', 'Vehicle Starting') where 'Verbing' is provided by the shortlabel.   This is optional, and will use the default mapping if None
           -verbose=bool:  Parsing verbosity
           -merge:  deduplicate annotations for each video across YAML files by merging them by mean spatial IoU per track (>0.5) and temporal IoU (>0)
-
+          -actor [bool]:  Include only those activities that include an associated track for the primary actor: "Person" for "person_*" and "hand_*", else "Vehicle"
         """
         
         self.videodir = videodir
@@ -93,7 +93,7 @@ class KF1(object):
             from vipy.batch import Batch
             self._vidlist = Batch(list(yamlfiles)).map(lambda tga: self._parse_video(d_videoname_to_path, d_category_to_shortlabel, tga[0], tga[1], tga[2], stride=stride, verbose=verbose))
         else:
-            self._vidlist = [self._parse_video(d_videoname_to_path, d_category_to_shortlabel, t, g, a, stride=stride, verbose=verbose) for (t,g,a) in yamlfiles]
+            self._vidlist = [self._parse_video(d_videoname_to_path, d_category_to_shortlabel, t, g, a, stride=stride, verbose=verbose, actor=actor) for (t,g,a) in yamlfiles]
         self._vidlist = [v for v in self._vidlist if v is not None]
 
         # Merge and dedupe activities and tracks across YAML files for same video, using temporal and spatial IoU association.
@@ -142,7 +142,7 @@ class KF1(object):
     def _get_videos(self):
         return sorted([x for x in findvideo(self.videodir)])
     
-    def _parse_video(self, d_videoname_to_path, d_category_to_shortlabel, types_yamlfile, geom_yamlfile, act_yamlfile, stride=1, verbose=False):
+    def _parse_video(self, d_videoname_to_path, d_category_to_shortlabel, types_yamlfile, geom_yamlfile, act_yamlfile, stride=1, verbose=False, actor=False):
         """Reference: https://gitlab.kitware.com/meva/meva-data-repo/-/blob/master/documents/KPF-specification-v4.pdf"""
         
         # Read YAML
@@ -198,6 +198,9 @@ class KF1(object):
             except Exception as e:
                 print('[vipy.dataset.meva.KF1]: track import error "%s" for trackid=%s, track=%s - SKIPPING' % (str(e), k, str(v)))
 
+        # Category to actor:  This defines the primary role for the activity (for tube based representations)
+        f_activity_to_actor = lambda c: 'Person' if (c.split('_')[0] == 'person' or 'hand' in c) else 'Vehicle'
+        
         # Parse activities
         for v in act_yaml:
             if 'act' in v:
@@ -229,7 +232,12 @@ class KF1(object):
                 
                 startframe = int(v['act']['timespan'][0]['tsr0'][0])
                 endframe = int(v['act']['timespan'][0]['tsr0'][1])
-                actorid = [x['id1'] for x in v['act']['actors']]  
+                actorid = [x['id1'] for x in v['act']['actors']]   
+                nounid = [d_id1_to_track[a].id() for a in actorid if f_activity_to_actor(category).lower() == d_id1_to_track[a].category().lower()]
+                if actor and len(nounid) == 0:
+                    print('[vipy.dataset.meva.KF1]: activity "%s" without a required primary actor "%s" - SKIPPING' % (category, f_activity_to_actor(category)))
+                    continue
+                nounid = nounid[0] if len(nounid) > 0 else None   # first track in activity of required object class for this category is assumed to be the performer/actor/noun
 
                 for aid in actorid:
                     if not aid in d_id1_to_track:
@@ -239,8 +247,9 @@ class KF1(object):
                 tracks = {d_id1_to_track[aid].id():d_id1_to_track[aid] for aid in actorid if aid in d_id1_to_track}  # order preserving (python 3.6)
                 if len(tracks) > 0:
                     try:
-                        vid.add(Activity(category=category, shortlabel=d_category_to_shortlabel[category],
-                                         startframe=startframe, endframe=endframe, tracks=tracks, framerate=framerate, attributes={'act':v['act'], 'act_yaml':act_yamlfile, 'geom_yaml':geom_yamlfile}), rangecheck=True)
+                        vid.add(Activity(category=category, shortlabel=d_category_to_shortlabel[category], actorid=nounid,
+                                         startframe=startframe, endframe=endframe, tracks=tracks, framerate=framerate, 
+                                         attributes={'act':v['act'], 'act_yaml':act_yamlfile, 'geom_yaml':geom_yamlfile}), rangecheck=True)
                     except Exception as e:
                         print('[vipy.dataset.meva.KF1]: activity import error "%s" for activity="%s" - SKIPPING' % (str(e), str(v)))
             

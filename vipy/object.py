@@ -390,13 +390,13 @@ class Activity(object):
     >>> a = vipy.object.Activity(startframe=0, endframe=10, category='Walking', tracks={t.id():t})
 
     """
-    def __init__(self, startframe, endframe, framerate=None, label=None, shortlabel=None, category=None, tracks=None, attributes=None):
+    def __init__(self, startframe, endframe, framerate=None, label=None, shortlabel=None, category=None, tracks=None, attributes=None, actorid=None):
         assert not (label is not None and category is not None), "Activity() Constructor requires either label or category kwargs, not both"
         assert startframe < endframe, "Start frame must be strictly less than end frame"
         assert tracks is None or isinstance(tracks, dict), "Tracks must be a dictionary {trackid:vipy.object.Track()}"
         assert tracks is None or all([isstring(k) for (k,v) in tracks.items()]) and all([isinstance(v, Track) for (k,v) in tracks.items()]), "Invalid tracks - Must be a dictionary of {str(trackid):vipy.object.Track()}"        
         assert tracks is None or all([any([t.during(f) for f in range(startframe, endframe)]) for t in tracks.values()]), "All tracks must be be present in at least one frame when this activity occurs"
-    
+
         self._id = uuid.uuid1().hex
         self._startframe = startframe
         self._endframe = endframe
@@ -404,6 +404,7 @@ class Activity(object):
         self._label = category if category is not None else label        
         self._shortlabel = self._label if shortlabel is None else shortlabel
         self._tracks = tracks if tracks is not None else {}
+        self._actorid = actorid
 
         self.attributes = attributes if attributes is not None else {}            
         
@@ -422,13 +423,19 @@ class Activity(object):
         return {'id':self._id, 'label':self.category(), 'shortlabel':self.shortlabel(), 'startframe':self._startframe, 'endframe':self._endframe, 'attributes':self.attributes, 'framerate':self._framerate,
                 'tracks':[t.dict() for (k,t) in self._tracks.items()]}
     
+    def actor(self, actorid=None):
+        if actorid is None:
+            return self._actorid
+        else:
+            self._actorid = actorid
+            return self
+
     def startframe(self, f=None):
         if f is None:
             return self._startframe
         else:
             self._startframe = f
             return self
-
     
     def endframe(self, f=None):
         if f is None:

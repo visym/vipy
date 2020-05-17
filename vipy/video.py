@@ -1140,6 +1140,9 @@ class Scene(VideoCategory):
     def hastracks(self):
         return len(self._tracks) > 0
 
+    def hastrack(self, trackid):
+        return trackid in self._tracks
+
     def add(self, obj, category=None, attributes=None, rangecheck=True):
         """Add the object obj to the scene, and return an index to this object for future updates
         
@@ -1285,20 +1288,40 @@ class Scene(VideoCategory):
 
     def activitytube(self, dilate=1.0, maxdim=256):
         """The activitytube() is a sequence of crops where the spatial box changes on every frame to track the activity.  
-           The box in each frame is the square activitybox() for this video which is the union of boxes contributing to this activity.
+           The box in each frame is the square activitybox() for this video which is the union of boxes contributing to this activity in each frame.
            This function does not perform any temporal clipping.  Use activityclip() first to split into individual activities.  
-           Crops will be dilated and zeropadded if the box is outside the image rectangle.  All crops will be resized so that the maximum dimension is maxdim.
+           Crops will be optionally dilated, with zeropadding if the box is outside the image rectangle.  All crops will be resized so that the maximum dimension is maxdim (and square by default)
         """
         vid = self.clone().load()  # triggers load        
         frames = [im.padcrop(im.boundingbox().maxsquare().dilate(dilate).int()).resize(maxdim, maxdim) for im in vid if im.boundingbox() is not None]  # track interpolation, for frames with boxes only
         if len(frames) != len(vid):
-            warnings.warn('[vipy.video.activitytube]: Removed %d frames during activity with no spatial bounding boxes' % (len(vid) - len(frames)))
+            warnings.warn('[vipy.video.activitytube]: Removed %d frames with no spatial bounding boxes' % (len(vid) - len(frames)))
         vid._tracks = {ti:vipy.object.Track(keyframes=[f for (f,im) in enumerate(frames) for d in im.objects() if d.attributes['trackid'] == ti],
                                             boxes=[d for (f,im) in enumerate(frames) for d in im.objects() if d.attributes['trackid'] == ti],
                                             category=t.category(), trackid=ti)
                        for (k,(ti,t)) in enumerate(self._tracks.items())}  # replace tracks with boxes relative to tube
         vid.activitymap(lambda a: a.tracks( {ti:t for (ti,t) in vid._tracks.items() if a.hastrack(ti)} ))  # update activity tracks too (yuck..)
         return vid.array(np.stack([im.numpy() for im in frames]))
+
+    def actortube(self, trackid, dilate=1.0, maxdim=256):
+        """The actortube() is a sequence of crops where the spatial box changes on every frame to track the activity.  
+           The box in each frame is the square box centered on the primary actor performing the activity.  
+           This function does not perform any temporal clipping.  Use activityclip() first to split into individual activities.  
+           Crops will be optionally dilated, with zeropadding if the box is outside the image rectangle.  All crops will be resized so that the maximum dimension is maxdim (and square by default)
+        """
+        assert self.hastrack(trackid), "Actortube requires a track ID in the scene"
+        vid = self.clone().load()  # triggers load        
+        t = vid.tracks(id=trackid)  # actor track
+        frames = [im.padcrop(t[k].maxsquare().dilate(dilate).int()).resize(maxdim, maxdim) for (k,im) in enumerate(vid) if t.during(k)]  # track interpolation, for frames with boxes for this actor only
+        if len(frames) != len(vid):
+            warnings.warn('[vipy.video.actortube]: Removed %d frames with no spatial bounding boxes for actorid "%s"' % (len(vid) - len(frames), trackid))
+        vid._tracks = {ti:vipy.object.Track(keyframes=[f for (f,im) in enumerate(frames) for d in im.objects() if d.attributes['trackid'] == ti],
+                                            boxes=[d for (f,im) in enumerate(frames) for d in im.objects() if d.attributes['trackid'] == ti],
+                                            category=t.category(), trackid=ti)
+                       for (k,(ti,t)) in enumerate(self._tracks.items())}  # replace tracks with boxes relative to tube
+        vid.activitymap(lambda a: a.tracks( {ti:t for (ti,t) in vid._tracks.items() if a.hastrack(ti)} ))  # update activity tracks too (yuck..)
+        return vid.array(np.stack([im.numpy() for im in frames]))
+
 
     def clip(self, startframe, endframe):
         """Clip the video to between (startframe, endframe).  This clip is relative to clip() shown by __repr__().  Return a clone of the video for idemponence"""

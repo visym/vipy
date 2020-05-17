@@ -140,6 +140,8 @@ def _test_scene():
     print('[test_video.scene]: activitycuboid()  PASSED - basic only')        
     a = vc.activitytube()
     print('[test_video.scene]: activitytube()  PASSED - basic only')        
+    a = vc.actortube(v.tracklist()[0].id())
+    print('[test_video.scene]: actortube()  PASSED - basic only')        
     
     # Downloader
     v = vipy.video.Video(url='http://visym.com/out.mp4').load(ignoreErrors=True)
