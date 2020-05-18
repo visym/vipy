@@ -2,7 +2,7 @@ import os
 import dill
 from vipy.util import remkdir, tempMP4, isurl, \
     isvideourl, templike, tempjpg, filetail, tempdir, isyoutubeurl, try_import, isnumpy, temppng, \
-    istuple, islist, isnumber, tolist, filefull, fileext, isS3url, totempdir, flatlist, tocache, premkdir
+    istuple, islist, isnumber, tolist, filefull, fileext, isS3url, totempdir, flatlist, tocache, premkdir, writecsv
 from vipy.image import Image
 import vipy.geometry
 import vipy.image
@@ -1031,7 +1031,7 @@ class Scene(VideoCategory):
         return self.__iter__()
     
     def labeled_frames(self):
-        """Iterate over frames, yielding tuples (activity+object labelset, vipy.image.Scene())"""
+        """Iterate over frames, yielding tuples (activity+object labelset in scene, vipy.image.Scene())"""
         self.load()
         for k in range(0, len(self)):
             self._currentframe = k    # used only for incremental add()
@@ -1215,6 +1215,20 @@ class Scene(VideoCategory):
         d['activities'] = [a.dict() for a in self._activities.values()]
         return d
         
+    def csv(self, outfile=None):
+        """Export scene to CSV file format with header.  If there are no tracks, this will be empty. """
+        assert self.load().isloaded()
+        csv = [(k,  # frame number (zero indexed)
+                d.category(), d.shortlabel(), # track category and shortlabel (displayed in caption)
+                ';'.join([a.category() for a in d.attributes['activity']] if 'activity' in d.attributes else ''), # semicolon separated activity ID assocated with track
+                d.xmin(), d.ymin(), d.width(), d.height(),   # bounding box
+                d.attributes['trackid'],  # globally unique track ID
+                ';'.join([a.id() for a in d.attributes['activity']] if 'activity' in d.attributes else '')) # semicolon separated activity ID assocated with track
+               for (k,im) in enumerate(self) for d in im.objects()]
+        csv = [('# frame number', 'object category', 'object shortlabel', 'activity categories(;)', 'xmin', 'ymin', 'width', 'height', 'trackid', 'activity id(;)')] + csv
+        return writecsv(csv, outfile) if outfile is not None else csv
+
+
     def framerate(self, fps=None):
         """Change the input framerate for the video and update frame indexes for all annotations"""
         if fps is None:

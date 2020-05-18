@@ -411,10 +411,25 @@ def loadas(infile, type='dill'):
         raise ValueError('unknown serialization type "%s"' % type)
 
 
-def load(infile):
+def load(infile, datapath=None, srcpath='/$PATH'):
     """Load variables from a dill pickled file"""
-    return loadas(infile, type='dill')
+    obj = loadas(infile, type='dill')
+    return obj if datapath is None else repath(obj, srcpath, datapath)
 
+def distload(infile, datapath, srcpath='/$PATH'):
+    return load(infile, datapath=datapath, srcpath=srcpath)
+
+def repath(v, srcpath, dstpath):
+    import vipy.image
+    import vipy.video
+    if not islist(v) and (hasattr(v, 'filename') and hasattr(v, 'clone')):
+        vc = v.clone().filename( v.filename().replace(srcpath, dstpath)) if v.filename() is not None else v
+    elif islist(v) and all([(hasattr(vv, 'filename') and hasattr(vv, 'clone')) for vv in v]):
+        vc = [vv.clone().filename( vv.filename().replace(srcpath, dstpath)) if vv.filename() is not None else vv for vv in v ]
+    else:
+        raise ValueError('Input must be a singleton or list of vipy.image.Image() or vipy.video.Video() objects, not type "%s"' % (str(type(v))))
+    return vc
+    
 
 def scpsave(v):
     import vipy.image
@@ -441,6 +456,10 @@ def save(vars, outfile=None, mode=None):
         chmod(outfile, mode)
     return outfile
 
+def distsave(vars, datapath, outfile=None, mode=None, dstpath='/$PATH'):
+    """Save a pickle file for redistribution, where datapath is replaced by dstpath.  Useful for redistribuing pickle files with absolute paths"""
+    vars = vars if datapath is None else repath(vars, datapath, dstpath)
+    return save(vars, outfile, mode)
 
 def fastsave(v, outfile=None):
     """Save variables as a cPickle file with the highest protocol - useful
@@ -686,6 +705,7 @@ def writecsv(list_of_tuples, outfile, mode='w', separator=','):
     """Write list of tuples to an output csv file with each list element
     on a row and tuple elements separated by comma"""
     list_of_tuples = list_of_tuples if not isnumpy(list_of_tuples) else list_of_tuples.tolist()
+    outfile = os.path.abspath(os.path.expanduser(outfile))
     with open(outfile, mode) as f:
         for u in list_of_tuples:
             n = len(u)

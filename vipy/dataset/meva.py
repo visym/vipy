@@ -12,7 +12,7 @@ import vipy.globals
 
 
 class KF1(object):
-    def __init__(self, videodir, repodir, contrib=False, stride=1, verbose=True, n_videos=None, d_category_to_shortlabel=None, merge=False, actor=False):
+    def __init__(self, videodir, repodir, contrib=False, stride=1, verbose=True, n_videos=None, d_category_to_shortlabel=None, merge=False, actor=False, disjoint=False):
         """Parse MEVA annotations (http://mevadata.org) for KNown Facility 1 dataset into vipy.video.Scene() objects
        
         Kwiver packet format: https://gitlab.kitware.com/meva/meva-data-repo/blob/master/documents/KPF-specification-v4.pdf
@@ -29,6 +29,7 @@ class KF1(object):
           -verbose=bool:  Parsing verbosity
           -merge:  deduplicate annotations for each video across YAML files by merging them by mean spatial IoU per track (>0.5) and temporal IoU (>0)
           -actor [bool]:  Include only those activities that include an associated track for the primary actor: "Person" for "person_*" and "hand_*", else "Vehicle"
+          -disjoint [bool]:  Enforce that overlapping causal activities (open/close, enter/exit, ...) are disjoint for a track
         """
         
         self.videodir = videodir
@@ -91,7 +92,7 @@ class KF1(object):
         # Parallel video annotation
         if vipy.globals.num_workers() > 1:
             from vipy.batch import Batch
-            self._vidlist = Batch(list(yamlfiles)).map(lambda tga: self._parse_video(d_videoname_to_path, d_category_to_shortlabel, tga[0], tga[1], tga[2], stride=stride, verbose=verbose))
+            self._vidlist = Batch(list(yamlfiles)).map(lambda tga: self._parse_video(d_videoname_to_path, d_category_to_shortlabel, tga[0], tga[1], tga[2], stride=stride, verbose=verbose, actor=actor))
         else:
             self._vidlist = [self._parse_video(d_videoname_to_path, d_category_to_shortlabel, t, g, a, stride=stride, verbose=verbose, actor=actor) for (t,g,a) in yamlfiles]
         self._vidlist = [v for v in self._vidlist if v is not None]
@@ -105,6 +106,21 @@ class KF1(object):
             print('[vipy.dataset.meva.KF1]: merging videos ...')
             self._vidlist = [v[0].clone().union(v[1:]) for (f, v) in groupbyasdict([a for vid in self._vidlist for a in vid.activitysplit()], lambda s: s.filename()).items()]
         
+        # Enforce disjoint causal activities
+        #   Due to the arbitrary temporal padding in the annotation definitions, merged causal activiites can overlap
+        #   Enforce that causal activities (open/close, enter/exit, pickup/putdown, load/unload) for the same track are disjoint
+        if disjoint:
+            V = self._vidlist
+            V = [v.activitymap(lambda a: a.disjoint([sa for sa in v.activitylist() if sa.category() == 'person_closes_vehicle_door']) if a.category() == 'person_opens_vehicle_door' else a) for v in V]  
+            V = [v.activitymap(lambda a: a.disjoint([sa for sa in v.activitylist() if sa.category() == 'person_closes_vehicle_trunk']) if a.category() == 'person_opens_vehicle_trunk' else a) for v in V]  
+            V = [v.activitymap(lambda a: a.disjoint([sa for sa in v.activitylist() if sa.category() == 'person_exits_vehicle']) if a.category() == 'person_enters_vehicle' else a) for v in V]  
+            V = [v.activitymap(lambda a: a.disjoint([sa for sa in v.activitylist() if sa.category() == 'person_enters_scene_through_structure']) if a.category() == 'person_exits_scene_through_structure' else a) for v in V]  
+            V = [v.activitymap(lambda a: a.disjoint([sa for sa in v.activitylist() if sa.category() == 'person_closes_facility_door']) if a.category() == 'person_opens_facility_door' else a) for v in V]  
+            V = [v.activitymap(lambda a: a.disjoint([sa for sa in v.activitylist() if sa.category() == 'person_unloads_vehicle']) if a.category() == 'person_loads_vehicle' else a) for v in V]  
+            V = [v.activitymap(lambda a: a.disjoint([sa for sa in v.activitylist() if sa.category() == 'person_puts_down_object']) if a.category() == 'person_picks_up_object' else a) for v in V]  
+            V = [v.activityfilter(lambda a: len(a)>0) for v in V]  # some activities may be zero length after disjoint
+            self._vidlist = V
+
     def __getitem__(self, k):
         return self._vidlist[k]
 
