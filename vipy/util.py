@@ -26,7 +26,7 @@ from itertools import groupby as itertools_groupby
 import importlib
 import pathlib
 import socket
-
+import warnings
 
 
 def hascache():
@@ -414,10 +414,16 @@ def loadas(infile, type='dill'):
 def load(infile, datapath=None, srcpath='/$PATH'):
     """Load variables from a dill pickled file"""
     obj = loadas(infile, type='dill')
-    return obj if datapath is None else repath(obj, srcpath, datapath)
+    obj = obj if datapath is None else repath(obj, srcpath, datapath)
+    if hasattr(tolist(obj)[0], 'filename') and srcpath in tolist(obj)[0].filename():
+        warnings.warn('Loading "%s" that contains redistributable paths - Use vipy.util.load("%s", datapath="/path/to/your/data") to rehome' % (infile, infile))
+    return obj
+        
+
 
 def distload(infile, datapath, srcpath='/$PATH'):
     return load(infile, datapath=datapath, srcpath=srcpath)
+
 
 def repath(v, srcpath, dstpath):
     import vipy.image
