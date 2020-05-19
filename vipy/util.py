@@ -412,26 +412,33 @@ def loadas(infile, type='dill'):
 
 
 def load(infile, datapath=None, srcpath='/$PATH'):
-    """Load variables from a dill pickled file"""
+    """Load variables from a dill pickled file.  
+       
+       datapath [str]:  If the variables in the pklfile 'infile' are vipy.image or vipy.video objects, replace the relocatable path with this 
+       srcpath [str]:  the relocatable path used in vipy.util.distsave()
+
+    """
     obj = loadas(infile, type='dill')
     obj = obj if datapath is None else repath(obj, srcpath, datapath)
-    if hasattr(tolist(obj)[0], 'filename') and srcpath in tolist(obj)[0].filename():
+    testobj = tolist(obj)[0]
+    if hasattr(testobj, 'filename') and srcpath in testobj.filename():
         warnings.warn('Loading "%s" that contains redistributable paths - Use vipy.util.load("%s", datapath="/path/to/your/data") to rehome' % (infile, infile))
+    elif hasattr(testobj, 'hasfilename') and not testobj.hasfilename(): 
+        warnings.warn('Loading "%s" that contains absolute filepaths - The relocated filename "%s" does not exist' % (infile, testobj.filename()))
     return obj
-        
 
 
 def distload(infile, datapath, srcpath='/$PATH'):
+    """Load a redistributable pickle file that replaces absolute paths in datapath with srcpath.  See also vipy.util.distsave()"""
     return load(infile, datapath=datapath, srcpath=srcpath)
 
 
 def repath(v, srcpath, dstpath):
-    import vipy.image
-    import vipy.video
+    """Change the filename with prefix srcpath to dstpath, for any element in v that supports the filename() api"""
     if not islist(v) and (hasattr(v, 'filename') and hasattr(v, 'clone')):
-        vc = v.clone().filename( v.filename().replace(srcpath, dstpath)) if v.filename() is not None else v
+        vc = v.filename( v.filename().replace(srcpath, dstpath)) if v.filename() is not None else v
     elif islist(v) and all([(hasattr(vv, 'filename') and hasattr(vv, 'clone')) for vv in v]):
-        vc = [vv.clone().filename( vv.filename().replace(srcpath, dstpath)) if vv.filename() is not None else vv for vv in v ]
+        vc = [vv.filename( vv.filename().replace(srcpath, dstpath)) if vv.filename() is not None else vv for vv in v ]
     else:
         raise ValueError('Input must be a singleton or list of vipy.image.Image() or vipy.video.Video() objects, not type "%s"' % (str(type(v))))
     return vc
@@ -463,9 +470,10 @@ def save(vars, outfile=None, mode=None):
     return outfile
 
 def distsave(vars, datapath, outfile=None, mode=None, dstpath='/$PATH'):
-    """Save a pickle file for redistribution, where datapath is replaced by dstpath.  Useful for redistribuing pickle files with absolute paths"""
+    """Save a pickle file for redistribution, where datapath is replaced by dstpath.  Useful for redistribuing pickle files with absolute paths.  See also vipy.util.distload()"""
     vars = vars if datapath is None else repath(vars, datapath, dstpath)
     return save(vars, outfile, mode)
+
 
 def fastsave(v, outfile=None):
     """Save variables as a cPickle file with the highest protocol - useful
