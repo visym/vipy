@@ -24,7 +24,7 @@ VIPY provides:
 Requirements
 -------------------
 python 3.*  
-ffmpeg (optional)  
+ffmpeg (required for videos)  
 
 
 Installation
