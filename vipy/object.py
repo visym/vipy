@@ -156,8 +156,11 @@ class Track(object):
 
     def __len__(self):
         """The length of a track is the total number of interpolated frames, or zero if degenerate"""
-        return max(0, self.endframe() - self.startframe() + 1)
+        return max(0, self.endframe() - self.startframe() + 1) if (len(self._keyframes)>0 and len(self._keyboxes)>0) else 0
 
+    def isempty(self):
+        return self.__len__() == 0
+    
     def dict(self):
         return {'id':self._id, 'label':self.category(), 'shortlabel':self.shortlabel(), 'keyframes':self._keyframes, 'framerate':self._framerate, 
                 'boundingbox':[bb.dict() for bb in self._keyboxes], 'attributes':self.attributes}
