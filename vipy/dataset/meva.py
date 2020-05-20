@@ -121,6 +121,9 @@ class KF1(object):
             V = [v.activityfilter(lambda a: len(a)>0) for v in V]  # some activities may be zero length after disjoint
             self._vidlist = V
 
+        # Remove empty tracks
+        self._vidlist = [v.trackfilter(lambda t: len(t) > 0) for v in self._vidlist]
+
     def __getitem__(self, k):
         return self._vidlist[k]
 
