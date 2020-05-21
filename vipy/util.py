@@ -1213,7 +1213,7 @@ def datestamp():
 
 def remkdir(path, flush=False):
     """Create a given directory if not already exists"""
-    if os.path.isdir(path) is False:
+    if os.path.isdir(path) is False and len(path) > 0:
         os.makedirs(path)
     elif flush is True:
         shutil.rmtree(path)
