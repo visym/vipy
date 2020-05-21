@@ -394,6 +394,10 @@ class Image(object):
         self._array = np.copy(self._array) if not self._array.flags['WRITEABLE'] else self._array  # triggers copy         
         return self._array
 
+    def zeros(self):
+        self._array = 0*self.load()._array
+        return self
+
     def pil(self):
         """Convert vipy.image.Image to PIL Image, by reference"""
         if self.colorspace() == 'float':

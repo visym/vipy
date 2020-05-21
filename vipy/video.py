@@ -316,6 +316,10 @@ class Video(object):
         self._array = np.copy(self._array) if not self._array.flags['WRITEABLE'] else self._array  # triggers copy 
         return self._array
     
+    def zeros(self):
+        self._array = 0*self.load()._array
+        return self
+
     def reload(self):
         return self.clone(flush=True).load()
                        
@@ -1329,6 +1333,11 @@ class Scene(VideoCategory):
         frames = [im.padcrop(t[k].maxsquare().dilate(dilate).int()).resize(maxdim, maxdim) for (k,im) in enumerate(vid) if t.during(k)]  # track interpolation, for frames with boxes for this actor only
         if len(frames) != len(vid):
             warnings.warn('[vipy.video.actortube]: Removed %d frames with no spatial bounding boxes for actorid "%s"' % (len(vid) - len(frames), trackid))
+            vid.attributes['actortube'] = {'truncated':len(vid) - len(frames)}  # provenance to reject
+        if len(frames) == 0:
+            warnings.warn('[vipy.video.actortube]: Resulting video is empty!  Setting actortube to zero')
+            frames = [ vid[0].resize(maxdim, maxdim).zeros() ]  # empty frame
+            vid.attributes['actortube'] = {'empty':True}   # provenance to reject 
         vid._tracks = {ti:vipy.object.Track(keyframes=[f for (f,im) in enumerate(frames) for d in im.objects() if d.attributes['trackid'] == ti],
                                             boxes=[d for (f,im) in enumerate(frames) for d in im.objects() if d.attributes['trackid'] == ti],
                                             category=t.category(), trackid=ti)  # preserve trackid
