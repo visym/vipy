@@ -3,7 +3,7 @@ from vipy.util import filetail, remkdir, readjson, groupbyasdict, filefull, read
 import vipy.downloader
 from vipy.video import VideoCategory, Video, Scene
 import numpy as np
-from vipy.object import Track, BoundingBox,
+from vipy.object import Track, BoundingBox
 from vipy.activity import Activity
 
 
