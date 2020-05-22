@@ -131,12 +131,10 @@ class Batch(object):
             else:
                 assert islist(args), "args must be a list"
                 obj = c.scatter(self._objlist[0], broadcast=True)
-                self.batch([self.__dict__['_client'].submit(f_lambda, obj, *a) for a in args])
+                return self.batch([self.__dict__['_client'].submit(f_lambda, obj, *a) for a in args])
         else:
-            self.batch(self.__dict__['_client'].map(f_lambda, self._objlist))
+            return self.batch(self.__dict__['_client'].map(f_lambda, self._objlist))
 
-        return list(self)
-    
     def filter(self, f_lambda):
         """Run the lambda function on each of the elements of the batch and filter based on the provided lambda  
         """
