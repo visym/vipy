@@ -1121,9 +1121,16 @@ class Scene(VideoCategory):
         """Return a set of all object and activity labels in this scene, or at frame int(k)"""
         return self.activitylabels(k).union(self.objectlabels(k))
 
-    def activitylabels(self, k=None):
-        """Return a set of all activity categories in this scene, or at frame k"""        
-        return set([a.category() for a in self.activities().values() if k is None or a.during(k)])
+    def activitylabels(self, startframe=None, endframe=None):
+        """Return a set of all activity categories in this scene, or at startframe, or in range [startframe, endframe]"""        
+        if startframe is None:
+            return set([a.category() for a in self.activities().values()])
+        elif startframe is not None and endframe is None:
+            return set([a.category() for a in self.activities().values() if a.during(startframe)])
+        elif startframe is not None and endframe is not None:
+            return [set([a.category() for a in self.activities().values() if a.during(k)]) for k in range(startframe, endframe)] 
+        else:
+            raise ValueError('Invalid input - must specify both startframe and endframe, or only startframe')            
     
     def objectlabels(self, k=None):
         """Return a set of all activity categories in this scene, or at frame k"""

@@ -52,6 +52,11 @@ def findyaml(basedir):
     return [str(path.resolve()) for path in pathlib.Path(basedir).rglob('*.yml')]
 
 
+def findpkl(basedir):
+    """Return a list of absolute paths to pkl files recursively discovered by walking the directory tree rooted at basedir"""
+    return [str(path.resolve()) for path in pathlib.Path(basedir).rglob('*.pkl')]
+
+
 def findjson(basedir):
     """Return a list of absolute paths to json files recursively discovered by walking the directory tree rooted at basedir"""
     return [str(path.resolve()) for path in pathlib.Path(basedir).rglob('*.json')]
