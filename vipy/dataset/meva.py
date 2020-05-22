@@ -12,7 +12,7 @@ import vipy.globals
 
 
 class KF1(object):
-    def __init__(self, videodir, repodir, contrib=False, stride=1, verbose=True, n_videos=None, d_category_to_shortlabel=None, merge=False, actor=False, disjoint=False):
+    def __init__(self, videodir, repodir, contrib=False, stride=1, verbose=True, n_videos=None, d_category_to_shortlabel=None, merge=False, actor=False, disjoint=False, unpad=False):
         """Parse MEVA annotations (http://mevadata.org) for KNown Facility 1 dataset into vipy.video.Scene() objects
        
         Kwiver packet format: https://gitlab.kitware.com/meva/meva-data-repo/blob/master/documents/KPF-specification-v4.pdf
@@ -30,13 +30,15 @@ class KF1(object):
           -merge:  deduplicate annotations for each video across YAML files by merging them by mean spatial IoU per track (>0.5) and temporal IoU (>0)
           -actor [bool]:  Include only those activities that include an associated track for the primary actor: "Person" for "person_*" and "hand_*", else "Vehicle"
           -disjoint [bool]:  Enforce that overlapping causal activities (open/close, enter/exit, ...) are disjoint for a track
+          -unpad [bool]:  remove the arbitrary padding assigned during dataset creation
+
         """
         
         self.videodir = videodir
         self.repodir = repodir
 
-        assert os.path.exists(os.path.join(self.videodir, 'drop-01')), "Invalid input - videodir must contain the drop-01, drop-02 and drop-03 subdirectories.  See http://mevadata.org/#getting-data"
-        assert os.path.exists(os.path.join(self.repodir, 'annotation')), "Invalid input - repodir must contain the clone of https://gitlab.kitware.com/meva/meva-data-repo"
+        assert os.path.exists(os.path.join(self.videodir, 'drop-01')), "Invalid input - videodir '%s' must contain the drop-01, drop-02 and drop-03 subdirectories.  See http://mevadata.org/#getting-data" % videodir
+        assert os.path.exists(os.path.join(self.repodir, 'annotation')), "Invalid input - repodir '%s' must contain the clone of https://gitlab.kitware.com/meva/meva-data-repo" % repodir
 
         # Shortlabels are optional and used for showing labels on videos only
         self._d_category_to_shortlabel = {'person_abandons_package':'Abandoning',
@@ -121,8 +123,50 @@ class KF1(object):
             V = [v.activityfilter(lambda a: len(a)>0) for v in V]  # some activities may be zero length after disjoint
             self._vidlist = V
 
-        # Remove empty tracks
+        # Remove the arbitrary temporal padding applied during dataset creation
+        if unpad:
+            # MEVA annotations assumptions:  https://docs.google.com/spreadsheets/d/19I3C5Zb6RHS0QC30nFT_m0ymArzjvlPLfb5SSRQYLUQ/edit#gid=0
+            # Pad one second before, zero seconds after
+            before1after0 = set(['person_opens_facility_door', 'person_closes_facility_door', 'person_opens_vehicle_door', 'person_closes_vehicle_door', 
+                                 'person_opens_trunk', 'person_closes_trunk', 'vehicle_stops', 'person_interacts_with_laptop'])        
+            V = [v.activitymap(lambda a: a.temporalpad( (-v.framerate()*1.0, 0) ) if a.category() in before1after0 else a) for v in self._vidlist]
+
+            # pad one second before, one second after, up to maximum of two seconds
+            before1after1max2 = set(['person_enters_scene_through_structure'])
+            V = [v.activitymap(lambda a: a.temporalpad(max(0, -v.framerate()*1.0)) if a.category() in before1after1max2 else a) for v in V]
+
+            # person_exits_scene_through_structure:  Pad one second before person_opens_facility_door label (if door collection), and ends with enough padding to make this minimum two seconds
+            V = [v.activitymap(lambda a: a.temporalpad( (-v.framerate()*1.0, 0) ) if a.category() == 'person_exits_scene_through_structure' else a) for v in V]        
+        
+            # person_enters_vehicle: Starts one second before person_opens_vehicle_door activity label and ends at the end of person_closes_vehicle_door activity
+            V = [v.activitymap(lambda a: a.temporalpad( (-v.framerate()*1.0, 0) ) if a.category() == 'person_enters_vehicle' else a) for v in V]        
+
+            # person_exits_vehicle:  Starts one second before person_opens_vehicle_door, and ends at person_exits_vehicle with enough padding to make this minimum two seconds
+            V = [v.activitymap(lambda a: a.temporalpad( (-v.framerate()*1.0, 0) ) if a.category() == 'person_exits_vehicle' else a) for v in V]        
+
+            # person_unloads_vehicle:  one second of padding before cargo starts to move
+            V = [v.activitymap(lambda a: a.temporalpad( (-v.framerate()*1.0, 0) ) if a.category() == 'person_unloads_vehicle' else a) for v in V]        
+
+            # person_talks_to_person:  Equal padding to minimum of five seconds            
+            # person_texting_on_phone:  Equal padding to minimum of two seconds
+
+            # Pad one second before, one second after
+            before1after1 = set(['vehicle_turns_left', 'vehicle_turns_right', 'person_transfers_object',
+                                 'person_sets_down_object', 'hand_interacts_with_person', 'person_embraces_person', 'person_purchases',
+                                 'vehicle_picks_up_person', 'vehicle_drops_off_person'])
+            V = [v.activitymap(lambda a: a.temporalpad(-v.framerate()*1.0) if a.category() in before1after1 else a) for v in V]
+
+            # Pad zero second before, one second after
+            before0after1 = set(['vehicle_makes_u_turn', 'person_picks_up_object'])
+            V = [v.activitymap(lambda a: a.temporalpad( (0, -v.framerate()*1.0) ) if a.category() in before0after1 else a) for v in V]
+
+            # person_abandons_package:  two seconds before, two seconds after
+            V = [v.activitymap(lambda a: a.temporalpad(-v.framerate()*2.0) if a.category() == 'person_abandons_package' else a) for v in V]            
+            self._vidlist = V
+
+        # Remove empty tracks and activities
         self._vidlist = [v.trackfilter(lambda t: len(t) > 0) for v in self._vidlist]
+        self._vidlist = [v.activityfilter(lambda a: len(a) > 0) for v in self._vidlist]
 
     def __getitem__(self, k):
         return self._vidlist[k]
