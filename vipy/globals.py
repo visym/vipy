@@ -2,6 +2,7 @@ import os
 import webbrowser
 import tempfile
 import vipy.math
+from vipy.util import remkdir
 
 
 # Global mutable dictionary
@@ -13,7 +14,7 @@ GLOBAL = {'VERBOSE': False,
 def cache(cachedir=None):
     """The cache is the location that URLs are downloaded to on your system.  This can be set here, or with the environment variable VIPY_CACHE"""
     if cachedir is not None:
-        os.environ['VIPY_CACHE'] = cachedir
+        os.environ['VIPY_CACHE'] = remkdir(cachedir)
     return os.environ['VIPY_CACHE'] if 'VIPY_CACHE' in os.environ else None
     
 
