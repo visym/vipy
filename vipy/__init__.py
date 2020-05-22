@@ -1,5 +1,6 @@
 # Import all subpackages
 import vipy.show  # matplotlib first
+import vipy.activity
 import vipy.annotation
 import vipy.calibration
 import vipy.downloader

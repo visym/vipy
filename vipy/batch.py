@@ -89,7 +89,10 @@ class Batch(object):
             return self._objlist
         else:
             raise ValueError('Invalid input - must be list')
-        
+
+    def result(self):
+        return self.batch()
+    
     def __iter__(self):
         for im in self._objlist:
             yield im
@@ -128,10 +131,12 @@ class Batch(object):
             else:
                 assert islist(args), "args must be a list"
                 obj = c.scatter(self._objlist[0], broadcast=True)
-                return self.batch([self.__dict__['_client'].submit(f_lambda, obj, *a) for a in args])
+                self.batch([self.__dict__['_client'].submit(f_lambda, obj, *a) for a in args])
         else:
-            return self.batch(self.__dict__['_client'].map(f_lambda, self._objlist))
+            self.batch(self.__dict__['_client'].map(f_lambda, self._objlist))
 
+        return list(self)
+    
     def filter(self, f_lambda):
         """Run the lambda function on each of the elements of the batch and filter based on the provided lambda  
         """

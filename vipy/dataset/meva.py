@@ -1,7 +1,8 @@
 import os
 from vipy.util import remkdir, readjson, readyaml, findyaml, findvideo, filetail, findjson, filebase, readlist, groupbyasdict, save, flatlist, isstring, tempdir, readcsv, delpath, temphtml
 from vipy.video import VideoCategory, Scene
-from vipy.object import Track, Activity
+from vipy.object import Track
+from vipy.activity import Activity
 from vipy.geometry import BoundingBox
 from vipy.batch import Batch
 from vipy.show import colorlist

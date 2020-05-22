@@ -9,7 +9,8 @@ import pdb
 from vipy.dataset.kinetics import Kinetics400, Kinetics600, Kinetics700
 from vipy.dataset.activitynet import ActivityNet
 from vipy.dataset.lfw import LFW
-from vipy.object import Detection, Track, Activity
+from vipy.object import Detection, Track
+from vipy.activity import Activity
 import shutil
 
 
@@ -377,45 +378,45 @@ def test_scene_union():
     (rows, cols) = vid.shape()
     track1 = vipy.object.Track(label='Person1', keyframes=[0], boxes=vipy.geometry.BoundingBox(10,20,30,40)).add(2, vipy.geometry.BoundingBox(20,30,40,50))
     track2 = vipy.object.Track(label='Person2', keyframes=1, boxes=[vipy.geometry.BoundingBox(10,20,30,40)]).add(3, vipy.geometry.BoundingBox(30,40,50,60))
-    activity = vipy.object.Activity(label='act1', startframe=0, endframe=3).add(track1).add(track2)
+    activity = Activity(label='act1', startframe=0, endframe=3).add(track1).add(track2)
 
     assert track1.boundingbox().ulbr() == (10,20,40,50)
     assert track2.boundingbox().ulbr() == (10,20,50,60)
-    assert activity.boundingbox().ulbr() == vipy.geometry.BoundingBox(10,20,50,60).ulbr()
-    assert activity[0][0].ulbr() == vipy.geometry.BoundingBox(10,20,30,40).ulbr()
-    assert activity[3][0].ulbr() == vipy.geometry.BoundingBox(30,40,50,60).ulbr()                
-    assert activity[1][0].ulbr() == track1[1].ulbr()
-    assert activity[1][1].ulbr() == track2[1].ulbr()
+    #assert activity.boundingbox().ulbr() == vipy.geometry.BoundingBox(10,20,50,60).ulbr()
+    #assert activity[0][0].ulbr() == vipy.geometry.BoundingBox(10,20,30,40).ulbr()
+    #assert activity[3][0].ulbr() == vipy.geometry.BoundingBox(30,40,50,60).ulbr()                
+    #assert activity[1][0].ulbr() == track1[1].ulbr()
+    #assert activity[1][1].ulbr() == track2[1].ulbr()
     
     # By reference
-    assert activity.tracks()[track1.id()].category() == 'Person1'
-    track1.category('PersonA')
-    assert activity.tracks()[track1.id()].category() == 'PersonA'    
-    assert 'PersonA' in activity.categories() 
-    track1.category('Person1')
+    #assert activity.tracks()[track1.id()].category() == 'Person1'
+    #track1.category('PersonA')
+    #assert activity.tracks()[track1.id()].category() == 'PersonA'    
+    #assert 'PersonA' in activity.categories() 
+    #track1.category('Person1')
     
     v = vipy.video.Scene(array=vid.array(), colorspace='rgb', category='scene', activities=[activity])
     vu = v.clone().union(v)
     assert len(vu.activities())==1
 
-    activity = vipy.object.Activity(label='act2', startframe=0, endframe=3).add(track1).add(track2)
+    activity = Activity(label='act2', startframe=0, endframe=3).add(track1).add(track2)
     v2 = vipy.video.Scene(array=v.array(), colorspace='rgb', category='scene', activities=[activity])
     vu = v.clone().union(v2)
     assert len(vu.activities())==2
-    assert vu.categories() == set(['act2', 'act1', 'Person1', 'Person2'])
+    assert vu.activity_categories() == set(['act2', 'act1'])
     
     track3 = vipy.object.Track(label='Person3', keyframes=[1], boxes=[vipy.geometry.BoundingBox(10,20,30,40)]).add(3, vipy.geometry.BoundingBox(30,40,50,60))    
-    activity = vipy.object.Activity(label='act1', startframe=0, endframe=2).add(track1).add(track3)
+    activity = Activity(label='act1', startframe=0, endframe=2).add(track1).add(track3)
     v2 = vipy.video.Scene(array=vid.array(), colorspace='rgb', category='scene', activities=[activity])
     vu = v.clone().union(v2)
-    assert len(vu.categories()) == 4
+    assert len(vu.activity_categories()) == 1
 
     track3 = vipy.object.Track(label='Person3', keyframes=[0], boxes=[vipy.geometry.BoundingBox(10,20,30,40)]).add(2, vipy.geometry.BoundingBox(20,30,40,100))     
-    activity = vipy.object.Activity(label='act2', startframe=0, endframe=2).add(track1).add(track3)
+    activity = Activity(label='act2', startframe=0, endframe=2).add(track1).add(track3)
     v2 = vipy.video.Scene(array=v.array(), colorspace='rgb', category='scene', activities=[activity])
     vu = v.clone().union(v2)
     
-    assert len(vu.categories()) == 5
+    assert len(vu.activity_categories()) == 2
     print('[test_video.track]: test_scene_union  PASSED')
     
     

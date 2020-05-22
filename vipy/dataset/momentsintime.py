@@ -2,8 +2,8 @@ import os
 import numpy as np
 from vipy.util import filetail, remkdir, readjson, groupbyasdict, filefull, readlist, readcsv
 from vipy.video import VideoCategory, Video, Scene
-from vipy.object import Track, BoundingBox, Activity
-from vipy.batch import Batch
+from vipy.object import Track, BoundingBox
+from vipy.activity import Activity
 import vipy.downloader
 import vipy.visualize
 

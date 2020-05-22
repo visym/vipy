@@ -23,6 +23,7 @@ import types
 import platform
 from io import BytesIO
 import vipy.globals
+import vipy.activity
 
 
 class Video(object):
@@ -119,7 +120,7 @@ class Video(object):
             strlist.append('filename="%s"' % self.filename())
         if self.hasurl():
             strlist.append('url="%s"' % self.url())
-        if not self.isloaded() and self._startframe is not None:
+        if not self.isloaded() and self._startframe is not None and self._endframe is not None:
             strlist.append('clip=(%d,%d)' % (self._startframe, self._endframe))
         if self._framerate is not None:
             strlist.append('fps=%1.1f' % float(self._framerate))
@@ -828,8 +829,8 @@ class Video(object):
         if flushfilter:
             v._ffmpeg = ffmpeg.input(v.filename())  # no other filters
             v._previewhash = None
-            (self._startframe, self._endframe) = (None, None)
-            (self._startsec, self._endsec) = (None, None)
+            (v._startframe, v._endframe) = (None, None)
+            (v._startsec, v._endsec) = (None, None)
         return v
 
     def flush(self):
@@ -890,7 +891,7 @@ class VideoCategory(Video):
             strlist.append('url="%s"' % self.url())
         if self.category() is not None:
             strlist.append('category="%s"' % self.category())
-        if not self.isloaded() and self._startframe is not None:
+        if not self.isloaded() and self._startframe is not None and self._endframe is not None:
             strlist.append('clip=(%d,%d)' % (self._startframe, self._endframe))
         if not self.isloaded() and self._startsec is not None:
             strlist.append('cliptime=(%1.2f,%1.2f)' % (self._startsec, self._endsec))
@@ -966,9 +967,8 @@ class Scene(VideoCategory):
         # Activites must be defined relative to the clip specified by this constructor            
         if activities is not None:
             activities = activities if isinstance(activities, list) or isinstance(activities, tuple) else [activities]  # canonicalize            
-            assert all([isinstance(a, vipy.object.Activity) for a in activities]), "Invalid activity input; activities=[vipy.object.Activity(), ...]"
+            assert all([isinstance(a, vipy.activity.Activity) for a in activities]), "Invalid activity input; activities=[vipy.activity.Activity(), ...]"
             self._activities = {a.id():a for a in activities}
-            self._tracks.update( {tid:t for (aid,a) in self._activities.items() for (tid,t) in a.tracks().items()} )
 
         self._currentframe = None  # used during iteration only
         
@@ -982,7 +982,7 @@ class Scene(VideoCategory):
             strlist.append('url="%s"' % self.url())
         if self._framerate is not None:
             strlist.append('fps=%1.1f' % float(self._framerate))
-        if not self.isloaded() and self._startframe is not None:
+        if not self.isloaded() and self._startframe is not None and self._endframe is not None:
             strlist.append('clip=(%d,%d)' % (self._startframe, self._endframe))
         if not self.isloaded() and self._startsec is not None:
             strlist.append('cliptime=(%1.2f,%1.2f)' % (self._startsec, self._endsec))            
@@ -1086,7 +1086,7 @@ class Scene(VideoCategory):
         elif id is not None:
             return self._activities[id]
         else:
-            assert all([isinstance(a, vipy.object.Activity) for a in tolist(activities)]), "Invalid input - Must be vipy.object.Activity or list of vipy.object.Activities"
+            assert all([isinstance(a, vipy.activity.Activity) for a in tolist(activities)]), "Invalid input - Must be vipy.activity.Activity or list of vipy.activity.Activity"
             self._activities = {a.id():a for a in tolist(activities)}   # insertion order preserved (python >=3.6)
             return self
 
@@ -1114,7 +1114,7 @@ class Scene(VideoCategory):
     def activitymap(self, f):
         """Apply lambda function f to each activity"""
         self._activities = {k:f(a) for (k,a) in self._activities.items()}
-        assert all([isinstance(a, vipy.object.Activity) for a in self.activitylist()]), "Lambda function must return vipy.object.Activity"
+        assert all([isinstance(a, vipy.activity.Activity) for a in self.activitylist()]), "Lambda function must return vipy.activity.Activity"
         return self
 
     def labels(self, k=None):
@@ -1161,7 +1161,7 @@ class Scene(VideoCategory):
 
             * obj = vipy.object.Detection(), this must be called from within a frame iterator (e.g. for im in video) to get the current frame index
             * obj = vipy.object.Track()  
-            * obj = vipy.object.Activity()
+            * obj = vipy.activity.Activity()
             * obj = [xmin, ymin, width, height], with associated category kwarg, this must be called from within a frame iterator to get the current frame index
         
         It is recomended that the objects are added as follows.  For a scene=vipy.video.Scene():
@@ -1196,7 +1196,7 @@ class Scene(VideoCategory):
                 warnings.warn('Clipping track "%s" to image rectangle' % (str(obj)))
             self._tracks[obj.id()] = obj
             return obj.id()
-        elif isinstance(obj, vipy.object.Activity):
+        elif isinstance(obj, vipy.activity.Activity):
             if rangecheck and obj.startframe() >= obj.endframe():
                 raise ValueError("Activity '%s' has invalid (startframe, endframe)=(%d, %d)" % (str(obj), obj.startframe(), obj.endframe()))
             self._activities[obj.id()] = obj
@@ -1211,7 +1211,7 @@ class Scene(VideoCategory):
             self._tracks[t.id()] = t
             return t.id()
         else:
-            raise ValueError('Undefined object type "%s" to be added to scene - Supported types are obj in ["vipy.object.Detection", "vipy.object.Track", "vipy.object.Activity", "[xmin, ymin, width, height]"]' % str(type(obj)))        
+            raise ValueError('Undefined object type "%s" to be added to scene - Supported types are obj in ["vipy.object.Detection", "vipy.object.Track", "vipy.activity.Activity", "[xmin, ymin, width, height]"]' % str(type(obj)))        
 
     def clear(self):
         """Remove all activities and tracks from this object"""
@@ -1289,35 +1289,37 @@ class Scene(VideoCategory):
         boxes = [t.boundingbox().dilate(dilate) for t in self.tracklist()]
         return boxes[0].union(boxes[1:]) if len(boxes) > 0 else imagebox(self.shape())
         
-    def activitybox(self, dilate=1.0):
+    def activitybox(self, activityid=None, dilate=1.0):
         """The activitybox is the union of all activity bounding boxes in the video, which is the union of all tracks contributing to all activities.  This is most useful after activityclip().
            The activitybox is the smallest bounding box that contains all of the boxes from all of the tracks in all activities in this video.
         """
-        boxes = [a.boundingbox().dilate(dilate) for a in self.activities().values()]
+        activities = [a for (k,a) in self.activities().items() if (activityid is None or k in set(activityid))]
+        boxes = [t.boundingbox().dilate(dilate) for t in self.tracklist() if any([a.hastrack(t) for a in activities])]
         return boxes[0].union(boxes[1:]) if len(boxes) > 0 else vipy.geometry.BoundingBox(xmin=0, ymin=0, width=self.width(), height=self.height())
 
-    def activitycuboid(self, dilate=1.0, maxdim=256, bb=None):
+    def activitycuboid(self, activityid=None, dilate=1.0, maxdim=256, bb=None):
         """The activitycuboid() is the fixed square spatial crop corresponding to the activitybox (or supplied bounding box), which contains all of the valid activities in the scene.  This is most useful after activityclip().
            The activitycuboid() is a spatial crop of the video corresponding to the supplied boundingbox or the square activitybox().
            This crop must be resized such that the maximum dimension is provided since the crop can be tiny and will not be encodable by ffmpeg
         """
-        bb = self.activitybox().maxsquare() if bb is None else bb  
+        bb = self.activitybox(activityid).maxsquare() if bb is None else bb  
         assert bb is None or isinstance(bb, vipy.geometry.BoundingBox)
         assert bb.issquare(), "Add support for non-square boxes"
         return self.clone().crop(bb.dilate(dilate).int(), zeropad=True).resize(maxdim, maxdim)  # crop triggers preview()
 
-    def activitysquare(self, dilate=1.0, maxdim=256):
+    def activitysquare(self, activityid=None, dilate=1.0, maxdim=256):
         """The activity square is the maxsquare activitybox that contains only valid (non-padded) pixels interior to the image"""
-        bb = self.activitybox().maxsquare().dilate(dilate).int().iminterior(self.width(), self.height()).minsquare()
-        return self.activitycuboid(dilate=1.0, maxdim=maxdim, bb=bb)
+        bb = self.activitybox(activityid).maxsquare().dilate(dilate).int().iminterior(self.width(), self.height()).minsquare()
+        return self.activitycuboid(activityid, dilate=1.0, maxdim=maxdim, bb=bb)
 
-    def activitytube(self, dilate=1.0, maxdim=256):
+    def activitytube(self, activityid=None, dilate=1.0, maxdim=256):
         """The activitytube() is a sequence of crops where the spatial box changes on every frame to track the activity.  
            The box in each frame is the square activitybox() for this video which is the union of boxes contributing to this activity in each frame.
            This function does not perform any temporal clipping.  Use activityclip() first to split into individual activities.  
            Crops will be optionally dilated, with zeropadding if the box is outside the image rectangle.  All crops will be resized so that the maximum dimension is maxdim (and square by default)
         """
-        vid = self.clone().load()  # triggers load        
+        vid = self.clone().load()  # triggers load
+        self.activityfilter(lambda a: activityid is None or a.id() in set(activityid))  # only requested IDs (or all of them)
         frames = [im.padcrop(im.boundingbox().maxsquare().dilate(dilate).int()).resize(maxdim, maxdim) for im in vid if im.boundingbox() is not None]  # track interpolation, for frames with boxes only
         if len(frames) != len(vid):
             warnings.warn('[vipy.video.activitytube]: Removed %d frames with no spatial bounding boxes' % (len(vid) - len(frames)))
@@ -1325,7 +1327,7 @@ class Scene(VideoCategory):
                                             boxes=[d for (f,im) in enumerate(frames) for d in im.objects() if d.attributes['trackid'] == ti],
                                             category=t.category(), trackid=ti)
                        for (k,(ti,t)) in enumerate(self._tracks.items())}  # replace tracks with boxes relative to tube
-        vid.activitymap(lambda a: a.tracks( {ti:t for (ti,t) in vid._tracks.items() if a.hastrack(ti)} ))  # update activity tracks too (yuck..)
+        #vid.activitymap(lambda a: a.tracks( {ti:t for (ti,t) in vid._tracks.items() if a.hastrack(ti)} ))  # update activity tracks too (yuck..)
         return vid.array(np.stack([im.numpy() for im in frames]))
 
     def actortube(self, trackid, dilate=1.0, maxdim=256):
@@ -1349,7 +1351,7 @@ class Scene(VideoCategory):
                                             boxes=[d for (f,im) in enumerate(frames) for d in im.objects() if d.attributes['trackid'] == ti],
                                             category=t.category(), trackid=ti)  # preserve trackid
                        for (k,(ti,t)) in enumerate(self._tracks.items())}  # replace tracks with boxes relative to tube
-        vid.activitymap(lambda a: a.tracks( {ti:t for (ti,t) in vid._tracks.items() if a.hastrack(ti)} ))  # update activity tracks too (yuck..)
+        #vid.activitymap(lambda a: a.tracks( {ti:t for (ti,t) in vid._tracks.items() if a.hastrack(ti)} ))  # update activity tracks too (yuck..)
         return vid.array(np.stack([im.numpy() for im in frames]))
 
 
@@ -1471,11 +1473,11 @@ class Scene(VideoCategory):
                         self.tracks()[i] = ti.average(tj)  # merge duplicate tracks
                         otherclone = otherclone.activitymap(lambda a: a.replace(tj, ti))  # replace duplicate track reference in activity
                         otherclone = otherclone.trackfilter(lambda t: t.id() != j)  # remove duplicate track
-
+            
             # Dedupe activities
             for (i,ai) in self.activities().items():
                 for (j,aj) in otherclone.activities().items():
-                    if ai.categories() == aj.categories() and ai.trackids() == aj.trackids() and ai.temporal_iou(aj) > temporal_iou_threshold and ai.max_spatial_iou(aj, n=2) > spatial_iou_threshold:
+                    if ai.category() == aj.category() and set(ai.trackids()) == set(aj.trackids()) and ai.temporal_iou(aj) > temporal_iou_threshold:
                         otherclone = otherclone.activityfilter(lambda a: a.id() != j)  # remove duplicate activity
 
             # Union of unique tracks/activities
@@ -1552,7 +1554,7 @@ def RandomScene(rows=None, cols=None, frames=None):
                                        vipy.geometry.BoundingBox(xmin=np.random.randint(0,cols - 16), ymin=np.random.randint(0,rows - 16),
                                                                  width=np.random.randint(16,cols//2), height=np.random.randint(16,rows//2))]) for k in range(0,32)]
 
-    activities = [vipy.object.Activity(label='activity%d' % k, shortlabel='a%d' % k, tracks={tracks[j].id():tracks[j] for j in [np.random.randint(32)]}, startframe=np.random.randint(50,99), endframe=np.random.randint(100,150)) for k in range(0,32)]   
+    activities = [vipy.activity.Activity(label='activity%d' % k, shortlabel='a%d' % k, tracks=[tracks[j].id() for j in [np.random.randint(32)]], startframe=np.random.randint(50,99), endframe=np.random.randint(100,150)) for k in range(0,32)]   
     return Scene(array=v.array(), colorspace='rgb', category='scene', tracks=tracks, activities=activities)
 
 
@@ -1569,7 +1571,7 @@ def RandomSceneActivity(rows=None, cols=None, frames=256):
                                        vipy.geometry.BoundingBox(xmin=np.random.randint(0,cols - 16), ymin=np.random.randint(0,rows - 16),
                                                                  width=np.random.randint(16,cols//2), height=np.random.randint(16,rows//2))]) for k in range(0,3)]
 
-    activities = [vipy.object.Activity(label='Person Carrying', shortlabel='Carry', tracks={tracks[0].id():tracks[0], tracks[1].id():tracks[1]}, startframe=np.random.randint(20,50), endframe=np.random.randint(70,100))]   
+    activities = [vipy.activity.Activity(label='Person Carrying', shortlabel='Carry', tracks=[tracks[0].id(), tracks[1].id()], startframe=np.random.randint(20,50), endframe=np.random.randint(70,100))]   
     ims = Scene(array=v.array(), colorspace='rgb', category='scene', tracks=tracks, activities=activities)
 
     return ims

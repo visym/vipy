@@ -9,7 +9,6 @@ import pdb
 from vipy.dataset.kinetics import Kinetics400, Kinetics600, Kinetics700
 from vipy.dataset.activitynet import ActivityNet
 from vipy.dataset.lfw import LFW
-from vipy.object import Detection, Track, Activity
 
 
 def _test_dataset():    
