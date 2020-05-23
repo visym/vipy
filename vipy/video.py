@@ -1331,10 +1331,10 @@ class Scene(VideoCategory):
         return vid.array(np.stack([im.numpy() for im in frames]))
 
     def actortube(self, trackid, dilate=1.0, maxdim=256):
-        """The actortube() is a sequence of crops where the spatial box changes on every frame to track the activity.  
-           The box in each frame is the square box centered on the primary actor performing the activity.  
+        """The actortube() is a sequence of crops where the spatial box changes on every frame to track the primary actor performing an activity.  
+           The box in each frame is the square box centered on the primary actor performing the activity, dilated by a given factor (the original box around the actor is unchanged, this just increases the context, with zero padding)
            This function does not perform any temporal clipping.  Use activityclip() first to split into individual activities.  
-           Crops will be optionally dilated, with zeropadding if the box is outside the image rectangle.  All crops will be resized so that the maximum dimension is maxdim (and square by default)
+           All crops will be resized so that the maximum dimension is maxdim (and square by default)
         """
         assert self.hastrack(trackid), "Track ID %s not found - Actortube requires a track ID in the scene (tracks=%s)" % (str(trackid), str(self.tracks()))
         vid = self.clone().load()  # triggers load        

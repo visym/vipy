@@ -27,6 +27,7 @@ import importlib
 import pathlib
 import socket
 import warnings
+import copy
 
 
 def hascache():
@@ -416,18 +417,24 @@ def loadas(infile, type='dill'):
         raise ValueError('unknown serialization type "%s"' % type)
 
 
-def load(infile, datapath=None, srcpath='/$PATH'):
-    """Load variables from a dill pickled file.  
+def load(infile):
+    """Load variables from a relocatable dill pickled file
        
-       datapath [str]:  If the variables in the pklfile 'infile' are vipy.image or vipy.video objects, replace the relocatable path with this 
-       srcpath [str]:  the relocatable path used in vipy.util.distsave()
+       Loading is performed by attemping the following:
+
+       1. load the pickle file
+       2. If the loaded object is a vipy object (or iterable) and the relocatable path /$PATH is present, try to repath it to the directory containing this pickle
+       3. If the resulting files are not found, throw a warning
 
     """
     obj = loadas(infile, type='dill')
-    obj = obj if datapath is None else repath(obj, srcpath, datapath)
-    testobj = tolist(obj)[0]
-    if hasattr(testobj, 'filename') and srcpath in testobj.filename():
-        warnings.warn('Loading "%s" that contains redistributable paths - Use vipy.util.load("%s", datapath="/path/to/your/data") to rehome' % (infile, infile))
+    testobj = copy.deepcopy(tolist(obj)[0])
+    if hasattr(testobj, 'filename') and '/$PATH' in testobj.filename():
+        testobj = repath(testobj, '/$PATH', filepath(os.path.abspath(infile)))  # attempt to rehome /$PATH/to/me.jpg -> /NEWPATH/to/me.jpg where NEWPATH=filepath(infile)
+        if os.path.exists(testobj.filename()):       # file found?
+            obj = repath(obj, '/$PATH', filepath(os.path.abspath(infile)))      # rehome everything to the same root path as the pklfile
+        else:
+            warnings.warn('Loading "%s" that contains redistributable paths - Use vipy.util.distload("%s", datapath="/path/to/your/data") to rehome absolute file paths' % (infile, infile))
     elif hasattr(testobj, 'hasfilename') and not testobj.hasfilename(): 
         warnings.warn('Loading "%s" that contains absolute filepaths - The relocated filename "%s" does not exist' % (infile, testobj.filename()))
     return obj
@@ -474,9 +481,10 @@ def save(vars, outfile=None, mode=None):
         chmod(outfile, mode)
     return outfile
 
+
 def distsave(vars, datapath, outfile=None, mode=None, dstpath='/$PATH'):
     """Save a pickle file for redistribution, where datapath is replaced by dstpath.  Useful for redistribuing pickle files with absolute paths.  See also vipy.util.distload()"""
-    vars = vars if datapath is None else repath(vars, datapath, dstpath)
+    vars = vars if (datapath is None or not isvipyobject(vars)) else repath(vars, datapath, dstpath) 
     return save(vars, outfile, mode)
 
 
@@ -864,6 +872,17 @@ def isvideotype(x):
     return (str(type(x)) in ["<class 'vipy.video.Video'>",
                              "<class 'vipy.video.VideoCategory'>",
                              "<class 'vipy.video.Scene'>"])
+
+def isvideoobject(x):
+    return isvideotype(x)
+
+
+def isvipyobject(x):
+    import vipy.image
+    import vipy.video
+    return ((isinstance(x, vipy.image.Image) or isinstance(x, vipy.video.Video)) 
+            or (islist(x) or istuple(x) and all([isinstance(v, vipy.image.Image) or isinstance(v, vipy.video.Video) for v in x]))
+            or (isinstance(x, dict) and all([isinstance(v, vipy.image.Image) or isinstance(v, vipy.video.Video) for (k,v) in x.items()])))
 
 
 def istuple(x):
