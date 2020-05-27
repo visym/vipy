@@ -434,7 +434,7 @@ def load(infile):
         if os.path.exists(testobj.filename()):       # file found
             obj = repath(obj, '/$PATH', filepath(os.path.abspath(infile)))      # rehome everything to the same root path as the pklfile
         else:
-            warnings.warn('Loading "%s" that contains redistributable paths - Use vipy.util.distlod("%s", datapath="/path/to/your/data") to rehome absolute file paths' % (infile, infile))
+            warnings.warn('Loading "%s" that contains redistributable paths - Use vipy.util.distload("%s", datapath="/path/to/your/data") to rehome absolute file paths' % (infile, infile))
     elif hasattr(testobj, 'hasfilename') and not testobj.hasfilename(): 
         warnings.warn('Loading "%s" that contains absolute filepaths - The relocated filename "%s" does not exist' % (infile, testobj.filename()))
     return obj
@@ -448,9 +448,9 @@ def distload(infile, datapath, srcpath='/$PATH'):
 def repath(v, srcpath, dstpath):
     """Change the filename with prefix srcpath to dstpath, for any element in v that supports the filename() api"""
     if not islist(v) and (hasattr(v, 'filename') and hasattr(v, 'clone')):
-        vc = v.filename( v.filename().replace(srcpath, dstpath)) if v.filename() is not None else v
+        vc = v.filename( v.filename().replace(os.path.normpath(srcpath), os.path.normpath(dstpath))) if v.filename() is not None else v
     elif islist(v) and all([(hasattr(vv, 'filename') and hasattr(vv, 'clone')) for vv in v]):
-        vc = [vv.filename( vv.filename().replace(srcpath, dstpath)) if vv.filename() is not None else vv for vv in v ]
+        vc = [vv.filename( vv.filename().replace(os.path.normpath(srcpath), os.path.normpath(dstpath))) if vv.filename() is not None else vv for vv in v ]
     else:
         raise ValueError('Input must be a singleton or list of vipy.image.Image() or vipy.video.Video() objects, not type "%s"' % (str(type(v))))
     return vc
