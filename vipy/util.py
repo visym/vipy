@@ -431,10 +431,10 @@ def load(infile):
     testobj = copy.deepcopy(tolist(obj)[0])
     if hasattr(testobj, 'filename') and '/$PATH' in testobj.filename():
         testobj = repath(testobj, '/$PATH', filepath(os.path.abspath(infile)))  # attempt to rehome /$PATH/to/me.jpg -> /NEWPATH/to/me.jpg where NEWPATH=filepath(infile)
-        if os.path.exists(testobj.filename()):       # file found?
+        if os.path.exists(testobj.filename()):       # file found
             obj = repath(obj, '/$PATH', filepath(os.path.abspath(infile)))      # rehome everything to the same root path as the pklfile
         else:
-            warnings.warn('Loading "%s" that contains redistributable paths - Use vipy.util.distload("%s", datapath="/path/to/your/data") to rehome absolute file paths' % (infile, infile))
+            warnings.warn('Loading "%s" that contains redistributable paths - Use vipy.util.distlod("%s", datapath="/path/to/your/data") to rehome absolute file paths' % (infile, infile))
     elif hasattr(testobj, 'hasfilename') and not testobj.hasfilename(): 
         warnings.warn('Loading "%s" that contains absolute filepaths - The relocated filename "%s" does not exist' % (infile, testobj.filename()))
     return obj
@@ -442,7 +442,7 @@ def load(infile):
 
 def distload(infile, datapath, srcpath='/$PATH'):
     """Load a redistributable pickle file that replaces absolute paths in datapath with srcpath.  See also vipy.util.distsave()"""
-    return load(infile, datapath=datapath, srcpath=srcpath)
+    return repath(load(infile), srcpath, datapath)
 
 
 def repath(v, srcpath, dstpath):
