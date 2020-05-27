@@ -1468,7 +1468,7 @@ class Scene(VideoCategory):
             # Merge tracks 
             for (i,ti) in self.tracks().items():
                 for (j,tj) in otherclone.tracks().items():
-                    if ti.category() == tj.category() and (ti.endpointiou(tj) > spatial_iou_threshold or tj.endpointiou(ti) > spatial_iou_threshold):  # maximum framewise overlap at endpoints >threshold
+                    if ti.category() == tj.category() and ti.endpointiou(tj) > spatial_iou_threshold:  # maximum framewise overlap at endpoints >threshold
                         print('[vipy.video.union]: merging track "%s" -> "%s" for scene "%s"' % (str(ti), str(tj), str(self)))
                         self.tracks()[i] = ti.average(tj)  # merge duplicate tracks
                         otherclone = otherclone.activitymap(lambda a: a.replace(tj, ti))  # replace duplicate track reference in activity

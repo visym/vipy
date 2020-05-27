@@ -325,9 +325,12 @@ class Track(object):
         return self.rankiou(other, rank=1, dt=dt, n=n)
 
     def endpointiou(self, other):
-        """Compute the maximum spatial IoU between two tracks at the endpoints (self.startframe(), self.endframe()) of this track.  useful for track continuation"""        
-        return np.max([self[f].iou(other[f]) if self.during(f) and other.during(f) else 0.0 for f in (self.startframe(), self.endframe())])
-        
+        """Compute the mean spatial IoU between two tracks at the two overlapping endpoints.  useful for track continuation"""        
+        assert isinstance(other, Track), "invalid input - Must be vipy.object.Track()"
+        startframe = max(self.startframe(), other.startframe())
+        endframe = min(self.endframe(), other.endframe())
+        return np.mean([self[startframe].iou(other[startframe]), self[endframe].iou(other[endframe])]) if endframe >= startframe else 0.0        
+
     def rankiou(self, other, rank, dt=1, n=None):
         """Compute the mean spatial IoU between two tracks per frame in the range (self.startframe(), self.endframe()) using only the top-k frame overlaps
            Sample tracks at endpoints and n uniformly spaced frames or a stride of dt frames.
