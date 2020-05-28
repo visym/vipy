@@ -405,11 +405,13 @@ class Image(object):
             self.rgb()
         return PIL.Image.fromarray(self.tonumpy())
 
-    def torch(self):
+    def torch(self, order='CHW'):
         """Convert the batch of 1 HxWxC images to a 1xCxHxW torch tensor, by reference"""
         try_import('torch'); import torch
         img = self.numpy() if self.iscolor() else np.expand_dims(self.numpy(), 2)  # HxW -> HxWx1
-        return torch.from_numpy(np.expand_dims(img,0).transpose(0,3,1,2))  # HxWxC -> 1xCxHxW
+        img = np.expand_dims(img,0)
+        img = img.transpose(0,3,1,2) if order == 'CHW' else img  # HxWxC or CxHxW
+        return torch.from_numpy(img)  
 
     def fromtorch(self, x):
         """Convert a 1xCxHxW torch.FloatTensor to HxWxC np.float32 numpy array(), returns new Image() instance with selected colorspace"""
@@ -1435,9 +1437,8 @@ class Scene(ImageCategory):
             return self._objectlist
         else:
             assert isinstance(objectlist, list) and all([isinstance(bb, vipy.object.Detection) for bb in objectlist]), "Invalid object list"
-            s = self.clone()
-            s._objectlist = objectlist
-            return s
+            self._objectlist = objectlist
+            return self
 
     def objectmap(self, f):
         """Apply lambda function f to each object"""
@@ -1449,6 +1450,10 @@ class Scene(ImageCategory):
         """Apply lambda function f to each object and keep if filter is True"""
         self._objectlist = [obj for obj in self._objectlist if f(obj) is True]
         return self
+
+    def nms(self, conf, iou):
+        """Non-maximum supporession of objects() by category based on confidence and spatial IoU thresholds"""
+        return self.objects( vipy.object.non_maximum_suppression(self.objects(), conf, iou, bycategory=True) )
     
     def boundingbox(self):
         """The boundingbox of a scene is the union of all object bounding boxes, or None if there are no objects"""

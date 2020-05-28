@@ -218,9 +218,13 @@ def chunklistWithOverlap(inlist, size_per_chunk, overlap_per_chunk):
     size_per_chunk"""
     assert size_per_chunk >= 1 and overlap_per_chunk >= 0 and \
         size_per_chunk > overlap_per_chunk
-    return [inlist[i:i + size_per_chunk] for i in range(
+    return [inlist[max(0, i-int(np.floor(size_per_chunk/2))):i+int(np.ceil(size_per_chunk/2))] for i in range(
         0, len(inlist), size_per_chunk - overlap_per_chunk)]
 
+
+def chunklistwithoverlap(inlist, size_per_chunk, overlap_per_chunk):
+    """Alias for chunklistWithOverlap"""
+    return chunklistWithOverlap(inlist, size_per_chunk, overlap_per_chunk)
 
 def imwritejet(img, imfile=None):
     """Write a grayscale numpy image as a jet colormapped image to the

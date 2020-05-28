@@ -656,9 +656,9 @@ class BoundingBox():
         return Ellipse(self.width() / 2.0, self.height() / 2.0, xcenter, ycenter, 0)
 
     def average(self, other):
-        """Compute the average bounding box between self and other"""
-        assert isinstance(other, BoundingBox), "Invalid input - must be BoundingBox"
-        return self.ulbr(np.mean(np.vstack( (self.ulbr(), other.ulbr()) ), axis=0))
+        """Compute the average bounding box between self and other.  Other may be a singleton bounding box or a list of bounding boxes"""
+        assert all([isinstance(bb, BoundingBox) for bb in tolist(other)]), "Invalid input - must be BoundingBox"        
+        return self.ulbr(np.mean( [self.ulbr()] + [bb.ulbr() for bb in tolist(other)], axis=0))
 
 
 class Ellipse():

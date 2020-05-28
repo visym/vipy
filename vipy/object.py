@@ -1,6 +1,6 @@
 import numpy as np
 from vipy.geometry import BoundingBox
-from vipy.util import isstring, tolist
+from vipy.util import isstring, tolist, chunklistwithoverlap
 import uuid
 import copy
 
@@ -35,7 +35,7 @@ class Detection(BoundingBox):
             strlist.append('bbox=(xmin=%1.1f, ymin=%1.1f, width=%1.1f, height=%1.1f)' %
                            (self.xmin(), self.ymin(),self.width(), self.height()))
         if self._confidence is not None:
-            strlist.append('conf=%1.3f')
+            strlist.append('conf=%1.3f' % self.confidence())
         return str('<vipy.object.detection: %s>' % (', '.join(strlist)))
 
     def __eq__(self, other):
@@ -59,16 +59,16 @@ class Detection(BoundingBox):
         if category is None:
             return self._label
         else:
-            self._label = category
+            self._label = str(category)  # coerce to string
             return self
 
     def shortlabel(self, label=None):
         """A optional shorter label string to show in the visualizations, defaults to category()"""        
         if label is not None:
-            self._shortlabel = label
+            self._shortlabel = str(label)  # coerce to string
             return self
         else:
-            return self._shortlabel
+            return self._shortlabel if self._shortlabel is not None else self.category()
 
     def label(self, label):
         """Alias for category"""
@@ -79,8 +79,11 @@ class Detection(BoundingBox):
 
     def clone(self):
         return copy.deepcopy(self)
-    
 
+    def confidence(self):
+        return self._confidence
+    
+    
 class Track(object):
     """vipy.object.Track class
     
@@ -176,7 +179,15 @@ class Track(object):
             self._keyframes = list(self._keyframes)
             self._keyboxes = list(self._keyboxes)
         return self
-        
+
+    def replace(self, keyframe, box):
+        """Replace a keyframe and associated box to track, preserve sorted order of keyframes"""
+        assert isinstance(box, BoundingBox), "Invalid input - Box must be vipy.geometry.BoundingBox()"
+        assert box.isvalid(), "Invalid input - Box must be non-degenerate"
+        assert keyframe in self._keyframes, "Keyframe not found"
+        self._keyboxes[self._keyframes.index(keyframe)] = box
+        return self
+    
     def keyframes(self):
         """Return keyframe frame indexes where there are track observations"""
         return self._keyframes
@@ -359,6 +370,11 @@ class Track(object):
                        for k in T._keyframes]  
         return T  
 
+    def smooth(self, width):
+        """Track smoothing by averaging neighboring keyboxes"""
+        self._keyboxes = [bb.clone().average(bbnbrs) for (bb, bbnbrs) in zip(self._keyboxes, chunklistwithoverlap(self._keyboxes, width, width-1))]
+        return self
+        
     def imclip(self, width, height):
         """Clip the track to the image rectangle (width, height).  If a keybox is outside the image rectangle, remove it otherwise clip to the image rectangle. 
            This operation can change the length of the track and the size of the keyboxes.  The result may be an empty track if the track is completely outside
@@ -377,6 +393,38 @@ class Track(object):
         assert dt >= 1 and dt < len(self)
         frames =  list(range(self.startframe(), self.endframe(), dt)) + [self.endframe()]
         (self._keyboxes, self._keyframes) = zip(*[(self[k], k) for k in frames])
+        (self._keyboxes, self._keyframes) = (list(self._keyboxes), list(self._keyframes))
         return self
 
 
+def non_maximum_suppression(detlist, conf, iou, bycategory=False):
+    """Compute non-maximum suppression of a list of vipy.object.Detection() based on spatial IOU threshold (iou) and a confidence threshold (conf)"""
+    assert all([isinstance(d, Detection) for d in detlist])
+    assert all([d.confidence() is not None for d in detlist])
+    assert conf>=0 and iou>=0 and iou<=1
+
+    detlist = [d for d in detlist if d.confidence() > conf and not d.isdegenerate()]    
+    detlist = sorted(detlist, key=lambda d: d.confidence(), reverse=True)  # biggest to smallest
+    
+    suppresslist = []
+    for (i,di) in enumerate(detlist):
+        for (j,dj) in enumerate(detlist):
+            if j > i and di.iou(dj) > iou and (bycategory is False or di.category() == dj.category()):
+                suppresslist.append(j)
+    return sorted([d for (j,d) in enumerate(detlist) if j not in set(suppresslist)], key=lambda d: d.confidence())  # smallest to biggest for display layering
+
+
+def greedy_assignment(srclist, dstlist, miniou=0.0):
+    """Compute a greedy one-to-one assignment of each vipy.object.Detection() in srclist to a unique element in dstlist with the largest IoU greater than miniou, else None
+    
+       returns:
+          assignlist [list]:  [d.iou(dstlist[j]) if j is not None else 0 for (d,j) in zip(srclist, assignlist)]  is the IoU for the assignment
+    """
+    assert all([isinstance(d, Detection) for d in srclist])
+    assert all([isinstance(d, Detection) for d in dstlist])    
+    
+    assignlist = []
+    for ds in sorted(srclist, key=lambda d: d.area(), reverse=True):
+        iou = [ds.iou(d) if j not in assignlist else 0.0 for (j,d) in enumerate(dstlist)]
+        assignlist.append( np.argmax(iou) if max(iou) > miniou else None)
+    return assignlist

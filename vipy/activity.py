@@ -46,10 +46,6 @@ class Activity(object):
         """Return activity length in frames, or zero if degenerate"""
         return max(0, self.endframe() - self.startframe())
 
-    #def __getitem__(self, k):
-    #    """Return a list Detection() objects interpolated at frame k if during activity, otherwise return None"""
-    #    return [t[k] for (i,t) in self._tracks.items() if t[k] is not None] if self.during(k) else None
-    
     def __repr__(self):
         return str('<vipy.activity: category="%s", frames=(%d,%d), tracks=%s>' % (self.category(), self.startframe(), self.endframe(), len(self.trackids())))
 
@@ -102,10 +98,6 @@ class Activity(object):
         """Alias for category"""
         return self.category(label)
 
-    #def categories(self):
-    #    """Return a set of categories for the activities and objects in this activity"""
-    #    return set([self.category()] + [t.category() for t in self.tracks().values()])
-        
     def shortlabel(self, label=None):
         """A optional shorter label string to show in the visualizations"""                
         if label is not None:
@@ -149,34 +141,18 @@ class Activity(object):
         if self.actorid() == oldtrack.id():
             self.actorid(newtrack.id())
         return self    
+
+    def replaceid(self, oldtrackid, newtrackid):
+        """Replace oldtrack with newtrack if present in self._tracks.  Pass in a trackdict to share reference to track, so that track owner can modify the track and this object observes the change"""
+        self._trackid.discard(oldtrackid)
+        self._trackid.add(newtrackid)
+        if self.actorid() == oldtrackid:
+            self.actorid(newtrackid)
+        return self    
     
     def during(self, frame):
         """Is frame during the time interval (startframe, endframe) inclusive?"""
         return int(frame) >= self._startframe and int(frame) <= self._endframe
-
-    #def boundingbox(self, trackdict, frame=None):
-    #    """The bounding box of an activity is the smallest bounding box for all tracks in the activity (inclusive of start and endframes), or None of there are no boxes.
-    #       If frame=k, then return the boundingbox for the activity at frame k
-    #    """
-    #    (startframe, endframe) = (self.startframe(), self.endframe()+1) if frame is None else (frame, frame+1)
-    #    boxes = [t.clone().clip(self.startframe(), self.endframe()+1).boundingbox() for (i,t) in trackdict.items() if i in self._trackid]
-    #    return boxes[0].clone().union(boxes[1:]) if boxes is not None and len(boxes)>0 else None
-    
-    #def spatial_iou(self, other, trackdict, dt=1, n=None):
-    #    """Return the mean spatial intersection over union of two activities as the mean spatial IoU for the framewise activity boundingbox()"""
-    #    assert isinstance(other, Activity), "Invalid input - must be vipy.object.Activity()"
-    #    dt = max(1, int(len(self)/n) if n is not None else dt)
-    #    frames = [self.startframe()] + list(range(self.startframe()+dt, self.endframe(), dt)) + [self.endframe()]
-    #    return np.mean([self.boundingbox(trackdict, k).iou(other.boundingbox(trackdict, k)) if (self.boundingbox(trackdict, k) is not None and other.boundingbox(trackdict, k) is not None) else 0.0
-    #                    for k in frames])
-
-    #def max_spatial_iou(self, other, trackdict, dt=1, n=None):
-    #    """Return the max spatial intersection over union of two activities as the mean spatial IoU for the framewise activity boundingbox()"""
-    #    assert isinstance(other, Activity), "Invalid input - must be vipy.object.Activity()"
-    #    dt = max(1, int(len(self)/n) if n is not None else dt)
-    #    frames = [self.startframe()] + list(range(self.startframe()+dt, self.endframe(), dt)) + [self.endframe()]
-    #    return np.max([self.boundingbox(trackdict, k).iou(other.boundingbox(trackdict, k)) if (self.boundingbox(trackdict, k) is not None and other.boundingbox(trackdict, k) is not None) else 0.0
-    #                   for k in frames])
 
     def temporal_iou(self, other):
         """Return the temporal intersection over union of two activities"""
@@ -194,16 +170,10 @@ class Activity(object):
     def offset(self, dt):
         self._startframe = self._startframe + dt
         self._endframe = self._endframe + dt
-        #self._tracks = {ti:t.offset(dt=dt) for (ti,t) in self._tracks.items()}  # Assume that track owner will update tracks, we hold a mutable reference
         return self
     
     def id(self):
         return self._id
-
-    #def imagebox(self, width, height):
-    #    """The image box of an activity is the smallest bounding box for all tracks in the activity (inclusive of start and endframes) that is within the image rectangle (width, height), or None if there are no boxes""" 
-    #    bb = self.boundingbox()
-    #    return None if bb is None or not bb.hasoverlap(width=width, height=height) else bb.imclipshape(width, height)
 
     def clone(self):
         return copy.deepcopy(self)

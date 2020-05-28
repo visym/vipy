@@ -20,6 +20,7 @@ import PIL.Image
 import warnings
 import shutil
 import types
+import uuid
 import platform
 from io import BytesIO
 import vipy.globals
@@ -632,6 +633,10 @@ class Video(object):
         """Crop video of size (NxN) in the center, such that N=min(width,height), keeping the video centroid constant"""
         return self.centercrop( (min(self.height(), self.width()), min(self.height(), self.width())))
 
+    def maxsquare(self):
+        self._ffmpeg = self._ffmpeg.filter('pad', max(self.shape()), max(self.shape()), 0, 0)
+        return self
+        
     def zeropad(self, padwidth, padheight):
         """Zero pad the video with padwidth columns before and after, and padheight rows before and after"""
         assert isinstance(padwidth, int) and isinstance(padheight, int)
@@ -738,7 +743,7 @@ class Video(object):
         """Alias for play()"""
         return self.play()
     
-    def torch(self, startframe=0, endframe=None, length=None, stride=1, take=None, boundary='repeat', order='nchw', verbose=False, withslice=False):
+    def torch(self, startframe=0, endframe=None, length=None, stride=1, take=None, boundary='repeat', order='nchw', verbose=False, withslice=False, scale=1.0):
         """Convert the loaded video of shape N HxWxC frames to an MxCxHxW torch tensor, forces a load().
            Order of arguments is (startframe, endframe) or (startframe, startframe+length) or (random_startframe, random_starframe+takelength), then stride or take.
            Follows numpy slicing rules.  Optionally return the slice used if withslice=True
@@ -791,14 +796,16 @@ class Video(object):
         else:
             raise ValueError("Invalid order = must be in ['nchw', 'nhwc']")
             
-        # Scaling
-        if self.colorspace() != 'float':
+        # Scaling (optional)
+        if scale is not None and self.colorspace() != 'float':
             t = (1.0/255.0)*t  # [0,255] -> [0,1]
+        elif scale is not None and scale != 1.0:
+            t = scale*t
 
         # Return tensor or (tensor, slice)
         return t if not withslice else (t, (i,j,k))
 
-    def clone(self, flushforward=False, flushbackward=False, flush=False, flushfilter=False):
+    def clone(self, flushforward=False, flushbackward=False, flush=False, flushfilter=False, rekey=False):
         """Create deep copy of video object, flushing the original buffer if requested and returning the cloned object.
         Flushing is useful for distributed memory management to free the buffer from this object, and pass along a cloned 
         object which can be used for encoding and will be garbage collected.
@@ -807,6 +814,7 @@ class Video(object):
             * flushbackward:  copy the object, and set the object array() to None.  This flushes the video buffer for the object, not the clone.
             * flush:  set the object array() to None and clone the object.  This flushes the video buffer for both the clone and the object.
             * flushfilter:  Set the ffmpeg filter chain to the default in the new object, useful for saving new videos
+            * rekey: Generate new unique track ID and activity ID keys for this scene
  
         """
         if flush or (flushforward and flushbackward):
@@ -831,6 +839,8 @@ class Video(object):
             v._previewhash = None
             (v._startframe, v._endframe) = (None, None)
             (v._startsec, v._endsec) = (None, None)
+        if rekey:
+            v.rekey()
         return v
 
     def flush(self):
@@ -1026,6 +1036,13 @@ class Scene(VideoCategory):
             yield self.__getitem__(k)
         self._currentframe = None
 
+    def during(self, frameindex):
+        try:
+            self.__getitem__(frameindex)  # triggers load
+            return True
+        except:
+            return False
+        
     def frame(self, k):
         """Alias for self.__getitem__[k]"""
         return self.__getitem__(k)
@@ -1111,12 +1128,26 @@ class Scene(VideoCategory):
         self._tracks = {k:t for (k,t) in self._tracks.items() if f(t) == True} 
         return self
 
+    def trackmap(self, f):
+        """Apply lambda function f to each activity"""
+        self._tracks = {k:f(t) for (k,t) in self._tracks.items()}
+        assert all([isinstance(t, vipy.object.Track) for t in self.tracklist()]), "Lambda function must return vipy.object.Track()"
+        return self
+        
     def activitymap(self, f):
         """Apply lambda function f to each activity"""
         self._activities = {k:f(a) for (k,a) in self._activities.items()}
-        assert all([isinstance(a, vipy.activity.Activity) for a in self.activitylist()]), "Lambda function must return vipy.activity.Activity"
+        assert all([isinstance(a, vipy.activity.Activity) for a in self.activitylist()]), "Lambda function must return vipy.activity.Activity()"
         return self
 
+    def rekey(self):
+        d_old_to_new = {k:uuid.uuid1().hex for (k,t) in self._tracks.items()}
+        self._tracks = {d_old_to_new[k]:t for (k,t) in self._tracks.items()}
+        self._activities = {uuid.uuid1().hex:a for (k,a) in self._activities.items()}
+        for (k,v) in d_old_to_new.items():
+            self.activitymap(lambda a: a.replaceid(k,v) )
+        return self
+    
     def labels(self, k=None):
         """Return a set of all object and activity labels in this scene, or at frame int(k)"""
         return self.activitylabels(k).union(self.objectlabels(k))
@@ -1143,7 +1174,6 @@ class Scene(VideoCategory):
     def activity_categories(self):
         """Alias for activitylabels()"""
         return self.activitylabels()        
-
         
     def hasactivities(self):
         return len(self._activities) > 0
@@ -1376,14 +1406,15 @@ class Scene(VideoCategory):
         super(Scene, self).crop(bb, zeropad=False)  # range check handled here to correctly apply zeropad
         self._tracks = {k:t.offset(dx=-bb.xmin(), dy=-bb.ymin()) for (k,t) in self._tracks.items()}
         return self
-
+    
     def zeropad(self, padwidth, padheight):
         assert not self.isloaded(), "Filters can only be applied prior to load() - Try calling flush() first"
         assert isinstance(padwidth, int) and isinstance(padheight, int)
         super(Scene, self).zeropad(padwidth, padheight)  
         self._tracks = {k:t.offset(dx=padwidth, dy=padheight) for (k,t) in self._tracks.items()}
-        return self
+        return sefl
 
+        
     def fliplr(self):
         assert not self.isloaded(), "Filters can only be applied prior to load() - Try calling flush() first"                
         (H,W) = self.shape()  # yuck, need to get image dimensions before filter
@@ -1481,11 +1512,14 @@ class Scene(VideoCategory):
                         otherclone = otherclone.activityfilter(lambda a: a.id() != j)  # remove duplicate activity
 
             # Union of unique tracks/activities
+            if len(set(self.tracks().keys()).intersection(otherclone.tracks().keys())) > 0:
+                print('[vipy.video.union]: track key collision - Ignoring key from other')
+            if len(set(self.activities().keys()).intersection(otherclone.activities().keys())) > 0:
+                print('[vipy.video.union]: activity key collision - Ignoring key from other')                
             self.tracks().update(otherclone.tracks())
             self.activities().update(otherclone.activities())
 
-        return self
-
+        return self        
 
     def annotate(self, verbose=True, fontsize=10, captionoffset=(0,0), textfacecolor='white', textfacealpha=1.0, shortlabel=True, boxalpha=0.25, d_category2color={'Person':'green', 'Vehicle':'blue', 'Object':'red'}, categories=None, nocaption=False, nocaption_withstring=[]):
         """Generate a video visualization of all annotated objects and activities in the video, at the resolution and framerate of the underlying video, pixels in this video will now contain the overlay
