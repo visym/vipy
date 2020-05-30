@@ -1481,8 +1481,8 @@ class Scene(VideoCategory):
   
            Input:
              -Other: Scene or list of scenes for union
-             -spatial_iou_threshold:  The intersection over union threshold for an activity bounding box (the union of all tracks within the activity) to be declared duplicates
-             -temporal_iou_threshold:  The intersection over union threshold for a temporal bounding box for a pair of activities to be declared duplicates
+             -spatial_iou_threshold:  The intersection over union threshold for an activity bounding box (the union of all tracks within the activity) to be declared duplicates.  Disable by setting to 1.0
+             -temporal_iou_threshold:  The intersection over union threshold for a temporal bounding box for a pair of activities to be declared duplicates.  Disable by setting to 1.0
              -strict:  Require both scenes to share the same underlying video filename
 
            Output:

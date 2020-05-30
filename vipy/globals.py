@@ -8,7 +8,8 @@ from vipy.util import remkdir
 # Global mutable dictionary
 GLOBAL = {'VERBOSE': False, 
           'DASK_CLIENT': None,
-          'CACHE':None}
+          'CACHE':None,
+          'GPU':None}
 
 
 def cache(cachedir=None):
@@ -35,7 +36,8 @@ class Dask(object):
         from dask.distributed import Client
         from dask.distributed import as_completed, wait
         from dask.config import set as dask_config_set
-        
+        from dask.distributed import get_worker         
+
         dask_config_set({"distributed.comm.timeouts.tcp": "50s"})
         dask_config_set({"distributed.comm.timeouts.connect": "10s"})        
         self._num_processes = num_processes
@@ -45,7 +47,7 @@ class Dask(object):
                               processes=True, 
                               threads_per_worker=1, 
                               n_workers=num_processes, 
-                              env={'VIPY_BACKEND':'Agg'},
+                              env={'VIPY_BACKEND':'Agg', 'PYTHONOPATH':os.environ['PYTHONPATH'], 'PATH':os.environ['PATH']},
                               direct_to_workers=True,
                               local_directory=tempfile.mkdtemp())
 
@@ -62,12 +64,17 @@ class Dask(object):
         self._client.close()
         self._num_processes = 0
         GLOBAL['DASK_CLIENT'] = None
+        GLOBAL['GPU'] = None
         return self
 
     def client(self):
         return self._client
 
-    
+def gpuindex(gpu=None):
+    if gpu is not None:
+        GLOBAL['GPU'] = gpu
+    return GLOBAL['GPU']
+
 def dask(num_processes=None, dashboard=False):
     """Return the local Dask client, can be accessed globally for parallel processing"""
     if GLOBAL['DASK_CLIENT'] is None and num_processes is not None:

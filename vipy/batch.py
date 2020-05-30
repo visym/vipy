@@ -1,6 +1,6 @@
 import os
 import sys
-from vipy.util import try_import, islist, tolist, tempdir, remkdir
+from vipy.util import try_import, islist, tolist, tempdir, remkdir, chunklistbysize
 from itertools import repeat
 try_import('dask', 'dask distributed torch')
 from dask.distributed import as_completed, wait
@@ -35,16 +35,23 @@ class Batch(object):
 
     """    
              
-    def __init__(self, objlist, n_processes=2, dashboard=False):
+    def __init__(self, objlist, n_processes=None, dashboard=False, ngpu=0):
         """Create a batch of homogeneous vipy.image objects from an iterable that can be operated on with a single parallel function call
         """
         objlist = tolist(objlist)
         self._batchtype = type(objlist[0])        
         assert all([isinstance(im, self._batchtype) for im in objlist]), "Invalid input - Must be homogeneous list of the same type"                
-        self._objlist = objlist        
-        if vipy.globals.dask() is None or vipy.globals.num_workers() < n_processes:
+        self._objlist = objlist      
+        n_processes = ngpu if ngpu > 0 else n_processes
+        n_processes = vipy.globals.num_workers() if n_processes is None else n_processes
+        if vipy.globals.dask() is None or vipy.globals.num_workers() != n_processes:
             vipy.globals.dask(num_processes=n_processes, dashboard=dashboard)
         self._client = vipy.globals.dask().client()  # shutdown using vipy.globals.dask().shutdown(), or let python garbage collect it
+    
+        self._ngpu = ngpu
+        if self._ngpu > 0:
+             assert ngpu == n_processes
+             wait([self._client.submit(lambda wid: vipy.globals.gpuindex( k ), wid, workers=wid) for (k,wid) in enumerate(self._client.scheduler_info()['workers'].keys())])
 
     def __enter__(self):
         return self
@@ -56,7 +63,10 @@ class Batch(object):
         return len(self._objlist)
 
     def __repr__(self):
-        return str('<vipy.batch: type=%s, len=%d, procs=%d>' % (str(self._batchtype), len(self), self.n_processes()))
+        return str('<vipy.batch: type=%s, len=%d, procs=%d, gpu=%d>' % (str(self._batchtype), len(self), self.n_processes(), self.ngpu()))
+
+    def ngpu(self):
+        return self._ngpu
 
     def info(self):
         return self._client.scheduler_info()
@@ -153,3 +163,27 @@ class Batch(object):
         """Convert the batch of N HxWxC images to a NxCxHxW torch tensor"""
         return np.stack(self.map(lambda im: im.numpy()))
     
+    def torchmap(self, f, net):
+        """Apply lambda function f prepare data, and pass resulting tensor to data parallel to torch network"""
+        assert self.__dict__['_client'] is not None, "Batch() must be reconsructed after shutdown"        
+
+        c = self.__dict__['_client']       
+        deviceid = 'cuda' if torch.cuda.is_available and self.ngpu() > 0 else 'cpu'
+        device = torch.device(deviceid)
+
+        modeldist = torch.nn.DataParallel(net)
+        modeldist = modeldist.to(device)
+        
+        return [modeldist(t.to(device)) for t in as_completed([c.submit(f, im) for im in self._objlist])]
+        
+    def chunkmap(self, f, obj, batchsize):
+        c = self.__dict__['_client']
+        objdist = c.scatter(obj)        
+        return self.batch([c.submit(f, objdist, imb) for imb in chunklistbysize(self._objlist, batchsize)])                
+
+    def scattermap(self, f, obj):
+        """Scatter obj to all workers, and apply lambda function f(obj, im) to each element in batch"""
+        c = self.__dict__['_client']
+        objdist = c.scatter(obj)        
+        return self.batch([c.submit(f, objdist, im) for im in self._objlist])
+

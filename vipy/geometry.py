@@ -366,7 +366,7 @@ class BoundingBox():
         else:
             area_intersection = w * h
             area_union = (self.area() + bb.area() - area_intersection)
-            iou = area_intersection / area_union
+            iou = area_intersection / float(area_union)
         return iou
 
     def intersection_over_union(self, bb):

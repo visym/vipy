@@ -187,6 +187,14 @@ class Track(object):
         assert keyframe in self._keyframes, "Keyframe not found"
         self._keyboxes[self._keyframes.index(keyframe)] = box
         return self
+
+    def delete(self, keyframe):
+        """Replace a keyframe and associated box to track, preserve sorted order of keyframes"""
+        assert keyframe in self._keyframes, "Keyframe not found"
+        k = self._keyframes.index(keyframe)
+        del self._keyboxes[k]
+        del self._keyframes[k]
+        return self
     
     def keyframes(self):
         """Return keyframe frame indexes where there are track observations"""
