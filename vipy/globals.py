@@ -28,7 +28,7 @@ def verbose(b=None):
 
 class Dask(object):
     def __init__(self, num_processes, dashboard=False):
-        assert isinstance(num_processes, int) and num_processes >=2, "num_processes must be >= 2"
+        assert isinstance(num_processes, int) and num_processes >=1, "num_processes must be >= 1"
 
         from vipy.util import try_import
         try_import('dask', 'dask distributed')

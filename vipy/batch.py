@@ -182,7 +182,20 @@ class Batch(object):
         return self.batch([c.submit(f, objdist, imb) for imb in chunklistbysize(self._objlist, batchsize)])                
 
     def scattermap(self, f, obj):
-        """Scatter obj to all workers, and apply lambda function f(obj, im) to each element in batch"""
+        """Scatter obj to all workers, and apply lambda function f(obj, im) to each element in batch
+        
+           Usage: 
+         
+           >>> Batch(mylist, ngpu=8).scattermap(lambda net, im: net(im), net).result()
+        
+           This will scatter the large object net to all workers, and pin it to a specific GPU.  Within the net object, you can call 
+           vipy.global.gpuindex() to retrieve your assigned GPU index, which can be used by torch.cuda.device().  Then, the net
+           object processes each element in the batch using net according to the lambda, and returns the results.  This function 
+           includes ngpu processes, and assumes there are ngpu available on the target machine.  Each net is replicated in a different
+           process, so it is the callers responsibility for getting vipy.global.gpuindex() from within the process and setting 
+           net to take advantage of this GPU rather than using the defaeult cuda:0.  
+
+        """
         c = self.__dict__['_client']
         objdist = c.scatter(obj)        
         return self.batch([c.submit(f, objdist, im) for im in self._objlist])
