@@ -634,7 +634,10 @@ class Video(object):
         return self.centercrop( (min(self.height(), self.width()), min(self.height(), self.width())))
 
     def maxsquare(self):
-        self._ffmpeg = self._ffmpeg.filter('pad', max(self.shape()), max(self.shape()), 0, 0)
+        # This ffmpeg filter can throw the error:  "Padded dimensions cannot be smaller than input dimensions." since the preview is off by one.  Add one here to make sure.
+        # FIXME: not sure where in some filter chains this off-by-one error is being introduced, but probably does not matter since it does not affect any annotations 
+        # since the max square always preserves the scale and the upper left corner of the source video. 
+        self._ffmpeg = self._ffmpeg.filter('pad', max(self.shape())+1, max(self.shape())+1, 0, 0)  
         return self
         
     def zeropad(self, padwidth, padheight):
