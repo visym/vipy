@@ -70,8 +70,13 @@ class Dask(object):
     def client(self):
         return self._client
 
+def cpuonly():
+    GLOBAL['GPU'] = None
+
 def gpuindex(gpu=None):
-    if gpu is not None:
+    if gpu == 'cpu':
+        cpuonly()
+    elif gpu is not None:
         GLOBAL['GPU'] = gpu
     return GLOBAL['GPU']
 

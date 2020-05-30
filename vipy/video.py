@@ -724,6 +724,9 @@ class Video(object):
         # Return a new video, cloned from this video with the new video file, optionally flush the video we loaded before returning
         return self.clone(flushforward=True, flushfilter=True, flushbackward=flush).filename(outfile)
     
+    def savetmp(self):
+        return self.saveas(outfile=tempMP4())
+
     def pptx(self, outfile):
         """Export the video in a format that can be played by powerpoint"""
         pass
