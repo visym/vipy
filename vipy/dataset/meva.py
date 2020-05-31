@@ -295,13 +295,14 @@ class KF1(object):
                         raise ValueError('undefined category "%s"' % category)
                 
                 startframe = int(v['act']['timespan'][0]['tsr0'][0])
-                endframe = int(v['act']['timespan'][0]['tsr0'][1])
+                endframe = int(v['act']['timespan'][0]['tsr0'][1])                
                 actorid = [x['id1'] for x in v['act']['actors']]   
-                nounid = [d_id1_to_track[a].id() for a in actorid if f_activity_to_actor(category).lower() == d_id1_to_track[a].category().lower()]
-                if actor and len(nounid) == 0:
-                    print('[vipy.dataset.meva.KF1]: activity "%s" without a required primary actor "%s" - SKIPPING' % (category, f_activity_to_actor(category)))
-                    continue
-                nounid = nounid[0] if len(nounid) > 0 else None   # first track in activity of required object class for this category is assumed to be the performer/actor/noun
+                if actor:                    
+                    nounid = [d_id1_to_track[a].id() for a in actorid if f_activity_to_actor(category).lower() == d_id1_to_track[a].category().lower()]
+                    if len(nounid) == 0:
+                        print('[vipy.dataset.meva.KF1]: activity "%s" without a required primary actor "%s" - SKIPPING' % (category, f_activity_to_actor(category)))
+                        continue
+                    nounid = nounid[0] if len(nounid) > 0 else None   # first track in activity of required object class for this category is assumed to be the performer/actor/noun
 
                 for aid in actorid:
                     if not aid in d_id1_to_track:
@@ -311,7 +312,7 @@ class KF1(object):
                 tracks = {d_id1_to_track[aid].id():d_id1_to_track[aid] for aid in actorid if aid in d_id1_to_track}  # order preserving (python 3.6)
                 if len(tracks) > 0:
                     try:
-                        vid.add(Activity(category=category, shortlabel=d_category_to_shortlabel[category], actorid=nounid,
+                        vid.add(Activity(category=category, shortlabel=d_category_to_shortlabel[category], actorid=nounid if actor else None,
                                          startframe=startframe, endframe=endframe, tracks=tracks, framerate=framerate, 
                                          attributes={'act':v['act'], 'act_yaml':act_yamlfile, 'geom_yaml':geom_yamlfile}), rangecheck=True)
                     except Exception as e:
