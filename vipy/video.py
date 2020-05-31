@@ -1147,9 +1147,11 @@ class Scene(VideoCategory):
         return self
 
     def rekey(self):
+        """Change the track and activity IDs to randomly assigned UUIDs.  Useful for cloning unique scenes"""
+        d_old_to_new = {k:uuid.uuid1().hex for (k,a) in self._activities.items()}
+        self._activities = {d_old_to_new[k]:a.id(d_old_to_new[k]) for (k,a) in self._activities.items()}
         d_old_to_new = {k:uuid.uuid1().hex for (k,t) in self._tracks.items()}
-        self._tracks = {d_old_to_new[k]:t for (k,t) in self._tracks.items()}
-        self._activities = {uuid.uuid1().hex:a for (k,a) in self._activities.items()}
+        self._tracks = {d_old_to_new[k]:t.id(d_old_to_new[k]) for (k,t) in self._tracks.items()}
         for (k,v) in d_old_to_new.items():
             self.activitymap(lambda a: a.replaceid(k,v) )
         return self

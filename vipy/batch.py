@@ -71,6 +71,9 @@ class Batch(object):
     def info(self):
         return self._client.scheduler_info()
 
+    def shutdown(self):
+        vipy.globals.dask().shutdown()
+
     def n_processes(self):
         return len(self.info()['workers'])
 

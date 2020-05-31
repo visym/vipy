@@ -309,8 +309,12 @@ class Track(object):
         self._keyboxes = [bb.flipud(height=H) for bb in self._keyboxes]
         return self
 
-    def id(self):
-        return self._id
+    def id(self, newid=None):
+        if newid is None:
+            return self._id
+        else:
+            self._id = newid
+            return self
 
     def clone(self):
         return copy.deepcopy(self)

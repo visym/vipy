@@ -64,7 +64,6 @@ class Dask(object):
         self._client.close()
         self._num_processes = 0
         GLOBAL['DASK_CLIENT'] = None
-        GLOBAL['GPU'] = None
         return self
 
     def client(self):
