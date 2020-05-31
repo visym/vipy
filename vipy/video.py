@@ -1361,11 +1361,15 @@ class Scene(VideoCategory):
         frames = [im.padcrop(im.boundingbox().maxsquare().dilate(dilate).int()).resize(maxdim, maxdim) for im in vid if im.boundingbox() is not None]  # track interpolation, for frames with boxes only
         if len(frames) != len(vid):
             warnings.warn('[vipy.video.activitytube]: Removed %d frames with no spatial bounding boxes' % (len(vid) - len(frames)))
+            vid.attributes['activtytube'] = {'truncated':len(vid) - len(frames)}  # provenance to reject
+        if len(frames) == 0:
+            warnings.warn('[vipy.video.activitytube]: Resulting video is empty!  Setting activitytube to zero')
+            frames = [ vid[0].resize(maxdim, maxdim).zeros() ]  # empty frame
+            vid.attributes['activitytube'] = {'empty':True}   # provenance to reject 
         vid._tracks = {ti:vipy.object.Track(keyframes=[f for (f,im) in enumerate(frames) for d in im.objects() if d.attributes['trackid'] == ti],
                                             boxes=[d for (f,im) in enumerate(frames) for d in im.objects() if d.attributes['trackid'] == ti],
                                             category=t.category(), trackid=ti)
                        for (k,(ti,t)) in enumerate(self._tracks.items())}  # replace tracks with boxes relative to tube
-        #vid.activitymap(lambda a: a.tracks( {ti:t for (ti,t) in vid._tracks.items() if a.hastrack(ti)} ))  # update activity tracks too (yuck..)
         return vid.array(np.stack([im.numpy() for im in frames]))
 
     def actortube(self, trackid, dilate=1.0, maxdim=256):
@@ -1389,7 +1393,6 @@ class Scene(VideoCategory):
                                             boxes=[d for (f,im) in enumerate(frames) for d in im.objects() if d.attributes['trackid'] == ti],
                                             category=t.category(), trackid=ti)  # preserve trackid
                        for (k,(ti,t)) in enumerate(self._tracks.items())}  # replace tracks with boxes relative to tube
-        #vid.activitymap(lambda a: a.tracks( {ti:t for (ti,t) in vid._tracks.items() if a.hastrack(ti)} ))  # update activity tracks too (yuck..)
         return vid.array(np.stack([im.numpy() for im in frames]))
 
 
@@ -1420,8 +1423,7 @@ class Scene(VideoCategory):
         assert isinstance(padwidth, int) and isinstance(padheight, int)
         super(Scene, self).zeropad(padwidth, padheight)  
         self._tracks = {k:t.offset(dx=padwidth, dy=padheight) for (k,t) in self._tracks.items()}
-        return sefl
-
+        return self
         
     def fliplr(self):
         assert not self.isloaded(), "Filters can only be applied prior to load() - Try calling flush() first"                

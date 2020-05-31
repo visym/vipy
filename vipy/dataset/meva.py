@@ -89,11 +89,11 @@ class KF1(object):
         yamlfiles = list(yamlfiles)[0:n_videos] if n_videos is not None else list(yamlfiles)
         if verbose:
             print('[vipy.dataset.meva.KF1]: Loading %d YAML files' % len(yamlfiles))
-            if len(yamlfiles) > 100 and vipy.globals.num_workers() == 1: 
-                print('[vipy.dataset.meva.KF1]: This takes a while since parsing YAML files in python is painfully slow, consider calling "vipy.globals.num_workers(8)" before loading the dataset for parallel parsing')
+            if len(yamlfiles) > 100 and vipy.globals.max_workers() == 1: 
+                print('[vipy.dataset.meva.KF1]: This takes a while since parsing YAML files in python is painfully slow, consider calling "vipy.globals.max_workers(n)" for n>1 before loading the dataset for parallel parsing')
 
         # Parallel video annotation
-        if vipy.globals.num_workers() > 1:
+        if vipy.globals.max_workers() > 1:
             from vipy.batch import Batch
             self._vidlist = Batch(list(yamlfiles)).map(lambda tga: self._parse_video(d_videoname_to_path, d_category_to_shortlabel, tga[0], tga[1], tga[2], stride=stride, verbose=verbose, actor=actor))
         else:
@@ -329,10 +329,10 @@ class KF1(object):
 
     def instances(self, padframes=0):
         """Return list of activity instances"""
-        if vipy.globals.num_workers() > 1:
+        if vipy.globals.max_workers() > 1:
             return [a for A in Batch(self.videos()).activityclip(padframes=padframes) for a in A]
         else:
-            warnings.warn('Consider setting vipy.globals.num_workers()>1 to speed this up')
+            warnings.warn('Consider setting vipy.globals.max_workers(n) for n>1 to speed this up')
             return [a for v in self.videos() for a in v.activityclip(padframes=padframes)]
         
 
@@ -447,8 +447,8 @@ class KF1(object):
 
     def review(self, outfile=None, mindim=512):        
         """Generate a standalone HTML file containing quicklooks for each annotated activity in dataset, along with some helpful provenance information for where the annotation came from"""
-        if vipy.globals.num_workers() == 1:
-            warnings.warn("Generating review HTML is very time consuming, consider setting vipy.global.num_workers(n) for n > 1 for parallel video processing")
+        if vipy.globals.max_workers() == 1:
+            warnings.warn("Generating review HTML is very time consuming, consider setting vipy.global.max_workers(n) for n > 1 for parallel video processing")
         quicklist = Batch(self._vidlist).map(lambda v: [(c.load().quicklook(context=True), c.flush()) for c in v.mindim(512).activityclip()])
         quicklooks = [imq for q in quicklist for (imq, c) in q]  # for HTML display purposes
         provenance = [{'clip':str(c), 'activities':str(';'.join([str(a) for a in c.activitylist()])), 'category':c.category(), 'yamlfile':c.activitylist()[0].attributes['act_yaml']} for q in quicklist for (imq, c) in q]

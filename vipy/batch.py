@@ -41,10 +41,12 @@ class Batch(object):
         objlist = tolist(objlist)
         self._batchtype = type(objlist[0])        
         assert all([isinstance(im, self._batchtype) for im in objlist]), "Invalid input - Must be homogeneous list of the same type"                
-        self._objlist = objlist      
+        self._objlist = objlist
+      
         n_processes = ngpu if ngpu > 0 else n_processes
-        n_processes = vipy.globals.num_workers() if n_processes is None else n_processes
-        if vipy.globals.dask() is None or vipy.globals.num_workers() != n_processes:
+        n_processes = vipy.globals.max_workers() if n_processes is None else n_processes
+        assert n_processes is not None, "set vipy.globals.max_workers() or n_processes kwarg"
+        if vipy.globals.dask() is None or n_processes != vipy.globals.dask().num_processes():
             vipy.globals.dask(num_processes=n_processes, dashboard=dashboard)
         self._client = vipy.globals.dask().client()  # shutdown using vipy.globals.dask().shutdown(), or let python garbage collect it
     

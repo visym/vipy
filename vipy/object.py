@@ -3,7 +3,7 @@ from vipy.geometry import BoundingBox
 from vipy.util import isstring, tolist, chunklistwithoverlap
 import uuid
 import copy
-
+import warnings
 
 class Detection(BoundingBox):
     """vipy.object.Detection class
@@ -194,6 +194,8 @@ class Track(object):
         k = self._keyframes.index(keyframe)
         del self._keyboxes[k]
         del self._keyframes[k]
+        if len(self._keyframes) == 0:
+            warnings.warn('Empty track')
         return self
     
     def keyframes(self):
@@ -216,10 +218,10 @@ class Track(object):
         return self
         
     def startframe(self):
-        return np.min(self._keyframes)
+        return np.min(self._keyframes) if len(self._keyframes)>0 else None
 
     def endframe(self):
-        return np.max(self._keyframes)
+        return np.max(self._keyframes) if len(self._keyframes)>0 else None
 
     def _linear_interpolation(self, k):
         """Linear bounding box interpolation at frame=k given observed boxes (x,y,w,h) at keyframes.  
@@ -256,9 +258,10 @@ class Track(object):
         else:
             return self._shortlabel
 
-    def during(self, k):
+    def during(self, k_start, k_end=None):
         """Is frame during the time interval (startframe, endframe) inclusive?"""        
-        return k >= self.startframe() and k <= self.endframe()
+        k_end = k_start+1 if k_end is None else k_end
+        return any([k >= self.startframe() and k <= self.endframe() for k in range(k_start, k_end)])
 
     def offset(self, dt=0, dx=0, dy=0):
         self._keyboxes = [bb.offset(dx, dy) for bb in self._keyboxes]

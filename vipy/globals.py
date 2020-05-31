@@ -8,6 +8,7 @@ from vipy.util import remkdir
 # Global mutable dictionary
 GLOBAL = {'VERBOSE': False, 
           'DASK_CLIENT': None,
+          'DASK_MAX_WORKERS':1,
           'CACHE':None,
           'GPU':None}
 
@@ -72,6 +73,7 @@ class Dask(object):
 def cpuonly():
     GLOBAL['GPU'] = None
 
+
 def gpuindex(gpu=None):
     if gpu == 'cpu':
         cpuonly()
@@ -79,24 +81,23 @@ def gpuindex(gpu=None):
         GLOBAL['GPU'] = gpu
     return GLOBAL['GPU']
 
+
 def dask(num_processes=None, dashboard=False):
     """Return the local Dask client, can be accessed globally for parallel processing"""
-    if GLOBAL['DASK_CLIENT'] is None and num_processes is not None:
-        GLOBAL['DASK_CLIENT'] = Dask(num_processes, dashboard=dashboard)        
-    elif GLOBAL['DASK_CLIENT'] is not None and num_processes is not None and GLOBAL['DASK_CLIENT'].num_processes() != num_processes:
-        GLOBAL['DASK_CLIENT'].shutdown()
+    if (num_processes is not None and (GLOBAL['DASK_CLIENT'] is None or GLOBAL['DASK_CLIENT'].num_processes() != num_processes)):
+        if GLOBAL['DASK_CLIENT'] is not None:
+            GLOBAL['DASK_CLIENT'].shutdown()
+        assert num_processes >= 1, "num_processes>=1"
         GLOBAL['DASK_CLIENT'] = Dask(num_processes, dashboard=dashboard)        
     return GLOBAL['DASK_CLIENT']
 
 
-def num_workers(n=None):
-    """Create n parallel Dask processes.  This is used in conjunction with vipy.batch.Batch()"""
+def max_workers(n=None, pct=None):
+    """Set the maximum number of workers as the largest power of two <= pct% of the number of CPUs on the current system, or the provided number.  This will be used as the default when creating a dask client."""
     if n is not None:
-        return dask(num_processes=n)
-    return 1 if dask() is None else dask().num_processes()
-
-
-def max_workers(pct=0.5):
-    """Set the maximum number of workers as the largest power of two <= pct% of the number of CPUs on the current system"""
-    import multiprocessing
-    return dask(num_processes=vipy.math.poweroftwo(pct*multiprocessing.cpu_count()))
+        assert isinstance(n, int)
+        GLOBAL['DASK_MAX_WORKERS'] = n
+    elif pct is not None:
+        import multiprocessing
+        GLOBAL['DASK_MAX_WORKERS'] = vipy.math.poweroftwo(pct*multiprocessing.cpu_count())
+    return GLOBAL['DASK_MAX_WORKERS'] 
