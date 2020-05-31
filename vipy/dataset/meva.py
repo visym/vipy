@@ -396,8 +396,7 @@ class KF1(object):
             plt.savefig(d['2D_%s_bounding_box_histogram' % c])
 
         # Mean track size per activity category
-        d_category_to_xy = {k:np.mean([t.meanshape() for v in vlist for t in v.tracklist()], axis=0) for (k,vlist) in groupbyasdict(scenes, lambda v: v.category()).items()}
-        
+        d_category_to_xy = {k:np.mean([t.meanshape() for v in vlist for t in v.tracklist()], axis=0) for (k,vlist) in groupbyasdict(scenes, lambda v: v.category()).items()}        
         plt.clf()
         plt.figure()
         plt.grid(True)
@@ -407,11 +406,11 @@ class KF1(object):
             plt.scatter(xc, yc, c=d_category_to_color[c], label=c)
         plt.xlabel('bounding box (width)')
         plt.ylabel('bounding box (height)')
-        plt.axis([0, 1000, 0, 1000])                
-        plt.legend()
+        plt.axis([0, 600, 0, 600])                
         plt.gca().set_axisbelow(True)        
+        lgd = plt.legend(bbox_to_anchor=(1.05, 1), loc='upper left', borderaxespad=0.)
         d['activity_bounding_box_scatterplot'] = os.path.join(outdir, 'activity_bounding_box_scatterplot.pdf')
-        plt.savefig(d['activity_bounding_box_scatterplot'])
+        plt.savefig(d['activity_bounding_box_scatterplot'], bbox_extra_artists=(lgd,), bbox_inches='tight')
     
         return d
 
