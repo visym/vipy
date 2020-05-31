@@ -364,59 +364,10 @@ class KF1(object):
         (categories, freq) = zip(*reversed(d['num_activities']))
         barcolors = ['blue' if not 'vehicle' in c else 'green' for c in categories]
         d['num_activities_histogram'] = vipy.metrics.histogram(freq, categories, barcolors=barcolors, outfile=os.path.join(outdir, 'num_activities_histogram.pdf'), ylabel='Instances')
-
-        # Scatterplot of box sizes
-        (x, y, category) = zip(*[(max([t.meanshape()[1] for t in a.tracks().values()]), max([t.meanshape()[0] for t in a.tracks().values()]), a.category()) for a in activities])
         colors = colorlist()
-        d_category_to_color = {c:colors[k % len(colors)] for (k,c) in enumerate(category)}
-        plt.clf()
-        plt.figure()
-        plt.subplot(111)
-        plt.grid(True)
-        d_category_to_boxsizes = groupbyasdict(zip(x,y,category), lambda xyc: xyc[2])
-        for c in categories:
-            (xc,yc) = zip(*[(xx,yy) for (xx,yy,cc) in d_category_to_boxsizes[c]])
-            plt.scatter(xc, yc, c=d_category_to_color[c], label=c)
-        plt.xlabel('Bounding box (width)')
-        plt.ylabel('Bounding box (height)')
-        plt.gca().set_axisbelow(True)                
-        plt.axis([0, max(max(x),max(y)), 0, max(max(x),max(y))])
-        lgd = plt.legend(bbox_to_anchor=(1.05, 1), loc='upper left', borderaxespad=0.)
-        d['bounding_box_scatterplot'] = os.path.join(outdir, 'bounding_box_scatterplot.pdf')
-        plt.savefig(d['bounding_box_scatterplot'], bbox_extra_artists=(lgd,), bbox_inches='tight')
 
-        # Separate scatterplots of box sizes
-        (x, y, category) = zip(*[(max([t.meanshape()[1] for t in a.tracks().values()]), max([t.meanshape()[0] for t in a.tracks().values()]), a.category()) for a in activities])
-        colors = colorlist()
-        d_category_to_color = {c:colors[k % len(colors)] for (k,c) in enumerate(category)}
-        d_category_to_boxsizes = groupbyasdict(zip(x,y,category), lambda xyc: xyc[2])
-        d['category_bounding_box_scatterplot'] = []
-        for c in categories:
-            plt.clf()
-            plt.figure()
-            plt.subplot(111)
-            plt.grid(True)            
-            (xc,yc) = zip(*[(xx,yy) for (xx,yy,cc) in d_category_to_boxsizes[c]])
-            plt.scatter(xc, yc, c=d_category_to_color[c], label=c)
-            plt.xlabel('Bounding box (width)')
-            plt.ylabel('Bounding box (height)')
-            plt.legend()            
-            plt.gca().set_axisbelow(True)                
-            plt.axis([0, max(max(x),max(y)), 0, max(max(x),max(y))])
-            filename = os.path.join(outdir, 'category_bounding_box_scatterplot_%s.pdf' % c)
-            d['category_bounding_box_scatterplot'].append(filename)
-            plt.savefig(filename)
-        
-        # 2D histogram of box sixes
-        plt.clf()
-        plt.figure()
-        plt.hist2d(x, y, bins=10)
-        plt.xlabel('Bounding box (width)')
-        plt.ylabel('Bounding box (height)')        
-        d['2D_bounding_box_histogram'] = os.path.join(outdir, '2D_bounding_box_histogram.pdf')
-        plt.savefig(d['2D_bounding_box_histogram'])
-        
         # Scatterplot of people and vehicles box sizes
+        (x, y) = zip(*[(t.meanshape()[1], t.meanshape()[0]) for t in tracks])
         plt.clf()
         plt.figure()
         plt.grid(True)
@@ -426,7 +377,7 @@ class KF1(object):
             plt.scatter(xc, yc, c=d_category_to_color[c], label=c)
         plt.xlabel('bounding box (width)')
         plt.ylabel('bounding box (height)')
-        plt.axis([0, max(max(x),max(y)), 0, max(max(x),max(y))])                
+        plt.axis([0, 1000, 0, 1000])                
         plt.legend()
         plt.gca().set_axisbelow(True)        
         d['object_bounding_box_scatterplot'] = os.path.join(outdir, 'object_bounding_box_scatterplot.pdf')
@@ -434,16 +385,34 @@ class KF1(object):
         
         # 2D histogram of people and vehicles box sizes
         for c in ['person', 'vehicle']:
-            (x, y) = zip(*[(t.meanshape()[1], t.meanshape()[0]) for t in tracks if t.category() == c])
+            (xc, yc) = zip(*[(t.meanshape()[1], t.meanshape()[0]) for t in tracks if t.category() == c])
             plt.clf()
             plt.figure()
-            plt.hist2d(x, y, bins=10)
+            plt.hist2d(xc, yc, bins=10)
             plt.xlabel('Bounding box (width)')
             plt.ylabel('Bounding box (height)')
             
             d['2D_%s_bounding_box_histogram' % c] = os.path.join(outdir, '2D_%s_bounding_box_histogram.pdf' % c)
             plt.savefig(d['2D_%s_bounding_box_histogram' % c])
 
+        # Mean track size per activity category
+        d_category_to_xy = {k:np.mean([t.meanshape() for v in vlist for t in v.tracklist()], axis=0) for (k,vlist) in groupbyasdict(scenes, lambda v: v.category()).items()}
+        
+        plt.clf()
+        plt.figure()
+        plt.grid(True)
+        d_category_to_color = {c:colors[k % len(colors)] for (k,c) in enumerate(d_category_to_xy.keys())}
+        for c in d_category_to_xy.keys():
+            (xc, yc) = d_category_to_xy[c]
+            plt.scatter(xc, yc, c=d_category_to_color[c], label=c)
+        plt.xlabel('bounding box (width)')
+        plt.ylabel('bounding box (height)')
+        plt.axis([0, 1000, 0, 1000])                
+        plt.legend()
+        plt.gca().set_axisbelow(True)        
+        d['activity_bounding_box_scatterplot'] = os.path.join(outdir, 'activity_bounding_box_scatterplot.pdf')
+        plt.savefig(d['activity_bounding_box_scatterplot'])
+    
         return d
 
     def review(self, outfile=None, mindim=512):        
