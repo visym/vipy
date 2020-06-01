@@ -387,9 +387,16 @@ class Track(object):
 
     def smooth(self, width):
         """Track smoothing by averaging neighboring keyboxes"""
+        assert isinstance(width, int)
         self._keyboxes = [bb.clone().average(bbnbrs) for (bb, bbnbrs) in zip(self._keyboxes, chunklistwithoverlap(self._keyboxes, width, width-1))]
         return self
-        
+
+    def smoothshape(self, width):
+        """Track smoothing by averaging width and height of neighboring keyboxes"""
+        assert isinstance(width, int)
+        self._keyboxes = [bb.clone().averageshape(bbnbrs) for (bb, bbnbrs) in zip(self._keyboxes, chunklistwithoverlap(self._keyboxes, width, width-1))]
+        return self
+    
     def imclip(self, width, height):
         """Clip the track to the image rectangle (width, height).  If a keybox is outside the image rectangle, remove it otherwise clip to the image rectangle. 
            This operation can change the length of the track and the size of the keyboxes.  The result may be an empty track if the track is completely outside

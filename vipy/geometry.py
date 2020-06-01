@@ -660,6 +660,13 @@ class BoundingBox():
         assert all([isinstance(bb, BoundingBox) for bb in tolist(other)]), "Invalid input - must be BoundingBox"        
         return self.ulbr(np.mean( [self.ulbr()] + [bb.ulbr() for bb in tolist(other)], axis=0))
 
+    def averageshape(self, other):
+        """Compute the average bounding box width and height between self and other.  Other may be a singleton bounding box or a list of bounding boxes"""
+        assert all([isinstance(bb, BoundingBox) for bb in tolist(other)]), "Invalid input - must be BoundingBox"        
+        (xmin, ymin, xmax, ymax) = np.mean( [self.ulbr()] + [bb.ulbr() for bb in tolist(other)], axis=0)
+        self.setwidth(xmax-xmin)
+        self.setheight(ymax-ymin)        
+        return self
 
 class Ellipse():
     def __init__(self, semi_major, semi_minor, xcenter, ycenter, phi):
