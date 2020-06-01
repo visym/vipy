@@ -668,6 +668,19 @@ class BoundingBox():
         self.setheight(ymax-ymin)        
         return self
 
+    def medianshape(self, other):
+        """Compute the median bounding box width and height between self and other.  Other may be a singleton bounding box or a list of bounding boxes"""
+        assert all([isinstance(bb, BoundingBox) for bb in tolist(other)]), "Invalid input - must be BoundingBox"        
+        (height, width) = np.median( [self.shape()] + [bb.shape() for bb in tolist(other)], axis=0)
+        self.setwidth(width)
+        self.setheight(height)
+        return self
+
+    def shapedist(self, other):
+        """L1 distance between (width,height) of two boxes"""
+        assert isinstance(other, BoundingBox), "Invalid input - must be BoundingBox()"                
+        return np.abs(self.width()-other.width())  + np.abs(self.height()-other.height())
+
 class Ellipse():
     def __init__(self, semi_major, semi_minor, xcenter, ycenter, phi):
         """Ellipse parameterization, for length of semimajor (half width of ellipse) and semiminor axis (half height), center point and angle phi in radians"""
