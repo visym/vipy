@@ -406,11 +406,11 @@ class Track(object):
         self._keyboxes = [bb.clone().medianshape(bbnbrs) for (bb, bbnbrs) in zip(self._keyboxes, chunklistwithoverlap(self._keyboxes, width, width-1))]
         return self
 
-    def spline(self, smoothing=None):
+    def spline(self, smoothingfactor=None):
         """Track smoothing by cubic spline fit, will return resampled dt=1 track.  Smoothing factor will increase with smoothing > 1 and decrease with 0 < smoothing < 1"""
-        assert smoothing is None or smoothing > 0
+        assert smoothingfactor is None or smoothingfactor > 0
         t = self.clone().resample(dt=1)
-        s = smoothing * len(self._keyframes) if smoothing is not None else None
+        s = smoothingfactor * len(self._keyframes) if smoothingfactor is not None else None
         (xmin, ymin, xmax, ymax) = zip(*[bb.to_ulbr() for bb in t._keyboxes])
         f_xmin = scipy.interpolate.UnivariateSpline(t._keyframes, xmin, check_finite=False, s=s)
         f_ymin = scipy.interpolate.UnivariateSpline(t._keyframes, ymin, check_finite=False, s=s)
@@ -418,7 +418,7 @@ class Track(object):
         f_ymax = scipy.interpolate.UnivariateSpline(t._keyframes, ymax, check_finite=False, s=s)
         (self._keyframes, self._keyboxes) = zip(*[(k, BoundingBox(xmin=float(f_xmin(k)), ymin=float(f_ymin(k)), xmax=float(f_xmax(k)), ymax=float(f_ymax(k)))) for k in range(self.startframe(), self.endframe())])
         return self
-        
+
     def imclip(self, width, height):
         """Clip the track to the image rectangle (width, height).  If a keybox is outside the image rectangle, remove it otherwise clip to the image rectangle. 
            This operation can change the length of the track and the size of the keyboxes.  The result may be an empty track if the track is completely outside
