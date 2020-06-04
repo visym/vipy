@@ -390,6 +390,11 @@ class BoundingBox():
         """Fraction of this bounding box covered by other bbox"""        
         return self.area_of_intersection(bb) / float(self.area())
 
+    def shapeiou(self, bb):
+        """Shape IoU is the IoU with the upper left corners aligned. This measures the deformation of the two boxes by removing the effect of translation"""
+        assert isinstance(bb, BoundingBox), "Invalid input - must be BoundingBox()"
+        return self.iou(bb.clone().translate(dx=self.xmin()-bb.xmin(), dy=self.ymin()-bb.ymin()))
+
     def intersection(self, bb, strict=True):
         """Intersection of two bounding boxes, throw an error on degeneracy of intersection result (if strict=True)"""
         assert isinstance(bb, BoundingBox), "Invalid BoundingBox() input"                
