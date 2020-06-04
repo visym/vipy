@@ -129,6 +129,12 @@ class Image(object):
             strlist.append('url="%s"' % self.url())
         return str('<vipy.image: %s>' % (', '.join(strlist)))
 
+    def print(self, prefix='', verbose=True):
+        """Print the representation of the image adn return self - useful for debugging in long fluent chains"""
+        if verbose:
+            print(prefix+self.__repr__())
+        return self
+    
     def dict(self):
         """Return a python dictionary containing the relevant serialized attributes of the Image() object"""
         d = {'filename':self.filename(),
