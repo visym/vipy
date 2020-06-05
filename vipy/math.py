@@ -36,3 +36,8 @@ def cartesian_to_polar(x, y):
     """Cartesian (x,y) coordinates to polar (radius, theta) coordinates, theta in radians in [-pi,pi]"""
     return (np.sqrt(np.array(x)**2 + np.array(y)**2),
             np.arctan2(y, x))
+
+def rad2deg(r):
+    """Radians to degrees"""
+    return r*(180.0 / np.pi)
+
