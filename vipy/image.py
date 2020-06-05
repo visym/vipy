@@ -704,6 +704,15 @@ class Image(object):
     def imagebox(self):
         """Return the bounding box for the image rectangle"""
         return BoundingBox(xmin=0, ymin=0, width=self.width(), height=self.height())
+
+    def border_mask(self, pad):
+        """Return a binary uint8 image the same size as self, with a border of pad pixels in width or height around the edge"""
+        img = np.zeros( (self.height(), self.width()), dtype=np.uint8)
+        img[0:pad,:] = 1
+        img[-pad:,:] = 1
+        img[:,0:pad] = 1
+        img[:,-pad:] = 1
+        return img
     
     # Color conversion
     def _convert(self, to):
@@ -1585,7 +1594,7 @@ class Scene(ImageCategory):
                 bbm = bb.clone().imclip(self.numpy()).int()
                 immask[bbm.ymin():bbm.ymax(), bbm.xmin():bbm.xmax()] = 1
         return immask
-
+        
     def show(self, categories=None, figure=None, nocaption=False, nocaption_withstring=[], fontsize=10, boxalpha=0.25, d_category2color={'Person':'green', 'Vehicle':'blue', 'Object':'red'}, captionoffset=(0,0), nowindow=False, textfacecolor='white', textfacealpha=1.0, shortlabel=True):
         """Show scene detection 
 

@@ -33,6 +33,6 @@ def find_closest_positive_divisor(a, b):
     return a  # should never get here, since bh=a is always a solution
 
 def cartesian_to_polar(x, y):
-    """Cartesian (x,y) coordinates to polar (radius, theta) coordinates, theta in radians"""
+    """Cartesian (x,y) coordinates to polar (radius, theta) coordinates, theta in radians in [-pi,pi]"""
     return (np.sqrt(np.array(x)**2 + np.array(y)**2),
             np.arctan2(y, x))

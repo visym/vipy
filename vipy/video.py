@@ -1137,7 +1137,7 @@ class Scene(VideoCategory):
     def trackmap(self, f):
         """Apply lambda function f to each activity"""
         self._tracks = {k:f(t) for (k,t) in self._tracks.items()}
-        assert all([isinstance(t, vipy.object.Track) for t in self.tracklist()]), "Lambda function must return vipy.object.Track()"
+        assert all([isinstance(t, vipy.object.Track) and not t.isdegenerate() for t in self.tracklist()]), "Lambda function must return non-degenerate vipy.object.Track()"
         return self
         
     def activitymap(self, f):
@@ -1399,7 +1399,7 @@ class Scene(VideoCategory):
     def clip(self, startframe, endframe):
         """Clip the video to between (startframe, endframe).  This clip is relative to clip() shown by __repr__().  Return a clone of the video for idemponence"""
         v = super(Scene, self.clone()).clip(startframe, endframe)  # clone for idemponence
-        v._tracks = {k:t.offset(dt=-startframe) for (k,t) in v._tracks.items()}   # track offset is performed here, not within activity
+        v._tracks = {k:t.offset(dt=-startframe) for (k,t) in v._tracks.items()}   # track offset is performed here, not within activity, no end frame enforced
         v._activities = {k:a.offset(dt=-startframe) for (k,a) in v._activities.items()}        
         return v  
 

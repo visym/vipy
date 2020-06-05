@@ -51,7 +51,7 @@ class Detection(BoundingBox):
         return {'id':self._id, 'label':self.category(), 'shortlabel':self.shortlabel() ,'boundingbox':super(Detection, self).dict(),
                 'attributes':self.attributes,  # these may be arbitrary user defined objects
                 'confidence':self._confidence}
-
+                    
     def nocategory(self):
         self._label = None
         return self
@@ -165,6 +165,12 @@ class Track(object):
 
     def isempty(self):
         return self.__len__() == 0
+
+    def isdegenerate(self):
+        import pdb; pdb.set_trace()
+        return not (len(self.keyboxes()) == len(self.keyframes()) and
+                    (len(self) == 0 or all([bb.isvalid() for bb in self.keyboxes()])) and
+                    sorted(self.keyframes()) == self._keyframes())
     
     def dict(self):
         return {'id':self._id, 'label':self.category(), 'shortlabel':self.shortlabel(), 'keyframes':self._keyframes, 'framerate':self._framerate, 
@@ -204,10 +210,15 @@ class Track(object):
         """Return keyframe frame indexes where there are track observations"""
         return self._keyframes
 
-    def keyboxes(self):
+    def keyboxes(self, boxes=None):
         """Return keyboxes where there are track observations"""
-        return self._keyboxes
-    
+        if boxes is None:
+            return self._keyboxes
+        else:
+            assert all([isinstance(bb, BoundingBox) for bb in boxes])
+            self._keyboxes = boxes
+            return self
+        
     def meanshape(self):
         """Return the mean (width,height) of the box during the track"""
         return np.mean([bb.shape() for bb in self._keyboxes], axis=0)
@@ -271,6 +282,11 @@ class Track(object):
         self._keyframes = list(np.array(self._keyframes) + dt)
         return self
 
+    def frameoffset(self, dx, dy):
+        assert len(self.keyboxes()) == len(dx) and len(self.keyboxes()) == len(dy)
+        self._keyboxes = [bb.offset(dx=x, dy=y) for (bb, (x, y)) in zip(self._keyboxes, zip(dx, dy))]
+        return self
+        
     def rescale(self, s):
         """Rescale track boxes by scale factor s"""
         self._keyboxes = [bb.rescale(s) for bb in self._keyboxes]
