@@ -412,7 +412,7 @@ class Image(object):
 
     def pil(self):
         """Convert vipy.image.Image to PIL Image, by reference"""
-        assert self.channels() in [1,3] and (self.channels() == 1 or self.colorspace() != 'float'), "Incompatible with PIL"
+        assert self.channels() in [1,3,4] and (self.channels() == 1 or self.colorspace() != 'float'), "Incompatible with PIL"
         return PIL.Image.fromarray(self.tonumpy())
 
     def torch(self, order='CHW'):
