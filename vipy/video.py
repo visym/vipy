@@ -602,11 +602,11 @@ class Video(object):
         self._ffmpeg = self._ffmpeg.filter('scale', cols if cols is not None else -1, rows if rows is not None else -1)
         return self
 
-    def mindim(self, dim):
+    def mindim(self, dim=None):
         """Resize the video so that the minimum of (width,height)=dim, preserving aspect ratio"""
-        assert not self.isloaded(), "Filters can only be applied prior to load() - Try calling flush() first"
+        assert dim is None or not self.isloaded(), "Filters can only be applied prior to load() - Try calling flush() first"
         (H,W) = self.shape()  # yuck, need to get image dimensions before filter
-        return self.resize(cols=dim) if W<H else self.resize(rows=dim)
+        return min(self.shape()) if dim is None else self.resize(cols=dim) if W<H else self.resize(rows=dim)
 
     def maxdim(self, dim):
         """Resize the video so that the maximum of (width,height)=dim, preserving aspect ratio"""
@@ -1465,11 +1465,11 @@ class Scene(VideoCategory):
         super(Scene, self).resize(rows, cols)
         return self
 
-    def mindim(self, dim):
+    def mindim(self, dim=None):
         """Resize the video so that the minimum of (width,height)=dim, preserving aspect ratio"""
-        assert not self.isloaded(), "Filters can only be applied prior to load() - Try calling flush() first"                
+        assert dim is None or not self.isloaded(), "Filters can only be applied prior to load() - Try calling flush() first"                
         (H,W) = self.shape()  # yuck, need to get image dimensions before filter
-        return self.resize(cols=dim) if W<H else self.resize(rows=dim)
+        return min(self.shape()) if dim is None else self.resize(cols=dim) if W<H else self.resize(rows=dim)
 
     def maxdim(self, dim):
         """Resize the video so that the maximum of (width,height)=dim, preserving aspect ratio"""

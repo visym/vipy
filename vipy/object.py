@@ -167,10 +167,9 @@ class Track(object):
         return self.__len__() == 0
 
     def isdegenerate(self):
-        import pdb; pdb.set_trace()
         return not (len(self.keyboxes()) == len(self.keyframes()) and
                     (len(self) == 0 or all([bb.isvalid() for bb in self.keyboxes()])) and
-                    sorted(self.keyframes()) == self._keyframes())
+                    sorted(self.keyframes()) == self.keyframes())
     
     def dict(self):
         return {'id':self._id, 'label':self.category(), 'shortlabel':self.shortlabel(), 'keyframes':self._keyframes, 'framerate':self._framerate, 
@@ -210,13 +209,15 @@ class Track(object):
         """Return keyframe frame indexes where there are track observations"""
         return self._keyframes
 
-    def keyboxes(self, boxes=None):
+    def keyboxes(self, boxes=None, keyframes=None):
         """Return keyboxes where there are track observations"""
-        if boxes is None:
+        if boxes is None and keyframes is None:
             return self._keyboxes
         else:
             assert all([isinstance(bb, BoundingBox) for bb in boxes])
             self._keyboxes = boxes
+            self._keyframes = keyframes if keyframes is not None else self._keyframes
+            assert not self.isdegenerate()
             return self
         
     def meanshape(self):
@@ -283,6 +284,7 @@ class Track(object):
         return self
 
     def frameoffset(self, dx, dy):
+        """Offset boxes by (dx,dy) in each frame"""
         assert len(self.keyboxes()) == len(dx) and len(self.keyboxes()) == len(dy)
         self._keyboxes = [bb.offset(dx=x, dy=y) for (bb, (x, y)) in zip(self._keyboxes, zip(dx, dy))]
         return self

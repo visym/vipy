@@ -321,6 +321,9 @@ class Image(object):
         """Return the (height, width) or equivalently (rows, cols) of the image"""
         return (self.load().height(), self.width())
 
+    def aspectratio(self):
+        return self.load().width() / float(self.height())
+    
     def centroid(self):
         """Return the real valued center pixel coordinates of the image (col=x,row=y)"""
         return (self.load().width() / 2.0, self.height() / 2.0)
@@ -342,14 +345,17 @@ class Image(object):
         else:
             raise ValueError('Invalid input - array() must be numpy array and not "%s"' % (str(type(np_array))))
 
-    def channel(self, k):
-        """Return a cloned Image() object for the kth channel"""
-        assert k < self.channels(), "Requested channel=%d must be within valid channels=%d" % (k, self.channels())
-        assert self.channels() > 1, "Channel() only valid for multi-channel image"
-        im = self.clone().load()
-        im._array = im._array[:,:,k]
-        im._colorspace = 'lum'
-        return im
+    def channel(self, k=None):
+        """Return a cloned Image() object for the kth channel, or return an iterator over channels if k=None"""
+        if k is None:
+            return [self.channel(j) for j in range(0, self.channels())]
+        else:
+            assert k < self.channels(), "Requested channel=%d must be within valid channels=%d" % (k, self.channels())
+            assert self.channels() > 1, "Channel() only valid for multi-channel image"
+            im = self.clone().load()
+            im._array = im._array[:,:,k]
+            im._colorspace = 'lum'
+            return im
 
     def red(self):
         """Return red channel as a cloned Image() object"""
@@ -363,7 +369,7 @@ class Image(object):
 
     def green(self):
         """Return green channel as a cloned Image() object"""
-        assert self.channels() >= 3, "Must be color image"
+        assert self.channels() >= 3, "Must be three channel color image"
         if self.colorspace() in ['rgb', 'rgba']:
             return self.channel(1)
         elif self.colorspace() in ['bgr', 'bgra']:
@@ -373,7 +379,7 @@ class Image(object):
 
     def blue(self):
         """Return blue channel as a cloned Image() object"""
-        assert self.channels() >= 3, "Must be color image"
+        assert self.channels() >= 3, "Must be three channel color image"
         if self.colorspace() in ['rgb', 'rgba']:
             return self.channel(2)
         elif self.colorspace() in ['bgr', 'bgra']:
@@ -406,9 +412,7 @@ class Image(object):
 
     def pil(self):
         """Convert vipy.image.Image to PIL Image, by reference"""
-        if self.colorspace() == 'float':
-            warnings.warn('Coercing generic colorspace=float to colorspace=rgb for image transformation')
-            self.rgb()
+        assert self.channels() in [1,3] and (self.channels() == 1 or self.colorspace() != 'float'), "Incompatible with PIL"
         return PIL.Image.fromarray(self.tonumpy())
 
     def torch(self, order='CHW'):
@@ -583,6 +587,8 @@ class Image(object):
                 scale = float(cols) / float(self.width())
             self.rescale(scale)
 
+        elif self.colorspace() == 'float':
+            self._array = np.dstack([np.array(im.pil().resize((cols, rows), self._interp_string_to_pil_interpolation(interp))) for im in self.channel()])
         else:
             self._array = np.array(self.load().pil().resize((cols, rows), self._interp_string_to_pil_interpolation(interp)))
         return self
@@ -595,19 +601,22 @@ class Image(object):
     def rescale(self, scale=1, interp='bilinear'):
         """Scale the image buffer by the given factor - NOT idemponent"""
         (height, width) = self.load().shape()
-        self._array = np.array(self.pil().resize((int(np.round(scale * width)), int(np.round(scale * height))), self._interp_string_to_pil_interpolation(interp)))
+        if self.colorspace() == 'float':
+            self._array = np.dstack([np.array(im.pil().resize((int(np.round(scale * width)), int(np.round(scale * height))), self._interp_string_to_pil_interpolation(interp))) for im in self.channel()])
+        else:                
+            self._array = np.array(self.pil().resize((int(np.round(scale * width)), int(np.round(scale * height))), self._interp_string_to_pil_interpolation(interp)))
         return self
 
-    def maxdim(self, dim, interp='bilinear'):
-        """Resize image preserving aspect ratio so that maximum dimension of image = dim"""
-        return self.rescale(float(dim) / float(np.maximum(self.height(), self.width())), interp=interp)
+    def maxdim(self, dim=None, interp='bilinear'):
+        """Resize image preserving aspect ratio so that maximum dimension of image = dim, or return maxdim()"""
+        return self.rescale(float(dim) / float(np.maximum(self.height(), self.width())), interp=interp) if dim is not None else max(self.shape())
 
-    def mindim(self, dim, interp='bilinear'):
-        """Resize image preserving aspect ratio so that minimum dimension of image = dim"""
-        return self.rescale(float(dim) / float(np.minimum(self.height(), self.width())), interp=interp)
+    def mindim(self, dim=None, interp='bilinear'):
+        """Resize image preserving aspect ratio so that minimum dimension of image = dim, or return mindim()"""
+        return self.rescale(float(dim) / float(np.minimum(self.height(), self.width())), interp=interp) if dim is not None else min(self.shape())
 
     def _pad(self, dx, dy, mode='edge'):
-        """Pad image using np.pad mode, dx=padwidth, dy=padheight"""
+        """Pad image using np.pad mode, dx=padwidth, dy=padheight, thin wrapper for numpy.pad"""
         self._array = np.pad(self.load().array(),
                              ((dy, dy), (dx, dx), (0, 0)) if
                              self.load().array().ndim == 3 else ((dy, dy), (dx, dx)),
@@ -784,7 +793,7 @@ class Image(object):
             if np.max(img) > 1 or np.min(img) < 0:
                 warnings.warn('Float image will be rescaled with self.mat2gray() into the range float32 [0,1]')
                 img = self.mat2gray().array()
-            if not self.channels() in [1,3]:
+            if not self.channels() in [1,2,3]:
                 raise ValueError('Float image must be single channel or three channel RGB in the range float32 [0,1] prior to conversion')
             if self.channels() == 3:  # assumed RGB
                 self._array = np.uint8(255 * self.array())   # float32 RGB [0,1] -> uint8 RGB [0,255]
@@ -879,7 +888,7 @@ class Image(object):
         return self.array(np.minimum(np.maximum(self.load().array(), min), max))
 
     def intensity(self):
-        """Convert image to float32 with [min,max] to range [0,1], force colormap to be 'float' """
+        """Convert image to float32 with [min,max] to range [0,1], force colormap to be 'float'.  Equivalent to self.mat2gray()"""
         self.array((self.load().float().array()) - float(self.min()) / float(self.max() - self.min()))
         return self.colorspace('float')
 
@@ -904,8 +913,8 @@ class Image(object):
         print(self)
         print('  Channels: %d' % self.channels())
         print('  Shape: %s' % str(self.shape()))
-        print('  min: %d' % self.min())
-        print('  max: %d' % self.max())
+        print('  min: %s' % str(self.min()))
+        print('  max: %s' % str(self.max()))
         print('  mean: %s' % str(self.mean()))
         print('  channel mean: %s' % str(self.meanchannel()))        
     
@@ -1270,13 +1279,13 @@ class ImageDetection(ImageCategory):
         self.bbox = BoundingBox(xmin=0, ymin=0, xmax=self.width(), ymax=self.height())
         return self
 
-    def mindim(self, dim, interp='bilinear'):
+    def mindim(self, dim=None, interp='bilinear'):
         """Resize image preserving aspect ratio so that minimum dimension of image = dim"""
-        return super(ImageDetection, self).mindim(dim, interp=interp)  # calls self.rescale() which will update boxes
+        return super(ImageDetection, self).mindim(dim, interp=interp) if dim is not None else min(self.shape())  # calls self.rescale() which will update boxes
 
-    def maxdim(self, dim, interp='bilinear'):
+    def maxdim(self, dim=None, interp='bilinear'):
         """Resize image preserving aspect ratio so that maximum dimension of image = dim"""        
-        return super(ImageDetection, self).maxdim(dim, interp=interp)  # calls self.rescale() will will update boxes
+        return super(ImageDetection, self).maxdim(dim, interp=interp) if dim is not None else max(self.shape())  # calls self.rescale() will will update boxes
 
     def centersquare(self):
         """Crop image of size (NxN) in the center, such that N=min(width,height), keeping the image centroid constant, new bounding box may be degenerate"""
@@ -1555,13 +1564,13 @@ class Scene(ImageCategory):
         self._objectlist = [bb.rot90ccw(H, W) for bb in self._objectlist]
         return self
 
-    def maxdim(self, dim, interp='bilinear'):
+    def maxdim(self, dim=None, interp='bilinear'):
         """Resize scene preserving aspect ratio so that maximum dimension of image = dim, update all objects"""
-        return super(ImageCategory, self).maxdim(dim, interp=interp)  # will call self.rescale() which will update boxes
+        return super(ImageCategory, self).maxdim(dim, interp=interp) if dim is not None else max(self.shape())  # will call self.rescale() which will update boxes
 
-    def mindim(self, dim, interp='bilinear'):
+    def mindim(self, dim=None, interp='bilinear'):
         """Resize scene preserving aspect ratio so that minimum dimension of image = dim, update all objects"""
-        return super(ImageCategory, self).mindim(dim, interp=interp)  # will call self.rescale() which will update boxes
+        return super(ImageCategory, self).mindim(dim, interp=interp) if dim is not None else min(self.shape())  # will call self.rescale() which will update boxes
 
     def crop(self, bbox):
         """Crop the image buffer using the supplied bounding box object, clipping the box to the image rectangle, update all scene objects"""        
