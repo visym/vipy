@@ -27,15 +27,15 @@ class Image(vipy.image.Image):
         hsv[:,:,2] = 255*mat2gray(r, min=minmag, max=maxmag)  
         return vipy.image.Image(array=np.uint8(hsv), colorspace='hsv').rgb()
         
-    def warp(self, im):
+    def warp(self, imprev, imnext=None):
         """Warp vipy.image.Image() input using computed flow from imprev to imnext updating objects"""
         (H, W) = self.shape()
         flow = -self.flow()        
         flow[:,:,0] += np.arange(W)
         flow[:,:,1] += np.arange(H)[:,np.newaxis]
-        return (im.clone()
-                  .array( cv2.remap(im.numpy(), flow, None, cv2.INTER_LINEAR) )
-                  .objectmap(lambda bb: bb.int().offset(dx=np.mean(self.flow()[bb.ymin():bb.ymax(), bb.xmin():bb.xmax(), 0]),
+        return (imprev.clone()
+                .array( cv2.remap(imprev.numpy(), flow, None, cv2.INTER_LINEAR, dst=imnext.numpy() if imnext is not None else None, borderMode=cv2.BORDER_TRANSPARENT) )
+                .objectmap(lambda bb: bb.int().offset(dx=np.mean(self.flow()[bb.ymin():bb.ymax(), bb.xmin():bb.xmax(), 0]),
                                                         dy=np.mean(self.flow()[bb.ymin():bb.ymax(), bb.xmin():bb.xmax(), 1]))))
     
     def _convert(self, to):
