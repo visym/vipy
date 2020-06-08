@@ -169,7 +169,7 @@ class Track(object):
     def isdegenerate(self):
         return not (len(self.keyboxes()) == len(self.keyframes()) and
                     (len(self) == 0 or all([bb.isvalid() for bb in self.keyboxes()])) and
-                    sorted(self.keyframes()) == self.keyframes())
+                    sorted(self.keyframes()) == list(self.keyframes()))
     
     def dict(self):
         return {'id':self._id, 'label':self.category(), 'shortlabel':self.shortlabel(), 'keyframes':self._keyframes, 'framerate':self._framerate, 

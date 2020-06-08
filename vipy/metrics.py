@@ -1,6 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
-from vipy.util import seq, groupby, try_import
+from vipy.util import seq, groupby, try_import, temppng
 from scipy.interpolate import interp1d
 try_import('sklearn', 'scikit-learn'); import sklearn.metrics
 
@@ -214,49 +214,34 @@ def f1_score(y_true, y_pred):
     return sklearn.metrics.f1_score(y_true, y_pred)
 
 
-def confusion_matrix(truthMatrix, similarityMatrix):
-    y = np.argmax(truthMatrix, axis=1)
-    yhat = np.argmax(similarityMatrix, axis=1)
-    return sklearn.metrics.confusion_matrix(y, yhat)
+def confusion_matrix(cm, outfile=None, figure=None, fontsize=5, xlabel=None, ylabel=None, normalized=False, classes=None, colorbar=False):
 
+    outfile = outfile if outfile is not None else temppng()
+    figure = 1 if figure is None else figure
+    plt.figure(figure)
+    plt.clf()
+    plt.matshow(cm, fignum=figure)
 
-def plot_confusion_matrix(truthMatrix=None, similarityMatrix=None, y=None, yhat=None, figure=None, fontsize=None, xlabel='Predicted Label', ylabel='True Label', outfile=None, normalized=False, classes=None):
-    y = np.argmax(truthMatrix, axis=1) if y is None else y
-    yhat = np.argmax(similarityMatrix, axis=1) if yhat is None else yhat
-    cm = sklearn.metrics.confusion_matrix(y, yhat)
-    if normalized:
-        cm = np.float32(cm) / (1E-9 + np.float32(np.sum(cm, axis=1).reshape(cm.shape[0], 1)))
-
-    if figure is not None:
-        plt.figure(figure)
-        plt.clf()
-        plt.matshow(cm, fignum=figure)
-    else:
-        plt.figure()
-        plt.clf()
-        plt.matshow(cm)
-
-    plt.colorbar()
+    if colorbar:
+        plt.colorbar()
     if classes is not None:
         tick_marks = np.arange(len(classes))
         plt.yticks(tick_marks, classes)
+        plt.xticks(tick_marks, classes, rotation='vertical')
 
-    plt.xlabel(xlabel)
-    plt.ylabel(ylabel)
+    xl = plt.xlabel(xlabel) if xlabel is not None else None
+    yl = plt.ylabel(ylabel) if ylabel is not None else None
 
     # Font size
     ax = plt.gca()
     for item in ([ax.title, ax.xaxis.label, ax.yaxis.label] + ax.get_xticklabels() + ax.get_yticklabels()):
         item.set_fontsize(fontsize)
 
-    if outfile is not None:
-        quietprint('[vipy.metric.plot_confusion_matrix]: saving "%s"' % outfile)
-        plt.savefig(outfile, dpi=600)
-    else:
-        plt.show()
+    print('[vipy.metric.plot_confusion_matrix]: saving "%s"' % outfile)
+    plt.savefig(outfile, bbox_extra_artists=(yl,) if yl is not None else None, bbox_inches='tight', dpi=600)
 
-    return cm
-
+    return outfile
+    
 
 def categorization_report(Y_true, Y_pred, labels):
     return sklearn.metrics.classification_report(Y_true, Y_pred, target_names=labels)
