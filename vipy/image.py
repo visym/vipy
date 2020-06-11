@@ -9,7 +9,7 @@ from vipy.util import isnumpy, isurl, isimageurl, \
     fileext, tempimage, mat2gray, imwrite, imwritegray, \
     tempjpg, filetail, isimagefile, remkdir, hasextension, \
     try_import, tolist, islistoflists, istupleoftuples, isstring, \
-    istuple, islist, isnumber, isnumpyarray
+    istuple, islist, isnumber, isnumpyarray, string_to_pil_interpolation
 from vipy.geometry import BoundingBox, imagebox
 import vipy.object
 import vipy.downloader
@@ -336,7 +336,7 @@ class Image(object):
     def array(self, np_array=None, copy=False):
         """Replace self._array with provided numpy array"""
         if np_array is None:
-            return self._array
+            return self._array if copy is False else np.copy(self._array)
         elif isnumpyarray(np_array):
             assert np_array.dtype == np.float32 or np_array.dtype == np.uint8, "Invalid input - array() must be type uint8 or float32 and not type='%s'" % (str(np_array.dtype))
             self._array = np.copy(np_array) if copy else np_array  # reference or copy
@@ -349,9 +349,10 @@ class Image(object):
         """Return a cloned Image() object for the kth channel, or return an iterator over channels if k=None"""
         if k is None:
             return [self.channel(j) for j in range(0, self.channels())]
+        elif k == 0 and self.channels() == 1:
+            return self
         else:
-            assert k < self.channels(), "Requested channel=%d must be within valid channels=%d" % (k, self.channels())
-            assert self.channels() > 1, "Channel() only valid for multi-channel image"
+            assert k < self.channels() and k>=0, "Requested channel=%d must be within valid channels=%d" % (k, self.channels())
             im = self.clone().load()
             im._array = im._array[:,:,k]
             im._colorspace = 'lum'
@@ -560,18 +561,6 @@ class Image(object):
             im = copy.deepcopy(self)            
         return im
     
-
-    def _interp_string_to_pil_interpolation(self, interp):
-        """Internal function to convert interp string to interp object"""
-        assert interp in ['bilinear', 'bicubic', 'nearest'], "Invalid interp - Must be in ['bilinear', 'bicubic', 'nearest']"
-        if interp == 'bilinear':
-            return PIL.Image.BILINEAR
-        elif interp == 'bicubic':
-            return PIL.Image.BICUBIC
-        elif interp == 'nearest':
-            return PIL.Image.NEAREST
-        else:
-            raise  # should never get here
         
     # Spatial transformations
     def resize(self, cols=None, rows=None, width=None, height=None, interp='bilinear'):
@@ -588,9 +577,9 @@ class Image(object):
             self.rescale(scale)
 
         elif self.colorspace() == 'float':
-            self._array = np.dstack([np.array(im.pil().resize((cols, rows), self._interp_string_to_pil_interpolation(interp))) for im in self.channel()])
+            self._array = np.dstack([np.array(im.pil().resize((cols, rows), string_to_pil_interpolation(interp))) for im in self.channel()])
         else:
-            self._array = np.array(self.load().pil().resize((cols, rows), self._interp_string_to_pil_interpolation(interp)))
+            self._array = np.array(self.load().pil().resize((cols, rows), string_to_pil_interpolation(interp)))
         return self
 
     def resize_like(self, im, interp='bilinear'):
@@ -602,9 +591,9 @@ class Image(object):
         """Scale the image buffer by the given factor - NOT idemponent"""
         (height, width) = self.load().shape()
         if self.colorspace() == 'float':
-            self._array = np.dstack([np.array(im.pil().resize((int(np.round(scale * width)), int(np.round(scale * height))), self._interp_string_to_pil_interpolation(interp))) for im in self.channel()])
+            self._array = np.dstack([np.array(im.pil().resize((int(np.round(scale * width)), int(np.round(scale * height))), string_to_pil_interpolation(interp))) for im in self.channel()])
         else:                
-            self._array = np.array(self.pil().resize((int(np.round(scale * width)), int(np.round(scale * height))), self._interp_string_to_pil_interpolation(interp)))
+            self._array = np.array(self.pil().resize((int(np.round(scale * width)), int(np.round(scale * height))), string_to_pil_interpolation(interp)))
         return self
 
     def maxdim(self, dim=None, interp='bilinear'):
@@ -647,25 +636,25 @@ class Image(object):
         return self.zeropad( (int(np.floor((width - self.width())/2)), int(np.ceil((width - self.width())/2))),
                              (int(np.floor((height - self.height())/2)), int(np.ceil((height - self.height())/2))))
                             
-    def meanpad(self, padwidth, padheight):
+    def meanpad(self, padwidth, padheight, mu=None):
         """Pad image using np.pad constant=image mean by adding padwidth on both left and right , or padwidth=(left,right) for different pre/postpadding,, and padheight on top and bottom or padheight=(top,bottom) for different pre/post padding"""        
         if not isinstance(padwidth, tuple):
             padwidth = (padwidth, padwidth)
         if not isinstance(padheight, tuple):
             padheight = (padheight, padheight)
-        if self.iscolor():
-            pad_shape = (padheight, padwidth, (0, 0))
-        else:
-            pad_shape = (padheight, padwidth)
-
         assert all([x>=0 for x in padheight]) and all([x>=0 for x in padwidth]), "padding must be positive"
-        mu = self.meanchannel()  
-        self._array = np.pad(self.load().array(),
-                             pad_width=pad_shape,
-                             mode='constant',
-                             constant_values=mu)
+        mu = self.meanchannel() if mu is None else mu
+        self._array = np.squeeze(np.dstack([np.pad(img,
+                                                   pad_width=(padheight,padwidth),
+                                                   mode='constant',
+                                                   constant_values=c) for (img,c) in zip(self.channel(), mu)]))
         return self
 
+    def alphapad(self, padwidth, padheight):
+        """Pad image using alpha transparency by adding padwidth on both left and right , or padwidth=(left,right) for different pre/postpadding,, and padheight on top and bottom or padheight=(top,bottom) for different pre/post padding"""
+        assert self.colorspace() == 'rgba', "Colorspace must be RGBA for padding with transparency"
+        return self.meanpad(padwidth, padheight, mu=np.array([0,0,0,0]))
+    
     def minsquare(self):
         """Crop image of size (HxW) to (min(H,W), min(H,W)), keeping upper left corner constant"""
         S = np.min(self.load().shape())
@@ -694,6 +683,10 @@ class Image(object):
         """Crop image of size (height x width) in the center, keeping the image centroid constant"""
         return self._crop(BoundingBox(xcentroid=self.width() / 2.0, ycentroid=self.height() / 2.0, width=width, height=height))
 
+    def cornercrop(self, height, width):
+        """Crop image of size (height x width) from the upper left corner"""
+        return self._crop(BoundingBox(xmin=0, ymin=0, width=width, height=height))
+    
     def _crop(self, bbox):
         """Crop the image buffer using the supplied bounding box object, clipping the box to the image rectangle"""
         assert isinstance(bbox, BoundingBox) and bbox.valid(), "Invalid vipy.geometry.BoundingBox() input"""
@@ -768,7 +761,7 @@ class Image(object):
             elif to == 'lum':
                 self._array = np.array(PIL.Image.fromarray(img).convert('L'))  # uint8 RGB -> uint8 Luminance (integer grey)
             elif to == 'rgba':
-                self._array = np.dstack((img, np.zeros((img.shape[0], img.shape[1]), dtype=np.uint8)))
+                self._array = np.dstack((img, 255*np.ones((img.shape[0], img.shape[1]), dtype=np.uint8)))
             elif to == 'bgra':
                 self._array = np.array(img)[:,:,::-1]  # uint8 RGB -> uint8 BGR
                 self._array = np.dstack((self._array, np.zeros((img.shape[0], img.shape[1]), dtype=np.uint8)))  # uint8 BGR -> uint8 BGRA
@@ -1312,9 +1305,9 @@ class ImageDetection(ImageCategory):
         self.bbox = self.bbox.translate(dx if not isinstance(dx, tuple) else dx[0], dy if not isinstance(dy, tuple) else dy[0])
         return self
 
-    def meanpad(self, dx, dy):
+    def meanpad(self, dx, dy, mu=None):
         """Pad image using np.pad constant where constant is the RGB mean per image"""
-        self = super(ImageDetection, self).meanpad(dx, dy)
+        self = super(ImageDetection, self).meanpad(dx, dy, mu=None)
         self.bbox = self.bbox.translate(dx if not isinstance(dx, tuple) else dx[0], dy if not isinstance(dy, tuple) else dy[0])        
         return self
         
@@ -1542,9 +1535,9 @@ class Scene(ImageCategory):
         self._objectlist = [bb.translate(dx, dy) for bb in self._objectlist]
         return self
 
-    def meanpad(self, dim):
+    def meanpad(self, padwidth, padheight, mu=None):
         """Mean pad (image color mean) image with padwidth cols before and after and padheight rows before and after, then update bounding box offsets"""
-        self = super(ImageCategory, self).meanpad(padwidth, padheight)
+        self = super(ImageCategory, self).meanpad(padwidth, padheight, mu=mu)
         dx = padwidth[0] if isinstance(padwidth, tuple) and len(padwidth) == 2 else padwidth
         dy = padheight[0] if isinstance(padheight, tuple) and len(padheight) == 2 else padheight
         self._objectlist = [bb.translate(dx, dy) for bb in self._objectlist]
@@ -1665,12 +1658,12 @@ def RandomImageDetection(rows=None, cols=None):
                           xmin=np.random.randint(0,cols - 16), ymin=np.random.randint(0,rows - 16),
                           bbwidth=np.random.randint(16,cols), bbheight=np.random.randint(16,rows))
 
-def RandomScene(rows=None, cols=None):
+def RandomScene(rows=None, cols=None, num_objects=16):
     im = RandomImage(rows, cols)
     (rows, cols) = im.shape()
     ims = Scene(array=im.array(), colorspace='rgb', category='scene', objects=[vipy.object.Detection('obj%d' % k, xmin=np.random.randint(0,cols - 16), ymin=np.random.randint(0,rows - 16),
                                                                                                      width=np.random.randint(16,cols), height=np.random.randint(16,rows))
-                                                                               for k in range(0,16)])
+                                                                               for k in range(0,num_objects)])
     return ims
     
 

@@ -1330,3 +1330,16 @@ def imcrop(img, bbox):
 class Failed(Exception):
     """Raised when unit test fails to throw an exception"""
     pass
+
+
+def string_to_pil_interpolation(interp):
+    """Internal function to convert interp string to interp object"""
+    assert interp in ['bilinear', 'bicubic', 'nearest'], "Invalid interp - Must be in ['bilinear', 'bicubic', 'nearest']"
+    if interp == 'bilinear':
+        return PIL.Image.BILINEAR
+    elif interp == 'bicubic':
+        return PIL.Image.BICUBIC
+    elif interp == 'nearest':
+        return PIL.Image.NEAREST
+    else:
+        raise  # should never get here

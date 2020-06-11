@@ -264,18 +264,6 @@ class Video(object):
         """Return True if the video has been loaded"""
         return self._array is not None
 
-    def channels(self):
-        """Return integer number of color channels"""
-        if not self.isloaded():
-            previewhash = hash(str(self._ffmpeg.output('dummyfile').compile()))
-            if not hasattr(self, '_previewhash') or previewhash != self._previewhash:
-                im = self._preview()  # ffmpeg chain changed, load a single frame of video 
-                self._channels = im.channels()  # cache
-                self._previewhash = previewhash
-            return self._channels  # cached
-        else:
-            return 1 if self.load().array().ndim == 3 else self.load().array().shape[3]
-
     def iscolor(self):
         return self.channels() == 3
 
@@ -445,11 +433,25 @@ class Video(object):
             if not hasattr(self, '_previewhash') or previewhash != self._previewhash:
                 im = self._preview()  # ffmpeg chain changed, load a single frame of video 
                 self._shape = (im.height(), im.width())  # cache the shape
+                self._channels = im.channels()
                 self._previewhash = previewhash
             return self._shape
         else:
             return (self._array.shape[1], self._array.shape[2])
 
+    def channels(self):
+        """Return integer number of color channels"""
+        if not self.isloaded():
+            previewhash = hash(str(self._ffmpeg.output('dummyfile').compile()))
+            if not hasattr(self, '_previewhash') or previewhash != self._previewhash:
+                im = self._preview()  # ffmpeg chain changed, load a single frame of video
+                self._shape = (im.height(), im.width())  # cache the shape                
+                self._channels = im.channels()  # cache
+                self._previewhash = previewhash
+            return self._channels  # cached
+        else:
+            return 1 if self.load().array().ndim == 3 else self.load().array().shape[3]
+        
     def width(self):
         """Width (cols) in pixels of the video for the current filter chain"""
         return self.shape()[1]
@@ -524,15 +526,10 @@ class Video(object):
             else:
                 raise ValueError("rotation must be one of ['rot90ccw', 'rot90cw']")
     
-        # Generate single frame _preview to get frame sizes
-        imthumb = self._preview()
-        (height, width, channels) = (imthumb.height(), imthumb.width(), imthumb.channels())
-
         # Load the video
         # 
         # [EXCEPTION]:  older ffmpeg versions may segfault on complex crop filter chains
         #    -On some versions of ffmpeg setting -cpuflags=0 fixes it, but the right solution is to rebuild from the head (30APR20)
-        #
         try:
             f = self._ffmpeg.output('pipe:', format='rawvideo', pix_fmt='rgb24')\
                             .global_args('-cpuflags', '0', '-loglevel', 'debug' if vipy.globals.verbose() else 'error')
@@ -540,7 +537,17 @@ class Video(object):
         except Exception as e:
             raise ValueError('[vipy.video.load]: Load failed for video "%s" with ffmpeg command "%s" - Try load(verbose=True) or manually running ffmpeg to see errors' % (str(self), str(self._ffmpeg_commandline(f))))
 
-        self._array = np.frombuffer(out, np.uint8).reshape([-1, height, width, channels])  # read-only
+        # [EXCEPTION]:  older ffmpeg versions may be off by one on the size returned from self._preview() vs. f.run()
+        #    -Try to correct this manually.  The right way is to upgrade your FFMPEG version
+        (height, width, channels) = (self.height(), self.width(), self.channels())
+        if len(out) % (height*width*channels) != 0:
+            warnings.warn('Your FFMPEG version is old and is triggering a known bug that is being manually worked around in an inefficient manner.  Consider upgrading your FFMPEG distribution.')
+            newwidth = width + 1 if (len(out) % (height*(width+1)*channels) == 0) else width
+            newwidth = width - 1 if (len(out) % (height*(width-1)*channels) == 0) else newwidth            
+            newheight = height + 1 if (len(out) % ((height+1)*width*channels) == 0) else height
+            newheight = height - 1 if (len(out) % ((height-1)*width*channels) == 0) else newheight            
+            self._shape = (newheight, newwidth)  # for self.shape()
+        self._array = np.frombuffer(out, np.uint8).reshape([-1, self.height(), self.width(), self.channels()])  # read-only            
         self.colorspace('rgb' if channels == 3 else 'lum')
         return self
     
@@ -748,6 +755,7 @@ class Video(object):
     def show(self):
         """Alias for play()"""
         return self.play()
+
     
     def torch(self, startframe=0, endframe=None, length=None, stride=1, take=None, boundary='repeat', order='nchw', verbose=False, withslice=False, scale=1.0):
         """Convert the loaded video of shape N HxWxC frames to an MxCxHxW torch tensor, forces a load().
@@ -811,7 +819,7 @@ class Video(object):
         # Return tensor or (tensor, slice)
         return t if not withslice else (t, (i,j,k))
 
-    def clone(self, flushforward=False, flushbackward=False, flush=False, flushfilter=False, rekey=False):
+    def clone(self, flushforward=False, flushbackward=False, flush=False, flushfilter=False, rekey=False, flushfile=False):
         """Create deep copy of video object, flushing the original buffer if requested and returning the cloned object.
         Flushing is useful for distributed memory management to free the buffer from this object, and pass along a cloned 
         object which can be used for encoding and will be garbage collected.
@@ -847,6 +855,8 @@ class Video(object):
             (v._startsec, v._endsec) = (None, None)
         if rekey:
             v.rekey()
+        if flushfile:
+            v.nofilename().nourl()
         return v
 
     def flush(self):
@@ -1134,10 +1144,10 @@ class Scene(VideoCategory):
         self._tracks = {k:t for (k,t) in self._tracks.items() if f(t) == True} 
         return self
 
-    def trackmap(self, f):
+    def trackmap(self, f, strict=True):
         """Apply lambda function f to each activity"""
         self._tracks = {k:f(t) for (k,t) in self._tracks.items()}
-        assert all([isinstance(t, vipy.object.Track) and not t.isdegenerate() for t in self.tracklist()]), "Lambda function must return non-degenerate vipy.object.Track()"
+        assert all([isinstance(t, vipy.object.Track) and (strict is False or not t.isdegenerate()) for t in self.tracklist()]), "Lambda function must return non-degenerate vipy.object.Track()"
         return self
         
     def activitymap(self, f):
@@ -1249,8 +1259,21 @@ class Scene(VideoCategory):
             self._tracks[t.id()] = t
             return t.id()
         else:
-            raise ValueError('Undefined object type "%s" to be added to scene - Supported types are obj in ["vipy.object.Detection", "vipy.object.Track", "vipy.activity.Activity", "[xmin, ymin, width, height]"]' % str(type(obj)))        
+            raise ValueError('Undefined object type "%s" to be added to scene - Supported types are obj in ["vipy.object.Detection", "vipy.object.Track", "vipy.activity.Activity", "[xmin, ymin, width, height]"]' % str(type(obj)))
 
+    def addframe(self, im, frame=None):
+        """Add im=vipy.image.Scene() into vipy.video.Scene() at given frame. The input image must have been generated using im=self[k] for this to be meaningful, so that trackid can be associated"""
+        assert isinstance(im, vipy.image.Scene), "Invalid input - Must be vipy.image.Scene()"
+        assert frame is not None or self._currentframe is not None, "Must provide a frame number"
+        assert im.shape() == self.shape(), "Frame input must be same shape as video"
+        
+        # Copy framewise vipy.image.Scene() into vipy.video.Scene(). 
+        frame = frame if frame is not None else self._currentframe  # if iterator        
+        self.numpy()[frame] = im.array()  # will trigger copy        
+        for bb in im.objects():
+            self.trackmap(lambda t: t.update(frame, bb) if bb.attributes['trackid'] == t.id() else t) 
+        return self
+    
     def clear(self):
         """Remove all activities and tracks from this object"""
         self._activities = {}

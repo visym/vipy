@@ -187,6 +187,12 @@ class Track(object):
             self._keyboxes = list(self._keyboxes)
         return self
 
+    def update(self, keyframe, box):
+        if keyframe in self._keyframes:
+            self.delete(keyframe)
+        self.add(keyframe, box)
+        return self
+        
     def replace(self, keyframe, box):
         """Replace a keyframe and associated box to track, preserve sorted order of keyframes"""
         assert isinstance(box, BoundingBox), "Invalid input - Box must be vipy.geometry.BoundingBox()"

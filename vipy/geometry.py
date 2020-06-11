@@ -23,9 +23,15 @@ def dehomogenize(p):
 
 def homogenize(p):
     """Convert 2xN non-homogenous points (x,y) to 3xN non-homogenous point (x, y, 1)"""
-    assert isnumpy(p) and p.shape[0] == 2, "Invalid input"
-    p = columnvector(p) if p.ndim == 1 else p
-    return np.vstack((p, np.ones_like(p[-1])))
+    assert isnumpy(p)
+    if p.ndim == 1:
+        return np.hstack( (p, 1) )
+    elif p.ndim == 2:
+        assert p.shape[0] == 2, "Invalid input"
+        p = columnvector(p) if p.ndim == 1 else p
+        return np.vstack((p, np.ones_like(p[-1])))
+    else:
+        return ValueError('p must be 1d or 2d')
 
 
 def apply_homography(H,p):
@@ -686,6 +692,12 @@ class BoundingBox():
         assert isinstance(other, BoundingBox), "Invalid input - must be BoundingBox()"                
         return np.abs(self.width()-other.width())  + np.abs(self.height()-other.height())
 
+    def affine(self, A):
+        assert isnumpy(A) and A.shape == (2,3), "A must be a 2x3 affine transformation matrix"
+        (self._xmin, self._ymin) = np.dot(A, homogenize(np.array(self.upperleft())))
+        (self._xmax, self._ymax) = np.dot(A, homogenize(np.array(self.bottomright())))
+        return self
+        
 class Ellipse():
     def __init__(self, semi_major, semi_minor, xcenter, ycenter, phi):
         """Ellipse parameterization, for length of semimajor (half width of ellipse) and semiminor axis (half height), center point and angle phi in radians"""
