@@ -537,8 +537,8 @@ class Video(object):
         except Exception as e:
             raise ValueError('[vipy.video.load]: Load failed for video "%s" with ffmpeg command "%s" - Try load(verbose=True) or manually running ffmpeg to see errors' % (str(self), str(self._ffmpeg_commandline(f))))
 
-        # [EXCEPTION]:  older ffmpeg versions may be off by one on the size returned from self._preview() vs. f.run()
-        #    -Try to correct this manually.  The right way is to upgrade your FFMPEG version
+        # [EXCEPTION]:  older ffmpeg versions may be off by one on the size returned from self._preview() which uses an image decoder vs. f.run() which uses a video decoder
+        #    -Try to correct this manually by searching for a one-off decoding that works.  The right way is to upgrade your FFMPEG version to the FFMPEG head (11JUN20)
         (height, width, channels) = (self.height(), self.width(), self.channels())
         if len(out) % (height*width*channels) != 0:
             warnings.warn('Your FFMPEG version is old and is triggering a known bug that is being manually worked around in an inefficient manner.  Consider upgrading your FFMPEG distribution.')

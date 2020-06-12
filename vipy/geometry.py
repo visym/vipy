@@ -290,10 +290,19 @@ class BoundingBox():
     def height(self):
         return self._ymax - self._ymin
 
-    def centroid(self):
+    def centroid(self, c=None):
         """(x,y) tuple of centroid position of bounding box"""
-        return (self._xmin + (float(self.width()) / 2.0), self._ymin + (float(self.height()) / 2.0))
-
+        if c is None:
+            return (self._xmin + (float(self.width()) / 2.0), self._ymin + (float(self.height()) / 2.0))
+        else:
+            assert len(c) == 2
+            (height, width) = self.shape()
+            self._xmin = float(c[0]) - (width / 2.0)
+            self._ymin = float(c[1]) - (height / 2.0)
+            self._xmax = float(c[0]) + (width / 2.0)
+            self._ymax = float(c[1]) + (height / 2.0)
+            return self
+            
     def x_centroid(self):
         return self.centroid()[0]
 
@@ -693,11 +702,11 @@ class BoundingBox():
         return np.abs(self.width()-other.width())  + np.abs(self.height()-other.height())
 
     def affine(self, A):
+        """Apply an 2x3 affine transformation to the box centroid.  This operation preserves an axis aligned bounding box for an arbitrary affine transform."""
         assert isnumpy(A) and A.shape == (2,3), "A must be a 2x3 affine transformation matrix"
-        (self._xmin, self._ymin) = np.dot(A, homogenize(np.array(self.upperleft())))
-        (self._xmax, self._ymax) = np.dot(A, homogenize(np.array(self.bottomright())))
-        return self
-        
+        return self.centroid(np.dot(A, homogenize(np.array(self.centroid()))))
+
+    
 class Ellipse():
     def __init__(self, semi_major, semi_minor, xcenter, ycenter, phi):
         """Ellipse parameterization, for length of semimajor (half width of ellipse) and semiminor axis (half height), center point and angle phi in radians"""

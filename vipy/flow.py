@@ -1,4 +1,4 @@
-from vipy.util import mat2gray, try_import, string_to_pil_interpolation
+from vipy.util import mat2gray, try_import, string_to_pil_interpolation, Stopwatch
 try_import('cv2', 'opencv-python opencv-contrib-python'); import cv2
 import vipy.image
 from vipy.math import cartesian_to_polar
@@ -159,13 +159,17 @@ class Video(vipy.video.Video):
 
     def __getitem__(self, k):
         assert k >= 0
-        (N,X,Y,F) = np.meshgrid(k, np.arange(self.height()), np.arange(self.width()), np.arange(2))
-        xi = np.stack( [N.flatten(), X.flatten(), Y.flatten(), F.flatten()] ).transpose()
-        x = scipy.interpolate.interpn( (np.arange(0, len(self), self._framestep), np.arange(self.height()), np.arange(self.width()), np.arange(2)),
-                                       self.flow() / float(self._flowstep),
-                                       xi,
-                                       method='linear', bounds_error=False, fill_value=0)
-        return Image(x.reshape( (self.height(), self.width(), 2) ))
+        if self._flowstep == 1 and self._framestep == 1:
+            return Image(self._array[k])
+        else:
+            # Flow interpolation
+            (N,X,Y,F) = np.meshgrid(k, np.arange(self.height()), np.arange(self.width()), np.arange(2))
+            xi = np.stack( [N.flatten(), X.flatten(), Y.flatten(), F.flatten()] ).transpose()
+            x = scipy.interpolate.interpn( (np.arange(0, len(self), self._framestep), np.arange(self.height()), np.arange(self.width()), np.arange(2)),
+                                           self.flow() / float(self._flowstep),
+                                           xi,
+                                           method='linear', bounds_error=False, fill_value=0)
+            return Image(x.reshape( (self.height(), self.width(), 2) ))
 
     def __iter__(self):
         for k in np.arange(len(self)):
@@ -215,19 +219,19 @@ class Flow(object):
         assert isinstance(imprev, vipy.image.Image) and isinstance(im, vipy.image.Image)
         imp = imprev.clone().mindim(self._mindim).luminance() if imprev.channels() != 1 else imprev.clone().mindim(self._mindim)
         imn = im.clone().mindim(self._mindim).luminance() if im.channels() != 1 else im.clone().mindim(self._mindim)
-        flow = cv2.calcOpticalFlowFarneback(imn.numpy(), imp.numpy(), None, 0.5, 7, 95, self._flowiter, 7, 1.5, cv2.OPTFLOW_FARNEBACK_GAUSSIAN) 
+        #flow = cv2.calcOpticalFlowFarneback(imn.numpy(), imp.numpy(), None, 0.5, 7, 95, self._flowiter, 7, 1.5, cv2.OPTFLOW_FARNEBACK_GAUSSIAN)  # cv2.LMEDS
+        flow = cv2.calcOpticalFlowFarneback(imn.numpy(), imp.numpy(), None, 0.5, 3, 16, self._flowiter, 5, 1.2, cv2.OPTFLOW_FARNEBACK_GAUSSIAN)         
         return Image(flow).resize_like(im)  # flow only, no objects
         
-    def videoflow(self, v, flowstep=1, framestep=1):
+    def videoflow(self, v, flowstep=1, framestep=1, keyframe=None):
         assert isinstance(v, vipy.video.Video)
-        imf = [self.imageflow(v[k], v[max(0, k-flowstep)]) for k in range(0, len(v.load())+framestep, framestep) if k < len(v.load())]
+        imf = [self.imageflow(v[k], v[max(0, k-flowstep) if keyframe is None else keyframe]) for k in range(0, len(v.load())+framestep, framestep) if k < len(v.load())]
         return Video(np.stack([im.flow() for im in imf]), flowstep, framestep)  # flow only, no objects
 
-    def keyflow(self, v, keystep=None, keyframe=None):        
+    def keyflow(self, v, keystep=None):        
         assert isinstance(v, vipy.video.Video)
-        assert keystep is not None or keyframe is not None
-        imf = [(self.imageflow(v[min(len(v)-1, int(keystep*np.round(k/keystep)) if keystep is not None else keyframe)], v[max(0, k-1)]) -
-                self.imageflow(v[min(len(v)-1, int(keystep*np.round(k/keystep)) if keystep is not None else keyframe)], v[k]))
+        imf = [(self.imageflow(v[min(len(v)-1, int(keystep*np.round(k/keystep)))], v[max(0, k-1)]) -
+                self.imageflow(v[min(len(v)-1, int(keystep*np.round(k/keystep)))], v[k]))
                for k in range(0, len(v.load()))]
         return Video(np.stack([im.flow() for im in imf]), flowstep=1, framestep=1)  # flow only, no objects
             
@@ -245,13 +249,8 @@ class Flow(object):
         
     def _euclideanflow(self, imflow, im, border=0.1, contrast=(16.0/255.0), dilate=1.0):
         """Returns translation (dx,dy) and rotation (r) that when applied to im will align to imprev"""        
-
-        # Robust correspondence
-        ((x1,y1), (x2,y2)) = self._correspondence(imflow, im, border, contrast, dilate)
-        
-        # Rotation and translation estimation
-        (H,W) = (imflow.height(), imflow.width())        
-        (dx, dy) = (np.mean(x2-x1), np.mean(y2-y1)) # global background translation
+        ((x1,y1), (x2,y2)) = self._correspondence(imflow, im, border, contrast, dilate)        
+        (dx, dy) = (np.mean(x2-x1), np.mean(y2-y1)) # global background translation (better than cv2.estimatePartialAffine2d)
         (x2c, y2c) = (x2 - np.mean(x2), y2 - np.mean(y2))  # destination coordinates (point centered)
         r = -np.arctan(np.sum(np.multiply(x2c, y1) - np.multiply(y2c, x1)) / np.sum(np.multiply(x2c, x1) + np.multiply(y2c, y1)))
         return (r, dx, dy)
@@ -282,12 +281,12 @@ class Flow(object):
             print('[vipy.flow]: tx=%1.2f, ty=%1.2f' % (dx, dy))        
         return Image(flow)
     
-    def stabilize_to_frame(self, v, k_ref=0, border=0.1, smooth=60, verbose=True, dilate=1.0, framestep=1, flowstep=5, strict=True):
+    def stabilize_to_frame(self, v, k_ref=None, border=0.1, smooth=60, verbose=True, dilate=1.0, framestep=1, flowstep=5, strict=False):
         """Rotation and translation stabilization to keyframe"""
         assert isinstance(v, vipy.video.Video)
 
         # Euclidean flow: rotation and translation from frame k to frame k_ref
-        vf = self.keyflow(v, keyframe=k_ref if k_ref is not None else len(v.load())//2)
+        vf = self.videoflow(v, flowstep=1, keyframe=k_ref if k_ref is not None else len(v.load())//2)
         (r, dx, dy) = zip(*[self._euclideanflow(imflow=imf, im=v[k], border=border, dilate=dilate) for (k, imf) in enumerate(vf)])
 
         # Stabilization
@@ -295,7 +294,7 @@ class Flow(object):
         if strict:
             dt = np.maximum(np.max(np.abs(np.gradient(dx))), np.max(np.abs(np.gradient(dy))))  # maximum framewise translation gradient -> discontinuity?
             dr = np.max(np.abs(np.gradient(r)))  # maximum framewise rotation gradient -> discontinuity?
-            assert dt < border*v.mindim() and dr < (5*np.pi/180.0), "Flow stabilization to frame %d failed - %1.1f (max dt) > %1.1f (mindim*border)" % (k_ref, dt, v.mindim()*border)
+            assert dt < border*v.mindim() and dr < (5*np.pi/180.0), "Flow stabilization failed - %1.1f (max dt) > %1.1f (mindim*border)" % (dt, v.mindim()*border)
         
         imflow = [self.euclideanflow(im=v[k], rdxdy=rdxdy) for (k, rdxdy) in enumerate(zip(r, dx, dy))]
 
@@ -308,31 +307,32 @@ class Flow(object):
                 .trackmap(lambda t: t.keyboxes(boxes=[bb for im in imwarp for bb in im.objects() if bb.attributes['trackid'] == t.id()],
                                                keyframes=[k for (k,im) in enumerate(imwarp) for bb in im.objects() if bb.attributes['trackid'] == t.id()])))                                              
 
-    def stabilize(self, v, keystep=10, pad=128, border=0.1, dilate=1.0, contrast=16.0/255.0, rigid=False):
-        """Affine stabilization"""
+    def stabilize(self, v, keystep=20, pad=128, border=0.1, dilate=1.0, contrast=16.0/255.0, rigid=False, verbose=True):
+        """Affine stabilization using multi-scale optical flow correspondence.  This method does not compensate for rolling shutter distortion."""
         vf = self.videoflow(v, framestep=1, flowstep=1)
         vfk1 = self.keyflow(v, keystep=keystep)
-        vfk2 = self.keyflow(v, keystep=int(keystep/1.3))
-
+        vfk2 = self.keyflow(v, keystep=len(v)//2)        
+            
         frames = []                
         (A, T) = (np.array([ [1,0,0],[0,1,0]]).astype(np.float64), np.array([[0,0,pad],[0,0,pad]]))
         f_estimator = cv2.estimateAffinePartial2D if rigid else cv2.estimateAffine2D
         imstabilized = v[0].clone().rgb().zeropad(pad, pad)
         vc = v.clone(flush=True).zeropad(pad,pad).load().nofilename().nourl()  
-        for (k, (im, imf, imfk1, imfk2)) in enumerate(zip(v, vf, vfk1, vfk2)):
-            print(im, imf, imfk1, imfk2)
-            
-            # Alignment
+        for (k, (im, imf, imfk1, imfk2)) in enumerate(zip(v, vf, vfk1, vfk2)):            
+            # Robust alignment 
             (xy_src_k0, xy_dst_k0) = self._correspondence(imf, im, border=border, dilate=dilate, contrast=contrast)
             (xy_src_k1, xy_dst_k1) = self._correspondence(imfk1, im, border=border, dilate=dilate, contrast=contrast)
             (xy_src_k2, xy_dst_k2) = self._correspondence(imfk2, im, border=border, dilate=dilate, contrast=contrast)
             (xy_src, xy_dst) = (np.hstack( (xy_src_k0, xy_src_k1, xy_src_k2) ).transpose(), np.hstack( (xy_dst_k0, xy_dst_k1, xy_dst_k2) ).transpose())
-            (M, inliers) = f_estimator(xy_src, xy_dst, method=cv2.LMEDS, confidence=0.99, refineIters=10)
-
-            # Render stabilized frame
+            (M, inliers) = f_estimator(xy_src, xy_dst, method=cv2.RANSAC, confidence=0.999, refineIters=5, ransacReprojThreshold=0.5)
+            
+            # Render stabilized frame with aligned objects
             A = A.dot(np.vstack( (M, [0,0,1])).astype(np.float64))  # update reference frame            
-            cv2.warpAffine(im.numpy(), dst=imstabilized._array, M=A+T, dsize=(imstabilized.width(), imstabilized.height()), borderMode=cv2.BORDER_TRANSPARENT)            
+            cv2.warpAffine(im.numpy(), dst=imstabilized._array, M=A+T, dsize=(imstabilized.width(), imstabilized.height()), borderMode=cv2.BORDER_TRANSPARENT)
             vc.addframe( im.array(imstabilized.array(), copy=True).objectmap(lambda o: o.affine(A+T)), frame=k)
+                
+            if verbose:
+                print('[vipy.flow.stabilize][%d/%d]: %s, %s, %s' % (k, len(v), imf, imfk1, imfk2))
             
         return vc
             
