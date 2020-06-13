@@ -1613,10 +1613,20 @@ class Scene(ImageCategory):
         img[self.binarymask() > 0] = self.meanchannel()
         return self.array(img)
 
-    def bghash(self):
-        """Perceptual differential hash function, masking out foreground objects.  Can be used for near duplicate detection of background scenes by unpacking the returned 64 bit integer to binary and computing hamming distance"""
-        b = (np.gradient(self.clone().meanmask().greyscale().resize(cols=9, rows=8).numpy(), axis=1)[:,:-1] > 0).flatten()
-        return int(np.packbits(b).view(np.int64))
+    def bghash(self, bits=128, asbinary=False, asbytes=False):
+        """Perceptual differential hash function, masking out foreground objects.  
+
+             -Algorithm: set foreground objects to mean color, convert to greyscale, resize with linear interpolation to small image based on desired bit encoding, compute vertical and horizontal gradient signs.
+             -bits:  longer hashes have lower TAR (true accept rate, some near dupes are missed), but lower FAR (false accept rate), shorter hashes have higher TAR (fewer near-dupes are missed) but higher FAR (more non-dupes are declared as dupes). 
+             -NOTE: Can be used for near duplicate detection of background scenes by unpacking the returned 64 bit integer to binary and computing hamming distance.
+             -NOTE: The packed hex output can be converted to binary as: np.unpackbits(bytearray().fromhex( bghash() ))
+
+        """
+        allowablebits = [2*k*k for k in range(2, 17)]
+        assert bits in allowablebits, "Bits must be in %s" % str(allowablebits)
+        sq = int(np.ceil(np.sqrt(bits/2.0)))
+        b = (np.dstack(np.gradient(self.clone().meanmask().greyscale().resize(cols=sq+1, rows=sq+1).numpy()))[0:-1, 0:-1] > 0).flatten()
+        return bytes(np.packbits(b)).hex() if not (asbytes or asbinary) else bytes(np.packbits(b)) if asbytes else b
         
     def show(self, categories=None, figure=None, nocaption=False, nocaption_withstring=[], fontsize=10, boxalpha=0.25, d_category2color={'Person':'green', 'Vehicle':'blue', 'Object':'red'}, captionoffset=(0,0), nowindow=False, textfacecolor='white', textfacealpha=1.0, shortlabel=True):
         """Show scene detection 

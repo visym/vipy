@@ -62,8 +62,12 @@ def findjson(basedir):
     """Return a list of absolute paths to json files recursively discovered by walking the directory tree rooted at basedir"""
     return [str(path.resolve()) for path in pathlib.Path(basedir).rglob('*.json')]
 
+def findimage(basedir):
+    """Return a list of absolute paths to image files recursively discovered by walking the directory tree rooted at basedir"""
+    return [str(path.resolve()) for path in pathlib.Path(basedir).rglob('*') if isimage(str(path.resolve()))]
+
 def findvideo(basedir):
-    """Return a list of absolute paths to json files recursively discovered by walking the directory tree rooted at basedir"""
+    """Return a list of absolute paths to video files recursively discovered by walking the directory tree rooted at basedir"""
     return [str(path.resolve()) for path in pathlib.Path(basedir).rglob('*') if isvideo(str(path.resolve()))]
     
 
@@ -914,6 +918,9 @@ def isimg(path):
     else:
         return False
 
+def isimage(path):
+    return isimg(path)
+    
 
 def isvideofile(path):
     """Equivalent to isvideo()"""
