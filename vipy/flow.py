@@ -120,8 +120,8 @@ class Image(object):
 
     def resize_like(self, im, interp='bicubic'):
         """Resize flow buffer to be the same size as the provided vipy.image.Image()"""
-        assert hasattr(im, 'width') and hasattr(im, 'height'), "Invalid input - Must be Image() object"
-        return self.resize(im.height(), im.width(), interp=interp)
+        assert hasattr(im, 'width') and hasattr(im, 'height'), "Invalid input - Must be Image() object"        
+        return self.resize(im.height(), im.width(), interp=interp) if self.shape() != im.shape() else self
 
     def resize(self, height, width, interp='bicubic'):
         (yscale, xscale) = (height/float(self.height()), width/float(self.width()))
@@ -219,7 +219,7 @@ class Flow(object):
         assert isinstance(imprev, vipy.image.Image) and isinstance(im, vipy.image.Image)
         imp = imprev.clone().mindim(self._mindim).luminance() if imprev.channels() != 1 else imprev.clone().mindim(self._mindim)
         imn = im.clone().mindim(self._mindim).luminance() if im.channels() != 1 else im.clone().mindim(self._mindim)
-        flow = cv2.calcOpticalFlowFarneback(imn.numpy(), imp.numpy(), None, 0.5, 3, 5, self._flowiter, 5, 1.2, cv2.OPTFLOW_FARNEBACK_GAUSSIAN)         
+        flow = cv2.calcOpticalFlowFarneback(imn.numpy(), imp.numpy(), None, 0.5, 3, 7, self._flowiter, 5, 1.2, cv2.OPTFLOW_FARNEBACK_GAUSSIAN)         
         return Image(flow).resize_like(im)  # flow only, no objects
         
     def videoflow(self, v, flowstep=1, framestep=1, keyframe=None):
@@ -236,7 +236,7 @@ class Flow(object):
             
     def _correspondence(self, imflow, im, border=0.1, contrast=(16.0/255.0), dilate=1.0):
         (H,W) = (imflow.height(), imflow.width())
-        m = im.dilate(dilate).rectangular_mask()  if isinstance(im, vipy.video.Scene) and len(im.objects())>0 else 0  # ignore foreground regions
+        m = im.clone().dilate(dilate).rectangular_mask()  if isinstance(im, vipy.image.Scene) and len(im.objects())>0 else 0  # ignore foreground regions
         b = im.border_mask(int(border*min(W,H)))  # ignore borders
         w = np.uint8(np.sum(np.abs(np.gradient(im.clone().greyscale().numpy())), axis=0) < contrast)  # ignore low contrast regions
         bk = np.nonzero((m+b+w) == 0)  # indexes for valid flow regions
@@ -265,7 +265,7 @@ class Flow(object):
         f_estimator = cv2.estimateAffinePartial2D if rigid else cv2.estimateAffine2D
         imstabilized = v[0].clone().rgb().zeropad(pad, pad)
         vc = v.clone(flush=True).zeropad(pad,pad).load().nofilename().nourl()  
-        for (k, (im, imf, imfk1, imfk2)) in enumerate(zip(v, vf, vfk1, vfk2)):            
+        for (k, (im, imf, imfk1, imfk2)) in enumerate(zip(v, vf, vfk1, vfk2)):
             # Robust alignment 
             (xy_src_k0, xy_dst_k0) = self._correspondence(imf, im, border=border, dilate=dilate, contrast=contrast)
             (xy_src_k1, xy_dst_k1) = self._correspondence(imfk1, im, border=border, dilate=dilate, contrast=contrast)
