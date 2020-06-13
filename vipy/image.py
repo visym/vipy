@@ -1342,7 +1342,7 @@ class ImageDetection(ImageCategory):
             bb = self.bbox.clone().imclip(immask).int()
             immask[bb.ymin():bb.ymax(), bb.xmin():bb.xmax()] = 1
         return immask
-
+    
     def setzero(self, bbox=None):
         """Set all image values within the bounding box (or provided bbox) to zero, triggers load()"""
         if bbox is not None:
@@ -1596,6 +1596,27 @@ class Scene(ImageCategory):
                 bbm = bb.clone().imclip(self.numpy()).int()
                 immask[bbm.ymin():bbm.ymax(), bbm.xmin():bbm.xmax()] = 1
         return immask
+
+    def binarymask(self):
+        return self.rectangular_mask()
+
+    def pixelmask(self, pixelsize=8):
+        """Replace pixels within all foreground objects with a privacy preserving pixelated foreground with larger pixels"""
+        assert pixelsize > 1, "Pixelsize is a scale factor such that pixels within the foreground are pixelsize times larger than the background"
+        (img, mask) = (self.numpy(), self.binarymask())  # force writeable
+        img[mask > 0] = self.clone().rescale(1.0/pixelsize, interp='nearest').resize_like(self, interp='nearest').numpy()[mask > 0]
+        return self.array(img)
+    
+    def meanmask(self):
+        """Replace pixels within the foreground objects with the mean pixel color"""
+        img = self.numpy()  # force writeable
+        img[self.binarymask() > 0] = self.meanchannel()
+        return self.array(img)
+
+    def bghash(self):
+        """Perceptual differential hash function, masking out foreground objects.  Can be used for near duplicate detection of background scenes by unpacking the returned 64 bit integer to binary and computing hamming distance"""
+        b = (np.gradient(self.clone().meanmask().greyscale().resize(cols=9, rows=8).numpy(), axis=1)[:,:-1] > 0).flatten()
+        return int(np.packbits(b).view(np.int64))
         
     def show(self, categories=None, figure=None, nocaption=False, nocaption_withstring=[], fontsize=10, boxalpha=0.25, d_category2color={'Person':'green', 'Vehicle':'blue', 'Object':'red'}, captionoffset=(0,0), nowindow=False, textfacecolor='white', textfacealpha=1.0, shortlabel=True):
         """Show scene detection 
