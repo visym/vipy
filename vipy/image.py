@@ -1600,6 +1600,10 @@ class Scene(ImageCategory):
     def binarymask(self):
         return self.rectangular_mask()
 
+    def bgmask(self):
+        mask = self.binarymask() if self.channels() == 1 else np.expand_dims(self.binarymask(), axis=2)
+        return self.array(np.multiply(mask, self.numpy()))
+    
     def pixelmask(self, pixelsize=8):
         """Replace pixels within all foreground objects with a privacy preserving pixelated foreground with larger pixels"""
         assert pixelsize > 1, "Pixelsize is a scale factor such that pixels within the foreground are pixelsize times larger than the background"
@@ -1616,10 +1620,10 @@ class Scene(ImageCategory):
     def bghash(self, bits=128, asbinary=False, asbytes=False):
         """Perceptual differential hash function, masking out foreground objects.  
 
-             -Algorithm: set foreground objects to mean color, convert to greyscale, resize with linear interpolation to small image based on desired bit encoding, compute vertical and horizontal gradient signs.
-             -bits:  longer hashes have lower TAR (true accept rate, some near dupes are missed), but lower FAR (false accept rate), shorter hashes have higher TAR (fewer near-dupes are missed) but higher FAR (more non-dupes are declared as dupes). 
-             -NOTE: Can be used for near duplicate detection of background scenes by unpacking the returned 64 bit integer to binary and computing hamming distance.
-             -NOTE: The packed hex output can be converted to binary as: np.unpackbits(bytearray().fromhex( bghash() ))
+             * bits [int]:  longer hashes have lower TAR (true accept rate, some near dupes are missed), but lower FAR (false accept rate), shorter hashes have higher TAR (fewer near-dupes are missed) but higher FAR (more non-dupes are declared as dupes).
+             * Algorithm: set foreground objects to mean color, convert to greyscale, resize with linear interpolation to small image based on desired bit encoding, compute vertical and horizontal gradient signs.
+             * NOTE: Can be used for near duplicate detection of background scenes by unpacking the returned hex string to binary and computing hamming distance, or performing hamming based nearest neighbor indexing.
+             * NOTE: The packed hex output can be converted to binary as: np.unpackbits(bytearray().fromhex( bghash() ))
 
         """
         allowablebits = [2*k*k for k in range(2, 17)]
