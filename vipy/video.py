@@ -646,7 +646,10 @@ class Video(object):
         # since the max square always preserves the scale and the upper left corner of the source video. 
         self._ffmpeg = self._ffmpeg.filter('pad', max(self.shape())+1, max(self.shape())+1, 0, 0)  
         return self
-        
+
+    def maxmatte(self):
+        return self.zeropad(max(1, int((max(self.shape()) - self.width())/2)), max(int((max(self.shape()) - self.height())/2), 1))
+    
     def zeropad(self, padwidth, padheight):
         """Zero pad the video with padwidth columns before and after, and padheight rows before and after"""
         assert isinstance(padwidth, int) and isinstance(padheight, int)

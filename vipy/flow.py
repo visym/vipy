@@ -12,6 +12,7 @@ import vipy.geometry
 
 class Image(object):
     """vipy.flow.Image() class"""
+    
     def __init__(self, array):
         assert array.ndim == 3 and array.shape[2] == 2, "Must be HxWx2 flow array"
         self._array = array
@@ -88,8 +89,7 @@ class Image(object):
         assert pad is not None or to is not None or like is not None
         pad_width = (pad, pad) if pad is not None else ((to[0]-self.height())//2, int(np.ceil((to[1] - self.width())/2))) if to is not None else ((like.height()-self.height())//2, int(np.ceil((like.width() - self.width())/2)))
         assert np.all([p >= 0 for p in pad_width])
-        #self._array = np.pad(self._array, pad_width=(pad_width, pad_width, (0,0)), mode='constant', constant_values=((4*max(pad_width)+max(self.shape()))))
-        self._array = np.pad(self._array, pad_width=(pad_width, pad_width, (0,0)), mode='constant', constant_values=-100000)        
+        self._array = np.pad(self._array, pad_width=(pad_width, pad_width, (0,0)), mode='constant', constant_values=-100000)  # -inf
         return self
                 
     def zeropad(self, pad=None, to=None, like=None):
@@ -134,7 +134,7 @@ class Image(object):
 
     def angle(self):
         return cartesian_to_polar(self.dx(), self.dy())[1]
-    
+
     def clone(self):
         return copy.deepcopy(self)
 
@@ -145,6 +145,7 @@ class Image(object):
     
 class Video(vipy.video.Video):
     """vipy.flow.Video() class"""
+    
     def __init__(self, array, flowstep, framestep):
         assert array.ndim == 4 and array.shape[3] == 2, "Must be NxHxWx2 flow array"        
         self._flowstep = flowstep 
@@ -207,6 +208,8 @@ class Video(vipy.video.Video):
 
     
 class Flow(object):
+    """vipy.flow.Flow() class"""
+    
     def __init__(self, flowiter=10):
         self._mindim = 256  # flow computation dimensionality, change the flow parameters if you change this
         self._flowiter = flowiter
@@ -215,6 +218,7 @@ class Flow(object):
         return self.videoflow(im, flowstep, framestep) if imprev is None else self.imageflow(im, imprev)
 
     def _numpyflow(self, img, imgprev):
+        """Overload this method for custom flow classes"""        
         return Image(cv2.calcOpticalFlowFarneback(img, imgprev, None, 0.5, 3, 7, self._flowiter, 5, 1.2, cv2.OPTFLOW_FARNEBACK_GAUSSIAN))
         
     def imageflow(self, im, imprev):
@@ -260,13 +264,28 @@ class Flow(object):
         bk = np.nonzero((m+b+w+v) == 0)  # indexes for valid flow regions
         (X, Y) = np.meshgrid(np.arange(0, im.width()), np.arange(0, im.height()))        
         (fx, fy) = (imflow.dx()[bk].flatten(), imflow.dy()[bk].flatten())  # flow
-        #(x1, y1) = ((X[bk].flatten() - (W/2.0)), (Y[bk].flatten() - (H/2.0)))  # source coordinates (point centered)
         (x1, y1) = (X[bk].flatten(), Y[bk].flatten())  # image coordinates
         (x2, y2) = (x1 + fx, y1 + fy)  # destination coordinates
         return (np.stack((x1,y1)), np.stack((x2,y2)))
         
-    def stabilize(self, v, keystep=20, pad=128, border=0.1, dilate=1.0, contrast=16.0/255.0, rigid=False, affine=True, verbose=True):
-        """Affine stabilization using multi-scale optical flow correspondence with foreground object keepouts.  This method does not compensate for rolling shutter distortion."""
+    def stabilize(self, v, keystep=20, padheight=32, padwidth=128, border=0.1, dilate=1.0, contrast=16.0/255.0, rigid=False, affine=True, verbose=True):
+        """Affine stabilization using multi-scale optical flow correspondence with foreground object keepouts.  
+
+           * v [vipy.video.Scene]:  The input video to stabilize, should be resized to mindim=256
+           * keystep [int]:  The local stabilization step between keyframes (should be <= 30)
+           * padheight [int]:  The height padding to be applied to output video to allow for vertical stabilization
+           * padwidth [int]:  The width padding to be applied to output video to allow for horizontal stabilization
+           * border [float]:  The border keepout fraction to ignore during flow correspondence.  This should be proportional to the maximum frame to frame flow
+           * dilate [float]:  The dilation to apply to the foreground object boxes to define a foregroun keepout for flow computation
+           * contrast [float]:  The minimum gradient necessary for flow correspondence, to avoid flow on low contrast regions
+           * rigid [bool]:  Euclidean stabilization
+           * affine [bool]:  Affine stabilization
+           * verbose [bool]:  This takes a while to run ...
+        
+           * NOTE: The remaining distortion after stabilization is due to: rolling shutter distortion, perspective distortion and non-keepout moving objects in background
+           * NOTE: If the video contains objects, the object boxes will be transformed along with the stabilization 
+
+        """        
         assert isinstance(v, vipy.video.Scene), "Invalid input - Must be vipy.video.Scene() with foreground object keepouts for background stabilization"
         
         # Optical flow (three passes)
@@ -275,7 +294,6 @@ class Flow(object):
         vf = self.videoflow(v, framestep=1, flowstep=1)
         vfk1 = self.keyflow(v, keystep=keystep)
         vfk2 = self.keyflow(v, keystep=len(v)//2)        
-        f = Flow()
         
         # Stabilization
         assert rigid is True or affine is True
@@ -286,9 +304,9 @@ class Flow(object):
         f_warp_fine = cv2.warpAffine if (rigid or affine) else cv2.warpPerspective
         f_transform_coarse = (lambda A: A[0:2,:])
         f_transform_fine = (lambda A: A[0:2,:]) if (rigid or affine) else (lambda A: A)
-        (A, T) = (np.array([ [1,0,0],[0,1,0],[0,0,1] ]).astype(np.float64), np.array([[1,0,pad],[0,1,pad],[0,0,1]]).astype(np.float64))
-        vc = v.clone(flush=True).zeropad(pad,pad).load().nofilename().nourl()       
-        imstabilized = v[0].clone().rgb().zeropad(pad, pad)
+        (A, T) = (np.array([ [1,0,0],[0,1,0],[0,0,1] ]).astype(np.float64), np.array([[1,0,padwidth],[0,1,padheight],[0,0,1]]).astype(np.float64))
+        vc = v.clone(flush=True).zeropad(padwidth, padheight).load().nofilename().nourl()       
+        imstabilized = v[0].clone().rgb().zeropad(padwidth, padheight)
         frames = []                        
         for (k, (im, imf, imfk1, imfk2)) in enumerate(zip(v, vf, vfk1, vfk2)): 
             if verbose and k==0:
@@ -305,9 +323,9 @@ class Flow(object):
             A = A.dot(M)  # update coarse reference frame
             imfine = im.clone().array(f_warp_coarse(im.clone().numpy(), dst=imstabilized.clone().numpy(), M=f_transform_coarse(T.dot(A)), dsize=(imstabilized.width(), imstabilized.height()), borderMode=cv2.BORDER_TRANSPARENT), copy=True).objectmap(lambda o: o.projective(T.dot(A)))
             imfinemask = f_warp_coarse(np.ones_like(im.clone().greyscale().numpy()), dst=np.zeros_like(imstabilized.numpy()), M=f_transform_coarse(T.dot(A)), dsize=(imstabilized.width(), imstabilized.height()), borderMode=cv2.BORDER_CONSTANT) > 0
-            imfineflow = f.imageflow(imfine, imstabilized)
+            imfineflow = self.imageflow(imfine, imstabilized)
             (xy_src, xy_dst) = self._correspondence(imfineflow, imfine, border=None, dilate=dilate, contrast=contrast, validmask=imfinemask)
-            F = f_estimate_fine(xy_src.transpose()-pad, xy_dst.transpose()-pad, method=cv2.RANSAC, confidence=0.9999, ransacReprojThreshold=0.1, refineIters=16, maxIters=2000)  
+            F = f_estimate_fine(xy_src.transpose()-np.array([padwidth, padheight]), xy_dst.transpose()-np.array([padwidth, padheight]), method=cv2.RANSAC, confidence=0.9999, ransacReprojThreshold=0.1, refineIters=16, maxIters=2000)  
             
             # Render coarse to fine stabilized frame with aligned objects
             A = F.dot(A)  # update fine reference frame            
@@ -316,17 +334,5 @@ class Flow(object):
                             
         return vc
             
-    def gpu(self):
-        pass
-
-
-
-    
-def FlowNet(Flow):
-    def __init__(self):
-        pass
-
-    def __call__(self, imprev, imnext):
-        pass
 
     

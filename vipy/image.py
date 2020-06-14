@@ -1693,8 +1693,8 @@ def RandomImageDetection(rows=None, cols=None):
                           xmin=np.random.randint(0,cols - 16), ymin=np.random.randint(0,rows - 16),
                           bbwidth=np.random.randint(16,cols), bbheight=np.random.randint(16,rows))
 
-def RandomScene(rows=None, cols=None, num_objects=16):
-    im = RandomImage(rows, cols)
+def RandomScene(rows=None, cols=None, num_objects=16, url=None):
+    im = RandomImage(rows, cols) if url is None else Image(url=url)
     (rows, cols) = im.shape()
     ims = Scene(array=im.array(), colorspace='rgb', category='scene', objects=[vipy.object.Detection('obj%d' % k, xmin=np.random.randint(0,cols - 16), ymin=np.random.randint(0,rows - 16),
                                                                                                      width=np.random.randint(16,cols), height=np.random.randint(16,rows))
