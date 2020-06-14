@@ -754,7 +754,7 @@ def test_scene():
 
     # bghash
     im = vipy.image.RandomScene(num_objects=1, url='https://upload.wikimedia.org/wikipedia/commons/1/11/Horned1b.jpg')
-    assert im.bghash() == im.clone().rescale(0.9).bghash()
+    assert im.bghash(bits=128) == im.clone().rescale(0.95).bghash()
     assert np.sum(im.bghash(asbinary=True, bits=72) == im.clone().zeropad(10,10).bghash(asbinary=True, bits=72)) >=64
     print('[test_image.scene]: bghash PASSED')
 
