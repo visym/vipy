@@ -2,6 +2,15 @@ import numpy as np
 import scipy.ndimage
 
 
+def iseven(x):
+    return x%2 == 0
+
+
+def even(x, greaterthan=False):
+    """Return the largest even number less than or equal (or greater than if greaterthan=True) to the value"""
+    return x if x%2 == 0 else (x+1 if greaterthan else x-1)
+
+
 def poweroftwo(x):
     """Return the closest power of two smaller than the value"""
     assert x>=2 

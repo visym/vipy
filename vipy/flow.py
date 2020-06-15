@@ -269,7 +269,7 @@ class Flow(object):
         return (np.stack((x1,y1)), np.stack((x2,y2)))
         
     def stabilize(self, v, keystep=20, padheight=32, padwidth=128, border=0.1, dilate=1.0, contrast=16.0/255.0, rigid=False, affine=True, verbose=True):
-        """Affine stabilization using multi-scale optical flow correspondence with foreground object keepouts.  
+        """Affine stabilization to frame zero using multi-scale optical flow correspondence with foreground object keepouts.  
 
            * v [vipy.video.Scene]:  The input video to stabilize, should be resized to mindim=256
            * keystep [int]:  The local stabilization step between keyframes (should be <= 30)
@@ -287,8 +287,12 @@ class Flow(object):
 
         """        
         assert isinstance(v, vipy.video.Scene), "Invalid input - Must be vipy.video.Scene() with foreground object keepouts for background stabilization"
+
+        # Prepare videos
+        v = v.clone().cropeven()  # make even for zero pad
+        vc = v.clone(flush=True).zeropad(padwidth, padheight).load().nofilename().nourl()       
         
-        # Optical flow (three passes)
+        # Optical flow (three passes)        
         if verbose:
             print('[vipy.flow.stabilize]: Optical flow (3x)- %s' % v)
         vf = self.videoflow(v, framestep=1, flowstep=1)
@@ -297,6 +301,7 @@ class Flow(object):
         
         # Stabilization
         assert rigid is True or affine is True
+        (A, T) = (np.array([ [1,0,0],[0,1,0],[0,0,1] ]).astype(np.float64), np.array([[1,0,padwidth],[0,1,padheight],[0,0,1]]).astype(np.float64))        
         f_estimate_coarse = ((lambda s, *args, **kw: np.vstack( (cv2.estimateAffinePartial2D(s, *args, **kw)[0], [0,0,1])).astype(np.float64)) if rigid else
                              (lambda s, *args, **kw: np.vstack( (cv2.estimateAffine2D(s, *args, **kw)[0], [0,0,1])).astype(np.float64)))
         f_estimate_fine = (lambda s, *args, **kw: cv2.findHomography(s, *args, **kw)[0]) if not (rigid or affine) else f_estimate_coarse 
@@ -304,8 +309,6 @@ class Flow(object):
         f_warp_fine = cv2.warpAffine if (rigid or affine) else cv2.warpPerspective
         f_transform_coarse = (lambda A: A[0:2,:])
         f_transform_fine = (lambda A: A[0:2,:]) if (rigid or affine) else (lambda A: A)
-        (A, T) = (np.array([ [1,0,0],[0,1,0],[0,0,1] ]).astype(np.float64), np.array([[1,0,padwidth],[0,1,padheight],[0,0,1]]).astype(np.float64))
-        vc = v.clone(flush=True).zeropad(padwidth, padheight).load().nofilename().nourl()       
         imstabilized = v[0].clone().rgb().zeropad(padwidth, padheight)
         frames = []                        
         for (k, (im, imf, imfk1, imfk2)) in enumerate(zip(v, vf, vfk1, vfk2)): 
@@ -322,7 +325,7 @@ class Flow(object):
             # Fine alignment
             A = A.dot(M)  # update coarse reference frame
             imfine = im.clone().array(f_warp_coarse(im.clone().numpy(), dst=imstabilized.clone().numpy(), M=f_transform_coarse(T.dot(A)), dsize=(imstabilized.width(), imstabilized.height()), borderMode=cv2.BORDER_TRANSPARENT), copy=True).objectmap(lambda o: o.projective(T.dot(A)))
-            imfinemask = f_warp_coarse(np.ones_like(im.clone().greyscale().numpy()), dst=np.zeros_like(imstabilized.numpy()), M=f_transform_coarse(T.dot(A)), dsize=(imstabilized.width(), imstabilized.height()), borderMode=cv2.BORDER_CONSTANT) > 0
+            imfinemask = f_warp_coarse(np.ones_like(im.clone().greyscale().numpy()), dst=np.zeros_like(imstabilized.numpy()), M=f_transform_coarse(T.dot(A)), dsize=(imstabilized.width(), imstabilized.height()), borderMode=cv2.BORDER_TRANSPARENT) > 0
             imfineflow = self.imageflow(imfine, imstabilized)
             (xy_src, xy_dst) = self._correspondence(imfineflow, imfine, border=None, dilate=dilate, contrast=contrast, validmask=imfinemask)
             F = f_estimate_fine(xy_src.transpose()-np.array([padwidth, padheight]), xy_dst.transpose()-np.array([padwidth, padheight]), method=cv2.RANSAC, confidence=0.9999, ransacReprojThreshold=0.1, refineIters=16, maxIters=2000)  

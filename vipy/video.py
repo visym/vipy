@@ -5,6 +5,7 @@ from vipy.util import remkdir, tempMP4, isurl, \
     istuple, islist, isnumber, tolist, filefull, fileext, isS3url, totempdir, flatlist, tocache, premkdir, writecsv
 from vipy.image import Image
 import vipy.geometry
+import vipy.math
 import vipy.image
 import vipy.downloader
 import copy
@@ -640,7 +641,12 @@ class Video(object):
         """Crop video of size (NxN) in the center, such that N=min(width,height), keeping the video centroid constant"""
         return self.centercrop( (min(self.height(), self.width()), min(self.height(), self.width())))
 
+    def cropeven(self):
+        """Crop the video to the largest even (width,height) less than or equal to current (width,height).  This is useful for some codecs or filters which require even shape"""
+        return self.crop(vipy.geometry.BoundingBox(xmin=0, ymin=0, width=vipy.math.even(self.width()), height=vipy.math.even(self.height())))
+    
     def maxsquare(self):
+        """Pad the video to be square, preserving the upper left corner of the video"""
         # This ffmpeg filter can throw the error:  "Padded dimensions cannot be smaller than input dimensions." since the preview is off by one.  Add one here to make sure.
         # FIXME: not sure where in some filter chains this off-by-one error is being introduced, but probably does not matter since it does not affect any annotations 
         # since the max square always preserves the scale and the upper left corner of the source video. 
@@ -650,9 +656,14 @@ class Video(object):
     def maxmatte(self):
         return self.zeropad(max(1, int((max(self.shape()) - self.width())/2)), max(int((max(self.shape()) - self.height())/2), 1))
     
-    def zeropad(self, padwidth, padheight):
-        """Zero pad the video with padwidth columns before and after, and padheight rows before and after"""
-        assert isinstance(padwidth, int) and isinstance(padheight, int)
+    def zeropad(self, padwidth, padheight, strict=False):
+        """Zero pad the video with padwidth columns before and after, and padheight rows before and after
+           
+           * NOTE: Older FFMPEG implementations can throw the error "Input area #:#:#:# not within the padded area #:#:#:# or zero-sized, this is often caused by odd sized padding. 
+             Recommend calling self.cropeven().zeropad(...) to avoid this
+
+        """
+        assert isinstance(padwidth, int) and isinstance(padheight, int)        
         self._ffmpeg = self._ffmpeg.filter('pad', 'iw+%d' % (2*padwidth), 'ih+%d' % (2*padheight), '%d'%padwidth, '%d'%padheight)
         return self
 
