@@ -144,8 +144,12 @@ def vipy_groupby(inset, keyfunc):
 
 
 def groupbyasdict(inset, keyfunc):
-    """Return dictionary of keys and lists from groupby on unsorted inset"""
+    """Return dictionary of keys and lists from groupby on unsorted inset, where keyfunc is a lambda function on elements in inset"""
     return {k: list(v) for (k, v) in groupby(inset, keyfunc)}
+
+def countby(inset, keyfunc):
+    """Return dictionary of keys and group sizes for a grouping of the input list by keyfunc lambda function""" 
+    return {k:len(v) for (k,v) in groupbyasdict(inset, keyfunc).items()}
 
 
 def softmax(x, temperature=1.0):
@@ -433,13 +437,13 @@ def load(infile):
     """
     obj = loadas(infile, type='dill')
     testobj = copy.deepcopy(tolist(obj)[0])
-    if hasattr(testobj, 'filename') and '/$PATH' in testobj.filename():
+    if hasattr(testobj, 'filename') and testobj.filename() is not None and '/$PATH' in testobj.filename():
         testobj = repath(testobj, '/$PATH', filepath(os.path.abspath(infile)))  # attempt to rehome /$PATH/to/me.jpg -> /NEWPATH/to/me.jpg where NEWPATH=filepath(infile)
         if os.path.exists(testobj.filename()):       # file found
             obj = repath(obj, '/$PATH', filepath(os.path.abspath(infile)))      # rehome everything to the same root path as the pklfile
         else:
             warnings.warn('Loading "%s" that contains redistributable paths - Use vipy.util.distload("%s", datapath="/path/to/your/data") to rehome absolute file paths' % (infile, infile))
-    elif hasattr(testobj, 'hasfilename') and not testobj.hasfilename(): 
+    elif hasattr(testobj, 'hasfilename') and testobj.filename() is not None and not testobj.hasfilename(): 
         warnings.warn('Loading "%s" that contains absolute filepaths - The relocated filename "%s" does not exist' % (infile, testobj.filename()))
     return obj
 
