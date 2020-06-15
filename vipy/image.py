@@ -1342,7 +1342,7 @@ class ImageDetection(ImageCategory):
             bb = self.bbox.clone().imclip(immask).int()
             immask[bb.ymin():bb.ymax(), bb.xmin():bb.xmax()] = 1
         return immask
-
+    
     def setzero(self, bbox=None):
         """Set all image values within the bounding box (or provided bbox) to zero, triggers load()"""
         if bbox is not None:
@@ -1596,6 +1596,41 @@ class Scene(ImageCategory):
                 bbm = bb.clone().imclip(self.numpy()).int()
                 immask[bbm.ymin():bbm.ymax(), bbm.xmin():bbm.xmax()] = 1
         return immask
+
+    def binarymask(self):
+        return self.rectangular_mask()
+
+    def bgmask(self):
+        mask = self.binarymask() if self.channels() == 1 else np.expand_dims(self.binarymask(), axis=2)
+        return self.array(np.multiply(mask, self.numpy()))
+    
+    def pixelmask(self, pixelsize=8):
+        """Replace pixels within all foreground objects with a privacy preserving pixelated foreground with larger pixels"""
+        assert pixelsize > 1, "Pixelsize is a scale factor such that pixels within the foreground are pixelsize times larger than the background"
+        (img, mask) = (self.numpy(), self.binarymask())  # force writeable
+        img[mask > 0] = self.clone().rescale(1.0/pixelsize, interp='nearest').resize_like(self, interp='nearest').numpy()[mask > 0]
+        return self.array(img)
+    
+    def meanmask(self):
+        """Replace pixels within the foreground objects with the mean pixel color"""
+        img = self.numpy()  # force writeable
+        img[self.binarymask() > 0] = self.meanchannel()
+        return self.array(img)
+
+    def bghash(self, bits=128, asbinary=False, asbytes=False):
+        """Perceptual differential hash function, masking out foreground objects.  
+
+             * bits [int]:  longer hashes have lower TAR (true accept rate, some near dupes are missed), but lower FAR (false accept rate), shorter hashes have higher TAR (fewer near-dupes are missed) but higher FAR (more non-dupes are declared as dupes).
+             * Algorithm: set foreground objects to mean color, convert to greyscale, resize with linear interpolation to small image based on desired bit encoding, compute vertical and horizontal gradient signs.
+             * NOTE: Can be used for near duplicate detection of background scenes by unpacking the returned hex string to binary and computing hamming distance, or performing hamming based nearest neighbor indexing.
+             * NOTE: The packed hex output can be converted to binary as: np.unpackbits(bytearray().fromhex( bghash() ))
+
+        """
+        allowablebits = [2*k*k for k in range(2, 17)]
+        assert bits in allowablebits, "Bits must be in %s" % str(allowablebits)
+        sq = int(np.ceil(np.sqrt(bits/2.0)))
+        b = (np.dstack(np.gradient(self.clone().meanmask().greyscale().resize(cols=sq+1, rows=sq+1).numpy()))[0:-1, 0:-1] > 0).flatten()
+        return bytes(np.packbits(b)).hex() if not (asbytes or asbinary) else bytes(np.packbits(b)) if asbytes else b
         
     def show(self, categories=None, figure=None, nocaption=False, nocaption_withstring=[], fontsize=10, boxalpha=0.25, d_category2color={'Person':'green', 'Vehicle':'blue', 'Object':'red'}, captionoffset=(0,0), nowindow=False, textfacecolor='white', textfacealpha=1.0, shortlabel=True):
         """Show scene detection 
@@ -1658,8 +1693,8 @@ def RandomImageDetection(rows=None, cols=None):
                           xmin=np.random.randint(0,cols - 16), ymin=np.random.randint(0,rows - 16),
                           bbwidth=np.random.randint(16,cols), bbheight=np.random.randint(16,rows))
 
-def RandomScene(rows=None, cols=None, num_objects=16):
-    im = RandomImage(rows, cols)
+def RandomScene(rows=None, cols=None, num_objects=16, url=None):
+    im = RandomImage(rows, cols) if url is None else Image(url=url)
     (rows, cols) = im.shape()
     ims = Scene(array=im.array(), colorspace='rgb', category='scene', objects=[vipy.object.Detection('obj%d' % k, xmin=np.random.randint(0,cols - 16), ymin=np.random.randint(0,rows - 16),
                                                                                                      width=np.random.randint(16,cols), height=np.random.randint(16,rows))

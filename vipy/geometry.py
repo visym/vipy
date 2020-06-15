@@ -16,10 +16,17 @@ def covariance_to_ellipse(cov):
 
 def dehomogenize(p):
     """Convert 3x1 homogenous point (x,y,h) to 2x1 non-homogenous point (x/h, y/h)"""
-    assert isnumpy(p) and p.shape[0] == 3, "Invalid input"
-    p = columnvector(p) if p.ndim == 1 else p
-    return p[0:-1, :] / p[-1,:]
-
+    assert isnumpy(p)    
+    if p.ndim == 1:
+        assert len(p) == 3
+        return p[0:2] / p[2]
+    elif p.ndim == 2:
+        assert isnumpy(p) and p.shape[0] == 3, "Invalid input"
+        p = columnvector(p) if p.ndim == 1 else p
+        return p[0:-1, :] / p[-1,:]
+    else:
+        return ValueError('p must be 1d or 2d')
+    
 
 def homogenize(p):
     """Convert 2xN non-homogenous points (x,y) to 3xN non-homogenous point (x, y, 1)"""
@@ -706,6 +713,11 @@ class BoundingBox():
         assert isnumpy(A) and A.shape == (2,3), "A must be a 2x3 affine transformation matrix"
         return self.centroid(np.dot(A, homogenize(np.array(self.centroid()))))
 
+    def projective(self, A):
+        """Apply an 3x3 affine transformation to the box centroid.  This operation preserves an axis aligned bounding box for an arbitrary affine transform."""
+        assert isnumpy(A) and A.shape == (3,3), "A must be a 3x3 affine transformation matrix"
+        return self.centroid(dehomogenize(np.dot(A, homogenize(np.array(self.centroid())))))
+    
     
 class Ellipse():
     def __init__(self, semi_major, semi_minor, xcenter, ycenter, phi):

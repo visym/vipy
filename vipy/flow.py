@@ -1,4 +1,4 @@
-from vipy.util import mat2gray, try_import, string_to_pil_interpolation, Stopwatch
+from vipy.util import mat2gray, try_import, string_to_pil_interpolation, Stopwatch, isnumpy
 try_import('cv2', 'opencv-python opencv-contrib-python'); import cv2
 import vipy.image
 from vipy.math import cartesian_to_polar
@@ -12,6 +12,7 @@ import vipy.geometry
 
 class Image(object):
     """vipy.flow.Image() class"""
+    
     def __init__(self, array):
         assert array.ndim == 3 and array.shape[2] == 2, "Must be HxWx2 flow array"
         self._array = array
@@ -88,8 +89,7 @@ class Image(object):
         assert pad is not None or to is not None or like is not None
         pad_width = (pad, pad) if pad is not None else ((to[0]-self.height())//2, int(np.ceil((to[1] - self.width())/2))) if to is not None else ((like.height()-self.height())//2, int(np.ceil((like.width() - self.width())/2)))
         assert np.all([p >= 0 for p in pad_width])
-        #self._array = np.pad(self._array, pad_width=(pad_width, pad_width, (0,0)), mode='constant', constant_values=((4*max(pad_width)+max(self.shape()))))
-        self._array = np.pad(self._array, pad_width=(pad_width, pad_width, (0,0)), mode='constant', constant_values=-100000)        
+        self._array = np.pad(self._array, pad_width=(pad_width, pad_width, (0,0)), mode='constant', constant_values=-100000)  # -inf
         return self
                 
     def zeropad(self, pad=None, to=None, like=None):
@@ -120,8 +120,8 @@ class Image(object):
 
     def resize_like(self, im, interp='bicubic'):
         """Resize flow buffer to be the same size as the provided vipy.image.Image()"""
-        assert hasattr(im, 'width') and hasattr(im, 'height'), "Invalid input - Must be Image() object"
-        return self.resize(im.height(), im.width(), interp=interp)
+        assert hasattr(im, 'width') and hasattr(im, 'height'), "Invalid input - Must be Image() object"        
+        return self.resize(im.height(), im.width(), interp=interp) if self.shape() != im.shape() else self
 
     def resize(self, height, width, interp='bicubic'):
         (yscale, xscale) = (height/float(self.height()), width/float(self.width()))
@@ -134,17 +134,18 @@ class Image(object):
 
     def angle(self):
         return cartesian_to_polar(self.dx(), self.dy())[1]
-    
+
     def clone(self):
         return copy.deepcopy(self)
 
     def print(self, outstring=None):
         print(outstring if outstring is not None else str(self))
         return self
-    
+
     
 class Video(vipy.video.Video):
     """vipy.flow.Video() class"""
+    
     def __init__(self, array, flowstep, framestep):
         assert array.ndim == 4 and array.shape[3] == 2, "Must be NxHxWx2 flow array"        
         self._flowstep = flowstep 
@@ -207,90 +208,134 @@ class Video(vipy.video.Video):
 
     
 class Flow(object):
+    """vipy.flow.Flow() class"""
+    
     def __init__(self, flowiter=10):
         self._mindim = 256  # flow computation dimensionality, change the flow parameters if you change this
         self._flowiter = flowiter
         
     def __call__(self, im, imprev=None, flowstep=1, framestep=1):
         return self.videoflow(im, flowstep, framestep) if imprev is None else self.imageflow(im, imprev)
-    
+
+    def _numpyflow(self, img, imgprev):
+        """Overload this method for custom flow classes"""        
+        return Image(cv2.calcOpticalFlowFarneback(img, imgprev, None, 0.5, 3, 7, self._flowiter, 5, 1.2, cv2.OPTFLOW_FARNEBACK_GAUSSIAN))
+        
     def imageflow(self, im, imprev):
         """Default opencv dense flow, from im to imprev.  This should be overloaded"""        
         assert isinstance(imprev, vipy.image.Image) and isinstance(im, vipy.image.Image)
         imp = imprev.clone().mindim(self._mindim).luminance() if imprev.channels() != 1 else imprev.clone().mindim(self._mindim)
         imn = im.clone().mindim(self._mindim).luminance() if im.channels() != 1 else im.clone().mindim(self._mindim)
-        flow = cv2.calcOpticalFlowFarneback(imn.numpy(), imp.numpy(), None, 0.5, 3, 5, self._flowiter, 5, 1.2, cv2.OPTFLOW_FARNEBACK_GAUSSIAN)         
-        return Image(flow).resize_like(im)  # flow only, no objects
+        imflow = self._numpyflow(imn.numpy(), imp.numpy())
+        return imflow.resize_like(im)  # flow only, no objects
         
     def videoflow(self, v, flowstep=1, framestep=1, keyframe=None):
+        """Compute optical flow for a video framewise skipping framestep frames, compute optical flow acrsos flowstep frames, """
         assert isinstance(v, vipy.video.Video)
         imf = [self.imageflow(v[k], v[max(0, k-flowstep) if keyframe is None else keyframe]) for k in range(0, len(v.load())+framestep, framestep) if k < len(v.load())]
         return Video(np.stack([im.flow() for im in imf]), flowstep, framestep)  # flow only, no objects
 
-    def keyflow(self, v, keystep=None):        
+    def keyflow(self, v, keystep=None):
+        """Compute optical flow for a video framewise relative to keyframes separated by keystep"""
         assert isinstance(v, vipy.video.Video)
         imf = [(self.imageflow(v[min(len(v)-1, int(keystep*np.round(k/keystep)))], v[max(0, k-1)]) -
                 self.imageflow(v[min(len(v)-1, int(keystep*np.round(k/keystep)))], v[k]))
                for k in range(0, len(v.load()))]
         return Video(np.stack([im.flow() for im in imf]), flowstep=1, framestep=1)  # flow only, no objects
-            
-    def _correspondence(self, imflow, im, border=0.1, contrast=(16.0/255.0), dilate=1.0):
+
+    def affineflow(self, A, H, W):
+        """Return a flow field of size (height=H, width=W) consistent with a 2x3 affine transformation A"""
+        assert isnumpy(A) and A.shape == (2,3) and H > 0 and W > 0, "Invalid input"
+        (X, Y) = np.meshgrid(np.arange(0, W,), np.arange(0, H))
+        (x, y) = (X.flatten() - np.mean(X.flatten()), Y.flatten() - np.mean(Y.flatten()))
+        (xf, yf) = np.dot(A, vipy.geometry.homogenize(np.vstack( (x, y))))
+        return Image(np.dstack( ((x-xf).reshape(H,W), (y-yf).reshape(H,W))))
+
+    def euclideanflow(self, R, t, H, W):
+        """Return a flow field of size (height=H, width=W) consistent with an Euclidean transform parameterized by a 2x2 Rotation and 2x1 translation"""  
+        return self.affineflow(np.array([[R[0,0], R[0,1], t[0]], [R[1,0], R[1,1], t[1]]]), H, W)
+    
+    def _correspondence(self, imflow, im, border=0.1, contrast=(16.0/255.0), dilate=1.0, validmask=None):
         (H,W) = (imflow.height(), imflow.width())
-        m = im.dilate(dilate).rectangular_mask()  if isinstance(im, vipy.video.Scene) and len(im.objects())>0 else 0  # ignore foreground regions
-        b = im.border_mask(int(border*min(W,H)))  # ignore borders
-        w = np.uint8(np.sum(np.abs(np.gradient(im.clone().greyscale().numpy())), axis=0) < contrast)  # ignore low contrast regions
-        bk = np.nonzero((m+b+w) == 0)  # indexes for valid flow regions
+        m = im.clone().dilate(dilate).rectangular_mask() if (dilate  is not None and isinstance(im, vipy.image.Scene) and len(im.objects())>0) else 0  # ignore foreground regions
+        b = im.border_mask(int(border*min(W,H))) if border is not None else 0  # ignore borders
+        w = np.uint8(np.sum(np.abs(np.gradient(im.clone().greyscale().numpy())), axis=0) < contrast) if contrast is not None else 0  # ignore low contrast regions
+        v = (1-np.float32(validmask)) if validmask is not None else 0  # ignore non-valid regions
+        bk = np.nonzero((m+b+w+v) == 0)  # indexes for valid flow regions
         (X, Y) = np.meshgrid(np.arange(0, im.width()), np.arange(0, im.height()))        
         (fx, fy) = (imflow.dx()[bk].flatten(), imflow.dy()[bk].flatten())  # flow
-        (x1, y1) = ((X[bk].flatten() - (W/2.0)), (Y[bk].flatten() - (H/2.0)))  # source coordinates (point centered)
+        (x1, y1) = (X[bk].flatten(), Y[bk].flatten())  # image coordinates
         (x2, y2) = (x1 + fx, y1 + fy)  # destination coordinates
         return (np.stack((x1,y1)), np.stack((x2,y2)))
         
-    def stabilize(self, v, keystep=20, pad=128, border=0.1, dilate=1.0, contrast=16.0/255.0, rigid=False, verbose=True):
-        """Affine stabilization using multi-scale optical flow correspondence with foreground object keepouts.  This method does not compensate for rolling shutter distortion."""
-        assert isinstance(v, vipy.video.Scene), "Invalid input - Must be vipy.video.Scene() with foreground object keepouts for background stabilization"
+    def stabilize(self, v, keystep=20, padheight=32, padwidth=128, border=0.1, dilate=1.0, contrast=16.0/255.0, rigid=False, affine=True, verbose=True):
+        """Affine stabilization to frame zero using multi-scale optical flow correspondence with foreground object keepouts.  
+
+           * v [vipy.video.Scene]:  The input video to stabilize, should be resized to mindim=256
+           * keystep [int]:  The local stabilization step between keyframes (should be <= 30)
+           * padheight [int]:  The height padding to be applied to output video to allow for vertical stabilization
+           * padwidth [int]:  The width padding to be applied to output video to allow for horizontal stabilization
+           * border [float]:  The border keepout fraction to ignore during flow correspondence.  This should be proportional to the maximum frame to frame flow
+           * dilate [float]:  The dilation to apply to the foreground object boxes to define a foregroun keepout for flow computation
+           * contrast [float]:  The minimum gradient necessary for flow correspondence, to avoid flow on low contrast regions
+           * rigid [bool]:  Euclidean stabilization
+           * affine [bool]:  Affine stabilization
+           * verbose [bool]:  This takes a while to run ...
         
-        # Optical flow (three passes)
+           * NOTE: The remaining distortion after stabilization is due to: rolling shutter distortion, perspective distortion and non-keepout moving objects in background
+           * NOTE: If the video contains objects, the object boxes will be transformed along with the stabilization 
+
+        """        
+        assert isinstance(v, vipy.video.Scene), "Invalid input - Must be vipy.video.Scene() with foreground object keepouts for background stabilization"
+
+        # Prepare videos
+        v = v.clone().cropeven()  # make even for zero pad
+        vc = v.clone(flush=True).zeropad(padwidth, padheight).load().nofilename().nourl()       
+        
+        # Optical flow (three passes)        
         if verbose:
             print('[vipy.flow.stabilize]: Optical flow (3x)- %s' % v)
         vf = self.videoflow(v, framestep=1, flowstep=1)
         vfk1 = self.keyflow(v, keystep=keystep)
         vfk2 = self.keyflow(v, keystep=len(v)//2)        
-
-        # Affine stabilization
-        if verbose:
-            print('[vipy.flow.stabilize]: Affine stabilization ...')        
-        frames = []                
-        (A, T) = (np.array([ [1,0,0],[0,1,0]]).astype(np.float64), np.array([[0,0,pad],[0,0,pad]]))
-        f_estimator = cv2.estimateAffinePartial2D if rigid else cv2.estimateAffine2D
-        imstabilized = v[0].clone().rgb().zeropad(pad, pad)
-        vc = v.clone(flush=True).zeropad(pad,pad).load().nofilename().nourl()  
-        for (k, (im, imf, imfk1, imfk2)) in enumerate(zip(v, vf, vfk1, vfk2)):            
-            # Robust alignment 
+        
+        # Stabilization
+        assert rigid is True or affine is True
+        (A, T) = (np.array([ [1,0,0],[0,1,0],[0,0,1] ]).astype(np.float64), np.array([[1,0,padwidth],[0,1,padheight],[0,0,1]]).astype(np.float64))        
+        f_estimate_coarse = ((lambda s, *args, **kw: np.vstack( (cv2.estimateAffinePartial2D(s, *args, **kw)[0], [0,0,1])).astype(np.float64)) if rigid else
+                             (lambda s, *args, **kw: np.vstack( (cv2.estimateAffine2D(s, *args, **kw)[0], [0,0,1])).astype(np.float64)))
+        f_estimate_fine = (lambda s, *args, **kw: cv2.findHomography(s, *args, **kw)[0]) if not (rigid or affine) else f_estimate_coarse 
+        f_warp_coarse = cv2.warpAffine
+        f_warp_fine = cv2.warpAffine if (rigid or affine) else cv2.warpPerspective
+        f_transform_coarse = (lambda A: A[0:2,:])
+        f_transform_fine = (lambda A: A[0:2,:]) if (rigid or affine) else (lambda A: A)
+        imstabilized = v[0].clone().rgb().zeropad(padwidth, padheight)
+        frames = []                        
+        for (k, (im, imf, imfk1, imfk2)) in enumerate(zip(v, vf, vfk1, vfk2)): 
+            if verbose and k==0:
+                print('[vipy.flow.stabilize]: %s coarse to fine stabilization ...' % ('Euclidean' if rigid else 'Affine' if affine else 'Projective'))                
+           
+            # Coarse alignment 
             (xy_src_k0, xy_dst_k0) = self._correspondence(imf, im, border=border, dilate=dilate, contrast=contrast)
             (xy_src_k1, xy_dst_k1) = self._correspondence(imfk1, im, border=border, dilate=dilate, contrast=contrast)
             (xy_src_k2, xy_dst_k2) = self._correspondence(imfk2, im, border=border, dilate=dilate, contrast=contrast)
             (xy_src, xy_dst) = (np.hstack( (xy_src_k0, xy_src_k1, xy_src_k2) ).transpose(), np.hstack( (xy_dst_k0, xy_dst_k1, xy_dst_k2) ).transpose())
-            (M, inliers) = f_estimator(xy_src, xy_dst, method=cv2.RANSAC, confidence=0.9999, refineIters=5, ransacReprojThreshold=0.1)
+            M = f_estimate_coarse(xy_src, xy_dst, method=cv2.RANSAC, confidence=0.9999, ransacReprojThreshold=0.1, refineIters=16, maxIters=2000)
+
+            # Fine alignment
+            A = A.dot(M)  # update coarse reference frame
+            imfine = im.clone().array(f_warp_coarse(im.clone().numpy(), dst=imstabilized.clone().numpy(), M=f_transform_coarse(T.dot(A)), dsize=(imstabilized.width(), imstabilized.height()), borderMode=cv2.BORDER_TRANSPARENT), copy=True).objectmap(lambda o: o.projective(T.dot(A)))
+            imfinemask = f_warp_coarse(np.ones_like(im.clone().greyscale().numpy()), dst=np.zeros_like(imstabilized.numpy()), M=f_transform_coarse(T.dot(A)), dsize=(imstabilized.width(), imstabilized.height()), borderMode=cv2.BORDER_TRANSPARENT) > 0
+            imfineflow = self.imageflow(imfine, imstabilized)
+            (xy_src, xy_dst) = self._correspondence(imfineflow, imfine, border=None, dilate=dilate, contrast=contrast, validmask=imfinemask)
+            F = f_estimate_fine(xy_src.transpose()-np.array([padwidth, padheight]), xy_dst.transpose()-np.array([padwidth, padheight]), method=cv2.RANSAC, confidence=0.9999, ransacReprojThreshold=0.1, refineIters=16, maxIters=2000)  
             
-            # Render stabilized frame with aligned objects
-            A = A.dot(np.vstack( (M, [0,0,1])).astype(np.float64))  # update reference frame            
-            cv2.warpAffine(im.numpy(), dst=imstabilized._array, M=A+T, dsize=(imstabilized.width(), imstabilized.height()), borderMode=cv2.BORDER_TRANSPARENT)
-            vc.addframe( im.array(imstabilized.array(), copy=True).objectmap(lambda o: o.affine(A+T)), frame=k)
+            # Render coarse to fine stabilized frame with aligned objects
+            A = F.dot(A)  # update fine reference frame            
+            f_warp_fine(im.numpy(), dst=imstabilized._array, M=f_transform_fine(T.dot(A)), dsize=(imstabilized.width(), imstabilized.height()), borderMode=cv2.BORDER_TRANSPARENT)
+            vc.addframe( im.array(imstabilized.array(), copy=True).objectmap(lambda o: o.projective(T.dot(A))), frame=k)
                             
         return vc
             
-    def gpu(self):
-        pass
-
-
-
-    
-def FlowNet(Flow):
-    def __init__(self):
-        pass
-
-    def __call__(self, imprev, imnext):
-        pass
 
     
