@@ -87,6 +87,7 @@ class KF1(object):
         yamlfiles = zip(self._get_types_yaml(), self._get_geom_yaml(), self._get_activities_yaml())
         yamlfiles = [y for y in yamlfiles if contrib is True or 'contrib' not in y[0]]
         yamlfiles = list(yamlfiles)[0:n_videos] if n_videos is not None else list(yamlfiles)
+
         if verbose:
             print('[vipy.dataset.meva.KF1]: Loading %d YAML files' % len(yamlfiles))
             if len(yamlfiles) > 100 and vipy.globals.max_workers() == 1: 

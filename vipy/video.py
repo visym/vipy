@@ -693,7 +693,7 @@ class Video(object):
            * if flush=True, then flush this buffer right after saving the new video. This is useful for transcoding in parallel
            * framerate:  input framerate of the frames in the buffer, or the output framerate of the transcoded video.  If not provided, use framerate of source video
         """        
-        outfile = tocache(tempMP4()) if outfile is None else outfile
+        outfile = tocache(tempMP4()) if outfile is None else os.path.normpath(os.path.abspath(os.path.expanduser(outfile)))
         premkdir(outfile)  # create output directory for this file if not exists
         framerate = framerate if framerate is not None else self._framerate
 
@@ -743,7 +743,7 @@ class Video(object):
                 raise
 
         # Return a new video, cloned from this video with the new video file, optionally flush the video we loaded before returning
-        return self.clone(flushforward=True, flushfilter=True, flushbackward=flush).filename(outfile)
+        return self.clone(flushforward=True, flushfilter=True, flushbackward=flush).filename(outfile).nourl()
     
     def savetmp(self):
         return self.saveas(outfile=tempMP4())
