@@ -718,6 +718,15 @@ class BoundingBox():
         assert isnumpy(A) and A.shape == (3,3), "A must be a 3x3 affine transformation matrix"
         return self.centroid(dehomogenize(np.dot(A, homogenize(np.array(self.centroid())))))
     
+    def crop(self, img):
+        """Crop an HxW 2D numpy image, HxWxC 3D numpy image, or NxHxWxC 4D numpy image array using this bounding box applied to HxW dimensions.  Sets bounding box to integer coordinates"""
+        assert isnumpy(img) and img.ndim in [2,3,4]
+        if img.ndim == 2:
+            return img[self.int().ymin():self.ymax(), self.xmin():self.xmax()]  # HxW
+        elif img.ndim == 3:
+            return img[self.ymin():self.ymax(), self.xmin():self.xmax(), :]  # HxWxC
+        else: 
+            return img[:, self.ymin():self.ymax(), self.xmin():self.xmax(), :]  # NxHxWxC
     
 class Ellipse():
     def __init__(self, semi_major, semi_minor, xcenter, ycenter, phi):

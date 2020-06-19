@@ -233,6 +233,8 @@ def _test_scene():
     
     v = vid.clone().clip(0,200).rot90cw().resize(rows=200).load(verbose=False)
     assert v.height() == 200 and len(v) == 200
+    v = v.resize(rows=20, cols=19)
+    assert v.height() == 20 and v.width() == 19
     print('[test_video.scene]: rotate and resize  PASSED')
     
     v.annotate('vipy.mp4')
@@ -244,6 +246,8 @@ def _test_scene():
 
     v = vid.clone().crop(BoundingBox(xmin=32, ymin=32, width=128, height=128)).load(verbose=False)
     assert v.height() == 128 
+    v = v.crop(BoundingBox(xmin=0, ymin=0, width=10, height=11))  # after load
+    assert v.height() == 11 and v.width() == 10 
     print('[test_video.scene]: crop  PASSED')
 
     v = vid.clone().resize(256,256).randomcrop( (100,200)).load(verbose=False)
@@ -257,7 +261,9 @@ def _test_scene():
 
     v = vid.clone().fliplr().load(verbose=False)
     assert np.allclose(v[0].array(), np.fliplr(vid.load()[0].array()))
-    print('[test_video.scene]: fliplr PASSED')  # FIXME: unit test for Scene
+    v = v.fliplr()
+    assert np.allclose(v[0].array(), vid.load()[0].array())
+    print('[test_video.scene]: fliplr PASSED')  # FIXME: unit test for boxes too
 
     v = vid.flush().clone().flipud().load(verbose=False)
     assert np.allclose(v[0].array(), np.flipud(vid.load()[0].array()))
@@ -266,6 +272,8 @@ def _test_scene():
 
     v = vid.flush().clone().zeropad(32,64).load(verbose=False)
     assert v.width() == vid.clone().width()+2*32 and v.height() == vid.clone().height()+2*64 and v.array()[0,0,0,0] == 0 and v.array()[1,-1,-1,-1] == 0
+    v = v.zeropad(1,2)  # after load
+    assert v.width() == vid.clone().width()+2*32+(1*2) and v.height() == vid.clone().height()+2*64+(2*2) and v.array()[0,0,0,0] == 0 and v.array()[1,-1,-1,-1] == 0
     print('[test_video.scene]: zeropad  PASSED')
     vid.flush()
 

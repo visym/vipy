@@ -9,22 +9,19 @@ def random_positive_semidefinite_matrix(N):
     return np.dot(A,A.transpose())
 
 
-def column_stochastic(X):
-    X = X.astype(np.float32)
+def column_stochastic(X, eps=1E-16):
     x = np.sum(X, axis=0)
-    return X / (1E-16 + x.reshape((1, x.size)))
+    return X / (eps + x.reshape((1, x.size)))
 
 
-def row_stochastic(X):
-    X = X.astype(np.float32)
+def row_stochastic(X, eps=1E-16):
     x = np.sum(X, axis=1)
-    return X / (1E-16 + x.reshape((x.size, 1)))
+    return X / (eps + x.reshape((x.size, 1)))
 
 
-def rowstochastic(X):
-    X = X.astype(np.float32)
+def rowstochastic(X, eps=1E-16):
     x = X.sum(axis=1)
-    return X / (1E-16 + x.reshape((x.size, 1)))
+    return X / (eps + x.reshape((x.size, 1)))
 
 
 def bistochastic(X, numIterations=10):

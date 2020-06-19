@@ -585,9 +585,11 @@ class Video(object):
         return self
 
     def fliplr(self):
-        """Rotate the video 90 degrees counter-clockwise, can only be applied prior to load()"""        
-        assert not self.isloaded(), "Filters can only be applied prior to load() - Try calling flush() first"
-        self._ffmpeg = self._ffmpeg.filter('hflip')
+        """Mirror the video left/right by flipping horizontally"""
+        if not self.isloaded():
+            self._ffmpeg = self._ffmpeg.filter('hflip')
+        else:
+            self.array(np.stack([np.fliplr(f) for f in self._array]), copy=True)
         return self
 
     def flipud(self):
@@ -604,10 +606,14 @@ class Video(object):
 
     def resize(self, rows=None, cols=None):
         """Resize the video to be (rows, cols), can only be applied prior to load()"""
-        if rows is None and cols is None:
+        if ((rows is None and cols is None) or 
+            (self.shape() == (cols if cols is not None else int(np.round(self.width()*(rows/self.height()))),
+                              rows if rows is not None else int(np.round(self.height()*(cols/self.width())))))):
             return self
-        assert not self.isloaded(), "Filters can only be applied prior to load() - Try calling flush() first"
-        self._ffmpeg = self._ffmpeg.filter('scale', cols if cols is not None else -1, rows if rows is not None else -1)
+        if not self.isloaded():
+            self._ffmpeg = self._ffmpeg.filter('scale', cols if cols is not None else -1, rows if rows is not None else -1)
+        else:            
+            self.array(np.stack([im.resize(rows=rows, cols=cols).numpy() for im in self]), copy=True)
         return self
 
     def mindim(self, dim=None):
@@ -634,7 +640,7 @@ class Video(object):
         """Crop the video to shape=(H,W) preserving the integer centroid position, and optionally return the box"""
         assert shape[0] <= self.height() and shape[1] <= self.width()  # triggers preview()
         bb = vipy.geometry.BoundingBox(xcentroid=self.width()/2.0, ycentroid=self.height()/2.0, width=shape[1], height=shape[0]).int()  # may be outside frame
-        self.crop(bb, zeropad=True)  
+        self.crop(bb, zeropad=True)
         return self if not withbox else (self, bb)
 
     def centersquare(self):
@@ -664,14 +670,16 @@ class Video(object):
 
         """
         assert isinstance(padwidth, int) and isinstance(padheight, int)        
-        self._ffmpeg = self._ffmpeg.filter('pad', 'iw+%d' % (2*padwidth), 'ih+%d' % (2*padheight), '%d'%padwidth, '%d'%padheight)
+        if not self.isloaded():
+            self._ffmpeg = self._ffmpeg.filter('pad', 'iw+%d' % (2*padwidth), 'ih+%d' % (2*padheight), '%d'%padwidth, '%d'%padheight)
+        else:
+            self.array( np.pad(self.array(), ((0,0), (padheight,padheight), (padwidth,padwidth), (0,0))), copy=True)
         return self
 
     def crop(self, bb, zeropad=True):
         """Spatially crop the video using the supplied vipy.geometry.BoundingBox, can only be applied prior to load().
            If strict=False, then we do not perform bounds checking on this bounding box
         """
-        assert not self.isloaded(), "Filters can only be applied prior to load() - Try calling flush() first"
         assert isinstance(bb, vipy.geometry.BoundingBox), "Invalid input"
         assert not bb.isdegenerate() and bb.isnonnegative() 
         bb = bb.int()
@@ -679,7 +687,10 @@ class Video(object):
             # Crop outside the image rectangle will segfault ffmpeg, pad video first (if zeropad=False, then rangecheck will not occur!)
             self.zeropad(bb.width(), bb.height())     # cannot be called in derived classes
             bb = bb.offset(bb.width(), bb.height())   # Shift boundingbox by padding
-        self._ffmpeg = self._ffmpeg.filter('crop', '%d' % bb.width(), '%d' % bb.height(), '%d' % bb.xmin(), '%d' % bb.ymin(), 0, 1)  # keep_aspect=False, exact=True
+        if not self.isloaded():
+            self._ffmpeg = self._ffmpeg.filter('crop', '%d' % bb.width(), '%d' % bb.height(), '%d' % bb.xmin(), '%d' % bb.ymin(), 0, 1)  # keep_aspect=False, exact=True
+        else:
+            self.array( bb.crop(self.array()), copy=True )
         return self
 
     def saveas(self, outfile=None, framerate=None, vcodec='libx264', verbose=False, ignoreErrors=False, flush=False):
@@ -1208,10 +1219,10 @@ class Scene(VideoCategory):
         return self.activitylabels()        
         
     def hasactivities(self):
-        return len(self._activities) > 0
+        return len(self._activities) > 0 and any([len(a)>0 for a in self.activitylist()])
 
     def hastracks(self):
-        return len(self._tracks) > 0
+        return len(self._tracks) > 0 and any([len(t)>0 for t in self.tracklist()])
 
     def hastrack(self, trackid):
         return trackid in self._tracks
@@ -1418,18 +1429,15 @@ class Scene(VideoCategory):
         assert self.hastrack(trackid), "Track ID %s not found - Actortube requires a track ID in the scene (tracks=%s)" % (str(trackid), str(self.tracks()))
         vid = self.clone().load()  # triggers load        
         t = vid.tracks(id=trackid)  # actor track
-        frames = [im.padcrop(t[k].maxsquare().dilate(dilate).int()).resize(maxdim, maxdim) for (k,im) in enumerate(vid) if t.during(k)]  # track interpolation, for frames with boxes for this actor only
-        if len(frames) != len(vid):
-            warnings.warn('[vipy.video.actortube]: Removed %d frames with no spatial bounding boxes for actorid "%s"' % (len(vid) - len(frames), trackid))
-            vid.attributes['actortube'] = {'truncated':len(vid) - len(frames)}  # provenance to reject
+        frames = [im.padcrop(t[k].maxsquare().dilate(dilate).int()).resize(maxdim, maxdim) for (k,im) in enumerate(vid) if t.during(k)]  # actor interpolation, padding may introduce frames with no tracks
         if len(frames) == 0:
             warnings.warn('[vipy.video.actortube]: Resulting video is empty!  Setting actortube to zero')
             frames = [ vid[0].resize(maxdim, maxdim).zeros() ]  # empty frame
             vid.attributes['actortube'] = {'empty':True}   # provenance to reject 
-        vid._tracks = {ti:vipy.object.Track(keyframes=[f for (f,im) in enumerate(frames) for d in im.objects() if d.attributes['trackid'] == ti],
-                                            boxes=[d for (f,im) in enumerate(frames) for d in im.objects() if d.attributes['trackid'] == ti],
+        vid._tracks = {ti:vipy.object.Track(keyframes=[f for (f,im) in enumerate(frames) for d in im.objects() if d.attributes['trackid'] == ti],  # keyframes zero indexed, relative to [frames]
+                                            boxes=[d for (f,im) in enumerate(frames) for d in im.objects() if d.attributes['trackid'] == ti],  # one box per frame
                                             category=t.category(), trackid=ti)  # preserve trackid
-                       for (k,(ti,t)) in enumerate(self._tracks.items())}  # replace tracks with boxes relative to tube
+                       for (k,(ti,t)) in enumerate(self._tracks.items())}  # replace tracks with interpolated boxes relative to tube defined by actor
         return vid.array(np.stack([im.numpy() for im in frames]))
 
 
@@ -1445,7 +1453,6 @@ class Scene(VideoCategory):
             
     def crop(self, bb, zeropad=True):
         """Crop the video using the supplied box, update tracks relative to crop, video is zeropadded if box is outside frame rectangle"""
-        assert not self.isloaded(), "Filters can only be applied prior to load() - Try calling flush() first"
         assert isinstance(bb, vipy.geometry.BoundingBox), "Invalid input"
         bb = bb.int()
         if zeropad and bb != bb.clone().imclipshape(self.width(), self.height()):
@@ -1456,14 +1463,12 @@ class Scene(VideoCategory):
         return self
     
     def zeropad(self, padwidth, padheight):
-        assert not self.isloaded(), "Filters can only be applied prior to load() - Try calling flush() first"
         assert isinstance(padwidth, int) and isinstance(padheight, int)
         super(Scene, self).zeropad(padwidth, padheight)  
         self._tracks = {k:t.offset(dx=padwidth, dy=padheight) for (k,t) in self._tracks.items()}
         return self
         
     def fliplr(self):
-        assert not self.isloaded(), "Filters can only be applied prior to load() - Try calling flush() first"                
         (H,W) = self.shape()  # yuck, need to get image dimensions before filter
         self._tracks = {k:t.fliplr(H,W) for (k,t) in self._tracks.items()}
         super(Scene, self).fliplr()
@@ -1492,7 +1497,6 @@ class Scene(VideoCategory):
 
     def resize(self, rows=None, cols=None):
         """Resize the video to (rows, cols), preserving the aspect ratio if only rows or cols is provided"""
-        assert not self.isloaded(), "Filters can only be applied prior to load() - Try calling flush() first"                
         assert rows is not None or cols is not None, "Invalid input"
         (H,W) = self.shape()  # yuck, need to get image dimensions before filter
         sy = rows / float(H) if rows is not None else cols / float(W)
