@@ -8,6 +8,7 @@ import vipy.object
 import PIL.Image
 import copy
 import vipy.geometry
+import warnings
 
 
 class Image(object):
@@ -287,7 +288,9 @@ class Flow(object):
 
         """        
         assert isinstance(v, vipy.video.Scene), "Invalid input - Must be vipy.video.Scene() with foreground object keepouts for background stabilization"
-
+        if min(v.shape()) != 256:
+            warnings.warn('You should resize the input video to v.mindim(256) prior to calling this function, otherwise it will take a while')
+        
         # Prepare videos
         v = v.clone().cropeven()  # make even for zero pad
         vc = v.clone(flush=True).zeropad(padwidth, padheight).load().nofilename().nourl()       

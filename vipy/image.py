@@ -993,15 +993,15 @@ class Image(object):
     def savefig(self, filename=None):
         """Save last figure output from self.show() with drawing overlays to provided filename and return filename"""
         self.show(figure=1, nowindow=True)  # sets figure dimensions, does not display window
-        if filename is None:
-            (W,H) = plt.figure(1).canvas.get_width_height()  # fast
-            buf = io.BytesIO()
-            plt.figure(1).canvas.print_raw(buf)  # fast
-            img = np.frombuffer(buf.getvalue(), dtype=np.uint8).reshape((H, W, 4))  # RGBA
-            plt.close(1)  # memory cleanup
-            return vipy.image.Image(array=img, colorspace='rgba')
-        else:
-            return savefig(filename)
+        (W,H) = plt.figure(1).canvas.get_width_height()  # fast
+        buf = io.BytesIO()
+        plt.figure(1).canvas.print_raw(buf)  # fast
+        img = np.frombuffer(buf.getvalue(), dtype=np.uint8).reshape((H, W, 4))  # RGBA
+        plt.close(1)  # memory cleanup
+        t = vipy.image.Image(array=img, colorspace='rgba')
+        if filename is not None:
+            t.saveas(filename)
+        return t
 
     def map(self, func):
         """Apply lambda function to our numpy array img, such that newimg=f(img), then replace newimg -> self.array().  The output of this lambda function must be a numpy array and if the channels or dtype changes, the colorspace is set to 'float'"""

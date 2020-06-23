@@ -1614,7 +1614,7 @@ class Scene(VideoCategory):
     
     def thumbnail(self, outfile=None, frame=0, fontsize=10, nocaption=False, boxalpha=0.25, dpi=200, textfacecolor='white', textfacealpha=1.0):
         """Return annotated frame=k of video, save annotation visualization to provided outfile"""
-        return self.__getitem__(frame).savefig(outfile if outfile is not None else temppng(), fontsize=fontsize, nocaption=nocaption, boxalpha=boxalpha, dpi=dpi, textfacecolor=textfacecolor, textfacealpha=textfacealpha)
+        return self.__getitem__(frame).savefig(outfile=outfile, fontsize=fontsize, nocaption=nocaption, boxalpha=boxalpha, dpi=dpi, textfacecolor=textfacecolor, textfacealpha=textfacealpha)
 
     
 def RandomVideo(rows=None, cols=None, frames=None):
