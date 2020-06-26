@@ -1525,14 +1525,16 @@ class Scene(VideoCategory):
         super(Scene, self).rescale(s)
         return self
 
-    def union(self, other, temporal_iou_threshold=0.5, spatial_iou_threshold=0.9, strict=True):
-        """Compute the union two scenes as the set of unique activities.  
+    def union(self, other, temporal_iou_threshold=0.5, spatial_iou_threshold=0.8, strict=True):
+        """Compute the union two scenes as the set of unique activities and tracks.  
 
            A pair of activities or tracks are non-unique if they overlap spatially and temporally by a given IoU threshold.  Merge overlapping tracks. 
+           Tracks are merged by considering the mean IoU at the overlapping segment of two tracks with the same category greater than the provided spatial_iou_threshold threshold
+           Activities are merged by considering the temporal IoU of the activities of the same class greater than the provided temporal_iou_threshold threshold
   
            Input:
              -Other: Scene or list of scenes for union
-             -spatial_iou_threshold:  The intersection over union threshold for an activity bounding box (the union of all tracks within the activity) to be declared duplicates.  Disable by setting to 1.0
+             -spatial_iou_threshold:  The intersection over union threshold for the mean of the two segments of an overlapping track, Disable by setting to 1.0
              -temporal_iou_threshold:  The intersection over union threshold for a temporal bounding box for a pair of activities to be declared duplicates.  Disable by setting to 1.0
              -strict:  Require both scenes to share the same underlying video filename
 
@@ -1550,7 +1552,7 @@ class Scene(VideoCategory):
             # Merge tracks 
             for (i,ti) in self.tracks().items():
                 for (j,tj) in otherclone.tracks().items():
-                    if ti.category() == tj.category() and ti.endpointiou(tj) > spatial_iou_threshold:  # maximum framewise overlap at endpoints >threshold
+                    if ti.category() == tj.category() and ti.segmentiou(tj) > spatial_iou_threshold:  # mean framewise overlap during overlapping segment of two tracks
                         print('[vipy.video.union]: merging track "%s" -> "%s" for scene "%s"' % (str(ti), str(tj), str(self)))
                         self.tracks()[i] = ti.average(tj)  # merge duplicate tracks
                         otherclone = otherclone.activitymap(lambda a: a.replace(tj, ti))  # replace duplicate track reference in activity
