@@ -1,5 +1,5 @@
 import os
-from vipy.util import remkdir, readjson, readyaml, findyaml, findvideo, filetail, findjson, filebase, readlist, groupbyasdict, save, flatlist, isstring, tempdir, readcsv, delpath, temphtml
+from vipy.util import remkdir, readjson, readyaml, findyaml, findvideo, filetail, findjson, filebase, readlist, groupbyasdict, save, flatlist, isstring, tempdir, readcsv, delpath, temphtml, tolist
 from vipy.video import VideoCategory, Scene
 from vipy.object import Track
 from vipy.activity import Activity
@@ -13,7 +13,7 @@ import vipy.globals
 
 
 class KF1(object):
-    def __init__(self, videodir, repodir, contrib=False, stride=1, verbose=True, n_videos=None, d_category_to_shortlabel=None, merge=False, actor=False, disjoint=False, unpad=False):
+    def __init__(self, videodir, repodir, contrib=False, stride=1, verbose=True, n_videos=None, withprefix=None, d_category_to_shortlabel=None, merge=False, actor=False, disjoint=False, unpad=False):
         """Parse MEVA annotations (http://mevadata.org) for KNown Facility 1 dataset into vipy.video.Scene() objects
        
         Kwiver packet format: https://gitlab.kitware.com/meva/meva-data-repo/blob/master/documents/KPF-specification-v4.pdf
@@ -22,6 +22,7 @@ class KF1(object):
           -repodir=str:  path to directory containing clone of https://gitlab.kitware.com/meva/meva-data-repo
           -stride=int: the temporal stride in frames for importing bounding boxes, vipy will do linear interpoluation and boundary handling
           -n_videos=int:  only return an integer number of videos, useful for debugging or for previewing dataset
+          -withprefix=list:  only return videos with the filename containing one of the strings in withprefix list, useful for debugging
           -contrib=bool:  include the noisy contrib anntations from DIVA performers
           -d_category_to_shortlabel is a dictionary mapping category names to a short displayed label on the video.  The standard for visualization is that 
             tracked objects are displayed with their category label (e.g. 'Person', 'Vehicle'), and activities are labeled according to the set of objects that
@@ -87,6 +88,8 @@ class KF1(object):
         yamlfiles = zip(self._get_types_yaml(), self._get_geom_yaml(), self._get_activities_yaml())
         yamlfiles = [y for y in yamlfiles if contrib is True or 'contrib' not in y[0]]
         yamlfiles = list(yamlfiles)[0:n_videos] if n_videos is not None else list(yamlfiles)
+        if withprefix is not None:            
+            yamlfiles = [y for y in yamlfiles if any([(p in y[0]) for p in tolist(withprefix)])]  
 
         if verbose:
             print('[vipy.dataset.meva.KF1]: Loading %d YAML files' % len(yamlfiles))
