@@ -709,7 +709,7 @@ class Video(object):
             self.array( bb.crop(self.array()), copy=True )
         return self
 
-    def saveas(self, outfile=None, framerate=None, vcodec='libx264', verbose=False, ignoreErrors=False, flush=False):
+    def saveas(self, outfile=None, framerate=None, vcodec='libx264', verbose=False, ignoreErrors=False, flush=False, pause=3):
         """Save video to new output video file.  This function does not draw boxes, it saves pixels to a new video file.
 
            * If self.array() is loaded, then export the contents of self._array to the video file
@@ -729,7 +729,10 @@ class Video(object):
         try:
             if iswebp(outfile):
                 # Save to animated webp image, and return the image file directly
-                self.load().frame(0).pil().save(outfile, append_images=[im.pil() for im in self.frames()], loop=0, save_all=True, method=0, duration=int((1.0/framerate)*1000.0))
+                # This animated image loops indefinitely, but pauses for pause=8 seconds after last frame before repeating
+                self.load().frame(0).pil().save(outfile, loop=0, save_all=True, method=0, 
+                                                append_images=[self.frame(k).pil() for k in range(1, len(self))],
+                                                duration=[pause*1000] + [int(1000.0/framerate) for k in range(0, len(self)-1)])
                 return outfile
                 
             elif self.isloaded():
