@@ -155,6 +155,9 @@ def countby(inset, keyfunc):
     """Return dictionary of keys and group sizes for a grouping of the input list by keyfunc lambda function""" 
     return {k:len(v) for (k,v) in groupbyasdict(inset, keyfunc).items()}
 
+def countbyasdict(inset, keyfunc):
+    """Alias for countby"""
+    return countby(inset, keyfunc)
 
 def softmax(x, temperature=1.0):
     """Row-wise softmax"""
@@ -947,6 +950,9 @@ def isgif(path):
 
 def isjpeg(path):
     return hasextension(path) and fileext(path).lower() == '.jpg' or fileext(path).lower() == '.jpeg'
+
+def iswebp(path):
+    return hasextension(path) and fileext(path).lower() == '.webp'
 
 
 def isjpg(path):

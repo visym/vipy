@@ -2,7 +2,7 @@ import os
 import dill
 from vipy.util import remkdir, tempMP4, isurl, \
     isvideourl, templike, tempjpg, filetail, tempdir, isyoutubeurl, try_import, isnumpy, temppng, \
-    istuple, islist, isnumber, tolist, filefull, fileext, isS3url, totempdir, flatlist, tocache, premkdir, writecsv
+    istuple, islist, isnumber, tolist, filefull, fileext, isS3url, totempdir, flatlist, tocache, premkdir, writecsv, iswebp
 from vipy.image import Image
 import vipy.geometry
 import vipy.math
@@ -52,7 +52,7 @@ class Video(object):
     Note that the video transformations (clip, resize, rescale, rotate) are only available prior to load(), and the array() is assumed immutable after load().
 
     """
-    def __init__(self, filename=None, url=None, framerate=30.0, attributes=None, array=None, colorspace=None, startframe=None, endframe=None, startsec=None, endsec=None):
+    def __init__(self, filename=None, url=None, framerate=30.0, attributes=None, array=None, colorspace=None, startframe=None, endframe=None, startsec=None, endsec=None, frames=None):
         self._url = None
         self._filename = None
         self._array = None
@@ -61,7 +61,7 @@ class Video(object):
         self._framerate = framerate
         
         self.attributes = attributes if attributes is not None else {}
-        assert filename is not None or url is not None or array is not None, 'Invalid constructor - Requires "filename", "url" or "array"'
+        assert filename is not None or url is not None or array is not None or frames is not None, 'Invalid constructor - Requires "filename", "url" or "array" or "frames"'
 
         # FFMPEG installed?
         ffmpeg_exe = shutil.which('ffmpeg')
@@ -110,10 +110,13 @@ class Video(object):
             self.cliptime(startsec, endsec)
             
         # Array input
+        assert not (array is not None and frames is not None)
         if array is not None:
             self.array(array)
             self.colorspace(colorspace)
-
+        elif frames is not None:
+            self.fromframes(frames)
+            
     def __repr__(self):
         strlist = []
         if self.isloaded():
@@ -144,6 +147,10 @@ class Video(object):
         else:
             raise ValueError('Invalid frame index %d ' % k)
 
+    def frame(self, k):
+        """Alias for self.__getitem__[k]"""
+        return self.__getitem__(k)
+        
     def __iter__(self):
         """Iterate over frames, yielding vipy.image.Image object for each frame"""
         self.load()
@@ -152,6 +159,10 @@ class Video(object):
             for k in range(0, len(self)):
                 yield self.__getitem__(k)
 
+    def frames(self):
+        """Alias for __iter__()"""
+        return self.__iter__()
+                
     def _update_ffmpeg(self, argname, argval):
         nodes = ffmpeg.nodes.get_stream_spec_nodes(self._ffmpeg)
         sorted_nodes, outgoing_edge_maps = ffmpeg.dag.topo_sort(nodes)
@@ -296,6 +307,11 @@ class Video(object):
     def fromarray(self, array):
         """Alias for self.array(..., copy=True), which forces the new array to be a copy"""
         return self.array(array, copy=True)
+
+    def fromframes(self, framelist):
+        """Create a video from a list of frames"""
+        assert all([isinstance(im, vipy.image.Image) for im in framelist])        
+        return self.array(np.stack([im.array() for im in framelist]), copy=True).colorspace(framelist[0].colorspace())
     
     def tonumpy(self):
         """Alias for numpy()"""
@@ -711,7 +727,12 @@ class Video(object):
         if verbose:
             print('[vipy.video.saveas]: Saving video "%s" ...' % outfile)                      
         try:
-            if self.isloaded():
+            if iswebp(outfile):
+                # Save to animated webp image
+                self.load().frame(0).pil().save(outfile, append_images=[im.pil() for im in self.frames()], loop=0, save_all=True, method=0)
+                return outfile
+                
+            elif self.isloaded():
                 # Save numpy() from load() to video, forcing to be even shape
                 (n, height, width, channels) = self._array.shape
                 process = ffmpeg.input('pipe:', format='rawvideo', pix_fmt='rgb24', s='{}x{}'.format(width, height), r=framerate) \
@@ -1083,15 +1104,7 @@ class Scene(VideoCategory):
             return True
         except:
             return False
-        
-    def frame(self, k):
-        """Alias for self.__getitem__[k]"""
-        return self.__getitem__(k)
-
-    def frames(self):
-        """Alias for __iter__()"""
-        return self.__iter__()
-    
+            
     def labeled_frames(self):
         """Iterate over frames, yielding tuples (activity+object labelset in scene, vipy.image.Scene())"""
         self.load()
@@ -1100,8 +1113,17 @@ class Scene(VideoCategory):
             yield (self.labels(k), self.__getitem__(k))
         self._currentframe = None
         
-        
-    def quicklook(self, n=9, dilate=1.5, mindim=256, fontsize=10, context=False):
+
+    def framecomposite(self, n=2, dt=10, mindim=256):
+        """Generate a single composite image with minimum dimension mindim as the uniformly blended composite of n frames each separated by dt frames"""
+        if not self.isloaded():
+            self.mindim(mindim).load()
+        imframes = [self.frame(k).maxmatte() for k in range(0, dt*n, dt)]
+        img = np.uint8(np.sum([1/float(n)*im.array() for im in imframes], axis=0))
+        return imframes[0].clone().array(img)
+
+    
+    def quicklook(self, n=9, dilate=1.5, mindim=256, fontsize=10, context=False, startframe=0, animate=False, dt=30):
         """Generate a montage of n uniformly spaced annotated frames centered on the union of the labeled boxes in the current frame to show the activity ocurring in this scene at a glance
            Montage increases rowwise for n uniformly spaced frames, starting from frame zero and ending on the last frame.  This quicklook is most useful when len(self.activities()==1)
            for generating a quicklook from an activityclip().
@@ -1112,10 +1134,15 @@ class Scene(VideoCategory):
               -mindim:  The minimum dimension of each of the elemnets in the montage
               -fontsize:  The size of the font for the bounding box label
               -context:  If true, replace the first and last frame in the montage with the full frame annotation, to help show the scale of the scene
+              -animate:  If true, return a video constructed by animating the quicklook into a video by showing dt consecutive frames
+              -dt:  The number of frames for animation
+              -startframe:  The initial frame index to start the n uniformly sampled frames for the quicklook
         """
+        if animate:
+            return Video(frames=[self.clone().quicklook(n=n, dilate=dilate, mindim=mindim, fontsize=fontsize, context=context, startframe=k, animate=False, dt=dt) for k in range(0,dt)])
         if not self.isloaded():
             self.mindim(mindim).load()
-        framelist = [int(np.round(f)) for f in np.linspace(0, len(self)-1, n)]
+        framelist = [int(np.round(f))+startframe for f in np.linspace(0, len(self)-startframe-1, n)]
         imframes = [self.frame(k).maxmatte()  # letterbox or pillarbox
                     if (self.frame(k).boundingbox() is None) or (context is True and (k == framelist[0] or k == framelist[-1])) else
                     self.frame(k).padcrop(self.frame(k).boundingbox().dilate(dilate).imclipshape(self.width(), self.height()).maxsquare().int()).mindim(mindim, interp='nearest')
