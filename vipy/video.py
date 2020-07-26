@@ -2,7 +2,7 @@ import os
 import dill
 from vipy.util import remkdir, tempMP4, isurl, \
     isvideourl, templike, tempjpg, filetail, tempdir, isyoutubeurl, try_import, isnumpy, temppng, \
-    istuple, islist, isnumber, tolist, filefull, fileext, isS3url, totempdir, flatlist, tocache, premkdir, writecsv, iswebp
+    istuple, islist, isnumber, tolist, filefull, fileext, isS3url, totempdir, flatlist, tocache, premkdir, writecsv, iswebp, ispng, isgif
 from vipy.image import Image
 import vipy.geometry
 import vipy.math
@@ -712,6 +712,7 @@ class Video(object):
     def saveas(self, outfile=None, framerate=None, vcodec='libx264', verbose=False, ignoreErrors=False, flush=False, pause=5):
         """Save video to new output video file.  This function does not draw boxes, it saves pixels to a new video file.
 
+           * outfile: the absolute path to the output video file.  This extension can be .mp4 (for video) or [".webp",".gif"]  (for animated image)
            * If self.array() is loaded, then export the contents of self._array to the video file
            * If self.array() is not loaded, and there exists a valid video file, apply the filter chain directly to the input video
            * If outfile==None or outfile==self.filename(), then overwrite the current filename 
@@ -719,6 +720,7 @@ class Video(object):
            * Returns a new video object with this video filename, and a clean video filter chain
            * if flush=True, then flush this buffer right after saving the new video. This is useful for transcoding in parallel
            * framerate:  input framerate of the frames in the buffer, or the output framerate of the transcoded video.  If not provided, use framerate of source video
+           * pause:  an integer in seconds to pause between loops of animated WEBP animated images
         """        
         outfile = tocache(tempMP4()) if outfile is None else os.path.normpath(os.path.abspath(os.path.expanduser(outfile)))
         premkdir(outfile)  # create output directory for this file if not exists
@@ -727,14 +729,14 @@ class Video(object):
         if verbose:
             print('[vipy.video.saveas]: Saving video "%s" ...' % outfile)                      
         try:
-            if iswebp(outfile):
+            if iswebp(outfile) or isgif(outfile):
                 # Save to animated webp image, and return the image file directly
                 # This animated image loops indefinitely, but pauses for pause=8 seconds after last frame before repeating
-                self.load().frame(0).pil().save(outfile, loop=0, save_all=True, method=0, 
+                self.load().frame(0).pil().save(outfile, loop=0, save_all=True, 
                                                 append_images=[self.frame(k).pil() for k in range(1, len(self))],
                                                 duration=[pause*1000] + [int(1000.0/framerate) for k in range(0, len(self)-1)])
                 return outfile
-                
+
             elif self.isloaded():
                 # Save numpy() from load() to video, forcing to be even shape
                 (n, height, width, channels) = self._array.shape

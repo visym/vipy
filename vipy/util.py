@@ -954,6 +954,12 @@ def isjpeg(path):
 def iswebp(path):
     return hasextension(path) and fileext(path).lower() == '.webp'
 
+def ispng(path):
+    return hasextension(path) and (fileext(path).lower() == '.png' or fileext(path).lower() == '.apng')
+
+def isgif(path):
+    return hasextension(path) and fileext(path).lower() == '.gif'
+
 
 def isjpg(path):
     return isjpeg(path)
