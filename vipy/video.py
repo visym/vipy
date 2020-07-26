@@ -728,8 +728,8 @@ class Video(object):
             print('[vipy.video.saveas]: Saving video "%s" ...' % outfile)                      
         try:
             if iswebp(outfile):
-                # Save to animated webp image
-                self.load().frame(0).pil().save(outfile, append_images=[im.pil() for im in self.frames()], loop=0, save_all=True, method=0)
+                # Save to animated webp image, and return the image file directly
+                self.load().frame(0).pil().save(outfile, append_images=[im.pil() for im in self.frames()], loop=0, save_all=True, method=0, duration=int((1.0/framerate)*1000.0))
                 return outfile
                 
             elif self.isloaded():
