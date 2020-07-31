@@ -2,7 +2,7 @@ import os
 import dill
 from vipy.util import remkdir, tempMP4, isurl, \
     isvideourl, templike, tempjpg, filetail, tempdir, isyoutubeurl, try_import, isnumpy, temppng, \
-    istuple, islist, isnumber, tolist, filefull, fileext, isS3url, totempdir, flatlist, tocache, premkdir, writecsv, iswebp, ispng, isgif
+    istuple, islist, isnumber, tolist, filefull, fileext, isS3url, totempdir, flatlist, tocache, premkdir, writecsv, iswebp, ispng, isgif, filepath
 from vipy.image import Image
 import vipy.geometry
 import vipy.math
@@ -139,11 +139,11 @@ class Video(object):
 
     def __getitem__(self, k):
         """Return the kth frame as an vipy.image object"""
-        assert isinstance(k, int), "Indexing video by frame must be integer"        
-        if k >= 0 and k < len(self):
+        assert isinstance(k, int), "Indexing video by frame must be integer"
+        if not self.isloaded():
+            raise ValueError('Video not loaded, load() before indexing')        
+        elif k >= 0 and k < len(self):
             return Image(array=self._array[k], colorspace=self.colorspace())
-        elif not self.isloaded():
-            raise ValueError('Video not loaded, load() before indexing')
         else:
             raise ValueError('Invalid frame index %d ' % k)
 
@@ -346,6 +346,12 @@ class Video(object):
         self._filename = newfile
         return self
 
+    def rename(self, newname):
+        """Change the name of the underlying video file preserving the absolute path, such that self.filename() == '/a/b/c.ext' and newname='d.ext', then self.filename() -> '/a/b/d.ext'"""
+        newfile = os.path.join(filepath(self.filename()), newname)
+        shutil.move(self.filename(), newfile)        
+        return self.filename(newfile)
+    
     def filesize(self):
         """Return the size in bytes of the filename(), None if the filename() is invalid"""
         return os.path.getsize(self.filename()) if self.hasfilename() else None
@@ -493,7 +499,7 @@ class Video(object):
                             .global_args('-cpuflags', '0', '-loglevel', 'debug' if vipy.globals.verbose() else 'error')
             (out, err) = f.run(capture_stdout=True)            
         except Exception as e:
-            raise ValueError('[vipy.video.load]: Video preview failed for video "%s" with ffmpeg command "%s" - Try manually running ffmpeg to see errors' % (str(self), str(self._ffmpeg_commandline(f))))
+            raise ValueError('[vipy.video.load]: Video preview failed for video "%s" with ffmpeg command "%s" - Try manually running ffmpeg to see errors.  This error usually means that you need to upgrade your FFMPEG distribution to the latest stable version.' % (str(self), str(self._ffmpeg_commandline(f))))
 
         # [EXCEPTION]:  UnidentifiedImageError: cannot identify image file
         #   -This may occur when the framerate of the video from ffprobe (tbr) does not match that passed to fps filter, resulting in a zero length image preview piped to stdout
@@ -552,13 +558,13 @@ class Video(object):
                             .global_args('-cpuflags', '0', '-loglevel', 'debug' if vipy.globals.verbose() else 'error')
             (out, err) = f.run(capture_stdout=True)
         except Exception as e:
-            raise ValueError('[vipy.video.load]: Load failed for video "%s" with ffmpeg command "%s" - Try load(verbose=True) or manually running ffmpeg to see errors' % (str(self), str(self._ffmpeg_commandline(f))))
+            raise ValueError('[vipy.video.load]: Load failed for video "%s" with ffmpeg command "%s" - Try load(verbose=True) or manually running ffmpeg to see errors.  This error usually means that you need to upgrade your FFMPEG distribution to the latest stable version.' % (str(self), str(self._ffmpeg_commandline(f))))
 
         # [EXCEPTION]:  older ffmpeg versions may be off by one on the size returned from self._preview() which uses an image decoder vs. f.run() which uses a video decoder
         #    -Try to correct this manually by searching for a one-off decoding that works.  The right way is to upgrade your FFMPEG version to the FFMPEG head (11JUN20)
         (height, width, channels) = (self.height(), self.width(), self.channels())
         if len(out) % (height*width*channels) != 0:
-            warnings.warn('Your FFMPEG version is old and is triggering a known bug that is being manually worked around in an inefficient manner.  Consider upgrading your FFMPEG distribution.')
+            warnings.warn('Your FFMPEG version is old and is triggering a known bug that is being manually worked around in an inefficient manner.  Consider upgrading your FFMPEG distribution to the latest stable.')
             newwidth = width + 1 if (len(out) % (height*(width+1)*channels) == 0) else width
             newwidth = width - 1 if (len(out) % (height*(width-1)*channels) == 0) else newwidth            
             newheight = height + 1 if (len(out) % ((height+1)*width*channels) == 0) else height
@@ -709,6 +715,32 @@ class Video(object):
             self.array( bb.crop(self.array()), copy=True )
         return self
 
+    def webp(self, outfile, pause=3, strict=True, smallest=False, smaller=False):
+        """Save a video to an animated WEBP file, with pause=N seconds between loops.  
+        
+           -strict=[bool]: assert that the filename must have an .webp extension
+           -pause=[int]: seconds to pause between loops of the animation
+           -smallest=[bool]:  create the smallest possible file but takes much longer to run
+           -smaller=[bool]:  create a smaller file, which takes a little longer to run 
+        """
+        assert strict is False or iswebp(outfile)
+        outfile = os.path.normpath(os.path.abspath(os.path.expanduser(outfile)))
+        self.load().frame(0).pil().save(outfile, loop=0, save_all=True, method=6 if smallest else 3 if smaller else 0,
+                                        append_images=[self.frame(k).pil() for k in range(1, len(self))],
+                                        duration=[pause*1000] + [int(1000.0/self._framerate) for k in range(0, len(self)-1)])
+        return outfile
+
+    def gif(self, outfile, pause=3, smallest=False, smaller=False):
+        """Save a video to an animated GIF file, with pause=N seconds between loops.  
+
+           WARNING:  this will be very large for big videos, consider using webp instead.
+           -pause=[int]: seconds to pause between loops of the animation
+           -smallest=[bool]:  create the smallest possible file but takes much longer to run
+           -smaller=[bool]:  create a smaller file, which takes a little longer to run 
+        """        
+        assert isgif(outfile)
+        return self.webp(outfile, pause, strict=False, smallest=smallest, smaller=True)
+        
     def saveas(self, outfile=None, framerate=None, vcodec='libx264', verbose=False, ignoreErrors=False, flush=False, pause=5):
         """Save video to new output video file.  This function does not draw boxes, it saves pixels to a new video file.
 
@@ -729,14 +761,10 @@ class Video(object):
         if verbose:
             print('[vipy.video.saveas]: Saving video "%s" ...' % outfile)                      
         try:
-            if iswebp(outfile) or isgif(outfile):
-                # Save to animated webp image, and return the image file directly
-                # This animated image loops indefinitely, but pauses for pause=8 seconds after last frame before repeating
-                self.load().frame(0).pil().save(outfile, loop=0, save_all=True, 
-                                                append_images=[self.frame(k).pil() for k in range(1, len(self))],
-                                                duration=[pause*1000] + [int(1000.0/framerate) for k in range(0, len(self)-1)])
-                return outfile
-
+            if iswebp(outfile):
+                return self.webp(outfile, pause)
+            elif isgif(outfile):
+                return self.gif(outfile, pause)
             elif self.isloaded():
                 # Save numpy() from load() to video, forcing to be even shape
                 (n, height, width, channels) = self._array.shape
@@ -784,10 +812,6 @@ class Video(object):
     
     def savetmp(self):
         return self.saveas(outfile=tempMP4())
-
-    def pptx(self, outfile):
-        """Export the video in a format that can be played by powerpoint"""
-        pass
 
     def play(self, verbose=True):
         """Play the saved video filename in self.filename() using the system 'ffplay', if there is no filename, try to download it """
@@ -1143,10 +1167,10 @@ class Scene(VideoCategory):
               -dt:  The number of frames for animation
               -startframe:  The initial frame index to start the n uniformly sampled frames for the quicklook
         """
-        if animate:
-            return Video(frames=[self.clone().quicklook(n=n, dilate=dilate, mindim=mindim, fontsize=fontsize, context=context, startframe=k, animate=False, dt=dt) for k in range(0,dt)])
         if not self.isloaded():
-            self.mindim(mindim).load()
+            self.mindim(mindim).load()        
+        if animate:
+            return Video(frames=[self.quicklook(n=n, dilate=dilate, mindim=mindim, fontsize=fontsize, context=context, startframe=k, animate=False, dt=dt) for k in range(0, min(dt, len(self)))])
         framelist = [int(np.round(f))+startframe for f in np.linspace(0, len(self)-startframe-1, n)]
         imframes = [self.frame(k).maxmatte()  # letterbox or pillarbox
                     if (self.frame(k).boundingbox() is None) or (context is True and (k == framelist[0] or k == framelist[-1])) else

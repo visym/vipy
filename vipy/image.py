@@ -1620,10 +1620,10 @@ class Scene(ImageCategory):
     def bghash(self, bits=128, asbinary=False, asbytes=False):
         """Perceptual differential hash function, masking out foreground objects.  
 
-             * bits [int]:  longer hashes have lower TAR (true accept rate, some near dupes are missed), but lower FAR (false accept rate), shorter hashes have higher TAR (fewer near-dupes are missed) but higher FAR (more non-dupes are declared as dupes).
-             * Algorithm: set foreground objects to mean color, convert to greyscale, resize with linear interpolation to small image based on desired bit encoding, compute vertical and horizontal gradient signs.
-             * NOTE: Can be used for near duplicate detection of background scenes by unpacking the returned hex string to binary and computing hamming distance, or performing hamming based nearest neighbor indexing.
-             * NOTE: The packed hex output can be converted to binary as: np.unpackbits(bytearray().fromhex( bghash() ))
+           * bits [int]:  longer hashes have lower TAR (true accept rate, some near dupes are missed), but lower FAR (false accept rate), shorter hashes have higher TAR (fewer near-dupes are missed) but higher FAR (more non-dupes are declared as dupes).
+           * Algorithm: set foreground objects to mean color, convert to greyscale, resize with linear interpolation to small image based on desired bit encoding, compute vertical and horizontal gradient signs.
+           * NOTE: Can be used for near duplicate detection of background scenes by unpacking the returned hex string to binary and computing hamming distance, or performing hamming based nearest neighbor indexing.
+           * NOTE: The default packed hex output can be converted to binary as: np.unpackbits(bytearray().fromhex( bghash() )) which is equivalent to bghash(asbinary=True)
 
         """
         allowablebits = [2*k*k for k in range(2, 17)]
