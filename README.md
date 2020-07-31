@@ -1,11 +1,11 @@
 [![PyPI version](https://badge.fury.io/py/vipy.svg)](https://badge.fury.io/py/vipy)
 
-Project
+VIPY
 -------------------
-VIPY: Visym Python Tools for Computer Vision and Machine Learning  
+VIPY: Visym Python Tools for Visual Dataset Transformation    
 URL: https://github.com/visym/vipy/  
 
-VIPY is a python package for representation, transformation and visualization of annotated videos and images.  Annotations are the ground truth provided by labelers (e.g. object bounding boxes, face identities, temporal activity clips), suitable for training computer vision systems.  VIPY provides tools to easily edit videos and images so that the annotations are transformed along with the pixels.  This enables a clean interface for transforming complex datasets for input to your training and testing pipeline.
+VIPY is a python package for representation, transformation and visualization of annotated videos and images.  Annotations are the ground truth provided by labelers (e.g. object bounding boxes, face identities, temporal activity clips), suitable for training computer vision systems.  VIPY provides tools to easily edit videos and images so that the annotations are transformed along with the pixels.  This enables a clean interface for transforming complex datasets for input to your computer vision training and testing pipeline.
 
 VIPY provides:  
 
