@@ -1168,10 +1168,10 @@ class Scene(VideoCategory):
               -startframe:  The initial frame index to start the n uniformly sampled frames for the quicklook
         """
         if not self.isloaded():
-            self.mindim(mindim).load()        
+            self.load()  
         if animate:
             return Video(frames=[self.quicklook(n=n, dilate=dilate, mindim=mindim, fontsize=fontsize, context=context, startframe=k, animate=False, dt=dt) for k in range(0, min(dt, len(self)))])
-        framelist = [int(np.round(f))+startframe for f in np.linspace(0, len(self)-startframe-1, n)]
+        framelist = [min(int(np.round(f))+startframe, len(self)-1) for f in np.linspace(0, len(self)-1, n)]
         imframes = [self.frame(k).maxmatte()  # letterbox or pillarbox
                     if (self.frame(k).boundingbox() is None) or (context is True and (k == framelist[0] or k == framelist[-1])) else
                     self.frame(k).padcrop(self.frame(k).boundingbox().dilate(dilate).imclipshape(self.width(), self.height()).maxsquare().int()).mindim(mindim, interp='nearest')

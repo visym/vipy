@@ -37,6 +37,10 @@ def testimage():
     """Return an Image() object of a superb owl from wikipedia"""
     return vipy.image.Image(url='https://upload.wikimedia.org/wikipedia/commons/1/11/Horned1b.jpg').minsquare().mindim(512)
 
+def owl():
+    """Return an Image() object of a superb owl from wikipedia"""
+    return vipy.image.Image(url='https://upload.wikimedia.org/wikipedia/commons/1/11/Horned1b.jpg').minsquare().mindim(512)
+
 def randomimage():
     return vipy.image.Image(array=np.uint8(255*np.random.rand(512,512,3)), colorspace='rgb')
 
