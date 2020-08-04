@@ -1173,9 +1173,9 @@ class Scene(VideoCategory):
             return Video(frames=[self.quicklook(n=n, dilate=dilate, mindim=mindim, fontsize=fontsize, context=context, startframe=k, animate=False, dt=dt) for k in range(0, min(dt, len(self)))])
         framelist = [min(int(np.round(f))+startframe, len(self)-1) for f in np.linspace(0, len(self)-1, n)]
         imframes = [self.frame(k).maxmatte()  # letterbox or pillarbox
-                    if (self.frame(k).boundingbox() is None) or (context is True and (k == framelist[0] or k == framelist[-1])) else
+                    if (self.frame(k).boundingbox() is None) or (context is True and (j == 0 or j == (n-1))) else
                     self.frame(k).padcrop(self.frame(k).boundingbox().dilate(dilate).imclipshape(self.width(), self.height()).maxsquare().int()).mindim(mindim, interp='nearest')
-                    for k in framelist]  
+                    for (j,k) in enumerate(framelist)]
         imframes = [im.savefig(fontsize=fontsize).rgb() for im in imframes]  # temp storage in memory
         return vipy.visualize.montage(imframes, imgwidth=mindim, imgheight=mindim)
     
