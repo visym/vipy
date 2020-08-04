@@ -716,7 +716,7 @@ class Video(object):
         return self
 
     def webp(self, outfile, pause=3, strict=True, smallest=False, smaller=False):
-        """Save a video to an animated WEBP file, with pause=N seconds between loops.  
+        """Save a video to an animated WEBP file, with pause=N seconds on the last frame between loops.  
         
            -strict=[bool]: assert that the filename must have an .webp extension
            -pause=[int]: seconds to pause between loops of the animation
@@ -727,7 +727,7 @@ class Video(object):
         outfile = os.path.normpath(os.path.abspath(os.path.expanduser(outfile)))
         self.load().frame(0).pil().save(outfile, loop=0, save_all=True, method=6 if smallest else 3 if smaller else 0,
                                         append_images=[self.frame(k).pil() for k in range(1, len(self))],
-                                        duration=[pause*1000] + [int(1000.0/self._framerate) for k in range(0, len(self)-1)])
+                                        duration=[int(1000.0/self._framerate) for k in range(0, len(self)-1)] + [pause*1000])
         return outfile
 
     def gif(self, outfile, pause=3, smallest=False, smaller=False):
