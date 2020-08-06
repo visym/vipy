@@ -276,6 +276,15 @@ class Video(object):
         """Return True if the video has been loaded"""
         return self._array is not None
 
+    def canload(self):
+        """Return True if the video can be loaded successfully, useful for filtering bad videos or filtering videos that cannot be loaded using your current FFMPEG version"""
+        if not self.isloaded():
+            b = self.load(ignoreErrors=True).isloaded()  # try to load
+            self.flush()  # undo it to avoid memory accumulation
+            return b  
+        else:
+            return True
+
     def iscolor(self):
         return self.channels() == 3
 
@@ -512,7 +521,7 @@ class Video(object):
     def load(self, verbose=False, ignoreErrors=False, startframe=None, endframe=None, rotation=None, rescale=None, mindim=None):
         """Load a video using ffmpeg, applying the requested filter chain.  
            If verbose=True. then ffmpeg console output will be displayed. 
-           If ignoreErrors=True, then download errors are warned and skipped.
+           If ignoreErrors=True, then all load errors are warned and skipped.  Be sure to call isloaded() to confirm loading was successful.
            Filter chains can be included at load time using the following kwargs:
                * (startframe=s, endframe=e) -> self.clip(s, e)
                * rotation='rot90cw' -> self.rot90cw()
@@ -524,7 +533,7 @@ class Video(object):
             return self
         elif not self.hasfilename() and self.hasurl():
             self.download(ignoreErrors=ignoreErrors)
-        elif not self.hasfilename():
+        elif not self.hasfilename() and not ignoreErrors:
             raise ValueError('Invalid input - load() requires a valid URL, filename or array')
         if not self.hasfilename() and ignoreErrors:
             print('[vipy.video.load]: Video file "%s" not found - Ignoring' % self.filename())
@@ -558,19 +567,23 @@ class Video(object):
                             .global_args('-cpuflags', '0', '-loglevel', 'debug' if vipy.globals.verbose() else 'error')
             (out, err) = f.run(capture_stdout=True)
         except Exception as e:
-            raise ValueError('[vipy.video.load]: Load failed for video "%s" with ffmpeg command "%s" - Try load(verbose=True) or manually running ffmpeg to see errors.  This error usually means that you need to upgrade your FFMPEG distribution to the latest stable version.' % (str(self), str(self._ffmpeg_commandline(f))))
+            if not ignoreErrors:
+                raise ValueError('[vipy.video.load]: Load failed for video "%s" with ffmpeg command "%s" - Try load(verbose=True) or manually running ffmpeg to see errors.  This error usually means that you need to upgrade your FFMPEG distribution to the latest stable version.' % (str(self), str(self._ffmpeg_commandline(f))))
+            else:
+                return self  # Failed, return immediately, useful for calling canload() 
 
         # [EXCEPTION]:  older ffmpeg versions may be off by one on the size returned from self._preview() which uses an image decoder vs. f.run() which uses a video decoder
         #    -Try to correct this manually by searching for a one-off decoding that works.  The right way is to upgrade your FFMPEG version to the FFMPEG head (11JUN20)
         (height, width, channels) = (self.height(), self.width(), self.channels())
-        if len(out) % (height*width*channels) != 0:
+        if (len(out) % (height*width*channels)) != 0:
             warnings.warn('Your FFMPEG version is old and is triggering a known bug that is being manually worked around in an inefficient manner.  Consider upgrading your FFMPEG distribution to the latest stable.')
             newwidth = width + 1 if (len(out) % (height*(width+1)*channels) == 0) else width
             newwidth = width - 1 if (len(out) % (height*(width-1)*channels) == 0) else newwidth            
             newheight = height + 1 if (len(out) % ((height+1)*width*channels) == 0) else height
             newheight = height - 1 if (len(out) % ((height-1)*width*channels) == 0) else newheight            
-            self._shape = (newheight, newwidth)  # for self.shape()
-        self._array = np.frombuffer(out, np.uint8).reshape([-1, self.height(), self.width(), self.channels()])  # read-only            
+            (height, width) = (newheight, newwidth)  # for self.shape()
+            assert (len(out) % (height*width*channels)) == 0, "Your FFMPEG version is old and is triggering a known bug that cannot be worked around.  Consider upgrading your FFMPEG distribution to the latest stable."
+        self._array = np.frombuffer(out, np.uint8).reshape([-1, height, width, channels])  # read-only            
         self.colorspace('rgb' if channels == 3 else 'lum')
         return self
     

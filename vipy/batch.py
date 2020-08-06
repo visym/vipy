@@ -151,7 +151,7 @@ class Batch(object):
             return self.batch(self.__dict__['_client'].map(f_lambda, self._objlist))
 
     def filter(self, f_lambda):
-        """Run the lambda function on each of the elements of the batch and filter based on the provided lambda  
+        """Run the lambda function on each of the elements of the batch and filter based on the provided lambda keeping those elemnents that return true 
         """
         assert self.__dict__['_client'] is not None, "Batch() must be reconstructed after shutdown"        
         c = self.__dict__['_client']
