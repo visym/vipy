@@ -729,7 +729,7 @@ class Video(object):
         return self
 
     def webp(self, outfile, pause=3, strict=True, smallest=False, smaller=False):
-        """Save a video to an animated WEBP file, with pause=N seconds between loops.  
+        """Save a video to an animated WEBP file, with pause=N seconds on the last frame between loops.  
         
            -strict=[bool]: assert that the filename must have an .webp extension
            -pause=[int]: seconds to pause between loops of the animation
@@ -740,7 +740,7 @@ class Video(object):
         outfile = os.path.normpath(os.path.abspath(os.path.expanduser(outfile)))
         self.load().frame(0).pil().save(outfile, loop=0, save_all=True, method=6 if smallest else 3 if smaller else 0,
                                         append_images=[self.frame(k).pil() for k in range(1, len(self))],
-                                        duration=[pause*1000] + [int(1000.0/self._framerate) for k in range(0, len(self)-1)])
+                                        duration=[int(1000.0/self._framerate) for k in range(0, len(self)-1)] + [pause*1000])
         return outfile
 
     def gif(self, outfile, pause=3, smallest=False, smaller=False):
@@ -1186,9 +1186,9 @@ class Scene(VideoCategory):
             return Video(frames=[self.quicklook(n=n, dilate=dilate, mindim=mindim, fontsize=fontsize, context=context, startframe=k, animate=False, dt=dt) for k in range(0, min(dt, len(self)))])
         framelist = [min(int(np.round(f))+startframe, len(self)-1) for f in np.linspace(0, len(self)-1, n)]
         imframes = [self.frame(k).maxmatte()  # letterbox or pillarbox
-                    if (self.frame(k).boundingbox() is None) or (context is True and (k == framelist[0] or k == framelist[-1])) else
+                    if (self.frame(k).boundingbox() is None) or (context is True and (j == 0 or j == (n-1))) else
                     self.frame(k).padcrop(self.frame(k).boundingbox().dilate(dilate).imclipshape(self.width(), self.height()).maxsquare().int()).mindim(mindim, interp='nearest')
-                    for k in framelist]  
+                    for (j,k) in enumerate(framelist)]
         imframes = [im.savefig(fontsize=fontsize).rgb() for im in imframes]  # temp storage in memory
         return vipy.visualize.montage(imframes, imgwidth=mindim, imgheight=mindim)
     
