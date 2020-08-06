@@ -302,7 +302,7 @@ class KF1(object):
                 endframe = int(v['act']['timespan'][0]['tsr0'][1])                
                 actorid = [x['id1'] for x in v['act']['actors']]   
                 if actor:                    
-                    nounid = [d_id1_to_track[a].id() for a in actorid if f_activity_to_actor(category).lower() == d_id1_to_track[a].category().lower()]
+                    nounid = [d_id1_to_track[a].id() for a in actorid if (a in d_id1_to_track) and (f_activity_to_actor(category).lower() == d_id1_to_track[a].category().lower())]
                     if len(nounid) == 0:
                         print('[vipy.dataset.meva.KF1]: activity "%s" without a required primary actor "%s" - SKIPPING' % (category, f_activity_to_actor(category)))
                         continue
