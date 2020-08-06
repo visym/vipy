@@ -750,9 +750,9 @@ class Video(object):
            * If outfile==None or outfile==self.filename(), then overwrite the current filename 
            * If ignoreErrors=True, then exit gracefully.  Useful for chaining download().saveas() on parallel dataset downloads
            * Returns a new video object with this video filename, and a clean video filter chain
-           * if flush=True, then flush this buffer right after saving the new video. This is useful for transcoding in parallel
+           * if flush=True, then flush the buffer for this object right after saving the new video. This is useful for transcoding in parallel
            * framerate:  input framerate of the frames in the buffer, or the output framerate of the transcoded video.  If not provided, use framerate of source video
-           * pause:  an integer in seconds to pause between loops of animated WEBP animated images
+           * pause:  an integer in seconds to pause between loops of animated images
         """        
         outfile = tocache(tempMP4()) if outfile is None else os.path.normpath(os.path.abspath(os.path.expanduser(outfile)))
         premkdir(outfile)  # create output directory for this file if not exists
