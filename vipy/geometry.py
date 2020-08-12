@@ -599,7 +599,7 @@ class BoundingBox():
                 isinstance(self.ymax(), int) and self.ymax() % 2 == 0)
 
     def even(self):
-        """Force all corners to be even number integers"""
+        """Force all corners to be even number integers.  This is helpful for FFMPEG crop filters."""
         self.int()
         self._xmin = (self._xmin // 2) * 2
         self._ymin = (self._ymin // 2) * 2
