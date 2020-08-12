@@ -577,13 +577,29 @@ class Video(object):
         (height, width, channels) = (self.height(), self.width(), self.channels())
         if (len(out) % (height*width*channels)) != 0:
             warnings.warn('Your FFMPEG version is old and is triggering a known bug that is being manually worked around in an inefficient manner.  Consider upgrading your FFMPEG distribution to the latest stable.')
-            newwidth = width + 1 if (len(out) % (height*(width+1)*channels) == 0) else width
-            newwidth = width - 1 if (len(out) % (height*(width-1)*channels) == 0) else newwidth            
-            newheight = height + 1 if (len(out) % ((height+1)*width*channels) == 0) else height
-            newheight = height - 1 if (len(out) % ((height-1)*width*channels) == 0) else newheight            
+            if (len(out) % ((height-1)*(width-1)*channels) == 0):
+                (newwidth, newheight) = (width-1, height-1)
+            elif (len(out) % ((height-1)*(width)*channels) == 0):
+                (newwidth, newheight) = (width, height-1)
+            elif (len(out) % ((height-1)*(width+1)*channels) == 0):
+                (newwidth, newheight) = (width+1, height-1)
+            elif (len(out) % ((height)*(width-1)*channels) == 0):
+                (newwidth, newheight) = (width-1, height)
+            elif (len(out) % ((height)*(width+1)*channels) == 0):
+                (newwidth, newheight) = (width+1, height)
+            elif (len(out) % ((height+1)*(width-1)*channels) == 0):
+                (newwidth, newheight) = (width-1, height+1)
+            elif (len(out) % ((height+1)*(width)*channels) == 0):
+                (newwidth, newheight) = (width, height+1)
+            elif (len(out) % ((height+1)*(width+1)*channels) == 0):
+                (newwidth, newheight) = (width+1, height+1)
+            else:
+                (newwidth, newheight) = (width, height)
             (height, width) = (newheight, newwidth)  # for self.shape()
-            assert (len(out) % (height*width*channels)) == 0, "Your FFMPEG version is old and is triggering a known bug that cannot be worked around.  Consider upgrading your FFMPEG distribution to the latest stable."
-        self._array = np.frombuffer(out, np.uint8).reshape([-1, height, width, channels])  # read-only            
+
+        is_loadable = (len(out) % (height*width*channels)) == 0
+        assert is_loadable or ignoreErrors, "Your FFMPEG version is old and is triggering a known bug that cannot be worked around.  Consider upgrading your FFMPEG distribution to the latest stable.  video: %s, FFMPEG command line: %s" % (str(self), str(self._ffmpeg_commandline(f)))
+        self._array = np.frombuffer(out, np.uint8).reshape([-1, height, width, channels]) if is_loadable else None  # read-only            
         self.colorspace('rgb' if channels == 3 else 'lum')
         return self
     
