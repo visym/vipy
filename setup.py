@@ -14,7 +14,7 @@ setup(
     author_email='jeff@visym.com',
     version=version,
     packages=find_packages(),
-    description='Visym Python Tools for Privacy Preserving Computer Vision',
+    description='Visym Python Tools for Visual Dataset Transformation',
     long_description=long_description,
     long_description_content_type="text/markdown",
     url='https://github.com/visym/vipy',
