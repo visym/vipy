@@ -21,7 +21,6 @@ setup(
     download_url='https://github.com/visym/vipy/archive/%s.tar.gz' % version,
     install_requires=[
         "numpy",
-        "scipy",
         "matplotlib",
         "dill",
         "pillow",
