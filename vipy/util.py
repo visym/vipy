@@ -13,7 +13,6 @@ import csv
 import hashlib
 import shutil
 import json
-import scipy.io
 import shelve
 import re
 import uuid
@@ -381,16 +380,6 @@ def loadh5(filename):
     else:
         raise ValueError('Invalid HDF5 file "%s" ' % filename)
 
-
-def savemat(outfile, vardict):
-    """Write a dictionary to .mat file"""
-    scipy.io.savemat(outfile, vardict)
-    return outfile
-
-
-def loadmat(infile):
-    """Read a dictionary to .mat file"""
-    return scipy.io.loadmat(infile)
 
 
 def loadmat73(matfile, keys=None):

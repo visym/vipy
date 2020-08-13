@@ -1,4 +1,5 @@
-from scipy.signal import gaussian, convolve2d
+from scipy.signal import convolve2d
+from vipy.math import gaussian
 import numpy as np
 
 

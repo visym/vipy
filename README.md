@@ -34,14 +34,14 @@ Installation
 pip install vipy
 ```
 
-This package has the following required dependencies
+This package has the following required dependencies which are installed by default
 ```python
-pip install numpy scipy matplotlib dill pillow ffmpeg-python
+pip install numpy matplotlib dill pillow ffmpeg-python
 ```
 
-Optional dependencies
+The following packages are optional.  You will receive a friendly warning if attempting to use these dependencies:
 ```python
-pip install opencv-python torch ipython scikit-learn boto3 youtube-dl dask distributed h5py nltk bs4 dropbox pyyaml pytest
+pip install scipy opencv-python torch ipython scikit-learn boto3 youtube-dl dask distributed h5py nltk bs4 dropbox pyyaml pytest
 ```
 
 Contact

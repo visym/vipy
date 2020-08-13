@@ -50,8 +50,6 @@ def test_geometry():
     print('[test_geometry.similarity_transform_2x3]: passed')
     assert vipy.geometry.similarity_transform((1,2), 3, 4).shape == (3,3)
     print('[test_geometry.similarity_transform]: passed')
-    assert vipy.geometry.sqdist(np.random.rand(10,4), np.random.rand(20,4)).shape == (10,20)
-    print('[test_geometry.sqdist]: passed')
     assert np.allclose(np.linalg.norm(vipy.geometry.normalize(np.random.rand(4))), 1.0)
     print('[test_geometry.normalize]: passed')
 

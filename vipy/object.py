@@ -4,7 +4,6 @@ from vipy.util import isstring, tolist, chunklistwithoverlap
 import uuid
 import copy
 import warnings
-import scipy.interpolate
 
 
 class Detection(BoundingBox):
@@ -438,7 +437,11 @@ class Track(object):
         return self
 
     def spline(self, smoothingfactor=None):
-        """Track smoothing by cubic spline fit, will return resampled dt=1 track.  Smoothing factor will increase with smoothing > 1 and decrease with 0 < smoothing < 1"""
+        """Track smoothing by cubic spline fit, will return resampled dt=1 track.  Smoothing factor will increase with smoothing > 1 and decrease with 0 < smoothing < 1
+        
+           This function requires optional package scipy
+        """
+        try_import('scipy.interpolate', 'scipy')
         assert smoothingfactor is None or smoothingfactor > 0
         t = self.clone().resample(dt=1)
         s = smoothingfactor * len(self._keyframes) if smoothingfactor is not None else None

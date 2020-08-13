@@ -1,7 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from vipy.util import seq, groupby, try_import, temppng
-from scipy.interpolate import interp1d
+from vipy.math import interp1d
 try_import('sklearn', 'scikit-learn'); import sklearn.metrics
 
 

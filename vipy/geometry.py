@@ -1,6 +1,5 @@
 import math
 import numpy as np
-import scipy.spatial
 from itertools import product
 from vipy.util import try_import, istuple, isnumpy, isnumber, tolist
 from vipy.linalg import columnvector
@@ -96,14 +95,6 @@ def imtransform(img, A):
         return cv2.warpAffine(img, A, (img.shape[1], img.shape[0]))
     else:
         return cv2.warpPerspective(img, A, (img.shape[1], img.shape[0]))
-
-
-def sqdist(d_obs, d_ref):
-    """Given numpy array d_obs of size (MxD) ad d_ref of size (NxD) return (MxN) matrix of pairwise euclidean distances"""
-    assert isnumpy(d_obs) and isnumpy(d_ref), "invalid input"
-    if d_obs.shape[0] > 1000 or d_ref.shape[0] > 1000:
-        warnings.warn('Large pairwise distance, this may take a while')
-    return scipy.spatial.distance.cdist(np.array(d_obs), np.array(d_ref), 'euclidean')  # small number of descriptors only
 
 
 def normalize(x, eps=1E-16):

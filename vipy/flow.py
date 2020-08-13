@@ -3,6 +3,7 @@ try_import('cv2', 'opencv-python opencv-contrib-python'); import cv2
 import vipy.image
 from vipy.math import cartesian_to_polar
 import numpy as np
+try_import('scipy.interpolate', 'scipy')
 import scipy.interpolate
 import vipy.object
 import PIL.Image
