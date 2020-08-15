@@ -52,4 +52,4 @@ import vipy
 vipy.image.owl().mindim(512).show(figure=1).fliplr().show(figure=2).minsquare().show(figure=3)
 ```
 
-[Demos](https://github.com/visym/vipy/tree/master/demo) provide useful notebook tutorials to help you get started.
+The [demos](https://github.com/visym/vipy/tree/master/demo) provide useful notebook tutorials to help you get started.
