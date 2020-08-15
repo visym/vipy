@@ -44,6 +44,11 @@ The following packages are optional.  You will receive a friendly warning if att
 pip install scipy opencv-python torch ipython scikit-learn boto3 youtube-dl dask distributed h5py nltk bs4 dropbox pyyaml pytest
 ```
 
-Contact
+Quickstart
 -------------------
-Jeffrey Byrne <<jeff@visym.com>>
+```python
+import vipy
+vipy.image.owl().mindim(512).show(figure=1).fliplr().show(figure=2).minsquare().show(figure=3)
+```
+
+[Demos](https://github.com/visym/vipy/tree/master/demo) provide useful notebook tutorials to help you get started.

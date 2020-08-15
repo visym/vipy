@@ -10,8 +10,8 @@ with open("README.md", "r") as fh:
 
 setup(
     name='vipy',
-    author='Jeffrey Byrne',
-    author_email='jeff@visym.com',
+    author='Visym Labs',
+    author_email='info@visym.com',
     version=version,
     packages=find_packages(),
     description='Visym Python Tools for Visual Dataset Transformation',
