@@ -17,7 +17,7 @@ VIPY provides:
 * Fluent interface for chaining operations on videos and images
 * Dataset download, unpack and import (e.g. Charades, AVA, ActivityNet, Kinetics, Moments in Time)
 * Video and image web search tools with URL downloading and caching
-* Minimum dependencies for easy installation 
+* Minimum dependencies for easy installation (e.g. AWS Lambda)
 
 [![VIPY MEVA dataset visualization](http://i3.ytimg.com/vi/_jixHQr5dK4/maxresdefault.jpg)](https://youtu.be/_jixHQr5dK4)
 
