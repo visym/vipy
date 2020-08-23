@@ -1,6 +1,6 @@
 import numpy as np
 from vipy.geometry import BoundingBox
-from vipy.util import isstring, tolist, chunklistwithoverlap
+from vipy.util import isstring, tolist, chunklistwithoverlap, try_import
 import uuid
 import copy
 import warnings
@@ -441,7 +441,7 @@ class Track(object):
         
            This function requires optional package scipy
         """
-        try_import('scipy.interpolate', 'scipy')
+        try_import('scipy', 'scipy');  import scipy.interpolate;
         assert smoothingfactor is None or smoothingfactor > 0
         t = self.clone().resample(dt=1)
         s = smoothingfactor * len(self._keyframes) if smoothingfactor is not None else None
