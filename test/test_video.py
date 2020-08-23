@@ -158,43 +158,6 @@ def _test_scene():
                                                      vipy.object.Track(category='vehicle', keyframes=[0,200], boxes=[BoundingBox(xmin=100,ymin=200,width=300,height=400), BoundingBox(xmin=400,ymin=300,width=200,height=100)])])
 
     # Loader
-    try:
-        v = vid.clone().load(startframe=0)
-        Failed()
-    except Failed:
-        raise
-    except:
-        pass
-    try:
-        v = vid.clone().load(endframe=0)
-        Failed()
-    except Failed:
-        raise
-    except:
-        pass
-    try:
-        v = vid.clone().load(mindim=1, rescale=1)
-        Failed()
-    except Failed:
-        raise
-    except:
-        pass
-    try:
-        v = vid.clone().load(rotation='an_invalid_string')
-        Failed()
-    except Failed:
-        raise
-    except:
-        pass
-
-    v = vid.clone().load(startframe=0, endframe=10)
-    assert len(v) == 10
-    assert np.allclose(vid.clone().load(startframe=0, endframe=10, rotation='rot90ccw').array(), vid.clone().clip(0,10).rot90ccw().load().array())
-    assert np.allclose(vid.clone().load(startframe=1, endframe=11, rotation='rot90cw').array(), vid.clone().clip(1,11).rot90cw().load().array())
-    assert np.allclose(vid.clone().load(startframe=2, endframe=12, mindim=10).array(), vid.clone().clip(2,12).mindim(10).load().array())
-    assert np.allclose(vid.clone().load(startframe=3, endframe=12, rescale=0.2).array(), vid.clone().clip(3,12).rescale(0.2).load().array())
-    print('[test_video.scene]:  load: PASSED')
-    
     v = vid.clone().clip(0,10).load()
     assert len(v) == 10
     vc = v.clone(flushforward=True).clip(1,4).load()
@@ -282,6 +245,25 @@ def _test_scene():
     assert v.load().width() == 256 and v.height() == 257 and v.array()[0,-1,-1,-1] == 0  # load() shape to get the true video size
     print('[test_video.scene]: padcrop PASSED')
     vid.flush()
+
+    v = vid.flush().clone().resize(rows=128,cols=256).mindim(64)
+    assert v.width() == 128 and v.height() == 64   
+    assert v.load().width() == 128 and v.height() == 64 
+    print('[test_video.scene]: mindim PASSED')
+    vid.flush()
+
+    v = vid.flush().clone().resize(rows=128,cols=256).maxdim(64)
+    assert v.width() == 64 and v.height() == 32
+    assert v.load().width() == 64 and v.height() == 32 
+    print('[test_video.scene]: maxdim PASSED')
+    vid.flush()
+
+    v = vid.flush().clone().resize(rows=127,cols=255).maxsquare()
+    assert v.width() == 255 and v.height() == 255
+    assert v.load().width() == 255 and v.height() == 255
+    print('[test_video.scene]: maxsquare PASSED')
+    vid.flush()
+
 
     # Thumbnail
     v = vid.clone().thumbnail()
