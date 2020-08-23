@@ -1,5 +1,5 @@
 import numpy as np
-import scipy.ndimage
+from vipy.util import isnumpy, chunklistWithOverlap
 
 
 def iseven(x):
@@ -23,8 +23,37 @@ def signsqrt(x):
 
 
 def runningmean(X, n):
-    """Compute the running unweighted mean of X row-wise, with a history of n, with reflection along each column"""
-    return scipy.ndimage.uniform_filter1d(X.astype(np.float32), axis=0, size=n, mode='reflect')
+    """Compute the running unweighted mean of X row-wise, with a history of n, reducing the history at the start"""
+    assert isnumpy(X), "Input must be a np.array()"    
+    return np.array([[np.mean(c) for c in chunklistWithOverlap(x, n, n-1)] for x in X])
+
+
+def gaussian(M, std, sym=True):
+    """Replication of scipy.signal.gaussian"""
+
+    if M < 1:
+        return np.array([])
+    if M == 1:
+        return np.ones(1, 'd')
+    odd = M % 2
+    if not sym and not odd:
+        M = M + 1
+    n = np.arange(0, M) - (M - 1.0) / 2.0
+    sig2 = 2 * std * std
+    w = np.exp(-n ** 2 / sig2)
+    if not sym and not odd:
+        w = w[:-1]
+    return w
+
+
+def interp1d(x, y):
+    """Replication of scipy.interpolate.interp1d with assume_sorted=True, and constant replication of boundary handling"""
+    def ceil(x, at):
+        k = np.argwhere(np.array(x)-at > 0)
+        return len(x)-1 if len(k) == 0 else int(k[0])
+    
+    assert sorted(x) == x and sorted(y) == y, "Input must be sorted"
+    return lambda at: y[max(0, ceil(x,at)-1)] + float(y[ceil(x,at)] - y[max(0, ceil(x,at)-1)])*((at - x[max(0, ceil(x,at)-1)])/(1E-16+(x[ceil(x,at)] - x[max(0, ceil(x,at)-1)])))
 
 
 def find_closest_positive_divisor(a, b):

@@ -1,7 +1,9 @@
 import os
 from glob import glob
-from vipy.util import remkdir, loadmat, dirlist, imlist, filetail
+from vipy.util import remkdir, try_import, dirlist, imlist, filetail
 from vipy.image import ImageDetection, ImageCategory
+try_import('scipy.io', 'scipy')
+from scipy.io import loadmat
 
 
 URL = 'http://www.cslab.openu.ac.il/download/wolftau/YouTubeFaces.tar.gz'

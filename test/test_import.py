@@ -11,7 +11,8 @@ def test_import():
     import vipy.collector
     import vipy.downloader
     import vipy.dropbox
-    import vipy.geometry
+    import vipy.flow
+    import vipy.geometry    
     import vipy.image
     import vipy.linalg
     import vipy.math

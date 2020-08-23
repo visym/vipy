@@ -285,7 +285,7 @@ def _test_scene():
 
     # Thumbnail
     v = vid.clone().thumbnail()
-    assert os.path.exists(v)
+    assert v.width() is not None and v.width() > 0
     print('[test_video.scene]: thumbnail ("%s")  PASSED' % v)
 
     # Map
