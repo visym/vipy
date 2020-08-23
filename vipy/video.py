@@ -501,7 +501,7 @@ class Video(object):
         if not self.hasfilename():
             raise ValueError('Video file not found')
 
-        # Convert frame to mjpeg and pipe to stdout
+        # Convert frame to mjpeg and pipe to stdout, used to get dimensions of video
         try:
             f = self._ffmpeg.filter('select', 'gte(n,{})'.format(framenum))\
                             .output('pipe:', vframes=1, format='image2', vcodec='mjpeg')\
@@ -518,16 +518,10 @@ class Video(object):
         """Return annotated frame=k of video, save annotation visualization to provided outfile"""
         return self.__getitem__(frame).savefig(outfile if outfile is not None else temppng())
     
-    def load(self, verbose=False, ignoreErrors=False, startframe=None, endframe=None, rotation=None, rescale=None, mindim=None):
+    def load(self, verbose=False, ignoreErrors=False):
         """Load a video using ffmpeg, applying the requested filter chain.  
            If verbose=True. then ffmpeg console output will be displayed. 
            If ignoreErrors=True, then all load errors are warned and skipped.  Be sure to call isloaded() to confirm loading was successful.
-           Filter chains can be included at load time using the following kwargs:
-               * (startframe=s, endframe=e) -> self.clip(s, e)
-               * rotation='rot90cw' -> self.rot90cw()
-               * rotation='rot90ccw' -> self.rot90ccw()        
-               * rescale=s -> self.rescale(s)
-               * mindim=d -> self.mindim(d)
         """
         if self.isloaded():
             return self
@@ -541,23 +535,6 @@ class Video(object):
         if verbose:
             print('[vipy.video.load]: Loading "%s"' % self.filename())
 
-        # Increase filter chain from load() kwargs
-        assert (startframe is not None and startframe is not None) or (startframe is None and endframe is None), "(startframe, endframe) must both be provided"
-        if startframe is not None and endframe is not None:   
-            self = self.clip(startframe, endframe)  # clip first
-        assert not (rescale is not None and mindim is not None), "mindim and rescale cannot both be provided, choose one or the other, or neither"            
-        if mindim is not None:
-            self.mindim(mindim)   # resize second
-        if rescale is not None:
-            self.rescale(rescale)      
-        if rotation is not None:  
-            if rotation == 'rot90cw':
-                self.rot90cw()  # rotate third
-            elif rotation == 'rot90ccw':
-                self.rot90ccw()
-            else:
-                raise ValueError("rotation must be one of ['rot90ccw', 'rot90cw']")
-    
         # Load the video
         # 
         # [EXCEPTION]:  older ffmpeg versions may segfault on complex crop filter chains
@@ -568,15 +545,16 @@ class Video(object):
             (out, err) = f.run(capture_stdout=True)
         except Exception as e:
             if not ignoreErrors:
-                raise ValueError('[vipy.video.load]: Load failed for video "%s" with ffmpeg command "%s" - Try load(verbose=True) or manually running ffmpeg to see errors.  This error usually means that you need to upgrade your FFMPEG distribution to the latest stable version.' % (str(self), str(self._ffmpeg_commandline(f))))
+                raise ValueError('[vipy.video.load]: Load failed for video "%s" with ffmpeg command "%s" - Try load(verbose=True) or manually running ffmpeg to see errors. This error usually means that you need to upgrade your FFMPEG distribution to the latest stable version.' % (str(self), str(self._ffmpeg_commandline(f))))
             else:
                 return self  # Failed, return immediately, useful for calling canload() 
 
         # [EXCEPTION]:  older ffmpeg versions may be off by one on the size returned from self._preview() which uses an image decoder vs. f.run() which uses a video decoder
-        #    -Try to correct this manually by searching for a one-off decoding that works.  The right way is to upgrade your FFMPEG version to the FFMPEG head (11JUN20)
+        #    -Try to correct this manually by searching for a off-by-one-pixel decoding that works.  The right way is to upgrade your FFMPEG version to the FFMPEG head (11JUN20)
+        #    -We cannot tell which is the one that the end-user wanted, so we leave it up to the calling function to check dimensions (see self.resize())
         (height, width, channels) = (self.height(), self.width(), self.channels())
         if (len(out) % (height*width*channels)) != 0:
-            warnings.warn('Your FFMPEG version is old and is triggering a known bug that is being manually worked around in an inefficient manner.  Consider upgrading your FFMPEG distribution to the latest stable.')
+            warnings.warn('Your FFMPEG version is triggering a known bug that is being worked around in an inefficient manner.  Consider upgrading your FFMPEG distribution.')
             if (len(out) % ((height-1)*(width-1)*channels) == 0):
                 (newwidth, newheight) = (width-1, height-1)
             elif (len(out) % ((height-1)*(width)*channels) == 0):
@@ -595,12 +573,15 @@ class Video(object):
                 (newwidth, newheight) = (width+1, height+1)
             else:
                 (newwidth, newheight) = (width, height)
-            (height, width) = (newheight, newwidth)  # for self.shape()
 
-        is_loadable = (len(out) % (height*width*channels)) == 0
-        assert is_loadable or ignoreErrors, "Your FFMPEG version is old and is triggering a known bug that cannot be worked around.  Consider upgrading your FFMPEG distribution to the latest stable.  video: %s, FFMPEG command line: %s" % (str(self), str(self._ffmpeg_commandline(f)))
-        self._array = np.frombuffer(out, np.uint8).reshape([-1, height, width, channels]) if is_loadable else None  # read-only            
-        self.colorspace('rgb' if channels == 3 else 'lum')
+            is_loadable = (len(out) % (newheight*newwidth*channels)) == 0
+            assert is_loadable or ignoreErrors, "Workaround failed for video '%s', and FFMPEG command line: '%s'" % (str(self), str(self._ffmpeg_commandline(f)))
+            self._array = np.frombuffer(out, np.uint8).reshape([-1, newheight, newwidth, channels]) if is_loadable else None  # read-only                        
+            self.colorspace('rgb' if channels == 3 else 'lum')
+            self.resize(rows=height, cols=width)  # Very expensive framewise resizing so that the loaded video is identical shape to preview
+        else:
+            self._array = np.frombuffer(out, np.uint8).reshape([-1, height, width, channels])  # read-only            
+            self.colorspace('rgb' if channels == 3 else 'lum')
         return self
     
     def clip(self, startframe, endframe):
@@ -699,16 +680,18 @@ class Video(object):
         return self.centercrop( (min(self.height(), self.width()), min(self.height(), self.width())))
 
     def cropeven(self):
-        """Crop the video to the largest even (width,height) less than or equal to current (width,height).  This is useful for some codecs or filters which require even shape"""
+        """Crop the video to the largest even (width,height) less than or equal to current (width,height).  This is useful for some codecs or filters which require even shape."""
         return self.crop(vipy.geometry.BoundingBox(xmin=0, ymin=0, width=vipy.math.even(self.width()), height=vipy.math.even(self.height())))
     
     def maxsquare(self):
         """Pad the video to be square, preserving the upper left corner of the video"""
         # This ffmpeg filter can throw the error:  "Padded dimensions cannot be smaller than input dimensions." since the preview is off by one.  Add one here to make sure.
         # FIXME: not sure where in some filter chains this off-by-one error is being introduced, but probably does not matter since it does not affect any annotations 
-        # since the max square always preserves the scale and the upper left corner of the source video. 
-        self._ffmpeg = self._ffmpeg.filter('pad', max(self.shape())+1, max(self.shape())+1, 0, 0)  
-        return self
+        # and since the max square always preserves the scale and the upper left corner of the source video. 
+        # FIXME: this may trigger an inefficient resizing operation during load()
+        d = max(self.shape())
+        self._ffmpeg = self._ffmpeg.filter('pad', d+1, d+1, 0, 0)
+        return self.crop(vipy.geometry.BoundingBox(xmin=0, ymin=0, width=d, height=d))
 
     def maxmatte(self):
         return self.zeropad(max(1, int((max(self.shape()) - self.width())/2)), max(int((max(self.shape()) - self.height())/2), 1))

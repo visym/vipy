@@ -145,7 +145,7 @@ class Track(object):
         strlist = []
         if self.category() is not None:
             strlist.append('category="%s"' % self.category())
-        if self.endframe() - self.startframe() > 0:
+        if self.endframe() is not None and self.startframe() is not None and ((self.endframe() - self.startframe()) > 0):
             strlist.append('startframe=%d, endframe=%d' % (self.startframe(), self.endframe()))
         strlist.append('keyframes=%d' % len(self._keyframes))
         return str('<vipy.object.track: %s>' % (', '.join(strlist)))
@@ -208,7 +208,7 @@ class Track(object):
         del self._keyboxes[k]
         del self._keyframes[k]
         if len(self._keyframes) == 0:
-            warnings.warn('Empty track')
+            warnings.warn('[vipy.object.Track]: Attempting to delete keyframe %d from empty track "%s" - Ignoring' % (keyframe, str(self)))
         return self
     
     def keyframes(self):

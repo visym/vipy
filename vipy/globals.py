@@ -28,7 +28,7 @@ def verbose(b=None):
 
 
 class Dask(object):
-    def __init__(self, num_processes, dashboard=False):
+    def __init__(self, num_processes, dashboard=False, verbose=False):
         assert isinstance(num_processes, int) and num_processes >=1, "num_processes must be >= 1"
 
         from vipy.util import try_import
@@ -52,6 +52,7 @@ class Dask(object):
                                    'PYTHONOPATH':os.environ['PYTHONPATH'] if 'PYTHONPATH' in os.environ else '',
                                    'PATH':os.environ['PATH'] if 'PATH' in os.environ else ''},
                               direct_to_workers=True,
+                              silence_logs=30 if verbose else 40,  # logging.WARN or logging.ERROR
                               local_directory=tempfile.mkdtemp())
 
     def __repr__(self):
