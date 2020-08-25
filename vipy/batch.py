@@ -198,7 +198,7 @@ class Batch(object):
            object processes each element in the batch using net according to the lambda, and returns the results.  This function 
            includes ngpu processes, and assumes there are ngpu available on the target machine.  Each net is replicated in a different
            process, so it is the callers responsibility for getting vipy.global.gpuindex() from within the process and setting 
-           net to take advantage of this GPU rather than using the defaeult cuda:0.  
+           net to take advantage of this GPU rather than using the default cuda:0.  
 
         """
         c = self.__dict__['_client']

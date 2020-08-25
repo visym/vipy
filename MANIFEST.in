@@ -1,2 +1,4 @@
 include LICENSE *.md *.py *.jpg
 recursive -include vipy *.py *.jpg
+prune test*
+prune demo*
