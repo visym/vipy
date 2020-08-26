@@ -4,40 +4,39 @@ from setuptools import setup, find_packages
 #
 ## Tag
 #
-#To create a tag in the repo
+# To create a tag in the repo
 #
-#```bash
-#    git commit -am "message"
-#    git push
-#    git tag X.Y.Z -m "vipy-X.Y.Z"
-#    git push --tags origin master
-#```
+# ```bash
+#     git commit -am "message"
+#     git push
+#     git tag X.Y.Z -m "vipy-X.Y.Z"
+#     git push --tags origin master
+# ```
 #
-#To delete a tag in the repo
-#
-#```bash
-#    git tag -d X.Y.Z
-#    git push origin :refs/tags/X.Y.Z
-#```
+# To delete a tag in the repo
+# 
+# ```bash
+#     git tag -d X.Y.Z
+#     git push origin :refs/tags/X.Y.Z
+# ```
 #
 ## PyPI distribution
 #
-#* Edit vipy/version.py to update the version number to match the tag
-#* create ~/.pypirc following https://packaging.python.org/guides/migrating-to-pypi-org/  # uploading
-#* minimum required setuptools >= 38.6.0
+# * Edit vipy/version.py to update the version number to match the tag
+# * create ~/.pypirc following https://packaging.python.org/guides/migrating-to-pypi-org/  # uploading
+# * minimum required setuptools >= 38.6.0
 #
-#```bash
-#python3 -m pip install --upgrade setuptools wheel twine
-#python3 setup.py sdist upload -r pypi
-#```
+# ```bash
+# python3 -m pip install --upgrade setuptools wheel twine
+# python3 setup.py sdist upload -r pypi
+# ```
 #
 # Local installation (virtualenv)
 #
-#```bash
-#cd /path/to/vipy
-#pip install -e .
-#```
-
+# ```bash
+# cd /path/to/vipy
+# pip install -e .
+# ```
 
 d_version = {}
 with open("./vipy/version.py") as fp:
@@ -65,6 +64,10 @@ setup(
         "pillow",
         "ffmpeg-python"
     ],
+    extras_require={
+        'all': ['scipy', 'opencv-python', 'torch', 'ipython', 'scikit-learn', 'boto3', 'youtube-dl', 'dask', 'distributed', 'h5py', 'nltk', 'bs4', 'dropbox', 'pyyaml', 'pytest'],
+        'complete': ['scipy', 'opencv-python', 'torch', 'ipython', 'scikit-learn', 'boto3', 'youtube-dl', 'dask', 'distributed', 'h5py', 'nltk', 'bs4', 'dropbox', 'pyyaml', 'pytest']    
+    },    
     keywords=['vision', 'learning', 'ML', 'CV'],
     classifiers=[
         "Programming Language :: Python :: 3",
