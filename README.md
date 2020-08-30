@@ -35,12 +35,13 @@ Installation
 pip install vipy
 ```
 
-This package includes optional dependencies, which are installable as a complete package:    
+Optional dependencies are installable as a complete package:
+
 ```python
 pip install 'vipy[all]'
 ```
 
-You will receive a friendly warning if attempting to use optional dependencies before installation.
+You will receive a friendly warning if attempting to use an optional dependency before installation.
 
 
 Quickstart
