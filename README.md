@@ -26,18 +26,13 @@ Requirements
 -------------------
 python 3.*  
 ffmpeg (required for videos)  
-
+numpy, matplotlib, dill, pillow, ffmpeg-python   
 
 Installation
 -------------------
 
 ```python
 pip install vipy
-```
-
-This package has the following minimum required dependencies which are installed by default as:    
-```python
-pip install numpy matplotlib dill pillow ffmpeg-python
 ```
 
 This package includes optional dependencies, which are installable as a complete package:    
