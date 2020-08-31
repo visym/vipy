@@ -1260,6 +1260,11 @@ def remkdir(path, flush=False):
     return os.path.abspath(os.path.expanduser(path))
 
 
+def rermdir(path):
+    """Recursively delete a given directory (if exists), and remake it"""
+    return remkdir(path, flush=True)
+
+
 def premkdir(filename):
     """create directory /path/to/subdir if not exist for outfile=/path/to/subdir/file.ext"""
     return remkdir(filepath(filename))

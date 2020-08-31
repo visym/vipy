@@ -279,9 +279,11 @@ class Video(object):
     def canload(self):
         """Return True if the video can be loaded successfully, useful for filtering bad videos or filtering videos that cannot be loaded using your current FFMPEG version"""
         if not self.isloaded():
-            b = self.load(ignoreErrors=True).isloaded()  # try to load
-            self.flush()  # undo it to avoid memory accumulation
-            return b  
+            try:
+                self._preview()  # try to preview
+                return True
+            except:
+                return False
         else:
             return True
 
