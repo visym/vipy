@@ -2,7 +2,7 @@ import os
 from os import path
 import urllib.parse as urlparse
 from vipy.util import try_import
-
+from vipy.globals import print
 
 class Dropbox():
 

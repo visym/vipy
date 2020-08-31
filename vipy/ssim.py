@@ -1,6 +1,7 @@
 from scipy.signal import convolve2d
 from vipy.math import gaussian
 import numpy as np
+from vipy.globals import print
 
 
 class SSIM(object):

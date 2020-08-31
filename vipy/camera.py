@@ -2,7 +2,7 @@ import urllib
 import timeit
 from vipy.util import tempimage, try_import
 from vipy.image import Image
-
+from vipy.globals import print
 
 class Camera(object):
     CAM = None

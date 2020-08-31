@@ -1,3 +1,4 @@
+from vipy.globals import print
 from vipy.util import mat2gray, try_import, string_to_pil_interpolation, Stopwatch, isnumpy
 try_import('cv2', 'opencv-python opencv-contrib-python'); import cv2
 import vipy.image

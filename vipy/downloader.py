@@ -28,6 +28,7 @@ try:
 except:
     pass
 from vipy.util import isS3url, filetail
+from vipy.globals import print
 
 
 # FIX <urlopen error [SSL: CERTIFICATE_VERIFY_FAILED] certificate
