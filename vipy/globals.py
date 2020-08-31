@@ -10,6 +10,7 @@ import warnings
 
 # Global mutable dictionary
 GLOBAL = {'VERBOSE': True, 
+          'VERBOSITY': 2,  # 0=debug, 1=warn, 2=info
           'DASK_CLIENT': None,
           'DASK_MAX_WORKERS':1,
           'CACHE':None,
@@ -52,8 +53,12 @@ def print(s, end='\n'):
         builtins.print(s, end=end) if (not GLOBAL['LOGGING'] or GLOBAL['LOGGER'] is None) else GLOBAL['LOGGER'].info(s)
 
 
-def verbosity():
+def isverbose():
     return GLOBAL['VERBOSE']
+
+
+def isdebug():
+    return GLOBAL['VERBOSE'] and GLOBAL['VERBOSITY'] == 0
 
 
 def verbose():
@@ -63,6 +68,11 @@ def verbose():
 
 def silent():
     GLOBAL['VERBOSE'] = False    
+
+
+def verbosity(v):
+    assert v in [0,1,2]    # debug, warn, info
+    GLOBAL['VERBOSITY'] = v
 
 
 def cache(cachedir=None):
