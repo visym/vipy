@@ -29,8 +29,10 @@ def logging(enable=None, format=None):
         assert isinstance(enable, bool)
         GLOBAL['LOGGING'] = enable
         if format is not None:
-            python_logging.basicConfig(level=python_logging.DEBUG, format=format)
-        GLOBAL['LOGGER'] = python_logging.getLogger('vipy') if enable else None
+            python_logging.basicConfig(level=python_logging.INFO, format=format)
+        GLOBAL['LOGGER'] = python_logging.getLogger('vipy')
+        GLOBAL['LOGGER'].propagate = True if enable else False
+        
     return GLOBAL['LOGGING']
 
 
