@@ -146,7 +146,7 @@ def dask(num_processes=None, dashboard=False):
         if GLOBAL['DASK_CLIENT'] is not None:
             GLOBAL['DASK_CLIENT'].shutdown()
         assert num_processes >= 1, "num_processes>=1"
-        GLOBAL['DASK_CLIENT'] = Dask(num_processes, dashboard=dashboard)        
+        GLOBAL['DASK_CLIENT'] = Dask(num_processes, dashboard=dashboard, verbose=isverbose())        
     return GLOBAL['DASK_CLIENT']
 
 
