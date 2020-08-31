@@ -41,7 +41,7 @@ def warn(s):
         warnings.warn(s) if (not GLOBAL['LOGGING'] or GLOBAL['LOGGER'] is None) else GLOBAL['LOGGER'].warn(s)
 
         
-def print(s):
+def print(s, end='\n'):
     """Main entry point for all print statements in the vipy package. All vipy code calls this to print helpful messages.
       
        Printing can be disabled by calling vipy.globals.silent()
@@ -49,7 +49,7 @@ def print(s):
 
     """
     if GLOBAL['VERBOSE']:
-        builtins.print(s) if (not GLOBAL['LOGGING'] or GLOBAL['LOGGER'] is None) else GLOBAL['LOGGER'].info(s)
+        builtins.print(s, end=end) if (not GLOBAL['LOGGING'] or GLOBAL['LOGGER'] is None) else GLOBAL['LOGGER'].info(s)
 
 
 def verbosity():
