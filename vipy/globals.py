@@ -3,14 +3,66 @@ import webbrowser
 import tempfile
 import vipy.math
 from vipy.util import remkdir
+import builtins
+import logging as python_logging
+import warnings
 
 
 # Global mutable dictionary
-GLOBAL = {'VERBOSE': False, 
+GLOBAL = {'VERBOSE': True, 
           'DASK_CLIENT': None,
           'DASK_MAX_WORKERS':1,
           'CACHE':None,
-          'GPU':None}
+          'GPU':None,
+          'LOGGING':False,
+          'LOGGER':None}
+
+
+def logging(enable=None, format=None):
+    """Single entry point for enabling/disabling logging vs. printing
+       
+       All vipy functions overload "from vipy.globals import print" for simplified readability of code.
+       This global function redirects print or warn to using the standard logging module.
+       If format is provided, this will create a basicConfig handler, but this should be configured by the end-user.    
+    """
+    if enable is not None:
+        assert isinstance(enable, bool)
+        GLOBAL['LOGGING'] = enable
+        if format is not None:
+            python_logging.basicConfig(level=python_logging.INFO, format=format)
+        GLOBAL['LOGGER'] = python_logging.getLogger('vipy')
+        GLOBAL['LOGGER'].propagate = True if enable else False
+        
+    return GLOBAL['LOGGING']
+
+
+def warn(s):
+    if GLOBAL['VERBOSE']:
+        warnings.warn(s) if (not GLOBAL['LOGGING'] or GLOBAL['LOGGER'] is None) else GLOBAL['LOGGER'].warn(s)
+
+        
+def print(s, end='\n'):
+    """Main entry point for all print statements in the vipy package. All vipy code calls this to print helpful messages.
+      
+       Printing can be disabled by calling vipy.globals.silent()
+       Printing can be redirected to logging by calling vipy.globals.logging(True)
+
+    """
+    if GLOBAL['VERBOSE']:
+        builtins.print(s, end=end) if (not GLOBAL['LOGGING'] or GLOBAL['LOGGER'] is None) else GLOBAL['LOGGER'].info(s)
+
+
+def verbosity():
+    return GLOBAL['VERBOSE']
+
+
+def verbose():
+    """The global verbosity level, only really used right now for FFMPEG messages"""
+    GLOBAL['VERBOSE'] = True
+
+
+def silent():
+    GLOBAL['VERBOSE'] = False    
 
 
 def cache(cachedir=None):
@@ -19,13 +71,6 @@ def cache(cachedir=None):
         os.environ['VIPY_CACHE'] = remkdir(cachedir)
     return os.environ['VIPY_CACHE'] if 'VIPY_CACHE' in os.environ else None
     
-
-def verbose(b=None):
-    """The global verbosity level, only really used right now for FFMPEG messages"""
-    if b is not None:
-        GLOBAL['VERBOSE'] = b
-    return GLOBAL['VERBOSE']
-
 
 class Dask(object):
     def __init__(self, num_processes, dashboard=False, verbose=False):

@@ -2,6 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from vipy.util import seq, groupby, try_import, temppng
 from vipy.math import interp1d
+from vipy.globals import print
 try_import('sklearn', 'scikit-learn'); import sklearn.metrics
 
 
@@ -272,7 +273,7 @@ def plot_pr(precision, recall, title=None, label='Precision-Recall', outfile=Non
     plt.grid(True)
 
     if outfile is not None:
-        quietprint('[vipy.metric.plot_pr]: saving "%s"' % outfile)
+        print('[vipy.metric.plot_pr]: saving "%s"' % outfile)
         plt.savefig(outfile)
     else:
         plt.show()
@@ -289,7 +290,7 @@ def plot_ap(ap, categories, title=None, outfile=None):
     if title is not None:
         plt.title('%s' % (title))
     if outfile is not None:
-        quietprint('[vipy.metric.plot_ap]: saving "%s"' % outfile)
+        print('[vipy.metric.plot_ap]: saving "%s"' % outfile)
         plt.savefig(outfile)
     else:
         plt.show()

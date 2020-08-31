@@ -26,7 +26,7 @@ Requirements
 -------------------
 python 3.*  
 ffmpeg (required for videos)  
-
+numpy, matplotlib, dill, pillow, ffmpeg-python   
 
 Installation
 -------------------
@@ -35,21 +35,20 @@ Installation
 pip install vipy
 ```
 
-This package has the following required dependencies which are installed by default
+Optional dependencies are installable as a complete package:
+
 ```python
-pip install numpy matplotlib dill pillow ffmpeg-python
+pip install 'vipy[all]'
 ```
 
-The following packages are optional.  You will receive a friendly warning if attempting to use these dependencies:
-```python
-pip install scipy opencv-python torch ipython scikit-learn boto3 youtube-dl dask distributed h5py nltk bs4 dropbox pyyaml pytest
-```
+You will receive a friendly warning if attempting to use an optional dependency before installation.
+
 
 Quickstart
 -------------------
 ```python
 import vipy
-vipy.image.owl().mindim(512).show(figure=1).fliplr().show(figure=2).minsquare().show(figure=3)
+vipy.image.owl().mindim(512).show(figure=1).fliplr().show(figure=2)
 ```
 
 The [demos](https://github.com/visym/vipy/tree/master/demo) provide useful notebook tutorials to help you get started.

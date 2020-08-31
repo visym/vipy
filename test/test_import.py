@@ -8,7 +8,6 @@ def test_import():
     import vipy.annotation
     import vipy.calibration
     import vipy.camera
-    import vipy.collector
     import vipy.downloader
     import vipy.dropbox
     import vipy.flow

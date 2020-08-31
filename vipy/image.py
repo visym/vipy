@@ -4,6 +4,7 @@ import PIL.Image
 import platform
 import dill
 import vipy.show
+from vipy.globals import print
 from vipy.show import imshow, imbbox, savefig, colorlist
 from vipy.util import isnumpy, isurl, isimageurl, \
     fileext, tempimage, mat2gray, imwrite, imwritegray, \
@@ -130,7 +131,7 @@ class Image(object):
         return str('<vipy.image: %s>' % (', '.join(strlist)))
 
     def print(self, prefix='', verbose=True):
-        """Print the representation of the image adn return self - useful for debugging in long fluent chains"""
+        """Print the representation of the image and return self - useful for debugging in long fluent chains"""
         if verbose:
             print(prefix+self.__repr__())
         return self

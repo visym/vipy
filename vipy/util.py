@@ -86,10 +86,6 @@ def count_images_in_subdirectories(indir):
     return num_files
 
 
-def quietprint(x, verbosity=None):
-    print(x)
-
-
 def rowvectorize(X):
     """Convert a 1D numpy array to a 2D row vector of size (1,N)"""
     return X.reshape((1, X. size)) if X.ndim == 1 else X

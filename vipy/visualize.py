@@ -1,7 +1,8 @@
 import os
 import numpy as np
 import shutil
-from vipy.util import remkdir, imlist, filetail, istuple, islist, isnumpy, quietprint, filebase, temphtml
+from vipy.globals import print
+from vipy.util import remkdir, imlist, filetail, istuple, islist, isnumpy, filebase, temphtml
 from vipy.image import Image
 from vipy.show import savefig
 from collections import defaultdict
