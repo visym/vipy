@@ -151,13 +151,13 @@ class Batch(object):
             return self.batch(self.__dict__['_client'].map(f_lambda, self._objlist))
 
     def filter(self, f_lambda):
-        """Run the lambda function on each of the elements of the batch and filter based on the provided lambda keeping those elemnents that return true 
+        """Run the lambda function on each of the elements of the batch and filter based on the provided lambda keeping those elements that return true 
         """
         assert self.__dict__['_client'] is not None, "Batch() must be reconstructed after shutdown"        
         c = self.__dict__['_client']
-        objlist = c.scatter(self._objlist)        
-        is_filtered = self.batch(self.__dict__['_client'].map(f_lambda, objlist))
-        self._objlist = [obj for (f, obj) in zip(is_filtered, self._objlist) if f is True]
+        objlist = self._objlist  # original list
+        is_filtered = self.batch(self.__dict__['_client'].map(f_lambda, c.scatter(self._objlist)))  # distributed filter (replaces self._objlist)
+        self._objlist = [obj for (f, obj) in zip(is_filtered, objlist) if f is True]  # keep only elements that filter true
         return self
         
     def torch(self):
