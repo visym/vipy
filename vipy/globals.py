@@ -95,7 +95,7 @@ class Dask(object):
         from dask.distributed import get_worker         
 
         dask_config_set({"distributed.comm.timeouts.tcp": "50s"})
-        dask_config_set({"distributed.comm.timeouts.connect": "10s"})        
+        dask_config_set({"distributed.comm.timeouts.connect": "50s"})        
         self._num_processes = num_processes
         self._client = Client(name='vipy', 
                               scheduler_port=0, 
