@@ -38,6 +38,7 @@ pip install vipy
 Optional dependencies are installable as a complete package:
 
 ```python
+pip install pip --upgrade
 pip install 'vipy[all]'
 ```
 
