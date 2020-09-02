@@ -2,6 +2,7 @@ import os
 import sys
 from vipy.util import try_import, islist, tolist, tempdir, remkdir, chunklistbysize
 from itertools import repeat
+import dill
 try_import('dask', 'dask distributed torch')
 from dask.distributed import as_completed, wait
 try_import('torch', 'torch');  import torch
@@ -9,6 +10,7 @@ import numpy as np
 import tempfile
 import warnings
 import vipy.globals
+
 
 
 class Batch(object):
@@ -124,7 +126,7 @@ class Batch(object):
         objlist = c.scatter(self._objlist)        
         futures = [c.submit(f_lambda, im, *a) for im in objlist for a in args]
         return self.batch(futures) if waiting else futures
-        
+
     def map(self, f_lambda, args=None):
         """Run the lambda function on each of the elements of the batch. 
         
@@ -185,6 +187,21 @@ class Batch(object):
         c = self.__dict__['_client']
         objdist = c.scatter(obj)        
         return self.batch([c.submit(f, objdist, imb) for imb in chunklistbysize(self._objlist, batchsize)])                
+
+    def dictmap(self, f, d):
+        """Apply lambda function f(obj, d) to each element in the batch, where d is a dictionary of parameters 
+
+          Usage:
+
+          >>> Batch(mylist).dictmap(lambda im,d: im.maxdim(d['maxdim']), {'maxdim':512})
+
+          This is useful when providing a lambda function with closure variables.
+        """
+        assert isinstance(d, dict)
+        c = self.__dict__['_client']
+        objlist = c.scatter(self._objlist)
+        return self.batch([c.submit(f, im, a) for (im, a) in zip(objlist, repeat(d, len(self._objlist)))])
+
 
     def scattermap(self, f, obj):
         """Scatter obj to all workers, and apply lambda function f(obj, im) to each element in batch
