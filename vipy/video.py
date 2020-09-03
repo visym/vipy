@@ -280,9 +280,11 @@ class Video(object):
     def canload(self):
         """Return True if the video can be loaded successfully, useful for filtering bad videos or filtering videos that cannot be loaded using your current FFMPEG version"""
         if not self.isloaded():
-            b = self.load(ignoreErrors=True).isloaded()  # try to load
-            self.flush()  # undo it to avoid memory accumulation
-            return b  
+            try:
+                self._preview()  # try to preview
+                return True
+            except:
+                return False
         else:
             return True
 
@@ -506,7 +508,7 @@ class Video(object):
         try:
             f = self._ffmpeg.filter('select', 'gte(n,{})'.format(framenum))\
                             .output('pipe:', vframes=1, format='image2', vcodec='mjpeg')\
-                            .global_args('-cpuflags', '0', '-loglevel', 'debug' if vipy.globals.verbosity() else 'error')
+                            .global_args('-cpuflags', '0', '-loglevel', 'debug' if vipy.globals.isdebug() else 'error')
             (out, err) = f.run(capture_stdout=True)            
         except Exception as e:
             raise ValueError('[vipy.video.load]: Video preview failed for video "%s" with ffmpeg command "%s" - Try manually running ffmpeg to see errors.  This error usually means that you need to upgrade your FFMPEG distribution to the latest stable version.' % (str(self), str(self._ffmpeg_commandline(f))))
@@ -542,7 +544,7 @@ class Video(object):
         #    -On some versions of ffmpeg setting -cpuflags=0 fixes it, but the right solution is to rebuild from the head (30APR20)
         try:
             f = self._ffmpeg.output('pipe:', format='rawvideo', pix_fmt='rgb24')\
-                            .global_args('-cpuflags', '0', '-loglevel', 'debug' if vipy.globals.verbosity() else 'error')
+                            .global_args('-cpuflags', '0', '-loglevel', 'debug' if vipy.globals.isdebug() else 'error')
             (out, err) = f.run(capture_stdout=True)
         except Exception as e:
             if not ignoreErrors:
@@ -785,7 +787,7 @@ class Video(object):
                                 .filter('pad', 'ceil(iw/2)*2', 'ceil(ih/2)*2') \
                                 .output(filename=outfile, pix_fmt='yuv420p', vcodec=vcodec) \
                                 .overwrite_output() \
-                                .global_args('-cpuflags', '0', '-loglevel', 'error' if not vipy.globals.verbosity() else 'debug') \
+                                .global_args('-cpuflags', '0', '-loglevel', 'error' if not vipy.globals.isdebug() else 'debug') \
                                 .run_async(pipe_stdin=True)                
                 for frame in self._array:
                     process.stdin.write(frame.astype(np.uint8).tobytes())
@@ -799,7 +801,7 @@ class Video(object):
                 self._ffmpeg.filter('pad', 'ceil(iw/2)*2', 'ceil(ih/2)*2') \
                             .output(filename=tmpfile, pix_fmt='yuv420p', vcodec=vcodec, r=framerate) \
                             .overwrite_output() \
-                            .global_args('-cpuflags', '0', '-loglevel', 'error' if not vipy.globals.verbosity() else 'debug') \
+                            .global_args('-cpuflags', '0', '-loglevel', 'error' if not vipy.globals.isdebug() else 'debug') \
                             .run()
                 if outfile == self.filename():
                     if os.path.exists(self.filename()):

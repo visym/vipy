@@ -1,4 +1,5 @@
 [![PyPI version](https://badge.fury.io/py/vipy.svg)](https://badge.fury.io/py/vipy)  ![CI](https://github.com/visym/vipy/workflows/vipy%20unit%20tests/badge.svg)
+
 VIPY
 -------------------
 VIPY: Visym Python Tools for Visual Dataset Transformation    
@@ -37,6 +38,7 @@ pip install vipy
 Optional dependencies are installable as a complete package:
 
 ```python
+pip install pip --upgrade
 pip install 'vipy[all]'
 ```
 

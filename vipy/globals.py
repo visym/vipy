@@ -1,5 +1,6 @@
 import os
 import webbrowser
+import dill
 import tempfile
 import vipy.math
 from vipy.util import remkdir
@@ -9,13 +10,14 @@ import warnings
 
 
 # Global mutable dictionary
-GLOBAL = {'VERBOSE': True, 
-          'DASK_CLIENT': None,
-          'DASK_MAX_WORKERS':1,
-          'CACHE':None,
-          'GPU':None,
-          'LOGGING':False,
-          'LOGGER':None}
+GLOBAL = {'VERBOSE': True,       # If False, will silence everything, equivalent to calling vipy.globals.silent()
+          'VERBOSITY': 2,        # 0=debug, 1=warn, 2=info, only if VERBOSE=True
+          'DASK_CLIENT': None,   # Global Dask() client for distributed processing
+          'DASK_MAX_WORKERS':1,  # Maximum number of processes when creating Dask() client
+          'CACHE':None,          # Cache directory for vipy.video and vipy.image donwloads
+          'GPU':None,            # GPU index assigned to this process
+          'LOGGING':False,       # If True, use python logging (handler provided by end-user) intead of print 
+          'LOGGER':None}         # The global logger used by vipy.globals.print() and vipy.globals.warn() if LOGGING=True
 
 
 def logging(enable=None, format=None):
@@ -44,25 +46,38 @@ def warn(s):
 def print(s, end='\n'):
     """Main entry point for all print statements in the vipy package. All vipy code calls this to print helpful messages.
       
-       Printing can be disabled by calling vipy.globals.silent()
-       Printing can be redirected to logging by calling vipy.globals.logging(True)
+       -Printing can be disabled by calling vipy.globals.silent()
+       -Printing can be redirected to logging by calling vipy.globals.logging(True)
+       -All print() statements in vipy.* are overloaded to call vipy.globals.print() so that it can be redirected to logging
 
     """
     if GLOBAL['VERBOSE']:
         builtins.print(s, end=end) if (not GLOBAL['LOGGING'] or GLOBAL['LOGGER'] is None) else GLOBAL['LOGGER'].info(s)
 
 
-def verbosity():
-    return GLOBAL['VERBOSE']
-
-
 def verbose():
     """The global verbosity level, only really used right now for FFMPEG messages"""
     GLOBAL['VERBOSE'] = True
 
+def isverbose():
+    return GLOBAL['VERBOSE']
 
 def silent():
     GLOBAL['VERBOSE'] = False    
+
+def issilent():
+    return GLOBAL['VERBOSE'] == False 
+
+def verbosity(v):
+    assert v in [0,1,2]    # debug, warn, info
+    GLOBAL['VERBOSITY'] = v
+
+def debug():
+    verbose()
+    verbosity(0)
+
+def isdebug():
+    return GLOBAL['VERBOSE'] and GLOBAL['VERBOSITY'] == 0
 
 
 def cache(cachedir=None):
@@ -79,16 +94,16 @@ class Dask(object):
         from vipy.util import try_import
         try_import('dask', 'dask distributed')
         import dask
+        import dask.config
+        dask.config.set(distributed__comm__timeouts__tcp="60s")
+        dask.config.set(distributed__comm__timeouts__connect="60s")        
         from dask.distributed import Client
         from dask.distributed import as_completed, wait
-        from dask.config import set as dask_config_set
         from dask.distributed import get_worker         
 
-        dask_config_set({"distributed.comm.timeouts.tcp": "50s"})
-        dask_config_set({"distributed.comm.timeouts.connect": "10s"})        
         self._num_processes = num_processes
         self._client = Client(name='vipy', 
-                              scheduler_port=0, 
+                              scheduler_port=0,   # random
                               dashboard_address=None if not dashboard else ':0',  # random port
                               processes=True, 
                               threads_per_worker=1, 
@@ -97,7 +112,7 @@ class Dask(object):
                                    'PYTHONOPATH':os.environ['PYTHONPATH'] if 'PYTHONPATH' in os.environ else '',
                                    'PATH':os.environ['PATH'] if 'PATH' in os.environ else ''},
                               direct_to_workers=True,
-                              silence_logs=30 if verbose else 40,  # logging.WARN or logging.ERROR
+                              silence_logs=(False if isdebug() else 30) if not verbose else 40,  # logging.WARN or logging.ERROR or logging.INFO
                               local_directory=tempfile.mkdtemp())
 
     def __repr__(self):
@@ -118,6 +133,7 @@ class Dask(object):
     def client(self):
         return self._client
 
+
 def cpuonly():
     GLOBAL['GPU'] = None
 
@@ -136,7 +152,7 @@ def dask(num_processes=None, dashboard=False):
         if GLOBAL['DASK_CLIENT'] is not None:
             GLOBAL['DASK_CLIENT'].shutdown()
         assert num_processes >= 1, "num_processes>=1"
-        GLOBAL['DASK_CLIENT'] = Dask(num_processes, dashboard=dashboard)        
+        GLOBAL['DASK_CLIENT'] = Dask(num_processes, dashboard=dashboard, verbose=isverbose())        
     return GLOBAL['DASK_CLIENT']
 
 
