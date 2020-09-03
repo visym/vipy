@@ -1,5 +1,4 @@
-[![PyPI version](https://badge.fury.io/py/vipy.svg)](https://badge.fury.io/py/vipy)
-
+[![PyPI version](https://badge.fury.io/py/vipy.svg)](https://badge.fury.io/py/vipy)  ![CI](https://github.com/visym/vipy/workflows/vipy%20unit%20tests/badge.svg)
 VIPY
 -------------------
 VIPY: Visym Python Tools for Visual Dataset Transformation    

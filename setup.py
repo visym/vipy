@@ -67,8 +67,8 @@ setup(
     extras_require={
         'all': ['scipy', 'opencv-python', 'torch', 'ipython', 'scikit-learn', 'boto3', 'youtube-dl', 'dask', 'distributed', 'h5py', 'nltk', 'bs4', 'dropbox', 'pyyaml', 'pytest'],
         'complete': ['scipy', 'opencv-python', 'torch', 'ipython', 'scikit-learn', 'boto3', 'youtube-dl', 'dask', 'distributed', 'h5py', 'nltk', 'bs4', 'dropbox', 'pyyaml', 'pytest']    
-    },    
-    keywords=['vision', 'learning', 'ML', 'CV'],
+    },
+    keywords=['computer vision machine learning ML CV privacy video image'],    
     classifiers=[
         "Programming Language :: Python :: 3",
         "Operating System :: OS Independent",
