@@ -25,7 +25,7 @@ VIPY provides:
 Requirements
 -------------------
 python 3.*  
-ffmpeg (required for videos)  
+[ffmpeg](https://ffmpeg.org/download.html) (required for videos)  
 numpy, matplotlib, dill, pillow, ffmpeg-python   
 
 Installation
