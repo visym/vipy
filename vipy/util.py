@@ -39,12 +39,15 @@ def tocache(filename):
     return os.path.join(remkdir(os.environ['VIPY_CACHE']), filetail(filename)) if hascache() else filename
 
 
-def try_import(package, pipname=None):
+def try_import(package, pipname=None, message=None):
     """Show a helpful error message for missing optional packages"""
     try:
         importlib.import_module(package)
     except:
-        raise ImportError('Optional package "%s" not installed -  Run "pip install %s" ' % (package, package if pipname is None else pipname))
+        if message is not None:
+            raise ImportError(message)
+        else:
+            raise ImportError('Optional package "%s" not installed -  Run "pip install %s" ' % (package, package if pipname is None else pipname))
 
 
 def findyaml(basedir):
