@@ -1690,6 +1690,12 @@ class Scene(VideoCategory):
         return self.__getitem__(frame).savefig(outfile=outfile, fontsize=fontsize, nocaption=nocaption, boxalpha=boxalpha, dpi=dpi, textfacecolor=textfacecolor, textfacealpha=textfacealpha)
 
     
+    def stabilize(self, mindim=256):
+        """Background stablization using flow based stabilization masking foreground region.  This will output a video with all frames aligned to the first frame, such that the background is static."""
+        from vipy.flow import Flow  # requires opencv
+        return Flow().stabilize(self.clone().mindim(mindim))
+    
+    
 def RandomVideo(rows=None, cols=None, frames=None):
     """Return a random loaded vipy.video.video, useful for unit testing, minimum size (32x32x32)"""
     rows = np.random.randint(256, 1024) if rows is None else rows
