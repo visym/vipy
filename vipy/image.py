@@ -1712,3 +1712,23 @@ def owl():
                  objects=[vipy.object.Detection('Great Horned Owl', xmin=300, ymin=320, width=1200, height=1600),
                           vipy.object.Detection('left eye', xmin=600, ymin=800, width=250, height=250), 
                           vipy.object.Detection('right eye', xmin=1000, ymin=800, width=250, height=250)])
+
+
+def vehicles():
+    """Return a highway scene with the four highest confidence vehicle detections for testing"""
+    return Scene(url='https://upload.wikimedia.org/wikipedia/commons/3/3e/I-80_Eastshore_Fwy.jpg',
+                 category='Highway',
+                 objects=[vipy.object.Detection(category="car", xywh=(473.0, 592.2, 92.4, 73.4)),
+                          vipy.object.Detection(category="car", xywh=(1410.0, 756.1, 175.2, 147.3)),
+                          vipy.object.Detection(category="car", xywh=(316.9, 640.1, 119.4, 119.5)),
+                          vipy.object.Detection(category="car", xywh=(886.9, 892.9, 223.8, 196.6))])
+
+def people():
+    """Return a crowd scene with the four highest confidence person detections for testing"""
+    return Scene(url='https://upload.wikimedia.org/wikipedia/commons/b/be/July_4_crowd_at_Vienna_Metro_station.jpg',
+                 category='crowd',
+                 objects=[vipy.object.Detection(category="person", xywh=(1.8, 1178.7, 574.1, 548.0)),
+                          vipy.object.Detection(category="person", xywh=(1589.4, 828.3, 363.0, 887.7)),
+                          vipy.object.Detection(category="person", xywh=(1902.9, 783.1, 250.8, 825.8)),
+                          vipy.object.Detection(category="person", xywh=(228.2, 948.7, 546.8, 688.5))])
+
