@@ -1166,6 +1166,9 @@ class Scene(VideoCategory):
         img = np.uint8(np.sum([1/float(n)*im.array() for im in imframes], axis=0))
         return imframes[0].clone().array(img)
 
+    def isdegenerate(self):
+        """Degenerate scene has empty or malformed tracks"""
+        return len(self.tracklist()) == 0 or any([t.isempty() or t.isdegenerate() for t in self.tracklist()])
     
     def quicklook(self, n=9, dilate=1.5, mindim=256, fontsize=10, context=False, startframe=0, animate=False, dt=30):
         """Generate a montage of n uniformly spaced annotated frames centered on the union of the labeled boxes in the current frame to show the activity ocurring in this scene at a glance

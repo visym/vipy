@@ -248,6 +248,7 @@ class Track(object):
         If self._boundary='extend', then boxes are repeated if the interpolation is outside the keyframes
         If self._boundary='strict', then interpolation returns None if the interpolation is outside the keyframes
         """
+        assert not self.isempty(), "Degenerate object for interpolation"
         (xmin, ymin, width, height) = zip(*[bb.to_xywh() for bb in self._keyboxes])
         d = Detection(xmin=np.interp(k, self._keyframes, xmin),
                       ymin=np.interp(k, self._keyframes, ymin),
