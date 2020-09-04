@@ -985,11 +985,11 @@ class Image(object):
         """Export a base64 encoding of the image suitable for embedding in an html page, enclosed in <img> tag
            
            Returns:
-              -string:  <img src="data:image/jpeg;charset=utf-8;base64,%s" alt="%s"> containing base64 encoded JPEG and alt text        
+              -string:  <img src="data:image/jpeg;charset=utf-8;base64,%s" alt="%s" loading="lazy"> containing base64 encoded JPEG and alt text with lazy loading
         """
         b = self.base64().decode('ascii')
         alt_text = alt if alt is not None else self.filename()
-        return '<img src="data:image/jpeg;charset=utf-8;base64,%s" alt="%s">' % (b, alt_text)
+        return '<img src="data:image/jpeg;charset=utf-8;base64,%s" alt="%s" loading="lazy">' % (b, alt_text)
 
     def savefig(self, filename=None):
         """Save last figure output from self.show() with drawing overlays to provided filename and return filename"""

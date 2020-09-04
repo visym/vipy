@@ -109,6 +109,8 @@ def videomontage(vidlist, imgheight, imgwidth, gridrows=None, gridcols=None, asp
 
 
 def urls(urllist, title='URL Visualization', imagewidth=1024, outfile=None, display=False):
+    """Given a list of public image URLs, create a stand-alone HTML page to show them all"""
+    
     # Create summary page to show precomputed images
     k_divid = 0    
     filename = outfile if outfile is not None else temphtml()
@@ -133,7 +135,7 @@ def urls(urllist, title='URL Visualization', imagewidth=1024, outfile=None, disp
         f.write('<p>\n</p>\n')
         f.write('URL: <a href="%s">%s</a>\n' % (url, url))
         f.write('<br>\n')        
-        f.write('<img src="%s" alt="image" width=%d/>\n' % (url, imagewidth))        
+        f.write('<img src="%s" alt="image" width=%d loading="lazy">\n' % (url, imagewidth))        
         f.write('<p>\n</p>\n')
         f.write('<hr>\n')
         f.write('<p>\n</p>\n')
@@ -237,7 +239,7 @@ def imagelist(list_of_image_files, outdir, title='Image Visualization', imagewid
         f.write('<p>\n</p>\n')
         f.write('<b>Filename: %s</b><br>\n' % imdst)
         f.write('<br>\n')
-        f.write('<img src="%s" alt="image" width=%d/>\n' % (imdst, imagewidth))
+        f.write('<img src="%s" alt="image" width=%d loading="lazy">\n' % (imdst, imagewidth))
         f.write('<p>\n</p>\n')
         f.write('<hr>\n')
         f.write('<p>\n</p>\n')
@@ -283,7 +285,7 @@ def imagetuplelist(list_of_tuples_of_image_files, outdir, title='Image Visualiza
         f.write('<br>\n')
         for imsrc in imsrclist:
             imdst = filetail(imsrc)
-            f.write('<img src="%s" alt="image" width=%d/>' % (imdst, imagewidth))
+            f.write('<img src="%s" alt="image" width=%d loading="lazy">' % (imdst, imagewidth))
         f.write('\n<p>\n</p>\n')
         f.write('<hr>\n')
         f.write('<p>\n</p>\n')
