@@ -117,7 +117,7 @@ class Batch(object):
     def __getattr__(self, attr):
         """Call the same method on all Image objects"""
         assert self.__dict__['_client'] is not None, "Batch() must be reconstructed after shutdown"                                
-        return lambda *args, **kw: self.batch(self.__dict__['_client'].map(lambda im: getattr(im, attr)(*args, **kw), self._objlist))
+        return lambda *args, **kw: self.dictmap(lambda im,d: getattr(im, d['attr'])(*d['args'], **d['kw']), {'attr':attr, 'args':args, 'kw':kw})
 
     def product(self, f_lambda, args, waiting=True):
         """Cartesian product of args and batch, returns an MxN list of N args applied to M batch elements.  Use this with extreme caution, as the memory requirements may be high."""
@@ -136,6 +136,8 @@ class Batch(object):
         >>> imb = vipy.image.Batch(iml, n_processes=4) 
         >>> imb.map(lambda im,f: im.saveas(f), args=[('/tmp/out%d.jpg'%k,) for k in range(0,1000)])  
         >>> imb.map(lambda im: im.rgb())  # this is equivalent to imb.rgb()
+
+        The lambda function f_lambda must not include closures.  If it does, use self.dictmap().
 
         """
         assert self.__dict__['_client'] is not None, "Batch() must be reconstructed after shutdown"                
