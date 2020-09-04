@@ -1665,16 +1665,18 @@ class Scene(ImageCategory):
         return self
 
     def savefig(self, outfile=None, categories=None, figure=None, nocaption=False, fontsize=10, boxalpha=0.25, d_category2color={'person':'green', 'vehicle':'blue', 'object':'red'}, captionoffset=(0,0), dpi=200, textfacecolor='white', textfacealpha=1.0, shortlabel=True, nocaption_withstring=[]):
-        """Save show() output to given file or return bufferwithout popping up a window"""
+        """Save show() output to given file or return buffer without popping up a window"""
         self.show(categories=categories, figure=figure, nocaption=nocaption, fontsize=fontsize, boxalpha=boxalpha, 
                   d_category2color=d_category2color, captionoffset=captionoffset, nowindow=True, textfacecolor=textfacecolor, 
                   textfacealpha=textfacealpha, shortlabel=shortlabel, nocaption_withstring=nocaption_withstring)
+        
         if outfile is None:
-            (W,H) = plt.gcf().canvas.get_width_height()  # fast
-            buf = io.BytesIO()
-            plt.gcf().canvas.print_raw(buf)  # fast
+            buf = io.BytesIO()                        
+            (W,H) = plt.figure(num=figure if figure is not None else plt.gcf().number).canvas.get_width_height()  # fast(ish)
+            plt.figure(num=figure if figure is not None else plt.gcf().number).canvas.print_raw(buf)  # fast(ish)
             img = np.frombuffer(buf.getvalue(), dtype=np.uint8).reshape((H, W, 4))
-            plt.close(plt.gcf())   # memory cleanup
+            if figure is None:
+                plt.close(plt.gcf())   # memory cleanup (useful for video annotation on last frame)
             return vipy.image.Image(array=img, colorspace='rgba')
         else:
             savefig(outfile, figure, dpi=dpi, bbox_inches='tight', pad_inches=0)

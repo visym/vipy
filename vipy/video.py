@@ -1666,6 +1666,7 @@ class Scene(VideoCategory):
                                 d_category2color=d_category2color,
                                 categories=categories,
                                 nocaption=nocaption,
+                                figure=1024 if k<(len(self)-1) else None,  # cleanup on last frame
                                 nocaption_withstring=nocaption_withstring).numpy() for k in range(0, len(self))]  # SLOW for large videos
         self._array = np.stack([np.array(PIL.Image.fromarray(img).convert('RGB')) for img in imgs], axis=0)  # replace pixels with annotated pixels
         return self
