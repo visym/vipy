@@ -1685,11 +1685,14 @@ class Scene(VideoCategory):
                                      categories=categories,
                                      nocaption=nocaption, 
                                      nocaption_withstring=nocaption_withstring).saveas(outfile).play()
-    
+
+    def fastshow(self, outfile=None, verbose=True, fontsize=10, captionoffset=(0,0), textfacecolor='white', textfacealpha=1.0, shortlabel=True, boxalpha=0.25, d_category2color={'Person':'green', 'Vehicle':'blue', 'Object':'red'}, categories=None, nocaption=False, nocaption_withstring=[]):
+        """Faster show generating much smaller video thumbnail, useful for quick visualizations for large videos"""
+        return self.clone().mindim(128).show(outfile, verbose, fontsize, captionoffset, textfacecolor, textfacealpha, shortlabel, boxalpha, d_category2color, categories, nocaption,nocaption_withstring)
+
     def thumbnail(self, outfile=None, frame=0, fontsize=10, nocaption=False, boxalpha=0.25, dpi=200, textfacecolor='white', textfacealpha=1.0):
         """Return annotated frame=k of video, save annotation visualization to provided outfile"""
         return self.__getitem__(frame).savefig(outfile=outfile, fontsize=fontsize, nocaption=nocaption, boxalpha=boxalpha, dpi=dpi, textfacecolor=textfacecolor, textfacealpha=textfacealpha)
-
     
     def stabilize(self, mindim=256):
         """Background stablization using flow based stabilization masking foreground region.  This will output a video with all frames aligned to the first frame, such that the background is static."""
