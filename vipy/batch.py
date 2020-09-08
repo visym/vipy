@@ -12,7 +12,6 @@ import warnings
 import vipy.globals
 
 
-
 class Batch(object):
     """vipy.batch.Batch class
 
@@ -54,8 +53,8 @@ class Batch(object):
     
         self._ngpu = ngpu
         if self._ngpu > 0:
-             assert ngpu == n_processes
-             wait([self._client.submit(lambda x: vipy.globals.gpuindex(x), k, workers=wid) for (k, wid) in enumerate(self._client.scheduler_info()['workers'].keys())])
+            assert ngpu == n_processes
+            wait([self._client.submit(vipy.globals.gpuindex, k, workers=wid) for (k, wid) in enumerate(self._client.scheduler_info()['workers'].keys())])
 
     def __enter__(self):
         return self
