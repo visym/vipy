@@ -989,7 +989,7 @@ class Image(object):
         """
         b = self.base64().decode('ascii')
         alt_text = alt if alt is not None else self.filename()
-        return '<img src="data:image/jpeg;charset=utf-8;base64,%s" alt="%s" loading="lazy">' % (b, alt_text)
+        return '<img src="data:image/jpeg;charset=utf-8;base64,%s" alt="%s" loading="lazy">' % (b, str(alt_text))
 
     def savefig(self, filename=None):
         """Save last figure output from self.show() with drawing overlays to provided filename and return filename"""

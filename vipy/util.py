@@ -598,6 +598,10 @@ def ispkl(filename):
     return filename[-4:] == '.pkl' if isstring(filename) and \
         len(filename) >= 4 else False
 
+def ishtml(filename):
+    """Is the file an HTMLfile"""
+    return fileext(filename).lower() == '.html'
+
 
 def ispickle(filename):
     """Is the file a pickle archive file"""

@@ -1,5 +1,4 @@
 # Import all subpackages
-import dill  # dill before pickle
 import vipy.show  # matplotlib first
 import vipy.activity
 import vipy.annotation
