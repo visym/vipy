@@ -331,10 +331,11 @@ class Flow(object):
             (xy_src_k1, xy_dst_k1) = self._correspondence(imfk1, im, border=border, dilate=dilate, contrast=contrast)
             (xy_src_k2, xy_dst_k2) = self._correspondence(imfk2, im, border=border, dilate=dilate, contrast=contrast)
             (xy_src, xy_dst) = (np.hstack( (xy_src_k0, xy_src_k1, xy_src_k2) ).transpose(), np.hstack( (xy_dst_k0, xy_dst_k1, xy_dst_k2) ).transpose())
-            if len(xy_src) < 8 or len(xy_dst) < 8:
-                print('[vipy.flow.stabilize]: ERROR - not enough corresponding points for coarse alignment, returning original video "%s"' % str(v))
+            try:            
+                M = f_estimate_coarse(xy_src, xy_dst, method=cv2.RANSAC, confidence=0.9999, ransacReprojThreshold=0.1, refineIters=16, maxIters=2000)
+            except:
+                print('[vipy.flow.stabilize]: ERROR - coarse alignment failed, returning original video "%s"' % str(v))
                 return v
-            M = f_estimate_coarse(xy_src, xy_dst, method=cv2.RANSAC, confidence=0.9999, ransacReprojThreshold=0.1, refineIters=16, maxIters=2000)
 
             # Fine alignment
             A = A.dot(M)  # update coarse reference frame
@@ -342,11 +343,12 @@ class Flow(object):
             imfinemask = f_warp_coarse(np.ones_like(im.clone().greyscale().numpy()), dst=np.zeros_like(imstabilized.numpy()), M=f_transform_coarse(T.dot(A)), dsize=(imstabilized.width(), imstabilized.height()), borderMode=cv2.BORDER_TRANSPARENT) > 0
             imfineflow = self.imageflow(imfine, imstabilized)
             (xy_src, xy_dst) = self._correspondence(imfineflow, imfine, border=None, dilate=dilate, contrast=contrast, validmask=imfinemask)
-            if len(xy_src.transpose()) < 8 or len(xy_dst.transpose()) < 8:
-                print('[vipy.flow.stabilize]: ERROR - not enough corresponding points for fine alignment, returning original video "%s"' % str(v))
+            try:
+                F = f_estimate_fine(xy_src.transpose()-np.array([padwidth, padheight]), xy_dst.transpose()-np.array([padwidth, padheight]), method=cv2.RANSAC, confidence=0.9999, ransacReprojThreshold=0.1, refineIters=16, maxIters=2000)  
+            except:
+                print('[vipy.flow.stabilize]: ERROR - fine alignment failed, returning original video "%s"' % str(v))
                 return v
-            F = f_estimate_fine(xy_src.transpose()-np.array([padwidth, padheight]), xy_dst.transpose()-np.array([padwidth, padheight]), method=cv2.RANSAC, confidence=0.9999, ransacReprojThreshold=0.1, refineIters=16, maxIters=2000)  
-            
+        
             # Render coarse to fine stabilized frame with aligned objects
             A = F.dot(A)  # update fine reference frame            
             f_warp_fine(im.numpy(), dst=imstabilized._array, M=f_transform_fine(T.dot(A)), dsize=(imstabilized.width(), imstabilized.height()), borderMode=cv2.BORDER_TRANSPARENT)

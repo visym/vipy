@@ -8,7 +8,7 @@ def run(outdir, n_processes):
     d = Kinetics700(outdir)
     if not d.isdownloaded():
         d.download()
-    Batch(d.valset() + d.testset() + d.trainset(), n_processes=n_processes).map(lambda v: v.download(ignoreErrors=True).save(ignoreErrors=True) if not v.hasfilename() else print_and_return(v))
+    Batch(d.valset() + d.testset() + d.trainset(), n_processes=n_processes).map(lambda v: v.download(ignoreErrors=True).save(ignoreErrors=True) if not v.hasfilename() else print_and_return(v)).result()
 
     
 if __name__ == '__main__':

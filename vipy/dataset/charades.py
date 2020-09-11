@@ -67,7 +67,7 @@ class Charades(object):
     def review(self, outfile=None, mindim=1024, n=25):
         """Generate a standalone HTML file containing quicklooks for each annotated activity in the train set"""
         T = self.trainset()
-        quicklist = Batch(T).map(lambda v: [(c.load().quicklook(n=n), c.activitylist(), str(c.flush().print())) for c in v.mindim(512).activityclip()])
+        quicklist = Batch(T).map(lambda v: [(c.load().quicklook(n=n), c.activitylist(), str(c.flush().print())) for c in v.mindim(512).activityclip()]).result()
         quicklooks = [imq for q in quicklist for (imq, activitylist, description) in q]  # for HTML display purposes
         provenance = [{'clip':str(description), 'activity':str(a), 'category':a.category(), 'train.csv':a.attributes['csvfile']} for q in quicklist for (imq, activitylist, description) in q for a in activitylist]
         (quicklooks, provenance) = zip(*sorted([(q,p) for (q,p) in zip(quicklooks, provenance)], key=lambda x: x[1]['category']))  # sorted in category order

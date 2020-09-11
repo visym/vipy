@@ -99,7 +99,7 @@ class KF1(object):
         # Parallel video annotation
         if vipy.globals.max_workers() > 1:
             from vipy.batch import Batch
-            self._vidlist = Batch(list(yamlfiles)).map(lambda tga: self._parse_video(d_videoname_to_path, d_category_to_shortlabel, tga[0], tga[1], tga[2], stride=stride, verbose=verbose, actor=actor))
+            self._vidlist = Batch(list(yamlfiles)).map(lambda tga: self._parse_video(d_videoname_to_path, d_category_to_shortlabel, tga[0], tga[1], tga[2], stride=stride, verbose=verbose, actor=actor)).result()
         else:
             self._vidlist = [self._parse_video(d_videoname_to_path, d_category_to_shortlabel, t, g, a, stride=stride, verbose=verbose, actor=actor) for (t,g,a) in yamlfiles]
         self._vidlist = [v for v in self._vidlist if v is not None]
@@ -335,7 +335,7 @@ class KF1(object):
     def instances(self, padframes=0):
         """Return list of activity instances"""
         if vipy.globals.max_workers() > 1:
-            return [a for A in Batch(self.videos()).activityclip(padframes=padframes) for a in A]
+            return [a for A in Batch(self.videos()).activityclip(padframes=padframes).result() for a in A]
         else:
             warnings.warn('Consider setting vipy.globals.max_workers(n) for n>1 to speed this up')
             return [a for v in self.videos() for a in v.activityclip(padframes=padframes)]
@@ -422,7 +422,7 @@ class KF1(object):
         """Generate a standalone HTML file containing quicklooks for each annotated activity in dataset, along with some helpful provenance information for where the annotation came from"""
         if vipy.globals.max_workers() == 1:
             warnings.warn("Generating review HTML is very time consuming, consider setting vipy.global.max_workers(n) for n > 1 for parallel video processing")
-        quicklist = Batch(self._vidlist).map(lambda v: [(c.load().quicklook(context=True), c.flush()) for c in v.mindim(512).activityclip()])
+        quicklist = Batch(self._vidlist).map(lambda v: [(c.load().quicklook(context=True), c.flush()) for c in v.mindim(512).activityclip()]).result()
         quicklooks = [imq for q in quicklist for (imq, c) in q]  # for HTML display purposes
         provenance = [{'clip':str(c), 'activities':str(';'.join([str(a) for a in c.activitylist()])), 'category':c.category(), 'yamlfile':c.activitylist()[0].attributes['act_yaml']} for q in quicklist for (imq, c) in q]
         (quicklooks, provenance) = zip(*sorted([(q,p) for (q,p) in zip(quicklooks, provenance)], key=lambda x: x[1]['category']))  # sorted in category order

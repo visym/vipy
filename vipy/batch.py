@@ -34,6 +34,8 @@ class Batch(object):
     >>> b = vipy.batch.Batch(d, n_processes=32)
     >>> b.map(lambda v: v.download().save())  # will download and clip dataset in parallel
 
+    >>> b.result()  # retrieve results after a sequence of map or filter chains
+    
     """    
              
     def __init__(self, objlist, n_processes=None, dashboard=False, ngpu=0):
@@ -80,35 +82,24 @@ class Batch(object):
     def n_processes(self):
         return len(self.info()['workers'])
 
-    def batch(self, newlist=None):
-        if islist(newlist) and not hasattr(newlist[0], 'result'):
-            self._objlist = newlist
-            return self
-        elif islist(newlist) and hasattr(newlist[0], 'result'):
-            try:
-                wait(newlist)
-            except KeyboardInterrupt:
-                warnings.warn('[vipy.batch]: batch cannot be restarted after killing with ctrl-c - You must create a new Batch()')
-                vipy.globals.dask().shutdown()
-                self._client = None
-                return None  
-            except:
-                # warnings.warn('[vipy.batch]: batch cannot be restarted after exception - Recreate Batch()')                
-                raise
-            completedlist = [f.result() for f in newlist]
-            if isinstance(completedlist[0], self._batchtype):
-                self._objlist = completedlist
-                return self
-            else:
-                return completedlist
-        elif newlist is None:
-            return self._objlist
-        else:
-            raise ValueError('Invalid input - must be list')
+    def _wait(self, futures):
+        assert islist(futures) and all([hasattr(f, 'result') for f in futures])
+        try:
+            wait(futures)
+        except KeyboardInterrupt:
+            # warnings.warn('[vipy.batch]: batch cannot be restarted after killing with ctrl-c - You must create a new Batch()')
+            vipy.globals.dask().shutdown()
+            self._client = None
+            return None  
+        except:
+            # warnings.warn('[vipy.batch]: batch cannot be restarted after exception - Recreate Batch()')                
+            raise
+        return [f.result() for f in futures]
 
     def result(self):
-        return self.batch()
-    
+        """Return the result of the batch processing"""
+        return self._objlist
+
     def __iter__(self):
         for im in self._objlist:
             yield im
@@ -118,16 +109,16 @@ class Batch(object):
         assert self.__dict__['_client'] is not None, "Batch() must be reconstructed after shutdown"                                
         return lambda *args, **kw: self.dictmap(lambda im,d: getattr(im, d['attr'])(*d['args'], **d['kw']), {'attr':attr, 'args':args, 'kw':kw})
 
-    def product(self, f_lambda, args, waiting=True):
-        """Cartesian product of args and batch, returns an MxN list of N args applied to M batch elements.  Use this with extreme caution, as the memory requirements may be high."""
+    def product(self, f_lambda, args):
+        """Cartesian product of args and batch.  Use this with extreme caution, as the memory requirements may be high."""
         assert self.__dict__['_client'] is not None, "Batch() must be reconstructed after shutdown"                        
         c = self.__dict__['_client']
         objlist = c.scatter(self._objlist)        
-        futures = [c.submit(f_lambda, im, *a) for im in objlist for a in args]
-        return self.batch(futures) if waiting else futures
+        self._objlist = self._wait([c.submit(f_lambda, im, *a) for im in objlist for a in args])
+        return self
 
     def map(self, f_lambda, args=None):
-        """Run the lambda function on each of the elements of the batch. 
+        """Run the lambda function on each of the elements of the batch and return the batch object.
         
         If args is provided, then this is a unique argument for the lambda function for each of the elements in the batch, or is broadcastable.
         
@@ -145,13 +136,14 @@ class Batch(object):
             if len(self._objlist) > 1:
                 assert islist(args) and len(list(args)) == len(self._objlist), "args must be a list of arguments of length %d, one for each element in batch" % len(self._objlist)
                 objlist = c.scatter(self._objlist)
-                return self.batch([c.submit(f_lambda, im, *a) for (im, a) in zip(objlist, args)])                
+                self._objlist = self._wait([c.submit(f_lambda, im, *a) for (im, a) in zip(objlist, args)])
             else:
                 assert islist(args), "args must be a list"
                 obj = c.scatter(self._objlist[0], broadcast=True)
-                return self.batch([self.__dict__['_client'].submit(f_lambda, obj, *a) for a in args])
+                self._objlist = self._wait([self.__dict__['_client'].submit(f_lambda, obj, *a) for a in args])
         else:
-            return self.batch(self.__dict__['_client'].map(f_lambda, self._objlist))
+            self._objlist = self._wait(self.__dict__['_client'].map(f_lambda, self._objlist))
+        return self
 
     def filter(self, f_lambda):
         """Run the lambda function on each of the elements of the batch and filter based on the provided lambda keeping those elements that return true 
@@ -159,17 +151,17 @@ class Batch(object):
         assert self.__dict__['_client'] is not None, "Batch() must be reconstructed after shutdown"        
         c = self.__dict__['_client']
         objlist = self._objlist  # original list
-        is_filtered = self.batch(self.__dict__['_client'].map(f_lambda, c.scatter(self._objlist)))  # distributed filter (replaces self._objlist)
+        is_filtered = self._wait(self.__dict__['_client'].map(f_lambda, c.scatter(self._objlist)))  # distributed filter (replaces self._objlist)
         self._objlist = [obj for (f, obj) in zip(is_filtered, objlist) if f is True]  # keep only elements that filter true
         return self
         
     def torch(self):
         """Convert the batch of N HxWxC images to a NxCxHxW torch tensor"""
-        return torch.cat(self.map(lambda im: im.torch()))
+        return torch.cat(self.map(lambda im: im.torch()).result())
 
     def numpy(self):
         """Convert the batch of N HxWxC images to a NxCxHxW torch tensor"""
-        return np.stack(self.map(lambda im: im.numpy()))
+        return np.stack(self.map(lambda im: im.numpy()).result())
     
     def torchmap(self, f, net):
         """Apply lambda function f prepare data, and pass resulting tensor to data parallel to torch network"""
@@ -187,7 +179,8 @@ class Batch(object):
     def chunkmap(self, f, obj, batchsize):
         c = self.__dict__['_client']
         objdist = c.scatter(obj)        
-        return self.batch([c.submit(f, objdist, imb) for imb in chunklistbysize(self._objlist, batchsize)])                
+        self._objlist = self._wait([c.submit(f, objdist, imb) for imb in chunklistbysize(self._objlist, batchsize)])
+        return self
 
     def dictmap(self, f, d):
         """Apply lambda function f(obj, d) to each element in the batch, where d is a dictionary of parameters 
@@ -201,7 +194,8 @@ class Batch(object):
         assert isinstance(d, dict)
         c = self.__dict__['_client']
         objlist = c.scatter(self._objlist)
-        return self.batch([c.submit(f, im, a) for (im, a) in zip(objlist, repeat(d, len(self._objlist)))])
+        self._objlist = self._wait([c.submit(f, im, a) for (im, a) in zip(objlist, repeat(d, len(self._objlist)))])
+        return self
 
 
     def scattermap(self, f, obj):
@@ -221,5 +215,6 @@ class Batch(object):
         """
         c = self.__dict__['_client']
         objdist = c.scatter(obj)        
-        return self.batch([c.submit(f, objdist, im) for im in self._objlist])
+        self._objlist = self._wait([c.submit(f, objdist, im) for im in self._objlist])
+        return self
 
