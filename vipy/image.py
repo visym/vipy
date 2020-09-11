@@ -1632,6 +1632,12 @@ class Scene(ImageCategory):
         sq = int(np.ceil(np.sqrt(bits/2.0)))
         b = (np.dstack(np.gradient(self.clone().meanmask().greyscale().resize(cols=sq+1, rows=sq+1).numpy()))[0:-1, 0:-1] > 0).flatten()
         return bytes(np.packbits(b)).hex() if not (asbytes or asbinary) else bytes(np.packbits(b)) if asbytes else b
+
+    def isduplicate(self, im, threshold=72, bits=128):
+        """Background hash near duplicate detection"""
+        assert isinstance(im, Image)
+        return np.sum(self.bghash(bits=bits, asbinary=True) == im.bghash(bits=bits, asbinary=True)) > threshold  # hamming distance threshold
+    
         
     def show(self, categories=None, figure=None, nocaption=False, nocaption_withstring=[], fontsize=10, boxalpha=0.25, d_category2color={'Person':'green', 'Vehicle':'blue', 'Object':'red'}, captionoffset=(0,0), nowindow=False, textfacecolor='white', textfacealpha=1.0, shortlabel=True):
         """Show scene detection 
