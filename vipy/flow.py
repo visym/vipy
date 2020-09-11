@@ -127,6 +127,7 @@ class Image(object):
         return self.resize(im.height(), im.width(), interp=interp) if self.shape() != im.shape() else self
 
     def resize(self, height, width, interp='bicubic'):
+        assert height > 0 and width > 0, "Invalid input"
         (yscale, xscale) = (height/float(self.height()), width/float(self.width()))
         self._array = np.dstack((np.array(PIL.Image.fromarray(self.dx()*xscale).resize((width, height), string_to_pil_interpolation(interp))),
                                  np.array(PIL.Image.fromarray(self.dy()*yscale).resize((width, height), string_to_pil_interpolation(interp)))))                                 
@@ -151,9 +152,11 @@ class Video(vipy.video.Video):
     
     def __init__(self, array, flowstep, framestep):
         assert array.ndim == 4 and array.shape[3] == 2, "Must be NxHxWx2 flow array"        
+        assert flowstep > 0, "Invalid flowstep"
         self._flowstep = flowstep 
         self._framestep = framestep
         self._array = array
+
 
     def __repr__(self):
         return str('<vipy.flow: frames=%d, height=%d, width=%d, keyframes=%d, framestep=%d, flowstep=%d, minflow=%1.2f, maxflow=%1.2f>' % (len(self), self.height(), self.width(), len(self._array), self._framestep, self._flowstep, self.min(), self.max()))        
@@ -296,7 +299,10 @@ class Flow(object):
         # Prepare videos
         v = v.clone().cropeven()  # make even for zero pad
         vc = v.clone(flush=True).zeropad(padwidth, padheight).load().nofilename().nourl()       
-        
+        if len(vc) < keystep:
+            print('[vipy.flow.stabilize]: ERROR - video not long enough for stabilization, returning original video "%s"' % str(v))
+            return v            
+
         # Optical flow (three passes)        
         if verbose:
             print('[vipy.flow.stabilize]: Optical flow (3x)- %s' % v)
@@ -325,6 +331,9 @@ class Flow(object):
             (xy_src_k1, xy_dst_k1) = self._correspondence(imfk1, im, border=border, dilate=dilate, contrast=contrast)
             (xy_src_k2, xy_dst_k2) = self._correspondence(imfk2, im, border=border, dilate=dilate, contrast=contrast)
             (xy_src, xy_dst) = (np.hstack( (xy_src_k0, xy_src_k1, xy_src_k2) ).transpose(), np.hstack( (xy_dst_k0, xy_dst_k1, xy_dst_k2) ).transpose())
+            if len(xy_src) < 8 or len(xy_dst) < 8:
+                print('[vipy.flow.stabilize]: ERROR - not enough corresponding points for coarse alignment, returning original video "%s"' % str(v))
+                return v
             M = f_estimate_coarse(xy_src, xy_dst, method=cv2.RANSAC, confidence=0.9999, ransacReprojThreshold=0.1, refineIters=16, maxIters=2000)
 
             # Fine alignment
@@ -333,6 +342,9 @@ class Flow(object):
             imfinemask = f_warp_coarse(np.ones_like(im.clone().greyscale().numpy()), dst=np.zeros_like(imstabilized.numpy()), M=f_transform_coarse(T.dot(A)), dsize=(imstabilized.width(), imstabilized.height()), borderMode=cv2.BORDER_TRANSPARENT) > 0
             imfineflow = self.imageflow(imfine, imstabilized)
             (xy_src, xy_dst) = self._correspondence(imfineflow, imfine, border=None, dilate=dilate, contrast=contrast, validmask=imfinemask)
+            if len(xy_src.transpose()) < 8 or len(xy_dst.transpose()) < 8:
+                print('[vipy.flow.stabilize]: ERROR - not enough corresponding points for fine alignment, returning original video "%s"' % str(v))
+                return v
             F = f_estimate_fine(xy_src.transpose()-np.array([padwidth, padheight]), xy_dst.transpose()-np.array([padwidth, padheight]), method=cv2.RANSAC, confidence=0.9999, ransacReprojThreshold=0.1, refineIters=16, maxIters=2000)  
             
             # Render coarse to fine stabilized frame with aligned objects
