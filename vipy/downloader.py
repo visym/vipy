@@ -85,15 +85,19 @@ def scp(url, output_filename, verbose=True):
 
 
 def s3(url, output_filename, verbose=True):
+    """Thin wrapper for boto3"""
+    
+    # https://aws.amazon.com/blogs/security/how-to-find-update-access-keys-password-mfa-aws-management-console/    
     assert 'VIPY_AWS_ACCESS_KEY_ID' in os.environ and 'VIPY_AWS_SECRET_ACCESS_KEY' in os.environ, \
         "AWS access keys not found - You need to create ENVIRONMENT variables ['VIPY_AWS_ACCESS_KEY_ID', 'VIPY_AWS_SECRET_ACCESS_KEY'] with S3 access credentials"   
-    try_import('boto3', 'boto3')
+    try_import('boto3', 'boto3')    
     assert isS3url(url), "Invalid URL - Must be 's3://BUCKETNAME.s3.amazonaws.com/OBJECTNAME.ext'"
     
     import boto3                        
     s3 = boto3.client('s3',
                       aws_access_key_id=os.environ['VIPY_AWS_ACCESS_KEY_ID'],
-                      aws_secret_access_key=os.environ['VIPY_AWS_SECRET_ACCESS_KEY']
+                      aws_secret_access_key=os.environ['VIPY_AWS_SECRET_ACCESS_KEY'],
+                      aws_session_token=os.environ['VIPY_AWS_SESSION_TOKEN'] if 'VIPY_AWS_SESSION_TOKEN' in os.environ else None                      
     )
     
     # url format: s3://BUCKETNAME.s3.amazonaws.com/OBJECTNAME.mp4
@@ -108,13 +112,15 @@ def s3(url, output_filename, verbose=True):
 
 def s3_bucket(bucket_name, object_name, output_filename, verbose=True):
     """Thin wrapper for boto3"""
+    # https://aws.amazon.com/blogs/security/how-to-find-update-access-keys-password-mfa-aws-management-console/
     assert 'VIPY_AWS_ACCESS_KEY_ID' in os.environ and 'VIPY_AWS_SECRET_ACCESS_KEY' in os.environ, \
         "AWS access keys not found - You need to create ENVIRONMENT variables ['VIPY_AWS_ACCESS_KEY_ID', 'VIPY_AWS_SECRET_ACCESS_KEY'] with S3 access credentials"   
     try_import('boto3', 'boto3')
     import boto3                        
     s3 = boto3.client('s3',
                       aws_access_key_id=os.environ['VIPY_AWS_ACCESS_KEY_ID'],
-                      aws_secret_access_key=os.environ['VIPY_AWS_SECRET_ACCESS_KEY']
+                      aws_secret_access_key=os.environ['VIPY_AWS_SECRET_ACCESS_KEY'],
+                      aws_session_token=os.environ['VIPY_AWS_SESSION_TOKEN'] if 'VIPY_AWS_SESSION_TOKEN' in os.environ else None
     )    
     s3.download_file(bucket_name, object_name, output_filename)
     return output_filename
