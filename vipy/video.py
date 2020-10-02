@@ -1384,19 +1384,21 @@ class Scene(VideoCategory):
         d['category'] = self.category()
         d['tracks'] = [t.dict() for t in self._tracks.values()]
         d['activities'] = [a.dict() for a in self._activities.values()]
+        d['filename'] = self.filename()
         return d
         
     def csv(self, outfile=None):
         """Export scene to CSV file format with header.  If there are no tracks, this will be empty. """
         assert self.load().isloaded()
-        csv = [(k,  # frame number (zero indexed)
+        csv = [(self.filename(), # video filename
+                k,  # frame number (zero indexed)
                 d.category(), d.shortlabel(), # track category and shortlabel (displayed in caption)
                 ';'.join([a.category() for a in d.attributes['activity']] if 'activity' in d.attributes else ''), # semicolon separated activity ID assocated with track
                 d.xmin(), d.ymin(), d.width(), d.height(),   # bounding box
                 d.attributes['trackid'],  # globally unique track ID
                 ';'.join([a.id() for a in d.attributes['activity']] if 'activity' in d.attributes else '')) # semicolon separated activity ID assocated with track
                for (k,im) in enumerate(self) for d in im.objects()]
-        csv = [('# frame number', 'object category', 'object shortlabel', 'activity categories(;)', 'xmin', 'ymin', 'width', 'height', 'trackid', 'activity id(;)')] + csv
+        csv = [('# video_filename', 'frame_number', 'object_category', 'object_shortlabel', 'activity categories(;)', 'xmin', 'ymin', 'width', 'height', 'track_id', 'activity_ids(;)')] + csv
         return writecsv(csv, outfile) if outfile is not None else csv
 
 
