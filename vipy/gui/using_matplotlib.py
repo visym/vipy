@@ -31,7 +31,6 @@ def show(fignum):
 
 
 def noshow(fignum):
-    closeall()
     plt.ioff()
 
 
@@ -87,8 +86,10 @@ def imshow(img, fignum=None):
     """Show an image in a figure window (optionally visible), reuse previous figure if it is the same shape"""
     global FIGHANDLE
     if fignum in plt.get_fignums() and fignum in FIGHANDLE and FIGHANDLE[fignum].get_size() == img.shape[0:2]:
-        # Delete all polygon and text overlays from previous drawing
+        # Do not delete and recreate the figure, just change the pixels 
         FIGHANDLE[fignum].set_data(img)
+
+        # Delete all polygon and text overlays from previous drawing so that they can be overwritten on current frame
         for c in plt.gca().get_children():
             if 'Text' in c.__repr__() or 'Polygon' in c.__repr__() or 'Circle' in c.__repr__() or 'Line' in c.__repr__() or 'Patch' in c.__repr__():
                 try:
@@ -129,8 +130,10 @@ def imdetection(img, detlist, fignum=None, bboxcolor='green', do_caption=True, f
     """Show bounding boxes from a list of vipy.object.Detections on the same image, plotted in list order with optional captions """
 
     # Create image
-    fignum = imshow(img, fignum=fignum)
+    fignum = imshow(img, fignum=fignum) 
 
+    # A better way? https://matplotlib.org/api/_as_gen/matplotlib.animation.FuncAnimation.html
+    
     # Valid detections
     for (k,det) in enumerate(detlist):
         if do_caption:
