@@ -1672,14 +1672,15 @@ class Scene(ImageCategory):
 
     def savefig(self, outfile=None, categories=None, figure=None, nocaption=False, fontsize=10, boxalpha=0.25, d_category2color={'person':'green', 'vehicle':'blue', 'object':'red'}, captionoffset=(0,0), dpi=200, textfacecolor='white', textfacealpha=1.0, shortlabel=True, nocaption_withstring=[]):
         """Save show() output to given file or return buffer without popping up a window"""
-        self.show(categories=categories, figure=figure, nocaption=nocaption, fontsize=fontsize, boxalpha=boxalpha, 
+        fignum = figure if figure is not None else plt.gcf().number
+        self.show(categories=categories, figure=fignum, nocaption=nocaption, fontsize=fontsize, boxalpha=boxalpha, 
                   d_category2color=d_category2color, captionoffset=captionoffset, nowindow=True, textfacecolor=textfacecolor, 
                   textfacealpha=textfacealpha, shortlabel=shortlabel, nocaption_withstring=nocaption_withstring)
         
         if outfile is None:
-            buf = io.BytesIO()                        
-            (W,H) = plt.figure(num=figure if figure is not None else plt.gcf().number).canvas.get_width_height()  # fast(ish)
-            plt.figure(num=figure if figure is not None else plt.gcf().number).canvas.print_raw(buf)  # fast(ish)
+            buf = io.BytesIO()
+            (W,H) = plt.figure(num=fignum).canvas.get_width_height()  # fast(ish)
+            plt.figure(num=fignum).canvas.print_raw(buf)  # fast(ish)
             img = np.frombuffer(buf.getvalue(), dtype=np.uint8).reshape((H, W, 4))
             if figure is None:
                 plt.close(plt.gcf())   # memory cleanup (useful for video annotation on last frame)
