@@ -1683,7 +1683,7 @@ class Scene(ImageCategory):
             plt.figure(num=fignum).canvas.print_raw(buf)  # fast(ish)
             img = np.frombuffer(buf.getvalue(), dtype=np.uint8).reshape((H, W, 4))
             if figure is None:
-                plt.close(plt.gcf())   # memory cleanup (useful for video annotation on last frame)
+                vipy.show.close(plt.gcf().number)   # memory cleanup (useful for video annotation on last frame)
             return vipy.image.Image(array=img, colorspace='rgba')
         else:
             savefig(outfile, figure, dpi=dpi, bbox_inches='tight', pad_inches=0)
