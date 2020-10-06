@@ -1194,7 +1194,7 @@ class Scene(VideoCategory):
                     if (self.frame(k).boundingbox() is None) or (context is True and (j == 0 or j == (n-1))) else
                     self.frame(k).padcrop(self.frame(k).boundingbox().dilate(dilate).imclipshape(self.width(), self.height()).maxsquare().int()).mindim(mindim, interp='nearest')
                     for (j,k) in enumerate(framelist)]
-        imframes = [im.savefig(fontsize=fontsize).rgb() for im in imframes]  # temp storage in memory
+        imframes = [im.savefig(fontsize=fontsize, figure=1).rgb() for im in imframes]  # temp storage in memory
         return vipy.visualize.montage(imframes, imgwidth=mindim, imgheight=mindim)
     
     def tracks(self, tracks=None, id=None):

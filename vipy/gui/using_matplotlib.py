@@ -54,8 +54,9 @@ def figure(fignum=None):
 def close(fignum):
     global FIGHANDLE
     if fignum in FIGHANDLE:
+        plt.close(fignum)
         FIGHANDLE.pop(fignum, None)
-        return plt.close(fignum)
+        return None
     else:
         return None
 
@@ -85,6 +86,7 @@ def _imshow_tight(img, fignum=None):
 def imshow(img, fignum=None):
     """Show an image in a figure window (optionally visible), reuse previous figure if it is the same shape"""
     global FIGHANDLE
+
     if fignum in plt.get_fignums() and fignum in FIGHANDLE and FIGHANDLE[fignum].get_size() == img.shape[0:2]:
         # Do not delete and recreate the figure, just change the pixels 
         FIGHANDLE[fignum].set_data(img)
