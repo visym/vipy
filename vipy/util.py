@@ -903,6 +903,8 @@ def tolist(x):
         return x
     elif isinstance(x, tuple):        
         return list(x)
+    elif isinstance(x, set):        
+        return list(x)
     else:
         return [x]
 
