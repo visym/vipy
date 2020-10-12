@@ -993,7 +993,7 @@ class VideoCategory(Video):
 
     """
     def __init__(self, filename=None, url=None, framerate=30.0, attributes=None, category=None, array=None, colorspace=None, startframe=None, endframe=None, startsec=None, endsec=None):
-        super(VideoCategory, self).__init__(url=url, filename=filename, framerate=framerate, attributes=attributes, array=array, colorspace=colorspace,
+        super().__init__(url=url, filename=filename, framerate=framerate, attributes=attributes, array=array, colorspace=colorspace,
                                             startframe=startframe, endframe=endframe, startsec=startsec, endsec=endsec)
         self._category = category                
         
@@ -1014,7 +1014,7 @@ class VideoCategory(Video):
         return str('<vipy.video.VideoCategory: %s>' % (', '.join(strlist)))
 
     def dict(self):
-        d = super(VideoCategory, self).dict()
+        d = super().dict()
         d['category'] = self.category()
         return d
     
@@ -1071,7 +1071,7 @@ class Scene(VideoCategory):
 
         self._tracks = {}
         self._activities = {}        
-        super(Scene, self).__init__(url=url, filename=filename, framerate=framerate, attributes=attributes, array=array, colorspace=colorspace,
+        super().__init__(url=url, filename=filename, framerate=framerate, attributes=attributes, array=array, colorspace=colorspace,
                                     category=category, startframe=startframe, endframe=endframe, startsec=startsec, endsec=endsec)
 
         # Tracks must be defined relative to the clip specified by this constructor
@@ -1380,7 +1380,7 @@ class Scene(VideoCategory):
         return self
         
     def dict(self):
-        d = super(Scene, self).dict()
+        d = super().dict()
         d['category'] = self.category()
         d['tracks'] = [t.dict() for t in self._tracks.values()]
         d['activities'] = [a.dict() for a in self._activities.values()]
@@ -1516,7 +1516,6 @@ class Scene(VideoCategory):
                        for (k,(ti,t)) in enumerate(self._tracks.items())}  # replace tracks with interpolated boxes relative to tube defined by actor
         return vid.array(np.stack([im.numpy() for im in frames]))
 
-
     def clip(self, startframe, endframe):
         """Clip the video to between (startframe, endframe).  This clip is relative to clip() shown by __repr__().  Return a clone of the video for idemponence"""
         v = super(Scene, self.clone()).clip(startframe, endframe)  # clone for idemponence
@@ -1534,41 +1533,41 @@ class Scene(VideoCategory):
         if zeropad and bb != bb.clone().imclipshape(self.width(), self.height()):
             self.zeropad(bb.width(), bb.height())     
             bb = bb.offset(bb.width(), bb.height())            
-        super(Scene, self).crop(bb, zeropad=False)  # range check handled here to correctly apply zeropad
+        super().crop(bb, zeropad=False)  # range check handled here to correctly apply zeropad
         self._tracks = {k:t.offset(dx=-bb.xmin(), dy=-bb.ymin()) for (k,t) in self._tracks.items()}
         return self
     
     def zeropad(self, padwidth, padheight):
         assert isinstance(padwidth, int) and isinstance(padheight, int)
-        super(Scene, self).zeropad(padwidth, padheight)  
+        super().zeropad(padwidth, padheight)  
         self._tracks = {k:t.offset(dx=padwidth, dy=padheight) for (k,t) in self._tracks.items()}
         return self
         
     def fliplr(self):
         (H,W) = self.shape()  # yuck, need to get image dimensions before filter
         self._tracks = {k:t.fliplr(H,W) for (k,t) in self._tracks.items()}
-        super(Scene, self).fliplr()
+        super().fliplr()
         return self
 
     def flipud(self):
         assert not self.isloaded(), "Filters can only be applied prior to load() - Try calling flush() first"                
         (H,W) = self.shape()  # yuck, need to get image dimensions before filter
         self._tracks = {k:t.flipud(H,W) for (k,t) in self._tracks.items()}
-        super(Scene, self).flipud()
+        super().flipud()
         return self
 
     def rot90ccw(self):
         assert not self.isloaded(), "Filters can only be applied prior to load() - Try calling flush() first"                
         (H,W) = self.shape()  # yuck, need to get image dimensions before filter
         self._tracks = {k:t.rot90ccw(H,W) for (k,t) in self._tracks.items()}
-        super(Scene, self).rot90ccw()
+        super().rot90ccw()
         return self
 
     def rot90cw(self):
         assert not self.isloaded(), "Filters can only be applied prior to load() - Try calling flush() first"                
         (H,W) = self.shape()  # yuck, need to get image dimensions before filter
         self._tracks = {k:t.rot90cw(H,W) for (k,t) in self._tracks.items()}
-        super(Scene, self).rot90cw()
+        super().rot90cw()
         return self
 
     def resize(self, rows=None, cols=None):
@@ -1579,7 +1578,7 @@ class Scene(VideoCategory):
         sx = cols / float(W) if cols is not None else rows / float(H)
         self._tracks = {k:t.scalex(sx) for (k,t) in self._tracks.items()}
         self._tracks = {k:t.scaley(sy) for (k,t) in self._tracks.items()}
-        super(Scene, self).resize(rows, cols)
+        super().resize(rows, cols)
         return self
 
     def mindim(self, dim=None):
@@ -1598,7 +1597,7 @@ class Scene(VideoCategory):
         """Spatially rescale the scene by a constant scale factor"""
         assert not self.isloaded(), "Filters can only be applied prior to load() - Try calling flush() first"                
         self._tracks = {k:t.rescale(s) for (k,t) in self._tracks.items()}
-        super(Scene, self).rescale(s)
+        super().rescale(s)
         return self
 
     def union(self, other, temporal_iou_threshold=0.5, spatial_iou_threshold=0.8, strict=True):

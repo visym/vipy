@@ -1032,11 +1032,11 @@ class ImageCategory(Image):
     def __init__(self, filename=None, url=None, category=None, label=None,
                  attributes=None, array=None, colorspace=None):
         # Image class inheritance
-        super(ImageCategory, self).__init__(filename=filename,
-                                            url=url,
-                                            attributes=attributes,
-                                            array=array,
-                                            colorspace=colorspace)
+        super().__init__(filename=filename,
+                         url=url,
+                         attributes=attributes,
+                         array=array,
+                         colorspace=colorspace)
         assert not (category is not None and label is not None), "Define either category or label kwarg, not both"
         self._category = category if category is not None else label
         
@@ -1134,12 +1134,12 @@ class ImageDetection(ImageCategory):
                  xcentroid=None, ycentroid=None):
 
         # ImageCategory class inheritance
-        super(ImageDetection, self).__init__(filename=filename,
-                                             url=url,
-                                             attributes=attributes,
-                                             category=category,
-                                             array=array,
-                                             colorspace=colorspace)
+        super().__init__(filename=filename,
+                         url=url,
+                         attributes=attributes,
+                         category=category,
+                         array=array,
+                         colorspace=colorspace)
 
         # Construction options
         (width, height) = (bbwidth if bbwidth is not None else width, bbheight if bbheight is not None else height)  # alias
@@ -1180,7 +1180,7 @@ class ImageDetection(ImageCategory):
         return self._category.lower() == other._category.lower() and self.bbox == other.bbox if isinstance(other, ImageDetection) else False
 
     def dict(self):
-        d = super(ImageCategory, self).dict()
+        d = super().dict()
         d['boundingbox'] = self.bbox.dict()
         return d
 
@@ -1241,7 +1241,7 @@ class ImageDetection(ImageCategory):
 
     def rescale(self, scale=1, interp='bilinear'):
         """Rescale image buffer and bounding box"""
-        self = super(ImageDetection, self).rescale(scale, interp=interp)
+        self = super().rescale(scale, interp=interp)
         self.bbox = self.bbox.rescale(scale)
         return self
 
@@ -1255,36 +1255,36 @@ class ImageDetection(ImageCategory):
         self.bbox.scalex(sx)
         self.bbox.scaley(sy)
         if sx == sy:
-            self = super(ImageDetection, self).rescale(sx, interp=interp)  # Warning: method resolution order for multi-inheritance
+            self = super().rescale(sx, interp=interp)  # Warning: method resolution order for multi-inheritance
         else:
-            self = super(ImageDetection, self).resize(cols, rows, interp=interp)
+            self = super().resize(cols, rows, interp=interp)
         return self
 
     
     def fliplr(self):
         """Mirror buffer and bounding box around vertical axis"""
         self.bbox.fliplr(width=self.width())
-        self = super(ImageDetection, self).fliplr()
+        self = super().fliplr()
         return self
 
     def crop(self):
         """Crop image using stored bounding box, then set the bounding box equal to the new image rectangle"""
-        self = super(ImageDetection, self)._crop(self.bbox)
+        self = super()._crop(self.bbox)
         self.bbox = BoundingBox(xmin=0, ymin=0, xmax=self.width(), ymax=self.height())
         return self
 
     def mindim(self, dim=None, interp='bilinear'):
         """Resize image preserving aspect ratio so that minimum dimension of image = dim"""
-        return super(ImageDetection, self).mindim(dim, interp=interp) if dim is not None else min(self.shape())  # calls self.rescale() which will update boxes
+        return super().mindim(dim, interp=interp) if dim is not None else min(self.shape())  # calls self.rescale() which will update boxes
 
     def maxdim(self, dim=None, interp='bilinear'):
         """Resize image preserving aspect ratio so that maximum dimension of image = dim"""        
-        return super(ImageDetection, self).maxdim(dim, interp=interp) if dim is not None else max(self.shape())  # calls self.rescale() will will update boxes
+        return super().maxdim(dim, interp=interp) if dim is not None else max(self.shape())  # calls self.rescale() will will update boxes
 
     def centersquare(self):
         """Crop image of size (NxN) in the center, such that N=min(width,height), keeping the image centroid constant, new bounding box may be degenerate"""
         (H,W) = self.shape()
-        self = super(ImageDetection, self).centersquare()
+        self = super().centersquare()
         (dy, dx) = ((H - self.height())/2.0, (W - self.width())/2.0)        
         self.bbox.translate(-dx, -dy)
         return self
@@ -1296,19 +1296,19 @@ class ImageDetection(ImageCategory):
 
     def _pad(self, dx, dy, mode='edge'):
         """Pad image using np.pad mode"""
-        self = super(ImageDetection, self)._pad(dx, dy, mode)
+        self = super()._pad(dx, dy, mode)
         self.bbox = self.bbox.translate(dx if not isinstance(dx, tuple) else dx[0], dy if not isinstance(dy, tuple) else dy[0])        
         return self
 
     def zeropad(self, dx, dy):
         """Pad image with dx=(leftpadwidth,rightpadwidth) or dx=bothpadwidth to zeropad left and right, dy=(toppadheight,bottompadheight) or dy=bothpadheight to zeropad top and bottom"""
-        self = super(ImageDetection, self).zeropad(dx, dy)
+        self = super().zeropad(dx, dy)
         self.bbox = self.bbox.translate(dx if not isinstance(dx, tuple) else dx[0], dy if not isinstance(dy, tuple) else dy[0])
         return self
 
     def meanpad(self, dx, dy, mu=None):
         """Pad image using np.pad constant where constant is the RGB mean per image"""
-        self = super(ImageDetection, self).meanpad(dx, dy, mu=None)
+        self = super().meanpad(dx, dy, mu=None)
         self.bbox = self.bbox.translate(dx if not isinstance(dx, tuple) else dx[0], dy if not isinstance(dy, tuple) else dy[0])        
         return self
         
@@ -1328,7 +1328,7 @@ class ImageDetection(ImageCategory):
                    fignum=figure, nowindow=nowindow)
         else:
             # Do not display the box if the box is degenerate or equal to the image rectangle
-            super(ImageDetection, self).show(figure=figure, nowindow=nowindow)
+            super().show(figure=figure, nowindow=nowindow)
         return self
 
     def rectangular_mask(self, W=None, H=None):
@@ -1379,7 +1379,7 @@ class Scene(ImageCategory):
 
     """
     def __init__(self, filename=None, url=None, category=None, attributes=None, objects=None, xywh=None, boxlabels=None, array=None, colorspace=None):
-        super(Scene, self).__init__(filename=filename, url=url, attributes=attributes, category=category, array=array, colorspace=colorspace)   # ImageCategory class inheritance
+        super().__init__(filename=filename, url=url, attributes=attributes, category=category, array=array, colorspace=colorspace)   # ImageCategory class inheritance
         self._objectlist = []
 
         if objects is not None:
@@ -1440,7 +1440,7 @@ class Scene(ImageCategory):
         return (ImageDetection(array=self.array(), filename=self.filename(), url=self.url(), colorspace=self.colorspace(), bbox=obj, category=obj.category(), attributes=obj.attributes))
 
     def dict(self):
-        d = super(Scene, self).dict()
+        d = super().dict()
         d['objects'] = [obj.dict() for obj in self.objects()]
         return d
 
@@ -1491,7 +1491,7 @@ class Scene(ImageCategory):
 
     def rescale(self, scale=1, interp='bilinear'):
         """Rescale image buffer and all bounding boxes - Not idemponent"""
-        self = super(ImageCategory, self).rescale(scale, interp=interp)
+        self = super().rescale(scale, interp=interp)
         self._objectlist = [bb.rescale(scale) for bb in self._objectlist]
         return self
 
@@ -1504,15 +1504,15 @@ class Scene(ImageCategory):
         sy = sx if sy is None else sy        
         self._objectlist = [bb.scalex(sx).scaley(sy) for bb in self._objectlist]        
         if sx == sy:
-            self = super(Scene, self).rescale(sx, interp=interp)  # FIXME: if we call resize here, inheritance is screweed up
+            self = super().rescale(sx, interp=interp)  # FIXME: if we call resize here, inheritance is screweed up
         else:
-            self = super(Scene, self).resize(cols, rows, interp=interp)
+            self = super().resize(cols, rows, interp=interp)
         return self
 
     def centersquare(self):
         """Crop the image of size (H,W) to be centersquare (min(H,W), min(H,W)) preserving center, and update bounding boxes"""
         (H,W) = self.shape()
-        self = super(ImageCategory, self).centersquare()
+        self = super().centersquare()
         (dy, dx) = ((H - self.height())/2.0, (W - self.width())/2.0)
         self._objectlist = [bb.translate(-dx, -dy) for bb in self._objectlist]
         return self
@@ -1520,7 +1520,7 @@ class Scene(ImageCategory):
     def fliplr(self):
         """Mirror buffer and all bounding box around vertical axis"""
         self._objectlist = [bb.fliplr(self.numpy()) for bb in self._objectlist]
-        self = super(ImageCategory, self).fliplr()
+        self = super().fliplr()
         return self
 
     def dilate(self, s):
@@ -1530,7 +1530,7 @@ class Scene(ImageCategory):
 
     def zeropad(self, padwidth, padheight):
         """Zero pad image with padwidth cols before and after and padheight rows before and after, then update bounding box offsets"""
-        self = super(ImageCategory, self).zeropad(padwidth, padheight)
+        self = super().zeropad(padwidth, padheight)
         dx = padwidth[0] if isinstance(padwidth, tuple) and len(padwidth) == 2 else padwidth
         dy = padheight[0] if isinstance(padheight, tuple) and len(padheight) == 2 else padheight
         self._objectlist = [bb.translate(dx, dy) for bb in self._objectlist]
@@ -1538,7 +1538,7 @@ class Scene(ImageCategory):
 
     def meanpad(self, padwidth, padheight, mu=None):
         """Mean pad (image color mean) image with padwidth cols before and after and padheight rows before and after, then update bounding box offsets"""
-        self = super(ImageCategory, self).meanpad(padwidth, padheight, mu=mu)
+        self = super().meanpad(padwidth, padheight, mu=mu)
         dx = padwidth[0] if isinstance(padwidth, tuple) and len(padwidth) == 2 else padwidth
         dy = padheight[0] if isinstance(padheight, tuple) and len(padheight) == 2 else padheight
         self._objectlist = [bb.translate(dx, dy) for bb in self._objectlist]
@@ -1560,15 +1560,15 @@ class Scene(ImageCategory):
 
     def maxdim(self, dim=None, interp='bilinear'):
         """Resize scene preserving aspect ratio so that maximum dimension of image = dim, update all objects"""
-        return super(ImageCategory, self).maxdim(dim, interp=interp) if dim is not None else max(self.shape())  # will call self.rescale() which will update boxes
+        return super().maxdim(dim, interp=interp) if dim is not None else max(self.shape())  # will call self.rescale() which will update boxes
 
     def mindim(self, dim=None, interp='bilinear'):
         """Resize scene preserving aspect ratio so that minimum dimension of image = dim, update all objects"""
-        return super(ImageCategory, self).mindim(dim, interp=interp) if dim is not None else min(self.shape())  # will call self.rescale() which will update boxes
+        return super().mindim(dim, interp=interp) if dim is not None else min(self.shape())  # will call self.rescale() which will update boxes
 
     def crop(self, bbox):
         """Crop the image buffer using the supplied bounding box object, clipping the box to the image rectangle, update all scene objects"""        
-        self = super(ImageCategory, self)._crop(bbox)        
+        self = super()._crop(bbox)        
         (dx, dy) = (bbox.xmin(), bbox.ymin())
         self._objectlist = [bb.translate(-dx, -dy) for bb in self._objectlist]
         return self
@@ -1578,7 +1578,7 @@ class Scene(ImageCategory):
         self.zeropad(bbox.int().width(), bbox.int().height())
         (dx, dy) = (bbox.width(), bbox.height())
         bbox = bbox.translate(dx, dy)
-        self = super(ImageCategory, self)._crop(bbox)        
+        self = super()._crop(bbox)        
         (dx, dy) = (bbox.xmin(), bbox.ymin())
         self._objectlist = [bb.translate(-dx, -dy) for bb in self._objectlist]
         return self
