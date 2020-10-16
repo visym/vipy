@@ -88,8 +88,8 @@ def cache(cachedir=None):
     
 
 class Dask(object):
-    def __init__(self, num_processes, dashboard=False, verbose=False):
-        assert isinstance(num_processes, int) and num_processes >=1, "num_processes must be >= 1"
+    def __init__(self, num_processes=1, dashboard=False, verbose=False, address=None):
+        assert address is not None or isinstance(num_processes, int) and num_processes >=1, "num_processes must be >= 1"
 
         from vipy.util import try_import
         try_import('dask', 'dask distributed')
@@ -102,21 +102,33 @@ class Dask(object):
         from dask.distributed import get_worker         
 
         self._num_processes = num_processes
-        self._client = Client(name='vipy', 
-                              scheduler_port=0,   # random
-                              dashboard_address=None if not dashboard else ':0',  # random port
-                              processes=True, 
-                              threads_per_worker=1, 
-                              n_workers=num_processes, 
-                              env={'VIPY_BACKEND':'Agg',
-                                   'PYTHONOPATH':os.environ['PYTHONPATH'] if 'PYTHONPATH' in os.environ else '',
-                                   'PATH':os.environ['PATH'] if 'PATH' in os.environ else ''},
-                              direct_to_workers=True,
-                              silence_logs=(False if isdebug() else 30) if not verbose else 40,  # logging.WARN or logging.ERROR or logging.INFO
-                              local_directory=tempfile.mkdtemp())
+
+        if address is not None:
+            # Distributed scheduler
+            self._client = Client(name='vipy', address=address)
+        else:
+            # Local scheduler
+            self._client = Client(name='vipy',
+                                  address=address,  # to connect to distributed scheduler HOSTNAME:PORT
+                                  scheduler_port=0,   # random
+                                  dashboard_address=None if not dashboard else ':0',  # random port
+                                  processes=True, 
+                                  threads_per_worker=1,
+                                  n_workers=num_processes, 
+                                  env={'VIPY_BACKEND':'Agg',
+                                       'PYTHONOPATH':os.environ['PYTHONPATH'] if 'PYTHONPATH' in os.environ else '',
+                                       'PATH':os.environ['PATH'] if 'PATH' in os.environ else ''},
+                                  direct_to_workers=True,
+                                  silence_logs=(False if isdebug() else 30) if not verbose else 40,  # logging.WARN or logging.ERROR or logging.INFO
+                                  local_directory=tempfile.mkdtemp())
 
     def __repr__(self):
-        return str('<vipy.globals.dask: num_processes=%d%s>' % (self._num_processes, '' if self._num_processes==0 or len(self._client.dashboard_link)==0 else ', dashboard="%s"' % str(self._client.dashboard_link)))
+        if self._num_processes is not None:
+            # Local 
+            return str('<vipy.globals.dask: num_processes=%d%s>' % (self._num_processes, '' if self._num_processes==0 or len(self._client.dashboard_link)==0 else ', dashboard="%s"' % str(self._client.dashboard_link)))
+        else:
+            # Distributed
+            return str('<vipy.globals.dask: %s>' % (str(self._client)))
 
     def dashboard(self):        
         webbrowser.open(self._client.dashboard_link) if len(self._client.dashboard_link)>0 else None
@@ -146,13 +158,12 @@ def gpuindex(gpu=None):
     return GLOBAL['GPU']
 
 
-def dask(num_processes=None, dashboard=False):
+def dask(num_processes=None, dashboard=False, address=None):
     """Return the local Dask client, can be accessed globally for parallel processing"""
-    if (num_processes is not None and (GLOBAL['DASK_CLIENT'] is None or GLOBAL['DASK_CLIENT'].num_processes() != num_processes)):
+    if (address is not None or (num_processes is not None and (GLOBAL['DASK_CLIENT'] is None or GLOBAL['DASK_CLIENT'].num_processes() != num_processes))):
         if GLOBAL['DASK_CLIENT'] is not None:
             GLOBAL['DASK_CLIENT'].shutdown()
-        assert num_processes >= 1, "num_processes>=1"
-        GLOBAL['DASK_CLIENT'] = Dask(num_processes, dashboard=dashboard, verbose=isverbose())        
+        GLOBAL['DASK_CLIENT'] = Dask(num_processes, dashboard=dashboard, verbose=isverbose(), address=address)        
     return GLOBAL['DASK_CLIENT']
 
 
