@@ -286,6 +286,8 @@ class Flow(object):
            * keystep [int]:  The local stabilization step between keyframes (should be <= 30)
            * padheight [float]:  The height padding (relative to video height) to be applied to output video to allow for vertical stabilization
            * padwidth [float]:  The width padding (relative to video width) to be applied to output video to allow for horizontal stabilization
+           * padheightpx [int]:  The height padding to be applied to output video to allow for vertical stabilization.  Overrides padheight.
+           * padwidthpx [int]:  The width padding to be applied to output video to allow for horizontal stabilization.  Overrides padwidth.
            * border [float]:  The border keepout fraction to ignore during flow correspondence.  This should be proportional to the maximum frame to frame flow
            * dilate [float]:  The dilation to apply to the foreground object boxes to define a foregroun keepout for flow computation
            * contrast [float]:  The minimum gradient necessary for flow correspondence, to avoid flow on low contrast regions
