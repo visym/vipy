@@ -62,6 +62,7 @@ class Video(object):
         self._framerate = framerate
         
         self.attributes = attributes if attributes is not None else {}
+        assert isinstance(self.attributes, dict), "Attributes must be a python dictionary"
         assert filename is not None or url is not None or array is not None or frames is not None, 'Invalid constructor - Requires "filename", "url" or "array" or "frames"'
 
         # FFMPEG installed?
@@ -984,7 +985,15 @@ class Video(object):
         self.colorspace('float')
         return self
 
-    
+    def setattribute(self, k, v=None):
+        if self.attributes is None:
+            self.attributes = {}
+        self.attributes[k] = v
+        return self
+
+    def hasattribute(self, k):
+        return isinstance(self.attributes, dict) and k in self.attributes
+
 class VideoCategory(Video):
     """vipy.video.VideoCategory class
 

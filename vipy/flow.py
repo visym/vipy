@@ -217,7 +217,11 @@ class Flow(object):
     """vipy.flow.Flow() class"""
     
     def __init__(self, flowiter=10):
-        self._mindim = 256  # flow computation dimensionality, change the flow parameters if you change this
+        self._mindim = 256  # flow computation dimensionality, change the hardcoded flow parameters in _numpyflow() if you change this
+        self._levels = 3
+        self._winsize = 7
+        self._poly_n = 5
+        self._poly_sigma = 1.2
         self._flowiter = flowiter
         
     def __call__(self, im, imprev=None, flowstep=1, framestep=1):
@@ -225,7 +229,7 @@ class Flow(object):
 
     def _numpyflow(self, img, imgprev):
         """Overload this method for custom flow classes"""        
-        return Image(cv2.calcOpticalFlowFarneback(img, imgprev, None, 0.5, 3, 7, self._flowiter, 5, 1.2, cv2.OPTFLOW_FARNEBACK_GAUSSIAN))
+        return Image(cv2.calcOpticalFlowFarneback(img, imgprev, None, 0.5, self._levels, self._winsize, self._flowiter, self._poly_n, self._poly_sigma, cv2.OPTFLOW_FARNEBACK_GAUSSIAN))
         
     def imageflow(self, im, imprev):
         """Default opencv dense flow, from im to imprev.  This should be overloaded"""        
@@ -274,7 +278,7 @@ class Flow(object):
         (x2, y2) = (x1 + fx, y1 + fy)  # destination coordinates
         return (np.stack((x1,y1)), np.stack((x2,y2)))
         
-    def stabilize(self, v, keystep=20, padheight=32, padwidth=128, border=0.1, dilate=1.0, contrast=16.0/255.0, rigid=False, affine=True, verbose=True):
+    def stabilize(self, v, keystep=20, padheight=32, padwidth=128, border=0.1, dilate=1.0, contrast=16.0/255.0, rigid=False, affine=True, verbose=True, strict=False):
         """Affine stabilization to frame zero using multi-scale optical flow correspondence with foreground object keepouts.  
 
            * v [vipy.video.Scene]:  The input video to stabilize, should be resized to mindim=256
@@ -287,7 +291,8 @@ class Flow(object):
            * rigid [bool]:  Euclidean stabilization
            * affine [bool]:  Affine stabilization
            * verbose [bool]:  This takes a while to run ...
-        
+           * strict [bool]:  If true, throw an exception on error, otherwise return the original video and set v.hasattribute('unstabilized'), useful for large scale stabilization
+
            * NOTE: The remaining distortion after stabilization is due to: rolling shutter distortion, perspective distortion and non-keepout moving objects in background
            * NOTE: If the video contains objects, the object boxes will be transformed along with the stabilization 
 
@@ -301,7 +306,7 @@ class Flow(object):
         vc = v.clone(flush=True).zeropad(padwidth, padheight).load().nofilename().nourl()       
         if len(vc) < keystep:
             print('[vipy.flow.stabilize]: ERROR - video not long enough for stabilization, returning original video "%s"' % str(v))
-            return v            
+            return v.setattribute('unstabilized')
 
         # Optical flow (three passes)        
         if verbose:
@@ -334,8 +339,10 @@ class Flow(object):
             try:            
                 M = f_estimate_coarse(xy_src, xy_dst, method=cv2.RANSAC, confidence=0.9999, ransacReprojThreshold=0.1, refineIters=16, maxIters=2000)
             except:
-                print('[vipy.flow.stabilize]: ERROR - coarse alignment failed, returning original video "%s"' % str(v))
-                return v
+                if not strict:
+                    print('[vipy.flow.stabilize]: ERROR - coarse alignment failed, returning original video "%s"' % str(v))
+                    return v.setattribute('unstabilized')  # for provenance
+                raise
 
             # Fine alignment
             A = A.dot(M)  # update coarse reference frame
@@ -346,12 +353,20 @@ class Flow(object):
             try:
                 F = f_estimate_fine(xy_src.transpose()-np.array([padwidth, padheight]), xy_dst.transpose()-np.array([padwidth, padheight]), method=cv2.RANSAC, confidence=0.9999, ransacReprojThreshold=0.1, refineIters=16, maxIters=2000)  
             except:
-                print('[vipy.flow.stabilize]: ERROR - fine alignment failed, returning original video "%s"' % str(v))
-                return v
+                if not strict:
+                    print('[vipy.flow.stabilize]: ERROR - fine alignment failed, returning original video "%s"' % str(v))
+                    return v.setattribute('unstabilized')  # for provenance
+                raise
         
             # Render coarse to fine stabilized frame with aligned objects
             A = F.dot(A)  # update fine reference frame            
             f_warp_fine(im.numpy(), dst=imstabilized._array, M=f_transform_fine(T.dot(A)), dsize=(imstabilized.width(), imstabilized.height()), borderMode=cv2.BORDER_TRANSPARENT)
+            if any([not o.projective(T.dot(A)).isvalid() for o in im.objects()]):
+                if not strict:
+                    print('[vipy.flow.stabilize]: ERROR - object alignment returned degenerate bounding box, returning original video "%s"' % str(v))
+                    return v.setattribute('unstabilized')  # for provenance
+                else:
+                    raise ValueError('[vipy.flow.stabilize]: ERROR - object alignment returned degenerate bounding box for video "%s"' % str(v))                    
             vc.addframe( im.array(imstabilized.array(), copy=True).objectmap(lambda o: o.projective(T.dot(A))), frame=k)
                             
         return vc

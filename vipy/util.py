@@ -29,6 +29,13 @@ import warnings
 import copy
 
 
+def mergedict(d1, d2):
+    assert isinstance(d1, dict) and isinstance(d2, dict)
+    d = copy.deepcopy(d1)
+    d.update(d2)
+    return d
+
+
 def hascache():
     """Is the VIPY_CACHE environment variable set?"""
     return 'VIPY_CACHE' in os.environ
@@ -454,6 +461,8 @@ def repath(v, srcpath, dstpath):
         vc = v.filename( v.filename().replace(os.path.normpath(srcpath), os.path.normpath(dstpath))) if v.filename() is not None else v
     elif islist(v) and all([(hasattr(vv, 'filename') and hasattr(vv, 'clone')) for vv in v]):
         vc = [vv.filename( vv.filename().replace(os.path.normpath(srcpath), os.path.normpath(dstpath))) if vv.filename() is not None else vv for vv in v ]
+    elif isstring(v):
+        vc = v.replace(os.path.normpath(srcpath), os.path.normpath(dstpath))
     else:
         raise ValueError('Input must be a singleton or list of vipy.image.Image() or vipy.video.Video() objects, not type "%s"' % (str(type(v))))
     return vc

@@ -38,24 +38,34 @@ class Batch(object):
     
     """    
              
-    def __init__(self, objlist, n_processes=None, dashboard=False, ngpu=0):
+    def __init__(self, objlist, n_processes=None, dashboard=False, ngpu=None):
         """Create a batch of homogeneous vipy.image objects from an iterable that can be operated on with a single parallel function call
         """
-        objlist = tolist(objlist)
+        assert isinstance(objlist, list), "Input must be a list"
         self._batchtype = type(objlist[0])        
         assert all([isinstance(im, self._batchtype) for im in objlist]), "Invalid input - Must be homogeneous list of the same type"                
         self._objlist = objlist
-      
-        if vipy.globals.dask() is None or n_processes != vipy.globals.dask().num_processes():
-            n_processes = ngpu if ngpu > 0 else n_processes
-            n_processes = vipy.globals.max_workers() if n_processes is None else n_processes
-            assert n_processes is not None, "set vipy.globals.max_workers() or n_processes kwarg"
-            vipy.globals.dask(num_processes=n_processes, dashboard=dashboard)
+
+        if n_processes is not None and ngpu is not None:
+            assert n_processes == ngpu, "Number of processes must be equal to the number of GPUs"
+        elif n_processes is not None:
+            n_processes = ngpu if (ngpu is not None) and isinstance(ngpu, int) and ngpu > 0 else n_processes
+            n_processes = vipy.globals.max_workers() if n_processes is None else n_processes      
+            if vipy.globals.dask() is None or n_processes != vipy.globals.dask().num_processes():
+                assert n_processes is not None, "set vipy.globals.max_workers() or n_processes kwarg"
+                vipy.globals.dask(num_processes=n_processes, dashboard=dashboard)
+        elif ngpu is not None:
+            n_processes = ngpu
+            if vipy.globals.dask() is None or n_processes != vipy.globals.dask().num_processes():
+                vipy.globals.dask(num_processes=n_processes, dashboard=dashboard)
+        else:
+            assert vipy.globals.dask() is not None
+
         self._client = vipy.globals.dask().client()  # shutdown using vipy.globals.dask().shutdown(), or let python garbage collect it
     
         self._ngpu = ngpu
-        if self._ngpu > 0:
-            assert ngpu == n_processes
+        if ngpu is not None:
+            assert isinstance(ngpu, int) and ngpu > 0, "Number of GPUs must be >= 0 not '%s'" % (str(ngpu))
             wait([self._client.submit(vipy.globals.gpuindex, k, workers=wid) for (k, wid) in enumerate(self._client.scheduler_info()['workers'].keys())])
 
     def __enter__(self):
@@ -67,8 +77,8 @@ class Batch(object):
     def __len__(self):
         return len(self._objlist)
 
-    def __repr__(self):
-        return str('<vipy.batch: type=%s, len=%d, procs=%d, gpu=%d>' % (str(self._batchtype), len(self), self.n_processes(), self.ngpu()))
+    def __repr__(self):        
+        return str('<vipy.batch: type=%s, len=%d, dask=%s%s>' % (str(self._batchtype), len(self), str(self._client), (', ngpu=%d' % self._ngpu) if self._ngpu is not None else ''))
 
     def ngpu(self):
         return self._ngpu
@@ -181,22 +191,6 @@ class Batch(object):
         objdist = c.scatter(obj)        
         self._objlist = self._wait([c.submit(f, objdist, imb) for imb in chunklistbysize(self._objlist, batchsize)])
         return self
-
-    def dictmap(self, f, d):
-        """Apply lambda function f(obj, d) to each element in the batch, where d is a dictionary of parameters 
-
-          Usage:
-
-          >>> Batch(mylist).dictmap(lambda im,d: im.maxdim(d['maxdim']), {'maxdim':512})
-
-          This is useful when providing a lambda function with closure variables.
-        """
-        assert isinstance(d, dict)
-        c = self.__dict__['_client']
-        objlist = c.scatter(self._objlist)
-        self._objlist = self._wait([c.submit(f, im, a) for (im, a) in zip(objlist, repeat(d, len(self._objlist)))])
-        return self
-
 
     def scattermap(self, f, obj):
         """Scatter obj to all workers, and apply lambda function f(obj, im) to each element in batch
