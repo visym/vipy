@@ -894,8 +894,7 @@ class Image(object):
 
     def gain(self, g):
         """Elementwise multiply gain to image array, Gain should be broadcastable to array().  This forces the colospace to 'float'"""
-        self.array(np.multiply(self.load().float().array(), g))
-        return self.colorspace('float')
+        return self.array(np.multiply(self.load().float().array(), g)).colorspace('float') if g != 1 else self
 
     def bias(self, b):
         """Add a bias to the image array.  Bias should be broadcastable to array().  This forces the colorspace to 'float'"""
