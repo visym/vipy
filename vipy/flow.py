@@ -216,13 +216,12 @@ class Video(vipy.video.Video):
 class Flow(object):
     """vipy.flow.Flow() class"""
     
-    def __init__(self, flowiter=10, flowscale=1):
-        assert isinstance(flowscale, int) and flowscale >= 1, "Invalid flowscale"
-        self._mindim = int(256*flowscale)  # flow computation dimensionality, change the hardcoded flow parameters if you change this, but beware
-        self._levels = 3 + (flowscale-1)
-        self._winsize = 7*flowscale
+    def __init__(self, flowiter=10):
+        self._mindim = None
+        self._levels = 3
+        self._winsize = 7
         self._poly_n = 5
-        self._poly_sigma = 1.2*flowscale
+        self._poly_sigma = 1.2
         self._flowiter = flowiter
         
     def __call__(self, im, imprev=None, flowstep=1, framestep=1):
@@ -235,6 +234,7 @@ class Flow(object):
     def imageflow(self, im, imprev):
         """Default opencv dense flow, from im to imprev.  This should be overloaded"""        
         assert isinstance(imprev, vipy.image.Image) and isinstance(im, vipy.image.Image)
+        self._mindim = self._mindim if self._mindim is not None else im.mindim()
         imp = imprev.clone().mindim(self._mindim).luminance() if imprev.channels() != 1 else imprev.clone().mindim(self._mindim)
         imn = im.clone().mindim(self._mindim).luminance() if im.channels() != 1 else im.clone().mindim(self._mindim)
         imflow = self._numpyflow(imn.numpy(), imp.numpy())
@@ -339,7 +339,7 @@ class Flow(object):
             (xy_src_k2, xy_dst_k2) = self._correspondence(imfk2, im, border=border, dilate=dilate, contrast=contrast)
             (xy_src, xy_dst) = (np.hstack( (xy_src_k0, xy_src_k1, xy_src_k2) ).transpose(), np.hstack( (xy_dst_k0, xy_dst_k1, xy_dst_k2) ).transpose())
             try:            
-                M = f_estimate_coarse(xy_src, xy_dst, method=cv2.RANSAC, confidence=0.99, ransacReprojThreshold=3.0, refineIters=16, maxIters=2000)   
+                M = f_estimate_coarse(xy_src, xy_dst, method=cv2.RANSAC, confidence=0.99999, ransacReprojThreshold=0.1, refineIters=16, maxIters=3000)                   
             except:
                 if not strict:
                     print('[vipy.flow.stabilize]: ERROR - coarse alignment failed, returning original video "%s"' % str(v))
@@ -353,7 +353,7 @@ class Flow(object):
             imfineflow = self.imageflow(imfine, imstabilized)
             (xy_src, xy_dst) = self._correspondence(imfineflow, imfine, border=None, dilate=dilate, contrast=contrast, validmask=imfinemask)
             try:
-                F = f_estimate_fine(xy_src.transpose()-np.array([padwidth, padheight]), xy_dst.transpose()-np.array([padwidth, padheight]), method=cv2.RANSAC, confidence=0.9999, ransacReprojThreshold=0.1, refineIters=64, maxIters=3000)  
+                F = f_estimate_fine(xy_src.transpose()-np.array([padwidth, padheight]), xy_dst.transpose()-np.array([padwidth, padheight]), method=cv2.RANSAC, confidence=0.99999, ransacReprojThreshold=0.1, refineIters=64, maxIters=3000)  
             except:
                 if not strict:
                     print('[vipy.flow.stabilize]: ERROR - fine alignment failed, returning original video "%s"' % str(v))
