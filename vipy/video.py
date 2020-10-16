@@ -1707,10 +1707,10 @@ class Scene(VideoCategory):
         """Return annotated frame=k of video, save annotation visualization to provided outfile"""
         return self.__getitem__(frame).savefig(outfile=outfile, fontsize=fontsize, nocaption=nocaption, boxalpha=boxalpha, dpi=dpi, textfacecolor=textfacecolor, textfacealpha=textfacealpha)
     
-    def stabilize(self, mindim=256):
+    def stabilize(self):
         """Background stablization using flow based stabilization masking foreground region.  This will output a video with all frames aligned to the first frame, such that the background is static."""
         from vipy.flow import Flow  # requires opencv
-        return Flow().stabilize(self.clone().mindim(mindim))
+        return Flow().stabilize(self.clone())
     
     
 def RandomVideo(rows=None, cols=None, frames=None):

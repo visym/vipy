@@ -216,10 +216,11 @@ class Video(vipy.video.Video):
 class Flow(object):
     """vipy.flow.Flow() class"""
     
-    def __init__(self, flowiter=10):
-        self._mindim = 256  # flow computation dimensionality, change the hardcoded flow parameters in _numpyflow() if you change this
-        self._levels = 3
-        self._winsize = 7
+    def __init__(self, flowiter=10, flowscale=1):
+        assert isinstance(flowscale, int) and flowscale >= 1, "Flowscale is an integer>1 of the minimum dimension of the flow field relative to 256.  Larger is more precise flow"
+        self._mindim = int(256*flowscale)  # flow computation dimensionality, change the hardcoded flow parameters in _numpyflow() if you change this
+        self._levels = 3+(flowscale-1)
+        self._winsize = 7*flowscale
         self._poly_n = 5
         self._poly_sigma = 1.2
         self._flowiter = flowiter
@@ -278,13 +279,13 @@ class Flow(object):
         (x2, y2) = (x1 + fx, y1 + fy)  # destination coordinates
         return (np.stack((x1,y1)), np.stack((x2,y2)))
         
-    def stabilize(self, v, keystep=20, padheight=32, padwidth=128, border=0.1, dilate=1.0, contrast=16.0/255.0, rigid=False, affine=True, verbose=True, strict=False):
+    def stabilize(self, v, keystep=20, padheight=0.125, padwidth=0.5, padheightpx=None, padwidthpx=None, border=0.1, dilate=1.0, contrast=16.0/255.0, rigid=False, affine=True, verbose=True, strict=False):
         """Affine stabilization to frame zero using multi-scale optical flow correspondence with foreground object keepouts.  
 
            * v [vipy.video.Scene]:  The input video to stabilize, should be resized to mindim=256
            * keystep [int]:  The local stabilization step between keyframes (should be <= 30)
-           * padheight [int]:  The height padding to be applied to output video to allow for vertical stabilization
-           * padwidth [int]:  The width padding to be applied to output video to allow for horizontal stabilization
+           * padheight [float]:  The height padding (relative to video height) to be applied to output video to allow for vertical stabilization
+           * padwidth [float]:  The width padding (relative to video width) to be applied to output video to allow for horizontal stabilization
            * border [float]:  The border keepout fraction to ignore during flow correspondence.  This should be proportional to the maximum frame to frame flow
            * dilate [float]:  The dilation to apply to the foreground object boxes to define a foregroun keepout for flow computation
            * contrast [float]:  The minimum gradient necessary for flow correspondence, to avoid flow on low contrast regions
@@ -298,11 +299,12 @@ class Flow(object):
 
         """        
         assert isinstance(v, vipy.video.Scene), "Invalid input - Must be vipy.video.Scene() with foreground object keepouts for background stabilization"
-        if min(v.shape()) != 256:
-            warnings.warn('You should resize the input video to v.mindim(256) prior to calling this function, otherwise it will take a while')
-        
+        if verbose and min(v.shape()) > 256:
+            warnings.warn('Large video frame detected - You should resize the input video to v.mindim(256) prior to calling this function, otherwise it will take a while')
+                    
         # Prepare videos
         v = v.clone().cropeven()  # make even for zero pad
+        (padwidth, padheight) = (int(v.width()*padwidth) if padwidthpx is None else padwidthpx, int(v.height()*padheight) if padheightpx is None else padheightpx)
         vc = v.clone(flush=True).zeropad(padwidth, padheight).load().nofilename().nourl()       
         if len(vc) < keystep:
             print('[vipy.flow.stabilize]: ERROR - video not long enough for stabilization, returning original video "%s"' % str(v))
@@ -361,13 +363,14 @@ class Flow(object):
             # Render coarse to fine stabilized frame with aligned objects
             A = F.dot(A)  # update fine reference frame            
             f_warp_fine(im.numpy(), dst=imstabilized._array, M=f_transform_fine(T.dot(A)), dsize=(imstabilized.width(), imstabilized.height()), borderMode=cv2.BORDER_TRANSPARENT)
-            if any([not o.projective(T.dot(A)).isvalid() for o in im.objects()]):
+            im = im.objectmap(lambda o: o.projective(T.dot(A)))  # apply object transformation
+            if any([not o.isvalid() for o in im.objects()]):  
                 if not strict:
                     print('[vipy.flow.stabilize]: ERROR - object alignment returned degenerate bounding box, returning original video "%s"' % str(v))
                     return v.setattribute('unstabilized')  # for provenance
                 else:
                     raise ValueError('[vipy.flow.stabilize]: ERROR - object alignment returned degenerate bounding box for video "%s"' % str(v))                    
-            vc.addframe( im.array(imstabilized.array(), copy=True).objectmap(lambda o: o.projective(T.dot(A))), frame=k)
+            vc.addframe( im.array(imstabilized.array(), copy=True), frame=k)
                             
         return vc
             
