@@ -17,7 +17,7 @@ import shutil
 mp4file = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'Video.mp4')
 mp4url = 'https://www.youtube.com/watch?v=C0DPdy98e4c'
 
-def test_video():
+def _test_video():
     # Common Parameters
     urls = vipy.videosearch.youtube('owl',1)
     if len(urls) > 0:
@@ -362,7 +362,7 @@ def test_track():
     print('[test_video.track]: interpolation  PASSED')
 
     
-def test_scene_union():
+def _test_scene_union():
     
     vid = vipy.video.RandomVideo(64,64,32)
     (rows, cols) = vid.shape()
@@ -411,7 +411,7 @@ def test_scene_union():
     
     
 if __name__ == "__main__":
-    test_video()
+    _test_video()
     test_track()
     _test_scene()
-    test_scene_union()
+    _test_scene_union()

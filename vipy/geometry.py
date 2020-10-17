@@ -107,7 +107,7 @@ def imagebox(shape):
 
 
 
-class BoundingBox():
+class BoundingBox(object):
     """Core bounding box class with flexible constructors in this priority order:
           (xmin,ymin,xmax,ymax)
           (xmin,ymin,width,height)
@@ -117,8 +117,7 @@ class BoundingBox():
           ulbr=(xmin,ymin,xmax,ymax)
           bounding rectangle of binary mask image"""
 
-    # FIXME: this will reduce memory, but it is not backwards compatible
-    #__slots__ = ['_xmin', '_ymin', '_xmax', '_ymax']
+    #__slots__ = ['_xmin', '_ymin', '_xmax', '_ymax']  # This is not backwards compatible
     def __init__(self, xmin=None, ymin=None, xmax=None, ymax=None, centroid=None, xcentroid=None, ycentroid=None, width=None, height=None, mask=None, xywh=None, ulbr=None):
 
         if xmin is not None and ymin is not None and xmax is not None and ymax is not None:
