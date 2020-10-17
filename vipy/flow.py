@@ -216,8 +216,8 @@ class Video(vipy.video.Video):
 class Flow(object):
     """vipy.flow.Flow() class"""
     
-    def __init__(self, flowiter=10):
-        self._mindim = None
+    def __init__(self, flowiter=10, flowdim=None):
+        self._mindim = flowdim
         self._levels = 3
         self._winsize = 7
         self._poly_n = 5
