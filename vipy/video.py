@@ -29,6 +29,14 @@ import vipy.globals
 import vipy.activity
 
 
+ffmpeg_exe = shutil.which('ffmpeg')
+has_ffmpeg = ffmpeg_exe is not None and os.path.exists(ffmpeg_exe)
+ffprobe_exe = shutil.which('ffprobe')        
+has_ffprobe = ffprobe_exe is not None and os.path.exists(ffprobe_exe)
+ffplay_exe = shutil.which('ffplay')        
+has_ffplay = ffplay_exe is not None and os.path.exists(ffplay_exe)
+
+
 class Video(object):
     """ vipy.video.Video class
 
@@ -66,15 +74,8 @@ class Video(object):
         assert filename is not None or url is not None or array is not None or frames is not None, 'Invalid constructor - Requires "filename", "url" or "array" or "frames"'
 
         # FFMPEG installed?
-        ffmpeg_exe = shutil.which('ffmpeg')
-        ffprobe_exe = shutil.which('ffprobe')        
-        ffplay_exe = shutil.which('ffplay')        
-        if ffmpeg_exe is None or not os.path.exists(ffmpeg_exe):
-            warnings.warn('"ffmpeg" executable not found on path, this is required for vipy.video - Install from http://ffmpeg.org/download.html')
-        if ffprobe_exe is None or not os.path.exists(ffprobe_exe):
-            warnings.warn('"ffprobe" executable not found on path, this is optional for vipy.video - Install from http://ffmpeg.org/download.html')            
-        if ffplay_exe is None or not os.path.exists(ffplay_exe):
-            warnings.warn('"ffplay" executable not found on path, this is used for visualization and is optional for vipy.video - Install from http://ffmpeg.org/download.html')            
+        if not has_ffmpeg:
+            raise ValueError('"ffmpeg" executable not found on path, this is required for vipy.video - Install from http://ffmpeg.org/download.html')
 
         # Constructor clips
         assert (startframe is not None and endframe is not None) or (startframe is None and endframe is None), "Invalid input - (startframe,endframe) are both required"
@@ -188,6 +189,8 @@ class Video(object):
 
     def probe(self):
         """Run ffprobe on the filename and return the result as a JSON file"""
+        if not has_ffprobe:
+            raise ValueError('"ffprobe" executable not found on path, this is optional for vipy.video - Install from http://ffmpeg.org/download.html')            
         assert self.hasfilename(), "Invalid video file '%s' for ffprobe" % self.filename() 
         return ffmpeg.probe(self.filename())
 
@@ -512,7 +515,7 @@ class Video(object):
                             .global_args('-cpuflags', '0', '-loglevel', 'debug' if vipy.globals.isdebug() else 'error')
             (out, err) = f.run(capture_stdout=True)            
         except Exception as e:
-            raise ValueError('[vipy.video.load]: Video preview failed for video "%s" with ffmpeg command "%s" - Try manually running ffmpeg to see errors.  This error usually means that you need to upgrade your FFMPEG distribution to the latest stable version.' % (str(self), str(self._ffmpeg_commandline(f))))
+            raise ValueError('[vipy.video.load]: Video preview failed with error "%s" for video "%s" with ffmpeg command "%s" - Try manually running ffmpeg to see errors.  This error usually means that you need to upgrade your FFMPEG distribution to the latest stable version.' % (str(e), str(self), str(self._ffmpeg_commandline(f))))
 
         # [EXCEPTION]:  UnidentifiedImageError: cannot identify image file
         #   -This may occur when the framerate of the video from ffprobe (tbr) does not match that passed to fps filter, resulting in a zero length image preview piped to stdout
@@ -549,7 +552,7 @@ class Video(object):
             (out, err) = f.run(capture_stdout=True)
         except Exception as e:
             if not ignoreErrors:
-                raise ValueError('[vipy.video.load]: Load failed for video "%s" with ffmpeg command "%s" - Try load(verbose=True) or manually running ffmpeg to see errors. This error usually means that you need to upgrade your FFMPEG distribution to the latest stable version.' % (str(self), str(self._ffmpeg_commandline(f))))
+                raise ValueError('[vipy.video.load]: Load failed with error "%s" for video "%s" with ffmpeg command "%s" - Try load(verbose=True) or manually running ffmpeg to see errors. This error usually means that you need to upgrade your FFMPEG distribution to the latest stable version.' % (str(e), str(self), str(self._ffmpeg_commandline(f))))
             else:
                 return self  # Failed, return immediately, useful for calling canload() 
 
@@ -831,6 +834,8 @@ class Video(object):
 
     def play(self, verbose=True):
         """Play the saved video filename in self.filename() using the system 'ffplay', if there is no filename, try to download it """
+        if not has_ffplay:
+            raise ValueError('"ffplay" executable not found on path, this is used for visualization and is optional for vipy.video - Install from http://ffmpeg.org/download.html')            
         v = self
         if not self.isdownloaded() and self.hasurl():
             v = self.download()

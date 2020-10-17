@@ -644,9 +644,11 @@ def filebase(filename):
     return base
 
 
-def filepath(filename):
-    """Return /a/b for filename /a/b/c.ext"""
+def filepath(filename, depth=0):
+    """Return /a/b/c for filename /a/b/c/d.ext, /a/b for filename /a/b/c/d.ext if depth=1, etc"""
     (head, tail) = os.path.split(filename)
+    for k in range(depth):
+        (head, tail) = os.path.split(head)           
     return head
 
 

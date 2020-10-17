@@ -105,6 +105,8 @@ def normalize(x, eps=1E-16):
 def imagebox(shape):
     return BoundingBox(xmin=0, ymin=0, width=shape[1], height=shape[0])
 
+
+
 class BoundingBox():
     """Core bounding box class with flexible constructors in this priority order:
           (xmin,ymin,xmax,ymax)
@@ -115,6 +117,8 @@ class BoundingBox():
           ulbr=(xmin,ymin,xmax,ymax)
           bounding rectangle of binary mask image"""
 
+    # FIXME: this will reduce memory, but it is not backwards compatible
+    #__slots__ = ['_xmin', '_ymin', '_xmax', '_ymax']
     def __init__(self, xmin=None, ymin=None, xmax=None, ymax=None, centroid=None, xcentroid=None, ycentroid=None, width=None, height=None, mask=None, xywh=None, ulbr=None):
 
         if xmin is not None and ymin is not None and xmax is not None and ymax is not None:
@@ -720,6 +724,7 @@ class BoundingBox():
             return img[:, self.ymin():self.ymax(), self.xmin():self.xmax(), :]  # NxHxWxC
     
 class Ellipse():
+    __slots__ = ['_major', '_minor', '_xcenter', '_ycenter', '_phi']
     def __init__(self, semi_major, semi_minor, xcenter, ycenter, phi):
         """Ellipse parameterization, for length of semimajor (half width of ellipse) and semiminor axis (half height), center point and angle phi in radians"""
         self._major = semi_major
