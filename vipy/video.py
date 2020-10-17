@@ -75,7 +75,7 @@ class Video(object):
 
         # FFMPEG installed?
         if not has_ffmpeg:
-            raise ValueError('"ffmpeg" executable not found on path, this is required for vipy.video - Install from http://ffmpeg.org/download.html')
+            warnings.warn('"ffmpeg" executable not found on path, this is required for vipy.video - Install from http://ffmpeg.org/download.html')
 
         # Constructor clips
         assert (startframe is not None and endframe is not None) or (startframe is None and endframe is None), "Invalid input - (startframe,endframe) are both required"
