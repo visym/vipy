@@ -38,7 +38,7 @@ class Batch(object):
     
     """    
              
-    def __init__(self, objlist, n_processes=None, dashboard=False, ngpu=None):
+    def __init__(self, objlist, n_processes=None, dashboard=False, ngpu=None, strict=True):
         """Create a batch of homogeneous vipy.image objects from an iterable that can be operated on with a single parallel function call
         """
         assert isinstance(objlist, list), "Input must be a list"
@@ -68,6 +68,8 @@ class Batch(object):
             assert isinstance(ngpu, int) and ngpu > 0, "Number of GPUs must be >= 0 not '%s'" % (str(ngpu))
             wait([self._client.submit(vipy.globals.gpuindex, k, workers=wid) for (k, wid) in enumerate(self._client.scheduler_info()['workers'].keys())])
 
+        self._strict = strict
+
     def __enter__(self):
         return self
 
@@ -95,7 +97,17 @@ class Batch(object):
     def _wait(self, futures):
         assert islist(futures) and all([hasattr(f, 'result') for f in futures])
         try:
-            wait(futures)
+            results = []
+            for f in as_completed(futures):
+                try:
+                    results.append(f.result())  # not order preserving
+                except:
+                    if self._strict:
+                        raise
+                    else:
+                        print('[vipy.batch]: future %s failed with error "%s"' % (str(f), str(f.exception())))
+                        results.append(None)
+            return results
         except KeyboardInterrupt:
             # warnings.warn('[vipy.batch]: batch cannot be restarted after killing with ctrl-c - You must create a new Batch()')
             vipy.globals.dask().shutdown()
@@ -104,7 +116,8 @@ class Batch(object):
         except:
             # warnings.warn('[vipy.batch]: batch cannot be restarted after exception - Recreate Batch()')                
             raise
-        return [f.result() for f in futures]
+
+        #return [f.result() for f in futures]
 
     def result(self):
         """Return the result of the batch processing"""
