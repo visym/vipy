@@ -438,9 +438,9 @@ def load(infile):
 
     """
     obj = loadas(infile, type='dill')
-    testobj = copy.deepcopy(tolist(obj)[0])
+    testobj = tolist(obj)[0]
     if hasattr(testobj, 'filename') and testobj.filename() is not None and '/$PATH' in testobj.filename():
-        testobj = repath(testobj, '/$PATH', filepath(os.path.abspath(infile)))  # attempt to rehome /$PATH/to/me.jpg -> /NEWPATH/to/me.jpg where NEWPATH=filepath(infile)
+        testobj = repath(copy.deepcopy(testobj), '/$PATH', filepath(os.path.abspath(infile)))  # attempt to rehome /$PATH/to/me.jpg -> /NEWPATH/to/me.jpg where NEWPATH=filepath(infile)
         if os.path.exists(testobj.filename()):       # file found
             obj = repath(obj, '/$PATH', filepath(os.path.abspath(infile)))      # rehome everything to the same root path as the pklfile
         else:
