@@ -246,6 +246,13 @@ class Flow(object):
         imf = [self.imageflow(v[k], v[max(0, k-flowstep) if keyframe is None else keyframe]) for k in range(0, len(v.load())+framestep, framestep) if k < len(v.load())]
         return Video(np.stack([im.flow() for im in imf]), flowstep, framestep)  # flow only, no objects
 
+    def videoflowframe(self, v, frame, flowstep=1, framestep=1, keyframe=None):
+        """Compute optical flow for a video framewise skipping framestep frames, compute optical flow acrsos flowstep frames, """
+        assert isinstance(v, vipy.video.Video)
+        assert flowstep == 1 and framestep == 1
+        imf = [self.imageflow(v[k], v[max(0, k-flowstep) if keyframe is None else keyframe]) for k in range(frame, frame+framestep, framestep) if k < len(v.load())]
+        return imf[0]
+
     def keyflow(self, v, keystep=None):
         """Compute optical flow for a video framewise relative to keyframes separated by keystep"""
         assert isinstance(v, vipy.video.Video)
@@ -253,6 +260,15 @@ class Flow(object):
                 self.imageflow(v[min(len(v)-1, int(keystep*np.round(k/keystep)))], v[k]))
                for k in range(0, len(v.load()))]
         return Video(np.stack([im.flow() for im in imf]), flowstep=1, framestep=1)  # flow only, no objects
+
+    def keyflowframe(self, v, frame, keystep=None):
+        """Compute optical flow for a video framewise relative to keyframes separated by keystep"""
+        assert isinstance(v, vipy.video.Video)
+        assert frame < len(v.load())
+        imf = [(self.imageflow(v[min(len(v)-1, int(keystep*np.round(k/keystep)))], v[max(0, k-1)]) -
+                self.imageflow(v[min(len(v)-1, int(keystep*np.round(k/keystep)))], v[k]))
+               for k in range(frame, frame+1)]
+        return imf[0]
 
     def affineflow(self, A, H, W):
         """Return a flow field of size (height=H, width=W) consistent with a 2x3 affine transformation A"""
@@ -302,7 +318,7 @@ class Flow(object):
         """        
         assert isinstance(v, vipy.video.Scene), "Invalid input - Must be vipy.video.Scene() with foreground object keepouts for background stabilization"
         if verbose and min(v.shape()) > 256:
-            warnings.warn('Large video frame detected - You should resize the input video to v.mindim(256) prior to calling this function, otherwise it will take a while')
+            warnings.warn('Large video frame size detected - This will take a while ...')
                     
         # Prepare videos
         v = v.clone().cropeven()  # make even for zero pad
@@ -313,11 +329,11 @@ class Flow(object):
             return v.setattribute('unstabilized')
 
         # Optical flow (three passes)        
-        if verbose:
-            print('[vipy.flow.stabilize]: Optical flow (3x)- %s' % v)
-        vf = self.videoflow(v, framestep=1, flowstep=1)
-        vfk1 = self.keyflow(v, keystep=keystep)
-        vfk2 = self.keyflow(v, keystep=len(v)//2)        
+        #if verbose:
+        #    print('[vipy.flow.stabilize]: Optical flow (3x)- %s' % v)
+        #vf = self.videoflow(v, framestep=1, flowstep=1)
+        #vfk1 = self.keyflow(v, keystep=keystep)  
+        #vfk2 = self.keyflow(v, keystep=len(v)//2)        
         
         # Stabilization
         assert rigid is True or affine is True
@@ -331,10 +347,15 @@ class Flow(object):
         f_transform_fine = (lambda A: A[0:2,:]) if (rigid or affine) else (lambda A: A)
         imstabilized = v[0].clone().rgb().zeropad(padwidth, padheight)
         frames = []                        
-        for (k, (im, imf, imfk1, imfk2)) in enumerate(zip(v, vf, vfk1, vfk2)): 
+        for (k, im) in enumerate(v): 
             if verbose and k==0:
                 print('[vipy.flow.stabilize]: %s coarse to fine stabilization ...' % ('Euclidean' if rigid else 'Affine' if affine else 'Projective'))                
-           
+         
+            # Optical flow: do not precompute to save on memory
+            imf = self.videoflowframe(v, k, framestep=1, flowstep=1)
+            imfk1 = self.keyflowframe(v, k, keystep=keystep)
+            imfk2 = self.keyflowframe(v, k, keystep=len(v)//2)
+
             # Coarse alignment 
             (xy_src_k0, xy_dst_k0) = self._correspondence(imf, im, border=border, dilate=dilate, contrast=contrast)
             (xy_src_k1, xy_dst_k1) = self._correspondence(imfk1, im, border=border, dilate=dilate, contrast=contrast)
