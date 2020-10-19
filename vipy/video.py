@@ -840,7 +840,8 @@ class Video(object):
     def play(self, verbose=True):
         """Play the saved video filename in self.filename() using the system 'ffplay', if there is no filename, try to download it """
         if not has_ffplay:
-            raise ValueError('"ffplay" executable not found on path, this is used for visualization and is optional for vipy.video - Install from http://ffmpeg.org/download.html')            
+            warnings.warn('"ffplay" executable not found on path, falling back on fastshow() - Install from http://ffmpeg.org/download.html')
+            return self.fastshow()
         v = self
         if not self.isdownloaded() and self.hasurl():
             v = self.download()
@@ -1379,11 +1380,15 @@ class Scene(VideoCategory):
         else:
             raise ValueError('Undefined object type "%s" to be added to scene - Supported types are obj in ["vipy.object.Detection", "vipy.object.Track", "vipy.activity.Activity", "[xmin, ymin, width, height]"]' % str(type(obj)))
 
+    def delete(self, id):
+        """Delete a given track or activity by id, if present"""
+        return self.trackfilter(lambda t: t.id() != id).activityfilter(lambda a: a.id() != id)
+            
     def addframe(self, im, frame=None):
         """Add im=vipy.image.Scene() into vipy.video.Scene() at given frame. The input image must have been generated using im=self[k] for this to be meaningful, so that trackid can be associated"""
         assert isinstance(im, vipy.image.Scene), "Invalid input - Must be vipy.image.Scene()"
         assert frame is not None or self._currentframe is not None, "Must provide a frame number"
-        assert im.shape() == self.shape(), "Frame input must be same shape as video"
+        assert im.shape() == self.shape(), "Frame input (shape=%s) must be same shape as video (shape=%s)" % (str(im.shape()), str(self.shape()))
         
         # Copy framewise vipy.image.Scene() into vipy.video.Scene(). 
         frame = frame if frame is not None else self._currentframe  # if iterator        
@@ -1444,6 +1449,10 @@ class Scene(VideoCategory):
         vid._tracks = {}      # for faster clone
         return [vid.clone().activities(pa).tracks(t) for (pa,t) in zip(activities, tracks)]
 
+    def tracksplit(self):
+        """Split the scene into k separate scenes, one for each track"""
+        return [self.clone().trackfilter(lambda t: t.id() == tid) for tid in self.tracks().keys()]
+        
     def activityclip(self, padframes=0, multilabel=True):
         """Return a list of vipy.video.Scene() each clipped to be temporally centered on a single activity, with an optional padframes before and after.  
            The Scene() category is updated to be the activity, and only the objects participating in the activity are included.

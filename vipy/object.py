@@ -27,7 +27,7 @@ class Detection(BoundingBox):
         self._shortlabel = self._label if shortlabel is None else shortlabel
         self._confidence = float(confidence) if confidence is not None else confidence
         self.attributes = attributes if attributes is not None else {}
-
+        
     def __repr__(self):
         strlist = []
         if self.category() is not None:
@@ -55,12 +55,17 @@ class Detection(BoundingBox):
         self._label = None
         return self
 
-    def category(self, category=None):
-        """Update the category of the detection"""
+    def noshortlabel(self):
+        self._shortlabel = None
+        return self
+        
+    def category(self, category=None, shortlabel=True):
+        """Update the category and shortlabel (optional) of the detection"""
         if category is None:
             return self._label
         else:
             self._label = str(category)  # coerce to string
+            self._shortlabel = str(category) if shortlabel else self._shortlabel  # coerce to string            
             return self
 
     def shortlabel(self, label=None):
@@ -72,8 +77,8 @@ class Detection(BoundingBox):
             return self._shortlabel if self._shortlabel is not None else self.category()
 
     def label(self, label):
-        """Alias for category"""
-        return self.category(label)
+        """Alias for category to update both category and shortlabel"""
+        return self.category(label, shortlabel=True)
 
     def id(self):
         return self._id
@@ -260,21 +265,22 @@ class Track(object):
         return d if self._boundary == 'extend' else (None if not self.during(k) else d)
 
 
-    def category(self, label=None):
+    def category(self, label=None, shortlabel=True):
         if label is not None:
-            self._label = label
+            self._label = str(label)  # coerce to string
+            self._shortlabel = str(label) if shortlabel else self._shortlabel  # coerce to string
             return self
         else:
             return self._label
     
     def label(self, label):
         """Alias for category"""
-        return self.category(label)
+        return self.category(label, shortlabel=True)
         
     def shortlabel(self, label=None):
         """A optional shorter label string to show as a caption in visualizations"""                
         if label is not None:
-            self._shortlabel = label
+            self._shortlabel = str(label)  # coerce to string
             return self
         else:
             return self._shortlabel
