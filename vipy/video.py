@@ -1695,19 +1695,25 @@ class Scene(VideoCategory):
         return self
 
 
-    def show(self, outfile=None, verbose=True, fontsize=10, captionoffset=(0,0), textfacecolor='white', textfacealpha=1.0, shortlabel=True, boxalpha=0.25, d_category2color={'Person':'green', 'Vehicle':'blue', 'Object':'red'}, categories=None, nocaption=False, nocaption_withstring=[]):
+    def show(self, outfile=None, verbose=True, fontsize=10, captionoffset=(0,0), textfacecolor='white', textfacealpha=1.0, shortlabel=True, boxalpha=0.25, d_category2color={'Person':'green', 'Vehicle':'blue', 'Object':'red'}, categories=None, nocaption=False, nocaption_withstring=[], notebook=False):
         """Generate an annotation video saved to outfile (or tempfile if outfile=None) and show it using ffplay when it is done exporting.  Do not modify the original video buffer"""
-        return self.clone().annotate(verbose=verbose, 
-                                     fontsize=fontsize,
-                                     captionoffset=captionoffset,
-                                     textfacecolor=textfacecolor,
-                                     textfacealpha=textfacealpha,
-                                     shortlabel=shortlabel,
-                                     boxalpha=boxalpha,
-                                     d_category2color=d_category2color,
-                                     categories=categories,
-                                     nocaption=nocaption, 
-                                     nocaption_withstring=nocaption_withstring).saveas(outfile).play()
+        v = self.clone().annotate(verbose=verbose, 
+                                  fontsize=fontsize,
+                                  captionoffset=captionoffset,
+                                  textfacecolor=textfacecolor,
+                                  textfacealpha=textfacealpha,
+                                  shortlabel=shortlabel,
+                                  boxalpha=boxalpha,
+                                  d_category2color=d_category2color,
+                                  categories=categories,
+                                  nocaption=nocaption, 
+                                  nocaption_withstring=nocaption_withstring).saveas(outfile)
+        if notebook:
+            try_import("IPython.display", "ipython"); import IPython.display
+            return IPython.display.Video(v.filename(), embed=True)
+        else:
+            return v.play()
+    
 
     def fastshow(self, outfile=None, verbose=True, fontsize=10, captionoffset=(0,0), textfacecolor='white', textfacealpha=1.0, shortlabel=True, boxalpha=0.25, d_category2color={'Person':'green', 'Vehicle':'blue', 'Object':'red'}, categories=None, nocaption=False, nocaption_withstring=[], figure=1):
         """Faster show using interative image show.  This can visualize videos before video rendering is complete, but it cannot guarantee frame rates. Large videos with complex scenes will slow this down and will render at lower frame rates."""
