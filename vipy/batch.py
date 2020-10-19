@@ -98,16 +98,20 @@ class Batch(object):
     def _wait(self, futures):
         assert islist(futures) and all([hasattr(f, 'result') for f in futures])
         try:
-            results = []
-            for f in (wait(futures) if not self._as_completed else as_completed(futures)):  
-                try:
-                    results.append(f.result())  # not order preserving
-                except:
-                    if self._strict:
-                        raise
-                    else:
-                        print('[vipy.batch]: future %s failed with error "%s"' % (str(f), str(f.exception())))
-                        results.append(None)
+            f_as_completed = lambda f: as_completed(f) if self._as_completed else f
+            f_wait = lambda f: wait(f) if not self._as_completed else f
+
+            results = []            
+            f_wait(futures)
+            for f in f_as_completed(futures):  
+                    try:
+                        results.append(f.result())  # not order preserving
+                    except:
+                        if self._strict:
+                            raise
+                        else:
+                            print('[vipy.batch]: future %s failed with error "%s"' % (str(f), str(f.exception())))
+                            results.append(None)
             return results
         except KeyboardInterrupt:
             # warnings.warn('[vipy.batch]: batch cannot be restarted after killing with ctrl-c - You must create a new Batch()')
