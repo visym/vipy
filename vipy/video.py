@@ -3,7 +3,7 @@ import dill
 from vipy.globals import print
 from vipy.util import remkdir, tempMP4, isurl, \
     isvideourl, templike, tempjpg, filetail, tempdir, isyoutubeurl, try_import, isnumpy, temppng, \
-    istuple, islist, isnumber, tolist, filefull, fileext, isS3url, totempdir, flatlist, tocache, premkdir, writecsv, iswebp, ispng, isgif, filepath
+    istuple, islist, isnumber, tolist, filefull, fileext, isS3url, totempdir, flatlist, tocache, premkdir, writecsv, iswebp, ispng, isgif, filepath, Stopwatch
 from vipy.image import Image
 import vipy.geometry
 import vipy.math
@@ -24,6 +24,7 @@ import shutil
 import types
 import uuid
 import platform
+import time
 from io import BytesIO
 import vipy.globals
 import vipy.activity
@@ -1708,9 +1709,23 @@ class Scene(VideoCategory):
                                      nocaption=nocaption, 
                                      nocaption_withstring=nocaption_withstring).saveas(outfile).play()
 
-    def fastshow(self, outfile=None, verbose=True, fontsize=10, captionoffset=(0,0), textfacecolor='white', textfacealpha=1.0, shortlabel=True, boxalpha=0.25, d_category2color={'Person':'green', 'Vehicle':'blue', 'Object':'red'}, categories=None, nocaption=False, nocaption_withstring=[]):
-        """Faster show generating much smaller video thumbnail, useful for quick visualizations for large videos"""
-        return self.clone().mindim(128).show(outfile, verbose, fontsize, captionoffset, textfacecolor, textfacealpha, shortlabel, boxalpha, d_category2color, categories, nocaption,nocaption_withstring)
+    def fastshow(self, outfile=None, verbose=True, fontsize=10, captionoffset=(0,0), textfacecolor='white', textfacealpha=1.0, shortlabel=True, boxalpha=0.25, d_category2color={'Person':'green', 'Vehicle':'blue', 'Object':'red'}, categories=None, nocaption=False, nocaption_withstring=[], figure=1):
+        """Faster show using interative image show.  This can visualize videos before video rendering is complete, but it cannot guarantee frame rates. Large videos with complex scenes will slow this down and will render at lower frame rates."""
+        with Stopwatch() as sw:
+            for im in self.load():
+                im.show(categories=categories,
+                        figure=figure,
+                        nocaption=nocaption,
+                        nocaption_withstring=nocaption_withstring,
+                        fontsize=fontsize,
+                        boxalpha=boxalpha,
+                        d_category2color=d_category2color,
+                        captionoffset=captionoffset,
+                        textfacecolor=textfacecolor,
+                        textfacealpha=textfacealpha,
+                        shortlabel=shortlabel)
+                time.sleep(max(0, (1.0/self.framerate()) - sw.since()))
+        return self
 
     def thumbnail(self, outfile=None, frame=0, fontsize=10, nocaption=False, boxalpha=0.25, dpi=200, textfacecolor='white', textfacealpha=1.0):
         """Return annotated frame=k of video, save annotation visualization to provided outfile"""
@@ -1719,7 +1734,7 @@ class Scene(VideoCategory):
     def stabilize(self):
         """Background stablization using flow based stabilization masking foreground region.  This will output a video with all frames aligned to the first frame, such that the background is static."""
         from vipy.flow import Flow  # requires opencv
-        return Flow().stabilize(self.clone())
+        return Flow().stabilize(self.clone(), residual=True)
     
     
 def RandomVideo(rows=None, cols=None, frames=None):

@@ -20,7 +20,7 @@ class Detection(BoundingBox):
     """
 
     def __init__(self, label=None, xmin=None, ymin=None, width=None, height=None, xmax=None, ymax=None, confidence=None, xcentroid=None, ycentroid=None, category=None, xywh=None, shortlabel=None, attributes=None):
-        super(Detection, self).__init__(xmin=xmin, ymin=ymin, width=width, height=height, xmax=xmax, ymax=ymax, xcentroid=xcentroid, ycentroid=ycentroid, xywh=xywh)
+        super().__init__(xmin=xmin, ymin=ymin, width=width, height=height, xmax=xmax, ymax=ymax, xcentroid=xcentroid, ycentroid=ycentroid, xywh=xywh)
         assert not (label is not None and category is not None), "Constructor requires either label or category kwargs, not both"
         self._id = uuid.uuid1().hex        
         self._label = category if category is not None else label
@@ -47,7 +47,7 @@ class Detection(BoundingBox):
         return self.__repr__()
 
     def dict(self):
-        return {'id':self._id, 'label':self.category(), 'shortlabel':self.shortlabel() ,'boundingbox':super(Detection, self).dict(),
+        return {'id':self._id, 'label':self.category(), 'shortlabel':self.shortlabel() ,'boundingbox':super().dict(),
                 'attributes':self.attributes,  # these may be arbitrary user defined objects
                 'confidence':self._confidence}
                     
