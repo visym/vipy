@@ -150,6 +150,10 @@ class Video(object):
         else:
             raise ValueError('Invalid frame index %d ' % k)
 
+    def metadata(self):
+        """Return a dictionary of metadata about this video"""
+        return self.attributes
+
     def frame(self, k):
         """Alias for self.__getitem__[k]"""
         return self.__getitem__(k)

@@ -10,7 +10,9 @@ import vipy.object
 import PIL.Image
 import copy
 import vipy.geometry
+from vipy.geometry import homogenize
 import warnings
+
 
 
 class Image(object):
@@ -247,7 +249,7 @@ class Flow(object):
         return Video(np.stack([im.flow() for im in imf]), flowstep, framestep)  # flow only, no objects
 
     def videoflowframe(self, v, frame, flowstep=1, framestep=1, keyframe=None):
-        """Compute optical flow for a video framewise skipping framestep frames, compute optical flow acrsos flowstep frames, """
+        """Computer the videoflow for a single frame"""
         assert isinstance(v, vipy.video.Video)
         assert flowstep == 1 and framestep == 1
         imf = [self.imageflow(v[k], v[max(0, k-flowstep) if keyframe is None else keyframe]) for k in range(frame, frame+framestep, framestep) if k < len(v.load())]
@@ -262,7 +264,7 @@ class Flow(object):
         return Video(np.stack([im.flow() for im in imf]), flowstep=1, framestep=1)  # flow only, no objects
 
     def keyflowframe(self, v, frame, keystep=None):
-        """Compute optical flow for a video framewise relative to keyframes separated by keystep"""
+        """Compute the keyflow for a single frame"""
         assert isinstance(v, vipy.video.Video)
         assert frame < len(v.load())
         imf = [(self.imageflow(v[min(len(v)-1, int(keystep*np.round(k/keystep)))], v[max(0, k-1)]) -
@@ -295,7 +297,7 @@ class Flow(object):
         (x2, y2) = (x1 + fx, y1 + fy)  # destination coordinates
         return (np.stack((x1,y1)), np.stack((x2,y2)))
         
-    def stabilize(self, v, keystep=20, padheight=0.125, padwidth=0.5, padheightpx=None, padwidthpx=None, border=0.1, dilate=1.0, contrast=16.0/255.0, rigid=False, affine=True, verbose=True, strict=False):
+    def stabilize(self, v, keystep=20, padheight=0.125, padwidth=0.5, padheightpx=None, padwidthpx=None, border=0.1, dilate=1.0, contrast=16.0/255.0, rigid=False, affine=True, verbose=True, strict=False, residual=False):
         """Affine stabilization to frame zero using multi-scale optical flow correspondence with foreground object keepouts.  
 
            * v [vipy.video.Scene]:  The input video to stabilize, should be resized to mindim=256
@@ -346,6 +348,7 @@ class Flow(object):
         f_transform_coarse = (lambda A: A[0:2,:])
         f_transform_fine = (lambda A: A[0:2,:]) if (rigid or affine) else (lambda A: A)
         imstabilized = v[0].clone().rgb().zeropad(padwidth, padheight)
+        r_coarse = []
         frames = []                        
         for (k, im) in enumerate(v): 
             if verbose and k==0:
@@ -360,9 +363,10 @@ class Flow(object):
             (xy_src_k0, xy_dst_k0) = self._correspondence(imf, im, border=border, dilate=dilate, contrast=contrast)
             (xy_src_k1, xy_dst_k1) = self._correspondence(imfk1, im, border=border, dilate=dilate, contrast=contrast)
             (xy_src_k2, xy_dst_k2) = self._correspondence(imfk2, im, border=border, dilate=dilate, contrast=contrast)
-            (xy_src, xy_dst) = (np.hstack( (xy_src_k0, xy_src_k1, xy_src_k2) ).transpose(), np.hstack( (xy_dst_k0, xy_dst_k1, xy_dst_k2) ).transpose())
+            (xy_src, xy_dst) = (np.hstack( (xy_src_k0, xy_src_k1, xy_src_k2) ).transpose(), np.hstack( (xy_dst_k0, xy_dst_k1, xy_dst_k2) ).transpose())  # Nx3
             try:            
                 M = f_estimate_coarse(xy_src, xy_dst, method=cv2.RANSAC, confidence=0.99999, ransacReprojThreshold=0.1, refineIters=16, maxIters=3000)                   
+                r_coarse.append(np.mean(np.sqrt(np.sum(np.square(M.dot(homogenize(xy_src[::8].transpose())) - homogenize(xy_dst[::8].transpose())), axis=0))) if (residual and len(xy_src)>8) else 0)
             except:
                 if not strict:
                     print('[vipy.flow.stabilize]: ERROR - coarse alignment failed, returning original video "%s"' % str(v))
@@ -394,8 +398,8 @@ class Flow(object):
                 else:
                     raise ValueError('[vipy.flow.stabilize]: ERROR - object alignment returned degenerate bounding box for video "%s"' % str(v))                    
             vc.addframe( im.array(imstabilized.array(), copy=True), frame=k)
-                            
+                           
+        vc = vc.setattribute('stabilize', {'residual':np.mean(r_coarse)}) if residual else vc
         return vc
             
 
-    

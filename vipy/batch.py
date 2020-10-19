@@ -38,7 +38,7 @@ class Batch(object):
     
     """    
              
-    def __init__(self, objlist, n_processes=None, dashboard=False, ngpu=None, strict=True):
+    def __init__(self, objlist, n_processes=None, dashboard=False, ngpu=None, strict=True, as_completed=False):
         """Create a batch of homogeneous vipy.image objects from an iterable that can be operated on with a single parallel function call
         """
         assert isinstance(objlist, list), "Input must be a list"
@@ -69,6 +69,7 @@ class Batch(object):
             wait([self._client.submit(vipy.globals.gpuindex, k, workers=wid) for (k, wid) in enumerate(self._client.scheduler_info()['workers'].keys())])
 
         self._strict = strict
+        self._as_completed = as_completed
 
     def __enter__(self):
         return self
@@ -98,7 +99,7 @@ class Batch(object):
         assert islist(futures) and all([hasattr(f, 'result') for f in futures])
         try:
             results = []
-            for f in as_completed(futures):
+            for f in (wait(futures) if not self._as_completed else as_completed(futures)):  
                 try:
                     results.append(f.result())  # not order preserving
                 except:
@@ -196,7 +197,7 @@ class Batch(object):
         
     def chunkmap(self, f, obj, batchsize):
         c = self.__dict__['_client']
-        objdist = c.scatter(obj)        
+        objdist = c.scatter(obj, broadcast=True)        
         self._objlist = self._wait([c.submit(f, objdist, imb) for imb in chunklistbysize(self._objlist, batchsize)])
         return self
 
@@ -216,7 +217,7 @@ class Batch(object):
 
         """
         c = self.__dict__['_client']
-        objdist = c.scatter(obj)        
+        objdist = c.scatter(obj, broadcast=True)        
         self._objlist = self._wait([c.submit(f, objdist, im) for im in self._objlist])
         return self
 
