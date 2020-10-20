@@ -1453,7 +1453,7 @@ class Scene(ImageCategory):
         if objectlist is None:
             return self._objectlist
         else:
-            assert isinstance(objectlist, list) and all([isinstance(bb, vipy.object.Detection) for bb in objectlist]), "Invalid object list"
+            assert isinstance(objectlist, list) and (len(objectlist) == 0 or all([isinstance(bb, vipy.object.Detection) for bb in objectlist])), "Invalid object list"
             self._objectlist = objectlist
             return self
 
@@ -1471,6 +1471,15 @@ class Scene(ImageCategory):
     def nms(self, conf, iou):
         """Non-maximum supporession of objects() by category based on confidence and spatial IoU thresholds"""
         return self.objects( vipy.object.non_maximum_suppression(self.objects(), conf, iou, bycategory=True) )
+
+    def union(self, other):
+        if isinstance(other, Scene):
+            self._objectlist.extend(other.objects())
+        return self
+
+    def clear(self):
+        """Remove all objects from this scene."""
+        return self.objects([])
     
     def boundingbox(self):
         """The boundingbox of a scene is the union of all object bounding boxes, or None if there are no objects"""
