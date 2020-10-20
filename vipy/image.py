@@ -1,6 +1,7 @@
 import os
 import PIL
 import PIL.Image
+import PIL.ImageFilter
 import platform
 import dill
 import vipy.show
@@ -417,6 +418,9 @@ class Image(object):
         assert self.channels() in [1,3,4] and (self.channels() == 1 or self.colorspace() != 'float'), "Incompatible with PIL"
         return PIL.Image.fromarray(self.tonumpy())
 
+    def blur(self, sigma=3):
+        return self.array(np.array(self.pil().filter(PIL.ImageFilter.GaussianBlur(radius=sigma))))
+        
     def torch(self, order='CHW'):
         """Convert the batch of 1 HxWxC images to a 1xCxHxW torch tensor, by reference"""
         try_import('torch'); import torch
@@ -1355,8 +1359,6 @@ class ImageDetection(ImageCategory):
     def replace(self, img):
         """Set all image values within the bounding box equal to the provided img, triggers load() and imclip()"""
         self.load().imclip()
-        if not (isnumpy(img) and img.shape == (self.bbox.int().height(), self.bbox.width(), self.channels()) and (img.dtype == self.array().dtype)):
-            import pdb; pdb.set_trace()
         assert isnumpy(img) and img.shape == (self.bbox.int().height(), self.bbox.width(), self.channels()) and (img.dtype == self.array().dtype),  "Invalid replacement image - Must be same shape as box and same type as img"
         self.array()[int(self.bbox.ymin()):int(self.bbox.ymax()),
                      int(self.bbox.xmin()):int(self.bbox.xmax())] = img
@@ -1607,24 +1609,42 @@ class Scene(ImageCategory):
         return immask
 
     def binarymask(self):
+        """Alias for rectangular_mask"""
         return self.rectangular_mask()
 
     def bgmask(self):
+        """Set all pixels outside the bounding box to zero"""
         mask = self.binarymask() if self.channels() == 1 else np.expand_dims(self.binarymask(), axis=2)
-        return self.array(np.multiply(mask, self.numpy()))
+        img = self.numpy()
+        img[:] = np.multiply(img, mask)  # in-place update
+        return self  
+
+    def fgmask(self):
+        """Set all pixels inside the bounding box to zero"""
+        mask = self.binarymask() if self.channels() == 1 else np.expand_dims(self.binarymask(), axis=2)
+        img = self.numpy()
+        img[:] = np.multiply(img, 1.0-mask)  # in-place update
+        return self  
     
     def pixelmask(self, pixelsize=8):
         """Replace pixels within all foreground objects with a privacy preserving pixelated foreground with larger pixels"""
         assert pixelsize > 1, "Pixelsize is a scale factor such that pixels within the foreground are pixelsize times larger than the background"
         (img, mask) = (self.numpy(), self.binarymask())  # force writeable
-        img[mask > 0] = self.clone().rescale(1.0/pixelsize, interp='nearest').resize_like(self, interp='nearest').numpy()[mask > 0]
-        return self.array(img)
+        img[mask > 0] = self.clone().rescale(1.0/pixelsize, interp='nearest').resize_like(self, interp='nearest').numpy()[mask > 0]  # in-place update
+        return self
+
+    def blurmask(self, radius=7):
+        """Replace pixels within all foreground objects with a privacy preserving blurred foreground"""
+        assert radius > 1, "Pixelsize is a scale factor such that pixels within the foreground are pixelsize times larger than the background"
+        (img, mask) = (self.numpy(), self.binarymask())  # force writeable
+        img[mask > 0] = self.clone().blur(radius).numpy()[mask > 0]  # in-place update
+        return self
     
     def meanmask(self):
         """Replace pixels within the foreground objects with the mean pixel color"""
         img = self.numpy()  # force writeable
-        img[self.binarymask() > 0] = self.meanchannel()
-        return self.array(img)
+        img[self.binarymask() > 0] = self.meanchannel()  # in-place update
+        return self
 
     def bghash(self, bits=128, asbinary=False, asbytes=False):
         """Perceptual differential hash function, masking out foreground objects.  
@@ -1642,7 +1662,7 @@ class Scene(ImageCategory):
         return bytes(np.packbits(b)).hex() if not (asbytes or asbinary) else bytes(np.packbits(b)) if asbytes else b
 
     def isduplicate(self, im, threshold=72, bits=128):
-        """Background hash near duplicate detection"""
+        """Background hash near duplicate detection, returns true if self and im are near duplicate images using bghash"""
         assert isinstance(im, Image)
         return np.sum(self.bghash(bits=bits, asbinary=True) == im.bghash(bits=bits, asbinary=True)) > threshold  # hamming distance threshold
     

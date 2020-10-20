@@ -161,8 +161,7 @@ class Video(object):
         
     def __iter__(self):
         """Iterate over frames, yielding vipy.image.Image object for each frame"""
-        self.load()
-        self._array = np.copy(self._array) if not self._array.flags['WRITEABLE'] else self._array  # triggers copy
+        self.load().numpy()  # triggers copy, mutable
         with np.nditer(self._array, op_flags=['readwrite']) as it:
             for k in range(0, len(self)):
                 yield self.__getitem__(k)
@@ -319,7 +318,7 @@ class Video(object):
             assert array.dtype == np.float32 or array.dtype == np.uint8, "Invalid input - array() must be type uint8 or float32"
             assert array.ndim == 4, "Invalid input array() must be of shape NxHxWxC, for N frames, of size HxW with C channels"
             self._array = np.copy(array) if copy else array
-            self._array.setflags(write=True)  # mutable iterators
+            self._array.setflags(write=True)  # mutable iterators, triggers copy
             self.colorspace(None)  # must be set with colorspace() after array() before _convert()
             return self
         else:
@@ -341,7 +340,8 @@ class Video(object):
     def numpy(self):
         """Convert the video to a numpy array, triggers a load()"""
         self.load()
-        self._array = np.copy(self._array) if not self._array.flags['WRITEABLE'] else self._array  # triggers copy 
+        self._array = np.copy(self._array) if not self._array.flags['WRITEABLE'] else self._array  # triggers copy
+        self._array.setflags(write=True)  # mutable iterators
         return self._array
     
     def zeros(self):
@@ -1156,7 +1156,7 @@ class Scene(VideoCategory):
 
     def __iter__(self):
         """Iterate over every frame of video yielding interpolated vipy.image.Scene() at the current frame"""
-        self.load()
+        self.load().numpy()  # mutable iterator, triggers copy 
         for k in range(0, len(self)):
             self._currentframe = k    # used only for incremental add()
             yield self.__getitem__(k)
@@ -1754,6 +1754,30 @@ class Scene(VideoCategory):
         """Background stablization using flow based stabilization masking foreground region.  This will output a video with all frames aligned to the first frame, such that the background is static."""
         from vipy.flow import Flow  # requires opencv
         return Flow().stabilize(self.clone(), residual=True)
+    
+    def pixelmask(self, pixelsize=8):
+        """Replace all pixels in foreground boxes with pixelation"""
+        for im in self: 
+            im.pixelmask(pixelsize)  # shared numpy array
+        return self
+
+    def meanmask(self):
+        """Replace all pixels in foreground boxes with mean color"""        
+        for im in self:
+            im.meanmask()  # shared numpy array
+        return self
+
+    def fgmask(self):
+        """Replace all pixels in foreground boxes with zero"""        
+        for im in self:
+            im.fgmask()  # shared numpy array
+        return self
+    
+    def blurmask(self, radius=7):
+        """Replace all pixels in foreground boxes with gaussian blurred foreground"""        
+        for im in self:
+            im.blurmask(radius)  # shared numpy array
+        return self
     
     
 def RandomVideo(rows=None, cols=None, frames=None):
