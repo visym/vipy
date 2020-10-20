@@ -1484,7 +1484,7 @@ class Scene(VideoCategory):
            The activitybox is the smallest bounding box that contains all of the boxes from all of the tracks in all activities in this video.
         """
         activities = [a for (k,a) in self.activities().items() if (activityid is None or k in set(activityid))]
-        boxes = [t.boundingbox().dilate(dilate) for t in self.tracklist() if any([a.hastrack(t) for a in activities])]
+        boxes = [t.clone().boundingbox().dilate(dilate) for t in self.tracklist() if any([a.hastrack(t) for a in activities])]
         return boxes[0].union(boxes[1:]) if len(boxes) > 0 else vipy.geometry.BoundingBox(xmin=0, ymin=0, width=self.width(), height=self.height())
 
     def activitycuboid(self, activityid=None, dilate=1.0, maxdim=256, bb=None):
