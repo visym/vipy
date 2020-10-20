@@ -589,7 +589,7 @@ class Image(object):
         return self.resize(im.width(), im.height(), interp=interp)
     
     def rescale(self, scale=1, interp='bilinear'):
-        """Scale the image buffer by the given factor - NOT idemponent"""
+        """Scale the image buffer by the given factor - NOT idempotent"""
         (height, width) = self.load().shape()
         if self.colorspace() == 'float':
             self._array = np.dstack([np.array(im.pil().resize((int(np.round(scale * width)), int(np.round(scale * height))), string_to_pil_interpolation(interp))) for im in self.channel()])
@@ -700,7 +700,7 @@ class Image(object):
         return self
     
     def fliplr(self):
-        """Mirror the image buffer about the vertical axis - Not idemponent"""
+        """Mirror the image buffer about the vertical axis - Not idempotent"""
         self._array = np.fliplr(self.load().array())
         return self
 
@@ -1489,7 +1489,7 @@ class Scene(ImageCategory):
         return self
 
     def rescale(self, scale=1, interp='bilinear'):
-        """Rescale image buffer and all bounding boxes - Not idemponent"""
+        """Rescale image buffer and all bounding boxes - Not idempotent"""
         self = super().rescale(scale, interp=interp)
         self._objectlist = [bb.rescale(scale) for bb in self._objectlist]
         return self

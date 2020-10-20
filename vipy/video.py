@@ -1451,7 +1451,7 @@ class Scene(VideoCategory):
 
     def tracksplit(self):
         """Split the scene into k separate scenes, one for each track"""
-        return [self.clone().trackfilter(lambda t: t.id() == tid) for tid in self.tracks().keys()]
+        return [self.clone().trackfilter(lambda t: t.id() == tid).activityfilter(lambda a: a.hastrack(tid)) for tid in self.tracks().keys()]
         
     def activityclip(self, padframes=0, multilabel=True):
         """Return a list of vipy.video.Scene() each clipped to be temporally centered on a single activity, with an optional padframes before and after.  
@@ -1545,8 +1545,8 @@ class Scene(VideoCategory):
         return vid.array(np.stack([im.numpy() for im in frames]))
 
     def clip(self, startframe, endframe):
-        """Clip the video to between (startframe, endframe).  This clip is relative to clip() shown by __repr__().  Return a clone of the video for idemponence"""
-        v = super(Scene, self.clone()).clip(startframe, endframe)  # clone for idemponence
+        """Clip the video to between (startframe, endframe).  This clip is relative to clip() shown by __repr__().  Return a clone of the video for idempotence"""
+        v = super(Scene, self.clone()).clip(startframe, endframe)  # clone for idempotence
         v._tracks = {k:t.offset(dt=-startframe) for (k,t) in v._tracks.items()}   # track offset is performed here, not within activity, no end frame enforced
         v._activities = {k:a.offset(dt=-startframe) for (k,a) in v._activities.items()}        
         return v  
