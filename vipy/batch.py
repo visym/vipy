@@ -109,9 +109,11 @@ class Batch(object):
                     except:
                         if self._strict:
                             raise
-                        else:
-                            print('[vipy.batch]: future %s failed with error "%s"' % (str(f), str(f.exception())))
-                            results.append(None)
+                        try:
+                            print('[vipy.batch]: future %s failed with error "%s" for batch "%s"' % (str(f), str(f.exception()), str(self)))
+                        except:
+                            print('[vipy.batch]: future failed fetching exception')
+                        results.append(None)
             return results
         except KeyboardInterrupt:
             # warnings.warn('[vipy.batch]: batch cannot be restarted after killing with ctrl-c - You must create a new Batch()')
