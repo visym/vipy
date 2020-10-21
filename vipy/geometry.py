@@ -364,15 +364,22 @@ class BoundingBox(object):
 
     def sqdist(self, bb):
         """Squared Euclidean distance between upper left corners of two bounding boxes"""
+        assert isinstance(bb, BoundingBox), "Invalid BoundingBox() input of type '%s'" % str(type(bb))                
         return np.power(self.dx(bb), 2.0) + np.power(self.dy(bb), 2.0)
 
     def dist(self, bb):
         """Distance between centroids of two bounding boxes"""
+        assert isinstance(bb, BoundingBox), "Invalid BoundingBox() input of type '%s'" % str(type(bb))                
         return np.sqrt(np.sum(np.square(np.array(bb.centroid()) - np.array(self.centroid()))))
 
+    def pdist(self, bb):
+        """Normalized Gaussian distance in [0,1] between centroids of two bounding boxes, where 0 is far and 1 is same with sigma=mindim() of this box"""
+        assert isinstance(bb, BoundingBox), "Invalid BoundingBox() input of type '%s'" % str(type(bb))
+        return np.exp(-self.sqdist(bb)/float(2*self.mindim()*self.mindim()))
+        
     def iou(self, bb):
         """area of intersection / area of union"""
-        assert isinstance(bb, BoundingBox), "Invalid BoundingBox() input"
+        assert isinstance(bb, BoundingBox), "Invalid BoundingBox() input of type '%s'" % str(type(bb))        
         if bb is None or bb.invalid() or self.invalid():
             return 0.0
         w = min(self.xmax(), bb.xmax()) - max(self.xmin(), bb.xmin())
@@ -391,7 +398,7 @@ class BoundingBox(object):
 
     def area_of_intersection(self, bb):
         """area of intersection"""
-        assert isinstance(bb, BoundingBox), "Invalid BoundingBox() input"                
+        assert isinstance(bb, BoundingBox), "Invalid BoundingBox() input of type '%s'" % str(type(bb))                
         if bb.invalid() or self.invalid():
             return 0.0
         w = min(self.xmax(), bb.xmax()) - max(self.xmin(), bb.xmin())
@@ -403,7 +410,7 @@ class BoundingBox(object):
         return aoi
 
     def cover(self, bb):
-        """Fraction of this bounding box covered by other bbox"""        
+        """Fraction of this bounding box intersected by other bbox"""        
         return self.area_of_intersection(bb) / float(self.area())
 
     def shapeiou(self, bb):
@@ -413,7 +420,7 @@ class BoundingBox(object):
 
     def intersection(self, bb, strict=True):
         """Intersection of two bounding boxes, throw an error on degeneracy of intersection result (if strict=True)"""
-        assert isinstance(bb, BoundingBox), "Invalid BoundingBox() input"                
+        assert isinstance(bb, BoundingBox), "Invalid BoundingBox() input of type '%s'" % str(type(bb))                        
         self._xmin = max(bb.xmin(), self.xmin())
         self._ymin = max(bb.ymin(), self.ymin())
         self._xmax = min(bb.xmax(), self.xmax())
@@ -428,7 +435,7 @@ class BoundingBox(object):
 
     def union(self, bb):
         """Union of one or more bounding boxes with this box"""        
-        bblist = tolist(bb)
+        bblist = tolist(bb)        
         assert all([isinstance(bb, BoundingBox) for bb in bblist]), "Invalid BoundingBox() input"
         self._xmin = min([bb.xmin() for bb in bblist] + [self.xmin()])
         self._ymin = min([bb.ymin() for bb in bblist] + [self.ymin()])
