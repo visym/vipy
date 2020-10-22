@@ -739,6 +739,12 @@ class Video(object):
             self.array( bb.crop(self.array()), copy=True )
         return self
 
+    def pkl(self, pklfile):
+        """save the object to a pickle file and return the object, useful for intermediate saving in long fluent chains"""
+        remkdir(filepath(pklfile))
+        vipy.util.save(self, pklfile)
+        return self
+
     def webp(self, outfile, pause=3, strict=True, smallest=False, smaller=False):
         """Save a video to an animated WEBP file, with pause=N seconds on the last frame between loops.  
         
