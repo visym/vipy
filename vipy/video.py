@@ -740,6 +740,12 @@ class Video(object):
             self.array( bb.crop(self.array()), copy=True )
         return self
 
+    def pkl(self, pklfile):
+        """save the object to a pickle file and return the object, useful for intermediate saving in long fluent chains"""
+        remkdir(filepath(pklfile))
+        vipy.util.save(self, pklfile)
+        return self
+
     def webp(self, outfile, pause=3, strict=True, smallest=False, smaller=False):
         """Save a video to an animated WEBP file, with pause=N seconds on the last frame between loops.  
         
@@ -1492,7 +1498,7 @@ class Scene(VideoCategory):
            The activitybox is the smallest bounding box that contains all of the boxes from all of the tracks in all activities in this video.
         """
         activities = [a for (k,a) in self.activities().items() if (activityid is None or k in set(activityid))]
-        boxes = [t.boundingbox().dilate(dilate) for t in self.tracklist() if any([a.hastrack(t) for a in activities])]
+        boxes = [t.clone().boundingbox().dilate(dilate) for t in self.tracklist() if any([a.hastrack(t) for a in activities])]
         return boxes[0].union(boxes[1:]) if len(boxes) > 0 else vipy.geometry.BoundingBox(xmin=0, ymin=0, width=self.width(), height=self.height())
 
     def activitycuboid(self, activityid=None, dilate=1.0, maxdim=256, bb=None):

@@ -20,9 +20,7 @@ class Batch(object):
     Examples:
 
     >>> b = vipy.batch.Batch([Image(filename='img_%06d.png' % k) for k in range(0,100)])
-    >>> b.bgr()  # convert all elements in batch to BGR
-    >>> b.torch()  # load all elements in batch and convert to torch tensor
-    >>> b.map(lambda im: im.bgr())  # equivalent
+    >>> b.map(lambda im: im.bgr())  
     >>> b.map(lambda im: np.sum(im.array())) 
     >>> b.map(lambda im, f: im.saveas(f), args=['out%d.jpg' % k for k in range(0,100)])
     
@@ -35,7 +33,11 @@ class Batch(object):
     >>> b.map(lambda v: v.download().save())  # will download and clip dataset in parallel
 
     >>> b.result()  # retrieve results after a sequence of map or filter chains
-    
+
+    Parameters:
+      -strict=False: if distributed processing fails, return None for that element and print the exception rather than raise
+      -as_completed=True:  Return the objects to the scheduler as they complete, this can introduce instabilities for large complex objects, use with caution
+
     """    
              
     def __init__(self, objlist, n_processes=None, dashboard=False, ngpu=None, strict=True, as_completed=False):
@@ -69,7 +71,7 @@ class Batch(object):
             wait([self._client.submit(vipy.globals.gpuindex, k, workers=wid) for (k, wid) in enumerate(self._client.scheduler_info()['workers'].keys())])
 
         self._strict = strict
-        self._as_completed = as_completed
+        self._as_completed = as_completed  # this may introduce instabilities for large complex objects, use with caution
 
     def __enter__(self):
         return self
@@ -100,20 +102,20 @@ class Batch(object):
         try:
             f_as_completed = lambda f: as_completed(f) if self._as_completed else f
             f_wait = lambda f: wait(f) if not self._as_completed else f
-
+                
             results = []            
             f_wait(futures)
             for f in f_as_completed(futures):  
+                try:
+                    results.append(f.result())  # not order preserving if as_completed=True
+                except:
+                    if self._strict:
+                        raise
                     try:
-                        results.append(f.result())  # not order preserving
+                        print('[vipy.batch]: future %s failed with error "%s" for batch "%s"' % (str(f), str(f.exception()), str(self)))
                     except:
-                        if self._strict:
-                            raise
-                        try:
-                            print('[vipy.batch]: future %s failed with error "%s" for batch "%s"' % (str(f), str(f.exception()), str(self)))
-                        except:
-                            print('[vipy.batch]: future failed fetching exception')
-                        results.append(None)
+                        print('[vipy.batch]: future failed fetching exception')
+                    results.append(None)
             return results
         except KeyboardInterrupt:
             # warnings.warn('[vipy.batch]: batch cannot be restarted after killing with ctrl-c - You must create a new Batch()')
@@ -123,8 +125,6 @@ class Batch(object):
         except:
             # warnings.warn('[vipy.batch]: batch cannot be restarted after exception - Recreate Batch()')                
             raise
-
-        #return [f.result() for f in futures]
 
     def result(self):
         """Return the result of the batch processing"""
