@@ -154,6 +154,10 @@ class Activity(object):
         """Is frame during the time interval (startframe, endframe) inclusive?"""
         return int(frame) >= self._startframe and int(frame) <= self._endframe
 
+    def during_interval(self, startframe, endframe):
+        """Is the activity occurring for all frames within the interval [startframe, endframe) (non-inclusive of endframe)?"""
+        return all([self.during(f) for f in range(startframe, endframe)])
+    
     def temporal_iou(self, other):
         """Return the temporal intersection over union of two activities"""
         assert isinstance(other, Activity), "Invalid input - must be vipy.object.Activity()"

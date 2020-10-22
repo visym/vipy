@@ -524,6 +524,7 @@ class Video(object):
 
         # [EXCEPTION]:  UnidentifiedImageError: cannot identify image file
         #   -This may occur when the framerate of the video from ffprobe (tbr) does not match that passed to fps filter, resulting in a zero length image preview piped to stdout
+        #   -This may occur after calling clip() with too short a duration, try increasing the clip to be > 1 sec
         return Image(array=np.array(PIL.Image.open(BytesIO(out))))
 
     def thumbnail(self, outfile=None, frame=0):
@@ -840,7 +841,7 @@ class Video(object):
     def play(self, verbose=True):
         """Play the saved video filename in self.filename() using the system 'ffplay', if there is no filename, try to download it """
         if not has_ffplay:
-            warnings.warn('"ffplay" executable not found on path, falling back on fastshow() - Install from http://ffmpeg.org/download.html')
+            warnings.warn('"ffplay" executable not found on path, falling back on show() - Install from http://ffmpeg.org/download.html')
             return self.fastshow()
         v = self
         if not self.isdownloaded() and self.hasurl():
@@ -854,10 +855,17 @@ class Video(object):
         os.system(cmd)
         return self
 
-    def show(self):
-        """Alias for play()"""
-        return self.play()
-
+    def fastshow(self, fps=30, figure=1):
+        """Faster show using interative image show.  This can visualize videos without ffplay, but it cannot guarantee frame rates. Large videos with complex scenes will slow this down and will render at lower frame rates."""
+        fps = min(fps, self.framerate()) if fps is not None else self.framerate()
+        assert fps > 0, "Invalid display framerate"
+        with Stopwatch() as sw:            
+            for (k,im) in enumerate(self.load()):
+                dt = sw.since()
+                if k % int(np.ceil((self.framerate()/fps))) == 0:
+                    im.show(figure=figure if k<len(self) else None)
+                    time.sleep(max(0, (1.0/self.framerate())*int(np.ceil((self.framerate()/fps))) - dt))            
+        return self
     
     def torch(self, startframe=0, endframe=None, length=None, stride=1, take=None, boundary='repeat', order='nchw', verbose=False, withslice=False, scale=1.0):
         """Convert the loaded video of shape N HxWxC frames to an MxCxHxW torch tensor, forces a load().
@@ -1546,7 +1554,17 @@ class Scene(VideoCategory):
 
     def clip(self, startframe, endframe):
         """Clip the video to between (startframe, endframe).  This clip is relative to clip() shown by __repr__().  Return a clone of the video for idempotence"""
-        v = super(Scene, self.clone()).clip(startframe, endframe)  # clone for idempotence
+        v = self.clone()
+
+        # -- Copied from super().clip() to allow for clip on clone (for indempotence)
+        # -- This code copy is used to avoid super(Scene, self.clone()) which screws up class inheritance for iPython reload
+        assert startframe <= endframe and startframe >= 0, "Invalid start and end frames (%s, %s)" % (str(startframe), str(endframe))
+        assert not v.isloaded(), "Filters can only be applied prior to load() - Try calling flush() first"
+        v._ffmpeg = v._ffmpeg.trim(start_frame=startframe, end_frame=endframe).setpts('PTS-STARTPTS')  # reset timestamp to 0 after trim filter
+        v._startframe = startframe if v._startframe is None else v._startframe + startframe  # for __repr__ only
+        v._endframe = endframe if v._endframe is None else v._startframe + (endframe-startframe)  # for __repr__ only
+        # -- end copy
+        
         v._tracks = {k:t.offset(dt=-startframe) for (k,t) in v._tracks.items()}   # track offset is performed here, not within activity, no end frame enforced
         v._activities = {k:a.offset(dt=-startframe) for (k,a) in v._activities.items()}        
         return v  
@@ -1733,7 +1751,7 @@ class Scene(VideoCategory):
                 dt = sw.since()
                 if k % int(np.ceil((self.framerate()/fps))) == 0:
                     im.show(categories=categories,
-                            figure=figure,
+                            figure=figure if k<len(self) else None,
                             nocaption=nocaption,
                             nocaption_withstring=nocaption_withstring,
                             fontsize=fontsize,

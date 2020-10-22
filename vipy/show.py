@@ -34,7 +34,7 @@ def imshow(im, fignum=None, nowindow=False):
     h = BACKEND.imshow(im, fignum=fignum)
     if not nowindow:
         show(fignum)
-        BACKEND.flush()
+        BACKEND.imflush()
     return h
 
 

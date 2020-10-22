@@ -372,10 +372,10 @@ class BoundingBox(object):
         assert isinstance(bb, BoundingBox), "Invalid BoundingBox() input of type '%s'" % str(type(bb))                
         return np.sqrt(np.sum(np.square(np.array(bb.centroid()) - np.array(self.centroid()))))
 
-    def pdist(self, bb):
-        """Normalized Gaussian distance in [0,1] between centroids of two bounding boxes, where 0 is far and 1 is same with sigma=mindim() of this box"""
+    def pdist(self, bb, sigma=None):
+        """Normalized Gaussian distance in [0,1] between centroids of two bounding boxes, where 0 is far and 1 is same with sigma=maxdim() of this box"""
         assert isinstance(bb, BoundingBox), "Invalid BoundingBox() input of type '%s'" % str(type(bb))
-        return np.exp(-self.sqdist(bb)/float(2*self.mindim()*self.mindim()))
+        return np.exp(-self.sqdist(bb)/(float(2*self.maxdim()*self.maxdim()) if sigma is None else float(2.0*sigma*sigma)))
         
     def iou(self, bb):
         """area of intersection / area of union"""
@@ -678,6 +678,10 @@ class BoundingBox(object):
         """Return min(width, height)"""
         return np.min(self.shape())
 
+    def maxdim(self):
+        """Return max(width, height)"""
+        return np.max(self.shape())
+    
     def ellipse(self):
         """Convert the boundingbox to a vipy.geometry.Ellipse object"""
         (xcenter,ycenter) = self.centroid()

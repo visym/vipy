@@ -24,12 +24,17 @@ def flush():
     plt.pause(0.001)
 
     
+def imflush():
+    plt.pause(0.0001)    
+    plt.annotate('', (0,0))  # this is necessary for imshow only, not sure why...
+
+    
 def show(fignum):
     plt.ion()
     plt.draw()
     plt.show()
 
-
+    
 def noshow(fignum):
     plt.ioff()
 
@@ -90,7 +95,7 @@ def imshow(img, fignum=None):
     if fignum in plt.get_fignums() and fignum in FIGHANDLE and FIGHANDLE[fignum].get_size() == img.shape[0:2]:
         # Do not delete and recreate the figure, just change the pixels 
         FIGHANDLE[fignum].set_data(img)
-
+        
         # Delete all polygon and text overlays from previous drawing so that they can be overwritten on current frame
         for c in plt.gca().get_children():
             if 'Text' in c.__repr__() or 'Polygon' in c.__repr__() or 'Circle' in c.__repr__() or 'Line' in c.__repr__() or 'Patch' in c.__repr__():
