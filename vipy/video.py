@@ -338,10 +338,10 @@ class Video(object):
         return self.numpy()
 
     def numpy(self):
-        """Convert the video to a numpy array, triggers a load()"""
+        """Convert the video to a writeable numpy array, triggers a load() and copy() as needed"""
         self.load()
         self._array = np.copy(self._array) if not self._array.flags['WRITEABLE'] else self._array  # triggers copy
-        self._array.setflags(write=True)  # mutable iterators
+        self._array.setflags(write=True)  # mutable iterators, torch conversion
         return self._array
     
     def zeros(self):
@@ -872,7 +872,7 @@ class Video(object):
            Returns float tensor in the range [0,1] following torchvision.transforms.ToTensor()           
         """
         try_import('torch'); import torch
-        frames = self.load().array() if self.iscolor() else np.expand_dims(self.load().array(), 3)
+        frames = self.load().numpy() if self.iscolor() else np.expand_dims(self.load().numpy(), 3)
         assert boundary in ['repeat', 'strict'], "Invalid boundary mode - must be in ['repeat', 'strict']"
 
         # Slice index (i=start, j=end, k=step)
@@ -1778,6 +1778,10 @@ class Scene(VideoCategory):
         for im in self:
             im.fgmask()  # shared numpy array
         return self
+
+    def zeromask(self):
+        """Alias for fgmask"""
+        return self.fgmask()
     
     def blurmask(self, radius=7):
         """Replace all pixels in foreground boxes with gaussian blurred foreground"""        
