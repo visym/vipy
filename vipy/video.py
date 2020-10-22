@@ -725,7 +725,6 @@ class Video(object):
 
     def crop(self, bb, zeropad=True):
         """Spatially crop the video using the supplied vipy.geometry.BoundingBox, can only be applied prior to load().
-           If strict=False, then we do not perform bounds checking on this bounding box
         """
         assert isinstance(bb, vipy.geometry.BoundingBox), "Invalid input"
         assert not bb.isdegenerate() and bb.isnonnegative() 
@@ -843,7 +842,9 @@ class Video(object):
     
     def savetmp(self):
         return self.saveas(outfile=tempMP4())
-
+    def savetemp(self):
+        return self.savetmp()
+        
     def play(self, verbose=True):
         """Play the saved video filename in self.filename() using the system 'ffplay', if there is no filename, try to download it """
         if not has_ffplay:
