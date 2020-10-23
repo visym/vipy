@@ -45,7 +45,7 @@ def imbbox(img, xmin, ymin, xmax, ymax, bboxcaption=None, fignum=None, nowindow=
     h = BACKEND.boundingbox(img, xmin, ymin, xmax, ymax, bboxcaption, fignum=h)
     if not nowindow:
         show(fignum)
-        BACKEND.flush()        
+        BACKEND.flush()
     return h
 
 
@@ -57,7 +57,7 @@ def imdetection(img, detlist, fignum=None, bboxcolor='green', facecolor='white',
     h = BACKEND.imdetection(img, detlist, fignum=fignum, bboxcolor=bboxcolor, do_caption=do_caption, facecolor=facecolor, facealpha=facealpha, fontsize=fontsize, textcolor=textcolor, captionoffset=captionoffset, textfacecolor=textfacecolor, textfacealpha=textfacealpha)
     if not nowindow:
         show(fignum)
-        BACKEND.flush()                
+        BACKEND.flush() if len(detlist)>0 else BACKEND.imflush()               
     return h
 
 

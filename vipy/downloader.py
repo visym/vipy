@@ -58,6 +58,8 @@ def verify_md5(filename, md5):
     data = open(filename, 'rb').read()
     return (md5 == hashlib.md5(data).hexdigest())
 
+def generate_md5(filename):
+    return hashlib.md5(open(filename, 'rb').read()).hexdigest()
 
 def scp(url, output_filename, verbose=True):
     """Download using pre-installed SSH keys where hostname is formatted 'scp://hostname.com:/path/to/file.jpg' """        

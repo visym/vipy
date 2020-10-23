@@ -356,13 +356,16 @@ class Video(object):
         self._update_ffmpeg('filename', None)
         return self
 
-    def filename(self, newfile=None):
-        """Video Filename"""
+    def filename(self, newfile=None, copy=False):
+        """Update video Filename with optional copy from existing file to new file"""
         if newfile is None:
             return self._filename
         
         # Update ffmpeg filter chain with new input node filename
         newfile = os.path.normpath(os.path.abspath(os.path.expanduser(newfile)))
+        if copy:
+            assert self.hasfilename(), "File not found for copy"
+            shutil.copyfile(self._filename, newfile)
         self._update_ffmpeg('filename', newfile)
         self._filename = newfile
         return self

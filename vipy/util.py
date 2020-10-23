@@ -793,10 +793,14 @@ def csvlist(imdir):
             if iscsv(item)]
 
 
-def pklist(imdir):
+def pklist(indir):
     """Return a list of absolute paths of *.pk files in current directory"""
-    return [os.path.join(imdir, item) for item in os.listdir(imdir)
-            if ispickle(os.path.join(imdir, item))]
+    return listpkl(indir)
+
+def listpkl(indir):
+    """Return a list of absolute paths of *.pk files in current directory"""
+    return [os.path.join(indir, item) for item in os.listdir(indir)
+            if ispickle(os.path.join(indir, item))]
 
 
 def txtlist(imdir):
@@ -1062,6 +1066,11 @@ def isarchive(filename):
         else:
             return False
 
+def istgz(filename):
+    return filename[-4:] == '.tgz' or filename[-7:] == '.tar.gz'
+
+def isbz2(filename):
+    return filename[-4:] == '.bz2' or filename[-8:] == '.tar.bz2'
 
 def tempfilename(suffix):
     """Create a temporary filename $TEMPDIR/$UUID.suffix, suffix should include the dot such as suffix='.jpg', """
