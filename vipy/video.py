@@ -26,6 +26,7 @@ import uuid
 import platform
 import time
 from io import BytesIO
+import itertools
 import vipy.globals
 import vipy.activity
 
@@ -254,10 +255,19 @@ class Video(object):
         return self
 
     def stream(self):
-        # FIXME: Streaming video access for large videos that will not fit into memory
-        # https://github.com/kkroening/ffmpeg-python/blob/master/examples/README.md
-        # FIXME: https://github.com/kkroening/ffmpeg-python/issues/78
-        raise NotImplementedError('Streaming video access for large videos that will not fit into memory - Try clip() first')
+        """Iterator to yield vipy.image.Image streaming from video"""
+        (height, width) = self.shape()
+        P = (self._ffmpeg
+             .output('pipe:', format='rawvideo', pix_fmt='rgb24')
+             .global_args('-cpuflags', '0', '-loglevel', 'debug' if vipy.globals.isdebug() else 'panic')             
+             .run_async(pipe_stdout=True))
+
+        while True:
+            in_bytes = P.stdout.read(width * height * 3)
+            if not in_bytes:
+                break
+            img = np.frombuffer(in_bytes, np.uint8).reshape([height, width, 3])
+            yield(vipy.image.Image(array=img, colorspace='rgb'))
         
     def __array__(self):
         """Called on np.array(self) for custom array container, (requires numpy >=1.16)"""
@@ -621,7 +631,7 @@ class Video(object):
         #    -On some versions of ffmpeg setting -cpuflags=0 fixes it, but the right solution is to rebuild from the head (30APR20)
         try:
             f = self._ffmpeg.output('pipe:', format='rawvideo', pix_fmt='rgb24')\
-                            .global_args('-cpuflags', '0', '-loglevel', 'debug' if vipy.globals.isdebug() else 'error')
+                            .global_args('-cpuflags', '0', '-loglevel', 'debug' if vipy.globals.isdebug() else 'panic')
             (out, err) = f.run(capture_stdout=True)
         except Exception as e:
             if not ignoreErrors:
@@ -869,7 +879,7 @@ class Video(object):
                                 .filter('pad', 'ceil(iw/2)*2', 'ceil(ih/2)*2') \
                                 .output(filename=outfile, pix_fmt='yuv420p', vcodec=vcodec) \
                                 .overwrite_output() \
-                                .global_args('-cpuflags', '0', '-loglevel', 'error' if not vipy.globals.isdebug() else 'debug') \
+                                .global_args('-cpuflags', '0', '-loglevel', 'panic' if not vipy.globals.isdebug() else 'debug') \
                                 .run_async(pipe_stdin=True)                
                 for frame in self._array:
                     process.stdin.write(frame.astype(np.uint8).tobytes())
@@ -883,7 +893,7 @@ class Video(object):
                 self._ffmpeg.filter('pad', 'ceil(iw/2)*2', 'ceil(ih/2)*2') \
                             .output(filename=tmpfile, pix_fmt='yuv420p', vcodec=vcodec, r=framerate) \
                             .overwrite_output() \
-                            .global_args('-cpuflags', '0', '-loglevel', 'error' if not vipy.globals.isdebug() else 'debug') \
+                            .global_args('-cpuflags', '0', '-loglevel', 'panic' if not vipy.globals.isdebug() else 'debug') \
                             .run()
                 if outfile == self.filename():
                     if os.path.exists(self.filename()):
@@ -934,11 +944,14 @@ class Video(object):
         fps = min(fps, self.framerate()) if fps is not None else self.framerate()
         assert fps > 0, "Invalid display framerate"
         with Stopwatch() as sw:            
-            for (k,im) in enumerate(self.load()):
+            for (k,im) in enumerate(self.load() if self.isloaded() else self.stream()):
                 dt = sw.since()
                 if k % int(np.ceil((self.framerate()/fps))) == 0:
-                    im.show(figure=figure if k<len(self) else None)
-                    time.sleep(max(0, (1.0/self.framerate())*int(np.ceil((self.framerate()/fps))) - dt))            
+                    im.show(figure=figure)
+                    time.sleep(max(0, (1.0/self.framerate())*int(np.ceil((self.framerate()/fps))) - dt))
+                if vipy.globals.user_hit_escape():
+                    break                    
+        vipy.show.close(figure)
         return self
     
     def torch(self, startframe=0, endframe=None, length=None, stride=1, take=None, boundary='repeat', order='nchw', verbose=False, withslice=False, scale=1.0):
@@ -1236,26 +1249,29 @@ class Scene(VideoCategory):
         """Return the vipy.image.Scene() for the vipy.video.Scene() interpolated at frame k"""
         assert isinstance(k, int), "Indexing video by frame must be integer"                
         if self.load().isloaded() and k >= 0 and k < len(self):
-            dets = [t[k] for (tid,t) in self._tracks.items() if t[k] is not None]  # track interpolation (cloned) with boundary handling
-            for d in dets:
-                shortlabel = [(d.shortlabel(),'')]  # [(Noun, Verbing1), (Noun, Verbing2), ...]
-                for (aid, a) in self._activities.items():  # insertion order:  First activity is primary, next is secondary
-                    if a.hastrack(d.attributes['trackid']) and a.during(k):
-                        # Shortlabel is always displayed as "Noun Verbing" during activity (e.g. Person Carrying, Vehicle Turning)
-                        # If noun is associated with more than one activity, then this is shown as "Noun Verbing1\nNoun Verbing2", with a newline separator 
-                        if not any([a.shortlabel() == v for (n,v) in shortlabel]):
-                            shortlabel.append( (d.shortlabel(), a.shortlabel()) )
-                        if 'activity' not in d.attributes:
-                            d.attributes['activityid'] = []                            
-                        d.attributes['activityid'].append(a.id())  # for activity correspondence (if desired)
-                d.shortlabel( '\n'.join([('%s %s' % (n,v)).strip() for (n,v) in shortlabel[0 if len(shortlabel)==1 else 1:]]))
-            dets = sorted(dets, key=lambda d: d.shortlabel())   # layering in video is in alphabetical order of shortlabel
-            return vipy.image.Scene(array=self._array[k], colorspace=self.colorspace(), objects=dets, category=self.category())  
+            return self._linear_interpolation(self._array[k], k)
         elif not self.isloaded():
             raise ValueError('Video not loaded; load() before indexing')
         else:
             raise ValueError('Invalid frame index %d ' % k)
 
+    def _linear_interpolation(self, img, k):
+        dets = [t[k] for (tid,t) in self._tracks.items() if t[k] is not None]  # track interpolation (cloned) with boundary handling
+        for d in dets:
+            shortlabel = [(d.shortlabel(),'')]  # [(Noun, Verbing1), (Noun, Verbing2), ...]
+            for (aid, a) in self._activities.items():  # insertion order:  First activity is primary, next is secondary
+                if a.hastrack(d.attributes['trackid']) and a.during(k):
+                    # Shortlabel is always displayed as "Noun Verbing" during activity (e.g. Person Carrying, Vehicle Turning)
+                    # If noun is associated with more than one activity, then this is shown as "Noun Verbing1\nNoun Verbing2", with a newline separator 
+                    if not any([a.shortlabel() == v for (n,v) in shortlabel]):
+                        shortlabel.append( (d.shortlabel(), a.shortlabel()) )
+                    if 'activity' not in d.attributes:
+                        d.attributes['activityid'] = []                            
+                    d.attributes['activityid'].append(a.id())  # for activity correspondence (if desired)
+            d.shortlabel( '\n'.join([('%s %s' % (n,v)).strip() for (n,v) in shortlabel[0 if len(shortlabel)==1 else 1:]]))
+        dets = sorted(dets, key=lambda d: d.shortlabel())   # layering in video is in alphabetical order of shortlabel
+        return vipy.image.Scene(array=img, colorspace=self.colorspace(), objects=dets, category=self.category())  
+                
     def __iter__(self):
         """Iterate over every frame of video yielding interpolated vipy.image.Scene() at the current frame"""
         self.load().numpy()  # mutable iterator, triggers copy 
@@ -1264,6 +1280,18 @@ class Scene(VideoCategory):
             yield self.__getitem__(k)
         self._currentframe = None
 
+    def stream(self):
+        """Iterator to yield vipy.image.Image streaming from video"""
+        (height, width) = self.shape()
+        P = (self._ffmpeg.output('pipe:', format='rawvideo', pix_fmt='rgb24').global_args('-loglevel', 'debug' if vipy.globals.isdebug() else 'panic').run_async(pipe_stdout=True))
+
+        for k in itertools.count(start=0, step=1):
+            in_bytes = P.stdout.read(width * height * 3)
+            if not in_bytes:
+                break
+            img = np.frombuffer(in_bytes, np.uint8).reshape([height, width, 3])
+            yield(self._linear_interpolation(img, k))
+        
     def during(self, frameindex):
         try:
             self.__getitem__(frameindex)  # triggers load
@@ -1847,11 +1875,11 @@ class Scene(VideoCategory):
         fps = min(fps, self.framerate()) if fps is not None else self.framerate()
         assert fps > 0, "Invalid display framerate"
         with Stopwatch() as sw:            
-            for (k,im) in enumerate(self.load()):
+            for (k,im) in enumerate(self.load() if self.isloaded() else self.stream()):
                 dt = sw.since()
                 if k % int(np.ceil((self.framerate()/fps))) == 0:
                     im.show(categories=categories,
-                            figure=figure if k<len(self) else None,
+                            figure=figure,
                             nocaption=nocaption,
                             nocaption_withstring=nocaption_withstring,
                             fontsize=fontsize,
@@ -1862,6 +1890,9 @@ class Scene(VideoCategory):
                             textfacealpha=textfacealpha,
                             shortlabel=shortlabel)
                     time.sleep(max(0, (1.0/self.framerate())*int(np.ceil((self.framerate()/fps))) - dt))
+                if vipy.globals.user_hit_escape():
+                    break
+        vipy.show.close(figure)
         return self
 
     def thumbnail(self, outfile=None, frame=0, fontsize=10, nocaption=False, boxalpha=0.25, dpi=200, textfacecolor='white', textfacealpha=1.0):
@@ -1900,7 +1931,11 @@ class Scene(VideoCategory):
         for im in self:
             im.blurmask(radius)  # shared numpy array
         return self
-    
+
+    def downcast(self):
+        self.__class__ = vipy.video.Video
+        return self
+
     
 def RandomVideo(rows=None, cols=None, frames=None):
     """Return a random loaded vipy.video.video, useful for unit testing, minimum size (32x32x32)"""

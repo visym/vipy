@@ -1,5 +1,6 @@
 import os
 import matplotlib
+
 if 'VIPY_BACKEND' in os.environ:
     matplotlib.use(os.environ['VIPY_BACKEND'])
     

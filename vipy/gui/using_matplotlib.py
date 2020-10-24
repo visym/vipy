@@ -3,6 +3,7 @@ import matplotlib
 from matplotlib import pyplot as plt
 import numpy as np
 from vipy.util import islist, temppng
+import sys
 
 
 FIGHANDLE = {}
@@ -20,6 +21,11 @@ except:
     pass  # ignored if latex is not installed or not wanted
 
 
+def escape_to_exit(event):
+    if event.key == 'escape' or event.key == 'q' or event.key == 'ctrl+c':
+        import vipy.globals            
+        vipy.globals.user_hit_escape(True)
+    
 def flush():
     plt.pause(0.001)
 
@@ -32,7 +38,7 @@ def imflush():
 def show(fignum):
     plt.ion()
     plt.draw()
-    plt.show()
+    plt.show() 
 
     
 def noshow(fignum):
@@ -85,6 +91,11 @@ def _imshow_tight(img, fignum=None):
         a.get_xaxis().set_visible(False)
         a.get_yaxis().set_visible(False)
     imh = plt.imshow(img, animated=True, interpolation='nearest', aspect='equal')
+
+    fig.canvas.mpl_connect('key_press_event', escape_to_exit)
+    import vipy.globals    
+    vipy.globals.user_hit_escape(False)
+    
     return (fig.number, imh)
 
 

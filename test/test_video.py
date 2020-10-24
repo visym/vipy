@@ -116,7 +116,7 @@ def _test_video():
 
     # JSON
     v = vipy.video.Video(url=mp4url)    
-    vs = v.clone().json(v.clone().json())
+    vs = vipy.video.Video.from_json(v.clone().json())
     assert v.__dict__ == vs.__dict__
     print('[test_video.scene]: json serialization PASSED')
     
