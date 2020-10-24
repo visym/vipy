@@ -419,6 +419,7 @@ def loadas(infile, type='dill'):
         try:
             return dill.load(open(infile, 'rb'))
         except Exception:
+            print('[vipy.util.loadas]: dill load failure - falling back on pickle')
             import pickle
             with open(infile, 'rb') as pfp:
                 fv = pickle.load(pfp, encoding="bytes")

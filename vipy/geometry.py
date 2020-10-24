@@ -4,6 +4,7 @@ from itertools import product
 from vipy.util import try_import, istuple, isnumpy, isnumber, tolist
 from vipy.linalg import columnvector
 import warnings
+import json
 
 
 def covariance_to_ellipse(cov):
@@ -165,12 +166,25 @@ class BoundingBox(object):
         else:
             raise ValueError('invalid constructor input')
 
+    @classmethod
+    def _from_json(obj, json_str):
+        d = json.loads(json_str)
+        return obj(xmin=d['_xmin'], ymin=d['_ymin'], xmax=d['_xmax'], ymax=d['_ymax'])
+
+    
     def dict(self):
         return {'xmin':self.xmin(), 'ymin':self.ymin(), 'width':self.width(), 'height':self.height(),
                 'xmax':self.xmax(), 'ymax':self.ymax(), 'xywh':self.xywh(), 'ulbr':self.ulbr(),
                 'xcentroid':self.xcentroid(), 'ycentroid':self.ycentroid(), 'centroid':self.centroid(),
                 'upperleft':self.upperleft(), 'bottomleft':self.bottomleft(), 'upperright':self.upperright(),
                 'bottomright':self.bottomright(), 'area':self.area()}
+
+    def json(self, s=None):
+        if s is None:
+            return json.dumps(self.__dict__)
+        else:
+            self.__dict__ = json.loads(s)
+            return self
         
     def clone(self):
         return BoundingBox(xmin=self._xmin, xmax=self._xmax, ymin=self._ymin, ymax=self._ymax)
@@ -234,6 +248,15 @@ class BoundingBox(object):
             self.bottom(h-self.height())  # preserve aspect ratio due to rounding by +/- bottom of box
         return self
 
+    def significant_digits(self, n):
+        """Convert corners to have at most n significant digits for efficient JSON storage"""
+        assert isinstance(n, int) and n>=0
+        self._xmin = round(self._xmin, n)
+        self._ymin = round(self._ymin, n)
+        self._xmax = round(self._xmax, n)
+        self._ymax = round(self._ymax, n)
+        return self
+        
     def translate(self, dx=0, dy=0):
         """Translate the bounding box by dx in x and dy in y"""
         self._xmin = self._xmin + dx
@@ -732,7 +755,8 @@ class BoundingBox(object):
             return img[self.ymin():self.ymax(), self.xmin():self.xmax(), :]  # HxWxC
         else: 
             return img[:, self.ymin():self.ymax(), self.xmin():self.xmax(), :]  # NxHxWxC
-    
+
+
 class Ellipse():
     __slots__ = ['_major', '_minor', '_xcenter', '_ycenter', '_phi']
     def __init__(self, semi_major, semi_minor, xcenter, ycenter, phi):

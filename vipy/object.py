@@ -4,6 +4,7 @@ from vipy.util import isstring, tolist, chunklistwithoverlap, try_import
 import uuid
 import copy
 import warnings
+import json
 
 
 class Detection(BoundingBox):
@@ -19,14 +20,19 @@ class Detection(BoundingBox):
 
     """
 
-    def __init__(self, label=None, xmin=None, ymin=None, width=None, height=None, xmax=None, ymax=None, confidence=None, xcentroid=None, ycentroid=None, category=None, xywh=None, shortlabel=None, attributes=None):
+    def __init__(self, label=None, xmin=None, ymin=None, width=None, height=None, xmax=None, ymax=None, confidence=None, xcentroid=None, ycentroid=None, category=None, xywh=None, shortlabel=None, attributes=None, id=None):
         super().__init__(xmin=xmin, ymin=ymin, width=width, height=height, xmax=xmax, ymax=ymax, xcentroid=xcentroid, ycentroid=ycentroid, xywh=xywh)
         assert not (label is not None and category is not None), "Constructor requires either label or category kwargs, not both"
-        self._id = uuid.uuid1().hex        
+        self._id = uuid.uuid1().hex if id is None else id
         self._label = category if category is not None else label
         self._shortlabel = self._label if shortlabel is None else shortlabel
         self._confidence = float(confidence) if confidence is not None else confidence
         self.attributes = attributes if attributes is not None else {}
+
+    @classmethod
+    def _from_json(obj, s):
+        d = json.loads(s)
+        return obj(xmin=d['_xmin'], ymin=d['_ymin'], xmax=d['_xmax'], ymax=d['_ymax'], label=d['_label'], shortlabel=d['_shortlabel'], confidence=d['_confidence'], attributes=d['attributes'])
         
     def __repr__(self):
         strlist = []
@@ -50,7 +56,14 @@ class Detection(BoundingBox):
         return {'id':self._id, 'label':self.category(), 'shortlabel':self.shortlabel() ,'boundingbox':super().dict(),
                 'attributes':self.attributes,  # these may be arbitrary user defined objects
                 'confidence':self._confidence}
-                    
+
+    def json(self, s=None):
+        if s is None:
+            return json.dumps(self.__dict__)
+        else:
+            self.__dict__ = json.loads(s)
+            return self
+                
     def nocategory(self):
         self._label = None
         return self
@@ -140,11 +153,25 @@ class Track(object):
         self._keyboxes = boxes
         
         # Sorted increasing frame order
-        if len(keyframes) > 0 and len(boxes) > 0:
+        if len(keyframes) > 0 and len(boxes) > 0 and not all([keyframes[i-1] <= keyframes[i] for i in range(1,len(keyframes))]):
             (keyframes, boxes) = zip(*sorted([(f,bb) for (f,bb) in zip(keyframes, boxes)], key=lambda x: x[0]))
             self._keyframes = [int(np.round(f)) for f in keyframes]  # coerce to int
             self._keyboxes = list(boxes)
-        
+
+    @classmethod
+    def _from_json(obj, json_str):
+        d = json.loads(json_str)
+        return obj(keyframes=d['_keyframes'],
+                   boxes=[BoundingBox._from_json(bbs) for bbs in d['_keyboxes']],
+                   category=d['_label'],
+                   confidence=None,
+                   framerate=d['_framerate'],
+                   interpolation=d['_interpolation'],
+                   boundary=d['_boundary'],
+                   shortlabel=d['_shortlabel'],
+                   attributes=d['attributes'],
+                   trackid=d['_id'])
+                   
     def __repr__(self):
         strlist = []
         if self.category() is not None:
@@ -179,6 +206,14 @@ class Track(object):
         return {'id':self._id, 'label':self.category(), 'shortlabel':self.shortlabel(), 'keyframes':self._keyframes, 'framerate':self._framerate, 
                 'boundingbox':[bb.dict() for bb in self._keyboxes], 'attributes':self.attributes}
 
+    def json(self, s=None):
+        if s is None:
+            return json.dumps( {k:v if k != '_keyboxes' else [bb.json() for bb in v] for (k,v) in self.__dict__.items() } )
+        else:
+            self.__dict__ = json.loads(s)
+            self.__dict__['_keyboxes'] = [BoundingBox._from_json(bbs) for bbs in self._keyboxes]
+            return self
+    
     def add(self, keyframe, box):
         """Add a new keyframe and associated box to track, preserve sorted order of keyframes"""
         assert isinstance(box, BoundingBox), "Invalid input - Box must be vipy.geometry.BoundingBox()"
@@ -489,6 +524,9 @@ class Track(object):
         (self._keyboxes, self._keyframes) = (list(self._keyboxes), list(self._keyframes))
         return self
 
+    def significant_digits(self, n):
+        self._keyboxes = [bb.significant_digits(n) for bb in self._keyboxes]
+        return self
 
 def non_maximum_suppression(detlist, conf, iou, bycategory=False):
     """Compute non-maximum suppression of a list of vipy.object.Detection() based on spatial IOU threshold (iou) and a confidence threshold (conf)"""

@@ -31,6 +31,7 @@ import types
 import hashlib
 from itertools import repeat
 import atexit
+import json
 
 
 class Image(object):
@@ -100,6 +101,15 @@ class Image(object):
             assert isinstance(attributes, dict), "Attributes must be dictionary"
             self.attributes = attributes
 
+    @classmethod
+    def _from_json(obj, s):
+        d = json.loads(s)        
+        return obj(filename=d['_filename'],
+                   url=d['_url'],
+                   array=np.array(d['_array'], dtype=np.uint8) if d['_array'] is not None else None,
+                   colorspace=d['_colorspace'],
+                   attributes=d['attributes'])
+    
     def __eq__(self, other):
         """Images are equivalent if they have the same filename, url and array"""
         return isinstance(other, Image) and other.filename()==self.filename() and other.url()==self.url() and np.all(other.array() == self.array())
@@ -155,6 +165,33 @@ class Image(object):
             d['array'] = self.array()
         return {'image':d}
 
+    def json(self, s=None):
+        if s is None:
+            d = {'_ignoreErrors':self._ignoreErrors,
+                 '_urluser':self._urluser,
+                 '_urlpassword':self._urlpassword,
+                 '_urlsha1':self._urlsha1,
+                 '_filename':self._filename,
+                 '_url':self._url,
+                 '_loader':self._loader,
+                 '_array':self._array.tolist() if self._array is not None else None,
+                 '_colorspace':self._colorspace,
+                 'attributes':self.attributes}                        
+            return json.dumps(d)
+        else:
+            d = json.loads(s)
+            self._ignoreErrors = d['_ignoreErrors'],
+            self._urluser = d['_urluser']
+            self._urlpassword = d['_urlpassword'],
+            self._urlsha1 = d['_urlsha1']
+            self._filename = d['_filename']
+            self._url = d['_url']
+            self._loader = d['_loader']
+            self._array = np.array(d['_array'], dtype=np.uint8) if d['_array'] is not None else None
+            self._colorspace = d['_colorspace']
+            self.attributes = d['attributes']            
+            return self
+        
     def loader(self, f):
         """Lambda function to load an unsupported image filename to a numpy array"""
         self._loader = f
@@ -565,7 +602,12 @@ class Image(object):
         else:
             im = copy.deepcopy(self)            
         return im
-    
+
+    def flush(self):
+        """Alias for clone(flush=True), returns self not clone"""
+        self._array = None  # flushes buffer on object and clone
+        return self
+
         
     # Spatial transformations
     def resize(self, cols=None, rows=None, width=None, height=None, interp='bilinear'):
@@ -1163,6 +1205,12 @@ class ImageDetection(ImageCategory):
         else:
             raise ValueError('Incomplete constructor')
 
+    @classmethod
+    def _from_json(obj, s):
+        im = super()._from_json(s)
+        im.bbox = BoundingBox._from_json(s)
+        return im
+    
     def __repr__(self):
         strlist = []
         if self.isloaded():
@@ -1178,6 +1226,7 @@ class ImageDetection(ImageCategory):
                            (self.bbox.xmin(), self.bbox.ymin(),self.bbox.width(), self.bbox.height()))
         return str('<vipy.imagedetection: %s>' % (', '.join(strlist)))
 
+    
     def __eq__(self, other):
         """ImageDetection equality is defined as equivalent categories and boxes (not pixels)"""
         return self._category.lower() == other._category.lower() and self.bbox == other.bbox if isinstance(other, ImageDetection) else False
@@ -1187,6 +1236,16 @@ class ImageDetection(ImageCategory):
         d['boundingbox'] = self.bbox.dict()
         return d
 
+    def json(self, s=None):
+        if s is None:
+            d = json.loads(super().json())
+            d['bbox'] = self.bbox.json()
+            return json.dumps(d)
+        else:
+            super().json(s)
+            self.bbox = BoundingBox._from_json(s)
+            return self
+            
     def detection(self):
         """Downgrade to vipy.object.Detection() object"""
         return vipy.object.Detection(category=self.category(), xywh=self.boundingbox().xywh(), attributes=self.attributes)
@@ -1406,7 +1465,25 @@ class Scene(ImageCategory):
                 raise ValueError("Invalid boxlabels list - len(boxlabels) must be len(xywh) with corresponding labels for each xywh box  [label1, label2, ...]")
 
         self._objectlist = self._objectlist + detlist
-        
+
+    @classmethod
+    def _from_json(obj, s):
+        im = super()._from_json(s)
+        d = json.loads(s)
+        im._objectlist = [vipy.object.Detection._from_json(s) for s in d['_objectlist']]        
+        return im
+
+    def json(self, s=None):
+        if s is None:
+            d = json.loads(super().json())
+            d['_objectlist'] = [bb.json() for bb in self._objectlist]
+            return json.dumps(d)
+        else:
+            super().json(s)
+            d = json.loads(s)            
+            self._objectlist = [vipy.object.Detection._from_json(s) for s in d['_objectlist']]
+            return self
+    
     def __eq__(self, other):
         """Scene equality requires equality of all objects in the scene, assumes a total order of objects"""
         return isinstance(other, Scene) and len(self)==len(other) and all([obj1 == obj2 for (obj1, obj2) in zip(self, other)])
@@ -1746,7 +1823,7 @@ def owl():
                  category='Nature',
                  objects=[vipy.object.Detection('Great Horned Owl', xmin=300, ymin=320, width=1200, height=1600),
                           vipy.object.Detection('left eye', xmin=600, ymin=800, width=250, height=250), 
-                          vipy.object.Detection('right eye', xmin=1000, ymin=800, width=250, height=250)])
+                          vipy.object.Detection('right eye', xmin=1000, ymin=800, width=250, height=250)]).mindim(512)
 
 
 def vehicles():

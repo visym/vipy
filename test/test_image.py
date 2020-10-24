@@ -153,9 +153,22 @@ def test_image():
     for imgfile in [rgbfile, greyfile, rgbafile]:
         _test_image_fileformat(imgfile)
 
-        
-        
-            
+
+    # JSON serialization
+    im = vipy.image.RandomImage().mindim(64)
+    img = im.numpy()
+    ims = im.clone()
+    s = ims.json()
+    assert np.allclose(ims.json(s).numpy(), img)
+    assert np.allclose(vipy.image.Image._from_json(s).numpy(), img)
+    print('[test_image]: JSON image serialization PASSED')    
+
+    im = vipy.image.RandomScene().mindim(64)
+    ims = im.clone().json(im.clone().json())
+    assert all([bbs == bb for (bbs, bb) in zip(ims._objectlist, im._objectlist)])
+    print('[test_image]: JSON scene serialization PASSED')
+
+    
 def _test_image_fileformat(imgfile):
     # Filename object
     im = ImageDetection(filename=imgfile, xmin=100, ymin=100, bbwidth=700, height=1000, category='face')

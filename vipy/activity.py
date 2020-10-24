@@ -4,6 +4,7 @@ from vipy.util import isstring, tolist
 import uuid
 import copy
 from vipy.object import Track
+import json
 
 
 class Activity(object):
@@ -41,7 +42,19 @@ class Activity(object):
         self._actorid = actorid
 
         self.attributes = attributes if attributes is not None else {}            
-        
+
+    @classmethod
+    def _from_json(obj, json_str):
+        d = json.loads(json_str)
+        return obj(startframe=d['_startframe'],
+                   endframe=d['_endframe'],
+                   framerate=d['_framerate'],
+                   category=d['_label'],
+                   shortlabel=d['_shortlabel'],
+                   tracks=d['_trackid'],
+                   attributes=d['attributes'],
+                   actorid=d['_actorid'])
+                
     def __len__(self):
         """Return activity length in frames, or zero if degenerate"""
         return max(0, self.endframe() - self.startframe())
@@ -52,6 +65,13 @@ class Activity(object):
     def dict(self):
         return {'id':self._id, 'label':self.category(), 'shortlabel':self.shortlabel(), 'startframe':self._startframe, 'endframe':self._endframe, 'attributes':self.attributes, 'framerate':self._framerate,
                 'trackid':self._trackid, 'actorid':self._actorid}
+
+    def json(self, s=None):
+        if s is None:
+            return json.dumps( {k:v if k != '_trackid' else list(v) for (k,v) in self.__dict__.items()})
+        else:
+            self.__dict__ = json.loads(s)
+            return self
     
     def actorid(self, actorid=None):
         if actorid is None:

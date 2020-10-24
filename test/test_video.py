@@ -114,6 +114,12 @@ def _test_video():
     assert vc._array is None and v._array is None
     print('[test_video.scene]: clone()  PASSED')        
 
+    # JSON
+    v = vipy.video.Video(url=mp4url)    
+    vs = v.clone().json(v.clone().json())
+    assert v.__dict__ == vs.__dict__
+    print('[test_video.scene]: json serialization PASSED')
+    
     
 def _test_scene():
 

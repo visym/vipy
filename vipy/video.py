@@ -28,6 +28,8 @@ import time
 from io import BytesIO
 import vipy.globals
 import vipy.activity
+import json  
+#import ujson as json   # faster, but requires custom package
 
 
 ffmpeg_exe = shutil.which('ffmpeg')
@@ -120,6 +122,23 @@ class Video(object):
             self.colorspace(colorspace)
         elif frames is not None:
             self.fromframes(frames)
+
+    @classmethod
+    def _from_json(obj, json_str):
+        d = json.loads(json_str)
+        
+        v = obj(filename=d['_filename'],
+                url=d['_url'],
+                framerate=d['_framerate'],
+                array=np.array(d['_array']) if d['_array'] is not None else None,
+                colorspace=d['_colorspace'],
+                attributes=d['attributes'],
+                startframe=d['_startframe'],
+                endframe=d['_endframe'],
+                startsec=d['_startsec'],
+                endsec=d['_endsec'])
+        v._ffmpeg = v._from_ffmpeg_commandline(d['_ffmpeg'])
+        return v.filename(d['_filename'])
             
     def __repr__(self):
         strlist = []
@@ -181,7 +200,7 @@ class Video(object):
                
     def _ffmpeg_commandline(self, f=None):
         """Return the ffmpeg command line string that will be used to process the video"""
-        cmd = f.compile() if f is not None else self._ffmpeg.output('vipy_output.mp4').compile()
+        cmd = f.compile() if f is not None else self._ffmpeg.output('dummyfile').compile()
         for (k,c) in enumerate(cmd):
             if c is None:
                 cmd[k] = str(c)
@@ -191,6 +210,33 @@ class Video(object):
                 cmd[k+1] = '"%s"' % str(cmd[k+1])
         return str(' ').join(cmd)
 
+    def _from_ffmpeg_commandline(self, cmd):
+        args = cmd.split(' ')
+        assert args[0] == 'ffmpeg'
+        assert args[1] == '-i'
+        assert args[3] == '-filter_complex'
+        assert args[4][0] == '"' and args[4][-1] == '"'
+
+        f = ffmpeg.input(args[2])        
+        filterargs = args[4][1:-1].split(';')
+        for a in filterargs:
+            assert a.count(']') == 2 and a.count('[') == 2
+            kwstr = a.split(']', maxsplit=1)[1].split('[', maxsplit=1)[0]
+            if kwstr.count('=') == 0:
+                f = f.filter(kwstr)
+            else:
+                (a, kw) = ([], {}) 
+                (filtername, kwstr) = kwstr.split('=', maxsplit=1)
+                for s in kwstr.split(':'):
+                    if s.count('=') > 0:
+                        (k,v) = s.split('=')
+                        kw[k] = v
+                    else:
+                        a.append(s)
+                f = f.filter(filtername, *a, **kw)
+        assert self._ffmpeg_commandline(f.output('dummyfile')) == cmd
+        return f
+                                 
     def probe(self):
         """Run ffprobe on the filename and return the result as a JSON file"""
         if not has_ffprobe:
@@ -226,7 +272,38 @@ class Video(object):
                  'attributes':self.attributes,
                  'array':self.array()}
         return {'video':video}
-             
+
+    def json(self, s=None):
+        if s is None:
+            assert not self.isloaded(), "JSON serialization of video requires flushed buffers, try calling v.flush() or v.saveas('/path/to.mp4', flush=True) first"
+            d = {'_filename':self._filename,
+                 '_url':self._url,
+                 '_framerate':self._framerate,
+                 '_array':self._array.tolist() if self._array is not None else None,
+                 '_colorspace':self._colorspace,
+                 'attributes':self.attributes,
+                 '_startframe':self._startframe,
+                 '_endframe':self._endframe,
+                 '_endsec':self._endsec,
+                 '_startsec':self._startsec,
+                 '_ffmpeg':self._ffmpeg_commandline()}
+            return json.dumps(d)
+        else:
+            d = json.loads(s)
+            self._filename = d['_filename']
+            self._url = d['_url']
+            self._framerate = d['_framerate']
+            self._array = np.array(d['_array']) if d['_array'] is not None else None
+            self._colorspace = d['_colorspace']
+            self.attributes = d['attributes']
+            self._startframe = d['_startframe']
+            self._endframe = d['_endframe']
+            self._startsec = d['_startsec']
+            self._endsec = d['_endsec']
+            self._ffmpeg = self._from_ffmpeg_commandline(d['_ffmpeg'])
+            self.filename(d['_filename'])
+            return self
+    
     def take(self, n):
         """Return n frames from the clip uniformly spaced as numpy array"""
         assert self.isloaded(), "Load() is required before take()"""
@@ -1034,6 +1111,13 @@ class VideoCategory(Video):
         super().__init__(url=url, filename=filename, framerate=framerate, attributes=attributes, array=array, colorspace=colorspace,
                                             startframe=startframe, endframe=endframe, startsec=startsec, endsec=endsec)
         self._category = category                
+
+    @classmethod
+    def _from_json(obj, json_str):
+        d = json.loads(json_str)
+        v = super()._from_json(json_str)
+        v._category = d['_category']
+        return v
         
     def __repr__(self):
         strlist = []
@@ -1055,6 +1139,17 @@ class VideoCategory(Video):
         d = super().dict()
         d['category'] = self.category()
         return d
+
+    def json(self, s=None):
+        if s is None:
+            d = json.loads(super().json())
+            d['_category'] = self._category
+            return json.dumps(d)
+        else:
+            d = json.loads(s)
+            super().json(s)
+            self._category = d['_category']
+            return self
     
     def category(self, c=None):
         if c is None:
@@ -1118,13 +1213,22 @@ class Scene(VideoCategory):
             assert all([isinstance(t, vipy.object.Track) for t in tracks]), "Invalid track input; tracks=[vipy.object.Track(), ...]"
             self._tracks = {t.id():t for t in tracks}
 
-        # Activites must be defined relative to the clip specified by this constructor            
+        # Activities must be defined relative to the clip specified by this constructor            
         if activities is not None:
             activities = activities if isinstance(activities, list) or isinstance(activities, tuple) else [activities]  # canonicalize            
             assert all([isinstance(a, vipy.activity.Activity) for a in activities]), "Invalid activity input; activities=[vipy.activity.Activity(), ...]"
             self._activities = {a.id():a for a in activities}
 
         self._currentframe = None  # used during iteration only
+
+    @classmethod
+    def _from_json(obj, json_str):
+        d = json.loads(json_str)
+
+        v = super()._from_json(json_str)
+        v._tracks = {t.id():t for t in [vipy.object.Track._from_json(s) for s in d['_tracks'].values()]}
+        v._activities = {a.id():a for a in [vipy.activity.Activity._from_json(s) for s in d['_activities'].values()]}
+        return v
         
     def __repr__(self):
         strlist = []
@@ -1162,8 +1266,8 @@ class Scene(VideoCategory):
                         if not any([a.shortlabel() == v for (n,v) in shortlabel]):
                             shortlabel.append( (d.shortlabel(), a.shortlabel()) )
                         if 'activity' not in d.attributes:
-                            d.attributes['activity'] = []                            
-                        d.attributes['activity'].append(a)  # for activity correspondence (if desired)
+                            d.attributes['activityid'] = []                            
+                        d.attributes['activityid'].append(a.id())  # for activity correspondence (if desired)
                 d.shortlabel( '\n'.join([('%s %s' % (n,v)).strip() for (n,v) in shortlabel[0 if len(shortlabel)==1 else 1:]]))
             dets = sorted(dets, key=lambda d: d.shortlabel())   # layering in video is in alphabetical order of shortlabel
             return vipy.image.Scene(array=self._array[k], colorspace=self.colorspace(), objects=dets, category=self.category())  
@@ -1428,6 +1532,19 @@ class Scene(VideoCategory):
         d['activities'] = [a.dict() for a in self._activities.values()]
         d['filename'] = self.filename()
         return d
+
+    def json(self, s=None):
+        if s is None:
+            d = json.loads(super().json())
+            d['_tracks'] = {k:t.json() for (k,t) in self._tracks.items()}
+            d['_activities'] = {k:a.json() for (k,a) in self._activities.items()}
+            return json.dumps(d)
+        else:
+            d = json.loads(s)
+            super().json(s)
+            self._tracks = [vipy.object.Track._from_json(s) for s in d['_tracks'].values()]
+            self._activities = [vipy.activity.Activity._from_json(s) for s in d['_activities'].values()]
+            return self
         
     def csv(self, outfile=None):
         """Export scene to CSV file format with header.  If there are no tracks, this will be empty. """
@@ -1435,10 +1552,10 @@ class Scene(VideoCategory):
         csv = [(self.filename(), # video filename
                 k,  # frame number (zero indexed)
                 d.category(), d.shortlabel(), # track category and shortlabel (displayed in caption)
-                ';'.join([a.category() for a in d.attributes['activity']] if 'activity' in d.attributes else ''), # semicolon separated activity ID assocated with track
+                ';'.join([a.category() for a in self.activities()[d.attributes['activityid']]] if 'activityid' in d.attributes else ''), # semicolon separated activity ID assocated with track
                 d.xmin(), d.ymin(), d.width(), d.height(),   # bounding box
                 d.attributes['trackid'],  # globally unique track ID
-                ';'.join([a.id() for a in d.attributes['activity']] if 'activity' in d.attributes else '')) # semicolon separated activity ID assocated with track
+                ';'.join([a.id() for a in self.activities()[d.attributes['activityid']]] if 'activityid' in d.attributes else '')) # semicolon separated activity ID assocated with track
                for (k,im) in enumerate(self) for d in im.objects()]
         csv = [('# video_filename', 'frame_number', 'object_category', 'object_shortlabel', 'activity categories(;)', 'xmin', 'ymin', 'width', 'height', 'track_id', 'activity_ids(;)')] + csv
         return writecsv(csv, outfile) if outfile is not None else csv
