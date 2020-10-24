@@ -44,7 +44,7 @@ class Activity(object):
         self.attributes = attributes if attributes is not None else {}            
 
     @classmethod
-    def _from_json(obj, s):
+    def from_json(obj, s):
         d = json.loads(s) if not isinstance(s, dict) else s                
         return obj(startframe=d['_startframe'],
                    endframe=d['_endframe'],
@@ -66,13 +66,9 @@ class Activity(object):
         return {'id':self._id, 'label':self.category(), 'shortlabel':self.shortlabel(), 'startframe':self._startframe, 'endframe':self._endframe, 'attributes':self.attributes, 'framerate':self._framerate,
                 'trackid':self._trackid, 'actorid':self._actorid}
 
-    def json(self, s=None, encode=True):
-        if s is None:
-            d = {k:v if k != '_trackid' else list(v) for (k,v) in self.__dict__.items()}
-            return json.dumps(d) if encode else d
-        else:
-            self.__dict__ = json.loads(s)
-            return self
+    def json(self, encode=True):
+        d = {k:v if k != '_trackid' else list(v) for (k,v) in self.__dict__.items()}
+        return json.dumps(d) if encode else d
     
     def actorid(self, actorid=None):
         if actorid is None:

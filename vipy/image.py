@@ -102,7 +102,7 @@ class Image(object):
             self.attributes = attributes
 
     @classmethod
-    def _from_json(obj, s):
+    def from_json(obj, s):
         d = json.loads(s)        
         return obj(filename=d['_filename'],
                    url=d['_url'],
@@ -1198,9 +1198,9 @@ class ImageDetection(ImageCategory):
             raise ValueError('Incomplete constructor')
 
     @classmethod
-    def _from_json(obj, s):
-        im = super()._from_json(s)
-        im.bbox = BoundingBox._from_json(s)
+    def from_json(obj, s):
+        im = super().from_json(s)
+        im.bbox = BoundingBox.from_json(s)
         return im
     
     def __repr__(self):
@@ -1235,7 +1235,7 @@ class ImageDetection(ImageCategory):
             return json.dumps(d) if encode else d
         else:
             super().json(s)
-            self.bbox = BoundingBox._from_json(s)
+            self.bbox = BoundingBox.from_json(s)
             return self
             
     def detection(self):
@@ -1459,10 +1459,10 @@ class Scene(ImageCategory):
         self._objectlist = self._objectlist + detlist
 
     @classmethod
-    def _from_json(obj, s):
-        im = super()._from_json(s)
+    def from_json(obj, s):
+        im = super().from_json(s)
         d = json.loads(s)
-        im._objectlist = [vipy.object.Detection._from_json(s) for s in d['_objectlist']]        
+        im._objectlist = [vipy.object.Detection.from_json(s) for s in d['_objectlist']]        
         return im
 
     def json(self, s=None, encode=True):
@@ -1473,7 +1473,7 @@ class Scene(ImageCategory):
         else:
             super().json(s)
             d = json.loads(s)            
-            self._objectlist = [vipy.object.Detection._from_json(s) for s in d['_objectlist']]
+            self._objectlist = [vipy.object.Detection.from_json(s) for s in d['_objectlist']]
             return self
     
     def __eq__(self, other):

@@ -167,7 +167,7 @@ class BoundingBox(object):
             raise ValueError('invalid constructor input')
 
     @classmethod
-    def _from_json(obj, s):
+    def from_json(obj, s):
         d = json.loads(s) if not isinstance(s, dict) else s
         return obj(xmin=d['_xmin'], ymin=d['_ymin'], xmax=d['_xmax'], ymax=d['_ymax'])
 
@@ -179,12 +179,8 @@ class BoundingBox(object):
                 'upperleft':self.upperleft(), 'bottomleft':self.bottomleft(), 'upperright':self.upperright(),
                 'bottomright':self.bottomright(), 'area':self.area()}
 
-    def json(self, s=None, encode=True):
-        if s is None:
-            return json.dumps(self.__dict__) if encode else self.__dict__
-        else:
-            self.__dict__ = json.loads(s)
-            return self
+    def json(self, encode=True):
+        return json.dumps(self.__dict__) if encode else self.__dict__
         
     def clone(self):
         return BoundingBox(xmin=self._xmin, xmax=self._xmax, ymin=self._ymin, ymax=self._ymax)

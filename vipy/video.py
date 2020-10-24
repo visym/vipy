@@ -124,7 +124,7 @@ class Video(object):
             self.fromframes(frames)
 
     @classmethod
-    def _from_json(obj, s):
+    def from_json(obj, s):
         d = json.loads(s) if not isinstance(s, dict) else s                        
         v = obj(filename=d['_filename'],
                 url=d['_url'],
@@ -272,36 +272,20 @@ class Video(object):
                  'array':self.array()}
         return {'video':video}
 
-    def json(self, s=None, encode=True):
-        if s is None:
-            assert not self.isloaded(), "JSON serialization of video requires flushed buffers, try calling v.flush() or v.saveas('/path/to.mp4', flush=True) first"
-            d = {'_filename':self._filename,
-                 '_url':self._url,
-                 '_framerate':self._framerate,
-                 '_array':self._array.tolist() if self._array is not None else None,
-                 '_colorspace':self._colorspace,
-                 'attributes':self.attributes,
-                 '_startframe':self._startframe,
-                 '_endframe':self._endframe,
-                 '_endsec':self._endsec,
-                 '_startsec':self._startsec,
-                 '_ffmpeg':self._ffmpeg_commandline()}
-            return json.dumps(d) if encode else d
-        else:
-            d = json.loads(s)
-            self._filename = d['_filename']
-            self._url = d['_url']
-            self._framerate = d['_framerate']
-            self._array = np.array(d['_array']) if d['_array'] is not None else None
-            self._colorspace = d['_colorspace']
-            self.attributes = d['attributes']
-            self._startframe = d['_startframe']
-            self._endframe = d['_endframe']
-            self._startsec = d['_startsec']
-            self._endsec = d['_endsec']
-            self._ffmpeg = self._from_ffmpeg_commandline(d['_ffmpeg'])
-            self.filename(d['_filename'])
-            return self
+    def json(self, encode=True):
+        assert not self.isloaded(), "JSON serialization of video requires flushed buffers, try calling v.flush() or v.saveas('/path/to.mp4', flush=True) first"
+        d = {'_filename':self._filename,
+             '_url':self._url,
+             '_framerate':self._framerate,
+             '_array':self._array.tolist() if self._array is not None else None,
+             '_colorspace':self._colorspace,
+             'attributes':self.attributes,
+             '_startframe':self._startframe,
+             '_endframe':self._endframe,
+             '_endsec':self._endsec,
+             '_startsec':self._startsec,
+             '_ffmpeg':self._ffmpeg_commandline()}
+        return json.dumps(d) if encode else d
     
     def take(self, n):
         """Return n frames from the clip uniformly spaced as numpy array"""
@@ -1112,9 +1096,9 @@ class VideoCategory(Video):
         self._category = category                
 
     @classmethod
-    def _from_json(obj, s):
+    def from_json(obj, s):
         d = json.loads(s) if not isinstance(s, dict) else s                        
-        v = super()._from_json(s)
+        v = super().from_json(s)
         v._category = d['_category']
         return v
         
@@ -1139,16 +1123,10 @@ class VideoCategory(Video):
         d['category'] = self.category()
         return d
 
-    def json(self, s=None, encode=True):
-        if s is None:
-            d = json.loads(super().json())
-            d['_category'] = self._category
-            return json.dumps(d) if encode else d
-        else:
-            d = json.loads(s)
-            super().json(s)
-            self._category = d['_category']
-            return self
+    def json(self, encode=True):
+        d = json.loads(super().json())
+        d['_category'] = self._category
+        return json.dumps(d) if encode else d
     
     def category(self, c=None):
         if c is None:
@@ -1221,11 +1199,11 @@ class Scene(VideoCategory):
         self._currentframe = None  # used during iteration only
 
     @classmethod
-    def _from_json(obj, s):
+    def from_json(obj, s):
         d = json.loads(s) if not isinstance(s, dict) else s                                
-        v = super()._from_json(s)
-        v._tracks = {t.id():t for t in [vipy.object.Track._from_json(s) for s in d['_tracks'].values()]}
-        v._activities = {a.id():a for a in [vipy.activity.Activity._from_json(s) for s in d['_activities'].values()]}
+        v = super().from_json(s)
+        v._tracks = {t.id():t for t in [vipy.object.Track.from_json(s) for s in d['_tracks'].values()]}
+        v._activities = {a.id():a for a in [vipy.activity.Activity.from_json(s) for s in d['_activities'].values()]}
         return v
         
     def __repr__(self):
@@ -1531,18 +1509,11 @@ class Scene(VideoCategory):
         d['filename'] = self.filename()
         return d
 
-    def json(self, s=None, encode=True):
-        if s is None:
-            d = json.loads(super().json())
-            d['_tracks'] = {k:t.json(encode=False) for (k,t) in self._tracks.items()}
-            d['_activities'] = {k:a.json(encode=False) for (k,a) in self._activities.items()}
-            return json.dumps(d) if encode else d
-        else:
-            d = json.loads(s)
-            super().json(s)
-            self._tracks = {t.id():t for t in [vipy.object.Track._from_json(s) for s in d['_tracks'].values()]}
-            self._activities = {a.id():a for a in [vipy.activity.Activity._from_json(s) for s in d['_activities'].values()]}
-            return self
+    def json(self, encode=True):
+        d = json.loads(super().json())
+        d['_tracks'] = {k:t.json(encode=False) for (k,t) in self._tracks.items()}
+        d['_activities'] = {k:a.json(encode=False) for (k,a) in self._activities.items()}
+        return json.dumps(d) if encode else d
         
     def csv(self, outfile=None):
         """Export scene to CSV file format with header.  If there are no tracks, this will be empty. """
@@ -1689,7 +1660,7 @@ class Scene(VideoCategory):
         v._startframe = startframe if v._startframe is None else v._startframe + startframe  # for __repr__ only
         v._endframe = endframe if v._endframe is None else v._startframe + (endframe-startframe)  # for __repr__ only
         # -- end copy
-        
+
         v._tracks = {k:t.offset(dt=-startframe) for (k,t) in v._tracks.items()}   # track offset is performed here, not within activity, no end frame enforced
         v._activities = {k:a.offset(dt=-startframe) for (k,a) in v._activities.items()}        
         return v  

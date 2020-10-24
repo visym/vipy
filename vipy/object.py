@@ -30,7 +30,7 @@ class Detection(BoundingBox):
         self.attributes = attributes if attributes is not None else {}
 
     @classmethod
-    def _from_json(obj, s):
+    def from_json(obj, s):
         d = json.loads(s) if not isinstance(s, dict) else s        
         return obj(xmin=d['_xmin'], ymin=d['_ymin'], xmax=d['_xmax'], ymax=d['_ymax'], label=d['_label'], shortlabel=d['_shortlabel'], confidence=d['_confidence'], attributes=d['attributes'])
         
@@ -57,12 +57,8 @@ class Detection(BoundingBox):
                 'attributes':self.attributes,  # these may be arbitrary user defined objects
                 'confidence':self._confidence}
 
-    def json(self, s=None, encode=True):
-        if s is None:
-            return json.dumps(self.__dict__) if encode else self.__dict__
-        else:
-            self.__dict__ = json.loads(s)
-            return self
+    def json(self, encode=True):
+        return json.dumps(self.__dict__) if encode else self.__dict__
                 
     def nocategory(self):
         self._label = None
@@ -159,10 +155,10 @@ class Track(object):
             self._keyboxes = list(boxes)
 
     @classmethod
-    def _from_json(obj, s):
+    def from_json(obj, s):
         d = json.loads(s) if not isinstance(s, dict) else s                
         return obj(keyframes=d['_keyframes'],
-                   boxes=[BoundingBox._from_json(bbs) for bbs in d['_keyboxes']],
+                   boxes=[BoundingBox.from_json(bbs) for bbs in d['_keyboxes']],
                    category=d['_label'],
                    confidence=None,
                    framerate=d['_framerate'],
@@ -206,14 +202,9 @@ class Track(object):
         return {'id':self._id, 'label':self.category(), 'shortlabel':self.shortlabel(), 'keyframes':self._keyframes, 'framerate':self._framerate, 
                 'boundingbox':[bb.dict() for bb in self._keyboxes], 'attributes':self.attributes}
 
-    def json(self, s=None, encode=True):
-        if s is None:
-            d = {k:v if k != '_keyboxes' else [bb.json(encode=False) for bb in v] for (k,v) in self.__dict__.items()}
-            return json.dumps(d) if encode else d
-        else:
-            self.__dict__ = json.loads(s)
-            self.__dict__['_keyboxes'] = [BoundingBox._from_json(bbs) for bbs in self._keyboxes]
-            return self
+    def json(self, encode=True):
+        d = {k:v if k != '_keyboxes' else [bb.json(encode=False) for bb in v] for (k,v) in self.__dict__.items()}
+        return json.dumps(d) if encode else d
     
     def add(self, keyframe, box):
         """Add a new keyframe and associated box to track, preserve sorted order of keyframes"""
@@ -328,7 +319,7 @@ class Track(object):
 
     def offset(self, dt=0, dx=0, dy=0):
         self._keyboxes = [bb.offset(dx, dy) for bb in self._keyboxes]
-        self._keyframes = list(np.array(self._keyframes) + dt)
+        self._keyframes = [f+dt for f in self._keyframes]
         return self
 
     def frameoffset(self, dx, dy):
@@ -424,14 +415,14 @@ class Track(object):
         assert isinstance(other, Track), "invalid input - Must be vipy.object.Track()"
         startframe = max(self.startframe(), other.startframe())
         endframe = min(self.endframe(), other.endframe())
-        return np.mean([self[startframe].iou(other[startframe]), self[endframe].iou(other[endframe])]) if endframe >= startframe else 0.0        
+        return float(np.mean([self[startframe].iou(other[startframe]), self[endframe].iou(other[endframe])]) if endframe >= startframe else 0.0)
 
     def segmentiou(self, other, dt=5):
         """Compute the mean spatial IoU between two tracks at the overlapping segment, sampling by dt.  Useful for track continuation for densely overlapping tracks"""
         assert isinstance(other, Track), "invalid input - Must be vipy.object.Track()"
         startframe = max(self.startframe(), other.startframe())
         endframe = min(self.endframe(), other.endframe())   # inclusive
-        return np.mean([self[min(k,endframe)].iou(other[min(k,endframe)]) for k in range(startframe, endframe, dt)]) if endframe >= startframe else 0.0 
+        return float(np.mean([self[min(k,endframe)].iou(other[min(k,endframe)]) for k in range(startframe, endframe, dt)]) if endframe >= startframe else 0.0)
         
     def rankiou(self, other, rank, dt=1, n=None):
         """Compute the mean spatial IoU between two tracks per frame in the range (self.startframe(), self.endframe()) using only the top-k (rank) frame overlaps
@@ -443,7 +434,7 @@ class Track(object):
         assert dt >= 1
         dt = max(1, int(len(self)/n) if n is not None else dt)
         frames = [self.startframe()] + list(range(self.startframe()+dt, self.endframe(), dt)) + [self.endframe()]
-        return np.mean(sorted([self[k].iou(other[k]) if (self.during(k) and other.during(k)) else 0.0 for k in frames])[-rank:])
+        return float(np.mean(sorted([self[k].iou(other[k]) if (self.during(k) and other.during(k)) else 0.0 for k in frames])[-rank:]))
 
     def percentileiou(self, other, percentile, dt=1, n=None):
         """Percentile iou returns rankiou for rank=percentile*len(self)"""
@@ -529,6 +520,7 @@ class Track(object):
         self._keyboxes = [bb.significant_digits(n) for bb in self._keyboxes]
         return self
 
+    
 def non_maximum_suppression(detlist, conf, iou, bycategory=False):
     """Compute non-maximum suppression of a list of vipy.object.Detection() based on spatial IOU threshold (iou) and a confidence threshold (conf)"""
     assert all([isinstance(d, Detection) for d in detlist])

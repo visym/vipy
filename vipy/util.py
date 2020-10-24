@@ -29,6 +29,7 @@ import warnings
 import copy
 
 
+
 def mergedict(d1, d2):
     assert isinstance(d1, dict) and isinstance(d2, dict)
     d = copy.deepcopy(d1)
@@ -401,21 +402,55 @@ def loadmat73(matfile, keys=None):
         return np.array(f)
 
 
-def saveas(vars, outfile=None, type='dill'):
+def _json_class_registry():
+    import vipy.video
+    import vipy.image
+    registry = {"<class 'vipy.video.Scene'>":vipy.video.Scene.from_json,
+                "<class 'vipy.video.Video'>":vipy.video.Video.from_json,
+                "<class 'vipy.video.VideoCategory'>":vipy.video.VideoCategory.from_json,
+                "<class 'vipy.image.Image'>":vipy.image.Image.from_json,
+                "<class 'vipy.image.ImageCategory'>":vipy.image.ImageCategory.from_json,
+                "<class 'vipy.image.ImageDetection'>":vipy.image.ImageDetection.from_json,            
+                "<class 'vipy.image.Scene'>":vipy.image.Scene.from_json}
+    try:
+        import pycollector.video
+        registry.update( {"<class 'pycollector.video.Video'>":pycollector.video.Video.from_json} )
+    except:
+        registry.update( {"<class 'pycollector.video.Video'>":lambda x: exec("raise ValueError(\"<class 'pycollector.video.Video'> not found - Run 'pip install pycollector' \")")})        
+
+    return registry
+            
+
+def saveas(vars, outfile=None, format='dill'):
     """Save variables as a dill pickled file"""
     outfile = temppickle() if outfile is None else outfile
-    if type in ['dill']:
+    if format in ['dill']:
         dill.dump(vars, open(outfile, 'wb'))
         return outfile
+    
+    elif format == 'json':
+        saveobj = vars
+        class_registry = _json_class_registry()
+        if isinstance(saveobj, list):
+            assert all([str(type(d)) in class_registry for d in saveobj]), "Invalid vipy JSON serialization format"        
+            s = [{str(type(d)):d.json(encode=False)} for d in saveobj] if isinstance(saveobj, list) else ({str(type(d)):d.json(encode=False)} for d in saveobj)
+        else:
+            assert str(type(saveobj)) in class_registry, "Invalid vipy JSON serialization format"
+            s = {str(type(saveobj)):saveobj.json(encode=False)}
+        with open(outfile, 'w') as f:
+            json.dump(s, f)
+        return outfile
+        
     else:
-        raise ValueError('unknown serialization type "%s"' % type)
+        raise ValueError('unknown serialization format "%s"' % format)
 
     return outfile
 
 
-def loadas(infile, type='dill'):
+def loadas(infile, format='dill'):
     """Load variables from a dill pickled file"""
-    if type in ['dill']:
+    
+    if format == 'dill':
         try:
             return dill.load(open(infile, 'rb'))
         except Exception:
@@ -424,8 +459,23 @@ def loadas(infile, type='dill'):
             with open(infile, 'rb') as pfp:
                 fv = pickle.load(pfp, encoding="bytes")
             return fv
+    elif format == 'json':
+        with open(infile, 'r') as f:
+            loadobj = json.load(f)
+        class_registry = _json_class_registry()
+        assert isinstance(loadobj, list) or isinstance(loadobj, dict), "invalid vipy JSON serialization format"
+        if isinstance(loadobj, list):
+            assert all([isinstance(d, dict) for d in loadobj]), "invalid vipy JSON serialization format"
+            assert all([c in class_registry for d in loadobj for (c,v) in d.items()]), "invalid vipy json serialization format"        
+            return [class_registry[c](v) for d in loadobj for (c,v) in d.items()]
+        else:
+            assert all([isinstance(d, dict) for (k,d) in loadobj.items()]), "invalid vipy JSON serialization format"
+            assert all([c in class_registry for (c,d) in loadobj.items()]), "invalid vipy json serialization format"        
+            obj = [class_registry[c](v) for (c,v) in loadobj.items()]
+            return obj[0] if len(obj) == 1 else obj
+                    
     else:
-        raise ValueError('unknown serialization type "%s"' % type)
+        raise ValueError('unknown serialization format "%s"' % format)
 
 
 def load(infile):
@@ -438,7 +488,14 @@ def load(infile):
        3. If the resulting files are not found, throw a warning
 
     """
-    obj = loadas(infile, type='dill')
+    if ispkl(infile):
+        format = 'dill'
+    elif isjsonfile(infile):
+        format = 'json'
+    else:
+        raise ValueError('unknown file type')
+    
+    obj = loadas(infile, format=format)
     testobj = tolist(obj)[0]
     if hasattr(testobj, 'filename') and testobj.filename() is not None and '/$PATH' in testobj.filename():
         testobj = repath(copy.deepcopy(testobj), '/$PATH', filepath(os.path.abspath(infile)))  # attempt to rehome /$PATH/to/me.jpg -> /NEWPATH/to/me.jpg where NEWPATH=filepath(infile)
@@ -489,7 +546,7 @@ def scpload(url):
 def save(vars, outfile=None, mode=None):
     """Save variables as a dill pickled file"""
     outfile = temppickle() if outfile is None else outfile
-    outfile = saveas(vars, outfile, type='dill')
+    outfile = saveas(vars, outfile, format='dill')
     if mode is not None:
         chmod(outfile, mode)
     return outfile
@@ -611,7 +668,6 @@ def ispkl(filename):
 def ishtml(filename):
     """Is the file an HTMLfile"""
     return fileext(filename).lower() == '.html'
-
 
 def ispickle(filename):
     """Is the file a pickle archive file"""
