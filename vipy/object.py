@@ -5,7 +5,7 @@ import uuid
 import copy
 import warnings
 import json
-
+#import ujson as json   # faster, but requires custom package
 
 class Detection(BoundingBox):
     """vipy.object.Detection class
@@ -31,7 +31,7 @@ class Detection(BoundingBox):
 
     @classmethod
     def _from_json(obj, s):
-        d = json.loads(s)
+        d = json.loads(s) if not isinstance(s, dict) else s        
         return obj(xmin=d['_xmin'], ymin=d['_ymin'], xmax=d['_xmax'], ymax=d['_ymax'], label=d['_label'], shortlabel=d['_shortlabel'], confidence=d['_confidence'], attributes=d['attributes'])
         
     def __repr__(self):
@@ -57,9 +57,9 @@ class Detection(BoundingBox):
                 'attributes':self.attributes,  # these may be arbitrary user defined objects
                 'confidence':self._confidence}
 
-    def json(self, s=None):
+    def json(self, s=None, encode=True):
         if s is None:
-            return json.dumps(self.__dict__)
+            return json.dumps(self.__dict__) if encode else self.__dict__
         else:
             self.__dict__ = json.loads(s)
             return self
@@ -159,8 +159,8 @@ class Track(object):
             self._keyboxes = list(boxes)
 
     @classmethod
-    def _from_json(obj, json_str):
-        d = json.loads(json_str)
+    def _from_json(obj, s):
+        d = json.loads(s) if not isinstance(s, dict) else s                
         return obj(keyframes=d['_keyframes'],
                    boxes=[BoundingBox._from_json(bbs) for bbs in d['_keyboxes']],
                    category=d['_label'],
@@ -206,9 +206,10 @@ class Track(object):
         return {'id':self._id, 'label':self.category(), 'shortlabel':self.shortlabel(), 'keyframes':self._keyframes, 'framerate':self._framerate, 
                 'boundingbox':[bb.dict() for bb in self._keyboxes], 'attributes':self.attributes}
 
-    def json(self, s=None):
+    def json(self, s=None, encode=True):
         if s is None:
-            return json.dumps( {k:v if k != '_keyboxes' else [bb.json() for bb in v] for (k,v) in self.__dict__.items() } )
+            d = {k:v if k != '_keyboxes' else [bb.json(encode=False) for bb in v] for (k,v) in self.__dict__.items()}
+            return json.dumps(d) if encode else d
         else:
             self.__dict__ = json.loads(s)
             self.__dict__['_keyboxes'] = [BoundingBox._from_json(bbs) for bbs in self._keyboxes]

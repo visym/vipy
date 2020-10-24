@@ -32,7 +32,7 @@ import hashlib
 from itertools import repeat
 import atexit
 import json
-
+#import ujson as json   # faster, but requires custom package
 
 class Image(object):
     """vipy.image.Image class
@@ -165,25 +165,17 @@ class Image(object):
             d['array'] = self.array()
         return {'image':d}
 
-    def json(self, s=None):
+    def json(self, s=None, encode=True):
         if s is None:
-            d = {'_ignoreErrors':self._ignoreErrors,
-                 '_urluser':self._urluser,
-                 '_urlpassword':self._urlpassword,
-                 '_urlsha1':self._urlsha1,
-                 '_filename':self._filename,
+            d = {'_filename':self._filename,
                  '_url':self._url,
                  '_loader':self._loader,
                  '_array':self._array.tolist() if self._array is not None else None,
                  '_colorspace':self._colorspace,
                  'attributes':self.attributes}                        
-            return json.dumps(d)
+            return json.dumps(d) if encode else d
         else:
             d = json.loads(s)
-            self._ignoreErrors = d['_ignoreErrors'],
-            self._urluser = d['_urluser']
-            self._urlpassword = d['_urlpassword'],
-            self._urlsha1 = d['_urlsha1']
             self._filename = d['_filename']
             self._url = d['_url']
             self._loader = d['_loader']
@@ -1236,11 +1228,11 @@ class ImageDetection(ImageCategory):
         d['boundingbox'] = self.bbox.dict()
         return d
 
-    def json(self, s=None):
+    def json(self, s=None, encode=True):
         if s is None:
             d = json.loads(super().json())
-            d['bbox'] = self.bbox.json()
-            return json.dumps(d)
+            d['bbox'] = self.bbox.json(encode=False)
+            return json.dumps(d) if encode else d
         else:
             super().json(s)
             self.bbox = BoundingBox._from_json(s)
@@ -1473,11 +1465,11 @@ class Scene(ImageCategory):
         im._objectlist = [vipy.object.Detection._from_json(s) for s in d['_objectlist']]        
         return im
 
-    def json(self, s=None):
+    def json(self, s=None, encode=True):
         if s is None:
             d = json.loads(super().json())
-            d['_objectlist'] = [bb.json() for bb in self._objectlist]
-            return json.dumps(d)
+            d['_objectlist'] = [bb.json(encode=False) for bb in self._objectlist]
+            return json.dumps(d) if encode else d
         else:
             super().json(s)
             d = json.loads(s)            
@@ -1823,7 +1815,7 @@ def owl():
                  category='Nature',
                  objects=[vipy.object.Detection('Great Horned Owl', xmin=300, ymin=320, width=1200, height=1600),
                           vipy.object.Detection('left eye', xmin=600, ymin=800, width=250, height=250), 
-                          vipy.object.Detection('right eye', xmin=1000, ymin=800, width=250, height=250)]).mindim(512)
+                          vipy.object.Detection('right eye', xmin=1000, ymin=800, width=250, height=250)])
 
 
 def vehicles():

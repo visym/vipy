@@ -5,7 +5,7 @@ import uuid
 import copy
 from vipy.object import Track
 import json
-
+#import ujson as json   # faster, but requires custom package
 
 class Activity(object):
     """vipy.object.Activity class
@@ -44,8 +44,8 @@ class Activity(object):
         self.attributes = attributes if attributes is not None else {}            
 
     @classmethod
-    def _from_json(obj, json_str):
-        d = json.loads(json_str)
+    def _from_json(obj, s):
+        d = json.loads(s) if not isinstance(s, dict) else s                
         return obj(startframe=d['_startframe'],
                    endframe=d['_endframe'],
                    framerate=d['_framerate'],
@@ -66,9 +66,10 @@ class Activity(object):
         return {'id':self._id, 'label':self.category(), 'shortlabel':self.shortlabel(), 'startframe':self._startframe, 'endframe':self._endframe, 'attributes':self.attributes, 'framerate':self._framerate,
                 'trackid':self._trackid, 'actorid':self._actorid}
 
-    def json(self, s=None):
+    def json(self, s=None, encode=True):
         if s is None:
-            return json.dumps( {k:v if k != '_trackid' else list(v) for (k,v) in self.__dict__.items()})
+            d = {k:v if k != '_trackid' else list(v) for (k,v) in self.__dict__.items()}
+            return json.dumps(d) if encode else d
         else:
             self.__dict__ = json.loads(s)
             return self

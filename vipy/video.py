@@ -124,9 +124,8 @@ class Video(object):
             self.fromframes(frames)
 
     @classmethod
-    def _from_json(obj, json_str):
-        d = json.loads(json_str)
-        
+    def _from_json(obj, s):
+        d = json.loads(s) if not isinstance(s, dict) else s                        
         v = obj(filename=d['_filename'],
                 url=d['_url'],
                 framerate=d['_framerate'],
@@ -273,7 +272,7 @@ class Video(object):
                  'array':self.array()}
         return {'video':video}
 
-    def json(self, s=None):
+    def json(self, s=None, encode=True):
         if s is None:
             assert not self.isloaded(), "JSON serialization of video requires flushed buffers, try calling v.flush() or v.saveas('/path/to.mp4', flush=True) first"
             d = {'_filename':self._filename,
@@ -287,7 +286,7 @@ class Video(object):
                  '_endsec':self._endsec,
                  '_startsec':self._startsec,
                  '_ffmpeg':self._ffmpeg_commandline()}
-            return json.dumps(d)
+            return json.dumps(d) if encode else d
         else:
             d = json.loads(s)
             self._filename = d['_filename']
@@ -1113,9 +1112,9 @@ class VideoCategory(Video):
         self._category = category                
 
     @classmethod
-    def _from_json(obj, json_str):
-        d = json.loads(json_str)
-        v = super()._from_json(json_str)
+    def _from_json(obj, s):
+        d = json.loads(s) if not isinstance(s, dict) else s                        
+        v = super()._from_json(s)
         v._category = d['_category']
         return v
         
@@ -1140,11 +1139,11 @@ class VideoCategory(Video):
         d['category'] = self.category()
         return d
 
-    def json(self, s=None):
+    def json(self, s=None, encode=True):
         if s is None:
             d = json.loads(super().json())
             d['_category'] = self._category
-            return json.dumps(d)
+            return json.dumps(d) if encode else d
         else:
             d = json.loads(s)
             super().json(s)
@@ -1222,10 +1221,9 @@ class Scene(VideoCategory):
         self._currentframe = None  # used during iteration only
 
     @classmethod
-    def _from_json(obj, json_str):
-        d = json.loads(json_str)
-
-        v = super()._from_json(json_str)
+    def _from_json(obj, s):
+        d = json.loads(s) if not isinstance(s, dict) else s                                
+        v = super()._from_json(s)
         v._tracks = {t.id():t for t in [vipy.object.Track._from_json(s) for s in d['_tracks'].values()]}
         v._activities = {a.id():a for a in [vipy.activity.Activity._from_json(s) for s in d['_activities'].values()]}
         return v
@@ -1533,17 +1531,17 @@ class Scene(VideoCategory):
         d['filename'] = self.filename()
         return d
 
-    def json(self, s=None):
+    def json(self, s=None, encode=True):
         if s is None:
             d = json.loads(super().json())
-            d['_tracks'] = {k:t.json() for (k,t) in self._tracks.items()}
-            d['_activities'] = {k:a.json() for (k,a) in self._activities.items()}
-            return json.dumps(d)
+            d['_tracks'] = {k:t.json(encode=False) for (k,t) in self._tracks.items()}
+            d['_activities'] = {k:a.json(encode=False) for (k,a) in self._activities.items()}
+            return json.dumps(d) if encode else d
         else:
             d = json.loads(s)
             super().json(s)
-            self._tracks = [vipy.object.Track._from_json(s) for s in d['_tracks'].values()]
-            self._activities = [vipy.activity.Activity._from_json(s) for s in d['_activities'].values()]
+            self._tracks = {t.id():t for t in [vipy.object.Track._from_json(s) for s in d['_tracks'].values()]}
+            self._activities = {a.id():a for a in [vipy.activity.Activity._from_json(s) for s in d['_activities'].values()]}
             return self
         
     def csv(self, outfile=None):
