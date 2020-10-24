@@ -4,8 +4,12 @@ from vipy.util import isstring, tolist, chunklistwithoverlap, try_import
 import uuid
 import copy
 import warnings
-import json
-#import ujson as json   # faster, but requires custom package
+
+try:
+    import ujson as json  # faster
+except ImportError:
+    import json
+
 
 class Detection(BoundingBox):
     """vipy.object.Detection class

@@ -4,8 +4,12 @@ from vipy.util import isstring, tolist
 import uuid
 import copy
 from vipy.object import Track
-import json
-#import ujson as json   # faster, but requires custom package
+
+try:
+    import ujson as json  # faster
+except ImportError:
+    import json
+
 
 class Activity(object):
     """vipy.object.Activity class

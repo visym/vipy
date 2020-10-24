@@ -12,7 +12,6 @@ import sys
 import csv
 import hashlib
 import shutil
-import json
 import shelve
 import re
 import uuid
@@ -27,6 +26,11 @@ import pathlib
 import socket
 import warnings
 import copy
+
+try:
+    import ujson as json  # faster
+except ImportError:
+    import json
 
 
 
@@ -543,10 +547,16 @@ def scpload(url):
     return load(vipy.downloader.scp(url, templike(url)))
 
                 
-def save(vars, outfile=None, mode=None):
+def save(vars, outfile, mode=None):
     """Save variables as a dill pickled file"""
-    outfile = temppickle() if outfile is None else outfile
-    outfile = saveas(vars, outfile, format='dill')
+    if ispkl(outfile):
+        format = 'dill'
+    elif isjsonfile(outfile):
+        format = 'json'
+    else:
+        raise ValueError('unknown file type')
+    
+    outfile = saveas(vars, outfile, format=format)
     if mode is not None:
         chmod(outfile, mode)
     return outfile

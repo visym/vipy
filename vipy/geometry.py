@@ -4,7 +4,11 @@ from itertools import product
 from vipy.util import try_import, istuple, isnumpy, isnumber, tolist
 from vipy.linalg import columnvector
 import warnings
-import json
+
+try:
+    import ujson as json  # faster
+except ImportError:
+    import json
 
 
 def covariance_to_ellipse(cov):

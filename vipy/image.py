@@ -31,8 +31,12 @@ import types
 import hashlib
 from itertools import repeat
 import atexit
-import json
-#import ujson as json   # faster, but requires custom package
+
+try:
+    import ujson as json  # faster
+except ImportError:
+    import json
+
 
 class Image(object):
     """vipy.image.Image class

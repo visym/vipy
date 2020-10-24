@@ -160,7 +160,7 @@ def test_image():
     ims = im.clone()
     s = ims.json()
     assert np.allclose(ims.json(s).numpy(), img)
-    assert np.allclose(vipy.image.Image._from_json(s).numpy(), img)
+    assert np.allclose(vipy.image.Image.from_json(s).numpy(), img)
     print('[test_image]: JSON image serialization PASSED')    
 
     im = vipy.image.RandomScene().mindim(64)

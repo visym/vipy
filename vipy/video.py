@@ -28,8 +28,12 @@ import time
 from io import BytesIO
 import vipy.globals
 import vipy.activity
-import json  
-#import ujson as json   # faster, but requires custom package
+
+try:
+    import ujson as json  # faster
+except ImportError:
+    import json
+    
 
 
 ffmpeg_exe = shutil.which('ffmpeg')
@@ -124,9 +128,9 @@ class Video(object):
             self.fromframes(frames)
 
     @classmethod
-    def from_json(obj, s):
-        d = json.loads(s) if not isinstance(s, dict) else s                        
-        v = obj(filename=d['_filename'],
+    def from_json(cls, s):
+        d = json.loads(s) if not isinstance(s, dict) else s
+        v = cls(filename=d['_filename'],
                 url=d['_url'],
                 framerate=d['_framerate'],
                 array=np.array(d['_array']) if d['_array'] is not None else None,
@@ -1096,7 +1100,7 @@ class VideoCategory(Video):
         self._category = category                
 
     @classmethod
-    def from_json(obj, s):
+    def from_json(cls, s):
         d = json.loads(s) if not isinstance(s, dict) else s                        
         v = super().from_json(s)
         v._category = d['_category']
@@ -1199,7 +1203,7 @@ class Scene(VideoCategory):
         self._currentframe = None  # used during iteration only
 
     @classmethod
-    def from_json(obj, s):
+    def from_json(cls, s):
         d = json.loads(s) if not isinstance(s, dict) else s                                
         v = super().from_json(s)
         v._tracks = {t.id():t for t in [vipy.object.Track.from_json(s) for s in d['_tracks'].values()]}
