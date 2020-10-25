@@ -267,7 +267,6 @@ def imwritejet(img, imfile=None):
 def isuint8(img):
     return isnumpy(img) and img.dtype == np.dtype('uint8')
 
-
 def isnumber(x):
     """Is the input a python type of a number or a string containing a number?"""
     return isinstance(x, (int, float)) or (isnumpy(x) and np.isscalar(x)) or (isstring(x) and isfloat(x))

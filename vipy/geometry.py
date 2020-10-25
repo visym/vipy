@@ -123,10 +123,11 @@ class BoundingBox(object):
           bounding rectangle of binary mask image"""
 
     #__slots__ = ['_xmin', '_ymin', '_xmax', '_ymax']  # This is not backwards compatible
-    def __init__(self, xmin=None, ymin=None, xmax=None, ymax=None, centroid=None, xcentroid=None, ycentroid=None, width=None, height=None, mask=None, xywh=None, ulbr=None):
+    def __init__(self, xmin=None, ymin=None, xmax=None, ymax=None, centroid=None, xcentroid=None, ycentroid=None, width=None, height=None, mask=None, xywh=None, ulbr=None, ulbrdict=None):
 
-        isnumber = lambda x: isinstance(x, (int, float))  # override vipy.util.isnumber, force python number types for serialization
-        if xmin is not None and ymin is not None and xmax is not None and ymax is not None:
+        if ulbrdict is not None:
+            self.__dict__ = ulbrdict  # no key or type checking, for classmethod constructor
+        elif xmin is not None and ymin is not None and xmax is not None and ymax is not None:
             if not (isnumber(xmin) and isnumber(ymin) and isnumber(xmax) and isnumber(ymax)):
                 raise ValueError('Box coordinates must be integers or floats not "%s"' % str(type(xmin)))
             self._xmin = float(xmin)
@@ -174,8 +175,7 @@ class BoundingBox(object):
     @classmethod
     def from_json(cls, s):
         d = json.loads(s) if not isinstance(s, dict) else s
-        return cls(xmin=d['_xmin'], ymin=d['_ymin'], xmax=d['_xmax'], ymax=d['_ymax'])
-
+        return cls(ulbrdict=d)
     
     def dict(self):
         return {'xmin':self.xmin(), 'ymin':self.ymin(), 'width':self.width(), 'height':self.height(),

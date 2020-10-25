@@ -164,7 +164,7 @@ class Track(object):
 
     @classmethod
     def from_json(cls, s):
-        d = json.loads(s) if not isinstance(s, dict) else s                
+        d = json.loads(s) if not isinstance(s, dict) else s
         return cls(keyframes=d['_keyframes'],
                    boxes=[BoundingBox.from_json(bbs) for bbs in d['_keyboxes']],
                    category=d['_label'],
