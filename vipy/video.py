@@ -976,15 +976,8 @@ class Video(object):
         return self.saveas(outfile=tempMP4())
     def savetemp(self):
         return self.savetmp()
-        
-    def play(self, verbose=True, notebook=False):
-        """Play the saved video filename in self.filename() using the system 'ffplay', if there is no filename, try to download it """
-        if notebook:
-            try_import("IPython.display", "ipython"); import IPython.display
-            return IPython.display.Video(self.filename(), embed=True)
-        elif not has_ffplay:
-            warnings.warn('"ffplay" executable not found on path, falling back on show() - Install from http://ffmpeg.org/download.html')
-            return self.fastshow()
+
+    def ffplay(self):
         v = self
         if not self.isdownloaded() and self.hasurl():
             v = self.download()
@@ -992,11 +985,24 @@ class Video(object):
             v = self.saveas()  # save to temporary video         
         assert v.hasfilename(), "Video frames must be saved to file prior to play() - Try calling saveas() first"
         cmd = "ffplay %s" % v.filename()
-        if verbose:
+        if True:
             print('[vipy.video.play]: Executing "%s"' % cmd)
         os.system(cmd)
         return self
-
+        
+    def play(self, verbose=True, notebook=False, fps=30):
+        """Play the saved video filename in self.filename() using the system 'ffplay', if there is no filename, try to download it """
+        if notebook:
+            try_import("IPython.display", "ipython"); import IPython.display
+            return IPython.display.Video(self.filename(), embed=True)
+        elif self.isloaded():
+            return self.fastshow(fps=self.framerate())  # play buffer
+        elif not has_ffplay:
+            warnings.warn('"ffplay" executable not found on path, falling back on fastshow() - Install from http://ffmpeg.org/download.html')
+            return self.fastshow(fps=self.framerate())
+        else:
+            return self.ffplay()
+        
     def fastshow(self, fps=30, figure=1):
         """Faster show using interative image show.  This can visualize videos without ffplay, but it cannot guarantee frame rates. Large videos with complex scenes will slow this down and will render at lower frame rates."""
         fps = min(fps, self.framerate()) if fps is not None else self.framerate()
@@ -1393,6 +1399,9 @@ class Scene(VideoCategory):
             self._tracks = {t.id():t for t in tolist(tracks)}  # insertion order preserved (python >=3.6)
             return self
 
+    def track(self, id):
+        return self.tracks(id=id)
+    
     def tracklist(self):
         return list(self._tracks.values())
         
@@ -1858,7 +1867,7 @@ class Scene(VideoCategory):
 
         return self        
 
-    def annotate(self, verbose=True, fontsize=10, captionoffset=(0,0), textfacecolor='white', textfacealpha=1.0, shortlabel=True, boxalpha=0.25, d_category2color={'Person':'green', 'Vehicle':'blue', 'Object':'red'}, categories=None, nocaption=False, nocaption_withstring=[], frame_mutator=None):
+    def annotate(self, verbose=True, fontsize=10, captionoffset=(0,0), textfacecolor='white', textfacealpha=1.0, shortlabel=True, boxalpha=0.25, d_category2color={'Person':'green', 'Vehicle':'blue', 'Object':'red'}, categories=None, nocaption=False, nocaption_withstring=[], mutator=None, timestamp=None, timestampcolor='black', timestampfacecolor=None):
         """Generate a video visualization of all annotated objects and activities in the video, at the resolution and framerate of the underlying video, pixels in this video will now contain the overlay
         This function does not play the video, it only generates an annotation video frames.  Use show() which is equivalent to annotate().saveas().play()
         In general, this function should not be run on very long videos, as it requires loading the video framewise into memory, try running on clips instead.
@@ -1868,7 +1877,8 @@ class Scene(VideoCategory):
         
         assert self.load().isloaded(), "Load() failed"
 
-        f_mutator = frame_mutator if frame_mutator is not None else lambda k,im: im
+        f_mutator = mutator if mutator is not None else lambda k,im: im
+        f_timestamp = timestamp if timestamp is not None else lambda k: None
         
         if verbose:
             print('[vipy.video.annotate]: Annotating video ...')              
@@ -1881,10 +1891,14 @@ class Scene(VideoCategory):
                                               d_category2color=d_category2color,
                                               categories=categories,
                                               nocaption=nocaption,
-                                              figure=1024 if k<(len(self)-1) else None,  # cleanup on last frame
+                                              timestampcolor=timestampcolor,
+                                              timestampfacecolor=timestampfacecolor,
+                                              timestamp=f_timestamp(k),
+                                              figure=1 if k<(len(self)-1) else None,  # cleanup on last frame
                                               nocaption_withstring=nocaption_withstring).numpy() for k in range(0, len(self))]  # SLOW for large videos
-        self._array = np.stack([np.array(PIL.Image.fromarray(img).convert('RGB')) for img in imgs], axis=0)  # replace pixels with annotated pixels
-        return self
+
+        # Replace pixels with annotated pixels and downcast object to vipy.video.Video (since there are no more objects to show)
+        return vipy.video.Video(array=np.stack([np.array(PIL.Image.fromarray(img).convert('RGB')) for img in imgs], axis=0))
 
 
     def show(self, outfile=None, verbose=True, fontsize=10, captionoffset=(0,0), textfacecolor='white', textfacealpha=1.0, shortlabel=True, boxalpha=0.25, d_category2color={'Person':'green', 'Vehicle':'blue', 'Object':'red'}, categories=None, nocaption=False, nocaption_withstring=[], notebook=False):

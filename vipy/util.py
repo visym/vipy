@@ -8,6 +8,8 @@ import numpy as np
 import tempfile
 import time
 from time import gmtime, strftime, localtime
+from datetime import datetime
+import pytz
 import sys
 import csv
 import hashlib
@@ -1330,6 +1332,9 @@ def timestamp():
     """Return date and time string in form DDMMMYY_HHMMSS"""
     return str.upper(strftime("%d%b%y_%I%M%S%p", localtime()))
 
+def clockstamp():
+    """Datetime stamp in eastern timezone with second resolution"""    
+    return datetime.now().astimezone(pytz.timezone("US/Eastern")).strftime("%Y-%m-%dT%H:%M:%S%z")    
 
 def minutestamp():
     """Return date and time string in form DDMMMYY_HHMM"""

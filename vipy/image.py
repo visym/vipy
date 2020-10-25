@@ -983,10 +983,10 @@ class Image(object):
             vipy.show.close(fignum)
             return self
     
-    def show(self, figure=None, nowindow=False):
+    def show(self, figure=None, nowindow=False, timestamp=None, timestampfacecolor=None):
         """Display image on screen in provided figure number (clone and convert to RGB colorspace to show), return object"""
         assert self.load().isloaded(), 'Image not loaded'
-        vipy.show.imshow(self.clone().rgb().numpy(), fignum=figure, nowindow=nowindow)
+        vipy.show.imshow(self.clone().rgb().numpy(), fignum=figure, nowindow=nowindow, timestamp=timestamp, timestampfacecolor=timestampfacecolor)
         return self
 
     def save(self, filename):
@@ -1035,9 +1035,9 @@ class Image(object):
         """Change pixels of this image to include rendered annotation and return an image object"""
         return self.array(self.savefig().rgb().array()).downcast()
     
-    def savefig(self, filename=None, figure=1):
+    def savefig(self, filename=None, figure=1, timestamp=None, timestampcolor='black', timestampfacecolor=None):
         """Save last figure output from self.show() with drawing overlays to provided filename and return filename"""
-        self.show(figure=figure, nowindow=True)  # sets figure dimensions, does not display window
+        self.show(figure=figure, nowindow=True, timestamp=timestamp, timestampcolor=timestampcolor, timestampfacecolor=timestampfacecolor)  # sets figure dimensions, does not display window
         (W,H) = plt.figure(figure).canvas.get_width_height()  # fast
         buf = io.BytesIO()
         plt.figure(1).canvas.print_raw(buf)  # fast
@@ -1748,7 +1748,7 @@ class Scene(ImageCategory):
         return np.sum(self.bghash(bits=bits, asbinary=True) == im.bghash(bits=bits, asbinary=True)) > threshold  # hamming distance threshold
     
         
-    def show(self, categories=None, figure=None, nocaption=False, nocaption_withstring=[], fontsize=10, boxalpha=0.25, d_category2color={'Person':'green', 'Vehicle':'blue', 'Object':'red'}, captionoffset=(0,0), nowindow=False, textfacecolor='white', textfacealpha=1.0, shortlabel=True):
+    def show(self, categories=None, figure=None, nocaption=False, nocaption_withstring=[], fontsize=10, boxalpha=0.25, d_category2color={'Person':'green', 'Vehicle':'blue', 'Object':'red'}, captionoffset=(0,0), nowindow=False, textfacecolor='white', textfacealpha=1.0, shortlabel=True, timestamp=None, timestampcolor='black', timestampfacecolor=None):
         """Show scene detection 
 
            * categories [list]:  List of category (or shortlabel) names in the scene to show
@@ -1776,15 +1776,15 @@ class Scene(ImageCategory):
         imdisplay = self.clone().rgb() if self.colorspace() != 'rgb' else self  # convert to RGB for show() if necessary
         fontsize_scaled = float(fontsize.split(':')[0])*(min(imdisplay.shape())/640.0) if isstring(fontsize) else fontsize
         vipy.show.imdetection(imdisplay._array, valid_detections, bboxcolor=detection_color, textcolor=detection_color, fignum=figure, do_caption=(nocaption==False), facealpha=boxalpha, fontsize=fontsize_scaled,
-                              captionoffset=captionoffset, nowindow=nowindow, textfacecolor=textfacecolor, textfacealpha=textfacealpha)
+                              captionoffset=captionoffset, nowindow=nowindow, textfacecolor=textfacecolor, textfacealpha=textfacealpha, timestamp=timestamp, timestampcolor=timestampcolor, timestampfacecolor=timestampfacecolor)
         return self
 
-    def savefig(self, outfile=None, categories=None, figure=None, nocaption=False, fontsize=10, boxalpha=0.25, d_category2color={'person':'green', 'vehicle':'blue', 'object':'red'}, captionoffset=(0,0), dpi=200, textfacecolor='white', textfacealpha=1.0, shortlabel=True, nocaption_withstring=[]):
+    def savefig(self, outfile=None, categories=None, figure=None, nocaption=False, fontsize=10, boxalpha=0.25, d_category2color={'person':'green', 'vehicle':'blue', 'object':'red'}, captionoffset=(0,0), dpi=200, textfacecolor='white', textfacealpha=1.0, shortlabel=True, nocaption_withstring=[], timestamp=None, timestampcolor='black', timestampfacecolor=None):
         """Save show() output to given file or return buffer without popping up a window"""
-        fignum = figure if figure is not None else 1
+        fignum = figure if figure is not None else 1        
         self.show(categories=categories, figure=fignum, nocaption=nocaption, fontsize=fontsize, boxalpha=boxalpha, 
                   d_category2color=d_category2color, captionoffset=captionoffset, nowindow=True, textfacecolor=textfacecolor, 
-                  textfacealpha=textfacealpha, shortlabel=shortlabel, nocaption_withstring=nocaption_withstring)
+                  textfacealpha=textfacealpha, shortlabel=shortlabel, nocaption_withstring=nocaption_withstring, timestamp=timestamp, timestampcolor=timestampcolor, timestampfacecolor=timestampfacecolor)
         
         if outfile is None:
             buf = io.BytesIO()
@@ -1798,6 +1798,9 @@ class Scene(ImageCategory):
             vipy.show.savefig(outfile, figure, dpi=dpi, bbox_inches='tight', pad_inches=0)
             return outfile
 
+    def framestamp(self):
+        """Add a frame number to the corner of the image"""
+        return vipy.show.text('TEST', 0, 0)
 
 def RandomImage(rows=None, cols=None):
     rows = np.random.randint(128, 1024) if rows is None else rows

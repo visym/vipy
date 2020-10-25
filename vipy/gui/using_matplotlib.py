@@ -122,6 +122,20 @@ def imshow(img, fignum=None):
     return fignum
 
 
+def text(caption, xmin, ymin, fignum=None, textcolor='black', textfacecolor='white', textfacealpha=1.0, fontsize=10, linewidth=3, facecolor='white', facealpha=0.5, alpha=1.0):
+    plt.figure(fignum) if fignum is not None else plt.gcf()
+    lw = linewidth  # pull in the boxes by linewidth so that they do not overhang the figure
+
+    newlines = caption.count('\n')
+    captionoffset = 15*newlines   # move down a bit if near top of image, shift once per newline in caption    
+    try:
+        # MatplotlibDeprecationWarning: The 's' parameter of annotate() has been renamed 'text' since Matplotlib 3.3            
+        handle = plt.annotate(alpha=alpha, text=caption, xy=(xmin,ymin), xytext=(xmin, ymin+captionoffset), xycoords='data', color=textcolor, bbox=None if textfacecolor is None else dict(facecolor=textfacecolor, edgecolor=None, alpha=textfacealpha, boxstyle='square'), fontsize=fontsize, clip_on=True)
+    except:
+        handle = plt.annotate(alpha=alpha, s=caption, xy=(xmin,ymin), xytext=(xmin, ymin+captionoffset), xycoords='data', color=textcolor, bbox=None if textfacecolor is None else dict(facecolor=textfacecolor, edgecolor=None, alpha=textfacealpha, boxstyle='square'), fontsize=fontsize, clip_on=True)        
+
+    return fignum
+
 def boundingbox(img, xmin, ymin, xmax, ymax, bboxcaption=None, fignum=None, bboxcolor='green', facecolor='white', facealpha=0.5, textcolor='black', textfacecolor='white', textfacealpha=1.0, fontsize=10, captionoffset=(0,0), linewidth=3):
     """Draw a captioned bounding box on a previously shown image"""
     plt.figure(fignum)
