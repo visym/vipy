@@ -701,34 +701,34 @@ class Image(object):
     def minsquare(self):
         """Crop image of size (HxW) to (min(H,W), min(H,W)), keeping upper left corner constant"""
         S = np.min(self.load().shape())
-        return self._crop(BoundingBox(xmin=0, ymin=0, width=S, height=S))
+        return self._crop(BoundingBox(xmin=0, ymin=0, width=int(S), height=int(S)))
 
     def maxsquare(self):
         """Crop image of size (HxW) to (max(H,W), max(H,W)) with zeropadding, keeping upper left corner constant"""
         S = np.max(self.load().shape())
         dW = S - self.width()
         dH = S - self.height()
-        return self.zeropad((0,dW), (0,dH))._crop(BoundingBox(0, 0, width=S, height=S))
+        return self.zeropad((0,dW), (0,dH))._crop(BoundingBox(0, 0, width=int(S), height=int(S)))
 
     def maxmatte(self):
         """Crop image of size (HxW) to (max(H,W), max(H,W)) with balanced zeropadding forming a letterbox with top/bottom matte or pillarbox with left/right matte"""
         S = np.max(self.load().shape())
         dW = S - self.width()
         dH = S - self.height()
-        return self.zeropad((int(np.floor(dW//2)), int(np.ceil(dW//2))), (int(np.floor(dH//2)), int(np.ceil(dH//2))))._crop(BoundingBox(0, 0, width=S, height=S))
+        return self.zeropad((int(np.floor(dW//2)), int(np.ceil(dW//2))), (int(np.floor(dH//2)), int(np.ceil(dH//2))))._crop(BoundingBox(0, 0, width=int(S), height=int(S)))
     
     def centersquare(self):
         """Crop image of size (NxN) in the center, such that N=min(width,height), keeping the image centroid constant"""
         N = int(np.min(self.shape()))
-        return self._crop(BoundingBox(xcentroid=self.width() / 2.0, ycentroid=self.height() / 2.0, width=N, height=N))
+        return self._crop(BoundingBox(xcentroid=float(self.width() / 2.0), ycentroid=float(self.height() / 2.0), width=N, height=N))
 
     def centercrop(self, height, width):
         """Crop image of size (height x width) in the center, keeping the image centroid constant"""
-        return self._crop(BoundingBox(xcentroid=self.width() / 2.0, ycentroid=self.height() / 2.0, width=width, height=height))
+        return self._crop(BoundingBox(xcentroid=float(self.width() / 2.0), ycentroid=float(self.height() / 2.0), width=int(width), height=int(height)))
 
     def cornercrop(self, height, width):
         """Crop image of size (height x width) from the upper left corner"""
-        return self._crop(BoundingBox(xmin=0, ymin=0, width=width, height=height))
+        return self._crop(BoundingBox(xmin=0, ymin=0, width=int(width), height=int(height)))
     
     def _crop(self, bbox):
         """Crop the image buffer using the supplied bounding box object, clipping the box to the image rectangle"""
@@ -748,7 +748,7 @@ class Image(object):
 
     def imagebox(self):
         """Return the bounding box for the image rectangle"""
-        return BoundingBox(xmin=0, ymin=0, width=self.width(), height=self.height())
+        return BoundingBox(xmin=0, ymin=0, width=int(self.width()), height=int(self.height()))
 
     def border_mask(self, pad):
         """Return a binary uint8 image the same size as self, with a border of pad pixels in width or height around the edge"""
@@ -1328,7 +1328,7 @@ class ImageDetection(ImageCategory):
     def crop(self):
         """Crop image using stored bounding box, then set the bounding box equal to the new image rectangle"""
         self = super()._crop(self.bbox)
-        self.bbox = BoundingBox(xmin=0, ymin=0, xmax=self.width(), ymax=self.height())
+        self.bbox = BoundingBox(xmin=0, ymin=0, xmax=int(self.width()), ymax=int(self.height()))
         return self
 
     def mindim(self, dim=None, interp='bilinear'):

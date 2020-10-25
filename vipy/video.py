@@ -754,14 +754,14 @@ class Video(object):
         """Crop the video to shape=(H,W) with random position such that the crop contains only valid pixels, and optionally return the box"""
         assert shape[0] <= self.height() and shape[1] <= self.width()  # triggers preview()
         (xmin, ymin) = (np.random.randint(self.height()-shape[0]), np.random.randint(self.width()-shape[1]))
-        bb = vipy.geometry.BoundingBox(xmin=xmin, ymin=ymin, width=shape[1], height=shape[0])  # may be outside frame
+        bb = vipy.geometry.BoundingBox(xmin=int(xmin), ymin=int(ymin), width=int(shape[1]), height=int(shape[0]))  # may be outside frame
         self.crop(bb, zeropad=True)
         return self if not withbox else (self, bb)
 
     def centercrop(self, shape, withbox=False):
         """Crop the video to shape=(H,W) preserving the integer centroid position, and optionally return the box"""
         assert shape[0] <= self.height() and shape[1] <= self.width()  # triggers preview()
-        bb = vipy.geometry.BoundingBox(xcentroid=self.width()/2.0, ycentroid=self.height()/2.0, width=shape[1], height=shape[0]).int()  # may be outside frame
+        bb = vipy.geometry.BoundingBox(xcentroid=float(self.width()/2.0), ycentroid=float(self.height()/2.0), width=float(shape[1]), height=float(shape[0])).int()  # may be outside frame
         self.crop(bb, zeropad=True)
         return self if not withbox else (self, bb)
 
@@ -771,7 +771,7 @@ class Video(object):
 
     def cropeven(self):
         """Crop the video to the largest even (width,height) less than or equal to current (width,height).  This is useful for some codecs or filters which require even shape."""
-        return self.crop(vipy.geometry.BoundingBox(xmin=0, ymin=0, width=vipy.math.even(self.width()), height=vipy.math.even(self.height())))
+        return self.crop(vipy.geometry.BoundingBox(xmin=0, ymin=0, width=int(vipy.math.even(self.width())), height=int(vipy.math.even(self.height()))))
     
     def maxsquare(self):
         """Pad the video to be square, preserving the upper left corner of the video"""
@@ -781,7 +781,7 @@ class Video(object):
         # FIXME: this may trigger an inefficient resizing operation during load()
         d = max(self.shape())
         self._ffmpeg = self._ffmpeg.filter('pad', d+1, d+1, 0, 0)
-        return self.crop(vipy.geometry.BoundingBox(xmin=0, ymin=0, width=d, height=d))
+        return self.crop(vipy.geometry.BoundingBox(xmin=0, ymin=0, width=int(d), height=int(d)))
 
     def maxmatte(self):
         return self.zeropad(max(1, int((max(self.shape()) - self.width())/2)), max(int((max(self.shape()) - self.height())/2), 1))
@@ -1624,7 +1624,7 @@ class Scene(VideoCategory):
         """
         activities = [a for (k,a) in self.activities().items() if (activityid is None or k in set(activityid))]
         boxes = [t.clone().boundingbox().dilate(dilate) for t in self.tracklist() if any([a.hastrack(t) for a in activities])]
-        return boxes[0].union(boxes[1:]) if len(boxes) > 0 else vipy.geometry.BoundingBox(xmin=0, ymin=0, width=self.width(), height=self.height())
+        return boxes[0].union(boxes[1:]) if len(boxes) > 0 else vipy.geometry.BoundingBox(xmin=0, ymin=0, width=int(self.width()), height=int(self.height()))
 
     def activitycuboid(self, activityid=None, dilate=1.0, maxdim=256, bb=None):
         """The activitycuboid() is the fixed square spatial crop corresponding to the activitybox (or supplied bounding box), which contains all of the valid activities in the scene.  This is most useful after activityclip().
@@ -1940,7 +1940,9 @@ class Scene(VideoCategory):
         """Assign a list of vipy.object.Detections at frame k to scene by greedy track association"""
         dets = tolist(dets)
         assert all([isinstance(d, vipy.object.Detection) for d in dets]), "invalid input"
-        assert all([d.confidence() is not None for d in dets]), "Detection must have confidence"
+        if any([d.confidence() is None for d in dets]):
+            warnings.warn('Removing %d detections with no confidence' % len([d.confidence() is None for d in dets]))
+            dets = [d for d in dets if d.confidence() is not None]
         assert frame >= 0 and miniou >= 0 and miniou <= 1.0 and minconf >= 0 and minconf <= 1.0 and maxconf >= 0 and maxconf <= 1.0, "invalid input"
         
         assigned = []

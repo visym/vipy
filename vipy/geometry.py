@@ -128,14 +128,14 @@ class BoundingBox(object):
         isnumber = lambda x: isinstance(x, (int, float))  # override vipy.util.isnumber, force python number types for serialization
         if xmin is not None and ymin is not None and xmax is not None and ymax is not None:
             if not (isnumber(xmin) and isnumber(ymin) and isnumber(xmax) and isnumber(ymax)):
-                raise ValueError('Box coordinates must be integers or floats')
+                raise ValueError('Box coordinates must be integers or floats not "%s"' % str(type(xmin)))
             self._xmin = float(xmin)
             self._ymin = float(ymin)
             self._xmax = float(xmax)
             self._ymax = float(ymax)
         elif xmin is not None and ymin is not None and width is not None and height is not None:
             if not (isnumber(xmin) and isnumber(ymin) and isnumber(width) and isnumber(height)):
-                raise ValueError('Box coordinates must be integers or floats')
+                raise ValueError('Box coordinates must be integers or floats not "%s"' % str(type(width)))
             self._xmin = float(xmin)
             self._ymin = float(ymin)
             self._xmax = self._xmin + float(width)
@@ -299,8 +299,8 @@ class BoundingBox(object):
         if w <= 0:
             raise ValueError('invalid width')
         worig = self.width()
-        self._xmax += (w - worig) / 2.0
-        self._xmin -= (w - worig) / 2.0
+        self._xmax += float((w - worig) / 2.0)
+        self._xmin -= float((w - worig) / 2.0)
         return self
 
     def setheight(self, h):
@@ -308,8 +308,8 @@ class BoundingBox(object):
         if h <= 0:
             raise ValueError('invalid height')
         horig = self.height()
-        self._ymax += (h - horig) / 2.0
-        self._ymin -= (h - horig) / 2.0
+        self._ymax += float((h - horig) / 2.0)
+        self._ymin -= float((h - horig) / 2.0)
         return self
 
     def height(self):
@@ -358,10 +358,10 @@ class BoundingBox(object):
             return tuple([self._xmin, self._ymin, self.width(), self.height()])
         else:
             assert len(xywh) == 4, "Invalid (xmin,ymin,width,height) input"
-            self._xmin = xywh[0]
-            self._ymin = xywh[1]
-            self._xmax = self._xmin + xywh[2]
-            self._ymax = self._ymin + xywh[3]
+            self._xmin = float(xywh[0])
+            self._ymin = float(xywh[1])
+            self._xmax = float(self._xmin + xywh[2])
+            self._ymax = float(self._ymin + xywh[3])
             return self
 
     def xywh(self, xywh_=None):
@@ -374,10 +374,10 @@ class BoundingBox(object):
             return (self.xmin(), self.ymin(), self.xmax(), self.ymax())            
         else:
             assert len(ulbr) == 4, "Invalid (xmin,ymin,xmax,ymax) input"
-            self._xmin = ulbr[0]
-            self._ymin = ulbr[1]
-            self._xmax = ulbr[2]
-            self._ymax = ulbr[3]
+            self._xmin = float(ulbr[0])
+            self._ymin = float(ulbr[1])
+            self._xmax = float(ulbr[2])
+            self._ymax = float(ulbr[3])
             return self
 
     def to_ulbr(self, ulbr=None):
@@ -685,15 +685,16 @@ class BoundingBox(object):
         return self.imclip(width=W, height=H)
 
     def convexhull(self, fr):
-        """Given a set of points [[x1,y1],[x2,xy],...], return the bounding rectangle"""
-        self._xmin = np.min(fr[:,0])
-        self._ymin = np.min(fr[:,1])
-        self._xmax = np.max(fr[:,0])
-        self._ymax = np.max(fr[:,1])
+        """Given a set of points [[x1,y1],[x2,xy],...], return the bounding rectangle, typecast to float"""
+        self._xmin = float(np.min(fr[:,0]))
+        self._ymin = float(np.min(fr[:,1]))
+        self._xmax = float(np.max(fr[:,0]))
+        self._ymax = float(np.max(fr[:,1]))
         return self
 
     def aspectratio(self):
         """Return the aspect ratio (width/height) of the box"""
+        assert self.height() > 0
         return float(self.width()) / float(self.height())
 
     def shape(self):
@@ -701,16 +702,16 @@ class BoundingBox(object):
         return (self.height(), self.width())
 
     def mindimension(self):
-        """Return min(width, height)"""
-        return np.min(self.shape())
+        """Return min(width, height) typecast to float"""
+        return float(np.min(self.shape()))
 
     def mindim(self):
-        """Return min(width, height)"""
-        return np.min(self.shape())
+        """Return min(width, height) typecast to float"""
+        return float(np.min(self.shape()))
 
     def maxdim(self):
-        """Return max(width, height)"""
-        return np.max(self.shape())
+        """Return max(width, height) typecast to float"""
+        return float(np.max(self.shape())) 
     
     def ellipse(self):
         """Convert the boundingbox to a vipy.geometry.Ellipse object"""
