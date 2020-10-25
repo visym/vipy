@@ -549,12 +549,13 @@ def scpload(url):
                 
 def save(vars, outfile, mode=None):
     """Save variables as a dill pickled file"""
+    allowable = set(['.pkl', '.json'])
     if ispkl(outfile):
         format = 'dill'
     elif isjsonfile(outfile):
         format = 'json'
     else:
-        raise ValueError('unknown file type')
+        raise ValueError('Unknown file extension "%s" - must be in %s' % (fileext(outfile), str(allowable)))
     
     outfile = saveas(vars, outfile, format=format)
     if mode is not None:

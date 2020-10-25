@@ -99,8 +99,12 @@ class Detection(BoundingBox):
     def clone(self):
         return copy.deepcopy(self)
 
-    def confidence(self):
-        return self._confidence
+    def confidence(self, c=None):
+        if c is None:
+            return self._confidence
+        else:
+            self._confidence = c
+            return self
     
     
 class Track(object):
@@ -159,9 +163,9 @@ class Track(object):
             self._keyboxes = list(boxes)
 
     @classmethod
-    def from_json(obj, s):
+    def from_json(cls, s):
         d = json.loads(s) if not isinstance(s, dict) else s                
-        return obj(keyframes=d['_keyframes'],
+        return cls(keyframes=d['_keyframes'],
                    boxes=[BoundingBox.from_json(bbs) for bbs in d['_keyboxes']],
                    category=d['_label'],
                    confidence=None,
@@ -229,21 +233,15 @@ class Track(object):
         return self
         
     def replace(self, keyframe, box):
-        """Replace a keyframe and associated box to track, preserve sorted order of keyframes"""
-        assert isinstance(box, BoundingBox), "Invalid input - Box must be vipy.geometry.BoundingBox()"
-        assert box.isvalid(), "Invalid input - Box must be non-degenerate"
-        assert keyframe in self._keyframes, "Keyframe not found"
-        self._keyboxes[self._keyframes.index(keyframe)] = box
-        return self
+        """Replace the keyframe and associated box(es), preserve sorted order of keyframes"""
+        return self.delete(keyframe).add(keyframe, box)
 
     def delete(self, keyframe):
         """Replace a keyframe and associated box to track, preserve sorted order of keyframes"""
-        assert keyframe in self._keyframes, "Keyframe not found"
-        k = self._keyframes.index(keyframe)
-        del self._keyboxes[k]
-        del self._keyframes[k]
-        if len(self._keyframes) == 0:
-            warnings.warn('[vipy.object.Track]: Attempting to delete keyframe %d from empty track "%s" - Ignoring' % (keyframe, str(self)))
+        while keyframe in self._keyframes:
+            k = self._keyframes.index(keyframe)
+            del self._keyboxes[k]
+            del self._keyframes[k]
         return self
     
     def keyframes(self):
@@ -293,7 +291,7 @@ class Track(object):
                       category=self.category(),
                       shortlabel=self.shortlabel())
         d.attributes['trackid'] = self.id()  # for correspondence of detections to tracks
-        return d if self._boundary == 'extend' else (None if not self.during(k) else d)
+        return d if self._boundary == 'extend' or self.during(k) else None
 
 
     def category(self, label=None, shortlabel=True):
@@ -499,6 +497,26 @@ class Track(object):
                 raise
         return self
 
+    def extrapolate(self, k, smoothingfactor=None, strict=False):
+        """Track extrapolation by quadratic spline fit.  Smoothing factor will increase with smoothing > 1 and decrease with 0 < smoothing < 1.
+
+           Requires at least 3 keyboxes.
+           Requires optional package scipy.
+        """
+        if self.during(k):
+            return self[k]
+        
+        try_import('scipy', 'scipy');  import scipy.interpolate;
+        assert smoothingfactor is None or smoothingfactor > 0
+        assert len(self._keyframes) >= 3, "Invalid length for quadratic spline extrapolation"
+        s = smoothingfactor * len(self._keyframes) if smoothingfactor is not None else None
+        (xmin, ymin, xmax, ymax) = zip(*[bb.to_ulbr() for bb in self._keyboxes])
+        f_xmin = scipy.interpolate.UnivariateSpline(self._keyframes, xmin, check_finite=False, s=s, k=2)
+        f_ymin = scipy.interpolate.UnivariateSpline(self._keyframes, ymin, check_finite=False, s=s, k=2)
+        f_xmax = scipy.interpolate.UnivariateSpline(self._keyframes, xmax, check_finite=False, s=s, k=2)
+        f_ymax = scipy.interpolate.UnivariateSpline(self._keyframes, ymax, check_finite=False, s=s, k=2)
+        return Detection(xmin=float(f_xmin(k)), ymin=float(f_ymin(k)), xmax=float(f_xmax(k)), ymax=float(f_ymax(k)))
+    
     def imclip(self, width, height):
         """Clip the track to the image rectangle (width, height).  If a keybox is outside the image rectangle, remove it otherwise clip to the image rectangle. 
            This operation can change the length of the track and the size of the keyboxes.  The result may be an empty track if the track is completely outside
@@ -523,6 +541,24 @@ class Track(object):
     def significant_digits(self, n):
         self._keyboxes = [bb.significant_digits(n) for bb in self._keyboxes]
         return self
+
+    def velocity(self, f, dt=5):
+        """Return the (x,y) track velocity at frame f in units of pixels per frame computed by finite difference"""
+        assert f >= 0 and dt > 0 and self.during(f)              
+        return (self.velocity_x(f, dt), self.velocity_y(f, dt))
+
+    def velocity_x(self, f, dt=5):
+        """Return the (x) track velocity at frame f in units of pixels per frame computed by finite difference"""
+        assert f >= 0 and dt > 0 and self.during(f)
+        return (self[f].centroid_x() - self[f-dt].centroid_x())/float(dt)
+
+    def velocity_y(self, f, dt=5):
+        """Return the (y) track velocity at frame f in units of pixels per frame computed by finite difference"""
+        assert f >= 0 and dt > 0 and self.during(f)
+        return (self[f].centroid_y() - self[f-dt].centroid_y())/float(dt)
+    
+    def nearest_keyframe(self, f):
+        return self._keyframes[int(np.abs(np.array(self._keyframes) - f).argmin())]
 
     
 def non_maximum_suppression(detlist, conf, iou, bycategory=False):

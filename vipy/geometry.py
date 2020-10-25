@@ -125,6 +125,7 @@ class BoundingBox(object):
     #__slots__ = ['_xmin', '_ymin', '_xmax', '_ymax']  # This is not backwards compatible
     def __init__(self, xmin=None, ymin=None, xmax=None, ymax=None, centroid=None, xcentroid=None, ycentroid=None, width=None, height=None, mask=None, xywh=None, ulbr=None):
 
+        isnumber = lambda x: isinstance(x, (int, float))  # override vipy.util.isnumber, force python number types for serialization
         if xmin is not None and ymin is not None and xmax is not None and ymax is not None:
             if not (isnumber(xmin) and isnumber(ymin) and isnumber(xmax) and isnumber(ymax)):
                 raise ValueError('Box coordinates must be integers or floats')
@@ -171,9 +172,9 @@ class BoundingBox(object):
             raise ValueError('invalid constructor input')
 
     @classmethod
-    def from_json(obj, s):
+    def from_json(cls, s):
         d = json.loads(s) if not isinstance(s, dict) else s
-        return obj(xmin=d['_xmin'], ymin=d['_ymin'], xmax=d['_xmax'], ymax=d['_ymax'])
+        return cls(xmin=d['_xmin'], ymin=d['_ymin'], xmax=d['_xmax'], ymax=d['_ymax'])
 
     
     def dict(self):
@@ -271,9 +272,9 @@ class BoundingBox(object):
 
     def invalid(self):
         """Is the box a valid bounding box?"""
-        is_undefined = np.isnan(self._xmin) or np.isnan(self._ymin) or np.isnan(self._xmax) or np.isnan(self._ymax)
-        is_degenerate = ((self._xmax - self._xmin) <= 0) or ((self._ymax - self._ymin) <= 0) or (self._xmin >= self._xmax) or (self._ymin >= self._ymax)
-        return is_undefined or is_degenerate
+        #is_undefined = np.isnan(self._xmin) or np.isnan(self._ymin) or np.isnan(self._xmax) or np.isnan(self._ymax)
+        is_valid = ((self._xmax - self._xmin) >= 0) and ((self._ymax - self._ymin) >= 0)  # if nan, will return False
+        return not is_valid
 
     def valid(self):
         return not self.invalid()
@@ -333,11 +334,17 @@ class BoundingBox(object):
     def xcentroid(self):
         """Alias for x_centroid()"""
         return self.centroid()[0]
-   
+    def centroid_x(self):
+        """Alias for x_centroid()"""
+        return self.centroid()[0]
+            
     def y_centroid(self):
         return self.centroid()[1]
 
     def ycentroid(self):
+        """Alias for y_centroid()"""
+        return self.centroid()[1]
+    def centroid_y(self):
         """Alias for y_centroid()"""
         return self.centroid()[1]
     

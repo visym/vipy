@@ -922,9 +922,12 @@ class Video(object):
     def savetemp(self):
         return self.savetmp()
         
-    def play(self, verbose=True):
+    def play(self, verbose=True, notebook=False):
         """Play the saved video filename in self.filename() using the system 'ffplay', if there is no filename, try to download it """
-        if not has_ffplay:
+        if notebook:
+            try_import("IPython.display", "ipython"); import IPython.display
+            return IPython.display.Video(self.filename(), embed=True)
+        elif not has_ffplay:
             warnings.warn('"ffplay" executable not found on path, falling back on show() - Install from http://ffmpeg.org/download.html')
             return self.fastshow()
         v = self
@@ -1863,11 +1866,7 @@ class Scene(VideoCategory):
                                   categories=categories,
                                   nocaption=nocaption, 
                                   nocaption_withstring=nocaption_withstring).saveas(outfile)
-        if notebook:
-            try_import("IPython.display", "ipython"); import IPython.display
-            return IPython.display.Video(v.filename(), embed=True)
-        else:
-            return v.play()
+        return v.play(notebook=notebook)
     
 
     def fastshow(self, outfile=None, verbose=True, fontsize=10, captionoffset=(0,0), textfacecolor='white', textfacealpha=1.0, shortlabel=True, boxalpha=0.25, d_category2color={'Person':'green', 'Vehicle':'blue', 'Object':'red'}, categories=None, nocaption=False, nocaption_withstring=[], figure=1, fps=None):
@@ -1933,7 +1932,35 @@ class Scene(VideoCategory):
         return self
 
     def downcast(self):
+        """Cast the object to a vipy.video.Video class"""
         self.__class__ = vipy.video.Video
+        return self
+
+    def assign(self, frame, dets, miniou=0.8, minconf=0.2, maxconf=0.8, maxhistory=30):
+        """Assign a list of vipy.object.Detections at frame k to scene by greedy track association"""
+        dets = tolist(dets)
+        assert all([isinstance(d, vipy.object.Detection) for d in dets]), "invalid input"
+        assert all([d.confidence() is not None for d in dets]), "Detection must have confidence"
+        assert frame >= 0 and miniou >= 0 and miniou <= 1.0 and minconf >= 0 and minconf <= 1.0 and maxconf >= 0 and maxconf <= 1.0, "invalid input"
+        
+        assigned = []
+        assignments = [(t, d.confidence(), d.iou(t.extrapolate(frame)), d)
+                       for (tid, t) in self.tracks().items()
+                       for d in dets
+                       if (t.during(frame) or (frame - t.endframe()) < maxhistory) and t.category() == d.category()]        
+        for (t, conf, iou, d) in sorted(assignments, key=lambda x: x[1]*x[2], reverse=True):
+            if (iou > miniou) and (conf > minconf):
+                if t.id() not in assigned:
+                    t.add(frame, d)  # track assignment
+                assigned.append(t.id())
+                assigned.append(d.id())
+
+        for t in self.tracks().values():
+            if t.id() not in assigned and (frame - t.endframe()) < maxhistory:
+                t.add(frame, t.extrapolate(frame))  # track prediction, otherwise death
+        for d in dets:
+            if d.confidence() >= maxconf and d.id() not in assigned:
+                self.add(vipy.object.Track(keyframes=[frame], boxes=[d], category=d.category(), framerate=self.framerate(), confidence=d.confidence()), rangecheck=False)  # track birth
         return self
 
     
