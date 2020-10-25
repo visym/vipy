@@ -126,7 +126,10 @@ class BoundingBox(object):
     def __init__(self, xmin=None, ymin=None, xmax=None, ymax=None, centroid=None, xcentroid=None, ycentroid=None, width=None, height=None, mask=None, xywh=None, ulbr=None, ulbrdict=None):
 
         if ulbrdict is not None:
-            self.__dict__ = ulbrdict  # no key or type checking, for classmethod constructor
+            self._xmin = ulbrdict['_xmin']
+            self._ymin = ulbrdict['_ymin']
+            self._xmax = ulbrdict['_xmax']
+            self._ymax = ulbrdict['_ymax']                                  
         elif xmin is not None and ymin is not None and xmax is not None and ymax is not None:
             if not (isnumber(xmin) and isnumber(ymin) and isnumber(xmax) and isnumber(ymax)):
                 raise ValueError('Box coordinates must be integers or floats not "%s"' % str(type(xmin)))
