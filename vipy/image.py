@@ -6,7 +6,6 @@ import platform
 import dill
 import vipy.show
 from vipy.globals import print
-from vipy.show import imshow, imbbox, savefig, colorlist
 from vipy.util import isnumpy, isurl, isimageurl, \
     fileext, tempimage, mat2gray, imwrite, imwritegray, \
     tempjpg, filetail, isimagefile, remkdir, hasextension, \
@@ -987,7 +986,7 @@ class Image(object):
     def show(self, figure=None, nowindow=False):
         """Display image on screen in provided figure number (clone and convert to RGB colorspace to show), return object"""
         assert self.load().isloaded(), 'Image not loaded'
-        imshow(self.clone().rgb().numpy(), fignum=figure, nowindow=nowindow)
+        vipy.show.imshow(self.clone().rgb().numpy(), fignum=figure, nowindow=nowindow)
         return self
 
     def save(self, filename):
@@ -1032,14 +1031,18 @@ class Image(object):
         alt_text = alt if alt is not None else self.filename()
         return '<img src="data:image/jpeg;charset=utf-8;base64,%s" alt="%s" loading="lazy">' % (b, str(alt_text))
 
-    def savefig(self, filename=None):
+    def annotate(self):
+        """Change pixels of this image to include rendered annotation and return an image object"""
+        return self.array(self.savefig().rgb().array()).downcast()
+    
+    def savefig(self, filename=None, figure=1):
         """Save last figure output from self.show() with drawing overlays to provided filename and return filename"""
-        self.show(figure=1, nowindow=True)  # sets figure dimensions, does not display window
-        (W,H) = plt.figure(1).canvas.get_width_height()  # fast
+        self.show(figure=figure, nowindow=True)  # sets figure dimensions, does not display window
+        (W,H) = plt.figure(figure).canvas.get_width_height()  # fast
         buf = io.BytesIO()
         plt.figure(1).canvas.print_raw(buf)  # fast
         img = np.frombuffer(buf.getvalue(), dtype=np.uint8).reshape((H, W, 4))  # RGBA
-        plt.close(1)  # memory cleanup
+        vipy.show.close(figure)
         t = vipy.image.Image(array=img, colorspace='rgba')
         if filename is not None:
             t.saveas(filename)
@@ -1056,6 +1059,10 @@ class Image(object):
             self.colorspace('float')  # unknown colorspace after transformation, set generic
         return self
 
+    def downcast(self):
+        """Cast the class to the base class (vipy.image.Image)"""
+        self.__class__ = vipy.image.Image
+        return self
     
 class ImageCategory(Image):
     """vipy ImageCategory class
@@ -1380,10 +1387,10 @@ class ImageDetection(ImageCategory):
             warnings.warn('Ignoring invalid bounding box "%s"' % str(self.bbox))
         if self.bbox.valid() and self.bbox.hasoverlap(self.array()) and self.bbox.shape() != self._array.shape[0:2]:
             self.imclip()  # crop bbox to image rectangle for valid overlay image
-            imbbox(self.clone().rgb()._array, self.bbox.xmin(),
-                   self.bbox.ymin(), self.bbox.xmax(), self.bbox.ymax(),
-                   bboxcaption=self.category(),
-                   fignum=figure, nowindow=nowindow)
+            vipy.show.imbbox(self.clone().rgb()._array, self.bbox.xmin(),
+                             self.bbox.ymin(), self.bbox.xmax(), self.bbox.ymax(),
+                             bboxcaption=self.category(),
+                             fignum=figure, nowindow=nowindow)
         else:
             # Do not display the box if the box is degenerate or equal to the image rectangle
             super().show(figure=figure, nowindow=nowindow)
@@ -1548,6 +1555,7 @@ class Scene(ImageCategory):
         return self.objects( vipy.object.non_maximum_suppression(self.objects(), conf, iou, bycategory=True) )
 
     def union(self, other):
+        """Combine the objects of the scene with other and self with no duplicate checking"""
         if isinstance(other, Scene):
             self._objectlist.extend(other.objects())
         return self
@@ -1757,7 +1765,7 @@ class Scene(ImageCategory):
            * shortlabel (bool):  Whether to show the shortlabel or the full category name in the caption
 
         """
-        colors = colorlist()        
+        colors = vipy.show.colorlist()        
         valid_detections = [obj.clone() for obj in self._objectlist if categories is None or obj.category() in tolist(categories)]  # Detections with valid category
         valid_detections = [obj.imclip(self.numpy()) for obj in valid_detections if obj.hasoverlap(self.numpy())]  # Detections within image rectangle
         valid_detections = [obj.category(obj.shortlabel()) for obj in valid_detections] if shortlabel else valid_detections  # Display name as shortlabel?               
@@ -1773,7 +1781,7 @@ class Scene(ImageCategory):
 
     def savefig(self, outfile=None, categories=None, figure=None, nocaption=False, fontsize=10, boxalpha=0.25, d_category2color={'person':'green', 'vehicle':'blue', 'object':'red'}, captionoffset=(0,0), dpi=200, textfacecolor='white', textfacealpha=1.0, shortlabel=True, nocaption_withstring=[]):
         """Save show() output to given file or return buffer without popping up a window"""
-        fignum = figure if figure is not None else plt.gcf().number
+        fignum = figure if figure is not None else 1
         self.show(categories=categories, figure=fignum, nocaption=nocaption, fontsize=fontsize, boxalpha=boxalpha, 
                   d_category2color=d_category2color, captionoffset=captionoffset, nowindow=True, textfacecolor=textfacecolor, 
                   textfacealpha=textfacealpha, shortlabel=shortlabel, nocaption_withstring=nocaption_withstring)
@@ -1787,7 +1795,7 @@ class Scene(ImageCategory):
                 vipy.show.close(plt.gcf().number)   # memory cleanup (useful for video annotation on last frame)
             return vipy.image.Image(array=img, colorspace='rgba')
         else:
-            savefig(outfile, figure, dpi=dpi, bbox_inches='tight', pad_inches=0)
+            vipy.show.savefig(outfile, figure, dpi=dpi, bbox_inches='tight', pad_inches=0)
             return outfile
 
 
