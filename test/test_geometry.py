@@ -95,15 +95,16 @@ def test_boundingbox():
     bb = BoundingBox(xmin=0, ymin=0, width=10, height=10.2)
     print('[test_geometry.boundingbox]: (x,y,w,h) constructor: PASSED')
 
-    bb = BoundingBox(xmin='0', ymin='0.5', width='1E2', height='10.2')
-    print('[test_geometry.boundingbox]: (x,y,w,h) string constructor: PASSED')
-
-    bb = BoundingBox(xmin='0', ymin='0.5', xmax='1E2', ymax='1000.2')
-    print('[test_geometry.boundingbox]: (xmin,ymin,xmax,ymax) constructor: PASSED')
-
-    bb = BoundingBox(centroid=('0',0), width=10, height=10)
-    print('[test_geometry.boundingbox]: (centroid, width, height) constructor: PASSED')
-
+    try:
+        bb = BoundingBox(xmin='0', ymin='0.5', width='1E2', height='10.2')
+        bb = BoundingBox(xmin='0', ymin='0.5', xmax='1E2', ymax='1000.2')
+        bb = BoundingBox(centroid=('0',0), width=10, height=10)
+        raise Failed()
+    except Failed:
+        raise
+    except:
+        print('[test_geometry.boundingbox]: (x,y,w,h) invalid string constructor: PASSED')
+        
     assert BoundingBox(centroid=(0,0), width=10, height=20) == BoundingBox(xmin=-5, ymin=-10, width=10, height=20)
     assert BoundingBox(xmin=10, ymin=20, xmax=30, ymax=40) != BoundingBox(xmin=-5, ymin=-10, width=10, height=20)
     print('[test_geometry.boundingbox]: equivalence PASSED')
