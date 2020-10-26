@@ -30,6 +30,7 @@ import itertools
 import vipy.globals
 import vipy.activity
 import hashlib
+import pathlib
 
 try:
     import ujson as json  # faster
@@ -268,7 +269,14 @@ class Video(object):
                 
         return Stream(self)
 
-        
+
+    def bytes(self):
+        """Return a bytes representation of the video file"""
+        assert self.hasfilename(), "Invalid filename"
+        with open(self.filename(), 'rb') as f:
+            data = io.BytesIO(f.read())
+        return str(data.read()).encode('UTF-8')
+    
     def frames(self):
         """Alias for __iter__()"""
         return self.__iter__()
@@ -1012,7 +1020,7 @@ class Video(object):
             try_import("IPython.display", "ipython"); import IPython.display
             if not self.hasfilename() or self.isloaded() or self.isdirty():
                 v = self.saveas(tempMP4())                 
-                warnings.warn('Saving video to temporary file "%s" for notebook viewer ... ' % v.filename())                
+                warnings.warn('Saving video to temporary file "%s" for notebook viewer ... ' % v.filename())
                 return IPython.display.Video(v.filename(), embed=True)
             return IPython.display.Video(self.filename(), embed=True)
         elif has_ffplay:
@@ -1029,7 +1037,8 @@ class Video(object):
                         break                    
             vipy.show.close(figure)
             return self
-    
+
+
     def torch(self, startframe=0, endframe=None, length=None, stride=1, take=None, boundary='repeat', order='nchw', verbose=False, withslice=False, scale=1.0):
         """Convert the loaded video of shape N HxWxC frames to an MxCxHxW torch tensor, forces a load().
            Order of arguments is (startframe, endframe) or (startframe, startframe+length) or (random_startframe, random_starframe+takelength), then stride or take.
