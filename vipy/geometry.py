@@ -189,7 +189,7 @@ class BoundingBox(object):
 
     def dict(self):
         """Return a python dictionary containing the relevant serialized attributes suitable for JSON encoding"""
-        return self.json(s=None, encode=False)
+        return self.json(encode=False)
     
     def json(self, encode=True):
         return json.dumps(self.__dict__) if encode else self.__dict__
