@@ -26,8 +26,17 @@ import uuid
 import platform
 import time
 from io import BytesIO
+import itertools
 import vipy.globals
 import vipy.activity
+import hashlib
+import pathlib
+
+try:
+    import ujson as json  # faster
+except ImportError:
+    import json
+    
 
 
 ffmpeg_exe = shutil.which('ffmpeg')
@@ -120,6 +129,28 @@ class Video(object):
             self.colorspace(colorspace)
         elif frames is not None:
             self.fromframes(frames)
+
+    @classmethod
+    def cast(cls, v):
+        assert isinstance(v, vipy.video.Video), "Invalid input - must be derived from vipy.video.Video"
+        v.__class__ = vipy.video.Video
+        return v
+            
+    @classmethod
+    def from_json(cls, s):
+        d = json.loads(s) if not isinstance(s, dict) else s
+        v = cls(filename=d['_filename'],
+                url=d['_url'],
+                framerate=d['_framerate'],
+                array=np.array(d['_array']) if d['_array'] is not None else None,
+                colorspace=d['_colorspace'],
+                attributes=d['attributes'],
+                startframe=d['_startframe'],
+                endframe=d['_endframe'],
+                startsec=d['_startsec'],
+                endsec=d['_endsec'])
+        v._ffmpeg = v._from_ffmpeg_commandline(d['_ffmpeg'])
+        return v.filename(d['_filename'])
             
     def __repr__(self):
         strlist = []
@@ -143,29 +174,109 @@ class Video(object):
 
     def __getitem__(self, k):
         """Return the kth frame as an vipy.image object"""
-        assert isinstance(k, int), "Indexing video by frame must be integer"
-        if not self.isloaded():
-            raise ValueError('Video not loaded, load() before indexing')        
-        elif k >= 0 and k < len(self):
-            return Image(array=self._array[k], colorspace=self.colorspace())
-        else:
-            raise ValueError('Invalid frame index %d ' % k)
+        return self.frame(k)
 
     def metadata(self):
         """Return a dictionary of metadata about this video"""
         return self.attributes
 
-    def frame(self, k):
+    def frame(self, k, img=None):
         """Alias for self.__getitem__[k]"""
-        return self.__getitem__(k)
+        assert img is not None or self.isloaded(), 'Video not loaded, load() before frame indexing or using stream()'
+        assert isinstance(k, int) and k>=0, "Frame index must be non-negative integer"
+        assert img is not None or k<len(self), "Invalid frame index %d - Indexing video by frame must be integer within (0, %d)" % (k, len(self))
+        return Image(array=img if img is not None else self._array[k], colorspace=self.colorspace())        
         
     def __iter__(self):
-        """Iterate over frames, yielding vipy.image.Image object for each frame"""
-        self.load().numpy()  # triggers copy, mutable
+        """Iterate over loaded video, yielding mutable frames"""
+        self.load().numpy()  # triggers load and copy of read-only video buffer, mutable
         with np.nditer(self._array, op_flags=['readwrite']) as it:
             for k in range(0, len(self)):
+                self._currentframe = k    # used only for incremental add()                
                 yield self.__getitem__(k)
+            self._currentframe = None    # used only for incremental add()
 
+    def stream(self, write=False, overwrite=False):
+        """Iterator to yield frames streaming from video"""
+
+        class Stream(object):
+            def __init__(self, v):
+                self._video = v
+                self._pipe = None
+                self._frame_index = None
+                self._vcodec = 'libx264'
+                self._framerate = self._video.framerate()
+                self._outfile = self._video.filename()
+                self._write = write or overwrite               
+                assert self._write is False or (overwrite is True or not os.path.exists(self._outfile)), "Output file '%s' exists - Writable stream cannot overwrite existing video file unless overwrite=True" % self._outfile
+                self._shape = self._video.shape() if self._video.canload() else None  # shape for write can be defined by first frame
+                
+            def __enter__(self):
+                if self._write and self._shape is not None:
+                    (height, width) = self._shape
+                    self._pipe = ffmpeg.input('pipe:', format='rawvideo', pix_fmt='rgb24', s='{}x{}'.format(width, height), r=self._framerate) \
+                                       .filter('pad', 'ceil(iw/2)*2', 'ceil(ih/2)*2') \
+                                       .output(filename=self._outfile, pix_fmt='yuv420p', vcodec=self._vcodec) \
+                                       .overwrite_output() \
+                                       .global_args('-cpuflags', '0', '-loglevel', 'panic' if not vipy.globals.isdebug() else 'debug') \
+                                       .run_async(pipe_stdin=True)
+                elif not self._write:
+                    self._pipe = (self._video._ffmpeg.output('pipe:', format='rawvideo', pix_fmt='rgb24').global_args('-loglevel', 'debug' if vipy.globals.isdebug() else 'panic').run_async(pipe_stdout=True))                                                
+                self._frame_index = 0
+                return self
+            
+            def __exit__(self, type, value, tb):
+                self.close()
+                if type is not None:
+                    raise
+                return self
+            
+            def read(self):
+                assert self._pipe is not None and self._write is False, "Stream is write only"
+                (height, width) = self._shape
+                in_bytes = self._pipe.stdout.read(height * width * 3)
+                if not in_bytes:
+                    return None
+                else:
+                    img = np.frombuffer(in_bytes, np.uint8).reshape([height, width, 3])                    
+                    im = self._video.frame(self._frame_index, img)
+                    self._frame_index = self._frame_index + 1
+                    return im
+
+            def write(self, im):
+                if self._shape is None:
+                    self._shape = im.shape()
+                    self.__enter__()
+                assert self._pipe is not None and self._write is True, "Stream is read only"                
+                assert im.shape() == self._shape, "Shape cannot change during writing"
+                self._pipe.stdin.write(im.array().astype(np.uint8).tobytes())
+
+            def close(self):
+                if self._pipe is not None:
+                    if self._write:
+                        self._pipe.stdin.close()
+                        self._pipe.wait()
+                    del self._pipe
+                    self._pipe = None
+                
+            def __iter__(self):
+                with self as s:
+                    while True:
+                        im = s.read()
+                        if im is None:
+                            break
+                        yield(im)
+                
+        return Stream(self)
+
+
+    def bytes(self):
+        """Return a bytes representation of the video file"""
+        assert self.hasfilename(), "Invalid filename"
+        with open(self.filename(), 'rb') as f:
+            data = io.BytesIO(f.read())
+        return str(data.read()).encode('UTF-8')
+    
     def frames(self):
         """Alias for __iter__()"""
         return self.__iter__()
@@ -181,7 +292,7 @@ class Video(object):
                
     def _ffmpeg_commandline(self, f=None):
         """Return the ffmpeg command line string that will be used to process the video"""
-        cmd = f.compile() if f is not None else self._ffmpeg.output('vipy_output.mp4').compile()
+        cmd = f.compile() if f is not None else self._ffmpeg.output('dummyfile').compile()
         for (k,c) in enumerate(cmd):
             if c is None:
                 cmd[k] = str(c)
@@ -191,6 +302,37 @@ class Video(object):
                 cmd[k+1] = '"%s"' % str(cmd[k+1])
         return str(' ').join(cmd)
 
+    def _from_ffmpeg_commandline(self, cmd):
+        args = cmd.split(' ')
+        assert args[0] == 'ffmpeg'
+        assert args[1] == '-i'
+        assert args[3] == '-filter_complex'
+        assert args[4][0] == '"' and args[4][-1] == '"'
+
+        f = ffmpeg.input(args[2])        
+        filterargs = args[4][1:-1].split(';')
+        for a in filterargs:
+            assert a.count(']') == 2 and a.count('[') == 2
+            kwstr = a.split(']', maxsplit=1)[1].split('[', maxsplit=1)[0]
+            if kwstr.count('=') == 0:
+                f = f.filter(kwstr)
+            else:
+                (a, kw) = ([], {}) 
+                (filtername, kwstr) = kwstr.split('=', maxsplit=1)
+                for s in kwstr.split(':'):
+                    if s.count('=') > 0:
+                        (k,v) = s.split('=')
+                        kw[k] = v
+                    else:
+                        a.append(s)
+                f = f.filter(filtername, *a, **kw)
+        assert self._ffmpeg_commandline(f.output('dummyfile')) == cmd
+        return f
+
+    def isdirty(self):
+        """Has the FFMPEG filter chain been modified from the default?  If so, then ffplay() on the video file will be different from self.load().play()"""
+        return '-filter_complex' in self._ffmpeg_commandline() and '[s1]' in self._ffmpeg_commandline()
+    
     def probe(self):
         """Run ffprobe on the filename and return the result as a JSON file"""
         if not has_ffprobe:
@@ -204,29 +346,29 @@ class Video(object):
             print(prefix+self.__repr__())
         return self
 
-    def stream(self):
-        # FIXME: Streaming video access for large videos that will not fit into memory
-        # https://github.com/kkroening/ffmpeg-python/blob/master/examples/README.md
-        # FIXME: https://github.com/kkroening/ffmpeg-python/issues/78
-        raise NotImplementedError('Streaming video access for large videos that will not fit into memory - Try clip() first')
-        
     def __array__(self):
         """Called on np.array(self) for custom array container, (requires numpy >=1.16)"""
         return self.numpy()
-                
+
     def dict(self):
-        video = {'filename':self.filename(),
-                 'url':self.url(),
-                 'ffmpeg':self._ffmpeg_commandline(),
-                 'height':self.height() if self.isloaded() else None,
-                 'width':self.width() if self.isloaded() else None,
-                 'channels':self.channels() if self.isloaded() else None,
-                 'colorspace':self.colorspace(),
-                 'framerate':self._framerate,
-                 'attributes':self.attributes,
-                 'array':self.array()}
-        return {'video':video}
-             
+        """Return a python dictionary containing the relevant serialized attributes suitable for JSON encoding"""
+        return self.json(s=None, encode=False)
+
+    def json(self, encode=True):
+        assert not self.isloaded(), "JSON serialization of video requires flushed buffers, try calling v.flush() or v.saveas('/path/to.mp4', flush=True) first"
+        d = {'_filename':self._filename,
+             '_url':self._url,
+             '_framerate':self._framerate,
+             '_array':self._array.tolist() if self._array is not None else None,
+             '_colorspace':self._colorspace,
+             'attributes':self.attributes,
+             '_startframe':self._startframe,
+             '_endframe':self._endframe,
+             '_endsec':self._endsec,
+             '_startsec':self._startsec,
+             '_ffmpeg':self._ffmpeg_commandline()}
+        return json.dumps(d) if encode else d
+    
     def take(self, n):
         """Return n frames from the clip uniformly spaced as numpy array"""
         assert self.isloaded(), "Load() is required before take()"""
@@ -476,7 +618,7 @@ class Video(object):
     def shape(self):
         """Return (height, width) of the frames, requires loading a preview frame from the video if the video is not already loaded"""
         if not self.isloaded():
-            previewhash = hash(str(self._ffmpeg.output('dummyfile').compile()))
+            previewhash = hashlib.md5(str(self._ffmpeg_commandline()).encode()).hexdigest()
             if not hasattr(self, '_previewhash') or previewhash != self._previewhash:
                 im = self._preview()  # ffmpeg chain changed, load a single frame of video 
                 self._shape = (im.height(), im.width())  # cache the shape
@@ -489,7 +631,7 @@ class Video(object):
     def channels(self):
         """Return integer number of color channels"""
         if not self.isloaded():
-            previewhash = hash(str(self._ffmpeg.output('dummyfile').compile()))
+            previewhash = hashlib.md5(str(self._ffmpeg_commandline()).encode()).hexdigest()            
             if not hasattr(self, '_previewhash') or previewhash != self._previewhash:
                 im = self._preview()  # ffmpeg chain changed, load a single frame of video
                 self._shape = (im.height(), im.width())  # cache the shape                
@@ -518,12 +660,12 @@ class Video(object):
 
         # Convert frame to mjpeg and pipe to stdout, used to get dimensions of video
         try:
-            f = self._ffmpeg.filter('select', 'gte(n,{})'.format(framenum))\
-                            .output('pipe:', vframes=1, format='image2', vcodec='mjpeg')\
-                            .global_args('-cpuflags', '0', '-loglevel', 'debug' if vipy.globals.isdebug() else 'error')
-            (out, err) = f.run(capture_stdout=True)            
-        except Exception as e:
-            raise ValueError('[vipy.video.load]: Video preview failed with error "%s" for video "%s" with ffmpeg command "%s" - Try manually running ffmpeg to see errors.  This error usually means that you need to upgrade your FFMPEG distribution to the latest stable version.' % (str(e), str(self), str(self._ffmpeg_commandline(f))))
+            f_prepipe = self._ffmpeg.filter('select', 'gte(n,{})'.format(framenum))
+            f = f_prepipe.output('pipe:', vframes=1, format='image2', vcodec='mjpeg')\
+                         .global_args('-cpuflags', '0', '-loglevel', 'debug' if vipy.globals.isdebug() else 'error')
+            (out, err) = f.run(capture_stdout=True)
+        except Exception as e:            
+            raise ValueError('[vipy.video.load]: Video preview failed with error "%s"\n\nVideo: "%s"\n\nFFMPEG command: "%s"\n\nTry manually running this ffmpeg command to see errors.  This error usually means that the video is corrupted or that you need to upgrade your FFMPEG distribution to the latest stable version.' % (str(e), str(self), str(self._ffmpeg_commandline(f_prepipe.output('preview.jpg', vframes=1)))))
 
         # [EXCEPTION]:  UnidentifiedImageError: cannot identify image file
         #   -This may occur when the framerate of the video from ffprobe (tbr) does not match that passed to fps filter, resulting in a zero length image preview piped to stdout
@@ -532,7 +674,7 @@ class Video(object):
 
     def thumbnail(self, outfile=None, frame=0):
         """Return annotated frame=k of video, save annotation visualization to provided outfile"""
-        return self.__getitem__(frame).savefig(outfile if outfile is not None else temppng())
+        return self.frame(frame, img=self._preview(frame).array()).savefig(outfile if outfile is not None else temppng())
     
     def load(self, verbose=False, ignoreErrors=False):
         """Load a video using ffmpeg, applying the requested filter chain.  
@@ -557,11 +699,11 @@ class Video(object):
         #    -On some versions of ffmpeg setting -cpuflags=0 fixes it, but the right solution is to rebuild from the head (30APR20)
         try:
             f = self._ffmpeg.output('pipe:', format='rawvideo', pix_fmt='rgb24')\
-                            .global_args('-cpuflags', '0', '-loglevel', 'debug' if vipy.globals.isdebug() else 'error')
+                            .global_args('-cpuflags', '0', '-loglevel', 'debug' if vipy.globals.isdebug() else 'panic')
             (out, err) = f.run(capture_stdout=True)
         except Exception as e:
             if not ignoreErrors:
-                raise ValueError('[vipy.video.load]: Load failed with error "%s" for video "%s" with ffmpeg command "%s" - Try load(verbose=True) or manually running ffmpeg to see errors. This error usually means that you need to upgrade your FFMPEG distribution to the latest stable version.' % (str(e), str(self), str(self._ffmpeg_commandline(f))))
+                raise ValueError('[vipy.video.load]: Load failed with error "%s"\n\nVideo: "%s"\n\nFFMPEG command: "%s"\n\n Try setting vipy.globals.debug() to see verbose FFMPEG debugging output and rerunning or manually running the ffmpeg command line to see errors. This error usually means that the video is corrupted or that you need to upgrade your FFMPEG distribution to the latest stable version.' % (str(e), str(self), str(self._ffmpeg_commandline(f))))
             else:
                 return self  # Failed, return immediately, useful for calling canload() 
 
@@ -680,14 +822,14 @@ class Video(object):
         """Crop the video to shape=(H,W) with random position such that the crop contains only valid pixels, and optionally return the box"""
         assert shape[0] <= self.height() and shape[1] <= self.width()  # triggers preview()
         (xmin, ymin) = (np.random.randint(self.height()-shape[0]), np.random.randint(self.width()-shape[1]))
-        bb = vipy.geometry.BoundingBox(xmin=xmin, ymin=ymin, width=shape[1], height=shape[0])  # may be outside frame
+        bb = vipy.geometry.BoundingBox(xmin=int(xmin), ymin=int(ymin), width=int(shape[1]), height=int(shape[0]))  # may be outside frame
         self.crop(bb, zeropad=True)
         return self if not withbox else (self, bb)
 
     def centercrop(self, shape, withbox=False):
         """Crop the video to shape=(H,W) preserving the integer centroid position, and optionally return the box"""
         assert shape[0] <= self.height() and shape[1] <= self.width()  # triggers preview()
-        bb = vipy.geometry.BoundingBox(xcentroid=self.width()/2.0, ycentroid=self.height()/2.0, width=shape[1], height=shape[0]).int()  # may be outside frame
+        bb = vipy.geometry.BoundingBox(xcentroid=float(self.width()/2.0), ycentroid=float(self.height()/2.0), width=float(shape[1]), height=float(shape[0])).int()  # may be outside frame
         self.crop(bb, zeropad=True)
         return self if not withbox else (self, bb)
 
@@ -697,7 +839,7 @@ class Video(object):
 
     def cropeven(self):
         """Crop the video to the largest even (width,height) less than or equal to current (width,height).  This is useful for some codecs or filters which require even shape."""
-        return self.crop(vipy.geometry.BoundingBox(xmin=0, ymin=0, width=vipy.math.even(self.width()), height=vipy.math.even(self.height())))
+        return self.crop(vipy.geometry.BoundingBox(xmin=0, ymin=0, width=int(vipy.math.even(self.width())), height=int(vipy.math.even(self.height()))))
     
     def maxsquare(self):
         """Pad the video to be square, preserving the upper left corner of the video"""
@@ -707,7 +849,7 @@ class Video(object):
         # FIXME: this may trigger an inefficient resizing operation during load()
         d = max(self.shape())
         self._ffmpeg = self._ffmpeg.filter('pad', d+1, d+1, 0, 0)
-        return self.crop(vipy.geometry.BoundingBox(xmin=0, ymin=0, width=d, height=d))
+        return self.crop(vipy.geometry.BoundingBox(xmin=0, ymin=0, width=int(d), height=int(d)))
 
     def maxmatte(self):
         return self.zeropad(max(1, int((max(self.shape()) - self.width())/2)), max(int((max(self.shape()) - self.height())/2), 1))
@@ -805,7 +947,7 @@ class Video(object):
                                 .filter('pad', 'ceil(iw/2)*2', 'ceil(ih/2)*2') \
                                 .output(filename=outfile, pix_fmt='yuv420p', vcodec=vcodec) \
                                 .overwrite_output() \
-                                .global_args('-cpuflags', '0', '-loglevel', 'error' if not vipy.globals.isdebug() else 'debug') \
+                                .global_args('-cpuflags', '0', '-loglevel', 'panic' if not vipy.globals.isdebug() else 'debug') \
                                 .run_async(pipe_stdin=True)                
                 for frame in self._array:
                     process.stdin.write(frame.astype(np.uint8).tobytes())
@@ -819,7 +961,7 @@ class Video(object):
                 self._ffmpeg.filter('pad', 'ceil(iw/2)*2', 'ceil(ih/2)*2') \
                             .output(filename=tmpfile, pix_fmt='yuv420p', vcodec=vcodec, r=framerate) \
                             .overwrite_output() \
-                            .global_args('-cpuflags', '0', '-loglevel', 'error' if not vipy.globals.isdebug() else 'debug') \
+                            .global_args('-cpuflags', '0', '-loglevel', 'panic' if not vipy.globals.isdebug() else 'debug') \
                             .run()
                 if outfile == self.filename():
                     if os.path.exists(self.filename()):
@@ -847,36 +989,56 @@ class Video(object):
         return self.saveas(outfile=tempMP4())
     def savetemp(self):
         return self.savetmp()
-        
-    def play(self, verbose=True):
-        """Play the saved video filename in self.filename() using the system 'ffplay', if there is no filename, try to download it """
-        if not has_ffplay:
-            warnings.warn('"ffplay" executable not found on path, falling back on show() - Install from http://ffmpeg.org/download.html')
-            return self.fastshow()
-        v = self
-        if not self.isdownloaded() and self.hasurl():
-            v = self.download()
-        if not self.hasfilename():
-            v = self.saveas()  # save to temporary video         
-        assert v.hasfilename(), "Video frames must be saved to file prior to play() - Try calling saveas() first"
-        cmd = "ffplay %s" % v.filename()
-        if verbose:
-            print('[vipy.video.play]: Executing "%s"' % cmd)
-        os.system(cmd)
-        return self
 
-    def fastshow(self, fps=30, figure=1):
-        """Faster show using interative image show.  This can visualize videos without ffplay, but it cannot guarantee frame rates. Large videos with complex scenes will slow this down and will render at lower frame rates."""
-        fps = min(fps, self.framerate()) if fps is not None else self.framerate()
-        assert fps > 0, "Invalid display framerate"
-        with Stopwatch() as sw:            
-            for (k,im) in enumerate(self.load()):
-                dt = sw.since()
-                if k % int(np.ceil((self.framerate()/fps))) == 0:
-                    im.show(figure=figure if k<len(self) else None)
-                    time.sleep(max(0, (1.0/self.framerate())*int(np.ceil((self.framerate()/fps))) - dt))            
+    def ffplay(self):
+        """Play the video file using ffplay.  If the video is loaded in memory, this will dump it to a temporary file first"""
+        assert has_ffplay, '"ffplay" executable not found on path - Install from http://ffmpeg.org/download.html'
+        if self.isloaded() or self.isdirty():
+            f = tempMP4()
+            warnings.warn('Saving video to temporary file "%s" for ffplay ... ' % f)                        
+            v = self.saveas(f)
+            cmd = "ffplay %s" % v.filename()
+            print('[vipy.video.play]: Executing "%s"' % cmd)
+            os.system(cmd)
+            os.remove(v.filename())  # cleanup
+        elif self.hasfilename() or (self.hasurl() and self.download().hasfilename()):  # triggers download
+            cmd = "ffplay %s" % self.filename()
+            print('[vipy.video.play]: Executing "%s"' % cmd)
+            os.system(cmd)
+        else:
+            raise ValueError('Invalid video file "%s" - ffplay requires a video filename' % self.filename())
         return self
-    
+        
+    def play(self, verbose=True, notebook=False, fps=30):
+        """Play the saved video filename in self.filename() using the system 'ffplay', if there is no filename, try to download it"""
+
+        if not self.isdownloaded() and self.hasurl():
+            self.download()
+        
+        if notebook:
+            # save to temporary video, this video is not cleaned up and may accumulate            
+            try_import("IPython.display", "ipython"); import IPython.display
+            if not self.hasfilename() or self.isloaded() or self.isdirty():
+                v = self.saveas(tempMP4())                 
+                warnings.warn('Saving video to temporary file "%s" for notebook viewer ... ' % v.filename())
+                return IPython.display.Video(v.filename(), embed=True)
+            return IPython.display.Video(self.filename(), embed=True)
+        elif has_ffplay:
+            return self.ffplay()            
+        else:
+            """Fallback player.  This can visualize videos without ffplay, but it cannot guarantee frame rates. Large videos with complex scenes will slow this down and will render at lower frame rates."""
+            fps = min(fps, self.framerate()) if fps is not None else self.framerate()
+            assert fps > 0, "Invalid display framerate"
+            with Stopwatch() as sw:            
+                for (k,im) in enumerate(self.load() if self.isloaded() else self.stream()):
+                    time.sleep(max(0, (1.0/self.framerate())*int(np.ceil((self.framerate()/fps))) - sw.since()))                                
+                    im.show(figure=figure)
+                    if vipy.globals.user_hit_escape():
+                        break                    
+            vipy.show.close(figure)
+            return self
+
+
     def torch(self, startframe=0, endframe=None, length=None, stride=1, take=None, boundary='repeat', order='nchw', verbose=False, withslice=False, scale=1.0):
         """Convert the loaded video of shape N HxWxC frames to an MxCxHxW torch tensor, forces a load().
            Order of arguments is (startframe, endframe) or (startframe, startframe+length) or (random_startframe, random_starframe+takelength), then stride or take.
@@ -1023,6 +1185,7 @@ class Video(object):
     def hasattribute(self, k):
         return isinstance(self.attributes, dict) and k in self.attributes
 
+        
 class VideoCategory(Video):
     """vipy.video.VideoCategory class
 
@@ -1034,6 +1197,13 @@ class VideoCategory(Video):
         super().__init__(url=url, filename=filename, framerate=framerate, attributes=attributes, array=array, colorspace=colorspace,
                                             startframe=startframe, endframe=endframe, startsec=startsec, endsec=endsec)
         self._category = category                
+
+    @classmethod
+    def from_json(cls, s):
+        d = json.loads(s) if not isinstance(s, dict) else s                        
+        v = super().from_json(s)
+        v._category = d['_category']
+        return v
         
     def __repr__(self):
         strlist = []
@@ -1051,10 +1221,10 @@ class VideoCategory(Video):
             strlist.append('cliptime=(%1.2f,%1.2f)' % (self._startsec, self._endsec))
         return str('<vipy.video.VideoCategory: %s>' % (', '.join(strlist)))
 
-    def dict(self):
-        d = super().dict()
-        d['category'] = self.category()
-        return d
+    def json(self, encode=True):
+        d = json.loads(super().json())
+        d['_category'] = self._category
+        return json.dumps(d) if encode else d
     
     def category(self, c=None):
         if c is None:
@@ -1118,13 +1288,31 @@ class Scene(VideoCategory):
             assert all([isinstance(t, vipy.object.Track) for t in tracks]), "Invalid track input; tracks=[vipy.object.Track(), ...]"
             self._tracks = {t.id():t for t in tracks}
 
-        # Activites must be defined relative to the clip specified by this constructor            
+        # Activities must be defined relative to the clip specified by this constructor            
         if activities is not None:
             activities = activities if isinstance(activities, list) or isinstance(activities, tuple) else [activities]  # canonicalize            
             assert all([isinstance(a, vipy.activity.Activity) for a in activities]), "Invalid activity input; activities=[vipy.activity.Activity(), ...]"
             self._activities = {a.id():a for a in activities}
 
         self._currentframe = None  # used during iteration only
+
+    @classmethod
+    def cast(cls, v, flush=False):
+        assert isinstance(v, vipy.video.Video), "Invalid input - must be derived from vipy.video.Video"
+        if v.__class__ != vipy.video.Scene:
+            v.__class__ = vipy.video.Scene            
+            v._tracks = {} if flush or not hasattr(v, '_tracks') else v._tracks
+            v._activities = {} if flush or not hasattr(v, '_activities') else v._activities
+            v._category = None if flush or not hasattr(v, '_category') else v._category
+        return v
+
+    @classmethod
+    def from_json(cls, s):
+        d = json.loads(s) if not isinstance(s, dict) else s                                
+        v = super().from_json(s)
+        v._tracks = {t.id():t for t in [vipy.object.Track.from_json(s) for s in d['_tracks'].values()]}
+        v._activities = {a.id():a for a in [vipy.activity.Activity.from_json(s) for s in d['_activities'].values()]}
+        return v
         
     def __repr__(self):
         strlist = []
@@ -1148,38 +1336,30 @@ class Scene(VideoCategory):
             strlist.append('activities=%d' % len(self._activities))
         return str('<vipy.video.scene: %s>' % (', '.join(strlist)))
 
-    def __getitem__(self, k):
-        """Return the vipy.image.Scene() for the vipy.video.Scene() interpolated at frame k"""
-        assert isinstance(k, int), "Indexing video by frame must be integer"                
-        if self.load().isloaded() and k >= 0 and k < len(self):
-            dets = [t[k] for (tid,t) in self._tracks.items() if t[k] is not None]  # track interpolation (cloned) with boundary handling
-            for d in dets:
-                shortlabel = [(d.shortlabel(),'')]  # [(Noun, Verbing1), (Noun, Verbing2), ...]
-                for (aid, a) in self._activities.items():  # insertion order:  First activity is primary, next is secondary
-                    if a.hastrack(d.attributes['trackid']) and a.during(k):
-                        # Shortlabel is always displayed as "Noun Verbing" during activity (e.g. Person Carrying, Vehicle Turning)
-                        # If noun is associated with more than one activity, then this is shown as "Noun Verbing1\nNoun Verbing2", with a newline separator 
-                        if not any([a.shortlabel() == v for (n,v) in shortlabel]):
-                            shortlabel.append( (d.shortlabel(), a.shortlabel()) )
-                        if 'activity' not in d.attributes:
-                            d.attributes['activity'] = []                            
-                        d.attributes['activity'].append(a)  # for activity correspondence (if desired)
-                d.shortlabel( '\n'.join([('%s %s' % (n,v)).strip() for (n,v) in shortlabel[0 if len(shortlabel)==1 else 1:]]))
-            dets = sorted(dets, key=lambda d: d.shortlabel())   # layering in video is in alphabetical order of shortlabel
-            return vipy.image.Scene(array=self._array[k], colorspace=self.colorspace(), objects=dets, category=self.category())  
-        elif not self.isloaded():
-            raise ValueError('Video not loaded; load() before indexing')
-        else:
-            raise ValueError('Invalid frame index %d ' % k)
+    def frame(self, k, img=None):
+        """Return vipy.image.Scene object at frame k"""
+        assert img is not None or self.isloaded(), 'Video not loaded, load() before indexing'
+        assert isinstance(k, int) and k>=0, "Frame index must be non-negative integer"
+        assert img is not None or k<len(self), "Invalid frame index %d - Indexing video by frame must be integer within (0, %d)" % (k, len(self))
 
-    def __iter__(self):
-        """Iterate over every frame of video yielding interpolated vipy.image.Scene() at the current frame"""
-        self.load().numpy()  # mutable iterator, triggers copy 
-        for k in range(0, len(self)):
-            self._currentframe = k    # used only for incremental add()
-            yield self.__getitem__(k)
-        self._currentframe = None
-
+        img = img if img is not None else self._array[k]
+        dets = [t[k] for (tid,t) in self._tracks.items() if t[k] is not None]  # track interpolation (cloned) with boundary handling
+        for d in dets:
+            shortlabel = [(d.shortlabel(),'')]  # [(Noun, Verbing1), (Noun, Verbing2), ...]
+            for (aid, a) in self._activities.items():  # insertion order:  First activity is primary, next is secondary
+                if a.hastrack(d.attributes['trackid']) and a.during(k):
+                    # Shortlabel is always displayed as "Noun Verbing" during activity (e.g. Person Carrying, Vehicle Turning)
+                    # If noun is associated with more than one activity, then this is shown as "Noun Verbing1\nNoun Verbing2", with a newline separator 
+                    if not any([a.shortlabel() == v for (n,v) in shortlabel]):
+                        shortlabel.append( (d.shortlabel(), a.shortlabel()) )
+                    if 'activity' not in d.attributes:
+                        d.attributes['activityid'] = []                            
+                    d.attributes['activityid'].append(a.id())  # for activity correspondence (if desired)
+            d.shortlabel( '\n'.join([('%s %s' % (n,v)).strip() for (n,v) in shortlabel[0 if len(shortlabel)==1 else 1:]]))
+        dets = sorted(dets, key=lambda d: d.shortlabel())   # layering in video is in alphabetical order of shortlabel
+        return vipy.image.Scene(array=img, colorspace=self.colorspace(), objects=dets, category=self.category())  
+                
+        
     def during(self, frameindex):
         try:
             self.__getitem__(frameindex)  # triggers load
@@ -1246,6 +1426,9 @@ class Scene(VideoCategory):
             self._tracks = {t.id():t for t in tolist(tracks)}  # insertion order preserved (python >=3.6)
             return self
 
+    def track(self, id):
+        return self.tracks(id=id)
+    
     def tracklist(self):
         return list(self._tracks.values())
         
@@ -1421,13 +1604,11 @@ class Scene(VideoCategory):
         self._tracks = {}
         return self
         
-    def dict(self):
-        d = super().dict()
-        d['category'] = self.category()
-        d['tracks'] = [t.dict() for t in self._tracks.values()]
-        d['activities'] = [a.dict() for a in self._activities.values()]
-        d['filename'] = self.filename()
-        return d
+    def json(self, encode=True):
+        d = json.loads(super().json())
+        d['_tracks'] = {k:t.json(encode=False) for (k,t) in self._tracks.items()}
+        d['_activities'] = {k:a.json(encode=False) for (k,a) in self._activities.items()}
+        return json.dumps(d) if encode else d
         
     def csv(self, outfile=None):
         """Export scene to CSV file format with header.  If there are no tracks, this will be empty. """
@@ -1435,10 +1616,10 @@ class Scene(VideoCategory):
         csv = [(self.filename(), # video filename
                 k,  # frame number (zero indexed)
                 d.category(), d.shortlabel(), # track category and shortlabel (displayed in caption)
-                ';'.join([a.category() for a in d.attributes['activity']] if 'activity' in d.attributes else ''), # semicolon separated activity ID assocated with track
+                ';'.join([a.category() for a in self.activities()[d.attributes['activityid']]] if 'activityid' in d.attributes else ''), # semicolon separated activity ID assocated with track
                 d.xmin(), d.ymin(), d.width(), d.height(),   # bounding box
                 d.attributes['trackid'],  # globally unique track ID
-                ';'.join([a.id() for a in d.attributes['activity']] if 'activity' in d.attributes else '')) # semicolon separated activity ID assocated with track
+                ';'.join([a.id() for a in self.activities()[d.attributes['activityid']]] if 'activityid' in d.attributes else '')) # semicolon separated activity ID assocated with track
                for (k,im) in enumerate(self) for d in im.objects()]
         csv = [('# video_filename', 'frame_number', 'object_category', 'object_shortlabel', 'activity categories(;)', 'xmin', 'ymin', 'width', 'height', 'track_id', 'activity_ids(;)')] + csv
         return writecsv(csv, outfile) if outfile is not None else csv
@@ -1503,7 +1684,7 @@ class Scene(VideoCategory):
         """
         activities = [a for (k,a) in self.activities().items() if (activityid is None or k in set(activityid))]
         boxes = [t.clone().boundingbox().dilate(dilate) for t in self.tracklist() if any([a.hastrack(t) for a in activities])]
-        return boxes[0].union(boxes[1:]) if len(boxes) > 0 else vipy.geometry.BoundingBox(xmin=0, ymin=0, width=self.width(), height=self.height())
+        return boxes[0].union(boxes[1:]) if len(boxes) > 0 else vipy.geometry.BoundingBox(xmin=0, ymin=0, width=int(self.width()), height=int(self.height()))
 
     def activitycuboid(self, activityid=None, dilate=1.0, maxdim=256, bb=None):
         """The activitycuboid() is the fixed square spatial crop corresponding to the activitybox (or supplied bounding box), which contains all of the valid activities in the scene.  This is most useful after activityclip().
@@ -1574,7 +1755,7 @@ class Scene(VideoCategory):
         v._startframe = startframe if v._startframe is None else v._startframe + startframe  # for __repr__ only
         v._endframe = endframe if v._endframe is None else v._startframe + (endframe-startframe)  # for __repr__ only
         # -- end copy
-        
+
         v._tracks = {k:t.offset(dt=-startframe) for (k,t) in v._tracks.items()}   # track offset is performed here, not within activity, no end frame enforced
         v._activities = {k:a.offset(dt=-startframe) for (k,a) in v._activities.items()}        
         return v  
@@ -1705,78 +1886,87 @@ class Scene(VideoCategory):
 
         return self        
 
-    def annotate(self, verbose=True, fontsize=10, captionoffset=(0,0), textfacecolor='white', textfacealpha=1.0, shortlabel=True, boxalpha=0.25, d_category2color={'Person':'green', 'Vehicle':'blue', 'Object':'red'}, categories=None, nocaption=False, nocaption_withstring=[]):
+    def annotate(self, verbose=True, fontsize=10, captionoffset=(0,0), textfacecolor='white', textfacealpha=1.0, shortlabel=True, boxalpha=0.25, d_category2color={'Person':'green', 'Vehicle':'blue', 'Object':'red'}, categories=None, nocaption=False, nocaption_withstring=[], mutator=None, timestamp=None, timestampcolor='black', timestampfacecolor='white'):
         """Generate a video visualization of all annotated objects and activities in the video, at the resolution and framerate of the underlying video, pixels in this video will now contain the overlay
         This function does not play the video, it only generates an annotation video frames.  Use show() which is equivalent to annotate().saveas().play()
         In general, this function should not be run on very long videos, as it requires loading the video framewise into memory, try running on clips instead.
         """
-        if verbose and not self.isloaded():
-            print('[vipy.video.annotate]: Loading video ...')  
+        if verbose:
+            print('[vipy.video.annotate]: Annotating video ...')  
         
         assert self.load().isloaded(), "Load() failed"
-        
-        if verbose:
-            print('[vipy.video.annotate]: Annotating video ...')              
-        imgs = [self[k].savefig(fontsize=fontsize,
-                                captionoffset=captionoffset,
-                                textfacecolor=textfacecolor,
-                                textfacealpha=textfacealpha,
-                                shortlabel=shortlabel,
-                                boxalpha=boxalpha,
-                                d_category2color=d_category2color,
-                                categories=categories,
-                                nocaption=nocaption,
-                                figure=1024 if k<(len(self)-1) else None,  # cleanup on last frame
-                                nocaption_withstring=nocaption_withstring).numpy() for k in range(0, len(self))]  # SLOW for large videos
-        self._array = np.stack([np.array(PIL.Image.fromarray(img).convert('RGB')) for img in imgs], axis=0)  # replace pixels with annotated pixels
-        return self
+
+        f_mutator = mutator if mutator is not None else lambda k,im: im
+        f_timestamp = (lambda k: '%s %d' % (vipy.util.clockstamp(), k)) if timestamp is True else timestamp
+
+        imgs = [f_mutator(k, self[k]).savefig(fontsize=fontsize,
+                                              captionoffset=captionoffset,
+                                              textfacecolor=textfacecolor,
+                                              textfacealpha=textfacealpha,
+                                              shortlabel=shortlabel,
+                                              boxalpha=boxalpha,
+                                              d_category2color=d_category2color,
+                                              categories=categories,
+                                              nocaption=nocaption,
+                                              timestampcolor=timestampcolor,
+                                              timestampfacecolor=timestampfacecolor,
+                                              timestamp=f_timestamp(k) if timestamp is not None else None,
+                                              figure=1 if k<(len(self)-1) else None,  # cleanup on last frame
+                                              nocaption_withstring=nocaption_withstring).numpy() for k in range(0, len(self))]  # SLOW for large videos
+
+        # Replace pixels with annotated pixels and downcast object to vipy.video.Video (since there are no more objects to show)
+        return vipy.video.Video(array=np.stack([np.array(PIL.Image.fromarray(img).convert('RGB')) for img in imgs], axis=0))
 
 
-    def show(self, outfile=None, verbose=True, fontsize=10, captionoffset=(0,0), textfacecolor='white', textfacealpha=1.0, shortlabel=True, boxalpha=0.25, d_category2color={'Person':'green', 'Vehicle':'blue', 'Object':'red'}, categories=None, nocaption=False, nocaption_withstring=[], notebook=False):
+    def show(self, outfile=None, verbose=True, fontsize=10, captionoffset=(0,0), textfacecolor='white', textfacealpha=1.0, shortlabel=True, boxalpha=0.25, d_category2color={'Person':'green', 'Vehicle':'blue', 'Object':'red'}, categories=None, nocaption=False, nocaption_withstring=[], notebook=False, timestamp=None, timestampcolor='black', timestampfacecolor='white'):
         """Generate an annotation video saved to outfile (or tempfile if outfile=None) and show it using ffplay when it is done exporting.  Do not modify the original video buffer.  Returns a clone of the video with the shown annotation."""
-        v = self.clone().annotate(verbose=verbose, 
-                                  fontsize=fontsize,
-                                  captionoffset=captionoffset,
-                                  textfacecolor=textfacecolor,
-                                  textfacealpha=textfacealpha,
-                                  shortlabel=shortlabel,
-                                  boxalpha=boxalpha,
-                                  d_category2color=d_category2color,
-                                  categories=categories,
-                                  nocaption=nocaption, 
-                                  nocaption_withstring=nocaption_withstring).saveas(outfile)
-        if notebook:
-            try_import("IPython.display", "ipython"); import IPython.display
-            return IPython.display.Video(v.filename(), embed=True)
-        else:
-            return v.play()
+        return self.clone().annotate(verbose=verbose, 
+                                     fontsize=fontsize,
+                                     captionoffset=captionoffset,
+                                     textfacecolor=textfacecolor,
+                                     textfacealpha=textfacealpha,
+                                     shortlabel=shortlabel,
+                                     boxalpha=boxalpha,
+                                     d_category2color=d_category2color,
+                                     categories=categories,
+                                     nocaption=nocaption,
+                                     timestampcolor=timestampcolor,
+                                     timestampfacecolor=timestampfacecolor,
+                                     timestamp=timestamp,
+                                     nocaption_withstring=nocaption_withstring).saveas(outfile).play(notebook=notebook)
     
 
-    def fastshow(self, outfile=None, verbose=True, fontsize=10, captionoffset=(0,0), textfacecolor='white', textfacealpha=1.0, shortlabel=True, boxalpha=0.25, d_category2color={'Person':'green', 'Vehicle':'blue', 'Object':'red'}, categories=None, nocaption=False, nocaption_withstring=[], figure=1, fps=None):
-        """Faster show using interative image show.  This can visualize videos before video rendering is complete, but it cannot guarantee frame rates. Large videos with complex scenes will slow this down and will render at lower frame rates."""
+    def fastshow(self, outfile=None, verbose=True, fontsize=10, captionoffset=(0,0), textfacecolor='white', textfacealpha=1.0, shortlabel=True, boxalpha=0.25, d_category2color={'Person':'green', 'Vehicle':'blue', 'Object':'red'}, categories=None, nocaption=False, nocaption_withstring=[], figure=1, fps=None, timestamp=None, timestampcolor='black', timestampfacecolor='white'):
+        """Faster show using interative image show for annotated videos.  This can visualize videos before video rendering is complete, but it cannot guarantee frame rates. Large videos with complex scenes will slow this down and will render at lower frame rates."""
         fps = min(fps, self.framerate()) if fps is not None else self.framerate()
         assert fps > 0, "Invalid display framerate"
+        f_timestamp = (lambda k: '%s %d' % (vipy.util.clockstamp(), k)) if timestamp is True else timestamp
         with Stopwatch() as sw:            
-            for (k,im) in enumerate(self.load()):
-                dt = sw.since()
-                if k % int(np.ceil((self.framerate()/fps))) == 0:
-                    im.show(categories=categories,
-                            figure=figure if k<len(self) else None,
-                            nocaption=nocaption,
-                            nocaption_withstring=nocaption_withstring,
-                            fontsize=fontsize,
-                            boxalpha=boxalpha,
-                            d_category2color=d_category2color,
-                            captionoffset=captionoffset,
-                            textfacecolor=textfacecolor,
-                            textfacealpha=textfacealpha,
-                            shortlabel=shortlabel)
-                    time.sleep(max(0, (1.0/self.framerate())*int(np.ceil((self.framerate()/fps))) - dt))
+            for (k,im) in enumerate(self.load() if self.isloaded() else self.stream()):
+                time.sleep(max(0, (1.0/self.framerate())*int(np.ceil((self.framerate()/fps))) - sw.since()))                
+                im.show(categories=categories,
+                        figure=figure,
+                        nocaption=nocaption,
+                        nocaption_withstring=nocaption_withstring,
+                        fontsize=fontsize,
+                        boxalpha=boxalpha,
+                        d_category2color=d_category2color,
+                        captionoffset=captionoffset,
+                        textfacecolor=textfacecolor,
+                        textfacealpha=textfacealpha, 
+                        timestampcolor=timestampcolor,
+                        timestampfacecolor=timestampfacecolor,
+                        timestamp=f_timestamp(k) if timestamp is not None else None,
+                        shortlabel=shortlabel)
+
+                if vipy.globals.user_hit_escape():
+                    break
+        vipy.show.close(figure)
         return self
 
     def thumbnail(self, outfile=None, frame=0, fontsize=10, nocaption=False, boxalpha=0.25, dpi=200, textfacecolor='white', textfacealpha=1.0):
         """Return annotated frame=k of video, save annotation visualization to provided outfile"""
-        return self.__getitem__(frame).savefig(outfile=outfile, fontsize=fontsize, nocaption=nocaption, boxalpha=boxalpha, dpi=dpi, textfacecolor=textfacecolor, textfacealpha=textfacealpha)
+        return self.frame(frame, img=self._preview(framenum=frame).array()).savefig(outfile=outfile, fontsize=fontsize, nocaption=nocaption, boxalpha=boxalpha, dpi=dpi, textfacecolor=textfacecolor, textfacealpha=textfacealpha)
     
     def stabilize(self):
         """Background stablization using flow based stabilization masking foreground region.  This will output a video with all frames aligned to the first frame, such that the background is static."""
@@ -1810,7 +2000,41 @@ class Scene(VideoCategory):
         for im in self:
             im.blurmask(radius)  # shared numpy array
         return self
-    
+
+    def downcast(self):
+        """Cast the object to a vipy.video.Video class"""
+        self.__class__ = vipy.video.Video
+        return self
+
+    def assign(self, frame, dets, miniou=0.8, minconf=0.2, maxconf=0.8, maxhistory=30):
+        """Assign a list of vipy.object.Detections at frame k to scene by greedy track association"""
+        dets = tolist(dets)
+        assert all([isinstance(d, vipy.object.Detection) for d in dets]), "invalid input"
+        if any([d.confidence() is None for d in dets]):
+            warnings.warn('Removing %d detections with no confidence' % len([d.confidence() is None for d in dets]))
+            dets = [d for d in dets if d.confidence() is not None]
+        assert frame >= 0 and miniou >= 0 and miniou <= 1.0 and minconf >= 0 and minconf <= 1.0 and maxconf >= 0 and maxconf <= 1.0, "invalid input"
+        
+        assigned = []
+        assignments = [(t, d.confidence(), d.iou(t.extrapolate(frame)), d)
+                       for (tid, t) in self.tracks().items()
+                       for d in dets
+                       if (t.during(frame) or (frame - t.endframe()) < maxhistory) and t.category() == d.category()]        
+        for (t, conf, iou, d) in sorted(assignments, key=lambda x: x[1]*x[2], reverse=True):
+            if (iou > miniou) and (conf > minconf):
+                if t.id() not in assigned:
+                    t.add(frame, d)  # track assignment
+                assigned.append(t.id())
+                assigned.append(d.id())
+
+        for t in self.tracks().values():
+            if t.id() not in assigned and (frame - t.endframe()) < maxhistory:
+                t.add(frame, t.extrapolate(frame))  # track prediction, otherwise death
+        for d in dets:
+            if d.confidence() >= maxconf and d.id() not in assigned:
+                self.add(vipy.object.Track(keyframes=[frame], boxes=[d], category=d.category(), framerate=self.framerate(), confidence=d.confidence()), rangecheck=False)  # track birth
+        return self
+
     
 def RandomVideo(rows=None, cols=None, frames=None):
     """Return a random loaded vipy.video.video, useful for unit testing, minimum size (32x32x32)"""

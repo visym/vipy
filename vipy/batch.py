@@ -1,6 +1,6 @@
 import os
 import sys
-from vipy.util import try_import, islist, tolist, tempdir, remkdir, chunklistbysize
+from vipy.util import try_import, islist, tolist, tempdir, remkdir, chunklistbysize, listpkl, filetail, filebase
 from itertools import repeat
 import dill
 try_import('dask', 'dask distributed torch')
@@ -10,9 +10,58 @@ import numpy as np
 import tempfile
 import warnings
 import vipy.globals
+import hashlib
+import uuid
+import shutil
 
 
-class Batch(object):
+class Checkpoint(object):
+    """Batch checkpoints for long running jobs"""
+    def __init__(self, checkpointdir=None):
+        self._checkpointdir = checkpointdir if checkpointdir is not None else os.path.join(vipy.globals.cache(), 'batch')
+
+    def checkpoint(self, archiveid=None):
+        """Return the last checkpointed result.  Useful for recovering from dask crashes for long jobs."""
+        pklfiles = self._list_checkpoints(archiveid)
+        if len(pklfiles) > 0:
+            print('[vipy.batch]: loading %d checkpoints %s' % (len(pklfiles), str(pklfiles)))
+            return [v for f in pklfiles for v in vipy.util.load(f)]
+        else:
+            return None
+
+    def last_archive(self):
+        archivelist = self._list_archives()
+        return archivelist[0] if len(archivelist) > 0 else None
+
+    def _checkpointid(self):
+        assert self._checkpointdir is not None
+        hash_object = hashlib.md5(str(self._checkpointdir).encode())
+        return str(hash_object.hexdigest())
+
+    def _list_checkpoints(self, archiveid=None):
+        cpdir = os.path.join(self._checkpointdir, archiveid) if (archiveid is not None and self._checkpointdir is not None) else self._checkpointdir
+        return sorted([f for f in listpkl(cpdir) if self._checkpointid() in f], key=lambda f: int(filebase(f).split('_')[1])) if cpdir is not None and os.path.isdir(cpdir) else []
+
+    def _list_archives(self):
+        return [filetail(d) for d in vipy.util.dirlist_sorted_bycreation(self._checkpointdir)] if self._checkpointdir is not None else []
+
+    def _flush_checkpoint(self):
+        for f in self._list_checkpoints():
+            if self._checkpointid() in f:
+                os.remove(f)
+        return self
+
+    def _archive_checkpoint(self):
+        archivedir = os.path.join(self._checkpointdir, str(uuid.uuid4().hex))
+        for f in self._list_checkpoints():
+            if self._checkpointid() in f:
+                f_new = os.path.join(remkdir(archivedir), filetail(f))
+                print('[vipy.batch]: archiving checkpoint %s -> %s' % (f, f_new))
+                shutil.copyfile(f, f_new)
+        return self
+
+
+class Batch(Checkpoint):
     """vipy.batch.Batch class
 
     This class provides a representation of a set of vipy objects.  All of the object types must be the same.  If so, then an operation on the batch is performed on each of the elements in the batch in parallel.
@@ -40,11 +89,11 @@ class Batch(object):
 
     """    
              
-    def __init__(self, objlist, n_processes=None, dashboard=False, ngpu=None, strict=True, as_completed=False):
+    def __init__(self, objlist, n_processes=None, dashboard=False, ngpu=None, strict=True, as_completed=False, checkpoint=False, checkpointdir=None, checkpointfrac=0.25):
         """Create a batch of homogeneous vipy.image objects from an iterable that can be operated on with a single parallel function call
         """
         assert isinstance(objlist, list), "Input must be a list"
-        self._batchtype = type(objlist[0])        
+        self._batchtype = type(objlist[0]) if len(objlist)>0 else type(None)
         assert all([isinstance(im, self._batchtype) for im in objlist]), "Invalid input - Must be homogeneous list of the same type"                
         self._objlist = objlist
 
@@ -61,7 +110,14 @@ class Batch(object):
             if vipy.globals.dask() is None or n_processes != vipy.globals.dask().num_processes():
                 vipy.globals.dask(num_processes=n_processes, dashboard=dashboard)
         else:
-            assert vipy.globals.dask() is not None
+            assert vipy.globals.dask() is not None, "Create a global dask scheduler using vipy.globals.dask(num_processes=n) for a given number of workers, or create Batch() with n_processes>0"            
+
+        assert checkpointfrac > 0.0 and checkpointfrac <= 1.0, "Invalid checkpoint fraction"
+        self._checkpointsize = max(1, int(len(objlist) * checkpointfrac))
+        super().__init__(checkpointdir)
+        self._checkpoint = checkpoint
+        if checkpoint:
+            as_completed = True  # force self._as_completed=True
 
         self._client = vipy.globals.dask().client()  # shutdown using vipy.globals.dask().shutdown(), or let python garbage collect it
     
@@ -72,6 +128,7 @@ class Batch(object):
 
         self._strict = strict
         self._as_completed = as_completed  # this may introduce instabilities for large complex objects, use with caution
+
 
     def __enter__(self):
         return self
@@ -97,24 +154,63 @@ class Batch(object):
     def n_processes(self):
         return len(self.info()['workers'])
 
+
+    def _batch_wait(self, futures):
+        self._archive_checkpoint()._flush_checkpoint()
+        k_checkpoint = 0
+        try:
+            results = []            
+            for (k, batch) in enumerate(as_completed(futures, with_results=True, raise_errors=False).batches()):
+                for (future, result) in batch:
+                    if future.status != 'error':
+                        results.append(result)  # not order preserving
+                    else:
+                        if self._strict:
+                            typ, exc, tb = result
+                            raise exc.with_traceback(tb)
+                        else:
+                            print('[vipy.batch]: future %s failed with error "%s" - SKIPPING' % (str(future), str(result)))
+                        results.append(None)
+                    k_checkpoint = k_checkpoint + 1
+
+                # Save intermediate results
+                if self._checkpoint and (k_checkpoint > self._checkpointsize):
+                    pklfile = os.path.join(remkdir(self._checkpointdir), '%s_%d.pkl' % (self._checkpointid(), k))
+                    print('[vipy.batch]: saving checkpoint %s ' % pklfile)
+                    vipy.util.save(results[-k_checkpoint:], pklfile)
+                    k_checkpoint = 0
+
+            return results
+
+        except KeyboardInterrupt:
+            # warnings.warn('[vipy.batch]: batch cannot be restarted after killing with ctrl-c - You must create a new Batch()')
+            #vipy.globals.dask().shutdown()
+            #self._client = None
+            return results
+        except:
+            # warnings.warn('[vipy.batch]: batch cannot be restarted after exception - Recreate Batch()')                
+            raise
+
+
+    
     def _wait(self, futures):
         assert islist(futures) and all([hasattr(f, 'result') for f in futures])
+        if self._as_completed:
+            return self._batch_wait(futures)
+        
         try:
-            f_as_completed = lambda f: as_completed(f) if self._as_completed else f
-            f_wait = lambda f: wait(f) if not self._as_completed else f
-                
             results = []            
-            f_wait(futures)
-            for f in f_as_completed(futures):  
+            wait(futures)
+            for f in futures:  
                 try:
-                    results.append(f.result())  # not order preserving if as_completed=True
+                    results.append(f.result()) 
                 except:
                     if self._strict:
                         raise
                     try:
                         print('[vipy.batch]: future %s failed with error "%s" for batch "%s"' % (str(f), str(f.exception()), str(self)))
                     except:
-                        print('[vipy.batch]: future failed fetching exception')
+                        print('[vipy.batch]: future failed')
                     results.append(None)
             return results
         except KeyboardInterrupt:
@@ -226,4 +322,5 @@ class Batch(object):
         objdist = c.scatter(obj, broadcast=True)        
         self._objlist = self._wait([c.submit(f, objdist, im) for im in self._objlist])
         return self
+
 

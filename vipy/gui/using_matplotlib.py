@@ -3,6 +3,7 @@ import matplotlib
 from matplotlib import pyplot as plt
 import numpy as np
 from vipy.util import islist, temppng
+import sys
 
 
 FIGHANDLE = {}
@@ -20,6 +21,11 @@ except:
     pass  # ignored if latex is not installed or not wanted
 
 
+def escape_to_exit(event):
+    if event.key == 'escape' or event.key == 'q' or event.key == 'ctrl+c':
+        import vipy.globals            
+        vipy.globals.user_hit_escape(True)
+    
 def flush():
     plt.pause(0.001)
 
@@ -32,7 +38,7 @@ def imflush():
 def show(fignum):
     plt.ion()
     plt.draw()
-    plt.show()
+    plt.show() 
 
     
 def noshow(fignum):
@@ -85,6 +91,11 @@ def _imshow_tight(img, fignum=None):
         a.get_xaxis().set_visible(False)
         a.get_yaxis().set_visible(False)
     imh = plt.imshow(img, animated=True, interpolation='nearest', aspect='equal')
+
+    fig.canvas.mpl_connect('key_press_event', escape_to_exit)
+    import vipy.globals    
+    vipy.globals.user_hit_escape(False)
+
     return (fig.number, imh)
 
 
@@ -95,7 +106,7 @@ def imshow(img, fignum=None):
     if fignum in plt.get_fignums() and fignum in FIGHANDLE and FIGHANDLE[fignum].get_size() == img.shape[0:2]:
         # Do not delete and recreate the figure, just change the pixels 
         FIGHANDLE[fignum].set_data(img)
-        
+
         # Delete all polygon and text overlays from previous drawing so that they can be overwritten on current frame
         for c in plt.gca().get_children():
             if 'Text' in c.__repr__() or 'Polygon' in c.__repr__() or 'Circle' in c.__repr__() or 'Line' in c.__repr__() or 'Patch' in c.__repr__():
@@ -110,6 +121,20 @@ def imshow(img, fignum=None):
         FIGHANDLE[fignum] = imh
     return fignum
 
+
+def text(caption, xmin, ymin, fignum=None, textcolor='black', textfacecolor='white', textfacealpha=1.0, fontsize=10, linewidth=3, facecolor='white', facealpha=0.5, alpha=1.0):
+    plt.figure(fignum) if fignum is not None else plt.gcf()
+    lw = linewidth  # pull in the boxes by linewidth so that they do not overhang the figure
+
+    newlines = caption.count('\n')
+    captionoffset = 15*newlines   # move down a bit if near top of image, shift once per newline in caption    
+    try:
+        # MatplotlibDeprecationWarning: The 's' parameter of annotate() has been renamed 'text' since Matplotlib 3.3            
+        handle = plt.annotate(alpha=alpha, text=caption, xy=(xmin,ymin), xytext=(xmin, ymin+captionoffset), xycoords='data', color=textcolor, bbox=None if textfacecolor is None else dict(facecolor=textfacecolor, edgecolor=None, alpha=textfacealpha, boxstyle='square'), fontsize=fontsize, clip_on=True)
+    except:
+        handle = plt.annotate(alpha=alpha, s=caption, xy=(xmin,ymin), xytext=(xmin, ymin+captionoffset), xycoords='data', color=textcolor, bbox=None if textfacecolor is None else dict(facecolor=textfacecolor, edgecolor=None, alpha=textfacealpha, boxstyle='square'), fontsize=fontsize, clip_on=True)        
+
+    return fignum
 
 def boundingbox(img, xmin, ymin, xmax, ymax, bboxcaption=None, fignum=None, bboxcolor='green', facecolor='white', facealpha=0.5, textcolor='black', textfacecolor='white', textfacealpha=1.0, fontsize=10, captionoffset=(0,0), linewidth=3):
     """Draw a captioned bounding box on a previously shown image"""

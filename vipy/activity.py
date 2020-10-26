@@ -5,6 +5,11 @@ import uuid
 import copy
 from vipy.object import Track
 
+try:
+    import ujson as json  # faster
+except ImportError:
+    import json
+
 
 class Activity(object):
     """vipy.object.Activity class
@@ -41,7 +46,19 @@ class Activity(object):
         self._actorid = actorid
 
         self.attributes = attributes if attributes is not None else {}            
-        
+
+    @classmethod
+    def from_json(obj, s):
+        d = json.loads(s) if not isinstance(s, dict) else s                
+        return obj(startframe=d['_startframe'],
+                   endframe=d['_endframe'],
+                   framerate=d['_framerate'],
+                   category=d['_label'],
+                   shortlabel=d['_shortlabel'],
+                   tracks=d['_trackid'],
+                   attributes=d['attributes'],
+                   actorid=d['_actorid'])
+                
     def __len__(self):
         """Return activity length in frames, or zero if degenerate"""
         return max(0, self.endframe() - self.startframe())
@@ -50,8 +67,12 @@ class Activity(object):
         return str('<vipy.activity: category="%s", frames=(%d,%d), tracks=%s>' % (self.category(), self.startframe(), self.endframe(), len(self.trackids())))
 
     def dict(self):
-        return {'id':self._id, 'label':self.category(), 'shortlabel':self.shortlabel(), 'startframe':self._startframe, 'endframe':self._endframe, 'attributes':self.attributes, 'framerate':self._framerate,
-                'trackid':self._trackid, 'actorid':self._actorid}
+        """Return a python dictionary containing the relevant serialized attributes suitable for JSON encoding"""
+        return self.json(s=None, encode=False)
+
+    def json(self, encode=True):
+        d = {k:v if k != '_trackid' else list(v) for (k,v) in self.__dict__.items()}
+        return json.dumps(d) if encode else d
     
     def actorid(self, actorid=None):
         if actorid is None:

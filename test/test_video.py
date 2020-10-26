@@ -3,7 +3,7 @@ import numpy as np
 import vipy.video
 import vipy.videosearch
 import vipy.object
-from vipy.util import tempjpg, tempdir, Failed, isurl, rmdir, totempdir
+from vipy.util import tempjpg, tempdir, Failed, isurl, rmdir, totempdir, tempMP4
 from vipy.geometry import BoundingBox
 import pdb
 from vipy.dataset.kinetics import Kinetics400, Kinetics600, Kinetics700
@@ -17,6 +17,31 @@ import shutil
 mp4file = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'Video.mp4')
 mp4url = 'https://www.youtube.com/watch?v=C0DPdy98e4c'
 
+def _test_stream():
+    v = vipy.video.Video(mp4file)
+    for (k,im) in enumerate(v.stream()):
+        if k == 0:
+            break
+    assert im.shape() == v.shape()
+    print('[test_video.video]: stream read  PASSED')
+        
+    try:
+        with v.stream() as s:
+            im = v._preview()
+            s.write(im)
+        raise Failed()        
+    except Failed:
+        raise
+    except:
+        print('[test_video.video]: stream overwrite   PASSED')
+
+    w = vipy.video.Video(tempMP4())
+    with w.stream(write=True) as s:
+        im = v._preview()
+        s.write(im)
+    assert w.hasfilename() 
+    print('[test_video.video]: stream write   PASSED')       
+        
 def _test_video():
     # Common Parameters
     urls = vipy.videosearch.youtube('owl',1)
@@ -114,6 +139,16 @@ def _test_video():
     assert vc._array is None and v._array is None
     print('[test_video.scene]: clone()  PASSED')        
 
+    # JSON
+    v = vipy.video.Video(url=mp4url)    
+    vs = vipy.video.Video.from_json(v.clone().json())
+    assert v.__dict__ == vs.__dict__
+    print('[test_video.scene]: json serialization PASSED')
+
+    # Casting
+    v_down = vipy.video.Video.cast(vipy.video.RandomScene())
+    v_up = vipy.video.Scene.cast(v_down)
+    print('[test_video.scene]: video casting PASSED')    
     
 def _test_scene():
 
@@ -411,6 +446,7 @@ def _test_scene_union():
     
     
 if __name__ == "__main__":
+    _test_stream()
     _test_video()
     test_track()
     _test_scene()

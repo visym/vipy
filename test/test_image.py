@@ -153,9 +153,26 @@ def test_image():
     for imgfile in [rgbfile, greyfile, rgbafile]:
         _test_image_fileformat(imgfile)
 
-        
-        
-            
+
+    # JSON serialization
+    im = vipy.image.RandomImage().mindim(64)
+    img = im.numpy()
+    ims = im.clone()
+    s = ims.json()
+    assert np.allclose(ims.json(s).numpy(), img)
+    assert np.allclose(vipy.image.Image.from_json(s).numpy(), img)
+    print('[test_image]: JSON image serialization PASSED')    
+
+    im = vipy.image.RandomScene().mindim(64)
+    ims = im.clone().json(im.clone().json())
+    assert all([bbs == bb for (bbs, bb) in zip(ims._objectlist, im._objectlist)])
+    print('[test_image]: JSON scene serialization PASSED')
+
+    im_down = vipy.image.Image.cast(im)
+    im_up = vipy.image.Scene(im_down)
+    print('[test_image]: image casting PASSED')    
+
+    
 def _test_image_fileformat(imgfile):
     # Filename object
     im = ImageDetection(filename=imgfile, xmin=100, ymin=100, bbwidth=700, height=1000, category='face')
@@ -185,8 +202,6 @@ def _test_image_fileformat(imgfile):
     im = ImageDetection(filename=imgfile, xmin=100, ymin=100, bbwidth=700, height=1000, category='face')    
     imd = im.detection()
     assert imd.xywh() == im.boundingbox().xywh()
-    imd = im.image()
-    assert imd.shape() == im.shape()
     print('[test_image.image]["%s"]:  ImageDetection downgrade  PASSED' % imgfile)    
     
     # Saveas
@@ -427,13 +442,13 @@ def test_imagedetection():
 
     # boundingbox() methods
     im = ImageDetection(filename=rgbfile, category='face', xmin=-1, ymin=-2, ymax=10, xmax=20)
-    assert im.boundingbox() == BoundingBox(-1, -2, 20, 10)
-    assert not im.boundingbox(xmin=0, ymin=0, width=10, height=20) == BoundingBox(0,0,width=10, height=20)
-    assert im.boundingbox(xmin=0, ymin=0, width=10, height=20).bbox == BoundingBox(0,0,width=10, height=20)
-    assert im.boundingbox(bbox=BoundingBox(1,2,3,4)).bbox == BoundingBox(1,2,3,4)
-    assert im.boundingbox(bbox=BoundingBox(xcentroid=1,ycentroid=2,width=3,height=4)).bbox == BoundingBox(xcentroid=1,ycentroid=2,width=3,height=4)
-    assert im.boundingbox(xmin=-1, ymin=-2, ymax=10, xmax=20).boundingbox(dilate=1.5).bbox == BoundingBox(xmin=-1, ymin=-2, ymax=10, xmax=20).dilate(1.5)
-    assert im.boundingbox(xmin=-1, ymin=-2, ymax=10, xmax=20).boundingbox(dilate=1.5).bbox == BoundingBox(xmin=-1, ymin=-2, ymax=10, xmax=20).dilate(1.5)
+    assert BoundingBox(-1, -2, 20, 10) == vipy.geometry.BoundingBox.cast(im.boundingbox())
+    assert vipy.geometry.BoundingBox.cast(im.boundingbox(xmin=0, ymin=0, width=10, height=20).bbox) == BoundingBox(0,0,width=10, height=20)
+    assert BoundingBox(0,0,width=10, height=20) == vipy.geometry.BoundingBox.cast(im.boundingbox(xmin=0, ymin=0, width=10, height=20).bbox)
+    assert BoundingBox(1,2,3,4) == vipy.geometry.BoundingBox.cast(im.boundingbox(bbox=BoundingBox(1,2,3,4)).bbox)
+    assert BoundingBox(xcentroid=1,ycentroid=2,width=3,height=4) == vipy.geometry.BoundingBox.cast(im.boundingbox(bbox=BoundingBox(xcentroid=1,ycentroid=2,width=3,height=4)).bbox)
+    assert BoundingBox(xmin=-1, ymin=-2, ymax=10, xmax=20).dilate(1.5) == vipy.geometry.BoundingBox.cast(im.boundingbox(xmin=-1, ymin=-2, ymax=10, xmax=20).boundingbox(dilate=1.5).bbox)
+    assert BoundingBox(xmin=-1, ymin=-2, ymax=10, xmax=20).dilate(1.5) == vipy.geometry.BoundingBox.cast(im.boundingbox(xmin=-1, ymin=-2, ymax=10, xmax=20).boundingbox(dilate=1.5).bbox)
     try:
         im.boundingbox(xmin=1)
         raise Failed()
@@ -508,7 +523,7 @@ def test_imagedetection():
 
     # Dilate
     im = ImageDetection(array=img, xmin=1, ymin=0, width=3, height=4)
-    assert im.clone().dilate(2).bbox == BoundingBox(centroid=im.bbox.centroid(), width=6, height=8) and img.shape[0] == im.height()
+    assert vipy.geometry.BoundingBox.cast(im.clone().dilate(2).bbox) == BoundingBox(centroid=im.bbox.centroid(), width=6, height=8) and img.shape[0] == im.height()
     print('[test_image.imagedetection]: dilate PASSED')
 
     # Pad

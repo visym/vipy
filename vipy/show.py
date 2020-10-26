@@ -1,5 +1,6 @@
 import os
 import matplotlib
+
 if 'VIPY_BACKEND' in os.environ:
     matplotlib.use(os.environ['VIPY_BACKEND'])
     
@@ -27,14 +28,15 @@ def noshow(fignum):
     return BACKEND.noshow(fignum)
 
 
-def imshow(im, fignum=None, nowindow=False):
+def imshow(im, fignum=None, nowindow=False, timestamp=None, timestampcolor='black', timestampfacecolor=None):
     """Show an image in the provided figure number"""
     if nowindow:
         noshow(fignum)
     h = BACKEND.imshow(im, fignum=fignum)
+    if timestamp is not None:
+        text(str(timestamp), 4, 15, fontsize=10, alpha=0.8 if timestampfacecolor is not None else 1.0, textfacealpha=0.6, facealpha=0.6, textcolor=timestampcolor, textfacecolor=timestampfacecolor)
     if not nowindow:
-        show(fignum)
-        BACKEND.imflush()
+        show(fignum)        
     return h
 
 
@@ -49,12 +51,14 @@ def imbbox(img, xmin, ymin, xmax, ymax, bboxcaption=None, fignum=None, nowindow=
     return h
 
 
-def imdetection(img, detlist, fignum=None, bboxcolor='green', facecolor='white', facealpha=0.5, do_caption=True, fontsize=10, textcolor='green', textfacecolor='white', textfacealpha=1.0, captionoffset=(0,0), nowindow=False):
+def imdetection(img, detlist, fignum=None, bboxcolor='green', facecolor='white', facealpha=0.5, do_caption=True, fontsize=10, textcolor='green', textfacecolor='white', textfacealpha=1.0, captionoffset=(0,0), nowindow=False, timestamp=None, timestampcolor='black', timestampfacecolor=None):
     """Show a list of vipy.object.Detections overlayed on img.  Image must be RGB"""
 
     if nowindow:
         noshow(fignum)
     h = BACKEND.imdetection(img, detlist, fignum=fignum, bboxcolor=bboxcolor, do_caption=do_caption, facecolor=facecolor, facealpha=facealpha, fontsize=fontsize, textcolor=textcolor, captionoffset=captionoffset, textfacecolor=textfacecolor, textfacealpha=textfacealpha)
+    if timestamp is not None:
+        text(str(timestamp), 6, 17, fontsize=fontsize, textfacealpha=0.6, facealpha=0.6, alpha=0.8 if timestampfacecolor is not None else 1.0, textcolor=timestampcolor, textfacecolor=timestampfacecolor)       
     if not nowindow:
         show(fignum)
         BACKEND.flush() if len(detlist)>0 else BACKEND.imflush()               
@@ -76,3 +80,7 @@ def savefig(filename=None, fignum=None, pad_inches=0, bbox_inches='tight', dpi=N
 def colorlist():
     return BACKEND.colorlist()
 
+
+def text(caption, xmin, ymin, fignum=None, textcolor='black', textfacecolor=None, textfacealpha=1.0, fontsize=10, linewidth=3, facecolor='white', facealpha=0.5, alpha=1.0):
+    return BACKEND.text(caption, xmin, ymin, fignum, textcolor, textfacecolor, textfacealpha, fontsize, linewidth, facecolor, facealpha, alpha)
+    

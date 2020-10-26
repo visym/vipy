@@ -5,6 +5,11 @@ import uuid
 import copy
 import warnings
 
+try:
+    import ujson as json  # faster
+except ImportError:
+    import json
+
 
 class Detection(BoundingBox):
     """vipy.object.Detection class
@@ -19,14 +24,31 @@ class Detection(BoundingBox):
 
     """
 
-    def __init__(self, label=None, xmin=None, ymin=None, width=None, height=None, xmax=None, ymax=None, confidence=None, xcentroid=None, ycentroid=None, category=None, xywh=None, shortlabel=None, attributes=None):
+    def __init__(self, label=None, xmin=None, ymin=None, width=None, height=None, xmax=None, ymax=None, confidence=None, xcentroid=None, ycentroid=None, category=None, xywh=None, shortlabel=None, attributes=None, id=None):
         super().__init__(xmin=xmin, ymin=ymin, width=width, height=height, xmax=xmax, ymax=ymax, xcentroid=xcentroid, ycentroid=ycentroid, xywh=xywh)
         assert not (label is not None and category is not None), "Constructor requires either label or category kwargs, not both"
-        self._id = uuid.uuid1().hex        
+        self._id = uuid.uuid1().hex if id is None else id
         self._label = category if category is not None else label
         self._shortlabel = self._label if shortlabel is None else shortlabel
         self._confidence = float(confidence) if confidence is not None else confidence
         self.attributes = attributes if attributes is not None else {}
+
+    @classmethod
+    def cast(cls, d, flush=False):
+        assert isinstance(d, BoundingBox)
+        if d.__class__ != Detection:
+            d.__class__ = Detection
+            d._id = uuid.uuid1().hex if flush or not hasattr(d, '_id') else d._id
+            d._shortlabel = None if flush or not hasattr(d, '_shortlabel') else d._shortlabel
+            d._confidence = None if flush or not hasattr(d, '_confidence') else d._confidence
+            d._label = None if flush or not hasattr(d, '_label') else d._label
+            d.attributes = {} if flush or not hasattr(d, 'attributes') else d.attributes
+        return d
+        
+    @classmethod
+    def from_json(obj, s):
+        d = json.loads(s) if not isinstance(s, dict) else s        
+        return obj(xmin=d['_xmin'], ymin=d['_ymin'], xmax=d['_xmax'], ymax=d['_ymax'], label=d['_label'], shortlabel=d['_shortlabel'], confidence=d['_confidence'], attributes=d['attributes'])
         
     def __repr__(self):
         strlist = []
@@ -47,10 +69,12 @@ class Detection(BoundingBox):
         return self.__repr__()
 
     def dict(self):
-        return {'id':self._id, 'label':self.category(), 'shortlabel':self.shortlabel() ,'boundingbox':super().dict(),
-                'attributes':self.attributes,  # these may be arbitrary user defined objects
-                'confidence':self._confidence}
-                    
+        """Return a python dictionary containing the relevant serialized attributes suitable for JSON encoding"""
+        return self.json(s=None, encode=False)
+
+    def json(self, encode=True):
+        return json.dumps(self.__dict__) if encode else self.__dict__
+                
     def nocategory(self):
         self._label = None
         return self
@@ -86,8 +110,12 @@ class Detection(BoundingBox):
     def clone(self):
         return copy.deepcopy(self)
 
-    def confidence(self):
-        return self._confidence
+    def confidence(self, c=None):
+        if c is None:
+            return self._confidence
+        else:
+            self._confidence = c
+            return self
     
     
 class Track(object):
@@ -140,11 +168,25 @@ class Track(object):
         self._keyboxes = boxes
         
         # Sorted increasing frame order
-        if len(keyframes) > 0 and len(boxes) > 0:
+        if len(keyframes) > 0 and len(boxes) > 0 and not all([keyframes[i-1] <= keyframes[i] for i in range(1,len(keyframes))]):
             (keyframes, boxes) = zip(*sorted([(f,bb) for (f,bb) in zip(keyframes, boxes)], key=lambda x: x[0]))
             self._keyframes = [int(np.round(f)) for f in keyframes]  # coerce to int
             self._keyboxes = list(boxes)
-        
+
+    @classmethod
+    def from_json(cls, s):
+        d = json.loads(s) if not isinstance(s, dict) else s
+        return cls(keyframes=d['_keyframes'],
+                   boxes=[BoundingBox.from_json(bbs) for bbs in d['_keyboxes']],
+                   category=d['_label'],
+                   confidence=None,
+                   framerate=d['_framerate'],
+                   interpolation=d['_interpolation'],
+                   boundary=d['_boundary'],
+                   shortlabel=d['_shortlabel'],
+                   attributes=d['attributes'],
+                   trackid=d['_id'])
+                   
     def __repr__(self):
         strlist = []
         if self.category() is not None:
@@ -179,6 +221,10 @@ class Track(object):
         return {'id':self._id, 'label':self.category(), 'shortlabel':self.shortlabel(), 'keyframes':self._keyframes, 'framerate':self._framerate, 
                 'boundingbox':[bb.dict() for bb in self._keyboxes], 'attributes':self.attributes}
 
+    def json(self, encode=True):
+        d = {k:v if k != '_keyboxes' else [bb.json(encode=False) for bb in v] for (k,v) in self.__dict__.items()}
+        return json.dumps(d) if encode else d
+    
     def add(self, keyframe, box):
         """Add a new keyframe and associated box to track, preserve sorted order of keyframes"""
         assert isinstance(box, BoundingBox), "Invalid input - Box must be vipy.geometry.BoundingBox()"
@@ -198,21 +244,15 @@ class Track(object):
         return self
         
     def replace(self, keyframe, box):
-        """Replace a keyframe and associated box to track, preserve sorted order of keyframes"""
-        assert isinstance(box, BoundingBox), "Invalid input - Box must be vipy.geometry.BoundingBox()"
-        assert box.isvalid(), "Invalid input - Box must be non-degenerate"
-        assert keyframe in self._keyframes, "Keyframe not found"
-        self._keyboxes[self._keyframes.index(keyframe)] = box
-        return self
+        """Replace the keyframe and associated box(es), preserve sorted order of keyframes"""
+        return self.delete(keyframe).add(keyframe, box)
 
     def delete(self, keyframe):
         """Replace a keyframe and associated box to track, preserve sorted order of keyframes"""
-        assert keyframe in self._keyframes, "Keyframe not found"
-        k = self._keyframes.index(keyframe)
-        del self._keyboxes[k]
-        del self._keyframes[k]
-        if len(self._keyframes) == 0:
-            warnings.warn('[vipy.object.Track]: Attempting to delete keyframe %d from empty track "%s" - Ignoring' % (keyframe, str(self)))
+        while keyframe in self._keyframes:
+            k = self._keyframes.index(keyframe)
+            del self._keyboxes[k]
+            del self._keyframes[k]
         return self
     
     def keyframes(self):
@@ -262,7 +302,7 @@ class Track(object):
                       category=self.category(),
                       shortlabel=self.shortlabel())
         d.attributes['trackid'] = self.id()  # for correspondence of detections to tracks
-        return d if self._boundary == 'extend' else (None if not self.during(k) else d)
+        return d if self._boundary == 'extend' or self.during(k) else None
 
 
     def category(self, label=None, shortlabel=True):
@@ -292,7 +332,7 @@ class Track(object):
 
     def offset(self, dt=0, dx=0, dy=0):
         self._keyboxes = [bb.offset(dx, dy) for bb in self._keyboxes]
-        self._keyframes = list(np.array(self._keyframes) + dt)
+        self._keyframes = [f+dt for f in self._keyframes]
         return self
 
     def frameoffset(self, dx, dy):
@@ -388,14 +428,14 @@ class Track(object):
         assert isinstance(other, Track), "invalid input - Must be vipy.object.Track()"
         startframe = max(self.startframe(), other.startframe())
         endframe = min(self.endframe(), other.endframe())
-        return np.mean([self[startframe].iou(other[startframe]), self[endframe].iou(other[endframe])]) if endframe >= startframe else 0.0        
+        return float(np.mean([self[startframe].iou(other[startframe]), self[endframe].iou(other[endframe])]) if endframe >= startframe else 0.0)
 
     def segmentiou(self, other, dt=5):
         """Compute the mean spatial IoU between two tracks at the overlapping segment, sampling by dt.  Useful for track continuation for densely overlapping tracks"""
         assert isinstance(other, Track), "invalid input - Must be vipy.object.Track()"
         startframe = max(self.startframe(), other.startframe())
         endframe = min(self.endframe(), other.endframe())   # inclusive
-        return np.mean([self[min(k,endframe)].iou(other[min(k,endframe)]) for k in range(startframe, endframe, dt)]) if endframe >= startframe else 0.0 
+        return float(np.mean([self[min(k,endframe)].iou(other[min(k,endframe)]) for k in range(startframe, endframe, dt)]) if endframe >= startframe else 0.0)
         
     def rankiou(self, other, rank, dt=1, n=None):
         """Compute the mean spatial IoU between two tracks per frame in the range (self.startframe(), self.endframe()) using only the top-k (rank) frame overlaps
@@ -407,7 +447,7 @@ class Track(object):
         assert dt >= 1
         dt = max(1, int(len(self)/n) if n is not None else dt)
         frames = [self.startframe()] + list(range(self.startframe()+dt, self.endframe(), dt)) + [self.endframe()]
-        return np.mean(sorted([self[k].iou(other[k]) if (self.during(k) and other.during(k)) else 0.0 for k in frames])[-rank:])
+        return float(np.mean(sorted([self[k].iou(other[k]) if (self.during(k) and other.during(k)) else 0.0 for k in frames])[-rank:]))
 
     def percentileiou(self, other, percentile, dt=1, n=None):
         """Percentile iou returns rankiou for rank=percentile*len(self)"""
@@ -468,6 +508,26 @@ class Track(object):
                 raise
         return self
 
+    def extrapolate(self, k, smoothingfactor=None, strict=False):
+        """Track extrapolation by quadratic spline fit.  Smoothing factor will increase with smoothing > 1 and decrease with 0 < smoothing < 1.
+
+           Requires at least 3 keyboxes.
+           Requires optional package scipy.
+        """
+        if self.during(k):
+            return self[k]
+        
+        try_import('scipy', 'scipy');  import scipy.interpolate;
+        assert smoothingfactor is None or smoothingfactor > 0
+        assert len(self._keyframes) >= 3, "Invalid length for quadratic spline extrapolation"
+        s = smoothingfactor * len(self._keyframes) if smoothingfactor is not None else None
+        (xmin, ymin, xmax, ymax) = zip(*[bb.to_ulbr() for bb in self._keyboxes])
+        f_xmin = scipy.interpolate.UnivariateSpline(self._keyframes, xmin, check_finite=False, s=s, k=2)
+        f_ymin = scipy.interpolate.UnivariateSpline(self._keyframes, ymin, check_finite=False, s=s, k=2)
+        f_xmax = scipy.interpolate.UnivariateSpline(self._keyframes, xmax, check_finite=False, s=s, k=2)
+        f_ymax = scipy.interpolate.UnivariateSpline(self._keyframes, ymax, check_finite=False, s=s, k=2)
+        return Detection(xmin=float(f_xmin(k)), ymin=float(f_ymin(k)), xmax=float(f_xmax(k)), ymax=float(f_ymax(k)))
+    
     def imclip(self, width, height):
         """Clip the track to the image rectangle (width, height).  If a keybox is outside the image rectangle, remove it otherwise clip to the image rectangle. 
            This operation can change the length of the track and the size of the keyboxes.  The result may be an empty track if the track is completely outside
@@ -489,7 +549,29 @@ class Track(object):
         (self._keyboxes, self._keyframes) = (list(self._keyboxes), list(self._keyframes))
         return self
 
+    def significant_digits(self, n):
+        self._keyboxes = [bb.significant_digits(n) for bb in self._keyboxes]
+        return self
 
+    def velocity(self, f, dt=5):
+        """Return the (x,y) track velocity at frame f in units of pixels per frame computed by finite difference"""
+        assert f >= 0 and dt > 0 and self.during(f)              
+        return (self.velocity_x(f, dt), self.velocity_y(f, dt))
+
+    def velocity_x(self, f, dt=5):
+        """Return the (x) track velocity at frame f in units of pixels per frame computed by finite difference"""
+        assert f >= 0 and dt > 0 and self.during(f)
+        return (self[f].centroid_x() - self[f-dt].centroid_x())/float(dt)
+
+    def velocity_y(self, f, dt=5):
+        """Return the (y) track velocity at frame f in units of pixels per frame computed by finite difference"""
+        assert f >= 0 and dt > 0 and self.during(f)
+        return (self[f].centroid_y() - self[f-dt].centroid_y())/float(dt)
+    
+    def nearest_keyframe(self, f):
+        return self._keyframes[int(np.abs(np.array(self._keyframes) - f).argmin())]
+
+    
 def non_maximum_suppression(detlist, conf, iou, bycategory=False):
     """Compute non-maximum suppression of a list of vipy.object.Detection() based on spatial IOU threshold (iou) and a confidence threshold (conf)"""
     assert all([isinstance(d, Detection) for d in detlist])

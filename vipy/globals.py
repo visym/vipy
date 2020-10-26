@@ -17,7 +17,8 @@ GLOBAL = {'VERBOSE': True,       # If False, will silence everything, equivalent
           'CACHE':None,          # Cache directory for vipy.video and vipy.image donwloads
           'GPU':None,            # GPU index assigned to this process
           'LOGGING':False,       # If True, use python logging (handler provided by end-user) intead of print 
-          'LOGGER':None}         # The global logger used by vipy.globals.print() and vipy.globals.warn() if LOGGING=True
+          'LOGGER':None,         # The global logger used by vipy.globals.print() and vipy.globals.warn() if LOGGING=True
+          'GUI':{'escape':False}}   
 
 
 def logging(enable=None, format=None):
@@ -87,6 +88,18 @@ def cache(cachedir=None):
     return os.environ['VIPY_CACHE'] if 'VIPY_CACHE' in os.environ else None
     
 
+def user_hit_escape(b=None):
+    if b is None:
+        if GLOBAL['GUI']['escape']:
+            GLOBAL['GUI']['escape'] = False  # toggle it
+            return True
+        else:
+            return False
+    else:
+        # Set in vipy.gui.using_matplotlib.escape_to_exit()
+        assert isinstance(b, bool)
+        GLOBAL['GUI']['escape'] = b  
+            
 class Dask(object):
     def __init__(self, num_processes=1, dashboard=False, verbose=False, address=None):
         assert address is not None or isinstance(num_processes, int) and num_processes >=1, "num_processes must be >= 1"
