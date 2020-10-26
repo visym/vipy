@@ -177,6 +177,12 @@ class BoundingBox(object):
             raise ValueError('invalid constructor input')
 
     @classmethod
+    def cast(cls, bb):
+        assert isinstance(bb, BoundingBox)
+        bb.__class__ = BoundingBox
+        return bb
+    
+    @classmethod
     def from_json(cls, s):
         d = json.loads(s) if not isinstance(s, dict) else s
         return cls(ulbrdict=d)
@@ -372,6 +378,14 @@ class BoundingBox(object):
         """Alias for to_xywh"""
         return self.to_xywh(xywh_)
 
+    def cxywh(self, cxywh=None):
+        """Return or set bounding box corners as (centroidx,centroidy,width,height) tuple"""
+        if cxywh is None:
+            return tuple([self.x_centroid(), self.y_centroid(), self.width(), self.height()])
+        else:
+            assert len(cxywh) == 4, "Invalid (xcentroid, ycentroid, width, height) input"
+            return self.centroid( (cxywh[0], cxywh[1]) ).width(cxywh[2]).height(cxywh[3])            
+    
     def ulbr(self, ulbr=None):
         """Return bounding box corners as upper left, bottom right (xmin, ymin, xmax, ymax)"""
         if ulbr is None:
@@ -593,7 +607,7 @@ class BoundingBox(object):
             assert isnumpy(img), "Invalid numpy image input"
             height = img.shape[0]
         else:
-            assert isnumber(height), "Invalid height"
+            assert height is not None and isnumber(height), "Invalid height"
         (x,y,w,h) = self.xywh()
         self._ymin = height - self._ymax
         self._ymax = self._ymin + h

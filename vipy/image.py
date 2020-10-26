@@ -737,7 +737,7 @@ class Image(object):
     
     def _crop(self, bbox):
         """Crop the image buffer using the supplied bounding box object, clipping the box to the image rectangle"""
-        assert isinstance(bbox, BoundingBox) and bbox.valid(), "Invalid vipy.geometry.BoundingBox() input"""
+        assert isinstance(bbox, BoundingBox) and bbox.valid(), "Invalid input - Must be vipy.geometry.BoundingBox() not '%s'" % (str(type(bbox)))
         if not bbox.isdegenerate() and bbox.hasoverlap(self.load().array()):
             bbox = bbox.imclip(self.load().array()).int()
             self._array = self.array()[bbox.ymin():bbox.ymax(),
@@ -751,6 +751,11 @@ class Image(object):
         self._array = np.fliplr(self.load().array())
         return self
 
+    def flipud(self):
+        """Mirror the image buffer about the horizontal axis - Not idempotent"""
+        self._array = np.flipud(self.load().array())
+        return self
+    
     def imagebox(self):
         """Return the bounding box for the image rectangle"""
         return BoundingBox(xmin=0, ymin=0, width=int(self.width()), height=int(self.height()))
@@ -1069,6 +1074,7 @@ class Image(object):
         """Cast the class to the base class (vipy.image.Image)"""
         self.__class__ = vipy.image.Image
         return self
+
     
 class ImageCategory(Image):
     """vipy ImageCategory class
@@ -1093,6 +1099,13 @@ class ImageCategory(Image):
                          colorspace=colorspace)
         assert not (category is not None and label is not None), "Define either category or label kwarg, not both"
         self._category = category if category is not None else label
+
+    @classmethod
+    def cast(cls, im, flush=False):
+        assert isinstance(im, vipy.image.Image)
+        im.__class__ = vipy.image.ImageCategory
+        im._category = None if flush or not hasattr(im, '_category') else im._category
+        return im
         
     def __repr__(self):
         strlist = []
@@ -1156,282 +1169,6 @@ class ImageCategory(Image):
             self.setattribute('RawDetectionProbability', newprob)
             return self
 
-    def vimage(self):
-        """Downgrade vipy.image.ImageCategory() to vipy.image.Image() object, array() is shared"""
-        return Image(filename=self.filename(), url=self.url(), attributes=self.attributes, array=self.array(), colorspace=self.colorspace())
-
-    def image(self):
-        """Alias for vimage"""
-        return self.vimage()
-    
-    
-class ImageDetection(ImageCategory):
-    """vipy.image.ImageDetection class
-
-    This class provides a representation of a vipy.image.Image with an object detection with a category and a vipy.geometry.BoundingBox
-
-    Valid constructors include all provided by vipy.image.Image with the additional kwarg 'category' (or alias 'label'), and BoundingBox coordinates
-
-    >>> im = vipy.image.ImageDetection(filename='/path/to/dog_image.ext', category='dog', xmin=0, ymin=0, width=100, height=100)
-    >>> im = vipy.image.ImageDetection(filename='/path/to/dog_image.ext', category='dog', xmin=0, ymin=0, xmax=100, ymax=100)
-    >>> im = vipy.image.ImageDetection(filename='/path/to/dog_image.ext', category='dog', xcentroid=50, ycentroid=50, width=100, height=100)
-    >>> im = vipy.image.ImageDetection(filename='/path/to/dog_image.ext', category='dog', bbox=vipy.geometry.BoundingBox(xmin=0, ymin=0, width=100, height=100))
-    >>> im = vipy.image.ImageCategory(url='http://path/to/dog_image.ext', category='dog').boundingbox(xmin=0, ymin=0, width=100, height=100)
-    >>> im = vipy.image.ImageCategory(array=dog_img, colorspace='rgb', category='dog',  xmin=0, ymin=0, width=100, height=100)
-
-    """
-    
-    def __init__(self, filename=None, url=None, category=None, attributes=None,
-                 xmin=None, xmax=None, ymin=None, ymax=None,
-                 width=None, bbwidth=None, height=None, bbheight=None,
-                 bbox=None, array=None, colorspace=None,
-                 xcentroid=None, ycentroid=None):
-
-        # ImageCategory class inheritance
-        super().__init__(filename=filename,
-                         url=url,
-                         attributes=attributes,
-                         category=category,
-                         array=array,
-                         colorspace=colorspace)
-
-        # Construction options
-        (width, height) = (bbwidth if bbwidth is not None else width, bbheight if bbheight is not None else height)  # alias
-        if bbox is not None:
-            assert isinstance(bbox, BoundingBox), "Invalid bounding box"
-            self.bbox = bbox
-        elif xmin is not None and ymin is not None and xmax is not None and ymax is not None:
-            self.bbox = BoundingBox(xmin=xmin, ymin=ymin, xmax=xmax, ymax=ymax)
-        elif xmin is not None and ymin is not None and width is not None and height is not None:
-            self.bbox = BoundingBox(xmin=xmin, ymin=ymin, width=width, height=height)
-        elif xcentroid is not None and ycentroid is not None and width is not None and height is not None:
-            self.bbox = BoundingBox(xcentroid=xcentroid, ycentroid=ycentroid, width=width, height=height)
-        elif (xmin is None and xmax is None and ymin is None and ymax is None and
-              width is None and bbwidth is None and height is None and bbheight is None and
-              bbox is None and xcentroid is None and ycentroid is None):
-            # Empty box to be updated with boundingbox() method
-            self.bbox = BoundingBox(xmin=0, ymin=0, width=0, height=0)
-        else:
-            raise ValueError('Incomplete constructor')
-
-        
-    @classmethod
-    def from_json(obj, s):
-        im = super().from_json(s)
-        im.bbox = BoundingBox.from_json(s)
-        return im
-    
-    def __repr__(self):
-        strlist = []
-        if self.isloaded():
-            strlist.append("height=%d, width=%d, color=%s" % (self.height(), self.width(), self.colorspace()))
-        if self.hasfilename():
-            strlist.append('filename="%s"' % self.filename())
-        if self.hasurl():
-            strlist.append('url="%s"' % self.url())
-        if self.category() is not None:
-            strlist.append('category="%s"' % self.category())
-        if self.bbox.isvalid():
-            strlist.append('bbox=(xmin=%1.1f, ymin=%1.1f, width=%1.1f, height=%1.1f)' %
-                           (self.bbox.xmin(), self.bbox.ymin(),self.bbox.width(), self.bbox.height()))
-        return str('<vipy.imagedetection: %s>' % (', '.join(strlist)))
-
-    
-    def __eq__(self, other):
-        """ImageDetection equality is defined as equivalent categories and boxes (not pixels)"""
-        return self._category.lower() == other._category.lower() and self.bbox == other.bbox if isinstance(other, ImageDetection) else False
-
-    def dict(self):
-        d = super().dict()
-        d['boundingbox'] = self.bbox.dict()
-        return d
-
-    def json(self, s=None, encode=True):
-        if s is None:
-            d = json.loads(super().json())
-            d['bbox'] = self.bbox.json(encode=False)
-            return json.dumps(d) if encode else d
-        else:
-            super().json(s)
-            self.bbox = BoundingBox.from_json(s)
-            return self
-            
-    def detection(self):
-        """Downgrade to vipy.object.Detection() object"""
-        return vipy.object.Detection(category=self.category(), xywh=self.boundingbox().xywh(), attributes=self.attributes)
-
-    def boundingbox(self, xmin=None, xmax=None, ymin=None, ymax=None,
-                    bbox=None, width=None, height=None, dilate=None,
-                    xcentroid=None, ycentroid=None):
-        """Modify the bounding box using the provided parameters, or return the box if no parameters provided"""
-        if (xmin is None and xmax is None and ymin is None and ymax is None
-            and bbox is None and width is None and height is None
-                and dilate is None and xcentroid is None and ycentroid is None):
-            return self.bbox
-        elif (xmin is not None and xmax is not None
-              and ymin is not None and ymax is not None):
-            self.bbox = BoundingBox(xmin=xmin, ymin=ymin,
-                                    xmax=xmax, ymax=ymax)
-        elif bbox is not None:
-            self.bbox = bbox
-        elif (xmin is not None and ymin is not None
-              and width is not None and height is not None):
-            self.bbox = BoundingBox(xmin=xmin, ymin=ymin, width=width, height=height)
-        elif (xcentroid is not None and ycentroid is not None
-              and width is not None and height is not None):
-            self.bbox = BoundingBox(xcentroid=xcentroid,
-                                    ycentroid=ycentroid,
-                                    width=width,
-                                    height=height)
-        elif (dilate is None):
-            raise ValueError('Invalid bounding box')
-
-        if dilate is not None:
-            self.bbox.dilate(dilate)
-
-        return self
-
-    def invalid(self):
-        """An ImageDetection is invalid when the box is invalid"""
-        return self.bbox.invalid()
-
-    def isinterior(self, W=None, H=None):
-        """Is the bounding box fully within the image rectangle?  Use provided image width and height (W,H) to avoid lots of reloads in some conditions"""
-        (W, H) = (W if W is not None else self.width(),
-                  H if H is not None else self.height())
-        return (self.bbox.xmin() >= 0 and self.bbox.ymin() >= 0
-                and self.bbox.xmax() <= W and self.bbox.ymax() <= H)
-    
-    # Spatial transformations
-    def imclip(self):
-        """Clip bounding box to the image rectangle, and ignore bbox if outside image rectangle.  Requires image load"""
-        if self.bbox.hasintersection(vipy.geometry.imagebox(self.shape())):
-            self.bbox.imclip(self.load().numpy())
-        else:
-            warnings.warn("Degenerate bounding box does not intersect image - Ignoring")            
-        return self
-
-    def rescale(self, scale=1, interp='bilinear'):
-        """Rescale image buffer and bounding box"""
-        self = super().rescale(scale, interp=interp)
-        self.bbox = self.bbox.rescale(scale)
-        return self
-
-    def resize(self, cols=None, rows=None, interp='bilinear'):
-        """Resize image buffer and bounding box so that the image buffer is size (height=cols, width=row).  If only cols or rows is provided, then scale the image appropriately"""
-        assert cols is not None or rows is not None, "Invalid input"
-        sx = (float(cols) / self.width()) if cols is not None else None
-        sy = (float(rows) / self.height()) if rows is not None else None
-        sx = sy if sx is None else sx
-        sy = sx if sy is None else sy
-        self.bbox.scalex(sx)
-        self.bbox.scaley(sy)
-        if sx == sy:
-            self = super().rescale(sx, interp=interp)  # Warning: method resolution order for multi-inheritance
-        else:
-            self = super().resize(cols, rows, interp=interp)
-        return self
-
-    
-    def fliplr(self):
-        """Mirror buffer and bounding box around vertical axis"""
-        self.bbox.fliplr(width=self.width())
-        self = super().fliplr()
-        return self
-
-    def crop(self):
-        """Crop image using stored bounding box, then set the bounding box equal to the new image rectangle"""
-        self = super()._crop(self.bbox)
-        self.bbox = BoundingBox(xmin=0, ymin=0, xmax=int(self.width()), ymax=int(self.height()))
-        return self
-
-    def mindim(self, dim=None, interp='bilinear'):
-        """Resize image preserving aspect ratio so that minimum dimension of image = dim"""
-        return super().mindim(dim, interp=interp) if dim is not None else min(self.shape())  # calls self.rescale() which will update boxes
-
-    def maxdim(self, dim=None, interp='bilinear'):
-        """Resize image preserving aspect ratio so that maximum dimension of image = dim"""        
-        return super().maxdim(dim, interp=interp) if dim is not None else max(self.shape())  # calls self.rescale() will will update boxes
-
-    def centersquare(self):
-        """Crop image of size (NxN) in the center, such that N=min(width,height), keeping the image centroid constant, new bounding box may be degenerate"""
-        (H,W) = self.shape()
-        self = super().centersquare()
-        (dy, dx) = ((H - self.height())/2.0, (W - self.width())/2.0)        
-        self.bbox.translate(-dx, -dy)
-        return self
-    
-    def dilate(self, s):
-        """Dilate bounding box by scale factor"""
-        self.bbox = self.bbox.dilate(s)
-        return self
-
-    def _pad(self, dx, dy, mode='edge'):
-        """Pad image using np.pad mode"""
-        self = super()._pad(dx, dy, mode)
-        self.bbox = self.bbox.translate(dx if not isinstance(dx, tuple) else dx[0], dy if not isinstance(dy, tuple) else dy[0])        
-        return self
-
-    def zeropad(self, dx, dy):
-        """Pad image with dx=(leftpadwidth,rightpadwidth) or dx=bothpadwidth to zeropad left and right, dy=(toppadheight,bottompadheight) or dy=bothpadheight to zeropad top and bottom"""
-        self = super().zeropad(dx, dy)
-        self.bbox = self.bbox.translate(dx if not isinstance(dx, tuple) else dx[0], dy if not isinstance(dy, tuple) else dy[0])
-        return self
-
-    def meanpad(self, dx, dy, mu=None):
-        """Pad image using np.pad constant where constant is the RGB mean per image"""
-        self = super().meanpad(dx, dy, mu=None)
-        self.bbox = self.bbox.translate(dx if not isinstance(dx, tuple) else dx[0], dy if not isinstance(dy, tuple) else dy[0])        
-        return self
-        
-    # Image export    
-    def show(self, figure=None, nowindow=False):
-        """Show the ImageDetection in the provided figure number"""
-        if figure is not None:
-            assert isinstance(figure, int) and figure > 0, "Invalid figure number, provide an integer > 0"
-        self.load()
-        if self.bbox.invalid():
-            warnings.warn('Ignoring invalid bounding box "%s"' % str(self.bbox))
-        if self.bbox.valid() and self.bbox.hasoverlap(self.array()) and self.bbox.shape() != self._array.shape[0:2]:
-            self.imclip()  # crop bbox to image rectangle for valid overlay image
-            vipy.show.imbbox(self.clone().rgb()._array, self.bbox.xmin(),
-                             self.bbox.ymin(), self.bbox.xmax(), self.bbox.ymax(),
-                             bboxcaption=self.category(),
-                             fignum=figure, nowindow=nowindow)
-        else:
-            # Do not display the box if the box is degenerate or equal to the image rectangle
-            super().show(figure=figure, nowindow=nowindow)
-        return self
-
-    def rectangular_mask(self, W=None, H=None):
-        """Return a binary array of the same size as the image (or using the
-        provided image width and height (W,H) size to avoid an image load),
-        with ones inside the bounding box, do not modify this image or this bounding box"""
-        if (W is None or H is None):
-            (H, W) = (int(np.round(self.height())),
-                      int(np.round(self.width())))
-        immask = np.zeros((H, W)).astype(np.uint8)
-        if self.bbox.hasoverlap(immask):
-            bb = self.bbox.clone().imclip(immask).int()
-            immask[bb.ymin():bb.ymax(), bb.xmin():bb.xmax()] = 1
-        return immask
-    
-    def setzero(self, bbox=None):
-        """Set all image values within the bounding box (or provided bbox) to zero, triggers load()"""
-        if bbox is not None:
-            assert isinstance(bbox, BoundingBox), "Invalid bounding box - Must be vipy.geometry.BoundingBox() "
-        bbox = self.bbox if bbox is None else bbox
-        self.load().array()[int(bbox.ymin()):int(bbox.ymax()),
-                            int(bbox.xmin()):int(bbox.xmax())] = 0
-        return self
-
-    def replace(self, img):
-        """Set all image values within the bounding box equal to the provided img, triggers load() and imclip()"""
-        self.load().imclip()
-        assert isnumpy(img) and img.shape == (self.bbox.int().height(), self.bbox.width(), self.channels()) and (img.dtype == self.array().dtype),  "Invalid replacement image - Must be same shape as box and same type as img"
-        self.array()[int(self.bbox.ymin()):int(self.bbox.ymax()),
-                     int(self.bbox.xmin()):int(self.bbox.xmax())] = img
-        return self
     
 
 class Scene(ImageCategory):
@@ -1453,7 +1190,7 @@ class Scene(ImageCategory):
         self._objectlist = []
 
         if objects is not None:
-            if not (isinstance(self._objectlist, list) and all([isinstance(bb, vipy.object.Detection) for bb in objects])):
+            if not (isinstance(objects, list) and all([isinstance(bb, vipy.object.Detection) for bb in objects])):
                 raise ValueError("Invalid object list - Input must be [vipy.object.Detection(), ...]")
             self._objectlist = objects
 
@@ -1547,6 +1284,10 @@ class Scene(ImageCategory):
         self._objectlist.append(imdet)
         return self
 
+    def add(self, imdet):
+        """Alias for append"""
+        
+        return self.append(imdet)
     def objects(self, objectlist=None):
         if objectlist is None:
             return self._objectlist
@@ -1630,6 +1371,12 @@ class Scene(ImageCategory):
         self = super().fliplr()
         return self
 
+    def flipud(self):
+        """Mirror buffer and all bounding box around vertical axis"""
+        self._objectlist = [bb.flipud(self.numpy()) for bb in self._objectlist]
+        self = super().flipud()
+        return self
+    
     def dilate(self, s):
         """Dilate all bounding boxes by scale factor, dilated boxes may be outside image rectangle"""
         self._objectlist = [bb.dilate(s) for bb in self._objectlist]
@@ -1722,6 +1469,8 @@ class Scene(ImageCategory):
         img = self.numpy()
         img[:] = np.multiply(img, 1.0-mask)  # in-place update
         return self  
+    def setzero(self):
+        return self.fgmask()
     
     def pixelmask(self, pixelsize=8):
         """Replace pixels within all foreground objects with a privacy preserving pixelated foreground with larger pixels"""
@@ -1735,6 +1484,17 @@ class Scene(ImageCategory):
         assert radius > 1, "Pixelsize is a scale factor such that pixels within the foreground are pixelsize times larger than the background"
         (img, mask) = (self.numpy(), self.binarymask())  # force writeable
         img[mask > 0] = self.clone().blur(radius).numpy()[mask > 0]  # in-place update
+        return self
+
+    def replace(self, newimg, broadcast=False):
+        """Set all image values within the bounding box equal to the provided img, triggers load() and imclip()"""
+        img = self.load().numpy()
+        assert isnumpy(newimg), "Invalid replacement image - Must be same shape as box and same type as img"
+        for d in self._objectlist:
+            d.imclip(newimg).imclip(img)
+            img[int(d.ymin()):int(d.ymax()),
+                int(d.xmin()):int(d.xmax())] = newimg[int(d.ymin()):int(d.ymax()),
+                                                      int(d.xmin()):int(d.xmax())] if not broadcast else vipy.image.Image(array=newimg).resize(d.width(), d.height())
         return self
     
     def meanmask(self):
@@ -1818,6 +1578,153 @@ class Scene(ImageCategory):
         """Add a frame number to the corner of the image"""
         return vipy.show.text('TEST', 0, 0)
 
+    
+class ImageDetection(Scene, BoundingBox):
+    """vipy.image.ImageDetection class
+
+    This class provides a representation of a vipy.image.Image with a single object detection with a category and a vipy.geometry.BoundingBox
+
+    Valid constructors include all provided by vipy.image.Image with the additional kwarg 'category' (or alias 'label'), and BoundingBox coordinates
+
+    >>> im = vipy.image.ImageDetection(filename='/path/to/dog_image.ext', category='dog', xmin=0, ymin=0, width=100, height=100)
+    >>> im = vipy.image.ImageDetection(filename='/path/to/dog_image.ext', category='dog', xmin=0, ymin=0, xmax=100, ymax=100)
+    >>> im = vipy.image.ImageDetection(filename='/path/to/dog_image.ext', category='dog', xcentroid=50, ycentroid=50, width=100, height=100)
+    >>> im = vipy.image.ImageDetection(filename='/path/to/dog_image.ext', category='dog', bbox=vipy.geometry.BoundingBox(xmin=0, ymin=0, width=100, height=100))
+    >>> im = vipy.image.ImageCategory(url='http://path/to/dog_image.ext', category='dog').boundingbox(xmin=0, ymin=0, width=100, height=100)
+    >>> im = vipy.image.ImageCategory(array=dog_img, colorspace='rgb', category='dog',  xmin=0, ymin=0, width=100, height=100)
+
+    """
+    
+    def __init__(self, filename=None, url=None, category=None, attributes=None,
+                 xmin=None, xmax=None, ymin=None, ymax=None,
+                 width=None, bbwidth=None, height=None, bbheight=None,
+                 bbox=None, array=None, colorspace=None,
+                 xcentroid=None, ycentroid=None):
+
+        # Construction options
+        (width, height) = (bbwidth if bbwidth is not None else width, bbheight if bbheight is not None else height)  # alias
+        if bbox is not None:
+            assert isinstance(bbox, BoundingBox), "Invalid bounding box"
+            bbox = vipy.object.Detection.cast(bbox)
+            bbox.category(category)
+        elif xmin is not None and ymin is not None and xmax is not None and ymax is not None:
+            bbox = vipy.object.Detection(xmin=xmin, ymin=ymin, xmax=xmax, ymax=ymax, category=category)
+        elif xmin is not None and ymin is not None and width is not None and height is not None:
+            bbox = vipy.object.Detection(xmin=xmin, ymin=ymin, width=width, height=height, category=category)
+        elif xcentroid is not None and ycentroid is not None and width is not None and height is not None:
+            bbox = vipy.object.Detection(xcentroid=xcentroid, ycentroid=ycentroid, width=width, height=height, category=category)
+        elif (xmin is None and xmax is None and ymin is None and ymax is None and
+              width is None and bbwidth is None and height is None and bbheight is None and
+              bbox is None and xcentroid is None and ycentroid is None):
+            # Empty box to be updated with boundingbox() method
+            bbox = vipy.object.Detection(xmin=0, ymin=0, width=0, height=0, category=category)
+        else:
+            raise ValueError('Incomplete constructor')
+
+        # ImageCategory class inheritance
+        super().__init__(filename=filename,
+                         url=url,
+                         category=category,
+                         attributes=attributes,
+                         objects=[bbox],
+                         array=array,
+                         colorspace=colorspace)
+
+    def __getattribute__(self, item):
+        if item == 'bbox':
+            assert len(self._objectlist) == 1, "Invalid ImageDetection"
+            return self._objectlist[0]
+        elif item == '_xmin':
+            assert len(self._objectlist) == 1, "Invalid ImageDetection"            
+            return self._objectlist[0]._xmin
+        elif item == '_ymin':
+            assert len(self._objectlist) == 1, "Invalid ImageDetection"            
+            return self._objectlist[0]._ymin
+        elif item == '_xmax':
+            assert len(self._objectlist) == 1, "Invalid ImageDetection"            
+            return self._objectlist[0]._xmax
+        elif item == '_ymax':
+            assert len(self._objectlist) == 1, "Invalid ImageDetection"            
+            return self._objectlist[0]._ymax        
+        else:
+            return super().__getattribute__(item)
+
+    def __getattr__(self, item):
+        if item == 'bbox':
+            assert len(self._objectlist) == 1, "Invalid ImageDetection"
+            return self._objectlist[0]
+        else:
+            return super().__getattribute__(item)
+    
+    @classmethod
+    def cast(cls, im, flush=True):
+        imc = super().cast(im, flush=flush)
+    
+    def __repr__(self):
+        strlist = []
+        if self.isloaded():
+            strlist.append("height=%d, width=%d, color=%s" % (self.height(), self.width(), self.colorspace()))
+        if self.hasfilename():
+            strlist.append('filename="%s"' % self.filename())
+        if self.hasurl():
+            strlist.append('url="%s"' % self.url())
+        if self.category() is not None:
+            strlist.append('category="%s"' % self.category())
+        if self.bbox.isvalid():
+            strlist.append('bbox=(xmin=%1.1f, ymin=%1.1f, width=%1.1f, height=%1.1f)' %
+                           (self.bbox.xmin(), self.bbox.ymin(),self.bbox.width(), self.bbox.height()))
+        return str('<vipy.image.imagedetection: %s>' % (', '.join(strlist)))
+
+    
+    def __eq__(self, other):
+        """ImageDetection equality is defined as equivalent categories and boxes (not pixels)"""
+        return self._category.lower() == other._category.lower() and self.bbox == other.bbox if isinstance(other, ImageDetection) else False
+
+    def boundingbox(self, xmin=None, xmax=None, ymin=None, ymax=None,
+                    bbox=None, width=None, height=None, dilate=None,
+                    xcentroid=None, ycentroid=None):
+        """Modify the bounding box using the provided parameters, or return the box if no parameters provided"""
+        if (xmin is None and xmax is None and ymin is None and ymax is None
+            and bbox is None and width is None and height is None
+                and dilate is None and xcentroid is None and ycentroid is None):
+            return self.bbox
+        elif (xmin is not None and xmax is not None
+              and ymin is not None and ymax is not None):
+            self.bbox.ulbr((xmin, ymin, xmax, ymax))
+        elif bbox is not None:
+            assert isinstance(bbox, BoundingBox)
+            self.bbox.ulbr(bbox.ulbr())
+        elif (xmin is not None and ymin is not None
+              and width is not None and height is not None):
+            self.bbox.xywh((xmin, ymin, width, height))
+        elif (xcentroid is not None and ycentroid is not None
+              and width is not None and height is not None):
+            self.bbox.cxywh((xcentroid, ycentroid, width, height))
+        elif (dilate is None):
+            raise ValueError('Invalid bounding box')
+
+        if dilate is not None:
+            self.bbox.dilate(dilate)
+
+        return self
+
+    def crop(self):
+        """Crop the image using the bounding box"""
+        return super().crop(self.boundingbox())
+    
+    def append(self, im):
+        raise ValueError('Unsupported for vipy.image.ImageDetection - use vipy.image.Scene instead')
+
+    def detection(self):
+        return self.boundingbox()
+
+    def isinterior(self, W=None, H=None):
+        """Is the bounding box fully within the image rectangle?  Use provided image width and height (W,H) to avoid lots of reloads in some conditions"""
+        (W, H) = (W if W is not None else self.width(),
+                  H if H is not None else self.height())
+        return (self.bbox.xmin() >= 0 and self.bbox.ymin() >= 0
+                and self.bbox.xmax() <= W and self.bbox.ymax() <= H)
+    
 def RandomImage(rows=None, cols=None):
     rows = np.random.randint(128, 1024) if rows is None else rows
     cols = np.random.randint(128, 1024) if cols is None else cols

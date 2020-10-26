@@ -34,6 +34,18 @@ class Detection(BoundingBox):
         self.attributes = attributes if attributes is not None else {}
 
     @classmethod
+    def cast(cls, d, flush=False):
+        assert isinstance(d, BoundingBox)
+        if d.__class__ != Detection:
+            d.__class__ = Detection
+            d._id = uuid.uuid1().hex if flush or not hasattr(d, '_id') else d._id
+            d._shortlabel = None if flush or not hasattr(d, '_shortlabel') else d._shortlabel
+            d._confidence = None if flush or not hasattr(d, '_confidence') else d._confidence
+            d._label = None if flush or not hasattr(d, '_label') else d._label
+            d.attributes = {} if flush or not hasattr(d, 'attributes') else d.attributes
+        return d
+        
+    @classmethod
     def from_json(obj, s):
         d = json.loads(s) if not isinstance(s, dict) else s        
         return obj(xmin=d['_xmin'], ymin=d['_ymin'], xmax=d['_xmax'], ymax=d['_ymax'], label=d['_label'], shortlabel=d['_shortlabel'], confidence=d['_confidence'], attributes=d['attributes'])
