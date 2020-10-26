@@ -129,6 +129,12 @@ class Video(object):
             self.fromframes(frames)
 
     @classmethod
+    def cast(cls, v):
+        assert isinstance(v, vipy.video.Video), "Invalid input - must be derived from vipy.video.Video"
+        v.__class__ = vipy.video.Video
+        return v
+            
+    @classmethod
     def from_json(cls, s):
         d = json.loads(s) if not isinstance(s, dict) else s
         v = cls(filename=d['_filename'],
@@ -218,12 +224,7 @@ class Video(object):
                 return self
             
             def __exit__(self, type, value, tb):
-                if self._pipe is not None:
-                    if self._write:
-                        self._pipe.stdin.close()
-                        self._pipe.wait()
-                    del self._pipe
-                    self._pipe = None
+                self.close()
                 if type is not None:
                     raise
                 return self
@@ -247,6 +248,14 @@ class Video(object):
                 assert self._pipe is not None and self._write is True, "Stream is read only"                
                 assert im.shape() == self._shape, "Shape cannot change during writing"
                 self._pipe.stdin.write(im.array().astype(np.uint8).tobytes())
+
+            def close(self):
+                if self._pipe is not None:
+                    if self._write:
+                        self._pipe.stdin.close()
+                        self._pipe.wait()
+                    del self._pipe
+                    self._pipe = None
                 
             def __iter__(self):
                 with self as s:
@@ -1167,13 +1176,6 @@ class Video(object):
     def hasattribute(self, k):
         return isinstance(self.attributes, dict) and k in self.attributes
 
-    def upcast(self):
-        """Cast the video to a vipy.video.Scene"""
-        if self.__class__ != vipy.video.Scene:
-            self.__class__ = vipy.video.Scene
-            self._tracks = {}
-            self._activities = {}            
-        return self
         
 class VideoCategory(Video):
     """vipy.video.VideoCategory class
@@ -1289,6 +1291,16 @@ class Scene(VideoCategory):
             self._activities = {a.id():a for a in activities}
 
         self._currentframe = None  # used during iteration only
+
+    @classmethod
+    def cast(cls, v):
+        assert isinstance(v, vipy.video.Video), "Invalid input - must be derived from vipy.video.Video"
+        if v.__class__ != vipy.video.Scene:
+            v.__class__ = vipy.video.Scene            
+            v._tracks = {} if not hasattr(v, '_tracks') else v._tracks
+            v._activities = {} if not hasattr(v, '_activities') else v._activities
+            v._category = None if not hasattr(v, '_category') else v._category
+        return v
 
     @classmethod
     def from_json(cls, s):
@@ -1993,11 +2005,6 @@ class Scene(VideoCategory):
         self.__class__ = vipy.video.Video
         return self
 
-    def asvideo(self):
-        """Cast the object to a vipy.video.Video class"""
-        self.__class__ = vipy.video.Video
-        return self
-    
     def assign(self, frame, dets, miniou=0.8, minconf=0.2, maxconf=0.8, maxhistory=30):
         """Assign a list of vipy.object.Detections at frame k to scene by greedy track association"""
         dets = tolist(dets)

@@ -105,9 +105,15 @@ class Image(object):
             self.attributes = attributes
 
     @classmethod
-    def from_json(obj, s):
+    def cast(cls, im):
+        assert isinstance(im, vipy.image.Image), "Invalid input - must derive from vipy.image.Image"
+        im.__class__ = vipy.image.Image
+        return im
+        
+    @classmethod
+    def from_json(cls, s):
         d = json.loads(s)        
-        return obj(filename=d['_filename'],
+        return cls(filename=d['_filename'],
                    url=d['_url'],
                    array=np.array(d['_array'], dtype=np.uint8) if d['_array'] is not None else None,
                    colorspace=d['_colorspace'],
@@ -1208,6 +1214,7 @@ class ImageDetection(ImageCategory):
         else:
             raise ValueError('Incomplete constructor')
 
+        
     @classmethod
     def from_json(obj, s):
         im = super().from_json(s)
@@ -1469,6 +1476,15 @@ class Scene(ImageCategory):
 
         self._objectlist = self._objectlist + detlist
 
+    @classmethod
+    def cast(cls, im):
+        assert isinstance(im, vipy.image.Image), "Invalid input - must be derived from vipy.image.Image"
+        if im.__class__ != vipy.image.Image:
+            im.__class__ = vipy.image.Image
+            im._category = None if not hasattr(im, '_category') else im._category
+            im._objectlist = [] if not hasattr(im, '_objectlist') else im._objectlist  
+        return im
+        
     @classmethod
     def from_json(obj, s):
         im = super().from_json(s)
