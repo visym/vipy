@@ -319,7 +319,11 @@ class Video(object):
                 f = f.filter(filtername, *a, **kw)
         assert self._ffmpeg_commandline(f.output('dummyfile')) == cmd
         return f
-                                 
+
+    def isdirty(self):
+        """Has the FFMPEG filter chain been modified from the default?  If so, then ffplay() on the video file will be different from self.load().play()"""
+        return '-filter_complex' in self._ffmpeg_commandline() and '[s1]' in self._ffmpeg_commandline()
+    
     def probe(self):
         """Run ffprobe on the filename and return the result as a JSON file"""
         if not has_ffprobe:
@@ -989,9 +993,10 @@ class Video(object):
     def ffplay(self):
         """Play the video file using ffplay.  If the video is loaded in memory, this will dump it to a temporary file first"""
         assert has_ffplay, '"ffplay" executable not found on path - Install from http://ffmpeg.org/download.html'
-        if self.isloaded():
-            warnings.warn('Video is loaded in memory, saving to temporary file for ffplay - This is expensive.  Try calling flush() first if you want to ffplay the source video filename.')
-            v = self.saveas(tempMP4())
+        if self.isloaded() or self.isdirty():
+            f = tempMP4()
+            warnings.warn('Saving video to temporary file "%s" for ffplay ... ' % f)                        
+            v = self.saveas(f)
             cmd = "ffplay %s" % v.filename()
             print('[vipy.video.play]: Executing "%s"' % cmd)
             os.system(cmd)
@@ -1012,9 +1017,12 @@ class Video(object):
         
         if notebook:
             # save to temporary video, this video is not cleaned up and may accumulate            
-            try_import("IPython.display", "ipython"); import IPython.display            
-            v = self.saveas(tempMP4()) if not self.hasfilename() or self.isloaded() else self
-            return IPython.display.Video(v.filename(), embed=True)
+            try_import("IPython.display", "ipython"); import IPython.display
+            if not self.hasfilename() or self.isloaded() or self.isdirty():
+                v = self.saveas(tempMP4())                 
+                warnings.warn('Saving video to temporary file "%s" for notebook viewer ... ' % v.filename())                
+                return IPython.display.Video(v.filename(), embed=True)
+            return IPython.display.Video(self.filename(), embed=True)
         elif has_ffplay:
             return self.ffplay()            
         else:
