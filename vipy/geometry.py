@@ -188,7 +188,7 @@ class BoundingBox(object):
         return cls(ulbrdict=d)
     
     def dict(self):
-        return {'xmin':self.xmin(), 'ymin':self.ymin(), 'width':self.width(), 'height':self.height(),
+        return {'xmin':self.xmin(), 'ymin':self.ymin(), 'width':self.bbwidth(), 'height':self.height(),
                 'xmax':self.xmax(), 'ymax':self.ymax(), 'xywh':self.xywh(), 'ulbr':self.ulbr(),
                 'xcentroid':self.xcentroid(), 'ycentroid':self.ycentroid(), 'centroid':self.centroid(),
                 'upperleft':self.upperleft(), 'bottomleft':self.bottomleft(), 'upperright':self.upperright(),
@@ -198,6 +198,8 @@ class BoundingBox(object):
         return json.dumps(self.__dict__) if encode else self.__dict__
         
     def clone(self):
+        return BoundingBox(xmin=self._xmin, xmax=self._xmax, ymin=self._ymin, ymax=self._ymax)
+    def bbclone(self):
         return BoundingBox(xmin=self._xmin, xmax=self._xmax, ymin=self._ymin, ymax=self._ymax)
 
     def __eq__(self, other):
@@ -209,7 +211,7 @@ class BoundingBox(object):
         return not self.__eq__(other)
 
     def __repr__(self):
-        return str('<vipy.geometry.boundingbox: xmin=%s, ymin=%s, width=%s, height=%s>' % (self.xmin(), self.ymin(), self.width(), self.height()))
+        return str('<vipy.geometry.boundingbox: xmin=%s, ymin=%s, width=%s, height=%s>' % (self.xmin(), self.ymin(), self.bbwidth(), self.bbheight()))
 
     def __str__(self):
         return self.__repr__()
@@ -248,15 +250,15 @@ class BoundingBox(object):
 
     def int(self):
         """Convert corners to integer with rounding"""
-        (w,h) = (int(np.round(self.width())), int(np.round(self.height())))
+        (w,h) = (int(np.round(self.bbwidth())), int(np.round(self.bbheight())))
         self._xmin = int(np.round(self._xmin))
         self._ymin = int(np.round(self._ymin))
         self._xmax = int(np.round(self._xmax))
         self._ymax = int(np.round(self._ymax))
-        if w != self.width():
-            self.right(w - self.width())  # preserve aspect ratio due to rounding by +/- right side of box 
-        if h != self.height():
-            self.bottom(h-self.height())  # preserve aspect ratio due to rounding by +/- bottom of box
+        if w != self.bbwidth():
+            self.right(w - self.bbwidth())  # preserve aspect ratio due to rounding by +/- right side of box 
+        if h != self.bbheight():
+            self.bottom(h-self.bbheight())  # preserve aspect ratio due to rounding by +/- bottom of box
         return self
 
     def significant_digits(self, n):
@@ -303,12 +305,14 @@ class BoundingBox(object):
 
     def width(self):
         return self._xmax - self._xmin
-
+    def bbwidth(self):
+        return self._xmax - self._xmin
+    
     def setwidth(self, w):
         """Set new width keeping centroid constant"""
         if w <= 0:
             raise ValueError('invalid width')
-        worig = self.width()
+        worig = (self._xmax - self._xmin)
         self._xmax += float((w - worig) / 2.0)
         self._xmin -= float((w - worig) / 2.0)
         return self
@@ -317,21 +321,24 @@ class BoundingBox(object):
         """Set new height keeping centroid constant"""
         if h <= 0:
             raise ValueError('invalid height')
-        horig = self.height()
+        horig = self._ymax - self._ymin
         self._ymax += float((h - horig) / 2.0)
         self._ymin -= float((h - horig) / 2.0)
         return self
 
     def height(self):
         return self._ymax - self._ymin
+    def bbheight(self):
+        return self._ymax - self._ymin
 
     def centroid(self, c=None):
         """(x,y) tuple of centroid position of bounding box"""
         if c is None:
-            return (self._xmin + (float(self.width()) / 2.0), self._ymin + (float(self.height()) / 2.0))
+            (height, width) = (self._ymax-self._ymin, self._xmax-self._xmin)            
+            return (self._xmin + (float(width) / 2.0), self._ymin + (float(height) / 2.0))
         else:
             assert len(c) == 2
-            (height, width) = self.shape()
+            (height, width) = (self._ymax-self._ymin, self._xmax-self._xmin)
             self._xmin = float(c[0]) - (width / 2.0)
             self._ymin = float(c[1]) - (height / 2.0)
             self._xmax = float(c[0]) + (width / 2.0)
@@ -360,12 +367,14 @@ class BoundingBox(object):
     
     def area(self):
         """Return the area=width*height of the bounding box"""
-        return self.width() * self.height()
+        (height, width) = (self._ymax-self._ymin, self._xmax-self._xmin)        
+        return width * height
 
     def to_xywh(self, xywh=None):
         """Return bounding box corners as (x,y,width,height) tuple"""
         if xywh is None:
-            return tuple([self._xmin, self._ymin, self.width(), self.height()])
+            (height, width) = (self._ymax-self._ymin, self._xmax-self._xmin)                    
+            return tuple([self._xmin, self._ymin, width, height])
         else:
             assert len(xywh) == 4, "Invalid (xmin,ymin,width,height) input"
             self._xmin = float(xywh[0])
@@ -381,10 +390,11 @@ class BoundingBox(object):
     def cxywh(self, cxywh=None):
         """Return or set bounding box corners as (centroidx,centroidy,width,height) tuple"""
         if cxywh is None:
-            return tuple([self.x_centroid(), self.y_centroid(), self.width(), self.height()])
+            (height, width) = (self._ymax-self._ymin, self._xmax-self._xmin)                    
+            return tuple([self.x_centroid(), self.y_centroid(), width, height])
         else:
             assert len(cxywh) == 4, "Invalid (xcentroid, ycentroid, width, height) input"
-            return self.centroid( (cxywh[0], cxywh[1]) ).width(cxywh[2]).height(cxywh[3])            
+            return self.centroid( (cxywh[0], cxywh[1]) ).setwidth(cxywh[2]).setheight(cxywh[3])            
     
     def ulbr(self, ulbr=None):
         """Return bounding box corners as upper left, bottom right (xmin, ymin, xmax, ymax)"""
@@ -494,7 +504,7 @@ class BoundingBox(object):
     def inside(self, p):
         """Is the 2D point p=(x,y) inside this boundingbox, or is the p=boundingbox() inside this bounding box?"""
         if isinstance(p, BoundingBox):
-            return self.hasintersection(p) and self.clone().intersection(p) == p
+            return self.hasintersection(p) and self.cover(p) == 1.0
         else:
             assert len(p) == 2, "Invalid 2D point=(x,y) input"""
             return (p[0] >= self._xmin) and (p[1] >= self._ymin) and (p[0] <= self._xmax) and (p[1] <= self._ymax)
@@ -502,8 +512,8 @@ class BoundingBox(object):
     def dilate(self, scale=1):
         """Change scale of bounding box keeping centroid constant"""
         assert isnumber(scale), "Invalid input"
-        w = self.width()
-        h = self.height()
+        w = (self._xmax - self._xmin)
+        h = (self._ymax - self._ymin)
         c = self.centroid()
         old_x = self._xmin
         old_y = self._ymin
@@ -525,7 +535,7 @@ class BoundingBox(object):
 
     def dilate_width(self, scale=1):
         """Change scale of bounding box in x direction keeping centroid constant"""
-        w = self.width()
+        w = self._xmax - self._xmin
         c = self.centroid()
         self._xmin = c[0] - (float(w) / 2.0) * scale
         self._xmax = c[0] + (float(w) / 2.0) * scale
@@ -625,8 +635,9 @@ class BoundingBox(object):
 
     def maxsquare(self):
         """Set the bounding box to be square by setting width and height to the maximum dimension of the box, keeping centroid constant"""
-        if self.width() != self.height():
-            dim = float(max(self.width(), self.height()))
+        (height, width) = (self._ymax-self._ymin, self._xmax-self._xmin)                            
+        if width != height:
+            dim = float(max(width, height))
             c = self.centroid()
             self._xmin = c[0] - (dim / 2.0)
             self._ymin = c[1] - (dim / 2.0)
@@ -638,7 +649,7 @@ class BoundingBox(object):
         return self.maxsquare() if do else self
 
     def issquare(self):
-        return self.clone().int().height() == self.clone().int().width()
+        return np.allclose(self.bbheight(), self.bbwidth())
 
     def iseven(self):
         """Are all corners even number integers?"""
@@ -658,8 +669,9 @@ class BoundingBox(object):
 
     def minsquare(self):
         """Set the bounding box to be square by setting width and height to the minimum dimension of the box, keeping centroid constant"""
-        if self.width() != self.height():
-            dim = float(min(self.width(), self.height()))
+        (height, width) = (self._ymax-self._ymin, self._xmax-self._xmin)                            
+        if width != height:
+            dim = float(min(width, height))
             c = self.centroid()
             self._xmin = c[0] - (dim / 2.0)
             self._ymin = c[1] - (dim / 2.0)
@@ -712,12 +724,13 @@ class BoundingBox(object):
 
     def aspectratio(self):
         """Return the aspect ratio (width/height) of the box"""
-        assert self.height() > 0
-        return float(self.width()) / float(self.height())
+        (height, width) = (self._ymax-self._ymin, self._xmax-self._xmin)                            
+        assert height > 0
+        return float(width) / float(height)
 
     def shape(self):
         """Return the (height, width) tuple for the box shape"""
-        return (self.height(), self.width())
+        return (self._ymax-self._ymin, self._xmax-self._xmin)                            
 
     def mindimension(self):
         """Return min(width, height) typecast to float"""
@@ -734,7 +747,7 @@ class BoundingBox(object):
     def ellipse(self):
         """Convert the boundingbox to a vipy.geometry.Ellipse object"""
         (xcenter,ycenter) = self.centroid()
-        return Ellipse(self.width() / 2.0, self.height() / 2.0, xcenter, ycenter, 0)
+        return Ellipse(self.bbwidth() / 2.0, self.bbheight() / 2.0, xcenter, ycenter, 0)
 
     def average(self, other):
         """Compute the average bounding box between self and other.  Other may be a singleton bounding box or a list of bounding boxes"""
@@ -760,7 +773,7 @@ class BoundingBox(object):
     def shapedist(self, other):
         """L1 distance between (width,height) of two boxes"""
         assert isinstance(other, BoundingBox), "Invalid input - must be BoundingBox()"                
-        return np.abs(self.width()-other.width())  + np.abs(self.height()-other.height())
+        return np.abs(self.bbwidth()-other.bbwidth())  + np.abs(self.bbheight()-other.bbheight())
 
     def affine(self, A):
         """Apply an 2x3 affine transformation to the box centroid.  This operation preserves an axis aligned bounding box for an arbitrary affine transform."""

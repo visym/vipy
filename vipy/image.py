@@ -1584,6 +1584,9 @@ class ImageDetection(Scene, BoundingBox):
 
     This class provides a representation of a vipy.image.Image with a single object detection with a category and a vipy.geometry.BoundingBox
 
+    This class inherits all methods of Scene and BoundingBox.  Be careful with overloaded methods clone(), width() and height() which will 
+    correspond to these methods for Scene() and not BoundingBox().  Use bbclone(), bbwidth() or bbheight() to access the subclass. 
+
     Valid constructors include all provided by vipy.image.Image with the additional kwarg 'category' (or alias 'label'), and BoundingBox coordinates
 
     >>> im = vipy.image.ImageDetection(filename='/path/to/dog_image.ext', category='dog', xmin=0, ymin=0, width=100, height=100)
