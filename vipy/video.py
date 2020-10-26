@@ -503,17 +503,20 @@ class Video(object):
         if newfile is None:
             return self._filename
         
-        # Update ffmpeg filter chain with new input node filename
-        newfile = os.path.normpath(os.path.abspath(os.path.expanduser(newfile)))
+        # Update ffmpeg filter chain with new input node filename (this file may not exist yet)
+        newfile = os.path.normpath(os.path.expanduser(newfile))
+        self._update_ffmpeg('filename', newfile)
+        self._filename = newfile
+
+        # Copy the file if requested
         if copy:
             assert self.hasfilename(), "File not found for copy"
             shutil.copyfile(self._filename, newfile)
-        self._update_ffmpeg('filename', newfile)
-        self._filename = newfile
+        
         return self
 
     def rename(self, newname):
-        """Change the name of the underlying video file preserving the absolute path, such that self.filename() == '/a/b/c.ext' and newname='d.ext', then self.filename() -> '/a/b/d.ext'"""
+        """Move the underlying video file preserving the absolute path, such that self.filename() == '/a/b/c.ext' and newname='d.ext', then self.filename() -> '/a/b/d.ext', and move the corresponding file"""
         newfile = os.path.join(filepath(self.filename()), newname)
         shutil.move(self.filename(), newfile)        
         return self.filename(newfile)
@@ -995,7 +998,7 @@ class Video(object):
         assert has_ffplay, '"ffplay" executable not found on path - Install from http://ffmpeg.org/download.html'
         if self.isloaded() or self.isdirty():
             f = tempMP4()
-            warnings.warn('Saving video to temporary file "%s" for ffplay ... ' % f)                        
+            warnings.warn('%s - Saving video to temporary file "%s" for ffplay ... ' % ('Video loaded into memory' if self.isloaded() else 'Dirty FFMPEG filter chain', f))
             v = self.saveas(f)
             cmd = "ffplay %s" % v.filename()
             print('[vipy.video.play]: Executing "%s"' % cmd)
