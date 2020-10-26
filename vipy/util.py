@@ -404,6 +404,7 @@ def loadmat73(matfile, keys=None):
 def saveas(vars, outfile=None, type='dill'):
     """Save variables as a dill pickled file"""
     outfile = temppickle() if outfile is None else outfile
+    remkdir(filepath(outfile))
     if type in ['dill']:
         dill.dump(vars, open(outfile, 'wb'))
         return outfile
@@ -614,8 +615,7 @@ def ishtml(filename):
 
 def ispickle(filename):
     """Is the file a pickle archive file"""
-    return isfile(filename) and os.path.exists(filename) and \
-        fileext(filename).lower() in ['.pk', '.pkl']
+    return isfile(filename) and os.path.exists(filename) and (fileext(filename) is not None) and fileext(filename).lower() in ['.pk', '.pkl']
 
 
 def ndmax(A):
@@ -708,6 +708,11 @@ def dirlist(indir):
             for item in os.listdir(indir)
             if (os.path.isdir(os.path.join(indir, item)) and
                 not is_hiddenfile(item))]
+
+
+def dirlist_sorted_bycreation(indir):
+    """Sort the directory list from newest first to oldest last by creation date"""
+    return sorted(dirlist(indir), key=lambda d: os.stat(d).st_ctime, reverse=True)
 
 
 def extlist(indir, ext):
