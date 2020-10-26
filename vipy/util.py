@@ -493,6 +493,7 @@ def load(infile):
        3. If the resulting files are not found, throw a warning
 
     """
+    infile = os.path.abspath(os.path.expanduser(infile))
     if ispkl(infile):
         format = 'dill'
     elif isjsonfile(infile):

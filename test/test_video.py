@@ -144,7 +144,11 @@ def _test_video():
     vs = vipy.video.Video.from_json(v.clone().json())
     assert v.__dict__ == vs.__dict__
     print('[test_video.scene]: json serialization PASSED')
-    
+
+    # Casting
+    v_down = vipy.video.Video.cast(vipy.video.RandomScene())
+    v_up = vipy.video.Scene.cast(v_down)
+    print('[test_video.scene]: video casting PASSED')    
     
 def _test_scene():
 

@@ -987,48 +987,48 @@ class Video(object):
         return self.savetmp()
 
     def ffplay(self):
-        v = self
-        if not self.isdownloaded() and self.hasurl():
-            v = self.download()
-        if not self.hasfilename():
-            v = self.saveas()  # save to temporary video         
-        assert v.hasfilename(), "Video frames must be saved to file prior to play() - Try calling saveas() first"
-        cmd = "ffplay %s" % v.filename()
-        if True:
+        """Play the video file using ffplay.  If the video is loaded in memory, this will dump it to a temporary file first"""
+        assert has_ffplay, '"ffplay" executable not found on path - Install from http://ffmpeg.org/download.html'
+        if self.isloaded():
+            warnings.warn('Video is loaded in memory, saving to temporary file for ffplay - This is expensive.  Try calling flush() first if you want to ffplay the source video filename.')
+            v = self.saveas(tempMP4())
+            cmd = "ffplay %s" % v.filename()
             print('[vipy.video.play]: Executing "%s"' % cmd)
-        os.system(cmd)
+            os.system(cmd)
+            os.remove(v.filename())  # cleanup
+        elif self.hasfilename() or (self.hasurl() and self.download().hasfilename()):  # triggers download
+            cmd = "ffplay %s" % self.filename()
+            print('[vipy.video.play]: Executing "%s"' % cmd)
+            os.system(cmd)
+        else:
+            raise ValueError('Invalid video file "%s" - ffplay requires a video filename' % self.filename())
         return self
         
     def play(self, verbose=True, notebook=False, fps=30):
-        """Play the saved video filename in self.filename() using the system 'ffplay', if there is no filename, try to download it """
-        if notebook:
-            try_import("IPython.display", "ipython"); import IPython.display
-            return IPython.display.Video(self.filename(), embed=True)
-        elif self.isloaded():
-            return self.fastshow(fps=self.framerate())  # play buffer
-        elif not has_ffplay:
-            warnings.warn('"ffplay" executable not found on path, falling back on fastshow() - Install from http://ffmpeg.org/download.html')
-            return self.fastshow(fps=self.framerate())
-        else:
-            return self.ffplay()
+        """Play the saved video filename in self.filename() using the system 'ffplay', if there is no filename, try to download it"""
 
-    def show(self):
-        return self.fastshow()
-    
-    def fastshow(self, fps=30, figure=1):
-        """Faster show using interative image show.  This can visualize videos without ffplay, but it cannot guarantee frame rates. Large videos with complex scenes will slow this down and will render at lower frame rates."""
-        fps = min(fps, self.framerate()) if fps is not None else self.framerate()
-        assert fps > 0, "Invalid display framerate"
-        with Stopwatch() as sw:            
-            for (k,im) in enumerate(self.load() if self.isloaded() else self.stream()):
-                dt = sw.since()
-                if k % int(np.ceil((self.framerate()/fps))) == 0:
+        if not self.isdownloaded() and self.hasurl():
+            self.download()
+        
+        if notebook:
+            # save to temporary video, this video is not cleaned up and may accumulate            
+            try_import("IPython.display", "ipython"); import IPython.display            
+            v = self.saveas(tempMP4()) if not self.hasfilename() or self.isloaded() else self
+            return IPython.display.Video(v.filename(), embed=True)
+        elif has_ffplay:
+            return self.ffplay()            
+        else:
+            """Fallback player.  This can visualize videos without ffplay, but it cannot guarantee frame rates. Large videos with complex scenes will slow this down and will render at lower frame rates."""
+            fps = min(fps, self.framerate()) if fps is not None else self.framerate()
+            assert fps > 0, "Invalid display framerate"
+            with Stopwatch() as sw:            
+                for (k,im) in enumerate(self.load() if self.isloaded() else self.stream()):
+                    time.sleep(max(0, (1.0/self.framerate())*int(np.ceil((self.framerate()/fps))) - sw.since()))                                
                     im.show(figure=figure)
-                    time.sleep(max(0, (1.0/self.framerate())*int(np.ceil((self.framerate()/fps))) - dt))
-                if vipy.globals.user_hit_escape():
-                    break                    
-        vipy.show.close(figure)
-        return self
+                    if vipy.globals.user_hit_escape():
+                        break                    
+            vipy.show.close(figure)
+            return self
     
     def torch(self, startframe=0, endframe=None, length=None, stride=1, take=None, boundary='repeat', order='nchw', verbose=False, withslice=False, scale=1.0):
         """Convert the loaded video of shape N HxWxC frames to an MxCxHxW torch tensor, forces a load().
@@ -1293,13 +1293,13 @@ class Scene(VideoCategory):
         self._currentframe = None  # used during iteration only
 
     @classmethod
-    def cast(cls, v):
+    def cast(cls, v, flush=False):
         assert isinstance(v, vipy.video.Video), "Invalid input - must be derived from vipy.video.Video"
         if v.__class__ != vipy.video.Scene:
             v.__class__ = vipy.video.Scene            
-            v._tracks = {} if not hasattr(v, '_tracks') else v._tracks
-            v._activities = {} if not hasattr(v, '_activities') else v._activities
-            v._category = None if not hasattr(v, '_category') else v._category
+            v._tracks = {} if flush or not hasattr(v, '_tracks') else v._tracks
+            v._activities = {} if flush or not hasattr(v, '_activities') else v._activities
+            v._category = None if flush or not hasattr(v, '_category') else v._category
         return v
 
     @classmethod
@@ -1901,8 +1901,8 @@ class Scene(VideoCategory):
         assert self.load().isloaded(), "Load() failed"
 
         f_mutator = mutator if mutator is not None else lambda k,im: im
-        f_timestamp = lambda k: '%s %d' % (vipy.util.clockstamp(), k) if timestamp is True else  timestamp if timestamp is not None else lambda k: None
-        
+        f_timestamp = (lambda k: '%s %d' % (vipy.util.clockstamp(), k)) if timestamp is True else timestamp
+
         imgs = [f_mutator(k, self[k]).savefig(fontsize=fontsize,
                                               captionoffset=captionoffset,
                                               textfacecolor=textfacecolor,
@@ -1914,7 +1914,7 @@ class Scene(VideoCategory):
                                               nocaption=nocaption,
                                               timestampcolor=timestampcolor,
                                               timestampfacecolor=timestampfacecolor,
-                                              timestamp=f_timestamp(k),
+                                              timestamp=f_timestamp(k) if timestamp is not None else None,
                                               figure=1 if k<(len(self)-1) else None,  # cleanup on last frame
                                               nocaption_withstring=nocaption_withstring).numpy() for k in range(0, len(self))]  # SLOW for large videos
 
@@ -1922,42 +1922,47 @@ class Scene(VideoCategory):
         return vipy.video.Video(array=np.stack([np.array(PIL.Image.fromarray(img).convert('RGB')) for img in imgs], axis=0))
 
 
-    def show(self, outfile=None, verbose=True, fontsize=10, captionoffset=(0,0), textfacecolor='white', textfacealpha=1.0, shortlabel=True, boxalpha=0.25, d_category2color={'Person':'green', 'Vehicle':'blue', 'Object':'red'}, categories=None, nocaption=False, nocaption_withstring=[], notebook=False):
+    def show(self, outfile=None, verbose=True, fontsize=10, captionoffset=(0,0), textfacecolor='white', textfacealpha=1.0, shortlabel=True, boxalpha=0.25, d_category2color={'Person':'green', 'Vehicle':'blue', 'Object':'red'}, categories=None, nocaption=False, nocaption_withstring=[], notebook=False, timestamp=None, timestampcolor='black', timestampfacecolor='white'):
         """Generate an annotation video saved to outfile (or tempfile if outfile=None) and show it using ffplay when it is done exporting.  Do not modify the original video buffer.  Returns a clone of the video with the shown annotation."""
-        v = self.clone().annotate(verbose=verbose, 
-                                  fontsize=fontsize,
-                                  captionoffset=captionoffset,
-                                  textfacecolor=textfacecolor,
-                                  textfacealpha=textfacealpha,
-                                  shortlabel=shortlabel,
-                                  boxalpha=boxalpha,
-                                  d_category2color=d_category2color,
-                                  categories=categories,
-                                  nocaption=nocaption, 
-                                  nocaption_withstring=nocaption_withstring).saveas(outfile)
-        return v.play(notebook=notebook)
+        return self.clone().annotate(verbose=verbose, 
+                                     fontsize=fontsize,
+                                     captionoffset=captionoffset,
+                                     textfacecolor=textfacecolor,
+                                     textfacealpha=textfacealpha,
+                                     shortlabel=shortlabel,
+                                     boxalpha=boxalpha,
+                                     d_category2color=d_category2color,
+                                     categories=categories,
+                                     nocaption=nocaption,
+                                     timestampcolor=timestampcolor,
+                                     timestampfacecolor=timestampfacecolor,
+                                     timestamp=timestamp,
+                                     nocaption_withstring=nocaption_withstring).saveas(outfile).play(notebook=notebook)
     
 
-    def fastshow(self, outfile=None, verbose=True, fontsize=10, captionoffset=(0,0), textfacecolor='white', textfacealpha=1.0, shortlabel=True, boxalpha=0.25, d_category2color={'Person':'green', 'Vehicle':'blue', 'Object':'red'}, categories=None, nocaption=False, nocaption_withstring=[], figure=1, fps=None):
-        """Faster show using interative image show.  This can visualize videos before video rendering is complete, but it cannot guarantee frame rates. Large videos with complex scenes will slow this down and will render at lower frame rates."""
+    def fastshow(self, outfile=None, verbose=True, fontsize=10, captionoffset=(0,0), textfacecolor='white', textfacealpha=1.0, shortlabel=True, boxalpha=0.25, d_category2color={'Person':'green', 'Vehicle':'blue', 'Object':'red'}, categories=None, nocaption=False, nocaption_withstring=[], figure=1, fps=None, timestamp=None, timestampcolor='black', timestampfacecolor='white'):
+        """Faster show using interative image show for annotated videos.  This can visualize videos before video rendering is complete, but it cannot guarantee frame rates. Large videos with complex scenes will slow this down and will render at lower frame rates."""
         fps = min(fps, self.framerate()) if fps is not None else self.framerate()
         assert fps > 0, "Invalid display framerate"
+        f_timestamp = (lambda k: '%s %d' % (vipy.util.clockstamp(), k)) if timestamp is True else timestamp
         with Stopwatch() as sw:            
             for (k,im) in enumerate(self.load() if self.isloaded() else self.stream()):
-                dt = sw.since()
-                if k % int(np.ceil((self.framerate()/fps))) == 0:
-                    im.show(categories=categories,
-                            figure=figure,
-                            nocaption=nocaption,
-                            nocaption_withstring=nocaption_withstring,
-                            fontsize=fontsize,
-                            boxalpha=boxalpha,
-                            d_category2color=d_category2color,
-                            captionoffset=captionoffset,
-                            textfacecolor=textfacecolor,
-                            textfacealpha=textfacealpha,
-                            shortlabel=shortlabel)
-                    time.sleep(max(0, (1.0/self.framerate())*int(np.ceil((self.framerate()/fps))) - dt))
+                time.sleep(max(0, (1.0/self.framerate())*int(np.ceil((self.framerate()/fps))) - sw.since()))                
+                im.show(categories=categories,
+                        figure=figure,
+                        nocaption=nocaption,
+                        nocaption_withstring=nocaption_withstring,
+                        fontsize=fontsize,
+                        boxalpha=boxalpha,
+                        d_category2color=d_category2color,
+                        captionoffset=captionoffset,
+                        textfacecolor=textfacecolor,
+                        textfacealpha=textfacealpha, 
+                        timestampcolor=timestampcolor,
+                        timestampfacecolor=timestampfacecolor,
+                        timestamp=f_timestamp(k) if timestamp is not None else None,
+                        shortlabel=shortlabel)
+
                 if vipy.globals.user_hit_escape():
                     break
         vipy.show.close(figure)

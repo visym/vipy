@@ -168,6 +168,10 @@ def test_image():
     assert all([bbs == bb for (bbs, bb) in zip(ims._objectlist, im._objectlist)])
     print('[test_image]: JSON scene serialization PASSED')
 
+    im_down = vipy.image.Image.cast(im)
+    im_up = vipy.image.Scene(im_down)
+    print('[test_image]: image casting PASSED')    
+
     
 def _test_image_fileformat(imgfile):
     # Filename object
