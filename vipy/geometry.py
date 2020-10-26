@@ -186,14 +186,11 @@ class BoundingBox(object):
     def from_json(cls, s):
         d = json.loads(s) if not isinstance(s, dict) else s
         return cls(ulbrdict=d)
-    
-    def dict(self):
-        return {'xmin':self.xmin(), 'ymin':self.ymin(), 'width':self.bbwidth(), 'height':self.height(),
-                'xmax':self.xmax(), 'ymax':self.ymax(), 'xywh':self.xywh(), 'ulbr':self.ulbr(),
-                'xcentroid':self.xcentroid(), 'ycentroid':self.ycentroid(), 'centroid':self.centroid(),
-                'upperleft':self.upperleft(), 'bottomleft':self.bottomleft(), 'upperright':self.upperright(),
-                'bottomright':self.bottomright(), 'area':self.area()}
 
+    def dict(self):
+        """Return a python dictionary containing the relevant serialized attributes suitable for JSON encoding"""
+        return self.json(s=None, encode=False)
+    
     def json(self, encode=True):
         return json.dumps(self.__dict__) if encode else self.__dict__
         

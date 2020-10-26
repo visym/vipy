@@ -155,24 +155,21 @@ class Image(object):
         if verbose:
             print(prefix+self.__repr__())
         return self
-    
+
+    def canload(self):
+        """Return True if the image can be loaded successfully, useful for filtering bad links or corrupt images"""
+        if not self.isloaded():
+            try:
+                self.load()  # try to load
+                return True
+            except:
+                return False
+        else:
+            return True
+        
     def dict(self):
-        """Return a python dictionary containing the relevant serialized attributes of the Image() object"""
-        d = {'filename':self.filename(),
-             'url':self.url(),
-             'attributes':self.attributes,
-             'height':None,
-             'width':None,
-             'channels':None,
-             'colorspace':None,
-             'array':None}
-        if self.isloaded():
-            d['height'] = self.height()
-            d['width'] = self.width()
-            d['channels'] = self.channels()
-            d['colorspace'] = self.colorspace()
-            d['array'] = self.array()
-        return {'image':d}
+        """Return a python dictionary containing the relevant serialized attributes suitable for JSON encoding"""
+        return self.json(s=None, encode=False)
 
     def json(self, s=None, encode=True):
         if s is None:
@@ -1131,11 +1128,6 @@ class ImageCategory(Image):
     def is_not(self, other):
         return self.__ne__(other)
 
-    def dict(self):
-        d = super(ImageCategory, self).dict()
-        d['category'] = self.category()
-        return d
-
     def nocategory(self):
         self._category = None
         return self
@@ -1272,11 +1264,6 @@ class Scene(ImageCategory):
         assert isinstance(k, int), "Indexing by object in scene must be integer"
         obj = self._objectlist[k]
         return (ImageDetection(array=self.array(), filename=self.filename(), url=self.url(), colorspace=self.colorspace(), bbox=obj, category=obj.category(), attributes=obj.attributes))
-
-    def dict(self):
-        d = super().dict()
-        d['objects'] = [obj.dict() for obj in self.objects()]
-        return d
 
     def append(self, imdet):
         """Append the provided vipy.object.Detection object to the scene object list"""

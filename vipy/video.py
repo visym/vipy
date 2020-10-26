@@ -341,19 +341,10 @@ class Video(object):
     def __array__(self):
         """Called on np.array(self) for custom array container, (requires numpy >=1.16)"""
         return self.numpy()
-                
+
     def dict(self):
-        video = {'filename':self.filename(),
-                 'url':self.url(),
-                 'ffmpeg':self._ffmpeg_commandline(),
-                 'height':self.height() if self.isloaded() else None,
-                 'width':self.width() if self.isloaded() else None,
-                 'channels':self.channels() if self.isloaded() else None,
-                 'colorspace':self.colorspace(),
-                 'framerate':self._framerate,
-                 'attributes':self.attributes,
-                 'array':self.array()}
-        return {'video':video}
+        """Return a python dictionary containing the relevant serialized attributes suitable for JSON encoding"""
+        return self.json(s=None, encode=False)
 
     def json(self, encode=True):
         assert not self.isloaded(), "JSON serialization of video requires flushed buffers, try calling v.flush() or v.saveas('/path/to.mp4', flush=True) first"
@@ -1221,11 +1212,6 @@ class VideoCategory(Video):
             strlist.append('cliptime=(%1.2f,%1.2f)' % (self._startsec, self._endsec))
         return str('<vipy.video.VideoCategory: %s>' % (', '.join(strlist)))
 
-    def dict(self):
-        d = super().dict()
-        d['category'] = self.category()
-        return d
-
     def json(self, encode=True):
         d = json.loads(super().json())
         d['_category'] = self._category
@@ -1609,14 +1595,6 @@ class Scene(VideoCategory):
         self._tracks = {}
         return self
         
-    def dict(self):
-        d = super().dict()
-        d['category'] = self.category()
-        d['tracks'] = [t.dict() for t in self._tracks.values()]
-        d['activities'] = [a.dict() for a in self._activities.values()]
-        d['filename'] = self.filename()
-        return d
-
     def json(self, encode=True):
         d = json.loads(super().json())
         d['_tracks'] = {k:t.json(encode=False) for (k,t) in self._tracks.items()}

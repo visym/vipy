@@ -34,10 +34,9 @@ def imshow(im, fignum=None, nowindow=False, timestamp=None, timestampcolor='blac
         noshow(fignum)
     h = BACKEND.imshow(im, fignum=fignum)
     if timestamp is not None:
-        text(str(timestamp), 4, 15, fontsize=10, alpha=0.8 if timestampfacecolor is not None else 1.0, textfacealpha=0.6, facealpha=0.6, textcolor=timestampcolor, textfacecolor=timestampfacecolor)            
+        text(str(timestamp), 4, 15, fontsize=10, alpha=0.8 if timestampfacecolor is not None else 1.0, textfacealpha=0.6, facealpha=0.6, textcolor=timestampcolor, textfacecolor=timestampfacecolor)
     if not nowindow:
         show(fignum)        
-        BACKEND.imflush()
     return h
 
 

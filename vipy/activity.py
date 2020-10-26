@@ -67,8 +67,8 @@ class Activity(object):
         return str('<vipy.activity: category="%s", frames=(%d,%d), tracks=%s>' % (self.category(), self.startframe(), self.endframe(), len(self.trackids())))
 
     def dict(self):
-        return {'id':self._id, 'label':self.category(), 'shortlabel':self.shortlabel(), 'startframe':self._startframe, 'endframe':self._endframe, 'attributes':self.attributes, 'framerate':self._framerate,
-                'trackid':self._trackid, 'actorid':self._actorid}
+        """Return a python dictionary containing the relevant serialized attributes suitable for JSON encoding"""
+        return self.json(s=None, encode=False)
 
     def json(self, encode=True):
         d = {k:v if k != '_trackid' else list(v) for (k,v) in self.__dict__.items()}

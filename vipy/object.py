@@ -69,9 +69,8 @@ class Detection(BoundingBox):
         return self.__repr__()
 
     def dict(self):
-        return {'id':self._id, 'label':self.category(), 'shortlabel':self.shortlabel() ,'boundingbox':super().dict(),
-                'attributes':self.attributes,  # these may be arbitrary user defined objects
-                'confidence':self._confidence}
+        """Return a python dictionary containing the relevant serialized attributes suitable for JSON encoding"""
+        return self.json(s=None, encode=False)
 
     def json(self, encode=True):
         return json.dumps(self.__dict__) if encode else self.__dict__
