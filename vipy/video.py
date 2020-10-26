@@ -29,6 +29,7 @@ from io import BytesIO
 import itertools
 import vipy.globals
 import vipy.activity
+import hashlib
 
 try:
     import ujson as json  # faster
@@ -618,7 +619,7 @@ class Video(object):
     def shape(self):
         """Return (height, width) of the frames, requires loading a preview frame from the video if the video is not already loaded"""
         if not self.isloaded():
-            previewhash = hash(str(self._ffmpeg.output('dummyfile').compile()))
+            previewhash = hashlib.md5(str(self._ffmpeg_commandline()).encode()).hexdigest()
             if not hasattr(self, '_previewhash') or previewhash != self._previewhash:
                 im = self._preview()  # ffmpeg chain changed, load a single frame of video 
                 self._shape = (im.height(), im.width())  # cache the shape
@@ -631,7 +632,7 @@ class Video(object):
     def channels(self):
         """Return integer number of color channels"""
         if not self.isloaded():
-            previewhash = hash(str(self._ffmpeg.output('dummyfile').compile()))
+            previewhash = hashlib.md5(str(self._ffmpeg_commandline()).encode()).hexdigest()            
             if not hasattr(self, '_previewhash') or previewhash != self._previewhash:
                 im = self._preview()  # ffmpeg chain changed, load a single frame of video
                 self._shape = (im.height(), im.width())  # cache the shape                
