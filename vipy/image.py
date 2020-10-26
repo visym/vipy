@@ -1042,11 +1042,11 @@ class Image(object):
         alt_text = alt if alt is not None else self.filename()
         return '<img src="data:image/jpeg;charset=utf-8;base64,%s" alt="%s" loading="lazy">' % (b, str(alt_text))
 
-    def annotate(self):
+    def annotate(self, timestamp=None, timestampcolor='black', timestampfacecolor='white'):
         """Change pixels of this image to include rendered annotation and return an image object"""
-        return self.array(self.savefig().rgb().array()).downcast()
+        return self.array(self.savefig(timestamp=timestamp, timestampcolor=timestampcolor, timestampfacecolor=timestampfacecolor).rgb().array()).downcast()
     
-    def savefig(self, filename=None, figure=1, timestamp=None, timestampcolor='black', timestampfacecolor=None):
+    def savefig(self, filename=None, figure=1, timestamp=None, timestampcolor='black', timestampfacecolor='white'):
         """Save last figure output from self.show() with drawing overlays to provided filename and return filename"""
         self.show(figure=figure, nowindow=True, timestamp=timestamp, timestampcolor=timestampcolor, timestampfacecolor=timestampfacecolor)  # sets figure dimensions, does not display window
         (W,H) = plt.figure(figure).canvas.get_width_height()  # fast
@@ -1486,15 +1486,16 @@ class Scene(ImageCategory):
         img[mask > 0] = self.clone().blur(radius).numpy()[mask > 0]  # in-place update
         return self
 
-    def replace(self, newimg, broadcast=False):
+    def replace(self, newim, broadcast=False):
         """Set all image values within the bounding box equal to the provided img, triggers load() and imclip()"""
-        img = self.load().numpy()
-        assert isnumpy(newimg), "Invalid replacement image - Must be same shape as box and same type as img"
+        assert isinstance(newim, vipy.image.Image), "Invalid replacement image - Must be vipy.image.Image"
+        img = self.numpy()        
+        newimg = newim.array()
         for d in self._objectlist:
             d.imclip(newimg).imclip(img)
             img[int(d.ymin()):int(d.ymax()),
                 int(d.xmin()):int(d.xmax())] = newimg[int(d.ymin()):int(d.ymax()),
-                                                      int(d.xmin()):int(d.xmax())] if not broadcast else vipy.image.Image(array=newimg).resize(d.width(), d.height())
+                                                      int(d.xmin()):int(d.xmax())] if not broadcast else newim.clone().resize(int(d.width()), int(d.height())).array()
         return self
     
     def meanmask(self):
@@ -1524,7 +1525,7 @@ class Scene(ImageCategory):
         return np.sum(self.bghash(bits=bits, asbinary=True) == im.bghash(bits=bits, asbinary=True)) > threshold  # hamming distance threshold
     
         
-    def show(self, categories=None, figure=None, nocaption=False, nocaption_withstring=[], fontsize=10, boxalpha=0.25, d_category2color={'Person':'green', 'Vehicle':'blue', 'Object':'red'}, captionoffset=(0,0), nowindow=False, textfacecolor='white', textfacealpha=1.0, shortlabel=True, timestamp=None, timestampcolor='black', timestampfacecolor=None):
+    def show(self, categories=None, figure=None, nocaption=False, nocaption_withstring=[], fontsize=10, boxalpha=0.25, d_category2color={'Person':'green', 'Vehicle':'blue', 'Object':'red'}, captionoffset=(0,0), nowindow=False, textfacecolor='white', textfacealpha=1.0, shortlabel=True, timestamp=None, timestampcolor='black', timestampfacecolor='white'):
         """Show scene detection 
 
            * categories [list]:  List of category (or shortlabel) names in the scene to show
@@ -1555,7 +1556,7 @@ class Scene(ImageCategory):
                               captionoffset=captionoffset, nowindow=nowindow, textfacecolor=textfacecolor, textfacealpha=textfacealpha, timestamp=timestamp, timestampcolor=timestampcolor, timestampfacecolor=timestampfacecolor)
         return self
 
-    def savefig(self, outfile=None, categories=None, figure=None, nocaption=False, fontsize=10, boxalpha=0.25, d_category2color={'person':'green', 'vehicle':'blue', 'object':'red'}, captionoffset=(0,0), dpi=200, textfacecolor='white', textfacealpha=1.0, shortlabel=True, nocaption_withstring=[], timestamp=None, timestampcolor='black', timestampfacecolor=None):
+    def savefig(self, outfile=None, categories=None, figure=None, nocaption=False, fontsize=10, boxalpha=0.25, d_category2color={'person':'green', 'vehicle':'blue', 'object':'red'}, captionoffset=(0,0), dpi=200, textfacecolor='white', textfacealpha=1.0, shortlabel=True, nocaption_withstring=[], timestamp=None, timestampcolor='black', timestampfacecolor='white'):
         """Save show() output to given file or return buffer without popping up a window"""
         fignum = figure if figure is not None else 1        
         self.show(categories=categories, figure=fignum, nocaption=nocaption, fontsize=fontsize, boxalpha=boxalpha, 
