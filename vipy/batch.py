@@ -1,6 +1,6 @@
 import os
 import sys
-from vipy.util import try_import, islist, tolist, tempdir, remkdir, chunklistbysize, listpkl, filetail, filebase
+from vipy.util import try_import, islist, tolist, tempdir, remkdir, chunklistbysize, listpkl, filetail, filebase, tempdir
 from itertools import repeat
 import dill
 try_import('dask', 'dask distributed torch')
@@ -18,7 +18,9 @@ import shutil
 class Checkpoint(object):
     """Batch checkpoints for long running jobs"""
     def __init__(self, checkpointdir=None):
-        self._checkpointdir = checkpointdir if checkpointdir is not None else os.path.join(vipy.globals.cache(), 'batch')
+        self._checkpointdir = (checkpointdir if checkpointdir is not None
+                               else (os.path.join(vipy.globals.cache(), 'batch') if vipy.globals.cache() is not None)
+                               else (os.path.join(tempdir(), 'batch')))
 
     def checkpoint(self, archiveid=None):
         """Return the last checkpointed result.  Useful for recovering from dask crashes for long jobs."""
