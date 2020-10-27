@@ -27,11 +27,11 @@ def escape_to_exit(event):
         vipy.globals.user_hit_escape(True)
     
 def flush():
-    plt.pause(0.001)
+    plt.pause(0.01)
 
     
 def imflush():
-    plt.pause(0.0001)    
+    plt.pause(0.01)    
     plt.annotate('', (0,0))  # this is necessary for imshow only, not sure why...
 
     

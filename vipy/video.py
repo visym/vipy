@@ -1009,12 +1009,12 @@ class Video(object):
             f = tempMP4()
             warnings.warn('%s - Saving video to temporary file "%s" for ffplay ... ' % ('Video loaded into memory' if self.isloaded() else 'Dirty FFMPEG filter chain', f))
             v = self.saveas(f)
-            cmd = "ffplay %s" % v.filename()
+            cmd = 'ffplay "%s"' % v.filename()
             print('[vipy.video.play]: Executing "%s"' % cmd)
             os.system(cmd)
             os.remove(v.filename())  # cleanup
         elif self.hasfilename() or (self.hasurl() and self.download().hasfilename()):  # triggers download
-            cmd = "ffplay %s" % self.filename()
+            cmd = 'ffplay "%s"' % self.filename()
             print('[vipy.video.play]: Executing "%s"' % cmd)
             os.system(cmd)
         else:

@@ -138,7 +138,7 @@ def download(vidurl, vidfile, skip=False, writeurlfile=True, max_filesize='350m'
         print('[vipy.videosearch.download]: saving "%s" to "%s"' % (vidurl, vidfile))
         for f in glob.glob("%s*" % vidfile):
             os.remove(f)  # youtube-dl will not overwrite, so we force it
-        cmd = '%s %s "%s" -o %s --max-filesize %s --no-check-certificate --user-agent="%s"' % (ydl_exe, '-q' if not verbose else '', vidurl, vidfile, max_filesize, user_agent)  # must be on path            
+        cmd = '%s %s "%s" -o "%s" --no-check-certificate --max-filesize="%s" --user-agent="%s"' % (ydl_exe, '-q' if not verbose else '', vidurl, vidfile, max_filesize, user_agent)  # must be on path            
         if verbose:
             print('[vipy.videosearch.download]: executing \'%s\'' % cmd)
         erno = os.system(cmd)
