@@ -144,6 +144,8 @@ class Image(object):
             strlist.append("height=%d, width=%d, color=%s" % (self._array.shape[0], self._array.shape[1], self.colorspace()))
         if self.colorspace() == 'float':
             strlist.append('channels=%d' % self.channels())
+        if self.filename() is not None:
+            strlist.append('filename="%s"' % (self.filename() if self.hasfilename() else '<NOTFOUND>%s</NOTFOUND>' % self.filename()))
         if self.hasfilename():
             strlist.append('filename="%s"' % self.filename())
         if self.hasurl():
@@ -1108,8 +1110,8 @@ class ImageCategory(Image):
         strlist = []
         if self.isloaded():
             strlist.append("height=%d, width=%d, color=%s" % (self.height(), self.width(), self.colorspace()))
-        if self.hasfilename():
-            strlist.append('filename="%s"' % self.filename())
+        if self.filename() is not None:
+            strlist.append('filename="%s"' % (self.filename() if self.hasfilename() else '<NOTFOUND>%s</NOTFOUND>' % self.filename()))
         if self.hasurl():
             strlist.append('url="%s"' % self.url())
         if self.category() is not None:
@@ -1240,8 +1242,8 @@ class Scene(ImageCategory):
         strlist = []
         if self.isloaded():
             strlist.append("height=%d, width=%d, color=%s" % (self.height(), self.width(), self.colorspace()))
-        if self.hasfilename():
-            strlist.append('filename="%s"' % self.filename())
+        if self.filename() is not None:
+            strlist.append('filename="%s"' % (self.filename() if self.hasfilename() else '<NOTFOUND>%s</NOTFOUND>' % self.filename()))
         if self.hasurl():
             strlist.append('url=%s' % self.url())
         if self.category() is not None:
@@ -1655,8 +1657,8 @@ class ImageDetection(Scene, BoundingBox):
         strlist = []
         if self.isloaded():
             strlist.append("height=%d, width=%d, color=%s" % (self.height(), self.width(), self.colorspace()))
-        if self.hasfilename():
-            strlist.append('filename="%s"' % self.filename())
+        if self.filename() is not None:
+            strlist.append('filename="%s"' % (self.filename() if self.hasfilename() else '<NOTFOUND>%s</NOTFOUND>' % self.filename()))
         if self.hasurl():
             strlist.append('url="%s"' % self.url())
         if self.category() is not None:

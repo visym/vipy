@@ -416,12 +416,21 @@ def _json_class_registry():
                 "<class 'vipy.image.Image'>":vipy.image.Image.from_json,
                 "<class 'vipy.image.ImageCategory'>":vipy.image.ImageCategory.from_json,
                 "<class 'vipy.image.ImageDetection'>":vipy.image.ImageDetection.from_json,            
-                "<class 'vipy.image.Scene'>":vipy.image.Scene.from_json}
+                "<class 'vipy.image.Scene'>":vipy.image.Scene.from_json,
+                "<class 'vipy.geometry.BoundingBox'>":vipy.geometry.BoundingBox.from_json,
+                "<class 'vipy.object.Track'>":vipy.object.Track.from_json,
+                "<class 'vipy.object.Detection'>":vipy.object.Detection.from_json,
+                "<class 'vipy.activity.Activity'>":vipy.activity.Activity.from_json}
     try:
         import pycollector.video
         registry.update( {"<class 'pycollector.video.Video'>":pycollector.video.Video.from_json} )
     except:
         registry.update( {"<class 'pycollector.video.Video'>":lambda x: exec("raise ValueError(\"<class 'pycollector.video.Video'> not found - Run 'pip install pycollector' \")")})        
+    try:
+        import pycollector.admin.video
+        registry.update( {"<class 'pycollector.admin.video.Video'>":pycollector.admin.video.Video.from_json} )
+    except:
+        registry.update( {"<class 'pycollector.admin.video.Video'>":lambda x: exec("raise ValueError(\"<class 'pycollector.admin.video.Video'> not found - This is for admin use only \")")})        
 
     return registry
             
@@ -438,14 +447,16 @@ def saveas(vars, outfile=None, format='dill'):
     elif format == 'json':
         saveobj = vars
         class_registry = _json_class_registry()
-        if isinstance(saveobj, list):
-            assert all([str(type(d)) in class_registry for d in saveobj]), "Invalid vipy JSON serialization format"        
-            s = [{str(type(d)):d.json(encode=False)} for d in saveobj] if isinstance(saveobj, list) else ({str(type(d)):d.json(encode=False)} for d in saveobj)
+        if isinstance(saveobj, list) and all([str(type(d)) in class_registry for d in saveobj]):
+            j = [{str(type(d)):d.json(encode=False)} for d in saveobj] if isinstance(saveobj, list) else ({str(type(d)):d.json(encode=False)} for d in saveobj)
+        elif str(type(saveobj)) in class_registry:
+            j = {str(type(saveobj)):saveobj.json(encode=False)}
         else:
-            assert str(type(saveobj)) in class_registry, "Invalid vipy JSON serialization format"
-            s = {str(type(saveobj)):saveobj.json(encode=False)}
+            j = saveobj
+
+        s = json.dumps(j, ensure_ascii=False)  # load to memory (faster than json.dump), will throw exception if it cannot serialize
         with open(outfile, 'w') as f:
-            json.dump(s, f)
+            f.write(s)            
         return outfile
         
     else:
@@ -457,7 +468,7 @@ def saveas(vars, outfile=None, format='dill'):
 def loadas(infile, format='dill'):
     """Load variables from a dill pickled file"""
     
-    if format == 'dill':
+    if format in ['dill', 'pkl']:
         try:
             return dill.load(open(infile, 'rb'))
         except Exception:
@@ -486,12 +497,12 @@ def loadas(infile, format='dill'):
 
 
 def load(infile):
-    """Load variables from a relocatable dill pickled file
+    """Load variables from a relocatable archive file format, either Dill Pickle or JSON.
        
        Loading is performed by attemping the following:
 
-       1. load the pickle file
-       2. If the loaded object is a vipy object (or iterable) and the relocatable path /$PATH is present, try to repath it to the directory containing this pickle
+       1. load the pickle or json file
+       2. If the loaded object is a vipy object (or iterable) and the relocatable path /$PATH is present, try to repath it to the directory containing this archive
        3. If the resulting files are not found, throw a warning
 
     """
@@ -504,7 +515,12 @@ def load(infile):
         raise ValueError('unknown file type')
     
     obj = loadas(infile, format=format)
-    testobj = tolist(obj)[0]
+    try:
+        testobj = tolist(obj)[0]
+    except:
+        raise ValueError('Invalid archive "%s"' % infile)
+
+    # Relocatable object?
     if hasattr(testobj, 'filename') and testobj.filename() is not None and '/$PATH' in testobj.filename():
         testobj = repath(copy.deepcopy(testobj), '/$PATH', filepath(os.path.abspath(infile)))  # attempt to rehome /$PATH/to/me.jpg -> /NEWPATH/to/me.jpg where NEWPATH=filepath(infile)
         if os.path.exists(testobj.filename()):       # file found
@@ -512,13 +528,39 @@ def load(infile):
         else:
             warnings.warn('Loading "%s" that contains redistributable paths - Use vipy.util.distload("%s", datapath="/path/to/your/data") to rehome absolute file paths' % (infile, infile))
     elif hasattr(testobj, 'hasfilename') and testobj.filename() is not None and not testobj.hasfilename(): 
-        warnings.warn('Loading "%s" that contains absolute filepaths - The relocated filename "%s" does not exist' % (infile, testobj.filename()))
+        warnings.warn('Loading "%s" that contains filename "%s" does not exist - Loading archives with relative paths must be loaded from the same directory containing the videos' % (infile, testobj.filename()))
     return obj
 
 
+def save(vars, outfile, mode=None):
+    """Save variables to an archive file"""
+    allowable = set(['.pkl', '.json'])
+    if ispkl(outfile):
+        format = 'dill'
+    elif isjsonfile(outfile):
+        format = 'json'
+    else:
+        raise ValueError('Unknown file extension "%s" - must be in %s' % (fileext(outfile), str(allowable)))
+    
+    outfile = saveas(vars, outfile, format=format)
+    if mode is not None:
+        chmod(outfile, mode)
+    return outfile
+
+
 def distload(infile, datapath, srcpath='/$PATH'):
-    """Load a redistributable pickle file that replaces absolute paths in datapath with srcpath.  See also vipy.util.distsave()"""
+    """Load a redistributable pickle file that replaces absolute paths in datapath with srcpath.  See also vipy.util.distsave(),
+       This function has been deprecated, all archives should be distributed with relative paths
+    """
     return repath(load(infile), srcpath, datapath)
+
+
+def distsave(vars, datapath, outfile=None, mode=None, dstpath='/$PATH'):
+    """Save a pickle file for redistribution, where datapath is replaced by dstpath.  Useful for redistribuing pickle files with absolute paths.  See also vipy.util.distload().
+       This function has been deprecated, all archives should be distributed with relative paths       
+    """
+    vars = vars if (datapath is None or not isvipyobject(vars)) else repath(vars, datapath, dstpath) 
+    return save(vars, outfile, mode)
 
 
 def repath(v, srcpath, dstpath):
@@ -549,43 +591,6 @@ def scpsave(v):
 def scpload(url):
     import vipy.downloader
     return load(vipy.downloader.scp(url, templike(url)))
-
-                
-def save(vars, outfile, mode=None):
-    """Save variables as a dill pickled file"""
-    allowable = set(['.pkl', '.json'])
-    if ispkl(outfile):
-        format = 'dill'
-    elif isjsonfile(outfile):
-        format = 'json'
-    else:
-        raise ValueError('Unknown file extension "%s" - must be in %s' % (fileext(outfile), str(allowable)))
-    
-    outfile = saveas(vars, outfile, format=format)
-    if mode is not None:
-        chmod(outfile, mode)
-    return outfile
-
-
-def distsave(vars, datapath, outfile=None, mode=None, dstpath='/$PATH'):
-    """Save a pickle file for redistribution, where datapath is replaced by dstpath.  Useful for redistribuing pickle files with absolute paths.  See also vipy.util.distload()"""
-    vars = vars if (datapath is None or not isvipyobject(vars)) else repath(vars, datapath, dstpath) 
-    return save(vars, outfile, mode)
-
-
-def fastsave(v, outfile=None):
-    """Save variables as a cPickle file with the highest protocol - useful
-    for very large custom classes"""
-    with open(outfile, 'wb') as fp:
-        cPickle.dump(v, fp, cPickle.HIGHEST_PROTOCOL)
-    return outfile
-
-
-def fastload(infile):
-    """Load file saved with fastsave"""
-    with open(infile, 'rb') as fp:
-        v = cPickle.load(fp)
-    return v
 
 
 def load_opencv_yaml(yamlfile):
@@ -689,14 +694,6 @@ def ispickle(filename):
     return isfile(filename) and os.path.exists(filename) and (fileext(filename) is not None) and fileext(filename).lower() in ['.pk', '.pkl']
 
 
-def ndmax(A):
-    return np.unravel_index(A.argmax(), A.shape)
-
-
-def ndmin(A):
-    return np.unravel_index(A.argmin(), A.shape)
-
-
 def ishdf5(path):
     """Is the file an HDF5 file?"""
     # tables.is_hdf5_file(path)
@@ -794,6 +791,9 @@ def extlist(indir, ext):
             if fileext(item) is not None
             and (fileext(item).lower() == ext.lower())]
 
+def listext(indir, ext):
+    """Alias for extlist"""
+    return extlist(indir, ext)
 
 def jsonlist(indir):
     """return list of fJSON iles with absolute path in a directory"""

@@ -30,7 +30,8 @@ import itertools
 import vipy.globals
 import vipy.activity
 import hashlib
-import pathlib
+from pathlib import PurePath
+
 
 try:
     import ujson as json  # faster
@@ -156,8 +157,8 @@ class Video(object):
         strlist = []
         if self.isloaded():
             strlist.append("height=%d, width=%d, frames=%d, color=%s" % (self.height(), self.width(), len(self), self.colorspace()))
-        if self.hasfilename():
-            strlist.append('filename="%s"' % self.filename())
+        if self.filename() is not None:
+            strlist.append('filename="%s"' % (self.filename() if self.hasfilename() else '<NOTFOUND>%s</NOTFOUND>' % self.filename()))
         if self.hasurl():
             strlist.append('url="%s"' % self.url())
         if not self.isloaded() and self._startframe is not None and self._endframe is not None:
@@ -514,6 +515,14 @@ class Video(object):
             shutil.copyfile(self._filename, newfile)
         
         return self
+
+    def abspath(self):
+        """Change the path of the filename from a relative path to an absolute path (not relocatable"""
+        return self.filename(os.path.normpath(os.path.abspath(os.path.expanduser(self.filename()))))
+
+    def relpath(self, parent):
+        assert parent in os.path.expanduser(self.filename())
+        return self.filename(PurePath(os.path.expanduser(self.filename())).relative_to(parent))
 
     def rename(self, newname):
         """Move the underlying video file preserving the absolute path, such that self.filename() == '/a/b/c.ext' and newname='d.ext', then self.filename() -> '/a/b/d.ext', and move the corresponding file"""
@@ -1212,8 +1221,8 @@ class VideoCategory(Video):
         strlist = []
         if self.isloaded():
             strlist.append("height=%d, width=%d, frames=%d" % (self._array[0].shape[0], self._array[0].shape[1], len(self._array)))
-        if self.hasfilename():
-            strlist.append('filename="%s"' % self.filename())
+        if self.filename() is not None:
+            strlist.append('filename="%s"' % (self.filename() if self.hasfilename() else '<NOTFOUND>%s</NOTFOUND>' % self.filename()))
         if self.hasurl():
             strlist.append('url="%s"' % self.url())
         if self.category() is not None:
@@ -1321,8 +1330,8 @@ class Scene(VideoCategory):
         strlist = []
         if self.isloaded():
             strlist.append("height=%d, width=%d, frames=%d, color=%s" % (self.height(), self.width(), len(self._array), self.colorspace()))
-        if self.hasfilename():
-            strlist.append('filename="%s"' % self.filename())
+        if self.filename() is not None:
+            strlist.append('filename="%s"' % (self.filename() if self.hasfilename() else '<NOTFOUND>%s</NOTFOUND>' % self.filename()))
         if self.hasurl():
             strlist.append('url="%s"' % self.url())
         if self._framerate is not None:
@@ -1431,13 +1440,16 @@ class Scene(VideoCategory):
 
     def track(self, id):
         return self.tracks(id=id)
+
+    def activity(self, id):
+        return self.activities(id=id)
     
     def tracklist(self):
         return list(self._tracks.values())
         
     def activities(self, activities=None, id=None):
         """Return mutable dictionary of activities.  All temporal alignment is relative to the current clip()."""
-        if activities is None:
+        if activities is None and id is None:
             return self._activities  # mutable dict
         elif id is not None:
             return self._activities[id]

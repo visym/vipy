@@ -177,9 +177,11 @@ class BoundingBox(object):
             raise ValueError('invalid constructor input')
 
     @classmethod
-    def cast(cls, bb):
+    def cast(cls, bb, flush=False):
         assert isinstance(bb, BoundingBox)
         bb.__class__ = BoundingBox
+        if flush:
+            bb.__dict__ = {k:v for (k,v) in bb.__dict__.items() if k in ['_xmin', '_ymin', '_xmax', '_ymax']}        
         return bb
     
     @classmethod
@@ -256,6 +258,14 @@ class BoundingBox(object):
             self.right(w - self.bbwidth())  # preserve aspect ratio due to rounding by +/- right side of box 
         if h != self.bbheight():
             self.bottom(h-self.bbheight())  # preserve aspect ratio due to rounding by +/- bottom of box
+        return self
+
+    def float(self):
+        """Convert corners to float"""
+        self._xmin = float(self._xmin)
+        self._ymin = float(self._ymin)
+        self._xmax = float(self._xmax)
+        self._ymax = float(self._ymax)
         return self
 
     def significant_digits(self, n):

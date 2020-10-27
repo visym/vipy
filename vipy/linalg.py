@@ -81,3 +81,11 @@ def rowvector(x):
 
 def poweroftwo(x):
     return x > 1 and ((x & (x - 1)) == 0)
+
+
+def ndmax(A):
+    return np.unravel_index(A.argmax(), A.shape)
+
+
+def ndmin(A):
+    return np.unravel_index(A.argmin(), A.shape)

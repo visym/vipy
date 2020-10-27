@@ -18,9 +18,12 @@ import shutil
 class Checkpoint(object):
     """Batch checkpoints for long running jobs"""
     def __init__(self, checkpointdir=None):
-        self._checkpointdir = (checkpointdir if checkpointdir is not None
-                               else (os.path.join(vipy.globals.cache(), 'batch') if vipy.globals.cache() is not None)
-                               else (os.path.join(tempdir(), 'batch')))
+        if checkpointdir is not None:
+            self._checkpointdir = checkpointdir
+        elif vipy.globals.cache() is not None:
+            self._checkpointdir = os.path.join(vipy.globals.cache(), 'batch')
+        else:
+            self._checkpointdir = os.path.join(tempdir(), 'batch')
 
     def checkpoint(self, archiveid=None):
         """Return the last checkpointed result.  Useful for recovering from dask crashes for long jobs."""

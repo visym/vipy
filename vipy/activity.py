@@ -37,8 +37,8 @@ class Activity(object):
                 tracks = [t.id() for t in tracks]  
                
         self._id = uuid.uuid1().hex
-        self._startframe = startframe
-        self._endframe = endframe
+        self._startframe = int(startframe)
+        self._endframe = int(endframe)
         self._framerate = framerate
         self._label = category if category is not None else label        
         self._shortlabel = self._label if shortlabel is None else shortlabel
@@ -92,7 +92,7 @@ class Activity(object):
         if f is None:
             return self._endframe
         else:
-            self._endframe = f
+            self._endframe = int(f)
             return self
 
     def middleframe(self):
@@ -193,8 +193,8 @@ class Activity(object):
         return (t_intersection / t_union) if t_intersection > 0 else 0
     
     def offset(self, dt):
-        self._startframe = self._startframe + dt
-        self._endframe = self._endframe + dt
+        self._startframe = int(self._startframe + dt)
+        self._endframe = int(self._endframe + dt)
         return self
     
     def id(self, newid=None):
