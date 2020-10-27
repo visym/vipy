@@ -1,5 +1,5 @@
 from vipy.globals import print
-from vipy.util import mat2gray, try_import, string_to_pil_interpolation, Stopwatch, isnumpy
+from vipy.util import mat2gray, try_import, string_to_pil_interpolation, Stopwatch, isnumpy, clockstamp
 try_import('cv2', 'opencv-python opencv-contrib-python'); import cv2
 import vipy.image
 from vipy.math import cartesian_to_polar, even
@@ -297,7 +297,7 @@ class Flow(object):
         (x2, y2) = (x1 + fx, y1 + fy)  # destination coordinates
         return (np.stack((x1,y1)), np.stack((x2,y2)))
         
-    def stabilize(self, v, keystep=20, padheight=0.125, padwidth=0.25, padheightpx=None, padwidthpx=None, border=0.1, dilate=1.0, contrast=16.0/255.0, rigid=False, affine=True, verbose=True, strict=False, residual=False):
+    def stabilize(self, v, keystep=20, padheight=0.125, padwidth=0.25, padheightpx=None, padwidthpx=None, border=0.1, dilate=1.0, contrast=16.0/255.0, rigid=False, affine=True, verbose=True, strict=False, residual=False, show=False):
         """Affine stabilization to frame zero using multi-scale optical flow correspondence with foreground object keepouts.  
 
            * v [vipy.video.Scene]:  The input video to stabilize, should be resized to mindim=256
@@ -404,7 +404,12 @@ class Flow(object):
                 (padwidth, padheight) = (padwidth + dx, padheight + dy)
                 T = np.array([[1,0,padwidth],[0,1,padheight],[0,0,1]]).astype(np.float64)
                 print('[vipy.flow.stabilize]: Increasing padding to (%d, %d)' % (vs.width(), vs.height()))
-                      
+
+            # Show intermediate stabilization
+            if show:
+                vs[k].show(figure=1, timestamp='%s %d' % (clockstamp(), k))
+                
+                
         vs = vs.setattribute('stabilize', {'mean residual':float(np.mean(r_coarse)), 'median residual':float(np.median(r_coarse))}) if residual else vs
         return vs
             

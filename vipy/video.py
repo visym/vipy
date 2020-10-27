@@ -1692,7 +1692,10 @@ class Scene(VideoCategory):
         """The trackbox is the union of all track bounding boxes in the video, or the image rectangle if there are no tracks"""
         boxes = [t.clone().boundingbox().dilate(dilate) for t in self.tracklist()]
         return boxes[0].union(boxes[1:]) if len(boxes) > 0 else imagebox(self.shape())
-        
+
+    def trackcrop(self, dilate=1.0):
+        return self.clone().crop(self.trackbox(dilate))
+    
     def activitybox(self, activityid=None, dilate=1.0):
         """The activitybox is the union of all activity bounding boxes in the video, which is the union of all tracks contributing to all activities.  This is most useful after activityclip().
            The activitybox is the smallest bounding box that contains all of the boxes from all of the tracks in all activities in this video.
