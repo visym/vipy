@@ -7,7 +7,8 @@ def iseven(x):
 
 
 def even(x, greaterthan=False):
-    """Return the largest even number less than or equal (or greater than if greaterthan=True) to the value"""
+    """Return the largest even integer less than or equal (or greater than if greaterthan=True) to the value"""
+    x = int(np.round(x))
     return x if x%2 == 0 else (x+1 if greaterthan else x-1)
 
 

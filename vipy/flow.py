@@ -2,7 +2,7 @@ from vipy.globals import print
 from vipy.util import mat2gray, try_import, string_to_pil_interpolation, Stopwatch, isnumpy
 try_import('cv2', 'opencv-python opencv-contrib-python'); import cv2
 import vipy.image
-from vipy.math import cartesian_to_polar
+from vipy.math import cartesian_to_polar, even
 import numpy as np
 try_import('scipy.interpolate', 'scipy')
 import scipy.interpolate
@@ -297,7 +297,7 @@ class Flow(object):
         (x2, y2) = (x1 + fx, y1 + fy)  # destination coordinates
         return (np.stack((x1,y1)), np.stack((x2,y2)))
         
-    def stabilize(self, v, keystep=20, padheight=0.125, padwidth=0.5, padheightpx=None, padwidthpx=None, border=0.1, dilate=1.0, contrast=16.0/255.0, rigid=False, affine=True, verbose=True, strict=False, residual=False):
+    def stabilize(self, v, keystep=20, padheight=0.125, padwidth=0.25, padheightpx=None, padwidthpx=None, border=0.1, dilate=1.0, contrast=16.0/255.0, rigid=False, affine=True, verbose=True, strict=False, residual=False):
         """Affine stabilization to frame zero using multi-scale optical flow correspondence with foreground object keepouts.  
 
            * v [vipy.video.Scene]:  The input video to stabilize, should be resized to mindim=256
@@ -323,20 +323,14 @@ class Flow(object):
             warnings.warn('Large video frame size detected - This will take a while ...')
                     
         # Prepare videos
-        v = v.clone().cropeven()  # make even for zero pad
-        (padwidth, padheight) = (int(v.width()*padwidth) if padwidthpx is None else padwidthpx, int(v.height()*padheight) if padheightpx is None else padheightpx)
-        vc = v.clone(flush=True).zeropad(padwidth, padheight).load().nofilename().nourl()       
-        if len(vc) < keystep:
+        vc = v.clone()  # clone to avoid memory leaks in distributed processing
+        vv = vc.cropeven()  # make even for zero pad
+        (padwidth, padheight) = (int(vv.width()*padwidth) if padwidthpx is None else padwidthpx, int(vv.height()*padheight) if padheightpx is None else padheightpx)
+        vs = vv.clone(flush=True).zeropad(padwidth, padheight).load().nofilename().nourl()       
+        if len(vs) < keystep:
             print('[vipy.flow.stabilize]: ERROR - video not long enough for stabilization, returning original video "%s"' % str(v))
-            return v.setattribute('unstabilized')
+            return vc.setattribute('unstabilized')
 
-        # Optical flow (three passes)        
-        #if verbose:
-        #    print('[vipy.flow.stabilize]: Optical flow (3x)- %s' % v)
-        #vf = self.videoflow(v, framestep=1, flowstep=1)
-        #vfk1 = self.keyflow(v, keystep=keystep)  
-        #vfk2 = self.keyflow(v, keystep=len(v)//2)        
-        
         # Stabilization
         assert rigid is True or affine is True
         (A, T) = (np.array([ [1,0,0],[0,1,0],[0,0,1] ]).astype(np.float64), np.array([[1,0,padwidth],[0,1,padheight],[0,0,1]]).astype(np.float64))        
@@ -347,17 +341,17 @@ class Flow(object):
         f_warp_fine = cv2.warpAffine if (rigid or affine) else cv2.warpPerspective
         f_transform_coarse = (lambda A: A[0:2,:])
         f_transform_fine = (lambda A: A[0:2,:]) if (rigid or affine) else (lambda A: A)
-        imstabilized = v[0].clone().rgb().zeropad(padwidth, padheight)
+        imstabilized = vv.preview(0).clone().rgb().zeropad(padwidth, padheight)
         r_coarse = []
         frames = []                        
-        for (k, im) in enumerate(v): 
+        for (k, im) in enumerate(vv):  # triggers load
             if verbose and k==0:
                 print('[vipy.flow.stabilize]: %s coarse to fine stabilization ...' % ('Euclidean' if rigid else 'Affine' if affine else 'Projective'))                
          
-            # Optical flow: do not precompute to save on memory
-            imf = self.videoflowframe(v, k, framestep=1, flowstep=1)
-            imfk1 = self.keyflowframe(v, k, keystep=keystep)
-            imfk2 = self.keyflowframe(v, k, keystep=len(v)//2)
+            # Optical flow (3x): do not precompute to save on memory
+            imf = self.videoflowframe(vv, k, framestep=1, flowstep=1)
+            imfk1 = self.keyflowframe(vv, k, keystep=keystep)
+            imfk2 = self.keyflowframe(vv, k, keystep=len(vv)//2)
 
             # Coarse alignment 
             (xy_src_k0, xy_dst_k0) = self._correspondence(imf, im, border=border, dilate=dilate, contrast=contrast)
@@ -370,7 +364,7 @@ class Flow(object):
             except:
                 if not strict:
                     print('[vipy.flow.stabilize]: ERROR - coarse alignment failed, returning original video "%s"' % str(v))
-                    return v.setattribute('unstabilized')  # for provenance
+                    return vc.setattribute('unstabilized')  # for provenance
                 raise
 
             # Fine alignment
@@ -384,7 +378,7 @@ class Flow(object):
             except:
                 if not strict:
                     print('[vipy.flow.stabilize]: ERROR - fine alignment failed, returning original video "%s"' % str(v))
-                    return v.setattribute('unstabilized')  # for provenance
+                    return vc.setattribute('unstabilized')  # for provenance
                 raise
         
             # Render coarse to fine stabilized frame with aligned objects
@@ -394,12 +388,24 @@ class Flow(object):
             if any([not o.isvalid() for o in im.objects()]):  
                 if not strict:
                     print('[vipy.flow.stabilize]: ERROR - object alignment returned degenerate bounding box, returning original video "%s"' % str(v))
-                    return v.setattribute('unstabilized')  # for provenance
+                    return vc.setattribute('unstabilized')  # for provenance
                 else:
                     raise ValueError('[vipy.flow.stabilize]: ERROR - object alignment returned degenerate bounding box for video "%s"' % str(v))                    
-            vc.addframe( im.array(imstabilized.array(), copy=True), frame=k)
-                           
-        vc = vc.setattribute('stabilize', {'residual':np.mean(r_coarse)}) if residual else vc
-        return vc
+            vs.addframe( im.array(imstabilized.array(), copy=True), frame=k)
+
+            # Increase padding?  If the box is within k% of the image edge, increase the symmetric padding by k%
+            padfrac = 0.25
+            bb = vs.trackbox()
+            dx = int(even(padfrac*vs.width()) if ((bb.xmin() < padfrac*vs.width()) or (vs.width() - bb.xmax()) < padfrac*vs.width()) else 0)
+            dy = int(even(padfrac*vs.height()) if ((bb.ymin() < padfrac*vs.height()) or (vs.height() - bb.ymax()) < padfrac*vs.height()) else 0)
+            if dx > 0 or dy > 0:
+                vs = vs.zeropad(dx, dy)
+                imstabilized = imstabilized.zeropad(dx, dy)
+                (padwidth, padheight) = (padwidth + dx, padheight + dy)
+                T = np.array([[1,0,padwidth],[0,1,padheight],[0,0,1]]).astype(np.float64)
+                print('[vipy.flow.stabilize]: Increasing padding to (%d, %d)' % (vs.width(), vs.height()))
+                      
+        vs = vs.setattribute('stabilize', {'mean residual':float(np.mean(r_coarse)), 'median residual':float(np.median(r_coarse))}) if residual else vs
+        return vs
             
 

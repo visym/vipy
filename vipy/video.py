@@ -432,7 +432,7 @@ class Video(object):
         """Return True if the video can be loaded successfully, useful for filtering bad videos or filtering videos that cannot be loaded using your current FFMPEG version"""
         if not self.isloaded():
             try:
-                self._preview()  # try to preview
+                self.preview()  # try to preview
                 return True
             except:
                 return False
@@ -632,7 +632,7 @@ class Video(object):
         if not self.isloaded():
             previewhash = hashlib.md5(str(self._ffmpeg_commandline()).encode()).hexdigest()
             if not hasattr(self, '_previewhash') or previewhash != self._previewhash:
-                im = self._preview()  # ffmpeg chain changed, load a single frame of video 
+                im = self.preview()  # ffmpeg chain changed, load a single frame of video 
                 self._shape = (im.height(), im.width())  # cache the shape
                 self._channels = im.channels()
                 self._previewhash = previewhash
@@ -645,7 +645,7 @@ class Video(object):
         if not self.isloaded():
             previewhash = hashlib.md5(str(self._ffmpeg_commandline()).encode()).hexdigest()            
             if not hasattr(self, '_previewhash') or previewhash != self._previewhash:
-                im = self._preview()  # ffmpeg chain changed, load a single frame of video
+                im = self.preview()  # ffmpeg chain changed, load a single frame of video
                 self._shape = (im.height(), im.width())  # cache the shape                
                 self._channels = im.channels()  # cache
                 self._previewhash = previewhash
@@ -661,8 +661,8 @@ class Video(object):
         """Height (rows) in pixels of the video for the current filter chain"""
         return self.shape()[0]
 
-    def _preview(self, framenum=0):
-        """Return selected frame of filtered video, return vipy.image.Image object.  This is useful for previewing the frame shape of a complex filter chain without loading the whole video."""
+    def preview(self, framenum=0):
+        """Return selected frame of filtered video, return vipy.image.Image object.  This is useful for previewing the frame shape of a complex filter chain or the frame contents at a particular location without loading the whole video"""
         if self.isloaded():
             return self[0]
         elif self.hasurl() and not self.hasfilename():
@@ -686,7 +686,7 @@ class Video(object):
 
     def thumbnail(self, outfile=None, frame=0):
         """Return annotated frame=k of video, save annotation visualization to provided outfile"""
-        return self.frame(frame, img=self._preview(frame).array()).savefig(outfile if outfile is not None else temppng())
+        return self.frame(frame, img=self.preview(frame).array()).savefig(outfile if outfile is not None else temppng())
     
     def load(self, verbose=False, ignoreErrors=False):
         """Load a video using ffmpeg, applying the requested filter chain.  
@@ -719,7 +719,7 @@ class Video(object):
             else:
                 return self  # Failed, return immediately, useful for calling canload() 
 
-        # [EXCEPTION]:  older ffmpeg versions may be off by one on the size returned from self._preview() which uses an image decoder vs. f.run() which uses a video decoder
+        # [EXCEPTION]:  older ffmpeg versions may be off by one on the size returned from self.preview() which uses an image decoder vs. f.run() which uses a video decoder
         #    -Try to correct this manually by searching for a off-by-one-pixel decoding that works.  The right way is to upgrade your FFMPEG version to the FFMPEG head (11JUN20)
         #    -We cannot tell which is the one that the end-user wanted, so we leave it up to the calling function to check dimensions (see self.resize())
         (height, width, channels) = (self.height(), self.width(), self.channels())
@@ -1690,7 +1690,7 @@ class Scene(VideoCategory):
 
     def trackbox(self, dilate=1.0):
         """The trackbox is the union of all track bounding boxes in the video, or the image rectangle if there are no tracks"""
-        boxes = [t.boundingbox().dilate(dilate) for t in self.tracklist()]
+        boxes = [t.clone().boundingbox().dilate(dilate) for t in self.tracklist()]
         return boxes[0].union(boxes[1:]) if len(boxes) > 0 else imagebox(self.shape())
         
     def activitybox(self, activityid=None, dilate=1.0):
@@ -1790,6 +1790,11 @@ class Scene(VideoCategory):
         return self
     
     def zeropad(self, padwidth, padheight):
+        """Zero pad the video with padwidth columns before and after, and padheight rows before and after
+           Update tracks accordingly. 
+
+        """
+        
         assert isinstance(padwidth, int) and isinstance(padheight, int)
         super().zeropad(padwidth, padheight)  
         self._tracks = {k:t.offset(dx=padwidth, dy=padheight) for (k,t) in self._tracks.items()}
@@ -1981,7 +1986,7 @@ class Scene(VideoCategory):
 
     def thumbnail(self, outfile=None, frame=0, fontsize=10, nocaption=False, boxalpha=0.25, dpi=200, textfacecolor='white', textfacealpha=1.0):
         """Return annotated frame=k of video, save annotation visualization to provided outfile"""
-        return self.frame(frame, img=self._preview(framenum=frame).array()).savefig(outfile=outfile, fontsize=fontsize, nocaption=nocaption, boxalpha=boxalpha, dpi=dpi, textfacecolor=textfacecolor, textfacealpha=textfacealpha)
+        return self.frame(frame, img=self.preview(framenum=frame).array()).savefig(outfile=outfile, fontsize=fontsize, nocaption=nocaption, boxalpha=boxalpha, dpi=dpi, textfacecolor=textfacecolor, textfacealpha=textfacealpha)
     
     def stabilize(self):
         """Background stablization using flow based stabilization masking foreground region.  This will output a video with all frames aligned to the first frame, such that the background is static."""

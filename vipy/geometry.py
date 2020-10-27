@@ -441,7 +441,7 @@ class BoundingBox(object):
         """Normalized Gaussian distance in [0,1] between centroids of two bounding boxes, where 0 is far and 1 is same with sigma=maxdim() of this box"""
         assert isinstance(bb, BoundingBox), "Invalid BoundingBox() input of type '%s'" % str(type(bb))
         return np.exp(-self.sqdist(bb)/(float(2*self.maxdim()*self.maxdim()) if sigma is None else float(2.0*sigma*sigma)))
-        
+
     def iou(self, bb):
         """area of intersection / area of union"""
         assert isinstance(bb, BoundingBox), "Invalid BoundingBox() input of type '%s'" % str(type(bb))        
