@@ -28,7 +28,7 @@ def noshow(fignum):
     return BACKEND.noshow(fignum)
 
 
-def imshow(im, fignum=None, nowindow=False, timestamp=None, timestampcolor='black', timestampfacecolor=None):
+def imshow(im, fignum=None, nowindow=False, timestamp=None, timestampcolor='black', timestampfacecolor=None, flush=False):
     """Show an image in the provided figure number"""
     if nowindow:
         noshow(fignum)
@@ -36,7 +36,9 @@ def imshow(im, fignum=None, nowindow=False, timestamp=None, timestampcolor='blac
     if timestamp is not None:
         text(str(timestamp), 4, 15, fontsize=10, alpha=0.8 if timestampfacecolor is not None else 1.0, textfacealpha=0.6, facealpha=0.6, textcolor=timestampcolor, textfacecolor=timestampfacecolor)
     if not nowindow:
-        show(fignum)        
+        show(fignum)
+        if flush:
+            BACKEND.imflush()
     return h
 
 

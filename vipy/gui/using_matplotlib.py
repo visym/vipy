@@ -27,18 +27,24 @@ def escape_to_exit(event):
         vipy.globals.user_hit_escape(True)
     
 def flush():
-    plt.pause(0.01)
+    plt.pause(0.001)
 
     
 def imflush():
-    plt.pause(0.01)    
-    plt.annotate('', (0,0))  # this is necessary for imshow only, not sure why...
+    plt.pause(0.001)
+
+    # this is necessary for imshow only, maybe to trigger remove() of child?
+    # However, this breaks jupyter notebook image show if we use gca()
+    [a.annotate('', (0,0)) for i in plt.get_fignums() for a in plt.figure(i).axes]
+    
+    #plt.gca().annotate('', (0,0))  
 
     
 def show(fignum):
+    fig = plt.figure(fignum) 
+    fig.canvas.draw()    
     plt.ion()
-    plt.draw()
-    plt.show() 
+    plt.show()
 
     
 def noshow(fignum):
@@ -115,6 +121,7 @@ def imshow(img, fignum=None):
                 except:
                     pass
     else:
+        # Jupyter notebook does not respect fignum.  It is always one when inspecting plt.get_fignums()
         if fignum in plt.get_fignums() and fignum in FIGHANDLE:
             close(fignum)
         (fignum, imh) = _imshow_tight(img, fignum=fignum)
