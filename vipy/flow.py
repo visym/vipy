@@ -50,6 +50,12 @@ class Image(object):
     def scale(self, s):
         self._array *= s
         return self
+
+    def threshold(self, t):
+        m = np.float32(self.magnitude() < t)
+        self._array[:,:,0] = np.multiply(m, self._array[:,:,0])
+        self._array[:,:,1] = np.multiply(m, self._array[:,:,1])                
+        return self
         
     def width(self):
         return self._array.shape[1]
@@ -117,7 +123,7 @@ class Image(object):
         return self
     
     def show(self, figure=None, nowindow=False):
-        self.colorflow().show(figure, nowindow)
+        self.colorflow().show(figure=figure, nowindow=nowindow)
     
     def rescale(self, scale, interp='bicubic'):
         (height, width) = self.shape()
@@ -284,20 +290,21 @@ class Flow(object):
         """Return a flow field of size (height=H, width=W) consistent with an Euclidean transform parameterized by a 2x2 Rotation and 2x1 translation"""  
         return self.affineflow(np.array([[R[0,0], R[0,1], t[0]], [R[1,0], R[1,1], t[1]]]), H, W)
     
-    def _correspondence(self, imflow, im, border=0.1, contrast=(16.0/255.0), dilate=1.0, validmask=None):
+    def _correspondence(self, imflow, im, border=0.1, contrast=(16.0/255.0), dilate=1.0, validmask=None, maxflow=None):
         (H,W) = (imflow.height(), imflow.width())
         m = im.clone().dilate(dilate).rectangular_mask() if (dilate  is not None and isinstance(im, vipy.image.Scene) and len(im.objects())>0) else 0  # ignore foreground regions
         b = im.border_mask(int(border*min(W,H))) if border is not None else 0  # ignore borders
         w = np.uint8(np.sum(np.abs(np.gradient(im.clone().greyscale().numpy())), axis=0) < contrast) if contrast is not None else 0  # ignore low contrast regions
         v = (1-np.float32(validmask)) if validmask is not None else 0  # ignore non-valid regions
-        bk = np.nonzero((m+b+w+v) == 0)  # indexes for valid flow regions
+        x = np.float32(imflow.magnitude() > maxflow) if maxflow is not None else 0  # ignore maxflow region
+        bk = np.nonzero((m+b+w+v+x) == 0)  # indexes for valid flow regions
         (X, Y) = np.meshgrid(np.arange(0, im.width()), np.arange(0, im.height()))        
         (fx, fy) = (imflow.dx()[bk].flatten(), imflow.dy()[bk].flatten())  # flow
         (x1, y1) = (X[bk].flatten(), Y[bk].flatten())  # image coordinates
         (x2, y2) = (x1 + fx, y1 + fy)  # destination coordinates
         return (np.stack((x1,y1)), np.stack((x2,y2)))
         
-    def stabilize(self, v, keystep=20, padheight=0.125, padwidth=0.25, padheightpx=None, padwidthpx=None, border=0.1, dilate=1.0, contrast=16.0/255.0, rigid=False, affine=True, verbose=True, strict=False, residual=False, show=False):
+    def stabilize(self, v, keystep=20, padheight=0.125, padwidth=0.25, padheightpx=None, padwidthpx=None, border=0.1, dilate=1.0, contrast=16.0/255.0, rigid=False, affine=True, verbose=True, strict=False, residual=False, show=False, maxflow=None): 
         """Affine stabilization to frame zero using multi-scale optical flow correspondence with foreground object keepouts.  
 
            * v [vipy.video.Scene]:  The input video to stabilize, should be resized to mindim=256
@@ -332,11 +339,11 @@ class Flow(object):
             return vc.setattribute('unstabilized')
 
         # Stabilization
-        assert rigid is True or affine is True
+        #assert rigid is True or affine is True, "Projective stabilization is disabled"
         (A, T) = (np.array([ [1,0,0],[0,1,0],[0,0,1] ]).astype(np.float64), np.array([[1,0,padwidth],[0,1,padheight],[0,0,1]]).astype(np.float64))        
         f_estimate_coarse = ((lambda s, *args, **kw: np.vstack( (cv2.estimateAffinePartial2D(s, *args, **kw)[0], [0,0,1])).astype(np.float64)) if rigid else
                              (lambda s, *args, **kw: np.vstack( (cv2.estimateAffine2D(s, *args, **kw)[0], [0,0,1])).astype(np.float64)))
-        f_estimate_fine = (lambda s, *args, **kw: cv2.findHomography(s, *args, **kw)[0]) if not (rigid or affine) else f_estimate_coarse 
+        f_estimate_fine = (lambda s, *args, **kw: cv2.findHomography(s, *args)[0]) if not (rigid or affine) else f_estimate_coarse 
         f_warp_coarse = cv2.warpAffine
         f_warp_fine = cv2.warpAffine if (rigid or affine) else cv2.warpPerspective
         f_transform_coarse = (lambda A: A[0:2,:])
@@ -352,18 +359,18 @@ class Flow(object):
             imf = self.videoflowframe(vv, k, framestep=1, flowstep=1)
             imfk1 = self.keyflowframe(vv, k, keystep=keystep)
             imfk2 = self.keyflowframe(vv, k, keystep=len(vv)//2)
-
+            
             # Coarse alignment 
-            (xy_src_k0, xy_dst_k0) = self._correspondence(imf, im, border=border, dilate=dilate, contrast=contrast)
-            (xy_src_k1, xy_dst_k1) = self._correspondence(imfk1, im, border=border, dilate=dilate, contrast=contrast)
-            (xy_src_k2, xy_dst_k2) = self._correspondence(imfk2, im, border=border, dilate=dilate, contrast=contrast)
+            (xy_src_k0, xy_dst_k0) = self._correspondence(imf, im, border=border, dilate=dilate, contrast=contrast, maxflow=maxflow)
+            (xy_src_k1, xy_dst_k1) = self._correspondence(imfk1, im, border=border, dilate=dilate, contrast=contrast, maxflow=maxflow)
+            (xy_src_k2, xy_dst_k2) = self._correspondence(imfk2, im, border=border, dilate=dilate, contrast=contrast, maxflow=maxflow)
             (xy_src, xy_dst) = (np.hstack( (xy_src_k0, xy_src_k1, xy_src_k2) ).transpose(), np.hstack( (xy_dst_k0, xy_dst_k1, xy_dst_k2) ).transpose())  # Nx3
             try:            
                 M = f_estimate_coarse(xy_src, xy_dst, method=cv2.RANSAC, confidence=0.99999, ransacReprojThreshold=0.1, refineIters=16, maxIters=3000)                   
                 r_coarse.append(np.mean(np.sqrt(np.sum(np.square(M.dot(homogenize(xy_src[::8].transpose())) - homogenize(xy_dst[::8].transpose())), axis=0))) if (residual and len(xy_src)>8) else 0)
-            except:
+            except Exception as e:
                 if not strict:
-                    print('[vipy.flow.stabilize]: ERROR - coarse alignment failed, returning original video "%s"' % str(v))
+                    print('[vipy.flow.stabilize]: ERROR - coarse alignment failed with error "%s", returning original video "%s"' % (str(e), str(v)))
                     return vc.setattribute('unstabilized')  # for provenance
                 raise
 
@@ -375,9 +382,9 @@ class Flow(object):
             (xy_src, xy_dst) = self._correspondence(imfineflow, imfine, border=None, dilate=dilate, contrast=contrast, validmask=imfinemask)
             try:
                 F = f_estimate_fine(xy_src.transpose()-np.array([padwidth, padheight]), xy_dst.transpose()-np.array([padwidth, padheight]), method=cv2.RANSAC, confidence=0.99999, ransacReprojThreshold=0.1, refineIters=64, maxIters=3000)  
-            except:
+            except Exception as e:
                 if not strict:
-                    print('[vipy.flow.stabilize]: ERROR - fine alignment failed, returning original video "%s"' % str(v))
+                    print('[vipy.flow.stabilize]: ERROR - finealignment failed with error "%s", returning original video "%s"' % (str(e), str(v)))                    
                     return vc.setattribute('unstabilized')  # for provenance
                 raise
         
@@ -406,10 +413,8 @@ class Flow(object):
                 print('[vipy.flow.stabilize]: Increasing padding to (%d, %d)' % (vs.width(), vs.height()))
 
             # Show intermediate stabilization
-            if show:
-                vs[k].show(figure=1, timestamp='%s %d' % (clockstamp(), k))
-                
-                
+            vs[k].show(timestamp='%s %d' % (clockstamp(), k)) if show else None
+            
         vs = vs.setattribute('stabilize', {'mean residual':float(np.mean(r_coarse)), 'median residual':float(np.median(r_coarse))}) if residual else vs
         return vs
             
