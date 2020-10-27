@@ -469,29 +469,19 @@ def loadas(infile, format='dill'):
     """Load variables from a dill pickled file"""
     
     if format in ['dill', 'pkl']:
-        try:
-            return dill.load(open(infile, 'rb'))
-        except Exception:
-            print('[vipy.util.loadas]: dill load failure - falling back on pickle')
-            import pickle
-            with open(infile, 'rb') as pfp:
-                fv = pickle.load(pfp, encoding="bytes")
-            return fv
+        return dill.load(open(infile, 'rb'))
     elif format == 'json':
         with open(infile, 'r') as f:
             loadobj = json.load(f)
         class_registry = _json_class_registry()
         assert isinstance(loadobj, list) or isinstance(loadobj, dict), "invalid vipy JSON serialization format"
-        if isinstance(loadobj, list):
-            assert all([isinstance(d, dict) for d in loadobj]), "invalid vipy JSON serialization format"
-            assert all([c in class_registry for d in loadobj for (c,v) in d.items()]), "invalid vipy json serialization format"        
+        if isinstance(loadobj, list) and all([isinstance(d, dict) for d in loadobj]) and all([c in class_registry for d in loadobj for (c,v) in d.items()]):
             return [class_registry[c](v) for d in loadobj for (c,v) in d.items()]
-        else:
-            assert all([isinstance(d, dict) for (k,d) in loadobj.items()]), "invalid vipy JSON serialization format"
-            assert all([c in class_registry for (c,d) in loadobj.items()]), "invalid vipy json serialization format"        
+        elif isinstance(loadobj, dict) and all([c in class_registry for (c,d) in loadobj.items()]):
             obj = [class_registry[c](v) for (c,v) in loadobj.items()]
             return obj[0] if len(obj) == 1 else obj
-                    
+        else:
+            return loadobj
     else:
         raise ValueError('unknown serialization format "%s"' % format)
 
@@ -556,7 +546,7 @@ def distload(infile, datapath, srcpath='/$PATH'):
 
 
 def distsave(vars, datapath, outfile=None, mode=None, dstpath='/$PATH'):
-    """Save a pickle file for redistribution, where datapath is replaced by dstpath.  Useful for redistribuing pickle files with absolute paths.  See also vipy.util.distload().
+    """Save a archive file for redistribution, where datapath is replaced by dstpath.  Useful for redistribuing pickle files with absolute paths.  See also vipy.util.distload().
        This function has been deprecated, all archives should be distributed with relative paths       
     """
     vars = vars if (datapath is None or not isvipyobject(vars)) else repath(vars, datapath, dstpath) 
@@ -576,16 +566,21 @@ def repath(v, srcpath, dstpath):
     return vc
     
 
-def scpsave(v):
+def scpsave(V):
     import vipy.image
     import vipy.video
-    if (isinstance(v, vipy.image.Image) or isinstance(v, vipy.video.Video)) and v.hasfilename():        
-        vc = v.clone().url('scp://%s:%s' % (socket.gethostname(), v.filename())).nofilename()
-        v = vc
-    elif islist(v) and all([isinstance(vv, vipy.image.Image) or isinstance(vv, vipy.video.Video) for vv in v]):
-        vc = [vv.clone().url('scp://%s:%s' % (socket.gethostname(), vv.filename())).nofilename() for vv in v]
-        v = vc
-    return 'scp://%s:%s' % (socket.gethostname(), save(v))
+    if (isinstance(V, vipy.image.Image) or isinstance(V, vipy.video.Video)) and v.hasfilename():        
+        v = V
+        v = v.clone().url('scp://%s:%s' % (socket.gethostname(), v.filename())).nofilename()
+    elif islist(V) and all([isinstance(v, vipy.image.Image) or isinstance(v, vipy.video.Video) for v in V]):
+        v = [v.clone().url('scp://%s:%s' % (socket.gethostname(), v.abspath().filename())).nofilename() for v in V]
+    else:
+        pass  # no vipy objects
+
+    pklfile = 'scp://%s:%s' % (socket.gethostname(), save(v, temppkl()))
+    cmd = "V = vipy.util.scpload('%s')" % pklfile
+    print('[vipy.util.scpsave]: On a remote machine where you have public key ssh access to this machine run\n>>> %s\n' % cmd)
+    return pklfile
 
 
 def scpload(url):

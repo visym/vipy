@@ -35,14 +35,20 @@ class Activity(object):
             if all([isinstance(t, Track) for t in tracks]):
                 assert all([any([t.during(f) for f in range(startframe, endframe)]) for t in tracks]), "All tracks must be be present in at least one frame when this activity occurs"
                 tracks = [t.id() for t in tracks]  
-               
+        trackid = set(tracks) if tracks is not None else set([])  # only store IDs, not tracks
+        
+        if actorid is not None:
+            assert isstring(actorid), "Invalid actor ID, must be a track ID for the actor performing this activity"
+            if actorid not in trackid:
+                trackid.add(actorid)
+
         self._id = uuid.uuid1().hex
         self._startframe = int(startframe)
         self._endframe = int(endframe)
         self._framerate = framerate
         self._label = category if category is not None else label        
         self._shortlabel = self._label if shortlabel is None else shortlabel
-        self._trackid = set(tracks) if tracks is not None else set([])
+        self._trackid = trackid
         self._actorid = actorid
 
         self.attributes = attributes if attributes is not None else {}            

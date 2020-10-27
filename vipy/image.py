@@ -158,6 +158,16 @@ class Image(object):
             print(prefix+self.__repr__())
         return self
 
+    def abspath(self):
+        """Change the path of the filename from a relative path to an absolute path (not relocatable)"""
+        return self.filename(os.path.normpath(os.path.abspath(os.path.expanduser(self.filename()))))
+
+    def relpath(self, parent=None):
+        """Replace the filename with a relative path to parent (or current working directory if none)"""
+        parent = parent if parent is not None else os.getcwd()
+        assert parent in os.path.expanduser(self.filename())
+        return self.filename(PurePath(os.path.expanduser(self.filename())).relative_to(parent))
+
     def canload(self):
         """Return True if the image can be loaded successfully, useful for filtering bad links or corrupt images"""
         if not self.isloaded():

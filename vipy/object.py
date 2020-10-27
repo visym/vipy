@@ -164,19 +164,19 @@ class Track(object):
         self._interpolation = interpolation
         self._boundary = boundary
         self.attributes = attributes if attributes is not None else {}        
-        self._keyframes = keyframes
+        self._keyframes = [int(np.round(f)) for f in keyframes]  # coerce to int
         self._keyboxes = boxes
         
         # Sorted increasing frame order
         if len(keyframes) > 0 and len(boxes) > 0 and not all([keyframes[i-1] <= keyframes[i] for i in range(1,len(keyframes))]):
             (keyframes, boxes) = zip(*sorted([(f,bb) for (f,bb) in zip(keyframes, boxes)], key=lambda x: x[0]))
-            self._keyframes = [int(np.round(f)) for f in keyframes]  # coerce to int
+            self._keyframes = list(keyframes)
             self._keyboxes = list(boxes)
 
     @classmethod
     def from_json(cls, s):
         d = json.loads(s) if not isinstance(s, dict) else s
-        return cls(keyframes=d['_keyframes'],
+        return cls(keyframes=[int(f) for f in d['_keyframes']],
                    boxes=[BoundingBox.from_json(bbs) for bbs in d['_keyboxes']],
                    category=d['_label'],
                    confidence=None,
@@ -218,18 +218,19 @@ class Track(object):
                     sorted(self.keyframes()) == list(self.keyframes()))
     
     def dict(self):
-        return {'id':self._id, 'label':self.category(), 'shortlabel':self.shortlabel(), 'keyframes':self._keyframes, 'framerate':self._framerate, 
-                'boundingbox':[bb.dict() for bb in self._keyboxes], 'attributes':self.attributes}
+        """Return a python dictionary containing the relevant serialized attributes suitable for JSON encoding"""
+        return self.json(encode=False)
 
     def json(self, encode=True):
         d = {k:v if k != '_keyboxes' else [bb.json(encode=False) for bb in v] for (k,v) in self.__dict__.items()}
+        d['_keyframes'] = [int(f) for f in self._keyframes]
         return json.dumps(d) if encode else d
     
     def add(self, keyframe, box):
         """Add a new keyframe and associated box to track, preserve sorted order of keyframes"""
         assert isinstance(box, BoundingBox), "Invalid input - Box must be vipy.geometry.BoundingBox()"
         assert box.isvalid(), "Invalid input - Box must be non-degenerate"
-        self._keyframes.append(keyframe)
+        self._keyframes.append(int(keyframe))
         self._keyboxes.append(box)
         if len(self._keyframes) > 1 and keyframe < self._keyframes[-2]:
             (self._keyframes, self._keyboxes) = zip(*sorted([(f,bb) for (f,bb) in zip(self._keyframes, self._keyboxes)], key=lambda x: x[0]))        
@@ -272,7 +273,8 @@ class Track(object):
         
     def meanshape(self):
         """Return the mean (width,height) of the box during the track"""
-        return np.mean([bb.shape() for bb in self._keyboxes], axis=0)
+        s = np.mean([bb.shape() for bb in self._keyboxes], axis=0)
+        return (float(s[0]), float(s[1]))
             
     def framerate(self, fps):
         """Resample keyframes from known original framerate set by constructor to be new framerate fps"""
@@ -282,10 +284,10 @@ class Track(object):
         return self
         
     def startframe(self):
-        return np.min(self._keyframes) if len(self._keyframes)>0 else None
+        return int(min(self._keyframes)) if len(self._keyframes)>0 else None
 
     def endframe(self):
-        return np.max(self._keyframes) if len(self._keyframes)>0 else None
+        return int(max(self._keyframes)) if len(self._keyframes)>0 else None
 
     def _linear_interpolation(self, k):
         """Linear bounding box interpolation at frame=k given observed boxes (x,y,w,h) at keyframes.  
@@ -295,10 +297,10 @@ class Track(object):
         """
         assert not self.isempty(), "Degenerate object for interpolation"
         (xmin, ymin, width, height) = zip(*[bb.to_xywh() for bb in self._keyboxes])
-        d = Detection(xmin=np.interp(k, self._keyframes, xmin),
-                      ymin=np.interp(k, self._keyframes, ymin),
-                      width=np.interp(k, self._keyframes, width),
-                      height=np.interp(k, self._keyframes, height),
+        d = Detection(xmin=float(np.interp(k, self._keyframes, xmin)),
+                      ymin=float(np.interp(k, self._keyframes, ymin)),
+                      width=float(np.interp(k, self._keyframes, width)),
+                      height=float(np.interp(k, self._keyframes, height)),
                       category=self.category(),
                       shortlabel=self.shortlabel())
         d.attributes['trackid'] = self.id()  # for correspondence of detections to tracks
@@ -332,7 +334,7 @@ class Track(object):
 
     def offset(self, dt=0, dx=0, dy=0):
         self._keyboxes = [bb.offset(dx, dy) for bb in self._keyboxes]
-        self._keyframes = [f+dt for f in self._keyframes]
+        self._keyframes = [int(f+dt) for f in self._keyframes]
         return self
 
     def frameoffset(self, dx, dy):
