@@ -135,14 +135,13 @@ def download(vidurl, vidfile, skip=False, writeurlfile=True, max_filesize='350m'
     """Use youtube-dl to download a video URL to a video file"""
 
     user_agent = random.choice(complete_user_agents)    
-    ydl_exe = os.path.join(filepath(sys.executable), 'youtube-dl')
-    if not os.path.exists(ydl_exe):
+    if not has_youtube_dl:
         raise ImportError('Optional package "youtube-dl" not installed -  Run "pip install youtube-dl"')
     try:
         print('[vipy.videosearch.download]: saving "%s" to "%s"' % (vidurl, vidfile))
         for f in glob.glob("%s*" % vidfile):
             os.remove(f)  # youtube-dl will not overwrite, so we force it
-        cmd = '%s %s "%s" -o "%s" --no-check-certificate --max-filesize="%s" --user-agent="%s"' % (ydl_exe, '-q' if not verbose else '', vidurl, vidfile, max_filesize, user_agent)  # must be on path            
+        cmd = '%s %s "%s" -o "%s" --no-check-certificate --max-filesize="%s" --user-agent="%s"' % (youtube_dl_exe, '-q' if not verbose else '', vidurl, vidfile, max_filesize, user_agent)  # must be on path            
         if verbose:
             print('[vipy.videosearch.download]: executing \'%s\'' % cmd)
         erno = os.system(cmd)
