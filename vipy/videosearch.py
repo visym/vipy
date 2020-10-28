@@ -11,6 +11,11 @@ from vipy.util import tofilename, remkdir, filepath, filebase, isurl, try_import
 import glob
 from subprocess import DEVNULL, STDOUT
 import subprocess
+import shutil
+
+
+youtube_dl_exe = shutil.which('youtube-dl')        
+has_youtube_dl = youtube_dl_exe is not None and os.path.exists(youtube_dl_exe)
 
 
 def isactiveyoutuber(username):
@@ -56,10 +61,9 @@ def youtubeuser(tag, n_pages=1):
 
 def is_downloadable_url(path):
     """Check to see if youtube-dl can download the path, this requires exeecuting 'youtube-dl $URL -q -j' to see if the returncode is non-zero"""
-    ydl_exe = os.path.join(filepath(sys.executable), 'youtube-dl')
-    if not os.path.exists(ydl_exe):
-        raise ImportError('Optional package "youtube-dl" not installed -  Run "pip install youtube-dl"')
-    retcode = subprocess.call([ydl_exe, path, '-q', '-j'], stdout=DEVNULL, stderr=STDOUT) if isurl(path) else -1
+    if not has_youtube_dl:
+        raise ImportError('Optional package "youtube-dl" not installed -  Run "pip install youtube-dl"')    
+    retcode = subprocess.call([youtube_dl_exe, '-q', '-j'], stdout=DEVNULL, stderr=STDOUT) if isurl(path) else -1
     return isurl(path) and retcode == 0
 
 
