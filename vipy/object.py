@@ -406,9 +406,14 @@ class Track(object):
         return copy.deepcopy(self)
 
     def boundingbox(self):
-        """The bounding box of a track is the smallest spatial box that contains all of the detections, or None if there are no detections"""
+        """The bounding box of a track is the smallest spatial box that contains all of the detections within startframe and endframe, or None if there are no detections"""
         d = self._keyboxes[0].clone() if len(self._keyboxes) >= 1 else None
-        return d.union(self._keyboxes[1:]) if (d is not None and len(self._keyboxes) >= 2) else d
+        return d.union([bb for (k,bb) in zip(self._keyframes[1:], self._keyboxes[1:]) if self.during(k)]) if (d is not None and len(self._keyboxes) >= 2) else d
+
+    def pathlength(self):
+        """The path length of a track is the cumulative Euclidean distance in pixels that the box travels"""
+        return float(np.sum([bb_next.dist(bb_prev) for (bb_next, bb_prev) in zip(self._keyboxes[1:], self._keyboxes[0:-1])])) if len(self._keyboxes)>1 else 0.0
+        
 
     def clip(self, startframe, endframe):
         """Clip a track to be within (startframe,endframe) with strict boundary handling"""

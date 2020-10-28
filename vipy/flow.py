@@ -339,7 +339,7 @@ class Flow(object):
             return vc.setattribute('unstabilized')
 
         # Stabilization
-        #assert rigid is True or affine is True, "Projective stabilization is disabled"
+        assert rigid is True or affine is True, "Projective stabilization is disabled"
         (A, T) = (np.array([ [1,0,0],[0,1,0],[0,0,1] ]).astype(np.float64), np.array([[1,0,padwidth],[0,1,padheight],[0,0,1]]).astype(np.float64))        
         f_estimate_coarse = ((lambda s, *args, **kw: np.vstack( (cv2.estimateAffinePartial2D(s, *args, **kw)[0], [0,0,1])).astype(np.float64)) if rigid else
                              (lambda s, *args, **kw: np.vstack( (cv2.estimateAffine2D(s, *args, **kw)[0], [0,0,1])).astype(np.float64)))
