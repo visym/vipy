@@ -556,8 +556,7 @@ class Video(object):
                 for ext in ['mkv', 'mp4', 'webm']:
                     f = '%s.%s' % (self.filename(), ext)
                     if os.path.exists(f):
-                        os.symlink(f, self.filename())  # for future load()
-                        self.filename(f)
+                        self.filename(f)  # change the filename to match the youtube extension
                         break    
                 if not self.hasfilename():
                     raise ValueError('Downloaded file not found "%s.*"' % self.filename())
