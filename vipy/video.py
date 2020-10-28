@@ -1691,8 +1691,12 @@ class Scene(VideoCategory):
         vid._activities = {}  # for faster clone
         vid._tracks = {}      # for faster clone
         padframes = padframes if istuple(padframes) else (padframes,padframes)
-        return [vid.clone().activities([pa]+sa).tracks(t).clip(startframe=max(pa.startframe()-padframes[0], 0),
-                                                               endframe=(pa.endframe()+padframes[1])).category(pa.category()) for (pa,sa,t) in zip(primary_activities, secondary_activities, tracks)]
+        return [vid.clone()
+                .activities([pa]+sa)
+                .tracks(t)
+                .clip(startframe=max(pa.startframe()-padframes[0], 0), endframe=(pa.endframe()+padframes[1]))
+                .category(pa.category())
+                for (pa,sa,t) in zip(primary_activities, secondary_activities, tracks)]
 
     def trackbox(self, dilate=1.0):
         """The trackbox is the union of all track bounding boxes in the video, or the image rectangle if there are no tracks"""
@@ -1780,8 +1784,8 @@ class Scene(VideoCategory):
         v._endframe = endframe if v._endframe is None else v._startframe + (endframe-startframe)  # for __repr__ only
         # -- end copy
 
-        v._tracks = {k:t.offset(dt=-startframe) for (k,t) in v._tracks.items()}   # track offset is performed here, not within activity, no end frame enforced
-        v._activities = {k:a.offset(dt=-startframe) for (k,a) in v._activities.items()}        
+        v._tracks = {k:t.offset(dt=-startframe).truncate(startframe=0, endframe=endframe-startframe) for (k,t) in v._tracks.items()}   
+        v._activities = {k:a.offset(dt=-startframe).truncate(startframe=0, endframe=endframe-startframe) for (k,a) in v._activities.items()}        
         return v  
 
     def cliptime(self, startsec, endsec):

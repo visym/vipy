@@ -202,6 +202,12 @@ class Activity(object):
         self._startframe = int(self._startframe + dt)
         self._endframe = int(self._endframe + dt)
         return self
+
+    def truncate(self, startframe=None, endframe=None):
+        self._startframe = self._startframe if startframe is None else max(self._startframe, startframe)
+        self._endframe = self._endframe if endframe is None else max(self._endframe, endframe)
+        return self
+        
     
     def id(self, newid=None):
         if newid is None:
