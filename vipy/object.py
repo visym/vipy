@@ -342,6 +342,14 @@ class Track(object):
         assert len(self.keyboxes()) == len(dx) and len(self.keyboxes()) == len(dy)
         self._keyboxes = [bb.offset(dx=x, dy=y) for (bb, (x, y)) in zip(self._keyboxes, zip(dx, dy))]
         return self
+
+    def truncate(self, startframe=None, endframe=None):
+        """Truncate a track so that any keyframes less than startframe or greater than or equal to endframe are removed"""
+        keyframes = copy.deepcopy(self.keyframes())
+        for k in keyframes:
+            if ((startframe is not None and k < startframe) or (endframe is not None and k >= endframe)):
+                self.delete(k)
+        return self
         
     def rescale(self, s):
         """Rescale track boxes by scale factor s"""
