@@ -579,7 +579,7 @@ def scpsave(V):
 
     pklfile = 'scp://%s:%s' % (socket.gethostname(), save(v, temppkl()))
     cmd = "V = vipy.util.scpload('%s')" % pklfile
-    print('[vipy.util.scpsave]: On a remote machine where you have public key ssh access to this machine run\n>>> %s\n' % cmd)
+    print('[vipy.util.scpsave]: On a remote machine where you have public key ssh access to this machine run:\n>>> %s\n' % cmd)
     return pklfile
 
 

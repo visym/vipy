@@ -305,28 +305,32 @@ class Video(object):
 
     def _from_ffmpeg_commandline(self, cmd):
         args = cmd.split(' ')
-        assert args[0] == 'ffmpeg'
-        assert args[1] == '-i'
-        assert args[3] == '-filter_complex'
-        assert args[4][0] == '"' and args[4][-1] == '"'
+        assert args[0] == 'ffmpeg', "Invalid FFMEG commmand line '%s'" % cmd
+        assert args[1] == '-i', "Invalid FFMEG commmand line '%s'" % cmd
+        assert args[-1] == 'dummyfile', "Invalid FFMEG commmand line '%s'" % cmd
+        assert len(args) >= 4, "Invalid FFMEG commmand line '%s'" % cmd
 
         f = ffmpeg.input(args[2])        
-        filterargs = args[4][1:-1].split(';')
-        for a in filterargs:
-            assert a.count(']') == 2 and a.count('[') == 2
-            kwstr = a.split(']', maxsplit=1)[1].split('[', maxsplit=1)[0]
-            if kwstr.count('=') == 0:
-                f = f.filter(kwstr)
-            else:
-                (a, kw) = ([], {}) 
-                (filtername, kwstr) = kwstr.split('=', maxsplit=1)
-                for s in kwstr.split(':'):
-                    if s.count('=') > 0:
-                        (k,v) = s.split('=')
-                        kw[k] = v
-                    else:
-                        a.append(s)
-                f = f.filter(filtername, *a, **kw)
+        if len(args) > 4:
+            assert args[3] == '-filter_complex', "Invalid FFMEG commmand line '%s'" % cmd
+            assert args[4][0] == '"' and args[4][-1] == '"', "Invalid FFMEG commmand line '%s'" % cmd
+
+            filterargs = args[4][1:-1].split(';')
+            for a in filterargs:
+                assert a.count(']') == 2 and a.count('[') == 2
+                kwstr = a.split(']', maxsplit=1)[1].split('[', maxsplit=1)[0]
+                if kwstr.count('=') == 0:
+                    f = f.filter(kwstr)
+                else:
+                    (a, kw) = ([], {}) 
+                    (filtername, kwstr) = kwstr.split('=', maxsplit=1)
+                    for s in kwstr.split(':'):
+                        if s.count('=') > 0:
+                            (k,v) = s.split('=')
+                            kw[k] = v
+                        else:
+                            a.append(s)
+                    f = f.filter(filtername, *a, **kw)
         assert self._ffmpeg_commandline(f.output('dummyfile')) == cmd
         return f
 
