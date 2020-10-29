@@ -10,8 +10,9 @@ def test_batch():
     vipy.globals.dask(num_processes=1)
     imb = vipy.batch.Batch([ImageDetection(filename=rgbfile, category='face', bbox=vipy.geometry.BoundingBox(0,0,100,100)) for k in range(0,100)])
 
+    vipy.globals.dask(num_processes=2)
     v = vipy.video.RandomScene()
-    b = vipy.batch.Batch([v], n_processes=2)
+    b = vipy.batch.Batch([v])
     res = b.map(lambda v,k: v[k], args=[(k,) for k in range(0,len(v))]).result()
     assert isinstance(res[0], vipy.image.Scene)
     print('[test_image.batch]: batch  PASSED')

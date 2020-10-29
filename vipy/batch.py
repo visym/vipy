@@ -6,6 +6,11 @@ import dill
 try_import('dask', 'dask distributed torch')
 from dask.distributed import as_completed, wait
 try_import('torch', 'torch');  import torch
+import dask
+import dask.config
+from dask.distributed import Client
+from dask.distributed import as_completed, wait
+from dask.distributed import get_worker         
 import numpy as np
 import tempfile
 import warnings
@@ -17,18 +22,15 @@ import shutil
 
 
 class Dask(object):
-    def __init__(self, num_processes=1, dashboard=False, verbose=False, address=None, num_gpus=None):
-        assert address is not None or isinstance(num_processes, int) and num_processes >=1, "num_processes must be >= 1"
+    def __init__(self, num_processes=None, dashboard=False, verbose=False, address=None, num_gpus=None):
+        assert address is not None or num_processes is not None or num_gpus is not None, "Invalid input"
 
-        from vipy.util import try_import
-        try_import('dask', 'dask distributed')
-        import dask
-        import dask.config
+        if num_gpus is not None:
+            assert num_processes is None, "Cannot specify both num_gpus and num_processes"
+            num_processes = num_gpus   # coercing
+
         dask.config.set(distributed__comm__timeouts__tcp="60s")
         dask.config.set(distributed__comm__timeouts__connect="60s")        
-        from dask.distributed import Client
-        from dask.distributed import as_completed, wait
-        from dask.distributed import get_worker         
 
         self._num_processes = num_processes
 
@@ -54,17 +56,25 @@ class Dask(object):
         self._num_gpus = num_gpus
         if self._num_gpus is not None:
             assert isinstance(self._num_gpus, int) and self._num_gpus > 0, "Number of GPUs must be >= 0 not '%s'" % (str(self._num_gpus))
-            assert self._num_gpu == self._num_processes
+            assert self._num_gpus == self._num_processes
             wait([self._client.submit(vipy.globals.gpuindex, k, workers=wid) for (k, wid) in enumerate(self._client.scheduler_info()['workers'].keys())])
 
 
     def __repr__(self):
-        if self._num_processes is not None:
+        if self._num_processes is not None or self._num_gpus is not None:
             # Local 
-            return str('<vipy.globals.dask: num_processes=%d%s>' % (self._num_processes, '' if self._num_processes==0 or len(self._client.dashboard_link)==0 else ', dashboard="%s"' % str(self._client.dashboard_link)))
-        else:
+            return str('<vipy.globals.dask: %s%s>' % ('gpus=%d' % self.num_gpus() if self.num_gpus() is not None else 'processes=%d' % self.num_processes(), ', dashboard="%s"' % str(self._client.dashboard_link) if self.has_dashboard() else ''))
+        elif self._client is not None:
             # Distributed
             return str('<vipy.globals.dask: %s>' % (str(self._client)))
+        else:
+            return str('<vipy.globals.dask: shutdown')
+
+    def num_gpus(self):
+        return self._num_gpus
+
+    def has_dashboard(self):
+        return len(self._client.dashboard_link) > 0 if self._client is not None else False
 
     def dashboard(self):        
         webbrowser.open(self._client.dashboard_link) if len(self._client.dashboard_link)>0 else None
@@ -74,7 +84,9 @@ class Dask(object):
 
     def shutdown(self):
         self._client.close()
-        self._num_processes = 0
+        self._num_processes = None
+        self._num_gpus = None
+        
         return self
 
     def client(self):
@@ -194,7 +206,7 @@ class Batch(Checkpoint):
             as_completed = True  # force self._as_completed=True
 
         if vipy.globals.dask() is None:
-            warnings.warn('Batch() is not set to use parallelism, set up using vipy.globals.dask(num_processes=n), vipy.globals.dask(num_gpus=m) or vipy.globals.dask(address="SCHEDULER:PORT")')
+            warnings.warn('vipy.batch.Batch() is not set to use parallelism.  This is set using:\n>>> vipy.globals.dask(num_processes=n) for multi-processing\n>>> vipy.globals.dask(num_gpus=m) for multi-gpu\n>>> vipy.globals.dask(pct=0.8) for multiprocessing that uses a percentage of the current system resources\n>>> vipy.globals.dask(address="SCHEDULER:PORT") which connects to a Dask distributed scheduler.\n>>> vipy.globals.noparallel() to completely disable all parallelism.')
 
         #self._client = vipy.globals.dask().client() if vipy.globals.dask() is not None else None
     

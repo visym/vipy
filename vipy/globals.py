@@ -130,4 +130,10 @@ def dask(num_processes=None, num_gpus=None, dashboard=False, address=None, pct=N
         GLOBAL['DASK_CLIENT'] = Dask(num_processes, dashboard=dashboard, verbose=isverbose(), address=address, num_gpus=num_gpus)        
     return GLOBAL['DASK_CLIENT']
 
+def noparallel():
+    """Disable all parallel processing"""
+    GLOBAL['DASK_CLIENT'] = None 
 
+def nodask():
+    """Alias for noparallel()"""
+    return noparallel()
