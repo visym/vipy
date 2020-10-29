@@ -517,8 +517,13 @@ def load(infile):
             obj = repath(obj, '/$PATH', filepath(os.path.abspath(infile)))      # rehome everything to the same root path as the pklfile
         else:
             warnings.warn('Loading "%s" that contains redistributable paths - Use vipy.util.distload("%s", datapath="/path/to/your/data") to rehome absolute file paths' % (infile, infile))
-    elif hasattr(testobj, 'hasfilename') and testobj.filename() is not None and not testobj.hasfilename(): 
-        warnings.warn('Loading "%s" that contains filename "%s" does not exist - Loading archives with relative paths must be loaded from the same directory containing the videos' % (infile, testobj.filename()))
+    elif hasattr(testobj, 'filename') and testobj.filename() is not None and not os.path.exists(testobj.filename()):
+        if hasattr(testobj, 'hasurl') and testobj.hasurl():
+            warnings.warn('Invalid file - Loading "%s" that contains filename "%s" which does not exist - This must be downloaded from the provided url() using download()' % (infile, testobj.filename()))
+        elif not os.path.isabs(testobj.filename()):
+            warnings.warn('Invalid file - Loading "%s" that contains relative path "%s" which does not exist - Loading archives with relative paths must be loaded from the same directory containing the videos' % (infile, testobj.filename()))
+        else:
+            warnings.warn('Invalid file - Loading "%s" that contains absolute path "%s" which does not exist' % (infile, testobj.filename()))
     return obj
 
 

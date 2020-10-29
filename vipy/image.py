@@ -165,7 +165,7 @@ class Image(object):
     def relpath(self, parent=None):
         """Replace the filename with a relative path to parent (or current working directory if none)"""
         parent = parent if parent is not None else os.getcwd()
-        assert parent in os.path.expanduser(self.filename())
+        assert parent in os.path.expanduser(self.filename()), "Parent path '%s' not found in abspath '%s'" % (parent, self.filename())
         return self.filename(PurePath(os.path.expanduser(self.filename())).relative_to(parent))
 
     def canload(self):

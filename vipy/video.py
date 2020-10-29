@@ -304,13 +304,14 @@ class Video(object):
         return str(' ').join(cmd)
 
     def _from_ffmpeg_commandline(self, cmd):
-        args = cmd.split(' ')
+        args = copy.copy(cmd).replace(self.filename(), 'FILENAME').split(' ')  # filename may contain spaces
+
         assert args[0] == 'ffmpeg', "Invalid FFMEG commmand line '%s'" % cmd
         assert args[1] == '-i', "Invalid FFMEG commmand line '%s'" % cmd
         assert args[-1] == 'dummyfile', "Invalid FFMEG commmand line '%s'" % cmd
         assert len(args) >= 4, "Invalid FFMEG commmand line '%s'" % cmd
 
-        f = ffmpeg.input(args[2])        
+        f = ffmpeg.input(args[2].replace('FILENAME', self.filename()))  # restore filename
         if len(args) > 4:
             assert args[3] == '-filter_complex', "Invalid FFMEG commmand line '%s'" % cmd
             assert args[4][0] == '"' and args[4][-1] == '"', "Invalid FFMEG commmand line '%s'" % cmd
@@ -527,7 +528,7 @@ class Video(object):
     def relpath(self, parent=None):
         """Replace the filename with a relative path to parent (or current working directory if none)"""
         parent = parent if parent is not None else os.getcwd()
-        assert parent in os.path.expanduser(self.filename())
+        assert parent in os.path.expanduser(self.filename()), "Parent path '%s' not found in abspath '%s'" % (parent, self.filename())
         return self.filename(PurePath(os.path.expanduser(self.filename())).relative_to(parent))
 
     def rename(self, newname):
@@ -970,7 +971,7 @@ class Video(object):
                 process.stdin.close()
                 process.wait()
             
-            elif self.isdownloaded():
+            elif self.isdownloaded() and self.isdirty():
                 # Transcode the video file directly, do not load() then export
                 # Requires saving to a tmpfile if the output filename is the same as the input filename
                 tmpfile = '%s.tmp%s' % (filefull(outfile), fileext(outfile)) if outfile == self.filename() else outfile
@@ -983,10 +984,10 @@ class Video(object):
                     if os.path.exists(self.filename()):
                         os.remove(self.filename())
                     shutil.move(tmpfile, self.filename())
-            elif self.hasurl():
+            elif self.hasfilename() and not self.isdirty():
+                shutil.copyfile(self.filename(), outfile)
+            elif self.hasurl() and not self.hasfilename():
                 raise ValueError('Input video url "%s" not downloaded, call download() first' % self.url())
-            elif not self.isloaded():
-                raise ValueError('Input video not loaded - Try calling load() first')
             elif not self.hasfilename():
                 raise ValueError('Input video file not found "%s"' % self.filename())
             else: 
@@ -1200,6 +1201,11 @@ class Video(object):
 
     def hasattribute(self, k):
         return isinstance(self.attributes, dict) and k in self.attributes
+
+    def delattribute(self, k):
+        if k in self.attributes:
+            self.attributes.pop(k)
+        return self
 
         
 class VideoCategory(Video):

@@ -13,7 +13,6 @@ import warnings
 GLOBAL = {'VERBOSE': True,       # If False, will silence everything, equivalent to calling vipy.globals.silent()
           'VERBOSITY': 2,        # 0=debug, 1=warn, 2=info, only if VERBOSE=True
           'DASK_CLIENT': None,   # Global Dask() client for distributed processing
-          'DASK_MAX_WORKERS':1,  # Maximum number of processes when creating Dask() client
           'CACHE':None,          # Cache directory for vipy.video and vipy.image donwloads
           'GPU':None,            # GPU index assigned to this process
           'LOGGING':False,       # If True, use python logging (handler provided by end-user) intead of print 
@@ -100,65 +99,6 @@ def user_hit_escape(b=None):
         assert isinstance(b, bool)
         GLOBAL['GUI']['escape'] = b  
             
-class Dask(object):
-    def __init__(self, num_processes=1, dashboard=False, verbose=False, address=None):
-        assert address is not None or isinstance(num_processes, int) and num_processes >=1, "num_processes must be >= 1"
-
-        from vipy.util import try_import
-        try_import('dask', 'dask distributed')
-        import dask
-        import dask.config
-        dask.config.set(distributed__comm__timeouts__tcp="60s")
-        dask.config.set(distributed__comm__timeouts__connect="60s")        
-        from dask.distributed import Client
-        from dask.distributed import as_completed, wait
-        from dask.distributed import get_worker         
-
-        self._num_processes = num_processes
-
-        if address is not None:
-            # Distributed scheduler
-            self._client = Client(name='vipy', address=address)
-        else:
-            # Local scheduler
-            self._client = Client(name='vipy',
-                                  address=address,  # to connect to distributed scheduler HOSTNAME:PORT
-                                  scheduler_port=0,   # random
-                                  dashboard_address=None if not dashboard else ':0',  # random port
-                                  processes=True, 
-                                  threads_per_worker=1,
-                                  n_workers=num_processes, 
-                                  env={'VIPY_BACKEND':'Agg',
-                                       'PYTHONOPATH':os.environ['PYTHONPATH'] if 'PYTHONPATH' in os.environ else '',
-                                       'PATH':os.environ['PATH'] if 'PATH' in os.environ else ''},
-                                  direct_to_workers=True,
-                                  silence_logs=(False if isdebug() else 30) if not verbose else 40,  # logging.WARN or logging.ERROR or logging.INFO
-                                  local_directory=tempfile.mkdtemp())
-
-    def __repr__(self):
-        if self._num_processes is not None:
-            # Local 
-            return str('<vipy.globals.dask: num_processes=%d%s>' % (self._num_processes, '' if self._num_processes==0 or len(self._client.dashboard_link)==0 else ', dashboard="%s"' % str(self._client.dashboard_link)))
-        else:
-            # Distributed
-            return str('<vipy.globals.dask: %s>' % (str(self._client)))
-
-    def dashboard(self):        
-        webbrowser.open(self._client.dashboard_link) if len(self._client.dashboard_link)>0 else None
-    
-    def num_processes(self):
-        return self._num_processes
-
-    def shutdown(self):
-        self._client.close()
-        self._num_processes = 0
-        GLOBAL['DASK_CLIENT'] = None
-        return self
-
-    def client(self):
-        return self._client
-
-
 def cpuonly():
     GLOBAL['GPU'] = None
 
@@ -171,21 +111,23 @@ def gpuindex(gpu=None):
     return GLOBAL['GPU']
 
 
-def dask(num_processes=None, dashboard=False, address=None):
-    """Return the local Dask client, can be accessed globally for parallel processing"""
-    if (address is not None or (num_processes is not None and (GLOBAL['DASK_CLIENT'] is None or GLOBAL['DASK_CLIENT'].num_processes() != num_processes))):
+def dask(num_processes=None, num_gpus=None, dashboard=False, address=None, pct=None):
+    """Return the current Dask client, can be accessed globally for parallel processing.
+    
+       -pct: [0,1] the percentage of the current machine to use
+       -address:  the dask scheduler of the form 'HOSTNAME:PORT'
+       -num_processes:  the number of prpcesses to use on the current machine
+       -num_gpus:  the number of GPUs to use on the current machine
+    """
+    from vipy.batch import Dask
+    if pct is not None:
+        assert pct > 0 and pct <= 1
+        import multiprocessing
+        num_processes = vipy.math.poweroftwo(pct*multiprocessing.cpu_count())        
+    if (address is not None or (num_processes is not None and (GLOBAL['DASK_CLIENT'] is None or GLOBAL['DASK_CLIENT'].num_processes() != num_processes)) or num_gpus is not None):
         if GLOBAL['DASK_CLIENT'] is not None:
             GLOBAL['DASK_CLIENT'].shutdown()
-        GLOBAL['DASK_CLIENT'] = Dask(num_processes, dashboard=dashboard, verbose=isverbose(), address=address)        
+        GLOBAL['DASK_CLIENT'] = Dask(num_processes, dashboard=dashboard, verbose=isverbose(), address=address, num_gpus=num_gpus)        
     return GLOBAL['DASK_CLIENT']
 
 
-def max_workers(n=None, pct=None):
-    """Set the maximum number of workers as the largest power of two <= pct% of the number of CPUs on the current system, or the provided number.  This will be used as the default when creating a dask client."""
-    if n is not None:
-        assert isinstance(n, int)
-        GLOBAL['DASK_MAX_WORKERS'] = n
-    elif pct is not None:
-        import multiprocessing
-        GLOBAL['DASK_MAX_WORKERS'] = vipy.math.poweroftwo(pct*multiprocessing.cpu_count())
-    return GLOBAL['DASK_MAX_WORKERS'] 
