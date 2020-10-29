@@ -5,6 +5,7 @@ import PIL.ImageFilter
 import platform
 import dill
 import vipy.show
+import vipy.globals
 from vipy.globals import print
 from vipy.util import isnumpy, isurl, isimageurl, \
     fileext, tempimage, mat2gray, imwrite, imwritegray, \
@@ -272,8 +273,8 @@ class Image(object):
                              'Invalid URL "%s" ' % self._url)
 
         if self._filename is None:
-            if 'VIPY_CACHE' in os.environ:
-                self._filename = os.path.join(remkdir(os.environ['VIPY_CACHE']), filetail(self._url))
+            if vipy.globals.cache() is not None:
+                self._filename = os.path.join(remkdir(vipy.globals.cache()), filetail(self._url))
             elif isimageurl(self._url):
                 self._filename = tempimage(fileext(self._url))
             else:

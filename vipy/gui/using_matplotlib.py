@@ -12,7 +12,8 @@ matplotlib.rcParams['toolbar'] = 'None'
 
 # Optional latex strings in captions
 try:
-    if 'VIPY_LATEX' in os.environ:
+    import vipy.globals
+    if vipy.globals.GLOBAL['LATEX'] is not None:
         from distutils.spawn import find_executable
         if not find_executable('latex'):
             raise

@@ -3,7 +3,7 @@ import webbrowser
 import dill
 import tempfile
 import vipy.math
-from vipy.util import remkdir
+from vipy.util import remkdir, tempdir
 import builtins
 import logging as python_logging
 import warnings
@@ -13,11 +13,16 @@ import warnings
 GLOBAL = {'VERBOSE': True,       # If False, will silence everything, equivalent to calling vipy.globals.silent()
           'VERBOSITY': 2,        # 0=debug, 1=warn, 2=info, only if VERBOSE=True
           'DASK_CLIENT': None,   # Global Dask() client for distributed processing
-          'CACHE':None,          # Cache directory for vipy.video and vipy.image donwloads
+          'CACHE':os.environ['VIPY_CACHE'] if 'VIPY_CACHE' in os.environ else None,   # Cache directory for vipy.video and vipy.image donwloads
           'GPU':None,            # GPU index assigned to this process
           'LOGGING':False,       # If True, use python logging (handler provided by end-user) intead of print 
           'LOGGER':None,         # The global logger used by vipy.globals.print() and vipy.globals.warn() if LOGGING=True
-          'GUI':{'escape':False}}   
+          'GUI':{'escape':False},
+          'AWS':{'AWS_ACCESS_KEY_ID':os.environ['VIPY_AWS_SECRET_ACCESS_KEY'] if 'VIPY_AWS_ACCESS_KEY_ID' in os.environ else None,
+                 'AWS_SECRET_ACCESS_KEY':os.environ['VIPY_AWS_SECRET_ACCESS_KEY'] if 'VIPY_AWS_SECRET_ACCESS_KEY' in os.environ else None,
+                 'AWS_SESSION_TOKEN':os.environ['VIPY_AWS_SESSION_TOKEN'] if 'VIPY_AWS_SESSION_TOKEN' in os.environ else None},
+          'LATEX':os.environ['VIPY_LATEX'] if 'VIPY_LATEX' in os.environ else None}
+
 
 
 def logging(enable=None, format=None):
@@ -84,6 +89,7 @@ def cache(cachedir=None):
     """The cache is the location that URLs are downloaded to on your system.  This can be set here, or with the environment variable VIPY_CACHE"""
     if cachedir is not None:
         os.environ['VIPY_CACHE'] = remkdir(cachedir)
+        GLOBAL['CACHE'] = cachedir
     return os.environ['VIPY_CACHE'] if 'VIPY_CACHE' in os.environ else None
     
 

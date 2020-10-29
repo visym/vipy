@@ -46,7 +46,7 @@ class Dask(object):
                                   processes=True, 
                                   threads_per_worker=1,
                                   n_workers=num_processes, 
-                                  env={'VIPY_BACKEND':'Agg',
+                                  env={'VIPY_BACKEND':'Agg',  # headless 
                                        'PYTHONOPATH':os.environ['PYTHONPATH'] if 'PYTHONPATH' in os.environ else '',
                                        'PATH':os.environ['PATH'] if 'PATH' in os.environ else ''},
                                   direct_to_workers=True,

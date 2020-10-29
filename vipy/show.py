@@ -1,7 +1,8 @@
 import os
 import matplotlib
 
-if 'VIPY_BACKEND' in os.environ:
+# Specify the 'Agg' backend for headless operation only 
+if 'VIPY_BACKEND' in os.environ:    
     matplotlib.use(os.environ['VIPY_BACKEND'])
     
 import importlib

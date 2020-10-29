@@ -109,8 +109,8 @@ class Video(object):
                 self._filename = os.path.join(tempdir(), '%s' % self._url.split('?')[1].split('&')[0])
             else:
                 self._filename = totempdir(self._url)  
-            if 'VIPY_CACHE' in os.environ and self._filename is not None:
-                self._filename = os.path.join(remkdir(os.environ['VIPY_CACHE']), filetail(self._filename))
+            if vipy.globals.cache() is not None and self._filename is not None:
+                self._filename = os.path.join(remkdir(vipy.globals.cache()), filetail(self._filename))
 
         # Video filter chain
         self._ffmpeg = ffmpeg.input(self.filename())  # restore, no other filters
@@ -576,15 +576,15 @@ class Video(object):
             elif url_scheme == 's3':
                 if self.filename() is None:
                     self.filename(totempdir(self._url))
-                    if 'VIPY_CACHE' in os.environ:
-                        self.filename(os.path.join(remkdir(os.environ['VIPY_CACHE']), filetail(self._url)))
+                    if vipy.globals.cache() is not None:
+                        self.filename(os.path.join(remkdir(vipy.globals.cache()), filetail(self._url)))
                 vipy.downloader.s3(self.url(), self.filename(), verbose=verbose)
                     
             elif url_scheme == 'scp':                
                 if self.filename() is None:
                     self.filename(templike(self._url))                    
-                    if 'VIPY_CACHE' in os.environ:
-                        self.filename(os.path.join(remkdir(os.environ['VIPY_CACHE']), filetail(self._url)))
+                    if vipy.globals.cache() is not None:
+                        self.filename(os.path.join(remkdir(vipy.globals.cache()), filetail(self._url)))
                 vipy.downloader.scp(self._url, self.filename(), verbose=verbose)
  
             elif not isvideourl(self._url) and vipy.videosearch.is_downloadable_url(self._url):
