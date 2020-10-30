@@ -1339,8 +1339,8 @@ def timestamp():
     return str.upper(strftime("%d%b%y_%I%M%S%p", localtime()))
 
 def clockstamp():
-    """Datetime stamp in local timezone with second resolution"""    
-    return datetime.now().strftime("%Y-%m-%dT%H:%M:%S")    
+    """Datetime stamp in local timezone with second resolution with format Year-Month-Day Hour:Minute:Second"""    
+    return datetime.now().strftime("%Y-%m-%d %H:%M:%S")    
 
 def minutestamp():
     """Return date and time string in form DDMMMYY_HHMM"""
