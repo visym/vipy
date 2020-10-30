@@ -1285,9 +1285,9 @@ class Scene(ImageCategory):
         return self
 
     def add(self, imdet):
-        """Alias for append"""
-        
+        """Alias for append"""        
         return self.append(imdet)
+    
     def objects(self, objectlist=None):
         if objectlist is None:
             return self._objectlist
@@ -1297,8 +1297,8 @@ class Scene(ImageCategory):
             return self
 
     def objectmap(self, f):
-        """Apply lambda function f to each object"""
-        self._objectlist = [f(obj)  for obj in self._objectlist]
+        """Apply lambda function f to each object.  If f is a list of lambda, apply one to one with the objects"""
+        self._objectlist = [f(obj)  for obj in self._objectlist] if not isinstance(f, list) else [g(obj) for (g,obj) in zip(f, self._objectlist)]
         assert all([isinstance(a, vipy.object.Detection) for a in self.objects()]), "Lambda function must return vipy.object.Detection"
         return self
 
@@ -1525,7 +1525,7 @@ class Scene(ImageCategory):
         return np.sum(self.bghash(bits=bits, asbinary=True) == im.bghash(bits=bits, asbinary=True)) > threshold  # hamming distance threshold
     
         
-    def show(self, categories=None, figure=1, nocaption=False, nocaption_withstring=[], fontsize=10, boxalpha=0.25, d_category2color={'Person':'green', 'Vehicle':'blue', 'Object':'red'}, captionoffset=(0,0), nowindow=False, textfacecolor='white', textfacealpha=1.0, shortlabel=True, timestamp=None, timestampcolor='black', timestampfacecolor='white'):
+    def show(self, categories=None, figure=1, nocaption=False, nocaption_withstring=[], fontsize=10, boxalpha=0.25, d_category2color={'Person':'green', 'Vehicle':'blue', 'Object':'red'}, captionoffset=(0,0), nowindow=False, textfacecolor='white', textfacealpha=1.0, shortlabel=True, timestamp=None, timestampcolor='black', timestampfacecolor='white', mutator=None):
         """Show scene detection 
 
            * categories [list]:  List of category (or shortlabel) names in the scene to show
@@ -1540,10 +1540,12 @@ class Scene(ImageCategory):
            * textfacecolor (str): One of the named colors from vipy.show.colorlist() for the color of the textbox background
            * textfacealpha (float, [0,1]):  The textbox background transparency
            * shortlabel (bool):  Whether to show the shortlabel or the full category name in the caption
+           * mutator (lambda):  A lambda function with signature lambda im: f(im) which will modify this image prior to show.  Useful for changing labels on the fly
 
         """
-        colors = vipy.show.colorlist()        
-        valid_detections = [obj.clone() for obj in self._objectlist if categories is None or obj.category() in tolist(categories)]  # Detections with valid category
+        colors = vipy.show.colorlist()
+        im = self.clone() if not mutator else mutator(self.clone())
+        valid_detections = [obj.clone() for obj in im._objectlist if categories is None or obj.category() in tolist(categories)]  # Detections with valid category
         valid_detections = [obj.imclip(self.numpy()) for obj in valid_detections if obj.hasoverlap(self.numpy())]  # Detections within image rectangle
         valid_detections = [obj.category(obj.shortlabel()) for obj in valid_detections] if shortlabel else valid_detections  # Display name as shortlabel?               
         d_categories2color = {d.category():colors[int(hashlib.sha1(d.category().split(' ')[-1].encode('utf-8')).hexdigest(), 16) % len(colors)] for d in valid_detections}   # consistent color mapping by category suffix (space separated)
@@ -1552,6 +1554,7 @@ class Scene(ImageCategory):
         valid_detections = [d if not any([c in d.category() for c in tolist(nocaption_withstring)]) else d.nocategory() for d in valid_detections]  # Detections requested to show without caption
         imdisplay = self.clone().rgb() if self.colorspace() != 'rgb' else self  # convert to RGB for show() if necessary
         fontsize_scaled = float(fontsize.split(':')[0])*(min(imdisplay.shape())/640.0) if isstring(fontsize) else fontsize
+        imdisplay = mutator(imdisplay) if mutator is not None else imdisplay        
         vipy.show.imdetection(imdisplay._array, valid_detections, bboxcolor=detection_color, textcolor=detection_color, fignum=figure, do_caption=(nocaption==False), facealpha=boxalpha, fontsize=fontsize_scaled,
                               captionoffset=captionoffset, nowindow=nowindow, textfacecolor=textfacecolor, textfacealpha=textfacealpha, timestamp=timestamp, timestampcolor=timestampcolor, timestampfacecolor=timestampfacecolor)
         return self
@@ -1728,7 +1731,30 @@ class ImageDetection(Scene, BoundingBox):
                   H if H is not None else self.height())
         return (self.bbox.xmin() >= 0 and self.bbox.ymin() >= 0
                 and self.bbox.xmax() <= W and self.bbox.ymax() <= H)
-    
+
+def mutator_show_trackid(n=5):
+    """Mutate the image to show tracking details in the shortlabel.  This is passed to show()"""
+    return lambda im: (im.objectmap(lambda o: o.shortlabel('%s (%s)' % (o.shortlabel(), o.attributes['trackid'][0:n]))
+                                    if o.hasattribute('trackid') else o))    
+
+def mutator_show_userstring(strlist):
+    """Mutate the image to show user supplied strings in the shortlabel.  The list be the same length oas the number of objects in the image.  This is not checked.  This is passed to show()"""
+    assert isinstance(strlist, list), "Invalid input"
+    return lambda im: im.objectmap([lambda o,s=s: o.shortlabel(s) for s in strlist])
+
+def mutator_show_noun_only():
+    """Mutate the image to show the noun only"""
+    return lambda im: (im.objectmap(lambda o: o.shortlabel('\n'.join([n for (n,v) in o.attributes['noun verb']])) if o.hasattribute('noun verb') else o))
+
+def mutator_show_verb_only():
+    """Mutate the image to show the noun only"""
+    return lambda im: (im.objectmap(lambda o: o.shortlabel('\n'.join([v for (n,v) in o.attributes['noun verb']])) if o.hasattribute('noun verb') else o))
+
+def mutator_show_objectindex():
+    """Mutate the image to show the index of the object in the scene.  This list must be the same length as the number of objects in the scene"""
+    return lambda im: im.objectmap([(lambda o,k=k: o.shortlabel(k)) for k in range(len(im))])
+
+
 def RandomImage(rows=None, cols=None):
     rows = np.random.randint(128, 1024) if rows is None else rows
     cols = np.random.randint(128, 1024) if cols is None else cols

@@ -27,7 +27,7 @@ class Detection(BoundingBox):
     def __init__(self, label=None, xmin=None, ymin=None, width=None, height=None, xmax=None, ymax=None, confidence=None, xcentroid=None, ycentroid=None, category=None, xywh=None, shortlabel=None, attributes=None, id=None):
         super().__init__(xmin=xmin, ymin=ymin, width=width, height=height, xmax=xmax, ymax=ymax, xcentroid=xcentroid, ycentroid=ycentroid, xywh=xywh)
         assert not (label is not None and category is not None), "Constructor requires either label or category kwargs, not both"
-        self._id = uuid.uuid1().hex if id is None else id
+        self._id = uuid.uuid4().hex if id is None else id
         self._label = category if category is not None else label
         self._shortlabel = self._label if shortlabel is None else shortlabel
         self._confidence = float(confidence) if confidence is not None else confidence
@@ -38,7 +38,7 @@ class Detection(BoundingBox):
         assert isinstance(d, BoundingBox)
         if d.__class__ != Detection:
             d.__class__ = Detection
-            d._id = uuid.uuid1().hex if flush or not hasattr(d, '_id') else d._id
+            d._id = uuid.uuid4().hex if flush or not hasattr(d, '_id') else d._id
             d._shortlabel = None if flush or not hasattr(d, '_shortlabel') else d._shortlabel
             d._confidence = None if flush or not hasattr(d, '_confidence') else d._confidence
             d._label = None if flush or not hasattr(d, '_label') else d._label
@@ -54,11 +54,13 @@ class Detection(BoundingBox):
         strlist = []
         if self.category() is not None:
             strlist.append('category="%s"' % self.category())
-        if self.isvalid():
+        if True:
             strlist.append('bbox=(xmin=%1.1f, ymin=%1.1f, width=%1.1f, height=%1.1f)' %
                            (self.xmin(), self.ymin(),self.width(), self.height()))
         if self._confidence is not None:
             strlist.append('conf=%1.3f' % self.confidence())
+        if self.isdegenerate():
+            strlist.append('degenerate')
         return str('<vipy.object.detection: %s>' % (', '.join(strlist)))
 
     def __eq__(self, other):
@@ -116,7 +118,10 @@ class Detection(BoundingBox):
         else:
             self._confidence = c
             return self
-    
+
+    def hasattribute(self, k):
+        return isinstance(self.attributes, dict) and k in self.attributes
+
     
 class Track(object):
     """vipy.object.Track class
@@ -157,12 +162,12 @@ class Track(object):
         assert boundary in set(['extend', 'strict']), "Invalid interpolation boundary - Must be ['extend', 'strict']"
         assert interpolation in set(['linear']), "Invalid interpolation - Must be ['linear']"
                 
-        self._id = uuid.uuid1().hex if trackid is None else trackid
+        self._id = uuid.uuid4().hex if trackid is None else trackid
         self._label = category if category is not None else label
         self._shortlabel = self._label if shortlabel is None else shortlabel
         self._framerate = framerate
         self._interpolation = interpolation
-        self._boundary = boundary
+        self._boundary = self.boundary(boundary)
         self.attributes = attributes if attributes is not None else {}        
         self._keyframes = [int(np.round(f)) for f in keyframes]  # coerce to int
         self._keyboxes = boxes
@@ -226,22 +231,27 @@ class Track(object):
         d['_keyframes'] = [int(f) for f in self._keyframes]
         return json.dumps(d) if encode else d
     
-    def add(self, keyframe, box):
-        """Add a new keyframe and associated box to track, preserve sorted order of keyframes"""
-        assert isinstance(box, BoundingBox), "Invalid input - Box must be vipy.geometry.BoundingBox()"
-        assert box.isvalid(), "Invalid input - Box must be non-degenerate"
+    def add(self, keyframe, bbox, strict=True):
+        """Add a new keyframe and associated box to track, preserve sorted order of keyframes. 
+
+           -strict [bool]:  If box is degenerate, throw an exception if strict=True, otherwise just don't add it
+        """
+        assert isinstance(bbox, BoundingBox), "Invalid input - Box must be vipy.geometry.BoundingBox()"
+        assert strict is False or bbox.isvalid(), "Invalid input - Box must be non-degenerate"
+        if not bbox.isvalid():
+            return self  # just don't add it 
         self._keyframes.append(int(keyframe))
-        self._keyboxes.append(box)
+        self._keyboxes.append(bbox)
         if len(self._keyframes) > 1 and keyframe < self._keyframes[-2]:
             (self._keyframes, self._keyboxes) = zip(*sorted([(f,bb) for (f,bb) in zip(self._keyframes, self._keyboxes)], key=lambda x: x[0]))        
             self._keyframes = list(self._keyframes)
             self._keyboxes = list(self._keyboxes)
         return self
 
-    def update(self, keyframe, box):
+    def update(self, keyframe, bbox):
         if keyframe in self._keyframes:
             self.delete(keyframe)
-        self.add(keyframe, box)
+        self.add(keyframe, bbox)
         return self
         
     def replace(self, keyframe, box):
@@ -414,7 +424,15 @@ class Track(object):
         """The path length of a track is the cumulative Euclidean distance in pixels that the box travels"""
         return float(np.sum([bb_next.dist(bb_prev) for (bb_next, bb_prev) in zip(self._keyboxes[1:], self._keyboxes[0:-1])])) if len(self._keyboxes)>1 else 0.0
         
-
+    def boundary(self, b=None):
+        if b is None:
+            return self._boundary
+        else:
+            assert b in ['strict', 'extend']
+            self._boundary = b
+            return self
+    
+    
     def clip(self, startframe, endframe):
         """Clip a track to be within (startframe,endframe) with strict boundary handling"""
         if self[startframe] is not None:
@@ -523,25 +541,27 @@ class Track(object):
                 raise
         return self
 
-    def extrapolate(self, k, smoothingfactor=None, strict=False):
-        """Track extrapolation by quadratic spline fit.  Smoothing factor will increase with smoothing > 1 and decrease with 0 < smoothing < 1.
-
+    def linear_extrapolation(self, k, smoothingfactor=None):
+        """Track extrapolation by linear fit.  Smoothing factor will increase with smoothing > 1 and decrease with 0 < smoothing < 1.
+        
            Requires at least 3 keyboxes.
+           Returned boxes may be degenerate if extrapolation failed. 
            Requires optional package scipy.
         """
         if self.during(k):
             return self[k]
-        
+        if len(self.keyboxes()) < 3:
+            return self.nearest_keybox(k)
         try_import('scipy', 'scipy');  import scipy.interpolate;
         assert smoothingfactor is None or smoothingfactor > 0
-        assert len(self._keyframes) >= 3, "Invalid length for quadratic spline extrapolation"
+        assert len(self._keyframes) >= 3, "Invalid length for linear extrapolation"
         s = smoothingfactor * len(self._keyframes) if smoothingfactor is not None else None
-        (xmin, ymin, xmax, ymax) = zip(*[bb.to_ulbr() for bb in self._keyboxes])
-        f_xmin = scipy.interpolate.UnivariateSpline(self._keyframes, xmin, check_finite=False, s=s, k=2)
-        f_ymin = scipy.interpolate.UnivariateSpline(self._keyframes, ymin, check_finite=False, s=s, k=2)
-        f_xmax = scipy.interpolate.UnivariateSpline(self._keyframes, xmax, check_finite=False, s=s, k=2)
-        f_ymax = scipy.interpolate.UnivariateSpline(self._keyframes, ymax, check_finite=False, s=s, k=2)
-        return Detection(xmin=float(f_xmin(k)), ymin=float(f_ymin(k)), xmax=float(f_xmax(k)), ymax=float(f_ymax(k)))
+        (xmin, ymin, width, height) = zip(*[bb.to_xywh() for bb in self._keyboxes])
+        f_xmin = scipy.interpolate.UnivariateSpline(self._keyframes, xmin, check_finite=False, s=s, k=1)
+        f_ymin = scipy.interpolate.UnivariateSpline(self._keyframes, ymin, check_finite=False, s=s, k=1)
+        f_width = scipy.interpolate.UnivariateSpline(self._keyframes, width, check_finite=False, s=s, k=1)
+        f_height = scipy.interpolate.UnivariateSpline(self._keyframes, height, check_finite=False, s=s, k=1)
+        return Detection(xmin=float(f_xmin(k)), ymin=float(f_ymin(k)), width=float(f_width(k)), height=float(f_height(k)))
     
     def imclip(self, width, height):
         """Clip the track to the image rectangle (width, height).  If a keybox is outside the image rectangle, remove it otherwise clip to the image rectangle. 
@@ -584,8 +604,13 @@ class Track(object):
         return (self[f].centroid_y() - self[f-dt].centroid_y())/float(dt)
     
     def nearest_keyframe(self, f):
+        """Nearest keyframe to frame f"""
         return self._keyframes[int(np.abs(np.array(self._keyframes) - f).argmin())]
 
+    def nearest_keybox(self, f):
+        """Nearest keybox to frame f"""
+        return self._keyboxes[int(np.abs(np.array(self._keyframes) - f).argmin())]
+    
     
 def non_maximum_suppression(detlist, conf, iou, bycategory=False):
     """Compute non-maximum suppression of a list of vipy.object.Detection() based on spatial IOU threshold (iou) and a confidence threshold (conf)"""

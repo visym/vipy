@@ -1378,6 +1378,7 @@ class Scene(VideoCategory):
                         d.attributes['activityid'] = []                            
                     d.attributes['activityid'].append(a.id())  # for activity correspondence (if desired)
             d.shortlabel( '\n'.join([('%s %s' % (n,v)).strip() for (n,v) in shortlabel[0 if len(shortlabel)==1 else 1:]]))
+            d.attributes['noun verb'] = shortlabel
         dets = sorted(dets, key=lambda d: d.shortlabel())   # layering in video is in alphabetical order of shortlabel
         return vipy.image.Scene(array=img, colorspace=self.colorspace(), objects=dets, category=self.category())  
                 
@@ -1503,9 +1504,9 @@ class Scene(VideoCategory):
 
     def rekey(self):
         """Change the track and activity IDs to randomly assigned UUIDs.  Useful for cloning unique scenes"""
-        d_old_to_new = {k:uuid.uuid1().hex for (k,a) in self._activities.items()}
+        d_old_to_new = {k:uuid.uuid4().hex for (k,a) in self._activities.items()}
         self._activities = {d_old_to_new[k]:a.id(d_old_to_new[k]) for (k,a) in self._activities.items()}
-        d_old_to_new = {k:uuid.uuid1().hex for (k,t) in self._tracks.items()}
+        d_old_to_new = {k:uuid.uuid4().hex for (k,t) in self._tracks.items()}
         self._tracks = {d_old_to_new[k]:t.id(d_old_to_new[k]) for (k,t) in self._tracks.items()}
         for (k,v) in d_old_to_new.items():
             self.activitymap(lambda a: a.replaceid(k,v) )
@@ -2051,25 +2052,30 @@ class Scene(VideoCategory):
             warnings.warn('Removing %d detections with no confidence' % len([d.confidence() is None for d in dets]))
             dets = [d for d in dets if d.confidence() is not None]
         assert frame >= 0 and miniou >= 0 and miniou <= 1.0 and minconf >= 0 and minconf <= 1.0 and maxconf >= 0 and maxconf <= 1.0, "invalid input"
-        
-        assigned = []
-        assignments = [(t, d.confidence(), d.iou(t.extrapolate(frame)), d)
-                       for (tid, t) in self.tracks().items()
+
+        # Track propagation
+        t_ref = self.clone().tracks()
+        for t in t_ref.values():
+            if (frame - t.endframe()) < maxhistory:
+                t.add(frame, t.linear_extrapolation(frame), strict=False)  # track prediction, otherwise death
+
+        # Track assignment
+        assignments = [(t, d.confidence(), d.iou(t.linear_extrapolation(frame)), d)
+                       for (tid, t) in t_ref.items()
                        for d in dets
-                       if (t.during(frame) or (frame - t.endframe()) < maxhistory) and t.category() == d.category()]        
+                       if (t.during(frame) or (frame - t.endframe()) < maxhistory) and t.category() == d.category()]
+        assigned = []        
         for (t, conf, iou, d) in sorted(assignments, key=lambda x: x[1]*x[2], reverse=True):
             if (iou > miniou) and (conf > minconf):
                 if t.id() not in assigned:
-                    t.add(frame, d)  # track assignment
+                    self.track(t.id()).add(frame, d)  # track assignment
                 assigned.append(t.id())
                 assigned.append(d.id())
 
-        for t in self.tracks().values():
-            if t.id() not in assigned and (frame - t.endframe()) < maxhistory:
-                t.add(frame, t.extrapolate(frame))  # track prediction, otherwise death
+        # Track construction from unassigned detections
         for d in dets:
             if d.confidence() >= maxconf and d.id() not in assigned:
-                self.add(vipy.object.Track(keyframes=[frame], boxes=[d], category=d.category(), framerate=self.framerate(), confidence=d.confidence()), rangecheck=False)  # track birth
+                self.add(vipy.object.Track(keyframes=[frame], boxes=[d], category=d.category(), framerate=self.framerate(), confidence=d.confidence()), rangecheck=False) 
         return self
 
     
