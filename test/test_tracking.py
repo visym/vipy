@@ -12,12 +12,15 @@ def _test_tracking():
     
     f = pycollector.detection.ObjectDetector()
 
+    v = v.stabilize(show=True)
     vt = v.clone().load()
-    for (k,im) in enumerate(v.stream()):
-        imd = f(im)
-        vt = vt.assign(k, imd.objects(), miniou=0.2)
-        vt.frame(k).show(mutator=vipy.image.mutator_show_trackid(), timestamp='Frame: %d' % k)
-        imf = vt.frame(k)
+    vo = vipy.video.Video('/tmp/out.mp4')
+    with vo.stream(write=True, overwrite=True) as s:
+        for (k,im) in enumerate(v):
+            imd = f(im, conf=2E-1)
+            vt = vt.assign(k, imd.objects())
+            vt.frame(k).show(mutator=vipy.image.mutator_show_trackid(), timestamp='Frame: %d' % k)
+            s.write(vt.frame(k).annotate(timestamp='Frame: %d' % k, mutator=vipy.image.mutator_show_trackid()))
         
         
 if __name__ == '__main__':

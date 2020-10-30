@@ -61,7 +61,7 @@ def try_import(package, pipname=None, message=None):
         if message is not None:
             raise ImportError(message)
         else:
-            raise ImportError('Optional package "%s" not installed -  Run "pip install %s" ' % (package, package if pipname is None else pipname))
+            raise ImportError('Optional package "%s" not installed -  Run "pip install %s" or "pip install vipy[all]" ' % (package, package if pipname is None else pipname))
 
 
 def findyaml(basedir):

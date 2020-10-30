@@ -244,6 +244,9 @@ class Video(object):
                     self._frame_index = self._frame_index + 1
                     return im
 
+            def __call__(self, im):
+                return self.write(im)
+            
             def write(self, im):
                 if self._shape is None:
                     self._shape = im.shape()
@@ -261,6 +264,7 @@ class Video(object):
                     self._pipe = None
                 
             def __iter__(self):
+                assert not self._video.isloaded(), "Stream() reading cannot be performed on a video that has been loaded into memory, just use the video iterator directly"
                 with self as s:
                     while True:
                         im = s.read()
@@ -2006,10 +2010,10 @@ class Scene(VideoCategory):
         """Return annotated frame=k of video, save annotation visualization to provided outfile"""
         return self.frame(frame, img=self.preview(framenum=frame).array()).savefig(outfile=outfile, fontsize=fontsize, nocaption=nocaption, boxalpha=boxalpha, dpi=dpi, textfacecolor=textfacecolor, textfacealpha=textfacealpha)
     
-    def stabilize(self):
+    def stabilize(self, show=False):
         """Background stablization using flow based stabilization masking foreground region.  This will output a video with all frames aligned to the first frame, such that the background is static."""
         from vipy.flow import Flow  # requires opencv
-        return Flow().stabilize(self.clone(), residual=True)
+        return Flow().stabilize(self.clone(), residual=True, show=show)
     
     def pixelmask(self, pixelsize=8):
         """Replace all pixels in foreground boxes with pixelation"""
