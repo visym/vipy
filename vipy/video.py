@@ -695,7 +695,8 @@ class Video(object):
 
     def thumbnail(self, outfile=None, frame=0):
         """Return annotated frame=k of video, save annotation visualization to provided outfile"""
-        return self.frame(frame, img=self.preview(frame).array()).savefig(outfile if outfile is not None else temppng())
+        im = self.frame(frame, img=self.preview(frame).array())
+        return im.savefig(outfile) if outfile is not None else im
     
     def load(self, verbose=False, ignoreErrors=False):
         """Load a video using ffmpeg, applying the requested filter chain.  
@@ -2007,8 +2008,9 @@ class Scene(VideoCategory):
         return self
 
     def thumbnail(self, outfile=None, frame=0, fontsize=10, nocaption=False, boxalpha=0.25, dpi=200, textfacecolor='white', textfacealpha=1.0):
-        """Return annotated frame=k of video, save annotation visualization to provided outfile"""
-        return self.frame(frame, img=self.preview(framenum=frame).array()).savefig(outfile=outfile, fontsize=fontsize, nocaption=nocaption, boxalpha=boxalpha, dpi=dpi, textfacecolor=textfacecolor, textfacealpha=textfacealpha)
+        """Return annotated frame=k of video, save annotation visualization to provided outfile if provided, otherwise return vipy.image.Scene"""
+        im = self.frame(frame, img=self.preview(framenum=frame).array())
+        return im.savefig(outfile=outfile, fontsize=fontsize, nocaption=nocaption, boxalpha=boxalpha, dpi=dpi, textfacecolor=textfacecolor, textfacealpha=textfacealpha) if outfile is not None else im
     
     def stabilize(self, show=False):
         """Background stablization using flow based stabilization masking foreground region.  This will output a video with all frames aligned to the first frame, such that the background is static."""

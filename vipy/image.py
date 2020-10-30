@@ -1427,6 +1427,14 @@ class Scene(ImageCategory):
         self._objectlist = [bb.translate(-dx, -dy) for bb in self._objectlist]
         return self
 
+    def centercrop(self, height, width):
+        """Crop image of size (height x width) in the center, keeping the image centroid constant"""
+        return self.crop(BoundingBox(xcentroid=float(self.width() / 2.0), ycentroid=float(self.height() / 2.0), width=int(width), height=int(height)))
+
+    def cornercrop(self, height, width):
+        """Crop image of size (height x width) from the upper left corner"""
+        return self.crop(BoundingBox(xmin=0, ymin=0, width=int(width), height=int(height)))
+    
     def padcrop(self, bbox):
         """Crop the image buffer using the supplied bounding box object, zero padding if box is outside image rectangle, update all scene objects"""
         self.zeropad(bbox.int().width(), bbox.int().height())
