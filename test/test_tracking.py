@@ -1,9 +1,11 @@
-from pycollector.admin.video import Video
-from pycollector.admin.globals import backend
-import pycollector.detection
 import vipy
 
+
 def _test_tracking():
+
+    from pycollector.admin.video import Video
+    from pycollector.admin.globals import backend
+    import pycollector.detection
 
     backend('prod','v1')
     v = Video('6C91C543-3930-4D2B-B259-55E19376E84F-3321-0000030A3BFFD8D1')
