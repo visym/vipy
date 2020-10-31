@@ -11,7 +11,7 @@ from vipy.util import isnumpy, isurl, isimageurl, \
     fileext, tempimage, mat2gray, imwrite, imwritegray, \
     tempjpg, filetail, isimagefile, remkdir, hasextension, \
     try_import, tolist, islistoflists, istupleoftuples, isstring, \
-    istuple, islist, isnumber, isnumpyarray, string_to_pil_interpolation
+    istuple, islist, isnumber, isnumpyarray, string_to_pil_interpolation, toextension
 from vipy.geometry import BoundingBox, imagebox
 import vipy.object
 import vipy.downloader
@@ -1017,6 +1017,18 @@ class Image(object):
         
         
     # Image export
+    def pkl(self, pklfile=None):
+        """save the object to a pickle file and return the object, useful for intermediate saving in long fluent chains"""
+        pklfile = pklfile if pklfile is not None else toextension(self.filename(), '.pkl')
+        remkdir(filepath(pklfile))
+        vipy.util.save(self, pklfile)
+        return self
+
+    def pklif(self, b, pklfile=None):
+        """Save the object to the provided pickle file only if b=True. Uuseful for conditional intermediate saving in long fluent chains"""
+        assert isinstance(b, bool)
+        return self.pkl(pklfile) if b else self
+
     def saveas(self, filename, writeas=None):
         """Save current buffer (not including drawing overlays) to new filename and return filename"""
         assert filename is not None, 'Valid filename="/path/to/image.ext" must be provided'

@@ -3,7 +3,7 @@ import dill
 from vipy.globals import print
 from vipy.util import remkdir, tempMP4, isurl, \
     isvideourl, templike, tempjpg, filetail, tempdir, isyoutubeurl, try_import, isnumpy, temppng, \
-    istuple, islist, isnumber, tolist, filefull, fileext, isS3url, totempdir, flatlist, tocache, premkdir, writecsv, iswebp, ispng, isgif, filepath, Stopwatch
+    istuple, islist, isnumber, tolist, filefull, fileext, isS3url, totempdir, flatlist, tocache, premkdir, writecsv, iswebp, ispng, isgif, filepath, Stopwatch, toextension, isjsonfile
 from vipy.image import Image
 import vipy.geometry
 import vipy.math
@@ -906,11 +906,17 @@ class Video(object):
             self.array( bb.crop(self.array()), copy=True )
         return self
 
-    def pkl(self, pklfile):
+    def pkl(self, pklfile=None):
         """save the object to a pickle file and return the object, useful for intermediate saving in long fluent chains"""
+        pklfile = pklfile if pklfile is not None else toextension(self.filename(), '.pkl')
         remkdir(filepath(pklfile))
         vipy.util.save(self, pklfile)
         return self
+
+    def pklif(self, b, pklfile=None):
+        """Save the object to the provided pickle file only if b=True. Uuseful for conditional intermediate saving in long fluent chains"""
+        assert isinstance(b, bool)
+        return self.pkl(pklfile) if b else self
 
     def webp(self, outfile, pause=3, strict=True, smallest=False, smaller=False):
         """Save a video to an animated WEBP file, with pause=N seconds on the last frame between loops.  
@@ -962,6 +968,10 @@ class Video(object):
                 return self.webp(outfile, pause)
             elif isgif(outfile):
                 return self.gif(outfile, pause)
+            elif isjsonfile(outfile):
+                with open(outfile) as f:
+                    f.write(self.json(encode=True))
+                return outfile
             elif self.isloaded():
                 # Save numpy() from load() to video, forcing to be even shape
                 (n, height, width, channels) = self._array.shape

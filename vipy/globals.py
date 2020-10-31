@@ -131,8 +131,6 @@ def dask(num_processes=None, num_gpus=None, dashboard=False, address=None, pct=N
         import multiprocessing
         num_processes = vipy.math.poweroftwo(pct*multiprocessing.cpu_count())        
     if (address is not None or (num_processes is not None and (GLOBAL['DASK_CLIENT'] is None or GLOBAL['DASK_CLIENT'].num_processes() != num_processes)) or num_gpus is not None):
-        if GLOBAL['DASK_CLIENT'] is not None:
-            GLOBAL['DASK_CLIENT'].shutdown()
         GLOBAL['DASK_CLIENT'] = Dask(num_processes, dashboard=dashboard, verbose=isverbose(), address=address, num_gpus=num_gpus)        
     return GLOBAL['DASK_CLIENT']
 

@@ -573,7 +573,7 @@ def repath(v, srcpath, dstpath):
 def scpsave(V):
     import vipy.image
     import vipy.video
-    if (isinstance(V, vipy.image.Image) or isinstance(V, vipy.video.Video)) and v.hasfilename():        
+    if (isinstance(V, vipy.image.Image) or isinstance(V, vipy.video.Video)) and V.hasfilename():        
         v = V
         v = v.clone().url('scp://%s:%s' % (socket.gethostname(), v.filename())).nofilename()
     elif islist(V) and all([isinstance(v, vipy.image.Image) or isinstance(v, vipy.video.Video) for v in V]):
