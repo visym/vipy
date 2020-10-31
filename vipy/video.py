@@ -1671,7 +1671,7 @@ class Scene(VideoCategory):
         tracks = [ [t.clone() for (tid, t) in vid.tracks().items() if a.hastrack(t)] for a in activities]  # tracks associated with each activity (may be empty)
         vid._activities = {}  # for faster clone
         vid._tracks = {}      # for faster clone
-        return [vid.clone().activities(pa).tracks(t) for (pa,t) in zip(activities, tracks)]
+        return [vid.clone().setattribute('activityindex', k).activities(pa).tracks(t) for (k,(pa,t)) in enumerate(zip(activities, tracks))]
 
     def tracksplit(self):
         """Split the scene into k separate scenes, one for each track"""
@@ -1700,7 +1700,8 @@ class Scene(VideoCategory):
                 .tracks(t)
                 .clip(startframe=max(pa.startframe()-padframes[0], 0), endframe=(pa.endframe()+padframes[1]))
                 .category(pa.category())
-                for (pa,sa,t) in zip(primary_activities, secondary_activities, tracks)]
+                .setattribute('activityindex',k)
+                for (k,(pa,sa,t)) in enumerate(zip(primary_activities, secondary_activities, tracks))]
 
     def trackbox(self, dilate=1.0):
         """The trackbox is the union of all track bounding boxes in the video, or the image rectangle if there are no tracks"""

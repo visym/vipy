@@ -304,7 +304,7 @@ class Flow(object):
         (x2, y2) = (x1 + fx, y1 + fy)  # destination coordinates
         return (np.stack((x1,y1)), np.stack((x2,y2)))
         
-    def stabilize(self, v, keystep=20, padheight=0.125, padwidth=0.25, padheightpx=None, padwidthpx=None, border=0.1, dilate=1.0, contrast=16.0/255.0, rigid=False, affine=True, verbose=True, strict=False, residual=False, show=False, maxflow=None): 
+    def stabilize(self, v, keystep=20, padheight=0.125, padwidth=0.25, padheightpx=None, padwidthpx=None, border=0.1, dilate=1.0, contrast=16.0/255.0, rigid=False, affine=True, verbose=True, strict=False, residual=False, show=False, maxflow=None, maxsize=10000): 
         """Affine stabilization to frame zero using multi-scale optical flow correspondence with foreground object keepouts.  
 
            * v [vipy.video.Scene]:  The input video to stabilize, should be resized to mindim=256
@@ -411,6 +411,12 @@ class Flow(object):
                 (padwidth, padheight) = (padwidth + dx, padheight + dy)
                 T = np.array([[1,0,padwidth],[0,1,padheight],[0,0,1]]).astype(np.float64)
                 print('[vipy.flow.stabilize]: Increasing padding to (%d, %d)' % (vs.width(), vs.height()))
+                if vs.width() > maxsize or vs.height() > maxsize:
+                    if not strict:
+                        print('[vipy.flow.stabilize]: ERROR - motion too large, returning original video "%s"' % str(v))
+                        return vc.setattribute('unstabilized')  # for provenance 
+                    else:
+                        raise ValueError('[vipy.flow.stabilize]: ERROR - motion too large')
 
             # Show intermediate stabilization
             vs[k].show(timestamp='%s %d' % (clockstamp(), k)) if show else None

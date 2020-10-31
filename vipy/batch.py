@@ -3,6 +3,7 @@ import sys
 from vipy.util import try_import, islist, tolist, tempdir, remkdir, chunklistbysize, listpkl, filetail, filebase, tempdir
 from itertools import repeat
 import dill
+dill.extend(False)  # https://github.com/uqfoundation/dill/issues/383
 try_import('dask', 'dask distributed torch')
 from dask.distributed import as_completed, wait
 try_import('torch', 'torch');  import torch
@@ -18,7 +19,7 @@ import vipy.globals
 import hashlib
 import uuid
 import shutil
-
+dill.extend(True)  # https://github.com/uqfoundation/dill/issues/383
 
 
 class Dask(object):

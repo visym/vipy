@@ -1399,8 +1399,8 @@ def hasextension(filename):
     return fileext(filename) is not None
 
 
-def fileext(filename, multidot=True):
-    """Given filename /a/b/c.ext return '.ext', or /a/b/c.tar.gz return '.tar.gz'.   If multidot=False, then return '.gz'"""
+def fileext(filename, multidot=True, withdot=True):
+    """Given filename /a/b/c.ext return '.ext', or /a/b/c.tar.gz return '.tar.gz'.   If multidot=False, then return '.gz'.  If withdot=False, return 'ext'"""
     (head, tail) = os.path.split(filename)
     try:
         parts = str.rsplit(tail, '.', 2)
@@ -1414,7 +1414,7 @@ def fileext(filename, multidot=True):
     except:
         base = tail
         ext = None
-    return ext
+    return ext if withdot else ext[1:]
 
 def mediaextension(filename):
     """Return '.mp4' for filename='/a/b/c.mp4'"""
