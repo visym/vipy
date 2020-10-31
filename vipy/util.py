@@ -9,7 +9,6 @@ import tempfile
 import time
 from time import gmtime, strftime, localtime
 from datetime import datetime
-import pytz
 import sys
 import csv
 import hashlib
@@ -61,7 +60,7 @@ def try_import(package, pipname=None, message=None):
         if message is not None:
             raise ImportError(message)
         else:
-            raise ImportError('Optional package "%s" not installed -  Run "pip install %s" ' % (package, package if pipname is None else pipname))
+            raise ImportError('Optional package "%s" not installed -  Run "pip install %s" or "pip install vipy[all]" ' % (package, package if pipname is None else pipname))
 
 
 def findyaml(basedir):
@@ -1340,8 +1339,8 @@ def timestamp():
     return str.upper(strftime("%d%b%y_%I%M%S%p", localtime()))
 
 def clockstamp():
-    """Datetime stamp in eastern timezone with second resolution"""    
-    return datetime.now().astimezone(pytz.timezone("US/Eastern")).strftime("%Y-%m-%dT%H:%M:%S%z")    
+    """Datetime stamp in local timezone with second resolution with format Year-Month-Day Hour:Minute:Second"""    
+    return datetime.now().strftime("%Y-%m-%d %H:%M:%S")    
 
 def minutestamp():
     """Return date and time string in form DDMMMYY_HHMM"""

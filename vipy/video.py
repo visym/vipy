@@ -244,6 +244,9 @@ class Video(object):
                     self._frame_index = self._frame_index + 1
                     return im
 
+            def __call__(self, im):
+                return self.write(im)
+            
             def write(self, im):
                 if self._shape is None:
                     self._shape = im.shape()
@@ -261,6 +264,7 @@ class Video(object):
                     self._pipe = None
                 
             def __iter__(self):
+                assert not self._video.isloaded(), "Stream() reading cannot be performed on a video that has been loaded into memory, just use the video iterator directly"
                 with self as s:
                     while True:
                         im = s.read()
@@ -691,7 +695,8 @@ class Video(object):
 
     def thumbnail(self, outfile=None, frame=0):
         """Return annotated frame=k of video, save annotation visualization to provided outfile"""
-        return self.frame(frame, img=self.preview(frame).array()).savefig(outfile if outfile is not None else temppng())
+        im = self.frame(frame, img=self.preview(frame).array())
+        return im.savefig(outfile) if outfile is not None else im
     
     def load(self, verbose=False, ignoreErrors=False):
         """Load a video using ffmpeg, applying the requested filter chain.  
@@ -1378,6 +1383,7 @@ class Scene(VideoCategory):
                         d.attributes['activityid'] = []                            
                     d.attributes['activityid'].append(a.id())  # for activity correspondence (if desired)
             d.shortlabel( '\n'.join([('%s %s' % (n,v)).strip() for (n,v) in shortlabel[0 if len(shortlabel)==1 else 1:]]))
+            d.attributes['noun verb'] = shortlabel
         dets = sorted(dets, key=lambda d: d.shortlabel())   # layering in video is in alphabetical order of shortlabel
         return vipy.image.Scene(array=img, colorspace=self.colorspace(), objects=dets, category=self.category())  
                 
@@ -1503,9 +1509,9 @@ class Scene(VideoCategory):
 
     def rekey(self):
         """Change the track and activity IDs to randomly assigned UUIDs.  Useful for cloning unique scenes"""
-        d_old_to_new = {k:uuid.uuid1().hex for (k,a) in self._activities.items()}
+        d_old_to_new = {k:uuid.uuid4().hex for (k,a) in self._activities.items()}
         self._activities = {d_old_to_new[k]:a.id(d_old_to_new[k]) for (k,a) in self._activities.items()}
-        d_old_to_new = {k:uuid.uuid1().hex for (k,t) in self._tracks.items()}
+        d_old_to_new = {k:uuid.uuid4().hex for (k,t) in self._tracks.items()}
         self._tracks = {d_old_to_new[k]:t.id(d_old_to_new[k]) for (k,t) in self._tracks.items()}
         for (k,v) in d_old_to_new.items():
             self.activitymap(lambda a: a.replaceid(k,v) )
@@ -2003,13 +2009,14 @@ class Scene(VideoCategory):
         return self
 
     def thumbnail(self, outfile=None, frame=0, fontsize=10, nocaption=False, boxalpha=0.25, dpi=200, textfacecolor='white', textfacealpha=1.0):
-        """Return annotated frame=k of video, save annotation visualization to provided outfile"""
-        return self.frame(frame, img=self.preview(framenum=frame).array()).savefig(outfile=outfile, fontsize=fontsize, nocaption=nocaption, boxalpha=boxalpha, dpi=dpi, textfacecolor=textfacecolor, textfacealpha=textfacealpha)
+        """Return annotated frame=k of video, save annotation visualization to provided outfile if provided, otherwise return vipy.image.Scene"""
+        im = self.frame(frame, img=self.preview(framenum=frame).array())
+        return im.savefig(outfile=outfile, fontsize=fontsize, nocaption=nocaption, boxalpha=boxalpha, dpi=dpi, textfacecolor=textfacecolor, textfacealpha=textfacealpha) if outfile is not None else im
     
-    def stabilize(self):
+    def stabilize(self, show=False):
         """Background stablization using flow based stabilization masking foreground region.  This will output a video with all frames aligned to the first frame, such that the background is static."""
         from vipy.flow import Flow  # requires opencv
-        return Flow().stabilize(self.clone(), residual=True)
+        return Flow().stabilize(self.clone(), residual=True, show=show)
     
     def pixelmask(self, pixelsize=8):
         """Replace all pixels in foreground boxes with pixelation"""
@@ -2052,25 +2059,30 @@ class Scene(VideoCategory):
             warnings.warn('Removing %d detections with no confidence' % len([d.confidence() is None for d in dets]))
             dets = [d for d in dets if d.confidence() is not None]
         assert frame >= 0 and miniou >= 0 and miniou <= 1.0 and minconf >= 0 and minconf <= 1.0 and maxconf >= 0 and maxconf <= 1.0, "invalid input"
-        
-        assigned = []
-        assignments = [(t, d.confidence(), d.iou(t.extrapolate(frame)), d)
-                       for (tid, t) in self.tracks().items()
+
+        # Track propagation
+        t_ref = self.clone().tracks()
+        for t in t_ref.values():
+            if (frame - t.endframe()) < maxhistory:
+                t.add(frame, t.linear_extrapolation(frame), strict=False)  # track prediction, otherwise death
+
+        # Track assignment
+        assignments = [(t, d.confidence(), d.iou(t.linear_extrapolation(frame)), d)
+                       for (tid, t) in t_ref.items()
                        for d in dets
-                       if (t.during(frame) or (frame - t.endframe()) < maxhistory) and t.category() == d.category()]        
+                       if (t.during(frame) or (frame - t.endframe()) < maxhistory) and t.category() == d.category()]
+        assigned = []        
         for (t, conf, iou, d) in sorted(assignments, key=lambda x: x[1]*x[2], reverse=True):
             if (iou > miniou) and (conf > minconf):
                 if t.id() not in assigned:
-                    t.add(frame, d)  # track assignment
+                    self.track(t.id()).add(frame, d)  # track assignment
                 assigned.append(t.id())
                 assigned.append(d.id())
 
-        for t in self.tracks().values():
-            if t.id() not in assigned and (frame - t.endframe()) < maxhistory:
-                t.add(frame, t.extrapolate(frame))  # track prediction, otherwise death
+        # Track construction from unassigned detections
         for d in dets:
             if d.confidence() >= maxconf and d.id() not in assigned:
-                self.add(vipy.object.Track(keyframes=[frame], boxes=[d], category=d.category(), framerate=self.framerate(), confidence=d.confidence()), rangecheck=False)  # track birth
+                self.add(vipy.object.Track(keyframes=[frame], boxes=[d], category=d.category(), framerate=self.framerate(), confidence=d.confidence()), rangecheck=False) 
         return self
 
     

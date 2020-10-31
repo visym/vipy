@@ -42,7 +42,7 @@ class Activity(object):
             if actorid not in trackid:
                 trackid.add(actorid)
 
-        self._id = uuid.uuid1().hex
+        self._id = uuid.uuid4().hex
         self._startframe = int(startframe)
         self._endframe = int(endframe)
         self._framerate = framerate
