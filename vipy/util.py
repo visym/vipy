@@ -731,6 +731,16 @@ def newpath(filename, newdir):
     (head, tail) = os.path.split(filename)
     return os.path.join(newdir, tail)
 
+def newpathroot(filename, newroot):
+    """Return /r/b/c.ext for filename /a/b/c.ext and new root r"""
+    p = pathlib.PurePath(filename)
+    path = list(p.parts)    
+    if len(p.root) == 0:
+        path[0] = newroot
+    else:
+        path[1] = newroot
+    return os.path.join(*path)
+
 def topath(filename, newdir):
     """Alias for newpath"""
     return newpath(filename, newdir)

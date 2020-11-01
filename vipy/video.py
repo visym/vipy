@@ -271,7 +271,10 @@ class Video(object):
                         if im is None:
                             break
                         yield(im)
-                
+
+            def __getitem__(self, k):
+                return self._video.thumbnail(frame=k)  # this is inefficient, don't do it a lot
+            
         return Stream(self)
 
 

@@ -304,13 +304,13 @@ class Flow(object):
         (x2, y2) = (x1 + fx, y1 + fy)  # destination coordinates
         return (np.stack((x1,y1)), np.stack((x2,y2)))
         
-    def stabilize(self, v, keystep=20, padheight=0.125, padwidth=0.25, padheightpx=None, padwidthpx=None, border=0.1, dilate=1.0, contrast=16.0/255.0, rigid=False, affine=True, verbose=True, strict=True, residual=False, show=False, maxflow=None, maxsize=4096): 
+    def stabilize(self, v, keystep=20, padheightfrac=0.125, padwidthfrac=0.25, padheightpx=None, padwidthpx=None, border=0.1, dilate=1.0, contrast=16.0/255.0, rigid=False, affine=True, verbose=True, strict=True, residual=False, show=False, maxflow=None, maxsize=None): 
         """Affine stabilization to frame zero using multi-scale optical flow correspondence with foreground object keepouts.  
 
            * v [vipy.video.Scene]:  The input video to stabilize, should be resized to mindim=256
            * keystep [int]:  The local stabilization step between keyframes (should be <= 30)
-           * padheight [float]:  The height padding (relative to video height) to be applied to output video to allow for vertical stabilization
-           * padwidth [float]:  The width padding (relative to video width) to be applied to output video to allow for horizontal stabilization
+           * padheightfrac [float]:  The height padding (relative to video height) to be applied to output video to allow for vertical stabilization
+           * padwidthfrac [float]:  The width padding (relative to video width) to be applied to output video to allow for horizontal stabilization
            * padheightpx [int]:  The height padding to be applied to output video to allow for vertical stabilization.  Overrides padheight.
            * padwidthpx [int]:  The width padding to be applied to output video to allow for horizontal stabilization.  Overrides padwidth.
            * border [float]:  The border keepout fraction to ignore during flow correspondence.  This should be proportional to the maximum frame to frame flow
@@ -323,17 +323,19 @@ class Flow(object):
 
            * NOTE: The remaining distortion after stabilization is due to: rolling shutter distortion, perspective distortion and non-keepout moving objects in background
            * NOTE: If the video contains objects, the object boxes will be transformed along with the stabilization 
+           * NOTE: This requires loading videos entirely into memory.  Be careful with stabilizing long videos.
 
-        """        
-        assert isinstance(v, vipy.video.Scene), "Invalid input - Must be vipy.video.Scene() with foreground object keepouts for background stabilization"
-        if verbose and min(v.shape()) > 256:
+        """
+        vc = v.clone()  # clone to avoid memory leaks in distributed processing
+        
+        assert isinstance(vc, vipy.video.Scene), "Invalid input - Must be vipy.video.Scene() with foreground object keepouts for background stabilization"
+        if verbose and min(vc.shape()) > 256:  # shape triggers fine frame fetch
             warnings.warn('Large video frame size detected - This will take a while ...')
                     
         # Prepare videos
-        vc = v.clone()  # clone to avoid memory leaks in distributed processing
         vv = vc.cropeven()  # make even for zero pad
-        (padwidth, padheight) = (int(vv.width()*padwidth) if padwidthpx is None else padwidthpx, int(vv.height()*padheight) if padheightpx is None else padheightpx)
-        vs = vv.clone(flush=True).zeropad(padwidth, padheight).load().nofilename().nourl()       
+        (padwidth, padheight) = (int(vv.width()*padwidthfrac) if padwidthpx is None else padwidthpx, int(vv.height()*padheightfrac) if padheightpx is None else padheightpx)  # width() height() triggers single frame fetch
+        vs = vv.clone(flush=True).zeropad(padwidth, padheight).load().nofilename().nourl()   # triggers load    
         if len(vs) < keystep:
             print('[vipy.flow.stabilize]: ERROR - video not long enough for stabilization, returning original video "%s"' % str(v))
             return vc.setattribute('unstabilized')
@@ -348,10 +350,10 @@ class Flow(object):
         f_warp_fine = cv2.warpAffine if (rigid or affine) else cv2.warpPerspective
         f_transform_coarse = (lambda A: A[0:2,:])
         f_transform_fine = (lambda A: A[0:2,:]) if (rigid or affine) else (lambda A: A)
-        imstabilized = vv.preview(0).clone().rgb().zeropad(padwidth, padheight)
+        imstabilized = vv.preview(0).clone().rgb().zeropad(padwidth, padheight)  # single frame fetch
         r_coarse = []
         frames = []                        
-        for (k, im) in enumerate(vv):  # triggers load
+        for (k, im) in enumerate(vv):  # triggers load of cloned original video, requires random access to video
             if verbose and k==0:
                 print('[vipy.flow.stabilize]: %s coarse to fine stabilization ...' % ('Euclidean' if rigid else 'Affine' if affine else 'Projective'))                
          
@@ -401,29 +403,33 @@ class Flow(object):
             vs.addframe( im.array(imstabilized.array(), copy=True), frame=k)
 
             # Increase padding?  If the box is within k% of the image edge, increase the symmetric padding by k%
-            padfrac = 0.1
-            bb = vs.trackbox()
-            dxl = int(even(padfrac*vs.width())) if (bb.xmin() < padfrac*vs.width()) else 0
-            dxr = int(even(padfrac*vs.width())) if ((vs.width() - bb.xmax()) < padfrac*vs.width()) else 0
-            dx = max(dxl, dxr)            
-            dyt = int(even(padfrac*vs.height())) if (bb.ymin() < padfrac*vs.height()) else 0
-            dyb = int(even(padfrac*vs.height())) if ((vs.height() - bb.ymax()) < padfrac*vs.height()) else 0
-            dy = max(dyt, dyb)
-            if dx > 0 or dy > 0:
-                imstabilized = imstabilized.zeropad(dx, dy)
-                (padwidth, padheight) = (padwidth + dx, padheight + dy)
-                T = np.array([[1,0,padwidth],[0,1,padheight],[0,0,1]]).astype(np.float64)
-                print('[vipy.flow.stabilize]: Increasing padding to (%d, %d)' % (imstabilized.width(), imstabilized.height()))
-                if maxsize is not None and (imstabilized.width() > maxsize or imstabilized.height() > maxsize):
-                    if not strict:
-                        print('[vipy.flow.stabilize]: ERROR - scene motion too large, returning original video "%s"' % str(v))
-                        return vc.setattribute('unstabilized')  # for provenance 
-                    else:
-                        raise ValueError('[vipy.flow.stabilize]: ERROR - scene motion too large, try increasing maxsize > %d' % maxsize)
-                vs = vs.zeropad(dx, dy)
+            if maxsize is not None:
+                padfrac = 0.1
+                bb = vs.trackbox()
+                dxl = int(even(padfrac*vs.width())) if (bb.xmin() < padfrac*vs.width()) else 0
+                dxr = int(even(padfrac*vs.width())) if ((vs.width() - bb.xmax()) < padfrac*vs.width()) else 0
+                dx = max(dxl, dxr)            
+                dyt = int(even(padfrac*vs.height())) if (bb.ymin() < padfrac*vs.height()) else 0
+                dyb = int(even(padfrac*vs.height())) if ((vs.height() - bb.ymax()) < padfrac*vs.height()) else 0
+                dy = max(dyt, dyb)
+                if dx > 0 or dy > 0:
+                    imstabilized = imstabilized.zeropad(dx, dy)
+                    (padwidth, padheight) = (padwidth + dx, padheight + dy)
+                    T = np.array([[1,0,padwidth],[0,1,padheight],[0,0,1]]).astype(np.float64)
+                    print('[vipy.flow.stabilize]: Increasing padding to (%d, %d)' % (imstabilized.width(), imstabilized.height()))
+                    if maxsize is not None and (imstabilized.width() > maxsize or imstabilized.height() > maxsize):
+                        if not strict:
+                            print('[vipy.flow.stabilize]: ERROR - scene motion too large, returning original video "%s"' % str(v))
+                            return vc.setattribute('unstabilized')  # for provenance 
+                        else:
+                            raise ValueError('[vipy.flow.stabilize]: ERROR - scene motion too large, try increasing maxsize > %d' % maxsize)
 
-            # Show intermediate stabilization
-            vs[k].show(timestamp='%s %d' % (clockstamp(), k)) if show else None
+                    # Pad the stabilized video - This video is stored in memory and the padding is increased for every frame - be careful with memory requirements
+                    vs = vs.zeropad(dx, dy)
+
+            # Show intermediate stabilization?
+            if show:
+                vs[k].show(timestamp='%s %d' % (clockstamp(), k))
             
         vs = vs.setattribute('stabilize', {'mean residual':float(np.mean(r_coarse)), 'median residual':float(np.median(r_coarse))}) if residual else vs
         return vs
