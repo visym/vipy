@@ -808,6 +808,9 @@ def jsonlist(indir):
     """return list of fJSON iles with absolute path in a directory"""
     return extlist(indir, ext='.json')
 
+def listjson(indir):
+    """Alias for jsonlist"""
+    return jsonlist(indir)
 
 def writelist(mylist, outfile, mode='w'):
     """Write list of strings to an output file with each row an element of
