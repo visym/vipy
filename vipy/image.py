@@ -159,6 +159,33 @@ class Image(object):
             print(prefix+self.__repr__())
         return self
 
+    def store(self):
+        """Store the current image file as an attribute of this object.  Useful for archiving an object to be fully self contained without any external references.  
+        
+           -Remove this stored image using unstore()
+           -Unpack this stored image and set up the filename using restore() 
+           -This method is more efficient than load() followed by pkl(), as it stores the encoded image as a byte string.
+           -Useful for creating a single self contained object for distributed processing.  
+
+           >>> v == v.store().restore(v.filename()) 
+
+        """
+        assert self.hasfilename(), "Image file not found"
+        with open(self.filename(), 'rb') as f:
+            self.attributes['__image__'] = f.read()
+        return self
+
+    def unstore(self):
+        """Delete the currently stored image from store()"""
+        return self.delattribute('__image__')
+
+    def restore(self, filename):
+        """Save the currently stored image to filename, and set up filename"""
+        assert self.hasattribute('__image__'), "Image not stored"
+        with open(filename, 'wb') as f:
+            f.write(self.attributes['__image__'])
+        return self.filename(filename)                
+    
     def abspath(self):
         """Change the path of the filename from a relative path to an absolute path (not relocatable)"""
         return self.filename(os.path.normpath(os.path.abspath(os.path.expanduser(self.filename()))))

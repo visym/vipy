@@ -197,6 +197,33 @@ class Video(object):
                 yield self.__getitem__(k)
             self._currentframe = None    # used only for incremental add()
 
+    def store(self):
+        """Store the current video file as an attribute of this object.  Useful for archiving an object to be fully self contained without any external references.  
+        
+           -Remove this stored video using unstore()
+           -Unpack this stored video and set up the video chains using restore() 
+           -This method is more efficient than load() followed by pkl(), as it stores the encoded video as a byte string.
+           -Useful for creating a single self contained object for distributed processing.  
+
+           >>> v == v.store().restore(v.filename()) 
+
+        """
+        assert self.hasfilename(), "Video file not found"
+        with open(self.filename(), 'rb') as f:
+            self.attributes['__video__'] = f.read()
+        return self
+
+    def unstore(self):
+        """Delete the currently stored video from store()"""
+        return self.delattribute('__video__')
+
+    def restore(self, filename):
+        """Save the currently stored video to filename, and set up filename"""
+        assert self.hasattribute('__video__'), "Video not stored"
+        with open(filename, 'wb') as f:
+            f.write(self.attributes['__video__'])
+        return self.filename(filename)                
+        
     def stream(self, write=False, overwrite=False):
         """Iterator to yield frames streaming from video"""
 
