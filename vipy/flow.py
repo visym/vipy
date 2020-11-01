@@ -403,8 +403,12 @@ class Flow(object):
             # Increase padding?  If the box is within k% of the image edge, increase the symmetric padding by k%
             padfrac = 0.1
             bb = vs.trackbox()
-            dx = int(even(padfrac*vs.width()) if ((bb.xmin() < padfrac*vs.width()) or (vs.width() - bb.xmax()) < padfrac*vs.width()) else 0)
-            dy = int(even(padfrac*vs.height()) if ((bb.ymin() < padfrac*vs.height()) or (vs.height() - bb.ymax()) < padfrac*vs.height()) else 0)
+            dxl = int(even(padfrac*vs.width())) if (bb.xmin() < padfrac*vs.width()) else 0
+            dxr = int(even(padfrac*vs.width())) if ((vs.width() - bb.xmax()) < padfrac*vs.width()) else 0
+            dx = max(dxl, dxr)            
+            dyt = int(even(padfrac*vs.height())) if (bb.ymin() < padfrac*vs.height()) else 0
+            dyb = int(even(padfrac*vs.height())) if ((vs.height() - bb.ymax()) < padfrac*vs.height()) else 0
+            dy = max(dyt, dyb)
             if dx > 0 or dy > 0:
                 imstabilized = imstabilized.zeropad(dx, dy)
                 (padwidth, padheight) = (padwidth + dx, padheight + dy)
