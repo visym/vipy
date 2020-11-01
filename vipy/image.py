@@ -609,6 +609,11 @@ class Image(object):
     def hasattribute(self, key):
         return self.attributes is not None and key in self.attributes
 
+    def delattribute(self, k):
+        if k in self.attributes:
+            self.attributes.pop(k)
+        return self
+
     def hasurl(self):
         return self._url is not None and isurl(self._url)
 
@@ -1031,10 +1036,11 @@ class Image(object):
             vipy.show.close(fignum)
             return self
     
-    def show(self, figure=1, nowindow=False, timestamp=None, timestampfacecolor='white', timestampcolor='black'):
+    def show(self, figure=1, nowindow=False, timestamp=None, timestampfacecolor='white', timestampcolor='black', mutator=None):
         """Display image on screen in provided figure number (clone and convert to RGB colorspace to show), return object"""
         assert self.load().isloaded(), 'Image not loaded'
-        vipy.show.imshow(self.clone().rgb().numpy(), fignum=figure, nowindow=nowindow, timestamp=timestamp, timestampfacecolor=timestampfacecolor, flush=True, timestampcolor=timestampcolor)
+        im = self.clone() if not mutator else mutator(self.clone())        
+        vipy.show.imshow(im.rgb().numpy(), fignum=figure, nowindow=nowindow, timestamp=timestamp, timestampfacecolor=timestampfacecolor, flush=True, timestampcolor=timestampcolor)
         return self
 
     def save(self, filename):

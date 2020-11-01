@@ -27,7 +27,7 @@ def _test_stream():
         
     try:
         with v.stream() as s:
-            im = v._preview()
+            im = v.preview()
             s.write(im)
         raise Failed()        
     except Failed:
@@ -37,7 +37,7 @@ def _test_stream():
 
     w = vipy.video.Video(tempMP4())
     with w.stream(write=True) as s:
-        im = v._preview()
+        im = v.preview()
         s.write(im)
     assert w.hasfilename() 
     print('[test_video.video]: stream write   PASSED')       
@@ -149,6 +149,14 @@ def _test_video():
     v_down = vipy.video.Video.cast(vipy.video.RandomScene())
     v_up = vipy.video.Scene.cast(v_down)
     print('[test_video.scene]: video casting PASSED')    
+
+    # Store/unstore/restore
+    v = vipy.video.Video(filename=mp4file).clip(0,30)
+    assert v.store().hasattribute('__video__')
+    assert np.allclose(v.clone().restore(tempMP4()).thumbnail(frame=0).load(), v.thumbnail(frame=0).load())
+    assert not v.unstore().hasattribute('__video__')
+    print('[test_video]: store/unstore/restore PASSED')
+    
     
 def _test_scene():
 

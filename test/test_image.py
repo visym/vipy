@@ -172,6 +172,13 @@ def test_image():
     im_up = vipy.image.Scene(im_down)
     print('[test_image]: image casting PASSED')    
 
+    # Store/unstore/restore
+    im = Image(filename=rgbfile)
+    assert im.store().hasattribute('__image__')
+    assert np.allclose(im.clone().restore(tempjpg()).load(), im.load())
+    assert not im.unstore().hasattribute('__image__')
+    print('[test_image]: store/unstore/restore PASSED')
+    
     
 def _test_image_fileformat(imgfile):
     # Filename object
