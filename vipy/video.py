@@ -395,11 +395,12 @@ class Video(object):
         return self.json(s=None, encode=False)
 
     def json(self, encode=True):
-        assert not self.isloaded(), "JSON serialization of video requires flushed buffers, try calling v.flush() or v.saveas('/path/to.mp4', flush=True) first"
+        if self.isloaded():
+            warnings.warn("JSON serialization of video requires flushed buffers, will not include the loaded video.  Try store()/restore()/unstore() instead to serialize videos as standalone objects efficiently.")
         d = {'_filename':self._filename,
              '_url':self._url,
              '_framerate':self._framerate,
-             '_array':self._array.tolist() if self._array is not None else None,
+             '_array':None,
              '_colorspace':self._colorspace,
              'attributes':self.attributes,
              '_startframe':self._startframe,
@@ -1252,6 +1253,8 @@ class Video(object):
             self.attributes.pop(k)
         return self
 
+    def getattribute(self, k):
+        return self.attributes[k]
         
 class VideoCategory(Video):
     """vipy.video.VideoCategory class
@@ -1556,11 +1559,23 @@ class Scene(VideoCategory):
         for (k,v) in d_old_to_new.items():
             self.activitymap(lambda a: a.replaceid(k,v) )
         return self
+
+    def label(self):
+        """Return an iterator over labels in each frame"""
+        endframe = max([a.endframe() for a in self.activitylist()]+[t.endframe() for t in self.tracklist()])
+        for k in range(0,endframe):
+            yield self.labels(k)
     
     def labels(self, k=None):
         """Return a set of all object and activity labels in this scene, or at frame int(k)"""
         return self.activitylabels(k).union(self.objectlabels(k))
 
+    def activitylabel(self):
+        """Return an iterator over activity labels in each frame"""        
+        endframe = max([a.endframe() for a in self.activitylist()])        
+        for k in range(0, endframe):
+            yield self.activitylabels(k)
+        
     def activitylabels(self, startframe=None, endframe=None):
         """Return a set of all activity categories in this scene, or at startframe, or in range [startframe, endframe]"""        
         if startframe is None:
@@ -1674,12 +1689,25 @@ class Scene(VideoCategory):
         self._activities = {}
         self._tracks = {}
         return self
-        
+
     def json(self, encode=True):
         d = json.loads(super().json())
         d['_tracks'] = {k:t.json(encode=False) for (k,t) in self._tracks.items()}
         d['_activities'] = {k:a.json(encode=False) for (k,a) in self._activities.items()}
-        return json.dumps(d) if encode else d
+        try:
+            return json.dumps(d) if encode else d
+        except:
+            # Legacy support for non JSON serializable objects (<= vipy.1.9.2)
+            v = self.clone()
+            for (ti, t) in v.tracks().items():
+                for o in t._keyboxes:
+                    vipy.geometry.BoundingBox.cast(o, flush=True)
+                    o.float().significant_digits(2)
+
+            for (ai, a) in v.activities().items():
+                a._startframe = int(a._startframe)
+                a._endframe = int(a._endframe)
+            return v.json(encode=encode)
         
     def csv(self, outfile=None):
         """Export scene to CSV file format with header.  If there are no tracks, this will be empty. """

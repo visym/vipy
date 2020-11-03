@@ -633,13 +633,14 @@ def greedy_assignment(srclist, dstlist, miniou=0.0):
     """Compute a greedy one-to-one assignment of each vipy.object.Detection() in srclist to a unique element in dstlist with the largest IoU greater than miniou, else None
     
        returns:
-          assignlist [list]:  [d.iou(dstlist[j]) if j is not None else 0 for (d,j) in zip(srclist, assignlist)]  is the IoU for the assignment
+          assignlist [list]:  same length as srclist, where j=assignlist[i] is the index of the assignment such that srclist[i] == dstlist[j]
     """
     assert all([isinstance(d, Detection) for d in srclist])
     assert all([isinstance(d, Detection) for d in dstlist])    
+    assert miniou >= 0 and miniou <= 1.0
     
-    assignlist = []
-    for ds in sorted(srclist, key=lambda d: d.area(), reverse=True):
-        iou = [ds.iou(d) if j not in assignlist else 0.0 for (j,d) in enumerate(dstlist)]
-        assignlist.append( np.argmax(iou) if max(iou) > miniou else None)
-    return assignlist
+    assigndict = {}
+    for (k, ds) in sorted(enumerate(srclist), key=lambda x: x[1].area(), reverse=True):
+        iou = [ds.iou(d) if j not in assigndict.values() else 0.0 for (j,d) in enumerate(dstlist)]
+        assigndict[k] = np.argmax(iou) if max(iou) > miniou else None
+    return [assigndict[k] for k in range(0, len(srclist))]

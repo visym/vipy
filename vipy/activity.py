@@ -56,8 +56,8 @@ class Activity(object):
     @classmethod
     def from_json(obj, s):
         d = json.loads(s) if not isinstance(s, dict) else s                
-        return obj(startframe=d['_startframe'],
-                   endframe=d['_endframe'],
+        return obj(startframe=int(d['_startframe']),
+                   endframe=int(d['_endframe']),
                    framerate=d['_framerate'],
                    category=d['_label'],
                    shortlabel=d['_shortlabel'],

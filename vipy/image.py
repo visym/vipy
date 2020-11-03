@@ -14,6 +14,7 @@ from vipy.util import isnumpy, isurl, isimageurl, \
     istuple, islist, isnumber, isnumpyarray, string_to_pil_interpolation, toextension
 from vipy.geometry import BoundingBox, imagebox
 import vipy.object
+from vipy.object import greedy_assignment
 import vipy.downloader
 import urllib.request
 import urllib.error
@@ -1320,7 +1321,7 @@ class Scene(ImageCategory):
     def __getitem__(self, k):
         """Return the kth object in the scene as an ImageDetection"""
         assert isinstance(k, int), "Indexing by object in scene must be integer"
-        obj = self._objectlist[k]
+        obj = self._objectlist[k].clone()
         return (ImageDetection(array=self.array(), filename=self.filename(), url=self.url(), colorspace=self.colorspace(), bbox=obj, category=obj.category(), attributes=obj.attributes))
 
     def append(self, imdet):
@@ -1356,11 +1357,27 @@ class Scene(ImageCategory):
         """Non-maximum supporession of objects() by category based on confidence and spatial IoU thresholds"""
         return self.objects( vipy.object.non_maximum_suppression(self.objects(), conf, iou, bycategory=True) )
 
-    def union(self, other):
-        """Combine the objects of the scene with other and self with no duplicate checking"""
-        if isinstance(other, Scene):
-            self._objectlist.extend(other.objects())
-        return self
+    def intersection(self, other, miniou):
+        """Return a Scene() containing the objects in both self and other, that overlap by miniou with greedy assignment"""
+        assert isinstance(other, Scene), "Invalid input"
+        v = self.clone()
+        v._objectlist = [v._objectlist[k] for (k,d) in enumerate(greedy_assignment(v.objects(), other.objects(), miniou)) if d is not None]
+        return v
+
+    def difference(self, other, miniou):
+        """Return a Scene() containing the objects in self but not other, that overlap by miniou with greedy assignment"""
+        assert isinstance(other, Scene), "Invalid input"
+        v = self.clone()
+        v._objectlist = [v._objectlist[k] for (k,d) in enumerate(greedy_assignment(self.objects(), other.objects(), miniou)) if d is None]
+        return v
+        
+    def union(self, other, miniou=None):
+        """Combine the objects of the scene with other and self with no duplicate checking unless miniou is not None"""
+        assert isinstance(other, Scene), "Invalid input"
+        assert miniou is None or (miniou>=0 and miniou <= 1), "Invalid input"
+        v = self.clone()
+        v._objectlist.extend(other.objects()) if miniou is None else v.difference(other, miniou).union(other)
+        return v
 
     def clear(self):
         """Remove all objects from this scene."""
@@ -1690,6 +1707,8 @@ class ImageDetection(Scene, BoundingBox):
                          array=array,
                          colorspace=colorspace)
 
+        self._asbbox = False
+        
     def __getattribute__(self, item):
         if item == 'bbox':
             assert len(self._objectlist) == 1, "Invalid ImageDetection"
@@ -1707,7 +1726,7 @@ class ImageDetection(Scene, BoundingBox):
             assert len(self._objectlist) == 1, "Invalid ImageDetection"            
             return self._objectlist[0]._ymax        
         else:
-            return super().__getattribute__(item)
+            return super().__getattribute__(item)            
 
     def __getattr__(self, item):
         if item == 'bbox':
@@ -1768,6 +1787,20 @@ class ImageDetection(Scene, BoundingBox):
 
         return self
 
+    def asimage(self):
+        self._asbbox = False
+        return self
+
+    def asbbox(self):
+        self._asbbox = True
+        return self
+    
+    def boxmap(self, f):
+        """Apply the lambda function f to the bounding box, and return the imagedetection"""
+        bb = f(self.bbox)
+        assert isinstance(bb, BoundingBox), "Lambda function must return BoundingBox()"
+        return self
+    
     def crop(self):
         """Crop the image using the bounding box"""
         return super().crop(self.boundingbox())
