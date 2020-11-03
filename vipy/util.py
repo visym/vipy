@@ -485,14 +485,15 @@ def loadas(infile, format='dill'):
         raise ValueError('unknown serialization format "%s"' % format)
 
 
-def load(infile):
+def load(infile, abspath=False):
     """Load variables from a relocatable archive file format, either Dill Pickle or JSON.
        
        Loading is performed by attemping the following:
 
        1. load the pickle or json file
-       2. If the loaded object is a vipy object (or iterable) and the relocatable path /$PATH is present, try to repath it to the directory containing this archive
-       3. If the resulting files are not found, throw a warning
+       2. if abspath=true, then convert relative paths to absolute paths for object when loaded
+       3. If the loaded object is a vipy object (or iterable) and the relocatable path /$PATH is present, try to repath it to the directory containing this archive (this has been deprecated)
+       4. If the resulting files are not found, throw a warning
 
     """
     infile = os.path.abspath(os.path.expanduser(infile))
@@ -518,11 +519,23 @@ def load(infile):
             warnings.warn('Loading "%s" that contains redistributable paths - Use vipy.util.distload("%s", datapath="/path/to/your/data") to rehome absolute file paths' % (infile, infile))
     elif hasattr(testobj, 'filename') and testobj.filename() is not None and not os.path.exists(testobj.filename()):
         if hasattr(testobj, 'hasurl') and testobj.hasurl():
-            warnings.warn('Invalid file - Loading "%s" that contains filename "%s" which does not exist - This must be downloaded from the provided url() using download()' % (infile, testobj.filename()))
+            warnings.warn('Loading archive "%s" that contains filename "%s" which does not exist - This must be downloaded from the provided url() using download()' % (infile, testobj.filename()))
         elif not os.path.isabs(testobj.filename()):
-            warnings.warn('Invalid file - Loading "%s" that contains relative path "%s" which does not exist - Loading archives with relative paths must be loaded from the same directory containing the videos' % (infile, testobj.filename()))
+            if not abspath:
+                warnings.warn('Loading archive "%s" with relative paths.  Changing directory to "%s"' % (infile, filepath(infile)))
+                os.chdir(filepath(infile))
+            else:
+                # Absolute path?  The loaded archive will no longer be relocatable, and the videos directory cannot be moved
+                pwd = os.getcwd()  
+                os.chdir(filepath(infile))  # change to archive directory
+                objout = [o.abspath() if o.hasfilename() else o for o in tolist(obj)]  # set absolute paths
+                obj = objout if isinstance(obj, list) else objout[0]
+                if any([not o.hasfilename() for o in tolist(obj)]):
+                    warnings.warn('Loading "%s" that contains absolute path "%s" which does not exist' % (infile, tolist(obj)[0]))
+                os.chdir(pwd)  # set it back
         else:
-            warnings.warn('Invalid file - Loading "%s" that contains absolute path "%s" which does not exist' % (infile, testobj.filename()))
+            warnings.warn('Loading "%s" that contains absolute path "%s" which does not exist' % (infile, testobj.filename()))
+
     return obj
 
 
