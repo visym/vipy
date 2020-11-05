@@ -195,7 +195,7 @@ def test_boundingbox():
     
     # Inside
     bb1 = BoundingBox(xmin=0, ymin=0, width=100, height=100)
-    assert bb1.inside((0,25)) and not bb1.inside((-10,0)) and bb1.inside((99,99))
+    assert bb1.ispointinside((0,25)) and not bb1.ispointinside((-10,0)) and bb1.ispointinside((99,99))
     print('[test_geometry.boundingbox.inside]: PASSED')
 
     # Typecast
