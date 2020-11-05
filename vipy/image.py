@@ -160,6 +160,39 @@ class Image(object):
             print(prefix+self.__repr__())
         return self
 
+    def tile(self, tilewidth, tileheight, overlaprows=0, overlapcols=0):
+        """Generate a list of tiled image"""
+        bboxes = [BoundingBox(xmin=i, ymin=j, width=tilewidth, height=tileheight) for i in range(0, self.width(), tilewidth-overlaprows) for j in range(0, self.height(), tileheight-overlapcols)]
+        return [self.clone().setattribute('tile', {'crop':bb, 'shape':self.shape()}).crop(bb) for bb in bboxes]
+
+    def untile(self, imlist):
+        """Undo tile"""
+        assert all([isinstance(im, vipy.image.Image) and im.hasattribute('tile') for im in imlist]), "invalid image list"
+        imc = None
+        for im in imlist:
+            imu = im.clone().uncrop(im.attributes['tile']['crop'], im.attributes['tile']['shape'])
+            imc = imc.splat(imu, imu.attributes['tile']['crop']) if imc is not None else imu.clone()
+            imc = imc.union(imu)            
+        return imc
+    
+    def uncrop(self, bb, shape):
+        """Uncrop using provided bounding box and zeropad to shape=(Height, Width), NOT idempotent"""
+        ((x,y,w,h), (H,W)) = (bb.xywh(), shape)
+        ((dyb, dya), (dxb, dxa)) = ((int(y), int(H-(y+h))), (int(x), int(W-(x+w))))
+        self._array = np.pad(self.load().array(),
+                             ((dyb, dya), (dxb, dxa), (0, 0)) if
+                             self.load().array().ndim == 3 else ((dyb, dya), (dxb, dxa)),
+                             mode='constant')        
+        return self
+
+    def splat(self, im, bb):
+        """Replace pixels within boundingbox in self with pixels in im"""
+        assert isinstance(im, vipy.image.Image), "invalid image"
+        assert bb.isinterior(im.width(), im.height()) and bb.isinterior(self.width(), self.height()), "Invalid bounding box"
+        (x,y,w,h) = bb.xywh()
+        self._array[int(y):int(y+h), int(x):int(x+w)] = im.array()[int(y):int(y+h), int(x):int(x+w)]
+        return self            
+        
     def store(self):
         """Store the current image file as an attribute of this object.  Useful for archiving an object to be fully self contained without any external references.  
         
@@ -788,6 +821,9 @@ class Image(object):
         else:
             warnings.warn('BoundingBox for crop() does not intersect image rectangle - Ignoring')
         return self
+
+    def crop(self, bbox):
+        return self._crop(bbox)
     
     def fliplr(self):
         """Mirror the image buffer about the vertical axis - Not idempotent"""
@@ -1353,9 +1389,9 @@ class Scene(ImageCategory):
         self._objectlist = [obj for obj in self._objectlist if f(obj) is True]
         return self
 
-    def nms(self, conf, iou):
+    def nms(self, conf, iou, cover=0.8):
         """Non-maximum supporession of objects() by category based on confidence and spatial IoU thresholds"""
-        return self.objects( vipy.object.non_maximum_suppression(self.objects(), conf, iou, bycategory=True) )
+        return self.objects( vipy.object.non_maximum_suppression(self.objects(), conf, iou, cover=cover, bycategory=True) )
 
     def intersection(self, other, miniou):
         """Return a Scene() containing the objects in both self and other, that overlap by miniou with greedy assignment"""
@@ -1379,6 +1415,11 @@ class Scene(ImageCategory):
         v._objectlist.extend(other.objects()) if miniou is None else v.difference(other, miniou).union(other)
         return v
 
+    def uncrop(self, bb, shape):
+        """Uncrop a previous crop(bb) called with the supplied bb=BoundingBox(), and zeropad to shape=(H,W)"""
+        super().uncrop(bb, shape)
+        return self.objectmap(lambda o: o.translate(bb.xmin(), bb.ymin()))
+        
     def clear(self):
         """Remove all objects from this scene."""
         return self.objects([])
@@ -1388,7 +1429,7 @@ class Scene(ImageCategory):
         boxes = self.objects()
         bb = boxes[0].clone() if len(boxes) >= 1 else None
         return bb.union(boxes[1:]) if len(boxes) >= 2 else bb
-        
+
     def categories(self):
         """Return list of unique object categories in scene"""
         return list(set([obj.category() for obj in self._objectlist]))
@@ -1648,10 +1689,6 @@ class Scene(ImageCategory):
             vipy.show.savefig(outfile, figure, dpi=dpi, bbox_inches='tight', pad_inches=0)
             return outfile
 
-    def framestamp(self):
-        """Add a frame number to the corner of the image"""
-        return vipy.show.text('TEST', 0, 0)
-
     
 class ImageDetection(Scene, BoundingBox):
     """vipy.image.ImageDetection class
@@ -1818,9 +1855,9 @@ class ImageDetection(Scene, BoundingBox):
         return (self.bbox.xmin() >= 0 and self.bbox.ymin() >= 0
                 and self.bbox.xmax() <= W and self.bbox.ymax() <= H)
 
-def mutator_show_trackid(n=5):
+def mutator_show_trackid(n_digits_in_trackid=5):
     """Mutate the image to show tracking details in the shortlabel.  This is passed to show()"""
-    return lambda im: (im.objectmap(lambda o: o.shortlabel('%s (%s)' % (o.shortlabel(), o.attributes['trackid'][0:n]))
+    return lambda im: (im.objectmap(lambda o: o.shortlabel('%s (%s)' % (o.shortlabel(), o.attributes['trackid'][0:n_digits_in_trackid]))
                                     if o.hasattribute('trackid') else o))    
 
 def mutator_show_userstring(strlist):

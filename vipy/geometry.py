@@ -475,7 +475,7 @@ class BoundingBox(object):
         return aoi
 
     def cover(self, bb):
-        """Fraction of this bounding box intersected by other bbox"""        
+        """Fraction of this bounding box intersected by other bbox (bb)"""        
         return self.area_of_intersection(bb) / float(self.area())
 
     def shapeiou(self, bb):
@@ -508,13 +508,15 @@ class BoundingBox(object):
         self._ymax = max([bb.ymax() for bb in bblist] + [self.ymax()])
         return self
 
-    def inside(self, p):
+    def isinside(self, bb):
+        """Is this boundingbox fully within the provided bounding box?"""
+        assert isinstance(bb, BoundingBox)
+        return self.hasintersection(bb) and self.cover(bb) == 1.0
+        
+    def ispointinside(self, p):
         """Is the 2D point p=(x,y) inside this boundingbox, or is the p=boundingbox() inside this bounding box?"""
-        if isinstance(p, BoundingBox):
-            return self.hasintersection(p) and self.cover(p) == 1.0
-        else:
-            assert len(p) == 2, "Invalid 2D point=(x,y) input"""
-            return (p[0] >= self._xmin) and (p[1] >= self._ymin) and (p[0] <= self._xmax) and (p[1] <= self._ymax)
+        assert len(p) == 2, "Invalid 2D point=(x,y) input"""
+        return (p[0] >= self._xmin) and (p[1] >= self._ymin) and (p[0] <= self._xmax) and (p[1] <= self._ymax)
 
     def dilate(self, scale=1):
         """Change scale of bounding box keeping centroid constant"""
@@ -696,6 +698,10 @@ class BoundingBox(object):
             assert isnumber(width) and isnumber(height), "Invalid width and height - both must be numbers"
         return self.area_of_intersection(BoundingBox(xmin=0, ymin=0, width=width, height=height)) > 0
 
+    def isinterior(self, width=None, height=None):
+        """Is this boundingbox fully within the provided image rectangle?"""
+        return self.isinside(imagebox((height, width)))
+        
     def iminterior(self, W, H):
         """Transform bounding box to be interior to the image rectangle with shape (W,H).  
            Transform is applyed by computing smallest (dx,dy) translation that it is interior to the image rectangle, then clip to the image rectangle if it is too big to fit

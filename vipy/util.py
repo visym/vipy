@@ -1411,7 +1411,7 @@ def splitextension(filename):
     """Given /a/b/c.ext return tuple of strings ('/a/b/c', '.ext')"""
     (head, tail) = os.path.split(filename)
     try:
-        (base, ext) = str.split(tail, '.', 1)  # for .tar.gz
+        (base, ext) = str.rsplit(tail, '.', 1)  # for .tar.gz
         ext = '.' + ext
     except:
         base = tail

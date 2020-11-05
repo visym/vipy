@@ -183,10 +183,10 @@ class Video(object):
 
     def frame(self, k, img=None):
         """Alias for self.__getitem__[k]"""
-        assert img is not None or self.isloaded(), 'Video not loaded, load() before frame indexing or using stream()'
+        #assert img is not None or self.isloaded(), 'Video not loaded, load() before frame indexing or using stream()'
         assert isinstance(k, int) and k>=0, "Frame index must be non-negative integer"
         assert img is not None or k<len(self), "Invalid frame index %d - Indexing video by frame must be integer within (0, %d)" % (k, len(self))
-        return Image(array=img if img is not None else self._array[k], colorspace=self.colorspace())        
+        return Image(array=img if img is not None else self._array[k] if self.isloaded() else self.preview(k).array(), colorspace=self.colorspace())       
         
     def __iter__(self):
         """Iterate over loaded video, yielding mutable frames"""
@@ -237,6 +237,8 @@ class Video(object):
                 self._outfile = self._video.filename()
                 self._write = write or overwrite               
                 assert self._write is False or (overwrite is True or not os.path.exists(self._outfile)), "Output file '%s' exists - Writable stream cannot overwrite existing video file unless overwrite=True" % self._outfile
+                if overwrite and os.path.exists(self._outfile):
+                    os.remove(self._outfile)                
                 self._shape = self._video.shape() if self._video.canload() else None  # shape for write can be defined by first frame
                 
             def __enter__(self):
@@ -273,15 +275,27 @@ class Video(object):
 
             def __call__(self, im):
                 return self.write(im)
-            
-            def write(self, im):
+
+            def clip(self, n):
+                assert isinstance(n, int) and n>0, "Clip length must be a positive integer"
+                frames = []
+                for (k,im) in enumerate(self):
+                    frames.append(im)
+                    if k%n == 0:
+                        # Yield clip of length n, first item yielded will have length one to match timing for __iter__
+                        yield self._video.clone().nourl().nofilename().fromframes(frames)  
+                        frames = []
+                    
+            def write(self, im, flush=False):
                 if self._shape is None:
                     self._shape = im.shape()
                     self.__enter__()
                 assert self._pipe is not None and self._write is True, "Stream is read only"                
                 assert im.shape() == self._shape, "Shape cannot change during writing"
                 self._pipe.stdin.write(im.array().astype(np.uint8).tobytes())
-
+                if flush:
+                    self._pipe.stdin.flush()  # do we need this?
+                
             def close(self):
                 if self._pipe is not None:
                     if self._write:
@@ -1408,11 +1422,11 @@ class Scene(VideoCategory):
 
     def frame(self, k, img=None):
         """Return vipy.image.Scene object at frame k"""
-        assert img is not None or self.isloaded(), 'Video not loaded, load() before indexing'
+        #assert img is not None or self.isloaded(), 'Video not loaded, load() before indexing'
         assert isinstance(k, int) and k>=0, "Frame index must be non-negative integer"
-        assert img is not None or k<len(self), "Invalid frame index %d - Indexing video by frame must be integer within (0, %d)" % (k, len(self))
+        assert img is not None or (self.isloaded() and k<len(self)) or not self.isloaded(), "Invalid frame index %d - Indexing video by frame must be integer within (0, %d)" % (k, len(self))
 
-        img = img if img is not None else self._array[k]
+        img = img if img is not None else self._array[k] if self.isloaded() else self.preview(k).array()
         dets = [t[k] for (tid,t) in self._tracks.items() if t[k] is not None]  # track interpolation (cloned) with boundary handling
         for d in dets:
             shortlabel = [(d.shortlabel(),'')]  # [(Noun, Verbing1), (Noun, Verbing2), ...]
@@ -1689,8 +1703,9 @@ class Scene(VideoCategory):
         self._activities = {}
         self._tracks = {}
         return self
-
+    
     def json(self, encode=True):
+        """Return JSON encoded string of this object"""
         d = json.loads(super().json())
         d['_tracks'] = {k:t.json(encode=False) for (k,t) in self._tracks.items()}
         d['_activities'] = {k:a.json(encode=False) for (k,a) in self._activities.items()}
@@ -2120,7 +2135,7 @@ class Scene(VideoCategory):
         return self
 
     def assign(self, frame, dets, miniou=0.8, minconf=0.2, maxconf=0.8, maxhistory=30):
-        """Assign a list of vipy.object.Detections at frame k to scene by greedy track association"""
+        """Assign a list of vipy.object.Detections at frame k to scene by greedy track association. In-place update."""
         dets = tolist(dets)
         assert all([isinstance(d, vipy.object.Detection) for d in dets]), "invalid input"
         if any([d.confidence() is None for d in dets]):

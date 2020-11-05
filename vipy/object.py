@@ -612,11 +612,12 @@ class Track(object):
         return self._keyboxes[int(np.abs(np.array(self._keyframes) - f).argmin())]
     
     
-def non_maximum_suppression(detlist, conf, iou, bycategory=False):
-    """Compute non-maximum suppression of a list of vipy.object.Detection() based on spatial IOU threshold (iou) and a confidence threshold (conf)"""
+def non_maximum_suppression(detlist, conf, iou, bycategory=False, cover=None):
+    """Compute greedy non-maximum suppression of a list of vipy.object.Detection() based on spatial IOU threshold (iou) and cover threhsold (cover) sorted by confidence (conf)"""
     assert all([isinstance(d, Detection) for d in detlist])
     assert all([d.confidence() is not None for d in detlist])
     assert conf>=0 and iou>=0 and iou<=1
+    assert cover is None or (cover>=0 and cover<=1)
 
     detlist = [d for d in detlist if d.confidence() > conf and not d.isdegenerate()]    
     detlist = sorted(detlist, key=lambda d: d.confidence(), reverse=True)  # biggest to smallest
@@ -624,7 +625,7 @@ def non_maximum_suppression(detlist, conf, iou, bycategory=False):
     suppresslist = []
     for (i,di) in enumerate(detlist):
         for (j,dj) in enumerate(detlist):
-            if j > i and di.iou(dj) > iou and (bycategory is False or di.category() == dj.category()):
+            if j > i and (di.iou(dj) >= iou or (cover is not None and dj.cover(di) >= cover)) and (bycategory is False or di.category() == dj.category()):
                 suppresslist.append(j)
     return sorted([d for (j,d) in enumerate(detlist) if j not in set(suppresslist)], key=lambda d: d.confidence())  # smallest to biggest for display layering
 
@@ -642,5 +643,5 @@ def greedy_assignment(srclist, dstlist, miniou=0.0):
     assigndict = {}
     for (k, ds) in sorted(enumerate(srclist), key=lambda x: x[1].area(), reverse=True):
         iou = [ds.iou(d) if j not in assigndict.values() else 0.0 for (j,d) in enumerate(dstlist)]
-        assigndict[k] = np.argmax(iou) if max(iou) > miniou else None
+        assigndict[k] = np.argmax(iou) if len(iou) > 0 and max(iou) > miniou else None
     return [assigndict[k] for k in range(0, len(srclist))]
