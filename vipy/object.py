@@ -340,7 +340,7 @@ class Track(object):
     def during(self, k_start, k_end=None):
         """Is frame during the time interval (startframe, endframe) inclusive?"""        
         k_end = k_start+1 if k_end is None else k_end
-        return any([k >= self.startframe() and k <= self.endframe() for k in range(k_start, k_end)])
+        return len(self)>0 and any([k >= self.startframe() and k <= self.endframe() for k in range(k_start, k_end)])
 
     def offset(self, dt=0, dx=0, dy=0):
         self._keyboxes = [bb.offset(dx, dy) for bb in self._keyboxes]

@@ -26,7 +26,7 @@ class Activity(object):
     >>> a = vipy.object.Activity(startframe=0, endframe=10, category='Walking', tracks={t.id():t})
 
     """
-    def __init__(self, startframe, endframe, framerate=None, label=None, shortlabel=None, category=None, tracks=None, attributes=None, actorid=None):
+    def __init__(self, startframe, endframe, framerate=None, label=None, shortlabel=None, category=None, tracks=None, attributes=None, actorid=None, confidence=None):
         assert not (label is not None and category is not None), "Activity() Constructor requires either label or category kwargs, not both"
         assert startframe < endframe, "Start frame must be strictly less than end frame"
         if tracks:
@@ -51,8 +51,13 @@ class Activity(object):
         self._trackid = trackid
         self._actorid = actorid
 
-        self.attributes = attributes if attributes is not None else {}            
+        self.attributes = attributes if attributes is not None else {}
+        if confidence is not None:
+            self.attributes['confidence'] = confidence
 
+    def confidence(self):
+        return self.attributes['confidence'] if 'confidence' in self.attributes else None
+    
     @classmethod
     def from_json(obj, s):
         d = json.loads(s) if not isinstance(s, dict) else s                

@@ -99,7 +99,7 @@ class Video(object):
             assert isurl(url), 'Invalid URL "%s" ' % url
             self._url = url
         if filename is not None:
-            self._filename = filename
+            self._filename = os.path.normpath(os.path.expanduser(filename))
         elif self._url is not None:
             if isS3url(self._url):
                 self._filename = totempdir(self._url)  # Preserve S3 Object ID
@@ -251,7 +251,7 @@ class Video(object):
                                        .global_args('-cpuflags', '0', '-loglevel', 'panic' if not vipy.globals.isdebug() else 'debug') \
                                        .run_async(pipe_stdin=True)
                 elif not self._write:
-                    self._pipe = (self._video._ffmpeg.output('pipe:', format='rawvideo', pix_fmt='rgb24').global_args('-loglevel', 'debug' if vipy.globals.isdebug() else 'panic').run_async(pipe_stdout=True))                                                
+                    self._pipe = (self._video._ffmpeg.output('pipe:', format='rawvideo', pix_fmt='rgb24').global_args('-loglevel', 'debug' if vipy.globals.isdebug() else 'panic').run_async(pipe_stdout=True))
                 self._frame_index = 0
                 return self
             
@@ -280,11 +280,9 @@ class Video(object):
                 assert isinstance(n, int) and n>0, "Clip length must be a positive integer"
                 frames = []
                 for (k,im) in enumerate(self):
-                    frames.append(im)
-                    if k%n == 0:
-                        # Yield clip of length n, first item yielded will have length one to match timing for __iter__
-                        yield self._video.clone().nourl().nofilename().fromframes(frames)  
-                        frames = []
+                    frames.append(im)                    
+                    frames.pop(0) if len(frames) >= n else None
+                    yield self._video.clone().nourl().nofilename().fromframes(frames)  
                     
             def write(self, im, flush=False):
                 if self._shape is None:
@@ -316,7 +314,7 @@ class Video(object):
             def __getitem__(self, k):
                 return self._video.thumbnail(frame=k)  # this is inefficient, don't do it a lot
             
-        return Stream(self)
+        return Stream(self.clone())
 
 
     def bytes(self):
@@ -1269,7 +1267,8 @@ class Video(object):
 
     def getattribute(self, k):
         return self.attributes[k]
-        
+
+    
 class VideoCategory(Video):
     """vipy.video.VideoCategory class
 
@@ -1415,7 +1414,7 @@ class Scene(VideoCategory):
         if self.category() is not None:
             strlist.append('category="%s"' % self.category())
         if self.hastracks():
-            strlist.append('objects=%d' % len(self._tracks))
+            strlist.append('tracks=%d' % len(self._tracks))
         if self.hasactivities():
             strlist.append('activities=%d' % len(self._activities))
         return str('<vipy.video.scene: %s>' % (', '.join(strlist)))
@@ -1441,7 +1440,7 @@ class Scene(VideoCategory):
                     d.attributes['activityid'].append(a.id())  # for activity correspondence (if desired)
             d.shortlabel( '\n'.join([('%s %s' % (n,v)).strip() for (n,v) in shortlabel[0 if len(shortlabel)==1 else 1:]]))
             d.attributes['noun verb'] = shortlabel
-        dets = sorted(dets, key=lambda d: d.shortlabel())   # layering in video is in alphabetical order of shortlabel
+        dets = sorted(dets, key=lambda d: (d.confidence() if d.confidence() is not None else 0, d.shortlabel()))   # layering in video is ordered by decreasing confidence and alphabetical shortlabel
         return vipy.image.Scene(array=img, colorspace=self.colorspace(), objects=dets, category=self.category())  
                 
         
@@ -1519,6 +1518,10 @@ class Scene(VideoCategory):
     
     def tracklist(self):
         return list(self._tracks.values())
+
+    def actorid(self):
+        assert len(self.tracks()) == 1, "Actor ID only valid for scenes with a single track"
+        return list(self.tracks().keys())[0]
         
     def activities(self, activities=None, id=None):
         """Return mutable dictionary of activities.  All temporal alignment is relative to the current clip()."""
@@ -1845,20 +1848,25 @@ class Scene(VideoCategory):
                        for (k,(ti,t)) in enumerate(self._tracks.items())}  # replace tracks with boxes relative to tube
         return vid.array(np.stack([im.numpy() for im in frames]))
 
-    def actortube(self, trackid, dilate=1.0, maxdim=256):
+    def actortube(self, trackid=None, dilate=1.0, maxdim=256, strict=True):
         """The actortube() is a sequence of crops where the spatial box changes on every frame to track the primary actor performing an activity.  
            The box in each frame is the square box centered on the primary actor performing the activity, dilated by a given factor (the original box around the actor is unchanged, this just increases the context, with zero padding)
            This function does not perform any temporal clipping.  Use activityclip() first to split into individual activities.  
            All crops will be resized so that the maximum dimension is maxdim (and square by default)
         """
+        assert trackid is not None or len(self.tracks()) == 1, "Track ID must be provided if there exists more than one track in the scene"
+        trackid = trackid if trackid is not None else list(self.tracks().keys())[0]
         assert self.hastrack(trackid), "Track ID %s not found - Actortube requires a track ID in the scene (tracks=%s)" % (str(trackid), str(self.tracks()))
         vid = self.clone().load()  # triggers load        
         t = vid.tracks(id=trackid)  # actor track
-        frames = [im.padcrop(t[k].maxsquare().dilate(dilate).int()).resize(maxdim, maxdim) for (k,im) in enumerate(vid) if t.during(k)]  # actor interpolation, padding may introduce frames with no tracks
+        frames = [im.padcrop(t[k].maxsquare().dilate(dilate).int()).resize(maxdim, maxdim) for (k,im) in enumerate(vid) if t.during(k)] if len(t)>0 else []  # actor interpolation, padding may introduce frames with no tracks
         if len(frames) == 0:
-            warnings.warn('[vipy.video.actortube]: Resulting video is empty!  Setting actortube to zero')
-            frames = [ vid[0].resize(maxdim, maxdim).zeros() ]  # empty frame
-            vid.attributes['actortube'] = {'empty':True}   # provenance to reject 
+            if not strict:
+                warnings.warn('[vipy.video.actortube]: Empy track for trackid="%s" - Setting actortube to zero' % trackid)
+                frames = [ vid[0].resize(maxdim, maxdim).zeros() ]  # empty frame
+                vid.attributes['actortube'] = {'empty':True}   # provenance to reject             
+            else:
+                raise ValueError('[vipy.video.actortube]: Empy track for trackid="%s" % trackid')
         vid._tracks = {ti:vipy.object.Track(keyframes=[f for (f,im) in enumerate(frames) for d in im.objects() if d.attributes['trackid'] == ti],  # keyframes zero indexed, relative to [frames]
                                             boxes=[d for (f,im) in enumerate(frames) for d in im.objects() if d.attributes['trackid'] == ti],  # one box per frame
                                             category=t.category(), trackid=ti)  # preserve trackid
@@ -1878,7 +1886,7 @@ class Scene(VideoCategory):
         v._endframe = endframe if v._endframe is None else v._startframe + (endframe-startframe)  # for __repr__ only
         # -- end copy
 
-        v._tracks = {k:t.offset(dt=-startframe).truncate(startframe=0, endframe=endframe-startframe) for (k,t) in v._tracks.items()}   
+        v._tracks = {k:t.offset(dt=-startframe).truncate(startframe=0, endframe=endframe-startframe) for (k,t) in v._tracks.items()}   # may be empty
         v._activities = {k:a.offset(dt=-startframe).truncate(startframe=0, endframe=endframe-startframe) for (k,a) in v._activities.items()}        
         return v  
 
@@ -2134,7 +2142,7 @@ class Scene(VideoCategory):
         self.__class__ = vipy.video.Video
         return self
 
-    def assign(self, frame, dets, miniou=0.8, minconf=0.2, maxconf=0.8, maxhistory=30):
+    def assign(self, frame, dets, miniou=0.5, minconf=0.2, maxconf=0.8, maxhistory=30):
         """Assign a list of vipy.object.Detections at frame k to scene by greedy track association. In-place update."""
         dets = tolist(dets)
         assert all([isinstance(d, vipy.object.Detection) for d in dets]), "invalid input"
