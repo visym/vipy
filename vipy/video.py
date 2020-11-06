@@ -1439,7 +1439,7 @@ class Scene(VideoCategory):
                         d.attributes['activityid'] = []                            
                     d.attributes['activityid'].append(a.id())  # for activity correspondence (if desired)
             d.shortlabel( '\n'.join([('%s %s' % (n,v)).strip() for (n,v) in shortlabel[0 if len(shortlabel)==1 else 1:]]))
-            d.attributes['noun verb'] = shortlabel
+            d.attributes['noun verb'] = shortlabel[0 if len(shortlabel)==1 else 1:]
         dets = sorted(dets, key=lambda d: (d.confidence() if d.confidence() is not None else 0, d.shortlabel()))   # layering in video is ordered by decreasing confidence and alphabetical shortlabel
         return vipy.image.Scene(array=img, colorspace=self.colorspace(), objects=dets, category=self.category())  
                 
@@ -1862,11 +1862,11 @@ class Scene(VideoCategory):
         frames = [im.padcrop(t[k].maxsquare().dilate(dilate).int()).resize(maxdim, maxdim) for (k,im) in enumerate(vid) if t.during(k)] if len(t)>0 else []  # actor interpolation, padding may introduce frames with no tracks
         if len(frames) == 0:
             if not strict:
-                warnings.warn('[vipy.video.actortube]: Empy track for trackid="%s" - Setting actortube to zero' % trackid)
+                warnings.warn('[vipy.video.actortube]: Empty track for trackid="%s" - Setting actortube to zero' % trackid)
                 frames = [ vid[0].resize(maxdim, maxdim).zeros() ]  # empty frame
                 vid.attributes['actortube'] = {'empty':True}   # provenance to reject             
             else:
-                raise ValueError('[vipy.video.actortube]: Empy track for trackid="%s" % trackid')
+                raise ValueError('[vipy.video.actortube]: Empty track for track=%s, trackid=%s' % (str(t), trackid))
         vid._tracks = {ti:vipy.object.Track(keyframes=[f for (f,im) in enumerate(frames) for d in im.objects() if d.attributes['trackid'] == ti],  # keyframes zero indexed, relative to [frames]
                                             boxes=[d for (f,im) in enumerate(frames) for d in im.objects() if d.attributes['trackid'] == ti],  # one box per frame
                                             category=t.category(), trackid=ti)  # preserve trackid
@@ -2144,13 +2144,19 @@ class Scene(VideoCategory):
 
     def assign(self, frame, dets, miniou=0.5, minconf=0.2, maxconf=0.8, maxhistory=30):
         """Assign a list of vipy.object.Detections at frame k to scene by greedy track association. In-place update."""
-        dets = tolist(dets)
-        assert all([isinstance(d, vipy.object.Detection) for d in dets]), "invalid input"
-        if any([d.confidence() is None for d in dets]):
-            warnings.warn('Removing %d detections with no confidence' % len([d.confidence() is None for d in dets]))
-            dets = [d for d in dets if d.confidence() is not None]
+        assert dets is None or all([isinstance(d, vipy.object.Detection) or isinstance(d, vipy.activity.Activity) for d in tolist(dets)]), "invalid input"
         assert frame >= 0 and miniou >= 0 and miniou <= 1.0 and minconf >= 0 and minconf <= 1.0 and maxconf >= 0 and maxconf <= 1.0, "invalid input"
 
+        if dets is None:
+            return self
+        dets = tolist(dets)
+        
+        if any([d.confidence() is None for d in dets]):
+            warnings.warn('Removing %d detections with no confidence' % len([d.confidence() is None for d in dets]))
+            dets = [d for d in dets if d.confidence() is not None]        
+        objdets = [d for d in dets if isinstance(d, vipy.object.Detection)]
+        activitydets = [d for d in dets if isinstance(d, vipy.activity.Activity)]        
+        
         # Track propagation
         t_ref = self.clone().tracks()
         for t in t_ref.values():
@@ -2160,7 +2166,7 @@ class Scene(VideoCategory):
         # Track assignment
         assignments = [(t, d.confidence(), d.iou(t.linear_extrapolation(frame)), d)
                        for (tid, t) in t_ref.items()
-                       for d in dets
+                       for d in objdets
                        if (t.during(frame) or (frame - t.endframe()) < maxhistory) and t.category() == d.category()]
         assigned = []        
         for (t, conf, iou, d) in sorted(assignments, key=lambda x: x[1]*x[2], reverse=True):
@@ -2171,11 +2177,27 @@ class Scene(VideoCategory):
                 assigned.append(d.id())
 
         # Track construction from unassigned detections
-        for d in dets:
+        for d in objdets:
             if d.confidence() >= maxconf and d.id() not in assigned:
-                self.add(vipy.object.Track(keyframes=[frame], boxes=[d], category=d.category(), framerate=self.framerate(), confidence=d.confidence()), rangecheck=False) 
+                self.add(vipy.object.Track(keyframes=[frame], boxes=[d], category=d.category(), framerate=self.framerate(), confidence=d.confidence()), rangecheck=False)
+
+        # Activity assignment
+        assert len(activitydets) == 0 or all([d.actorid() in self.tracks() for d in activitydets]), "Invalid activity"
+        assigned = []
+        for d in activitydets:
+            for a in self.activities().values():
+                if (a.category() == d.category()) and (a.actorid() == d.actorid()) and a.hasoverlap(d, miniou):
+                    a.union(d)  # activity assignment
+                    assigned.append(d.id())
+
+        # Activity construction from unassigned detections
+        for d in activitydets:
+            if d.id() not in assigned:
+                self.add(d)  
+
         return self
 
+    
     
 def RandomVideo(rows=None, cols=None, frames=None):
     """Return a random loaded vipy.video.video, useful for unit testing, minimum size (32x32x32)"""

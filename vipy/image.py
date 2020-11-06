@@ -1856,7 +1856,7 @@ class ImageDetection(Scene, BoundingBox):
                 and self.bbox.xmax() <= W and self.bbox.ymax() <= H)
 
 def mutator_show_trackid(n_digits_in_trackid=5):
-    """Mutate the image to show tracking details in the shortlabel.  This is passed to show()"""
+    """Mutate the image to show track ID with a fixed number of digits appended to the shortlabel as (####)"""
     return lambda im: (im.objectmap(lambda o: o.shortlabel('%s (%s)' % (o.shortlabel(), o.attributes['trackid'][0:n_digits_in_trackid]))
                                     if o.hasattribute('trackid') else o))    
 
@@ -1870,9 +1870,17 @@ def mutator_show_noun_only():
     return lambda im: (im.objectmap(lambda o: o.shortlabel('\n'.join([n for (n,v) in o.attributes['noun verb']])) if o.hasattribute('noun verb') else o))
 
 def mutator_show_verb_only():
-    """Mutate the image to show the noun only"""
+    """Mutate the image to show the verb only"""
     return lambda im: (im.objectmap(lambda o: o.shortlabel('\n'.join([v for (n,v) in o.attributes['noun verb']])) if o.hasattribute('noun verb') else o))
 
+def mutator_show_noun_or_verb():
+    """Mutate the image to show the verb only if it is non-zero else noun"""
+    return lambda im: (im.objectmap(lambda o: o.shortlabel('\n'.join([v if len(v)>0 else n for (n,v) in o.attributes['noun verb']])) if o.hasattribute('noun verb') else o))
+
+def mutator_capitalize():
+    """Mutate the image to show the shortlabel as 'Noun Verb1\nNoun Verb2'"""
+    return lambda im: (im.objectmap(lambda o: o.shortlabel('\n'.join(['%s %s' % (n.capitalize(), v.capitalize()) for (n,v) in o.attributes['noun verb']])) if o.hasattribute('noun verb') else o))
+    
 def mutator_show_objectindex():
     """Mutate the image to show the index of the object in the scene.  This list must be the same length as the number of objects in the scene"""
     return lambda im: im.objectmap([(lambda o,k=k: o.shortlabel(k)) for k in range(len(im))])

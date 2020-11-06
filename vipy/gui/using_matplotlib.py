@@ -85,7 +85,7 @@ def closeall():
     return plt.close('all')
 
 
-def _imshow_tight(img, fignum=None):
+def _imshow_tight(img, fignum=None, keypress=True):
     """Helper function to show an image in a figure window"""
     dpi = 100.0
     fig = plt.figure(fignum, dpi=dpi, figsize=(img.shape[1] / dpi, img.shape[0] / dpi))
@@ -99,9 +99,10 @@ def _imshow_tight(img, fignum=None):
         a.get_yaxis().set_visible(False)
     imh = plt.imshow(img, animated=True, interpolation='nearest', aspect='equal')
 
-    fig.canvas.mpl_connect('key_press_event', escape_to_exit)
-    import vipy.globals    
-    vipy.globals.user_hit_escape(False)
+    if keypress:
+        fig.canvas.mpl_connect('key_press_event', escape_to_exit)
+        import vipy.globals    
+        vipy.globals.user_hit_escape(False)
 
     return (fig.number, imh)
 
