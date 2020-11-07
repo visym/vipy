@@ -286,9 +286,14 @@ class Track(object):
         s = np.mean([bb.shape() for bb in self._keyboxes], axis=0)
         return (float(s[0]), float(s[1]))
             
-    def framerate(self, fps):
+    def framerate(self, fps=None, speed=None):
         """Resample keyframes from known original framerate set by constructor to be new framerate fps"""
         assert self._framerate is not None, "Framerate conversion requires that the framerate is known for current keyframes.  This must be provided to the vipy.object.Track() constructor."
+        assert fps is not None or speed is not None, "Invalid input"
+        assert not (fps is not None and speed is not None), "Invalid input"
+        assert speed is None or speed > 0, "Invalid speed, must specify speed multiplier s=1, s=2 for 2x faster, s=0.5 for half slower"
+        
+        fps = fps if fps is not None else (1.0/speed)*self._framerate
         self._keyframes = [int(np.round(f*(fps/float(self._framerate)))) for f in self._keyframes]
         self._framerate = fps
         return self
@@ -577,7 +582,7 @@ class Track(object):
             raise ValueError('All key boxes for track outside image rectangle')
 
     def resample(self, dt):
-        """Resample the track using a stride of dt frames"""
+        """Resample the track using a stride of dt frames.  This reduces the density of keyframes by interpolating new keyframes as a uniform stride of dt.  This is useful for track compression"""
         assert dt >= 1 and dt < len(self)
         frames =  list(range(self.startframe(), self.endframe(), dt)) + [self.endframe()]
         (self._keyboxes, self._keyframes) = zip(*[(self[k], k) for k in frames])

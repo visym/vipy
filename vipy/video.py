@@ -806,7 +806,13 @@ class Video(object):
             self._array = np.frombuffer(out, np.uint8).reshape([-1, height, width, channels])  # read-only            
             self.colorspace('rgb' if channels == 3 else 'lum')
         return self
-    
+
+    def speed(self, s):
+        """Change the speed by a multiplier s.  If s=1, this will be the same speed, s=0.5 for half-speed (slower playback), s=2 for double-speed (faster playback)"""
+        assert s > 0, "Invalid input"
+        self._ffmpeg = self._ffmpeg.setpts('%1.3f*PTS' % float(1.0/float(s)))
+        return self
+        
     def clip(self, startframe, endframe):
         """Load a video clip betweeen start and end frames"""
         assert startframe <= endframe and startframe >= 0, "Invalid start and end frames (%s, %s)" % (str(startframe), str(endframe))
@@ -1873,6 +1879,11 @@ class Scene(VideoCategory):
                        for (k,(ti,t)) in enumerate(self._tracks.items())}  # replace tracks with interpolated boxes relative to tube defined by actor
         return vid.array(np.stack([im.numpy() for im in frames]))
 
+    def speed(self, s):
+        """Change the speed by a multiplier s.  If s=1, this will be the same speed, s=0.5 for half-speed (slower playback), s=2 for double-speed (faster playback)"""        
+        super().speed(s)
+        return self.trackmap(lambda t: t.framerate(speed=s)).activitymap(lambda a: a.framerate(speed=s))
+        
     def clip(self, startframe, endframe):
         """Clip the video to between (startframe, endframe).  This clip is relative to clip() shown by __repr__().  Return a clone of the video for idempotence"""
         v = self.clone()

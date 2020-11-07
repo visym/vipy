@@ -109,12 +109,17 @@ class Activity(object):
     def middleframe(self):
         return int(np.round((self.endframe() - self.startframe()) / 2.0)) + self.startframe()
 
-    def framerate(self, fps=None):
+    def framerate(self, fps=None, speed=None):
         """Resample (startframe, endframe) from known original framerate set by constructor to be new framerate fps"""        
-        if fps is None:
+        if fps is None and speed is None:
             return self._framerate
         else:
+            assert fps is not None or speed is not None, "Invalid input"
+            assert not (fps is not None and speed is not None), "Invalid input"
+            assert speed is None or speed > 0, "Invalid speed, must specify speed multiplier s=1, s=2 for 2x faster, s=0.5 for half slower"                    
             assert self._framerate is not None, "Framerate conversion requires that the framerate is known for current activities.  This must be provided to the vipy.object.Activity() constructor."
+
+            fps = fps if fps is not None else (1.0/speed)*self._framerate            
             (self._startframe, self._endframe) = [int(np.round(f*(fps/float(self._framerate)))) for f in (self._startframe, self._endframe)]
             self._framerate = fps
             return self
