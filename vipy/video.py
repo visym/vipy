@@ -240,6 +240,7 @@ class Video(object):
                 if overwrite and os.path.exists(self._outfile):
                     os.remove(self._outfile)                
                 self._shape = self._video.shape() if self._video.canload() else None  # shape for write can be defined by first frame
+                assert (write is True or overwrite is True) or self._shape is not None, "Invalid read-on;y video '%s'" % (str(v))
                 
             def __enter__(self):
                 if self._write and self._shape is not None:
@@ -263,6 +264,7 @@ class Video(object):
             
             def read(self):
                 assert self._pipe is not None and self._write is False, "Stream is write only"
+
                 (height, width) = self._shape
                 in_bytes = self._pipe.stdout.read(height * width * 3)
                 if not in_bytes:

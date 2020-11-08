@@ -433,13 +433,16 @@ class Image(object):
 
     def height(self):
         return self.load().array().shape[0]
-
+    
     def shape(self):
         """Return the (height, width) or equivalently (rows, cols) of the image"""
         return (self.load().height(), self.width())
 
     def aspectratio(self):
         return self.load().width() / float(self.height())
+
+    def area(self):
+        return self.width()*self.height()
     
     def centroid(self):
         """Return the real valued center pixel coordinates of the image (col=x,row=y)"""
@@ -1396,7 +1399,7 @@ class Scene(ImageCategory):
         return self
 
     def nms(self, conf, iou, cover=0.8):
-        """Non-maximum supporession of objects() by category based on confidence and spatial IoU thresholds"""
+        """Non-maximum supporession of objects() by category based on confidence and spatial IoU and cover thresholds"""
         return self.objects( vipy.object.non_maximum_suppression(self.objects(), conf, iou, cover=cover, bycategory=True) )
 
     def intersection(self, other, miniou):
