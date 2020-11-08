@@ -185,7 +185,6 @@ def test_image():
     assert len(t) == 1
     t = im.tile(123,234,4,7)
     imt = Image(filename=greyfile).untile(t)
-    import pdb; pdb.set_trace()
     assert np.allclose(im.array(), imt.array())
     print('[test_image]: tile/untile PASSED')    
     
