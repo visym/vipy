@@ -162,9 +162,15 @@ class Image(object):
 
     def tile(self, tilewidth, tileheight, overlaprows=0, overlapcols=0):
         """Generate a list of tiled image"""
-        bboxes = [BoundingBox(xmin=i, ymin=j, width=tilewidth, height=tileheight) for i in range(0, self.width(), tilewidth-overlaprows) for j in range(0, self.height(), tileheight-overlapcols)]
+        assert tilewidth > 0 and tileheight > 0 and overlaprows >= 0 and overlapcols >= 0, "Invalid input"
+        assert self.width() >= tilewidth-overlapcols and self.height() >= tileheight-overlaprows, "Invalid input" 
+        bboxes = [BoundingBox(xmin=i, ymin=j, width=min(tilewidth, self.width()-i), height=min(tileheight, self.height()-j)) for i in range(0, self.width(), tilewidth-overlapcols) for j in range(0, self.height(), tileheight-overlaprows)]
         return [self.clone().setattribute('tile', {'crop':bb, 'shape':self.shape()}).crop(bb) for bb in bboxes]
 
+    def union(self, other):
+        """No-op for vipy.image.Image"""
+        return self
+    
     def untile(self, imlist):
         """Undo tile"""
         assert all([isinstance(im, vipy.image.Image) and im.hasattribute('tile') for im in imlist]), "invalid image list"

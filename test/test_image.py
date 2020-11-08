@@ -178,6 +178,16 @@ def test_image():
     assert np.allclose(im.clone().restore(tempjpg()).load(), im.load())
     assert not im.unstore().hasattribute('__image__')
     print('[test_image]: store/unstore/restore PASSED')
+
+    # Tile
+    im = Image(filename=rgbfile)
+    t = im.tile(im.width(),im.height(),0,0)
+    assert len(t) == 1
+    t = im.tile(123,234,4,7)
+    imt = Image(filename=greyfile).untile(t)
+    import pdb; pdb.set_trace()
+    assert np.allclose(im.array(), imt.array())
+    print('[test_image]: tile/untile PASSED')    
     
     
 def _test_image_fileformat(imgfile):
