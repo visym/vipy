@@ -546,28 +546,27 @@ class Track(object):
                 raise
         return self
 
-    def linear_extrapolation(self, k, smoothingfactor=None):
-        """Track extrapolation by linear fit.  Smoothing factor will increase with smoothing > 1 and decrease with 0 < smoothing < 1.
+    def linear_extrapolation(self, k, shape=False):
+        """Track extrapolation by linear fit.
         
-           Requires at least 3 keyboxes.
-           Returned boxes may be degenerate if extrapolation failed. 
-           Requires optional package scipy.
+           * Requires at least 2 keyboxes.
+           * Returned boxes may be degenerate.
+           * shape=True then both the position and shape (width, height) of the box is extrapolated
         """
         if self.during(k):
             return self[k]
-        if len(self.keyboxes()) < 3:
+        elif len(self.keyboxes()) == 1:
             return self.nearest_keybox(k)
-        try_import('scipy', 'scipy');  import scipy.interpolate;
-        assert smoothingfactor is None or smoothingfactor > 0
-        assert len(self._keyframes) >= 3, "Invalid length for linear extrapolation"
-        s = smoothingfactor * len(self._keyframes) if smoothingfactor is not None else None
-        (xmin, ymin, width, height) = zip(*[bb.to_xywh() for bb in self._keyboxes])
-        f_xmin = scipy.interpolate.UnivariateSpline(self._keyframes, xmin, check_finite=False, s=s, k=1)
-        f_ymin = scipy.interpolate.UnivariateSpline(self._keyframes, ymin, check_finite=False, s=s, k=1)
-        f_width = scipy.interpolate.UnivariateSpline(self._keyframes, width, check_finite=False, s=s, k=1)
-        f_height = scipy.interpolate.UnivariateSpline(self._keyframes, height, check_finite=False, s=s, k=1)
-        return Detection(xmin=float(f_xmin(k)), ymin=float(f_ymin(k)), width=float(f_width(k)), height=float(f_height(k)))
-    
+        else:
+            n = self.endframe() if k > self.endframe() else self.startframe()+1
+            (vx, vy, vw, vh) = (self.velocity_x(n, dt=1), self.velocity_y(n, dt=1), self.velocity_w(n, dt=1), self.velocity_h(n, dt=1))
+            return (self.clone()[n]
+                    .translate((k-n)*vx, (k-n)*vy)
+                    .top(0 if not shape else ((k-n)*vh)/2.0)
+                    .bottom(0 if not shape else ((k-n)*vh)/2.0)
+                    .left(0 if not shape else ((k-n)*vw)/2.0)
+                    .right(0 if not shape else ((k-n)*vw)/2.0))
+       
     def imclip(self, width, height):
         """Clip the track to the image rectangle (width, height).  If a keybox is outside the image rectangle, remove it otherwise clip to the image rectangle. 
            This operation can change the length of the track and the size of the keyboxes.  The result may be an empty track if the track is completely outside
@@ -607,6 +606,16 @@ class Track(object):
         """Return the (y) track velocity at frame f in units of pixels per frame computed by finite difference"""
         assert f >= 0 and dt > 0 and self.during(f)
         return (self[f].centroid_y() - self[f-dt].centroid_y())/float(dt)
+
+    def velocity_w(self, f, dt=5):
+        """Return the (w) track velocity at frame f in units of pixels per frame computed by finite difference"""
+        assert f >= 0 and dt > 0 and self.during(f)
+        return (self[f].width() - self[f-dt].width())/float(dt)
+
+    def velocity_h(self, f, dt=5):
+        """Return the (h) track velocity at frame f in units of pixels per frame computed by finite difference"""
+        assert f >= 0 and dt > 0 and self.during(f)
+        return (self[f].height() - self[f-dt].height())/float(dt)
     
     def nearest_keyframe(self, f):
         """Nearest keyframe to frame f"""
@@ -624,18 +633,16 @@ def non_maximum_suppression(detlist, conf, iou, bycategory=False, cover=None):
     assert conf>=0 and iou>=0 and iou<=1
     assert cover is None or (cover>=0 and cover<=1)
 
-    detlist = [d for d in detlist if d.confidence() > conf and not d.isdegenerate()]    
+    suppresslist = [k for (k,d) in enumerate(detlist) if d.confidence() <= conf or d.isdegenerate()]
     detlist = sorted(detlist, key=lambda d: d.confidence(), reverse=True)  # biggest to smallest
-    
-    suppresslist = []
     for (i,di) in enumerate(detlist):
         for (j,dj) in enumerate(detlist):
-            if j > i and (di.iou(dj) >= iou or (cover is not None and dj.cover(di) >= cover)) and (bycategory is False or di.category() == dj.category()):
+            if j > i and (j not in suppresslist) and (di.iou(dj) >= iou or (cover is not None and dj.cover(di) >= cover)) and (bycategory is False or di.category() == dj.category()):
                 suppresslist.append(j)
-    return sorted([d for (j,d) in enumerate(detlist) if j not in set(suppresslist)], key=lambda d: d.confidence())  # smallest to biggest for display layering
+    return sorted([d for (j,d) in enumerate(detlist) if j not in set(suppresslist)], key=lambda d: d.confidence())  # smallest to biggest confidence for display layering
 
 
-def greedy_assignment(srclist, dstlist, miniou=0.0):
+def greedy_assignment(srclist, dstlist, miniou=0.0, bycategory=False):
     """Compute a greedy one-to-one assignment of each vipy.object.Detection() in srclist to a unique element in dstlist with the largest IoU greater than miniou, else None
     
        returns:
@@ -647,6 +654,6 @@ def greedy_assignment(srclist, dstlist, miniou=0.0):
     
     assigndict = {}
     for (k, ds) in sorted(enumerate(srclist), key=lambda x: x[1].area(), reverse=True):
-        iou = [ds.iou(d) if j not in assigndict.values() else 0.0 for (j,d) in enumerate(dstlist)]
+        iou = [ds.iou(d) if (j not in assigndict.values() and (bycategory is False or ds.category() == d.category())) else 0.0 for (j,d) in enumerate(dstlist)]
         assigndict[k] = np.argmax(iou) if len(iou) > 0 and max(iou) > miniou else None
     return [assigndict[k] for k in range(0, len(srclist))]

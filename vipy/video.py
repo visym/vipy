@@ -305,13 +305,18 @@ class Video(object):
                     self._pipe = None
                 
             def __iter__(self):
-                assert not self._video.isloaded(), "Stream() reading cannot be performed on a video that has been loaded into memory, just use the video iterator directly"
-                with self as s:
-                    while True:
-                        im = s.read()
-                        if im is None:
-                            break
-                        yield(im)
+                if self._video.isloaded():
+                    # For loaded video, just use the existing iterator for in-memory video
+                    for im in self._video.__iter__():
+                        yield im
+                else:
+                    # Otherwise, read from the stream
+                    with self as s:
+                        while True:
+                            im = s.read()
+                            if im is None:
+                                break
+                            yield(im)
 
             def __getitem__(self, k):
                 return self._video.thumbnail(frame=k)  # this is inefficient, don't do it a lot
@@ -2155,7 +2160,7 @@ class Scene(VideoCategory):
         self.__class__ = vipy.video.Video
         return self
 
-    def assign(self, frame, dets, miniou=0.5, minconf=0.2, maxconf=0.8, maxhistory=30):
+    def assign(self, frame, dets, miniou=0.5, minconf=0.2, maxconf=0.8, maxhistory=30, dupecheck=True):
         """Assign a list of vipy.object.Detections at frame k to scene by greedy track association. In-place update."""
         assert dets is None or all([isinstance(d, vipy.object.Detection) or isinstance(d, vipy.activity.Activity) for d in tolist(dets)]), "invalid input"
         assert frame >= 0 and miniou >= 0 and miniou <= 1.0 and minconf >= 0 and minconf <= 1.0 and maxconf >= 0 and maxconf <= 1.0, "invalid input"
@@ -2163,36 +2168,62 @@ class Scene(VideoCategory):
         if dets is None:
             return self
         dets = tolist(dets)
-        
+
         if any([d.confidence() is None for d in dets]):
             warnings.warn('Removing %d detections with no confidence' % len([d.confidence() is None for d in dets]))
-            dets = [d for d in dets if d.confidence() is not None]        
+            dets = [d for d in dets if d.confidence() is not None]
         objdets = [d for d in dets if isinstance(d, vipy.object.Detection)]
         activitydets = [d for d in dets if isinstance(d, vipy.activity.Activity)]        
-        
+                
         # Track propagation
-        t_ref = self.clone().tracks()
+        t_ref = self.clone().tracks()  # must be cloned to not propagate in self
         for t in t_ref.values():
-            if (frame - t.endframe()) < maxhistory:
-                t.add(frame, t.linear_extrapolation(frame), strict=False)  # track prediction, otherwise death
+            if (frame - t.endframe()) < maxhistory:  # only predict for tracks less than maxhistory frames old with no new assignments
+                t.add(frame, t.linear_extrapolation(frame), strict=False)  # future track prediction
 
+        # SANITY CHECK
+        #assert all([t.during(frame) for t in t_ref.values()])
+        #for ti in t_ref.values():
+        #    for tj in t_ref.values():
+        #        if ti.id() != tj.id() and ti.category() == tj.category()  and ti.during(frame) and tj.during(frame) and ti[frame].iou(tj[frame]) > 0.8:
+        #            raise ValueError("Duplicate track propagation")
+
+        #self.frame(max(0, frame-1)).show(figure=100)
+        #vc = self.clone()
+        #vc._tracks = t_ref
+        #import numpy as np
+        #vc.frame(frame).objectmap(lambda o: o.translate((np.random.rand()-0.5)*50, (np.random.rand()-0.5)*50)).show(figure=101)        
+        #breakpoint()
+        
         # Track assignment
-        assignments = [(t, d.confidence(), d.iou(t.linear_extrapolation(frame)), d)
+        assignments = [(t, d.confidence(), d.iou(t[frame]), d)
                        for (tid, t) in t_ref.items()
                        for d in objdets
-                       if (t.during(frame) or (frame - t.endframe()) < maxhistory) and t.category() == d.category()]
+                       if t.during(frame) and t.category() == d.category()]
         assigned = []        
-        for (t, conf, iou, d) in sorted(assignments, key=lambda x: x[1]*x[2], reverse=True):
+        for (t, conf, iou, d) in sorted(assignments, key=lambda x: (x[1]+min([d.confidence() for d in objdets]))*x[2], reverse=True):
             if (iou > miniou) and (conf > minconf):
-                if t.id() not in assigned:
-                    self.track(t.id()).add(frame, d)  # track assignment
-                assigned.append(t.id())
-                assigned.append(d.id())
+                if t.id() not in assigned and d.id() not in assigned:  # one-to-one
+                    self.track(t.id()).add(frame, d)  # track assignment in self
+                    assigned.append(t.id())
+                    assigned.append(d.id())
 
         # Track construction from unassigned detections
         for d in objdets:
             if d.confidence() >= maxconf and d.id() not in assigned:
                 self.add(vipy.object.Track(keyframes=[frame], boxes=[d], category=d.category(), framerate=self.framerate(), confidence=d.confidence()), rangecheck=False)
+                    
+        # Sanity check: before assignment there should not be duplicate object detections, after assignment there should not be duplicate tracks
+        if dupecheck:
+            for i in range(len(objdets)):
+                for j in range(i+1, len(objdets)):
+                    if objdets[i].iou(objdets[j]) > 0.8 and objdets[i].category() == objdets[j].category():
+                        raise ValueError('Duplicate detections  %s and %s in frame %d' % (str(objdets[i]), str(objdets[j]), frame))
+            
+            for ti in self.tracks().keys():
+                for tj in self.tracks().keys():
+                    if ti != tj and self.track(ti).category() == self.track(tj).category()  and self.track(ti).during(frame) and self.track(tj).during(frame) and self.track(ti)[frame].iou(self.track(tj)[frame]) > 0.8:
+                        raise ValueError("Duplicate tracks '%s' and '%s' in frame %d for trackids (%s, %s)" % (str(self.track(ti)[frame]),  str(self.track(tj)[frame]), frame, ti, tj))
 
         # Activity assignment
         assert len(activitydets) == 0 or all([d.actorid() in self.tracks() for d in activitydets]), "Invalid activity"

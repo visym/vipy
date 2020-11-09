@@ -178,7 +178,7 @@ class Image(object):
         for im in imlist:
             imu = im.clone().uncrop(im.attributes['tile']['crop'], im.attributes['tile']['shape'])
             imc = imc.splat(imu, imu.attributes['tile']['crop']) if imc is not None else imu.clone()
-            imc = imc.union(imu)            
+            imc = imc.union(imu)
         return imc
     
     def uncrop(self, bb, shape):
@@ -1145,6 +1145,7 @@ class Image(object):
 
     def annotate(self, timestamp=None, timestampcolor='black', timestampfacecolor='white', mutator=None):
         """Change pixels of this image to include rendered annotation and return an image object"""
+        # FIXME: for k in range(0,10): self.annotate().show(figure=k), this will result in cumulative figures
         return self.array(self.savefig(timestamp=timestamp, timestampcolor=timestampcolor, timestampfacecolor=timestampfacecolor, mutator=mutator).rgb().array()).downcast()
 
     def savefig(self, filename=None, figure=1, timestamp=None, timestampcolor='black', timestampfacecolor='white', mutator=None):
@@ -1406,14 +1407,14 @@ class Scene(ImageCategory):
         """Return a Scene() containing the objects in both self and other, that overlap by miniou with greedy assignment"""
         assert isinstance(other, Scene), "Invalid input"
         v = self.clone()
-        v._objectlist = [v._objectlist[k] for (k,d) in enumerate(greedy_assignment(v.objects(), other.objects(), miniou)) if d is not None]
+        v._objectlist = [v._objectlist[k] for (k,d) in enumerate(greedy_assignment(v.objects(), other.objects(), miniou, bycategory=True)) if d is not None]
         return v
 
     def difference(self, other, miniou):
         """Return a Scene() containing the objects in self but not other, that overlap by miniou with greedy assignment"""
         assert isinstance(other, Scene), "Invalid input"
         v = self.clone()
-        v._objectlist = [v._objectlist[k] for (k,d) in enumerate(greedy_assignment(self.objects(), other.objects(), miniou)) if d is None]
+        v._objectlist = [v._objectlist[k] for (k,d) in enumerate(greedy_assignment(self.objects(), other.objects(), miniou, bycategory=True)) if d is None]
         return v
         
     def union(self, other, miniou=None):
@@ -1867,7 +1868,7 @@ class ImageDetection(Scene, BoundingBox):
 def mutator_show_trackid(n_digits_in_trackid=5):
     """Mutate the image to show track ID with a fixed number of digits appended to the shortlabel as (####)"""
     return lambda im: (im.objectmap(lambda o: o.shortlabel('%s (%s)' % (o.shortlabel(), o.attributes['trackid'][0:n_digits_in_trackid]))
-                                    if o.hasattribute('trackid') else o))    
+                                    if o.hasattribute('trackid') else o))
 
 def mutator_show_userstring(strlist):
     """Mutate the image to show user supplied strings in the shortlabel.  The list be the same length oas the number of objects in the image.  This is not checked.  This is passed to show()"""
