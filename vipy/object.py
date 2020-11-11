@@ -521,7 +521,7 @@ class Track(object):
         self._keyboxes = [bb.clone().medianshape(bbnbrs) for (bb, bbnbrs) in zip(self._keyboxes, chunklistwithoverlap(self._keyboxes, width, width-1))]
         return self
 
-    def spline(self, smoothingfactor=None, strict=True):
+    def spline(self, smoothingfactor=None, strict=True, startframe=None, endframe=None):
         """Track smoothing by cubic spline fit, will return resampled dt=1 track.  Smoothing factor will increase with smoothing > 1 and decrease with 0 < smoothing < 1
         
            This function requires optional package scipy
@@ -529,6 +529,7 @@ class Track(object):
         try_import('scipy', 'scipy');  import scipy.interpolate;
         assert smoothingfactor is None or smoothingfactor > 0
         t = self.clone().resample(dt=1)
+        (startframe, endframe) = (self.startframe() if startframe is None else startframe, self.endframe() if endframe is None else endframe)
         try:
             assert len(t._keyframes) > 4, "Invalid length for spline interpolation"        
             s = smoothingfactor * len(self._keyframes) if smoothingfactor is not None else None
@@ -537,7 +538,7 @@ class Track(object):
             f_ymin = scipy.interpolate.UnivariateSpline(t._keyframes, ymin, check_finite=False, s=s)
             f_xmax = scipy.interpolate.UnivariateSpline(t._keyframes, xmax, check_finite=False, s=s)
             f_ymax = scipy.interpolate.UnivariateSpline(t._keyframes, ymax, check_finite=False, s=s)
-            (self._keyframes, self._keyboxes) = zip(*[(k, BoundingBox(xmin=float(f_xmin(k)), ymin=float(f_ymin(k)), xmax=float(f_xmax(k)), ymax=float(f_ymax(k)))) for k in range(self.startframe(), self.endframe())])
+            (self._keyframes, self._keyboxes) = zip(*[(k, BoundingBox(xmin=float(f_xmin(k)), ymin=float(f_ymin(k)), xmax=float(f_xmax(k)), ymax=float(f_ymax(k)))) for k in range(startframe, endframe)])
         except Exception as e:
             if not strict:
                 print('[vipy.object.track]: spline smoothing failed with error "%s" - Returning unsmoothed track' % (str(e)))

@@ -1,4 +1,5 @@
 import os
+import sys
 import dill
 from vipy.globals import print
 from vipy.util import remkdir, tempMP4, isurl, \
@@ -225,7 +226,11 @@ class Video(object):
         return self.filename(filename)                
         
     def stream(self, write=False, overwrite=False):
-        """Iterator to yield frames streaming from video"""
+        """Iterator to yield frames streaming from video
+        
+           * Using this iterator may affect PDB debugging due to stdout/stdin redirection.  Use ipdb instead.
+
+        """
 
         class Stream(object):
             def __init__(self, v):
@@ -2169,6 +2174,8 @@ class Scene(VideoCategory):
             return self
         dets = tolist(dets)
 
+
+
         if any([d.confidence() is None for d in dets]):
             warnings.warn('Removing %d detections with no confidence' % len([d.confidence() is None for d in dets]))
             dets = [d for d in dets if d.confidence() is not None]
@@ -2181,28 +2188,14 @@ class Scene(VideoCategory):
             if (frame - t.endframe()) < maxhistory:  # only predict for tracks less than maxhistory frames old with no new assignments
                 t.add(frame, t.linear_extrapolation(frame), strict=False)  # future track prediction
 
-        # SANITY CHECK
-        #assert all([t.during(frame) for t in t_ref.values()])
-        #for ti in t_ref.values():
-        #    for tj in t_ref.values():
-        #        if ti.id() != tj.id() and ti.category() == tj.category()  and ti.during(frame) and tj.during(frame) and ti[frame].iou(tj[frame]) > 0.8:
-        #            raise ValueError("Duplicate track propagation")
-
-        #self.frame(max(0, frame-1)).show(figure=100)
-        #vc = self.clone()
-        #vc._tracks = t_ref
-        #import numpy as np
-        #vc.frame(frame).objectmap(lambda o: o.translate((np.random.rand()-0.5)*50, (np.random.rand()-0.5)*50)).show(figure=101)        
-        #breakpoint()
-        
         # Track assignment
-        assignments = [(t, d.confidence(), d.iou(t[frame]), d)
+        assignments = [(t, d.confidence(), d.iou(t[frame]), d.shapeiou(t[frame]), d)
                        for (tid, t) in t_ref.items()
                        for d in objdets
                        if t.during(frame) and t.category() == d.category()]
         assigned = []        
-        for (t, conf, iou, d) in sorted(assignments, key=lambda x: (x[1]+min([d.confidence() for d in objdets]))*x[2], reverse=True):
-            if (iou > miniou) and (conf > minconf):
+        for (t, conf, iou, shapeiou, d) in sorted(assignments, key=lambda x: (x[1]+min([d.confidence() for d in objdets])*(x[2]+x[3])), reverse=True):
+            if (iou > miniou) and (shapeiou > miniou) and (conf > minconf):
                 if t.id() not in assigned and d.id() not in assigned:  # one-to-one
                     self.track(t.id()).add(frame, d)  # track assignment in self
                     assigned.append(t.id())
