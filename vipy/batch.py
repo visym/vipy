@@ -81,7 +81,7 @@ class Dask(object):
         webbrowser.open(self._client.dashboard_link) if len(self._client.dashboard_link)>0 else None
     
     def num_processes(self):
-        return self._num_processes
+        return len(self._client.nthreads()) if self._client is not None else 0
 
     def shutdown(self):
         self._client.close()

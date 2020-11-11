@@ -134,6 +134,14 @@ def dask(num_processes=None, num_gpus=None, dashboard=False, address=None, pct=N
         GLOBAL['DASK_CLIENT'] = Dask(num_processes, dashboard=dashboard, verbose=isverbose(), address=address, num_gpus=num_gpus)        
     return GLOBAL['DASK_CLIENT']
 
+def parallel(n=None):
+    """Enable parallel processing with n>=1 processes"""
+    if n is None:
+        return GLOBAL['DASK_CLIENT'].num_processes() if GLOBAL['DASK_CLIENT'] is not None else 0
+    else:
+        assert isinstance(n, int) and n>=1
+        return dask(num_processes=n)
+        
 def noparallel():
     """Disable all parallel processing"""
     GLOBAL['DASK_CLIENT'] = None 

@@ -93,15 +93,12 @@ class KF1(object):
 
         if verbose:
             print('[vipy.dataset.meva.KF1]: Loading %d YAML files' % len(yamlfiles))
-            if len(yamlfiles) > 100 and vipy.globals.max_workers() == 1: 
-                print('[vipy.dataset.meva.KF1]: This takes a while since parsing YAML files in python is painfully slow, consider calling "vipy.globals.max_workers(n)" for n>1 before loading the dataset for parallel parsing')
+            if len(yamlfiles) > 100 and vipy.globals.parallel() <= 1:
+                print('[vipy.dataset.meva.KF1]: This takes a while since parsing YAML files in python is painfully slow, consider calling "vipy.globals.parallel(n)" for n>1 before loading the dataset for parallel parsing')
 
-        # Parallel video annotation
-        if vipy.globals.max_workers() > 1:
-            from vipy.batch import Batch
-            self._vidlist = Batch(list(yamlfiles)).map(lambda tga: self._parse_video(d_videoname_to_path, d_category_to_shortlabel, tga[0], tga[1], tga[2], stride=stride, verbose=verbose, actor=actor)).result()
-        else:
-            self._vidlist = [self._parse_video(d_videoname_to_path, d_category_to_shortlabel, t, g, a, stride=stride, verbose=verbose, actor=actor) for (t,g,a) in yamlfiles]
+        # Parallel video annotation:  set vipy.globals.parallel(n) for n parallel workers for the Batch() processing
+        from vipy.batch import Batch
+        self._vidlist = Batch(list(yamlfiles)).map(lambda tga: self._parse_video(d_videoname_to_path, d_category_to_shortlabel, tga[0], tga[1], tga[2], stride=stride, verbose=verbose, actor=actor)).result()
         self._vidlist = [v for v in self._vidlist if v is not None]
 
         # Merge and dedupe activities and tracks across YAML files for same video, using temporal and spatial IoU association.
