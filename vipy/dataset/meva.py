@@ -254,7 +254,7 @@ class KF1(object):
                 elif v['id1'] not in d_id1_to_track:
                     d_id1_to_track[v['id1']] = Track(category=d_id1_to_category[v['id1']], framerate=framerate, keyframes=[keyframe], boxes=[bbox], boundary='strict')
                 else:
-                    d_id1_to_track[v['id1']].add(keyframe=keyframe, box=bbox)
+                    d_id1_to_track[v['id1']].add(keyframe=keyframe, bbox=bbox)
                 
         # Add tracks to scene
         for (k,v) in d_id1_to_track.items():

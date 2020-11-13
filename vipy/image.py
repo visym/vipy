@@ -933,7 +933,7 @@ class Image(object):
                 self._array = np.uint8(255 * self.array())   # float32 RGB [0,1] -> uint8 RGB [0,255]
                 self.colorspace('rgb')
             else:
-                self._array = (1.0 / 255.0) * np.array(PIL.Image.fromarray(np.uint8(255 * self.array())).convert('L')).astype(np.float32)  # float32 RGB [0,1] -> float32 gray [0,1]                
+                self._array = (1.0 / 255.0) * np.array(PIL.Image.fromarray(np.uint8(255 * np.squeeze(self.array()))).convert('L')).astype(np.float32)  # float32 RGB [0,1] -> float32 gray [0,1]                
                 self.colorspace('grey')
             self._convert(to)
         elif self.colorspace() is None:
@@ -1574,19 +1574,22 @@ class Scene(ImageCategory):
         return immask
 
     def binarymask(self):
-        """Alias for rectangular_mask"""
-        return self.rectangular_mask()
-
+        """Alias for rectangular_mask with in-place update"""
+        mask = self.rectangular_mask() if self.channels() == 1 else np.expand_dims(self.rectangular_mask(), axis=2)
+        img = self.numpy()
+        img[:] = mask[:]  # in-place update
+        return self
+        
     def bgmask(self):
         """Set all pixels outside the bounding box to zero"""
-        mask = self.binarymask() if self.channels() == 1 else np.expand_dims(self.binarymask(), axis=2)
+        mask = self.rectangular_mask() if self.channels() == 1 else np.expand_dims(self.rectangular_mask(), axis=2)
         img = self.numpy()
         img[:] = np.multiply(img, mask)  # in-place update
         return self  
 
     def fgmask(self):
         """Set all pixels inside the bounding box to zero"""
-        mask = self.binarymask() if self.channels() == 1 else np.expand_dims(self.binarymask(), axis=2)
+        mask = self.rectangular_mask() if self.channels() == 1 else np.expand_dims(self.rectangular_mask(), axis=2)
         img = self.numpy()
         img[:] = np.multiply(img, 1.0-mask)  # in-place update
         return self  
@@ -1596,14 +1599,14 @@ class Scene(ImageCategory):
     def pixelmask(self, pixelsize=8):
         """Replace pixels within all foreground objects with a privacy preserving pixelated foreground with larger pixels"""
         assert pixelsize > 1, "Pixelsize is a scale factor such that pixels within the foreground are pixelsize times larger than the background"
-        (img, mask) = (self.numpy(), self.binarymask())  # force writeable
+        (img, mask) = (self.numpy(), self.rectangular_mask())  # force writeable
         img[mask > 0] = self.clone().rescale(1.0/pixelsize, interp='nearest').resize_like(self, interp='nearest').numpy()[mask > 0]  # in-place update
         return self
 
     def blurmask(self, radius=7):
         """Replace pixels within all foreground objects with a privacy preserving blurred foreground"""
         assert radius > 1, "Pixelsize is a scale factor such that pixels within the foreground are pixelsize times larger than the background"
-        (img, mask) = (self.numpy(), self.binarymask())  # force writeable
+        (img, mask) = (self.numpy(), self.rectangular_mask())  # force writeable
         img[mask > 0] = self.clone().blur(radius).numpy()[mask > 0]  # in-place update
         return self
 
@@ -1622,7 +1625,7 @@ class Scene(ImageCategory):
     def meanmask(self):
         """Replace pixels within the foreground objects with the mean pixel color"""
         img = self.numpy()  # force writeable
-        img[self.binarymask() > 0] = self.meanchannel()  # in-place update
+        img[self.rectangular_mask() > 0] = self.meanchannel()  # in-place update
         return self
 
     def bghash(self, bits=128, asbinary=False, asbytes=False):

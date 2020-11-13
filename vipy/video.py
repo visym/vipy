@@ -537,8 +537,8 @@ class Video(object):
 
     def fromframes(self, framelist):
         """Create a video from a list of frames"""
-        assert all([isinstance(im, vipy.image.Image) for im in framelist])        
-        return self.array(np.stack([im.array() for im in framelist]), copy=True).colorspace(framelist[0].colorspace())
+        assert all([isinstance(im, vipy.image.Image) for im in framelist]), "Invalid input"
+        return self.array(np.stack([im.array() if im.array().ndim == 3 else np.expand_dims(im.array(), 2) for im in framelist]), copy=True).colorspace(framelist[0].colorspace())
     
     def tonumpy(self):
         """Alias for numpy()"""
@@ -1134,9 +1134,11 @@ class Video(object):
 
     def torch(self, startframe=0, endframe=None, length=None, stride=1, take=None, boundary='repeat', order='nchw', verbose=False, withslice=False, scale=1.0):
         """Convert the loaded video of shape N HxWxC frames to an MxCxHxW torch tensor, forces a load().
-           Order of arguments is (startframe, endframe) or (startframe, startframe+length) or (random_startframe, random_starframe+takelength), then stride or take.
-           Follows numpy slicing rules.  Optionally return the slice used if withslice=True
-           Returns float tensor in the range [0,1] following torchvision.transforms.ToTensor()           
+
+           * Order of arguments is (startframe, endframe) or (startframe, startframe+length) or (random_startframe, random_starframe+takelength), then stride or take.
+           * Follows numpy slicing rules.  Optionally return the slice used if withslice=True
+           * Returns float tensor in the range [0,1] following torchvision.transforms.ToTensor()           
+           * order can be ['nchw', 'nhwc', 'cnhw'] for batchsize=n, channels=c, height=h, width=w
         """
         try_import('torch'); import torch
         frames = self.load().numpy() if self.iscolor() else np.expand_dims(self.load().numpy(), 3)
@@ -1182,6 +1184,10 @@ class Video(object):
             t = t.permute(0,3,1,2)  # NxCxHxW
         elif order == 'nhwc':
             pass  # NxHxWxC  (native numpy order)
+        elif order == 'cnhw' or order == 'cdhw':
+            t = t.permute(3,0,1,2)  # CxNxHxW == CxDxHxW (for torch conv3d)           
+        elif order == 'chwn':
+            t = t.permute(3,1,2,0)  # CxHxWxN
         else:
             raise ValueError("Invalid order = must be in ['nchw', 'nhwc']")
             
@@ -1263,11 +1269,20 @@ class Video(object):
             self.colorspace('float')  # unknown colorspace after shape or type transformation, set generic
         return self
 
-    def normalize(self, mean, std, scale=1.0):
+    def gain(self, g):
+        """Pixelwise multiplicative gain, such that each pixel p_{ij} = g * p_{ij}"""
+        return self.normalize(0, 1, scale=g)
+
+    def bias(self, b):
+        """Pixelwise additive bias, such that each pixel p_{ij} = b + p_{ij}"""
+        return self.normalize(mean=0, std=1, scale=1.0, bias=b)
+    
+    def normalize(self, mean, std, scale=1.0, bias=0):
         """Pixelwise whitening, out = ((scale*in) - mean) / std); triggers load()"""
-        self._array = (((scale*self.load()._array) - np.array(mean)) / np.array(std)).astype(np.float32)
-        self.colorspace('float')
-        return self
+        assert scale >= 0, "Invalid input"
+        assert std > 0, "Invalid input"
+        self._array = ((((scale*self.load()._array) - np.array(mean)) / np.array(std)).astype(np.float32)) + bias
+        return self.colorspace('float')
 
     def setattribute(self, k, v=None):
         if self.attributes is None:
@@ -1680,7 +1695,7 @@ class Scene(VideoCategory):
             self._tracks[t.id()] = t
             return t.id()
         elif isinstance(obj, vipy.object.Track):
-            if rangecheck and not vipy.geometry.imagebox(self.shape()).inside(obj.boundingbox()):
+            if rangecheck and not obj.boundingbox().isinside(vipy.geometry.imagebox(self.shape())):
                 obj = obj.imclip(self.width(), self.height())  # try to clip it, will throw exception if all are bad 
                 warnings.warn('Clipping track "%s" to image rectangle' % (str(obj)))
             self._tracks[obj.id()] = obj
@@ -1694,7 +1709,7 @@ class Scene(VideoCategory):
         elif (istuple(obj) or islist(obj)) and len(obj) == 4 and isnumber(obj[0]):
             assert self._currentframe is not None, "add() for obj=xywh must be added during frame iteration (e.g. for im in video: )"
             t = vipy.object.Track(category=category, keyframes=[self._currentframe], boxes=[vipy.geometry.BoundingBox(xywh=obj)], boundary='strict', attributes=attributes)
-            if rangecheck and not vipy.geometry.imagebox(self.shape()).inside(t.boundingbox()):
+            if rangecheck and not t.boundingbox().isinside(vipy.geometry.imagebox(self.shape())):
                 t = t.imclip(self.width(), self.height())  # try to clip it, will throw exception if all are bad 
                 warnings.warn('Clipping track "%s" to image rectangle' % (str(t)))
             self._tracks[t.id()] = t
@@ -2138,6 +2153,11 @@ class Scene(VideoCategory):
             im.pixelmask(pixelsize)  # shared numpy array
         return self
 
+    def binarymask(self):
+        """Replace all pixels in background with zero and foreground with 1, requires clone() and load() conversion to single channel luminance() video"""
+        v = self.clone()
+        return v.fromframes([im.lum().binarymask() for im in v])  
+    
     def meanmask(self):
         """Replace all pixels in foreground boxes with mean color"""        
         for im in self:
