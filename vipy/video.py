@@ -1280,7 +1280,7 @@ class Video(object):
     def normalize(self, mean, std, scale=1.0, bias=0):
         """Pixelwise whitening, out = ((scale*in) - mean) / std); triggers load()"""
         assert scale >= 0, "Invalid input"
-        assert std > 0, "Invalid input"
+        assert all([s > 0 for s in tolist(std)]), "Invalid input"
         self._array = ((((scale*self.load()._array) - np.array(mean)) / np.array(std)).astype(np.float32)) + bias
         return self.colorspace('float')
 
@@ -1799,9 +1799,13 @@ class Scene(VideoCategory):
         return [vid.clone().setattribute('activityindex', k).activities(pa).tracks(t) for (k,(pa,t)) in enumerate(zip(activities, tracks))]
 
     def tracksplit(self):
-        """Split the scene into k separate scenes, one for each track"""
+        """Split the scene into k separate scenes, one for each track.  Each video starts at frame 0."""
         return [self.clone().trackfilter(lambda t: t.id() == tid).activityfilter(lambda a: a.hastrack(tid)) for tid in self.tracks().keys()]
-        
+
+    def trackclip(self):
+        """Split the scene into k separate scenes, one for each track.  Each video starts and ends when the track starts and ends"""
+        return [t.clip(t.track(t.actorid()).startframe(), t.track(t.actorid()).endframe()) for t in self.tracksplit()]
+    
     def activityclip(self, padframes=0, multilabel=True):
         """Return a list of vipy.video.Scene() each clipped to be temporally centered on a single activity, with an optional padframes before and after.  
            The Scene() category is updated to be the activity, and only the objects participating in the activity are included.
