@@ -1403,11 +1403,11 @@ class Scene(ImageCategory):
         """Non-maximum supporession of objects() by category based on confidence and spatial IoU and cover thresholds"""
         return self.objects( vipy.object.non_maximum_suppression(self.objects(), conf, iou, cover=cover, bycategory=True) )
 
-    def intersection(self, other, miniou):
+    def intersection(self, other, miniou, bycategory=True):
         """Return a Scene() containing the objects in both self and other, that overlap by miniou with greedy assignment"""
         assert isinstance(other, Scene), "Invalid input"
         v = self.clone()
-        v._objectlist = [v._objectlist[k] for (k,d) in enumerate(greedy_assignment(v.objects(), other.objects(), miniou, bycategory=True)) if d is not None]
+        v._objectlist = [v._objectlist[k] for (k,d) in enumerate(greedy_assignment(v.objects(), other.objects(), miniou, bycategory=bycategory)) if d is not None]
         return v
 
     def difference(self, other, miniou):
@@ -1545,7 +1545,7 @@ class Scene(ImageCategory):
         return self.crop(BoundingBox(xcentroid=float(self.width() / 2.0), ycentroid=float(self.height() / 2.0), width=int(width), height=int(height)))
 
     def cornercrop(self, height, width):
-        """Crop image of size (height x width) from the upper left corner"""
+        """Crop image of size (height x width) from the upper left corner, returning valid pixels only"""
         return self.crop(BoundingBox(xmin=0, ymin=0, width=int(width), height=int(height)))
     
     def padcrop(self, bbox):
@@ -1557,6 +1557,10 @@ class Scene(ImageCategory):
         (dx, dy) = (bbox.xmin(), bbox.ymin())
         self._objectlist = [bb.translate(-dx, -dy) for bb in self._objectlist]
         return self
+
+    def cornerpadcrop(self, height, width):
+        """Crop image of size (height x width) from the upper left corner, returning zero padded result out to (height, width)"""
+        return self.padcrop(BoundingBox(xmin=0, ymin=0, width=width, height=height))
     
     # Image export
     def rectangular_mask(self, W=None, H=None):
