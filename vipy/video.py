@@ -828,11 +828,14 @@ class Video(object):
     def clip(self, startframe, endframe):
         """Load a video clip betweeen start and end frames"""
         assert startframe <= endframe and startframe >= 0, "Invalid start and end frames (%s, %s)" % (str(startframe), str(endframe))
-        assert not self.isloaded(), "Filters can only be applied prior to load() - Try calling flush() first"
-        self._ffmpeg = self._ffmpeg.trim(start_frame=startframe, end_frame=endframe)\
-                                   .setpts('PTS-STARTPTS')  # reset timestamp to 0 after trim filter
-        self._startframe = startframe if self._startframe is None else self._startframe + startframe  # for __repr__ only
-        self._endframe = endframe if self._endframe is None else self._startframe + (endframe-startframe)  # for __repr__ only
+        if not self.isloaded():
+            self._ffmpeg = self._ffmpeg.trim(start_frame=startframe, end_frame=endframe)\
+                                       .setpts('PTS-STARTPTS')  # reset timestamp to 0 after trim filter
+            self._startframe = startframe if self._startframe is None else self._startframe + startframe  # for __repr__ only
+            self._endframe = endframe if self._endframe is None else self._startframe + (endframe-startframe)  # for __repr__ only
+        else:
+            self._array = self._array[startframe:endframe]
+            (self._startframe, self._endframe) = (0, endframe-startframe)
         return self
 
     def cliptime(self, startsec, endsec):
@@ -1141,7 +1144,7 @@ class Video(object):
            * order can be ['nchw', 'nhwc', 'cnhw'] for batchsize=n, channels=c, height=h, width=w
         """
         try_import('torch'); import torch
-        frames = self.load().numpy() if self.iscolor() else np.expand_dims(self.load().numpy(), 3)
+        frames = self.load().numpy() if self.load().numpy().ndim == 4 else np.expand_dims(self.load().numpy(), 3)  # NxHxWx(C=1, C=3)
         assert boundary in ['repeat', 'strict'], "Invalid boundary mode - must be in ['repeat', 'strict']"
 
         # Slice index (i=start, j=end, k=step)
@@ -1180,6 +1183,8 @@ class Video(object):
 
         # Slice and transpose to torch tensor axis ordering
         t = torch.from_numpy(frames[i:j:k])
+        if t.dim() == 2:
+            t = t.unsqueeze(0).unsqueeze(-1)  # HxW -> (N=1)xHxWx(C=1)
         if order == 'nchw':
             t = t.permute(0,3,1,2)  # NxCxHxW
         elif order == 'nhwc':
@@ -1808,11 +1813,12 @@ class Scene(VideoCategory):
     
     def activityclip(self, padframes=0, multilabel=True):
         """Return a list of vipy.video.Scene() each clipped to be temporally centered on a single activity, with an optional padframes before and after.  
-           The Scene() category is updated to be the activity, and only the objects participating in the activity are included.
-           Activities are returned ordered in the temporal order they appear in the video.
-           The returned vipy.video.Scene() objects for each activityclip are clones of the video, with the video buffer flushed.
-           Each activityclip() is associated with each activity in the scene, and includes all other secondary activities that the objects in the primary activity also perform (if multilabel=True).  See activityclip().labels(). 
-           Calling activityclip() on activityclip(multilabel=True) can result in duplicate activities, due to the overlapping secondary activities being included in each clip.  Be careful. 
+           
+           * The Scene() category is updated to be the activity, and only the objects participating in the activity are included.
+           * Activities are returned ordered in the temporal order they appear in the video.
+           * The returned vipy.video.Scene() objects for each activityclip are clones of the video, with the video buffer flushed.
+           * Each activityclip() is associated with each activity in the scene, and includes all other secondary activities that the objects in the primary activity also perform (if multilabel=True).  See activityclip().labels(). 
+           * Calling activityclip() on activityclip(multilabel=True) can result in duplicate activities, due to the overlapping secondary activities being included in each clip.  Be careful. 
         """
         vid = self.clone(flushforward=True)
         if any([(a.endframe()-a.startframe()) <= 0 for a in vid.activities().values()]):
@@ -1917,19 +1923,22 @@ class Scene(VideoCategory):
         
     def clip(self, startframe, endframe):
         """Clip the video to between (startframe, endframe).  This clip is relative to clip() shown by __repr__().  Return a clone of the video for idempotence"""
-        v = self.clone()
-
-        # -- Copied from super().clip() to allow for clip on clone (for indempotence)
-        # -- This code copy is used to avoid super(Scene, self.clone()) which screws up class inheritance for iPython reload
         assert startframe <= endframe and startframe >= 0, "Invalid start and end frames (%s, %s)" % (str(startframe), str(endframe))
-        assert not v.isloaded(), "Filters can only be applied prior to load() - Try calling flush() first"
-        v._ffmpeg = v._ffmpeg.trim(start_frame=startframe, end_frame=endframe).setpts('PTS-STARTPTS')  # reset timestamp to 0 after trim filter
-        v._startframe = startframe if v._startframe is None else v._startframe + startframe  # for __repr__ only
-        v._endframe = endframe if v._endframe is None else v._startframe + (endframe-startframe)  # for __repr__ only
-        # -- end copy
 
-        v._tracks = {k:t.offset(dt=-startframe).truncate(startframe=0, endframe=endframe-startframe) for (k,t) in v._tracks.items()}   # may be empty
-        v._activities = {k:a.offset(dt=-startframe).truncate(startframe=0, endframe=endframe-startframe) for (k,a) in v._activities.items()}        
+        v = self.clone()
+        if not v.isloaded():
+            # -- Copied from super().clip() to allow for clip on clone (for indempotence)
+            # -- This code copy is used to avoid super(Scene, self.clone()) which screws up class inheritance for iPython reload
+            assert not v.isloaded(), "Filters can only be applied prior to load() - Try calling flush() first"
+            v._ffmpeg = v._ffmpeg.trim(start_frame=startframe, end_frame=endframe).setpts('PTS-STARTPTS')  # reset timestamp to 0 after trim filter
+            v._startframe = startframe if v._startframe is None else v._startframe + startframe  # for __repr__ only
+            v._endframe = endframe if v._endframe is None else v._startframe + (endframe-startframe)  # for __repr__ only
+            # -- end copy
+        else:
+            v._array = self._array[startframe:endframe]
+            (v._startframe, v._endframe) = (0, endframe-startframe)
+            v._tracks = {k:t.offset(dt=-startframe).truncate(startframe=0, endframe=endframe-startframe) for (k,t) in v._tracks.items()}   # may be empty
+            v._activities = {k:a.offset(dt=-startframe).truncate(startframe=0, endframe=endframe-startframe) for (k,a) in v._activities.items()}        
         return v  
 
     def cliptime(self, startsec, endsec):
@@ -2160,7 +2169,7 @@ class Scene(VideoCategory):
     def binarymask(self):
         """Replace all pixels in background with zero and foreground with 1, requires clone() and load() conversion to single channel luminance() video"""
         v = self.clone()
-        return v.fromframes([im.lum().binarymask() for im in v])  
+        return v.fromframes([im.binarymask().channel(0).float() for im in v])  
     
     def meanmask(self):
         """Replace all pixels in foreground boxes with mean color"""        

@@ -164,7 +164,7 @@ class Image(object):
         """Generate a list of tiled image"""
         assert tilewidth > 0 and tileheight > 0 and overlaprows >= 0 and overlapcols >= 0, "Invalid input"
         assert self.width() >= tilewidth-overlapcols and self.height() >= tileheight-overlaprows, "Invalid input" 
-        bboxes = [BoundingBox(xmin=i, ymin=j, width=min(tilewidth, self.width()-i), height=min(tileheight, self.height()-j)) for i in range(0, self.width(), tilewidth-overlapcols) for j in range(0, self.height(), tileheight-overlaprows)]
+        bboxes = [BoundingBox(xmin=i, ymin=j, width=min(tilewidth, self.width()-i), height=min(tileheight, self.height()-j)) for i in range(0, self.width()-overlapcols, tilewidth-overlapcols) for j in range(0, self.height()-overlaprows, tileheight-overlaprows)]
         return [self.clone().setattribute('tile', {'crop':bb, 'shape':self.shape()}).crop(bb) for bb in bboxes]
 
     def union(self, other):
@@ -194,7 +194,7 @@ class Image(object):
     def splat(self, im, bb):
         """Replace pixels within boundingbox in self with pixels in im"""
         assert isinstance(im, vipy.image.Image), "invalid image"
-        assert bb.isinterior(im.width(), im.height()) and bb.isinterior(self.width(), self.height()), "Invalid bounding box"
+        assert bb.isinterior(im.width(), im.height()) and bb.isinterior(self.width(), self.height()), "Invalid bounding box '%s'" % str(bb)
         (x,y,w,h) = bb.xywh()
         self._array[int(y):int(y+h), int(x):int(x+w)] = im.array()[int(y):int(y+h), int(x):int(x+w)]
         return self            
@@ -925,7 +925,7 @@ class Image(object):
         elif self.colorspace() == 'float':
             img = self.load().array()  # float32
             if np.max(img) > 1 or np.min(img) < 0:
-                warnings.warn('Float image will be rescaled with self.mat2gray() into the range float32 [0,1]')
+                warnings.warn('Converting float image to "%s" will be rescaled with self.mat2gray() into the range float32 [0,1]' % to)
                 img = self.mat2gray().array()
             if not self.channels() in [1,2,3]:
                 raise ValueError('Float image must be single channel or three channel RGB in the range float32 [0,1] prior to conversion')
@@ -1401,7 +1401,7 @@ class Scene(ImageCategory):
 
     def nms(self, conf, iou, cover=0.8):
         """Non-maximum supporession of objects() by category based on confidence and spatial IoU and cover thresholds"""
-        return self.objects( vipy.object.non_maximum_suppression(self.objects(), conf, iou, cover=cover, bycategory=True) )
+        return self.objects( vipy.object.non_maximum_suppression(self.objects(), conf=conf, iou=iou, cover=cover, bycategory=True) )
 
     def intersection(self, other, miniou):
         """Return a Scene() containing the objects in both self and other, that overlap by miniou with greedy assignment"""
