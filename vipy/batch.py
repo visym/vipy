@@ -263,6 +263,8 @@ class Batch(Checkpoint):
                             print('[vipy.batch]: future %s failed with error "%s" - SKIPPING' % (str(future), str(result)))
                         results.append(None)
                     k_checkpoint = k_checkpoint + 1
+                    
+                    del future, result  # distributed memory cleanup
 
                 # Save intermediate results
                 if self._checkpoint and (k_checkpoint > self._checkpointsize):
@@ -271,6 +273,9 @@ class Batch(Checkpoint):
                     vipy.util.save(results[-k_checkpoint:], pklfile)
                     k_checkpoint = 0
 
+                # Distributed memory cleanup
+                del batch
+  
             return results
 
         except KeyboardInterrupt:
