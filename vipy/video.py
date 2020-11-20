@@ -1542,7 +1542,7 @@ class Scene(VideoCategory):
         if not self.isloaded():
             self.load()  
         if animate:
-            return Video(frames=[self.quicklook(n=n, dilate=dilate, mindim=mindim, fontsize=fontsize, context=context, startframe=k, animate=False, dt=dt) for k in range(0, min(dt, len(self)))])
+            return Video(frames=[self.quicklook(n=n, dilate=dilate, mindim=mindim, fontsize=fontsize, context=context, startframe=k, animate=False, dt=dt) for k in range(0, min(dt, len(self)))], framerate=self.framerate())
         framelist = [min(int(np.round(f))+startframe, len(self)-1) for f in np.linspace(0, len(self)-1, n)]
         imframes = [self.frame(k).maxmatte()  # letterbox or pillarbox
                     if (self.frame(k).boundingbox() is None) or (context is True and (j == 0 or j == (n-1))) else
