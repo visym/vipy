@@ -245,7 +245,7 @@ class Video(object):
                 if overwrite and os.path.exists(self._outfile):
                     os.remove(self._outfile)                
                 self._shape = self._video.shape() if self._video.canload() else None  # shape for write can be defined by first frame
-                assert (write is True or overwrite is True) or self._shape is not None, "Invalid read-on;y video '%s'" % (str(v))
+                assert (write is True or overwrite is True) or self._shape is not None, "Invalid video '%s'" % (str(v))
                 
             def __enter__(self):
                 if self._write and self._shape is not None:
@@ -1937,8 +1937,8 @@ class Scene(VideoCategory):
         else:
             v._array = self._array[startframe:endframe]
             (v._startframe, v._endframe) = (0, endframe-startframe)
-            v._tracks = {k:t.offset(dt=-startframe).truncate(startframe=0, endframe=endframe-startframe) for (k,t) in v._tracks.items()}   # may be empty
-            v._activities = {k:a.offset(dt=-startframe).truncate(startframe=0, endframe=endframe-startframe) for (k,a) in v._activities.items()}        
+        v._tracks = {k:t.offset(dt=-startframe).truncate(startframe=0, endframe=endframe-startframe) for (k,t) in v._tracks.items()}   # may be empty
+        v._activities = {k:a.offset(dt=-startframe).truncate(startframe=0, endframe=endframe-startframe) for (k,a) in v._activities.items()}        
         return v  
 
     def cliptime(self, startsec, endsec):
