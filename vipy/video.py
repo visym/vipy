@@ -284,6 +284,7 @@ class Video(object):
                 return self.write(im)
 
             def clip(self, n):
+                """Stream clips of length n such that the yielded video clip contains frame(0) to frame(-n)"""
                 assert isinstance(n, int) and n>0, "Clip length must be a positive integer"
                 frames = []
                 for (k,im) in enumerate(self):
@@ -291,6 +292,16 @@ class Video(object):
                     frames.pop(0) if len(frames) >= n else None
                     yield self._video.clone().nourl().nofilename().fromframes(frames)  
                     
+            def frame(self, n=0):
+                """Stream individual frames of video with negative offset n to the stream head. If n=-30, this full return a frame 30 frames ago"""
+                assert isinstance(n, int) and n<=0, "Frame offset must be non-positive integer"
+                frames = []
+                for (k,im) in enumerate(self):
+                    frames.append(im)                    
+                    imout = frames[0]
+                    frames.pop(0) if len(frames) == abs(n) else None
+                    yield imout
+                
             def write(self, im, flush=False):
                 if self._shape is None:
                     self._shape = im.shape()
@@ -736,6 +747,9 @@ class Video(object):
 
         # Convert frame to mjpeg and pipe to stdout, used to get dimensions of video
         try:
+            # FIXME: this is inefficient for large framenum.  Need to add "-ss sec.msec" flag before input, but this can screw up clip timing.  
+            #   * the "ss" option must be provided before the input filename, and is supported by ffmpeg-python as ".input(in_filename, ss=time)"
+            timestamp_in_seconds = framenum/float(self.framerate())
             f_prepipe = self._ffmpeg.filter('select', 'gte(n,{})'.format(framenum))
             f = f_prepipe.output('pipe:', vframes=1, format='image2', vcodec='mjpeg')\
                          .global_args('-cpuflags', '0', '-loglevel', 'debug' if vipy.globals.isdebug() else 'error')
@@ -2101,7 +2115,7 @@ class Scene(VideoCategory):
                                               nocaption_withstring=nocaption_withstring).numpy() for k in range(0, len(self))]  # SLOW for large videos
 
         # Replace pixels with annotated pixels and downcast object to vipy.video.Video (since there are no more objects to show)
-        return vipy.video.Video(array=np.stack([np.array(PIL.Image.fromarray(img).convert('RGB')) for img in imgs], axis=0))
+        return vipy.video.Video(array=np.stack([np.array(PIL.Image.fromarray(img).convert('RGB')) for img in imgs], axis=0), framerate=self.framerate())
 
 
     def show(self, outfile=None, verbose=True, fontsize=10, captionoffset=(0,0), textfacecolor='white', textfacealpha=1.0, shortlabel=True, boxalpha=0.25, d_category2color={'Person':'green', 'Vehicle':'blue', 'Object':'red'}, categories=None, nocaption=False, nocaption_withstring=[], notebook=False, timestamp=None, timestampcolor='black', timestampfacecolor='white'):
@@ -2198,16 +2212,23 @@ class Scene(VideoCategory):
         self.__class__ = vipy.video.Video
         return self
 
-    def assign(self, frame, dets, miniou=0.5, minconf=0.2, maxconf=0.8, maxhistory=30, dupecheck=True):
-        """Assign a list of vipy.object.Detections at frame k to scene by greedy track association. In-place update."""
+    def assign(self, frame, dets, miniou=0.5, minconf=0.2, maxconf=0.8, maxhistory=30, mincover=0.8, dupecheck=True):
+        """Assign a list of vipy.object.Detections at frame k to scene by greedy track association. In-place update.
+        
+           * miniou [float]: the minimum box IOU and shape IOU between an existing track and a detection for measurement assignment.  
+           * minconf [float]: the minimum confidence for a detection to be considered for assignment
+           * maxconf [float]:  the track birth confidence.  New detections not assigned to a track must be above this to be born.
+           * maxhistory [int]:  the maximum propagation length of a track with no measurements.  
+           * mincover [float]:  the minimum cover between a detection and a track for the detection to be assigned
+           * dupecheck [bool]:  a sanity check to see if there are duplicate identical detections or tracks 
+        
+        """
         assert dets is None or all([isinstance(d, vipy.object.Detection) or isinstance(d, vipy.activity.Activity) for d in tolist(dets)]), "invalid input"
         assert frame >= 0 and miniou >= 0 and miniou <= 1.0 and minconf >= 0 and minconf <= 1.0 and maxconf >= 0 and maxconf <= 1.0, "invalid input"
 
         if dets is None:
             return self
         dets = tolist(dets)
-
-
 
         if any([d.confidence() is None for d in dets]):
             warnings.warn('Removing %d detections with no confidence' % len([d.confidence() is None for d in dets]))
@@ -2219,22 +2240,26 @@ class Scene(VideoCategory):
         t_ref = self.clone().tracks()  # must be cloned to not propagate in self
         for t in t_ref.values():
             if (frame - t.endframe()) < maxhistory:  # only predict for tracks less than maxhistory frames old with no new assignments
-                t.add(frame, t.linear_extrapolation(frame), strict=False)  # future track prediction
+                t.add(frame, t.nearest_keybox(frame), strict=False)  # future track prediction (zero velocity)
+        t_ref = [(t,t[frame]) for (tid, t) in t_ref.items() if t.during(frame)]
 
         # Track assignment
-        assignments = [(t, d.confidence(), d.iou(t[frame]), d.shapeiou(t[frame]), d)
-                       for (tid, t) in t_ref.items()
+        assignments = [(t, d.confidence(), d.iou(ti), d.shapeiou(ti), max(d.cover(ti), ti.cover(d)), d)
+                       for (t, ti) in t_ref
                        for d in objdets
-                       if t.during(frame) and t.category() == d.category()]
-        assigned = []        
-        for (t, conf, iou, shapeiou, d) in sorted(assignments, key=lambda x: (x[1]+min([d.confidence() for d in objdets])*(x[2]+x[3])), reverse=True):
-            if (iou > miniou) and (shapeiou > miniou) and (conf > minconf):
+                       if t.category() == d.category()]
+
+        assigned = set([])        
+        for (t, conf, iou, shapeiou, cover, d) in sorted(assignments, key=lambda x: (x[1]+min([d.confidence() for d in objdets])*(x[2]+x[3])), reverse=True):
+            if conf > minconf and iou > 0 and cover > 0:  # the highest confidence overlapping detection 
                 if t.id() not in assigned and d.id() not in assigned:  # one-to-one
                     self.track(t.id()).add(frame, d)  # track assignment in self
-                    assigned.append(t.id())
-                    assigned.append(d.id())
+                    assigned.add(t.id())  # cannot assign again to this track
+                    assigned.add(d.id())  # cannot assign again to this detection
+                if cover > mincover:
+                    assigned.add(d.id())  # this track was already assigned
 
-        # Track construction from unassigned detections
+        # Track construction from unassigned new detections
         for d in objdets:
             if d.confidence() >= maxconf and d.id() not in assigned:
                 self.add(vipy.object.Track(keyframes=[frame], boxes=[d], category=d.category(), framerate=self.framerate(), confidence=d.confidence()), rangecheck=False)
