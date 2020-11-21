@@ -452,7 +452,11 @@ class Video(object):
         return self._array[::dt][0:n]
 
     def framerate(self, fps=None):
-        """Change the input framerate for the video and update frame indexes for all annotations"""
+        """Change the input framerate for the video and update frame indexes for all annotations
+        
+           * NOTE: do not call framerate() after calling clip() as this introduces extra repeated final frames during load()
+        
+        """
         if fps is None:
             return self._framerate
         else:
@@ -1795,11 +1799,15 @@ class Scene(VideoCategory):
 
 
     def framerate(self, fps=None):
-        """Change the input framerate for the video and update frame indexes for all annotations"""
+        """Change the input framerate for the video and update frame indexes for all annotations
+
+           * NOTE: do not call framerate() after calling clip() as this introduces extra repeated final frames during load()
+        """
+        
         if fps is None:
             return self._framerate
         else:
-            assert not self.isloaded(), "Filters can only be applied prior to load() - Try calling flush() first"        
+            assert not self.isloaded(), "Filters can only be applied prior to load() - Try calling flush() first"
             self._ffmpeg = self._ffmpeg.filter('fps', fps=fps, round='up')
             self._tracks = {k:t.framerate(fps) for (k,t) in self._tracks.items()}
             self._activities = {k:a.framerate(fps) for (k,a) in self._activities.items()}        
