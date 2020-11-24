@@ -1154,7 +1154,7 @@ class Image(object):
         (W,H) = plt.figure(figure).canvas.get_width_height()  # fast
         buf = io.BytesIO()
         plt.figure(1).canvas.print_raw(buf)  # fast
-        img = np.frombuffer(buf.getvalue(), dtype=np.uint8).reshape((H, W, 4))  # RGBA
+        img = np.frombuffer(buf.getbuffer(), dtype=np.uint8).reshape((H, W, 4))  # RGBA
         vipy.show.close(figure)
         t = vipy.image.Image(array=img, colorspace='rgba')
         if filename is not None:
@@ -1698,7 +1698,7 @@ class Scene(ImageCategory):
             buf = io.BytesIO()
             (W,H) = plt.figure(num=fignum).canvas.get_width_height()  # fast(ish)
             plt.figure(num=fignum).canvas.print_raw(buf)  # fast(ish)
-            img = np.frombuffer(buf.getvalue(), dtype=np.uint8).reshape((H, W, 4))
+            img = np.frombuffer(buf.getbuffer(), dtype=np.uint8).reshape((H, W, 4))
             if figure is None:
                 vipy.show.close(plt.gcf().number)   # memory cleanup (useful for video annotation on last frame)
             return vipy.image.Image(array=img, colorspace='rgba')

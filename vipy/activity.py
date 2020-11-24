@@ -232,11 +232,11 @@ class Activity(object):
         return self
 
     def truncate(self, startframe=None, endframe=None):
+        """Truncate the activity so that it is between startframe and endframe"""
         self._startframe = self._startframe if startframe is None else max(self._startframe, startframe)
-        self._endframe = self._endframe if endframe is None else max(self._endframe, endframe)
+        self._endframe = self._endframe if endframe is None else min(self._endframe, endframe)
         return self
-        
-    
+            
     def id(self, newid=None):
         if newid is None:
             return self._id

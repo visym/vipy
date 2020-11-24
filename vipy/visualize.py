@@ -95,6 +95,8 @@ def montage(imlist, imgheight, imgwidth, gridrows=None, gridcols=None, aspectrat
 
 def videomontage(vidlist, imgheight, imgwidth, gridrows=None, gridcols=None, aspectratio=1, crop=False, skip=True, border=1, border_bgr=(128,128,128), do_flush=False, verbose=True):
     """Generate a video montage for the provided videos by creating a image montage for every frame.  This loads every video into memory, so be careful with large montages!"""
+    assert len(vidlist) > 0, "Invalid input"
+    
     if verbose:
         print('[vipy.visualize.videomontage]: Loading %d videos' % len(vidlist))
         
@@ -109,7 +111,7 @@ def videomontage(vidlist, imgheight, imgwidth, gridrows=None, gridcols=None, asp
     
     montagelist = [montage([v[k % len(v)].mindim(max(imgheight, imgwidth)).centercrop(imgheight, imgwidth) for v in vidlist], imgheight, imgwidth, gridrows, gridcols, aspectratio, crop, skip, border, border_bgr, do_flush, verbose=False)
                    for k in range(0, maxlength)]
-    return vipy.video.Video(array=np.stack([im.array() for im in montagelist]), colorspace='rgb')
+    return vipy.video.Video(array=np.stack([im.array() for im in montagelist]), colorspace='rgb', framerate=vidlist[0].framerate())
 
 
 def urls(urllist, title='URL Visualization', imagewidth=1024, outfile=None, display=False):

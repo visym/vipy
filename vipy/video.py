@@ -245,7 +245,7 @@ class Video(object):
                 if overwrite and os.path.exists(self._outfile):
                     os.remove(self._outfile)                
                 self._shape = self._video.shape() if self._video.canload() else None  # shape for write can be defined by first frame
-                assert (write is True or overwrite is True) or self._shape is not None, "Invalid read-on;y video '%s'" % (str(v))
+                assert (write is True or overwrite is True) or self._shape is not None, "Invalid video '%s'" % (str(v))
                 
             def __enter__(self):
                 if self._write and self._shape is not None:
@@ -466,7 +466,11 @@ class Video(object):
         return self._array[::dt][0:n]
 
     def framerate(self, fps=None):
-        """Change the input framerate for the video and update frame indexes for all annotations"""
+        """Change the input framerate for the video and update frame indexes for all annotations
+        
+           * NOTE: do not call framerate() after calling clip() as this introduces extra repeated final frames during load()
+        
+        """
         if fps is None:
             return self._framerate
         else:
@@ -1557,7 +1561,7 @@ class Scene(VideoCategory):
         if not self.isloaded():
             self.load()  
         if animate:
-            return Video(frames=[self.quicklook(n=n, dilate=dilate, mindim=mindim, fontsize=fontsize, context=context, startframe=k, animate=False, dt=dt) for k in range(0, min(dt, len(self)))])
+            return Video(frames=[self.quicklook(n=n, dilate=dilate, mindim=mindim, fontsize=fontsize, context=context, startframe=k, animate=False, dt=dt) for k in range(0, min(dt, len(self)))], framerate=self.framerate())
         framelist = [min(int(np.round(f))+startframe, len(self)-1) for f in np.linspace(0, len(self)-1, n)]
         imframes = [self.frame(k).maxmatte()  # letterbox or pillarbox
                     if (self.frame(k).boundingbox() is None) or (context is True and (j == 0 or j == (n-1))) else
@@ -1810,11 +1814,15 @@ class Scene(VideoCategory):
 
 
     def framerate(self, fps=None):
-        """Change the input framerate for the video and update frame indexes for all annotations"""
+        """Change the input framerate for the video and update frame indexes for all annotations
+
+           * NOTE: do not call framerate() after calling clip() as this introduces extra repeated final frames during load()
+        """
+        
         if fps is None:
             return self._framerate
         else:
-            assert not self.isloaded(), "Filters can only be applied prior to load() - Try calling flush() first"        
+            assert not self.isloaded(), "Filters can only be applied prior to load() - Try calling flush() first"
             self._ffmpeg = self._ffmpeg.filter('fps', fps=fps, round='up')
             self._tracks = {k:t.framerate(fps) for (k,t) in self._tracks.items()}
             self._activities = {k:a.framerate(fps) for (k,a) in self._activities.items()}        
@@ -1854,7 +1862,7 @@ class Scene(VideoCategory):
             warnings.warn('Filtering invalid activity clips with degenerate lengths: %s' % str([a for a in vid.activities().values() if (a.endframe()-a.startframe()) <= 0]))
         primary_activities = sorted([a.clone() for a in vid.activities().values() if (a.endframe()-a.startframe()) > 0], key=lambda a: a.startframe())   # only activities with at least one frame, sorted in temporal order
         tracks = [ [t.clone() for (tid, t) in vid.tracks().items() if a.hastrack(t)] for a in primary_activities]  # tracks associated with each primary activity (may be empty)
-        secondary_activities = [[sa.clone() for sa in primary_activities if (sa.id() != pa.id() and pa.temporal_iou(sa)>0 and (len(T)==0 or any([sa.hastrack(t) for t in T])))] for (pa, T) in zip(primary_activities, tracks)]  # overlapping secondary activities that includes any track in the primary activity
+        secondary_activities = [[sa.clone() for sa in primary_activities if (sa.id() != pa.id() and pa.hasoverlap(sa) and (len(T)==0 or any([sa.hastrack(t) for t in T])))] for (pa, T) in zip(primary_activities, tracks)]  # overlapping secondary activities that includes any track in the primary activity
         secondary_activities = [sa if multilabel else [] for sa in secondary_activities]  
         vid._activities = {}  # for faster clone
         vid._tracks = {}      # for faster clone
@@ -1966,8 +1974,8 @@ class Scene(VideoCategory):
         else:
             v._array = self._array[startframe:endframe]
             (v._startframe, v._endframe) = (0, endframe-startframe)
-            v._tracks = {k:t.offset(dt=-startframe).truncate(startframe=0, endframe=endframe-startframe) for (k,t) in v._tracks.items()}   # may be empty
-            v._activities = {k:a.offset(dt=-startframe).truncate(startframe=0, endframe=endframe-startframe) for (k,a) in v._activities.items()}        
+        v._tracks = {k:t.offset(dt=-startframe).truncate(startframe=0, endframe=endframe-startframe) for (k,t) in v._tracks.items()}   # may be empty
+        v._activities = {k:a.offset(dt=-startframe).truncate(startframe=0, endframe=endframe-startframe) for (k,a) in v._activities.items()}        
         return v  
 
     def cliptime(self, startsec, endsec):
