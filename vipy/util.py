@@ -592,7 +592,7 @@ def scpsave(V):
     elif islist(V) and all([isinstance(v, vipy.image.Image) or isinstance(v, vipy.video.Video) for v in V]):
         v = [v.clone().url('scp://%s:%s' % (socket.gethostname(), v.abspath().filename())).nofilename() for v in V]
     else:
-        pass  # no vipy objects
+        v = V # no vipy objects
 
     pklfile = 'scp://%s:%s' % (socket.gethostname(), save(v, temppkl()))
     cmd = "V = vipy.util.scpload('%s')" % pklfile
@@ -744,8 +744,13 @@ def newpath(filename, newdir):
     (head, tail) = os.path.split(filename)
     return os.path.join(newdir, tail)
 
+def newprefix(filename, newprefix, depth=0):
+    """Return /a/b/c/h/i.ext for filename /f/g/h/i.ext and prefix /a/b/c and depth=1"""
+    p = filepath(filename, depth=depth)
+    return os.path.normpath(filename.replace(p, newprefix))
+
 def newpathroot(filename, newroot):
-    """Return /r/b/c.ext for filename /a/b/c.ext and new root r"""
+    """Return /r/b/c.ext for filename /a/b/c.ext and new root directory r"""
     p = pathlib.PurePath(filename)
     path = list(p.parts)    
     if len(p.root) == 0:
@@ -1398,6 +1403,10 @@ def premkdir(filename):
     """create directory /path/to/subdir if not exist for outfile=/path/to/subdir/file.ext"""
     return remkdir(filepath(filename))
 
+
+def newbase(filename, base):
+    """Convert filename=/a/b/c.ext base=d -> /a/b/d.ext"""
+    return os.path.join(filepath(filename), '%s.%s' % (base, fileext(filename, withdot=False)))
 
 def toextension(filename, newext):
     """Convert filenam='/path/to/myfile.ext' to /path/to/myfile.xyz, such that newext='xyz' or newext='.xyz'"""

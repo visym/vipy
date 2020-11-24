@@ -254,6 +254,10 @@ class Activity(object):
         self._endframe += int(df[1])
         return self  
 
+    def padto(self, t):
+        """Add a symmetric temporal pad so that the activity is at least t seconds long"""
+        return self.temporalpad((t - len(self))/2.0) if t > len(self) else self
+
     def disjoint(self, other, strict=False):
         """Enforce disjoint activities with other by shifting the endframe or startframe of self to not overlap if they share the same tracks.
            Other may be an Activity() or list of Activity()
