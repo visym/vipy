@@ -1841,11 +1841,11 @@ class Scene(VideoCategory):
         return [vid.clone().setattribute('activityindex', k).activities(pa).tracks(t) for (k,(pa,t)) in enumerate(zip(activities, tracks))]
 
     def tracksplit(self):
-        """Split the scene into k separate scenes, one for each track.  Each video starts at frame 0."""
+        """Split the scene into k separate scenes, one for each track.  Each scene starts at frame 0."""
         return [self.clone().trackfilter(lambda t: t.id() == tid).activityfilter(lambda a: a.hastrack(tid)) for tid in self.tracks().keys()]
 
     def trackclip(self):
-        """Split the scene into k separate scenes, one for each track.  Each video starts and ends when the track starts and ends"""
+        """Split the scene into k separate scenes, one for each track.  Each scene starts and ends when the track starts and ends"""
         return [t.clip(t.track(t.actorid()).startframe(), t.track(t.actorid()).endframe()) for t in self.tracksplit()]
     
     def activityclip(self, padframes=0, multilabel=True):
@@ -1874,6 +1874,25 @@ class Scene(VideoCategory):
                 .category(pa.category())
                 .setattribute('activityindex',k)
                 for (k,(pa,sa,t)) in enumerate(zip(primary_activities, secondary_activities, tracks))]
+
+    def noactivityclip(self, label='Background'):
+        """Return a list of vipy.video.Scene() each clipped on a track segment that has no associated activities.  
+        
+           * Each clip will contain exactly one activity "Background" which is the interval for this track where no activities are occurring
+           * Each clip will be at least one frame long
+
+        """
+        v = self.clone()
+        for t in v.tracklist():
+            startframe = t.startframe()
+            for a in sorted(v.activitylist(), key=lambda x: x.startframe()):
+                if a.hastrack(t): 
+                    if startframe < (a.startframe()-1):
+                        v.add(vipy.activity.Activity(label=label, startframe=startframe, endframe=a.startframe(), actorid=t.id(), framerate=self.framerate()))
+                    startframe = a.endframe()
+            if (t.endframe()-1) > startframe:
+                v.add(vipy.activity.Activity(label=label, startframe=startframe, endframe=t.endframe(), actorid=t.id(), framerate=self.framerate()))
+        return [a for a in v.activityclip() if a.category() == label]
 
     def trackbox(self, dilate=1.0):
         """The trackbox is the union of all track bounding boxes in the video, or the image rectangle if there are no tracks"""

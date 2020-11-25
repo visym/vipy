@@ -131,7 +131,7 @@ class Activity(object):
         else:
             return self._label
 
-    def label(self, label):
+    def label(self, label=None):
         """Alias for category"""
         return self.category(label)
 
