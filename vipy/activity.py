@@ -131,7 +131,7 @@ class Activity(object):
         else:
             return self._label
 
-    def label(self, label):
+    def label(self, label=None):
         """Alias for category"""
         return self.category(label)
 
@@ -253,6 +253,10 @@ class Activity(object):
         self._startframe -= int(df[0])
         self._endframe += int(df[1])
         return self  
+
+    def padto(self, t):
+        """Add a symmetric temporal pad so that the activity is at least t seconds long"""
+        return self.temporalpad((t - len(self))/2.0) if t > len(self) else self
 
     def disjoint(self, other, strict=False):
         """Enforce disjoint activities with other by shifting the endframe or startframe of self to not overlap if they share the same tracks.

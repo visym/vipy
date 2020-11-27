@@ -436,8 +436,7 @@ class Track(object):
             assert b in ['strict', 'extend']
             self._boundary = b
             return self
-    
-    
+        
     def clip(self, startframe, endframe):
         """Clip a track to be within (startframe,endframe) with strict boundary handling"""
         if self[startframe] is not None:

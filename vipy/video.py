@@ -284,7 +284,7 @@ class Video(object):
                 return self.write(im)
 
             def clip(self, n):
-                """Stream clips of length n such that the yielded video clip contains frame(0) to frame(-n)"""
+                """Stream clips of length n such that the yielded video clip contains frame(0) to frame(-n), and next contains frame(1) to frame (-(n+1)). """
                 assert isinstance(n, int) and n>0, "Clip length must be a positive integer"
                 frames = []
                 for (k,im) in enumerate(self):
@@ -292,6 +292,17 @@ class Video(object):
                     frames.pop(0) if len(frames) >= n else None
                     yield self._video.clone().nourl().nofilename().fromframes(frames)  
                     
+            def batch(self, n):
+                """Stream batches of length n such that each batch contains frames [0,n], [n+1, 2n], ..."""
+                assert isinstance(n, int) and n>0, "batch length must be a positive integer"
+                frames = []
+                for (k, im) in enumerate(self):
+                    frames.append(im)                    
+                    if len(frames) == n:
+                        batchlist = frames
+                        frames = []
+                        yield self._video.clone().nourl().nofilename().fromframes(batchlist)  
+                                
             def frame(self, n=0):
                 """Stream individual frames of video with negative offset n to the stream head. If n=-30, this full return a frame 30 frames ago"""
                 assert isinstance(n, int) and n<=0, "Frame offset must be non-positive integer"
@@ -351,6 +362,9 @@ class Video(object):
         """Alias for __iter__()"""
         return self.__iter__()
                 
+    def framelist(self):
+        return list(self.frames())
+
     def _update_ffmpeg(self, argname, argval):
         nodes = ffmpeg.nodes.get_stream_spec_nodes(self._ffmpeg)
         sorted_nodes, outgoing_edge_maps = ffmpeg.dag.topo_sort(nodes)
@@ -582,16 +596,17 @@ class Video(object):
         """Update video Filename with optional copy from existing file to new file"""
         if newfile is None:
             return self._filename
-        
-        # Update ffmpeg filter chain with new input node filename (this file may not exist yet)
         newfile = os.path.normpath(os.path.expanduser(newfile))
-        self._update_ffmpeg('filename', newfile)
-        self._filename = newfile
 
         # Copy the file if requested
         if copy:
             assert self.hasfilename(), "File not found for copy"
+            remkdir(filepath(newfile))
             shutil.copyfile(self._filename, newfile)
+        
+        # Update ffmpeg filter chain with new input node filename (this file may not exist yet)
+        self._update_ffmpeg('filename', newfile)
+        self._filename = newfile
         
         return self
 
@@ -1826,11 +1841,11 @@ class Scene(VideoCategory):
         return [vid.clone().setattribute('activityindex', k).activities(pa).tracks(t) for (k,(pa,t)) in enumerate(zip(activities, tracks))]
 
     def tracksplit(self):
-        """Split the scene into k separate scenes, one for each track.  Each video starts at frame 0."""
+        """Split the scene into k separate scenes, one for each track.  Each scene starts at frame 0."""
         return [self.clone().trackfilter(lambda t: t.id() == tid).activityfilter(lambda a: a.hastrack(tid)) for tid in self.tracks().keys()]
 
     def trackclip(self):
-        """Split the scene into k separate scenes, one for each track.  Each video starts and ends when the track starts and ends"""
+        """Split the scene into k separate scenes, one for each track.  Each scene starts and ends when the track starts and ends"""
         return [t.clip(t.track(t.actorid()).startframe(), t.track(t.actorid()).endframe()) for t in self.tracksplit()]
     
     def activityclip(self, padframes=0, multilabel=True):
@@ -1859,6 +1874,25 @@ class Scene(VideoCategory):
                 .category(pa.category())
                 .setattribute('activityindex',k)
                 for (k,(pa,sa,t)) in enumerate(zip(primary_activities, secondary_activities, tracks))]
+
+    def noactivityclip(self, label='Background'):
+        """Return a list of vipy.video.Scene() each clipped on a track segment that has no associated activities.  
+        
+           * Each clip will contain exactly one activity "Background" which is the interval for this track where no activities are occurring
+           * Each clip will be at least one frame long
+
+        """
+        v = self.clone()
+        for t in v.tracklist():
+            startframe = t.startframe()
+            for a in sorted(v.activitylist(), key=lambda x: x.startframe()):
+                if a.hastrack(t): 
+                    if startframe < (a.startframe()-1):
+                        v.add(vipy.activity.Activity(label=label, startframe=startframe, endframe=a.startframe(), actorid=t.id(), framerate=self.framerate()))
+                    startframe = a.endframe()
+            if (t.endframe()-1) > startframe:
+                v.add(vipy.activity.Activity(label=label, startframe=startframe, endframe=t.endframe(), actorid=t.id(), framerate=self.framerate()))
+        return [a for a in v.activityclip() if a.category() == label]
 
     def trackbox(self, dilate=1.0):
         """The trackbox is the union of all track bounding boxes in the video, or the image rectangle if there are no tracks"""
@@ -2220,7 +2254,7 @@ class Scene(VideoCategory):
         self.__class__ = vipy.video.Video
         return self
 
-    def assign(self, frame, dets, miniou=0.5, minconf=0.2, maxconf=0.8, maxhistory=30, mincover=0.8, dupecheck=True):
+    def assign(self, frame, dets, miniou=0.5, minconf=0.2, maxconf=0.8, maxhistory=30, mincover=0.8, dupecheck=False):
         """Assign a list of vipy.object.Detections at frame k to scene by greedy track association. In-place update.
         
            * miniou [float]: the minimum box IOU and shape IOU between an existing track and a detection for measurement assignment.  
@@ -2273,6 +2307,7 @@ class Scene(VideoCategory):
                 self.add(vipy.object.Track(keyframes=[frame], boxes=[d], category=d.category(), framerate=self.framerate(), confidence=d.confidence()), rangecheck=False)
                     
         # Sanity check: before assignment there should not be duplicate object detections, after assignment there should not be duplicate tracks
+        #   * NOTE: this gets slow for complex videos
         if dupecheck:
             for i in range(len(objdets)):
                 for j in range(i+1, len(objdets)):
