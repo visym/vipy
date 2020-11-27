@@ -1,6 +1,6 @@
 import numpy as np
 from vipy.geometry import BoundingBox
-from vipy.util import isstring, tolist, chunklistwithoverlap, try_import
+from vipy.util import isstring, tolist, chunklistwithoverlap, try_import, Timer
 import uuid
 import copy
 import warnings
@@ -21,17 +21,18 @@ class Detection(BoundingBox):
     >>> d = vipy.object.Detection(label='Person', xmin=0, ymin=0, width=50, height=100)  # "label" is an alias for "category"
     >>> d = vipy.object.Detection(label='John Doe', shortlabel='Person', xmin=0, ymin=0, width=50, height=100)  # shortlabel is displayed
     >>> d = vipy.object.Detection(label='Person', xywh=[0,0,50,100])
+    >>> d = vupy.object.Detection(..., id=True)  # generate a unique UUID for this detection retrievable with d.id()
 
     """
 
-    def __init__(self, label=None, xmin=None, ymin=None, width=None, height=None, xmax=None, ymax=None, confidence=None, xcentroid=None, ycentroid=None, category=None, xywh=None, shortlabel=None, attributes=None, id=None):
+    def __init__(self, label=None, xmin=None, ymin=None, width=None, height=None, xmax=None, ymax=None, confidence=None, xcentroid=None, ycentroid=None, category=None, xywh=None, shortlabel=None, attributes=None, id=False):
         super().__init__(xmin=xmin, ymin=ymin, width=width, height=height, xmax=xmax, ymax=ymax, xcentroid=xcentroid, ycentroid=ycentroid, xywh=xywh)
         assert not (label is not None and category is not None), "Constructor requires either label or category kwargs, not both"
-        self._id = uuid.uuid4().hex if id is None else id
+        self._id = None if id is False else uuid.uuid4().hex if id is True else id  # unique id if id=True
         self._label = category if category is not None else label
         self._shortlabel = self._label if shortlabel is None else shortlabel
         self._confidence = float(confidence) if confidence is not None else confidence
-        self.attributes = attributes if attributes is not None else {}
+        self.attributes = {} if attributes is None else attributes
 
     @classmethod
     def cast(cls, d, flush=False):
@@ -633,13 +634,13 @@ def non_maximum_suppression(detlist, conf, iou, bycategory=False, cover=None):
     assert conf>=0 and iou>=0 and iou<=1
     assert cover is None or (cover>=0 and cover<=1)
 
-    suppresslist = [k for (k,d) in enumerate(detlist) if d.confidence() <= conf or d.isdegenerate()]
+    suppressed = set([k for (k,d) in enumerate(detlist) if d.confidence() <= conf or d.isdegenerate()])
     detlist = sorted(detlist, key=lambda d: d.confidence(), reverse=True)  # biggest to smallest
     for (i,di) in enumerate(detlist):
         for (j,dj) in enumerate(detlist):
-            if j > i and (j not in suppresslist) and (di.iou(dj) >= iou or (cover is not None and dj.cover(di) >= cover)) and (bycategory is False or di.category() == dj.category()):
-                suppresslist.append(j)
-    return sorted([d for (j,d) in enumerate(detlist) if j not in set(suppresslist)], key=lambda d: d.confidence())  # smallest to biggest confidence for display layering
+            if j > i and (j not in suppressed) and (bycategory is False or di.category() == dj.category()) and (di.iou(dj) >= iou or (cover is not None and dj.cover(di) >= cover)):
+                suppressed.add(j)
+    return sorted([d for (j,d) in enumerate(detlist) if j not in suppressed], key=lambda d: d.confidence())  # smallest to biggest confidence for display layering
 
 
 def greedy_assignment(srclist, dstlist, miniou=0.0, bycategory=False):

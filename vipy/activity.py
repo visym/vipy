@@ -55,6 +55,9 @@ class Activity(object):
         if confidence is not None:
             self.attributes['confidence'] = confidence
 
+    def hasattribute(self, k):
+        return k in self.attributes
+
     def confidence(self):
         return self.attributes['confidence'] if 'confidence' in self.attributes else None
     

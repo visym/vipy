@@ -293,7 +293,7 @@ class Video(object):
                     yield self._video.clone().nourl().nofilename().fromframes(frames)  
                     
             def batch(self, n):
-                """Stream batches of length n such that each batch contains frames [0,n], [n+1, 2n], ..."""
+                """Stream batches of length n such that each batch contains frames [0,n], [n+1, 2n], ...  Last batch will be ragged"""
                 assert isinstance(n, int) and n>0, "batch length must be a positive integer"
                 frames = []
                 for (k, im) in enumerate(self):
@@ -301,8 +301,10 @@ class Video(object):
                     if len(frames) == n:
                         batchlist = frames
                         frames = []
-                        yield self._video.clone().nourl().nofilename().fromframes(batchlist)  
-                                
+                        yield self._video.clone().nourl().nofilename().fromframes(batchlist)                                  
+                if len(frames) > 0:
+                    yield self._video.clone().nourl().nofilename().fromframes(frames)  
+
             def frame(self, n=0):
                 """Stream individual frames of video with negative offset n to the stream head. If n=-30, this full return a frame 30 frames ago"""
                 assert isinstance(n, int) and n<=0, "Frame offset must be non-positive integer"
@@ -1215,7 +1217,7 @@ class Video(object):
             print('[vipy.video.torch]: slice (start,end,step)=%s for frame shape (N,C,H,W)=%s' % (str((i,j,k)), str(frames.shape)))
 
         # Slice and transpose to torch tensor axis ordering
-        t = torch.from_numpy(frames[i:j:k])
+        t = torch.from_numpy(frames[i:j:k])  # do not copy
         if t.dim() == 2:
             t = t.unsqueeze(0).unsqueeze(-1)  # HxW -> (N=1)xHxWx(C=1)
         if order == 'nchw':
@@ -1605,6 +1607,11 @@ class Scene(VideoCategory):
             self._activities = {a.id():a for a in tolist(activities)}   # insertion order preserved (python >=3.6)
             return self
 
+    def activityindex(self, k):
+        alist = self.activitylist()
+        assert k >= 0 and k < len(alist), "Invalid index"        
+        return alist[k]
+
     def activitylist(self):
         return list(self._activities.values())  # insertion ordered (python >=3.6)
         
@@ -1875,24 +1882,31 @@ class Scene(VideoCategory):
                 .setattribute('activityindex',k)
                 for (k,(pa,sa,t)) in enumerate(zip(primary_activities, secondary_activities, tracks))]
 
-    def noactivityclip(self, label='Background'):
+    def noactivityclip(self, label=None, strict=True, padframes=0):
         """Return a list of vipy.video.Scene() each clipped on a track segment that has no associated activities.  
         
            * Each clip will contain exactly one activity "Background" which is the interval for this track where no activities are occurring
            * Each clip will be at least one frame long
+           * strict=True means that background can only occur in frames where no tracks are performing any activities.  This is useful so that background is not constructed from secondary objects.
+           * struct=False means that background can only occur in frames where a given track is not performing any activities. 
+           * label=str: The activity label to give the background activities.  Defaults to the track category (lowercase)
+           * padframes=0:  The amount of temporal padding to apply to the clips before and after in frames
 
         """
         v = self.clone()
         for t in v.tracklist():
             startframe = t.startframe()
             for a in sorted(v.activitylist(), key=lambda x: x.startframe()):
-                if a.hastrack(t): 
+                if a.hastrack(t) or (strict and t.during(a.startframe(), a.endframe())): 
                     if startframe < (a.startframe()-1):
-                        v.add(vipy.activity.Activity(label=label, startframe=startframe, endframe=a.startframe(), actorid=t.id(), framerate=self.framerate()))
+                        v.add(vipy.activity.Activity(label=t.category().lower() if label is None else label, 
+                                                     shortlabel='' if label is None else label,
+                                                     startframe=startframe, endframe=a.startframe(), 
+                                                     actorid=t.id(), framerate=self.framerate(), attributes={'background':True}))
                     startframe = a.endframe()
             if (t.endframe()-1) > startframe:
-                v.add(vipy.activity.Activity(label=label, startframe=startframe, endframe=t.endframe(), actorid=t.id(), framerate=self.framerate()))
-        return [a for a in v.activityclip() if a.category() == label]
+                v.add(vipy.activity.Activity(label=t.category().lower() if label is None else label, startframe=startframe, endframe=t.endframe(), actorid=t.id(), framerate=self.framerate(), attributes={'background':True}))
+        return [a for a in v.activityclip(padframes=padframes) if a.activityindex(0).hasattribute('background')]
 
     def trackbox(self, dilate=1.0):
         """The trackbox is the union of all track bounding boxes in the video, or the image rectangle if there are no tracks"""
@@ -2079,7 +2093,7 @@ class Scene(VideoCategory):
         super().rescale(s)
         return self
 
-    def union(self, other, temporal_iou_threshold=0.5, spatial_iou_threshold=0.8, strict=True):
+    def union(self, other, temporal_iou_threshold=0.5, spatial_iou_threshold=0.8, strict=True, average=True):
         """Compute the union two scenes as the set of unique activities and tracks.  
 
            A pair of activities or tracks are non-unique if they overlap spatially and temporally by a given IoU threshold.  Merge overlapping tracks. 
@@ -2091,6 +2105,7 @@ class Scene(VideoCategory):
              -spatial_iou_threshold:  The intersection over union threshold for the mean of the two segments of an overlapping track, Disable by setting to 1.0
              -temporal_iou_threshold:  The intersection over union threshold for a temporal bounding box for a pair of activities to be declared duplicates.  Disable by setting to 1.0
              -strict:  Require both scenes to share the same underlying video filename
+             -average: Merge two tracks by averaging the boxes (average=True) or by taking this track (average=False)
 
            Output:
              -Updates this scene to include the non-overlapping activities from other.  By default, it takes the strict union of all activities and tracks. 
@@ -2108,7 +2123,7 @@ class Scene(VideoCategory):
                 for (j,tj) in otherclone.tracks().items():
                     if ti.category() == tj.category() and ti.segmentiou(tj) > spatial_iou_threshold:  # mean framewise overlap during overlapping segment of two tracks
                         print('[vipy.video.union]: merging track "%s" -> "%s" for scene "%s"' % (str(ti), str(tj), str(self)))
-                        self.tracks()[i] = ti.average(tj)  # merge duplicate tracks
+                        self.tracks()[i] = ti.average(tj) if average else ti.clone()  # merge duplicate tracks by averaging 
                         otherclone = otherclone.activitymap(lambda a: a.replace(tj, ti))  # replace duplicate track reference in activity
                         otherclone = otherclone.trackfilter(lambda t: t.id() != j)  # remove duplicate track
             

@@ -153,8 +153,8 @@ class BoundingBox(object):
             self._xmax = float(centroid[0]) + float(width) / 2.0
             self._ymax = float(centroid[1]) + float(height) / 2.0
         elif xcentroid is not None and ycentroid is not None and width is not None and height is not None:
-            if not (isnumber(xcentroid) and isnumber(ycentroid) and isnumber(width) and isnumber(height)):
-                raise ValueError('Box coordinates must be integers or floats')
+            #if not (isnumber(xcentroid) and isnumber(ycentroid) and isnumber(width) and isnumber(height)):
+            #    raise ValueError('Box coordinates must be integers or floats')
             self._xmin = float(xcentroid) - (float(width) / 2.0)
             self._ymin = float(ycentroid) - (float(height) / 2.0)
             self._xmax = float(xcentroid) + (float(width) / 2.0)
