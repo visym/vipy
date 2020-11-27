@@ -207,7 +207,7 @@ class Batch(Checkpoint):
             as_completed = True  # force self._as_completed=True
 
         if vipy.globals.dask() is None:
-            warnings.warn('vipy.batch.Batch() is not set to use parallelism.  This is set using:\n>>> vipy.globals.dask(num_processes=n) for multi-processing\n>>> vipy.globals.dask(num_gpus=m) for multi-gpu\n>>> vipy.globals.dask(pct=0.8) for multiprocessing that uses a percentage of the current system resources\n>>> vipy.globals.dask(address="SCHEDULER:PORT") which connects to a Dask distributed scheduler.\n>>> vipy.globals.noparallel() to completely disable all parallelism.')
+            warnings.warn('vipy.batch.Batch() is not set to use parallelism.  This is set using:\n>>> vipy.globals.parallel(n) for multi-processing with n processes\n>>> vipy.globals.dask(num_gpus=m) for multi-gpu\n>>> vipy.globals.parallel(pct=0.8) for multiprocessing that uses a percentage of the current system resources\n>>> vipy.globals.dask(address="SCHEDULER:PORT") which connects to a Dask distributed scheduler.\n>>> vipy.globals.noparallel() to completely disable all parallelism.')
 
         #self._client = vipy.globals.dask().client() if vipy.globals.dask() is not None else None
     
