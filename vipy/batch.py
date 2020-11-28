@@ -51,7 +51,7 @@ class Dask(object):
                                        'PYTHONOPATH':os.environ['PYTHONPATH'] if 'PYTHONPATH' in os.environ else '',
                                        'PATH':os.environ['PATH'] if 'PATH' in os.environ else ''},
                                   direct_to_workers=True,
-                                  silence_logs=20 if isdebug() else 40,  # logging.WARN=30 or logging.ERROR=40 or logging.INFO=20, ignores verbose (FIXME)
+                                  silence_logs=20 if verbose else 40,  # logging.WARN=30 or logging.ERROR=40 or logging.INFO=20
                                   local_directory=tempfile.mkdtemp())
 
         self._num_gpus = num_gpus
