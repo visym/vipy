@@ -25,10 +25,10 @@ class Detection(BoundingBox):
 
     """
 
-    def __init__(self, label=None, xmin=None, ymin=None, width=None, height=None, xmax=None, ymax=None, confidence=None, xcentroid=None, ycentroid=None, category=None, xywh=None, shortlabel=None, attributes=None, id=False):
+    def __init__(self, label=None, xmin=None, ymin=None, width=None, height=None, xmax=None, ymax=None, confidence=None, xcentroid=None, ycentroid=None, category=None, xywh=None, shortlabel=None, attributes=None, id=True):
         super().__init__(xmin=xmin, ymin=ymin, width=width, height=height, xmax=xmax, ymax=ymax, xcentroid=xcentroid, ycentroid=ycentroid, xywh=xywh)
         assert not (label is not None and category is not None), "Constructor requires either label or category kwargs, not both"
-        self._id = None if id is False else uuid.uuid4().hex if id is True else id  # unique id if id=True
+        self._id = uuid.uuid4().hex if id is True else (None if id is False else id)  # unique id if id=True
         self._label = category if category is not None else label
         self._shortlabel = self._label if shortlabel is None else shortlabel
         self._confidence = float(confidence) if confidence is not None else confidence
@@ -466,14 +466,14 @@ class Track(object):
         assert isinstance(other, Track), "invalid input - Must be vipy.object.Track()"
         startframe = max(self.startframe(), other.startframe())
         endframe = min(self.endframe(), other.endframe())
-        return float(np.mean([self[startframe].iou(other[startframe]), self[endframe].iou(other[endframe])]) if endframe >= startframe else 0.0)
+        return float(np.mean([self[startframe].iou(other[startframe]), self[endframe].iou(other[endframe])]) if endframe > startframe else 0.0)
 
     def segmentiou(self, other, dt=5):
         """Compute the mean spatial IoU between two tracks at the overlapping segment, sampling by dt.  Useful for track continuation for densely overlapping tracks"""
         assert isinstance(other, Track), "invalid input - Must be vipy.object.Track()"
         startframe = max(self.startframe(), other.startframe())
         endframe = min(self.endframe(), other.endframe())   # inclusive
-        return float(np.mean([self[min(k,endframe)].iou(other[min(k,endframe)]) for k in range(startframe, endframe, dt)]) if endframe >= startframe else 0.0)
+        return float(np.mean([self[min(k,endframe)].iou(other[min(k,endframe)]) for k in range(startframe, endframe, dt)]) if endframe > startframe else 0.0)
         
     def rankiou(self, other, rank, dt=1, n=None):
         """Compute the mean spatial IoU between two tracks per frame in the range (self.startframe(), self.endframe()) using only the top-k (rank) frame overlaps

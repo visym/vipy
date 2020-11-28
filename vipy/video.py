@@ -757,6 +757,10 @@ class Video(object):
         """Height (rows) in pixels of the video for the current filter chain"""
         return self.shape()[0]
 
+    def aspect_ratio(self):
+        """The width/height of the video expressed as a fraction"""
+        return self.width() / self.height()
+
     def preview(self, framenum=0):
         """Return selected frame of filtered video, return vipy.image.Image object.  This is useful for previewing the frame shape of a complex filter chain or the frame contents at a particular location without loading the whole video"""
         if self.isloaded():
@@ -1830,6 +1834,8 @@ class Scene(VideoCategory):
             return self._framerate
         else:
             assert not self.isloaded(), "Filters can only be applied prior to load() - Try calling flush() first"
+            if self._startframe is not None and self._endframe is not None:
+                (self._startframe, self._endframe) = (int(round(self._startframe * (fps/self._framerate))), int(round(self._endframe * (fps/self._framerate))))
             self._ffmpeg = self._ffmpeg.filter('fps', fps=fps, round='up')
             self._tracks = {k:t.framerate(fps) for (k,t) in self._tracks.items()}
             self._activities = {k:a.framerate(fps) for (k,a) in self._activities.items()}        
@@ -2093,6 +2099,9 @@ class Scene(VideoCategory):
         super().rescale(s)
         return self
 
+    def startframe(self):
+        return self._startframe
+
     def union(self, other, temporal_iou_threshold=0.5, spatial_iou_threshold=0.8, strict=True, average=True):
         """Compute the union two scenes as the set of unique activities and tracks.  
 
@@ -2101,7 +2110,7 @@ class Scene(VideoCategory):
            Activities are merged by considering the temporal IoU of the activities of the same class greater than the provided temporal_iou_threshold threshold
   
            Input:
-             -Other: Scene or list of scenes for union
+             -Other: Scene or list of scenes for union.  Other may be a clip of self at a different framerate, spatial isotropic scake, clip offset
              -spatial_iou_threshold:  The intersection over union threshold for the mean of the two segments of an overlapping track, Disable by setting to 1.0
              -temporal_iou_threshold:  The intersection over union threshold for a temporal bounding box for a pair of activities to be declared duplicates.  Disable by setting to 1.0
              -strict:  Require both scenes to share the same underlying video filename
@@ -2109,6 +2118,10 @@ class Scene(VideoCategory):
 
            Output:
              -Updates this scene to include the non-overlapping activities from other.  By default, it takes the strict union of all activities and tracks. 
+
+           Notes:
+             -This is useful for merging scenes computed using a lower resolution/framerate/clipped  object or activity detector without running the detector on the high-res scene
+             -This function will preserve the invariance for v == v.clear().union(v.rescale(0.5).framerate(5).activityclip()), to within the quantization error of framerate() downsampling.
         """
         for o in tolist(other):
             assert isinstance(o, Scene), "Invalid input - must be vipy.video.Scene() object and not type=%s" % str(type(o))
@@ -2116,30 +2129,45 @@ class Scene(VideoCategory):
             assert temporal_iou_threshold >= 0 and temporal_iou_threshold <= 1, "invalid temporal_iou_threshold, must be between [0,1]"        
             if strict:
                 assert self.filename() == o.filename(), "Invalid input - Scenes must have the same underlying video.  Disable this with strict=False."
-            otherclone = o.clone()   # do not change other, make a copy
+            oc = o.clone()   # do not change other, make a copy
+
+            # Key collision?
+            if len(set(self.tracks().keys()).intersection(set(oc.tracks().keys()))) > 0:
+                print('[vipy.video.union]: track key collision - Rekeying other... Use other.rekey() to suppress this warning.')
+                oc.rekey()
+            if len(set(self.activities().keys()).intersection(set(oc.activities().keys()))) > 0:
+                print('[vipy.video.union]: activity key collision - Rekeying other... Use other.rekey() to suppress this warning.')                
+                oc.rekey()
+
+            # Similarity transform?
+            assert np.isclose(self.aspect_ratio(), oc.aspect_ratio(), atol=1E-2), "Invalid input - Scenes must have the same aspect ratio"
+            if self.width() != oc.width():
+                oc = oc.rescale(self.width() / oc.width())   # match spatial scale
+            if not np.isclose(self.framerate(), oc.framerate(), atol=1E-3):
+                oc = oc.framerate(self.framerate())   # match temporal scale 
+            if self.startframe() != oc.startframe():
+                dt = (oc.startframe() if oc.startframe() is not None else 0) - (self.startframe() if self.startframe() is not None else 0)
+                oc = oc.trackmap(lambda t: t.offset(dt=dt)).activitymap(lambda a: a.offset(dt=dt))  # match temporal translation
+            oc = oc.trackfilter(lambda t: ((not t.isdegenerate()) and len(t)>0))
 
             # Merge tracks 
             for (i,ti) in self.tracks().items():
-                for (j,tj) in otherclone.tracks().items():
+                for (j,tj) in oc.tracks().items():
                     if ti.category() == tj.category() and ti.segmentiou(tj) > spatial_iou_threshold:  # mean framewise overlap during overlapping segment of two tracks
                         print('[vipy.video.union]: merging track "%s" -> "%s" for scene "%s"' % (str(ti), str(tj), str(self)))
                         self.tracks()[i] = ti.average(tj) if average else ti.clone()  # merge duplicate tracks by averaging 
-                        otherclone = otherclone.activitymap(lambda a: a.replace(tj, ti))  # replace duplicate track reference in activity
-                        otherclone = otherclone.trackfilter(lambda t: t.id() != j)  # remove duplicate track
+                        oc = oc.activitymap(lambda a: a.replace(tj, ti))  # replace duplicate track reference in activity
+                        oc = oc.trackfilter(lambda t: t.id() != j)  # remove duplicate track
             
             # Dedupe activities
             for (i,ai) in self.activities().items():
-                for (j,aj) in otherclone.activities().items():
+                for (j,aj) in oc.activities().items():
                     if ai.category() == aj.category() and set(ai.trackids()) == set(aj.trackids()) and ai.temporal_iou(aj) > temporal_iou_threshold:
-                        otherclone = otherclone.activityfilter(lambda a: a.id() != j)  # remove duplicate activity
+                        oc = oc.activityfilter(lambda a: a.id() != j)  # remove duplicate activity
 
             # Union of unique tracks/activities
-            if len(set(self.tracks().keys()).intersection(otherclone.tracks().keys())) > 0:
-                print('[vipy.video.union]: track key collision - Ignoring key from other')
-            if len(set(self.activities().keys()).intersection(otherclone.activities().keys())) > 0:
-                print('[vipy.video.union]: activity key collision - Ignoring key from other')                
-            self.tracks().update(otherclone.tracks())
-            self.activities().update(otherclone.activities())
+            self.tracks().update(oc.tracks())
+            self.activities().update(oc.activities())
 
         return self        
 

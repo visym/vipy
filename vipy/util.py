@@ -703,7 +703,7 @@ def ishtml(filename):
 
 def ispickle(filename):
     """Is the file a pickle archive file"""
-    return isfile(filename) and os.path.exists(filename) and (fileext(filename) is not None) and fileext(filename).lower() in ['.pk', '.pkl']
+    return isfile(filename) and os.path.exists(filename) and (((fileext(filename) is not None) and fileext(filename).lower() in ['.pk', '.pkl']) or (filename[-4:] == '.pkl'))
 
 
 def ishdf5(path):
