@@ -175,29 +175,13 @@ class Batch(Checkpoint):
 
     """    
              
-    def __init__(self, objlist, strict=True, as_completed=False, checkpoint=False, checkpointdir=None, checkpointfrac=0.1):
+    def __init__(self, objlist, strict=True, as_completed=False, checkpoint=False, checkpointdir=None, checkpointfrac=0.1, warnme=True):
         """Create a batch of homogeneous vipy.image objects from an iterable that can be operated on with a single parallel function call
         """
         assert isinstance(objlist, list), "Input must be a list"
         self._batchtype = type(objlist[0]) if len(objlist)>0 else type(None)
         assert all([isinstance(im, self._batchtype) for im in objlist]), "Invalid input - Must be homogeneous list of the same type"                
-        self._objlist = objlist
-
-        # This has been deprecated - Set up globally
-        #if n_processes is not None and ngpu is not None:
-        #    assert n_processes == ngpu, "Number of processes must be equal to the number of GPUs"
-        #elif n_processes is not None:
-        #    n_processes = ngpu if (ngpu is not None) and isinstance(ngpu, int) and ngpu > 0 else n_processes
-        #    n_processes = vipy.globals.max_workers() if n_processes is None else n_processes      
-        #    if vipy.globals.dask() is None or n_processes != vipy.globals.dask().num_processes():
-        #        assert n_processes is not None, "set vipy.globals.max_workers() or n_processes kwarg"
-        #        vipy.globals.dask(num_processes=n_processes, dashboard=dashboard)
-        #elif ngpu is not None:
-        #    n_processes = ngpu
-        #    if vipy.globals.dask() is None or n_processes != vipy.globals.dask().num_processes():
-        #        vipy.globals.dask(num_processes=n_processes, dashboard=dashboard)
-        #else:
-        #    assert vipy.globals.dask() is not None, "Create a global dask scheduler using vipy.globals.dask(num_processes=n) for a given number of workers, or create Batch() with n_processes>0"            
+        self._objlist = [(k,o) for (k,o) in enumerate(objlist)]  # ordered
 
         assert checkpointfrac > 0.0 and checkpointfrac <= 1.0, "Invalid checkpoint fraction"
         self._checkpointsize = max(1, int(len(objlist) * checkpointfrac))
@@ -206,11 +190,9 @@ class Batch(Checkpoint):
         if checkpoint:
             as_completed = True  # force self._as_completed=True
 
-        if vipy.globals.dask() is None:
-            warnings.warn('vipy.batch.Batch() is not set to use parallelism.  This is set using:\n>>> vipy.globals.parallel(n) for multi-processing with n processes\n>>> vipy.globals.dask(num_gpus=m) for multi-gpu\n>>> vipy.globals.parallel(pct=0.8) for multiprocessing that uses a percentage of the current system resources\n>>> vipy.globals.dask(address="SCHEDULER:PORT") which connects to a Dask distributed scheduler.\n>>> vipy.globals.noparallel() to completely disable all parallelism.')
+        if vipy.globals.dask() is None and warnme:
+            print('[vipy.batch.Batch]: vipy.batch.Batch() is not set to use parallelism.  This is set using:\n    >>> vipy.globals.parallel(n) for multi-processing with n processes\n    >>> vipy.globals.parallel(pct=0.8) for multiprocessing that uses a percentage of the current system resources\n    >>> vipy.globals.dask(address="SCHEDULER:PORT") which connects to a Dask distributed scheduler.\n    >>> vipy.globals.noparallel() to completely disable all parallelism.')
 
-        #self._client = vipy.globals.dask().client() if vipy.globals.dask() is not None else None
-    
         # FIXME: this needs to go into Dask()
         #self._ngpu = ngpu
         #if ngpu is not None:
@@ -233,18 +215,8 @@ class Batch(Checkpoint):
     def __repr__(self):        
         return str('<vipy.batch: type=%s, len=%d, client=%s>' % (str(self._batchtype), len(self), str(vipy.globals.dask())))
 
-    #def ngpu(self):
-    #    return self._ngpu
-
     def _client(self):
         return vipy.globals.dask()._client if vipy.globals.dask() is not None else None
-
-    #def shutdown(self):
-    #    vipy.globals.dask().shutdown()
-
-    #def n_processes(self):
-    #    return len(self.info()['workers'])
-
 
     def _batch_wait(self, futures):
         self._archive_checkpoint()._flush_checkpoint()
@@ -254,7 +226,7 @@ class Batch(Checkpoint):
             for (k, batch) in enumerate(as_completed(futures, with_results=True, raise_errors=False).batches()):
                 for (future, result) in batch:
                     if future.status != 'error':
-                        results.append(result)  # not order preserving
+                        results.append(result)  # not order preserving, will restore order in result()
                     else:
                         if self._strict:
                             typ, exc, tb = result
@@ -290,8 +262,7 @@ class Batch(Checkpoint):
     def _wait(self, futures):
         assert islist(futures) and all([hasattr(f, 'result') for f in futures])
         if self._as_completed:
-            return self._batch_wait(futures)
-        
+            return self._batch_wait(futures)        
         try:
             results = []            
             wait(futures)
@@ -320,21 +291,13 @@ class Batch(Checkpoint):
         return self.checkpoint() if self._checkpoint else None
 
     def result(self):
-        """Return the result of the batch processing"""
-        return self._objlist
+        """Return the result of the batch processing, ordered"""
+        return [x[1] for x in sorted(self._objlist, key=lambda y: y[0])]  # restore order
 
     def __iter__(self):
-        for im in self._objlist:
-            yield im
+        for x in self.result():
+            yield x
             
-    def product(self, f_lambda, args):
-        """Cartesian product of args and batch.  Use this with extreme caution, as the memory requirements may be high."""
-        assert self._client() is not None, "Invalid Batch() backend"
-        c = self._client()
-        objlist = c.scatter(self._objlist)        
-        self._objlist = self._wait([c.submit(f_lambda, im, *a) for im in objlist for a in args])
-        return self
-
     def map(self, f_lambda, args=None):
         """Run the lambda function on each of the elements of the batch and return the batch object.
         
@@ -350,62 +313,38 @@ class Batch(Checkpoint):
 
         """
         c = self._client()
+        f_lambda_ordered = lambda x,f=f_lambda: (x[0], f(x[1])) 
+
         if c is None:
-            self._objlist = [f_lambda(o) for o in self._objlist]  # no parallelism
+            self._objlist = [f_lambda_ordered(o) for o in self._objlist]  # no parallelism
         elif args is not None:
             if len(self._objlist) > 1:
                 assert islist(args) and len(list(args)) == len(self._objlist), "args must be a list of arguments of length %d, one for each element in batch" % len(self._objlist)
                 objlist = c.scatter(self._objlist)
-                self._objlist = self._wait([c.submit(f_lambda, im, *a) for (im, a) in zip(objlist, args)])
+                self._objlist = self._wait([c.submit(f_lambda_ordered, im, *a) for (im, a) in zip(objlist, args)])
             else:
                 assert islist(args), "args must be a list"
                 obj = c.scatter(self._objlist[0], broadcast=True)
-                self._objlist = self._wait([c.submit(f_lambda, obj, *a) for a in args])
+                self._objlist = self._wait([c.submit(f_lambda_ordered, obj, *a) for a in args])
         else:
-            self._objlist = self._wait(c.map(f_lambda, self._objlist))
+            self._objlist = self._wait(c.map(f_lambda_ordered, self._objlist))
         return self
 
     def filter(self, f_lambda):
         """Run the lambda function on each of the elements of the batch and filter based on the provided lambda keeping those elements that return true 
         """
         c = self._client()
+        f_lambda_ordered = lambda x,f=f_lambda: (x[0], f(x[1])) 
+
         if c is None:
-            self._objlist = [o for o in self._objlist if f_lambda(o)]  # no parallelism
+            self._objlist = [o for o in self._objlist if f_lambda_ordered(o)[1]]  # no parallelism
         else:
             objlist = self._objlist  # original list
-            is_filtered = self._wait(c.map(f_lambda, c.scatter(self._objlist)))  # distributed filter (replaces self._objlist)
-            self._objlist = [obj for (f, obj) in zip(is_filtered, objlist) if f is True]  # keep only elements that filter true
+            is_filtered = self._wait(c.map(f_lambda_ordered, c.scatter(self._objlist)))  # distributed filter (replaces self._objlist)
+            self._objlist = [obj for (f, obj) in zip(is_filtered, objlist) if f[1] is True]  # keep only elements that filter true
         return self
         
-    #def torch(self):
-    #    """Convert the batch of N HxWxC images to a NxCxHxW torch tensor"""
-    #    return torch.cat(self.map(lambda im: im.torch()).result())
-
-    #def numpy(self):
-    #    """Convert the batch of N HxWxC images to a NxCxHxW torch tensor"""
-    #    return np.stack(self.map(lambda im: im.numpy()).result())
-    
-    #def torchmap(self, f, net):
-    #    """Apply lambda function f prepare data, and pass resulting tensor to data parallel to torch network"""
-    #    assert self.__dict__['_client'] is not None, "Batch() must be reconsructed after shutdown"        
-    #
-    #    c = self.__dict__['_client']       
-    #    deviceid = 'cuda' if torch.cuda.is_available and self.ngpu() > 0 else 'cpu'
-    #    device = torch.device(deviceid)
-    #
-    #    modeldist = torch.nn.DataParallel(net)
-    #    modeldist = modeldist.to(device)
-    #    
-    #    return [modeldist(t.to(device)) for t in as_completed([c.submit(f, im) for im in self._objlist])]
-        
-    #def chunkmap(self, f, obj, batchsize):
-    #    c = self._client()
-    #    assert c is not None, "Invalid backend"
-    #    objdist = c.scatter(obj, broadcast=True)        
-    #    self._objlist = self._wait([c.submit(f, objdist, imb) for imb in chunklistbysize(self._objlist, batchsize)])
-    #    return self
-
-    def scattermap(self, f, obj):
+    def scattermap(self, f_lambda, obj):
         """Scatter obj to all workers, and apply lambda function f(obj, im) to each element in batch
         
            Usage: 
@@ -421,11 +360,13 @@ class Batch(Checkpoint):
 
         """
         c = self._client()
+        f_lambda_ordered = lambda net,x,f=f_lambda: (x[0], f(net,x[1])) 
+
         if c is None:
-            self._objlist = [f(obj, o) for o in self._objlist]  # no parallelism
+            self._objlist = [f_lambda_ordered(obj, o) for o in self._objlist]  # no parallelism
         else:
             objdist = c.scatter(obj, broadcast=True)        
-            self._objlist = self._wait([c.submit(f, objdist, im) for im in self._objlist])
+            self._objlist = self._wait([c.submit(f_lambda_ordered, objdist, im) for im in self._objlist])
         return self
 
 

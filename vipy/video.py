@@ -594,18 +594,22 @@ class Video(object):
         self._update_ffmpeg('filename', None)
         return self
 
-    def filename(self, newfile=None, copy=False):
+    def filename(self, newfile=None, copy=False, symlink=False):
         """Update video Filename with optional copy from existing file to new file"""
         if newfile is None:
             return self._filename
         newfile = os.path.normpath(os.path.expanduser(newfile))
 
-        # Copy the file if requested
+        # Copy or symlink from the old filename to the new filename (if requested)
         if copy:
             assert self.hasfilename(), "File not found for copy"
             remkdir(filepath(newfile))
             shutil.copyfile(self._filename, newfile)
-        
+        elif symlink:
+            assert self.hasfilename(), "File not found for copy"
+            remkdir(filepath(newfile))
+            os.symlink(self._filename, newfile)
+                    
         # Update ffmpeg filter chain with new input node filename (this file may not exist yet)
         self._update_ffmpeg('filename', newfile)
         self._filename = newfile
@@ -1671,7 +1675,7 @@ class Scene(VideoCategory):
 
     def activitylabel(self):
         """Return an iterator over activity labels in each frame"""        
-        endframe = max([a.endframe() for a in self.activitylist()])        
+        endframe = max([a.endframe() for a in self.activitylist()]) if len(self.activities())>0 else 0
         for k in range(0, endframe):
             yield self.activitylabels(k)
         
@@ -1919,8 +1923,8 @@ class Scene(VideoCategory):
         boxes = [t.clone().boundingbox().dilate(dilate) for t in self.tracklist()]
         return boxes[0].union(boxes[1:]) if len(boxes) > 0 else vipy.geometry.imagebox(self.shape())
 
-    def trackcrop(self, dilate=1.0):
-        return self.clone().crop(self.trackbox(dilate))
+    def trackcrop(self, dilate=1.0, maxsquare=False):
+        return self.clone().crop(self.trackbox(dilate).maxsquareif(maxsquare))
     
     def activitybox(self, activityid=None, dilate=1.0):
         """The activitybox is the union of all activity bounding boxes in the video, which is the union of all tracks contributing to all activities.  This is most useful after activityclip().

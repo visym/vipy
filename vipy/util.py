@@ -766,7 +766,7 @@ def topath(filename, newdir):
 
 def filefull(f):
     """Return /a/b/c for filename /a/b/c.ext"""
-    return splitextension(f)[0]
+    return f.replace(fileext(f, multidot=True, withdot=True), '')  # better handling of .tar.gz
 
 
 def filetail(filename):
