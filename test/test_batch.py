@@ -13,8 +13,11 @@ def test_batch():
     vipy.globals.dask(num_processes=2)
     v = vipy.video.RandomScene()
     b = vipy.batch.Batch([v])
-    res = b.map(lambda v,k: v[k], args=[(k,) for k in range(0,len(v))]).result()
-    assert isinstance(res[0], vipy.image.Scene)
+
+    res = b.map(lambda v: v).result()
+    print(res)
+    assert isinstance(res[0], vipy.video.Scene)
+    
     print('[test_image.batch]: batch  PASSED')
 
 if __name__ == "__main__":
