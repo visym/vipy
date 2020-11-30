@@ -301,32 +301,21 @@ class Batch(Checkpoint):
     def map(self, f_lambda, args=None):
         """Run the lambda function on each of the elements of the batch and return the batch object.
         
-        If args is provided, then this is a unique argument for the lambda function for each of the elements in the batch, or is broadcastable.
-        
         >>> iml = [vipy.image.RandomScene(512,512) for k in range(0,1000)]   
-        >>> imb = vipy.image.Batch(iml, n_processes=4) 
-        >>> imb.map(lambda im,f: im.saveas(f), args=[('/tmp/out%d.jpg'%k,) for k in range(0,1000)])  
-        >>> imb.map(lambda im: im.rgb())  # this is equivalent to imb.rgb()
+        >>> imb = vipy.image.Batch(iml) 
+        >>> imb.map(lambda im: im.rgb())  
 
         The lambda function f_lambda must not include closures.  If it does, construct the batch with tuples (obj,prms) or with default parameter capture:
         >>> f = lambda x, prm1=1, prm2=2: x+prm1+prm2
 
         """
         c = self._client()
-        f_lambda_ordered = lambda x,f=f_lambda: (x[0], f(x[1])) 
 
         if c is None:
+            f_lambda_ordered = lambda x,f=f_lambda: (x[0], f(x[1]))                         
             self._objlist = [f_lambda_ordered(o) for o in self._objlist]  # no parallelism
-        elif args is not None:
-            if len(self._objlist) > 1:
-                assert islist(args) and len(list(args)) == len(self._objlist), "args must be a list of arguments of length %d, one for each element in batch" % len(self._objlist)
-                objlist = c.scatter(self._objlist)
-                self._objlist = self._wait([c.submit(f_lambda_ordered, im, *a) for (im, a) in zip(objlist, args)])
-            else:
-                assert islist(args), "args must be a list"
-                obj = c.scatter(self._objlist[0], broadcast=True)
-                self._objlist = self._wait([c.submit(f_lambda_ordered, obj, *a) for a in args])
         else:
+            f_lambda_ordered = lambda x,f=f_lambda: (x[0], f(x[1]))             
             self._objlist = self._wait(c.map(f_lambda_ordered, self._objlist))
         return self
 
