@@ -2148,7 +2148,7 @@ class Scene(VideoCategory):
             if self.width() != oc.width():
                 oc = oc.rescale(self.width() / oc.width())   # match spatial scale
             if not np.isclose(self.framerate(), oc.framerate(), atol=1E-3):
-                oc = oc.framerate(self.framerate())   # match temporal scale 
+                oc = oc.framerate(self.framerate())   # match temporal scale (video in oc will not match, only annotations)
             if self.startframe() != oc.startframe():
                 dt = (oc.startframe() if oc.startframe() is not None else 0) - (self.startframe() if self.startframe() is not None else 0)
                 oc = oc.trackmap(lambda t: t.offset(dt=dt)).activitymap(lambda a: a.offset(dt=dt))  # match temporal translation
@@ -2301,18 +2301,19 @@ class Scene(VideoCategory):
         self.__class__ = vipy.video.Video
         return self
 
-    def merge_tracks(self, dilate=2.0, framedist=5):
+    def merge_tracks(self, dilate_height=2.0, dilate_width=2.0, framedist=5):
         """Merge tracks if a track endpoint dilated by a fraction overlaps exactly one track startpoint, and the endpoint and startpoint are close enough together temporally"""
         merged = set([])
         for ti in sorted(self.tracklist(), key=lambda t: t.startframe()):
             for tj in sorted(self.tracklist(), key=lambda t: t.startframe()):
-                if (tj.id() not in merged) and (ti.id() != tj.id()) and (ti.endframe() >= tj.startframe()) and ((ti.endframe()-tj.startframe()) <= framedist) and (ti.category() == tj.category()):
-                    di = ti[ti.endframe()].dilate(dilate)
+                if (tj.id() not in merged) and (ti.id() != tj.id()) and (tj.startframe() >= ti.endframe()) and ((tj.startframe()-ti.endframe()) <= framedist) and (ti.category() == tj.category()):
+                    di = ti[ti.endframe()].dilate_height(dilate_height).dilate_width(dilate_width)
                     dj = tj[tj.startframe()]
                     if di.iou(dj) > 0 and not any([di.iou(tk[tj.startframe()]) > 0 for tk in self.tracklist() if (tk.id() not in [ti.id(), tj.id()]) and tk.during(tj.startframe())]):
-                        ti.union(tj)  # Merge tracks that are within gating distance
-                        self.delete(tj.id())   # remove merged track
+                        self.tracks()[ti.id()] = ti.union(tj)  # Merge tracks that are within gating distance
+                        self.delete(tj.id())  # remove merged track
                         merged.add(tj.id())
+                        break
         return self
 
     def assign(self, frame, dets, miniou=0.5, minconf=0.2, maxconf=0.8, maxhistory=30, mincover=0.8, dupecheck=False):

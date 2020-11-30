@@ -503,7 +503,7 @@ class Track(object):
                         if (self.during(k) and other.during(k)) else 
                         (self[k] if self.during(k) and not other.during(k) else other[k]))
                        for k in keyframes] 
-        T_keyframes = keyframes
+        T._keyframes = keyframes
         return T  
 
 
