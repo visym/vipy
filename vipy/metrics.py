@@ -296,7 +296,7 @@ def plot_ap(ap, categories, title=None, outfile=None):
         plt.show()
 
 
-def histogram(freq, categories, barcolors=None, title=None, outfile=None, figure=None, ylabel='Frequency', xrot='vertical', xlabel=None):
+def histogram(freq, categories, barcolors=None, title=None, outfile=None, figure=None, ylabel='Frequency', xrot='vertical', xlabel=None, fontsize=10):
     """Plot histogram bar chart using matplotlib with vertical axis labels on x-axis,, with optional figure save.
        
        Inputs:
@@ -312,7 +312,7 @@ def histogram(freq, categories, barcolors=None, title=None, outfile=None, figure
 
     x = range(1, len(categories)+1)
     plt.bar(x, height=freq, width=0.8, bottom=None, color=barcolors)
-    plt.xticks(x, list(categories), rotation=xrot)
+    plt.xticks(x, list(categories), rotation=xrot, fontsize=fontsize)
     plt.autoscale(tight=True)
     if ylabel is not None:
         plt.ylabel(ylabel)

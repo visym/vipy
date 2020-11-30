@@ -197,7 +197,7 @@ class Track(object):
         strlist = []
         if self.category() is not None:
             strlist.append('category="%s"' % self.category())
-        if self.endframe() is not None and self.startframe() is not None and ((self.endframe() - self.startframe()) > 0):
+        if self.endframe() is not None and self.startframe() is not None:
             strlist.append('startframe=%d, endframe=%d' % (self.startframe(), self.endframe()))
         strlist.append('keyframes=%d' % len(self._keyframes))
         return str('<vipy.object.track: %s>' % (', '.join(strlist)))
@@ -239,6 +239,7 @@ class Track(object):
         """
         assert isinstance(bbox, BoundingBox), "Invalid input - Box must be vipy.geometry.BoundingBox()"
         assert strict is False or bbox.isvalid(), "Invalid input - Box must be non-degenerate"
+        assert int(keyframe) not in self._keyframes, "Invalid input - repeated keyframe"
         if not bbox.isvalid():
             return self  # just don't add it 
         self._keyframes.append(int(keyframe))
@@ -283,9 +284,9 @@ class Track(object):
             return self
         
     def meanshape(self):
-        """Return the mean (width,height) of the box during the track"""
-        s = np.mean([bb.shape() for bb in self._keyboxes], axis=0)
-        return (float(s[0]), float(s[1]))
+        """Return the mean (width,height) of the box during the track, or None if the track is degenerate"""
+        s = np.mean([bb.shape() for bb in self._keyboxes], axis=0) if len(self._keyboxes) > 0 else None
+        return (float(s[0]), float(s[1])) if s is not None else None
             
     def framerate(self, fps=None, speed=None):
         """Resample keyframes from known original framerate set by constructor to be new framerate fps"""
@@ -492,6 +493,20 @@ class Track(object):
         assert percentile > 0 and percentile <= 1
         return self.rankiou(other, max(1, int(len(self)*percentile)), dt=dt, n=n)
 
+    def union(self, other):
+        """Compute the union of two tracks by the framewise interpolated boxes at the keyframes of either track"""
+        assert isinstance(other, Track), "Invalid input - must be vipy.object.Track()"
+        assert other.category() == self.category(), "Category mismatch"
+        T = self.clone()
+        keyframes = sorted(set(T._keyframes+other._keyframes))
+        T._keyboxes = [(self[k].average(other[k]) 
+                        if (self.during(k) and other.during(k)) else 
+                        (self[k] if self.during(k) and not other.during(k) else other[k]))
+                       for k in keyframes] 
+        T_keyframes = keyframes
+        return T  
+
+
     def average(self, other):
         """Compute the average of two tracks by the framewise interpolated boxes at the keyframes of this track"""
         assert isinstance(other, Track), "Invalid input - must be vipy.object.Track()"
@@ -502,6 +517,11 @@ class Track(object):
                         (self[k] if self.during(k) and not other.during(k) else other[k]))
                        for k in T._keyframes]  
         return T  
+
+    def temporal_distance(self, other):
+        """The temporal distance between two tracks is the minimum number of frames separating them"""
+        assert isinstance(other, Track), "Invalid input - must be vipy.object.Track()"
+        return max(max(self.startframe() - other.endframe(), other.startframe() - self.endframe()), 0)
 
     def smooth(self, width):
         """Track smoothing by averaging neighboring keyboxes"""

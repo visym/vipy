@@ -1916,7 +1916,7 @@ class Scene(VideoCategory):
                     startframe = a.endframe()
             if (t.endframe()-1) > startframe:
                 v.add(vipy.activity.Activity(label=t.category().lower() if label is None else label, startframe=startframe, endframe=t.endframe(), actorid=t.id(), framerate=self.framerate(), attributes={'background':True}))
-        return [a for a in v.activityclip(padframes=padframes) if a.activityindex(0).hasattribute('background')]
+        return [a for a in v.activityclip(padframes=padframes, multilabel=False) if a.activityindex(0).hasattribute('background')]
 
     def trackbox(self, dilate=1.0):
         """The trackbox is the union of all track bounding boxes in the video, or the image rectangle if there are no tracks"""
@@ -2143,7 +2143,7 @@ class Scene(VideoCategory):
                 print('[vipy.video.union]: activity key collision - Rekeying other... Use other.rekey() to suppress this warning.')                
                 oc.rekey()
 
-            # Similarity transform?
+            # Similarity transform?  Other may differ from self by a temporal scale (framerate), temporal translation (clip) or spatial isotropic scale (rescale)
             assert np.isclose(self.aspect_ratio(), oc.aspect_ratio(), atol=1E-2), "Invalid input - Scenes must have the same aspect ratio"
             if self.width() != oc.width():
                 oc = oc.rescale(self.width() / oc.width())   # match spatial scale
@@ -2299,6 +2299,20 @@ class Scene(VideoCategory):
     def downcast(self):
         """Cast the object to a vipy.video.Video class"""
         self.__class__ = vipy.video.Video
+        return self
+
+    def merge_tracks(self, dilate=2.0, framedist=5):
+        """Merge tracks if a track endpoint dilated by a fraction overlaps exactly one track startpoint, and the endpoint and startpoint are close enough together temporally"""
+        merged = set([])
+        for ti in sorted(self.tracklist(), key=lambda t: t.startframe()):
+            for tj in sorted(self.tracklist(), key=lambda t: t.startframe()):
+                if (tj.id() not in merged) and (ti.id() != tj.id()) and (ti.endframe() >= tj.startframe()) and ((ti.endframe()-tj.startframe()) <= framedist) and (ti.category() == tj.category()):
+                    di = ti[ti.endframe()].dilate(dilate)
+                    dj = tj[tj.startframe()]
+                    if di.iou(dj) > 0 and not any([di.iou(tk[tj.startframe()]) > 0 for tk in self.tracklist() if (tk.id() not in [ti.id(), tj.id()]) and tk.during(tj.startframe())]):
+                        ti.union(tj)  # Merge tracks that are within gating distance
+                        self.delete(tj.id())   # remove merged track
+                        merged.add(tj.id())
         return self
 
     def assign(self, frame, dets, miniou=0.5, minconf=0.2, maxconf=0.8, maxhistory=30, mincover=0.8, dupecheck=False):
