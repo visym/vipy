@@ -647,7 +647,7 @@ class Track(object):
         return self._keyboxes[int(np.abs(np.array(self._keyframes) - f).argmin())]
     
     
-def non_maximum_suppression(detlist, conf, iou, bycategory=False, cover=None):
+def non_maximum_suppression(detlist, conf, iou, bycategory=False, cover=None, coverdilation=1.2):
     """Compute greedy non-maximum suppression of a list of vipy.object.Detection() based on spatial IOU threshold (iou) and cover threhsold (cover) sorted by confidence (conf)"""
     assert all([isinstance(d, Detection) for d in detlist])
     assert all([d.confidence() is not None for d in detlist])
@@ -658,7 +658,7 @@ def non_maximum_suppression(detlist, conf, iou, bycategory=False, cover=None):
     detlist = sorted(detlist, key=lambda d: d.confidence(), reverse=True)  # biggest to smallest
     for (i,di) in enumerate(detlist):
         for (j,dj) in enumerate(detlist):
-            if j > i and (j not in suppressed) and (bycategory is False or di.category() == dj.category()) and (di.iou(dj) >= iou or (cover is not None and dj.cover(di) >= cover)):
+            if j > i and (j not in suppressed) and (bycategory is False or di.category() == dj.category()) and (di.iou(dj) >= iou or (cover is not None and dj.clone().dilate(coverdilation).cover(di) >= cover)):
                 suppressed.add(j)
     return sorted([d for (j,d) in enumerate(detlist) if j not in suppressed], key=lambda d: d.confidence())  # smallest to biggest confidence for display layering
 
