@@ -168,7 +168,7 @@ class Track(object):
         self._shortlabel = self._label if shortlabel is None else shortlabel
         self._framerate = framerate
         self._interpolation = interpolation
-        self._boundary = self.boundary(boundary)
+        self._boundary = boundary
         self.attributes = attributes if attributes is not None else {}        
         self._keyframes = [int(np.round(f)) for f in keyframes]  # coerce to int
         self._keyboxes = boxes

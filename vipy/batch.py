@@ -175,7 +175,7 @@ class Batch(Checkpoint):
 
     """    
              
-    def __init__(self, objlist, strict=True, as_completed=False, checkpoint=False, checkpointdir=None, checkpointfrac=0.1, warnme=True):
+    def __init__(self, objlist, strict=True, as_completed=False, checkpoint=False, checkpointdir=None, checkpointfrac=0.1, warnme=True, minscatter=10000):
         """Create a batch of homogeneous vipy.image objects from an iterable that can be operated on with a single parallel function call
         """
         assert isinstance(objlist, list), "Input must be a list"
@@ -201,7 +201,7 @@ class Batch(Checkpoint):
 
         self._strict = strict
         self._as_completed = as_completed  # this may introduce instabilities for large complex objects, use with caution
-
+        self._minscatter = minscatter
 
     def __enter__(self):
         return self
@@ -316,7 +316,8 @@ class Batch(Checkpoint):
             self._objlist = [f_lambda_ordered(o) for o in self._objlist]  # no parallelism
         else:
             f_lambda_ordered = lambda x,f=f_lambda: (x[0], f(x[1]))             
-            self._objlist = self._wait(c.map(f_lambda_ordered, self._objlist))
+            objlist = c.scatter(self._objlist) if len(self._objlist) > self._minscatter else self._objlist
+            self._objlist = self._wait(c.map(f_lambda_ordered, objlist))
         return self
 
     def filter(self, f_lambda):
@@ -355,7 +356,8 @@ class Batch(Checkpoint):
             self._objlist = [f_lambda_ordered(obj, o) for o in self._objlist]  # no parallelism
         else:
             objdist = c.scatter(obj, broadcast=True)        
-            self._objlist = self._wait([c.submit(f_lambda_ordered, objdist, im) for im in self._objlist])
+            objlist = c.scatter(self._objlist) if len(self._objlist) > self._minscatter else self._objlist
+            self._objlist = self._wait([c.submit(f_lambda_ordered, objdist, im) for im in objlist])
         return self
 
 

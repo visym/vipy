@@ -749,6 +749,13 @@ def newprefix(filename, newprefix, depth=0):
     p = filepath(filename, depth=depth)
     return os.path.normpath(filename.replace(p, newprefix))
 
+def newpathdir(filename, olddir, newdir, n=1):
+    """Return /a/b/n/d/e.ext for filename=/a/b/c/d/e.ext, olddir=c, newdir=n"""
+    p = pathlib.PurePath(filename)
+    assert sum([d == olddir for d in p.parts]) == n, "Path must have exactly %s directory matches" % n
+    return os.path.join(*[d.replace(olddir, newdir) for d in list(p.parts)])
+
+
 def newpathroot(filename, newroot):
     """Return /r/b/c.ext for filename /a/b/c.ext and new root directory r"""
     p = pathlib.PurePath(filename)
