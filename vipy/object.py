@@ -182,8 +182,8 @@ class Track(object):
     @classmethod
     def from_json(cls, s):
         d = json.loads(s) if not isinstance(s, dict) else s
-        return cls(keyframes=[int(f) for f in d['_keyframes']],
-                   boxes=[BoundingBox.from_json(bbs) for bbs in d['_keyboxes']],
+        return cls(keyframes=tuple(int(f) for f in d['_keyframes']),
+                   boxes=tuple([BoundingBox.from_json(bbs) for bbs in d['_keyboxes']]),
                    category=d['_label'],
                    confidence=None,
                    framerate=d['_framerate'],
@@ -228,8 +228,8 @@ class Track(object):
         return self.json(encode=False)
 
     def json(self, encode=True):
-        d = {k:v if k != '_keyboxes' else [bb.json(encode=False) for bb in v] for (k,v) in self.__dict__.items()}
-        d['_keyframes'] = [int(f) for f in self._keyframes]
+        d = {k:v if k != '_keyboxes' else tuple([bb.json(encode=False) for bb in v]) for (k,v) in self.__dict__.items()}
+        d['_keyframes'] = tuple([int(f) for f in self._keyframes])
         return json.dumps(d) if encode else d
     
     def add(self, keyframe, bbox, strict=True):

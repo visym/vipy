@@ -85,7 +85,7 @@ class Activity(object):
         return self.json(s=None, encode=False)
 
     def json(self, encode=True):
-        d = {k:v if k != '_trackid' else list(v) for (k,v) in self.__dict__.items()}
+        d = {k:v if k != '_trackid' else tuple(v) for (k,v) in self.__dict__.items()}
         return json.dumps(d) if encode else d
     
     def actorid(self, actorid=None):

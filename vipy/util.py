@@ -494,6 +494,7 @@ def load(infile, abspath=False):
        2. if abspath=true, then convert relative paths to absolute paths for object when loaded
        3. If the loaded object is a vipy object (or iterable) and the relocatable path /$PATH is present, try to repath it to the directory containing this archive (this has been deprecated)
        4. If the resulting files are not found, throw a warning
+       5. If a large number of objects are loaded, disable garbage collection.
 
     """
     infile = os.path.abspath(os.path.expanduser(infile))
@@ -536,6 +537,18 @@ def load(infile, abspath=False):
         else:
             warnings.warn('Loading "%s" that contains absolute path "%s" which does not exist' % (infile, testobj.filename()))
 
+    # Large vipy object?  Disable garbage collection.
+    #   - Python uses reference counting for the primary garbage collection mechanism, but also uses reference cycle checks to search for dependencies between objects.
+    #   - All vipy objects are self contained, and do not have reference cycles.  However, there is no way to mark an individual object which does not participate in reference cycle counting.
+    #   - This means that a large number of vipy objects, garbage collection can take minutes searching for cycles which are never there.  To fix this, globally disable the garbage collector.
+    #   - Note that refernece counting is still performed, we are just disabling reference *cycle* counting using the generational garbage collector.
+    #   - This can be re-enabled at any time by "import gc; gc.enable()"
+    #   - If you use %autoreload iPython magic command, note that this will be very slow.  You should set %sutoreload 0
+    #   - Alternatively, load as JSON and all attributes will be unpacked on demand and stored in a packed format that is not tracked (e.g. tuple of strings) by the reference cycle counter
+    if format != 'json' and hasattr(testobj, 'filename') and len(tolist(obj)) > 10000:
+        # Should we warn the user?  Probably doesn't matter ...
+        #warnings.warn('Loading "%s" that contains a large number of vipy objects - disabling reference cycle checks.  Re-enable at any time using "import gc; gc.enable()"' % (infile))
+        import gc; gc.disable()
     return obj
 
 
