@@ -40,7 +40,7 @@ except ImportError:
     import json
     
 
-
+    
 ffmpeg_exe = shutil.which('ffmpeg')
 has_ffmpeg = ffmpeg_exe is not None and os.path.exists(ffmpeg_exe)
 ffprobe_exe = shutil.which('ffprobe')        
@@ -1483,8 +1483,8 @@ class Scene(VideoCategory):
         #   - This is useful when calling vipy.util.load(...) on archives that contain hundreds of thousands of objects
         #   - Do not access the private attributes self._tracks and self._attributes as they will be packed until needed
         #   - Should install ultrajson (pip install ujson) for super fast parsing
-        v._tracks = tuple((json.dumps(s) for s in d['_tracks'].values()))  # efficient garbage collection: store as a packed string to avoid refernece cycle tracking, unpack on demand
-        v._activities = tuple((json.dumps(s) for s in d['_activities'].values()))  # efficient garbage collection: store as a packed string to avoid reference cycle tracking, unpack on demand 
+        v._tracks = tuple(d['_tracks'].values())  # efficient garbage collection: store as a packed string to avoid refernece cycle tracking, unpack on demand
+        v._activities = tuple(d['_activities'].values())  # efficient garbage collection: store as a packed string to avoid reference cycle tracking, unpack on demand 
         return v
         
     def __repr__(self):
@@ -1809,8 +1809,8 @@ class Scene(VideoCategory):
     def json(self, encode=True):
         """Return JSON encoded string of this object"""
         d = json.loads(super().json())
-        d['_tracks'] = {k:t.json(encode=False) for (k,t) in self.tracks().items()}
-        d['_activities'] = {k:a.json(encode=False) for (k,a) in self.activities().items()}
+        d['_tracks'] = {k:t.json(encode=True) for (k,t) in self.tracks().items()}
+        d['_activities'] = {k:a.json(encode=True) for (k,a) in self.activities().items()}
         try:
             return json.dumps(d) if encode else d
         except:
