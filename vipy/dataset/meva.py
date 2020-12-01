@@ -273,6 +273,7 @@ class KF1(object):
                     act2 = v['act']['act2']
                     if isinstance(act2, set):
                         category = list(act2)[0]
+                        v['act']['act2'] = list(act2)  # for JSON serialization
                     elif isinstance(act2, dict):
                         category = list(act2.keys())[0]
                     else:
@@ -281,6 +282,7 @@ class KF1(object):
                     act3 = v['act']['act3']
                     if isinstance(act3, set):
                         category = list(act3)[0]
+                        v['act']['act3'] = list(act3)  # for JSON serialization
                     elif isinstance(act3, dict):
                         category = list(act3.keys())[0]
                     else:

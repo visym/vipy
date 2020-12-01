@@ -1474,8 +1474,17 @@ class Scene(VideoCategory):
     def from_json(cls, s):
         d = json.loads(s) if not isinstance(s, dict) else s                                
         v = super().from_json(s)
-        v._tracks = {t.id():t for t in [vipy.object.Track.from_json(s) for s in d['_tracks'].values()]}
-        v._activities = {a.id():a for a in [vipy.activity.Activity.from_json(s) for s in d['_activities'].values()]}
+
+        # Packed attribute storage:
+        #   - When loading a large number of vipy objects, the python garbage collector slows down signficantly due to reference cycle counting
+        #   - Mutable objects and custom containers are tracked by the garbage collector and the more of them that are loaded the longer GC takes
+        #   - To avoid this, load attributes as tuples of packed strings.  This is an immutable type that is not refernce counted.  Check this with gc.is_tracked()
+        #   - Then, unpack load the attributes on demand when accessing tracks() or activities().  Then, the nested containers are reference counted (even though they really should not since there are no cycles by construction)
+        #   - This is useful when calling vipy.util.load(...) on archives that contain hundreds of thousands of objects
+        #   - Do not access the private attributes self._tracks and self._attributes as they will be packed until needed
+        #   - Should install ultrajson (pip install ujson) for super fast parsing
+        v._tracks = tuple((json.dumps(s) for s in d['_tracks'].values()))  # efficient garbage collection: store as a packed string to avoid refernece cycle tracking, unpack on demand
+        v._activities = tuple((json.dumps(s) for s in d['_activities'].values()))  # efficient garbage collection: store as a packed string to avoid reference cycle tracking, unpack on demand 
         return v
         
     def __repr__(self):
@@ -1507,10 +1516,10 @@ class Scene(VideoCategory):
         assert img is not None or (self.isloaded() and k<len(self)) or not self.isloaded(), "Invalid frame index %d - Indexing video by frame must be integer within (0, %d)" % (k, len(self))
 
         img = img if img is not None else self._array[k] if self.isloaded() else self.preview(k).array()
-        dets = [t[k] for (tid,t) in self._tracks.items() if t[k] is not None]  # track interpolation (cloned) with boundary handling
+        dets = [t[k] for (tid,t) in self.tracks().items() if t[k] is not None]  # track interpolation (cloned) with boundary handling
         for d in dets:
             shortlabel = [(d.shortlabel(),'')]  # [(Noun, Verbing1), (Noun, Verbing2), ...]
-            for (aid, a) in self._activities.items():  # insertion order:  First activity is primary, next is secondary
+            for (aid, a) in self.activities().items():  # insertion order:  First activity is primary, next is secondary
                 if a.hastrack(d.attributes['trackid']) and a.during(k):
                     # Shortlabel is always displayed as "Noun Verbing" during activity (e.g. Person Carrying, Vehicle Turning)
                     # If noun is associated with more than one activity, then this is shown as "Noun Verbing1\nNoun Verbing2", with a newline separator 
@@ -1582,6 +1591,8 @@ class Scene(VideoCategory):
     
     def tracks(self, tracks=None, id=None):
         """Return mutable dictionary of tracks"""        
+        if isinstance(self._tracks, tuple):
+            self._tracks = {t.id():t for t in [vipy.object.Track.from_json(json.loads(s)) for s in self._tracks]}  # on-demand unpack (efficient garbage collection for large list of objects)
         if tracks is None and id is None:
             return self._tracks  # mutable dict
         elif id is not None:
@@ -1598,7 +1609,7 @@ class Scene(VideoCategory):
         return self.activities(id=id)
     
     def tracklist(self):
-        return list(self._tracks.values())
+        return list(self.tracks().values())
 
     def actorid(self):
         assert len(self.tracks()) == 1, "Actor ID only valid for scenes with a single track"
@@ -1606,6 +1617,8 @@ class Scene(VideoCategory):
         
     def activities(self, activities=None, id=None):
         """Return mutable dictionary of activities.  All temporal alignment is relative to the current clip()."""
+        if isinstance(self._activities, tuple):
+            self._activities = {a.id():a for a in [vipy.activity.Activity.from_json(json.loads(s)) for s in self._activities]}  # on-demand
         if activities is None and id is None:
             return self._activities  # mutable dict
         elif id is not None:
@@ -1621,7 +1634,7 @@ class Scene(VideoCategory):
         return alist[k]
 
     def activitylist(self):
-        return list(self._activities.values())  # insertion ordered (python >=3.6)
+        return list(self.activities().values())  # insertion ordered (python >=3.6)
         
     def activityfilter(self, f):
         """Apply boolean lambda function f to each activity and keep activity if function is true, remove activity if function is false
@@ -1633,32 +1646,32 @@ class Scene(VideoCategory):
              vid = vid.activityfilter(lambda a: a.category() in set(['category1', 'category2']))
        
         """
-        self._activities = {k:a for (k,a) in self._activities.items() if f(a) == True}
+        self._activities = {k:a for (k,a) in self.activities().items() if f(a) == True}
         return self
         
     def trackfilter(self, f):
         """Apply lambda function f to each object and keep if filter is True"""
-        self._tracks = {k:t for (k,t) in self._tracks.items() if f(t) == True} 
+        self._tracks = {k:t for (k,t) in self.tracks().items() if f(t) == True} 
         return self
 
     def trackmap(self, f, strict=True):
         """Apply lambda function f to each activity"""
-        self._tracks = {k:f(t) for (k,t) in self._tracks.items()}
+        self._tracks = {k:f(t) for (k,t) in self.tracks().items()}
         assert all([isinstance(t, vipy.object.Track) and (strict is False or not t.isdegenerate()) for t in self.tracklist()]), "Lambda function must return non-degenerate vipy.object.Track()"
         return self
         
     def activitymap(self, f):
         """Apply lambda function f to each activity"""
-        self._activities = {k:f(a) for (k,a) in self._activities.items()}
+        self._activities = {k:f(a) for (k,a) in self.activities().items()}
         assert all([isinstance(a, vipy.activity.Activity) for a in self.activitylist()]), "Lambda function must return vipy.activity.Activity()"
         return self
 
     def rekey(self):
         """Change the track and activity IDs to randomly assigned UUIDs.  Useful for cloning unique scenes"""
-        d_old_to_new = {k:uuid.uuid4().hex for (k,a) in self._activities.items()}
-        self._activities = {d_old_to_new[k]:a.id(d_old_to_new[k]) for (k,a) in self._activities.items()}
-        d_old_to_new = {k:uuid.uuid4().hex for (k,t) in self._tracks.items()}
-        self._tracks = {d_old_to_new[k]:t.id(d_old_to_new[k]) for (k,t) in self._tracks.items()}
+        d_old_to_new = {k:uuid.uuid4().hex for (k,a) in self.activities().items()}
+        self._activities = {d_old_to_new[k]:a.id(d_old_to_new[k]) for (k,a) in self.activities().items()}
+        d_old_to_new = {k:uuid.uuid4().hex for (k,t) in self.tracks().items()}
+        self._tracks = {d_old_to_new[k]:t.id(d_old_to_new[k]) for (k,t) in self.tracks().items()}
         for (k,v) in d_old_to_new.items():
             self.activitymap(lambda a: a.replaceid(k,v) )
         return self
@@ -1703,13 +1716,13 @@ class Scene(VideoCategory):
         return self.activitylabels()        
         
     def hasactivities(self):
-        return len(self._activities) > 0 and any([len(a)>0 for a in self.activitylist()])
+        return len(self._activities) > 0
 
     def hastracks(self):
-        return len(self._tracks) > 0 and any([len(t)>0 for t in self.tracklist()])
+        return len(self._tracks) > 0
 
     def hastrack(self, trackid):
-        return trackid in self._tracks
+        return trackid in self.tracks()
 
     def add(self, obj, category=None, attributes=None, rangecheck=True):
         """Add the object obj to the scene, and return an index to this object for future updates
@@ -1745,18 +1758,18 @@ class Scene(VideoCategory):
             t = vipy.object.Track(category=obj.category(), keyframes=[self._currentframe], boxes=[obj], boundary='strict', attributes=obj.attributes)
             if rangecheck and not obj.hasoverlap(width=self.width(), height=self.height()):
                 raise ValueError("Track '%s' does not intersect with frame shape (%d, %d)" % (str(t), self.height(), self.width()))
-            self._tracks[t.id()] = t
+            self.tracks()[t.id()] = t  
             return t.id()
         elif isinstance(obj, vipy.object.Track):
             if rangecheck and not obj.boundingbox().isinside(vipy.geometry.imagebox(self.shape())):
                 obj = obj.imclip(self.width(), self.height())  # try to clip it, will throw exception if all are bad 
                 warnings.warn('Clipping track "%s" to image rectangle' % (str(obj)))
-            self._tracks[obj.id()] = obj
+            self.tracks()[obj.id()] = obj
             return obj.id()
         elif isinstance(obj, vipy.activity.Activity):
             if rangecheck and obj.startframe() >= obj.endframe():
                 raise ValueError("Activity '%s' has invalid (startframe, endframe)=(%d, %d)" % (str(obj), obj.startframe(), obj.endframe()))
-            self._activities[obj.id()] = obj
+            self.activities()[obj.id()] = obj
             # FIXME: check to see if activity has at least one track during activity
             return obj.id()
         elif (istuple(obj) or islist(obj)) and len(obj) == 4 and isnumber(obj[0]):
@@ -1765,7 +1778,7 @@ class Scene(VideoCategory):
             if rangecheck and not t.boundingbox().isinside(vipy.geometry.imagebox(self.shape())):
                 t = t.imclip(self.width(), self.height())  # try to clip it, will throw exception if all are bad 
                 warnings.warn('Clipping track "%s" to image rectangle' % (str(t)))
-            self._tracks[t.id()] = t
+            self.tracks()[t.id()] = t
             return t.id()
         else:
             raise ValueError('Undefined object type "%s" to be added to scene - Supported types are obj in ["vipy.object.Detection", "vipy.object.Track", "vipy.activity.Activity", "[xmin, ymin, width, height]"]' % str(type(obj)))
@@ -1796,8 +1809,8 @@ class Scene(VideoCategory):
     def json(self, encode=True):
         """Return JSON encoded string of this object"""
         d = json.loads(super().json())
-        d['_tracks'] = {k:t.json(encode=False) for (k,t) in self._tracks.items()}
-        d['_activities'] = {k:a.json(encode=False) for (k,a) in self._activities.items()}
+        d['_tracks'] = {k:t.json(encode=False) for (k,t) in self.tracks().items()}
+        d['_activities'] = {k:a.json(encode=False) for (k,a) in self.activities().items()}
         try:
             return json.dumps(d) if encode else d
         except:
@@ -1841,8 +1854,8 @@ class Scene(VideoCategory):
             if self._startframe is not None and self._endframe is not None:
                 (self._startframe, self._endframe) = (int(round(self._startframe * (fps/self._framerate))), int(round(self._endframe * (fps/self._framerate))))
             self._ffmpeg = self._ffmpeg.filter('fps', fps=fps, round='up')
-            self._tracks = {k:t.framerate(fps) for (k,t) in self._tracks.items()}
-            self._activities = {k:a.framerate(fps) for (k,a) in self._activities.items()}        
+            self._tracks = {k:t.framerate(fps) for (k,t) in self.tracks().items()}
+            self._activities = {k:a.framerate(fps) for (k,a) in self.activities().items()}        
             self._framerate = fps
             return self
         
@@ -1968,7 +1981,7 @@ class Scene(VideoCategory):
         vid._tracks = {ti:vipy.object.Track(keyframes=[f for (f,im) in enumerate(frames) for d in im.objects() if d.attributes['trackid'] == ti],
                                             boxes=[d for (f,im) in enumerate(frames) for d in im.objects() if d.attributes['trackid'] == ti],
                                             category=t.category(), trackid=ti)
-                       for (k,(ti,t)) in enumerate(self._tracks.items())}  # replace tracks with boxes relative to tube
+                       for (k,(ti,t)) in enumerate(self.tracks().items())}  # replace tracks with boxes relative to tube
         return vid.array(np.stack([im.numpy() for im in frames]))
 
     def actortube(self, trackid=None, dilate=1.0, maxdim=256, strict=True):
@@ -1993,7 +2006,7 @@ class Scene(VideoCategory):
         vid._tracks = {ti:vipy.object.Track(keyframes=[f for (f,im) in enumerate(frames) for d in im.objects() if d.attributes['trackid'] == ti],  # keyframes zero indexed, relative to [frames]
                                             boxes=[d for (f,im) in enumerate(frames) for d in im.objects() if d.attributes['trackid'] == ti],  # one box per frame
                                             category=t.category(), trackid=ti)  # preserve trackid
-                       for (k,(ti,t)) in enumerate(self._tracks.items())}  # replace tracks with interpolated boxes relative to tube defined by actor
+                       for (k,(ti,t)) in enumerate(self.tracks().items())}  # replace tracks with interpolated boxes relative to tube defined by actor
         return vid.array(np.stack([im.numpy() for im in frames]))
 
     def speed(self, s):
@@ -2017,7 +2030,7 @@ class Scene(VideoCategory):
         else:
             v._array = self._array[startframe:endframe]
             (v._startframe, v._endframe) = (0, endframe-startframe)
-        v._tracks = {k:t.offset(dt=-startframe).truncate(startframe=0, endframe=endframe-startframe) for (k,t) in v._tracks.items()}   # may be empty
+        v._tracks = {k:t.offset(dt=-startframe).truncate(startframe=0, endframe=endframe-startframe) for (k,t) in v.tracks().items()}   # may be empty
         v._activities = {k:a.offset(dt=-startframe).truncate(startframe=0, endframe=endframe-startframe) for (k,a) in v._activities.items()}        
         return v  
 
@@ -2032,7 +2045,7 @@ class Scene(VideoCategory):
             self.zeropad(bb.width(), bb.height())     
             bb = bb.offset(bb.width(), bb.height())            
         super().crop(bb, zeropad=False)  # range check handled here to correctly apply zeropad
-        self._tracks = {k:t.offset(dx=-bb.xmin(), dy=-bb.ymin()) for (k,t) in self._tracks.items()}
+        self._tracks = {k:t.offset(dx=-bb.xmin(), dy=-bb.ymin()) for (k,t) in self.tracks().items()}
         return self
     
     def zeropad(self, padwidth, padheight):
@@ -2043,33 +2056,33 @@ class Scene(VideoCategory):
         
         assert isinstance(padwidth, int) and isinstance(padheight, int)
         super().zeropad(padwidth, padheight)  
-        self._tracks = {k:t.offset(dx=padwidth, dy=padheight) for (k,t) in self._tracks.items()}
+        self._tracks = {k:t.offset(dx=padwidth, dy=padheight) for (k,t) in self.tracks().items()}
         return self
         
     def fliplr(self):
         (H,W) = self.shape()  # yuck, need to get image dimensions before filter
-        self._tracks = {k:t.fliplr(H,W) for (k,t) in self._tracks.items()}
+        self._tracks = {k:t.fliplr(H,W) for (k,t) in self.tracks().items()}
         super().fliplr()
         return self
 
     def flipud(self):
         assert not self.isloaded(), "Filters can only be applied prior to load() - Try calling flush() first"                
         (H,W) = self.shape()  # yuck, need to get image dimensions before filter
-        self._tracks = {k:t.flipud(H,W) for (k,t) in self._tracks.items()}
+        self._tracks = {k:t.flipud(H,W) for (k,t) in self.tracks().items()}
         super().flipud()
         return self
 
     def rot90ccw(self):
         assert not self.isloaded(), "Filters can only be applied prior to load() - Try calling flush() first"                
         (H,W) = self.shape()  # yuck, need to get image dimensions before filter
-        self._tracks = {k:t.rot90ccw(H,W) for (k,t) in self._tracks.items()}
+        self._tracks = {k:t.rot90ccw(H,W) for (k,t) in self.tracks().items()}
         super().rot90ccw()
         return self
 
     def rot90cw(self):
         assert not self.isloaded(), "Filters can only be applied prior to load() - Try calling flush() first"                
         (H,W) = self.shape()  # yuck, need to get image dimensions before filter
-        self._tracks = {k:t.rot90cw(H,W) for (k,t) in self._tracks.items()}
+        self._tracks = {k:t.rot90cw(H,W) for (k,t) in self.tracks().items()}
         super().rot90cw()
         return self
 
@@ -2079,8 +2092,8 @@ class Scene(VideoCategory):
         (H,W) = self.shape()  # yuck, need to get image dimensions before filter
         sy = rows / float(H) if rows is not None else cols / float(W)
         sx = cols / float(W) if cols is not None else rows / float(H)
-        self._tracks = {k:t.scalex(sx) for (k,t) in self._tracks.items()}
-        self._tracks = {k:t.scaley(sy) for (k,t) in self._tracks.items()}
+        self._tracks = {k:t.scalex(sx) for (k,t) in self.tracks().items()}
+        self._tracks = {k:t.scaley(sy) for (k,t) in self.tracks().items()}
         super().resize(rows, cols)
         return self
 
@@ -2099,7 +2112,7 @@ class Scene(VideoCategory):
     def rescale(self, s):
         """Spatially rescale the scene by a constant scale factor"""
         assert not self.isloaded(), "Filters can only be applied prior to load() - Try calling flush() first"                
-        self._tracks = {k:t.rescale(s) for (k,t) in self._tracks.items()}
+        self._tracks = {k:t.rescale(s) for (k,t) in self.tracks().items()}
         super().rescale(s)
         return self
 
