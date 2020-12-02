@@ -431,10 +431,13 @@ class Video(object):
         assert self.hasfilename(), "Invalid video file '%s' for ffprobe" % self.filename() 
         return ffmpeg.probe(self.filename())
 
-    def print(self, prefix='', verbose=True):
-        """Print the representation of the video - useful for debugging in long fluent chains"""
+    def print(self, prefix='', verbose=True, sleep=None):
+        """Print the representation of the video - useful for debugging in long fluent chains.  Sleep is useful for adding in a delay for distributed processing"""
         if verbose:
             print(prefix+self.__repr__())
+        if sleep is not None:
+            assert isinstance(sleep, int) and sleep > 0, "Sleep must be a non-negative integer number of seconds"
+            time.sleep(sleep)
         return self
 
     def __array__(self):
