@@ -292,7 +292,8 @@ class Batch(Checkpoint):
 
     def result(self):
         """Return the result of the batch processing, ordered"""
-        return [x[1] for x in sorted(self._objlist, key=lambda y: y[0])]  # restore order
+        objlist = {int(v[0]):v[1] for v in self._objlist if v is not None}
+        return [objlist[k] if k in objlist else None for k in range(len(self._objlist))]  # restore order
 
     def __iter__(self):
         for x in self.result():
