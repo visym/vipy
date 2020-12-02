@@ -1462,6 +1462,7 @@ class Scene(VideoCategory):
 
     @classmethod
     def cast(cls, v, flush=False):
+        """Cast a conformal vipy object to this class.  This is useful for downcast and upcast conversion of video objects."""
         assert isinstance(v, vipy.video.Video), "Invalid input - must be derived from vipy.video.Video"
         if v.__class__ != vipy.video.Scene:
             v.__class__ = vipy.video.Scene            
@@ -1472,6 +1473,13 @@ class Scene(VideoCategory):
 
     @classmethod
     def from_json(cls, s):
+        """Restore an object serialized with self.json()
+        
+           Usage:
+           >>> vs = vipy.video.Scene.from_json(v.json())
+
+        """
+
         d = json.loads(s) if not isinstance(s, dict) else s                                
         v = super().from_json(s)
 
@@ -1483,10 +1491,24 @@ class Scene(VideoCategory):
         #   - This is useful when calling vipy.util.load(...) on archives that contain hundreds of thousands of objects
         #   - Do not access the private attributes self._tracks and self._attributes as they will be packed until needed
         #   - Should install ultrajson (pip install ujson) for super fast parsing
-        v._tracks = tuple(d['_tracks'].values())  # efficient garbage collection: store as a packed string to avoid refernece cycle tracking, unpack on demand
+        v._tracks = tuple(d['_tracks'].values())  # efficient garbage collection: store as a packed string to avoid reference cycle tracking, unpack on demand
         v._activities = tuple(d['_activities'].values())  # efficient garbage collection: store as a packed string to avoid reference cycle tracking, unpack on demand 
         return v
         
+    def pack(self):
+        """Packing a scene returns the scene with the annotations JSON serialized.  
+               
+              - This is useful for fast garbage collection when there are many objects in memory
+              - This is useful for distributed processing prior to serializing from a scheduler to a client
+              - This is useful for lazy deserialization of complex attributes when loading many videos into memory
+              - Unpacking is transparent to the end user and is performed on the fly when annotations are accessed.  There is no unpack() method.
+              - See the notes in from_json() for why this helps with nested containers and reference cycle tracking with the python garbage collector        
+        """
+        d = json.loads(self.json())
+        self._tracks = tuple(d['_tracks'].values())  # efficient garbage collection: store as a packed string to avoid reference cycle tracking, unpack on demand
+        self._activities = tuple(d['_activities'].values())  # efficient garbage collection: store as a packed string to avoid reference cycle tracking, unpack on demand 
+        return self
+
     def __repr__(self):
         strlist = []
         if self.isloaded():
