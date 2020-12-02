@@ -422,7 +422,7 @@ class Video(object):
 
     def isdirty(self):
         """Has the FFMPEG filter chain been modified from the default?  If so, then ffplay() on the video file will be different from self.load().play()"""
-        return '-filter_complex' in self._ffmpeg_commandline() and '[s1]' in self._ffmpeg_commandline()
+        return '-filter_complex' in self._ffmpeg_commandline()
     
     def probe(self):
         """Run ffprobe on the filename and return the result as a JSON file"""
