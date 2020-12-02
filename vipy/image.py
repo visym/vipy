@@ -1027,7 +1027,7 @@ class Image(object):
         return self.colorspace('float')
 
     def mat2gray(self, min=None, max=None):
-        """Convert the image buffer so that [min,max] -> [0,1], forces conversion to 'float' colorspace"""
+        """Convert the image buffer so that [min,max] -> [0,1], forces conversion to 'float' colorspace.  This does not change the number of color channels"""
         self.array(mat2gray(np.float32(self.load().float().array()), min, max))
         return self.colorspace('float')
         return self
@@ -1265,7 +1265,6 @@ class ImageCategory(Image):
             self.setattribute('probability', newprob)
             self.setattribute('RawDetectionProbability', newprob)
             return self
-
     
 
 class Scene(ImageCategory):
@@ -1399,9 +1398,9 @@ class Scene(ImageCategory):
         self._objectlist = [obj for obj in self._objectlist if f(obj) is True]
         return self
 
-    def nms(self, conf, iou, cover=0.8):
+    def nms(self, conf, iou, cover=0.8, coverdilation=1.2):
         """Non-maximum supporession of objects() by category based on confidence and spatial IoU and cover thresholds"""
-        return self.objects( vipy.object.non_maximum_suppression(self.objects(), conf=conf, iou=iou, cover=cover, bycategory=True) )
+        return self.objects( vipy.object.non_maximum_suppression(self.objects(), conf=conf, iou=iou, cover=cover, bycategory=True, coverdilation=coverdilation) )
 
     def intersection(self, other, miniou, bycategory=True):
         """Return a Scene() containing the objects in both self and other, that overlap by miniou with greedy assignment"""

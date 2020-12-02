@@ -698,10 +698,11 @@ class BoundingBox(object):
             assert isnumber(width) and isnumber(height), "Invalid width and height - both must be numbers"
         return self.area_of_intersection(BoundingBox(xmin=0, ymin=0, width=width, height=height)) > 0
 
-    def isinterior(self, width=None, height=None):
-        """Is this boundingbox fully within the provided image rectangle?"""
-        return self.isinside(imagebox((height, width)))
-        
+    def isinterior(self, width=None, height=None, border=1.0):
+        """Is this boundingbox fully within the provided image rectangle?  If border in [0,1], then the image is dilated by a border percentage prior to computing interior, useful to check if self is near the image edge"""
+        assert border > 0 and border <= 1, "Border must be a dilation fraction of the image, such that the image centroid is constant and the sides are dilated by a scale [0,1]"
+        return self.isinside(imagebox((height, width)).dilate(border))
+
     def iminterior(self, W, H):
         """Transform bounding box to be interior to the image rectangle with shape (W,H).  
            Transform is applyed by computing smallest (dx,dy) translation that it is interior to the image rectangle, then clip to the image rectangle if it is too big to fit

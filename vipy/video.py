@@ -367,11 +367,11 @@ class Video(object):
     def framelist(self):
         return list(self.frames())
 
-    def _update_ffmpeg(self, argname, argval):
+    def _update_ffmpeg(self, argname, argval, node_name=None):
         nodes = ffmpeg.nodes.get_stream_spec_nodes(self._ffmpeg)
         sorted_nodes, outgoing_edge_maps = ffmpeg.dag.topo_sort(nodes)
         for n in sorted_nodes:
-            if argname in n.__dict__['kwargs']:
+            if argname in n.__dict__['kwargs'] or node_name == n.__dict__['name']:
                 n.__dict__['kwargs'][argname] = argval
                 return self
         raise ValueError('invalid ffmpeg argument "%s" -> "%s"' % (argname, argval))
@@ -776,10 +776,10 @@ class Video(object):
 
         # Convert frame to mjpeg and pipe to stdout, used to get dimensions of video
         try:
-            # FIXME: this is inefficient for large framenum.  Need to add "-ss sec.msec" flag before input, but this can screw up clip timing.  
-            #   * the "ss" option must be provided before the input filename, and is supported by ffmpeg-python as ".input(in_filename, ss=time)"
+            # FFMPEG frame indexing is inefficient for large framenum.  Need to add "-ss sec.msec" flag before input, but this can screw up clip timing, so this cannot be used in general
+            #   - the "ss" option must be provided before the input filename, and is supported by ffmpeg-python as ".input(in_filename, ss=time)"
             timestamp_in_seconds = framenum/float(self.framerate())
-            f_prepipe = self._ffmpeg.filter('select', 'gte(n,{})'.format(framenum))
+            f_prepipe = self.clone()._update_ffmpeg('ss', timestamp_in_seconds, 'input')._ffmpeg.filter('select', 'gte(n,{})'.format(0))
             f = f_prepipe.output('pipe:', vframes=1, format='image2', vcodec='mjpeg')\
                          .global_args('-cpuflags', '0', '-loglevel', 'debug' if vipy.globals.isdebug() else 'error')
             (out, err) = f.run(capture_stdout=True)
@@ -789,7 +789,15 @@ class Video(object):
         # [EXCEPTION]:  UnidentifiedImageError: cannot identify image file
         #   -This may occur when the framerate of the video from ffprobe (tbr) does not match that passed to fps filter, resulting in a zero length image preview piped to stdout
         #   -This may occur after calling clip() with too short a duration, try increasing the clip to be > 1 sec
-        return Image(array=np.array(PIL.Image.open(BytesIO(out))))
+        #   -This may occur if requesting a frame number greater than the length of the video.  At this point, we do not know the video length, and cannot fail gracefully
+        try:
+            return Image(array=np.array(PIL.Image.open(BytesIO(out))))
+        except Exception as e:
+            print('[vipy.video.Video.preview][ERROR]:  %s' % str(e))
+            print('   -This may occur when the framerate of the video from ffprobe (tbr) does not match that passed to fps filter, resulting in a zero length image preview piped to stdout')
+            print('   -This may occur after calling clip() with too short a duration, try increasing the clip to be > 1 sec')
+            print('   -This may occur if requesting a frame number greater than the length of the video.  At this point, we do not know the video length, and cannot fail gracefully')
+            raise
 
     def thumbnail(self, outfile=None, frame=0):
         """Return annotated frame=k of video, save annotation visualization to provided outfile"""
