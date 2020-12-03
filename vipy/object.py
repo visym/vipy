@@ -150,7 +150,7 @@ class Track(object):
 
     """
 
-    def __init__(self, keyframes, boxes, category=None, label=None, confidence=None, framerate=None, interpolation='linear', boundary='strict', shortlabel=None, attributes=None, trackid=None):
+    def __init__(self, keyframes, boxes, category=None, label=None, framerate=None, interpolation='linear', boundary='strict', shortlabel=None, attributes=None, trackid=None):
 
         keyframes = tolist(keyframes)
         boxes = tolist(boxes)        
@@ -185,7 +185,6 @@ class Track(object):
         return cls(keyframes=tuple(int(f) for f in d['_keyframes']),
                    boxes=tuple([BoundingBox.from_json(bbs) for bbs in d['_keyboxes']]),
                    category=d['_label'],
-                   confidence=None,
                    framerate=d['_framerate'],
                    interpolation=d['_interpolation'],
                    boundary=d['_boundary'],
@@ -218,6 +217,11 @@ class Track(object):
     def isempty(self):
         return self.__len__() == 0
 
+    def confidence(self):
+        """The confidence of a track is the mean confidence of all keyboxes (if confidences are available) else 0"""
+        C = [Detection.cast(d).confidence() for d in self.keyboxes() if Detection.cast(d).confidence() is not None]
+        return np.mean(C) if ((not self.isdegenerate()) and (len(C) > 0)) else 0
+        
     def isdegenerate(self):
         return not (len(self.keyboxes()) == len(self.keyframes()) and
                     (len(self) == 0 or all([bb.isvalid() for bb in self.keyboxes()])) and

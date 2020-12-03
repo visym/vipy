@@ -1532,8 +1532,10 @@ class Scene(ImageCategory):
         """Resize scene preserving aspect ratio so that minimum dimension of image = dim, update all objects"""
         return super().mindim(dim, interp=interp) if dim is not None else min(self.shape())  # will call self.rescale() which will update boxes
 
-    def crop(self, bbox):
-        """Crop the image buffer using the supplied bounding box object, clipping the box to the image rectangle, update all scene objects"""        
+    def crop(self, bbox=None):
+        """Crop the image buffer using the supplied bounding box object (or the only object if bbox=None), clipping the box to the image rectangle, update all scene objects"""
+        assert bbox is not None or (len(self) == 1), "Bounding box must be provided if number of objects != 1"
+        bbox = bbox if bbox is not None else self._objectlist[0]
         self = super()._crop(bbox)        
         (dx, dy) = (bbox.xmin(), bbox.ymin())
         self._objectlist = [bb.translate(-dx, -dy) for bb in self._objectlist]
