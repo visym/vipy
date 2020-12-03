@@ -133,7 +133,7 @@ def keymin(d):
 
 
 def isjsonfile(filename):
-    return hasextension(filename) and fileext(filename).lower() == '.json'
+    return len(filename) > 5 and filename[-5:] == '.json'
 
 
 def writejson(d, outfile):
@@ -165,6 +165,10 @@ def groupbyasdict(inset, keyfunc):
 def countby(inset, keyfunc):
     """Return dictionary of keys and group sizes for a grouping of the input list by keyfunc lambda function""" 
     return {k:len(v) for (k,v) in groupbyasdict(inset, keyfunc).items()}
+
+def most_frequent(inset):
+    """Return the most frequent element as determined by element equality"""
+    return sorted([(k,v) for (k,v) in vipy.util.countby(inset, lambda x: x).items()], key=lambda y: y[1])[-1][0]
 
 def countbyasdict(inset, keyfunc):
     """Alias for countby"""

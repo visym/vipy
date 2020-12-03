@@ -447,13 +447,19 @@ class Video(object):
         """Has the FFMPEG filter chain been modified from the default?  If so, then ffplay() on the video file will be different from self.load().play()"""
         return '-filter_complex' in self._ffmpeg_commandline()
 
-    def duration_in_seconds(self):
-        """Return video duration in seconds, requires ffprobe"""
-        return float(self.probe()['format']['duration']) if not self.isloaded() else len(self)/self.framerate()
+    def duration_in_seconds_of_videofile(self):
+        """Return video duration of the source filename (NOT the filter chain) in seconds, requires ffprobe.  Fetch once and cache (refetch automatically if _previewhash changes)"""
+        filehash = hashlib.md5(str(self.filename()).encode()).hexdigest()            
+        if self.hasattribute('_duration_in_seconds_of_videofile') and self.attributes['_duration_in_seconds_of_videofile']['filehash'] == filehash:
+            return self.attributes['_duration_in_seconds_of_videofile']['duration']
+        else:
+            d = float(self.probe()['format']['duration'])
+            self.attributes['_duration_in_seconds_of_videofile'] = {'duration':d, 'filehash':filehash}  # for next time
+            return d
 
-    def duration_in_frames(self):
-        """Return video duration in frames, requires ffprobe"""
-        return int(round(self.duration_in_seconds()*self.framerate())) if not self.isloaded() else len(self)
+    def duration_in_frames_of_videofile(self):
+        """Return video duration of the source filename (NOT the filter chain) in frames, requires ffprobe"""
+        return int(round(self.duration_in_seconds_of_videofile()*self.framerate()))
     
     def probe(self):
         """Run ffprobe on the filename and return the result as a JSON file"""
@@ -1220,17 +1226,21 @@ class Video(object):
             return self
 
 
-    def torch(self, startframe=0, endframe=None, length=None, stride=1, take=None, boundary='repeat', order='nchw', verbose=False, withslice=False, scale=1.0):
+    def torch(self, startframe=0, endframe=None, length=None, stride=1, take=None, boundary='repeat', order='nchw', verbose=False, withslice=False, scale=1.0, withlabel=False):
         """Convert the loaded video of shape N HxWxC frames to an MxCxHxW torch tensor, forces a load().
 
            * Order of arguments is (startframe, endframe) or (startframe, startframe+length) or (random_startframe, random_starframe+takelength), then stride or take.
            * Follows numpy slicing rules.  Optionally return the slice used if withslice=True
            * Returns float tensor in the range [0,1] following torchvision.transforms.ToTensor()           
            * order can be ['nchw', 'nhwc', 'cnhw'] for batchsize=n, channels=c, height=h, width=w
+           * boundary can be ['repeat', 'strict', 'cyclic']
+           * withlabel=True, returns tuple (t, labellist), where labellist is a list of tuples of activity labels occurring at the corresponding frame in the tensor
+           * withslice=Trye, returnss tuple (t, (startframe, endframe, stride))
+
         """
         try_import('torch'); import torch
         frames = self.load().numpy() if self.load().numpy().ndim == 4 else np.expand_dims(self.load().numpy(), 3)  # NxHxWx(C=1, C=3)
-        assert boundary in ['repeat', 'strict'], "Invalid boundary mode - must be in ['repeat', 'strict']"
+        assert boundary in ['repeat', 'strict', 'cyclic'], "Invalid boundary mode - must be in ['repeat', 'strict', 'cyclic']"
 
         # Slice index (i=start, j=end, k=step)
         (i,j,k) = (startframe, len(frames), stride)
@@ -1262,6 +1272,9 @@ class Video(object):
         if boundary == 'repeat' and j > len(frames):
             for d in range(j-len(frames)):
                 frames = np.concatenate( (frames, np.expand_dims(frames[-1], 0) ))
+        elif boundary == 'cyclic' and j > len(frames):
+            for d in range(j-len(frames)):
+                frames = np.concatenate( (frames, np.expand_dims(frames[j % len(frames)], 0) ))            
         assert j <= len(frames), "invalid slice=%s for frame shape=%s - try setting boundary='repeat'" % (str((i,j,k)), str(frames.shape))
         if verbose:
             print('[vipy.video.torch]: slice (start,end,step)=%s for frame shape (N,C,H,W)=%s' % (str((i,j,k)), str(frames.shape)))
@@ -1287,8 +1300,14 @@ class Video(object):
         elif scale is not None and scale != 1.0:
             t = scale*t
 
-        # Return tensor or (tensor, slice)
-        return t if not withslice else (t, (i,j,k))
+        # Return tensor or (tensor, slice) or (tensor, labels)
+        if withslice:
+            return (t, (i,j,k))
+        elif withlabel:            
+            labels = [sorted(tuple(self.activitylabels( (k%len(frames)) if boundary == 'cyclic' else min(k, len(frames)-1) ))) for f in range(i,j,k)]
+            return (t, labels)
+        else:
+            return t
 
     def clone(self, flushforward=False, flushbackward=False, flush=False, flushfilter=False, rekey=False, flushfile=False):
         """Create deep copy of video object, flushing the original buffer if requested and returning the cloned object.
