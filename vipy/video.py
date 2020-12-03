@@ -182,6 +182,15 @@ class Video(object):
         """Return a dictionary of metadata about this video"""
         return self.attributes
 
+    def videoid(self):
+        """Return a unique video identifier for this video, as specified in the video attributes in the 'video_id' key, or by hashing all the video attributes.
+
+           Notes:
+             - If any attribute in __dict__ changes, and video_id is not set in self.attributes, then the video ID will change.
+             - To preserve a video ID independent of transformations, set self.setattribute('video_id', MY_ID)
+        """
+        return self.attributes['video_id'] if 'video_id' in self.attributes else hashlib.sha1(str(self.__dict__).encode("UTF-8")).hexdigest()
+    
     def frame(self, k, img=None):
         """Alias for self.__getitem__[k]"""
         assert isinstance(k, int) and k>=0, "Frame index must be non-negative integer"
