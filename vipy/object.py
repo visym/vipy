@@ -427,6 +427,11 @@ class Track(object):
         d = self._keyboxes[0].clone() if len(self._keyboxes) >= 1 else None
         return d.union([bb for (k,bb) in zip(self._keyframes[1:], self._keyboxes[1:]) if self.during(k)]) if (d is not None and len(self._keyboxes) >= 2) else d
 
+    def smallestbox(self):
+        """The smallest box of a track is the smallest spatial box in area along the track"""
+        k = np.argmin([bb.area() for bb in self._keyboxes]) if len(self._keyboxes) > 0 else None
+        return self._keyboxes[k] if k is not None else None
+        
     def pathlength(self):
         """The path length of a track is the cumulative Euclidean distance in pixels that the box travels"""
         return float(np.sum([bb_next.dist(bb_prev) for (bb_next, bb_prev) in zip(self._keyboxes[1:], self._keyboxes[0:-1])])) if len(self._keyboxes)>1 else 0.0

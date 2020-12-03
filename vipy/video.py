@@ -184,9 +184,7 @@ class Video(object):
 
     def frame(self, k, img=None):
         """Alias for self.__getitem__[k]"""
-        #assert img is not None or self.isloaded(), 'Video not loaded, load() before frame indexing or using stream()'
         assert isinstance(k, int) and k>=0, "Frame index must be non-negative integer"
-        assert img is not None or k<len(self), "Invalid frame index %d - Indexing video by frame must be integer within (0, %d)" % (k, len(self))
         return Image(array=img if img is not None else self._array[k] if self.isloaded() else self.preview(k).array(), colorspace=self.colorspace())       
         
     def __iter__(self):
@@ -367,6 +365,21 @@ class Video(object):
     def framelist(self):
         return list(self.frames())
 
+    def _update_ffmpeg_seek(self, timestamp_in_seconds=0, offset=0):
+        nodes = ffmpeg.nodes.get_stream_spec_nodes(self._ffmpeg)
+        sorted_nodes, outgoing_edge_maps = ffmpeg.dag.topo_sort(nodes)
+        for n in sorted_nodes:
+            if 'input' == n.__dict__['name']:
+                if 'ss' not in n.__dict__['kwargs']:
+                    n.__dict__['kwargs']['ss'] = 0
+                if timestamp_in_seconds == 0:
+                    n.__dict__['kwargs']['ss'] = n.__dict__['kwargs']['ss'] + offset
+                else: 
+                    n.__dict__['kwargs']['ss'] = timestamp_in_seconds + offset                   
+                return self
+        raise ValueError('invalid ffmpeg argument "%s" -> "%s"' % ('ss', timestamp_in_seconds))
+
+        
     def _update_ffmpeg(self, argname, argval, node_name=None):
         nodes = ffmpeg.nodes.get_stream_spec_nodes(self._ffmpeg)
         sorted_nodes, outgoing_edge_maps = ffmpeg.dag.topo_sort(nodes)
@@ -423,6 +436,14 @@ class Video(object):
     def isdirty(self):
         """Has the FFMPEG filter chain been modified from the default?  If so, then ffplay() on the video file will be different from self.load().play()"""
         return '-filter_complex' in self._ffmpeg_commandline()
+
+    def duration_in_seconds(self):
+        """Return video duration in seconds, requires ffprobe"""
+        return float(self.probe()['format']['duration']) if not self.isloaded() else len(self)/self.framerate()
+
+    def duration_in_frames(self):
+        """Return video duration in frames, requires ffprobe"""
+        return int(round(self.duration_in_seconds()*self.framerate())) if not self.isloaded() else len(self)
     
     def probe(self):
         """Run ffprobe on the filename and return the result as a JSON file"""
@@ -771,7 +792,7 @@ class Video(object):
     def preview(self, framenum=0):
         """Return selected frame of filtered video, return vipy.image.Image object.  This is useful for previewing the frame shape of a complex filter chain or the frame contents at a particular location without loading the whole video"""
         if self.isloaded():
-            return self[0]
+            return self[framenum]
         elif self.hasurl() and not self.hasfilename():
             self.download(verbose=True)  
         if not self.hasfilename():
@@ -782,7 +803,7 @@ class Video(object):
             # FFMPEG frame indexing is inefficient for large framenum.  Need to add "-ss sec.msec" flag before input, but this can screw up clip timing, so this cannot be used in general
             #   - the "ss" option must be provided before the input filename, and is supported by ffmpeg-python as ".input(in_filename, ss=time)"
             timestamp_in_seconds = framenum/float(self.framerate())
-            f_prepipe = self.clone()._update_ffmpeg('ss', timestamp_in_seconds, 'input')._ffmpeg.filter('select', 'gte(n,{})'.format(0))
+            f_prepipe = self.clone()._update_ffmpeg_seek(offset=timestamp_in_seconds)._ffmpeg.filter('select', 'gte(n,{})'.format(0))
             f = f_prepipe.output('pipe:', vframes=1, format='image2', vcodec='mjpeg')\
                          .global_args('-cpuflags', '0', '-loglevel', 'debug' if vipy.globals.isdebug() else 'error')
             (out, err) = f.run(capture_stdout=True)
@@ -883,8 +904,8 @@ class Video(object):
         """Load a video clip betweeen start and end frames"""
         assert startframe <= endframe and startframe >= 0, "Invalid start and end frames (%s, %s)" % (str(startframe), str(endframe))
         if not self.isloaded():
-            self._ffmpeg = self._ffmpeg.trim(start_frame=startframe, end_frame=endframe)\
-                                       .setpts('PTS-STARTPTS')  # reset timestamp to 0 after trim filter
+            timestamp_in_seconds = ((self._startframe if self._startframe is not None else 0)+startframe)/float(self.framerate())            
+            self._ffmpeg = self._update_ffmpeg_seek(timestamp_in_seconds)._ffmpeg.trim(start_frame=0, end_frame=(endframe-startframe)).setpts('PTS-STARTPTS')  # reset timestamp to 0 after trim filter            
             self._startframe = startframe if self._startframe is None else self._startframe + startframe  # for __repr__ only
             self._endframe = endframe if self._endframe is None else self._startframe + (endframe-startframe)  # for __repr__ only
         else:
@@ -1336,11 +1357,16 @@ class Video(object):
         """Pixelwise additive bias, such that each pixel p_{ij} = b + p_{ij}"""
         return self.normalize(mean=0, std=1, scale=1.0, bias=b)
     
-    def normalize(self, mean, std, scale=1.0, bias=0):
-        """Pixelwise whitening, out = ((scale*in) - mean) / std); triggers load()"""
+    def normalize(self, mean, std, scale=1, bias=0):
+        """Pixelwise whitening, out = ((scale*in) - mean) / std); triggers load().  All computations float32"""
         assert scale >= 0, "Invalid input"
         assert all([s > 0 for s in tolist(std)]), "Invalid input"
-        self._array = ((((scale*self.load()._array) - np.array(mean)) / np.array(std)).astype(np.float32)) + bias
+        self._array = self.load()._array
+        if scale != 1:
+            self._array = np.multiply(np.array(scale, dtype=np.float32), self._array)
+        self._array = (self._array - np.array(mean, dtype=np.float32)) / np.array(std, dtype=np.float32)
+        if bias != 0:
+            self._array = self._array + np.array(bias, dtype=np.float32)
         return self.colorspace('float')
 
     def setattribute(self, k, v=None):
@@ -2055,8 +2081,9 @@ class Scene(VideoCategory):
         if not v.isloaded():
             # -- Copied from super().clip() to allow for clip on clone (for indempotence)
             # -- This code copy is used to avoid super(Scene, self.clone()) which screws up class inheritance for iPython reload
-            assert not v.isloaded(), "Filters can only be applied prior to load() - Try calling flush() first"
-            v._ffmpeg = v._ffmpeg.trim(start_frame=startframe, end_frame=endframe).setpts('PTS-STARTPTS')  # reset timestamp to 0 after trim filter
+            assert not v.isloaded(), "Filters can only be applied prior to load() - Try calling flush() first"            
+            timestamp_in_seconds = ((v._startframe if v._startframe is not None else 0)+startframe)/float(v.framerate())
+            v._ffmpeg = v._update_ffmpeg_seek(timestamp_in_seconds)._ffmpeg.trim(start_frame=0, end_frame=(endframe-startframe)).setpts('PTS-STARTPTS')  # reset timestamp to 0 after trim filter
             v._startframe = startframe if v._startframe is None else v._startframe + startframe  # for __repr__ only
             v._endframe = endframe if v._endframe is None else v._startframe + (endframe-startframe)  # for __repr__ only
             # -- end copy
@@ -2064,7 +2091,8 @@ class Scene(VideoCategory):
             v._array = self._array[startframe:endframe]
             (v._startframe, v._endframe) = (0, endframe-startframe)
         v._tracks = {k:t.offset(dt=-startframe).truncate(startframe=0, endframe=endframe-startframe) for (k,t) in v.tracks().items()}   # may be empty
-        v._activities = {k:a.offset(dt=-startframe).truncate(startframe=0, endframe=endframe-startframe) for (k,a) in v._activities.items()}        
+        v._activities = {k:a.offset(dt=-startframe).truncate(startframe=0, endframe=endframe-startframe) for (k,a) in v.activities().items()}
+        v.trackfilter(lambda t: len(t)>0)  # remove empty tracks        
         return v  
 
     def cliptime(self, startsec, endsec):

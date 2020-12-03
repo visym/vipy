@@ -387,6 +387,56 @@ def _test_scene():
     print('[test_video.scene]: saveas()  PASSED')    
 
 
+def test_clip():
+    imgframes = np.zeros( (120,112,112,3), dtype=np.uint8)
+    imgframes[60] = imgframes[60]+255
+    v = vipy.video.Video(frames=[vipy.image.Image(array=img) for img in imgframes])
+
+    assert np.mean(v[59].array().flatten()) < 128    
+    assert np.mean(v[60].array().flatten()) > 128
+    assert np.mean(v[61].array().flatten()) < 128    
+
+    vc = v.clip(30, 120)
+    assert np.mean(vc[59-30].array().flatten()) < 128    
+    assert np.mean(vc[60-30].array().flatten()) > 128
+    assert np.mean(vc[61-30].array().flatten()) < 128    
+
+    vc = vc.clip(20, 90)
+    assert np.mean(vc[59-50].array().flatten()) < 128    
+    assert np.mean(vc[60-50].array().flatten()) > 128
+    assert np.mean(vc[61-50].array().flatten()) < 128    
+
+    outfile = totempdir('out.mp4')
+    v = vipy.video.Video(frames=[vipy.image.Image(array=img) for img in imgframes])    
+    vc = v.saveas(outfile)
+    assert np.mean(vc.frame(59).array().flatten()) < 128
+    assert np.mean(vc.frame(60).array().flatten()) > 128
+    assert np.mean(vc.frame(61).array().flatten()) < 128    
+
+    v = vipy.video.Video(frames=[vipy.image.Image(array=img) for img in imgframes])    
+    vc = v.saveas(outfile).clip(31, 90)
+    assert np.mean(vc.frame(59-31).array().flatten()) < 128
+    assert np.mean(vc.frame(60-31).array().flatten()) > 128
+    assert np.mean(vc.frame(61-31).array().flatten()) < 128    
+    
+    v = vipy.video.Video(frames=[vipy.image.Image(array=img) for img in imgframes])    
+    vc = v.saveas(outfile).clip(31, 90).clip(2, 40)
+    assert np.mean(vc.frame(59-31-2).array().flatten()) < 128
+    assert np.mean(vc.frame(60-31-2).array().flatten()) > 128
+    assert np.mean(vc.frame(61-31-2).array().flatten()) < 128    
+
+    v = vipy.video.RandomScene()
+    im = v.frame(10)
+    vc = v.saveas(outfile).clip(10,60)
+    imc = vc.frame(0)
+    assert all([i == j for (i,j) in zip(im.objects(), imc.objects())])
+    vc = vc.clip(5, 50)
+    assert all([i == j for (i,j) in zip(v.frame(15).objects(), vc.load().frame(0).objects())])
+
+    os.remove(outfile)    
+    print('[test_video.clip]: clip  PASSED')    
+    
+    
 def test_track():
     t = Track(category=1, keyframes=[1,10], boxes=[BoundingBox(0,0,10,11), BoundingBox(1,1,11,12)])
     assert t.boundingbox().xywh() == (0,0,11,12)
@@ -459,3 +509,4 @@ if __name__ == "__main__":
     test_track()
     _test_scene()
     _test_scene_union()
+    test_clip()
