@@ -183,13 +183,14 @@ class Video(object):
         return self.attributes
 
     def videoid(self):
-        """Return a unique video identifier for this video, as specified in the video attributes in the 'video_id' key, or by hashing all the video attributes.
+        """Return a unique video identifier for this video, as specified in the 'video_id' attribute, or by hashing the filename() and url().
 
            Notes:
-             - If any attribute in __dict__ changes, and video_id is not set in self.attributes, then the video ID will change.
-             - To preserve a video ID independent of transformations, set self.setattribute('video_id', MY_ID)
+             - If the video filename changes (e.g. from transformation), and video_id is not set in self.attributes, then the video ID will change.
+             - If a video does not have a filename or URL or a video ID in the attributes, then this will return None
+             - To preserve a video ID independent of transformations, set self.setattribute('video_id', $MY_ID)
         """
-        return self.attributes['video_id'] if 'video_id' in self.attributes else hashlib.sha1(str(self.__dict__).encode("UTF-8")).hexdigest()
+        return self.attributes['video_id'] if 'video_id' in self.attributes else hashlib.sha1(str(str(self.filename())+str(self.url())).encode("UTF-8")).hexdigest() if (self.filename() is not None or self.url() is not None) else None
     
     def frame(self, k, img=None):
         """Alias for self.__getitem__[k]"""
