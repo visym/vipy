@@ -387,7 +387,7 @@ def _test_scene():
     print('[test_video.scene]: saveas()  PASSED')    
 
 
-def test_clip():
+def _test_clip():
     imgframes = np.zeros( (120,112,112,3), dtype=np.uint8)
     imgframes[60] = imgframes[60]+255
     v = vipy.video.Video(frames=[vipy.image.Image(array=img) for img in imgframes])
@@ -509,4 +509,4 @@ if __name__ == "__main__":
     test_track()
     _test_scene()
     _test_scene_union()
-    test_clip()
+    _test_clip()
