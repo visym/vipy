@@ -1875,21 +1875,25 @@ class ImageDetection(Scene, BoundingBox):
 
 def mutator_show_trackid(n_digits_in_trackid=5):
     """Mutate the image to show track ID with a fixed number of digits appended to the shortlabel as (####)"""
-    return lambda im: (im.objectmap(lambda o: o.shortlabel('%s (%s)' % (o.shortlabel(), o.attributes['trackid'][0:n_digits_in_trackid]))
+    return lambda im, k=None: (im.objectmap(lambda o: o.shortlabel('%s (%s)' % (o.shortlabel(), o.attributes['trackid'][0:n_digits_in_trackid]))
                                     if o.hasattribute('trackid') else o))
+
+def mutator_show_trackindex():
+    """Mutate the image to show track index appended to the shortlabel as (####)"""
+    return lambda im, k=None: (im.objectmap(lambda o: o.shortlabel('%s (%d)' % (o.shortlabel(), int(o.attributes['trackindex']))) if o.hasattribute('trackindex') else o))
 
 def mutator_show_userstring(strlist):
     """Mutate the image to show user supplied strings in the shortlabel.  The list be the same length oas the number of objects in the image.  This is not checked.  This is passed to show()"""
     assert isinstance(strlist, list), "Invalid input"
-    return lambda im: im.objectmap([lambda o,s=s: o.shortlabel(s) for s in strlist])
+    return lambda im, k=None, strlist=strlist: im.objectmap([lambda o,s=s: o.shortlabel(s) for s in strlist])
 
 def mutator_show_noun_only():
     """Mutate the image to show the noun only"""
-    return lambda im: (im.objectmap(lambda o: o.shortlabel('\n'.join([n for (n,v) in o.attributes['noun verb']])) if o.hasattribute('noun verb') else o))
+    return lambda im, k=None: (im.objectmap(lambda o: o.shortlabel('\n'.join([n for (n,v) in o.attributes['noun verb']])) if o.hasattribute('noun verb') else o))
 
 def mutator_show_verb_only():
     """Mutate the image to show the verb only"""
-    return lambda im: (im.objectmap(lambda o: o.shortlabel('\n'.join([v for (n,v) in o.attributes['noun verb']])) if o.hasattribute('noun verb') else o))
+    return lambda im, k=None: (im.objectmap(lambda o: o.shortlabel('\n'.join([v for (n,v) in o.attributes['noun verb']])) if o.hasattribute('noun verb') else o))
 
 def mutator_show_noun_or_verb():
     """Mutate the image to show the verb only if it is non-zero else noun"""
@@ -1897,11 +1901,11 @@ def mutator_show_noun_or_verb():
 
 def mutator_capitalize():
     """Mutate the image to show the shortlabel as 'Noun Verb1\nNoun Verb2'"""
-    return lambda im: (im.objectmap(lambda o: o.shortlabel('\n'.join(['%s %s' % (n.capitalize(), v.capitalize()) for (n,v) in o.attributes['noun verb']])) if o.hasattribute('noun verb') else o))
+    return lambda im, k=None: (im.objectmap(lambda o: o.shortlabel('\n'.join(['%s %s' % (n.capitalize(), v.capitalize()) for (n,v) in o.attributes['noun verb']])) if o.hasattribute('noun verb') else o))
     
 def mutator_show_objectindex():
     """Mutate the image to show the index of the object in the scene.  This list must be the same length as the number of objects in the scene"""
-    return lambda im: im.objectmap([(lambda o,k=k: o.shortlabel(k)) for k in range(len(im))])
+    return lambda im, k=None: im.objectmap([(lambda o,k=k: o.shortlabel(k)) for k in range(len(im))])
 
 
 def RandomImage(rows=None, cols=None):

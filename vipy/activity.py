@@ -177,18 +177,20 @@ class Activity(object):
     def replace(self, oldtrack, newtrack):
         """Replace oldtrack with newtrack if present in self._tracks.  Pass in a trackdict to share reference to track, so that track owner can modify the track and this object observes the change"""
         assert isinstance(oldtrack, Track) and isinstance(newtrack, Track), "Invalid input - must be vipy.object.Track"
-        self._trackid.discard(oldtrack.id())
-        self._trackid.add(newtrack.id())
-        if self.actorid() == oldtrack.id():
-            self.actorid(newtrack.id())
+        if self.hastrack(oldtrack):
+            self._trackid.discard(oldtrack.id())
+            self._trackid.add(newtrack.id())
+            if self.actorid() == oldtrack.id():
+                self.actorid(newtrack.id())
         return self    
 
     def replaceid(self, oldtrackid, newtrackid):
         """Replace oldtrack with newtrack if present in self._tracks.  Pass in a trackdict to share reference to track, so that track owner can modify the track and this object observes the change"""
-        self._trackid.discard(oldtrackid)
-        self._trackid.add(newtrackid)
-        if self.actorid() == oldtrackid:
-            self.actorid(newtrackid)
+        if self.hastrack(oldtrackid):
+            self._trackid.discard(oldtrackid)
+            self._trackid.add(newtrackid)
+            if self.actorid() == oldtrackid:
+                self.actorid(newtrackid)
         return self    
     
     def during(self, frame):

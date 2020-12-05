@@ -123,6 +123,9 @@ class Detection(BoundingBox):
     def hasattribute(self, k):
         return isinstance(self.attributes, dict) and k in self.attributes
 
+    def setattribute(self, k, v):
+        self.attributes[k] = v
+        return self
     
 class Track(object):
     """vipy.object.Track class
@@ -502,15 +505,23 @@ class Track(object):
         assert percentile > 0 and percentile <= 1
         return self.rankiou(other, max(1, int(len(self)*percentile)), dt=dt, n=n)
 
-    def union(self, other):
-        """Compute the union of two tracks by the framewise interpolated boxes at the keyframes of either track"""
+    def union(self, other, overlap='average'):
+        """Compute the union of two tracks.  Overlapping boxes between self and other:
+        
+           Inputs
+             - average [bool]:  average framewise interpolated boxes at overlapping keyframes
+             - replace [bool]:  replace the box with other if other and self overlap at a keyframe
+             - keep [bool]:  keep the box from self (discard other) at a keyframe
+
+        """
         assert isinstance(other, Track), "Invalid input - must be vipy.object.Track()"
         assert other.category() == self.category(), "Category mismatch"
+        assert overlap in ['average', 'replace', 'keep'], "Invalid input - 'overlap' must be in [average, replace, keep]"
         T = self.clone()
         keyframes = sorted(set(T._keyframes+other._keyframes))
-        T._keyboxes = [(self[k].average(other[k]) 
+        T._keyboxes = [((self[k].average(other[k]) if (overlap == 'average') else (self[k] if (overlap == 'keep') else other[k]))
                         if (self.during(k) and other.during(k)) else 
-                        (self[k] if self.during(k) and not other.during(k) else other[k]))
+                        (self[k] if (self.during(k) and not other.during(k)) else (other[k])))
                        for k in keyframes] 
         T._keyframes = keyframes
         return T  
@@ -522,8 +533,7 @@ class Track(object):
         assert other.category() == self.category(), "Category mismatch"
         T = self.clone()
         T._keyboxes = [(self[k].average(other[k]) 
-                        if (self.during(k) and other.during(k)) else 
-                        (self[k] if self.during(k) and not other.during(k) else other[k]))
+                        if (self.during(k) and other.during(k)) else (self[k] if (self.during(k) and not other.during(k)) else (other[k])))
                        for k in T._keyframes]  
         return T  
 
@@ -619,32 +629,33 @@ class Track(object):
         return self
 
     def significant_digits(self, n):
+        """Round the coordinates of all boxes so that they have n significant digits for efficient serialization"""
         self._keyboxes = [bb.significant_digits(n) for bb in self._keyboxes]
         return self
 
     def velocity(self, f, dt=5):
         """Return the (x,y) track velocity at frame f in units of pixels per frame computed by finite difference"""
-        assert f >= 0 and dt > 0 and self.during(f)              
+        assert f >= 0 and dt > 0 and self.during(f) and self.during(f-dt)
         return (self.velocity_x(f, dt), self.velocity_y(f, dt))
 
     def velocity_x(self, f, dt=5):
-        """Return the (x) track velocity at frame f in units of pixels per frame computed by finite difference"""
+        """Return the left/right velocity at frame f in units of pixels per frame computed by finite difference"""
         assert f >= 0 and dt > 0 and self.during(f)
         return (self[f].centroid_x() - self[f-dt].centroid_x())/float(dt)
 
     def velocity_y(self, f, dt=5):
-        """Return the (y) track velocity at frame f in units of pixels per frame computed by finite difference"""
-        assert f >= 0 and dt > 0 and self.during(f)
+        """Return the up/down velocity at frame f in units of pixels per frame computed by finite difference"""
+        assert f >= 0 and dt > 0 and self.during(f) and self.during(f-dt)
         return (self[f].centroid_y() - self[f-dt].centroid_y())/float(dt)
 
     def velocity_w(self, f, dt=5):
-        """Return the (w) track velocity at frame f in units of pixels per frame computed by finite difference"""
-        assert f >= 0 and dt > 0 and self.during(f)
+        """Return the width velocity at frame f in units of pixels per frame computed by finite difference"""
+        assert f >= 0 and dt > 0 and self.during(f) and self.during(f-dt)
         return (self[f].width() - self[f-dt].width())/float(dt)
 
     def velocity_h(self, f, dt=5):
-        """Return the (h) track velocity at frame f in units of pixels per frame computed by finite difference"""
-        assert f >= 0 and dt > 0 and self.during(f)
+        """Return the height velocity at frame f in units of pixels per frame computed by finite difference"""
+        assert f >= 0 and dt > 0 and self.during(f) and self.during(f-dt)
         return (self[f].height() - self[f-dt].height())/float(dt)
     
     def nearest_keyframe(self, f):

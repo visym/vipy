@@ -300,11 +300,13 @@ class KF1(object):
                 startframe = int(v['act']['timespan'][0]['tsr0'][0])
                 endframe = int(v['act']['timespan'][0]['tsr0'][1])                
                 actorid = [x['id1'] for x in v['act']['actors']]   
-                if actor:                    
+                if True:                    
                     nounid = [d_id1_to_track[a].id() for a in actorid if (a in d_id1_to_track) and (f_activity_to_actor(category).lower() == d_id1_to_track[a].category().lower())]
-                    if len(nounid) == 0:
-                        print('[vipy.dataset.meva.KF1]: activity "%s" without a required primary actor "%s" - SKIPPING' % (category, f_activity_to_actor(category)))
-                        continue
+                    if len(nounid) == 0 and actor:
+                        print('[vipy.dataset.meva.KF1]: Warning - activity "%s" without a required primary actor "%s" - SKIPPING' % (category, f_activity_to_actor(category)))
+                        continue  # skip it
+                    elif len(nounid) == 0:
+                        print('[vipy.dataset.meva.KF1]: Warning - activity "%s" without a required primary actor "%s"' % (category, f_activity_to_actor(category)))
                     nounid = nounid[0] if len(nounid) > 0 else None   # first track in activity of required object class for this category is assumed to be the performer/actor/noun
 
                 for aid in actorid:

@@ -848,7 +848,10 @@ def listext(indir, ext):
 
 def jsonlist(indir):
     """return list of fJSON iles with absolute path in a directory"""
-    return extlist(indir, ext='.json')
+    #return extlist(indir, ext='.json')  # FIXME: broken.for.wonky.filenames.with.dots.json
+    return [os.path.abspath(os.path.join(indir, item))
+            for item in os.listdir(indir)
+            if len(item) > 5 and item[-5:] == '.json']
 
 def listjson(indir):
     """Alias for jsonlist"""
