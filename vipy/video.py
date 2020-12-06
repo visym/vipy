@@ -2477,7 +2477,7 @@ class Scene(VideoCategory):
         for (t, conf, iou, shapeiou, cover, d) in sorted(assignments, key=lambda x: (x[1]+min([d.confidence() for d in objdets])*(x[2]+x[3])), reverse=True):
             if conf > minconf and iou > 0 and cover > 0:  # the highest confidence overlapping detection 
                 if t.id() not in assigned and (d.id() not in assigned or iou > miniou or cover > mincover):    # if not assigned yet, or two tracks are assigned the same detection
-                    self.track(t.id()).add(frame, d)  # track assignment in self
+                    self.track(t.id()).add(frame, d.clone())  # track assignment in self (cloned since detections can be assigned multiple times)
                     assigned.add(t.id())  # cannot assign again to this track
                     assigned.add(d.id())  # mark detection as assigned 
                 if cover > mincover:
