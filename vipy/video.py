@@ -2212,6 +2212,25 @@ class Scene(VideoCategory):
     def startframe(self):
         return self._startframe
 
+    def dedupe(self, spatial_iou_threshold=0.8, dt=5):
+        """Find and delete duplicate tracks by track segmentiou() overlap.  This is an expensive operation, quadratic in the number of tracks.
+        
+           Algorithm
+             - For each pair of tracks with the same category, find the larest temporal segment that contains both tracks.
+             - For this segment, compute the IOU for each box interpolated at a stride of dt frames
+             - Compute the mean IOU for this segment.  This is the segment IOU. 
+             - If the segment IOU is greater than the threshold, remove the shorter of the two tracks.  
+
+        """
+        deleted = set([])
+        for tj in sorted(self.tracklist(), key=lambda t: len(t), reverse=True):  # longest to shortest
+            for (s, ti) in sorted([(0,t) if ((tj.id() in deleted or t.id() in deleted or t.id() == tj.id() or t.category() != tj.category())) else (t.segmentiou(tj, dt=dt), t) for t in self.tracklist()], key=lambda x: x[0], reverse=True):
+                if s > spatial_iou_threshold:  # best mean framewise overlap during overlapping segment of two tracks (ti, tj)
+                    self.trackfilter(lambda t: t.id() != ti.id())  # remove duplicate track from final union
+                    print('[vipy.video.dedupe]: deleting duplicate track "%s" (id=%s) which overlaps with "%s" (id=%s)' % (ti, ti.id(), tj, tj.id()))
+                    deleted.add(ti.id())
+        return self
+    
     def union(self, other, temporal_iou_threshold=0.5, spatial_iou_threshold=0.8, strict=True, overlap='average'):
         """Compute the union two scenes as the set of unique activities and tracks.  
 
