@@ -2231,7 +2231,7 @@ class Scene(VideoCategory):
                     deleted.add(ti.id())
         return self
     
-    def union(self, other, temporal_iou_threshold=0.5, spatial_iou_threshold=0.8, strict=True, overlap='average'):
+    def union(self, other, temporal_iou_threshold=0.5, spatial_iou_threshold=0.8, strict=True, overlap='average', percentileiou=0.5):
         """Compute the union two scenes as the set of unique activities and tracks.  
 
            A pair of activities or tracks are non-unique if they overlap spatially and temporally by a given IoU threshold.  Merge overlapping tracks. 
@@ -2247,13 +2247,15 @@ class Scene(VideoCategory):
                 -average: Merge two tracks by averaging the boxes (average=True) if overlapping
                 -replace:  merge two tracks by replacing overlapping boxes with other (discard self)
                 -keep: merge two tracks by keeping overlapping boxes with other (discard other)
-        
+             -percentileiou [0,1]:  When determining the assignment of two tracks, compute the percentileiou of two tracks by ranking the iou in the overlapping segment and computing the mean of the top-k assignments, where k=len(segment)*percentileiou.
+
            Output:
              -Updates this scene to include the non-overlapping activities from other.  By default, it takes the strict union of all activities and tracks. 
 
            Notes:
              -This is useful for merging scenes computed using a lower resolution/framerate/clipped  object or activity detector without running the detector on the high-res scene
              -This function will preserve the invariance for v == v.clear().union(v.rescale(0.5).framerate(5).activityclip()), to within the quantization error of framerate() downsampling.
+             -percentileiou is a robust method of track assignment when boxes for two tracks (e.g. ground truth and detections) where one track may deform due to occlusion.
         """
         assert overlap in ['average', 'replace', 'keep'], "Invalid input - 'overlap' must be in [average, replace, keep]"
         assert spatial_iou_threshold >= 0 and spatial_iou_threshold <= 1, "invalid spatial_iou_threshold, must be between [0,1]"
@@ -2288,7 +2290,7 @@ class Scene(VideoCategory):
 
             # Merge other tracks into self
             for tj in ot:
-                for (s, ti) in sorted([(0,t) if t.category() != tj.category() else (t.segmentiou(tj), t) for t in self.tracklist()], key=lambda x: x[0], reverse=True):
+                for (s, ti) in sorted([(0,t) if t.category() != tj.category() else (t.percentileiou(tj, percentile=percentileiou), t) for t in self.tracklist()], key=lambda x: x[0], reverse=True):
                     if s > spatial_iou_threshold:  # best mean framewise overlap during overlapping segment of two tracks
                         tk = ti.union(tj, overlap=overlap)  # merge duplicate tracks into self by averaging (or keep self only), and save in self
                         oc = oc.activitymap(lambda a: a.replace(tj, ti))  # replace merged track reference in activity for final union
@@ -2503,7 +2505,7 @@ class Scene(VideoCategory):
         # Track construction from unassigned new detections
         for d in objdets:
             if d.confidence() >= maxconf and d.id() not in assigned:
-                self.add(vipy.object.Track(keyframes=[frame], boxes=[d], category=d.category(), framerate=self.framerate(), confidence=d.confidence()), rangecheck=False)
+                self.add(vipy.object.Track(keyframes=[frame], boxes=[d], category=d.category(), framerate=self.framerate()), rangecheck=False)
                     
         # Sanity check: before assignment there should not be duplicate object detections, after assignment there should not be duplicate tracks
         #   - this gets slow for complex videos, use with caution and for debugging only
