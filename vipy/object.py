@@ -466,13 +466,13 @@ class Track(object):
         self._boundary = 'strict'
         return self
 
-    def iou(self, other, dt=1, n=None):
+    def iou(self, other, dt=1):
         """Compute the spatial IoU between two tracks as the mean IoU per frame in the range (self.startframe(), self.endframe())"""
-        return self.rankiou(other, rank=len(self), dt=dt, n=n)
+        return self.rankiou(other, rank=len(self), dt=dt)
 
-    def maxiou(self, other, dt=1, n=None):
+    def maxiou(self, other, dt=1):
         """Compute the maximum spatial IoU between two tracks per frame in the range (self.startframe(), self.endframe())"""        
-        return self.rankiou(other, rank=1, dt=dt, n=n)
+        return self.rankiou(other, rank=1, dt=dt)
 
     def endpointiou(self, other):
         """Compute the mean spatial IoU between two tracks at the two overlapping endpoints.  useful for track continuation"""        
@@ -488,22 +488,29 @@ class Track(object):
         endframe = min(self.endframe(), other.endframe())   # inclusive
         return float(np.mean([self[min(k,endframe)].iou(other[min(k,endframe)]) for k in range(startframe, endframe, dt)]) if endframe > startframe else 0.0)
         
-    def rankiou(self, other, rank, dt=1, n=None):
+    def rankiou(self, other, rank, dt=1):
         """Compute the mean spatial IoU between two tracks per frame in the range (self.startframe(), self.endframe()) using only the top-k (rank) frame overlaps
-           Sample tracks at endpoints and n uniformly spaced frames or a stride of dt frames.
+           Sample tracks at endpoints and n uniformly spaced frames or a stride of dt frames.  
+        
+           - This is useful for track continuation where the box deforms in the overlapping segment at the end due to occlusion. 
+           - This is the robust version of segmentiou.
+           - Use percentileiou to determine the rank based a fraction of the length of the overlap
         """
         assert rank >= 1 and rank <= len(self)
         assert isinstance(other, Track), "Invalid input - must be vipy.object.Track()"
-        assert n is None or n >= 1
         assert dt >= 1
-        dt = max(1, int(len(self)/n) if n is not None else dt)
         frames = [self.startframe()] + list(range(self.startframe()+dt, self.endframe(), dt)) + [self.endframe()]
         return float(np.mean(sorted([self[k].iou(other[k]) if (self.during(k) and other.during(k)) else 0.0 for k in frames])[-rank:]))
 
-    def percentileiou(self, other, percentile, dt=1, n=None):
-        """Percentile iou returns rankiou for rank=percentile*len(self)"""
+    def percentileiou(self, other, percentile, dt=1):
+        """Percentile iou returns rankiou for rank=percentile*len(overlap(self, other))"""
         assert percentile > 0 and percentile <= 1
-        return self.rankiou(other, max(1, int(len(self)*percentile)), dt=dt, n=n)
+        assert isinstance(other, Track), "invalid input - Must be vipy.object.Track()"
+
+        startframe = max(self.startframe(), other.startframe())
+        endframe = min(self.endframe(), other.endframe())
+        segmentlen = endframe - startframe
+        return self.rankiou(other, max(1, int(segmentlen*percentile)), dt=dt) if segmentlen > 0 else 0
 
     def union(self, other, overlap='average'):
         """Compute the union of two tracks.  Overlapping boxes between self and other:
