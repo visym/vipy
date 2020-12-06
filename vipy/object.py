@@ -474,6 +474,13 @@ class Track(object):
         """Compute the maximum spatial IoU between two tracks per frame in the range (self.startframe(), self.endframe())"""        
         return self.rankiou(other, rank=1, dt=dt)
 
+    def fragmentiou(self, other, dt=5):
+        """A fragment is a track that is fully contained within self"""
+        assert isinstance(other, Track), "invalid input - Must be vipy.object.Track()"        
+        startframe = max(self.startframe(), other.startframe())
+        endframe = min(self.endframe(), other.endframe())
+        return float(np.min([self[min(k,endframe)].iou(other[min(k,endframe)]) for k in range(startframe, endframe, dt)])) if (other.startframe() >= self.startframe() and other.endframe() <= self.endframe() and endframe > startframe) else 0
+        
     def endpointiou(self, other):
         """Compute the mean spatial IoU between two tracks at the two overlapping endpoints.  useful for track continuation"""        
         assert isinstance(other, Track), "invalid input - Must be vipy.object.Track()"
