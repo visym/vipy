@@ -2025,8 +2025,13 @@ class Scene(VideoCategory):
 
     def trackbox(self, dilate=1.0):
         """The trackbox is the union of all track bounding boxes in the video, or the image rectangle if there are no tracks"""
-        boxes = [t.clone().boundingbox().dilate(dilate) for t in self.tracklist()]
-        return boxes[0].union(boxes[1:]) if len(boxes) > 0 else vipy.geometry.imagebox(self.shape())
+        boxes = [t.clone().boundingbox() for t in self.tracklist()]
+        boxes = [bb.dilate(dilate) for bb in boxes if bb is not None]
+        return boxes[0].union(boxes[1:]) if len(boxes) > 0 else None
+
+    def framebox(self):
+        """Return the bounding box for the image rectangle, requires preview() to get frame shape"""
+        return vipy.geometry.BoundingBox(xmin=0, ymin=0, width=self.width(), height=self.height())
 
     def trackcrop(self, dilate=1.0, maxsquare=False):
         return self.clone().crop(self.trackbox(dilate).maxsquareif(maxsquare))
