@@ -2217,6 +2217,25 @@ class Scene(VideoCategory):
     def startframe(self):
         return self._startframe
 
+    def dedupe(self, spatial_iou_threshold=0.2, dt=5):
+        """Find and delete duplicate tracks by track segmentiou() overlap.  This is an expensive operation, quadratic in the number of tracks.
+        
+           Algorithm
+             - For each pair of tracks with the same category, find the larest temporal segment that contains both tracks.
+             - For this segment, compute the IOU for each box interpolated at a stride of dt frames
+             - Compute the mean IOU for this segment.  This is the segment IOU. 
+             - If the segment IOU is greater than the threshold, remove the shorter of the two tracks.  
+
+        """
+        deleted = set([])
+        for tj in sorted(self.tracklist(), key=lambda t: len(t), reverse=True):  # longest to shortest
+            for (s, ti) in sorted([(0,t) if ((len(t)>len(tj) or tj.id() in deleted or t.id() in deleted or t.id() == tj.id() or t.category() != tj.category())) else (tj.fragmentiou(t, dt=dt), t) for t in self.tracklist()], key=lambda x: x[0], reverse=True):
+                if s > spatial_iou_threshold:  # best mean framewise overlap during overlapping segment of two tracks (ti, tj)
+                    self.trackfilter(lambda t: t.id() != ti.id())  # remove duplicate track from final union
+                    print('[vipy.video.dedupe]: deleting duplicate track "%s" (id=%s) which overlaps with "%s" (id=%s)' % (ti, ti.id(), tj, tj.id()))
+                    deleted.add(ti.id())
+        return self
+    
     def union(self, other, temporal_iou_threshold=0.5, spatial_iou_threshold=0.8, strict=True, overlap='average', percentileiou=0.5):
         """Compute the union two scenes as the set of unique activities and tracks.  
 
@@ -2347,29 +2366,30 @@ class Scene(VideoCategory):
                                      nocaption_withstring=nocaption_withstring).saveas(outfile).play(notebook=notebook)
     
 
-    def fastshow(self, outfile=None, verbose=True, fontsize=10, captionoffset=(0,0), textfacecolor='white', textfacealpha=1.0, shortlabel=True, boxalpha=0.25, d_category2color={'Person':'green', 'Vehicle':'blue', 'Object':'red'}, categories=None, nocaption=False, nocaption_withstring=[], figure=1, fps=None, timestamp=None, timestampcolor='black', timestampfacecolor='white'):
+    def fastshow(self, outfile=None, verbose=True, fontsize=10, captionoffset=(0,0), textfacecolor='white', textfacealpha=1.0, shortlabel=True, boxalpha=0.25, d_category2color={'Person':'green', 'Vehicle':'blue', 'Object':'red'}, categories=None, nocaption=False, nocaption_withstring=[], figure=1, fps=None, timestamp=None, timestampcolor='black', timestampfacecolor='white', mutator=None):
         """Faster show using interative image show for annotated videos.  This can visualize videos before video rendering is complete, but it cannot guarantee frame rates. Large videos with complex scenes will slow this down and will render at lower frame rates."""
         fps = min(fps, self.framerate()) if fps is not None else self.framerate()
         assert fps > 0, "Invalid display framerate"
         f_timestamp = (lambda k: '%s %d' % (vipy.util.clockstamp(), k)) if timestamp is True else timestamp
+        f_mutator = mutator if mutator is not None else lambda im,k: im        
         with Stopwatch() as sw:            
             for (k,im) in enumerate(self.load() if self.isloaded() else self.stream()):
                 time.sleep(max(0, (1.0/self.framerate())*int(np.ceil((self.framerate()/fps))) - sw.since()))                
-                im.show(categories=categories,
-                        figure=figure,
-                        nocaption=nocaption,
-                        nocaption_withstring=nocaption_withstring,
-                        fontsize=fontsize,
-                        boxalpha=boxalpha,
-                        d_category2color=d_category2color,
-                        captionoffset=captionoffset,
-                        textfacecolor=textfacecolor,
-                        textfacealpha=textfacealpha, 
-                        timestampcolor=timestampcolor,
-                        timestampfacecolor=timestampfacecolor,
-                        timestamp=f_timestamp(k) if timestamp is not None else None,
-                        shortlabel=shortlabel)
-
+                f_mutator(im,k).show(categories=categories,
+                                   figure=figure,
+                                   nocaption=nocaption,
+                                   nocaption_withstring=nocaption_withstring,
+                                   fontsize=fontsize,
+                                   boxalpha=boxalpha,
+                                   d_category2color=d_category2color,
+                                   captionoffset=captionoffset,
+                                   textfacecolor=textfacecolor,
+                                   textfacealpha=textfacealpha, 
+                                   timestampcolor=timestampcolor,
+                                   timestampfacecolor=timestampfacecolor,
+                                   timestamp=f_timestamp(k) if timestamp is not None else None,
+                                   shortlabel=shortlabel)
+                
                 if vipy.globals.user_hit_escape():
                     break
         vipy.show.close(figure)

@@ -1633,24 +1633,35 @@ class Scene(ImageCategory):
         img[self.rectangular_mask() > 0] = self.meanchannel()  # in-place update
         return self
 
-    def bghash(self, bits=128, asbinary=False, asbytes=False):
-        """Perceptual differential hash function, masking out foreground objects.  
+    def fghash(self, bits=8, asbinary=False, asbytes=False):
+        """Perceptual differential hash function, computed for each foreground region independently"""
+        return [im.crop().perceptualhash(bits=bits, asbinary=asbinary, asbytes=asbytes, objmask=False)  for im in self]
+
+    def perceptualhash(self, bits=128, asbinary=False, asbytes=False, objmask=False):
+        """Perceptual differentialhash function
 
            * bits [int]:  longer hashes have lower TAR (true accept rate, some near dupes are missed), but lower FAR (false accept rate), shorter hashes have higher TAR (fewer near-dupes are missed) but higher FAR (more non-dupes are declared as dupes).
            * Algorithm: set foreground objects to mean color, convert to greyscale, resize with linear interpolation to small image based on desired bit encoding, compute vertical and horizontal gradient signs.
            * NOTE: Can be used for near duplicate detection of background scenes by unpacking the returned hex string to binary and computing hamming distance, or performing hamming based nearest neighbor indexing.
            * NOTE: The default packed hex output can be converted to binary as: np.unpackbits(bytearray().fromhex( bghash() )) which is equivalent to bghash(asbinary=True)
-
-        """
+           * objmask [bool]: if trye, replace the foreground object masks with the mean color prior to computing
+        
+        """        
         allowablebits = [2*k*k for k in range(2, 17)]
         assert bits in allowablebits, "Bits must be in %s" % str(allowablebits)
         sq = int(np.ceil(np.sqrt(bits/2.0)))
-        b = (np.dstack(np.gradient(self.clone().meanmask().greyscale().resize(cols=sq+1, rows=sq+1).numpy()))[0:-1, 0:-1] > 0).flatten()
+        im = self.clone() if not objmask else self.clone().meanmask()        
+        b = (np.dstack(np.gradient(im.resize(cols=sq+1, rows=sq+1).numpy()))[0:-1, 0:-1] > 0).flatten()
         return bytes(np.packbits(b)).hex() if not (asbytes or asbinary) else bytes(np.packbits(b)) if asbytes else b
 
+                
+    def bghash(self, bits=128, asbinary=False, asbytes=False):
+        """Percetual differential hash function, masking out foreground regions"""
+        return self.clone().greyscale().perceptualhash(bits=bits, asbinary=asbinary, asbytes=asbytes, objmask=True)
+        
     def isduplicate(self, im, threshold=72, bits=128):
         """Background hash near duplicate detection, returns true if self and im are near duplicate images using bghash"""
-        assert isinstance(im, Image)
+        assert isinstance(im, Image), "Invalid input"
         return np.sum(self.bghash(bits=bits, asbinary=True) == im.bghash(bits=bits, asbinary=True)) > threshold  # hamming distance threshold
     
         

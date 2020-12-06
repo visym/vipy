@@ -175,7 +175,7 @@ class Batch(Checkpoint):
 
     """    
              
-    def __init__(self, objlist, strict=True, as_completed=False, checkpoint=False, checkpointdir=None, checkpointfrac=0.1, warnme=True, minscatter=10000):
+    def __init__(self, objlist, strict=True, as_completed=False, checkpoint=False, checkpointdir=None, checkpointfrac=0.1, warnme=True, minscatter=None):
         """Create a batch of homogeneous vipy.image objects from an iterable that can be operated on with a single parallel function call
         """
         assert isinstance(objlist, list), "Input must be a list"
@@ -316,8 +316,8 @@ class Batch(Checkpoint):
             f_lambda_ordered = lambda x,f=f_lambda: (x[0], f(x[1]))                         
             self._objlist = [f_lambda_ordered(o) for o in self._objlist]  # no parallelism
         else:
-            f_lambda_ordered = lambda x,f=f_lambda: (x[0], f(x[1]))             
-            objlist = c.scatter(self._objlist) if len(self._objlist) > self._minscatter else self._objlist
+            f_lambda_ordered = lambda x,f=f_lambda: (x[0], f(x[1]))            
+            objlist = c.scatter(self._objlist) if (self._minscatter is not None and len(self._objlist) > self._minscatter) else self._objlist
             self._objlist = self._wait(c.map(f_lambda_ordered, objlist))
         return self
 
