@@ -2217,7 +2217,7 @@ class Scene(VideoCategory):
     def startframe(self):
         return self._startframe
 
-    def dedupe(self, spatial_iou_threshold=0.2, dt=5):
+    def dedupe(self, spatial_iou_threshold=0.8, dt=5):
         """Find and delete duplicate tracks by track segmentiou() overlap.  This is an expensive operation, quadratic in the number of tracks.
         
            Algorithm
@@ -2229,11 +2229,13 @@ class Scene(VideoCategory):
         """
         deleted = set([])
         for tj in sorted(self.tracklist(), key=lambda t: len(t), reverse=True):  # longest to shortest
-            for (s, ti) in sorted([(0,t) if ((len(t)>len(tj) or tj.id() in deleted or t.id() in deleted or t.id() == tj.id() or t.category() != tj.category())) else (tj.fragmentiou(t, dt=dt), t) for t in self.tracklist()], key=lambda x: x[0], reverse=True):
+            for (s, ti) in sorted([(0,t) if (len(tj) < len(t) or t.id() in deleted or t.id() == tj.id() or t.category() != tj.category()) else (tj.segmentiou(t, dt=dt), t) for t in self.tracklist()], key=lambda x: x[0], reverse=True):
                 if s > spatial_iou_threshold:  # best mean framewise overlap during overlapping segment of two tracks (ti, tj)
-                    self.trackfilter(lambda t: t.id() != ti.id())  # remove duplicate track from final union
-                    print('[vipy.video.dedupe]: deleting duplicate track "%s" (id=%s) which overlaps with "%s" (id=%s)' % (ti, ti.id(), tj, tj.id()))
+                    print('[vipy.video.dedupe]: merging duplicate track "%s" (id=%s) which overlaps with "%s" (id=%s)' % (ti, ti.id(), tj, tj.id()))
+                    self.tracks()[tj.id()] = tj.union(ti).clone()  # merge
+                    self.activitymap(lambda a: a.replace(ti, tj))  # replace merged track reference in activity
                     deleted.add(ti.id())
+        self.trackfilter(lambda t: t.id() not in deleted)  # remove duplicate tracks
         return self
     
     def union(self, other, temporal_iou_threshold=0.5, spatial_iou_threshold=0.8, strict=True, overlap='average', percentileiou=0.5):
