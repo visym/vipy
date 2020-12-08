@@ -2323,7 +2323,7 @@ class Scene(VideoCategory):
 
         return self        
 
-    def annotate(self, verbose=True, fontsize=10, captionoffset=(0,0), textfacecolor='white', textfacealpha=1.0, shortlabel=True, boxalpha=0.25, d_category2color={'Person':'green', 'Vehicle':'blue', 'Object':'red'}, categories=None, nocaption=False, nocaption_withstring=[], mutator=None, timestamp=None, timestampcolor='black', timestampfacecolor='white'):
+    def annotate(self, verbose=True, fontsize=10, captionoffset=(3,-8), textfacecolor='white', textfacealpha=1.0, shortlabel=True, boxalpha=0.25, d_category2color={'Person':'green', 'Vehicle':'blue', 'Object':'red'}, categories=None, nocaption=False, nocaption_withstring=[], mutator=None, timestamp=None, timestampcolor='black', timestampfacecolor='white'):
         """Generate a video visualization of all annotated objects and activities in the video, at the resolution and framerate of the underlying video, pixels in this video will now contain the overlay
         This function does not play the video, it only generates an annotation video frames.  Use show() which is equivalent to annotate().saveas().play()
         In general, this function should not be run on very long videos, as it requires loading the video framewise into memory, try running on clips instead.
@@ -2355,7 +2355,7 @@ class Scene(VideoCategory):
         return vipy.video.Video(array=np.stack([np.array(PIL.Image.fromarray(img).convert('RGB')) for img in imgs], axis=0), framerate=self.framerate(), attributes=self.attributes)
 
 
-    def show(self, outfile=None, verbose=True, fontsize=10, captionoffset=(0,0), textfacecolor='white', textfacealpha=1.0, shortlabel=True, boxalpha=0.25, d_category2color={'Person':'green', 'Vehicle':'blue', 'Object':'red'}, categories=None, nocaption=False, nocaption_withstring=[], notebook=False, timestamp=None, timestampcolor='black', timestampfacecolor='white'):
+    def show(self, outfile=None, verbose=True, fontsize=10, captionoffset=(3,-8), textfacecolor='white', textfacealpha=1.0, shortlabel=True, boxalpha=0.25, d_category2color={'Person':'green', 'Vehicle':'blue', 'Object':'red'}, categories=None, nocaption=False, nocaption_withstring=[], notebook=False, timestamp=None, timestampcolor='black', timestampfacecolor='white'):
         """Generate an annotation video saved to outfile (or tempfile if outfile=None) and show it using ffplay when it is done exporting.  Do not modify the original video buffer.  Returns a clone of the video with the shown annotation."""
         return self.clone().annotate(verbose=verbose, 
                                      fontsize=fontsize,
@@ -2373,7 +2373,7 @@ class Scene(VideoCategory):
                                      nocaption_withstring=nocaption_withstring).saveas(outfile).play(notebook=notebook)
     
 
-    def fastshow(self, outfile=None, verbose=True, fontsize=10, captionoffset=(0,0), textfacecolor='white', textfacealpha=1.0, shortlabel=True, boxalpha=0.25, d_category2color={'Person':'green', 'Vehicle':'blue', 'Object':'red'}, categories=None, nocaption=False, nocaption_withstring=[], figure=1, fps=None, timestamp=None, timestampcolor='black', timestampfacecolor='white', mutator=None):
+    def fastshow(self, outfile=None, verbose=True, fontsize=10, captionoffset=(3,-8), textfacecolor='white', textfacealpha=1.0, shortlabel=True, boxalpha=0.25, d_category2color={'Person':'green', 'Vehicle':'blue', 'Object':'red'}, categories=None, nocaption=False, nocaption_withstring=[], figure=1, fps=None, timestamp=None, timestampcolor='black', timestampfacecolor='white', mutator=None):
         """Faster show using interative image show for annotated videos.  This can visualize videos before video rendering is complete, but it cannot guarantee frame rates. Large videos with complex scenes will slow this down and will render at lower frame rates."""
         fps = min(fps, self.framerate()) if fps is not None else self.framerate()
         assert fps > 0, "Invalid display framerate"
@@ -2509,7 +2509,7 @@ class Scene(VideoCategory):
                        if t.category() == d.category()]
         assigned = set([])        
         for (t, conf, iou, shapeiou, cover, d) in sorted(assignments, key=lambda x: (x[1]+min([d.confidence() for d in objdets])*(x[2]+x[3])), reverse=True):
-            if iou > 0:  # the highest confidence overlapping detection 
+            if iou > 0 and shapeiou > 0.5:  # the highest confidence overlapping detection with the same shape
                 if (t.id() not in assigned and d.id() not in assigned):  # not assigned yet, assign it!
                     self.track(t.id()).add(frame, d.clone())  # track assignment in self (cloned since detections can be assigned multiple times)
                     assigned.add(t.id())  # cannot assign again to this track
