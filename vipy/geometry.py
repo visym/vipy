@@ -534,6 +534,14 @@ class BoundingBox(object):
         self._ymax = c[1] + new_y
         return self
 
+    def dilatepx(self, px):
+        """Dilate by a given pixel amount on all sides, keeping centroid constant"""
+        self._xmin = self._xmin - px
+        self._ymin = self._ymin - px
+        self._xmax = self._xmax + px
+        self._ymax = self._ymax + px
+        return self
+
     def dilate_height(self, scale=1):
         """Change scale of bounding box in y direction keeping centroid constant"""
         h = self.height()
@@ -699,7 +707,11 @@ class BoundingBox(object):
         return self.area_of_intersection(BoundingBox(xmin=0, ymin=0, width=width, height=height)) > 0
 
     def isinterior(self, width=None, height=None, border=1.0):
-        """Is this boundingbox fully within the provided image rectangle?  If border in [0,1], then the image is dilated by a border percentage prior to computing interior, useful to check if self is near the image edge"""
+        """Is this boundingbox fully within the provided image rectangle?  
+        
+           * If border in [0,1], then the image is dilated by a border percentage prior to computing interior, useful to check if self is near the image edge
+           * If border=0.8, then the image rectangle is dilated by 80% (smaller) keeping the centroid constant. 
+        """
         assert border > 0 and border <= 1, "Border must be a dilation fraction of the image, such that the image centroid is constant and the sides are dilated by a scale [0,1]"
         return self.isinside(imagebox((height, width)).dilate(border))
 

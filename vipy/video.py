@@ -2481,7 +2481,7 @@ class Scene(VideoCategory):
         assert dets is None or all([isinstance(d, vipy.object.Detection) or isinstance(d, vipy.activity.Activity) for d in tolist(dets)]), "invalid input"
         assert frame >= 0 and minconf >= 0 and minconf <= 1.0 and maxhistory > 0, "invalid input"
 
-        if dets is None:
+        if dets is None or len(tolist(dets)) == 0:
             return self
         dets = tolist(dets)
 
@@ -2491,24 +2491,24 @@ class Scene(VideoCategory):
         objdets = [d for d in dets if isinstance(d, vipy.object.Detection)]
         activitydets = [d for d in dets if isinstance(d, vipy.activity.Activity)]        
                 
-        # Track propagation
+        # Track propagation:  Constant velocity motion  model 
         t_ref = self.clone().tracks()  # must be cloned to not propagate in self
         for t in t_ref.values():
-            if (frame - t.endframe()) < maxhistory:  # only predict for tracks less than maxhistory frames old with no new assignments
-                t.add(frame, t.nearest_keybox(frame), strict=False)  # future track prediction (zero velocity, box jitter makes t.velocity() unreliable)
+            if (frame - t.endframe()) <= maxhistory:  # only predict for tracks less than maxhistory frames old with no new assignments
+                t.add(frame, t.linear_extrapolation(frame, dt=maxhistory), strict=False)  # future track prediction
         t_ref = [(t,t[frame]) for (tid, t) in t_ref.items() if t.during(frame)]
 
         # Track assignment:
         #   - Each track is assigned at most one detection
-        #   - Each detection is assigned to zero or more tracks.  
-        #   - Overlapping tracks may be assigned the same detection.
-        #   - Assignment is the highest confidence maximum overlapping detection
+        #   - Each detection is assigned to at most one track.  
+        #   - Assignment is the highest confidence maximum overlapping detection, prioritized by historical track confidence
         assignments = [(t, d.confidence(), d.iou(ti), d.shapeiou(ti), max(d.clone().dilate(1.1).cover(ti), ti.clone().dilate(1.1).cover(d)), d)
                        for (t, ti) in t_ref
                        for d in objdets
                        if t.category() == d.category()]
         assigned = set([])        
-        for (t, conf, iou, shapeiou, cover, d) in sorted(assignments, key=lambda x: (x[1]+min([d.confidence() for d in objdets])*(x[2]+x[3])), reverse=True):
+        posconf = min([d.confidence() for d in objdets])
+        for (t, conf, iou, shapeiou, cover, d) in sorted(assignments, key=lambda x: (x[1]+posconf)*(x[2]+x[3]), reverse=True):
             if iou > 0:  # the highest confidence overlapping detection 
                 if (t.id() not in assigned and d.id() not in assigned):  # not assigned yet, assign it!
                     self.track(t.id()).add(frame, d.clone())  # track assignment in self (cloned since detections can be assigned multiple times)
