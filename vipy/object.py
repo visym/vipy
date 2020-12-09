@@ -296,9 +296,15 @@ class Track(object):
         
     def meanshape(self):
         """Return the mean (width,height) of the box during the track, or None if the track is degenerate"""
-        s = np.mean([bb.shape() for bb in self._keyboxes], axis=0) if len(self._keyboxes) > 0 else None
+        s = np.mean([bb.shape() for bb in self.keyboxes()], axis=0) if len(self.keyboxes()) > 0 else None
         return (float(s[0]), float(s[1])) if s is not None else None
             
+    def shapevariance(self):
+        """Return the variance (width, height) of the box shape during the track or None if the track is degenerate.  This is useful for filtering spurious tracks where the aspect ratio changes rapidly and randomly"""
+        m = self.meanshape()
+        return (float(np.mean([(bb.width() - m[0])**2 for bb in self.keyboxes()])), 
+                float(np.mean([(bb.height() - m[1])**2 for bb in self.keyboxes()]))) if m is not None else None
+
     def framerate(self, fps=None, speed=None):
         """Resample keyframes from known original framerate set by constructor to be new framerate fps"""
         assert self._framerate is not None, "Framerate conversion requires that the framerate is known for current keyframes.  This must be provided to the vipy.object.Track() constructor."
@@ -442,11 +448,28 @@ class Track(object):
         """The smallest box of a track is the smallest spatial box in area along the track"""
         k = np.argmin([bb.area() for bb in self._keyboxes]) if len(self._keyboxes) > 0 else None
         return self._keyboxes[k] if k is not None else None
+
+    def biggestbox(self):
+        """The biggest box of a track is the largest spatial box in area along the track"""
+        k = np.argmax([bb.area() for bb in self._keyboxes]) if len(self._keyboxes) > 0 else None
+        return self._keyboxes[k] if k is not None else None
         
     def pathlength(self):
         """The path length of a track is the cumulative Euclidean distance in pixels that the box travels"""
         return float(np.sum([bb_next.dist(bb_prev) for (bb_next, bb_prev) in zip(self._keyboxes[1:], self._keyboxes[0:-1])])) if len(self._keyboxes)>1 else 0.0
         
+    def startbox(self):
+        """The startbox is the first bounding box in the track"""
+        return self._keyboxes[0] if len(self._keyboxes) > 0 else None
+
+    def endbox(self):
+        """The endbox is the last box in the track"""
+        return self._keyboxes[-1] if len(self._keyboxes) > 0 else None
+
+    def loop_closure_distance(self):
+        """The loop closure track distance is the Euclidean distance in pixels between the start frame bounding box and end frame bounding box"""
+        return self.startbox().dist(self.endbox()) if not self.isdegenerate() else None
+
     def boundary(self, b=None):
         if b is None:
             return self._boundary
@@ -604,7 +627,7 @@ class Track(object):
                 raise
         return self
 
-    def linear_extrapolation(self, k, shape=True, dt=30):
+    def linear_extrapolation(self, k, shape=False, dt=30):
         """Track extrapolation by linear fit.
         
            * Requires at least 2 keyboxes.
@@ -617,7 +640,8 @@ class Track(object):
             return self.nearest_keybox(k)
         else:
             n = self.endframe() if k > self.endframe() else self.startframe()+1
-            (vx, vy, vw, vh) = (self.velocity_x(n, dt=dt), self.velocity_y(n, dt=dt), self.velocity_w(n, dt=dt), self.velocity_h(n, dt=dt))
+            (vx, vy) = self.shape_invariant_velocity(n, dt=dt) if not shape else self.velocity(n, dt=dt)
+            (vw, vh) = (self.velocity_w(n, dt=dt), self.velocity_h(n, dt=dt)) if shape else (0,0)
             return (self.clone()[n]
                     .translate((k-n)*vx, (k-n)*vy)
                     .top(0 if not shape else ((k-n)*vh)/2.0)
@@ -652,28 +676,49 @@ class Track(object):
         return self
 
     def velocity(self, f, dt=30):
-        """Return the (x,y) track velocity at frame f in units of pixels per frame computed by mean finite difference"""
+        """Return the (x,y) track velocity at frame f in units of pixels per frame computed by mean finite difference of the box centroid"""
         return (self.velocity_x(f, dt), self.velocity_y(f, dt))
 
-    def velocity_x(self, f, dt=30):
-        """Return the left/right velocity at frame f in units of pixels per frame computed by mean finite difference over a fixed time window (dt, frames)"""
+    def boxmap(self, f):
+        """Apply the lambda function to each keybox"""
+        self._keyboxes = [f(bb) for bb in self._keyboxes]
+        return self
+
+    def shape_invariant_velocity(self, f, dt=30):
+        """Return the (x,y) track velocity at frame f in units of pixels per frame computed by minimum mean finite differences of any box corner independent of changes in shape"""
         assert f >= 0 and dt > 0 and self.during(f) 
-        return float(np.mean([(self[f].centroid_x() - self[f-k].centroid_x())/float(k) for k in range(1,dt) if self.during(f-k)])) if self.during(f-dt) else 0
+        bbl = [self[f]] + [self[f-k] for k in range(1,dt) if self.during(f-k)]
+        vx = float(np.mean([sorted([(bbl[0].ulx() - bbl[k].ulx())/float(k), 
+                                    (bbl[0].urx() - bbl[k].urx())/float(k), 
+                                    (bbl[0].blx() - bbl[k].blx())/float(k), 
+                                    (bbl[0].brx() - bbl[k].brx())/float(k)], key=lambda x: abs(x))[0]
+                            for k in range(1,dt) if self.during(f-k)])) if self.during(f-1) else 0
+        vy = float(np.mean([sorted([(bbl[0].uly() - bbl[k].uly())/float(k), 
+                                    (bbl[0].ury() - bbl[k].ury())/float(k), 
+                                    (bbl[0].bly() - bbl[k].bly())/float(k), 
+                                    (bbl[0].bry() - bbl[k].bry())/float(k)], key=lambda x: abs(x))[0]
+                            for k in range(1,dt) if self.during(f-k)])) if self.during(f-1) else 0
+        return (vx, vy)
+
+    def velocity_x(self, f, dt=30):
+        """Return the left/right velocity at frame f in units of pixels per frame computed by mean finite difference over a fixed time window (dt, frames) of the box centroid"""
+        assert f >= 0 and dt > 0 and self.during(f) 
+        return float(np.mean([(self[f].centroid_x() - self[f-k].centroid_x())/float(k) for k in range(1,dt) if self.during(f-k)])) if self.during(f-1) else 0
 
     def velocity_y(self, f, dt=30):
-        """Return the up/down velocity at frame f in units of pixels per frame computed by mean finite difference over a fixed time window (dt, frames)"""
+        """Return the up/down velocity at frame f in units of pixels per frame computed by mean finite difference over a fixed time window (dt, frames) of the box centroid"""
         assert f >= 0 and dt > 0 and self.during(f)
-        return float(np.mean([(self[f].centroid_y() - self[f-k].centroid_y())/float(k) for k in range(1,dt) if self.during(f-k)])) if self.during(f-dt) else 0
+        return float(np.mean([(self[f].centroid_y() - self[f-k].centroid_y())/float(k) for k in range(1,dt) if self.during(f-k)])) if self.during(f-1) else 0
 
     def velocity_w(self, f, dt=30):
         """Return the width velocity at frame f in units of pixels per frame computed by finite difference"""
         assert f >= 0 and dt > 0 and self.during(f)
-        return float(np.mean([(self[f].width() - self[f-k].width())/float(k) for k in range(1,dt) if self.during(f-k)])) if self.during(f-dt) else 0
+        return float(np.mean([(self[f].width() - self[f-k].width())/float(k) for k in range(1,dt) if self.during(f-k)])) if self.during(f-1) else 0
 
     def velocity_h(self, f, dt=30):
         """Return the height velocity at frame f in units of pixels per frame computed by finite difference"""
         assert f >= 0 and dt > 0 and self.during(f)
-        return float(np.mean([(self[f].height() - self[f-k].height())/float(k) for k in range(1,dt) if self.during(f-k)])) if self.during(f-dt) else 0
+        return float(np.mean([(self[f].height() - self[f-k].height())/float(k) for k in range(1,dt) if self.during(f-k)])) if self.during(f-1) else 0
     
     def nearest_keyframe(self, f):
         """Nearest keyframe to frame f"""

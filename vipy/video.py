@@ -2323,7 +2323,7 @@ class Scene(VideoCategory):
 
         return self        
 
-    def annotate(self, verbose=True, fontsize=10, captionoffset=(3,-8), textfacecolor='white', textfacealpha=1.0, shortlabel=True, boxalpha=0.25, d_category2color={'Person':'green', 'Vehicle':'blue', 'Object':'red'}, categories=None, nocaption=False, nocaption_withstring=[], mutator=None, timestamp=None, timestampcolor='black', timestampfacecolor='white'):
+    def annotate(self, verbose=True, fontsize=10, captionoffset=(0,0), textfacecolor='white', textfacealpha=1.0, shortlabel=True, boxalpha=0.25, d_category2color={'Person':'green', 'Vehicle':'blue', 'Object':'red'}, categories=None, nocaption=False, nocaption_withstring=[], mutator=None, timestamp=None, timestampcolor='black', timestampfacecolor='white'):
         """Generate a video visualization of all annotated objects and activities in the video, at the resolution and framerate of the underlying video, pixels in this video will now contain the overlay
         This function does not play the video, it only generates an annotation video frames.  Use show() which is equivalent to annotate().saveas().play()
         In general, this function should not be run on very long videos, as it requires loading the video framewise into memory, try running on clips instead.
@@ -2355,7 +2355,7 @@ class Scene(VideoCategory):
         return vipy.video.Video(array=np.stack([np.array(PIL.Image.fromarray(img).convert('RGB')) for img in imgs], axis=0), framerate=self.framerate(), attributes=self.attributes)
 
 
-    def show(self, outfile=None, verbose=True, fontsize=10, captionoffset=(3,-8), textfacecolor='white', textfacealpha=1.0, shortlabel=True, boxalpha=0.25, d_category2color={'Person':'green', 'Vehicle':'blue', 'Object':'red'}, categories=None, nocaption=False, nocaption_withstring=[], notebook=False, timestamp=None, timestampcolor='black', timestampfacecolor='white'):
+    def show(self, outfile=None, verbose=True, fontsize=10, captionoffset=(0,0), textfacecolor='white', textfacealpha=1.0, shortlabel=True, boxalpha=0.25, d_category2color={'Person':'green', 'Vehicle':'blue', 'Object':'red'}, categories=None, nocaption=False, nocaption_withstring=[], notebook=False, timestamp=None, timestampcolor='black', timestampfacecolor='white'):
         """Generate an annotation video saved to outfile (or tempfile if outfile=None) and show it using ffplay when it is done exporting.  Do not modify the original video buffer.  Returns a clone of the video with the shown annotation."""
         return self.clone().annotate(verbose=verbose, 
                                      fontsize=fontsize,
@@ -2373,7 +2373,7 @@ class Scene(VideoCategory):
                                      nocaption_withstring=nocaption_withstring).saveas(outfile).play(notebook=notebook)
     
 
-    def fastshow(self, outfile=None, verbose=True, fontsize=10, captionoffset=(3,-8), textfacecolor='white', textfacealpha=1.0, shortlabel=True, boxalpha=0.25, d_category2color={'Person':'green', 'Vehicle':'blue', 'Object':'red'}, categories=None, nocaption=False, nocaption_withstring=[], figure=1, fps=None, timestamp=None, timestampcolor='black', timestampfacecolor='white', mutator=None):
+    def fastshow(self, outfile=None, verbose=True, fontsize=10, captionoffset=(0,0), textfacecolor='white', textfacealpha=1.0, shortlabel=True, boxalpha=0.25, d_category2color={'Person':'green', 'Vehicle':'blue', 'Object':'red'}, categories=None, nocaption=False, nocaption_withstring=[], figure=1, fps=None, timestamp=None, timestampcolor='black', timestampfacecolor='white', mutator=None):
         """Faster show using interative image show for annotated videos.  This can visualize videos before video rendering is complete, but it cannot guarantee frame rates. Large videos with complex scenes will slow this down and will render at lower frame rates."""
         fps = min(fps, self.framerate()) if fps is not None else self.framerate()
         assert fps > 0, "Invalid display framerate"
@@ -2470,7 +2470,7 @@ class Scene(VideoCategory):
                         break
         return self
 
-    def assign(self, frame, dets, minconf=0.2, maxhistory=5, activityiou=0.5):
+    def assign(self, frame, dets, minconf=0.2, maxhistory=5, activityiou=0.5, trackcover=0.5):
         """Assign a list of vipy.object.Detections at frame k to scene by greedy track association. In-place update.
         
            * miniou [float]: the minimum temporal IOU for activity assignment
@@ -2495,31 +2495,38 @@ class Scene(VideoCategory):
         t_ref = self.clone().tracks()  # must be cloned to not propagate in self
         for t in t_ref.values():
             if (frame - t.endframe()) <= maxhistory:  # only predict for tracks less than maxhistory frames old with no new assignments
-                t.add(frame, t.linear_extrapolation(frame, dt=maxhistory), strict=False)  # future track prediction
+                t.add(frame, t.linear_extrapolation(frame, dt=maxhistory, shape=False), strict=False)  # future track prediction
         t_ref = [(t,t[frame]) for (tid, t) in t_ref.items() if t.during(frame)]
 
         # Track assignment:
         #   - Each track is assigned at most one detection
         #   - Each detection is assigned to at most one track.  
-        #   - Assignment is the highest confidence maximum overlapping detection, prioritized by historical track confidence
+        #   - Assignment is the highest confidence maximum overlapping detection
+        #   - Detections of the same class must not cover (or be covered by) previously assigned detections, explaining same pixels twice
         assignments = [(t, d.confidence(), d.iou(ti), d.shapeiou(ti), max(d.clone().dilate(1.1).cover(ti), ti.clone().dilate(1.1).cover(d)), d)
                        for (t, ti) in t_ref
                        for d in objdets
                        if t.category() == d.category()]
         assigned = set([])        
         posconf = min([d.confidence() for d in objdets])
-        for (t, conf, iou, shapeiou, cover, d) in sorted(assignments, key=lambda x: (x[1]+posconf)*(x[2]+x[3]), reverse=True):
-            if iou > 0 and shapeiou > 0.5:  # the highest confidence overlapping detection with the same shape
+        for (t, conf, iou, shapeiou, cover, d) in sorted(assignments, key=lambda x: (x[1]+posconf)*(x[2]+x[3]+x[4]), reverse=True):
+            if cover > (trackcover if len(t)>1 else 0):  # the highest confidence detection within the iou gate (or any overlap if not yet enough history for velocity estimate) 
                 if (t.id() not in assigned and d.id() not in assigned):  # not assigned yet, assign it!
-                    self.track(t.id()).add(frame, d.clone())  # track assignment in self (cloned since detections can be assigned multiple times)
+                    D = [o for o in objdets if o.id() in assigned]  # already assigned detections
+                    if not any([max(o.clone().dilate(1.1).cover(d), d.clone().dilate(1.1).cover(o)) > 0.8 for o in D]):  # no detection already assigned covers this detection
+                        self.track(t.id()).add(frame, d.clone())  # track assignment
                     assigned.add(t.id())  # cannot assign again to this track
                     assigned.add(d.id())  # mark detection as assigned
-                elif t.id() in assigned and (cover > 0.95 or iou > 0.95):
+                elif t.id() in assigned and (cover > 0.8 or iou > 0.8):
                     assigned.add(d.id())  # track already assigned, mark duplicate detection as assigned
                 else:
                     pass  # no track assignment, let this track die out
                 
-        # Track construction from unassigned new detections
+        # Track construction from unassigned detections
+        #   - This may create spurious tracks if trackconf is low.  
+        #   - These spurious tracks manifest as tracks with significant shape variation or flying off into the distance due to noisy velocity.
+        #   - These spurious tracks are often due to spurious detections between two or more objects
+        #   - Filter the final tracks by len(track) > minhistory, track.confidence() > minconf, increase trackconf, or track.shapevariance() > var
         for d in objdets:
             if d.confidence() >= minconf and d.id() not in assigned:
                 self.add(vipy.object.Track(keyframes=[frame], boxes=[d], category=d.category(), framerate=self.framerate()), rangecheck=False)

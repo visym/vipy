@@ -1665,7 +1665,7 @@ class Scene(ImageCategory):
         return np.sum(self.bghash(bits=bits, asbinary=True) == im.bghash(bits=bits, asbinary=True)) > threshold  # hamming distance threshold
     
         
-    def show(self, categories=None, figure=1, nocaption=False, nocaption_withstring=[], fontsize=10, boxalpha=0.25, d_category2color={'Person':'green', 'Vehicle':'blue', 'Object':'red'}, captionoffset=(3,-8), nowindow=False, textfacecolor='white', textfacealpha=1.0, shortlabel=True, timestamp=None, timestampcolor='black', timestampfacecolor='white', mutator=None):
+    def show(self, categories=None, figure=1, nocaption=False, nocaption_withstring=[], fontsize=10, boxalpha=0.25, d_category2color={'Person':'green', 'Vehicle':'blue', 'Object':'red'}, captionoffset=(0,0), nowindow=False, textfacecolor='white', textfacealpha=1.0, shortlabel=True, timestamp=None, timestampcolor='black', timestampfacecolor='white', mutator=None):
         """Show scene detection 
 
            * categories [list]:  List of category (or shortlabel) names in the scene to show
@@ -1699,7 +1699,7 @@ class Scene(ImageCategory):
                               captionoffset=captionoffset, nowindow=nowindow, textfacecolor=textfacecolor, textfacealpha=textfacealpha, timestamp=timestamp, timestampcolor=timestampcolor, timestampfacecolor=timestampfacecolor)
         return self
 
-    def savefig(self, outfile=None, categories=None, figure=1, nocaption=False, fontsize=10, boxalpha=0.25, d_category2color={'person':'green', 'vehicle':'blue', 'object':'red'}, captionoffset=(3,-8), dpi=200, textfacecolor='white', textfacealpha=1.0, shortlabel=True, nocaption_withstring=[], timestamp=None, timestampcolor='black', timestampfacecolor='white', mutator=None):
+    def savefig(self, outfile=None, categories=None, figure=1, nocaption=False, fontsize=10, boxalpha=0.25, d_category2color={'person':'green', 'vehicle':'blue', 'object':'red'}, captionoffset=(0,0), dpi=200, textfacecolor='white', textfacealpha=1.0, shortlabel=True, nocaption_withstring=[], timestamp=None, timestampcolor='black', timestampfacecolor='white', mutator=None):
         """Save show() output to given file or return buffer without popping up a window"""
         fignum = figure if figure is not None else 1        
         self.show(categories=categories, figure=fignum, nocaption=nocaption, fontsize=fontsize, boxalpha=boxalpha, 

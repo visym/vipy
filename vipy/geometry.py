@@ -219,6 +219,63 @@ class BoundingBox(object):
         """x coordinate of upper left corner of box, x-axis is image column"""
         return self._xmin
 
+    def ul(self):
+        """Upper left coordinate (x,y)"""
+        return (self._xmin, self._ymin)
+
+    def ulx(self):
+        """Upper left coordinate (x)"""
+        return self.ul()[0]
+
+    def uly(self):
+        """Upper left coordinate (y)"""
+        return self.ul()[1]
+
+    def ur(self):
+        """Upper right coordinate (x,y)"""
+        return (self._xmax, self._ymin)
+
+    def urx(self):
+        """Upper right coordinate (x)"""
+        return self.ur()[0]
+
+    def ury(self):
+        """Upper right coordinate (y)"""
+        return self.ur()[1]
+
+    def ll(self):
+        """Lower left coordinate (x,y), synonym for bl()"""
+        return (self._xmin, self._ymax)
+
+    def bl(self):
+        """Bottom left coordinate (x,y), synonym for ll()"""
+        return (self._xmin, self._ymax)
+
+    def blx(self):
+        """Bottom left coordinate (x)"""
+        return self.bl()[0]
+
+    def bly(self):
+        """Bottom left coordinate (y)"""
+        return self.bl()[1]
+
+    def lr(self):
+        """Lower right coordinate (x,y), synonym for br()"""
+        return (self._xmax, self._ymax)
+
+    def br(self):
+        """Bottom right coordinate (x,y), synonym for lr()"""
+        return (self._xmax, self._ymax)
+
+    def brx(self):
+        """Bottom right coordinate (x)"""
+        return self.br()[0]
+
+    def bry(self):
+        """Bottom right coordinate (y)"""
+        return self.br()[1]
+
+
     def ymin(self):
         """y coordinate of upper left corner of box, y-axis is image row"""
         return self._ymin
