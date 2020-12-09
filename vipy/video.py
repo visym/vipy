@@ -2509,16 +2509,16 @@ class Scene(VideoCategory):
                        if t.category() == d.category()]
         assigned = set([])        
         posconf = min([d.confidence() for d in objdets])
-        for (t, conf, iou, shapeiou, cover, d) in sorted(assignments, key=lambda x: (x[1]+posconf)*(x[2]+x[3]+x[4]), reverse=True):
+        for (t, conf, iou, shapeiou, cover, d) in sorted(assignments, key=lambda x: (x[1]+posconf)*(x[2]+x[3]+x[4])+t.confidence(), reverse=True):
             if cover > (trackcover if len(t)>1 else 0):  # the highest confidence detection within the iou gate (or any overlap if not yet enough history for velocity estimate) 
                 if (t.id() not in assigned and d.id() not in assigned):  # not assigned yet, assign it!
                     D = [o for o in objdets if o.id() in assigned]  # already assigned detections
-                    if not any([max(o.clone().dilate(1.1).cover(d), d.clone().dilate(1.1).cover(o)) > 0.8 for o in D]):  # no detection already assigned covers this detection
-                        self.track(t.id()).add(frame, d.clone())  # track assignment
+                    if not any([max(o.clone().dilate(1.1).cover(d), d.clone().dilate(1.1).cover(o)) > 0.8 for o in D]):  # no detection already assigned to another track explains this detection
+                        self.track(t.id()).add(frame, d.clone())  # track assignment!
                     assigned.add(t.id())  # cannot assign again to this track
                     assigned.add(d.id())  # mark detection as assigned
-                elif t.id() in assigned and (cover > 0.8 or iou > 0.8):
-                    assigned.add(d.id())  # track already assigned, mark duplicate detection as assigned
+                elif t.id() in assigned and (d.clone().dilate(1.1).cover(t.endbox()) > 0.8 or t.endbox().clone().dilate(1.1).cover(d) > 0.8):
+                    assigned.add(d.id())  # track already assigned but this detection is also explained by this track, mark detection as assigned so new track is not spawned
                 else:
                     pass  # no track assignment, let this track die out
                 
