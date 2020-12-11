@@ -214,7 +214,7 @@ class BoundingBox(object):
 
     def __str__(self):
         return self.__repr__()
-
+    
     def xmin(self):
         """x coordinate of upper left corner of box, x-axis is image column"""
         return self._xmin
@@ -878,6 +878,10 @@ class BoundingBox(object):
         else: 
             return img[:, self.ymin():self.ymax(), self.xmin():self.xmax(), :]  # NxHxWxC
 
+
+    def confidence(self):
+        """Bounding boxes do not have confidences, use vipy.object.Detection()"""
+        return None
 
 class Ellipse():
     __slots__ = ['_major', '_minor', '_xcenter', '_ycenter', '_phi']
