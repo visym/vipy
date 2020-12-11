@@ -1420,9 +1420,7 @@ class Scene(ImageCategory):
         """Combine the objects of the scene with other and self with no duplicate checking unless miniou is not None"""
         assert isinstance(other, Scene), "Invalid input"
         assert miniou is None or (miniou>=0 and miniou <= 1), "Invalid input"
-        v = self.clone()
-        v._objectlist.extend(other.objects()) if miniou is None else v.difference(other, miniou).union(other)
-        return v
+        return self.objects(v.objects()+other.objects()) # FIXME: NMS outside
 
     def uncrop(self, bb, shape):
         """Uncrop a previous crop(bb) called with the supplied bb=BoundingBox(), and zeropad to shape=(H,W)"""

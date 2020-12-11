@@ -226,7 +226,7 @@ class Track(object):
 
     def confidence(self, dt=None):
         """The confidence of a track is the mean confidence of all (or last frames=dt) keyboxes (if confidences are available) else 0"""
-        C = [Detection.cast(d).confidence() for (f,d) in zip(self.keyframes(), self.keyboxes()) if Detection.cast(d).confidence() is not None if (dt is None or f >= (self.endframe()-dt))]
+        C = [d._confidence for (f,d) in zip(self.keyframes(), self.keyboxes()) if (hasattr(d, '_confidence') and d._confidence is not None and (dt is None or f >= (self.endframe()-dt)))]
         return float(np.mean(C)) if ((not self.isdegenerate()) and (len(C) > 0)) else 0
         
     def isdegenerate(self):
@@ -283,6 +283,9 @@ class Track(object):
         """Return keyframe frame indexes where there are track observations"""
         return self._keyframes
 
+    def num_keyframes(self):
+        return len(self._keyframes)
+
     def keyboxes(self, boxes=None, keyframes=None):
         """Return keyboxes where there are track observations"""
         if boxes is None and keyframes is None:
@@ -335,6 +338,7 @@ class Track(object):
                       ymin=float(np.interp(k, self._keyframes, ymin)),
                       width=float(np.interp(k, self._keyframes, width)),
                       height=float(np.interp(k, self._keyframes, height)),
+                      confidence=self.nearest_keybox(k).confidence(),  # may be None
                       category=self.category(),
                       shortlabel=self.shortlabel())
         d.attributes['trackid'] = self.id()  # for correspondence of detections to tracks
@@ -722,10 +726,12 @@ class Track(object):
     
     def nearest_keyframe(self, f):
         """Nearest keyframe to frame f"""
+        assert len(self._keyframes) > 0
         return self._keyframes[int(np.abs(np.array(self._keyframes) - f).argmin())]
 
     def nearest_keybox(self, f):
         """Nearest keybox to frame f"""
+        assert len(self._keyframes) > 0
         return self._keyboxes[int(np.abs(np.array(self._keyframes) - f).argmin())]
     
     

@@ -296,13 +296,14 @@ def plot_ap(ap, categories, title=None, outfile=None):
         plt.show()
 
 
-def histogram(freq, categories, barcolors=None, title=None, outfile=None, figure=None, ylabel='Frequency', xrot='vertical', xlabel=None, fontsize=10):
+def histogram(freq, categories, barcolors=None, title=None, outfile=None, figure=None, ylabel='Frequency', xrot='vertical', xlabel=None, fontsize=10, xshow=True):
     """Plot histogram bar chart using matplotlib with vertical axis labels on x-axis,, with optional figure save.
        
        Inputs:
           -freq:  the output of (freq, categories) = np.histogram(..., bins=n)
           -categories [list]:  a list of category names that must be length n, or the output of (f,c) = np.histogram(...) and categories=c[:-1]
           -xrot ['vertical'|None]:  rotate the xticks
+          -barcolors [list]:  list of named colors equal to the length of categories
     """
     if figure is not None:
         plt.figure(figure)
@@ -312,7 +313,8 @@ def histogram(freq, categories, barcolors=None, title=None, outfile=None, figure
 
     x = range(1, len(categories)+1)
     plt.bar(x, height=freq, width=0.8, bottom=None, color=barcolors)
-    plt.xticks(x, list(categories), rotation=xrot, fontsize=fontsize)
+    if xshow:
+        plt.xticks(x, list(categories), rotation=xrot, fontsize=fontsize)
     plt.autoscale(tight=True)
     if ylabel is not None:
         plt.ylabel(ylabel)
@@ -330,14 +332,18 @@ def histogram(freq, categories, barcolors=None, title=None, outfile=None, figure
         plt.show()
 
         
-def pie(sizes, labels, explode=None, outfile=None, shadow=False):
+def pie(sizes, labels, explode=None, outfile=None, shadow=False, legend=True, fontsize=10, rotatelabels=False):
     """Generate a matplotlib style pie chart with wedges with specified size and labels, with an optional outfile"""
     plt.figure(1)
     plt.clf()
     
     # pie = plt.pie(sizes, explode=explode, labels=labels, autopct='%1.1f%%', shadow=shadow, startangle=0)
-    pie = plt.pie(sizes, explode=explode, shadow=shadow, startangle=0)
-    plt.legend(labels)
+    if legend:
+        pie = plt.pie(sizes, explode=explode, shadow=shadow, startangle=0,  textprops={'fontsize': fontsize}, rotatelabels=rotatelabels)
+        plt.legend(labels)
+    else:
+        pie = plt.pie(sizes, explode=explode, shadow=shadow, startangle=0, labels=labels,  textprops={'fontsize': fontsize}, rotatelabels=rotatelabels)
+
     plt.axis('equal')  # Equal aspect ratio ensures that pie is drawn as a circle.
 
     plt.tight_layout()        
