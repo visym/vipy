@@ -342,6 +342,11 @@ class BoundingBox(object):
         self._ymax = self._ymax + dy
         return self
 
+    def set_origin(self, other):
+        """Set the origin of the coordinates of this bounding box to be relative to the upper left of the other bounding box"""
+        assert isinstance(other, BoundingBox), "Invalid BoundingBox() input of type '%s'" % str(type(other))
+        return self.translate(other.xmin(), other.ymin())                
+    
     def offset(self, dx=0, dy=0):
         """Alias for translate"""
         return self.translate(dx, dy)
