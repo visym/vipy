@@ -2284,7 +2284,7 @@ class Scene(VideoCategory):
         assert spatial_iou_threshold >= 0 and spatial_iou_threshold <= 1, "invalid spatial_iou_threshold, must be between [0,1]"
         assert temporal_iou_threshold >= 0 and temporal_iou_threshold <= 1, "invalid temporal_iou_threshold, must be between [0,1]"        
         assert percentilesamples >= 1, "invalid samples, must be >= 1"
-        if activity and not track:
+        if not activity and not track:
             return self  # nothing to do
 
         sc = self.clone()
