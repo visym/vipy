@@ -2251,7 +2251,7 @@ class Scene(VideoCategory):
         self.trackfilter(lambda t: t.id() not in deleted)  # remove duplicate tracks
         return self
     
-    def union(self, other, temporal_iou_threshold=0.5, spatial_iou_threshold=0.6, strict=True, overlap='average', percentileiou=0.8, percentilesamples=100):
+    def union(self, other, temporal_iou_threshold=0.5, spatial_iou_threshold=0.6, strict=True, overlap='average', percentileiou=0.8, percentilesamples=100, activity=True, track=True):
         """Compute the union two scenes as the set of unique activities and tracks.  
 
            A pair of activities or tracks are non-unique if they overlap spatially and temporally by a given IoU threshold.  Merge overlapping tracks. 
@@ -2269,6 +2269,8 @@ class Scene(VideoCategory):
                 -keep: merge two tracks by keeping overlapping boxes with other (discard other)
              -percentileiou [0,1]:  When determining the assignment of two tracks, compute the percentileiou of two tracks by ranking the iou in the overlapping segment and computing the mean of the top-k assignments, where k=len(segment)*percentileiou.
              -percentilesamples [>1]:  the number of samples along the overlapping scemgne for computing percentile iou
+             -activity [bool]: union of activities
+             -track [bool]: union of tracks
 
            Output:
              -Updates this scene to include the non-overlapping activities from other.  By default, it takes the strict union of all activities and tracks. 
@@ -2282,53 +2284,62 @@ class Scene(VideoCategory):
         assert spatial_iou_threshold >= 0 and spatial_iou_threshold <= 1, "invalid spatial_iou_threshold, must be between [0,1]"
         assert temporal_iou_threshold >= 0 and temporal_iou_threshold <= 1, "invalid temporal_iou_threshold, must be between [0,1]"        
         assert percentilesamples >= 1, "invalid samples, must be >= 1"
+        if activity and not track:
+            return self  # nothing to do
 
+        sc = self.clone()
         for o in tolist(other):
             assert isinstance(o, Scene), "Invalid input - must be vipy.video.Scene() object and not type=%s" % str(type(o))
 
             if strict:
-                assert self.filename() == o.filename(), "Invalid input - Scenes must have the same underlying video.  Disable this with strict=False."
+                assert sc.filename() == o.filename(), "Invalid input - Scenes must have the same underlying video.  Disable this with strict=False."
             oc = o.clone()   # do not change other, make a copy
 
             # Key collision?
-            if len(set(self.tracks().keys()).intersection(set(oc.tracks().keys()))) > 0:
+            if len(set(sc.tracks().keys()).intersection(set(oc.tracks().keys()))) > 0:
                 print('[vipy.video.union]: track key collision - Rekeying other... Use other.rekey() to suppress this warning.')
                 oc.rekey()
-            if len(set(self.activities().keys()).intersection(set(oc.activities().keys()))) > 0:
+            if len(set(sc.activities().keys()).intersection(set(oc.activities().keys()))) > 0:
                 print('[vipy.video.union]: activity key collision - Rekeying other... Use other.rekey() to suppress this warning.')                
                 oc.rekey()
 
             # Similarity transform?  Other may differ from self by a temporal scale (framerate), temporal translation (clip) or spatial isotropic scale (rescale)
-            assert np.isclose(self.aspect_ratio(), oc.aspect_ratio(), atol=1E-2), "Invalid input - Scenes must have the same aspect ratio"
-            if self.width() != oc.width():
-                oc = oc.rescale(self.width() / oc.width())   # match spatial scale
-            if not np.isclose(self.framerate(), oc.framerate(), atol=1E-3):
-                oc = oc.framerate(self.framerate())   # match temporal scale (video in oc will not match, only annotations)
-            if self.startframe() != oc.startframe():
-                dt = (oc.startframe() if oc.startframe() is not None else 0) - (self.startframe() if self.startframe() is not None else 0)
+            assert np.isclose(sc.aspect_ratio(), oc.aspect_ratio(), atol=1E-2), "Invalid input - Scenes must have the same aspect ratio"
+            if sc.width() != oc.width():
+                oc = oc.rescale(sc.width() / oc.width())   # match spatial scale
+            if not np.isclose(sc.framerate(), oc.framerate(), atol=1E-3):
+                oc = oc.framerate(sc.framerate())   # match temporal scale (video in oc will not match, only annotations)
+            if sc.startframe() != oc.startframe():
+                dt = (oc.startframe() if oc.startframe() is not None else 0) - (sc.startframe() if sc.startframe() is not None else 0)
                 oc = oc.trackmap(lambda t: t.offset(dt=dt)).activitymap(lambda a: a.offset(dt=dt))  # match temporal translation of tracks and activities
             oc = oc.trackfilter(lambda t: ((not t.isdegenerate()) and len(t)>0))
 
             # Merge other tracks into self
             merged = set([])  # the set of tracks in oc that have already been merged
-            for ti in sorted(self.tracklist(), key=lambda t: len(t), reverse=True):  # longest to shortest
+            for ti in sorted(sc.tracklist(), key=lambda t: len(t), reverse=True):  # longest to shortest
                 for tj in sorted(oc.tracklist(), key=lambda t: len(t), reverse=True):  
-                    if ti.category() == tj.category() and tj.id() not in merged and tj.segment_percentileiou(self.track(ti.id()), percentile=percentileiou, samples=percentilesamples) > spatial_iou_threshold:  # best mean framewise overlap during overlapping segment of two tracks
-                        self.tracks()[ti.id()] = self.track(ti.id()).union(tj, overlap=overlap)  # merge duplicate tracks into self, union() returns clone (not in place)
+                    if ti.category() == tj.category() and tj.id() not in merged and tj.segment_percentileiou(sc.track(ti.id()), percentile=percentileiou, samples=percentilesamples) > spatial_iou_threshold:  # best mean framewise overlap during overlapping segment of two tracks
+                        sc.tracks()[ti.id()] = sc.track(ti.id()).union(tj, overlap=overlap)  # merge duplicate tracks into self, union() returns clone (not in place)
                         oc.activitymap(lambda a: a.replace(tj, ti))  # replace merged track reference in other activity for final union
                         oc.trackfilter(lambda t: t.id() != tj.id())  # remove duplicate other track for final union
-                        print('[vipy.video.union]: merging track "%s"(id=%s) + "%s"(id=%s) for scene "%s"' % (str(ti), str(ti.id()), str(tj), str(tj.id()), str(self)))
+                        print('[vipy.video.union]: merging track "%s"(id=%s) + "%s"(id=%s) for scene "%s"' % (str(ti), str(ti.id()), str(tj), str(tj.id()), str(sc)))
                         merged.add(tj.id())
 
             # Dedupe activities
-            for (i,ai) in self.activities().items():
+            for (i,ai) in sc.activities().items():
                 for (j,aj) in oc.activities().items():
                     if ai.category() == aj.category() and set(ai.trackids()) == set(aj.trackids()) and ai.temporal_iou(aj) > temporal_iou_threshold:
                         oc = oc.activityfilter(lambda a: a.id() != j)  # remove duplicate activity from final union
 
-            # Final union of unique tracks/activities
-            self.tracks().update(oc.tracks())
-            self.activities().update(oc.activities())
+            # Union
+            sc.tracks().update(oc.tracks())
+            sc.activities().update(oc.activities())
+
+        # Final union of unique tracks/activities
+        if track:
+            self.tracks(sc.tracklist() + oc.tracklist())
+        if activity:
+            self.activities(sc.activitylist() + oc.activitylist())
 
         return self        
 
