@@ -333,11 +333,11 @@ class Track(object):
         If self._boundary='strict', then interpolation returns None if the interpolation is outside the keyframes
         """
         assert not self.isempty(), "Degenerate object for interpolation"
-        (xmin, ymin, width, height) = zip(*[bb.to_xywh() for bb in self._keyboxes])
-        d = Detection(xmin=float(np.interp(k, self._keyframes, xmin)),
-                      ymin=float(np.interp(k, self._keyframes, ymin)),
-                      width=float(np.interp(k, self._keyframes, width)),
-                      height=float(np.interp(k, self._keyframes, height)),
+        #(xmin, ymin, xmax, ymax) = zip(*(bb.ulbr() for bb in self._keyboxes))
+        d = Detection(xmin=float(np.interp(k, self._keyframes, [bb._xmin for bb in self._keyboxes])),
+                      ymin=float(np.interp(k, self._keyframes, [bb._ymin for bb in self._keyboxes])),
+                      xmax=float(np.interp(k, self._keyframes, [bb._xmax for bb in self._keyboxes])),
+                      ymax=float(np.interp(k, self._keyframes, [bb._ymax for bb in self._keyboxes])),
                       confidence=self.nearest_keybox(k).confidence(),  # may be None
                       category=self.category(),
                       shortlabel=self.shortlabel())
@@ -530,9 +530,11 @@ class Track(object):
         """Compute the mean spatial IoU between two tracks per frame in the range (self.startframe(), self.endframe()) using only the top-k (rank) frame overlaps
            Sample tracks at endpoints and n uniformly spaced frames or a stride of dt frames.  
         
+           - rank [>1]:  The top-k best IOU overlaps to average when computing the rank IOU
            - This is useful for track continuation where the box deforms in the overlapping segment at the end due to occlusion. 
+           - This is useful for track correspondence where a ground truth box does not match an estimated box precisely (e.g. loose box, non-visually grounded box)
            - This is the robust version of segmentiou.
-           - Use percentileiou to determine the rank based a fraction of the length of the overlap
+           - Use percentileiou to determine the rank based a fraction of the length of the overlap, which will be more efficient for long tracks
         """
         assert rank >= 1 and rank <= len(self)
         assert isinstance(other, Track), "Invalid input - must be vipy.object.Track()"
@@ -540,15 +542,34 @@ class Track(object):
         frames = [self.startframe()] + list(range(self.startframe()+dt, self.endframe(), dt)) + [self.endframe()]
         return float(np.mean(sorted([self[k].iou(other[k]) if (self.during(k) and other.during(k)) else 0.0 for k in frames])[-rank:]))
 
-    def percentileiou(self, other, percentile, dt=1):
-        """Percentile iou returns rankiou for rank=percentile*len(overlap(self, other))"""
+    def percentileiou(self, other, percentile, samples=100):
+        """Percentile iou returns rankiou for rank=percentile*len(overlap(self, other))
+        
+           -other [Track]
+           -percentile [0,1]:  The top-k best overlaps to average when computing rankiou
+           -samples:  The number of uniformly spaced samples to take along the track for computing the rankiou
+        """
         assert percentile > 0 and percentile <= 1
         assert isinstance(other, Track), "invalid input - Must be vipy.object.Track()"
 
         startframe = max(self.startframe(), other.startframe())
         endframe = min(self.endframe(), other.endframe())
         segmentlen = endframe - startframe
+        dt = max(1, int(np.floor(segmentlen/samples)))
         return self.rankiou(other, max(1, int(segmentlen*percentile)), dt=dt) if segmentlen > 0 else 0
+
+    def segment_percentileiou(self, other, percentile, samples=100):
+        """percentiliou on the overlapping segment with other"""
+        assert percentile > 0 and percentile <= 1
+        assert isinstance(other, Track), "invalid input - Must be vipy.object.Track()"
+
+        startframe = max(self.startframe(), other.startframe())
+        endframe = min(self.endframe(), other.endframe())
+        segmentlen = endframe - startframe
+        rank = int(segmentlen*percentile)
+        dt = max(1, int(np.floor(segmentlen/samples)))
+        iou = sorted([self[min(k,endframe)].iou(other[min(k,endframe)]) for k in range(startframe, endframe, dt)]) if endframe > startframe else []
+        return float(np.mean(iou[-rank:]) if endframe > startframe else 0.0)
 
     def union(self, other, overlap='average'):
         """Compute the union of two tracks.  Overlapping boxes between self and other:

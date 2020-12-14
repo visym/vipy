@@ -139,7 +139,8 @@ def parallel(n=None, pct=None):
     if n is None and pct is None:
         return GLOBAL['DASK_CLIENT'].num_processes() if GLOBAL['DASK_CLIENT'] is not None else 0
     else:
-        assert isinstance(n, int) and n>=1
+        assert n is None or (isinstance(n, int) and n>=1)
+        assert pct is None or (pct > 0 and pct <= 1)
         return dask(num_processes=n, pct=pct)
         
 def noparallel():

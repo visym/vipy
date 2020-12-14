@@ -468,7 +468,7 @@ class BoundingBox(object):
     def ulbr(self, ulbr=None):
         """Return bounding box corners as upper left, bottom right (xmin, ymin, xmax, ymax)"""
         if ulbr is None:
-            return (self.xmin(), self.ymin(), self.xmax(), self.ymax())            
+            return (self._xmin, self._ymin, self._xmax, self._ymax)            
         else:
             assert len(ulbr) == 4, "Invalid (xmin,ymin,xmax,ymax) input"
             self._xmin = float(ulbr[0])
