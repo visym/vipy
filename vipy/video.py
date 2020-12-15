@@ -255,6 +255,7 @@ class Video(object):
                 self._shape = self._video.shape() if self._video.canload() else None  # shape for write can be defined by first frame
                 assert (write is True or overwrite is True) or self._shape is not None, "Invalid video '%s'" % (str(v))
                 
+                                
             def __enter__(self):
                 if self._write and self._shape is not None:
                     (height, width) = self._shape
@@ -267,6 +268,22 @@ class Video(object):
                 elif not self._write:
                     self._pipe = (self._video._ffmpeg.output('pipe:', format='rawvideo', pix_fmt='rgb24').global_args('-loglevel', 'debug' if vipy.globals.isdebug() else 'panic').run_async(pipe_stdout=True))
                 self._frame_index = 0
+
+                #def _f_threadloop(s,q):
+                #    while True:
+                #        print(s._pipe)
+                #        im = s.read()
+                #        if im is None:
+                #            break
+                #        q.put(im)
+
+                #from queue import Queue
+                #import threading
+                #self._queue = Queue()
+                #self._thread = threading.Thread(target=_f_threadloop, args=(self, self._queue))
+                #self._thread.daemon = True
+                #self._thread.start()
+
                 return self
             
             def __exit__(self, type, value, tb):
@@ -304,14 +321,15 @@ class Video(object):
                 """Stream batches of length n such that each batch contains frames [0,n], [n+1, 2n], ...  Last batch will be ragged"""
                 assert isinstance(n, int) and n>0, "batch length must be a positive integer"
                 frames = []
+                v = self._video.clone().nourl().nofilename()
                 for (k, im) in enumerate(self):
                     frames.append(im)                    
                     if len(frames) == n:
                         batchlist = frames
                         frames = []
-                        yield self._video.clone().nourl().nofilename().fromframes(batchlist)                                  
+                        yield v.fromframes(batchlist)                                  
                 if len(frames) > 0:
-                    yield self._video.clone().nourl().nofilename().fromframes(frames)  
+                    yield v.fromframes(frames)  
 
             def frame(self, n=0):
                 """Stream individual frames of video with negative offset n to the stream head. If n=-30, this full return a frame 30 frames ago"""
@@ -2251,7 +2269,7 @@ class Scene(VideoCategory):
         self.trackfilter(lambda t: t.id() not in deleted)  # remove duplicate tracks
         return self
     
-    def union(self, other, temporal_iou_threshold=0.5, spatial_iou_threshold=0.6, strict=True, overlap='average', percentileiou=0.8, percentilesamples=100, activity=True, track=True):
+    def union(self, other, temporal_iou_threshold=0.5, spatial_iou_threshold=0.6, strict=True, overlap='average', percentilecover=0.8, percentilesamples=100, activity=True, track=True, onetomany=False):
         """Compute the union two scenes as the set of unique activities and tracks.  
 
            A pair of activities or tracks are non-unique if they overlap spatially and temporally by a given IoU threshold.  Merge overlapping tracks. 
@@ -2267,10 +2285,11 @@ class Scene(VideoCategory):
                 -average: Merge two tracks by averaging the boxes (average=True) if overlapping
                 -replace:  merge two tracks by replacing overlapping boxes with other (discard self)
                 -keep: merge two tracks by keeping overlapping boxes with other (discard other)
-             -percentileiou [0,1]:  When determining the assignment of two tracks, compute the percentileiou of two tracks by ranking the iou in the overlapping segment and computing the mean of the top-k assignments, where k=len(segment)*percentileiou.
-             -percentilesamples [>1]:  the number of samples along the overlapping scemgne for computing percentile iou
-             -activity [bool]: union of activities
-             -track [bool]: union of tracks
+             -percentilecover [0,1]:  When determining the assignment of two tracks, compute the percentilecover of two tracks by ranking the cover in the overlapping segment and computing the mean of the top-k assignments, where k=len(segment)*percentilecover.
+             -percentilesamples [>1]:  the number of samples along the overlapping scemgne for computing percentile cover
+             -activity [bool]: union() of activities only
+             -track [bool]: union() of tracks only
+             -onetomany [bool]:  allow one track in other to be assigned to many tracks in self (useful for track fragmentation in self)                    
 
            Output:
              -Updates this scene to include the non-overlapping activities from other.  By default, it takes the strict union of all activities and tracks. 
@@ -2318,12 +2337,15 @@ class Scene(VideoCategory):
             merged = set([])  # the set of tracks in oc that have already been merged
             for ti in sorted(sc.tracklist(), key=lambda t: len(t), reverse=True):  # longest to shortest
                 for tj in sorted(oc.tracklist(), key=lambda t: len(t), reverse=True):  
-                    if ti.category() == tj.category() and tj.id() not in merged and tj.segment_percentileiou(sc.track(ti.id()), percentile=percentileiou, samples=percentilesamples) > spatial_iou_threshold:  # best mean framewise overlap during overlapping segment of two tracks
+                    if ti.category() == tj.category() and (onetomany or tj.id() not in merged) and tj.segment_percentilecover(sc.track(ti.id()), percentile=percentilecover, samples=percentilesamples) > spatial_iou_threshold:  # mean framewise overlap during overlapping segment of two tracks
                         sc.tracks()[ti.id()] = sc.track(ti.id()).union(tj, overlap=overlap)  # merge duplicate tracks into self, union() returns clone (not in place)
-                        oc.activitymap(lambda a: a.replace(tj, ti))  # replace merged track reference in other activity for final union
-                        oc.trackfilter(lambda t: t.id() != tj.id())  # remove duplicate other track for final union
+                        for a in oc.activitylist():
+                            if a.hastrack(tj):
+                                sc.add(a.clone(rekey=True).replace(tj, ti))  # create new activity referencing merged track
+                        sc.activitymap(lambda a: a.replace(tj, ti) if a.hastrack(tj) else a)
+                        merged.add(tj.id())  # allow one track in other to be assigned to many tracks in self (useful for track fragmentation in self)
                         print('[vipy.video.union]: merging track "%s"(id=%s) + "%s"(id=%s) for scene "%s"' % (str(ti), str(ti.id()), str(tj), str(tj.id()), str(sc)))
-                        merged.add(tj.id())
+            oc.trackfilter(lambda t: t.id() not in merged)  # remove duplicate other track for final union
 
             # Dedupe activities
             for (i,ai) in sc.activities().items():
@@ -2337,10 +2359,9 @@ class Scene(VideoCategory):
 
         # Final union of unique tracks/activities
         if track:
-            self.tracks(sc.tracklist() + oc.tracklist())
+            self.tracks(sc.tracklist())
         if activity:
-            self.activities(sc.activitylist() + oc.activitylist())
-
+            self.activities(sc.activityfilter(lambda a: a.actorid() in self.tracks().keys()).activitylist())
         return self        
 
     def annotate(self, verbose=True, fontsize=10, captionoffset=(0,0), textfacecolor='white', textfacealpha=1.0, shortlabel=True, boxalpha=0.25, d_category2color={'Person':'green', 'Vehicle':'blue', 'Object':'red'}, categories=None, nocaption=False, nocaption_withstring=[], mutator=None, timestamp=None, timestampcolor='black', timestampfacecolor='white'):
@@ -2512,11 +2533,7 @@ class Scene(VideoCategory):
         activitydets = [d for d in dets if isinstance(d, vipy.activity.Activity)]        
                 
         # Track propagation:  Constant velocity motion  model 
-        t_ref = self.clone().tracks()  # must be cloned to not propagate in self
-        for t in t_ref.values():
-            if (frame - t.endframe()) <= maxhistory:  # only predict for tracks less than maxhistory frames old with no new assignments
-                t.add(frame, t.linear_extrapolation(frame, dt=maxhistory, shape=False), strict=False)  # future track prediction
-        t_ref = [(t,t[frame]) for (tid, t) in t_ref.items() if t.during(frame)]
+        t_ref = [(t, t.linear_extrapolation(frame, dt=maxhistory, shape=False)) for t in self.tracklist() if ((frame - t.endframe()) <= maxhistory)]
 
         # Track assignment:
         #   - Each track is assigned at most one detection
@@ -2528,7 +2545,7 @@ class Scene(VideoCategory):
                        if t.category() == d.category()]
         assigned = set([])        
         posconf = min([d.confidence() for d in objdets])
-        for (t, conf, iou, shapeiou, cover, d) in sorted(assignments, key=lambda x: (x[1]+posconf)*(x[2]+x[3]+x[4])+t.confidence(), reverse=True):
+        for (t, conf, iou, shapeiou, cover, d) in sorted(assignments, key=lambda x: (x[1]+posconf)*(x[2]+x[3]+x[4])+x[0].confidence(dt=maxhistory), reverse=True):
             if cover > (trackcover if len(t)>1 else 0):  # the highest confidence detection within the iou gate (or any overlap if not yet enough history for velocity estimate) 
                 if (t.id() not in assigned and d.id() not in assigned):  # not assigned yet, assign it!
                     self.track(t.id()).add(frame, d.clone())  # track assignment!
@@ -2542,9 +2559,10 @@ class Scene(VideoCategory):
                     
         # Non-maximum suppression
         deleted = set([])
-        for ti in sorted(self.tracklist(), key=lambda t: t.confidence(), reverse=True):
-            for tj in self.tracklist():
-                if (ti.category() == tj.category()) and (ti.id() != tj.id()) and (tj.id() not in deleted) and ((frame - ti.endframe()) <= maxhistory) and ((frame - tj.endframe()) <= maxhistory) and (tj.confidence() < ti.confidence()):
+        trackconf = [(t.confidence(dt=maxhistory), t) for t in self.tracklist() if ((frame - t.endframe()) <= maxhistory)]
+        for (ci, ti) in sorted(trackconf, key=lambda x: x[0], reverse=True):
+            for (cj, tj) in trackconf:
+                if (ti.category() == tj.category()) and (ti.id() != tj.id()) and (tj.id() not in deleted) and (cj < ci):
                     di = ti.linear_extrapolation(frame, dt=maxhistory, shape=False)
                     dj = tj.linear_extrapolation(frame, dt=maxhistory, shape=False)
                     if max(di.cover(dj), dj.cover(di)) >= 0.8:   # track overlap (to within 80% uncertainty of box position)  

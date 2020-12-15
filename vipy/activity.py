@@ -174,6 +174,20 @@ class Activity(object):
         trackid = track.id() if isinstance(track, Track) else track
         return trackid in self._trackid
 
+    def append(self, newtrack):
+        """Append newtrack to this activity and set as actorid()"""
+        assert isinstance(newtrack, Track), "Invalid input - must be vipy.object.Track"
+        self._trackid.add(newtrack.id())
+        self.actorid(newtrack.id())
+        return self
+
+    def trackfilter(self, f):
+        """Remove all tracks such that the lambda function f(trackid) resolves to False"""
+        self._trackid = [tid for tid in self._trackid if f(tid)]
+        if not f(self.actorid()):
+            self._actorid = None
+        return self
+
     def replace(self, oldtrack, newtrack):
         """Replace oldtrack with newtrack if present in self._tracks.  Pass in a trackdict to share reference to track, so that track owner can modify the track and this object observes the change"""
         assert isinstance(oldtrack, Track) and isinstance(newtrack, Track), "Invalid input - must be vipy.object.Track"
@@ -249,8 +263,11 @@ class Activity(object):
             self._id = newid
             return self
 
-    def clone(self):
-        return copy.deepcopy(self)
+    def clone(self, rekey=False):
+        a = copy.deepcopy(self)
+        if rekey:
+            a.id(newid=uuid.uuid4().hex)
+        return a
     
     def temporalpad(self, df):
         """Add a temporal pad of df=(before,after) or df=pad frames to the start and end of the activity.  The padded start frame may be negative."""

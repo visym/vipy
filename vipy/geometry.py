@@ -507,17 +507,16 @@ class BoundingBox(object):
     def iou(self, bb):
         """area of intersection / area of union"""
         assert isinstance(bb, BoundingBox), "Invalid BoundingBox() input of type '%s'" % str(type(bb))        
-        if bb is None or bb.invalid() or self.invalid():
-            return 0.0
-        w = min(self.xmax(), bb.xmax()) - max(self.xmin(), bb.xmin())
-        h = min(self.ymax(), bb.ymax()) - max(self.ymin(), bb.ymin())
-        if ((w < 0) or (h < 0)):
-            iou = 0   # invalid (no overlap)
-        else:
-            area_intersection = w * h
-            area_union = (self.area() + bb.area() - area_intersection)
-            iou = area_intersection / float(area_union)
-        return iou
+        w = min(self._xmax, bb._xmax) - max(self._xmin, bb._xmin)
+        if w < 0:
+            return 0  # invalid (no overlap), early exit
+        h = min(self._ymax, bb._ymax) - max(self._ymin, bb._ymin)
+        if (h < 0):
+            return 0  # invalid (no overlap), early exit
+
+        area_intersection = w * h
+        area_union = (self.area() + bb.area() - area_intersection)
+        return area_intersection / float(area_union)
 
     def intersection_over_union(self, bb):
         """Alias for iou"""
@@ -526,15 +525,13 @@ class BoundingBox(object):
     def area_of_intersection(self, bb):
         """area of intersection"""
         assert isinstance(bb, BoundingBox), "Invalid BoundingBox() input of type '%s'" % str(type(bb))                
-        if bb.invalid() or self.invalid():
-            return 0.0
-        w = min(self.xmax(), bb.xmax()) - max(self.xmin(), bb.xmin())
-        h = min(self.ymax(), bb.ymax()) - max(self.ymin(), bb.ymin())
-        if ((w < 0) or (h < 0)):
-            aoi = 0   # invalid (no overlap)
-        else:
-            aoi = w * h
-        return aoi
+        w = min(self._xmax, bb._xmax) - max(self._xmin, bb._xmin)
+        if w < 0:
+            return 0  # invalid (no overlap), early exit 
+        h = min(self._ymax, bb._ymax) - max(self._ymin, bb._ymin)
+        if h < 0:
+            return 0  # invalid (no overlap), early exit 
+        return w*h
 
     def cover(self, bb):
         """Fraction of this bounding box intersected by other bbox (bb)"""        
@@ -542,16 +539,21 @@ class BoundingBox(object):
 
     def shapeiou(self, bb):
         """Shape IoU is the IoU with the upper left corners aligned. This measures the deformation of the two boxes by removing the effect of translation"""
+        #return self.iou(bb.clone().translate(dx=self._xmin-bb._xmin, dy=self._ymin-bb._ymin))  # equivalent to
         assert isinstance(bb, BoundingBox), "Invalid input - must be BoundingBox()"
-        return self.iou(bb.clone().translate(dx=self.xmin()-bb.xmin(), dy=self.ymin()-bb.ymin()))
-
+        w = min(self._xmax, bb._xmax)
+        h = min(self._ymax, bb._ymax)
+        area_intersection = w * h
+        area_union = (self.area() + bb.area() - area_intersection)
+        return area_intersection / float(area_union)
+        
     def intersection(self, bb, strict=True):
         """Intersection of two bounding boxes, throw an error on degeneracy of intersection result (if strict=True)"""
         assert isinstance(bb, BoundingBox), "Invalid BoundingBox() input of type '%s'" % str(type(bb))                        
-        self._xmin = max(bb.xmin(), self.xmin())
-        self._ymin = max(bb.ymin(), self.ymin())
-        self._xmax = min(bb.xmax(), self.xmax())
-        self._ymax = min(bb.ymax(), self.ymax())
+        self._xmin = max(bb._xmin, self._xmin)
+        self._ymin = max(bb._ymin, self._ymin)
+        self._xmax = min(bb._xmax, self._xmax)
+        self._ymax = min(bb._ymax, self._ymax)
         if strict and self.isdegenerate():
             raise ValueError('Degenerate intersection for bounding boxes "%s" and "%s"' % (str(bb), str(self)))
         return self
@@ -564,10 +566,10 @@ class BoundingBox(object):
         """Union of one or more bounding boxes with this box"""        
         bblist = tolist(bb)        
         assert all([isinstance(bb, BoundingBox) for bb in bblist]), "Invalid BoundingBox() input"
-        self._xmin = min([bb.xmin() for bb in bblist] + [self.xmin()])
-        self._ymin = min([bb.ymin() for bb in bblist] + [self.ymin()])
-        self._xmax = max([bb.xmax() for bb in bblist] + [self.xmax()])
-        self._ymax = max([bb.ymax() for bb in bblist] + [self.ymax()])
+        self._xmin = min([bb._xmin for bb in bblist] + [self._xmin])
+        self._ymin = min([bb._ymin for bb in bblist] + [self._ymin])
+        self._xmax = max([bb._xmax for bb in bblist] + [self._xmax])
+        self._ymax = max([bb._ymax for bb in bblist] + [self._ymax])
         return self
 
     def isinside(self, bb):
