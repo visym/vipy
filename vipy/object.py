@@ -331,7 +331,7 @@ class Track(object):
     def endframe(self):
         return self._keyframes[-1] if len(self._keyframes)>0 else None  # assumes sorted order
 
-    def _linear_interpolation(self, k):
+    def _linear_interpolation(self, f):
         """Linear bounding box interpolation at frame=k given observed boxes (x,y,w,h) at keyframes.  
         This returns a vipy.object.Detection() which is the interpolation of the Track() at frame k
         If self._boundary='extend', then boxes are repeated if the interpolation is outside the keyframes
@@ -339,11 +339,12 @@ class Track(object):
         """
         assert len(self._keyboxes) > 0, "Degenerate object for interpolation"   # not self.isempty()
         if len(self._keyboxes) == 1:
-            return Detection.cast(self._keyboxes[0].clone()).setattribute('trackid', self.id()) if (self._boundary == 'extend' or self.during(k)) else None
+            return Detection.cast(self._keyboxes[0].clone()).setattribute('trackid', self.id()) if (self._boundary == 'extend' or self.during(f)) else None
 
-        kt = min(max(k, self._keyframes[0]), self._keyframes[-1])  # truncate
-        i = min(len(self._keyframes)-2, [i for (i,f) in enumerate(self._keyframes) if f >= kt][0])  # floor keyframe index
-        c = (kt - self._keyframes[i]) / float(self._keyframes[i+1] - self._keyframes[i])  # interpolation coefficient
+        kf = self._keyframes
+        ft = min(max(f, kf[0]), kf[-1])  # truncated frame index
+        i = min(len(kf)-2, [i for i in range(0,len(kf)-1) if kf[i] <= ft and kf[i+1] >= ft][0])  # floor keyframe index
+        c = (ft - kf[i]) / float(kf[i+1] - kf[i])  # interpolation coefficient
         (bi, bj) = (self._keyboxes[i], self._keyboxes[i+1])
         d = Detection(xmin=bi._xmin + c*(bj._xmin - bi._xmin),   # float(np.interp(k, self._keyframes, [bb._xmin for bb in self._keyboxes])),
                       ymin=bi._ymin + c*(bj._ymin - bi._ymin),   # float(np.interp(k, self._keyframes, [bb._ymin for bb in self._keyboxes])),
@@ -353,7 +354,7 @@ class Track(object):
                       category=self.category(),
                       shortlabel=self.shortlabel())
         d.attributes['trackid'] = self.id()  # for correspondence of detections to tracks
-        return d if self._boundary == 'extend' or self.during(k) else None
+        return d if self._boundary == 'extend' or self.during(f) else None
 
     def category(self, label=None, shortlabel=True):
         if label is not None:
