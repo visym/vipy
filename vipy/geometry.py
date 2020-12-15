@@ -541,8 +541,8 @@ class BoundingBox(object):
         """Shape IoU is the IoU with the upper left corners aligned. This measures the deformation of the two boxes by removing the effect of translation"""
         #return self.iou(bb.clone().translate(dx=self._xmin-bb._xmin, dy=self._ymin-bb._ymin))  # equivalent to
         assert isinstance(bb, BoundingBox), "Invalid input - must be BoundingBox()"
-        w = min(self._xmax, bb._xmax)
-        h = min(self._ymax, bb._ymax)
+        w = min(self._xmax, bb._xmax + (self._xmin-bb._xmin)) - max(self._xmin, bb._xmin + (self._xmin-bb._xmin))
+        h = min(self._ymax, bb._ymax + (self._ymin-bb._ymin)) - max(self._ymin, bb._ymin + (self._ymin-bb._ymin))
         area_intersection = w * h
         area_union = (self.area() + bb.area() - area_intersection)
         return area_intersection / float(area_union)

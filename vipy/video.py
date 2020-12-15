@@ -2044,18 +2044,16 @@ class Scene(VideoCategory):
         """
         v = self.clone()
         for t in v.tracklist():
-            startframe = t.startframe()
-            for a in sorted(v.activitylist(), key=lambda x: x.startframe()):
-                if a.hastrack(t) or (strict and t.during(a.startframe(), a.endframe())): 
-                    if startframe < (a.startframe()-1):
-                        v.add(vipy.activity.Activity(label=t.category().lower() if label is None else label, 
-                                                     shortlabel='' if label is None else label,
-                                                     startframe=startframe, endframe=a.startframe(), 
-                                                     actorid=t.id(), framerate=self.framerate(), attributes={'background':True}))
-                    startframe = a.endframe()
-            if (t.endframe()-1) > startframe:
-                v.add(vipy.activity.Activity(label=t.category().lower() if label is None else label, startframe=startframe, endframe=t.endframe(), actorid=t.id(), framerate=self.framerate(), attributes={'background':True}))
-        return [a for a in v.activityclip(padframes=padframes, multilabel=False) if a.activityindex(0).hasattribute('background')]
+            bgframe = [k for k in range(t.startframe(), t.endframe()) if not any([a.hastrack(t) and a.during(k) for a in v.activitylist()])]                
+            while len(bgframe) > 0:
+                (i,j) = (0, np.argwhere(np.diff(bgframe) > 1).flatten()[0] + 1 if len(np.argwhere(np.diff(bgframe) > 1))>0 else len(bgframe)-1)
+                if i < j:
+                    v.add(vipy.activity.Activity(label=t.category() if label is None else label, 
+                                                 shortlabel='' if label is None else label,
+                                                 startframe=bgframe[i], endframe=bgframe[j],
+                                                 actorid=t.id(), framerate=v.framerate(), attributes={'noactivityclip':True}))
+                bgframe = bgframe[j+1:]
+        return v.activityfilter(lambda a: 'noactivityclip' not in a.attributes).activityclip(padframes=padframes, multilabel=False)
 
     def trackbox(self, dilate=1.0):
         """The trackbox is the union of all track bounding boxes in the video, or the image rectangle if there are no tracks"""
@@ -2511,7 +2509,7 @@ class Scene(VideoCategory):
                         break
         return self
 
-    def assign(self, frame, dets, minconf=0.2, maxhistory=5, activityiou=0.5, trackcover=0.2, trackconfsamples=8):
+    def assign(self, frame, dets, minconf=0.2, maxhistory=5, activityiou=0.5, trackcover=0.2, trackconfsamples=100):
         """Assign a list of vipy.object.Detections at frame k to scene by greedy track association. In-place update.
         
            * miniou [float]: the minimum temporal IOU for activity assignment
@@ -2563,12 +2561,12 @@ class Scene(VideoCategory):
         trackconf = [(t.confidence(samples=trackconfsamples), t) for t in self.tracklist() if ((frame - t.endframe()) <= maxhistory)]
         for (ci, ti) in sorted(trackconf, key=lambda x: x[0], reverse=True):
             for (cj, tj) in trackconf:
-                if (ti.category() == tj.category()) and (ti.id() != tj.id()) and (tj.id() not in deleted) and (cj < ci):
+                if (ti.category() == tj.category()) and (ti.id() != tj.id()) and (tj.id() not in deleted and ti.id() not in deleted) and (cj < ci):
                     di = ti.linear_extrapolation(frame, dt=maxhistory, shape=False)
                     dj = tj.linear_extrapolation(frame, dt=maxhistory, shape=False)
                     if max(di.cover(dj), dj.cover(di)) >= 0.8:   # track overlap (to within 80% uncertainty of box position)  
                         deleted.add(tj.id())
-        self.trackmap(lambda t: t.delete(t.endframe()) if t.id() in deleted else t).trackfilter(lambda t: len(t)>0)
+        self.trackmap(lambda t: t.delete(frame) if t.id() in deleted else t).trackfilter(lambda t: len(t)>0)
 
         # Activity assignment
         assert len(activitydets) == 0 or all([d.actorid() in self.tracks() for d in activitydets]), "Invalid activity"

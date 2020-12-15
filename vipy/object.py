@@ -229,7 +229,7 @@ class Track(object):
         """The confidence of a track is the mean confidence of all (or just last=last frames, or samples=samples uniformly spaced) keyboxes (if confidences are available) else 0"""
         if samples is not None:
             dt = max(1, int(round(len(self._keyframes)/float(samples))))
-            C = [self._keyframes[i]._confidence for i in range(len(self._keyframes)-1, 0, -dt) if (hasattr(self._keyframes[i], '_confidence') and self._keyframes[i]._confidence is not None)]
+            C = [self._keyboxes[i]._confidence for i in range(len(self._keyframes)-1, 0, -dt) if (hasattr(self._keyboxes[i], '_confidence') and self._keyboxes[i]._confidence is not None)]
         else:
             ef = self.endframe() - last if last is not None else 0
             C = [d._confidence for (f,d) in zip(self.keyframes(), self.keyboxes()) if f >= ef and (hasattr(d, '_confidence') and d._confidence is not None)]
