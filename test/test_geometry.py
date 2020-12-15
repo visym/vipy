@@ -283,7 +283,7 @@ def test_boundingbox():
     BoundingBox(xmin=-20, ymin=-10, width=30, height=40).dict()
     print('[test_geometry.boundingbox]: dict PASSED')
     
-    
+
 def test_ellipse():
     e = BoundingBox(xmin=-20, ymin=-10, width=30, height=40).ellipse()
 

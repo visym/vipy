@@ -66,7 +66,8 @@ class Detection(BoundingBox):
 
     def __eq__(self, other):
         """Detection equality when bounding boxes and categories are equivalent"""
-        return isinstance(other, Detection) and self.xywh() == other.xywh() and self.category() == other.category()
+        return ((isinstance(other, Detection) and self.xywh() == other.xywh() and self.category() == other.category()) or
+                isinstance(other, BoundingBox) and self.xywh() == other.xywh())
 
     def __str__(self):
         return self.__repr__()
