@@ -815,6 +815,9 @@ class Video(object):
             raise ValueError('Video file not found')
 
         # Convert frame to mjpeg and pipe to stdout, used to get dimensions of video
+        #   - The MJPEG encoder will generally output lower quality than H.264 encoded frames
+        #   - This means that frame indexing from preview() will generate slightly different images than streaming raw
+        #   - Beware running convnets, as the pixels will be slightly different (~4 grey levels in uint8) ... 
         try:
             # FFMPEG frame indexing is inefficient for large framenum.  Need to add "-ss sec.msec" flag before input, but this can screw up clip timing, so this cannot be used in general
             #   - the "ss" option must be provided before the input filename, and is supported by ffmpeg-python as ".input(in_filename, ss=time)"

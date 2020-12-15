@@ -301,7 +301,11 @@ class Track(object):
         """Return the mean (width,height) of the box during the track, or None if the track is degenerate"""
         s = np.mean([bb.shape() for bb in self.keyboxes()], axis=0) if len(self.keyboxes()) > 0 else None
         return (float(s[0]), float(s[1])) if s is not None else None
-            
+
+    def meanbox(self):
+        """Return the mean bounding box during the track, or None if the track is degenerate"""
+        return BoundingBox(ulbr=np.mean([bb.ulbr() for bb in self.keyboxes()], axis=0)) if len(self.keyboxes()) > 0 else None 
+    
     def shapevariance(self):
         """Return the variance (width, height) of the box shape during the track or None if the track is degenerate.  This is useful for filtering spurious tracks where the aspect ratio changes rapidly and randomly"""
         m = self.meanshape()
