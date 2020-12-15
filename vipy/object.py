@@ -226,8 +226,9 @@ class Track(object):
 
     def confidence(self, dt=None):
         """The confidence of a track is the mean confidence of all (or last frames=dt) keyboxes (if confidences are available) else 0"""
-        C = [d._confidence for (f,d) in zip(self.keyframes(), self.keyboxes()) if (hasattr(d, '_confidence') and d._confidence is not None and (dt is None or f >= (self.endframe()-dt)))]
-        return float(np.mean(C)) if ((not self.isdegenerate()) and (len(C) > 0)) else 0
+        ef = self.endframe() - dt if dt is not None else 0
+        C = [d._confidence for (f,d) in zip(self.keyframes(), self.keyboxes()) if f >= ef and (hasattr(d, '_confidence') and d._confidence is not None)]
+        return float(np.mean(C)) if len(C) > 0 else 0
         
     def isdegenerate(self):
         return not (len(self.keyboxes()) == len(self.keyframes()) and
@@ -325,10 +326,10 @@ class Track(object):
         return self
         
     def startframe(self):
-        return int(min(self._keyframes)) if len(self._keyframes)>0 else None
+        return self._keyframes[0] if len(self._keyframes)>0 else None  # assumes sorted order
 
     def endframe(self):
-        return int(max(self._keyframes)) if len(self._keyframes)>0 else None
+        return self._keyframes[-1] if len(self._keyframes)>0 else None  # assumes sorted order
 
     def _linear_interpolation(self, k):
         """Linear bounding box interpolation at frame=k given observed boxes (x,y,w,h) at keyframes.  
@@ -336,18 +337,23 @@ class Track(object):
         If self._boundary='extend', then boxes are repeated if the interpolation is outside the keyframes
         If self._boundary='strict', then interpolation returns None if the interpolation is outside the keyframes
         """
-        assert not self.isempty(), "Degenerate object for interpolation"
-        (xmin, ymin, width, height) = zip(*[bb.to_xywh() for bb in self._keyboxes])
-        d = Detection(xmin=float(np.interp(k, self._keyframes, xmin)),
-                      ymin=float(np.interp(k, self._keyframes, ymin)),
-                      width=float(np.interp(k, self._keyframes, width)),
-                      height=float(np.interp(k, self._keyframes, height)),
-                      confidence=self.nearest_keybox(k).confidence(),  # may be None
+        assert len(self._keyboxes) > 0, "Degenerate object for interpolation"   # not self.isempty()
+        if len(self._keyboxes) == 1:
+            return self._keyboxes[0].clone() if (self._boundary == 'extend' or self.during(k)) else None
+
+        kt = min(max(k, self._keyframes[0]), self._keyframes[-1])  # truncate
+        i = min(len(self._keyframes)-2, [i for (i,f) in enumerate(self._keyframes) if f >= kt][0])  # floor keyframe index
+        c = (kt - self._keyframes[i]) / float(self._keyframes[i+1] - self._keyframes[i])  # interpolation coefficient
+        (bi, bj) = (self._keyboxes[i], self._keyboxes[i+1])
+        d = Detection(xmin=bi._xmin + c*(bj._xmin - bi._xmin),   # float(np.interp(k, self._keyframes, [bb._xmin for bb in self._keyboxes])),
+                      ymin=bi._ymin + c*(bj._ymin - bi._ymin),   # float(np.interp(k, self._keyframes, [bb._ymin for bb in self._keyboxes])),
+                      xmax=bi._xmax + c*(bj._xmax - bi._xmax),   # float(np.interp(k, self._keyframes, [bb._xmax for bb in self._keyboxes])),
+                      ymax=bi._ymax + c*(bj._ymax - bi._ymax),   # float(np.interp(k, self._keyframes, [bb._ymax for bb in self._keyboxes])),
+                      confidence=bi.confidence(),  # may be None
                       category=self.category(),
                       shortlabel=self.shortlabel())
         d.attributes['trackid'] = self.id()  # for correspondence of detections to tracks
         return d if self._boundary == 'extend' or self.during(k) else None
-
 
     def category(self, label=None, shortlabel=True):
         if label is not None:
@@ -534,9 +540,11 @@ class Track(object):
         """Compute the mean spatial IoU between two tracks per frame in the range (self.startframe(), self.endframe()) using only the top-k (rank) frame overlaps
            Sample tracks at endpoints and n uniformly spaced frames or a stride of dt frames.  
         
+           - rank [>1]:  The top-k best IOU overlaps to average when computing the rank IOU
            - This is useful for track continuation where the box deforms in the overlapping segment at the end due to occlusion. 
+           - This is useful for track correspondence where a ground truth box does not match an estimated box precisely (e.g. loose box, non-visually grounded box)
            - This is the robust version of segmentiou.
-           - Use percentileiou to determine the rank based a fraction of the length of the overlap
+           - Use percentileiou to determine the rank based a fraction of the length of the overlap, which will be more efficient for long tracks
         """
         assert rank >= 1 and rank <= len(self)
         assert isinstance(other, Track), "Invalid input - must be vipy.object.Track()"
@@ -544,15 +552,49 @@ class Track(object):
         frames = [self.startframe()] + list(range(self.startframe()+dt, self.endframe(), dt)) + [self.endframe()]
         return float(np.mean(sorted([self[k].iou(other[k]) if (self.during(k) and other.during(k)) else 0.0 for k in frames])[-rank:]))
 
-    def percentileiou(self, other, percentile, dt=1):
-        """Percentile iou returns rankiou for rank=percentile*len(overlap(self, other))"""
+    def percentileiou(self, other, percentile, samples=100):
+        """Percentile iou returns rankiou for rank=percentile*len(overlap(self, other))
+        
+           -other [Track]
+           -percentile [0,1]:  The top-k best overlaps to average when computing rankiou
+           -samples:  The number of uniformly spaced samples to take along the track for computing the rankiou
+        """
         assert percentile > 0 and percentile <= 1
         assert isinstance(other, Track), "invalid input - Must be vipy.object.Track()"
 
         startframe = max(self.startframe(), other.startframe())
         endframe = min(self.endframe(), other.endframe())
         segmentlen = endframe - startframe
+        dt = max(1, int(np.floor(segmentlen/samples)))
         return self.rankiou(other, max(1, int(segmentlen*percentile)), dt=dt) if segmentlen > 0 else 0
+
+    def segment_percentileiou(self, other, percentile, samples=100):
+        """percentiliou on the overlapping segment with other"""
+        assert percentile > 0 and percentile <= 1
+        assert isinstance(other, Track), "invalid input - Must be vipy.object.Track()"
+
+        startframe = max(self.startframe(), other.startframe())
+        endframe = min(self.endframe(), other.endframe())
+        segmentlen = endframe - startframe
+        rank = int(segmentlen*percentile)
+        dt = max(1, int(np.floor(segmentlen/samples)))
+        iou = sorted([self[min(k,endframe)].iou(other[min(k,endframe)]) for k in range(startframe, endframe, dt)]) if endframe > startframe else []
+        return float(np.mean(iou[-rank:]) if endframe > startframe else 0.0)
+
+
+    def segment_percentilecover(self, other, percentile, samples=100):
+        """percentile cover on the overlapping segment with other"""
+        assert percentile > 0 and percentile <= 1
+        assert isinstance(other, Track), "invalid input - Must be vipy.object.Track()"
+
+        startframe = max(self.startframe(), other.startframe())
+        endframe = min(self.endframe(), other.endframe())
+        segmentlen = endframe - startframe
+        rank = int(segmentlen*percentile)
+        dt = max(1, int(np.floor(segmentlen/samples)))
+        bblist = [(self[min(k,endframe)], other[min(k,endframe)]) for k in range(startframe, endframe, dt)] if endframe > startframe else []
+        cover = [max(bbself.cover(bbother), bbother.cover(bbself)) for (bbself, bbother) in bblist]
+        return float(np.mean(cover[-rank:]) if endframe > startframe else 0.0)
 
     def union(self, other, overlap='average'):
         """Compute the union of two tracks.  Overlapping boxes between self and other:
@@ -650,7 +692,7 @@ class Track(object):
             n = self.endframe() if k > self.endframe() else self.startframe()+1
             (vx, vy) = self.shape_invariant_velocity(n, dt=dt) if not shape else self.velocity(n, dt=dt)
             (vw, vh) = (self.velocity_w(n, dt=dt), self.velocity_h(n, dt=dt)) if shape else (0,0)
-            return (self.clone()[n]
+            return (self[n]
                     .translate((k-n)*vx, (k-n)*vy)
                     .top(0 if not shape else ((k-n)*vh)/2.0)
                     .bottom(0 if not shape else ((k-n)*vh)/2.0)
@@ -746,13 +788,17 @@ def non_maximum_suppression(detlist, conf, iou, bycategory=False, cover=None, co
     assert conf>=0 and iou>=0 and iou<=1
     assert cover is None or (cover>=0 and cover<=1)
 
-    suppressed = set([k for (k,d) in enumerate(detlist) if d.confidence() <= conf or d.isdegenerate()])
+    suppressed = set([])
+    detlist = [d for d in detlist if d.confidence() > conf and not d.isdegenerate()]  # valid
     detlist = sorted(detlist, key=lambda d: d.confidence(), reverse=True)  # biggest to smallest
-    for (i,di) in enumerate(detlist):
-        for (j,dj) in enumerate(detlist):
-            if j > i and (j not in suppressed) and (bycategory is False or di.category() == dj.category()) and (di.iou(dj) >= iou or (cover is not None and dj.clone().dilate(coverdilation).cover(di) >= cover)):
-                suppressed.add(j)
-    return sorted([d for (j,d) in enumerate(detlist) if j not in suppressed], key=lambda d: d.confidence())  # smallest to biggest confidence for display layering
+    detlist = [(d.clone().dilate(coverdilation), d) for d in detlist]  
+    for i in range(0, len(detlist)-1):
+        for j in range(i+1, len(detlist)):
+            if i not in suppressed and j not in suppressed:
+                ((ddi, di), (ddj, dj)) = (detlist[i], detlist[j])
+                if (bycategory is False or di.category() == dj.category()) and (di.iou(dj) >= iou or (cover is not None and ddj.cover(di) >= cover)):
+                    suppressed.add(j)
+    return sorted([d for (j,(dd,d)) in enumerate(detlist) if j not in suppressed], key=lambda x: x.confidence())  # smallest to biggest confidence for display layering
 
 
 def greedy_assignment(srclist, dstlist, miniou=0.0, bycategory=False):

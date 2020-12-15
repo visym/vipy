@@ -214,7 +214,7 @@ def dividelist(inlist, fractions):
     assert all([f >= 0 and f <=1 for f in fractions])
     assert np.sum(fractions) == 1
     assert len(inlist) >= len(fractions)
-    N = np.int32(np.maximum(1, np.ceil(len(inlist)*np.array(fractions))))
+    N = np.int32(np.maximum(0, np.ceil(len(inlist)*np.array(fractions))))
     outlist = []
     for n in N:
         outlist.append(inlist[0:n])

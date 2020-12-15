@@ -87,7 +87,7 @@ class Dask(object):
         self._client.close()
         self._num_processes = None
         self._num_gpus = None
-        
+        vipy.globals.GLOBAL['DASK_CLIENT'] = None        
         return self
 
     def client(self):

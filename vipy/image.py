@@ -1912,9 +1912,14 @@ def mutator_capitalize():
     """Mutate the image to show the shortlabel as 'Noun Verb1\nNoun Verb2'"""
     return lambda im, k=None: (im.objectmap(lambda o: o.shortlabel('\n'.join(['%s %s' % (n.capitalize(), v.capitalize()) for (n,v) in o.attributes['noun verb']])) if o.hasattribute('noun verb') else o))
     
-def mutator_show_objectindex():
+def mutator_show_activityonly():
     """Mutate the image to show the index of the object in the scene.  This list must be the same length as the number of objects in the scene"""
-    return lambda im, k=None: im.objectmap([(lambda o,k=k: o.shortlabel(k)) for k in range(len(im))])
+    return lambda im, k=None: im.objectmap(lambda o: o.shortlabel('') if (len(o.attributes['noun verb']) == 1 and len(o.attributes['noun verb'][0][1]) == 0) else o)
+
+def mutator_show_trackindex_activityonly():
+    """Mutate the image to show the index of the object in the scene.  This list must be the same length as the number of objects in the scene"""
+    f = mutator_show_trackindex()
+    return lambda im, k=None, f=f: f(im).objectmap(lambda o: o.shortlabel('__%s' % o.shortlabel()) if (len(o.attributes['noun verb']) == 1 and len(o.attributes['noun verb'][0][1]) == 0) else o)
 
 
 def RandomImage(rows=None, cols=None):

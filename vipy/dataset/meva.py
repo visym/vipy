@@ -108,8 +108,9 @@ class KF1(object):
         #   which does not work in general.  This requires global track correspondence.  
         if merge:
             print('[vipy.dataset.meva.KF1]: merging videos ...')
-            self._vidlist = [v[0].clone().union(v[1:]) for (f, v) in groupbyasdict([a for vid in self._vidlist for a in vid.activitysplit()], lambda s: s.filename()).items()]
-        
+            V = list(groupbyasdict([a for vid in self._vidlist for a in vid.activitysplit()], lambda s: s.filename()).values())
+            self._vidlist = Batch(V).map(lambda v: v[0].clone().union(v[1:])).result()
+
         # Enforce disjoint causal activities
         #   Due to the arbitrary temporal padding in the annotation definitions, merged causal activiites can overlap
         #   Enforce that causal activities (open/close, enter/exit, pickup/putdown, load/unload) for the same track are disjoint
