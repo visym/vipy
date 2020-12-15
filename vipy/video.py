@@ -2514,12 +2514,13 @@ class Scene(VideoCategory):
                         break
         return self
 
-    def assign(self, frame, dets, minconf=0.2, maxhistory=5, activityiou=0.5, trackcover=0.2):
+    def assign(self, frame, dets, minconf=0.2, maxhistory=5, activityiou=0.5, trackcover=0.2, trackconfsamples=8):
         """Assign a list of vipy.object.Detections at frame k to scene by greedy track association. In-place update.
         
            * miniou [float]: the minimum temporal IOU for activity assignment
            * minconf [float]: the minimum confidence for a detection to be considered as a new track
            * maxhistory [int]:  the maximum propagation length of a track with no measurements.  
+           * trackconfsamples [int]:  the number of uniformly spaced samples along a track to compute a track confidence
 
         """
         assert dets is None or all([isinstance(d, vipy.object.Detection) or isinstance(d, vipy.activity.Activity) for d in tolist(dets)]), "invalid input"
@@ -2548,7 +2549,7 @@ class Scene(VideoCategory):
                        if t.category() == d.category()]
         assigned = set([])        
         posconf = min([d.confidence() for d in objdets])
-        for (t, conf, iou, shapeiou, cover, d) in sorted(assignments, key=lambda x: (x[1]+posconf)*(x[2]+x[3]+x[4])+x[0].confidence(dt=maxhistory), reverse=True):
+        for (t, conf, iou, shapeiou, cover, d) in sorted(assignments, key=lambda x: (x[1]+posconf)*(x[2]+x[3]+x[4])+x[0].confidence(samples=trackconfsamples), reverse=True):
             if cover > (trackcover if len(t)>1 else 0):  # the highest confidence detection within the iou gate (or any overlap if not yet enough history for velocity estimate) 
                 if (t.id() not in assigned and d.id() not in assigned):  # not assigned yet, assign it!
                     self.track(t.id()).add(frame, d.clone())  # track assignment!
@@ -2562,7 +2563,7 @@ class Scene(VideoCategory):
                     
         # Non-maximum suppression
         deleted = set([])
-        trackconf = [(t.confidence(dt=maxhistory), t) for t in self.tracklist() if ((frame - t.endframe()) <= maxhistory)]
+        trackconf = [(t.confidence(samples=trackconfsamples), t) for t in self.tracklist() if ((frame - t.endframe()) <= maxhistory)]
         for (ci, ti) in sorted(trackconf, key=lambda x: x[0], reverse=True):
             for (cj, tj) in trackconf:
                 if (ti.category() == tj.category()) and (ti.id() != tj.id()) and (tj.id() not in deleted) and (cj < ci):

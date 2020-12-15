@@ -225,10 +225,14 @@ class Track(object):
     def isempty(self):
         return self.__len__() == 0
 
-    def confidence(self, dt=None):
-        """The confidence of a track is the mean confidence of all (or last frames=dt) keyboxes (if confidences are available) else 0"""
-        ef = self.endframe() - dt if dt is not None else 0
-        C = [d._confidence for (f,d) in zip(self.keyframes(), self.keyboxes()) if f >= ef and (hasattr(d, '_confidence') and d._confidence is not None)]
+    def confidence(self, last=None, samples=None):
+        """The confidence of a track is the mean confidence of all (or just last=last frames, or samples=samples uniformly spaced) keyboxes (if confidences are available) else 0"""
+        if samples is not None:
+            dt = max(1, int(round(len(self._keyframes)/float(samples))))
+            C = [self._keyframes[i]._confidence for i in range(len(self._keyframes)-1, 0, -dt) if (hasattr(self._keyframes[i], '_confidence') and self._keyframes[i]._confidence is not None)]
+        else:
+            ef = self.endframe() - last if last is not None else 0
+            C = [d._confidence for (f,d) in zip(self.keyframes(), self.keyboxes()) if f >= ef and (hasattr(d, '_confidence') and d._confidence is not None)]
         return float(np.mean(C)) if len(C) > 0 else 0
         
     def isdegenerate(self):
@@ -344,7 +348,7 @@ class Track(object):
 
         kf = self._keyframes
         ft = min(max(f, kf[0]), kf[-1])  # truncated frame index
-        i = min(len(kf)-2, [i for i in range(0,len(kf)-1) if kf[i] <= ft and kf[i+1] >= ft][0])  # floor keyframe index
+        i = [i for i in range(0,len(kf)-1) if kf[i] <= ft and kf[i+1] >= ft][0]  # floor keyframe index
         c = (ft - kf[i]) / float(kf[i+1] - kf[i])  # interpolation coefficient
         (bi, bj) = (self._keyboxes[i], self._keyboxes[i+1])
         d = Detection(xmin=bi._xmin + c*(bj._xmin - bi._xmin),   # float(np.interp(k, self._keyframes, [bb._xmin for bb in self._keyboxes])),
