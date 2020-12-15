@@ -478,7 +478,7 @@ def _test_scene_union():
     #assert 'PersonA' in activity.categories() 
     #track1.category('Person1')
     
-    v = vipy.video.Scene(array=vid.array(), colorspace='rgb', category='scene', activities=[activity])
+    v = vipy.video.Scene(array=vid.array(), colorspace='rgb', category='scene', activities=[activity], tracks=[track1, track2])
     vu = v.clone().union(v)
     assert len(vu.activities())==1
 

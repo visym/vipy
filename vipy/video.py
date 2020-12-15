@@ -2272,7 +2272,7 @@ class Scene(VideoCategory):
         self.trackfilter(lambda t: t.id() not in deleted)  # remove duplicate tracks
         return self
     
-    def union(self, other, temporal_iou_threshold=0.5, spatial_iou_threshold=0.6, strict=True, overlap='average', percentilecover=0.8, percentilesamples=100, activity=True, track=True, onetomany=False):
+    def union(self, other, temporal_iou_threshold=0.5, spatial_iou_threshold=0.6, strict=True, overlap='average', percentilecover=0.8, percentilesamples=100, activity=True, track=True):
         """Compute the union two scenes as the set of unique activities and tracks.  
 
            A pair of activities or tracks are non-unique if they overlap spatially and temporally by a given IoU threshold.  Merge overlapping tracks. 
@@ -2292,7 +2292,6 @@ class Scene(VideoCategory):
              -percentilesamples [>1]:  the number of samples along the overlapping scemgne for computing percentile cover
              -activity [bool]: union() of activities only
              -track [bool]: union() of tracks only
-             -onetomany [bool]:  allow one track in other to be assigned to many tracks in self (useful for track fragmentation in self)                    
 
            Output:
              -Updates this scene to include the non-overlapping activities from other.  By default, it takes the strict union of all activities and tracks. 
@@ -2309,7 +2308,7 @@ class Scene(VideoCategory):
         if not activity and not track:
             return self  # nothing to do
 
-        sc = self.clone()
+        sc = self.clone()  # do not change self yet, make a copy then merge at the end
         for o in tolist(other):
             assert isinstance(o, Scene), "Invalid input - must be vipy.video.Scene() object and not type=%s" % str(type(o))
 
@@ -2336,35 +2335,33 @@ class Scene(VideoCategory):
                 oc = oc.trackmap(lambda t: t.offset(dt=dt)).activitymap(lambda a: a.offset(dt=dt))  # match temporal translation of tracks and activities
             oc = oc.trackfilter(lambda t: ((not t.isdegenerate()) and len(t)>0))
 
-            # Merge other tracks into self
-            merged = set([])  # the set of tracks in oc that have already been merged
+            # Merge other tracks into selfclone: one-to-many mapping
+            merged = {}  # dictionary mapping trackid in other to the trackid in self
             for ti in sorted(sc.tracklist(), key=lambda t: len(t), reverse=True):  # longest to shortest
                 for tj in sorted(oc.tracklist(), key=lambda t: len(t), reverse=True):  
-                    if ti.category() == tj.category() and (onetomany or tj.id() not in merged) and tj.segment_percentilecover(sc.track(ti.id()), percentile=percentilecover, samples=percentilesamples) > spatial_iou_threshold:  # mean framewise overlap during overlapping segment of two tracks
-                        sc.tracks()[ti.id()] = sc.track(ti.id()).union(tj, overlap=overlap)  # merge duplicate tracks into self, union() returns clone (not in place)
-                        for a in oc.activitylist():
-                            if a.hastrack(tj):
-                                sc.add(a.clone(rekey=True).replace(tj, ti))  # create new activity referencing merged track
-                        sc.activitymap(lambda a: a.replace(tj, ti) if a.hastrack(tj) else a)
-                        merged.add(tj.id())  # allow one track in other to be assigned to many tracks in self (useful for track fragmentation in self)
-                        print('[vipy.video.union]: merging track "%s"(id=%s) + "%s"(id=%s) for scene "%s"' % (str(ti), str(ti.id()), str(tj), str(tj.id()), str(sc)))
+                    if ti.category() == tj.category() and (tj.id() not in merged) and tj.segment_percentilecover(sc.track(ti.id()), percentile=percentilecover, samples=percentilesamples) > spatial_iou_threshold:  # mean framewise overlap during overlapping segment of two tracks
+                        sc.tracks()[ti.id()] = sc.track(ti.id()).union(tj, overlap=overlap)  # merge duplicate/fragmented tracks from other into self, union() returns clone
+                        merged[tj.id()] = ti.id()  
+                        print('[vipy.video.union]: merging track "%s"(id=%s) + "%s"(id=%s) for scene "%s"' % (str(ti), str(ti.id()), str(tj), str(tj.id()), str(sc)))                        
             oc.trackfilter(lambda t: t.id() not in merged)  # remove duplicate other track for final union
 
-            # Dedupe activities
+            # Merge other activities into selfclone: one-to-one mapping
+            for (i,j) in merged.items():  # i=id of other, j=id of self
+                oc.activitymap(lambda a: a.replaceid(i, j) if a.hastrack(i) else a)  # update track IDs referenced in activities for merged tracks
             for (i,ai) in sc.activities().items():
                 for (j,aj) in oc.activities().items():
                     if ai.category() == aj.category() and set(ai.trackids()) == set(aj.trackids()) and ai.temporal_iou(aj) > temporal_iou_threshold:
-                        oc = oc.activityfilter(lambda a: a.id() != j)  # remove duplicate activity from final union
-
+                        oc.activityfilter(lambda a: a.id() != j)  # remove duplicate activity from final union
+                        
             # Union
             sc.tracks().update(oc.tracks())
             sc.activities().update(oc.activities())
 
         # Final union of unique tracks/activities
         if track:
-            self.tracks(sc.tracklist())
+            self.tracks(sc.tracklist())  # union of tracks only
         if activity:
-            self.activities(sc.activityfilter(lambda a: a.actorid() in self.tracks().keys()).activitylist())
+            self.activities(sc.activitylist())  # union of activities only: may reference tracks not in self of track=False
         return self        
 
     def annotate(self, verbose=True, fontsize=10, captionoffset=(0,0), textfacecolor='white', textfacealpha=1.0, shortlabel=True, boxalpha=0.25, d_category2color={'Person':'green', 'Vehicle':'blue', 'Object':'red'}, categories=None, nocaption=False, nocaption_withstring=[], mutator=None, timestamp=None, timestampcolor='black', timestampfacecolor='white'):
