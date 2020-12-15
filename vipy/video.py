@@ -2266,7 +2266,7 @@ class Scene(VideoCategory):
             for (s, ti) in sorted([(0,t) if (len(tj) < len(t) or t.id() in deleted or t.id() == tj.id() or t.category() != tj.category()) else (tj.fragmentiou(t, dt=dt), t) for t in self.tracklist()], key=lambda x: x[0], reverse=True):
                 if s > spatial_iou_threshold:  # best mean framewise overlap during overlapping segment of two tracks (ti, tj)
                     print('[vipy.video.dedupe]: merging duplicate track "%s" (id=%s) which overlaps with "%s" (id=%s)' % (ti, ti.id(), tj, tj.id()))
-                    self.tracks()[tj.id()] = tj.union(ti).clone()  # merge
+                    self.tracks()[tj.id()] = tj.union(ti)  # merge
                     self.activitymap(lambda a: a.replace(ti, tj))  # replace merged track reference in activity
                     deleted.add(ti.id())
         self.trackfilter(lambda t: t.id() not in deleted)  # remove duplicate tracks
@@ -2335,8 +2335,8 @@ class Scene(VideoCategory):
                 oc = oc.trackmap(lambda t: t.offset(dt=dt)).activitymap(lambda a: a.offset(dt=dt))  # match temporal translation of tracks and activities
             oc = oc.trackfilter(lambda t: ((not t.isdegenerate()) and len(t)>0))
 
-            # Merge other tracks into selfclone: one-to-many mapping
-            merged = {}  # dictionary mapping trackid in other to the trackid in self
+            # Merge other tracks into selfclone: one-to-many mapping from self to other
+            merged = {}  # dictionary mapping trackid in other to the trackid in self, each track in other can be merged at most once
             for ti in sorted(sc.tracklist(), key=lambda t: len(t), reverse=True):  # longest to shortest
                 for tj in sorted(oc.tracklist(), key=lambda t: len(t), reverse=True):  
                     if ti.category() == tj.category() and (tj.id() not in merged) and tj.segment_percentilecover(sc.track(ti.id()), percentile=percentilecover, samples=percentilesamples) > spatial_iou_threshold:  # mean framewise overlap during overlapping segment of two tracks

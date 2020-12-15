@@ -349,7 +349,7 @@ class Track(object):
         kf = self._keyframes
         ft = min(max(f, kf[0]), kf[-1])  # truncated frame index
         i = [i for i in range(0,len(kf)-1) if kf[i] <= ft and kf[i+1] >= ft][0]  # floor keyframe index
-        c = (ft - kf[i]) / float(kf[i+1] - kf[i])  # interpolation coefficient
+        c = (ft - kf[i]) / max(1, float(kf[i+1] - kf[i]))  # interpolation coefficient
         (bi, bj) = (self._keyboxes[i], self._keyboxes[i+1])
         d = Detection(xmin=bi._xmin + c*(bj._xmin - bi._xmin),   # float(np.interp(k, self._keyframes, [bb._xmin for bb in self._keyboxes])),
                       ymin=bi._ymin + c*(bj._ymin - bi._ymin),   # float(np.interp(k, self._keyframes, [bb._ymin for bb in self._keyboxes])),
