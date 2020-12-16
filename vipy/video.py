@@ -263,10 +263,10 @@ class Video(object):
                                        .filter('pad', 'ceil(iw/2)*2', 'ceil(ih/2)*2') \
                                        .output(filename=self._outfile, pix_fmt='yuv420p', vcodec=self._vcodec) \
                                        .overwrite_output() \
-                                       .global_args('-cpuflags', '0', '-loglevel', 'panic' if not vipy.globals.isdebug() else 'debug') \
+                                       .global_args('-cpuflags', '0', '-loglevel', 'quiet' if not vipy.globals.isdebug() else 'debug') \
                                        .run_async(pipe_stdin=True)
                 elif not self._write:
-                    self._pipe = (self._video._ffmpeg.output('pipe:', format='rawvideo', pix_fmt='rgb24').global_args('-loglevel', 'debug' if vipy.globals.isdebug() else 'panic').run_async(pipe_stdout=True))
+                    self._pipe = (self._video._ffmpeg.output('pipe:', format='rawvideo', pix_fmt='rgb24').global_args('-loglevel', 'debug' if vipy.globals.isdebug() else 'quiet').run_async(pipe_stdout=True))
                 self._frame_index = 0
 
                 #def _f_threadloop(s,q):
@@ -850,7 +850,7 @@ class Video(object):
             f_prepipe = self.clone()._update_ffmpeg_seek(offset=timestamp_in_seconds)._ffmpeg.filter('select', 'gte(n,{})'.format(0))
             f = f_prepipe.output('pipe:', vframes=1, format='image2', vcodec='mjpeg')\
                          .global_args('-cpuflags', '0', '-loglevel', 'debug' if vipy.globals.isdebug() else 'error')
-            (out, err) = f.run(capture_stdout=True)
+            (out, err) = f.run(capture_stdout=True, capture_stderr=True)
         except Exception as e:            
             raise ValueError('[vipy.video.load]: Video preview failed with error "%s"\n\nVideo: "%s"\n\nFFMPEG command: "%s"\n\nTry manually running this ffmpeg command to see errors.  This error usually means that the video is corrupted or that you need to upgrade your FFMPEG distribution to the latest stable version.' % (str(e), str(self), str(self._ffmpeg_commandline(f_prepipe.output('preview.jpg', vframes=1)))))
 
@@ -862,9 +862,10 @@ class Video(object):
             return Image(array=np.array(PIL.Image.open(BytesIO(out))))
         except Exception as e:
             print('[vipy.video.Video.preview][ERROR]:  %s' % str(e))
-            print('   -This may occur when the framerate of the video from ffprobe (tbr) does not match that passed to fps filter, resulting in a zero length image preview piped to stdout')
-            print('   -This may occur after calling clip() with too short a duration, try increasing the clip to be > 1 sec')
-            print('   -This may occur if requesting a frame number greater than the length of the video.  At this point, we do not know the video length, and cannot fail gracefully')
+            print('   - This may occur when the framerate of the video from ffprobe (tbr) does not match that passed to fps filter, resulting in a zero length image preview piped to stdout')
+            print('   - This may occur after calling clip() with too short a duration, try increasing the clip to be > 1 sec')
+            print('   - This may occur if requesting a frame number greater than the length of the video.  At this point, we do not know the video length, and cannot fail gracefully')
+            print('   - %s' % (str(self)))
             raise
 
     def thumbnail(self, outfile=None, frame=0):
@@ -895,8 +896,8 @@ class Video(object):
         #    -On some versions of ffmpeg setting -cpuflags=0 fixes it, but the right solution is to rebuild from the head (30APR20)
         try:
             f = self._ffmpeg.output('pipe:', format='rawvideo', pix_fmt='rgb24')\
-                            .global_args('-cpuflags', '0', '-loglevel', 'debug' if vipy.globals.isdebug() else 'panic')
-            (out, err) = f.run(capture_stdout=True)
+                            .global_args('-cpuflags', '0', '-loglevel', 'debug' if vipy.globals.isdebug() else 'quiet')
+            (out, err) = f.run(capture_stdout=True, capture_stderr=True)
         except Exception as e:
             if not ignoreErrors:
                 raise ValueError('[vipy.video.load]: Load failed with error "%s"\n\nVideo: "%s"\n\nFFMPEG command: "%s"\n\n Try setting vipy.globals.debug() to see verbose FFMPEG debugging output and rerunning or manually running the ffmpeg command line to see errors. This error usually means that the video is corrupted or that you need to upgrade your FFMPEG distribution to the latest stable version.' % (str(e), str(self), str(self._ffmpeg_commandline(f))))
@@ -1162,7 +1163,7 @@ class Video(object):
                                 .filter('pad', 'ceil(iw/2)*2', 'ceil(ih/2)*2') \
                                 .output(filename=outfile, pix_fmt='yuv420p', vcodec=vcodec) \
                                 .overwrite_output() \
-                                .global_args('-cpuflags', '0', '-loglevel', 'panic' if not vipy.globals.isdebug() else 'debug') \
+                                .global_args('-cpuflags', '0', '-loglevel', 'quiet' if not vipy.globals.isdebug() else 'debug') \
                                 .run_async(pipe_stdin=True)                
                 for frame in self._array:
                     process.stdin.write(frame.astype(np.uint8).tobytes())
@@ -1176,7 +1177,7 @@ class Video(object):
                 self._ffmpeg.filter('pad', 'ceil(iw/2)*2', 'ceil(ih/2)*2') \
                             .output(filename=tmpfile, pix_fmt='yuv420p', vcodec=vcodec, r=framerate) \
                             .overwrite_output() \
-                            .global_args('-cpuflags', '0', '-loglevel', 'panic' if not vipy.globals.isdebug() else 'debug') \
+                            .global_args('-cpuflags', '0', '-loglevel', 'quiet' if not vipy.globals.isdebug() else 'debug') \
                             .run()
                 if outfile == self.filename():
                     if os.path.exists(self.filename()):
@@ -2057,7 +2058,7 @@ class Scene(VideoCategory):
         """
         v = self.clone()
         for t in v.tracklist():
-            bgframe = [k for k in range(t.startframe(), t.endframe()) if not any([a.hastrack(t) and a.during(k) for a in v.activitylist()])]                
+            bgframe = [k for k in range(t.startframe(), t.endframe()) if not any([a.hastrack(t) and a.during(k) for a in self.activitylist()])]                
             while len(bgframe) > 0:
                 (i,j) = (0, np.argwhere(np.diff(bgframe) > 1).flatten()[0] + 1 if len(np.argwhere(np.diff(bgframe) > 1))>0 else len(bgframe)-1)
                 if i < j:
