@@ -28,7 +28,7 @@ class Activity(object):
     """
     def __init__(self, startframe, endframe, framerate=None, label=None, shortlabel=None, category=None, tracks=None, attributes=None, actorid=None, confidence=None):
         assert not (label is not None and category is not None), "Activity() Constructor requires either label or category kwargs, not both"
-        assert startframe < endframe, "Start frame must be strictly less than end frame"
+        assert startframe <= endframe, "Start frame must be less than or equal to end frame"
         if tracks:
             tracks = [v for (k,v) in tracks.items()] if isinstance(tracks, dict) else tracks  # backwards compatible, track dictionary input
             assert (all([isstring(t) for t in tracks]) or all([isinstance(t, Track) for t in tracks])), "Invalid track input"

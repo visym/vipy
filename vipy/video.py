@@ -431,13 +431,20 @@ class Video(object):
 
     def _from_ffmpeg_commandline(self, cmd):
         args = copy.copy(cmd).replace(self.filename(), 'FILENAME').split(' ')  # filename may contain spaces
-
+        
         assert args[0] == 'ffmpeg', "Invalid FFMEG commmand line '%s'" % cmd
-        assert args[1] == '-i', "Invalid FFMEG commmand line '%s'" % cmd
+        assert args[1] == '-i' or (args[3] == '-i' and args[1] == '-ss'), "Invalid FFMEG commmand line '%s'" % cmd
         assert args[-1] == 'dummyfile', "Invalid FFMEG commmand line '%s'" % cmd
         assert len(args) >= 4, "Invalid FFMEG commmand line '%s'" % cmd
 
-        f = ffmpeg.input(args[2].replace('FILENAME', self.filename()))  # restore filename
+        if args[1] == '-ss':
+            timestamp_in_seconds = float(args[2])
+            timestamp_in_seconds = int(timestamp_in_seconds) if timestamp_in_seconds == 0 else timestamp_in_seconds  # 0.0 -> 0
+            args = [args[0]] + args[3:]
+            f = ffmpeg.input(args[2].replace('FILENAME', self.filename()), ss=timestamp_in_seconds)   # restore filename, set offset time
+        else:
+            f = ffmpeg.input(args[2].replace('FILENAME', self.filename()))  # restore filename
+
         if len(args) > 4:
             assert args[3] == '-filter_complex', "Invalid FFMEG commmand line '%s'" % cmd
             assert args[4][0] == '"' and args[4][-1] == '"', "Invalid FFMEG commmand line '%s'" % cmd
@@ -458,7 +465,7 @@ class Video(object):
                         else:
                             a.append(s)
                     f = f.filter(filtername, *a, **kw)
-        assert self._ffmpeg_commandline(f.output('dummyfile')) == cmd
+        assert self._ffmpeg_commandline(f.output('dummyfile')) == cmd, "FFMPEG command line '%s' != '%s'" % (self._ffmpeg_commandline(f.output('dummyfile')), cmd)
         return f
 
     def isdirty(self):
@@ -1718,6 +1725,9 @@ class Scene(VideoCategory):
         assert id in self.tracks()
         return [t.id() for t in self.tracklist()].index(id)
 
+    def trackidx(self, idx):
+        return self.tracklist()[idx]
+
     def activity(self, id):
         return self.activities(id=id)
     
@@ -1725,13 +1735,16 @@ class Scene(VideoCategory):
         return list(self.tracks().values())
 
     def actorid(self):
-        assert len(self.tracks()) == 1, "Actor ID only valid for scenes with a single track"
+        #assert len(self.tracks()) == 1, "Actor ID only valid for scenes with a single track"
         return list(self.tracks().keys())[0]
         
     def actor(self):
-        assert len(self.tracks()) == 1, "Actor only valid for scenes with a single track"
+        #assert len(self.tracks()) == 1, "Actor only valid for scenes with a single track"
         return self.tracklist()[0]
         
+    def primary_activity(self):
+        return self.activitylist()[0]
+
     def activities(self, activities=None, id=None):
         """Return mutable dictionary of activities.  All temporal alignment is relative to the current clip()."""
         if isinstance(self._activities, tuple):
@@ -2053,10 +2066,10 @@ class Scene(VideoCategory):
                                                  startframe=bgframe[i], endframe=bgframe[j],
                                                  actorid=t.id(), framerate=v.framerate(), attributes={'noactivityclip':True}))
                 bgframe = bgframe[j+1:]
-        return v.activityfilter(lambda a: 'noactivityclip' not in a.attributes).activityclip(padframes=padframes, multilabel=False)
+        return v.activityfilter(lambda a: 'noactivityclip' in a.attributes).activityclip(padframes=padframes, multilabel=False)
 
     def trackbox(self, dilate=1.0):
-        """The trackbox is the union of all track bounding boxes in the video, or the image rectangle if there are no tracks"""
+        """The trackbox is the union of all track bounding boxes in the video, or None if there are no tracks"""
         boxes = [t.clone().boundingbox() for t in self.tracklist()]
         boxes = [bb.dilate(dilate) for bb in boxes if bb is not None]
         return boxes[0].union(boxes[1:]) if len(boxes) > 0 else None
@@ -2066,7 +2079,9 @@ class Scene(VideoCategory):
         return vipy.geometry.BoundingBox(xmin=0, ymin=0, width=self.width(), height=self.height())
 
     def trackcrop(self, dilate=1.0, maxsquare=False):
-        return self.clone().crop(self.trackbox(dilate).maxsquareif(maxsquare))
+        """Return the trackcrop() of the scene which is the crop of the video using the trackbox().  If there are no tracks, return None"""
+        bb = self.trackbox(dilate)  # may be None if trackbox is degenerate
+        return self.clone().crop(bb.maxsquareif(maxsquare)) if bb is not None else None
     
     def activitybox(self, activityid=None, dilate=1.0):
         """The activitybox is the union of all activity bounding boxes in the video, which is the union of all tracks contributing to all activities.  This is most useful after activityclip().
