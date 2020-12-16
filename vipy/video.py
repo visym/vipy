@@ -80,7 +80,7 @@ class Video(object):
         self._colorspace = None
         self._ffmpeg = None
         self._framerate = framerate
-        
+
         self.attributes = attributes if attributes is not None else {}
         assert isinstance(self.attributes, dict), "Attributes must be a python dictionary"
         assert filename is not None or url is not None or array is not None or frames is not None, 'Invalid constructor - Requires "filename", "url" or "array" or "frames"'
@@ -152,7 +152,7 @@ class Video(object):
                 startsec=d['_startsec'],
                 endsec=d['_endsec'])
         v._ffmpeg = v._from_ffmpeg_commandline(d['_ffmpeg'])
-        return v.filename(d['_filename'])
+        return v.filename(d['_filename']) if d['_filename'] is not None else v.nofilename()
             
     def __repr__(self):
         strlist = []
@@ -430,7 +430,7 @@ class Video(object):
         return str(' ').join(cmd)
 
     def _from_ffmpeg_commandline(self, cmd):
-        args = copy.copy(cmd).replace(self.filename(), 'FILENAME').split(' ')  # filename may contain spaces
+        args = copy.copy(cmd).replace(str(self.filename()), 'FILENAME').split(' ')  # filename may contain spaces
         
         assert args[0] == 'ffmpeg', "Invalid FFMEG commmand line '%s'" % cmd
         assert args[1] == '-i' or (args[3] == '-i' and args[1] == '-ss'), "Invalid FFMEG commmand line '%s'" % cmd
@@ -442,6 +442,7 @@ class Video(object):
             timestamp_in_seconds = int(timestamp_in_seconds) if timestamp_in_seconds == 0 else timestamp_in_seconds  # 0.0 -> 0
             args = [args[0]] + args[3:]
             f = ffmpeg.input(args[2].replace('FILENAME', self.filename()), ss=timestamp_in_seconds)   # restore filename, set offset time
+            self._startframe = int(round(timestamp_in_seconds*self.framerate()))  # necessary for clip()
         else:
             f = ffmpeg.input(args[2].replace('FILENAME', self.filename()))  # restore filename
 
