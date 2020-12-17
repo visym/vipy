@@ -90,7 +90,7 @@ class Video(object):
             warnings.warn('"ffmpeg" executable not found on path, this is required for vipy.video - Install from http://ffmpeg.org/download.html')
 
         # Constructor clips
-        assert (startframe is not None and endframe is not None) or (startframe is None and endframe is None), "Invalid input - (startframe,endframe) are both required"
+        startframe = startframe if startframe is not None else (0 if endframe is not None else startframe)
         assert (startsec is not None and endsec is not None) or (startsec is None and endsec is None), "Invalid input - (startsec,endsec) are both required"        
         (self._startframe, self._endframe) = (None, None)  # __repr__ only
         (self._startsec, self._endsec) = (None, None)      # __repr__ only  
@@ -118,7 +118,7 @@ class Video(object):
         if framerate is not None:
             self.framerate(framerate)
             self._framerate = framerate        
-        if startframe is not None and endframe is not None:
+        if startframe is not None:
             self.clip(startframe, endframe)  
         if startsec is not None and endsec is not None:
             (self._startsec, self._endsec) = (startsec, endsec)            
@@ -954,15 +954,19 @@ class Video(object):
         self._ffmpeg = self._ffmpeg.setpts('%1.3f*PTS' % float(1.0/float(s)))
         return self
         
-    def clip(self, startframe, endframe):
+    def clip(self, startframe, endframe=None):
         """Load a video clip betweeen start and end frames"""
-        assert startframe <= endframe and startframe >= 0, "Invalid start and end frames (%s, %s)" % (str(startframe), str(endframe))
+        assert (endframe is None or startframe <= endframe) and startframe >= 0, "Invalid start and end frames (%s, %s)" % (str(startframe), str(endframe))
         if not self.isloaded():
             timestamp_in_seconds = ((self._startframe if self._startframe is not None else 0)+startframe)/float(self.framerate())            
-            self._ffmpeg = self._update_ffmpeg_seek(timestamp_in_seconds)._ffmpeg.trim(start_frame=0, end_frame=(endframe-startframe)).setpts('PTS-STARTPTS')  # reset timestamp to 0 after trim filter            
+            self._update_ffmpeg_seek(timestamp_in_seconds)
+            if endframe is not None:
+                self._ffmpeg = self._ffmpeg.trim(start_frame=0, end_frame=(endframe-startframe))
+            self._ffmpeg = self._ffmpeg.setpts('PTS-STARTPTS')  # reset timestamp to 0 after trim filter            
             self._startframe = startframe if self._startframe is None else self._startframe + startframe  # for __repr__ only
-            self._endframe = endframe if self._endframe is None else self._startframe + (endframe-startframe)  # for __repr__ only
+            self._endframe = endframe if (self._endframe is None or endframe is None) else self._startframe + (endframe-startframe)  # for __repr__ only
         else:
+            endframe = endframe if endframe is not None else len(self._array)
             self._array = self._array[startframe:endframe]
             (self._startframe, self._endframe) = (0, endframe-startframe)
         return self
@@ -2168,9 +2172,10 @@ class Scene(VideoCategory):
         super().speed(s)
         return self.trackmap(lambda t: t.framerate(speed=s)).activitymap(lambda a: a.framerate(speed=s))
         
-    def clip(self, startframe, endframe):
+
+    def clip(self, startframe, endframe=None):
         """Clip the video to between (startframe, endframe).  This clip is relative to clip() shown by __repr__().  Return a clone of the video for idempotence"""
-        assert startframe <= endframe and startframe >= 0, "Invalid start and end frames (%s, %s)" % (str(startframe), str(endframe))
+        assert (endframe is None or startframe <= endframe) and startframe >= 0, "Invalid start and end frames (%s, %s)" % (str(startframe), str(endframe))
 
         v = self.clone()
         if not v.isloaded():
@@ -2178,11 +2183,15 @@ class Scene(VideoCategory):
             # -- This code copy is used to avoid super(Scene, self.clone()) which screws up class inheritance for iPython reload
             assert not v.isloaded(), "Filters can only be applied prior to load() - Try calling flush() first"            
             timestamp_in_seconds = ((v._startframe if v._startframe is not None else 0)+startframe)/float(v.framerate())
-            v._ffmpeg = v._update_ffmpeg_seek(timestamp_in_seconds)._ffmpeg.trim(start_frame=0, end_frame=(endframe-startframe)).setpts('PTS-STARTPTS')  # reset timestamp to 0 after trim filter
+            v._update_ffmpeg_seek(timestamp_in_seconds)
+            if endframe is not None:
+                v._ffmpeg = v._ffmpeg.trim(start_frame=0, end_frame=(endframe-startframe))
+            v._ffmpeg = v._ffmpeg.setpts('PTS-STARTPTS')  # reset timestamp to 0 after trim filter            
             v._startframe = startframe if v._startframe is None else v._startframe + startframe  # for __repr__ only
-            v._endframe = endframe if v._endframe is None else v._startframe + (endframe-startframe)  # for __repr__ only
+            v._endframe = endframe if (v._endframe is None or endframe is None) else v._startframe + (endframe-startframe)  # for __repr__ only
             # -- end copy
         else:
+            endframe = endframe if endframe is not None else len(self._array)
             v._array = self._array[startframe:endframe]
             (v._startframe, v._endframe) = (0, endframe-startframe)
         v._tracks = {k:t.offset(dt=-startframe).truncate(startframe=0, endframe=endframe-startframe) for (k,t) in v.tracks().items()}   # may be degenerate
