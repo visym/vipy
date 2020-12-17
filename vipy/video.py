@@ -874,10 +874,13 @@ class Video(object):
         im = self.frame(frame, img=self.preview(frame).array())
         return im.savefig(outfile) if outfile is not None else im
     
-    def load(self, verbose=False, ignoreErrors=False):
+    def load(self, verbose=False, ignoreErrors=False, shape=None):
         """Load a video using ffmpeg, applying the requested filter chain.  
-           If verbose=True. then ffmpeg console output will be displayed. 
-           If ignoreErrors=True, then all load errors are warned and skipped.  Be sure to call isloaded() to confirm loading was successful.
+           
+             - If verbose=True. then ffmpeg console output will be displayed. 
+             - If ignoreErrors=True, then all load errors are warned and skipped.  Be sure to call isloaded() to confirm loading was successful.
+             - shape tuple(height, width, channels):  If provided, use this shape for reading and reshaping the byte stream from ffmpeg
+             - knowing the final output shape can speed up loads by avoiding a preview() of the filter chain to get the frame size
         """
         if self.isloaded():
             return self
@@ -905,10 +908,15 @@ class Video(object):
             else:
                 return self  # Failed, return immediately, useful for calling canload() 
 
+        # Video shape:
+        #   - due to complex filter chains, we may not know the final video size without executing it
+        #   - However, this introduces extra cost by calling preview() on each filter chain
+        #   - If we know what the shape will be (e.g. we made the video square with a known size), then use it here directly
+        (height, width, channels) = (self.height(), self.width(), self.channels()) if shape is None else shape
+        
         # [EXCEPTION]:  older ffmpeg versions may be off by one on the size returned from self.preview() which uses an image decoder vs. f.run() which uses a video decoder
         #    -Try to correct this manually by searching for a off-by-one-pixel decoding that works.  The right way is to upgrade your FFMPEG version to the FFMPEG head (11JUN20)
         #    -We cannot tell which is the one that the end-user wanted, so we leave it up to the calling function to check dimensions (see self.resize())
-        (height, width, channels) = (self.height(), self.width(), self.channels())
         if (len(out) % (height*width*channels)) != 0:
             warnings.warn('Your FFMPEG version is triggering a known bug that is being worked around in an inefficient manner.  Consider upgrading your FFMPEG distribution.')
             if (len(out) % ((height-1)*(width-1)*channels) == 0):
