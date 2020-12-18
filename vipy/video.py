@@ -964,7 +964,7 @@ class Video(object):
                 self._ffmpeg = self._ffmpeg.trim(start_frame=0, end_frame=(endframe-startframe))
             self._ffmpeg = self._ffmpeg.setpts('PTS-STARTPTS')  # reset timestamp to 0 after trim filter            
             self._startframe = startframe if self._startframe is None else self._startframe + startframe  # for __repr__ only
-            self._endframe = endframe if (self._endframe is None or endframe is None) else self._startframe + (endframe-startframe)  # for __repr__ only
+            self._endframe = (self._startframe + (endframe-startframe)) if endframe is not None else endframe  # for __repr__ only
         else:
             endframe = endframe if endframe is not None else len(self._array)
             self._array = self._array[startframe:endframe]
@@ -2188,7 +2188,7 @@ class Scene(VideoCategory):
                 v._ffmpeg = v._ffmpeg.trim(start_frame=0, end_frame=(endframe-startframe))
             v._ffmpeg = v._ffmpeg.setpts('PTS-STARTPTS')  # reset timestamp to 0 after trim filter            
             v._startframe = startframe if v._startframe is None else v._startframe + startframe  # for __repr__ only
-            v._endframe = endframe if (v._endframe is None or endframe is None) else v._startframe + (endframe-startframe)  # for __repr__ only
+            v._endframe = (v._startframe + (endframe-startframe)) if endframe is not None else v._endframe  # for __repr__ only
             # -- end copy
         else:
             endframe = endframe if endframe is not None else len(self._array)
