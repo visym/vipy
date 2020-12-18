@@ -855,7 +855,7 @@ class Video(object):
                          .global_args('-cpuflags', '0', '-loglevel', 'debug' if vipy.globals.isdebug() else 'error')
             (out, err) = f.run(capture_stdout=True, capture_stderr=True)
         except Exception as e:            
-            raise ValueError('[vipy.video.load]: Video preview failed with error "%s"\n\nVideo: "%s"\n\nFFMPEG command: "%s"\n\nTry manually running this ffmpeg command to see errors.  This error usually means that the video is corrupted or that you need to upgrade your FFMPEG distribution to the latest stable version.' % (str(e), str(self), str(self._ffmpeg_commandline(f_prepipe.output('preview.jpg', vframes=1)))))
+            raise ValueError('[vipy.video.load]: Video preview failed with error "%s"\n\nVideo: "%s"\n\nFFMPEG command: "%s"\n\nTry manually running this ffmpeg command to see errors.  This error usually means that the video is corrupted.' % (str(e), str(self), str(self._ffmpeg_commandline(f_prepipe.output('preview.jpg', vframes=1)))))
 
         # [EXCEPTION]:  UnidentifiedImageError: cannot identify image file
         #   -This may occur when the framerate of the video from ffprobe (tbr) does not match that passed to fps filter, resulting in a zero length image preview piped to stdout
@@ -868,6 +868,7 @@ class Video(object):
             print('   - This may occur when the framerate of the video from ffprobe (tbr) does not match that passed to fps filter, resulting in a zero length image preview piped to stdout')
             print('   - This may occur after calling clip() with too short a duration, try increasing the clip to be > 1 sec')
             print('   - This may occur if requesting a frame number greater than the length of the video.  At this point, we do not know the video length, and cannot fail gracefully')
+            print('   - This may occur if the filter chain fails for some unknown reason on this video.  Try running the ffmpeg command manually for this video and looking at the FFMPEG console output (e.g. the output of v._ffmpeg_commandline())')
             print('   - %s' % (str(self)))
             raise
 
