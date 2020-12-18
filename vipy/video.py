@@ -164,6 +164,8 @@ class Video(object):
             strlist.append('url="%s"' % self.url())
         if not self.isloaded() and self._startframe is not None and self._endframe is not None:
             strlist.append('clip=(%d,%d)' % (self._startframe, self._endframe))
+        if not self.isloaded() and self._startframe is not None and self._endframe is None:
+            strlist.append('clip=(%d,)' % (self._startframe))
         if self._framerate is not None:
             strlist.append('fps=%1.1f' % float(self._framerate))
         return str('<vipy.video: %s>' % (', '.join(strlist)))
@@ -1489,6 +1491,8 @@ class VideoCategory(Video):
             strlist.append('category="%s"' % self.category())
         if not self.isloaded() and self._startframe is not None and self._endframe is not None:
             strlist.append('clip=(%d,%d)' % (self._startframe, self._endframe))
+        if not self.isloaded() and self._startframe is not None and self._endframe is None:
+            strlist.append('clip=(%d,)' % (self._startframe))
         if not self.isloaded() and self._startsec is not None:
             strlist.append('cliptime=(%1.2f,%1.2f)' % (self._startsec, self._endsec))
         return str('<vipy.video.VideoCategory: %s>' % (', '.join(strlist)))
@@ -1629,6 +1633,8 @@ class Scene(VideoCategory):
             strlist.append('fps=%1.1f' % float(self._framerate))
         if not self.isloaded() and self._startframe is not None and self._endframe is not None:
             strlist.append('clip=(%d,%d)' % (self._startframe, self._endframe))
+        if not self.isloaded() and self._startframe is not None and self._endframe is None:
+            strlist.append('clip=(%d,)' % (self._startframe)
         if not self.isloaded() and self._startsec is not None:
             strlist.append('cliptime=(%1.2f,%1.2f)' % (self._startsec, self._endsec))            
         if self.category() is not None:
