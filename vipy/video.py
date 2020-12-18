@@ -1634,7 +1634,7 @@ class Scene(VideoCategory):
         if not self.isloaded() and self._startframe is not None and self._endframe is not None:
             strlist.append('clip=(%d,%d)' % (self._startframe, self._endframe))
         if not self.isloaded() and self._startframe is not None and self._endframe is None:
-            strlist.append('clip=(%d,)' % (self._startframe)
+            strlist.append('clip=(%d,)' % (self._startframe))
         if not self.isloaded() and self._startsec is not None:
             strlist.append('cliptime=(%1.2f,%1.2f)' % (self._startsec, self._endsec))            
         if self.category() is not None:
