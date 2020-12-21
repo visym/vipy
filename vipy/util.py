@@ -27,6 +27,7 @@ import pathlib
 import socket
 import warnings
 import copy
+import bz2
 
 try:
     import ujson as json  # faster
@@ -34,6 +35,20 @@ except ImportError:
     import json
 
 
+def bz2pkl(filename, obj=None):
+    """Read/Write compressed pickle file"""
+    assert filename[-8:] == '.pkl.bz2', "Invalid filename - must be '*.pkl.bz2'"
+    if obj is not None:
+        f = bz2.BZ2File(filename, 'wb')
+        cPickle.dump(obj, f)
+        f.close()
+        return filename
+    else:
+        f = bz2.BZ2File(filename, 'rb')
+        obj = cPickle.load(f)
+        f.close()
+        return obj
+        
 
 def mergedict(d1, d2):
     assert isinstance(d1, dict) and isinstance(d2, dict)
