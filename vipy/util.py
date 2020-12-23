@@ -257,10 +257,8 @@ def chunklistWithOverlap(inlist, size_per_chunk, overlap_per_chunk):
     """Convert list into a list of lists such that each element is a list
     containing a sequential chunk of the original list of length
     size_per_chunk"""
-    assert size_per_chunk >= 1 and overlap_per_chunk >= 0 and \
-        size_per_chunk > overlap_per_chunk
-    return [inlist[max(0, i-int(np.floor(size_per_chunk/2))):i+int(np.ceil(size_per_chunk/2))] for i in range(
-        0, len(inlist), size_per_chunk - overlap_per_chunk)]
+    assert size_per_chunk >= 1 and overlap_per_chunk >= 0 and size_per_chunk > overlap_per_chunk
+    return [inlist[i-size_per_chunk:i] for i in range(size_per_chunk, len(inlist)+(size_per_chunk-overlap_per_chunk), size_per_chunk - overlap_per_chunk)]
 
 
 def chunklistwithoverlap(inlist, size_per_chunk, overlap_per_chunk):

@@ -244,7 +244,7 @@ class Video(object):
 
         class Stream(object):
             def __init__(self, v):
-                self._video = v
+                self._video = v   # do not clone
                 self._pipe = None
                 self._frame_index = None
                 self._vcodec = 'libx264'
@@ -307,17 +307,28 @@ class Video(object):
                     self._frame_index = self._frame_index + 1
                     return im
 
+            def __del__(self):
+                self.close()
+
             def __call__(self, im):
                 return self.write(im)
-
-            def clip(self, n):
-                """Stream clips of length n such that the yielded video clip contains frame(0) to frame(-n), and next contains frame(1) to frame (-(n+1)). """
+    
+            def clip(self, n, m=1, continuous=False):
+                """Stream clips of length n such that the yielded video clip contains frame(0) to frame(-n), and next contains frame(m) to frame (-(n+m)). """
                 assert isinstance(n, int) and n>0, "Clip length must be a positive integer"
-                frames = []
+                assert isinstance(m, int) and m>0, "Clip stride must be a positive integer"
+
+                frames = []               
+                v = self._video.clone().clear().nourl().nofilename()
                 for (k,im) in enumerate(self):
                     frames.append(im)                    
-                    frames.pop(0) if len(frames) >= n else None
-                    yield self._video.clone().nourl().nofilename().fromframes(frames)  
+                    frames.pop(0) if len(frames) > n else None
+                    if k%m == 0:
+                        yield (v.fromframes(frames[-n:])
+                               .activities([a.clone().offset(-k+n).truncate(0,n) for a in self._video.activitylist() if a.during_interval(k-n, k)])
+                               .tracks([t.clone().offset(-k+n).truncate(0,n) for t in self._video.tracklist() if t.during_interval(k-n, k)]))
+                    elif continuous:
+                        yield None
                     
             def batch(self, n):
                 """Stream batches of length n such that each batch contains frames [0,n], [n+1, 2n], ...  Last batch will be ragged"""
@@ -333,6 +344,21 @@ class Video(object):
                 if len(frames) > 0:
                     yield v.fromframes(frames)  
 
+            def clipped_batch(self, n, m):
+                assert isinstance(n, int) and n>0, "batch length must be a positive integer"
+                assert isinstance(m, int) and m>0, "clip stride must be a positive integer"
+
+                frames = []
+                v = self._video.clone().nourl().nofilename()
+                for (k, im) in enumerate(self):
+                    frames.append(im)                    
+                    if len(frames) == n+(n-m):
+                        batchlist = frames
+                        frames = frames[-n:]
+                        yield (v.clone().fromframes(f) for f in vipy.util.chunklistwithoverlap(batchlist, n, overlap_per_chunk=n-m))
+                if len(frames) > 0:
+                    yield (v.clone().fromframes(f) for f in vipy.util.chunklistwithoverlap(frames[m:], n, overlap_per_chunk=n-m))
+                    
             def frame(self, n=0):
                 """Stream individual frames of video with negative offset n to the stream head. If n=-30, this full return a frame 30 frames ago"""
                 assert isinstance(n, int) and n<=0, "Frame offset must be non-positive integer"
@@ -346,6 +372,7 @@ class Video(object):
             def write(self, im, flush=False):
                 if self._shape is None:
                     self._shape = im.shape()
+                    assert im.channels() == 3, "RGB frames required"
                     self.__enter__()
                 assert self._pipe is not None and self._write is True, "Stream is read only"                
                 assert im.shape() == self._shape, "Shape cannot change during writing"
@@ -378,7 +405,7 @@ class Video(object):
             def __getitem__(self, k):
                 return self._video.thumbnail(frame=k)  # this is inefficient, don't do it a lot
             
-        return Stream(self.clone())
+        return Stream(self)  # do not clone
 
 
     def bytes(self):
@@ -1965,6 +1992,13 @@ class Scene(VideoCategory):
         self._activities = {}
         return self
     
+    def replace(self, other, frame=None):
+        """Replace tracks and activities with other if activity/track is during frame"""
+        assert isinstance(other, vipy.video.Scene)
+        self.activities([a for a in other.activitylist() if frame is None or a.during(frame)])
+        self.tracks([t for t in other.tracklist() if frame is None or t.during(frame)])
+        return self
+
     def json(self, encode=True):
         """Return JSON encoded string of this object"""
         d = json.loads(super().json())
@@ -2403,36 +2437,61 @@ class Scene(VideoCategory):
             self.activities(sc.activitylist())  # union of activities only: may reference tracks not in self of track=False
         return self        
 
-    def annotate(self, verbose=True, fontsize=10, captionoffset=(0,0), textfacecolor='white', textfacealpha=1.0, shortlabel=True, boxalpha=0.25, d_category2color={'Person':'green', 'Vehicle':'blue', 'Object':'red'}, categories=None, nocaption=False, nocaption_withstring=[], mutator=None, timestamp=None, timestampcolor='black', timestampfacecolor='white'):
+    def annotate(self, verbose=True, fontsize=10, captionoffset=(0,0), textfacecolor='white', textfacealpha=1.0, shortlabel=True, boxalpha=0.25, d_category2color={'Person':'green', 'Vehicle':'blue', 'Object':'red'}, categories=None, nocaption=False, nocaption_withstring=[], mutator=None, timestamp=None, timestampcolor='black', timestampfacecolor='white', outfile=None):
         """Generate a video visualization of all annotated objects and activities in the video, at the resolution and framerate of the underlying video, pixels in this video will now contain the overlay
         This function does not play the video, it only generates an annotation video frames.  Use show() which is equivalent to annotate().saveas().play()
-        In general, this function should not be run on very long videos, as it requires loading the video framewise into memory, try running on clips instead.
+        
+            * In general, this function should not be run on very long videos, as it requires loading the video framewise into memory, try running on clips instead.
+            * For long videos, a btter strategy given a video object vo with an output filename which will use a video stream for annotation
+
         """
         if verbose:
             print('[vipy.video.annotate]: Annotating video ...')  
-        
-        assert self.load().isloaded(), "Load() failed"
-
+    
         f_mutator = mutator if mutator is not None else lambda im,k: im
         f_timestamp = (lambda k: '%s %d' % (vipy.util.clockstamp(), k)) if timestamp is True else timestamp
 
-        imgs = [f_mutator(self[k], k).savefig(fontsize=fontsize,
-                                              captionoffset=captionoffset,
-                                              textfacecolor=textfacecolor,
-                                              textfacealpha=textfacealpha,
-                                              shortlabel=shortlabel,
-                                              boxalpha=boxalpha,
-                                              d_category2color=d_category2color,
-                                              categories=categories,
-                                              nocaption=nocaption,
-                                              timestampcolor=timestampcolor,
-                                              timestampfacecolor=timestampfacecolor,
-                                              timestamp=f_timestamp(k) if timestamp is not None else None,
-                                              figure=1 if k<(len(self)-1) else None,  # cleanup on last frame
-                                              nocaption_withstring=nocaption_withstring).numpy() for k in range(0, len(self))]  # SLOW for large videos
+        if outfile is None:        
+            assert self.load().isloaded(), "Load() failed"
+            imgs = [f_mutator(self[k], k).savefig(fontsize=fontsize,
+                                                  captionoffset=captionoffset,
+                                                  textfacecolor=textfacecolor,
+                                                  textfacealpha=textfacealpha,
+                                                  shortlabel=shortlabel,
+                                                  boxalpha=boxalpha,
+                                                  d_category2color=d_category2color,
+                                                  categories=categories,
+                                                  nocaption=nocaption,
+                                                  timestampcolor=timestampcolor,
+                                                  timestampfacecolor=timestampfacecolor,
+                                                  timestamp=f_timestamp(k) if timestamp is not None else None,
+                                                  figure=1 if k<(len(self)-1) else None,  # cleanup on last frame
+                                                  nocaption_withstring=nocaption_withstring).numpy() for k in range(0, len(self))]
+            
 
-        # Replace pixels with annotated pixels and downcast object to vipy.video.Video (since there are no more objects to show)
-        return vipy.video.Video(array=np.stack([np.array(PIL.Image.fromarray(img).convert('RGB')) for img in imgs], axis=0), framerate=self.framerate(), attributes=self.attributes)
+            # Replace pixels with annotated pixels and downcast object to vipy.video.Video (since there are no more objects to show)
+            return vipy.video.Video(array=np.stack([np.array(PIL.Image.fromarray(img).convert('RGB')) for img in imgs], axis=0), framerate=self.framerate(), attributes=self.attributes)  # slow for large videos
+        else:
+            # Stream to output video without loading all frames into memory
+            n = self.duration_in_frames_of_videofile()
+            vo = vipy.video.Video(filename=outfile, framerate=self.framerate())
+            with vo.stream(overwrite=True) as so:
+                for (k,im) in enumerate(self.stream()):
+                    so.write(f_mutator(im, k).savefig(fontsize=fontsize,
+                                                      captionoffset=captionoffset,
+                                                      textfacecolor=textfacecolor,
+                                                      textfacealpha=textfacealpha,
+                                                      shortlabel=shortlabel,
+                                                      boxalpha=boxalpha,
+                                                      d_category2color=d_category2color,
+                                                      categories=categories,
+                                                      nocaption=nocaption,
+                                                      timestampcolor=timestampcolor,
+                                                      timestampfacecolor=timestampfacecolor,
+                                                      timestamp=f_timestamp(k) if timestamp is not None else None,
+                                                      figure=1 if k<(n-1) else None,  # cleanup on last frame
+                                                      nocaption_withstring=nocaption_withstring).rgb())
+            return vo
 
 
     def show(self, outfile=None, verbose=True, fontsize=10, captionoffset=(0,0), textfacecolor='white', textfacealpha=1.0, shortlabel=True, boxalpha=0.25, d_category2color={'Person':'green', 'Vehicle':'blue', 'Object':'red'}, categories=None, nocaption=False, nocaption_withstring=[], notebook=False, timestamp=None, timestampcolor='black', timestampfacecolor='white'):
@@ -2584,7 +2643,7 @@ class Scene(VideoCategory):
                        for d in objdets
                        if t.category() == d.category()]
         assigned = set([])        
-        posconf = min([d.confidence() for d in objdets])
+        posconf = min([d.confidence() for d in objdets]) if len(objdets)>0 else 0
         for (t, conf, iou, shapeiou, cover, d) in sorted(assignments, key=lambda x: (x[1]+posconf)*(x[2]+x[3]+x[4])+x[0].confidence(samples=trackconfsamples), reverse=True):
             if cover > (trackcover if len(t)>1 else 0):  # the highest confidence detection within the iou gate (or any overlap if not yet enough history for velocity estimate) 
                 if (t.id() not in assigned and d.id() not in assigned):  # not assigned yet, assign it!
@@ -2671,4 +2730,6 @@ def RandomSceneActivity(rows=None, cols=None, frames=256):
 
     return ims
     
-
+def EmptyScene():
+    """Return an empty scene""" 
+    return vipy.video.Scene(array=np.zeros((1,1,1,3), dtype=np.uint8))

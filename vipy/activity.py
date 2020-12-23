@@ -58,8 +58,12 @@ class Activity(object):
     def hasattribute(self, k):
         return k in self.attributes
 
-    def confidence(self):
-        return self.attributes['confidence'] if 'confidence' in self.attributes else None
+    def confidence(self, c=None):
+        if c is not None:
+            self.attributes['confidence'] = c
+            return self
+        else:
+            return self.attributes['confidence'] if 'confidence' in self.attributes else None
     
     @classmethod
     def from_json(obj, s):
@@ -78,7 +82,7 @@ class Activity(object):
         return max(0, self.endframe() - self.startframe())
 
     def __repr__(self):
-        return str('<vipy.activity: category="%s", frames=(%d,%d), tracks=%s>' % (self.category(), self.startframe(), self.endframe(), len(self.trackids())))
+        return str('<vipy.activity: category="%s", frames=(%d,%d), tracks=%s%s>' % (self.category(), self.startframe(), self.endframe(), len(self.trackids()), '' if self.confidence() is None else ', confidence=%1.2f' % self.confidence()))
 
     def dict(self):
         """Return a python dictionary containing the relevant serialized attributes suitable for JSON encoding"""
@@ -212,8 +216,8 @@ class Activity(object):
         return int(frame) >= self._startframe and int(frame) <= self._endframe
 
     def during_interval(self, startframe, endframe):
-        """Is the activity occurring for all frames within the interval [startframe, endframe) (non-inclusive of endframe)?"""
-        return all([self.during(f) for f in range(startframe, endframe)])
+        """Is the activity occurring for any frames within the interval [startframe, endframe) (non-inclusive of endframe)?"""
+        return any([self.during(f) for f in range(startframe, endframe)])
 
     def union(self, other, confweight=0.5):
         """Compute the union of the new activity other to this activity by updating the start and end times and computing the mean confidence.
