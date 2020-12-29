@@ -19,6 +19,10 @@ def is_at_least(versionstring):
     return num(VERSION) >= num(versionstring)    
 
 
+def is_exactly(versionstring):
+    return versionstring == VERSION
+
+
 def at_least_major_version(major):
     return MAJOR >= int(major)
 

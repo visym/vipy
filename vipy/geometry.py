@@ -304,6 +304,12 @@ class BoundingBox(object):
         """Return the (x,y) lower right corner coordinate of the box"""
         return (self.xmax(), self.ymax())
 
+    def isinteger(self):
+        return (isinstance(self._xmin, int) and
+                isinstance(self._ymin, int) and
+                isinstance(self._xmax, int) and
+                isinstance(self._ymax, int))
+                
     def int(self):
         """Convert corners to integer with rounding"""
         (w,h) = (int(np.round(self.bbwidth())), int(np.round(self.bbheight())))
@@ -876,15 +882,16 @@ class BoundingBox(object):
         return self.centroid(dehomogenize(np.dot(A, homogenize(np.array(self.centroid())))))
     
     def crop(self, img):
-        """Crop an HxW 2D numpy image, HxWxC 3D numpy image, or NxHxWxC 4D numpy image array using this bounding box applied to HxW dimensions.  Sets bounding box to integer coordinates"""
+        """Crop an HxW 2D numpy image, HxWxC 3D numpy image, or NxHxWxC 4D numpy image array using this bounding box applied to HxW dimensions.  Crop is performed in-place. """
         assert isnumpy(img) and img.ndim in [2,3,4]
+        assert self.isinteger(), "Box corners must be integer - try calling self.int()"
+
         if img.ndim == 2:
-            return img[self.int().ymin():self.ymax(), self.xmin():self.xmax()]  # HxW
+            return img[self.ymin():self.ymax(), self.xmin():self.xmax()]  # HxW
         elif img.ndim == 3:
             return img[self.ymin():self.ymax(), self.xmin():self.xmax(), :]  # HxWxC
         else: 
             return img[:, self.ymin():self.ymax(), self.xmin():self.xmax(), :]  # NxHxWxC
-
 
     def confidence(self):
         """Bounding boxes do not have confidences, use vipy.object.Detection()"""

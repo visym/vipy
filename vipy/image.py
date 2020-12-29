@@ -1936,8 +1936,14 @@ def mutator_show_activityonly():
     return lambda im, k=None: im.objectmap(lambda o: o.shortlabel('') if (len(o.attributes['noun verb']) == 1 and len(o.attributes['noun verb'][0][1]) == 0) else o)
 
 def mutator_show_trackindex_activityonly():
+    """Mutate the image to show boxes colored by track index, and only show 'noun verb' captions"""
     f = mutator_show_trackindex()
     return lambda im, k=None, f=f: f(im).objectmap(lambda o: o.shortlabel('__%s' % o.shortlabel()) if (len(o.attributes['noun verb']) == 1 and len(o.attributes['noun verb'][0][1]) == 0) else o)
+
+def mutator_show_trackindex_verbonly(confidence=True, significant_digits=2):
+    """Mutate the image to show boxes colored by track index, and only show 'verb' captions with activity confidence"""
+    f = mutator_show_trackindex()
+    return lambda im, k=None, f=f: f(im).objectmap(lambda o: o.shortlabel('__%s' % o.shortlabel()) if (len(o.attributes['noun verb']) == 1 and len(o.attributes['noun verb'][0][1]) == 0) else o.shortlabel('\n'.join(['%s %s' % (v, ('(%1.2f)'%float(c)) if (confidence is True and c is not None) else '') for ((n,v),c) in zip(o.attributes['noun verb'], o.attributes['activityconf'])])))
 
 
 def RandomImage(rows=None, cols=None):

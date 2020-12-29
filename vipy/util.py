@@ -1379,8 +1379,19 @@ class Timer(object):
        >>> [some more code]
        >>> print(t)
 
+       >>> with Timer():
+       >>>    [some code]
+       
+
     """
-    def __init__(self, sprintf='timer: elapsed=%1.6fs, since=%1.6fs'):
+    def __enter__(self):
+        self._begin = time.time()
+        self._last = self._begin
+
+    def __exit__(self, *args):
+        print(self.__repr__())
+
+    def __init__(self, sprintf='[vipy.util.timer]: elapsed=%1.6fs, since=%1.6fs'):
         self._sprintf = sprintf
         self._begin = time.time()
         self._last = self._begin

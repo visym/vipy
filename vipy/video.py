@@ -32,6 +32,8 @@ import vipy.globals
 import vipy.activity
 import hashlib
 from pathlib import PurePath
+import queue 
+import threading
 
 
 try:
@@ -197,7 +199,7 @@ class Video(object):
     def frame(self, k, img=None):
         """Alias for self.__getitem__[k]"""
         assert isinstance(k, int) and k>=0, "Frame index must be non-negative integer"
-        return Image(array=img if img is not None else self._array[k] if self.isloaded() else self.preview(k).array(), colorspace=self.colorspace())       
+        return Image(array=img if img is not None else (self._array[k] if self.isloaded() else self.preview(k).array()), colorspace=self.colorspace())       
         
     def __iter__(self):
         """Iterate over loaded video, yielding mutable frames"""
@@ -242,6 +244,7 @@ class Video(object):
 
         """
 
+
         class Stream(object):
             def __init__(self, v):
                 self._video = v   # do not clone
@@ -256,7 +259,8 @@ class Video(object):
                     os.remove(self._outfile)                
                 self._shape = self._video.shape() if self._video.canload() else None  # shape for write can be defined by first frame
                 assert (write is True or overwrite is True) or self._shape is not None, "Invalid video '%s'" % (str(v))
-                
+                self._thread = None
+                self._queue = None
                                 
             def __enter__(self):
                 if self._write and self._shape is not None:
@@ -267,25 +271,26 @@ class Video(object):
                                        .overwrite_output() \
                                        .global_args('-cpuflags', '0', '-loglevel', 'quiet' if not vipy.globals.isdebug() else 'debug') \
                                        .run_async(pipe_stdin=True)
+
                 elif not self._write:
                     self._pipe = (self._video._ffmpeg.output('pipe:', format='rawvideo', pix_fmt='rgb24').global_args('-loglevel', 'debug' if vipy.globals.isdebug() else 'quiet').run_async(pipe_stdout=True))
+
+                    def _f_threadloop(pipe, queue, height, width):
+                        assert pipe is not None, "Invalid pipe"         
+                        while True:
+                            in_bytes = pipe.stdout.read(height * width * 3)
+                            if not in_bytes:
+                                queue.put(None)
+                                return None
+                            else:
+                                queue.put(np.frombuffer(in_bytes, np.uint8).reshape([height, width, 3]))
+
+                    self._queue = queue.Queue(128)
+                    (height, width) = self._shape
+                    self._thread = threading.Thread(target=_f_threadloop, args=(self._pipe, self._queue, height, width), daemon=True)
+                    self._thread.start()
+
                 self._frame_index = 0
-
-                #def _f_threadloop(s,q):
-                #    while True:
-                #        print(s._pipe)
-                #        im = s.read()
-                #        if im is None:
-                #            break
-                #        q.put(im)
-
-                #from queue import Queue
-                #import threading
-                #self._queue = Queue()
-                #self._thread = threading.Thread(target=_f_threadloop, args=(self, self._queue))
-                #self._thread.daemon = True
-                #self._thread.start()
-
                 return self
             
             def __exit__(self, type, value, tb):
@@ -296,16 +301,14 @@ class Video(object):
             
             def read(self):
                 assert self._pipe is not None and self._write is False, "Stream is write only"
-
-                (height, width) = self._shape
-                in_bytes = self._pipe.stdout.read(height * width * 3)
-                if not in_bytes:
-                    return None
-                else:
-                    img = np.frombuffer(in_bytes, np.uint8).reshape([height, width, 3])                    
+                assert self._thread is not None and self._queue is not None, "Stream read thread is not created, use stream context manager"
+                img = self._queue.get()
+                if img is not None:
                     im = self._video.frame(self._frame_index, img)
                     self._frame_index = self._frame_index + 1
                     return im
+                else:
+                    return None
 
             def __del__(self):
                 self.close()
@@ -324,7 +327,7 @@ class Video(object):
                     frames.append(im)                    
                     frames.pop(0) if len(frames) > n else None
                     if k%m == 0:
-                        yield (v.fromframes(frames[-n:])
+                        yield (v.fromframes(frames[-n:], copy=False)
                                .activities([a.clone().offset(-k+n).truncate(0,n) for a in self._video.activitylist() if a.during_interval(k-n, k)])
                                .tracks([t.clone().offset(-k+n).truncate(0,n) for t in self._video.tracklist() if t.during_interval(k-n, k)]))
                     elif continuous:
@@ -340,9 +343,9 @@ class Video(object):
                     if len(frames) == n:
                         batchlist = frames
                         frames = []
-                        yield v.fromframes(batchlist)                                  
+                        yield v.fromframes(batchlist, copy=False)                                  
                 if len(frames) > 0:
-                    yield v.fromframes(frames)  
+                    yield v.fromframes(frames, copy=False)  
 
             def clipped_batch(self, n, m):
                 assert isinstance(n, int) and n>0, "batch length must be a positive integer"
@@ -355,9 +358,9 @@ class Video(object):
                     if len(frames) == n+(n-m):
                         batchlist = frames
                         frames = frames[-n:]
-                        yield (v.clone().fromframes(f) for f in vipy.util.chunklistwithoverlap(batchlist, n, overlap_per_chunk=n-m))
+                        yield (v.clone().fromframes(f, copy=False) for f in vipy.util.chunklistwithoverlap(batchlist, n, overlap_per_chunk=n-m))
                 if len(frames) > 0:
-                    yield (v.clone().fromframes(f) for f in vipy.util.chunklistwithoverlap(frames[m:], n, overlap_per_chunk=n-m))
+                    yield (v.clone().fromframes(f, copy=False) for f in vipy.util.chunklistwithoverlap(frames[m:], n, overlap_per_chunk=n-m))
                     
             def frame(self, n=0):
                 """Stream individual frames of video with negative offset n to the stream head. If n=-30, this full return a frame 30 frames ago"""
@@ -651,7 +654,8 @@ class Video(object):
             assert array.dtype == np.float32 or array.dtype == np.uint8, "Invalid input - array() must be type uint8 or float32"
             assert array.ndim == 4, "Invalid input array() must be of shape NxHxWxC, for N frames, of size HxW with C channels"
             self._array = np.copy(array) if copy else array
-            self._array.setflags(write=True)  # mutable iterators, triggers copy
+            if copy:
+                self._array.setflags(write=True)  # mutable iterators, triggers copy
             self.colorspace(None)  # must be set with colorspace() after array() before _convert()
             return self
         else:
@@ -661,10 +665,10 @@ class Video(object):
         """Alias for self.array(..., copy=True), which forces the new array to be a copy"""
         return self.array(array, copy=True)
 
-    def fromframes(self, framelist):
+    def fromframes(self, framelist, copy=True):
         """Create a video from a list of frames"""
         assert all([isinstance(im, vipy.image.Image) for im in framelist]), "Invalid input"
-        return self.array(np.stack([im.array() if im.array().ndim == 3 else np.expand_dims(im.array(), 2) for im in framelist]), copy=True).colorspace(framelist[0].colorspace())
+        return self.array(np.stack([im.array() if im.array().ndim == 3 else np.expand_dims(im.array(), 2) for im in framelist]), copy=copy).colorspace(framelist[0].colorspace())
     
     def tonumpy(self):
         """Alias for numpy()"""
@@ -877,7 +881,7 @@ class Video(object):
             # FFMPEG frame indexing is inefficient for large framenum.  Need to add "-ss sec.msec" flag before input, but this can screw up clip timing, so this cannot be used in general
             #   - the "ss" option must be provided before the input filename, and is supported by ffmpeg-python as ".input(in_filename, ss=time)"
             timestamp_in_seconds = framenum/float(self.framerate())
-            f_prepipe = self.clone()._update_ffmpeg_seek(offset=timestamp_in_seconds)._ffmpeg.filter('select', 'gte(n,{})'.format(0))
+            f_prepipe = self.clone(shallow=True)._update_ffmpeg_seek(offset=timestamp_in_seconds)._ffmpeg.filter('select', 'gte(n,{})'.format(0))
             f = f_prepipe.output('pipe:', vframes=1, format='image2', vcodec='mjpeg')\
                          .global_args('-cpuflags', '0', '-loglevel', 'debug' if vipy.globals.isdebug() else 'error')
             (out, err) = f.run(capture_stdout=True, capture_stderr=True)
@@ -1028,7 +1032,7 @@ class Video(object):
         if not self.isloaded():
             self._ffmpeg = self._ffmpeg.filter('hflip')
         else:
-            self.array(np.stack([np.fliplr(f) for f in self._array]), copy=True)
+            self.array(np.stack([np.fliplr(f) for f in self._array]), copy=False)
         return self
 
     def flipud(self):
@@ -1052,7 +1056,8 @@ class Video(object):
         if not self.isloaded():
             self._ffmpeg = self._ffmpeg.filter('scale', cols if cols is not None else -1, rows if rows is not None else -1)
         else:            
-            self.array(np.stack([im.resize(rows=rows, cols=cols).numpy() for im in self]), copy=True)
+            # Do not use self.__iter__() which triggers copy for mutable arrays
+            self.array(np.stack([self.frame(k).resize(rows=rows, cols=cols).array() for k in range(len(self))]), copy=False) 
         return self
 
     def mindim(self, dim=None):
@@ -1114,7 +1119,7 @@ class Video(object):
         if not self.isloaded():
             self._ffmpeg = self._ffmpeg.filter('pad', 'iw+%d' % (2*padwidth), 'ih+%d' % (2*padheight), '%d'%padwidth, '%d'%padheight)
         else:
-            self.array( np.pad(self.array(), ((0,0), (padheight,padheight), (padwidth,padwidth), (0,0))), copy=True)
+            self.array( np.pad(self.array(), ((0,0), (padheight,padheight), (padwidth,padwidth), (0,0))), copy=False)
         return self
 
     def crop(self, bb, zeropad=True):
@@ -1130,7 +1135,7 @@ class Video(object):
         if not self.isloaded():
             self._ffmpeg = self._ffmpeg.filter('crop', '%d' % bb.width(), '%d' % bb.height(), '%d' % bb.xmin(), '%d' % bb.ymin(), 0, 1)  # keep_aspect=False, exact=True
         else:
-            self.array( bb.crop(self.array()), copy=True )
+            self.array( bb.crop(self.array()), copy=False )  # in-place 
         return self
 
     def pkl(self, pklfile=None):
@@ -1381,7 +1386,7 @@ class Video(object):
         else:
             return t
 
-    def clone(self, flushforward=False, flushbackward=False, flush=False, flushfilter=False, rekey=False, flushfile=False):
+    def clone(self, flushforward=False, flushbackward=False, flush=False, flushfilter=False, rekey=False, flushfile=False, shallow=False, sharedarray=False):
         """Create deep copy of video object, flushing the original buffer if requested and returning the cloned object.
         Flushing is useful for distributed memory management to free the buffer from this object, and pass along a cloned 
         object which can be used for encoding and will be garbage collected.
@@ -1391,7 +1396,9 @@ class Video(object):
             * flush:  set the object array() to None and clone the object.  This flushes the video buffer for both the clone and the object.
             * flushfilter:  Set the ffmpeg filter chain to the default in the new object, useful for saving new videos
             * rekey: Generate new unique track ID and activity ID keys for this scene
- 
+            * shallow:  shallow copy everything (copy by reference), except for ffmpeg object
+            * sharedarray:  deep copy of everything, except for pixel buffer which is shared
+
         """
         if flush or (flushforward and flushbackward):
             self._array = None  # flushes buffer on object and clone
@@ -1408,8 +1415,19 @@ class Video(object):
             v = copy.deepcopy(self)   # does not propagate _array to clone
             self._array = array    # object not flushed
             v._array = None   # clone flushed
+        elif shallow:
+            v = copy.copy(self)  # shallow copy
+            v._ffmpeg = copy.deepcopy(self._ffmpeg)  # except for ffmpeg object
+            v._array = np.asarray(self._array) if self._array is not None else None  # shared pixels
+        elif sharedarray:
+            array = self._array
+            self._array = None
+            v = copy.deepcopy(self)  # deep copy of everything but pixels
+            v._array = np.asarray(array) if array is not None else None  # shared pixels
+            self._array = array # restore
         else:
             v = copy.deepcopy(self)            
+
         if flushfilter:
             v._ffmpeg = ffmpeg.input(v.filename())  # no other filters
             v._previewhash = None
@@ -1675,26 +1693,28 @@ class Scene(VideoCategory):
 
     def frame(self, k, img=None):
         """Return vipy.image.Scene object at frame k"""
-        #assert img is not None or self.isloaded(), 'Video not loaded, load() before indexing'
         assert isinstance(k, int) and k>=0, "Frame index must be non-negative integer"
         assert img is not None or (self.isloaded() and k<len(self)) or not self.isloaded(), "Invalid frame index %d - Indexing video by frame must be integer within (0, %d)" % (k, len(self))
 
-        img = img if img is not None else self._array[k] if self.isloaded() else self.preview(k).array()
+        img = img if img is not None else (self._array[k] if self.isloaded() else self.preview(k).array())
         dets = [t[k].setattribute('trackindex', j) for (j,(tid,t)) in enumerate(self.tracks().items()) if t[k] is not None]  # track interpolation (cloned) with boundary handling
         for d in dets:
             shortlabel = [(d.shortlabel(),'')]  # [(Noun, Verbing1), (Noun, Verbing2), ...]
-            for (aid, a) in self.activities().items():  # insertion order:  First activity is primary, next is secondary
+            activityconf = [None]   # for display 
+            for (aid, a) in self.activities().items():  # insertion order:  First activity is primary, next is secondary (not in confidence order) 
                 if a.hastrack(d.attributes['trackid']) and a.during(k):
                     # Shortlabel is always displayed as "Noun Verbing" during activity (e.g. Person Carrying, Vehicle Turning)
                     # If noun is associated with more than one activity, then this is shown as "Noun Verbing1\nNoun Verbing2", with a newline separator 
                     if not any([a.shortlabel() == v for (n,v) in shortlabel]):
-                        shortlabel.append( (d.shortlabel(), a.shortlabel()) )
-                    if 'activity' not in d.attributes:
+                        shortlabel.append( (d.shortlabel(), a.shortlabel()) )  # only show each activity once (even if repeated)
+                        activityconf.append(a.confidence())
+                    if 'activityid' not in d.attributes:
                         d.attributes['activityid'] = []                            
                     d.attributes['activityid'].append(a.id())  # for activity correspondence (if desired)
             d.shortlabel( '\n'.join([('%s %s' % (n,v)).strip() for (n,v) in shortlabel[0 if len(shortlabel)==1 else 1:]]))
             d.attributes['noun verb'] = shortlabel[0 if len(shortlabel)==1 else 1:]
-        dets = sorted(dets, key=lambda d: (d.confidence() if d.confidence() is not None else 0, d.shortlabel()))   # layering in video is ordered by decreasing confidence and alphabetical shortlabel
+            d.attributes['activityconf'] = activityconf[0 if len(shortlabel)==1 else 1:]
+        dets = sorted(dets, key=lambda d: (d.confidence() if d.confidence() is not None else 0, d.shortlabel()))   # layering in video is ordered by decreasing track confidence and alphabetical shortlabel
         return vipy.image.Scene(array=img, colorspace=self.colorspace(), objects=dets, category=self.category())  
                 
         
@@ -2064,9 +2084,8 @@ class Scene(VideoCategory):
         return [vid.clone().setattribute('activityindex', k).activities(pa).tracks(t) for (k,(pa,t)) in enumerate(zip(activities, tracks))]
 
     def tracksplit(self):
-        """Split the scene into k separate scenes, one for each track.  Each scene starts at frame 0."""
-        v = self.clone().cleartracks()  # for faster clone
-        return [v.clone().tracks(t).activityfilter(lambda a: a.hastrack(t.id())) for t in self.tracklist()]
+        """Split the scene into k separate scenes, one for each track.  Each scene starts at frame 0 and is a shallow copy of self containing exactly one track.  Use clone() to create a deep copy if needed."""
+        return [self.clone(shallow=True).tracks(t).activityfilter(lambda a: a.hastrack(t.id())) for t in self.tracklist()] 
 
     def trackclip(self):
         """Split the scene into k separate scenes, one for each track.  Each scene starts and ends when the track starts and ends"""
@@ -2136,8 +2155,8 @@ class Scene(VideoCategory):
     def trackcrop(self, dilate=1.0, maxsquare=False):
         """Return the trackcrop() of the scene which is the crop of the video using the trackbox().  If there are no tracks, return None"""
         bb = self.trackbox(dilate)  # may be None if trackbox is degenerate
-        return self.clone().crop(bb.maxsquareif(maxsquare)) if bb is not None else None
-    
+        return self.clone(sharedarray=True).crop(bb.maxsquareif(maxsquare)) if bb is not None else None  # TESTING
+
     def activitybox(self, activityid=None, dilate=1.0):
         """The activitybox is the union of all activity bounding boxes in the video, which is the union of all tracks contributing to all activities.  This is most useful after activityclip().
            The activitybox is the smallest bounding box that contains all of the boxes from all of the tracks in all activities in this video.
@@ -2558,9 +2577,8 @@ class Scene(VideoCategory):
         return self
 
     def binarymask(self):
-        """Replace all pixels in background with zero and foreground with 1, requires clone() and load() conversion to single channel luminance() video"""
-        v = self.clone()
-        return v.fromframes([im.binarymask().channel(0).float() for im in v])  
+        """Replace all pixels in background with zero and foreground with 1, requires clone() and load() conversion to single channel luminance() video.  Does not trigger clone()"""
+        return self.fromframes([im.binarymask().channel(0).float() for im in self], copy=False) 
     
     def meanmask(self):
         """Replace all pixels in foreground boxes with mean color"""        

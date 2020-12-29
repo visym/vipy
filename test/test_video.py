@@ -408,26 +408,26 @@ def _test_clip():
 
     outfile = totempdir('out.mp4')
     v = vipy.video.Video(frames=[vipy.image.Image(array=img) for img in imgframes])    
-    vc = v.saveas(outfile)
+    vc = v.saveas(outfile).load()
     assert np.mean(vc.frame(59).array().flatten()) < 128
     assert np.mean(vc.frame(60).array().flatten()) > 128
     assert np.mean(vc.frame(61).array().flatten()) < 128    
 
     v = vipy.video.Video(frames=[vipy.image.Image(array=img) for img in imgframes])    
-    vc = v.saveas(outfile).clip(31, 90)
+    vc = v.saveas(outfile).clip(31, 90).load()
     assert np.mean(vc.frame(59-31).array().flatten()) < 128
     assert np.mean(vc.frame(60-31).array().flatten()) > 128
     assert np.mean(vc.frame(61-31).array().flatten()) < 128    
     
     v = vipy.video.Video(frames=[vipy.image.Image(array=img) for img in imgframes])    
-    vc = v.saveas(outfile).clip(31, 90).clip(2, 40)
+    vc = v.saveas(outfile).clip(31, 90).clip(2, 40).load()
     assert np.mean(vc.frame(59-31-2).array().flatten()) < 128
     assert np.mean(vc.frame(60-31-2).array().flatten()) > 128
     assert np.mean(vc.frame(61-31-2).array().flatten()) < 128    
 
     v = vipy.video.RandomScene()
     im = v.frame(10)
-    vc = v.saveas(outfile).clip(10,60)
+    vc = v.saveas(outfile).clip(10,60).load()
     imc = vc.frame(0)
     assert all([i == j for (i,j) in zip(im.objects(), imc.objects())])
     vc = vc.clip(5, 50)
