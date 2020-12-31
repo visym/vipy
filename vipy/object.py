@@ -348,7 +348,9 @@ class Track(object):
 
         kf = self._keyframes
         ft = min(max(f, kf[0]), kf[-1])  # truncated frame index
-        i = [i for i in range(0,len(kf)-1) if kf[i] <= ft and kf[i+1] >= ft][0]  # floor keyframe index
+        for i in range(0, len(kf)-1):
+            if kf[i] <= ft and kf[i+1] >= ft:
+                break  # floor keyframe index
         c = (ft - kf[i]) / max(1, float(kf[i+1] - kf[i]))  # interpolation coefficient
         (bi, bj) = (self._keyboxes[i], self._keyboxes[i+1])
         d = Detection(xmin=bi._xmin + c*(bj._xmin - bi._xmin),   # float(np.interp(k, self._keyframes, [bb._xmin for bb in self._keyboxes])),
@@ -734,6 +736,16 @@ class Track(object):
         self._keyboxes = [bb.significant_digits(n) for bb in self._keyboxes]
         return self
 
+    def bearing(self, f, dt=30):
+        """The bearing of a track at frame f is the angle of the velocity vector relative to the (x,y) image coordinate frame, in radians [-pi, pi]"""
+        v = self.shape_invariant_velocity(f, dt)
+        return float(np.arctan2(v[1], v[0]))  # atan2(y,x)
+
+    def bearing_change(self, f1=None, f2=None, dt=30, eps=1E-9):
+        """The bearing change of a track from frame f1 (or start) and frame f2 (or end) is the relative angle of the velocity vectors in radians [-pi,pi]"""
+        dr = self.bearing(f1 if f1 is not None else self.startframe()+dt, dt) - self.bearing(f2 if f2 is not None else self.endframe(), dt)  
+        return dr if np.abs(dr)<=np.pi else ((2*np.pi - dr) if (dr > np.pi) else (2*np.pi + dr))
+        
     def velocity(self, f, dt=30):
         """Return the (x,y) track velocity at frame f in units of pixels per frame computed by mean finite difference of the box centroid"""
         return (self.velocity_x(f, dt), self.velocity_y(f, dt))
@@ -789,7 +801,11 @@ class Track(object):
         assert len(self._keyframes) > 0
         return self._keyboxes[int(np.abs(np.array(self._keyframes) - f).argmin())]
     
-    
+    def ismoving(self, n=1, mincover=0.8):
+        """Is the track moving?  Sample last n keyboxes along track and compute minimum cover with startbox"""        
+        return (min([max(self.startbox().cover(bb), bb.cover(self.startbox())) for bb in self._keyboxes[-n:]]) < mincover) if len(self)>=2 else False
+
+
 def non_maximum_suppression(detlist, conf, iou, bycategory=False, cover=None, coverdilation=1.2):
     """Compute greedy non-maximum suppression of a list of vipy.object.Detection() based on spatial IOU threshold (iou) and cover threhsold (cover) sorted by confidence (conf)"""
     assert all([isinstance(d, Detection) for d in detlist])

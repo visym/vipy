@@ -53,14 +53,14 @@ class Activity(object):
 
         self.attributes = attributes if attributes is not None else {}
         if confidence is not None:
-            self.attributes['confidence'] = confidence
+            self.attributes['confidence'] = float(confidence)
 
     def hasattribute(self, k):
         return k in self.attributes
 
     def confidence(self, c=None):
         if c is not None:
-            self.attributes['confidence'] = c
+            self.attributes['confidence'] = float(c)
             return self
         else:
             return self.attributes['confidence'] if 'confidence' in self.attributes else None
@@ -236,7 +236,7 @@ class Activity(object):
         self.startframe(min(other.startframe(), self.startframe()))
         self.endframe(max(other.endframe(), self.endframe()))
         if other.confidence() is not None and self.confidence() is not None:
-            self.confidence((1.0-confweight)*self.confidence() + confweight*other.confidence())   # mean confidence
+            self.confidence(float((1.0-confweight)*self.confidence() + confweight*other.confidence()))   # mean confidence
         return self
         
     def temporal_iou(self, other):

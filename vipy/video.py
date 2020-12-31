@@ -1357,7 +1357,7 @@ class Video(object):
             print('[vipy.video.torch]: slice (start,end,step)=%s for frame shape (N,C,H,W)=%s' % (str((i,j,k)), str(frames.shape)))
 
         # Slice and transpose to torch tensor axis ordering
-        t = torch.from_numpy(frames[i:j:k])  # do not copy
+        t = torch.from_numpy(frames[i:j:k])  # do runnot copy - This shares the numpy buffer of the video, be careful!
         if t.dim() == 2:
             t = t.unsqueeze(0).unsqueeze(-1)  # HxW -> (N=1)xHxWx(C=1)
         if order == 'nchw':
@@ -1476,6 +1476,17 @@ class Video(object):
         """Pixelwise additive bias, such that each pixel p_{ij} = b + p_{ij}"""
         return self.normalize(mean=0, std=1, scale=1.0, bias=b)
     
+    def float(self):
+        self.load()
+        self._array = self._array.astype(np.float32) if self._array is not None else self._array
+        return self
+
+    def channel(self, c):
+        self.load()
+        assert c >= 0 and c < self.channels()
+        self._array = self._array[:,:,:,c] if self._array is not None else self._array
+        return self
+        
     def normalize(self, mean, std, scale=1, bias=0):
         """Pixelwise whitening, out = ((scale*in) - mean) / std); triggers load().  All computations float32"""
         assert scale >= 0, "Invalid input"
@@ -2155,7 +2166,7 @@ class Scene(VideoCategory):
     def trackcrop(self, dilate=1.0, maxsquare=False):
         """Return the trackcrop() of the scene which is the crop of the video using the trackbox().  If there are no tracks, return None"""
         bb = self.trackbox(dilate)  # may be None if trackbox is degenerate
-        return self.clone(sharedarray=True).crop(bb.maxsquareif(maxsquare)) if bb is not None else None  # TESTING
+        return self.crop(bb.maxsquareif(maxsquare)) if bb is not None else None  
 
     def activitybox(self, activityid=None, dilate=1.0):
         """The activitybox is the union of all activity bounding boxes in the video, which is the union of all tracks contributing to all activities.  This is most useful after activityclip().
@@ -2577,9 +2588,11 @@ class Scene(VideoCategory):
         return self
 
     def binarymask(self):
-        """Replace all pixels in background with zero and foreground with 1, requires clone() and load() conversion to single channel luminance() video.  Does not trigger clone()"""
-        return self.fromframes([im.binarymask().channel(0).float() for im in self], copy=False) 
-    
+        """Replace all pixels in foreground boxes with mean color"""        
+        for im in self:
+            im.binarymask()  # shared numpy array
+        return self
+
     def meanmask(self):
         """Replace all pixels in foreground boxes with mean color"""        
         for im in self:
