@@ -458,8 +458,8 @@ class Image(object):
         if np_array is None:
             return self._array if copy is False else np.copy(self._array)
         elif isnumpyarray(np_array):
-            assert np_array.dtype == np.float32 or np_array.dtype == np.uint8, "Invalid input - array() must be type uint8 or float32 and not type='%s'" % (str(np_array.dtype))
             self._array = np.copy(np_array) if copy else np_array  # reference or copy
+            assert self._array.dtype == np.float32 or self._array.dtype == np.uint8, "Invalid input - array() must be type uint8 or float32 and not type='%s'" % (str(self._array.dtype))                        
             self.colorspace(None)  # must be set with colorspace() after array() but before _convert()
             return self
         else:
