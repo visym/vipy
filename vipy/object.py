@@ -351,7 +351,7 @@ class Track(object):
         if len(self._keyboxes) == 1:
             return Detection.cast(self._keyboxes[0].clone()).setattribute('trackid', self.id()) if (self._boundary == 'extend' or self.during(f)) else None
         if f in reversed(self._keyframes):            
-            return self._keyboxes[self._keyframes.index(f)].setattribute('trackid', self.id())
+            return Detection.cast(self._keyboxes[self._keyframes.index(f)]).setattribute('trackid', self.id())
 
         kf = self._keyframes
         ft = min(max(f, kf[0]), kf[-1])  # truncated frame index
