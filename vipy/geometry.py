@@ -512,12 +512,14 @@ class BoundingBox(object):
 
     def iou(self, bb):
         """area of intersection / area of union"""
-        assert isinstance(bb, BoundingBox), "Invalid BoundingBox() input of type '%s'" % str(type(bb))        
+        assert bb is None or isinstance(bb, BoundingBox), "Invalid BoundingBox() input of type '%s'" % str(type(bb))        
+        if bb is None:
+            return 0
         w = min(self._xmax, bb._xmax) - max(self._xmin, bb._xmin)
-        if w < 0:
+        if w <= 0:
             return 0  # invalid (no overlap), early exit
         h = min(self._ymax, bb._ymax) - max(self._ymin, bb._ymin)
-        if (h < 0):
+        if h <= 0:
             return 0  # invalid (no overlap), early exit
 
         area_intersection = w * h
@@ -532,10 +534,10 @@ class BoundingBox(object):
         """area of intersection"""
         assert isinstance(bb, BoundingBox), "Invalid BoundingBox() input of type '%s'" % str(type(bb))                
         w = min(self._xmax, bb._xmax) - max(self._xmin, bb._xmin)
-        if w < 0:
+        if w <= 0:
             return 0  # invalid (no overlap), early exit 
         h = min(self._ymax, bb._ymax) - max(self._ymin, bb._ymin)
-        if h < 0:
+        if h <= 0:
             return 0  # invalid (no overlap), early exit 
         return w*h
 
@@ -543,6 +545,10 @@ class BoundingBox(object):
         """Fraction of this bounding box intersected by other bbox (bb)"""        
         return self.area_of_intersection(bb) / float(self.area())
 
+    def maxcover(self, bb):
+        """The maximum cover of self to bb and bb to self"""
+        return max(self.cover(bb), bb.cover(self))
+    
     def shapeiou(self, bb):
         """Shape IoU is the IoU with the upper left corners aligned. This measures the deformation of the two boxes by removing the effect of translation"""
         #return self.iou(bb.clone().translate(dx=self._xmin-bb._xmin, dy=self._ymin-bb._ymin))  # equivalent to
@@ -565,8 +571,9 @@ class BoundingBox(object):
         return self
 
     def hasintersection(self, bb):
-        """Return true of self and bb intersect"""
-        return self.area_of_intersection(bb) > 0
+        """Return true of self and bb intersect, do not perform type check to maximize speed"""
+        #assert isinstance(bb, BoundingBox), "Invalid BoundingBox() input of type '%s'" % str(type(bb))                
+        return (min(self._xmax, bb._xmax) - max(self._xmin, bb._xmin) > 0) and (min(self._ymax, bb._ymax) - max(self._ymin, bb._ymin) > 0)
 
     def union(self, bb):
         """Union of one or more bounding boxes with this box"""        

@@ -1148,9 +1148,9 @@ class Image(object):
         # FIXME: for k in range(0,10): self.annotate().show(figure=k), this will result in cumulative figures
         return self.array(self.savefig(timestamp=timestamp, timestampcolor=timestampcolor, timestampfacecolor=timestampfacecolor, mutator=mutator, fontsize=fontsize).rgb().array()).downcast()
 
-    def savefig(self, filename=None, figure=1, timestamp=None, timestampcolor='black', timestampfacecolor='white', mutator=None, fontsize=10):
+    def savefig(self, filename=None, figure=1, timestamp=None, timestampcolor='black', timestampfacecolor='white', mutator=None):
         """Save last figure output from self.show() with drawing overlays to provided filename and return filename"""
-        self.show(figure=figure, nowindow=True, timestamp=timestamp, timestampcolor=timestampcolor, timestampfacecolor=timestampfacecolor, mutator=mutator, fontsize=fontsize)  # sets figure dimensions, does not display window
+        self.show(figure=figure, nowindow=True, timestamp=timestamp, timestampcolor=timestampcolor, timestampfacecolor=timestampfacecolor, mutator=mutator)  # sets figure dimensions, does not display window
         (W,H) = plt.figure(figure).canvas.get_width_height()  # fast
         buf = io.BytesIO()
         plt.figure(1).canvas.print_raw(buf)  # fast
@@ -1158,7 +1158,7 @@ class Image(object):
         vipy.show.close(figure)
         t = vipy.image.Image(array=img, colorspace='rgba')
         if filename is not None:
-            t.saveas(filename)
+            t.rgb().saveas(filename)
         return t
 
     def map(self, func):

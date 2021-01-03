@@ -11,6 +11,8 @@ except ImportError:
     import json
 
 
+ACTIVITY_GUID = int(uuid.uuid4().hex[0:8], 16)  
+
 class Activity(object):
     """vipy.object.Activity class
     
@@ -42,7 +44,7 @@ class Activity(object):
             if actorid not in trackid:
                 trackid.add(actorid)
 
-        self._id = uuid.uuid4().hex
+        global ACTIVITY_GUID; self._id = hex(int(ACTIVITY_GUID))[2:];  ACTIVITY_GUID = ACTIVITY_GUID + 1;  # faster, increment package level UUID4 initialized GUID
         self._startframe = int(startframe)
         self._endframe = int(endframe)
         self._framerate = framerate
@@ -274,7 +276,7 @@ class Activity(object):
     def clone(self, rekey=False):
         a = copy.deepcopy(self)
         if rekey:
-            a.id(newid=uuid.uuid4().hex)
+            global ACTIVITY_GUID; a.id(newid=hex(int(ACTIVITY_GUID))[2:]);  ACTIVITY_GUID = ACTIVITY_GUID + 1;  # faster, increment package level UUID4 initialized GUID
         return a
     
     def temporalpad(self, df):
@@ -294,7 +296,7 @@ class Activity(object):
            if strict=True, then throw an exception if other or self is fully contained with the other, resulting in degenerate activity after disjoint
         """
         for o in tolist(other):
-            assert isinstance(o, Activity), "Invalid input - must be vipy.object.Activity() or list of activities"       
+            assert isinstance(o, Activity), "Invalid input - must be vipy.activity.Activity() or list of activities"       
             if strict:
                 assert not (o.during(self.startframe()) and o.during(self.endframe())), "Self cannot fully overlap other"
                 assert not (self.during(o.startframe()) and self.during(o.endframe())), "Other cannot fully overlap self"
@@ -304,3 +306,7 @@ class Activity(object):
                 self.startframe(o.endframe()+1)
         return self  # may be zero length now
 
+    def temporal_distance(self, other):
+        """Return the temporal distance in frames between self and other which is the minimum frame difference between the end of one to the start of the other, or zero if they overlap"""
+        assert isinstance(other, Activity), "Invalid input - must be vipy.activity.Activity()"
+        return max(0, float(max(self.startframe(), other.startframe()) - min(self.endframe(), other.endframe())))

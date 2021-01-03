@@ -249,7 +249,7 @@ class Video(object):
             def __init__(self, v):
                 self._video = v   # do not clone
                 self._pipe = None
-                self._frame_index = None
+                self._frame_index = 0
                 self._vcodec = 'libx264'
                 self._framerate = self._video.framerate()
                 self._outfile = self._video.filename()
@@ -283,7 +283,8 @@ class Video(object):
                                 queue.put(None)
                                 return None
                             else:
-                                queue.put(np.frombuffer(in_bytes, np.uint8).reshape([height, width, 3]))
+                                img = np.frombuffer(in_bytes, np.uint8).reshape([height, width, 3])
+                                queue.put(img)
 
                     self._queue = queue.Queue(128)
                     (height, width) = self._shape
@@ -878,9 +879,10 @@ class Video(object):
         #   - This means that frame indexing from preview() will generate slightly different images than streaming raw
         #   - Beware running convnets, as the pixels will be slightly different (~4 grey levels in uint8) ... 
         try:
-            # FFMPEG frame indexing is inefficient for large framenum.  Need to add "-ss sec.msec" flag before input, but this can screw up clip timing, so this cannot be used in general
+            # FFMPEG frame indexing is inefficient for large framenum.  Need to add "-ss sec.msec" flag before input
             #   - the "ss" option must be provided before the input filename, and is supported by ffmpeg-python as ".input(in_filename, ss=time)"
-            timestamp_in_seconds = framenum/float(self.framerate())
+            #   - Seek to the frame before the desired frame in order to pipe the next (desired) frame 
+            timestamp_in_seconds = max(0.0, (framenum-1)/float(self.framerate()))
             f_prepipe = self.clone(shallow=True)._update_ffmpeg_seek(offset=timestamp_in_seconds)._ffmpeg.filter('select', 'gte(n,{})'.format(0))
             f = f_prepipe.output('pipe:', vframes=1, format='image2', vcodec='mjpeg')\
                          .global_args('-cpuflags', '0', '-loglevel', 'debug' if vipy.globals.isdebug() else 'error')
@@ -1705,10 +1707,10 @@ class Scene(VideoCategory):
     def frame(self, k, img=None):
         """Return vipy.image.Scene object at frame k"""
         assert isinstance(k, int) and k>=0, "Frame index must be non-negative integer"
-        assert img is not None or (self.isloaded() and k<len(self)) or not self.isloaded(), "Invalid frame index %d - Indexing video by frame must be integer within (0, %d)" % (k, len(self))
+        assert img is not None or (self.isloaded() and k<len(self)) or not self.isloaded(), "Invalid frame index %d - Indexing video by frame must be integer within (0, %d)" % (k, len(self)-1)
 
         img = img if img is not None else (self._array[k] if self.isloaded() else self.preview(k).array())
-        dets = [t[k].setattribute('trackindex', j) for (j,(tid,t)) in enumerate(self.tracks().items()) if t[k] is not None]  # track interpolation (cloned) with boundary handling
+        dets = [t[k].clone().setattribute('trackindex', j) for (j, t) in enumerate(self.tracklist()) if len(t)>0 and (t.during(k) or t.boundary()=='extend')]  # track interpolation (cloned) with boundary handling 
         for d in dets:
             shortlabel = [(d.shortlabel(),'')]  # [(Noun, Verbing1), (Noun, Verbing2), ...]
             activityconf = [None]   # for display 
@@ -1877,9 +1879,9 @@ class Scene(VideoCategory):
 
     def rekey(self):
         """Change the track and activity IDs to randomly assigned UUIDs.  Useful for cloning unique scenes"""
-        d_old_to_new = {k:uuid.uuid4().hex for (k,a) in self.activities().items()}
+        d_old_to_new = {k:hex(int(uuid.uuid4().hex[0:8], 16))[2:] for (k,a) in self.activities().items()}
         self._activities = {d_old_to_new[k]:a.id(d_old_to_new[k]) for (k,a) in self.activities().items()}
-        d_old_to_new = {k:uuid.uuid4().hex for (k,t) in self.tracks().items()}
+        d_old_to_new = {k:hex(int(uuid.uuid4().hex[0:8], 16))[2:] for (k,t) in self.tracks().items()}
         self._tracks = {d_old_to_new[k]:t.id(d_old_to_new[k]) for (k,t) in self.tracks().items()}
         for (k,v) in d_old_to_new.items():
             self.activitymap(lambda a: a.replaceid(k,v) )
@@ -1967,19 +1969,18 @@ class Scene(VideoCategory):
             t = vipy.object.Track(category=obj.category(), keyframes=[self._currentframe], boxes=[obj], boundary='strict', attributes=obj.attributes)
             if rangecheck and not obj.hasoverlap(width=self.width(), height=self.height()):
                 raise ValueError("Track '%s' does not intersect with frame shape (%d, %d)" % (str(t), self.height(), self.width()))
-            self.tracks()[t.id()] = t  
+            self.tracks()[t.id()] = t  # by-reference
             return t.id()
         elif isinstance(obj, vipy.object.Track):
             if rangecheck and not obj.boundingbox().isinside(vipy.geometry.imagebox(self.shape())):
                 obj = obj.imclip(self.width(), self.height())  # try to clip it, will throw exception if all are bad 
                 warnings.warn('Clipping track "%s" to image rectangle' % (str(obj)))
-            self.tracks()[obj.id()] = obj
+            self.tracks()[obj.id()] = obj  # by-reference
             return obj.id()
         elif isinstance(obj, vipy.activity.Activity):
             if rangecheck and obj.startframe() >= obj.endframe():
                 raise ValueError("Activity '%s' has invalid (startframe, endframe)=(%d, %d)" % (str(obj), obj.startframe(), obj.endframe()))
-            self.activities()[obj.id()] = obj
-            # FIXME: check to see if activity has at least one track during activity
+            self.activities()[obj.id()] = obj  # by-reference, activity may have no tracks
             return obj.id()
         elif (istuple(obj) or islist(obj)) and len(obj) == 4 and isnumber(obj[0]):
             assert self._currentframe is not None, "add() for obj=xywh must be added during frame iteration (e.g. for im in video: )"
@@ -1987,7 +1988,7 @@ class Scene(VideoCategory):
             if rangecheck and not t.boundingbox().isinside(vipy.geometry.imagebox(self.shape())):
                 t = t.imclip(self.width(), self.height())  # try to clip it, will throw exception if all are bad 
                 warnings.warn('Clipping track "%s" to image rectangle' % (str(t)))
-            self.tracks()[t.id()] = t
+            self.tracks()[t.id()] = t  # by-reference
             return t.id()
         else:
             raise ValueError('Undefined object type "%s" to be added to scene - Supported types are obj in ["vipy.object.Detection", "vipy.object.Track", "vipy.activity.Activity", "[xmin, ymin, width, height]"]' % str(type(obj)))
@@ -2640,7 +2641,7 @@ class Scene(VideoCategory):
                         break
         return self
 
-    def assign(self, frame, dets, minconf=0.2, maxhistory=5, activityiou=0.5, trackcover=0.2, trackconfsamples=100):
+    def assign(self, frame, dets, minconf=0.2, maxhistory=5, activityiou=0.5, trackcover=0.2, trackconfsamples=8):
         """Assign a list of vipy.object.Detections at frame k to scene by greedy track association. In-place update.
         
            * miniou [float]: the minimum temporal IOU for activity assignment
@@ -2669,27 +2670,28 @@ class Scene(VideoCategory):
         #   - Each track is assigned at most one detection
         #   - Each detection is assigned to at most one track.  
         #   - Assignment is the highest confidence maximum overlapping detection within tracking gate
+        trackconf = {t.id():t.confidence(samples=trackconfsamples) for (t, ti) in t_ref}
         assignments = [(t, d.confidence(), d.iou(ti), d.shapeiou(ti), max(d.cover(ti), ti.cover(d)), d)
                        for (t, ti) in t_ref
                        for d in objdets
-                       if t.category() == d.category()]
+                       if t.category() == d.category() and ti.hasintersection(d)]
         assigned = set([])        
         posconf = min([d.confidence() for d in objdets]) if len(objdets)>0 else 0
-        for (t, conf, iou, shapeiou, cover, d) in sorted(assignments, key=lambda x: (x[1]+posconf)*(x[2]+x[3]+x[4])+x[0].confidence(samples=trackconfsamples), reverse=True):
+        for (t, conf, iou, shapeiou, cover, d) in sorted(assignments, key=lambda x: (x[1]+posconf)*(x[2]+x[3]+x[4])+trackconf[x[0].id()], reverse=True):
             if cover > (trackcover if len(t)>1 else 0):  # the highest confidence detection within the iou gate (or any overlap if not yet enough history for velocity estimate) 
                 if (t.id() not in assigned and d.id() not in assigned):  # not assigned yet, assign it!
-                    self.track(t.id()).add(frame, d.clone())  # track assignment!
+                    self.track(t.id()).add(frame, d.clone())  # track assignment! (clone required)
                     assigned.add(t.id())  # cannot assign again to this track
                     assigned.add(d.id())  # mark detection as assigned
                 
         # Track spawn from unassigned detections
         for d in objdets:
             if d.confidence() >= minconf and d.id() not in assigned:
-                self.add(vipy.object.Track(keyframes=[frame], boxes=[d.clone()], category=d.category(), framerate=self.framerate()), rangecheck=False)
+                self.add(vipy.object.Track(keyframes=[frame], boxes=[d.clone()], category=d.category(), framerate=self.framerate()), rangecheck=False)  # clone required
                     
         # Non-maximum suppression
         deleted = set([])
-        trackconf = [(t.confidence(samples=trackconfsamples), t) for t in self.tracklist() if ((frame - t.endframe()) <= maxhistory)]
+        trackconf = [(trackconf[t.id()] if t.id() in trackconf else t.confidence(samples=trackconfsamples), t) for t in self.tracklist() if ((frame - t.endframe()) <= maxhistory)]
         for (ci, ti) in sorted(trackconf, key=lambda x: x[0], reverse=True):
             for (cj, tj) in trackconf:
                 if (ti.category() == tj.category()) and (ti.id() != tj.id()) and (tj.id() not in deleted and ti.id() not in deleted) and (cj < ci):
@@ -2702,16 +2704,16 @@ class Scene(VideoCategory):
         # Activity assignment
         assert len(activitydets) == 0 or all([d.actorid() in self.tracks() for d in activitydets]), "Invalid activity"
         assigned = []
-        for d in activitydets:
-            for a in self.activities().values():
+        for d in sorted(activitydets, key=lambda a: a.startframe()):
+            for a in sorted(self.activitylist(), key=lambda a: a.startframe()):
                 if (a.category() == d.category()) and (a.actorid() == d.actorid()) and a.hasoverlap(d, activityiou): 
                     a.union(d)  # activity assignment
                     assigned.append(d.id())
-
+        
         # Activity construction from unassigned detections
         for d in activitydets:
             if d.id() not in assigned:
-                self.add(d)  
+                self.add(d.clone())  
 
         return self
 

@@ -10,6 +10,7 @@ try:
 except ImportError:
     import json
 
+DETECTION_GUID = int(uuid.uuid4().hex[0:8], 16)  
 
 class Detection(BoundingBox):
     """vipy.object.Detection class
@@ -28,7 +29,10 @@ class Detection(BoundingBox):
     def __init__(self, label=None, xmin=None, ymin=None, width=None, height=None, xmax=None, ymax=None, confidence=None, xcentroid=None, ycentroid=None, category=None, xywh=None, shortlabel=None, attributes=None, id=True):
         super().__init__(xmin=xmin, ymin=ymin, width=width, height=height, xmax=xmax, ymax=ymax, xcentroid=xcentroid, ycentroid=ycentroid, xywh=xywh)
         assert not (label is not None and category is not None), "Constructor requires either label or category kwargs, not both"
-        self._id = uuid.uuid4().hex if id is True else (None if id is False else id)  # unique id if id=True
+        if id is True:
+            global DETECTION_GUID; self._id = hex(int(DETECTION_GUID))[2:];  DETECTION_GUID = DETECTION_GUID + 1;  # faster, increment package level UUID4 initialized GUID
+        else:
+            self._id = None if id is False else id
         self._label = category if category is not None else label
         self._shortlabel = self._label if shortlabel is None else shortlabel
         self._confidence = float(confidence) if confidence is not None else confidence
@@ -39,7 +43,8 @@ class Detection(BoundingBox):
         assert isinstance(d, BoundingBox)
         if d.__class__ != Detection:
             d.__class__ = Detection
-            d._id = uuid.uuid4().hex if flush or not hasattr(d, '_id') else d._id
+            global DETECTION_GUID; newid = hex(int(DETECTION_GUID))[2:];  DETECTION_GUID = DETECTION_GUID + 1;  
+            d._id = newid if flush or not hasattr(d, '_id') else d._id
             d._shortlabel = None if flush or not hasattr(d, '_shortlabel') else d._shortlabel
             d._confidence = None if flush or not hasattr(d, '_confidence') else d._confidence
             d._label = None if flush or not hasattr(d, '_label') else d._label
@@ -191,7 +196,7 @@ class Track(object):
     def from_json(cls, s):
         d = json.loads(s) if not isinstance(s, dict) else s
         return cls(keyframes=tuple(int(f) for f in d['_keyframes']),
-                   boxes=tuple([BoundingBox.from_json(bbs) for bbs in d['_keyboxes']]),
+                   boxes=tuple([Detection.from_json(bbs) for bbs in d['_keyboxes']]),
                    category=d['_label'],
                    framerate=d['_framerate'],
                    interpolation=d['_interpolation'],
@@ -345,10 +350,12 @@ class Track(object):
         assert len(self._keyboxes) > 0, "Degenerate object for interpolation"   # not self.isempty()
         if len(self._keyboxes) == 1:
             return Detection.cast(self._keyboxes[0].clone()).setattribute('trackid', self.id()) if (self._boundary == 'extend' or self.during(f)) else None
+        if f in reversed(self._keyframes):            
+            return self._keyboxes[self._keyframes.index(f)].setattribute('trackid', self.id())
 
         kf = self._keyframes
         ft = min(max(f, kf[0]), kf[-1])  # truncated frame index
-        for i in range(0, len(kf)-1):
+        for i in reversed(range(0, len(kf)-1)):
             if kf[i] <= ft and kf[i+1] >= ft:
                 break  # floor keyframe index
         c = (ft - kf[i]) / max(1, float(kf[i+1] - kf[i]))  # interpolation coefficient
@@ -386,7 +393,8 @@ class Track(object):
     def during(self, k_start, k_end=None):
         """Is frame during the time interval (startframe, endframe) inclusive?"""        
         k_end = k_start+1 if k_end is None else k_end
-        return len(self)>0 and any([k >= self.startframe() and k <= self.endframe() for k in range(k_start, k_end)])
+        #return len(self)>0 and any([k >= self.startframe() and k <= self.endframe() for k in range(k_start, k_end)])
+        return len(self)>0 and ((k_start >= self._keyframes[0] and k_start <= self._keyframes[-1]) or (k_end >= self._keyframes[0] and k_end <= self._keyframes[-1]))
 
     def during_interval(self, k_start, k_end):
         return self.during(k_start, k_end)
@@ -407,7 +415,7 @@ class Track(object):
         keyframes = copy.deepcopy(self.keyframes())
         for k in keyframes:
             if ((startframe is not None and k < startframe) or (endframe is not None and k >= endframe)):
-                self.delete(k)
+                self.delete(k)  # will also delete corresponding keybox
         return self
         
     def rescale(self, s):
@@ -464,10 +472,11 @@ class Track(object):
     def clone(self):
         return copy.deepcopy(self)
 
-    def boundingbox(self):
+    def boundingbox(self, startframe=None, endframe=None):
         """The bounding box of a track is the smallest spatial box that contains all of the detections within startframe and endframe, or None if there are no detections"""
-        d = self._keyboxes[0].clone() if len(self._keyboxes) >= 1 else None
-        return d.union([bb for (k,bb) in zip(self._keyframes[1:], self._keyboxes[1:]) if self.during(k)]) if (d is not None and len(self._keyboxes) >= 2) else d
+        t = self.clone() if (startframe is None and endframe is None) else self.clone().truncate(startframe, endframe)
+        d = t._keyboxes[0].clone() if len(t._keyboxes) >= 1 else None
+        return d.union([bb for (k,bb) in zip(t._keyframes[1:], t._keyboxes[1:]) if t.during(k)]) if (d is not None and len(t._keyboxes) >= 2) else d
 
     def smallestbox(self):
         """The smallest box of a track is the smallest spatial box in area along the track"""
@@ -701,10 +710,10 @@ class Track(object):
             return self.nearest_keybox(k)
         else:
             n = self.endframe() if k > self.endframe() else self.startframe()+1
+            d = self.endbox().clone() if k > self.endframe() else self.startbox().clone()
             (vx, vy) = self.shape_invariant_velocity(n, dt=dt) if not shape else self.velocity(n, dt=dt)
             (vw, vh) = (self.velocity_w(n, dt=dt), self.velocity_h(n, dt=dt)) if shape else (0,0)
-            return (self[n]
-                    .translate((k-n)*vx, (k-n)*vy)
+            return (d.translate((k-n)*vx, (k-n)*vy)
                     .top(0 if not shape else ((k-n)*vh)/2.0)
                     .bottom(0 if not shape else ((k-n)*vh)/2.0)
                     .left(0 if not shape else ((k-n)*vw)/2.0)
@@ -743,7 +752,8 @@ class Track(object):
 
     def bearing_change(self, f1=None, f2=None, dt=30, eps=1E-9):
         """The bearing change of a track from frame f1 (or start) and frame f2 (or end) is the relative angle of the velocity vectors in radians [-pi,pi]"""
-        dr = self.bearing(f1 if f1 is not None else self.startframe()+dt, dt) - self.bearing(f2 if f2 is not None else self.endframe(), dt)  
+        dt = min(dt, len(self))
+        dr = self.bearing(f1 if f1 is not None else min(self.endframe(), self.startframe()+dt), dt) - self.bearing(f2 if f2 is not None else self.endframe(), dt)  
         return dr if np.abs(dr)<=np.pi else ((2*np.pi - dr) if (dr > np.pi) else (2*np.pi + dr))
         
     def velocity(self, f, dt=30):
@@ -758,7 +768,8 @@ class Track(object):
     def shape_invariant_velocity(self, f, dt=30):
         """Return the (x,y) track velocity at frame f in units of pixels per frame computed by minimum mean finite differences of any box corner independent of changes in shape"""
         assert f >= 0 and dt > 0 and self.during(f) 
-        bbl = [self[f]] + [self[f-k] for k in range(1,dt) if self.during(f-k)]
+        #bbl = [self[f]] + [self[f-k] for k in range(1,dt) if self.during(f-k)]
+        bbl = [self.nearest_keybox(k) for k in range(f,f-dt,-1) if self.during(k)]
         vx = float(np.mean([sorted([(bbl[0].ulx() - bbl[k].ulx())/float(k), 
                                     (bbl[0].urx() - bbl[k].urx())/float(k), 
                                     (bbl[0].blx() - bbl[k].blx())/float(k), 
@@ -816,14 +827,14 @@ def non_maximum_suppression(detlist, conf, iou, bycategory=False, cover=None, co
     suppressed = set([])
     detlist = [d for d in detlist if d.confidence() > conf and not d.isdegenerate()]  # valid
     detlist = sorted(detlist, key=lambda d: d.confidence(), reverse=True)  # biggest to smallest
-    detlist = [(d.clone().dilate(coverdilation), d) for d in detlist]  
-    for i in range(0, len(detlist)-1):
-        for j in range(i+1, len(detlist)):
-            if i not in suppressed and j not in suppressed:
-                ((ddi, di), (ddj, dj)) = (detlist[i], detlist[j])
-                if (bycategory is False or di.category() == dj.category()) and (di.iou(dj) >= iou or (cover is not None and ddj.cover(di) >= cover)):
-                    suppressed.add(j)
-    return sorted([d for (j,(dd,d)) in enumerate(detlist) if j not in suppressed], key=lambda x: x.confidence())  # smallest to biggest confidence for display layering
+    for (i, di) in enumerate(detlist):
+        if i in suppressed:
+            continue
+        ddi = di.clone().dilate(coverdilation)
+        for (j, dj) in enumerate(detlist[i+1:], start=i+1):
+            if (j not in suppressed) and (bycategory is False or di.category() == dj.category()) and ddi.hasintersection(dj) and ((cover is not None and ddi.cover(dj) >= cover) or di.iou(dj) >= iou):
+                suppressed.add(j)
+    return sorted([d for (j,d) in enumerate(detlist) if j not in suppressed], key=lambda x: x.confidence())  # smallest to biggest confidence for display layering
 
 
 def greedy_assignment(srclist, dstlist, miniou=0.0, bycategory=False):
