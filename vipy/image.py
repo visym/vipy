@@ -178,7 +178,9 @@ class Image(object):
             if imc is None:
                 imc = im.clone(shallow=True).array(np.zeros( (im.attributes['tile']['shape'][0], im.attributes['tile']['shape'][1], im.channels()), dtype=np.uint8))                
             imc = imc.splat(im.array(im.attributes['tile']['crop'].clone().to_origin().int().crop(im.array())), im.attributes['tile']['crop'])
-            imc = imc.union(im.objectmap(lambda o: o.set_origin(im.attributes['tile']['crop'])))
+            if hasattr(im, 'objectmap'):
+                im.objectmap(lambda o: o.set_origin(im.attributes['tile']['crop']))  # FIXME: only for Scene()
+            imc = imc.union(im)
         return imc
     
     def uncrop(self, bb, shape):
