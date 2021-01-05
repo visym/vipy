@@ -30,8 +30,7 @@ import warnings
 import base64
 import types
 import hashlib
-from itertools import repeat
-import atexit
+import torch
 
 try:
     import ujson as json  # faster
@@ -173,12 +172,13 @@ class Image(object):
     
     def untile(self, imlist):
         """Undo tile"""
-        assert all([isinstance(im, vipy.image.Image) and im.hasattribute('tile') for im in imlist]), "invalid image list"
+        assert all([isinstance(im, vipy.image.Image) and im.hasattribute('tile') for im in imlist]), "invalid image list"        
         imc = None
         for im in imlist:
-            imu = im.clone().uncrop(im.attributes['tile']['crop'], im.attributes['tile']['shape'])
-            imc = imc.splat(imu, imu.attributes['tile']['crop']) if imc is not None else imu.clone()
-            imc = imc.union(imu)
+            if imc is None:
+                imc = im.clone(shallow=True).array(np.zeros( (im.attributes['tile']['shape'][0], im.attributes['tile']['shape'][1], im.channels()), dtype=np.uint8))                
+            imc = imc.splat(im.array(im.attributes['tile']['crop'].clone().to_origin().int().crop(im.array())), im.attributes['tile']['crop'])
+            imc = imc.union(im.objectmap(lambda o: o.set_origin(im.attributes['tile']['crop'])))
         return imc
     
     def uncrop(self, bb, shape):
@@ -194,9 +194,9 @@ class Image(object):
     def splat(self, im, bb):
         """Replace pixels within boundingbox in self with pixels in im"""
         assert isinstance(im, vipy.image.Image), "invalid image"
-        assert bb.isinterior(im.width(), im.height()) and bb.isinterior(self.width(), self.height()), "Invalid bounding box '%s'" % str(bb)
+        assert (im.width() == bb.width() and im.height() == bb.height()) or bb.isinterior(im.width(), im.height()) and bb.isinterior(self.width(), self.height()), "Invalid bounding box '%s'" % str(bb)
         (x,y,w,h) = bb.xywh()
-        self._array[int(y):int(y+h), int(x):int(x+w)] = im.array()[int(y):int(y+h), int(x):int(x+w)]
+        self._array[int(y):int(y+h), int(x):int(x+w)] = im.array() if (im.width() == bb.width() and im.height() == bb.height()) else im.array()[int(y):int(y+h), int(x):int(x+w)]
         return self            
         
     def store(self):
@@ -541,7 +541,6 @@ class Image(object):
         
     def torch(self, order='CHW'):
         """Convert the batch of 1 HxWxC images to a 1xCxHxW torch tensor, by reference"""
-        try_import('torch'); import torch
         img = self.numpy() if self.iscolor() else np.expand_dims(self.numpy(), 2)  # HxW -> HxWx1
         img = np.expand_dims(img,0)
         img = img.transpose(0,3,1,2) if order == 'CHW' else img  # HxWxC or CxHxW
@@ -549,7 +548,6 @@ class Image(object):
 
     def fromtorch(self, x):
         """Convert a 1xCxHxW torch.FloatTensor to HxWxC np.float32 numpy array(), returns new Image() instance with selected colorspace"""
-        try_import('torch'); import torch
         assert isinstance(x, torch.Tensor), "Invalid input type '%s'- must be torch.Tensor" % (str(type(x)))
         img = np.copy(np.squeeze(x.permute(2,3,1,0).detach().numpy()))  # 1xCxHxW -> HxWxC, copied
         colorspace = 'float' if img.dtype == np.float32 else None
@@ -663,7 +661,7 @@ class Image(object):
     def hasfilename(self):
         return self._filename is not None and os.path.exists(self._filename)
 
-    def clone(self, flushforward=False, flushbackward=False, flush=False):
+    def clone(self, flushforward=False, flushbackward=False, flush=False, shallow=False):
         """Create deep copy of object, flushing the original buffer if requested and returning the cloned object.
         Flushing is useful for distributed memory management to free the buffer from this object, and pass along a cloned 
         object which can be used for encoding and will be garbage collected.
@@ -685,6 +683,9 @@ class Image(object):
             im = copy.deepcopy(self)   # does not propagate _array to clone
             self._array = array    # object not flushed
             im._array = None   # clone flushed
+        elif shallow:
+            im = copy.copy(self)  # shallow copy
+            im._array = np.asarray(self._array) if self._array is not None else None  # shared pixels            
         else:
             im = copy.deepcopy(self)            
         return im
@@ -1419,8 +1420,7 @@ class Scene(ImageCategory):
     def union(self, other, miniou=None):
         """Combine the objects of the scene with other and self with no duplicate checking unless miniou is not None"""
         assert isinstance(other, Scene), "Invalid input"
-        assert miniou is None or (miniou>=0 and miniou <= 1), "Invalid input"
-        return self.objects(self.objects()+other.objects()) # FIXME: NMS outside
+        return self.objects(self.objects()+other.objects())
 
     def uncrop(self, bb, shape):
         """Uncrop a previous crop(bb) called with the supplied bb=BoundingBox(), and zeropad to shape=(H,W)"""

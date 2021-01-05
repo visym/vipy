@@ -348,6 +348,9 @@ class BoundingBox(object):
         self._ymax = self._ymax + dy
         return self
 
+    def to_origin(self):
+        return self.translate(-self.xmin(), -self.ymin())
+    
     def set_origin(self, other):
         """Set the origin of the coordinates of this bounding box to be relative to the upper left of the other bounding box"""
         assert isinstance(other, BoundingBox), "Invalid BoundingBox() input of type '%s'" % str(type(other))
@@ -572,8 +575,9 @@ class BoundingBox(object):
 
     def hasintersection(self, bb):
         """Return true of self and bb intersect, do not perform type check to maximize speed"""
-        #assert isinstance(bb, BoundingBox), "Invalid BoundingBox() input of type '%s'" % str(type(bb))                
-        return (min(self._xmax, bb._xmax) - max(self._xmin, bb._xmin) > 0) and (min(self._ymax, bb._ymax) - max(self._ymin, bb._ymin) > 0)
+        #assert isinstance(bb, BoundingBox), "Invalid BoundingBox() input of type '%s'" % str(type(bb))
+        return (((self._xmax if self._xmax < bb._xmax else bb._xmax) - (self._xmin if self._xmin > bb._xmin else bb._xmin)) > 0 and
+                ((self._ymax if self._ymax < bb._ymax else bb._ymax) - (self._ymin if self._ymin > bb._ymin else bb._ymin)) > 0)
 
     def union(self, bb):
         """Union of one or more bounding boxes with this box"""        

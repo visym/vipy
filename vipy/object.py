@@ -262,7 +262,7 @@ class Track(object):
         assert isinstance(bbox, BoundingBox), "Invalid input - Box must be vipy.geometry.BoundingBox()"
         assert strict is False or bbox.isvalid(), "Invalid input - Box must be non-degenerate"
         assert int(keyframe) not in self._keyframes, "Invalid input - repeated keyframe"
-        if not bbox.isvalid():
+        if not bbox.isvalid():            
             return self  # just don't add it 
         self._keyframes.append(int(keyframe))
         self._keyboxes.append(bbox)
@@ -346,6 +346,9 @@ class Track(object):
         This returns a vipy.object.Detection() which is the interpolation of the Track() at frame k
         If self._boundary='extend', then boxes are repeated if the interpolation is outside the keyframes
         If self._boundary='strict', then interpolation returns None if the interpolation is outside the keyframes
+        
+          - The returned object is not cloned when possible, be careful when modifying this object. 
+
         """
         assert len(self._keyboxes) > 0, "Degenerate object for interpolation"   # not self.isempty()
         if len(self._keyboxes) == 1:
@@ -531,6 +534,12 @@ class Track(object):
         """Compute the spatial IoU between two tracks as the mean IoU per frame in the range (self.startframe(), self.endframe())"""
         return self.rankiou(other, rank=len(self), dt=dt)
 
+    def segment_maxiou(self, other, startframe, endframe):
+        """Return the maximum framewise bounding box IOU between self and other in the range (startframe, endframe)"""
+        assert isinstance(other, Track), "invalid input - Must be vipy.object.Track()"
+        assert startframe < endframe
+        return max([self[k].iou(other[k]) if (self[k] is not None) else 0 for k in range(startframe, endframe)])
+    
     def maxiou(self, other, dt=1):
         """Compute the maximum spatial IoU between two tracks per frame in the range (self.startframe(), self.endframe())"""        
         return self.rankiou(other, rank=1, dt=dt)
@@ -745,21 +754,33 @@ class Track(object):
         self._keyboxes = [bb.significant_digits(n) for bb in self._keyboxes]
         return self
 
-    def bearing(self, f, dt=30):
+    def bearing(self, f, dt=30, minspeed=1):
         """The bearing of a track at frame f is the angle of the velocity vector relative to the (x,y) image coordinate frame, in radians [-pi, pi]"""
         v = self.shape_invariant_velocity(f, dt)
-        return float(np.arctan2(v[1], v[0]))  # atan2(y,x)
+        return float(np.arctan2(v[1], v[0])) if self.speed(f, dt) > minspeed else None  # atan2(y,x)
 
-    def bearing_change(self, f1=None, f2=None, dt=30, eps=1E-9):
+    def bearing_change(self, f1=None, f2=None, dt=30, minspeed=1):
         """The bearing change of a track from frame f1 (or start) and frame f2 (or end) is the relative angle of the velocity vectors in radians [-pi,pi]"""
         dt = min(dt, len(self))
-        dr = self.bearing(f1 if f1 is not None else min(self.endframe(), self.startframe()+dt), dt) - self.bearing(f2 if f2 is not None else self.endframe(), dt)  
-        return dr if np.abs(dr)<=np.pi else ((2*np.pi - dr) if (dr > np.pi) else (2*np.pi + dr))
+        B = [self.bearing(k, dt=dt, minspeed=minspeed) for k in range(f1 if f1 is not None else self.startframe(), f2 if f2 is not None else self.endframe())]
+        B = [b for b in B if b is not None]  # valid bearing estimates only
+        dr = np.sum(np.diff(B)) if len(B) > 0 else 0  # cumulative bearing angle change 
+        return float(dr if np.abs(dr)<=np.pi else ((2*np.pi - dr) if (dr > np.pi) else (2*np.pi + dr)))
+
+    def acceleration(self, f, dt=30):
+        """Return the (x,y) track acceleration magnitude at frame f computed using central finite differences of velocity"""
+        (u, v) = (self.shape_invariant_velocity(f-dt, dt), self.shape_invariant_velocity(f+2*dt, dt))  # ((f-2*dt, (f-dt)), (f+dt, f+2*dt))
+        (ax, ay) = ((v[0] - u[0])/float(2*dt), (v[1] - u[1])/float(2*dt))
+        return float(np.sqrt(ax**2 + ay**2))  # acceleration magnitude in pixels
         
     def velocity(self, f, dt=30):
         """Return the (x,y) track velocity at frame f in units of pixels per frame computed by mean finite difference of the box centroid"""
         return (self.velocity_x(f, dt), self.velocity_y(f, dt))
 
+    def speed(self, f, dt=30):
+        (u,v) = self.shape_invariant_velocity(f, dt)
+        return float(np.sqrt(u**2 + v**2))
+    
     def boxmap(self, f):
         """Apply the lambda function to each keybox"""
         self._keyboxes = [f(bb) for bb in self._keyboxes]
@@ -767,30 +788,30 @@ class Track(object):
 
     def shape_invariant_velocity(self, f, dt=30):
         """Return the (x,y) track velocity at frame f in units of pixels per frame computed by minimum mean finite differences of any box corner independent of changes in shape"""
-        assert f >= 0 and dt > 0 and self.during(f) 
+        assert f >= 0 and dt > 0 
         #bbl = [self[f]] + [self[f-k] for k in range(1,dt) if self.during(f-k)]
         bbl = [self.nearest_keybox(k) for k in range(f,f-dt,-1) if self.during(k)]
         vx = float(np.mean([sorted([(bbl[0].ulx() - bbl[k].ulx())/float(k), 
                                     (bbl[0].urx() - bbl[k].urx())/float(k), 
                                     (bbl[0].blx() - bbl[k].blx())/float(k), 
                                     (bbl[0].brx() - bbl[k].brx())/float(k)], key=lambda x: abs(x))[0]
-                            for k in range(1,dt) if self.during(f-k)])) if self.during(f-1) else 0
+                            for k in range(1,dt) if self.during(f-k)])) if (self.during(f-1) and self.during(f)) else 0
         vy = float(np.mean([sorted([(bbl[0].uly() - bbl[k].uly())/float(k), 
                                     (bbl[0].ury() - bbl[k].ury())/float(k), 
                                     (bbl[0].bly() - bbl[k].bly())/float(k), 
                                     (bbl[0].bry() - bbl[k].bry())/float(k)], key=lambda x: abs(x))[0]
-                            for k in range(1,dt) if self.during(f-k)])) if self.during(f-1) else 0
+                            for k in range(1,dt) if self.during(f-k)])) if (self.during(f-1) and self.during(f)) else 0
         return (vx, vy)
 
     def velocity_x(self, f, dt=30):
         """Return the left/right velocity at frame f in units of pixels per frame computed by mean finite difference over a fixed time window (dt, frames) of the box centroid"""
-        assert f >= 0 and dt > 0 and self.during(f) 
-        return float(np.mean([(self[f].centroid_x() - self[f-k].centroid_x())/float(k) for k in range(1,dt) if self.during(f-k)])) if self.during(f-1) else 0
+        assert f >= 0 and dt > 0
+        return float(np.mean([(self[f].centroid_x() - self[f-k].centroid_x())/float(k) for k in range(1,dt) if self.during(f-k)])) if (self.during(f-1) and self.during(f)) else 0
 
     def velocity_y(self, f, dt=30):
         """Return the up/down velocity at frame f in units of pixels per frame computed by mean finite difference over a fixed time window (dt, frames) of the box centroid"""
-        assert f >= 0 and dt > 0 and self.during(f)
-        return float(np.mean([(self[f].centroid_y() - self[f-k].centroid_y())/float(k) for k in range(1,dt) if self.during(f-k)])) if self.during(f-1) else 0
+        assert f >= 0 and dt > 0
+        return float(np.mean([(self[f].centroid_y() - self[f-k].centroid_y())/float(k) for k in range(1,dt) if self.during(f-k)])) if (self.during(f-1) and self.during(f)) else 0
 
     def velocity_w(self, f, dt=30):
         """Return the width velocity at frame f in units of pixels per frame computed by finite difference"""
@@ -810,11 +831,12 @@ class Track(object):
     def nearest_keybox(self, f):
         """Nearest keybox to frame f"""
         assert len(self._keyframes) > 0
-        return self._keyboxes[int(np.abs(np.array(self._keyframes) - f).argmin())]
+        return self._keyboxes[int(np.abs(np.array(self._keyframes) - f).argmin())]  # by-reference
     
-    def ismoving(self, n=1, mincover=0.8):
-        """Is the track moving?  Sample last n keyboxes along track and compute minimum cover with startbox"""        
-        return (min([max(self.startbox().cover(bb), bb.cover(self.startbox())) for bb in self._keyboxes[-n:]]) < mincover) if len(self)>=2 else False
+    def ismoving(self, startframe=None, endframe=None, mincover=0.9):
+        """Is the track moving in the frame range (startframe,endframe)?"""
+        (bbs, bbe) = (self[max(self.startframe(), startframe)] if startframe is not None else self.startbox(), self[min(self.endframe(), endframe)] if endframe is not None else self.endbox())
+        return (bbs.maxcover(bbe) < mincover) if (bbs is not None and bbe is not None) else False
 
 
 def non_maximum_suppression(detlist, conf, iou, bycategory=False, cover=None, coverdilation=1.2):
@@ -832,7 +854,7 @@ def non_maximum_suppression(detlist, conf, iou, bycategory=False, cover=None, co
             continue
         ddi = di.clone().dilate(coverdilation)
         for (j, dj) in enumerate(detlist[i+1:], start=i+1):
-            if (j not in suppressed) and (bycategory is False or di.category() == dj.category()) and ddi.hasintersection(dj) and ((cover is not None and ddi.cover(dj) >= cover) or di.iou(dj) >= iou):
+            if (j not in suppressed) and (bycategory is False or di._label == dj._label) and ddi.hasintersection(dj) and ((cover is not None and ddi.cover(dj) >= cover) or di.iou(dj) >= iou):
                 suppressed.add(j)
     return sorted([d for (j,d) in enumerate(detlist) if j not in suppressed], key=lambda x: x.confidence())  # smallest to biggest confidence for display layering
 

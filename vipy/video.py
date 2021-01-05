@@ -161,7 +161,7 @@ class Video(object):
         if self.isloaded():
             strlist.append("height=%d, width=%d, frames=%d, color=%s" % (self.height(), self.width(), len(self), self.colorspace()))
         if self.filename() is not None:
-            strlist.append('filename="%s"' % (self.filename() if self.hasfilename() else '<NOTFOUND>%s</NOTFOUND>' % self.filename()))
+            strlist.append('filename="%s"' % self.filename())
         if self.hasurl():
             strlist.append('url="%s"' % self.url())
         if not self.isloaded() and self._startframe is not None and self._endframe is not None:
@@ -246,7 +246,7 @@ class Video(object):
 
 
         class Stream(object):
-            def __init__(self, v):
+            def __init__(self, v, bufsize=1024):
                 self._video = v   # do not clone
                 self._pipe = None
                 self._frame_index = 0
@@ -261,7 +261,8 @@ class Video(object):
                 assert (write is True or overwrite is True) or self._shape is not None, "Invalid video '%s'" % (str(v))
                 self._thread = None
                 self._queue = None
-                                
+                self._queuesize = bufsize
+                
             def __enter__(self):
                 if self._write and self._shape is not None:
                     (height, width) = self._shape
@@ -286,7 +287,7 @@ class Video(object):
                                 img = np.frombuffer(in_bytes, np.uint8).reshape([height, width, 3])
                                 queue.put(img)
 
-                    self._queue = queue.Queue(128)
+                    self._queue = queue.Queue(self._queuesize)
                     (height, width) = self._shape
                     self._thread = threading.Thread(target=_f_threadloop, args=(self._pipe, self._queue, height, width), daemon=True)
                     self._thread.start()
@@ -1543,7 +1544,7 @@ class VideoCategory(Video):
         if self.isloaded():
             strlist.append("height=%d, width=%d, frames=%d" % (self._array[0].shape[0], self._array[0].shape[1], len(self._array)))
         if self.filename() is not None:
-            strlist.append('filename="%s"' % (self.filename() if self.hasfilename() else '<NOTFOUND>%s</NOTFOUND>' % self.filename()))
+            strlist.append('filename="%s"' % self.filename())
         if self.hasurl():
             strlist.append('url="%s"' % self.url())
         if self.category() is not None:
@@ -1685,7 +1686,7 @@ class Scene(VideoCategory):
         if self.isloaded():
             strlist.append("height=%d, width=%d, frames=%d, color=%s" % (self.height(), self.width(), len(self._array), self.colorspace()))
         if self.filename() is not None:
-            strlist.append('filename="%s"' % (self.filename() if self.hasfilename() else '<NOTFOUND>%s</NOTFOUND>' % self.filename()))
+            strlist.append('filename="%s"' % (self.filename()))
         if self.hasurl():
             strlist.append('url="%s"' % self.url())
         if self._framerate is not None:
@@ -2355,6 +2356,10 @@ class Scene(VideoCategory):
     def startframe(self):
         return self._startframe
 
+    def extrapolate(self, f, dt=None):
+        """Extrapolate the video to frame f and add the extrapolated tracks to the video"""
+        return self.trackmap(lambda t: t.add(f, t.linear_extrapolation(f, dt=dt if dt is not None else self.framerate()), strict=False))
+        
     def dedupe(self, spatial_iou_threshold=0.8, dt=5):
         """Find and delete duplicate tracks by track segmentiou() overlap.
         
