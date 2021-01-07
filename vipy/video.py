@@ -1157,7 +1157,7 @@ class Video(object):
         assert isinstance(padwidth, int) and isinstance(padheight, int)        
         if not self.isloaded():
             self._ffmpeg = self._ffmpeg.filter('pad', 'iw+%d' % (2*padwidth), 'ih+%d' % (2*padheight), '%d'%padwidth, '%d'%padheight)
-        else:
+        elif padwidth > 0 or padheight > 0:
             self.array( np.pad(self.array(), ((0,0), (padheight,padheight), (padwidth,padwidth), (0,0))), copy=False)  # this is very expensive, since np.pad() must copy (once in np.pad >=1.17)
         return self
 
