@@ -765,18 +765,7 @@ class Image(object):
 
         assert all([x>=0 for x in padheight]) and all([x>=0 for x in padwidth]), "padding must be positive"
         if padwidth[0]>0 or padwidth[1]>0 or padheight[0]>0 or padheight[1]>0:
-            # slower but equivalent to            
-            #img = self.load().array()
-            #vs = [np.zeros((padheight[0], img.shape[1], self.channels()), dtype=img.dtype) if padheight[0] > 0 else None,
-            #      img,
-            #      np.zeros((padheight[1], img.shape[1], self.channels()), dtype=img.dtype) if padheight[1] > 0 else None]
-            #vs = np.vstack( [r for r in vs if r is not None] )
-            #hs = [np.zeros((vs.shape[0], padwidth[0], self.channels()), dtype=img.dtype) if padwidth[0] > 0 else None,
-            #      vs,
-            #      np.zeros((vs.shape[0], padwidth[1], self.channels()), dtype=img.dtype) if padwidth[1] > 0 else None]
-            #self._array = np.hstack( [c for c in hs if c is not None] )
-            
-            self._array = np.pad(self.load().array(), pad_width=pad_shape, mode='constant', constant_values=0)  # this is still painfully slow due to the required copy
+            self._array = np.pad(self.load().array(), pad_width=pad_shape, mode='constant', constant_values=0)  # this is still slow due to the required copy, but fast-ish in np >= 1.17
             
         return self
 
