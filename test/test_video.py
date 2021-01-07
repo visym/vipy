@@ -41,7 +41,18 @@ def _test_stream():
         s.write(im)
     assert w.hasfilename() 
     print('[test_video.video]: stream write   PASSED')       
-        
+
+    v = vipy.video.Video(mp4file)
+    for (k,vb) in enumerate(v.stream().batch(8)):
+        if k == 1:
+            break
+    for (k,vc) in enumerate(v.stream().clip(8,1)):
+        if k == 15:
+            break
+    assert np.allclose(vb.array(), vc.array())
+    print('[test_video.video]: stream batch   PASSED')
+    print('[test_video.video]: stream clip  PASSED')               
+    
 def _test_video():
     # Common Parameters
     urls = vipy.videosearch.youtube('owl',1)

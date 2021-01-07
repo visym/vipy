@@ -36,7 +36,7 @@ class Detection(BoundingBox):
         self._label = category if category is not None else label
         self._shortlabel = self._label if shortlabel is None else shortlabel
         self._confidence = float(confidence) if confidence is not None else confidence
-        self.attributes = {} if attributes is None else attributes
+        self.attributes = {} if attributes is None else copy.copy(attributes)  # shallow copy
 
     @classmethod
     def cast(cls, d, flush=False):
@@ -54,7 +54,11 @@ class Detection(BoundingBox):
     @classmethod
     def from_json(obj, s):
         d = json.loads(s) if not isinstance(s, dict) else s        
-        return obj(xmin=d['_xmin'], ymin=d['_ymin'], xmax=d['_xmax'], ymax=d['_ymax'], label=d['_label'], shortlabel=d['_shortlabel'], confidence=d['_confidence'], attributes=d['attributes'])
+        return obj(xmin=d['_xmin'], ymin=d['_ymin'], xmax=d['_xmax'], ymax=d['_ymax'],
+                   label=d['_label'] if '_label' in d else None,
+                   shortlabel=d['_shortlabel'] if '_shortlabel' in d else None,
+                   confidence=d['_confidence'] if '_confidence' in d else None,
+                   attributes=d['attributes'] if 'attributes' in d else None)
         
     def __repr__(self):
         strlist = []
@@ -117,7 +121,8 @@ class Detection(BoundingBox):
         return self._id
 
     def clone(self):
-        return copy.deepcopy(self)
+        #return copy.deepcopy(self)
+        return Detection.from_json(self.json(encode=False))
 
     def confidence(self, c=None):
         if c is None:
@@ -182,7 +187,7 @@ class Track(object):
         self._framerate = framerate
         self._interpolation = interpolation
         self._boundary = boundary
-        self.attributes = attributes if attributes is not None else {}        
+        self.attributes = copy.copy(attributes) if attributes is not None else {}  # shallow copy
         self._keyframes = [int(np.round(f)) for f in keyframes]  # coerce to int
         self._keyboxes = boxes
         
@@ -197,14 +202,19 @@ class Track(object):
         d = json.loads(s) if not isinstance(s, dict) else s
         return cls(keyframes=tuple(int(f) for f in d['_keyframes']),
                    boxes=tuple([Detection.from_json(bbs) for bbs in d['_keyboxes']]),
-                   category=d['_label'],
+                   category=d['_label'] if '_label' in d else None,
                    framerate=d['_framerate'],
                    interpolation=d['_interpolation'],
                    boundary=d['_boundary'],
-                   shortlabel=d['_shortlabel'],
+                   shortlabel=d['_shortlabel'] if '_shortlabel' in d else None,
                    attributes=d['attributes'],
                    trackid=d['_id'])
                    
+    def json(self, encode=True):
+        d = {k:v if k != '_keyboxes' else tuple([bb.json(encode=False) for bb in v]) for (k,v) in self.__dict__.items()}
+        d['_keyframes'] = tuple([int(f) for f in self._keyframes])
+        return json.dumps(d) if encode else d
+
     def __repr__(self):
         strlist = []
         if self.category() is not None:
@@ -249,10 +259,6 @@ class Track(object):
         """Return a python dictionary containing the relevant serialized attributes suitable for JSON encoding"""
         return self.json(encode=False)
 
-    def json(self, encode=True):
-        d = {k:v if k != '_keyboxes' else tuple([bb.json(encode=False) for bb in v]) for (k,v) in self.__dict__.items()}
-        d['_keyframes'] = tuple([int(f) for f in self._keyframes])
-        return json.dumps(d) if encode else d
     
     def add(self, keyframe, bbox, strict=True):
         """Add a new keyframe and associated box to track, preserve sorted order of keyframes. 
@@ -473,7 +479,8 @@ class Track(object):
             return self
 
     def clone(self):
-        return copy.deepcopy(self)
+        #return copy.deepcopy(self)  
+        return Track.from_json(self.json(encode=False))  # 2x faster than deepcopy
 
     def boundingbox(self, startframe=None, endframe=None):
         """The bounding box of a track is the smallest spatial box that contains all of the detections within startframe and endframe, or None if there are no detections"""
@@ -874,3 +881,6 @@ def greedy_assignment(srclist, dstlist, miniou=0.0, bycategory=False):
         iou = [ds.iou(d) if (j not in assigndict.values() and (bycategory is False or ds.category() == d.category())) else 0.0 for (j,d) in enumerate(dstlist)]
         assigndict[k] = np.argmax(iou) if len(iou) > 0 and max(iou) > miniou else None
     return [assigndict[k] for k in range(0, len(srclist))]
+
+def RandomDetection(W=640, H=480):
+    return Detection(xmin=np.random.rand()*W, ymin=np.random.rand()*H, width=np.random.rand()*100, height=np.random.rand()*100, category=str(np.random.rand()), confidence=np.random.rand())

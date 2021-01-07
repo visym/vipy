@@ -53,7 +53,7 @@ class Activity(object):
         self._trackid = trackid
         self._actorid = actorid
 
-        self.attributes = attributes if attributes is not None else {}
+        self.attributes = copy.copy(attributes) if attributes is not None else {}  # shallow copy
         if confidence is not None:
             self.attributes['confidence'] = float(confidence)
 
@@ -274,7 +274,8 @@ class Activity(object):
             return self
 
     def clone(self, rekey=False):
-        a = copy.deepcopy(self)
+        #a = copy.deepcopy(self)
+        a = Activity.from_json(self.json(encode=False))
         if rekey:
             global ACTIVITY_GUID; a.id(newid=hex(int(ACTIVITY_GUID))[2:]);  ACTIVITY_GUID = ACTIVITY_GUID + 1;  # faster, increment package level UUID4 initialized GUID
         return a
