@@ -760,10 +760,11 @@ class Image(object):
             pad_shape = (padheight, padwidth)
 
         assert all([x>=0 for x in padheight]) and all([x>=0 for x in padwidth]), "padding must be positive"
-        self._array = np.pad(self.load().array(),
-                             pad_width=pad_shape,
-                             mode='constant',
-                             constant_values=0)
+        if padwidth[0]>0 or padwidth[1]>0 or padheight[0]>0 or padheight[1]>0:
+            self._array = np.pad(self.load().array(),
+                                 pad_width=pad_shape,
+                                 mode='constant',
+                                 constant_values=0)
         return self
 
     def zeropadlike(self, width, height):
@@ -1551,7 +1552,7 @@ class Scene(ImageCategory):
     
     def padcrop(self, bbox):
         """Crop the image buffer using the supplied bounding box object, zero padding if box is outside image rectangle, update all scene objects"""
-        self.zeropad(bbox.int().width(), bbox.int().height())
+        self.zeropad(bbox.int().width(), bbox.int().height())  # FIXME: this is inefficient
         (dx, dy) = (bbox.width(), bbox.height())
         bbox = bbox.translate(dx, dy)
         self = super()._crop(bbox)        
