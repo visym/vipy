@@ -1158,7 +1158,7 @@ class Video(object):
         if not self.isloaded():
             self._ffmpeg = self._ffmpeg.filter('pad', 'iw+%d' % (2*padwidth), 'ih+%d' % (2*padheight), '%d'%padwidth, '%d'%padheight)
         else:
-            self.array( np.pad(self.array(), ((0,0), (padheight,padheight), (padwidth,padwidth), (0,0))), copy=False)
+            self.array( np.pad(self.array(), ((0,0), (padheight,padheight), (padwidth,padwidth), (0,0))), copy=False)  # this is very expensive, since np.pad() must copy (once in np.pad >=1.17)
         return self
 
     def crop(self, bb, zeropad=True):
@@ -1167,10 +1167,11 @@ class Video(object):
         assert isinstance(bb, vipy.geometry.BoundingBox), "Invalid input"
         assert not bb.isdegenerate() and bb.isnonnegative() 
         bb = bb.int()
-        if zeropad and bb != bb.clone().imclipshape(self.width(), self.height()):
+        if zeropad and bb != bb.clone().imclipshape(self.width(), self.height()).int():
             # Crop outside the image rectangle will segfault ffmpeg, pad video first (if zeropad=False, then rangecheck will not occur!)
-            self.zeropad(bb.width(), bb.height())     # cannot be called in derived classes
-            bb = bb.offset(bb.width(), bb.height())   # Shift boundingbox by padding
+            bbc = bb.clone().imclipshape(self.width(), self.height()).int()
+            self.zeropad(bb.width()-bbc.width(), bb.height()-bbc.height())     # cannot be called in derived classes
+            bb = bb.offset(bb.width()-bbc.width(), bb.height()-bbc.height())   # Shift boundingbox by padding
         if not self.isloaded():
             self._ffmpeg = self._ffmpeg.filter('crop', '%d' % bb.width(), '%d' % bb.height(), '%d' % bb.xmin(), '%d' % bb.ymin(), 0, 1)  # keep_aspect=False, exact=True
         else:
@@ -2314,9 +2315,10 @@ class Scene(VideoCategory):
         """Crop the video using the supplied box, update tracks relative to crop, video is zeropadded if box is outside frame rectangle"""
         assert isinstance(bb, vipy.geometry.BoundingBox), "Invalid input"
         bb = bb.int()
-        if zeropad and bb != bb.clone().imclipshape(self.width(), self.height()):
-            self.zeropad(bb.width(), bb.height())     
-            bb = bb.offset(bb.width(), bb.height())            
+        bbc = bb.clone().imclipshape(self.width(), self.height()).int()
+        if zeropad and bb != bbc:
+            self.zeropad(bb.width()-bbc.width(), bb.height()-bbc.height())  
+            bb = bb.offset(bb.width()-bbc.width(), bb.height()-bbc.height())            
         super().crop(bb, zeropad=False)  # range check handled here to correctly apply zeropad
         self._tracks = {k:t.offset(dx=-bb.xmin(), dy=-bb.ymin()) for (k,t) in self.tracks().items()}
         return self

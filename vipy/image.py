@@ -711,7 +711,8 @@ class Image(object):
             else:
                 scale = float(cols) / float(self.width())
             self.rescale(scale)
-
+        elif rows == self.height() and cols == self.width():
+            return self  
         elif self.colorspace() == 'float':
             self._array = np.dstack([np.array(im.pil().resize((cols, rows), string_to_pil_interpolation(interp))) for im in self.channel()])
         else:
@@ -726,7 +727,9 @@ class Image(object):
     def rescale(self, scale=1, interp='bilinear'):
         """Scale the image buffer by the given factor - NOT idempotent"""
         (height, width) = self.load().shape()
-        if self.colorspace() == 'float':
+        if scale == 1:
+            return self
+        elif self.colorspace() == 'float':
             self._array = np.dstack([np.array(im.pil().resize((int(np.round(scale * width)), int(np.round(scale * height))), string_to_pil_interpolation(interp))) for im in self.channel()])
         else:                
             self._array = np.array(self.pil().resize((int(np.round(scale * width)), int(np.round(scale * height))), string_to_pil_interpolation(interp)))
@@ -738,7 +741,8 @@ class Image(object):
 
     def mindim(self, dim=None, interp='bilinear'):
         """Resize image preserving aspect ratio so that minimum dimension of image = dim, or return mindim()"""
-        return self.rescale(float(dim) / float(np.minimum(self.height(), self.width())), interp=interp) if dim is not None else min(self.shape())
+        s = float(dim) / float(np.minimum(self.height(), self.width()))
+        return self.rescale(s, interp=interp) if dim is not None else min(self.shape())
 
     def _pad(self, dx, dy, mode='edge'):
         """Pad image using np.pad mode, dx=padwidth, dy=padheight, thin wrapper for numpy.pad"""
@@ -761,10 +765,19 @@ class Image(object):
 
         assert all([x>=0 for x in padheight]) and all([x>=0 for x in padwidth]), "padding must be positive"
         if padwidth[0]>0 or padwidth[1]>0 or padheight[0]>0 or padheight[1]>0:
-            self._array = np.pad(self.load().array(),
-                                 pad_width=pad_shape,
-                                 mode='constant',
-                                 constant_values=0)
+            # slower but equivalent to            
+            #img = self.load().array()
+            #vs = [np.zeros((padheight[0], img.shape[1], self.channels()), dtype=img.dtype) if padheight[0] > 0 else None,
+            #      img,
+            #      np.zeros((padheight[1], img.shape[1], self.channels()), dtype=img.dtype) if padheight[1] > 0 else None]
+            #vs = np.vstack( [r for r in vs if r is not None] )
+            #hs = [np.zeros((vs.shape[0], padwidth[0], self.channels()), dtype=img.dtype) if padwidth[0] > 0 else None,
+            #      vs,
+            #      np.zeros((vs.shape[0], padwidth[1], self.channels()), dtype=img.dtype) if padwidth[1] > 0 else None]
+            #self._array = np.hstack( [c for c in hs if c is not None] )
+            
+            self._array = np.pad(self.load().array(), pad_width=pad_shape, mode='constant', constant_values=0)  # this is still painfully slow due to the required copy
+            
         return self
 
     def zeropadlike(self, width, height):
@@ -797,12 +810,14 @@ class Image(object):
         S = np.min(self.load().shape())
         return self._crop(BoundingBox(xmin=0, ymin=0, width=int(S), height=int(S)))
 
-    def maxsquare(self):
-        """Crop image of size (HxW) to (max(H,W), max(H,W)) with zeropadding, keeping upper left corner constant"""
-        S = np.max(self.load().shape())
-        dW = S - self.width()
-        dH = S - self.height()
-        return self.zeropad((0,dW), (0,dH))._crop(BoundingBox(0, 0, width=int(S), height=int(S)))
+    def maxsquare(self, S=None):
+        """Crop image of size (HxW) to (max(H,W), max(H,W)) with zeropadding or (S,S) if provided, keeping upper left corner constant"""
+        S = np.max(self.load().shape()) if S is None else S
+        dW = max(0, S - self.width())
+        dH = max(0, S - self.height())
+        if (dW > 0 or dH > 0):
+            self.zeropad((0,dW), (0,dH))
+        return self._crop(BoundingBox(0, 0, width=int(S), height=int(S)))
 
     def maxmatte(self):
         """Crop image of size (HxW) to (max(H,W), max(H,W)) with balanced zeropadding forming a letterbox with top/bottom matte or pillarbox with left/right matte"""
