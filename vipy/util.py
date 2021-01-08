@@ -1387,22 +1387,27 @@ class Timer(object):
     def __enter__(self):
         self._begin = time.time()
         self._last = self._begin
-
+        return self
+        
     def __exit__(self, *args):
         print(self.__repr__())
 
-    def __init__(self, sprintf='[vipy.util.timer]: elapsed=%1.6fs, since=%1.6fs'):
-        self._sprintf = sprintf
+    def __init__(self, sprintf_next=None, sprintf_first=None):
+        self._sprintf_next = '[vipy.util.timer]: elapsed=%1.6fs, total=%1.6fs' if sprintf_next is None else sprintf_next
+        self._sprintf_first = '[vipy.util.timer]: elapsed=%1.6fs' if sprintf_first is None else sprintf_first
         self._begin = time.time()
         self._last = self._begin
+        self._laps = 0        
         try:
-            sprintf % (1.0, 1.0)
+            self._sprintf_next % (1.0, 1.0)
+            self._sprintf_first % (1.0)            
         except:
-            raise ValueError('Printed display string must be a sprintf style string with two number variable like "Elapsed=%1.6f since=%1.6f"')
+            raise ValueError('Printed display string must be a sprintf style string with one or two number variable like "Elapsed=%1.6f since=%1.6f"')
             
     def __repr__(self):
-        s = str(self._sprintf % (time.time() - self._last, (time.time() - self._begin)))
+        s = str(self._sprintf_next % (time.time() - self._last, (time.time() - self._begin))) if self._laps > 0 else str(self._sprintf_first % (time.time() - self._begin))
         self._last = time.time()
+        self._laps += 1
         return s
 
         
