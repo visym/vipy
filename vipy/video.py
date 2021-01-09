@@ -2787,12 +2787,11 @@ class Scene(VideoCategory):
                     
         # Non-maximum suppression
         deleted = set([])
-        trackconf = [(trackconf[t.id()] if t.id() in trackconf else t.confidence(samples=trackconfsamples), t) for t in self.tracklist() if ((frame - t.endframe()) <= maxhistory)]
-        for (ci, ti) in sorted(trackconf, key=lambda x: x[0], reverse=True):
-            for (cj, tj) in trackconf:
+        trackconf = [(trackconf[t.id()] if t.id() in trackconf else t.confidence(samples=trackconfsamples), t, t.linear_extrapolation(frame, dt=maxhistory, shape=False))
+                     for t in self.tracklist() if ((frame - t.endframe()) <= maxhistory)]
+        for (ci, ti, di) in sorted(trackconf, key=lambda x: x[0], reverse=True):
+            for (cj, tj, dj) in trackconf:
                 if (ti.category() == tj.category()) and (ti.id() != tj.id()) and (tj.id() not in deleted and ti.id() not in deleted) and (cj < ci):
-                    di = ti.linear_extrapolation(frame, dt=maxhistory, shape=False)
-                    dj = tj.linear_extrapolation(frame, dt=maxhistory, shape=False)
                     if max(di.cover(dj), dj.cover(di)) >= 0.8:   # track overlap (to within 80% uncertainty of box position)  
                         deleted.add(tj.id())
         self.trackmap(lambda t: t.delete(frame) if t.id() in deleted else t).trackfilter(lambda t: len(t)>0)
