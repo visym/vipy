@@ -1197,22 +1197,24 @@ class Video(object):
             self.shape(shape=(self.height()+2*padheight, self.width()+2*padwidth))  # manually set shape to avoid preview            
             self._ffmpeg = self._ffmpeg.filter('pad', 'iw+%d' % (2*padwidth), 'ih+%d' % (2*padheight), '%d'%padwidth, '%d'%padheight)
         elif padwidth > 0 or padheight > 0:
-            self.array( np.pad(self.array(), ((0,0), (padheight,padheight), (padwidth,padwidth), (0,0)), mode=constant), copy=False)  # this is very expensive, since np.pad() must copy (once in np.pad >=1.17)            
+            self.array( np.pad(self.array(), ((0,0), (padheight,padheight), (padwidth,padwidth), (0,0)), mode='constant'), copy=False)  # this is very expensive, since np.pad() must copy (once in np.pad >=1.17)            
         return self
 
     def crop(self, bb, zeropad=True):
         """Spatially crop the video using the supplied vipy.geometry.BoundingBox, can only be applied prior to load().
         """
         assert isinstance(bb, vipy.geometry.BoundingBox), "Invalid input"
-        assert not bb.isdegenerate() and bb.isnonnegative() 
+        #assert not bb.isdegenerate() and bb.isnonnegative() 
         bb = bb.int()
         bbc = bb.clone().imclipshape(self.width(), self.height()).int()  # clipped box to image rectangle
-        if zeropad and bb != bbc:
+        if zeropad and bb != bbc and not bb.isdegenerate():
             # Crop outside the image rectangle will segfault ffmpeg, pad video first (if zeropad=False, then rangecheck will not occur!)
             self.zeropad(bb.width()-bbc.width(), bb.height()-bbc.height())     # cannot be called in derived classes
             bb = bb.offset(bb.width()-bbc.width(), bb.height()-bbc.height())   # Shift boundingbox by padding
-        bbc = bb if zeropad else bbc  # use clipped box if not zeropad            
-        if not self.isloaded():
+        bbc = bb if zeropad else bbc  # use clipped box if not zeropad
+        if bbc.isdegenerate():
+            return None
+        elif not self.isloaded():
             self._ffmpeg = self._ffmpeg.filter('crop', '%d' % bbc.width(), '%d' % bbc.height(), '%d' % bbc.xmin(), '%d' % bbc.ymin(), 0, 1)  # keep_aspect=False, exact=True
         else:
             self.array( bbc.crop(self.array()), copy=False )  # in-place

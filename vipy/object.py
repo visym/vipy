@@ -799,18 +799,17 @@ class Track(object):
     def shape_invariant_velocity(self, f, dt=30):
         """Return the (x,y) track velocity at frame f in units of pixels per frame computed by minimum mean finite differences of any box corner independent of changes in shape"""
         assert f >= 0 and dt > 0 
-        #bbl = [self[f]] + [self[f-k] for k in range(1,dt) if self.during(f-k)]
-        bbl = [self.nearest_keybox(k) for k in range(f,f-dt,-1) if self.during(k)]
-        vx = float(np.mean([sorted([(bbl[0].ulx() - bbl[k].ulx())/float(k), 
-                                    (bbl[0].urx() - bbl[k].urx())/float(k), 
-                                    (bbl[0].blx() - bbl[k].blx())/float(k), 
-                                    (bbl[0].brx() - bbl[k].brx())/float(k)], key=lambda x: abs(x))[0]
-                            for k in range(1,dt) if self.during(f-k)])) if (self.during(f-1) and self.during(f)) else 0
-        vy = float(np.mean([sorted([(bbl[0].uly() - bbl[k].uly())/float(k), 
-                                    (bbl[0].ury() - bbl[k].ury())/float(k), 
-                                    (bbl[0].bly() - bbl[k].bly())/float(k), 
-                                    (bbl[0].bry() - bbl[k].bry())/float(k)], key=lambda x: abs(x))[0]
-                            for k in range(1,dt) if self.during(f-k)])) if (self.during(f-1) and self.during(f)) else 0
+        bbl = [(max(1,(f-self._keyframes[k])), bb) for (k,bb) in enumerate(self._keyboxes) if self._keyframes[k] >= f-dt]
+        vx = float(np.mean([sorted([(bbl[-1][1].ulx() - bb.ulx())/float(k), 
+                                    (bbl[-1][1].urx() - bb.urx())/float(k), 
+                                    (bbl[-1][1].blx() - bb.blx())/float(k), 
+                                    (bbl[-1][1].brx() - bb.brx())/float(k)], key=lambda x: abs(x))[0]
+                            for (k,bb) in bbl[0:-1]])) if (self.during(f-1) and self.during(f)) else 0
+        vy = float(np.mean([sorted([(bbl[-1][1].uly() - bb.uly())/float(k), 
+                                    (bbl[-1][1].ury() - bb.ury())/float(k), 
+                                    (bbl[-1][1].bly() - bb.bly())/float(k), 
+                                    (bbl[-1][1].bry() - bb.bry())/float(k)], key=lambda x: abs(x))[0]
+                            for (k,bb) in bbl[0:-1]])) if (self.during(f-1) and self.during(f)) else 0
         return (vx, vy)
 
     def velocity_x(self, f, dt=30):
@@ -864,7 +863,7 @@ def non_maximum_suppression(detlist, conf, iou, bycategory=False, cover=None, co
             continue
         ddi = di.clone().dilate(coverdilation)
         for (j, dj) in enumerate(detlist[i+1:], start=i+1):
-            if (j not in suppressed) and (bycategory is False or di._label == dj._label) and ddi.hasintersection(dj) and ((cover is not None and ddi.cover(dj) >= cover) or di.iou(dj) >= iou):
+            if (j not in suppressed) and (bycategory is False or di._label == dj._label) and ddi.hasintersection(dj) and ((di.iou(dj) >= iou) or (cover is not None and ddi.cover(dj) >= cover)):
                 suppressed.add(j)
     return sorted([d for (j,d) in enumerate(detlist) if j not in suppressed], key=lambda x: x.confidence())  # smallest to biggest confidence for display layering
 
