@@ -253,7 +253,7 @@ class Video(object):
         """
 
         class Stream(object):
-            def __init__(self, v, bufsize=256):
+            def __init__(self, v, bufsize=1024):
                 self._video = v   # do not clone
                 self._write_pipe = None
                 self._frame_index = 0
