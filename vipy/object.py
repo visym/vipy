@@ -248,7 +248,7 @@ class Track(object):
         else:
             ef = self.endframe() - last if last is not None else 0
             C = [d._confidence for (f,d) in zip(self.keyframes(), self.keyboxes()) if f >= ef and (hasattr(d, '_confidence') and d._confidence is not None)]
-        return float(np.mean(C)) if len(C) > 0 else 0
+        return C[0] if len(C) == 1 else (float(np.mean(C)) if len(C) > 0 else 0)
         
     def isdegenerate(self):
         return not (len(self.keyboxes()) == len(self.keyframes()) and
@@ -671,20 +671,23 @@ class Track(object):
 
     def smooth(self, width):
         """Track smoothing by averaging neighboring keyboxes"""
-        assert isinstance(width, int)
-        self._keyboxes = [bb.clone().average(bbnbrs) for (bb, bbnbrs) in zip(self._keyboxes, chunklistwithoverlap(self._keyboxes, width, width-1))]
+        assert isinstance(width, int) and width > 0
+        if len(self._keyboxes) > width:
+            self._keyboxes = [bb.clone().average(bbnbrs) for (bb, bbnbrs) in zip(self._keyboxes, chunklistwithoverlap(self._keyboxes, width, width-1))] 
         return self
 
     def smoothshape(self, width):
         """Track smoothing by averaging width and height of neighboring keyboxes"""
-        assert isinstance(width, int)
-        self._keyboxes = [bb.clone().averageshape(bbnbrs) for (bb, bbnbrs) in zip(self._keyboxes, chunklistwithoverlap(self._keyboxes, width, width-1))]
+        assert isinstance(width, int) and width > 0
+        if len(self._keyboxes) > width:
+            self._keyboxes = [bb.clone().averageshape(bbnbrs) for (bb, bbnbrs) in zip(self._keyboxes, chunklistwithoverlap(self._keyboxes, width, width-1))]
         return self
 
     def medianshape(self, width):
         """Track smoothing by median width and height of neighboring keyboxes"""
-        assert isinstance(width, int)
-        self._keyboxes = [bb.clone().medianshape(bbnbrs) for (bb, bbnbrs) in zip(self._keyboxes, chunklistwithoverlap(self._keyboxes, width, width-1))]
+        assert isinstance(width, int) and width > 0
+        if len(self._keyboxes) > width:
+            self._keyboxes = [bb.clone().medianshape(bbnbrs) for (bb, bbnbrs) in zip(self._keyboxes, chunklistwithoverlap(self._keyboxes, width, width-1))]
         return self
 
     def spline(self, smoothingfactor=None, strict=True, startframe=None, endframe=None):

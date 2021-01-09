@@ -75,7 +75,7 @@ class Video(object):
     Note that the video transformations (clip, resize, rescale, rotate) are only available prior to load(), and the array() is assumed immutable after load().
 
     """
-    def __init__(self, filename=None, url=None, framerate=30.0, attributes=None, array=None, colorspace=None, startframe=None, endframe=None, startsec=None, endsec=None, frames=None):
+    def __init__(self, filename=None, url=None, framerate=30.0, attributes=None, array=None, colorspace=None, startframe=None, endframe=None, startsec=None, endsec=None, frames=None, probeshape=False):
         self._url = None
         self._filename = None
         self._array = None
@@ -115,8 +115,14 @@ class Video(object):
             if vipy.globals.cache() is not None and self._filename is not None:
                 self._filename = os.path.join(remkdir(vipy.globals.cache()), filetail(self._filename))
 
+        # Initial video shape: useful to avoid preview()
+        self._ffmpeg = ffmpeg.input(self.filename())  # restore, no other filters        
+        if probeshape and (frames is None and array is None) and has_ffprobe and self.hasfilename():
+            self.shape(self.probeshape())
+        else:
+            self._shape = None  # preview() on shape()
+            
         # Video filter chain
-        self._ffmpeg = ffmpeg.input(self.filename())  # restore, no other filters
         if framerate is not None:
             self.framerate(framerate)
             self._framerate = framerate        
@@ -134,6 +140,8 @@ class Video(object):
         elif frames is not None:
             self.fromframes(frames)
 
+            
+        
     @classmethod
     def cast(cls, v):
         assert isinstance(v, vipy.video.Video), "Invalid input - must be derived from vipy.video.Video"
@@ -256,7 +264,7 @@ class Video(object):
                 assert self._write is False or (overwrite is True or not os.path.exists(self._outfile)), "Output file '%s' exists - Writable stream cannot overwrite existing video file unless overwrite=True" % self._outfile
                 if overwrite and os.path.exists(self._outfile):
                     os.remove(self._outfile)                
-                self._shape = self._video.shape() if self._video.canload() else None  # shape for write can be defined by first frame
+                self._shape = self._video.shape() if (not self._write) or (self._write and self._video.canload()) else None  # shape for write can be defined by first frame
                 assert (write is True or overwrite is True) or self._shape is not None, "Invalid video '%s'" % (str(v))
                 #self._thread = None
                 #self._queue = None
@@ -464,6 +472,8 @@ class Video(object):
         return list(self.frames())
 
     def _update_ffmpeg_seek(self, timestamp_in_seconds=0, offset=0):
+        if timestamp_in_seconds == 0 and offset == 0:
+            return self
         nodes = ffmpeg.nodes.get_stream_spec_nodes(self._ffmpeg)
         sorted_nodes, outgoing_edge_maps = ffmpeg.dag.topo_sort(nodes)
         for n in sorted_nodes:
@@ -543,8 +553,14 @@ class Video(object):
         """Has the FFMPEG filter chain been modified from the default?  If so, then ffplay() on the video file will be different from self.load().play()"""
         return '-filter_complex' in self._ffmpeg_commandline()
 
+    def probeshape(self):
+        """Return the (height, width) of underlying video file as determined from ffprobe, this does not take into account any applied ffmpeg filters"""
+        p = self.probe()
+        assert len(p['streams']) > 0
+        return (p['streams'][0]['height'], p['streams'][0]['width'])
+        
     def duration_in_seconds_of_videofile(self):
-        """Return video duration of the source filename (NOT the filter chain) in seconds, requires ffprobe.  Fetch once and cache (refetch automatically if _previewhash changes)"""
+        """Return video duration of the source filename (NOT the filter chain) in seconds, requires ffprobe.  Fetch once and cache"""
         filehash = hashlib.md5(str(self.filename()).encode()).hexdigest()            
         if self.hasattribute('_duration_in_seconds_of_videofile') and self.attributes['_duration_in_seconds_of_videofile']['filehash'] == filehash:
             return self.attributes['_duration_in_seconds_of_videofile']['duration']
@@ -864,15 +880,25 @@ class Video(object):
         """Download only if hasfilename() is not found"""
         return self.download(ignoreErrors=ignoreErrors) if not self.hasfilename() else self
 
-    def shape(self):
-        """Return (height, width) of the frames, requires loading a preview frame from the video if the video is not already loaded"""
-        if not self.isloaded():
-            previewhash = hashlib.md5(str(self._ffmpeg_commandline()).encode()).hexdigest()
-            if not hasattr(self, '_previewhash') or previewhash != self._previewhash:
-                im = self.preview()  # ffmpeg chain changed, load a single frame of video 
+    def shape(self, shape=None, probe=False):
+        """Return (height, width) of the frames, requires loading a preview frame from the video if the video is not already loaded, or providing the shape=(height,width) by the user"""
+        if probe:
+            return self.shape(self.probeshape(), probe=False)
+        elif shape is not None:
+            assert isinstance(shape, tuple), "shape=(height, width) tuple"
+            self._shape = shape
+            self._channels = self.channels()
+            #self._previewhash = hashlib.md5(str(self._ffmpeg_commandline()).encode()).hexdigest() 
+            return self
+            
+        elif not self.isloaded():
+            #previewhash = hashlib.md5(str(self._ffmpeg_commandline()).encode()).hexdigest()
+            #if not hasattr(self, '_previewhash') or previewhash != self._previewhash:
+            if self._shape is None or len(self._shape) == 0:  # dirty filter chain
+                im = self.preview()  # ffmpeg chain changed, load a single frame of video, triggers fetch
                 self._shape = (im.height(), im.width())  # cache the shape
                 self._channels = im.channels()
-                self._previewhash = previewhash
+                #self._previewhash = previewhash
             return self._shape
         else:
             return (self._array.shape[1], self._array.shape[2])
@@ -880,12 +906,13 @@ class Video(object):
     def channels(self):
         """Return integer number of color channels"""
         if not self.isloaded():
-            previewhash = hashlib.md5(str(self._ffmpeg_commandline()).encode()).hexdigest()            
-            if not hasattr(self, '_previewhash') or previewhash != self._previewhash:
-                im = self.preview()  # ffmpeg chain changed, load a single frame of video
-                self._shape = (im.height(), im.width())  # cache the shape                
-                self._channels = im.channels()  # cache
-                self._previewhash = previewhash
+            self._channels = 3   # always color video 
+            #previewhash = hashlib.md5(str(self._ffmpeg_commandline()).encode()).hexdigest()            
+            #if not hasattr(self, '_previewhash') or previewhash != self._previewhash:
+            #    im = self.preview()  # ffmpeg chain changed, load a single frame of video
+            #    self._shape = (im.height(), im.width())  # cache the shape                
+            #    self._channels = im.channels()  # cache
+            #    self._previewhash = previewhash
             return self._channels  # cached
         else:
             return 1 if self.load().array().ndim == 3 else self.load().array().shape[3]
@@ -991,7 +1018,7 @@ class Video(object):
         #    -Try to correct this manually by searching for a off-by-one-pixel decoding that works.  The right way is to upgrade your FFMPEG version to the FFMPEG head (11JUN20)
         #    -We cannot tell which is the one that the end-user wanted, so we leave it up to the calling function to check dimensions (see self.resize())
         if (len(out) % (height*width*channels)) != 0:
-            warnings.warn('Your FFMPEG version is triggering a known bug that is being worked around in an inefficient manner.  Consider upgrading your FFMPEG distribution.')
+            #warnings.warn('Your FFMPEG version is triggering a known bug that is being worked around in an inefficient manner.  Consider upgrading your FFMPEG distribution.')
             if (len(out) % ((height-1)*(width-1)*channels) == 0):
                 (newwidth, newheight) = (width-1, height-1)
             elif (len(out) % ((height-1)*(width)*channels) == 0):
@@ -1012,7 +1039,12 @@ class Video(object):
                 (newwidth, newheight) = (width, height)
 
             is_loadable = (len(out) % (newheight*newwidth*channels)) == 0
-            assert is_loadable or ignoreErrors, "Workaround failed for video '%s', and FFMPEG command line: '%s'" % (str(self), str(self._ffmpeg_commandline(f)))
+
+            if not is_loadable():
+                im = self.preview()  # get the real shape...
+                (newheight, newwidth, newchannels) = (im.height(), im.width(), im.channels()) 
+                        
+            assert is_loadable or ignoreErrors, "Load failed for video '%s', and FFMPEG command line: '%s'" % (str(self), str(self._ffmpeg_commandline(f)))
             self._array = np.frombuffer(out, np.uint8).reshape([-1, newheight, newwidth, channels]) if is_loadable else None  # read-only                        
             self.colorspace('rgb' if channels == 3 else 'lum')
             self.resize(rows=height, cols=width)  # Very expensive framewise resizing so that the loaded video is identical shape to preview
@@ -1058,12 +1090,14 @@ class Video(object):
         """Rotate the video 90 degrees clockwise, can only be applied prior to load()"""
         assert not self.isloaded(), "Filters can only be applied prior to load() - Try calling flush() first"
         self._ffmpeg = self._ffmpeg.filter('transpose', 1)
+        self.shape(shape=(self.width(), self.height()))  # transposed
         return self
 
     def rot90ccw(self):
         """Rotate the video 90 degrees counter-clockwise, can only be applied prior to load()"""        
         assert not self.isloaded(), "Filters can only be applied prior to load() - Try calling flush() first"
         self._ffmpeg = self._ffmpeg.filter('transpose', 2)
+        self.shape(shape=(self.width(), self.height()))  # transposed        
         return self
 
     def fliplr(self):
@@ -1081,35 +1115,38 @@ class Video(object):
         return self
 
     def rescale(self, s):
-        """Rescale the video by factor s, such that the new dimensions are (s*H, s*W), can only be applied prior load()"""
+        """Rescale the video by factor s, such that the new dimensions are (s*H, s*W), can only be applied prior to load()"""
         assert not self.isloaded(), "Filters can only be applied prior to load() - Try calling flush() first"
-        self._ffmpeg = self._ffmpeg.filter('scale', 'iw*%1.2f' % s, 'ih*%1.2f' % s)
+        self.shape(shape=(int(np.round(self.height()*s)), int(np.round(self.width()*s))))  # update the known shape        
+        self._ffmpeg = self._ffmpeg.filter('scale', 'iw*%1.6f' % float(np.ceil(s*1e6)/1e6), 'ih*%1.6f' % float(np.ceil(s*1e6)/1e6))  # ceil last significant digit to avoid off by one
         return self
 
     def resize(self, rows=None, cols=None):
-        """Resize the video to be (rows, cols), can only be applied prior to load()"""
-        if ((rows is None and cols is None) or 
-            (self.shape() == (cols if cols is not None else int(np.round(self.width()*(rows/self.height()))),
-                              rows if rows is not None else int(np.round(self.height()*(cols/self.width())))))):
-            return self
+        """Resize the video to be (rows=height, cols=width)"""
+        newshape = (rows if rows is not None else int(np.round(self.height()*(cols/self.width()))),
+                    cols if cols is not None else int(np.round(self.width()*(rows/self.height()))))
+                            
+        if (rows is None and cols is None) or (self.shape() == newshape):
+            return self  # only if strictly necessary
         if not self.isloaded():
             self._ffmpeg = self._ffmpeg.filter('scale', cols if cols is not None else -1, rows if rows is not None else -1)
         else:            
             # Do not use self.__iter__() which triggers copy for mutable arrays
-            self.array(np.stack([self.frame(k).resize(rows=rows, cols=cols).array() for k in range(len(self))]), copy=False) 
+            self.array(np.stack([self.frame(k).resize(rows=rows, cols=cols).array() for k in range(len(self))]), copy=False)
+        self.shape(shape=newshape)  # manually set newshape
         return self
 
     def mindim(self, dim=None):
         """Resize the video so that the minimum of (width,height)=dim, preserving aspect ratio"""
         assert dim is None or not self.isloaded(), "Filters can only be applied prior to load() - Try calling flush() first"
         (H,W) = self.shape()  # yuck, need to get image dimensions before filter
-        return min(self.shape()) if dim is None else self.resize(cols=dim) if W<H else self.resize(rows=dim)
+        return min(self.shape()) if dim is None else (self.resize(cols=dim) if W<H else self.resize(rows=dim))
 
-    def maxdim(self, dim):
+    def maxdim(self, dim=None):
         """Resize the video so that the maximum of (width,height)=dim, preserving aspect ratio"""
         assert not self.isloaded(), "Filters can only be applied prior to load() - Try calling flush() first"
         (H,W) = self.shape()  # yuck, need to get image dimensions before filter
-        return self.resize(cols=dim) if W>H else self.resize(rows=dim)
+        return max(H,W) if dim is None else (self.resize(cols=dim) if W>H else self.resize(rows=dim))
     
     def randomcrop(self, shape, withbox=False):
         """Crop the video to shape=(H,W) with random position such that the crop contains only valid pixels, and optionally return the box"""
@@ -1142,12 +1179,13 @@ class Video(object):
         # FIXME: this may trigger an inefficient resizing operation during load()
         d = max(self.shape())
         self._ffmpeg = self._ffmpeg.filter('pad', d+1, d+1, 0, 0)
+        self.shape(shape=(d+1, d+1))
         return self.crop(vipy.geometry.BoundingBox(xmin=0, ymin=0, width=int(d), height=int(d)))
 
     def maxmatte(self):
         return self.zeropad(max(1, int((max(self.shape()) - self.width())/2)), max(int((max(self.shape()) - self.height())/2), 1))
     
-    def zeropad(self, padwidth, padheight, strict=False):
+    def zeropad(self, padwidth, padheight):
         """Zero pad the video with padwidth columns before and after, and padheight rows before and after
            
            * NOTE: Older FFMPEG implementations can throw the error "Input area #:#:#:# not within the padded area #:#:#:# or zero-sized, this is often caused by odd sized padding. 
@@ -1156,9 +1194,10 @@ class Video(object):
         """
         assert isinstance(padwidth, int) and isinstance(padheight, int)        
         if not self.isloaded():
+            self.shape(shape=(self.height()+2*padheight, self.width()+2*padwidth))  # manually set shape to avoid preview            
             self._ffmpeg = self._ffmpeg.filter('pad', 'iw+%d' % (2*padwidth), 'ih+%d' % (2*padheight), '%d'%padwidth, '%d'%padheight)
         elif padwidth > 0 or padheight > 0:
-            self.array( np.pad(self.array(), ((0,0), (padheight,padheight), (padwidth,padwidth), (0,0))), copy=False)  # this is very expensive, since np.pad() must copy (once in np.pad >=1.17)
+            self.array( np.pad(self.array(), ((0,0), (padheight,padheight), (padwidth,padwidth), (0,0))), copy=False)  # this is very expensive, since np.pad() must copy (once in np.pad >=1.17)            
         return self
 
     def crop(self, bb, zeropad=True):
@@ -1167,15 +1206,17 @@ class Video(object):
         assert isinstance(bb, vipy.geometry.BoundingBox), "Invalid input"
         assert not bb.isdegenerate() and bb.isnonnegative() 
         bb = bb.int()
-        if zeropad and bb != bb.clone().imclipshape(self.width(), self.height()).int():
+        bbc = bb.clone().imclipshape(self.width(), self.height()).int()  # clipped box to image rectangle
+        if zeropad and bb != bbc:
             # Crop outside the image rectangle will segfault ffmpeg, pad video first (if zeropad=False, then rangecheck will not occur!)
-            bbc = bb.clone().imclipshape(self.width(), self.height()).int()
             self.zeropad(bb.width()-bbc.width(), bb.height()-bbc.height())     # cannot be called in derived classes
             bb = bb.offset(bb.width()-bbc.width(), bb.height()-bbc.height())   # Shift boundingbox by padding
+        bbc = bb if zeropad else bbc  # use clipped box if not zeropad            
         if not self.isloaded():
-            self._ffmpeg = self._ffmpeg.filter('crop', '%d' % bb.width(), '%d' % bb.height(), '%d' % bb.xmin(), '%d' % bb.ymin(), 0, 1)  # keep_aspect=False, exact=True
+            self._ffmpeg = self._ffmpeg.filter('crop', '%d' % bbc.width(), '%d' % bbc.height(), '%d' % bbc.xmin(), '%d' % bbc.ymin(), 0, 1)  # keep_aspect=False, exact=True
         else:
-            self.array( bb.crop(self.array()), copy=False )  # in-place 
+            self.array( bbc.crop(self.array()), copy=False )  # in-place
+        self.shape(shape=(bbc.height(), bbc.width()))  # manually set shape
         return self
 
     def pkl(self, pklfile=None):
@@ -1442,16 +1483,19 @@ class Video(object):
         """
         if flush or (flushforward and flushbackward):
             self._array = None  # flushes buffer on object and clone
-            self._previewhash = None
+            #self._previewhash = None
+            self._shape = None
             v = copy.deepcopy(self)  # object and clone are flushed
         elif flushbackward:
             v = copy.deepcopy(self)  # propagates _array to clone
             self._array = None   # object flushed, clone not flushed
-            self._previewhash = None
+            #self._previewhash = None
+            self._shape = None
         elif flushforward:
             array = self._array;
             self._array = None
-            self._previewhash = None
+            #self._previewhash = None
+            self._shape = None
             v = copy.deepcopy(self)   # does not propagate _array to clone
             self._array = array    # object not flushed
             v._array = None   # clone flushed
@@ -1470,7 +1514,8 @@ class Video(object):
 
         if flushfilter:
             v._ffmpeg = ffmpeg.input(v.filename())  # no other filters
-            v._previewhash = None
+            #v._previewhash = None
+            v._shape = None
             (v._startframe, v._endframe) = (None, None)
             (v._startsec, v._endsec) = (None, None)
         if rekey:
@@ -1482,7 +1527,8 @@ class Video(object):
     def flush(self):
         """Alias for clone(flush=True), returns self not clone"""
         self._array = None  # flushes buffer on object and clone
-        self._previewhash = None
+        #self._previewhash = None
+        self._shape = None
         return self
 
     def flush_and_return(self, retval):
@@ -2202,10 +2248,15 @@ class Scene(VideoCategory):
         """Return the bounding box for the image rectangle, requires preview() to get frame shape"""
         return vipy.geometry.BoundingBox(xmin=0, ymin=0, width=self.width(), height=self.height())
 
-    def trackcrop(self, dilate=1.0, maxsquare=False):
-        """Return the trackcrop() of the scene which is the crop of the video using the trackbox().  If there are no tracks, return None"""
+    def trackcrop(self, dilate=1.0, maxsquare=False, zeropad=True):
+        """Return the trackcrop() of the scene which is the crop of the video using the trackbox().  
+         
+           * If there are no tracks, return None.  
+           * if zeropad=True, the zero pad the crop if it is outside the image rectangle, otherwise return only valid pixels
+
+        """
         bb = self.trackbox(dilate)  # may be None if trackbox is degenerate
-        return self.crop(bb.maxsquareif(maxsquare)) if bb is not None else None  
+        return self.crop(bb.maxsquareif(maxsquare), zeropad=zeropad) if bb is not None else None  
 
     def activitybox(self, activityid=None, dilate=1.0):
         """The activitybox is the union of all activity bounding boxes in the video, which is the union of all tracks contributing to all activities.  This is most useful after activityclip().
@@ -2378,11 +2429,11 @@ class Scene(VideoCategory):
         (H,W) = self.shape()  # yuck, need to get image dimensions before filter
         return min(self.shape()) if dim is None else self.resize(cols=dim) if W<H else self.resize(rows=dim)
 
-    def maxdim(self, dim):
+    def maxdim(self, dim=None):
         """Resize the video so that the maximum of (width,height)=dim, preserving aspect ratio"""
         assert not self.isloaded(), "Filters can only be applied prior to load() - Try calling flush() first"                
         (H,W) = self.shape()  # yuck, need to get image dimensions before filter
-        return self.resize(cols=dim) if W>H else self.resize(rows=dim)
+        return max(H,W) if dim is None else (self.resize(cols=dim) if W>H else self.resize(rows=dim))        
     
     def rescale(self, s):
         """Spatially rescale the scene by a constant scale factor"""
