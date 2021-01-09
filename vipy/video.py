@@ -253,7 +253,7 @@ class Video(object):
         """
 
         class Stream(object):
-            def __init__(self, v, bufsize=1024):
+            def __init__(self, v, bufsize=256):
                 self._video = v   # do not clone
                 self._write_pipe = None
                 self._frame_index = 0
@@ -1197,7 +1197,7 @@ class Video(object):
             self.shape(shape=(self.height()+2*padheight, self.width()+2*padwidth))  # manually set shape to avoid preview            
             self._ffmpeg = self._ffmpeg.filter('pad', 'iw+%d' % (2*padwidth), 'ih+%d' % (2*padheight), '%d'%padwidth, '%d'%padheight)
         elif padwidth > 0 or padheight > 0:
-            self.array( np.pad(self.array(), ((0,0), (padheight,padheight), (padwidth,padwidth), (0,0))), copy=False)  # this is very expensive, since np.pad() must copy (once in np.pad >=1.17)            
+            self.array( np.pad(self.array(), ((0,0), (padheight,padheight), (padwidth,padwidth), (0,0)), mode=constant), copy=False)  # this is very expensive, since np.pad() must copy (once in np.pad >=1.17)            
         return self
 
     def crop(self, bb, zeropad=True):
