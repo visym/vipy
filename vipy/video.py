@@ -1089,15 +1089,15 @@ class Video(object):
     def rot90cw(self):
         """Rotate the video 90 degrees clockwise, can only be applied prior to load()"""
         assert not self.isloaded(), "Filters can only be applied prior to load() - Try calling flush() first"
+        self.shape(shape=(self.width(), self.height()))  # transposed        
         self._ffmpeg = self._ffmpeg.filter('transpose', 1)
-        self.shape(shape=(self.width(), self.height()))  # transposed
         return self
 
     def rot90ccw(self):
         """Rotate the video 90 degrees counter-clockwise, can only be applied prior to load()"""        
         assert not self.isloaded(), "Filters can only be applied prior to load() - Try calling flush() first"
+        self.shape(shape=(self.width(), self.height()))  # transposed                
         self._ffmpeg = self._ffmpeg.filter('transpose', 2)
-        self.shape(shape=(self.width(), self.height()))  # transposed        
         return self
 
     def fliplr(self):
@@ -1117,7 +1117,7 @@ class Video(object):
     def rescale(self, s):
         """Rescale the video by factor s, such that the new dimensions are (s*H, s*W), can only be applied prior to load()"""
         assert not self.isloaded(), "Filters can only be applied prior to load() - Try calling flush() first"
-        self.shape(shape=(int(np.round(self.height()*s)), int(np.round(self.width()*s))))  # update the known shape        
+        self.shape(shape=(int(np.round(self.height()*float(np.ceil(s*1e6)/1e6))), int(np.round(self.width()*float(np.ceil(s*1e6)/1e6)))))  # update the known shape        
         self._ffmpeg = self._ffmpeg.filter('scale', 'iw*%1.6f' % float(np.ceil(s*1e6)/1e6), 'ih*%1.6f' % float(np.ceil(s*1e6)/1e6))  # ceil last significant digit to avoid off by one
         return self
 
@@ -1211,14 +1211,16 @@ class Video(object):
             # Crop outside the image rectangle will segfault ffmpeg, pad video first (if zeropad=False, then rangecheck will not occur!)
             self.zeropad(bb.width()-bbc.width(), bb.height()-bbc.height())     # cannot be called in derived classes
             bb = bb.offset(bb.width()-bbc.width(), bb.height()-bbc.height())   # Shift boundingbox by padding
-        bbc = bb if zeropad else bbc  # use clipped box if not zeropad
-        if bbc.isdegenerate():
+        elif bb.isdegenerate():
             return None
-        elif not self.isloaded():
-            self._ffmpeg = self._ffmpeg.filter('crop', '%d' % bbc.width(), '%d' % bbc.height(), '%d' % bbc.xmin(), '%d' % bbc.ymin(), 0, 1)  # keep_aspect=False, exact=True
+        elif not zeropad:
+            bb = bbc  # use clipped box if not zeropad
+            
+        if not self.isloaded():
+            self._ffmpeg = self._ffmpeg.filter('crop', '%d' % bb.width(), '%d' % bb.height(), '%d' % bb.xmin(), '%d' % bb.ymin(), 0, 1)  # keep_aspect=False, exact=True
         else:
-            self.array( bbc.crop(self.array()), copy=False )  # in-place
-        self.shape(shape=(bbc.height(), bbc.width()))  # manually set shape
+            self.array( bb.crop(self.array()), copy=False )  # in-place
+        self.shape(shape=(bb.height(), bb.width()))  # manually set shape
         return self
 
     def pkl(self, pklfile=None):
@@ -2373,6 +2375,7 @@ class Scene(VideoCategory):
             self.zeropad(bb.width()-bbc.width(), bb.height()-bbc.height())  
             bb = bb.offset(bb.width()-bbc.width(), bb.height()-bbc.height())            
         super().crop(bb, zeropad=False)  # range check handled here to correctly apply zeropad
+        bb = bb if zeropad else bbc
         self._tracks = {k:t.offset(dx=-bb.xmin(), dy=-bb.ymin()) for (k,t) in self.tracks().items()}
         return self
     
