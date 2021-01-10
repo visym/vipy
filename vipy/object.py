@@ -861,9 +861,10 @@ def non_maximum_suppression(detlist, conf, iou, bycategory=False, cover=None, co
     for (i, di) in enumerate(detlist):
         if i in suppressed:
             continue
-        ddi = di.clone().dilate(coverdilation)
+        ddi = di.clone().dilate(coverdilation) if coverdilation != 1.0 else di
         for (j, dj) in enumerate(detlist[i+1:], start=i+1):
-            if (j not in suppressed) and (bycategory is False or di._label == dj._label) and ddi.hasintersection(dj) and ((di.iou(dj) >= iou) or (cover is not None and ddi.cover(dj) >= cover)):
+            #if (j not in suppressed) and (bycategory is False or di._label == dj._label) and ddi.hasintersection(dj) and ((di.iou(dj) >= iou) or (cover is not None and ddi.cover(dj) >= cover)):
+            if (j not in suppressed) and (bycategory is False or di._label == dj._label) and ddi.hasoverlap(dj, iou=iou, cover=cover):
                 suppressed.add(j)
     return sorted([d for (j,d) in enumerate(detlist) if j not in suppressed], key=lambda x: x.confidence())  # smallest to biggest confidence for display layering
 

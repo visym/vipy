@@ -533,9 +533,10 @@ class BoundingBox(object):
         """Alias for iou"""
         return self.iou(bb)
 
-    def area_of_intersection(self, bb):
+    def area_of_intersection(self, bb, strict=True):
         """area of intersection"""
-        assert isinstance(bb, BoundingBox), "Invalid BoundingBox() input of type '%s'" % str(type(bb))                
+        if strict:
+            assert isinstance(bb, BoundingBox), "Invalid BoundingBox() input of type '%s'" % str(type(bb))                
         w = min(self._xmax, bb._xmax) - max(self._xmin, bb._xmin)
         if w <= 0:
             return 0  # invalid (no overlap), early exit 
@@ -544,6 +545,9 @@ class BoundingBox(object):
             return 0  # invalid (no overlap), early exit 
         return w*h
 
+    def area_of_union(self, bb):
+        return self.area() + bb.area() - self.area_of_intersection(bb)
+        
     def cover(self, bb):
         """Fraction of this bounding box intersected by other bbox (bb)"""        
         return self.area_of_intersection(bb) / float(self.area())
@@ -573,12 +577,19 @@ class BoundingBox(object):
             raise ValueError('Degenerate intersection for bounding boxes "%s" and "%s"' % (str(bb), str(self)))
         return self
 
-    def hasintersection(self, bb):
-        """Return true of self and bb intersect, do not perform type check to maximize speed"""
-        #assert isinstance(bb, BoundingBox), "Invalid BoundingBox() input of type '%s'" % str(type(bb))
-        return (((self._xmax if self._xmax < bb._xmax else bb._xmax) - (self._xmin if self._xmin > bb._xmin else bb._xmin)) > 0 and
-                ((self._ymax if self._ymax < bb._ymax else bb._ymax) - (self._ymin if self._ymin > bb._ymin else bb._ymin)) > 0)
+    def hasintersection(self, bb, iou=None, cover=None, bbcover=None):
+        """Return true if self and bb overlap by any amount, or by the cover threshold (if provided) or the iou threshold (if provided).  This is a convenience function that allows for shared computation for fast non-maximum suppression."""
 
+        aoi = self.area_of_intersection(bb, strict=False)
+        if aoi == 0:
+            return False
+        else:
+            bbarea = bb.area() if (bbcover is not None or iou is not None) else 0
+            area = self.area() if (cover is not None or iou is not None) else 0
+            return (((iou is not None) and ((aoi / (area+bbarea-aoi)) >= iou)) or
+                    ((cover is not None) and ((aoi / area) >= cover)) or
+                    ((bbcover is not None) and ((aoi / bbarea) >= bbcover)))
+                
     def union(self, bb):
         """Union of one or more bounding boxes with this box"""        
         bblist = tolist(bb)        

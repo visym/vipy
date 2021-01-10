@@ -283,7 +283,26 @@ def test_boundingbox():
     BoundingBox(xmin=-20, ymin=-10, width=30, height=40).dict()
     print('[test_geometry.boundingbox]: dict PASSED')
     
+def test_intersection():
+    bb1 = BoundingBox(xmin=0, ymin=0, width=10, height=20)
+    bb2 = BoundingBox(xmin=10, ymin=20, width=10, height=20)
+    bb3 = bb1.clone().right(10)
 
+    assert not bb1.hasintersection(bb2)
+    assert not bb2.hasintersection(bb1)
+    assert bb3.cover(bb1) == 0.5
+    assert bb1.cover(bb3) == 1.0
+    assert bb3.iou(bb3) == 1.0
+    assert bb3.iou(bb1) == 0.5    
+    assert not bb3.hasintersection(bb1, cover=0.8)
+    assert bb3.hasintersection(bb1, bbcover=0.8)
+    assert bb3.hasintersection(bb1, cover=0.7, bbcover=0.8)
+    assert not bb3.hasintersection(bb1, iou=0.51)
+    assert bb3.hasintersection(bb1, iou=0.5)    
+    print('[test_geometry.intersection]: PASSED')
+    
+    
+    
 def test_ellipse():
     e = BoundingBox(xmin=-20, ymin=-10, width=30, height=40).ellipse()
 
@@ -304,3 +323,5 @@ if __name__ == "__main__":
     test_geometry()
     test_boundingbox()
     test_ellipse()
+    test_intersection()
+    
