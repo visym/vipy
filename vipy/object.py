@@ -273,6 +273,7 @@ class Track(object):
         self._keyframes.append(int(keyframe))
         self._keyboxes.append(bbox)
         if len(self._keyframes) > 1 and keyframe < self._keyframes[-2]:
+            # Preserve sorted order if inserting into the middle somewhere
             (self._keyframes, self._keyboxes) = zip(*sorted([(f,bb) for (f,bb) in zip(self._keyframes, self._keyboxes)], key=lambda x: x[0]))        
             self._keyframes = list(self._keyframes)
             self._keyboxes = list(self._keyboxes)
@@ -732,12 +733,9 @@ class Track(object):
             d = self.endbox().clone() if k > self.endframe() else self.startbox().clone()
             (vx, vy) = self.shape_invariant_velocity(n, dt=dt) if not shape else self.velocity(n, dt=dt)
             (vw, vh) = (self.velocity_w(n, dt=dt), self.velocity_h(n, dt=dt)) if shape else (0,0)
-            return (d.translate((k-n)*vx, (k-n)*vy)
-                    .top(0 if not shape else ((k-n)*vh)/2.0)
-                    .bottom(0 if not shape else ((k-n)*vh)/2.0)
-                    .left(0 if not shape else ((k-n)*vw)/2.0)
-                    .right(0 if not shape else ((k-n)*vw)/2.0))
-       
+            d = d.translate((k-n)*vx, (k-n)*vy)
+            return d if not shape else d.top( ((k-n)*vh)/2.0).bottom( ((k-n)*vh)/2.0).left( ((k-n)*vw)/2.0).right( ((k-n)*vw)/2.0)
+            
     def imclip(self, width, height):
         """Clip the track to the image rectangle (width, height).  If a keybox is outside the image rectangle, remove it otherwise clip to the image rectangle. 
            This operation can change the length of the track and the size of the keyboxes.  The result may be an empty track if the track is completely outside
@@ -800,16 +798,10 @@ class Track(object):
         """Return the (x,y) track velocity at frame f in units of pixels per frame computed by minimum mean finite differences of any box corner independent of changes in shape"""
         assert f >= 0 and dt > 0 
         bbl = [(max(1,(f-self._keyframes[k])), bb) for (k,bb) in enumerate(self._keyboxes) if self._keyframes[k] >= f-dt]
-        vx = float(np.mean([sorted([(bbl[-1][1].ulx() - bb.ulx())/float(k), 
-                                    (bbl[-1][1].urx() - bb.urx())/float(k), 
-                                    (bbl[-1][1].blx() - bb.blx())/float(k), 
-                                    (bbl[-1][1].brx() - bb.brx())/float(k)], key=lambda x: abs(x))[0]
-                            for (k,bb) in bbl[0:-1]])) if (self.during(f-1) and self.during(f)) else 0
-        vy = float(np.mean([sorted([(bbl[-1][1].uly() - bb.uly())/float(k), 
-                                    (bbl[-1][1].ury() - bb.ury())/float(k), 
-                                    (bbl[-1][1].bly() - bb.bly())/float(k), 
-                                    (bbl[-1][1].bry() - bb.bry())/float(k)], key=lambda x: abs(x))[0]
-                            for (k,bb) in bbl[0:-1]])) if (self.during(f-1) and self.during(f)) else 0
+        vx = float(np.mean([min([(bbl[-1][1]._xmin - bb._xmin), (bbl[-1][1]._xmax - bb._xmax)], key=abs)/float(k)  
+                            for (k,bb) in bbl[0:-1]])) if self.during(f-1, f+1) else 0
+        vy = float(np.mean([min([(bbl[-1][1]._ymin - bb._ymin), (bbl[-1][1]._ymax - bb._ymax)], key=abs)/float(k)
+                            for (k,bb) in bbl[0:-1]])) if self.during(f-1, f+1) else 0
         return (vx, vy)
 
     def velocity_x(self, f, dt=30):

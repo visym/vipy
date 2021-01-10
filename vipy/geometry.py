@@ -554,7 +554,8 @@ class BoundingBox(object):
 
     def maxcover(self, bb):
         """The maximum cover of self to bb and bb to self"""
-        return max(self.cover(bb), bb.cover(self))
+        aoi = self.area_of_intersection(bb)
+        return float(max(aoi/self.area(), aoi/bb.area()))
     
     def shapeiou(self, bb):
         """Shape IoU is the IoU with the upper left corners aligned. This measures the deformation of the two boxes by removing the effect of translation"""
@@ -583,12 +584,14 @@ class BoundingBox(object):
         aoi = self.area_of_intersection(bb, strict=False)
         if aoi == 0:
             return False
-        else:
+        elif iou is not None or cover is not None or bbcover is not None:
             bbarea = bb.area() if (bbcover is not None or iou is not None) else 0
             area = self.area() if (cover is not None or iou is not None) else 0
             return (((iou is not None) and ((aoi / (area+bbarea-aoi)) >= iou)) or
                     ((cover is not None) and ((aoi / area) >= cover)) or
                     ((bbcover is not None) and ((aoi / bbarea) >= bbcover)))
+        else:
+            return aoi > 0
                 
     def union(self, bb):
         """Union of one or more bounding boxes with this box"""        
