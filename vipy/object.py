@@ -797,11 +797,12 @@ class Track(object):
     def shape_invariant_velocity(self, f, dt=30):
         """Return the (x,y) track velocity at frame f in units of pixels per frame computed by minimum mean finite differences of any box corner independent of changes in shape"""
         assert f >= 0 and dt > 0 
-        bbl = [(max(1,(f-self._keyframes[k])), bb) for (k,bb) in enumerate(self._keyboxes) if self._keyframes[k] >= f-dt]
-        vx = float(np.mean([min([(bbl[-1][1]._xmin - bb._xmin), (bbl[-1][1]._xmax - bb._xmax)], key=abs)/float(k)  
-                            for (k,bb) in bbl[0:-1]])) if self.during(f-1, f+1) else 0
-        vy = float(np.mean([min([(bbl[-1][1]._ymin - bb._ymin), (bbl[-1][1]._ymax - bb._ymax)], key=abs)/float(k)
-                            for (k,bb) in bbl[0:-1]])) if self.during(f-1, f+1) else 0
+        kb = [(kf, bb) for (kf,bb) in zip(self._keyframes, self._keyboxes) if kf >= f-dt]
+        if len(kb) <= 2:
+            return (0,0)        
+        ((kfe, bbe), kb) = (kb[-1], kb[0:-1])
+        vx = float(np.mean([((min([(bbe._xmin - bb._xmin), (bbe._xmax - bb._xmax)], key=abs)/float(kfe-kf)) if (kfe-kf)!=0 else 0) for (kf,bb) in kb]))
+        vy = float(np.mean([((min([(bbe._ymin - bb._ymin), (bbe._ymax - bb._ymax)], key=abs)/float(kfe-kf)) if (kfe-kf)!=0 else 0) for (kf,bb) in kb]))
         return (vx, vy)
 
     def velocity_x(self, f, dt=30):
@@ -840,23 +841,26 @@ class Track(object):
         return (bbs.maxcover(bbe) < mincover) if (bbs is not None and bbe is not None) else False
 
 
-def non_maximum_suppression(detlist, conf, iou, bycategory=False, cover=None, coverdilation=1.2):
+def non_maximum_suppression(detlist, conf, iou, bycategory=False, cover=None, coverdilation=1.2, gridsize=(4,7)):
     """Compute greedy non-maximum suppression of a list of vipy.object.Detection() based on spatial IOU threshold (iou) and cover threhsold (cover) sorted by confidence (conf)"""
     assert all([isinstance(d, Detection) for d in detlist])
     assert all([d.confidence() is not None for d in detlist])
     assert conf>=0 and iou>=0 and iou<=1
     assert cover is None or (cover>=0 and cover<=1)
-
+    assert isinstance(gridsize, tuple) and len(gridsize) == 2
+        
     suppressed = set([])
     detlist = [d for d in detlist if d.confidence() > conf and not d.isdegenerate()]  # valid
     detlist = sorted(detlist, key=lambda d: d.confidence(), reverse=True)  # biggest to smallest
+    grid = detlist[0].clone().union(detlist).grid(gridsize[0], gridsize[1]) if len(detlist) > 0 else []  
+    bbidx = [set([k for (k,bbg) in enumerate(grid) if bbg.hasintersection(bb)]) for bb in detlist]  # spatial index
     for (i, di) in enumerate(detlist):
         if i in suppressed:
             continue
         ddi = di.clone().dilate(coverdilation) if coverdilation != 1.0 else di
         for (j, dj) in enumerate(detlist[i+1:], start=i+1):
             #if (j not in suppressed) and (bycategory is False or di._label == dj._label) and ddi.hasintersection(dj) and ((di.iou(dj) >= iou) or (cover is not None and ddi.cover(dj) >= cover)):
-            if (j not in suppressed) and (bycategory is False or di._label == dj._label) and ddi.hasoverlap(dj, iou=iou, cover=cover):
+            if (j not in suppressed) and (bycategory is False or di._label == dj._label) and (len(bbidx[i].intersection(bbidx[j]))>0) and ((cover is not None and ddi.hasintersection(dj, cover=cover)) or di.hasintersection(dj, iou=iou)):
                 suppressed.add(j)
     return sorted([d for (j,d) in enumerate(detlist) if j not in suppressed], key=lambda x: x.confidence())  # smallest to biggest confidence for display layering
 
@@ -879,3 +883,5 @@ def greedy_assignment(srclist, dstlist, miniou=0.0, bycategory=False):
 
 def RandomDetection(W=640, H=480):
     return Detection(xmin=np.random.rand()*W, ymin=np.random.rand()*H, width=np.random.rand()*100, height=np.random.rand()*100, category=str(np.random.rand()), confidence=np.random.rand())
+
+

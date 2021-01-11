@@ -581,10 +581,13 @@ class BoundingBox(object):
     def hasintersection(self, bb, iou=None, cover=None, bbcover=None):
         """Return true if self and bb overlap by any amount, or by the cover threshold (if provided) or the iou threshold (if provided).  This is a convenience function that allows for shared computation for fast non-maximum suppression."""
 
-        aoi = self.area_of_intersection(bb, strict=False)
-        if aoi == 0:
+        intersects = (((self._xmax if self._xmax < bb._xmax else bb._xmax) - (self._xmin if self._xmin > bb._xmin else bb._xmin)) > 0 and
+                      ((self._ymax if self._ymax < bb._ymax else bb._ymax) - (self._ymin if self._ymin > bb._ymin else bb._ymin)) > 0)
+        if not intersects:
             return False
-        elif iou is not None or cover is not None or bbcover is not None:
+        
+        aoi = self.area_of_intersection(bb, strict=False)
+        if iou is not None or cover is not None or bbcover is not None:
             bbarea = bb.area() if (bbcover is not None or iou is not None) else 0
             area = self.area() if (cover is not None or iou is not None) else 0
             return (((iou is not None) and ((aoi / (area+bbarea-aoi)) >= iou)) or
@@ -592,7 +595,7 @@ class BoundingBox(object):
                     ((bbcover is not None) and ((aoi / bbarea) >= bbcover)))
         else:
             return aoi > 0
-                
+
     def union(self, bb):
         """Union of one or more bounding boxes with this box"""        
         bblist = tolist(bb)        
@@ -922,6 +925,11 @@ class BoundingBox(object):
         """Bounding boxes do not have confidences, use vipy.object.Detection()"""
         return None
 
+    def grid(self, rows, cols):
+        """Split a bounding box into the smallest grid of non-overlapping bounding boxes such that the union is the original box"""
+        (w,h) = (self.width()/cols, self.height()/rows)
+        return [BoundingBox(xmin=x, ymin=y, width=w, height=h) for x in np.arange(0, self._xmax, w) for y in np.arange(0, self._ymax, h)]
+
 class Ellipse():
     __slots__ = ['_major', '_minor', '_xcenter', '_ycenter', '_phi']
     def __init__(self, semi_major, semi_minor, xcenter, ycenter, phi):
@@ -993,3 +1001,7 @@ class Ellipse():
         for (y,x) in product(range(0,H), range(0,W)):
             img[y,x] = self.inside(x,y)
         return img
+
+def union(bblist):
+    """Return the union of a list of vipy.geometry.BoundingBox"""
+    return bblist[0].clone().union(bblist)    

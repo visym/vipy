@@ -319,18 +319,20 @@ class Video(object):
                     q = queue.Queue(self._queuesize)
                     (h, w) = self._shape
                     
-                    def _f_threadloop(pipe, queue, height, width):
+                    def _f_threadloop(pipe, queue, height, width, event):
                         assert pipe is not None, "Invalid pipe"
                         assert queue is not None, "invalid queue"
                         while True:
                             in_bytes = pipe.stdout.read(height * width * 3)
                             if not in_bytes:
                                 queue.put(None)
+                                event.wait()
                                 break
                             else:
                                 queue.put(np.frombuffer(in_bytes, np.uint8).reshape([height, width, 3]))
 
-                    t = threading.Thread(target=_f_threadloop, args=(p, q, h, w), daemon=True)
+                    e = threading.Event()                                
+                    t = threading.Thread(target=_f_threadloop, args=(p, q, h, w, e), daemon=True)
                     t.start()
 
                     frameindex = 0
@@ -341,6 +343,7 @@ class Video(object):
                             frameindex += 1
                             yield im
                         else:
+                            e.set()
                             break
                         
             def __getitem__(self, k):
@@ -364,7 +367,7 @@ class Video(object):
                 assert isinstance(n, int) and n>0, "Clip length must be a positive integer"
                 assert isinstance(m, int) and m>0, "Clip stride must be a positive integer"                
                 
-                def _f_threadloop(pipe, queue, height, width, video, n, m, continuous):
+                def _f_threadloop(pipe, queue, height, width, video, n, m, continuous, event):
                     assert pipe is not None, "invalid pipe"
                     assert queue is not None, "invalid queue"
                     frameindex = 0
@@ -374,6 +377,7 @@ class Video(object):
                         in_bytes = pipe.stdout.read(height * width * 3)
                         if not in_bytes:
                             queue.put( (None, None) )
+                            event.wait()
                             break
                         else:
                             frames.append(np.frombuffer(in_bytes, np.uint8).reshape([height, width, 3]))
@@ -390,7 +394,8 @@ class Video(object):
                 q = queue.Queue(self._queuesize)
                 (h, w) = self._shape                        
                 v = self._video.clone(flushfilter=True).clear().nourl().nofilename()
-                t = threading.Thread(target=_f_threadloop, args=(p, q, h, w, v, n, m, continuous), daemon=True)
+                e = threading.Event()                
+                t = threading.Thread(target=_f_threadloop, args=(p, q, h, w, v, n, m, continuous, e), daemon=True)
                 t.start()
 
                 while True:
@@ -399,13 +404,14 @@ class Video(object):
                         yield (vc.activities([a.clone().offset(-k+n).truncate(0,n) for a in self._video.activitylist() if a.during_interval(k-n, k)])
                                .tracks([t.clone().offset(-k+n).truncate(0,n) for t in self._video.tracklist() if t.during_interval(k-n, k)])) if vc is not None and isinstance(vc, vipy.video.Scene) else vc
                     else:
+                        e.set()
                         break
                     
             def batch(self, n):
                 """Stream batches of length n such that each batch contains frames [0,n], [n+1, 2n], ...  Last batch will be ragged"""
                 assert isinstance(n, int) and n>0, "batch length must be a positive integer"
 
-                def _f_threadloop(pipe, queue, height, width, video, n):
+                def _f_threadloop(pipe, queue, height, width, video, n, event):
                     assert pipe is not None, "invalid pipe"
                     assert queue is not None, "invalid queue"
                     frameindex = 0
@@ -416,6 +422,7 @@ class Video(object):
                         if not in_bytes:
                             queue.put((frameindex, video.clone(shallow=True).array(np.stack(frames))))
                             queue.put((None, None))
+                            event.wait()
                             break
                         else:
                             frames.append(np.frombuffer(in_bytes, np.uint8).reshape([height, width, 3]))
@@ -430,7 +437,8 @@ class Video(object):
                 q = queue.Queue(self._queuesize)
                 (h, w) = self._shape                        
                 v = self._video.clone(flushfilter=True).clear().nourl().nofilename()
-                t = threading.Thread(target=_f_threadloop, args=(p, q, h, w, v, n), daemon=True)
+                e = threading.Event()
+                t = threading.Thread(target=_f_threadloop, args=(p, q, h, w, v, n, e), daemon=True)
                 t.start()
                 
                 while True:
@@ -438,6 +446,7 @@ class Video(object):
                     if k is not None:
                         yield vb  # FIXME: should clone activities/tracks
                     else:
+                        e.set()
                         break
 
             def frame(self, n=0):
@@ -2740,7 +2749,7 @@ class Scene(VideoCategory):
                         break
         return self
 
-    def assign(self, frame, dets, minconf=0.2, maxhistory=5, activityiou=0.5, trackcover=0.2, trackconfsamples=4):
+    def assign(self, frame, dets, minconf=0.2, maxhistory=5, activityiou=0.5, trackcover=0.2, trackconfsamples=4, gridsize=(4,7)):
         """Assign a list of vipy.object.Detections at frame k to scene by greedy track association. In-place update.
         
            * miniou [float]: the minimum temporal IOU for activity assignment
@@ -2751,7 +2760,8 @@ class Scene(VideoCategory):
         """
         assert dets is None or all([isinstance(d, vipy.object.Detection) or isinstance(d, vipy.activity.Activity) for d in tolist(dets)]), "invalid input"
         assert frame >= 0 and minconf >= 0 and minconf <= 1.0 and maxhistory > 0, "invalid input"
-
+        assert isinstance(gridsize, tuple) and len(gridsize) == 2
+        
         if dets is None or len(tolist(dets)) == 0:
             return self
         dets = tolist(dets)
@@ -2761,19 +2771,24 @@ class Scene(VideoCategory):
             dets = [d for d in dets if d.confidence() is not None]
         objdets = [d for d in dets if isinstance(d, vipy.object.Detection)]
         activitydets = [d for d in dets if isinstance(d, vipy.activity.Activity)]        
-                
+
         # Track propagation:  Constant velocity motion model for active tracks 
         t_ref = [(t, t.linear_extrapolation(frame, dt=maxhistory, shape=False)) for t in self.tracklist() if ((frame - t.endframe()) <= maxhistory)]
 
+        # Spatial index
+        grid = objdets[0].clone().union(objdets).grid(gridsize[0], gridsize[1]) if len(objdets) > 0 else []
+        detidx = [set([k for (k,bbg) in enumerate(grid) if bbg.hasintersection(bb)]) for bb in objdets]
+        trackidx = [set([k for (k,bbg) in enumerate(grid) if bbg.hasintersection(ti)]) for (t,ti) in t_ref]
+        
         # Track assignment:
         #   - Each track is assigned at most one detection
         #   - Each detection is assigned to at most one track.  
         #   - Assignment is the highest confidence maximum overlapping detection within tracking gate
         trackconf = {t.id():t.confidence(samples=trackconfsamples) for (t, ti) in t_ref}
         assignments = [(t, d.confidence(), d.iou(ti), d.shapeiou(ti), d.maxcover(ti), d)
-                       for (t, ti) in t_ref
-                       for d in objdets
-                       if t.category() == d.category() and ti.hasintersection(d)]
+                       for (i, (t, ti)) in enumerate(t_ref)
+                       for (j,d) in enumerate(objdets)
+                       if (t.category() == d.category() and (len(trackidx[i].intersection(detidx[j]))>0) and ti.hasintersection(d))]
         assigned = set([])        
         posconf = min([d.confidence() for d in objdets]) if len(objdets)>0 else 0
         for (t, conf, iou, shapeiou, cover, d) in sorted(assignments, key=lambda x: (x[1]+posconf)*(x[2]+x[3]+x[4])+trackconf[x[0].id()], reverse=True):
@@ -2786,7 +2801,7 @@ class Scene(VideoCategory):
         # Track spawn from unassigned and unexplained detections 
         spawned = set([])
         for d in objdets:
-            if d.id() not in assigned and d.confidence() >= minconf and not any([t.endbox().maxcover(d) >= 0.8 for (t,ti) in t_dets if t.category() == d.category()]):
+            if d.id() not in assigned and d.confidence() >= minconf and not any([t.linear_extrapolation(frame, dt=maxhistory, shape=False).maxcover(d) >= 0.8 for (t,ti) in t_ref if t.category() == d.category()]):
                 spawned.add(self.add(vipy.object.Track(keyframes=[frame], boxes=[d.clone()], category=d.category(), framerate=self.framerate()), rangecheck=False))  # clone required
                 
         # Non-maximum suppression
