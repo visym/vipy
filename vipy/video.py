@@ -295,15 +295,12 @@ class Video(object):
                     raise
                 return self
             
-            #def __del__(self):
-            #    self.close()
-
             def __call__(self, im):
                 """alias for write()"""
                 return self.write(im)
 
             def _read_pipe(self):
-                p = self._video._ffmpeg.output('pipe:', format='rawvideo', pix_fmt='rgb24').global_args('-loglevel', 'debug' if vipy.globals.isdebug() else 'quiet').run_async(pipe_stdout=True)
+                p = self._video._ffmpeg.output('pipe:', format='rawvideo', pix_fmt='rgb24').global_args('-loglevel', 'debug' if vipy.globals.isdebug() else 'quiet').run_async(pipe_stdout=True, pipe_stderr=True)
                 assert p is not None, "Invalid read pipe"
                 return p
             
@@ -326,6 +323,9 @@ class Video(object):
                             in_bytes = pipe.stdout.read(height * width * 3)
                             if not in_bytes:
                                 queue.put(None)
+                                pipe.poll()
+                                if pipe.returncode != 0:
+                                    raise ValueError('Stream iterator failed with error "%s"' % str(pipe.stderr.readlines()))
                                 event.wait()
                                 break
                             else:
@@ -377,6 +377,9 @@ class Video(object):
                         in_bytes = pipe.stdout.read(height * width * 3)
                         if not in_bytes:
                             queue.put( (None, None) )
+                            pipe.poll()
+                            if pipe.returncode != 0:
+                                raise ValueError('Clip stream iterator failed with error "%s"' % str(pipe.stderr.readlines()))                                
                             event.wait()
                             break
                         else:
@@ -422,6 +425,9 @@ class Video(object):
                         if not in_bytes:
                             queue.put((frameindex, video.clone(shallow=True).array(np.stack(frames))))
                             queue.put((None, None))
+                            pipe.poll()
+                            if pipe.returncode != 0:
+                                raise ValueError('Batch stream iterator failed with error "%s"' % str(pipe.stderr.readlines()))                                                                
                             event.wait()
                             break
                         else:

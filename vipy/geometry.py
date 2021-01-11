@@ -586,15 +586,15 @@ class BoundingBox(object):
         if not intersects:
             return False
         
-        aoi = self.area_of_intersection(bb, strict=False)
-        if iou is not None or cover is not None or bbcover is not None:
+        elif iou is not None or cover is not None or bbcover is not None:
+            aoi = self.area_of_intersection(bb, strict=False)            
             bbarea = bb.area() if (bbcover is not None or iou is not None) else 0
             area = self.area() if (cover is not None or iou is not None) else 0
             return (((iou is not None) and ((aoi / (area+bbarea-aoi)) >= iou)) or
                     ((cover is not None) and ((aoi / area) >= cover)) or
                     ((bbcover is not None) and ((aoi / bbarea) >= bbcover)))
         else:
-            return aoi > 0
+            return True
 
     def union(self, bb):
         """Union of one or more bounding boxes with this box"""        
@@ -928,7 +928,7 @@ class BoundingBox(object):
     def grid(self, rows, cols):
         """Split a bounding box into the smallest grid of non-overlapping bounding boxes such that the union is the original box"""
         (w,h) = (self.width()/cols, self.height()/rows)
-        return [BoundingBox(xmin=x, ymin=y, width=w, height=h) for x in np.arange(0, self._xmax, w) for y in np.arange(0, self._ymax, h)]
+        return [BoundingBox(xmin=x, ymin=y, width=w, height=h) for x in np.arange(self._xmin, self._xmax, w) for y in np.arange(self._ymin, self._ymax, h)]
 
 class Ellipse():
     __slots__ = ['_major', '_minor', '_xcenter', '_ycenter', '_phi']

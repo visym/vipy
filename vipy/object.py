@@ -852,7 +852,7 @@ def non_maximum_suppression(detlist, conf, iou, bycategory=False, cover=None, co
     suppressed = set([])
     detlist = [d for d in detlist if d.confidence() > conf and not d.isdegenerate()]  # valid
     detlist = sorted(detlist, key=lambda d: d.confidence(), reverse=True)  # biggest to smallest
-    grid = detlist[0].clone().union(detlist).grid(gridsize[0], gridsize[1]) if len(detlist) > 0 else []  
+    grid = detlist[0].clone().union(detlist).grid(gridsize[0], gridsize[1]) if len(detlist) > 0 else []
     bbidx = [set([k for (k,bbg) in enumerate(grid) if bbg.hasintersection(bb)]) for bb in detlist]  # spatial index
     for (i, di) in enumerate(detlist):
         if i in suppressed:
