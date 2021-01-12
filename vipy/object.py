@@ -226,12 +226,12 @@ class Track(object):
 
     def __getitem__(self, k):
         """Interpolate the track at frame k"""
-        return self._linear_interpolation(k)
+        return self.linear_interpolation(k)
 
     def __iter__(self):
         """Iterate over the track interpolating each frame from min(keyframes) to max(keyframes)"""
         for k in range(self.startframe(), self.endframe()+1):
-            yield self._linear_interpolation(k)
+            yield self.linear_interpolation(k)
 
     def __len__(self):
         """The length of a track is the total number of interpolated frames, or zero if degenerate"""
@@ -348,7 +348,7 @@ class Track(object):
     def endframe(self):
         return self._keyframes[-1] if len(self._keyframes)>0 else None  # assumes sorted order
 
-    def _linear_interpolation(self, f):
+    def linear_interpolation(self, f, id=True):
         """Linear bounding box interpolation at frame=k given observed boxes (x,y,w,h) at keyframes.  
         This returns a vipy.object.Detection() which is the interpolation of the Track() at frame k
         If self._boundary='extend', then boxes are repeated if the interpolation is outside the keyframes
@@ -376,7 +376,8 @@ class Track(object):
                       ymax=bi._ymax + c*(bj._ymax - bi._ymax),   # float(np.interp(k, self._keyframes, [bb._ymax for bb in self._keyboxes])),
                       confidence=bi.confidence(),  # may be None
                       category=self.category(),
-                      shortlabel=self.shortlabel())
+                      shortlabel=self.shortlabel(),
+                      id=id)
         d.attributes['trackid'] = self.id()  # for correspondence of detections to tracks
         return d if self._boundary == 'extend' or self.during(f) else None
 
@@ -794,14 +795,15 @@ class Track(object):
         return self
 
     def shape_invariant_velocity(self, f, dt=30):
-        """Return the (x,y) track velocity at frame f in units of pixels per frame computed by minimum mean finite differences of any box corner independent of changes in shape"""
-        assert f >= 0 and dt > 0 
-        kb = [(kf, bb) for (kf,bb) in zip(self._keyframes, self._keyboxes) if kf >= f-dt]
-        if len(kb) <= 2:
-            return (0,0)        
-        ((kfe, bbe), kb) = (kb[-1], kb[0:-1])
-        vx = float(np.mean([((min([(bbe._xmin - bb._xmin), (bbe._xmax - bb._xmax)], key=abs)/float(kfe-kf)) if (kfe-kf)!=0 else 0) for (kf,bb) in kb]))
-        vy = float(np.mean([((min([(bbe._ymin - bb._ymin), (bbe._ymax - bb._ymax)], key=abs)/float(kfe-kf)) if (kfe-kf)!=0 else 0) for (kf,bb) in kb]))
+        """Return the (x,y) track velocity at frame f in units of pixels per frame computed by minimum mean finite differences of any box corner independent of changes in shape, over a finite time window of [f-dt, f]"""
+        assert f >= 0 and dt > 0
+        if len(self) < 2 or not (self.during(f) and self.during(f-dt)) :
+            return (0,0)
+        
+        kb = [((f-dt), self.linear_interpolation(f-dt, id=False))] + [(kf, bb) for (kf,bb) in zip(self._keyframes, self._keyboxes) if (kf > f-dt) and (kf < f)]
+        (kfe, bbe) = (f, self.linear_interpolation(f, id=False))
+        vx = float((1.0/len(kb))*sum([min([(bbe._xmin - bb._xmin), (bbe._xmax - bb._xmax)], key=abs)/float(kfe-kf) for (kf,bb) in kb]))
+        vy = float((1.0/len(kb))*sum([min([(bbe._ymin - bb._ymin), (bbe._ymax - bb._ymax)], key=abs)/float(kfe-kf) for (kf,bb) in kb]))
         return (vx, vy)
 
     def velocity_x(self, f, dt=30):
@@ -857,12 +859,11 @@ def non_maximum_suppression(detlist, conf, iou, bycategory=False, cover=None, gr
     for (i, di) in enumerate(detlist):
         if i in suppressed:
             continue
-        #ddi = di.clone().dilate(coverdilation) if coverdilation != 1.0 else di
-        #ddiarea = ddi.area() if coverdilation != 1.0 else area[i]
         for (j, dj) in enumerate(detlist[i+1:], start=i+1):
-            #if (j not in suppressed) and (bycategory is False or di._label == dj._label) and ddi.hasintersection(dj) and ((di.iou(dj) >= iou) or (cover is not None and ddi.cover(dj) >= cover)):
-            #if (j not in suppressed) and (bycategory is False or di._label == dj._label) and (len(bbidx[i].intersection(bbidx[j]))>0) and ((cover is not None and ddi.hasintersection(dj, maxcover=cover, area=ddiarea, otherarea=area[j])) or di.hasintersection(dj, iou=iou, area=area[i], otherarea=area[j])):
-            if (j not in suppressed) and (bycategory is False or di._label == dj._label) and (len(bbidx[i].intersection(bbidx[j]))>0) and ((cover is not None and di.hasintersection(dj, maxcover=cover, area=area[i], otherarea=area[j])) or di.hasintersection(dj, iou=iou, area=area[i], otherarea=area[j])):  
+            if ((j not in suppressed) and
+                (bycategory is False or di._label == dj._label) and
+                (len(bbidx[i].intersection(bbidx[j]))>0) and
+                ((cover is not None and di.hasintersection(dj, maxcover=cover, area=area[i], otherarea=area[j])) or di.hasintersection(dj, iou=iou, area=area[i], otherarea=area[j]))):  
                 suppressed.add(j)
                 
     return sorted([d for (j,d) in enumerate(detlist) if j not in suppressed], key=lambda x: x.confidence())  # smallest to biggest confidence for display layering

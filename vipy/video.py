@@ -249,6 +249,7 @@ class Video(object):
         """Iterator to yield frames streaming from video
         
            * Using this iterator may affect PDB debugging due to stdout/stdin redirection.  Use ipdb instead.
+           * FFMPEG stdout pipe may screw up bash shell newlines, requiring issuing command "reset"  
 
         """
 
@@ -266,8 +267,6 @@ class Video(object):
                     os.remove(self._outfile)                
                 self._shape = self._video.shape() if (not self._write) or (self._write and self._video.canload()) else None  # shape for write can be defined by first frame
                 assert (write is True or overwrite is True) or self._shape is not None, "Invalid video '%s'" % (str(v))
-                #self._thread = None
-                #self._queue = None
                 self._queuesize = bufsize
                 
             def __enter__(self):
@@ -379,7 +378,7 @@ class Video(object):
                             queue.put( (None, None) )
                             pipe.poll()
                             if pipe.returncode != 0:
-                                raise ValueError('Clip stream iterator failed with error "%s"' % str(pipe.stderr.readlines()))                                
+                                raise ValueError('Clip stream iterator failed with error "%s"' % str(pipe.stderr.readlines()))
                             event.wait()
                             break
                         else:
@@ -450,7 +449,7 @@ class Video(object):
                 while True:
                     (k,vb) = q.get()
                     if k is not None:
-                        yield vb  # FIXME: should clone activities/tracks
+                        yield vb  # FIXME: should clone shift and truncate activities/tracks
                     else:
                         e.set()
                         break
@@ -2755,13 +2754,16 @@ class Scene(VideoCategory):
                         break
         return self
 
-    def assign(self, frame, dets, minconf=0.2, maxhistory=5, activityiou=0.5, trackcover=0.2, trackconfsamples=4, gridsize=(4,7)):
+    def assign(self, frame, dets, minconf=0.2, maxhistory=5, activityiou=0.5, trackcover=0.2, trackconfsamples=4, gridsize=(4,7), gate=0):
         """Assign a list of vipy.object.Detections at frame k to scene by greedy track association. In-place update.
         
            * miniou [float]: the minimum temporal IOU for activity assignment
            * minconf [float]: the minimum confidence for a detection to be considered as a new track
-           * maxhistory [int]:  the maximum propagation length of a track with no measurements.  
+           * maxhistory [int]:  the maximum propagation length of a track with no measurements, the frame history ised for velocity estimates  
            * trackconfsamples [int]:  the number of uniformly spaced samples along a track to compute a track confidence
+           * gridsize: the (rows,cols) grid used as a spatial index for nearest neighbor lookups to assign detections to tracks
+           * gate [int]: the gating distance in pixels used for assignment of fast moving detections.  Useful for low detection framerates if a detection does not overlap with the track.
+           * trackcover [float]: the minimum cover necessary for assignment of a detection to a track
 
         """
         assert dets is None or all([isinstance(d, vipy.object.Detection) or isinstance(d, vipy.activity.Activity) for d in tolist(dets)]), "invalid input"
@@ -2795,13 +2797,13 @@ class Scene(VideoCategory):
             #   - Each detection is assigned to at most one track.  
             #   - Assignment is the highest confidence maximum overlapping detection within tracking gate
             trackconf = {t.id():t.confidence(samples=trackconfsamples) for (t, ti) in t_ref}
-            assignments = [(t, d.confidence(), d.iou(ti, area=detarea[j], otherarea=trackarea[i]), d.shapeiou(ti, area=detarea[j], otherarea=trackarea[i]), d.maxcover(ti, area=detarea[j], otherarea=trackarea[i]), d)
+            assignments = [(t, d.confidence(), d.iou(ti, area=detarea[j], otherarea=trackarea[i]), d.shapeiou(ti, area=detarea[j], otherarea=trackarea[i]), d.maxcover(ti, area=detarea[j], otherarea=trackarea[i]), d, ti)
                            for (i, (t, ti)) in enumerate(t_ref)
                            for (j,d) in enumerate(objdets)
                            if (t.category() == d.category() and (len(trackidx[i].intersection(detidx[j]))>0) and ti.hasintersection(d))]
             assigned = set([])        
             posconf = min([d.confidence() for d in objdets]) if len(objdets)>0 else 0
-            for (t, conf, iou, shapeiou, cover, d) in sorted(assignments, key=lambda x: (x[1]+posconf)*(x[2]+x[3]+x[4])+trackconf[x[0].id()], reverse=True):
+            for (t, conf, iou, shapeiou, cover, d, ti) in sorted(assignments, key=lambda x: (x[1]+posconf)*(x[2]+x[3]+x[4])+trackconf[x[0].id()], reverse=True):
                 if cover > (trackcover if len(t)>1 else 0):  # the highest confidence detection within the iou gate (or any overlap if not yet enough history for velocity estimate) 
                     if (t.id() not in assigned and d.id() not in assigned):  # not assigned yet, assign it!
                         self.track(t.id()).add(frame, d.clone())  # track assignment! (clone required)
@@ -2809,23 +2811,18 @@ class Scene(VideoCategory):
                         assigned.add(d.id())  # mark detection as assigned
                 
             # Track spawn from unassigned and unexplained detections 
-            spawned = set([])
-            for (j,d) in enumerate(objdets):
-                if d.id() not in assigned and d.confidence() >= minconf and not any([t.endbox().maxcover(d, otherarea=detarea[j]) >= 0.8 or t.linear_extrapolation(frame, dt=maxhistory, shape=False).maxcover(d, otherarea=detarea[j]) >= 0.8 for (i,(t,ti)) in enumerate(t_ref) if t.category() == d.category()]):
-                    spawned.add(self.add(vipy.object.Track(keyframes=[frame], boxes=[d.clone()], category=d.category(), framerate=self.framerate()), rangecheck=False))  # clone required
-                    
-            # Non-maximum suppression
-            #if len(spawned) > 0:
-            #    deleted = set([])
-            #    trackconf = [(trackconf[t.id()] if t.id() in trackconf else t.confidence(samples=trackconfsamples), t, t.linear_extrapolation(frame, dt=maxhistory, shape=False))
-            #                 for t in self.tracklist() if ((frame - t.endframe()) <= maxhistory)]
-            #    for (ci, ti, di) in sorted(trackconf, key=lambda x: x[0], reverse=True):
-            #        for (cj, tj, dj) in trackconf:
-            #            if (cj < ci) and (ti.category() == tj.category()) and (ti.id() != tj.id()) and (tj.id() not in deleted and ti.id() not in deleted):
-            #                if di.maxcover(dj) >= 0.8:   # track overlap (to within 80% uncertainty of box position)  
-            #                    deleted.add(tj.id())
-            #    if len(deleted) > 0:
-            #        self.trackmap(lambda t: t.delete(frame) if t.id() in deleted else t).trackfilter(lambda t: len(t)>0)
+            for (j,d) in enumerate(objdets):                
+                if (d.id() not in assigned):
+                    if (d.confidence() >= minconf and not any([t.linear_extrapolation(frame, dt=maxhistory, shape=False).maxcover(d, otherarea=detarea[j]) >= 0.7 for (i,(t,ti)) in enumerate(t_ref) if t.category() == d.category()])):
+                        gated = [(t, t.linear_extrapolation(frame, dt=maxhistory, shape=False)) for (t,ti) in t_ref if (t.id() not in assigned and t.category() == d.category())] if gate>0 else []
+                        gated = sorted([(t, ti) for (t, ti) in gated if ti.hasintersection(d, gate=gate)], key=lambda x: d.sqdist(x[1]))
+                        if len(gated) > 0:
+                            self.track(gated[0][0].id()).add(frame, d.clone())  # track assignment! (clone required)
+                            assigned.add(gated[0][0].id())
+                            assigned.add(d.id())
+                        else:
+                            assigned.add(self.add(vipy.object.Track(keyframes=[frame], boxes=[d.clone()], category=d.category(), framerate=self.framerate()), rangecheck=False))  # clone required
+                            assigned.add(d.id())
 
         # Activity assignment
         if len(activitydets) > 0:
