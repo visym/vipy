@@ -44,12 +44,21 @@ def _test_stream():
 
     v = vipy.video.Video(mp4file)
     for (k,vb) in enumerate(v.stream().batch(8)):
+        if k == 0:
+            break
+    for (k,vc) in enumerate(v.stream().clip(8,1)):
+        if k == 0:
+            break
+    assert np.allclose(vb.array(), vc.array())
+
+    for (k,vb) in enumerate(v.stream().batch(8)):
         if k == 1:
             break
     for (k,vc) in enumerate(v.stream().clip(8,1)):
-        if k == 15:
+        if k == 8:
             break
     assert np.allclose(vb.array(), vc.array())
+    
     print('[test_video.video]: stream batch   PASSED')
     print('[test_video.video]: stream clip  PASSED')               
     
