@@ -403,8 +403,7 @@ class Track(object):
     def during(self, k_start, k_end=None):
         """Is frame during the time interval (startframe, endframe) inclusive?"""        
         k_end = k_start+1 if k_end is None else k_end
-        #return len(self)>0 and any([k >= self.startframe() and k <= self.endframe() for k in range(k_start, k_end)])
-        return len(self)>0 and ((k_start >= self._keyframes[0] and k_start <= self._keyframes[-1]) or (k_end >= self._keyframes[0] and k_end <= self._keyframes[-1]))
+        return len(self)>0 and any([k >= self.startframe() and k <= self.endframe() for k in range(k_start, k_end)])
 
     def during_interval(self, k_start, k_end):
         return self.during(k_start, k_end)
@@ -421,10 +420,10 @@ class Track(object):
         return self
 
     def truncate(self, startframe=None, endframe=None):
-        """Truncate a track so that any keyframes less than startframe or greater than or equal to endframe are removed"""
+        """Truncate a track so that any keyframes less than startframe or greater than endframe are removed"""
         keyframes = copy.deepcopy(self.keyframes())
         for k in keyframes:
-            if ((startframe is not None and k < startframe) or (endframe is not None and k >= endframe)):
+            if ((startframe is not None and k < startframe) or (endframe is not None and k > endframe)):
                 self.delete(k)  # will also delete corresponding keybox
         return self
         
@@ -841,7 +840,7 @@ class Track(object):
         return (bbs.maxcover(bbe) < mincover) if (bbs is not None and bbe is not None) else False
 
 
-def non_maximum_suppression(detlist, conf, iou, bycategory=False, cover=None, coverdilation=1.2, gridsize=(4,7)):
+def non_maximum_suppression(detlist, conf, iou, bycategory=False, cover=None, gridsize=(4,7)):
     """Compute greedy non-maximum suppression of a list of vipy.object.Detection() based on spatial IOU threshold (iou) and cover threhsold (cover) sorted by confidence (conf)"""
     assert all([isinstance(d, Detection) for d in detlist])
     assert all([d.confidence() is not None for d in detlist])
@@ -854,14 +853,18 @@ def non_maximum_suppression(detlist, conf, iou, bycategory=False, cover=None, co
     detlist = sorted(detlist, key=lambda d: d.confidence(), reverse=True)  # biggest to smallest
     grid = detlist[0].clone().union(detlist).grid(gridsize[0], gridsize[1]) if len(detlist) > 0 else []
     bbidx = [set([k for (k,bbg) in enumerate(grid) if bbg.hasintersection(bb)]) for bb in detlist]  # spatial index
+    area = [bb.area() for bb in detlist]  
     for (i, di) in enumerate(detlist):
         if i in suppressed:
             continue
-        ddi = di.clone().dilate(coverdilation) if coverdilation != 1.0 else di
+        #ddi = di.clone().dilate(coverdilation) if coverdilation != 1.0 else di
+        #ddiarea = ddi.area() if coverdilation != 1.0 else area[i]
         for (j, dj) in enumerate(detlist[i+1:], start=i+1):
             #if (j not in suppressed) and (bycategory is False or di._label == dj._label) and ddi.hasintersection(dj) and ((di.iou(dj) >= iou) or (cover is not None and ddi.cover(dj) >= cover)):
-            if (j not in suppressed) and (bycategory is False or di._label == dj._label) and (len(bbidx[i].intersection(bbidx[j]))>0) and ((cover is not None and ddi.hasintersection(dj, cover=cover)) or di.hasintersection(dj, iou=iou)):
+            #if (j not in suppressed) and (bycategory is False or di._label == dj._label) and (len(bbidx[i].intersection(bbidx[j]))>0) and ((cover is not None and ddi.hasintersection(dj, maxcover=cover, area=ddiarea, otherarea=area[j])) or di.hasintersection(dj, iou=iou, area=area[i], otherarea=area[j])):
+            if (j not in suppressed) and (bycategory is False or di._label == dj._label) and (len(bbidx[i].intersection(bbidx[j]))>0) and ((cover is not None and di.hasintersection(dj, maxcover=cover, area=area[i], otherarea=area[j])) or di.hasintersection(dj, iou=iou, area=area[i], otherarea=area[j])):  
                 suppressed.add(j)
+                
     return sorted([d for (j,d) in enumerate(detlist) if j not in suppressed], key=lambda x: x.confidence())  # smallest to biggest confidence for display layering
 
 

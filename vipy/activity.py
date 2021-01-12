@@ -219,9 +219,9 @@ class Activity(object):
         """Is frame during the time interval (startframe, endframe) inclusive?"""
         return int(frame) >= self._startframe and int(frame) <= self._endframe
 
-    def during_interval(self, startframe, endframe):
+    def during_interval(self, startframe, endframe, inclusive=False):
         """Is the activity occurring for any frames within the interval [startframe, endframe) (non-inclusive of endframe)?"""
-        return any([self.during(f) for f in range(startframe, endframe)]) if startframe <= endframe else False
+        return any([self.during(f) for f in range(startframe, endframe+(0 if not inclusive else 1))]) if startframe <= endframe else False
 
     def union(self, other, confweight=0.5):
         """Compute the union of the new activity other to this activity by updating the start and end times and computing the mean confidence.

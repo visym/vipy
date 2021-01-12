@@ -513,7 +513,7 @@ class BoundingBox(object):
         assert isinstance(bb, BoundingBox), "Invalid BoundingBox() input of type '%s'" % str(type(bb))
         return np.exp(-self.sqdist(bb)/(float(2*self.maxdim()*self.maxdim()) if sigma is None else float(2.0*sigma*sigma)))
 
-    def iou(self, bb):
+    def iou(self, bb, area=None, otherarea=None):
         """area of intersection / area of union"""
         assert bb is None or isinstance(bb, BoundingBox), "Invalid BoundingBox() input of type '%s'" % str(type(bb))        
         if bb is None:
@@ -526,7 +526,9 @@ class BoundingBox(object):
             return 0  # invalid (no overlap), early exit
 
         area_intersection = w * h
-        area_union = (self.area() + bb.area() - area_intersection)
+        area_union = ((self.area() if area is None else area) +
+                      (bb.area() if otherarea is None else otherarea) -
+                      area_intersection)
         return area_intersection / float(area_union)
 
     def intersection_over_union(self, bb):
@@ -552,19 +554,21 @@ class BoundingBox(object):
         """Fraction of this bounding box intersected by other bbox (bb)"""        
         return self.area_of_intersection(bb) / float(self.area())
 
-    def maxcover(self, bb):
+    def maxcover(self, bb, area=None, otherarea=None):
         """The maximum cover of self to bb and bb to self"""
-        aoi = self.area_of_intersection(bb)
-        return float(max(aoi/self.area(), aoi/bb.area()))
+        aoi = self.area_of_intersection(bb, strict=False)
+        return float(max(aoi/(self.area() if area is None else area), aoi/(bb.area() if otherarea is None else otherarea)))
     
-    def shapeiou(self, bb):
+    def shapeiou(self, bb, area=None, otherarea=None):
         """Shape IoU is the IoU with the upper left corners aligned. This measures the deformation of the two boxes by removing the effect of translation"""
         #return self.iou(bb.clone().translate(dx=self._xmin-bb._xmin, dy=self._ymin-bb._ymin))  # equivalent to
         assert isinstance(bb, BoundingBox), "Invalid input - must be BoundingBox()"
         w = min(self._xmax, bb._xmax + (self._xmin-bb._xmin)) - max(self._xmin, bb._xmin + (self._xmin-bb._xmin))
         h = min(self._ymax, bb._ymax + (self._ymin-bb._ymin)) - max(self._ymin, bb._ymin + (self._ymin-bb._ymin))
         area_intersection = w * h
-        area_union = (self.area() + bb.area() - area_intersection)
+        area_union = ((self.area() if area is None else area) +
+                      (bb.area() if otherarea is None else otherarea)
+                      - area_intersection)
         return area_intersection / float(area_union)
         
     def intersection(self, bb, strict=True):
@@ -578,21 +582,22 @@ class BoundingBox(object):
             raise ValueError('Degenerate intersection for bounding boxes "%s" and "%s"' % (str(bb), str(self)))
         return self
 
-    def hasintersection(self, bb, iou=None, cover=None, bbcover=None):
+    def hasintersection(self, bb, iou=None, cover=None, maxcover=None, bbcover=None, area=None, otherarea=None):
         """Return true if self and bb overlap by any amount, or by the cover threshold (if provided) or the iou threshold (if provided).  This is a convenience function that allows for shared computation for fast non-maximum suppression."""
 
-        intersects = (((self._xmax if self._xmax < bb._xmax else bb._xmax) - (self._xmin if self._xmin > bb._xmin else bb._xmin)) > 0 and
-                      ((self._ymax if self._ymax < bb._ymax else bb._ymax) - (self._ymin if self._ymin > bb._ymin else bb._ymin)) > 0)
+        intersects = (((self._xmax if self._xmax < bb._xmax else bb._xmax) - (self._xmin if self._xmin > bb._xmin else bb._xmin)) >= 0 and
+                      ((self._ymax if self._ymax < bb._ymax else bb._ymax) - (self._ymin if self._ymin > bb._ymin else bb._ymin)) >= 0)
         if not intersects:
             return False
         
-        elif iou is not None or cover is not None or bbcover is not None:
+        elif maxcover is not None or iou is not None or cover is not None or bbcover is not None:
             aoi = self.area_of_intersection(bb, strict=False)            
-            bbarea = bb.area() if (bbcover is not None or iou is not None) else 0
-            area = self.area() if (cover is not None or iou is not None) else 0
-            return (((iou is not None) and ((aoi / (area+bbarea-aoi)) >= iou)) or
+            otherarea = otherarea if otherarea is not None else (bb.area() if (maxcover is not None or bbcover is not None or iou is not None) else 0)
+            area = area if area is not None else (self.area() if (maxcover is not None or cover is not None or iou is not None) else 0)
+            return (((maxcover is not None) and (max(aoi/area, aoi/otherarea) > maxcover)) or
+                    ((iou is not None) and ((aoi / (area+otherarea-aoi)) >= iou)) or
                     ((cover is not None) and ((aoi / area) >= cover)) or
-                    ((bbcover is not None) and ((aoi / bbarea) >= bbcover)))
+                    ((bbcover is not None) and ((aoi / otherarea) >= bbcover)))
         else:
             return True
 

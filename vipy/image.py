@@ -1406,9 +1406,9 @@ class Scene(ImageCategory):
         self._objectlist = [obj for obj in self._objectlist if f(obj) is True]
         return self
 
-    def nms(self, conf, iou, cover=0.8, coverdilation=1.2):
+    def nms(self, conf, iou, cover=0.8):
         """Non-maximum supporession of objects() by category based on confidence and spatial IoU and cover thresholds"""
-        return self.objects( vipy.object.non_maximum_suppression(self.objects(), conf=conf, iou=iou, cover=cover, bycategory=True, coverdilation=coverdilation) )
+        return self.objects( vipy.object.non_maximum_suppression(self.objects(), conf=conf, iou=iou, cover=cover, bycategory=True) )
 
     def intersection(self, other, miniou, bycategory=True):
         """Return a Scene() containing the objects in both self and other, that overlap by miniou with greedy assignment"""

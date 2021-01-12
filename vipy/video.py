@@ -386,7 +386,7 @@ class Video(object):
                             frames.append(np.frombuffer(in_bytes, np.uint8).reshape([height, width, 3]))
                             
                         frames.pop(0) if len(frames) > n else None
-                        if frameindex % m == 0:
+                        if (frameindex-1) % m == 0 and len(frames) >= n:
                             queue.put( (frameindex, video.clone(shallow=True).array(np.stack(frames[-n:]))) )  # requires copy, expensive operation
                         elif continuous:
                             queue.put((frameindex, None))
@@ -404,8 +404,8 @@ class Video(object):
                 while True:
                     (k,vc) = q.get()
                     if k is not None:
-                        yield (vc.activities([a.clone().offset(-k+n).truncate(0,n) for a in self._video.activitylist() if a.during_interval(k-n, k)])
-                               .tracks([t.clone().offset(-k+n).truncate(0,n) for t in self._video.tracklist() if t.during_interval(k-n, k)])) if vc is not None and isinstance(vc, vipy.video.Scene) else vc
+                        yield (vc.activities([a.clone().offset(-k+n-1).truncate(0,n) for a in self._video.activitylist() if a.during_interval(k-n+1, k, inclusive=True)]) 
+                               .tracks([t.clone().offset(-k+n-1).truncate(0,n) for t in self._video.tracklist() if t.during_interval(k-n+1, k)])) if (vc is not None and isinstance(vc, vipy.video.Scene)) else vc
                     else:
                         e.set()
                         break
@@ -2778,64 +2778,69 @@ class Scene(VideoCategory):
         objdets = [d for d in dets if isinstance(d, vipy.object.Detection)]
         activitydets = [d for d in dets if isinstance(d, vipy.activity.Activity)]        
 
-        # Track propagation:  Constant velocity motion model for active tracks 
-        t_ref = [(t, t.linear_extrapolation(frame, dt=maxhistory, shape=False)) for t in self.tracklist() if ((frame - t.endframe()) <= maxhistory)]
+        # Object detection to track assignment
+        if len(objdets) > 0:
+            # Track propagation:  Constant velocity motion model for active tracks 
+            t_ref = [(t, t.linear_extrapolation(frame, dt=maxhistory, shape=False)) for t in self.tracklist() if ((frame - t.endframe()) <= maxhistory)]
 
-        # Spatial index
-        grid = objdets[0].clone().union(objdets).grid(gridsize[0], gridsize[1]) if len(objdets) > 0 else []
-        detidx = [set([k for (k,bbg) in enumerate(grid) if bbg.hasintersection(bb)]) for bb in objdets]
-        trackidx = [set([k for (k,bbg) in enumerate(grid) if bbg.hasintersection(ti)]) for (t,ti) in t_ref]
+            # Spatial index
+            grid = objdets[0].clone().union(objdets).grid(gridsize[0], gridsize[1]) if len(objdets) > 0 else []
+            detidx = [set([k for (k,bbg) in enumerate(grid) if bbg.hasintersection(bb)]) for bb in objdets]
+            trackidx = [set([k for (k,bbg) in enumerate(grid) if bbg.hasintersection(ti)]) for (t,ti) in t_ref]
+            trackarea = [ti.area() for (t,ti) in t_ref]
+            detarea = [d.area() for d in objdets]
         
-        # Track assignment:
-        #   - Each track is assigned at most one detection
-        #   - Each detection is assigned to at most one track.  
-        #   - Assignment is the highest confidence maximum overlapping detection within tracking gate
-        trackconf = {t.id():t.confidence(samples=trackconfsamples) for (t, ti) in t_ref}
-        assignments = [(t, d.confidence(), d.iou(ti), d.shapeiou(ti), d.maxcover(ti), d)
-                       for (i, (t, ti)) in enumerate(t_ref)
-                       for (j,d) in enumerate(objdets)
-                       if (t.category() == d.category() and (len(trackidx[i].intersection(detidx[j]))>0) and ti.hasintersection(d))]
-        assigned = set([])        
-        posconf = min([d.confidence() for d in objdets]) if len(objdets)>0 else 0
-        for (t, conf, iou, shapeiou, cover, d) in sorted(assignments, key=lambda x: (x[1]+posconf)*(x[2]+x[3]+x[4])+trackconf[x[0].id()], reverse=True):
-            if cover > (trackcover if len(t)>1 else 0):  # the highest confidence detection within the iou gate (or any overlap if not yet enough history for velocity estimate) 
-                if (t.id() not in assigned and d.id() not in assigned):  # not assigned yet, assign it!
-                    self.track(t.id()).add(frame, d.clone())  # track assignment! (clone required)
-                    assigned.add(t.id())  # cannot assign again to this track
-                    assigned.add(d.id())  # mark detection as assigned
+            # Track assignment:
+            #   - Each track is assigned at most one detection
+            #   - Each detection is assigned to at most one track.  
+            #   - Assignment is the highest confidence maximum overlapping detection within tracking gate
+            trackconf = {t.id():t.confidence(samples=trackconfsamples) for (t, ti) in t_ref}
+            assignments = [(t, d.confidence(), d.iou(ti, area=detarea[j], otherarea=trackarea[i]), d.shapeiou(ti, area=detarea[j], otherarea=trackarea[i]), d.maxcover(ti, area=detarea[j], otherarea=trackarea[i]), d)
+                           for (i, (t, ti)) in enumerate(t_ref)
+                           for (j,d) in enumerate(objdets)
+                           if (t.category() == d.category() and (len(trackidx[i].intersection(detidx[j]))>0) and ti.hasintersection(d))]
+            assigned = set([])        
+            posconf = min([d.confidence() for d in objdets]) if len(objdets)>0 else 0
+            for (t, conf, iou, shapeiou, cover, d) in sorted(assignments, key=lambda x: (x[1]+posconf)*(x[2]+x[3]+x[4])+trackconf[x[0].id()], reverse=True):
+                if cover > (trackcover if len(t)>1 else 0):  # the highest confidence detection within the iou gate (or any overlap if not yet enough history for velocity estimate) 
+                    if (t.id() not in assigned and d.id() not in assigned):  # not assigned yet, assign it!
+                        self.track(t.id()).add(frame, d.clone())  # track assignment! (clone required)
+                        assigned.add(t.id())  # cannot assign again to this track
+                        assigned.add(d.id())  # mark detection as assigned
                 
-        # Track spawn from unassigned and unexplained detections 
-        spawned = set([])
-        for d in objdets:
-            if d.id() not in assigned and d.confidence() >= minconf and not any([t.linear_extrapolation(frame, dt=maxhistory, shape=False).maxcover(d) >= 0.8 for (t,ti) in t_ref if t.category() == d.category()]):
-                spawned.add(self.add(vipy.object.Track(keyframes=[frame], boxes=[d.clone()], category=d.category(), framerate=self.framerate()), rangecheck=False))  # clone required
-                
-        # Non-maximum suppression
-        #if len(spawned) > 0:
-        #    deleted = set([])
-        #    trackconf = [(trackconf[t.id()] if t.id() in trackconf else t.confidence(samples=trackconfsamples), t, t.linear_extrapolation(frame, dt=maxhistory, shape=False))
-        #                 for t in self.tracklist() if ((frame - t.endframe()) <= maxhistory)]
-        #    for (ci, ti, di) in sorted(trackconf, key=lambda x: x[0], reverse=True):
-        #        for (cj, tj, dj) in trackconf:
-        #            if (cj < ci) and (ti.category() == tj.category()) and (ti.id() != tj.id()) and (tj.id() not in deleted and ti.id() not in deleted):
-        #                if di.maxcover(dj) >= 0.8:   # track overlap (to within 80% uncertainty of box position)  
-        #                    deleted.add(tj.id())
-        #    if len(deleted) > 0:
-        #        self.trackmap(lambda t: t.delete(frame) if t.id() in deleted else t).trackfilter(lambda t: len(t)>0)
+            # Track spawn from unassigned and unexplained detections 
+            spawned = set([])
+            for (j,d) in enumerate(objdets):
+                if d.id() not in assigned and d.confidence() >= minconf and not any([t.endbox().maxcover(d, otherarea=detarea[j]) >= 0.8 or t.linear_extrapolation(frame, dt=maxhistory, shape=False).maxcover(d, otherarea=detarea[j]) >= 0.8 for (i,(t,ti)) in enumerate(t_ref) if t.category() == d.category()]):
+                    spawned.add(self.add(vipy.object.Track(keyframes=[frame], boxes=[d.clone()], category=d.category(), framerate=self.framerate()), rangecheck=False))  # clone required
+                    
+            # Non-maximum suppression
+            #if len(spawned) > 0:
+            #    deleted = set([])
+            #    trackconf = [(trackconf[t.id()] if t.id() in trackconf else t.confidence(samples=trackconfsamples), t, t.linear_extrapolation(frame, dt=maxhistory, shape=False))
+            #                 for t in self.tracklist() if ((frame - t.endframe()) <= maxhistory)]
+            #    for (ci, ti, di) in sorted(trackconf, key=lambda x: x[0], reverse=True):
+            #        for (cj, tj, dj) in trackconf:
+            #            if (cj < ci) and (ti.category() == tj.category()) and (ti.id() != tj.id()) and (tj.id() not in deleted and ti.id() not in deleted):
+            #                if di.maxcover(dj) >= 0.8:   # track overlap (to within 80% uncertainty of box position)  
+            #                    deleted.add(tj.id())
+            #    if len(deleted) > 0:
+            #        self.trackmap(lambda t: t.delete(frame) if t.id() in deleted else t).trackfilter(lambda t: len(t)>0)
 
         # Activity assignment
-        assert len(activitydets) == 0 or all([d.actorid() in self.tracks() for d in activitydets]), "Invalid activity"
-        assigned = []
-        for d in sorted(activitydets, key=lambda a: a.startframe()):
-            for a in sorted(self.activitylist(), key=lambda a: a.startframe()):
-                if (a.category() == d.category()) and (a.actorid() == d.actorid()) and a.hasoverlap(d, activityiou): 
-                    a.union(d)  # activity assignment
-                    assigned.append(d.id())
+        if len(activitydets) > 0:
+            assert all([d.actorid() in self.tracks() for d in activitydets]), "Invalid activity"
+            assigned = []
+            for d in sorted(activitydets, key=lambda a: a.startframe()):
+                for a in sorted(self.activitylist(), key=lambda a: a.startframe()):
+                    if (a.category() == d.category()) and (a.actorid() == d.actorid()) and a.hasoverlap(d, activityiou): 
+                        a.union(d)  # activity assignment
+                        assigned.append(d.id())
         
-        # Activity construction from unassigned detections
-        for d in activitydets:
-            if d.id() not in assigned:
-                self.add(d.clone())  
+            # Activity construction from unassigned detections
+            for d in activitydets:
+                if d.id() not in assigned:
+                    self.add(d.clone())  
 
         return self
 
