@@ -311,7 +311,7 @@ class BoundingBox(object):
                 isinstance(self._ymax, int))
                 
     def int(self):
-        """Convert corners to integer with rounding"""
+        """Convert corners to integer with rounding, in-place update"""
         (w,h) = (int(np.round(self.bbwidth())), int(np.round(self.bbheight())))
         self._xmin = int(np.round(self._xmin))
         self._ymin = int(np.round(self._ymin))

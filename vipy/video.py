@@ -299,7 +299,7 @@ class Video(object):
                 return self.write(im)
 
             def _read_pipe(self):
-                p = self._video._ffmpeg.output('pipe:', format='rawvideo', pix_fmt='rgb24').global_args('-loglevel', 'debug' if vipy.globals.isdebug() else 'quiet').run_async(pipe_stdout=True, pipe_stderr=True)
+                p = self._video._ffmpeg.output('pipe:', format='rawvideo', pix_fmt='rgb24').global_args('-nostdin', '-loglevel', 'debug' if vipy.globals.isdebug() else 'quiet').run_async(pipe_stdout=True, pipe_stderr=True)
                 assert p is not None, "Invalid read pipe"
                 return p
             
@@ -1214,26 +1214,27 @@ class Video(object):
             self.array( np.pad(self.array(), ((0,0), (padheight,padheight), (padwidth,padwidth), (0,0)), mode='constant'), copy=False)  # this is very expensive, since np.pad() must copy (once in np.pad >=1.17)            
         return self
 
-    def crop(self, bb, zeropad=True):
+    def crop(self, bbi, zeropad=True):
         """Spatially crop the video using the supplied vipy.geometry.BoundingBox, can only be applied prior to load().
         """
-        assert isinstance(bb, vipy.geometry.BoundingBox), "Invalid input"
-        #assert not bb.isdegenerate() and bb.isnonnegative() 
-        bb = bb.int()
-        bbc = bb.clone().imclipshape(self.width(), self.height()).int()  # clipped box to image rectangle
-        if zeropad and bb != bbc and not bb.isdegenerate():
-            # Crop outside the image rectangle will segfault ffmpeg, pad video first (if zeropad=False, then rangecheck will not occur!)
-            self.zeropad(bb.width()-bbc.width(), bb.height()-bbc.height())     # cannot be called in derived classes
-            bb = bb.offset(bb.width()-bbc.width(), bb.height()-bbc.height())   # Shift boundingbox by padding
-        elif bb.isdegenerate():
+        assert isinstance(bbi, vipy.geometry.BoundingBox), "Invalid input"
+        bbc = bbi.clone().imclipshape(self.width(), self.height()).int()  # clipped box to image rectangle
+        bb = bbi.int() if zeropad else bbc  # use clipped box if not zeropad 
+
+        if bb.isdegenerate():
             return None
-        elif not zeropad:
-            bb = bbc  # use clipped box if not zeropad
-            
-        if not self.isloaded():
-            self._ffmpeg = self._ffmpeg.filter('crop', '%d' % bb.width(), '%d' % bb.height(), '%d' % bb.xmin(), '%d' % bb.ymin(), 0, 1)  # keep_aspect=False, exact=True
+        elif not self.isloaded():
+            if zeropad and bb != bbc:
+                # Crop outside the image rectangle will segfault ffmpeg, pad video first (if zeropad=False, then rangecheck will not occur!)
+                self.zeropad(int(np.ceil(bb.width()-bbc.width())), int(np.ceil(bb.height()-bbc.height())))     # cannot be called in derived classes
+                bb = bb.offset(int(np.ceil(bb.width()-bbc.width())), int(np.ceil(bb.height()-bbc.height())))   # Shift boundingbox by padding            
+            self._ffmpeg = self._ffmpeg.filter('crop', '%d' % bb.width(), '%d' % bb.height(), '%d' % bb.xmin(), '%d' % bb.ymin(), 0, 1)  # keep_aspect=False, exact=True        
         else:
-            self.array( bb.crop(self.array()), copy=False )  # in-place
+            self.array( bbc.crop(self.array()), copy=False )  # crop first, in-place, valid pixels only
+            if zeropad and bb != bbc:
+                ((dyb, dya), (dxb, dxa)) = ((max(0, int(abs(np.ceil(bb.ymin() - bbc.ymin())))), max(0, int(abs(np.ceil(bb.ymax() - bbc.ymax()))))),
+                                            (max(0, int(abs(np.ceil(bb.xmin() - bbc.xmin())))), max(0, int(abs(np.ceil(bb.xmax() - bbc.xmax()))))))
+                self._array = np.pad(self.load().array(), ((0,0), (dyb, dya), (dxb, dxa), (0, 0)), mode='constant')
         self.shape(shape=(bb.height(), bb.width()))  # manually set shape
         return self
 
@@ -2385,10 +2386,10 @@ class Scene(VideoCategory):
         assert isinstance(bb, vipy.geometry.BoundingBox), "Invalid input"
         bb = bb.int()
         bbc = bb.clone().imclipshape(self.width(), self.height()).int()
-        if zeropad and bb != bbc:
-            self.zeropad(bb.width()-bbc.width(), bb.height()-bbc.height())  
-            bb = bb.offset(bb.width()-bbc.width(), bb.height()-bbc.height())            
-        super().crop(bb, zeropad=False)  # range check handled here to correctly apply zeropad
+        #if zeropad and bb != bbc:
+        #    self.zeropad(bb.width()-bbc.width(), bb.height()-bbc.height())  
+        #    bb = bb.offset(bb.width()-bbc.width(), bb.height()-bbc.height())            
+        super().crop(bb, zeropad=zeropad)  # range check handled here to correctly apply zeropad
         bb = bb if zeropad else bbc
         self._tracks = {k:t.offset(dx=-bb.xmin(), dy=-bb.ymin()) for (k,t) in self.tracks().items()}
         return self
