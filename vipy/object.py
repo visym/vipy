@@ -867,7 +867,7 @@ def non_maximum_suppression(detlist, conf, iou, bycategory=False, cover=None, gr
         for (j, dj) in enumerate(islice(detlist, i+1, None), start=i+1):  # no-copy, equivalent to detlist[i+1:]
             if ((j not in suppressed) and
                 (bycategory is False or di._label == dj._label) and
-                (len(bbidx[i].intersection(bbidx[j]))>0) and
+                (not bbidx[i].isdisjoint(bbidx[j])) and
                 ((cover is not None and di.hasintersection(dj, maxcover=cover, area=area[i], otherarea=area[j])) or di.hasintersection(dj, iou=iou, area=area[i], otherarea=area[j]))):  
                 suppressed.add(j)
     detlist_nms = [d for (j,d) in enumerate(detlist) if j not in suppressed]  # filter

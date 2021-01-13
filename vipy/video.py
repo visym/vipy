@@ -2801,7 +2801,7 @@ class Scene(VideoCategory):
             assignments = [(t, d.confidence(), d.iou(ti, area=detarea[j], otherarea=trackarea[i]), d.shapeiou(ti, area=detarea[j], otherarea=trackarea[i]), d.maxcover(ti, area=detarea[j], otherarea=trackarea[i]), d)
                            for (i, (t, ti)) in enumerate(t_ref)
                            for (j,d) in enumerate(objdets)
-                           if (t.category() == d.category() and (len(trackidx[i].intersection(detidx[j]))>0) and ti.hasintersection(d))]
+                           if (t.category() == d.category() and ((not trackidx[i].isdisjoint(detidx[j])) and ti.hasintersection(d)))]
             assigned = set([])        
             posconf = min([d.confidence() for d in objdets]) if len(objdets)>0 else 0
             assignments.sort(key=lambda x: (x[1]+posconf)*(x[2]+x[3]+x[4])+trackconf[x[0].id()], reverse=True)  # in-place
