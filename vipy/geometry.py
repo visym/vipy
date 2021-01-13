@@ -585,10 +585,9 @@ class BoundingBox(object):
     def hasintersection(self, bb, iou=None, cover=None, maxcover=None, bbcover=None, area=None, otherarea=None, gate=0):
         """Return true if self and bb overlap by any amount, or by the cover threshold (if provided) or the iou threshold (if provided).  This is a convenience function that allows for shared computation for fast non-maximum suppression."""
 
-        intersects = (((self._xmax if self._xmax < bb._xmax else bb._xmax) - (self._xmin if self._xmin > bb._xmin else bb._xmin)) > (-gate) and
-                      ((self._ymax if self._ymax < bb._ymax else bb._ymax) - (self._ymin if self._ymin > bb._ymin else bb._ymin)) > (-gate))
-        if not intersects:
-            return False
+        if not (((self._xmax if self._xmax < bb._xmax else bb._xmax) - (self._xmin if self._xmin > bb._xmin else bb._xmin)) > (-gate) and
+                ((self._ymax if self._ymax < bb._ymax else bb._ymax) - (self._ymin if self._ymin > bb._ymin else bb._ymin)) > (-gate)):  # faster than min(x,y)-max(x,y)
+            return False  # does not intersect
         
         elif maxcover is not None or iou is not None or cover is not None or bbcover is not None:
             aoi = self.area_of_intersection(bb, strict=False)            

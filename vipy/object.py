@@ -4,6 +4,7 @@ from vipy.util import isstring, tolist, chunklistwithoverlap, try_import, Timer
 import uuid
 import copy
 import warnings
+from itertools import islice
 
 try:
     import ujson as json  # faster
@@ -841,8 +842,8 @@ class Track(object):
         (bbs, bbe) = (self[max(self.startframe(), startframe)] if startframe is not None else self.startbox(), self[min(self.endframe(), endframe)] if endframe is not None else self.endbox())
         return (bbs.maxcover(bbe) < mincover) if (bbs is not None and bbe is not None) else False
 
-
-def non_maximum_suppression(detlist, conf, iou, bycategory=False, cover=None, gridsize=(4,7)):
+    
+def non_maximum_suppression(detlist, conf, iou, bycategory=False, cover=None, gridsize=(6,9)):
     """Compute greedy non-maximum suppression of a list of vipy.object.Detection() based on spatial IOU threshold (iou) and cover threhsold (cover) sorted by confidence (conf)"""
     assert all([isinstance(d, Detection) for d in detlist])
     assert all([d.confidence() is not None for d in detlist])
@@ -852,21 +853,26 @@ def non_maximum_suppression(detlist, conf, iou, bycategory=False, cover=None, gr
         
     suppressed = set([])
     detlist = [d for d in detlist if d.confidence() > conf and not d.isdegenerate()]  # valid
-    detlist = sorted(detlist, key=lambda d: d.confidence(), reverse=True)  # biggest to smallest
+    detlist.sort(key=lambda d: d.confidence(), reverse=True)  # biggest to smallest, in-place
     grid = detlist[0].clone().union(detlist).grid(gridsize[0], gridsize[1]) if len(detlist) > 0 else []
-    bbidx = [set([k for (k,bbg) in enumerate(grid) if bbg.hasintersection(bb)]) for bb in detlist]  # spatial index
-    area = [bb.area() for bb in detlist]  
+    bbidx = [set([k for (k,bbg) in enumerate(grid) if (((bbg._xmax if bbg._xmax < bb._xmax else bb._xmax) - (bbg._xmin if bbg._xmin > bb._xmin else bb._xmin)) > 0 and
+                                                       ((bbg._ymax if bbg._ymax < bb._ymax else bb._ymax) - (bbg._ymin if bbg._ymin > bb._ymin else bb._ymin)) > 0)])
+             for bb in detlist]  # spatial index, without the function call overhead of bbg.hasintersection(bb)
+    #bbidx = [set([k for (k,bbg) in enumerate(grid) if bbg.hasintersection(bb)]) for bb in detlist]  # spatial index, equivalent to above but slower
+    
+    area = [bb.area() for bb in detlist]
     for (i, di) in enumerate(detlist):
         if i in suppressed:
             continue
-        for (j, dj) in enumerate(detlist[i+1:], start=i+1):
+        for (j, dj) in enumerate(islice(detlist, i+1, None), start=i+1):  # no-copy, equivalent to detlist[i+1:]
             if ((j not in suppressed) and
                 (bycategory is False or di._label == dj._label) and
                 (len(bbidx[i].intersection(bbidx[j]))>0) and
                 ((cover is not None and di.hasintersection(dj, maxcover=cover, area=area[i], otherarea=area[j])) or di.hasintersection(dj, iou=iou, area=area[i], otherarea=area[j]))):  
                 suppressed.add(j)
-                
-    return sorted([d for (j,d) in enumerate(detlist) if j not in suppressed], key=lambda x: x.confidence())  # smallest to biggest confidence for display layering
+    detlist_nms = [d for (j,d) in enumerate(detlist) if j not in suppressed]  # filter
+    detlist_nms.sort(key=lambda x: x.confidence())  # smallest to biggest confidence for display layering, in-place
+    return detlist_nms
 
 
 def greedy_assignment(srclist, dstlist, miniou=0.0, bycategory=False):

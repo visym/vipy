@@ -403,8 +403,8 @@ class Video(object):
                 while True:
                     (k,vc) = q.get()
                     if k is not None:
-                        yield (vc.activities([a.clone().offset(-k+n-1).truncate(0,n) for a in self._video.activitylist() if a.during_interval(k-n+1, k, inclusive=True)]) 
-                               .tracks([t.clone().offset(-k+n-1).truncate(0,n) for t in self._video.tracklist() if t.during_interval(k-n+1, k)])) if (vc is not None and isinstance(vc, vipy.video.Scene)) else vc
+                        yield (vc.activities([a.clone().offset(-k+n-1).truncate(0,n) for (ak,a) in self._video.activities().items() if a.during_interval(k-n+1, k, inclusive=True)]) 
+                               .tracks([t.clone().offset(-k+n-1).truncate(0,n) for (tk,t) in self._video.tracks().items() if t.during_interval(k-n+1, k)])) if (vc is not None and isinstance(vc, vipy.video.Scene)) else vc
                     else:
                         e.set()
                         break
@@ -1813,7 +1813,7 @@ class Scene(VideoCategory):
         assert img is not None or (self.isloaded() and k<len(self)) or not self.isloaded(), "Invalid frame index %d - Indexing video by frame must be integer within (0, %d)" % (k, len(self)-1)
 
         img = img if img is not None else (self._array[k] if self.isloaded() else self.preview(k).array())
-        dets = [t[k].clone().setattribute('trackindex', j) for (j, t) in enumerate(self.tracklist()) if len(t)>0 and (t.during(k) or t.boundary()=='extend')]  # track interpolation (cloned) with boundary handling
+        dets = [t[k].clone().setattribute('trackindex', j) for (j, t) in enumerate(self.tracks().values()) if len(t)>0 and (t.during(k) or t.boundary()=='extend')]  # track interpolation (cloned) with boundary handling
         for d in dets:
             shortlabel = [(d.shortlabel(),'')]  # [(Noun, Verbing1), (Noun, Verbing2), ...]
             activityconf = [None]   # for display 
@@ -1830,7 +1830,7 @@ class Scene(VideoCategory):
             d.shortlabel( '\n'.join([('%s %s' % (n,v)).strip() for (n,v) in shortlabel[0 if len(shortlabel)==1 else 1:]]))
             d.attributes['noun verb'] = shortlabel[0 if len(shortlabel)==1 else 1:]
             d.attributes['activityconf'] = activityconf[0 if len(shortlabel)==1 else 1:]
-        dets = sorted(dets, key=lambda d: (d.confidence() if d.confidence() is not None else 0, d.shortlabel()))   # layering in video is ordered by decreasing track confidence and alphabetical shortlabel
+        dets.sort(key=lambda d: (d.confidence() if d.confidence() is not None else 0, d.shortlabel()))   # layering in video is ordered by decreasing track confidence and alphabetical shortlabel
         return vipy.image.Scene(array=img, colorspace=self.colorspace(), objects=dets, category=self.category())  
                 
         
@@ -1916,18 +1916,18 @@ class Scene(VideoCategory):
         return self.activities(id=id)
     
     def tracklist(self):
-        return list(self.tracks().values())
+        return list(self.tracks().values())  # triggers copy
 
     def actorid(self):
         #assert len(self.tracks()) == 1, "Actor ID only valid for scenes with a single track"
-        return list(self.tracks().keys())[0]
+        return next(iter(self.tracks().keys()))   # Python >=3.6
         
     def actor(self):
         #assert len(self.tracks()) == 1, "Actor only valid for scenes with a single track"
-        return self.tracklist()[0]
+        return next(iter(self.tracks().values()))   # Python >=3.6
         
     def primary_activity(self):
-        return self.activitylist()[0]
+        return next(iter(self.activities().values()))   # Python >=3.6        
 
     def activities(self, activities=None, id=None):
         """Return mutable dictionary of activities.  All temporal alignment is relative to the current clip()."""
@@ -1948,7 +1948,7 @@ class Scene(VideoCategory):
         return alist[k]
 
     def activitylist(self):
-        return list(self.activities().values())  # insertion ordered (python >=3.6)
+        return list(self.activities().values())  # insertion ordered (python >=3.6), triggers copy
         
     def activityfilter(self, f):
         """Apply boolean lambda function f to each activity and keep activity if function is true, remove activity if function is false
@@ -1971,7 +1971,7 @@ class Scene(VideoCategory):
     def trackmap(self, f, strict=True):
         """Apply lambda function f to each activity"""
         self._tracks = {k:f(t) for (k,t) in self.tracks().items()}
-        assert all([isinstance(t, vipy.object.Track) and (strict is False or not t.isdegenerate()) for t in self.tracklist()]), "Lambda function must return non-degenerate vipy.object.Track()"
+        assert all([isinstance(t, vipy.object.Track) and (strict is False or not t.isdegenerate()) for (tk,t) in self.tracks().items()]), "Lambda function must return non-degenerate vipy.object.Track()"
         return self
         
     def activitymap(self, f):
@@ -1992,7 +1992,7 @@ class Scene(VideoCategory):
 
     def label(self):
         """Return an iterator over labels in each frame"""
-        endframe = max([a.endframe() for a in self.activitylist()]+[t.endframe() for t in self.tracklist()])
+        endframe = max([a.endframe() for a in self.activitylist()]+[t.endframe() for (tk,t) in self.tracks().items()])
         for k in range(0,endframe):
             yield self.labels(k)
     
@@ -2200,7 +2200,7 @@ class Scene(VideoCategory):
 
     def tracksplit(self):
         """Split the scene into k separate scenes, one for each track.  Each scene starts at frame 0 and is a shallow copy of self containing exactly one track.  Use clone() to create a deep copy if needed."""
-        return [self.clone(shallow=True).tracks(t).activityfilter(lambda a: a.hastrack(t.id())) for t in self.tracklist()] 
+        return [self.clone(shallow=True).tracks(t).activityfilter(lambda a: a.hastrack(t.id())) for (tk,t) in self.tracks().items()] 
 
     def trackclip(self):
         """Split the scene into k separate scenes, one for each track.  Each scene starts and ends when the track starts and ends"""
@@ -2784,7 +2784,7 @@ class Scene(VideoCategory):
         # Object detection to track assignment
         if len(objdets) > 0:
             # Track propagation:  Constant velocity motion model for active tracks 
-            t_ref = [(t, t.linear_extrapolation(frame, dt=maxhistory, shape=False)) for t in self.tracklist() if ((frame - t.endframe()) <= maxhistory)]
+            t_ref = [(t, t.linear_extrapolation(frame, dt=maxhistory, shape=False)) for (k,t) in self.tracks().items() if ((frame - t.endframe()) <= maxhistory)]
 
             # Spatial index
             grid = objdets[0].clone().union(objdets).grid(gridsize[0], gridsize[1]) if len(objdets) > 0 else []
@@ -2798,13 +2798,14 @@ class Scene(VideoCategory):
             #   - Each detection is assigned to at most one track.  
             #   - Assignment is the highest confidence maximum overlapping detection within tracking gate
             trackconf = {t.id():t.confidence(samples=trackconfsamples) for (t, ti) in t_ref}
-            assignments = [(t, d.confidence(), d.iou(ti, area=detarea[j], otherarea=trackarea[i]), d.shapeiou(ti, area=detarea[j], otherarea=trackarea[i]), d.maxcover(ti, area=detarea[j], otherarea=trackarea[i]), d, ti)
+            assignments = [(t, d.confidence(), d.iou(ti, area=detarea[j], otherarea=trackarea[i]), d.shapeiou(ti, area=detarea[j], otherarea=trackarea[i]), d.maxcover(ti, area=detarea[j], otherarea=trackarea[i]), d)
                            for (i, (t, ti)) in enumerate(t_ref)
                            for (j,d) in enumerate(objdets)
                            if (t.category() == d.category() and (len(trackidx[i].intersection(detidx[j]))>0) and ti.hasintersection(d))]
             assigned = set([])        
             posconf = min([d.confidence() for d in objdets]) if len(objdets)>0 else 0
-            for (t, conf, iou, shapeiou, cover, d, ti) in sorted(assignments, key=lambda x: (x[1]+posconf)*(x[2]+x[3]+x[4])+trackconf[x[0].id()], reverse=True):
+            assignments.sort(key=lambda x: (x[1]+posconf)*(x[2]+x[3]+x[4])+trackconf[x[0].id()], reverse=True)  # in-place
+            for (t, conf, iou, shapeiou, cover, d) in assignments:
                 if cover > (trackcover if len(t)>1 else 0):  # the highest confidence detection within the iou gate (or any overlap if not yet enough history for velocity estimate) 
                     if (t.id() not in assigned and d.id() not in assigned):  # not assigned yet, assign it!
                         self.track(t.id()).add(frame, d.clone())  # track assignment! (clone required)
@@ -2828,13 +2829,14 @@ class Scene(VideoCategory):
         # Activity assignment
         if len(activitydets) > 0:
             assert all([d.actorid() in self.tracks() for d in activitydets]), "Invalid activity"
-            assigned = []
-            for d in sorted(activitydets, key=lambda a: a.startframe()):
-                for a in sorted(self.activitylist(), key=lambda a: a.startframe()):
+            assigned = set([])
+            activitydets.sort(key=lambda a: a.startframe())  # in-place
+            for a in sorted(self.activities().values(), key=lambda a: a.startframe()):            
+                for d in activitydets: 
                     if (a.category() == d.category()) and (a.actorid() == d.actorid()) and a.hasoverlap(d, activityiou): 
                         a.union(d)  # activity assignment
-                        assigned.append(d.id())
-        
+                        assigned.add(d.id())
+                        
             # Activity construction from unassigned detections
             for d in activitydets:
                 if d.id() not in assigned:
