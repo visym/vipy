@@ -2200,7 +2200,7 @@ class Scene(VideoCategory):
 
     def tracksplit(self):
         """Split the scene into k separate scenes, one for each track.  Each scene starts at frame 0 and is a shallow copy of self containing exactly one track.  Use clone() to create a deep copy if needed."""
-        return [self.clone(shallow=True).tracks(t).activityfilter(lambda a: a.hastrack(t.id())) for (tk,t) in self.tracks().items()] 
+        return [self.clone(shallow=True).tracks(t).activityfilter(lambda a: a.hastrack(tk)) for (tk,t) in self.tracks().items()] 
 
     def trackclip(self):
         """Split the scene into k separate scenes, one for each track.  Each scene starts and ends when the track starts and ends"""
