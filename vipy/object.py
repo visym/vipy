@@ -246,6 +246,8 @@ class Track(object):
         if samples is not None:
             dt = max(1, int(round(len(self._keyframes)/float(samples))))
             C = [self._keyboxes[i]._confidence for i in range(len(self._keyframes)-1, 0, -dt) if (hasattr(self._keyboxes[i], '_confidence') and self._keyboxes[i]._confidence is not None)]
+        elif last == 1:
+            return self.endbox().confidence() if len(self)>0 else 0
         else:
             ef = self.endframe() - last if last is not None else 0
             C = [d._confidence for (f,d) in zip(self.keyframes(), self.keyboxes()) if f >= ef and (hasattr(d, '_confidence') and d._confidence is not None)]
@@ -405,7 +407,12 @@ class Track(object):
     def during(self, k_start, k_end=None):
         """Is frame during the time interval (startframe, endframe) inclusive?"""        
         k_end = k_start+1 if k_end is None else k_end
-        return len(self)>0 and any([k >= self.startframe() and k <= self.endframe() for k in range(k_start, k_end)])
+        (startframe, endframe) = (self.startframe(), self.endframe())
+        if len(self)>0:
+            for k in range(k_start, k_end):
+                if k >= startframe and k <= endframe:
+                    return True  # early exit
+        return False
 
     def during_interval(self, k_start, k_end):
         return self.during(k_start, k_end)
@@ -423,10 +430,7 @@ class Track(object):
 
     def truncate(self, startframe=None, endframe=None):
         """Truncate a track so that any keyframes less than startframe or greater than endframe are removed"""
-        keyframes = copy.deepcopy(self.keyframes())
-        for k in keyframes:
-            if ((startframe is not None and k < startframe) or (endframe is not None and k > endframe)):
-                self.delete(k)  # will also delete corresponding keybox
+        (self._keyframes, self._keyboxes) = zip(*[(kf,kb) for (kf,kb) in zip(self._keyframes, self._keyboxes) if ((startframe is None or kf >= startframe) and (endframe is None or kf <= endframe))])
         return self
         
     def rescale(self, s):
