@@ -223,7 +223,7 @@ class Activity(object):
         """Is the activity occurring for any frames within the interval [startframe, endframe) (non-inclusive of endframe)?"""
         return any([self.during(f) for f in range(startframe, endframe+(0 if not inclusive else 1))]) if startframe <= endframe else False
 
-    def union(self, other, confweight=0.5):
+    def union(self, other, confweight=0.5, maxconf=False):
         """Compute the union of the new activity other to this activity by updating the start and end times and computing the mean confidence.
         
            -Note: other must have the same category and track IDs as self
@@ -238,7 +238,7 @@ class Activity(object):
         self.startframe(min(other.startframe(), self.startframe()))
         self.endframe(max(other.endframe(), self.endframe()))
         if other.confidence() is not None and self.confidence() is not None:
-            self.confidence(float((1.0-confweight)*self.confidence() + confweight*other.confidence()))   # mean confidence
+            self.confidence(float((1.0-confweight)*self.confidence() + confweight*other.confidence()) if not maxconf else float(max(self.confidence(), other.confidence())))  # running mean confidence or max
         return self
         
     def temporal_iou(self, other):

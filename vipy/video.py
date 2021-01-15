@@ -2703,7 +2703,7 @@ class Scene(VideoCategory):
         return self
 
     def binarymask(self):
-        """Replace all pixels in foreground boxes with mean color"""        
+        """Replace all pixels in foreground boxes with white, zero in background"""        
         for im in self:
             im.binarymask()  # shared numpy array
         return self
@@ -2834,7 +2834,7 @@ class Scene(VideoCategory):
             for a in sorted(self.activities().values(), key=lambda a: a.startframe()):            
                 for d in activitydets: 
                     if (a.category() == d.category()) and (a.actorid() == d.actorid()) and a.hasoverlap(d, activityiou): 
-                        a.union(d)  # activity assignment
+                        a.union(d, maxconf=True)  # activity assignment with maximum confidence
                         assigned.add(d.id())
                         
             # Activity construction from unassigned detections
