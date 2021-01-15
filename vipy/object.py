@@ -430,7 +430,8 @@ class Track(object):
 
     def truncate(self, startframe=None, endframe=None):
         """Truncate a track so that any keyframes less than startframe or greater than endframe are removed"""
-        (self._keyframes, self._keyboxes) = zip(*[(kf,kb) for (kf,kb) in zip(self._keyframes, self._keyboxes) if ((startframe is None or kf >= startframe) and (endframe is None or kf <= endframe))])
+        kfkb = [(kf,kb) for (kf,kb) in zip(self._keyframes, self._keyboxes) if ((startframe is None or kf >= startframe) and (endframe is None or kf <= endframe))]
+        (self._keyframes, self._keyboxes) = zip(*kfkb) if len(kfkb) > 0 else ([], [])
         return self
         
     def rescale(self, s):
