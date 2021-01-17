@@ -362,9 +362,9 @@ class Track(object):
         """
         assert len(self._keyboxes) > 0, "Degenerate object for interpolation"   # not self.isempty()
         if len(self._keyboxes) == 1:
-            return Detection.cast(self._keyboxes[0].clone()).setattribute('trackid', self.id()) if (self._boundary == 'extend' or self.during(f)) else None
+            return Detection.cast(self._keyboxes[0].clone()).setattribute('trackid', self.id()).category(self.category()) if (self._boundary == 'extend' or self.during(f)) else None
         if f in reversed(self._keyframes):            
-            return Detection.cast(self._keyboxes[self._keyframes.index(f)]).setattribute('trackid', self.id())
+            return Detection.cast(self._keyboxes[self._keyframes.index(f)]).setattribute('trackid', self.id()).category(self.category())
 
         kf = self._keyframes
         ft = min(max(f, kf[0]), kf[-1])  # truncated frame index
