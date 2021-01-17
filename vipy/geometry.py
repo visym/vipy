@@ -446,7 +446,7 @@ class BoundingBox(object):
     def area(self):
         """Return the area=width*height of the bounding box"""
         (height, width) = (self._ymax-self._ymin, self._xmax-self._xmin)        
-        return width * height
+        return width * height if (height>0 and width>0) else 0
 
     def to_xywh(self, xywh=None):
         """Return bounding box corners as (x,y,width,height) tuple"""
@@ -529,7 +529,7 @@ class BoundingBox(object):
         area_union = ((self.area() if area is None else area) +
                       (bb.area() if otherarea is None else otherarea) -
                       area_intersection)
-        return area_intersection / float(area_union)
+        return (area_intersection / float(area_union)) if area_union > 0 else 0
 
     def intersection_over_union(self, bb):
         """Alias for iou"""
@@ -551,13 +551,15 @@ class BoundingBox(object):
         return self.area() + bb.area() - self.area_of_intersection(bb)
         
     def cover(self, bb):
-        """Fraction of this bounding box intersected by other bbox (bb)"""        
-        return self.area_of_intersection(bb) / float(self.area())
+        """Fraction of this bounding box intersected by other bbox (bb)"""
+        a = float(self.area())
+        return (self.area_of_intersection(bb) / a) if a>0 else 0
 
     def maxcover(self, bb, area=None, otherarea=None):
         """The maximum cover of self to bb and bb to self"""
         aoi = self.area_of_intersection(bb, strict=False)
-        return float(max(aoi/(self.area() if area is None else area), aoi/(bb.area() if otherarea is None else otherarea)))
+        (area, otherarea) = (self.area() if area is None else area, bb.area() if otherarea is None else otherarea)
+        return float(max((aoi/area) if area>0 else 0, (aoi/otherarea) if otherarea>0 else 0))
     
     def shapeiou(self, bb, area=None, otherarea=None):
         """Shape IoU is the IoU with the upper left corners aligned. This measures the deformation of the two boxes by removing the effect of translation"""
@@ -569,7 +571,7 @@ class BoundingBox(object):
         area_union = ((self.area() if area is None else area) +
                       (bb.area() if otherarea is None else otherarea)
                       - area_intersection)
-        return area_intersection / float(area_union)
+        return (area_intersection / float(area_union)) if area_union>0 else 0
         
     def intersection(self, bb, strict=True):
         """Intersection of two bounding boxes, throw an error on degeneracy of intersection result (if strict=True)"""

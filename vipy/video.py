@@ -2797,14 +2797,14 @@ class Scene(VideoCategory):
         if len(objdets) > 0:
             # Track propagation:  Constant velocity motion model for active tracks 
             t_ref = [(t, t.linear_extrapolation(frame, dt=maxhistory, shape=False)) for (k,t) in self.tracks().items() if ((frame - t.endframe()) <= maxhistory)]
-
+            trackarea = [ti.area() for (t,ti) in t_ref]
+            detarea = [d.area() for d in objdets]
+            
             # Spatial index
             grid = objdets[0].clone().union(objdets).grid(gridsize[0], gridsize[1]) if len(objdets) > 0 else []
             detidx = [set([k for (k,bbg) in enumerate(grid) if bbg.hasintersection(bb)]) for bb in objdets]
             trackidx = [set([k for (k,bbg) in enumerate(grid) if bbg.hasintersection(ti)]) for (t,ti) in t_ref]
-            trackarea = [ti.area() for (t,ti) in t_ref]
-            detarea = [d.area() for d in objdets]
-        
+                        
             # Track assignment:
             #   - Each track is assigned at most one detection
             #   - Each detection is assigned to at most one track.  
