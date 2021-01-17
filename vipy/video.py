@@ -116,7 +116,7 @@ class Video(object):
                 self._filename = os.path.join(remkdir(vipy.globals.cache()), filetail(self._filename))
 
         # Initial video shape: useful to avoid preview()
-        self._ffmpeg = ffmpeg.input(self.filename())  # restore, no other filters        
+        self._ffmpeg = ffmpeg.input(self.filename())  if array is None else None  # restore, no other filters        
         if probeshape and (frames is None and array is None) and has_ffprobe and self.hasfilename():
             self.shape(self.probeshape())
         else:
@@ -124,7 +124,8 @@ class Video(object):
             
         # Video filter chain
         if framerate is not None:
-            self.framerate(framerate)
+            if array is None and frames is None:
+                self.framerate(framerate)
             self._framerate = framerate        
         if startframe is not None:
             self.clip(startframe, endframe)  
@@ -1457,7 +1458,7 @@ class Video(object):
             print('[vipy.video.torch]: slice (start,end,step)=%s for frame shape (N,C,H,W)=%s' % (str((i,j,k)), str(frames.shape)))
 
         # Slice and transpose to torch tensor axis ordering
-        t = torch.from_numpy(frames[i:j:k])  # do runnot copy - This shares the numpy buffer of the video, be careful!
+        t = torch.from_numpy(frames[i:j:k])  # do not copy - This shares the numpy buffer of the video, be careful!
         if t.dim() == 2:
             t = t.unsqueeze(0).unsqueeze(-1)  # HxW -> (N=1)xHxWx(C=1)
         if order == 'nchw':
@@ -2707,7 +2708,18 @@ class Scene(VideoCategory):
         for im in self:
             im.binarymask()  # shared numpy array
         return self
+    
+    def asfloatmask(self, fg=1.0, bg=0.0):
+        """Replace all pixels in foreground boxes with fg, and bg in background, return a copy"""
+        array = np.zeros( (len(self.load()), self.height(), self.width(), 1), dtype=np.float32) + bg        
+        for (k,im) in enumerate(self):
+            for bb in im.objects():
+                if bb.hasintersection(im.imagebox()):
+                    bbm = bb.clone().imclip(array[k]).int()
+                    array[k, bbm._ymin:bbm._ymax, bbm._xmin:bbm._xmax] = fg
+        return vipy.video.Video(array=array, framerate=self.framerate(), colorspace='float')
 
+    
     def meanmask(self):
         """Replace all pixels in foreground boxes with mean color"""        
         for im in self:
@@ -2834,7 +2846,7 @@ class Scene(VideoCategory):
             for a in sorted(self.activities().values(), key=lambda a: a.startframe()):            
                 for d in activitydets: 
                     if (a.category() == d.category()) and (a.actorid() == d.actorid()) and a.hasoverlap(d, activityiou): 
-                        a.union(d, maxconf=True)  # activity assignment with maximum confidence
+                        a.union(d)  # activity assignment with maximum confidence
                         assigned.add(d.id())
                         
             # Activity construction from unassigned detections
