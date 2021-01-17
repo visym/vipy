@@ -6,13 +6,13 @@ def test_interpolation():
     t = vipy.object.Track(keyframes=[0,4,8], boxes=[BoundingBox(100,200,300,400),
                                                     BoundingBox(500,600,700,800),
                                                     BoundingBox(900,1000,1100,1200)])
-    assert t[0] == t.keyboxes()[0]
-    assert t[8] == t.keyboxes()[2]
-    assert t[2] == BoundingBox(300,400,500,600)
-
+    assert t.keyboxes()[0] == t[0]
+    assert t.keyboxes()[2] == t[8]
+    assert BoundingBox(300,400,500,600) == t[2]
+    
     t.resample(1)
-    assert t[2] == t.keyboxes()[2]
-    assert t[8] == t.keyboxes()[-1]    
+    assert t.keyboxes()[2] == t[2]
+    assert t.keyboxes()[-1] == t[8]
     print('test_interpolation: passed')
 
     

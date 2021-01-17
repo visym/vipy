@@ -116,7 +116,7 @@ class Video(object):
                 self._filename = os.path.join(remkdir(vipy.globals.cache()), filetail(self._filename))
 
         # Initial video shape: useful to avoid preview()
-        self._ffmpeg = ffmpeg.input(self.filename())  if array is None else None  # restore, no other filters        
+        self._ffmpeg = ffmpeg.input(self.filename())  # restore, no other filters        
         if probeshape and (frames is None and array is None) and has_ffprobe and self.hasfilename():
             self.shape(self.probeshape())
         else:
