@@ -2711,7 +2711,7 @@ class Scene(VideoCategory):
     
     def asfloatmask(self, fg=1.0, bg=0.0):
         """Replace all pixels in foreground boxes with fg, and bg in background, return a copy"""
-        array = np.zeros( (len(self.load()), self.height(), self.width(), 1), dtype=np.float32) + bg        
+        array = np.full( (len(self.load()), self.height(), self.width(), 1), dtype=np.float32, fill_value=bg)
         for (k,im) in enumerate(self):
             for bb in im.objects():
                 if bb.hasintersection(im.imagebox()):
