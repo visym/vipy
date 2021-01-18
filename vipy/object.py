@@ -734,7 +734,7 @@ class Track(object):
         """
         if self.during(k):
             return self[k]
-        elif len(self.keyboxes()) == 1:
+        elif len(self._keyboxes) == 1:
             return self.nearest_keybox(k)
         else:
             n = self.endframe() if k > self.endframe() else self.startframe()+1

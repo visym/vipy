@@ -2767,14 +2767,13 @@ class Scene(VideoCategory):
                         break
         return self
 
-    def assign(self, frame, dets, minconf=0.2, maxhistory=5, activityiou=0.5, trackcover=0.2, trackconfsamples=4, gridsize=(4,7), gate=0):
+    def assign(self, frame, dets, minconf=0.2, maxhistory=5, activityiou=0.5, trackcover=0.2, trackconfsamples=4, gate=0):
         """Assign a list of vipy.object.Detections at frame k to scene by greedy track association. In-place update.
         
            * miniou [float]: the minimum temporal IOU for activity assignment
            * minconf [float]: the minimum confidence for a detection to be considered as a new track
            * maxhistory [int]:  the maximum propagation length of a track with no measurements, the frame history ised for velocity estimates  
            * trackconfsamples [int]:  the number of uniformly spaced samples along a track to compute a track confidence
-           * gridsize: the (rows,cols) grid used as a spatial index for nearest neighbor lookups to assign detections to tracks
            * gate [int]: the gating distance in pixels used for assignment of fast moving detections.  Useful for low detection framerates if a detection does not overlap with the track.
            * trackcover [float]: the minimum cover necessary for assignment of a detection to a track
 
@@ -2800,11 +2799,6 @@ class Scene(VideoCategory):
             trackarea = [ti.area() for (t,ti) in t_ref]
             detarea = [d.area() for d in objdets]
             
-            # Spatial index
-            grid = objdets[0].clone().union(objdets).grid(gridsize[0], gridsize[1]) if len(objdets) > 0 else []
-            detidx = [set([k for (k,bbg) in enumerate(grid) if bbg.hasintersection(bb)]) for bb in objdets]
-            trackidx = [set([k for (k,bbg) in enumerate(grid) if bbg.hasintersection(ti)]) for (t,ti) in t_ref]
-                        
             # Track assignment:
             #   - Each track is assigned at most one detection
             #   - Each detection is assigned to at most one track.  
@@ -2813,7 +2807,10 @@ class Scene(VideoCategory):
             assignments = [(t, d.confidence(), d.iou(ti, area=detarea[j], otherarea=trackarea[i]), d.shapeiou(ti, area=detarea[j], otherarea=trackarea[i]), d.maxcover(ti, area=detarea[j], otherarea=trackarea[i]), d)
                            for (i, (t, ti)) in enumerate(t_ref)
                            for (j,d) in enumerate(objdets)
-                           if (t.category() == d.category() and ((not trackidx[i].isdisjoint(detidx[j])) and ti.hasintersection(d)))]
+                           if (t.category() == d.category() and
+                               (((ti._xmax if ti._xmax < d._xmax else d._xmax) - (ti._xmin if ti._xmin > d._xmin else d._xmin)) > 0 and
+                                ((ti._ymax if ti._ymax < d._ymax else d._ymax) - (ti._ymin if ti._ymin > d._ymin else d._ymin)) > 0))]
+            
             assigned = set([])        
             posconf = min([d.confidence() for d in objdets]) if len(objdets)>0 else 0
             assignments.sort(key=lambda x: (x[1]+posconf)*(x[2]+x[3]+x[4])+trackconf[x[0].id()], reverse=True)  # in-place
