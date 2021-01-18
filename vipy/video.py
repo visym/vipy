@@ -2845,7 +2845,7 @@ class Scene(VideoCategory):
             activitydets.sort(key=lambda a: a.startframe())  # in-place
             for a in sorted(self.activities().values(), key=lambda a: a.startframe()):            
                 for d in activitydets: 
-                    if (a.category() == d.category()) and (a.actorid() == d.actorid()) and a.hasoverlap(d, activityiou): 
+                    if (d.id() not in assigned) and (a.category() == d.category()) and (a.actorid() == d.actorid()) and a.hasoverlap(d, activityiou): 
                         a.union(d)  # activity assignment with maximum confidence
                         assigned.add(d.id())
                         
