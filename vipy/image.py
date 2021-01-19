@@ -164,7 +164,7 @@ class Image(object):
         assert tilewidth > 0 and tileheight > 0 and overlaprows >= 0 and overlapcols >= 0, "Invalid input"
         assert self.width() >= tilewidth-overlapcols and self.height() >= tileheight-overlaprows, "Invalid input" 
         bboxes = [BoundingBox(xmin=i, ymin=j, width=min(tilewidth, self.width()-i), height=min(tileheight, self.height()-j)) for i in range(0, self.width()-overlapcols, tilewidth-overlapcols) for j in range(0, self.height()-overlaprows, tileheight-overlaprows)]
-        return [self.clone().setattribute('tile', {'crop':bb, 'shape':self.shape()}).crop(bb) for bb in bboxes]
+        return [self.clone(shallow=True, attributes=True).setattribute('tile', {'crop':bb, 'shape':self.shape()}).crop(bb) for bb in bboxes]
 
     def union(self, other):
         """No-op for vipy.image.Image"""
@@ -663,7 +663,7 @@ class Image(object):
     def hasfilename(self):
         return self._filename is not None and os.path.exists(self._filename)
 
-    def clone(self, flushforward=False, flushbackward=False, flush=False, shallow=False):
+    def clone(self, flushforward=False, flushbackward=False, flush=False, shallow=False, attributes=False):
         """Create deep copy of object, flushing the original buffer if requested and returning the cloned object.
         Flushing is useful for distributed memory management to free the buffer from this object, and pass along a cloned 
         object which can be used for encoding and will be garbage collected.
@@ -689,7 +689,9 @@ class Image(object):
             im = copy.copy(self)  # shallow copy
             im._array = np.asarray(self._array) if self._array is not None else None  # shared pixels            
         else:
-            im = copy.deepcopy(self)            
+            im = copy.deepcopy(self)
+        if attributes:
+            im.attributes = copy.deepcopy(self.attributes)
         return im
 
     def flush(self):
@@ -801,12 +803,14 @@ class Image(object):
 
     def maxsquare(self, S=None):
         """Crop image of size (HxW) to (max(H,W), max(H,W)) with zeropadding or (S,S) if provided, keeping upper left corner constant"""
-        S = np.max(self.load().shape()) if S is None else S
-        dW = max(0, S - self.width())
-        dH = max(0, S - self.height())
-        if (dW > 0 or dH > 0):
-            self.zeropad((0,dW), (0,dH))
-        return self._crop(BoundingBox(0, 0, width=int(S), height=int(S)))
+        S = np.max(self.load().shape()) if S is None else int(S)
+        (H, W) = self.shape()
+        (dW, dH) = (max(0, S - W), max(0, S - H))
+        if S != W or S != H:
+            self._crop(BoundingBox(0, 0, width=min(W, S), height=min(H, S)))
+            if (dW > 0 or dH > 0):
+                self.zeropad((0,dW), (0,dH))  # crop then zeropad
+        return self
 
     def maxmatte(self):
         """Crop image of size (HxW) to (max(H,W), max(H,W)) with balanced zeropadding forming a letterbox with top/bottom matte or pillarbox with left/right matte"""

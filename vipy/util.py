@@ -803,7 +803,8 @@ def topath(filename, newdir):
 
 def filefull(f):
     """Return /a/b/c for filename /a/b/c.ext"""
-    return f.replace(fileext(f, multidot=True, withdot=True), '')  # better handling of .tar.gz
+    ext = fileext(f, multidot=True, withdot=True)
+    return f.replace(ext, '') if ext is not None else None
 
 
 def filetail(filename):

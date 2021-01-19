@@ -2780,7 +2780,6 @@ class Scene(VideoCategory):
         """
         assert dets is None or all([isinstance(d, vipy.object.Detection) or isinstance(d, vipy.activity.Activity) for d in tolist(dets)]), "invalid input"
         assert frame >= 0 and minconf >= 0 and minconf <= 1.0 and maxhistory > 0, "invalid input"
-        assert isinstance(gridsize, tuple) and len(gridsize) == 2
         
         if dets is None or len(tolist(dets)) == 0:
             return self

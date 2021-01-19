@@ -209,12 +209,13 @@ def _test_scene():
     
     # Downloader
     v = vipy.video.Video(url='http://visym.com/out.mp4').load(ignoreErrors=True)
-    print('[test_video.video]: download ignoreErrors  PASSED')                
-    v = vipy.video.Scene(url=mp4url).clip(0,100).load()
-    print('[test_video.scene: download  PASSED')        
-    for im in v:
-        assert im.shape() == v.shape()
-    print('[test_video.scene]: __iter__  PASSED')
+    print('[test_video.video]: download ignoreErrors  PASSED')
+    
+    #v = vipy.video.Scene(url=mp4url).clip(0,100).load()
+    #print('[test_video.scene: download  PASSED')        
+    #for im in v:
+    #    assert im.shape() == v.shape()
+    #print('[test_video.scene]: __iter__  PASSED')
     
     
     vid = vipy.video.Scene(filename=mp4file, tracks=[vipy.object.Track(category='person', keyframes=[0,200], boxes=[BoundingBox(xmin=0,ymin=0,width=200,height=400), BoundingBox(xmin=0,ymin=0,width=400,height=100)]),
