@@ -1149,7 +1149,7 @@ class Video(object):
             self._ffmpeg = self._ffmpeg.filter('scale', cols if cols is not None else -1, rows if rows is not None else -1)
         else:            
             # Do not use self.__iter__() which triggers copy for mutable arrays
-            self.array(np.stack([self.frame(k).resize(rows=rows, cols=cols).array() for k in range(len(self))]), copy=False)
+            self.array(np.stack([Image(array=self._array[k]).resize(rows=rows, cols=cols).array() for k in range(len(self))]), copy=False)
         self.shape(shape=newshape)  # manually set newshape
         return self
 

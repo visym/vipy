@@ -536,7 +536,7 @@ class Image(object):
     def pil(self):
         """Convert vipy.image.Image to PIL Image, by reference"""
         assert self.channels() in [1,3,4] and (self.channels() == 1 or self.colorspace() != 'float'), "Incompatible with PIL"
-        return PIL.Image.fromarray(self.numpy())
+        return PIL.Image.fromarray(self.numpy(), mode='RGB' if self.colorspace()=='rgb' else None)
 
     def blur(self, sigma=3):
         return self.array(np.array(self.pil().filter(PIL.ImageFilter.GaussianBlur(radius=sigma))))
@@ -718,7 +718,7 @@ class Image(object):
         elif self.colorspace() == 'float':
             self._array = np.dstack([np.array(im.pil().resize((cols, rows), string_to_pil_interpolation(interp))) for im in self.channel()])
         else:
-            self._array = np.array(self.load().pil().resize((cols, rows), string_to_pil_interpolation(interp)))
+            self._array = np.asarray(self.load().pil().resize((cols, rows), string_to_pil_interpolation(interp)))  
         return self
 
     def resize_like(self, im, interp='bilinear'):
@@ -732,9 +732,9 @@ class Image(object):
         if scale == 1:
             return self
         elif self.colorspace() == 'float':
-            self._array = np.dstack([np.array(im.pil().resize((int(np.round(scale * width)), int(np.round(scale * height))), string_to_pil_interpolation(interp))) for im in self.channel()])
+            self._array = np.dstack([np.asarray(im.pil().resize((int(np.round(scale * width)), int(np.round(scale * height))), string_to_pil_interpolation(interp))) for im in self.channel()])
         else: 
-            self._array = np.array(self.pil().resize((int(np.round(scale * width)), int(np.round(scale * height))), string_to_pil_interpolation(interp)))
+            self._array = np.asarray(self.pil().resize((int(np.round(scale * width)), int(np.round(scale * height))), string_to_pil_interpolation(interp)))
         return self
 
     def maxdim(self, dim=None, interp='bilinear'):
