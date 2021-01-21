@@ -51,6 +51,8 @@ ffplay_exe = shutil.which('ffplay')
 has_ffplay = ffplay_exe is not None and os.path.exists(ffplay_exe)
 
 
+
+
 class Video(object):
     """ vipy.video.Video class
 
@@ -1458,7 +1460,7 @@ class Video(object):
             print('[vipy.video.torch]: slice (start,end,step)=%s for frame shape (N,C,H,W)=%s' % (str((i,j,k)), str(frames.shape)))
 
         # Slice and transpose to torch tensor axis ordering
-        t = torch.from_numpy(frames[i:j:k])  # do not copy - This shares the numpy buffer of the video, be careful!
+        t = torch.from_numpy(frames[i:j:k] if (k!=1 or i!=0 or j!=len(frames)) else frames)  # do not copy - This shares the numpy buffer of the video, be careful!
         if t.dim() == 2:
             t = t.unsqueeze(0).unsqueeze(-1)  # HxW -> (N=1)xHxWx(C=1)
         if order == 'nchw':
@@ -1592,15 +1594,12 @@ class Video(object):
         assert c >= 0 and c < self.channels()
         self._array = self._array[:,:,:,c] if self._array is not None else self._array
         return self
-        
+
     def normalize(self, mean, std, scale=1, bias=0):
         """Pixelwise whitening, out = ((scale*in) - mean) / std); triggers load().  All computations float32"""
         assert scale >= 0, "Invalid input"
         assert all([s > 0 for s in tolist(std)]), "Invalid input"
-        self._array = self.load()._array
-        if scale != 1:
-            self._array = np.multiply(np.array(scale, dtype=np.float32), self._array)
-        self._array = (self._array - np.array(mean, dtype=np.float32)) / np.array(std, dtype=np.float32)
+        self._array = vipy.math.normalize(self._array, np.array(mean, dtype=np.float32), np.array(std, dtype=np.float32), np.float32(scale))
         if bias != 0:
             self._array = self._array + np.array(bias, dtype=np.float32)
         return self.colorspace('float')

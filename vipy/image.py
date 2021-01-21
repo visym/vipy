@@ -536,7 +536,7 @@ class Image(object):
     def pil(self):
         """Convert vipy.image.Image to PIL Image, by reference"""
         assert self.channels() in [1,3,4] and (self.channels() == 1 or self.colorspace() != 'float'), "Incompatible with PIL"
-        return PIL.Image.fromarray(self.tonumpy())
+        return PIL.Image.fromarray(self.numpy())
 
     def blur(self, sigma=3):
         return self.array(np.array(self.pil().filter(PIL.ImageFilter.GaussianBlur(radius=sigma))))
@@ -733,7 +733,7 @@ class Image(object):
             return self
         elif self.colorspace() == 'float':
             self._array = np.dstack([np.array(im.pil().resize((int(np.round(scale * width)), int(np.round(scale * height))), string_to_pil_interpolation(interp))) for im in self.channel()])
-        else:                
+        else: 
             self._array = np.array(self.pil().resize((int(np.round(scale * width)), int(np.round(scale * height))), string_to_pil_interpolation(interp)))
         return self
 
