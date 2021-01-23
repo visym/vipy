@@ -389,7 +389,7 @@ class Video(object):
                             
                         frames.pop(0) if len(frames) > n else None
                         if (frameindex-1) % m == 0 and len(frames) >= n:
-                            queue.put( (frameindex, video.clone(shallow=True).array(np.stack(frames[-n:]))))  # requires copy, expensive operation
+                            queue.put( (frameindex, video.clear().clone(shallow=True).array(np.stack(frames[-n:]))))  # requires copy, expensive operation
                             
                         elif continuous:
                             queue.put((frameindex, None))
@@ -426,7 +426,7 @@ class Video(object):
                     while True:
                         in_bytes = pipe.stdout.read(height * width * 3)
                         if not in_bytes:
-                            queue.put((frameindex, video.clone(shallow=True).array(np.stack(frames))))
+                            queue.put((frameindex, video.clear().clone(shallow=True).array(np.stack(frames))))
                             queue.put((None, None))
                             pipe.poll()
                             if pipe.returncode != 0:
@@ -437,7 +437,7 @@ class Video(object):
                             frames.append(np.frombuffer(in_bytes, np.uint8).reshape([height, width, 3]))
                             
                         if len(frames) == n:
-                            queue.put( (frameindex, video.clone(shallow=True).array(np.stack(frames))) )  # requires copy, expensive operation                            
+                            queue.put( (frameindex, video.clear().clone(shallow=True).array(np.stack(frames))) )  # requires copy, expensive operation                            
                             frames = []
                             
                         frameindex += 1
