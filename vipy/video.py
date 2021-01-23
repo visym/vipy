@@ -36,6 +36,7 @@ import queue
 import threading
 from concurrent.futures import ThreadPoolExecutor
 
+
 try:
     import ujson as json  # faster
 except ImportError:
@@ -386,8 +387,9 @@ class Video(object):
                             break
                         else:
                             frames.append(np.frombuffer(in_bytes, np.uint8).reshape([height, width, 3]))
-                            
-                        frames.pop(0) if len(frames) > n else None
+
+                        if len(frames) > n:
+                            frames.pop(0) 
                         if (frameindex-1) % m == 0 and len(frames) >= n:
                             queue.put( (frameindex, video.clear().clone(shallow=True).array(np.stack(frames[-n:]))))  # requires copy, expensive operation
                             
