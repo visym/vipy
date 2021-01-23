@@ -34,7 +34,7 @@ import hashlib
 from pathlib import PurePath
 import queue 
 import threading
-
+from concurrent.futures import ThreadPoolExecutor
 
 try:
     import ujson as json  # faster
@@ -390,6 +390,7 @@ class Video(object):
                         frames.pop(0) if len(frames) > n else None
                         if (frameindex-1) % m == 0 and len(frames) >= n:
                             queue.put( (frameindex, video.clone(shallow=True).array(np.stack(frames[-n:]))) )  # requires copy, expensive operation
+                            time.sleep(0.008)  # to allow other threads to jump in 
                         elif continuous:
                             queue.put((frameindex, None))
                             
@@ -437,6 +438,7 @@ class Video(object):
                             
                         if len(frames) == n:
                             queue.put( (frameindex, video.clone(shallow=True).array(np.stack(frames))) )  # requires copy, expensive operation
+                            time.sleep(0.008)  # to allow other threads to jump in                             
                             frames = []
                             
                         frameindex += 1
@@ -1149,7 +1151,10 @@ class Video(object):
             self._ffmpeg = self._ffmpeg.filter('scale', cols if cols is not None else -1, rows if rows is not None else -1)
         else:            
             # Do not use self.__iter__() which triggers copy for mutable arrays
-            self.array(np.stack([Image(array=self._array[k]).resize(rows=rows, cols=cols).array() for k in range(len(self))]), copy=False)
+            #self.array(np.stack([Image(array=self._array[k]).resize(rows=rows, cols=cols).array() for k in range(len(self))]), copy=False)
+            
+            # Faster: RGB->RGBX to allow for PIL.Image.fromarray() without tobytes() copy, padding faster than np.concatenate()
+            self.array(np.stack([PIL.Image.fromarray(x, mode='RGBX').resize( (cols, rows), resample=PIL.Image.BILINEAR) for x in np.pad(self._array, ((0,0),(0,0),(0,0),(0,1)))])[:,:,:,:-1], copy=False)  # RGB->RGBX->RGB
         self.shape(shape=newshape)  # manually set newshape
         return self
 
@@ -2714,8 +2719,7 @@ class Scene(VideoCategory):
         for (k,im) in enumerate(self):
             for bb in im.objects():
                 if bb.hasintersection(im.imagebox()):
-                    bbm = bb.clone().imclip(array[k]).int()
-                    array[k, bbm._ymin:bbm._ymax, bbm._xmin:bbm._xmax] = fg
+                    array[k, int(round(bb._ymin)):int(round(bb._ymax)), int(round(bb._xmin)):int(round(bb._xmax))] = fg   # does not need imclip
         return vipy.video.Video(array=array, framerate=self.framerate(), colorspace='float')
 
     

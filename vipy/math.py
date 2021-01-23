@@ -4,19 +4,17 @@ from vipy.util import isnumpy, chunklistWithOverlap
 
 try:
     from numba import njit, config  
-    config.THREADING_LAYER = 'workqueue'
+    config.THREADING_LAYER = 'workqueue'    
+    @njit(parallel=True, cache=True, nogil=True, fastmath=True)
+    def normalize(arr, mean, std, scale):
+        """Parallel normalization by whitening"""
+        return ((np.float32(scale)*arr.astype(np.float32)) - mean.flatten()) / std.flatten() 
 except:
-    def njit(parallel, cache, nogil, fastmath):
-        def decorator(func):
-            return func 
-        return decorator  # no-op decorator
+    def normalize(arr, mean, std, scale):
+        """Whiten the numpy array arr"""
+        return ((np.float32(scale)*arr.astype(np.float32)) - mean.flatten()) / std.flatten() 
 
     
-@njit(parallel=True, cache=True, nogil=True, fastmath=True)
-def normalize(arr, mean, std, scale):
-    return ((np.float32(scale)*arr.astype(np.float32)) - mean.flatten()) / std.flatten() 
-
-
 def iseven(x):
     return x%2 == 0
 

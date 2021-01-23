@@ -536,7 +536,7 @@ class Image(object):
     def pil(self):
         """Convert vipy.image.Image to PIL Image, by reference"""
         assert self.channels() in [1,3,4] and (self.channels() == 1 or self.colorspace() != 'float'), "Incompatible with PIL"
-        return PIL.Image.fromarray(self.numpy(), mode='RGB' if self.colorspace()=='rgb' else None)
+        return PIL.Image.fromarray(self.numpy(), mode='RGB' if self.colorspace()=='rgb' else None)  # FIXME: mode='RGB' triggers slow tobytes() conversion, need RGBA or RGBX
 
     def blur(self, sigma=3):
         return self.array(np.array(self.pil().filter(PIL.ImageFilter.GaussianBlur(radius=sigma))))
@@ -701,7 +701,7 @@ class Image(object):
 
         
     # Spatial transformations
-    def resize(self, cols=None, rows=None, width=None, height=None, interp='bilinear'):
+    def resize(self, cols=None, rows=None, width=None, height=None, interp='bilinear', fast=False):
         """Resize the image buffer to (rows x cols) with bilinear interpolation.  If rows or cols is provided, rescale image maintaining aspect ratio"""
         assert not (cols is not None and width is not None), "Define either width or cols"
         assert not (rows is not None and height is not None), "Define either height or rows"
@@ -718,7 +718,7 @@ class Image(object):
         elif self.colorspace() == 'float':
             self._array = np.dstack([np.array(im.pil().resize((cols, rows), string_to_pil_interpolation(interp))) for im in self.channel()])
         else:
-            self._array = np.asarray(self.load().pil().resize((cols, rows), string_to_pil_interpolation(interp)))  
+            self._array = np.asarray(self.load().pil().resize((cols, rows), string_to_pil_interpolation(interp), reducing_gap=2 if fast else None))  
         return self
 
     def resize_like(self, im, interp='bilinear'):
@@ -726,7 +726,7 @@ class Image(object):
         assert isinstance(im, Image), "Invalid input - Must be vipy.image.Image()"
         return self.resize(im.width(), im.height(), interp=interp)
     
-    def rescale(self, scale=1, interp='bilinear'):
+    def rescale(self, scale=1, interp='bilinear', fast=False):
         """Scale the image buffer by the given factor - NOT idempotent"""
         (height, width) = self.load().shape()
         if scale == 1:
@@ -734,7 +734,7 @@ class Image(object):
         elif self.colorspace() == 'float':
             self._array = np.dstack([np.asarray(im.pil().resize((int(np.round(scale * width)), int(np.round(scale * height))), string_to_pil_interpolation(interp))) for im in self.channel()])
         else: 
-            self._array = np.asarray(self.pil().resize((int(np.round(scale * width)), int(np.round(scale * height))), string_to_pil_interpolation(interp)))
+            self._array = np.asarray(self.pil().resize((int(np.round(scale * width)), int(np.round(scale * height))), string_to_pil_interpolation(interp), reducing_gap=2 if fast else None))
         return self
 
     def maxdim(self, dim=None, interp='bilinear'):
