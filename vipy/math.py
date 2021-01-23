@@ -14,6 +14,10 @@ except:
         """Whiten the numpy array arr"""
         return ((np.float32(scale)*arr.astype(np.float32)) - mean.flatten()) / std.flatten() 
 
+def _normalize(arr, mean, std, scale):
+    """Whiten the numpy array arr (no parallelization)"""
+    return ((np.float32(scale)*arr.astype(np.float32)) - mean.flatten()) / std.flatten() 
+    
     
 def iseven(x):
     return x%2 == 0
