@@ -390,7 +390,7 @@ class Video(object):
                         frames.pop(0) if len(frames) > n else None
                         if (frameindex-1) % m == 0 and len(frames) >= n:
                             queue.put( (frameindex, video.clone(shallow=True).array(np.stack(frames[-n:]))) )  # requires copy, expensive operation
-                            time.sleep(0.008)  # to allow other threads to jump in 
+                            
                         elif continuous:
                             queue.put((frameindex, None))
                             
@@ -408,7 +408,7 @@ class Video(object):
                     (k,vc) = q.get()
                     if k is not None:
                         yield (vc.activities([a.clone().offset(-k+n-1).truncate(0,n) for (ak,a) in self._video.activities().items() if a.during_interval(k-n+1, k, inclusive=True)]) 
-                               .tracks([t.clone().offset(-k+n-1).truncate(0,n) for (tk,t) in self._video.tracks().items() if t.during_interval(k-n+1, k)])) if (vc is not None and isinstance(vc, vipy.video.Scene)) else vc
+                               .tracks([t.clone(k-n+1, k).offset(-k+n-1).truncate(0,n) for (tk,t) in self._video.tracks().items() if t.during_interval(k-n+1, k)])) if (vc is not None and isinstance(vc, vipy.video.Scene)) else vc
                     else:
                         e.set()
                         break
@@ -438,7 +438,6 @@ class Video(object):
                             
                         if len(frames) == n:
                             queue.put( (frameindex, video.clone(shallow=True).array(np.stack(frames))) )  # requires copy, expensive operation
-                            time.sleep(0.008)  # to allow other threads to jump in                             
                             frames = []
                             
                         frameindex += 1
@@ -1154,7 +1153,10 @@ class Video(object):
             #self.array(np.stack([Image(array=self._array[k]).resize(rows=rows, cols=cols).array() for k in range(len(self))]), copy=False)
             
             # Faster: RGB->RGBX to allow for PIL.Image.fromarray() without tobytes() copy, padding faster than np.concatenate()
-            self.array(np.stack([PIL.Image.fromarray(x, mode='RGBX').resize( (cols, rows), resample=PIL.Image.BILINEAR) for x in np.pad(self._array, ((0,0),(0,0),(0,0),(0,1)))])[:,:,:,:-1], copy=False)  # RGB->RGBX->RGB
+            #self.array(np.stack([PIL.Image.fromarray(x, mode='RGBX').resize( (cols, rows), resample=PIL.Image.BILINEAR) for x in np.pad(self._array, ((0,0),(0,0),(0,0),(0,1)))])[:,:,:,:-1], copy=False)  # RGB->RGBX->RGB
+            
+            # Fastest: padding introduces more overhead than just accepting tobytes(), image size dependent?
+            self.array(np.stack([PIL.Image.fromarray(x).resize( (cols, rows), resample=PIL.Image.BILINEAR) for x in np.ascontiguousarray(self._array)]), copy=False)
         self.shape(shape=newshape)  # manually set newshape
         return self
 
@@ -1411,7 +1413,7 @@ class Video(object):
             return self
 
 
-    def torch(self, startframe=0, endframe=None, length=None, stride=1, take=None, boundary='repeat', order='nchw', verbose=False, withslice=False, scale=1.0, withlabel=False):
+    def torch(self, startframe=0, endframe=None, length=None, stride=1, take=None, boundary='repeat', order='nchw', verbose=False, withslice=False, scale=1.0, withlabel=False, nonelabel=False):
         """Convert the loaded video of shape N HxWxC frames to an MxCxHxW torch tensor, forces a load().
 
            * Order of arguments is (startframe, endframe) or (startframe, startframe+length) or (random_startframe, random_starframe+takelength), then stride or take.
@@ -1421,6 +1423,7 @@ class Video(object):
            * boundary can be ['repeat', 'strict', 'cyclic']
            * withlabel=True, returns tuple (t, labellist), where labellist is a list of tuples of activity labels occurring at the corresponding frame in the tensor
            * withslice=Trye, returnss tuple (t, (startframe, endframe, stride))
+           * nonelabel=True, returns tuple (t, None) if withlabel=False 
 
         """
         try_import('torch'); import torch
@@ -1469,15 +1472,15 @@ class Video(object):
         if t.dim() == 2:
             t = t.unsqueeze(0).unsqueeze(-1)  # HxW -> (N=1)xHxWx(C=1)
         if order == 'nchw':
-            t = t.permute(0,3,1,2)  # NxCxHxW
+            t = t.permute(0,3,1,2)  # NxCxHxW, view
         elif order == 'nhwc':
             pass  # NxHxWxC  (native numpy order)
         elif order == 'cnhw' or order == 'cdhw':
-            t = t.permute(3,0,1,2)  # CxNxHxW == CxDxHxW (for torch conv3d)           
+            t = t.permute(3,0,1,2)  # CxNxHxW == CxDxHxW (for torch conv3d), view
         elif order == 'chwn':
-            t = t.permute(3,1,2,0)  # CxHxWxN
+            t = t.permute(3,1,2,0)  # CxHxWxN, view
         else:
-            raise ValueError("Invalid order = must be in ['nchw', 'nhwc']")
+            raise ValueError("Invalid order = must be in ['nchw', 'nhwc', 'chwn', 'cnhw']")
             
         # Scaling (optional)
         if scale is not None and self.colorspace() != 'float':
@@ -1491,6 +1494,8 @@ class Video(object):
         elif withlabel:            
             labels = [sorted(tuple(self.activitylabels( (k%len(frames)) if boundary == 'cyclic' else min(k, len(frames)-1) ))) for f in range(i,j,k)]
             return (t, labels)
+        elif nonelabel:
+            return (t, None)
         else:
             return t
 

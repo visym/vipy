@@ -487,10 +487,16 @@ class Track(object):
             self._id = newid
             return self
 
-    def clone(self):
+    def clone(self, startframe=None, endframe=None):
         #return copy.deepcopy(self)  
-        return Track.from_json(self.json(encode=False))  # 2x faster than deepcopy
+        return Track.from_json(self.json(encode=False)) if (startframe is None and endframe is None) else self.clone_during(startframe, endframe)  # 2x faster than deepcopy
 
+    def clone_during(self, startframe, endframe):
+        #return copy.deepcopy(self)
+        kfkb = [(kf,kb.clone()) for (kf,kb) in zip(self._keyframes, self._keyboxes) if ((startframe is None or kf >= startframe) and (endframe is None or kf <= endframe))]
+        (kf, kb) = zip(*kfkb) if len(kfkb) > 0 else ([], [])        
+        return Track(keyframes=kf, boxes=kb, category=self._label, framerate=self._framerate, interpolation=self._interpolation, boundary=self._boundary, shortlabel=self._shortlabel, attributes=self.attributes, trackid=self._id)
+    
     def boundingbox(self, startframe=None, endframe=None):
         """The bounding box of a track is the smallest spatial box that contains all of the detections within startframe and endframe, or None if there are no detections"""
         t = self.clone() if (startframe is None and endframe is None) else self.clone().truncate(startframe, endframe)
