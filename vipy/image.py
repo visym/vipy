@@ -30,7 +30,11 @@ import warnings
 import base64
 import types
 import hashlib
-import torch
+
+try:
+    import torch  # pre-import
+except:
+    pass
 
 try:
     import ujson as json  # faster
@@ -543,6 +547,7 @@ class Image(object):
         
     def torch(self, order='CHW'):
         """Convert the batch of 1 HxWxC images to a 1xCxHxW torch tensor, by reference"""
+        try_import('torch'); import torch        
         img = self.numpy() if self.iscolor() else np.expand_dims(self.numpy(), 2)  # HxW -> HxWx1
         img = np.expand_dims(img,0)
         img = img.transpose(0,3,1,2) if order == 'CHW' else img  # HxWxC or CxHxW
@@ -550,6 +555,7 @@ class Image(object):
 
     def fromtorch(self, x):
         """Convert a 1xCxHxW torch.FloatTensor to HxWxC np.float32 numpy array(), returns new Image() instance with selected colorspace"""
+        try_import('torch'); import torch        
         assert isinstance(x, torch.Tensor), "Invalid input type '%s'- must be torch.Tensor" % (str(type(x)))
         img = np.copy(np.squeeze(x.permute(2,3,1,0).detach().numpy()))  # 1xCxHxW -> HxWxC, copied
         colorspace = 'float' if img.dtype == np.float32 else None

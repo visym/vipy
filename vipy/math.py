@@ -47,7 +47,7 @@ def runningmean(X, n):
 
 
 def gaussian(M, std, sym=True):
-    """Replication of scipy.signal.gaussian"""
+    """1D gaussian window with M points, Replication of scipy.signal.gaussian"""
 
     if M < 1:
         return np.array([])
@@ -86,13 +86,16 @@ def find_closest_positive_divisor(a, b):
         bh = b - k
         if bh>1 and a % bh == 0:
             return bh
-    return a  # should never get here, since bh=a is always a solution
+    raise  # should never get here, since bh=a is always a solution
 
 def cartesian_to_polar(x, y):
     """Cartesian (x,y) coordinates to polar (radius, theta) coordinates, theta in radians in [-pi,pi]"""
-    return (np.sqrt(np.array(x)**2 + np.array(y)**2),
-            np.arctan2(y, x))
+    return (np.sqrt(np.array(x)**2 + np.array(y)**2), np.arctan2(y, x))
 
+def polar_to_cartesian(r, t):
+    """Polar (radius, theta) coordinates to cartesian (x=right,y=down) coordinates.  (0,0) is upper left of image"""
+    return (np.multiply(r, np.cos(t)), np.multiply(r, np.sin(t)))
+            
 def rad2deg(r):
     """Radians to degrees"""
     return r*(180.0 / np.pi)
