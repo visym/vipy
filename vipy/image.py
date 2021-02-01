@@ -547,10 +547,11 @@ class Image(object):
         
     def torch(self, order='CHW'):
         """Convert the batch of 1 HxWxC images to a 1xCxHxW torch tensor, by reference"""
-        try_import('torch'); import torch        
+        try_import('torch'); import torch
+        assert order in ['CHW', 'chw', 'HWC', 'hwc']
         img = self.numpy() if self.iscolor() else np.expand_dims(self.numpy(), 2)  # HxW -> HxWx1
-        img = np.expand_dims(img,0)
-        img = img.transpose(0,3,1,2) if order == 'CHW' else img  # HxWxC or CxHxW
+        img = np.expand_dims(img,0)  # HxWxC -> 1xHxWxC
+        img = img.transpose(0,3,1,2) if order.lower() == 'chw' else img  # HxWxC or CxHxW
         return torch.from_numpy(img)  
 
     def fromtorch(self, x):
@@ -749,8 +750,11 @@ class Image(object):
 
     def mindim(self, dim=None, interp='bilinear'):
         """Resize image preserving aspect ratio so that minimum dimension of image = dim, or return mindim()"""
-        s = float(dim) / float(np.minimum(self.height(), self.width()))
-        return self.rescale(s, interp=interp) if dim is not None else min(self.shape())
+        if dim is None:
+            return np.minimum(self.height(), self.width())
+        else:
+            s = float(dim) / float(np.minimum(self.height(), self.width()))
+            return self.rescale(s, interp=interp) if dim is not None else min(self.shape())
 
     def _pad(self, dx, dy, mode='edge'):
         """Pad image using np.pad mode, dx=padwidth, dy=padheight, thin wrapper for numpy.pad"""

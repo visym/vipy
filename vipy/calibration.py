@@ -109,11 +109,24 @@ def vertical_gradient(nrows, ncols):
     """Create a 2D linear ramp image """
     return np.outer([(255.0 * (x / float(nrows))) for x in range(0,nrows)], np.ones((1,ncols))).astype(np.uint8)
 
-def centersquare(height=512, width=512, squaresize=256):
-    img = np.zeros( (height, width) )
+def centersquare(height=512, width=512, squaresize=256, channels=1):
+    img = np.zeros( (height, width, channels) )
     (x,y,s) = (int(height//2), int(width//2), int(squaresize//2))
     img[x-s:x+s, y-s:y+s] = 1.0
     return img
 
 def centersquare_image(height=512, width=512, squaresize=256):    
     return vipy.image.Image(array=np.uint8(255*centersquare(height, width, squaresize)), colorspace='lum')
+
+
+def circle(x, y, r, width, height, channels=1):
+    img = np.zeros( (height, width, channels), dtype=np.float32 )
+    (X,Y) = np.meshgrid(range(width), range(height))
+    img[np.sqrt((X-x)**2 + (Y-y)**2) < r] = 1.0
+    return img
+
+def square(x, y, r, width, height, channels=1):
+    img = np.zeros( (height, width, channels), dtype=np.float32 )
+    img[max(int(y-r), 0):min(height, int(y+r)), max(int(x-r), 0):min(int(x+r), width)] = 1.0
+    return img
+
