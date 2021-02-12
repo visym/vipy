@@ -34,7 +34,7 @@ import hashlib
 try:
     import torch  # pre-import
 except:
-    pass
+    pass  # lazy load on demand
 
 try:
     import ujson as json  # faster
