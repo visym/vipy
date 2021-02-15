@@ -2777,7 +2777,7 @@ class Scene(VideoCategory):
                         break
         return self
 
-    def assign(self, frame, dets, minconf=0.2, maxhistory=5, activityiou=0.5, trackcover=0.2, trackconfsamples=4, gate=0):
+    def assign(self, frame, dets, minconf=0.2, maxhistory=5, activityiou=0.5, trackcover=0.2, trackconfsamples=4, gate=0, activitymerge=True):
         """Assign a list of vipy.object.Detections at frame k to scene by greedy track association. In-place update.
         
            * miniou [float]: the minimum temporal IOU for activity assignment
@@ -2786,6 +2786,7 @@ class Scene(VideoCategory):
            * trackconfsamples [int]:  the number of uniformly spaced samples along a track to compute a track confidence
            * gate [int]: the gating distance in pixels used for assignment of fast moving detections.  Useful for low detection framerates if a detection does not overlap with the track.
            * trackcover [float]: the minimum cover necessary for assignment of a detection to a track
+           * activitymerge [bool]: if true, then merge overlapping activity detections of the same track and category, otherwise each activity detection is added as a new detection
 
         """
         assert dets is None or all([isinstance(d, vipy.object.Detection) or isinstance(d, vipy.activity.Activity) for d in tolist(dets)]), "invalid input"
@@ -2851,7 +2852,7 @@ class Scene(VideoCategory):
             activitydets.sort(key=lambda a: a.startframe())  # in-place
             for a in sorted(self.activities().values(), key=lambda a: a.startframe()):            
                 for d in activitydets: 
-                    if (d.id() not in assigned) and (a.category() == d.category()) and (a.actorid() == d.actorid()) and a.hasoverlap(d, activityiou): 
+                    if activitymerge and (d.id() not in assigned) and (a.category() == d.category()) and (a.actorid() == d.actorid()) and a.hasoverlap(d, activityiou): 
                         a.union(d)  # activity assignment with maximum confidence
                         assigned.add(d.id())
                         
