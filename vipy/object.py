@@ -410,12 +410,8 @@ class Track(object):
         """Is frame during the time interval (startframe, endframe) inclusive?"""        
         k_end = k_start+1 if k_end is None else k_end
         (startframe, endframe) = (self.startframe(), self.endframe())
-        if len(self)>0:
-            for k in range(k_start, k_end):
-                if k >= startframe and k <= endframe:
-                    return True  # early exit
-        return False
-
+        return len(self)>0 and ((k_start >= startframe and k_start <= endframe) or (k_end >= startframe and k_end <= endframe) or (k_start <= startframe and k_end >= endframe))
+        
     def during_interval(self, k_start, k_end):
         return self.during(k_start, k_end)
 

@@ -2850,7 +2850,7 @@ class Scene(VideoCategory):
             assert all([d.actorid() in self.tracks() for d in activitydets]), "Invalid activity"
             assigned = set([])
             activitydets.sort(key=lambda a: a.startframe())  # in-place
-            for a in sorted(self.activities().values(), key=lambda a: a.startframe()):            
+            for a in self.activities().values():  # assumed sorted
                 for d in activitydets: 
                     if activitymerge and (d.id() not in assigned) and (a.category() == d.category()) and (a.actorid() == d.actorid()) and a.hasoverlap(d, activityiou): 
                         a.union(d)  # activity assignment with maximum confidence
