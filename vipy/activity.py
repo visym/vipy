@@ -37,12 +37,10 @@ class Activity(object):
             if all([isinstance(t, Track) for t in tracks]):
                 assert all([any([t.during(f) for f in range(startframe, endframe)]) for t in tracks]), "All tracks must be be present in at least one frame when this activity occurs"
                 tracks = [t.id() for t in tracks]  
-        trackid = set(tracks) if tracks is not None else set([])  # only store IDs, not tracks
+        trackid = set(tracks) if tracks is not None else (set([actorid]) if actorid is not None else set([]))  # only store IDs, not tracks
         
-        if actorid is not None:
-            assert isstring(actorid), "Invalid actor ID, must be a track ID for the actor performing this activity"
-            if actorid not in trackid:
-                trackid.add(actorid)
+        if tracks is not None and actorid is not None and actorid not in trackid:
+            trackid.add(actorid)
 
         global ACTIVITY_GUID; self._id = hex(int(ACTIVITY_GUID))[2:];  ACTIVITY_GUID = ACTIVITY_GUID + 1;  # faster, increment package level UUID4 initialized GUID
         self._startframe = int(startframe)
@@ -53,7 +51,7 @@ class Activity(object):
         self._trackid = trackid
         self._actorid = actorid
 
-        self.attributes = copy.copy(attributes) if attributes is not None else {}  # shallow copy
+        self.attributes = attributes.copy() if attributes is not None else {}  # shallow copy
         if confidence is not None:
             self.attributes['confidence'] = float(confidence)
 
