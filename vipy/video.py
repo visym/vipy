@@ -2858,12 +2858,13 @@ class Scene(VideoCategory):
             assert all([d.actorid() in self.tracks() for d in activitydets]), "Invalid activity"
             assigned = set([])
             if activitymerge:
-                activitydets.sort(key=lambda a: a.startframe())  # in-place
-                for a in self.activities().values():  # assumed sorted
-                    for d in activitydets: 
-                        if (d.id() not in assigned) and (a.category() == d.category()) and (a.actorid() == d.actorid()) and a.hasoverlap(d, activityiou): 
-                            a.union(d)  # activity assignment with maximum confidence
-                            assigned.add(d.id())
+                minframe = min([a._startframe for a in activitydets])
+                for a in self.activities().values():  
+                    if a._endframe >= minframe:
+                        for d in activitydets: 
+                            if (d.id() not in assigned) and (a.category() == d.category()) and (a.actorid() == d.actorid()) and a.hasoverlap(d, activityiou): 
+                                a.union(d)  # activity assignment 
+                                assigned.add(d.id())
                         
             # Activity construction from unassigned detections
             for d in activitydets:
