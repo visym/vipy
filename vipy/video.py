@@ -2679,19 +2679,19 @@ class Scene(VideoCategory):
             for (k,im) in enumerate(self.load() if self.isloaded() else self.stream()):
                 time.sleep(max(0, (1.0/self.framerate())*int(np.ceil((self.framerate()/fps))) - sw.since()))                
                 f_mutator(im,k).show(categories=categories,
-                                   figure=figure,
-                                   nocaption=nocaption,
-                                   nocaption_withstring=nocaption_withstring,
-                                   fontsize=fontsize,
-                                   boxalpha=boxalpha,
-                                   d_category2color=d_category2color,
-                                   captionoffset=captionoffset,
-                                   textfacecolor=textfacecolor,
-                                   textfacealpha=textfacealpha, 
-                                   timestampcolor=timestampcolor,
-                                   timestampfacecolor=timestampfacecolor,
-                                   timestamp=f_timestamp(k) if timestamp is not None else None,
-                                   shortlabel=shortlabel)
+                                     figure=figure,
+                                     nocaption=nocaption,
+                                     nocaption_withstring=nocaption_withstring,
+                                     fontsize=fontsize,
+                                     boxalpha=boxalpha,
+                                     d_category2color=d_category2color,
+                                     captionoffset=captionoffset,
+                                     textfacecolor=textfacecolor,
+                                     textfacealpha=textfacealpha,
+                                     timestampcolor=timestampcolor,
+                                     timestampfacecolor=timestampfacecolor,
+                                     timestamp=f_timestamp(k) if timestamp is not None else None,
+                                     shortlabel=shortlabel)
                 
                 if vipy.globals.user_hit_escape():
                     break

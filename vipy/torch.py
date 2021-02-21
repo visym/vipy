@@ -82,16 +82,19 @@ class Foveation(LaplacianPyramid):
         super().__init__(im)
         
         (H,W) = (im.height(), im.width())
-        allowable_modes = ['gaussian', 'linear-circle', 'linear-square']
+        allowable_modes = ['gaussian', 'linear-circle', 'linear-square', 'log-circle']
         if mode == 'gaussian':
-            G = np.repeat(vipy.math.gaussian2d([W/2,H/2], [sx,sy], H, W)[:,:,np.newaxis], 3, axis=2)
+            G = np.repeat(vipy.math.gaussian2d([W,H], [sx,sy], 2*H, 2*W)[:,:,np.newaxis], 3, axis=2)
             masks = [vipy.image.Image(array=np.array(G>t).astype(np.float32), colorspace='float') for t in np.arange(0, np.max(G), np.max(G)/len(self))]
         elif mode == 'linear-circle':
-            masks = [vipy.image.Image(array=vipy.calibration.circle(W/2,H/2,s*(d/2),W,H,3).astype(np.float32), colorspace='float') for d in np.arange(max(H,W), 0, -max(H,W)/len(self))]
+            masks = [vipy.image.Image(array=vipy.calibration.circle(W,H,s*(d/2),2*W,2*H,3).astype(np.float32), colorspace='float') for d in np.arange(max(H,W), 0, -max(H,W)/len(self))]
+        elif mode == 'log-circle':
+            masks = [vipy.image.Image(array=vipy.calibration.circle(W,H,(s*(d/2))**2,2*W,2*H,3).astype(np.float32), colorspace='float') for d in np.arange(max(H,W), 0, -max(H,W)/len(self))]
         elif mode == 'linear-square':
-            masks = [vipy.image.Image(array=vipy.calibration.square(W/2,H/2,s*(d/2),W,H,3).astype(np.float32), colorspace='float') for d in np.arange(max(H,W), 0, -max(H,W)/len(self))]
+            masks = [vipy.image.Image(array=vipy.calibration.square(W,H,s*(d/2),2*W,2*H,3).astype(np.float32), colorspace='float') for d in np.arange(max(H,W), 0, -max(H,W)/len(self))]
         else:
             raise ValueError('invalid mode "%s" - must be in %s' % (mode, str(allowable_modes)))
+        self._immasks = masks
         self._masks = [m.torch() for m in masks]
         
     def foveate(self, tx=0, ty=0, sx=1.0, sy=1.0):
