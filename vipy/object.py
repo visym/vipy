@@ -37,7 +37,7 @@ class Detection(BoundingBox):
         self._label = category if category is not None else label
         self._shortlabel = self._label if shortlabel is None else shortlabel
         self._confidence = float(confidence) if confidence is not None else confidence
-        self.attributes = {} if attributes is None else copy.copy(attributes)  # shallow copy
+        self.attributes = {} if attributes is None else attributes.copy()  # shallow copy
 
     @classmethod
     def cast(cls, d, flush=False, category=None):
@@ -190,7 +190,7 @@ class Track(object):
         self._framerate = framerate
         self._interpolation = interpolation
         self._boundary = boundary
-        self.attributes = copy.copy(attributes) if attributes is not None else {}  # shallow copy
+        self.attributes = attributes.copy() if attributes is not None else {}  # shallow copy
         self._keyframes = [int(np.round(f)) for f in keyframes]  # coerce to int
         self._keyboxes = boxes
         
@@ -410,12 +410,8 @@ class Track(object):
         """Is frame during the time interval (startframe, endframe) inclusive?"""        
         k_end = k_start+1 if k_end is None else k_end
         (startframe, endframe) = (self.startframe(), self.endframe())
-        if len(self)>0:
-            for k in range(k_start, k_end):
-                if k >= startframe and k <= endframe:
-                    return True  # early exit
-        return False
-
+        return len(self)>0 and ((k_start >= startframe and k_start <= endframe) or (k_end >= startframe and k_end <= endframe) or (k_start <= startframe and k_end >= endframe))
+        
     def during_interval(self, k_start, k_end):
         return self.during(k_start, k_end)
 

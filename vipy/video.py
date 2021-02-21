@@ -365,8 +365,15 @@ class Video(object):
                 if flush:
                     self._write_pipe.stdin.flush()  # do we need this?
                 
-            def clip(self, n, m=1, continuous=False):
-                """Stream clips of length n such that the yielded video clip contains frame(0) to frame(-n), and next contains frame(m) to frame (-(n+m)). """
+            def clip(self, n, m=1, continuous=False, tracks=True, activities=True):
+                """Stream clips of length n such that the yielded video clip contains frame(0) to frame(-n), and next contains frame(m) to frame (-(n+m)). 
+                
+                   - n [int]: the length of the clip
+                   - m [int]: the stride between clips
+                   - continuous [bool]:  if true, then yield None for the frames between the strides so that a clip is yielded on every frame
+                   - activities [bool]:  if false, then activities from the source video are not copied into the clip
+                   - tracks [bool]:  if false, then tracks from the source video are not copied into the clip
+                """
                 assert isinstance(n, int) and n>0, "Clip length must be a positive integer"
                 assert isinstance(m, int) and m>0, "Clip stride must be a positive integer"                
                 
@@ -409,8 +416,9 @@ class Video(object):
                 while True:
                     (k,vc) = q.get()
                     if k is not None:
-                        yield (vc.activities([a.clone().offset(-k+n-1).truncate(0,n) for (ak,a) in self._video.activities().items() if a.during_interval(k-n+1, k, inclusive=True)]) 
-                               .tracks([t.clone(k-n+1, k).offset(-k+n-1).truncate(0,n) for (tk,t) in self._video.tracks().items() if t.during_interval(k-n+1, k)])) if (vc is not None and isinstance(vc, vipy.video.Scene)) else vc
+                        yield ((vc.activities([a.clone().offset(-k+n-1).truncate(0,n) for (ak,a) in self._video.activities().items() if a.during_interval(k-n+1, k, inclusive=True)] if activities else []) 
+                               .tracks([t.clone(k-n+1, k).offset(-k+n-1).truncate(0,n) for (tk,t) in self._video.tracks().items() if t.during_interval(k-n+1, k)] if tracks else []))
+                               if (vc is not None and isinstance(vc, vipy.video.Scene)) else vc)
                     else:
                         e.set()
                         break
@@ -2849,12 +2857,14 @@ class Scene(VideoCategory):
         if len(activitydets) > 0:
             assert all([d.actorid() in self.tracks() for d in activitydets]), "Invalid activity"
             assigned = set([])
-            activitydets.sort(key=lambda a: a.startframe())  # in-place
-            for a in sorted(self.activities().values(), key=lambda a: a.startframe()):            
-                for d in activitydets: 
-                    if activitymerge and (d.id() not in assigned) and (a.category() == d.category()) and (a.actorid() == d.actorid()) and a.hasoverlap(d, activityiou): 
-                        a.union(d)  # activity assignment with maximum confidence
-                        assigned.add(d.id())
+            if activitymerge:
+                minframe = min([a._startframe for a in activitydets])
+                for a in self.activities().values():  
+                    if a._endframe >= minframe:
+                        for d in activitydets: 
+                            if (d.id() not in assigned) and (a.category() == d.category()) and (a.actorid() == d.actorid()) and a.hasoverlap(d, activityiou): 
+                                a.union(d)  # activity assignment 
+                                assigned.add(d.id())
                         
             # Activity construction from unassigned detections
             for d in activitydets:
