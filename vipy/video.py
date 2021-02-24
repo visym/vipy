@@ -2862,9 +2862,9 @@ class Scene(VideoCategory):
                 for a in self.activities().values():  
                     if a._endframe >= minframe:
                         for d in activitydets: 
-                            if (d.id() not in assigned) and (a.category() == d.category()) and (a.actorid() == d.actorid()) and a.hasoverlap(d, activityiou): 
+                            if (d._id not in assigned) and (a._label == d._label) and (a._actorid == d._actorid) and a.hasoverlap(d, activityiou): 
                                 a.union(d)  # activity assignment 
-                                assigned.add(d.id())
+                                assigned.add(d._id)
                         
             # Activity construction from unassigned detections
             for d in activitydets:
