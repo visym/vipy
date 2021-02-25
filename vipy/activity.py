@@ -114,7 +114,7 @@ class Activity(object):
             return self
 
     def middleframe(self):
-        return int(np.round((self.endframe() - self.startframe()) / 2.0)) + self.startframe()
+        return int(np.round((self._endframe - self._startframe) / 2.0)) + self._startframe
 
     def framerate(self, fps=None, speed=None):
         """Resample (startframe, endframe) from known original framerate set by constructor to be new framerate fps"""        
@@ -169,7 +169,8 @@ class Activity(object):
     def hasoverlap(self, other, threshold=0):
         assert isinstance(other, Activity), "Invalid input"
         assert threshold >= 0 and threshold <= 1, "Invalid temporal IOU threshold"
-        return self.temporal_iou(other) > threshold
+        return (((min(self._endframe, other._endframe) - max(self._startframe, other._startframe)) > 0) if threshold == 0 else
+                self.temporal_iou(other) > threshold)
         
     def isneighbor(self, other, framegate=10):
         return self.temporal_iou(other.clone().temporalpad(framegate)) > 0 
@@ -229,13 +230,13 @@ class Activity(object):
            -confweight [0,1]:  the convex combinatiopn weight applied to the new activity 
         """
         assert isinstance(other, Activity), "Invalid input"
-        assert self.actorid() == other.actorid(), "Actor ID must be the same"
-        assert self.category() == other.category(), "Assigned activity is a different category"
-        assert self.framerate() == other.framerate(), "Invalid input"
+        assert self._actorid == other._actorid, "Actor ID must be the same"
+        assert self._label == other._label, "Assigned activity is a different category"
+        assert self._framerate == other._framerate, "Invalid input"
         assert confweight >= 0 and confweight <= 1, "Confidence weight must be [0,1]"
 
-        self.startframe(min(other.startframe(), self.startframe()))
-        self.endframe(max(other.endframe(), self.endframe()))
+        self.startframe(min(other._startframe, self._startframe))
+        self.endframe(max(other._endframe, self._endframe))
         if other.confidence() is not None and self.confidence() is not None:
             self.confidence(float((1.0-confweight)*self.confidence() + confweight*other.confidence()) if not maxconf else float(max(self.confidence(), other.confidence())))  # running mean confidence or max
         return self
@@ -243,13 +244,13 @@ class Activity(object):
     def temporal_iou(self, other):
         """Return the temporal intersection over union of two activities"""
         assert isinstance(other, Activity), "Invalid input - must be vipy.object.Activity()"
-        assert self.framerate() == other.framerate(), "invald input - framerate must match"
-        t_start = min(self.startframe(), other.startframe())
-        t_end = max(self.endframe(), other.endframe())
+        assert self._framerate == other._framerate, "invald input - framerate must match"
+        t_start = min(self._startframe, other._startframe)
+        t_end = max(self._endframe, other._endframe)
         t_union = float(t_end - t_start)
         
-        t_start = max(self.startframe(), other.startframe())
-        t_end = min(self.endframe(), other.endframe())
+        t_start = max(self._startframe, other._startframe)
+        t_end = min(self._endframe, other._endframe)
         t_intersection = float(t_end - t_start)
         
         return (t_intersection / t_union) if t_intersection > 0 else 0

@@ -777,10 +777,12 @@ class Track(object):
         v = self.shape_invariant_velocity(f, dt)
         return float(np.arctan2(v[1], v[0])) if self.speed(f, dt) > minspeed else None  # atan2(y,x)
 
-    def bearing_change(self, f1=None, f2=None, dt=30, minspeed=1):
+    def bearing_change(self, f1=None, f2=None, dt=30, minspeed=1, samples=None):
         """The bearing change of a track from frame f1 (or start) and frame f2 (or end) is the relative angle of the velocity vectors in radians [-pi,pi]"""
         dt = min(dt, len(self))
-        B = [self.bearing(k, dt=dt, minspeed=minspeed) for k in range(f1 if f1 is not None else self.startframe(), f2 if f2 is not None else self.endframe())]
+        (sf, ef) = (f1 if f1 is not None else self.startframe(), f2 if f2 is not None else self.endframe())
+        df = 1 if samples is None else int(np.floor((ef-sf)/samples))
+        B = [self.bearing(k, dt=dt, minspeed=minspeed) for k in range(sf, ef+df, df) if k>=sf and k<=ef]
         B = [b for b in B if b is not None]  # valid bearing estimates only
         dr = np.sum(np.diff(B)) if len(B) > 0 else 0  # cumulative bearing angle change 
         return float(dr if np.abs(dr)<=np.pi else ((2*np.pi - dr) if (dr > np.pi) else (2*np.pi + dr)))
