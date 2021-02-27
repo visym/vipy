@@ -540,7 +540,7 @@ def load(infile, abspath=False):
             warnings.warn('Loading archive "%s" that contains filename "%s" which does not exist - This must be downloaded from the provided url() using download()' % (infile, testobj.filename()))
         elif not os.path.isabs(testobj.filename()):
             if not abspath:
-                warnings.warn('Loading archive "%s" with relative paths.  Changing directory to "%s".  Disable this warning by setting vipy.util.load(..., abspath=True).' % (infile, filepath(infile)))
+                warnings.warn('Loading archive "%s" with relative paths.  Changing directory to "%s".  Disable this warning with vipy.util.load(..., abspath=True).' % (infile, filepath(infile)))
                 os.chdir(filepath(infile))
             else:
                 # Absolute path?  The loaded archive will no longer be relocatable, and the videos directory cannot be moved
