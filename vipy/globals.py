@@ -134,15 +134,33 @@ def dask(num_processes=None, num_gpus=None, dashboard=False, address=None, pct=N
         GLOBAL['DASK_CLIENT'] = Dask(num_processes, dashboard=dashboard, verbose=isverbose(), address=address, num_gpus=num_gpus)        
     return GLOBAL['DASK_CLIENT']
 
+
 def parallel(n=None, pct=None):
-    """Enable parallel processing with n>=1 processes"""
-    if n is None and pct is None:
-        return GLOBAL['DASK_CLIENT'].num_processes() if GLOBAL['DASK_CLIENT'] is not None else 0
-    else:
-        assert n is None or (isinstance(n, int) and n>=1)
-        assert pct is None or (pct > 0 and pct <= 1)
-        return dask(num_processes=n, pct=pct)
-        
+    """Enable parallel processing with n>=1 processes.  
+
+       >>> with vipy.globals.parallel(n=4):
+               vipy.batch.Batch(...)
+       
+    """
+
+    class Parallel():
+        def __init__(self, n=None, pct=None):
+            if n is None and pct is None:
+                return GLOBAL['DASK_CLIENT'].num_processes() if GLOBAL['DASK_CLIENT'] is not None else 0
+            else:
+                assert n is None or (isinstance(n, int) and n>=1)
+                assert pct is None or (pct > 0 and pct <= 1)
+                dask(num_processes=n, pct=pct)
+            
+        def __enter__(self):
+            pass
+
+        def __exit__(self, *args):
+            noparallel()
+
+    return Parallel(n, pct)
+
+
 def noparallel():
     """Disable all parallel processing"""
     if GLOBAL['DASK_CLIENT'] is not None:

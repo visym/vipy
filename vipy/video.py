@@ -787,7 +787,7 @@ class Video(object):
             remkdir(filepath(newfile))
             shutil.copyfile(self._filename, newfile)
         elif symlink:
-            assert self.hasfilename(), "File not found for copy"
+            assert self.hasfilename(), "File not found for symlink"
             remkdir(filepath(newfile))
             os.symlink(self._filename, newfile)
                     
@@ -1902,8 +1902,9 @@ class Scene(VideoCategory):
         if animate:
             return Video(frames=[self.quicklook(n=n, dilate=dilate, mindim=mindim, fontsize=fontsize, context=context, startframe=k, animate=False, dt=dt) for k in range(0, min(dt, len(self)))], framerate=self.framerate())
         framelist = [min(int(np.round(f))+startframe, len(self)-1) for f in np.linspace(0, len(self)-1, n)]
+        isdegenerate = [self.frame(k).boundingbox() is None or self.frame(k).boundingbox().dilate(dilate).intersection(self.framebox(), strict=False).isdegenerate() for (j,k) in enumerate(framelist)]
         imframes = [self.frame(k).maxmatte()  # letterbox or pillarbox
-                    if (self.frame(k).boundingbox() is None) or (context is True and (j == 0 or j == (n-1))) else
+                    if (isdegenerate[j] or (context is True and (j == 0 or j == (n-1)))) else
                     self.frame(k).padcrop(self.frame(k).boundingbox().dilate(dilate).imclipshape(self.width(), self.height()).maxsquare().int()).mindim(mindim, interp='nearest')
                     for (j,k) in enumerate(framelist)]
         imframes = [im.savefig(fontsize=fontsize, figure=1).rgb() for im in imframes]  # temp storage in memory
@@ -1917,6 +1918,10 @@ class Scene(VideoCategory):
             return self._tracks  # mutable dict
         elif id is not None:
             return self._tracks[id]
+        elif isinstance(tracks, dict):
+            assert all([isinstance(t, vipy.object.Track) and k == t.id() for (k,t) in tracks.items()]), "Invalid input - Must be dictionary of vipy.object.Track"
+            self._tracks = tracks.copy()  # shallow copy
+            return self
         else:
             assert all([isinstance(t, vipy.object.Track) for t in tolist(tracks)]), "Invalid input - Must be vipy.object.Track or list of vipy.object.Track"
             self._tracks = {t.id():t for t in tolist(tracks)}  # insertion order preserved (python >=3.6)
@@ -1957,6 +1962,10 @@ class Scene(VideoCategory):
             return self._activities  # mutable dict
         elif id is not None:
             return self._activities[id]
+        elif isinstance(activities, dict):
+            assert all([isinstance(a, vipy.activity.Activity) and k == a.id() for (k,a) in activities.items()]), "Invalid input - Must be dictionary of vipy.activity.Activity"
+            self._activities = activities.copy()  # shallow copy
+            return self
         else:
             assert all([isinstance(a, vipy.activity.Activity) for a in tolist(activities)]), "Invalid input - Must be vipy.activity.Activity or list of vipy.activity.Activity"
             self._activities = {a.id():a for a in tolist(activities)}   # insertion order preserved (python >=3.6)
@@ -2455,6 +2464,8 @@ class Scene(VideoCategory):
     def resize(self, rows=None, cols=None):
         """Resize the video to (rows, cols), preserving the aspect ratio if only rows or cols is provided"""
         assert rows is not None or cols is not None, "Invalid input"
+        if rows is not None and cols is not None:
+            self.shape(shape=(rows, cols))  # manually set newshape to avoid preview
         (H,W) = self.shape()  # yuck, need to get image dimensions before filter
         sy = rows / float(H) if rows is not None else cols / float(W)
         sx = cols / float(W) if cols is not None else rows / float(H)

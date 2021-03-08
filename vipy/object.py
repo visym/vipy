@@ -42,7 +42,7 @@ class Detection(BoundingBox):
     @classmethod
     def cast(cls, d, flush=False, category=None):
         assert isinstance(d, BoundingBox)
-        if d.__class__ != Detection:
+        if d.__class__ != Detection or flush:
             d.__class__ = Detection
             global DETECTION_GUID; newid = hex(int(DETECTION_GUID))[2:];  DETECTION_GUID = DETECTION_GUID + 1;  
             d._id = newid if flush or not hasattr(d, '_id') else d._id
@@ -50,8 +50,8 @@ class Detection(BoundingBox):
             d._confidence = None if flush or not hasattr(d, '_confidence') else d._confidence
             d._label = None if flush or not hasattr(d, '_label') else d._label
             d.attributes = {} if flush or not hasattr(d, 'attributes') else d.attributes
-            if category is not None:
-                d._label = category  # when casting BoundingBox to Detection, extra args are necessary
+        if category is not None:
+            d._label = category  # when casting BoundingBox to Detection, extra args are necessary
         return d
         
     @classmethod
@@ -144,6 +144,7 @@ class Detection(BoundingBox):
     def delattribute(self, k):
         self.attributes.pop(k, None)
         return self
+
 
 class Track(object):
     """vipy.object.Track class
