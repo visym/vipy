@@ -1068,7 +1068,7 @@ class Video(object):
 
             is_loadable = (len(out) % (newheight*newwidth*channels)) == 0
 
-            if not is_loadable():
+            if not is_loadable:
                 im = self.preview()  # get the real shape...
                 (newheight, newwidth, newchannels) = (im.height(), im.width(), im.channels()) 
                         
@@ -1154,7 +1154,7 @@ class Video(object):
         newshape = (rows if rows is not None else int(np.round(self.height()*(cols/self.width()))),
                     cols if cols is not None else int(np.round(self.width()*(rows/self.height()))))
                             
-        if (rows is None and cols is None) or (self.shape() == newshape):
+        if (rows is None and cols is None):
             return self  # only if strictly necessary
         if not self.isloaded():
             self._ffmpeg = self._ffmpeg.filter('scale', cols if cols is not None else -1, rows if rows is not None else -1)
@@ -2464,14 +2464,12 @@ class Scene(VideoCategory):
     def resize(self, rows=None, cols=None):
         """Resize the video to (rows, cols), preserving the aspect ratio if only rows or cols is provided"""
         assert rows is not None or cols is not None, "Invalid input"
-        if rows is not None and cols is not None:
-            self.shape(shape=(rows, cols))  # manually set newshape to avoid preview
-        (H,W) = self.shape()  # yuck, need to get image dimensions before filter
+        (H,W) = self.shape()  # yuck, need to get image dimensions before filter, manually set this if known
         sy = rows / float(H) if rows is not None else cols / float(W)
         sx = cols / float(W) if cols is not None else rows / float(H)
         self._tracks = {k:t.scalex(sx) for (k,t) in self.tracks().items()}
         self._tracks = {k:t.scaley(sy) for (k,t) in self.tracks().items()}
-        super().resize(rows, cols)
+        super().resize(rows=rows, cols=cols)        
         return self
 
     def mindim(self, dim=None):
