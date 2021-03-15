@@ -285,6 +285,7 @@ class Video(object):
                                              .overwrite_output() \
                                              .global_args('-cpuflags', '0', '-loglevel', 'quiet' if not vipy.globals.isdebug() else 'debug') \
                                              .run_async(pipe_stdin=True)
+                self._frame_index = 0
                 return self
             
             def __exit__(self, type, value, tb):
@@ -359,12 +360,16 @@ class Video(object):
                     self._shape = im.shape()
                     assert im.channels() == 3, "RGB frames required"
                     self.__enter__()
-                assert self._write_pipe is not None, "Write stream cannot be initializedy"                
+                assert self._write_pipe is not None, "Write stream cannot be initialized"                
                 assert im.shape() == self._shape, "Shape cannot change during writing"
                 self._write_pipe.stdin.write(im.array().astype(np.uint8).tobytes())
                 if flush:
                     self._write_pipe.stdin.flush()  # do we need this?
-                
+                if isinstance(im, vipy.image.Scene) and len(im.objects()) > 0:
+                    for obj in im.objects():
+                        self._video.add(obj, frame=self._frame_index, rangecheck=False)
+                self._frame_index += 1  # assumes that the source image is at the appropriate frame rate for this video
+
             def clip(self, n, m=1, continuous=False, tracks=True, activities=True):
                 """Stream clips of length n such that the yielded video clip contains frame(0) to frame(-n), and next contains frame(m) to frame (-(n+m)). 
                 
@@ -599,7 +604,7 @@ class Video(object):
 
     def duration_in_frames_of_videofile(self):
         """Return video duration of the source filename (NOT the filter chain) in frames, requires ffprobe"""
-        return int(round(self.duration_in_seconds_of_videofile()*self.framerate()))
+        return int(np.ceil(self.duration_in_seconds_of_videofile()*self.framerate()))
     
     def probe(self):
         """Run ffprobe on the filename and return the result as a JSON file"""
@@ -1833,7 +1838,7 @@ class Scene(VideoCategory):
         assert img is not None or (self.isloaded() and k<len(self)) or not self.isloaded(), "Invalid frame index %d - Indexing video by frame must be integer within (0, %d)" % (k, len(self)-1)
 
         img = img if img is not None else (self._array[k] if self.isloaded() else self.preview(k).array())
-        dets = [t[k].clone().setattribute('trackindex', j) for (j, t) in enumerate(self.tracks().values()) if len(t)>0 and (t.during(k) or t.boundary()=='extend')]  # track interpolation (cloned) with boundary handling
+        dets = [t[k].clone(deep=True).setattribute('trackindex', j) for (j, t) in enumerate(self.tracks().values()) if len(t)>0 and (t.during(k) or t.boundary()=='extend')]  # track interpolation (cloned) with boundary handling
         for d in dets:
             shortlabel = [(d.shortlabel(),'')]  # [(Noun, Verbing1), (Noun, Verbing2), ...]
             activityconf = [None]   # for display 
@@ -2067,7 +2072,7 @@ class Scene(VideoCategory):
     def hastrack(self, trackid):
         return trackid in self.tracks()
 
-    def add(self, obj, category=None, attributes=None, rangecheck=True):
+    def add(self, obj, category=None, attributes=None, rangecheck=True, frame=None):
         """Add the object obj to the scene, and return an index to this object for future updates
         
         This function is used to incrementally build up a scene frame by frame.  Obj can be one of the following types:
@@ -2097,12 +2102,18 @@ class Scene(VideoCategory):
 
         """        
         if isinstance(obj, vipy.object.Detection):
-            assert self._currentframe is not None, "add() for vipy.object.Detection() must be added during frame iteration (e.g. for im in video: )"
-            t = vipy.object.Track(category=obj.category(), keyframes=[self._currentframe], boxes=[obj], boundary='strict', attributes=obj.attributes)
-            if rangecheck and not obj.hasoverlap(width=self.width(), height=self.height()):
-                raise ValueError("Track '%s' does not intersect with frame shape (%d, %d)" % (str(t), self.height(), self.width()))
-            self.tracks()[t.id()] = t  # by-reference
-            return t.id()
+            assert frame is not None or self._currentframe is not None, "add() for vipy.object.Detection() must be added during frame iteration (e.g. for im in video: )"
+            k = frame if frame is not None else self._currentframe
+            if obj.hasattribute('trackid') and obj.attributes['trackid'] in self.tracks():
+                # The attribute "trackid" is set for a detection when interpolating a track at a frame.  This is useful for reconstructing a track from previously enumerated detections
+                self.trackmap(lambda t: t.update(k, obj) if obj.attributes['trackid'] == t.id() else t) 
+                return obj.attributes['trackid']
+            else:
+                t = vipy.object.Track(category=obj.category(), keyframes=[k], boxes=[obj], boundary='strict', attributes=obj.attributes, trackid=obj.attributes['trackid'] if obj.hasattribute('trackid') else None)
+                if rangecheck and not obj.hasoverlap(width=self.width(), height=self.height()):
+                    raise ValueError("Track '%s' does not intersect with frame shape (%d, %d)" % (str(t), self.height(), self.width()))
+                self.tracks()[t.id()] = t  # by-reference
+                return t.id()
         elif isinstance(obj, vipy.object.Track):
             if rangecheck and not obj.boundingbox().isinside(vipy.geometry.imagebox(self.shape())):
                 obj = obj.imclip(self.width(), self.height())  # try to clip it, will throw exception if all are bad 
@@ -2720,10 +2731,10 @@ class Scene(VideoCategory):
         im = self.frame(frame, img=self.preview(framenum=frame).array())
         return im.savefig(outfile=outfile, fontsize=fontsize, nocaption=nocaption, boxalpha=boxalpha, dpi=dpi, textfacecolor=textfacecolor, textfacealpha=textfacealpha) if outfile is not None else im
     
-    def stabilize(self, show=False):
+    def stabilize(self):
         """Background stablization using flow based stabilization masking foreground region.  This will output a video with all frames aligned to the first frame, such that the background is static."""
         from vipy.flow import Flow  # requires opencv
-        return Flow().stabilize(self.clone(), residual=True, show=show)
+        return Flow().stabilize(self.clone(), residual=True)
     
     def pixelmask(self, pixelsize=8):
         """Replace all pixels in foreground boxes with pixelation"""

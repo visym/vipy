@@ -123,9 +123,13 @@ class Detection(BoundingBox):
     def id(self):
         return self._id
 
-    def clone(self):
+    def clone(self, deep=False):
+        """Copy the object, if deep=True, then include a deep copy of the attribute dictionary, else a shallow copy"""
         #return copy.deepcopy(self)
-        return Detection.from_json(self.json(encode=False))
+        d = Detection.from_json(self.json(encode=False))
+        if deep:
+            d.attributes = copy.deepcopy(self.attributes)
+        return d
 
     def confidence(self, c=None):
         if c is None:
