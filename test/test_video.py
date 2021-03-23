@@ -18,15 +18,15 @@ mp4file = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'Video.mp4')
 mp4url = 'https://www.youtube.com/watch?v=C0DPdy98e4c'
 
 def test_stream():
-    v = vipy.video.Video(mp4file).clip(0,10)
-    for (k,im) in enumerate(v.stream()):
+    v = vipy.video.Video(mp4file)
+    for (k,im) in enumerate(v.stream(bufsize=8)):
         if k == 0:
             break
     assert im.shape() == v.shape()
     print('[test_video.video]: stream read  PASSED')
         
     try:
-        with v.stream() as s:
+        with v.stream(bufsize=8) as s:
             im = v.preview()
             s.write(im)
         raise Failed()        
@@ -42,19 +42,19 @@ def test_stream():
     assert w.hasfilename() 
     print('[test_video.video]: stream write   PASSED')       
 
-    v = vipy.video.Video(mp4file).clip(0,10)
-    for (k,vb) in enumerate(v.stream().batch(8)):
+    v = vipy.video.Video(mp4file)
+    for (k,vb) in enumerate(v.stream(bufsize=8).batch(8)):
         if k == 0:
             break
-    for (k,vc) in enumerate(v.stream().clip(8,1)):
+    for (k,vc) in enumerate(v.stream(bufsize=8).clip(8,1)):
         if k == 0:
             break
     assert np.allclose(vb.array(), vc.array())
 
-    for (k,vb) in enumerate(v.stream().batch(8)):
+    for (k,vb) in enumerate(v.stream(bufsize=8).batch(8)):
         if k == 1:
             break
-    for (k,vc) in enumerate(v.stream().clip(8,1)):
+    for (k,vc) in enumerate(v.stream(bufsize=8).clip(8,1)):
         if k == 8:
             break
     assert np.allclose(vb.array(), vc.array())
@@ -527,8 +527,8 @@ def test_scene_union():
     
 if __name__ == "__main__":
     test_stream()
-    test_video()
-    test_scene()
+    _test_video()
+    _test_scene()
     test_clip()
     test_track()
     test_scene_union()
