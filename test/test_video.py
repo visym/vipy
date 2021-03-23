@@ -63,7 +63,7 @@ def test_stream():
     print('[test_video.video]: stream clip  PASSED')               
     
 
-def _test_video():
+def test_video():
     # Common Parameters
     urls = vipy.videosearch.youtube('owl',1)
     if len(urls) > 0:
@@ -179,7 +179,7 @@ def _test_video():
     print('[test_video]: store/unstore/restore PASSED')
     
     
-def _test_scene():
+def test_scene():
 
     # Activityclip
     v = vipy.video.RandomSceneActivity(64,64,64)
