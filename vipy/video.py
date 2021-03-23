@@ -1382,26 +1382,15 @@ class Video(object):
         return self.savetmp()
 
     def ffplay(self):
-        """Play the video file using ffplay.  If the video is loaded in memory, this will dump it to a temporary file first"""
-        assert has_ffplay, '"ffplay" executable not found on path - Install from http://ffmpeg.org/download.html'
-        if self.isloaded() or self.isdirty():
-            f = tempMP4()
-            warnings.warn('%s - Saving video to temporary file "%s" for ffplay ... ' % ('Video loaded into memory' if self.isloaded() else 'Dirty FFMPEG filter chain', f))
-            v = self.saveas(f)
-            cmd = 'ffplay "%s"' % v.filename()
-            print('[vipy.video.play]: Executing "%s"' % cmd)
-            os.system(cmd)
-            os.remove(v.filename())  # cleanup
-        elif self.hasfilename() or (self.hasurl() and self.download().hasfilename()):  # triggers download
-            cmd = 'ffplay "%s"' % self.filename()
-            print('[vipy.video.play]: Executing "%s"' % cmd)
-            os.system(cmd)
-        else:
-            raise ValueError('Invalid video file "%s" - ffplay requires a video filename' % self.filename())
+        """Play the video file using ffplay"""
+        assert self.hasfilename() or (self.hasurl() and self.download().hasfilename())  # triggers download if needed
+        cmd = 'ffplay "%s"' % self.filename()
+        print('[vipy.video.play]: Executing "%s"' % cmd)
+        os.system(cmd)
         return self
         
     def play(self, verbose=True, notebook=False, fps=30):
-        """Play the saved video filename in self.filename() using the system 'ffplay', if there is no filename, try to download it"""
+        """Play the saved video filename in self.filename() using the system 'ffplay', if there is no filename, try to download it, if the filter chain is dirty, dump to temp file first"""
 
         if not self.isdownloaded() and self.hasurl():
             self.download()
@@ -1415,7 +1404,20 @@ class Video(object):
                 return IPython.display.Video(v.filename(), embed=True)
             return IPython.display.Video(self.filename(), embed=True)
         elif has_ffplay:
-            return self.ffplay()            
+            if self.isloaded() or self.isdirty():
+                f = tempMP4()
+                warnings.warn('%s - Saving video to temporary file "%s" for ffplay ... ' % ('Video loaded into memory' if self.isloaded() else 'Dirty FFMPEG filter chain', f))
+                v = self.saveas(f)
+                cmd = 'ffplay "%s"' % v.filename()
+                print('[vipy.video.play]: Executing "%s"' % cmd)
+                os.system(cmd)
+                os.remove(v.filename())  # cleanup
+            elif self.hasfilename() or (self.hasurl() and self.download().hasfilename()):  # triggers download
+                self.ffplay()
+            else:
+                raise ValueError('Invalid video file "%s" - ffplay requires a video filename' % self.filename())
+            return self
+
         else:
             """Fallback player.  This can visualize videos without ffplay, but it cannot guarantee frame rates. Large videos with complex scenes will slow this down and will render at lower frame rates."""
             fps = min(fps, self.framerate()) if fps is not None else self.framerate()
