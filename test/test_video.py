@@ -272,18 +272,18 @@ def test_scene():
     assert v.height() == 200 and len(v) == 50
     print('[test_video.scene]: trim, rotate, resize  PASSED')
 
-    v = vid.clone().crop(BoundingBox(xmin=32, ymin=32, width=128, height=128)).load(verbose=False)
+    v = vid.clone().crop(BoundingBox(xmin=32, ymin=32, width=128, height=128)).clip(0,10).load(verbose=False)
     assert v.height() == 128 
     v = v.crop(BoundingBox(xmin=0, ymin=0, width=10, height=11))  # after load
     assert v.height() == 11 and v.width() == 10 
     print('[test_video.scene]: crop  PASSED')
 
-    v = vid.clone().resize(256,256).randomcrop( (100,200)).load(verbose=False)
+    v = vid.clone().resize(256,256).randomcrop( (100,200)).clip(0,10).load(verbose=False)
     assert v.height() == 100  and v.width() == 200
     print('[test_video.scene]: randomcrop  PASSED')
 
     # If the video is not resized, this triggers SIGSEGV on ffmpeg, not sure why
-    v = vid.clone().resize(256,256).centercrop( (224,224)).load(verbose=False)
+    v = vid.clone().resize(256,256).centercrop( (224,224)).clip(0,10).load(verbose=False)
     assert v.height() == 224  and v.width() == 224  
     print('[test_video.scene]: centercrop  PASSED')
 
@@ -317,13 +317,13 @@ def test_scene():
     print('[test_video.scene]: mindim PASSED')
     vid.flush()
 
-    v = vid.flush().clone().resize(rows=128,cols=256).maxdim(64)
+    v = vid.flush().clone().clip(0,30).resize(rows=128,cols=256).maxdim(64)
     assert v.width() == 64 and v.height() == 32
     assert v.load().width() == 64 and v.height() == 32 
     print('[test_video.scene]: maxdim PASSED')
     vid.flush()
 
-    v = vid.flush().clone().resize(rows=127,cols=255).maxsquare()
+    v = vid.flush().clone().clip(0,30).resize(rows=127,cols=255).maxsquare()
     assert v.width() == 255 and v.height() == 255
     assert v.load().width() == 255 and v.height() == 255
     print('[test_video.scene]: maxsquare PASSED')
