@@ -1461,8 +1461,9 @@ def rermdir(path):
 
 
 def premkdir(filename):
-    """create directory /path/to/subdir if not exist for outfile=/path/to/subdir/file.ext"""
-    return remkdir(filepath(filename))
+    """create directory /path/to/subdir if not exist for outfile=/path/to/subdir/file.ext, and return filename"""
+    remkdir(filepath(filename))
+    return filename
 
 
 def newbase(filename, base):

@@ -1926,7 +1926,10 @@ class ImageDetection(Scene, BoundingBox):
 def mutator_show_trackid(n_digits_in_trackid=5):
     """Mutate the image to show track ID with a fixed number of digits appended to the shortlabel as (####)"""
     return lambda im, k=None: (im.objectmap(lambda o: o.shortlabel('%s (%s)' % (o.shortlabel(), o.attributes['trackid'][0:n_digits_in_trackid]))
-                                    if o.hasattribute('trackid') else o))
+                                            if o.hasattribute('trackid') else o))
+
+def mutator_show_jointlabel():
+    return lambda im, k=None: im.objectmap(lambda o: o.shortlabel(o.getattribute('jointlabel')) if o.hasattribute('jointlabel') else o)   # from frame interpolation 
 
 def mutator_show_trackindex():
     """Mutate the image to show track index appended to the shortlabel as (####)"""

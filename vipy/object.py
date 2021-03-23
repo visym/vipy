@@ -141,6 +141,9 @@ class Detection(BoundingBox):
     def hasattribute(self, k):
         return isinstance(self.attributes, dict) and k in self.attributes
 
+    def getattribute(self, k):
+        return self.attributes[k]
+
     def setattribute(self, k, v):
         self.attributes[k] = v
         return self
@@ -149,6 +152,9 @@ class Detection(BoundingBox):
         self.attributes.pop(k, None)
         return self
 
+    def noattributes(self):
+        self.attributes = {}
+        return self
 
 class Track(object):
     """vipy.object.Track class
@@ -364,14 +370,14 @@ class Track(object):
         If self._boundary='extend', then boxes are repeated if the interpolation is outside the keyframes
         If self._boundary='strict', then interpolation returns None if the interpolation is outside the keyframes
         
-          - The returned object is not cloned when possible, be careful when modifying this object. 
+          - The returned object is not cloned when possible for speed purposes, be careful when modifying this object.  clone() if necessary
 
         """
         assert len(self._keyboxes) > 0, "Degenerate object for interpolation"   # not self.isempty()
         if len(self._keyboxes) == 1:
-            return Detection.cast(self._keyboxes[0].clone(), category=self.category()).setattribute('trackid', self.id()) if (self._boundary == 'extend' or self.during(f)) else None
+            return Detection.cast(self._keyboxes[0].clone(), category=self.category()).noattributes().setattribute('trackid', self.id()) if (self._boundary == 'extend' or self.during(f)) else None
         if f in reversed(self._keyframes):            
-            return Detection.cast(self._keyboxes[self._keyframes.index(f)], category=self.category()).setattribute('trackid', self.id())
+            return Detection.cast(self._keyboxes[self._keyframes.index(f)], category=self.category()).noattributes().setattribute('trackid', self.id())
 
         kf = self._keyframes
         ft = min(max(f, kf[0]), kf[-1])  # truncated frame index

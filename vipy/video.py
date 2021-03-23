@@ -249,7 +249,7 @@ class Video(object):
             f.write(self.attributes['__video__'])
         return self.filename(filename)                
         
-    def stream(self, write=False, overwrite=False):
+    def stream(self, write=False, overwrite=False, bufsize=1024):
         """Iterator to yield frames streaming from video
         
            * Using this iterator may affect PDB debugging due to stdout/stdin redirection.  Use ipdb instead.
@@ -258,7 +258,7 @@ class Video(object):
         """
 
         class Stream(object):
-            def __init__(self, v, bufsize=1024):
+            def __init__(self, v, bufsize=bufsize):
                 self._video = v   # do not clone
                 self._write_pipe = None
                 self._frame_index = 0
@@ -306,6 +306,7 @@ class Video(object):
             def _read_pipe(self):
                 p = self._video._ffmpeg.output('pipe:', format='rawvideo', pix_fmt='rgb24').global_args('-nostdin', '-loglevel', 'debug' if vipy.globals.isdebug() else 'quiet').run_async(pipe_stdout=True, pipe_stderr=True)
                 assert p is not None, "Invalid read pipe"
+                p.poll()
                 return p
             
             def __iter__(self):
@@ -328,8 +329,9 @@ class Video(object):
                             if not in_bytes:
                                 queue.put(None)
                                 pipe.poll()
+                                pipe.wait()
                                 if pipe.returncode != 0:
-                                    raise ValueError('Stream iterator failed with error "%s"' % str(pipe.stderr.readlines()))
+                                    raise ValueError('Stream iterator failed with returncode %d - error "%s"' % (pipe.returncode, str(pipe.stderr.readlines())))
                                 event.wait()
                                 break
                             else:
@@ -352,7 +354,7 @@ class Video(object):
                         
             def __getitem__(self, k):
                 """Retrieve individual frame index - this is inefficient, use __iter__ instead"""
-                return self._video.thumbnail(frame=k)  # this is inefficient
+                return self._video.preview(frame=k)  # this is inefficient
 
             def write(self, im, flush=False):
                 """Write individual frames to write stream"""
@@ -604,7 +606,7 @@ class Video(object):
 
     def duration_in_frames_of_videofile(self):
         """Return video duration of the source filename (NOT the filter chain) in frames, requires ffprobe"""
-        return int(np.ceil(self.duration_in_seconds_of_videofile()*self.framerate()))
+        return int(np.floor(self.duration_in_seconds_of_videofile()*self.framerate()))
     
     def probe(self):
         """Run ffprobe on the filename and return the result as a JSON file"""
@@ -708,11 +710,11 @@ class Video(object):
         """Return True if the video has been loaded"""
         return self._array is not None
 
-    def canload(self):
+    def canload(self, frame=0):
         """Return True if the video can be loaded successfully, useful for filtering bad videos or filtering videos that cannot be loaded using your current FFMPEG version"""
         if not self.isloaded():
             try:
-                self.preview()  # try to preview
+                self.preview(framenum=frame)  # try to preview
                 return True
             except:
                 return False
@@ -1840,21 +1842,23 @@ class Scene(VideoCategory):
         img = img if img is not None else (self._array[k] if self.isloaded() else self.preview(k).array())
         dets = [t[k].clone(deep=True).setattribute('trackindex', j) for (j, t) in enumerate(self.tracks().values()) if len(t)>0 and (t.during(k) or t.boundary()=='extend')]  # track interpolation (cloned) with boundary handling
         for d in dets:
-            shortlabel = [(d.shortlabel(),'')]  # [(Noun, Verbing1), (Noun, Verbing2), ...]
+            d.attributes['activityid'] = []  # reset
+            jointlabel = [(d.shortlabel(),'')]  # [(Noun, Verbing1), (Noun, Verbing2), ...]
             activityconf = [None]   # for display 
+
             for (aid, a) in self.activities().items():  # insertion order:  First activity is primary, next is secondary (not in confidence order) 
                 if a.hastrack(d.attributes['trackid']) and a.during(k):
-                    # Shortlabel is always displayed as "Noun Verbing" during activity (e.g. Person Carrying, Vehicle Turning)
+                    # Jointlabel is always displayed as "Noun Verbing" during activity (e.g. Person Carrying, Vehicle Turning) using noun=track shortlabel, verb=activity shortlabel
                     # If noun is associated with more than one activity, then this is shown as "Noun Verbing1\nNoun Verbing2", with a newline separator 
-                    if not any([a.shortlabel() == v for (n,v) in shortlabel]):
-                        shortlabel.append( (d.shortlabel(), a.shortlabel()) )  # only show each activity once (even if repeated)
+                    if not any([a.shortlabel() == v for (n,v) in jointlabel]):
+                        jointlabel.append( (d.shortlabel(), a.shortlabel()) )  # only show each activity once (even if repeated)
                         activityconf.append(a.confidence())
-                    if 'activityid' not in d.attributes:
-                        d.attributes['activityid'] = []                            
                     d.attributes['activityid'].append(a.id())  # for activity correspondence (if desired)
-            d.shortlabel( '\n'.join([('%s %s' % (n,v)).strip() for (n,v) in shortlabel[0 if len(shortlabel)==1 else 1:]]))
-            d.attributes['noun verb'] = shortlabel[0 if len(shortlabel)==1 else 1:]
-            d.attributes['activityconf'] = activityconf[0 if len(shortlabel)==1 else 1:]
+
+            # For display purposes
+            d.attributes['jointlabel'] = '\n'.join([('%s %s' % (n,v)).strip() for (n,v) in jointlabel[0 if len(jointlabel)==1 else 1:]])
+            d.attributes['noun verb'] = jointlabel[0 if len(jointlabel)==1 else 1:]
+            d.attributes['activityconf'] = activityconf[0 if len(jointlabel)==1 else 1:]
         dets.sort(key=lambda d: (d.confidence() if d.confidence() is not None else 0, d.shortlabel()))   # layering in video is ordered by decreasing track confidence and alphabetical shortlabel
         return vipy.image.Scene(array=img, colorspace=self.colorspace(), objects=dets, category=self.category())  
                 
@@ -2106,8 +2110,9 @@ class Scene(VideoCategory):
             k = frame if frame is not None else self._currentframe
             if obj.hasattribute('trackid') and obj.attributes['trackid'] in self.tracks():
                 # The attribute "trackid" is set for a detection when interpolating a track at a frame.  This is useful for reconstructing a track from previously enumerated detections
+                trackid = obj.attributes['trackid']
                 self.trackmap(lambda t: t.update(k, obj) if obj.attributes['trackid'] == t.id() else t) 
-                return obj.attributes['trackid']
+                return 
             else:
                 t = vipy.object.Track(category=obj.category(), keyframes=[k], boxes=[obj], boundary='strict', attributes=obj.attributes, trackid=obj.attributes['trackid'] if obj.hasattribute('trackid') else None)
                 if rangecheck and not obj.hasoverlap(width=self.width(), height=self.height()):
@@ -2632,13 +2637,13 @@ class Scene(VideoCategory):
         """
         if verbose:
             print('[vipy.video.annotate]: Annotating video ...')  
-    
-        f_mutator = mutator if mutator is not None else lambda im,k: im
+            
+        f_mutator = mutator if mutator is not None else vipy.image.mutator_show_jointlabel()
         f_timestamp = (lambda k: '%s %d' % (vipy.util.clockstamp(), k)) if timestamp is True else timestamp
 
         if outfile is None:        
             assert self.load().isloaded(), "Load() failed"
-            imgs = [f_mutator(self[k], k).savefig(fontsize=fontsize,
+            imgs = [f_mutator(self[k].clone(), k).savefig(fontsize=fontsize,
                                                   captionoffset=captionoffset,
                                                   textfacecolor=textfacecolor,
                                                   textfacealpha=textfacealpha,
@@ -2662,7 +2667,7 @@ class Scene(VideoCategory):
             vo = vipy.video.Video(filename=outfile, framerate=self.framerate())
             with vo.stream(overwrite=True) as so:
                 for (k,im) in enumerate(self.stream()):
-                    so.write(f_mutator(im, k).savefig(fontsize=fontsize,
+                    so.write(f_mutator(im.clone(), k).savefig(fontsize=fontsize,
                                                       captionoffset=captionoffset,
                                                       textfacecolor=textfacecolor,
                                                       textfacealpha=textfacealpha,
@@ -2731,10 +2736,10 @@ class Scene(VideoCategory):
         im = self.frame(frame, img=self.preview(framenum=frame).array())
         return im.savefig(outfile=outfile, fontsize=fontsize, nocaption=nocaption, boxalpha=boxalpha, dpi=dpi, textfacecolor=textfacecolor, textfacealpha=textfacealpha) if outfile is not None else im
     
-    def stabilize(self):
+    def stabilize(self, flowdim=None):
         """Background stablization using flow based stabilization masking foreground region.  This will output a video with all frames aligned to the first frame, such that the background is static."""
         from vipy.flow import Flow  # requires opencv
-        return Flow().stabilize(self.clone(), residual=True)
+        return Flow(flowdim=flowdim).stabilize(self.clone(), residual=True)
     
     def pixelmask(self, pixelsize=8):
         """Replace all pixels in foreground boxes with pixelation"""
