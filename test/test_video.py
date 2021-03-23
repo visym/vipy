@@ -18,7 +18,7 @@ mp4file = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'Video.mp4')
 mp4url = 'https://www.youtube.com/watch?v=C0DPdy98e4c'
 
 def test_stream():
-    v = vipy.video.Video(mp4file)
+    v = vipy.video.Video(mp4file).clip(0,10)
     for (k,im) in enumerate(v.stream()):
         if k == 0:
             break
@@ -42,7 +42,7 @@ def test_stream():
     assert w.hasfilename() 
     print('[test_video.video]: stream write   PASSED')       
 
-    v = vipy.video.Video(mp4file)
+    v = vipy.video.Video(mp4file).clip(0,10)
     for (k,vb) in enumerate(v.stream().batch(8)):
         if k == 0:
             break
@@ -63,7 +63,7 @@ def test_stream():
     print('[test_video.video]: stream clip  PASSED')               
     
 
-def test_video():
+def _test_video():
     # Common Parameters
     urls = vipy.videosearch.youtube('owl',1)
     if len(urls) > 0:
@@ -179,7 +179,7 @@ def test_video():
     print('[test_video]: store/unstore/restore PASSED')
     
     
-def test_scene():
+def _test_scene():
 
     # Activityclip
     v = vipy.video.RandomSceneActivity(64,64,64)
