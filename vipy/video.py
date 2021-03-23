@@ -2684,7 +2684,7 @@ class Scene(VideoCategory):
             return vo
 
 
-    def show(self, outfile=None, verbose=True, fontsize=10, captionoffset=(0,0), textfacecolor='white', textfacealpha=1.0, shortlabel=True, boxalpha=0.25, d_category2color={'Person':'green', 'Vehicle':'blue', 'Object':'red'}, categories=None, nocaption=False, nocaption_withstring=[], notebook=False, timestamp=None, timestampcolor='black', timestampfacecolor='white'):
+    def _show(self, outfile=None, verbose=True, fontsize=10, captionoffset=(0,0), textfacecolor='white', textfacealpha=1.0, shortlabel=True, boxalpha=0.25, d_category2color={'Person':'green', 'Vehicle':'blue', 'Object':'red'}, categories=None, nocaption=False, nocaption_withstring=[], notebook=False, timestamp=None, timestampcolor='black', timestampfacecolor='white'):
         """Generate an annotation video saved to outfile (or tempfile if outfile=None) and show it using ffplay when it is done exporting.  Do not modify the original video buffer.  Returns a clone of the video with the shown annotation."""
         return self.clone().annotate(verbose=verbose, 
                                      fontsize=fontsize,
@@ -2702,12 +2702,12 @@ class Scene(VideoCategory):
                                      nocaption_withstring=nocaption_withstring).saveas(outfile).play(notebook=notebook)
     
 
-    def fastshow(self, outfile=None, verbose=True, fontsize=10, captionoffset=(0,0), textfacecolor='white', textfacealpha=1.0, shortlabel=True, boxalpha=0.25, d_category2color={'Person':'green', 'Vehicle':'blue', 'Object':'red'}, categories=None, nocaption=False, nocaption_withstring=[], figure=1, fps=None, timestamp=None, timestampcolor='black', timestampfacecolor='white', mutator=None):
+    def show(self, outfile=None, verbose=True, fontsize=10, captionoffset=(0,0), textfacecolor='white', textfacealpha=1.0, shortlabel=True, boxalpha=0.25, d_category2color={'Person':'green', 'Vehicle':'blue', 'Object':'red'}, categories=None, nocaption=False, nocaption_withstring=[], figure=1, fps=None, timestamp=None, timestampcolor='black', timestampfacecolor='white', mutator=None):
         """Faster show using interative image show for annotated videos.  This can visualize videos before video rendering is complete, but it cannot guarantee frame rates. Large videos with complex scenes will slow this down and will render at lower frame rates."""
         fps = min(fps, self.framerate()) if fps is not None else self.framerate()
         assert fps > 0, "Invalid display framerate"
         f_timestamp = (lambda k: '%s %d' % (vipy.util.clockstamp(), k)) if timestamp is True else timestamp
-        f_mutator = mutator if mutator is not None else lambda im,k: im        
+        f_mutator = mutator if mutator is not None else vipy.image.mutator_show_jointlabel()        
         with Stopwatch() as sw:            
             for (k,im) in enumerate(self.load() if self.isloaded() else self.stream()):
                 time.sleep(max(0, (1.0/self.framerate())*int(np.ceil((self.framerate()/fps))) - sw.since()))                
