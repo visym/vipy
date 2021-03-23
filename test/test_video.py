@@ -62,6 +62,7 @@ def test_stream():
     print('[test_video.video]: stream batch   PASSED')
     print('[test_video.video]: stream clip  PASSED')               
     
+
 def test_video():
     # Common Parameters
     urls = vipy.videosearch.youtube('owl',1)
@@ -245,9 +246,9 @@ def test_scene():
     assert [im.crop().width() for im in v[0]] == [100, 150]        
     print('[test_video.scene]: rescale  PASSED')
 
-    (H,W) = vid.clone().clip(0,200).load(verbose=False).shape()
-    v = vid.clone().clip(0,200).resize(cols=100).load(verbose=False)    
-    assert v.width() == 100 and len(v) == 200
+    (H,W) = vid.clone().clip(0,21).load(verbose=False).shape()
+    v = vid.clone().clip(0,21).resize(cols=100).load(verbose=False)    
+    assert v.width() == 100 and len(v) == 21
     assert np.allclose([im.bbox.height() for im in v[0]], [400*(100.0/W), 400*(100.0/W)])
     assert np.allclose([im.bbox.width() for im in v[0]], [200*(100.0/W), 300*(100.0/W)])
     print('[test_video.scene]: resize isotropic  PASSED')
@@ -258,8 +259,8 @@ def test_scene():
     assert np.allclose([im.bbox.width() for im in v[0]], [200*(100.0/W), 300*(100.0/W)])    
     print('[test_video.scene]: resize anisotropic   PASSED')
     
-    v = vid.clone().clip(0,200).rot90cw().resize(rows=200).load(verbose=False)
-    assert v.height() == 200 and len(v) == 200
+    v = vid.clone().clip(0,22).rot90cw().resize(rows=200).load(verbose=False)
+    assert v.height() == 200 and len(v) == 22
     v = v.resize(rows=20, cols=19)
     assert v.height() == 20 and v.width() == 19
     print('[test_video.scene]: rotate and resize  PASSED')
@@ -286,31 +287,31 @@ def test_scene():
     assert v.height() == 224  and v.width() == 224  
     print('[test_video.scene]: centercrop  PASSED')
 
-    v = vid.clone().fliplr().load(verbose=False)
-    assert np.allclose(v[0].array(), np.fliplr(vid.load()[0].array()))
+    v = vid.clone().clip(0,30).fliplr().load(verbose=False)
+    assert np.allclose(v[0].array(), np.fliplr(vid.clone().clip(0,30).load()[0].array()), atol=15)
     v = v.fliplr()
-    assert np.allclose(v[0].array(), vid.load()[0].array())
+    assert np.allclose(v[0].array(), vid.clone().clip(0,30).load()[0].array(), atol=15)
     print('[test_video.scene]: fliplr PASSED')  # FIXME: unit test for boxes too
 
-    v = vid.flush().clone().flipud().load(verbose=False)
-    assert np.allclose(v[0].array(), np.flipud(vid.load()[0].array()))
+    v = vid.flush().clone().clip(0,30).flipud().load(verbose=False)
+    assert np.allclose(v[0].array(), np.flipud(vid.clone().clip(0,30).load()[0].array()))
     print('[test_video.scene]: flipud  PASSED')
     vid.flush()
 
-    v = vid.flush().clone().zeropad(32,64).load(verbose=False)
+    v = vid.flush().clone().zeropad(32,64).clip(0,30).load(verbose=False)
     assert v.width() == vid.clone().width()+2*32 and v.height() == vid.clone().height()+2*64 and v.array()[0,0,0,0] == 0 and v.array()[1,-1,-1,-1] == 0
     v = v.zeropad(1,2)  # after load
     assert v.width() == vid.clone().width()+2*32+(1*2) and v.height() == vid.clone().height()+2*64+(2*2) and v.array()[0,0,0,0] == 0 and v.array()[1,-1,-1,-1] == 0
     print('[test_video.scene]: zeropad  PASSED')
     vid.flush()
 
-    v = vid.flush().clone().resize(256,256).crop(BoundingBox(128,128,width=256,height=257))  
+    v = vid.flush().clone().clip(0,30).resize(256,256).crop(BoundingBox(128,128,width=256,height=257))  
     assert v.width() == 256 and v.height() == 257   
     assert v.load().width() == 256 and v.height() == 257 and v.array()[0,-1,-1,-1] == 0  # load() shape to get the true video size
     print('[test_video.scene]: padcrop PASSED')
     vid.flush()
 
-    v = vid.flush().clone().resize(rows=128,cols=256).mindim(64)
+    v = vid.flush().clone().clip(0,30).resize(rows=128,cols=256).mindim(64)
     assert v.width() == 128 and v.height() == 64   
     assert v.load().width() == 128 and v.height() == 64 
     print('[test_video.scene]: mindim PASSED')
@@ -527,7 +528,8 @@ def test_scene_union():
 if __name__ == "__main__":
     test_stream()
     test_video()
-    test_track()
     test_scene()
-    test_scene_union()
     test_clip()
+    test_track()
+    test_scene_union()
+
