@@ -17,7 +17,7 @@ import shutil
 mp4file = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'Video.mp4')
 mp4url = 'https://www.youtube.com/watch?v=C0DPdy98e4c'
 
-def _test_stream():
+def test_stream():
     v = vipy.video.Video(mp4file)
     for (k,im) in enumerate(v.stream()):
         if k == 0:
@@ -62,7 +62,7 @@ def _test_stream():
     print('[test_video.video]: stream batch   PASSED')
     print('[test_video.video]: stream clip  PASSED')               
     
-def _test_video():
+def test_video():
     # Common Parameters
     urls = vipy.videosearch.youtube('owl',1)
     if len(urls) > 0:
@@ -178,7 +178,7 @@ def _test_video():
     print('[test_video]: store/unstore/restore PASSED')
     
     
-def _test_scene():
+def test_scene():
 
     # Activityclip
     v = vipy.video.RandomSceneActivity(64,64,64)
@@ -408,7 +408,7 @@ def _test_scene():
     print('[test_video.scene]: saveas()  PASSED')    
 
 
-def _test_clip():
+def test_clip():
     imgframes = np.zeros( (120,112,112,3), dtype=np.uint8)
     imgframes[60] = imgframes[60]+255
     v = vipy.video.Video(frames=[vipy.image.Image(array=img) for img in imgframes])
@@ -476,7 +476,7 @@ def test_track():
     print('[test_video.track]: interpolation  PASSED')
 
     
-def _test_scene_union():
+def test_scene_union():
     
     vid = vipy.video.RandomVideo(64,64,32)
     (rows, cols) = vid.shape()
@@ -525,9 +525,9 @@ def _test_scene_union():
     
     
 if __name__ == "__main__":
-    _test_stream()
-    _test_video()
+    test_stream()
+    test_video()
     test_track()
-    _test_scene()
-    _test_scene_union()
-    _test_clip()
+    test_scene()
+    test_scene_union()
+    test_clip()
