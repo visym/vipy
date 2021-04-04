@@ -36,7 +36,7 @@ except ImportError:
 
 
 def bz2pkl(filename, obj=None):
-    """Read/Write compressed pickle file"""
+    """Read/Write a bz2 compressed pickle file"""
     assert filename[-8:] == '.pkl.bz2', "Invalid filename - must be '*.pkl.bz2'"
     if obj is not None:
         f = bz2.BZ2File(filename, 'wb')
