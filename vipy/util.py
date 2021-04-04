@@ -51,6 +51,7 @@ def bz2pkl(filename, obj=None):
         
 
 def mergedict(d1, d2):
+    """Combine keys of two dictionaries and return a dictionary deep copy"""
     assert isinstance(d1, dict) and isinstance(d2, dict)
     d = copy.deepcopy(d1)
     d.update(d2)
