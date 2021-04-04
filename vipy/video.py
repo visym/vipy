@@ -1912,12 +1912,14 @@ class Scene(VideoCategory):
             self.load()  
         if animate:
             return Video(frames=[self.quicklook(n=n, dilate=dilate, mindim=mindim, fontsize=fontsize, context=context, startframe=k, animate=False, dt=dt) for k in range(0, min(dt, len(self)))], framerate=self.framerate())
+        f_mutator = vipy.image.mutator_show_jointlabel()
         framelist = [min(int(np.round(f))+startframe, len(self)-1) for f in np.linspace(0, len(self)-1, n)]
         isdegenerate = [self.frame(k).boundingbox() is None or self.frame(k).boundingbox().dilate(dilate).intersection(self.framebox(), strict=False).isdegenerate() for (j,k) in enumerate(framelist)]
         imframes = [self.frame(k).maxmatte()  # letterbox or pillarbox
                     if (isdegenerate[j] or (context is True and (j == 0 or j == (n-1)))) else
                     self.frame(k).padcrop(self.frame(k).boundingbox().dilate(dilate).imclipshape(self.width(), self.height()).maxsquare().int()).mindim(mindim, interp='nearest')
                     for (j,k) in enumerate(framelist)]
+        imframes = [f_mutator(im) for im in imframes]  # show jointlabel from frame interpolation
         imframes = [im.savefig(fontsize=fontsize, figure=1).rgb() for im in imframes]  # temp storage in memory
         return vipy.visualize.montage(imframes, imgwidth=mindim, imgheight=mindim)
     
@@ -1950,7 +1952,21 @@ class Scene(VideoCategory):
 
     def activity(self, id):
         return self.activities(id=id)
-    
+        
+    def next_activity(self, id):
+        """Return the next activity just after the given activityid"""
+        assert id in self.activities()
+        A = self.activitylist()
+        k = [k for (k,a) in enumerate(A) if a.id() == id][0]
+        return A[k+1] if k<len(A)-1 else None
+
+    def prev_activity(self, id):
+        """Return the previous activity just before the given activityid"""
+        assert id in self.activities()
+        A = self.activitylist()
+        k = [k for (k,a) in enumerate(A) if a.id() == id][0]
+        return A[k-1] if k>=1 else None
+
     def tracklist(self):
         return list(self.tracks().values())  # triggers copy
 
@@ -2182,7 +2198,12 @@ class Scene(VideoCategory):
         return self
 
     def json(self, encode=True):
-        """Return JSON encoded string of this object"""
+        """Return JSON encoded string of this object.  This may fail if attributes contain non-json encodeable object"""
+        try:
+            json.loads(json.dumps(self.attributes))  # rount trip for the attributes ductionary - this can be any arbitrary object and contents may not be json encodable
+        except:
+            raise ValueError('Video contains non-JSON encodable object in self.attributes dictionary - Try to clear with self.attributes = {} first')
+
         d = json.loads(super().json())
         d['_tracks'] = {k:t.json(encode=True) for (k,t) in self.tracks().items()}
         d['_activities'] = {k:a.json(encode=True) for (k,a) in self.activities().items()}
@@ -2261,24 +2282,30 @@ class Scene(VideoCategory):
            * The returned vipy.video.Scene() objects for each activityclip are clones of the video, with the video buffer flushed.
            * Each activityclip() is associated with each activity in the scene, and includes all other secondary activities that the objects in the primary activity also perform (if multilabel=True).  See activityclip().labels(). 
            * Calling activityclip() on activityclip(multilabel=True) can result in duplicate activities, due to the overlapping secondary activities being included in each clip.  Be careful. 
+           * padframes=int for symmetric padding same before and after
+           * padframes=(int, int) for asymmetric padding before and after
+           * padframes=[(int, int), ...] for activity specific asymmetric padding
+           
         """
+        assert isinstance(padframes, int) or istuple(padframes) or islist(padframes)
+        padframelist = [padframes if istuple(padframes) else (padframes, padframes) for k in range(len(primary_activities))] if not islist(padframes) else padframes
+
         vid = self.clone(flushforward=True)
         if any([(a.endframe()-a.startframe()) <= 0 for a in vid.activities().values()]):
             warnings.warn('Filtering invalid activity clips with degenerate lengths: %s' % str([a for a in vid.activities().values() if (a.endframe()-a.startframe()) <= 0]))
         primary_activities = sorted([a.clone() for a in vid.activities().values() if (a.endframe()-a.startframe()) > 0], key=lambda a: a.startframe())   # only activities with at least one frame, sorted in temporal order
         tracks = [ [t.clone() for (tid, t) in vid.tracks().items() if a.hastrack(t)] for a in primary_activities]  # tracks associated with each primary activity (may be empty)
-        secondary_activities = [[sa.clone() for sa in primary_activities if (sa.id() != pa.id() and pa.hasoverlap(sa) and (len(T)==0 or any([sa.hastrack(t) for t in T])))] for (pa, T) in zip(primary_activities, tracks)]  # overlapping secondary activities that includes any track in the primary activity
+        secondary_activities = [[sa.clone() for sa in primary_activities if (sa.id() != pa.id() and pa.clone().temporalpad((prepad, postpad)).hasoverlap(sa) and (len(T)==0 or any([sa.hastrack(t) for t in T])))] for (pa, T, (prepad,postpad)) in zip(primary_activities, tracks, padframelist)]  # overlapping secondary activities that includes any track in the primary activity
         secondary_activities = [sa if multilabel else [] for sa in secondary_activities]  
         vid._activities = {}  # for faster clone
         vid._tracks = {}      # for faster clone
-        padframes = padframes if istuple(padframes) else (padframes,padframes)
         return [vid.clone()
                 .activities([pa]+sa)
                 .tracks(t)
-                .clip(startframe=max(pa.startframe()-padframes[0], 0), endframe=(pa.endframe()+padframes[1]))
+                .clip(startframe=max(pa.startframe()-prepad, 0), endframe=(pa.endframe()+postpad))
                 .category(pa.category())
                 .setattribute('activityindex',k)
-                for (k,(pa,sa,t)) in enumerate(zip(primary_activities, secondary_activities, tracks))]
+                for (k,(pa,sa,t,(prepad,postpad))) in enumerate(zip(primary_activities, secondary_activities, tracks, padframelist))]
 
     def noactivityclip(self, label=None, strict=True, padframes=0):
         """Return a list of vipy.video.Scene() each clipped on a track segment that has no associated activities.  

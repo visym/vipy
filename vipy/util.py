@@ -568,6 +568,13 @@ def load(infile, abspath=False):
         import gc; gc.disable()
     return obj
 
+def canload(infile):
+    """Attempt to load a pkl file, and return true if it can be successfully loaded, otherwise False"""
+    try:
+        load(infile, abspath=True)
+        return True
+    except:
+        return False
 
 def save(vars, outfile, mode=None):
     """Save variables to an archive file"""
