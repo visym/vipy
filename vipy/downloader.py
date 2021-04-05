@@ -29,6 +29,7 @@ except:
     pass
 from vipy.util import isS3url, filetail
 from vipy.globals import print
+import vipy.version
 
 
 # FIX <urlopen error [SSL: CERTIFICATE_VERIFY_FAILED] certificate
@@ -134,11 +135,13 @@ def download(url, output_filename, sha1=None, verbose=True, md5=None, timeout=No
         timeout = 10
 
     if username is None and password is None:
-        page = urlopen(url, None, timeout=timeout)  # urllib for username:password options
+        request = urllib.request.Request(url)
+        request.add_header('User-agent', 'vipy/%s (https://visym.com; info@visym.com)' % vipy.version.VERSION)  # https://meta.wikimedia.org/wiki/User-Agent_policy
+        page = urllib.request.urlopen(request, timeout=timeout)               
     else:
         request = urllib.request.Request(url)
         base64string = base64.encodestring('%s:%s' % (username, password)).replace('\n', '')
-        request.add_header("Authorization", "Basic %s" % base64string)
+        request.add_header("Authorization", "Basic %s" % base64string)        
         page = urllib.request.urlopen(request, timeout=timeout)
 
     page_info = page.info()

@@ -651,7 +651,7 @@ class Video(object):
     
     def take(self, n):
         """Return n frames from the clip uniformly spaced as numpy array"""
-        assert self.isloaded(), "Load() is required before take()"""
+        assert self.isloaded(), "Load() is required before take()"
         dt = int(np.round(len(self._array) / float(n)))  # stride
         return self._array[::dt][0:n]
 
@@ -2074,9 +2074,9 @@ class Scene(VideoCategory):
         else:
             raise ValueError('Invalid input - must specify both startframe and endframe, or only startframe')            
     
-    def objectlabels(self, k=None):
+    def objectlabels(self, k=None, lower=False):
         """Return a set of all activity categories in this scene, or at frame k"""
-        return set([t.category() for t in self.tracks().values() if k is None or t.during(k)])        
+        return set([t.category() if not lower else t.category().lower() for t in self.tracks().values() if k is None or t.during(k)])        
 
     def categories(self):
         """Alias for labels()"""

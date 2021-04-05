@@ -182,14 +182,14 @@ class Track(object):
 
     """
 
-    def __init__(self, keyframes, boxes, category=None, label=None, framerate=None, interpolation='linear', boundary='strict', shortlabel=None, attributes=None, trackid=None):
+    def __init__(self, keyframes, boxes, category=None, label=None, framerate=None, interpolation='linear', boundary='strict', shortlabel=None, attributes=None, trackid=None, filterbox=False):
 
         keyframes = tolist(keyframes)
         boxes = tolist(boxes)        
         assert isinstance(keyframes, tuple) or isinstance(keyframes, list), "Keyframes are required and must be tuple or list"
         assert isinstance(boxes, tuple) or isinstance(boxes, list), "Keyframe boundingboxes are required and must be tuple or list"
         assert all([isinstance(bb, BoundingBox) for bb in boxes]), "Keyframe bounding boxes must be vipy.geometry.BoundingBox objects"
-        assert all([bb.isvalid() for bb in boxes]), "All keyframe bounding boxes must be valid"        
+        assert filterbox or all([bb.isvalid() for bb in boxes]), "All keyframe bounding boxes must be valid"        
         assert not (label is not None and category is not None), "Constructor requires either label or category kwargs, not both"                
         assert len(keyframes) == len(boxes), "Boxes and keyframes must be the same length, there must be a one to one mapping of frames to boxes"
         assert boundary in set(['extend', 'strict']), "Invalid interpolation boundary - Must be ['extend', 'strict']"
@@ -211,6 +211,15 @@ class Track(object):
             self._keyframes = list(keyframes)
             self._keyboxes = list(boxes)
 
+        # Filter boxes:  remove invalid boxes and keyframes
+        if filterbox and len(keyframes) > 0 and len(boxes) > 0:
+            kfbb = [(f,bb) for (f,bb) in zip(keyframes, boxes) if bb.isvalid()]
+            (keyframes, boxes) = zip(*kfbb) if len(kfbb)>0 else ([],[])
+            self._keyframes = list(keyframes)
+            self._keyboxes = list(boxes)
+            if len(self) == 0:
+                warnings.warn('vipy.object.Track - filtering invalid boxes with filterbox=True resulted in zero length track for track ID %s' % str(self.id()))            
+            
     @classmethod
     def from_json(cls, s):
         d = json.loads(s) if not isinstance(s, dict) else s

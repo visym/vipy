@@ -609,7 +609,7 @@ def test_scene():
     im = Scene(objects=[Detection('obj1',0,0,0,0), Detection('obj2',0,0,0,0)])
     print('[test_image.scene]:Invalid object type Constructor: PASSED')
 
-    im = Scene(url='https://upload.wikimedia.org/wikipedia/commons/thumb/2/23/Bubo_virginianus_06.jpg/1920px-Bubo_virginianus_06.jpg').load()
+    im = Scene(url=jpegurl).load()
     print('[test_image.scene] url constructor: PASSED')
 
     f = im.filename()
@@ -617,7 +617,7 @@ def test_scene():
     print('[test_image.scene]: filename constructor: PASSED')
 
     f = im.filename()
-    im = Scene(url='https://upload.wikimedia.org/wikipedia/commons/thumb/2/23/Bubo_virginianus_06.jpg/1920px-Bubo_virginianus_06.jpg', filename=f).load()
+    im = Scene(url=jpegurl, filename=f).load()
     assert im.filename() == f
     print('[test_image.scene]: url and filename constructor: PASSED')
 
@@ -648,7 +648,7 @@ def test_scene():
     print('[test_image.scene]: xywh constructor: PASSED')    
     
     # Test Scene
-    im = Scene(url='https://upload.wikimedia.org/wikipedia/commons/thumb/2/23/Bubo_virginianus_06.jpg/1920px-Bubo_virginianus_06.jpg', filename=f).load()    
+    im = Scene(url=jpegurl, filename=f).load()    
     (H,W) = im.shape()
     im = im.objects([Detection('obj1',20,50,100,100), Detection('obj2',300,300,200,200)])
     im.append(Detection('obj3',W +1,H +1,200,200))   # invalid box outside image rectancle

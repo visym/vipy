@@ -154,7 +154,7 @@ class Activity(object):
     def add(self, track):
         """Add the track id for the track to this activity, so that if the track is changed externally it is reflected here"""
         assert isinstance(track, Track), "Invalid input - must be vipy.object.Track"
-        assert track.during(self.startframe()) or track.during(self.endframe()) or track.during(self.middleframe()), "The track must be present during the activity"
+        assert self.during_interval(track.startframe(), track.endframe()), "The track must be present during the activity"
         self._trackid.add(track.id())
         return self
         

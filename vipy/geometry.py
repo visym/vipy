@@ -619,7 +619,7 @@ class BoundingBox(object):
         
     def ispointinside(self, p):
         """Is the 2D point p=(x,y) inside this boundingbox, or is the p=boundingbox() inside this bounding box?"""
-        assert len(p) == 2, "Invalid 2D point=(x,y) input"""
+        assert len(p) == 2, "Invalid 2D point=(x,y) input"
         return (p[0] >= self._xmin) and (p[1] >= self._ymin) and (p[0] <= self._xmax) and (p[1] <= self._ymax)
 
     def dilate(self, scale=1):
