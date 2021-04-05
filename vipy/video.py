@@ -443,7 +443,8 @@ class Video(object):
                     while True:
                         in_bytes = pipe.stdout.read(height * width * 3)
                         if not in_bytes:
-                            queue.put((frameindex, video.clear().clone(shallow=True).array(np.stack(frames))))
+                            if len(frames) > 0:
+                                queue.put((frameindex, video.clear().clone(shallow=True).array(np.stack(frames))))
                             queue.put((None, None))
                             pipe.poll()
                             if pipe.returncode != 0:
