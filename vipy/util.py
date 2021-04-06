@@ -1479,12 +1479,15 @@ def newbase(filename, base):
     return os.path.join(filepath(filename), '%s.%s' % (base, fileext(filename, withdot=False)))
 
 def toextension(filename, newext):
-    """Convert filenam='/path/to/myfile.ext' to /path/to/myfile.xyz, such that newext='xyz' or newext='.xyz'"""
+    """Convert filename='/path/to/myfile.ext' to /path/to/myfile.xyz, such that newext='xyz' or newext='.xyz'"""
     if '.' in newext:
         newext = newext.split('.')[-1]
     (filename, oldext) = splitextension(filename)
     return filename + '.' + str(newext)
 
+def topkl(filename):
+    """Convert filename='/path/to/myfile.ext' to /path/to/myfile.pkl"""
+    return toextension(filename, '.pkl')
 
 def splitextension(filename):
     """Given /a/b/c.ext return tuple of strings ('/a/b/c', '.ext')"""
