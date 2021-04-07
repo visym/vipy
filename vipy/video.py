@@ -396,7 +396,8 @@ class Video(object):
                             queue.put( (None, None) )
                             pipe.poll()
                             if pipe.returncode != 0:
-                                raise ValueError('Clip stream iterator failed with error "%s"' % str(pipe.stderr.readlines()))
+                                #raise ValueError('Clip stream iterator exited')
+                                pass
                             event.wait()
                             break
                         else:
@@ -448,7 +449,8 @@ class Video(object):
                             queue.put((None, None))
                             pipe.poll()
                             if pipe.returncode != 0:
-                                raise ValueError('Batch stream iterator failed with error "%s"' % str(pipe.stderr.readlines()))                                                                
+                                #raise ValueError('Batch stream iterator exited')
+                                pass
                             event.wait()
                             break
                         else:
