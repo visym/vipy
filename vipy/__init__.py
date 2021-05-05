@@ -1,5 +1,5 @@
 # Import all subpackages
-import dill
+import dill  # 
 import vipy.show  # matplotlib first
 import vipy.activity
 import vipy.annotation
@@ -15,3 +15,6 @@ import vipy.version
 import vipy.video
 import vipy.videosearch
 import vipy.visualize
+
+__version__ = vipy.version.VERSION
+

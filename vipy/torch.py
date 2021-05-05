@@ -7,8 +7,9 @@ try_import('torch'); import torch
 
 
 def fromtorch(x):
-    """Convert a 1xCxHxW torch.FloatTensor to HxWxC np.float32 numpy array(), returns new Image() instance with selected colorspace"""
+    """Convert a 1xCxHxW torch.FloatTensor to HxWxC np.float32 numpy array(), returns new Image() instance with an inferred colorspace based on channels and datatype"""
     assert isinstance(x, torch.Tensor), "Invalid input type '%s'- must be torch.Tensor" % (str(type(x)))
+    assert x.ndim == 4 and x.shape[0] == 1, "Invalid input type - must be torch.Tensor of shape 1xCxHxW"
     img = np.copy(np.squeeze(x.permute(2,3,1,0).detach().numpy()))  # 1xCxHxW -> HxWxC, copied
     colorspace = 'float' if img.dtype == np.float32 else None
     colorspace = 'rgb' if img.dtype == np.uint8 and img.shape[2] == 3 else colorspace  # assumed
@@ -69,7 +70,7 @@ class LaplacianPyramid(object):
     def reconstruct(self):
         x = self._band[-1]
         for b in reversed(self._band[0:-1]):
-            xu = torch.zeros(1, 3, x.shape[2]*2, x.shape[3]*2)
+            xu = torch.zeros(1, 3, b.shape[2], b.shape[3])
             xu[:,:,::2,::2] = x
             x = torch.nn.functional.conv2d(self._pad(xu), 4*self._G, groups=3) + b
             x[:,:,1::2,1::2] *= float(np.sqrt(5/4))  # compensate for odd padding
@@ -78,13 +79,13 @@ class LaplacianPyramid(object):
         
 
 class Foveation(LaplacianPyramid):
-    def __init__(self, im, sx=64, sy=64, s=1, mode='gaussian'):
+    def __init__(self, im, s=0.125, mode='log-circle'):
         super().__init__(im)
         
         (H,W) = (im.height(), im.width())
         allowable_modes = ['gaussian', 'linear-circle', 'linear-square', 'log-circle']
         if mode == 'gaussian':
-            G = np.repeat(vipy.math.gaussian2d([W,H], [sx,sy], 2*H, 2*W)[:,:,np.newaxis], 3, axis=2)
+            G = np.repeat(vipy.math.gaussian2d([W,H], [s,s], 2*H, 2*W)[:,:,np.newaxis], 3, axis=2)
             masks = [vipy.image.Image(array=np.array(G>t).astype(np.float32), colorspace='float') for t in np.arange(0, np.max(G), np.max(G)/len(self))]
         elif mode == 'linear-circle':
             masks = [vipy.image.Image(array=vipy.calibration.circle(W,H,s*(d/2),2*W,2*H,3).astype(np.float32), colorspace='float') for d in np.arange(max(H,W), 0, -max(H,W)/len(self))]
@@ -96,8 +97,8 @@ class Foveation(LaplacianPyramid):
             raise ValueError('invalid mode "%s" - must be in %s' % (mode, str(allowable_modes)))
         self._immasks = masks
         self._masks = [m.torch() for m in masks]
-        
-    def foveate(self, tx=0, ty=0, sx=1.0, sy=1.0):
+
+    def __call__(self, tx=0, ty=0, sx=1.0, sy=1.0):
         (H,W) = (self._im.height(), self._im.width())        
         theta = torch.FloatTensor([[sx,0,tx],[0,sy,ty]]).repeat( (1, 1, 1) )
         G = torch.nn.functional.affine_grid(theta, (1, 3, H, W), align_corners=False)
@@ -106,5 +107,7 @@ class Foveation(LaplacianPyramid):
         pyr = copy.deepcopy(self)
         pyr._band[:-1] = [torch.mul(w[k].torch(), b) for (k, (w,b)) in enumerate(zip(reversed(blend), pyr._band[:-1]))]
         return pyr.reconstruct()
-
+        
+    def foveate(self, tx=0, ty=0, sx=1.0, sy=1.0):
+        return self.__call__(tx=tx, ty=ty, sx=sx, sy=sy)
     

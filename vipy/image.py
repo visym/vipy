@@ -1906,9 +1906,9 @@ class ImageDetection(Scene, BoundingBox):
         assert isinstance(bb, BoundingBox), "Lambda function must return BoundingBox()"
         return self
     
-    def crop(self):
+    def crop(self, bbox=None):
         """Crop the image using the bounding box"""
-        return super().crop(self.boundingbox())
+        return super().crop(self.boundingbox() if bbox is None else bbox)
     
     def append(self, im):
         raise ValueError('Unsupported for vipy.image.ImageDetection - use vipy.image.Scene instead')
