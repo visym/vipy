@@ -2025,6 +2025,7 @@ class Scene(VideoCategory):
     def trackfilter(self, f):
         """Apply lambda function f to each object and keep if filter is True"""
         self._tracks = {k:t for (k,t) in self.tracks().items() if f(t) == True} 
+        self.activitymap(lambda a: a.trackfilter(lambda ti: ti in self._tracks))  # remove track association in activities
         return self
 
     def trackmap(self, f, strict=True):
@@ -2144,6 +2145,8 @@ class Scene(VideoCategory):
             if rangecheck and not obj.boundingbox().isinside(vipy.geometry.imagebox(self.shape())):
                 obj = obj.imclip(self.width(), self.height())  # try to clip it, will throw exception if all are bad 
                 warnings.warn('Clipping track "%s" to image rectangle' % (str(obj)))
+            if obj.framerate() != self.framerate():
+                obj.framerate(self.framerate())  # convert framerate of track to framerate of video
             self.tracks()[obj.id()] = obj  # by-reference
             return obj.id()
         elif isinstance(obj, vipy.activity.Activity):
@@ -2252,9 +2255,13 @@ class Scene(VideoCategory):
             assert not self.isloaded(), "Filters can only be applied prior to load() - Try calling flush() first"
             if self._startframe is not None and self._endframe is not None:
                 (self._startframe, self._endframe) = (int(round(self._startframe * (fps/self._framerate))), int(round(self._endframe * (fps/self._framerate))))
-            self._ffmpeg = self._ffmpeg.filter('fps', fps=fps, round='up')
+            #
             self._tracks = {k:t.framerate(fps) for (k,t) in self.tracks().items()}
             self._activities = {k:a.framerate(fps) for (k,a) in self.activities().items()}        
+            if 'fps=' in self._ffmpeg_commandline():
+                self._update_ffmpeg('fps', fps)  # replace fps filter, do not add to it
+            else:
+                self._ffmpeg = self._ffmpeg.filter('fps', fps=fps, round='up')  # create fps filter first time
             self._framerate = fps
             return self
         
@@ -2740,6 +2747,8 @@ class Scene(VideoCategory):
         assert fps > 0, "Invalid display framerate"
         f_timestamp = (lambda k: '%s %d' % (vipy.util.clockstamp(), k)) if timestamp is True else timestamp
         f_mutator = mutator if mutator is not None else vipy.image.mutator_show_jointlabel()        
+        if not self.isdownloaded() and self.hasurl():
+            self.download()
         with Stopwatch() as sw:            
             for (k,im) in enumerate(self.load() if self.isloaded() else self.stream()):
                 time.sleep(max(0, (1.0/self.framerate())*int(np.ceil((self.framerate()/fps))) - sw.since()))                
@@ -2892,7 +2901,7 @@ class Scene(VideoCategory):
             for (t, conf, iou, shapeiou, cover, d) in assignments:
                 if cover > (trackcover if len(t)>1 else 0):  # the highest confidence detection within the iou gate (or any overlap if not yet enough history for velocity estimate) 
                     if (t.id() not in assigned and d.id() not in assigned):  # not assigned yet, assign it!
-                        self.track(t.id()).add(frame, d.clone())  # track assignment! (clone required)
+                        self.track(t.id()).update(frame, d.clone())  # track assignment! (clone required)
                         assigned.add(t.id())  # cannot assign again to this track
                         assigned.add(d.id())  # mark detection as assigned
                 
@@ -2903,7 +2912,7 @@ class Scene(VideoCategory):
                         gated = [(t, t.linear_extrapolation(frame, dt=maxhistory, shape=False)) for (t,ti) in t_ref if (t.id() not in assigned and t.category() == d.category())] if gate>0 else []
                         gated = sorted([(t, ti) for (t, ti) in gated if ti.hasintersection(d, gate=gate)], key=lambda x: d.sqdist(x[1]))
                         if len(gated) > 0:
-                            self.track(gated[0][0].id()).add(frame, d.clone())  # track assignment! (clone required)
+                            self.track(gated[0][0].id()).update(frame, d.clone())  # track assignment! (clone required)
                             assigned.add(gated[0][0].id())
                             assigned.add(d.id())
                         else:

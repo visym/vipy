@@ -155,7 +155,9 @@ class Activity(object):
         """Add the track id for the track to this activity, so that if the track is changed externally it is reflected here"""
         assert isinstance(track, Track), "Invalid input - must be vipy.object.Track"
         assert self.during_interval(track.startframe(), track.endframe()), "The track must be present during the activity"
-        self._trackid.add(track.id())
+        if track.id() not in self._trackid:
+            self._trackid = list(self._trackid)
+            self._trackid.append(track.id())
         return self
         
     def tracks(self):
@@ -191,7 +193,7 @@ class Activity(object):
     def trackfilter(self, f):
         """Remove all tracks such that the lambda function f(trackid) resolves to False"""
         self._trackid = [tid for tid in self._trackid if f(tid)]
-        if not f(self.actorid()):
+        if self.actorid() not in self._trackid:
             self._actorid = None
         return self
 
