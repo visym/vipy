@@ -210,7 +210,7 @@ class Activity(object):
     def replaceid(self, oldtrackid, newtrackid):
         """Replace oldtrack with newtrack if present in self._tracks.  Pass in a trackdict to share reference to track, so that track owner can modify the track and this object observes the change"""
         if self.hastrack(oldtrackid):
-            ti = set(self._trackid).discard(oldtrackid)
+            ti = set(self._trackid)
             ti.discard(oldtrackid)
             ti.add(newtrackid)
             if self.actorid() == oldtrackid:
