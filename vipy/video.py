@@ -1982,7 +1982,7 @@ class Scene(VideoCategory):
         return next(iter(self.tracks().values()))   # Python >=3.6
         
     def primary_activity(self):
-        return next(iter(self.activities().values()))   # Python >=3.6        
+        return next(iter(self.activities().values())) if len(self._activities)>0 else None  # Python >=3.6        
 
     def activities(self, activities=None, id=None):
         """Return mutable dictionary of activities.  All temporal alignment is relative to the current clip()."""
@@ -2022,14 +2022,23 @@ class Scene(VideoCategory):
         self._activities = {k:a for (k,a) in self.activities().items() if f(a) == True}
         return self
         
-    def trackfilter(self, f):
-        """Apply lambda function f to each object and keep if filter is True"""
-        self._tracks = {k:t for (k,t) in self.tracks().items() if f(t) == True} 
-        self.activitymap(lambda a: a.trackfilter(lambda ti: ti in self._tracks))  # remove track association in activities
+    def trackfilter(self, f, activitytrack=True):
+        """Apply lambda function f to each object and keep if filter is True.  
+        
+           -strict=True: remove track assignment from activities also, may result in activities with no tracks
+        """
+        self._tracks = {k:t for (k,t) in self.tracks().items() if f(t) == True}
+        if activitytrack:
+            self.activitymap(lambda a: a.trackfilter(lambda ti: ti in self._tracks))  # remove track association in activities
+            if any([len(a.tracks()) == 0 for a in self.activitylist()]):
+                warnings.warn('trackfilter(..., activitytrack=True) returned at least one degenerate activity with no tracks')
         return self
 
     def trackmap(self, f, strict=True):
-        """Apply lambda function f to each activity"""
+        """Apply lambda function f to each activity
+
+           -strict=True: enforce that lambda function must return non-degenerate Track() objects        
+        """
         self._tracks = {k:f(t) for (k,t) in self.tracks().items()}
         assert all([isinstance(t, vipy.object.Track) and (strict is False or not t.isdegenerate()) for (tk,t) in self.tracks().items()]), "Lambda function must return non-degenerate vipy.object.Track()"
         return self
@@ -2635,7 +2644,7 @@ class Scene(VideoCategory):
             if sc.startframe() != oc.startframe():
                 dt = (oc.startframe() if oc.startframe() is not None else 0) - (sc.startframe() if sc.startframe() is not None else 0)
                 oc = oc.trackmap(lambda t: t.offset(dt=dt)).activitymap(lambda a: a.offset(dt=dt))  # match temporal translation of tracks and activities
-            oc = oc.trackfilter(lambda t: ((not t.isdegenerate()) and len(t)>0))
+            oc = oc.trackfilter(lambda t: ((not t.isdegenerate()) and len(t)>0), activitytrack=False)  
 
             # Merge other tracks into selfclone: one-to-many mapping from self to other
             merged = {}  # dictionary mapping trackid in other to the trackid in self, each track in other can be merged at most once
@@ -2645,7 +2654,7 @@ class Scene(VideoCategory):
                         sc.tracks()[ti.id()] = sc.track(ti.id()).union(tj, overlap=overlap)  # merge duplicate/fragmented tracks from other into self, union() returns clone
                         merged[tj.id()] = ti.id()  
                         print('[vipy.video.union]: merging track "%s"(id=%s) + "%s"(id=%s) for scene "%s"' % (str(ti), str(ti.id()), str(tj), str(tj.id()), str(sc)))                        
-            oc.trackfilter(lambda t: t.id() not in merged)  # remove duplicate other track for final union
+            oc.trackfilter(lambda t: t.id() not in merged, activitytrack=False)  # remove duplicate other track for final union
 
             # Merge other activities into selfclone: one-to-one mapping
             for (i,j) in merged.items():  # i=id of other, j=id of self
@@ -2654,7 +2663,8 @@ class Scene(VideoCategory):
                 for (j,aj) in oc.activities().items():
                     if ai.category() == aj.category() and set(ai.trackids()) == set(aj.trackids()) and ai.temporal_iou(aj) > temporal_iou_threshold:
                         oc.activityfilter(lambda a: a.id() != j)  # remove duplicate activity from final union
-                        
+            oc.activityfilter(lambda a: len(a.tracks())>0)  # remove empty activities not merged
+
             # Union
             sc.tracks().update(oc.tracks())
             sc.activities().update(oc.activities())

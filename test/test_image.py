@@ -190,6 +190,8 @@ def test_image():
     
     
 def _test_image_fileformat(imgfile):
+    """Exercised by test_image"""
+    
     # Filename object
     im = ImageDetection(filename=imgfile, xmin=100, ymin=100, bbwidth=700, height=1000, category='face')
     print('[test_image.image]["%s"]:  Image __desc__: %s' % (im, imgfile))

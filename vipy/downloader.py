@@ -343,8 +343,6 @@ class ExtractInterface(object):
                 status += chr(8) * (len(status) + 1)
                 print(status, end=' ')
                 sys.stdout.flush()
-            print()
-
 
 class TarArchive(ExtractInterface, BaseArchive):
 
