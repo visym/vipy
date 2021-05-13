@@ -2298,12 +2298,12 @@ class Scene(VideoCategory):
            
         """
         assert isinstance(padframes, int) or istuple(padframes) or islist(padframes)
-        padframelist = [padframes if istuple(padframes) else (padframes, padframes) for k in range(len(primary_activities))] if not islist(padframes) else padframes
 
         vid = self.clone(flushforward=True)
         if any([(a.endframe()-a.startframe()) <= 0 for a in vid.activities().values()]):
             warnings.warn('Filtering invalid activity clips with degenerate lengths: %s' % str([a for a in vid.activities().values() if (a.endframe()-a.startframe()) <= 0]))
         primary_activities = sorted([a.clone() for a in vid.activities().values() if (a.endframe()-a.startframe()) > 0], key=lambda a: a.startframe())   # only activities with at least one frame, sorted in temporal order
+        padframelist = [padframes if istuple(padframes) else (padframes, padframes) for k in range(len(primary_activities))] if not islist(padframes) else padframes                    
         tracks = [ [t.clone() for (tid, t) in vid.tracks().items() if a.hastrack(t)] for a in primary_activities]  # tracks associated with each primary activity (may be empty)
         secondary_activities = [[sa.clone() for sa in primary_activities if (sa.id() != pa.id() and pa.clone().temporalpad((prepad, postpad)).hasoverlap(sa) and (len(T)==0 or any([sa.hastrack(t) for t in T])))] for (pa, T, (prepad,postpad)) in zip(primary_activities, tracks, padframelist)]  # overlapping secondary activities that includes any track in the primary activity
         secondary_activities = [sa if multilabel else [] for sa in secondary_activities]  
