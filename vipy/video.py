@@ -2680,7 +2680,7 @@ class Scene(VideoCategory):
         """Generate a video visualization of all annotated objects and activities in the video, at the resolution and framerate of the underlying video, pixels in this video will now contain the overlay
         This function does not play the video, it only generates an annotation video frames.  Use show() which is equivalent to annotate().saveas().play()
         
-            * In general, this function should not be run on very long videos, as it requires loading the video framewise into memory, try running on clips instead.
+            * In general, this function should not be run on very long videos without the outfile kwarg, as it requires loading the video framewise into memory, try running on clips instead.
             * For long videos, a btter strategy given a video object vo with an output filename which will use a video stream for annotation
 
         """
