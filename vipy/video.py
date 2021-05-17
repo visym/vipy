@@ -1434,6 +1434,26 @@ class Video(object):
             vipy.show.close(figure)
             return self
 
+    def quicklook(self, n=9, mindim=256, startframe=0, animate=False, dt=30):
+        """Generate a montage of n uniformly spaced frames.
+           Montage increases rowwise for n uniformly spaced frames, starting from frame zero and ending on the last frame.
+        
+           Input:
+              -n:  Number of images in the quicklook
+              -mindim:  The minimum dimension of each of the elements in the montage
+              -animate:  If true, return a video constructed by animating the quicklook into a video by showing dt consecutive frames
+              -dt:  The number of frames for animation
+              -startframe:  The initial frame index to start the n uniformly sampled frames for the quicklook
+        """
+        if not self.isloaded():
+            self.load()  
+        if animate:
+            return Video(frames=[self.quicklook(n=n, startframe=k, animate=False, dt=dt) for k in range(0, min(dt, len(self)))], framerate=self.framerate())
+        framelist = [min(int(np.round(f))+startframe, len(self)-1) for f in np.linspace(0, len(self)-1, n)]
+        imframes = [self.frame(k).maxmatte()  # letterbox or pillarbox
+                    for (j,k) in enumerate(framelist)]
+        imframes = [im.savefig(figure=1).rgb() for im in imframes]  # temp storage in memory
+        return vipy.visualize.montage(imframes, imgwidth=mindim, imgheight=mindim)
 
     def torch(self, startframe=0, endframe=None, length=None, stride=1, take=None, boundary='repeat', order='nchw', verbose=False, withslice=False, scale=1.0, withlabel=False, nonelabel=False):
         """Convert the loaded video of shape N HxWxC frames to an MxCxHxW torch tensor, forces a load().
