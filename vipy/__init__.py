@@ -15,6 +15,24 @@ VIPY provides:
 * Video and image web search tools with URL downloading and caching
 * Minimum dependencies for easy installation (e.g. AWS Lambda)
 
+## Design Goals
+
+## Customization
+
+You can set the following environment variables to customize the output of vipy
+
+* **VIPY_CACHE**=/path/to/directory.  This directory will contain all of the cached downloaded filenames when downloading URLs.  
+* **VIPY_AWS_ACCESS_KEY_ID**=MYKEY.  This is the [AWS key](https://docs.aws.amazon.com/general/latest/gr/aws-sec-cred-types.html) to download urls of the form "s3://"
+* **VIPY_AWS_SECRET_ACCESS_KEY**=MYKEY.   This is the [AWS secret key](https://docs.aws.amazon.com/general/latest/gr/aws-sec-cred-types.html) to download urls of the form "s3://".
+
+
+## Parallelization
+
+## Demos
+
+See the [demos](https://github.com/visym/vipy/tree/master/demo)
+ 
+
 """
 
 # Import all subpackages

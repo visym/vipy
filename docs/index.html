@@ -39,10 +39,25 @@ This enables a clean interface for transforming complex datasets for input to yo
 <li>Video and image web search tools with URL downloading and caching</li>
 <li>Minimum dependencies for easy installation (e.g. AWS Lambda)</li>
 </ul>
+<h2 id="design-goals">Design Goals</h2>
+<h2 id="customization">Customization</h2>
+<p>You can set the following environment variables to customize the output of vipy</p>
+<ul>
+<li><strong>VIPY_CACHE</strong>=/path/to/directory.
+This directory will contain all of the cached downloaded filenames when downloading URLs.
+</li>
+<li><strong>VIPY_AWS_ACCESS_KEY_ID</strong>=MYKEY.
+This is the <a href="https://docs.aws.amazon.com/general/latest/gr/aws-sec-cred-types.html">AWS key</a> to download urls of the form "s3://"</li>
+<li><strong>VIPY_AWS_SECRET_ACCESS_KEY</strong>=MYKEY.
+This is the <a href="https://docs.aws.amazon.com/general/latest/gr/aws-sec-cred-types.html">AWS secret key</a> to download urls of the form "s3://".</li>
+</ul>
+<h2 id="parallelization">Parallelization</h2>
+<h2 id="demos">Demos</h2>
+<p>See the <a href="https://github.com/visym/vipy/tree/master/demo">demos</a></p>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/8e1276ce0141644e28385adc315ad307a53af450/vipy/__init__.py#L0-L37" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/f489d8f7656c36f7b3aee8dd95978d1be2209ad7/vipy/__init__.py#L0-L55" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">&#34;&#34;&#34;
 VIPY is a python package for representation, transformation and visualization of annotated videos and images.  Annotations are the ground truth provided by labelers (e.g. object bounding boxes, face identities, temporal activity clips), suit\
@@ -60,6 +75,24 @@ VIPY provides:
 * Dataset download, unpack and import (e.g. Charades, AVA, ActivityNet, Kinetics, Moments in Time)
 * Video and image web search tools with URL downloading and caching
 * Minimum dependencies for easy installation (e.g. AWS Lambda)
+
+## Design Goals
+
+## Customization
+
+You can set the following environment variables to customize the output of vipy
+
+* **VIPY_CACHE**=/path/to/directory.  This directory will contain all of the cached downloaded filenames when downloading URLs.  
+* **VIPY_AWS_ACCESS_KEY_ID**=MYKEY.  This is the [AWS key](https://docs.aws.amazon.com/general/latest/gr/aws-sec-cred-types.html) to download urls of the form &#34;s3://&#34;
+* **VIPY_AWS_SECRET_ACCESS_KEY**=MYKEY.   This is the [AWS secret key](https://docs.aws.amazon.com/general/latest/gr/aws-sec-cred-types.html) to download urls of the form &#34;s3://&#34;.
+
+
+## Parallelization
+
+## Demos
+
+See the [demos](https://github.com/visym/vipy/tree/master/demo)
+ 
 
 &#34;&#34;&#34;
 
@@ -202,7 +235,7 @@ __version__ = vipy.version.VERSION</code></pre>
 <nav id="sidebar">
 <header>
 <a class="homelink" rel="home" title="Vipy" href="https://github.com/visym/vipy/">
-<img src="https://www.visym.com/labs/images/visym_logo_black_notext.png" alt="" width="200"> <p>VIPY</p>
+<img src="https://www.visym.com/labs/images/visym_logo_black_notext.png" alt="" width="150"> <p> </p>
 </a>
 </header>
 <form>
@@ -253,7 +286,12 @@ setTimeout(() => input.focus(), 100);
 </script>
 <h1>Index</h1>
 <div class="toc">
-<ul></ul>
+<ul>
+<li><a href="#design-goals">Design Goals</a></li>
+<li><a href="#customization">Customization</a></li>
+<li><a href="#parallelization">Parallelization</a></li>
+<li><a href="#demos">Demos</a></li>
+</ul>
 </div>
 <ul id="index">
 <li><h3><a href="#header-submodules">Sub-modules</a></h3>
