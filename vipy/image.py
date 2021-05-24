@@ -1180,7 +1180,7 @@ class Image(object):
         vipy.show.close(figure)
         t = vipy.image.Image(array=img, colorspace='rgba')
         if filename is not None:
-            t.rgb().saveas(filename)
+            t.rgb().saveas(os.path.abspath(os.path.expanduser(filename)))
         return t
 
     def map(self, func):
@@ -1754,7 +1754,7 @@ class Scene(ImageCategory):
                 vipy.show.close(plt.gcf().number)   # memory cleanup (useful for video annotation on last frame)
             return vipy.image.Image(array=img, colorspace='rgba')
         else:
-            vipy.show.savefig(outfile, figure, dpi=dpi, bbox_inches='tight', pad_inches=0)
+            vipy.show.savefig(os.path.abspath(os.path.expanduser(outfile)), figure, dpi=dpi, bbox_inches='tight', pad_inches=0)
             return outfile
 
     

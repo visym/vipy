@@ -2,7 +2,7 @@
 
 VIPY
 -------------------
-[VIPY](https://github.com/visym/vipy): Visym Python Tools for Visual Dataset Transformation    
+VIPY: Visym Python Tools for Visual Dataset Transformation    
 Docs: https://visym.github.io/vipy
 
 VIPY is a python package for representation, transformation and visualization of annotated videos and images.  Annotations are the ground truth provided by labelers (e.g. object bounding boxes, face identities, temporal activity clips), suitable for training computer vision systems.  VIPY provides tools to easily edit videos and images so that the annotations are transformed along with the pixels.  This enables a clean interface for transforming complex datasets for input to your computer vision training and testing pipeline.
@@ -49,7 +49,8 @@ Quickstart
 -------------------
 ```python
 import vipy
-vipy.image.owl().mindim(512).show(figure=1).fliplr().show(figure=2)
+vipy.image.owl().mindim(512).fliplr().show()
 ```
+![](./docs/vipy_image_owl.jpg)
 
 The [demos](https://github.com/visym/vipy/tree/master/demo) provide useful notebook tutorials to help you get started.
