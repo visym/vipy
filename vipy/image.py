@@ -1996,7 +1996,7 @@ def owl():
     """Return an owl image for testing"""
     return Scene(url='https://upload.wikimedia.org/wikipedia/commons/thumb/2/23/Bubo_virginianus_06.jpg/1920px-Bubo_virginianus_06.jpg',
                  category='Nature',
-                 objects=[vipy.object.Detection('Great Horned Owl', xmin=300, ymin=320, width=1200, height=1600),
+                 objects=[vipy.object.Detection('Great Horned Owl', xmin=350, ymin=320, width=1400, height=2100),
                           vipy.object.Detection('left eye', xmin=600, ymin=800, width=250, height=250), 
                           vipy.object.Detection('right eye', xmin=1000, ymin=800, width=250, height=250)])
 
