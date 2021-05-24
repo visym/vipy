@@ -8,27 +8,41 @@ if [ "$#" -ge 3 ]; then
     exit 2
 fi
 
-
-cd ..
-pdoc vipy -o ./docs --html --force --template-dir ./docs/templates
+COMMIT=0
+OPEN=0
 
 for arg in "$@"
 do
     case $arg in
         -c|--commit)
-
-	git add ./docs/*
-	git commit -m "documentation" ./docs/*
-	    
+	COMMIT=1
         shift # Remove from processing
         ;;
 
         -o|--open)
-	open ./docs/vipy/index.html
+	OPEN=1
         shift # Remove from processing
         ;;
 
     esac
 done
+
+
+
+if [ ${COMMIT} == 1 ]; then
+    git commit -am "documentation"  # necessary for git blobs to be correct
+fi
+   
+cd ..
+pdoc vipy -o ./docs --html --force --template-dir ./docs/templates
+
+if [ ${COMMIT} == 1 ]; then
+    git add ./docs/*
+    git commit -m "documentation" ./docs/*
+fi
+
+if [ ${OPEN} == 1 ]; then
+    open ./docs/vipy/index.html
+fi
 	
 cd script
