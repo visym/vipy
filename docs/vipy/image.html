@@ -25,7 +25,7 @@
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/67275f3fd76871f56f4dbea31498ba2d829f60d8/vipy/image.py#L1-L2021" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/09dad983c66f16c99bce3ff33e47c60944ee4750/vipy/image.py#L1-L2021" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">import os
 import PIL
@@ -2064,7 +2064,7 @@ def people():
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/67275f3fd76871f56f4dbea31498ba2d829f60d8/vipy/image.py#L1973-L1976" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/09dad983c66f16c99bce3ff33e47c60944ee4750/vipy/image.py#L1973-L1976" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def RandomImage(rows=None, cols=None):
     rows = np.random.randint(128, 1024) if rows is None else rows
@@ -2080,7 +2080,7 @@ def people():
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/67275f3fd76871f56f4dbea31498ba2d829f60d8/vipy/image.py#L1979-L1984" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/09dad983c66f16c99bce3ff33e47c60944ee4750/vipy/image.py#L1979-L1984" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def RandomImageDetection(rows=None, cols=None):
     rows = np.random.randint(128, 1024) if rows is None else rows
@@ -2098,7 +2098,7 @@ def people():
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/67275f3fd76871f56f4dbea31498ba2d829f60d8/vipy/image.py#L1986-L1992" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/09dad983c66f16c99bce3ff33e47c60944ee4750/vipy/image.py#L1986-L1992" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def RandomScene(rows=None, cols=None, num_objects=16, url=None):
     im = RandomImage(rows, cols) if url is None else Image(url=url)
@@ -2118,7 +2118,7 @@ Noun Verb2'</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/67275f3fd76871f56f4dbea31498ba2d829f60d8/vipy/image.py#L1955-L1957" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/09dad983c66f16c99bce3ff33e47c60944ee4750/vipy/image.py#L1955-L1957" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def mutator_capitalize():
     &#34;&#34;&#34;Mutate the image to show the shortlabel as &#39;Noun Verb1\nNoun Verb2&#39;&#34;&#34;&#34;
@@ -2133,7 +2133,7 @@ Noun Verb2'</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/67275f3fd76871f56f4dbea31498ba2d829f60d8/vipy/image.py#L1959-L1960" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/09dad983c66f16c99bce3ff33e47c60944ee4750/vipy/image.py#L1959-L1960" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def mutator_show_activityonly():
     return lambda im, k=None: im.objectmap(lambda o: o.shortlabel(&#39;&#39;) if (len(o.attributes[&#39;noun verb&#39;]) == 1 and len(o.attributes[&#39;noun verb&#39;][0][1]) == 0) else o)</code></pre>
@@ -2147,7 +2147,7 @@ Noun Verb2'</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/67275f3fd76871f56f4dbea31498ba2d829f60d8/vipy/image.py#L1931-L1932" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/09dad983c66f16c99bce3ff33e47c60944ee4750/vipy/image.py#L1931-L1932" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def mutator_show_jointlabel():
     return lambda im, k=None: im.objectmap(lambda o: o.shortlabel(o.getattribute(&#39;jointlabel&#39;)) if o.hasattribute(&#39;jointlabel&#39;) else o)   # from frame interpolation </code></pre>
@@ -2161,7 +2161,7 @@ Noun Verb2'</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/67275f3fd76871f56f4dbea31498ba2d829f60d8/vipy/image.py#L1943-L1945" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/09dad983c66f16c99bce3ff33e47c60944ee4750/vipy/image.py#L1943-L1945" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def mutator_show_noun_only():
     &#34;&#34;&#34;Mutate the image to show the noun only&#34;&#34;&#34;
@@ -2176,7 +2176,7 @@ Noun Verb2'</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/67275f3fd76871f56f4dbea31498ba2d829f60d8/vipy/image.py#L1951-L1953" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/09dad983c66f16c99bce3ff33e47c60944ee4750/vipy/image.py#L1951-L1953" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def mutator_show_noun_or_verb():
     &#34;&#34;&#34;Mutate the image to show the verb only if it is non-zero else noun&#34;&#34;&#34;
@@ -2191,7 +2191,7 @@ Noun Verb2'</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/67275f3fd76871f56f4dbea31498ba2d829f60d8/vipy/image.py#L1926-L1929" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/09dad983c66f16c99bce3ff33e47c60944ee4750/vipy/image.py#L1926-L1929" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def mutator_show_trackid(n_digits_in_trackid=5):
     &#34;&#34;&#34;Mutate the image to show track ID with a fixed number of digits appended to the shortlabel as (####)&#34;&#34;&#34;
@@ -2207,7 +2207,7 @@ Noun Verb2'</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/67275f3fd76871f56f4dbea31498ba2d829f60d8/vipy/image.py#L1934-L1936" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/09dad983c66f16c99bce3ff33e47c60944ee4750/vipy/image.py#L1934-L1936" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def mutator_show_trackindex():
     &#34;&#34;&#34;Mutate the image to show track index appended to the shortlabel as (####)&#34;&#34;&#34;
@@ -2222,7 +2222,7 @@ Noun Verb2'</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/67275f3fd76871f56f4dbea31498ba2d829f60d8/vipy/image.py#L1962-L1965" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/09dad983c66f16c99bce3ff33e47c60944ee4750/vipy/image.py#L1962-L1965" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def mutator_show_trackindex_activityonly():
     &#34;&#34;&#34;Mutate the image to show boxes colored by track index, and only show &#39;noun verb&#39; captions&#34;&#34;&#34;
@@ -2238,7 +2238,7 @@ Noun Verb2'</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/67275f3fd76871f56f4dbea31498ba2d829f60d8/vipy/image.py#L1967-L1970" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/09dad983c66f16c99bce3ff33e47c60944ee4750/vipy/image.py#L1967-L1970" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def mutator_show_trackindex_verbonly(confidence=True, significant_digits=2):
     &#34;&#34;&#34;Mutate the image to show boxes colored by track index, and only show &#39;verb&#39; captions with activity confidence&#34;&#34;&#34;
@@ -2257,7 +2257,7 @@ This is passed to show()</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/67275f3fd76871f56f4dbea31498ba2d829f60d8/vipy/image.py#L1938-L1941" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/09dad983c66f16c99bce3ff33e47c60944ee4750/vipy/image.py#L1938-L1941" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def mutator_show_userstring(strlist):
     &#34;&#34;&#34;Mutate the image to show user supplied strings in the shortlabel.  The list be the same length oas the number of objects in the image.  This is not checked.  This is passed to show()&#34;&#34;&#34;
@@ -2273,7 +2273,7 @@ This is passed to show()</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/67275f3fd76871f56f4dbea31498ba2d829f60d8/vipy/image.py#L1947-L1949" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/09dad983c66f16c99bce3ff33e47c60944ee4750/vipy/image.py#L1947-L1949" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def mutator_show_verb_only():
     &#34;&#34;&#34;Mutate the image to show the verb only&#34;&#34;&#34;
@@ -2288,7 +2288,7 @@ This is passed to show()</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/67275f3fd76871f56f4dbea31498ba2d829f60d8/vipy/image.py#L1995-L2001" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/09dad983c66f16c99bce3ff33e47c60944ee4750/vipy/image.py#L1995-L2001" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def owl():
     &#34;&#34;&#34;Return an owl image for testing&#34;&#34;&#34;
@@ -2307,7 +2307,7 @@ This is passed to show()</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/67275f3fd76871f56f4dbea31498ba2d829f60d8/vipy/image.py#L2013-L2020" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/09dad983c66f16c99bce3ff33e47c60944ee4750/vipy/image.py#L2013-L2020" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def people():
     &#34;&#34;&#34;Return a crowd scene with the four highest confidence person detections for testing&#34;&#34;&#34;
@@ -2327,7 +2327,7 @@ This is passed to show()</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/67275f3fd76871f56f4dbea31498ba2d829f60d8/vipy/image.py#L2004-L2011" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/09dad983c66f16c99bce3ff33e47c60944ee4750/vipy/image.py#L2004-L2011" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def vehicles():
     &#34;&#34;&#34;Return a highway scene with the four highest confidence vehicle detections for testing&#34;&#34;&#34;
@@ -2384,7 +2384,7 @@ The most general colorspace is 'float' which is used to manipulate images prior 
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/67275f3fd76871f56f4dbea31498ba2d829f60d8/vipy/image.py#L45-L1200" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/09dad983c66f16c99bce3ff33e47c60944ee4750/vipy/image.py#L45-L1200" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">class Image(object):
     &#34;&#34;&#34;vipy.image.Image class
@@ -3557,7 +3557,7 @@ The most general colorspace is 'float' which is used to manipulate images prior 
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/67275f3fd76871f56f4dbea31498ba2d829f60d8/vipy/image.py#L112-L116" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/09dad983c66f16c99bce3ff33e47c60944ee4750/vipy/image.py#L112-L116" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">@classmethod
 def cast(cls, im):
@@ -3574,7 +3574,7 @@ def cast(cls, im):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/67275f3fd76871f56f4dbea31498ba2d829f60d8/vipy/image.py#L118-L125" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/09dad983c66f16c99bce3ff33e47c60944ee4750/vipy/image.py#L118-L125" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">@classmethod
 def from_json(cls, s):
@@ -3597,7 +3597,7 @@ def from_json(cls, s):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/67275f3fd76871f56f4dbea31498ba2d829f60d8/vipy/image.py#L235-L237" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/09dad983c66f16c99bce3ff33e47c60944ee4750/vipy/image.py#L235-L237" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def abspath(self):
     &#34;&#34;&#34;Change the path of the filename from a relative path to an absolute path (not relocatable)&#34;&#34;&#34;
@@ -3612,7 +3612,7 @@ def from_json(cls, s):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/67275f3fd76871f56f4dbea31498ba2d829f60d8/vipy/image.py#L517-L520" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/09dad983c66f16c99bce3ff33e47c60944ee4750/vipy/image.py#L517-L520" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def alpha(self):
     &#34;&#34;&#34;Return alpha (transparency) channel as a cloned Image() object&#34;&#34;&#34;
@@ -3628,7 +3628,7 @@ def from_json(cls, s):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/67275f3fd76871f56f4dbea31498ba2d829f60d8/vipy/image.py#L804-L807" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/09dad983c66f16c99bce3ff33e47c60944ee4750/vipy/image.py#L804-L807" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def alphapad(self, padwidth, padheight):
     &#34;&#34;&#34;Pad image using alpha transparency by adding padwidth on both left and right , or padwidth=(left,right) for different pre/postpadding,, and padheight on top and bottom or padheight=(top,bottom) for different pre/post padding&#34;&#34;&#34;
@@ -3644,7 +3644,7 @@ def from_json(cls, s):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/67275f3fd76871f56f4dbea31498ba2d829f60d8/vipy/image.py#L1168-L1171" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/09dad983c66f16c99bce3ff33e47c60944ee4750/vipy/image.py#L1168-L1171" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def annotate(self, timestamp=None, timestampcolor=&#39;black&#39;, timestampfacecolor=&#39;white&#39;, mutator=None):
     &#34;&#34;&#34;Change pixels of this image to include rendered annotation and return an image object&#34;&#34;&#34;
@@ -3660,7 +3660,7 @@ def from_json(cls, s):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/67275f3fd76871f56f4dbea31498ba2d829f60d8/vipy/image.py#L450-L451" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/09dad983c66f16c99bce3ff33e47c60944ee4750/vipy/image.py#L450-L451" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def area(self):
     return self.width()*self.height()</code></pre>
@@ -3674,7 +3674,7 @@ def from_json(cls, s):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/67275f3fd76871f56f4dbea31498ba2d829f60d8/vipy/image.py#L462-L472" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/09dad983c66f16c99bce3ff33e47c60944ee4750/vipy/image.py#L462-L472" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def array(self, np_array=None, copy=False):
     &#34;&#34;&#34;Replace self._array with provided numpy array&#34;&#34;&#34;
@@ -3697,7 +3697,7 @@ def from_json(cls, s):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/67275f3fd76871f56f4dbea31498ba2d829f60d8/vipy/image.py#L447-L448" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/09dad983c66f16c99bce3ff33e47c60944ee4750/vipy/image.py#L447-L448" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def aspectratio(self):
     return self.load().width() / float(self.height())</code></pre>
@@ -3711,7 +3711,7 @@ def from_json(cls, s):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/67275f3fd76871f56f4dbea31498ba2d829f60d8/vipy/image.py#L1152-L1156" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/09dad983c66f16c99bce3ff33e47c60944ee4750/vipy/image.py#L1152-L1156" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def base64(self):
     &#34;&#34;&#34;Export a base64 encoding of the image suitable for embedding in an html page&#34;&#34;&#34;
@@ -3728,7 +3728,7 @@ def from_json(cls, s):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/67275f3fd76871f56f4dbea31498ba2d829f60d8/vipy/image.py#L981-L983" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/09dad983c66f16c99bce3ff33e47c60944ee4750/vipy/image.py#L981-L983" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def bgr(self):
     &#34;&#34;&#34;Convert the image buffer to three channel BGR uint8 colorspace&#34;&#34;&#34;
@@ -3743,7 +3743,7 @@ def from_json(cls, s):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/67275f3fd76871f56f4dbea31498ba2d829f60d8/vipy/image.py#L985-L987" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/09dad983c66f16c99bce3ff33e47c60944ee4750/vipy/image.py#L985-L987" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def bgra(self):
     &#34;&#34;&#34;Convert the image buffer to four channel BGR uint8 colorspace&#34;&#34;&#34;
@@ -3760,7 +3760,7 @@ This forces the colorspace to 'float'</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/67275f3fd76871f56f4dbea31498ba2d829f60d8/vipy/image.py#L1061-L1064" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/09dad983c66f16c99bce3ff33e47c60944ee4750/vipy/image.py#L1061-L1064" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def bias(self, b):
     &#34;&#34;&#34;Add a bias to the image array.  Bias should be broadcastable to array().  This forces the colorspace to &#39;float&#39;&#34;&#34;&#34;
@@ -3776,7 +3776,7 @@ This forces the colorspace to 'float'</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/67275f3fd76871f56f4dbea31498ba2d829f60d8/vipy/image.py#L507-L515" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/09dad983c66f16c99bce3ff33e47c60944ee4750/vipy/image.py#L507-L515" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def blue(self):
     &#34;&#34;&#34;Return blue channel as a cloned Image() object&#34;&#34;&#34;
@@ -3797,7 +3797,7 @@ This forces the colorspace to 'float'</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/67275f3fd76871f56f4dbea31498ba2d829f60d8/vipy/image.py#L545-L546" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/09dad983c66f16c99bce3ff33e47c60944ee4750/vipy/image.py#L545-L546" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def blur(self, sigma=3):
     return self.array(np.array(self.pil().filter(PIL.ImageFilter.GaussianBlur(radius=sigma))))</code></pre>
@@ -3811,7 +3811,7 @@ This forces the colorspace to 'float'</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/67275f3fd76871f56f4dbea31498ba2d829f60d8/vipy/image.py#L1038-L1040" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/09dad983c66f16c99bce3ff33e47c60944ee4750/vipy/image.py#L1038-L1040" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def bone(self):
     &#34;&#34;&#34;Apply bone colormap to greyscale image and convert to RGB&#34;&#34;&#34;
@@ -3826,7 +3826,7 @@ This forces the colorspace to 'float'</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/67275f3fd76871f56f4dbea31498ba2d829f60d8/vipy/image.py#L873-L880" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/09dad983c66f16c99bce3ff33e47c60944ee4750/vipy/image.py#L873-L880" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def border_mask(self, pad):
     &#34;&#34;&#34;Return a binary uint8 image the same size as self, with a border of pad pixels in width or height around the edge&#34;&#34;&#34;
@@ -3846,7 +3846,7 @@ This forces the colorspace to 'float'</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/67275f3fd76871f56f4dbea31498ba2d829f60d8/vipy/image.py#L245-L254" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/09dad983c66f16c99bce3ff33e47c60944ee4750/vipy/image.py#L245-L254" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def canload(self):
     &#34;&#34;&#34;Return True if the image can be loaded successfully, useful for filtering bad links or corrupt images&#34;&#34;&#34;
@@ -3868,7 +3868,7 @@ This forces the colorspace to 'float'</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/67275f3fd76871f56f4dbea31498ba2d829f60d8/vipy/image.py#L837-L839" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/09dad983c66f16c99bce3ff33e47c60944ee4750/vipy/image.py#L837-L839" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def centercrop(self, height, width):
     &#34;&#34;&#34;Crop image of size (height x width) in the center, keeping the image centroid constant&#34;&#34;&#34;
@@ -3883,7 +3883,7 @@ This forces the colorspace to 'float'</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/67275f3fd76871f56f4dbea31498ba2d829f60d8/vipy/image.py#L457-L460" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/09dad983c66f16c99bce3ff33e47c60944ee4750/vipy/image.py#L457-L460" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def centerpixel(self):
     &#34;&#34;&#34;Return the integer valued center pixel coordinates of the image (col=i,row=j)&#34;&#34;&#34;
@@ -3899,7 +3899,7 @@ This forces the colorspace to 'float'</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/67275f3fd76871f56f4dbea31498ba2d829f60d8/vipy/image.py#L832-L835" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/09dad983c66f16c99bce3ff33e47c60944ee4750/vipy/image.py#L832-L835" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def centersquare(self):
     &#34;&#34;&#34;Crop image of size (NxN) in the center, such that N=min(width,height), keeping the image centroid constant&#34;&#34;&#34;
@@ -3915,7 +3915,7 @@ This forces the colorspace to 'float'</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/67275f3fd76871f56f4dbea31498ba2d829f60d8/vipy/image.py#L453-L455" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/09dad983c66f16c99bce3ff33e47c60944ee4750/vipy/image.py#L453-L455" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def centroid(self):
     &#34;&#34;&#34;Return the real valued center pixel coordinates of the image (col=x,row=y)&#34;&#34;&#34;
@@ -3930,7 +3930,7 @@ This forces the colorspace to 'float'</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/67275f3fd76871f56f4dbea31498ba2d829f60d8/vipy/image.py#L474-L485" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/09dad983c66f16c99bce3ff33e47c60944ee4750/vipy/image.py#L474-L485" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def channel(self, k=None):
     &#34;&#34;&#34;Return a cloned Image() object for the kth channel, or return an iterator over channels if k=None&#34;&#34;&#34;
@@ -3954,7 +3954,7 @@ This forces the colorspace to 'float'</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/67275f3fd76871f56f4dbea31498ba2d829f60d8/vipy/image.py#L412-L414" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/09dad983c66f16c99bce3ff33e47c60944ee4750/vipy/image.py#L412-L414" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def channels(self):
     &#34;&#34;&#34;Return integer number of color channels&#34;&#34;&#34;
@@ -3975,7 +3975,7 @@ object which can be used for encoding and will be garbage collected.</p>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/67275f3fd76871f56f4dbea31498ba2d829f60d8/vipy/image.py#L673-L702" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/09dad983c66f16c99bce3ff33e47c60944ee4750/vipy/image.py#L673-L702" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def clone(self, flushforward=False, flushbackward=False, flush=False, shallow=False, attributes=False):
     &#34;&#34;&#34;Create deep copy of object, flushing the original buffer if requested and returning the cloned object.
@@ -4017,7 +4017,7 @@ object which can be used for encoding and will be garbage collected.</p>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/67275f3fd76871f56f4dbea31498ba2d829f60d8/vipy/image.py#L1099-L1105" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/09dad983c66f16c99bce3ff33e47c60944ee4750/vipy/image.py#L1099-L1105" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def close(self, fignum=None):
     &#34;&#34;&#34;Close the requested figure number, or close all of fignum=None&#34;&#34;&#34;
@@ -4036,7 +4036,7 @@ object which can be used for encoding and will be garbage collected.</p>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/67275f3fd76871f56f4dbea31498ba2d829f60d8/vipy/image.py#L1094-L1097" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/09dad983c66f16c99bce3ff33e47c60944ee4750/vipy/image.py#L1094-L1097" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def closeall(self):
     &#34;&#34;&#34;Close all open figure windows&#34;&#34;&#34;
@@ -4052,7 +4052,7 @@ object which can be used for encoding and will be garbage collected.</p>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/67275f3fd76871f56f4dbea31498ba2d829f60d8/vipy/image.py#L600-L627" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/09dad983c66f16c99bce3ff33e47c60944ee4750/vipy/image.py#L600-L627" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def colorspace(self, colorspace=None):
     &#34;&#34;&#34;Return or set the colorspace as [&#39;rgb&#39;, &#39;rgba&#39;, &#39;bgr&#39;, &#39;bgra&#39;, &#39;hsv&#39;, &#39;float&#39;, &#39;grey&#39;, &#39;lum&#39;]&#34;&#34;&#34;
@@ -4092,7 +4092,7 @@ object which can be used for encoding and will be garbage collected.</p>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/67275f3fd76871f56f4dbea31498ba2d829f60d8/vipy/image.py#L841-L843" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/09dad983c66f16c99bce3ff33e47c60944ee4750/vipy/image.py#L841-L843" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def cornercrop(self, height, width):
     &#34;&#34;&#34;Crop image of size (height x width) from the upper left corner&#34;&#34;&#34;
@@ -4107,7 +4107,7 @@ object which can be used for encoding and will be garbage collected.</p>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/67275f3fd76871f56f4dbea31498ba2d829f60d8/vipy/image.py#L856-L857" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/09dad983c66f16c99bce3ff33e47c60944ee4750/vipy/image.py#L856-L857" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def crop(self, bbox):
     return self._crop(bbox)</code></pre>
@@ -4121,7 +4121,7 @@ object which can be used for encoding and will be garbage collected.</p>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/67275f3fd76871f56f4dbea31498ba2d829f60d8/vipy/image.py#L662-L665" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/09dad983c66f16c99bce3ff33e47c60944ee4750/vipy/image.py#L662-L665" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def delattribute(self, k):
     if k in self.attributes:
@@ -4137,7 +4137,7 @@ object which can be used for encoding and will be garbage collected.</p>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/67275f3fd76871f56f4dbea31498ba2d829f60d8/vipy/image.py#L256-L258" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/09dad983c66f16c99bce3ff33e47c60944ee4750/vipy/image.py#L256-L258" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def dict(self):
     &#34;&#34;&#34;Return a python dictionary containing the relevant serialized attributes suitable for JSON encoding&#34;&#34;&#34;
@@ -4152,7 +4152,7 @@ object which can be used for encoding and will be garbage collected.</p>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/67275f3fd76871f56f4dbea31498ba2d829f60d8/vipy/image.py#L1197-L1200" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/09dad983c66f16c99bce3ff33e47c60944ee4750/vipy/image.py#L1197-L1200" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def downcast(self):
     &#34;&#34;&#34;Cast the class to the base class (vipy.image.Image)&#34;&#34;&#34;
@@ -4168,7 +4168,7 @@ object which can be used for encoding and will be garbage collected.</p>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/67275f3fd76871f56f4dbea31498ba2d829f60d8/vipy/image.py#L340-L403" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/09dad983c66f16c99bce3ff33e47c60944ee4750/vipy/image.py#L340-L403" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def download(self, ignoreErrors=False, timeout=10, verbose=False):
     &#34;&#34;&#34;Download URL to filename provided by constructor, or to temp filename&#34;&#34;&#34;
@@ -4244,7 +4244,7 @@ object which can be used for encoding and will be garbage collected.</p>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/67275f3fd76871f56f4dbea31498ba2d829f60d8/vipy/image.py#L571-L577" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/09dad983c66f16c99bce3ff33e47c60944ee4750/vipy/image.py#L571-L577" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def filename(self, newfile=None):
     &#34;&#34;&#34;Return or set image filename&#34;&#34;&#34;
@@ -4263,7 +4263,7 @@ object which can be used for encoding and will be garbage collected.</p>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/67275f3fd76871f56f4dbea31498ba2d829f60d8/vipy/image.py#L432-L435" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/09dad983c66f16c99bce3ff33e47c60944ee4750/vipy/image.py#L432-L435" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def filesize(self):
     &#34;&#34;&#34;Return size of underlying image file, requires fetching metadata from filesystem&#34;&#34;&#34;
@@ -4279,7 +4279,7 @@ object which can be used for encoding and will be garbage collected.</p>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/67275f3fd76871f56f4dbea31498ba2d829f60d8/vipy/image.py#L859-L862" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/09dad983c66f16c99bce3ff33e47c60944ee4750/vipy/image.py#L859-L862" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def fliplr(self):
     &#34;&#34;&#34;Mirror the image buffer about the vertical axis - Not idempotent&#34;&#34;&#34;
@@ -4295,7 +4295,7 @@ object which can be used for encoding and will be garbage collected.</p>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/67275f3fd76871f56f4dbea31498ba2d829f60d8/vipy/image.py#L864-L867" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/09dad983c66f16c99bce3ff33e47c60944ee4750/vipy/image.py#L864-L867" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def flipud(self):
     &#34;&#34;&#34;Mirror the image buffer about the horizontal axis - Not idempotent&#34;&#34;&#34;
@@ -4311,7 +4311,7 @@ object which can be used for encoding and will be garbage collected.</p>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/67275f3fd76871f56f4dbea31498ba2d829f60d8/vipy/image.py#L989-L991" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/09dad983c66f16c99bce3ff33e47c60944ee4750/vipy/image.py#L989-L991" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def float(self):
     &#34;&#34;&#34;Convert the image buffer to float32&#34;&#34;&#34;
@@ -4326,7 +4326,7 @@ object which can be used for encoding and will be garbage collected.</p>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/67275f3fd76871f56f4dbea31498ba2d829f60d8/vipy/image.py#L704-L707" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/09dad983c66f16c99bce3ff33e47c60944ee4750/vipy/image.py#L704-L707" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def flush(self):
     &#34;&#34;&#34;Alias for clone(flush=True), returns self not clone&#34;&#34;&#34;
@@ -4342,7 +4342,7 @@ object which can be used for encoding and will be garbage collected.</p>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/67275f3fd76871f56f4dbea31498ba2d829f60d8/vipy/image.py#L522-L524" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/09dad983c66f16c99bce3ff33e47c60944ee4750/vipy/image.py#L522-L524" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def fromarray(self, data):
     &#34;&#34;&#34;Alias for array(data, copy=True), set new array() with a numpy array copy&#34;&#34;&#34;
@@ -4357,7 +4357,7 @@ object which can be used for encoding and will be garbage collected.</p>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/67275f3fd76871f56f4dbea31498ba2d829f60d8/vipy/image.py#L557-L565" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/09dad983c66f16c99bce3ff33e47c60944ee4750/vipy/image.py#L557-L565" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def fromtorch(self, x):
     &#34;&#34;&#34;Convert a 1xCxHxW torch.FloatTensor to HxWxC np.float32 numpy array(), returns new Image() instance with selected colorspace&#34;&#34;&#34;
@@ -4379,7 +4379,7 @@ This forces the colospace to 'float'</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/67275f3fd76871f56f4dbea31498ba2d829f60d8/vipy/image.py#L1057-L1059" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/09dad983c66f16c99bce3ff33e47c60944ee4750/vipy/image.py#L1057-L1059" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def gain(self, g):
     &#34;&#34;&#34;Elementwise multiply gain to image array, Gain should be broadcastable to array().  This forces the colospace to &#39;float&#39;&#34;&#34;&#34;
@@ -4394,7 +4394,7 @@ This forces the colospace to 'float'</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/67275f3fd76871f56f4dbea31498ba2d829f60d8/vipy/image.py#L653-L657" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/09dad983c66f16c99bce3ff33e47c60944ee4750/vipy/image.py#L653-L657" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def getattribute(self, key):
     if self.attributes is not None and key in list(self.attributes.keys()):
@@ -4411,7 +4411,7 @@ This forces the colospace to 'float'</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/67275f3fd76871f56f4dbea31498ba2d829f60d8/vipy/image.py#L1005-L1007" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/09dad983c66f16c99bce3ff33e47c60944ee4750/vipy/image.py#L1005-L1007" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def gray(self):
     &#34;&#34;&#34;Alias for greyscale()&#34;&#34;&#34;
@@ -4426,7 +4426,7 @@ This forces the colospace to 'float'</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/67275f3fd76871f56f4dbea31498ba2d829f60d8/vipy/image.py#L997-L999" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/09dad983c66f16c99bce3ff33e47c60944ee4750/vipy/image.py#L997-L999" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def grayscale(self):
     &#34;&#34;&#34;Alias for greyscale()&#34;&#34;&#34;
@@ -4441,7 +4441,7 @@ This forces the colospace to 'float'</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/67275f3fd76871f56f4dbea31498ba2d829f60d8/vipy/image.py#L497-L505" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/09dad983c66f16c99bce3ff33e47c60944ee4750/vipy/image.py#L497-L505" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def green(self):
     &#34;&#34;&#34;Return green channel as a cloned Image() object&#34;&#34;&#34;
@@ -4462,7 +4462,7 @@ This forces the colospace to 'float'</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/67275f3fd76871f56f4dbea31498ba2d829f60d8/vipy/image.py#L1001-L1003" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/09dad983c66f16c99bce3ff33e47c60944ee4750/vipy/image.py#L1001-L1003" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def grey(self):
     &#34;&#34;&#34;Alias for greyscale()&#34;&#34;&#34;
@@ -4477,7 +4477,7 @@ This forces the colospace to 'float'</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/67275f3fd76871f56f4dbea31498ba2d829f60d8/vipy/image.py#L993-L995" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/09dad983c66f16c99bce3ff33e47c60944ee4750/vipy/image.py#L993-L995" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def greyscale(self):
     &#34;&#34;&#34;Convert the image buffer to single channel grayscale float32 in range [0,1]&#34;&#34;&#34;
@@ -4492,7 +4492,7 @@ This forces the colospace to 'float'</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/67275f3fd76871f56f4dbea31498ba2d829f60d8/vipy/image.py#L659-L660" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/09dad983c66f16c99bce3ff33e47c60944ee4750/vipy/image.py#L659-L660" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def hasattribute(self, key):
     return self.attributes is not None and key in self.attributes</code></pre>
@@ -4506,7 +4506,7 @@ This forces the colospace to 'float'</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/67275f3fd76871f56f4dbea31498ba2d829f60d8/vipy/image.py#L670-L671" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/09dad983c66f16c99bce3ff33e47c60944ee4750/vipy/image.py#L670-L671" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def hasfilename(self):
     return self._filename is not None and os.path.exists(self._filename)</code></pre>
@@ -4520,7 +4520,7 @@ This forces the colospace to 'float'</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/67275f3fd76871f56f4dbea31498ba2d829f60d8/vipy/image.py#L667-L668" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/09dad983c66f16c99bce3ff33e47c60944ee4750/vipy/image.py#L667-L668" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def hasurl(self):
     return self._url is not None and isurl(self._url)</code></pre>
@@ -4534,7 +4534,7 @@ This forces the colospace to 'float'</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/67275f3fd76871f56f4dbea31498ba2d829f60d8/vipy/image.py#L440-L441" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/09dad983c66f16c99bce3ff33e47c60944ee4750/vipy/image.py#L440-L441" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def height(self):
     return self.load().array().shape[0]</code></pre>
@@ -4548,7 +4548,7 @@ This forces the colospace to 'float'</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/67275f3fd76871f56f4dbea31498ba2d829f60d8/vipy/image.py#L1034-L1036" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/09dad983c66f16c99bce3ff33e47c60944ee4750/vipy/image.py#L1034-L1036" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def hot(self):
     &#34;&#34;&#34;Apply hot colormap to greyscale image and convert to RGB&#34;&#34;&#34;
@@ -4563,7 +4563,7 @@ This forces the colospace to 'float'</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/67275f3fd76871f56f4dbea31498ba2d829f60d8/vipy/image.py#L977-L979" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/09dad983c66f16c99bce3ff33e47c60944ee4750/vipy/image.py#L977-L979" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def hsv(self):
     &#34;&#34;&#34;Convert the image buffer to three channel HSV uint8 colorspace&#34;&#34;&#34;
@@ -4581,7 +4581,7 @@ This forces the colospace to 'float'</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/67275f3fd76871f56f4dbea31498ba2d829f60d8/vipy/image.py#L1158-L1166" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/09dad983c66f16c99bce3ff33e47c60944ee4750/vipy/image.py#L1158-L1166" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def html(self, alt=None):
     &#34;&#34;&#34;Export a base64 encoding of the image suitable for embedding in an html page, enclosed in &lt;img&gt; tag
@@ -4602,7 +4602,7 @@ This forces the colospace to 'float'</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/67275f3fd76871f56f4dbea31498ba2d829f60d8/vipy/image.py#L869-L871" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/09dad983c66f16c99bce3ff33e47c60944ee4750/vipy/image.py#L869-L871" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def imagebox(self):
     &#34;&#34;&#34;Return the bounding box for the image rectangle&#34;&#34;&#34;
@@ -4618,7 +4618,7 @@ Equivalent to self.mat2gray()</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/67275f3fd76871f56f4dbea31498ba2d829f60d8/vipy/image.py#L1046-L1049" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/09dad983c66f16c99bce3ff33e47c60944ee4750/vipy/image.py#L1046-L1049" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def intensity(self):
     &#34;&#34;&#34;Convert image to float32 with [min,max] to range [0,1], force colormap to be &#39;float&#39;.  Equivalent to self.mat2gray()&#34;&#34;&#34;
@@ -4634,7 +4634,7 @@ Equivalent to self.mat2gray()</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/67275f3fd76871f56f4dbea31498ba2d829f60d8/vipy/image.py#L416-L418" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/09dad983c66f16c99bce3ff33e47c60944ee4750/vipy/image.py#L416-L418" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def iscolor(self):
     &#34;&#34;&#34;Color images are three channel or four channel with transparency, float32 or uint8&#34;&#34;&#34;
@@ -4649,7 +4649,7 @@ Equivalent to self.mat2gray()</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/67275f3fd76871f56f4dbea31498ba2d829f60d8/vipy/image.py#L424-L426" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/09dad983c66f16c99bce3ff33e47c60944ee4750/vipy/image.py#L424-L426" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def isgrey(self):
     &#34;&#34;&#34;Grey images are one channel, float32&#34;&#34;&#34;
@@ -4664,7 +4664,7 @@ Equivalent to self.mat2gray()</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/67275f3fd76871f56f4dbea31498ba2d829f60d8/vipy/image.py#L409-L410" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/09dad983c66f16c99bce3ff33e47c60944ee4750/vipy/image.py#L409-L410" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def isloaded(self):
     return self._array is not None</code></pre>
@@ -4678,7 +4678,7 @@ Equivalent to self.mat2gray()</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/67275f3fd76871f56f4dbea31498ba2d829f60d8/vipy/image.py#L428-L430" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/09dad983c66f16c99bce3ff33e47c60944ee4750/vipy/image.py#L428-L430" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def isluminance(self):
     &#34;&#34;&#34;Luninance images are one channel, uint8&#34;&#34;&#34;
@@ -4693,7 +4693,7 @@ Equivalent to self.mat2gray()</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/67275f3fd76871f56f4dbea31498ba2d829f60d8/vipy/image.py#L420-L422" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/09dad983c66f16c99bce3ff33e47c60944ee4750/vipy/image.py#L420-L422" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def istransparent(self):
     &#34;&#34;&#34;Color images are three channel or four channel with transparency, float32 or uint8&#34;&#34;&#34;
@@ -4708,7 +4708,7 @@ Equivalent to self.mat2gray()</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/67275f3fd76871f56f4dbea31498ba2d829f60d8/vipy/image.py#L1026-L1028" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/09dad983c66f16c99bce3ff33e47c60944ee4750/vipy/image.py#L1026-L1028" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def jet(self):
     &#34;&#34;&#34;Apply jet colormap to greyscale image and save as RGB&#34;&#34;&#34;
@@ -4723,7 +4723,7 @@ Equivalent to self.mat2gray()</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/67275f3fd76871f56f4dbea31498ba2d829f60d8/vipy/image.py#L260-L277" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/09dad983c66f16c99bce3ff33e47c60944ee4750/vipy/image.py#L260-L277" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def json(self, s=None, encode=True):
     if s is None:
@@ -4753,7 +4753,7 @@ Equivalent to self.mat2gray()</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/67275f3fd76871f56f4dbea31498ba2d829f60d8/vipy/image.py#L284-L338" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/09dad983c66f16c99bce3ff33e47c60944ee4750/vipy/image.py#L284-L338" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def load(self, ignoreErrors=False, verbose=False):
     &#34;&#34;&#34;Load image to cached private &#39;_array&#39; attribute and return Image object&#34;&#34;&#34;
@@ -4820,7 +4820,7 @@ Equivalent to self.mat2gray()</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/67275f3fd76871f56f4dbea31498ba2d829f60d8/vipy/image.py#L279-L282" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/09dad983c66f16c99bce3ff33e47c60944ee4750/vipy/image.py#L279-L282" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def loader(self, f):
     &#34;&#34;&#34;Lambda function to load an unsupported image filename to a numpy array&#34;&#34;&#34;
@@ -4836,7 +4836,7 @@ Equivalent to self.mat2gray()</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/67275f3fd76871f56f4dbea31498ba2d829f60d8/vipy/image.py#L1013-L1015" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/09dad983c66f16c99bce3ff33e47c60944ee4750/vipy/image.py#L1013-L1015" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def lum(self):
     &#34;&#34;&#34;Alias for luminance()&#34;&#34;&#34;
@@ -4851,7 +4851,7 @@ Equivalent to self.mat2gray()</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/67275f3fd76871f56f4dbea31498ba2d829f60d8/vipy/image.py#L1009-L1011" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/09dad983c66f16c99bce3ff33e47c60944ee4750/vipy/image.py#L1009-L1011" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def luminance(self):
     &#34;&#34;&#34;Convert the image buffer to single channel uint8 in range [0,255] corresponding to the luminance component&#34;&#34;&#34;
@@ -4867,7 +4867,7 @@ The output of this lambda function must be a numpy array and if the channels or 
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/67275f3fd76871f56f4dbea31498ba2d829f60d8/vipy/image.py#L1186-L1195" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/09dad983c66f16c99bce3ff33e47c60944ee4750/vipy/image.py#L1186-L1195" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def map(self, func):
     &#34;&#34;&#34;Apply lambda function to our numpy array img, such that newimg=f(img), then replace newimg -&gt; self.array().  The output of this lambda function must be a numpy array and if the channels or dtype changes, the colorspace is set to &#39;float&#39;&#34;&#34;&#34;
@@ -4890,7 +4890,7 @@ This does not change the number of color channels</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/67275f3fd76871f56f4dbea31498ba2d829f60d8/vipy/image.py#L1051-L1055" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/09dad983c66f16c99bce3ff33e47c60944ee4750/vipy/image.py#L1051-L1055" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def mat2gray(self, min=None, max=None):
     &#34;&#34;&#34;Convert the image buffer so that [min,max] -&gt; [0,1], forces conversion to &#39;float&#39; colorspace.  This does not change the number of color channels&#34;&#34;&#34;
@@ -4907,7 +4907,7 @@ This does not change the number of color channels</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/67275f3fd76871f56f4dbea31498ba2d829f60d8/vipy/image.py#L1079-L1080" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/09dad983c66f16c99bce3ff33e47c60944ee4750/vipy/image.py#L1079-L1080" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def max(self):
     return np.max(self.load().array().flatten())</code></pre>
@@ -4921,7 +4921,7 @@ This does not change the number of color channels</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/67275f3fd76871f56f4dbea31498ba2d829f60d8/vipy/image.py#L747-L749" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/09dad983c66f16c99bce3ff33e47c60944ee4750/vipy/image.py#L747-L749" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def maxdim(self, dim=None, interp=&#39;bilinear&#39;):
     &#34;&#34;&#34;Resize image preserving aspect ratio so that maximum dimension of image = dim, or return maxdim()&#34;&#34;&#34;
@@ -4936,7 +4936,7 @@ This does not change the number of color channels</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/67275f3fd76871f56f4dbea31498ba2d829f60d8/vipy/image.py#L825-L830" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/09dad983c66f16c99bce3ff33e47c60944ee4750/vipy/image.py#L825-L830" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def maxmatte(self):
     &#34;&#34;&#34;Crop image of size (HxW) to (max(H,W), max(H,W)) with balanced zeropadding forming a letterbox with top/bottom matte or pillarbox with left/right matte&#34;&#34;&#34;
@@ -4954,7 +4954,7 @@ This does not change the number of color channels</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/67275f3fd76871f56f4dbea31498ba2d829f60d8/vipy/image.py#L814-L823" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/09dad983c66f16c99bce3ff33e47c60944ee4750/vipy/image.py#L814-L823" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def maxsquare(self, S=None):
     &#34;&#34;&#34;Crop image of size (HxW) to (max(H,W), max(H,W)) with zeropadding or (S,S) if provided, keeping upper left corner constant&#34;&#34;&#34;
@@ -4976,7 +4976,7 @@ This does not change the number of color channels</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/67275f3fd76871f56f4dbea31498ba2d829f60d8/vipy/image.py#L1082-L1084" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/09dad983c66f16c99bce3ff33e47c60944ee4750/vipy/image.py#L1082-L1084" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def mean(self):
     &#34;&#34;&#34;Mean over all pixels&#34;&#34;&#34;
@@ -4991,7 +4991,7 @@ This does not change the number of color channels</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/67275f3fd76871f56f4dbea31498ba2d829f60d8/vipy/image.py#L1086-L1088" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/09dad983c66f16c99bce3ff33e47c60944ee4750/vipy/image.py#L1086-L1088" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def meanchannel(self):
     &#34;&#34;&#34;Mean per channel over all pixels&#34;&#34;&#34;
@@ -5006,7 +5006,7 @@ This does not change the number of color channels</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/67275f3fd76871f56f4dbea31498ba2d829f60d8/vipy/image.py#L790-L802" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/09dad983c66f16c99bce3ff33e47c60944ee4750/vipy/image.py#L790-L802" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def meanpad(self, padwidth, padheight, mu=None):
     &#34;&#34;&#34;Pad image using np.pad constant=image mean by adding padwidth on both left and right , or padwidth=(left,right) for different pre/postpadding,, and padheight on top and bottom or padheight=(top,bottom) for different pre/post padding&#34;&#34;&#34;        
@@ -5031,7 +5031,7 @@ This does not change the number of color channels</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/67275f3fd76871f56f4dbea31498ba2d829f60d8/vipy/image.py#L1076-L1077" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/09dad983c66f16c99bce3ff33e47c60944ee4750/vipy/image.py#L1076-L1077" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def min(self):
     return np.min(self.load().array().flatten())</code></pre>
@@ -5045,7 +5045,7 @@ This does not change the number of color channels</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/67275f3fd76871f56f4dbea31498ba2d829f60d8/vipy/image.py#L751-L757" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/09dad983c66f16c99bce3ff33e47c60944ee4750/vipy/image.py#L751-L757" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def mindim(self, dim=None, interp=&#39;bilinear&#39;):
     &#34;&#34;&#34;Resize image preserving aspect ratio so that minimum dimension of image = dim, or return mindim()&#34;&#34;&#34;
@@ -5064,7 +5064,7 @@ This does not change the number of color channels</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/67275f3fd76871f56f4dbea31498ba2d829f60d8/vipy/image.py#L809-L812" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/09dad983c66f16c99bce3ff33e47c60944ee4750/vipy/image.py#L809-L812" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def minsquare(self):
     &#34;&#34;&#34;Crop image of size (HxW) to (min(H,W), min(H,W)), keeping upper left corner constant&#34;&#34;&#34;
@@ -5080,7 +5080,7 @@ This does not change the number of color channels</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/67275f3fd76871f56f4dbea31498ba2d829f60d8/vipy/image.py#L567-L569" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/09dad983c66f16c99bce3ff33e47c60944ee4750/vipy/image.py#L567-L569" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def nofilename(self):
     self._filename = None
@@ -5095,7 +5095,7 @@ This does not change the number of color channels</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/67275f3fd76871f56f4dbea31498ba2d829f60d8/vipy/image.py#L579-L581" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/09dad983c66f16c99bce3ff33e47c60944ee4750/vipy/image.py#L579-L581" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def nourl(self):
     self._url = None
@@ -5110,7 +5110,7 @@ This does not change the number of color channels</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/67275f3fd76871f56f4dbea31498ba2d829f60d8/vipy/image.py#L530-L534" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/09dad983c66f16c99bce3ff33e47c60944ee4750/vipy/image.py#L530-L534" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def numpy(self):
     &#34;&#34;&#34;Convert vipy.image.Image to numpy array, returns writeable array&#34;&#34;&#34;
@@ -5127,7 +5127,7 @@ This does not change the number of color channels</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/67275f3fd76871f56f4dbea31498ba2d829f60d8/vipy/image.py#L540-L543" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/09dad983c66f16c99bce3ff33e47c60944ee4750/vipy/image.py#L540-L543" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def pil(self):
     &#34;&#34;&#34;Convert vipy.image.Image to PIL Image, by reference&#34;&#34;&#34;
@@ -5143,7 +5143,7 @@ This does not change the number of color channels</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/67275f3fd76871f56f4dbea31498ba2d829f60d8/vipy/image.py#L1121-L1126" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/09dad983c66f16c99bce3ff33e47c60944ee4750/vipy/image.py#L1121-L1126" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def pkl(self, pklfile=None):
     &#34;&#34;&#34;save the object to a pickle file and return the object, useful for intermediate saving in long fluent chains&#34;&#34;&#34;
@@ -5161,7 +5161,7 @@ This does not change the number of color channels</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/67275f3fd76871f56f4dbea31498ba2d829f60d8/vipy/image.py#L1128-L1131" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/09dad983c66f16c99bce3ff33e47c60944ee4750/vipy/image.py#L1128-L1131" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def pklif(self, b, pklfile=None):
     &#34;&#34;&#34;Save the object to the provided pickle file only if b=True. Uuseful for conditional intermediate saving in long fluent chains&#34;&#34;&#34;
@@ -5177,7 +5177,7 @@ This does not change the number of color channels</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/67275f3fd76871f56f4dbea31498ba2d829f60d8/vipy/image.py#L160-L164" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/09dad983c66f16c99bce3ff33e47c60944ee4750/vipy/image.py#L160-L164" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def print(self, prefix=&#39;&#39;, verbose=True):
     &#34;&#34;&#34;Print the representation of the image and return self - useful for debugging in long fluent chains&#34;&#34;&#34;
@@ -5194,7 +5194,7 @@ This does not change the number of color channels</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/67275f3fd76871f56f4dbea31498ba2d829f60d8/vipy/image.py#L1030-L1032" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/09dad983c66f16c99bce3ff33e47c60944ee4750/vipy/image.py#L1030-L1032" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def rainbow(self):
     &#34;&#34;&#34;Apply rainbow colormap to greyscale image and convert to RGB&#34;&#34;&#34;
@@ -5209,7 +5209,7 @@ This does not change the number of color channels</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/67275f3fd76871f56f4dbea31498ba2d829f60d8/vipy/image.py#L487-L495" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/09dad983c66f16c99bce3ff33e47c60944ee4750/vipy/image.py#L487-L495" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def red(self):
     &#34;&#34;&#34;Return red channel as a cloned Image() object&#34;&#34;&#34;
@@ -5230,7 +5230,7 @@ This does not change the number of color channels</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/67275f3fd76871f56f4dbea31498ba2d829f60d8/vipy/image.py#L405-L407" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/09dad983c66f16c99bce3ff33e47c60944ee4750/vipy/image.py#L405-L407" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def reload(self):
     &#34;&#34;&#34;Flush the image buffer to force reloading from file or URL&#34;&#34;&#34;
@@ -5245,7 +5245,7 @@ This does not change the number of color channels</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/67275f3fd76871f56f4dbea31498ba2d829f60d8/vipy/image.py#L239-L243" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/09dad983c66f16c99bce3ff33e47c60944ee4750/vipy/image.py#L239-L243" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def relpath(self, parent=None):
     &#34;&#34;&#34;Replace the filename with a relative path to parent (or current working directory if none)&#34;&#34;&#34;
@@ -5262,7 +5262,7 @@ This does not change the number of color channels</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/67275f3fd76871f56f4dbea31498ba2d829f60d8/vipy/image.py#L736-L745" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/09dad983c66f16c99bce3ff33e47c60944ee4750/vipy/image.py#L736-L745" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def rescale(self, scale=1, interp=&#39;bilinear&#39;, fast=False):
     &#34;&#34;&#34;Scale the image buffer by the given factor - NOT idempotent&#34;&#34;&#34;
@@ -5285,7 +5285,7 @@ If rows or cols is provided, rescale image maintaining aspect ratio</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/67275f3fd76871f56f4dbea31498ba2d829f60d8/vipy/image.py#L711-L729" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/09dad983c66f16c99bce3ff33e47c60944ee4750/vipy/image.py#L711-L729" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def resize(self, cols=None, rows=None, width=None, height=None, interp=&#39;bilinear&#39;, fast=False):
     &#34;&#34;&#34;Resize the image buffer to (rows x cols) with bilinear interpolation.  If rows or cols is provided, rescale image maintaining aspect ratio&#34;&#34;&#34;
@@ -5316,7 +5316,7 @@ If rows or cols is provided, rescale image maintaining aspect ratio</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/67275f3fd76871f56f4dbea31498ba2d829f60d8/vipy/image.py#L731-L734" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/09dad983c66f16c99bce3ff33e47c60944ee4750/vipy/image.py#L731-L734" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def resize_like(self, im, interp=&#39;bilinear&#39;):
     &#34;&#34;&#34;Resize image buffer to be the same size as the provided vipy.image.Image()&#34;&#34;&#34;
@@ -5332,7 +5332,7 @@ If rows or cols is provided, rescale image maintaining aspect ratio</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/67275f3fd76871f56f4dbea31498ba2d829f60d8/vipy/image.py#L228-L233" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/09dad983c66f16c99bce3ff33e47c60944ee4750/vipy/image.py#L228-L233" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def restore(self, filename):
     &#34;&#34;&#34;Save the currently stored image to filename, and set up filename&#34;&#34;&#34;
@@ -5350,7 +5350,7 @@ If rows or cols is provided, rescale image maintaining aspect ratio</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/67275f3fd76871f56f4dbea31498ba2d829f60d8/vipy/image.py#L969-L971" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/09dad983c66f16c99bce3ff33e47c60944ee4750/vipy/image.py#L969-L971" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def rgb(self):
     &#34;&#34;&#34;Convert the image buffer to three channel RGB uint8 colorspace&#34;&#34;&#34;
@@ -5365,7 +5365,7 @@ If rows or cols is provided, rescale image maintaining aspect ratio</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/67275f3fd76871f56f4dbea31498ba2d829f60d8/vipy/image.py#L973-L975" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/09dad983c66f16c99bce3ff33e47c60944ee4750/vipy/image.py#L973-L975" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def rgba(self):
     &#34;&#34;&#34;Convert the image buffer to four channel RGBA uint8 colorspace&#34;&#34;&#34;
@@ -5380,7 +5380,7 @@ If rows or cols is provided, rescale image maintaining aspect ratio</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/67275f3fd76871f56f4dbea31498ba2d829f60d8/vipy/image.py#L1042-L1044" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/09dad983c66f16c99bce3ff33e47c60944ee4750/vipy/image.py#L1042-L1044" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def saturate(self, min, max):
     &#34;&#34;&#34;Saturate the image buffer to be clipped between [min,max], types of min/max are specified by _array type&#34;&#34;&#34;
@@ -5395,7 +5395,7 @@ If rows or cols is provided, rescale image maintaining aspect ratio</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/67275f3fd76871f56f4dbea31498ba2d829f60d8/vipy/image.py#L1114-L1117" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/09dad983c66f16c99bce3ff33e47c60944ee4750/vipy/image.py#L1114-L1117" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def save(self, filename):
     &#34;&#34;&#34;Save the current image to a new filename and return the image object&#34;&#34;&#34;
@@ -5411,7 +5411,7 @@ If rows or cols is provided, rescale image maintaining aspect ratio</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/67275f3fd76871f56f4dbea31498ba2d829f60d8/vipy/image.py#L1133-L1142" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/09dad983c66f16c99bce3ff33e47c60944ee4750/vipy/image.py#L1133-L1142" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def saveas(self, filename, writeas=None):
     &#34;&#34;&#34;Save current buffer (not including drawing overlays) to new filename and return filename&#34;&#34;&#34;
@@ -5434,7 +5434,7 @@ Alias for savetmp()</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/67275f3fd76871f56f4dbea31498ba2d829f60d8/vipy/image.py#L1144-L1146" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/09dad983c66f16c99bce3ff33e47c60944ee4750/vipy/image.py#L1144-L1146" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def saveastmp(self):
     &#34;&#34;&#34;Save current buffer to temp JPEG filename and return filename.  Alias for savetmp()&#34;&#34;&#34;
@@ -5449,7 +5449,7 @@ Alias for savetmp()</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/67275f3fd76871f56f4dbea31498ba2d829f60d8/vipy/image.py#L1173-L1184" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/09dad983c66f16c99bce3ff33e47c60944ee4750/vipy/image.py#L1173-L1184" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def savefig(self, filename=None, figure=1, timestamp=None, timestampcolor=&#39;black&#39;, timestampfacecolor=&#39;white&#39;, mutator=None):
     &#34;&#34;&#34;Save last figure output from self.show() with drawing overlays to provided filename and return filename&#34;&#34;&#34;
@@ -5474,7 +5474,7 @@ Alias for saveastmp()</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/67275f3fd76871f56f4dbea31498ba2d829f60d8/vipy/image.py#L1148-L1150" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/09dad983c66f16c99bce3ff33e47c60944ee4750/vipy/image.py#L1148-L1150" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def savetmp(self):
     &#34;&#34;&#34;Save current buffer to temp JPEG filename and return filename.   Alias for saveastmp()&#34;&#34;&#34;
@@ -5489,7 +5489,7 @@ Alias for saveastmp()</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/67275f3fd76871f56f4dbea31498ba2d829f60d8/vipy/image.py#L639-L645" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/09dad983c66f16c99bce3ff33e47c60944ee4750/vipy/image.py#L639-L645" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def setattribute(self, key, value):
     &#34;&#34;&#34;Set element self.attributes[key]=value&#34;&#34;&#34;
@@ -5508,7 +5508,7 @@ Alias for saveastmp()</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/67275f3fd76871f56f4dbea31498ba2d829f60d8/vipy/image.py#L647-L651" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/09dad983c66f16c99bce3ff33e47c60944ee4750/vipy/image.py#L647-L651" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def setattributes(self, newattr):
     &#34;&#34;&#34;Set many attributes at once by providing a dictionary to be merged with current attributes&#34;&#34;&#34;
@@ -5525,7 +5525,7 @@ Alias for saveastmp()</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/67275f3fd76871f56f4dbea31498ba2d829f60d8/vipy/image.py#L443-L445" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/09dad983c66f16c99bce3ff33e47c60944ee4750/vipy/image.py#L443-L445" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def shape(self):
     &#34;&#34;&#34;Return the (height, width) or equivalently (rows, cols) of the image&#34;&#34;&#34;
@@ -5540,7 +5540,7 @@ Alias for saveastmp()</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/67275f3fd76871f56f4dbea31498ba2d829f60d8/vipy/image.py#L1107-L1112" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/09dad983c66f16c99bce3ff33e47c60944ee4750/vipy/image.py#L1107-L1112" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def show(self, figure=1, nowindow=False, timestamp=None, timestampfacecolor=&#39;white&#39;, timestampcolor=&#39;black&#39;, mutator=None):
     &#34;&#34;&#34;Display image on screen in provided figure number (clone and convert to RGB colorspace to show), return object&#34;&#34;&#34;
@@ -5558,7 +5558,7 @@ Alias for saveastmp()</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/67275f3fd76871f56f4dbea31498ba2d829f60d8/vipy/image.py#L200-L206" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/09dad983c66f16c99bce3ff33e47c60944ee4750/vipy/image.py#L200-L206" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def splat(self, im, bb):
     &#34;&#34;&#34;Replace pixels within boundingbox in self with pixels in im&#34;&#34;&#34;
@@ -5577,7 +5577,7 @@ Alias for saveastmp()</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/67275f3fd76871f56f4dbea31498ba2d829f60d8/vipy/image.py#L1067-L1074" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/09dad983c66f16c99bce3ff33e47c60944ee4750/vipy/image.py#L1067-L1074" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def stats(self):
     print(self)
@@ -5606,7 +5606,7 @@ Useful for archiving an object to be fully self contained without any external r
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/67275f3fd76871f56f4dbea31498ba2d829f60d8/vipy/image.py#L208-L222" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/09dad983c66f16c99bce3ff33e47c60944ee4750/vipy/image.py#L208-L222" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def store(self):
     &#34;&#34;&#34;Store the current image file as an attribute of this object.  Useful for archiving an object to be fully self contained without any external references.  
@@ -5633,7 +5633,7 @@ Useful for archiving an object to be fully self contained without any external r
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/67275f3fd76871f56f4dbea31498ba2d829f60d8/vipy/image.py#L1090-L1091" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/09dad983c66f16c99bce3ff33e47c60944ee4750/vipy/image.py#L1090-L1091" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def sum(self):
     return np.sum(self.load().array().flatten())</code></pre>
@@ -5647,7 +5647,7 @@ Useful for archiving an object to be fully self contained without any external r
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/67275f3fd76871f56f4dbea31498ba2d829f60d8/vipy/image.py#L166-L171" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/09dad983c66f16c99bce3ff33e47c60944ee4750/vipy/image.py#L166-L171" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def tile(self, tilewidth, tileheight, overlaprows=0, overlapcols=0):
     &#34;&#34;&#34;Generate a list of tiled image&#34;&#34;&#34;
@@ -5665,7 +5665,7 @@ Useful for archiving an object to be fully self contained without any external r
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/67275f3fd76871f56f4dbea31498ba2d829f60d8/vipy/image.py#L526-L528" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/09dad983c66f16c99bce3ff33e47c60944ee4750/vipy/image.py#L526-L528" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def tonumpy(self):
     &#34;&#34;&#34;Alias for numpy()&#34;&#34;&#34;
@@ -5680,7 +5680,7 @@ Useful for archiving an object to be fully self contained without any external r
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/67275f3fd76871f56f4dbea31498ba2d829f60d8/vipy/image.py#L548-L555" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/09dad983c66f16c99bce3ff33e47c60944ee4750/vipy/image.py#L548-L555" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def torch(self, order=&#39;CHW&#39;):
     &#34;&#34;&#34;Convert the batch of 1 HxWxC images to a 1xCxHxW torch tensor, by reference&#34;&#34;&#34;
@@ -5700,7 +5700,7 @@ Useful for archiving an object to be fully self contained without any external r
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/67275f3fd76871f56f4dbea31498ba2d829f60d8/vipy/image.py#L190-L198" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/09dad983c66f16c99bce3ff33e47c60944ee4750/vipy/image.py#L190-L198" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def uncrop(self, bb, shape):
     &#34;&#34;&#34;Uncrop using provided bounding box and zeropad to shape=(Height, Width), NOT idempotent&#34;&#34;&#34;
@@ -5721,7 +5721,7 @@ Useful for archiving an object to be fully self contained without any external r
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/67275f3fd76871f56f4dbea31498ba2d829f60d8/vipy/image.py#L173-L175" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/09dad983c66f16c99bce3ff33e47c60944ee4750/vipy/image.py#L173-L175" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def union(self, other):
     &#34;&#34;&#34;No-op for vipy.image.Image&#34;&#34;&#34;
@@ -5736,7 +5736,7 @@ Useful for archiving an object to be fully self contained without any external r
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/67275f3fd76871f56f4dbea31498ba2d829f60d8/vipy/image.py#L224-L226" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/09dad983c66f16c99bce3ff33e47c60944ee4750/vipy/image.py#L224-L226" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def unstore(self):
     &#34;&#34;&#34;Delete the currently stored image from store()&#34;&#34;&#34;
@@ -5751,7 +5751,7 @@ Useful for archiving an object to be fully self contained without any external r
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/67275f3fd76871f56f4dbea31498ba2d829f60d8/vipy/image.py#L177-L188" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/09dad983c66f16c99bce3ff33e47c60944ee4750/vipy/image.py#L177-L188" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def untile(self, imlist):
     &#34;&#34;&#34;Undo tile&#34;&#34;&#34;
@@ -5775,7 +5775,7 @@ Useful for archiving an object to be fully self contained without any external r
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/67275f3fd76871f56f4dbea31498ba2d829f60d8/vipy/image.py#L629-L636" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/09dad983c66f16c99bce3ff33e47c60944ee4750/vipy/image.py#L629-L636" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def uri(self):
     &#34;&#34;&#34;Return the URI of the image object, either the URL or the filename, raise exception if neither defined&#34;&#34;&#34;
@@ -5795,7 +5795,7 @@ Useful for archiving an object to be fully self contained without any external r
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/67275f3fd76871f56f4dbea31498ba2d829f60d8/vipy/image.py#L583-L598" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/09dad983c66f16c99bce3ff33e47c60944ee4750/vipy/image.py#L583-L598" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def url(self, url=None, username=None, password=None, sha1=None, ignoreUrlErrors=None):
     &#34;&#34;&#34;Image URL and URL download properties&#34;&#34;&#34;
@@ -5823,7 +5823,7 @@ Useful for archiving an object to be fully self contained without any external r
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/67275f3fd76871f56f4dbea31498ba2d829f60d8/vipy/image.py#L437-L438" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/09dad983c66f16c99bce3ff33e47c60944ee4750/vipy/image.py#L437-L438" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def width(self):
     return self.load().array().shape[1]</code></pre>
@@ -5837,7 +5837,7 @@ Useful for archiving an object to be fully self contained without any external r
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/67275f3fd76871f56f4dbea31498ba2d829f60d8/vipy/image.py#L767-L782" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/09dad983c66f16c99bce3ff33e47c60944ee4750/vipy/image.py#L767-L782" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def zeropad(self, padwidth, padheight):
     &#34;&#34;&#34;Pad image using np.pad constant by adding padwidth on both left and right , or padwidth=(left,right) for different pre/postpadding,, and padheight on top and bottom or padheight=(top,bottom) for different pre/post padding&#34;&#34;&#34;
@@ -5865,7 +5865,7 @@ Useful for archiving an object to be fully self contained without any external r
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/67275f3fd76871f56f4dbea31498ba2d829f60d8/vipy/image.py#L784-L788" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/09dad983c66f16c99bce3ff33e47c60944ee4750/vipy/image.py#L784-L788" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def zeropadlike(self, width, height):
     &#34;&#34;&#34;Zero pad the image balancing the border so that the resulting image size is (width, height)&#34;&#34;&#34;
@@ -5882,7 +5882,7 @@ Useful for archiving an object to be fully self contained without any external r
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/67275f3fd76871f56f4dbea31498ba2d829f60d8/vipy/image.py#L536-L538" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/09dad983c66f16c99bce3ff33e47c60944ee4750/vipy/image.py#L536-L538" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def zeros(self):
     self._array = 0*self.load()._array
@@ -5906,7 +5906,7 @@ Useful for archiving an object to be fully self contained without any external r
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/67275f3fd76871f56f4dbea31498ba2d829f60d8/vipy/image.py#L1203-L1289" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/09dad983c66f16c99bce3ff33e47c60944ee4750/vipy/image.py#L1203-L1289" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">class ImageCategory(Image):
     &#34;&#34;&#34;vipy ImageCategory class
@@ -6014,7 +6014,7 @@ Useful for archiving an object to be fully self contained without any external r
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/67275f3fd76871f56f4dbea31498ba2d829f60d8/vipy/image.py#L1227-L1232" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/09dad983c66f16c99bce3ff33e47c60944ee4750/vipy/image.py#L1227-L1232" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">@classmethod
 def cast(cls, im, flush=False):
@@ -6035,7 +6035,7 @@ def cast(cls, im, flush=False):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/67275f3fd76871f56f4dbea31498ba2d829f60d8/vipy/image.py#L1262-L1268" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/09dad983c66f16c99bce3ff33e47c60944ee4750/vipy/image.py#L1262-L1268" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def category(self, newcategory=None):
     &#34;&#34;&#34;Return or update the category&#34;&#34;&#34;
@@ -6054,7 +6054,7 @@ def cast(cls, im, flush=False):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/67275f3fd76871f56f4dbea31498ba2d829f60d8/vipy/image.py#L1252-L1253" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/09dad983c66f16c99bce3ff33e47c60944ee4750/vipy/image.py#L1252-L1253" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def is_(self, other):
     return self.__eq__(other)</code></pre>
@@ -6068,7 +6068,7 @@ def cast(cls, im, flush=False):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/67275f3fd76871f56f4dbea31498ba2d829f60d8/vipy/image.py#L1255-L1256" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/09dad983c66f16c99bce3ff33e47c60944ee4750/vipy/image.py#L1255-L1256" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def is_not(self, other):
     return self.__ne__(other)</code></pre>
@@ -6082,7 +6082,7 @@ def cast(cls, im, flush=False):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/67275f3fd76871f56f4dbea31498ba2d829f60d8/vipy/image.py#L1270-L1272" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/09dad983c66f16c99bce3ff33e47c60944ee4750/vipy/image.py#L1270-L1272" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def label(self, newlabel=None):
     &#34;&#34;&#34;Alias for category&#34;&#34;&#34;
@@ -6097,7 +6097,7 @@ def cast(cls, im, flush=False):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/67275f3fd76871f56f4dbea31498ba2d829f60d8/vipy/image.py#L1258-L1260" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/09dad983c66f16c99bce3ff33e47c60944ee4750/vipy/image.py#L1258-L1260" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def nocategory(self):
     self._category = None
@@ -6112,7 +6112,7 @@ def cast(cls, im, flush=False):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/67275f3fd76871f56f4dbea31498ba2d829f60d8/vipy/image.py#L1282-L1289" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/09dad983c66f16c99bce3ff33e47c60944ee4750/vipy/image.py#L1282-L1289" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def probability(self, newprob=None):
     &#34;&#34;&#34;Real valued probability for categorization, [0,1]&#34;&#34;&#34;
@@ -6132,7 +6132,7 @@ def cast(cls, im, flush=False):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/67275f3fd76871f56f4dbea31498ba2d829f60d8/vipy/image.py#L1274-L1280" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/09dad983c66f16c99bce3ff33e47c60944ee4750/vipy/image.py#L1274-L1280" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def score(self, newscore=None):
     &#34;&#34;&#34;Real valued score for categorization, larger is better&#34;&#34;&#34;
@@ -6277,7 +6277,7 @@ Use bbclone(), bbwidth() or bbheight() to access the subclass. </p>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/67275f3fd76871f56f4dbea31498ba2d829f60d8/vipy/image.py#L1761-L1924" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/09dad983c66f16c99bce3ff33e47c60944ee4750/vipy/image.py#L1761-L1924" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">class ImageDetection(Scene, BoundingBox):
     &#34;&#34;&#34;vipy.image.ImageDetection class
@@ -6461,7 +6461,7 @@ Use bbclone(), bbwidth() or bbheight() to access the subclass. </p>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/67275f3fd76871f56f4dbea31498ba2d829f60d8/vipy/image.py#L1843-L1845" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/09dad983c66f16c99bce3ff33e47c60944ee4750/vipy/image.py#L1843-L1845" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">@classmethod
 def cast(cls, im, flush=True):
@@ -6479,7 +6479,7 @@ def cast(cls, im, flush=True):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/67275f3fd76871f56f4dbea31498ba2d829f60d8/vipy/image.py#L1899-L1901" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/09dad983c66f16c99bce3ff33e47c60944ee4750/vipy/image.py#L1899-L1901" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def asbbox(self):
     self._asbbox = True
@@ -6494,7 +6494,7 @@ def cast(cls, im, flush=True):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/67275f3fd76871f56f4dbea31498ba2d829f60d8/vipy/image.py#L1895-L1897" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/09dad983c66f16c99bce3ff33e47c60944ee4750/vipy/image.py#L1895-L1897" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def asimage(self):
     self._asbbox = False
@@ -6509,7 +6509,7 @@ def cast(cls, im, flush=True):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/67275f3fd76871f56f4dbea31498ba2d829f60d8/vipy/image.py#L1867-L1893" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/09dad983c66f16c99bce3ff33e47c60944ee4750/vipy/image.py#L1867-L1893" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def boundingbox(self, xmin=None, xmax=None, ymin=None, ymax=None,
                 bbox=None, width=None, height=None, dilate=None,
@@ -6548,7 +6548,7 @@ def cast(cls, im, flush=True):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/67275f3fd76871f56f4dbea31498ba2d829f60d8/vipy/image.py#L1903-L1907" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/09dad983c66f16c99bce3ff33e47c60944ee4750/vipy/image.py#L1903-L1907" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def boxmap(self, f):
     &#34;&#34;&#34;Apply the lambda function f to the bounding box, and return the imagedetection&#34;&#34;&#34;
@@ -6565,7 +6565,7 @@ def cast(cls, im, flush=True):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/67275f3fd76871f56f4dbea31498ba2d829f60d8/vipy/image.py#L1909-L1911" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/09dad983c66f16c99bce3ff33e47c60944ee4750/vipy/image.py#L1909-L1911" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def crop(self, bbox=None):
     &#34;&#34;&#34;Crop the image using the bounding box&#34;&#34;&#34;
@@ -6580,7 +6580,7 @@ def cast(cls, im, flush=True):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/67275f3fd76871f56f4dbea31498ba2d829f60d8/vipy/image.py#L1916-L1917" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/09dad983c66f16c99bce3ff33e47c60944ee4750/vipy/image.py#L1916-L1917" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def detection(self):
     return self.boundingbox()</code></pre>
@@ -6595,7 +6595,7 @@ Use provided image width and height (W,H) to avoid lots of reloads in some condi
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/67275f3fd76871f56f4dbea31498ba2d829f60d8/vipy/image.py#L1919-L1924" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/09dad983c66f16c99bce3ff33e47c60944ee4750/vipy/image.py#L1919-L1924" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def isinterior(self, W=None, H=None):
     &#34;&#34;&#34;Is the bounding box fully within the image rectangle?  Use provided image width and height (W,H) to avoid lots of reloads in some conditions&#34;&#34;&#34;
@@ -6851,7 +6851,7 @@ The goal of this class is to provide a unified representation for all objects in
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/67275f3fd76871f56f4dbea31498ba2d829f60d8/vipy/image.py#L1292-L1758" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/09dad983c66f16c99bce3ff33e47c60944ee4750/vipy/image.py#L1292-L1758" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">class Scene(ImageCategory):
     &#34;&#34;&#34;vipy.image.Scene class
@@ -7340,7 +7340,7 @@ The goal of this class is to provide a unified representation for all objects in
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/67275f3fd76871f56f4dbea31498ba2d829f60d8/vipy/image.py#L1334-L1341" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/09dad983c66f16c99bce3ff33e47c60944ee4750/vipy/image.py#L1334-L1341" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">@classmethod
 def cast(cls, im):
@@ -7360,7 +7360,7 @@ def cast(cls, im):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/67275f3fd76871f56f4dbea31498ba2d829f60d8/vipy/image.py#L1343-L1348" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/09dad983c66f16c99bce3ff33e47c60944ee4750/vipy/image.py#L1343-L1348" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">@classmethod
 def from_json(obj, s):
@@ -7381,7 +7381,7 @@ def from_json(obj, s):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/67275f3fd76871f56f4dbea31498ba2d829f60d8/vipy/image.py#L1400-L1402" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/09dad983c66f16c99bce3ff33e47c60944ee4750/vipy/image.py#L1400-L1402" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def add(self, imdet):
     &#34;&#34;&#34;Alias for append&#34;&#34;&#34;        
@@ -7396,7 +7396,7 @@ def from_json(obj, s):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/67275f3fd76871f56f4dbea31498ba2d829f60d8/vipy/image.py#L1721-L1739" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/09dad983c66f16c99bce3ff33e47c60944ee4750/vipy/image.py#L1721-L1739" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def annotate(self, outfile=None, categories=None, figure=1, nocaption=False, fontsize=10, boxalpha=0.25, d_category2color={&#39;person&#39;:&#39;green&#39;, &#39;vehicle&#39;:&#39;blue&#39;, &#39;object&#39;:&#39;red&#39;}, captionoffset=(0,0), dpi=200, textfacecolor=&#39;white&#39;, textfacealpha=1.0, shortlabel=True, nocaption_withstring=[], timestamp=None, timestampcolor=&#39;black&#39;, timestampfacecolor=&#39;white&#39;, mutator=None):
     &#34;&#34;&#34;Alias for savefig&#34;&#34;&#34;
@@ -7427,7 +7427,7 @@ def from_json(obj, s):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/67275f3fd76871f56f4dbea31498ba2d829f60d8/vipy/image.py#L1394-L1398" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/09dad983c66f16c99bce3ff33e47c60944ee4750/vipy/image.py#L1394-L1398" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def append(self, imdet):
     &#34;&#34;&#34;Append the provided vipy.object.Detection object to the scene object list&#34;&#34;&#34;
@@ -7444,7 +7444,7 @@ def from_json(obj, s):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/67275f3fd76871f56f4dbea31498ba2d829f60d8/vipy/image.py#L1677-L1679" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/09dad983c66f16c99bce3ff33e47c60944ee4750/vipy/image.py#L1677-L1679" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def bghash(self, bits=128, asbinary=False, asbytes=False):
     &#34;&#34;&#34;Percetual differential hash function, masking out foreground regions&#34;&#34;&#34;
@@ -7459,7 +7459,7 @@ def from_json(obj, s):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/67275f3fd76871f56f4dbea31498ba2d829f60d8/vipy/image.py#L1607-L1612" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/09dad983c66f16c99bce3ff33e47c60944ee4750/vipy/image.py#L1607-L1612" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def bgmask(self):
     &#34;&#34;&#34;Set all pixels outside the bounding box to zero&#34;&#34;&#34;
@@ -7477,7 +7477,7 @@ def from_json(obj, s):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/67275f3fd76871f56f4dbea31498ba2d829f60d8/vipy/image.py#L1600-L1605" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/09dad983c66f16c99bce3ff33e47c60944ee4750/vipy/image.py#L1600-L1605" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def binarymask(self):
     &#34;&#34;&#34;Alias for rectangular_mask with in-place update&#34;&#34;&#34;
@@ -7495,7 +7495,7 @@ def from_json(obj, s):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/67275f3fd76871f56f4dbea31498ba2d829f60d8/vipy/image.py#L1630-L1635" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/09dad983c66f16c99bce3ff33e47c60944ee4750/vipy/image.py#L1630-L1635" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def blurmask(self, radius=7):
     &#34;&#34;&#34;Replace pixels within all foreground objects with a privacy preserving blurred foreground&#34;&#34;&#34;
@@ -7513,7 +7513,7 @@ def from_json(obj, s):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/67275f3fd76871f56f4dbea31498ba2d829f60d8/vipy/image.py#L1455-L1459" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/09dad983c66f16c99bce3ff33e47c60944ee4750/vipy/image.py#L1455-L1459" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def boundingbox(self):
     &#34;&#34;&#34;The boundingbox of a scene is the union of all object bounding boxes, or None if there are no objects&#34;&#34;&#34;
@@ -7530,7 +7530,7 @@ def from_json(obj, s):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/67275f3fd76871f56f4dbea31498ba2d829f60d8/vipy/image.py#L1461-L1463" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/09dad983c66f16c99bce3ff33e47c60944ee4750/vipy/image.py#L1461-L1463" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def categories(self):
     &#34;&#34;&#34;Return list of unique object categories in scene&#34;&#34;&#34;
@@ -7545,7 +7545,7 @@ def from_json(obj, s):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/67275f3fd76871f56f4dbea31498ba2d829f60d8/vipy/image.py#L1491-L1497" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/09dad983c66f16c99bce3ff33e47c60944ee4750/vipy/image.py#L1491-L1497" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def centersquare(self):
     &#34;&#34;&#34;Crop the image of size (H,W) to be centersquare (min(H,W), min(H,W)) preserving center, and update bounding boxes&#34;&#34;&#34;
@@ -7564,7 +7564,7 @@ def from_json(obj, s):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/67275f3fd76871f56f4dbea31498ba2d829f60d8/vipy/image.py#L1451-L1453" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/09dad983c66f16c99bce3ff33e47c60944ee4750/vipy/image.py#L1451-L1453" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def clear(self):
     &#34;&#34;&#34;Remove all objects from this scene.&#34;&#34;&#34;
@@ -7579,7 +7579,7 @@ def from_json(obj, s):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/67275f3fd76871f56f4dbea31498ba2d829f60d8/vipy/image.py#L1567-L1569" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/09dad983c66f16c99bce3ff33e47c60944ee4750/vipy/image.py#L1567-L1569" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def cornercrop(self, height, width):
     &#34;&#34;&#34;Crop image of size (height x width) from the upper left corner, returning valid pixels only&#34;&#34;&#34;
@@ -7594,7 +7594,7 @@ def from_json(obj, s):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/67275f3fd76871f56f4dbea31498ba2d829f60d8/vipy/image.py#L1581-L1583" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/09dad983c66f16c99bce3ff33e47c60944ee4750/vipy/image.py#L1581-L1583" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def cornerpadcrop(self, height, width):
     &#34;&#34;&#34;Crop image of size (height x width) from the upper left corner, returning zero padded result out to (height, width)&#34;&#34;&#34;
@@ -7609,7 +7609,7 @@ def from_json(obj, s):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/67275f3fd76871f56f4dbea31498ba2d829f60d8/vipy/image.py#L1554-L1561" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/09dad983c66f16c99bce3ff33e47c60944ee4750/vipy/image.py#L1554-L1561" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def crop(self, bbox=None):
     &#34;&#34;&#34;Crop the image buffer using the supplied bounding box object (or the only object if bbox=None), clipping the box to the image rectangle, update all scene objects&#34;&#34;&#34;
@@ -7629,7 +7629,7 @@ def from_json(obj, s):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/67275f3fd76871f56f4dbea31498ba2d829f60d8/vipy/image.py#L1434-L1439" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/09dad983c66f16c99bce3ff33e47c60944ee4750/vipy/image.py#L1434-L1439" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def difference(self, other, miniou):
     &#34;&#34;&#34;Return a Scene() containing the objects in self but not other, that overlap by miniou with greedy assignment&#34;&#34;&#34;
@@ -7647,7 +7647,7 @@ def from_json(obj, s):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/67275f3fd76871f56f4dbea31498ba2d829f60d8/vipy/image.py#L1511-L1514" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/09dad983c66f16c99bce3ff33e47c60944ee4750/vipy/image.py#L1511-L1514" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def dilate(self, s):
     &#34;&#34;&#34;Dilate all bounding boxes by scale factor, dilated boxes may be outside image rectangle&#34;&#34;&#34;
@@ -7663,7 +7663,7 @@ def from_json(obj, s):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/67275f3fd76871f56f4dbea31498ba2d829f60d8/vipy/image.py#L1655-L1657" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/09dad983c66f16c99bce3ff33e47c60944ee4750/vipy/image.py#L1655-L1657" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def fghash(self, bits=8, asbinary=False, asbytes=False):
     &#34;&#34;&#34;Perceptual differential hash function, computed for each foreground region independently&#34;&#34;&#34;
@@ -7678,7 +7678,7 @@ def from_json(obj, s):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/67275f3fd76871f56f4dbea31498ba2d829f60d8/vipy/image.py#L1614-L1619" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/09dad983c66f16c99bce3ff33e47c60944ee4750/vipy/image.py#L1614-L1619" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def fgmask(self):
     &#34;&#34;&#34;Set all pixels inside the bounding box to zero&#34;&#34;&#34;
@@ -7696,7 +7696,7 @@ def from_json(obj, s):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/67275f3fd76871f56f4dbea31498ba2d829f60d8/vipy/image.py#L1499-L1503" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/09dad983c66f16c99bce3ff33e47c60944ee4750/vipy/image.py#L1499-L1503" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def fliplr(self):
     &#34;&#34;&#34;Mirror buffer and all bounding box around vertical axis&#34;&#34;&#34;
@@ -7713,7 +7713,7 @@ def from_json(obj, s):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/67275f3fd76871f56f4dbea31498ba2d829f60d8/vipy/image.py#L1505-L1509" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/09dad983c66f16c99bce3ff33e47c60944ee4750/vipy/image.py#L1505-L1509" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def flipud(self):
     &#34;&#34;&#34;Mirror buffer and all bounding box around vertical axis&#34;&#34;&#34;
@@ -7730,7 +7730,7 @@ def from_json(obj, s):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/67275f3fd76871f56f4dbea31498ba2d829f60d8/vipy/image.py#L1466-L1469" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/09dad983c66f16c99bce3ff33e47c60944ee4750/vipy/image.py#L1466-L1469" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def imclip(self):
     &#34;&#34;&#34;Clip all bounding boxes to the image rectangle, silently rejecting those boxes that are degenerate or outside the image&#34;&#34;&#34;
@@ -7746,7 +7746,7 @@ def from_json(obj, s):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/67275f3fd76871f56f4dbea31498ba2d829f60d8/vipy/image.py#L1427-L1432" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/09dad983c66f16c99bce3ff33e47c60944ee4750/vipy/image.py#L1427-L1432" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def intersection(self, other, miniou, bycategory=True):
     &#34;&#34;&#34;Return a Scene() containing the objects in both self and other, that overlap by miniou with greedy assignment&#34;&#34;&#34;
@@ -7764,7 +7764,7 @@ def from_json(obj, s):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/67275f3fd76871f56f4dbea31498ba2d829f60d8/vipy/image.py#L1681-L1684" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/09dad983c66f16c99bce3ff33e47c60944ee4750/vipy/image.py#L1681-L1684" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def isduplicate(self, im, threshold=72, bits=128):
     &#34;&#34;&#34;Background hash near duplicate detection, returns true if self and im are near duplicate images using bghash&#34;&#34;&#34;
@@ -7780,7 +7780,7 @@ def from_json(obj, s):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/67275f3fd76871f56f4dbea31498ba2d829f60d8/vipy/image.py#L1350-L1359" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/09dad983c66f16c99bce3ff33e47c60944ee4750/vipy/image.py#L1350-L1359" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def json(self, s=None, encode=True):
     if s is None:
@@ -7802,7 +7802,7 @@ def from_json(obj, s):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/67275f3fd76871f56f4dbea31498ba2d829f60d8/vipy/image.py#L1546-L1548" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/09dad983c66f16c99bce3ff33e47c60944ee4750/vipy/image.py#L1546-L1548" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def maxdim(self, dim=None, interp=&#39;bilinear&#39;):
     &#34;&#34;&#34;Resize scene preserving aspect ratio so that maximum dimension of image = dim, update all objects&#34;&#34;&#34;
@@ -7817,7 +7817,7 @@ def from_json(obj, s):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/67275f3fd76871f56f4dbea31498ba2d829f60d8/vipy/image.py#L1649-L1653" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/09dad983c66f16c99bce3ff33e47c60944ee4750/vipy/image.py#L1649-L1653" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def meanmask(self):
     &#34;&#34;&#34;Replace pixels within the foreground objects with the mean pixel color&#34;&#34;&#34;
@@ -7834,7 +7834,7 @@ def from_json(obj, s):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/67275f3fd76871f56f4dbea31498ba2d829f60d8/vipy/image.py#L1524-L1530" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/09dad983c66f16c99bce3ff33e47c60944ee4750/vipy/image.py#L1524-L1530" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def meanpad(self, padwidth, padheight, mu=None):
     &#34;&#34;&#34;Mean pad (image color mean) image with padwidth cols before and after and padheight rows before and after, then update bounding box offsets&#34;&#34;&#34;
@@ -7853,7 +7853,7 @@ def from_json(obj, s):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/67275f3fd76871f56f4dbea31498ba2d829f60d8/vipy/image.py#L1550-L1552" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/09dad983c66f16c99bce3ff33e47c60944ee4750/vipy/image.py#L1550-L1552" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def mindim(self, dim=None, interp=&#39;bilinear&#39;):
     &#34;&#34;&#34;Resize scene preserving aspect ratio so that minimum dimension of image = dim, update all objects&#34;&#34;&#34;
@@ -7868,7 +7868,7 @@ def from_json(obj, s):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/67275f3fd76871f56f4dbea31498ba2d829f60d8/vipy/image.py#L1423-L1425" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/09dad983c66f16c99bce3ff33e47c60944ee4750/vipy/image.py#L1423-L1425" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def nms(self, conf, iou, cover=0.8):
     &#34;&#34;&#34;Non-maximum supporession of objects() by category based on confidence and spatial IoU and cover thresholds&#34;&#34;&#34;
@@ -7883,7 +7883,7 @@ def from_json(obj, s):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/67275f3fd76871f56f4dbea31498ba2d829f60d8/vipy/image.py#L1418-L1421" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/09dad983c66f16c99bce3ff33e47c60944ee4750/vipy/image.py#L1418-L1421" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def objectfilter(self, f):
     &#34;&#34;&#34;Apply lambda function f to each object and keep if filter is True&#34;&#34;&#34;
@@ -7900,7 +7900,7 @@ If f is a list of lambda, apply one to one with the objects</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/67275f3fd76871f56f4dbea31498ba2d829f60d8/vipy/image.py#L1412-L1416" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/09dad983c66f16c99bce3ff33e47c60944ee4750/vipy/image.py#L1412-L1416" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def objectmap(self, f):
     &#34;&#34;&#34;Apply lambda function f to each object.  If f is a list of lambda, apply one to one with the objects&#34;&#34;&#34;
@@ -7917,7 +7917,7 @@ If f is a list of lambda, apply one to one with the objects</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/67275f3fd76871f56f4dbea31498ba2d829f60d8/vipy/image.py#L1404-L1410" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/09dad983c66f16c99bce3ff33e47c60944ee4750/vipy/image.py#L1404-L1410" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def objects(self, objectlist=None):
     if objectlist is None:
@@ -7936,7 +7936,7 @@ If f is a list of lambda, apply one to one with the objects</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/67275f3fd76871f56f4dbea31498ba2d829f60d8/vipy/image.py#L1571-L1579" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/09dad983c66f16c99bce3ff33e47c60944ee4750/vipy/image.py#L1571-L1579" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def padcrop(self, bbox):
     &#34;&#34;&#34;Crop the image buffer using the supplied bounding box object, zero padding if box is outside image rectangle, update all scene objects&#34;&#34;&#34;
@@ -7965,7 +7965,7 @@ longer hashes have lower TAR (true accept rate, some near dupes are missed), but
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/67275f3fd76871f56f4dbea31498ba2d829f60d8/vipy/image.py#L1659-L1674" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/09dad983c66f16c99bce3ff33e47c60944ee4750/vipy/image.py#L1659-L1674" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def perceptualhash(self, bits=128, asbinary=False, asbytes=False, objmask=False):
     &#34;&#34;&#34;Perceptual differentialhash function
@@ -7993,7 +7993,7 @@ longer hashes have lower TAR (true accept rate, some near dupes are missed), but
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/67275f3fd76871f56f4dbea31498ba2d829f60d8/vipy/image.py#L1623-L1628" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/09dad983c66f16c99bce3ff33e47c60944ee4750/vipy/image.py#L1623-L1628" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def pixelmask(self, pixelsize=8):
     &#34;&#34;&#34;Replace pixels within all foreground objects with a privacy preserving pixelated foreground with larger pixels&#34;&#34;&#34;
@@ -8013,7 +8013,7 @@ with ones inside the bounding box</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/67275f3fd76871f56f4dbea31498ba2d829f60d8/vipy/image.py#L1586-L1598" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/09dad983c66f16c99bce3ff33e47c60944ee4750/vipy/image.py#L1586-L1598" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def rectangular_mask(self, W=None, H=None):
     &#34;&#34;&#34;Return a binary array of the same size as the image (or using the
@@ -8038,7 +8038,7 @@ with ones inside the bounding box</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/67275f3fd76871f56f4dbea31498ba2d829f60d8/vipy/image.py#L1637-L1647" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/09dad983c66f16c99bce3ff33e47c60944ee4750/vipy/image.py#L1637-L1647" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def replace(self, newim, broadcast=False):
     &#34;&#34;&#34;Set all image values within the bounding box equal to the provided img, triggers load() and imclip()&#34;&#34;&#34;
@@ -8061,7 +8061,7 @@ with ones inside the bounding box</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/67275f3fd76871f56f4dbea31498ba2d829f60d8/vipy/image.py#L1471-L1475" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/09dad983c66f16c99bce3ff33e47c60944ee4750/vipy/image.py#L1471-L1475" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def rescale(self, scale=1, interp=&#39;bilinear&#39;):
     &#34;&#34;&#34;Rescale image buffer and all bounding boxes - Not idempotent&#34;&#34;&#34;
@@ -8079,7 +8079,7 @@ If cols or rows is None, then scale isotropically</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/67275f3fd76871f56f4dbea31498ba2d829f60d8/vipy/image.py#L1477-L1489" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/09dad983c66f16c99bce3ff33e47c60944ee4750/vipy/image.py#L1477-L1489" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def resize(self, cols=None, rows=None, interp=&#39;bilinear&#39;):
     &#34;&#34;&#34;Resize image buffer to (height=rows, width=cols) and transform all bounding boxes accordingly.  If cols or rows is None, then scale isotropically&#34;&#34;&#34;
@@ -8104,7 +8104,7 @@ If cols or rows is None, then scale isotropically</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/67275f3fd76871f56f4dbea31498ba2d829f60d8/vipy/image.py#L1539-L1544" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/09dad983c66f16c99bce3ff33e47c60944ee4750/vipy/image.py#L1539-L1544" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def rot90ccw(self):
     &#34;&#34;&#34;Rotate the scene 90 degrees counterclockwise, and update objects&#34;&#34;&#34;
@@ -8122,7 +8122,7 @@ If cols or rows is None, then scale isotropically</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/67275f3fd76871f56f4dbea31498ba2d829f60d8/vipy/image.py#L1532-L1537" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/09dad983c66f16c99bce3ff33e47c60944ee4750/vipy/image.py#L1532-L1537" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def rot90cw(self):
     &#34;&#34;&#34;Rotate the scene 90 degrees clockwise, and update objects&#34;&#34;&#34;
@@ -8140,7 +8140,7 @@ If cols or rows is None, then scale isotropically</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/67275f3fd76871f56f4dbea31498ba2d829f60d8/vipy/image.py#L1741-L1758" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/09dad983c66f16c99bce3ff33e47c60944ee4750/vipy/image.py#L1741-L1758" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def savefig(self, outfile=None, categories=None, figure=1, nocaption=False, fontsize=10, boxalpha=0.25, d_category2color={&#39;person&#39;:&#39;green&#39;, &#39;vehicle&#39;:&#39;blue&#39;, &#39;object&#39;:&#39;red&#39;}, captionoffset=(0,0), dpi=200, textfacecolor=&#39;white&#39;, textfacealpha=1.0, shortlabel=True, nocaption_withstring=[], timestamp=None, timestampcolor=&#39;black&#39;, timestampfacecolor=&#39;white&#39;, mutator=None):
     &#34;&#34;&#34;Save show() output to given file or return buffer without popping up a window&#34;&#34;&#34;
@@ -8170,7 +8170,7 @@ If cols or rows is None, then scale isotropically</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/67275f3fd76871f56f4dbea31498ba2d829f60d8/vipy/image.py#L1620-L1621" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/09dad983c66f16c99bce3ff33e47c60944ee4750/vipy/image.py#L1620-L1621" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def setzero(self):
     return self.fgmask()</code></pre>
@@ -8210,7 +8210,7 @@ Useful for changing labels on the fly</li>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/67275f3fd76871f56f4dbea31498ba2d829f60d8/vipy/image.py#L1687-L1719" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/09dad983c66f16c99bce3ff33e47c60944ee4750/vipy/image.py#L1687-L1719" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def show(self, categories=None, figure=1, nocaption=False, nocaption_withstring=[], fontsize=10, boxalpha=0.25, d_category2color={&#39;Person&#39;:&#39;green&#39;, &#39;Vehicle&#39;:&#39;blue&#39;, &#39;Object&#39;:&#39;red&#39;}, captionoffset=(0,0), nowindow=False, textfacecolor=&#39;white&#39;, textfacealpha=1.0, shortlabel=True, timestamp=None, timestampcolor=&#39;black&#39;, timestampfacecolor=&#39;white&#39;, mutator=None):
     &#34;&#34;&#34;Show scene detection 
@@ -8255,7 +8255,7 @@ Useful for changing labels on the fly</li>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/67275f3fd76871f56f4dbea31498ba2d829f60d8/vipy/image.py#L1446-L1449" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/09dad983c66f16c99bce3ff33e47c60944ee4750/vipy/image.py#L1446-L1449" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def uncrop(self, bb, shape):
     &#34;&#34;&#34;Uncrop a previous crop(bb) called with the supplied bb=BoundingBox(), and zeropad to shape=(H,W)&#34;&#34;&#34;
@@ -8271,7 +8271,7 @@ Useful for changing labels on the fly</li>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/67275f3fd76871f56f4dbea31498ba2d829f60d8/vipy/image.py#L1441-L1444" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/09dad983c66f16c99bce3ff33e47c60944ee4750/vipy/image.py#L1441-L1444" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def union(self, other, miniou=None):
     &#34;&#34;&#34;Combine the objects of the scene with other and self with no duplicate checking unless miniou is not None&#34;&#34;&#34;
@@ -8287,7 +8287,7 @@ Useful for changing labels on the fly</li>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/67275f3fd76871f56f4dbea31498ba2d829f60d8/vipy/image.py#L1516-L1522" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/09dad983c66f16c99bce3ff33e47c60944ee4750/vipy/image.py#L1516-L1522" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def zeropad(self, padwidth, padheight):
     &#34;&#34;&#34;Zero pad image with padwidth cols before and after and padheight rows before and after, then update bounding box offsets&#34;&#34;&#34;
