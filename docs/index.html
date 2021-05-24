@@ -55,6 +55,7 @@ We designed Vipy with minimal dependencies on standard and mature machine learni
 Vipy is written in pure python with the goal of performing in place operations and avoiding copies of media whenever possible.
 This enables fast video processing by operating on videos as chains of transformations.
 The documentation describes when an object is changed in place vs. copied.
+Furthermore, loading of media is delayed until explicitly requested by the user (or the pixels are needed) to enable lazy loading for distributed processing.
 </li>
 </ul>
 <h1 id="getting-started">Getting started</h1>
@@ -100,7 +101,7 @@ This allows for introspection of the vipy object state providing transparency</p
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/009ef7a819b5a89d80ca44e6e68baa32a7ec819b/vipy/__init__.py#L0-L102" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/c6cfa6faf548310f3cf4a47b4d6fbd2653bcad48/vipy/__init__.py#L0-L102" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">&#34;&#34;&#34;
 VIPY is a python package for representation, transformation and visualization of annotated videos and images.  Annotations are the ground truth provided by labelers (e.g. object bounding boxes, face identities, temporal activity clips), suit\
@@ -125,7 +126,7 @@ Vipy was created with three design goals.
 
 * **Simplicity**.  Annotated Videos and images should be as easy to manipulate as the pixels.  We provide a simple fluent API that enables the transformation of media so that pixels are transformed along with the annotations.  We provide a comprehensive unit test suite to validate this pipeline with continuous integration.
 * **Portability**.  Vipy was designed with the goal of allowing it to be easily retargeted to new platforms.  For example, deployment on a serverless architecture such as AWS lambda has restrictions on the allowable code that can be executed in layers.  We designed Vipy with minimal dependencies on standard and mature machine learning tool chains (numpy, matplotlib, ffmpeg, pillow) to ensure that it can be ported to new computational environments. 
-* **Efficiency**.  Vipy is written in pure python with the goal of performing in place operations and avoiding copies of media whenever possible.  This enables fast video processing by operating on videos as chains of transformations.  The documentation describes when an object is changed in place vs. copied.  
+* **Efficiency**.  Vipy is written in pure python with the goal of performing in place operations and avoiding copies of media whenever possible.  This enables fast video processing by operating on videos as chains of transformations.  The documentation describes when an object is changed in place vs. copied.  Furthermore, loading of media is delayed until explicitly requested by the user (or the pixels are needed) to enable lazy loading for distributed processing.  
 
 
 # Getting started
@@ -289,10 +290,6 @@ __version__ = vipy.version.VERSION</code></pre>
 <dd>
 <div class="desc"></div>
 </dd>
-<dt><code class="name"><a title="vipy.useragent" href="useragent.html">vipy.useragent</a></code></dt>
-<dd>
-<div class="desc"></div>
-</dd>
 <dt><code class="name"><a title="vipy.util" href="util.html">vipy.util</a></code></dt>
 <dd>
 <div class="desc"></div>
@@ -411,7 +408,6 @@ setTimeout(() => input.focus(), 100);
 <li><code><a title="vipy.show" href="show.html">vipy.show</a></code></li>
 <li><code><a title="vipy.ssim" href="ssim.html">vipy.ssim</a></code></li>
 <li><code><a title="vipy.torch" href="torch.html">vipy.torch</a></code></li>
-<li><code><a title="vipy.useragent" href="useragent.html">vipy.useragent</a></code></li>
 <li><code><a title="vipy.util" href="util.html">vipy.util</a></code></li>
 <li><code><a title="vipy.version" href="version.html">vipy.version</a></code></li>
 <li><code><a title="vipy.video" href="video.html">vipy.video</a></code></li>
