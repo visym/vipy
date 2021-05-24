@@ -177,9 +177,18 @@ def vipy_groupby(inset, keyfunc):
     return groupby(inset, keyfunc)
 
 
-def groupbyasdict(inset, keyfunc):
-    """Return dictionary of keys and lists from groupby on unsorted inset, where keyfunc is a lambda function on elements in inset"""
-    return {k: list(v) for (k, v) in groupby(inset, keyfunc)}
+def groupbyasdict(togroup, keyfunc):
+    """Return dictionary of keys and lists from groupby on unsorted inset, where keyfunc is a lambda function on elements in inset
+    
+    Args:
+        togroup: a list of elements to group
+        keyfunc:  a lambda function to operate on elemenets of togroup such that the value returned from the lambda is the equality key for grouping
+
+    Returns:
+        A dictionary with unique keys returned from keyfunc, and values are lists of elements in togroup with the same key
+
+    """
+    return {k: list(v) for (k, v) in groupby(togroup, keyfunc)}
 
 def countby(inset, keyfunc):
     """Return dictionary of keys and group sizes for a grouping of the input list by keyfunc lambda function""" 
@@ -190,7 +199,7 @@ def most_frequent(inset):
     return sorted([(k,v) for (k,v) in vipy.util.countby(inset, lambda x: x).items()], key=lambda y: y[1])[-1][0]
 
 def countbyasdict(inset, keyfunc):
-    """Alias for countby"""
+    """Alias for `vipy.util.countby`"""
     return countby(inset, keyfunc)
 
 def softmax(x, temperature=1.0):
