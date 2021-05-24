@@ -5,7 +5,7 @@ if [ "$#" -ne 1 ]; then
     exit 2
 fi
 
-source ./make_documentation.sh
+source ./make_documentation.sh --commit
 
 
 # Make release
