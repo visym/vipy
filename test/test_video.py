@@ -379,10 +379,15 @@ def _test_scene():
 
     # Scene iterator
     frames = np.random.rand(2,2,2,3).astype(np.float32)
-    v = vipy.video.Scene(array=frames)
+    v = vipy.video.Scene(array=frames, framerate=30)
     for im in v:
         v.add(Detection(0, 0, 0, 100, 100))
-        v.add(Track(category=1, keyframes=[1], boxes=[BoundingBox(0,0,1,1)]))
+        try:
+            v.add(Track(category=1, keyframes=[1], boxes=[BoundingBox(0,0,1,1)]))
+            raise  # framerate is required
+        except:
+            pass 
+        v.add(Track(category=1, keyframes=[1], boxes=[BoundingBox(0,0,1,1)], framerate=30))
         v.add([1,2,3,4], category='test', rangecheck=False)
     print('[test_video.scene]: scene iterator  PASSED')
     
@@ -505,8 +510,9 @@ def test_scene_union():
     assert len(vu.activities())==1
 
     activity = Activity(label='act2', startframe=0, endframe=3).add(track1).add(track2)
-    v2 = vipy.video.Scene(array=v.array(), colorspace='rgb', category='scene', activities=[activity])
+    v2 = vipy.video.Scene(array=v.array(), colorspace='rgb', category='scene', activities=[activity], tracks=[track1, track2])
     vu = v.clone().union(v2)
+
     assert len(vu.activities())==2
     assert vu.activity_categories() == set(['act2', 'act1'])
     

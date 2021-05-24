@@ -6,7 +6,7 @@ import math
 from vipy.util import try_import, isurl, remkdir
 import tempfile
 import numpy as np
-from vipy.useragent import common_user_agents
+from vipy.downloader import common_user_agents
 from vipy.globals import print
 
 

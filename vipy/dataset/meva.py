@@ -12,6 +12,44 @@ import shutil
 import vipy.globals
 
 
+d_category_to_shortlabel = {'person_abandons_package':'Abandoning',
+                            'person_closes_facility_door':'Closing',
+                            'person_closes_trunk':'Closing trunk',
+                            'person_closes_vehicle_door':'Closing door',
+                            'person_embraces_person':'Hugging',
+                            'person_enters_scene_through_structure':'Entering',
+                            'person_enters_vehicle':'Entering',
+                            'person_exits_scene_through_structure':'Exiting',
+                            'person_exits_vehicle':'Exiting',
+                            'hand_interacts_with_person':'Using hand',
+                            'person_carries_heavy_object':'Carrying',
+                            'person_interacts_with_laptop':'Using laptop',
+                            'person_loads_vehicle':'Loading',
+                            'person_transfers_object':'Transferring',
+                            'person_opens_facility_door':'Opening door',
+                            'person_opens_trunk':'Opening trunk',
+                            'person_opens_vehicle_door':'Opening door',
+                            'person_talks_to_person':'Talking',
+                            'person_picks_up_object':'Picking up',
+                            'person_purchases':'Purchasing',
+                            'person_reads_document':'Reading',
+                            'person_rides_bicycle':'Riding',
+                            'person_puts_down_object':'Putting down',
+                            'person_sits_down':'Sitting',
+                            'person_stands_up':'Standing',
+                            'person_talks_on_phone':'Talking',
+                            'person_texts_on_phone':'Texting',
+                            'person_steals_object':'Stealing',
+                            'person_unloads_vehicle':'Unloading',
+                            'vehicle_drops_off_person':'Dropping off',
+                            'vehicle_picks_up_person':'Picking up',
+                            'vehicle_reverses':'Reversing',
+                            'vehicle_starts':'Starting',
+                            'vehicle_stops':'Stopping',
+                            'vehicle_turns_left':'Turning left',
+                            'vehicle_turns_right':'Turning right',
+                            'vehicle_makes_u_turn':'Turning around'}
+
 class KF1(object):
     def __init__(self, videodir, repodir, contrib=False, stride=1, verbose=True, n_videos=None, withprefix=None, d_category_to_shortlabel=None, merge=False, actor=False, disjoint=False, unpad=False):
         """Parse MEVA annotations (http://mevadata.org) for KNown Facility 1 dataset into vipy.video.Scene() objects
@@ -43,43 +81,7 @@ class KF1(object):
         assert os.path.exists(os.path.join(self.repodir, 'annotation')), "Invalid input - repodir '%s' must contain the clone of https://gitlab.kitware.com/meva/meva-data-repo" % repodir
 
         # Shortlabels are optional and used for showing labels on videos only
-        self._d_category_to_shortlabel = {'person_abandons_package':'Abandoning',
-                                          'person_closes_facility_door':'Closing',
-                                          'person_closes_trunk':'Closing trunk',
-                                          'person_closes_vehicle_door':'Closing door',
-                                          'person_embraces_person':'Hugging',
-                                          'person_enters_scene_through_structure':'Entering',
-                                          'person_enters_vehicle':'Entering',
-                                          'person_exits_scene_through_structure':'Exiting',
-                                          'person_exits_vehicle':'Exiting',
-                                          'hand_interacts_with_person':'Using hand',
-                                          'person_carries_heavy_object':'Carrying',
-                                          'person_interacts_with_laptop':'Using laptop',
-                                          'person_loads_vehicle':'Loading',
-                                          'person_transfers_object':'Transferring',
-                                          'person_opens_facility_door':'Opening door',
-                                          'person_opens_trunk':'Opening trunk',
-                                          'person_opens_vehicle_door':'Opening door',
-                                          'person_talks_to_person':'Talking',
-                                          'person_picks_up_object':'Picking up',
-                                          'person_purchases':'Purchasing',
-                                          'person_reads_document':'Reading',
-                                          'person_rides_bicycle':'Riding',
-                                          'person_puts_down_object':'Putting down',
-                                          'person_sits_down':'Sitting',
-                                          'person_stands_up':'Standing',
-                                          'person_talks_on_phone':'Talking',
-                                          'person_texts_on_phone':'Texting',
-                                          'person_steals_object':'Stealing',
-                                          'person_unloads_vehicle':'Unloading',
-                                          'vehicle_drops_off_person':'Dropping off',
-                                          'vehicle_picks_up_person':'Picking up',
-                                          'vehicle_reverses':'Reversing',
-                                          'vehicle_starts':'Starting',
-                                          'vehicle_stops':'Stopping',
-                                          'vehicle_turns_left':'Turning left',
-                                          'vehicle_turns_right':'Turning right',
-                                          'vehicle_makes_u_turn':'Turning around'}
+        self._d_category_to_shortlabel = d_category_to_shortlabel
         self._d_category_to_shortlabel = {k:v.lower() for (k,v) in self._d_category_to_shortlabel.items()}        
         self._d_oldcategory_to_newcategory = {k:v for (k,v) in readcsv(os.path.join(self.repodir, 'documents', 'activity-name-mapping.csv'))[1:]}
 

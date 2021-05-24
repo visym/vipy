@@ -5,6 +5,10 @@ if [ "$#" -ne 1 ]; then
     exit 2
 fi
 
+source ./make_documentation.sh --commit
+
+
+# Make release
 cd ..
 git tag $1 -m "vipy-$1"
 git push --tags origin master

@@ -1180,7 +1180,7 @@ class Image(object):
         vipy.show.close(figure)
         t = vipy.image.Image(array=img, colorspace='rgba')
         if filename is not None:
-            t.rgb().saveas(filename)
+            t.rgb().saveas(os.path.abspath(os.path.expanduser(filename)))
         return t
 
     def map(self, func):
@@ -1754,7 +1754,7 @@ class Scene(ImageCategory):
                 vipy.show.close(plt.gcf().number)   # memory cleanup (useful for video annotation on last frame)
             return vipy.image.Image(array=img, colorspace='rgba')
         else:
-            vipy.show.savefig(outfile, figure, dpi=dpi, bbox_inches='tight', pad_inches=0)
+            vipy.show.savefig(os.path.abspath(os.path.expanduser(outfile)), figure, dpi=dpi, bbox_inches='tight', pad_inches=0)
             return outfile
 
     
@@ -1996,7 +1996,7 @@ def owl():
     """Return an owl image for testing"""
     return Scene(url='https://upload.wikimedia.org/wikipedia/commons/thumb/2/23/Bubo_virginianus_06.jpg/1920px-Bubo_virginianus_06.jpg',
                  category='Nature',
-                 objects=[vipy.object.Detection('Great Horned Owl', xmin=300, ymin=320, width=1200, height=1600),
+                 objects=[vipy.object.Detection('Great Horned Owl', xmin=350, ymin=320, width=1400, height=2100),
                           vipy.object.Detection('left eye', xmin=600, ymin=800, width=250, height=250), 
                           vipy.object.Detection('right eye', xmin=1000, ymin=800, width=250, height=250)])
 

@@ -64,7 +64,7 @@ def hascache():
 
 
 def tocache(filename):
-    """If the VIPY_CACHE environment variable is set, then return the filename in the cache"""
+    """If the VIPY_CACHE environment variable is set, then return the filename=/path/to/file.ext in the cache as VIPY_CACHE/file.ext"""
     return os.path.join(remkdir(os.environ['VIPY_CACHE']), filetail(filename)) if hascache() else filename
 
 
@@ -158,7 +158,10 @@ def writejson(d, outfile):
     return outfile
 
 
-def readjson(jsonfile):
+def readjson(jsonfile, strict=True):
+    """Read jsonfile=/path/to/file.json and return the json parsed object, issue warning if jsonfile does not have .json extension and strict=True"""
+    if not isjsonfile(jsonfile) and strict:
+        warnings.warn('Attempting to read JSON file "%s" without .json extension' % jsonfile)
     with open(jsonfile) as f:
         data = json.loads(f.read())
     return data
@@ -1469,7 +1472,7 @@ def rermdir(path):
 
 
 def premkdir(filename):
-    """create directory /path/to/subdir if not exist for outfile=/path/to/subdir/file.ext, and return filename"""
+    """pre-create directory /path/to/subdir using `vipy.util.remkdir` if it does not exist for outfile=/path/to/subdir/file.ext, and return filename"""
     remkdir(filepath(filename))
     return filename
 

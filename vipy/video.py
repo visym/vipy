@@ -547,6 +547,13 @@ class Video(object):
                 cmd[k+1] = '"%s"' % str(cmd[k+1])
         return str(' ').join(cmd)
 
+    def commandline(self):
+        """Return the equivalent ffmpeg command line string that will be used to transcode the video.
+        
+           This is useful for introspecting the complex filter chain that will be used to process the video.  You can try to run this command line yourself for debugging purposes, by replacing 'dummyfile' with an appropriately named output file.
+        """        
+        return self._ffmpeg_commandline()
+    
     def _from_ffmpeg_commandline(self, cmd):
         args = copy.copy(cmd).replace(str(self.filename()), 'FILENAME').split(' ')  # filename may contain spaces
         
@@ -587,12 +594,15 @@ class Video(object):
         assert self._ffmpeg_commandline(f.output('dummyfile')) == cmd, "FFMPEG command line '%s' != '%s'" % (self._ffmpeg_commandline(f.output('dummyfile')), cmd)
         return f
 
-    def isdirty(self):
+    def _isdirty(self):
         """Has the FFMPEG filter chain been modified from the default?  If so, then ffplay() on the video file will be different from self.load().play()"""
         return '-filter_complex' in self._ffmpeg_commandline()
 
     def probeshape(self):
-        """Return the (height, width) of underlying video file as determined from ffprobe, this does not take into account any applied ffmpeg filters"""
+        """Return the (height, width) of underlying video file as determined from ffprobe
+        
+        .. warning:: this does not take into account any applied ffmpeg filters.  The shape will be the (height, width) of the underlying video file.  
+        """
         p = self.probe()
         assert len(p['streams']) > 0
         return (p['streams'][0]['height'], p['streams'][0]['width'])
@@ -612,14 +622,25 @@ class Video(object):
         return int(np.floor(self.duration_in_seconds_of_videofile()*self.framerate()))
     
     def probe(self):
-        """Run ffprobe on the filename and return the result as a JSON file"""
+        """Run ffprobe on the filename and return the result as a dictionary"""
         if not has_ffprobe:
             raise ValueError('"ffprobe" executable not found on path, this is optional for vipy.video - Install from http://ffmpeg.org/download.html')            
         assert self.hasfilename(), "Invalid video file '%s' for ffprobe" % self.filename() 
         return ffmpeg.probe(self.filename())
 
     def print(self, prefix='', verbose=True, sleep=None):
-        """Print the representation of the video - useful for debugging in long fluent chains.  Sleep is useful for adding in a delay for distributed processing"""
+        """Print the representation of the video
+
+        This is useful for debugging in long fluent chains.  Sleep is useful for adding in a delay for distributed processing.
+
+        Args:
+            prefix: prepend a string prefix to the video __repr__ when printing.  Useful for logging.
+            verbose:  Print out the video __repr__.  Set verbose=False to just sleep
+            sleep:  Integer number of seconds to sleep[ before returning
+
+        Returns:  
+            The video object after sleeping 
+        """
         if verbose:
             print(prefix+self.__repr__())
         if sleep is not None:
@@ -632,10 +653,21 @@ class Video(object):
         return self.numpy()
 
     def dict(self):
-        """Return a python dictionary containing the relevant serialized attributes suitable for JSON encoding"""
-        return self.json(s=None, encode=False)
+        """Return a python dictionary containing the relevant serialized attributes suitable for JSON encoding."""
+        return self.json(encode=False)
 
     def json(self, encode=True):
+        """Return a json representation of the video.
+        
+        Args:
+            encode: If true, return a JSON encoded string using json.dumps
+        
+        Returns:
+            A JSON encoded string if encode=True, else returns a dictionary object 
+
+        .. note::  If the video is loaded, then the JSON will not include the pixels.  Try using `vipy.video.Video.store` to serialize videos, or call `vipy.video.Video.flush` first.
+        """
+        
         if self.isloaded():
             warnings.warn("JSON serialization of video requires flushed buffers, will not include the loaded video.  Try store()/restore()/unstore() instead to serialize videos as standalone objects efficiently.")
         d = {'_filename':self._filename,
@@ -652,15 +684,30 @@ class Video(object):
         return json.dumps(d) if encode else d
     
     def take(self, n):
-        """Return n frames from the clip uniformly spaced as numpy array"""
-        assert self.isloaded(), "Load() is required before take()"
+        """Return n frames from the clip uniformly spaced as numpy array
+        
+        Args:
+            n: Integer number of uniformly spaced frames to return 
+        
+        Returns:
+            A numpy array of shape (n,W,H)
+
+        .. warning:: This assumes that the entire video is loaded into memory (e.g. call `vipy.video.Video.load`).  Use with caution.
+        """
+        assert self.isloaded(), "load() is required before take()"
         dt = int(np.round(len(self._array) / float(n)))  # stride
         return self._array[::dt][0:n]
 
     def framerate(self, fps=None):
         """Change the input framerate for the video and update frame indexes for all annotations
-        
-           * NOTE: do not call framerate() after calling clip() as this introduces extra repeated final frames during load()
+
+        Args:
+            fps: Float frames per second to process the underlying video
+
+        Returns:
+            If fps is None, return the current framerate, otherwise set the framerate to fps
+
+        .. note:: Do not call framerate() after calling clip() as this may introduce extra repeated final frames during load()
         
         """
         if fps is None:
@@ -691,11 +738,12 @@ class Video(object):
         return self
 
     def nourl(self):
+        """Remove the `vipy.video.Video.url` from the video"""
         (self._url, self._urluser, self._urlpassword, self._urlsha1) = (None, None, None, None)
         return self
 
     def url(self, url=None, username=None, password=None, sha1=None):
-        """Image URL and URL download properties"""
+        """Video URL and URL download properties"""
         if url is not None:
             self._url = url  # note that this does not change anything else, better to use the constructor for this
         if username is not None:
@@ -1283,10 +1331,16 @@ class Video(object):
     def webp(self, outfile, pause=3, strict=True, smallest=False, smaller=False):
         """Save a video to an animated WEBP file, with pause=N seconds on the last frame between loops.  
         
-           -strict=[bool]: assert that the filename must have an .webp extension
-           -pause=[int]: seconds to pause between loops of the animation
-           -smallest=[bool]:  create the smallest possible file but takes much longer to run
-           -smaller=[bool]:  create a smaller file, which takes a little longer to run 
+        Args:
+            strict: If true, assert that the filename must have an .webp extension
+            pause: Integer seconds to pause between loops of the animation
+            smallest:  if true, create the smallest possible file but takes much longer to run
+            smaller:  If true, create a smaller file, which takes a little longer to run 
+
+        Returns:
+            The filename of the webp file for this video
+
+        .. warning::  This may be slow for very long or large videos
         """
         assert strict is False or iswebp(outfile)
         outfile = os.path.normpath(os.path.abspath(os.path.expanduser(outfile)))
@@ -1298,10 +1352,15 @@ class Video(object):
     def gif(self, outfile, pause=3, smallest=False, smaller=False):
         """Save a video to an animated GIF file, with pause=N seconds between loops.  
 
-           WARNING:  this will be very large for big videos, consider using webp instead.
-           -pause=[int]: seconds to pause between loops of the animation
-           -smallest=[bool]:  create the smallest possible file but takes much longer to run
-           -smaller=[bool]:  create a smaller file, which takes a little longer to run 
+        Args:
+            pause: Integer seconds to pause between loops of the animation
+            smallest:  If true, create the smallest possible file but takes much longer to run
+            smaller:  if trye, create a smaller file, which takes a little longer to run 
+
+        Returns:
+            The filename of the animated GIF of this video
+
+        .. warning::  This will be very large for big videos, consider using `vipy.video.Video.webp` instead.
         """        
         assert isgif(outfile)
         return self.webp(outfile, pause, strict=False, smallest=smallest, smaller=True)
@@ -1309,15 +1368,21 @@ class Video(object):
     def saveas(self, outfile=None, framerate=None, vcodec='libx264', verbose=False, ignoreErrors=False, flush=False, pause=5):
         """Save video to new output video file.  This function does not draw boxes, it saves pixels to a new video file.
 
-           * outfile: the absolute path to the output video file.  This extension can be .mp4 (for video) or [".webp",".gif"]  (for animated image)
-           * If self.array() is loaded, then export the contents of self._array to the video file
-           * If self.array() is not loaded, and there exists a valid video file, apply the filter chain directly to the input video
-           * If outfile==None or outfile==self.filename(), then overwrite the current filename 
-           * If ignoreErrors=True, then exit gracefully.  Useful for chaining download().saveas() on parallel dataset downloads
-           * Returns a new video object with this video filename, and a clean video filter chain
-           * if flush=True, then flush the buffer for this object right after saving the new video. This is useful for transcoding in parallel
-           * framerate:  input framerate of the frames in the buffer, or the output framerate of the transcoded video.  If not provided, use framerate of source video
-           * pause:  an integer in seconds to pause between loops of animated images
+        Args:
+            outfile: the absolute path to the output video file.  This extension can be .mp4 (for video) or [".webp",".gif"]  (for animated image)
+            ignoreErrors:  if True, then exit gracefully without throwing an exception.  Useful for chaining download().saveas() on parallel dataset downloads
+            flush:  If true, then flush the buffer for this object right after saving the new video. This is useful for transcoding in parallel
+            framerate:  input framerate of the frames in the buffer, or the output framerate of the transcoded video.  If not provided, use framerate of source video
+            pause:  an integer in seconds to pause between loops of animated images if the outfile is webp or animated gif
+
+        Returns:
+            a new video object with this video filename, and a clean video filter chain
+
+        .. note:: 
+            - If self.array() is loaded, then export the contents of self._array to the video file
+            - If self.array() is not loaded, and there exists a valid video file, apply the filter chain directly to the input video
+            - If outfile==None or outfile==self.filename(), then overwrite the current filename 
+
         """        
         outfile = tocache(tempMP4()) if outfile is None else os.path.normpath(os.path.abspath(os.path.expanduser(outfile)))
         premkdir(outfile)  # create output directory for this file if not exists
@@ -1348,7 +1413,7 @@ class Video(object):
                 process.stdin.close()
                 process.wait()
             
-            elif self.isdownloaded() and self.isdirty():
+            elif self.isdownloaded() and self._isdirty():
                 # Transcode the video file directly, do not load() then export
                 # Requires saving to a tmpfile if the output filename is the same as the input filename
                 tmpfile = '%s.tmp%s' % (filefull(outfile), fileext(outfile)) if outfile == self.filename() else outfile
@@ -1361,7 +1426,7 @@ class Video(object):
                     if os.path.exists(self.filename()):
                         os.remove(self.filename())
                     shutil.move(tmpfile, self.filename())
-            elif self.hasfilename() and not self.isdirty():
+            elif self.hasfilename() and not self._isdirty():
                 shutil.copyfile(self.filename(), outfile)
             elif self.hasurl() and not self.hasfilename():
                 raise ValueError('Input video url "%s" not downloaded, call download() first' % self.url())
@@ -1380,8 +1445,10 @@ class Video(object):
         return self.clone(flushforward=True, flushfilter=True, flushbackward=flush).filename(outfile).nourl()
     
     def savetmp(self):
+        """Call `vipy.video.Video.saveas` using a new temporary video file, and return the video object with this new filename"""
         return self.saveas(outfile=tempMP4())
     def savetemp(self):
+        """Alias for `vipy.video.Video.savetmp`"""
         return self.savetmp()
 
     def ffplay(self):
@@ -1392,8 +1459,20 @@ class Video(object):
         os.system(cmd)
         return self
         
-    def play(self, verbose=True, notebook=False, fps=30):
-        """Play the saved video filename in self.filename() using the system 'ffplay', if there is no filename, try to download it, if the filter chain is dirty, dump to temp file first"""
+    def play(self, verbose=False, notebook=False):
+        """Play the saved video filename in self.filename()
+
+        If there is no filename, try to download it.  If the filter chain is dirty or the pixels are loaded, dump to temp video file first then play it.  This uses 'ffplay' on the PATH if available, otherwise uses a fallback player by showing a sequence of matplotlib frames.
+        If the output of the ffmpeg filter chain has modified this video, then this will be saved to a temporary video file.  To play the original video (indepenedent of the filter chain of this video), use `vipy.video.Video.ffplay`.
+        
+        Args:
+            verbose: If true, show more verbose output 
+            notebook:  If true, play in a jupyter notebook
+
+        Returns:
+            The unmodified video object
+        """
+        
 
         if not self.isdownloaded() and self.hasurl():
             self.download()
@@ -1401,19 +1480,23 @@ class Video(object):
         if notebook:
             # save to temporary video, this video is not cleaned up and may accumulate            
             try_import("IPython.display", "ipython"); import IPython.display
-            if not self.hasfilename() or self.isloaded() or self.isdirty():
+            if not self.hasfilename() or self.isloaded() or self._isdirty():
                 v = self.saveas(tempMP4())                 
                 warnings.warn('Saving video to temporary file "%s" for notebook viewer ... ' % v.filename())
                 return IPython.display.Video(v.filename(), embed=True)
             return IPython.display.Video(self.filename(), embed=True)
         elif has_ffplay:
-            if self.isloaded() or self.isdirty():
+            if self.isloaded() or self._isdirty():
                 f = tempMP4()
-                warnings.warn('%s - Saving video to temporary file "%s" for ffplay ... ' % ('Video loaded into memory' if self.isloaded() else 'Dirty FFMPEG filter chain', f))
+                if verbose:
+                    warnings.warn('%s - Saving video to temporary file "%s" for ffplay ... ' % ('Video loaded into memory' if self.isloaded() else 'Dirty FFMPEG filter chain', f))
                 v = self.saveas(f)
                 cmd = 'ffplay "%s"' % v.filename()
-                print('[vipy.video.play]: Executing "%s"' % cmd)
+                if verbose:
+                    print('[vipy.video.play]: Executing "%s"' % cmd)
                 os.system(cmd)
+                if verbose:
+                    print('[vipy.video.play]:  Removing temporary file "%s"' % v.filename())                    
                 os.remove(v.filename())  # cleanup
             elif self.hasfilename() or (self.hasurl() and self.download().hasfilename()):  # triggers download
                 self.ffplay()
@@ -1423,7 +1506,7 @@ class Video(object):
 
         else:
             """Fallback player.  This can visualize videos without ffplay, but it cannot guarantee frame rates. Large videos with complex scenes will slow this down and will render at lower frame rates."""
-            fps = min(fps, self.framerate()) if fps is not None else self.framerate()
+            fps = self.framerate()
             assert fps > 0, "Invalid display framerate"
             with Stopwatch() as sw:            
                 for (k,im) in enumerate(self.load() if self.isloaded() else self.stream()):
@@ -1434,6 +1517,30 @@ class Video(object):
             vipy.show.close(figure)
             return self
 
+    def show(self):
+        """Alias for play"""
+        return self.play()
+    
+    def quicklook(self, n=9, mindim=256, startframe=0, animate=False, dt=30):
+        """Generate a montage of n uniformly spaced frames.
+           Montage increases rowwise for n uniformly spaced frames, starting from frame zero and ending on the last frame.
+        
+           Input:
+              -n:  Number of images in the quicklook
+              -mindim:  The minimum dimension of each of the elements in the montage
+              -animate:  If true, return a video constructed by animating the quicklook into a video by showing dt consecutive frames
+              -dt:  The number of frames for animation
+              -startframe:  The initial frame index to start the n uniformly sampled frames for the quicklook
+        """
+        if not self.isloaded():
+            self.load()  
+        if animate:
+            return Video(frames=[self.quicklook(n=n, startframe=k, animate=False, dt=dt) for k in range(0, min(dt, len(self)))], framerate=self.framerate())
+        framelist = [min(int(np.round(f))+startframe, len(self)-1) for f in np.linspace(0, len(self)-1, n)]
+        imframes = [self.frame(k).maxmatte()  # letterbox or pillarbox
+                    for (j,k) in enumerate(framelist)]
+        imframes = [im.savefig(figure=1).rgb() for im in imframes]  # temp storage in memory
+        return vipy.visualize.montage(imframes, imgwidth=mindim, imgheight=mindim)
 
     def torch(self, startframe=0, endframe=None, length=None, stride=1, take=None, boundary='repeat', order='nchw', verbose=False, withslice=False, scale=1.0, withlabel=False, nonelabel=False):
         """Convert the loaded video of shape N HxWxC frames to an MxCxHxW torch tensor, forces a load().
@@ -1523,16 +1630,24 @@ class Video(object):
 
     def clone(self, flushforward=False, flushbackward=False, flush=False, flushfilter=False, rekey=False, flushfile=False, shallow=False, sharedarray=False):
         """Create deep copy of video object, flushing the original buffer if requested and returning the cloned object.
+
         Flushing is useful for distributed memory management to free the buffer from this object, and pass along a cloned 
         object which can be used for encoding and will be garbage collected.
         
-            * flushforward: copy the object, and set the cloned object array() to None.  This flushes the video buffer for the clone, not the object
-            * flushbackward:  copy the object, and set the object array() to None.  This flushes the video buffer for the object, not the clone.
-            * flush:  set the object array() to None and clone the object.  This flushes the video buffer for both the clone and the object.
-            * flushfilter:  Set the ffmpeg filter chain to the default in the new object, useful for saving new videos
-            * rekey: Generate new unique track ID and activity ID keys for this scene
-            * shallow:  shallow copy everything (copy by reference), except for ffmpeg object
-            * sharedarray:  deep copy of everything, except for pixel buffer which is shared
+        Args:
+            flushforward: copy the object, and set the cloned object `vipy.video.Video.array` to None.  This flushes the video buffer for the clone, not the object
+            flushbackward:  copy the object, and set the object array() to None.  This flushes the video buffer for the object, not the clone.
+            flush:  set the object array() to None and clone the object.  This flushes the video buffer for both the clone and the object.
+            flushfilter:  Set the ffmpeg filter chain to the default in the new object, useful for saving new videos
+            flushfile:  Remove the filename and the URL from the video object.  Useful for creating new video objects from loaded pixels.  
+            rekey: Generate new unique track ID and activity ID keys for this scene
+            shallow:  shallow copy everything (copy by reference), except for ffmpeg object
+            sharedarray:  deep copy of everything, except for pixel buffer which is shared.  Changing the pixel buffer on self is reflected in the clone.
+
+        Returns:
+            A deepcopy of the video object such that changes to self are not reflected in the copy
+
+        .. note:: Cloning videos is an expensive operation and can slow down real time code. Use sparingly. 
 
         """
         if flush or (flushforward and flushbackward):
@@ -1982,7 +2097,7 @@ class Scene(VideoCategory):
         return next(iter(self.tracks().values()))   # Python >=3.6
         
     def primary_activity(self):
-        return next(iter(self.activities().values()))   # Python >=3.6        
+        return next(iter(self.activities().values())) if len(self._activities)>0 else None  # Python >=3.6        
 
     def activities(self, activities=None, id=None):
         """Return mutable dictionary of activities.  All temporal alignment is relative to the current clip()."""
@@ -2022,14 +2137,23 @@ class Scene(VideoCategory):
         self._activities = {k:a for (k,a) in self.activities().items() if f(a) == True}
         return self
         
-    def trackfilter(self, f):
-        """Apply lambda function f to each object and keep if filter is True"""
-        self._tracks = {k:t for (k,t) in self.tracks().items() if f(t) == True} 
-        self.activitymap(lambda a: a.trackfilter(lambda ti: ti in self._tracks))  # remove track association in activities
+    def trackfilter(self, f, activitytrack=True):
+        """Apply lambda function f to each object and keep if filter is True.  
+        
+           -strict=True: remove track assignment from activities also, may result in activities with no tracks
+        """
+        self._tracks = {k:t for (k,t) in self.tracks().items() if f(t) == True}
+        if activitytrack:
+            self.activitymap(lambda a: a.trackfilter(lambda ti: ti in self._tracks))  # remove track association in activities
+            if any([len(a.tracks()) == 0 for a in self.activitylist()]):
+                warnings.warn('trackfilter(..., activitytrack=True) returned at least one degenerate activity with no tracks')
         return self
 
     def trackmap(self, f, strict=True):
-        """Apply lambda function f to each activity"""
+        """Apply lambda function f to each activity
+
+           -strict=True: enforce that lambda function must return non-degenerate Track() objects        
+        """
         self._tracks = {k:f(t) for (k,t) in self.tracks().items()}
         assert all([isinstance(t, vipy.object.Track) and (strict is False or not t.isdegenerate()) for (tk,t) in self.tracks().items()]), "Lambda function must return non-degenerate vipy.object.Track()"
         return self
@@ -2298,12 +2422,12 @@ class Scene(VideoCategory):
            
         """
         assert isinstance(padframes, int) or istuple(padframes) or islist(padframes)
-        padframelist = [padframes if istuple(padframes) else (padframes, padframes) for k in range(len(primary_activities))] if not islist(padframes) else padframes
 
         vid = self.clone(flushforward=True)
         if any([(a.endframe()-a.startframe()) <= 0 for a in vid.activities().values()]):
             warnings.warn('Filtering invalid activity clips with degenerate lengths: %s' % str([a for a in vid.activities().values() if (a.endframe()-a.startframe()) <= 0]))
         primary_activities = sorted([a.clone() for a in vid.activities().values() if (a.endframe()-a.startframe()) > 0], key=lambda a: a.startframe())   # only activities with at least one frame, sorted in temporal order
+        padframelist = [padframes if istuple(padframes) else (padframes, padframes) for k in range(len(primary_activities))] if not islist(padframes) else padframes                    
         tracks = [ [t.clone() for (tid, t) in vid.tracks().items() if a.hastrack(t)] for a in primary_activities]  # tracks associated with each primary activity (may be empty)
         secondary_activities = [[sa.clone() for sa in primary_activities if (sa.id() != pa.id() and pa.clone().temporalpad((prepad, postpad)).hasoverlap(sa) and (len(T)==0 or any([sa.hastrack(t) for t in T])))] for (pa, T, (prepad,postpad)) in zip(primary_activities, tracks, padframelist)]  # overlapping secondary activities that includes any track in the primary activity
         secondary_activities = [sa if multilabel else [] for sa in secondary_activities]  
@@ -2635,7 +2759,7 @@ class Scene(VideoCategory):
             if sc.startframe() != oc.startframe():
                 dt = (oc.startframe() if oc.startframe() is not None else 0) - (sc.startframe() if sc.startframe() is not None else 0)
                 oc = oc.trackmap(lambda t: t.offset(dt=dt)).activitymap(lambda a: a.offset(dt=dt))  # match temporal translation of tracks and activities
-            oc = oc.trackfilter(lambda t: ((not t.isdegenerate()) and len(t)>0))
+            oc = oc.trackfilter(lambda t: ((not t.isdegenerate()) and len(t)>0), activitytrack=False)  
 
             # Merge other tracks into selfclone: one-to-many mapping from self to other
             merged = {}  # dictionary mapping trackid in other to the trackid in self, each track in other can be merged at most once
@@ -2645,7 +2769,7 @@ class Scene(VideoCategory):
                         sc.tracks()[ti.id()] = sc.track(ti.id()).union(tj, overlap=overlap)  # merge duplicate/fragmented tracks from other into self, union() returns clone
                         merged[tj.id()] = ti.id()  
                         print('[vipy.video.union]: merging track "%s"(id=%s) + "%s"(id=%s) for scene "%s"' % (str(ti), str(ti.id()), str(tj), str(tj.id()), str(sc)))                        
-            oc.trackfilter(lambda t: t.id() not in merged)  # remove duplicate other track for final union
+            oc.trackfilter(lambda t: t.id() not in merged, activitytrack=False)  # remove duplicate other track for final union
 
             # Merge other activities into selfclone: one-to-one mapping
             for (i,j) in merged.items():  # i=id of other, j=id of self
@@ -2654,7 +2778,8 @@ class Scene(VideoCategory):
                 for (j,aj) in oc.activities().items():
                     if ai.category() == aj.category() and set(ai.trackids()) == set(aj.trackids()) and ai.temporal_iou(aj) > temporal_iou_threshold:
                         oc.activityfilter(lambda a: a.id() != j)  # remove duplicate activity from final union
-                        
+            oc.activityfilter(lambda a: len(a.tracks())>0)  # remove empty activities not merged
+
             # Union
             sc.tracks().update(oc.tracks())
             sc.activities().update(oc.activities())
@@ -2670,7 +2795,7 @@ class Scene(VideoCategory):
         """Generate a video visualization of all annotated objects and activities in the video, at the resolution and framerate of the underlying video, pixels in this video will now contain the overlay
         This function does not play the video, it only generates an annotation video frames.  Use show() which is equivalent to annotate().saveas().play()
         
-            * In general, this function should not be run on very long videos, as it requires loading the video framewise into memory, try running on clips instead.
+            * In general, this function should not be run on very long videos without the outfile kwarg, as it requires loading the video framewise into memory, try running on clips instead.
             * For long videos, a btter strategy given a video object vo with an output filename which will use a video stream for annotation
 
         """
