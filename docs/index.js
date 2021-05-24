@@ -1823,7 +1823,7 @@ INDEX=[
 {
 "ref":"vipy.util.tocache",
 "url":9,
-"doc":"If the VIPY_CACHE environment variable is set, then return the filename in the cache",
+"doc":"If the VIPY_CACHE environment variable is set, then return the filename=/path/to/file.ext in the cache as VIPY_CACHE/file.ext",
 "func":1
 },
 {
@@ -1919,7 +1919,7 @@ INDEX=[
 {
 "ref":"vipy.util.readjson",
 "url":9,
-"doc":"",
+"doc":"Read jsonfile=/path/to/file.json and return the json parsed object, issue warning if jsonfile does not have .json extension and strict=True",
 "func":1
 },
 {
@@ -2889,7 +2889,7 @@ INDEX=[
 {
 "ref":"vipy.util.premkdir",
 "url":9,
-"doc":"create directory /path/to/subdir if not exist for outfile=/path/to/subdir/file.ext, and return filename",
+"doc":"pre-create directory /path/to/subdir using  vipy.util.remkdir if it does not exist for outfile=/path/to/subdir/file.ext, and return filename",
 "func":1
 },
 {
@@ -4454,13 +4454,13 @@ INDEX=[
 {
 "ref":"vipy.flow.Video.show",
 "url":37,
-"doc":"",
+"doc":"Alias for play",
 "func":1
 },
 {
 "ref":"vipy.flow.Video.print",
 "url":37,
-"doc":"Print the representation of the video - useful for debugging in long fluent chains. Sleep is useful for adding in a delay for distributed processing",
+"doc":"Print the representation of the video This is useful for debugging in long fluent chains. Sleep is useful for adding in a delay for distributed processing. Args: prefix: prepend a string prefix to the video __repr__ when printing. Useful for logging. verbose: Print out the video __repr__. Set verbose=False to just sleep sleep: Integer number of seconds to sleep[ before returning Returns: The video object after sleeping",
 "func":1
 },
 {
@@ -4524,15 +4524,15 @@ INDEX=[
 "func":1
 },
 {
-"ref":"vipy.flow.Video.isdirty",
+"ref":"vipy.flow.Video.commandline",
 "url":38,
-"doc":"Has the FFMPEG filter chain been modified from the default? If so, then ffplay() on the video file will be different from self.load().play()",
+"doc":"Return the equivalent ffmpeg command line string that will be used to transcode the video. This is useful for introspecting the complex filter chain that will be used to process the video. You can try to run this command line yourself for debugging purposes, by replacing 'dummyfile' with an appropriately named output file.",
 "func":1
 },
 {
 "ref":"vipy.flow.Video.probeshape",
 "url":38,
-"doc":"Return the (height, width) of underlying video file as determined from ffprobe, this does not take into account any applied ffmpeg filters",
+"doc":"Return the (height, width) of underlying video file as determined from ffprobe  warning this does not take into account any applied ffmpeg filters. The shape will be the (height, width) of the underlying video file.",
 "func":1
 },
 {
@@ -4550,25 +4550,31 @@ INDEX=[
 {
 "ref":"vipy.flow.Video.probe",
 "url":38,
-"doc":"Run ffprobe on the filename and return the result as a JSON file",
+"doc":"Run ffprobe on the filename and return the result as a dictionary",
 "func":1
 },
 {
 "ref":"vipy.flow.Video.dict",
 "url":38,
-"doc":"Return a python dictionary containing the relevant serialized attributes suitable for JSON encoding",
+"doc":"Return a python dictionary containing the relevant serialized attributes suitable for JSON encoding.",
+"func":1
+},
+{
+"ref":"vipy.flow.Video.json",
+"url":38,
+"doc":"Return a json representation of the video. Args: encode: If true, return a JSON encoded string using json.dumps Returns: A JSON encoded string if encode=True, else returns a dictionary object  note If the video is loaded, then the JSON will not include the pixels. Try using  vipy.video.Video.store to serialize videos, or call  vipy.video.Video.flush first.",
 "func":1
 },
 {
 "ref":"vipy.flow.Video.take",
 "url":38,
-"doc":"Return n frames from the clip uniformly spaced as numpy array",
+"doc":"Return n frames from the clip uniformly spaced as numpy array Args: n: Integer number of uniformly spaced frames to return Returns: A numpy array of shape (n,W,H)  warning This assumes that the entire video is loaded into memory (e.g. call  vipy.video.Video.load ). Use with caution.",
 "func":1
 },
 {
 "ref":"vipy.flow.Video.framerate",
 "url":38,
-"doc":"Change the input framerate for the video and update frame indexes for all annotations  NOTE: do not call framerate() after calling clip() as this introduces extra repeated final frames during load()",
+"doc":"Change the input framerate for the video and update frame indexes for all annotations Args: fps: Float frames per second to process the underlying video Returns: If fps is None, return the current framerate, otherwise set the framerate to fps  note Do not call framerate() after calling clip() as this may introduce extra repeated final frames during load()",
 "func":1
 },
 {
@@ -4578,9 +4584,15 @@ INDEX=[
 "func":1
 },
 {
+"ref":"vipy.flow.Video.nourl",
+"url":38,
+"doc":"Remove the  vipy.video.Video.url from the video",
+"func":1
+},
+{
 "ref":"vipy.flow.Video.url",
 "url":38,
-"doc":"Image URL and URL download properties",
+"doc":"Video URL and URL download properties",
 "func":1
 },
 {
@@ -4820,19 +4832,31 @@ INDEX=[
 {
 "ref":"vipy.flow.Video.webp",
 "url":38,
-"doc":"Save a video to an animated WEBP file, with pause=N seconds on the last frame between loops. -strict=[bool]: assert that the filename must have an .webp extension -pause=[int]: seconds to pause between loops of the animation -smallest=[bool]: create the smallest possible file but takes much longer to run -smaller=[bool]: create a smaller file, which takes a little longer to run",
+"doc":"Save a video to an animated WEBP file, with pause=N seconds on the last frame between loops. Args: strict: If true, assert that the filename must have an .webp extension pause: Integer seconds to pause between loops of the animation smallest: if true, create the smallest possible file but takes much longer to run smaller: If true, create a smaller file, which takes a little longer to run Returns: The filename of the webp file for this video  warning This may be slow for very long or large videos",
 "func":1
 },
 {
 "ref":"vipy.flow.Video.gif",
 "url":38,
-"doc":"Save a video to an animated GIF file, with pause=N seconds between loops. WARNING: this will be very large for big videos, consider using webp instead. -pause=[int]: seconds to pause between loops of the animation -smallest=[bool]: create the smallest possible file but takes much longer to run -smaller=[bool]: create a smaller file, which takes a little longer to run",
+"doc":"Save a video to an animated GIF file, with pause=N seconds between loops. Args: pause: Integer seconds to pause between loops of the animation smallest: If true, create the smallest possible file but takes much longer to run smaller: if trye, create a smaller file, which takes a little longer to run Returns: The filename of the animated GIF of this video  warning This will be very large for big videos, consider using  vipy.video.Video.webp instead.",
 "func":1
 },
 {
 "ref":"vipy.flow.Video.saveas",
 "url":38,
-"doc":"Save video to new output video file. This function does not draw boxes, it saves pixels to a new video file.  outfile: the absolute path to the output video file. This extension can be .mp4 (for video) or [\".webp\",\".gif\"] (for animated image)  If self.array() is loaded, then export the contents of self._array to the video file  If self.array() is not loaded, and there exists a valid video file, apply the filter chain directly to the input video  If outfile None or outfile self.filename(), then overwrite the current filename  If ignoreErrors=True, then exit gracefully. Useful for chaining download().saveas() on parallel dataset downloads  Returns a new video object with this video filename, and a clean video filter chain  if flush=True, then flush the buffer for this object right after saving the new video. This is useful for transcoding in parallel  framerate: input framerate of the frames in the buffer, or the output framerate of the transcoded video. If not provided, use framerate of source video  pause: an integer in seconds to pause between loops of animated images",
+"doc":"Save video to new output video file. This function does not draw boxes, it saves pixels to a new video file. Args: outfile: the absolute path to the output video file. This extension can be .mp4 (for video) or [\".webp\",\".gif\"] (for animated image) ignoreErrors: if True, then exit gracefully without throwing an exception. Useful for chaining download().saveas() on parallel dataset downloads flush: If true, then flush the buffer for this object right after saving the new video. This is useful for transcoding in parallel framerate: input framerate of the frames in the buffer, or the output framerate of the transcoded video. If not provided, use framerate of source video pause: an integer in seconds to pause between loops of animated images if the outfile is webp or animated gif Returns: a new video object with this video filename, and a clean video filter chain  note - If self.array() is loaded, then export the contents of self._array to the video file - If self.array() is not loaded, and there exists a valid video file, apply the filter chain directly to the input video - If outfile None or outfile self.filename(), then overwrite the current filename",
+"func":1
+},
+{
+"ref":"vipy.flow.Video.savetmp",
+"url":38,
+"doc":"Call  vipy.video.Video.saveas using a new temporary video file, and return the video object with this new filename",
+"func":1
+},
+{
+"ref":"vipy.flow.Video.savetemp",
+"url":38,
+"doc":"Alias for  vipy.video.Video.savetmp ",
 "func":1
 },
 {
@@ -4844,7 +4868,7 @@ INDEX=[
 {
 "ref":"vipy.flow.Video.play",
 "url":38,
-"doc":"Play the saved video filename in self.filename() using the system 'ffplay', if there is no filename, try to download it, if the filter chain is dirty, dump to temp file first",
+"doc":"Play the saved video filename in self.filename() If there is no filename, try to download it. If the filter chain is dirty or the pixels are loaded, dump to temp video file first then play it. This uses 'ffplay' on the PATH if available, otherwise uses a fallback player by showing a sequence of matplotlib frames. If the output of the ffmpeg filter chain has modified this video, then this will be saved to a temporary video file. To play the original video (indepenedent of the filter chain of this video), use  vipy.video.Video.ffplay . Args: verbose: If true, show more verbose output notebook: If true, play in a jupyter notebook Returns: The unmodified video object",
 "func":1
 },
 {
@@ -4862,7 +4886,7 @@ INDEX=[
 {
 "ref":"vipy.flow.Video.clone",
 "url":38,
-"doc":"Create deep copy of video object, flushing the original buffer if requested and returning the cloned object. Flushing is useful for distributed memory management to free the buffer from this object, and pass along a cloned object which can be used for encoding and will be garbage collected.  flushforward: copy the object, and set the cloned object array() to None. This flushes the video buffer for the clone, not the object  flushbackward: copy the object, and set the object array() to None. This flushes the video buffer for the object, not the clone.  flush: set the object array() to None and clone the object. This flushes the video buffer for both the clone and the object.  flushfilter: Set the ffmpeg filter chain to the default in the new object, useful for saving new videos  rekey: Generate new unique track ID and activity ID keys for this scene  shallow: shallow copy everything (copy by reference), except for ffmpeg object  sharedarray: deep copy of everything, except for pixel buffer which is shared",
+"doc":"Create deep copy of video object, flushing the original buffer if requested and returning the cloned object. Flushing is useful for distributed memory management to free the buffer from this object, and pass along a cloned object which can be used for encoding and will be garbage collected. Args: flushforward: copy the object, and set the cloned object  vipy.video.Video.array to None. This flushes the video buffer for the clone, not the object flushbackward: copy the object, and set the object array() to None. This flushes the video buffer for the object, not the clone. flush: set the object array() to None and clone the object. This flushes the video buffer for both the clone and the object. flushfilter: Set the ffmpeg filter chain to the default in the new object, useful for saving new videos flushfile: Remove the filename and the URL from the video object. Useful for creating new video objects from loaded pixels. rekey: Generate new unique track ID and activity ID keys for this scene shallow: shallow copy everything (copy by reference), except for ffmpeg object sharedarray: deep copy of everything, except for pixel buffer which is shared. Changing the pixel buffer on self is reflected in the clone. Returns: A deepcopy of the video object such that changes to self are not reflected in the copy  note Cloning videos is an expensive operation and can slow down real time code. Use sparingly.",
 "func":1
 },
 {
@@ -6557,15 +6581,15 @@ INDEX=[
 "func":1
 },
 {
-"ref":"vipy.video.Video.isdirty",
+"ref":"vipy.video.Video.commandline",
 "url":38,
-"doc":"Has the FFMPEG filter chain been modified from the default? If so, then ffplay() on the video file will be different from self.load().play()",
+"doc":"Return the equivalent ffmpeg command line string that will be used to transcode the video. This is useful for introspecting the complex filter chain that will be used to process the video. You can try to run this command line yourself for debugging purposes, by replacing 'dummyfile' with an appropriately named output file.",
 "func":1
 },
 {
 "ref":"vipy.video.Video.probeshape",
 "url":38,
-"doc":"Return the (height, width) of underlying video file as determined from ffprobe, this does not take into account any applied ffmpeg filters",
+"doc":"Return the (height, width) of underlying video file as determined from ffprobe  warning this does not take into account any applied ffmpeg filters. The shape will be the (height, width) of the underlying video file.",
 "func":1
 },
 {
@@ -6583,37 +6607,37 @@ INDEX=[
 {
 "ref":"vipy.video.Video.probe",
 "url":38,
-"doc":"Run ffprobe on the filename and return the result as a JSON file",
+"doc":"Run ffprobe on the filename and return the result as a dictionary",
 "func":1
 },
 {
 "ref":"vipy.video.Video.print",
 "url":38,
-"doc":"Print the representation of the video - useful for debugging in long fluent chains. Sleep is useful for adding in a delay for distributed processing",
+"doc":"Print the representation of the video This is useful for debugging in long fluent chains. Sleep is useful for adding in a delay for distributed processing. Args: prefix: prepend a string prefix to the video __repr__ when printing. Useful for logging. verbose: Print out the video __repr__. Set verbose=False to just sleep sleep: Integer number of seconds to sleep[ before returning Returns: The video object after sleeping",
 "func":1
 },
 {
 "ref":"vipy.video.Video.dict",
 "url":38,
-"doc":"Return a python dictionary containing the relevant serialized attributes suitable for JSON encoding",
+"doc":"Return a python dictionary containing the relevant serialized attributes suitable for JSON encoding.",
 "func":1
 },
 {
 "ref":"vipy.video.Video.json",
 "url":38,
-"doc":"",
+"doc":"Return a json representation of the video. Args: encode: If true, return a JSON encoded string using json.dumps Returns: A JSON encoded string if encode=True, else returns a dictionary object  note If the video is loaded, then the JSON will not include the pixels. Try using  vipy.video.Video.store to serialize videos, or call  vipy.video.Video.flush first.",
 "func":1
 },
 {
 "ref":"vipy.video.Video.take",
 "url":38,
-"doc":"Return n frames from the clip uniformly spaced as numpy array",
+"doc":"Return n frames from the clip uniformly spaced as numpy array Args: n: Integer number of uniformly spaced frames to return Returns: A numpy array of shape (n,W,H)  warning This assumes that the entire video is loaded into memory (e.g. call  vipy.video.Video.load ). Use with caution.",
 "func":1
 },
 {
 "ref":"vipy.video.Video.framerate",
 "url":38,
-"doc":"Change the input framerate for the video and update frame indexes for all annotations  NOTE: do not call framerate() after calling clip() as this introduces extra repeated final frames during load()",
+"doc":"Change the input framerate for the video and update frame indexes for all annotations Args: fps: Float frames per second to process the underlying video Returns: If fps is None, return the current framerate, otherwise set the framerate to fps  note Do not call framerate() after calling clip() as this may introduce extra repeated final frames during load()",
 "func":1
 },
 {
@@ -6625,13 +6649,13 @@ INDEX=[
 {
 "ref":"vipy.video.Video.nourl",
 "url":38,
-"doc":"",
+"doc":"Remove the  vipy.video.Video.url from the video",
 "func":1
 },
 {
 "ref":"vipy.video.Video.url",
 "url":38,
-"doc":"Image URL and URL download properties",
+"doc":"Video URL and URL download properties",
 "func":1
 },
 {
@@ -6943,31 +6967,31 @@ INDEX=[
 {
 "ref":"vipy.video.Video.webp",
 "url":38,
-"doc":"Save a video to an animated WEBP file, with pause=N seconds on the last frame between loops. -strict=[bool]: assert that the filename must have an .webp extension -pause=[int]: seconds to pause between loops of the animation -smallest=[bool]: create the smallest possible file but takes much longer to run -smaller=[bool]: create a smaller file, which takes a little longer to run",
+"doc":"Save a video to an animated WEBP file, with pause=N seconds on the last frame between loops. Args: strict: If true, assert that the filename must have an .webp extension pause: Integer seconds to pause between loops of the animation smallest: if true, create the smallest possible file but takes much longer to run smaller: If true, create a smaller file, which takes a little longer to run Returns: The filename of the webp file for this video  warning This may be slow for very long or large videos",
 "func":1
 },
 {
 "ref":"vipy.video.Video.gif",
 "url":38,
-"doc":"Save a video to an animated GIF file, with pause=N seconds between loops. WARNING: this will be very large for big videos, consider using webp instead. -pause=[int]: seconds to pause between loops of the animation -smallest=[bool]: create the smallest possible file but takes much longer to run -smaller=[bool]: create a smaller file, which takes a little longer to run",
+"doc":"Save a video to an animated GIF file, with pause=N seconds between loops. Args: pause: Integer seconds to pause between loops of the animation smallest: If true, create the smallest possible file but takes much longer to run smaller: if trye, create a smaller file, which takes a little longer to run Returns: The filename of the animated GIF of this video  warning This will be very large for big videos, consider using  vipy.video.Video.webp instead.",
 "func":1
 },
 {
 "ref":"vipy.video.Video.saveas",
 "url":38,
-"doc":"Save video to new output video file. This function does not draw boxes, it saves pixels to a new video file.  outfile: the absolute path to the output video file. This extension can be .mp4 (for video) or [\".webp\",\".gif\"] (for animated image)  If self.array() is loaded, then export the contents of self._array to the video file  If self.array() is not loaded, and there exists a valid video file, apply the filter chain directly to the input video  If outfile None or outfile self.filename(), then overwrite the current filename  If ignoreErrors=True, then exit gracefully. Useful for chaining download().saveas() on parallel dataset downloads  Returns a new video object with this video filename, and a clean video filter chain  if flush=True, then flush the buffer for this object right after saving the new video. This is useful for transcoding in parallel  framerate: input framerate of the frames in the buffer, or the output framerate of the transcoded video. If not provided, use framerate of source video  pause: an integer in seconds to pause between loops of animated images",
+"doc":"Save video to new output video file. This function does not draw boxes, it saves pixels to a new video file. Args: outfile: the absolute path to the output video file. This extension can be .mp4 (for video) or [\".webp\",\".gif\"] (for animated image) ignoreErrors: if True, then exit gracefully without throwing an exception. Useful for chaining download().saveas() on parallel dataset downloads flush: If true, then flush the buffer for this object right after saving the new video. This is useful for transcoding in parallel framerate: input framerate of the frames in the buffer, or the output framerate of the transcoded video. If not provided, use framerate of source video pause: an integer in seconds to pause between loops of animated images if the outfile is webp or animated gif Returns: a new video object with this video filename, and a clean video filter chain  note - If self.array() is loaded, then export the contents of self._array to the video file - If self.array() is not loaded, and there exists a valid video file, apply the filter chain directly to the input video - If outfile None or outfile self.filename(), then overwrite the current filename",
 "func":1
 },
 {
 "ref":"vipy.video.Video.savetmp",
 "url":38,
-"doc":"",
+"doc":"Call  vipy.video.Video.saveas using a new temporary video file, and return the video object with this new filename",
 "func":1
 },
 {
 "ref":"vipy.video.Video.savetemp",
 "url":38,
-"doc":"",
+"doc":"Alias for  vipy.video.Video.savetmp ",
 "func":1
 },
 {
@@ -6979,7 +7003,13 @@ INDEX=[
 {
 "ref":"vipy.video.Video.play",
 "url":38,
-"doc":"Play the saved video filename in self.filename() using the system 'ffplay', if there is no filename, try to download it, if the filter chain is dirty, dump to temp file first",
+"doc":"Play the saved video filename in self.filename() If there is no filename, try to download it. If the filter chain is dirty or the pixels are loaded, dump to temp video file first then play it. This uses 'ffplay' on the PATH if available, otherwise uses a fallback player by showing a sequence of matplotlib frames. If the output of the ffmpeg filter chain has modified this video, then this will be saved to a temporary video file. To play the original video (indepenedent of the filter chain of this video), use  vipy.video.Video.ffplay . Args: verbose: If true, show more verbose output notebook: If true, play in a jupyter notebook Returns: The unmodified video object",
+"func":1
+},
+{
+"ref":"vipy.video.Video.show",
+"url":38,
+"doc":"Alias for play",
 "func":1
 },
 {
@@ -6997,7 +7027,7 @@ INDEX=[
 {
 "ref":"vipy.video.Video.clone",
 "url":38,
-"doc":"Create deep copy of video object, flushing the original buffer if requested and returning the cloned object. Flushing is useful for distributed memory management to free the buffer from this object, and pass along a cloned object which can be used for encoding and will be garbage collected.  flushforward: copy the object, and set the cloned object array() to None. This flushes the video buffer for the clone, not the object  flushbackward: copy the object, and set the object array() to None. This flushes the video buffer for the object, not the clone.  flush: set the object array() to None and clone the object. This flushes the video buffer for both the clone and the object.  flushfilter: Set the ffmpeg filter chain to the default in the new object, useful for saving new videos  rekey: Generate new unique track ID and activity ID keys for this scene  shallow: shallow copy everything (copy by reference), except for ffmpeg object  sharedarray: deep copy of everything, except for pixel buffer which is shared",
+"doc":"Create deep copy of video object, flushing the original buffer if requested and returning the cloned object. Flushing is useful for distributed memory management to free the buffer from this object, and pass along a cloned object which can be used for encoding and will be garbage collected. Args: flushforward: copy the object, and set the cloned object  vipy.video.Video.array to None. This flushes the video buffer for the clone, not the object flushbackward: copy the object, and set the object array() to None. This flushes the video buffer for the object, not the clone. flush: set the object array() to None and clone the object. This flushes the video buffer for both the clone and the object. flushfilter: Set the ffmpeg filter chain to the default in the new object, useful for saving new videos flushfile: Remove the filename and the URL from the video object. Useful for creating new video objects from loaded pixels. rekey: Generate new unique track ID and activity ID keys for this scene shallow: shallow copy everything (copy by reference), except for ffmpeg object sharedarray: deep copy of everything, except for pixel buffer which is shared. Changing the pixel buffer on self is reflected in the clone. Returns: A deepcopy of the video object such that changes to self are not reflected in the copy  note Cloning videos is an expensive operation and can slow down real time code. Use sparingly.",
 "func":1
 },
 {
@@ -7086,7 +7116,7 @@ INDEX=[
 {
 "ref":"vipy.video.VideoCategory.json",
 "url":38,
-"doc":"",
+"doc":"Return a json representation of the video. Args: encode: If true, return a JSON encoded string using json.dumps Returns: A JSON encoded string if encode=True, else returns a dictionary object  note If the video is loaded, then the JSON will not include the pixels. Try using  vipy.video.Video.store to serialize videos, or call  vipy.video.Video.flush first.",
 "func":1
 },
 {
@@ -7156,15 +7186,15 @@ INDEX=[
 "func":1
 },
 {
-"ref":"vipy.video.VideoCategory.isdirty",
+"ref":"vipy.video.VideoCategory.commandline",
 "url":38,
-"doc":"Has the FFMPEG filter chain been modified from the default? If so, then ffplay() on the video file will be different from self.load().play()",
+"doc":"Return the equivalent ffmpeg command line string that will be used to transcode the video. This is useful for introspecting the complex filter chain that will be used to process the video. You can try to run this command line yourself for debugging purposes, by replacing 'dummyfile' with an appropriately named output file.",
 "func":1
 },
 {
 "ref":"vipy.video.VideoCategory.probeshape",
 "url":38,
-"doc":"Return the (height, width) of underlying video file as determined from ffprobe, this does not take into account any applied ffmpeg filters",
+"doc":"Return the (height, width) of underlying video file as determined from ffprobe  warning this does not take into account any applied ffmpeg filters. The shape will be the (height, width) of the underlying video file.",
 "func":1
 },
 {
@@ -7182,31 +7212,31 @@ INDEX=[
 {
 "ref":"vipy.video.VideoCategory.probe",
 "url":38,
-"doc":"Run ffprobe on the filename and return the result as a JSON file",
+"doc":"Run ffprobe on the filename and return the result as a dictionary",
 "func":1
 },
 {
 "ref":"vipy.video.VideoCategory.print",
 "url":38,
-"doc":"Print the representation of the video - useful for debugging in long fluent chains. Sleep is useful for adding in a delay for distributed processing",
+"doc":"Print the representation of the video This is useful for debugging in long fluent chains. Sleep is useful for adding in a delay for distributed processing. Args: prefix: prepend a string prefix to the video __repr__ when printing. Useful for logging. verbose: Print out the video __repr__. Set verbose=False to just sleep sleep: Integer number of seconds to sleep[ before returning Returns: The video object after sleeping",
 "func":1
 },
 {
 "ref":"vipy.video.VideoCategory.dict",
 "url":38,
-"doc":"Return a python dictionary containing the relevant serialized attributes suitable for JSON encoding",
+"doc":"Return a python dictionary containing the relevant serialized attributes suitable for JSON encoding.",
 "func":1
 },
 {
 "ref":"vipy.video.VideoCategory.take",
 "url":38,
-"doc":"Return n frames from the clip uniformly spaced as numpy array",
+"doc":"Return n frames from the clip uniformly spaced as numpy array Args: n: Integer number of uniformly spaced frames to return Returns: A numpy array of shape (n,W,H)  warning This assumes that the entire video is loaded into memory (e.g. call  vipy.video.Video.load ). Use with caution.",
 "func":1
 },
 {
 "ref":"vipy.video.VideoCategory.framerate",
 "url":38,
-"doc":"Change the input framerate for the video and update frame indexes for all annotations  NOTE: do not call framerate() after calling clip() as this introduces extra repeated final frames during load()",
+"doc":"Change the input framerate for the video and update frame indexes for all annotations Args: fps: Float frames per second to process the underlying video Returns: If fps is None, return the current framerate, otherwise set the framerate to fps  note Do not call framerate() after calling clip() as this may introduce extra repeated final frames during load()",
 "func":1
 },
 {
@@ -7216,9 +7246,15 @@ INDEX=[
 "func":1
 },
 {
+"ref":"vipy.video.VideoCategory.nourl",
+"url":38,
+"doc":"Remove the  vipy.video.Video.url from the video",
+"func":1
+},
+{
 "ref":"vipy.video.VideoCategory.url",
 "url":38,
-"doc":"Image URL and URL download properties",
+"doc":"Video URL and URL download properties",
 "func":1
 },
 {
@@ -7470,19 +7506,31 @@ INDEX=[
 {
 "ref":"vipy.video.VideoCategory.webp",
 "url":38,
-"doc":"Save a video to an animated WEBP file, with pause=N seconds on the last frame between loops. -strict=[bool]: assert that the filename must have an .webp extension -pause=[int]: seconds to pause between loops of the animation -smallest=[bool]: create the smallest possible file but takes much longer to run -smaller=[bool]: create a smaller file, which takes a little longer to run",
+"doc":"Save a video to an animated WEBP file, with pause=N seconds on the last frame between loops. Args: strict: If true, assert that the filename must have an .webp extension pause: Integer seconds to pause between loops of the animation smallest: if true, create the smallest possible file but takes much longer to run smaller: If true, create a smaller file, which takes a little longer to run Returns: The filename of the webp file for this video  warning This may be slow for very long or large videos",
 "func":1
 },
 {
 "ref":"vipy.video.VideoCategory.gif",
 "url":38,
-"doc":"Save a video to an animated GIF file, with pause=N seconds between loops. WARNING: this will be very large for big videos, consider using webp instead. -pause=[int]: seconds to pause between loops of the animation -smallest=[bool]: create the smallest possible file but takes much longer to run -smaller=[bool]: create a smaller file, which takes a little longer to run",
+"doc":"Save a video to an animated GIF file, with pause=N seconds between loops. Args: pause: Integer seconds to pause between loops of the animation smallest: If true, create the smallest possible file but takes much longer to run smaller: if trye, create a smaller file, which takes a little longer to run Returns: The filename of the animated GIF of this video  warning This will be very large for big videos, consider using  vipy.video.Video.webp instead.",
 "func":1
 },
 {
 "ref":"vipy.video.VideoCategory.saveas",
 "url":38,
-"doc":"Save video to new output video file. This function does not draw boxes, it saves pixels to a new video file.  outfile: the absolute path to the output video file. This extension can be .mp4 (for video) or [\".webp\",\".gif\"] (for animated image)  If self.array() is loaded, then export the contents of self._array to the video file  If self.array() is not loaded, and there exists a valid video file, apply the filter chain directly to the input video  If outfile None or outfile self.filename(), then overwrite the current filename  If ignoreErrors=True, then exit gracefully. Useful for chaining download().saveas() on parallel dataset downloads  Returns a new video object with this video filename, and a clean video filter chain  if flush=True, then flush the buffer for this object right after saving the new video. This is useful for transcoding in parallel  framerate: input framerate of the frames in the buffer, or the output framerate of the transcoded video. If not provided, use framerate of source video  pause: an integer in seconds to pause between loops of animated images",
+"doc":"Save video to new output video file. This function does not draw boxes, it saves pixels to a new video file. Args: outfile: the absolute path to the output video file. This extension can be .mp4 (for video) or [\".webp\",\".gif\"] (for animated image) ignoreErrors: if True, then exit gracefully without throwing an exception. Useful for chaining download().saveas() on parallel dataset downloads flush: If true, then flush the buffer for this object right after saving the new video. This is useful for transcoding in parallel framerate: input framerate of the frames in the buffer, or the output framerate of the transcoded video. If not provided, use framerate of source video pause: an integer in seconds to pause between loops of animated images if the outfile is webp or animated gif Returns: a new video object with this video filename, and a clean video filter chain  note - If self.array() is loaded, then export the contents of self._array to the video file - If self.array() is not loaded, and there exists a valid video file, apply the filter chain directly to the input video - If outfile None or outfile self.filename(), then overwrite the current filename",
+"func":1
+},
+{
+"ref":"vipy.video.VideoCategory.savetmp",
+"url":38,
+"doc":"Call  vipy.video.Video.saveas using a new temporary video file, and return the video object with this new filename",
+"func":1
+},
+{
+"ref":"vipy.video.VideoCategory.savetemp",
+"url":38,
+"doc":"Alias for  vipy.video.Video.savetmp ",
 "func":1
 },
 {
@@ -7494,7 +7542,13 @@ INDEX=[
 {
 "ref":"vipy.video.VideoCategory.play",
 "url":38,
-"doc":"Play the saved video filename in self.filename() using the system 'ffplay', if there is no filename, try to download it, if the filter chain is dirty, dump to temp file first",
+"doc":"Play the saved video filename in self.filename() If there is no filename, try to download it. If the filter chain is dirty or the pixels are loaded, dump to temp video file first then play it. This uses 'ffplay' on the PATH if available, otherwise uses a fallback player by showing a sequence of matplotlib frames. If the output of the ffmpeg filter chain has modified this video, then this will be saved to a temporary video file. To play the original video (indepenedent of the filter chain of this video), use  vipy.video.Video.ffplay . Args: verbose: If true, show more verbose output notebook: If true, play in a jupyter notebook Returns: The unmodified video object",
+"func":1
+},
+{
+"ref":"vipy.video.VideoCategory.show",
+"url":38,
+"doc":"Alias for play",
 "func":1
 },
 {
@@ -7512,7 +7566,7 @@ INDEX=[
 {
 "ref":"vipy.video.VideoCategory.clone",
 "url":38,
-"doc":"Create deep copy of video object, flushing the original buffer if requested and returning the cloned object. Flushing is useful for distributed memory management to free the buffer from this object, and pass along a cloned object which can be used for encoding and will be garbage collected.  flushforward: copy the object, and set the cloned object array() to None. This flushes the video buffer for the clone, not the object  flushbackward: copy the object, and set the object array() to None. This flushes the video buffer for the object, not the clone.  flush: set the object array() to None and clone the object. This flushes the video buffer for both the clone and the object.  flushfilter: Set the ffmpeg filter chain to the default in the new object, useful for saving new videos  rekey: Generate new unique track ID and activity ID keys for this scene  shallow: shallow copy everything (copy by reference), except for ffmpeg object  sharedarray: deep copy of everything, except for pixel buffer which is shared",
+"doc":"Create deep copy of video object, flushing the original buffer if requested and returning the cloned object. Flushing is useful for distributed memory management to free the buffer from this object, and pass along a cloned object which can be used for encoding and will be garbage collected. Args: flushforward: copy the object, and set the cloned object  vipy.video.Video.array to None. This flushes the video buffer for the clone, not the object flushbackward: copy the object, and set the object array() to None. This flushes the video buffer for the object, not the clone. flush: set the object array() to None and clone the object. This flushes the video buffer for both the clone and the object. flushfilter: Set the ffmpeg filter chain to the default in the new object, useful for saving new videos flushfile: Remove the filename and the URL from the video object. Useful for creating new video objects from loaded pixels. rekey: Generate new unique track ID and activity ID keys for this scene shallow: shallow copy everything (copy by reference), except for ffmpeg object sharedarray: deep copy of everything, except for pixel buffer which is shared. Changing the pixel buffer on self is reflected in the clone. Returns: A deepcopy of the video object such that changes to self are not reflected in the copy  note Cloning videos is an expensive operation and can slow down real time code. Use sparingly.",
 "func":1
 },
 {
@@ -8157,15 +8211,15 @@ INDEX=[
 "func":1
 },
 {
-"ref":"vipy.video.Scene.isdirty",
+"ref":"vipy.video.Scene.commandline",
 "url":38,
-"doc":"Has the FFMPEG filter chain been modified from the default? If so, then ffplay() on the video file will be different from self.load().play()",
+"doc":"Return the equivalent ffmpeg command line string that will be used to transcode the video. This is useful for introspecting the complex filter chain that will be used to process the video. You can try to run this command line yourself for debugging purposes, by replacing 'dummyfile' with an appropriately named output file.",
 "func":1
 },
 {
 "ref":"vipy.video.Scene.probeshape",
 "url":38,
-"doc":"Return the (height, width) of underlying video file as determined from ffprobe, this does not take into account any applied ffmpeg filters",
+"doc":"Return the (height, width) of underlying video file as determined from ffprobe  warning this does not take into account any applied ffmpeg filters. The shape will be the (height, width) of the underlying video file.",
 "func":1
 },
 {
@@ -8183,25 +8237,25 @@ INDEX=[
 {
 "ref":"vipy.video.Scene.probe",
 "url":38,
-"doc":"Run ffprobe on the filename and return the result as a JSON file",
+"doc":"Run ffprobe on the filename and return the result as a dictionary",
 "func":1
 },
 {
 "ref":"vipy.video.Scene.print",
 "url":38,
-"doc":"Print the representation of the video - useful for debugging in long fluent chains. Sleep is useful for adding in a delay for distributed processing",
+"doc":"Print the representation of the video This is useful for debugging in long fluent chains. Sleep is useful for adding in a delay for distributed processing. Args: prefix: prepend a string prefix to the video __repr__ when printing. Useful for logging. verbose: Print out the video __repr__. Set verbose=False to just sleep sleep: Integer number of seconds to sleep[ before returning Returns: The video object after sleeping",
 "func":1
 },
 {
 "ref":"vipy.video.Scene.dict",
 "url":38,
-"doc":"Return a python dictionary containing the relevant serialized attributes suitable for JSON encoding",
+"doc":"Return a python dictionary containing the relevant serialized attributes suitable for JSON encoding.",
 "func":1
 },
 {
 "ref":"vipy.video.Scene.take",
 "url":38,
-"doc":"Return n frames from the clip uniformly spaced as numpy array",
+"doc":"Return n frames from the clip uniformly spaced as numpy array Args: n: Integer number of uniformly spaced frames to return Returns: A numpy array of shape (n,W,H)  warning This assumes that the entire video is loaded into memory (e.g. call  vipy.video.Video.load ). Use with caution.",
 "func":1
 },
 {
@@ -8211,9 +8265,15 @@ INDEX=[
 "func":1
 },
 {
+"ref":"vipy.video.Scene.nourl",
+"url":38,
+"doc":"Remove the  vipy.video.Video.url from the video",
+"func":1
+},
+{
 "ref":"vipy.video.Scene.url",
 "url":38,
-"doc":"Image URL and URL download properties",
+"doc":"Video URL and URL download properties",
 "func":1
 },
 {
@@ -8381,19 +8441,31 @@ INDEX=[
 {
 "ref":"vipy.video.Scene.webp",
 "url":38,
-"doc":"Save a video to an animated WEBP file, with pause=N seconds on the last frame between loops. -strict=[bool]: assert that the filename must have an .webp extension -pause=[int]: seconds to pause between loops of the animation -smallest=[bool]: create the smallest possible file but takes much longer to run -smaller=[bool]: create a smaller file, which takes a little longer to run",
+"doc":"Save a video to an animated WEBP file, with pause=N seconds on the last frame between loops. Args: strict: If true, assert that the filename must have an .webp extension pause: Integer seconds to pause between loops of the animation smallest: if true, create the smallest possible file but takes much longer to run smaller: If true, create a smaller file, which takes a little longer to run Returns: The filename of the webp file for this video  warning This may be slow for very long or large videos",
 "func":1
 },
 {
 "ref":"vipy.video.Scene.gif",
 "url":38,
-"doc":"Save a video to an animated GIF file, with pause=N seconds between loops. WARNING: this will be very large for big videos, consider using webp instead. -pause=[int]: seconds to pause between loops of the animation -smallest=[bool]: create the smallest possible file but takes much longer to run -smaller=[bool]: create a smaller file, which takes a little longer to run",
+"doc":"Save a video to an animated GIF file, with pause=N seconds between loops. Args: pause: Integer seconds to pause between loops of the animation smallest: If true, create the smallest possible file but takes much longer to run smaller: if trye, create a smaller file, which takes a little longer to run Returns: The filename of the animated GIF of this video  warning This will be very large for big videos, consider using  vipy.video.Video.webp instead.",
 "func":1
 },
 {
 "ref":"vipy.video.Scene.saveas",
 "url":38,
-"doc":"Save video to new output video file. This function does not draw boxes, it saves pixels to a new video file.  outfile: the absolute path to the output video file. This extension can be .mp4 (for video) or [\".webp\",\".gif\"] (for animated image)  If self.array() is loaded, then export the contents of self._array to the video file  If self.array() is not loaded, and there exists a valid video file, apply the filter chain directly to the input video  If outfile None or outfile self.filename(), then overwrite the current filename  If ignoreErrors=True, then exit gracefully. Useful for chaining download().saveas() on parallel dataset downloads  Returns a new video object with this video filename, and a clean video filter chain  if flush=True, then flush the buffer for this object right after saving the new video. This is useful for transcoding in parallel  framerate: input framerate of the frames in the buffer, or the output framerate of the transcoded video. If not provided, use framerate of source video  pause: an integer in seconds to pause between loops of animated images",
+"doc":"Save video to new output video file. This function does not draw boxes, it saves pixels to a new video file. Args: outfile: the absolute path to the output video file. This extension can be .mp4 (for video) or [\".webp\",\".gif\"] (for animated image) ignoreErrors: if True, then exit gracefully without throwing an exception. Useful for chaining download().saveas() on parallel dataset downloads flush: If true, then flush the buffer for this object right after saving the new video. This is useful for transcoding in parallel framerate: input framerate of the frames in the buffer, or the output framerate of the transcoded video. If not provided, use framerate of source video pause: an integer in seconds to pause between loops of animated images if the outfile is webp or animated gif Returns: a new video object with this video filename, and a clean video filter chain  note - If self.array() is loaded, then export the contents of self._array to the video file - If self.array() is not loaded, and there exists a valid video file, apply the filter chain directly to the input video - If outfile None or outfile self.filename(), then overwrite the current filename",
+"func":1
+},
+{
+"ref":"vipy.video.Scene.savetmp",
+"url":38,
+"doc":"Call  vipy.video.Video.saveas using a new temporary video file, and return the video object with this new filename",
+"func":1
+},
+{
+"ref":"vipy.video.Scene.savetemp",
+"url":38,
+"doc":"Alias for  vipy.video.Video.savetmp ",
 "func":1
 },
 {
@@ -8405,7 +8477,7 @@ INDEX=[
 {
 "ref":"vipy.video.Scene.play",
 "url":38,
-"doc":"Play the saved video filename in self.filename() using the system 'ffplay', if there is no filename, try to download it, if the filter chain is dirty, dump to temp file first",
+"doc":"Play the saved video filename in self.filename() If there is no filename, try to download it. If the filter chain is dirty or the pixels are loaded, dump to temp video file first then play it. This uses 'ffplay' on the PATH if available, otherwise uses a fallback player by showing a sequence of matplotlib frames. If the output of the ffmpeg filter chain has modified this video, then this will be saved to a temporary video file. To play the original video (indepenedent of the filter chain of this video), use  vipy.video.Video.ffplay . Args: verbose: If true, show more verbose output notebook: If true, play in a jupyter notebook Returns: The unmodified video object",
 "func":1
 },
 {
@@ -8417,7 +8489,7 @@ INDEX=[
 {
 "ref":"vipy.video.Scene.clone",
 "url":38,
-"doc":"Create deep copy of video object, flushing the original buffer if requested and returning the cloned object. Flushing is useful for distributed memory management to free the buffer from this object, and pass along a cloned object which can be used for encoding and will be garbage collected.  flushforward: copy the object, and set the cloned object array() to None. This flushes the video buffer for the clone, not the object  flushbackward: copy the object, and set the object array() to None. This flushes the video buffer for the object, not the clone.  flush: set the object array() to None and clone the object. This flushes the video buffer for both the clone and the object.  flushfilter: Set the ffmpeg filter chain to the default in the new object, useful for saving new videos  rekey: Generate new unique track ID and activity ID keys for this scene  shallow: shallow copy everything (copy by reference), except for ffmpeg object  sharedarray: deep copy of everything, except for pixel buffer which is shared",
+"doc":"Create deep copy of video object, flushing the original buffer if requested and returning the cloned object. Flushing is useful for distributed memory management to free the buffer from this object, and pass along a cloned object which can be used for encoding and will be garbage collected. Args: flushforward: copy the object, and set the cloned object  vipy.video.Video.array to None. This flushes the video buffer for the clone, not the object flushbackward: copy the object, and set the object array() to None. This flushes the video buffer for the object, not the clone. flush: set the object array() to None and clone the object. This flushes the video buffer for both the clone and the object. flushfilter: Set the ffmpeg filter chain to the default in the new object, useful for saving new videos flushfile: Remove the filename and the URL from the video object. Useful for creating new video objects from loaded pixels. rekey: Generate new unique track ID and activity ID keys for this scene shallow: shallow copy everything (copy by reference), except for ffmpeg object sharedarray: deep copy of everything, except for pixel buffer which is shared. Changing the pixel buffer on self is reflected in the clone. Returns: A deepcopy of the video object such that changes to self are not reflected in the copy  note Cloning videos is an expensive operation and can slow down real time code. Use sparingly.",
 "func":1
 },
 {
