@@ -1,0 +1,425 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1" />
+<meta name="generator" content="pdoc 0.9.3.dev21+g251d61a.d20210524" />
+<title>vipy API documentation</title>
+<meta name="description" content="VIPY is a python package for representation, transformation and visualization of annotated videos and images.
+Annotations are the ground truth …" />
+<link rel="preload stylesheet" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/10up-sanitize.css/11.0.1/sanitize.min.css" integrity="sha256-PK9q560IAAa6WVRRh76LtCaI8pjTJ2z11v0miyNNjrs=" crossorigin>
+<link rel="preload stylesheet" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/10up-sanitize.css/11.0.1/typography.min.css" integrity="sha256-7l/o7C8jubJiy74VsKTidCy1yBkRtiUGbVkYBylBqUg=" crossorigin>
+<link rel="stylesheet preload" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/10.1.1/styles/github.min.css" crossorigin>
+<style>:root{--highlight-color:#fe9}.flex{display:flex !important}body{line-height:1.5em}#content{padding:20px}#sidebar{padding:30px;overflow:hidden}#sidebar > *:last-child{margin-bottom:2cm}#lunr-search{width:100%;font-size:1em;padding:6px 9px 5px 9px;border:1px solid silver}.http-server-breadcrumbs{font-size:130%;margin:0 0 15px 0}#footer{font-size:.75em;padding:5px 30px;border-top:1px solid #ddd;text-align:right}#footer p{margin:0 0 0 1em;display:inline-block}#footer p:last-child{margin-right:30px}h1,h2,h3,h4,h5{font-weight:300}h1{font-size:2.5em;line-height:1.1em}h2{font-size:1.75em;margin:1em 0 .50em 0}h3{font-size:1.4em;margin:25px 0 10px 0}h4{margin:0;font-size:105%}h1:target,h2:target,h3:target,h4:target,h5:target,h6:target{background:var(--highlight-color);padding:.2em 0}a{color:#058;text-decoration:none;transition:color .3s ease-in-out}a:hover{color:#e82}.title code{font-weight:bold}h2[id^="header-"]{margin-top:2em}.ident{color:#900}pre code{background:#f8f8f8;font-size:.8em;line-height:1.4em}code{background:#f2f2f1;padding:1px 4px;overflow-wrap:break-word}h1 code{background:transparent}pre{background:#f8f8f8;border:0;border-top:1px solid #ccc;border-bottom:1px solid #ccc;margin:1em 0;padding:1ex}#http-server-module-list{display:flex;flex-flow:column}#http-server-module-list div{display:flex}#http-server-module-list dt{min-width:10%}#http-server-module-list p{margin-top:0}.toc ul,#index{list-style-type:none;margin:0;padding:0}#index code{background:transparent}#index h3{border-bottom:1px solid #ddd}#index ul{padding:0}#index h4{margin-top:.6em;font-weight:bold}@media (min-width:200ex){#index .two-column{column-count:2}}@media (min-width:300ex){#index .two-column{column-count:3}}dl{margin-bottom:2em}dl dl:last-child{margin-bottom:4em}dd{margin:0 0 1em 3em}#header-classes + dl > dd{margin-bottom:3em}dd dd{margin-left:2em}dd p{margin:10px 0}.name{background:#eee;font-weight:bold;font-size:.85em;padding:5px 10px;display:inline-block;min-width:40%}.name:hover{background:#e0e0e0}dt:target .name{background:var(--highlight-color)}.name > span:first-child{white-space:nowrap}.name.class > span:nth-child(2){margin-left:.4em}.inherited{color:#999;border-left:5px solid #eee;padding-left:1em}.inheritance em{font-style:normal;font-weight:bold}.desc h2{font-weight:400;font-size:1.25em}.desc h3{font-size:1em}.desc dt code{background:inherit}.source summary,.git-link-div{color:#666;text-align:right;font-weight:400;font-size:.8em;text-transform:uppercase}.source summary > *{white-space:nowrap;cursor:pointer}.git-link{color:inherit;margin-left:1em}.source pre{max-height:500px;overflow:auto;margin:0}.source pre code{font-size:12px;overflow:visible}.hlist{list-style:none}.hlist li{display:inline}.hlist li:after{content:',\2002'}.hlist li:last-child:after{content:none}.hlist .hlist{display:inline;padding-left:1em}img{max-width:100%}td{padding:0 .5em}.admonition{padding:.1em .5em;margin-bottom:1em}.admonition-title{font-weight:bold}.admonition.note,.admonition.info,.admonition.important{background:#aef}.admonition.todo,.admonition.versionadded,.admonition.tip,.admonition.hint{background:#dfd}.admonition.warning,.admonition.versionchanged,.admonition.deprecated{background:#fd4}.admonition.error,.admonition.danger,.admonition.caution{background:lightpink}</style>
+<style media="screen and (min-width: 700px)">@media screen and (min-width:700px){#sidebar{width:30%;height:100vh;overflow:auto;position:sticky;top:0}#content{width:70%;max-width:100ch;padding:3em 4em;border-left:1px solid #ddd}pre code{font-size:1em}.item .name{font-size:1em}main{display:flex;flex-direction:row-reverse;justify-content:flex-end}.toc ul ul,#index ul{padding-left:1.5em}.toc > ul > li{margin-top:.5em}}</style>
+<style media="print">@media print{#sidebar h1{page-break-before:always}.source{display:none}}@media print{*{background:transparent !important;color:#000 !important;box-shadow:none !important;text-shadow:none !important}a[href]:after{content:" (" attr(href) ")";font-size:90%}a[href][title]:after{content:none}abbr[title]:after{content:" (" attr(title) ")"}.ir a:after,a[href^="javascript:"]:after,a[href^="#"]:after{content:""}pre,blockquote{border:1px solid #999;page-break-inside:avoid}thead{display:table-header-group}tr,img{page-break-inside:avoid}img{max-width:100% !important}@page{margin:0.5cm}p,h2,h3{orphans:3;widows:3}h1,h2,h3,h4,h5,h6{page-break-after:avoid}}</style>
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/10.1.1/highlight.min.js" integrity="sha256-Uv3H6lx7dJmRfRvH8TH6kJD1TSK1aFcwgx+mdg3epi8=" crossorigin></script>
+<script>window.addEventListener('DOMContentLoaded', () => hljs.initHighlighting())</script>
+</head>
+<body>
+<main>
+<article id="content">
+<header>
+<h1 class="title">Package <code>vipy</code></h1>
+</header>
+<section id="section-intro">
+<p>VIPY is a python package for representation, transformation and visualization of annotated videos and images.
+Annotations are the ground truth provided by labelers (e.g. object bounding boxes, face identities, temporal activity clips), suitable for training computer vision systems.
+VIPY provides tools to easily edit videos and images so that the annotations are transformed along with the pixels.
+This enables a clean interface for transforming complex datasets for input to your computer vision training and testing pipeline.</p>
+<p>VIPY provides:</p>
+<ul>
+<li>Representation of videos with labeled activities that can be resized, clipped, rotated, scaled and cropped</li>
+<li>Representation of images with object bounding boxes that can be manipulated as easily as editing an image</li>
+<li>Clean visualization of annotated images and videos</li>
+<li>Lazy loading of images and videos suitable for distributed procesing (e.g. dask, spark)</li>
+<li>Straightforward integration into machine learning toolchains (e.g. torch, numpy)</li>
+<li>Fluent interface for chaining operations on videos and images</li>
+<li>Dataset download, unpack and import (e.g. Charades, AVA, ActivityNet, Kinetics, Moments in Time)</li>
+<li>Video and image web search tools with URL downloading and caching</li>
+<li>Minimum dependencies for easy installation (e.g. AWS Lambda)</li>
+</ul>
+<h1 id="design-goals">Design Goals</h1>
+<p>Vipy was created with three design goals.
+</p>
+<ul>
+<li><strong>Simplicity</strong>.
+Annotated Videos and images should be as easy to manipulate as the pixels.
+We provide a simple fluent API that enables the transformation of media so that pixels are transformed along with the annotations.
+We provide a comprehensive unit test suite to validate this pipeline with continuous integration.</li>
+<li><strong>Portability</strong>.
+Vipy was designed with the goal of allowing it to be easily retargeted to new platforms.
+For example, deployment on a serverless architecture such as AWS lambda has restrictions on the allowable code that can be executed in layers.
+We designed Vipy with minimal dependencies on standard and mature machine learning tool chains (numpy, matplotlib, ffmpeg, pillow) to ensure that it can be ported to new computational environments. </li>
+<li><strong>Efficiency</strong>.
+Vipy is written in pure python with the goal of performing in place operations and avoiding copies of media whenever possible.
+This enables fast video processing by operating on videos as chains of transformations.
+The documentation describes when an object is changed in place vs. copied.
+Furthermore, loading of media is delayed until explicitly requested by the user (or the pixels are needed) to enable lazy loading for distributed processing.
+</li>
+</ul>
+<h1 id="getting-started">Getting started</h1>
+<p>See the <a href="https://github.com/visym/vipy/tree/master/demo">demos</a> as a starting point.</p>
+<h2 id="import">Import</h2>
+<h2 id="customization">Customization</h2>
+<p>You can set the following environment variables to customize the output of vipy</p>
+<ul>
+<li><strong>VIPY_CACHE</strong>='/path/to/directory.
+This directory will contain all of the cached downloaded filenames when downloading URLs.
+For example, the following will download all media to '~/.vipy'.</li>
+</ul>
+<pre><code class="language-python">os.environ['VIPY_CACHE'] = vipy.util.remkdir('~/.vipy')
+vipy.image.Image(url='https://upload.wikimedia.org/wikipedia/commons/thumb/2/23/Bubo_virginianus_06.jpg/1920px-Bubo_virginianus_06.jpg').download()
+</code></pre>
+<p>This will output an image object:</p>
+<pre><code class="language-python">&lt;vipy.image: filename=&quot;/Users/jebyrne/.vipy/1920px-Bubo_virginianus_06.jpg&quot;, filename=&quot;/Users/jebyrne/.vipy/1920px-Bubo_virginianus_06.jpg&quot;, url=&quot;https://upload.wikimedia.org/wikipedia/commons/thumb/2/23/Bubo_virginianus_06.jpg/1920px-Bubo_virginianus_06.jpg&quot;&gt;
+</code></pre>
+<p>This provides control over where large datasets are cached on your local file system.
+By default, this will be cached to the system temp directory.</p>
+<ul>
+<li><strong>VIPY_AWS_ACCESS_KEY_ID</strong>='MYKEY'.
+This is the <a href="https://docs.aws.amazon.com/general/latest/gr/aws-sec-cred-types.html">AWS key</a> to download urls of the form "s3://".
+</li>
+<li><strong>VIPY_AWS_SECRET_ACCESS_KEY</strong>='MYKEY'.
+This is the <a href="https://docs.aws.amazon.com/general/latest/gr/aws-sec-cred-types.html">AWS secret key</a> to download urls of the form "s3://".</li>
+</ul>
+<h2 id="parallelization">Parallelization</h2>
+<p>Vipy includes integration with (Dask Distributed)[<a href="https://distributed.dask.org/]">https://distributed.dask.org/]</a> for parallel processing of video and images.
+This is useful for video preprocessing of datasets to export cached tensors for training.</p>
+<p>For example, to export torch tensors for a list of video objects using four parallel processes:</p>
+<pre><code class="language-python">with vipy.globals.parallel(4):
+    vipy.batch.Batch(my_list_of_vipy_videos).map(lambda v: v.torch()).result()
+</code></pre>
+<p>This supports integration with distributed schedulers for massively parallel operation.</p>
+<h2 id="export">Export</h2>
+<p>All vipy objects can be imported and exported to JSON for interoperatability with other tool chains.
+This allows for introspection of the vipy object state providing transparency</p>
+<pre><code class="language-python">vipy.video.RandomScene().json()
+</code></pre>
+<h1 id="contact">Contact</h1>
+<p><a href="&#109;&#97;&#105;&#108;&#116;&#111;&#58;&#105;&#110;&#102;&#111;&#64;&#118;&#105;&#115;&#121;&#109;&#46;&#99;&#111;&#109;">&#105;&#110;&#102;&#111;&#64;&#118;&#105;&#115;&#121;&#109;&#46;&#99;&#111;&#109;</a></p>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+<a href="https://github.com/visym/vipy/blob/b85b71b6dc5b071e47f3258c8ad8cd849401788a/vipy/__init__.py#L1-L103" class="git-link">Browse git</a>
+</summary>
+<pre><code class="python">&#34;&#34;&#34;
+VIPY is a python package for representation, transformation and visualization of annotated videos and images.  Annotations are the ground truth provided by labelers (e.g. object bounding boxes, face identities, temporal activity clips), suit\
+able for training computer vision systems.  VIPY provides tools to easily edit videos and images so that the annotations are transformed along with the pixels.  This enables a clean interface for transforming complex datasets for input to yo\
+ur computer vision training and testing pipeline.
+
+VIPY provides:
+
+* Representation of videos with labeled activities that can be resized, clipped, rotated, scaled and cropped
+* Representation of images with object bounding boxes that can be manipulated as easily as editing an image
+* Clean visualization of annotated images and videos
+* Lazy loading of images and videos suitable for distributed procesing (e.g. dask, spark)
+* Straightforward integration into machine learning toolchains (e.g. torch, numpy)
+* Fluent interface for chaining operations on videos and images
+* Dataset download, unpack and import (e.g. Charades, AVA, ActivityNet, Kinetics, Moments in Time)
+* Video and image web search tools with URL downloading and caching
+* Minimum dependencies for easy installation (e.g. AWS Lambda)
+
+# Design Goals
+
+Vipy was created with three design goals.  
+
+* **Simplicity**.  Annotated Videos and images should be as easy to manipulate as the pixels.  We provide a simple fluent API that enables the transformation of media so that pixels are transformed along with the annotations.  We provide a comprehensive unit test suite to validate this pipeline with continuous integration.
+* **Portability**.  Vipy was designed with the goal of allowing it to be easily retargeted to new platforms.  For example, deployment on a serverless architecture such as AWS lambda has restrictions on the allowable code that can be executed in layers.  We designed Vipy with minimal dependencies on standard and mature machine learning tool chains (numpy, matplotlib, ffmpeg, pillow) to ensure that it can be ported to new computational environments. 
+* **Efficiency**.  Vipy is written in pure python with the goal of performing in place operations and avoiding copies of media whenever possible.  This enables fast video processing by operating on videos as chains of transformations.  The documentation describes when an object is changed in place vs. copied.  Furthermore, loading of media is delayed until explicitly requested by the user (or the pixels are needed) to enable lazy loading for distributed processing.  
+
+
+# Getting started
+
+See the [demos](https://github.com/visym/vipy/tree/master/demo) as a starting point.
+
+
+## Import
+
+
+## Customization
+
+You can set the following environment variables to customize the output of vipy
+
+* **VIPY_CACHE**=&#39;/path/to/directory.  This directory will contain all of the cached downloaded filenames when downloading URLs.  For example, the following will download all media to &#39;~/.vipy&#39;.
+
+```python
+os.environ[&#39;VIPY_CACHE&#39;] = vipy.util.remkdir(&#39;~/.vipy&#39;)
+vipy.image.Image(url=&#39;https://upload.wikimedia.org/wikipedia/commons/thumb/2/23/Bubo_virginianus_06.jpg/1920px-Bubo_virginianus_06.jpg&#39;).download()
+```
+
+This will output an image object:
+```python
+&lt;vipy.image: filename=&#34;/Users/jebyrne/.vipy/1920px-Bubo_virginianus_06.jpg&#34;, filename=&#34;/Users/jebyrne/.vipy/1920px-Bubo_virginianus_06.jpg&#34;, url=&#34;https://upload.wikimedia.org/wikipedia/commons/thumb/2/23/Bubo_virginianus_06.jpg/1920px-Bubo_virginianus_06.jpg&#34;&gt;
+```
+
+This provides control over where large datasets are cached on your local file system.  By default, this will be cached to the system temp directory.
+
+* **VIPY_AWS_ACCESS_KEY_ID**=&#39;MYKEY&#39;.  This is the [AWS key](https://docs.aws.amazon.com/general/latest/gr/aws-sec-cred-types.html) to download urls of the form &#34;s3://&#34;.  
+* **VIPY_AWS_SECRET_ACCESS_KEY**=&#39;MYKEY&#39;.   This is the [AWS secret key](https://docs.aws.amazon.com/general/latest/gr/aws-sec-cred-types.html) to download urls of the form &#34;s3://&#34;.
+
+
+## Parallelization
+
+Vipy includes integration with (Dask Distributed)[https://distributed.dask.org/] for parallel processing of video and images.   This is useful for video preprocessing of datasets to export cached tensors for training.
+
+For example, to export torch tensors for a list of video objects using four parallel processes:
+
+```python
+with vipy.globals.parallel(4):
+    vipy.batch.Batch(my_list_of_vipy_videos).map(lambda v: v.torch()).result()
+```
+
+This supports integration with distributed schedulers for massively parallel operation.
+
+## Export
+
+All vipy objects can be imported and exported to JSON for interoperatability with other tool chains.  This allows for introspection of the vipy object state providing transparency
+
+```python
+vipy.video.RandomScene().json()
+```
+
+
+# Contact
+
+&lt;info@visym.com&gt;
+
+&#34;&#34;&#34;
+
+# Import all subpackages
+import vipy.show  # matplotlib first
+import vipy.activity
+import vipy.annotation
+import vipy.calibration
+import vipy.downloader
+import vipy.geometry
+import vipy.image
+import vipy.linalg
+import vipy.math
+import vipy.object
+import vipy.util
+import vipy.version
+import vipy.video
+import vipy.videosearch
+import vipy.visualize
+
+__version__ = vipy.version.VERSION</code></pre>
+</details>
+</section>
+<section>
+<h2 class="section-title" id="header-submodules">Sub-modules</h2>
+<dl>
+<dt><code class="name"><a title="vipy.activity" href="activity.html">vipy.activity</a></code></dt>
+<dd>
+<div class="desc"></div>
+</dd>
+<dt><code class="name"><a title="vipy.annotation" href="annotation.html">vipy.annotation</a></code></dt>
+<dd>
+<div class="desc"></div>
+</dd>
+<dt><code class="name"><a title="vipy.batch" href="batch.html">vipy.batch</a></code></dt>
+<dd>
+<div class="desc"></div>
+</dd>
+<dt><code class="name"><a title="vipy.calibration" href="calibration.html">vipy.calibration</a></code></dt>
+<dd>
+<div class="desc"></div>
+</dd>
+<dt><code class="name"><a title="vipy.camera" href="camera.html">vipy.camera</a></code></dt>
+<dd>
+<div class="desc"></div>
+</dd>
+<dt><code class="name"><a title="vipy.dataset" href="dataset/index.html">vipy.dataset</a></code></dt>
+<dd>
+<div class="desc"></div>
+</dd>
+<dt><code class="name"><a title="vipy.downloader" href="downloader.html">vipy.downloader</a></code></dt>
+<dd>
+<div class="desc"></div>
+</dd>
+<dt><code class="name"><a title="vipy.dropbox" href="dropbox.html">vipy.dropbox</a></code></dt>
+<dd>
+<div class="desc"></div>
+</dd>
+<dt><code class="name"><a title="vipy.flow" href="flow.html">vipy.flow</a></code></dt>
+<dd>
+<div class="desc"></div>
+</dd>
+<dt><code class="name"><a title="vipy.geometry" href="geometry.html">vipy.geometry</a></code></dt>
+<dd>
+<div class="desc"></div>
+</dd>
+<dt><code class="name"><a title="vipy.globals" href="globals.html">vipy.globals</a></code></dt>
+<dd>
+<div class="desc"></div>
+</dd>
+<dt><code class="name"><a title="vipy.gui" href="gui/index.html">vipy.gui</a></code></dt>
+<dd>
+<div class="desc"></div>
+</dd>
+<dt><code class="name"><a title="vipy.image" href="image.html">vipy.image</a></code></dt>
+<dd>
+<div class="desc"></div>
+</dd>
+<dt><code class="name"><a title="vipy.linalg" href="linalg.html">vipy.linalg</a></code></dt>
+<dd>
+<div class="desc"></div>
+</dd>
+<dt><code class="name"><a title="vipy.math" href="math.html">vipy.math</a></code></dt>
+<dd>
+<div class="desc"></div>
+</dd>
+<dt><code class="name"><a title="vipy.metrics" href="metrics.html">vipy.metrics</a></code></dt>
+<dd>
+<div class="desc"></div>
+</dd>
+<dt><code class="name"><a title="vipy.object" href="object.html">vipy.object</a></code></dt>
+<dd>
+<div class="desc"></div>
+</dd>
+<dt><code class="name"><a title="vipy.show" href="show.html">vipy.show</a></code></dt>
+<dd>
+<div class="desc"></div>
+</dd>
+<dt><code class="name"><a title="vipy.ssim" href="ssim.html">vipy.ssim</a></code></dt>
+<dd>
+<div class="desc"></div>
+</dd>
+<dt><code class="name"><a title="vipy.torch" href="torch.html">vipy.torch</a></code></dt>
+<dd>
+<div class="desc"></div>
+</dd>
+<dt><code class="name"><a title="vipy.util" href="util.html">vipy.util</a></code></dt>
+<dd>
+<div class="desc"></div>
+</dd>
+<dt><code class="name"><a title="vipy.version" href="version.html">vipy.version</a></code></dt>
+<dd>
+<div class="desc"></div>
+</dd>
+<dt><code class="name"><a title="vipy.video" href="video.html">vipy.video</a></code></dt>
+<dd>
+<div class="desc"></div>
+</dd>
+<dt><code class="name"><a title="vipy.videosearch" href="videosearch.html">vipy.videosearch</a></code></dt>
+<dd>
+<div class="desc"></div>
+</dd>
+<dt><code class="name"><a title="vipy.visualize" href="visualize.html">vipy.visualize</a></code></dt>
+<dd>
+<div class="desc"></div>
+</dd>
+</dl>
+</section>
+<section>
+</section>
+<section>
+</section>
+<section>
+</section>
+</article>
+<nav id="sidebar">
+<header>
+<a class="homelink" rel="home" title="Vipy" href="https://github.com/visym/vipy/">
+<img src="https://www.visym.com/labs/images/visym_logo_black_notext.png" alt="" width="150"> <p> </p>
+</a>
+</header>
+<form>
+<input id="lunr-search" name="q" placeholder="🔎 Search ..." aria-label="Search"
+disabled minlength="2">
+</form>
+<link rel="preload stylesheet" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/tingle/0.15.3/tingle.min.css" integrity="sha512-j1u8eUJ4f23xPPxwOrLUPQaCD2dwzNqqmDDcWS4deWsMv2ohLqmXXuP3hU7g8TyzbMSakP/mMqoNBYWj8AEIFg==" crossorigin>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/tingle/0.15.3/tingle.min.js" integrity="sha512-plGUER9JkeEWPPqQBE4sdLqBoQug5Ap+BCGMc7bJ8BXkm+VVj6QzkpBz5Yv2yPkkq+cqg9IpkBaGCas6uDbW8g==" crossorigin></script>
+<style>
+.modal-dialog iframe {
+width: 100vw;
+height: calc(100vh - 80px);
+}
+@media screen and (min-width: 700px) {
+.modal-dialog iframe {
+width: 70vw;
+height: 80vh;
+}
+}
+.modal-dialog .tingle-modal-box {width: auto;}
+.modal-dialog .tingle-modal-box__content {padding: 0;}
+</style>
+<script>
+const input = document.getElementById('lunr-search');
+input.disabled = false;
+input.form.addEventListener('submit', (ev) => {
+ev.preventDefault();
+const url = new URL(window.location);
+url.searchParams.set('q', input.value);
+history.replaceState({}, null, url.toString());
+search(input.value);
+});
+const query = new URL(window.location).searchParams.get('q');
+if (query)
+search(query);
+function search(query) {
+const url = '../doc-search.html#' + encodeURIComponent(query);
+new tingle.modal({
+cssClass: ['modal-dialog'],
+onClose: () => {
+const url = new URL(window.location);
+url.searchParams.delete('q');
+history.replaceState({}, null, url.toString());
+setTimeout(() => input.focus(), 100);
+}
+}).setContent('<iframe src="' + url + '"></iframe>').open();
+}
+</script>
+<h1>Index</h1>
+<div class="toc">
+<ul>
+<li><a href="#design-goals">Design Goals</a></li>
+<li><a href="#getting-started">Getting started</a><ul>
+<li><a href="#import">Import</a></li>
+<li><a href="#customization">Customization</a></li>
+<li><a href="#parallelization">Parallelization</a></li>
+<li><a href="#export">Export</a></li>
+</ul>
+</li>
+<li><a href="#contact">Contact</a></li>
+</ul>
+</div>
+<ul id="index">
+<li><h3><a href="#header-submodules">Sub-modules</a></h3>
+<ul>
+<li><code><a title="vipy.activity" href="activity.html">vipy.activity</a></code></li>
+<li><code><a title="vipy.annotation" href="annotation.html">vipy.annotation</a></code></li>
+<li><code><a title="vipy.batch" href="batch.html">vipy.batch</a></code></li>
+<li><code><a title="vipy.calibration" href="calibration.html">vipy.calibration</a></code></li>
+<li><code><a title="vipy.camera" href="camera.html">vipy.camera</a></code></li>
+<li><code><a title="vipy.dataset" href="dataset/index.html">vipy.dataset</a></code></li>
+<li><code><a title="vipy.downloader" href="downloader.html">vipy.downloader</a></code></li>
+<li><code><a title="vipy.dropbox" href="dropbox.html">vipy.dropbox</a></code></li>
+<li><code><a title="vipy.flow" href="flow.html">vipy.flow</a></code></li>
+<li><code><a title="vipy.geometry" href="geometry.html">vipy.geometry</a></code></li>
+<li><code><a title="vipy.globals" href="globals.html">vipy.globals</a></code></li>
+<li><code><a title="vipy.gui" href="gui/index.html">vipy.gui</a></code></li>
+<li><code><a title="vipy.image" href="image.html">vipy.image</a></code></li>
+<li><code><a title="vipy.linalg" href="linalg.html">vipy.linalg</a></code></li>
+<li><code><a title="vipy.math" href="math.html">vipy.math</a></code></li>
+<li><code><a title="vipy.metrics" href="metrics.html">vipy.metrics</a></code></li>
+<li><code><a title="vipy.object" href="object.html">vipy.object</a></code></li>
+<li><code><a title="vipy.show" href="show.html">vipy.show</a></code></li>
+<li><code><a title="vipy.ssim" href="ssim.html">vipy.ssim</a></code></li>
+<li><code><a title="vipy.torch" href="torch.html">vipy.torch</a></code></li>
+<li><code><a title="vipy.util" href="util.html">vipy.util</a></code></li>
+<li><code><a title="vipy.version" href="version.html">vipy.version</a></code></li>
+<li><code><a title="vipy.video" href="video.html">vipy.video</a></code></li>
+<li><code><a title="vipy.videosearch" href="videosearch.html">vipy.videosearch</a></code></li>
+<li><code><a title="vipy.visualize" href="visualize.html">vipy.visualize</a></code></li>
+</ul>
+</li>
+</ul>
+</nav>
+</main>
+<footer id="footer">
+<p>Generated by <a href="https://pdoc3.github.io/pdoc" title="pdoc: Python API documentation generator"><cite>pdoc</cite> 0.9.3.dev21+g251d61a.d20210524</a>.</p>
+</footer>
+</body>
+</html>
