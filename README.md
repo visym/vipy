@@ -51,6 +51,6 @@ Quickstart
 import vipy
 vipy.image.owl().mindim(256).fliplr().zeropad(padwidth=50, padheight=20).show()
 ```
-<img src="./docs/vipy_image_owl.jpg" width="100">
+<img src="./docs/vipy_image_owl.jpg" width="300">
 
 The [demos](https://github.com/visym/vipy/tree/master/demo) provide useful notebook tutorials to help you get started.
