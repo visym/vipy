@@ -550,10 +550,10 @@ def load(infile, abspath=False):
                 objout = [o.abspath() if o.hasfilename() else o for o in tolist(obj)]  # set absolute paths
                 obj = objout if isinstance(obj, list) else objout[0]
                 if any([not o.hasfilename() for o in tolist(obj)]):
-                    warnings.warn('Loading "%s" that contains absolute path "%s" which does not exist' % (infile, tolist(obj)[0]))
+                    warnings.warn('Loading "%s" that contains path "%s" which does not exist' % (infile, tolist(obj)[0]))
                 os.chdir(pwd)  # set it back
         else:
-            warnings.warn('Loading "%s" that contains absolute path "%s" which does not exist' % (infile, testobj.filename()))
+            warnings.warn('Loading "%s" that contains path "%s" which does not exist' % (infile, testobj.filename()))
 
     # Large vipy object?  Disable garbage collection.
     #   - Python uses reference counting for the primary garbage collection mechanism, but also uses reference cycle checks to search for dependencies between objects.
