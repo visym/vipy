@@ -31,6 +31,7 @@ See the [demos](https://github.com/visym/vipy/tree/master/demo) as a starting po
 
 ## Import
 
+Vipy was designed to define annotated videos and imagery as collections of python objects.
 
 ## Customization
 
