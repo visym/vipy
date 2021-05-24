@@ -248,7 +248,7 @@ class Activity(object):
     def temporal_iou(self, other):
         """Return the temporal intersection over union of two activities"""
         assert isinstance(other, Activity), "Invalid input - must be vipy.object.Activity()"
-        assert self._framerate == other._framerate, "invald input - framerate must match"
+        assert self._framerate == other._framerate, "invalid input - framerate must match"
         t_start = min(self._startframe, other._startframe)
         t_end = max(self._endframe, other._endframe)
         t_union = float(t_end - t_start)

@@ -430,7 +430,7 @@ class Track(object):
             return self._shortlabel
 
     def during(self, k_start, k_end=None):
-        """Is frame during the time interval (startframe, endframe) inclusive?"""        
+        """Does the track contain a keyframe during the time interval (startframe, endframe) inclusive?"""        
         k_end = k_start+1 if k_end is None else k_end
         (startframe, endframe) = (self.startframe(), self.endframe())
         return len(self)>0 and ((k_start >= startframe and k_start <= endframe) or (k_end >= startframe and k_end <= endframe) or (k_start <= startframe and k_end >= endframe))
