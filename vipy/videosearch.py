@@ -40,6 +40,8 @@ def isactiveyoutuber(username):
 
 def youtubeuser(tag, n_pages=1):
     """return all unique /user/* urls returned for a search for a given query tag"""
+    raise ValueErro('this scraping no longer works')
+
     try_import('bs4', 'beautifulsoup4'); from bs4 import BeautifulSoup
     url = 'http://www.youtube.com/results?search_query=%s&page=%d'
     userlist = []
@@ -67,7 +69,7 @@ def is_downloadable_url(path):
     return isurl(path) and retcode == 0
 
 
-def youtube(tag, n_pages=1, channel=False, video_limit=None, expected_vid_list=None):
+def youtube(tag, n_pages=1, channel=False, video_limit=None):
     """Return a list of YouTube URLs for the given tag and optional channel"""
     if channel:
         url = 'http://www.youtube.com/user/%s/videos'
@@ -100,16 +102,13 @@ def youtube(tag, n_pages=1, channel=False, video_limit=None, expected_vid_list=N
                 return ([None], [None])
         search_data = str(search_results.read())
 
-        datalist = search_data.split('href="/watch?')
+        with open('/Users/jebyrne/Desktop/out.txt', 'w') as f:
+            f.write(search_data)
+            
+        datalist = search_data.split('{"webCommandMetadata":{"url":"')
 
-        vidlist.extend(['https://www.youtube.com/watch?%s' % vid.split('"')[0] for vid in datalist if 'DOCTYPE' not in vid.split('"')[0]])
-        if expected_vid_list is not None:
-            new_list = [v for v in expected_vid_list if v in vidlist]
-            if len(new_list) == len(expected_vid_list):
-                print('YOUTUBE: PREVIOUS USER CHECK WAS GOOD: %s' % tag)
-                return new_list
-            else:
-                return []
+        vidlist.extend(['https://www.youtube.com%s' % vid.split('"')[0] for vid in datalist if 'watch?' in vid])
+
     vidlist = [v for v in set(vidlist) if isurl(v)]   # unique valid URLs
     return(vidlist)
 
