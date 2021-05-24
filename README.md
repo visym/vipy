@@ -49,7 +49,7 @@ Quickstart
 -------------------
 ```python
 import vipy
-vipy.image.owl().mindim(256).fliplr().zeropad(padwidth=50, padheight=20).show()
+vipy.image.owl().mindim(512).fliplr().zeropad(padwidth=150).show()
 ```
 <img src="./docs/vipy_image_owl.jpg" width="700">
 
