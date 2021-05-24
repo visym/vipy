@@ -82,7 +82,7 @@
             return;
         }
 
-        const fuzziness = 1;
+        const fuzziness = 0;
         if (fuzziness) {
             query = query.split(/\s+/)
                     .map(str => str.includes('~') ? str : str + '~' + fuzziness).join(' ');
