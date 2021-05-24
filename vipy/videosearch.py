@@ -6,7 +6,7 @@ import json
 import re
 import random
 from vipy.globals import print
-from vipy.useragent import common_user_agents, complete_user_agents
+from vipy.downloader import common_user_agents, complete_user_agents
 from vipy.util import tofilename, remkdir, filepath, filebase, isurl, try_import
 import glob
 from subprocess import DEVNULL, STDOUT
