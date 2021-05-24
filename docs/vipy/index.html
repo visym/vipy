@@ -62,7 +62,7 @@ Furthermore, loading of media is delayed until explicitly requested by the user 
 <p>See the <a href="https://github.com/visym/vipy/tree/master/demo">demos</a> as a starting point.</p>
 <h2 id="import">Import</h2>
 <p>Vipy was designed to define annotated videos and imagery as collections of python objects.
-The core objects are </p>
+The core objects for images are:</p>
 <ul>
 <li><a href="image.html#vipy.image.Scene">vipy.image.Scene</a></li>
 <li><a href="object.html#vipy.object.Detection">vipy.object.Detection</a></li>
@@ -74,6 +74,8 @@ The core objects are </p>
 <li><a href="object.html#vipy.object.Track">vipy.object.Track</a></li>
 <li><a href="activity.html#vipy.activity.Activity">vipy.activity.Activity</a></li>
 </ul>
+<p>See the documentation for each object for how to construct them.
+</p>
 <h2 id="customization">Customization</h2>
 <p>You can set the following environment variables to customize the output of vipy</p>
 <ul>
@@ -114,7 +116,7 @@ This allows for introspection of the vipy object state providing transparency</p
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/09dad983c66f16c99bce3ff33e47c60944ee4750/vipy/__init__.py#L1-L115" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/a14be0268b6fe140a58b06ed4bbce305da3d955a/vipy/__init__.py#L1-L116" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">&#34;&#34;&#34;
 VIPY is a python package for representation, transformation and visualization of annotated videos and images.  Annotations are the ground truth provided by labelers (e.g. object bounding boxes, face identities, temporal activity clips), suit\
@@ -149,7 +151,7 @@ See the [demos](https://github.com/visym/vipy/tree/master/demo) as a starting po
 
 ## Import
 
-Vipy was designed to define annotated videos and imagery as collections of python objects.  The core objects are 
+Vipy was designed to define annotated videos and imagery as collections of python objects.  The core objects for images are:
 
 * [vipy.image.Scene](image.html#vipy.image.Scene)
 * [vipy.object.Detection](object.html#vipy.object.Detection)
@@ -161,6 +163,7 @@ The core objects for videos:
 * [vipy.object.Track](object.html#vipy.object.Track)
 * [vipy.activity.Activity](activity.html#vipy.activity.Activity)
 
+See the documentation for each object for how to construct them.  
 
 ## Customization
 

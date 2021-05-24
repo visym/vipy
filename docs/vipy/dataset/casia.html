@@ -25,7 +25,7 @@
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/09dad983c66f16c99bce3ff33e47c60944ee4750/vipy/dataset/casia.py#L1-L28" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/a14be0268b6fe140a58b06ed4bbce305da3d955a/vipy/dataset/casia.py#L1-L28" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">import os
 from vipy.util import remkdir, dirlist, imlist, filebase, readcsv
@@ -75,7 +75,7 @@ class WebFace(object):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/09dad983c66f16c99bce3ff33e47c60944ee4750/vipy/dataset/casia.py#L6-L28" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/a14be0268b6fe140a58b06ed4bbce305da3d955a/vipy/dataset/casia.py#L6-L28" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">class WebFace(object):
     def __init__(self, datadir):
@@ -111,7 +111,7 @@ class WebFace(object):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/09dad983c66f16c99bce3ff33e47c60944ee4750/vipy/dataset/casia.py#L20-L21" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/a14be0268b6fe140a58b06ed4bbce305da3d955a/vipy/dataset/casia.py#L20-L21" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def dataset(self):
     return self._parse()</code></pre>
@@ -125,7 +125,7 @@ class WebFace(object):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/09dad983c66f16c99bce3ff33e47c60944ee4750/vipy/dataset/casia.py#L27-L28" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/a14be0268b6fe140a58b06ed4bbce305da3d955a/vipy/dataset/casia.py#L27-L28" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def subjectid(self):
     return {k:v for (k,v) in readcsv(os.path.join(self.datadir, &#39;names.txt&#39;), separator=&#39; &#39;)}</code></pre>
@@ -139,7 +139,7 @@ class WebFace(object):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/09dad983c66f16c99bce3ff33e47c60944ee4750/vipy/dataset/casia.py#L23-L25" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/a14be0268b6fe140a58b06ed4bbce305da3d955a/vipy/dataset/casia.py#L23-L25" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def subjects(self):
     (subjectid, subjectname) = zip(*readcsv(os.path.join(self.datadir, &#39;names.txt&#39;), separator=&#39; &#39;))
