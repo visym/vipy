@@ -31,7 +31,19 @@ See the [demos](https://github.com/visym/vipy/tree/master/demo) as a starting po
 
 ## Import
 
-Vipy was designed to define annotated videos and imagery as collections of python objects.
+Vipy was designed to define annotated videos and imagery as collections of python objects.  The core objects for images are:
+
+* [vipy.image.Scene](image.html#vipy.image.Scene)
+* [vipy.object.Detection](object.html#vipy.object.Detection)
+* [vipy.geometry.BoundingBox](geometry.html#vipy.geometry.BoundingBox)
+
+The core objects for videos:
+
+* [vipy.video.Scene](video.html#vipy.video.Scene)
+* [vipy.object.Track](object.html#vipy.object.Track)
+* [vipy.activity.Activity](activity.html#vipy.activity.Activity)
+
+See the documentation for each object for how to construct them.  
 
 ## Customization
 
