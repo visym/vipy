@@ -276,6 +276,14 @@ class Track(object):
         return C[0] if len(C) == 1 else (float(np.mean(C)) if len(C) > 0 else 0)
         
     def isdegenerate(self):
+        """Is the track degenerate?  
+        
+        A degenerate track has:
+            - Unequal length keyboxes and keyframes
+            - length zero track
+            - Non increasing keyframes
+            - Invalid keyboxes
+        """
         return not (len(self.keyboxes()) == len(self.keyframes()) and
                     (len(self) == 0 or all([bb.isvalid() for bb in self.keyboxes()])) and
                     sorted(self.keyframes()) == list(self.keyframes()))

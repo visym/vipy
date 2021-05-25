@@ -81,6 +81,11 @@ class Activity(object):
         """Return activity length in frames, or zero if degenerate"""
         return max(0, self.endframe() - self.startframe())
 
+    def duration(self):
+        """The length of the activity in seconds"""
+        assert self.framerate() is not None, "Framerate must be set in constructor"
+        return len(self) / float(self.framerate())
+        
     def __repr__(self):
         return str('<vipy.activity: category="%s", frames=(%d,%d), tracks=%s%s>' % (self.category(), self.startframe(), self.endframe(), len(self.trackids()), '' if self.confidence() is None else ', confidence=%1.2f' % self.confidence()))
 
@@ -285,7 +290,7 @@ class Activity(object):
         return a
     
     def temporalpad(self, df):
-        """Add a temporal pad of df=(before,after) or df=pad frames to the start and end of the activity.  The padded start frame may be negative."""
+        """Add a temporal pad of df=(before frames, after frames) or df=pad frames to the start and end of the activity.  The padded start frame may be negative."""
         df = (df, df) if not isinstance(df, tuple) else df
         self._startframe -= int(df[0])
         self._endframe += int(df[1])
@@ -293,7 +298,7 @@ class Activity(object):
 
     def padto(self, t):
         """Add a symmetric temporal pad so that the activity is at least t seconds long"""
-        return self.temporalpad((t - len(self))/2.0) if t > len(self) else self
+        return self.temporalpad(self.framerate()*((t - self.duration())/2.0)) if t > self.duration() else self
 
     def disjoint(self, other, strict=False):
         """Enforce disjoint activities with other by shifting the endframe or startframe of self to not overlap if they share the same tracks.
