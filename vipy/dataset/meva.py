@@ -52,25 +52,26 @@ d_category_to_shortlabel = {'person_abandons_package':'Abandoning',
 
 class KF1(object):
     def __init__(self, videodir, repodir, contrib=False, stride=1, verbose=True, n_videos=None, withprefix=None, d_category_to_shortlabel=None, merge=False, actor=False, disjoint=False, unpad=False):
-        """Parse MEVA annotations (http://mevadata.org) for KNown Facility 1 dataset into vipy.video.Scene() objects
+        """Parse MEVA annotations (http://mevadata.org) for Known Facility 1 dataset into vipy.video.Scene() objects
        
         Kwiver packet format: https://gitlab.kitware.com/meva/meva-data-repo/blob/master/documents/KPF-specification-v4.pdf
-        Inputs:
-          -videodir=str:  path to Directory containing 'drop-01' 
-          -repodir=str:  path to directory containing clone of https://gitlab.kitware.com/meva/meva-data-repo
-          -stride=int: the temporal stride in frames for importing bounding boxes, vipy will do linear interpoluation and boundary handling
-          -n_videos=int:  only return an integer number of videos, useful for debugging or for previewing dataset
-          -withprefix=list:  only return videos with the filename containing one of the strings in withprefix list, useful for debugging
-          -contrib=bool:  include the noisy contrib anntations from DIVA performers
-          -d_category_to_shortlabel is a dictionary mapping category names to a short displayed label on the video.  The standard for visualization is that 
-            tracked objects are displayed with their category label (e.g. 'Person', 'Vehicle'), and activities are labeled according to the set of objects that
-            performing the activity.  When an activity occurs, the set of objects are labeled with the same color as 'Noun Verbing' (e.g. 'Person Entering', 
-            'Person Reading', 'Vehicle Starting') where 'Verbing' is provided by the shortlabel.   This is optional, and will use the default mapping if None
-          -verbose=bool:  Parsing verbosity
-          -merge:  deduplicate annotations for each video across YAML files by merging them by mean spatial IoU per track (>0.5) and temporal IoU (>0)
-          -actor [bool]:  Include only those activities that include an associated track for the primary actor: "Person" for "person_*" and "hand_*", else "Vehicle"
-          -disjoint [bool]:  Enforce that overlapping causal activities (open/close, enter/exit, ...) are disjoint for a track
-          -unpad [bool]:  remove the arbitrary padding assigned during dataset creation
+
+        Args:
+            videodir: [str]  path to Directory containing 'drop-01' 
+            repodir: [str]  path to directory containing clone of https://gitlab.kitware.com/meva/meva-data-repo
+            stride: [int] the integer temporal stride in frames for importing bounding boxes, vipy will do linear interpoluation and boundary handling
+            n_videos: [int] only return an integer number of videos, useful for debugging or for previewing dataset
+            withprefix: [list] only return videos with the filename containing one of the strings in withprefix list, useful for debugging
+            contrib: [bool] include the noisy contrib anntations from DIVA performers
+            d_category_to_shortlabel: [dict] is a dictionary mapping category names to a short displayed label on the video.  The standard for visualization is that tracked objects are displayed with their category label (e.g. 'Person', 'Vehicle'), and activities are labeled according to the set of objects that performing the activity.  When an activity occurs, the set of objects are labeled with the same color as 'Noun Verbing' (e.g. 'Person Entering', 'Person Reading', 'Vehicle Starting') where 'Verbing' is provided by the shortlabel.   This is optional, and will use the default mapping if None
+            verbose: [bool]  Parsing verbosity
+            merge: [bool] deduplicate annotations for each video across YAML files by merging them by mean spatial IoU per track (>0.5) and temporal IoU (>0)
+            actor: [bool]  Include only those activities that include an associated track for the primary actor: "Person" for "person_*" and "hand_*", else "Vehicle"
+            disjoint: [bool]:  Enforce that overlapping causal activities (open/close, enter/exit, ...) are disjoint for a track
+            unpad: [bool] remove the arbitrary padding assigned during dataset creation
+
+        Returns:
+            a list of `vipy.video.Scene` objects
 
         """
         
@@ -81,7 +82,7 @@ class KF1(object):
         assert os.path.exists(os.path.join(self.repodir, 'annotation')), "Invalid input - repodir '%s' must contain the clone of https://gitlab.kitware.com/meva/meva-data-repo" % repodir
 
         # Shortlabels are optional and used for showing labels on videos only
-        self._d_category_to_shortlabel = d_category_to_shortlabel
+        self._d_category_to_shortlabel = vipy.dataset.meva.d_category_to_shortlabel
         self._d_category_to_shortlabel = {k:v.lower() for (k,v) in self._d_category_to_shortlabel.items()}        
         self._d_oldcategory_to_newcategory = {k:v for (k,v) in readcsv(os.path.join(self.repodir, 'documents', 'activity-name-mapping.csv'))[1:]}
 
@@ -222,8 +223,12 @@ class KF1(object):
 
         # Sanity check
         assert act_yamlfile.split('.')[:-2] == geom_yamlfile.split('.')[:-2], "Unmatched activity and geom yaml file"
-        assert len(set([types_yaml[0]['meta'], geom_yaml[0]['meta'], act_yaml[0]['meta']]))==1, "Mismatched video name for '%s'" % act_yamlfile
-        videoname = act_yaml[0]['meta'] if act_yaml[0]['meta'][-4:] != '.avi' else act_yaml[0]['meta'][0:-4]  # strip .avi 
+        assert 'meta' not in types_yaml[0] or len(set([types_yaml[0]['meta'], geom_yaml[0]['meta'], act_yaml[0]['meta']]))==1, "Mismatched video name for '%s'" % act_yamlfile
+        try:
+            videoname = act_yaml[0]['meta'] if act_yaml[0]['meta'][-4:] != '.avi' else act_yaml[0]['meta'][0:-4]  # strip .avi 
+        except:
+            videoname = vipy.util.filetail(act_yamlfile.split('activities.yml')[0][0:-1])  # /path/to/filebase-activities.yml or /path/to/filebase.activities.yml  [YUCK, necessary for newer drops in Spring 2021]
+
         if videoname not in d_videoname_to_path:
             if verbose:
                 print('[vipy.dataset.meva.KF1]: Invalid MEVA video "%s" in "%s" - Ignoring' % (videoname, filebase(act_yamlfile)))
@@ -322,7 +327,7 @@ class KF1(object):
                     try:
                         vid.add(Activity(category=category, shortlabel=d_category_to_shortlabel[category], actorid=nounid if actor else None,
                                          startframe=startframe, endframe=endframe, tracks=tracks, framerate=framerate, 
-                                         attributes={'act':v['act'], 'act_yaml':act_yamlfile, 'geom_yaml':geom_yamlfile}), rangecheck=True)
+                                         attributes={'act':str(v['act']), 'act_yaml':act_yamlfile, 'geom_yaml':geom_yamlfile}), rangecheck=True)
                     except Exception as e:
                         print('[vipy.dataset.meva.KF1]: activity import error "%s" for activity="%s" - SKIPPING' % (str(e), str(v)))
             

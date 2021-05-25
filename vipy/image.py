@@ -50,32 +50,43 @@ class Image(object):
 
     >>> im = vipy.image.Image(filename="/path/to/image.ext")
     
-        All image file formats that are readable by PIL are supported here.
+    All image file formats that are readable by PIL are supported here.
 
     >>> im = vipy.image.Image(url="http://domain.com/path/to/image.ext")
     
-        The image will be downloaded from the provided url and saved to a temporary filename.
-        The environment variable VIPY_CACHE controls the location of the directory used for saving images, otherwise this will be saved to the system temp directory.
+    The image will be downloaded from the provided url and saved to a temporary filename.
+    The environment variable VIPY_CACHE controls the location of the directory used for saving images, otherwise this will be saved to the system temp directory.
 
     >>> im = vipy.image.Image(url="http://domain.com/path/to/image.ext", filename="/path/to/new/image.ext")
 
-        The image will be downloaded from the provided url and saved to the provided filename.
-        The url() method provides optional basic authentication set for username and password
+    The image will be downloaded from the provided url and saved to the provided filename.
+    The url() method provides optional basic authentication set for username and password
 
     >>> im = vipy.image.Image(array=img, colorspace='rgb')
 
-        The image will be constructed from a provided numpy array 'img', with an associated colorspace.  The numpy array and colorspace can be one of the following combinations:
+    The image will be constructed from a provided numpy array 'img', with an associated colorspace.  The numpy array and colorspace can be one of the following combinations:
 
-            'rgb': uint8, three channel (red, green, blue)
-            'rgba':  uint8, four channel (rgb + alpha)
-            'bgr': uint8, three channel (blue, green, red), such as is returned from cv2.imread()
-            'bgra':  uint8, four channel
-            'hsv':  uint8, three channel (hue, saturation, value)
-            'lum;:  uint8, one channel, luminance (8 bit grey level)
-            'grey':  float32, one channel in range [0,1] (32 bit intensity)
-            'float':  float32, any channel in range [-inf, +inf]
+    - 'rgb': uint8, three channel (red, green, blue)
+    - 'rgba':  uint8, four channel (rgb + alpha)
+    - 'bgr': uint8, three channel (blue, green, red), such as is returned from cv2.imread()
+    - 'bgra':  uint8, four channel
+    - 'hsv':  uint8, three channel (hue, saturation, value)
+    - 'lum;:  uint8, one channel, luminance (8 bit grey level)
+    - 'grey':  float32, one channel in range [0,1] (32 bit intensity)
+    - 'float':  float32, any channel in range [-inf, +inf]
+    
+    The most general colorspace is 'float' which is used to manipulate images prior to network encoding, such as applying bias. 
+    
+    Args:
+        filename: a path to an image file that is readable by PIL
+        url:  a url string to an image file that is readable by PIL
+        array: a numpy array of type uint8 or float32 of shape HxWxC=height x width x channels
+        colorspace:  a string in ['rgb', 'rgba', 'bgr', 'bgra', 'hsv', 'float', 'grey', 'lum']
+        attributes:  a python dictionary that is passed by reference to the image.  This is useful for encoding metadata about the image.  Accessible as im.attributes
 
-        The most general colorspace is 'float' which is used to manipulate images prior to network encoding, such as applying bias. 
+    Returns:
+        a `vipy.image.Image` object
+
     """
 
     def __init__(self, filename=None, url=None, array=None, colorspace=None, attributes=None):
@@ -111,12 +122,29 @@ class Image(object):
 
     @classmethod
     def cast(cls, im):
+        """Typecast the conformal vipy.image object im as `vipy.image.Image`.
+        
+        This is useful for downcasting `vipy.image.Scene` or `vipy.image.ImageDetection` down to an image.
+
+        >>> ims = vipy.image.RandomScene()
+        >>> im = vipy.image.Image.cast(im)
+
+        """
         assert isinstance(im, vipy.image.Image), "Invalid input - must derive from vipy.image.Image"
         im.__class__ = vipy.image.Image
         return im
         
     @classmethod
     def from_json(cls, s):
+        """Import the JSON string s as an `vipy.image.Image` object.
+        
+        This will perform a round trip such that im1 == im2
+
+        >>> im1 = vupy.image.RandomImage()
+        >>> im2 = vipy.image.Image.from_json(im1.json())
+        >>> assert im1 == im2
+        
+        """
         d = json.loads(s)        
         return cls(filename=d['_filename'],
                    url=d['_url'],
@@ -157,26 +185,65 @@ class Image(object):
             strlist.append('url="%s"' % self.url())
         return str('<vipy.image: %s>' % (', '.join(strlist)))
 
-    def print(self, prefix='', verbose=True):
-        """Print the representation of the image and return self - useful for debugging in long fluent chains"""
+    def print(self, prefix='', verbose=True, sleep=None):
+        """Print the representation of the image and return self with an optional sleep=n seconds
+        
+        Useful for debugging in long fluent chains.
+        """
         if verbose:
             print(prefix+self.__repr__())
+        if sleep is not None:
+            assert isinstance(sleep, int) and sleep > 0, "Sleep must be a non-negative integer number of seconds"
+            time.sleep(sleep)
         return self
 
     def tile(self, tilewidth, tileheight, overlaprows=0, overlapcols=0):
-        """Generate a list of tiled image"""
+        """Generate an image tiling.
+        
+        A tiling is a decomposition of an image into overlapping or non-overlapping rectangular regions.  
+
+        Args:
+            tilewidth: [int] the image width of each tile
+            tileheight: [int] the image height of each tile
+            overlaprows: [int] the number of overlapping rows (height) for each tile
+            overlapcols: [int] the number of overlapping width (width) for each tile
+    
+        Returns:
+            A list of `vipy.image.Image` objects such that each image is a single tile and the set of these tiles forms the original image
+            Each image in the returned list contains the 'tile' attribute which encodes the crop used to create the tile.
+
+        .. note:: 
+            - `vipy.image.Image.tile` can be undone using `vipy.image.Image.untile`
+            - The identity tiling is im.tile(im.widht(), im.height(), overlaprows=0, overlapcols=0)
+            - Ragged tiles outside the image boundary are zero padded
+            - All annotations are updated properly for each tile, when the source image is `vipy.image.Scene`
+        """
         assert tilewidth > 0 and tileheight > 0 and overlaprows >= 0 and overlapcols >= 0, "Invalid input"
         assert self.width() >= tilewidth-overlapcols and self.height() >= tileheight-overlaprows, "Invalid input" 
         bboxes = [BoundingBox(xmin=i, ymin=j, width=min(tilewidth, self.width()-i), height=min(tileheight, self.height()-j)) for i in range(0, self.width()-overlapcols, tilewidth-overlapcols) for j in range(0, self.height()-overlaprows, tileheight-overlaprows)]
         return [self.clone(shallow=True, attributes=True).setattribute('tile', {'crop':bb, 'shape':self.shape()}).crop(bb) for bb in bboxes]
 
     def union(self, other):
-        """No-op for vipy.image.Image"""
+        """No-op for `vipy.image.Image`"""
         return self
     
-    def untile(self, imlist):
-        """Undo tile"""
-        assert all([isinstance(im, vipy.image.Image) and im.hasattribute('tile') for im in imlist]), "invalid image list"        
+    @classmethod
+    def untile(cls, imlist):
+        """Undo an image tiling and recreate the original image.
+
+        >>> tiles = im.tile(im.width()/2, im.height()/2, 0, 0)
+        >>> imdst = vipy.image.Image.untile(tiles)
+        >>> assert imdst == im
+
+        Args:
+            imlist: this must be the output of `vipy.image.Image.tile`
+        
+        Returns:
+            A  new `vipy.image.Image` object reconstructed from the tiling, such that this is equivalent to the input to vipy.image.Image.tile` 
+        
+        .. note:: All annotations are updated properly for each tile, when the source image is `vipy.image.Scene`
+        """
+        assert all([isinstance(im, vipy.image.Image) and im.hasattribute('tile') for im in imlist]), "invalid image tile list"        
         imc = None
         for im in imlist:
             if imc is None:
@@ -188,7 +255,23 @@ class Image(object):
         return imc
     
     def uncrop(self, bb, shape):
-        """Uncrop using provided bounding box and zeropad to shape=(Height, Width), NOT idempotent"""
+        """Uncrop using provided bounding box and zeropad to shape=(Height, Width).
+
+        An uncrop is the inverse operation for a crop, which preserves the cropped portion of the image in the correct location and replaces the rest with zeros out to shape.
+    
+        >>> im = vipy.image.RandomImage(128, 128)
+        >>> bb = vipy.geometry.BoundingBox(xmin=0, ymin=0, width=64, height=64)
+        >>> uncrop = im.crop(bb).uncrop(bb, shape=(128,128))
+
+        Args:
+            bb: [`vipy.geometry.BoundingBox`] the bounding box used to crop the image in self
+            shape: [tuple] (height, width) of the uncropped image
+    
+        Returns:
+            this `vipy.image.Image` object with the pixels uncropped.
+
+        .. note:: NOT idempotent.  This will generate different results if run more than once.
+        """
         ((x,y,w,h), (H,W)) = (bb.xywh(), shape)
         ((dyb, dya), (dxb, dxa)) = ((int(y), int(H-(y+h))), (int(x), int(W-(x+w))))
         self._array = np.pad(self.load().array(),

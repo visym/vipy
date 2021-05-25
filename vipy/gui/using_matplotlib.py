@@ -25,7 +25,7 @@ except:
 def escape_to_exit(event):
     if event.key == 'escape' or event.key == 'q' or event.key == 'ctrl+c':
         import vipy.globals            
-        vipy.globals.user_hit_escape(True)
+        vipy.globals._user_hit_escape(True)
     
 def flush():
     plt.pause(0.001)
@@ -102,7 +102,7 @@ def _imshow_tight(img, fignum=None, keypress=True):
     if keypress:
         fig.canvas.mpl_connect('key_press_event', escape_to_exit)
         import vipy.globals    
-        vipy.globals.user_hit_escape(False)
+        vipy.globals._user_hit_escape(False)
 
     return (fig.number, imh)
 

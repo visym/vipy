@@ -184,7 +184,7 @@ def test_image():
     t = im.tile(im.width(),im.height(),0,0)
     assert len(t) == 1
     t = im.tile(123,234,4,7)
-    imt = Image(filename=greyfile).untile(t)
+    imt = vipy.image.Image.untile(t)
     assert np.allclose(im.array(), imt.array())
     print('[test_image]: tile/untile PASSED')    
     

@@ -201,10 +201,10 @@ class Video(object):
     def videoid(self):
         """Return a unique video identifier for this video, as specified in the 'video_id' attribute, or by hashing the filename() and url().
 
-           Notes:
-             - If the video filename changes (e.g. from transformation), and video_id is not set in self.attributes, then the video ID will change.
-             - If a video does not have a filename or URL or a video ID in the attributes, then this will return None
-             - To preserve a video ID independent of transformations, set self.setattribute('video_id', $MY_ID)
+        .. notes::
+            - If the video filename changes (e.g. from transformation), and video_id is not set in self.attributes, then the video ID will change.
+            - If a video does not have a filename or URL or a video ID in the attributes, then this will return None
+            - To preserve a video ID independent of transformations, set self.setattribute('video_id', $MY_ID)
         """
         return self.attributes['video_id'] if 'video_id' in self.attributes else hashlib.sha1(str(str(self.filename())+str(self.url())).encode("UTF-8")).hexdigest() if (self.filename() is not None or self.url() is not None) else None
     
@@ -223,15 +223,17 @@ class Video(object):
             self._currentframe = None    # used only for incremental add()
 
     def store(self):
-        """Store the current video file as an attribute of this object.  Useful for archiving an object to be fully self contained without any external references.  
-        
-           -Remove this stored video using unstore()
-           -Unpack this stored video and set up the video chains using restore() 
-           -This method is more efficient than load() followed by pkl(), as it stores the encoded video as a byte string.
-           -Useful for creating a single self contained object for distributed processing.  
+        """Store the current video file as an attribute of this object.  
+
+        Useful for archiving an object to be fully self contained without any external references.  
 
            >>> v == v.store().restore(v.filename()) 
-
+        
+        .. notes::
+            -Remove this stored video using unstore()
+            -Unpack this stored video and set up the video chains using restore() 
+            -This method is more efficient than load() followed by pkl(), as it stores the encoded video as a byte string.
+            -Useful for creating a single self contained object for distributed processing.  
         """
         assert self.hasfilename(), "Video file not found"
         with open(self.filename(), 'rb') as f:
@@ -527,6 +529,10 @@ class Video(object):
 
         
     def _update_ffmpeg(self, argname, argval, node_name=None):
+        """Update the ffmpeg filter chain to overwrite the (argname, argval) elements. 
+
+        Useful for fine-tuning a filter chain without rewwriring the whole thing.
+        """
         nodes = ffmpeg.nodes.get_stream_spec_nodes(self._ffmpeg)
         sorted_nodes, outgoing_edge_maps = ffmpeg.dag.topo_sort(nodes)
         for n in sorted_nodes:
@@ -555,6 +561,7 @@ class Video(object):
         return self._ffmpeg_commandline()
     
     def _from_ffmpeg_commandline(self, cmd):
+        """Convert the ffmpeg command line string (e.g. from `vipy.video.Video.commandline`) to the corresponding ffmpeg-python filter chain"""
         args = copy.copy(cmd).replace(str(self.filename()), 'FILENAME').split(' ')  # filename may contain spaces
         
         assert args[0] == 'ffmpeg', "Invalid FFMEG commmand line '%s'" % cmd
@@ -762,7 +769,10 @@ class Video(object):
         return self._array is not None
 
     def canload(self, frame=0):
-        """Return True if the video can be loaded successfully, useful for filtering bad videos or filtering videos that cannot be loaded using your current FFMPEG version"""
+        """Return True if the video can be loaded successfully.
+        
+        This is useful for filtering bad videos or filtering videos that cannot be loaded using your current FFMPEG version.
+        """
         if not self.isloaded():
             try:
                 self.preview(framenum=frame)  # try to preview
@@ -773,21 +783,36 @@ class Video(object):
             return True
 
     def iscolor(self):
+        """Is the video a three channel color video as returned from `vipy.video.Video.channels`?"""
         return self.channels() == 3
 
     def isgrayscale(self):
+        """Is the video a single channel as returned from `vipy.video.Video.channels`?"""
         return self.channels() == 1
 
     def hasfilename(self):
+        """Does the filename returned from `vipy.video.Video.filename` exist?"""
         return self._filename is not None and os.path.exists(self._filename)
 
     def isdownloaded(self):
+        """Does the filename returned from `vipy.video.Video.filename` exist, meaning that the url has been downloaded to a local file?"""
         return self._filename is not None and os.path.exists(self._filename)
 
     def hasurl(self):
+        """Is the url returned from `vipy.video.Video.url` a well formed url?"""
         return self._url is not None and isurl(self._url)
 
     def array(self, array=None, copy=False):
+        """Set or return the video buffer as a numpy array.
+        
+        Args:
+            array: [np.array] A numpy array of size NxHxWxC = (frames, height, width, channels)  of type uint8 or float32.
+            copy: [bool] If true, copy the buffer by value instaed of by reference.  Copied buffers do not share pixels.
+
+        Returns:
+            if array=None, return a reference to the pixel buffer as a numpy array, otherwise return the video object.
+
+        """
         if array is None:
             return self._array
         elif isnumpy(array):

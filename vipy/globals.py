@@ -24,7 +24,6 @@ GLOBAL = {'VERBOSE': True,       # If False, will silence everything, equivalent
           'LATEX':os.environ['VIPY_LATEX'] if 'VIPY_LATEX' in os.environ else None}
 
 
-
 def logging(enable=None, format=None):
     """Single entry point for enabling/disabling logging vs. printing
        
@@ -50,10 +49,11 @@ def warn(s):
         
 def print(s, end='\n'):
     """Main entry point for all print statements in the vipy package. All vipy code calls this to print helpful messages.
-      
-       -Printing can be disabled by calling vipy.globals.silent()
-       -Printing can be redirected to logging by calling vipy.globals.logging(True)
-       -All print() statements in vipy.* are overloaded to call vipy.globals.print() so that it can be redirected to logging
+
+    .. notes::
+        -Printing can be disabled by calling vipy.globals.silent()
+        -Printing can be redirected to logging by calling vipy.globals.logging(True)
+        -All print() statements in vipy.* are overloaded to call vipy.globals.print() so that it can be redirected to logging
 
     """
     if GLOBAL['VERBOSE']:
@@ -68,12 +68,15 @@ def isverbose():
     return GLOBAL['VERBOSE']
 
 def silent():
+    """Silence the global verbosity level, only really used right now for FFMPEG messages"""
     GLOBAL['VERBOSE'] = False    
 
 def issilent():
+    """Is the global verbosity silent?"""
     return GLOBAL['VERBOSE'] == False 
 
 def verbosity(v):
+    """Set the global verbosity level [0,1,2]=debug, warn, info"""
     assert v in [0,1,2]    # debug, warn, info
     GLOBAL['VERBOSITY'] = v
 
@@ -86,14 +89,26 @@ def isdebug():
 
 
 def cache(cachedir=None):
-    """The cache is the location that URLs are downloaded to on your system.  This can be set here, or with the environment variable VIPY_CACHE"""
+    """The cache is the location that URLs are downloaded to on your system.  This can be set here, or with the environment variable VIPY_CACHE
+
+    >>> vipy.globals.cache('/path/to/.vipy')
+    >>> cachedir = vipy.globals.cache()
+
+    Args:
+        cachedir:  the location to store cached files when downloaded.  Can also be set using the VIPY_CACHE environment variable.  if none, return the current cachedir
+    
+    Returns:
+        The current cachedir if cachedir=None else None
+    
+    """
     if cachedir is not None:
         os.environ['VIPY_CACHE'] = remkdir(cachedir)
         GLOBAL['CACHE'] = cachedir
     return os.environ['VIPY_CACHE'] if 'VIPY_CACHE' in os.environ else None
     
 
-def user_hit_escape(b=None):
+def _user_hit_escape(b=None):
+    """Did the user hit the escape key?  Useful for matplotlib GUI to stop displaying video"""
     if b is None:
         if GLOBAL['GUI']['escape']:
             GLOBAL['GUI']['escape'] = False  # toggle it
@@ -120,10 +135,15 @@ def gpuindex(gpu=None):
 def dask(num_processes=None, num_gpus=None, dashboard=False, address=None, pct=None):
     """Return the current Dask client, can be accessed globally for parallel processing.
     
-       -pct: [0,1] the percentage of the current machine to use
-       -address:  the dask scheduler of the form 'HOSTNAME:PORT'
-       -num_processes:  the number of prpcesses to use on the current machine
-       -num_gpus:  the number of GPUs to use on the current machine
+    Args:
+        pct: float in [0,1] the percentage of the current machine to use
+        address:  the dask scheduler of the form 'HOSTNAME:PORT'
+        num_processes:  the number of prpcesses to use on the current machine
+        num_gpus:  the number of GPUs to use on the current machine
+        dashboard: [bool] whether to inialize the dask client with a web dashboard
+
+    Returns:
+        The `vipy.batch.Dask` object pointing to the Dask Distrbuted object
     """
     from vipy.batch import Dask
     if pct is not None:
@@ -135,22 +155,42 @@ def dask(num_processes=None, num_gpus=None, dashboard=False, address=None, pct=N
     return GLOBAL['DASK_CLIENT']
 
 
-def parallel(n=None, pct=None):
-    """Enable parallel processing with n>=1 processes.  
+def parallel(n=None, pct=None, scheduler=None):
+    """Enable parallel processing with n>=1 processes or a percentage of system core (pct \in [0,1]) or a dask scheduler .
 
-       >>> with vipy.globals.parallel(n=4):
-               vipy.batch.Batch(...)
-       
+    This can be be used as a context manager
+    
+    >>> with vipy.globals.parallel(n=4):
+    >>>     vipy.batch.Batch(...)
+
+    or using the global variables:
+
+    >>> vipy.globals.parallel(n=4):
+    >>> vipy.batch.Batch(...)
+    >>> vipy.globals.noparallel()
+    
+    To check the current parallelism level:
+    
+    >>> num_processes = vipy.globals.parallel()
+
+    To run with a dask scheduler:
+    
+    >>> with vipy.globals.parallel(scheduler='10.0.1.1:8585')
+    >>>    vipy.batch.Batch(...)
+
+    Args:
+        n: [int] number of parallel processes
+        pct: [float] the percentage [0,1] of system cores to dedicate to parallel processing
+        scheduler: [str]  the dask scheduler of the form 'HOSTNAME:PORT' like '128.0.0.1:8785'.  See <https://docs.dask.org/en/latest/install.html>
     """
 
     class Parallel():
-        def __init__(self, n=None, pct=None):
-            if n is None and pct is None:
-                return GLOBAL['DASK_CLIENT'].num_processes() if GLOBAL['DASK_CLIENT'] is not None else 0
-            else:
-                assert n is None or (isinstance(n, int) and n>=1)
-                assert pct is None or (pct > 0 and pct <= 1)
-                dask(num_processes=n, pct=pct)
+        def __init__(self, n=None, pct=None, scheduler=None):
+            assert n is not None or pct is not None
+            assert not (n is not None and pct is not None)
+            assert n is None or (isinstance(n, int) and n>=1)
+            assert pct is None or (pct > 0 and pct <= 1)
+            dask(num_processes=n, pct=pct, address=scheduler)
             
         def __enter__(self):
             pass
@@ -158,7 +198,13 @@ def parallel(n=None, pct=None):
         def __exit__(self, *args):
             noparallel()
 
-    return Parallel(n, pct)
+    if n is None and pct is None and scheduler is None:
+        return GLOBAL['DASK_CLIENT'].num_processes() if  GLOBAL['DASK_CLIENT'] is not None else 0
+    else:
+        assert n is not None or pct is not None or scheduler is not None
+        assert sum([x is not None for x in (n, pct, scheduler)]) == 1, "Exactly one"
+        return Parallel(n=n, pct=pct, scheduler=scheduler) 
+
 
 
 def noparallel():
@@ -168,5 +214,5 @@ def noparallel():
     GLOBAL['DASK_CLIENT'] = None 
 
 def nodask():
-    """Alias for noparallel()"""
+    """Alias for `vipy.globals.noparallel`"""
     return noparallel()
