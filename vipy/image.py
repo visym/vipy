@@ -1770,11 +1770,12 @@ class Scene(ImageCategory):
     def show(self, categories=None, figure=1, nocaption=False, nocaption_withstring=[], fontsize=10, boxalpha=0.25, d_category2color={'Person':'green', 'Vehicle':'blue', 'Object':'red'}, captionoffset=(0,0), nowindow=False, textfacecolor='white', textfacealpha=1.0, shortlabel=True, timestamp=None, timestampcolor='black', timestampfacecolor='white', mutator=None):
         """Show scene detection 
 
-           * categories [list]:  List of category (or shortlabel) names in the scene to show
-           * fontsize (int, string): Size of the font, fontsize=int for points, fontsize='NN:scaled' to scale the font relative to the image size
-           * figure (int): Figure number, show the image in the provided figure=int numbered window
-           * nocaption (bool):  Show or do not show the text caption in the upper left of the box 
-           * nocaption_withstring (list):  Do not show captions for those detection categories (or shortlabels) containing any of the strings in the provided list
+        Args:
+            categories: [list]  List of category (or shortlabel) names in the scene to show
+            fontsize: [int] or [str]: Size of the font, fontsize=int for points, fontsize='NN:scaled' to scale the font relative to the image size
+            figure: [int] Figure number, show the image in the provided figure=int numbered window
+            nocaption: [bool]  Show or do not show the text caption in the upper left of the box 
+            nocaption_withstring: [list]:  Do not show captions for those detection categories (or shortlabels) containing any of the strings in the provided list
            * boxalpha (float, [0,1]):  Set the text box background to be semi-transparent with an alpha
            * d_category2color (dict):  Define a dictionary of required mapping of specific category() to box colors.  Non-specified categories are assigned a random named color from vipy.show.colorlist()
            * caption_offset (int, int): The relative position of the caption to the upper right corner of the box.
@@ -2054,12 +2055,14 @@ def mutator_show_trackindex_verbonly(confidence=True, significant_digits=2):
 
 
 def RandomImage(rows=None, cols=None):
+    """Return a uniform random color `vipy.image.Image` of size (rows, cols)"""
     rows = np.random.randint(128, 1024) if rows is None else rows
     cols = np.random.randint(128, 1024) if cols is None else cols
     return Image(array=np.uint8(255 * np.random.rand(rows, cols, 3)), colorspace='rgb')
 
 
 def RandomImageDetection(rows=None, cols=None):
+    """Return a uniform random color `vipy.image.ImageDetection` of size (rows, cols) with a random bounding box"""
     rows = np.random.randint(128, 1024) if rows is None else rows
     cols = np.random.randint(128, 1024) if cols is None else cols
     return ImageDetection(array=np.uint8(255 * np.random.rand(rows, cols, 3)), colorspace='rgb', category='RandomImageDetection',
@@ -2067,6 +2070,7 @@ def RandomImageDetection(rows=None, cols=None):
                           bbwidth=np.random.randint(16,cols), bbheight=np.random.randint(16,rows))
 
 def RandomScene(rows=None, cols=None, num_objects=16, url=None):
+    """Return a uniform random color `vipy.image.Scene` of size (rows, cols) with a specified number of vipy.object.Detection` objects"""    
     im = RandomImage(rows, cols) if url is None else Image(url=url)
     (rows, cols) = im.shape()
     ims = Scene(array=im.array(), colorspace='rgb', category='scene', objects=[vipy.object.Detection('obj%d' % k, xmin=np.random.randint(0,cols - 16), ymin=np.random.randint(0,rows - 16),
@@ -2076,7 +2080,7 @@ def RandomScene(rows=None, cols=None, num_objects=16, url=None):
     
 
 def owl():
-    """Return an owl image for testing"""
+    """Return a suberb owl image for testing"""
     return Scene(url='https://upload.wikimedia.org/wikipedia/commons/thumb/2/23/Bubo_virginianus_06.jpg/1920px-Bubo_virginianus_06.jpg',
                  category='Nature',
                  objects=[vipy.object.Detection('Great Horned Owl', xmin=350, ymin=320, width=1400, height=2100),

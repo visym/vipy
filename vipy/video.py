@@ -98,7 +98,7 @@ class Video(object):
         startframe = startframe if startframe is not None else (0 if endframe is not None else startframe)
         assert (startsec is not None and endsec is not None) or (startsec is None and endsec is None), "Invalid input - (startsec,endsec) are both required"        
         (self._startframe, self._endframe) = (None, None)  # __repr__ only
-        (self._startsec, self._endsec) = (None, None)      # __repr__ only  
+        (self._startsec, self._endsec) = (None, None)  # __repr__ only (legacy)
 
         # Input filenames
         if url is not None:
@@ -133,8 +133,7 @@ class Video(object):
         if startframe is not None:
             self.clip(startframe, endframe)  
         if startsec is not None and endsec is not None:
-            (self._startsec, self._endsec) = (startsec, endsec)            
-            self.cliptime(startsec, endsec)
+            self.clip(int(round(startsec/self.framerate())), int(round(endsec/self.framerate())))
             
         # Array input
         assert not (array is not None and frames is not None)
@@ -576,8 +575,8 @@ class Video(object):
         """        
         return self._ffmpeg_commandline()
     
-    def _from_ffmpeg_commandline(self, cmd):
-        """Convert the ffmpeg command line string (e.g. from `vipy.video.Video.commandline`) to the corresponding ffmpeg-python filter chain"""
+    def _from_ffmpeg_commandline(self, cmd, strict=False):
+        """Convert the ffmpeg command line string (e.g. from `vipy.video.Video.commandline`) to the corresponding ffmpeg-python filter chain and update self"""
         args = copy.copy(cmd).replace(str(self.filename()), 'FILENAME').split(' ')  # filename may contain spaces
         
         assert args[0] == 'ffmpeg', "Invalid FFMEG commmand line '%s'" % cmd
@@ -590,7 +589,7 @@ class Video(object):
             timestamp_in_seconds = int(timestamp_in_seconds) if timestamp_in_seconds == 0 else timestamp_in_seconds  # 0.0 -> 0
             args = [args[0]] + args[3:]
             f = ffmpeg.input(args[2].replace('FILENAME', self.filename()), ss=timestamp_in_seconds)   # restore filename, set offset time
-            self._startframe = int(round(timestamp_in_seconds*self.framerate()))  # necessary for clip()
+            self._startframe = int(round(timestamp_in_seconds*self.framerate()))  # necessary for clip() and __repr__
         else:
             f = ffmpeg.input(args[2].replace('FILENAME', self.filename()))  # restore filename
 
@@ -613,8 +612,24 @@ class Video(object):
                             kw[k] = v
                         else:
                             a.append(s)
+
+                    if 'end' in kw:
+                        self._endframe = (self._startframe if self._startframe is not None else 0) + int(round(float(kw['end'])*self.framerate()))  # for __repr__
+                    if 'start' in kw:
+                        pass
+                    if 'end_frame' in kw:
+                        self._endframe = (self._startframe if self._startframe is not None else 0) + int(kw['end_frame'])  # for __repr__
+                        kw['end'] = int(kw['end_frame'])/self.framerate()  # convert end_frame to end (legacy)
+                        del kw['end_frame']  # use only end and not end frame
+                    if 'start_frame' in kw:
+                        self._startframe = (self._startframe if self._startframe is not None else 0) + int(kw['start_frame'])  # for __repr__
+                        kw['start'] = int(kw['start_frame'])/self.framerate()  # convert start_frame to start (legacy)
+                        del kw['start_frame']  # use only start and not start_frame
+                        
                     f = f.filter(filtername, *a, **kw)
-        assert self._ffmpeg_commandline(f.output('dummyfile')) == cmd, "FFMPEG command line '%s' != '%s'" % (self._ffmpeg_commandline(f.output('dummyfile')), cmd)
+
+        if strict:
+            assert self._ffmpeg_commandline(f.output('dummyfile')) == cmd, "FFMPEG command line '%s' != '%s'" % (self._ffmpeg_commandline(f.output('dummyfile')), cmd)
         return f
 
     def _isdirty(self):
@@ -730,14 +745,21 @@ class Video(object):
         Returns:
             If fps is None, return the current framerate, otherwise set the framerate to fps
 
-        .. note:: Do not call framerate() after calling clip() as this may introduce extra repeated final frames during load()
-        
         """
         if fps is None:
             return self._framerate
         else:
             assert not self.isloaded(), "Filters can only be applied prior to load()"
-            self._ffmpeg = self._ffmpeg.filter('fps', fps=fps, round='up')
+            if 'fps=' in self._ffmpeg_commandline():
+                self._update_ffmpeg('fps', fps)  # replace fps filter, do not add to it
+            else:
+                self._ffmpeg = self._ffmpeg.filter('fps', fps=fps, round='up')  # create fps filter first time
+        
+            # if '-ss' in self._ffmpeg_commandline():
+            #     No change is needed here.  The seek is in seconds and is independent of the framerate
+            # if 'trim' in self._ffmpeg_commandline():
+            #     No change is needed here.  The trim is in units of seconds which is independent of the framerate
+
             self._framerate = fps
             return self
             
@@ -1193,7 +1215,7 @@ class Video(object):
             timestamp_in_seconds = ((self._startframe if self._startframe is not None else 0)+startframe)/float(self.framerate())            
             self._update_ffmpeg_seek(timestamp_in_seconds)
             if endframe is not None:
-                self._ffmpeg = self._ffmpeg.trim(start_frame=0, end_frame=(endframe-startframe))
+                self._ffmpeg = self._ffmpeg.trim(start=0, end=(endframe-startframe)/self.framerate())  # must be in seconds to allow for framerate conversion
             self._ffmpeg = self._ffmpeg.setpts('PTS-STARTPTS')  # reset timestamp to 0 after trim filter            
             self._startframe = startframe if self._startframe is None else self._startframe + startframe  # for __repr__ only
             self._endframe = (self._startframe + (endframe-startframe)) if endframe is not None else endframe  # for __repr__ only
@@ -1203,15 +1225,15 @@ class Video(object):
             (self._startframe, self._endframe) = (0, endframe-startframe)
         return self
 
-    def cliptime(self, startsec, endsec):
-        """Load a video clip betweeen start seconds and end seconds, should be initialized by constructor, which will work but will not set __repr__ correctly"""
-        assert startsec <= endsec and startsec >= 0, "Invalid start and end seconds (%s, %s)" % (str(startsec), str(endsec))
-        assert not self.isloaded(), "Filters can only be applied prior to load() - Try calling flush() first"
-        self._ffmpeg = self._ffmpeg.trim(start=startsec, end=endsec)\
-                                   .setpts('PTS-STARTPTS')  # reset timestamp to 0 after trim filter
-        self._startsec = startsec if self._startsec is None else self._startsec + startsec  # for __repr__ only
-        self._endsec = endsec if self._endsec is None else self._startsec + (endsec-startsec)  # for __repr__ only
-        return self
+    #def cliptime(self, startsec, endsec):
+    #    """Load a video clip betweeen start seconds and end seconds, should be initialized by constructor, which will work but will not set __repr__ correctly"""
+    #    assert startsec <= endsec and startsec >= 0, "Invalid start and end seconds (%s, %s)" % (str(startsec), str(endsec))
+    #    assert not self.isloaded(), "Filters can only be applied prior to load() - Try calling flush() first"
+    #    self._ffmpeg = self._ffmpeg.trim(start=startsec, end=endsec)\
+    #                               .setpts('PTS-STARTPTS')  # reset timestamp to 0 after trim filter
+    #    self._startsec = startsec if self._startsec is None else self._startsec + startsec  # for __repr__ only
+    #    self._endsec = endsec if self._endsec is None else self._startsec + (endsec-startsec)  # for __repr__ only
+    #    return self
     
     def rot90cw(self):
         """Rotate the video 90 degrees clockwise, can only be applied prior to load()"""
@@ -1843,8 +1865,6 @@ class VideoCategory(Video):
             strlist.append('clip=(%d,%d)' % (self._startframe, self._endframe))
         if not self.isloaded() and self._startframe is not None and self._endframe is None:
             strlist.append('clip=(%d,)' % (self._startframe))
-        if not self.isloaded() and self._startsec is not None:
-            strlist.append('cliptime=(%1.2f,%1.2f)' % (self._startsec, self._endsec))
         return str('<vipy.video.VideoCategory: %s>' % (', '.join(strlist)))
 
     def json(self, encode=True):
@@ -1985,8 +2005,6 @@ class Scene(VideoCategory):
             strlist.append('clip=(%d,%d)' % (self._startframe, self._endframe))
         if not self.isloaded() and self._startframe is not None and self._endframe is None:
             strlist.append('clip=(%d,)' % (self._startframe))
-        if not self.isloaded() and self._startsec is not None:
-            strlist.append('cliptime=(%1.2f,%1.2f)' % (self._startsec, self._endsec))            
         if self.category() is not None:
             strlist.append('category="%s"' % self.category())
         if self.hastracks():
@@ -2430,18 +2448,19 @@ class Scene(VideoCategory):
 
 
     def framerate(self, fps=None):
-        """Change the input framerate for the video and update frame indexes for all annotations
+        """Change the input framerate for the video and update frame indexes for all annotations.
 
-           * NOTE: do not call framerate() after calling clip() as this introduces extra repeated final frames during load()
+        >>> fps = self.framerate()
+        >>> self.framerate(fps=15.0)
+
         """
         
         if fps is None:
             return self._framerate
         else:
             assert not self.isloaded(), "Filters can only be applied prior to load() - Try calling flush() first"
-            if self._startframe is not None and self._endframe is not None:
-                (self._startframe, self._endframe) = (int(round(self._startframe * (fps/self._framerate))), int(round(self._endframe * (fps/self._framerate))))
-            #
+            self._startframe = int(round(self._startframe * (fps/self._framerate))) if self._startframe is not None else self._startframe  # __repr__ only
+            self._endframe = int(round(self._endframe * (fps/self._framerate))) if self._endframe is not None else self._endframe  # __repr__only
             self._tracks = {k:t.framerate(fps) for (k,t) in self.tracks().items()}
             self._activities = {k:a.framerate(fps) for (k,a) in self.activities().items()}        
             if 'fps=' in self._ffmpeg_commandline():
@@ -2472,16 +2491,22 @@ class Scene(VideoCategory):
     
     def activityclip(self, padframes=0, multilabel=True):
         """Return a list of vipy.video.Scene() each clipped to be temporally centered on a single activity, with an optional padframes before and after.  
-           
-           * The Scene() category is updated to be the activity, and only the objects participating in the activity are included.
-           * Activities are returned ordered in the temporal order they appear in the video.
-           * The returned vipy.video.Scene() objects for each activityclip are clones of the video, with the video buffer flushed.
-           * Each activityclip() is associated with each activity in the scene, and includes all other secondary activities that the objects in the primary activity also perform (if multilabel=True).  See activityclip().labels(). 
-           * Calling activityclip() on activityclip(multilabel=True) can result in duplicate activities, due to the overlapping secondary activities being included in each clip.  Be careful. 
-           * padframes=int for symmetric padding same before and after
-           * padframes=(int, int) for asymmetric padding before and after
-           * padframes=[(int, int), ...] for activity specific asymmetric padding
-           
+
+        Args:
+            padframes: [int] for symmetric padding same before and after
+            padframes: [tuple] (int, int) for asymmetric padding before and after
+            padframes: [list[tuples]] [(int, int), ...] for activity specific asymmetric padding
+            multilabel: [bool] include overlapping multilabel secondary activities in each activityclip
+
+        Returns:
+            A list of `vipy.video.Scene` each cloned from the source video and clipped on one activity in the scene
+
+        .. notes::
+           - The Scene() category is updated to be the activity, and only the objects participating in the activity are included.
+           - Activities are returned ordered in the temporal order they appear in the video.
+           - The returned vipy.video.Scene() objects for each activityclip are clones of the video, with the video buffer flushed.
+           - Each activityclip() is associated with each activity in the scene, and includes all other secondary activities that the objects in the primary activity also perform (if multilabel=True).  See activityclip().labels(). 
+           - Calling activityclip() on activityclip(multilabel=True) will duplicate activities, due to the overlapping secondary activities being included in each clip with an overlap.  Be careful. 
         """
         assert isinstance(padframes, int) or istuple(padframes) or islist(padframes)
 
@@ -2505,14 +2530,18 @@ class Scene(VideoCategory):
 
     def noactivityclip(self, label=None, strict=True, padframes=0):
         """Return a list of vipy.video.Scene() each clipped on a track segment that has no associated activities.  
-        
-           * Each clip will contain exactly one activity "Background" which is the interval for this track where no activities are occurring
-           * Each clip will be at least one frame long
-           * strict=True means that background can only occur in frames where no tracks are performing any activities.  This is useful so that background is not constructed from secondary objects.
-           * struct=False means that background can only occur in frames where a given track is not performing any activities. 
-           * label=str: The activity label to give the background activities.  Defaults to the track category (lowercase)
-           * padframes=0:  The amount of temporal padding to apply to the clips before and after in frames
 
+        Args:
+            strict: [bool] True means that background can only occur in frames where no tracks are performing any activities.  This is useful so that background is not constructed from secondary objects. False means that background can only occur in frames where a given track is not performing any activities. 
+            label: [str] The activity label to give the background activities.  Defaults to the track category (lowercase)
+            padframes: [int]  The amount of temporal padding to apply to the clips before and after in frames.  See `vipy.video.Scene.activityclip` for options.
+        
+        Returns:
+            A list of `vipy.video.Scene` each cloned from the source video and clipped in the temporal region between activities.  The union of activityclip() and noactivityclip() should equal the entire video.
+
+        .. notes::
+            - Each clip will contain exactly one activity "Background" which is the interval for this track where no activities are occurring
+            - Each clip will be at least one frame long
         """
         v = self.clone()
         for t in v.tracklist():
@@ -2528,20 +2557,37 @@ class Scene(VideoCategory):
         return v.activityfilter(lambda a: 'noactivityclip' in a.attributes).activityclip(padframes=padframes, multilabel=False)
 
     def trackbox(self, dilate=1.0):
-        """The trackbox is the union of all track bounding boxes in the video, or None if there are no tracks"""
+        """The trackbox is the union of all track bounding boxes in the video, or None if there are no tracks
+        
+        Args:
+            dilate: [float] A dilation factor to apply to the trackbox before returning.  See `vipy.geometry.BoundingBox.dilate`
+
+        Returns:
+            A `vipy.geometry.BoundingBox` which is the union of all boxes in the track (or None if no boxes exist)
+        """
         boxes = [t.clone().boundingbox() for t in self.tracklist()]
         boxes = [bb.dilate(dilate) for bb in boxes if bb is not None]
         return boxes[0].union(boxes[1:]) if len(boxes) > 0 else None
 
     def framebox(self):
-        """Return the bounding box for the image rectangle, requires preview() to get frame shape"""
+        """Return the bounding box for the image rectangle.
+
+        Returns:
+            A `vipy.geometry.BoundingBox` which defines the image rectangle
+
+        .. notes: This requires calling `vipy.video.Video.preview` to get the frame shape from the current filter chain, which touches the video file"""
         return vipy.geometry.BoundingBox(xmin=0, ymin=0, width=self.width(), height=self.height())
 
     def trackcrop(self, dilate=1.0, maxsquare=False, zeropad=True):
-        """Return the trackcrop() of the scene which is the crop of the video using the trackbox().  
+        """Return the trackcrop() of the scene which is the crop of the video using the `vipy.video.Scene.trackbox`.
          
-           * If there are no tracks, return None.  
-           * if zeropad=True, the zero pad the crop if it is outside the image rectangle, otherwise return only valid pixels
+        Args:
+            zeropad: [bool] If True, the zero pad the crop if it is outside the image rectangle, otherwise return only valid pixels inside the image rectangle
+            maxsquare: [bool] If True, make the bounding box the maximum square before cropping
+            dilate: [float] The dilation factor to apply to the trackbox prior to cropping
+        
+        Returns:
+           A `vipy.video.Scene` object from cropping the video using the trackbox.  If there are no tracks, return None.  
 
         """
         bb = self.trackbox(dilate)  # may be None if trackbox is degenerate
@@ -2635,7 +2681,7 @@ class Scene(VideoCategory):
             timestamp_in_seconds = ((v._startframe if v._startframe is not None else 0)+startframe)/float(v.framerate())
             v._update_ffmpeg_seek(timestamp_in_seconds)
             if endframe is not None:
-                v._ffmpeg = v._ffmpeg.trim(start_frame=0, end_frame=(endframe-startframe))
+                v._ffmpeg = v._ffmpeg.trim(start=0, end=(endframe-startframe)/self.framerate())  # must be in seconds to allow for framerate conversion
             v._ffmpeg = v._ffmpeg.setpts('PTS-STARTPTS')  # reset timestamp to 0 after trim filter            
             v._startframe = startframe if v._startframe is None else v._startframe + startframe  # for __repr__ only
             v._endframe = (v._startframe + (endframe-startframe)) if endframe is not None else v._endframe  # for __repr__ only
@@ -2648,9 +2694,6 @@ class Scene(VideoCategory):
         v._activities = {k:a.offset(dt=-startframe).truncate(startframe=0, endframe=endframe-startframe) for (k,a) in v.activities().items()}  # may be degenerate
         return v.trackfilter(lambda t: len(t)>0).activityfilter(lambda a: len(a)>0)  # remove degenerate tracks and activities
 
-    def cliptime(self, startsec, endsec):
-        raise NotImplementedError('FIXME: use clip() instead for now')
-            
     def crop(self, bb, zeropad=True):
         """Crop the video using the supplied box, update tracks relative to crop, video is zeropadded if box is outside frame rectangle"""
         assert isinstance(bb, vipy.geometry.BoundingBox), "Invalid input"
@@ -2857,15 +2900,34 @@ class Scene(VideoCategory):
             self.activities(sc.activitylist())  # union of activities only: may reference tracks not in self of track=False
         return self        
 
-    def annotate(self, verbose=True, fontsize=10, captionoffset=(0,0), textfacecolor='white', textfacealpha=1.0, shortlabel=True, boxalpha=0.25, d_category2color={'Person':'green', 'Vehicle':'blue', 'Object':'red'}, categories=None, nocaption=False, nocaption_withstring=[], mutator=None, timestamp=None, timestampcolor='black', timestampfacecolor='white', outfile=None):
+    def annotate(self, outfile=None, fontsize=10, captionoffset=(0,0), textfacecolor='white', textfacealpha=1.0, shortlabel=True, boxalpha=0.25, d_category2color={'Person':'green', 'Vehicle':'blue', 'Object':'red'}, categories=None, nocaption=False, nocaption_withstring=[], mutator=None, timestamp=None, timestampcolor='black', timestampfacecolor='white', verbose=True):
         """Generate a video visualization of all annotated objects and activities in the video.
         
         The annotation video will be at the resolution and framerate of the underlying video, and pixels in this video will now contain the overlay.
         This function does not play the video, it only generates an annotation video frames.  Use show() which is equivalent to annotate().saveas().play()
         
-        .. note::
-            -In general, this function should not be run on very long videos without the outfile kwarg, as it requires loading the video framewise into memory, try running on clips instead.
-            -For long videos, a btter strategy given a video object vo with an output filename which will use a video stream for annotation
+        Args:
+            outfile: [str] An optional file to stream the anntation to without storing the annotated video in memory
+            fontsize: [int] The fontsize of bounding box captions, used by matplotlib
+            captionoffset: (tuple) The (x,y) offset relative to the bounding box to place the caption for each box.
+            textfacecolor: [str] The color of the text in the bounding box caption.  Must be in `vipy.gui.using_matplotlib.colorlist`.
+            textfacealpha: [float] The transparency of the text in the bounding box caption.  Must be in [0,1], where 0=transparent and 1=opaque.
+            shortlabel: [bool] If true, display the shortlabel for each object in the scene, otherwise show the full category
+            boxalpha: [float]  The transparency of the box face behind the text.  Must be in [0,1], where 0=transparent and 1=opaque.
+            d_category2color: [dict]  A dictionary mapping categories of objects in the scene to their box colors.  Named colors must be in `vipy.gui.using_matplotlib.colorlist`. 
+            categories: [list]  Only show these categories, or show them all if None
+            nocaption_withstring: [list]:  Do not show captions for those detection categories (or shortlabels) containing any of the strings in the provided list
+            nocaption: [bool] If true, do not show any captions, just boxes
+            mutator: [lambda] A lambda function that will mutate an image to allow for complex visualizations.  This should be a mutator like `vipy.image.mutator_show_trackid`.
+            timestamp: [bool] If true, show a semitransparent timestamp (when the annotation occurs, not when the video was collected) with frame number in the upper left corner of the video
+            timestampcolor: [str] The color of the timstamp text.  Named colors must be in `vipy.gui.using_matplotlib.colorlist`.
+            timestampfacecolor: [str]  The color of the timestamp background.  Named colors must be in `vipy.gui.using_matplotlib.colorlist`.  
+            verbose: [bool] Show more helpful messages if true
+
+        Returns:
+            A `vipy.video.Video` with annotations in the pixels.  If outfile is provided, then the returned video will be flushed.  
+
+        .. note::  In general, this function should not be run on very long videos without the outfile kwarg, as it requires loading the video framewise into memory.  
         """
         if verbose:
             print('[vipy.video.annotate]: Annotating video ...')  
@@ -3144,7 +3206,10 @@ class Scene(VideoCategory):
     
     
 def RandomVideo(rows=None, cols=None, frames=None):
-    """Return a random loaded vipy.video.video, useful for unit testing, minimum size (32x32x32)"""
+    """Return a random loaded vipy.video.video.
+    
+    Useful for unit testing, minimum size (32x32x32) for ffmpeg
+    """
     rows = np.random.randint(256, 1024) if rows is None else rows
     cols = np.random.randint(256, 1024) if cols is None else cols
     frames = np.random.randint(32, 256) if frames is None else frames
@@ -3153,7 +3218,10 @@ def RandomVideo(rows=None, cols=None, frames=None):
 
 
 def RandomScene(rows=None, cols=None, frames=None):
-    """Return a random loaded vipy.video.Scene, useful for unit testing"""
+    """Return a random loaded vipy.video.Scene.
+    
+    Useful for unit testing.
+    """
     v = RandomVideo(rows, cols, frames)
     (rows, cols) = v.shape()
     tracks = [vipy.object.Track(label='track%d' % k, shortlabel='t%d' % k,
@@ -3170,7 +3238,10 @@ def RandomScene(rows=None, cols=None, frames=None):
 
 
 def RandomSceneActivity(rows=None, cols=None, frames=256):
-    """Return a random loaded vipy.video.Scene, useful for unit testing"""    
+    """Return a random loaded vipy.video.Scene.
+
+    Useful for unit testing.
+    """    
     v = RandomVideo(rows, cols, frames)
     (rows, cols) = v.shape()
     tracks = [vipy.object.Track(label=['Person','Vehicle','Object'][k], shortlabel='track%d' % k, boundary='strict', 
