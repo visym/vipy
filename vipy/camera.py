@@ -1,8 +1,12 @@
 import urllib
 import timeit
-from vipy.util import tempimage, try_import
+from vipy.util import tempimage, try_import, isurl
 from vipy.image import Image
 from vipy.globals import print
+
+try_import("cv2", "opencv-python")
+import cv2
+
 
 class Camera(object):
     CAM = None
@@ -15,14 +19,32 @@ class Camera(object):
 
 
 class Webcam(Camera):
-    def __init__(self, framerate=False, url=0):
+    """Create a webcam object that will yield `vipy.image.Image` frames.
 
-        try_import("cv2", "opencv-python")
-        import cv2
+    This is a light wrapper to OpenCV webcam object (cv2.VideoCapture) that yields vipy objects.
 
-        self.CAM = cv2.VideoCapture(url)
+    >>> cam = vipy.cmaera.Webcam()
+    >>> cam.frame().show()
+
+    Or as an iterator:
+    
+    >>> for im in vipy.camera.Webcam():
+    >>>     im.show()
+
+    To capture a video:
+
+    >>> 
+    Args:
+        framerate: [float] The framerate to grab from the camera
+        url: [int]  The camera index to open 
+
+    """
+    def __init__(self, framerate=False, idx=0):
+
+        assert idx >= 0
+        self.CAM = cv2.VideoCapture(idx)
         if not self.CAM.isOpened():
-            self.CAM.open(url)
+            self.CAM.open(idx)
         self.FRAMERATE = framerate
         if framerate:
             self.TIC = timeit.default_timer()
@@ -40,9 +62,11 @@ class Webcam(Camera):
         return self.CAM.read()  # HACK: for slow processing to get most recent image
 
     def current(self):
-        return self.next(grab=False)
+        """Alias for `vipy.camera.Webcam.next`"""
+        return self.next()
 
-    def next(self, grab=True):
+    def next(self):
+        """Return a `vipy.image.Image` from the camera"""
         k = 0
         while not self.CAM.grab():
             k = k + 1
@@ -60,26 +84,41 @@ class Webcam(Camera):
 
         return Image(array=im, colorspace='bgr')
 
+    def frame(self)
+        """Alias for `vipy.camera.Webcam.next`"""
+        return self.next()
 
-class Flow(Webcam):
-    IMCURRENT = None
-    IMPREV = None
+    def video(self, n, framerate=30):
+        """Return a `vipy.video.Video` with n frames, constructed using the provided framerate (defaults to 30Hz)"""
+        assert n > 0
 
-    def next(self):
-        if self.IMPREV is None:
-            self.IMPREV = super(Flow, self).next()
-        else:
-            self.IMPREV = self.IMCURRENT.copy()
-        self.IMCURRENT = super(Flow, self).next()
-        return (self.IMCURRENT, self.IMPREV)
+        frames = []
+        for (k,im) in enumerate(self):
+            frames.append(im.rgb())
+            if k > n:
+                break
+        return vipy.video.Video(frames=frames, framerate=framerate)
 
 
 class Ipcam(Camera):
+    """Create a IPcam object that will yield `vipy.image.Image` frames.
+
+    >>> cam = vipy.cmaera.IPcam()
+    >>> cam.frame().show()
+
+    Or as an iterator:
+    
+    >>> for im in vipy.camera.IPcam():
+    >>>     im.show()
+
+    """
+
     TMPFILE = None
 
     def __init__(self, url, imfile=tempimage()):
         self.CAM = url
         self.TMPFILE = imfile
+        assert isurl(url)
 
     def __iter__(self):
         return self

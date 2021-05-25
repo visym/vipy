@@ -154,11 +154,11 @@ def rowvector(x):
     return z.reshape((1, z.size))
 
 
-def poweroftwo(x):
+def is_poweroftwo(x):
     """Is the number x a power of two?  
     
-    >>> assert vipy.linalg.poweroftwo(4) == True
-    >>> assert vipy.linalg.poweroftwo(3) == False
+    >>> assert vipy.linalg.is_poweroftwo(4) == True
+    >>> assert vipy.linalg.is_poweroftwo(3) == False
     """
 
     return x > 1 and ((x & (x - 1)) == 0)

@@ -7,19 +7,49 @@ try:
     config.THREADING_LAYER = 'workqueue'    
     @njit(parallel=True, cache=True, nogil=True, fastmath=True)
     def normalize(arr, mean, std, scale):
-        """Parallel normalization by whitening"""
+        """Whiten the numpy array arr using the provided mean and standard deviation.
+
+        - Uses numba acceleration since this is a common operation for preparing tensors.
+        - Computes:  ((scale*arr) - mean)) / std
+        
+        Args:
+            arr: [numpy] A numpy array
+            mean: [numpy] A broadcastable mean vector
+            std: [numpy]  A broadcastable std vector
+            scale: [float] A scale factor to apply to arr before whitening (e.g. to scale from [0,255] to [0,1])
+
+        Returns
+            ((scale*arr) - mean)) / std
+
+        .. notes:: Does not check that std > 0
+        """
         return ((np.float32(scale)*arr.astype(np.float32)) - mean.flatten()) / std.flatten() 
 except:
     def normalize(arr, mean, std, scale):
-        """Whiten the numpy array arr"""
+        """Whiten the numpy array arr using the provided mean and standard deviation.
+
+        Computes:  (scale*(arr - mean)) / std
+
+        Args:
+            arr: [numpy] A numpy array
+            mean: [numpy] A broadcastable mean vector
+            std: [numpy]  A broadcastable std vector
+            scale: [float] A scale factor to apply to arr before whitening (e.g. to scale to [0,1])
+
+        Returns
+            ((scale*arr) - mean)) / std
+
+        .. notes:: Does not check that std > 0
+        """
         return ((np.float32(scale)*arr.astype(np.float32)) - mean.flatten()) / std.flatten() 
 
 def _normalize(arr, mean, std, scale):
-    """Whiten the numpy array arr (no parallelization)"""
+    """Whiten the numpy array arr using mean and standard deviation (no parallelization)"""
     return ((np.float32(scale)*arr.astype(np.float32)) - mean.flatten()) / std.flatten() 
     
     
 def iseven(x):
+    """is the number x an even number?"""
     return x%2 == 0
 
 
@@ -30,24 +60,27 @@ def even(x, greaterthan=False):
 
 
 def poweroftwo(x):
-    """Return the closest power of two smaller than the value. x=511 -> 256, x=512 -> 512"""
+    """Return the closest power of two smaller than the scalar value. x=511 -> 256, x=512 -> 512"""
     assert x>=2 
     return int(np.power(2, int(np.floor(np.log2(x)/np.log2(2)))))
 
 
 def signsqrt(x):
-    """Return the signed square root of elements in x"""
+    """Return the signed square root of elements in numpy array x"""
     return np.multiply(np.sign(x), np.sqrt(np.abs(x)))
 
 
 def runningmean(X, n):
-    """Compute the running unweighted mean of X row-wise, with a history of n, reducing the history at the start"""
+    """Compute the running unweighted mean of X row-wise, with a history of n, reducing the history at the start for column indexes < n"""
     assert isnumpy(X), "Input must be a np.array()"    
     return np.array([[np.mean(c) for c in chunklistWithOverlap(x, n, n-1)] for x in X])
 
 
 def gaussian(M, std=1, sym=True):
-    """1D gaussian window with M points, Replication of scipy.signal.gaussian"""
+    """1D gaussian window with M points.
+
+    Replication of scipy.signal.gaussian
+    """
 
     if M < 1:
         return np.array([])
@@ -64,7 +97,7 @@ def gaussian(M, std=1, sym=True):
     return w
 
 def gaussian2d(mu, std, H, W):
-    """2D gaussian image of size (rows=H, cols=W) with mu=[x,y] and std=[stdx, stdy]"""
+    """2D float32 gaussian image of size (rows=H, cols=W) with mu=[x, y] and std=[stdx, stdy]"""
     img = np.zeros( (H,W), dtype=np.float32)
     (X,Y) = np.meshgrid(W,H)
     gx = ((1.0/np.sqrt(2*np.pi))*np.exp(-0.5*((np.arange(W)-mu[0])**2 / (std[0]**2)))).astype(np.float32)
@@ -83,7 +116,10 @@ def interp1d(x, y):
 
 
 def find_closest_positive_divisor(a, b):
-    """Return non-trivial positive integer divisor (bh) of (a) closest to (b) in abs(b-bh) such that a % bh == 0.  This uses exhaustive search, which is inefficient for large a."""
+    """Return non-trivial positive integer divisor (bh) of (a) closest to (b) in abs(b-bh) such that a % bh == 0.  
+
+    .. notes:: This uses exhaustive search, which is inefficient for large a.
+    """
     assert a>0 and b>0
     if a<=b:
         return a
@@ -97,11 +133,11 @@ def find_closest_positive_divisor(a, b):
     raise  # should never get here, since bh=a is always a solution
 
 def cartesian_to_polar(x, y):
-    """Cartesian (x,y) coordinates to polar (radius, theta) coordinates, theta in radians in [-pi,pi]"""
+    """Cartesian (x,y) coordinates to polar (radius, theta_radians) coordinates, theta in radians in [-pi,pi]"""
     return (np.sqrt(np.array(x)**2 + np.array(y)**2), np.arctan2(y, x))
 
 def polar_to_cartesian(r, t):
-    """Polar (radius, theta) coordinates to cartesian (x=right,y=down) coordinates.  (0,0) is upper left of image"""
+    """Polar (r=radius, t=theta_radians) coordinates to cartesian (x=right,y=down) coordinates.  (0,0) is upper left of image"""
     return (np.multiply(r, np.cos(t)), np.multiply(r, np.sin(t)))
             
 def rad2deg(r):

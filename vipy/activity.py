@@ -121,6 +121,11 @@ class Activity(object):
     def middleframe(self):
         return int(np.round((self._endframe - self._startframe) / 2.0)) + self._startframe
 
+    def _set_framerate(self, fps):
+        """Override framerate conversion and just set the framerate attribute.  This should really be set only in constructor.  Use with caution!"""
+        self._framerate = fps
+        return self
+
     def framerate(self, fps=None, speed=None):
         """Resample (startframe, endframe) from known original framerate set by constructor to be new framerate fps"""        
         if fps is None and speed is None:
