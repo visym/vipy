@@ -1296,7 +1296,7 @@ INDEX=[
 {
 "ref":"vipy.object.Track.isdegenerate",
 "url":7,
-"doc":"",
+"doc":"Is the track degenerate? A degenerate track has: - Unequal length keyboxes and keyframes - length zero track - Non increasing keyframes - Invalid keyboxes",
 "func":1
 },
 {
@@ -1410,7 +1410,7 @@ INDEX=[
 {
 "ref":"vipy.object.Track.during",
 "url":7,
-"doc":"Is frame during the time interval (startframe, endframe) inclusive?",
+"doc":"Does the track contain a keyframe during the time interval (startframe, endframe) inclusive?",
 "func":1
 },
 {
@@ -1937,7 +1937,7 @@ INDEX=[
 {
 "ref":"vipy.util.groupbyasdict",
 "url":9,
-"doc":"Return dictionary of keys and lists from groupby on unsorted inset, where keyfunc is a lambda function on elements in inset",
+"doc":"Return dictionary of keys and lists from groupby on unsorted inset, where keyfunc is a lambda function on elements in inset Args: togroup: a list of elements to group keyfunc: a lambda function to operate on elemenets of togroup such that the value returned from the lambda is the equality key for grouping Returns: A dictionary with unique keys returned from keyfunc, and values are lists of elements in togroup with the same key",
 "func":1
 },
 {
@@ -1955,7 +1955,7 @@ INDEX=[
 {
 "ref":"vipy.util.countbyasdict",
 "url":9,
-"doc":"Alias for countby",
+"doc":"Alias for  vipy.util.countby ",
 "func":1
 },
 {
@@ -1985,13 +1985,13 @@ INDEX=[
 {
 "ref":"vipy.util.dividelist",
 "url":9,
-"doc":"Divide inlist into a list of lists such that the size of each sublist is the requseted fraction of the original list. This operation is deterministic and generates the same division in multiple calls. Input: -inlist=list -fractions=(0.1, 0.7, 0.2) An iterable of fractions that must be non-negative and sum to one",
+"doc":"Divide inlist into a list of lists such that the size of each sublist is the requseted fraction of the original list. This operation is deterministic and generates the same division in multiple calls. Args: inlist: [list] fractions: [tuple] such as (0.1, 0.7, 0.2) An iterable of fractions that must be non-negative and sum to one",
 "func":1
 },
 {
 "ref":"vipy.util.chunklist",
 "url":9,
-"doc":"Convert list into a list of lists of length num_chunks each element is a list containing a sequential chunk of the original list",
+"doc":"Convert list into a list of lists of length num_chunks, such that each element is a list containing a sequential chunk of the original list. >>> (A,B,C) = vipy.util.chunklist(inlist, num_chunks=3) >>> assert len(A)  len(inlist)  3  note The last chunk will be larger for ragged chunks",
 "func":1
 },
 {
@@ -2429,7 +2429,7 @@ INDEX=[
 {
 "ref":"vipy.util.shortuuid",
 "url":9,
-"doc":"",
+"doc":"Generate a short UUID with n hex digits",
 "func":1
 },
 {
@@ -3567,7 +3567,7 @@ INDEX=[
 {
 "ref":"vipy.dataset.meva.KF1",
 "url":27,
-"doc":"Parse MEVA annotations (http: mevadata.org) for KNown Facility 1 dataset into vipy.video.Scene() objects Kwiver packet format: https: gitlab.kitware.com/meva/meva-data-repo/blob/master/documents/KPF-specification-v4.pdf Inputs: -videodir=str: path to Directory containing 'drop-01' -repodir=str: path to directory containing clone of https: gitlab.kitware.com/meva/meva-data-repo -stride=int: the temporal stride in frames for importing bounding boxes, vipy will do linear interpoluation and boundary handling -n_videos=int: only return an integer number of videos, useful for debugging or for previewing dataset -withprefix=list: only return videos with the filename containing one of the strings in withprefix list, useful for debugging -contrib=bool: include the noisy contrib anntations from DIVA performers -d_category_to_shortlabel is a dictionary mapping category names to a short displayed label on the video. The standard for visualization is that tracked objects are displayed with their category label (e.g. 'Person', 'Vehicle'), and activities are labeled according to the set of objects that performing the activity. When an activity occurs, the set of objects are labeled with the same color as 'Noun Verbing' (e.g. 'Person Entering', 'Person Reading', 'Vehicle Starting') where 'Verbing' is provided by the shortlabel. This is optional, and will use the default mapping if None -verbose=bool: Parsing verbosity -merge: deduplicate annotations for each video across YAML files by merging them by mean spatial IoU per track (>0.5) and temporal IoU (>0) -actor [bool]: Include only those activities that include an associated track for the primary actor: \"Person\" for \"person_ \" and \"hand_ \", else \"Vehicle\" -disjoint [bool]: Enforce that overlapping causal activities (open/close, enter/exit,  .) are disjoint for a track -unpad [bool]: remove the arbitrary padding assigned during dataset creation"
+"doc":"Parse MEVA annotations (http: mevadata.org) for Known Facility 1 dataset into vipy.video.Scene() objects Kwiver packet format: https: gitlab.kitware.com/meva/meva-data-repo/blob/master/documents/KPF-specification-v4.pdf Args: videodir: [str] path to Directory containing 'drop-01' repodir: [str] path to directory containing clone of https: gitlab.kitware.com/meva/meva-data-repo stride: [int] the integer temporal stride in frames for importing bounding boxes, vipy will do linear interpoluation and boundary handling n_videos: [int] only return an integer number of videos, useful for debugging or for previewing dataset withprefix: [list] only return videos with the filename containing one of the strings in withprefix list, useful for debugging contrib: [bool] include the noisy contrib anntations from DIVA performers d_category_to_shortlabel: [dict] is a dictionary mapping category names to a short displayed label on the video. The standard for visualization is that tracked objects are displayed with their category label (e.g. 'Person', 'Vehicle'), and activities are labeled according to the set of objects that performing the activity. When an activity occurs, the set of objects are labeled with the same color as 'Noun Verbing' (e.g. 'Person Entering', 'Person Reading', 'Vehicle Starting') where 'Verbing' is provided by the shortlabel. This is optional, and will use the default mapping if None verbose: [bool] Parsing verbosity merge: [bool] deduplicate annotations for each video across YAML files by merging them by mean spatial IoU per track (>0.5) and temporal IoU (>0) actor: [bool] Include only those activities that include an associated track for the primary actor: \"Person\" for \"person_ \" and \"hand_ \", else \"Vehicle\" disjoint: [bool]: Enforce that overlapping causal activities (open/close, enter/exit,  .) are disjoint for a track unpad: [bool] remove the arbitrary padding assigned during dataset creation Returns: a list of  vipy.video.Scene objects"
 },
 {
 "ref":"vipy.dataset.meva.KF1.videos",
@@ -3839,7 +3839,7 @@ INDEX=[
 {
 "ref":"vipy.globals.print",
 "url":34,
-"doc":"Main entry point for all print statements in the vipy package. All vipy code calls this to print helpful messages. -Printing can be disabled by calling vipy.globals.silent() -Printing can be redirected to logging by calling vipy.globals.logging(True) -All print() statements in vipy. are overloaded to call vipy.globals.print() so that it can be redirected to logging",
+"doc":"Main entry point for all print statements in the vipy package. All vipy code calls this to print helpful messages.  notes -Printing can be disabled by calling vipy.globals.silent() -Printing can be redirected to logging by calling vipy.globals.logging(True) -All print() statements in vipy. are overloaded to call vipy.globals.print() so that it can be redirected to logging",
 "func":1
 },
 {
@@ -3857,19 +3857,19 @@ INDEX=[
 {
 "ref":"vipy.globals.silent",
 "url":34,
-"doc":"",
+"doc":"Silence the global verbosity level, only really used right now for FFMPEG messages",
 "func":1
 },
 {
 "ref":"vipy.globals.issilent",
 "url":34,
-"doc":"",
+"doc":"Is the global verbosity silent?",
 "func":1
 },
 {
 "ref":"vipy.globals.verbosity",
 "url":34,
-"doc":"",
+"doc":"Set the global verbosity level [0,1,2]=debug, warn, info",
 "func":1
 },
 {
@@ -3887,13 +3887,7 @@ INDEX=[
 {
 "ref":"vipy.globals.cache",
 "url":34,
-"doc":"The cache is the location that URLs are downloaded to on your system. This can be set here, or with the environment variable VIPY_CACHE",
-"func":1
-},
-{
-"ref":"vipy.globals.user_hit_escape",
-"url":34,
-"doc":"",
+"doc":"The cache is the location that URLs are downloaded to on your system. This can be set here, or with the environment variable VIPY_CACHE >>> vipy.globals.cache('/path/to/.vipy') >>> cachedir = vipy.globals.cache() Args: cachedir: the location to store cached files when downloaded. Can also be set using the VIPY_CACHE environment variable. if none, return the current cachedir Returns: The current cachedir if cachedir=None else None",
 "func":1
 },
 {
@@ -3911,13 +3905,13 @@ INDEX=[
 {
 "ref":"vipy.globals.dask",
 "url":34,
-"doc":"Return the current Dask client, can be accessed globally for parallel processing. -pct: [0,1] the percentage of the current machine to use -address: the dask scheduler of the form 'HOSTNAME:PORT' -num_processes: the number of prpcesses to use on the current machine -num_gpus: the number of GPUs to use on the current machine",
+"doc":"Return the current Dask client, can be accessed globally for parallel processing. Args: pct: float in [0,1] the percentage of the current machine to use address: the dask scheduler of the form 'HOSTNAME:PORT' num_processes: the number of prpcesses to use on the current machine num_gpus: the number of GPUs to use on the current machine dashboard: [bool] whether to inialize the dask client with a web dashboard Returns: The  vipy.batch.Dask object pointing to the Dask Distrbuted object",
 "func":1
 },
 {
 "ref":"vipy.globals.parallel",
 "url":34,
-"doc":"Enable parallel processing with n>=1 processes. >>> with vipy.globals.parallel(n=4): vipy.batch.Batch( .)",
+"doc":"Enable parallel processing with n>=1 processes or a percentage of system core (pct \\in [0,1]) or a dask scheduler . This can be be used as a context manager >>> with vipy.globals.parallel(n=4): >>> vipy.batch.Batch( .) or using the global variables: >>> vipy.globals.parallel(n=4): >>> vipy.batch.Batch( .) >>> vipy.globals.noparallel() To check the current parallelism level: >>> num_processes = vipy.globals.parallel() To run with a dask scheduler: >>> with vipy.globals.parallel(scheduler='10.0.1.1:8585') >>> vipy.batch.Batch( .) Args: n: [int] number of parallel processes pct: [float] the percentage [0,1] of system cores to dedicate to parallel processing scheduler: [str] the dask scheduler of the form 'HOSTNAME:PORT' like '128.0.0.1:8785'. See  ",
 "func":1
 },
 {
@@ -3929,7 +3923,7 @@ INDEX=[
 {
 "ref":"vipy.globals.nodask",
 "url":34,
-"doc":"Alias for noparallel()",
+"doc":"Alias for  vipy.globals.noparallel ",
 "func":1
 },
 {
@@ -4062,6 +4056,12 @@ INDEX=[
 "ref":"vipy.activity.Activity.from_json",
 "url":36,
 "doc":"",
+"func":1
+},
+{
+"ref":"vipy.activity.Activity.duration",
+"url":36,
+"doc":"The length of the activity in seconds",
 "func":1
 },
 {
@@ -4235,7 +4235,7 @@ INDEX=[
 {
 "ref":"vipy.activity.Activity.temporalpad",
 "url":36,
-"doc":"Add a temporal pad of df=(before,after) or df=pad frames to the start and end of the activity. The padded start frame may be negative.",
+"doc":"Add a temporal pad of df=(before frames, after frames) or df=pad frames to the start and end of the activity. The padded start frame may be negative.",
 "func":1
 },
 {
@@ -4466,13 +4466,13 @@ INDEX=[
 {
 "ref":"vipy.flow.Video.metadata",
 "url":38,
-"doc":"Return a dictionary of metadata about this video",
+"doc":"Return a dictionary of metadata about this video. This is an alias for the 'attributes' dictionary.",
 "func":1
 },
 {
 "ref":"vipy.flow.Video.videoid",
 "url":38,
-"doc":"Return a unique video identifier for this video, as specified in the 'video_id' attribute, or by hashing the filename() and url(). Notes: - If the video filename changes (e.g. from transformation), and video_id is not set in self.attributes, then the video ID will change. - If a video does not have a filename or URL or a video ID in the attributes, then this will return None - To preserve a video ID independent of transformations, set self.setattribute('video_id', $MY_ID)",
+"doc":"Return a unique video identifier for this video, as specified in the 'video_id' attribute, or by SHA1 hash of the  vipy.video.Video.filename and  vipy.video.Video.url . Args: newid: [str] If not None, then update the video_id as newid. Returns: The video ID if newid=None else self  note - If the video filename changes (e.g. from transformation), and video_id is not set in self.attributes, then the video ID will change. - If a video does not have a filename or URL or a video ID in the attributes, then this will return None - To preserve a video ID independent of transformations, set self.setattribute('video_id', ${MY_ID}), or pass in newid",
 "func":1
 },
 {
@@ -4484,7 +4484,7 @@ INDEX=[
 {
 "ref":"vipy.flow.Video.store",
 "url":38,
-"doc":"Store the current video file as an attribute of this object. Useful for archiving an object to be fully self contained without any external references. -Remove this stored video using unstore() -Unpack this stored video and set up the video chains using restore() -This method is more efficient than load() followed by pkl(), as it stores the encoded video as a byte string. -Useful for creating a single self contained object for distributed processing. >>> v  v.store().restore(v.filename( ",
+"doc":"Store the current video file as an attribute of this object. Useful for archiving an object to be fully self contained without any external references. >>> v  v.store().restore(v.filename(  note -Remove this stored video using unstore() -Unpack this stored video and set up the video chains using restore() -This method is more efficient than load() followed by pkl(), as it stores the encoded video as a byte string. -Useful for creating a single self contained object for distributed processing.",
 "func":1
 },
 {
@@ -4604,7 +4604,43 @@ INDEX=[
 {
 "ref":"vipy.flow.Video.canload",
 "url":38,
-"doc":"Return True if the video can be loaded successfully, useful for filtering bad videos or filtering videos that cannot be loaded using your current FFMPEG version",
+"doc":"Return True if the video can be loaded successfully. This is useful for filtering bad videos or filtering videos that cannot be loaded using your current FFMPEG version.",
+"func":1
+},
+{
+"ref":"vipy.flow.Video.iscolor",
+"url":38,
+"doc":"Is the video a three channel color video as returned from  vipy.video.Video.channels ?",
+"func":1
+},
+{
+"ref":"vipy.flow.Video.isgrayscale",
+"url":38,
+"doc":"Is the video a single channel as returned from  vipy.video.Video.channels ?",
+"func":1
+},
+{
+"ref":"vipy.flow.Video.hasfilename",
+"url":38,
+"doc":"Does the filename returned from  vipy.video.Video.filename exist?",
+"func":1
+},
+{
+"ref":"vipy.flow.Video.isdownloaded",
+"url":38,
+"doc":"Does the filename returned from  vipy.video.Video.filename exist, meaning that the url has been downloaded to a local file?",
+"func":1
+},
+{
+"ref":"vipy.flow.Video.hasurl",
+"url":38,
+"doc":"Is the url returned from  vipy.video.Video.url a well formed url?",
+"func":1
+},
+{
+"ref":"vipy.flow.Video.array",
+"url":38,
+"doc":"Set or return the video buffer as a numpy array. Args: array: [np.array] A numpy array of size NxHxWxC = (frames, height, width, channels) of type uint8 or float32. copy: [bool] If true, copy the buffer by value instaed of by reference. Copied buffers do not share pixels. Returns: if array=None, return a reference to the pixel buffer as a numpy array, otherwise return the video object.",
 "func":1
 },
 {
@@ -6517,13 +6553,13 @@ INDEX=[
 {
 "ref":"vipy.video.Video.metadata",
 "url":38,
-"doc":"Return a dictionary of metadata about this video",
+"doc":"Return a dictionary of metadata about this video. This is an alias for the 'attributes' dictionary.",
 "func":1
 },
 {
 "ref":"vipy.video.Video.videoid",
 "url":38,
-"doc":"Return a unique video identifier for this video, as specified in the 'video_id' attribute, or by hashing the filename() and url(). Notes: - If the video filename changes (e.g. from transformation), and video_id is not set in self.attributes, then the video ID will change. - If a video does not have a filename or URL or a video ID in the attributes, then this will return None - To preserve a video ID independent of transformations, set self.setattribute('video_id', $MY_ID)",
+"doc":"Return a unique video identifier for this video, as specified in the 'video_id' attribute, or by SHA1 hash of the  vipy.video.Video.filename and  vipy.video.Video.url . Args: newid: [str] If not None, then update the video_id as newid. Returns: The video ID if newid=None else self  note - If the video filename changes (e.g. from transformation), and video_id is not set in self.attributes, then the video ID will change. - If a video does not have a filename or URL or a video ID in the attributes, then this will return None - To preserve a video ID independent of transformations, set self.setattribute('video_id', ${MY_ID}), or pass in newid",
 "func":1
 },
 {
@@ -6535,7 +6571,7 @@ INDEX=[
 {
 "ref":"vipy.video.Video.store",
 "url":38,
-"doc":"Store the current video file as an attribute of this object. Useful for archiving an object to be fully self contained without any external references. -Remove this stored video using unstore() -Unpack this stored video and set up the video chains using restore() -This method is more efficient than load() followed by pkl(), as it stores the encoded video as a byte string. -Useful for creating a single self contained object for distributed processing. >>> v  v.store().restore(v.filename( ",
+"doc":"Store the current video file as an attribute of this object. Useful for archiving an object to be fully self contained without any external references. >>> v  v.store().restore(v.filename(  note -Remove this stored video using unstore() -Unpack this stored video and set up the video chains using restore() -This method is more efficient than load() followed by pkl(), as it stores the encoded video as a byte string. -Useful for creating a single self contained object for distributed processing.",
 "func":1
 },
 {
@@ -6667,43 +6703,43 @@ INDEX=[
 {
 "ref":"vipy.video.Video.canload",
 "url":38,
-"doc":"Return True if the video can be loaded successfully, useful for filtering bad videos or filtering videos that cannot be loaded using your current FFMPEG version",
+"doc":"Return True if the video can be loaded successfully. This is useful for filtering bad videos or filtering videos that cannot be loaded using your current FFMPEG version.",
 "func":1
 },
 {
 "ref":"vipy.video.Video.iscolor",
 "url":38,
-"doc":"",
+"doc":"Is the video a three channel color video as returned from  vipy.video.Video.channels ?",
 "func":1
 },
 {
 "ref":"vipy.video.Video.isgrayscale",
 "url":38,
-"doc":"",
+"doc":"Is the video a single channel as returned from  vipy.video.Video.channels ?",
 "func":1
 },
 {
 "ref":"vipy.video.Video.hasfilename",
 "url":38,
-"doc":"",
+"doc":"Does the filename returned from  vipy.video.Video.filename exist?",
 "func":1
 },
 {
 "ref":"vipy.video.Video.isdownloaded",
 "url":38,
-"doc":"",
+"doc":"Does the filename returned from  vipy.video.Video.filename exist, meaning that the url has been downloaded to a local file?",
 "func":1
 },
 {
 "ref":"vipy.video.Video.hasurl",
 "url":38,
-"doc":"",
+"doc":"Is the url returned from  vipy.video.Video.url a well formed url?",
 "func":1
 },
 {
 "ref":"vipy.video.Video.array",
 "url":38,
-"doc":"",
+"doc":"Set or return the video buffer as a numpy array. Args: array: [np.array] A numpy array of size NxHxWxC = (frames, height, width, channels) of type uint8 or float32. copy: [bool] If true, copy the buffer by value instaed of by reference. Copied buffers do not share pixels. Returns: if array=None, return a reference to the pixel buffer as a numpy array, otherwise return the video object.",
 "func":1
 },
 {
@@ -7128,13 +7164,13 @@ INDEX=[
 {
 "ref":"vipy.video.VideoCategory.metadata",
 "url":38,
-"doc":"Return a dictionary of metadata about this video",
+"doc":"Return a dictionary of metadata about this video. This is an alias for the 'attributes' dictionary.",
 "func":1
 },
 {
 "ref":"vipy.video.VideoCategory.videoid",
 "url":38,
-"doc":"Return a unique video identifier for this video, as specified in the 'video_id' attribute, or by hashing the filename() and url(). Notes: - If the video filename changes (e.g. from transformation), and video_id is not set in self.attributes, then the video ID will change. - If a video does not have a filename or URL or a video ID in the attributes, then this will return None - To preserve a video ID independent of transformations, set self.setattribute('video_id', $MY_ID)",
+"doc":"Return a unique video identifier for this video, as specified in the 'video_id' attribute, or by SHA1 hash of the  vipy.video.Video.filename and  vipy.video.Video.url . Args: newid: [str] If not None, then update the video_id as newid. Returns: The video ID if newid=None else self  note - If the video filename changes (e.g. from transformation), and video_id is not set in self.attributes, then the video ID will change. - If a video does not have a filename or URL or a video ID in the attributes, then this will return None - To preserve a video ID independent of transformations, set self.setattribute('video_id', ${MY_ID}), or pass in newid",
 "func":1
 },
 {
@@ -7146,7 +7182,7 @@ INDEX=[
 {
 "ref":"vipy.video.VideoCategory.store",
 "url":38,
-"doc":"Store the current video file as an attribute of this object. Useful for archiving an object to be fully self contained without any external references. -Remove this stored video using unstore() -Unpack this stored video and set up the video chains using restore() -This method is more efficient than load() followed by pkl(), as it stores the encoded video as a byte string. -Useful for creating a single self contained object for distributed processing. >>> v  v.store().restore(v.filename( ",
+"doc":"Store the current video file as an attribute of this object. Useful for archiving an object to be fully self contained without any external references. >>> v  v.store().restore(v.filename(  note -Remove this stored video using unstore() -Unpack this stored video and set up the video chains using restore() -This method is more efficient than load() followed by pkl(), as it stores the encoded video as a byte string. -Useful for creating a single self contained object for distributed processing.",
 "func":1
 },
 {
@@ -7266,7 +7302,43 @@ INDEX=[
 {
 "ref":"vipy.video.VideoCategory.canload",
 "url":38,
-"doc":"Return True if the video can be loaded successfully, useful for filtering bad videos or filtering videos that cannot be loaded using your current FFMPEG version",
+"doc":"Return True if the video can be loaded successfully. This is useful for filtering bad videos or filtering videos that cannot be loaded using your current FFMPEG version.",
+"func":1
+},
+{
+"ref":"vipy.video.VideoCategory.iscolor",
+"url":38,
+"doc":"Is the video a three channel color video as returned from  vipy.video.Video.channels ?",
+"func":1
+},
+{
+"ref":"vipy.video.VideoCategory.isgrayscale",
+"url":38,
+"doc":"Is the video a single channel as returned from  vipy.video.Video.channels ?",
+"func":1
+},
+{
+"ref":"vipy.video.VideoCategory.hasfilename",
+"url":38,
+"doc":"Does the filename returned from  vipy.video.Video.filename exist?",
+"func":1
+},
+{
+"ref":"vipy.video.VideoCategory.isdownloaded",
+"url":38,
+"doc":"Does the filename returned from  vipy.video.Video.filename exist, meaning that the url has been downloaded to a local file?",
+"func":1
+},
+{
+"ref":"vipy.video.VideoCategory.hasurl",
+"url":38,
+"doc":"Is the url returned from  vipy.video.Video.url a well formed url?",
+"func":1
+},
+{
+"ref":"vipy.video.VideoCategory.array",
+"url":38,
+"doc":"Set or return the video buffer as a numpy array. Args: array: [np.array] A numpy array of size NxHxWxC = (frames, height, width, channels) of type uint8 or float32. copy: [bool] If true, copy the buffer by value instaed of by reference. Copied buffers do not share pixels. Returns: if array=None, return a reference to the pixel buffer as a numpy array, otherwise return the video object.",
 "func":1
 },
 {
@@ -7805,7 +7877,7 @@ INDEX=[
 {
 "ref":"vipy.video.Scene.objectlabels",
 "url":38,
-"doc":"Return a set of all activity categories in this scene, or at frame k",
+"doc":"Return a python set of all activity categories in this scene, or at frame k. Args: k: [int] The object labels present at frame k. If k=None, then all object labels in the video lower: [bool] If true, return the object labels in alll lower case for case invariant string comparisonsn",
 "func":1
 },
 {
@@ -7823,25 +7895,25 @@ INDEX=[
 {
 "ref":"vipy.video.Scene.hasactivities",
 "url":38,
-"doc":"",
+"doc":"Does this video have any activities?",
 "func":1
 },
 {
 "ref":"vipy.video.Scene.hastracks",
 "url":38,
-"doc":"",
+"doc":"Does this video have any tracks?",
 "func":1
 },
 {
 "ref":"vipy.video.Scene.hastrack",
 "url":38,
-"doc":"",
+"doc":"Does the video have this trackid?  note Track IDs are available as vipy.object.Track().id()",
 "func":1
 },
 {
 "ref":"vipy.video.Scene.add",
 "url":38,
-"doc":"Add the object obj to the scene, and return an index to this object for future updates This function is used to incrementally build up a scene frame by frame. Obj can be one of the following types:  obj = vipy.object.Detection(), this must be called from within a frame iterator (e.g. for im in video) to get the current frame index  obj = vipy.object.Track()  obj = vipy.activity.Activity()  obj = [xmin, ymin, width, height], with associated category kwarg, this must be called from within a frame iterator to get the current frame index It is recomended that the objects are added as follows. For a scene=vipy.video.Scene(): for im in scene:  Do some processing on frame im to detect objects (object_labels, xywh) = object_detection(im)  Add them to the scene, note that each object instance is independent in each frame, use tracks for object correspondence for (lbl,bb) in zip(object_labels, xywh): scene.add(bb, lbl)  Do some correspondences to track objects t2 = scene.add( vipy.object.Track( .) )  Update a previous track to add a keyframe scene.track(t2).add(  . ) This will keep track of the current frame in the video and add the objects in the appropriate place",
+"doc":"Add the object obj to the scene, and return an index to this object for future updates This function is used to incrementally build up a scene frame by frame. Obj can be one of the following types: - obj = vipy.object.Detection(), this must be called from within a frame iterator (e.g. for im in video) to get the current frame index - obj = vipy.object.Track() - obj = vipy.activity.Activity() - obj = [xmin, ymin, width, height], with associated category kwarg, this must be called from within a frame iterator to get the current frame index It is recomended that the objects are added as follows. For a v=vipy.video.Scene(): >>> for im in v: >>>  Do some processing on frame im to detect objects >>> (object_labels, xywh) = object_detection(im) >>> >>>  Add them to the scene, note that each object instance is independent in each frame, use tracks for object correspondence >>> for (lbl,bb) in zip(object_labels, xywh): >>> v.add(bb, lbl) >>> >>>  Do some correspondences to track objects >>> t2 = v.add( vipy.object.Track( .) ) >>> >>>  Update a previous track to add a keyframe >>> v.track(t2).add(  . ) The frame iterator will keep track of the current frame in the video and add the objects in the appropriate place. Alternatively, >>> v.add(vipy.object.Track( ), frame=k) Args: obj: A conformal python object to add to the scene ( vipy.object.Detection ,  vipy.object.Track ,  vipy.activity.Activity , [xmin, ymin, width, height] category: Used if obj is an xywh tuple attributes: Used only if obj is an xywh tuple frame: [int] The frame to add the object rangecheck: [bool] If true, check if the object is within the image rectangle and throw an exception if not. This requires introspecting the video shape using  vipy.video.Video.shape . fluent: [bool] If true, return self instead of the object index",
 "func":1
 },
 {
@@ -8051,7 +8123,7 @@ INDEX=[
 {
 "ref":"vipy.video.Scene.rescale",
 "url":38,
-"doc":"Spatially rescale the scene by a constant scale factor",
+"doc":"Spatially rescale the scene by a constant scale factor. Args: s: [float] Scale factor > 0 to isotropically scale the image.",
 "func":1
 },
 {
@@ -8081,7 +8153,7 @@ INDEX=[
 {
 "ref":"vipy.video.Scene.annotate",
 "url":38,
-"doc":"Generate a video visualization of all annotated objects and activities in the video, at the resolution and framerate of the underlying video, pixels in this video will now contain the overlay This function does not play the video, it only generates an annotation video frames. Use show() which is equivalent to annotate().saveas().play()  In general, this function should not be run on very long videos without the outfile kwarg, as it requires loading the video framewise into memory, try running on clips instead.  For long videos, a btter strategy given a video object vo with an output filename which will use a video stream for annotation",
+"doc":"Generate a video visualization of all annotated objects and activities in the video. The annotation video will be at the resolution and framerate of the underlying video, and pixels in this video will now contain the overlay. This function does not play the video, it only generates an annotation video frames. Use show() which is equivalent to annotate().saveas().play()  note -In general, this function should not be run on very long videos without the outfile kwarg, as it requires loading the video framewise into memory, try running on clips instead. -For long videos, a btter strategy given a video object vo with an output filename which will use a video stream for annotation",
 "func":1
 },
 {
@@ -8165,19 +8237,19 @@ INDEX=[
 {
 "ref":"vipy.video.Scene.metadata",
 "url":38,
-"doc":"Return a dictionary of metadata about this video",
+"doc":"Return a dictionary of metadata about this video. This is an alias for the 'attributes' dictionary.",
 "func":1
 },
 {
 "ref":"vipy.video.Scene.videoid",
 "url":38,
-"doc":"Return a unique video identifier for this video, as specified in the 'video_id' attribute, or by hashing the filename() and url(). Notes: - If the video filename changes (e.g. from transformation), and video_id is not set in self.attributes, then the video ID will change. - If a video does not have a filename or URL or a video ID in the attributes, then this will return None - To preserve a video ID independent of transformations, set self.setattribute('video_id', $MY_ID)",
+"doc":"Return a unique video identifier for this video, as specified in the 'video_id' attribute, or by SHA1 hash of the  vipy.video.Video.filename and  vipy.video.Video.url . Args: newid: [str] If not None, then update the video_id as newid. Returns: The video ID if newid=None else self  note - If the video filename changes (e.g. from transformation), and video_id is not set in self.attributes, then the video ID will change. - If a video does not have a filename or URL or a video ID in the attributes, then this will return None - To preserve a video ID independent of transformations, set self.setattribute('video_id', ${MY_ID}), or pass in newid",
 "func":1
 },
 {
 "ref":"vipy.video.Scene.store",
 "url":38,
-"doc":"Store the current video file as an attribute of this object. Useful for archiving an object to be fully self contained without any external references. -Remove this stored video using unstore() -Unpack this stored video and set up the video chains using restore() -This method is more efficient than load() followed by pkl(), as it stores the encoded video as a byte string. -Useful for creating a single self contained object for distributed processing. >>> v  v.store().restore(v.filename( ",
+"doc":"Store the current video file as an attribute of this object. Useful for archiving an object to be fully self contained without any external references. >>> v  v.store().restore(v.filename(  note -Remove this stored video using unstore() -Unpack this stored video and set up the video chains using restore() -This method is more efficient than load() followed by pkl(), as it stores the encoded video as a byte string. -Useful for creating a single self contained object for distributed processing.",
 "func":1
 },
 {
@@ -8285,7 +8357,43 @@ INDEX=[
 {
 "ref":"vipy.video.Scene.canload",
 "url":38,
-"doc":"Return True if the video can be loaded successfully, useful for filtering bad videos or filtering videos that cannot be loaded using your current FFMPEG version",
+"doc":"Return True if the video can be loaded successfully. This is useful for filtering bad videos or filtering videos that cannot be loaded using your current FFMPEG version.",
+"func":1
+},
+{
+"ref":"vipy.video.Scene.iscolor",
+"url":38,
+"doc":"Is the video a three channel color video as returned from  vipy.video.Video.channels ?",
+"func":1
+},
+{
+"ref":"vipy.video.Scene.isgrayscale",
+"url":38,
+"doc":"Is the video a single channel as returned from  vipy.video.Video.channels ?",
+"func":1
+},
+{
+"ref":"vipy.video.Scene.hasfilename",
+"url":38,
+"doc":"Does the filename returned from  vipy.video.Video.filename exist?",
+"func":1
+},
+{
+"ref":"vipy.video.Scene.isdownloaded",
+"url":38,
+"doc":"Does the filename returned from  vipy.video.Video.filename exist, meaning that the url has been downloaded to a local file?",
+"func":1
+},
+{
+"ref":"vipy.video.Scene.hasurl",
+"url":38,
+"doc":"Is the url returned from  vipy.video.Video.url a well formed url?",
+"func":1
+},
+{
+"ref":"vipy.video.Scene.array",
+"url":38,
+"doc":"Set or return the video buffer as a numpy array. Args: array: [np.array] A numpy array of size NxHxWxC = (frames, height, width, channels) of type uint8 or float32. copy: [bool] If true, copy the buffer by value instaed of by reference. Copied buffers do not share pixels. Returns: if array=None, return a reference to the pixel buffer as a numpy array, otherwise return the video object.",
 "func":1
 },
 {
@@ -8560,48 +8668,48 @@ INDEX=[
 {
 "ref":"vipy.image.Image",
 "url":48,
-"doc":"vipy.image.Image class The vipy image class provides a fluent, lazy interface for representing, transforming and visualizing images. The following constructors are supported: >>> im = vipy.image.Image(filename=\"/path/to/image.ext\") All image file formats that are readable by PIL are supported here. >>> im = vipy.image.Image(url=\"http: domain.com/path/to/image.ext\") The image will be downloaded from the provided url and saved to a temporary filename. The environment variable VIPY_CACHE controls the location of the directory used for saving images, otherwise this will be saved to the system temp directory. >>> im = vipy.image.Image(url=\"http: domain.com/path/to/image.ext\", filename=\"/path/to/new/image.ext\") The image will be downloaded from the provided url and saved to the provided filename. The url() method provides optional basic authentication set for username and password >>> im = vipy.image.Image(array=img, colorspace='rgb') The image will be constructed from a provided numpy array 'img', with an associated colorspace. The numpy array and colorspace can be one of the following combinations: 'rgb': uint8, three channel (red, green, blue) 'rgba': uint8, four channel (rgb + alpha) 'bgr': uint8, three channel (blue, green, red), such as is returned from cv2.imread() 'bgra': uint8, four channel 'hsv': uint8, three channel (hue, saturation, value) 'lum;: uint8, one channel, luminance (8 bit grey level) 'grey': float32, one channel in range [0,1] (32 bit intensity) 'float': float32, any channel in range [-inf, +inf] The most general colorspace is 'float' which is used to manipulate images prior to network encoding, such as applying bias."
+"doc":"vipy.image.Image class The vipy image class provides a fluent, lazy interface for representing, transforming and visualizing images. The following constructors are supported: >>> im = vipy.image.Image(filename=\"/path/to/image.ext\") All image file formats that are readable by PIL are supported here. >>> im = vipy.image.Image(url=\"http: domain.com/path/to/image.ext\") The image will be downloaded from the provided url and saved to a temporary filename. The environment variable VIPY_CACHE controls the location of the directory used for saving images, otherwise this will be saved to the system temp directory. >>> im = vipy.image.Image(url=\"http: domain.com/path/to/image.ext\", filename=\"/path/to/new/image.ext\") The image will be downloaded from the provided url and saved to the provided filename. The url() method provides optional basic authentication set for username and password >>> im = vipy.image.Image(array=img, colorspace='rgb') The image will be constructed from a provided numpy array 'img', with an associated colorspace. The numpy array and colorspace can be one of the following combinations: - 'rgb': uint8, three channel (red, green, blue) - 'rgba': uint8, four channel (rgb + alpha) - 'bgr': uint8, three channel (blue, green, red), such as is returned from cv2.imread() - 'bgra': uint8, four channel - 'hsv': uint8, three channel (hue, saturation, value) - 'lum;: uint8, one channel, luminance (8 bit grey level) - 'grey': float32, one channel in range [0,1] (32 bit intensity) - 'float': float32, any channel in range [-inf, +inf] The most general colorspace is 'float' which is used to manipulate images prior to network encoding, such as applying bias. Args: filename: a path to an image file that is readable by PIL url: a url string to an image file that is readable by PIL array: a numpy array of type uint8 or float32 of shape HxWxC=height x width x channels colorspace: a string in ['rgb', 'rgba', 'bgr', 'bgra', 'hsv', 'float', 'grey', 'lum'] attributes: a python dictionary that is passed by reference to the image. This is useful for encoding metadata about the image. Accessible as im.attributes Returns: a  vipy.image.Image object"
 },
 {
 "ref":"vipy.image.Image.cast",
 "url":48,
-"doc":"",
+"doc":"Typecast the conformal vipy.image object im as  vipy.image.Image . This is useful for downcasting  vipy.image.Scene or  vipy.image.ImageDetection down to an image. >>> ims = vipy.image.RandomScene() >>> im = vipy.image.Image.cast(im)",
 "func":1
 },
 {
 "ref":"vipy.image.Image.from_json",
 "url":48,
-"doc":"",
+"doc":"Import the JSON string s as an  vipy.image.Image object. This will perform a round trip such that im1  im2 >>> im1 = vupy.image.RandomImage() >>> im2 = vipy.image.Image.from_json(im1.json( >>> assert im1  im2",
 "func":1
 },
 {
 "ref":"vipy.image.Image.print",
 "url":48,
-"doc":"Print the representation of the image and return self - useful for debugging in long fluent chains",
+"doc":"Print the representation of the image and return self with an optional sleep=n seconds Useful for debugging in long fluent chains.",
 "func":1
 },
 {
 "ref":"vipy.image.Image.tile",
 "url":48,
-"doc":"Generate a list of tiled image",
+"doc":"Generate an image tiling. A tiling is a decomposition of an image into overlapping or non-overlapping rectangular regions. Args: tilewidth: [int] the image width of each tile tileheight: [int] the image height of each tile overlaprows: [int] the number of overlapping rows (height) for each tile overlapcols: [int] the number of overlapping width (width) for each tile Returns: A list of  vipy.image.Image objects such that each image is a single tile and the set of these tiles forms the original image Each image in the returned list contains the 'tile' attribute which encodes the crop used to create the tile.  note -  vipy.image.Image.tile can be undone using  vipy.image.Image.untile - The identity tiling is im.tile(im.widht(), im.height(), overlaprows=0, overlapcols=0) - Ragged tiles outside the image boundary are zero padded - All annotations are updated properly for each tile, when the source image is  vipy.image.Scene ",
 "func":1
 },
 {
 "ref":"vipy.image.Image.union",
 "url":48,
-"doc":"No-op for vipy.image.Image",
+"doc":"No-op for  vipy.image.Image ",
 "func":1
 },
 {
 "ref":"vipy.image.Image.untile",
 "url":48,
-"doc":"Undo tile",
+"doc":"Undo an image tiling and recreate the original image. >>> tiles = im.tile(im.width()/2, im.height()/2, 0, 0) >>> imdst = vipy.image.Image.untile(tiles) >>> assert imdst  im Args: imlist: this must be the output of  vipy.image.Image.tile Returns: A new  vipy.image.Image object reconstructed from the tiling, such that this is equivalent to the input to vipy.image.Image.tile  note All annotations are updated properly for each tile, when the source image is  vipy.image.Scene ",
 "func":1
 },
 {
 "ref":"vipy.image.Image.uncrop",
 "url":48,
-"doc":"Uncrop using provided bounding box and zeropad to shape=(Height, Width), NOT idempotent",
+"doc":"Uncrop using provided bounding box and zeropad to shape=(Height, Width). An uncrop is the inverse operation for a crop, which preserves the cropped portion of the image in the correct location and replaces the rest with zeros out to shape. >>> im = vipy.image.RandomImage(128, 128) >>> bb = vipy.geometry.BoundingBox(xmin=0, ymin=0, width=64, height=64) >>> uncrop = im.crop(bb).uncrop(bb, shape=(128,128 Args: bb: [ vipy.geometry.BoundingBox ] the bounding box used to crop the image in self shape: [tuple] (height, width) of the uncropped image Returns: this  vipy.image.Image object with the pixels uncropped.  note NOT idempotent. This will generate different results if run more than once.",
 "func":1
 },
 {
@@ -9320,7 +9428,7 @@ INDEX=[
 {
 "ref":"vipy.image.ImageCategory.cast",
 "url":48,
-"doc":"",
+"doc":"Typecast the conformal vipy.image object im as  vipy.image.Image . This is useful for downcasting  vipy.image.Scene or  vipy.image.ImageDetection down to an image. >>> ims = vipy.image.RandomScene() >>> im = vipy.image.Image.cast(im)",
 "func":1
 },
 {
@@ -9366,33 +9474,39 @@ INDEX=[
 "func":1
 },
 {
+"ref":"vipy.image.ImageCategory.from_json",
+"url":48,
+"doc":"Import the JSON string s as an  vipy.image.Image object. This will perform a round trip such that im1  im2 >>> im1 = vupy.image.RandomImage() >>> im2 = vipy.image.Image.from_json(im1.json( >>> assert im1  im2",
+"func":1
+},
+{
 "ref":"vipy.image.ImageCategory.print",
 "url":48,
-"doc":"Print the representation of the image and return self - useful for debugging in long fluent chains",
+"doc":"Print the representation of the image and return self with an optional sleep=n seconds Useful for debugging in long fluent chains.",
 "func":1
 },
 {
 "ref":"vipy.image.ImageCategory.tile",
 "url":48,
-"doc":"Generate a list of tiled image",
+"doc":"Generate an image tiling. A tiling is a decomposition of an image into overlapping or non-overlapping rectangular regions. Args: tilewidth: [int] the image width of each tile tileheight: [int] the image height of each tile overlaprows: [int] the number of overlapping rows (height) for each tile overlapcols: [int] the number of overlapping width (width) for each tile Returns: A list of  vipy.image.Image objects such that each image is a single tile and the set of these tiles forms the original image Each image in the returned list contains the 'tile' attribute which encodes the crop used to create the tile.  note -  vipy.image.Image.tile can be undone using  vipy.image.Image.untile - The identity tiling is im.tile(im.widht(), im.height(), overlaprows=0, overlapcols=0) - Ragged tiles outside the image boundary are zero padded - All annotations are updated properly for each tile, when the source image is  vipy.image.Scene ",
 "func":1
 },
 {
 "ref":"vipy.image.ImageCategory.union",
 "url":48,
-"doc":"No-op for vipy.image.Image",
+"doc":"No-op for  vipy.image.Image ",
 "func":1
 },
 {
 "ref":"vipy.image.ImageCategory.untile",
 "url":48,
-"doc":"Undo tile",
+"doc":"Undo an image tiling and recreate the original image. >>> tiles = im.tile(im.width()/2, im.height()/2, 0, 0) >>> imdst = vipy.image.Image.untile(tiles) >>> assert imdst  im Args: imlist: this must be the output of  vipy.image.Image.tile Returns: A new  vipy.image.Image object reconstructed from the tiling, such that this is equivalent to the input to vipy.image.Image.tile  note All annotations are updated properly for each tile, when the source image is  vipy.image.Scene ",
 "func":1
 },
 {
 "ref":"vipy.image.ImageCategory.uncrop",
 "url":48,
-"doc":"Uncrop using provided bounding box and zeropad to shape=(Height, Width), NOT idempotent",
+"doc":"Uncrop using provided bounding box and zeropad to shape=(Height, Width). An uncrop is the inverse operation for a crop, which preserves the cropped portion of the image in the correct location and replaces the rest with zeros out to shape. >>> im = vipy.image.RandomImage(128, 128) >>> bb = vipy.geometry.BoundingBox(xmin=0, ymin=0, width=64, height=64) >>> uncrop = im.crop(bb).uncrop(bb, shape=(128,128 Args: bb: [ vipy.geometry.BoundingBox ] the bounding box used to crop the image in self shape: [tuple] (height, width) of the uncropped image Returns: this  vipy.image.Image object with the pixels uncropped.  note NOT idempotent. This will generate different results if run more than once.",
 "func":1
 },
 {
@@ -9991,13 +10105,13 @@ INDEX=[
 {
 "ref":"vipy.image.Scene.cast",
 "url":48,
-"doc":"",
+"doc":"Typecast the conformal vipy.image object im as  vipy.image.Image . This is useful for downcasting  vipy.image.Scene or  vipy.image.ImageDetection down to an image. >>> ims = vipy.image.RandomScene() >>> im = vipy.image.Image.cast(im)",
 "func":1
 },
 {
 "ref":"vipy.image.Scene.from_json",
 "url":48,
-"doc":"",
+"doc":"Import the JSON string s as an  vipy.image.Image object. This will perform a round trip such that im1  im2 >>> im1 = vupy.image.RandomImage() >>> im2 = vipy.image.Image.from_json(im1.json( >>> assert im1  im2",
 "func":1
 },
 {
@@ -10315,19 +10429,19 @@ INDEX=[
 {
 "ref":"vipy.image.Scene.print",
 "url":48,
-"doc":"Print the representation of the image and return self - useful for debugging in long fluent chains",
+"doc":"Print the representation of the image and return self with an optional sleep=n seconds Useful for debugging in long fluent chains.",
 "func":1
 },
 {
 "ref":"vipy.image.Scene.tile",
 "url":48,
-"doc":"Generate a list of tiled image",
+"doc":"Generate an image tiling. A tiling is a decomposition of an image into overlapping or non-overlapping rectangular regions. Args: tilewidth: [int] the image width of each tile tileheight: [int] the image height of each tile overlaprows: [int] the number of overlapping rows (height) for each tile overlapcols: [int] the number of overlapping width (width) for each tile Returns: A list of  vipy.image.Image objects such that each image is a single tile and the set of these tiles forms the original image Each image in the returned list contains the 'tile' attribute which encodes the crop used to create the tile.  note -  vipy.image.Image.tile can be undone using  vipy.image.Image.untile - The identity tiling is im.tile(im.widht(), im.height(), overlaprows=0, overlapcols=0) - Ragged tiles outside the image boundary are zero padded - All annotations are updated properly for each tile, when the source image is  vipy.image.Scene ",
 "func":1
 },
 {
 "ref":"vipy.image.Scene.untile",
 "url":48,
-"doc":"Undo tile",
+"doc":"Undo an image tiling and recreate the original image. >>> tiles = im.tile(im.width()/2, im.height()/2, 0, 0) >>> imdst = vipy.image.Image.untile(tiles) >>> assert imdst  im Args: imlist: this must be the output of  vipy.image.Image.tile Returns: A new  vipy.image.Image object reconstructed from the tiling, such that this is equivalent to the input to vipy.image.Image.tile  note All annotations are updated properly for each tile, when the source image is  vipy.image.Scene ",
 "func":1
 },
 {
@@ -10842,7 +10956,7 @@ INDEX=[
 {
 "ref":"vipy.image.ImageDetection.cast",
 "url":48,
-"doc":"",
+"doc":"Typecast the conformal vipy.image object im as  vipy.image.Image . This is useful for downcasting  vipy.image.Scene or  vipy.image.ImageDetection down to an image. >>> ims = vipy.image.RandomScene() >>> im = vipy.image.Image.cast(im)",
 "func":1
 },
 {
@@ -10891,6 +11005,12 @@ INDEX=[
 "ref":"vipy.image.ImageDetection.isinterior",
 "url":48,
 "doc":"Is the bounding box fully within the image rectangle? Use provided image width and height (W,H) to avoid lots of reloads in some conditions",
+"func":1
+},
+{
+"ref":"vipy.image.ImageDetection.from_json",
+"url":48,
+"doc":"Import the JSON string s as an  vipy.image.Image object. This will perform a round trip such that im1  im2 >>> im1 = vupy.image.RandomImage() >>> im2 = vipy.image.Image.from_json(im1.json( >>> assert im1  im2",
 "func":1
 },
 {
@@ -11172,19 +11292,19 @@ INDEX=[
 {
 "ref":"vipy.image.ImageDetection.print",
 "url":48,
-"doc":"Print the representation of the image and return self - useful for debugging in long fluent chains",
+"doc":"Print the representation of the image and return self with an optional sleep=n seconds Useful for debugging in long fluent chains.",
 "func":1
 },
 {
 "ref":"vipy.image.ImageDetection.tile",
 "url":48,
-"doc":"Generate a list of tiled image",
+"doc":"Generate an image tiling. A tiling is a decomposition of an image into overlapping or non-overlapping rectangular regions. Args: tilewidth: [int] the image width of each tile tileheight: [int] the image height of each tile overlaprows: [int] the number of overlapping rows (height) for each tile overlapcols: [int] the number of overlapping width (width) for each tile Returns: A list of  vipy.image.Image objects such that each image is a single tile and the set of these tiles forms the original image Each image in the returned list contains the 'tile' attribute which encodes the crop used to create the tile.  note -  vipy.image.Image.tile can be undone using  vipy.image.Image.untile - The identity tiling is im.tile(im.widht(), im.height(), overlaprows=0, overlapcols=0) - Ragged tiles outside the image boundary are zero padded - All annotations are updated properly for each tile, when the source image is  vipy.image.Scene ",
 "func":1
 },
 {
 "ref":"vipy.image.ImageDetection.untile",
 "url":48,
-"doc":"Undo tile",
+"doc":"Undo an image tiling and recreate the original image. >>> tiles = im.tile(im.width()/2, im.height()/2, 0, 0) >>> imdst = vipy.image.Image.untile(tiles) >>> assert imdst  im Args: imlist: this must be the output of  vipy.image.Image.tile Returns: A new  vipy.image.Image object reconstructed from the tiling, such that this is equivalent to the input to vipy.image.Image.tile  note All annotations are updated properly for each tile, when the source image is  vipy.image.Scene ",
 "func":1
 },
 {

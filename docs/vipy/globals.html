@@ -25,7 +25,7 @@
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/8b362bc85d8cd6518882e71ba4bb3733b748cd3c/vipy/globals.py#L1-L172" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/f296535df6bd369b9e7341bce0576aab61b15841/vipy/globals.py#L1-L218" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">import os
 import webbrowser
@@ -53,7 +53,6 @@ GLOBAL = {&#39;VERBOSE&#39;: True,       # If False, will silence everything, eq
           &#39;LATEX&#39;:os.environ[&#39;VIPY_LATEX&#39;] if &#39;VIPY_LATEX&#39; in os.environ else None}
 
 
-
 def logging(enable=None, format=None):
     &#34;&#34;&#34;Single entry point for enabling/disabling logging vs. printing
        
@@ -79,10 +78,11 @@ def warn(s):
         
 def print(s, end=&#39;\n&#39;):
     &#34;&#34;&#34;Main entry point for all print statements in the vipy package. All vipy code calls this to print helpful messages.
-      
-       -Printing can be disabled by calling vipy.globals.silent()
-       -Printing can be redirected to logging by calling vipy.globals.logging(True)
-       -All print() statements in vipy.* are overloaded to call vipy.globals.print() so that it can be redirected to logging
+
+    .. notes::
+        -Printing can be disabled by calling vipy.globals.silent()
+        -Printing can be redirected to logging by calling vipy.globals.logging(True)
+        -All print() statements in vipy.* are overloaded to call vipy.globals.print() so that it can be redirected to logging
 
     &#34;&#34;&#34;
     if GLOBAL[&#39;VERBOSE&#39;]:
@@ -97,12 +97,15 @@ def isverbose():
     return GLOBAL[&#39;VERBOSE&#39;]
 
 def silent():
+    &#34;&#34;&#34;Silence the global verbosity level, only really used right now for FFMPEG messages&#34;&#34;&#34;
     GLOBAL[&#39;VERBOSE&#39;] = False    
 
 def issilent():
+    &#34;&#34;&#34;Is the global verbosity silent?&#34;&#34;&#34;
     return GLOBAL[&#39;VERBOSE&#39;] == False 
 
 def verbosity(v):
+    &#34;&#34;&#34;Set the global verbosity level [0,1,2]=debug, warn, info&#34;&#34;&#34;
     assert v in [0,1,2]    # debug, warn, info
     GLOBAL[&#39;VERBOSITY&#39;] = v
 
@@ -115,14 +118,26 @@ def isdebug():
 
 
 def cache(cachedir=None):
-    &#34;&#34;&#34;The cache is the location that URLs are downloaded to on your system.  This can be set here, or with the environment variable VIPY_CACHE&#34;&#34;&#34;
+    &#34;&#34;&#34;The cache is the location that URLs are downloaded to on your system.  This can be set here, or with the environment variable VIPY_CACHE
+
+    &gt;&gt;&gt; vipy.globals.cache(&#39;/path/to/.vipy&#39;)
+    &gt;&gt;&gt; cachedir = vipy.globals.cache()
+
+    Args:
+        cachedir:  the location to store cached files when downloaded.  Can also be set using the VIPY_CACHE environment variable.  if none, return the current cachedir
+    
+    Returns:
+        The current cachedir if cachedir=None else None
+    
+    &#34;&#34;&#34;
     if cachedir is not None:
         os.environ[&#39;VIPY_CACHE&#39;] = remkdir(cachedir)
         GLOBAL[&#39;CACHE&#39;] = cachedir
     return os.environ[&#39;VIPY_CACHE&#39;] if &#39;VIPY_CACHE&#39; in os.environ else None
     
 
-def user_hit_escape(b=None):
+def _user_hit_escape(b=None):
+    &#34;&#34;&#34;Did the user hit the escape key?  Useful for matplotlib GUI to stop displaying video&#34;&#34;&#34;
     if b is None:
         if GLOBAL[&#39;GUI&#39;][&#39;escape&#39;]:
             GLOBAL[&#39;GUI&#39;][&#39;escape&#39;] = False  # toggle it
@@ -149,10 +164,15 @@ def gpuindex(gpu=None):
 def dask(num_processes=None, num_gpus=None, dashboard=False, address=None, pct=None):
     &#34;&#34;&#34;Return the current Dask client, can be accessed globally for parallel processing.
     
-       -pct: [0,1] the percentage of the current machine to use
-       -address:  the dask scheduler of the form &#39;HOSTNAME:PORT&#39;
-       -num_processes:  the number of prpcesses to use on the current machine
-       -num_gpus:  the number of GPUs to use on the current machine
+    Args:
+        pct: float in [0,1] the percentage of the current machine to use
+        address:  the dask scheduler of the form &#39;HOSTNAME:PORT&#39;
+        num_processes:  the number of prpcesses to use on the current machine
+        num_gpus:  the number of GPUs to use on the current machine
+        dashboard: [bool] whether to inialize the dask client with a web dashboard
+
+    Returns:
+        The `vipy.batch.Dask` object pointing to the Dask Distrbuted object
     &#34;&#34;&#34;
     from vipy.batch import Dask
     if pct is not None:
@@ -164,22 +184,42 @@ def dask(num_processes=None, num_gpus=None, dashboard=False, address=None, pct=N
     return GLOBAL[&#39;DASK_CLIENT&#39;]
 
 
-def parallel(n=None, pct=None):
-    &#34;&#34;&#34;Enable parallel processing with n&gt;=1 processes.  
+def parallel(n=None, pct=None, scheduler=None):
+    &#34;&#34;&#34;Enable parallel processing with n&gt;=1 processes or a percentage of system core (pct \in [0,1]) or a dask scheduler .
 
-       &gt;&gt;&gt; with vipy.globals.parallel(n=4):
-               vipy.batch.Batch(...)
-       
+    This can be be used as a context manager
+    
+    &gt;&gt;&gt; with vipy.globals.parallel(n=4):
+    &gt;&gt;&gt;     vipy.batch.Batch(...)
+
+    or using the global variables:
+
+    &gt;&gt;&gt; vipy.globals.parallel(n=4):
+    &gt;&gt;&gt; vipy.batch.Batch(...)
+    &gt;&gt;&gt; vipy.globals.noparallel()
+    
+    To check the current parallelism level:
+    
+    &gt;&gt;&gt; num_processes = vipy.globals.parallel()
+
+    To run with a dask scheduler:
+    
+    &gt;&gt;&gt; with vipy.globals.parallel(scheduler=&#39;10.0.1.1:8585&#39;)
+    &gt;&gt;&gt;    vipy.batch.Batch(...)
+
+    Args:
+        n: [int] number of parallel processes
+        pct: [float] the percentage [0,1] of system cores to dedicate to parallel processing
+        scheduler: [str]  the dask scheduler of the form &#39;HOSTNAME:PORT&#39; like &#39;128.0.0.1:8785&#39;.  See &lt;https://docs.dask.org/en/latest/install.html&gt;
     &#34;&#34;&#34;
 
     class Parallel():
-        def __init__(self, n=None, pct=None):
-            if n is None and pct is None:
-                return GLOBAL[&#39;DASK_CLIENT&#39;].num_processes() if GLOBAL[&#39;DASK_CLIENT&#39;] is not None else 0
-            else:
-                assert n is None or (isinstance(n, int) and n&gt;=1)
-                assert pct is None or (pct &gt; 0 and pct &lt;= 1)
-                dask(num_processes=n, pct=pct)
+        def __init__(self, n=None, pct=None, scheduler=None):
+            assert n is not None or pct is not None
+            assert not (n is not None and pct is not None)
+            assert n is None or (isinstance(n, int) and n&gt;=1)
+            assert pct is None or (pct &gt; 0 and pct &lt;= 1)
+            dask(num_processes=n, pct=pct, address=scheduler)
             
         def __enter__(self):
             pass
@@ -187,7 +227,13 @@ def parallel(n=None, pct=None):
         def __exit__(self, *args):
             noparallel()
 
-    return Parallel(n, pct)
+    if n is None and pct is None and scheduler is None:
+        return GLOBAL[&#39;DASK_CLIENT&#39;].num_processes() if  GLOBAL[&#39;DASK_CLIENT&#39;] is not None else 0
+    else:
+        assert n is not None or pct is not None or scheduler is not None
+        assert sum([x is not None for x in (n, pct, scheduler)]) == 1, &#34;Exactly one&#34;
+        return Parallel(n=n, pct=pct, scheduler=scheduler) 
+
 
 
 def noparallel():
@@ -197,7 +243,7 @@ def noparallel():
     GLOBAL[&#39;DASK_CLIENT&#39;] = None 
 
 def nodask():
-    &#34;&#34;&#34;Alias for noparallel()&#34;&#34;&#34;
+    &#34;&#34;&#34;Alias for `vipy.globals.noparallel`&#34;&#34;&#34;
     return noparallel()</code></pre>
 </details>
 </section>
@@ -213,14 +259,37 @@ def nodask():
 </code></dt>
 <dd>
 <div class="desc"><p>The cache is the location that URLs are downloaded to on your system.
-This can be set here, or with the environment variable VIPY_CACHE</p></div>
+This can be set here, or with the environment variable VIPY_CACHE</p>
+<pre><code class="language-python-repl">&gt;&gt;&gt; vipy.globals.cache('/path/to/.vipy')
+&gt;&gt;&gt; cachedir = vipy.globals.cache()
+</code></pre>
+<h2 id="args">Args</h2>
+<dl>
+<dt><strong><code>cachedir</code></strong></dt>
+<dd>the location to store cached files when downloaded.
+Can also be set using the VIPY_CACHE environment variable.
+if none, return the current cachedir</dd>
+</dl>
+<h2 id="returns">Returns</h2>
+<p>The current cachedir if cachedir=None else None</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/8b362bc85d8cd6518882e71ba4bb3733b748cd3c/vipy/globals.py#L88-L93" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/f296535df6bd369b9e7341bce0576aab61b15841/vipy/globals.py#L91-L107" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def cache(cachedir=None):
-    &#34;&#34;&#34;The cache is the location that URLs are downloaded to on your system.  This can be set here, or with the environment variable VIPY_CACHE&#34;&#34;&#34;
+    &#34;&#34;&#34;The cache is the location that URLs are downloaded to on your system.  This can be set here, or with the environment variable VIPY_CACHE
+
+    &gt;&gt;&gt; vipy.globals.cache(&#39;/path/to/.vipy&#39;)
+    &gt;&gt;&gt; cachedir = vipy.globals.cache()
+
+    Args:
+        cachedir:  the location to store cached files when downloaded.  Can also be set using the VIPY_CACHE environment variable.  if none, return the current cachedir
+    
+    Returns:
+        The current cachedir if cachedir=None else None
+    
+    &#34;&#34;&#34;
     if cachedir is not None:
         os.environ[&#39;VIPY_CACHE&#39;] = remkdir(cachedir)
         GLOBAL[&#39;CACHE&#39;] = cachedir
@@ -235,7 +304,7 @@ This can be set here, or with the environment variable VIPY_CACHE</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/8b362bc85d8cd6518882e71ba4bb3733b748cd3c/vipy/globals.py#L108-L109" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/f296535df6bd369b9e7341bce0576aab61b15841/vipy/globals.py#L123-L124" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def cpuonly():
     GLOBAL[&#39;GPU&#39;] = None</code></pre>
@@ -246,25 +315,38 @@ This can be set here, or with the environment variable VIPY_CACHE</p></div>
 </code></dt>
 <dd>
 <div class="desc"><p>Return the current Dask client, can be accessed globally for parallel processing.</p>
-<p>-pct: [0,1] the percentage of the current machine to use
--address:
-the dask scheduler of the form 'HOSTNAME:PORT'
--num_processes:
-the number of prpcesses to use on the current machine
--num_gpus:
-the number of GPUs to use on the current machine</p></div>
+<h2 id="args">Args</h2>
+<dl>
+<dt><strong><code>pct</code></strong></dt>
+<dd>float in [0,1] the percentage of the current machine to use</dd>
+<dt><strong><code>address</code></strong></dt>
+<dd>the dask scheduler of the form 'HOSTNAME:PORT'</dd>
+<dt><strong><code>num_processes</code></strong></dt>
+<dd>the number of prpcesses to use on the current machine</dd>
+<dt><strong><code>num_gpus</code></strong></dt>
+<dd>the number of GPUs to use on the current machine</dd>
+<dt><strong><code>dashboard</code></strong></dt>
+<dd>[bool] whether to inialize the dask client with a web dashboard</dd>
+</dl>
+<h2 id="returns">Returns</h2>
+<p>The <code><a title="vipy.batch.Dask" href="batch.html#vipy.batch.Dask">Dask</a></code> object pointing to the Dask Distrbuted object</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/8b362bc85d8cd6518882e71ba4bb3733b748cd3c/vipy/globals.py#L120-L135" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/f296535df6bd369b9e7341bce0576aab61b15841/vipy/globals.py#L135-L155" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def dask(num_processes=None, num_gpus=None, dashboard=False, address=None, pct=None):
     &#34;&#34;&#34;Return the current Dask client, can be accessed globally for parallel processing.
     
-       -pct: [0,1] the percentage of the current machine to use
-       -address:  the dask scheduler of the form &#39;HOSTNAME:PORT&#39;
-       -num_processes:  the number of prpcesses to use on the current machine
-       -num_gpus:  the number of GPUs to use on the current machine
+    Args:
+        pct: float in [0,1] the percentage of the current machine to use
+        address:  the dask scheduler of the form &#39;HOSTNAME:PORT&#39;
+        num_processes:  the number of prpcesses to use on the current machine
+        num_gpus:  the number of GPUs to use on the current machine
+        dashboard: [bool] whether to inialize the dask client with a web dashboard
+
+    Returns:
+        The `vipy.batch.Dask` object pointing to the Dask Distrbuted object
     &#34;&#34;&#34;
     from vipy.batch import Dask
     if pct is not None:
@@ -284,7 +366,7 @@ the number of GPUs to use on the current machine</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/8b362bc85d8cd6518882e71ba4bb3733b748cd3c/vipy/globals.py#L80-L82" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/f296535df6bd369b9e7341bce0576aab61b15841/vipy/globals.py#L83-L85" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def debug():
     verbose()
@@ -299,7 +381,7 @@ the number of GPUs to use on the current machine</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/8b362bc85d8cd6518882e71ba4bb3733b748cd3c/vipy/globals.py#L112-L117" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/f296535df6bd369b9e7341bce0576aab61b15841/vipy/globals.py#L127-L132" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def gpuindex(gpu=None):
     if gpu == &#39;cpu&#39;:
@@ -317,7 +399,7 @@ the number of GPUs to use on the current machine</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/8b362bc85d8cd6518882e71ba4bb3733b748cd3c/vipy/globals.py#L84-L85" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/f296535df6bd369b9e7341bce0576aab61b15841/vipy/globals.py#L87-L88" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def isdebug():
     return GLOBAL[&#39;VERBOSE&#39;] and GLOBAL[&#39;VERBOSITY&#39;] == 0</code></pre>
@@ -327,13 +409,14 @@ the number of GPUs to use on the current machine</p></div>
 <span>def <span class="ident">issilent</span></span>(<span>)</span>
 </code></dt>
 <dd>
-<div class="desc"></div>
+<div class="desc"><p>Is the global verbosity silent?</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/8b362bc85d8cd6518882e71ba4bb3733b748cd3c/vipy/globals.py#L73-L74" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/f296535df6bd369b9e7341bce0576aab61b15841/vipy/globals.py#L74-L76" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def issilent():
+    &#34;&#34;&#34;Is the global verbosity silent?&#34;&#34;&#34;
     return GLOBAL[&#39;VERBOSE&#39;] == False </code></pre>
 </details>
 </dd>
@@ -345,7 +428,7 @@ the number of GPUs to use on the current machine</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/8b362bc85d8cd6518882e71ba4bb3733b748cd3c/vipy/globals.py#L67-L68" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/f296535df6bd369b9e7341bce0576aab61b15841/vipy/globals.py#L67-L68" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def isverbose():
     return GLOBAL[&#39;VERBOSE&#39;]</code></pre>
@@ -362,7 +445,7 @@ If format is provided, this will create a basicConfig handler, but this should b
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/8b362bc85d8cd6518882e71ba4bb3733b748cd3c/vipy/globals.py#L28-L43" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/f296535df6bd369b9e7341bce0576aab61b15841/vipy/globals.py#L27-L42" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def logging(enable=None, format=None):
     &#34;&#34;&#34;Single entry point for enabling/disabling logging vs. printing
@@ -386,14 +469,14 @@ If format is provided, this will create a basicConfig handler, but this should b
 <span>def <span class="ident">nodask</span></span>(<span>)</span>
 </code></dt>
 <dd>
-<div class="desc"><p>Alias for noparallel()</p></div>
+<div class="desc"><p>Alias for <code><a title="vipy.globals.noparallel" href="#vipy.globals.noparallel">noparallel()</a></code></p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/8b362bc85d8cd6518882e71ba4bb3733b748cd3c/vipy/globals.py#L170-L172" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/f296535df6bd369b9e7341bce0576aab61b15841/vipy/globals.py#L216-L218" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def nodask():
-    &#34;&#34;&#34;Alias for noparallel()&#34;&#34;&#34;
+    &#34;&#34;&#34;Alias for `vipy.globals.noparallel`&#34;&#34;&#34;
     return noparallel()</code></pre>
 </details>
 </dd>
@@ -405,7 +488,7 @@ If format is provided, this will create a basicConfig handler, but this should b
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/8b362bc85d8cd6518882e71ba4bb3733b748cd3c/vipy/globals.py#L164-L168" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/f296535df6bd369b9e7341bce0576aab61b15841/vipy/globals.py#L210-L214" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def noparallel():
     &#34;&#34;&#34;Disable all parallel processing&#34;&#34;&#34;
@@ -415,35 +498,78 @@ If format is provided, this will create a basicConfig handler, but this should b
 </details>
 </dd>
 <dt id="vipy.globals.parallel"><code class="name flex">
-<span>def <span class="ident">parallel</span></span>(<span>n=None, pct=None)</span>
+<span>def <span class="ident">parallel</span></span>(<span>n=None, pct=None, scheduler=None)</span>
 </code></dt>
 <dd>
-<div class="desc"><p>Enable parallel processing with n&gt;=1 processes.
-</p>
+<div class="desc"><p>Enable parallel processing with n&gt;=1 processes or a percentage of system core (pct \in [0,1]) or a dask scheduler .</p>
+<p>This can be be used as a context manager</p>
 <pre><code class="language-python-repl">&gt;&gt;&gt; with vipy.globals.parallel(n=4):
-        vipy.batch.Batch(...)
-</code></pre></div>
+&gt;&gt;&gt;     vipy.batch.Batch(...)
+</code></pre>
+<p>or using the global variables:</p>
+<pre><code class="language-python-repl">&gt;&gt;&gt; vipy.globals.parallel(n=4):
+&gt;&gt;&gt; vipy.batch.Batch(...)
+&gt;&gt;&gt; vipy.globals.noparallel()
+</code></pre>
+<p>To check the current parallelism level:</p>
+<pre><code class="language-python-repl">&gt;&gt;&gt; num_processes = vipy.globals.parallel()
+</code></pre>
+<p>To run with a dask scheduler:</p>
+<pre><code class="language-python-repl">&gt;&gt;&gt; with vipy.globals.parallel(scheduler='10.0.1.1:8585')
+&gt;&gt;&gt;    vipy.batch.Batch(...)
+</code></pre>
+<h2 id="args">Args</h2>
+<dl>
+<dt><strong><code>n</code></strong></dt>
+<dd>[int] number of parallel processes</dd>
+<dt><strong><code>pct</code></strong></dt>
+<dd>[float] the percentage [0,1] of system cores to dedicate to parallel processing</dd>
+<dt><strong><code>scheduler</code></strong></dt>
+<dd>[str]
+the dask scheduler of the form 'HOSTNAME:PORT' like '128.0.0.1:8785'.
+See <a href="https://docs.dask.org/en/latest/install.html">https://docs.dask.org/en/latest/install.html</a></dd>
+</dl></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/8b362bc85d8cd6518882e71ba4bb3733b748cd3c/vipy/globals.py#L138-L161" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/f296535df6bd369b9e7341bce0576aab61b15841/vipy/globals.py#L158-L206" class="git-link">Browse git</a>
 </summary>
-<pre><code class="python">def parallel(n=None, pct=None):
-    &#34;&#34;&#34;Enable parallel processing with n&gt;=1 processes.  
+<pre><code class="python">def parallel(n=None, pct=None, scheduler=None):
+    &#34;&#34;&#34;Enable parallel processing with n&gt;=1 processes or a percentage of system core (pct \in [0,1]) or a dask scheduler .
 
-       &gt;&gt;&gt; with vipy.globals.parallel(n=4):
-               vipy.batch.Batch(...)
-       
+    This can be be used as a context manager
+    
+    &gt;&gt;&gt; with vipy.globals.parallel(n=4):
+    &gt;&gt;&gt;     vipy.batch.Batch(...)
+
+    or using the global variables:
+
+    &gt;&gt;&gt; vipy.globals.parallel(n=4):
+    &gt;&gt;&gt; vipy.batch.Batch(...)
+    &gt;&gt;&gt; vipy.globals.noparallel()
+    
+    To check the current parallelism level:
+    
+    &gt;&gt;&gt; num_processes = vipy.globals.parallel()
+
+    To run with a dask scheduler:
+    
+    &gt;&gt;&gt; with vipy.globals.parallel(scheduler=&#39;10.0.1.1:8585&#39;)
+    &gt;&gt;&gt;    vipy.batch.Batch(...)
+
+    Args:
+        n: [int] number of parallel processes
+        pct: [float] the percentage [0,1] of system cores to dedicate to parallel processing
+        scheduler: [str]  the dask scheduler of the form &#39;HOSTNAME:PORT&#39; like &#39;128.0.0.1:8785&#39;.  See &lt;https://docs.dask.org/en/latest/install.html&gt;
     &#34;&#34;&#34;
 
     class Parallel():
-        def __init__(self, n=None, pct=None):
-            if n is None and pct is None:
-                return GLOBAL[&#39;DASK_CLIENT&#39;].num_processes() if GLOBAL[&#39;DASK_CLIENT&#39;] is not None else 0
-            else:
-                assert n is None or (isinstance(n, int) and n&gt;=1)
-                assert pct is None or (pct &gt; 0 and pct &lt;= 1)
-                dask(num_processes=n, pct=pct)
+        def __init__(self, n=None, pct=None, scheduler=None):
+            assert n is not None or pct is not None
+            assert not (n is not None and pct is not None)
+            assert n is None or (isinstance(n, int) and n&gt;=1)
+            assert pct is None or (pct &gt; 0 and pct &lt;= 1)
+            dask(num_processes=n, pct=pct, address=scheduler)
             
         def __enter__(self):
             pass
@@ -451,7 +577,12 @@ If format is provided, this will create a basicConfig handler, but this should b
         def __exit__(self, *args):
             noparallel()
 
-    return Parallel(n, pct)</code></pre>
+    if n is None and pct is None and scheduler is None:
+        return GLOBAL[&#39;DASK_CLIENT&#39;].num_processes() if  GLOBAL[&#39;DASK_CLIENT&#39;] is not None else 0
+    else:
+        assert n is not None or pct is not None or scheduler is not None
+        assert sum([x is not None for x in (n, pct, scheduler)]) == 1, &#34;Exactly one&#34;
+        return Parallel(n=n, pct=pct, scheduler=scheduler) </code></pre>
 </details>
 </dd>
 <dt id="vipy.globals.print"><code class="name flex">
@@ -459,20 +590,24 @@ If format is provided, this will create a basicConfig handler, but this should b
 </code></dt>
 <dd>
 <div class="desc"><p>Main entry point for all print statements in the vipy package. All vipy code calls this to print helpful messages.</p>
+<div class="admonition notes">
+<p class="admonition-title">Notes</p>
 <p>-Printing can be disabled by calling vipy.globals.silent()
 -Printing can be redirected to logging by calling vipy.globals.logging(True)
--All print() statements in vipy.* are overloaded to call vipy.globals.print() so that it can be redirected to logging</p></div>
+-All print() statements in vipy.* are overloaded to call vipy.globals.print() so that it can be redirected to logging</p>
+</div></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/8b362bc85d8cd6518882e71ba4bb3733b748cd3c/vipy/globals.py#L51-L60" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/f296535df6bd369b9e7341bce0576aab61b15841/vipy/globals.py#L50-L60" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def print(s, end=&#39;\n&#39;):
     &#34;&#34;&#34;Main entry point for all print statements in the vipy package. All vipy code calls this to print helpful messages.
-      
-       -Printing can be disabled by calling vipy.globals.silent()
-       -Printing can be redirected to logging by calling vipy.globals.logging(True)
-       -All print() statements in vipy.* are overloaded to call vipy.globals.print() so that it can be redirected to logging
+
+    .. notes::
+        -Printing can be disabled by calling vipy.globals.silent()
+        -Printing can be redirected to logging by calling vipy.globals.logging(True)
+        -All print() statements in vipy.* are overloaded to call vipy.globals.print() so that it can be redirected to logging
 
     &#34;&#34;&#34;
     if GLOBAL[&#39;VERBOSE&#39;]:
@@ -483,37 +618,15 @@ If format is provided, this will create a basicConfig handler, but this should b
 <span>def <span class="ident">silent</span></span>(<span>)</span>
 </code></dt>
 <dd>
-<div class="desc"></div>
+<div class="desc"><p>Silence the global verbosity level, only really used right now for FFMPEG messages</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/8b362bc85d8cd6518882e71ba4bb3733b748cd3c/vipy/globals.py#L70-L71" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/f296535df6bd369b9e7341bce0576aab61b15841/vipy/globals.py#L70-L72" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def silent():
+    &#34;&#34;&#34;Silence the global verbosity level, only really used right now for FFMPEG messages&#34;&#34;&#34;
     GLOBAL[&#39;VERBOSE&#39;] = False    </code></pre>
-</details>
-</dd>
-<dt id="vipy.globals.user_hit_escape"><code class="name flex">
-<span>def <span class="ident">user_hit_escape</span></span>(<span>b=None)</span>
-</code></dt>
-<dd>
-<div class="desc"></div>
-<details class="source">
-<summary>
-<span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/8b362bc85d8cd6518882e71ba4bb3733b748cd3c/vipy/globals.py#L96-L106" class="git-link">Browse git</a>
-</summary>
-<pre><code class="python">def user_hit_escape(b=None):
-    if b is None:
-        if GLOBAL[&#39;GUI&#39;][&#39;escape&#39;]:
-            GLOBAL[&#39;GUI&#39;][&#39;escape&#39;] = False  # toggle it
-            return True
-        else:
-            return False
-    else:
-        # Set in vipy.gui.using_matplotlib.escape_to_exit()
-        assert isinstance(b, bool)
-        GLOBAL[&#39;GUI&#39;][&#39;escape&#39;] = b  </code></pre>
 </details>
 </dd>
 <dt id="vipy.globals.verbose"><code class="name flex">
@@ -524,7 +637,7 @@ If format is provided, this will create a basicConfig handler, but this should b
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/8b362bc85d8cd6518882e71ba4bb3733b748cd3c/vipy/globals.py#L63-L65" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/f296535df6bd369b9e7341bce0576aab61b15841/vipy/globals.py#L63-L65" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def verbose():
     &#34;&#34;&#34;The global verbosity level, only really used right now for FFMPEG messages&#34;&#34;&#34;
@@ -535,13 +648,14 @@ If format is provided, this will create a basicConfig handler, but this should b
 <span>def <span class="ident">verbosity</span></span>(<span>v)</span>
 </code></dt>
 <dd>
-<div class="desc"></div>
+<div class="desc"><p>Set the global verbosity level [0,1,2]=debug, warn, info</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/8b362bc85d8cd6518882e71ba4bb3733b748cd3c/vipy/globals.py#L76-L78" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/f296535df6bd369b9e7341bce0576aab61b15841/vipy/globals.py#L78-L81" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def verbosity(v):
+    &#34;&#34;&#34;Set the global verbosity level [0,1,2]=debug, warn, info&#34;&#34;&#34;
     assert v in [0,1,2]    # debug, warn, info
     GLOBAL[&#39;VERBOSITY&#39;] = v</code></pre>
 </details>
@@ -554,7 +668,7 @@ If format is provided, this will create a basicConfig handler, but this should b
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/8b362bc85d8cd6518882e71ba4bb3733b748cd3c/vipy/globals.py#L46-L48" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/f296535df6bd369b9e7341bce0576aab61b15841/vipy/globals.py#L45-L47" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def warn(s):
     if GLOBAL[&#39;VERBOSE&#39;]:
@@ -644,7 +758,6 @@ setTimeout(() => input.focus(), 100);
 <li><code><a title="vipy.globals.parallel" href="#vipy.globals.parallel">parallel</a></code></li>
 <li><code><a title="vipy.globals.print" href="#vipy.globals.print">print</a></code></li>
 <li><code><a title="vipy.globals.silent" href="#vipy.globals.silent">silent</a></code></li>
-<li><code><a title="vipy.globals.user_hit_escape" href="#vipy.globals.user_hit_escape">user_hit_escape</a></code></li>
 <li><code><a title="vipy.globals.verbose" href="#vipy.globals.verbose">verbose</a></code></li>
 <li><code><a title="vipy.globals.verbosity" href="#vipy.globals.verbosity">verbosity</a></code></li>
 <li><code><a title="vipy.globals.warn" href="#vipy.globals.warn">warn</a></code></li>
