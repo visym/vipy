@@ -25,7 +25,7 @@
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/b32ccc5d8687a8fd97c1510db48295e8e76b435a/vipy/object.py#L1-L951" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/97f958b94b01ca8de04396434b8749fef2039109/vipy/object.py#L1-L951" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">import numpy as np
 from vipy.geometry import BoundingBox
@@ -993,7 +993,7 @@ def RandomDetection(W=640, H=480):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/b32ccc5d8687a8fd97c1510db48295e8e76b435a/vipy/object.py#L948-L949" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/97f958b94b01ca8de04396434b8749fef2039109/vipy/object.py#L948-L949" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def RandomDetection(W=640, H=480):
     return Detection(xmin=np.random.rand()*W, ymin=np.random.rand()*H, width=np.random.rand()*100, height=np.random.rand()*100, category=str(np.random.rand()), confidence=np.random.rand())</code></pre>
@@ -1010,7 +1010,7 @@ same length as srclist, where j=assignlist[i] is the index of the assignment suc
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/b32ccc5d8687a8fd97c1510db48295e8e76b435a/vipy/object.py#L932-L946" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/97f958b94b01ca8de04396434b8749fef2039109/vipy/object.py#L932-L946" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def greedy_assignment(srclist, dstlist, miniou=0.0, bycategory=False):
     &#34;&#34;&#34;Compute a greedy one-to-one assignment of each vipy.object.Detection() in srclist to a unique element in dstlist with the largest IoU greater than miniou, else None
@@ -1037,7 +1037,7 @@ same length as srclist, where j=assignlist[i] is the index of the assignment suc
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/b32ccc5d8687a8fd97c1510db48295e8e76b435a/vipy/object.py#L900-L929" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/97f958b94b01ca8de04396434b8749fef2039109/vipy/object.py#L900-L929" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def non_maximum_suppression(detlist, conf, iou, bycategory=False, cover=None, gridsize=(6,9)):
     &#34;&#34;&#34;Compute greedy non-maximum suppression of a list of vipy.object.Detection() based on spatial IOU threshold (iou) and cover threhsold (cover) sorted by confidence (conf)&#34;&#34;&#34;
@@ -1093,7 +1093,7 @@ The constructor of this class follows a subset of the constructor patterns of vi
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/b32ccc5d8687a8fd97c1510db48295e8e76b435a/vipy/object.py#L16-L157" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/97f958b94b01ca8de04396434b8749fef2039109/vipy/object.py#L16-L157" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">class Detection(BoundingBox):
     &#34;&#34;&#34;vipy.object.Detection class
@@ -1252,7 +1252,7 @@ The constructor of this class follows a subset of the constructor patterns of vi
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/b32ccc5d8687a8fd97c1510db48295e8e76b435a/vipy/object.py#L42-L55" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/97f958b94b01ca8de04396434b8749fef2039109/vipy/object.py#L42-L55" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">@classmethod
 def cast(cls, d, flush=False, category=None):
@@ -1278,7 +1278,7 @@ def cast(cls, d, flush=False, category=None):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/b32ccc5d8687a8fd97c1510db48295e8e76b435a/vipy/object.py#L57-L64" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/97f958b94b01ca8de04396434b8749fef2039109/vipy/object.py#L57-L64" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">@classmethod
 def from_json(obj, s):
@@ -1301,7 +1301,7 @@ def from_json(obj, s):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/b32ccc5d8687a8fd97c1510db48295e8e76b435a/vipy/object.py#L102-L109" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/97f958b94b01ca8de04396434b8749fef2039109/vipy/object.py#L102-L109" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def category(self, category=None, shortlabel=True):
     &#34;&#34;&#34;Update the category and shortlabel (optional) of the detection&#34;&#34;&#34;
@@ -1321,7 +1321,7 @@ def from_json(obj, s):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/b32ccc5d8687a8fd97c1510db48295e8e76b435a/vipy/object.py#L126-L132" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/97f958b94b01ca8de04396434b8749fef2039109/vipy/object.py#L126-L132" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def clone(self, deep=False):
     &#34;&#34;&#34;Copy the object, if deep=True, then include a deep copy of the attribute dictionary, else a shallow copy&#34;&#34;&#34;
@@ -1340,7 +1340,7 @@ def from_json(obj, s):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/b32ccc5d8687a8fd97c1510db48295e8e76b435a/vipy/object.py#L151-L153" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/97f958b94b01ca8de04396434b8749fef2039109/vipy/object.py#L151-L153" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def delattribute(self, k):
     self.attributes.pop(k, None)
@@ -1355,7 +1355,7 @@ def from_json(obj, s):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/b32ccc5d8687a8fd97c1510db48295e8e76b435a/vipy/object.py#L144-L145" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/97f958b94b01ca8de04396434b8749fef2039109/vipy/object.py#L144-L145" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def getattribute(self, k):
     return self.attributes[k]</code></pre>
@@ -1369,7 +1369,7 @@ def from_json(obj, s):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/b32ccc5d8687a8fd97c1510db48295e8e76b435a/vipy/object.py#L141-L142" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/97f958b94b01ca8de04396434b8749fef2039109/vipy/object.py#L141-L142" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def hasattribute(self, k):
     return isinstance(self.attributes, dict) and k in self.attributes</code></pre>
@@ -1383,7 +1383,7 @@ def from_json(obj, s):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/b32ccc5d8687a8fd97c1510db48295e8e76b435a/vipy/object.py#L123-L124" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/97f958b94b01ca8de04396434b8749fef2039109/vipy/object.py#L123-L124" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def id(self):
     return self._id</code></pre>
@@ -1397,7 +1397,7 @@ def from_json(obj, s):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/b32ccc5d8687a8fd97c1510db48295e8e76b435a/vipy/object.py#L91-L92" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/97f958b94b01ca8de04396434b8749fef2039109/vipy/object.py#L91-L92" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def json(self, encode=True):
     return json.dumps(self.__dict__) if encode else self.__dict__</code></pre>
@@ -1411,7 +1411,7 @@ def from_json(obj, s):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/b32ccc5d8687a8fd97c1510db48295e8e76b435a/vipy/object.py#L119-L121" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/97f958b94b01ca8de04396434b8749fef2039109/vipy/object.py#L119-L121" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def label(self, label):
     &#34;&#34;&#34;Alias for category to update both category and shortlabel&#34;&#34;&#34;
@@ -1426,7 +1426,7 @@ def from_json(obj, s):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/b32ccc5d8687a8fd97c1510db48295e8e76b435a/vipy/object.py#L155-L157" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/97f958b94b01ca8de04396434b8749fef2039109/vipy/object.py#L155-L157" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def noattributes(self):
     self.attributes = {}
@@ -1441,7 +1441,7 @@ def from_json(obj, s):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/b32ccc5d8687a8fd97c1510db48295e8e76b435a/vipy/object.py#L94-L96" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/97f958b94b01ca8de04396434b8749fef2039109/vipy/object.py#L94-L96" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def nocategory(self):
     self._label = None
@@ -1456,7 +1456,7 @@ def from_json(obj, s):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/b32ccc5d8687a8fd97c1510db48295e8e76b435a/vipy/object.py#L98-L100" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/97f958b94b01ca8de04396434b8749fef2039109/vipy/object.py#L98-L100" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def noshortlabel(self):
     self._shortlabel = None
@@ -1471,7 +1471,7 @@ def from_json(obj, s):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/b32ccc5d8687a8fd97c1510db48295e8e76b435a/vipy/object.py#L147-L149" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/97f958b94b01ca8de04396434b8749fef2039109/vipy/object.py#L147-L149" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def setattribute(self, k, v):
     self.attributes[k] = v
@@ -1486,7 +1486,7 @@ def from_json(obj, s):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/b32ccc5d8687a8fd97c1510db48295e8e76b435a/vipy/object.py#L111-L117" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/97f958b94b01ca8de04396434b8749fef2039109/vipy/object.py#L111-L117" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def shortlabel(self, label=None):
     &#34;&#34;&#34;A optional shorter label string to show in the visualizations, defaults to category()&#34;&#34;&#34;        
@@ -1637,7 +1637,7 @@ track is interpolated outside the (min,max) of the keyframes.
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/b32ccc5d8687a8fd97c1510db48295e8e76b435a/vipy/object.py#L159-L897" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/97f958b94b01ca8de04396434b8749fef2039109/vipy/object.py#L159-L897" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">class Track(object):
     &#34;&#34;&#34;vipy.object.Track class
@@ -2389,7 +2389,7 @@ track is interpolated outside the (min,max) of the keyframes.
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/b32ccc5d8687a8fd97c1510db48295e8e76b435a/vipy/object.py#L223-L234" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/97f958b94b01ca8de04396434b8749fef2039109/vipy/object.py#L223-L234" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">@classmethod
 def from_json(cls, s):
@@ -2416,7 +2416,7 @@ def from_json(cls, s):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/b32ccc5d8687a8fd97c1510db48295e8e76b435a/vipy/object.py#L833-L837" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/97f958b94b01ca8de04396434b8749fef2039109/vipy/object.py#L833-L837" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def acceleration(self, f, dt=30):
     &#34;&#34;&#34;Return the (x,y) track acceleration magnitude at frame f computed using central finite differences of velocity&#34;&#34;&#34;
@@ -2437,7 +2437,7 @@ If box is degenerate, throw an exception if strict=True, otherwise just don't ad
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/b32ccc5d8687a8fd97c1510db48295e8e76b435a/vipy/object.py#L296-L313" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/97f958b94b01ca8de04396434b8749fef2039109/vipy/object.py#L296-L313" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def add(self, keyframe, bbox, strict=True):
     &#34;&#34;&#34;Add a new keyframe and associated box to track, preserve sorted order of keyframes.  If keyframe is already in track, throw an exception.  In this case use update() instead
@@ -2467,7 +2467,7 @@ If box is degenerate, throw an exception if strict=True, otherwise just don't ad
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/b32ccc5d8687a8fd97c1510db48295e8e76b435a/vipy/object.py#L711-L719" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/97f958b94b01ca8de04396434b8749fef2039109/vipy/object.py#L711-L719" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def average(self, other):
     &#34;&#34;&#34;Compute the average of two tracks by the framewise interpolated boxes at the keyframes of this track&#34;&#34;&#34;
@@ -2488,7 +2488,7 @@ If box is degenerate, throw an exception if strict=True, otherwise just don't ad
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/b32ccc5d8687a8fd97c1510db48295e8e76b435a/vipy/object.py#L818-L821" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/97f958b94b01ca8de04396434b8749fef2039109/vipy/object.py#L818-L821" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def bearing(self, f, dt=30, minspeed=1):
     &#34;&#34;&#34;The bearing of a track at frame f is the angle of the velocity vector relative to the (x,y) image coordinate frame, in radians [-pi, pi]&#34;&#34;&#34;
@@ -2504,7 +2504,7 @@ If box is degenerate, throw an exception if strict=True, otherwise just don't ad
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/b32ccc5d8687a8fd97c1510db48295e8e76b435a/vipy/object.py#L823-L831" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/97f958b94b01ca8de04396434b8749fef2039109/vipy/object.py#L823-L831" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def bearing_change(self, f1=None, f2=None, dt=30, minspeed=1, samples=None):
     &#34;&#34;&#34;The bearing change of a track from frame f1 (or start) and frame f2 (or end) is the relative angle of the velocity vectors in radians [-pi,pi]&#34;&#34;&#34;
@@ -2525,7 +2525,7 @@ If box is degenerate, throw an exception if strict=True, otherwise just don't ad
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/b32ccc5d8687a8fd97c1510db48295e8e76b435a/vipy/object.py#L543-L546" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/97f958b94b01ca8de04396434b8749fef2039109/vipy/object.py#L543-L546" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def biggestbox(self):
     &#34;&#34;&#34;The biggest box of a track is the largest spatial box in area along the track&#34;&#34;&#34;
@@ -2541,7 +2541,7 @@ If box is degenerate, throw an exception if strict=True, otherwise just don't ad
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/b32ccc5d8687a8fd97c1510db48295e8e76b435a/vipy/object.py#L564-L570" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/97f958b94b01ca8de04396434b8749fef2039109/vipy/object.py#L564-L570" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def boundary(self, b=None):
     if b is None:
@@ -2560,7 +2560,7 @@ If box is degenerate, throw an exception if strict=True, otherwise just don't ad
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/b32ccc5d8687a8fd97c1510db48295e8e76b435a/vipy/object.py#L532-L536" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/97f958b94b01ca8de04396434b8749fef2039109/vipy/object.py#L532-L536" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def boundingbox(self, startframe=None, endframe=None):
     &#34;&#34;&#34;The bounding box of a track is the smallest spatial box that contains all of the detections within startframe and endframe, or None if there are no detections&#34;&#34;&#34;
@@ -2577,7 +2577,7 @@ If box is degenerate, throw an exception if strict=True, otherwise just don't ad
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/b32ccc5d8687a8fd97c1510db48295e8e76b435a/vipy/object.py#L847-L850" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/97f958b94b01ca8de04396434b8749fef2039109/vipy/object.py#L847-L850" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def boxmap(self, f):
     &#34;&#34;&#34;Apply the lambda function to each keybox&#34;&#34;&#34;
@@ -2593,7 +2593,7 @@ If box is degenerate, throw an exception if strict=True, otherwise just don't ad
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/b32ccc5d8687a8fd97c1510db48295e8e76b435a/vipy/object.py#L425-L431" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/97f958b94b01ca8de04396434b8749fef2039109/vipy/object.py#L425-L431" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def category(self, label=None, shortlabel=True):
     if label is not None:
@@ -2612,7 +2612,7 @@ If box is degenerate, throw an exception if strict=True, otherwise just don't ad
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/b32ccc5d8687a8fd97c1510db48295e8e76b435a/vipy/object.py#L572-L585" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/97f958b94b01ca8de04396434b8749fef2039109/vipy/object.py#L572-L585" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def clip(self, startframe, endframe):
     &#34;&#34;&#34;Clip a track to be within (startframe,endframe) with strict boundary handling&#34;&#34;&#34;
@@ -2638,7 +2638,7 @@ If box is degenerate, throw an exception if strict=True, otherwise just don't ad
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/b32ccc5d8687a8fd97c1510db48295e8e76b435a/vipy/object.py#L522-L524" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/97f958b94b01ca8de04396434b8749fef2039109/vipy/object.py#L522-L524" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def clone(self, startframe=None, endframe=None):
     #return copy.deepcopy(self)  
@@ -2653,7 +2653,7 @@ If box is degenerate, throw an exception if strict=True, otherwise just don't ad
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/b32ccc5d8687a8fd97c1510db48295e8e76b435a/vipy/object.py#L526-L530" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/97f958b94b01ca8de04396434b8749fef2039109/vipy/object.py#L526-L530" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def clone_during(self, startframe, endframe):
     #return copy.deepcopy(self)
@@ -2670,7 +2670,7 @@ If box is degenerate, throw an exception if strict=True, otherwise just don't ad
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/b32ccc5d8687a8fd97c1510db48295e8e76b435a/vipy/object.py#L266-L276" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/97f958b94b01ca8de04396434b8749fef2039109/vipy/object.py#L266-L276" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def confidence(self, last=None, samples=None):
     &#34;&#34;&#34;The confidence of a track is the mean confidence of all (or just last=last frames, or samples=samples uniformly spaced) keyboxes (if confidences are available) else 0&#34;&#34;&#34;
@@ -2693,7 +2693,7 @@ If box is degenerate, throw an exception if strict=True, otherwise just don't ad
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/b32ccc5d8687a8fd97c1510db48295e8e76b435a/vipy/object.py#L325-L331" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/97f958b94b01ca8de04396434b8749fef2039109/vipy/object.py#L325-L331" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def delete(self, keyframe):
     &#34;&#34;&#34;Replace a keyframe and associated box to track, preserve sorted order of keyframes&#34;&#34;&#34;
@@ -2712,7 +2712,7 @@ If box is degenerate, throw an exception if strict=True, otherwise just don't ad
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/b32ccc5d8687a8fd97c1510db48295e8e76b435a/vipy/object.py#L291-L293" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/97f958b94b01ca8de04396434b8749fef2039109/vipy/object.py#L291-L293" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def dict(self):
     &#34;&#34;&#34;Return a python dictionary containing the relevant serialized attributes suitable for JSON encoding&#34;&#34;&#34;
@@ -2727,7 +2727,7 @@ If box is degenerate, throw an exception if strict=True, otherwise just don't ad
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/b32ccc5d8687a8fd97c1510db48295e8e76b435a/vipy/object.py#L490-L493" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/97f958b94b01ca8de04396434b8749fef2039109/vipy/object.py#L490-L493" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def dilate(self, s):
     &#34;&#34;&#34;Dilate track boxes by scale factor s&#34;&#34;&#34;
@@ -2743,7 +2743,7 @@ If box is degenerate, throw an exception if strict=True, otherwise just don't ad
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/b32ccc5d8687a8fd97c1510db48295e8e76b435a/vipy/object.py#L445-L449" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/97f958b94b01ca8de04396434b8749fef2039109/vipy/object.py#L445-L449" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def during(self, k_start, k_end=None):
     &#34;&#34;&#34;Does the track contain a keyframe during the time interval (startframe, endframe) inclusive?&#34;&#34;&#34;        
@@ -2760,7 +2760,7 @@ If box is degenerate, throw an exception if strict=True, otherwise just don't ad
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/b32ccc5d8687a8fd97c1510db48295e8e76b435a/vipy/object.py#L451-L452" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/97f958b94b01ca8de04396434b8749fef2039109/vipy/object.py#L451-L452" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def during_interval(self, k_start, k_end):
     return self.during(k_start, k_end)</code></pre>
@@ -2774,7 +2774,7 @@ If box is degenerate, throw an exception if strict=True, otherwise just don't ad
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/b32ccc5d8687a8fd97c1510db48295e8e76b435a/vipy/object.py#L556-L558" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/97f958b94b01ca8de04396434b8749fef2039109/vipy/object.py#L556-L558" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def endbox(self):
     &#34;&#34;&#34;The endbox is the last box in the track&#34;&#34;&#34;
@@ -2789,7 +2789,7 @@ If box is degenerate, throw an exception if strict=True, otherwise just don't ad
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/b32ccc5d8687a8fd97c1510db48295e8e76b435a/vipy/object.py#L389-L390" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/97f958b94b01ca8de04396434b8749fef2039109/vipy/object.py#L389-L390" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def endframe(self):
     return self._keyframes[-1] if len(self._keyframes)&gt;0 else None  # assumes sorted order</code></pre>
@@ -2804,7 +2804,7 @@ useful for track continuation</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/b32ccc5d8687a8fd97c1510db48295e8e76b435a/vipy/object.py#L608-L613" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/97f958b94b01ca8de04396434b8749fef2039109/vipy/object.py#L608-L613" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def endpointiou(self, other):
     &#34;&#34;&#34;Compute the mean spatial IoU between two tracks at the two overlapping endpoints.  useful for track continuation&#34;&#34;&#34;        
@@ -2822,7 +2822,7 @@ useful for track continuation</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/b32ccc5d8687a8fd97c1510db48295e8e76b435a/vipy/object.py#L505-L508" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/97f958b94b01ca8de04396434b8749fef2039109/vipy/object.py#L505-L508" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def fliplr(self, H, W):
     &#34;&#34;&#34;Flip an image left and right (mirror about vertical axis)&#34;&#34;&#34;
@@ -2838,7 +2838,7 @@ useful for track continuation</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/b32ccc5d8687a8fd97c1510db48295e8e76b435a/vipy/object.py#L510-L513" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/97f958b94b01ca8de04396434b8749fef2039109/vipy/object.py#L510-L513" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def flipud(self, H, W):
     &#34;&#34;&#34;Flip an image left and right (mirror about vertical axis)&#34;&#34;&#34;
@@ -2854,7 +2854,7 @@ useful for track continuation</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/b32ccc5d8687a8fd97c1510db48295e8e76b435a/vipy/object.py#L601-L606" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/97f958b94b01ca8de04396434b8749fef2039109/vipy/object.py#L601-L606" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def fragmentiou(self, other, dt=5):
     &#34;&#34;&#34;A fragment is a track that is fully contained within self&#34;&#34;&#34;
@@ -2872,7 +2872,7 @@ useful for track continuation</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/b32ccc5d8687a8fd97c1510db48295e8e76b435a/vipy/object.py#L459-L463" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/97f958b94b01ca8de04396434b8749fef2039109/vipy/object.py#L459-L463" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def frameoffset(self, dx, dy):
     &#34;&#34;&#34;Offset boxes by (dx,dy) in each frame&#34;&#34;&#34;
@@ -2889,7 +2889,7 @@ useful for track continuation</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/b32ccc5d8687a8fd97c1510db48295e8e76b435a/vipy/object.py#L371-L384" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/97f958b94b01ca8de04396434b8749fef2039109/vipy/object.py#L371-L384" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def framerate(self, fps=None, speed=None):
     &#34;&#34;&#34;Resample keyframes from known original framerate set by constructor to be new framerate fps&#34;&#34;&#34;
@@ -2915,7 +2915,7 @@ useful for track continuation</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/b32ccc5d8687a8fd97c1510db48295e8e76b435a/vipy/object.py#L515-L520" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/97f958b94b01ca8de04396434b8749fef2039109/vipy/object.py#L515-L520" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def id(self, newid=None):
     if newid is None:
@@ -2937,7 +2937,7 @@ the image rectangle, which results in an exception.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/b32ccc5d8687a8fd97c1510db48295e8e76b435a/vipy/object.py#L792-L803" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/97f958b94b01ca8de04396434b8749fef2039109/vipy/object.py#L792-L803" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def imclip(self, width, height):
     &#34;&#34;&#34;Clip the track to the image rectangle (width, height).  If a keybox is outside the image rectangle, remove it otherwise clip to the image rectangle. 
@@ -2961,7 +2961,7 @@ the image rectangle, which results in an exception.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/b32ccc5d8687a8fd97c1510db48295e8e76b435a/vipy/object.py#L587-L589" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/97f958b94b01ca8de04396434b8749fef2039109/vipy/object.py#L587-L589" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def iou(self, other, dt=1):
     &#34;&#34;&#34;Compute the spatial IoU between two tracks as the mean IoU per frame in the range (self.startframe(), self.endframe())&#34;&#34;&#34;
@@ -2982,7 +2982,7 @@ the image rectangle, which results in an exception.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/b32ccc5d8687a8fd97c1510db48295e8e76b435a/vipy/object.py#L278-L289" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/97f958b94b01ca8de04396434b8749fef2039109/vipy/object.py#L278-L289" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def isdegenerate(self):
     &#34;&#34;&#34;Is the track degenerate?  
@@ -3006,7 +3006,7 @@ the image rectangle, which results in an exception.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/b32ccc5d8687a8fd97c1510db48295e8e76b435a/vipy/object.py#L263-L264" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/97f958b94b01ca8de04396434b8749fef2039109/vipy/object.py#L263-L264" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def isempty(self):
     return self.__len__() == 0</code></pre>
@@ -3020,7 +3020,7 @@ the image rectangle, which results in an exception.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/b32ccc5d8687a8fd97c1510db48295e8e76b435a/vipy/object.py#L894-L897" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/97f958b94b01ca8de04396434b8749fef2039109/vipy/object.py#L894-L897" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def ismoving(self, startframe=None, endframe=None, mincover=0.9):
     &#34;&#34;&#34;Is the track moving in the frame range (startframe,endframe)?&#34;&#34;&#34;
@@ -3036,7 +3036,7 @@ the image rectangle, which results in an exception.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/b32ccc5d8687a8fd97c1510db48295e8e76b435a/vipy/object.py#L236-L239" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/97f958b94b01ca8de04396434b8749fef2039109/vipy/object.py#L236-L239" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def json(self, encode=True):
     d = {k:v if k != &#39;_keyboxes&#39; else tuple([bb.json(encode=False) for bb in v]) for (k,v) in self.__dict__.items()}
@@ -3052,7 +3052,7 @@ the image rectangle, which results in an exception.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/b32ccc5d8687a8fd97c1510db48295e8e76b435a/vipy/object.py#L340-L349" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/97f958b94b01ca8de04396434b8749fef2039109/vipy/object.py#L340-L349" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def keyboxes(self, boxes=None, keyframes=None):
     &#34;&#34;&#34;Return keyboxes where there are track observations&#34;&#34;&#34;
@@ -3074,7 +3074,7 @@ the image rectangle, which results in an exception.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/b32ccc5d8687a8fd97c1510db48295e8e76b435a/vipy/object.py#L333-L335" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/97f958b94b01ca8de04396434b8749fef2039109/vipy/object.py#L333-L335" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def keyframes(self):
     &#34;&#34;&#34;Return keyframe frame indexes where there are track observations&#34;&#34;&#34;
@@ -3089,7 +3089,7 @@ the image rectangle, which results in an exception.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/b32ccc5d8687a8fd97c1510db48295e8e76b435a/vipy/object.py#L433-L435" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/97f958b94b01ca8de04396434b8749fef2039109/vipy/object.py#L433-L435" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def label(self, label):
     &#34;&#34;&#34;Alias for category&#34;&#34;&#34;
@@ -3109,7 +3109,7 @@ the image rectangle, which results in an exception.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/b32ccc5d8687a8fd97c1510db48295e8e76b435a/vipy/object.py#L773-L790" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/97f958b94b01ca8de04396434b8749fef2039109/vipy/object.py#L773-L790" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def linear_extrapolation(self, k, shape=False, dt=30):
     &#34;&#34;&#34;Track extrapolation by linear fit.
@@ -3146,7 +3146,7 @@ clone() if necessary</li>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/b32ccc5d8687a8fd97c1510db48295e8e76b435a/vipy/object.py#L392-L423" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/97f958b94b01ca8de04396434b8749fef2039109/vipy/object.py#L392-L423" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def linear_interpolation(self, f, id=True):
     &#34;&#34;&#34;Linear bounding box interpolation at frame=k given observed boxes (x,y,w,h) at keyframes.  
@@ -3190,7 +3190,7 @@ clone() if necessary</li>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/b32ccc5d8687a8fd97c1510db48295e8e76b435a/vipy/object.py#L560-L562" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/97f958b94b01ca8de04396434b8749fef2039109/vipy/object.py#L560-L562" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def loop_closure_distance(self):
     &#34;&#34;&#34;The loop closure track distance is the Euclidean distance in pixels between the start frame bounding box and end frame bounding box&#34;&#34;&#34;
@@ -3205,7 +3205,7 @@ clone() if necessary</li>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/b32ccc5d8687a8fd97c1510db48295e8e76b435a/vipy/object.py#L597-L599" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/97f958b94b01ca8de04396434b8749fef2039109/vipy/object.py#L597-L599" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def maxiou(self, other, dt=1):
     &#34;&#34;&#34;Compute the maximum spatial IoU between two tracks per frame in the range (self.startframe(), self.endframe())&#34;&#34;&#34;        
@@ -3220,7 +3220,7 @@ clone() if necessary</li>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/b32ccc5d8687a8fd97c1510db48295e8e76b435a/vipy/object.py#L356-L358" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/97f958b94b01ca8de04396434b8749fef2039109/vipy/object.py#L356-L358" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def meanbox(self):
     &#34;&#34;&#34;Return the mean bounding box during the track, or None if the track is degenerate&#34;&#34;&#34;
@@ -3235,7 +3235,7 @@ clone() if necessary</li>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/b32ccc5d8687a8fd97c1510db48295e8e76b435a/vipy/object.py#L351-L354" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/97f958b94b01ca8de04396434b8749fef2039109/vipy/object.py#L351-L354" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def meanshape(self):
     &#34;&#34;&#34;Return the mean (width,height) of the box during the track, or None if the track is degenerate&#34;&#34;&#34;
@@ -3251,7 +3251,7 @@ clone() if necessary</li>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/b32ccc5d8687a8fd97c1510db48295e8e76b435a/vipy/object.py#L740-L745" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/97f958b94b01ca8de04396434b8749fef2039109/vipy/object.py#L740-L745" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def medianshape(self, width):
     &#34;&#34;&#34;Track smoothing by median width and height of neighboring keyboxes&#34;&#34;&#34;
@@ -3269,7 +3269,7 @@ clone() if necessary</li>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/b32ccc5d8687a8fd97c1510db48295e8e76b435a/vipy/object.py#L889-L892" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/97f958b94b01ca8de04396434b8749fef2039109/vipy/object.py#L889-L892" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def nearest_keybox(self, f):
     &#34;&#34;&#34;Nearest keybox to frame f&#34;&#34;&#34;
@@ -3285,7 +3285,7 @@ clone() if necessary</li>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/b32ccc5d8687a8fd97c1510db48295e8e76b435a/vipy/object.py#L884-L887" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/97f958b94b01ca8de04396434b8749fef2039109/vipy/object.py#L884-L887" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def nearest_keyframe(self, f):
     &#34;&#34;&#34;Nearest keyframe to frame f&#34;&#34;&#34;
@@ -3301,7 +3301,7 @@ clone() if necessary</li>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/b32ccc5d8687a8fd97c1510db48295e8e76b435a/vipy/object.py#L337-L338" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/97f958b94b01ca8de04396434b8749fef2039109/vipy/object.py#L337-L338" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def num_keyframes(self):
     return len(self._keyframes)</code></pre>
@@ -3315,7 +3315,7 @@ clone() if necessary</li>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/b32ccc5d8687a8fd97c1510db48295e8e76b435a/vipy/object.py#L454-L457" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/97f958b94b01ca8de04396434b8749fef2039109/vipy/object.py#L454-L457" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def offset(self, dt=0, dx=0, dy=0):
     self._keyboxes = [bb.offset(dx, dy) for bb in self._keyboxes]
@@ -3331,7 +3331,7 @@ clone() if necessary</li>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/b32ccc5d8687a8fd97c1510db48295e8e76b435a/vipy/object.py#L548-L550" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/97f958b94b01ca8de04396434b8749fef2039109/vipy/object.py#L548-L550" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def pathlength(self):
     &#34;&#34;&#34;The path length of a track is the cumulative Euclidean distance in pixels that the box travels&#34;&#34;&#34;
@@ -3351,7 +3351,7 @@ The number of uniformly spaced samples to take along the track for computing the
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/b32ccc5d8687a8fd97c1510db48295e8e76b435a/vipy/object.py#L645-L659" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/97f958b94b01ca8de04396434b8749fef2039109/vipy/object.py#L645-L659" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def percentileiou(self, other, percentile, samples=100):
     &#34;&#34;&#34;Percentile iou returns rankiou for rank=percentile*len(overlap(self, other))
@@ -3388,7 +3388,7 @@ The top-k best IOU overlaps to average when computing the rank IOU</li>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/b32ccc5d8687a8fd97c1510db48295e8e76b435a/vipy/object.py#L629-L643" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/97f958b94b01ca8de04396434b8749fef2039109/vipy/object.py#L629-L643" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def rankiou(self, other, rank, dt=1):
     &#34;&#34;&#34;Compute the mean spatial IoU between two tracks per frame in the range (self.startframe(), self.endframe()) using only the top-k (rank) frame overlaps
@@ -3415,7 +3415,7 @@ The top-k best IOU overlaps to average when computing the rank IOU</li>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/b32ccc5d8687a8fd97c1510db48295e8e76b435a/vipy/object.py#L321-L323" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/97f958b94b01ca8de04396434b8749fef2039109/vipy/object.py#L321-L323" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def replace(self, keyframe, box):
     &#34;&#34;&#34;Replace the keyframe and associated box(es), preserve sorted order of keyframes&#34;&#34;&#34;
@@ -3432,7 +3432,7 @@ This is useful for track compression</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/b32ccc5d8687a8fd97c1510db48295e8e76b435a/vipy/object.py#L805-L811" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/97f958b94b01ca8de04396434b8749fef2039109/vipy/object.py#L805-L811" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def resample(self, dt):
     &#34;&#34;&#34;Resample the track using a stride of dt frames.  This reduces the density of keyframes by interpolating new keyframes as a uniform stride of dt.  This is useful for track compression&#34;&#34;&#34;
@@ -3451,7 +3451,7 @@ This is useful for track compression</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/b32ccc5d8687a8fd97c1510db48295e8e76b435a/vipy/object.py#L471-L474" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/97f958b94b01ca8de04396434b8749fef2039109/vipy/object.py#L471-L474" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def rescale(self, s):
     &#34;&#34;&#34;Rescale track boxes by scale factor s&#34;&#34;&#34;
@@ -3467,7 +3467,7 @@ This is useful for track compression</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/b32ccc5d8687a8fd97c1510db48295e8e76b435a/vipy/object.py#L500-L503" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/97f958b94b01ca8de04396434b8749fef2039109/vipy/object.py#L500-L503" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def rot90ccw(self, H, W):
     &#34;&#34;&#34;Rotate an image with (H,W)=shape 90 degrees clockwise and update all boxes to be consistent&#34;&#34;&#34;
@@ -3483,7 +3483,7 @@ This is useful for track compression</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/b32ccc5d8687a8fd97c1510db48295e8e76b435a/vipy/object.py#L495-L498" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/97f958b94b01ca8de04396434b8749fef2039109/vipy/object.py#L495-L498" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def rot90cw(self, H, W):
     &#34;&#34;&#34;Rotate an image with (H,W)=shape 90 degrees clockwise and update all boxes to be consistent&#34;&#34;&#34;
@@ -3499,7 +3499,7 @@ This is useful for track compression</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/b32ccc5d8687a8fd97c1510db48295e8e76b435a/vipy/object.py#L476-L478" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/97f958b94b01ca8de04396434b8749fef2039109/vipy/object.py#L476-L478" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def scale(self, s):
     &#34;&#34;&#34;Alias for rescale&#34;&#34;&#34;
@@ -3514,7 +3514,7 @@ This is useful for track compression</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/b32ccc5d8687a8fd97c1510db48295e8e76b435a/vipy/object.py#L480-L483" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/97f958b94b01ca8de04396434b8749fef2039109/vipy/object.py#L480-L483" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def scalex(self, sx):
     &#34;&#34;&#34;Rescale track boxes by scale factor sx&#34;&#34;&#34;
@@ -3530,7 +3530,7 @@ This is useful for track compression</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/b32ccc5d8687a8fd97c1510db48295e8e76b435a/vipy/object.py#L485-L488" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/97f958b94b01ca8de04396434b8749fef2039109/vipy/object.py#L485-L488" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def scaley(self, sy):
     &#34;&#34;&#34;Rescale track boxes by scale factor sx&#34;&#34;&#34;
@@ -3546,7 +3546,7 @@ This is useful for track compression</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/b32ccc5d8687a8fd97c1510db48295e8e76b435a/vipy/object.py#L591-L595" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/97f958b94b01ca8de04396434b8749fef2039109/vipy/object.py#L591-L595" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def segment_maxiou(self, other, startframe, endframe):
     &#34;&#34;&#34;Return the maximum framewise bounding box IOU between self and other in the range (startframe, endframe)&#34;&#34;&#34;
@@ -3563,7 +3563,7 @@ This is useful for track compression</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/b32ccc5d8687a8fd97c1510db48295e8e76b435a/vipy/object.py#L675-L687" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/97f958b94b01ca8de04396434b8749fef2039109/vipy/object.py#L675-L687" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def segment_percentilecover(self, other, percentile, samples=100):
     &#34;&#34;&#34;percentile cover on the overlapping segment with other&#34;&#34;&#34;
@@ -3588,7 +3588,7 @@ This is useful for track compression</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/b32ccc5d8687a8fd97c1510db48295e8e76b435a/vipy/object.py#L661-L672" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/97f958b94b01ca8de04396434b8749fef2039109/vipy/object.py#L661-L672" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def segment_percentileiou(self, other, percentile, samples=100):
     &#34;&#34;&#34;percentiliou on the overlapping segment with other&#34;&#34;&#34;
@@ -3613,7 +3613,7 @@ Useful for track continuation for densely overlapping tracks</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/b32ccc5d8687a8fd97c1510db48295e8e76b435a/vipy/object.py#L622-L627" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/97f958b94b01ca8de04396434b8749fef2039109/vipy/object.py#L622-L627" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def segmentcover(self, other, dt=5):
     &#34;&#34;&#34;Compute the mean spatial cover between two tracks at the overlapping segment, sampling by dt.  Useful for track continuation for densely overlapping tracks&#34;&#34;&#34;
@@ -3632,7 +3632,7 @@ Useful for track continuation for densely overlapping tracks</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/b32ccc5d8687a8fd97c1510db48295e8e76b435a/vipy/object.py#L615-L620" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/97f958b94b01ca8de04396434b8749fef2039109/vipy/object.py#L615-L620" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def segmentiou(self, other, dt=5):
     &#34;&#34;&#34;Compute the mean spatial IoU between two tracks at the overlapping segment, sampling by dt.  Useful for track continuation for densely overlapping tracks&#34;&#34;&#34;
@@ -3650,7 +3650,7 @@ Useful for track continuation for densely overlapping tracks</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/b32ccc5d8687a8fd97c1510db48295e8e76b435a/vipy/object.py#L852-L862" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/97f958b94b01ca8de04396434b8749fef2039109/vipy/object.py#L852-L862" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def shape_invariant_velocity(self, f, dt=30):
     &#34;&#34;&#34;Return the (x,y) track velocity at frame f in units of pixels per frame computed by minimum mean finite differences of any box corner independent of changes in shape, over a finite time window of [f-dt, f]&#34;&#34;&#34;
@@ -3674,7 +3674,7 @@ This is useful for filtering spurious tracks where the aspect ratio changes rapi
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/b32ccc5d8687a8fd97c1510db48295e8e76b435a/vipy/object.py#L360-L364" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/97f958b94b01ca8de04396434b8749fef2039109/vipy/object.py#L360-L364" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def shapevariance(self):
     &#34;&#34;&#34;Return the variance (width, height) of the box shape during the track or None if the track is degenerate.  This is useful for filtering spurious tracks where the aspect ratio changes rapidly and randomly&#34;&#34;&#34;
@@ -3691,7 +3691,7 @@ This is useful for filtering spurious tracks where the aspect ratio changes rapi
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/b32ccc5d8687a8fd97c1510db48295e8e76b435a/vipy/object.py#L437-L443" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/97f958b94b01ca8de04396434b8749fef2039109/vipy/object.py#L437-L443" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def shortlabel(self, label=None):
     &#34;&#34;&#34;A optional shorter label string to show as a caption in visualizations&#34;&#34;&#34;                
@@ -3710,7 +3710,7 @@ This is useful for filtering spurious tracks where the aspect ratio changes rapi
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/b32ccc5d8687a8fd97c1510db48295e8e76b435a/vipy/object.py#L813-L816" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/97f958b94b01ca8de04396434b8749fef2039109/vipy/object.py#L813-L816" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def significant_digits(self, n):
     &#34;&#34;&#34;Round the coordinates of all boxes so that they have n significant digits for efficient serialization&#34;&#34;&#34;
@@ -3726,7 +3726,7 @@ This is useful for filtering spurious tracks where the aspect ratio changes rapi
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/b32ccc5d8687a8fd97c1510db48295e8e76b435a/vipy/object.py#L538-L541" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/97f958b94b01ca8de04396434b8749fef2039109/vipy/object.py#L538-L541" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def smallestbox(self):
     &#34;&#34;&#34;The smallest box of a track is the smallest spatial box in area along the track&#34;&#34;&#34;
@@ -3742,7 +3742,7 @@ This is useful for filtering spurious tracks where the aspect ratio changes rapi
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/b32ccc5d8687a8fd97c1510db48295e8e76b435a/vipy/object.py#L726-L731" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/97f958b94b01ca8de04396434b8749fef2039109/vipy/object.py#L726-L731" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def smooth(self, width):
     &#34;&#34;&#34;Track smoothing by averaging neighboring keyboxes&#34;&#34;&#34;
@@ -3760,7 +3760,7 @@ This is useful for filtering spurious tracks where the aspect ratio changes rapi
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/b32ccc5d8687a8fd97c1510db48295e8e76b435a/vipy/object.py#L733-L738" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/97f958b94b01ca8de04396434b8749fef2039109/vipy/object.py#L733-L738" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def smoothshape(self, width):
     &#34;&#34;&#34;Track smoothing by averaging width and height of neighboring keyboxes&#34;&#34;&#34;
@@ -3778,7 +3778,7 @@ This is useful for filtering spurious tracks where the aspect ratio changes rapi
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/b32ccc5d8687a8fd97c1510db48295e8e76b435a/vipy/object.py#L843-L845" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/97f958b94b01ca8de04396434b8749fef2039109/vipy/object.py#L843-L845" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def speed(self, f, dt=30):
     (u,v) = self.shape_invariant_velocity(f, dt)
@@ -3795,7 +3795,7 @@ Smoothing factor will increase with smoothing &gt; 1 and decrease with 0 &lt; sm
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/b32ccc5d8687a8fd97c1510db48295e8e76b435a/vipy/object.py#L747-L771" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/97f958b94b01ca8de04396434b8749fef2039109/vipy/object.py#L747-L771" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def spline(self, smoothingfactor=None, strict=True, startframe=None, endframe=None):
     &#34;&#34;&#34;Track smoothing by cubic spline fit, will return resampled dt=1 track.  Smoothing factor will increase with smoothing &gt; 1 and decrease with 0 &lt; smoothing &lt; 1
@@ -3832,7 +3832,7 @@ Smoothing factor will increase with smoothing &gt; 1 and decrease with 0 &lt; sm
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/b32ccc5d8687a8fd97c1510db48295e8e76b435a/vipy/object.py#L552-L554" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/97f958b94b01ca8de04396434b8749fef2039109/vipy/object.py#L552-L554" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def startbox(self):
     &#34;&#34;&#34;The startbox is the first bounding box in the track&#34;&#34;&#34;
@@ -3847,7 +3847,7 @@ Smoothing factor will increase with smoothing &gt; 1 and decrease with 0 &lt; sm
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/b32ccc5d8687a8fd97c1510db48295e8e76b435a/vipy/object.py#L386-L387" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/97f958b94b01ca8de04396434b8749fef2039109/vipy/object.py#L386-L387" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def startframe(self):
     return self._keyframes[0] if len(self._keyframes)&gt;0 else None  # assumes sorted order</code></pre>
@@ -3861,7 +3861,7 @@ Smoothing factor will increase with smoothing &gt; 1 and decrease with 0 &lt; sm
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/b32ccc5d8687a8fd97c1510db48295e8e76b435a/vipy/object.py#L721-L724" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/97f958b94b01ca8de04396434b8749fef2039109/vipy/object.py#L721-L724" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def temporal_distance(self, other):
     &#34;&#34;&#34;The temporal distance between two tracks is the minimum number of frames separating them&#34;&#34;&#34;
@@ -3877,7 +3877,7 @@ Smoothing factor will increase with smoothing &gt; 1 and decrease with 0 &lt; sm
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/b32ccc5d8687a8fd97c1510db48295e8e76b435a/vipy/object.py#L465-L469" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/97f958b94b01ca8de04396434b8749fef2039109/vipy/object.py#L465-L469" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def truncate(self, startframe=None, endframe=None):
     &#34;&#34;&#34;Truncate a track so that any keyframes less than startframe or greater than endframe are removed&#34;&#34;&#34;
@@ -3902,7 +3902,7 @@ keep the box from self (discard other) at a keyframe</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/b32ccc5d8687a8fd97c1510db48295e8e76b435a/vipy/object.py#L689-L708" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/97f958b94b01ca8de04396434b8749fef2039109/vipy/object.py#L689-L708" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def union(self, other, overlap=&#39;average&#39;):
     &#34;&#34;&#34;Compute the union of two tracks.  Overlapping boxes between self and other:
@@ -3934,7 +3934,7 @@ keep the box from self (discard other) at a keyframe</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/b32ccc5d8687a8fd97c1510db48295e8e76b435a/vipy/object.py#L315-L319" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/97f958b94b01ca8de04396434b8749fef2039109/vipy/object.py#L315-L319" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def update(self, keyframe, bbox):
     if keyframe in self._keyframes:
@@ -3951,7 +3951,7 @@ keep the box from self (discard other) at a keyframe</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/b32ccc5d8687a8fd97c1510db48295e8e76b435a/vipy/object.py#L839-L841" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/97f958b94b01ca8de04396434b8749fef2039109/vipy/object.py#L839-L841" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def velocity(self, f, dt=30):
     &#34;&#34;&#34;Return the (x,y) track velocity at frame f in units of pixels per frame computed by mean finite difference of the box centroid&#34;&#34;&#34;
@@ -3966,7 +3966,7 @@ keep the box from self (discard other) at a keyframe</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/b32ccc5d8687a8fd97c1510db48295e8e76b435a/vipy/object.py#L879-L882" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/97f958b94b01ca8de04396434b8749fef2039109/vipy/object.py#L879-L882" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def velocity_h(self, f, dt=30):
     &#34;&#34;&#34;Return the height velocity at frame f in units of pixels per frame computed by finite difference&#34;&#34;&#34;
@@ -3982,7 +3982,7 @@ keep the box from self (discard other) at a keyframe</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/b32ccc5d8687a8fd97c1510db48295e8e76b435a/vipy/object.py#L874-L877" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/97f958b94b01ca8de04396434b8749fef2039109/vipy/object.py#L874-L877" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def velocity_w(self, f, dt=30):
     &#34;&#34;&#34;Return the width velocity at frame f in units of pixels per frame computed by finite difference&#34;&#34;&#34;
@@ -3998,7 +3998,7 @@ keep the box from self (discard other) at a keyframe</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/b32ccc5d8687a8fd97c1510db48295e8e76b435a/vipy/object.py#L864-L867" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/97f958b94b01ca8de04396434b8749fef2039109/vipy/object.py#L864-L867" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def velocity_x(self, f, dt=30):
     &#34;&#34;&#34;Return the left/right velocity at frame f in units of pixels per frame computed by mean finite difference over a fixed time window (dt, frames) of the box centroid&#34;&#34;&#34;
@@ -4014,7 +4014,7 @@ keep the box from self (discard other) at a keyframe</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/b32ccc5d8687a8fd97c1510db48295e8e76b435a/vipy/object.py#L869-L872" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/97f958b94b01ca8de04396434b8749fef2039109/vipy/object.py#L869-L872" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def velocity_y(self, f, dt=30):
     &#34;&#34;&#34;Return the up/down velocity at frame f in units of pixels per frame computed by mean finite difference over a fixed time window (dt, frames) of the box centroid&#34;&#34;&#34;
