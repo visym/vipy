@@ -185,28 +185,44 @@ class Video(object):
         return str('<vipy.video: %s>' % (', '.join(strlist)))
 
     def __len__(self):
-        """Number of frames in the video if loaded, else zero.  Do not automatically trigger a load, since this can interact in unexpected ways with other tools that depend on fast __len__()"""
+        """Number of frames in the video if loaded, else zero.  
+        
+        .. notes:: Do not automatically trigger a load, since this can interact in unexpected ways with other tools that depend on fast __len__()
+        """
         if not self.isloaded():
             warnings.warn('Load() video to see number of frames - Returning zero')  # should this just throw an exception?
         return len(self.array()) if self.isloaded() else 0
 
     def __getitem__(self, k):
-        """Return the kth frame as an vipy.image object"""
+        """Return the kth frame as an `vipy.image Image` object"""
         return self.frame(k)
 
     def metadata(self):
-        """Return a dictionary of metadata about this video"""
+        """Return a dictionary of metadata about this video.
+
+        This is an alias for the 'attributes' dictionary. 
+        """
         return self.attributes
 
-    def videoid(self):
-        """Return a unique video identifier for this video, as specified in the 'video_id' attribute, or by hashing the filename() and url().
+    def videoid(self, newid=None):
+        """Return a unique video identifier for this video, as specified in the 'video_id' attribute, or by SHA1 hash of the `vipy.video.Video.filename` and `vipy.video.Video.url`.
 
-        .. notes::
+        Args:
+            newid: [str] If not None, then update the video_id as newid. 
+
+        Returns:
+            The video ID if newid=None else self
+
+        .. note::
             - If the video filename changes (e.g. from transformation), and video_id is not set in self.attributes, then the video ID will change.
             - If a video does not have a filename or URL or a video ID in the attributes, then this will return None
-            - To preserve a video ID independent of transformations, set self.setattribute('video_id', $MY_ID)
+            - To preserve a video ID independent of transformations, set self.setattribute('video_id', ${MY_ID}), or pass in newid
         """
-        return self.attributes['video_id'] if 'video_id' in self.attributes else hashlib.sha1(str(str(self.filename())+str(self.url())).encode("UTF-8")).hexdigest() if (self.filename() is not None or self.url() is not None) else None
+        if newid is not None:
+            self.setattribute('video_id', newid)
+            return self
+        else:
+            return self.attributes['video_id'] if 'video_id' in self.attributes else hashlib.sha1(str(str(self.filename())+str(self.url())).encode("UTF-8")).hexdigest() if (self.filename() is not None or self.url() is not None) else None
     
     def frame(self, k, img=None):
         """Alias for self.__getitem__[k]"""
@@ -227,9 +243,9 @@ class Video(object):
 
         Useful for archiving an object to be fully self contained without any external references.  
 
-           >>> v == v.store().restore(v.filename()) 
+        >>> v == v.store().restore(v.filename()) 
         
-        .. notes::
+        .. note::
             -Remove this stored video using unstore()
             -Unpack this stored video and set up the video chains using restore() 
             -This method is more efficient than load() followed by pkl(), as it stores the encoded video as a byte string.
@@ -2227,7 +2243,12 @@ class Scene(VideoCategory):
             raise ValueError('Invalid input - must specify both startframe and endframe, or only startframe')            
     
     def objectlabels(self, k=None, lower=False):
-        """Return a set of all activity categories in this scene, or at frame k"""
+        """Return a python set of all activity categories in this scene, or at frame k.
+        
+        Args:
+            k: [int] The object labels present at frame k.  If k=None, then all object labels in the video
+            lower: [bool] If true, return the object labels in alll lower case for case invariant string comparisonsn            
+        """
         return set([t.category() if not lower else t.category().lower() for t in self.tracks().values() if k is None or t.during(k)])        
 
     def categories(self):
@@ -2239,41 +2260,57 @@ class Scene(VideoCategory):
         return self.activitylabels()        
         
     def hasactivities(self):
+        """Does this video have any activities?"""
         return len(self._activities) > 0
 
     def hastracks(self):
+        """Does this video have any tracks?"""
         return len(self._tracks) > 0
 
     def hastrack(self, trackid):
+        """Does the video have this trackid?  
+        
+        .. note:: Track IDs are available as vipy.object.Track().id()
+        """
         return trackid in self.tracks()
 
-    def add(self, obj, category=None, attributes=None, rangecheck=True, frame=None):
+    def add(self, obj, category=None, attributes=None, rangecheck=True, frame=None, fluent=False):
         """Add the object obj to the scene, and return an index to this object for future updates
         
         This function is used to incrementally build up a scene frame by frame.  Obj can be one of the following types:
 
-            * obj = vipy.object.Detection(), this must be called from within a frame iterator (e.g. for im in video) to get the current frame index
-            * obj = vipy.object.Track()  
-            * obj = vipy.activity.Activity()
-            * obj = [xmin, ymin, width, height], with associated category kwarg, this must be called from within a frame iterator to get the current frame index
+        - obj = vipy.object.Detection(), this must be called from within a frame iterator (e.g. for im in video) to get the current frame index
+        - obj = vipy.object.Track()  
+        - obj = vipy.activity.Activity()
+        - obj = [xmin, ymin, width, height], with associated category kwarg, this must be called from within a frame iterator to get the current frame index
         
-        It is recomended that the objects are added as follows.  For a scene=vipy.video.Scene():
+        It is recomended that the objects are added as follows.  For a v=vipy.video.Scene():
             
-            for im in scene:
-                # Do some processing on frame im to detect objects
-                (object_labels, xywh) = object_detection(im)
-
-                # Add them to the scene, note that each object instance is independent in each frame, use tracks for object correspondence
-                for (lbl,bb) in zip(object_labels, xywh):
-                    scene.add(bb, lbl)
-
-                # Do some correspondences to track objects
-                t2 = scene.add( vipy.object.Track(...) )
-
-                # Update a previous track to add a keyframe
-                scene.track(t2).add( ... )
+        >>>    for im in v:
+        >>>        # Do some processing on frame im to detect objects
+        >>>        (object_labels, xywh) = object_detection(im)
+        >>>
+        >>>        # Add them to the scene, note that each object instance is independent in each frame, use tracks for object correspondence
+        >>>        for (lbl,bb) in zip(object_labels, xywh):
+        >>>            v.add(bb, lbl)
+        >>>
+        >>>        # Do some correspondences to track objects
+        >>>        t2 = v.add( vipy.object.Track(...) )
+        >>>
+        >>>        # Update a previous track to add a keyframe
+        >>>        v.track(t2).add( ... )
         
-        This will keep track of the current frame in the video and add the objects in the appropriate place
+        The frame iterator will keep track of the current frame in the video and add the objects in the appropriate place.  Alternatively,
+
+        >>>    v.add(vipy.object.Track(..), frame=k)
+
+        Args:
+            obj: A conformal python object to add to the scene (`vipy.object.Detection`, `vipy.object.Track`, `vipy.activity.Activity`, [xmin, ymin, width, height]
+            category:  Used if obj is an xywh tuple
+            attributes:  Used only if obj is an xywh tuple
+            frame:  [int] The frame to add the object
+            rangecheck: [bool] If true, check if the object is within the image rectangle and throw an exception if not.  This requires introspecting the video shape using `vipy.video.Video.shape`.
+            fluent: [bool] If true, return self instead of the object index 
 
         """        
         if isinstance(obj, vipy.object.Detection):
@@ -2283,13 +2320,13 @@ class Scene(VideoCategory):
                 # The attribute "trackid" is set for a detection when interpolating a track at a frame.  This is useful for reconstructing a track from previously enumerated detections
                 trackid = obj.attributes['trackid']
                 self.trackmap(lambda t: t.update(k, obj) if obj.attributes['trackid'] == t.id() else t) 
-                return 
+                return None if not fluent else self
             else:
                 t = vipy.object.Track(category=obj.category(), keyframes=[k], boxes=[obj], boundary='strict', attributes=obj.attributes, trackid=obj.attributes['trackid'] if obj.hasattribute('trackid') else None)
                 if rangecheck and not obj.hasoverlap(width=self.width(), height=self.height()):
                     raise ValueError("Track '%s' does not intersect with frame shape (%d, %d)" % (str(t), self.height(), self.width()))
                 self.tracks()[t.id()] = t  # by-reference
-                return t.id()
+                return t.id() if not fluent else self
         elif isinstance(obj, vipy.object.Track):
             if rangecheck and not obj.boundingbox().isinside(vipy.geometry.imagebox(self.shape())):
                 obj = obj.imclip(self.width(), self.height())  # try to clip it, will throw exception if all are bad 
@@ -2297,12 +2334,12 @@ class Scene(VideoCategory):
             if obj.framerate() != self.framerate():
                 obj.framerate(self.framerate())  # convert framerate of track to framerate of video
             self.tracks()[obj.id()] = obj  # by-reference
-            return obj.id()
+            return obj.id() if not fluent else self
         elif isinstance(obj, vipy.activity.Activity):
             if rangecheck and obj.startframe() >= obj.endframe():
                 raise ValueError("Activity '%s' has invalid (startframe, endframe)=(%d, %d)" % (str(obj), obj.startframe(), obj.endframe()))
             self.activities()[obj.id()] = obj  # by-reference, activity may have no tracks
-            return obj.id()
+            return obj.id() if not fluent else self
         elif (istuple(obj) or islist(obj)) and len(obj) == 4 and isnumber(obj[0]):
             assert self._currentframe is not None, "add() for obj=xywh must be added during frame iteration (e.g. for im in video: )"
             t = vipy.object.Track(category=category, keyframes=[self._currentframe], boxes=[vipy.geometry.BoundingBox(xywh=obj)], boundary='strict', attributes=attributes)
@@ -2310,7 +2347,7 @@ class Scene(VideoCategory):
                 t = t.imclip(self.width(), self.height())  # try to clip it, will throw exception if all are bad 
                 warnings.warn('Clipping track "%s" to image rectangle' % (str(t)))
             self.tracks()[t.id()] = t  # by-reference
-            return t.id()
+            return t.id() if not fluent else self
         else:
             raise ValueError('Undefined object type "%s" to be added to scene - Supported types are obj in ["vipy.object.Detection", "vipy.object.Track", "vipy.activity.Activity", "[xmin, ymin, width, height]"]' % str(type(obj)))
 
@@ -2689,7 +2726,11 @@ class Scene(VideoCategory):
         return max(H,W) if dim is None else (self.resize(cols=dim) if W>H else self.resize(rows=dim))        
     
     def rescale(self, s):
-        """Spatially rescale the scene by a constant scale factor"""
+        """Spatially rescale the scene by a constant scale factor.
+
+        Args:
+            s: [float] Scale factor > 0 to isotropically scale the image.
+        """
         assert not self.isloaded(), "Filters can only be applied prior to load() - Try calling flush() first"                
         self._tracks = {k:t.rescale(s) for (k,t) in self.tracks().items()}
         super().rescale(s)
@@ -2705,11 +2746,11 @@ class Scene(VideoCategory):
     def dedupe(self, spatial_iou_threshold=0.8, dt=5):
         """Find and delete duplicate tracks by track segmentiou() overlap.
         
-           Algorithm
-             - For each pair of tracks with the same category, find the larest temporal segment that contains both tracks.
-             - For this segment, compute the IOU for each box interpolated at a stride of dt frames
-             - Compute the mean IOU for this segment.  This is the segment IOU. 
-             - If the segment IOU is greater than the threshold, merge the shorter of the two tracks with the current track.  
+        Algorithm
+        - For each pair of tracks with the same category, find the larest temporal segment that contains both tracks.
+        - For this segment, compute the IOU for each box interpolated at a stride of dt frames
+        - Compute the mean IOU for this segment.  This is the segment IOU. 
+        - If the segment IOU is greater than the threshold, merge the shorter of the two tracks with the current track.  
 
         """
         deleted = set([])
@@ -2817,12 +2858,14 @@ class Scene(VideoCategory):
         return self        
 
     def annotate(self, verbose=True, fontsize=10, captionoffset=(0,0), textfacecolor='white', textfacealpha=1.0, shortlabel=True, boxalpha=0.25, d_category2color={'Person':'green', 'Vehicle':'blue', 'Object':'red'}, categories=None, nocaption=False, nocaption_withstring=[], mutator=None, timestamp=None, timestampcolor='black', timestampfacecolor='white', outfile=None):
-        """Generate a video visualization of all annotated objects and activities in the video, at the resolution and framerate of the underlying video, pixels in this video will now contain the overlay
+        """Generate a video visualization of all annotated objects and activities in the video.
+        
+        The annotation video will be at the resolution and framerate of the underlying video, and pixels in this video will now contain the overlay.
         This function does not play the video, it only generates an annotation video frames.  Use show() which is equivalent to annotate().saveas().play()
         
-            * In general, this function should not be run on very long videos without the outfile kwarg, as it requires loading the video framewise into memory, try running on clips instead.
-            * For long videos, a btter strategy given a video object vo with an output filename which will use a video stream for annotation
-
+        .. note::
+            -In general, this function should not be run on very long videos without the outfile kwarg, as it requires loading the video framewise into memory, try running on clips instead.
+            -For long videos, a btter strategy given a video object vo with an output filename which will use a video stream for annotation
         """
         if verbose:
             print('[vipy.video.annotate]: Annotating video ...')  
