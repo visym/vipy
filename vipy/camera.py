@@ -84,7 +84,7 @@ class Webcam(Camera):
 
         return Image(array=im, colorspace='bgr')
 
-    def frame(self)
+    def frame(self):
         """Alias for `vipy.camera.Webcam.next`"""
         return self.next()
 
