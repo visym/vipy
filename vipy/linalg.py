@@ -164,7 +164,7 @@ def poweroftwo(x):
     return x > 1 and ((x & (x - 1)) == 0)
 
 
-def ndmax(A)
+def ndmax(A):
     """Return the (i,j,...)=(row, col,...) entry corresponding to the maximum element in the nd numpy matrix A
     
     >>> A = np.array([[1,2,3],[4,100,6]])
