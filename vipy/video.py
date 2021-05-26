@@ -42,7 +42,6 @@ try:
 except ImportError:
     import json
     
-
     
 ffmpeg_exe = shutil.which('ffmpeg')
 has_ffmpeg = ffmpeg_exe is not None and os.path.exists(ffmpeg_exe)
@@ -50,8 +49,6 @@ ffprobe_exe = shutil.which('ffprobe')
 has_ffprobe = ffprobe_exe is not None and os.path.exists(ffprobe_exe)
 ffplay_exe = shutil.which('ffplay')        
 has_ffplay = ffplay_exe is not None and os.path.exists(ffplay_exe)
-
-
 
 
 class Video(object):
@@ -72,10 +69,32 @@ class Video(object):
     If a filename is provided to the constructor, then that filename will be used instead of a temp or cached filename.
     URLs can be defined as an absolute URL to a video file, or to a site supported by 'youtube-dl' (https://ytdl-org.github.io/youtube-dl/supportedsites.html)
 
-    >>> vid = vipy.video.Video(array=frames, colorspace='rgb')
+    >>> vid = vipy.video.Video(url='s3://BUCKET.s3.amazonaws.com/PATH/video.ext')
+
+    If you set the environment variables VIPY_AWS_ACCESS_KEY_ID and VIPY_AWS_SECRET_ACCESS_KEY, then this will download videos directly from S3 using boto3 and store in VIPY_CACHE.
+    Note that the URL protocol should be 's3' and not 'http' to enable keyed downloads.  
+
+    >>> vid = vipy.video.Video(array=array, colorspace='rgb')
     
-    The input 'frames' is an NxHxWx3 numpy array corresponding to an N-length list of HxWx3 uint8 numpy array which is a single frame of pre-loaded video
-    Note that the video transformations (clip, resize, rescale, rotate) are only available prior to load(), and the array() is assumed immutable after load().
+    The input 'array' is an NxHxWx3 numpy array corresponding to an N-length list of HxWx3 uint8 numpy array which is a single frame of pre-loaded video
+    Note that some video transformations are only available prior to load(), and the array() is assumed immutable after load().
+
+    >>> frames = [im for im in vipy.video.RandomVideo()]
+    >>> vid = vipy.video.Video(frames=frames)
+
+    Args:
+        filename: [str] The path to a video file.  
+        url: [str] The URL to a video file.  If filename is not provided, then a random filename is assigned in VIPY_CACHE on download
+        framerate: [float] The framerate of the video file.  This is required.  You can introspect this using ffprobe.
+        attributes: [dict]  A user supplied dictionary of metadata about this video.
+        colorspace: [str] Must be in ['rgb', 'float']
+        array: [numpy] An NxHxWxC numpy array for N frames each HxWxC shape
+        startframe: [int]  A start frame to clip the video
+        endframe: [int] An end frame to clip the video
+        startsec: [float] A start time in seconds to clip the video (this requires setting framerate)
+        endsec: [float] An end time in seconds to clip the video (this requires setting framerate)
+        frames: [list of `vipy.image.Image`] A list of frames in the video
+        probeshape: [bool] If true, then probe the shape of the video from ffprobe to avoid an explicit preview later.  This can speed up loading in some circumstances.
 
     """
     def __init__(self, filename=None, url=None, framerate=30.0, attributes=None, array=None, colorspace=None, startframe=None, endframe=None, startsec=None, endsec=None, frames=None, probeshape=False):
@@ -98,7 +117,7 @@ class Video(object):
         startframe = startframe if startframe is not None else (0 if endframe is not None else startframe)
         assert (startsec is not None and endsec is not None) or (startsec is None and endsec is None), "Invalid input - (startsec,endsec) are both required"        
         (self._startframe, self._endframe) = (None, None)  # __repr__ only
-        (self._startsec, self._endsec) = (None, None)  # __repr__ only (legacy)
+        (self._startsec, self._endsec) = (None, None)  # __repr__ only (legacy, no longer used)
 
         # Input filenames
         if url is not None:
@@ -132,8 +151,10 @@ class Video(object):
             self._framerate = framerate        
         if startframe is not None:
             self.clip(startframe, endframe)  
-        if startsec is not None and endsec is not None:
-            self.clip(int(round(startsec/self.framerate())), int(round(endsec/self.framerate())))
+        if startsec is not None:
+            # WARNING: if the user does not supply the correct framerate for the video, then this will be wrong since these are converted to frames 
+            self.clip(int(round(startsec/self.framerate())), int(round(endsec/self.framerate())) if endsec is not None else None)
+
             
         # Array input
         assert not (array is not None and frames is not None)
@@ -147,12 +168,29 @@ class Video(object):
         
     @classmethod
     def cast(cls, v):
+        """Cast a conformal video object to a `vipy.video.Video` object.
+        
+        This is useful for downcasting superclasses.
+
+        >>> vs = vipy.video.RandomScene()
+        >>> v = vipy.video.Video.cast(vs)
+
+        """
         assert isinstance(v, vipy.video.Video), "Invalid input - must be derived from vipy.video.Video"
         v.__class__ = vipy.video.Video
         return v
             
     @classmethod
     def from_json(cls, s):
+        """Import a json string as a `vipy.video.Video` object.
+
+        This will perform a round trip from a video to json and back to a video object.
+        This same operation is used for serialization of all vipy objects to JSON for storage.
+
+        >>> v = vipy.video.Video.from_json(vipy.video.RandomVideo().json())
+
+        """
+        
         d = json.loads(s) if not isinstance(s, dict) else s
         v = cls(filename=d['_filename'],
                 url=d['_url'],
