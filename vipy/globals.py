@@ -186,8 +186,8 @@ def parallel(n=None, pct=None, scheduler=None):
 
     class Parallel():
         def __init__(self, n=None, pct=None, scheduler=None):
-            assert n is not None or pct is not None
-            assert not (n is not None and pct is not None)
+            assert n is not None or pct is not None or scheduler is not None
+            assert sum([x is not None for x in (n, pct, scheduler)]) == 1, "Exactly one"
             assert n is None or (isinstance(n, int) and n>=1)
             assert pct is None or (pct > 0 and pct <= 1)
             dask(num_processes=n, pct=pct, address=scheduler)

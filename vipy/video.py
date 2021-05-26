@@ -1191,7 +1191,7 @@ class Video(object):
             (out, err) = f.run(capture_stdout=True, capture_stderr=True)
         except Exception as e:
             if not ignoreErrors:
-                raise ValueError('[vipy.video.load]: Load failed with error "%s"\n\nVideo: "%s"\n\nFFMPEG command: "%s"\n\n Try setting vipy.globals.debug() to see verbose FFMPEG debugging output and rerunning or manually running the ffmpeg command line to see errors. This error usually means that the video is corrupted or that you need to upgrade your FFMPEG distribution to the latest stable version.' % (str(e), str(self), str(self._ffmpeg_commandline(f))))
+                raise ValueError('[vipy.video.load]: Load failed with error "%s"\n\nVideo: "%s"\n\nFFMPEG command: "%s"\n\n Try setting vipy.globals.debug() to see verbose FFMPEG debugging output then rerunning, or inspect the ffmpeg command line output with self.commandline() and run manually to see errors (removing pipes as needed). This error usually means that the video is corrupted or that you need to upgrade your FFMPEG distribution to the latest stable version.' % (str(e), str(self), str(self._ffmpeg_commandline(f))))
             else:
                 return self  # Failed, return immediately, useful for calling canload() 
 
@@ -1406,8 +1406,8 @@ class Video(object):
             if zeropad and bb != bbc:
                 # Crop outside the image rectangle will segfault ffmpeg, pad video first (if zeropad=False, then rangecheck will not occur!)
                 self.zeropad(int(np.ceil(bb.width()-bbc.width())), int(np.ceil(bb.height()-bbc.height())))     # cannot be called in derived classes
-                bb = bb.offset(int(np.ceil(bb.width()-bbc.width())), int(np.ceil(bb.height()-bbc.height())))   # Shift boundingbox by padding            
-            self._ffmpeg = self._ffmpeg.filter('crop', '%d' % bb.width(), '%d' % bb.height(), '%d' % bb.xmin(), '%d' % bb.ymin(), 0, 1)  # keep_aspect=False, exact=True        
+                bb = bb.offset(int(np.ceil(bb.width()-bbc.width())), int(np.ceil(bb.height()-bbc.height())))   # Shift boundingbox by padding (integer coordinates)
+            self._ffmpeg = self._ffmpeg.filter('crop', '%d' % bb.width(), '%d' % bb.height(), '%d' % bb.xmin(), '%d' % bb.ymin(), keep_aspect=0)  # keep_aspect=False (disable exact=True, this is not present in older ffmpeg)
         else:
             self.array( bbc.crop(self.array()), copy=False )  # crop first, in-place, valid pixels only
             if zeropad and bb != bbc:
