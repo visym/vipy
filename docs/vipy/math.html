@@ -25,7 +25,7 @@
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/f296535df6bd369b9e7341bce0576aab61b15841/vipy/math.py#L1-L110" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/97f958b94b01ca8de04396434b8749fef2039109/vipy/math.py#L1-L146" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">import numpy as np
 from vipy.util import isnumpy, chunklistWithOverlap
@@ -36,19 +36,49 @@ try:
     config.THREADING_LAYER = &#39;workqueue&#39;    
     @njit(parallel=True, cache=True, nogil=True, fastmath=True)
     def normalize(arr, mean, std, scale):
-        &#34;&#34;&#34;Parallel normalization by whitening&#34;&#34;&#34;
+        &#34;&#34;&#34;Whiten the numpy array arr using the provided mean and standard deviation.
+
+        - Uses numba acceleration since this is a common operation for preparing tensors.
+        - Computes:  ((scale*arr) - mean)) / std
+        
+        Args:
+            arr: [numpy] A numpy array
+            mean: [numpy] A broadcastable mean vector
+            std: [numpy]  A broadcastable std vector
+            scale: [float] A scale factor to apply to arr before whitening (e.g. to scale from [0,255] to [0,1])
+
+        Returns
+            ((scale*arr) - mean)) / std
+
+        .. notes:: Does not check that std &gt; 0
+        &#34;&#34;&#34;
         return ((np.float32(scale)*arr.astype(np.float32)) - mean.flatten()) / std.flatten() 
 except:
     def normalize(arr, mean, std, scale):
-        &#34;&#34;&#34;Whiten the numpy array arr&#34;&#34;&#34;
+        &#34;&#34;&#34;Whiten the numpy array arr using the provided mean and standard deviation.
+
+        Computes:  (scale*(arr - mean)) / std
+
+        Args:
+            arr: [numpy] A numpy array
+            mean: [numpy] A broadcastable mean vector
+            std: [numpy]  A broadcastable std vector
+            scale: [float] A scale factor to apply to arr before whitening (e.g. to scale to [0,1])
+
+        Returns
+            ((scale*arr) - mean)) / std
+
+        .. notes:: Does not check that std &gt; 0
+        &#34;&#34;&#34;
         return ((np.float32(scale)*arr.astype(np.float32)) - mean.flatten()) / std.flatten() 
 
 def _normalize(arr, mean, std, scale):
-    &#34;&#34;&#34;Whiten the numpy array arr (no parallelization)&#34;&#34;&#34;
+    &#34;&#34;&#34;Whiten the numpy array arr using mean and standard deviation (no parallelization)&#34;&#34;&#34;
     return ((np.float32(scale)*arr.astype(np.float32)) - mean.flatten()) / std.flatten() 
     
     
 def iseven(x):
+    &#34;&#34;&#34;is the number x an even number?&#34;&#34;&#34;
     return x%2 == 0
 
 
@@ -59,24 +89,27 @@ def even(x, greaterthan=False):
 
 
 def poweroftwo(x):
-    &#34;&#34;&#34;Return the closest power of two smaller than the value. x=511 -&gt; 256, x=512 -&gt; 512&#34;&#34;&#34;
+    &#34;&#34;&#34;Return the closest power of two smaller than the scalar value. x=511 -&gt; 256, x=512 -&gt; 512&#34;&#34;&#34;
     assert x&gt;=2 
     return int(np.power(2, int(np.floor(np.log2(x)/np.log2(2)))))
 
 
 def signsqrt(x):
-    &#34;&#34;&#34;Return the signed square root of elements in x&#34;&#34;&#34;
+    &#34;&#34;&#34;Return the signed square root of elements in numpy array x&#34;&#34;&#34;
     return np.multiply(np.sign(x), np.sqrt(np.abs(x)))
 
 
 def runningmean(X, n):
-    &#34;&#34;&#34;Compute the running unweighted mean of X row-wise, with a history of n, reducing the history at the start&#34;&#34;&#34;
+    &#34;&#34;&#34;Compute the running unweighted mean of X row-wise, with a history of n, reducing the history at the start for column indexes &lt; n&#34;&#34;&#34;
     assert isnumpy(X), &#34;Input must be a np.array()&#34;    
     return np.array([[np.mean(c) for c in chunklistWithOverlap(x, n, n-1)] for x in X])
 
 
 def gaussian(M, std=1, sym=True):
-    &#34;&#34;&#34;1D gaussian window with M points, Replication of scipy.signal.gaussian&#34;&#34;&#34;
+    &#34;&#34;&#34;1D gaussian window with M points.
+
+    Replication of scipy.signal.gaussian
+    &#34;&#34;&#34;
 
     if M &lt; 1:
         return np.array([])
@@ -93,7 +126,7 @@ def gaussian(M, std=1, sym=True):
     return w
 
 def gaussian2d(mu, std, H, W):
-    &#34;&#34;&#34;2D gaussian image of size (rows=H, cols=W) with mu=[x,y] and std=[stdx, stdy]&#34;&#34;&#34;
+    &#34;&#34;&#34;2D float32 gaussian image of size (rows=H, cols=W) with mu=[x, y] and std=[stdx, stdy]&#34;&#34;&#34;
     img = np.zeros( (H,W), dtype=np.float32)
     (X,Y) = np.meshgrid(W,H)
     gx = ((1.0/np.sqrt(2*np.pi))*np.exp(-0.5*((np.arange(W)-mu[0])**2 / (std[0]**2)))).astype(np.float32)
@@ -112,7 +145,10 @@ def interp1d(x, y):
 
 
 def find_closest_positive_divisor(a, b):
-    &#34;&#34;&#34;Return non-trivial positive integer divisor (bh) of (a) closest to (b) in abs(b-bh) such that a % bh == 0.  This uses exhaustive search, which is inefficient for large a.&#34;&#34;&#34;
+    &#34;&#34;&#34;Return non-trivial positive integer divisor (bh) of (a) closest to (b) in abs(b-bh) such that a % bh == 0.  
+
+    .. notes:: This uses exhaustive search, which is inefficient for large a.
+    &#34;&#34;&#34;
     assert a&gt;0 and b&gt;0
     if a&lt;=b:
         return a
@@ -126,11 +162,11 @@ def find_closest_positive_divisor(a, b):
     raise  # should never get here, since bh=a is always a solution
 
 def cartesian_to_polar(x, y):
-    &#34;&#34;&#34;Cartesian (x,y) coordinates to polar (radius, theta) coordinates, theta in radians in [-pi,pi]&#34;&#34;&#34;
+    &#34;&#34;&#34;Cartesian (x,y) coordinates to polar (radius, theta_radians) coordinates, theta in radians in [-pi,pi]&#34;&#34;&#34;
     return (np.sqrt(np.array(x)**2 + np.array(y)**2), np.arctan2(y, x))
 
 def polar_to_cartesian(r, t):
-    &#34;&#34;&#34;Polar (radius, theta) coordinates to cartesian (x=right,y=down) coordinates.  (0,0) is upper left of image&#34;&#34;&#34;
+    &#34;&#34;&#34;Polar (r=radius, t=theta_radians) coordinates to cartesian (x=right,y=down) coordinates.  (0,0) is upper left of image&#34;&#34;&#34;
     return (np.multiply(r, np.cos(t)), np.multiply(r, np.sin(t)))
             
 def rad2deg(r):
@@ -149,14 +185,14 @@ def rad2deg(r):
 <span>def <span class="ident">cartesian_to_polar</span></span>(<span>x, y)</span>
 </code></dt>
 <dd>
-<div class="desc"><p>Cartesian (x,y) coordinates to polar (radius, theta) coordinates, theta in radians in [-pi,pi]</p></div>
+<div class="desc"><p>Cartesian (x,y) coordinates to polar (radius, theta_radians) coordinates, theta in radians in [-pi,pi]</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/f296535df6bd369b9e7341bce0576aab61b15841/vipy/math.py#L99-L101" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/97f958b94b01ca8de04396434b8749fef2039109/vipy/math.py#L135-L137" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def cartesian_to_polar(x, y):
-    &#34;&#34;&#34;Cartesian (x,y) coordinates to polar (radius, theta) coordinates, theta in radians in [-pi,pi]&#34;&#34;&#34;
+    &#34;&#34;&#34;Cartesian (x,y) coordinates to polar (radius, theta_radians) coordinates, theta in radians in [-pi,pi]&#34;&#34;&#34;
     return (np.sqrt(np.array(x)**2 + np.array(y)**2), np.arctan2(y, x))</code></pre>
 </details>
 </dd>
@@ -168,7 +204,7 @@ def rad2deg(r):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/f296535df6bd369b9e7341bce0576aab61b15841/vipy/math.py#L26-L29" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/97f958b94b01ca8de04396434b8749fef2039109/vipy/math.py#L56-L59" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def even(x, greaterthan=False):
     &#34;&#34;&#34;Return the largest even integer less than or equal (or greater than if greaterthan=True) to the value&#34;&#34;&#34;
@@ -181,14 +217,20 @@ def rad2deg(r):
 </code></dt>
 <dd>
 <div class="desc"><p>Return non-trivial positive integer divisor (bh) of (a) closest to (b) in abs(b-bh) such that a % bh == 0.
-This uses exhaustive search, which is inefficient for large a.</p></div>
+</p>
+<div class="admonition notes">
+<p class="admonition-title">Notes:&ensp;This uses exhaustive search, which is inefficient for large a.</p>
+</div></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/f296535df6bd369b9e7341bce0576aab61b15841/vipy/math.py#L85-L97" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/97f958b94b01ca8de04396434b8749fef2039109/vipy/math.py#L118-L133" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def find_closest_positive_divisor(a, b):
-    &#34;&#34;&#34;Return non-trivial positive integer divisor (bh) of (a) closest to (b) in abs(b-bh) such that a % bh == 0.  This uses exhaustive search, which is inefficient for large a.&#34;&#34;&#34;
+    &#34;&#34;&#34;Return non-trivial positive integer divisor (bh) of (a) closest to (b) in abs(b-bh) such that a % bh == 0.  
+
+    .. notes:: This uses exhaustive search, which is inefficient for large a.
+    &#34;&#34;&#34;
     assert a&gt;0 and b&gt;0
     if a&lt;=b:
         return a
@@ -206,14 +248,18 @@ This uses exhaustive search, which is inefficient for large a.</p></div>
 <span>def <span class="ident">gaussian</span></span>(<span>M, std=1, sym=True)</span>
 </code></dt>
 <dd>
-<div class="desc"><p>1D gaussian window with M points, Replication of scipy.signal.gaussian</p></div>
+<div class="desc"><p>1D gaussian window with M points.</p>
+<p>Replication of scipy.signal.gaussian</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/f296535df6bd369b9e7341bce0576aab61b15841/vipy/math.py#L49-L64" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/97f958b94b01ca8de04396434b8749fef2039109/vipy/math.py#L79-L97" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def gaussian(M, std=1, sym=True):
-    &#34;&#34;&#34;1D gaussian window with M points, Replication of scipy.signal.gaussian&#34;&#34;&#34;
+    &#34;&#34;&#34;1D gaussian window with M points.
+
+    Replication of scipy.signal.gaussian
+    &#34;&#34;&#34;
 
     if M &lt; 1:
         return np.array([])
@@ -234,14 +280,14 @@ This uses exhaustive search, which is inefficient for large a.</p></div>
 <span>def <span class="ident">gaussian2d</span></span>(<span>mu, std, H, W)</span>
 </code></dt>
 <dd>
-<div class="desc"><p>2D gaussian image of size (rows=H, cols=W) with mu=[x,y] and std=[stdx, stdy]</p></div>
+<div class="desc"><p>2D float32 gaussian image of size (rows=H, cols=W) with mu=[x, y] and std=[stdx, stdy]</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/f296535df6bd369b9e7341bce0576aab61b15841/vipy/math.py#L66-L72" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/97f958b94b01ca8de04396434b8749fef2039109/vipy/math.py#L99-L105" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def gaussian2d(mu, std, H, W):
-    &#34;&#34;&#34;2D gaussian image of size (rows=H, cols=W) with mu=[x,y] and std=[stdx, stdy]&#34;&#34;&#34;
+    &#34;&#34;&#34;2D float32 gaussian image of size (rows=H, cols=W) with mu=[x, y] and std=[stdx, stdy]&#34;&#34;&#34;
     img = np.zeros( (H,W), dtype=np.float32)
     (X,Y) = np.meshgrid(W,H)
     gx = ((1.0/np.sqrt(2*np.pi))*np.exp(-0.5*((np.arange(W)-mu[0])**2 / (std[0]**2)))).astype(np.float32)
@@ -257,7 +303,7 @@ This uses exhaustive search, which is inefficient for large a.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/f296535df6bd369b9e7341bce0576aab61b15841/vipy/math.py#L75-L82" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/97f958b94b01ca8de04396434b8749fef2039109/vipy/math.py#L108-L115" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def interp1d(x, y):
     &#34;&#34;&#34;Replication of scipy.interpolate.interp1d with assume_sorted=True, and constant replication of boundary handling&#34;&#34;&#34;
@@ -273,13 +319,14 @@ This uses exhaustive search, which is inefficient for large a.</p></div>
 <span>def <span class="ident">iseven</span></span>(<span>x)</span>
 </code></dt>
 <dd>
-<div class="desc"></div>
+<div class="desc"><p>is the number x an even number?</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/f296535df6bd369b9e7341bce0576aab61b15841/vipy/math.py#L22-L23" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/97f958b94b01ca8de04396434b8749fef2039109/vipy/math.py#L51-L53" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def iseven(x):
+    &#34;&#34;&#34;is the number x an even number?&#34;&#34;&#34;
     return x%2 == 0</code></pre>
 </details>
 </dd>
@@ -287,14 +334,47 @@ This uses exhaustive search, which is inefficient for large a.</p></div>
 <span>def <span class="ident">normalize</span></span>(<span>arr, mean, std, scale)</span>
 </code></dt>
 <dd>
-<div class="desc"><p>Whiten the numpy array arr</p></div>
+<div class="desc"><p>Whiten the numpy array arr using the provided mean and standard deviation.</p>
+<p>Computes:
+(scale*(arr - mean)) / std</p>
+<h2 id="args">Args</h2>
+<dl>
+<dt><strong><code>arr</code></strong></dt>
+<dd>[numpy] A numpy array</dd>
+<dt><strong><code>mean</code></strong></dt>
+<dd>[numpy] A broadcastable mean vector</dd>
+<dt><strong><code>std</code></strong></dt>
+<dd>[numpy]
+A broadcastable std vector</dd>
+<dt><strong><code>scale</code></strong></dt>
+<dd>[float] A scale factor to apply to arr before whitening (e.g. to scale to [0,1])</dd>
+</dl>
+<p>Returns
+((scale*arr) - mean)) / std</p>
+<div class="admonition notes">
+<p class="admonition-title">Notes:&ensp;Does not check that std &gt; 0</p>
+</div></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/f296535df6bd369b9e7341bce0576aab61b15841/vipy/math.py#L13-L15" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/97f958b94b01ca8de04396434b8749fef2039109/vipy/math.py#L28-L44" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def normalize(arr, mean, std, scale):
-    &#34;&#34;&#34;Whiten the numpy array arr&#34;&#34;&#34;
+    &#34;&#34;&#34;Whiten the numpy array arr using the provided mean and standard deviation.
+
+    Computes:  (scale*(arr - mean)) / std
+
+    Args:
+        arr: [numpy] A numpy array
+        mean: [numpy] A broadcastable mean vector
+        std: [numpy]  A broadcastable std vector
+        scale: [float] A scale factor to apply to arr before whitening (e.g. to scale to [0,1])
+
+    Returns
+        ((scale*arr) - mean)) / std
+
+    .. notes:: Does not check that std &gt; 0
+    &#34;&#34;&#34;
     return ((np.float32(scale)*arr.astype(np.float32)) - mean.flatten()) / std.flatten() </code></pre>
 </details>
 </dd>
@@ -302,15 +382,15 @@ This uses exhaustive search, which is inefficient for large a.</p></div>
 <span>def <span class="ident">polar_to_cartesian</span></span>(<span>r, t)</span>
 </code></dt>
 <dd>
-<div class="desc"><p>Polar (radius, theta) coordinates to cartesian (x=right,y=down) coordinates.
+<div class="desc"><p>Polar (r=radius, t=theta_radians) coordinates to cartesian (x=right,y=down) coordinates.
 (0,0) is upper left of image</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/f296535df6bd369b9e7341bce0576aab61b15841/vipy/math.py#L103-L105" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/97f958b94b01ca8de04396434b8749fef2039109/vipy/math.py#L139-L141" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def polar_to_cartesian(r, t):
-    &#34;&#34;&#34;Polar (radius, theta) coordinates to cartesian (x=right,y=down) coordinates.  (0,0) is upper left of image&#34;&#34;&#34;
+    &#34;&#34;&#34;Polar (r=radius, t=theta_radians) coordinates to cartesian (x=right,y=down) coordinates.  (0,0) is upper left of image&#34;&#34;&#34;
     return (np.multiply(r, np.cos(t)), np.multiply(r, np.sin(t)))</code></pre>
 </details>
 </dd>
@@ -318,14 +398,14 @@ This uses exhaustive search, which is inefficient for large a.</p></div>
 <span>def <span class="ident">poweroftwo</span></span>(<span>x)</span>
 </code></dt>
 <dd>
-<div class="desc"><p>Return the closest power of two smaller than the value. x=511 -&gt; 256, x=512 -&gt; 512</p></div>
+<div class="desc"><p>Return the closest power of two smaller than the scalar value. x=511 -&gt; 256, x=512 -&gt; 512</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/f296535df6bd369b9e7341bce0576aab61b15841/vipy/math.py#L32-L35" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/97f958b94b01ca8de04396434b8749fef2039109/vipy/math.py#L62-L65" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def poweroftwo(x):
-    &#34;&#34;&#34;Return the closest power of two smaller than the value. x=511 -&gt; 256, x=512 -&gt; 512&#34;&#34;&#34;
+    &#34;&#34;&#34;Return the closest power of two smaller than the scalar value. x=511 -&gt; 256, x=512 -&gt; 512&#34;&#34;&#34;
     assert x&gt;=2 
     return int(np.power(2, int(np.floor(np.log2(x)/np.log2(2)))))</code></pre>
 </details>
@@ -338,7 +418,7 @@ This uses exhaustive search, which is inefficient for large a.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/f296535df6bd369b9e7341bce0576aab61b15841/vipy/math.py#L107-L109" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/97f958b94b01ca8de04396434b8749fef2039109/vipy/math.py#L143-L145" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def rad2deg(r):
     &#34;&#34;&#34;Radians to degrees&#34;&#34;&#34;
@@ -349,14 +429,14 @@ This uses exhaustive search, which is inefficient for large a.</p></div>
 <span>def <span class="ident">runningmean</span></span>(<span>X, n)</span>
 </code></dt>
 <dd>
-<div class="desc"><p>Compute the running unweighted mean of X row-wise, with a history of n, reducing the history at the start</p></div>
+<div class="desc"><p>Compute the running unweighted mean of X row-wise, with a history of n, reducing the history at the start for column indexes &lt; n</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/f296535df6bd369b9e7341bce0576aab61b15841/vipy/math.py#L43-L46" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/97f958b94b01ca8de04396434b8749fef2039109/vipy/math.py#L73-L76" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def runningmean(X, n):
-    &#34;&#34;&#34;Compute the running unweighted mean of X row-wise, with a history of n, reducing the history at the start&#34;&#34;&#34;
+    &#34;&#34;&#34;Compute the running unweighted mean of X row-wise, with a history of n, reducing the history at the start for column indexes &lt; n&#34;&#34;&#34;
     assert isnumpy(X), &#34;Input must be a np.array()&#34;    
     return np.array([[np.mean(c) for c in chunklistWithOverlap(x, n, n-1)] for x in X])</code></pre>
 </details>
@@ -365,14 +445,14 @@ This uses exhaustive search, which is inefficient for large a.</p></div>
 <span>def <span class="ident">signsqrt</span></span>(<span>x)</span>
 </code></dt>
 <dd>
-<div class="desc"><p>Return the signed square root of elements in x</p></div>
+<div class="desc"><p>Return the signed square root of elements in numpy array x</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/f296535df6bd369b9e7341bce0576aab61b15841/vipy/math.py#L38-L40" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/97f958b94b01ca8de04396434b8749fef2039109/vipy/math.py#L68-L70" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def signsqrt(x):
-    &#34;&#34;&#34;Return the signed square root of elements in x&#34;&#34;&#34;
+    &#34;&#34;&#34;Return the signed square root of elements in numpy array x&#34;&#34;&#34;
     return np.multiply(np.sign(x), np.sqrt(np.abs(x)))</code></pre>
 </details>
 </dd>

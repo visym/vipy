@@ -25,13 +25,17 @@
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/f296535df6bd369b9e7341bce0576aab61b15841/vipy/camera.py#L1-L89" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/97f958b94b01ca8de04396434b8749fef2039109/vipy/camera.py#L1-L128" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">import urllib
 import timeit
-from vipy.util import tempimage, try_import
+from vipy.util import tempimage, try_import, isurl
 from vipy.image import Image
 from vipy.globals import print
+
+try_import(&#34;cv2&#34;, &#34;opencv-python&#34;)
+import cv2
+
 
 class Camera(object):
     CAM = None
@@ -44,14 +48,32 @@ class Camera(object):
 
 
 class Webcam(Camera):
-    def __init__(self, framerate=False, url=0):
+    &#34;&#34;&#34;Create a webcam object that will yield `vipy.image.Image` frames.
 
-        try_import(&#34;cv2&#34;, &#34;opencv-python&#34;)
-        import cv2
+    This is a light wrapper to OpenCV webcam object (cv2.VideoCapture) that yields vipy objects.
 
-        self.CAM = cv2.VideoCapture(url)
+    &gt;&gt;&gt; cam = vipy.cmaera.Webcam()
+    &gt;&gt;&gt; cam.frame().show()
+
+    Or as an iterator:
+    
+    &gt;&gt;&gt; for im in vipy.camera.Webcam():
+    &gt;&gt;&gt;     im.show()
+
+    To capture a video:
+
+    &gt;&gt;&gt; 
+    Args:
+        framerate: [float] The framerate to grab from the camera
+        url: [int]  The camera index to open 
+
+    &#34;&#34;&#34;
+    def __init__(self, framerate=False, idx=0):
+
+        assert idx &gt;= 0
+        self.CAM = cv2.VideoCapture(idx)
         if not self.CAM.isOpened():
-            self.CAM.open(url)
+            self.CAM.open(idx)
         self.FRAMERATE = framerate
         if framerate:
             self.TIC = timeit.default_timer()
@@ -69,9 +91,11 @@ class Webcam(Camera):
         return self.CAM.read()  # HACK: for slow processing to get most recent image
 
     def current(self):
-        return self.next(grab=False)
+        &#34;&#34;&#34;Alias for `vipy.camera.Webcam.next`&#34;&#34;&#34;
+        return self.next()
 
-    def next(self, grab=True):
+    def next(self):
+        &#34;&#34;&#34;Return a `vipy.image.Image` from the camera&#34;&#34;&#34;
         k = 0
         while not self.CAM.grab():
             k = k + 1
@@ -89,26 +113,41 @@ class Webcam(Camera):
 
         return Image(array=im, colorspace=&#39;bgr&#39;)
 
+    def frame(self):
+        &#34;&#34;&#34;Alias for `vipy.camera.Webcam.next`&#34;&#34;&#34;
+        return self.next()
 
-class Flow(Webcam):
-    IMCURRENT = None
-    IMPREV = None
+    def video(self, n, framerate=30):
+        &#34;&#34;&#34;Return a `vipy.video.Video` with n frames, constructed using the provided framerate (defaults to 30Hz)&#34;&#34;&#34;
+        assert n &gt; 0
 
-    def next(self):
-        if self.IMPREV is None:
-            self.IMPREV = super(Flow, self).next()
-        else:
-            self.IMPREV = self.IMCURRENT.copy()
-        self.IMCURRENT = super(Flow, self).next()
-        return (self.IMCURRENT, self.IMPREV)
+        frames = []
+        for (k,im) in enumerate(self):
+            frames.append(im.rgb())
+            if k &gt; n:
+                break
+        return vipy.video.Video(frames=frames, framerate=framerate)
 
 
 class Ipcam(Camera):
+    &#34;&#34;&#34;Create a IPcam object that will yield `vipy.image.Image` frames.
+
+    &gt;&gt;&gt; cam = vipy.cmaera.IPcam()
+    &gt;&gt;&gt; cam.frame().show()
+
+    Or as an iterator:
+    
+    &gt;&gt;&gt; for im in vipy.camera.IPcam():
+    &gt;&gt;&gt;     im.show()
+
+    &#34;&#34;&#34;
+
     TMPFILE = None
 
     def __init__(self, url, imfile=tempimage()):
         self.CAM = url
         self.TMPFILE = imfile
+        assert isurl(url)
 
     def __iter__(self):
         return self
@@ -135,7 +174,7 @@ class Ipcam(Camera):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/f296535df6bd369b9e7341bce0576aab61b15841/vipy/camera.py#L7-L14" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/97f958b94b01ca8de04396434b8749fef2039109/vipy/camera.py#L11-L18" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">class Camera(object):
     CAM = None
@@ -183,85 +222,43 @@ class Ipcam(Camera):
 </dd>
 </dl>
 </dd>
-<dt id="vipy.camera.Flow"><code class="flex name class">
-<span>class <span class="ident">Flow</span></span>
-<span>(</span><span>framerate=False, url=0)</span>
-</code></dt>
-<dd>
-<div class="desc"></div>
-<details class="source">
-<summary>
-<span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/f296535df6bd369b9e7341bce0576aab61b15841/vipy/camera.py#L64-L74" class="git-link">Browse git</a>
-</summary>
-<pre><code class="python">class Flow(Webcam):
-    IMCURRENT = None
-    IMPREV = None
-
-    def next(self):
-        if self.IMPREV is None:
-            self.IMPREV = super(Flow, self).next()
-        else:
-            self.IMPREV = self.IMCURRENT.copy()
-        self.IMCURRENT = super(Flow, self).next()
-        return (self.IMCURRENT, self.IMPREV)</code></pre>
-</details>
-<h3>Ancestors</h3>
-<ul class="hlist">
-<li><a title="vipy.camera.Webcam" href="#vipy.camera.Webcam">Webcam</a></li>
-<li><a title="vipy.camera.Camera" href="#vipy.camera.Camera">Camera</a></li>
-</ul>
-<h3>Class variables</h3>
-<dl>
-<dt id="vipy.camera.Flow.IMCURRENT"><code class="name">var <span class="ident">IMCURRENT</span></code></dt>
-<dd>
-<div class="desc"></div>
-</dd>
-<dt id="vipy.camera.Flow.IMPREV"><code class="name">var <span class="ident">IMPREV</span></code></dt>
-<dd>
-<div class="desc"></div>
-</dd>
-</dl>
-<h3>Methods</h3>
-<dl>
-<dt id="vipy.camera.Flow.next"><code class="name flex">
-<span>def <span class="ident">next</span></span>(<span>self)</span>
-</code></dt>
-<dd>
-<div class="desc"></div>
-<details class="source">
-<summary>
-<span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/f296535df6bd369b9e7341bce0576aab61b15841/vipy/camera.py#L68-L74" class="git-link">Browse git</a>
-</summary>
-<pre><code class="python">def next(self):
-    if self.IMPREV is None:
-        self.IMPREV = super(Flow, self).next()
-    else:
-        self.IMPREV = self.IMCURRENT.copy()
-    self.IMCURRENT = super(Flow, self).next()
-    return (self.IMCURRENT, self.IMPREV)</code></pre>
-</details>
-</dd>
-</dl>
-</dd>
 <dt id="vipy.camera.Ipcam"><code class="flex name class">
 <span>class <span class="ident">Ipcam</span></span>
-<span>(</span><span>url, imfile='/var/folders/sn/6n34qjp513742_5y3lvmhnlw0000gn/T/c52393d344d90072.jpg')</span>
+<span>(</span><span>url, imfile='/var/folders/sn/6n34qjp513742_5y3lvmhnlw0000gn/T/d28ae4adf08efe70.jpg')</span>
 </code></dt>
 <dd>
-<div class="desc"></div>
+<div class="desc"><p>Create a IPcam object that will yield <code><a title="vipy.image.Image" href="image.html#vipy.image.Image">Image</a></code> frames.</p>
+<pre><code class="language-python-repl">&gt;&gt;&gt; cam = vipy.cmaera.IPcam()
+&gt;&gt;&gt; cam.frame().show()
+</code></pre>
+<p>Or as an iterator:</p>
+<pre><code class="language-python-repl">&gt;&gt;&gt; for im in vipy.camera.IPcam():
+&gt;&gt;&gt;     im.show()
+</code></pre></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/f296535df6bd369b9e7341bce0576aab61b15841/vipy/camera.py#L77-L89" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/97f958b94b01ca8de04396434b8749fef2039109/vipy/camera.py#L103-L128" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">class Ipcam(Camera):
+    &#34;&#34;&#34;Create a IPcam object that will yield `vipy.image.Image` frames.
+
+    &gt;&gt;&gt; cam = vipy.cmaera.IPcam()
+    &gt;&gt;&gt; cam.frame().show()
+
+    Or as an iterator:
+    
+    &gt;&gt;&gt; for im in vipy.camera.IPcam():
+    &gt;&gt;&gt;     im.show()
+
+    &#34;&#34;&#34;
+
     TMPFILE = None
 
     def __init__(self, url, imfile=tempimage()):
         self.CAM = url
         self.TMPFILE = imfile
+        assert isurl(url)
 
     def __iter__(self):
         return self
@@ -291,7 +288,7 @@ class Ipcam(Camera):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/f296535df6bd369b9e7341bce0576aab61b15841/vipy/camera.py#L87-L89" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/97f958b94b01ca8de04396434b8749fef2039109/vipy/camera.py#L126-L128" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def next(self):
     urllib.urlretrieve(self.CAM, self.TMPFILE)
@@ -302,24 +299,61 @@ class Ipcam(Camera):
 </dd>
 <dt id="vipy.camera.Webcam"><code class="flex name class">
 <span>class <span class="ident">Webcam</span></span>
-<span>(</span><span>framerate=False, url=0)</span>
+<span>(</span><span>framerate=False, idx=0)</span>
 </code></dt>
 <dd>
-<div class="desc"></div>
+<div class="desc"><p>Create a webcam object that will yield <code><a title="vipy.image.Image" href="image.html#vipy.image.Image">Image</a></code> frames.</p>
+<p>This is a light wrapper to OpenCV webcam object (cv2.VideoCapture) that yields vipy objects.</p>
+<pre><code class="language-python-repl">&gt;&gt;&gt; cam = vipy.cmaera.Webcam()
+&gt;&gt;&gt; cam.frame().show()
+</code></pre>
+<p>Or as an iterator:</p>
+<pre><code class="language-python-repl">&gt;&gt;&gt; for im in vipy.camera.Webcam():
+&gt;&gt;&gt;     im.show()
+</code></pre>
+<p>To capture a video:</p>
+<pre><code class="language-python-repl">&gt;&gt;&gt; 
+</code></pre>
+<h2 id="args">Args</h2>
+<dl>
+<dt><strong><code>framerate</code></strong></dt>
+<dd>[float] The framerate to grab from the camera</dd>
+<dt><strong><code>url</code></strong></dt>
+<dd>[int]
+The camera index to open</dd>
+</dl></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/f296535df6bd369b9e7341bce0576aab61b15841/vipy/camera.py#L17-L61" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/97f958b94b01ca8de04396434b8749fef2039109/vipy/camera.py#L21-L100" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">class Webcam(Camera):
-    def __init__(self, framerate=False, url=0):
+    &#34;&#34;&#34;Create a webcam object that will yield `vipy.image.Image` frames.
 
-        try_import(&#34;cv2&#34;, &#34;opencv-python&#34;)
-        import cv2
+    This is a light wrapper to OpenCV webcam object (cv2.VideoCapture) that yields vipy objects.
 
-        self.CAM = cv2.VideoCapture(url)
+    &gt;&gt;&gt; cam = vipy.cmaera.Webcam()
+    &gt;&gt;&gt; cam.frame().show()
+
+    Or as an iterator:
+    
+    &gt;&gt;&gt; for im in vipy.camera.Webcam():
+    &gt;&gt;&gt;     im.show()
+
+    To capture a video:
+
+    &gt;&gt;&gt; 
+    Args:
+        framerate: [float] The framerate to grab from the camera
+        url: [int]  The camera index to open 
+
+    &#34;&#34;&#34;
+    def __init__(self, framerate=False, idx=0):
+
+        assert idx &gt;= 0
+        self.CAM = cv2.VideoCapture(idx)
         if not self.CAM.isOpened():
-            self.CAM.open(url)
+            self.CAM.open(idx)
         self.FRAMERATE = framerate
         if framerate:
             self.TIC = timeit.default_timer()
@@ -337,9 +371,11 @@ class Ipcam(Camera):
         return self.CAM.read()  # HACK: for slow processing to get most recent image
 
     def current(self):
-        return self.next(grab=False)
+        &#34;&#34;&#34;Alias for `vipy.camera.Webcam.next`&#34;&#34;&#34;
+        return self.next()
 
-    def next(self, grab=True):
+    def next(self):
+        &#34;&#34;&#34;Return a `vipy.image.Image` from the camera&#34;&#34;&#34;
         k = 0
         while not self.CAM.grab():
             k = k + 1
@@ -355,15 +391,26 @@ class Ipcam(Camera):
             print(&#39;[vipy.camera]: frame rate = &#39; + str(round(1.0 / (self.TOC - self.TIC),1)) + &#39; Hz&#39;)
             self.TIC = self.TOC
 
-        return Image(array=im, colorspace=&#39;bgr&#39;)</code></pre>
+        return Image(array=im, colorspace=&#39;bgr&#39;)
+
+    def frame(self):
+        &#34;&#34;&#34;Alias for `vipy.camera.Webcam.next`&#34;&#34;&#34;
+        return self.next()
+
+    def video(self, n, framerate=30):
+        &#34;&#34;&#34;Return a `vipy.video.Video` with n frames, constructed using the provided framerate (defaults to 30Hz)&#34;&#34;&#34;
+        assert n &gt; 0
+
+        frames = []
+        for (k,im) in enumerate(self):
+            frames.append(im.rgb())
+            if k &gt; n:
+                break
+        return vipy.video.Video(frames=frames, framerate=framerate)</code></pre>
 </details>
 <h3>Ancestors</h3>
 <ul class="hlist">
 <li><a title="vipy.camera.Camera" href="#vipy.camera.Camera">Camera</a></li>
-</ul>
-<h3>Subclasses</h3>
-<ul class="hlist">
-<li><a title="vipy.camera.Flow" href="#vipy.camera.Flow">Flow</a></li>
 </ul>
 <h3>Methods</h3>
 <dl>
@@ -371,27 +418,44 @@ class Ipcam(Camera):
 <span>def <span class="ident">current</span></span>(<span>self)</span>
 </code></dt>
 <dd>
-<div class="desc"></div>
+<div class="desc"><p>Alias for <code><a title="vipy.camera.Webcam.next" href="#vipy.camera.Webcam.next">Webcam.next()</a></code></p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/f296535df6bd369b9e7341bce0576aab61b15841/vipy/camera.py#L42-L43" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/97f958b94b01ca8de04396434b8749fef2039109/vipy/camera.py#L64-L66" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def current(self):
-    return self.next(grab=False)</code></pre>
+    &#34;&#34;&#34;Alias for `vipy.camera.Webcam.next`&#34;&#34;&#34;
+    return self.next()</code></pre>
+</details>
+</dd>
+<dt id="vipy.camera.Webcam.frame"><code class="name flex">
+<span>def <span class="ident">frame</span></span>(<span>self)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Alias for <code><a title="vipy.camera.Webcam.next" href="#vipy.camera.Webcam.next">Webcam.next()</a></code></p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+<a href="https://github.com/visym/vipy/blob/97f958b94b01ca8de04396434b8749fef2039109/vipy/camera.py#L87-L89" class="git-link">Browse git</a>
+</summary>
+<pre><code class="python">def frame(self):
+    &#34;&#34;&#34;Alias for `vipy.camera.Webcam.next`&#34;&#34;&#34;
+    return self.next()</code></pre>
 </details>
 </dd>
 <dt id="vipy.camera.Webcam.next"><code class="name flex">
-<span>def <span class="ident">next</span></span>(<span>self, grab=True)</span>
+<span>def <span class="ident">next</span></span>(<span>self)</span>
 </code></dt>
 <dd>
-<div class="desc"></div>
+<div class="desc"><p>Return a <code><a title="vipy.image.Image" href="image.html#vipy.image.Image">Image</a></code> from the camera</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/f296535df6bd369b9e7341bce0576aab61b15841/vipy/camera.py#L45-L61" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/97f958b94b01ca8de04396434b8749fef2039109/vipy/camera.py#L68-L85" class="git-link">Browse git</a>
 </summary>
-<pre><code class="python">def next(self, grab=True):
+<pre><code class="python">def next(self):
+    &#34;&#34;&#34;Return a `vipy.image.Image` from the camera&#34;&#34;&#34;
     k = 0
     while not self.CAM.grab():
         k = k + 1
@@ -408,6 +472,28 @@ class Ipcam(Camera):
         self.TIC = self.TOC
 
     return Image(array=im, colorspace=&#39;bgr&#39;)</code></pre>
+</details>
+</dd>
+<dt id="vipy.camera.Webcam.video"><code class="name flex">
+<span>def <span class="ident">video</span></span>(<span>self, n, framerate=30)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Return a <code><a title="vipy.video.Video" href="video.html#vipy.video.Video">Video</a></code> with n frames, constructed using the provided framerate (defaults to 30Hz)</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+<a href="https://github.com/visym/vipy/blob/97f958b94b01ca8de04396434b8749fef2039109/vipy/camera.py#L91-L100" class="git-link">Browse git</a>
+</summary>
+<pre><code class="python">def video(self, n, framerate=30):
+    &#34;&#34;&#34;Return a `vipy.video.Video` with n frames, constructed using the provided framerate (defaults to 30Hz)&#34;&#34;&#34;
+    assert n &gt; 0
+
+    frames = []
+    for (k,im) in enumerate(self):
+        frames.append(im.rgb())
+        if k &gt; n:
+            break
+    return vipy.video.Video(frames=frames, framerate=framerate)</code></pre>
 </details>
 </dd>
 </dl>
@@ -492,14 +578,6 @@ setTimeout(() => input.focus(), 100);
 </ul>
 </li>
 <li>
-<h4><code><a title="vipy.camera.Flow" href="#vipy.camera.Flow">Flow</a></code></h4>
-<ul class="">
-<li><code><a title="vipy.camera.Flow.IMCURRENT" href="#vipy.camera.Flow.IMCURRENT">IMCURRENT</a></code></li>
-<li><code><a title="vipy.camera.Flow.IMPREV" href="#vipy.camera.Flow.IMPREV">IMPREV</a></code></li>
-<li><code><a title="vipy.camera.Flow.next" href="#vipy.camera.Flow.next">next</a></code></li>
-</ul>
-</li>
-<li>
 <h4><code><a title="vipy.camera.Ipcam" href="#vipy.camera.Ipcam">Ipcam</a></code></h4>
 <ul class="">
 <li><code><a title="vipy.camera.Ipcam.TMPFILE" href="#vipy.camera.Ipcam.TMPFILE">TMPFILE</a></code></li>
@@ -510,7 +588,9 @@ setTimeout(() => input.focus(), 100);
 <h4><code><a title="vipy.camera.Webcam" href="#vipy.camera.Webcam">Webcam</a></code></h4>
 <ul class="">
 <li><code><a title="vipy.camera.Webcam.current" href="#vipy.camera.Webcam.current">current</a></code></li>
+<li><code><a title="vipy.camera.Webcam.frame" href="#vipy.camera.Webcam.frame">frame</a></code></li>
 <li><code><a title="vipy.camera.Webcam.next" href="#vipy.camera.Webcam.next">next</a></code></li>
+<li><code><a title="vipy.camera.Webcam.video" href="#vipy.camera.Webcam.video">video</a></code></li>
 </ul>
 </li>
 </ul>

@@ -9,7 +9,6 @@ def test_import():
     import vipy.calibration
     import vipy.camera
     import vipy.downloader
-    import vipy.dropbox
     import vipy.flow
     import vipy.geometry    
     import vipy.image

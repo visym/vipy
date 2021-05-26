@@ -25,11 +25,11 @@
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/f296535df6bd369b9e7341bce0576aab61b15841/vipy/version.py#L1-L29" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/97f958b94b01ca8de04396434b8749fef2039109/vipy/version.py#L1-L29" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">MAJOR = 1
-MINOR = 10
-RELEASE = 35
+MINOR = 11
+RELEASE = 1
 VERSION = &#39;%d.%d.%d&#39; % (MAJOR, MINOR, RELEASE)
 
 
@@ -71,7 +71,7 @@ def at_least_major_version(major):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/f296535df6bd369b9e7341bce0576aab61b15841/vipy/version.py#L26-L27" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/97f958b94b01ca8de04396434b8749fef2039109/vipy/version.py#L26-L27" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def at_least_major_version(major):
     return MAJOR &gt;= int(major)</code></pre>
@@ -85,7 +85,7 @@ def at_least_major_version(major):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/f296535df6bd369b9e7341bce0576aab61b15841/vipy/version.py#L12-L14" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/97f958b94b01ca8de04396434b8749fef2039109/vipy/version.py#L12-L14" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def at_least_version(versionstring):
     &#34;&#34;&#34;Is versionstring=&#39;X.Y.Z&#39; at least the current version?&#34;&#34;&#34;
@@ -100,7 +100,7 @@ def at_least_major_version(major):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/f296535df6bd369b9e7341bce0576aab61b15841/vipy/version.py#L17-L19" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/97f958b94b01ca8de04396434b8749fef2039109/vipy/version.py#L17-L19" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def is_at_least(versionstring):
     &#34;&#34;&#34;Synonym for at_least_version&#34;&#34;&#34;
@@ -115,21 +115,21 @@ def at_least_major_version(major):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/f296535df6bd369b9e7341bce0576aab61b15841/vipy/version.py#L22-L23" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/97f958b94b01ca8de04396434b8749fef2039109/vipy/version.py#L22-L23" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def is_exactly(versionstring):
     return versionstring == VERSION</code></pre>
 </details>
 </dd>
 <dt id="vipy.version.num"><code class="name flex">
-<span>def <span class="ident">num</span></span>(<span>versionstring='1.10.35')</span>
+<span>def <span class="ident">num</span></span>(<span>versionstring='1.11.1')</span>
 </code></dt>
 <dd>
 <div class="desc"></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/f296535df6bd369b9e7341bce0576aab61b15841/vipy/version.py#L7-L9" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/97f958b94b01ca8de04396434b8749fef2039109/vipy/version.py#L7-L9" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def num(versionstring=VERSION):
     (major, minor, release) = versionstring.split(&#39;.&#39;)    
