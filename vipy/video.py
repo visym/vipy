@@ -655,15 +655,17 @@ class Video(object):
                         self._endframe = (self._startframe if self._startframe is not None else 0) + int(round(float(kw['end'])*self.framerate()))  # for __repr__
                     if 'start' in kw:
                         pass
-                    if 'end_frame' in kw:
-                        self._endframe = (self._startframe if self._startframe is not None else 0) + int(kw['end_frame'])  # for __repr__
-                        kw['end'] = int(kw['end_frame'])/self.framerate()  # convert end_frame to end (legacy)
-                        del kw['end_frame']  # use only end and not end frame
-                    if 'start_frame' in kw:
-                        self._startframe = (self._startframe if self._startframe is not None else 0) + int(kw['start_frame'])  # for __repr__
-                        kw['start'] = int(kw['start_frame'])/self.framerate()  # convert start_frame to start (legacy)
-                        del kw['start_frame']  # use only start and not start_frame
-                        
+                    if 'start_frame' in kw or 'end_frame' in kw:
+                        f = f.setpts('PTS-STARTPTS')  # reset timestamp to 0 before trim filter in seconds
+                        if 'end_frame' in kw:
+                            self._endframe = (self._startframe if self._startframe is not None else 0) + int(kw['end_frame'])  # for __repr__
+                            kw['end'] = int(kw['end_frame'])/self.framerate()  # convert end_frame to end (legacy)
+                            del kw['end_frame']  # use only end and not end frame
+                        if 'start_frame' in kw:
+                            self._startframe = (self._startframe if self._startframe is not None else 0) + int(kw['start_frame'])  # for __repr__
+                            kw['start'] = int(kw['start_frame'])/self.framerate()  # convert start_frame to start (legacy)
+                            del kw['start_frame']  # use only start and not start_frame
+
                     f = f.filter(filtername, *a, **kw)
 
         if strict:
@@ -684,7 +686,10 @@ class Video(object):
         return (p['streams'][0]['height'], p['streams'][0]['width'])
         
     def duration_in_seconds_of_videofile(self):
-        """Return video duration of the source filename (NOT the filter chain) in seconds, requires ffprobe.  Fetch once and cache"""
+        """Return video duration of the source filename (NOT the filter chain) in seconds, requires ffprobe.  Fetch once and cache.
+        
+        .. notes:: This is the duration of the source video and NOT the duration of the filter chain.  If you load(), this may be different duration depending on clip() or framerate() directives.
+        """
         filehash = hashlib.md5(str(self.filename()).encode()).hexdigest()            
         if self.hasattribute('_duration_in_seconds_of_videofile') and self.attributes['_duration_in_seconds_of_videofile']['filehash'] == filehash:
             return self.attributes['_duration_in_seconds_of_videofile']['duration']
@@ -694,7 +699,10 @@ class Video(object):
             return d
 
     def duration_in_frames_of_videofile(self):
-        """Return video duration of the source filename (NOT the filter chain) in frames, requires ffprobe"""
+        """Return video duration of the source video file (NOT the filter chain) in frames, requires ffprobe.
+
+        .. notes:: This is the duration of the source video and NOT the duration of the filter chain.  If you load(), this may be different duration depending on clip() or framerate() directives.
+        """
         return int(np.floor(self.duration_in_seconds_of_videofile()*self.framerate()))
     
     def probe(self):
@@ -1152,7 +1160,7 @@ class Video(object):
             print('   - This may occur when the framerate of the video from ffprobe (tbr) does not match that passed to fps filter, resulting in a zero length image preview piped to stdout')
             print('   - This may occur after calling clip() with too short a duration, try increasing the clip to be > 1 sec')
             print('   - This may occur if requesting a frame number greater than the length of the video.  At this point, we do not know the video length, and cannot fail gracefully')
-            print('   - This may occur if the filter chain fails for some unknown reason on this video.  Try running the ffmpeg command manually for this video and looking at the FFMPEG console output (e.g. the output of v._ffmpeg_commandline())')
+            print('   - This may occur if the filter chain fails for some unknown reason on this video.  Try running the ffmpeg command manually for this video and looking at the FFMPEG console output (e.g. manually run the output of v.commandline())')
             print('   - %s' % (str(self)))
             raise
 
@@ -1164,10 +1172,15 @@ class Video(object):
     def load(self, verbose=False, ignoreErrors=False, shape=None):
         """Load a video using ffmpeg, applying the requested filter chain.  
            
-             - If verbose=True. then ffmpeg console output will be displayed. 
-             - If ignoreErrors=True, then all load errors are warned and skipped.  Be sure to call isloaded() to confirm loading was successful.
-             - shape tuple(height, width, channels):  If provided, use this shape for reading and reshaping the byte stream from ffmpeg
-             - knowing the final output shape can speed up loads by avoiding a preview() of the filter chain to get the frame size
+        Args:
+            verbose: [bool] if True. then ffmpeg console output will be displayed. 
+            ignoreErrors: [bool] if True, then all load errors are warned and skipped.  Be sure to call isloaded() to confirm loading was successful.
+            shape: [tuple (height, width, channels)]  If provided, use this shape for reading and reshaping the byte stream from ffmpeg.  This is useful for efficient loading in some scenarios. Knowing the final output shape can speed up loads by avoiding a preview() of the filter chain to get the frame size
+
+        Returns:
+            this video object, with the pixels loaded in self.array()
+
+        .. warning:: Loading long videos can result in out of memory conditions.  Try to call clip() first to extract a video segment to load().
         """
         if self.isloaded():
             return self
@@ -1191,7 +1204,7 @@ class Video(object):
             (out, err) = f.run(capture_stdout=True, capture_stderr=True)
         except Exception as e:
             if not ignoreErrors:
-                raise ValueError('[vipy.video.load]: Load failed with error "%s"\n\nVideo: "%s"\n\nFFMPEG command: "%s"\n\n Try setting vipy.globals.debug() to see verbose FFMPEG debugging output then rerunning, or inspect the ffmpeg command line output with self.commandline() and run manually to see errors (removing pipes as needed). This error usually means that the video is corrupted or that you need to upgrade your FFMPEG distribution to the latest stable version.' % (str(e), str(self), str(self._ffmpeg_commandline(f))))
+                raise ValueError('[vipy.video.load]: Load failed with error "%s"\n\nVideo: "%s"\n\nFFMPEG command: "%s"\n\n Try setting vipy.globals.debug() to see verbose FFMPEG debugging output then rerunning, or inspect the FFMPEG filter chain with self.commandline() and run manually to see errors (Note you will need to remove pipes and and add your own output filename to execute). This error usually means that the video is corrupted or that you need to upgrade your FFMPEG distribution to the latest stable version.' % (str(e), str(self), str(self._ffmpeg_commandline(f))))
             else:
                 return self  # Failed, return immediately, useful for calling canload() 
 
@@ -1253,6 +1266,7 @@ class Video(object):
             timestamp_in_seconds = ((self._startframe if self._startframe is not None else 0)+startframe)/float(self.framerate())            
             self._update_ffmpeg_seek(timestamp_in_seconds)
             if endframe is not None:
+                self._ffmpeg = self._ffmpeg.setpts('PTS-STARTPTS')  # reset timestamp to 0 before trim filter            
                 self._ffmpeg = self._ffmpeg.trim(start=0, end=(endframe-startframe)/self.framerate())  # must be in seconds to allow for framerate conversion
             self._ffmpeg = self._ffmpeg.setpts('PTS-STARTPTS')  # reset timestamp to 0 after trim filter            
             self._startframe = startframe if self._startframe is None else self._startframe + startframe  # for __repr__ only
@@ -1644,17 +1658,31 @@ class Video(object):
         return vipy.visualize.montage(imframes, imgwidth=mindim, imgheight=mindim)
 
     def torch(self, startframe=0, endframe=None, length=None, stride=1, take=None, boundary='repeat', order='nchw', verbose=False, withslice=False, scale=1.0, withlabel=False, nonelabel=False):
-        """Convert the loaded video of shape N HxWxC frames to an MxCxHxW torch tensor, forces a load().
+        """Convert the loaded video of shape NxHxWxC frames to an MxCxHxW torch tensor/
 
-           * Order of arguments is (startframe, endframe) or (startframe, startframe+length) or (random_startframe, random_starframe+takelength), then stride or take.
-           * Follows numpy slicing rules.  Optionally return the slice used if withslice=True
-           * Returns float tensor in the range [0,1] following torchvision.transforms.ToTensor()           
-           * order can be ['nchw', 'nhwc', 'cnhw'] for batchsize=n, channels=c, height=h, width=w
-           * boundary can be ['repeat', 'strict', 'cyclic']
-           * withlabel=True, returns tuple (t, labellist), where labellist is a list of tuples of activity labels occurring at the corresponding frame in the tensor
-           * withslice=Trye, returnss tuple (t, (startframe, endframe, stride))
-           * nonelabel=True, returns tuple (t, None) if withlabel=False 
+        Args:
+            startframe: [int >= 0] The start frame of the loaded video to use for constructig the torch tensor
+            endframe: [int >= 0] The end frame of the loaded video to use for constructing the torch tensor
+            length: [int >= 0] The length of the torch tensor if endframe is not provided. 
+            stride: [int >= 1] The temporal stride in frames.  This is the number of frames to skip.
+            take: [int >= 0]  The number of uniformly spaced frames to include in the tensor.  
+            boundary: ['repeat', 'cyclic'] The boundary handling for when the requested tensor slice goes beyond the end of the video
+            order: ['nchw', 'nhwc', 'chwn', 'cnhw']  The axis ordering of the returned torch tensor N=number of frames (batchsize), C=channels, H=height, W=width
+            verbose [bool]: Print out the slice used for contructing tensor
+            withslice: [bool] Return a tuple (tensor, slice) that includes the slice used to construct the tensor.  Useful for data provenance.
+            scale: [float] An optional scale factor to apply to the tensor. Useful for converting [0,255] -> [0,1]
+            withlabel: [bool] Return a tuple (tensor, labels) that includes the N framewise activity labels.  
+            nonelabel: [bool] returns tuple (t, None) if withlabel=False
 
+        Returns
+            Returns torch float tensor, analogous to torchvision.transforms.ToTensor()           
+            Return (tensor, slice) if withslice=True (withslice takes precedence)
+            Returns (tensor, labellist) if withlabel=True
+
+        .. notes::
+            - This triggers a load() of the video
+            - The precedence of arguments is (startframe, endframe) or (startframe, startframe+length), then stride and take.
+            - Follows numpy slicing rules.  Optionally return the slice used if withslice=True
         """
         try_import('torch'); import torch
         frames = self.load().numpy() if self.load().numpy().ndim == 4 else np.expand_dims(self.load().numpy(), 3)  # NxHxWx(C=1, C=3)
@@ -1722,7 +1750,7 @@ class Video(object):
         if withslice:
             return (t, (i,j,k))
         elif withlabel:            
-            labels = [sorted(tuple(self.activitylabels( (k%len(frames)) if boundary == 'cyclic' else min(k, len(frames)-1) ))) for f in range(i,j,k)]
+            labels = [sorted(tuple(self.activitylabels( (f%len(frames)) if boundary == 'cyclic' else min(f, len(frames)-1) ))) for f in range(i,j,k)]
             return (t, labels)
         elif nonelabel:
             return (t, None)
@@ -2237,13 +2265,18 @@ class Scene(VideoCategory):
     def trackfilter(self, f, activitytrack=True):
         """Apply lambda function f to each object and keep if filter is True.  
         
-           -strict=True: remove track assignment from activities also, may result in activities with no tracks
+        Args:
+            activitytrack: [bool] If trye, remove track assignment from activities also, may result in activities with no tracks
+            f: [lambda]  The lambda function to apply to each track t, and if f(t) returns True, then keep the track
+        
+        Returns:
+            self, with tracks removed in-place
         """
         self._tracks = {k:t for (k,t) in self.tracks().items() if f(t) == True}
         if activitytrack:
             self.activitymap(lambda a: a.trackfilter(lambda ti: ti in self._tracks))  # remove track association in activities
             if any([len(a.tracks()) == 0 for a in self.activitylist()]):
-                warnings.warn('trackfilter(..., activitytrack=True) returned at least one degenerate activity with no tracks')
+                warnings.warn('trackfilter(..., activitytrack=True) removed tracks which returned at least one degenerate activity with no tracks')
         return self
 
     def trackmap(self, f, strict=True):
@@ -2719,6 +2752,7 @@ class Scene(VideoCategory):
             timestamp_in_seconds = ((v._startframe if v._startframe is not None else 0)+startframe)/float(v.framerate())
             v._update_ffmpeg_seek(timestamp_in_seconds)
             if endframe is not None:
+                v._ffmpeg = v._ffmpeg.setpts('PTS-STARTPTS')  # reset timestamp to 0 before trim filter            
                 v._ffmpeg = v._ffmpeg.trim(start=0, end=(endframe-startframe)/self.framerate())  # must be in seconds to allow for framerate conversion
             v._ffmpeg = v._ffmpeg.setpts('PTS-STARTPTS')  # reset timestamp to 0 after trim filter            
             v._startframe = startframe if v._startframe is None else v._startframe + startframe  # for __repr__ only
@@ -3264,6 +3298,7 @@ def RandomScene(rows=None, cols=None, frames=None):
     (rows, cols) = v.shape()
     tracks = [vipy.object.Track(label='track%d' % k, shortlabel='t%d' % k,
                                 keyframes=[0, np.random.randint(50,100), 150],
+                                framerate=30, 
                                 boxes=[vipy.object.Detection(xmin=np.random.randint(0,cols - 16), ymin=np.random.randint(0,rows - 16),
                                                                  width=np.random.randint(16,cols//2), height=np.random.randint(16,rows//2)),
                                        vipy.object.Detection(xmin=np.random.randint(0,cols - 16), ymin=np.random.randint(0,rows - 16),
@@ -3271,8 +3306,8 @@ def RandomScene(rows=None, cols=None, frames=None):
                                        vipy.object.Detection(xmin=np.random.randint(0,cols - 16), ymin=np.random.randint(0,rows - 16),
                                                                  width=np.random.randint(16,cols//2), height=np.random.randint(16,rows//2))]) for k in range(0,32)]
 
-    activities = [vipy.activity.Activity(label='activity%d' % k, shortlabel='a%d' % k, tracks=[tracks[j].id() for j in [np.random.randint(32)]], startframe=np.random.randint(50,99), endframe=np.random.randint(100,150)) for k in range(0,32)]   
-    return Scene(array=v.array(), colorspace='rgb', category='scene', tracks=tracks, activities=activities)
+    activities = [vipy.activity.Activity(label='activity%d' % k, shortlabel='a%d' % k, tracks=[tracks[j].id() for j in [np.random.randint(32)]], startframe=np.random.randint(50,99), endframe=np.random.randint(100,150), framerate=30) for k in range(0,32)]   
+    return Scene(array=v.array(), colorspace='rgb', category='scene', tracks=tracks, activities=activities, framerate=30)
 
 
 def RandomSceneActivity(rows=None, cols=None, frames=256):
@@ -3284,6 +3319,7 @@ def RandomSceneActivity(rows=None, cols=None, frames=256):
     (rows, cols) = v.shape()
     tracks = [vipy.object.Track(label=['Person','Vehicle','Object'][k], shortlabel='track%d' % k, boundary='strict', 
                                 keyframes=[0, np.random.randint(50,100), np.random.randint(50,150)],
+                                framerate=30,
                                 boxes=[vipy.object.Detection(xmin=np.random.randint(0,cols - 16), ymin=np.random.randint(0,rows - 16),
                                                                  width=np.random.randint(16,cols//2), height=np.random.randint(16,rows//2)),
                                        vipy.object.Detection(xmin=np.random.randint(0,cols - 16), ymin=np.random.randint(0,rows - 16),
@@ -3291,8 +3327,8 @@ def RandomSceneActivity(rows=None, cols=None, frames=256):
                                        vipy.object.Detection(xmin=np.random.randint(0,cols - 16), ymin=np.random.randint(0,rows - 16),
                                                                  width=np.random.randint(16,cols//2), height=np.random.randint(16,rows//2))]) for k in range(0,3)]
 
-    activities = [vipy.activity.Activity(label='Person Carrying', shortlabel='Carry', tracks=[tracks[0].id(), tracks[1].id()], startframe=np.random.randint(20,50), endframe=np.random.randint(70,100))]   
-    ims = Scene(array=v.array(), colorspace='rgb', category='scene', tracks=tracks, activities=activities)
+    activities = [vipy.activity.Activity(label='Person Carrying', shortlabel='Carry', tracks=[tracks[0].id(), tracks[1].id()], startframe=np.random.randint(20,50), endframe=np.random.randint(70,100), framerate=30)]   
+    ims = Scene(array=v.array(), colorspace='rgb', category='scene', tracks=tracks, activities=activities, framerate=30)
 
     return ims
     
