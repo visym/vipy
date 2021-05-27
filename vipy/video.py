@@ -1149,19 +1149,17 @@ class Video(object):
         except Exception as e:            
             raise ValueError('[vipy.video.load]: Video preview failed with error "%s"\n\nVideo: "%s"\n\nFFMPEG command: "%s"\n\nTry manually running this ffmpeg command to see errors.  This error usually means that the video is corrupted.' % (str(e), str(self), str(self._ffmpeg_commandline(f_prepipe.output('preview.jpg', vframes=1)))))
 
-        # [EXCEPTION]:  UnidentifiedImageError: cannot identify image file
-        #   -This may occur when the framerate of the video from ffprobe (tbr) does not match that passed to fps filter, resulting in a zero length image preview piped to stdout
-        #   -This may occur after calling clip() with too short a duration, try increasing the clip to be > 1 sec
-        #   -This may occur if requesting a frame number greater than the length of the video.  At this point, we do not know the video length, and cannot fail gracefully
+        # [EXCEPTION]:  UnidentifiedImageError: cannot identify image file, means usually that FFMPEG piped a zero length image
         try:
             return Image(array=np.array(PIL.Image.open(BytesIO(out))))
         except Exception as e:
             print('[vipy.video.Video.preview][ERROR]:  %s' % str(e))
-            print('   - This may occur when the framerate of the video from ffprobe (tbr) does not match that passed to fps filter, resulting in a zero length image preview piped to stdout')
-            print('   - This may occur after calling clip() with too short a duration, try increasing the clip to be > 1 sec')
-            print('   - This may occur if requesting a frame number greater than the length of the video.  At this point, we do not know the video length, and cannot fail gracefully')
-            print('   - This may occur if the filter chain fails for some unknown reason on this video.  Try running the ffmpeg command manually for this video and looking at the FFMPEG console output (e.g. manually run the output of v.commandline())')
-            print('   - %s' % (str(self)))
+            print('  - FFMPEG attempted to extract a single frame from the following video and failed:\n    %s' % str(self))
+            print('  - This may occur after calling clip() with too short a duration, try increasing the clip to be > 1 sec')
+            print('  - This may occur after calling clip() with a startframe or endframe outside the duration of the video')
+            print('  - This may occur if requesting a frame number greater than the length of the video.  At this point, we do not know the video length, and cannot fail gracefully')
+            print('  - This may occur when the framerate of the video from ffprobe (tbr) does not match that passed to fps filter, resulting in a zero length image preview piped to stdout')
+            print('  - This may occur if the filter chain fails for some unknown reason on this video.  Try running this ffmpeg command manually and inspect the FFMPEG console output:\n     sh> %s' % str(self._ffmpeg_commandline(f_prepipe.output('preview.jpg', vframes=1))))
             raise
 
     def thumbnail(self, outfile=None, frame=0):
@@ -2080,7 +2078,25 @@ class Scene(VideoCategory):
         return str('<vipy.video.scene: %s>' % (', '.join(strlist)))
 
     def frame(self, k, img=None):
-        """Return vipy.image.Scene object at frame k"""
+        """Return `vipy.image.Scene` object at frame k
+
+        -The attributes of each of the `vipy.image.Scene.objects` in the scene contains helpful metadata for the provenance of the detection, including:  
+            - 'trackid' of the track this detection
+            - 'activityid' associated with this detection 
+            - 'jointlabel' of this detection, used for visualization
+            - 'noun verb' of this detection, used for visualization
+        
+        Args:
+            k: [int >=- 0] The frame index requested.  This is relative to the current frame rate of the video.
+            img: [numpy]  An optional image to be used for this frame.  This is useful to construct frames efficiently for videos if the pixel buffer is available from a stream rather than a preview.
+        
+        Return:
+            A `vipy.image.Scene` object for frame k containing all objects in this frame
+        
+        .. notes::
+            -Modifying this frame will not affect the source video
+
+        """
         assert isinstance(k, int) and k>=0, "Frame index must be non-negative integer"
         assert img is not None or (self.isloaded() and k<len(self)) or not self.isloaded(), "Invalid frame index %d - Indexing video by frame must be integer within (0, %d)" % (k, len(self)-1)
 
