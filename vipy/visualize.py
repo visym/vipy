@@ -95,11 +95,12 @@ def montage(imlist, imgheight, imgwidth, gridrows=None, gridcols=None, aspectrat
     return Image(array=img_montage, colorspace=imlist[0].colorspace())
 
 
-def videomontage(vidlist, imgheight, imgwidth, gridrows=None, gridcols=None, aspectratio=1, crop=False, skip=True, border=1, border_bgr=(128,128,128), do_flush=False, verbose=True):
+def videomontage(vidlist, imgheight, imgwidth, gridrows=None, gridcols=None, aspectratio=1, crop=False, skip=True, border=1, border_bgr=(128,128,128), do_flush=False, verbose=True, framerate=30):
     """Generate a video montage for the provided videos by creating a image montage for every frame.  
 
     Args:
-        See the arguments for `vipy.visualize.montage`.
+        `vipy.visualize.montage`:  See the args   
+        framerate: [float] the framerate of the montage video.  All of the input videos are resampled to this common frame rate
 
     Returns:
         An video file in outfile that shows each video tiled into a montage.  <Like https://www.youtube.com/watch?v=HjNa7_T-Xkc>
@@ -120,9 +121,10 @@ def videomontage(vidlist, imgheight, imgwidth, gridrows=None, gridcols=None, asp
     # with Video(outfile).stream(write=True) as s:
     #     s.write(montage(...))
     
+    vidlist = [v.framerate(framerate) for v in vidlist]  # resample to a common framerate
     montagelist = [montage([v[k % len(v)].mindim(max(imgheight, imgwidth)).centercrop(imgheight, imgwidth) for v in vidlist], imgheight, imgwidth, gridrows, gridcols, aspectratio, crop, skip, border, border_bgr, do_flush, verbose=False)
                    for k in range(0, maxlength)]
-    return vipy.video.Video(array=np.stack([im.array() for im in montagelist]), colorspace='rgb', framerate=vidlist[0].framerate())
+    return vipy.video.Video(array=np.stack([im.array() for im in montagelist]), colorspace='rgb', framerate=framerate)
 
 
 def urls(urllist, title='URL Visualization', imagewidth=1024, outfile=None, display=False):

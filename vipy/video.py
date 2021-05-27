@@ -852,10 +852,38 @@ class Video(object):
         """Return True if the video has been loaded"""
         return self._array is not None
 
-    def canload(self, frame=0):
+    def isloadable(self, flush=True):
         """Return True if the video can be loaded successfully.
         
         This is useful for filtering bad videos or filtering videos that cannot be loaded using your current FFMPEG version.
+        
+        Args:
+            flush: [bool] If true, flush the video after it loads.  This will clear the video pixel buffer
+
+        Returns:
+            True if load() can be called without FFMPEG exception.  
+            If flush=False, then self will contain the loaded video, which is helpful to avoid load() twice in some conditions
+        
+        .. warning:: This requires loading and flushing the video.  This is an expensive operation when performed on many videos, use with caution!
+        """
+        if not self.isloaded():
+            try:
+                self.load()  # try to load the whole thing
+                if flush:
+                    self.flush()
+                return True
+            except:
+                return False
+        else:
+            return True
+        
+        
+    def canload(self, frame=0):
+        """Return True if the video can be previewed at frame=k successfully.
+        
+        This is useful for filtering bad videos or filtering videos that cannot be loaded using your current FFMPEG version.
+
+        .. notes:: This will only try to preview a single frame.  This will not check if the entire video is loadable.  Use `vipy.video.Video.isloadable` in this case
         """
         if not self.isloaded():
             try:
@@ -1147,7 +1175,7 @@ class Video(object):
                          .global_args('-cpuflags', '0', '-loglevel', 'debug' if vipy.globals.isdebug() else 'error')
             (out, err) = f.run(capture_stdout=True, capture_stderr=True)
         except Exception as e:            
-            raise ValueError('[vipy.video.load]: Video preview failed with error "%s"\n\nVideo: "%s"\n\nFFMPEG command: "%s"\n\nTry manually running this ffmpeg command to see errors.  This error usually means that the video is corrupted.' % (str(e), str(self), str(self._ffmpeg_commandline(f_prepipe.output('preview.jpg', vframes=1)))))
+            raise ValueError('[vipy.video.load]: Video preview failed with error "%s"\n  - Video: "%s"\n  - FFMPEG command: \'sh> %s\'\n  - Try manually running this ffmpeg command to see errors.  This error usually means that the video is corrupted.' % (str(e), str(self), str(self._ffmpeg_commandline(f_prepipe.output('preview.jpg', vframes=1)))))
 
         # [EXCEPTION]:  UnidentifiedImageError: cannot identify image file, means usually that FFMPEG piped a zero length image
         try:
@@ -1197,12 +1225,13 @@ class Video(object):
         # [EXCEPTION]:  older ffmpeg versions may segfault on complex crop filter chains
         #    -On some versions of ffmpeg setting -cpuflags=0 fixes it, but the right solution is to rebuild from the head (30APR20)
         try:
+            f_prepipe = copy.deepcopy(self._ffmpeg)
             f = self._ffmpeg.output('pipe:', format='rawvideo', pix_fmt='rgb24')\
                             .global_args('-cpuflags', '0', '-loglevel', 'debug' if vipy.globals.isdebug() else 'quiet')
             (out, err) = f.run(capture_stdout=True, capture_stderr=True)
         except Exception as e:
             if not ignoreErrors:
-                raise ValueError('[vipy.video.load]: Load failed with error "%s"\n\nVideo: "%s"\n\nFFMPEG command: "%s"\n\n Try setting vipy.globals.debug() to see verbose FFMPEG debugging output then rerunning, or inspect the FFMPEG filter chain with self.commandline() and run manually to see errors (Note you will need to remove pipes and and add your own output filename to execute). This error usually means that the video is corrupted or that you need to upgrade your FFMPEG distribution to the latest stable version.' % (str(e), str(self), str(self._ffmpeg_commandline(f))))
+                raise ValueError('[vipy.video.load]: Load failed with error "%s"\n\n  - Video: "%s"\n  - FFMPEG command: \'sh> %s\'\n  - This error usually means that the video is corrupted or that you need to upgrade your FFMPEG distribution to the latest stable version.\n  - Try running the output of the ffmpeg command for debugging.' % (str(e), str(self), str(self._ffmpeg_commandline(f_prepipe.output('preview.mp4')))))
             else:
                 return self  # Failed, return immediately, useful for calling canload() 
 
@@ -1713,13 +1742,13 @@ class Video(object):
         assert i >= 0, "Start frame must be >= 0"
         assert i < j, "Start frame must be less then end frame"
         assert k <= len(frames), "Stride must be <= len(frames)"            
-        if boundary == 'repeat' and j > len(frames):
-            for d in range(j-len(frames)):
+        if boundary == 'repeat' and j >= len(frames):
+            for d in range(j-len(frames)+1):
                 frames = np.concatenate( (frames, np.expand_dims(frames[-1], 0) ))
-        elif boundary == 'cyclic' and j > len(frames):
-            for d in range(j-len(frames)):
+        elif boundary == 'cyclic' and j >= len(frames):
+            for d in range(j-len(frames)+1):
                 frames = np.concatenate( (frames, np.expand_dims(frames[j % len(frames)], 0) ))            
-        assert j <= len(frames), "invalid slice=%s for frame shape=%s - try setting boundary='repeat'" % (str((i,j,k)), str(frames.shape))
+        assert j < len(frames), "invalid slice=%s for frame shape=%s - try setting boundary='repeat'" % (str((i,j,k)), str(frames.shape))
         if verbose:
             print('[vipy.video.torch]: slice (start,end,step)=%s for frame shape (N,C,H,W)=%s' % (str((i,j,k)), str(frames.shape)))
 
@@ -2577,7 +2606,7 @@ class Scene(VideoCategory):
         return [t.clip(t.track(t.actorid()).startframe(), t.track(t.actorid()).endframe()) for t in self.tracksplit()]
     
     def activityclip(self, padframes=0, multilabel=True):
-        """Return a list of vipy.video.Scene() each clipped to be temporally centered on a single activity, with an optional padframes before and after.  
+        """Return a list of `vipy.video.Scene` objects each clipped to be temporally centered on a single activity, with an optional padframes before and after.  
 
         Args:
             padframes: [int] for symmetric padding same before and after
@@ -2589,11 +2618,11 @@ class Scene(VideoCategory):
             A list of `vipy.video.Scene` each cloned from the source video and clipped on one activity in the scene
 
         .. notes::
-           - The Scene() category is updated to be the activity, and only the objects participating in the activity are included.
-           - Activities are returned ordered in the temporal order they appear in the video.
+           - The Scene() category is updated to be the activity category of the clip, and only the objects participating in the activity are included.
+           - Clips are returned ordered in the temporal order they appear in the video.
            - The returned vipy.video.Scene() objects for each activityclip are clones of the video, with the video buffer flushed.
            - Each activityclip() is associated with each activity in the scene, and includes all other secondary activities that the objects in the primary activity also perform (if multilabel=True).  See activityclip().labels(). 
-           - Calling activityclip() on activityclip(multilabel=True) will duplicate activities, due to the overlapping secondary activities being included in each clip with an overlap.  Be careful. 
+           - Calling activityclip() on activityclip(multilabel=True) will duplicate activities, due to the overlapping secondary activities being included in each clip with an overlap.  Be careful!
         """
         assert isinstance(padframes, int) or istuple(padframes) or islist(padframes)
 
