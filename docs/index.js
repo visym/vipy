@@ -4463,6 +4463,18 @@ INDEX=[
 "func":1
 },
 {
+"ref":"vipy.flow.Video.cast",
+"url":38,
+"doc":"Cast a conformal video object to a  vipy.video.Video object. This is useful for downcasting superclasses. >>> vs = vipy.video.RandomScene() >>> v = vipy.video.Video.cast(vs)",
+"func":1
+},
+{
+"ref":"vipy.flow.Video.from_json",
+"url":38,
+"doc":"Import a json string as a  vipy.video.Video object. This will perform a round trip from a video to json and back to a video object. This same operation is used for serialization of all vipy objects to JSON for storage. >>> v = vipy.video.Video.from_json(vipy.video.RandomVideo().json( ",
+"func":1
+},
+{
 "ref":"vipy.flow.Video.metadata",
 "url":38,
 "doc":"Return a dictionary of metadata about this video. This is an alias for the 'attributes' dictionary.",
@@ -4537,13 +4549,13 @@ INDEX=[
 {
 "ref":"vipy.flow.Video.duration_in_seconds_of_videofile",
 "url":38,
-"doc":"Return video duration of the source filename (NOT the filter chain) in seconds, requires ffprobe. Fetch once and cache",
+"doc":"Return video duration of the source filename (NOT the filter chain) in seconds, requires ffprobe. Fetch once and cache.  notes This is the duration of the source video and NOT the duration of the filter chain. If you load(), this may be different duration depending on clip() or framerate() directives.",
 "func":1
 },
 {
 "ref":"vipy.flow.Video.duration_in_frames_of_videofile",
 "url":38,
-"doc":"Return video duration of the source filename (NOT the filter chain) in frames, requires ffprobe",
+"doc":"Return video duration of the source video file (NOT the filter chain) in frames, requires ffprobe.  notes This is the duration of the source video and NOT the duration of the filter chain. If you load(), this may be different duration depending on clip() or framerate() directives.",
 "func":1
 },
 {
@@ -4741,7 +4753,7 @@ INDEX=[
 {
 "ref":"vipy.flow.Video.load",
 "url":38,
-"doc":"Load a video using ffmpeg, applying the requested filter chain. - If verbose=True. then ffmpeg console output will be displayed. - If ignoreErrors=True, then all load errors are warned and skipped. Be sure to call isloaded() to confirm loading was successful. - shape tuple(height, width, channels): If provided, use this shape for reading and reshaping the byte stream from ffmpeg - knowing the final output shape can speed up loads by avoiding a preview() of the filter chain to get the frame size",
+"doc":"Load a video using ffmpeg, applying the requested filter chain. Args: verbose: [bool] if True. then ffmpeg console output will be displayed. ignoreErrors: [bool] if True, then all load errors are warned and skipped. Be sure to call isloaded() to confirm loading was successful. shape: [tuple (height, width, channels)] If provided, use this shape for reading and reshaping the byte stream from ffmpeg. This is useful for efficient loading in some scenarios. Knowing the final output shape can speed up loads by avoiding a preview() of the filter chain to get the frame size Returns: this video object, with the pixels loaded in self.array()  warning Loading long videos can result in out of memory conditions. Try to call clip() first to extract a video segment to load().",
 "func":1
 },
 {
@@ -4909,7 +4921,7 @@ INDEX=[
 {
 "ref":"vipy.flow.Video.torch",
 "url":38,
-"doc":"Convert the loaded video of shape N HxWxC frames to an MxCxHxW torch tensor, forces a load().  Order of arguments is (startframe, endframe) or (startframe, startframe+length) or (random_startframe, random_starframe+takelength), then stride or take.  Follows numpy slicing rules. Optionally return the slice used if withslice=True  Returns float tensor in the range [0,1] following torchvision.transforms.ToTensor()  order can be ['nchw', 'nhwc', 'cnhw'] for batchsize=n, channels=c, height=h, width=w  boundary can be ['repeat', 'strict', 'cyclic']  withlabel=True, returns tuple (t, labellist), where labellist is a list of tuples of activity labels occurring at the corresponding frame in the tensor  withslice=Trye, returnss tuple (t, (startframe, endframe, stride  nonelabel=True, returns tuple (t, None) if withlabel=False",
+"doc":"Convert the loaded video of shape NxHxWxC frames to an MxCxHxW torch tensor/ Args: startframe: [int >= 0] The start frame of the loaded video to use for constructig the torch tensor endframe: [int >= 0] The end frame of the loaded video to use for constructing the torch tensor length: [int >= 0] The length of the torch tensor if endframe is not provided. stride: [int >= 1] The temporal stride in frames. This is the number of frames to skip. take: [int >= 0] The number of uniformly spaced frames to include in the tensor. boundary: ['repeat', 'cyclic'] The boundary handling for when the requested tensor slice goes beyond the end of the video order: ['nchw', 'nhwc', 'chwn', 'cnhw'] The axis ordering of the returned torch tensor N=number of frames (batchsize), C=channels, H=height, W=width verbose [bool]: Print out the slice used for contructing tensor withslice: [bool] Return a tuple (tensor, slice) that includes the slice used to construct the tensor. Useful for data provenance. scale: [float] An optional scale factor to apply to the tensor. Useful for converting [0,255] -> [0,1] withlabel: [bool] Return a tuple (tensor, labels) that includes the N framewise activity labels. nonelabel: [bool] returns tuple (t, None) if withlabel=False Returns Returns torch float tensor, analogous to torchvision.transforms.ToTensor() Return (tensor, slice) if withslice=True (withslice takes precedence) Returns (tensor, labellist) if withlabel=True  notes - This triggers a load() of the video - The precedence of arguments is (startframe, endframe) or (startframe, startframe+length), then stride and take. - Follows numpy slicing rules. Optionally return the slice used if withslice=True",
 "func":1
 },
 {
@@ -5062,37 +5074,37 @@ INDEX=[
 {
 "ref":"vipy.visualize.montage",
 "url":40,
-"doc":"Create a montage image from the of provided list of vipy.image.Image objects. Inputs:  imlist: iterable of vipy.image.Image objects which is used to montage rowwise  (imgheight, imgwidth): the size of each individual image in the grid  (gridrows, gridcols): The number of images per row, and number of images per column. This defines the montage shape.  aspectratio. This is an optional parameter which defines the shape of the montage as (gridcols/gridrows) without specifying the gridrows, gridcols input  crop=[True|False]: Whether the vipy.image.Image objects should call crop(), which will trigger a load  skip=[True|False]: Whether images should be skipped on failure to load(), useful for lazy downloading  border: a border of size in pixels surrounding each image in the grid  border_bgr: the border color in a bgr color tuple (b, g, r) in [0,255], uint8  do_flush=[True|False]: flush the loaded images as garbage collection for large montages  verbose=[True|False]: display optional verbose messages Outputs:  Return a vipy.image.Image montage which is of size (gridrows (imgheight + 2 border), gridcols (imgwidth+2 border ",
+"doc":"Create a montage image from the of provided list of vipy.image.Image objects. Args: imlist: [list, tuple] iterable of vipy.image.Image objects which is used to montage rowwise imgheight: [int] The height of each individual image in the grid imgwidth: [int] the width of each individual image in the grid gridrows: [int] The number of images per row, and number of images per column. This defines the montage shape. gridcols: [int] The number of images per row, and number of images per column. This defines the montage shape. aspectratio: [float]. This is an optional parameter which defines the shape of the montage as (gridcols/gridrows) without specifying the gridrows, gridcols input crop: [bool] If true, the vipy.image.Image objects should call crop(), which will trigger a load skip: [bool] Whether images should be skipped on failure to load(), useful for lazy downloading border: [int] a border of size in pixels surrounding each image in the grid border_bgr [tuple (r,g,b)]: the border color in a bgr color tuple (b, g, r) in [0,255], uint8 do_flush: [bool] flush the loaded images as garbage collection for large montages verbose: [bool] display optional verbose messages Returns Return a vipy.image.Image montage which is of size (gridrows (imgheight + 2 border), gridcols (imgwidth+2 border ",
 "func":1
 },
 {
 "ref":"vipy.visualize.videomontage",
 "url":40,
-"doc":"Generate a video montage for the provided videos by creating a image montage for every frame. This loads every video into memory, so be careful with large montages!",
+"doc":"Generate a video montage for the provided videos by creating a image montage for every frame. Args: See the arguments for  vipy.visualize.montage . Returns: An video file in outfile that shows each video tiled into a montage.   warning This loads every video into memory, so be careful with large montages!",
 "func":1
 },
 {
 "ref":"vipy.visualize.urls",
 "url":40,
-"doc":"Given a list of public image URLs, create a stand-alone HTML page to show them all",
+"doc":"Given a list of public image URLs, create a stand-alone HTML page to show them all. Args: urllist: [list] A list of urls to display title: [str] The title of the html file imagewidth: [int] The size of the images in the page outfile: [str] The path to the output html file display: [bool] open the html file in the default system viewer when complete",
 "func":1
 },
 {
 "ref":"vipy.visualize.tohtml",
 "url":40,
-"doc":"Given a list of vipy.image.Image objects, show the images along with the dictionary contents of imdict (one per image) in a single standalone HTML file",
+"doc":"Given a list of vipy.image.Image objects, show the images along with the dictionary contents of imdict (one per image) in a single standalone HTML file Args: imlist: [list  vipy.image.Image ] imdict: [list of dict] An optional list of dictionaries, such that each dictionary is visualized per image title: [str] The title of the html file imagewidth: [int] The size of the images in the page outfile: [str] The path to the output html file display: [bool] open the html file in the default system viewer when complete Returns: An html file in outfile that contains all the images as a standalone embedded file (no links or external files).",
 "func":1
 },
 {
 "ref":"vipy.visualize.imagelist",
 "url":40,
-"doc":"Given a list of image filenames wth absolute paths, copy to outdir, and create an index.html file that visualizes each",
+"doc":"Given a list of image filenames wth absolute paths, copy to outdir, and create an index.html file that visualizes each.",
 "func":1
 },
 {
 "ref":"vipy.visualize.imagetuplelist",
 "url":40,
-"doc":"Imageset but put tuples on same row",
+"doc":"Imagelist but put tuples on same row",
 "func":1
 },
 {
@@ -6492,18 +6504,18 @@ INDEX=[
 {
 "ref":"vipy.video.Video",
 "url":38,
-"doc":"vipy.video.Video class The vipy.video class provides a fluent, lazy interface for representing, transforming and visualizing videos. The following constructors are supported: >>> vid = vipy.video.Video(filename='/path/to/video.ext') Valid video extensions are those that are supported by ffmpeg ['.avi','.mp4','.mov','.wmv','.mpg', 'mkv', 'webm']. >>> vid = vipy.video.Video(url='https: www.youtube.com/watch?v=MrIN959JuV8') >>> vid = vipy.video.Video(url='http: path/to/video.ext', filename='/path/to/video.ext') Youtube URLs are downloaded to a temporary filename, retrievable as vid.download().filename(). If the environment variable 'VIPY_CACHE' is defined, then videos are saved to this directory rather than the system temporary directory. If a filename is provided to the constructor, then that filename will be used instead of a temp or cached filename. URLs can be defined as an absolute URL to a video file, or to a site supported by 'youtube-dl' (https: ytdl-org.github.io/youtube-dl/supportedsites.html) >>> vid = vipy.video.Video(array=frames, colorspace='rgb') The input 'frames' is an NxHxWx3 numpy array corresponding to an N-length list of HxWx3 uint8 numpy array which is a single frame of pre-loaded video Note that the video transformations (clip, resize, rescale, rotate) are only available prior to load(), and the array() is assumed immutable after load()."
+"doc":"vipy.video.Video class The vipy.video class provides a fluent, lazy interface for representing, transforming and visualizing videos. The following constructors are supported: >>> vid = vipy.video.Video(filename='/path/to/video.ext') Valid video extensions are those that are supported by ffmpeg ['.avi','.mp4','.mov','.wmv','.mpg', 'mkv', 'webm']. >>> vid = vipy.video.Video(url='https: www.youtube.com/watch?v=MrIN959JuV8') >>> vid = vipy.video.Video(url='http: path/to/video.ext', filename='/path/to/video.ext') Youtube URLs are downloaded to a temporary filename, retrievable as vid.download().filename(). If the environment variable 'VIPY_CACHE' is defined, then videos are saved to this directory rather than the system temporary directory. If a filename is provided to the constructor, then that filename will be used instead of a temp or cached filename. URLs can be defined as an absolute URL to a video file, or to a site supported by 'youtube-dl' (https: ytdl-org.github.io/youtube-dl/supportedsites.html) >>> vid = vipy.video.Video(url='s3: BUCKET.s3.amazonaws.com/PATH/video.ext') If you set the environment variables VIPY_AWS_ACCESS_KEY_ID and VIPY_AWS_SECRET_ACCESS_KEY, then this will download videos directly from S3 using boto3 and store in VIPY_CACHE. Note that the URL protocol should be 's3' and not 'http' to enable keyed downloads. >>> vid = vipy.video.Video(array=array, colorspace='rgb') The input 'array' is an NxHxWx3 numpy array corresponding to an N-length list of HxWx3 uint8 numpy array which is a single frame of pre-loaded video Note that some video transformations are only available prior to load(), and the array() is assumed immutable after load(). >>> frames = [im for im in vipy.video.RandomVideo()] >>> vid = vipy.video.Video(frames=frames) Args: filename: [str] The path to a video file. url: [str] The URL to a video file. If filename is not provided, then a random filename is assigned in VIPY_CACHE on download framerate: [float] The framerate of the video file. This is required. You can introspect this using ffprobe. attributes: [dict] A user supplied dictionary of metadata about this video. colorspace: [str] Must be in ['rgb', 'float'] array: [numpy] An NxHxWxC numpy array for N frames each HxWxC shape startframe: [int] A start frame to clip the video endframe: [int] An end frame to clip the video startsec: [float] A start time in seconds to clip the video (this requires setting framerate) endsec: [float] An end time in seconds to clip the video (this requires setting framerate) frames: [list of  vipy.image.Image ] A list of frames in the video probeshape: [bool] If true, then probe the shape of the video from ffprobe to avoid an explicit preview later. This can speed up loading in some circumstances."
 },
 {
 "ref":"vipy.video.Video.cast",
 "url":38,
-"doc":"",
+"doc":"Cast a conformal video object to a  vipy.video.Video object. This is useful for downcasting superclasses. >>> vs = vipy.video.RandomScene() >>> v = vipy.video.Video.cast(vs)",
 "func":1
 },
 {
 "ref":"vipy.video.Video.from_json",
 "url":38,
-"doc":"",
+"doc":"Import a json string as a  vipy.video.Video object. This will perform a round trip from a video to json and back to a video object. This same operation is used for serialization of all vipy objects to JSON for storage. >>> v = vipy.video.Video.from_json(vipy.video.RandomVideo().json( ",
 "func":1
 },
 {
@@ -6587,13 +6599,13 @@ INDEX=[
 {
 "ref":"vipy.video.Video.duration_in_seconds_of_videofile",
 "url":38,
-"doc":"Return video duration of the source filename (NOT the filter chain) in seconds, requires ffprobe. Fetch once and cache",
+"doc":"Return video duration of the source filename (NOT the filter chain) in seconds, requires ffprobe. Fetch once and cache.  notes This is the duration of the source video and NOT the duration of the filter chain. If you load(), this may be different duration depending on clip() or framerate() directives.",
 "func":1
 },
 {
 "ref":"vipy.video.Video.duration_in_frames_of_videofile",
 "url":38,
-"doc":"Return video duration of the source filename (NOT the filter chain) in frames, requires ffprobe",
+"doc":"Return video duration of the source video file (NOT the filter chain) in frames, requires ffprobe.  notes This is the duration of the source video and NOT the duration of the filter chain. If you load(), this may be different duration depending on clip() or framerate() directives.",
 "func":1
 },
 {
@@ -6827,7 +6839,7 @@ INDEX=[
 {
 "ref":"vipy.video.Video.load",
 "url":38,
-"doc":"Load a video using ffmpeg, applying the requested filter chain. - If verbose=True. then ffmpeg console output will be displayed. - If ignoreErrors=True, then all load errors are warned and skipped. Be sure to call isloaded() to confirm loading was successful. - shape tuple(height, width, channels): If provided, use this shape for reading and reshaping the byte stream from ffmpeg - knowing the final output shape can speed up loads by avoiding a preview() of the filter chain to get the frame size",
+"doc":"Load a video using ffmpeg, applying the requested filter chain. Args: verbose: [bool] if True. then ffmpeg console output will be displayed. ignoreErrors: [bool] if True, then all load errors are warned and skipped. Be sure to call isloaded() to confirm loading was successful. shape: [tuple (height, width, channels)] If provided, use this shape for reading and reshaping the byte stream from ffmpeg. This is useful for efficient loading in some scenarios. Knowing the final output shape can speed up loads by avoiding a preview() of the filter chain to get the frame size Returns: this video object, with the pixels loaded in self.array()  warning Loading long videos can result in out of memory conditions. Try to call clip() first to extract a video segment to load().",
 "func":1
 },
 {
@@ -7007,7 +7019,7 @@ INDEX=[
 {
 "ref":"vipy.video.Video.torch",
 "url":38,
-"doc":"Convert the loaded video of shape N HxWxC frames to an MxCxHxW torch tensor, forces a load().  Order of arguments is (startframe, endframe) or (startframe, startframe+length) or (random_startframe, random_starframe+takelength), then stride or take.  Follows numpy slicing rules. Optionally return the slice used if withslice=True  Returns float tensor in the range [0,1] following torchvision.transforms.ToTensor()  order can be ['nchw', 'nhwc', 'cnhw'] for batchsize=n, channels=c, height=h, width=w  boundary can be ['repeat', 'strict', 'cyclic']  withlabel=True, returns tuple (t, labellist), where labellist is a list of tuples of activity labels occurring at the corresponding frame in the tensor  withslice=Trye, returnss tuple (t, (startframe, endframe, stride  nonelabel=True, returns tuple (t, None) if withlabel=False",
+"doc":"Convert the loaded video of shape NxHxWxC frames to an MxCxHxW torch tensor/ Args: startframe: [int >= 0] The start frame of the loaded video to use for constructig the torch tensor endframe: [int >= 0] The end frame of the loaded video to use for constructing the torch tensor length: [int >= 0] The length of the torch tensor if endframe is not provided. stride: [int >= 1] The temporal stride in frames. This is the number of frames to skip. take: [int >= 0] The number of uniformly spaced frames to include in the tensor. boundary: ['repeat', 'cyclic'] The boundary handling for when the requested tensor slice goes beyond the end of the video order: ['nchw', 'nhwc', 'chwn', 'cnhw'] The axis ordering of the returned torch tensor N=number of frames (batchsize), C=channels, H=height, W=width verbose [bool]: Print out the slice used for contructing tensor withslice: [bool] Return a tuple (tensor, slice) that includes the slice used to construct the tensor. Useful for data provenance. scale: [float] An optional scale factor to apply to the tensor. Useful for converting [0,255] -> [0,1] withlabel: [bool] Return a tuple (tensor, labels) that includes the N framewise activity labels. nonelabel: [bool] returns tuple (t, None) if withlabel=False Returns Returns torch float tensor, analogous to torchvision.transforms.ToTensor() Return (tensor, slice) if withslice=True (withslice takes precedence) Returns (tensor, labellist) if withlabel=True  notes - This triggers a load() of the video - The precedence of arguments is (startframe, endframe) or (startframe, startframe+length), then stride and take. - Follows numpy slicing rules. Optionally return the slice used if withslice=True",
 "func":1
 },
 {
@@ -7096,7 +7108,7 @@ INDEX=[
 {
 "ref":"vipy.video.VideoCategory.from_json",
 "url":38,
-"doc":"",
+"doc":"Import a json string as a  vipy.video.Video object. This will perform a round trip from a video to json and back to a video object. This same operation is used for serialization of all vipy objects to JSON for storage. >>> v = vipy.video.Video.from_json(vipy.video.RandomVideo().json( ",
 "func":1
 },
 {
@@ -7109,6 +7121,12 @@ INDEX=[
 "ref":"vipy.video.VideoCategory.category",
 "url":38,
 "doc":"",
+"func":1
+},
+{
+"ref":"vipy.video.VideoCategory.cast",
+"url":38,
+"doc":"Cast a conformal video object to a  vipy.video.Video object. This is useful for downcasting superclasses. >>> vs = vipy.video.RandomScene() >>> v = vipy.video.Video.cast(vs)",
 "func":1
 },
 {
@@ -7186,13 +7204,13 @@ INDEX=[
 {
 "ref":"vipy.video.VideoCategory.duration_in_seconds_of_videofile",
 "url":38,
-"doc":"Return video duration of the source filename (NOT the filter chain) in seconds, requires ffprobe. Fetch once and cache",
+"doc":"Return video duration of the source filename (NOT the filter chain) in seconds, requires ffprobe. Fetch once and cache.  notes This is the duration of the source video and NOT the duration of the filter chain. If you load(), this may be different duration depending on clip() or framerate() directives.",
 "func":1
 },
 {
 "ref":"vipy.video.VideoCategory.duration_in_frames_of_videofile",
 "url":38,
-"doc":"Return video duration of the source filename (NOT the filter chain) in frames, requires ffprobe",
+"doc":"Return video duration of the source video file (NOT the filter chain) in frames, requires ffprobe.  notes This is the duration of the source video and NOT the duration of the filter chain. If you load(), this may be different duration depending on clip() or framerate() directives.",
 "func":1
 },
 {
@@ -7402,7 +7420,7 @@ INDEX=[
 {
 "ref":"vipy.video.VideoCategory.load",
 "url":38,
-"doc":"Load a video using ffmpeg, applying the requested filter chain. - If verbose=True. then ffmpeg console output will be displayed. - If ignoreErrors=True, then all load errors are warned and skipped. Be sure to call isloaded() to confirm loading was successful. - shape tuple(height, width, channels): If provided, use this shape for reading and reshaping the byte stream from ffmpeg - knowing the final output shape can speed up loads by avoiding a preview() of the filter chain to get the frame size",
+"doc":"Load a video using ffmpeg, applying the requested filter chain. Args: verbose: [bool] if True. then ffmpeg console output will be displayed. ignoreErrors: [bool] if True, then all load errors are warned and skipped. Be sure to call isloaded() to confirm loading was successful. shape: [tuple (height, width, channels)] If provided, use this shape for reading and reshaping the byte stream from ffmpeg. This is useful for efficient loading in some scenarios. Knowing the final output shape can speed up loads by avoiding a preview() of the filter chain to get the frame size Returns: this video object, with the pixels loaded in self.array()  warning Loading long videos can result in out of memory conditions. Try to call clip() first to extract a video segment to load().",
 "func":1
 },
 {
@@ -7576,7 +7594,7 @@ INDEX=[
 {
 "ref":"vipy.video.VideoCategory.torch",
 "url":38,
-"doc":"Convert the loaded video of shape N HxWxC frames to an MxCxHxW torch tensor, forces a load().  Order of arguments is (startframe, endframe) or (startframe, startframe+length) or (random_startframe, random_starframe+takelength), then stride or take.  Follows numpy slicing rules. Optionally return the slice used if withslice=True  Returns float tensor in the range [0,1] following torchvision.transforms.ToTensor()  order can be ['nchw', 'nhwc', 'cnhw'] for batchsize=n, channels=c, height=h, width=w  boundary can be ['repeat', 'strict', 'cyclic']  withlabel=True, returns tuple (t, labellist), where labellist is a list of tuples of activity labels occurring at the corresponding frame in the tensor  withslice=Trye, returnss tuple (t, (startframe, endframe, stride  nonelabel=True, returns tuple (t, None) if withlabel=False",
+"doc":"Convert the loaded video of shape NxHxWxC frames to an MxCxHxW torch tensor/ Args: startframe: [int >= 0] The start frame of the loaded video to use for constructig the torch tensor endframe: [int >= 0] The end frame of the loaded video to use for constructing the torch tensor length: [int >= 0] The length of the torch tensor if endframe is not provided. stride: [int >= 1] The temporal stride in frames. This is the number of frames to skip. take: [int >= 0] The number of uniformly spaced frames to include in the tensor. boundary: ['repeat', 'cyclic'] The boundary handling for when the requested tensor slice goes beyond the end of the video order: ['nchw', 'nhwc', 'chwn', 'cnhw'] The axis ordering of the returned torch tensor N=number of frames (batchsize), C=channels, H=height, W=width verbose [bool]: Print out the slice used for contructing tensor withslice: [bool] Return a tuple (tensor, slice) that includes the slice used to construct the tensor. Useful for data provenance. scale: [float] An optional scale factor to apply to the tensor. Useful for converting [0,255] -> [0,1] withlabel: [bool] Return a tuple (tensor, labels) that includes the N framewise activity labels. nonelabel: [bool] returns tuple (t, None) if withlabel=False Returns Returns torch float tensor, analogous to torchvision.transforms.ToTensor() Return (tensor, slice) if withslice=True (withslice takes precedence) Returns (tensor, labellist) if withlabel=True  notes - This triggers a load() of the video - The precedence of arguments is (startframe, endframe) or (startframe, startframe+length), then stride and take. - Follows numpy slicing rules. Optionally return the slice used if withslice=True",
 "func":1
 },
 {
@@ -7773,7 +7791,7 @@ INDEX=[
 {
 "ref":"vipy.video.Scene.trackfilter",
 "url":38,
-"doc":"Apply lambda function f to each object and keep if filter is True. -strict=True: remove track assignment from activities also, may result in activities with no tracks",
+"doc":"Apply lambda function f to each object and keep if filter is True. Args: activitytrack: [bool] If trye, remove track assignment from activities also, may result in activities with no tracks f: [lambda] The lambda function to apply to each track t, and if f(t) returns True, then keep the track Returns: self, with tracks removed in-place",
 "func":1
 },
 {
@@ -8235,13 +8253,13 @@ INDEX=[
 {
 "ref":"vipy.video.Scene.duration_in_seconds_of_videofile",
 "url":38,
-"doc":"Return video duration of the source filename (NOT the filter chain) in seconds, requires ffprobe. Fetch once and cache",
+"doc":"Return video duration of the source filename (NOT the filter chain) in seconds, requires ffprobe. Fetch once and cache.  notes This is the duration of the source video and NOT the duration of the filter chain. If you load(), this may be different duration depending on clip() or framerate() directives.",
 "func":1
 },
 {
 "ref":"vipy.video.Scene.duration_in_frames_of_videofile",
 "url":38,
-"doc":"Return video duration of the source filename (NOT the filter chain) in frames, requires ffprobe",
+"doc":"Return video duration of the source video file (NOT the filter chain) in frames, requires ffprobe.  notes This is the duration of the source video and NOT the duration of the filter chain. If you load(), this may be different duration depending on clip() or framerate() directives.",
 "func":1
 },
 {
@@ -8439,7 +8457,7 @@ INDEX=[
 {
 "ref":"vipy.video.Scene.load",
 "url":38,
-"doc":"Load a video using ffmpeg, applying the requested filter chain. - If verbose=True. then ffmpeg console output will be displayed. - If ignoreErrors=True, then all load errors are warned and skipped. Be sure to call isloaded() to confirm loading was successful. - shape tuple(height, width, channels): If provided, use this shape for reading and reshaping the byte stream from ffmpeg - knowing the final output shape can speed up loads by avoiding a preview() of the filter chain to get the frame size",
+"doc":"Load a video using ffmpeg, applying the requested filter chain. Args: verbose: [bool] if True. then ffmpeg console output will be displayed. ignoreErrors: [bool] if True, then all load errors are warned and skipped. Be sure to call isloaded() to confirm loading was successful. shape: [tuple (height, width, channels)] If provided, use this shape for reading and reshaping the byte stream from ffmpeg. This is useful for efficient loading in some scenarios. Knowing the final output shape can speed up loads by avoiding a preview() of the filter chain to get the frame size Returns: this video object, with the pixels loaded in self.array()  warning Loading long videos can result in out of memory conditions. Try to call clip() first to extract a video segment to load().",
 "func":1
 },
 {
@@ -8529,7 +8547,7 @@ INDEX=[
 {
 "ref":"vipy.video.Scene.torch",
 "url":38,
-"doc":"Convert the loaded video of shape N HxWxC frames to an MxCxHxW torch tensor, forces a load().  Order of arguments is (startframe, endframe) or (startframe, startframe+length) or (random_startframe, random_starframe+takelength), then stride or take.  Follows numpy slicing rules. Optionally return the slice used if withslice=True  Returns float tensor in the range [0,1] following torchvision.transforms.ToTensor()  order can be ['nchw', 'nhwc', 'cnhw'] for batchsize=n, channels=c, height=h, width=w  boundary can be ['repeat', 'strict', 'cyclic']  withlabel=True, returns tuple (t, labellist), where labellist is a list of tuples of activity labels occurring at the corresponding frame in the tensor  withslice=Trye, returnss tuple (t, (startframe, endframe, stride  nonelabel=True, returns tuple (t, None) if withlabel=False",
+"doc":"Convert the loaded video of shape NxHxWxC frames to an MxCxHxW torch tensor/ Args: startframe: [int >= 0] The start frame of the loaded video to use for constructig the torch tensor endframe: [int >= 0] The end frame of the loaded video to use for constructing the torch tensor length: [int >= 0] The length of the torch tensor if endframe is not provided. stride: [int >= 1] The temporal stride in frames. This is the number of frames to skip. take: [int >= 0] The number of uniformly spaced frames to include in the tensor. boundary: ['repeat', 'cyclic'] The boundary handling for when the requested tensor slice goes beyond the end of the video order: ['nchw', 'nhwc', 'chwn', 'cnhw'] The axis ordering of the returned torch tensor N=number of frames (batchsize), C=channels, H=height, W=width verbose [bool]: Print out the slice used for contructing tensor withslice: [bool] Return a tuple (tensor, slice) that includes the slice used to construct the tensor. Useful for data provenance. scale: [float] An optional scale factor to apply to the tensor. Useful for converting [0,255] -> [0,1] withlabel: [bool] Return a tuple (tensor, labels) that includes the N framewise activity labels. nonelabel: [bool] returns tuple (t, None) if withlabel=False Returns Returns torch float tensor, analogous to torchvision.transforms.ToTensor() Return (tensor, slice) if withslice=True (withslice takes precedence) Returns (tensor, labellist) if withlabel=True  notes - This triggers a load() of the video - The precedence of arguments is (startframe, endframe) or (startframe, startframe+length), then stride and take. - Follows numpy slicing rules. Optionally return the slice used if withslice=True",
 "func":1
 },
 {
