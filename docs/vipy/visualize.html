@@ -25,13 +25,13 @@
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/97f958b94b01ca8de04396434b8749fef2039109/vipy/visualize.py#L1-L303" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/518200996e33d153578a4c3a3b4db5e850d6f54c/vipy/visualize.py#L1-L341" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">import os
 import numpy as np
 import shutil
 from vipy.globals import print
-from vipy.util import remkdir, imlist, filetail, istuple, islist, isnumpy, filebase, temphtml
+from vipy.util import remkdir, imlist, filetail, istuple, islist, isnumpy, filebase, temphtml, isurl
 from vipy.image import Image
 from vipy.show import savefig
 from collections import defaultdict
@@ -46,20 +46,22 @@ import html
 def montage(imlist, imgheight, imgwidth, gridrows=None, gridcols=None, aspectratio=1, crop=False, skip=True, border=1, border_bgr=(128,128,128), do_flush=False, verbose=False):
     &#34;&#34;&#34;Create a montage image from the of provided list of vipy.image.Image objects.
 
-       Inputs:
-         * imlist: iterable of vipy.image.Image objects which is used to montage rowwise
-         * (imgheight, imgwidth):  the size of each individual image in the grid
-         * (gridrows, gridcols):  The number of images per row, and number of images per column.  This defines the montage shape.
-         * aspectratio.  This is an optional parameter which defines the shape of the montage as (gridcols/gridrows) without specifying the gridrows, gridcols input
-         * crop=[True|False]:  Whether the vipy.image.Image objects should call crop(), which will trigger a load
-         * skip=[True|False]:  Whether images should be skipped on failure to load(), useful for lazy downloading
-         * border:  a border of size in pixels surrounding each image in the grid
-         * border_bgr:  the border color in a bgr color tuple (b, g, r) in [0,255], uint8
-         * do_flush=[True|False]:  flush the loaded images as garbage collection for large montages
-         * verbose=[True|False]:  display optional verbose messages
+    Args:
+        imlist: [list, tuple] iterable of vipy.image.Image objects which is used to montage rowwise
+        imgheight: [int] The height of each individual image in the grid
+        imgwidth: [int] the width of each individual image in the grid
+        gridrows: [int]  The number of images per row, and number of images per column.  This defines the montage shape.
+        gridcols: [int]  The number of images per row, and number of images per column.  This defines the montage shape.
+        aspectratio: [float].  This is an optional parameter which defines the shape of the montage as (gridcols/gridrows) without specifying the gridrows, gridcols input
+        crop: [bool]  If true, the vipy.image.Image objects should call crop(), which will trigger a load
+        skip: [bool]  Whether images should be skipped on failure to load(), useful for lazy downloading
+        border: [int]  a border of size in pixels surrounding each image in the grid
+        border_bgr [tuple (r,g,b)]:  the border color in a bgr color tuple (b, g, r) in [0,255], uint8
+        do_flush: [bool]  flush the loaded images as garbage collection for large montages
+        verbose: [bool]  display optional verbose messages
 
-       Outputs:
-         * Return a vipy.image.Image montage which is of size (gridrows*(imgheight + 2*border), gridcols*(imgwidth+2*border))
+    Returns::
+        Return a vipy.image.Image montage which is of size (gridrows*(imgheight + 2*border), gridcols*(imgwidth+2*border))
     
     &#34;&#34;&#34;
 
@@ -123,7 +125,16 @@ def montage(imlist, imgheight, imgwidth, gridrows=None, gridcols=None, aspectrat
 
 
 def videomontage(vidlist, imgheight, imgwidth, gridrows=None, gridcols=None, aspectratio=1, crop=False, skip=True, border=1, border_bgr=(128,128,128), do_flush=False, verbose=True):
-    &#34;&#34;&#34;Generate a video montage for the provided videos by creating a image montage for every frame.  This loads every video into memory, so be careful with large montages!&#34;&#34;&#34;
+    &#34;&#34;&#34;Generate a video montage for the provided videos by creating a image montage for every frame.  
+
+    Args:
+        See the arguments for `vipy.visualize.montage`.
+
+    Returns:
+        An video file in outfile that shows each video tiled into a montage.  &lt;Like https://www.youtube.com/watch?v=HjNa7_T-Xkc&gt;
+
+    .. warning:: This loads every video into memory, so be careful with large montages!
+    &#34;&#34;&#34;
     assert len(vidlist) &gt; 0, &#34;Invalid input&#34;
     
     if verbose:
@@ -144,8 +155,18 @@ def videomontage(vidlist, imgheight, imgwidth, gridrows=None, gridcols=None, asp
 
 
 def urls(urllist, title=&#39;URL Visualization&#39;, imagewidth=1024, outfile=None, display=False):
-    &#34;&#34;&#34;Given a list of public image URLs, create a stand-alone HTML page to show them all&#34;&#34;&#34;
+    &#34;&#34;&#34;Given a list of public image URLs, create a stand-alone HTML page to show them all.
     
+    Args:
+        urllist: [list] A list of urls to display
+        title: [str] The title of the html file
+        imagewidth: [int] The size of the images in the page
+        outfile: [str] The path to the output html file
+        display: [bool] open the html file in the default system viewer when complete
+    
+    &#34;&#34;&#34;
+    assert all([isurl(url) for url in urls])
+
     # Create summary page to show precomputed images
     k_divid = 0    
     filename = outfile if outfile is not None else temphtml()
@@ -191,8 +212,21 @@ def urls(urllist, title=&#39;URL Visualization&#39;, imagewidth=1024, outfile=No
     
     
 def tohtml(imlist, imdict=None, title=&#39;Image Visualization&#39;, mindim=1024, outfile=None, display=False):
-    &#34;&#34;&#34;Given a list of vipy.image.Image objects, show the images along with the dictionary contents of imdict (one per image) in a single standalone HTML file&#34;&#34;&#34;
+    &#34;&#34;&#34;Given a list of vipy.image.Image objects, show the images along with the dictionary contents of imdict (one per image) in a single standalone HTML file
+    
+    Args:
+        imlist: [list `vipy.image.Image`] 
+        imdict: [list of dict] An optional list of dictionaries, such that each dictionary is visualized per image
+        title: [str] The title of the html file
+        imagewidth: [int] The size of the images in the page
+        outfile: [str] The path to the output html file
+        display: [bool] open the html file in the default system viewer when complete
 
+    Returns:
+        An html file in outfile that contains all the images as a standalone embedded file (no links or external files).
+    &#34;&#34;&#34;
+
+    assert all([isinstance(im, vipy.image.Image) for im in imlist])
     assert imdict is None or (len(imdict) == len(imlist) and isinstance(imdict[0], dict)), &#34;imdict must be one dictionary per image&#34;
         
     # Create summary page to show precomputed images
@@ -245,7 +279,11 @@ def tohtml(imlist, imdict=None, title=&#39;Image Visualization&#39;, mindim=1024
 
     
 def imagelist(list_of_image_files, outdir, title=&#39;Image Visualization&#39;, imagewidth=64):
-    &#34;&#34;&#34;Given a list of image filenames wth absolute paths, copy to outdir, and create an index.html file that visualizes each&#34;&#34;&#34;
+    &#34;&#34;&#34;Given a list of image filenames wth absolute paths, copy to outdir, and create an index.html file that visualizes each.    
+    &#34;&#34;&#34;
+
+    # FIXME: should this just call tohtml?
+
     k_divid = 0
 
     # Create summary page to show precomputed images
@@ -287,7 +325,7 @@ def imagelist(list_of_image_files, outdir, title=&#39;Image Visualization&#39;, 
 
 
 def imagetuplelist(list_of_tuples_of_image_files, outdir, title=&#39;Image Visualization&#39;, imagewidth=64):
-    &#34;&#34;&#34;Imageset but put tuples on same row&#34;&#34;&#34;
+    &#34;&#34;&#34;Imagelist but put tuples on same row&#34;&#34;&#34;
     k_divid = 0
 
     # Create summary page to show precomputed images
@@ -343,14 +381,18 @@ def imagetuplelist(list_of_tuples_of_image_files, outdir, title=&#39;Image Visua
 <span>def <span class="ident">imagelist</span></span>(<span>list_of_image_files, outdir, title='Image Visualization', imagewidth=64)</span>
 </code></dt>
 <dd>
-<div class="desc"><p>Given a list of image filenames wth absolute paths, copy to outdir, and create an index.html file that visualizes each</p></div>
+<div class="desc"><p>Given a list of image filenames wth absolute paths, copy to outdir, and create an index.html file that visualizes each.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/97f958b94b01ca8de04396434b8749fef2039109/vipy/visualize.py#L218-L257" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/518200996e33d153578a4c3a3b4db5e850d6f54c/vipy/visualize.py#L252-L295" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def imagelist(list_of_image_files, outdir, title=&#39;Image Visualization&#39;, imagewidth=64):
-    &#34;&#34;&#34;Given a list of image filenames wth absolute paths, copy to outdir, and create an index.html file that visualizes each&#34;&#34;&#34;
+    &#34;&#34;&#34;Given a list of image filenames wth absolute paths, copy to outdir, and create an index.html file that visualizes each.    
+    &#34;&#34;&#34;
+
+    # FIXME: should this just call tohtml?
+
     k_divid = 0
 
     # Create summary page to show precomputed images
@@ -395,14 +437,14 @@ def imagetuplelist(list_of_tuples_of_image_files, outdir, title=&#39;Image Visua
 <span>def <span class="ident">imagetuplelist</span></span>(<span>list_of_tuples_of_image_files, outdir, title='Image Visualization', imagewidth=64)</span>
 </code></dt>
 <dd>
-<div class="desc"><p>Imageset but put tuples on same row</p></div>
+<div class="desc"><p>Imagelist but put tuples on same row</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/97f958b94b01ca8de04396434b8749fef2039109/vipy/visualize.py#L260-L303" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/518200996e33d153578a4c3a3b4db5e850d6f54c/vipy/visualize.py#L298-L341" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def imagetuplelist(list_of_tuples_of_image_files, outdir, title=&#39;Image Visualization&#39;, imagewidth=64):
-    &#34;&#34;&#34;Imageset but put tuples on same row&#34;&#34;&#34;
+    &#34;&#34;&#34;Imagelist but put tuples on same row&#34;&#34;&#34;
     k_divid = 0
 
     # Create summary page to show precomputed images
@@ -452,55 +494,69 @@ def imagetuplelist(list_of_tuples_of_image_files, outdir, title=&#39;Image Visua
 </code></dt>
 <dd>
 <div class="desc"><p>Create a montage image from the of provided list of vipy.image.Image objects.</p>
-<h2 id="inputs">Inputs</h2>
-<ul>
-<li>imlist: iterable of vipy.image.Image objects which is used to montage rowwise</li>
-<li>(imgheight, imgwidth):
-the size of each individual image in the grid</li>
-<li>(gridrows, gridcols):
+<h2 id="args">Args</h2>
+<dl>
+<dt><strong><code>imlist</code></strong></dt>
+<dd>[list, tuple] iterable of vipy.image.Image objects which is used to montage rowwise</dd>
+<dt><strong><code>imgheight</code></strong></dt>
+<dd>[int] The height of each individual image in the grid</dd>
+<dt><strong><code>imgwidth</code></strong></dt>
+<dd>[int] the width of each individual image in the grid</dd>
+<dt><strong><code>gridrows</code></strong></dt>
+<dd>[int]
 The number of images per row, and number of images per column.
-This defines the montage shape.</li>
-<li>aspectratio.
-This is an optional parameter which defines the shape of the montage as (gridcols/gridrows) without specifying the gridrows, gridcols input</li>
-<li>crop=[True|False]:
-Whether the vipy.image.Image objects should call crop(), which will trigger a load</li>
-<li>skip=[True|False]:
-Whether images should be skipped on failure to load(), useful for lazy downloading</li>
-<li>border:
-a border of size in pixels surrounding each image in the grid</li>
-<li>border_bgr:
-the border color in a bgr color tuple (b, g, r) in [0,255], uint8</li>
-<li>do_flush=[True|False]:
-flush the loaded images as garbage collection for large montages</li>
-<li>verbose=[True|False]:
-display optional verbose messages</li>
-</ul>
-<h2 id="outputs">Outputs</h2>
-<ul>
-<li>Return a vipy.image.Image montage which is of size (gridrows<em>(imgheight + 2</em>border), gridcols<em>(imgwidth+2</em>border))</li>
-</ul></div>
+This defines the montage shape.</dd>
+<dt><strong><code>gridcols</code></strong></dt>
+<dd>[int]
+The number of images per row, and number of images per column.
+This defines the montage shape.</dd>
+<dt><strong><code>aspectratio</code></strong></dt>
+<dd>[float].
+This is an optional parameter which defines the shape of the montage as (gridcols/gridrows) without specifying the gridrows, gridcols input</dd>
+<dt><strong><code>crop</code></strong></dt>
+<dd>[bool]
+If true, the vipy.image.Image objects should call crop(), which will trigger a load</dd>
+<dt><strong><code>skip</code></strong></dt>
+<dd>[bool]
+Whether images should be skipped on failure to load(), useful for lazy downloading</dd>
+<dt><strong><code>border</code></strong></dt>
+<dd>[int]
+a border of size in pixels surrounding each image in the grid</dd>
+<dt>border_bgr [tuple (r,g,b)]:
+the border color in a bgr color tuple (b, g, r) in [0,255], uint8</dt>
+<dt><strong><code>do_flush</code></strong></dt>
+<dd>[bool]
+flush the loaded images as garbage collection for large montages</dd>
+<dt><strong><code>verbose</code></strong></dt>
+<dd>[bool]
+display optional verbose messages</dd>
+</dl>
+<p>Returns::
+Return a vipy.image.Image montage which is of size (gridrows<em>(imgheight + 2</em>border), gridcols<em>(imgwidth+2</em>border))</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/97f958b94b01ca8de04396434b8749fef2039109/vipy/visualize.py#L17-L93" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/518200996e33d153578a4c3a3b4db5e850d6f54c/vipy/visualize.py#L17-L95" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def montage(imlist, imgheight, imgwidth, gridrows=None, gridcols=None, aspectratio=1, crop=False, skip=True, border=1, border_bgr=(128,128,128), do_flush=False, verbose=False):
     &#34;&#34;&#34;Create a montage image from the of provided list of vipy.image.Image objects.
 
-       Inputs:
-         * imlist: iterable of vipy.image.Image objects which is used to montage rowwise
-         * (imgheight, imgwidth):  the size of each individual image in the grid
-         * (gridrows, gridcols):  The number of images per row, and number of images per column.  This defines the montage shape.
-         * aspectratio.  This is an optional parameter which defines the shape of the montage as (gridcols/gridrows) without specifying the gridrows, gridcols input
-         * crop=[True|False]:  Whether the vipy.image.Image objects should call crop(), which will trigger a load
-         * skip=[True|False]:  Whether images should be skipped on failure to load(), useful for lazy downloading
-         * border:  a border of size in pixels surrounding each image in the grid
-         * border_bgr:  the border color in a bgr color tuple (b, g, r) in [0,255], uint8
-         * do_flush=[True|False]:  flush the loaded images as garbage collection for large montages
-         * verbose=[True|False]:  display optional verbose messages
+    Args:
+        imlist: [list, tuple] iterable of vipy.image.Image objects which is used to montage rowwise
+        imgheight: [int] The height of each individual image in the grid
+        imgwidth: [int] the width of each individual image in the grid
+        gridrows: [int]  The number of images per row, and number of images per column.  This defines the montage shape.
+        gridcols: [int]  The number of images per row, and number of images per column.  This defines the montage shape.
+        aspectratio: [float].  This is an optional parameter which defines the shape of the montage as (gridcols/gridrows) without specifying the gridrows, gridcols input
+        crop: [bool]  If true, the vipy.image.Image objects should call crop(), which will trigger a load
+        skip: [bool]  Whether images should be skipped on failure to load(), useful for lazy downloading
+        border: [int]  a border of size in pixels surrounding each image in the grid
+        border_bgr [tuple (r,g,b)]:  the border color in a bgr color tuple (b, g, r) in [0,255], uint8
+        do_flush: [bool]  flush the loaded images as garbage collection for large montages
+        verbose: [bool]  display optional verbose messages
 
-       Outputs:
-         * Return a vipy.image.Image montage which is of size (gridrows*(imgheight + 2*border), gridcols*(imgwidth+2*border))
+    Returns::
+        Return a vipy.image.Image montage which is of size (gridrows*(imgheight + 2*border), gridcols*(imgwidth+2*border))
     
     &#34;&#34;&#34;
 
@@ -567,15 +623,45 @@ display optional verbose messages</li>
 <span>def <span class="ident">tohtml</span></span>(<span>imlist, imdict=None, title='Image Visualization', mindim=1024, outfile=None, display=False)</span>
 </code></dt>
 <dd>
-<div class="desc"><p>Given a list of vipy.image.Image objects, show the images along with the dictionary contents of imdict (one per image) in a single standalone HTML file</p></div>
+<div class="desc"><p>Given a list of vipy.image.Image objects, show the images along with the dictionary contents of imdict (one per image) in a single standalone HTML file</p>
+<h2 id="args">Args</h2>
+<dl>
+<dt><strong><code>imlist</code></strong></dt>
+<dd>[list <code>vipy.image.Image</code>] </dd>
+<dt><strong><code>imdict</code></strong></dt>
+<dd>[list of dict] An optional list of dictionaries, such that each dictionary is visualized per image</dd>
+<dt><strong><code>title</code></strong></dt>
+<dd>[str] The title of the html file</dd>
+<dt><strong><code>imagewidth</code></strong></dt>
+<dd>[int] The size of the images in the page</dd>
+<dt><strong><code>outfile</code></strong></dt>
+<dd>[str] The path to the output html file</dd>
+<dt><strong><code>display</code></strong></dt>
+<dd>[bool] open the html file in the default system viewer when complete</dd>
+</dl>
+<h2 id="returns">Returns</h2>
+<p>An html file in outfile that contains all the images as a standalone embedded file (no links or external files).</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/97f958b94b01ca8de04396434b8749fef2039109/vipy/visualize.py#L164-L215" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/518200996e33d153578a4c3a3b4db5e850d6f54c/vipy/visualize.py#L185-L249" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def tohtml(imlist, imdict=None, title=&#39;Image Visualization&#39;, mindim=1024, outfile=None, display=False):
-    &#34;&#34;&#34;Given a list of vipy.image.Image objects, show the images along with the dictionary contents of imdict (one per image) in a single standalone HTML file&#34;&#34;&#34;
+    &#34;&#34;&#34;Given a list of vipy.image.Image objects, show the images along with the dictionary contents of imdict (one per image) in a single standalone HTML file
+    
+    Args:
+        imlist: [list `vipy.image.Image`] 
+        imdict: [list of dict] An optional list of dictionaries, such that each dictionary is visualized per image
+        title: [str] The title of the html file
+        imagewidth: [int] The size of the images in the page
+        outfile: [str] The path to the output html file
+        display: [bool] open the html file in the default system viewer when complete
 
+    Returns:
+        An html file in outfile that contains all the images as a standalone embedded file (no links or external files).
+    &#34;&#34;&#34;
+
+    assert all([isinstance(im, vipy.image.Image) for im in imlist])
     assert imdict is None or (len(imdict) == len(imlist) and isinstance(imdict[0], dict)), &#34;imdict must be one dictionary per image&#34;
         
     # Create summary page to show precomputed images
@@ -631,15 +717,38 @@ display optional verbose messages</li>
 <span>def <span class="ident">urls</span></span>(<span>urllist, title='URL Visualization', imagewidth=1024, outfile=None, display=False)</span>
 </code></dt>
 <dd>
-<div class="desc"><p>Given a list of public image URLs, create a stand-alone HTML page to show them all</p></div>
+<div class="desc"><p>Given a list of public image URLs, create a stand-alone HTML page to show them all.</p>
+<h2 id="args">Args</h2>
+<dl>
+<dt><strong><code>urllist</code></strong></dt>
+<dd>[list] A list of urls to display</dd>
+<dt><strong><code>title</code></strong></dt>
+<dd>[str] The title of the html file</dd>
+<dt><strong><code>imagewidth</code></strong></dt>
+<dd>[int] The size of the images in the page</dd>
+<dt><strong><code>outfile</code></strong></dt>
+<dd>[str] The path to the output html file</dd>
+<dt><strong><code>display</code></strong></dt>
+<dd>[bool] open the html file in the default system viewer when complete</dd>
+</dl></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/97f958b94b01ca8de04396434b8749fef2039109/vipy/visualize.py#L117-L160" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/518200996e33d153578a4c3a3b4db5e850d6f54c/vipy/visualize.py#L128-L181" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def urls(urllist, title=&#39;URL Visualization&#39;, imagewidth=1024, outfile=None, display=False):
-    &#34;&#34;&#34;Given a list of public image URLs, create a stand-alone HTML page to show them all&#34;&#34;&#34;
+    &#34;&#34;&#34;Given a list of public image URLs, create a stand-alone HTML page to show them all.
     
+    Args:
+        urllist: [list] A list of urls to display
+        title: [str] The title of the html file
+        imagewidth: [int] The size of the images in the page
+        outfile: [str] The path to the output html file
+        display: [bool] open the html file in the default system viewer when complete
+    
+    &#34;&#34;&#34;
+    assert all([isurl(url) for url in urls])
+
     # Create summary page to show precomputed images
     k_divid = 0    
     filename = outfile if outfile is not None else temphtml()
@@ -688,14 +797,31 @@ display optional verbose messages</li>
 </code></dt>
 <dd>
 <div class="desc"><p>Generate a video montage for the provided videos by creating a image montage for every frame.
-This loads every video into memory, so be careful with large montages!</p></div>
+</p>
+<h2 id="args">Args</h2>
+<p>See the arguments for <code><a title="vipy.visualize.montage" href="#vipy.visualize.montage">montage()</a></code>.</p>
+<h2 id="returns">Returns</h2>
+<p>An video file in outfile that shows each video tiled into a montage.
+<Like <a href="https://www.youtube.com/watch?v=HjNa7_T-Xkc">https://www.youtube.com/watch?v=HjNa7_T-Xkc</a>></p>
+<div class="admonition warning">
+<p class="admonition-title">Warning:&ensp;This loads every video into memory, so be careful with large montages!</p>
+</div></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/97f958b94b01ca8de04396434b8749fef2039109/vipy/visualize.py#L96-L114" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/518200996e33d153578a4c3a3b4db5e850d6f54c/vipy/visualize.py#L98-L125" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def videomontage(vidlist, imgheight, imgwidth, gridrows=None, gridcols=None, aspectratio=1, crop=False, skip=True, border=1, border_bgr=(128,128,128), do_flush=False, verbose=True):
-    &#34;&#34;&#34;Generate a video montage for the provided videos by creating a image montage for every frame.  This loads every video into memory, so be careful with large montages!&#34;&#34;&#34;
+    &#34;&#34;&#34;Generate a video montage for the provided videos by creating a image montage for every frame.  
+
+    Args:
+        See the arguments for `vipy.visualize.montage`.
+
+    Returns:
+        An video file in outfile that shows each video tiled into a montage.  &lt;Like https://www.youtube.com/watch?v=HjNa7_T-Xkc&gt;
+
+    .. warning:: This loads every video into memory, so be careful with large montages!
+    &#34;&#34;&#34;
     assert len(vidlist) &gt; 0, &#34;Invalid input&#34;
     
     if verbose:

@@ -25,7 +25,7 @@
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/97f958b94b01ca8de04396434b8749fef2039109/vipy/torch.py#L1-L113" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/518200996e33d153578a4c3a3b4db5e850d6f54c/vipy/torch.py#L1-L113" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">import vipy
 import numpy as np
@@ -157,7 +157,7 @@ class Foveation(LaplacianPyramid):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/97f958b94b01ca8de04396434b8749fef2039109/vipy/torch.py#L9-L17" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/518200996e33d153578a4c3a3b4db5e850d6f54c/vipy/torch.py#L9-L17" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def fromtorch(x):
     &#34;&#34;&#34;Convert a 1xCxHxW torch.FloatTensor to HxWxC np.float32 numpy array(), returns new Image() instance with an inferred colorspace based on channels and datatype&#34;&#34;&#34;
@@ -184,7 +184,7 @@ class Foveation(LaplacianPyramid):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/97f958b94b01ca8de04396434b8749fef2039109/vipy/torch.py#L81-L112" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/518200996e33d153578a4c3a3b4db5e850d6f54c/vipy/torch.py#L81-L112" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">class Foveation(LaplacianPyramid):
     def __init__(self, im, s=0.125, mode=&#39;log-circle&#39;):
@@ -233,7 +233,7 @@ class Foveation(LaplacianPyramid):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/97f958b94b01ca8de04396434b8749fef2039109/vipy/torch.py#L111-L112" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/518200996e33d153578a4c3a3b4db5e850d6f54c/vipy/torch.py#L111-L112" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def foveate(self, tx=0, ty=0, sx=1.0, sy=1.0):
     return self.__call__(tx=tx, ty=ty, sx=sx, sy=sy)</code></pre>
@@ -250,7 +250,7 @@ class Foveation(LaplacianPyramid):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/97f958b94b01ca8de04396434b8749fef2039109/vipy/torch.py#L20-L42" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/518200996e33d153578a4c3a3b4db5e850d6f54c/vipy/torch.py#L20-L42" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">class GaussianPyramid(object):
     def __init__(self, im=None, tensor=None):
@@ -286,7 +286,7 @@ class Foveation(LaplacianPyramid):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/97f958b94b01ca8de04396434b8749fef2039109/vipy/torch.py#L45-L78" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/518200996e33d153578a4c3a3b4db5e850d6f54c/vipy/torch.py#L45-L78" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">class LaplacianPyramid(object):
     def __init__(self, im):
@@ -337,7 +337,7 @@ class Foveation(LaplacianPyramid):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/97f958b94b01ca8de04396434b8749fef2039109/vipy/torch.py#L70-L78" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/518200996e33d153578a4c3a3b4db5e850d6f54c/vipy/torch.py#L70-L78" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def reconstruct(self):
     x = self._band[-1]
