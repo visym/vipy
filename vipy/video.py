@@ -1691,7 +1691,7 @@ class Video(object):
                 for (k,im) in enumerate(self.load() if self.isloaded() else self.stream()):
                     time.sleep(max(0, (1.0/self.framerate())*int(np.ceil((self.framerate()/fps))) - sw.since()))                                
                     im.show(figure=figure)
-                    if vipy.globals.user_hit_escape():
+                    if vipy.globals._user_hit_escape():
                         break                    
             vipy.show.close(figure)
             return self
@@ -3219,7 +3219,7 @@ class Scene(VideoCategory):
                                      timestamp=f_timestamp(k) if timestamp is not None else None,
                                      shortlabel=shortlabel)
                 
-                if vipy.globals.user_hit_escape():
+                if vipy.globals._user_hit_escape():
                     break
         vipy.show.close(figure)
         return self
