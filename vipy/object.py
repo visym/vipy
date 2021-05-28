@@ -364,7 +364,7 @@ class Track(object):
                 float(np.mean([(bb.height() - m[1])**2 for bb in self.keyboxes()]))) if m is not None else None
 
     def _set_framerate(self, fps):
-        """Override framerate conversion and just set the framerate attribute.  This should really only be set in the constructor.  Use with caution!"""
+        """Override framerate conversion and just set the framerate attribute.  This should really only be set by the user in the constructor.  Use with caution!"""
         self._framerate = fps
         return self
 

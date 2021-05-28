@@ -69,7 +69,7 @@ This provides control over where large datasets are cached on your local file sy
 
 ## Parallelization
 
-Vipy includes integration with (Dask Distributed)[https://distributed.dask.org/] for parallel processing of video and images.   This is useful for video preprocessing of datasets to export cached tensors for training.
+Vipy includes integration with [Dask Distributed](https://distributed.dask.org) for parallel processing of video and images.   This is useful for video preprocessing of datasets to export cached tensors for training.
 
 For example, to export torch tensors for a list of video objects using four parallel processes:
 
