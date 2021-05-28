@@ -219,15 +219,16 @@ def _test_scene():
     #print('[test_video.scene]: __iter__  PASSED')
     
     
-    vid = vipy.video.Scene(filename=mp4file, tracks=[vipy.object.Track(category='person', keyframes=[0,200], boxes=[BoundingBox(xmin=0,ymin=0,width=200,height=400), BoundingBox(xmin=0,ymin=0,width=400,height=100)]),
-                                                     vipy.object.Track(category='vehicle', keyframes=[0,200], boxes=[BoundingBox(xmin=100,ymin=200,width=300,height=400), BoundingBox(xmin=400,ymin=300,width=200,height=100)])])
+    vid = vipy.video.Scene(filename=mp4file, framerate=30, tracks=[vipy.object.Track(category='person', keyframes=[0,200], boxes=[BoundingBox(xmin=0,ymin=0,width=200,height=400), BoundingBox(xmin=0,ymin=0,width=400,height=100)]),
+                                                                   vipy.object.Track(category='vehicle', keyframes=[0,200], boxes=[BoundingBox(xmin=100,ymin=200,width=300,height=400), BoundingBox(xmin=400,ymin=300,width=200,height=100)])])
 
     # Loader
-    v = vid.clone().clip(0,10).load()
+    v = vid.clone().clip(10,20).load()
     assert len(v) == 10
     vc = v.clone(flushforward=True).clip(1,4).load()
     assert len(vc) == 3
-    print('[test_video.scene]:  trim: PASSED')
+    assert all([o1 == o2 for (o1, o2) in zip(vc.frame(1).objects(), vid.frame(12).objects())])
+    print('[test_video.scene]:  clip: PASSED')
 
     (h,w) = v.shape()
     v = vid.clone().clip(0,10).rot90ccw().load()

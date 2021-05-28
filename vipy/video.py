@@ -103,7 +103,7 @@ class Video(object):
         self._array = None
         self._colorspace = None
         self._ffmpeg = None
-        self._framerate = framerate
+        self._framerate = None
 
         self.attributes = attributes if attributes is not None else {}
         assert isinstance(self.attributes, dict), "Attributes must be a python dictionary"
