@@ -31,7 +31,7 @@ def montage(imlist, imgheight, imgwidth, gridrows=None, gridcols=None, aspectrat
         do_flush: [bool]  flush the loaded images as garbage collection for large montages
         verbose: [bool]  display optional verbose messages
 
-    Returns::
+    Returns:
         Return a vipy.image.Image montage which is of size (gridrows*(imgheight + 2*border), gridcols*(imgwidth+2*border))
     
     """
