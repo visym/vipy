@@ -25,7 +25,7 @@
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/518200996e33d153578a4c3a3b4db5e850d6f54c/vipy/visualize.py#L1-L341" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/21d0be6fd0953abb3d66dd745b88d5752d33be3d/vipy/visualize.py#L1-L349" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">import os
 import numpy as np
@@ -60,7 +60,7 @@ def montage(imlist, imgheight, imgwidth, gridrows=None, gridcols=None, aspectrat
         do_flush: [bool]  flush the loaded images as garbage collection for large montages
         verbose: [bool]  display optional verbose messages
 
-    Returns::
+    Returns:
         Return a vipy.image.Image montage which is of size (gridrows*(imgheight + 2*border), gridcols*(imgwidth+2*border))
     
     &#34;&#34;&#34;
@@ -124,34 +124,42 @@ def montage(imlist, imgheight, imgwidth, gridrows=None, gridcols=None, aspectrat
     return Image(array=img_montage, colorspace=imlist[0].colorspace())
 
 
-def videomontage(vidlist, imgheight, imgwidth, gridrows=None, gridcols=None, aspectratio=1, crop=False, skip=True, border=1, border_bgr=(128,128,128), do_flush=False, verbose=True):
+def videomontage(vidlist, imgheight, imgwidth, gridrows=None, gridcols=None, aspectratio=1, crop=False, skip=True, border=1, border_bgr=(128,128,128), do_flush=False, verbose=True, framerate=30.0, max_duration=None):
     &#34;&#34;&#34;Generate a video montage for the provided videos by creating a image montage for every frame.  
 
     Args:
-        See the arguments for `vipy.visualize.montage`.
+        `vipy.visualize.montage`:  See the args   
+        framerate: [float] the framerate of the montage video.  All of the input videos are resampled to this common frame rate
+        max_duration: [float] If not None, the maximum diuration of any element in the montage before it cycles
 
     Returns:
         An video file in outfile that shows each video tiled into a montage.  &lt;Like https://www.youtube.com/watch?v=HjNa7_T-Xkc&gt;
 
-    .. warning:: This loads every video into memory, so be careful with large montages!
+    .. warning:: 
+        - This loads every video into memory, so be careful with large montages!
+        - If max_duration is not set, then this can result in loading very long video elements in the montage, which will make for long videos
     &#34;&#34;&#34;
     assert len(vidlist) &gt; 0, &#34;Invalid input&#34;
-    
+    assert max_duration is None or max_duration &gt; 0
+    assert framerate &gt; 0
+
     if verbose:
         print(&#39;[vipy.visualize.videomontage]: Loading %d videos&#39; % len(vidlist))
-        
-    maxlength = max([len(v.load()) for v in vidlist])  # triggers load, make sure that the vidlist videos have a reasonably small frames
+
+    vidlist = [v.framerate(framerate) for v in vidlist]  # resample to a common framerate, this must occur prior to load
+    vidlist = [v.load() for v in vidlist]  # triggers load, make sure that the vidlist videos have a reasonably small frames
+    max_length = max([len(v) for v in vidlist]) if max_duration is None else int(round(max_duration * framerate))   
     
     if verbose:
-        print(&#39;[vipy.visualize.videomontage]: Maximum video length (frames) = %d&#39; % (maxlength))
+        print(&#39;[vipy.visualize.videomontage]: Maximum video length (frames) = %d&#39; % (max_length))
 
     # FIXME: use stream here:
     # with Video(outfile).stream(write=True) as s:
     #     s.write(montage(...))
     
     montagelist = [montage([v[k % len(v)].mindim(max(imgheight, imgwidth)).centercrop(imgheight, imgwidth) for v in vidlist], imgheight, imgwidth, gridrows, gridcols, aspectratio, crop, skip, border, border_bgr, do_flush, verbose=False)
-                   for k in range(0, maxlength)]
-    return vipy.video.Video(array=np.stack([im.array() for im in montagelist]), colorspace=&#39;rgb&#39;, framerate=vidlist[0].framerate())
+                   for k in range(0, max_length)]
+    return vipy.video.Video(array=np.stack([im.array() for im in montagelist]), colorspace=&#39;rgb&#39;, framerate=framerate)
 
 
 def urls(urllist, title=&#39;URL Visualization&#39;, imagewidth=1024, outfile=None, display=False):
@@ -385,7 +393,7 @@ def imagetuplelist(list_of_tuples_of_image_files, outdir, title=&#39;Image Visua
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/518200996e33d153578a4c3a3b4db5e850d6f54c/vipy/visualize.py#L252-L295" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/21d0be6fd0953abb3d66dd745b88d5752d33be3d/vipy/visualize.py#L260-L303" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def imagelist(list_of_image_files, outdir, title=&#39;Image Visualization&#39;, imagewidth=64):
     &#34;&#34;&#34;Given a list of image filenames wth absolute paths, copy to outdir, and create an index.html file that visualizes each.    
@@ -441,7 +449,7 @@ def imagetuplelist(list_of_tuples_of_image_files, outdir, title=&#39;Image Visua
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/518200996e33d153578a4c3a3b4db5e850d6f54c/vipy/visualize.py#L298-L341" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/21d0be6fd0953abb3d66dd745b88d5752d33be3d/vipy/visualize.py#L306-L349" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def imagetuplelist(list_of_tuples_of_image_files, outdir, title=&#39;Image Visualization&#39;, imagewidth=64):
     &#34;&#34;&#34;Imagelist but put tuples on same row&#34;&#34;&#34;
@@ -531,12 +539,12 @@ flush the loaded images as garbage collection for large montages</dd>
 <dd>[bool]
 display optional verbose messages</dd>
 </dl>
-<p>Returns::
-Return a vipy.image.Image montage which is of size (gridrows<em>(imgheight + 2</em>border), gridcols<em>(imgwidth+2</em>border))</p></div>
+<h2 id="returns">Returns</h2>
+<p>Return a vipy.image.Image montage which is of size (gridrows<em>(imgheight + 2</em>border), gridcols<em>(imgwidth+2</em>border))</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/518200996e33d153578a4c3a3b4db5e850d6f54c/vipy/visualize.py#L17-L95" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/21d0be6fd0953abb3d66dd745b88d5752d33be3d/vipy/visualize.py#L17-L95" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def montage(imlist, imgheight, imgwidth, gridrows=None, gridcols=None, aspectratio=1, crop=False, skip=True, border=1, border_bgr=(128,128,128), do_flush=False, verbose=False):
     &#34;&#34;&#34;Create a montage image from the of provided list of vipy.image.Image objects.
@@ -555,7 +563,7 @@ Return a vipy.image.Image montage which is of size (gridrows<em>(imgheight + 2</
         do_flush: [bool]  flush the loaded images as garbage collection for large montages
         verbose: [bool]  display optional verbose messages
 
-    Returns::
+    Returns:
         Return a vipy.image.Image montage which is of size (gridrows*(imgheight + 2*border), gridcols*(imgwidth+2*border))
     
     &#34;&#34;&#34;
@@ -644,7 +652,7 @@ Return a vipy.image.Image montage which is of size (gridrows<em>(imgheight + 2</
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/518200996e33d153578a4c3a3b4db5e850d6f54c/vipy/visualize.py#L185-L249" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/21d0be6fd0953abb3d66dd745b88d5752d33be3d/vipy/visualize.py#L193-L257" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def tohtml(imlist, imdict=None, title=&#39;Image Visualization&#39;, mindim=1024, outfile=None, display=False):
     &#34;&#34;&#34;Given a list of vipy.image.Image objects, show the images along with the dictionary contents of imdict (one per image) in a single standalone HTML file
@@ -734,7 +742,7 @@ Return a vipy.image.Image montage which is of size (gridrows<em>(imgheight + 2</
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/518200996e33d153578a4c3a3b4db5e850d6f54c/vipy/visualize.py#L128-L181" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/21d0be6fd0953abb3d66dd745b88d5752d33be3d/vipy/visualize.py#L136-L189" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def urls(urllist, title=&#39;URL Visualization&#39;, imagewidth=1024, outfile=None, display=False):
     &#34;&#34;&#34;Given a list of public image URLs, create a stand-alone HTML page to show them all.
@@ -793,52 +801,72 @@ Return a vipy.image.Image montage which is of size (gridrows<em>(imgheight + 2</
 </details>
 </dd>
 <dt id="vipy.visualize.videomontage"><code class="name flex">
-<span>def <span class="ident">videomontage</span></span>(<span>vidlist, imgheight, imgwidth, gridrows=None, gridcols=None, aspectratio=1, crop=False, skip=True, border=1, border_bgr=(128, 128, 128), do_flush=False, verbose=True)</span>
+<span>def <span class="ident">videomontage</span></span>(<span>vidlist, imgheight, imgwidth, gridrows=None, gridcols=None, aspectratio=1, crop=False, skip=True, border=1, border_bgr=(128, 128, 128), do_flush=False, verbose=True, framerate=30.0, max_duration=None)</span>
 </code></dt>
 <dd>
 <div class="desc"><p>Generate a video montage for the provided videos by creating a image montage for every frame.
 </p>
 <h2 id="args">Args</h2>
-<p>See the arguments for <code><a title="vipy.visualize.montage" href="#vipy.visualize.montage">montage()</a></code>.</p>
+<dl>
+<dt><code><a title="vipy.visualize.montage" href="#vipy.visualize.montage">montage()</a></code>:
+See the args</dt>
+<dt><strong><code>framerate</code></strong></dt>
+<dd>[float] the framerate of the montage video.
+All of the input videos are resampled to this common frame rate</dd>
+<dt><strong><code>max_duration</code></strong></dt>
+<dd>[float] If not None, the maximum diuration of any element in the montage before it cycles</dd>
+</dl>
 <h2 id="returns">Returns</h2>
 <p>An video file in outfile that shows each video tiled into a montage.
 <Like <a href="https://www.youtube.com/watch?v=HjNa7_T-Xkc">https://www.youtube.com/watch?v=HjNa7_T-Xkc</a>></p>
 <div class="admonition warning">
-<p class="admonition-title">Warning:&ensp;This loads every video into memory, so be careful with large montages!</p>
+<p class="admonition-title">Warning</p>
+<ul>
+<li>This loads every video into memory, so be careful with large montages!</li>
+<li>If max_duration is not set, then this can result in loading very long video elements in the montage, which will make for long videos</li>
+</ul>
 </div></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/518200996e33d153578a4c3a3b4db5e850d6f54c/vipy/visualize.py#L98-L125" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/21d0be6fd0953abb3d66dd745b88d5752d33be3d/vipy/visualize.py#L98-L133" class="git-link">Browse git</a>
 </summary>
-<pre><code class="python">def videomontage(vidlist, imgheight, imgwidth, gridrows=None, gridcols=None, aspectratio=1, crop=False, skip=True, border=1, border_bgr=(128,128,128), do_flush=False, verbose=True):
+<pre><code class="python">def videomontage(vidlist, imgheight, imgwidth, gridrows=None, gridcols=None, aspectratio=1, crop=False, skip=True, border=1, border_bgr=(128,128,128), do_flush=False, verbose=True, framerate=30.0, max_duration=None):
     &#34;&#34;&#34;Generate a video montage for the provided videos by creating a image montage for every frame.  
 
     Args:
-        See the arguments for `vipy.visualize.montage`.
+        `vipy.visualize.montage`:  See the args   
+        framerate: [float] the framerate of the montage video.  All of the input videos are resampled to this common frame rate
+        max_duration: [float] If not None, the maximum diuration of any element in the montage before it cycles
 
     Returns:
         An video file in outfile that shows each video tiled into a montage.  &lt;Like https://www.youtube.com/watch?v=HjNa7_T-Xkc&gt;
 
-    .. warning:: This loads every video into memory, so be careful with large montages!
+    .. warning:: 
+        - This loads every video into memory, so be careful with large montages!
+        - If max_duration is not set, then this can result in loading very long video elements in the montage, which will make for long videos
     &#34;&#34;&#34;
     assert len(vidlist) &gt; 0, &#34;Invalid input&#34;
-    
+    assert max_duration is None or max_duration &gt; 0
+    assert framerate &gt; 0
+
     if verbose:
         print(&#39;[vipy.visualize.videomontage]: Loading %d videos&#39; % len(vidlist))
-        
-    maxlength = max([len(v.load()) for v in vidlist])  # triggers load, make sure that the vidlist videos have a reasonably small frames
+
+    vidlist = [v.framerate(framerate) for v in vidlist]  # resample to a common framerate, this must occur prior to load
+    vidlist = [v.load() for v in vidlist]  # triggers load, make sure that the vidlist videos have a reasonably small frames
+    max_length = max([len(v) for v in vidlist]) if max_duration is None else int(round(max_duration * framerate))   
     
     if verbose:
-        print(&#39;[vipy.visualize.videomontage]: Maximum video length (frames) = %d&#39; % (maxlength))
+        print(&#39;[vipy.visualize.videomontage]: Maximum video length (frames) = %d&#39; % (max_length))
 
     # FIXME: use stream here:
     # with Video(outfile).stream(write=True) as s:
     #     s.write(montage(...))
     
     montagelist = [montage([v[k % len(v)].mindim(max(imgheight, imgwidth)).centercrop(imgheight, imgwidth) for v in vidlist], imgheight, imgwidth, gridrows, gridcols, aspectratio, crop, skip, border, border_bgr, do_flush, verbose=False)
-                   for k in range(0, maxlength)]
-    return vipy.video.Video(array=np.stack([im.array() for im in montagelist]), colorspace=&#39;rgb&#39;, framerate=vidlist[0].framerate())</code></pre>
+                   for k in range(0, max_length)]
+    return vipy.video.Video(array=np.stack([im.array() for im in montagelist]), colorspace=&#39;rgb&#39;, framerate=framerate)</code></pre>
 </details>
 </dd>
 </dl>

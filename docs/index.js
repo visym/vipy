@@ -53,7 +53,7 @@ INDEX=[
 {
 "ref":"vipy",
 "url":0,
-"doc":"VIPY is a python package for representation, transformation and visualization of annotated videos and images. Annotations are the ground truth provided by labelers (e.g. object bounding boxes, face identities, temporal activity clips), suitable for training computer vision systems. VIPY provides tools to easily edit videos and images so that the annotations are transformed along with the pixels. This enables a clean interface for transforming complex datasets for input to your computer vision training and testing pipeline. VIPY provides:  Representation of videos with labeled activities that can be resized, clipped, rotated, scaled and cropped  Representation of images with object bounding boxes that can be manipulated as easily as editing an image  Clean visualization of annotated images and videos  Lazy loading of images and videos suitable for distributed procesing (e.g. dask, spark)  Straightforward integration into machine learning toolchains (e.g. torch, numpy)  Fluent interface for chaining operations on videos and images  Dataset download, unpack and import (e.g. Charades, AVA, ActivityNet, Kinetics, Moments in Time)  Video and image web search tools with URL downloading and caching  Minimum dependencies for easy installation (e.g. AWS Lambda)  Design Goals Vipy was created with three design goals.   Simplicity . Annotated Videos and images should be as easy to manipulate as the pixels. We provide a simple fluent API that enables the transformation of media so that pixels are transformed along with the annotations. We provide a comprehensive unit test suite to validate this pipeline with continuous integration.   Portability . Vipy was designed with the goal of allowing it to be easily retargeted to new platforms. For example, deployment on a serverless architecture such as AWS lambda has restrictions on the allowable code that can be executed in layers. We designed Vipy with minimal dependencies on standard and mature machine learning tool chains (numpy, matplotlib, ffmpeg, pillow) to ensure that it can be ported to new computational environments.   Efficiency . Vipy is written in pure python with the goal of performing in place operations and avoiding copies of media whenever possible. This enables fast video processing by operating on videos as chains of transformations. The documentation describes when an object is changed in place vs. copied. Furthermore, loading of media is delayed until explicitly requested by the user (or the pixels are needed) to enable lazy loading for distributed processing.  Getting started See the [demos](https: github.com/visym/vipy/tree/master/demo) as a starting point.  Import Vipy was designed to define annotated videos and imagery as collections of python objects. The core objects for images are:  [vipy.image.Scene](image.html vipy.image.Scene)  [vipy.object.Detection](object.html vipy.object.Detection)  [vipy.geometry.BoundingBox](geometry.html vipy.geometry.BoundingBox) The core objects for videos:  [vipy.video.Scene](video.html vipy.video.Scene)  [vipy.object.Track](object.html vipy.object.Track)  [vipy.activity.Activity](activity.html vipy.activity.Activity) See the documentation for each object for how to construct them.  Customization You can set the following environment variables to customize the output of vipy   VIPY_CACHE ='/path/to/directory. This directory will contain all of the cached downloaded filenames when downloading URLs. For example, the following will download all media to '~/.vipy'.   os.environ['VIPY_CACHE'] = vipy.util.remkdir('~/.vipy') vipy.image.Image(url='https: upload.wikimedia.org/wikipedia/commons/thumb/2/23/Bubo_virginianus_06.jpg/1920px-Bubo_virginianus_06.jpg').download()   This will output an image object:      This provides control over where large datasets are cached on your local file system. By default, this will be cached to the system temp directory.   VIPY_AWS_ACCESS_KEY_ID ='MYKEY'. This is the [AWS key](https: docs.aws.amazon.com/general/latest/gr/aws-sec-cred-types.html) to download urls of the form \"s3: \".   VIPY_AWS_SECRET_ACCESS_KEY ='MYKEY'. This is the [AWS secret key](https: docs.aws.amazon.com/general/latest/gr/aws-sec-cred-types.html) to download urls of the form \"s3: \".  Parallelization Vipy includes integration with (Dask Distributed)[https: distributed.dask.org/] for parallel processing of video and images. This is useful for video preprocessing of datasets to export cached tensors for training. For example, to export torch tensors for a list of video objects using four parallel processes:   with vipy.globals.parallel(4): vipy.batch.Batch(my_list_of_vipy_videos).map(lambda v: v.torch( .result()   This supports integration with distributed schedulers for massively parallel operation.  Export All vipy objects can be imported and exported to JSON for interoperatability with other tool chains. This allows for introspection of the vipy object state providing transparency   vipy.video.RandomScene().json()    Contact  "
+"doc":"VIPY is a python package for representation, transformation and visualization of annotated videos and images. Annotations are the ground truth provided by labelers (e.g. object bounding boxes, face identities, temporal activity clips), suitable for training computer vision systems. VIPY provides tools to easily edit videos and images so that the annotations are transformed along with the pixels. This enables a clean interface for transforming complex datasets for input to your computer vision training and testing pipeline. VIPY provides:  Representation of videos with labeled activities that can be resized, clipped, rotated, scaled and cropped  Representation of images with object bounding boxes that can be manipulated as easily as editing an image  Clean visualization of annotated images and videos  Lazy loading of images and videos suitable for distributed procesing (e.g. dask, spark)  Straightforward integration into machine learning toolchains (e.g. torch, numpy)  Fluent interface for chaining operations on videos and images  Dataset download, unpack and import (e.g. Charades, AVA, ActivityNet, Kinetics, Moments in Time)  Video and image web search tools with URL downloading and caching  Minimum dependencies for easy installation (e.g. AWS Lambda)  Design Goals Vipy was created with three design goals.   Simplicity . Annotated Videos and images should be as easy to manipulate as the pixels. We provide a simple fluent API that enables the transformation of media so that pixels are transformed along with the annotations. We provide a comprehensive unit test suite to validate this pipeline with continuous integration.   Portability . Vipy was designed with the goal of allowing it to be easily retargeted to new platforms. For example, deployment on a serverless architecture such as AWS lambda has restrictions on the allowable code that can be executed in layers. We designed Vipy with minimal dependencies on standard and mature machine learning tool chains (numpy, matplotlib, ffmpeg, pillow) to ensure that it can be ported to new computational environments.   Efficiency . Vipy is written in pure python with the goal of performing in place operations and avoiding copies of media whenever possible. This enables fast video processing by operating on videos as chains of transformations. The documentation describes when an object is changed in place vs. copied. Furthermore, loading of media is delayed until explicitly requested by the user (or the pixels are needed) to enable lazy loading for distributed processing.  Getting started See the [demos](https: github.com/visym/vipy/tree/master/demo) as a starting point.  Import Vipy was designed to define annotated videos and imagery as collections of python objects. The core objects for images are:  [vipy.image.Scene](image.html vipy.image.Scene)  [vipy.object.Detection](object.html vipy.object.Detection)  [vipy.geometry.BoundingBox](geometry.html vipy.geometry.BoundingBox) The core objects for videos:  [vipy.video.Scene](video.html vipy.video.Scene)  [vipy.object.Track](object.html vipy.object.Track)  [vipy.activity.Activity](activity.html vipy.activity.Activity) See the documentation for each object for how to construct them.  Customization You can set the following environment variables to customize the output of vipy   VIPY_CACHE ='/path/to/directory. This directory will contain all of the cached downloaded filenames when downloading URLs. For example, the following will download all media to '~/.vipy'.   os.environ['VIPY_CACHE'] = vipy.util.remkdir('~/.vipy') vipy.image.Image(url='https: upload.wikimedia.org/wikipedia/commons/thumb/2/23/Bubo_virginianus_06.jpg/1920px-Bubo_virginianus_06.jpg').download()   This will output an image object:      This provides control over where large datasets are cached on your local file system. By default, this will be cached to the system temp directory.   VIPY_AWS_ACCESS_KEY_ID ='MYKEY'. This is the [AWS key](https: docs.aws.amazon.com/general/latest/gr/aws-sec-cred-types.html) to download urls of the form \"s3: \".   VIPY_AWS_SECRET_ACCESS_KEY ='MYKEY'. This is the [AWS secret key](https: docs.aws.amazon.com/general/latest/gr/aws-sec-cred-types.html) to download urls of the form \"s3: \".  Parallelization Vipy includes integration with [Dask Distributed](https: distributed.dask.org) for parallel processing of video and images. This is useful for video preprocessing of datasets to export cached tensors for training. For example, to export torch tensors for a list of video objects using four parallel processes:   with vipy.globals.parallel(4): vipy.batch.Batch(my_list_of_vipy_videos).map(lambda v: v.torch( .result()   This supports integration with distributed schedulers for massively parallel operation.  Export All vipy objects can be imported and exported to JSON for interoperatability with other tool chains. This allows for introspection of the vipy object state providing transparency   vipy.video.RandomScene().json()    Contact  "
 },
 {
 "ref":"vipy.metrics",
@@ -4108,7 +4108,7 @@ INDEX=[
 {
 "ref":"vipy.activity.Activity.category",
 "url":36,
-"doc":"",
+"doc":"Change the label (and shortlabel) to the new label (and shortlabel)",
 "func":1
 },
 {
@@ -4559,6 +4559,12 @@ INDEX=[
 "func":1
 },
 {
+"ref":"vipy.flow.Video.framerate_of_videofile",
+"url":38,
+"doc":"Return video framerate in frames per second of the source video file (NOT the filter chain), requires ffprobe.",
+"func":1
+},
+{
 "ref":"vipy.flow.Video.probe",
 "url":38,
 "doc":"Run ffprobe on the filename and return the result as a dictionary",
@@ -4613,9 +4619,15 @@ INDEX=[
 "func":1
 },
 {
+"ref":"vipy.flow.Video.isloadable",
+"url":38,
+"doc":"Return True if the video can be loaded successfully. This is useful for filtering bad videos or filtering videos that cannot be loaded using your current FFMPEG version. Args: flush: [bool] If true, flush the video after it loads. This will clear the video pixel buffer Returns: True if load() can be called without FFMPEG exception. If flush=False, then self will contain the loaded video, which is helpful to avoid load() twice in some conditions  warning This requires loading and flushing the video. This is an expensive operation when performed on many videos, use with caution!",
+"func":1
+},
+{
 "ref":"vipy.flow.Video.canload",
 "url":38,
-"doc":"Return True if the video can be loaded successfully. This is useful for filtering bad videos or filtering videos that cannot be loaded using your current FFMPEG version.",
+"doc":"Return True if the video can be previewed at frame=k successfully. This is useful for filtering bad videos or filtering videos that cannot be loaded using your current FFMPEG version.  notes This will only try to preview a single frame. This will not check if the entire video is loadable. Use  vipy.video.Video.isloadable in this case",
 "func":1
 },
 {
@@ -4766,6 +4778,12 @@ INDEX=[
 "ref":"vipy.flow.Video.clip",
 "url":38,
 "doc":"Load a video clip betweeen start and end frames",
+"func":1
+},
+{
+"ref":"vipy.flow.Video.cliprange",
+"url":38,
+"doc":"Return the planned clip (startframe, endframe) range",
 "func":1
 },
 {
@@ -5074,13 +5092,13 @@ INDEX=[
 {
 "ref":"vipy.visualize.montage",
 "url":40,
-"doc":"Create a montage image from the of provided list of vipy.image.Image objects. Args: imlist: [list, tuple] iterable of vipy.image.Image objects which is used to montage rowwise imgheight: [int] The height of each individual image in the grid imgwidth: [int] the width of each individual image in the grid gridrows: [int] The number of images per row, and number of images per column. This defines the montage shape. gridcols: [int] The number of images per row, and number of images per column. This defines the montage shape. aspectratio: [float]. This is an optional parameter which defines the shape of the montage as (gridcols/gridrows) without specifying the gridrows, gridcols input crop: [bool] If true, the vipy.image.Image objects should call crop(), which will trigger a load skip: [bool] Whether images should be skipped on failure to load(), useful for lazy downloading border: [int] a border of size in pixels surrounding each image in the grid border_bgr [tuple (r,g,b)]: the border color in a bgr color tuple (b, g, r) in [0,255], uint8 do_flush: [bool] flush the loaded images as garbage collection for large montages verbose: [bool] display optional verbose messages Returns Return a vipy.image.Image montage which is of size (gridrows (imgheight + 2 border), gridcols (imgwidth+2 border ",
+"doc":"Create a montage image from the of provided list of vipy.image.Image objects. Args: imlist: [list, tuple] iterable of vipy.image.Image objects which is used to montage rowwise imgheight: [int] The height of each individual image in the grid imgwidth: [int] the width of each individual image in the grid gridrows: [int] The number of images per row, and number of images per column. This defines the montage shape. gridcols: [int] The number of images per row, and number of images per column. This defines the montage shape. aspectratio: [float]. This is an optional parameter which defines the shape of the montage as (gridcols/gridrows) without specifying the gridrows, gridcols input crop: [bool] If true, the vipy.image.Image objects should call crop(), which will trigger a load skip: [bool] Whether images should be skipped on failure to load(), useful for lazy downloading border: [int] a border of size in pixels surrounding each image in the grid border_bgr [tuple (r,g,b)]: the border color in a bgr color tuple (b, g, r) in [0,255], uint8 do_flush: [bool] flush the loaded images as garbage collection for large montages verbose: [bool] display optional verbose messages Returns: Return a vipy.image.Image montage which is of size (gridrows (imgheight + 2 border), gridcols (imgwidth+2 border ",
 "func":1
 },
 {
 "ref":"vipy.visualize.videomontage",
 "url":40,
-"doc":"Generate a video montage for the provided videos by creating a image montage for every frame. Args: See the arguments for  vipy.visualize.montage . Returns: An video file in outfile that shows each video tiled into a montage.   warning This loads every video into memory, so be careful with large montages!",
+"doc":"Generate a video montage for the provided videos by creating a image montage for every frame. Args:  vipy.visualize.montage : See the args framerate: [float] the framerate of the montage video. All of the input videos are resampled to this common frame rate max_duration: [float] If not None, the maximum diuration of any element in the montage before it cycles Returns: An video file in outfile that shows each video tiled into a montage.   warning - This loads every video into memory, so be careful with large montages! - If max_duration is not set, then this can result in loading very long video elements in the montage, which will make for long videos",
 "func":1
 },
 {
@@ -6609,6 +6627,12 @@ INDEX=[
 "func":1
 },
 {
+"ref":"vipy.video.Video.framerate_of_videofile",
+"url":38,
+"doc":"Return video framerate in frames per second of the source video file (NOT the filter chain), requires ffprobe.",
+"func":1
+},
+{
 "ref":"vipy.video.Video.probe",
 "url":38,
 "doc":"Run ffprobe on the filename and return the result as a dictionary",
@@ -6669,9 +6693,15 @@ INDEX=[
 "func":1
 },
 {
+"ref":"vipy.video.Video.isloadable",
+"url":38,
+"doc":"Return True if the video can be loaded successfully. This is useful for filtering bad videos or filtering videos that cannot be loaded using your current FFMPEG version. Args: flush: [bool] If true, flush the video after it loads. This will clear the video pixel buffer Returns: True if load() can be called without FFMPEG exception. If flush=False, then self will contain the loaded video, which is helpful to avoid load() twice in some conditions  warning This requires loading and flushing the video. This is an expensive operation when performed on many videos, use with caution!",
+"func":1
+},
+{
 "ref":"vipy.video.Video.canload",
 "url":38,
-"doc":"Return True if the video can be loaded successfully. This is useful for filtering bad videos or filtering videos that cannot be loaded using your current FFMPEG version.",
+"doc":"Return True if the video can be previewed at frame=k successfully. This is useful for filtering bad videos or filtering videos that cannot be loaded using your current FFMPEG version.  notes This will only try to preview a single frame. This will not check if the entire video is loadable. Use  vipy.video.Video.isloadable in this case",
 "func":1
 },
 {
@@ -6852,6 +6882,12 @@ INDEX=[
 "ref":"vipy.video.Video.clip",
 "url":38,
 "doc":"Load a video clip betweeen start and end frames",
+"func":1
+},
+{
+"ref":"vipy.video.Video.cliprange",
+"url":38,
+"doc":"Return the planned clip (startframe, endframe) range",
 "func":1
 },
 {
@@ -7214,6 +7250,12 @@ INDEX=[
 "func":1
 },
 {
+"ref":"vipy.video.VideoCategory.framerate_of_videofile",
+"url":38,
+"doc":"Return video framerate in frames per second of the source video file (NOT the filter chain), requires ffprobe.",
+"func":1
+},
+{
 "ref":"vipy.video.VideoCategory.probe",
 "url":38,
 "doc":"Run ffprobe on the filename and return the result as a dictionary",
@@ -7268,9 +7310,15 @@ INDEX=[
 "func":1
 },
 {
+"ref":"vipy.video.VideoCategory.isloadable",
+"url":38,
+"doc":"Return True if the video can be loaded successfully. This is useful for filtering bad videos or filtering videos that cannot be loaded using your current FFMPEG version. Args: flush: [bool] If true, flush the video after it loads. This will clear the video pixel buffer Returns: True if load() can be called without FFMPEG exception. If flush=False, then self will contain the loaded video, which is helpful to avoid load() twice in some conditions  warning This requires loading and flushing the video. This is an expensive operation when performed on many videos, use with caution!",
+"func":1
+},
+{
 "ref":"vipy.video.VideoCategory.canload",
 "url":38,
-"doc":"Return True if the video can be loaded successfully. This is useful for filtering bad videos or filtering videos that cannot be loaded using your current FFMPEG version.",
+"doc":"Return True if the video can be previewed at frame=k successfully. This is useful for filtering bad videos or filtering videos that cannot be loaded using your current FFMPEG version.  notes This will only try to preview a single frame. This will not check if the entire video is loadable. Use  vipy.video.Video.isloadable in this case",
 "func":1
 },
 {
@@ -7433,6 +7481,12 @@ INDEX=[
 "ref":"vipy.video.VideoCategory.clip",
 "url":38,
 "doc":"Load a video clip betweeen start and end frames",
+"func":1
+},
+{
+"ref":"vipy.video.VideoCategory.cliprange",
+"url":38,
+"doc":"Return the planned clip (startframe, endframe) range",
 "func":1
 },
 {
@@ -7665,7 +7719,7 @@ INDEX=[
 {
 "ref":"vipy.video.Scene.frame",
 "url":38,
-"doc":"Return vipy.image.Scene object at frame k",
+"doc":"Return  vipy.image.Scene object at frame k -The attributes of each of the  vipy.image.Scene.objects in the scene contains helpful metadata for the provenance of the detection, including: - 'trackid' of the track this detection - 'activityid' associated with this detection - 'jointlabel' of this detection, used for visualization - 'noun verb' of this detection, used for visualization Args: k: [int >=- 0] The frame index requested. This is relative to the current frame rate of the video. img: [numpy] An optional image to be used for this frame. This is useful to construct frames efficiently for videos if the pixel buffer is available from a stream rather than a preview. Return: A  vipy.image.Scene object for frame k containing all objects in this frame  notes -Modifying this frame will not affect the source video",
 "func":1
 },
 {
@@ -7785,7 +7839,7 @@ INDEX=[
 {
 "ref":"vipy.video.Scene.activityfilter",
 "url":38,
-"doc":"Apply boolean lambda function f to each activity and keep activity if function is true, remove activity if function is false Usage: Filter out all activities longer than 128 frames vid = vid.activityfilter(lambda a: len(a)<128) Usage: Filter out activities with category in set vid = vid.activityfilter(lambda a: a.category() in set(['category1', 'category2'] ",
+"doc":"Apply boolean lambda function f to each activity and keep activity if function is true, remove activity if function is false Filter out all activities longer than 128 frames >>> vid = vid.activityfilter(lambda a: len(a) >> vid = vid.activityfilter(lambda a: a.category() in set(['category1', 'category2'] Args: f: [lambda] a lambda function that takes an activity and returns a boolean Returns: This video with the activities f(a) False removed.",
 "func":1
 },
 {
@@ -7953,7 +8007,7 @@ INDEX=[
 {
 "ref":"vipy.video.Scene.activityclip",
 "url":38,
-"doc":"Return a list of vipy.video.Scene() each clipped to be temporally centered on a single activity, with an optional padframes before and after. Args: padframes: [int] for symmetric padding same before and after padframes: [tuple] (int, int) for asymmetric padding before and after padframes: [list[tuples [(int, int),  .] for activity specific asymmetric padding multilabel: [bool] include overlapping multilabel secondary activities in each activityclip Returns: A list of  vipy.video.Scene each cloned from the source video and clipped on one activity in the scene  notes - The Scene() category is updated to be the activity, and only the objects participating in the activity are included. - Activities are returned ordered in the temporal order they appear in the video. - The returned vipy.video.Scene() objects for each activityclip are clones of the video, with the video buffer flushed. - Each activityclip() is associated with each activity in the scene, and includes all other secondary activities that the objects in the primary activity also perform (if multilabel=True). See activityclip().labels(). - Calling activityclip() on activityclip(multilabel=True) will duplicate activities, due to the overlapping secondary activities being included in each clip with an overlap. Be careful.",
+"doc":"Return a list of  vipy.video.Scene objects each clipped to be temporally centered on a single activity, with an optional padframes before and after. Args: padframes: [int] for symmetric padding same before and after padframes: [tuple] (int, int) for asymmetric padding before and after padframes: [list[tuples [(int, int),  .] for activity specific asymmetric padding multilabel: [bool] include overlapping multilabel secondary activities in each activityclip Returns: A list of  vipy.video.Scene each cloned from the source video and clipped on one activity in the scene  notes - The Scene() category is updated to be the activity category of the clip, and only the objects participating in the activity are included. - Clips are returned ordered in the temporal order they appear in the video. - The returned vipy.video.Scene() objects for each activityclip are clones of the video, with the video buffer flushed. - Each activityclip() is associated with each activity in the scene, and includes all other secondary activities that the objects in the primary activity also perform (if multilabel=True). See activityclip().labels(). - Calling activityclip() on activityclip(multilabel=True) will duplicate activities, due to the overlapping secondary activities being included in each clip with an overlap. Be careful!",
 "func":1
 },
 {
@@ -8263,6 +8317,12 @@ INDEX=[
 "func":1
 },
 {
+"ref":"vipy.video.Scene.framerate_of_videofile",
+"url":38,
+"doc":"Return video framerate in frames per second of the source video file (NOT the filter chain), requires ffprobe.",
+"func":1
+},
+{
 "ref":"vipy.video.Scene.probe",
 "url":38,
 "doc":"Run ffprobe on the filename and return the result as a dictionary",
@@ -8311,9 +8371,15 @@ INDEX=[
 "func":1
 },
 {
+"ref":"vipy.video.Scene.isloadable",
+"url":38,
+"doc":"Return True if the video can be loaded successfully. This is useful for filtering bad videos or filtering videos that cannot be loaded using your current FFMPEG version. Args: flush: [bool] If true, flush the video after it loads. This will clear the video pixel buffer Returns: True if load() can be called without FFMPEG exception. If flush=False, then self will contain the loaded video, which is helpful to avoid load() twice in some conditions  warning This requires loading and flushing the video. This is an expensive operation when performed on many videos, use with caution!",
+"func":1
+},
+{
 "ref":"vipy.video.Scene.canload",
 "url":38,
-"doc":"Return True if the video can be loaded successfully. This is useful for filtering bad videos or filtering videos that cannot be loaded using your current FFMPEG version.",
+"doc":"Return True if the video can be previewed at frame=k successfully. This is useful for filtering bad videos or filtering videos that cannot be loaded using your current FFMPEG version.  notes This will only try to preview a single frame. This will not check if the entire video is loadable. Use  vipy.video.Video.isloadable in this case",
 "func":1
 },
 {
@@ -8458,6 +8524,12 @@ INDEX=[
 "ref":"vipy.video.Scene.load",
 "url":38,
 "doc":"Load a video using ffmpeg, applying the requested filter chain. Args: verbose: [bool] if True. then ffmpeg console output will be displayed. ignoreErrors: [bool] if True, then all load errors are warned and skipped. Be sure to call isloaded() to confirm loading was successful. shape: [tuple (height, width, channels)] If provided, use this shape for reading and reshaping the byte stream from ffmpeg. This is useful for efficient loading in some scenarios. Knowing the final output shape can speed up loads by avoiding a preview() of the filter chain to get the frame size Returns: this video object, with the pixels loaded in self.array()  warning Loading long videos can result in out of memory conditions. Try to call clip() first to extract a video segment to load().",
+"func":1
+},
+{
+"ref":"vipy.video.Scene.cliprange",
+"url":38,
+"doc":"Return the planned clip (startframe, endframe) range",
 "func":1
 },
 {
