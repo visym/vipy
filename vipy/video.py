@@ -1202,7 +1202,17 @@ class Video(object):
             raise
 
     def thumbnail(self, outfile=None, frame=0):
-        """Return annotated frame=k of video, save annotation visualization to provided outfile"""
+        """Return annotated frame=k of video, save annotation visualization to provided outfile.
+
+        This is functionally equivalent to `vipy.video.Video.frame` with an additional outfile argument to easily save an annotated thumbnail image.
+
+        Args:
+            outfile: [str] an optional outfile to save the annotated frame 
+            frame: [int >= 0] The frame to output the thumbnail
+
+        Returns:
+            A `vipy.image.Image` object for frame k.  
+        """
         im = self.frame(frame, img=self.preview(frame).array())
         return im.savefig(outfile) if outfile is not None else im
     
@@ -1316,8 +1326,20 @@ class Video(object):
         return self
 
     def cliprange(self):
-        """Return the planned clip (startframe, endframe) range"""
-        return (self._startframe, self._endframe)
+        """Return the planned clip (startframe, endframe) range.
+        
+        This is useful for introspection of the planned clip() before load(), such as for data augmentation purposes without triggering a load. 
+        
+        Returns:
+            (startframe, endframe) of the video() such that after load(), the pixel buffer will contain frame=0 equivalent to startframe in the source video, and frame=endframe-startframe-1 equivalent to endframe in the source video.
+            (0, None) If a video does not have a clip() (e.g. clip() was never called, the filter chain does not include a 'trim')
+
+        .. notes:: The endframe can be retrieved (inefficiently) using:
+
+        >>> int(round(self.duration_in_frames_of_videofile() * (self.framerate() / self.framerate_of_videofile())))
+
+        """
+        return (self._startframe if self._startframe is not None else 0, self._endframe)
 
     #def cliptime(self, startsec, endsec):
     #    """Load a video clip betweeen start seconds and end seconds, should be initialized by constructor, which will work but will not set __repr__ correctly"""
@@ -1842,7 +1864,7 @@ class Video(object):
         elif shallow:
             v = copy.copy(self)  # shallow copy
             v._ffmpeg = copy.deepcopy(self._ffmpeg)  # except for ffmpeg object
-            v.attributes = {k:v for (k,v) in self.attributes}  # shallow copy of keys
+            v.attributes = {k:v for (k,v) in self.attributes.items()}  # shallow copy of keys
             v._array = np.asarray(self._array) if self._array is not None else None  # shared pixels
         elif sharedarray:
             array = self._array

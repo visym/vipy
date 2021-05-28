@@ -148,6 +148,7 @@ def _test_video():
     
     # Clone
     v = vipy.video.RandomVideo(64,64,64)
+    v.attributes['clonetest'] = True
     vc = v.clone()
     assert np.allclose(vc._array, v._array)    
     vc._array = 0
@@ -158,6 +159,19 @@ def _test_video():
     assert vc._array is not None and v._array is None
     vc = v.clone(flush=True)
     assert vc._array is None and v._array is None
+    vc = v.clone(shallow=True)
+    vc.attributes['clonetest'] = False
+    assert vc.attributes['clonetest'] != v.attributes['clonetest']
+
+    v = vipy.video.RandomScene()
+    vc = v.clone()
+    vc.activitymap(lambda a: a.category('clonetest'))
+    assert all([a.category() != ac.category() for (a,ac) in zip(v.activitylist(), vc.activitylist())])
+
+    vc = v.clone(shallow=True)
+    vc.activitymap(lambda a: a.category('clonetest'))
+    assert all([a.category() == ac.category() for (a,ac) in zip(v.activitylist(), vc.activitylist())])
+    
     print('[test_video.scene]: clone()  PASSED')        
 
     # JSON

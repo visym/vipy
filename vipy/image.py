@@ -1282,6 +1282,38 @@ class Image(object):
         self.__class__ = vipy.image.Image
         return self
 
+    def perceptualhash(self, bits=128, asbinary=False, asbytes=False):
+        """Perceptual differential hash function
+
+        This function converts to greyscale, resizes with linear interpolation to small image based on desired bit encoding, compute vertical and horizontal gradient signs.
+        
+        Args:
+            bits: [int]  longer hashes have lower TAR (true accept rate, some near dupes are missed), but lower FAR (false accept rate), shorter hashes have higher TAR (fewer near-dupes are missed) but higher FAR (more non-dupes are declared as dupes).
+            asbinary: [bool] If true, return a binary array
+            asbytes: [bool] if true return a byte array
+
+        Returns:
+            A hash string encoding the perceptual hash such that `vipy.image.Image._perceptualhash_distance` can be used to compute a hash distance
+            asbytes: a bytes array
+            asbinary: a numpy binary array            
+
+        .. notes::
+            - Can be used for near duplicate detection by unpacking the returned hex string to binary and computing hamming distance, or performing hamming based nearest neighbor indexing.  Equivalently, `vipy.image.Image.perceptualhash_distance`.
+            - The default packed hex output can be converted to binary as: np.unpackbits(bytearray().fromhex(h)
+        """        
+        allowablebits = [2*k*k for k in range(2, 17)]
+        assert bits in allowablebits, "Bits must be in %s" % str(allowablebits)
+        sq = int(np.ceil(np.sqrt(bits/2.0)))
+        im = self.clone()
+        b = (np.dstack(np.gradient(im.resize(cols=sq+1, rows=sq+1).greyscale().numpy()))[0:-1, 0:-1] > 0).flatten()
+        return bytes(np.packbits(b)).hex() if not (asbytes or asbinary) else bytes(np.packbits(b)) if asbytes else b
+
+    @staticmethod
+    def perceptualhash_distance(h1, h2):
+        """Hamming distance between two perceptual hashes"""
+        assert len(h1) == len(h2)
+        return np.sum(np.unpackbits(bytearray().fromhex(h1)) != np.unpackbits(bytearray().fromhex(h2)))
+    
     
 class ImageCategory(Image):
     """vipy ImageCategory class
@@ -1735,36 +1767,47 @@ class Scene(ImageCategory):
         img[self.rectangular_mask() > 0] = self.meanchannel()  # in-place update
         return self
 
-    def fghash(self, bits=8, asbinary=False, asbytes=False):
-        """Perceptual differential hash function, computed for each foreground region independently"""
-        return [im.crop().perceptualhash(bits=bits, asbinary=asbinary, asbytes=asbytes, objmask=False)  for im in self]
-
     def perceptualhash(self, bits=128, asbinary=False, asbytes=False, objmask=False):
-        """Perceptual differentialhash function
+        """Perceptual differential hash function.
 
-           * bits [int]:  longer hashes have lower TAR (true accept rate, some near dupes are missed), but lower FAR (false accept rate), shorter hashes have higher TAR (fewer near-dupes are missed) but higher FAR (more non-dupes are declared as dupes).
-           * Algorithm: set foreground objects to mean color, convert to greyscale, resize with linear interpolation to small image based on desired bit encoding, compute vertical and horizontal gradient signs.
-           * NOTE: Can be used for near duplicate detection of background scenes by unpacking the returned hex string to binary and computing hamming distance, or performing hamming based nearest neighbor indexing.
-           * NOTE: The default packed hex output can be converted to binary as: np.unpackbits(bytearray().fromhex( bghash() )) which is equivalent to bghash(asbinary=True)
-           * objmask [bool]: if trye, replace the foreground object masks with the mean color prior to computing
+        This function sets foreground objects to mean color, convert to greyscale, resize with linear interpolation to small image based on desired bit encoding, compute vertical and horizontal gradient signs.
         
+        Args:
+            bits: [int]  longer hashes have lower TAR (true accept rate, some near dupes are missed), but lower FAR (false accept rate), shorter hashes have higher TAR (fewer near-dupes are missed) but higher FAR (more non-dupes are declared as dupes).
+            objmask: [bool] if true, replace the foreground object masks with the mean color prior to computing
+            asbinary: [bool] If true, return a binary array
+            asbytes: [bool] if true return a byte array
+
+        Returns:
+            A hash string encoding the perceptual hash such that `vipy.image.Image._perceptualhash_distance` can be used to compute a hash distance
+            asbytes: a bytes array
+            asbinary: a numpy binary array            
+
+        .. notes::
+            - Can be used for near duplicate detection of background scenes by unpacking the returned hex string to binary and computing hamming distance, or performing hamming based nearest neighbor indexing.  Equivalently, `vipy.image.Image.perceptualhash_distance`.
+            - The default packed hex output can be converted to binary as: np.unpackbits(bytearray().fromhex( bghash() )) which is equivalent to perceptualhash(asbinary=True)
+       
         """        
         allowablebits = [2*k*k for k in range(2, 17)]
         assert bits in allowablebits, "Bits must be in %s" % str(allowablebits)
         sq = int(np.ceil(np.sqrt(bits/2.0)))
         im = self.clone() if not objmask else self.clone().meanmask()        
-        b = (np.dstack(np.gradient(im.resize(cols=sq+1, rows=sq+1).numpy()))[0:-1, 0:-1] > 0).flatten()
+        b = (np.dstack(np.gradient(im.resize(cols=sq+1, rows=sq+1).greyscale().numpy()))[0:-1, 0:-1] > 0).flatten()
         return bytes(np.packbits(b)).hex() if not (asbytes or asbinary) else bytes(np.packbits(b)) if asbytes else b
 
-                
+    def fghash(self, bits=8, asbinary=False, asbytes=False):
+        """Perceptual differential hash function, computed for each foreground region independently"""
+        return [im.crop().perceptualhash(bits=bits, asbinary=asbinary, asbytes=asbytes, objmask=False)  for im in self]
+
+    
     def bghash(self, bits=128, asbinary=False, asbytes=False):
         """Percetual differential hash function, masking out foreground regions"""
         return self.clone().greyscale().perceptualhash(bits=bits, asbinary=asbinary, asbytes=asbytes, objmask=True)
         
-    def isduplicate(self, im, threshold=72, bits=128):
+    def isduplicate(self, im, threshold, bits=128):
         """Background hash near duplicate detection, returns true if self and im are near duplicate images using bghash"""
         assert isinstance(im, Image), "Invalid input"
-        return np.sum(self.bghash(bits=bits, asbinary=True) == im.bghash(bits=bits, asbinary=True)) > threshold  # hamming distance threshold
+        return vipy.image.Image.perceptualhash_distance(self.bghash(bits=bits), im.bghash(bits=bits)) < threshold 
     
         
     def show(self, categories=None, figure=1, nocaption=False, nocaption_withstring=[], fontsize=10, boxalpha=0.25, d_category2color={'Person':'green', 'Vehicle':'blue', 'Object':'red'}, captionoffset=(0,0), nowindow=False, textfacecolor='white', textfacealpha=1.0, shortlabel=True, timestamp=None, timestampcolor='black', timestampfacecolor='white', mutator=None):
