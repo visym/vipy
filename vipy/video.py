@@ -259,8 +259,9 @@ class Video(object):
             self.setattribute('video_id', newid)
             return self
         else:
-            return self.attributes['video_id'] if 'video_id' in self.attributes else hashlib.sha1(str(str(self.filename())+str(self.url())).encode("UTF-8")).hexdigest() if (self.filename() is not None or self.url() is not None) else None
-    
+            return self.attributes['video_id'] if 'video_id' in self.attributes else (hashlib.sha1(str(str(self.filename())+str(self.url())).encode("UTF-8")).hexdigest() if (self.filename() is not None or self.url() is not None) else None)
+        
+
     def frame(self, k, img=None):
         """Alias for self.__getitem__[k]"""
         assert isinstance(k, int) and k>=0, "Frame index must be non-negative integer"
@@ -1811,7 +1812,7 @@ class Video(object):
             flushfilter:  Set the ffmpeg filter chain to the default in the new object, useful for saving new videos
             flushfile:  Remove the filename and the URL from the video object.  Useful for creating new video objects from loaded pixels.  
             rekey: Generate new unique track ID and activity ID keys for this scene
-            shallow:  shallow copy everything (copy by reference), except for ffmpeg object
+            shallow:  shallow copy everything (copy by reference), except for ffmpeg object.  attributes dictionary is shallow copied
             sharedarray:  deep copy of everything, except for pixel buffer which is shared.  Changing the pixel buffer on self is reflected in the clone.
 
         Returns:
@@ -1841,6 +1842,7 @@ class Video(object):
         elif shallow:
             v = copy.copy(self)  # shallow copy
             v._ffmpeg = copy.deepcopy(self._ffmpeg)  # except for ffmpeg object
+            v.attributes = {k:v for (k,v) in self.attributes}  # shallow copy of keys
             v._array = np.asarray(self._array) if self._array is not None else None  # shared pixels
         elif sharedarray:
             array = self._array
@@ -2119,6 +2121,34 @@ class Scene(VideoCategory):
         if self.hasactivities():
             strlist.append('activities=%d' % len(self._activities))
         return str('<vipy.video.scene: %s>' % (', '.join(strlist)))
+
+
+    def instanceid(self, newid=None):
+        """Return an annotation instance identifier for this video.  
+
+        An instance ID is a unique identifier for a ground truth annotation within a video, either a track or an activity.  More than one instance ID may share the same video ID if they are from the same source videofile.  
+
+        This is useful when calling `vipy.video.Scene.activityclip` or `vipy.video.Scene.activitysplit` to clip a video into segments such that each clip has a unique identifier, but all share the same underlying `vipy.video.Video.videoid`.
+        This is useful when calling `vipy.video.Scene.trackclip` or `vipy.video.Scene.tracksplit` to clip a video into segments such that each clip has a unique identifier, but all share the same underlying `vipy.video.Video.videoid`.
+        
+        Returns:
+            INSTANCEID: if 'instance_id' key is in self.attribute
+            VIDEOID_INSTANCEID: if '_instance_id' key is in self.attribute, as set by activityclip() or trackclip().  This is set using INSTANCE_ID=ACTIVITYID_ACTIVITYINDEX or INSTANCEID=TRACKID_TRACKINDEX, where the index is the temporal order of the annotation in the source video prior to clip().
+            VIDEOID_ACTIVITYINDEX: if 'activityindex' key is in self.attribute, as set by activityclip().  (fallback for legacy datasets).
+            VIDEOID: otherwise 
+        """
+        if newid is not None:
+            self.setattribute('instance_id', newid)
+            return self
+        else:
+            if 'instance_id' in self.attributes:
+                return self.attributes['instance_id']
+            elif '_instance_id' in self.attributes:
+                return '%s_%s' % (self.videoid(), str(self.attributes['_instance_id']))
+            elif 'activityindex' in self.attributes:
+                return '%s_%s' % (self.videoid(), str(self.attributes['activityindex']))
+            else:
+                return self.videoid()
 
     def frame(self, k, img=None):
         """Return `vipy.image.Scene` object at frame k
@@ -2620,12 +2650,18 @@ class Scene(VideoCategory):
         return [vid.clone().setattribute('activityindex', k).activities(pa).tracks(t) for (k,(pa,t)) in enumerate(zip(activities, tracks))]
 
     def tracksplit(self):
-        """Split the scene into k separate scenes, one for each track.  Each scene starts at frame 0 and is a shallow copy of self containing exactly one track.  Use clone() to create a deep copy if needed."""
-        return [self.clone(shallow=True).tracks(t).activityfilter(lambda a: a.hastrack(tk)) for (tk,t) in self.tracks().items()] 
+        """Split the scene into k separate scenes, one for each track.  Each scene starts at frame 0 and is a shallow copy of self containing exactly one track.  
+
+        - This is useful for visualization by breaking a scene into a list of scenes that contain only one track.
+        - The attribute '_trackid' is set in the attributes dictionary to provide provenance for the track 
+
+        .. notes:: Use clone() to create a deep copy if needed.
+        """
+        return [self.clone(shallow=True).setattribute('_trackindex', k).tracks(t).activityfilter(lambda a: a.hastrack(tk)) for (k,(tk,t)) in enumerate(self.tracks().items())]
 
     def trackclip(self):
         """Split the scene into k separate scenes, one for each track.  Each scene starts and ends when the track starts and ends"""
-        return [t.clip(t.track(t.actorid()).startframe(), t.track(t.actorid()).endframe()) for t in self.tracksplit()]
+        return [t.setattribute('_instance_id', '%s_%d' % (t.actorid(), k)).clip(t.track(t.actorid()).startframe(), t.track(t.actorid()).endframe()) for (k,t) in enumerate(self.tracksplit())]
     
     def activityclip(self, padframes=0, multilabel=True):
         """Return a list of `vipy.video.Scene` objects each clipped to be temporally centered on a single activity, with an optional padframes before and after.  
@@ -2663,7 +2699,7 @@ class Scene(VideoCategory):
                 .tracks(t)
                 .clip(startframe=max(pa.startframe()-prepad, 0), endframe=(pa.endframe()+postpad))
                 .category(pa.category())
-                .setattribute('activityindex',k)
+                .setattribute('activityindex',k).setattribute('_instance_id', '%s_%d' % (pa.id(), k))
                 for (k,(pa,sa,t,(prepad,postpad))) in enumerate(zip(primary_activities, secondary_activities, tracks, padframelist))]
 
     def noactivityclip(self, label=None, strict=True, padframes=0):
