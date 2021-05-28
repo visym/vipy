@@ -703,8 +703,16 @@ class Video(object):
 
         .. notes:: This is the duration of the source video and NOT the duration of the filter chain.  If you load(), this may be different duration depending on clip() or framerate() directives.
         """
-        return int(np.floor(self.duration_in_seconds_of_videofile()*self.framerate()))
+        return int(np.floor(self.duration_in_seconds_of_videofile()*self.framerate_of_videofile()))
     
+    def framerate_of_videofile(self):
+        """Return video framerate in frames per second of the source video file (NOT the filter chain), requires ffprobe.
+        """
+        p = self.probe()
+        assert 'streams' in p and len(['streams']) > 0
+        fps = p['streams'][0]['avg_frame_rate']
+        return float(fps) if '/' not in fps else (float(fps.split('/')[0]) / float(fps.split('/')[1]))  # fps='30/1' or fps='30.0'
+
     def probe(self):
         """Run ffprobe on the filename and return the result as a dictionary"""
         if not has_ffprobe:
@@ -794,7 +802,9 @@ class Video(object):
         """
         if fps is None:
             return self._framerate
-        else:
+        elif fps == self._framerate:
+            return self
+        else:            
             assert not self.isloaded(), "Filters can only be applied prior to load()"
             if 'fps=' in self._ffmpeg_commandline():
                 self._update_ffmpeg('fps', fps)  # replace fps filter, do not add to it
@@ -1303,6 +1313,10 @@ class Video(object):
             self._array = self._array[startframe:endframe]
             (self._startframe, self._endframe) = (0, endframe-startframe)
         return self
+
+    def cliprange(self):
+        """Return the planned clip (startframe, endframe) range"""
+        return (self._startframe, self._endframe)
 
     #def cliptime(self, startsec, endsec):
     #    """Load a video clip betweeen start seconds and end seconds, should be initialized by constructor, which will work but will not set __repr__ correctly"""
@@ -2297,12 +2311,18 @@ class Scene(VideoCategory):
     def activityfilter(self, f):
         """Apply boolean lambda function f to each activity and keep activity if function is true, remove activity if function is false
         
-           Usage:  Filter out all activities longer than 128 frames 
-             vid = vid.activityfilter(lambda a: len(a)<128)
+        Filter out all activities longer than 128 frames 
+        >>> vid = vid.activityfilter(lambda a: len(a)<128)
 
-           Usage:  Filter out activities with category in set
-             vid = vid.activityfilter(lambda a: a.category() in set(['category1', 'category2']))
+        Filter out activities with category in set
+        >>> vid = vid.activityfilter(lambda a: a.category() in set(['category1', 'category2']))
        
+        Args:
+            f: [lambda] a lambda function that takes an activity and returns a boolean
+
+        Returns:
+            This video with the activities f(a)==False removed.
+
         """
         self._activities = {k:a for (k,a) in self.activities().items() if f(a) == True}
         return self
@@ -2464,7 +2484,7 @@ class Scene(VideoCategory):
         elif isinstance(obj, vipy.object.Track):
             if rangecheck and not obj.boundingbox().isinside(vipy.geometry.imagebox(self.shape())):
                 obj = obj.imclip(self.width(), self.height())  # try to clip it, will throw exception if all are bad 
-                warnings.warn('Clipping track "%s" to image rectangle' % (str(obj)))
+                warnings.warn('[vipy.video.add]: Clipping trackid=%s track="%s" to image rectangle' % (str(obj.id()), str(obj)))
             if obj.framerate() != self.framerate():
                 obj.framerate(self.framerate())  # convert framerate of track to framerate of video
             self.tracks()[obj.id()] = obj  # by-reference
@@ -2573,6 +2593,8 @@ class Scene(VideoCategory):
         
         if fps is None:
             return self._framerate
+        elif fps == self._framerate:
+            return self
         else:
             assert not self.isloaded(), "Filters can only be applied prior to load() - Try calling flush() first"
             self._startframe = int(round(self._startframe * (fps/self._framerate))) if self._startframe is not None else self._startframe  # __repr__ only
