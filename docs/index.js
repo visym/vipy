@@ -4759,7 +4759,7 @@ INDEX=[
 {
 "ref":"vipy.flow.Video.thumbnail",
 "url":38,
-"doc":"Return annotated frame=k of video, save annotation visualization to provided outfile",
+"doc":"Return annotated frame=k of video, save annotation visualization to provided outfile. This is functionally equivalent to  vipy.video.Video.frame with an additional outfile argument to easily save an annotated thumbnail image. Args: outfile: [str] an optional outfile to save the annotated frame frame: [int >= 0] The frame to output the thumbnail Returns: A  vipy.image.Image object for frame k.",
 "func":1
 },
 {
@@ -4783,7 +4783,7 @@ INDEX=[
 {
 "ref":"vipy.flow.Video.cliprange",
 "url":38,
-"doc":"Return the planned clip (startframe, endframe) range",
+"doc":"Return the planned clip (startframe, endframe) range. This is useful for introspection of the planned clip() before load(), such as for data augmentation purposes without triggering a load. Returns: (startframe, endframe) of the video() such that after load(), the pixel buffer will contain frame=0 equivalent to startframe in the source video, and frame=endframe-startframe-1 equivalent to endframe in the source video. (0, None) If a video does not have a clip() (e.g. clip() was never called, the filter chain does not include a 'trim')  notes The endframe can be retrieved (inefficiently) using: >>> int(round(self.duration_in_frames_of_videofile()  (self.framerate() / self.framerate_of_videofile(  ",
 "func":1
 },
 {
@@ -4945,7 +4945,7 @@ INDEX=[
 {
 "ref":"vipy.flow.Video.clone",
 "url":38,
-"doc":"Create deep copy of video object, flushing the original buffer if requested and returning the cloned object. Flushing is useful for distributed memory management to free the buffer from this object, and pass along a cloned object which can be used for encoding and will be garbage collected. Args: flushforward: copy the object, and set the cloned object  vipy.video.Video.array to None. This flushes the video buffer for the clone, not the object flushbackward: copy the object, and set the object array() to None. This flushes the video buffer for the object, not the clone. flush: set the object array() to None and clone the object. This flushes the video buffer for both the clone and the object. flushfilter: Set the ffmpeg filter chain to the default in the new object, useful for saving new videos flushfile: Remove the filename and the URL from the video object. Useful for creating new video objects from loaded pixels. rekey: Generate new unique track ID and activity ID keys for this scene shallow: shallow copy everything (copy by reference), except for ffmpeg object sharedarray: deep copy of everything, except for pixel buffer which is shared. Changing the pixel buffer on self is reflected in the clone. Returns: A deepcopy of the video object such that changes to self are not reflected in the copy  note Cloning videos is an expensive operation and can slow down real time code. Use sparingly.",
+"doc":"Create deep copy of video object, flushing the original buffer if requested and returning the cloned object. Flushing is useful for distributed memory management to free the buffer from this object, and pass along a cloned object which can be used for encoding and will be garbage collected. Args: flushforward: copy the object, and set the cloned object  vipy.video.Video.array to None. This flushes the video buffer for the clone, not the object flushbackward: copy the object, and set the object array() to None. This flushes the video buffer for the object, not the clone. flush: set the object array() to None and clone the object. This flushes the video buffer for both the clone and the object. flushfilter: Set the ffmpeg filter chain to the default in the new object, useful for saving new videos flushfile: Remove the filename and the URL from the video object. Useful for creating new video objects from loaded pixels. rekey: Generate new unique track ID and activity ID keys for this scene shallow: shallow copy everything (copy by reference), except for ffmpeg object. attributes dictionary is shallow copied sharedarray: deep copy of everything, except for pixel buffer which is shared. Changing the pixel buffer on self is reflected in the clone. Returns: A deepcopy of the video object such that changes to self are not reflected in the copy  note Cloning videos is an expensive operation and can slow down real time code. Use sparingly.",
 "func":1
 },
 {
@@ -6863,7 +6863,7 @@ INDEX=[
 {
 "ref":"vipy.video.Video.thumbnail",
 "url":38,
-"doc":"Return annotated frame=k of video, save annotation visualization to provided outfile",
+"doc":"Return annotated frame=k of video, save annotation visualization to provided outfile. This is functionally equivalent to  vipy.video.Video.frame with an additional outfile argument to easily save an annotated thumbnail image. Args: outfile: [str] an optional outfile to save the annotated frame frame: [int >= 0] The frame to output the thumbnail Returns: A  vipy.image.Image object for frame k.",
 "func":1
 },
 {
@@ -6887,7 +6887,7 @@ INDEX=[
 {
 "ref":"vipy.video.Video.cliprange",
 "url":38,
-"doc":"Return the planned clip (startframe, endframe) range",
+"doc":"Return the planned clip (startframe, endframe) range. This is useful for introspection of the planned clip() before load(), such as for data augmentation purposes without triggering a load. Returns: (startframe, endframe) of the video() such that after load(), the pixel buffer will contain frame=0 equivalent to startframe in the source video, and frame=endframe-startframe-1 equivalent to endframe in the source video. (0, None) If a video does not have a clip() (e.g. clip() was never called, the filter chain does not include a 'trim')  notes The endframe can be retrieved (inefficiently) using: >>> int(round(self.duration_in_frames_of_videofile()  (self.framerate() / self.framerate_of_videofile(  ",
 "func":1
 },
 {
@@ -7061,7 +7061,7 @@ INDEX=[
 {
 "ref":"vipy.video.Video.clone",
 "url":38,
-"doc":"Create deep copy of video object, flushing the original buffer if requested and returning the cloned object. Flushing is useful for distributed memory management to free the buffer from this object, and pass along a cloned object which can be used for encoding and will be garbage collected. Args: flushforward: copy the object, and set the cloned object  vipy.video.Video.array to None. This flushes the video buffer for the clone, not the object flushbackward: copy the object, and set the object array() to None. This flushes the video buffer for the object, not the clone. flush: set the object array() to None and clone the object. This flushes the video buffer for both the clone and the object. flushfilter: Set the ffmpeg filter chain to the default in the new object, useful for saving new videos flushfile: Remove the filename and the URL from the video object. Useful for creating new video objects from loaded pixels. rekey: Generate new unique track ID and activity ID keys for this scene shallow: shallow copy everything (copy by reference), except for ffmpeg object sharedarray: deep copy of everything, except for pixel buffer which is shared. Changing the pixel buffer on self is reflected in the clone. Returns: A deepcopy of the video object such that changes to self are not reflected in the copy  note Cloning videos is an expensive operation and can slow down real time code. Use sparingly.",
+"doc":"Create deep copy of video object, flushing the original buffer if requested and returning the cloned object. Flushing is useful for distributed memory management to free the buffer from this object, and pass along a cloned object which can be used for encoding and will be garbage collected. Args: flushforward: copy the object, and set the cloned object  vipy.video.Video.array to None. This flushes the video buffer for the clone, not the object flushbackward: copy the object, and set the object array() to None. This flushes the video buffer for the object, not the clone. flush: set the object array() to None and clone the object. This flushes the video buffer for both the clone and the object. flushfilter: Set the ffmpeg filter chain to the default in the new object, useful for saving new videos flushfile: Remove the filename and the URL from the video object. Useful for creating new video objects from loaded pixels. rekey: Generate new unique track ID and activity ID keys for this scene shallow: shallow copy everything (copy by reference), except for ffmpeg object. attributes dictionary is shallow copied sharedarray: deep copy of everything, except for pixel buffer which is shared. Changing the pixel buffer on self is reflected in the clone. Returns: A deepcopy of the video object such that changes to self are not reflected in the copy  note Cloning videos is an expensive operation and can slow down real time code. Use sparingly.",
 "func":1
 },
 {
@@ -7462,7 +7462,7 @@ INDEX=[
 {
 "ref":"vipy.video.VideoCategory.thumbnail",
 "url":38,
-"doc":"Return annotated frame=k of video, save annotation visualization to provided outfile",
+"doc":"Return annotated frame=k of video, save annotation visualization to provided outfile. This is functionally equivalent to  vipy.video.Video.frame with an additional outfile argument to easily save an annotated thumbnail image. Args: outfile: [str] an optional outfile to save the annotated frame frame: [int >= 0] The frame to output the thumbnail Returns: A  vipy.image.Image object for frame k.",
 "func":1
 },
 {
@@ -7486,7 +7486,7 @@ INDEX=[
 {
 "ref":"vipy.video.VideoCategory.cliprange",
 "url":38,
-"doc":"Return the planned clip (startframe, endframe) range",
+"doc":"Return the planned clip (startframe, endframe) range. This is useful for introspection of the planned clip() before load(), such as for data augmentation purposes without triggering a load. Returns: (startframe, endframe) of the video() such that after load(), the pixel buffer will contain frame=0 equivalent to startframe in the source video, and frame=endframe-startframe-1 equivalent to endframe in the source video. (0, None) If a video does not have a clip() (e.g. clip() was never called, the filter chain does not include a 'trim')  notes The endframe can be retrieved (inefficiently) using: >>> int(round(self.duration_in_frames_of_videofile()  (self.framerate() / self.framerate_of_videofile(  ",
 "func":1
 },
 {
@@ -7654,7 +7654,7 @@ INDEX=[
 {
 "ref":"vipy.video.VideoCategory.clone",
 "url":38,
-"doc":"Create deep copy of video object, flushing the original buffer if requested and returning the cloned object. Flushing is useful for distributed memory management to free the buffer from this object, and pass along a cloned object which can be used for encoding and will be garbage collected. Args: flushforward: copy the object, and set the cloned object  vipy.video.Video.array to None. This flushes the video buffer for the clone, not the object flushbackward: copy the object, and set the object array() to None. This flushes the video buffer for the object, not the clone. flush: set the object array() to None and clone the object. This flushes the video buffer for both the clone and the object. flushfilter: Set the ffmpeg filter chain to the default in the new object, useful for saving new videos flushfile: Remove the filename and the URL from the video object. Useful for creating new video objects from loaded pixels. rekey: Generate new unique track ID and activity ID keys for this scene shallow: shallow copy everything (copy by reference), except for ffmpeg object sharedarray: deep copy of everything, except for pixel buffer which is shared. Changing the pixel buffer on self is reflected in the clone. Returns: A deepcopy of the video object such that changes to self are not reflected in the copy  note Cloning videos is an expensive operation and can slow down real time code. Use sparingly.",
+"doc":"Create deep copy of video object, flushing the original buffer if requested and returning the cloned object. Flushing is useful for distributed memory management to free the buffer from this object, and pass along a cloned object which can be used for encoding and will be garbage collected. Args: flushforward: copy the object, and set the cloned object  vipy.video.Video.array to None. This flushes the video buffer for the clone, not the object flushbackward: copy the object, and set the object array() to None. This flushes the video buffer for the object, not the clone. flush: set the object array() to None and clone the object. This flushes the video buffer for both the clone and the object. flushfilter: Set the ffmpeg filter chain to the default in the new object, useful for saving new videos flushfile: Remove the filename and the URL from the video object. Useful for creating new video objects from loaded pixels. rekey: Generate new unique track ID and activity ID keys for this scene shallow: shallow copy everything (copy by reference), except for ffmpeg object. attributes dictionary is shallow copied sharedarray: deep copy of everything, except for pixel buffer which is shared. Changing the pixel buffer on self is reflected in the clone. Returns: A deepcopy of the video object such that changes to self are not reflected in the copy  note Cloning videos is an expensive operation and can slow down real time code. Use sparingly.",
 "func":1
 },
 {
@@ -7714,6 +7714,12 @@ INDEX=[
 "ref":"vipy.video.Scene.pack",
 "url":38,
 "doc":"Packing a scene returns the scene with the annotations JSON serialized. - This is useful for fast garbage collection when there are many objects in memory - This is useful for distributed processing prior to serializing from a scheduler to a client - This is useful for lazy deserialization of complex attributes when loading many videos into memory - Unpacking is transparent to the end user and is performed on the fly when annotations are accessed. There is no unpack() method. - See the notes in from_json() for why this helps with nested containers and reference cycle tracking with the python garbage collector",
+"func":1
+},
+{
+"ref":"vipy.video.Scene.instanceid",
+"url":38,
+"doc":"Return an annotation instance identifier for this video. An instance ID is a unique identifier for a ground truth annotation within a video, either a track or an activity. More than one instance ID may share the same video ID if they are from the same source videofile. This is useful when calling  vipy.video.Scene.activityclip or  vipy.video.Scene.activitysplit to clip a video into segments such that each clip has a unique identifier, but all share the same underlying  vipy.video.Video.videoid . This is useful when calling  vipy.video.Scene.trackclip or  vipy.video.Scene.tracksplit to clip a video into segments such that each clip has a unique identifier, but all share the same underlying  vipy.video.Video.videoid . Returns: INSTANCEID: if 'instance_id' key is in self.attribute VIDEOID_INSTANCEID: if '_instance_id' key is in self.attribute, as set by activityclip() or trackclip(). This is set using INSTANCE_ID=ACTIVITYID_ACTIVITYINDEX or INSTANCEID=TRACKID_TRACKINDEX, where the index is the temporal order of the annotation in the source video prior to clip(). VIDEOID_ACTIVITYINDEX: if 'activityindex' key is in self.attribute, as set by activityclip(). (fallback for legacy datasets). VIDEOID: otherwise",
 "func":1
 },
 {
@@ -7995,7 +8001,7 @@ INDEX=[
 {
 "ref":"vipy.video.Scene.tracksplit",
 "url":38,
-"doc":"Split the scene into k separate scenes, one for each track. Each scene starts at frame 0 and is a shallow copy of self containing exactly one track. Use clone() to create a deep copy if needed.",
+"doc":"Split the scene into k separate scenes, one for each track. Each scene starts at frame 0 and is a shallow copy of self containing exactly one track. - This is useful for visualization by breaking a scene into a list of scenes that contain only one track. - The attribute '_trackid' is set in the attributes dictionary to provide provenance for the track  notes Use clone() to create a deep copy if needed.",
 "func":1
 },
 {
@@ -8529,7 +8535,7 @@ INDEX=[
 {
 "ref":"vipy.video.Scene.cliprange",
 "url":38,
-"doc":"Return the planned clip (startframe, endframe) range",
+"doc":"Return the planned clip (startframe, endframe) range. This is useful for introspection of the planned clip() before load(), such as for data augmentation purposes without triggering a load. Returns: (startframe, endframe) of the video() such that after load(), the pixel buffer will contain frame=0 equivalent to startframe in the source video, and frame=endframe-startframe-1 equivalent to endframe in the source video. (0, None) If a video does not have a clip() (e.g. clip() was never called, the filter chain does not include a 'trim')  notes The endframe can be retrieved (inefficiently) using: >>> int(round(self.duration_in_frames_of_videofile()  (self.framerate() / self.framerate_of_videofile(  ",
 "func":1
 },
 {
@@ -8625,7 +8631,7 @@ INDEX=[
 {
 "ref":"vipy.video.Scene.clone",
 "url":38,
-"doc":"Create deep copy of video object, flushing the original buffer if requested and returning the cloned object. Flushing is useful for distributed memory management to free the buffer from this object, and pass along a cloned object which can be used for encoding and will be garbage collected. Args: flushforward: copy the object, and set the cloned object  vipy.video.Video.array to None. This flushes the video buffer for the clone, not the object flushbackward: copy the object, and set the object array() to None. This flushes the video buffer for the object, not the clone. flush: set the object array() to None and clone the object. This flushes the video buffer for both the clone and the object. flushfilter: Set the ffmpeg filter chain to the default in the new object, useful for saving new videos flushfile: Remove the filename and the URL from the video object. Useful for creating new video objects from loaded pixels. rekey: Generate new unique track ID and activity ID keys for this scene shallow: shallow copy everything (copy by reference), except for ffmpeg object sharedarray: deep copy of everything, except for pixel buffer which is shared. Changing the pixel buffer on self is reflected in the clone. Returns: A deepcopy of the video object such that changes to self are not reflected in the copy  note Cloning videos is an expensive operation and can slow down real time code. Use sparingly.",
+"doc":"Create deep copy of video object, flushing the original buffer if requested and returning the cloned object. Flushing is useful for distributed memory management to free the buffer from this object, and pass along a cloned object which can be used for encoding and will be garbage collected. Args: flushforward: copy the object, and set the cloned object  vipy.video.Video.array to None. This flushes the video buffer for the clone, not the object flushbackward: copy the object, and set the object array() to None. This flushes the video buffer for the object, not the clone. flush: set the object array() to None and clone the object. This flushes the video buffer for both the clone and the object. flushfilter: Set the ffmpeg filter chain to the default in the new object, useful for saving new videos flushfile: Remove the filename and the URL from the video object. Useful for creating new video objects from loaded pixels. rekey: Generate new unique track ID and activity ID keys for this scene shallow: shallow copy everything (copy by reference), except for ffmpeg object. attributes dictionary is shallow copied sharedarray: deep copy of everything, except for pixel buffer which is shared. Changing the pixel buffer on self is reflected in the clone. Returns: A deepcopy of the video object such that changes to self are not reflected in the copy  note Cloning videos is an expensive operation and can slow down real time code. Use sparingly.",
 "func":1
 },
 {
@@ -9449,6 +9455,18 @@ INDEX=[
 "func":1
 },
 {
+"ref":"vipy.image.Image.perceptualhash",
+"url":47,
+"doc":"Perceptual differential hash function This function converts to greyscale, resizes with linear interpolation to small image based on desired bit encoding, compute vertical and horizontal gradient signs. Args: bits: [int] longer hashes have lower TAR (true accept rate, some near dupes are missed), but lower FAR (false accept rate), shorter hashes have higher TAR (fewer near-dupes are missed) but higher FAR (more non-dupes are declared as dupes). asbinary: [bool] If true, return a binary array asbytes: [bool] if true return a byte array Returns: A hash string encoding the perceptual hash such that  vipy.image.Image._perceptualhash_distance can be used to compute a hash distance asbytes: a bytes array asbinary: a numpy binary array  notes - Can be used for near duplicate detection by unpacking the returned hex string to binary and computing hamming distance, or performing hamming based nearest neighbor indexing. Equivalently,  vipy.image.Image.perceptualhash_distance . - The default packed hex output can be converted to binary as: np.unpackbits(bytearray().fromhex(h)",
+"func":1
+},
+{
+"ref":"vipy.image.Image.perceptualhash_distance",
+"url":47,
+"doc":"Hamming distance between two perceptual hashes",
+"func":1
+},
+{
 "ref":"vipy.image.ImageCategory",
 "url":47,
 "doc":"vipy ImageCategory class This class provides a representation of a vipy.image.Image with a category. Valid constructors include all provided by vipy.image.Image with the additional kwarg 'category' (or alias 'label') >>> im = vipy.image.ImageCategory(filename='/path/to/dog_image.ext', category='dog') >>> im = vipy.image.ImageCategory(url='http: path/to/dog_image.ext', category='dog') >>> im = vipy.image.ImageCategory(array=dog_img, colorspace='rgb', category='dog')"
@@ -10126,6 +10144,18 @@ INDEX=[
 "func":1
 },
 {
+"ref":"vipy.image.ImageCategory.perceptualhash",
+"url":47,
+"doc":"Perceptual differential hash function This function converts to greyscale, resizes with linear interpolation to small image based on desired bit encoding, compute vertical and horizontal gradient signs. Args: bits: [int] longer hashes have lower TAR (true accept rate, some near dupes are missed), but lower FAR (false accept rate), shorter hashes have higher TAR (fewer near-dupes are missed) but higher FAR (more non-dupes are declared as dupes). asbinary: [bool] If true, return a binary array asbytes: [bool] if true return a byte array Returns: A hash string encoding the perceptual hash such that  vipy.image.Image._perceptualhash_distance can be used to compute a hash distance asbytes: a bytes array asbinary: a numpy binary array  notes - Can be used for near duplicate detection by unpacking the returned hex string to binary and computing hamming distance, or performing hamming based nearest neighbor indexing. Equivalently,  vipy.image.Image.perceptualhash_distance . - The default packed hex output can be converted to binary as: np.unpackbits(bytearray().fromhex(h)",
+"func":1
+},
+{
+"ref":"vipy.image.ImageCategory.perceptualhash_distance",
+"url":47,
+"doc":"Hamming distance between two perceptual hashes",
+"func":1
+},
+{
 "ref":"vipy.image.Scene",
 "url":47,
 "doc":"vipy.image.Scene class This class provides a representation of a vipy.image.ImageCategory with one or more vipy.object.Detections. The goal of this class is to provide a unified representation for all objects in a scene. Valid constructors include all provided by vipy.image.Image() and vipy.image.ImageCategory() with the additional kwarg 'objects', which is a list of vipy.object.Detections() >>> im = vipy.image.Scene(filename='/path/to/city_image.ext', category='city', objects=[vipy.object.Detection(category='vehicle', xmin=0, ymin=0, width=100, height=100)]) >>> im = vipy.image.Scene(filename='/path/to/city_image.ext', category='city').objects([vipy.object.Detection(category='vehicle', xmin=0, ymin=0, width=100, height=100)]) >>> im = vipy.image.Scene(filename='/path/to/city_image.ext', category='office', boxlabels='face', xywh=[0,0,100,100]) >>> im = vipy.image.Scene(filename='/path/to/city_image.ext', category='office', boxlabels='face', xywh= 0,0,100,100], [100,100,200,200 ) >>> im = vipy.image.Scene(filename='/path/to/city_image.ext', category='office', boxlabels=['face', 'desk'] xywh= 0,0,100,100], [200,200,300,300 )"
@@ -10389,15 +10419,15 @@ INDEX=[
 "func":1
 },
 {
-"ref":"vipy.image.Scene.fghash",
+"ref":"vipy.image.Scene.perceptualhash",
 "url":47,
-"doc":"Perceptual differential hash function, computed for each foreground region independently",
+"doc":"Perceptual differential hash function. This function sets foreground objects to mean color, convert to greyscale, resize with linear interpolation to small image based on desired bit encoding, compute vertical and horizontal gradient signs. Args: bits: [int] longer hashes have lower TAR (true accept rate, some near dupes are missed), but lower FAR (false accept rate), shorter hashes have higher TAR (fewer near-dupes are missed) but higher FAR (more non-dupes are declared as dupes). objmask: [bool] if true, replace the foreground object masks with the mean color prior to computing asbinary: [bool] If true, return a binary array asbytes: [bool] if true return a byte array Returns: A hash string encoding the perceptual hash such that  vipy.image.Image._perceptualhash_distance can be used to compute a hash distance asbytes: a bytes array asbinary: a numpy binary array  notes - Can be used for near duplicate detection of background scenes by unpacking the returned hex string to binary and computing hamming distance, or performing hamming based nearest neighbor indexing. Equivalently,  vipy.image.Image.perceptualhash_distance . - The default packed hex output can be converted to binary as: np.unpackbits(bytearray().fromhex( bghash()  which is equivalent to perceptualhash(asbinary=True)",
 "func":1
 },
 {
-"ref":"vipy.image.Scene.perceptualhash",
+"ref":"vipy.image.Scene.fghash",
 "url":47,
-"doc":"Perceptual differentialhash function  bits [int]: longer hashes have lower TAR (true accept rate, some near dupes are missed), but lower FAR (false accept rate), shorter hashes have higher TAR (fewer near-dupes are missed) but higher FAR (more non-dupes are declared as dupes).  Algorithm: set foreground objects to mean color, convert to greyscale, resize with linear interpolation to small image based on desired bit encoding, compute vertical and horizontal gradient signs.  NOTE: Can be used for near duplicate detection of background scenes by unpacking the returned hex string to binary and computing hamming distance, or performing hamming based nearest neighbor indexing.  NOTE: The default packed hex output can be converted to binary as: np.unpackbits(bytearray().fromhex( bghash()  which is equivalent to bghash(asbinary=True)  objmask [bool]: if trye, replace the foreground object masks with the mean color prior to computing",
+"doc":"Perceptual differential hash function, computed for each foreground region independently",
 "func":1
 },
 {
@@ -10977,6 +11007,12 @@ INDEX=[
 "func":1
 },
 {
+"ref":"vipy.image.Scene.perceptualhash_distance",
+"url":47,
+"doc":"Hamming distance between two perceptual hashes",
+"func":1
+},
+{
 "ref":"vipy.image.ImageDetection",
 "url":47,
 "doc":"vipy.image.ImageDetection class This class provides a representation of a vipy.image.Image with a single object detection with a category and a vipy.geometry.BoundingBox This class inherits all methods of Scene and BoundingBox. Be careful with overloaded methods clone(), width() and height() which will correspond to these methods for Scene() and not BoundingBox(). Use bbclone(), bbwidth() or bbheight() to access the subclass. Valid constructors include all provided by vipy.image.Image with the additional kwarg 'category' (or alias 'label'), and BoundingBox coordinates >>> im = vipy.image.ImageDetection(filename='/path/to/dog_image.ext', category='dog', xmin=0, ymin=0, width=100, height=100) >>> im = vipy.image.ImageDetection(filename='/path/to/dog_image.ext', category='dog', xmin=0, ymin=0, xmax=100, ymax=100) >>> im = vipy.image.ImageDetection(filename='/path/to/dog_image.ext', category='dog', xcentroid=50, ycentroid=50, width=100, height=100) >>> im = vipy.image.ImageDetection(filename='/path/to/dog_image.ext', category='dog', bbox=vipy.geometry.BoundingBox(xmin=0, ymin=0, width=100, height=100 >>> im = vipy.image.ImageCategory(url='http: path/to/dog_image.ext', category='dog').boundingbox(xmin=0, ymin=0, width=100, height=100) >>> im = vipy.image.ImageCategory(array=dog_img, colorspace='rgb', category='dog', xmin=0, ymin=0, width=100, height=100)"
@@ -11252,15 +11288,15 @@ INDEX=[
 "func":1
 },
 {
-"ref":"vipy.image.ImageDetection.fghash",
+"ref":"vipy.image.ImageDetection.perceptualhash",
 "url":47,
-"doc":"Perceptual differential hash function, computed for each foreground region independently",
+"doc":"Perceptual differential hash function. This function sets foreground objects to mean color, convert to greyscale, resize with linear interpolation to small image based on desired bit encoding, compute vertical and horizontal gradient signs. Args: bits: [int] longer hashes have lower TAR (true accept rate, some near dupes are missed), but lower FAR (false accept rate), shorter hashes have higher TAR (fewer near-dupes are missed) but higher FAR (more non-dupes are declared as dupes). objmask: [bool] if true, replace the foreground object masks with the mean color prior to computing asbinary: [bool] If true, return a binary array asbytes: [bool] if true return a byte array Returns: A hash string encoding the perceptual hash such that  vipy.image.Image._perceptualhash_distance can be used to compute a hash distance asbytes: a bytes array asbinary: a numpy binary array  notes - Can be used for near duplicate detection of background scenes by unpacking the returned hex string to binary and computing hamming distance, or performing hamming based nearest neighbor indexing. Equivalently,  vipy.image.Image.perceptualhash_distance . - The default packed hex output can be converted to binary as: np.unpackbits(bytearray().fromhex( bghash()  which is equivalent to perceptualhash(asbinary=True)",
 "func":1
 },
 {
-"ref":"vipy.image.ImageDetection.perceptualhash",
+"ref":"vipy.image.ImageDetection.fghash",
 "url":47,
-"doc":"Perceptual differentialhash function  bits [int]: longer hashes have lower TAR (true accept rate, some near dupes are missed), but lower FAR (false accept rate), shorter hashes have higher TAR (fewer near-dupes are missed) but higher FAR (more non-dupes are declared as dupes).  Algorithm: set foreground objects to mean color, convert to greyscale, resize with linear interpolation to small image based on desired bit encoding, compute vertical and horizontal gradient signs.  NOTE: Can be used for near duplicate detection of background scenes by unpacking the returned hex string to binary and computing hamming distance, or performing hamming based nearest neighbor indexing.  NOTE: The default packed hex output can be converted to binary as: np.unpackbits(bytearray().fromhex( bghash()  which is equivalent to bghash(asbinary=True)  objmask [bool]: if trye, replace the foreground object masks with the mean color prior to computing",
+"doc":"Perceptual differential hash function, computed for each foreground region independently",
 "func":1
 },
 {
@@ -11837,6 +11873,12 @@ INDEX=[
 "ref":"vipy.image.ImageDetection.downcast",
 "url":47,
 "doc":"Cast the class to the base class (vipy.image.Image)",
+"func":1
+},
+{
+"ref":"vipy.image.ImageDetection.perceptualhash_distance",
+"url":47,
+"doc":"Hamming distance between two perceptual hashes",
 "func":1
 },
 {
