@@ -1752,15 +1752,15 @@ class Video(object):
         frames = self.load().numpy() if self.load().numpy().ndim == 4 else np.expand_dims(self.load().numpy(), 3)  # NxHxWx(C=1, C=3)
         assert boundary in ['repeat', 'strict', 'cyclic'], "Invalid boundary mode - must be in ['repeat', 'strict', 'cyclic']"
 
-        # Slice index (i=start, j=end, k=step)
-        (i,j,k) = (startframe, len(frames), stride)
+        # Slice index (i=start (zero-indexed), j=end (non-inclusive), k=step)
+        (i,j,k) = (startframe, endframe, stride)
         if startframe == 'random':
             assert length is not None, "Random start frame requires fixed length"
             i = max(0, np.random.randint(len(frames)-length+1))
         if endframe is not None:
             assert length is None, "Cannot specify both endframe and length"                        
             assert endframe > startframe, "End frame must be greater than start frame"
-            (j,k) = (endframe-startframe+1, 1)
+            (j,k) = (endframe, 1)
         if length is not None:
             assert endframe is None, "Cannot specify both endframe and length"
             assert length >= 0, "Length must be positive"
@@ -1778,14 +1778,15 @@ class Video(object):
         # Boundary handling
         assert i >= 0, "Start frame must be >= 0"
         assert i < j, "Start frame must be less then end frame"
-        assert k <= len(frames), "Stride must be <= len(frames)"            
-        if boundary == 'repeat' and j >= len(frames):
-            for d in range(j-len(frames)+1):
+        assert k <= len(frames), "Stride must be <= len(frames)"
+        n = len(frames)  # true video length for labels
+        if boundary == 'repeat' and j > len(frames):
+            for d in range(j-len(frames)):
                 frames = np.concatenate( (frames, np.expand_dims(frames[-1], 0) ))
-        elif boundary == 'cyclic' and j >= len(frames):
-            for d in range(j-len(frames)+1):
-                frames = np.concatenate( (frames, np.expand_dims(frames[j % len(frames)], 0) ))            
-        assert j < len(frames), "invalid slice=%s for frame shape=%s - try setting boundary='repeat'" % (str((i,j,k)), str(frames.shape))
+        elif boundary == 'cyclic' and j > len(frames):
+            for d in range(j-len(frames)):
+                frames = np.concatenate( (frames, np.expand_dims(frames[j % len(frames)], 0) ))
+        assert j <= len(frames), "invalid slice=%s for frame shape=%s" % (str((i,j,k)), str(frames.shape))
         if verbose:
             print('[vipy.video.torch]: slice (start,end,step)=%s for frame shape (N,C,H,W)=%s' % (str((i,j,k)), str(frames.shape)))
 
@@ -1814,7 +1815,7 @@ class Video(object):
         if withslice:
             return (t, (i,j,k))
         elif withlabel:            
-            labels = [sorted(tuple(self.activitylabels( (f%len(frames)) if boundary == 'cyclic' else min(f, len(frames)-1) ))) for f in range(i,j,k)]
+            labels = [sorted(tuple(self.activitylabels( (f%n) if boundary == 'cyclic' else min(f, n-1) ))) for f in range(i,j,k)]
             return (t, labels)
         elif nonelabel:
             return (t, None)
