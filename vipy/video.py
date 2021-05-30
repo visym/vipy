@@ -1458,7 +1458,7 @@ class Video(object):
     def zeropad(self, padwidth, padheight):
         """Zero pad the video with padwidth columns before and after, and padheight rows before and after
            
-           * NOTE: Older FFMPEG implementations can throw the error "Input area #:#:#:# not within the padded area #:#:#:# or zero-sized, this is often caused by odd sized padding. 
+        .. notes:: Older FFMPEG implementations can throw the error "Input area #:#:#:# not within the padded area #:#:#:# or zero-sized, this is often caused by odd sized padding. 
              Recommend calling self.cropeven().zeropad(...) to avoid this
 
         """
@@ -1470,6 +1470,10 @@ class Video(object):
             self.array( np.pad(self.array(), ((0,0), (padheight,padheight), (padwidth,padwidth), (0,0)), mode='constant'), copy=False)  # this is very expensive, since np.pad() must copy (once in np.pad >=1.17)            
         return self
 
+    def pad(self, padwidth=0, padheight=0):
+        """Alias for zeropad"""
+        return self.zeropad(padwidth=padwidth, padheight=padheight)
+    
     def crop(self, bbi, zeropad=True):
         """Spatially crop the video using the supplied vipy.geometry.BoundingBox, can only be applied prior to load().
         """
