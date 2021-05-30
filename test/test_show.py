@@ -16,4 +16,8 @@ def _test_colors():
     
     d_category2color = {c:c for c in colorlist()}
     ims.show(d_category2color=d_category2color)
-
+    print('[test_show._test_colors]: PASSED')
+    
+if __name__ == "__main__":
+    _test_colors()
+    
