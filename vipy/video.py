@@ -309,7 +309,6 @@ class Video(object):
         """Iterator to yield frames streaming from video
         
            * Using this iterator may affect PDB debugging due to stdout/stdin redirection.  Use ipdb instead.
-           * FFMPEG stdout pipe may screw up bash shell newlines, requiring issuing command "reset"  
 
         """
 
@@ -2432,10 +2431,12 @@ class Scene(VideoCategory):
         """Return a set of all object and activity labels in this scene, or at frame int(k)"""
         return self.activitylabels(k).union(self.objectlabels(k))
 
-    def activitylabel(self):
-        """Return an iterator over activity labels in each frame"""        
-        endframe = max([a.endframe() for a in self.activitylist()]) if len(self.activities())>0 else 0
-        for k in range(0, endframe):
+    def activitylabel(self, startframe=None, endframe=None):
+        """Return an iterator over activity labels in each frame, starting from startframe and ending when there are no more activities"""        
+        endframe = endframe if endframe is not None else (max([a.endframe() for a in self.activitylist()]) if len(self.activities())>0 else 0)
+        startframe = startframe if startframe is not None else (min([a.startframe() for a in self.activitylist()]) if len(self.activities())>0 else 0)
+        assert startframe <= endframe
+        for k in range(startframe, endframe):
             yield self.activitylabels(k)
         
     def activitylabels(self, startframe=None, endframe=None):

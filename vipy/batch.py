@@ -180,9 +180,9 @@ class Batch(Checkpoint):
 
     >>> b.result()  # retrieve results after a sequence of map or filter chains
 
-    Parameters:
-      -strict=False: if distributed processing fails, return None for that element and print the exception rather than raise
-      -as_completed=True:  Return the objects to the scheduler as they complete, this can introduce instabilities for large complex objects, use with caution
+    Args:
+        strict: [bool] if distributed processing fails, return None for that element and print the exception rather than raise
+        as_completed: [bool] Return the objects to the scheduler as they complete, this can introduce instabilities for large complex objects, use with caution
 
     """    
              
@@ -201,6 +201,7 @@ class Batch(Checkpoint):
         if checkpoint:
             as_completed = True  # force self._as_completed=True
 
+        # Move this into map and disable using localmap
         if vipy.globals.dask() is None and warnme:
             print('[vipy.batch.Batch]: vipy.batch.Batch() is not set to use parallelism.  This is set using:\n    >>> vipy.globals.parallel(n) for multi-processing with n processes\n    >>> vipy.globals.parallel(pct=0.8) for multiprocessing that uses a percentage of the current system resources\n    >>> vipy.globals.dask(address="SCHEDULER:PORT") which connects to a Dask distributed scheduler.\n    >>> vipy.globals.noparallel() to completely disable all parallelism.')
 
@@ -317,8 +318,14 @@ class Batch(Checkpoint):
         >>> imb = vipy.image.Batch(iml) 
         >>> imb.map(lambda im: im.rgb())  
 
-        The lambda function f_lambda must not include closures.  If it does, construct the batch with tuples (obj,prms) or with default parameter capture:
-        >>> f = lambda x, prm1=1, prm2=2: x+prm1+prm2
+        The lambda function f_lambda should not include closures.  If it does, construct the lambda with default parameter capture:
+
+        >>> f = lambda x, prm1=42: x+prm1
+
+        instead of:
+
+        >>> prm1 = 42
+        >>> f = lambda x: x+prm1
 
         """
         c = self._client()

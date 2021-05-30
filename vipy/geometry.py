@@ -349,6 +349,7 @@ class BoundingBox(object):
         return self
 
     def to_origin(self):
+        """Translate the bounding box so that (xmin, ymin) = (0,0)"""
         return self.translate(-self.xmin(), -self.ymin())
     
     def set_origin(self, other):

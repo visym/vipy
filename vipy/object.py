@@ -452,12 +452,48 @@ class Track(object):
         return self.during(k_start, k_end)
 
     def offset(self, dt=0, dx=0, dy=0):
+        """Apply a temporal shift of dt frames, and a spatial shift of (dx, dy) pixels.
+        
+        Args:
+            dt: [int] frame offset
+            dx: [float] horizontal spatial offset 
+            dy: [float] vertical spatial offset 
+
+        Returns:
+            This box updated in place
+        """
         self._keyboxes = [bb.offset(dx, dy) for bb in self._keyboxes]
         self._keyframes = [int(f+dt) for f in self._keyframes]
         return self
 
+    def uncrop(self, bb, s=1):
+        """Apply a transformation to the track that will undo a crop of a bounding box with an optional scale factor.
+
+        A typical operation is as follows.  A video is cropped and zommed in order to run a detector on a region of interest.  However, we want to align the resulting tracks on the original video before the crop and zoom.  
+
+        Args:
+            bb: [`vipy.geometry.BoundingBox`].  A bounding box which was used to crop this track
+            s: [float]  A scale factor applied after the bounding box crop
+
+        Returns:
+            This track after undoing the scale and crop 
+        """
+        assert isinstance(bb, BoundingBox)
+        return self.rescale(1/s).offset(dt=0, dx=bb.xmin(), dy=bb.ymin())
+
     def frameoffset(self, dx, dy):
-        """Offset boxes by (dx,dy) in each frame"""
+        """Offset boxes by (dx,dy) in each frame.
+        
+        This is used to apply a different offset for each frame.  To apply one offset to all frames, use `vipy.object.offset`.
+        Args:
+            dx: [list]  This should be a list of frame offsets at each keyframe the same length as the number of keyboxes
+            dy: [list]  This should be a list of frame offsets at each keyframe the same length as the number of keyboxes
+
+        Returns:
+            This box updated in place
+        """
+        assert isinstance(dx, list) or isinstance(dx, tuple)
+        assert isinstance(dy, list) or isinstance(dy, tuple)
         assert len(self.keyboxes()) == len(dx) and len(self.keyboxes()) == len(dy)
         self._keyboxes = [bb.offset(dx=x, dy=y) for (bb, (x, y)) in zip(self._keyboxes, zip(dx, dy))]
         return self
@@ -470,7 +506,8 @@ class Track(object):
         
     def rescale(self, s):
         """Rescale track boxes by scale factor s"""
-        self._keyboxes = [bb.rescale(s) for bb in self._keyboxes]
+        if s != 1.0:
+            self._keyboxes = [bb.rescale(s) for bb in self._keyboxes]
         return self
 
     def scale(self, s):
@@ -898,7 +935,20 @@ class Track(object):
 
     
 def non_maximum_suppression(detlist, conf, iou, bycategory=False, cover=None, gridsize=(6,9)):
-    """Compute greedy non-maximum suppression of a list of vipy.object.Detection() based on spatial IOU threshold (iou) and cover threhsold (cover) sorted by confidence (conf)"""
+    """Compute greedy non-maximum suppression of a list of vipy.object.Detection() based on spatial IOU threshold (iou) and cover threhsold (cover) sorted by confidence (conf).
+
+    Args:
+        detlist: [list `vipy.object.Detection`]
+        conf: [float] minimum confidence for non-maximum suppression
+        iou: [float] minimum iou for non-maximum suporession
+        bycategory: [bool] NMS only within the same category 
+        cover: [float, None] A minimum cover for NMS (stricter than iou)
+        gridsize: [tuple, (rows, cols)] An optional grid for fast intersection lookups 
+
+    Returns:
+        List of `vipy.object.Detection` non-maximum suppressed, sorted by increasing confidence 
+
+    """
     assert all([isinstance(d, Detection) for d in detlist])
     assert all([d.confidence() is not None for d in detlist])
     assert conf>=0 and iou>=0 and iou<=1
@@ -932,8 +982,14 @@ def non_maximum_suppression(detlist, conf, iou, bycategory=False, cover=None, gr
 def greedy_assignment(srclist, dstlist, miniou=0.0, bycategory=False):
     """Compute a greedy one-to-one assignment of each vipy.object.Detection() in srclist to a unique element in dstlist with the largest IoU greater than miniou, else None
     
-       returns:
-          assignlist [list]:  same length as srclist, where j=assignlist[i] is the index of the assignment such that srclist[i] == dstlist[j]
+    Args:
+        srclist: [list, `vipy.object.Detection`]
+        dstlist: [list, `vipy.object.Detection`]
+        miniou: [float, >=0, <=1] The minimum IoU for gated assignment
+        bycategory: [bool]  If true, only assign di and dj if di.category() == dj.category()
+
+    Returns:
+        assignlist: [list, int]  same length as srclist, where j=assignlist[i] is the index of the assignment such that srclist[i] -> dstlist[j]
     """
     assert all([isinstance(d, Detection) for d in srclist])
     assert all([isinstance(d, Detection) for d in dstlist])    
@@ -941,11 +997,41 @@ def greedy_assignment(srclist, dstlist, miniou=0.0, bycategory=False):
     
     assigndict = {}
     for (k, ds) in sorted(enumerate(srclist), key=lambda x: x[1].area(), reverse=True):
-        iou = [ds.iou(d) if (j not in assigndict.values() and (bycategory is False or ds.category() == d.category())) else 0.0 for (j,d) in enumerate(dstlist)]
+        iou = [ds.iou(d) if (j not in assigndict.values() and (bycategory is False or ds.category().lower() == d.category().lower())) else 0.0 for (j,d) in enumerate(dstlist)]
         assigndict[k] = np.argmax(iou) if len(iou) > 0 and max(iou) > miniou else None
     return [assigndict[k] for k in range(0, len(srclist))]
 
+
+def greedy_track_assignment(srclist, dstlist, miniou, bycategory=True, pct=0.5):
+    """Compute a greedy one-to-ine assignment of each `vipy.object.Track` in srclist to a unique element in dstlist with the largest assignment score.
+
+    - Assignment score: `vipy.object.Track.percentileiou` * `vipy.object.Track.confidence`, if maxiou() > miniou else 0
+    - Assigment order: longest to shortest src track
+
+    Args:
+        srclist: [list, `vipy.object.Track`]
+        dstlist: [list, `vipy.object.Track`]
+        miniou: [float, >=0, <=1] The minimum IoU for gated assignment
+        bycategory: [bool]  If true, only assign di and dj if di.category() == dj.category()
+        pct: [float <=1] The percentile for percentileiou
+
+    Returns:
+        assignlist: [list, int]  same length as srclist, where j=assignlist[i] is the index of the assignment such that srclist[i] -> dstlist[j]
+    """
+
+    assert all([isinstance(d, Track) for d in srclist])
+    assert all([isinstance(d, Track) for d in dstlist])    
+    assert miniou >= 0 and miniou <= 1.0
+    
+    assigndict = {}
+    for (k, ts) in sorted(enumerate(srclist), key=lambda x: len(x[1]), reverse=True):
+        assignscore = [ts.percentileiou(t, pct) * t.confidence() if (j not in assigndict.values() and (bycategory is False or ts.category().lower() == t.category().lower()) and ts.maxiou(t) > miniou) else 0.0 for (j,t) in enumerate(dstlist)]
+        assigndict[k] = np.argmax(assignscore) if len(assignscore) > 0 and max(assignscore) > 0 else None
+    return [assigndict[k] for k in range(0, len(srclist))]
+    
+    
 def RandomDetection(W=640, H=480):
+    """Return a random `vipy.object.Detection` in the range (0 < xmin < W, 0 < ymin < H, height < 100, width < 100).  Useful for unit testing."""
     return Detection(xmin=np.random.rand()*W, ymin=np.random.rand()*H, width=np.random.rand()*100, height=np.random.rand()*100, category=str(np.random.rand()), confidence=np.random.rand())
 
 
