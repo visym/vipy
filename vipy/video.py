@@ -2324,15 +2324,46 @@ class Scene(VideoCategory):
     def tracklist(self):
         return list(self.tracks().values())  # triggers copy
 
-    def actorid(self):
-        #assert len(self.tracks()) == 1, "Actor ID only valid for scenes with a single track"
-        return next(iter(self.tracks().keys()))   # Python >=3.6
+    def actorid(self, id=None, fluent=False):
+        """Return or set the actor ID for the video.
+
+        - The actor ID is the track ID of the primary actor in the scene.  This is useful for assigning a role for activities that are performed by the actor.
+        - The actor ID is the first track is in the tracklist
         
+        Args:
+            id: [str] if not None, then use this track ID as the actor
+            fluent: [bool] If true, always return self. This is useful for those cases where the actorid being set is None.
+        
+        Returns:
+            [id=None, fluent=False] the actor ID
+            [id is not None] The video with the actor ID set.        
+        """
+        if id is None:
+            return next(iter(self.tracks().keys())) if not fluent else self  # Python >=3.6
+        else:
+            # Reorder tracks so that id is first
+            assert id in self.tracks()
+            idlist = [id] + [ti for ti in self.tracks().keys() if ti != id]
+            self._tracks = {k:self.track(k) for k in idlist}
+            return self
+
+    def setactorid(self, id):
+        """Alias for `vipy.video.Scene.actorid`"""
+        return self.actorid(id, fluent=True)
+
     def actor(self):
         #assert len(self.tracks()) == 1, "Actor only valid for scenes with a single track"
         return next(iter(self.tracks().values()))   # Python >=3.6
         
     def primary_activity(self):
+        """Return the primary activity of the video.
+
+        - The primary activity is the first activity in the activitylist.  
+        - This is useful for activityclip() videos that are centered on a single activity
+        
+        Returns:
+            `vipy.activity.Activity` that is first in the `vipy.video.Scene.activitylist`
+        """
         return next(iter(self.activities().values())) if len(self._activities)>0 else None  # Python >=3.6        
 
     def activities(self, activities=None, id=None):
@@ -2383,7 +2414,7 @@ class Scene(VideoCategory):
         """Apply lambda function f to each object and keep if filter is True.  
         
         Args:
-            activitytrack: [bool] If trye, remove track assignment from activities also, may result in activities with no tracks
+            activitytrack: [bool] If true, remove track assignment from activities also, may result in activities with no tracks
             f: [lambda]  The lambda function to apply to each track t, and if f(t) returns True, then keep the track
         
         Returns:
@@ -2671,7 +2702,7 @@ class Scene(VideoCategory):
         tracks = [ [t.clone() for (tid, t) in vid.tracks().items() if a.hastrack(t)] for a in activities]  # tracks associated with each activity (may be empty)
         vid._activities = {}  # for faster clone
         vid._tracks = {}      # for faster clone
-        return [vid.clone().setattribute('activityindex', k).activities(pa).tracks(t) for (k,(pa,t)) in enumerate(zip(activities, tracks))]
+        return [vid.clone().setattribute('activityindex', k).activities(pa).tracks(t).setactorid(pa.actorid()) for (k,(pa,t)) in enumerate(zip(activities, tracks))]
 
     def tracksplit(self):
         """Split the scene into k separate scenes, one for each track.  Each scene starts at frame 0 and is a shallow copy of self containing exactly one track.  
@@ -2719,10 +2750,11 @@ class Scene(VideoCategory):
         vid._activities = {}  # for faster clone
         vid._tracks = {}      # for faster clone
         return [vid.clone()
-                .activities([pa]+sa)
+                .activities([pa]+sa)  # primary activity first
                 .tracks(t)
                 .clip(startframe=max(pa.startframe()-prepad, 0), endframe=(pa.endframe()+postpad))
                 .category(pa.category())
+                .setactorid(pa.actorid())  # actor is actor of primary activity
                 .setattribute('activityindex',k).setattribute('_instance_id', '%s_%d' % (pa.id(), k))
                 for (k,(pa,sa,t,(prepad,postpad))) in enumerate(zip(primary_activities, secondary_activities, tracks, padframelist))]
 

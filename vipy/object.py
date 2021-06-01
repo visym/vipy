@@ -1005,7 +1005,7 @@ def greedy_assignment(srclist, dstlist, miniou=0.0, bycategory=False):
 def greedy_track_assignment(srclist, dstlist, miniou, bycategory=True, pct=0.5):
     """Compute a greedy one-to-ine assignment of each `vipy.object.Track` in srclist to a unique element in dstlist with the largest assignment score.
 
-    - Assignment score: `vipy.object.Track.percentileiou` * `vipy.object.Track.confidence`, if maxiou() > miniou else 0
+    - Assignment score: `vipy.object.Track.segment_percentileiou` * `vipy.object.Track.confidence`, if maxiou() > miniou else 0
     - Assigment order: longest to shortest src track
 
     Args:
@@ -1025,7 +1025,7 @@ def greedy_track_assignment(srclist, dstlist, miniou, bycategory=True, pct=0.5):
     
     assigndict = {}
     for (k, ts) in sorted(enumerate(srclist), key=lambda x: len(x[1]), reverse=True):
-        assignscore = [ts.percentileiou(t, pct) * t.confidence() if (j not in assigndict.values() and (bycategory is False or ts.category().lower() == t.category().lower()) and ts.maxiou(t) > miniou) else 0.0 for (j,t) in enumerate(dstlist)]
+        assignscore = [ts.segment_percentileiou(t, pct) * t.confidence() if (j not in assigndict.values() and (bycategory is False or ts.category().lower() == t.category().lower()) and (miniou == 0 or ts.maxiou(t) > miniou)) else 0.0 for (j,t) in enumerate(dstlist)]
         assigndict[k] = np.argmax(assignscore) if len(assignscore) > 0 and max(assignscore) > 0 else None
     return [assigndict[k] for k in range(0, len(srclist))]
     

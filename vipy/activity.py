@@ -105,6 +105,8 @@ class Activity(object):
             return self._actorid
         else:
             self._actorid = actorid
+            if actorid not in self._trackid:
+                self._trackid.append(actorid)
             return self
 
     def startframe(self, f=None):
@@ -177,6 +179,11 @@ class Activity(object):
     def tracks(self):
         """alias for trackids"""
         return self.trackids()
+
+    def cleartracks(self):
+        """Remove all track IDs from this activity"""
+        self._trackid = []
+        return self
 
     def trackids(self):
         """Return a set of track IDs associated with this activity"""
