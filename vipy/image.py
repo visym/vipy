@@ -1293,7 +1293,7 @@ class Image(object):
             asbytes: [bool] if true return a byte array
 
         Returns:
-            A hash string encoding the perceptual hash such that `vipy.image.Image._perceptualhash_distance` can be used to compute a hash distance
+            A hash string encoding the perceptual hash such that `vipy.image.Image.perceptualhash_distance` can be used to compute a hash distance
             asbytes: a bytes array
             asbinary: a numpy binary array            
 
@@ -1779,7 +1779,7 @@ class Scene(ImageCategory):
             asbytes: [bool] if true return a byte array
 
         Returns:
-            A hash string encoding the perceptual hash such that `vipy.image.Image._perceptualhash_distance` can be used to compute a hash distance
+            A hash string encoding the perceptual hash such that `vipy.image.Image.perceptualhash_distance` can be used to compute a hash distance
             asbytes: a bytes array
             asbinary: a numpy binary array            
 
