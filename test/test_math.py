@@ -14,3 +14,8 @@ def test_interp1d():
     assert np.allclose(f1(1.25), f2(1.25))
     
     print('[test_math]: interp1d passed')
+
+    
+if __name__ == '__main__':
+    test_interp1d()
+    

@@ -9,9 +9,15 @@ import pdb
 from vipy.dataset.kinetics import Kinetics400, Kinetics600, Kinetics700
 from vipy.dataset.activitynet import ActivityNet
 from vipy.dataset.lfw import LFW
+import warnings
 
-
-def _test_dataset():    
+def _test_dataset():
+    rmdir('/tmp/lfw')
+    d = LFW('/tmp/lfw').download().dataset()
+    d[0].saveas('lfw.jpg')
+    print('[test_datasets]: LFW PASSED')
+    
+    warnings.warn('these datasets are crufty and have many missing youtube videos')    
     rmdir('/tmp/kinetics')
     d = Kinetics400('/tmp/kinetics').download().valset()
     v = d[0].load(verbose=True)[0].resize(rows=256).saveas('/tmp/kinetics.jpg')
@@ -31,10 +37,6 @@ def _test_dataset():
     v = d[0].load()
     print('[test_datasets]:  ActivityNet  PASSED')
     
-    rmdir('/tmp/lfw')
-    d = LFW('/tmp/lfw').download().dataset()
-    d[0].saveas('lfw.jpg')
-    print('Video.datasets: PASSED')
 
     
 if __name__ == "__main__":
