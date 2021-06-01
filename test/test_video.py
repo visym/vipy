@@ -62,7 +62,18 @@ def test_stream():
     print('[test_video.video]: stream batch   PASSED')
     print('[test_video.video]: stream clip  PASSED')               
     
+    for (k,vb) in enumerate(v.stream(bufsize=8).batch(8)):
+        if k == 1:
+            break
+    for (k,vc) in enumerate(v.load().stream(bufsize=8).clip(8,1)):
+        if k == 8:
+            break
 
+    assert np.allclose(vb.array(), vc.array(), atol=15)
+    print('[test_video.video]: stream clip (loaded) PASSED')                   
+    
+    
+    
 def _test_video():
     # Common Parameters
     urls = vipy.videosearch.youtube('owl',1)

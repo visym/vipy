@@ -231,7 +231,7 @@ class Video(object):
         return len(self.array()) if self.isloaded() else 0
 
     def __getitem__(self, k):
-        """Return the kth frame as an `vipy.image Image` object"""
+        """Alias for `vipy.video.Video.frame`"""
         return self.frame(k)
 
     def metadata(self):
@@ -263,7 +263,7 @@ class Video(object):
         
 
     def frame(self, k, img=None):
-        """Alias for self.__getitem__[k]"""
+        """Return the kth frame as an `vipy.image Image` object"""        
         assert isinstance(k, int) and k>=0, "Frame index must be non-negative integer"
         return Image(array=img if img is not None else (self._array[k] if self.isloaded() else self.preview(k).array()), colorspace=self.colorspace())       
         
@@ -284,10 +284,10 @@ class Video(object):
         >>> v == v.store().restore(v.filename()) 
         
         .. note::
-            -Remove this stored video using unstore()
-            -Unpack this stored video and set up the video chains using restore() 
-            -This method is more efficient than load() followed by pkl(), as it stores the encoded video as a byte string.
-            -Useful for creating a single self contained object for distributed processing.  
+        -Remove this stored video using unstore()
+        -Unpack this stored video and set up the video chains using restore() 
+        -This method is more efficient than load() followed by pkl(), as it stores the encoded video as a byte string.
+        -Useful for creating a single self contained object for distributed processing.  
         """
         assert self.hasfilename(), "Video file not found"
         with open(self.filename(), 'rb') as f:
@@ -295,20 +295,57 @@ class Video(object):
         return self
 
     def unstore(self):
-        """Delete the currently stored video from store()"""
+        """Delete the currently stored video from `vipy.video.Video.store"""
         return self.delattribute('__video__')
 
     def restore(self, filename):
-        """Save the currently stored video to filename, and set up filename"""
+        """Save the currently stored video as set using `vipy.video.Video.store` to filename, and set up filename"""
         assert self.hasattribute('__video__'), "Video not stored"
         with open(filename, 'wb') as f:
             f.write(self.attributes['__video__'])
         return self.filename(filename)                
         
     def stream(self, write=False, overwrite=False, bufsize=1024):
-        """Iterator to yield frames streaming from video
+        """Iterator to yield frames streaming from video.
+
+        A video stream is a real time iterator to read or write from a video.  Streams are useful to group together frames into clips that are operated on as a group.
+
+        The following use cases are supported:
+
+        >>> v = vipy.video.RandomScene()
+
+        Stream individual video frames offset by 10 frames and 20 frames
+
+        >>> for (im1, im2) in zip(v.stream().frame(n=-10), v.stream().frame(n=-20)):
+        >>>     print(im1, im2)
         
-           * Using this iterator may affect PDB debugging due to stdout/stdin redirection.  Use ipdb instead.
+        Stream overlapping clips such that each clip is a video n=16 frames long and starts at frame i, and the next clip is n=16 frames long and starts at frame i=i+m
+
+        >>> for vc in v.stream().clip(n=16, m=4):
+        >>>     print(vc)
+
+        Stream non-overlapping batches of frames such that each clip is a video of length n and starts at frame i, and the next clip is length n and starts at frame i+n
+
+        >>> for vb in v.stream().batch(n=16):
+        >>>     print(vb)        
+
+        Create a write stream to incrementally add frames to long video.  
+
+        >>> vi = vipy.video.Video(filename='/path/to/output.mp4')
+        >>> vo = vipy.video.Video(filename='/path/to/input.mp4')
+        >>> with vo.stream(write=True) as s:
+        >>>     for im in vi.stream():
+        >>>         s.write(im)  # manipulate pixels of im, if desired
+
+        Args:
+            write: [bool]  If true, create a write stream
+            overwrite: [bool]  If true, and the video output filename already exists, overwrite it
+            bufsize: [int]  The maximum queue size for the pipe thread.  
+
+        Returns:
+            A `vipy.video.Video.stream.Stream` object
+
+        ..note:: Using this iterator may affect PDB debugging due to stdout/stdin redirection.  Use ipdb instead.
 
         """
 
@@ -359,10 +396,13 @@ class Video(object):
                 return self.write(im)
 
             def _read_pipe(self):
-                p = self._video._ffmpeg.output('pipe:', format='rawvideo', pix_fmt='rgb24').global_args('-nostdin', '-loglevel', 'debug' if vipy.globals.isdebug() else 'quiet').run_async(pipe_stdout=True, pipe_stderr=True)
-                assert p is not None, "Invalid read pipe"
-                p.poll()
-                return p
+                if not self._video.isloaded():
+                    p = self._video._ffmpeg.output('pipe:', format='rawvideo', pix_fmt='rgb24').global_args('-nostdin', '-loglevel', 'debug' if vipy.globals.isdebug() else 'quiet').run_async(pipe_stdout=True, pipe_stderr=True)
+                    assert p is not None, "Invalid read pipe"
+                    p.poll()
+                    return p
+                else:
+                    return None
             
             def __iter__(self):
                 """Stream individual video frames"""
@@ -413,6 +453,8 @@ class Video(object):
 
             def write(self, im, flush=False):
                 """Write individual frames to write stream"""
+                
+                assert isinstance(im, vipy.image.Image)
                 if self._shape is None:
                     self._shape = im.shape()
                     assert im.channels() == 3, "RGB frames required"
@@ -430,33 +472,45 @@ class Video(object):
             def clip(self, n, m=1, continuous=False, tracks=True, activities=True):
                 """Stream clips of length n such that the yielded video clip contains frame(0) to frame(-n), and next contains frame(m) to frame (-(n+m)). 
                 
-                   - n [int]: the length of the clip
-                   - m [int]: the stride between clips
-                   - continuous [bool]:  if true, then yield None for the frames between the strides so that a clip is yielded on every frame
-                   - activities [bool]:  if false, then activities from the source video are not copied into the clip
-                   - tracks [bool]:  if false, then tracks from the source video are not copied into the clip
+                Args:
+                    n: [int] the length of the clip
+                    m: [int] the stride between clips
+                    continuous: [bool]  if true, then yield None for the frames between the strides so that a clip is yielded on every frame
+                    activities: [bool]  if false, then activities from the source video are not copied into the clip
+                    tracks: [bool]  if false, then tracks from the source video are not copied into the clip
+
+                Returns:
+                    An iterator that yields `vipy.video.Video` objects each of length n with startframe += m
                 """
                 assert isinstance(n, int) and n>0, "Clip length must be a positive integer"
                 assert isinstance(m, int) and m>0, "Clip stride must be a positive integer"                
                 
                 def _f_threadloop(pipe, queue, height, width, video, n, m, continuous, event):
-                    assert pipe is not None, "invalid pipe"
+                    assert self._video.isloaded() or pipe is not None, "invalid pipe"
                     assert queue is not None, "invalid queue"
                     frameindex = 0
                     frames = []
 
                     while True:
-                        in_bytes = pipe.stdout.read(height * width * 3)
-                        if not in_bytes:
-                            queue.put( (None, None) )
-                            pipe.poll()
-                            if pipe.returncode != 0:
-                                #raise ValueError('Clip stream iterator exited')
-                                pass
-                            event.wait()
-                            break
+                        if self._video.isloaded():
+                            if frameindex < len(self._video):
+                                frames.append(self._video[frameindex].array())
+                            else:
+                                queue.put( (None, None) )
+                                event.wait()                                
+                                break
                         else:
-                            frames.append(np.frombuffer(in_bytes, np.uint8).reshape([height, width, 3]))
+                            in_bytes = pipe.stdout.read(height * width * 3)
+                            if not in_bytes:
+                                queue.put( (None, None) )
+                                pipe.poll()
+                                if pipe.returncode != 0:
+                                    #raise ValueError('Clip stream iterator exited')
+                                    pass
+                                event.wait()
+                                break
+                            else:
+                                frames.append(np.frombuffer(in_bytes, np.uint8).reshape([height, width, 3]))
 
                         if len(frames) > n:
                             frames.pop(0) 
@@ -491,25 +545,35 @@ class Video(object):
                 assert isinstance(n, int) and n>0, "batch length must be a positive integer"
 
                 def _f_threadloop(pipe, queue, height, width, video, n, event):
-                    assert pipe is not None, "invalid pipe"
+                    assert self._video.isloaded() or pipe is not None, "invalid pipe"
                     assert queue is not None, "invalid queue"
                     frameindex = 0
                     frames = []
 
                     while True:
-                        in_bytes = pipe.stdout.read(height * width * 3)
-                        if not in_bytes:
-                            if len(frames) > 0:
-                                queue.put((frameindex, video.clear().clone(shallow=True).array(np.stack(frames))))
-                            queue.put((None, None))
-                            pipe.poll()
-                            if pipe.returncode != 0:
-                                #raise ValueError('Batch stream iterator exited')
-                                pass
-                            event.wait()
-                            break
-                        else:
-                            frames.append(np.frombuffer(in_bytes, np.uint8).reshape([height, width, 3]))
+                        if self._video.isloaded():
+                            if frameindex < len(self._video):
+                                frames.append(self._video[frameindex].array())
+                            else:
+                                if len(frames) > 0:
+                                    queue.put((frameindex, video.clear().clone(shallow=True).array(np.stack(frames))))                                
+                                queue.put( (None, None) )
+                                event.wait()                                
+                                break
+                        else:                            
+                            in_bytes = pipe.stdout.read(height * width * 3)
+                            if not in_bytes:
+                                if len(frames) > 0:
+                                    queue.put((frameindex, video.clear().clone(shallow=True).array(np.stack(frames))))
+                                queue.put((None, None))
+                                pipe.poll()
+                                if pipe.returncode != 0:
+                                    #raise ValueError('Batch stream iterator exited')
+                                    pass
+                                event.wait()
+                                break
+                            else:
+                                frames.append(np.frombuffer(in_bytes, np.uint8).reshape([height, width, 3]))
                             
                         if len(frames) == n:
                             queue.put( (frameindex, video.clear().clone(shallow=True).array(np.stack(frames))) )  # requires copy, expensive operation                            
@@ -534,7 +598,7 @@ class Video(object):
                         break
 
             def frame(self, n=0):
-                """Stream individual frames of video with negative offset n to the stream head. If n=-30, this full return a frame 30 frames ago"""
+                """Stream individual frames of video with negative offset n to the stream head. If n=-30, this will return a frame 30 frames ago"""
                 assert isinstance(n, int) and n<=0, "Frame offset must be non-positive integer"
                 frames = []
                 for (k,im) in enumerate(self):
@@ -547,7 +611,7 @@ class Video(object):
 
 
     def clear(self):
-        """no-op for Video()"""
+        """no-op for `vipy.video.Video` object, used only for `vipy.video.Scene`"""
         return self
     
     def bytes(self):
