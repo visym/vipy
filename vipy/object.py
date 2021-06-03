@@ -358,18 +358,36 @@ class Track(object):
         return BoundingBox(ulbr=np.mean([bb.ulbr() for bb in self.keyboxes()], axis=0)) if len(self.keyboxes()) > 0 else None 
     
     def shapevariance(self):
-        """Return the variance (width, height) of the box shape during the track or None if the track is degenerate.  This is useful for filtering spurious tracks where the aspect ratio changes rapidly and randomly"""
+        """Return the variance (width, height) of the box shape relative to `vipy.object.Track.meanbox` during the track or None if the track is degenerate.  
+
+        This is useful for filtering spurious tracks where the aspect ratio changes rapidly and randomly
+
+        Returns:
+            (width_variance, height_variance) of the box shape during the track (or None)
+        """
         m = self.meanshape()
         return (float(np.mean([(bb.width() - m[0])**2 for bb in self.keyboxes()])), 
                 float(np.mean([(bb.height() - m[1])**2 for bb in self.keyboxes()]))) if m is not None else None
 
     def _set_framerate(self, fps):
-        """Override framerate conversion and just set the framerate attribute.  This should really only be set by the user in the constructor.  Use with caution!"""
+        """Override framerate conversion and just set the framerate attribute.  
+
+        .. warning::  This should really only be set by the user in the constructor and is included here as an admin override.  Use with caution!
+        """
         self._framerate = fps
         return self
 
     def framerate(self, fps=None, speed=None):
-        """Resample keyframes from known original framerate set by constructor to be new framerate fps"""
+        """Resample keyframes from known original framerate set by constructor to be new framerate fps.
+
+        Args:
+            fps: [float]  The new frame rate in frames per second
+            speed: [float]  An optional speed factor which will multiply the current framerate by this factor (e.g. speed=2 --> fps=self.framerate()*2)
+
+        Returns:
+            This track object with the keyframes resampled to the new framerate
+
+        """
         if fps is None and speed is None:
             return self._framerate
         
@@ -384,18 +402,29 @@ class Track(object):
         return self
         
     def startframe(self):
+        """Return the startframe of the track or None if there are no keyframes.  
+        
+        The frame index is relative to the framerate set in the constructor.
+
+        """        
         return self._keyframes[0] if len(self._keyframes)>0 else None  # assumes sorted order
 
     def endframe(self):
+        """Return the endframe of the track or None if there are no keyframes.
+
+        The frame index is relative to the framerate set in the constructor.
+        """
         return self._keyframes[-1] if len(self._keyframes)>0 else None  # assumes sorted order
 
     def linear_interpolation(self, f, id=True):
         """Linear bounding box interpolation at frame=k given observed boxes (x,y,w,h) at keyframes.  
-        This returns a vipy.object.Detection() which is the interpolation of the Track() at frame k
-        If self._boundary='extend', then boxes are repeated if the interpolation is outside the keyframes
-        If self._boundary='strict', then interpolation returns None if the interpolation is outside the keyframes
+
+        This returns a `vipy.object.Detection` which is the interpolation of the `vipy.object.Track` at frame k
+
+        - If self._boundary='extend', then boxes are repeated if the interpolation is outside the keyframes
+        - If self._boundary='strict', then interpolation returns None if the interpolation is outside the keyframes
         
-          - The returned object is not cloned when possible for speed purposes, be careful when modifying this object.  clone() if necessary
+        .. note::  The returned object is not cloned when possible for speed purposes, be careful when modifying this object.  clone() if necessary
 
         """
         assert len(self._keyboxes) > 0, "Degenerate object for interpolation"   # not self.isempty()

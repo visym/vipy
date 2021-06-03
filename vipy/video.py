@@ -3317,15 +3317,16 @@ class Scene(VideoCategory):
         return self
 
     def downcast(self):
-        """Cast the object to a vipy.video.Video class"""
+        """Cast the object to a `vipy.video.Video` class"""
         self.__class__ = vipy.video.Video
         return self
 
     def merge_tracks(self, dilate_height=2.0, dilate_width=2.0, framedist=5):
         """Merge tracks if a track endpoint dilated by a fraction overlaps exactly one track startpoint, and the endpoint and startpoint are close enough together temporally.
         
-           * This is useful for continuing tracking when the detection framerate was too low and the assignment falls outside the measurement gate.
-           * This will not work for complex scenes, as it assumes that there is exactly one possible continuation for a track.  
+        .. note::
+        - This is useful for continuing tracking when the detection framerate was too low and the assignment falls outside the measurement gate.
+        - This will not work for complex scenes, as it assumes that there is exactly one possible continuation for a track.  
         
         """
         merged = set([])
@@ -3344,13 +3345,17 @@ class Scene(VideoCategory):
     def assign(self, frame, dets, minconf=0.2, maxhistory=5, activityiou=0.5, trackcover=0.2, trackconfsamples=4, gate=0, activitymerge=True):
         """Assign a list of vipy.object.Detections at frame k to scene by greedy track association. In-place update.
         
-           * miniou [float]: the minimum temporal IOU for activity assignment
-           * minconf [float]: the minimum confidence for a detection to be considered as a new track
-           * maxhistory [int]:  the maximum propagation length of a track with no measurements, the frame history ised for velocity estimates  
-           * trackconfsamples [int]:  the number of uniformly spaced samples along a track to compute a track confidence
-           * gate [int]: the gating distance in pixels used for assignment of fast moving detections.  Useful for low detection framerates if a detection does not overlap with the track.
-           * trackcover [float]: the minimum cover necessary for assignment of a detection to a track
-           * activitymerge [bool]: if true, then merge overlapping activity detections of the same track and category, otherwise each activity detection is added as a new detection
+        Args:
+            miniou: [float] the minimum temporal IOU for activity assignment
+            minconf: [float] the minimum confidence for a detection to be considered as a new track
+            maxhistory: [int]  the maximum propagation length of a track with no measurements, the frame history ised for velocity estimates  
+            trackconfsamples: [int]  the number of uniformly spaced samples along a track to compute a track confidence
+            gate: [int] the gating distance in pixels used for assignment of fast moving detections.  Useful for low detection framerates if a detection does not overlap with the track.
+            trackcover: [float] the minimum cover necessary for assignment of a detection to a track
+            activitymerge: [bool] if true, then merge overlapping activity detections of the same track and category, otherwise each activity detection is added as a new detection
+
+        Returns:
+            This video object with each det assigned to correpsonding track or activity.
 
         """
         assert dets is None or all([isinstance(d, vipy.object.Detection) or isinstance(d, vipy.activity.Activity) for d in tolist(dets)]), "invalid input"

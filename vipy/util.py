@@ -747,6 +747,16 @@ def isinstalled(cmd):
     return shutil.which(cmd) is not None
 
 
+def isextension(filename, ext):
+    """Does the filename end with the extension ext? 
+    
+    >>> isextension('/path/to/myfile.json', 'json') == True
+    >>> isextension('/path/to/myfile.json', '.json') == True
+    >>> isextension('/path/to/myfile.json', '.pkl') == False
+
+    """
+    return filename.endswith(ext)
+
 def ispkl(filename):
     """Is the file a pickle archive file"""
     return filename[-4:] == '.pkl' if isstring(filename) and \
