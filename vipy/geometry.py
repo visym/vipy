@@ -202,8 +202,8 @@ class BoundingBox(object):
         return BoundingBox(xmin=self._xmin, xmax=self._xmax, ymin=self._ymin, ymax=self._ymax)
 
     def __eq__(self, other):
-        """Bounding box equality"""
-        return isinstance(other, BoundingBox) and self.xywh() == other.xywh()
+        """Bounding box equality (integer resolution of corners)"""
+        return isinstance(other, BoundingBox) and self.clone().int().xywh() == other.clone().int().xywh()
 
     def __neq__(self, other):
         """Bounding box non-equality"""

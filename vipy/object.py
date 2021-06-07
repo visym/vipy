@@ -77,9 +77,9 @@ class Detection(BoundingBox):
         return str('<vipy.object.detection: %s>' % (', '.join(strlist)))
 
     def __eq__(self, other):
-        """Detection equality when bounding boxes and categories are equivalent"""
-        return ((isinstance(other, Detection) and self.xywh() == other.xywh() and self.category() == other.category()) or
-                isinstance(other, BoundingBox) and self.xywh() == other.xywh())
+        """Detection equality when bounding boxes (integer resolution) and categories are equivalent"""
+        return ((isinstance(other, Detection) and self.clone().int().xywh() == other.clone().int().xywh() and self.category() == other.category()) or
+                isinstance(other, BoundingBox) and self.clone().int().xywh() == other.clone().int().xywh())
 
     def __str__(self):
         return self.__repr__()

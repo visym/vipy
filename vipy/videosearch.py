@@ -102,9 +102,6 @@ def youtube(tag, n_pages=1, channel=False, video_limit=None):
                 return ([None], [None])
         search_data = str(search_results.read())
 
-        with open('/Users/jebyrne/Desktop/out.txt', 'w') as f:
-            f.write(search_data)
-            
         datalist = search_data.split('{"webCommandMetadata":{"url":"')
 
         vidlist.extend(['https://www.youtube.com%s' % vid.split('"')[0] for vid in datalist if 'watch?' in vid])
