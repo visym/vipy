@@ -826,6 +826,12 @@ INDEX=[
 "func":1
 },
 {
+"ref":"vipy.object.Detection.to_origin",
+"url":8,
+"doc":"Translate the bounding box so that (xmin, ymin) = (0,0)",
+"func":1
+},
+{
 "ref":"vipy.object.Detection.set_origin",
 "url":8,
 "doc":"Set the origin of the coordinates of this bounding box to be relative to the upper left of the other bounding box",
@@ -1421,13 +1427,19 @@ INDEX=[
 {
 "ref":"vipy.object.Track.offset",
 "url":7,
-"doc":"",
+"doc":"Apply a temporal shift of dt frames, and a spatial shift of (dx, dy) pixels. Args: dt: [int] frame offset dx: [float] horizontal spatial offset dy: [float] vertical spatial offset Returns: This box updated in place",
+"func":1
+},
+{
+"ref":"vipy.object.Track.uncrop",
+"url":7,
+"doc":"Apply a transformation to the track that will undo a crop of a bounding box with an optional scale factor. A typical operation is as follows. A video is cropped and zommed in order to run a detector on a region of interest. However, we want to align the resulting tracks on the original video before the crop and zoom. Args: bb: [ vipy.geometry.BoundingBox ]. A bounding box which was used to crop this track s: [float] A scale factor applied after the bounding box crop Returns: This track after undoing the scale and crop",
 "func":1
 },
 {
 "ref":"vipy.object.Track.frameoffset",
 "url":7,
-"doc":"Offset boxes by (dx,dy) in each frame",
+"doc":"Offset boxes by (dx,dy) in each frame. This is used to apply a different offset for each frame. To apply one offset to all frames, use  vipy.object.offset . Args: dx: [list] This should be a list of frame offsets at each keyframe the same length as the number of keyboxes dy: [list] This should be a list of frame offsets at each keyframe the same length as the number of keyboxes Returns: This box updated in place",
 "func":1
 },
 {
@@ -1781,19 +1793,25 @@ INDEX=[
 {
 "ref":"vipy.object.non_maximum_suppression",
 "url":7,
-"doc":"Compute greedy non-maximum suppression of a list of vipy.object.Detection() based on spatial IOU threshold (iou) and cover threhsold (cover) sorted by confidence (conf)",
+"doc":"Compute greedy non-maximum suppression of a list of vipy.object.Detection() based on spatial IOU threshold (iou) and cover threhsold (cover) sorted by confidence (conf). Args: detlist: [list  vipy.object.Detection ] conf: [float] minimum confidence for non-maximum suppression iou: [float] minimum iou for non-maximum suporession bycategory: [bool] NMS only within the same category cover: [float, None] A minimum cover for NMS (stricter than iou) gridsize: [tuple, (rows, cols)] An optional grid for fast intersection lookups Returns: List of  vipy.object.Detection non-maximum suppressed, sorted by increasing confidence",
 "func":1
 },
 {
 "ref":"vipy.object.greedy_assignment",
 "url":7,
-"doc":"Compute a greedy one-to-one assignment of each vipy.object.Detection() in srclist to a unique element in dstlist with the largest IoU greater than miniou, else None returns: assignlist [list]: same length as srclist, where j=assignlist[i] is the index of the assignment such that srclist[i]  dstlist[j]",
+"doc":"Compute a greedy one-to-one assignment of each vipy.object.Detection() in srclist to a unique element in dstlist with the largest IoU greater than miniou, else None Args: srclist: [list,  vipy.object.Detection ] dstlist: [list,  vipy.object.Detection ] miniou: [float, >=0,  dstlist[j]",
+"func":1
+},
+{
+"ref":"vipy.object.greedy_track_assignment",
+"url":7,
+"doc":"Compute a greedy one-to-ine assignment of each  vipy.object.Track in srclist to a unique element in dstlist with the largest assignment score. - Assignment score:  vipy.object.Track.segment_percentileiou   vipy.object.Track.confidence , if maxiou() > miniou else 0 - Assigment order: longest to shortest src track Args: srclist: [list,  vipy.object.Track ] dstlist: [list,  vipy.object.Track ] miniou: [float, >=0,  dstlist[j]",
 "func":1
 },
 {
 "ref":"vipy.object.RandomDetection",
 "url":7,
-"doc":"",
+"doc":"Return a random  vipy.object.Detection in the range (0 < xmin < W, 0 < ymin < H, height < 100, width < 100). Useful for unit testing.",
 "func":1
 },
 {
@@ -3991,7 +4009,7 @@ INDEX=[
 {
 "ref":"vipy.batch.Batch",
 "url":35,
-"doc":"vipy.batch.Batch class This class provides a representation of a set of vipy objects. All of the object types must be the same. If so, then an operation on the batch is performed on each of the elements in the batch in parallel. Examples: >>> b = vipy.batch.Batch([Image(filename='img_%06d.png' % k) for k in range(0,100)]) >>> b.map(lambda im: im.bgr( >>> b.map(lambda im: np.sum(im.array( ) >>> b.map(lambda im, f: im.saveas(f), args=['out%d.jpg' % k for k in range(0,100)]) >>> v = vipy.video.RandomSceneActivity() >>> b = vipy.batch.Batch(v, n_processes=16) >>> b.map(lambda v,k: v[k], args=[(k,) for k in range(0, len(v ])  paralle interpolation >>> d = vipy.dataset.kinetics.Kinetics700('/path/to/kinetics').download().trainset() >>> b = vipy.batch.Batch(d, n_processes=32) >>> b.map(lambda v: v.download().save(  will download and clip dataset in parallel >>> b.result()  retrieve results after a sequence of map or filter chains Parameters: -strict=False: if distributed processing fails, return None for that element and print the exception rather than raise -as_completed=True: Return the objects to the scheduler as they complete, this can introduce instabilities for large complex objects, use with caution Create a batch of homogeneous vipy.image objects from an iterable that can be operated on with a single parallel function call"
+"doc":"vipy.batch.Batch class This class provides a representation of a set of vipy objects. All of the object types must be the same. If so, then an operation on the batch is performed on each of the elements in the batch in parallel. Examples: >>> b = vipy.batch.Batch([Image(filename='img_%06d.png' % k) for k in range(0,100)]) >>> b.map(lambda im: im.bgr( >>> b.map(lambda im: np.sum(im.array( ) >>> b.map(lambda im, f: im.saveas(f), args=['out%d.jpg' % k for k in range(0,100)]) >>> v = vipy.video.RandomSceneActivity() >>> b = vipy.batch.Batch(v, n_processes=16) >>> b.map(lambda v,k: v[k], args=[(k,) for k in range(0, len(v ])  paralle interpolation >>> d = vipy.dataset.kinetics.Kinetics700('/path/to/kinetics').download().trainset() >>> b = vipy.batch.Batch(d, n_processes=32) >>> b.map(lambda v: v.download().save(  will download and clip dataset in parallel >>> b.result()  retrieve results after a sequence of map or filter chains Args: strict: [bool] if distributed processing fails, return None for that element and print the exception rather than raise as_completed: [bool] Return the objects to the scheduler as they complete, this can introduce instabilities for large complex objects, use with caution Create a batch of homogeneous vipy.image objects from an iterable that can be operated on with a single parallel function call"
 },
 {
 "ref":"vipy.batch.Batch.restore",
@@ -4008,7 +4026,7 @@ INDEX=[
 {
 "ref":"vipy.batch.Batch.map",
 "url":35,
-"doc":"Run the lambda function on each of the elements of the batch and return the batch object. >>> iml = [vipy.image.RandomScene(512,512) for k in range(0,1000)] >>> imb = vipy.image.Batch(iml) >>> imb.map(lambda im: im.rgb( The lambda function f_lambda must not include closures. If it does, construct the batch with tuples (obj,prms) or with default parameter capture: >>> f = lambda x, prm1=1, prm2=2: x+prm1+prm2",
+"doc":"Run the lambda function on each of the elements of the batch and return the batch object. >>> iml = [vipy.image.RandomScene(512,512) for k in range(0,1000)] >>> imb = vipy.image.Batch(iml) >>> imb.map(lambda im: im.rgb( The lambda function f_lambda should not include closures. If it does, construct the lambda with default parameter capture: >>> f = lambda x, prm1=42: x+prm1 instead of: >>> prm1 = 42 >>> f = lambda x: x+prm1",
 "func":1
 },
 {
@@ -4133,6 +4151,12 @@ INDEX=[
 "ref":"vipy.activity.Activity.tracks",
 "url":36,
 "doc":"alias for trackids",
+"func":1
+},
+{
+"ref":"vipy.activity.Activity.cleartracks",
+"url":36,
+"doc":"Remove all track IDs from this activity",
 "func":1
 },
 {
@@ -4489,7 +4513,7 @@ INDEX=[
 {
 "ref":"vipy.flow.Video.frame",
 "url":38,
-"doc":"Alias for self.__getitem__[k]",
+"doc":"Return the kth frame as an  vipy.image Image object",
 "func":1
 },
 {
@@ -4501,25 +4525,25 @@ INDEX=[
 {
 "ref":"vipy.flow.Video.unstore",
 "url":38,
-"doc":"Delete the currently stored video from store()",
+"doc":"Delete the currently stored video from  vipy.video.Video.store",
 "func":1
 },
 {
 "ref":"vipy.flow.Video.restore",
 "url":38,
-"doc":"Save the currently stored video to filename, and set up filename",
+"doc":"Save the currently stored video as set using  vipy.video.Video.store to filename, and set up filename",
 "func":1
 },
 {
 "ref":"vipy.flow.Video.stream",
 "url":38,
-"doc":"Iterator to yield frames streaming from video  Using this iterator may affect PDB debugging due to stdout/stdin redirection. Use ipdb instead.  FFMPEG stdout pipe may screw up bash shell newlines, requiring issuing command \"reset\"",
+"doc":"Iterator to yield frames streaming from video. A video stream is a real time iterator to read or write from a video. Streams are useful to group together frames into clips that are operated on as a group. The following use cases are supported: >>> v = vipy.video.RandomScene() Stream individual video frames offset by 10 frames and 20 frames >>> for (im1, im2) in zip(v.stream().frame(n=-10), v.stream().frame(n=-20 : >>> print(im1, im2) Stream overlapping clips such that each clip is a video n=16 frames long and starts at frame i, and the next clip is n=16 frames long and starts at frame i=i+m >>> for vc in v.stream().clip(n=16, m=4): >>> print(vc) Stream non-overlapping batches of frames such that each clip is a video of length n and starts at frame i, and the next clip is length n and starts at frame i+n >>> for vb in v.stream().batch(n=16): >>> print(vb) Create a write stream to incrementally add frames to long video. >>> vi = vipy.video.Video(filename='/path/to/output.mp4') >>> vo = vipy.video.Video(filename='/path/to/input.mp4') >>> with vo.stream(write=True) as s: >>> for im in vi.stream(): >>> s.write(im)  manipulate pixels of im, if desired Args: write: [bool] If true, create a write stream overwrite: [bool] If true, and the video output filename already exists, overwrite it bufsize: [int] The maximum queue size for the pipe thread. Returns: A  vipy.video.Video.stream.Stream object  note Using this iterator may affect PDB debugging due to stdout/stdin redirection. Use ipdb instead.",
 "func":1
 },
 {
 "ref":"vipy.flow.Video.clear",
 "url":38,
-"doc":"no-op for Video()",
+"doc":"no-op for  vipy.video.Video object, used only for  vipy.video.Scene ",
 "func":1
 },
 {
@@ -4867,7 +4891,13 @@ INDEX=[
 {
 "ref":"vipy.flow.Video.zeropad",
 "url":38,
-"doc":"Zero pad the video with padwidth columns before and after, and padheight rows before and after  NOTE: Older FFMPEG implementations can throw the error \"Input area  : : : not within the padded area  : : : or zero-sized, this is often caused by odd sized padding. Recommend calling self.cropeven().zeropad( .) to avoid this",
+"doc":"Zero pad the video with padwidth columns before and after, and padheight rows before and after  notes Older FFMPEG implementations can throw the error \"Input area  : : : not within the padded area  : : : or zero-sized, this is often caused by odd sized padding. Recommend calling self.cropeven().zeropad( .) to avoid this",
+"func":1
+},
+{
+"ref":"vipy.flow.Video.pad",
+"url":38,
+"doc":"Alias for zeropad",
 "func":1
 },
 {
@@ -5593,7 +5623,7 @@ INDEX=[
 {
 "ref":"vipy.geometry.BoundingBox.to_origin",
 "url":8,
-"doc":"",
+"doc":"Translate the bounding box so that (xmin, ymin) = (0,0)",
 "func":1
 },
 {
@@ -6551,7 +6581,7 @@ INDEX=[
 {
 "ref":"vipy.video.Video.frame",
 "url":38,
-"doc":"Alias for self.__getitem__[k]",
+"doc":"Return the kth frame as an  vipy.image Image object",
 "func":1
 },
 {
@@ -6563,25 +6593,25 @@ INDEX=[
 {
 "ref":"vipy.video.Video.unstore",
 "url":38,
-"doc":"Delete the currently stored video from store()",
+"doc":"Delete the currently stored video from  vipy.video.Video.store",
 "func":1
 },
 {
 "ref":"vipy.video.Video.restore",
 "url":38,
-"doc":"Save the currently stored video to filename, and set up filename",
+"doc":"Save the currently stored video as set using  vipy.video.Video.store to filename, and set up filename",
 "func":1
 },
 {
 "ref":"vipy.video.Video.stream",
 "url":38,
-"doc":"Iterator to yield frames streaming from video  Using this iterator may affect PDB debugging due to stdout/stdin redirection. Use ipdb instead.  FFMPEG stdout pipe may screw up bash shell newlines, requiring issuing command \"reset\"",
+"doc":"Iterator to yield frames streaming from video. A video stream is a real time iterator to read or write from a video. Streams are useful to group together frames into clips that are operated on as a group. The following use cases are supported: >>> v = vipy.video.RandomScene() Stream individual video frames offset by 10 frames and 20 frames >>> for (im1, im2) in zip(v.stream().frame(n=-10), v.stream().frame(n=-20 : >>> print(im1, im2) Stream overlapping clips such that each clip is a video n=16 frames long and starts at frame i, and the next clip is n=16 frames long and starts at frame i=i+m >>> for vc in v.stream().clip(n=16, m=4): >>> print(vc) Stream non-overlapping batches of frames such that each clip is a video of length n and starts at frame i, and the next clip is length n and starts at frame i+n >>> for vb in v.stream().batch(n=16): >>> print(vb) Create a write stream to incrementally add frames to long video. >>> vi = vipy.video.Video(filename='/path/to/output.mp4') >>> vo = vipy.video.Video(filename='/path/to/input.mp4') >>> with vo.stream(write=True) as s: >>> for im in vi.stream(): >>> s.write(im)  manipulate pixels of im, if desired Args: write: [bool] If true, create a write stream overwrite: [bool] If true, and the video output filename already exists, overwrite it bufsize: [int] The maximum queue size for the pipe thread. Returns: A  vipy.video.Video.stream.Stream object  note Using this iterator may affect PDB debugging due to stdout/stdin redirection. Use ipdb instead.",
 "func":1
 },
 {
 "ref":"vipy.video.Video.clear",
 "url":38,
-"doc":"no-op for Video()",
+"doc":"no-op for  vipy.video.Video object, used only for  vipy.video.Scene ",
 "func":1
 },
 {
@@ -6977,7 +7007,13 @@ INDEX=[
 {
 "ref":"vipy.video.Video.zeropad",
 "url":38,
-"doc":"Zero pad the video with padwidth columns before and after, and padheight rows before and after  NOTE: Older FFMPEG implementations can throw the error \"Input area  : : : not within the padded area  : : : or zero-sized, this is often caused by odd sized padding. Recommend calling self.cropeven().zeropad( .) to avoid this",
+"doc":"Zero pad the video with padwidth columns before and after, and padheight rows before and after  notes Older FFMPEG implementations can throw the error \"Input area  : : : not within the padded area  : : : or zero-sized, this is often caused by odd sized padding. Recommend calling self.cropeven().zeropad( .) to avoid this",
+"func":1
+},
+{
+"ref":"vipy.video.Video.pad",
+"url":38,
+"doc":"Alias for zeropad",
 "func":1
 },
 {
@@ -7180,7 +7216,7 @@ INDEX=[
 {
 "ref":"vipy.video.VideoCategory.frame",
 "url":38,
-"doc":"Alias for self.__getitem__[k]",
+"doc":"Return the kth frame as an  vipy.image Image object",
 "func":1
 },
 {
@@ -7192,25 +7228,25 @@ INDEX=[
 {
 "ref":"vipy.video.VideoCategory.unstore",
 "url":38,
-"doc":"Delete the currently stored video from store()",
+"doc":"Delete the currently stored video from  vipy.video.Video.store",
 "func":1
 },
 {
 "ref":"vipy.video.VideoCategory.restore",
 "url":38,
-"doc":"Save the currently stored video to filename, and set up filename",
+"doc":"Save the currently stored video as set using  vipy.video.Video.store to filename, and set up filename",
 "func":1
 },
 {
 "ref":"vipy.video.VideoCategory.stream",
 "url":38,
-"doc":"Iterator to yield frames streaming from video  Using this iterator may affect PDB debugging due to stdout/stdin redirection. Use ipdb instead.  FFMPEG stdout pipe may screw up bash shell newlines, requiring issuing command \"reset\"",
+"doc":"Iterator to yield frames streaming from video. A video stream is a real time iterator to read or write from a video. Streams are useful to group together frames into clips that are operated on as a group. The following use cases are supported: >>> v = vipy.video.RandomScene() Stream individual video frames offset by 10 frames and 20 frames >>> for (im1, im2) in zip(v.stream().frame(n=-10), v.stream().frame(n=-20 : >>> print(im1, im2) Stream overlapping clips such that each clip is a video n=16 frames long and starts at frame i, and the next clip is n=16 frames long and starts at frame i=i+m >>> for vc in v.stream().clip(n=16, m=4): >>> print(vc) Stream non-overlapping batches of frames such that each clip is a video of length n and starts at frame i, and the next clip is length n and starts at frame i+n >>> for vb in v.stream().batch(n=16): >>> print(vb) Create a write stream to incrementally add frames to long video. >>> vi = vipy.video.Video(filename='/path/to/output.mp4') >>> vo = vipy.video.Video(filename='/path/to/input.mp4') >>> with vo.stream(write=True) as s: >>> for im in vi.stream(): >>> s.write(im)  manipulate pixels of im, if desired Args: write: [bool] If true, create a write stream overwrite: [bool] If true, and the video output filename already exists, overwrite it bufsize: [int] The maximum queue size for the pipe thread. Returns: A  vipy.video.Video.stream.Stream object  note Using this iterator may affect PDB debugging due to stdout/stdin redirection. Use ipdb instead.",
 "func":1
 },
 {
 "ref":"vipy.video.VideoCategory.clear",
 "url":38,
-"doc":"no-op for Video()",
+"doc":"no-op for  vipy.video.Video object, used only for  vipy.video.Scene ",
 "func":1
 },
 {
@@ -7570,7 +7606,13 @@ INDEX=[
 {
 "ref":"vipy.video.VideoCategory.zeropad",
 "url":38,
-"doc":"Zero pad the video with padwidth columns before and after, and padheight rows before and after  NOTE: Older FFMPEG implementations can throw the error \"Input area  : : : not within the padded area  : : : or zero-sized, this is often caused by odd sized padding. Recommend calling self.cropeven().zeropad( .) to avoid this",
+"doc":"Zero pad the video with padwidth columns before and after, and padheight rows before and after  notes Older FFMPEG implementations can throw the error \"Input area  : : : not within the padded area  : : : or zero-sized, this is often caused by odd sized padding. Recommend calling self.cropeven().zeropad( .) to avoid this",
+"func":1
+},
+{
+"ref":"vipy.video.VideoCategory.pad",
+"url":38,
+"doc":"Alias for zeropad",
 "func":1
 },
 {
@@ -7809,7 +7851,13 @@ INDEX=[
 {
 "ref":"vipy.video.Scene.actorid",
 "url":38,
-"doc":"",
+"doc":"Return or set the actor ID for the video. - The actor ID is the track ID of the primary actor in the scene. This is useful for assigning a role for activities that are performed by the actor. - The actor ID is the first track is in the tracklist Args: id: [str] if not None, then use this track ID as the actor fluent: [bool] If true, always return self. This is useful for those cases where the actorid being set is None. Returns: [id=None, fluent=False] the actor ID [id is not None] The video with the actor ID set.",
+"func":1
+},
+{
+"ref":"vipy.video.Scene.setactorid",
+"url":38,
+"doc":"Alias for  vipy.video.Scene.actorid ",
 "func":1
 },
 {
@@ -7821,7 +7869,7 @@ INDEX=[
 {
 "ref":"vipy.video.Scene.primary_activity",
 "url":38,
-"doc":"",
+"doc":"Return the primary activity of the video. - The primary activity is the first activity in the activitylist. - This is useful for activityclip() videos that are centered on a single activity Returns:  vipy.activity.Activity that is first in the  vipy.video.Scene.activitylist ",
 "func":1
 },
 {
@@ -7851,7 +7899,7 @@ INDEX=[
 {
 "ref":"vipy.video.Scene.trackfilter",
 "url":38,
-"doc":"Apply lambda function f to each object and keep if filter is True. Args: activitytrack: [bool] If trye, remove track assignment from activities also, may result in activities with no tracks f: [lambda] The lambda function to apply to each track t, and if f(t) returns True, then keep the track Returns: self, with tracks removed in-place",
+"doc":"Apply lambda function f to each object and keep if filter is True. Args: activitytrack: [bool] If true, remove track assignment from activities also, may result in activities with no tracks f: [lambda] The lambda function to apply to each track t, and if f(t) returns True, then keep the track Returns: self, with tracks removed in-place",
 "func":1
 },
 {
@@ -7887,7 +7935,7 @@ INDEX=[
 {
 "ref":"vipy.video.Scene.activitylabel",
 "url":38,
-"doc":"Return an iterator over activity labels in each frame",
+"doc":"Return an iterator over activity labels in each frame, starting from startframe and ending when there are no more activities",
 "func":1
 },
 {
@@ -8271,19 +8319,19 @@ INDEX=[
 {
 "ref":"vipy.video.Scene.unstore",
 "url":38,
-"doc":"Delete the currently stored video from store()",
+"doc":"Delete the currently stored video from  vipy.video.Video.store",
 "func":1
 },
 {
 "ref":"vipy.video.Scene.restore",
 "url":38,
-"doc":"Save the currently stored video to filename, and set up filename",
+"doc":"Save the currently stored video as set using  vipy.video.Video.store to filename, and set up filename",
 "func":1
 },
 {
 "ref":"vipy.video.Scene.stream",
 "url":38,
-"doc":"Iterator to yield frames streaming from video  Using this iterator may affect PDB debugging due to stdout/stdin redirection. Use ipdb instead.  FFMPEG stdout pipe may screw up bash shell newlines, requiring issuing command \"reset\"",
+"doc":"Iterator to yield frames streaming from video. A video stream is a real time iterator to read or write from a video. Streams are useful to group together frames into clips that are operated on as a group. The following use cases are supported: >>> v = vipy.video.RandomScene() Stream individual video frames offset by 10 frames and 20 frames >>> for (im1, im2) in zip(v.stream().frame(n=-10), v.stream().frame(n=-20 : >>> print(im1, im2) Stream overlapping clips such that each clip is a video n=16 frames long and starts at frame i, and the next clip is n=16 frames long and starts at frame i=i+m >>> for vc in v.stream().clip(n=16, m=4): >>> print(vc) Stream non-overlapping batches of frames such that each clip is a video of length n and starts at frame i, and the next clip is length n and starts at frame i+n >>> for vb in v.stream().batch(n=16): >>> print(vb) Create a write stream to incrementally add frames to long video. >>> vi = vipy.video.Video(filename='/path/to/output.mp4') >>> vo = vipy.video.Video(filename='/path/to/input.mp4') >>> with vo.stream(write=True) as s: >>> for im in vi.stream(): >>> s.write(im)  manipulate pixels of im, if desired Args: write: [bool] If true, create a write stream overwrite: [bool] If true, and the video output filename already exists, overwrite it bufsize: [int] The maximum queue size for the pipe thread. Returns: A  vipy.video.Video.stream.Stream object  note Using this iterator may affect PDB debugging due to stdout/stdin redirection. Use ipdb instead.",
 "func":1
 },
 {
@@ -8566,6 +8614,12 @@ INDEX=[
 "ref":"vipy.video.Scene.maxsquare",
 "url":38,
 "doc":"Pad the video to be square, preserving the upper left corner of the video",
+"func":1
+},
+{
+"ref":"vipy.video.Scene.pad",
+"url":38,
+"doc":"Alias for zeropad",
 "func":1
 },
 {
@@ -12029,6 +12083,12 @@ INDEX=[
 "ref":"vipy.image.ImageDetection.translate",
 "url":8,
 "doc":"Translate the bounding box by dx in x and dy in y",
+"func":1
+},
+{
+"ref":"vipy.image.ImageDetection.to_origin",
+"url":8,
+"doc":"Translate the bounding box so that (xmin, ymin) = (0,0)",
 "func":1
 },
 {

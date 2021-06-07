@@ -25,7 +25,7 @@
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/bfd48e8fd1640fe9b3548b82632e2ef123d86a75/vipy/dataset/lfw.py#L1-L80" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/9104ff42b3d76273c8341abf5499fc7e29315d36/vipy/dataset/lfw.py#L1-L85" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">import os
 import numpy as np
@@ -44,26 +44,31 @@ URL_PAIRS_VIEW2 = &#39;http://vis-www.cs.umass.edu/lfw/pairs.txt&#39;
 class LFW(object):
     def __init__(self, datadir):
         &#34;&#34;&#34;Datadir contains the unpacked contents of LFW from $URL -&gt; /path/to/lfw&#34;&#34;&#34;
-        self.lfwdir = remkdir(os.path.join(remkdir(datadir), &#39;lfw&#39;, &#39;lfw&#39;))
-
+        self.lfwdir = datadir
+        remkdir(os.path.join(self.lfwdir, &#39;lfw&#39;))
+        self._dataset = self.dataset()
+        
     def download(self, verbose=True):
         vipy.downloader.download_and_unpack(URL, self.lfwdir, verbose=verbose)
         return self
 
+    def __getitem__(self, k):
+        return self._dataset[k]
+    
     def __repr__(self):
         return str(&#34;&lt;vipy.dataset.lfw: &#39;%s&#39;&gt;&#34; % self.lfwdir)
 
     def subjects(self):
         &#34;&#34;&#34;List of all subject names&#34;&#34;&#34;
-        return [filetail(d) for d in dirlist(self.lfwdir)]
+        return [filetail(d) for d in dirlist(os.path.join(self.lfwdir, &#39;lfw&#39;))]
 
     def subject_images(self, subject):
         &#34;&#34;&#34;List of Images of a subject&#34;&#34;&#34;
-        fnames = imlist(os.path.join(self.lfwdir, subject))
+        fnames = imlist(os.path.join(self.lfwdir, &#39;lfw&#39;, subject))
         return [ImageCategory(category=subject, filename=f) for f in fnames]
 
     def dataset(self):
-        return [ImageCategory(category=s, filename=f) for s in self.subjects() for f in imlist(os.path.join(self.lfwdir, s))]
+        return [ImageCategory(category=s, filename=f) for s in self.subjects() for f in imlist(os.path.join(self.lfwdir, &#39;lfw&#39;, s))]
 
     def dictionary(self):
         &#34;&#34;&#34;List of all Images of all subjects&#34;&#34;&#34;
@@ -82,30 +87,30 @@ class LFW(object):
 
     def _parse_pairs(self, txtfile):
         pairs = []
-        for x in readcsv(os.path.join(self.lfwdir, txtfile), separator=&#39;\t&#39;):
+        for x in readcsv(os.path.join(self.lfwdir, &#39;lfw&#39;, txtfile), separator=&#39;\t&#39;):
             if len(x) == 3:
-                pairs.append((ImageCategory(category=x[0], filename=os.path.join(self.lfwdir, x[0], &#39;%s_%04d.jpg&#39; % (x[0], int(x[1])))),
-                              ImageCategory(category=x[0], filename=os.path.join(self.lfwdir, x[0], &#39;%s_%04d.jpg&#39; % (x[0], int(x[2]))))))
+                pairs.append((ImageCategory(category=x[0], filename=os.path.join(self.lfwdir, &#39;lfw&#39;, x[0], &#39;%s_%04d.jpg&#39; % (x[0], int(x[1])))),
+                              ImageCategory(category=x[0], filename=os.path.join(self.lfwdir, &#39;lfw&#39;, x[0], &#39;%s_%04d.jpg&#39; % (x[0], int(x[2]))))))
             elif len(x) == 4:
-                pairs.append((ImageCategory(category=x[0], filename=os.path.join(self.lfwdir, x[0], &#39;%s_%04d.jpg&#39; % (x[0], int(x[1])))),
-                              ImageCategory(category=x[2], filename=os.path.join(self.lfwdir, x[2], &#39;%s_%04d.jpg&#39; % (x[2], int(x[3]))))))
+                pairs.append((ImageCategory(category=x[0], filename=os.path.join(self.lfwdir, &#39;lfw&#39;, x[0], &#39;%s_%04d.jpg&#39; % (x[0], int(x[1])))),
+                              ImageCategory(category=x[2], filename=os.path.join(self.lfwdir, &#39;lfw&#39;, x[2], &#39;%s_%04d.jpg&#39; % (x[2], int(x[3]))))))
             else:
                 pass
         return pairs
 
     def pairsDevTest(self):
-        if not os.path.isfile(os.path.join(self.lfwdir, &#39;pairsDevTest.txt&#39;)):
-            raise ValueError(&#34;Download and save text file to $datadir/pairsDevTest.txt with &#39;wget %s -O %s&#39;&#34; % (URL_PAIRS_DEV_TRAIN, os.path.join(self.lfwdir, &#39;pairsDevTest.txt&#39;)))
+        if not os.path.isfile(os.path.join(self.lfwdir, &#39;lfw&#39;, &#39;pairsDevTest.txt&#39;)):
+            raise ValueError(&#34;Download and save text file to $datadir/pairsDevTest.txt with &#39;wget %s -O %s&#39;&#34; % (URL_PAIRS_DEV_TRAIN, os.path.join(self.lfwdir, &#39;lfw&#39; &#39;pairsDevTest.txt&#39;)))
         return self._parse_pairs(&#39;pairsDevTest.txt&#39;)
 
     def pairsDevTrain(self):
-        if not os.path.isfile(os.path.join(self.lfwdir, &#39;pairsDevTrain.txt&#39;)):
-            raise ValueError(&#34;Download and save text file to $datadir/pairsDevTrain.txt with &#39;wget %s -O %s&#39;&#34; % (URL_PAIRS_DEV_TRAIN, os.path.join(self.lfwdir, &#39;pairsDevTrain.txt&#39;)))
+        if not os.path.isfile(os.path.join(self.lfwdir, &#39;lfw&#39;, &#39;pairsDevTrain.txt&#39;)):
+            raise ValueError(&#34;Download and save text file to $datadir/pairsDevTrain.txt with &#39;wget %s -O %s&#39;&#34; % (URL_PAIRS_DEV_TRAIN, os.path.join(self.lfwdir, &#39;lfw&#39;, &#39;pairsDevTrain.txt&#39;)))
         return self._parse_pairs(&#39;pairsDevTrain.txt&#39;)
 
     def pairs(self):
-        if not os.path.isfile(os.path.join(self.lfwdir, &#39;pairs.txt&#39;)):
-            raise ValueError(&#34;Download and save text file to $datadir/pairs.txt with &#39;wget %s -O %s&#39;&#34; % (URL_PAIRS_DEV_TRAIN, os.path.join(self.lfwdir, &#39;pairs.txt&#39;)))
+        if not os.path.isfile(os.path.join(self.lfwdir, &#39;lfw&#39;, &#39;pairs.txt&#39;)):
+            raise ValueError(&#34;Download and save text file to $datadir/pairs.txt with &#39;wget %s -O %s&#39;&#34; % (URL_PAIRS_DEV_TRAIN, os.path.join(self.lfwdir, &#39;lfw&#39;, &#39;pairs.txt&#39;)))
         return self._parse_pairs(&#39;pairs.txt&#39;)</code></pre>
 </details>
 </section>
@@ -127,31 +132,36 @@ class LFW(object):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/bfd48e8fd1640fe9b3548b82632e2ef123d86a75/vipy/dataset/lfw.py#L15-L80" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/9104ff42b3d76273c8341abf5499fc7e29315d36/vipy/dataset/lfw.py#L15-L85" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">class LFW(object):
     def __init__(self, datadir):
         &#34;&#34;&#34;Datadir contains the unpacked contents of LFW from $URL -&gt; /path/to/lfw&#34;&#34;&#34;
-        self.lfwdir = remkdir(os.path.join(remkdir(datadir), &#39;lfw&#39;, &#39;lfw&#39;))
-
+        self.lfwdir = datadir
+        remkdir(os.path.join(self.lfwdir, &#39;lfw&#39;))
+        self._dataset = self.dataset()
+        
     def download(self, verbose=True):
         vipy.downloader.download_and_unpack(URL, self.lfwdir, verbose=verbose)
         return self
 
+    def __getitem__(self, k):
+        return self._dataset[k]
+    
     def __repr__(self):
         return str(&#34;&lt;vipy.dataset.lfw: &#39;%s&#39;&gt;&#34; % self.lfwdir)
 
     def subjects(self):
         &#34;&#34;&#34;List of all subject names&#34;&#34;&#34;
-        return [filetail(d) for d in dirlist(self.lfwdir)]
+        return [filetail(d) for d in dirlist(os.path.join(self.lfwdir, &#39;lfw&#39;))]
 
     def subject_images(self, subject):
         &#34;&#34;&#34;List of Images of a subject&#34;&#34;&#34;
-        fnames = imlist(os.path.join(self.lfwdir, subject))
+        fnames = imlist(os.path.join(self.lfwdir, &#39;lfw&#39;, subject))
         return [ImageCategory(category=subject, filename=f) for f in fnames]
 
     def dataset(self):
-        return [ImageCategory(category=s, filename=f) for s in self.subjects() for f in imlist(os.path.join(self.lfwdir, s))]
+        return [ImageCategory(category=s, filename=f) for s in self.subjects() for f in imlist(os.path.join(self.lfwdir, &#39;lfw&#39;, s))]
 
     def dictionary(self):
         &#34;&#34;&#34;List of all Images of all subjects&#34;&#34;&#34;
@@ -170,30 +180,30 @@ class LFW(object):
 
     def _parse_pairs(self, txtfile):
         pairs = []
-        for x in readcsv(os.path.join(self.lfwdir, txtfile), separator=&#39;\t&#39;):
+        for x in readcsv(os.path.join(self.lfwdir, &#39;lfw&#39;, txtfile), separator=&#39;\t&#39;):
             if len(x) == 3:
-                pairs.append((ImageCategory(category=x[0], filename=os.path.join(self.lfwdir, x[0], &#39;%s_%04d.jpg&#39; % (x[0], int(x[1])))),
-                              ImageCategory(category=x[0], filename=os.path.join(self.lfwdir, x[0], &#39;%s_%04d.jpg&#39; % (x[0], int(x[2]))))))
+                pairs.append((ImageCategory(category=x[0], filename=os.path.join(self.lfwdir, &#39;lfw&#39;, x[0], &#39;%s_%04d.jpg&#39; % (x[0], int(x[1])))),
+                              ImageCategory(category=x[0], filename=os.path.join(self.lfwdir, &#39;lfw&#39;, x[0], &#39;%s_%04d.jpg&#39; % (x[0], int(x[2]))))))
             elif len(x) == 4:
-                pairs.append((ImageCategory(category=x[0], filename=os.path.join(self.lfwdir, x[0], &#39;%s_%04d.jpg&#39; % (x[0], int(x[1])))),
-                              ImageCategory(category=x[2], filename=os.path.join(self.lfwdir, x[2], &#39;%s_%04d.jpg&#39; % (x[2], int(x[3]))))))
+                pairs.append((ImageCategory(category=x[0], filename=os.path.join(self.lfwdir, &#39;lfw&#39;, x[0], &#39;%s_%04d.jpg&#39; % (x[0], int(x[1])))),
+                              ImageCategory(category=x[2], filename=os.path.join(self.lfwdir, &#39;lfw&#39;, x[2], &#39;%s_%04d.jpg&#39; % (x[2], int(x[3]))))))
             else:
                 pass
         return pairs
 
     def pairsDevTest(self):
-        if not os.path.isfile(os.path.join(self.lfwdir, &#39;pairsDevTest.txt&#39;)):
-            raise ValueError(&#34;Download and save text file to $datadir/pairsDevTest.txt with &#39;wget %s -O %s&#39;&#34; % (URL_PAIRS_DEV_TRAIN, os.path.join(self.lfwdir, &#39;pairsDevTest.txt&#39;)))
+        if not os.path.isfile(os.path.join(self.lfwdir, &#39;lfw&#39;, &#39;pairsDevTest.txt&#39;)):
+            raise ValueError(&#34;Download and save text file to $datadir/pairsDevTest.txt with &#39;wget %s -O %s&#39;&#34; % (URL_PAIRS_DEV_TRAIN, os.path.join(self.lfwdir, &#39;lfw&#39; &#39;pairsDevTest.txt&#39;)))
         return self._parse_pairs(&#39;pairsDevTest.txt&#39;)
 
     def pairsDevTrain(self):
-        if not os.path.isfile(os.path.join(self.lfwdir, &#39;pairsDevTrain.txt&#39;)):
-            raise ValueError(&#34;Download and save text file to $datadir/pairsDevTrain.txt with &#39;wget %s -O %s&#39;&#34; % (URL_PAIRS_DEV_TRAIN, os.path.join(self.lfwdir, &#39;pairsDevTrain.txt&#39;)))
+        if not os.path.isfile(os.path.join(self.lfwdir, &#39;lfw&#39;, &#39;pairsDevTrain.txt&#39;)):
+            raise ValueError(&#34;Download and save text file to $datadir/pairsDevTrain.txt with &#39;wget %s -O %s&#39;&#34; % (URL_PAIRS_DEV_TRAIN, os.path.join(self.lfwdir, &#39;lfw&#39;, &#39;pairsDevTrain.txt&#39;)))
         return self._parse_pairs(&#39;pairsDevTrain.txt&#39;)
 
     def pairs(self):
-        if not os.path.isfile(os.path.join(self.lfwdir, &#39;pairs.txt&#39;)):
-            raise ValueError(&#34;Download and save text file to $datadir/pairs.txt with &#39;wget %s -O %s&#39;&#34; % (URL_PAIRS_DEV_TRAIN, os.path.join(self.lfwdir, &#39;pairs.txt&#39;)))
+        if not os.path.isfile(os.path.join(self.lfwdir, &#39;lfw&#39;, &#39;pairs.txt&#39;)):
+            raise ValueError(&#34;Download and save text file to $datadir/pairs.txt with &#39;wget %s -O %s&#39;&#34; % (URL_PAIRS_DEV_TRAIN, os.path.join(self.lfwdir, &#39;lfw&#39;, &#39;pairs.txt&#39;)))
         return self._parse_pairs(&#39;pairs.txt&#39;)</code></pre>
 </details>
 <h3>Methods</h3>
@@ -206,10 +216,10 @@ class LFW(object):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/bfd48e8fd1640fe9b3548b82632e2ef123d86a75/vipy/dataset/lfw.py#L36-L37" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/9104ff42b3d76273c8341abf5499fc7e29315d36/vipy/dataset/lfw.py#L41-L42" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def dataset(self):
-    return [ImageCategory(category=s, filename=f) for s in self.subjects() for f in imlist(os.path.join(self.lfwdir, s))]</code></pre>
+    return [ImageCategory(category=s, filename=f) for s in self.subjects() for f in imlist(os.path.join(self.lfwdir, &#39;lfw&#39;, s))]</code></pre>
 </details>
 </dd>
 <dt id="vipy.dataset.lfw.LFW.dictionary"><code class="name flex">
@@ -220,7 +230,7 @@ class LFW(object):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/bfd48e8fd1640fe9b3548b82632e2ef123d86a75/vipy/dataset/lfw.py#L39-L41" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/9104ff42b3d76273c8341abf5499fc7e29315d36/vipy/dataset/lfw.py#L44-L46" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def dictionary(self):
     &#34;&#34;&#34;List of all Images of all subjects&#34;&#34;&#34;
@@ -235,7 +245,7 @@ class LFW(object):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/bfd48e8fd1640fe9b3548b82632e2ef123d86a75/vipy/dataset/lfw.py#L20-L22" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/9104ff42b3d76273c8341abf5499fc7e29315d36/vipy/dataset/lfw.py#L22-L24" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def download(self, verbose=True):
     vipy.downloader.download_and_unpack(URL, self.lfwdir, verbose=verbose)
@@ -250,7 +260,7 @@ class LFW(object):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/bfd48e8fd1640fe9b3548b82632e2ef123d86a75/vipy/dataset/lfw.py#L43-L48" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/9104ff42b3d76273c8341abf5499fc7e29315d36/vipy/dataset/lfw.py#L48-L53" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def list(self):
     &#34;&#34;&#34;List of all Images of all subjects&#34;&#34;&#34;
@@ -268,11 +278,11 @@ class LFW(object):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/bfd48e8fd1640fe9b3548b82632e2ef123d86a75/vipy/dataset/lfw.py#L77-L80" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/9104ff42b3d76273c8341abf5499fc7e29315d36/vipy/dataset/lfw.py#L82-L85" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def pairs(self):
-    if not os.path.isfile(os.path.join(self.lfwdir, &#39;pairs.txt&#39;)):
-        raise ValueError(&#34;Download and save text file to $datadir/pairs.txt with &#39;wget %s -O %s&#39;&#34; % (URL_PAIRS_DEV_TRAIN, os.path.join(self.lfwdir, &#39;pairs.txt&#39;)))
+    if not os.path.isfile(os.path.join(self.lfwdir, &#39;lfw&#39;, &#39;pairs.txt&#39;)):
+        raise ValueError(&#34;Download and save text file to $datadir/pairs.txt with &#39;wget %s -O %s&#39;&#34; % (URL_PAIRS_DEV_TRAIN, os.path.join(self.lfwdir, &#39;lfw&#39;, &#39;pairs.txt&#39;)))
     return self._parse_pairs(&#39;pairs.txt&#39;)</code></pre>
 </details>
 </dd>
@@ -284,11 +294,11 @@ class LFW(object):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/bfd48e8fd1640fe9b3548b82632e2ef123d86a75/vipy/dataset/lfw.py#L67-L70" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/9104ff42b3d76273c8341abf5499fc7e29315d36/vipy/dataset/lfw.py#L72-L75" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def pairsDevTest(self):
-    if not os.path.isfile(os.path.join(self.lfwdir, &#39;pairsDevTest.txt&#39;)):
-        raise ValueError(&#34;Download and save text file to $datadir/pairsDevTest.txt with &#39;wget %s -O %s&#39;&#34; % (URL_PAIRS_DEV_TRAIN, os.path.join(self.lfwdir, &#39;pairsDevTest.txt&#39;)))
+    if not os.path.isfile(os.path.join(self.lfwdir, &#39;lfw&#39;, &#39;pairsDevTest.txt&#39;)):
+        raise ValueError(&#34;Download and save text file to $datadir/pairsDevTest.txt with &#39;wget %s -O %s&#39;&#34; % (URL_PAIRS_DEV_TRAIN, os.path.join(self.lfwdir, &#39;lfw&#39; &#39;pairsDevTest.txt&#39;)))
     return self._parse_pairs(&#39;pairsDevTest.txt&#39;)</code></pre>
 </details>
 </dd>
@@ -300,11 +310,11 @@ class LFW(object):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/bfd48e8fd1640fe9b3548b82632e2ef123d86a75/vipy/dataset/lfw.py#L72-L75" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/9104ff42b3d76273c8341abf5499fc7e29315d36/vipy/dataset/lfw.py#L77-L80" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def pairsDevTrain(self):
-    if not os.path.isfile(os.path.join(self.lfwdir, &#39;pairsDevTrain.txt&#39;)):
-        raise ValueError(&#34;Download and save text file to $datadir/pairsDevTrain.txt with &#39;wget %s -O %s&#39;&#34; % (URL_PAIRS_DEV_TRAIN, os.path.join(self.lfwdir, &#39;pairsDevTrain.txt&#39;)))
+    if not os.path.isfile(os.path.join(self.lfwdir, &#39;lfw&#39;, &#39;pairsDevTrain.txt&#39;)):
+        raise ValueError(&#34;Download and save text file to $datadir/pairsDevTrain.txt with &#39;wget %s -O %s&#39;&#34; % (URL_PAIRS_DEV_TRAIN, os.path.join(self.lfwdir, &#39;lfw&#39;, &#39;pairsDevTrain.txt&#39;)))
     return self._parse_pairs(&#39;pairsDevTrain.txt&#39;)</code></pre>
 </details>
 </dd>
@@ -316,11 +326,11 @@ class LFW(object):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/bfd48e8fd1640fe9b3548b82632e2ef123d86a75/vipy/dataset/lfw.py#L31-L34" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/9104ff42b3d76273c8341abf5499fc7e29315d36/vipy/dataset/lfw.py#L36-L39" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def subject_images(self, subject):
     &#34;&#34;&#34;List of Images of a subject&#34;&#34;&#34;
-    fnames = imlist(os.path.join(self.lfwdir, subject))
+    fnames = imlist(os.path.join(self.lfwdir, &#39;lfw&#39;, subject))
     return [ImageCategory(category=subject, filename=f) for f in fnames]</code></pre>
 </details>
 </dd>
@@ -332,11 +342,11 @@ class LFW(object):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/bfd48e8fd1640fe9b3548b82632e2ef123d86a75/vipy/dataset/lfw.py#L27-L29" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/9104ff42b3d76273c8341abf5499fc7e29315d36/vipy/dataset/lfw.py#L32-L34" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def subjects(self):
     &#34;&#34;&#34;List of all subject names&#34;&#34;&#34;
-    return [filetail(d) for d in dirlist(self.lfwdir)]</code></pre>
+    return [filetail(d) for d in dirlist(os.path.join(self.lfwdir, &#39;lfw&#39;))]</code></pre>
 </details>
 </dd>
 <dt id="vipy.dataset.lfw.LFW.take"><code class="name flex">
@@ -347,7 +357,7 @@ class LFW(object):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/bfd48e8fd1640fe9b3548b82632e2ef123d86a75/vipy/dataset/lfw.py#L50-L52" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/9104ff42b3d76273c8341abf5499fc7e29315d36/vipy/dataset/lfw.py#L55-L57" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def take(self, n=128):
     &#34;&#34;&#34;Return a represenative list of 128 images&#34;&#34;&#34;

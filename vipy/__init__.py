@@ -88,6 +88,12 @@ All vipy objects can be imported and exported to JSON for interoperatability wit
 vipy.video.RandomScene().json()
 ```
 
+## Versioning
+
+To determine what vipy version you are running you can use:
+
+>>> vipy.__version__
+>>> vipy.version.is_as_least('1.11.1') 
 
 # Contact
 
