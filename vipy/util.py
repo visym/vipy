@@ -787,7 +787,10 @@ def ishdf5(path):
 
 
 def filebase(filename):
-    """Return c for filename /a/b/c.ext"""
+    """Return c for filename /a/b/c.ext
+    
+    .. warning:: Will return /a/b/c.d for multidot filenames like /a/b/c.d.e (e.g. /a/b/filename.tar.gz)
+    """
     (head, tail) = os.path.split(filename)
     (base, ext) = os.path.splitext(tail)
     return base
