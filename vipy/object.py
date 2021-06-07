@@ -304,7 +304,7 @@ class Track(object):
         if not bbox.isvalid():            
             return self  # just don't add it 
         self._keyframes.append(int(keyframe))
-        self._keyboxes.append(bbox)
+        self._keyboxes.append(bbox.clone())  # make copy
         if len(self._keyframes) > 1 and keyframe < self._keyframes[-2]:
             # Preserve sorted order if inserting into the middle somewhere
             (self._keyframes, self._keyboxes) = zip(*sorted([(f,bb) for (f,bb) in zip(self._keyframes, self._keyboxes)], key=lambda x: x[0]))        
@@ -528,7 +528,11 @@ class Track(object):
         return self
 
     def truncate(self, startframe=None, endframe=None):
-        """Truncate a track so that any keyframes less than startframe or greater than endframe are removed"""
+        """Truncate a track so that any keyframes less than startframe or greater than endframe are removed.  Interpolate keyboxes at (startframe, endframe) endpoints."""
+        if startframe not in self._keyframes and self[startframe] is not None:
+            self.add(startframe, self[startframe])  # interpolated boundary condition
+        if endframe not in self._keyframes and self[endframe] is not None:
+            self.add(endframe, self[endframe])  # intepolated boundary condition
         kfkb = [(kf,kb) for (kf,kb) in zip(self._keyframes, self._keyboxes) if ((startframe is None or kf >= startframe) and (endframe is None or kf <= endframe))]
         (self._keyframes, self._keyboxes) = zip(*kfkb) if len(kfkb) > 0 else ([], [])
         return self
@@ -887,7 +891,19 @@ class Track(object):
         return float(np.arctan2(v[1], v[0])) if self.speed(f, dt) > minspeed else None  # atan2(y,x)
 
     def bearing_change(self, f1=None, f2=None, dt=30, minspeed=1, samples=None):
-        """The bearing change of a track from frame f1 (or start) and frame f2 (or end) is the relative angle of the velocity vectors in radians [-pi,pi]"""
+        """The bearing change of a track from frame f1 (or start) and frame f2 (or end) is the relative angle of the velocity vectors in radians [-pi,pi].
+        
+        Args:
+            f1: [int] the start frame for computing the bearing change.  If None, then use self.startframe()
+            f2: [int] the end frame for computing the bearing change.  if None, then use self.endframe()
+            dt: [int] The number of frames between computations of the velocity vector for bearing
+            minspeed: [float] The minimum speed in frames per second used to threshold bearing computations if there is no motion
+            samples: [int] The number of samples to average for computing the bearing change
+        
+        Returns:
+            The floating point bearing change in radians in [-pi, pi] from (f1,f2) where bearing is computed at samples=n points, and each bearing is computed with a velocity stride of dt frames.
+
+        """
         dt = min(dt, len(self))
         (sf, ef) = (f1 if f1 is not None else self.startframe(), f2 if f2 is not None else self.endframe())
         df = 1 if samples is None else int(np.floor((ef-sf)/samples))
