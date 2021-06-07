@@ -85,7 +85,7 @@ class Image(object):
         attributes:  a python dictionary that is passed by reference to the image.  This is useful for encoding metadata about the image.  Accessible as im.attributes
 
     Returns:
-        a `vipy.image.Image` object
+        A `vipy.image.Image` object
 
     """
 
@@ -360,12 +360,25 @@ class Image(object):
             return self
         
     def loader(self, f):
-        """Lambda function to load an unsupported image filename to a numpy array"""
+        """Lambda function to load an unsupported image filename to a numpy array.
+        
+        This lambda function will be executed during load and the result will be stored in self._array
+        """
         self._loader = f
         return self
 
     def load(self, ignoreErrors=False, verbose=False):
-        """Load image to cached private '_array' attribute and return Image object"""
+        """Load image to cached private '_array' attribute.
+
+        Args:
+            ignoreErrors: [bool] If true, ignore any exceptions thrown during load and print the corresponding error messages.  This is useful for loading images distributed without throwing exceptions when some images may be corrupted.  In this case, the _array attribute will be None and `vipy.image.Image.isloaded` will return false to determine if the image is loaded, which can be used to filter out corrupted images gracefully. 
+            verbose: [bool] If true, show additional useful printed output
+
+        Returns:
+            This `vipy.image.Image` object with the pixels loaded in self._array as a numpy array.
+
+        .. note:: This loader supports any image file format supported by PIL.  A custom loader can be added using `vipy.image.Image.loader`.
+        """
         try:
             # Return if previously loaded image
             if self._array is not None:
@@ -421,7 +434,16 @@ class Image(object):
         return self
 
     def download(self, ignoreErrors=False, timeout=10, verbose=False):
-        """Download URL to filename provided by constructor, or to temp filename"""
+        """Download URL to filename provided by constructor, or to temp filename.
+
+        Args:
+            ignoreErrors:  [bool] If true, do not throw an exception if the download of the URL fails for some reason.  Instead, print out a reason and return this image object.  The function `vipy.image.Image.hasfilename` will return false if the downloaded file does not exist and can be used to filter these failed downloads gracefully.
+            timeout: [int]  The timeout in seconds for an http or https connection attempt.  See also [urllib.request.urlopen](https://docs.python.org/3/library/urllib.request.html).
+            verbose: [bool] If true, output more helpful message.
+
+        Returns:
+            This `vipy.image.Image` object with the URL downloaded to `vipy.image.Image.filename` or to a `vipy.util.tempimage` filename which can be retrieved with `vipy.image.Image.filename`.
+        """
         if self._url is None and self._filename is not None:
             return self
         if self._url is None or not isurl(str(self._url)):
@@ -490,6 +512,7 @@ class Image(object):
         return self.clone(flush=True).load()
 
     def isloaded(self):
+        """Return True if `vipy.image.Image.load` was successful in reading the image, or if the pixels are present in `vipy.image.Image.array`."""
         return self._array is not None
 
     def channels(self):
@@ -501,7 +524,7 @@ class Image(object):
         return self.channels() == 3 or self.channels() == 4
 
     def istransparent(self):
-        """Color images are three channel or four channel with transparency, float32 or uint8"""
+        """Transparent images are four channel color images with transparency, float32 or uint8.  Return true if this image contains an alpha transparency channel"""
         return self.channels() == 4
 
     def isgrey(self):
@@ -518,32 +541,85 @@ class Image(object):
         return os.path.getsize(self._filename)
 
     def width(self):
+        """Return the width (columns) of the image in integer pixels.
+        
+        .. note:: This triggers a `vipy.image.Image.load` if the image is not already loaded.
+        """
         return self.load().array().shape[1]
 
     def height(self):
+        """Return the height (rows) of the image in integer pixels.
+        
+        .. note:: This triggers a `vipy.image.Image.load` if the image is not already loaded.
+        """        
         return self.load().array().shape[0]
     
     def shape(self):
-        """Return the (height, width) or equivalently (rows, cols) of the image"""
+        """Return the (height, width) or equivalently (rows, cols) of the image.
+        
+        Returns:
+            A tuple (height=int, width=int) of the image.
+
+        .. note:: This triggers a `vipy.image.Image.load` if the image is not already loaded.
+        """
         return (self.load().height(), self.width())
 
     def aspectratio(self):
+        """Return the aspect ratio of the image as (width/height) ratio.
+
+        Returns:
+            A float equivalent to (`vipy.image.Image.width` / `vipy.image.Image.height`)
+
+        .. note:: This triggers a `vipy.image.Image.load` if the image is not already loaded.
+        """
         return self.load().width() / float(self.height())
 
     def area(self):
+        """Return the area of the image as (width * height).
+
+        Returns:
+            An integer equivalent to (`vipy.image.Image.width` * `vipy.image.Image.height`)
+
+        .. note:: This triggers a `vipy.image.Image.load` if the image is not already loaded.
+        """
         return self.width()*self.height()
     
     def centroid(self):
-        """Return the real valued center pixel coordinates of the image (col=x,row=y)"""
+        """Return the real valued center pixel coordinates of the image (col=x,row=y).
+        
+        The centroid is equivalent to half the `vipy.image.Image.shape`.
+
+        Returns:
+            A tuple (column, row) of the floating point center of the image.
+        """
         return (self.load().width() / 2.0, self.height() / 2.0)
 
     def centerpixel(self):
-        """Return the integer valued center pixel coordinates of the image (col=i,row=j)"""
+        """Return the integer valued center pixel coordinates of the image (col=i,row=j)
+
+        The centerpixel is equivalent to half the `vipy.image.Image.shape` floored to the nearest integer pixel coordinate.
+
+        Returns:
+            A tuple (int(column), int(row)) of the integer center of the image.
+        """
         c = np.round(self.centroid())
         return (int(c[0]), int(c[1]))
     
     def array(self, np_array=None, copy=False):
-        """Replace self._array with provided numpy array"""
+        """Replace self._array with provided numpy array
+
+        Args:
+            np_array: [numpy array] A new array to use as the pixel buffer for this image.
+            copy: [bool] If true, copy the buffer using np.copy(), else use a reference to this buffer.
+
+        Returns:
+            - If np_array is not None, return the `vipy.image.Image` object such that this object points to the provided numpy array as the pixel buffer
+            - If np_array is None, then return the numpy array.
+
+        .. notes:: 
+            - If copy=False, then this `vipy.image.Image` object will share the pixel buffer with the owner of np_array.  Changes to pixels in this buffer will be shared.  
+            - If copy=True, then this will significantly slow down processing for large images.  Use referneces wherevery possible.
+        """
         if np_array is None:
             return self._array if copy is False else np.copy(self._array)
         elif isnumpyarray(np_array):
@@ -554,8 +630,39 @@ class Image(object):
         else:
             raise ValueError('Invalid input - array() must be numpy array and not "%s"' % (str(type(np_array))))
 
+    def fromarray(self, data):
+        """Alias for `vipy.image.Image.array` with copy=True. This will set new numpy array as the pixel buffer with a numpy array copy"""
+        return self.array(data, copy=True)
+    
+    def tonumpy(self):
+        """Alias for `vipy.image.Image.numpy"""
+        return self.numpy()
+
+    def numpy(self):
+        """Return a mutable numpy array for this `vipy.image.Image`.
+
+        .. notes:: 
+            - This will always return a writeable array with the 'WRITEABLE' numpy flag set.  This is useful for returning a mutable numpy array as needed while keeping the original non-mutable numpy array (e.g. loaded from a video or PIL) as the underlying pixel buffer for efficiency reasons.
+            - Triggers a `vipy.image.Image.load` if the pixel buffer has not been loaded
+            - This will trigger a copy if the ['WRITEABLE' flag](https://numpy.org/doc/stable/reference/generated/numpy.ndarray.flags.html) is not set. 
+        """        
+        self.load()
+        self._array = np.copy(self._array) if not self._array.flags['WRITEABLE'] else self._array  # triggers copy         
+        return self._array
+        
     def channel(self, k=None):
-        """Return a cloned Image() object for the kth channel, or return an iterator over channels if k=None"""
+        """Return a cloned Image() object for the kth channel, or return an iterator over channels if k=None.
+
+        Iterate over channels as single channel luminance images:
+
+        >>> for c in self.channel():
+        >>>     print(c)
+
+        Return the kth channel as a single channel luminance image:
+
+        >>> c = self.channel(k=0)
+
+        """
         if k is None:
             return [self.channel(j) for j in range(0, self.channels())]
         elif k == 0 and self.channels() == 1:
@@ -568,7 +675,18 @@ class Image(object):
             return im
 
     def red(self):
-        """Return red channel as a cloned Image() object"""
+        """Return red channel as a cloned single channel `vipy.image.Image` object.
+
+        These are equivalent operations if the colorspace is 'rgb' or 'rgba':
+
+        >>> self.red() == self.channel(0) 
+
+        These are equivalent operations if the colorspace is 'bgr' or 'bgra':
+
+        >>> self.red() == self.channel(3) 
+
+        .. note:: OpenCV returns images in BGR colorspace.  Use this method to always return the desired channel by color.
+        """
         assert self.channels() >= 3, "Must be color image"
         if self.colorspace() in ['rgb', 'rgba']:
             return self.channel(0)
@@ -578,7 +696,18 @@ class Image(object):
             raise ValueError('Invalid colorspace "%s" does not contain red channel' % self.colorspace())
 
     def green(self):
-        """Return green channel as a cloned Image() object"""
+        """Return green channel as a cloned single channel `vipy.image.Image` object.
+
+        These are equivalent operations if the colorspace is 'rgb' or 'rgba':
+
+        >>> self.green() == self.channel(1) 
+
+        These are equivalent operations if the colorspace is 'bgr' or 'bgra':
+
+        >>> self.green() == self.channel(1) 
+
+        .. note:: OpenCV returns images in BGR colorspace.  Use this method to always return the desired channel by color.
+        """
         assert self.channels() >= 3, "Must be three channel color image"
         if self.colorspace() in ['rgb', 'rgba']:
             return self.channel(1)
@@ -588,7 +717,18 @@ class Image(object):
             raise ValueError('Invalid colorspace "%s" does not contain red channel' % self.colorspace())
 
     def blue(self):
-        """Return blue channel as a cloned Image() object"""
+        """Return blue channel as a cloned single channel `vipy.image.Image` object.
+
+        These are equivalent operations if the colorspace is 'rgb' or 'rgba':
+
+        >>> self.vlue() == self.channel(2) 
+
+        These are equivalent operations if the colorspace is 'bgr' or 'bgra':
+
+        >>> self.blue() == self.channel(0) 
+
+        .. note:: OpenCV returns images in BGR colorspace.  Use this method to always return the desired channel by color.
+        """
         assert self.channels() >= 3, "Must be three channel color image"
         if self.colorspace() in ['rgb', 'rgba']:
             return self.channel(2)
@@ -598,38 +738,55 @@ class Image(object):
             raise ValueError('Invalid colorspace "%s" does not contain red channel' % self.colorspace())                
 
     def alpha(self):
-        """Return alpha (transparency) channel as a cloned Image() object"""
+        """Return alpha (transparency) channel as a cloned single channel `vipy.image.Image` object"""
         assert self.channels() == 4 and self.colorspace() in ['rgba', 'bgra'], "Must be four channnel color image"
         return self.channel(3)
         
-    def fromarray(self, data):
-        """Alias for array(data, copy=True), set new array() with a numpy array copy"""
-        return self.array(data, copy=True)
-    
-    def tonumpy(self):
-        """Alias for numpy()"""
-        return self.numpy()
-
-    def numpy(self):
-        """Convert vipy.image.Image to numpy array, returns writeable array"""
-        self.load()
-        self._array = np.copy(self._array) if not self._array.flags['WRITEABLE'] else self._array  # triggers copy         
-        return self._array
-
     def zeros(self):
+        """Set the pixel buffer to all zeros of the same shape and datatype as this `vipy.image.Image` object.
+        
+        These are equivalent operations for the resulting buffer shape: 
+
+        >>> import numpy as np
+        >>> np.zeros( (self.width(), self.height(), self.channels()) ) == self.zeros().array()
+
+        Returns:
+           This `vipy.image.Image` object.
+
+        .. note:: Triggers load() if the pixel buffer has not been loaded yet.
+        """
         self._array = 0*self.load()._array
         return self
 
     def pil(self):
-        """Convert vipy.image.Image to PIL Image, by reference"""
+        """Convert vipy.image.Image to PIL Image.
+        
+        Returns:
+            A [PIL image](https://pillow.readthedocs.io/en/stable/reference/Image.html) object, that shares the pixel buffer by reference
+        """
         assert self.channels() in [1,3,4] and (self.channels() == 1 or self.colorspace() != 'float'), "Incompatible with PIL"
         return PIL.Image.fromarray(self.numpy(), mode='RGB' if self.colorspace()=='rgb' else None)  # FIXME: mode='RGB' triggers slow tobytes() conversion, need RGBA or RGBX
 
     def blur(self, sigma=3):
+        """Apply a Gaussian blur with Gaussian kernel radius=sigma to the pixel buffer.
+        
+        Args:
+            sigma: [float >0] The gaussian blur kernel radius.
+
+        Returns:
+            This `vipy.image.Image` object with the pixel buffer blurred.
+        """
         return self.array(np.array(self.pil().filter(PIL.ImageFilter.GaussianBlur(radius=sigma))))
         
     def torch(self, order='CHW'):
-        """Convert the batch of 1 HxWxC images to a 1xCxHxW torch tensor, by reference"""
+        """Convert the batch of 1 HxWxC images to a 1xCxHxW torch tensor.
+
+        Args:
+            order: ['CHW', 'HWC'].  The axis order of the torch tensor (channels, height, width) or (height, width, channels)
+
+        Returns:
+            A 1xCxHxW or 1xHxWxC [torch tensor](https://pytorch.org/docs/stable/tensors.html) that shares the pixel buffer of this image object by reference.
+        """
         try_import('torch'); import torch
         assert order in ['CHW', 'chw', 'HWC', 'hwc']
         img = self.numpy() if self.iscolor() else np.expand_dims(self.numpy(), 2)  # HxW -> HxWx1
@@ -637,7 +794,8 @@ class Image(object):
         img = img.transpose(0,3,1,2) if order.lower() == 'chw' else img  # HxWxC or CxHxW
         return torch.from_numpy(img)  
 
-    def fromtorch(self, x):
+    @staticmethod
+    def fromtorch(x):
         """Convert a 1xCxHxW torch.FloatTensor to HxWxC np.float32 numpy array(), returns new Image() instance with selected colorspace"""
         try_import('torch'); import torch        
         assert isinstance(x, torch.Tensor), "Invalid input type '%s'- must be torch.Tensor" % (str(type(x)))
