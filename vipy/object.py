@@ -617,14 +617,22 @@ class Track(object):
         - Boundary keyframes are copied to enable proper interpolation.        
         """
         # Update (startframe,endframe) to be the keyframes just before startframe and the keyframe just after endframe so that interpolation will work correctly
-        (startframe, endframe) = ([kf for kf in self._keyframes if kf <= startframe][-1] if self.during(startframe) else startframe,
-                                  [kf for kf in self._keyframes if kf >= endframe][0] if self.during(endframe) else endframe) 
+        (startframe, endframe) = (([kf for kf in self._keyframes if kf <= startframe][-1]) if self.during(startframe, startframe) else startframe,
+                                  ([kf for kf in self._keyframes if kf >= endframe][0]) if self.during(endframe, endframe) else endframe)
         kfkb = [(kf,kb.clone()) for (kf,kb) in zip(self._keyframes, self._keyboxes) if ((startframe is None or kf >= startframe) and (endframe is None or kf <= endframe))]
         (kf, kb) = zip(*kfkb) if len(kfkb) > 0 else ([], [])        
         return Track(keyframes=kf, boxes=kb, category=self._label, framerate=self._framerate, interpolation=self._interpolation, boundary=self._boundary, shortlabel=self._shortlabel, attributes=self.attributes, trackid=self._id)
     
     def boundingbox(self, startframe=None, endframe=None):
-        """The bounding box of a track is the smallest spatial box that contains all of the detections within startframe and endframe, or None if there are no detections"""
+        """The bounding box of a track is the smallest spatial box that contains all of the BoundingBoxes of the track  within startframe and endframe, or None if there are no detections.
+        
+        Args:
+            startframe: [int] the startframe of the track to compute the bounding box.
+            endframe: [int] the endframe of the track to compute the bounding box.
+        
+        Returns:
+            `vipy.geometry.BoundingBox` which is the smallest box that contains all boxes of the track from (startframe, endframe)
+        """
         t = self.clone() if (startframe is None and endframe is None) else self.clone().truncate(startframe, endframe)
         d = t._keyboxes[0].clone() if len(t._keyboxes) >= 1 else None
         return d.union([bb for (k,bb) in zip(t._keyframes[1:], t._keyboxes[1:]) if t.during(k)]) if (d is not None and len(t._keyboxes) >= 2) else d

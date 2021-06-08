@@ -469,21 +469,36 @@ class Video(object):
                         self._video.add(obj, frame=self._frame_index, rangecheck=False)
                 self._frame_index += 1  # assumes that the source image is at the appropriate frame rate for this video
 
-            def clip(self, n, m=1, continuous=False, tracks=True, activities=True):
-                """Stream clips of length n such that the yielded video clip contains frame(0) to frame(n), and next contains frame(m) to frame(n+m). 
+            def clip(self, n, m=1, continuous=False, tracks=True, activities=True, delay=0):
+                """Stream clips of length n such that the yielded video clip contains frame(0+delay) to frame(n+delay), and next contains frame(m+delay) to frame(n+m+delay). 
+
+                Usage examples:
                 
+                >>> for vc in v.stream().clip(n=16, m=2):
+                >>>     # yields video vc with frames [0,16] from v
+                >>>     # then video vc with frames [2,18] from v
+                >>>     # ... finally video with frames [len(v)-n-1, len(v)-1]
+
+                Introducing a delay so that the clips start at a temporal offset from v
+
+                >>> for vc in v.stream().clip(n=8, m=3, delay=1):
+                >>>     # yields video vc with frames [1,9]
+                >>>     # then video vc with frames [4,12] ...
+
                 Args:
                     n: [int] the length of the clip in frames
                     m: [int] the stride between clips in frames
+                    delay: [int] The temporal delay in frames for the clip, must be less than n and >= 0
                     continuous: [bool]  if true, then yield None for the sequential frames not aligned with a stride so that a clip is yielded on every frame
                     activities: [bool]  if false, then activities from the source video are not copied into the clip
                     tracks: [bool]  if false, then tracks from the source video are not copied into the clip
 
                 Returns:
-                    An iterator that yields `vipy.video.Video` objects each of length n with startframe += m
+                    An iterator that yields `vipy.video.Video` objects each of length n with startframe += m, starting at frame=delay, such that each video contains the tracks and activities (if requested) for this clip sourced from the shared stream video.
                 """
                 assert isinstance(n, int) and n>0, "Clip length must be a positive integer"
-                assert isinstance(m, int) and m>0, "Clip stride must be a positive integer"                
+                assert isinstance(m, int) and m>0, "Clip stride must be a positive integer"
+                assert isinstance(delay, int) and delay >= 0 and delay < n, "Clip delay must be a positive integer less than n"
                 
                 def _f_threadloop(pipe, queue, height, width, video, n, m, continuous, event):
                     assert self._video.isloaded() or pipe is not None, "invalid pipe"
@@ -514,8 +529,9 @@ class Video(object):
 
                         if len(frames) > n:
                             frames.pop(0)
-                        if ((frameindex+1) % m) == 0 and len(frames) >= n:
-                            # Use frameindex+1 so that we include (0,1), (2,3), (4,5) for n=2, m=2
+                        if ((frameindex+1-delay) % m) == 0 and len(frames) >= n:
+                            # Use frameindex+1 so that we include (0,1), (1,2), (2,3), ... for n=2, m=1
+                            # The delay shifts the clip +delay frames (1,2,3), (3,4,5), ... for n=3, m=2, delay=1
                             queue.put( (frameindex, video.clear().clone(shallow=True).array(np.stack(frames[-n:]))))  # requires copy, expensive operation                            
                         elif continuous:
                             queue.put((frameindex, None))
@@ -533,9 +549,14 @@ class Video(object):
                 while True:
                     (k,vc) = q.get()
                     if k is not None:
-                        # Use -k+n+1 here since frameindex is zero indexed, when frameindex=3 there are four frames (0,1,2,3)
-                        yield ((vc.activities([a.clone().offset(-k+n+1).truncate(0,n-1) for (ak,a) in self._video.activities().items() if a.during_interval(k-n+1, k-1, inclusive=False)] if activities else []) 
-                                .tracks([t.clone(k-n+1, k).offset(-k+n+1).truncate(0,n-1) for (tk,t) in self._video.tracks().items() if t.during_interval(k-n+1, k-1)] if tracks else []))
+                        # Yield clip such that activities and tracks are relative to frame 0 if the clip
+                        # - self._video is shared and contains the current activities and tracks
+                        # - The frameindex (k) is the frame index in self._video that corresponds to the last frame in the clip.
+                        # - The clip contains n frames from (k-(n-1), k), recall k is zero indexed, n is length which is one indexed so subtract n-1 
+                        # - Offset all activities and tracks by -(k-(n-1)) so that they are relative to frame 0 of clip
+                        # - Truncate is inclusive, so use n-1 as the last frame
+                        yield ((vc.activities([a.clone().offset(-(k-(n-1))).truncate(0,n-1) for (ak,a) in self._video.activities().items() if a.during_interval(k-(n-1), k, inclusive=False)] if activities else []) 
+                                .tracks([t.clone(k-(n-1), k).offset(-(k-(n-1))).truncate(0,n-1) for (tk,t) in self._video.tracks().items() if t.during_interval(k-(n-1), k)] if tracks else []))
                                if (vc is not None and isinstance(vc, vipy.video.Scene)) else vc)
                     else:
                         e.set()
@@ -3264,12 +3285,11 @@ class Scene(VideoCategory):
                                                   figure=1 if k<(len(self)-1) else None,  # cleanup on last frame
                                                   nocaption_withstring=nocaption_withstring).numpy() for k in range(0, len(self))]
             
-
             # Replace pixels with annotated pixels and downcast object to vipy.video.Video (since there are no more objects to show)
             return vipy.video.Video(array=np.stack([np.array(PIL.Image.fromarray(img).convert('RGB')) for img in imgs], axis=0), framerate=self.framerate(), attributes=self.attributes)  # slow for large videos
         else:
             # Stream to output video without loading all frames into memory
-            n = self.duration_in_frames_of_videofile()
+            n = self.duration_in_frames_of_videofile() if not self.isloaded() else len(self)
             vo = vipy.video.Video(filename=outfile, framerate=self.framerate())
             with vo.stream(overwrite=True) as so:
                 for (k,im) in enumerate(self.stream()):
