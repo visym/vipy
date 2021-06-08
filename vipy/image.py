@@ -774,8 +774,9 @@ class Image(object):
             sigma: [float >0] The gaussian blur kernel radius.
 
         Returns:
-            This `vipy.image.Image` object with the pixel buffer blurred.
+            This `vipy.image.Image` object with the pixel buffer blurred in place.
         """
+        assert sigma > 0
         return self.array(np.array(self.pil().filter(PIL.ImageFilter.GaussianBlur(radius=sigma))))
         
     def torch(self, order='CHW'):
@@ -1207,6 +1208,18 @@ class Image(object):
         self.colorspace(to)
         return self
 
+    def affine_transform(self, A):
+        """Apply a 3x3 affine geometric transformation to the image. 
+
+        See also `vipy.geometry.affine_transform`
+
+        .. note:: The image will be loaded and converted to float() prior to applying the affine transformation.  
+        """
+        assert isnumpy(A) or isinstance(img, vipy.image.Image), "invalid input"
+        assert A.shape == (3,3), "The affine transformation matrix should be the output of vipy.geometry.affine_transformation"
+        self._array = vipy.geometry.imtransform(self.load().float().array(), A.astype(np.float32))
+        return self
+        
     def rgb(self):
         """Convert the image buffer to three channel RGB uint8 colorspace"""
         return self._convert('rgb')

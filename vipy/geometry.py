@@ -71,7 +71,18 @@ def similarity_transform(txy=(0,0), r=0, s=1):
 
 
 def affine_transform(txy=(0,0), r=0, sx=1, sy=1, kx=0, ky=0):
-    """Compose and return a 3x3 affine transformation for translation txy=(0,0), rotation r (radians), scalex=sx, scaley=sy, shearx=kx, sheary=ky"""
+    """Compose and return a 3x3 affine transformation for translation txy=(0,0), rotation r (radians), scalex=sx, scaley=sy, shearx=kx, sheary=ky.
+    
+    Usage:
+    
+    >>> A = vipy.geometry.affine_transform(r=np.pi/4)
+    >>> vipy.image.Image(array=vipy.geometry.imtransform(im.array(), A), colorspace='float')
+    
+    Equivalently:
+
+    >>> im = vipy.image.RandomImage().affine_transform(A)    
+    
+    """
     assert istuple(txy) and len(txy) == 2 and isnumber(r) and isnumber(sx) and isnumber(sy) and isnumber(kx) and isnumber(ky), "Invalid input"
     R = np.mat([[np.cos(r), -np.sin(r), 0], [np.sin(r), np.cos(r), 0], [0,0,1]])
     S = np.mat([[sx,0,0], [0, sy, 0], [0,0,1]])
@@ -95,11 +106,12 @@ def random_affine_transform(txy=((0,1),(0,1)), r=(0,1), sx=(0.1,1), sy=(0.1,1), 
 def imtransform(img, A):
     """Transform an numpy array image (MxNx3) following the affine or similiarity transformation A"""
     assert isnumpy(img) and isnumpy(A), "invalid input"
-    try_import(cv2, 'opencv-python'); import cv2
-    if A.shape == (2,3):
-        return cv2.warpAffine(img, A, (img.shape[1], img.shape[0]))
+    try_import('cv2', 'opencv-python'); import cv2
+    if A.shape == (3,3):
+        return cv2.warpPerspective(img, A, (img.shape[1], img.shape[0]))        
     else:
-        return cv2.warpPerspective(img, A, (img.shape[1], img.shape[0]))
+        return cv2.warpAffine(img, A, (img.shape[1], img.shape[0]))        
+
 
 
 def normalize(x, eps=1E-16):
