@@ -3385,7 +3385,7 @@ class Scene(VideoCategory):
         for im in self:
             im.binarymask()  # shared numpy array
         return self
-    
+
     def asfloatmask(self, fg=1.0, bg=0.0):
         """Replace all pixels in foreground boxes with fg, and bg in background, return a copy"""
         array = np.full( (len(self.load()), self.height(), self.width(), 1), dtype=np.float32, fill_value=bg)
