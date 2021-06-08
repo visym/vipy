@@ -306,7 +306,7 @@ class Video(object):
         return self.filename(filename)                
         
     def stream(self, write=False, overwrite=False, bufsize=1024):
-        """Iterator to yield frames streaming from video.
+        """Iterator to yield groups of frames streaming from video.
 
         A video stream is a real time iterator to read or write from a video.  Streams are useful to group together frames into clips that are operated on as a group.
 
@@ -314,7 +314,7 @@ class Video(object):
 
         >>> v = vipy.video.RandomScene()
 
-        Stream individual video frames offset by 10 frames and 20 frames
+        Stream individual video frames lagged by 10 frames and 20 frames
 
         >>> for (im1, im2) in zip(v.stream().frame(n=-10), v.stream().frame(n=-20)):
         >>>     print(im1, im2)
@@ -470,7 +470,7 @@ class Video(object):
                 self._frame_index += 1  # assumes that the source image is at the appropriate frame rate for this video
 
             def clip(self, n, m=1, continuous=False, tracks=True, activities=True):
-                """Stream clips of length n such that the yielded video clip contains frame(0) to frame(-n), and next contains frame(m) to frame (-(n+m)). 
+                """Stream clips of length n such that the yielded video clip contains frame(-n) to frame(0), and next contains frame (-(n+m)) to frame(m). 
                 
                 Args:
                     n: [int] the length of the clip
@@ -2968,7 +2968,19 @@ class Scene(VideoCategory):
         
 
     def clip(self, startframe, endframe=None):
-        """Clip the video to between (startframe, endframe).  This clip is relative to clip() shown by __repr__().  Return a clone of the video for idempotence"""
+        """Clip the video to between (startframe, endframe).  This clip is relative to clip() shown by __repr__(). 
+
+        Args:
+            startframe: [int] the start frame relative to the video framerate() for the clip
+            endframe: [int] the end frame relative to the video framerate for the clip, may be none
+        
+        Returns:
+            This video object, clipped so that a load() will result in frame=0 equivalent to startframe.  All tracks and activities updated relative to the new startframe.
+
+        .. notes:  
+            - This return a clone of the video for idempotence
+            - This does not load the video.  This updates the ffmpeg filter chain to temporally trim the video.  See self.commandline() for the updated filter chain to run.
+        """
         assert (endframe is None or startframe <= endframe) and startframe >= 0, "Invalid start and end frames (%s, %s)" % (str(startframe), str(endframe))
 
         v = self.clone()
@@ -2989,8 +3001,8 @@ class Scene(VideoCategory):
             endframe = endframe if endframe is not None else len(self._array)
             v._array = self._array[startframe:endframe]
             (v._startframe, v._endframe) = (0, endframe-startframe)
-        v._tracks = {k:t.offset(dt=-startframe).truncate(startframe=0, endframe=endframe-startframe) for (k,t) in v.tracks().items()}   # may be degenerate
-        v._activities = {k:a.offset(dt=-startframe).truncate(startframe=0, endframe=endframe-startframe) for (k,a) in v.activities().items()}  # may be degenerate
+        v._tracks = {k:t.offset(dt=-startframe).truncate(startframe=0, endframe=(endframe-startframe) if endframe is not None else None) for (k,t) in v.tracks().items()}   # may be degenerate
+        v._activities = {k:a.offset(dt=-startframe).truncate(startframe=0, endframe=(endframe-startframe) if endframe is not None else None)) for (k,a) in v.activities().items()}  # may be degenerate
         return v.trackfilter(lambda t: len(t)>0).activityfilter(lambda a: len(a)>0)  # remove degenerate tracks and activities
 
     def crop(self, bb, zeropad=True):

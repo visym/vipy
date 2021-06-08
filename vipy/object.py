@@ -297,6 +297,8 @@ class Track(object):
         """Add a new keyframe and associated box to track, preserve sorted order of keyframes.  If keyframe is already in track, throw an exception.  In this case use update() instead
 
            -strict [bool]:  If box is degenerate, throw an exception if strict=True, otherwise just don't add it
+        
+        .. note::  The BoundingBox is added by reference.  If you want to this to be a copy, pass in bbox.clone()
         """
         assert isinstance(bbox, BoundingBox), "Invalid input - Box must be vipy.geometry.BoundingBox()"
         assert strict is False or bbox.isvalid(), "Invalid input - Box must be non-degenerate"
@@ -304,7 +306,7 @@ class Track(object):
         if not bbox.isvalid():            
             return self  # just don't add it 
         self._keyframes.append(int(keyframe))
-        self._keyboxes.append(bbox.clone())  # make copy
+        self._keyboxes.append(bbox)  # not cloned()
         if len(self._keyframes) > 1 and keyframe < self._keyframes[-2]:
             # Preserve sorted order if inserting into the middle somewhere
             (self._keyframes, self._keyboxes) = zip(*sorted([(f,bb) for (f,bb) in zip(self._keyframes, self._keyboxes)], key=lambda x: x[0]))        
@@ -529,9 +531,9 @@ class Track(object):
 
     def truncate(self, startframe=None, endframe=None):
         """Truncate a track so that any keyframes less than startframe or greater than endframe are removed.  Interpolate keyboxes at (startframe, endframe) endpoints."""
-        if startframe not in self._keyframes and self[startframe] is not None:
+        if startframe is not None and startframe not in self._keyframes and self[startframe] is not None:
             self.add(startframe, self[startframe])  # interpolated boundary condition
-        if endframe not in self._keyframes and self[endframe] is not None:
+        if endframe is not None and endframe not in self._keyframes and self[endframe] is not None:
             self.add(endframe, self[endframe])  # intepolated boundary condition
         kfkb = [(kf,kb) for (kf,kb) in zip(self._keyframes, self._keyboxes) if ((startframe is None or kf >= startframe) and (endframe is None or kf <= endframe))]
         (self._keyframes, self._keyboxes) = zip(*kfkb) if len(kfkb) > 0 else ([], [])
