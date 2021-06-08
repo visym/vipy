@@ -93,7 +93,7 @@ vipy.video.RandomScene().json()
 To determine what vipy version you are running you can use:
 
 >>> vipy.__version__
->>> vipy.version.is_as_least('1.11.1') 
+>>> vipy.version.is_at_least('1.11.1') 
 
 # Contact
 
