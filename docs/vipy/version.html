@@ -25,7 +25,7 @@
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/9104ff42b3d76273c8341abf5499fc7e29315d36/vipy/version.py#L1-L29" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/e853937b981093ae19c89323be3814a32a16a2c3/vipy/version.py#L1-L32" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">MAJOR = 1
 MINOR = 11
@@ -34,11 +34,12 @@ VERSION = &#39;%d.%d.%d&#39; % (MAJOR, MINOR, RELEASE)
 
 
 def num(versionstring=VERSION):
+    &#34;&#34;&#34;Convert the version string of the form &#39;X.Y.Z&#39; to an integer 100000*X + 100*Y + Z for version comparison&#34;&#34;&#34;
     (major, minor, release) = versionstring.split(&#39;.&#39;)    
     return 100*100*int(major) + 100*int(minor) + int(release)
 
 
-def at_least_version(versionstring):
+def at_least_version(versionstring):    
     &#34;&#34;&#34;Is versionstring=&#39;X.Y.Z&#39; at least the current version?&#34;&#34;&#34;
     return num(VERSION) &gt;= num(versionstring)
 
@@ -49,10 +50,12 @@ def is_at_least(versionstring):
 
 
 def is_exactly(versionstring):
+    &#34;&#34;&#34;Is the versionstring = &#39;X,Y.Z&#39; exactly equal to `vipy.version.VERSION`&#34;&#34;&#34;
     return versionstring == VERSION
 
 
 def at_least_major_version(major):
+    &#34;&#34;&#34;is the major version (e.g. X, for version X.Y.Z) greater than or equal to the major version integer supplied?&#34;&#34;&#34;
     return MAJOR &gt;= int(major)</code></pre>
 </details>
 </section>
@@ -67,13 +70,14 @@ def at_least_major_version(major):
 <span>def <span class="ident">at_least_major_version</span></span>(<span>major)</span>
 </code></dt>
 <dd>
-<div class="desc"></div>
+<div class="desc"><p>is the major version (e.g. X, for version X.Y.Z) greater than or equal to the major version integer supplied?</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/9104ff42b3d76273c8341abf5499fc7e29315d36/vipy/version.py#L26-L27" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/e853937b981093ae19c89323be3814a32a16a2c3/vipy/version.py#L28-L30" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def at_least_major_version(major):
+    &#34;&#34;&#34;is the major version (e.g. X, for version X.Y.Z) greater than or equal to the major version integer supplied?&#34;&#34;&#34;
     return MAJOR &gt;= int(major)</code></pre>
 </details>
 </dd>
@@ -85,9 +89,9 @@ def at_least_major_version(major):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/9104ff42b3d76273c8341abf5499fc7e29315d36/vipy/version.py#L12-L14" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/e853937b981093ae19c89323be3814a32a16a2c3/vipy/version.py#L13-L15" class="git-link">Browse git</a>
 </summary>
-<pre><code class="python">def at_least_version(versionstring):
+<pre><code class="python">def at_least_version(versionstring):    
     &#34;&#34;&#34;Is versionstring=&#39;X.Y.Z&#39; at least the current version?&#34;&#34;&#34;
     return num(VERSION) &gt;= num(versionstring)</code></pre>
 </details>
@@ -100,7 +104,7 @@ def at_least_major_version(major):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/9104ff42b3d76273c8341abf5499fc7e29315d36/vipy/version.py#L17-L19" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/e853937b981093ae19c89323be3814a32a16a2c3/vipy/version.py#L18-L20" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def is_at_least(versionstring):
     &#34;&#34;&#34;Synonym for at_least_version&#34;&#34;&#34;
@@ -111,13 +115,14 @@ def at_least_major_version(major):
 <span>def <span class="ident">is_exactly</span></span>(<span>versionstring)</span>
 </code></dt>
 <dd>
-<div class="desc"></div>
+<div class="desc"><p>Is the versionstring = 'X,Y.Z' exactly equal to <code>vipy.version.VERSION</code></p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/9104ff42b3d76273c8341abf5499fc7e29315d36/vipy/version.py#L22-L23" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/e853937b981093ae19c89323be3814a32a16a2c3/vipy/version.py#L23-L25" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def is_exactly(versionstring):
+    &#34;&#34;&#34;Is the versionstring = &#39;X,Y.Z&#39; exactly equal to `vipy.version.VERSION`&#34;&#34;&#34;
     return versionstring == VERSION</code></pre>
 </details>
 </dd>
@@ -125,13 +130,14 @@ def at_least_major_version(major):
 <span>def <span class="ident">num</span></span>(<span>versionstring='1.11.1')</span>
 </code></dt>
 <dd>
-<div class="desc"></div>
+<div class="desc"><p>Convert the version string of the form 'X.Y.Z' to an integer 100000<em>X + 100</em>Y + Z for version comparison</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/9104ff42b3d76273c8341abf5499fc7e29315d36/vipy/version.py#L7-L9" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/e853937b981093ae19c89323be3814a32a16a2c3/vipy/version.py#L7-L10" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def num(versionstring=VERSION):
+    &#34;&#34;&#34;Convert the version string of the form &#39;X.Y.Z&#39; to an integer 100000*X + 100*Y + Z for version comparison&#34;&#34;&#34;
     (major, minor, release) = versionstring.split(&#39;.&#39;)    
     return 100*100*int(major) + 100*int(minor) + int(release)</code></pre>
 </details>

@@ -111,12 +111,17 @@ This is useful for video preprocessing of datasets to export cached tensors for 
 This allows for introspection of the vipy object state providing transparency</p>
 <pre><code class="language-python">vipy.video.RandomScene().json()
 </code></pre>
+<h2 id="versioning">Versioning</h2>
+<p>To determine what vipy version you are running you can use:</p>
+<pre><code class="language-python-repl">&gt;&gt;&gt; vipy.__version__
+&gt;&gt;&gt; vipy.version.is_as_least('1.11.1') 
+</code></pre>
 <h1 id="contact">Contact</h1>
 <p><a href="&#109;&#97;&#105;&#108;&#116;&#111;&#58;&#105;&#110;&#102;&#111;&#64;&#118;&#105;&#115;&#121;&#109;&#46;&#99;&#111;&#109;">&#105;&#110;&#102;&#111;&#64;&#118;&#105;&#115;&#121;&#109;&#46;&#99;&#111;&#109;</a></p>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/9104ff42b3d76273c8341abf5499fc7e29315d36/vipy/__init__.py#L1-L116" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/e853937b981093ae19c89323be3814a32a16a2c3/vipy/__init__.py#L1-L122" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">&#34;&#34;&#34;
 VIPY is a python package for representation, transformation and visualization of annotated videos and images.  Annotations are the ground truth provided by labelers (e.g. object bounding boxes, face identities, temporal activity clips), suit\
@@ -208,6 +213,12 @@ All vipy objects can be imported and exported to JSON for interoperatability wit
 vipy.video.RandomScene().json()
 ```
 
+## Versioning
+
+To determine what vipy version you are running you can use:
+
+&gt;&gt;&gt; vipy.__version__
+&gt;&gt;&gt; vipy.version.is_as_least(&#39;1.11.1&#39;) 
 
 # Contact
 
@@ -404,6 +415,7 @@ setTimeout(() => input.focus(), 100);
 <li><a href="#customization">Customization</a></li>
 <li><a href="#parallelization">Parallelization</a></li>
 <li><a href="#export">Export</a></li>
+<li><a href="#versioning">Versioning</a></li>
 </ul>
 </li>
 <li><a href="#contact">Contact</a></li>

@@ -25,7 +25,7 @@
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/9104ff42b3d76273c8341abf5499fc7e29315d36/vipy/flow.py#L1-L422" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/e853937b981093ae19c89323be3814a32a16a2c3/vipy/flow.py#L1-L432" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">from vipy.globals import print
 from vipy.util import mat2gray, try_import, string_to_pil_interpolation, Stopwatch, isnumpy, clockstamp, tempMP4, premkdir
@@ -253,7 +253,7 @@ class Video(vipy.video.Video):
 class Flow(object):
     &#34;&#34;&#34;vipy.flow.Flow() class&#34;&#34;&#34;
     
-    def __init__(self, flowiter=10, flowdim=None):
+    def __init__(self, flowiter=10, flowdim=256):
         self._mindim = flowdim
         self._levels = 3
         self._winsize = 7
@@ -336,27 +336,38 @@ class Flow(object):
     def stabilize(self, v, keystep=20, padheightfrac=0.125, padwidthfrac=0.25, padheightpx=None, padwidthpx=None, border=0.1, dilate=1.0, contrast=16.0/255.0, rigid=False, affine=True, verbose=True, strict=True, residual=False, maxflow=None, outfile=None): 
         &#34;&#34;&#34;Affine stabilization to frame zero using multi-scale optical flow correspondence with foreground object keepouts.  
 
-           * v [vipy.video.Scene]:  The input video to stabilize, should be resized to mindim=256
-           * keystep [int]:  The local stabilization step between keyframes (should be &lt;= 30)
-           * padheightfrac [float]:  The height padding (relative to video height) to be applied to output video to allow for vertical stabilization
-           * padwidthfrac [float]:  The width padding (relative to video width) to be applied to output video to allow for horizontal stabilization
-           * padheightpx [int]:  The height padding to be applied to output video to allow for vertical stabilization.  Overrides padheight.
-           * padwidthpx [int]:  The width padding to be applied to output video to allow for horizontal stabilization.  Overrides padwidth.
-           * border [float]:  The border keepout fraction to ignore during flow correspondence.  This should be proportional to the maximum frame to frame flow
-           * dilate [float]:  The dilation to apply to the foreground object boxes to define a foregroun keepout for flow computation
-           * contrast [float]:  The minimum gradient necessary for flow correspondence, to avoid flow on low contrast regions
-           * rigid [bool]:  Euclidean stabilization
-           * affine [bool]:  Affine stabilization
-           * verbose [bool]:  This takes a while to run ...
-           * strict [bool]:  If true, throw an exception on error, otherwise return the original video and set v.hasattribute(&#39;unstabilized&#39;), useful for large scale stabilization
-           * outfile [str]: the file path to the stabilized output video
+        Recommended usage:
 
-           * NOTE: The remaining distortion after stabilization is due to: rolling shutter distortion, perspective distortion and non-keepout moving objects in background
-           * NOTE: If the video contains objects, the object boxes will be transformed along with the stabilization 
-           * NOTE: This requires loading videos entirely into memory.  Be careful with stabilizing long videos.
+        &gt;&gt;&gt; v = vipy.video.Scene(filename=&#39;/path/to/my/video.mp4&#39;).stabilize()
 
+        Args:
+            v: [`vipy.video.Scene`]:  The input video to stabilize, should be resized to mindim=256
+            keystep: [int]  The local stabilization step between keyframes (should be &lt;= 30)
+            padheightfrac: [float] The height padding (relative to video height) to be applied to output video to allow for vertical stabilization
+            padwidthfrac: [float]  The width padding (relative to video width) to be applied to output video to allow for horizontal stabilization
+            padheightpx: [int]  The height padding to be applied to output video to allow for vertical stabilization.  Overrides padheight.
+            padwidthpx: [int]  The width padding to be applied to output video to allow for horizontal stabilization.  Overrides padwidth.
+            border: [float]  The border keepout fraction to ignore during flow correspondence.  This should be proportional to the maximum frame to frame flow
+            dilate: [float]  The dilation to apply to the foreground object boxes to define a foregroun keepout for flow computation
+            contrast: [float]  The minimum gradient necessary for flow correspondence, to avoid flow on low contrast regions
+            rigid: [bool]  Euclidean stabilization
+            affine: [bool]  Affine stabilization
+            verbose: [bool]  This takes a while to run so show some progress ...
+            strict: [bool]  If true, throw an exception on error, otherwise return the original video and set v.hasattribute(&#39;unstabilized&#39;), useful for large scale stabilization
+            outfile: [str] the file path to the stabilized output video
+
+        Returns:
+            A cloned `vipy.video.Scene` with filename=outfile, such that pixels and tracks are background stabilized.
+
+        .. notes::
+            - The remaining distortion after stabilization is due to: rolling shutter distortion, perspective distortion and non-keepout moving objects in background
+            - If the video contains objects, the object boxes will be transformed along with the stabilization 
+            - This requires loading videos entirely into memory.  Be careful with stabilizing long videos.
+            - The returned video has the attribute &#39;stabilize&#39; which contains the mean and median residual of the flow field relative to the motion model. This can be used for stabilization quality filtering.
+    
         &#34;&#34;&#34;
         vc = v.clone()  # clone to avoid memory leaks in distributed processing
+        vc = vc.saveas(tempMP4()) if vc.isloaded() else vc  # dump to temp file if loaded
         
         assert isinstance(vc, vipy.video.Scene), &#34;Invalid input - Must be vipy.video.Scene() with foreground object keepouts for background stabilization&#34;
         if verbose and min(vc.shape()) &gt; 256:  # shape triggers fine frame fetch
@@ -366,8 +377,7 @@ class Flow(object):
         vv = vc.cropeven()  # make even for zero pad
         (padwidth, padheight) = (int(vv.width()*padwidthfrac) if padwidthpx is None else padwidthpx, int(vv.height()*padheightfrac) if padheightpx is None else padheightpx)  # width() height() triggers single frame fetch
         outfile = premkdir(outfile if outfile is not None else tempMP4())
-        #vs = vv.clone(flush=True).zeropad(padwidth, padheight).load().nofilename().nourl()   # triggers load, this pre-allocates stabilized video buffer to copy into    
-        vs = vv.clone(flush=True, flushfilter=True).filename(outfile if outfile is not None else tempMP4()).nourl().cleartracks()   # does not trigger load
+        vs = vv.clone(flushforward=True, flushfilter=True).filename(outfile if outfile is not None else tempMP4()).nourl().cleartracks()   # does not trigger load
         s = vv.mindim() / float(self._mindim)  # for upsample
         vvd = vv.clone().mindim(self._mindim)  # downsampled for flow correspondence
         if vc.duration_in_frames_of_videofile() &lt; keystep:
@@ -461,19 +471,19 @@ class Flow(object):
 <dl>
 <dt id="vipy.flow.Flow"><code class="flex name class">
 <span>class <span class="ident">Flow</span></span>
-<span>(</span><span>flowiter=10, flowdim=None)</span>
+<span>(</span><span>flowiter=10, flowdim=256)</span>
 </code></dt>
 <dd>
 <div class="desc"><p>vipy.flow.Flow() class</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/9104ff42b3d76273c8341abf5499fc7e29315d36/vipy/flow.py#L224-L420" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/e853937b981093ae19c89323be3814a32a16a2c3/vipy/flow.py#L224-L430" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">class Flow(object):
     &#34;&#34;&#34;vipy.flow.Flow() class&#34;&#34;&#34;
     
-    def __init__(self, flowiter=10, flowdim=None):
+    def __init__(self, flowiter=10, flowdim=256):
         self._mindim = flowdim
         self._levels = 3
         self._winsize = 7
@@ -556,27 +566,38 @@ class Flow(object):
     def stabilize(self, v, keystep=20, padheightfrac=0.125, padwidthfrac=0.25, padheightpx=None, padwidthpx=None, border=0.1, dilate=1.0, contrast=16.0/255.0, rigid=False, affine=True, verbose=True, strict=True, residual=False, maxflow=None, outfile=None): 
         &#34;&#34;&#34;Affine stabilization to frame zero using multi-scale optical flow correspondence with foreground object keepouts.  
 
-           * v [vipy.video.Scene]:  The input video to stabilize, should be resized to mindim=256
-           * keystep [int]:  The local stabilization step between keyframes (should be &lt;= 30)
-           * padheightfrac [float]:  The height padding (relative to video height) to be applied to output video to allow for vertical stabilization
-           * padwidthfrac [float]:  The width padding (relative to video width) to be applied to output video to allow for horizontal stabilization
-           * padheightpx [int]:  The height padding to be applied to output video to allow for vertical stabilization.  Overrides padheight.
-           * padwidthpx [int]:  The width padding to be applied to output video to allow for horizontal stabilization.  Overrides padwidth.
-           * border [float]:  The border keepout fraction to ignore during flow correspondence.  This should be proportional to the maximum frame to frame flow
-           * dilate [float]:  The dilation to apply to the foreground object boxes to define a foregroun keepout for flow computation
-           * contrast [float]:  The minimum gradient necessary for flow correspondence, to avoid flow on low contrast regions
-           * rigid [bool]:  Euclidean stabilization
-           * affine [bool]:  Affine stabilization
-           * verbose [bool]:  This takes a while to run ...
-           * strict [bool]:  If true, throw an exception on error, otherwise return the original video and set v.hasattribute(&#39;unstabilized&#39;), useful for large scale stabilization
-           * outfile [str]: the file path to the stabilized output video
+        Recommended usage:
 
-           * NOTE: The remaining distortion after stabilization is due to: rolling shutter distortion, perspective distortion and non-keepout moving objects in background
-           * NOTE: If the video contains objects, the object boxes will be transformed along with the stabilization 
-           * NOTE: This requires loading videos entirely into memory.  Be careful with stabilizing long videos.
+        &gt;&gt;&gt; v = vipy.video.Scene(filename=&#39;/path/to/my/video.mp4&#39;).stabilize()
 
+        Args:
+            v: [`vipy.video.Scene`]:  The input video to stabilize, should be resized to mindim=256
+            keystep: [int]  The local stabilization step between keyframes (should be &lt;= 30)
+            padheightfrac: [float] The height padding (relative to video height) to be applied to output video to allow for vertical stabilization
+            padwidthfrac: [float]  The width padding (relative to video width) to be applied to output video to allow for horizontal stabilization
+            padheightpx: [int]  The height padding to be applied to output video to allow for vertical stabilization.  Overrides padheight.
+            padwidthpx: [int]  The width padding to be applied to output video to allow for horizontal stabilization.  Overrides padwidth.
+            border: [float]  The border keepout fraction to ignore during flow correspondence.  This should be proportional to the maximum frame to frame flow
+            dilate: [float]  The dilation to apply to the foreground object boxes to define a foregroun keepout for flow computation
+            contrast: [float]  The minimum gradient necessary for flow correspondence, to avoid flow on low contrast regions
+            rigid: [bool]  Euclidean stabilization
+            affine: [bool]  Affine stabilization
+            verbose: [bool]  This takes a while to run so show some progress ...
+            strict: [bool]  If true, throw an exception on error, otherwise return the original video and set v.hasattribute(&#39;unstabilized&#39;), useful for large scale stabilization
+            outfile: [str] the file path to the stabilized output video
+
+        Returns:
+            A cloned `vipy.video.Scene` with filename=outfile, such that pixels and tracks are background stabilized.
+
+        .. notes::
+            - The remaining distortion after stabilization is due to: rolling shutter distortion, perspective distortion and non-keepout moving objects in background
+            - If the video contains objects, the object boxes will be transformed along with the stabilization 
+            - This requires loading videos entirely into memory.  Be careful with stabilizing long videos.
+            - The returned video has the attribute &#39;stabilize&#39; which contains the mean and median residual of the flow field relative to the motion model. This can be used for stabilization quality filtering.
+    
         &#34;&#34;&#34;
         vc = v.clone()  # clone to avoid memory leaks in distributed processing
+        vc = vc.saveas(tempMP4()) if vc.isloaded() else vc  # dump to temp file if loaded
         
         assert isinstance(vc, vipy.video.Scene), &#34;Invalid input - Must be vipy.video.Scene() with foreground object keepouts for background stabilization&#34;
         if verbose and min(vc.shape()) &gt; 256:  # shape triggers fine frame fetch
@@ -586,8 +607,7 @@ class Flow(object):
         vv = vc.cropeven()  # make even for zero pad
         (padwidth, padheight) = (int(vv.width()*padwidthfrac) if padwidthpx is None else padwidthpx, int(vv.height()*padheightfrac) if padheightpx is None else padheightpx)  # width() height() triggers single frame fetch
         outfile = premkdir(outfile if outfile is not None else tempMP4())
-        #vs = vv.clone(flush=True).zeropad(padwidth, padheight).load().nofilename().nourl()   # triggers load, this pre-allocates stabilized video buffer to copy into    
-        vs = vv.clone(flush=True, flushfilter=True).filename(outfile if outfile is not None else tempMP4()).nourl().cleartracks()   # does not trigger load
+        vs = vv.clone(flushforward=True, flushfilter=True).filename(outfile if outfile is not None else tempMP4()).nourl().cleartracks()   # does not trigger load
         s = vv.mindim() / float(self._mindim)  # for upsample
         vvd = vv.clone().mindim(self._mindim)  # downsampled for flow correspondence
         if vc.duration_in_frames_of_videofile() &lt; keystep:
@@ -678,7 +698,7 @@ class Flow(object):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/9104ff42b3d76273c8341abf5499fc7e29315d36/vipy/flow.py#L281-L287" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/e853937b981093ae19c89323be3814a32a16a2c3/vipy/flow.py#L281-L287" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def affineflow(self, A, H, W):
     &#34;&#34;&#34;Return a flow field of size (height=H, width=W) consistent with a 2x3 affine transformation A&#34;&#34;&#34;
@@ -697,7 +717,7 @@ class Flow(object):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/9104ff42b3d76273c8341abf5499fc7e29315d36/vipy/flow.py#L289-L291" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/e853937b981093ae19c89323be3814a32a16a2c3/vipy/flow.py#L289-L291" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def euclideanflow(self, R, t, H, W):
     &#34;&#34;&#34;Return a flow field of size (height=H, width=W) consistent with an Euclidean transform parameterized by a 2x2 Rotation and 2x1 translation&#34;&#34;&#34;  
@@ -713,7 +733,7 @@ This should be overloaded</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/9104ff42b3d76273c8341abf5499fc7e29315d36/vipy/flow.py#L242-L249" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/e853937b981093ae19c89323be3814a32a16a2c3/vipy/flow.py#L242-L249" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def imageflow(self, im, imprev):
     &#34;&#34;&#34;Default opencv dense flow, from im to imprev.  This should be overloaded&#34;&#34;&#34;        
@@ -733,7 +753,7 @@ This should be overloaded</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/9104ff42b3d76273c8341abf5499fc7e29315d36/vipy/flow.py#L265-L271" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/e853937b981093ae19c89323be3814a32a16a2c3/vipy/flow.py#L265-L271" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def keyflow(self, v, keystep=None):
     &#34;&#34;&#34;Compute optical flow for a video framewise relative to keyframes separated by keystep&#34;&#34;&#34;
@@ -752,7 +772,7 @@ This should be overloaded</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/9104ff42b3d76273c8341abf5499fc7e29315d36/vipy/flow.py#L273-L279" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/e853937b981093ae19c89323be3814a32a16a2c3/vipy/flow.py#L273-L279" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def keyflowframe(self, v, frame, keystep=None):
     &#34;&#34;&#34;Compute the keyflow for a single frame&#34;&#34;&#34;
@@ -769,75 +789,107 @@ This should be overloaded</p></div>
 <dd>
 <div class="desc"><p>Affine stabilization to frame zero using multi-scale optical flow correspondence with foreground object keepouts.
 </p>
-<ul>
-<li>v [vipy.video.Scene]:
-The input video to stabilize, should be resized to mindim=256</li>
-<li>keystep [int]:
-The local stabilization step between keyframes (should be &lt;= 30)</li>
-<li>padheightfrac [float]:
-The height padding (relative to video height) to be applied to output video to allow for vertical stabilization</li>
-<li>padwidthfrac [float]:
-The width padding (relative to video width) to be applied to output video to allow for horizontal stabilization</li>
-<li>padheightpx [int]:
+<p>Recommended usage:</p>
+<pre><code class="language-python-repl">&gt;&gt;&gt; v = vipy.video.Scene(filename='/path/to/my/video.mp4').stabilize()
+</code></pre>
+<h2 id="args">Args</h2>
+<dl>
+<dt><strong><code>v</code></strong></dt>
+<dd>[<code>vipy.video.Scene</code>]:
+The input video to stabilize, should be resized to mindim=256</dd>
+<dt><strong><code>keystep</code></strong></dt>
+<dd>[int]
+The local stabilization step between keyframes (should be &lt;= 30)</dd>
+<dt><strong><code>padheightfrac</code></strong></dt>
+<dd>[float] The height padding (relative to video height) to be applied to output video to allow for vertical stabilization</dd>
+<dt><strong><code>padwidthfrac</code></strong></dt>
+<dd>[float]
+The width padding (relative to video width) to be applied to output video to allow for horizontal stabilization</dd>
+<dt><strong><code>padheightpx</code></strong></dt>
+<dd>[int]
 The height padding to be applied to output video to allow for vertical stabilization.
-Overrides padheight.</li>
-<li>padwidthpx [int]:
+Overrides padheight.</dd>
+<dt><strong><code>padwidthpx</code></strong></dt>
+<dd>[int]
 The width padding to be applied to output video to allow for horizontal stabilization.
-Overrides padwidth.</li>
-<li>border [float]:
+Overrides padwidth.</dd>
+<dt><strong><code>border</code></strong></dt>
+<dd>[float]
 The border keepout fraction to ignore during flow correspondence.
-This should be proportional to the maximum frame to frame flow</li>
-<li>dilate [float]:
-The dilation to apply to the foreground object boxes to define a foregroun keepout for flow computation</li>
-<li>contrast [float]:
-The minimum gradient necessary for flow correspondence, to avoid flow on low contrast regions</li>
-<li>rigid [bool]:
-Euclidean stabilization</li>
-<li>affine [bool]:
-Affine stabilization</li>
-<li>verbose [bool]:
-This takes a while to run &hellip;</li>
-<li>strict [bool]:
-If true, throw an exception on error, otherwise return the original video and set v.hasattribute('unstabilized'), useful for large scale stabilization</li>
-<li>
-<p>outfile [str]: the file path to the stabilized output video</p>
-</li>
-<li>
-<p>NOTE: The remaining distortion after stabilization is due to: rolling shutter distortion, perspective distortion and non-keepout moving objects in background</p>
-</li>
-<li>NOTE: If the video contains objects, the object boxes will be transformed along with the stabilization </li>
-<li>NOTE: This requires loading videos entirely into memory.
+This should be proportional to the maximum frame to frame flow</dd>
+<dt><strong><code>dilate</code></strong></dt>
+<dd>[float]
+The dilation to apply to the foreground object boxes to define a foregroun keepout for flow computation</dd>
+<dt><strong><code>contrast</code></strong></dt>
+<dd>[float]
+The minimum gradient necessary for flow correspondence, to avoid flow on low contrast regions</dd>
+<dt><strong><code>rigid</code></strong></dt>
+<dd>[bool]
+Euclidean stabilization</dd>
+<dt><strong><code>affine</code></strong></dt>
+<dd>[bool]
+Affine stabilization</dd>
+<dt><strong><code>verbose</code></strong></dt>
+<dd>[bool]
+This takes a while to run so show some progress &hellip;</dd>
+<dt><strong><code>strict</code></strong></dt>
+<dd>[bool]
+If true, throw an exception on error, otherwise return the original video and set v.hasattribute('unstabilized'), useful for large scale stabilization</dd>
+<dt><strong><code>outfile</code></strong></dt>
+<dd>[str] the file path to the stabilized output video</dd>
+</dl>
+<h2 id="returns">Returns</h2>
+<p>A cloned <code><a title="vipy.video.Scene" href="video.html#vipy.video.Scene">Scene</a></code> with filename=outfile, such that pixels and tracks are background stabilized.</p>
+<div class="admonition notes">
+<p class="admonition-title">Notes</p>
+<ul>
+<li>The remaining distortion after stabilization is due to: rolling shutter distortion, perspective distortion and non-keepout moving objects in background</li>
+<li>If the video contains objects, the object boxes will be transformed along with the stabilization </li>
+<li>This requires loading videos entirely into memory.
 Be careful with stabilizing long videos.</li>
-</ul></div>
+<li>The returned video has the attribute 'stabilize' which contains the mean and median residual of the flow field relative to the motion model. This can be used for stabilization quality filtering.</li>
+</ul>
+</div></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/9104ff42b3d76273c8341abf5499fc7e29315d36/vipy/flow.py#L307-L420" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/e853937b981093ae19c89323be3814a32a16a2c3/vipy/flow.py#L307-L430" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def stabilize(self, v, keystep=20, padheightfrac=0.125, padwidthfrac=0.25, padheightpx=None, padwidthpx=None, border=0.1, dilate=1.0, contrast=16.0/255.0, rigid=False, affine=True, verbose=True, strict=True, residual=False, maxflow=None, outfile=None): 
     &#34;&#34;&#34;Affine stabilization to frame zero using multi-scale optical flow correspondence with foreground object keepouts.  
 
-       * v [vipy.video.Scene]:  The input video to stabilize, should be resized to mindim=256
-       * keystep [int]:  The local stabilization step between keyframes (should be &lt;= 30)
-       * padheightfrac [float]:  The height padding (relative to video height) to be applied to output video to allow for vertical stabilization
-       * padwidthfrac [float]:  The width padding (relative to video width) to be applied to output video to allow for horizontal stabilization
-       * padheightpx [int]:  The height padding to be applied to output video to allow for vertical stabilization.  Overrides padheight.
-       * padwidthpx [int]:  The width padding to be applied to output video to allow for horizontal stabilization.  Overrides padwidth.
-       * border [float]:  The border keepout fraction to ignore during flow correspondence.  This should be proportional to the maximum frame to frame flow
-       * dilate [float]:  The dilation to apply to the foreground object boxes to define a foregroun keepout for flow computation
-       * contrast [float]:  The minimum gradient necessary for flow correspondence, to avoid flow on low contrast regions
-       * rigid [bool]:  Euclidean stabilization
-       * affine [bool]:  Affine stabilization
-       * verbose [bool]:  This takes a while to run ...
-       * strict [bool]:  If true, throw an exception on error, otherwise return the original video and set v.hasattribute(&#39;unstabilized&#39;), useful for large scale stabilization
-       * outfile [str]: the file path to the stabilized output video
+    Recommended usage:
 
-       * NOTE: The remaining distortion after stabilization is due to: rolling shutter distortion, perspective distortion and non-keepout moving objects in background
-       * NOTE: If the video contains objects, the object boxes will be transformed along with the stabilization 
-       * NOTE: This requires loading videos entirely into memory.  Be careful with stabilizing long videos.
+    &gt;&gt;&gt; v = vipy.video.Scene(filename=&#39;/path/to/my/video.mp4&#39;).stabilize()
+
+    Args:
+        v: [`vipy.video.Scene`]:  The input video to stabilize, should be resized to mindim=256
+        keystep: [int]  The local stabilization step between keyframes (should be &lt;= 30)
+        padheightfrac: [float] The height padding (relative to video height) to be applied to output video to allow for vertical stabilization
+        padwidthfrac: [float]  The width padding (relative to video width) to be applied to output video to allow for horizontal stabilization
+        padheightpx: [int]  The height padding to be applied to output video to allow for vertical stabilization.  Overrides padheight.
+        padwidthpx: [int]  The width padding to be applied to output video to allow for horizontal stabilization.  Overrides padwidth.
+        border: [float]  The border keepout fraction to ignore during flow correspondence.  This should be proportional to the maximum frame to frame flow
+        dilate: [float]  The dilation to apply to the foreground object boxes to define a foregroun keepout for flow computation
+        contrast: [float]  The minimum gradient necessary for flow correspondence, to avoid flow on low contrast regions
+        rigid: [bool]  Euclidean stabilization
+        affine: [bool]  Affine stabilization
+        verbose: [bool]  This takes a while to run so show some progress ...
+        strict: [bool]  If true, throw an exception on error, otherwise return the original video and set v.hasattribute(&#39;unstabilized&#39;), useful for large scale stabilization
+        outfile: [str] the file path to the stabilized output video
+
+    Returns:
+        A cloned `vipy.video.Scene` with filename=outfile, such that pixels and tracks are background stabilized.
+
+    .. notes::
+        - The remaining distortion after stabilization is due to: rolling shutter distortion, perspective distortion and non-keepout moving objects in background
+        - If the video contains objects, the object boxes will be transformed along with the stabilization 
+        - This requires loading videos entirely into memory.  Be careful with stabilizing long videos.
+        - The returned video has the attribute &#39;stabilize&#39; which contains the mean and median residual of the flow field relative to the motion model. This can be used for stabilization quality filtering.
 
     &#34;&#34;&#34;
     vc = v.clone()  # clone to avoid memory leaks in distributed processing
+    vc = vc.saveas(tempMP4()) if vc.isloaded() else vc  # dump to temp file if loaded
     
     assert isinstance(vc, vipy.video.Scene), &#34;Invalid input - Must be vipy.video.Scene() with foreground object keepouts for background stabilization&#34;
     if verbose and min(vc.shape()) &gt; 256:  # shape triggers fine frame fetch
@@ -847,8 +899,7 @@ Be careful with stabilizing long videos.</li>
     vv = vc.cropeven()  # make even for zero pad
     (padwidth, padheight) = (int(vv.width()*padwidthfrac) if padwidthpx is None else padwidthpx, int(vv.height()*padheightfrac) if padheightpx is None else padheightpx)  # width() height() triggers single frame fetch
     outfile = premkdir(outfile if outfile is not None else tempMP4())
-    #vs = vv.clone(flush=True).zeropad(padwidth, padheight).load().nofilename().nourl()   # triggers load, this pre-allocates stabilized video buffer to copy into    
-    vs = vv.clone(flush=True, flushfilter=True).filename(outfile if outfile is not None else tempMP4()).nourl().cleartracks()   # does not trigger load
+    vs = vv.clone(flushforward=True, flushfilter=True).filename(outfile if outfile is not None else tempMP4()).nourl().cleartracks()   # does not trigger load
     s = vv.mindim() / float(self._mindim)  # for upsample
     vvd = vv.clone().mindim(self._mindim)  # downsampled for flow correspondence
     if vc.duration_in_frames_of_videofile() &lt; keystep:
@@ -938,7 +989,7 @@ Be careful with stabilizing long videos.</li>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/9104ff42b3d76273c8341abf5499fc7e29315d36/vipy/flow.py#L251-L255" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/e853937b981093ae19c89323be3814a32a16a2c3/vipy/flow.py#L251-L255" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def videoflow(self, v, flowstep=1, framestep=1, keyframe=None):
     &#34;&#34;&#34;Compute optical flow for a video framewise skipping framestep frames, compute optical flow acrsos flowstep frames, &#34;&#34;&#34;
@@ -955,7 +1006,7 @@ Be careful with stabilizing long videos.</li>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/9104ff42b3d76273c8341abf5499fc7e29315d36/vipy/flow.py#L257-L263" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/e853937b981093ae19c89323be3814a32a16a2c3/vipy/flow.py#L257-L263" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def videoflowframe(self, v, frame, flowstep=1, framestep=1, keyframe=None):
     &#34;&#34;&#34;Computer the videoflow for a single frame&#34;&#34;&#34;
@@ -977,7 +1028,7 @@ Be careful with stabilizing long videos.</li>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/9104ff42b3d76273c8341abf5499fc7e29315d36/vipy/flow.py#L18-L155" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/e853937b981093ae19c89323be3814a32a16a2c3/vipy/flow.py#L18-L155" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">class Image(object):
     &#34;&#34;&#34;vipy.flow.Image() class&#34;&#34;&#34;
@@ -1128,7 +1179,7 @@ Be careful with stabilizing long videos.</li>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/9104ff42b3d76273c8341abf5499fc7e29315d36/vipy/flow.py#L99-L104" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/e853937b981093ae19c89323be3814a32a16a2c3/vipy/flow.py#L99-L104" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def alphapad(self, pad=None, to=None, like=None):
     assert pad is not None or to is not None or like is not None
@@ -1146,7 +1197,7 @@ Be careful with stabilizing long videos.</li>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/9104ff42b3d76273c8341abf5499fc7e29315d36/vipy/flow.py#L147-L148" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/e853937b981093ae19c89323be3814a32a16a2c3/vipy/flow.py#L147-L148" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def angle(self):
     return cartesian_to_polar(self.dx(), self.dy())[1]</code></pre>
@@ -1160,7 +1211,7 @@ Be careful with stabilizing long videos.</li>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/9104ff42b3d76273c8341abf5499fc7e29315d36/vipy/flow.py#L150-L151" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/e853937b981093ae19c89323be3814a32a16a2c3/vipy/flow.py#L150-L151" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def clone(self):
     return copy.deepcopy(self)</code></pre>
@@ -1174,7 +1225,7 @@ Be careful with stabilizing long videos.</li>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/9104ff42b3d76273c8341abf5499fc7e29315d36/vipy/flow.py#L76-L84" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/e853937b981093ae19c89323be3814a32a16a2c3/vipy/flow.py#L76-L84" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def colorflow(self, minmag=None, maxmag=None):
     &#34;&#34;&#34;Flow visualization image (HSV: H=flow angle, V=flow magnitude), returns vipy.image.Image()&#34;&#34;&#34;
@@ -1195,7 +1246,7 @@ Be careful with stabilizing long videos.</li>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/9104ff42b3d76273c8341abf5499fc7e29315d36/vipy/flow.py#L113-L115" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/e853937b981093ae19c89323be3814a32a16a2c3/vipy/flow.py#L113-L115" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def dx(self):
     &#34;&#34;&#34;Return dx (horizontal) component of flow&#34;&#34;&#34;
@@ -1210,7 +1261,7 @@ Be careful with stabilizing long videos.</li>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/9104ff42b3d76273c8341abf5499fc7e29315d36/vipy/flow.py#L117-L119" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/e853937b981093ae19c89323be3814a32a16a2c3/vipy/flow.py#L117-L119" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def dy(self):
     &#34;&#34;&#34;Return dy (vertical) component of flow&#34;&#34;&#34;        
@@ -1225,7 +1276,7 @@ Be careful with stabilizing long videos.</li>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/9104ff42b3d76273c8341abf5499fc7e29315d36/vipy/flow.py#L69-L74" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/e853937b981093ae19c89323be3814a32a16a2c3/vipy/flow.py#L69-L74" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def flow(self, array=None):
     if array is None:
@@ -1243,7 +1294,7 @@ Be careful with stabilizing long videos.</li>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/9104ff42b3d76273c8341abf5499fc7e29315d36/vipy/flow.py#L63-L64" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/e853937b981093ae19c89323be3814a32a16a2c3/vipy/flow.py#L63-L64" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def height(self):
     return self._array.shape[0]</code></pre>
@@ -1257,7 +1308,7 @@ Be careful with stabilizing long videos.</li>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/9104ff42b3d76273c8341abf5499fc7e29315d36/vipy/flow.py#L144-L145" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/e853937b981093ae19c89323be3814a32a16a2c3/vipy/flow.py#L144-L145" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def magnitude(self):
     return cartesian_to_polar(self.dx(), self.dy())[0]</code></pre>
@@ -1271,7 +1322,7 @@ Be careful with stabilizing long videos.</li>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/9104ff42b3d76273c8341abf5499fc7e29315d36/vipy/flow.py#L43-L48" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/e853937b981093ae19c89323be3814a32a16a2c3/vipy/flow.py#L43-L48" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def max(self, maxflow=None):
     if maxflow is None:
@@ -1289,7 +1340,7 @@ Be careful with stabilizing long videos.</li>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/9104ff42b3d76273c8341abf5499fc7e29315d36/vipy/flow.py#L36-L41" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/e853937b981093ae19c89323be3814a32a16a2c3/vipy/flow.py#L36-L41" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def min(self, minflow=None):
     if minflow is None:
@@ -1307,7 +1358,7 @@ Be careful with stabilizing long videos.</li>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/9104ff42b3d76273c8341abf5499fc7e29315d36/vipy/flow.py#L153-L155" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/e853937b981093ae19c89323be3814a32a16a2c3/vipy/flow.py#L153-L155" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def print(self, outstring=None):
     print(outstring if outstring is not None else str(self))
@@ -1322,7 +1373,7 @@ Be careful with stabilizing long videos.</li>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/9104ff42b3d76273c8341abf5499fc7e29315d36/vipy/flow.py#L128-L130" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/e853937b981093ae19c89323be3814a32a16a2c3/vipy/flow.py#L128-L130" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def rescale(self, scale, interp=&#39;bicubic&#39;):
     (height, width) = self.shape()
@@ -1337,7 +1388,7 @@ Be careful with stabilizing long videos.</li>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/9104ff42b3d76273c8341abf5499fc7e29315d36/vipy/flow.py#L137-L142" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/e853937b981093ae19c89323be3814a32a16a2c3/vipy/flow.py#L137-L142" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def resize(self, height, width, interp=&#39;bicubic&#39;):
     assert height &gt; 0 and width &gt; 0, &#34;Invalid input&#34;
@@ -1355,7 +1406,7 @@ Be careful with stabilizing long videos.</li>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/9104ff42b3d76273c8341abf5499fc7e29315d36/vipy/flow.py#L132-L135" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/e853937b981093ae19c89323be3814a32a16a2c3/vipy/flow.py#L132-L135" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def resize_like(self, im, interp=&#39;bicubic&#39;):
     &#34;&#34;&#34;Resize flow buffer to be the same size as the provided vipy.image.Image()&#34;&#34;&#34;
@@ -1371,7 +1422,7 @@ Be careful with stabilizing long videos.</li>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/9104ff42b3d76273c8341abf5499fc7e29315d36/vipy/flow.py#L50-L52" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/e853937b981093ae19c89323be3814a32a16a2c3/vipy/flow.py#L50-L52" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def scale(self, s):
     self._array *= s
@@ -1386,7 +1437,7 @@ Be careful with stabilizing long videos.</li>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/9104ff42b3d76273c8341abf5499fc7e29315d36/vipy/flow.py#L66-L67" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/e853937b981093ae19c89323be3814a32a16a2c3/vipy/flow.py#L66-L67" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def shape(self):
     return (self.height(), self.width())</code></pre>
@@ -1400,7 +1451,7 @@ Be careful with stabilizing long videos.</li>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/9104ff42b3d76273c8341abf5499fc7e29315d36/vipy/flow.py#L121-L123" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/e853937b981093ae19c89323be3814a32a16a2c3/vipy/flow.py#L121-L123" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def shift(self, f):
     self._array += f
@@ -1415,7 +1466,7 @@ Be careful with stabilizing long videos.</li>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/9104ff42b3d76273c8341abf5499fc7e29315d36/vipy/flow.py#L125-L126" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/e853937b981093ae19c89323be3814a32a16a2c3/vipy/flow.py#L125-L126" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def show(self, figure=None, nowindow=False):
     self.colorflow().show(figure=figure, nowindow=nowindow)</code></pre>
@@ -1429,7 +1480,7 @@ Be careful with stabilizing long videos.</li>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/9104ff42b3d76273c8341abf5499fc7e29315d36/vipy/flow.py#L54-L58" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/e853937b981093ae19c89323be3814a32a16a2c3/vipy/flow.py#L54-L58" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def threshold(self, t):
     m = np.float32(self.magnitude() &lt; t)
@@ -1446,7 +1497,7 @@ Be careful with stabilizing long videos.</li>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/9104ff42b3d76273c8341abf5499fc7e29315d36/vipy/flow.py#L86-L97" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/e853937b981093ae19c89323be3814a32a16a2c3/vipy/flow.py#L86-L97" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def warp(self, imfrom, imto=None):
     &#34;&#34;&#34;Warp image imfrom=vipy.image.Image() to imto=vipy.image.Image() using flow computed as imfrom-&gt;imto, updating objects&#34;&#34;&#34;
@@ -1470,7 +1521,7 @@ Be careful with stabilizing long videos.</li>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/9104ff42b3d76273c8341abf5499fc7e29315d36/vipy/flow.py#L60-L61" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/e853937b981093ae19c89323be3814a32a16a2c3/vipy/flow.py#L60-L61" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def width(self):
     return self._array.shape[1]</code></pre>
@@ -1484,7 +1535,7 @@ Be careful with stabilizing long videos.</li>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/9104ff42b3d76273c8341abf5499fc7e29315d36/vipy/flow.py#L106-L111" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/e853937b981093ae19c89323be3814a32a16a2c3/vipy/flow.py#L106-L111" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def zeropad(self, pad=None, to=None, like=None):
     assert pad is not None or to is not None or like is not None
@@ -1505,7 +1556,7 @@ Be careful with stabilizing long videos.</li>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/9104ff42b3d76273c8341abf5499fc7e29315d36/vipy/flow.py#L158-L221" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/e853937b981093ae19c89323be3814a32a16a2c3/vipy/flow.py#L158-L221" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">class Video(vipy.video.Video):
     &#34;&#34;&#34;vipy.flow.Video() class&#34;&#34;&#34;
@@ -1586,7 +1637,7 @@ Be careful with stabilizing long videos.</li>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/9104ff42b3d76273c8341abf5499fc7e29315d36/vipy/flow.py#L208-L211" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/e853937b981093ae19c89323be3814a32a16a2c3/vipy/flow.py#L208-L211" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def colorflow(self):
     &#34;&#34;&#34;Flow visualization video&#34;&#34;&#34;
@@ -1602,7 +1653,7 @@ Be careful with stabilizing long videos.</li>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/9104ff42b3d76273c8341abf5499fc7e29315d36/vipy/flow.py#L205-L206" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/e853937b981093ae19c89323be3814a32a16a2c3/vipy/flow.py#L205-L206" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def flow(self):
     return self._array</code></pre>
@@ -1616,7 +1667,7 @@ Be careful with stabilizing long videos.</li>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/9104ff42b3d76273c8341abf5499fc7e29315d36/vipy/flow.py#L213-L214" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/e853937b981093ae19c89323be3814a32a16a2c3/vipy/flow.py#L213-L214" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def magnitude(self):
     return np.stack([cartesian_to_polar(f[:,:,0], f[:,:,1])[0] for f in self.flow()])</code></pre>
@@ -1630,7 +1681,7 @@ Be careful with stabilizing long videos.</li>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/9104ff42b3d76273c8341abf5499fc7e29315d36/vipy/flow.py#L196-L197" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/e853937b981093ae19c89323be3814a32a16a2c3/vipy/flow.py#L196-L197" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def max(self):
     return np.max(self._array)</code></pre>
@@ -1644,7 +1695,7 @@ Be careful with stabilizing long videos.</li>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/9104ff42b3d76273c8341abf5499fc7e29315d36/vipy/flow.py#L193-L194" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/e853937b981093ae19c89323be3814a32a16a2c3/vipy/flow.py#L193-L194" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def min(self):
     return np.min(self._array)</code></pre>

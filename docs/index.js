@@ -53,7 +53,7 @@ INDEX=[
 {
 "ref":"vipy",
 "url":0,
-"doc":"VIPY is a python package for representation, transformation and visualization of annotated videos and images. Annotations are the ground truth provided by labelers (e.g. object bounding boxes, face identities, temporal activity clips), suitable for training computer vision systems. VIPY provides tools to easily edit videos and images so that the annotations are transformed along with the pixels. This enables a clean interface for transforming complex datasets for input to your computer vision training and testing pipeline. VIPY provides:  Representation of videos with labeled activities that can be resized, clipped, rotated, scaled and cropped  Representation of images with object bounding boxes that can be manipulated as easily as editing an image  Clean visualization of annotated images and videos  Lazy loading of images and videos suitable for distributed procesing (e.g. dask, spark)  Straightforward integration into machine learning toolchains (e.g. torch, numpy)  Fluent interface for chaining operations on videos and images  Dataset download, unpack and import (e.g. Charades, AVA, ActivityNet, Kinetics, Moments in Time)  Video and image web search tools with URL downloading and caching  Minimum dependencies for easy installation (e.g. AWS Lambda)  Design Goals Vipy was created with three design goals.   Simplicity . Annotated Videos and images should be as easy to manipulate as the pixels. We provide a simple fluent API that enables the transformation of media so that pixels are transformed along with the annotations. We provide a comprehensive unit test suite to validate this pipeline with continuous integration.   Portability . Vipy was designed with the goal of allowing it to be easily retargeted to new platforms. For example, deployment on a serverless architecture such as AWS lambda has restrictions on the allowable code that can be executed in layers. We designed Vipy with minimal dependencies on standard and mature machine learning tool chains (numpy, matplotlib, ffmpeg, pillow) to ensure that it can be ported to new computational environments.   Efficiency . Vipy is written in pure python with the goal of performing in place operations and avoiding copies of media whenever possible. This enables fast video processing by operating on videos as chains of transformations. The documentation describes when an object is changed in place vs. copied. Furthermore, loading of media is delayed until explicitly requested by the user (or the pixels are needed) to enable lazy loading for distributed processing.  Getting started See the [demos](https: github.com/visym/vipy/tree/master/demo) as a starting point.  Import Vipy was designed to define annotated videos and imagery as collections of python objects. The core objects for images are:  [vipy.image.Scene](image.html vipy.image.Scene)  [vipy.object.Detection](object.html vipy.object.Detection)  [vipy.geometry.BoundingBox](geometry.html vipy.geometry.BoundingBox) The core objects for videos:  [vipy.video.Scene](video.html vipy.video.Scene)  [vipy.object.Track](object.html vipy.object.Track)  [vipy.activity.Activity](activity.html vipy.activity.Activity) See the documentation for each object for how to construct them.  Customization You can set the following environment variables to customize the output of vipy   VIPY_CACHE ='/path/to/directory. This directory will contain all of the cached downloaded filenames when downloading URLs. For example, the following will download all media to '~/.vipy'.   os.environ['VIPY_CACHE'] = vipy.util.remkdir('~/.vipy') vipy.image.Image(url='https: upload.wikimedia.org/wikipedia/commons/thumb/2/23/Bubo_virginianus_06.jpg/1920px-Bubo_virginianus_06.jpg').download()   This will output an image object:      This provides control over where large datasets are cached on your local file system. By default, this will be cached to the system temp directory.   VIPY_AWS_ACCESS_KEY_ID ='MYKEY'. This is the [AWS key](https: docs.aws.amazon.com/general/latest/gr/aws-sec-cred-types.html) to download urls of the form \"s3: \".   VIPY_AWS_SECRET_ACCESS_KEY ='MYKEY'. This is the [AWS secret key](https: docs.aws.amazon.com/general/latest/gr/aws-sec-cred-types.html) to download urls of the form \"s3: \".  Parallelization Vipy includes integration with [Dask Distributed](https: distributed.dask.org) for parallel processing of video and images. This is useful for video preprocessing of datasets to export cached tensors for training. For example, to export torch tensors for a list of video objects using four parallel processes:   with vipy.globals.parallel(4): vipy.batch.Batch(my_list_of_vipy_videos).map(lambda v: v.torch( .result()   This supports integration with distributed schedulers for massively parallel operation.  Export All vipy objects can be imported and exported to JSON for interoperatability with other tool chains. This allows for introspection of the vipy object state providing transparency   vipy.video.RandomScene().json()    Contact  "
+"doc":"VIPY is a python package for representation, transformation and visualization of annotated videos and images. Annotations are the ground truth provided by labelers (e.g. object bounding boxes, face identities, temporal activity clips), suitable for training computer vision systems. VIPY provides tools to easily edit videos and images so that the annotations are transformed along with the pixels. This enables a clean interface for transforming complex datasets for input to your computer vision training and testing pipeline. VIPY provides:  Representation of videos with labeled activities that can be resized, clipped, rotated, scaled and cropped  Representation of images with object bounding boxes that can be manipulated as easily as editing an image  Clean visualization of annotated images and videos  Lazy loading of images and videos suitable for distributed procesing (e.g. dask, spark)  Straightforward integration into machine learning toolchains (e.g. torch, numpy)  Fluent interface for chaining operations on videos and images  Dataset download, unpack and import (e.g. Charades, AVA, ActivityNet, Kinetics, Moments in Time)  Video and image web search tools with URL downloading and caching  Minimum dependencies for easy installation (e.g. AWS Lambda)  Design Goals Vipy was created with three design goals.   Simplicity . Annotated Videos and images should be as easy to manipulate as the pixels. We provide a simple fluent API that enables the transformation of media so that pixels are transformed along with the annotations. We provide a comprehensive unit test suite to validate this pipeline with continuous integration.   Portability . Vipy was designed with the goal of allowing it to be easily retargeted to new platforms. For example, deployment on a serverless architecture such as AWS lambda has restrictions on the allowable code that can be executed in layers. We designed Vipy with minimal dependencies on standard and mature machine learning tool chains (numpy, matplotlib, ffmpeg, pillow) to ensure that it can be ported to new computational environments.   Efficiency . Vipy is written in pure python with the goal of performing in place operations and avoiding copies of media whenever possible. This enables fast video processing by operating on videos as chains of transformations. The documentation describes when an object is changed in place vs. copied. Furthermore, loading of media is delayed until explicitly requested by the user (or the pixels are needed) to enable lazy loading for distributed processing.  Getting started See the [demos](https: github.com/visym/vipy/tree/master/demo) as a starting point.  Import Vipy was designed to define annotated videos and imagery as collections of python objects. The core objects for images are:  [vipy.image.Scene](image.html vipy.image.Scene)  [vipy.object.Detection](object.html vipy.object.Detection)  [vipy.geometry.BoundingBox](geometry.html vipy.geometry.BoundingBox) The core objects for videos:  [vipy.video.Scene](video.html vipy.video.Scene)  [vipy.object.Track](object.html vipy.object.Track)  [vipy.activity.Activity](activity.html vipy.activity.Activity) See the documentation for each object for how to construct them.  Customization You can set the following environment variables to customize the output of vipy   VIPY_CACHE ='/path/to/directory. This directory will contain all of the cached downloaded filenames when downloading URLs. For example, the following will download all media to '~/.vipy'.   os.environ['VIPY_CACHE'] = vipy.util.remkdir('~/.vipy') vipy.image.Image(url='https: upload.wikimedia.org/wikipedia/commons/thumb/2/23/Bubo_virginianus_06.jpg/1920px-Bubo_virginianus_06.jpg').download()   This will output an image object:      This provides control over where large datasets are cached on your local file system. By default, this will be cached to the system temp directory.   VIPY_AWS_ACCESS_KEY_ID ='MYKEY'. This is the [AWS key](https: docs.aws.amazon.com/general/latest/gr/aws-sec-cred-types.html) to download urls of the form \"s3: \".   VIPY_AWS_SECRET_ACCESS_KEY ='MYKEY'. This is the [AWS secret key](https: docs.aws.amazon.com/general/latest/gr/aws-sec-cred-types.html) to download urls of the form \"s3: \".  Parallelization Vipy includes integration with [Dask Distributed](https: distributed.dask.org) for parallel processing of video and images. This is useful for video preprocessing of datasets to export cached tensors for training. For example, to export torch tensors for a list of video objects using four parallel processes:   with vipy.globals.parallel(4): vipy.batch.Batch(my_list_of_vipy_videos).map(lambda v: v.torch( .result()   This supports integration with distributed schedulers for massively parallel operation.  Export All vipy objects can be imported and exported to JSON for interoperatability with other tool chains. This allows for introspection of the vipy object state providing transparency   vipy.video.RandomScene().json()    Versioning To determine what vipy version you are running you can use: >>> vipy.__version__ >>> vipy.version.is_as_least('1.11.1')  Contact  "
 },
 {
 "ref":"vipy.metrics",
@@ -306,7 +306,7 @@ INDEX=[
 {
 "ref":"vipy.version.num",
 "url":4,
-"doc":"",
+"doc":"Convert the version string of the form 'X.Y.Z' to an integer 100000 X + 100 Y + Z for version comparison",
 "func":1
 },
 {
@@ -324,13 +324,13 @@ INDEX=[
 {
 "ref":"vipy.version.is_exactly",
 "url":4,
-"doc":"",
+"doc":"Is the versionstring = 'X,Y.Z' exactly equal to  vipy.version.VERSION ",
 "func":1
 },
 {
 "ref":"vipy.version.at_least_major_version",
 "url":4,
-"doc":"",
+"doc":"is the major version (e.g. X, for version X.Y.Z) greater than or equal to the major version integer supplied?",
 "func":1
 },
 {
@@ -1313,7 +1313,7 @@ INDEX=[
 {
 "ref":"vipy.object.Track.add",
 "url":7,
-"doc":"Add a new keyframe and associated box to track, preserve sorted order of keyframes. If keyframe is already in track, throw an exception. In this case use update() instead -strict [bool]: If box is degenerate, throw an exception if strict=True, otherwise just don't add it",
+"doc":"Add a new keyframe and associated box to track, preserve sorted order of keyframes. If keyframe is already in track, throw an exception. In this case use update() instead -strict [bool]: If box is degenerate, throw an exception if strict=True, otherwise just don't add it  note The BoundingBox is added by reference. If you want to this to be a copy, pass in bbox.clone()",
 "func":1
 },
 {
@@ -1367,31 +1367,31 @@ INDEX=[
 {
 "ref":"vipy.object.Track.shapevariance",
 "url":7,
-"doc":"Return the variance (width, height) of the box shape during the track or None if the track is degenerate. This is useful for filtering spurious tracks where the aspect ratio changes rapidly and randomly",
+"doc":"Return the variance (width, height) of the box shape relative to  vipy.object.Track.meanbox during the track or None if the track is degenerate. This is useful for filtering spurious tracks where the aspect ratio changes rapidly and randomly Returns: (width_variance, height_variance) of the box shape during the track (or None)",
 "func":1
 },
 {
 "ref":"vipy.object.Track.framerate",
 "url":7,
-"doc":"Resample keyframes from known original framerate set by constructor to be new framerate fps",
+"doc":"Resample keyframes from known original framerate set by constructor to be new framerate fps. Args: fps: [float] The new frame rate in frames per second speed: [float] An optional speed factor which will multiply the current framerate by this factor (e.g. speed=2  > fps=self.framerate() 2) Returns: This track object with the keyframes resampled to the new framerate",
 "func":1
 },
 {
 "ref":"vipy.object.Track.startframe",
 "url":7,
-"doc":"",
+"doc":"Return the startframe of the track or None if there are no keyframes. The frame index is relative to the framerate set in the constructor.",
 "func":1
 },
 {
 "ref":"vipy.object.Track.endframe",
 "url":7,
-"doc":"",
+"doc":"Return the endframe of the track or None if there are no keyframes. The frame index is relative to the framerate set in the constructor.",
 "func":1
 },
 {
 "ref":"vipy.object.Track.linear_interpolation",
 "url":7,
-"doc":"Linear bounding box interpolation at frame=k given observed boxes (x,y,w,h) at keyframes. This returns a vipy.object.Detection() which is the interpolation of the Track() at frame k If self._boundary='extend', then boxes are repeated if the interpolation is outside the keyframes If self._boundary='strict', then interpolation returns None if the interpolation is outside the keyframes - The returned object is not cloned when possible for speed purposes, be careful when modifying this object. clone() if necessary",
+"doc":"Linear bounding box interpolation at frame=k given observed boxes (x,y,w,h) at keyframes. This returns a  vipy.object.Detection which is the interpolation of the  vipy.object.Track at frame k - If self._boundary='extend', then boxes are repeated if the interpolation is outside the keyframes - If self._boundary='strict', then interpolation returns None if the interpolation is outside the keyframes  note The returned object is not cloned when possible for speed purposes, be careful when modifying this object. clone() if necessary",
 "func":1
 },
 {
@@ -1421,7 +1421,7 @@ INDEX=[
 {
 "ref":"vipy.object.Track.during_interval",
 "url":7,
-"doc":"",
+"doc":"Does the track contain a keyframe during the inclusive frame interval (startframe, endframe)?  note The start and end frames are inclusive",
 "func":1
 },
 {
@@ -1439,13 +1439,13 @@ INDEX=[
 {
 "ref":"vipy.object.Track.frameoffset",
 "url":7,
-"doc":"Offset boxes by (dx,dy) in each frame. This is used to apply a different offset for each frame. To apply one offset to all frames, use  vipy.object.offset . Args: dx: [list] This should be a list of frame offsets at each keyframe the same length as the number of keyboxes dy: [list] This should be a list of frame offsets at each keyframe the same length as the number of keyboxes Returns: This box updated in place",
+"doc":"Offset boxes by (dx,dy) in each frame. This is used to apply a different offset for each frame. To apply one offset to all frames, use  vipy.object.offset . Args: dx: [list] This should be a list of frame offsets at each keyframe the same length as the number of keyboxes dy: [list] This should be a list of frame offsets at each keyframe the same length as the number of keyboxes Returns: This track updated in place",
 "func":1
 },
 {
 "ref":"vipy.object.Track.truncate",
 "url":7,
-"doc":"Truncate a track so that any keyframes less than startframe or greater than endframe are removed",
+"doc":"Truncate a track so that any keyframes less than startframe or greater than endframe (inclusive) are removed. Interpolate keyboxes at (startframe, endframe) endpoints. Args: startframe: [int] The startframe of the truncation relative to the track framerate. All keyframes less than or equal to startframe are included. If the keyframe does not exist at startframe, one is interpolated and added. endframe: [int] The endframe of the truncation relative to the track framerate. All keyframes greater than or equal to the endframe are included. If the keyfrmae does not exist at endframe, one is interpolated and added. Returns: This track such that all keyboxes  = endframe are removed.  note The startframe and endframe for truncation are inclusive.",
 "func":1
 },
 {
@@ -1517,13 +1517,13 @@ INDEX=[
 {
 "ref":"vipy.object.Track.clone_during",
 "url":7,
-"doc":"",
+"doc":"Clone a track during a specific interval (startframe, endframe) relative to the framerate of the track. - This is useful for copying a small segment of a long track without the expense of copying the whole track. - All keyframes and keyboxes not in (startframe, endframe) are not copied. - Boundary keyframes are copied to enable proper interpolation.",
 "func":1
 },
 {
 "ref":"vipy.object.Track.boundingbox",
 "url":7,
-"doc":"The bounding box of a track is the smallest spatial box that contains all of the detections within startframe and endframe, or None if there are no detections",
+"doc":"The bounding box of a track is the smallest spatial box that contains all of the BoundingBoxes of the track within startframe and endframe, or None if there are no detections. Args: startframe: [int] the startframe of the track to compute the bounding box. endframe: [int] the endframe of the track to compute the bounding box. Returns:  vipy.geometry.BoundingBox which is the smallest box that contains all boxes of the track from (startframe, endframe)",
 "func":1
 },
 {
@@ -1715,7 +1715,7 @@ INDEX=[
 {
 "ref":"vipy.object.Track.bearing_change",
 "url":7,
-"doc":"The bearing change of a track from frame f1 (or start) and frame f2 (or end) is the relative angle of the velocity vectors in radians [-pi,pi]",
+"doc":"The bearing change of a track from frame f1 (or start) and frame f2 (or end) is the relative angle of the velocity vectors in radians [-pi,pi]. Args: f1: [int] the start frame for computing the bearing change. If None, then use self.startframe() f2: [int] the end frame for computing the bearing change. if None, then use self.endframe() dt: [int] The number of frames between computations of the velocity vector for bearing minspeed: [float] The minimum speed in frames per second used to threshold bearing computations if there is no motion samples: [int] The number of samples to average for computing the bearing change Returns: The floating point bearing change in radians in [-pi, pi] from (f1,f2) where bearing is computed at samples=n points, and each bearing is computed with a velocity stride of dt frames.",
 "func":1
 },
 {
@@ -2210,6 +2210,12 @@ INDEX=[
 "func":1
 },
 {
+"ref":"vipy.util.isextension",
+"url":9,
+"doc":"Does the filename end with the extension ext? >>> isextension('/path/to/myfile.json', 'json')  True >>> isextension('/path/to/myfile.json', '.json')  True >>> isextension('/path/to/myfile.json', '.pkl')  False",
+"func":1
+},
+{
 "ref":"vipy.util.ispkl",
 "url":9,
 "doc":"Is the file a pickle archive file",
@@ -2242,7 +2248,7 @@ INDEX=[
 {
 "ref":"vipy.util.filebase",
 "url":9,
-"doc":"Return c for filename /a/b/c.ext",
+"doc":"Return c for filename /a/b/c.ext  warning Will return /a/b/c.d for multidot filenames like /a/b/c.d.e (e.g. /a/b/filename.tar.gz)",
 "func":1
 },
 {
@@ -4537,7 +4543,7 @@ INDEX=[
 {
 "ref":"vipy.flow.Video.stream",
 "url":38,
-"doc":"Iterator to yield frames streaming from video. A video stream is a real time iterator to read or write from a video. Streams are useful to group together frames into clips that are operated on as a group. The following use cases are supported: >>> v = vipy.video.RandomScene() Stream individual video frames offset by 10 frames and 20 frames >>> for (im1, im2) in zip(v.stream().frame(n=-10), v.stream().frame(n=-20 : >>> print(im1, im2) Stream overlapping clips such that each clip is a video n=16 frames long and starts at frame i, and the next clip is n=16 frames long and starts at frame i=i+m >>> for vc in v.stream().clip(n=16, m=4): >>> print(vc) Stream non-overlapping batches of frames such that each clip is a video of length n and starts at frame i, and the next clip is length n and starts at frame i+n >>> for vb in v.stream().batch(n=16): >>> print(vb) Create a write stream to incrementally add frames to long video. >>> vi = vipy.video.Video(filename='/path/to/output.mp4') >>> vo = vipy.video.Video(filename='/path/to/input.mp4') >>> with vo.stream(write=True) as s: >>> for im in vi.stream(): >>> s.write(im)  manipulate pixels of im, if desired Args: write: [bool] If true, create a write stream overwrite: [bool] If true, and the video output filename already exists, overwrite it bufsize: [int] The maximum queue size for the pipe thread. Returns: A  vipy.video.Video.stream.Stream object  note Using this iterator may affect PDB debugging due to stdout/stdin redirection. Use ipdb instead.",
+"doc":"Iterator to yield groups of frames streaming from video. A video stream is a real time iterator to read or write from a video. Streams are useful to group together frames into clips that are operated on as a group. The following use cases are supported: >>> v = vipy.video.RandomScene() Stream individual video frames lagged by 10 frames and 20 frames >>> for (im1, im2) in zip(v.stream().frame(n=-10), v.stream().frame(n=-20 : >>> print(im1, im2) Stream overlapping clips such that each clip is a video n=16 frames long and starts at frame i, and the next clip is n=16 frames long and starts at frame i=i+m >>> for vc in v.stream().clip(n=16, m=4): >>> print(vc) Stream non-overlapping batches of frames such that each clip is a video of length n and starts at frame i, and the next clip is length n and starts at frame i+n >>> for vb in v.stream().batch(n=16): >>> print(vb) Create a write stream to incrementally add frames to long video. >>> vi = vipy.video.Video(filename='/path/to/output.mp4') >>> vo = vipy.video.Video(filename='/path/to/input.mp4') >>> with vo.stream(write=True) as s: >>> for im in vi.stream(): >>> s.write(im)  manipulate pixels of im, if desired Args: write: [bool] If true, create a write stream overwrite: [bool] If true, and the video output filename already exists, overwrite it bufsize: [int] The maximum queue size for the pipe thread. Returns: A  vipy.video.Video.stream.Stream object  note Using this iterator may affect PDB debugging due to stdout/stdin redirection. Use ipdb instead.",
 "func":1
 },
 {
@@ -4645,7 +4651,7 @@ INDEX=[
 {
 "ref":"vipy.flow.Video.isloadable",
 "url":38,
-"doc":"Return True if the video can be loaded successfully. This is useful for filtering bad videos or filtering videos that cannot be loaded using your current FFMPEG version. Args: flush: [bool] If true, flush the video after it loads. This will clear the video pixel buffer Returns: True if load() can be called without FFMPEG exception. If flush=False, then self will contain the loaded video, which is helpful to avoid load() twice in some conditions  warning This requires loading and flushing the video. This is an expensive operation when performed on many videos, use with caution!",
+"doc":"Return True if the video can be loaded successfully. This is useful for filtering bad videos or filtering videos that cannot be loaded using your current FFMPEG version. Args: flush: [bool] If true, flush the video after it loads. This will clear the video pixel buffer Returns: True if load() can be called without FFMPEG exception. If flush=False, then self will contain the loaded video, which is helpful to avoid load() twice in some conditions  warning This requires loading and flushing the video. This is an expensive operation when performed on many videos and may result in out of memory conditions with long videos. Use with caution! Try  vipy.video.Video.canload to test if a single frame can be loaded as a less expensive alternative.",
 "func":1
 },
 {
@@ -5064,7 +5070,7 @@ INDEX=[
 {
 "ref":"vipy.flow.Flow.stabilize",
 "url":37,
-"doc":"Affine stabilization to frame zero using multi-scale optical flow correspondence with foreground object keepouts.  v [vipy.video.Scene]: The input video to stabilize, should be resized to mindim=256  keystep [int]: The local stabilization step between keyframes (should be <= 30)  padheightfrac [float]: The height padding (relative to video height) to be applied to output video to allow for vertical stabilization  padwidthfrac [float]: The width padding (relative to video width) to be applied to output video to allow for horizontal stabilization  padheightpx [int]: The height padding to be applied to output video to allow for vertical stabilization. Overrides padheight.  padwidthpx [int]: The width padding to be applied to output video to allow for horizontal stabilization. Overrides padwidth.  border [float]: The border keepout fraction to ignore during flow correspondence. This should be proportional to the maximum frame to frame flow  dilate [float]: The dilation to apply to the foreground object boxes to define a foregroun keepout for flow computation  contrast [float]: The minimum gradient necessary for flow correspondence, to avoid flow on low contrast regions  rigid [bool]: Euclidean stabilization  affine [bool]: Affine stabilization  verbose [bool]: This takes a while to run  .  strict [bool]: If true, throw an exception on error, otherwise return the original video and set v.hasattribute('unstabilized'), useful for large scale stabilization  outfile [str]: the file path to the stabilized output video  NOTE: The remaining distortion after stabilization is due to: rolling shutter distortion, perspective distortion and non-keepout moving objects in background  NOTE: If the video contains objects, the object boxes will be transformed along with the stabilization  NOTE: This requires loading videos entirely into memory. Be careful with stabilizing long videos.",
+"doc":"Affine stabilization to frame zero using multi-scale optical flow correspondence with foreground object keepouts. Recommended usage: >>> v = vipy.video.Scene(filename='/path/to/my/video.mp4').stabilize() Args: v: [ vipy.video.Scene ]: The input video to stabilize, should be resized to mindim=256 keystep: [int] The local stabilization step between keyframes (should be <= 30) padheightfrac: [float] The height padding (relative to video height) to be applied to output video to allow for vertical stabilization padwidthfrac: [float] The width padding (relative to video width) to be applied to output video to allow for horizontal stabilization padheightpx: [int] The height padding to be applied to output video to allow for vertical stabilization. Overrides padheight. padwidthpx: [int] The width padding to be applied to output video to allow for horizontal stabilization. Overrides padwidth. border: [float] The border keepout fraction to ignore during flow correspondence. This should be proportional to the maximum frame to frame flow dilate: [float] The dilation to apply to the foreground object boxes to define a foregroun keepout for flow computation contrast: [float] The minimum gradient necessary for flow correspondence, to avoid flow on low contrast regions rigid: [bool] Euclidean stabilization affine: [bool] Affine stabilization verbose: [bool] This takes a while to run so show some progress  . strict: [bool] If true, throw an exception on error, otherwise return the original video and set v.hasattribute('unstabilized'), useful for large scale stabilization outfile: [str] the file path to the stabilized output video Returns: A cloned  vipy.video.Scene with filename=outfile, such that pixels and tracks are background stabilized.  notes - The remaining distortion after stabilization is due to: rolling shutter distortion, perspective distortion and non-keepout moving objects in background - If the video contains objects, the object boxes will be transformed along with the stabilization - This requires loading videos entirely into memory. Be careful with stabilizing long videos. - The returned video has the attribute 'stabilize' which contains the mean and median residual of the flow field relative to the motion model. This can be used for stabilization quality filtering.",
 "func":1
 },
 {
@@ -6605,7 +6611,7 @@ INDEX=[
 {
 "ref":"vipy.video.Video.stream",
 "url":38,
-"doc":"Iterator to yield frames streaming from video. A video stream is a real time iterator to read or write from a video. Streams are useful to group together frames into clips that are operated on as a group. The following use cases are supported: >>> v = vipy.video.RandomScene() Stream individual video frames offset by 10 frames and 20 frames >>> for (im1, im2) in zip(v.stream().frame(n=-10), v.stream().frame(n=-20 : >>> print(im1, im2) Stream overlapping clips such that each clip is a video n=16 frames long and starts at frame i, and the next clip is n=16 frames long and starts at frame i=i+m >>> for vc in v.stream().clip(n=16, m=4): >>> print(vc) Stream non-overlapping batches of frames such that each clip is a video of length n and starts at frame i, and the next clip is length n and starts at frame i+n >>> for vb in v.stream().batch(n=16): >>> print(vb) Create a write stream to incrementally add frames to long video. >>> vi = vipy.video.Video(filename='/path/to/output.mp4') >>> vo = vipy.video.Video(filename='/path/to/input.mp4') >>> with vo.stream(write=True) as s: >>> for im in vi.stream(): >>> s.write(im)  manipulate pixels of im, if desired Args: write: [bool] If true, create a write stream overwrite: [bool] If true, and the video output filename already exists, overwrite it bufsize: [int] The maximum queue size for the pipe thread. Returns: A  vipy.video.Video.stream.Stream object  note Using this iterator may affect PDB debugging due to stdout/stdin redirection. Use ipdb instead.",
+"doc":"Iterator to yield groups of frames streaming from video. A video stream is a real time iterator to read or write from a video. Streams are useful to group together frames into clips that are operated on as a group. The following use cases are supported: >>> v = vipy.video.RandomScene() Stream individual video frames lagged by 10 frames and 20 frames >>> for (im1, im2) in zip(v.stream().frame(n=-10), v.stream().frame(n=-20 : >>> print(im1, im2) Stream overlapping clips such that each clip is a video n=16 frames long and starts at frame i, and the next clip is n=16 frames long and starts at frame i=i+m >>> for vc in v.stream().clip(n=16, m=4): >>> print(vc) Stream non-overlapping batches of frames such that each clip is a video of length n and starts at frame i, and the next clip is length n and starts at frame i+n >>> for vb in v.stream().batch(n=16): >>> print(vb) Create a write stream to incrementally add frames to long video. >>> vi = vipy.video.Video(filename='/path/to/output.mp4') >>> vo = vipy.video.Video(filename='/path/to/input.mp4') >>> with vo.stream(write=True) as s: >>> for im in vi.stream(): >>> s.write(im)  manipulate pixels of im, if desired Args: write: [bool] If true, create a write stream overwrite: [bool] If true, and the video output filename already exists, overwrite it bufsize: [int] The maximum queue size for the pipe thread. Returns: A  vipy.video.Video.stream.Stream object  note Using this iterator may affect PDB debugging due to stdout/stdin redirection. Use ipdb instead.",
 "func":1
 },
 {
@@ -6725,7 +6731,7 @@ INDEX=[
 {
 "ref":"vipy.video.Video.isloadable",
 "url":38,
-"doc":"Return True if the video can be loaded successfully. This is useful for filtering bad videos or filtering videos that cannot be loaded using your current FFMPEG version. Args: flush: [bool] If true, flush the video after it loads. This will clear the video pixel buffer Returns: True if load() can be called without FFMPEG exception. If flush=False, then self will contain the loaded video, which is helpful to avoid load() twice in some conditions  warning This requires loading and flushing the video. This is an expensive operation when performed on many videos, use with caution!",
+"doc":"Return True if the video can be loaded successfully. This is useful for filtering bad videos or filtering videos that cannot be loaded using your current FFMPEG version. Args: flush: [bool] If true, flush the video after it loads. This will clear the video pixel buffer Returns: True if load() can be called without FFMPEG exception. If flush=False, then self will contain the loaded video, which is helpful to avoid load() twice in some conditions  warning This requires loading and flushing the video. This is an expensive operation when performed on many videos and may result in out of memory conditions with long videos. Use with caution! Try  vipy.video.Video.canload to test if a single frame can be loaded as a less expensive alternative.",
 "func":1
 },
 {
@@ -7240,7 +7246,7 @@ INDEX=[
 {
 "ref":"vipy.video.VideoCategory.stream",
 "url":38,
-"doc":"Iterator to yield frames streaming from video. A video stream is a real time iterator to read or write from a video. Streams are useful to group together frames into clips that are operated on as a group. The following use cases are supported: >>> v = vipy.video.RandomScene() Stream individual video frames offset by 10 frames and 20 frames >>> for (im1, im2) in zip(v.stream().frame(n=-10), v.stream().frame(n=-20 : >>> print(im1, im2) Stream overlapping clips such that each clip is a video n=16 frames long and starts at frame i, and the next clip is n=16 frames long and starts at frame i=i+m >>> for vc in v.stream().clip(n=16, m=4): >>> print(vc) Stream non-overlapping batches of frames such that each clip is a video of length n and starts at frame i, and the next clip is length n and starts at frame i+n >>> for vb in v.stream().batch(n=16): >>> print(vb) Create a write stream to incrementally add frames to long video. >>> vi = vipy.video.Video(filename='/path/to/output.mp4') >>> vo = vipy.video.Video(filename='/path/to/input.mp4') >>> with vo.stream(write=True) as s: >>> for im in vi.stream(): >>> s.write(im)  manipulate pixels of im, if desired Args: write: [bool] If true, create a write stream overwrite: [bool] If true, and the video output filename already exists, overwrite it bufsize: [int] The maximum queue size for the pipe thread. Returns: A  vipy.video.Video.stream.Stream object  note Using this iterator may affect PDB debugging due to stdout/stdin redirection. Use ipdb instead.",
+"doc":"Iterator to yield groups of frames streaming from video. A video stream is a real time iterator to read or write from a video. Streams are useful to group together frames into clips that are operated on as a group. The following use cases are supported: >>> v = vipy.video.RandomScene() Stream individual video frames lagged by 10 frames and 20 frames >>> for (im1, im2) in zip(v.stream().frame(n=-10), v.stream().frame(n=-20 : >>> print(im1, im2) Stream overlapping clips such that each clip is a video n=16 frames long and starts at frame i, and the next clip is n=16 frames long and starts at frame i=i+m >>> for vc in v.stream().clip(n=16, m=4): >>> print(vc) Stream non-overlapping batches of frames such that each clip is a video of length n and starts at frame i, and the next clip is length n and starts at frame i+n >>> for vb in v.stream().batch(n=16): >>> print(vb) Create a write stream to incrementally add frames to long video. >>> vi = vipy.video.Video(filename='/path/to/output.mp4') >>> vo = vipy.video.Video(filename='/path/to/input.mp4') >>> with vo.stream(write=True) as s: >>> for im in vi.stream(): >>> s.write(im)  manipulate pixels of im, if desired Args: write: [bool] If true, create a write stream overwrite: [bool] If true, and the video output filename already exists, overwrite it bufsize: [int] The maximum queue size for the pipe thread. Returns: A  vipy.video.Video.stream.Stream object  note Using this iterator may affect PDB debugging due to stdout/stdin redirection. Use ipdb instead.",
 "func":1
 },
 {
@@ -7348,7 +7354,7 @@ INDEX=[
 {
 "ref":"vipy.video.VideoCategory.isloadable",
 "url":38,
-"doc":"Return True if the video can be loaded successfully. This is useful for filtering bad videos or filtering videos that cannot be loaded using your current FFMPEG version. Args: flush: [bool] If true, flush the video after it loads. This will clear the video pixel buffer Returns: True if load() can be called without FFMPEG exception. If flush=False, then self will contain the loaded video, which is helpful to avoid load() twice in some conditions  warning This requires loading and flushing the video. This is an expensive operation when performed on many videos, use with caution!",
+"doc":"Return True if the video can be loaded successfully. This is useful for filtering bad videos or filtering videos that cannot be loaded using your current FFMPEG version. Args: flush: [bool] If true, flush the video after it loads. This will clear the video pixel buffer Returns: True if load() can be called without FFMPEG exception. If flush=False, then self will contain the loaded video, which is helpful to avoid load() twice in some conditions  warning This requires loading and flushing the video. This is an expensive operation when performed on many videos and may result in out of memory conditions with long videos. Use with caution! Try  vipy.video.Video.canload to test if a single frame can be loaded as a less expensive alternative.",
 "func":1
 },
 {
@@ -7899,7 +7905,7 @@ INDEX=[
 {
 "ref":"vipy.video.Scene.trackfilter",
 "url":38,
-"doc":"Apply lambda function f to each object and keep if filter is True. Args: activitytrack: [bool] If true, remove track assignment from activities also, may result in activities with no tracks f: [lambda] The lambda function to apply to each track t, and if f(t) returns True, then keep the track Returns: self, with tracks removed in-place",
+"doc":"Apply lambda function f to each object and keep if filter is True. Args: activitytrack: [bool] If true, remove track assignment from activities also, may result in activities with no tracks f: [lambda] The lambda function to apply to each track t, and if f(t) returns True, then keep the track Returns: self, with tracks removed in-place  note Applying track filter with activitytrack=True may result in activities with no associated tracks. You should follow up with self.activityfilter(lambda a: len(a.trackids( > 0).",
 "func":1
 },
 {
@@ -8127,7 +8133,7 @@ INDEX=[
 {
 "ref":"vipy.video.Scene.clip",
 "url":38,
-"doc":"Clip the video to between (startframe, endframe). This clip is relative to clip() shown by __repr__(). Return a clone of the video for idempotence",
+"doc":"Clip the video to between (startframe, endframe). This clip is relative to clip() shown by __repr__(). Args: startframe: [int] the start frame relative to the video framerate() for the clip endframe: [int] the end frame relative to the video framerate for the clip, may be none Returns: This video object, clipped so that a load() will result in frame=0 equivalent to startframe. All tracks and activities updated relative to the new startframe.  notes: - This return a clone of the video for idempotence - This does not load the video. This updates the ffmpeg filter chain to temporally trim the video. See self.commandline() for the updated filter chain to run.",
 "func":1
 },
 {
@@ -8283,19 +8289,19 @@ INDEX=[
 {
 "ref":"vipy.video.Scene.downcast",
 "url":38,
-"doc":"Cast the object to a vipy.video.Video class",
+"doc":"Cast the object to a  vipy.video.Video class",
 "func":1
 },
 {
 "ref":"vipy.video.Scene.merge_tracks",
 "url":38,
-"doc":"Merge tracks if a track endpoint dilated by a fraction overlaps exactly one track startpoint, and the endpoint and startpoint are close enough together temporally.  This is useful for continuing tracking when the detection framerate was too low and the assignment falls outside the measurement gate.  This will not work for complex scenes, as it assumes that there is exactly one possible continuation for a track.",
+"doc":"Merge tracks if a track endpoint dilated by a fraction overlaps exactly one track startpoint, and the endpoint and startpoint are close enough together temporally.  note - This is useful for continuing tracking when the detection framerate was too low and the assignment falls outside the measurement gate. - This will not work for complex scenes, as it assumes that there is exactly one possible continuation for a track.",
 "func":1
 },
 {
 "ref":"vipy.video.Scene.assign",
 "url":38,
-"doc":"Assign a list of vipy.object.Detections at frame k to scene by greedy track association. In-place update.  miniou [float]: the minimum temporal IOU for activity assignment  minconf [float]: the minimum confidence for a detection to be considered as a new track  maxhistory [int]: the maximum propagation length of a track with no measurements, the frame history ised for velocity estimates  trackconfsamples [int]: the number of uniformly spaced samples along a track to compute a track confidence  gate [int]: the gating distance in pixels used for assignment of fast moving detections. Useful for low detection framerates if a detection does not overlap with the track.  trackcover [float]: the minimum cover necessary for assignment of a detection to a track  activitymerge [bool]: if true, then merge overlapping activity detections of the same track and category, otherwise each activity detection is added as a new detection",
+"doc":"Assign a list of vipy.object.Detections at frame k to scene by greedy track association. In-place update. Args: miniou: [float] the minimum temporal IOU for activity assignment minconf: [float] the minimum confidence for a detection to be considered as a new track maxhistory: [int] the maximum propagation length of a track with no measurements, the frame history ised for velocity estimates trackconfsamples: [int] the number of uniformly spaced samples along a track to compute a track confidence gate: [int] the gating distance in pixels used for assignment of fast moving detections. Useful for low detection framerates if a detection does not overlap with the track. trackcover: [float] the minimum cover necessary for assignment of a detection to a track activitymerge: [bool] if true, then merge overlapping activity detections of the same track and category, otherwise each activity detection is added as a new detection Returns: This video object with each det assigned to correpsonding track or activity.",
 "func":1
 },
 {
@@ -8331,7 +8337,7 @@ INDEX=[
 {
 "ref":"vipy.video.Scene.stream",
 "url":38,
-"doc":"Iterator to yield frames streaming from video. A video stream is a real time iterator to read or write from a video. Streams are useful to group together frames into clips that are operated on as a group. The following use cases are supported: >>> v = vipy.video.RandomScene() Stream individual video frames offset by 10 frames and 20 frames >>> for (im1, im2) in zip(v.stream().frame(n=-10), v.stream().frame(n=-20 : >>> print(im1, im2) Stream overlapping clips such that each clip is a video n=16 frames long and starts at frame i, and the next clip is n=16 frames long and starts at frame i=i+m >>> for vc in v.stream().clip(n=16, m=4): >>> print(vc) Stream non-overlapping batches of frames such that each clip is a video of length n and starts at frame i, and the next clip is length n and starts at frame i+n >>> for vb in v.stream().batch(n=16): >>> print(vb) Create a write stream to incrementally add frames to long video. >>> vi = vipy.video.Video(filename='/path/to/output.mp4') >>> vo = vipy.video.Video(filename='/path/to/input.mp4') >>> with vo.stream(write=True) as s: >>> for im in vi.stream(): >>> s.write(im)  manipulate pixels of im, if desired Args: write: [bool] If true, create a write stream overwrite: [bool] If true, and the video output filename already exists, overwrite it bufsize: [int] The maximum queue size for the pipe thread. Returns: A  vipy.video.Video.stream.Stream object  note Using this iterator may affect PDB debugging due to stdout/stdin redirection. Use ipdb instead.",
+"doc":"Iterator to yield groups of frames streaming from video. A video stream is a real time iterator to read or write from a video. Streams are useful to group together frames into clips that are operated on as a group. The following use cases are supported: >>> v = vipy.video.RandomScene() Stream individual video frames lagged by 10 frames and 20 frames >>> for (im1, im2) in zip(v.stream().frame(n=-10), v.stream().frame(n=-20 : >>> print(im1, im2) Stream overlapping clips such that each clip is a video n=16 frames long and starts at frame i, and the next clip is n=16 frames long and starts at frame i=i+m >>> for vc in v.stream().clip(n=16, m=4): >>> print(vc) Stream non-overlapping batches of frames such that each clip is a video of length n and starts at frame i, and the next clip is length n and starts at frame i+n >>> for vb in v.stream().batch(n=16): >>> print(vb) Create a write stream to incrementally add frames to long video. >>> vi = vipy.video.Video(filename='/path/to/output.mp4') >>> vo = vipy.video.Video(filename='/path/to/input.mp4') >>> with vo.stream(write=True) as s: >>> for im in vi.stream(): >>> s.write(im)  manipulate pixels of im, if desired Args: write: [bool] If true, create a write stream overwrite: [bool] If true, and the video output filename already exists, overwrite it bufsize: [int] The maximum queue size for the pipe thread. Returns: A  vipy.video.Video.stream.Stream object  note Using this iterator may affect PDB debugging due to stdout/stdin redirection. Use ipdb instead.",
 "func":1
 },
 {
@@ -8427,7 +8433,7 @@ INDEX=[
 {
 "ref":"vipy.video.Scene.isloadable",
 "url":38,
-"doc":"Return True if the video can be loaded successfully. This is useful for filtering bad videos or filtering videos that cannot be loaded using your current FFMPEG version. Args: flush: [bool] If true, flush the video after it loads. This will clear the video pixel buffer Returns: True if load() can be called without FFMPEG exception. If flush=False, then self will contain the loaded video, which is helpful to avoid load() twice in some conditions  warning This requires loading and flushing the video. This is an expensive operation when performed on many videos, use with caution!",
+"doc":"Return True if the video can be loaded successfully. This is useful for filtering bad videos or filtering videos that cannot be loaded using your current FFMPEG version. Args: flush: [bool] If true, flush the video after it loads. This will clear the video pixel buffer Returns: True if load() can be called without FFMPEG exception. If flush=False, then self will contain the loaded video, which is helpful to avoid load() twice in some conditions  warning This requires loading and flushing the video. This is an expensive operation when performed on many videos and may result in out of memory conditions with long videos. Use with caution! Try  vipy.video.Video.canload to test if a single frame can be loaded as a less expensive alternative.",
 "func":1
 },
 {
@@ -8756,7 +8762,7 @@ INDEX=[
 {
 "ref":"vipy.image.Image",
 "url":47,
-"doc":"vipy.image.Image class The vipy image class provides a fluent, lazy interface for representing, transforming and visualizing images. The following constructors are supported: >>> im = vipy.image.Image(filename=\"/path/to/image.ext\") All image file formats that are readable by PIL are supported here. >>> im = vipy.image.Image(url=\"http: domain.com/path/to/image.ext\") The image will be downloaded from the provided url and saved to a temporary filename. The environment variable VIPY_CACHE controls the location of the directory used for saving images, otherwise this will be saved to the system temp directory. >>> im = vipy.image.Image(url=\"http: domain.com/path/to/image.ext\", filename=\"/path/to/new/image.ext\") The image will be downloaded from the provided url and saved to the provided filename. The url() method provides optional basic authentication set for username and password >>> im = vipy.image.Image(array=img, colorspace='rgb') The image will be constructed from a provided numpy array 'img', with an associated colorspace. The numpy array and colorspace can be one of the following combinations: - 'rgb': uint8, three channel (red, green, blue) - 'rgba': uint8, four channel (rgb + alpha) - 'bgr': uint8, three channel (blue, green, red), such as is returned from cv2.imread() - 'bgra': uint8, four channel - 'hsv': uint8, three channel (hue, saturation, value) - 'lum;: uint8, one channel, luminance (8 bit grey level) - 'grey': float32, one channel in range [0,1] (32 bit intensity) - 'float': float32, any channel in range [-inf, +inf] The most general colorspace is 'float' which is used to manipulate images prior to network encoding, such as applying bias. Args: filename: a path to an image file that is readable by PIL url: a url string to an image file that is readable by PIL array: a numpy array of type uint8 or float32 of shape HxWxC=height x width x channels colorspace: a string in ['rgb', 'rgba', 'bgr', 'bgra', 'hsv', 'float', 'grey', 'lum'] attributes: a python dictionary that is passed by reference to the image. This is useful for encoding metadata about the image. Accessible as im.attributes Returns: a  vipy.image.Image object"
+"doc":"vipy.image.Image class The vipy image class provides a fluent, lazy interface for representing, transforming and visualizing images. The following constructors are supported: >>> im = vipy.image.Image(filename=\"/path/to/image.ext\") All image file formats that are readable by PIL are supported here. >>> im = vipy.image.Image(url=\"http: domain.com/path/to/image.ext\") The image will be downloaded from the provided url and saved to a temporary filename. The environment variable VIPY_CACHE controls the location of the directory used for saving images, otherwise this will be saved to the system temp directory. >>> im = vipy.image.Image(url=\"http: domain.com/path/to/image.ext\", filename=\"/path/to/new/image.ext\") The image will be downloaded from the provided url and saved to the provided filename. The url() method provides optional basic authentication set for username and password >>> im = vipy.image.Image(array=img, colorspace='rgb') The image will be constructed from a provided numpy array 'img', with an associated colorspace. The numpy array and colorspace can be one of the following combinations: - 'rgb': uint8, three channel (red, green, blue) - 'rgba': uint8, four channel (rgb + alpha) - 'bgr': uint8, three channel (blue, green, red), such as is returned from cv2.imread() - 'bgra': uint8, four channel - 'hsv': uint8, three channel (hue, saturation, value) - 'lum;: uint8, one channel, luminance (8 bit grey level) - 'grey': float32, one channel in range [0,1] (32 bit intensity) - 'float': float32, any channel in range [-inf, +inf] The most general colorspace is 'float' which is used to manipulate images prior to network encoding, such as applying bias. Args: filename: a path to an image file that is readable by PIL url: a url string to an image file that is readable by PIL array: a numpy array of type uint8 or float32 of shape HxWxC=height x width x channels colorspace: a string in ['rgb', 'rgba', 'bgr', 'bgra', 'hsv', 'float', 'grey', 'lum'] attributes: a python dictionary that is passed by reference to the image. This is useful for encoding metadata about the image. Accessible as im.attributes Returns: A  vipy.image.Image object"
 },
 {
 "ref":"vipy.image.Image.cast",
@@ -8857,19 +8863,19 @@ INDEX=[
 {
 "ref":"vipy.image.Image.loader",
 "url":47,
-"doc":"Lambda function to load an unsupported image filename to a numpy array",
+"doc":"Lambda function to load an unsupported image filename to a numpy array. This lambda function will be executed during load and the result will be stored in self._array",
 "func":1
 },
 {
 "ref":"vipy.image.Image.load",
 "url":47,
-"doc":"Load image to cached private '_array' attribute and return Image object",
+"doc":"Load image to cached private '_array' attribute. Args: ignoreErrors: [bool] If true, ignore any exceptions thrown during load and print the corresponding error messages. This is useful for loading images distributed without throwing exceptions when some images may be corrupted. In this case, the _array attribute will be None and  vipy.image.Image.isloaded will return false to determine if the image is loaded, which can be used to filter out corrupted images gracefully. verbose: [bool] If true, show additional useful printed output Returns: This  vipy.image.Image object with the pixels loaded in self._array as a numpy array.  note This loader supports any image file format supported by PIL. A custom loader can be added using  vipy.image.Image.loader .",
 "func":1
 },
 {
 "ref":"vipy.image.Image.download",
 "url":47,
-"doc":"Download URL to filename provided by constructor, or to temp filename",
+"doc":"Download URL to filename provided by constructor, or to temp filename. Args: ignoreErrors: [bool] If true, do not throw an exception if the download of the URL fails for some reason. Instead, print out a reason and return this image object. The function  vipy.image.Image.hasfilename will return false if the downloaded file does not exist and can be used to filter these failed downloads gracefully. timeout: [int] The timeout in seconds for an http or https connection attempt. See also [urllib.request.urlopen](https: docs.python.org/3/library/urllib.request.html). verbose: [bool] If true, output more helpful message. Returns: This  vipy.image.Image object with the URL downloaded to  vipy.image.Image.filename or to a  vipy.util.tempimage filename which can be retrieved with  vipy.image.Image.filename .",
 "func":1
 },
 {
@@ -8881,7 +8887,7 @@ INDEX=[
 {
 "ref":"vipy.image.Image.isloaded",
 "url":47,
-"doc":"",
+"doc":"Return True if  vipy.image.Image.load was successful in reading the image, or if the pixels are present in  vipy.image.Image.array .",
 "func":1
 },
 {
@@ -8899,7 +8905,7 @@ INDEX=[
 {
 "ref":"vipy.image.Image.istransparent",
 "url":47,
-"doc":"Color images are three channel or four channel with transparency, float32 or uint8",
+"doc":"Transparent images are four channel color images with transparency, float32 or uint8. Return true if this image contains an alpha transparency channel",
 "func":1
 },
 {
@@ -8923,121 +8929,121 @@ INDEX=[
 {
 "ref":"vipy.image.Image.width",
 "url":47,
-"doc":"",
+"doc":"Return the width (columns) of the image in integer pixels.  note This triggers a  vipy.image.Image.load if the image is not already loaded.",
 "func":1
 },
 {
 "ref":"vipy.image.Image.height",
 "url":47,
-"doc":"",
+"doc":"Return the height (rows) of the image in integer pixels.  note This triggers a  vipy.image.Image.load if the image is not already loaded.",
 "func":1
 },
 {
 "ref":"vipy.image.Image.shape",
 "url":47,
-"doc":"Return the (height, width) or equivalently (rows, cols) of the image",
+"doc":"Return the (height, width) or equivalently (rows, cols) of the image. Returns: A tuple (height=int, width=int) of the image.  note This triggers a  vipy.image.Image.load if the image is not already loaded.",
 "func":1
 },
 {
 "ref":"vipy.image.Image.aspectratio",
 "url":47,
-"doc":"",
+"doc":"Return the aspect ratio of the image as (width/height) ratio. Returns: A float equivalent to ( vipy.image.Image.width /  vipy.image.Image.height )  note This triggers a  vipy.image.Image.load if the image is not already loaded.",
 "func":1
 },
 {
 "ref":"vipy.image.Image.area",
 "url":47,
-"doc":"",
+"doc":"Return the area of the image as (width  height). Returns: An integer equivalent to ( vipy.image.Image.width   vipy.image.Image.height )  note This triggers a  vipy.image.Image.load if the image is not already loaded.",
 "func":1
 },
 {
 "ref":"vipy.image.Image.centroid",
 "url":47,
-"doc":"Return the real valued center pixel coordinates of the image (col=x,row=y)",
+"doc":"Return the real valued center pixel coordinates of the image (col=x,row=y). The centroid is equivalent to half the  vipy.image.Image.shape . Returns: A tuple (column, row) of the floating point center of the image.",
 "func":1
 },
 {
 "ref":"vipy.image.Image.centerpixel",
 "url":47,
-"doc":"Return the integer valued center pixel coordinates of the image (col=i,row=j)",
+"doc":"Return the integer valued center pixel coordinates of the image (col=i,row=j) The centerpixel is equivalent to half the  vipy.image.Image.shape floored to the nearest integer pixel coordinate. Returns: A tuple (int(column), int(row of the integer center of the image.",
 "func":1
 },
 {
 "ref":"vipy.image.Image.array",
 "url":47,
-"doc":"Replace self._array with provided numpy array",
-"func":1
-},
-{
-"ref":"vipy.image.Image.channel",
-"url":47,
-"doc":"Return a cloned Image() object for the kth channel, or return an iterator over channels if k=None",
-"func":1
-},
-{
-"ref":"vipy.image.Image.red",
-"url":47,
-"doc":"Return red channel as a cloned Image() object",
-"func":1
-},
-{
-"ref":"vipy.image.Image.green",
-"url":47,
-"doc":"Return green channel as a cloned Image() object",
-"func":1
-},
-{
-"ref":"vipy.image.Image.blue",
-"url":47,
-"doc":"Return blue channel as a cloned Image() object",
-"func":1
-},
-{
-"ref":"vipy.image.Image.alpha",
-"url":47,
-"doc":"Return alpha (transparency) channel as a cloned Image() object",
+"doc":"Replace self._array with provided numpy array Args: np_array: [numpy array] A new array to use as the pixel buffer for this image. copy: [bool] If true, copy the buffer using np.copy(), else use a reference to this buffer. Returns: - If np_array is not None, return the  vipy.image.Image object such that this object points to the provided numpy array as the pixel buffer - If np_array is None, then return the numpy array.  notes - If copy=False, then this  vipy.image.Image object will share the pixel buffer with the owner of np_array. Changes to pixels in this buffer will be shared. - If copy=True, then this will significantly slow down processing for large images. Use referneces wherevery possible.",
 "func":1
 },
 {
 "ref":"vipy.image.Image.fromarray",
 "url":47,
-"doc":"Alias for array(data, copy=True), set new array() with a numpy array copy",
+"doc":"Alias for  vipy.image.Image.array with copy=True. This will set new numpy array as the pixel buffer with a numpy array copy",
 "func":1
 },
 {
 "ref":"vipy.image.Image.tonumpy",
 "url":47,
-"doc":"Alias for numpy()",
+"doc":"Alias for  vipy.image.Image.numpy",
 "func":1
 },
 {
 "ref":"vipy.image.Image.numpy",
 "url":47,
-"doc":"Convert vipy.image.Image to numpy array, returns writeable array",
+"doc":"Return a mutable numpy array for this  vipy.image.Image .  notes - This will always return a writeable array with the 'WRITEABLE' numpy flag set. This is useful for returning a mutable numpy array as needed while keeping the original non-mutable numpy array (e.g. loaded from a video or PIL) as the underlying pixel buffer for efficiency reasons. - Triggers a  vipy.image.Image.load if the pixel buffer has not been loaded - This will trigger a copy if the ['WRITEABLE' flag](https: numpy.org/doc/stable/reference/generated/numpy.ndarray.flags.html) is not set.",
+"func":1
+},
+{
+"ref":"vipy.image.Image.channel",
+"url":47,
+"doc":"Return a cloned Image() object for the kth channel, or return an iterator over channels if k=None. Iterate over channels as single channel luminance images: >>> for c in self.channel(): >>> print(c) Return the kth channel as a single channel luminance image: >>> c = self.channel(k=0)",
+"func":1
+},
+{
+"ref":"vipy.image.Image.red",
+"url":47,
+"doc":"Return red channel as a cloned single channel  vipy.image.Image object. These are equivalent operations if the colorspace is 'rgb' or 'rgba': >>> self.red()  self.channel(0) These are equivalent operations if the colorspace is 'bgr' or 'bgra': >>> self.red()  self.channel(3)  note OpenCV returns images in BGR colorspace. Use this method to always return the desired channel by color.",
+"func":1
+},
+{
+"ref":"vipy.image.Image.green",
+"url":47,
+"doc":"Return green channel as a cloned single channel  vipy.image.Image object. These are equivalent operations if the colorspace is 'rgb' or 'rgba': >>> self.green()  self.channel(1) These are equivalent operations if the colorspace is 'bgr' or 'bgra': >>> self.green()  self.channel(1)  note OpenCV returns images in BGR colorspace. Use this method to always return the desired channel by color.",
+"func":1
+},
+{
+"ref":"vipy.image.Image.blue",
+"url":47,
+"doc":"Return blue channel as a cloned single channel  vipy.image.Image object. These are equivalent operations if the colorspace is 'rgb' or 'rgba': >>> self.vlue()  self.channel(2) These are equivalent operations if the colorspace is 'bgr' or 'bgra': >>> self.blue()  self.channel(0)  note OpenCV returns images in BGR colorspace. Use this method to always return the desired channel by color.",
+"func":1
+},
+{
+"ref":"vipy.image.Image.alpha",
+"url":47,
+"doc":"Return alpha (transparency) channel as a cloned single channel  vipy.image.Image object",
 "func":1
 },
 {
 "ref":"vipy.image.Image.zeros",
 "url":47,
-"doc":"",
+"doc":"Set the pixel buffer to all zeros of the same shape and datatype as this  vipy.image.Image object. These are equivalent operations for the resulting buffer shape: >>> import numpy as np >>> np.zeros( (self.width(), self.height(), self.channels( )  self.zeros().array() Returns: This  vipy.image.Image object.  note Triggers load() if the pixel buffer has not been loaded yet.",
 "func":1
 },
 {
 "ref":"vipy.image.Image.pil",
 "url":47,
-"doc":"Convert vipy.image.Image to PIL Image, by reference",
+"doc":"Convert vipy.image.Image to PIL Image. Returns: A [PIL image](https: pillow.readthedocs.io/en/stable/reference/Image.html) object, that shares the pixel buffer by reference",
 "func":1
 },
 {
 "ref":"vipy.image.Image.blur",
 "url":47,
-"doc":"",
+"doc":"Apply a Gaussian blur with Gaussian kernel radius=sigma to the pixel buffer. Args: sigma: [float >0] The gaussian blur kernel radius. Returns: This  vipy.image.Image object with the pixel buffer blurred.",
 "func":1
 },
 {
 "ref":"vipy.image.Image.torch",
 "url":47,
-"doc":"Convert the batch of 1 HxWxC images to a 1xCxHxW torch tensor, by reference",
+"doc":"Convert the batch of 1 HxWxC images to a 1xCxHxW torch tensor. Args: order: ['CHW', 'HWC']. The axis order of the torch tensor (channels, height, width) or (height, width, channels) Returns: A 1xCxHxW or 1xHxWxC [torch tensor](https: pytorch.org/docs/stable/tensors.html) that shares the pixel buffer of this image object by reference.",
 "func":1
 },
 {
@@ -9511,7 +9517,7 @@ INDEX=[
 {
 "ref":"vipy.image.Image.perceptualhash",
 "url":47,
-"doc":"Perceptual differential hash function This function converts to greyscale, resizes with linear interpolation to small image based on desired bit encoding, compute vertical and horizontal gradient signs. Args: bits: [int] longer hashes have lower TAR (true accept rate, some near dupes are missed), but lower FAR (false accept rate), shorter hashes have higher TAR (fewer near-dupes are missed) but higher FAR (more non-dupes are declared as dupes). asbinary: [bool] If true, return a binary array asbytes: [bool] if true return a byte array Returns: A hash string encoding the perceptual hash such that  vipy.image.Image._perceptualhash_distance can be used to compute a hash distance asbytes: a bytes array asbinary: a numpy binary array  notes - Can be used for near duplicate detection by unpacking the returned hex string to binary and computing hamming distance, or performing hamming based nearest neighbor indexing. Equivalently,  vipy.image.Image.perceptualhash_distance . - The default packed hex output can be converted to binary as: np.unpackbits(bytearray().fromhex(h)",
+"doc":"Perceptual differential hash function This function converts to greyscale, resizes with linear interpolation to small image based on desired bit encoding, compute vertical and horizontal gradient signs. Args: bits: [int] longer hashes have lower TAR (true accept rate, some near dupes are missed), but lower FAR (false accept rate), shorter hashes have higher TAR (fewer near-dupes are missed) but higher FAR (more non-dupes are declared as dupes). asbinary: [bool] If true, return a binary array asbytes: [bool] if true return a byte array Returns: A hash string encoding the perceptual hash such that  vipy.image.Image.perceptualhash_distance can be used to compute a hash distance asbytes: a bytes array asbinary: a numpy binary array  notes - Can be used for near duplicate detection by unpacking the returned hex string to binary and computing hamming distance, or performing hamming based nearest neighbor indexing. Equivalently,  vipy.image.Image.perceptualhash_distance . - The default packed hex output can be converted to binary as: np.unpackbits(bytearray().fromhex(h)",
 "func":1
 },
 {
@@ -9660,25 +9666,31 @@ INDEX=[
 {
 "ref":"vipy.image.ImageCategory.loader",
 "url":47,
-"doc":"Lambda function to load an unsupported image filename to a numpy array",
+"doc":"Lambda function to load an unsupported image filename to a numpy array. This lambda function will be executed during load and the result will be stored in self._array",
 "func":1
 },
 {
 "ref":"vipy.image.ImageCategory.load",
 "url":47,
-"doc":"Load image to cached private '_array' attribute and return Image object",
+"doc":"Load image to cached private '_array' attribute. Args: ignoreErrors: [bool] If true, ignore any exceptions thrown during load and print the corresponding error messages. This is useful for loading images distributed without throwing exceptions when some images may be corrupted. In this case, the _array attribute will be None and  vipy.image.Image.isloaded will return false to determine if the image is loaded, which can be used to filter out corrupted images gracefully. verbose: [bool] If true, show additional useful printed output Returns: This  vipy.image.Image object with the pixels loaded in self._array as a numpy array.  note This loader supports any image file format supported by PIL. A custom loader can be added using  vipy.image.Image.loader .",
 "func":1
 },
 {
 "ref":"vipy.image.ImageCategory.download",
 "url":47,
-"doc":"Download URL to filename provided by constructor, or to temp filename",
+"doc":"Download URL to filename provided by constructor, or to temp filename. Args: ignoreErrors: [bool] If true, do not throw an exception if the download of the URL fails for some reason. Instead, print out a reason and return this image object. The function  vipy.image.Image.hasfilename will return false if the downloaded file does not exist and can be used to filter these failed downloads gracefully. timeout: [int] The timeout in seconds for an http or https connection attempt. See also [urllib.request.urlopen](https: docs.python.org/3/library/urllib.request.html). verbose: [bool] If true, output more helpful message. Returns: This  vipy.image.Image object with the URL downloaded to  vipy.image.Image.filename or to a  vipy.util.tempimage filename which can be retrieved with  vipy.image.Image.filename .",
 "func":1
 },
 {
 "ref":"vipy.image.ImageCategory.reload",
 "url":47,
 "doc":"Flush the image buffer to force reloading from file or URL",
+"func":1
+},
+{
+"ref":"vipy.image.ImageCategory.isloaded",
+"url":47,
+"doc":"Return True if  vipy.image.Image.load was successful in reading the image, or if the pixels are present in  vipy.image.Image.array .",
 "func":1
 },
 {
@@ -9696,7 +9708,7 @@ INDEX=[
 {
 "ref":"vipy.image.ImageCategory.istransparent",
 "url":47,
-"doc":"Color images are three channel or four channel with transparency, float32 or uint8",
+"doc":"Transparent images are four channel color images with transparency, float32 or uint8. Return true if this image contains an alpha transparency channel",
 "func":1
 },
 {
@@ -9718,87 +9730,123 @@ INDEX=[
 "func":1
 },
 {
+"ref":"vipy.image.ImageCategory.width",
+"url":47,
+"doc":"Return the width (columns) of the image in integer pixels.  note This triggers a  vipy.image.Image.load if the image is not already loaded.",
+"func":1
+},
+{
+"ref":"vipy.image.ImageCategory.height",
+"url":47,
+"doc":"Return the height (rows) of the image in integer pixels.  note This triggers a  vipy.image.Image.load if the image is not already loaded.",
+"func":1
+},
+{
 "ref":"vipy.image.ImageCategory.shape",
 "url":47,
-"doc":"Return the (height, width) or equivalently (rows, cols) of the image",
+"doc":"Return the (height, width) or equivalently (rows, cols) of the image. Returns: A tuple (height=int, width=int) of the image.  note This triggers a  vipy.image.Image.load if the image is not already loaded.",
+"func":1
+},
+{
+"ref":"vipy.image.ImageCategory.aspectratio",
+"url":47,
+"doc":"Return the aspect ratio of the image as (width/height) ratio. Returns: A float equivalent to ( vipy.image.Image.width /  vipy.image.Image.height )  note This triggers a  vipy.image.Image.load if the image is not already loaded.",
+"func":1
+},
+{
+"ref":"vipy.image.ImageCategory.area",
+"url":47,
+"doc":"Return the area of the image as (width  height). Returns: An integer equivalent to ( vipy.image.Image.width   vipy.image.Image.height )  note This triggers a  vipy.image.Image.load if the image is not already loaded.",
 "func":1
 },
 {
 "ref":"vipy.image.ImageCategory.centroid",
 "url":47,
-"doc":"Return the real valued center pixel coordinates of the image (col=x,row=y)",
+"doc":"Return the real valued center pixel coordinates of the image (col=x,row=y). The centroid is equivalent to half the  vipy.image.Image.shape . Returns: A tuple (column, row) of the floating point center of the image.",
 "func":1
 },
 {
 "ref":"vipy.image.ImageCategory.centerpixel",
 "url":47,
-"doc":"Return the integer valued center pixel coordinates of the image (col=i,row=j)",
+"doc":"Return the integer valued center pixel coordinates of the image (col=i,row=j) The centerpixel is equivalent to half the  vipy.image.Image.shape floored to the nearest integer pixel coordinate. Returns: A tuple (int(column), int(row of the integer center of the image.",
 "func":1
 },
 {
 "ref":"vipy.image.ImageCategory.array",
 "url":47,
-"doc":"Replace self._array with provided numpy array",
-"func":1
-},
-{
-"ref":"vipy.image.ImageCategory.channel",
-"url":47,
-"doc":"Return a cloned Image() object for the kth channel, or return an iterator over channels if k=None",
-"func":1
-},
-{
-"ref":"vipy.image.ImageCategory.red",
-"url":47,
-"doc":"Return red channel as a cloned Image() object",
-"func":1
-},
-{
-"ref":"vipy.image.ImageCategory.green",
-"url":47,
-"doc":"Return green channel as a cloned Image() object",
-"func":1
-},
-{
-"ref":"vipy.image.ImageCategory.blue",
-"url":47,
-"doc":"Return blue channel as a cloned Image() object",
-"func":1
-},
-{
-"ref":"vipy.image.ImageCategory.alpha",
-"url":47,
-"doc":"Return alpha (transparency) channel as a cloned Image() object",
+"doc":"Replace self._array with provided numpy array Args: np_array: [numpy array] A new array to use as the pixel buffer for this image. copy: [bool] If true, copy the buffer using np.copy(), else use a reference to this buffer. Returns: - If np_array is not None, return the  vipy.image.Image object such that this object points to the provided numpy array as the pixel buffer - If np_array is None, then return the numpy array.  notes - If copy=False, then this  vipy.image.Image object will share the pixel buffer with the owner of np_array. Changes to pixels in this buffer will be shared. - If copy=True, then this will significantly slow down processing for large images. Use referneces wherevery possible.",
 "func":1
 },
 {
 "ref":"vipy.image.ImageCategory.fromarray",
 "url":47,
-"doc":"Alias for array(data, copy=True), set new array() with a numpy array copy",
+"doc":"Alias for  vipy.image.Image.array with copy=True. This will set new numpy array as the pixel buffer with a numpy array copy",
 "func":1
 },
 {
 "ref":"vipy.image.ImageCategory.tonumpy",
 "url":47,
-"doc":"Alias for numpy()",
+"doc":"Alias for  vipy.image.Image.numpy",
 "func":1
 },
 {
 "ref":"vipy.image.ImageCategory.numpy",
 "url":47,
-"doc":"Convert vipy.image.Image to numpy array, returns writeable array",
+"doc":"Return a mutable numpy array for this  vipy.image.Image .  notes - This will always return a writeable array with the 'WRITEABLE' numpy flag set. This is useful for returning a mutable numpy array as needed while keeping the original non-mutable numpy array (e.g. loaded from a video or PIL) as the underlying pixel buffer for efficiency reasons. - Triggers a  vipy.image.Image.load if the pixel buffer has not been loaded - This will trigger a copy if the ['WRITEABLE' flag](https: numpy.org/doc/stable/reference/generated/numpy.ndarray.flags.html) is not set.",
+"func":1
+},
+{
+"ref":"vipy.image.ImageCategory.channel",
+"url":47,
+"doc":"Return a cloned Image() object for the kth channel, or return an iterator over channels if k=None. Iterate over channels as single channel luminance images: >>> for c in self.channel(): >>> print(c) Return the kth channel as a single channel luminance image: >>> c = self.channel(k=0)",
+"func":1
+},
+{
+"ref":"vipy.image.ImageCategory.red",
+"url":47,
+"doc":"Return red channel as a cloned single channel  vipy.image.Image object. These are equivalent operations if the colorspace is 'rgb' or 'rgba': >>> self.red()  self.channel(0) These are equivalent operations if the colorspace is 'bgr' or 'bgra': >>> self.red()  self.channel(3)  note OpenCV returns images in BGR colorspace. Use this method to always return the desired channel by color.",
+"func":1
+},
+{
+"ref":"vipy.image.ImageCategory.green",
+"url":47,
+"doc":"Return green channel as a cloned single channel  vipy.image.Image object. These are equivalent operations if the colorspace is 'rgb' or 'rgba': >>> self.green()  self.channel(1) These are equivalent operations if the colorspace is 'bgr' or 'bgra': >>> self.green()  self.channel(1)  note OpenCV returns images in BGR colorspace. Use this method to always return the desired channel by color.",
+"func":1
+},
+{
+"ref":"vipy.image.ImageCategory.blue",
+"url":47,
+"doc":"Return blue channel as a cloned single channel  vipy.image.Image object. These are equivalent operations if the colorspace is 'rgb' or 'rgba': >>> self.vlue()  self.channel(2) These are equivalent operations if the colorspace is 'bgr' or 'bgra': >>> self.blue()  self.channel(0)  note OpenCV returns images in BGR colorspace. Use this method to always return the desired channel by color.",
+"func":1
+},
+{
+"ref":"vipy.image.ImageCategory.alpha",
+"url":47,
+"doc":"Return alpha (transparency) channel as a cloned single channel  vipy.image.Image object",
+"func":1
+},
+{
+"ref":"vipy.image.ImageCategory.zeros",
+"url":47,
+"doc":"Set the pixel buffer to all zeros of the same shape and datatype as this  vipy.image.Image object. These are equivalent operations for the resulting buffer shape: >>> import numpy as np >>> np.zeros( (self.width(), self.height(), self.channels( )  self.zeros().array() Returns: This  vipy.image.Image object.  note Triggers load() if the pixel buffer has not been loaded yet.",
 "func":1
 },
 {
 "ref":"vipy.image.ImageCategory.pil",
 "url":47,
-"doc":"Convert vipy.image.Image to PIL Image, by reference",
+"doc":"Convert vipy.image.Image to PIL Image. Returns: A [PIL image](https: pillow.readthedocs.io/en/stable/reference/Image.html) object, that shares the pixel buffer by reference",
+"func":1
+},
+{
+"ref":"vipy.image.ImageCategory.blur",
+"url":47,
+"doc":"Apply a Gaussian blur with Gaussian kernel radius=sigma to the pixel buffer. Args: sigma: [float >0] The gaussian blur kernel radius. Returns: This  vipy.image.Image object with the pixel buffer blurred.",
 "func":1
 },
 {
 "ref":"vipy.image.ImageCategory.torch",
 "url":47,
-"doc":"Convert the batch of 1 HxWxC images to a 1xCxHxW torch tensor, by reference",
+"doc":"Convert the batch of 1 HxWxC images to a 1xCxHxW torch tensor. Args: order: ['CHW', 'HWC']. The axis order of the torch tensor (channels, height, width) or (height, width, channels) Returns: A 1xCxHxW or 1xHxWxC [torch tensor](https: pytorch.org/docs/stable/tensors.html) that shares the pixel buffer of this image object by reference.",
 "func":1
 },
 {
@@ -10200,7 +10248,7 @@ INDEX=[
 {
 "ref":"vipy.image.ImageCategory.perceptualhash",
 "url":47,
-"doc":"Perceptual differential hash function This function converts to greyscale, resizes with linear interpolation to small image based on desired bit encoding, compute vertical and horizontal gradient signs. Args: bits: [int] longer hashes have lower TAR (true accept rate, some near dupes are missed), but lower FAR (false accept rate), shorter hashes have higher TAR (fewer near-dupes are missed) but higher FAR (more non-dupes are declared as dupes). asbinary: [bool] If true, return a binary array asbytes: [bool] if true return a byte array Returns: A hash string encoding the perceptual hash such that  vipy.image.Image._perceptualhash_distance can be used to compute a hash distance asbytes: a bytes array asbinary: a numpy binary array  notes - Can be used for near duplicate detection by unpacking the returned hex string to binary and computing hamming distance, or performing hamming based nearest neighbor indexing. Equivalently,  vipy.image.Image.perceptualhash_distance . - The default packed hex output can be converted to binary as: np.unpackbits(bytearray().fromhex(h)",
+"doc":"Perceptual differential hash function This function converts to greyscale, resizes with linear interpolation to small image based on desired bit encoding, compute vertical and horizontal gradient signs. Args: bits: [int] longer hashes have lower TAR (true accept rate, some near dupes are missed), but lower FAR (false accept rate), shorter hashes have higher TAR (fewer near-dupes are missed) but higher FAR (more non-dupes are declared as dupes). asbinary: [bool] If true, return a binary array asbytes: [bool] if true return a byte array Returns: A hash string encoding the perceptual hash such that  vipy.image.Image.perceptualhash_distance can be used to compute a hash distance asbytes: a bytes array asbinary: a numpy binary array  notes - Can be used for near duplicate detection by unpacking the returned hex string to binary and computing hamming distance, or performing hamming based nearest neighbor indexing. Equivalently,  vipy.image.Image.perceptualhash_distance . - The default packed hex output can be converted to binary as: np.unpackbits(bytearray().fromhex(h)",
 "func":1
 },
 {
@@ -10475,7 +10523,7 @@ INDEX=[
 {
 "ref":"vipy.image.Scene.perceptualhash",
 "url":47,
-"doc":"Perceptual differential hash function. This function sets foreground objects to mean color, convert to greyscale, resize with linear interpolation to small image based on desired bit encoding, compute vertical and horizontal gradient signs. Args: bits: [int] longer hashes have lower TAR (true accept rate, some near dupes are missed), but lower FAR (false accept rate), shorter hashes have higher TAR (fewer near-dupes are missed) but higher FAR (more non-dupes are declared as dupes). objmask: [bool] if true, replace the foreground object masks with the mean color prior to computing asbinary: [bool] If true, return a binary array asbytes: [bool] if true return a byte array Returns: A hash string encoding the perceptual hash such that  vipy.image.Image._perceptualhash_distance can be used to compute a hash distance asbytes: a bytes array asbinary: a numpy binary array  notes - Can be used for near duplicate detection of background scenes by unpacking the returned hex string to binary and computing hamming distance, or performing hamming based nearest neighbor indexing. Equivalently,  vipy.image.Image.perceptualhash_distance . - The default packed hex output can be converted to binary as: np.unpackbits(bytearray().fromhex( bghash()  which is equivalent to perceptualhash(asbinary=True)",
+"doc":"Perceptual differential hash function. This function sets foreground objects to mean color, convert to greyscale, resize with linear interpolation to small image based on desired bit encoding, compute vertical and horizontal gradient signs. Args: bits: [int] longer hashes have lower TAR (true accept rate, some near dupes are missed), but lower FAR (false accept rate), shorter hashes have higher TAR (fewer near-dupes are missed) but higher FAR (more non-dupes are declared as dupes). objmask: [bool] if true, replace the foreground object masks with the mean color prior to computing asbinary: [bool] If true, return a binary array asbytes: [bool] if true return a byte array Returns: A hash string encoding the perceptual hash such that  vipy.image.Image.perceptualhash_distance can be used to compute a hash distance asbytes: a bytes array asbinary: a numpy binary array  notes - Can be used for near duplicate detection of background scenes by unpacking the returned hex string to binary and computing hamming distance, or performing hamming based nearest neighbor indexing. Equivalently,  vipy.image.Image.perceptualhash_distance . - The default packed hex output can be converted to binary as: np.unpackbits(bytearray().fromhex( bghash()  which is equivalent to perceptualhash(asbinary=True)",
 "func":1
 },
 {
@@ -10607,25 +10655,31 @@ INDEX=[
 {
 "ref":"vipy.image.Scene.loader",
 "url":47,
-"doc":"Lambda function to load an unsupported image filename to a numpy array",
+"doc":"Lambda function to load an unsupported image filename to a numpy array. This lambda function will be executed during load and the result will be stored in self._array",
 "func":1
 },
 {
 "ref":"vipy.image.Scene.load",
 "url":47,
-"doc":"Load image to cached private '_array' attribute and return Image object",
+"doc":"Load image to cached private '_array' attribute. Args: ignoreErrors: [bool] If true, ignore any exceptions thrown during load and print the corresponding error messages. This is useful for loading images distributed without throwing exceptions when some images may be corrupted. In this case, the _array attribute will be None and  vipy.image.Image.isloaded will return false to determine if the image is loaded, which can be used to filter out corrupted images gracefully. verbose: [bool] If true, show additional useful printed output Returns: This  vipy.image.Image object with the pixels loaded in self._array as a numpy array.  note This loader supports any image file format supported by PIL. A custom loader can be added using  vipy.image.Image.loader .",
 "func":1
 },
 {
 "ref":"vipy.image.Scene.download",
 "url":47,
-"doc":"Download URL to filename provided by constructor, or to temp filename",
+"doc":"Download URL to filename provided by constructor, or to temp filename. Args: ignoreErrors: [bool] If true, do not throw an exception if the download of the URL fails for some reason. Instead, print out a reason and return this image object. The function  vipy.image.Image.hasfilename will return false if the downloaded file does not exist and can be used to filter these failed downloads gracefully. timeout: [int] The timeout in seconds for an http or https connection attempt. See also [urllib.request.urlopen](https: docs.python.org/3/library/urllib.request.html). verbose: [bool] If true, output more helpful message. Returns: This  vipy.image.Image object with the URL downloaded to  vipy.image.Image.filename or to a  vipy.util.tempimage filename which can be retrieved with  vipy.image.Image.filename .",
 "func":1
 },
 {
 "ref":"vipy.image.Scene.reload",
 "url":47,
 "doc":"Flush the image buffer to force reloading from file or URL",
+"func":1
+},
+{
+"ref":"vipy.image.Scene.isloaded",
+"url":47,
+"doc":"Return True if  vipy.image.Image.load was successful in reading the image, or if the pixels are present in  vipy.image.Image.array .",
 "func":1
 },
 {
@@ -10643,7 +10697,7 @@ INDEX=[
 {
 "ref":"vipy.image.Scene.istransparent",
 "url":47,
-"doc":"Color images are three channel or four channel with transparency, float32 or uint8",
+"doc":"Transparent images are four channel color images with transparency, float32 or uint8. Return true if this image contains an alpha transparency channel",
 "func":1
 },
 {
@@ -10665,87 +10719,123 @@ INDEX=[
 "func":1
 },
 {
+"ref":"vipy.image.Scene.width",
+"url":47,
+"doc":"Return the width (columns) of the image in integer pixels.  note This triggers a  vipy.image.Image.load if the image is not already loaded.",
+"func":1
+},
+{
+"ref":"vipy.image.Scene.height",
+"url":47,
+"doc":"Return the height (rows) of the image in integer pixels.  note This triggers a  vipy.image.Image.load if the image is not already loaded.",
+"func":1
+},
+{
 "ref":"vipy.image.Scene.shape",
 "url":47,
-"doc":"Return the (height, width) or equivalently (rows, cols) of the image",
+"doc":"Return the (height, width) or equivalently (rows, cols) of the image. Returns: A tuple (height=int, width=int) of the image.  note This triggers a  vipy.image.Image.load if the image is not already loaded.",
+"func":1
+},
+{
+"ref":"vipy.image.Scene.aspectratio",
+"url":47,
+"doc":"Return the aspect ratio of the image as (width/height) ratio. Returns: A float equivalent to ( vipy.image.Image.width /  vipy.image.Image.height )  note This triggers a  vipy.image.Image.load if the image is not already loaded.",
+"func":1
+},
+{
+"ref":"vipy.image.Scene.area",
+"url":47,
+"doc":"Return the area of the image as (width  height). Returns: An integer equivalent to ( vipy.image.Image.width   vipy.image.Image.height )  note This triggers a  vipy.image.Image.load if the image is not already loaded.",
 "func":1
 },
 {
 "ref":"vipy.image.Scene.centroid",
 "url":47,
-"doc":"Return the real valued center pixel coordinates of the image (col=x,row=y)",
+"doc":"Return the real valued center pixel coordinates of the image (col=x,row=y). The centroid is equivalent to half the  vipy.image.Image.shape . Returns: A tuple (column, row) of the floating point center of the image.",
 "func":1
 },
 {
 "ref":"vipy.image.Scene.centerpixel",
 "url":47,
-"doc":"Return the integer valued center pixel coordinates of the image (col=i,row=j)",
+"doc":"Return the integer valued center pixel coordinates of the image (col=i,row=j) The centerpixel is equivalent to half the  vipy.image.Image.shape floored to the nearest integer pixel coordinate. Returns: A tuple (int(column), int(row of the integer center of the image.",
 "func":1
 },
 {
 "ref":"vipy.image.Scene.array",
 "url":47,
-"doc":"Replace self._array with provided numpy array",
-"func":1
-},
-{
-"ref":"vipy.image.Scene.channel",
-"url":47,
-"doc":"Return a cloned Image() object for the kth channel, or return an iterator over channels if k=None",
-"func":1
-},
-{
-"ref":"vipy.image.Scene.red",
-"url":47,
-"doc":"Return red channel as a cloned Image() object",
-"func":1
-},
-{
-"ref":"vipy.image.Scene.green",
-"url":47,
-"doc":"Return green channel as a cloned Image() object",
-"func":1
-},
-{
-"ref":"vipy.image.Scene.blue",
-"url":47,
-"doc":"Return blue channel as a cloned Image() object",
-"func":1
-},
-{
-"ref":"vipy.image.Scene.alpha",
-"url":47,
-"doc":"Return alpha (transparency) channel as a cloned Image() object",
+"doc":"Replace self._array with provided numpy array Args: np_array: [numpy array] A new array to use as the pixel buffer for this image. copy: [bool] If true, copy the buffer using np.copy(), else use a reference to this buffer. Returns: - If np_array is not None, return the  vipy.image.Image object such that this object points to the provided numpy array as the pixel buffer - If np_array is None, then return the numpy array.  notes - If copy=False, then this  vipy.image.Image object will share the pixel buffer with the owner of np_array. Changes to pixels in this buffer will be shared. - If copy=True, then this will significantly slow down processing for large images. Use referneces wherevery possible.",
 "func":1
 },
 {
 "ref":"vipy.image.Scene.fromarray",
 "url":47,
-"doc":"Alias for array(data, copy=True), set new array() with a numpy array copy",
+"doc":"Alias for  vipy.image.Image.array with copy=True. This will set new numpy array as the pixel buffer with a numpy array copy",
 "func":1
 },
 {
 "ref":"vipy.image.Scene.tonumpy",
 "url":47,
-"doc":"Alias for numpy()",
+"doc":"Alias for  vipy.image.Image.numpy",
 "func":1
 },
 {
 "ref":"vipy.image.Scene.numpy",
 "url":47,
-"doc":"Convert vipy.image.Image to numpy array, returns writeable array",
+"doc":"Return a mutable numpy array for this  vipy.image.Image .  notes - This will always return a writeable array with the 'WRITEABLE' numpy flag set. This is useful for returning a mutable numpy array as needed while keeping the original non-mutable numpy array (e.g. loaded from a video or PIL) as the underlying pixel buffer for efficiency reasons. - Triggers a  vipy.image.Image.load if the pixel buffer has not been loaded - This will trigger a copy if the ['WRITEABLE' flag](https: numpy.org/doc/stable/reference/generated/numpy.ndarray.flags.html) is not set.",
+"func":1
+},
+{
+"ref":"vipy.image.Scene.channel",
+"url":47,
+"doc":"Return a cloned Image() object for the kth channel, or return an iterator over channels if k=None. Iterate over channels as single channel luminance images: >>> for c in self.channel(): >>> print(c) Return the kth channel as a single channel luminance image: >>> c = self.channel(k=0)",
+"func":1
+},
+{
+"ref":"vipy.image.Scene.red",
+"url":47,
+"doc":"Return red channel as a cloned single channel  vipy.image.Image object. These are equivalent operations if the colorspace is 'rgb' or 'rgba': >>> self.red()  self.channel(0) These are equivalent operations if the colorspace is 'bgr' or 'bgra': >>> self.red()  self.channel(3)  note OpenCV returns images in BGR colorspace. Use this method to always return the desired channel by color.",
+"func":1
+},
+{
+"ref":"vipy.image.Scene.green",
+"url":47,
+"doc":"Return green channel as a cloned single channel  vipy.image.Image object. These are equivalent operations if the colorspace is 'rgb' or 'rgba': >>> self.green()  self.channel(1) These are equivalent operations if the colorspace is 'bgr' or 'bgra': >>> self.green()  self.channel(1)  note OpenCV returns images in BGR colorspace. Use this method to always return the desired channel by color.",
+"func":1
+},
+{
+"ref":"vipy.image.Scene.blue",
+"url":47,
+"doc":"Return blue channel as a cloned single channel  vipy.image.Image object. These are equivalent operations if the colorspace is 'rgb' or 'rgba': >>> self.vlue()  self.channel(2) These are equivalent operations if the colorspace is 'bgr' or 'bgra': >>> self.blue()  self.channel(0)  note OpenCV returns images in BGR colorspace. Use this method to always return the desired channel by color.",
+"func":1
+},
+{
+"ref":"vipy.image.Scene.alpha",
+"url":47,
+"doc":"Return alpha (transparency) channel as a cloned single channel  vipy.image.Image object",
+"func":1
+},
+{
+"ref":"vipy.image.Scene.zeros",
+"url":47,
+"doc":"Set the pixel buffer to all zeros of the same shape and datatype as this  vipy.image.Image object. These are equivalent operations for the resulting buffer shape: >>> import numpy as np >>> np.zeros( (self.width(), self.height(), self.channels( )  self.zeros().array() Returns: This  vipy.image.Image object.  note Triggers load() if the pixel buffer has not been loaded yet.",
 "func":1
 },
 {
 "ref":"vipy.image.Scene.pil",
 "url":47,
-"doc":"Convert vipy.image.Image to PIL Image, by reference",
+"doc":"Convert vipy.image.Image to PIL Image. Returns: A [PIL image](https: pillow.readthedocs.io/en/stable/reference/Image.html) object, that shares the pixel buffer by reference",
+"func":1
+},
+{
+"ref":"vipy.image.Scene.blur",
+"url":47,
+"doc":"Apply a Gaussian blur with Gaussian kernel radius=sigma to the pixel buffer. Args: sigma: [float >0] The gaussian blur kernel radius. Returns: This  vipy.image.Image object with the pixel buffer blurred.",
 "func":1
 },
 {
 "ref":"vipy.image.Scene.torch",
 "url":47,
-"doc":"Convert the batch of 1 HxWxC images to a 1xCxHxW torch tensor, by reference",
+"doc":"Convert the batch of 1 HxWxC images to a 1xCxHxW torch tensor. Args: order: ['CHW', 'HWC']. The axis order of the torch tensor (channels, height, width) or (height, width, channels) Returns: A 1xCxHxW or 1xHxWxC [torch tensor](https: pytorch.org/docs/stable/tensors.html) that shares the pixel buffer of this image object by reference.",
 "func":1
 },
 {
@@ -11344,7 +11434,7 @@ INDEX=[
 {
 "ref":"vipy.image.ImageDetection.perceptualhash",
 "url":47,
-"doc":"Perceptual differential hash function. This function sets foreground objects to mean color, convert to greyscale, resize with linear interpolation to small image based on desired bit encoding, compute vertical and horizontal gradient signs. Args: bits: [int] longer hashes have lower TAR (true accept rate, some near dupes are missed), but lower FAR (false accept rate), shorter hashes have higher TAR (fewer near-dupes are missed) but higher FAR (more non-dupes are declared as dupes). objmask: [bool] if true, replace the foreground object masks with the mean color prior to computing asbinary: [bool] If true, return a binary array asbytes: [bool] if true return a byte array Returns: A hash string encoding the perceptual hash such that  vipy.image.Image._perceptualhash_distance can be used to compute a hash distance asbytes: a bytes array asbinary: a numpy binary array  notes - Can be used for near duplicate detection of background scenes by unpacking the returned hex string to binary and computing hamming distance, or performing hamming based nearest neighbor indexing. Equivalently,  vipy.image.Image.perceptualhash_distance . - The default packed hex output can be converted to binary as: np.unpackbits(bytearray().fromhex( bghash()  which is equivalent to perceptualhash(asbinary=True)",
+"doc":"Perceptual differential hash function. This function sets foreground objects to mean color, convert to greyscale, resize with linear interpolation to small image based on desired bit encoding, compute vertical and horizontal gradient signs. Args: bits: [int] longer hashes have lower TAR (true accept rate, some near dupes are missed), but lower FAR (false accept rate), shorter hashes have higher TAR (fewer near-dupes are missed) but higher FAR (more non-dupes are declared as dupes). objmask: [bool] if true, replace the foreground object masks with the mean color prior to computing asbinary: [bool] If true, return a binary array asbytes: [bool] if true return a byte array Returns: A hash string encoding the perceptual hash such that  vipy.image.Image.perceptualhash_distance can be used to compute a hash distance asbytes: a bytes array asbinary: a numpy binary array  notes - Can be used for near duplicate detection of background scenes by unpacking the returned hex string to binary and computing hamming distance, or performing hamming based nearest neighbor indexing. Equivalently,  vipy.image.Image.perceptualhash_distance . - The default packed hex output can be converted to binary as: np.unpackbits(bytearray().fromhex( bghash()  which is equivalent to perceptualhash(asbinary=True)",
 "func":1
 },
 {
@@ -11476,25 +11566,31 @@ INDEX=[
 {
 "ref":"vipy.image.ImageDetection.loader",
 "url":47,
-"doc":"Lambda function to load an unsupported image filename to a numpy array",
+"doc":"Lambda function to load an unsupported image filename to a numpy array. This lambda function will be executed during load and the result will be stored in self._array",
 "func":1
 },
 {
 "ref":"vipy.image.ImageDetection.load",
 "url":47,
-"doc":"Load image to cached private '_array' attribute and return Image object",
+"doc":"Load image to cached private '_array' attribute. Args: ignoreErrors: [bool] If true, ignore any exceptions thrown during load and print the corresponding error messages. This is useful for loading images distributed without throwing exceptions when some images may be corrupted. In this case, the _array attribute will be None and  vipy.image.Image.isloaded will return false to determine if the image is loaded, which can be used to filter out corrupted images gracefully. verbose: [bool] If true, show additional useful printed output Returns: This  vipy.image.Image object with the pixels loaded in self._array as a numpy array.  note This loader supports any image file format supported by PIL. A custom loader can be added using  vipy.image.Image.loader .",
 "func":1
 },
 {
 "ref":"vipy.image.ImageDetection.download",
 "url":47,
-"doc":"Download URL to filename provided by constructor, or to temp filename",
+"doc":"Download URL to filename provided by constructor, or to temp filename. Args: ignoreErrors: [bool] If true, do not throw an exception if the download of the URL fails for some reason. Instead, print out a reason and return this image object. The function  vipy.image.Image.hasfilename will return false if the downloaded file does not exist and can be used to filter these failed downloads gracefully. timeout: [int] The timeout in seconds for an http or https connection attempt. See also [urllib.request.urlopen](https: docs.python.org/3/library/urllib.request.html). verbose: [bool] If true, output more helpful message. Returns: This  vipy.image.Image object with the URL downloaded to  vipy.image.Image.filename or to a  vipy.util.tempimage filename which can be retrieved with  vipy.image.Image.filename .",
 "func":1
 },
 {
 "ref":"vipy.image.ImageDetection.reload",
 "url":47,
 "doc":"Flush the image buffer to force reloading from file or URL",
+"func":1
+},
+{
+"ref":"vipy.image.ImageDetection.isloaded",
+"url":47,
+"doc":"Return True if  vipy.image.Image.load was successful in reading the image, or if the pixels are present in  vipy.image.Image.array .",
 "func":1
 },
 {
@@ -11512,7 +11608,7 @@ INDEX=[
 {
 "ref":"vipy.image.ImageDetection.istransparent",
 "url":47,
-"doc":"Color images are three channel or four channel with transparency, float32 or uint8",
+"doc":"Transparent images are four channel color images with transparency, float32 or uint8. Return true if this image contains an alpha transparency channel",
 "func":1
 },
 {
@@ -11534,87 +11630,123 @@ INDEX=[
 "func":1
 },
 {
+"ref":"vipy.image.ImageDetection.width",
+"url":47,
+"doc":"Return the width (columns) of the image in integer pixels.  note This triggers a  vipy.image.Image.load if the image is not already loaded.",
+"func":1
+},
+{
+"ref":"vipy.image.ImageDetection.height",
+"url":47,
+"doc":"Return the height (rows) of the image in integer pixels.  note This triggers a  vipy.image.Image.load if the image is not already loaded.",
+"func":1
+},
+{
 "ref":"vipy.image.ImageDetection.shape",
 "url":47,
-"doc":"Return the (height, width) or equivalently (rows, cols) of the image",
+"doc":"Return the (height, width) or equivalently (rows, cols) of the image. Returns: A tuple (height=int, width=int) of the image.  note This triggers a  vipy.image.Image.load if the image is not already loaded.",
+"func":1
+},
+{
+"ref":"vipy.image.ImageDetection.aspectratio",
+"url":47,
+"doc":"Return the aspect ratio of the image as (width/height) ratio. Returns: A float equivalent to ( vipy.image.Image.width /  vipy.image.Image.height )  note This triggers a  vipy.image.Image.load if the image is not already loaded.",
+"func":1
+},
+{
+"ref":"vipy.image.ImageDetection.area",
+"url":47,
+"doc":"Return the area of the image as (width  height). Returns: An integer equivalent to ( vipy.image.Image.width   vipy.image.Image.height )  note This triggers a  vipy.image.Image.load if the image is not already loaded.",
 "func":1
 },
 {
 "ref":"vipy.image.ImageDetection.centroid",
 "url":47,
-"doc":"Return the real valued center pixel coordinates of the image (col=x,row=y)",
+"doc":"Return the real valued center pixel coordinates of the image (col=x,row=y). The centroid is equivalent to half the  vipy.image.Image.shape . Returns: A tuple (column, row) of the floating point center of the image.",
 "func":1
 },
 {
 "ref":"vipy.image.ImageDetection.centerpixel",
 "url":47,
-"doc":"Return the integer valued center pixel coordinates of the image (col=i,row=j)",
+"doc":"Return the integer valued center pixel coordinates of the image (col=i,row=j) The centerpixel is equivalent to half the  vipy.image.Image.shape floored to the nearest integer pixel coordinate. Returns: A tuple (int(column), int(row of the integer center of the image.",
 "func":1
 },
 {
 "ref":"vipy.image.ImageDetection.array",
 "url":47,
-"doc":"Replace self._array with provided numpy array",
-"func":1
-},
-{
-"ref":"vipy.image.ImageDetection.channel",
-"url":47,
-"doc":"Return a cloned Image() object for the kth channel, or return an iterator over channels if k=None",
-"func":1
-},
-{
-"ref":"vipy.image.ImageDetection.red",
-"url":47,
-"doc":"Return red channel as a cloned Image() object",
-"func":1
-},
-{
-"ref":"vipy.image.ImageDetection.green",
-"url":47,
-"doc":"Return green channel as a cloned Image() object",
-"func":1
-},
-{
-"ref":"vipy.image.ImageDetection.blue",
-"url":47,
-"doc":"Return blue channel as a cloned Image() object",
-"func":1
-},
-{
-"ref":"vipy.image.ImageDetection.alpha",
-"url":47,
-"doc":"Return alpha (transparency) channel as a cloned Image() object",
+"doc":"Replace self._array with provided numpy array Args: np_array: [numpy array] A new array to use as the pixel buffer for this image. copy: [bool] If true, copy the buffer using np.copy(), else use a reference to this buffer. Returns: - If np_array is not None, return the  vipy.image.Image object such that this object points to the provided numpy array as the pixel buffer - If np_array is None, then return the numpy array.  notes - If copy=False, then this  vipy.image.Image object will share the pixel buffer with the owner of np_array. Changes to pixels in this buffer will be shared. - If copy=True, then this will significantly slow down processing for large images. Use referneces wherevery possible.",
 "func":1
 },
 {
 "ref":"vipy.image.ImageDetection.fromarray",
 "url":47,
-"doc":"Alias for array(data, copy=True), set new array() with a numpy array copy",
+"doc":"Alias for  vipy.image.Image.array with copy=True. This will set new numpy array as the pixel buffer with a numpy array copy",
 "func":1
 },
 {
 "ref":"vipy.image.ImageDetection.tonumpy",
 "url":47,
-"doc":"Alias for numpy()",
+"doc":"Alias for  vipy.image.Image.numpy",
 "func":1
 },
 {
 "ref":"vipy.image.ImageDetection.numpy",
 "url":47,
-"doc":"Convert vipy.image.Image to numpy array, returns writeable array",
+"doc":"Return a mutable numpy array for this  vipy.image.Image .  notes - This will always return a writeable array with the 'WRITEABLE' numpy flag set. This is useful for returning a mutable numpy array as needed while keeping the original non-mutable numpy array (e.g. loaded from a video or PIL) as the underlying pixel buffer for efficiency reasons. - Triggers a  vipy.image.Image.load if the pixel buffer has not been loaded - This will trigger a copy if the ['WRITEABLE' flag](https: numpy.org/doc/stable/reference/generated/numpy.ndarray.flags.html) is not set.",
+"func":1
+},
+{
+"ref":"vipy.image.ImageDetection.channel",
+"url":47,
+"doc":"Return a cloned Image() object for the kth channel, or return an iterator over channels if k=None. Iterate over channels as single channel luminance images: >>> for c in self.channel(): >>> print(c) Return the kth channel as a single channel luminance image: >>> c = self.channel(k=0)",
+"func":1
+},
+{
+"ref":"vipy.image.ImageDetection.red",
+"url":47,
+"doc":"Return red channel as a cloned single channel  vipy.image.Image object. These are equivalent operations if the colorspace is 'rgb' or 'rgba': >>> self.red()  self.channel(0) These are equivalent operations if the colorspace is 'bgr' or 'bgra': >>> self.red()  self.channel(3)  note OpenCV returns images in BGR colorspace. Use this method to always return the desired channel by color.",
+"func":1
+},
+{
+"ref":"vipy.image.ImageDetection.green",
+"url":47,
+"doc":"Return green channel as a cloned single channel  vipy.image.Image object. These are equivalent operations if the colorspace is 'rgb' or 'rgba': >>> self.green()  self.channel(1) These are equivalent operations if the colorspace is 'bgr' or 'bgra': >>> self.green()  self.channel(1)  note OpenCV returns images in BGR colorspace. Use this method to always return the desired channel by color.",
+"func":1
+},
+{
+"ref":"vipy.image.ImageDetection.blue",
+"url":47,
+"doc":"Return blue channel as a cloned single channel  vipy.image.Image object. These are equivalent operations if the colorspace is 'rgb' or 'rgba': >>> self.vlue()  self.channel(2) These are equivalent operations if the colorspace is 'bgr' or 'bgra': >>> self.blue()  self.channel(0)  note OpenCV returns images in BGR colorspace. Use this method to always return the desired channel by color.",
+"func":1
+},
+{
+"ref":"vipy.image.ImageDetection.alpha",
+"url":47,
+"doc":"Return alpha (transparency) channel as a cloned single channel  vipy.image.Image object",
+"func":1
+},
+{
+"ref":"vipy.image.ImageDetection.zeros",
+"url":47,
+"doc":"Set the pixel buffer to all zeros of the same shape and datatype as this  vipy.image.Image object. These are equivalent operations for the resulting buffer shape: >>> import numpy as np >>> np.zeros( (self.width(), self.height(), self.channels( )  self.zeros().array() Returns: This  vipy.image.Image object.  note Triggers load() if the pixel buffer has not been loaded yet.",
 "func":1
 },
 {
 "ref":"vipy.image.ImageDetection.pil",
 "url":47,
-"doc":"Convert vipy.image.Image to PIL Image, by reference",
+"doc":"Convert vipy.image.Image to PIL Image. Returns: A [PIL image](https: pillow.readthedocs.io/en/stable/reference/Image.html) object, that shares the pixel buffer by reference",
+"func":1
+},
+{
+"ref":"vipy.image.ImageDetection.blur",
+"url":47,
+"doc":"Apply a Gaussian blur with Gaussian kernel radius=sigma to the pixel buffer. Args: sigma: [float >0] The gaussian blur kernel radius. Returns: This  vipy.image.Image object with the pixel buffer blurred.",
 "func":1
 },
 {
 "ref":"vipy.image.ImageDetection.torch",
 "url":47,
-"doc":"Convert the batch of 1 HxWxC images to a 1xCxHxW torch tensor, by reference",
+"doc":"Convert the batch of 1 HxWxC images to a 1xCxHxW torch tensor. Args: order: ['CHW', 'HWC']. The axis order of the torch tensor (channels, height, width) or (height, width, channels) Returns: A 1xCxHxW or 1xHxWxC [torch tensor](https: pytorch.org/docs/stable/tensors.html) that shares the pixel buffer of this image object by reference.",
 "func":1
 },
 {
@@ -12146,12 +12278,6 @@ INDEX=[
 "func":1
 },
 {
-"ref":"vipy.image.ImageDetection.area",
-"url":8,
-"doc":"Return the area=width height of the bounding box",
-"func":1
-},
-{
 "ref":"vipy.image.ImageDetection.to_xywh",
 "url":8,
 "doc":"Return bounding box corners as (x,y,width,height) tuple",
@@ -12359,12 +12485,6 @@ INDEX=[
 "ref":"vipy.image.ImageDetection.convexhull",
 "url":8,
 "doc":"Given a set of points  x1,y1],[x2,xy], .], return the bounding rectangle, typecast to float",
-"func":1
-},
-{
-"ref":"vipy.image.ImageDetection.aspectratio",
-"url":8,
-"doc":"Return the aspect ratio (width/height) of the box",
 "func":1
 },
 {
