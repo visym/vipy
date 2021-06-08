@@ -563,7 +563,10 @@ class Video(object):
                         break
                     
             def batch(self, n):
-                """Stream batches of length n such that each batch contains frames [0,n], [n+1, 2n], ...  Last batch will be ragged"""
+                """Stream batches of length n such that each batch contains frames [0,n], [n+1, 2n], ...  Last batch will be ragged.
+
+                .. warning:: Unlike clip(), this method currently does not support activities and tracks.  The batch will contain pixels only. 
+                """
                 assert isinstance(n, int) and n>0, "batch length must be a positive integer"
 
                 def _f_threadloop(pipe, queue, height, width, video, n, event):
@@ -960,7 +963,7 @@ class Video(object):
             True if load() can be called without FFMPEG exception.  
             If flush=False, then self will contain the loaded video, which is helpful to avoid load() twice in some conditions
         
-        .. warning:: This requires loading and flushing the video.  This is an expensive operation when performed on many videos, use with caution!
+        .. warning:: This requires loading and flushing the video.  This is an expensive operation when performed on many videos and may result in out of memory conditions with long videos.  Use with caution!  Try `vipy.video.Video.canload` to test if a single frame can be loaded as a less expensive alternative.
         """
         if not self.isloaded():
             try:
@@ -2509,12 +2512,14 @@ class Scene(VideoCategory):
         
         Returns:
             self, with tracks removed in-place
+
+        .. note:: Applying track filter with activitytrack=True may result in activities with no associated tracks.  You should follow up with self.activityfilter(lambda a: len(a.trackids()) > 0).
         """
         self._tracks = {k:t for (k,t) in self.tracks().items() if f(t) == True}
         if activitytrack:
             self.activitymap(lambda a: a.trackfilter(lambda ti: ti in self._tracks))  # remove track association in activities
-            if any([len(a.tracks()) == 0 for a in self.activitylist()]):
-                warnings.warn('trackfilter(..., activitytrack=True) removed tracks which returned at least one degenerate activity with no tracks')
+            #if any([len(a.tracks()) == 0 for a in self.activitylist()]):
+            #    warnings.warn('trackfilter(..., activitytrack=True) removed tracks which returned at least one degenerate activity with no tracks')
         return self
 
     def trackmap(self, f, strict=True):
@@ -3364,7 +3369,7 @@ class Scene(VideoCategory):
         im = self.frame(frame, img=self.preview(framenum=frame).array())
         return im.savefig(outfile=outfile, fontsize=fontsize, nocaption=nocaption, boxalpha=boxalpha, dpi=dpi, textfacecolor=textfacecolor, textfacealpha=textfacealpha) if outfile is not None else im
     
-    def stabilize(self, flowdim=None):
+    def stabilize(self, flowdim=256):
         """Background stablization using flow based stabilization masking foreground region.  This will output a video with all frames aligned to the first frame, such that the background is static."""
         from vipy.flow import Flow  # requires opencv
         return Flow(flowdim=flowdim).stabilize(self.clone(), residual=True)

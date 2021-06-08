@@ -224,7 +224,7 @@ class Video(vipy.video.Video):
 class Flow(object):
     """vipy.flow.Flow() class"""
     
-    def __init__(self, flowiter=10, flowdim=None):
+    def __init__(self, flowiter=10, flowdim=256):
         self._mindim = flowdim
         self._levels = 3
         self._winsize = 7
@@ -307,27 +307,38 @@ class Flow(object):
     def stabilize(self, v, keystep=20, padheightfrac=0.125, padwidthfrac=0.25, padheightpx=None, padwidthpx=None, border=0.1, dilate=1.0, contrast=16.0/255.0, rigid=False, affine=True, verbose=True, strict=True, residual=False, maxflow=None, outfile=None): 
         """Affine stabilization to frame zero using multi-scale optical flow correspondence with foreground object keepouts.  
 
-           * v [vipy.video.Scene]:  The input video to stabilize, should be resized to mindim=256
-           * keystep [int]:  The local stabilization step between keyframes (should be <= 30)
-           * padheightfrac [float]:  The height padding (relative to video height) to be applied to output video to allow for vertical stabilization
-           * padwidthfrac [float]:  The width padding (relative to video width) to be applied to output video to allow for horizontal stabilization
-           * padheightpx [int]:  The height padding to be applied to output video to allow for vertical stabilization.  Overrides padheight.
-           * padwidthpx [int]:  The width padding to be applied to output video to allow for horizontal stabilization.  Overrides padwidth.
-           * border [float]:  The border keepout fraction to ignore during flow correspondence.  This should be proportional to the maximum frame to frame flow
-           * dilate [float]:  The dilation to apply to the foreground object boxes to define a foregroun keepout for flow computation
-           * contrast [float]:  The minimum gradient necessary for flow correspondence, to avoid flow on low contrast regions
-           * rigid [bool]:  Euclidean stabilization
-           * affine [bool]:  Affine stabilization
-           * verbose [bool]:  This takes a while to run ...
-           * strict [bool]:  If true, throw an exception on error, otherwise return the original video and set v.hasattribute('unstabilized'), useful for large scale stabilization
-           * outfile [str]: the file path to the stabilized output video
+        Recommended usage:
 
-           * NOTE: The remaining distortion after stabilization is due to: rolling shutter distortion, perspective distortion and non-keepout moving objects in background
-           * NOTE: If the video contains objects, the object boxes will be transformed along with the stabilization 
-           * NOTE: This requires loading videos entirely into memory.  Be careful with stabilizing long videos.
+        >>> v = vipy.video.Scene(filename='/path/to/my/video.mp4').stabilize()
 
+        Args:
+            v: [`vipy.video.Scene`]:  The input video to stabilize, should be resized to mindim=256
+            keystep: [int]  The local stabilization step between keyframes (should be <= 30)
+            padheightfrac: [float] The height padding (relative to video height) to be applied to output video to allow for vertical stabilization
+            padwidthfrac: [float]  The width padding (relative to video width) to be applied to output video to allow for horizontal stabilization
+            padheightpx: [int]  The height padding to be applied to output video to allow for vertical stabilization.  Overrides padheight.
+            padwidthpx: [int]  The width padding to be applied to output video to allow for horizontal stabilization.  Overrides padwidth.
+            border: [float]  The border keepout fraction to ignore during flow correspondence.  This should be proportional to the maximum frame to frame flow
+            dilate: [float]  The dilation to apply to the foreground object boxes to define a foregroun keepout for flow computation
+            contrast: [float]  The minimum gradient necessary for flow correspondence, to avoid flow on low contrast regions
+            rigid: [bool]  Euclidean stabilization
+            affine: [bool]  Affine stabilization
+            verbose: [bool]  This takes a while to run so show some progress ...
+            strict: [bool]  If true, throw an exception on error, otherwise return the original video and set v.hasattribute('unstabilized'), useful for large scale stabilization
+            outfile: [str] the file path to the stabilized output video
+
+        Returns:
+            A cloned `vipy.video.Scene` with filename=outfile, such that pixels and tracks are background stabilized.
+
+        .. notes::
+            - The remaining distortion after stabilization is due to: rolling shutter distortion, perspective distortion and non-keepout moving objects in background
+            - If the video contains objects, the object boxes will be transformed along with the stabilization 
+            - This requires loading videos entirely into memory.  Be careful with stabilizing long videos.
+            - The returned video has the attribute 'stabilize' which contains the mean and median residual of the flow field relative to the motion model. This can be used for stabilization quality filtering.
+    
         """
         vc = v.clone()  # clone to avoid memory leaks in distributed processing
+        vc = vc.saveas(tempMP4()) if vc.isloaded() else vc  # dump to temp file if loaded
         
         assert isinstance(vc, vipy.video.Scene), "Invalid input - Must be vipy.video.Scene() with foreground object keepouts for background stabilization"
         if verbose and min(vc.shape()) > 256:  # shape triggers fine frame fetch
@@ -337,8 +348,7 @@ class Flow(object):
         vv = vc.cropeven()  # make even for zero pad
         (padwidth, padheight) = (int(vv.width()*padwidthfrac) if padwidthpx is None else padwidthpx, int(vv.height()*padheightfrac) if padheightpx is None else padheightpx)  # width() height() triggers single frame fetch
         outfile = premkdir(outfile if outfile is not None else tempMP4())
-        #vs = vv.clone(flush=True).zeropad(padwidth, padheight).load().nofilename().nourl()   # triggers load, this pre-allocates stabilized video buffer to copy into    
-        vs = vv.clone(flush=True, flushfilter=True).filename(outfile if outfile is not None else tempMP4()).nourl().cleartracks()   # does not trigger load
+        vs = vv.clone(flushforward=True, flushfilter=True).filename(outfile if outfile is not None else tempMP4()).nourl().cleartracks()   # does not trigger load
         s = vv.mindim() / float(self._mindim)  # for upsample
         vvd = vv.clone().mindim(self._mindim)  # downsampled for flow correspondence
         if vc.duration_in_frames_of_videofile() < keystep:
