@@ -470,12 +470,12 @@ class Video(object):
                 self._frame_index += 1  # assumes that the source image is at the appropriate frame rate for this video
 
             def clip(self, n, m=1, continuous=False, tracks=True, activities=True):
-                """Stream clips of length n such that the yielded video clip contains frame(-n) to frame(0), and next contains frame (-(n+m)) to frame(m). 
+                """Stream clips of length n such that the yielded video clip contains frame(0) to frame(n), and next contains frame(m) to frame(n+m). 
                 
                 Args:
-                    n: [int] the length of the clip
-                    m: [int] the stride between clips
-                    continuous: [bool]  if true, then yield None for the frames between the strides so that a clip is yielded on every frame
+                    n: [int] the length of the clip in frames
+                    m: [int] the stride between clips in frames
+                    continuous: [bool]  if true, then yield None for the sequential frames not aligned with a stride so that a clip is yielded on every frame
                     activities: [bool]  if false, then activities from the source video are not copied into the clip
                     tracks: [bool]  if false, then tracks from the source video are not copied into the clip
 
@@ -490,7 +490,7 @@ class Video(object):
                     assert queue is not None, "invalid queue"
                     frameindex = 0
                     frames = []
-
+                    
                     while True:
                         if self._video.isloaded():
                             if frameindex < len(self._video):
@@ -513,10 +513,10 @@ class Video(object):
                                 frames.append(np.frombuffer(in_bytes, np.uint8).reshape([height, width, 3]))
 
                         if len(frames) > n:
-                            frames.pop(0) 
-                        if (frameindex-1) % m == 0 and len(frames) >= n:
-                            queue.put( (frameindex, video.clear().clone(shallow=True).array(np.stack(frames[-n:]))))  # requires copy, expensive operation
-                            
+                            frames.pop(0)
+                        if ((frameindex+1) % m) == 0 and len(frames) >= n:
+                            # Use frameindex+1 so that we include (0,1), (2,3), (4,5) for n=2, m=2
+                            queue.put( (frameindex, video.clear().clone(shallow=True).array(np.stack(frames[-n:]))))  # requires copy, expensive operation                            
                         elif continuous:
                             queue.put((frameindex, None))
                             
@@ -533,8 +533,9 @@ class Video(object):
                 while True:
                     (k,vc) = q.get()
                     if k is not None:
-                        yield ((vc.activities([a.clone().offset(-k+n-1).truncate(0,n) for (ak,a) in self._video.activities().items() if a.during_interval(k-n+1, k, inclusive=True)] if activities else []) 
-                               .tracks([t.clone(k-n+1, k).offset(-k+n-1).truncate(0,n) for (tk,t) in self._video.tracks().items() if t.during_interval(k-n+1, k)] if tracks else []))
+                        # Use -k+n+1 here since frameindex is zero indexed, when frameindex=3 there are four frames (0,1,2,3)
+                        yield ((vc.activities([a.clone().offset(-k+n+1).truncate(0,n-1) for (ak,a) in self._video.activities().items() if a.during_interval(k-n+1, k-1, inclusive=False)] if activities else []) 
+                                .tracks([t.clone(k-n+1, k).offset(-k+n+1).truncate(0,n-1) for (tk,t) in self._video.tracks().items() if t.during_interval(k-n+1, k-1)] if tracks else []))
                                if (vc is not None and isinstance(vc, vipy.video.Scene)) else vc)
                     else:
                         e.set()
@@ -3002,7 +3003,7 @@ class Scene(VideoCategory):
             v._array = self._array[startframe:endframe]
             (v._startframe, v._endframe) = (0, endframe-startframe)
         v._tracks = {k:t.offset(dt=-startframe).truncate(startframe=0, endframe=(endframe-startframe) if endframe is not None else None) for (k,t) in v.tracks().items()}   # may be degenerate
-        v._activities = {k:a.offset(dt=-startframe).truncate(startframe=0, endframe=(endframe-startframe) if endframe is not None else None)) for (k,a) in v.activities().items()}  # may be degenerate
+        v._activities = {k:a.offset(dt=-startframe).truncate(startframe=0, endframe=(endframe-startframe) if endframe is not None else None) for (k,a) in v.activities().items()}  # may be degenerate
         return v.trackfilter(lambda t: len(t)>0).activityfilter(lambda a: len(a)>0)  # remove degenerate tracks and activities
 
     def crop(self, bb, zeropad=True):

@@ -480,6 +480,10 @@ class Track(object):
         return len(self)>0 and ((k_start >= startframe and k_start <= endframe) or (k_end >= startframe and k_end <= endframe) or (k_start <= startframe and k_end >= endframe))
         
     def during_interval(self, k_start, k_end):
+        """Does the track contain a keyframe during the inclusive frame interval (startframe, endframe)?
+
+        .. note:: The start and end frames are inclusive
+        """
         return self.during(k_start, k_end)
 
     def offset(self, dt=0, dx=0, dy=0):
@@ -521,7 +525,7 @@ class Track(object):
             dy: [list]  This should be a list of frame offsets at each keyframe the same length as the number of keyboxes
 
         Returns:
-            This box updated in place
+            This track updated in place
         """
         assert isinstance(dx, list) or isinstance(dx, tuple)
         assert isinstance(dy, list) or isinstance(dy, tuple)
@@ -530,11 +534,21 @@ class Track(object):
         return self
 
     def truncate(self, startframe=None, endframe=None):
-        """Truncate a track so that any keyframes less than startframe or greater than endframe are removed.  Interpolate keyboxes at (startframe, endframe) endpoints."""
+        """Truncate a track so that any keyframes less than startframe or greater than endframe (inclusive) are removed.  Interpolate keyboxes at (startframe, endframe) endpoints.
+
+        Args:
+            startframe: [int] The startframe of the truncation relative to the track framerate.  All keyframes less than or equal to startframe are included.  If the keyframe does not exist at startframe, one is interpolated and added.
+            endframe: [int] The endframe of the truncation relative to the track framerate.  All keyframes greater than or equal to the endframe are included.  If the keyfrmae does not exist at endframe, one is interpolated and added.
+
+        Returns:
+            This track such that all keyboxes <= startframe or >= endframe are removed.
+
+        .. note::  The startframe and endframe for truncation are inclusive.  
+        """
         if startframe is not None and startframe not in self._keyframes and self[startframe] is not None:
-            self.add(startframe, self[startframe])  # interpolated boundary condition
+            self.add(startframe, self[startframe].clone())  # interpolated boundary condition
         if endframe is not None and endframe not in self._keyframes and self[endframe] is not None:
-            self.add(endframe, self[endframe])  # intepolated boundary condition
+            self.add(endframe, self[endframe].clone())  # intepolated boundary condition
         kfkb = [(kf,kb) for (kf,kb) in zip(self._keyframes, self._keyboxes) if ((startframe is None or kf >= startframe) and (endframe is None or kf <= endframe))]
         (self._keyframes, self._keyboxes) = zip(*kfkb) if len(kfkb) > 0 else ([], [])
         return self
@@ -596,7 +610,15 @@ class Track(object):
         return Track.from_json(self.json(encode=False)) if (startframe is None and endframe is None) else self.clone_during(startframe, endframe)  # 2x faster than deepcopy
 
     def clone_during(self, startframe, endframe):
-        #return copy.deepcopy(self)
+        """Clone a track during a specific interval (startframe, endframe) relative to the framerate of the track.
+
+        - This is useful for copying a small segment of a long track without the expense of copying the whole track.  
+        - All keyframes and keyboxes not in (startframe, endframe) are not copied.
+        - Boundary keyframes are copied to enable proper interpolation.        
+        """
+        # Update (startframe,endframe) to be the keyframes just before startframe and the keyframe just after endframe so that interpolation will work correctly
+        (startframe, endframe) = ([kf for kf in self._keyframes if kf <= startframe][-1] if self.during(startframe) else startframe,
+                                  [kf for kf in self._keyframes if kf >= endframe][0] if self.during(endframe) else endframe) 
         kfkb = [(kf,kb.clone()) for (kf,kb) in zip(self._keyframes, self._keyboxes) if ((startframe is None or kf >= startframe) and (endframe is None or kf <= endframe))]
         (kf, kb) = zip(*kfkb) if len(kfkb) > 0 else ([], [])        
         return Track(keyframes=kf, boxes=kb, category=self._label, framerate=self._framerate, interpolation=self._interpolation, boundary=self._boundary, shortlabel=self._shortlabel, attributes=self.attributes, trackid=self._id)

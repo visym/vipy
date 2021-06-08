@@ -289,6 +289,7 @@ class Activity(object):
         """Truncate the activity so that it is between startframe and endframe"""
         self._startframe = self._startframe if startframe is None else max(self._startframe, startframe)
         self._endframe = self._endframe if endframe is None else min(self._endframe, endframe)
+        self._endframe = self._endframe if self._endframe > self._startframe else self._startframe  # degenerate truncation
         return self
             
     def id(self, newid=None):
