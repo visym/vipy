@@ -1516,7 +1516,24 @@ class ImageCategory(Image):
         im.__class__ = vipy.image.ImageCategory
         im._category = None if flush or not hasattr(im, '_category') else im._category
         return im
-        
+
+    @classmethod
+    def from_json(obj, s):
+        im = super().from_json(s)
+        im._category = json.loads(s)['_category']
+        return im
+
+    def json(self, s=None, encode=True):
+        if s is None:
+            d = json.loads(super().json())
+            d['_category'] = self._category
+            return json.dumps(d) if encode else d
+        else:
+            super().json(s)
+            d = json.loads(s)            
+            self._category = d['_category']
+            return self
+    
     def __repr__(self):
         strlist = []
         if self.isloaded():
