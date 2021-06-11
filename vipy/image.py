@@ -774,24 +774,25 @@ class Image(object):
             sigma: [float >0] The gaussian blur kernel radius.
 
         Returns:
-            This `vipy.image.Image` object with the pixel buffer blurred.
+            This `vipy.image.Image` object with the pixel buffer blurred in place.
         """
+        assert sigma > 0
         return self.array(np.array(self.pil().filter(PIL.ImageFilter.GaussianBlur(radius=sigma))))
         
     def torch(self, order='CHW'):
-        """Convert the batch of 1 HxWxC images to a 1xCxHxW torch tensor.
+        """Convert the batch of 1 HxWxC images to a CxHxW torch tensor.
 
         Args:
-            order: ['CHW', 'HWC'].  The axis order of the torch tensor (channels, height, width) or (height, width, channels)
+            order: ['CHW', 'HWC', 'NCHW', 'NHWC'].  The axis order of the torch tensor (channels, height, width) or (height, width, channels) or (1, channels, height, width) or (1, height, width, channels)
 
         Returns:
-            A 1xCxHxW or 1xHxWxC [torch tensor](https://pytorch.org/docs/stable/tensors.html) that shares the pixel buffer of this image object by reference.
+            A CxHxW or HxWxC or 1xCxHxW or 1xHxWxC [torch tensor](https://pytorch.org/docs/stable/tensors.html) that shares the pixel buffer of this image object by reference.
         """
         try_import('torch'); import torch
-        assert order in ['CHW', 'chw', 'HWC', 'hwc']
+        assert order.lower() in ['chw', 'hwc', 'nchw', 'nhwc']
         img = self.numpy() if self.iscolor() else np.expand_dims(self.numpy(), 2)  # HxW -> HxWx1
-        img = np.expand_dims(img,0)  # HxWxC -> 1xHxWxC
-        img = img.transpose(0,3,1,2) if order.lower() == 'chw' else img  # HxWxC or CxHxW
+        img = img.transpose(2,0,1) if order.lower() in ['chw', 'nchw']  else img   # HxWxC or CxHxW        
+        img = np.expand_dims(img,0) if order.lower() in ['nhwc', 'nchw'] else img  # HxWxC -> 1xHxWxC
         return torch.from_numpy(img)  
 
     @staticmethod
@@ -1207,6 +1208,18 @@ class Image(object):
         self.colorspace(to)
         return self
 
+    def affine_transform(self, A):
+        """Apply a 3x3 affine geometric transformation to the image. 
+
+        See also `vipy.geometry.affine_transform`
+
+        .. note:: The image will be loaded and converted to float() prior to applying the affine transformation.  
+        """
+        assert isnumpy(A) or isinstance(img, vipy.image.Image), "invalid input"
+        assert A.shape == (3,3), "The affine transformation matrix should be the output of vipy.geometry.affine_transformation"
+        self._array = vipy.geometry.imtransform(self.load().float().array(), A.astype(np.float32))
+        return self
+        
     def rgb(self):
         """Convert the image buffer to three channel RGB uint8 colorspace"""
         return self._convert('rgb')
@@ -1503,7 +1516,24 @@ class ImageCategory(Image):
         im.__class__ = vipy.image.ImageCategory
         im._category = None if flush or not hasattr(im, '_category') else im._category
         return im
-        
+
+    @classmethod
+    def from_json(obj, s):
+        im = super().from_json(s)
+        im._category = json.loads(s)['_category']
+        return im
+
+    def json(self, s=None, encode=True):
+        if s is None:
+            d = json.loads(super().json())
+            d['_category'] = self._category
+            return json.dumps(d) if encode else d
+        else:
+            super().json(s)
+            d = json.loads(s)            
+            self._category = d['_category']
+            return self
+    
     def __repr__(self):
         strlist = []
         if self.isloaded():
@@ -1684,12 +1714,14 @@ class Scene(ImageCategory):
 
     def objectmap(self, f):
         """Apply lambda function f to each object.  If f is a list of lambda, apply one to one with the objects"""
+        assert callable(f)
         self._objectlist = [f(obj)  for obj in self._objectlist] if not isinstance(f, list) else [g(obj) for (g,obj) in zip(f, self._objectlist)]
         assert all([isinstance(a, vipy.object.Detection) for a in self.objects()]), "Lambda function must return vipy.object.Detection"
         return self
 
     def objectfilter(self, f):
         """Apply lambda function f to each object and keep if filter is True"""
+        assert callable(f)
         self._objectlist = [obj for obj in self._objectlist if f(obj) is True]
         return self
 
@@ -2187,6 +2219,7 @@ class ImageDetection(Scene, BoundingBox):
     
     def boxmap(self, f):
         """Apply the lambda function f to the bounding box, and return the imagedetection"""
+        assert callable(f)
         bb = f(self.bbox)
         assert isinstance(bb, BoundingBox), "Lambda function must return BoundingBox()"
         return self

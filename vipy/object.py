@@ -960,7 +960,8 @@ class Track(object):
     
     def boxmap(self, f):
         """Apply the lambda function to each keybox"""
-        self._keyboxes = [f(bb) for bb in self._keyboxes]
+        assert callable(f)
+        self._keyboxes = [f(bb) for bb in self._keyboxes]        
         return self
 
     def shape_invariant_velocity(self, f, dt=30):
