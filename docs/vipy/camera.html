@@ -25,7 +25,7 @@
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/f876261953e71eb1656cd7a927e1902adee3ea95/vipy/camera.py#L0-L127" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/30de1d5c0142d2b78c5786f6681e8ec43dd32805/vipy/camera.py#L0-L127" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">import urllib
 import timeit
@@ -174,7 +174,7 @@ class Ipcam(Camera):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/f876261953e71eb1656cd7a927e1902adee3ea95/vipy/camera.py#L11-L18" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/30de1d5c0142d2b78c5786f6681e8ec43dd32805/vipy/camera.py#L11-L18" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">class Camera(object):
     CAM = None
@@ -224,7 +224,7 @@ class Ipcam(Camera):
 </dd>
 <dt id="vipy.camera.Ipcam"><code class="flex name class">
 <span>class <span class="ident">Ipcam</span></span>
-<span>(</span><span>url, imfile='/tmp/7734d003f1076c1d.jpg')</span>
+<span>(</span><span>url, imfile='/tmp/672d4526bf11d7f0.jpg')</span>
 </code></dt>
 <dd>
 <div class="desc"><p>Create a IPcam object that will yield <code><a title="vipy.image.Image" href="image.html#vipy.image.Image">Image</a></code> frames.</p>
@@ -238,7 +238,7 @@ class Ipcam(Camera):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/f876261953e71eb1656cd7a927e1902adee3ea95/vipy/camera.py#L103-L128" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/30de1d5c0142d2b78c5786f6681e8ec43dd32805/vipy/camera.py#L103-L128" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">class Ipcam(Camera):
     &#34;&#34;&#34;Create a IPcam object that will yield `vipy.image.Image` frames.
@@ -288,7 +288,7 @@ class Ipcam(Camera):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/f876261953e71eb1656cd7a927e1902adee3ea95/vipy/camera.py#L126-L128" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/30de1d5c0142d2b78c5786f6681e8ec43dd32805/vipy/camera.py#L126-L128" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def next(self):
     urllib.urlretrieve(self.CAM, self.TMPFILE)
@@ -325,7 +325,7 @@ The camera index to open</dd>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/f876261953e71eb1656cd7a927e1902adee3ea95/vipy/camera.py#L21-L100" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/30de1d5c0142d2b78c5786f6681e8ec43dd32805/vipy/camera.py#L21-L100" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">class Webcam(Camera):
     &#34;&#34;&#34;Create a webcam object that will yield `vipy.image.Image` frames.
@@ -422,7 +422,7 @@ The camera index to open</dd>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/f876261953e71eb1656cd7a927e1902adee3ea95/vipy/camera.py#L64-L66" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/30de1d5c0142d2b78c5786f6681e8ec43dd32805/vipy/camera.py#L64-L66" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def current(self):
     &#34;&#34;&#34;Alias for `vipy.camera.Webcam.next`&#34;&#34;&#34;
@@ -437,7 +437,7 @@ The camera index to open</dd>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/f876261953e71eb1656cd7a927e1902adee3ea95/vipy/camera.py#L87-L89" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/30de1d5c0142d2b78c5786f6681e8ec43dd32805/vipy/camera.py#L87-L89" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def frame(self):
     &#34;&#34;&#34;Alias for `vipy.camera.Webcam.next`&#34;&#34;&#34;
@@ -452,7 +452,7 @@ The camera index to open</dd>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/f876261953e71eb1656cd7a927e1902adee3ea95/vipy/camera.py#L68-L85" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/30de1d5c0142d2b78c5786f6681e8ec43dd32805/vipy/camera.py#L68-L85" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def next(self):
     &#34;&#34;&#34;Return a `vipy.image.Image` from the camera&#34;&#34;&#34;
@@ -482,7 +482,7 @@ The camera index to open</dd>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/f876261953e71eb1656cd7a927e1902adee3ea95/vipy/camera.py#L91-L100" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/30de1d5c0142d2b78c5786f6681e8ec43dd32805/vipy/camera.py#L91-L100" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def video(self, n, framerate=30):
     &#34;&#34;&#34;Return a `vipy.video.Video` with n frames, constructed using the provided framerate (defaults to 30Hz)&#34;&#34;&#34;
