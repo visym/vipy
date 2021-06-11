@@ -46,10 +46,10 @@ class CIFAR10(MNIST):
         return self._classes
 
     def trainset(self):
-        return [(x,y) for (x,y) in zip(self._trainset, self._trainlabels)]
+        return [vipy.image.ImageCategory(category=self._classes[y], array=x, colorspace='rgb') for (x,y) in zip(self._trainset, self._trainlabels)]
     
     def testset(self):
-        return [(x,y) for (x,y) in zip(self._testset, self._testlabels)]
+        return [vipy.image.ImageCategory(category=self._classes[y], array=x, colorspace='rgb') for (x,y) in zip(self._testset, self._testlabels)]        
     
     def _trainset(self):
         (data, labels) = ([], [])

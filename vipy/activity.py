@@ -213,6 +213,7 @@ class Activity(object):
 
     def trackfilter(self, f):
         """Remove all tracks such that the lambda function f(trackid) resolves to False"""
+        assert callable(f)
         self._trackid = [tid for tid in self._trackid if f(tid)]
         if self.actorid() not in self._trackid:
             self._actorid = None

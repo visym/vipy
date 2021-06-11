@@ -2500,6 +2500,7 @@ class Scene(VideoCategory):
             This video with the activities f(a)==False removed.
 
         """
+        assert callable(f)
         self._activities = {k:a for (k,a) in self.activities().items() if f(a) == True}
         return self
         
@@ -2515,6 +2516,7 @@ class Scene(VideoCategory):
 
         .. note:: Applying track filter with activitytrack=True may result in activities with no associated tracks.  You should follow up with self.activityfilter(lambda a: len(a.trackids()) > 0).
         """
+        assert callable(f)
         self._tracks = {k:t for (k,t) in self.tracks().items() if f(t) == True}
         if activitytrack:
             self.activitymap(lambda a: a.trackfilter(lambda ti: ti in self._tracks))  # remove track association in activities
@@ -2527,12 +2529,14 @@ class Scene(VideoCategory):
 
            -strict=True: enforce that lambda function must return non-degenerate Track() objects        
         """
+        assert callable(f)
         self._tracks = {k:f(t) for (k,t) in self.tracks().items()}
         assert all([isinstance(t, vipy.object.Track) and (strict is False or not t.isdegenerate()) for (tk,t) in self.tracks().items()]), "Lambda function must return non-degenerate vipy.object.Track()"
         return self
         
     def activitymap(self, f):
         """Apply lambda function f to each activity"""
+        assert callable(f)
         self._activities = {k:f(a) for (k,a) in self.activities().items()}
         assert all([isinstance(a, vipy.activity.Activity) for a in self.activitylist()]), "Lambda function must return vipy.activity.Activity()"
         return self
