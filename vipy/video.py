@@ -2204,11 +2204,12 @@ class Scene(VideoCategory):
     def pack(self):
         """Packing a scene returns the scene with the annotations JSON serialized.  
                
-              - This is useful for fast garbage collection when there are many objects in memory
-              - This is useful for distributed processing prior to serializing from a scheduler to a client
-              - This is useful for lazy deserialization of complex attributes when loading many videos into memory
-              - Unpacking is transparent to the end user and is performed on the fly when annotations are accessed.  There is no unpack() method.
-              - See the notes in from_json() for why this helps with nested containers and reference cycle tracking with the python garbage collector        
+        - This is useful for fast garbage collection when there are many objects in memory
+        - This is useful for distributed processing prior to serializing from a scheduler to a client
+        - This is useful for lazy deserialization of complex attributes when loading many videos into memory
+        - Unpacking is transparent to the end user and is performed on the fly when annotations are accessed.  There is no unpack() method.
+        - See the notes in from_json() for why this helps with nested containers and reference cycle tracking with the python garbage collector        
+
         """
         d = json.loads(self.json())
         self._tracks = tuple(d['_tracks'].values())  # efficient garbage collection: store as a packed string to avoid reference cycle tracking, unpack on demand
