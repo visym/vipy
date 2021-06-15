@@ -6,7 +6,7 @@ if [ "$#" -ne 1 ]; then
 fi
 
 source ./make_documentation.sh --commit
-
+git push
 
 # Make release
 cd ..

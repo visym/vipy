@@ -2808,7 +2808,7 @@ class Scene(VideoCategory):
         """Split the scene into k separate scenes, one for each track.  Each scene starts at frame 0 and is a shallow copy of self containing exactly one track.  
 
         - This is useful for visualization by breaking a scene into a list of scenes that contain only one track.
-        - The attribute '_trackid' is set in the attributes dictionary to provide provenance for the track 
+        - The attribute '_trackindex' is set in the attributes dictionary to provide provenance for the track relative to the source video
 
         .. notes:: Use clone() to create a deep copy if needed.
         """
@@ -3449,7 +3449,7 @@ class Scene(VideoCategory):
                         break
         return self
 
-    def assign(self, frame, dets, minconf=0.2, maxhistory=5, activityiou=0.5, trackcover=0.2, trackconfsamples=4, gate=0, activitymerge=True):
+    def assign(self, frame, dets, minconf=0.2, maxhistory=5, activityiou=0.5, trackcover=0.2, trackconfsamples=4, gate=0, activitymerge=True, activitynms=False):
         """Assign a list of vipy.object.Detections at frame k to scene by greedy track association. In-place update.
         
         Args:
@@ -3460,6 +3460,7 @@ class Scene(VideoCategory):
             gate: [int] the gating distance in pixels used for assignment of fast moving detections.  Useful for low detection framerates if a detection does not overlap with the track.
             trackcover: [float] the minimum cover necessary for assignment of a detection to a track
             activitymerge: [bool] if true, then merge overlapping activity detections of the same track and category, otherwise each activity detection is added as a new detection
+            activitynms: [bool] if true, then perform non-maximum suppression of activity detections of the same actor and category that overlap more than activityiou
 
         Returns:
             This video object with each det assigned to correpsonding track or activity.
@@ -3526,14 +3527,6 @@ class Scene(VideoCategory):
             assert all([d.actorid() in self.tracks() for d in activitydets]), "Invalid activity"
             assigned = set([])
             if activitymerge:
-                #minframe = min([a._startframe for a in activitydets])
-                #for a in self.activities().values():
-                #    if a._endframe >= minframe:
-                #        for d in activitydets: 
-                #            if (d._id not in assigned) and (a._label == d._label) and (a._actorid == d._actorid) and a.hasoverlap(d, activityiou): 
-                #                a.union(d)  # activity assignment 
-                #                assigned.add(d._id)
-
                 minframe = min([a._startframe for a in activitydets]) 
                 activities = [a for a in self.activities().values() if a._endframe >= minframe]
                 for d in activitydets:
@@ -3542,7 +3535,16 @@ class Scene(VideoCategory):
                             a.union(d)  # activity assignment 
                             assigned.add(d._id)
                             break  # assigned, early exit
-                
+                        
+            if activitynms:
+                minframe = min([a._startframe for a in activitydets]) 
+                activities = sorted([a for a in self.activities().values() if a._endframe >= minframe], key=lambda a: a.confidence(), reverse=True)
+                for d in sorted(activitydets, key=lambda x: x.confidence(), reverse=True):
+                    for a in activities:
+                        if (a._label == d._label) and (a._actorid == d._actorid) and a.hasoverlap(d, activityiou):
+                            assigned.add(a._id if d.confidence()>a.confidence() else d._id)  # suppressed                            
+                self.activityfilter(lambda a: a._id not in assigned)  # suppression
+                                    
             # Activity construction from unassigned detections
             for d in activitydets:
                 if d._id not in assigned:
