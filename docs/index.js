@@ -6689,7 +6689,7 @@ INDEX=[
 {
 "ref":"vipy.video.Scene.tracksplit",
 "url":32,
-"doc":"Split the scene into k separate scenes, one for each track. Each scene starts at frame 0 and is a shallow copy of self containing exactly one track. - This is useful for visualization by breaking a scene into a list of scenes that contain only one track. - The attribute '_trackid' is set in the attributes dictionary to provide provenance for the track  notes Use clone() to create a deep copy if needed.",
+"doc":"Split the scene into k separate scenes, one for each track. Each scene starts at frame 0 and is a shallow copy of self containing exactly one track. - This is useful for visualization by breaking a scene into a list of scenes that contain only one track. - The attribute '_trackindex' is set in the attributes dictionary to provide provenance for the track relative to the source video  notes Use clone() to create a deep copy if needed.",
 "func":1
 },
 {
@@ -6935,7 +6935,7 @@ INDEX=[
 {
 "ref":"vipy.video.Scene.assign",
 "url":32,
-"doc":"Assign a list of vipy.object.Detections at frame k to scene by greedy track association. In-place update. Args: miniou: [float] the minimum temporal IOU for activity assignment minconf: [float] the minimum confidence for a detection to be considered as a new track maxhistory: [int] the maximum propagation length of a track with no measurements, the frame history ised for velocity estimates trackconfsamples: [int] the number of uniformly spaced samples along a track to compute a track confidence gate: [int] the gating distance in pixels used for assignment of fast moving detections. Useful for low detection framerates if a detection does not overlap with the track. trackcover: [float] the minimum cover necessary for assignment of a detection to a track activitymerge: [bool] if true, then merge overlapping activity detections of the same track and category, otherwise each activity detection is added as a new detection Returns: This video object with each det assigned to correpsonding track or activity.",
+"doc":"Assign a list of vipy.object.Detections at frame k to scene by greedy track association. In-place update. Args: miniou: [float] the minimum temporal IOU for activity assignment minconf: [float] the minimum confidence for a detection to be considered as a new track maxhistory: [int] the maximum propagation length of a track with no measurements, the frame history ised for velocity estimates trackconfsamples: [int] the number of uniformly spaced samples along a track to compute a track confidence gate: [int] the gating distance in pixels used for assignment of fast moving detections. Useful for low detection framerates if a detection does not overlap with the track. trackcover: [float] the minimum cover necessary for assignment of a detection to a track activitymerge: [bool] if true, then merge overlapping activity detections of the same track and category, otherwise each activity detection is added as a new detection activitynms: [bool] if true, then perform non-maximum suppression of activity detections of the same actor and category that overlap more than activityiou Returns: This video object with each det assigned to correpsonding track or activity.",
 "func":1
 },
 {
