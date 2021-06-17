@@ -10,6 +10,27 @@ def num(versionstring=VERSION):
     return 100*100*int(major) + 100*int(minor) + int(release)
 
 
+def split(versionstring):
+    """Split the version string 'X.Y.Z' and return tuple (int(X), int(Y), int(Z))"""
+    assert versionstring.count('.') == 2, "Version string must be of the form str('X.Y.Z')"
+    return tuple([int(x) for x in versionstring.split('.')])
+
+
+def major(versionstring=VERSION):
+    """Return the major version number int(X) for versionstring 'X.Y.Z'"""
+    return split(versionstring)[0]
+
+
+def minor(versionstring=VERSION):
+    """Return the minor version number int(Y) for versionstring 'X.Y.Z'"""    
+    return split(versionstring)[1]
+
+
+def release(versionstring=VERSION):
+    """Return the release version number int(Z) for versionstring 'X.Y.Z'"""    
+    return split(versionstring)[2]
+
+
 def at_least_version(versionstring):    
     """Is versionstring='X.Y.Z' at least the current version?"""
     return num(VERSION) >= num(versionstring)
