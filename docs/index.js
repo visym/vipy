@@ -46,9 +46,9 @@ URLS=[
 "vipy/downloader.html",
 "vipy/videosearch.html",
 "vipy/visualize.html",
-"vipy/version.html",
 "vipy/activity.html",
-"vipy/object.html"
+"vipy/object.html",
+"vipy/version.html"
 ];
 INDEX=[
 {
@@ -644,7 +644,19 @@ INDEX=[
 "func":1
 },
 {
+"ref":"vipy.dataset.mnist.MNIST.imtrainset",
+"url":15,
+"doc":"",
+"func":1
+},
+{
 "ref":"vipy.dataset.mnist.MNIST.testset",
+"url":15,
+"doc":"",
+"func":1
+},
+{
+"ref":"vipy.dataset.mnist.MNIST.imtestset",
 "url":15,
 "doc":"",
 "func":1
@@ -10443,269 +10455,234 @@ INDEX=[
 "func":1
 },
 {
-"ref":"vipy.version",
-"url":47,
-"doc":""
-},
-{
-"ref":"vipy.version.num",
-"url":47,
-"doc":"Convert the version string of the form 'X.Y.Z' to an integer 100000 X + 100 Y + Z for version comparison",
-"func":1
-},
-{
-"ref":"vipy.version.at_least_version",
-"url":47,
-"doc":"Is versionstring='X.Y.Z' at least the current version?",
-"func":1
-},
-{
-"ref":"vipy.version.is_at_least",
-"url":47,
-"doc":"Synonym for at_least_version",
-"func":1
-},
-{
-"ref":"vipy.version.is_exactly",
-"url":47,
-"doc":"Is the versionstring = 'X,Y.Z' exactly equal to  vipy.version.VERSION ",
-"func":1
-},
-{
-"ref":"vipy.version.at_least_major_version",
-"url":47,
-"doc":"is the major version (e.g. X, for version X.Y.Z) greater than or equal to the major version integer supplied?",
-"func":1
-},
-{
 "ref":"vipy.activity",
-"url":48,
+"url":47,
 "doc":""
 },
 {
 "ref":"vipy.activity.Activity",
-"url":48,
+"url":47,
 "doc":"vipy.object.Activity class An activity is a grouping of one or more tracks involved in an activity within a given startframe and endframe. The activity occurs at a given (startframe, endframe), where these frame indexes are extracted at the provided framerate. All objects are passed by reference with a globally unique track ID, for the tracks involved with the activity. This is done since tracks can exist after an activity completes, and that tracks should update the spatial transformation of boxes. The shortlabel defines the string shown on the visualization video. Valid constructors >>> t = vipy.object.Track(category='Person').add( . >>> a = vipy.object.Activity(startframe=0, endframe=10, category='Walking', tracks={t.id():t})"
 },
 {
 "ref":"vipy.activity.Activity.hasattribute",
-"url":48,
+"url":47,
 "doc":"",
 "func":1
 },
 {
 "ref":"vipy.activity.Activity.confidence",
-"url":48,
+"url":47,
 "doc":"",
 "func":1
 },
 {
 "ref":"vipy.activity.Activity.from_json",
-"url":48,
+"url":47,
 "doc":"",
 "func":1
 },
 {
 "ref":"vipy.activity.Activity.duration",
-"url":48,
-"doc":"The length of the activity in seconds",
+"url":47,
+"doc":"The length of the activity in seconds. Args: s: [float] The number of seconds for this activity, starting at the startframe centered: [bool] If true, then set the duration centered on the middle frame Returns: The duration in seconds of this activity object (if s=None) This activity object with the requested duration (if s!=None)",
 "func":1
 },
 {
 "ref":"vipy.activity.Activity.dict",
-"url":48,
+"url":47,
 "doc":"Return a python dictionary containing the relevant serialized attributes suitable for JSON encoding",
 "func":1
 },
 {
 "ref":"vipy.activity.Activity.json",
-"url":48,
+"url":47,
 "doc":"",
 "func":1
 },
 {
 "ref":"vipy.activity.Activity.actorid",
-"url":48,
+"url":47,
 "doc":"",
 "func":1
 },
 {
 "ref":"vipy.activity.Activity.startframe",
-"url":48,
+"url":47,
 "doc":"",
 "func":1
 },
 {
 "ref":"vipy.activity.Activity.endframe",
-"url":48,
+"url":47,
 "doc":"",
 "func":1
 },
 {
 "ref":"vipy.activity.Activity.middleframe",
-"url":48,
+"url":47,
 "doc":"",
 "func":1
 },
 {
 "ref":"vipy.activity.Activity.framerate",
-"url":48,
+"url":47,
 "doc":"Resample (startframe, endframe) from known original framerate set by constructor to be new framerate fps",
 "func":1
 },
 {
 "ref":"vipy.activity.Activity.category",
-"url":48,
+"url":47,
 "doc":"Change the label (and shortlabel) to the new label (and shortlabel)",
 "func":1
 },
 {
 "ref":"vipy.activity.Activity.label",
-"url":48,
+"url":47,
 "doc":"Alias for category",
 "func":1
 },
 {
 "ref":"vipy.activity.Activity.shortlabel",
-"url":48,
+"url":47,
 "doc":"A optional shorter label string to show in the visualizations",
 "func":1
 },
 {
 "ref":"vipy.activity.Activity.add",
-"url":48,
+"url":47,
 "doc":"Add the track id for the track to this activity, so that if the track is changed externally it is reflected here",
 "func":1
 },
 {
 "ref":"vipy.activity.Activity.tracks",
-"url":48,
+"url":47,
 "doc":"alias for trackids",
 "func":1
 },
 {
 "ref":"vipy.activity.Activity.cleartracks",
-"url":48,
+"url":47,
 "doc":"Remove all track IDs from this activity",
 "func":1
 },
 {
 "ref":"vipy.activity.Activity.trackids",
-"url":48,
+"url":47,
 "doc":"Return a set of track IDs associated with this activity",
 "func":1
 },
 {
 "ref":"vipy.activity.Activity.hasoverlap",
-"url":48,
+"url":47,
 "doc":"",
 "func":1
 },
 {
 "ref":"vipy.activity.Activity.isneighbor",
-"url":48,
+"url":47,
 "doc":"",
 "func":1
 },
 {
 "ref":"vipy.activity.Activity.hastrack",
-"url":48,
+"url":47,
 "doc":"Is the track part of the activity?",
 "func":1
 },
 {
 "ref":"vipy.activity.Activity.append",
-"url":48,
+"url":47,
 "doc":"Append newtrack to this activity and set as actorid()",
 "func":1
 },
 {
 "ref":"vipy.activity.Activity.trackfilter",
-"url":48,
+"url":47,
 "doc":"Remove all tracks such that the lambda function f(trackid) resolves to False",
 "func":1
 },
 {
 "ref":"vipy.activity.Activity.replace",
-"url":48,
+"url":47,
 "doc":"Replace oldtrack with newtrack if present in self._tracks. Pass in a trackdict to share reference to track, so that track owner can modify the track and this object observes the change",
 "func":1
 },
 {
 "ref":"vipy.activity.Activity.replaceid",
-"url":48,
+"url":47,
 "doc":"Replace oldtrack with newtrack if present in self._tracks. Pass in a trackdict to share reference to track, so that track owner can modify the track and this object observes the change",
 "func":1
 },
 {
 "ref":"vipy.activity.Activity.during",
-"url":48,
+"url":47,
 "doc":"Is frame during the time interval (startframe, endframe) inclusive?",
 "func":1
 },
 {
 "ref":"vipy.activity.Activity.during_interval",
-"url":48,
+"url":47,
 "doc":"Is the activity occurring for any frames within the interval [startframe, endframe) (non-inclusive of endframe)?",
 "func":1
 },
 {
 "ref":"vipy.activity.Activity.union",
-"url":48,
+"url":47,
 "doc":"Compute the union of the new activity other to this activity by updating the start and end times and computing the mean confidence. -Note: other must have the same category and track IDs as self -confweight [0,1]: the convex combinatiopn weight applied to the new activity",
 "func":1
 },
 {
 "ref":"vipy.activity.Activity.temporal_iou",
-"url":48,
+"url":47,
 "doc":"Return the temporal intersection over union of two activities",
 "func":1
 },
 {
 "ref":"vipy.activity.Activity.offset",
-"url":48,
+"url":47,
 "doc":"",
 "func":1
 },
 {
 "ref":"vipy.activity.Activity.truncate",
-"url":48,
+"url":47,
 "doc":"Truncate the activity so that it is between startframe and endframe",
 "func":1
 },
 {
 "ref":"vipy.activity.Activity.id",
-"url":48,
+"url":47,
 "doc":"",
 "func":1
 },
 {
 "ref":"vipy.activity.Activity.clone",
-"url":48,
+"url":47,
 "doc":"",
 "func":1
 },
 {
 "ref":"vipy.activity.Activity.temporalpad",
-"url":48,
+"url":47,
 "doc":"Add a temporal pad of df=(before frames, after frames) or df=pad frames to the start and end of the activity. The padded start frame may be negative.",
 "func":1
 },
 {
 "ref":"vipy.activity.Activity.padto",
-"url":48,
+"url":47,
 "doc":"Add a symmetric temporal pad so that the activity is at least t seconds long",
 "func":1
 },
 {
 "ref":"vipy.activity.Activity.disjoint",
-"url":48,
+"url":47,
 "doc":"Enforce disjoint activities with other by shifting the endframe or startframe of self to not overlap if they share the same tracks. Other may be an Activity() or list of Activity() if strict=True, then throw an exception if other or self is fully contained with the other, resulting in degenerate activity after disjoint",
 "func":1
 },
 {
 "ref":"vipy.activity.Activity.temporal_distance",
-"url":48,
+"url":47,
 "doc":"Return the temporal distance in frames between self and other which is the minimum frame difference between the end of one to the start of the other, or zero if they overlap",
 "func":1
 },
@@ -11584,113 +11561,113 @@ INDEX=[
 },
 {
 "ref":"vipy.object",
-"url":49,
+"url":48,
 "doc":""
 },
 {
 "ref":"vipy.object.Detection",
-"url":49,
+"url":48,
 "doc":"vipy.object.Detection class This class represent a single object detection in the form a bounding box with a label and confidence. The constructor of this class follows a subset of the constructor patterns of vipy.geometry.BoundingBox >>> d = vipy.object.Detection(category='Person', xmin=0, ymin=0, width=50, height=100) >>> d = vipy.object.Detection(label='Person', xmin=0, ymin=0, width=50, height=100)  \"label\" is an alias for \"category\" >>> d = vipy.object.Detection(label='John Doe', shortlabel='Person', xmin=0, ymin=0, width=50, height=100)  shortlabel is displayed >>> d = vipy.object.Detection(label='Person', xywh=[0,0,50,100]) >>> d = vupy.object.Detection( ., id=True)  generate a unique UUID for this detection retrievable with d.id()"
 },
 {
 "ref":"vipy.object.Detection.cast",
-"url":49,
+"url":48,
 "doc":"",
 "func":1
 },
 {
 "ref":"vipy.object.Detection.from_json",
-"url":49,
+"url":48,
 "doc":"",
 "func":1
 },
 {
 "ref":"vipy.object.Detection.dict",
-"url":49,
+"url":48,
 "doc":"Return a python dictionary containing the relevant serialized attributes suitable for JSON encoding",
 "func":1
 },
 {
 "ref":"vipy.object.Detection.json",
-"url":49,
+"url":48,
 "doc":"",
 "func":1
 },
 {
 "ref":"vipy.object.Detection.nocategory",
-"url":49,
+"url":48,
 "doc":"",
 "func":1
 },
 {
 "ref":"vipy.object.Detection.noshortlabel",
-"url":49,
+"url":48,
 "doc":"",
 "func":1
 },
 {
 "ref":"vipy.object.Detection.category",
-"url":49,
+"url":48,
 "doc":"Update the category and shortlabel (optional) of the detection",
 "func":1
 },
 {
 "ref":"vipy.object.Detection.shortlabel",
-"url":49,
+"url":48,
 "doc":"A optional shorter label string to show in the visualizations, defaults to category()",
 "func":1
 },
 {
 "ref":"vipy.object.Detection.label",
-"url":49,
+"url":48,
 "doc":"Alias for category to update both category and shortlabel",
 "func":1
 },
 {
 "ref":"vipy.object.Detection.id",
-"url":49,
+"url":48,
 "doc":"",
 "func":1
 },
 {
 "ref":"vipy.object.Detection.clone",
-"url":49,
+"url":48,
 "doc":"Copy the object, if deep=True, then include a deep copy of the attribute dictionary, else a shallow copy",
 "func":1
 },
 {
 "ref":"vipy.object.Detection.confidence",
-"url":49,
+"url":48,
 "doc":"Bounding boxes do not have confidences, use vipy.object.Detection()",
 "func":1
 },
 {
 "ref":"vipy.object.Detection.hasattribute",
-"url":49,
+"url":48,
 "doc":"",
 "func":1
 },
 {
 "ref":"vipy.object.Detection.getattribute",
-"url":49,
+"url":48,
 "doc":"",
 "func":1
 },
 {
 "ref":"vipy.object.Detection.setattribute",
-"url":49,
+"url":48,
 "doc":"",
 "func":1
 },
 {
 "ref":"vipy.object.Detection.delattribute",
-"url":49,
+"url":48,
 "doc":"",
 "func":1
 },
 {
 "ref":"vipy.object.Detection.noattributes",
-"url":49,
+"url":48,
 "doc":"",
 "func":1
 },
@@ -12296,547 +12273,606 @@ INDEX=[
 },
 {
 "ref":"vipy.object.Track",
-"url":49,
+"url":48,
 "doc":"vipy.object.Track class A track represents one or more labeled bounding boxes of an object instance through time. A track is defined as a finite set of labeled boxes observed at keyframes, which are discrete observations of this instance. Each keyframe has an associated vipy.geometry.BoundingBox() which defines the spatial bounding box of the instance in this keyframe. The kwarg \"interpolation\" defines how the track is interpolated between keyframes, and the kwarg \"boundary\" defines how the track is interpolated outside the (min,max) of the keyframes. Valid constructors are: >>> t = vipy.object.Track(keyframes=[0,100], boxes=[vipy.geometry.BoundingBox(0,0,10,10), vipy.geometry.BoundingBox(0,0,20,20)], label='Person') >>> t = vipy.object.Track(keyframes=[0,100], boxes=[vipy.geometry.BoundingBox(0,0,10,10), vipy.geometry.BoundingBox(0,0,20,20)], label='Person', interpolation='linear') >>> t = vipy.object.Track(keyframes=[10,100], boxes=[vipy.geometry.BoundingBox(0,0,10,10), vipy.geometry.BoundingBox(0,0,20,20)], label='Person', boundary='strict') Tracks can be constructed incrementally: >>> t = vipy.object.Track('Person') >>> t.add(0, vipy.geometry.BoundingBox(0,0,10,10 >>> t.add(100, vipy.geometry.BoundingBox(0,0,20,20 Tracks can be resampled at a new framerate, as long as the framerate is known when the keyframes are extracted >>> t.framerate(newfps)"
 },
 {
 "ref":"vipy.object.Track.from_json",
-"url":49,
+"url":48,
 "doc":"",
 "func":1
 },
 {
 "ref":"vipy.object.Track.json",
-"url":49,
+"url":48,
 "doc":"",
 "func":1
 },
 {
 "ref":"vipy.object.Track.isempty",
-"url":49,
+"url":48,
 "doc":"",
 "func":1
 },
 {
 "ref":"vipy.object.Track.confidence",
-"url":49,
+"url":48,
 "doc":"The confidence of a track is the mean confidence of all (or just last=last frames, or samples=samples uniformly spaced) keyboxes (if confidences are available) else 0",
 "func":1
 },
 {
 "ref":"vipy.object.Track.isdegenerate",
-"url":49,
+"url":48,
 "doc":"Is the track degenerate? A degenerate track has: - Unequal length keyboxes and keyframes - length zero track - Non increasing keyframes - Invalid keyboxes",
 "func":1
 },
 {
 "ref":"vipy.object.Track.dict",
-"url":49,
+"url":48,
 "doc":"Return a python dictionary containing the relevant serialized attributes suitable for JSON encoding",
 "func":1
 },
 {
 "ref":"vipy.object.Track.add",
-"url":49,
+"url":48,
 "doc":"Add a new keyframe and associated box to track, preserve sorted order of keyframes. If keyframe is already in track, throw an exception. In this case use update() instead -strict [bool]: If box is degenerate, throw an exception if strict=True, otherwise just don't add it  note The BoundingBox is added by reference. If you want to this to be a copy, pass in bbox.clone()",
 "func":1
 },
 {
 "ref":"vipy.object.Track.update",
-"url":49,
+"url":48,
 "doc":"",
 "func":1
 },
 {
 "ref":"vipy.object.Track.replace",
-"url":49,
+"url":48,
 "doc":"Replace the keyframe and associated box(es), preserve sorted order of keyframes",
 "func":1
 },
 {
 "ref":"vipy.object.Track.delete",
-"url":49,
+"url":48,
 "doc":"Replace a keyframe and associated box to track, preserve sorted order of keyframes",
 "func":1
 },
 {
 "ref":"vipy.object.Track.keyframes",
-"url":49,
+"url":48,
 "doc":"Return keyframe frame indexes where there are track observations",
 "func":1
 },
 {
 "ref":"vipy.object.Track.num_keyframes",
-"url":49,
+"url":48,
 "doc":"",
 "func":1
 },
 {
 "ref":"vipy.object.Track.keyboxes",
-"url":49,
+"url":48,
 "doc":"Return keyboxes where there are track observations",
 "func":1
 },
 {
 "ref":"vipy.object.Track.meanshape",
-"url":49,
+"url":48,
 "doc":"Return the mean (width,height) of the box during the track, or None if the track is degenerate",
 "func":1
 },
 {
 "ref":"vipy.object.Track.meanbox",
-"url":49,
+"url":48,
 "doc":"Return the mean bounding box during the track, or None if the track is degenerate",
 "func":1
 },
 {
 "ref":"vipy.object.Track.shapevariance",
-"url":49,
+"url":48,
 "doc":"Return the variance (width, height) of the box shape relative to  vipy.object.Track.meanbox during the track or None if the track is degenerate. This is useful for filtering spurious tracks where the aspect ratio changes rapidly and randomly Returns: (width_variance, height_variance) of the box shape during the track (or None)",
 "func":1
 },
 {
 "ref":"vipy.object.Track.framerate",
-"url":49,
+"url":48,
 "doc":"Resample keyframes from known original framerate set by constructor to be new framerate fps. Args: fps: [float] The new frame rate in frames per second speed: [float] An optional speed factor which will multiply the current framerate by this factor (e.g. speed=2  > fps=self.framerate() 2) Returns: This track object with the keyframes resampled to the new framerate",
 "func":1
 },
 {
 "ref":"vipy.object.Track.startframe",
-"url":49,
+"url":48,
 "doc":"Return the startframe of the track or None if there are no keyframes. The frame index is relative to the framerate set in the constructor.",
 "func":1
 },
 {
 "ref":"vipy.object.Track.endframe",
-"url":49,
+"url":48,
 "doc":"Return the endframe of the track or None if there are no keyframes. The frame index is relative to the framerate set in the constructor.",
 "func":1
 },
 {
 "ref":"vipy.object.Track.linear_interpolation",
-"url":49,
+"url":48,
 "doc":"Linear bounding box interpolation at frame=k given observed boxes (x,y,w,h) at keyframes. This returns a  vipy.object.Detection which is the interpolation of the  vipy.object.Track at frame k - If self._boundary='extend', then boxes are repeated if the interpolation is outside the keyframes - If self._boundary='strict', then interpolation returns None if the interpolation is outside the keyframes  note The returned object is not cloned when possible for speed purposes, be careful when modifying this object. clone() if necessary",
 "func":1
 },
 {
 "ref":"vipy.object.Track.category",
-"url":49,
+"url":48,
 "doc":"",
 "func":1
 },
 {
 "ref":"vipy.object.Track.label",
-"url":49,
+"url":48,
 "doc":"Alias for category",
 "func":1
 },
 {
 "ref":"vipy.object.Track.shortlabel",
-"url":49,
+"url":48,
 "doc":"A optional shorter label string to show as a caption in visualizations",
 "func":1
 },
 {
 "ref":"vipy.object.Track.during",
-"url":49,
+"url":48,
 "doc":"Does the track contain a keyframe during the time interval (startframe, endframe) inclusive?",
 "func":1
 },
 {
 "ref":"vipy.object.Track.during_interval",
-"url":49,
+"url":48,
 "doc":"Does the track contain a keyframe during the inclusive frame interval (startframe, endframe)?  note The start and end frames are inclusive",
 "func":1
 },
 {
 "ref":"vipy.object.Track.offset",
-"url":49,
+"url":48,
 "doc":"Apply a temporal shift of dt frames, and a spatial shift of (dx, dy) pixels. Args: dt: [int] frame offset dx: [float] horizontal spatial offset dy: [float] vertical spatial offset Returns: This box updated in place",
 "func":1
 },
 {
 "ref":"vipy.object.Track.uncrop",
-"url":49,
+"url":48,
 "doc":"Apply a transformation to the track that will undo a crop of a bounding box with an optional scale factor. A typical operation is as follows. A video is cropped and zommed in order to run a detector on a region of interest. However, we want to align the resulting tracks on the original video before the crop and zoom. Args: bb: [ vipy.geometry.BoundingBox ]. A bounding box which was used to crop this track s: [float] A scale factor applied after the bounding box crop Returns: This track after undoing the scale and crop",
 "func":1
 },
 {
 "ref":"vipy.object.Track.frameoffset",
-"url":49,
+"url":48,
 "doc":"Offset boxes by (dx,dy) in each frame. This is used to apply a different offset for each frame. To apply one offset to all frames, use  vipy.object.offset . Args: dx: [list] This should be a list of frame offsets at each keyframe the same length as the number of keyboxes dy: [list] This should be a list of frame offsets at each keyframe the same length as the number of keyboxes Returns: This track updated in place",
 "func":1
 },
 {
 "ref":"vipy.object.Track.truncate",
-"url":49,
+"url":48,
 "doc":"Truncate a track so that any keyframes less than startframe or greater than endframe (inclusive) are removed. Interpolate keyboxes at (startframe, endframe) endpoints. Args: startframe: [int] The startframe of the truncation relative to the track framerate. All keyframes less than or equal to startframe are included. If the keyframe does not exist at startframe, one is interpolated and added. endframe: [int] The endframe of the truncation relative to the track framerate. All keyframes greater than or equal to the endframe are included. If the keyfrmae does not exist at endframe, one is interpolated and added. Returns: This track such that all keyboxes  = endframe are removed.  note The startframe and endframe for truncation are inclusive.",
 "func":1
 },
 {
 "ref":"vipy.object.Track.rescale",
-"url":49,
+"url":48,
 "doc":"Rescale track boxes by scale factor s",
 "func":1
 },
 {
 "ref":"vipy.object.Track.scale",
-"url":49,
+"url":48,
 "doc":"Alias for rescale",
 "func":1
 },
 {
 "ref":"vipy.object.Track.scalex",
-"url":49,
+"url":48,
 "doc":"Rescale track boxes by scale factor sx",
 "func":1
 },
 {
 "ref":"vipy.object.Track.scaley",
-"url":49,
+"url":48,
 "doc":"Rescale track boxes by scale factor sx",
 "func":1
 },
 {
 "ref":"vipy.object.Track.dilate",
-"url":49,
+"url":48,
 "doc":"Dilate track boxes by scale factor s",
 "func":1
 },
 {
 "ref":"vipy.object.Track.rot90cw",
-"url":49,
+"url":48,
 "doc":"Rotate an image with (H,W)=shape 90 degrees clockwise and update all boxes to be consistent",
 "func":1
 },
 {
 "ref":"vipy.object.Track.rot90ccw",
-"url":49,
+"url":48,
 "doc":"Rotate an image with (H,W)=shape 90 degrees clockwise and update all boxes to be consistent",
 "func":1
 },
 {
 "ref":"vipy.object.Track.fliplr",
-"url":49,
+"url":48,
 "doc":"Flip an image left and right (mirror about vertical axis)",
 "func":1
 },
 {
 "ref":"vipy.object.Track.flipud",
-"url":49,
+"url":48,
 "doc":"Flip an image left and right (mirror about vertical axis)",
 "func":1
 },
 {
 "ref":"vipy.object.Track.id",
-"url":49,
+"url":48,
 "doc":"",
 "func":1
 },
 {
 "ref":"vipy.object.Track.clone",
-"url":49,
+"url":48,
 "doc":"",
 "func":1
 },
 {
 "ref":"vipy.object.Track.clone_during",
-"url":49,
+"url":48,
 "doc":"Clone a track during a specific interval (startframe, endframe) relative to the framerate of the track. - This is useful for copying a small segment of a long track without the expense of copying the whole track. - All keyframes and keyboxes not in (startframe, endframe) are not copied. - Boundary keyframes are copied to enable proper interpolation.",
 "func":1
 },
 {
 "ref":"vipy.object.Track.boundingbox",
-"url":49,
+"url":48,
 "doc":"The bounding box of a track is the smallest spatial box that contains all of the BoundingBoxes of the track within startframe and endframe, or None if there are no detections. Args: startframe: [int] the startframe of the track to compute the bounding box. endframe: [int] the endframe of the track to compute the bounding box. Returns:  vipy.geometry.BoundingBox which is the smallest box that contains all boxes of the track from (startframe, endframe)",
 "func":1
 },
 {
 "ref":"vipy.object.Track.smallestbox",
-"url":49,
+"url":48,
 "doc":"The smallest box of a track is the smallest spatial box in area along the track",
 "func":1
 },
 {
 "ref":"vipy.object.Track.biggestbox",
-"url":49,
+"url":48,
 "doc":"The biggest box of a track is the largest spatial box in area along the track",
 "func":1
 },
 {
 "ref":"vipy.object.Track.pathlength",
-"url":49,
+"url":48,
 "doc":"The path length of a track is the cumulative Euclidean distance in pixels that the box travels",
 "func":1
 },
 {
 "ref":"vipy.object.Track.startbox",
-"url":49,
+"url":48,
 "doc":"The startbox is the first bounding box in the track",
 "func":1
 },
 {
 "ref":"vipy.object.Track.endbox",
-"url":49,
+"url":48,
 "doc":"The endbox is the last box in the track",
 "func":1
 },
 {
 "ref":"vipy.object.Track.loop_closure_distance",
-"url":49,
+"url":48,
 "doc":"The loop closure track distance is the Euclidean distance in pixels between the start frame bounding box and end frame bounding box",
 "func":1
 },
 {
 "ref":"vipy.object.Track.boundary",
-"url":49,
+"url":48,
 "doc":"",
 "func":1
 },
 {
 "ref":"vipy.object.Track.clip",
-"url":49,
+"url":48,
 "doc":"Clip a track to be within (startframe,endframe) with strict boundary handling",
 "func":1
 },
 {
 "ref":"vipy.object.Track.iou",
-"url":49,
+"url":48,
 "doc":"Compute the spatial IoU between two tracks as the mean IoU per frame in the range (self.startframe(), self.endframe( ",
 "func":1
 },
 {
 "ref":"vipy.object.Track.segment_maxiou",
-"url":49,
+"url":48,
 "doc":"Return the maximum framewise bounding box IOU between self and other in the range (startframe, endframe)",
 "func":1
 },
 {
 "ref":"vipy.object.Track.maxiou",
-"url":49,
+"url":48,
 "doc":"Compute the maximum spatial IoU between two tracks per frame in the range (self.startframe(), self.endframe( ",
 "func":1
 },
 {
 "ref":"vipy.object.Track.fragmentiou",
-"url":49,
+"url":48,
 "doc":"A fragment is a track that is fully contained within self",
 "func":1
 },
 {
 "ref":"vipy.object.Track.endpointiou",
-"url":49,
+"url":48,
 "doc":"Compute the mean spatial IoU between two tracks at the two overlapping endpoints. useful for track continuation",
 "func":1
 },
 {
 "ref":"vipy.object.Track.segmentiou",
-"url":49,
+"url":48,
 "doc":"Compute the mean spatial IoU between two tracks at the overlapping segment, sampling by dt. Useful for track continuation for densely overlapping tracks",
 "func":1
 },
 {
 "ref":"vipy.object.Track.segmentcover",
-"url":49,
+"url":48,
 "doc":"Compute the mean spatial cover between two tracks at the overlapping segment, sampling by dt. Useful for track continuation for densely overlapping tracks",
 "func":1
 },
 {
 "ref":"vipy.object.Track.rankiou",
-"url":49,
+"url":48,
 "doc":"Compute the mean spatial IoU between two tracks per frame in the range (self.startframe(), self.endframe( using only the top-k (rank) frame overlaps Sample tracks at endpoints and n uniformly spaced frames or a stride of dt frames. - rank [>1]: The top-k best IOU overlaps to average when computing the rank IOU - This is useful for track continuation where the box deforms in the overlapping segment at the end due to occlusion. - This is useful for track correspondence where a ground truth box does not match an estimated box precisely (e.g. loose box, non-visually grounded box) - This is the robust version of segmentiou. - Use percentileiou to determine the rank based a fraction of the length of the overlap, which will be more efficient for long tracks",
 "func":1
 },
 {
 "ref":"vipy.object.Track.percentileiou",
-"url":49,
+"url":48,
 "doc":"Percentile iou returns rankiou for rank=percentile len(overlap(self, other -other [Track] -percentile [0,1]: The top-k best overlaps to average when computing rankiou -samples: The number of uniformly spaced samples to take along the track for computing the rankiou",
 "func":1
 },
 {
 "ref":"vipy.object.Track.segment_percentileiou",
-"url":49,
+"url":48,
 "doc":"percentiliou on the overlapping segment with other",
 "func":1
 },
 {
 "ref":"vipy.object.Track.segment_percentilecover",
-"url":49,
+"url":48,
 "doc":"percentile cover on the overlapping segment with other",
 "func":1
 },
 {
 "ref":"vipy.object.Track.union",
-"url":49,
+"url":48,
 "doc":"Compute the union of two tracks. Overlapping boxes between self and other: Inputs - average [bool]: average framewise interpolated boxes at overlapping keyframes - replace [bool]: replace the box with other if other and self overlap at a keyframe - keep [bool]: keep the box from self (discard other) at a keyframe",
 "func":1
 },
 {
 "ref":"vipy.object.Track.average",
-"url":49,
+"url":48,
 "doc":"Compute the average of two tracks by the framewise interpolated boxes at the keyframes of this track",
 "func":1
 },
 {
 "ref":"vipy.object.Track.temporal_distance",
-"url":49,
+"url":48,
 "doc":"The temporal distance between two tracks is the minimum number of frames separating them",
 "func":1
 },
 {
 "ref":"vipy.object.Track.smooth",
-"url":49,
+"url":48,
 "doc":"Track smoothing by averaging neighboring keyboxes",
 "func":1
 },
 {
 "ref":"vipy.object.Track.smoothshape",
-"url":49,
+"url":48,
 "doc":"Track smoothing by averaging width and height of neighboring keyboxes",
 "func":1
 },
 {
 "ref":"vipy.object.Track.medianshape",
-"url":49,
+"url":48,
 "doc":"Track smoothing by median width and height of neighboring keyboxes",
 "func":1
 },
 {
 "ref":"vipy.object.Track.spline",
-"url":49,
+"url":48,
 "doc":"Track smoothing by cubic spline fit, will return resampled dt=1 track. Smoothing factor will increase with smoothing > 1 and decrease with 0 < smoothing < 1 This function requires optional package scipy",
 "func":1
 },
 {
 "ref":"vipy.object.Track.linear_extrapolation",
-"url":49,
+"url":48,
 "doc":"Track extrapolation by linear fit.  Requires at least 2 keyboxes.  Returned boxes may be degenerate.  shape=True then both the position and shape (width, height) of the box is extrapolated",
 "func":1
 },
 {
 "ref":"vipy.object.Track.imclip",
-"url":49,
+"url":48,
 "doc":"Clip the track to the image rectangle (width, height). If a keybox is outside the image rectangle, remove it otherwise clip to the image rectangle. This operation can change the length of the track and the size of the keyboxes. The result may be an empty track if the track is completely outside the image rectangle, which results in an exception.",
 "func":1
 },
 {
 "ref":"vipy.object.Track.resample",
-"url":49,
+"url":48,
 "doc":"Resample the track using a stride of dt frames. This reduces the density of keyframes by interpolating new keyframes as a uniform stride of dt. This is useful for track compression",
 "func":1
 },
 {
 "ref":"vipy.object.Track.significant_digits",
-"url":49,
+"url":48,
 "doc":"Round the coordinates of all boxes so that they have n significant digits for efficient serialization",
 "func":1
 },
 {
 "ref":"vipy.object.Track.bearing",
-"url":49,
+"url":48,
 "doc":"The bearing of a track at frame f is the angle of the velocity vector relative to the (x,y) image coordinate frame, in radians [-pi, pi]",
 "func":1
 },
 {
 "ref":"vipy.object.Track.bearing_change",
-"url":49,
+"url":48,
 "doc":"The bearing change of a track from frame f1 (or start) and frame f2 (or end) is the relative angle of the velocity vectors in radians [-pi,pi]. Args: f1: [int] the start frame for computing the bearing change. If None, then use self.startframe() f2: [int] the end frame for computing the bearing change. if None, then use self.endframe() dt: [int] The number of frames between computations of the velocity vector for bearing minspeed: [float] The minimum speed in frames per second used to threshold bearing computations if there is no motion samples: [int] The number of samples to average for computing the bearing change Returns: The floating point bearing change in radians in [-pi, pi] from (f1,f2) where bearing is computed at samples=n points, and each bearing is computed with a velocity stride of dt frames.",
 "func":1
 },
 {
 "ref":"vipy.object.Track.acceleration",
-"url":49,
-"doc":"Return the (x,y) track acceleration magnitude at frame f computed using central finite differences of velocity",
+"url":48,
+"doc":"Return the (x,y) track acceleration magnitude at frame f computed using central finite differences of velocity. Returns: acceleration in (pixels / seconds^2) using velocity computed at (f-2 dt, f-dt), (f+dt, f+2 dt)",
 "func":1
 },
 {
 "ref":"vipy.object.Track.velocity",
-"url":49,
+"url":48,
 "doc":"Return the (x,y) track velocity at frame f in units of pixels per frame computed by mean finite difference of the box centroid",
 "func":1
 },
 {
 "ref":"vipy.object.Track.speed",
-"url":49,
+"url":48,
 "doc":"",
 "func":1
 },
 {
 "ref":"vipy.object.Track.boxmap",
-"url":49,
+"url":48,
 "doc":"Apply the lambda function to each keybox",
 "func":1
 },
 {
 "ref":"vipy.object.Track.shape_invariant_velocity",
-"url":49,
+"url":48,
 "doc":"Return the (x,y) track velocity at frame f in units of pixels per frame computed by minimum mean finite differences of any box corner independent of changes in shape, over a finite time window of [f-dt, f]",
 "func":1
 },
 {
 "ref":"vipy.object.Track.velocity_x",
-"url":49,
+"url":48,
 "doc":"Return the left/right velocity at frame f in units of pixels per frame computed by mean finite difference over a fixed time window (dt, frames) of the box centroid",
 "func":1
 },
 {
 "ref":"vipy.object.Track.velocity_y",
-"url":49,
+"url":48,
 "doc":"Return the up/down velocity at frame f in units of pixels per frame computed by mean finite difference over a fixed time window (dt, frames) of the box centroid",
 "func":1
 },
 {
 "ref":"vipy.object.Track.velocity_w",
-"url":49,
+"url":48,
 "doc":"Return the width velocity at frame f in units of pixels per frame computed by finite difference",
 "func":1
 },
 {
 "ref":"vipy.object.Track.velocity_h",
-"url":49,
+"url":48,
 "doc":"Return the height velocity at frame f in units of pixels per frame computed by finite difference",
 "func":1
 },
 {
 "ref":"vipy.object.Track.nearest_keyframe",
-"url":49,
+"url":48,
 "doc":"Nearest keyframe to frame f",
 "func":1
 },
 {
 "ref":"vipy.object.Track.nearest_keybox",
-"url":49,
+"url":48,
 "doc":"Nearest keybox to frame f",
 "func":1
 },
 {
 "ref":"vipy.object.Track.ismoving",
-"url":49,
+"url":48,
 "doc":"Is the track moving in the frame range (startframe,endframe)?",
 "func":1
 },
 {
 "ref":"vipy.object.non_maximum_suppression",
-"url":49,
+"url":48,
 "doc":"Compute greedy non-maximum suppression of a list of vipy.object.Detection() based on spatial IOU threshold (iou) and cover threhsold (cover) sorted by confidence (conf). Args: detlist: [list  vipy.object.Detection ] conf: [float] minimum confidence for non-maximum suppression iou: [float] minimum iou for non-maximum suporession bycategory: [bool] NMS only within the same category cover: [float, None] A minimum cover for NMS (stricter than iou) gridsize: [tuple, (rows, cols)] An optional grid for fast intersection lookups Returns: List of  vipy.object.Detection non-maximum suppressed, sorted by increasing confidence",
 "func":1
 },
 {
 "ref":"vipy.object.greedy_assignment",
-"url":49,
+"url":48,
 "doc":"Compute a greedy one-to-one assignment of each vipy.object.Detection() in srclist to a unique element in dstlist with the largest IoU greater than miniou, else None Args: srclist: [list,  vipy.object.Detection ] dstlist: [list,  vipy.object.Detection ] miniou: [float, >=0,  dstlist[j]",
 "func":1
 },
 {
 "ref":"vipy.object.greedy_track_assignment",
-"url":49,
+"url":48,
 "doc":"Compute a greedy one-to-ine assignment of each  vipy.object.Track in srclist to a unique element in dstlist with the largest assignment score. - Assignment score:  vipy.object.Track.segment_percentileiou   vipy.object.Track.confidence , if maxiou() > miniou else 0 - Assigment order: longest to shortest src track Args: srclist: [list,  vipy.object.Track ] dstlist: [list,  vipy.object.Track ] miniou: [float, >=0,  dstlist[j]",
 "func":1
 },
 {
 "ref":"vipy.object.RandomDetection",
-"url":49,
+"url":48,
 "doc":"Return a random  vipy.object.Detection in the range (0 < xmin < W, 0 < ymin < H, height < 100, width < 100). Useful for unit testing.",
+"func":1
+},
+{
+"ref":"vipy.version",
+"url":49,
+"doc":""
+},
+{
+"ref":"vipy.version.num",
+"url":49,
+"doc":"Convert the version string of the form 'X.Y.Z' to an integer 100000 X + 100 Y + Z for version comparison",
+"func":1
+},
+{
+"ref":"vipy.version.split",
+"url":49,
+"doc":"Split the version string 'X.Y.Z' and return tuple (int(X), int(Y), int(Z ",
+"func":1
+},
+{
+"ref":"vipy.version.major",
+"url":49,
+"doc":"Return the major version number int(X) for versionstring 'X.Y.Z'",
+"func":1
+},
+{
+"ref":"vipy.version.minor",
+"url":49,
+"doc":"Return the minor version number int(Y) for versionstring 'X.Y.Z'",
+"func":1
+},
+{
+"ref":"vipy.version.release",
+"url":49,
+"doc":"Return the release version number int(Z) for versionstring 'X.Y.Z'",
+"func":1
+},
+{
+"ref":"vipy.version.at_least_version",
+"url":49,
+"doc":"Is versionstring='X.Y.Z' at least the current version?",
+"func":1
+},
+{
+"ref":"vipy.version.is_at_least",
+"url":49,
+"doc":"Synonym for at_least_version",
+"func":1
+},
+{
+"ref":"vipy.version.is_exactly",
+"url":49,
+"doc":"Is the versionstring = 'X,Y.Z' exactly equal to  vipy.version.VERSION ",
+"func":1
+},
+{
+"ref":"vipy.version.at_least_major_version",
+"url":49,
+"doc":"is the major version (e.g. X, for version X.Y.Z) greater than or equal to the major version integer supplied?",
 "func":1
 }
 ]

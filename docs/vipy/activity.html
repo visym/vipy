@@ -25,7 +25,7 @@
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/ad4822bf7643dbacf82245905afcf42b8bb1f9ec/vipy/activity.py#L0-L339" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/1176a77daf0e8e76554420ca35f7cd65aca69dd9/vipy/activity.py#L0-L349" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">import numpy as np
 from vipy.geometry import BoundingBox
@@ -110,13 +110,23 @@ class Activity(object):
         &#34;&#34;&#34;Return activity length in frames, or zero if degenerate&#34;&#34;&#34;
         return max(0, self.endframe() - self.startframe())
 
-    def duration(self, s=None):
-        &#34;&#34;&#34;The length of the activity in seconds&#34;&#34;&#34;
+    def duration(self, s=None, centered=False):
+        &#34;&#34;&#34;The length of the activity in seconds.
+
+        Args:
+            s: [float] The number of seconds for this activity, starting at the startframe
+            centered: [bool] If true, then set the duration centered on the middle frame
+
+        Returns:
+            The duration in seconds of this activity object (if s=None)
+            This activity object with the requested duration (if s!=None)
+        &#34;&#34;&#34;
         assert self.framerate() is not None, &#34;Framerate must be set in constructor&#34;
         if s is None:
             return len(self) / float(self.framerate())
         else:
-            return self.endframe(self.startframe() + int(round(s*self.framerate())))
+            return (self.endframe(self.startframe() + int(round(s*self.framerate()))) if not centered else 
+                    self.truncate(startframe=self.middleframe()-int(np.ceil(s*self.framerate())//2), endframe=self.middleframe()+int(np.ceil(s*self.framerate())//2)))
         
     def __repr__(self):
         return str(&#39;&lt;vipy.activity: category=&#34;%s&#34;, frames=(%d,%d), tracks=%s%s&gt;&#39; % (self.category(), self.startframe(), self.endframe(), len(self.trackids()), &#39;&#39; if self.confidence() is None else &#39;, confidence=%1.2f&#39; % self.confidence()))
@@ -397,7 +407,7 @@ The shortlabel defines the string shown on the visualization video.</p>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/ad4822bf7643dbacf82245905afcf42b8bb1f9ec/vipy/activity.py#L16-L340" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/1176a77daf0e8e76554420ca35f7cd65aca69dd9/vipy/activity.py#L16-L350" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">class Activity(object):
     &#34;&#34;&#34;vipy.object.Activity class
@@ -467,13 +477,23 @@ The shortlabel defines the string shown on the visualization video.</p>
         &#34;&#34;&#34;Return activity length in frames, or zero if degenerate&#34;&#34;&#34;
         return max(0, self.endframe() - self.startframe())
 
-    def duration(self, s=None):
-        &#34;&#34;&#34;The length of the activity in seconds&#34;&#34;&#34;
+    def duration(self, s=None, centered=False):
+        &#34;&#34;&#34;The length of the activity in seconds.
+
+        Args:
+            s: [float] The number of seconds for this activity, starting at the startframe
+            centered: [bool] If true, then set the duration centered on the middle frame
+
+        Returns:
+            The duration in seconds of this activity object (if s=None)
+            This activity object with the requested duration (if s!=None)
+        &#34;&#34;&#34;
         assert self.framerate() is not None, &#34;Framerate must be set in constructor&#34;
         if s is None:
             return len(self) / float(self.framerate())
         else:
-            return self.endframe(self.startframe() + int(round(s*self.framerate())))
+            return (self.endframe(self.startframe() + int(round(s*self.framerate()))) if not centered else 
+                    self.truncate(startframe=self.middleframe()-int(np.ceil(s*self.framerate())//2), endframe=self.middleframe()+int(np.ceil(s*self.framerate())//2)))
         
     def __repr__(self):
         return str(&#39;&lt;vipy.activity: category=&#34;%s&#34;, frames=(%d,%d), tracks=%s%s&gt;&#39; % (self.category(), self.startframe(), self.endframe(), len(self.trackids()), &#39;&#39; if self.confidence() is None else &#39;, confidence=%1.2f&#39; % self.confidence()))
@@ -735,7 +755,7 @@ The shortlabel defines the string shown on the visualization video.</p>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/ad4822bf7643dbacf82245905afcf42b8bb1f9ec/vipy/activity.py#L68-L78" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/1176a77daf0e8e76554420ca35f7cd65aca69dd9/vipy/activity.py#L68-L78" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">@classmethod
 def from_json(obj, s):
@@ -761,7 +781,7 @@ def from_json(obj, s):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/ad4822bf7643dbacf82245905afcf42b8bb1f9ec/vipy/activity.py#L103-L110" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/1176a77daf0e8e76554420ca35f7cd65aca69dd9/vipy/activity.py#L113-L120" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def actorid(self, actorid=None):
     if actorid is None:
@@ -781,7 +801,7 @@ def from_json(obj, s):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/ad4822bf7643dbacf82245905afcf42b8bb1f9ec/vipy/activity.py#L170-L177" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/1176a77daf0e8e76554420ca35f7cd65aca69dd9/vipy/activity.py#L180-L187" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def add(self, track):
     &#34;&#34;&#34;Add the track id for the track to this activity, so that if the track is changed externally it is reflected here&#34;&#34;&#34;
@@ -801,7 +821,7 @@ def from_json(obj, s):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/ad4822bf7643dbacf82245905afcf42b8bb1f9ec/vipy/activity.py#L207-L212" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/1176a77daf0e8e76554420ca35f7cd65aca69dd9/vipy/activity.py#L217-L222" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def append(self, newtrack):
     &#34;&#34;&#34;Append newtrack to this activity and set as actorid()&#34;&#34;&#34;
@@ -819,7 +839,7 @@ def from_json(obj, s):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/ad4822bf7643dbacf82245905afcf42b8bb1f9ec/vipy/activity.py#L150-L156" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/1176a77daf0e8e76554420ca35f7cd65aca69dd9/vipy/activity.py#L160-L166" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def category(self, label=None, shortlabel=None):
     &#34;&#34;&#34;Change the label (and shortlabel) to the new label (and shortlabel)&#34;&#34;&#34;
@@ -838,7 +858,7 @@ def from_json(obj, s):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/ad4822bf7643dbacf82245905afcf42b8bb1f9ec/vipy/activity.py#L183-L186" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/1176a77daf0e8e76554420ca35f7cd65aca69dd9/vipy/activity.py#L193-L196" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def cleartracks(self):
     &#34;&#34;&#34;Remove all track IDs from this activity&#34;&#34;&#34;
@@ -854,7 +874,7 @@ def from_json(obj, s):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/ad4822bf7643dbacf82245905afcf42b8bb1f9ec/vipy/activity.py#L303-L308" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/1176a77daf0e8e76554420ca35f7cd65aca69dd9/vipy/activity.py#L313-L318" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def clone(self, rekey=False):
     #a = copy.deepcopy(self)
@@ -872,7 +892,7 @@ def from_json(obj, s):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/ad4822bf7643dbacf82245905afcf42b8bb1f9ec/vipy/activity.py#L61-L66" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/1176a77daf0e8e76554420ca35f7cd65aca69dd9/vipy/activity.py#L61-L66" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def confidence(self, c=None):
     if c is not None:
@@ -890,7 +910,7 @@ def from_json(obj, s):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/ad4822bf7643dbacf82245905afcf42b8bb1f9ec/vipy/activity.py#L95-L97" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/1176a77daf0e8e76554420ca35f7cd65aca69dd9/vipy/activity.py#L105-L107" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def dict(self):
     &#34;&#34;&#34;Return a python dictionary containing the relevant serialized attributes suitable for JSON encoding&#34;&#34;&#34;
@@ -907,7 +927,7 @@ if strict=True, then throw an exception if other or self is fully contained with
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/ad4822bf7643dbacf82245905afcf42b8bb1f9ec/vipy/activity.py#L321-L335" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/1176a77daf0e8e76554420ca35f7cd65aca69dd9/vipy/activity.py#L331-L345" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def disjoint(self, other, strict=False):
     &#34;&#34;&#34;Enforce disjoint activities with other by shifting the endframe or startframe of self to not overlap if they share the same tracks.
@@ -927,22 +947,42 @@ if strict=True, then throw an exception if other or self is fully contained with
 </details>
 </dd>
 <dt id="vipy.activity.Activity.duration"><code class="name flex">
-<span>def <span class="ident">duration</span></span>(<span>self, s=None)</span>
+<span>def <span class="ident">duration</span></span>(<span>self, s=None, centered=False)</span>
 </code></dt>
 <dd>
-<div class="desc"><p>The length of the activity in seconds</p></div>
+<div class="desc"><p>The length of the activity in seconds.</p>
+<h2 id="args">Args</h2>
+<dl>
+<dt><strong><code>s</code></strong></dt>
+<dd>[float] The number of seconds for this activity, starting at the startframe</dd>
+<dt><strong><code>centered</code></strong></dt>
+<dd>[bool] If true, then set the duration centered on the middle frame</dd>
+</dl>
+<h2 id="returns">Returns</h2>
+<p>The duration in seconds of this activity object (if s=None)
+This activity object with the requested duration (if s!=None)</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/ad4822bf7643dbacf82245905afcf42b8bb1f9ec/vipy/activity.py#L84-L90" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/1176a77daf0e8e76554420ca35f7cd65aca69dd9/vipy/activity.py#L84-L100" class="git-link">Browse git</a>
 </summary>
-<pre><code class="python">def duration(self, s=None):
-    &#34;&#34;&#34;The length of the activity in seconds&#34;&#34;&#34;
+<pre><code class="python">def duration(self, s=None, centered=False):
+    &#34;&#34;&#34;The length of the activity in seconds.
+
+    Args:
+        s: [float] The number of seconds for this activity, starting at the startframe
+        centered: [bool] If true, then set the duration centered on the middle frame
+
+    Returns:
+        The duration in seconds of this activity object (if s=None)
+        This activity object with the requested duration (if s!=None)
+    &#34;&#34;&#34;
     assert self.framerate() is not None, &#34;Framerate must be set in constructor&#34;
     if s is None:
         return len(self) / float(self.framerate())
     else:
-        return self.endframe(self.startframe() + int(round(s*self.framerate())))</code></pre>
+        return (self.endframe(self.startframe() + int(round(s*self.framerate()))) if not centered else 
+                self.truncate(startframe=self.middleframe()-int(np.ceil(s*self.framerate())//2), endframe=self.middleframe()+int(np.ceil(s*self.framerate())//2)))</code></pre>
 </details>
 </dd>
 <dt id="vipy.activity.Activity.during"><code class="name flex">
@@ -953,7 +993,7 @@ if strict=True, then throw an exception if other or self is fully contained with
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/ad4822bf7643dbacf82245905afcf42b8bb1f9ec/vipy/activity.py#L243-L245" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/1176a77daf0e8e76554420ca35f7cd65aca69dd9/vipy/activity.py#L253-L255" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def during(self, frame):
     &#34;&#34;&#34;Is frame during the time interval (startframe, endframe) inclusive?&#34;&#34;&#34;
@@ -968,7 +1008,7 @@ if strict=True, then throw an exception if other or self is fully contained with
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/ad4822bf7643dbacf82245905afcf42b8bb1f9ec/vipy/activity.py#L247-L250" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/1176a77daf0e8e76554420ca35f7cd65aca69dd9/vipy/activity.py#L257-L260" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def during_interval(self, startframe, endframe, inclusive=False):
     &#34;&#34;&#34;Is the activity occurring for any frames within the interval [startframe, endframe) (non-inclusive of endframe)?&#34;&#34;&#34;
@@ -984,7 +1024,7 @@ if strict=True, then throw an exception if other or self is fully contained with
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/ad4822bf7643dbacf82245905afcf42b8bb1f9ec/vipy/activity.py#L119-L124" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/1176a77daf0e8e76554420ca35f7cd65aca69dd9/vipy/activity.py#L129-L134" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def endframe(self, f=None):
     if f is None:
@@ -1002,7 +1042,7 @@ if strict=True, then throw an exception if other or self is fully contained with
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/ad4822bf7643dbacf82245905afcf42b8bb1f9ec/vipy/activity.py#L134-L148" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/1176a77daf0e8e76554420ca35f7cd65aca69dd9/vipy/activity.py#L144-L158" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def framerate(self, fps=None, speed=None):
     &#34;&#34;&#34;Resample (startframe, endframe) from known original framerate set by constructor to be new framerate fps&#34;&#34;&#34;        
@@ -1029,7 +1069,7 @@ if strict=True, then throw an exception if other or self is fully contained with
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/ad4822bf7643dbacf82245905afcf42b8bb1f9ec/vipy/activity.py#L58-L59" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/1176a77daf0e8e76554420ca35f7cd65aca69dd9/vipy/activity.py#L58-L59" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def hasattribute(self, k):
     return k in self.attributes</code></pre>
@@ -1043,7 +1083,7 @@ if strict=True, then throw an exception if other or self is fully contained with
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/ad4822bf7643dbacf82245905afcf42b8bb1f9ec/vipy/activity.py#L192-L196" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/1176a77daf0e8e76554420ca35f7cd65aca69dd9/vipy/activity.py#L202-L206" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def hasoverlap(self, other, threshold=0):
     assert isinstance(other, Activity), &#34;Invalid input&#34;
@@ -1060,7 +1100,7 @@ if strict=True, then throw an exception if other or self is fully contained with
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/ad4822bf7643dbacf82245905afcf42b8bb1f9ec/vipy/activity.py#L201-L205" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/1176a77daf0e8e76554420ca35f7cd65aca69dd9/vipy/activity.py#L211-L215" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def hastrack(self, track):
     &#34;&#34;&#34;Is the track part of the activity?&#34;&#34;&#34;
@@ -1077,7 +1117,7 @@ if strict=True, then throw an exception if other or self is fully contained with
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/ad4822bf7643dbacf82245905afcf42b8bb1f9ec/vipy/activity.py#L296-L301" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/1176a77daf0e8e76554420ca35f7cd65aca69dd9/vipy/activity.py#L306-L311" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def id(self, newid=None):
     if newid is None:
@@ -1095,7 +1135,7 @@ if strict=True, then throw an exception if other or self is fully contained with
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/ad4822bf7643dbacf82245905afcf42b8bb1f9ec/vipy/activity.py#L198-L199" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/1176a77daf0e8e76554420ca35f7cd65aca69dd9/vipy/activity.py#L208-L209" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def isneighbor(self, other, framegate=10):
     return self.temporal_iou(other.clone().temporalpad(framegate)) &gt; 0 </code></pre>
@@ -1109,7 +1149,7 @@ if strict=True, then throw an exception if other or self is fully contained with
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/ad4822bf7643dbacf82245905afcf42b8bb1f9ec/vipy/activity.py#L99-L101" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/1176a77daf0e8e76554420ca35f7cd65aca69dd9/vipy/activity.py#L109-L111" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def json(self, encode=True):
     d = {k:v if k != &#39;_trackid&#39; else tuple(v) for (k,v) in self.__dict__.items()}
@@ -1124,7 +1164,7 @@ if strict=True, then throw an exception if other or self is fully contained with
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/ad4822bf7643dbacf82245905afcf42b8bb1f9ec/vipy/activity.py#L158-L160" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/1176a77daf0e8e76554420ca35f7cd65aca69dd9/vipy/activity.py#L168-L170" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def label(self, label=None, shortlabel=None):
     &#34;&#34;&#34;Alias for category&#34;&#34;&#34;
@@ -1139,7 +1179,7 @@ if strict=True, then throw an exception if other or self is fully contained with
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/ad4822bf7643dbacf82245905afcf42b8bb1f9ec/vipy/activity.py#L126-L127" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/1176a77daf0e8e76554420ca35f7cd65aca69dd9/vipy/activity.py#L136-L137" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def middleframe(self):
     return int(np.round((self._endframe - self._startframe) / 2.0)) + self._startframe</code></pre>
@@ -1153,7 +1193,7 @@ if strict=True, then throw an exception if other or self is fully contained with
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/ad4822bf7643dbacf82245905afcf42b8bb1f9ec/vipy/activity.py#L284-L287" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/1176a77daf0e8e76554420ca35f7cd65aca69dd9/vipy/activity.py#L294-L297" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def offset(self, dt):
     self._startframe = int(self._startframe + dt)
@@ -1169,7 +1209,7 @@ if strict=True, then throw an exception if other or self is fully contained with
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/ad4822bf7643dbacf82245905afcf42b8bb1f9ec/vipy/activity.py#L317-L319" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/1176a77daf0e8e76554420ca35f7cd65aca69dd9/vipy/activity.py#L327-L329" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def padto(self, t):
     &#34;&#34;&#34;Add a symmetric temporal pad so that the activity is at least t seconds long&#34;&#34;&#34;
@@ -1185,7 +1225,7 @@ Pass in a trackdict to share reference to track, so that track owner can modify 
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/ad4822bf7643dbacf82245905afcf42b8bb1f9ec/vipy/activity.py#L222-L230" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/1176a77daf0e8e76554420ca35f7cd65aca69dd9/vipy/activity.py#L232-L240" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def replace(self, oldtrack, newtrack):
     &#34;&#34;&#34;Replace oldtrack with newtrack if present in self._tracks.  Pass in a trackdict to share reference to track, so that track owner can modify the track and this object observes the change&#34;&#34;&#34;
@@ -1207,7 +1247,7 @@ Pass in a trackdict to share reference to track, so that track owner can modify 
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/ad4822bf7643dbacf82245905afcf42b8bb1f9ec/vipy/activity.py#L232-L241" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/1176a77daf0e8e76554420ca35f7cd65aca69dd9/vipy/activity.py#L242-L251" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def replaceid(self, oldtrackid, newtrackid):
     &#34;&#34;&#34;Replace oldtrack with newtrack if present in self._tracks.  Pass in a trackdict to share reference to track, so that track owner can modify the track and this object observes the change&#34;&#34;&#34;
@@ -1229,7 +1269,7 @@ Pass in a trackdict to share reference to track, so that track owner can modify 
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/ad4822bf7643dbacf82245905afcf42b8bb1f9ec/vipy/activity.py#L162-L168" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/1176a77daf0e8e76554420ca35f7cd65aca69dd9/vipy/activity.py#L172-L178" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def shortlabel(self, label=None):
     &#34;&#34;&#34;A optional shorter label string to show in the visualizations&#34;&#34;&#34;                
@@ -1248,7 +1288,7 @@ Pass in a trackdict to share reference to track, so that track owner can modify 
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/ad4822bf7643dbacf82245905afcf42b8bb1f9ec/vipy/activity.py#L112-L117" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/1176a77daf0e8e76554420ca35f7cd65aca69dd9/vipy/activity.py#L122-L127" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def startframe(self, f=None):
     if f is None:
@@ -1266,7 +1306,7 @@ Pass in a trackdict to share reference to track, so that track owner can modify 
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/ad4822bf7643dbacf82245905afcf42b8bb1f9ec/vipy/activity.py#L337-L340" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/1176a77daf0e8e76554420ca35f7cd65aca69dd9/vipy/activity.py#L347-L350" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def temporal_distance(self, other):
     &#34;&#34;&#34;Return the temporal distance in frames between self and other which is the minimum frame difference between the end of one to the start of the other, or zero if they overlap&#34;&#34;&#34;
@@ -1282,7 +1322,7 @@ Pass in a trackdict to share reference to track, so that track owner can modify 
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/ad4822bf7643dbacf82245905afcf42b8bb1f9ec/vipy/activity.py#L270-L282" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/1176a77daf0e8e76554420ca35f7cd65aca69dd9/vipy/activity.py#L280-L292" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def temporal_iou(self, other):
     &#34;&#34;&#34;Return the temporal intersection over union of two activities&#34;&#34;&#34;
@@ -1308,7 +1348,7 @@ The padded start frame may be negative.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/ad4822bf7643dbacf82245905afcf42b8bb1f9ec/vipy/activity.py#L310-L315" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/1176a77daf0e8e76554420ca35f7cd65aca69dd9/vipy/activity.py#L320-L325" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def temporalpad(self, df):
     &#34;&#34;&#34;Add a temporal pad of df=(before frames, after frames) or df=pad frames to the start and end of the activity.  The padded start frame may be negative.&#34;&#34;&#34;
@@ -1326,7 +1366,7 @@ The padded start frame may be negative.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/ad4822bf7643dbacf82245905afcf42b8bb1f9ec/vipy/activity.py#L214-L220" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/1176a77daf0e8e76554420ca35f7cd65aca69dd9/vipy/activity.py#L224-L230" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def trackfilter(self, f):
     &#34;&#34;&#34;Remove all tracks such that the lambda function f(trackid) resolves to False&#34;&#34;&#34;
@@ -1345,7 +1385,7 @@ The padded start frame may be negative.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/ad4822bf7643dbacf82245905afcf42b8bb1f9ec/vipy/activity.py#L188-L190" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/1176a77daf0e8e76554420ca35f7cd65aca69dd9/vipy/activity.py#L198-L200" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def trackids(self):
     &#34;&#34;&#34;Return a set of track IDs associated with this activity&#34;&#34;&#34;
@@ -1360,7 +1400,7 @@ The padded start frame may be negative.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/ad4822bf7643dbacf82245905afcf42b8bb1f9ec/vipy/activity.py#L179-L181" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/1176a77daf0e8e76554420ca35f7cd65aca69dd9/vipy/activity.py#L189-L191" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def tracks(self):
     &#34;&#34;&#34;alias for trackids&#34;&#34;&#34;
@@ -1375,7 +1415,7 @@ The padded start frame may be negative.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/ad4822bf7643dbacf82245905afcf42b8bb1f9ec/vipy/activity.py#L289-L294" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/1176a77daf0e8e76554420ca35f7cd65aca69dd9/vipy/activity.py#L299-L304" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def truncate(self, startframe=None, endframe=None):
     &#34;&#34;&#34;Truncate the activity so that it is between startframe and endframe&#34;&#34;&#34;
@@ -1396,7 +1436,7 @@ the convex combinatiopn weight applied to the new activity</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/ad4822bf7643dbacf82245905afcf42b8bb1f9ec/vipy/activity.py#L252-L268" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/1176a77daf0e8e76554420ca35f7cd65aca69dd9/vipy/activity.py#L262-L278" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def union(self, other, confweight=0.5, maxconf=False):
     &#34;&#34;&#34;Compute the union of the new activity other to this activity by updating the start and end times and computing the mean confidence.
