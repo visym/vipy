@@ -4,6 +4,7 @@ from vipy.util import remkdir
 import gzip
 import struct
 from array import array
+import vipy.image
 
 
 TRAIN_IMG_URL = 'http://yann.lecun.com/exdb/mnist/train-images-idx3-ubyte.gz'
@@ -77,6 +78,9 @@ class MNIST(object):
 
         return (y_train, np.array(x_train))
 
+    def imtrainset(self):
+        return [vipy.image.ImageCategory(array=img, category=str(y), colorspace='lum') for (y,img) in zip(*self.trainset())]
+    
     def testset(self):
         y_test = self._labels(os.path.join(self.outdir, 't10k-labels-idx1-ubyte.gz')).tolist()
         x_test = []
@@ -91,3 +95,6 @@ class MNIST(object):
                 x_test.append(img)
 
         return (y_test, np.array(x_test))
+
+    def imtestset(self):
+        return [vipy.image.ImageCategory(array=img, category=str(y), colorspace='lum') for (y,img) in zip(*self.testset())]
