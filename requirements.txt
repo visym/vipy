@@ -2,7 +2,8 @@ scikit-build
 scipy
 opencv-python
 torch
-python
+torchvision
+ipython
 scikit-learn
 boto3
 youtube-dl
