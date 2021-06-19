@@ -81,13 +81,23 @@ class Activity(object):
         """Return activity length in frames, or zero if degenerate"""
         return max(0, self.endframe() - self.startframe())
 
-    def duration(self, s=None):
-        """The length of the activity in seconds"""
+    def duration(self, s=None, centered=False):
+        """The length of the activity in seconds.
+
+        Args:
+            s: [float] The number of seconds for this activity, starting at the startframe
+            centered: [bool] If true, then set the duration centered on the middle frame
+
+        Returns:
+            The duration in seconds of this activity object (if s=None)
+            This activity object with the requested duration (if s!=None)
+        """
         assert self.framerate() is not None, "Framerate must be set in constructor"
         if s is None:
             return len(self) / float(self.framerate())
         else:
-            return self.endframe(self.startframe() + int(round(s*self.framerate())))
+            return (self.endframe(self.startframe() + int(round(s*self.framerate()))) if not centered else 
+                    self.truncate(startframe=self.middleframe()-int(np.ceil(s*self.framerate())//2), endframe=self.middleframe()+int(np.ceil(s*self.framerate())//2)))
         
     def __repr__(self):
         return str('<vipy.activity: category="%s", frames=(%d,%d), tracks=%s%s>' % (self.category(), self.startframe(), self.endframe(), len(self.trackids()), '' if self.confidence() is None else ', confidence=%1.2f' % self.confidence()))

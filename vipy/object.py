@@ -945,10 +945,14 @@ class Track(object):
         return float(dr if np.abs(dr)<=np.pi else ((2*np.pi - dr) if (dr > np.pi) else (2*np.pi + dr)))
 
     def acceleration(self, f, dt=30):
-        """Return the (x,y) track acceleration magnitude at frame f computed using central finite differences of velocity"""
+        """Return the (x,y) track acceleration magnitude at frame f computed using central finite differences of velocity.
+        
+        Returns:
+            acceleration in (pixels / seconds^2) using velocity computed at (f-2*dt, f-dt), (f+dt, f+2*dt)
+        """
         (u, v) = (self.shape_invariant_velocity(f-dt, dt), self.shape_invariant_velocity(f+2*dt, dt))  # ((f-2*dt, (f-dt)), (f+dt, f+2*dt))
         (ax, ay) = ((v[0] - u[0])/float(2*dt), (v[1] - u[1])/float(2*dt))
-        return float(np.sqrt(ax**2 + ay**2))  # acceleration magnitude in pixels
+        return float(np.sqrt(ax**2 + ay**2))  # acceleration magnitude in pixels    
         
     def velocity(self, f, dt=30):
         """Return the (x,y) track velocity at frame f in units of pixels per frame computed by mean finite difference of the box centroid"""
