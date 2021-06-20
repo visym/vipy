@@ -12481,6 +12481,12 @@ INDEX=[
 "func":1
 },
 {
+"ref":"vipy.object.Track.maxsquare",
+"url":48,
+"doc":"Set all of the track boxes to maxsquare",
+"func":1
+},
+{
 "ref":"vipy.object.Track.rot90cw",
 "url":48,
 "doc":"Rotate an image with (H,W)=shape 90 degrees clockwise and update all boxes to be consistent",

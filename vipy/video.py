@@ -343,7 +343,7 @@ class Video(object):
             bufsize: [int]  The maximum queue size for the pipe thread.  
 
         Returns:
-            A `vipy.video.Video.stream.Stream` object
+            A Stream object
 
         ..note:: Using this iterator may affect PDB debugging due to stdout/stdin redirection.  Use ipdb instead.
 

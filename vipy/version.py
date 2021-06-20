@@ -42,7 +42,7 @@ def is_at_least(versionstring):
 
 
 def is_exactly(versionstring):
-    """Is the versionstring = 'X,Y.Z' exactly equal to `vipy.version.VERSION`"""
+    """Is the versionstring = 'X,Y.Z' exactly equal to vipy.__version__"""
     return versionstring == VERSION
 
 

@@ -519,7 +519,7 @@ class Track(object):
     def frameoffset(self, dx, dy):
         """Offset boxes by (dx,dy) in each frame.
         
-        This is used to apply a different offset for each frame.  To apply one offset to all frames, use `vipy.object.offset`.
+        This is used to apply a different offset for each frame.  To apply one offset to all frames, use `vipy.object.Track.offset`.
         Args:
             dx: [list]  This should be a list of frame offsets at each keyframe the same length as the number of keyboxes
             dy: [list]  This should be a list of frame offsets at each keyframe the same length as the number of keyboxes
