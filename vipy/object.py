@@ -578,6 +578,11 @@ class Track(object):
         self._keyboxes = [bb.dilate(s) for bb in self._keyboxes]
         return self
 
+    def maxsquare(self):
+        """Set all of the track boxes to maxsquare"""
+        self._keyboxes = [bb.maxsquare() for bb in self._keyboxes]
+        return self
+    
     def rot90cw(self, H, W):
         """Rotate an image with (H,W)=shape 90 degrees clockwise and update all boxes to be consistent"""
         self._keyboxes = [bb.rot90cw(H, W) for bb in self._keyboxes]
