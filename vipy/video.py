@@ -3542,8 +3542,10 @@ class Scene(VideoCategory):
                 for d in sorted(activitydets, key=lambda x: x.confidence(), reverse=True):
                     for a in activities:
                         if (a._label == d._label) and (a._actorid == d._actorid) and a.hasoverlap(d, activityiou):
-                            assigned.add(a._id if d.confidence()>a.confidence() else d._id)  # suppressed                            
-                self.activityfilter(lambda a: a._id not in assigned)  # suppression
+                            assigned.add(a._id if d.confidence()>a.confidence() else d._id)  # suppressed
+                for id in assigned:
+                    if id in self._activities:
+                        del self._activities[id]  # suppression, faster than self.activityfilter(lambda a: a.id() in assigned)
                                     
             # Activity construction from unassigned detections
             for d in activitydets:
