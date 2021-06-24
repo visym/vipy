@@ -1051,6 +1051,8 @@ def isyoutubeurl(path):
     """Is a path a youtube URL?"""
     return isurl(path) and 'youtube.com' in path
 
+def isRTSPurl(path):
+    return path.startswith('rtsp://')
 
 def checkerboard(m=8,n=256):
     """m=number of square by column, n=size of final image"""

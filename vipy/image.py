@@ -1316,6 +1316,21 @@ class Image(object):
         """Add a bias to the image array.  Bias should be broadcastable to array().  This forces the colorspace to 'float'"""
         self.array(self.load().float().array() + b)
         return self.colorspace('float')
+
+    def normalize(self, gain, bias):
+        """Apply a multiplicative gain g and additive bias b, such that self.array() == gain*self.array() + bias.
+
+        This is useful for applying a normalization of an image prior to calling `vipy.image.Image.torch`.
+
+        The following operations are equivalent.
+
+        >>> im = vipy.image.RandomImage()
+        >>> im.normalize(1/255.0, 0.5) == im.gain(1/255.0).bias(-0.5)
+        
+        .. note:: This will force the colorspace to 'float'
+        """
+        self.array(gain*self.load().float().array() + bias)
+        return self.colorspace('float')
     
     # Image statistics
     def stats(self):
