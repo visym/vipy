@@ -83,8 +83,11 @@ class Video(object):
     >>> vid = vipy.video.Video(frames=frames)
 
     The input can be an RTSP video stream.  Note that streaming is most efficiently performed using `vipy.video.Scene`.  The URL must contain the 'rtsp://' url scheme.  
+    You can experiment with this using the free Periscope H.264 RTSP App (https://apps.apple.com/us/app/periscope-hd-h-264-rtsp-cam/id1095600218)
 
-    >>> vid = vipy.video.Video(url='rtsp://path/to/video.mp4')    
+    >>> vipy.video.Scene(url='rtsp://127.0.0.1:8554/live.sdp').show()
+    >>> for im in vipy.video.Scene(url='rtsp://127.0.0.1:8554/live.sdp').stream():
+    >>>     print(im)
 
     Args:
         filename: [str] The path to a video file.  
@@ -1132,7 +1135,8 @@ class Video(object):
         try:
             url_scheme = urllib.parse.urlparse(self._url)[0]
             if isyoutubeurl(self._url):
-                vipy.videosearch.download(self._url, filefull(self._filename), writeurlfile=False, skip=ignoreErrors, verbose=verbose)
+                f = self._filename if filefull(self._filename) is None else filefull(self._filename)
+                vipy.videosearch.download(self._url, f, writeurlfile=False, skip=ignoreErrors, verbose=verbose)
                 for ext in ['mkv', 'mp4', 'webm']:
                     f = '%s.%s' % (self.filename(), ext)
                     if os.path.exists(f):
