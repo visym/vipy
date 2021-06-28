@@ -76,7 +76,7 @@ class AVA(object):
             d_tracknum_to_track = {}
             for (tracknum, tracklist) in tracks.items():
                 (keyframes, boxes) = zip(*[((float(x[1])*framerate)-startframe, BoundingBox(xmin=width*float(x[2]), ymin=height*float(x[3]), xmax=width*float(x[4]), ymax=height*float(x[5]))) for x in tracklist])
-                t = Track(keyframes=keyframes, boxes=boxes, category=tracknum)
+                t = Track(keyframes=keyframes, boxes=boxes, category=tracknum, framerate=framerate)
                 d_tracknum_to_track[tracknum] = t
                 v.add(t)
 
@@ -87,7 +87,7 @@ class AVA(object):
                 try:
                     a = Activity(startframe=max(0, int(np.round((act_startframe-1.5*framerate)))), endframe=int(np.round((act_startframe+1.5*framerate))),
                                  category=d_index_to_category[int(activity_id)],
-                                 tracks={t.id():t})
+                                 tracks={t.id():t}, framerate=framerate)
                     v.add(a)
 
                 except KeyboardInterrupt:

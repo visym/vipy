@@ -4,7 +4,7 @@ import dill
 from vipy.globals import print
 from vipy.util import remkdir, tempMP4, isurl, \
     isvideourl, templike, tempjpg, filetail, tempdir, isyoutubeurl, try_import, isnumpy, temppng, \
-    istuple, islist, isnumber, tolist, filefull, fileext, isS3url, totempdir, flatlist, tocache, premkdir, writecsv, iswebp, ispng, isgif, filepath, Stopwatch, toextension, isjsonfile
+    istuple, islist, isnumber, tolist, filefull, fileext, isS3url, totempdir, flatlist, tocache, premkdir, writecsv, iswebp, ispng, isgif, filepath, Stopwatch, toextension, isjsonfile, isRTSPurl
 from vipy.image import Image
 import vipy.geometry
 import vipy.math
@@ -82,6 +82,13 @@ class Video(object):
     >>> frames = [im for im in vipy.video.RandomVideo()]
     >>> vid = vipy.video.Video(frames=frames)
 
+    The input can be an RTSP video stream.  Note that streaming is most efficiently performed using `vipy.video.Scene`.  The URL must contain the 'rtsp://' url scheme.  
+    You can experiment with this using the free Periscope H.264 RTSP App (https://apps.apple.com/us/app/periscope-hd-h-264-rtsp-cam/id1095600218)
+
+    >>> vipy.video.Scene(url='rtsp://127.0.0.1:8554/live.sdp').show()
+    >>> for im in vipy.video.Scene(url='rtsp://127.0.0.1:8554/live.sdp').stream():
+    >>>     print(im)
+
     Args:
         filename: [str] The path to a video file.  
         url: [str] The URL to a video file.  If filename is not provided, then a random filename is assigned in VIPY_CACHE on download
@@ -128,13 +135,16 @@ class Video(object):
         elif self._url is not None:
             if isS3url(self._url):
                 self._filename = totempdir(self._url)  # Preserve S3 Object ID
+            elif isRTSPurl(self._url):
+                # https://ffmpeg.org/ffmpeg-protocols.html#rtsp                
+                self._filename = self._url                
             elif isvideourl(self._url):
                 self._filename = templike(self._url)
             elif isyoutubeurl(self._url):
                 self._filename = os.path.join(tempdir(), '%s' % self._url.split('?')[1].split('&')[0])
             else:
                 self._filename = totempdir(self._url)  
-            if vipy.globals.cache() is not None and self._filename is not None:
+            if vipy.globals.cache() is not None and self._filename is not None and not isRTSPurl(self._filename):
                 self._filename = os.path.join(remkdir(vipy.globals.cache()), filetail(self._filename))
 
         # Initial video shape: useful to avoid preview()
@@ -936,6 +946,8 @@ class Video(object):
         """Video URL and URL download properties"""
         if url is not None:
             self._url = url  # note that this does not change anything else, better to use the constructor for this
+        if url is not None and isRTSPurl(url):
+            self.filename(self._url) 
         if username is not None:
             self._urluser = username  # basic authentication
         if password is not None:
@@ -1003,7 +1015,7 @@ class Video(object):
 
     def hasfilename(self):
         """Does the filename returned from `vipy.video.Video.filename` exist?"""
-        return self._filename is not None and os.path.exists(self._filename)
+        return self._filename is not None and (os.path.exists(self._filename) or isRTSPurl(self._filename))
 
     def isdownloaded(self):
         """Does the filename returned from `vipy.video.Video.filename` exist, meaning that the url has been downloaded to a local file?"""
@@ -1123,7 +1135,8 @@ class Video(object):
         try:
             url_scheme = urllib.parse.urlparse(self._url)[0]
             if isyoutubeurl(self._url):
-                vipy.videosearch.download(self._url, filefull(self._filename), writeurlfile=False, skip=ignoreErrors, verbose=verbose)
+                f = self._filename if filefull(self._filename) is None else filefull(self._filename)
+                vipy.videosearch.download(self._url, f, writeurlfile=False, skip=ignoreErrors, verbose=verbose)
                 for ext in ['mkv', 'mp4', 'webm']:
                     f = '%s.%s' % (self.filename(), ext)
                     if os.path.exists(f):
@@ -1166,7 +1179,11 @@ class Video(object):
                         break    
                 if not self.hasfilename():
                     raise ValueError('Downloaded filenot found "%s.*"' % self.filename())
-                
+
+            elif url_scheme == 'rtsp':
+                # https://ffmpeg.org/ffmpeg-protocols.html#rtsp
+                pass
+            
             else:
                 raise NotImplementedError(
                     'Invalid URL scheme "%s" for URL "%s"' %
@@ -1684,7 +1701,7 @@ class Video(object):
                 process.stdin.close()
                 process.wait()
             
-            elif self.isdownloaded() and self._isdirty():
+            elif (self.isdownloaded() and self._isdirty()) or isRTSPurl(self.filename()):
                 # Transcode the video file directly, do not load() then export
                 # Requires saving to a tmpfile if the output filename is the same as the input filename
                 tmpfile = '%s.tmp%s' % (filefull(outfile), fileext(outfile)) if outfile == self.filename() else outfile
