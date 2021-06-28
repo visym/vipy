@@ -2253,14 +2253,29 @@ def mutator_show_trackindex():
     """Mutate the image to show track index appended to the shortlabel as (####)"""
     return lambda im, k=None: (im.objectmap(lambda o: o.shortlabel('%s (%d)' % (o.shortlabel(), int(o.attributes['trackindex']))) if o.hasattribute('trackindex') else o))
 
+def mutator_show_trackonly():
+    """Mutate the image to show track as a consistently colored box with no shortlabels"""
+    f = mutator_show_trackindex()
+    return lambda im, k=None, f=f: f(im).objectmap(lambda o: o.shortlabel('__%s' % o.shortlabel()))  # prepending __shortlabel will not show it, but will color boxes correctly
+    
 def mutator_show_userstring(strlist):
     """Mutate the image to show user supplied strings in the shortlabel.  The list be the same length oas the number of objects in the image.  This is not checked.  This is passed to show()"""
     assert isinstance(strlist, list), "Invalid input"
     return lambda im, k=None, strlist=strlist: im.objectmap([lambda o,s=s: o.shortlabel(s) for s in strlist])
 
-def mutator_show_noun_only():
-    """Mutate the image to show the noun only"""
-    return lambda im, k=None: (im.objectmap(lambda o: o.shortlabel('\n'.join([n for (n,v) in o.attributes['noun verb']])) if o.hasattribute('noun verb') else o))
+def mutator_show_noun_only(nocaption=False):
+    """Mutate the image to show the noun only.  
+    
+    Args:
+        nocaption: [bool] If true, then do not display the caption, only consistently colored boxes for the noun. 
+    
+    ..note:: To color boxes by track rather than noun, use `vipy.image.mutator_show_trackonly`
+    """
+    return lambda im, k=None: (im.objectmap(lambda o: o.shortlabel('\n'.join([('__'+n if nocaption else n) for (n,v) in o.attributes['noun verb']])) if o.hasattribute('noun verb') else o))
+
+def mutator_show_nounonly(nocaption=False):
+    """Alias for `vipy.image.mutator_show_noun_only`"""
+    return mutator_show_noun_only(nocaption=nocaption)
 
 def mutator_show_verb_only():
     """Mutate the image to show the verb only"""
