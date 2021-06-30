@@ -846,7 +846,7 @@ def topath(filename, newdir):
 def filefull(f):
     """Return /a/b/c for filename /a/b/c.ext"""
     ext = fileext(f, multidot=True, withdot=True)
-    return f.replace(ext, '') if ext is not None else None
+    return f.replace(ext, '') if ext is not None else f
 
 
 def filetail(filename):
