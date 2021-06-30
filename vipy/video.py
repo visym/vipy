@@ -1123,8 +1123,18 @@ class Video(object):
         """Return the size in bytes of the filename(), None if the filename() is invalid"""
         return os.path.getsize(self.filename()) if self.hasfilename() else None
 
-    def download(self, ignoreErrors=False, timeout=10, verbose=True):
-        """Download URL to filename provided by constructor, or to temp filename"""
+    def download(self, ignoreErrors=False, timeout=10, verbose=True, max_filesize='350m'):
+        """Download URL to filename provided by constructor, or to temp filename.
+        
+        Args:
+            ignoreErrors: [bool] If true, show a warning and return the video object, otherwise throw an exception
+            timeout: [int] An integer timeout in seconds for the download to connect
+            verbose: [bool] If trye, show more verbose console output
+            max_filesize: [str] A string of the form 'NNNg' or 'NNNm' for youtube downloads to limit the maximum size of a URL to '350m' 350MB or '12g' for 12GB.
+
+        Returns:
+            This video object with the video downloaded to the filename()        
+        """
         if self._url is None and self._filename is not None:
             return self
         if self._url is None:
@@ -1136,7 +1146,7 @@ class Video(object):
             url_scheme = urllib.parse.urlparse(self._url)[0]
             if isyoutubeurl(self._url):
                 f = self._filename if filefull(self._filename) is None else filefull(self._filename)
-                vipy.videosearch.download(self._url, f, writeurlfile=False, skip=ignoreErrors, verbose=verbose)
+                vipy.videosearch.download(self._url, f, writeurlfile=False, skip=ignoreErrors, verbose=verbose, max_filesize=max_filesize)
                 for ext in ['mkv', 'mp4', 'webm']:
                     f = '%s.%s' % (self.filename(), ext)
                     if os.path.exists(f):
@@ -1171,7 +1181,7 @@ class Video(object):
                 vipy.downloader.scp(self._url, self.filename(), verbose=verbose)
  
             elif not isvideourl(self._url) and vipy.videosearch.is_downloadable_url(self._url):
-                vipy.videosearch.download(self._url, filefull(self._filename), writeurlfile=False, skip=ignoreErrors, verbose=verbose)
+                vipy.videosearch.download(self._url, filefull(self._filename), writeurlfile=False, skip=ignoreErrors, verbose=verbose, max_filesize=max_filesize)
                 for ext in ['mkv', 'mp4', 'webm']:
                     f = '%s.%s' % (self.filename(), ext)
                     if os.path.exists(f):
