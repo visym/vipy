@@ -32,7 +32,7 @@ class AVA(object):
     def _isdownloaded(self):
         return os.path.exists(os.path.join(self.datadir, 'ava_train_v2.2.csv'))
     
-    def _dataset(self, csvfile):
+    def _dataset(self, csvfile, downloaded=False):
         # AVA csv format: video_id, middle_frame_timestamp, scaled_person_box (xmin, ymin, xmax, ymax), action_id, person_id
 
         # video_id: YouTube identifier
@@ -58,10 +58,14 @@ class AVA(object):
         videos = [vipy.video.Scene(url='https://www.youtube.com/watch?v=%s' % video_id, filename=os.path.join(self.datadir, video_id)) for (k_video, (video_id, rowlist)) in enumerate(d_videoid_to_rows.items())]
         d = {filebase(f):f for f in vipy.util.findvideo(self.datadir)}  # already downloaded, youtube videos are tricky since we don't know the extension until it is downloaded...
         videos = [v.filename(d[filebase(v.filename())]) if filebase(v.filename()) in d else v for v in videos]
-        videos = vipy.batch.Batch(videos, warnme=False).map(lambda v: v.download(ignoreErrors=True) if not v.isdownloaded() else v).result()
+        videos = ([v.filename(d[filebase(v.filename())]) if filebase(v.filename()) in d else None for v in videos] if downloaded else   # only the videos that have been downloaded so far
+                  vipy.batch.Batch(videos, warnme=False).map(lambda v: v.download(ignoreErrors=True) if not v.isdownloaded() else v).result())
                     
         for (k_video, (video_id, rowlist)) in enumerate(d_videoid_to_rows.items()):
-            v = videos[k_video]            
+            v = videos[k_video]
+            if v is None:
+                continue
+            
             print('[vipy.dataset.ava][%d/%d]: Parsing "%s" with %d activities' % (k_video, len(d_videoid_to_rows), v.url(), len(rowlist)))            
 
             # Download or skip
