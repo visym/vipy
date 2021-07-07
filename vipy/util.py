@@ -1052,7 +1052,10 @@ def isyoutubeurl(path):
     return isurl(path) and 'youtube.com' in path
 
 def isRTSPurl(path):
-    return path.startswith('rtsp://')
+    return isurl(path) and path.startswith('rtsp://')
+
+def isRTMPurl(path):
+    return isurl(path) and path.startswith('rtmp://')
 
 def checkerboard(m=8,n=256):
     """m=number of square by column, n=size of final image"""
