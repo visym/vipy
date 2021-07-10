@@ -2349,7 +2349,7 @@ def owl():
                  category='Nature',
                  objects=[vipy.object.Detection('Great Horned Owl', xmin=350, ymin=320, width=1400, height=2100),
                           vipy.object.Detection('left eye', xmin=600, ymin=800, width=250, height=250), 
-                          vipy.object.Detection('right eye', xmin=1000, ymin=800, width=250, height=250)])
+                          vipy.object.Detection('right eye', xmin=1000, ymin=800, width=250, height=250)]).mindim(512)
 
 
 def vehicles():
@@ -2359,7 +2359,7 @@ def vehicles():
                  objects=[vipy.object.Detection(category="car", xywh=(473.0, 592.2, 92.4, 73.4)),
                           vipy.object.Detection(category="car", xywh=(1410.0, 756.1, 175.2, 147.3)),
                           vipy.object.Detection(category="car", xywh=(316.9, 640.1, 119.4, 119.5)),
-                          vipy.object.Detection(category="car", xywh=(886.9, 892.9, 223.8, 196.6))])
+                          vipy.object.Detection(category="car", xywh=(886.9, 892.9, 223.8, 196.6))]).mindim(512)
 
 def people():
     """Return a crowd scene with the four highest confidence person detections for testing"""
@@ -2368,5 +2368,5 @@ def people():
                  objects=[vipy.object.Detection(category="person", xywh=(1.8, 1178.7, 574.1, 548.0)),
                           vipy.object.Detection(category="person", xywh=(1589.4, 828.3, 363.0, 887.7)),
                           vipy.object.Detection(category="person", xywh=(1902.9, 783.1, 250.8, 825.8)),
-                          vipy.object.Detection(category="person", xywh=(228.2, 948.7, 546.8, 688.5))])
+                          vipy.object.Detection(category="person", xywh=(228.2, 948.7, 546.8, 688.5))]).mindim(512)
 

@@ -1055,7 +1055,7 @@ def isRTSPurl(path):
     return isurl(path) and path.startswith('rtsp://')
 
 def isRTMPurl(path):
-    return isurl(path) and path.startswith('rtmp://')
+    return isurl(path) and (path.startswith('rtmp://') or path.startswith('rtmps://'))
 
 def checkerboard(m=8,n=256):
     """m=number of square by column, n=size of final image"""

@@ -390,10 +390,11 @@ class Video(object):
                 if self._shape is not None:
                     (height, width) = self._shape
                     outfile = self._outfile if self._outfile is not None else self._url  # may be youtube/twitch live stream
+                    outrate = 30 if vipy.util.isRTMPurl(outfile) else self._video.framerate()
                     fiv = (ffmpeg.input('pipe:', format='rawvideo', pix_fmt='rgb24', s='{}x{}'.format(width, height), r=self._video.framerate()) 
                            .filter('pad', 'ceil(iw/2)*2', 'ceil(ih/2)*2'))
                     fi = ffmpeg.concat(fiv.filter('fps', fps=30, round='up'), ffmpeg.input('anullsrc', f='lavfi'), v=1, a=1) if isRTMPurl(outfile) else fiv  # empty audio for youtube-live
-                    fo = (fi.output(filename=self._outfile if self._outfile is not None else self._url, pix_fmt='yuv420p', vcodec=self._vcodec, f='flv' if vipy.util.isRTMPurl(outfile) else vipy.util.fileext(outfile, withdot=False))
+                    fo = (fi.output(filename=self._outfile if self._outfile is not None else self._url, pix_fmt='yuv420p', vcodec=self._vcodec, f='flv' if vipy.util.isRTMPurl(outfile) else vipy.util.fileext(outfile, withdot=False), g=2*outrate)
                           .overwrite_output() 
                           .global_args('-cpuflags', '0', '-loglevel', 'quiet' if not vipy.globals.isdebug() else 'debug'))
                     self._write_pipe = fo.run_async(pipe_stdin=True)
@@ -402,7 +403,10 @@ class Video(object):
                 return self
             
             def __exit__(self, type, value, tb):
-                """Write pipe context manager"""
+                """Write pipe context manager
+                
+                ..note:: This is triggered on ctrl-c as the last step for cleanup
+                """
                 if self._write_pipe is not None:
                     self._write_pipe.stdin.close()
                     self._write_pipe.wait()
@@ -411,7 +415,7 @@ class Video(object):
                 if type is not None:
                     raise
                 return self
-            
+                
             def __call__(self, im):
                 """alias for write()"""
                 return self.write(im)
