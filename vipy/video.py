@@ -278,7 +278,16 @@ class Video(object):
         return Image(array=img if img is not None else (self._array[k] if self.isloaded() else self.preview(k).array()), colorspace=self.colorspace())       
         
     def __iter__(self):
-        """Iterate over loaded video, yielding mutable frames"""
+        """Iterate over loaded video, yielding mutable frames.
+        
+        FIXME: this should really be replaced by default with:
+        
+        >>> for in im self.stream():
+        >>>     pass
+
+        This is much more efficient, and will be migrated to the default for frame iterators.
+
+        """
         self.load().numpy()  # triggers load and copy of read-only video buffer, mutable
         with np.nditer(self._array, op_flags=['readwrite']) as it:
             for k in range(0, len(self)):
