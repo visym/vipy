@@ -768,7 +768,7 @@ def ispklfile(filename):
 
 def ishtml(filename):
     """Is the file an HTMLfile"""
-    return fileext(filename).lower() == '.html'
+    return filename.lower()[-5:] == '.html'
 
 def ispickle(filename):
     """Is the file a pickle archive file"""
