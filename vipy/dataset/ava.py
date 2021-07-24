@@ -1,5 +1,6 @@
 import os
-from vipy.util import filetail, remkdir, readjson, groupbyasdict, filefull, readlist, readcsv
+import vipy.util
+from vipy.util import filetail, remkdir, readjson, groupbyasdict, filefull, readlist, readcsv, filebase
 import vipy.downloader
 from vipy.video import VideoCategory, Video, Scene
 import numpy as np
@@ -31,7 +32,7 @@ class AVA(object):
     def _isdownloaded(self):
         return os.path.exists(os.path.join(self.datadir, 'ava_train_v2.2.csv'))
     
-    def _dataset(self, csvfile):
+    def _dataset(self, csvfile, downloaded=False):
         # AVA csv format: video_id, middle_frame_timestamp, scaled_person_box (xmin, ymin, xmax, ymax), action_id, person_id
 
         # video_id: YouTube identifier
@@ -47,28 +48,35 @@ class AVA(object):
         vidlist = []
         d_category_to_index = self.categories()
         d_index_to_category = {v:k for (k,v) in d_category_to_index.items()}
+
+        # Parallel download
+        #
+        # >>> D = vipy.dataset.ava.AVA('/path/to')
+        # >>> with vipy.globals.parallel(8):
+        # >>>     V = D.valset()
+        #  
+        videos = [vipy.video.Scene(url='https://www.youtube.com/watch?v=%s' % video_id, filename=os.path.join(self.datadir, video_id)) for (k_video, (video_id, rowlist)) in enumerate(d_videoid_to_rows.items())]
+        d = {filebase(f):f for f in vipy.util.findvideo(self.datadir)}  # already downloaded, youtube videos are tricky since we don't know the extension until it is downloaded...
+        videos = [v.filename(d[filebase(v.filename())]) if filebase(v.filename()) in d else v for v in videos]
+        videos = ([v.filename(d[filebase(v.filename())]) if filebase(v.filename()) in d else None for v in videos] if downloaded else   # only the videos that have been downloaded so far
+                  vipy.batch.Batch(videos, warnme=False).map(lambda v: v.download(ignoreErrors=True) if not v.isdownloaded() else v).result())
+                    
         for (k_video, (video_id, rowlist)) in enumerate(d_videoid_to_rows.items()):
-            url = 'https://www.youtube.com/watch?v=%s' % video_id
-            print('[vipy.dataset.ava][%d/%d]: Parsing "%s" with %d activities' % (k_video, len(d_videoid_to_rows), url, len(rowlist)))
+            v = videos[k_video]
+            if v is None:
+                continue
             
-            startframe = 30*min([float(x[1]) for x in rowlist])
-            endframe = 30*(max([float(x[1]) for x in rowlist])+1.5)
-            framerate = 30000/1001.0   # FIXME: is this correct in general, or do we need to grab this from ffprobe?
-            
-            v = vipy.video.Scene(url=url,
-                                 filename=os.path.join(self.datadir, video_id),
-                                 startframe=startframe,
-                                 endframe=endframe,
-                                 framerate=framerate) 
+            print('[vipy.dataset.ava][%d/%d]: Parsing "%s" with %d activities' % (k_video, len(d_videoid_to_rows), v.url(), len(rowlist)))            
 
             # Download or skip
             if not v.isdownloaded():
-                print('[vipy.dataset.ava][%d/%d]: Downloading "%s" to get (width, height) required for AVA bounding boxes' % (k_video, len(d_videoid_to_rows), url))
-                v.download(ignoreErrors=True)
-                if not v.isdownloaded():
-                    print('[vipy.dataset.ava][%d/%d]: Download failed - SKIPPING' % (k_video, len(d_videoid_to_rows)))
-                    continue
-                
+                print('[vipy.dataset.ava][%d/%d]: Download failed - SKIPPING' % (k_video, len(d_videoid_to_rows)))
+                continue
+
+            framerate = v.framerate_of_videofile()
+            startframe = max(0, framerate*(min([float(x[1]) for x in rowlist])-1.5))
+            endframe = framerate*(max([float(x[1]) for x in rowlist])+1.5)            
+            v = v.framerate(framerate).clip(startframe, endframe)
             (height, width) = v.shape() 
 
             # Tracks are "actor_id" across the video
@@ -119,3 +127,4 @@ class AVA(object):
     def valset(self):
         return self._dataset(os.path.join(self.datadir, 'ava_val_v2.2.csv'))
 
+    

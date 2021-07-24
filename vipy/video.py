@@ -4,7 +4,7 @@ import dill
 from vipy.globals import print
 from vipy.util import remkdir, tempMP4, isurl, \
     isvideourl, templike, tempjpg, filetail, tempdir, isyoutubeurl, try_import, isnumpy, temppng, \
-    istuple, islist, isnumber, tolist, filefull, fileext, isS3url, totempdir, flatlist, tocache, premkdir, writecsv, iswebp, ispng, isgif, filepath, Stopwatch, toextension, isjsonfile, isRTSPurl
+    istuple, islist, isnumber, tolist, filefull, fileext, isS3url, totempdir, flatlist, tocache, premkdir, writecsv, iswebp, ispng, isgif, filepath, Stopwatch, toextension, isjsonfile, isRTSPurl, isRTMPurl
 from vipy.image import Image
 import vipy.geometry
 import vipy.math
@@ -135,7 +135,7 @@ class Video(object):
         elif self._url is not None:
             if isS3url(self._url):
                 self._filename = totempdir(self._url)  # Preserve S3 Object ID
-            elif isRTSPurl(self._url):
+            elif isRTSPurl(self._url) or isRTMPurl(self._url):
                 # https://ffmpeg.org/ffmpeg-protocols.html#rtsp                
                 self._filename = self._url                
             elif isvideourl(self._url):
@@ -144,7 +144,7 @@ class Video(object):
                 self._filename = os.path.join(tempdir(), '%s' % self._url.split('?')[1].split('&')[0])
             else:
                 self._filename = totempdir(self._url)  
-            if vipy.globals.cache() is not None and self._filename is not None and not isRTSPurl(self._filename):
+            if vipy.globals.cache() is not None and self._filename is not None and not isRTSPurl(self._filename) and not isRTMPurl(self._filename):
                 self._filename = os.path.join(remkdir(vipy.globals.cache()), filetail(self._filename))
 
         # Initial video shape: useful to avoid preview()
@@ -278,7 +278,16 @@ class Video(object):
         return Image(array=img if img is not None else (self._array[k] if self.isloaded() else self.preview(k).array()), colorspace=self.colorspace())       
         
     def __iter__(self):
-        """Iterate over loaded video, yielding mutable frames"""
+        """Iterate over loaded video, yielding mutable frames.
+        
+        FIXME: this should really be replaced by default with:
+        
+        >>> for in im self.stream():
+        >>>     pass
+
+        This is much more efficient, and will be migrated to the default for frame iterators.
+
+        """
         self.load().numpy()  # triggers load and copy of read-only video buffer, mutable
         with np.nditer(self._array, op_flags=['readwrite']) as it:
             for k in range(0, len(self)):
@@ -347,6 +356,14 @@ class Video(object):
         >>>     for im in vi.stream():
         >>>         s.write(im)  # manipulate pixels of im, if desired
 
+        Create a YouTube live stream from an RTSP camera at 5Hz 
+        
+        >>> vo = vipy.video.Scene(url='rtmp://a.rtmp.youtube.com/live2/$SECRET_STREAM_KEY')
+        >>> vi = vipy.video.Scene(url='rtsp://URL').framerate(5)
+        >>> with vo.framerate(5).stream(write=True) as s:
+        >>>     for im in vi.framerate(5).stream():
+        >>>         s.write(im.mindim(256))
+
         Args:
             write: [bool]  If true, create a write stream
             overwrite: [bool]  If true, and the video output filename already exists, overwrite it
@@ -381,17 +398,24 @@ class Video(object):
 
                 if self._shape is not None:
                     (height, width) = self._shape
-                    self._write_pipe = ffmpeg.input('pipe:', format='rawvideo', pix_fmt='rgb24', s='{}x{}'.format(width, height), r=self._framerate) \
-                                             .filter('pad', 'ceil(iw/2)*2', 'ceil(ih/2)*2') \
-                                             .output(filename=self._outfile, pix_fmt='yuv420p', vcodec=self._vcodec) \
-                                             .overwrite_output() \
-                                             .global_args('-cpuflags', '0', '-loglevel', 'quiet' if not vipy.globals.isdebug() else 'debug') \
-                                             .run_async(pipe_stdin=True)
+                    outfile = self._outfile if self._outfile is not None else self._url  # may be youtube/twitch live stream
+                    outrate = 30 if vipy.util.isRTMPurl(outfile) else self._video.framerate()
+                    fiv = (ffmpeg.input('pipe:', format='rawvideo', pix_fmt='rgb24', s='{}x{}'.format(width, height), r=self._video.framerate()) 
+                           .filter('pad', 'ceil(iw/2)*2', 'ceil(ih/2)*2'))
+                    fi = ffmpeg.concat(fiv.filter('fps', fps=30, round='up'), ffmpeg.input('anullsrc', f='lavfi'), v=1, a=1) if isRTMPurl(outfile) else fiv  # empty audio for youtube-live
+                    fo = (fi.output(filename=self._outfile if self._outfile is not None else self._url, pix_fmt='yuv420p', vcodec=self._vcodec, f='flv' if vipy.util.isRTMPurl(outfile) else vipy.util.fileext(outfile, withdot=False), g=2*outrate)
+                          .overwrite_output() 
+                          .global_args('-cpuflags', '0', '-loglevel', 'quiet' if not vipy.globals.isdebug() else 'debug'))
+                    self._write_pipe = fo.run_async(pipe_stdin=True)
+                    
                 self._frame_index = 0
                 return self
             
             def __exit__(self, type, value, tb):
-                """Write pipe context manager"""
+                """Write pipe context manager
+                
+                ..note:: This is triggered on ctrl-c as the last step for cleanup
+                """
                 if self._write_pipe is not None:
                     self._write_pipe.stdin.close()
                     self._write_pipe.wait()
@@ -400,7 +424,7 @@ class Video(object):
                 if type is not None:
                     raise
                 return self
-            
+                
             def __call__(self, im):
                 """alias for write()"""
                 return self.write(im)
@@ -946,7 +970,7 @@ class Video(object):
         """Video URL and URL download properties"""
         if url is not None:
             self._url = url  # note that this does not change anything else, better to use the constructor for this
-        if url is not None and isRTSPurl(url):
+        if url is not None and (isRTSPurl(url) or isRTMPurl(url)):
             self.filename(self._url) 
         if username is not None:
             self._urluser = username  # basic authentication
@@ -1015,7 +1039,7 @@ class Video(object):
 
     def hasfilename(self):
         """Does the filename returned from `vipy.video.Video.filename` exist?"""
-        return self._filename is not None and (os.path.exists(self._filename) or isRTSPurl(self._filename))
+        return self._filename is not None and (os.path.exists(self._filename) or isRTSPurl(self._filename) or isRTMPurl(self._filename))
 
     def isdownloaded(self):
         """Does the filename returned from `vipy.video.Video.filename` exist, meaning that the url has been downloaded to a local file?"""
@@ -1123,8 +1147,18 @@ class Video(object):
         """Return the size in bytes of the filename(), None if the filename() is invalid"""
         return os.path.getsize(self.filename()) if self.hasfilename() else None
 
-    def download(self, ignoreErrors=False, timeout=10, verbose=True):
-        """Download URL to filename provided by constructor, or to temp filename"""
+    def download(self, ignoreErrors=False, timeout=10, verbose=True, max_filesize='350m'):
+        """Download URL to filename provided by constructor, or to temp filename.
+        
+        Args:
+            ignoreErrors: [bool] If true, show a warning and return the video object, otherwise throw an exception
+            timeout: [int] An integer timeout in seconds for the download to connect
+            verbose: [bool] If trye, show more verbose console output
+            max_filesize: [str] A string of the form 'NNNg' or 'NNNm' for youtube downloads to limit the maximum size of a URL to '350m' 350MB or '12g' for 12GB.
+
+        Returns:
+            This video object with the video downloaded to the filename()        
+        """
         if self._url is None and self._filename is not None:
             return self
         if self._url is None:
@@ -1136,7 +1170,7 @@ class Video(object):
             url_scheme = urllib.parse.urlparse(self._url)[0]
             if isyoutubeurl(self._url):
                 f = self._filename if filefull(self._filename) is None else filefull(self._filename)
-                vipy.videosearch.download(self._url, f, writeurlfile=False, skip=ignoreErrors, verbose=verbose)
+                vipy.videosearch.download(self._url, f, writeurlfile=False, skip=ignoreErrors, verbose=verbose, max_filesize=max_filesize)
                 for ext in ['mkv', 'mp4', 'webm']:
                     f = '%s.%s' % (self.filename(), ext)
                     if os.path.exists(f):
@@ -1171,7 +1205,7 @@ class Video(object):
                 vipy.downloader.scp(self._url, self.filename(), verbose=verbose)
  
             elif not isvideourl(self._url) and vipy.videosearch.is_downloadable_url(self._url):
-                vipy.videosearch.download(self._url, filefull(self._filename), writeurlfile=False, skip=ignoreErrors, verbose=verbose)
+                vipy.videosearch.download(self._url, filefull(self._filename), writeurlfile=False, skip=ignoreErrors, verbose=verbose, max_filesize=max_filesize)
                 for ext in ['mkv', 'mp4', 'webm']:
                     f = '%s.%s' % (self.filename(), ext)
                     if os.path.exists(f):
@@ -1701,7 +1735,7 @@ class Video(object):
                 process.stdin.close()
                 process.wait()
             
-            elif (self.isdownloaded() and self._isdirty()) or isRTSPurl(self.filename()):
+            elif (self.isdownloaded() and self._isdirty()) or isRTSPurl(self.filename()) or isRTMPurl(self.filename()):
                 # Transcode the video file directly, do not load() then export
                 # Requires saving to a tmpfile if the output filename is the same as the input filename
                 tmpfile = '%s.tmp%s' % (filefull(outfile), fileext(outfile)) if outfile == self.filename() else outfile

@@ -846,7 +846,7 @@ def topath(filename, newdir):
 def filefull(f):
     """Return /a/b/c for filename /a/b/c.ext"""
     ext = fileext(f, multidot=True, withdot=True)
-    return f.replace(ext, '') if ext is not None else None
+    return f.replace(ext, '') if ext is not None else f
 
 
 def filetail(filename):
@@ -1052,7 +1052,10 @@ def isyoutubeurl(path):
     return isurl(path) and 'youtube.com' in path
 
 def isRTSPurl(path):
-    return path.startswith('rtsp://')
+    return isurl(path) and path.startswith('rtsp://')
+
+def isRTMPurl(path):
+    return isurl(path) and (path.startswith('rtmp://') or path.startswith('rtmps://'))
 
 def checkerboard(m=8,n=256):
     """m=number of square by column, n=size of final image"""
