@@ -2370,3 +2370,11 @@ def people():
                           vipy.object.Detection(category="person", xywh=(1902.9, 783.1, 250.8, 825.8)),
                           vipy.object.Detection(category="person", xywh=(228.2, 948.7, 546.8, 688.5))]).mindim(512)
 
+def show(img, mindim=512, figure=1):
+    """Fast visualization of a numpy array img
+        
+    >>> im = vipy.image.show(np.random.rand(16,16,3))
+
+    """
+    assert isnumpy(img)
+    return vipy.image.Image(array=np.array(img).astype(np.float32), colorspace='float').mindim(mindim, interp='nearest').show(figure=figure)
