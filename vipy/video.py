@@ -1592,6 +1592,12 @@ class Video(object):
         self.shape(shape=(d+1, d+1))
         return self.crop(vipy.geometry.BoundingBox(xmin=0, ymin=0, width=int(d), height=int(d)))
 
+    def minsquare(self):
+        """Return a square crop of the video, preserving the upper left corner of the video"""
+        d = min(self.shape())
+        self.shape(shape=(d, d))
+        return self.crop(vipy.geometry.BoundingBox(xmin=0, ymin=0, width=int(d), height=int(d)))
+    
     def maxmatte(self):
         return self.zeropad(max(1, int((max(self.shape()) - self.width())/2)), max(int((max(self.shape()) - self.height())/2), 1))
     
