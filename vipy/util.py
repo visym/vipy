@@ -190,9 +190,9 @@ def groupbyasdict(togroup, keyfunc):
     """
     return {k: list(v) for (k, v) in groupby(togroup, keyfunc)}
 
-def countby(inset, keyfunc):
-    """Return dictionary of keys and group sizes for a grouping of the input list by keyfunc lambda function""" 
-    return {k:len(v) for (k,v) in groupbyasdict(inset, keyfunc).items()}
+def countby(inset, keyfunc=lambda x: x):
+    """Return dictionary of keys and group sizes for a grouping of the input list by keyfunc lambda function, sorted by increasing count""" 
+    return {k:v for (k,v) in sorted({k:len(v) for (k,v) in groupbyasdict(inset, keyfunc).items()}.items(), key=lambda x: x[1])}
 
 def most_frequent(inset):
     """Return the most frequent element as determined by element equality"""
