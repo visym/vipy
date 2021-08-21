@@ -171,9 +171,12 @@ class Video(object):
         if array is not None:
             self.array(array)
             self.colorspace(colorspace)
-        elif frames is not None:
+        elif frames is not None and (isinstance(frames, list) or isinstance(frames, tuple)) and all([isinstance(im, vipy.image.Image) for im in frames]):
             self.fromframes(frames)
-
+        elif frames is not None and (isinstance(frames, list) or isinstance(frames, tuple)) and all([isinstance(im, str) and os.path.exists(im) for im in frames]):
+            self.fromframes([vipy.image.Image(filename=f) for f in frames])
+        elif frames is not None and (isinstance(frames, str) and os.path.isdir(frames)):
+            self.fromdirectory(frames)
             
         
     @classmethod
@@ -1077,10 +1080,22 @@ class Video(object):
         """Alias for self.array(..., copy=True), which forces the new array to be a copy"""
         return self.array(array, copy=True)
 
+    def fromdirectory(self, indir, sortkey=None):
+        """Create a video from a directory of frames stored as individual image filenames.
+        
+        Given a directory with files:
+        
+        framedir/image_0001.jpg
+        framedir/image_0002.jpg
+        
+        >>> vipy.video.Video(frames='/path/to/framedir')
+        """
+        return self.fromframes([vipy.image.Image(filename=f) for f in sorted(vipy.util.imlist(indir), key=sortkey)])
+                                
     def fromframes(self, framelist, copy=True):
         """Create a video from a list of frames"""
         assert all([isinstance(im, vipy.image.Image) for im in framelist]), "Invalid input"
-        return self.array(np.stack([im.array() if im.array().ndim == 3 else np.expand_dims(im.array(), 2) for im in framelist]), copy=copy).colorspace(framelist[0].colorspace())
+        return self.array(np.stack([im.load().array() if im.load().array().ndim == 3 else np.expand_dims(im.load().array(), 2) for im in framelist]), copy=copy).colorspace(framelist[0].colorspace())
     
     def tonumpy(self):
         """Alias for numpy()"""
