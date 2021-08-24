@@ -1147,6 +1147,10 @@ class Video(object):
         """Return the size in bytes of the filename(), None if the filename() is invalid"""
         return os.path.getsize(self.filename()) if self.hasfilename() else None
 
+    def downloadif(self, ignoreErrors=False, timeout=10, verbose=True, max_filesize='350m'):
+        """Download URL to filename if the filename has not already been downloaded"""
+        return self.download(ignoreErrors=ignoreErrors, timeout=timeout, verbose=verbose, max_filesize=max_filesize) if self.hasurl() and not self.isdownloaded() else self
+    
     def download(self, ignoreErrors=False, timeout=10, verbose=True, max_filesize='350m'):
         """Download URL to filename provided by constructor, or to temp filename.
         
@@ -2816,10 +2820,10 @@ class Scene(VideoCategory):
         csv = [(self.filename(), # video filename
                 k,  # frame number (zero indexed)
                 d.category(), d.shortlabel(), # track category and shortlabel (displayed in caption)
-                ';'.join([a.category() for a in self.activities()[d.attributes['activityid']]] if 'activityid' in d.attributes else ''), # semicolon separated activity ID assocated with track
+                ';'.join([self.activities(id=aid).category() for aid in tolist(d.attributes['activityid'])] if 'activityid' in d.attributes else ''), # semicolon separated activity category associated with track
                 d.xmin(), d.ymin(), d.width(), d.height(),   # bounding box
                 d.attributes['trackid'],  # globally unique track ID
-                ';'.join([a.id() for a in self.activities()[d.attributes['activityid']]] if 'activityid' in d.attributes else '')) # semicolon separated activity ID assocated with track
+                ';'.join([aid for aid in tolist(d.attributes['activityid'])] if 'activityid' in d.attributes else '')) # semicolon separated activity ID associated with track
                for (k,im) in enumerate(self) for d in im.objects()]
         csv = [('# video_filename', 'frame_number', 'object_category', 'object_shortlabel', 'activity categories(;)', 'xmin', 'ymin', 'width', 'height', 'track_id', 'activity_ids(;)')] + csv
         return writecsv(csv, outfile) if outfile is not None else csv
