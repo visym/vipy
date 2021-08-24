@@ -3,7 +3,11 @@ import numpy as np
 import copy
 
 from vipy.util import try_import
-try_import('torch'); import torch
+try_import('torch');
+
+import torch
+import torch.utils.data
+from torch.utils.data import DataLoader, random_split
 
 
 def fromtorch(x):
@@ -110,4 +114,71 @@ class Foveation(LaplacianPyramid):
         
     def foveate(self, tx=0, ty=0, sx=1.0, sy=1.0):
         return self.__call__(tx=tx, ty=ty, sx=sx, sy=sy)
+    
+
+
+class TorchDataset(torch.utils.data.Dataset):
+    """Converter from a pycollector dataset to a torch dataset"""
+    def __init__(self, f_transformer, d):
+        assert isinstance(d, Dataset), "Invalid input"
+        assert callable(f_transformer), "Invalid input"
+        self._f_transformer = dill.dumps(f_transformer)  # for torch serialization of lambda functions        
+        self.dataset = d
+        
+    def _unpack(self):
+        if isinstance(self._f_transformer, bytes):
+            self._f_transformer = dill.loads(self._f_transformer)        
+        return self
+
+    def __iter__(self):
+        for k in range(len(self)):
+            yield self[k]
+            
+    def __getitem__(self, k):
+        """Should return tuple(tensor, index)"""
+        x = self._unpack()._f_transformer(self.dataset[k])
+        assert isinstance(x, tuple) and len(x) == 2 and isinstance(x[0], torch.Tensor) and isinstance(x[1], int)
+        return x
+
+    def __len__(self):
+        return len(self.dataset)
+
+
+class TorchTensordir(torch.utils.data.Dataset):
+    """A torch dataset stored as a directory of .pkl.bz2 files each containing a list of [(tensor, str=json.dumps(label)), ...] tuples used for data augmented training.
+    
+       This is useful to use the default Dataset loaders in Torch.
+    
+    .. note:: Use python random() and not numpy random 
+    """
+    def __init__(self, tensordir, verbose=True, reseed=True):
+        assert os.path.isdir(tensordir)
+        self._dirlist = [s for s in vipy.util.extlist(tensordir, '.pkl.bz2')]
+        self._verbose = verbose
+        self._reseed = reseed
+
+    def __getitem__(self, k):
+        if self._reseed:
+            random.seed()  # force randomness after fork()
+
+        assert k >= 0 and k < len(self._dirlist)
+        for j in range(0,3):
+            try:
+                obj = vipy.util.bz2pkl(self._dirlist[k])  # load me
+                assert len(obj) > 0, "Invalid augmentation"
+                (t, lbl) = obj[random.randint(0, len(obj))]  # choose one tensor at random
+                assert t is not None and json.loads(lbl) is not None, "Invalid augmentation"  # get another one if the augmentation was invalid
+                return (t, lbl)
+            except:
+                time.sleep(1)  # try again after a bit if another process is augmenting this .pkl.bz2 in parallel
+        if self._verbose:
+            print('[vipy.dataset.TorchTensordir][WARNING]: %s corrupted or invalid' % self._dirlist[k])
+        return self.__getitem__(random.randint(0, len(self)))  # maximum retries reached, get another one
+
+    def __len__(self):
+        return len(self._dirlist)
+
+    def filter(self, f):
+        self._dirlist = [x for x in self._dirlist if f(x)]
+        return self
     

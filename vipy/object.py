@@ -610,10 +610,13 @@ class Track(object):
             self._id = newid
             return self
 
-    def clone(self, startframe=None, endframe=None):
+    def clone(self, startframe=None, endframe=None, rekey=False):
         #return copy.deepcopy(self)  
-        return Track.from_json(self.json(encode=False)) if (startframe is None and endframe is None) else self.clone_during(startframe, endframe)  # 2x faster than deepcopy
-
+        t = Track.from_json(self.json(encode=False)) if (startframe is None and endframe is None) else self.clone_during(startframe, endframe)  # 2x faster than deepcopy
+        if rekey:
+            global DETECTION_GUID; t.id(newid=hex(int(DETECTION_GUID))[2:]);  DETECTION_GUID = DETECTION_GUID + 1;  # faster, increment package level UUID4 initialized GUID
+        return t
+    
     def clone_during(self, startframe, endframe):
         """Clone a track during a specific interval (startframe, endframe) relative to the framerate of the track.
 
@@ -800,7 +803,6 @@ class Track(object):
              - average [bool]:  average framewise interpolated boxes at overlapping keyframes
              - replace [bool]:  replace the box with other if other and self overlap at a keyframe
              - keep [bool]:  keep the box from self (discard other) at a keyframe
-
         """
         assert isinstance(other, Track), "Invalid input - must be vipy.object.Track()"
         assert other.category() == self.category(), "Category mismatch"

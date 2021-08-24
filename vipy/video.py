@@ -3225,7 +3225,17 @@ class Scene(VideoCategory):
                     deleted.add(ti.id())
         self.trackfilter(lambda t: t.id() not in deleted)  # remove duplicate tracks
         return self
+
+    def combine(self, other):
+        """Combine the activities and tracks from both scenes into self"""
+        assert isinstance(other, Scene), "Invalid input - must be vipy.video.Scene() object and not type=%s" % str(type(other))
+        assert self.framerate() == other.framerate()
+        o = other.clone(rekey=True)   # make sure keys are unique
+        self.activities().update(o.activities())
+        self.tracks().update(o.tracks())
+        return self
     
+        
     def union(self, other, temporal_iou_threshold=0.5, spatial_iou_threshold=0.6, strict=True, overlap='average', percentilecover=0.8, percentilesamples=100, activity=True, track=True):
         """Compute the union two scenes as the set of unique activities and tracks.  
 
@@ -3319,6 +3329,41 @@ class Scene(VideoCategory):
             self.activities(sc.activitylist())  # union of activities only: may reference tracks not in self of track=False
         return self        
 
+
+    def trackmatch(self, other, spatial_iou_threshold=0.6, percentilecover=0.8, percentilesamples=100, activitymatch=True):
+        """Match tracks one-to-one in self with other.  
+
+        Args:
+            -other: [vipy.video.Scene]
+            -spatial_iou_threshold:  The intersection over union threshold for the mean of the two segments of an overlapping track, Disable by setting to 1.0
+            -percentilecover [0,1]:  When determining the assignment of two tracks, compute the percentilecover of two tracks by ranking the cover in the overlapping segment and computing the mean of the top-k assignments, where k=len(segment)*percentilecover.
+            -percentilesamples [>1]:  the number of samples along the overlapping scemgne for computing percentile cover
+            -activitymatch [bool]: matching of activities also, so that tracks matched inherit activities 
+
+           Output:
+             -Updates this scene to include only those tracks that match with other.  If activitymatch=True, then this inherits activities that are associated with the matched tracks
+
+        Notes:
+            -Matched tracks inherit activities from other
+            -unmatched tracks are removed. 
+            -Useful for proposal assignment.
+        """
+        assert isinstance(other, vipy.video.Scene)
+        assert other.framerate() == self.framerate()  
+        matched = set([])
+        for ti in self.tracklist():
+            for (tj, c) in sorted([(t, ti.segment_percentilecover(t, percentile=percentilecover, samples=percentilesamples)) for t in other.tracklist()], key=lambda x: x[1], reverse=True):
+                if c >= spatial_iou_threshold and ti.category() == tj.category():
+                    matched.add(ti.id())
+                    for a in other.activitylist():
+                        if a.hastrack(tj) and a.id() not in self.activities() and activitymatch:
+                            self.activities().update({a.id():a.clone().replace(tj, ti)})
+                        elif a.hastrack(tj) and a.id() in self.activities() and activitymatch:
+                            self.activities()[a.id()].append(ti)
+                    break
+        return self.trackfilter(lambda t: t.id() in matched, activitytrack=True)
+    
+    
     def annotate(self, outfile=None, fontsize=10, captionoffset=(0,0), textfacecolor='white', textfacealpha=1.0, shortlabel=True, boxalpha=0.25, d_category2color={'Person':'green', 'Vehicle':'blue', 'Object':'red'}, categories=None, nocaption=False, nocaption_withstring=[], mutator=None, timestamp=None, timestampcolor='black', timestampfacecolor='white', verbose=True):
         """Generate a video visualization of all annotated objects and activities in the video.
         

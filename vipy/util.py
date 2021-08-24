@@ -402,6 +402,12 @@ def jet(n, bgr=False):
     return rgb if bgr is False else np.fliplr(rgb)
 
 
+def is_email_address(email):
+    """Is the provided string an email address?"""
+    regex = r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b'
+    return re.fullmatch(regex, email) is not None
+
+
 def is_hiddenfile(filename):
     """Does the filename start with a period?"""
     return filename[0] == '.'
