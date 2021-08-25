@@ -116,7 +116,7 @@ class Activity(object):
         else:
             self._actorid = actorid
             if actorid not in self._trackid:
-                self._trackid.append(actorid)
+                self._trackid.add(actorid) if isinstance(self._trackid, set) else self._trackid.append(actorid)                    
             return self
 
     def startframe(self, f=None):
@@ -217,7 +217,7 @@ class Activity(object):
     def append(self, newtrack):
         """Append newtrack to this activity and set as actorid()"""
         assert isinstance(newtrack, Track), "Invalid input - must be vipy.object.Track"
-        self._trackid.add(newtrack.id())
+        self._trackid.add(newtrack.id()) if isinstance(self._trackid, set) else self._trackid.append(newtrack.id())
         self.actorid(newtrack.id())
         return self
 
