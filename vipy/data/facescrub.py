@@ -10,7 +10,7 @@ class FaceScrub(object):
         self._dataset = []  # parsed and validated ImageDetections
 
     def __repr__(self):
-        return str('<vipy.dataset.facescrub: %s>' % self._datadir)
+        return str('<vipy.data.facescrub: %s>' % self._datadir)
 
     def __len__(self):
         return len(self._dataset)
@@ -43,7 +43,7 @@ class FaceScrub(object):
         D = []
         for (k,p) in enumerate(P):
             if k % 1000 == 0:
-                print('[vipy.dataset.facescrub][%d/%d]: validating dataset... (successful download?, good bounding box?, loadable image?)' % (k, len(P)))
+                print('[vipy.data.facescrub][%d/%d]: validating dataset... (successful download?, good bounding box?, loadable image?)' % (k, len(P)))
             if not p.invalid() and p.load(ignoreErrors=True, fetch=False) is not None:
                 D.append(p.flush())
         self._dataset = D  # cache
@@ -53,7 +53,7 @@ class FaceScrub(object):
         return self._dataset if len(self) > 0 else self.validate().dataset()
 
     def stats(self):
-        print('[vipy.dataset.facescrub]: %f percent downloaded' % (float(len(self.parse())) / float(len(self.dataset()))))
+        print('[vipy.data.facescrub]: %f percent downloaded' % (float(len(self.parse())) / float(len(self.dataset()))))
 
     def subjects(self):
         return list(set([im.category() for im in self.dataset()]))

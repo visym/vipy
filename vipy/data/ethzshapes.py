@@ -16,7 +16,7 @@ class ETHZShapes(object):
         self.datadir = remkdir(datadir)
 
     def __repr__(self):
-        return str('<vipy.dataset.ethzshapes: "%s">' % self.datadir)
+        return str('<vipy.data.ethzshapes: "%s">' % self.datadir)
 
     def download_and_unpack(self):
         vipy.downloader.download_and_unpack(URL, self.datadir, sha1=SHA1)

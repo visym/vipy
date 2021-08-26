@@ -28,7 +28,7 @@ class MultiMoments(object):
             raise ValueError('Not downloaded - datadir="/path/to/dir" such that "/path/to/dir/moments_categories.txt" exists.  See http://moments.csail.mit.edu/')
             
     def __repr__(self):
-        return str('<vipy.dataset.multimoments: datadir="%s">' % (self.datadir))
+        return str('<vipy.data.multimoments: datadir="%s">' % (self.datadir))
 
     def _isdownloaded(self):
         return os.path.exists(os.path.join(self.datadir, 'moments_categories.txt'))

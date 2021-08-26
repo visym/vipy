@@ -27,7 +27,7 @@ class LFW(object):
         return self._dataset[k]
     
     def __repr__(self):
-        return str("<vipy.dataset.lfw: '%s'>" % self.lfwdir)
+        return str("<vipy.data.lfw: '%s'>" % self.lfwdir)
 
     def subjects(self):
         """List of all subject names"""

@@ -45,7 +45,7 @@ class AFLW(object):
             raise ValueError('Download AFLW dataset manually to "%s" ' % self.datadir)
 
     def __repr__(self):
-        return str('<vipy.dataset.aflw: %s>' % self.datadir)
+        return str('<vipy.data.aflw: %s>' % self.datadir)
 
     def dataset(self):
         csvfile = os.path.join(self.datadir, 'aflw.csv')
@@ -94,7 +94,7 @@ class AFLW(object):
                 annoDict['FACE_HEIGHT'] = facerect[3]
 
                 row = [annoDict[key] if key in annoDict.keys() else '' for key in SCHEMA]
-                print('[vipy.dataset.aflw]: exporting %d points for face "%s" ' % (len(ptsQuery), faceid))
+                print('[vipy.data.aflw]: exporting %d points for face "%s" ' % (len(ptsQuery), faceid))
                 f.writerow(row)
 
         db.close()

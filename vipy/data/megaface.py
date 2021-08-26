@@ -10,7 +10,7 @@ class MF2(object):
         self.datadir = remkdir(datadir)
 
     def __repr__(self):
-        return str('<vipy.dataset.megaface: "%s">' % self.datadir)
+        return str('<vipy.data.megaface: "%s">' % self.datadir)
 
     def _trainset(self):
         """Save a csv file containing each image on a line for Megaface_Challenge_1M_disjoint_LOOSE.tar.gz"""
@@ -45,7 +45,7 @@ class Megaface(object):
         self.datadir = datadir
 
     def __repr__(self):
-        return str('<vipy.dataset.megaface: %s>' % self.datadir)
+        return str('<vipy.data.megaface: %s>' % self.datadir)
 
     def _attributes(self, imgfile):
         return json.load(open(imgfile + '.json', 'r'))

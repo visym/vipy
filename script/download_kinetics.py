@@ -1,5 +1,5 @@
 import sys
-from vipy.dataset.kinetics import Kinetics700
+from vipy.data.kinetics import Kinetics700
 from vipy.batch import Batch
 from vipy.util import print_and_return
 

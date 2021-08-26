@@ -1,16 +1,16 @@
 import os
 import numpy as np
 import vipy
-from vipy.dataset.mnist import MNIST
+from vipy.data.mnist import MNIST
 import pickle
 
 URL = 'https://www.cs.toronto.edu/~kriz/cifar-10-python.tar.gz'
 
 
 class CIFAR10(MNIST):
-    """vipy.dataset.cifar.CIFAR10 class
+    """vipy.data.cifar.CIFAR10 class
 
-    >>> D = vipy.dataset.cifar.CIFAR10('/path/to/outdir')
+    >>> D = vipy.data.cifar.CIFAR10('/path/to/outdir')
     >>> (x,y) = D.trainset()
     >>> im = D[0].mindim(512).show()
 
@@ -20,7 +20,7 @@ class CIFAR10(MNIST):
         self.outdir = vipy.util.remkdir(outdir)
 
         if not os.path.exists(os.path.join(outdir, 'cifar-10-batches-py', 'data_batch_1')):
-            print('[vipy.dataset.cifar10]: downloading CIFAR-10 to "%s"' % self.outdir)
+            print('[vipy.data.cifar10]: downloading CIFAR-10 to "%s"' % self.outdir)
             vipy.downloader.download_and_unpack(URL, self.outdir)
 
         self._archives = [os.path.join(outdir, 'cifar-10-batches-py', 'data_batch_%d' % k) for k in range(1,6)]

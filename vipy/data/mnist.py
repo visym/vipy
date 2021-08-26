@@ -22,7 +22,7 @@ class MNIST(object):
         """download URLS above to outdir, then run export()"""
         self.outdir = remkdir(outdir)
         if not self._downloaded():
-            print('[vipy.dataset.mnist]: downloading MNIST to "%s"' % self.outdir)
+            print('[vipy.data.mnist]: downloading MNIST to "%s"' % self.outdir)
             self._wget()
 
     def _downloaded(self):

@@ -23,7 +23,7 @@ class KTHActions(object):
         self.datadir = remkdir(datadir)
 
     def __repr__(self):
-        return str('<vipy.dataset.kthactions: %s>' % self.datadir)
+        return str('<vipy.data.kthactions: %s>' % self.datadir)
 
     def split(self):
         trainPeople = ['person02','person03','person05','person06','person07','person08','person09','person10','person22']
@@ -33,7 +33,7 @@ class KTHActions(object):
         return (trainset, testset)
 
     def download_and_unpack(self):
-        print('[vipy.dataset.kthactions][WARNING]: downloads will not show percent progress since content length is unknown')
+        print('[vipy.data.kthactions][WARNING]: downloads will not show percent progress since content length is unknown')
         for (url, label, sha1) in zip(URLS, LABELS, SHA1):
             vipy.downloader.download_and_unpack(url, self.datadir, sha1=sha1)
 

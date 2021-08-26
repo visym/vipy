@@ -21,7 +21,7 @@ class Charades(object):
             raise ValueError('Not downloaded')
             
     def __repr__(self):
-        return str('<vipy.dataset.charades: datadir="%s", annotations="%s">' % (self.datadir, self.annodir))
+        return str('<vipy.data.charades: datadir="%s", annotations="%s">' % (self.datadir, self.annodir))
 
     def _isdownloaded(self):
         return os.path.exists(os.path.join(self.annodir, 'Charades_v1_train.csv')) and os.path.exists(os.path.join(self.datadir, 'ZZXQF.mp4'))
@@ -51,7 +51,7 @@ class Charades(object):
                     except KeyboardInterrupt:
                         raise
                     except Exception as e:
-                        print('[vipy.dataset.charades]: SKIPPING invalid activity row="%s" with error "%s"' % (str(row),str(e)))
+                        print('[vipy.data.charades]: SKIPPING invalid activity row="%s" with error "%s"' % (str(row),str(e)))
                         
         return list(d_videoid_to_video.values())
 

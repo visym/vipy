@@ -49,7 +49,7 @@ class YouTubeFaces(object):
         imlist = []
         categorydir = os.path.join(self.ytfdir, 'frame_images_DB')
         for i,infilename in enumerate(glob('%s/*labeled_faces.txt' % categorydir)):
-            print('[vipy.dataset.youtubefaces:] parsing "%s" ' % infilename)
+            print('[vipy.data.youtubefaces:] parsing "%s" ' % infilename)
             with open(infilename, 'r') as infile:
                 for line in infile:
                     (imname, ignore, x_ctr, y_ctr, w, h, ignore, ignore) = line.split(',')

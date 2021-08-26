@@ -12,7 +12,7 @@ class VGGFaceURL(object):
         self._subjects = None
 
     def __repr__(self):
-        return str('<vipy.dataset.vggfaceurl: %s>' % self.datadir)
+        return str('<vipy.data.vggfaceurl: %s>' % self.datadir)
 
     def subjects(self):
         if self._subjects is None:
@@ -45,7 +45,7 @@ class VGGFace(object):
         self._subjects = None
 
     def __repr__(self):
-        return str('<vipy.dataset.vggface: %s>' % self.datadir)
+        return str('<vipy.data.vggface: %s>' % self.datadir)
 
     def subjects(self):
         if self._subjects is None:

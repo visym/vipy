@@ -15,7 +15,7 @@ class Kinetics700(object):
             self.download()
         
     def __repr__(self):
-        return str('<vipy.dataset.%s: "%s/%s">' % (self._name, self.datadir, self._name))
+        return str('<vipy.data.%s: "%s/%s">' % (self._name, self.datadir, self._name))
 
     def download(self, verbose=True):
         vipy.downloader.download_and_unpack(self._url, self.datadir, verbose=verbose)

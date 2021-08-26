@@ -21,7 +21,7 @@ class AVA(object):
 
             
     def __repr__(self):
-        return str('<vipy.dataset.ava_v2.2: "%s">' % self.datadir)
+        return str('<vipy.data.ava_v2.2: "%s">' % self.datadir)
 
     def download(self):
         zipfile = os.path.join(self.datadir, filetail(URL))
@@ -51,7 +51,7 @@ class AVA(object):
 
         # Parallel download
         #
-        # >>> D = vipy.dataset.ava.AVA('/path/to')
+        # >>> D = vipy.data.ava.AVA('/path/to')
         # >>> with vipy.globals.parallel(8):
         # >>>     V = D.valset()
         #  
@@ -66,11 +66,11 @@ class AVA(object):
             if v is None:
                 continue
             
-            print('[vipy.dataset.ava][%d/%d]: Parsing "%s" with %d activities' % (k_video, len(d_videoid_to_rows), v.url(), len(rowlist)))            
+            print('[vipy.data.ava][%d/%d]: Parsing "%s" with %d activities' % (k_video, len(d_videoid_to_rows), v.url(), len(rowlist)))            
 
             # Download or skip
             if not v.isdownloaded():
-                print('[vipy.dataset.ava][%d/%d]: Download failed - SKIPPING' % (k_video, len(d_videoid_to_rows)))
+                print('[vipy.data.ava][%d/%d]: Download failed - SKIPPING' % (k_video, len(d_videoid_to_rows)))
                 continue
 
             framerate = v.framerate_of_videofile()
@@ -102,7 +102,7 @@ class AVA(object):
                     raise
                 
                 except Exception as e:
-                    print('[vipy.dataset.ava]: actor_id=%s, activity_id=%s, video_id=%s - SKIPPING with error "%s"' % (actor_id, activity_id, video_id, str(e)))                   
+                    print('[vipy.data.ava]: actor_id=%s, activity_id=%s, video_id=%s - SKIPPING with error "%s"' % (actor_id, activity_id, video_id, str(e)))                   
                 
             vidlist.append(v)
         return vidlist

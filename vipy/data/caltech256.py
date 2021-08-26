@@ -13,7 +13,7 @@ class Caltech256(object):
         self.datadir = remkdir(datadir)
 
     def __repr__(self):
-        return str('<vipy.dataset.caltech256: %s>' % self.datadir)
+        return str('<vipy.data.caltech256: %s>' % self.datadir)
 
     def download_and_unpack(self):
         vipy.downloader.download_and_unpack(URL, self.datadir, sha1=SHA1)

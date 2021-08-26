@@ -14,7 +14,7 @@ class VGGFace2(object):
             np.random.seed(seed)  # for repeatable np.random
 
     def __repr__(self):
-        return str('<vipy.dataset.vggface2: %s>' % self.datadir)
+        return str('<vipy.data.vggface2: %s>' % self.datadir)
 
     def subjects(self):
         if self._subjects is None:

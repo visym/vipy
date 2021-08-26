@@ -23,25 +23,25 @@ def test_import():
     import vipy.videosearch
     import vipy.visualize
     import vipy.gui.using_matplotlib
-    import vipy.dataset.aflw
-    import vipy.dataset.caltech256
-    import vipy.dataset.ethzshapes
-    import vipy.dataset.fddb
-    import vipy.dataset.imagenet
-    import vipy.dataset.kthactions
-    import vipy.dataset.megaface
-    import vipy.dataset.msceleb
-    import vipy.dataset.vggface
-    import vipy.dataset.youtubefaces
-    import vipy.dataset.activitynet
-    import vipy.dataset.caltech101
-    import vipy.dataset.casia
-    import vipy.dataset.facescrub
-    import vipy.dataset.hmdb
-    import vipy.dataset.kinetics
-    import vipy.dataset.lfw
-    import vipy.dataset.mnist
-    import vipy.dataset.vggface2
+    import vipy.data.aflw
+    import vipy.data.caltech256
+    import vipy.data.ethzshapes
+    import vipy.data.fddb
+    import vipy.data.imagenet
+    import vipy.data.kthactions
+    import vipy.data.megaface
+    import vipy.data.msceleb
+    import vipy.data.vggface
+    import vipy.data.youtubefaces
+    import vipy.data.activitynet
+    import vipy.data.caltech101
+    import vipy.data.casia
+    import vipy.data.facescrub
+    import vipy.data.hmdb
+    import vipy.data.kinetics
+    import vipy.data.lfw
+    import vipy.data.mnist
+    import vipy.data.vggface2
     print('[test_import]: PASSED')
 
 

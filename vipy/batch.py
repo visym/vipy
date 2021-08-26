@@ -174,7 +174,7 @@ class Batch(Checkpoint):
     >>> b = vipy.batch.Batch(v, n_processes=16)
     >>> b.map(lambda v,k: v[k], args=[(k,) for k in range(0, len(v))])  # paralle interpolation
 
-    >>> d = vipy.dataset.kinetics.Kinetics700('/path/to/kinetics').download().trainset()
+    >>> d = vipy.data.kinetics.Kinetics700('/path/to/kinetics').download().trainset()
     >>> b = vipy.batch.Batch(d, n_processes=32)
     >>> b.map(lambda v: v.download().save())  # will download and clip dataset in parallel
 

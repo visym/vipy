@@ -8,7 +8,7 @@ class WebFace(object):
         self.datadir = remkdir(datadir)
 
     def __repr__(self):
-        return str('<viset.CASIA-WebFace: %s>' % self.datadir)
+        return str('<vipy.data.casia: %s>' % self.datadir)
 
     def _parse(self):
         outlist = []

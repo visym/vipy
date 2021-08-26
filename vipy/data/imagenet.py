@@ -12,7 +12,7 @@ class ImageNet(object):
         self.datadir = remkdir(datadir)
 
     def __repr__(self):
-        return str('<vipy.dataset.imagenet: %s>' % self.datadir)
+        return str('<vipy.data.imagenet: %s>' % self.datadir)
 
     def _parse_loc(self, imageset='train'):
         """ImageNet localization, imageset = {train, val}"""

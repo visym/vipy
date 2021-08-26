@@ -18,7 +18,7 @@ class ActivityNet(object):
             self.download()
         
     def __repr__(self):
-        return str('<vipy.dataset.activitynet: "%s">' % self.datadir)
+        return str('<vipy.data.activitynet: "%s">' % self.datadir)
 
     def download(self):
         vipy.downloader.download(URL, os.path.join(self.datadir, filetail(URL)))
