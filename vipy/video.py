@@ -845,7 +845,7 @@ class Video(object):
         p = self.probe()
         assert 'streams' in p and len(['streams']) > 0
         (H,W) = (p['streams'][0]['height'], p['streams'][0]['width'])  # (height, width) in pixels
-        return (W,H) if ('tags' in p['streams'][0] and 'rotate' in p['streams'][0]['tags'] and p['streams'][0]['tags']['rotate'] == '90') else (H,W)
+        return (W,H) if ('tags' in p['streams'][0] and 'rotate' in p['streams'][0]['tags'] and p['streams'][0]['tags']['rotate'] in ['90','270']) else (H,W)
     
     def probe(self):
         """Run ffprobe on the filename and return the result as a dictionary"""
