@@ -3454,7 +3454,7 @@ class Scene(VideoCategory):
             self.download()
         with Stopwatch() as sw:            
             for (k,im) in enumerate(self.load() if self.isloaded() else self.stream()):
-                time.sleep(max(0, (1.0/self.framerate())*int(np.ceil((self.framerate()/fps))) - sw.since()))                
+                time.sleep(max(0, (1.0/self.framerate())*int(np.ceil((self.framerate()/fps)))))
                 f_mutator(im,k).show(categories=categories,
                                      figure=figure,
                                      nocaption=nocaption,
