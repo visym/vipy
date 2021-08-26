@@ -839,6 +839,14 @@ class Video(object):
         fps = p['streams'][0]['avg_frame_rate']
         return float(fps) if '/' not in fps else (float(fps.split('/')[0]) / float(fps.split('/')[1]))  # fps='30/1' or fps='30.0'
 
+    def resolution_of_videofile(self):
+        """Return video resolution in (height, width) in pixels (NOT the filter chain), requires ffprobe.
+        """
+        p = self.probe()
+        assert 'streams' in p and len(['streams']) > 0
+        (H,W) = (p['streams'][0]['height'], p['streams'][0]['width'])  # (height, width) in pixels
+        return (W,H) if ('tags' in p['streams'][0] and 'rotate' in p['streams'][0]['tags'] and p['streams'][0]['tags']['rotate'] == '90') else (H,W)
+    
     def probe(self):
         """Run ffprobe on the filename and return the result as a dictionary"""
         if not has_ffprobe:
@@ -1134,7 +1142,10 @@ class Video(object):
         elif symlink:
             assert self.hasfilename(), "File not found for symlink"
             remkdir(filepath(newfile))
-            os.symlink(self._filename, newfile)
+            if os.path.islink(newfile) and os.path.abspath(os.readlink(newfile)) == os.path.normpath(os.path.abspath(os.path.expanduser(self.filename()))):
+                pass  # already points to the same place, nothing to do
+            else:
+                os.symlink(self._filename, newfile)                    
                     
         # Update ffmpeg filter chain with new input node filename (this file may not exist yet)
         self._update_ffmpeg('filename', newfile)
@@ -1878,6 +1889,8 @@ class Video(object):
               -animate:  If true, return a video constructed by animating the quicklook into a video by showing dt consecutive frames
               -dt:  The number of frames for animation
               -startframe:  The initial frame index to start the n uniformly sampled frames for the quicklook
+
+           ..note:: The first frame in the upper left is guaranteed to be the start frame of the labeled activity, but the last frame in the bottom right may not be precisely the end frame and may be off by at most len(video)/9.
         """
         if not self.isloaded():
             self.load()  

@@ -99,7 +99,7 @@ class Dataset():
               - tarfile: /path/to/tarfilename.tar.gz
               - delprefix:  the absolute file path contained in the media filenames to be removed.  If a video has a delprefix='/a/b' then videos with path /a/b/c/d.mp4' -> 'c/d.mp4', and {JSON|PKL} will be saved with relative paths to mediadir
               - mediadir:  the subdirectory name of the media to be contained in the archive.  Usually "videos".             
-              - extrafiles: list of tuples [(abspath, filename_in_archive),...]
+              - extrafiles: list of tuples [(abspath, filename_in_archive_relative_to_root),...]
 
             Example:  
 
