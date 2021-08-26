@@ -10,7 +10,6 @@ import warnings
 import copy 
 import atexit
 from vipy.util import is_email_address
-import torch
 from vipy.batch import Batch       
 import hashlib
 import pickle
@@ -570,7 +569,8 @@ class Dataset():
 
     def to_torch(self, f_video_to_tensor):
         """Return a torch dataset that will apply the lambda function f_video_to_tensor to each element in the dataset on demand"""
-        return TorchDataset(f_video_to_tensor, self)
+        import vipy.torch
+        return vipy.torch.TorchDataset(f_video_to_tensor, self)
 
     def to_torch_tensordir(self, f_video_to_tensor, outdir, n_augmentations=20, n_chunks=512):
         """Return a TorchTensordir dataset that will load a pkl.bz2 file that contains one of n_augmentations (tensor, label) pairs.
@@ -578,11 +578,12 @@ class Dataset():
         This is useful for fast loading of datasets that contain many videos.
 
         """
+        import vipy.torch
         assert self.is_vipy_scene()
         outdir = vipy.util.remkdir(outdir)
         B = vipy.util.chunklist(self._objlist, n_chunks)
         vipy.batch.Batch(B, as_completed=True, minscatter=1).map(lambda V, f=f_video_to_tensor, outdir=outdir, n_augmentations=n_augmentations: [vipy.util.bz2pkl(os.path.join(outdir, '%s.pkl.bz2' % v.instanceid()), [f(v.clone()) for k in range(0, n_augmentations)]) for v in V])
-        return TorchTensordir(outdir)
+        return vipy.torch.TorchTensordir(outdir)
 
     def annotate(self, outdir, mindim=512):
         assert self._isvipy()
@@ -672,7 +673,7 @@ class Dataset():
 
     def boundingbox_refinement(self, dst='boundingbox_refinement', batchsize=1, dt=3, minlength=5, f_savepkl=None):        
         """Must be connected to dask scheduler such that each machine has GPU resources"""
-        raise
+        raise  # FIXME
     
         model = pycollector.detection.VideoProposalRefinement(batchsize=batchsize) 
         f = lambda net, v, dt=dt, f_savepkl=f_savepkl, b=batchsize: net.gpu(list(range(torch.cuda.device_count())), batchsize=b)(v, proposalconf=5E-2, proposaliou=0.8, miniou=0.2, dt=dt, mincover=0.8, byclass=True, shapeiou=0.7, smoothing=None, strict=True).pklif(f_savepkl is not None, f_savepkl(v)).print()
