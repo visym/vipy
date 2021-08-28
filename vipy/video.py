@@ -117,7 +117,10 @@ class Stream(object):
             return p
         else:
             return None
-            
+
+    def framerate(self):
+        return self._video.framerate()
+    
     def __iter__(self):
         """Stream individual video frames"""
                 
