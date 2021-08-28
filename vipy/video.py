@@ -341,10 +341,10 @@ class Stream(object):
         assert isinstance(n, int) and n<=0, "Frame offset must be non-positive integer"
         frames = []
         for (k,im) in enumerate(self):
-            frames.append(im)                    
-            imout = frames[0]
+            frames.append( (k,im) )                    
+            (kout, imout) = frames[0]
             frames.pop(0) if len(frames) == abs(n) else None
-            yield imout
+            yield self._video.frame(kout, imout.array()) if n < 0 else imout   # refetch for track interpolation
                                           
 
 
@@ -1557,6 +1557,8 @@ class Video(object):
 
     def rescale(self, s):
         """Rescale the video by factor s, such that the new dimensions are (s*H, s*W), can only be applied prior to load()"""
+        if s == 1:
+            return self
         assert not self.isloaded(), "Filters can only be applied prior to load() - Try calling flush() first"
         self.shape(shape=(int(np.round(self.height()*float(np.ceil(s*1e6)/1e6))), int(np.round(self.width()*float(np.ceil(s*1e6)/1e6)))))  # update the known shape        
         self._ffmpeg = self._ffmpeg.filter('scale', 'iw*%1.6f' % float(np.ceil(s*1e6)/1e6), 'ih*%1.6f' % float(np.ceil(s*1e6)/1e6))  # ceil last significant digit to avoid off by one
@@ -1579,15 +1581,14 @@ class Video(object):
             #self.array(np.stack([PIL.Image.fromarray(x, mode='RGBX').resize( (cols, rows), resample=PIL.Image.BILINEAR) for x in np.pad(self._array, ((0,0),(0,0),(0,0),(0,1)))])[:,:,:,:-1], copy=False)  # RGB->RGBX->RGB
             
             # Fastest: padding introduces more overhead than just accepting tobytes(), image size dependent?
-            self.array(np.stack([PIL.Image.fromarray(x).resize( (cols, rows), resample=PIL.Image.BILINEAR) for x in np.ascontiguousarray(self._array)]), copy=False)
+            self.array(np.stack([PIL.Image.fromarray(x).resize( (newshape[1], newshape[0]), resample=PIL.Image.BILINEAR) for x in np.ascontiguousarray(self._array)]), copy=False)
         self.shape(shape=newshape)  # manually set newshape
         return self
 
     def mindim(self, dim=None):
         """Resize the video so that the minimum of (width,height)=dim, preserving aspect ratio"""
-        assert dim is None or not self.isloaded(), "Filters can only be applied prior to load() - Try calling flush() first"
         (H,W) = self.shape()  # yuck, need to get image dimensions before filter
-        return min(self.shape()) if dim is None else (self.resize(cols=dim) if W<H else self.resize(rows=dim))
+        return min(self.shape()) if dim is None else (self if min(H,W)==dim else (self.resize(cols=dim) if W<H else self.resize(rows=dim)))
 
     def maxdim(self, dim=None):
         """Resize the video so that the maximum of (width,height)=dim, preserving aspect ratio"""
@@ -3099,6 +3100,12 @@ class Scene(VideoCategory):
         return self.trackmap(lambda t: t.framerate(speed=s)).activitymap(lambda a: a.framerate(speed=s))
         
 
+    def duration(self, frames=None, seconds=None, minutes=None):
+        """Return a video clipped with frame indexes between (0, frames) or (0,seconds*self.framerate()) or (0,minutes*60*self.framerate()"""
+        assert frames is not None or seconds is not None or minutes is not None
+        frames = frames if frames is not None else ((int(seconds*self.framerate()) if seconds is not None else 0) + (int(minutes*60*self.framerate()) if minutes is not None else 0))
+        return self.clip(0, frames)
+    
     def clip(self, startframe, endframe=None):
         """Clip the video to between (startframe, endframe).  This clip is relative to clip() shown by __repr__(). 
 
@@ -3201,9 +3208,8 @@ class Scene(VideoCategory):
 
     def mindim(self, dim=None):
         """Resize the video so that the minimum of (width,height)=dim, preserving aspect ratio"""
-        assert dim is None or not self.isloaded(), "Filters can only be applied prior to load() - Try calling flush() first"                
         (H,W) = self.shape()  # yuck, need to get image dimensions before filter
-        return min(self.shape()) if dim is None else self.resize(cols=dim) if W<H else self.resize(rows=dim)
+        return min(self.shape()) if dim is None else (self if min(H,W) == dim else (self.resize(cols=dim) if W<H else self.resize(rows=dim)))
 
     def maxdim(self, dim=None):
         """Resize the video so that the maximum of (width,height)=dim, preserving aspect ratio"""
@@ -3217,7 +3223,7 @@ class Scene(VideoCategory):
         Args:
             s: [float] Scale factor > 0 to isotropically scale the image.
         """
-        assert not self.isloaded(), "Filters can only be applied prior to load() - Try calling flush() first"                
+        assert s == 1 or not self.isloaded(), "Filters can only be applied prior to load() - Try calling flush() first"                
         self._tracks = {k:t.rescale(s) for (k,t) in self.tracks().items()}
         super().rescale(s)
         return self
