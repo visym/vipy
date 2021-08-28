@@ -129,6 +129,10 @@ def s3_bucket(bucket_name, object_name, output_filename, verbose=True):
     return output_filename
 
 
+def downloadif(url, output_filename, sha1):
+    """Downloads file at `url` and write it in `output_filename` only if the file does not exist with the provided SHA1 hash"""    
+    return output_filename if os.path.exists(output_filename) and verify_sha1(output_filename, sha1) else download(url=url, output_filename=output_filename, sha1=sha1)
+
 def download(url, output_filename, sha1=None, verbose=True, md5=None, timeout=None, username=None, password=None):
     """Downloads file at `url` and write it in `output_filename`"""
     if timeout is None:
@@ -201,6 +205,8 @@ def download(url, output_filename, sha1=None, verbose=True, md5=None, timeout=No
     if md5 is not None:
         if not verify_md5(output_filename, md5):
             raise IOError('invalid md5 for "%s"' % output_filename)
+
+    return output_filename
 
 
 def unpack(archive_filename, output_dirname, sha1=None, verbose=True):
