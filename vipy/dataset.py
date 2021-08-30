@@ -377,6 +377,17 @@ class Dataset():
     def frequency(self):
         return self.count()
 
+    def histogram(self, outfile=None):
+        from vipy.metrics import histogram
+        assert self._is_vipy()
+        
+        d = self.count()
+        if outfile is not None:
+            (categories, freq) = zip(*reversed(d))
+            barcolors = ['blue' for c in categories]
+            vipy.metrics.histogram(freq, categories, barcolors=barcolors, outfile=outfile, ylabel='Instances', fontsize=6)
+        return d
+    
     def percentage(self):
         """Fraction of dataset for each label"""
         d = self.count()
@@ -410,11 +421,11 @@ class Dataset():
         assert self._isvipy()
         d = vipy.util.countby(self.list(), lambda v: v.attributes['collector_id'])
         f = lambda x,n: len([k for (k,v) in d.items() if int(v) >= n])
-        print('[collector.dataset.collectors]: Collectors = %d ' % f(d,0))
-        print('[collector.dataset.collectors]: Collectors with >10 submissions = %d' % f(d,10))
-        print('[collector.dataset.collectors]: Collectors with >100 submissions = %d' % f(d,100))
-        print('[collector.dataset.collectors]: Collectors with >1000 submissions = %d' % f(d,1000))
-        print('[collector.dataset.collectors]: Collectors with >10000 submissions = %d' % f(d,10000))
+        print('[vipy.dataset]: Collectors = %d ' % f(d,0))
+        print('[vipy.dataset]: Collectors with >10 submissions = %d' % f(d,10))
+        print('[vipy.dataset]: Collectors with >100 submissions = %d' % f(d,100))
+        print('[vipy.dataset]: Collectors with >1000 submissions = %d' % f(d,1000))
+        print('[vipy.dataset]: Collectors with >10000 submissions = %d' % f(d,10000))
 
         if outfile is not None:
             from vipy.metrics import histogram
@@ -424,7 +435,7 @@ class Dataset():
     def os(self, outfile=None):
         assert self._isvipy()
         d = vipy.util.countby([v for v in self.list() if v.hasattribute('device_identifier')], lambda v: v.attributes['device_identifier'])
-        print('[collector.dataset.collectors]: Device OS = %d ' % len(d))
+        print('[vipy.dataset]: Device OS = %d ' % len(d))
         if outfile is not None:
             from vipy.metrics import pie
             pie(d.values(), d.keys(), explode=None, outfile=outfile,  shadow=False)
@@ -441,8 +452,8 @@ class Dataset():
         d.update( {'Other':other} )
         d = dict(sorted(list(d.items()), key=lambda x: x[1]))
 
-        print('[collector.dataset.collectors]: Device types = %d ' % len(d_all))
-        print('[collector.dataset.collectors]: Top-%d Device types = %s ' % (n, str(topk)))
+        print('[vipy.dataset.device]: Device types = %d ' % len(d_all))
+        print('[vipy.dataset.device]: Top-%d Device types = %s ' % (n, str(topk)))
 
         if outfile is not None:
             from vipy.metrics import pie
@@ -515,7 +526,7 @@ class Dataset():
             d['num_activities_histogram'] = vipy.metrics.histogram(freq, categories, barcolors=barcolors, outfile=os.path.join(outdir, 'num_activities_histogram.pdf'), ylabel='Instances', fontsize=6)
             colors = colorlist()
 
-            # Scatterplot of people and vehicles box sizes
+            # Scatterplot of object box sizes
             (x, y) = zip(*[(t.meanshape()[1], t.meanshape()[0]) for t in tracks])
             plt.clf()
             plt.figure()
@@ -534,7 +545,7 @@ class Dataset():
             d['object_bounding_box_scatterplot'] = os.path.join(outdir, 'object_bounding_box_scatterplot.pdf')
             plt.savefig(d['object_bounding_box_scatterplot'])
         
-            # 2D histogram of people and vehicles box sizes
+            # 2D histogram of object box sizes
             for c in object_categories:
                 xcyc = [(t.meanshape()[1], t.meanshape()[0]) for t in tracks if ((t.category() == c) and (t.meanshape() is not None))]
                 if len(xcyc) > 0:
@@ -675,11 +686,6 @@ class Dataset():
         """Must be connected to dask scheduler such that each machine has GPU resources"""
         raise  # FIXME
     
-        model = pycollector.detection.VideoProposalRefinement(batchsize=batchsize) 
-        f = lambda net, v, dt=dt, f_savepkl=f_savepkl, b=batchsize: net.gpu(list(range(torch.cuda.device_count())), batchsize=b)(v, proposalconf=5E-2, proposaliou=0.8, miniou=0.2, dt=dt, mincover=0.8, byclass=True, shapeiou=0.7, smoothing=None, strict=True).pklif(f_savepkl is not None, f_savepkl(v)).print()
-        D = self.map(f, dst=dst, model=model)
-        D.filter(lambda v: (v is not None) and (not v.hasattribute('unrefined')))  # remove videos that failed refinement
-        D.localmap(lambda v: v.activityfilter(lambda a: any([a.hastrack(t) and len(t)>minlength and t.during(a.startframe(), a.endframe()) for t in v.tracklist()])))  # get rid of activities without tracks greater than dt
         return D
 
     def stabilize(self, f_saveas, dst='stabilize', padwidthfrac=1.0, padheightfrac=0.2):

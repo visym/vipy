@@ -210,7 +210,7 @@ def parallel(n=None, pct=None, scheduler=None):
 def noparallel():
     """Disable all parallel processing"""
     if GLOBAL['DASK_CLIENT'] is not None:
-        GLOBAL['DASK_CLIENT'].shutdown()
+        del GLOBAL['DASK_CLIENT']
     GLOBAL['DASK_CLIENT'] = None 
 
 def nodask():

@@ -186,7 +186,7 @@ class Batch(Checkpoint):
 
     """    
              
-    def __init__(self, objlist, strict=True, as_completed=False, checkpoint=False, checkpointdir=None, checkpointfrac=0.1, warnme=True, minscatter=None):
+    def __init__(self, objlist, strict=False, as_completed=False, checkpoint=False, checkpointdir=None, checkpointfrac=0.1, warnme=True, minscatter=None):
         """Create a batch of homogeneous vipy.image objects from an iterable that can be operated on with a single parallel function call
         """
         assert isinstance(objlist, list), "Input must be a list"
