@@ -64,8 +64,8 @@ def hascache():
 
 
 def tocache(filename):
-    """If the VIPY_CACHE environment variable is set, then return the filename=/path/to/file.ext in the cache as VIPY_CACHE/file.ext"""
-    return os.path.join(remkdir(os.environ['VIPY_CACHE']), filetail(filename)) if hascache() else filename
+    """If the VIPY_CACHE environment variable is set, then return the filename=/path/to/file.ext in the cache as VIPY_CACHE/file.ext.  Otherwise, return the file in the system temp"""
+    return os.path.join(remkdir(os.environ['VIPY_CACHE']) if hascache() else tempdir(), filetail(filename))
 
 
 def try_import(package, pipname=None, message=None):
