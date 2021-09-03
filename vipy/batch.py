@@ -375,7 +375,7 @@ class Batch(Checkpoint):
             self._objlist = [f_lambda_ordered(obj, o) for o in self._objlist]  # no parallelism
         else:
             objdist = c.scatter(obj, broadcast=True)        
-            objlist = c.scatter(self._objlist) if len(self._objlist) > self._minscatter else self._objlist
+            objlist = c.scatter(self._objlist) if (self._minscatter is not None and len(self._objlist) > self._minscatter) else self._objlist
             self._objlist = self._wait([c.submit(f_lambda_ordered, objdist, im) for im in objlist])
         return self
 

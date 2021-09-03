@@ -627,7 +627,7 @@ class Video(object):
             f.write(self.attributes['__video__'])
         return self.filename(filename)                
 
-    def concatenate(self, videos, outfile):
+    def concatenate(self, videos, outfile, youtube_chapters=False):
         """Temporally concatenate a sequence of videos into a single video stored in outfile.
         
         >>> (v1, v2, v3) = (vipy.video.RandomVideo(128,128,32), vipy.video.RandomVideo(128,128,32), vipy.video.RandomVideo(128,128,32))
@@ -638,6 +638,7 @@ class Video(object):
         Input:
             videos: a single video or an iterable of videos of type `vipy.video.Video`.
             outfile: the output filename to store the concatenation. 
+            youtube_chapters [bool]:  If true, output a string that can be used to define the start and end times of chapters if this video is uploaded to youtube.  The string output should be copied to the youtube video description in order to enable chapters on playback.
 
         Returns:
             A `vipy.video.Video` object with filename()=outfile, such that outfile contains the temporal concatenation of pixels in (self, videos).
@@ -652,13 +653,20 @@ class Video(object):
         assert all([isinstance(v, vipy.video.Video) for v in tolist(videos)])
         assert all([self.shape() == v.shape() for v in tolist(videos)]), "Video shapes must all the same, try padding"
         vi = [self.clone()] + tolist(videos)        
-        vo = vipy.video.Video(filename=outfile, framerate=self.framerate())
+        vo = vipy.video.Scene(filename=outfile, framerate=self.framerate())
         with vo.stream(overwrite=True) as s:
             for v in vi:
                 for im in v.clone().framerate(self.framerate()):
                     s.write(im)
+
+        if youtube_chapters:            
+            print('[vipy.video.concatenate]: Copy the following into the video Description after uploading the videofile "%s" to YouTube to enable chapters on playback.' % outfile)
+            print('\n'.join(['%s %s' % (vipy.util.seconds_to_MMSS_colon_notation(int(s)), v.category()) for (s,v) in zip(np.cumsum([v.duration() for v in vi]), vi)]))
+            if any([v.duration() < 10 for v in vi]):
+                warnings.warn('YouTube chapters must be a minimum duration of 10 seconds')
         return vo
     
+
     def stream(self, write=False, overwrite=False, bufsize=1024):
         """Iterator to yield groups of frames streaming from video.
 
@@ -1347,6 +1355,11 @@ class Video(object):
         else:
             return (self._array.shape[1], self._array.shape[2])
 
+    def issquare(self):
+        """Return true if the video has square dimensions (height == width), else false"""
+        s = self.shape()
+        return s[0] == s[1]
+
     def channels(self):
         """Return integer number of color channels"""
         if not self.isloaded():
@@ -1659,10 +1672,13 @@ class Video(object):
         # FIXME: not sure where in some filter chains this off-by-one error is being introduced, but probably does not matter since it does not affect any annotations 
         # and since the max square always preserves the scale and the upper left corner of the source video. 
         # FIXME: this may trigger an inefficient resizing operation during load()
-        d = max(self.shape())
-        self._ffmpeg = self._ffmpeg.filter('pad', d+1, d+1, 0, 0)
-        self.shape(shape=(d+1, d+1))
-        return self.crop(vipy.geometry.BoundingBox(xmin=0, ymin=0, width=int(d), height=int(d)))
+        if not self.issquare():
+            d = max(self.shape())
+            self._ffmpeg = self._ffmpeg.filter('pad', d+1, d+1, 0, 0)
+            self.shape(shape=(d+1, d+1))
+            return self.crop(vipy.geometry.BoundingBox(xmin=0, ymin=0, width=int(d), height=int(d)))
+        else:
+            return self
 
     def minsquare(self):
         """Return a square crop of the video, preserving the upper left corner of the video"""
@@ -1671,7 +1687,8 @@ class Video(object):
         return self.crop(vipy.geometry.BoundingBox(xmin=0, ymin=0, width=int(d), height=int(d)))
     
     def maxmatte(self):
-        return self.zeropad(max(1, int((max(self.shape()) - self.width())/2)), max(int((max(self.shape()) - self.height())/2), 1))
+        """Return a square video with dimensions (self.maxdim(), self.maxdim()) with zeropadded lack bars or mattes above or below the video forming a letterboxed video."""
+        return self.zeropad(max(1, int((max(self.shape()) - self.width())/2)), max(int((max(self.shape()) - self.height())/2), 1)).maxsquare()
     
     def zeropad(self, padwidth, padheight):
         """Zero pad the video with padwidth columns before and after, and padheight rows before and after
@@ -2559,6 +2576,10 @@ class Scene(VideoCategory):
     def tracklist(self):
         return list(self.tracks().values())  # triggers copy
 
+    def objects(self, casesensitive=True):
+        """The objects in a scene are the unique categories of tracks"""
+        return sorted(list(set([t.category() if casesensitive else t.category().lower() for t in self.tracklist()])))
+    
     def actorid(self, id=None, fluent=False):
         """Return or set the actor ID for the video.
 
@@ -3152,7 +3173,9 @@ class Scene(VideoCategory):
         
 
     def duration(self, frames=None, seconds=None, minutes=None):
-        """Return a video clipped with frame indexes between (0, frames) or (0,seconds*self.framerate()) or (0,minutes*60*self.framerate()"""
+        """Return a video clipped with frame indexes between (0, frames) or (0,seconds*self.framerate()) or (0,minutes*60*self.framerate().  Return duration in seconds if no arguments are provided."""
+        if frames is None and seconds is None and minutes is None:
+            return self.duration_in_seconds_of_videofile() if not self.isloaded() else (len(self) / self.framerate())
         assert frames is not None or seconds is not None or minutes is not None
         frames = frames if frames is not None else ((int(seconds*self.framerate()) if seconds is not None else 0) + (int(minutes*60*self.framerate()) if minutes is not None else 0))
         return self.clip(0, frames)
@@ -3544,10 +3567,10 @@ class Scene(VideoCategory):
         im = self.frame(frame, img=self.preview(framenum=frame).array())
         return im.savefig(outfile=outfile, fontsize=fontsize, nocaption=nocaption, boxalpha=boxalpha, dpi=dpi, textfacecolor=textfacecolor, textfacealpha=textfacealpha) if outfile is not None else im
     
-    def stabilize(self, flowdim=256):
+    def stabilize(self, flowdim=256, gpu=None):
         """Background stablization using flow based stabilization masking foreground region.  This will output a video with all frames aligned to the first frame, such that the background is static."""
         from vipy.flow import Flow  # requires opencv
-        return Flow(flowdim=flowdim).stabilize(self.clone(), residual=True)
+        return Flow(flowdim=flowdim, gpu=gpu).stabilize(self.clone(), residual=True)
     
     def pixelmask(self, pixelsize=8):
         """Replace all pixels in foreground boxes with pixelation"""

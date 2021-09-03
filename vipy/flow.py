@@ -224,20 +224,57 @@ class Video(vipy.video.Video):
 class Flow(object):
     """vipy.flow.Flow() class"""
     
-    def __init__(self, flowiter=10, flowdim=256):
+    def __init__(self, flowiter=10, flowdim=256, gpu=None):
         self._mindim = flowdim
         self._levels = 3
         self._winsize = 7
         self._poly_n = 5
         self._poly_sigma = 1.2
         self._flowiter = flowiter
-        
+        self._gpu = gpu
+
     def __call__(self, im, imprev=None, flowstep=1, framestep=1):
         return self.videoflow(im, flowstep, framestep) if imprev is None else self.imageflow(im, imprev)
 
-    def _numpyflow(self, img, imgprev):
+    def _numpyflow_gpu(self, img, imgprev):
+        """Optical flow on GPU"""
+
+        # To compile CUDA enabled opencv (YUCK):
+        #
+        #   sh> python3 -m venv /path/to/myvirtualenv
+        #   sh> source /path/to/myvirtualenv/bin/activate   # for python bindings
+        #   sh> git clone --recursive https://github.com/opencv/opencv-python.git
+        #   sh> cd opencv-python
+        #   sh> export ENABLE_CONTRIB=1 ENABLE_HEADLESS=1  # opencv packages
+        #   sh> export CMAKE_ARGS="-DWITH_CUDNN=OFF -DOPENCV_DNN_CUDA=OFF -DWITH_CUDA=ON -DCUDA_ARCH_BIN=5.2 -DCMAKE_CXX_STANDARD=11 -DPYTHON3_EXECUTABLE=$(which python) -DINSTALL_PYTHON_EXAMPLES=OFF -DCMAKE_CXX_STANDARD_REQUIRED=ON -DCMAKE_CXX_FLAGS=\"-std=c++11\""
+        #   sh> pip wheel . --verbose
+        #   sh> pip install /path/to/opencv_contrib_python_headless-4.5.3+c1cc7e5-cp36-cp36m-linux_x86_64.whl   # path output at compile time
+        #   sh> cd ..  # do not import from within-source
+        #   sh> python
+        #   >>> import cv2
+        #   >>> cv2.cuda_FarnebackOpticalFlow
+        #
+        # See also: 
+        #   https://github.com/opencv/opencv-python#manual-builds
+        #   https://learnopencv.com/getting-started-opencv-cuda-module/
+        #   https://developer.nvidia.com/blog/opencv-optical-flow-algorithms-with-nvidia-turing-gpus/
+
+        (gpu_img, gpu_imgprev) = (cv2.cuda_GpuMat(), cv2.cuda_GpuMat())
+        gpu_img.upload(img)
+        gpu_imgprev.upload(imgprev)
+        gpu_flow = cv2.cuda_FarnebackOpticalFlow.create(self._levels, 0.5, False, self._winsize, self._flowiter, self._poly_n, self._poly_sigma, cv2.OPTFLOW_FARNEBACK_GAUSSIAN)
+        gpu_flow = cv2.cuda_FarnebackOpticalFlow.calc(gpu_flow, gpu_img, gpu_imgprev, None)
+        flow = gpu_flow.download()        
+        return vipy.flow.Image(flow)
+
+    def _numpyflow_cpu(self, img, imgprev):
         """Overload this method for custom flow classes"""        
         return Image(cv2.calcOpticalFlowFarneback(img, imgprev, None, 0.5, self._levels, self._winsize, self._flowiter, self._poly_n, self._poly_sigma, cv2.OPTFLOW_FARNEBACK_GAUSSIAN))
+
+    def _numpyflow(self, img, imgprev):
+        """Overload this method for custom flow classes"""        
+        f = self._numpyflow_cpu if self._gpu is None or self._gpu == False else self._numpyflow_gpu
+        return f(img, imgprev)
         
     def imageflow(self, im, imprev):
         """Default opencv dense flow, from im to imprev.  This should be overloaded"""        
@@ -304,7 +341,7 @@ class Flow(object):
         (x2, y2) = (x1 + fx, y1 + fy)  # destination coordinates
         return (np.stack((x1,y1)), np.stack((x2,y2)))
         
-    def stabilize(self, v, keystep=20, padheightfrac=0.125, padwidthfrac=0.25, padheightpx=None, padwidthpx=None, border=0.1, dilate=1.0, contrast=16.0/255.0, rigid=False, affine=True, verbose=True, strict=True, residual=False, maxflow=None, outfile=None): 
+    def stabilize(self, v, keystep=20, padheightfrac=0.125, padwidthfrac=0.25, padheightpx=None, padwidthpx=None, border=0.1, dilate=1.0, contrast=16.0/255.0, rigid=False, affine=True, verbose=True, strict=True, residual=False, maxflow=None, outfile=None, preload=True): 
         """Affine stabilization to frame zero using multi-scale optical flow correspondence with foreground object keepouts.  
 
         Recommended usage:
@@ -326,6 +363,7 @@ class Flow(object):
             verbose: [bool]  This takes a while to run so show some progress ...
             strict: [bool]  If true, throw an exception on error, otherwise return the original video and set v.hasattribute('unstabilized'), useful for large scale stabilization
             outfile: [str] the file path to the stabilized output video
+            preload [bool]: If true, load the input video into memory before stabilizing.  Fasterm but requires video to fit into memory.
 
         Returns:
             A cloned `vipy.video.Scene` with filename=outfile, such that pixels and tracks are background stabilized.
@@ -350,10 +388,12 @@ class Flow(object):
         outfile = premkdir(outfile if outfile is not None else tempMP4())
         vs = vv.clone(flushforward=True, flushfilter=True).filename(outfile if outfile is not None else tempMP4()).nourl().cleartracks()   # does not trigger load
         s = vv.mindim() / float(self._mindim)  # for upsample
-        vvd = vv.clone().mindim(self._mindim)  # downsampled for flow correspondence
+        vvd = vv.clone().mindim(self._mindim)  # downsampled for flow correspondence        
         if vc.duration_in_frames_of_videofile() < keystep:
             print('[vipy.flow.stabilize]: ERROR - video not long enough for stabilization, returning original video "%s"' % str(v))
             return vc.setattribute('unstabilized')
+        if preload:
+            (vv, vvd) = (vv.load(), vvd.load())  # Faster, but requires lots of memory, replace with stream, replace all frame() calls
 
         # Stabilization
         assert rigid is True or affine is True, "Projective stabilization is disabled"
@@ -366,7 +406,7 @@ class Flow(object):
         f_transform_coarse = (lambda A: A[0:2,:])
         f_transform_fine = (lambda A: A[0:2,:]) if (rigid or affine) else (lambda A: A)
         imstabilized = vv.preview(0).rgb().zeropad(padwidth, padheight)  # single frame fetch
-        duration = vv.duration_in_frames_of_videofile()
+        duration = vv.duration_in_frames_of_videofile()   # FIXME: this may be off if the video filter chain has a different framerate
         r_coarse = []
         frames = []                        
 
@@ -392,7 +432,7 @@ class Flow(object):
                 (xy_src_k2, xy_dst_k2) = self._correspondence(imfk2, imd, border=border, dilate=dilate, contrast=contrast, maxflow=maxflow)
                 (xy_src, xy_dst) = (np.hstack( (xy_src_k0, xy_src_k1, xy_src_k2) ).transpose(), np.hstack( (xy_dst_k0, xy_dst_k1, xy_dst_k2) ).transpose())  # Nx3
                 try:            
-                    M = f_estimate_coarse(s*xy_src, s*xy_dst, method=cv2.RANSAC, confidence=0.99999, ransacReprojThreshold=0.1, refineIters=16, maxIters=3000)                   
+                    M = f_estimate_coarse(s*xy_src, s*xy_dst, method=cv2.RANSAC, confidence=0.99999, ransacReprojThreshold=0.1, refineIters=16, maxIters=3000)   # SLOW
                     r_coarse.append(np.mean(np.sqrt(np.sum(np.square(M.dot(homogenize(xy_src[::8].transpose())) - homogenize(xy_dst[::8].transpose())), axis=0))) if (residual and len(xy_src)>8) else 0)
                 except Exception as e:
                     if not strict:

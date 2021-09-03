@@ -67,6 +67,10 @@ def tocache(filename):
     """If the VIPY_CACHE environment variable is set, then return the filename=/path/to/file.ext in the cache as VIPY_CACHE/file.ext.  Otherwise, return the file in the system temp"""
     return os.path.join(remkdir(os.environ['VIPY_CACHE']) if hascache() else tempdir(), filetail(filename))
 
+def seconds_to_MMSS_colon_notation(sec):
+    """Convert integer seconds into MM:SS colon format.  If sec=121, then return '02:01'. """
+    assert isinstance(sec, int) and sec <= 99*60 + 59 and sec >= 0
+    return '%02d:%02d' % (int(sec/60.0), sec % 60)
 
 def try_import(package, pipname=None, message=None):
     """Show a helpful error message for missing optional packages"""
@@ -591,6 +595,13 @@ def load(infile, abspath=False):
         #warnings.warn('Loading "%s" that contains a large number of vipy objects - disabling reference cycle checks.  Re-enable at any time using "import gc; gc.enable()"' % (infile))
         import gc; gc.disable()
     return obj
+
+def tryload(infile, abspath=False):
+    """Attempt to load a pkl file, and return the value if successful and None if not"""
+    try:
+        return load(infile, abspath=abspath)
+    except:
+        return None
 
 def canload(infile):
     """Attempt to load a pkl file, and return true if it can be successfully loaded, otherwise False"""

@@ -454,9 +454,12 @@ class Track(object):
         return d if self._boundary == 'extend' or self.during(f) else None
 
     def category(self, label=None, shortlabel=True):
+        """Set the track category to label, and update thte shortlabel also.  Updates all keyboxes"""
         if label is not None:
             self._label = str(label)  # coerce to string
             self._shortlabel = str(label) if shortlabel else self._shortlabel  # coerce to string
+            self.boxmap(lambda bb: bb.shortlabel(self._shortlabel) if shortlabel and isinstance(bb, Detection) else bb)
+            self.boxmap(lambda bb: bb.category(self._label) if isinstance(bb, Detection) else bb)
             return self
         else:
             return self._label
@@ -466,9 +469,10 @@ class Track(object):
         return self.category(label, shortlabel=True)
         
     def shortlabel(self, label=None):
-        """A optional shorter label string to show as a caption in visualizations"""                
+        """A optional shorter label string to show as a caption in visualizations.  Updates all keyboxes"""                
         if label is not None:
             self._shortlabel = str(label)  # coerce to string
+            self.boxmap(lambda bb: bb.shortlabel(self._shortlabel) if isinstance(bb, Detection) else bb)
             return self
         else:
             return self._shortlabel

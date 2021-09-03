@@ -331,6 +331,7 @@ def histogram(freq, categories, barcolors=None, title=None, outfile=None, figure
     else:
         plt.show()
 
+    return outfile
         
 def pie(sizes, labels, explode=None, outfile=None, shadow=False, legend=True, fontsize=10, rotatelabels=False):
     """Generate a matplotlib style pie chart with wedges with specified size and labels, with an optional outfile"""
