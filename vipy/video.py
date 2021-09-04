@@ -626,7 +626,47 @@ class Video(object):
         with open(filename, 'wb') as f:
             f.write(self.attributes['__video__'])
         return self.filename(filename)                
+
+    def concatenate(self, videos, outfile, youtube_chapters=False):
+        """Temporally concatenate a sequence of videos into a single video stored in outfile.
         
+        >>> (v1, v2, v3) = (vipy.video.RandomVideo(128,128,32), vipy.video.RandomVideo(128,128,32), vipy.video.RandomVideo(128,128,32))
+        >>> vc = v1.concatenate((v2, v3), 'concatenated.mp4')
+
+        In this example, vc will point to concatenated.mp4 which will contain (v1,v2,v3) concatenated temporally .  
+
+        Input:
+            videos: a single video or an iterable of videos of type `vipy.video.Video`.
+            outfile: the output filename to store the concatenation. 
+            youtube_chapters [bool]:  If true, output a string that can be used to define the start and end times of chapters if this video is uploaded to youtube.  The string output should be copied to the youtube video description in order to enable chapters on playback.
+
+        Returns:
+            A `vipy.video.Video` object with filename()=outfile, such that outfile contains the temporal concatenation of pixels in (self, videos).
+        
+        .. note::
+        -self will not be modified, this will return a new `vipy.video.Video` object.
+        -All videos must be the same shape().  If the videos are different shapes, you must pad them to a common size equal to self.shape().  Try `vipy.video.Video.zeropadlike`.
+        -The output video will be at the framerate of self.framerate().
+        -if you want to concatenate annotations, call `vipy.video.Scene.annotate` first on the videos to save the annotations into the pixels, then concatenate.
+        """
+        
+        assert all([isinstance(v, vipy.video.Video) for v in tolist(videos)])
+        assert all([self.shape() == v.shape() for v in tolist(videos)]), "Video shapes must all the same, try padding"
+        vi = [self.clone()] + tolist(videos)        
+        vo = vipy.video.Scene(filename=outfile, framerate=self.framerate())
+        with vo.stream(overwrite=True) as s:
+            for v in vi:
+                for im in v.clone().framerate(self.framerate()):
+                    s.write(im)
+
+        if youtube_chapters:            
+            print('[vipy.video.concatenate]: Copy the following into the video Description after uploading the videofile "%s" to YouTube to enable chapters on playback.' % outfile)
+            print('\n'.join(['%s %s' % (vipy.util.seconds_to_MMSS_colon_notation(int(s)), v.category()) for (s,v) in zip(np.cumsum([v.duration() for v in vi]), vi)]))
+            if any([v.duration() < 10 for v in vi]):
+                warnings.warn('YouTube chapters must be a minimum duration of 10 seconds')
+        return vo
+    
+
     def stream(self, write=False, overwrite=False, bufsize=1024):
         """Iterator to yield groups of frames streaming from video.
 
@@ -678,7 +718,6 @@ class Video(object):
         ..note:: Using this iterator may affect PDB debugging due to stdout/stdin redirection.  Use ipdb instead.
 
         """
-
         return Stream(self, bufsize=bufsize, write=write, overwrite=overwrite)  # do not clone
 
 
@@ -1316,6 +1355,11 @@ class Video(object):
         else:
             return (self._array.shape[1], self._array.shape[2])
 
+    def issquare(self):
+        """Return true if the video has square dimensions (height == width), else false"""
+        s = self.shape()
+        return s[0] == s[1]
+
     def channels(self):
         """Return integer number of color channels"""
         if not self.isloaded():
@@ -1628,10 +1672,13 @@ class Video(object):
         # FIXME: not sure where in some filter chains this off-by-one error is being introduced, but probably does not matter since it does not affect any annotations 
         # and since the max square always preserves the scale and the upper left corner of the source video. 
         # FIXME: this may trigger an inefficient resizing operation during load()
-        d = max(self.shape())
-        self._ffmpeg = self._ffmpeg.filter('pad', d+1, d+1, 0, 0)
-        self.shape(shape=(d+1, d+1))
-        return self.crop(vipy.geometry.BoundingBox(xmin=0, ymin=0, width=int(d), height=int(d)))
+        if not self.issquare():
+            d = max(self.shape())
+            self._ffmpeg = self._ffmpeg.filter('pad', d+1, d+1, 0, 0)
+            self.shape(shape=(d+1, d+1))
+            return self.crop(vipy.geometry.BoundingBox(xmin=0, ymin=0, width=int(d), height=int(d)))
+        else:
+            return self
 
     def minsquare(self):
         """Return a square crop of the video, preserving the upper left corner of the video"""
@@ -1640,7 +1687,8 @@ class Video(object):
         return self.crop(vipy.geometry.BoundingBox(xmin=0, ymin=0, width=int(d), height=int(d)))
     
     def maxmatte(self):
-        return self.zeropad(max(1, int((max(self.shape()) - self.width())/2)), max(int((max(self.shape()) - self.height())/2), 1))
+        """Return a square video with dimensions (self.maxdim(), self.maxdim()) with zeropadded lack bars or mattes above or below the video forming a letterboxed video."""
+        return self.zeropad(max(1, int((max(self.shape()) - self.width())/2)), max(int((max(self.shape()) - self.height())/2), 1)).maxsquare()
     
     def zeropad(self, padwidth, padheight):
         """Zero pad the video with padwidth columns before and after, and padheight rows before and after
@@ -1660,6 +1708,14 @@ class Video(object):
     def pad(self, padwidth=0, padheight=0):
         """Alias for zeropad"""
         return self.zeropad(padwidth=padwidth, padheight=padheight)
+
+    def zeropadlike(self, width, height):
+        """Zero pad the video balancing the border so that the resulting video size is (width, height)."""
+        assert width >= self.width() and height >= self.height(), "Invalid input - final (width=%d, height=%d) must be greater than current image size (width=%d, height=%d)" % (width, height, self.width(), self.height())
+        assert int(np.floor((width - self.width())/2)) == int(np.ceil((width - self.width())/2)), "Zero pad must be symmetric, this is often due to odd zeropadding which ffmpeg doesn't like.  Try changing the width +/- 1 pixel"
+        assert int(np.floor((height - self.height())/2)) == int(np.ceil((height - self.height())/2)), "Zero pad must be symmetric, this is often due to odd zeropadding which ffmpeg doesn't like.  Try changing the height +/- 1 pixel"        
+        return self.zeropad(int(np.floor((width - self.width())/2)),
+                            int(np.floor((height - self.height())/2)))
     
     def crop(self, bbi, zeropad=True):
         """Spatially crop the video using the supplied vipy.geometry.BoundingBox, can only be applied prior to load().
@@ -1957,6 +2013,8 @@ class Video(object):
             assert endframe is None, "Cannot specify both endframe and length"
             assert length >= 0, "Length must be positive"
             (j,k) = (i+length, 1)
+        if length is None and endframe is None:
+            j = len(frames)  # use them all
         if stride != 1:
             assert take is None, "Cannot specify both take and stride"
             assert stride >= 1, "Stride must be >= 1"
@@ -2518,6 +2576,10 @@ class Scene(VideoCategory):
     def tracklist(self):
         return list(self.tracks().values())  # triggers copy
 
+    def objects(self, casesensitive=True):
+        """The objects in a scene are the unique categories of tracks"""
+        return sorted(list(set([t.category() if casesensitive else t.category().lower() for t in self.tracklist()])))
+    
     def actorid(self, id=None, fluent=False):
         """Return or set the actor ID for the video.
 
@@ -2897,8 +2959,14 @@ class Scene(VideoCategory):
             self._framerate = fps
             return self
         
-    def activitysplit(self):
-        """Split the scene into k separate scenes, one for each activity.  Do not include overlapping activities.  This is useful for union()"""
+    def activitysplit(self, idx=None):
+        """Split the scene into k separate scenes, one for each activity.  Do not include overlapping activities.  
+
+        Args:
+            idx: [int],[tuple],[list].  Return only those activities in the provided activity index list, where the activity index is the integer index of the activity in the video.
+
+        .. note:: This is useful for union()
+        """
         vid = self.clone(flushforward=True)
         if any([(a.endframe()-a.startframe()) <= 0 for a in vid.activities().values()]):
             warnings.warn('Filtering invalid activity with degenerate lengths: %s' % str([a for a in vid.activities().values() if (a.endframe()-a.startframe()) <= 0]))
@@ -2906,7 +2974,7 @@ class Scene(VideoCategory):
         tracks = [ [t.clone() for (tid, t) in vid.tracks().items() if a.hastrack(t)] for a in activities]  # tracks associated with each activity (may be empty)
         vid._activities = {}  # for faster clone
         vid._tracks = {}      # for faster clone
-        return [vid.clone().setattribute('activityindex', k).activities(pa).tracks(t).setactorid(pa.actorid()) for (k,(pa,t)) in enumerate(zip(activities, tracks))]
+        return [vid.clone().setattribute('activityindex', k).activities(pa).tracks(t).setactorid(pa.actorid()) for (k,(pa,t)) in enumerate(zip(activities, tracks)) if idx is None or k in tolist(idx)]
 
     def tracksplit(self):
         """Split the scene into k separate scenes, one for each track.  Each scene starts at frame 0 and is a shallow copy of self containing exactly one track.  
@@ -2922,7 +2990,7 @@ class Scene(VideoCategory):
         """Split the scene into k separate scenes, one for each track.  Each scene starts and ends when the track starts and ends"""
         return [t.setattribute('_instance_id', '%s_%d' % (t.actorid(), k)).clip(t.track(t.actorid()).startframe(), t.track(t.actorid()).endframe()) for (k,t) in enumerate(self.tracksplit())]
     
-    def activityclip(self, padframes=0, multilabel=True):
+    def activityclip(self, padframes=0, multilabel=True, idx=None):
         """Return a list of `vipy.video.Scene` objects each clipped to be temporally centered on a single activity, with an optional padframes before and after.  
 
         Args:
@@ -2930,6 +2998,7 @@ class Scene(VideoCategory):
             padframes: [tuple] (int, int) for asymmetric padding before and after
             padframes: [list[tuples]] [(int, int), ...] for activity specific asymmetric padding
             multilabel: [bool] include overlapping multilabel secondary activities in each activityclip
+            idx: [int], [tuple], [list].  The indexes of the activities to return, where the index is the integer index order of the activity in the video.
 
         Returns:
             A list of `vipy.video.Scene` each cloned from the source video and clipped on one activity in the scene
@@ -2960,7 +3029,7 @@ class Scene(VideoCategory):
                 .category(pa.category())
                 .setactorid(pa.actorid())  # actor is actor of primary activity
                 .setattribute('activityindex',k).setattribute('_instance_id', '%s_%d' % (pa.id(), k))
-                for (k,(pa,sa,t,(prepad,postpad))) in enumerate(zip(primary_activities, secondary_activities, tracks, padframelist))]
+                for (k,(pa,sa,t,(prepad,postpad))) in enumerate(zip(primary_activities, secondary_activities, tracks, padframelist)) if idx is None or k in tolist(idx)]
 
     def noactivityclip(self, label=None, strict=True, padframes=0):
         """Return a list of vipy.video.Scene() each clipped on a track segment that has no associated activities.  
@@ -3104,7 +3173,9 @@ class Scene(VideoCategory):
         
 
     def duration(self, frames=None, seconds=None, minutes=None):
-        """Return a video clipped with frame indexes between (0, frames) or (0,seconds*self.framerate()) or (0,minutes*60*self.framerate()"""
+        """Return a video clipped with frame indexes between (0, frames) or (0,seconds*self.framerate()) or (0,minutes*60*self.framerate().  Return duration in seconds if no arguments are provided."""
+        if frames is None and seconds is None and minutes is None:
+            return self.duration_in_seconds_of_videofile() if not self.isloaded() else (len(self) / self.framerate())
         assert frames is not None or seconds is not None or minutes is not None
         frames = frames if frames is not None else ((int(seconds*self.framerate()) if seconds is not None else 0) + (int(minutes*60*self.framerate()) if minutes is not None else 0))
         return self.clip(0, frames)
@@ -3496,10 +3567,10 @@ class Scene(VideoCategory):
         im = self.frame(frame, img=self.preview(framenum=frame).array())
         return im.savefig(outfile=outfile, fontsize=fontsize, nocaption=nocaption, boxalpha=boxalpha, dpi=dpi, textfacecolor=textfacecolor, textfacealpha=textfacealpha) if outfile is not None else im
     
-    def stabilize(self, flowdim=256):
+    def stabilize(self, flowdim=256, gpu=None):
         """Background stablization using flow based stabilization masking foreground region.  This will output a video with all frames aligned to the first frame, such that the background is static."""
         from vipy.flow import Flow  # requires opencv
-        return Flow(flowdim=flowdim).stabilize(self.clone(), residual=True)
+        return Flow(flowdim=flowdim, gpu=gpu).stabilize(self.clone(), residual=True)
     
     def pixelmask(self, pixelsize=8):
         """Replace all pixels in foreground boxes with pixelation"""
