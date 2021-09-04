@@ -285,6 +285,7 @@ def imagelist(list_of_image_files, outdir, title='Image Visualization', imagewid
     k_divid = k_divid + 1
 
     # Generate images and html
+    assert all([os.path.exists(f) and vipy.util.isimg(f) for f in list_of_image_files])
     for (k, imsrc) in enumerate(list_of_image_files):
         shutil.copyfile(imsrc, os.path.join(outdir, filetail(imsrc)))
         imdst = filetail(imsrc)

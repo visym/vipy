@@ -4,7 +4,6 @@ from vipy.video import VideoCategory, Scene
 from vipy.object import Track
 from vipy.activity import Activity
 from vipy.geometry import BoundingBox
-from vipy.batch import Batch
 from vipy.show import colorlist
 import numpy as np
 import warnings
@@ -100,7 +99,7 @@ class KF1(object):
                 print('[vipy.data.meva.KF1]: This takes a while since parsing YAML files in python is painfully slow, consider calling "vipy.globals.parallel(n)" for n>1 before loading the dataset for parallel parsing')
 
         # Parallel video annotation:  set vipy.globals.parallel(n) for n parallel workers for the Batch() processing
-        from vipy.batch import Batch
+        from vipy.batch import Batch  # requires Dask, Distributed
         self._vidlist = Batch(list(yamlfiles)).map(lambda tga: self._parse_video(d_videoname_to_path, d_category_to_shortlabel, tga[0], tga[1], tga[2], stride=stride, verbose=verbose, actor=actor)).result()
         self._vidlist = [v for v in self._vidlist if v is not None]
 
