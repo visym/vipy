@@ -181,7 +181,7 @@ class Stream(object):
         self._write_pipe.stdin.write(im.array().astype(np.uint8).tobytes())
         if flush:
             self._write_pipe.stdin.flush()  # do we need this?
-        if isinstance(im, vipy.image.Scene) and len(im.objects()) > 0:
+        if isinstance(im, vipy.image.Scene) and len(im.objects()) > 0 and isinstance(self._video, vipy.video.Scene):
             for obj in im.objects():
                 self._video.add(obj, frame=self._frame_index, rangecheck=False)
         self._frame_index += 1  # assumes that the source image is at the appropriate frame rate for this video
@@ -627,18 +627,20 @@ class Video(object):
             f.write(self.attributes['__video__'])
         return self.filename(filename)                
 
-    def concatenate(self, videos, outfile, youtube_chapters=False):
+    @classmethod
+    def concatenate(cls, videos, outfile, framerate=30, youtube_chapters=None):
         """Temporally concatenate a sequence of videos into a single video stored in outfile.
         
         >>> (v1, v2, v3) = (vipy.video.RandomVideo(128,128,32), vipy.video.RandomVideo(128,128,32), vipy.video.RandomVideo(128,128,32))
-        >>> vc = v1.concatenate((v2, v3), 'concatenated.mp4')
+        >>> vc = vipy.video.Video.concatenate((v1, v2, v3), 'concatenated.mp4')
 
         In this example, vc will point to concatenated.mp4 which will contain (v1,v2,v3) concatenated temporally .  
 
         Input:
-            videos: a single video or an iterable of videos of type `vipy.video.Video`.
+            videos: a single video or an iterable of videos of type `vipy.video.Video` or an iterable of video files
             outfile: the output filename to store the concatenation. 
-            youtube_chapters [bool]:  If true, output a string that can be used to define the start and end times of chapters if this video is uploaded to youtube.  The string output should be copied to the youtube video description in order to enable chapters on playback.
+            youtube_chapters [bool, callable]:  If true, output a string that can be used to define the start and end times of chapters if this video is uploaded to youtube.  The string output should be copied to the youtube video description in order to enable chapters on playback.  This argument will default to the string representation ofo the video, but you may also pass a callable of the form: 'youtube_chapters=lambda v: str(v)' which will output the provided string for each video chapter.  
+            framerate [float]: The output frame rate of outfile
 
         Returns:
             A `vipy.video.Video` object with filename()=outfile, such that outfile contains the temporal concatenation of pixels in (self, videos).
@@ -649,19 +651,21 @@ class Video(object):
         -The output video will be at the framerate of self.framerate().
         -if you want to concatenate annotations, call `vipy.video.Scene.annotate` first on the videos to save the annotations into the pixels, then concatenate.
         """
-        
-        assert all([isinstance(v, vipy.video.Video) for v in tolist(videos)])
-        assert all([self.shape() == v.shape() for v in tolist(videos)]), "Video shapes must all the same, try padding"
-        vi = [self.clone()] + tolist(videos)        
-        vo = vipy.video.Scene(filename=outfile, framerate=self.framerate())
+
+        assert len(tolist(videos))>0 and (all([isinstance(v, vipy.video.Video) for v in tolist(videos)]) or all([os.path.exists(f) and vipy.util.isvideofile(f) for f in tolist(videos)]))
+        vi = tolist(videos) if all([isinstance(v, vipy.video.Video) for v in tolist(videos)]) else [cls(filename=f) for f in tolist(videos)]
+
+        assert all([vij.shape() == vik.shape() for vij in vi for vik in vi]), "Video shapes must all the same, try padding"
+        vo = cls(filename=outfile, framerate=vi[0].framerate())
         with vo.stream(overwrite=True) as s:
             for v in vi:
-                for im in v.clone().framerate(self.framerate()):
+                for im in v.clone().framerate(framerate).stream():
                     s.write(im)
 
-        if youtube_chapters:            
-            print('[vipy.video.concatenate]: Copy the following into the video Description after uploading the videofile "%s" to YouTube to enable chapters on playback.' % outfile)
-            print('\n'.join(['%s %s' % (vipy.util.seconds_to_MMSS_colon_notation(int(s)), v.category()) for (s,v) in zip(np.cumsum([v.duration() for v in vi]), vi)]))
+        if youtube_chapters is not None:        
+            f = youtube_chapters if callable(youtube_chapters) else lambda v: str(v)
+            print('[vipy.video.concatenate]: Copy the following into the video Description after uploading the videofile "%s" to YouTube to enable chapters on playback.\n' % outfile)
+            print('\n'.join(['%s  %s' % (vipy.util.seconds_to_MMSS_colon_notation(int(s)), str(f(v))) for (s,v) in zip(np.cumsum([0] + [v.duration() for v in vi][:-1]), vi)])); print('\n')
             if any([v.duration() < 10 for v in vi]):
                 warnings.warn('YouTube chapters must be a minimum duration of 10 seconds')
         return vo
@@ -880,6 +884,14 @@ class Video(object):
         """
         return int(np.floor(self.duration_in_seconds_of_videofile()*self.framerate_of_videofile()))
     
+    def duration(self, frames=None, seconds=None, minutes=None):
+        """Return a video clipped with frame indexes between (0, frames) or (0,seconds*self.framerate()) or (0,minutes*60*self.framerate().  Return duration in seconds if no arguments are provided."""
+        if frames is None and seconds is None and minutes is None:
+            return self.duration_in_seconds_of_videofile() if not self.isloaded() else (len(self) / self.framerate())
+        assert frames is not None or seconds is not None or minutes is not None
+        frames = frames if frames is not None else ((int(seconds*self.framerate()) if seconds is not None else 0) + (int(minutes*60*self.framerate()) if minutes is not None else 0))
+        return self.clip(0, frames)
+
     def framerate_of_videofile(self):
         """Return video framerate in frames per second of the source video file (NOT the filter chain), requires ffprobe.
         """
@@ -912,6 +924,7 @@ class Video(object):
             prefix: prepend a string prefix to the video __repr__ when printing.  Useful for logging.
             verbose:  Print out the video __repr__.  Set verbose=False to just sleep
             sleep:  Integer number of seconds to sleep[ before returning
+            fluent [bool]:  If true, return self else return None.  This is useful for terminating long fluent chains in lambdas that return None
 
         Returns:  
             The video object after sleeping 
@@ -2145,6 +2158,10 @@ class Video(object):
         self._shape = None
         return self
 
+    def returns(self, r=None):
+        """Return the provided value, useful for terminating long fluent chains without returning self"""
+        return r
+
     def flush_and_return(self, retval):
         """Flush the video and return the parameter supplied, useful for long fluent chains"""
         self.flush()
@@ -2260,6 +2277,7 @@ class VideoCategory(Video):
         else:
             self._category = c
             return self
+
 
     
 class Scene(VideoCategory):
@@ -3172,13 +3190,6 @@ class Scene(VideoCategory):
         return self.trackmap(lambda t: t.framerate(speed=s)).activitymap(lambda a: a.framerate(speed=s))
         
 
-    def duration(self, frames=None, seconds=None, minutes=None):
-        """Return a video clipped with frame indexes between (0, frames) or (0,seconds*self.framerate()) or (0,minutes*60*self.framerate().  Return duration in seconds if no arguments are provided."""
-        if frames is None and seconds is None and minutes is None:
-            return self.duration_in_seconds_of_videofile() if not self.isloaded() else (len(self) / self.framerate())
-        assert frames is not None or seconds is not None or minutes is not None
-        frames = frames if frames is not None else ((int(seconds*self.framerate()) if seconds is not None else 0) + (int(minutes*60*self.framerate()) if minutes is not None else 0))
-        return self.clip(0, frames)
     
     def clip(self, startframe, endframe=None):
         """Clip the video to between (startframe, endframe).  This clip is relative to clip() shown by __repr__(). 

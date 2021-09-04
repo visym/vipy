@@ -232,6 +232,12 @@ class Flow(object):
         self._poly_sigma = 1.2
         self._flowiter = flowiter
         self._gpu = gpu
+        if gpu == True:
+            try:
+                f = cv2.cuda_FarnebackOpticalFlow
+            except:
+                warnings.warn('OpenCV not CUDA enabled - GPU acceleration is unavailable')
+                self._gpu = None
 
     def __call__(self, im, imprev=None, flowstep=1, framestep=1):
         return self.videoflow(im, flowstep, framestep) if imprev is None else self.imageflow(im, imprev)
@@ -291,11 +297,10 @@ class Flow(object):
         imf = [self.imageflow(v[k], v[max(0, k-flowstep) if keyframe is None else keyframe]) for k in range(0, len(v.load())+framestep, framestep) if k < len(v.load())]
         return Video(np.stack([im.flow() for im in imf]), flowstep, framestep)  # flow only, no objects
 
-    def videoflowframe(self, v, frame, flowstep=1, framestep=1, keyframe=None):
+    def videoflowframe(self, v, frame, duration, flowstep=1, framestep=1, keyframe=None):
         """Computer the videoflow for a single frame"""
         assert isinstance(v, vipy.video.Video)
         assert flowstep == 1 and framestep == 1
-        duration = v.duration_in_frames_of_videofile()
         imf = [self.imageflow(v.frame(k), v.frame(max(0, k-flowstep) if keyframe is None else keyframe)) for k in range(frame, frame+framestep, framestep) if k < duration]
         return imf[0]
 
@@ -307,10 +312,10 @@ class Flow(object):
                for k in range(0, len(v.load()))]
         return Video(np.stack([im.flow() for im in imf]), flowstep=1, framestep=1)  # flow only, no objects
 
-    def keyflowframe(self, v, frame, keystep=None):
+    def keyflowframe(self, v, frame, duration, keystep=None):
         """Compute the keyflow for a single frame"""
         assert isinstance(v, vipy.video.Video)
-        len_v = v.duration_in_frames_of_videofile()
+        len_v = duration
         assert frame < len_v
         (ima, imb, imc) = (v.frame(min(len_v-1, int(keystep*np.round(frame/keystep)))), v.frame(max(0, frame-1)), v.frame(frame))
         return self.imageflow(ima, imb) - self.imageflow(ima, imc)
@@ -327,14 +332,18 @@ class Flow(object):
         """Return a flow field of size (height=H, width=W) consistent with an Euclidean transform parameterized by a 2x2 Rotation and 2x1 translation"""  
         return self.affineflow(np.array([[R[0,0], R[0,1], t[0]], [R[1,0], R[1,1], t[1]]]), H, W)
     
-    def _correspondence(self, imflow, im, border=0.1, contrast=(16.0/255.0), dilate=1.0, validmask=None, maxflow=None):
+    def _correspondence(self, imflow, im, border=0.1, contrast=(16.0/255.0), dilate=1.0, validmask=None, maxflow=None, subsample=1):
         (H,W) = (imflow.height(), imflow.width())
         m = im.clone().dilate(dilate).rectangular_mask() if (dilate  is not None and isinstance(im, vipy.image.Scene) and len(im.objects())>0) else 0  # ignore foreground regions
         b = im.border_mask(int(border*min(W,H))) if border is not None else 0  # ignore borders
         w = np.uint8(np.sum(np.abs(np.gradient(im.clone().greyscale().numpy())), axis=0) < contrast) if contrast is not None else 0  # ignore low contrast regions
         v = (1-np.float32(validmask)) if validmask is not None else 0  # ignore non-valid regions
         x = np.float32(imflow.magnitude() > maxflow) if maxflow is not None else 0  # ignore maxflow region
-        bk = np.nonzero((m+b+w+v+x) == 0)  # indexes for valid flow regions
+        vf = (m+b+w+v+x)  # valid flow regions (non-zero elements)
+        if subsample != 1:
+            assert isinstance(subsample, int) and subsample > 1
+            vf[::subsample, ::subsample] = 0  # zero out (ignore) neighboring flow
+        bk = np.nonzero(vf == 0)  # indexes for valid flow regions
         (X, Y) = np.meshgrid(np.arange(0, im.width()), np.arange(0, im.height()))        
         (fx, fy) = (imflow.dx()[bk].flatten(), imflow.dy()[bk].flatten())  # flow
         (x1, y1) = (X[bk].flatten(), Y[bk].flatten())  # image coordinates
@@ -379,8 +388,10 @@ class Flow(object):
         vc = vc.saveas(tempMP4()) if vc.isloaded() else vc  # dump to temp file if loaded
         
         assert isinstance(vc, vipy.video.Scene), "Invalid input - Must be vipy.video.Scene() with foreground object keepouts for background stabilization"
-        if verbose and min(vc.shape()) > 256:  # shape triggers fine frame fetch
-            warnings.warn('Large video frame size detected - This will take a while ...')
+        if verbose and vc.framerate() != 5:  # stabilization optimized for framerate=5.0Hz
+            warnings.warn('Optimal framerate for vipy.flow.stabilize is 5.0 Hz.  Set this with v.framerate(5).')
+            if vc.framerate() > 5:
+                warnings.warn('High framerate for stabilization - this will take a while ...')
                     
         # Prepare videos
         vv = vc.cropeven()  # make even for zero pad
@@ -389,11 +400,9 @@ class Flow(object):
         vs = vv.clone(flushforward=True, flushfilter=True).filename(outfile if outfile is not None else tempMP4()).nourl().cleartracks()   # does not trigger load
         s = vv.mindim() / float(self._mindim)  # for upsample
         vvd = vv.clone().mindim(self._mindim)  # downsampled for flow correspondence        
-        if vc.duration_in_frames_of_videofile() < keystep:
-            print('[vipy.flow.stabilize]: ERROR - video not long enough for stabilization, returning original video "%s"' % str(v))
-            return vc.setattribute('unstabilized')
         if preload:
             (vv, vvd) = (vv.load(), vvd.load())  # Faster, but requires lots of memory, replace with stream, replace all frame() calls
+        assert preload, "preload=True is required for now"
 
         # Stabilization
         assert rigid is True or affine is True, "Projective stabilization is disabled"
@@ -406,7 +415,10 @@ class Flow(object):
         f_transform_coarse = (lambda A: A[0:2,:])
         f_transform_fine = (lambda A: A[0:2,:]) if (rigid or affine) else (lambda A: A)
         imstabilized = vv.preview(0).rgb().zeropad(padwidth, padheight)  # single frame fetch
-        duration = vv.duration_in_frames_of_videofile()   # FIXME: this may be off if the video filter chain has a different framerate
+        duration = vv.duration_in_frames_of_videofile() if not preload else len(vv)  # FIXME: this may be off if the video filter chain has a different framerate
+        if duration < keystep:
+            print('[vipy.flow.stabilize]: ERROR - video not long enough for stabilization, returning original video "%s"' % str(v))
+            return vc.setattribute('unstabilized')
         r_coarse = []
         frames = []                        
 
@@ -416,14 +428,10 @@ class Flow(object):
                     print('[vipy.flow.stabilize]: %s coarse to fine stabilization ...' % ('Euclidean' if rigid else 'Affine' if affine else 'Projective'))                
 
                 # Optical flow (3x): use downsampled video, do not precompute to save on memory, requires random access to downsampled video
-                try:
-                    im = vv.frame(k)                    
-                    imf = self.videoflowframe(vvd, k, framestep=1, flowstep=1)
-                    imfk1 = self.keyflowframe(vvd, k, keystep=keystep)
-                    imfk2 = self.keyflowframe(vvd, k, keystep=duration//2)
-                except:
-                    print('[vipy.flow.stabilize]: graceful early exit')
-                    break  # FIXME: duration is sometimes off by one causing frame(k) to error, early exit here
+                im = vv.frame(k)                    
+                imf = self.videoflowframe(vvd, k, duration=duration, framestep=1, flowstep=1)
+                imfk1 = self.keyflowframe(vvd, k, duration=duration, keystep=keystep)
+                imfk2 = self.keyflowframe(vvd, k, duration=duration, keystep=duration//2)
             
                 # Coarse alignment 
                 imd = im.clone().rescale(1.0 / s)  # downsample
@@ -432,7 +440,7 @@ class Flow(object):
                 (xy_src_k2, xy_dst_k2) = self._correspondence(imfk2, imd, border=border, dilate=dilate, contrast=contrast, maxflow=maxflow)
                 (xy_src, xy_dst) = (np.hstack( (xy_src_k0, xy_src_k1, xy_src_k2) ).transpose(), np.hstack( (xy_dst_k0, xy_dst_k1, xy_dst_k2) ).transpose())  # Nx3
                 try:            
-                    M = f_estimate_coarse(s*xy_src, s*xy_dst, method=cv2.RANSAC, confidence=0.99999, ransacReprojThreshold=0.1, refineIters=16, maxIters=3000)   # SLOW
+                    M = f_estimate_coarse(s*xy_src, s*xy_dst, method=cv2.RANSAC, confidence=0.99999, ransacReprojThreshold=0.1, refineIters=16, maxIters=3000)   # upsampled correspondences
                     r_coarse.append(np.mean(np.sqrt(np.sum(np.square(M.dot(homogenize(xy_src[::8].transpose())) - homogenize(xy_dst[::8].transpose())), axis=0))) if (residual and len(xy_src)>8) else 0)
                 except Exception as e:
                     if not strict:
