@@ -191,12 +191,16 @@ def parallel(n=None, pct=None, scheduler=None):
             assert n is None or (isinstance(n, int) and n>=1)
             assert pct is None or (pct > 0 and pct <= 1)
             dask(num_processes=n, pct=pct, address=scheduler)
+            self._n = n
+            self._pct = pct
+            self._scheduler = scheduler
             
         def __enter__(self):
             pass
 
         def __exit__(self, *args):
-            noparallel()
+            if self._scheduler is None:
+                noparallel()
 
     if n is None and pct is None and scheduler is None:
         return GLOBAL['DASK_CLIENT'].num_processes() if  GLOBAL['DASK_CLIENT'] is not None else 0
@@ -210,6 +214,7 @@ def parallel(n=None, pct=None, scheduler=None):
 def noparallel():
     """Disable all parallel processing"""
     if GLOBAL['DASK_CLIENT'] is not None:
+        GLOBAL['DASK_CLIENT'].shutdown()
         del GLOBAL['DASK_CLIENT']
     GLOBAL['DASK_CLIENT'] = None 
 
