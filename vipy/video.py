@@ -2436,9 +2436,9 @@ class Scene(VideoCategory):
             if 'instance_id' in self.attributes:
                 return self.attributes['instance_id']  # set at video creation time (e.g. pycollector)
             elif '_instance_id' in self.attributes:
-                return '%s_%s' % (self.videoid(), str(self.attributes['_instance_id']))  # set at activityclip() time for provenance from clips back to videos
+                return self.attributes['_instance_id']  # set at activityclip() time for provenance from clips back to videos
             elif 'activityindex' in self.attributes:
-                return '%s_%s' % (self.videoid(), str(self.attributes['activityindex']))  # set at activityclip() time for provenance from clips back to videos
+                return '%s_%s' % (self.videoid(), str(self.attributes['activityindex']))  # set at activityclip() time for provenance from clips back to videos (deprecated)
             else:
                 return self.videoid()
 
