@@ -40,7 +40,7 @@ class Detection(BoundingBox):
         self.attributes = {} if attributes is None else attributes.copy()  # shallow copy
 
     @classmethod
-    def cast(cls, d, flush=False, category=None):
+    def cast(cls, d, flush=False, category=None, shortlabel=None):
         assert isinstance(d, BoundingBox)
         if d.__class__ != Detection or flush:
             d.__class__ = Detection
@@ -52,6 +52,8 @@ class Detection(BoundingBox):
             d.attributes = {} if flush or not hasattr(d, 'attributes') else d.attributes
         if category is not None:
             d._label = category  # when casting BoundingBox to Detection, extra args are necessary
+        if shortlabel is not None:
+            d._shortlabel = shortlabel  # when casting BoundingBox to Detection, extra args are necessary
         return d
         
     @classmethod
@@ -431,9 +433,9 @@ class Track(object):
         """
         assert len(self._keyboxes) > 0, "Degenerate object for interpolation"   # not self.isempty()
         if len(self._keyboxes) == 1:
-            return Detection.cast(self._keyboxes[0].clone(), category=self.category()).noattributes().setattribute('trackid', self.id()) if (self._boundary == 'extend' or self.during(f)) else None
+            return Detection.cast(self._keyboxes[0].clone(), category=self.category(), shortlabel=self.shortlabel()).noattributes().setattribute('trackid', self.id()) if (self._boundary == 'extend' or self.during(f)) else None
         if f in reversed(self._keyframes):            
-            return Detection.cast(self._keyboxes[self._keyframes.index(f)], category=self.category()).noattributes().setattribute('trackid', self.id())
+            return Detection.cast(self._keyboxes[self._keyframes.index(f)], category=self.category(), shortlabel=self.shortlabel()).noattributes().setattribute('trackid', self.id())
 
         kf = self._keyframes
         ft = min(max(f, kf[0]), kf[-1])  # truncated frame index

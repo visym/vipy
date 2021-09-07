@@ -632,14 +632,14 @@ class Video(object):
         """Temporally concatenate a sequence of videos into a single video stored in outfile.
         
         >>> (v1, v2, v3) = (vipy.video.RandomVideo(128,128,32), vipy.video.RandomVideo(128,128,32), vipy.video.RandomVideo(128,128,32))
-        >>> vc = vipy.video.Video.concatenate((v1, v2, v3), 'concatenated.mp4')
+        >>> vc = vipy.video.Video.concatenate((v1, v2, v3), 'concatenated.mp4', youtube_chapters=lambda v: v.category())
 
         In this example, vc will point to concatenated.mp4 which will contain (v1,v2,v3) concatenated temporally .  
 
         Input:
             videos: a single video or an iterable of videos of type `vipy.video.Video` or an iterable of video files
             outfile: the output filename to store the concatenation. 
-            youtube_chapters [bool, callable]:  If true, output a string that can be used to define the start and end times of chapters if this video is uploaded to youtube.  The string output should be copied to the youtube video description in order to enable chapters on playback.  This argument will default to the string representation ofo the video, but you may also pass a callable of the form: 'youtube_chapters=lambda v: str(v)' which will output the provided string for each video chapter.  
+            youtube_chapters [bool, callable]:  If true, output a string that can be used to define the start and end times of chapters if this video is uploaded to youtube.  The string output should be copied to the youtube video description in order to enable chapters on playback.  This argument will default to the string representation ofo the video, but you may also pass a callable of the form: 'youtube_chapters=lambda v: str(v)' which will output the provided string for each video chapter.  A useful lambda is 'youtube_chapters=lambda v: v.category()'
             framerate [float]: The output frame rate of outfile
 
         Returns:
@@ -663,7 +663,7 @@ class Video(object):
                     s.write(im)
 
         if youtube_chapters is not None:        
-            f = youtube_chapters if callable(youtube_chapters) else lambda v: str(v)
+            f = youtube_chapters if callable(youtube_chapters) else lambda v: str(v).replace('<','').replace('>','')  # angle brackets not allowed
             print('[vipy.video.concatenate]: Copy the following into the video Description after uploading the videofile "%s" to YouTube to enable chapters on playback.\n' % outfile)
             print('\n'.join(['%s  %s' % (vipy.util.seconds_to_MMSS_colon_notation(int(s)), str(f(v))) for (s,v) in zip(np.cumsum([0] + [v.duration() for v in vi][:-1]), vi)])); print('\n')
             if any([v.duration() < 10 for v in vi]):
@@ -2434,11 +2434,11 @@ class Scene(VideoCategory):
             return self
         else:
             if 'instance_id' in self.attributes:
-                return self.attributes['instance_id']
+                return self.attributes['instance_id']  # set at video creation time (e.g. pycollector)
             elif '_instance_id' in self.attributes:
-                return '%s_%s' % (self.videoid(), str(self.attributes['_instance_id']))
+                return '%s_%s' % (self.videoid(), str(self.attributes['_instance_id']))  # set at activityclip() time for provenance from clips back to videos
             elif 'activityindex' in self.attributes:
-                return '%s_%s' % (self.videoid(), str(self.attributes['activityindex']))
+                return '%s_%s' % (self.videoid(), str(self.attributes['activityindex']))  # set at activityclip() time for provenance from clips back to videos
             else:
                 return self.videoid()
 
@@ -3048,7 +3048,7 @@ class Scene(VideoCategory):
                 .clip(startframe=max(pa.startframe()-prepad, 0), endframe=(pa.endframe()+postpad))
                 .category(pa.category())
                 .setactorid(pa.actorid())  # actor is actor of primary activity
-                .setattribute('activityindex',k).setattribute('_instance_id', '%s_%d' % (pa.id(), k))
+                .setattribute('activityindex',k).setattribute('_instance_id', '%s_%d' % (vid.videoid(), k))
                 for (k,(pa,sa,t,(prepad,postpad))) in enumerate(zip(primary_activities, secondary_activities, tracks, padframelist)) if idx is None or k in tolist(idx)]
 
     def noactivityclip(self, label=None, strict=True, padframes=0):
