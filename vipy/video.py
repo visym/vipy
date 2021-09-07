@@ -2592,7 +2592,7 @@ class Scene(VideoCategory):
         return A[k-1] if k>=1 else None
 
     def tracklist(self):
-        return list(self.tracks().values())  # triggers copy
+        return list(self.tracks().values())  # triggers shallow copy
 
     def objects(self, casesensitive=True):
         """The objects in a scene are the unique categories of tracks"""
@@ -2610,24 +2610,25 @@ class Scene(VideoCategory):
         
         Returns:
             [id=None, fluent=False] the actor ID
-            [id is not None] The video with the actor ID set.        
+            [id is not None] The video with the actor ID set, only if the ID is found in the tracklist
         """
         if id is None:
             return next(iter(self.tracks().keys())) if not fluent else self  # Python >=3.6
-        else:
+        elif id in self._tracks:
             # Reorder tracks so that id is first
-            assert id in self.tracks()
             idlist = [id] + [ti for ti in self.tracks().keys() if ti != id]
             self._tracks = {k:self.track(k) for k in idlist}
-            return self
+        else:
+            warnings.warn('trackid=%s not found in "%s"' % (str(id), str(self)))
+        return self
 
     def setactorid(self, id):
         """Alias for `vipy.video.Scene.actorid`"""
         return self.actorid(id, fluent=True)
 
     def actor(self):
-        #assert len(self.tracks()) == 1, "Actor only valid for scenes with a single track"
-        return next(iter(self.tracks().values()))   # Python >=3.6
+        """Return the primary actor (first `vipy.object.Track`) in the video"""
+        return next(iter(self.tracks().values())) if len(self._tracks)>0 else None   # Python >=3.6
         
     def primary_activity(self):
         """Return the primary activity of the video.
@@ -2658,12 +2659,13 @@ class Scene(VideoCategory):
             return self
 
     def activityindex(self, k):
+        """Return the `vipy.activity.Activity` at the requested index order in the video"""
         alist = self.activitylist()
         assert k >= 0 and k < len(alist), "Invalid index"        
         return alist[k]
 
     def activitylist(self):
-        return list(self.activities().values())  # insertion ordered (python >=3.6), triggers copy
+        return list(self.activities().values())  # insertion ordered (python >=3.6), triggers shallow copy
         
     def activityfilter(self, f):
         """Apply boolean lambda function f to each activity and keep activity if function is true, remove activity if function is false
@@ -2845,7 +2847,7 @@ class Scene(VideoCategory):
                 self.trackmap(lambda t: t.update(k, obj) if obj.attributes['trackid'] == t.id() else t) 
                 return None if not fluent else self
             else:
-                t = vipy.object.Track(category=obj.category(), keyframes=[k], boxes=[obj], boundary='strict', attributes=obj.attributes, trackid=obj.attributes['trackid'] if obj.hasattribute('trackid') else None)
+                t = vipy.object.Track(category=obj.category(), keyframes=[k], boxes=[obj], boundary='strict', attributes=obj.attributes, trackid=obj.attributes['trackid'] if obj.hasattribute('trackid') else None, framerate=self.framerate())
                 if rangecheck and not obj.hasoverlap(width=self.width(), height=self.height()):
                     raise ValueError("Track '%s' does not intersect with frame shape (%d, %d)" % (str(t), self.height(), self.width()))
                 self.tracks()[t.id()] = t  # by-reference
@@ -2865,7 +2867,7 @@ class Scene(VideoCategory):
             return obj.id() if not fluent else self
         elif (istuple(obj) or islist(obj)) and len(obj) == 4 and isnumber(obj[0]):
             assert self._currentframe is not None, "add() for obj=xywh must be added during frame iteration (e.g. for im in video: )"
-            t = vipy.object.Track(category=category, keyframes=[self._currentframe], boxes=[vipy.geometry.BoundingBox(xywh=obj)], boundary='strict', attributes=attributes)
+            t = vipy.object.Track(category=category, keyframes=[self._currentframe], boxes=[vipy.geometry.BoundingBox(xywh=obj)], boundary='strict', attributes=attributes, framerate=self.framerate())
             if rangecheck and not t.boundingbox().isinside(vipy.geometry.imagebox(self.shape())):
                 t = t.imclip(self.width(), self.height())  # try to clip it, will throw exception if all are bad 
                 warnings.warn('Clipping track "%s" to image rectangle' % (str(t)))
@@ -3155,7 +3157,7 @@ class Scene(VideoCategory):
             vid.attributes['activitytube'] = {'empty':True}   # provenance to reject 
         vid._tracks = {ti:vipy.object.Track(keyframes=[f for (f,im) in enumerate(frames) for d in im.objects() if d.attributes['trackid'] == ti],
                                             boxes=[d for (f,im) in enumerate(frames) for d in im.objects() if d.attributes['trackid'] == ti],
-                                            category=t.category(), trackid=ti)
+                                            category=t.category(), trackid=ti, framerate=self.framerate())
                        for (k,(ti,t)) in enumerate(self.tracks().items())}  # replace tracks with boxes relative to tube
         return vid.array(np.stack([im.numpy() for im in frames]))
 
@@ -3180,7 +3182,7 @@ class Scene(VideoCategory):
                 raise ValueError('[vipy.video.actortube]: Empty track for track=%s, trackid=%s' % (str(t), trackid))
         vid._tracks = {ti:vipy.object.Track(keyframes=[f for (f,im) in enumerate(frames) for d in im.objects() if d.attributes['trackid'] == ti],  # keyframes zero indexed, relative to [frames]
                                             boxes=[d for (f,im) in enumerate(frames) for d in im.objects() if d.attributes['trackid'] == ti],  # one box per frame
-                                            category=t.category(), trackid=ti)  # preserve trackid
+                                            category=t.category(), trackid=ti, framerate=self.framerate())  # preserve trackid
                        for (k,(ti,t)) in enumerate(self.tracks().items())}  # replace tracks with interpolated boxes relative to tube defined by actor
         return vid.array(np.stack([im.numpy() for im in frames]))
 

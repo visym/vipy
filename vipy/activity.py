@@ -28,7 +28,7 @@ class Activity(object):
     >>> a = vipy.object.Activity(startframe=0, endframe=10, category='Walking', tracks={t.id():t})
 
     """
-    def __init__(self, startframe, endframe, framerate=None, label=None, shortlabel=None, category=None, tracks=None, attributes=None, actorid=None, confidence=None):
+    def __init__(self, startframe, endframe, framerate=None, label=None, shortlabel=None, category=None, tracks=None, attributes=None, actorid=None, confidence=None, id=None):
         assert not (label is not None and category is not None), "Activity() Constructor requires either label or category kwargs, not both"
         assert startframe <= endframe, "Start frame must be less than or equal to end frame"
         if tracks:
@@ -42,7 +42,10 @@ class Activity(object):
         if tracks is not None and actorid is not None and actorid not in trackid:
             trackid.add(actorid)
 
-        global ACTIVITY_GUID; self._id = hex(int(ACTIVITY_GUID))[2:];  ACTIVITY_GUID = ACTIVITY_GUID + 1;  # faster, increment package level UUID4 initialized GUID
+        if id is None:
+            global ACTIVITY_GUID; self._id = hex(int(ACTIVITY_GUID))[2:];  ACTIVITY_GUID = ACTIVITY_GUID + 1;  # faster, increment package level UUID4 initialized GUID
+        else:
+            self._id = id  # use provided
         self._startframe = int(startframe)
         self._endframe = int(endframe)
         self._framerate = framerate
@@ -75,7 +78,8 @@ class Activity(object):
                    shortlabel=d['_shortlabel'],
                    tracks=d['_trackid'],
                    attributes=d['attributes'],
-                   actorid=d['_actorid'])
+                   actorid=d['_actorid'],
+                   id=d['_id'] if '_id' in d else None)
                 
     def __len__(self):
         """Return activity length in frames, or zero if degenerate"""
@@ -278,15 +282,17 @@ class Activity(object):
         return self
         
     def temporal_iou(self, other):
-        """Return the temporal intersection over union of two activities"""
-        assert isinstance(other, Activity), "Invalid input - must be vipy.object.Activity()"
+        """Return the temporal intersection over union of two activities or this activity and a track"""
+        assert isinstance(other, Activity) or isinstance(other, Track), "Invalid input - must be vipy.activity.Activity or vipy.object.Track"
         assert self._framerate == other._framerate, "invalid input - framerate must match"
-        t_start = min(self._startframe, other._startframe)
-        t_end = max(self._endframe, other._endframe)
+        (sf, ef) = (other._startframe, other._endframe) if isinstance(other, Activity) else (other.startframe(), other.endframe())  # attribute access is faster than methods
+        
+        t_start = min(self._startframe, sf)
+        t_end = max(self._endframe, ef)
         t_union = float(t_end - t_start)
         
-        t_start = max(self._startframe, other._startframe)
-        t_end = min(self._endframe, other._endframe)
+        t_start = max(self._startframe, sf)
+        t_end = min(self._endframe, ef)
         t_intersection = float(t_end - t_start)
         
         return (t_intersection / t_union) if t_intersection > 0 else 0

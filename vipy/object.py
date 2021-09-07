@@ -374,7 +374,7 @@ class Track(object):
     def _set_framerate(self, fps):
         """Override framerate conversion and just set the framerate attribute.  
 
-        .. warning::  This should really only be set by the user in the constructor and is included here as an admin override.  Use with caution!
+        .. warning::  This should really only be set by the user in the constructor and is included here as an admin override for some legacy JSON that did not contain framerates.  Use with caution!
         """
         self._framerate = fps
         return self
@@ -765,7 +765,8 @@ class Track(object):
         """
         assert percentile > 0 and percentile <= 1
         assert isinstance(other, Track), "invalid input - Must be vipy.object.Track()"
-
+        assert self.framerate() == other.framerate()
+        
         startframe = max(self.startframe(), other.startframe())
         endframe = min(self.endframe(), other.endframe())
         segmentlen = endframe - startframe
@@ -776,7 +777,8 @@ class Track(object):
         """percentiliou on the overlapping segment with other"""
         assert percentile > 0 and percentile <= 1
         assert isinstance(other, Track), "invalid input - Must be vipy.object.Track()"
-
+        assert self.framerate() == other.framerate()
+        
         startframe = max(self.startframe(), other.startframe())
         endframe = min(self.endframe(), other.endframe())
         segmentlen = endframe - startframe
@@ -790,7 +792,8 @@ class Track(object):
         """percentile cover on the overlapping segment with other"""
         assert percentile > 0 and percentile <= 1
         assert isinstance(other, Track), "invalid input - Must be vipy.object.Track()"
-
+        assert self.framerate() == other.framerate()
+        
         startframe = max(self.startframe(), other.startframe())
         endframe = min(self.endframe(), other.endframe())
         segmentlen = endframe - startframe

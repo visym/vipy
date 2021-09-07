@@ -472,7 +472,7 @@ class Flow(object):
                         return vc.setattribute('unstabilized')  # for provenance
                     else:
                         raise ValueError('[vipy.flow.stabilize]: ERROR - object alignment returned degenerate bounding box for video "%s"' % str(v))                    
-                vss.write( im.array(imstabilized.array()) )
+                vss.write( im.array(imstabilized.array()) )  # assign detections to tracks in stabilized video (vs) output
 
         vs = vs.setattribute('stabilize', {'mean residual':float(np.mean(r_coarse)), 'median residual':float(np.median(r_coarse))}) if residual else vs
         return vs

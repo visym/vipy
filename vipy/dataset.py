@@ -100,7 +100,7 @@ class Dataset():
               - tarfile: /path/to/tarfilename.tar.gz
               - delprefix:  the absolute file path contained in the media filenames to be removed.  If a video has a delprefix='/a/b' then videos with path /a/b/c/d.mp4' -> 'c/d.mp4', and {JSON|PKL} will be saved with relative paths to mediadir
               - mediadir:  the subdirectory name of the media to be contained in the archive.  Usually "videos".             
-              - extrafiles: list of tuples or singletones [(abspath, filename_in_archive_relative_to_root), 'file_in_root_and_in_pwd', ...], 
+              - extrafiles: list of tuples or singletons [(abspath, filename_in_archive_relative_to_root), 'file_in_root_and_in_pwd', ...], 
 
             Example:  
 
@@ -126,7 +126,7 @@ class Dataset():
     
         # Copy extras (symlinked) to staging directory
         if extrafiles is not None:
-            extrafiles = [e if isinstance(e, tuple) or isinstnace(e, list) else (e,e) for e in extrafiles]  # tuple-ify files like README that are in cwd() and should be put in the root
+            extrafiles = [e if (isinstance(e, tuple) or isinstance(e, list)) else (e,e) for e in extrafiles]  # tuple-ify files in pwd() and should be put in the tarball root
             for (e, a) in tolist(extrafiles):
                 assert os.path.exists(os.path.abspath(e)), "Invalid extras file '%s'" % e
                 os.symlink(os.path.abspath(e), os.path.join(stagedir, filetail(e) if a is None else a))
