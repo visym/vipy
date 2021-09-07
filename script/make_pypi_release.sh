@@ -12,4 +12,13 @@ git push
 cd ..
 git tag $1 -m "vipy-$1"
 git push --tags origin master
-python3 setup.py sdist upload -r pypi
+
+# Upload me
+python3 setup.py sdist bdist_wheel
+twine upload dist/*
+
+# Cleanup
+rm -rf dist/
+rm -rf build/
+rm -rf vipy.egg-info/
+
