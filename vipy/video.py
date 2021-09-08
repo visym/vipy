@@ -2746,9 +2746,26 @@ class Scene(VideoCategory):
             self.activitymap(lambda a: a.replaceid(k,v) )
         return self
 
+    def annotation(self):
+        """Return an iterator over annotations in each frame.
+        
+        >>> for y in self.annotation():
+        >>>     for (bb,a) in y:
+        >>>         print((bb,a))
+
+        Yields:
+            for each frame yield the tuple:  ( (`vipy.object.Detection`, (tuple of `vipy.activity.Activity` performed by the actor in this bounding box)), ... )
+
+        .. note:: The preferred method for accessing annotations is a frame iterator, which includes pixels.  However, this method provides access to just the annotations without pixels.
+
+        """
+        endframe = max([a.endframe() for a in self.activitylist()]+[t.endframe() for (tk,t) in self.tracks().items()]) if (len(self._tracks) > 0 or len(self._activities) > 0) else 0
+        for k in range(0,endframe):
+            yield tuple( [tuple( [t[k] if t.during(k) else None, tuple( [a for a in self.activitylist() if a.during(k) and a.hastrackoverlap(t)] ) ]) for t in self.tracklist()])
+        
     def label(self):
         """Return an iterator over labels in each frame"""
-        endframe = max([a.endframe() for a in self.activitylist()]+[t.endframe() for (tk,t) in self.tracks().items()])
+        endframe = max([a.endframe() for a in self.activitylist()]+[t.endframe() for (tk,t) in self.tracks().items()]) if (len(self._tracks) > 0 or len(self._activities) > 0) else 0
         for k in range(0,endframe):
             yield self.labels(k)
     
