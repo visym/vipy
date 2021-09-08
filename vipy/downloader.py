@@ -40,27 +40,55 @@ if hasattr(ssl, '_create_unverified_context'):
     ssl._create_default_https_context = ssl._create_unverified_context
 
 
-def generate_sha1(filepath):
-    sha1 = hashlib.sha1()
-    f = open(filepath, 'rb')
-    try:
-        sha1.update(f.read())
-    finally:
-        f.close()
-    return sha1.hexdigest()
+def generate_sha1(filename, blocks=128):
+    """Generate the SHA1 hash of the provided filename.
 
+    This is equivalent on a linux flavor to:
 
+    >>> vipy.downloader.generate_sha1('/path/to/file') == os.system('sha1sum /path/to/file')
+
+    """
+    
+    if blocks is None:
+        # Read entire file into memory
+        return hashlib.sha1(open(filename, 'rb').read()).hexdigest()
+    else:
+        # Read file in chunks (suitable for very large files)
+        h = hashlib.sha1()
+        with open(filename,'rb') as f:
+            for chunk in iter(lambda: f.read(blocks*h.block_size), b''):
+                h.update(chunk)
+        return h.hexdigest()
+    
 def verify_sha1(filename, sha1):
-    data = open(filename, 'rb').read()
-    return (sha1 == hashlib.sha1(data).hexdigest())
+    """Verify that the provide SHA1 hash is equivalent to the provided file"""     
+    return sha1 == generate_sha1(filename)
 
 
 def verify_md5(filename, md5):
-    data = open(filename, 'rb').read()
-    return (md5 == hashlib.md5(data).hexdigest())
+    """Verify that the provide MD5 hash is equivalent to the provided file""" 
+    return md5 == generate_md5(filename)
 
-def generate_md5(filename):
-    return hashlib.md5(open(filename, 'rb').read()).hexdigest()
+def generate_md5(filename, blocks=128):
+    """Generate the MD5 sum of the provided filename.
+
+    This is equivalent on a linux flavor to:
+
+    >>> vipy.downloader.generate_md5('/path/to/file') == os.system('md5sum /path/to/file')
+
+    """
+    
+    if blocks is None:
+        # Read entire file into memory
+        return hashlib.md5(open(filename, 'rb').read()).hexdigest()
+    else:
+        # Read file in chunks (suitable for very large files)
+        h = hashlib.md5()
+        with open(filename,'rb') as f:
+            for chunk in iter(lambda: f.read(blocks*h.block_size), b''):
+                h.update(chunk)
+        return h.hexdigest()
+
 
 def scp(url, output_filename, verbose=True):
     """Download using pre-installed SSH keys where hostname is formatted 'scp://hostname.com:/path/to/file.jpg' """        

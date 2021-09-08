@@ -35,7 +35,7 @@ class Dataset():
         self._saveas_ext = ['pkl', 'json']
         self._id = id if id is not None else (vipy.util.filetail(objlist_or_filename) if isinstance(objlist_or_filename, str) else uuid.uuid4().hex)
         self._objlist = tolist(objlist)
-        assert len(self._objlist) > 0, "Invalid object list"
+        assert len(self._objlist) > 0, "Empty dataset"
 
     def __repr__(self):
         if len(self) > 0:
@@ -122,13 +122,14 @@ class Dataset():
         print('[vipy.dataset]: creating staging directory "%s"' % stagedir)        
         D._objlist = [v.filename(v.filename().replace(os.path.normpath(delprefix), os.path.normpath(os.path.join(stagedir, mediadir))), symlink=not novideos) for v in D.list()]
         pklfile = os.path.join(stagedir, '%s.%s' % (filetail(filefull(tarfile)), format))
-        D.save(pklfile, relpath=True, nourl=True, noadmin=True, castas=castas, significant_digits=2, noemail=True, flush=True)
+        D.save(pklfile, relpath=True, nourl=True, sanitize=True, castas=castas, significant_digits=2, noemail=True, flush=True)
     
         # Copy extras (symlinked) to staging directory
         if extrafiles is not None:
+            assert all([((isinstance(e, tuple) or isinstance(e, list)) and len(e) == 2) or isinstance(e, str) for e in extrafiles])
             extrafiles = [e if (isinstance(e, tuple) or isinstance(e, list)) else (e,e) for e in extrafiles]  # tuple-ify files in pwd() and should be put in the tarball root
             for (e, a) in tolist(extrafiles):
-                assert os.path.exists(os.path.abspath(e)), "Invalid extras file '%s'" % e
+                assert os.path.exists(os.path.abspath(e)), "Invalid extras file '%s' - file not found" % e
                 os.symlink(os.path.abspath(e), os.path.join(stagedir, filetail(e) if a is None else a))
 
         # System command to run tar
@@ -145,12 +146,12 @@ class Dataset():
         print('[vipy.dataset]: %s, MD5=%s' % (tarfile, vipy.downloader.generate_md5(tarfile)))
         return tarfile
         
-    def save(self, outfile, nourl=False, castas=None, relpath=False, noadmin=False, strict=True, significant_digits=2, noemail=True, flush=True):    
+    def save(self, outfile, nourl=False, castas=None, relpath=False, sanitize=True, strict=True, significant_digits=2, noemail=True, flush=True):    
         n = len([v for v in self._objlist if v is None])
         if n > 0:
             print('[vipy.dataset]: removing %d invalid elements' % n)
         objlist = [v for v in self._objlist if v is not None]  
-        if relpath or nourl or noadmin or flush or noemail or (significant_digits is not None):
+        if relpath or nourl or sanitize or flush or noemail or (significant_digits is not None):
             assert self._isvipy(), "Invalid input"
         if relpath:
             print('[vipy.dataset]: setting relative paths')
@@ -158,8 +159,9 @@ class Dataset():
         if nourl: 
             print('[vipy.dataset]: removing URLs')
             objlist = [v.nourl() for v in objlist]           
-        if noadmin:
-            objlist = [v.delattribute('admin') for v in objlist]
+        if sanitize:
+            print('[vipy.dataset]: sanitizing attributes')                        
+            objlist = [v.sanitize() for v in objlist]  # removes all attributes with '__' keys
         if castas is not None:
             assert hasattr(castas, 'cast'), "Invalid cast"
             print('[vipy.dataset]: casting as "%s"' % (str(castas)))

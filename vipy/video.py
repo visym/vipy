@@ -554,6 +554,18 @@ class Video(object):
         """
         return self.attributes
 
+    def sanitize(self):
+        """Remove all private keys from the attributes dictionary.
+        
+        The attributes dictionary is useful storage for arbitrary (key,value) pairs.  However, this storage may contain sensitive information that should be scrubbed from the video before serialization.  As a general rule, any key that is of the form '__keyname' prepended by two underscores is a private key.  This is analogous to private or reserved attributes in the python lanugage.  Users should reserve these keynames for those keys that should be sanitized and removed before any seerialization of this object.
+        
+        >>> assert self.setattribute('__mykey', 1).sanitize().hasattribute('__mykey') == False
+
+        """
+        self.attributes = {k:v for (k,v) in self.attributes.items() if not k.startswith('__')} if isinstance(self.attributes, dict) else self.attributes
+        return self
+        
+        
     def videoid(self, newid=None):
         """Return a unique video identifier for this video, as specified in the 'video_id' attribute, or by SHA1 hash of the `vipy.video.Video.filename` and `vipy.video.Video.url`.
 
@@ -870,11 +882,11 @@ class Video(object):
         .. notes:: This is the duration of the source video and NOT the duration of the filter chain.  If you load(), this may be different duration depending on clip() or framerate() directives.
         """
         filehash = hashlib.md5(str(self.filename()).encode()).hexdigest()            
-        if self.hasattribute('_duration_in_seconds_of_videofile') and self.attributes['_duration_in_seconds_of_videofile']['filehash'] == filehash:
-            return self.attributes['_duration_in_seconds_of_videofile']['duration']
+        if self.hasattribute('_duration_in_seconds_of_videofile') and self.attributes['__duration_in_seconds_of_videofile']['filehash'] == filehash:
+            return self.attributes['__duration_in_seconds_of_videofile']['duration']
         else:
             d = float(self.probe()['format']['duration'])
-            self.attributes['_duration_in_seconds_of_videofile'] = {'duration':d, 'filehash':filehash}  # for next time
+            self.attributes['__duration_in_seconds_of_videofile'] = {'duration':d, 'filehash':filehash}  # for next time
             return d
 
     def duration_in_frames_of_videofile(self):

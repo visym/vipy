@@ -530,7 +530,7 @@ def loadas(infile, format='dill'):
         raise ValueError('unknown serialization format "%s"' % format)
 
 
-def load(infile, abspath=False):
+def load(infile, abspath=True):
     """Load variables from a relocatable archive file format, either Dill Pickle or JSON.
        
        Loading is performed by attemping the following:
@@ -558,12 +558,13 @@ def load(infile, abspath=False):
 
     # Relocatable object?
     if hasattr(testobj, 'filename') and testobj.filename() is not None and '/$PATH' in testobj.filename():
+        # 07SEP21: this path is deprecated
         testobj = repath(copy.deepcopy(testobj), '/$PATH', filepath(os.path.abspath(infile)))  # attempt to rehome /$PATH/to/me.jpg -> /NEWPATH/to/me.jpg where NEWPATH=filepath(infile)
         if os.path.exists(testobj.filename()):       # file found
             obj = repath(obj, '/$PATH', filepath(os.path.abspath(infile)))      # rehome everything to the same root path as the pklfile
         else:
             warnings.warn('Loading "%s" that contains redistributable paths - Use vipy.util.distload("%s", datapath="/path/to/your/data") to rehome absolute file paths' % (infile, infile))
-    elif hasattr(testobj, 'filename') and testobj.filename() is not None and not os.path.exists(testobj.filename()):
+    elif hasattr(testobj, 'filename') and testobj.filename() is not None:
         if hasattr(testobj, 'hasurl') and testobj.hasurl():
             warnings.warn('Loading archive "%s" that contains filename "%s" which does not exist - This must be downloaded from the provided url() using download()' % (infile, testobj.filename()))
         elif not os.path.isabs(testobj.filename()):
@@ -571,15 +572,15 @@ def load(infile, abspath=False):
                 warnings.warn('Loading archive "%s" with relative paths.  Changing directory to "%s".  Disable this warning with vipy.util.load(..., abspath=True).' % (infile, filepath(infile)))
                 os.chdir(filepath(infile))
             else:
-                # Absolute path?  The loaded archive will no longer be relocatable, and the videos directory cannot be moved
-                pwd = os.getcwd()  
+                # Absolute path?  The loaded archive will no longer be relocatable if you save this to a new archive, and the videos directory cannot be moved
+                pwd = os.getcwd()  # save current directory
                 os.chdir(filepath(infile))  # change to archive directory
-                objout = [o.abspath() if o.hasfilename() else o for o in tolist(obj)]  # set absolute paths
+                objout = [o.abspath() if o.filename() is not None else o for o in tolist(obj)]  # set absolute paths relative to archive directory
                 obj = objout if isinstance(obj, list) else objout[0]
                 if any([not o.hasfilename() for o in tolist(obj)]):
-                    warnings.warn('Loading "%s" that contains path "%s" which does not exist' % (infile, tolist(obj)[0]))
-                os.chdir(pwd)  # set it back
-        else:
+                    warnings.warn('Loading "%s" that contains a path to media file (e.g. "%s") which does not exist' % (infile, tolist(obj)[0]))
+                os.chdir(pwd)  # restore current directory
+        elif not testobj.hasfilename():
             warnings.warn('Loading "%s" that contains path "%s" which does not exist' % (infile, testobj.filename()))
 
     # Large vipy object?  Disable garbage collection.
@@ -590,10 +591,11 @@ def load(infile, abspath=False):
     #   - This can be re-enabled at any time by "import gc; gc.enable()"
     #   - If you use %autoreload iPython magic command, note that this will be very slow.  You should set %sutoreload 0
     #   - Alternatively, load as JSON and all attributes will be unpacked on demand and stored in a packed format that is not tracked (e.g. tuple of strings) by the reference cycle counter
-    if format != 'json' and hasattr(testobj, 'filename') and len(tolist(obj)) > 10000:
+    if hasattr(testobj, 'filename') and len(tolist(obj)) > 100000:
         # Should we warn the user?  Probably doesn't matter ...
         #warnings.warn('Loading "%s" that contains a large number of vipy objects - disabling reference cycle checks.  Re-enable at any time using "import gc; gc.enable()"' % (infile))
-        import gc; gc.disable()
+        #import gc; gc.disable()
+        pass   # do not do this without explicit user authorization
     return obj
 
 def tryload(infile, abspath=False):

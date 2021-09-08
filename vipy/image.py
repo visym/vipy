@@ -185,6 +185,17 @@ class Image(object):
             strlist.append('url="%s"' % self.url())
         return str('<vipy.image: %s>' % (', '.join(strlist)))
 
+    def sanitize(self):
+        """Remove all private keys from the attributes dictionary.
+        
+        The attributes dictionary is useful storage for arbitrary (key,value) pairs.  However, this storage may contain sensitive information that should be scrubbed from the media before serialization.  As a general rule, any key that is of the form '__keyname' prepended by two underscores is a private key.  This is analogous to private or reserved attributes in the python lanugage.  Users should reserve these keynames for those keys that should be sanitized and removed before any serialization of this object.
+        
+        >>> assert self.setattribute('__mykey', 1).sanitize().hasattribute('__mykey') == False
+
+        """
+        self.attributes = {k:v for (k,v) in self.attributes.items() if not k.startswith('__')} if isinstance(self.atttributes, dict) else self.attributes
+        return self
+    
     def print(self, prefix='', verbose=True, sleep=None):
         """Print the representation of the image and return self with an optional sleep=n seconds
         
