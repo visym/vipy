@@ -367,25 +367,25 @@ INDEX=[
 {
 "ref":"vipy.downloader.generate_sha1",
 "url":5,
-"doc":"",
+"doc":"Generate the SHA1 hash of the provided filename. This is equivalent on a linux flavor to: >>> vipy.downloader.generate_sha1('/path/to/file')  os.system('sha1sum /path/to/file')",
 "func":1
 },
 {
 "ref":"vipy.downloader.verify_sha1",
 "url":5,
-"doc":"",
+"doc":"Verify that the provide SHA1 hash is equivalent to the provided file",
 "func":1
 },
 {
 "ref":"vipy.downloader.verify_md5",
 "url":5,
-"doc":"",
+"doc":"Verify that the provide MD5 hash is equivalent to the provided file",
 "func":1
 },
 {
 "ref":"vipy.downloader.generate_md5",
 "url":5,
-"doc":"",
+"doc":"Generate the MD5 sum of the provided filename. This is equivalent on a linux flavor to: >>> vipy.downloader.generate_md5('/path/to/file')  os.system('md5sum /path/to/file')",
 "func":1
 },
 {
@@ -3068,7 +3068,7 @@ INDEX=[
 {
 "ref":"vipy.dataset.Dataset",
 "url":10,
-"doc":"vipy.dataset.Dataset() class This class is designed to be used with vipy.batch.Batch() for massively parallel operations This is currently in transition from pycollector.dataset"
+"doc":"vipy.dataset.Dataset() class Common class to manipulate large sets of vipy objects in parallel >>> D = vipy.dataset.Dataset([vipy.video.RandomScene(), vipy.video.RandomScene()], id='random_scene') >>> with vipy.globals.parallel(2): >>> D = D.map(lambda v: v.frame(0 >>> list(D)"
 },
 {
 "ref":"vipy.dataset.Dataset.id",
@@ -4090,6 +4090,12 @@ INDEX=[
 "ref":"vipy.flow.Video.metadata",
 "url":15,
 "doc":"Return a dictionary of metadata about this video. This is an alias for the 'attributes' dictionary.",
+"func":1
+},
+{
+"ref":"vipy.flow.Video.sanitize",
+"url":15,
+"doc":"Remove all private keys from the attributes dictionary. The attributes dictionary is useful storage for arbitrary (key,value) pairs. However, this storage may contain sensitive information that should be scrubbed from the video before serialization. As a general rule, any key that is of the form '__keyname' prepended by two underscores is a private key. This is analogous to private or reserved attributes in the python lanugage. Users should reserve these keynames for those keys that should be sanitized and removed before any seerialization of this object. >>> assert self.setattribute('__mykey', 1).sanitize().hasattribute('__mykey')  False",
 "func":1
 },
 {
@@ -7162,6 +7168,12 @@ INDEX=[
 "func":1
 },
 {
+"ref":"vipy.video.Video.sanitize",
+"url":15,
+"doc":"Remove all private keys from the attributes dictionary. The attributes dictionary is useful storage for arbitrary (key,value) pairs. However, this storage may contain sensitive information that should be scrubbed from the video before serialization. As a general rule, any key that is of the form '__keyname' prepended by two underscores is a private key. This is analogous to private or reserved attributes in the python lanugage. Users should reserve these keynames for those keys that should be sanitized and removed before any seerialization of this object. >>> assert self.setattribute('__mykey', 1).sanitize().hasattribute('__mykey')  False",
+"func":1
+},
+{
 "ref":"vipy.video.Video.videoid",
 "url":15,
 "doc":"Return a unique video identifier for this video, as specified in the 'video_id' attribute, or by SHA1 hash of the  vipy.video.Video.filename and  vipy.video.Video.url . Args: newid: [str] If not None, then update the video_id as newid. Returns: The video ID if newid=None else self  note - If the video filename changes (e.g. from transformation), and video_id is not set in self.attributes, then the video ID will change. - If a video does not have a filename or URL or a video ID in the attributes, then this will return None - To preserve a video ID independent of transformations, set self.setattribute('video_id', ${MY_ID}), or pass in newid",
@@ -7848,6 +7860,12 @@ INDEX=[
 "ref":"vipy.video.VideoCategory.metadata",
 "url":15,
 "doc":"Return a dictionary of metadata about this video. This is an alias for the 'attributes' dictionary.",
+"func":1
+},
+{
+"ref":"vipy.video.VideoCategory.sanitize",
+"url":15,
+"doc":"Remove all private keys from the attributes dictionary. The attributes dictionary is useful storage for arbitrary (key,value) pairs. However, this storage may contain sensitive information that should be scrubbed from the video before serialization. As a general rule, any key that is of the form '__keyname' prepended by two underscores is a private key. This is analogous to private or reserved attributes in the python lanugage. Users should reserve these keynames for those keys that should be sanitized and removed before any seerialization of this object. >>> assert self.setattribute('__mykey', 1).sanitize().hasattribute('__mykey')  False",
 "func":1
 },
 {
@@ -9026,6 +9044,12 @@ INDEX=[
 "func":1
 },
 {
+"ref":"vipy.video.Scene.sanitize",
+"url":15,
+"doc":"Remove all private keys from the attributes dictionary. The attributes dictionary is useful storage for arbitrary (key,value) pairs. However, this storage may contain sensitive information that should be scrubbed from the video before serialization. As a general rule, any key that is of the form '__keyname' prepended by two underscores is a private key. This is analogous to private or reserved attributes in the python lanugage. Users should reserve these keynames for those keys that should be sanitized and removed before any seerialization of this object. >>> assert self.setattribute('__mykey', 1).sanitize().hasattribute('__mykey')  False",
+"func":1
+},
+{
 "ref":"vipy.video.Scene.videoid",
 "url":15,
 "doc":"Return a unique video identifier for this video, as specified in the 'video_id' attribute, or by SHA1 hash of the  vipy.video.Video.filename and  vipy.video.Video.url . Args: newid: [str] If not None, then update the video_id as newid. Returns: The video ID if newid=None else self  note - If the video filename changes (e.g. from transformation), and video_id is not set in self.attributes, then the video ID will change. - If a video does not have a filename or URL or a video ID in the attributes, then this will return None - To preserve a video ID independent of transformations, set self.setattribute('video_id', ${MY_ID}), or pass in newid",
@@ -9549,6 +9573,12 @@ INDEX=[
 "ref":"vipy.image.Image.from_json",
 "url":49,
 "doc":"Import the JSON string s as an  vipy.image.Image object. This will perform a round trip such that im1  im2 >>> im1 = vupy.image.RandomImage() >>> im2 = vipy.image.Image.from_json(im1.json( >>> assert im1  im2",
+"func":1
+},
+{
+"ref":"vipy.image.Image.sanitize",
+"url":49,
+"doc":"Remove all private keys from the attributes dictionary. The attributes dictionary is useful storage for arbitrary (key,value) pairs. However, this storage may contain sensitive information that should be scrubbed from the media before serialization. As a general rule, any key that is of the form '__keyname' prepended by two underscores is a private key. This is analogous to private or reserved attributes in the python lanugage. Users should reserve these keynames for those keys that should be sanitized and removed before any serialization of this object. >>> assert self.setattribute('__mykey', 1).sanitize().hasattribute('__mykey')  False",
 "func":1
 },
 {
@@ -10376,6 +10406,12 @@ INDEX=[
 "ref":"vipy.image.ImageCategory.probability",
 "url":49,
 "doc":"Real valued probability for categorization, [0,1]",
+"func":1
+},
+{
+"ref":"vipy.image.ImageCategory.sanitize",
+"url":49,
+"doc":"Remove all private keys from the attributes dictionary. The attributes dictionary is useful storage for arbitrary (key,value) pairs. However, this storage may contain sensitive information that should be scrubbed from the media before serialization. As a general rule, any key that is of the form '__keyname' prepended by two underscores is a private key. This is analogous to private or reserved attributes in the python lanugage. Users should reserve these keynames for those keys that should be sanitized and removed before any serialization of this object. >>> assert self.setattribute('__mykey', 1).sanitize().hasattribute('__mykey')  False",
 "func":1
 },
 {
@@ -11392,6 +11428,12 @@ INDEX=[
 "func":1
 },
 {
+"ref":"vipy.image.Scene.sanitize",
+"url":49,
+"doc":"Remove all private keys from the attributes dictionary. The attributes dictionary is useful storage for arbitrary (key,value) pairs. However, this storage may contain sensitive information that should be scrubbed from the media before serialization. As a general rule, any key that is of the form '__keyname' prepended by two underscores is a private key. This is analogous to private or reserved attributes in the python lanugage. Users should reserve these keynames for those keys that should be sanitized and removed before any serialization of this object. >>> assert self.setattribute('__mykey', 1).sanitize().hasattribute('__mykey')  False",
+"func":1
+},
+{
 "ref":"vipy.image.Scene.print",
 "url":49,
 "doc":"Print the representation of the image and return self with an optional sleep=n seconds Useful for debugging in long fluent chains.",
@@ -12312,6 +12354,12 @@ INDEX=[
 "ref":"vipy.image.ImageDetection.probability",
 "url":49,
 "doc":"Real valued probability for categorization, [0,1]",
+"func":1
+},
+{
+"ref":"vipy.image.ImageDetection.sanitize",
+"url":49,
+"doc":"Remove all private keys from the attributes dictionary. The attributes dictionary is useful storage for arbitrary (key,value) pairs. However, this storage may contain sensitive information that should be scrubbed from the media before serialization. As a general rule, any key that is of the form '__keyname' prepended by two underscores is a private key. This is analogous to private or reserved attributes in the python lanugage. Users should reserve these keynames for those keys that should be sanitized and removed before any serialization of this object. >>> assert self.setattribute('__mykey', 1).sanitize().hasattribute('__mykey')  False",
 "func":1
 },
 {

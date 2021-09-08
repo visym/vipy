@@ -25,7 +25,7 @@
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/16fb58544d8c354c3498b37a00d72bebcb91a1fd/vipy/downloader.py#L0-L1485" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/27875812385d5fbb0be86104a6110dcb19a892c3/vipy/downloader.py#L0-L1513" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python"># Adapted for vipy.downloader from original authors below
 #
@@ -69,27 +69,55 @@ if hasattr(ssl, &#39;_create_unverified_context&#39;):
     ssl._create_default_https_context = ssl._create_unverified_context
 
 
-def generate_sha1(filepath):
-    sha1 = hashlib.sha1()
-    f = open(filepath, &#39;rb&#39;)
-    try:
-        sha1.update(f.read())
-    finally:
-        f.close()
-    return sha1.hexdigest()
+def generate_sha1(filename, blocks=128):
+    &#34;&#34;&#34;Generate the SHA1 hash of the provided filename.
 
+    This is equivalent on a linux flavor to:
 
+    &gt;&gt;&gt; vipy.downloader.generate_sha1(&#39;/path/to/file&#39;) == os.system(&#39;sha1sum /path/to/file&#39;)
+
+    &#34;&#34;&#34;
+    
+    if blocks is None:
+        # Read entire file into memory
+        return hashlib.sha1(open(filename, &#39;rb&#39;).read()).hexdigest()
+    else:
+        # Read file in chunks (suitable for very large files)
+        h = hashlib.sha1()
+        with open(filename,&#39;rb&#39;) as f:
+            for chunk in iter(lambda: f.read(blocks*h.block_size), b&#39;&#39;):
+                h.update(chunk)
+        return h.hexdigest()
+    
 def verify_sha1(filename, sha1):
-    data = open(filename, &#39;rb&#39;).read()
-    return (sha1 == hashlib.sha1(data).hexdigest())
+    &#34;&#34;&#34;Verify that the provide SHA1 hash is equivalent to the provided file&#34;&#34;&#34;     
+    return sha1 == generate_sha1(filename)
 
 
 def verify_md5(filename, md5):
-    data = open(filename, &#39;rb&#39;).read()
-    return (md5 == hashlib.md5(data).hexdigest())
+    &#34;&#34;&#34;Verify that the provide MD5 hash is equivalent to the provided file&#34;&#34;&#34; 
+    return md5 == generate_md5(filename)
 
-def generate_md5(filename):
-    return hashlib.md5(open(filename, &#39;rb&#39;).read()).hexdigest()
+def generate_md5(filename, blocks=128):
+    &#34;&#34;&#34;Generate the MD5 sum of the provided filename.
+
+    This is equivalent on a linux flavor to:
+
+    &gt;&gt;&gt; vipy.downloader.generate_md5(&#39;/path/to/file&#39;) == os.system(&#39;md5sum /path/to/file&#39;)
+
+    &#34;&#34;&#34;
+    
+    if blocks is None:
+        # Read entire file into memory
+        return hashlib.md5(open(filename, &#39;rb&#39;).read()).hexdigest()
+    else:
+        # Read file in chunks (suitable for very large files)
+        h = hashlib.md5()
+        with open(filename,&#39;rb&#39;) as f:
+            for chunk in iter(lambda: f.read(blocks*h.block_size), b&#39;&#39;):
+                h.update(chunk)
+        return h.hexdigest()
+
 
 def scp(url, output_filename, verbose=True):
     &#34;&#34;&#34;Download using pre-installed SSH keys where hostname is formatted &#39;scp://hostname.com:/path/to/file.jpg&#39; &#34;&#34;&#34;        
@@ -1530,7 +1558,7 @@ complete_user_agents = [
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/16fb58544d8c354c3498b37a00d72bebcb91a1fd/vipy/downloader.py#L136-L209" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/27875812385d5fbb0be86104a6110dcb19a892c3/vipy/downloader.py#L164-L237" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def download(url, output_filename, sha1=None, verbose=True, md5=None, timeout=None, username=None, password=None):
     &#34;&#34;&#34;Downloads file at `url` and write it in `output_filename`&#34;&#34;&#34;
@@ -1618,7 +1646,7 @@ function.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/16fb58544d8c354c3498b37a00d72bebcb91a1fd/vipy/downloader.py#L245-L254" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/27875812385d5fbb0be86104a6110dcb19a892c3/vipy/downloader.py#L273-L282" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def download_and_unpack(url, output_dirname, sha1=None, verbose=True):
     &#34;&#34;&#34;Downloads and extracts archive in `url` into `output_dirname`.
@@ -1640,7 +1668,7 @@ function.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/16fb58544d8c354c3498b37a00d72bebcb91a1fd/vipy/downloader.py#L257-L259" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/27875812385d5fbb0be86104a6110dcb19a892c3/vipy/downloader.py#L285-L287" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def download_unpack_and_cleanup(url, output_dirname, sha1=None, verbose=True):
     download_and_extract(url, output_dirname, sha1, verbose)
@@ -1655,7 +1683,7 @@ function.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/16fb58544d8c354c3498b37a00d72bebcb91a1fd/vipy/downloader.py#L132-L134" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/27875812385d5fbb0be86104a6110dcb19a892c3/vipy/downloader.py#L160-L162" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def downloadif(url, output_filename, sha1):
     &#34;&#34;&#34;Downloads file at `url` and write it in `output_filename` only if the file does not exist with the provided SHA1 hash&#34;&#34;&#34;    
@@ -1671,7 +1699,7 @@ directory specified by <code>output_dirname</code>.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/16fb58544d8c354c3498b37a00d72bebcb91a1fd/vipy/downloader.py#L275-L280" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/27875812385d5fbb0be86104a6110dcb19a892c3/vipy/downloader.py#L303-L308" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def extract(archive_filename, output_dirname=&#39;./&#39;, verbose=True):
     &#34;&#34;&#34;
@@ -1682,37 +1710,71 @@ directory specified by <code>output_dirname</code>.</p></div>
 </details>
 </dd>
 <dt id="vipy.downloader.generate_md5"><code class="name flex">
-<span>def <span class="ident">generate_md5</span></span>(<span>filename)</span>
+<span>def <span class="ident">generate_md5</span></span>(<span>filename, blocks=128)</span>
 </code></dt>
 <dd>
-<div class="desc"></div>
+<div class="desc"><p>Generate the MD5 sum of the provided filename.</p>
+<p>This is equivalent on a linux flavor to:</p>
+<pre><code class="language-python-repl">&gt;&gt;&gt; vipy.downloader.generate_md5('/path/to/file') == os.system('md5sum /path/to/file')
+</code></pre></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/16fb58544d8c354c3498b37a00d72bebcb91a1fd/vipy/downloader.py#L62-L63" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/27875812385d5fbb0be86104a6110dcb19a892c3/vipy/downloader.py#L72-L90" class="git-link">Browse git</a>
 </summary>
-<pre><code class="python">def generate_md5(filename):
-    return hashlib.md5(open(filename, &#39;rb&#39;).read()).hexdigest()</code></pre>
+<pre><code class="python">def generate_md5(filename, blocks=128):
+    &#34;&#34;&#34;Generate the MD5 sum of the provided filename.
+
+    This is equivalent on a linux flavor to:
+
+    &gt;&gt;&gt; vipy.downloader.generate_md5(&#39;/path/to/file&#39;) == os.system(&#39;md5sum /path/to/file&#39;)
+
+    &#34;&#34;&#34;
+    
+    if blocks is None:
+        # Read entire file into memory
+        return hashlib.md5(open(filename, &#39;rb&#39;).read()).hexdigest()
+    else:
+        # Read file in chunks (suitable for very large files)
+        h = hashlib.md5()
+        with open(filename,&#39;rb&#39;) as f:
+            for chunk in iter(lambda: f.read(blocks*h.block_size), b&#39;&#39;):
+                h.update(chunk)
+        return h.hexdigest()</code></pre>
 </details>
 </dd>
 <dt id="vipy.downloader.generate_sha1"><code class="name flex">
-<span>def <span class="ident">generate_sha1</span></span>(<span>filepath)</span>
+<span>def <span class="ident">generate_sha1</span></span>(<span>filename, blocks=128)</span>
 </code></dt>
 <dd>
-<div class="desc"></div>
+<div class="desc"><p>Generate the SHA1 hash of the provided filename.</p>
+<p>This is equivalent on a linux flavor to:</p>
+<pre><code class="language-python-repl">&gt;&gt;&gt; vipy.downloader.generate_sha1('/path/to/file') == os.system('sha1sum /path/to/file')
+</code></pre></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/16fb58544d8c354c3498b37a00d72bebcb91a1fd/vipy/downloader.py#L43-L50" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/27875812385d5fbb0be86104a6110dcb19a892c3/vipy/downloader.py#L43-L61" class="git-link">Browse git</a>
 </summary>
-<pre><code class="python">def generate_sha1(filepath):
-    sha1 = hashlib.sha1()
-    f = open(filepath, &#39;rb&#39;)
-    try:
-        sha1.update(f.read())
-    finally:
-        f.close()
-    return sha1.hexdigest()</code></pre>
+<pre><code class="python">def generate_sha1(filename, blocks=128):
+    &#34;&#34;&#34;Generate the SHA1 hash of the provided filename.
+
+    This is equivalent on a linux flavor to:
+
+    &gt;&gt;&gt; vipy.downloader.generate_sha1(&#39;/path/to/file&#39;) == os.system(&#39;sha1sum /path/to/file&#39;)
+
+    &#34;&#34;&#34;
+    
+    if blocks is None:
+        # Read entire file into memory
+        return hashlib.sha1(open(filename, &#39;rb&#39;).read()).hexdigest()
+    else:
+        # Read file in chunks (suitable for very large files)
+        h = hashlib.sha1()
+        with open(filename,&#39;rb&#39;) as f:
+            for chunk in iter(lambda: f.read(blocks*h.block_size), b&#39;&#39;):
+                h.update(chunk)
+        return h.hexdigest()</code></pre>
 </details>
 </dd>
 <dt id="vipy.downloader.s3"><code class="name flex">
@@ -1723,7 +1785,7 @@ directory specified by <code>output_dirname</code>.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/16fb58544d8c354c3498b37a00d72bebcb91a1fd/vipy/downloader.py#L90-L113" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/27875812385d5fbb0be86104a6110dcb19a892c3/vipy/downloader.py#L118-L141" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def s3(url, output_filename, verbose=True):
     &#34;&#34;&#34;Thin wrapper for boto3&#34;&#34;&#34;
@@ -1759,7 +1821,7 @@ directory specified by <code>output_dirname</code>.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/16fb58544d8c354c3498b37a00d72bebcb91a1fd/vipy/downloader.py#L116-L129" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/27875812385d5fbb0be86104a6110dcb19a892c3/vipy/downloader.py#L144-L157" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def s3_bucket(bucket_name, object_name, output_filename, verbose=True):
     &#34;&#34;&#34;Thin wrapper for boto3&#34;&#34;&#34;
@@ -1785,7 +1847,7 @@ directory specified by <code>output_dirname</code>.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/16fb58544d8c354c3498b37a00d72bebcb91a1fd/vipy/downloader.py#L65-L87" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/27875812385d5fbb0be86104a6110dcb19a892c3/vipy/downloader.py#L93-L115" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def scp(url, output_filename, verbose=True):
     &#34;&#34;&#34;Download using pre-installed SSH keys where hostname is formatted &#39;scp://hostname.com:/path/to/file.jpg&#39; &#34;&#34;&#34;        
@@ -1827,7 +1889,7 @@ directory specified by <code>output_dirname</code>.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/16fb58544d8c354c3498b37a00d72bebcb91a1fd/vipy/downloader.py#L212-L242" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/27875812385d5fbb0be86104a6110dcb19a892c3/vipy/downloader.py#L240-L270" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def unpack(archive_filename, output_dirname, sha1=None, verbose=True):
     &#34;&#34;&#34;Extracts `archive_filename` in `output_dirname`.
@@ -1870,7 +1932,7 @@ directory specified by <code>output_dirname</code>.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/16fb58544d8c354c3498b37a00d72bebcb91a1fd/vipy/downloader.py#L262-L264" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/27875812385d5fbb0be86104a6110dcb19a892c3/vipy/downloader.py#L290-L292" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def unpack_and_cleanup(archive_filename, output_dirname, sha1=None, verbose=True):
     download_and_extract(url, output_dirname, sha1, verbose)
@@ -1881,30 +1943,30 @@ directory specified by <code>output_dirname</code>.</p></div>
 <span>def <span class="ident">verify_md5</span></span>(<span>filename, md5)</span>
 </code></dt>
 <dd>
-<div class="desc"></div>
+<div class="desc"><p>Verify that the provide MD5 hash is equivalent to the provided file</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/16fb58544d8c354c3498b37a00d72bebcb91a1fd/vipy/downloader.py#L58-L60" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/27875812385d5fbb0be86104a6110dcb19a892c3/vipy/downloader.py#L68-L70" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def verify_md5(filename, md5):
-    data = open(filename, &#39;rb&#39;).read()
-    return (md5 == hashlib.md5(data).hexdigest())</code></pre>
+    &#34;&#34;&#34;Verify that the provide MD5 hash is equivalent to the provided file&#34;&#34;&#34; 
+    return md5 == generate_md5(filename)</code></pre>
 </details>
 </dd>
 <dt id="vipy.downloader.verify_sha1"><code class="name flex">
 <span>def <span class="ident">verify_sha1</span></span>(<span>filename, sha1)</span>
 </code></dt>
 <dd>
-<div class="desc"></div>
+<div class="desc"><p>Verify that the provide SHA1 hash is equivalent to the provided file</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/16fb58544d8c354c3498b37a00d72bebcb91a1fd/vipy/downloader.py#L53-L55" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/27875812385d5fbb0be86104a6110dcb19a892c3/vipy/downloader.py#L63-L65" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def verify_sha1(filename, sha1):
-    data = open(filename, &#39;rb&#39;).read()
-    return (sha1 == hashlib.sha1(data).hexdigest())</code></pre>
+    &#34;&#34;&#34;Verify that the provide SHA1 hash is equivalent to the provided file&#34;&#34;&#34;     
+    return sha1 == generate_sha1(filename)</code></pre>
 </details>
 </dd>
 </dl>
@@ -1921,7 +1983,7 @@ directory specified by <code>output_dirname</code>.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/16fb58544d8c354c3498b37a00d72bebcb91a1fd/vipy/downloader.py#L283-L316" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/27875812385d5fbb0be86104a6110dcb19a892c3/vipy/downloader.py#L311-L344" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">class Archive(object):
     &#34;&#34;&#34;
@@ -1968,7 +2030,7 @@ directory specified by <code>output_dirname</code>.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/16fb58544d8c354c3498b37a00d72bebcb91a1fd/vipy/downloader.py#L312-L313" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/27875812385d5fbb0be86104a6110dcb19a892c3/vipy/downloader.py#L340-L341" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def extract(self, output_dirname=&#39;&#39;):
     self._archive.extract(output_dirname)</code></pre>
@@ -1982,7 +2044,7 @@ directory specified by <code>output_dirname</code>.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/16fb58544d8c354c3498b37a00d72bebcb91a1fd/vipy/downloader.py#L315-L316" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/27875812385d5fbb0be86104a6110dcb19a892c3/vipy/downloader.py#L343-L344" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def list(self):
     self._archive.list()</code></pre>
@@ -1999,7 +2061,7 @@ directory specified by <code>output_dirname</code>.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/16fb58544d8c354c3498b37a00d72bebcb91a1fd/vipy/downloader.py#L267-L268" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/27875812385d5fbb0be86104a6110dcb19a892c3/vipy/downloader.py#L295-L296" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">class ArchiveException(Exception):
     &#34;&#34;&#34;Base exception class for all archive errors.&#34;&#34;&#34;</code></pre>
@@ -2023,7 +2085,7 @@ Implementations should inherit this class.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/16fb58544d8c354c3498b37a00d72bebcb91a1fd/vipy/downloader.py#L319-L328" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/27875812385d5fbb0be86104a6110dcb19a892c3/vipy/downloader.py#L347-L356" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">class BaseArchive(object):
     &#34;&#34;&#34;
@@ -2051,7 +2113,7 @@ Implementations should inherit this class.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/16fb58544d8c354c3498b37a00d72bebcb91a1fd/vipy/downloader.py#L324-L325" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/27875812385d5fbb0be86104a6110dcb19a892c3/vipy/downloader.py#L352-L353" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def extract(self):
     raise NotImplementedError</code></pre>
@@ -2065,7 +2127,7 @@ Implementations should inherit this class.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/16fb58544d8c354c3498b37a00d72bebcb91a1fd/vipy/downloader.py#L327-L328" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/27875812385d5fbb0be86104a6110dcb19a892c3/vipy/downloader.py#L355-L356" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def list(self):
     raise NotImplementedError</code></pre>
@@ -2083,7 +2145,7 @@ zipfile).</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/16fb58544d8c354c3498b37a00d72bebcb91a1fd/vipy/downloader.py#L331-L351" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/27875812385d5fbb0be86104a6110dcb19a892c3/vipy/downloader.py#L359-L379" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">class ExtractInterface(object):
     &#34;&#34;&#34;
@@ -2122,7 +2184,7 @@ zipfile).</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/16fb58544d8c354c3498b37a00d72bebcb91a1fd/vipy/downloader.py#L338-L351" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/27875812385d5fbb0be86104a6110dcb19a892c3/vipy/downloader.py#L366-L379" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def extract(self, output_dirname, verbose=True):
     if not verbose:
@@ -2153,7 +2215,7 @@ zipfile).</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/16fb58544d8c354c3498b37a00d72bebcb91a1fd/vipy/downloader.py#L353-L362" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/27875812385d5fbb0be86104a6110dcb19a892c3/vipy/downloader.py#L381-L390" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">class TarArchive(ExtractInterface, BaseArchive):
 
@@ -2181,7 +2243,7 @@ zipfile).</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/16fb58544d8c354c3498b37a00d72bebcb91a1fd/vipy/downloader.py#L361-L362" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/27875812385d5fbb0be86104a6110dcb19a892c3/vipy/downloader.py#L389-L390" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def get_members(self):
     return self._archive.getmembers()</code></pre>
@@ -2195,7 +2257,7 @@ zipfile).</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/16fb58544d8c354c3498b37a00d72bebcb91a1fd/vipy/downloader.py#L358-L359" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/27875812385d5fbb0be86104a6110dcb19a892c3/vipy/downloader.py#L386-L387" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def list(self, *args, **kwargs):
     self._archive.list(*args, **kwargs)</code></pre>
@@ -2212,7 +2274,7 @@ zipfile).</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/16fb58544d8c354c3498b37a00d72bebcb91a1fd/vipy/downloader.py#L271-L272" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/27875812385d5fbb0be86104a6110dcb19a892c3/vipy/downloader.py#L299-L300" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">class UnrecognizedArchiveFormat(ArchiveException):
     &#34;&#34;&#34;Error raised when passed file is not a recognized archive format.&#34;&#34;&#34;</code></pre>
@@ -2235,7 +2297,7 @@ zipfile).</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/16fb58544d8c354c3498b37a00d72bebcb91a1fd/vipy/downloader.py#L365-L374" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/27875812385d5fbb0be86104a6110dcb19a892c3/vipy/downloader.py#L393-L402" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">class ZipArchive(ExtractInterface, BaseArchive):
 
@@ -2263,7 +2325,7 @@ zipfile).</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/16fb58544d8c354c3498b37a00d72bebcb91a1fd/vipy/downloader.py#L373-L374" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/27875812385d5fbb0be86104a6110dcb19a892c3/vipy/downloader.py#L401-L402" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def get_members(self):
     return self._archive.namelist()</code></pre>
@@ -2277,7 +2339,7 @@ zipfile).</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/16fb58544d8c354c3498b37a00d72bebcb91a1fd/vipy/downloader.py#L370-L371" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/27875812385d5fbb0be86104a6110dcb19a892c3/vipy/downloader.py#L398-L399" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def list(self, *args, **kwargs):
     self._archive.printdir(*args, **kwargs)</code></pre>
