@@ -218,6 +218,11 @@ class Activity(object):
         trackid = track.id() if isinstance(track, Track) else track
         return trackid in self._trackid
 
+    def hastrackoverlap(self, track):
+        """is the activity occurring during the interval when the track is occurring?"""
+        assert isinstance(other, Track)
+        return self.hastrack(track) and self.temporal_iou(track) > 0
+    
     def append(self, newtrack):
         """Append newtrack to this activity and set as actorid()"""
         assert isinstance(newtrack, Track), "Invalid input - must be vipy.object.Track"
@@ -263,6 +268,7 @@ class Activity(object):
         ef = endframe+(0 if not inclusive else 1)
         return (startframe >= self._startframe and startframe <= self._endframe) or (ef >= self._startframe and ef <= self._endframe) or (startframe <= self._startframe and ef >= self._endframe)
 
+    
     def union(self, other, confweight=0.5, maxconf=False):
         """Compute the union of the new activity other to this activity by updating the start and end times and computing the mean confidence.
         
