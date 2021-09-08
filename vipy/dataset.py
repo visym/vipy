@@ -24,9 +24,13 @@ import vipy.metrics
 class Dataset():
     """vipy.dataset.Dataset() class
     
-       This class is designed to be used with vipy.batch.Batch() for massively parallel operations 
+    Common class to manipulate large sets of vipy objects in parallel
 
-       This is currently in transition from pycollector.dataset 
+    >>> D = vipy.dataset.Dataset([vipy.video.RandomScene(), vipy.video.RandomScene()], id='random_scene')
+    >>> with vipy.globals.parallel(2):
+    >>>     D = D.map(lambda v: v.frame(0))
+    >>> list(D)
+
     """
 
     def __init__(self, objlist_or_filename, id=None, abspath=True):
