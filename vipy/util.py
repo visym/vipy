@@ -538,8 +538,7 @@ def load(infile, abspath=True):
        1. load the pickle or json file
        2. if abspath=true, then convert relative paths to absolute paths for object when loaded
        3. If the loaded object is a vipy object (or iterable) and the relocatable path /$PATH is present, try to repath it to the directory containing this archive (this has been deprecated)
-       4. If the resulting files are not found, throw a warning
-       5. If a large number of objects are loaded, disable garbage collection.
+       4. If the resulting first filename is not found, throw a warning
 
     """
     infile = os.path.abspath(os.path.expanduser(infile))
@@ -565,9 +564,7 @@ def load(infile, abspath=True):
         else:
             warnings.warn('Loading "%s" that contains redistributable paths - Use vipy.util.distload("%s", datapath="/path/to/your/data") to rehome absolute file paths' % (infile, infile))
     elif hasattr(testobj, 'filename') and testobj.filename() is not None:
-        if hasattr(testobj, 'hasurl') and testobj.hasurl():
-            warnings.warn('Loading archive "%s" that contains filename "%s" which does not exist - This must be downloaded from the provided url() using download()' % (infile, testobj.filename()))
-        elif not os.path.isabs(testobj.filename()):
+        if not os.path.isabs(testobj.filename()):
             if not abspath:
                 warnings.warn('Loading archive "%s" with relative paths.  Changing directory to "%s".  Disable this warning with vipy.util.load(..., abspath=True).' % (infile, filepath(infile)))
                 os.chdir(filepath(infile))
@@ -577,11 +574,9 @@ def load(infile, abspath=True):
                 os.chdir(filepath(infile))  # change to archive directory
                 objout = [o.abspath() if o.filename() is not None else o for o in tolist(obj)]  # set absolute paths relative to archive directory
                 obj = objout if isinstance(obj, list) else objout[0]
-                if any([not o.hasfilename() for o in tolist(obj)]):
-                    warnings.warn('Loading "%s" that contains a path to media file (e.g. "%s") which does not exist' % (infile, tolist(obj)[0]))
                 os.chdir(pwd)  # restore current directory
         elif not testobj.hasfilename():
-            warnings.warn('Loading "%s" that contains path "%s" which does not exist' % (infile, testobj.filename()))
+            warnings.warn('Loading "%s" that contains path (e.g. "%s") which does not exist' % (infile, testobj.filename()))
 
     # Large vipy object?  Disable garbage collection.
     #   - Python uses reference counting for the primary garbage collection mechanism, but also uses reference cycle checks to search for dependencies between objects.

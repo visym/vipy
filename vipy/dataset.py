@@ -59,6 +59,7 @@ class Dataset():
         return len(self._objlist)
 
     def id(self, n=None):
+        """Set or return the dataset id"""
         if n is None:
             return self._id
         else:
@@ -66,27 +67,35 @@ class Dataset():
             return self
 
     def list(self):
+        """Return the dataset as a list"""
         return self._objlist
     def tolist(self):
+        """Alias for self.list()"""
         return self._objlist
 
     def flatten(self):
+        """Convert dataset stored as a list of lists into a flat list"""
         self._objlist = [o for objlist in self._objlist for o in vipy.util.tolist(objlist)]
         return self
 
     def istype(self, validtype):
+        """Return True if all elements in the dataset are of type 'validtype'"""
         return all([any([isinstance(v,t) for t in tolist(validtype)]) for v in self._objlist])
             
     def _isvipy(self):
+        """Return True if all elements in the dataset are of type `vipy.video.Video` or `vipy.image.Image`"""        
         return self.istype([vipy.image.Image, vipy.video.Video])
 
     def _is_vipy_video(self):
+        """Return True if all elements in the dataset are of type `vipy.video.Video`"""                
         return self.istype([vipy.video.Video])
 
     def _is_vipy_scene(self):
+        """Return True if all elements in the dataset are of type `vipy.video.Scene`"""                        
         return self.istype([vipy.video.Scene])
 
     def clone(self):
+        """Return a deep copy of the dataset"""
         return copy.deepcopy(self)
 
     def archive(self, tarfile, delprefix, mediadir='', format='json', castas=vipy.video.Scene, verbose=False, extrafiles=None, novideos=False):
@@ -150,7 +159,23 @@ class Dataset():
         print('[vipy.dataset]: %s, MD5=%s' % (tarfile, vipy.downloader.generate_md5(tarfile)))
         return tarfile
         
-    def save(self, outfile, nourl=False, castas=None, relpath=False, sanitize=True, strict=True, significant_digits=2, noemail=True, flush=True):    
+    def save(self, outfile, nourl=False, castas=None, relpath=False, sanitize=True, strict=True, significant_digits=2, noemail=True, flush=True):
+        """Save the dataset to the provided output filename stored as pkl or json
+        
+        Args:
+            outfile [str]: The /path/to/out.pkl or /path/to/out.json
+            nourl [bool]: If true, remove all URLs from the media (if present)
+            castas [type]:  Cast all media to the provided type.  This is useful for downcasting to `vipy.video.Scene` from superclasses
+            relpath [bool]: If true, define all file paths in objects relative to the /path/to in /path/to/out.json
+            sanitize [bool]:  If trye, call sanitize() on all objects to remove all private attributes with prepended '__' 
+            strict [bool]: Unused
+            significant_digits [int]: Assign the requested number of significant digits to all bounding boxes in all tracks.  This requires dataset of `vipy.video.Scene`
+            noemail [bool]: If true, scrub the attributes for emails and replace with a hash
+            flush [bool]:  If true, flush the object buffers prior to save
+
+        Returns:        
+            This dataset that is quivalent to vipy.dataset.Dataset('/path/to/outfile.json')
+        """
         n = len([v for v in self._objlist if v is None])
         if n > 0:
             print('[vipy.dataset]: removing %d invalid elements' % n)
@@ -171,6 +196,7 @@ class Dataset():
             print('[vipy.dataset]: casting as "%s"' % (str(castas)))
             objlist = [castas.cast(v) for v in objlist]                     
         if significant_digits is not None:
+            assert self._is_vipy_scene()
             assert isinstance(significant_digits, int) and significant_digits >= 1, "Invalid input"
             objlist = [o.trackmap(lambda t: t.significant_digits(significant_digits)) if o is not None else o for o in objlist]
         if noemail:
@@ -187,28 +213,37 @@ class Dataset():
         return self
 
     def classlist(self):
+        """Return a sorted list of categories in the dataset"""
         assert self._isvipy(), "Invalid input"
         return sorted(list(set([v.category() for v in self._objlist])))
 
     def classes(self):
+        """Alias for classlist"""
         return self.classlist()
     def categories(self):
+        """Alias for classlist"""
         return self.classlist()
     def num_classes(self):
+        """Return the number of unique categories in this dataset"""
         return len(self.classlist())
     def num_labels(self):
+        """Alias for num_classes"""
         return self.num_classes()
     def num_categories(self):
+        """Alias for num_classes"""
         return self.num_classes()
     
     
     def class_to_index(self):
+        """Return a dictionary mapping the unique classes to an integer index.  This is useful for defining a softmax index ordering for categorization"""
         return {v:k for (k,v) in enumerate(self.classlist())}
 
     def index_to_class(self):
+        """Return a dictionary mapping an integer index to the unique class names.  This is the inverse of class_to_index, swapping keys and values"""
         return {v:k for (k,v) in self.class_to_index().items()}
 
     def label_to_index(self):
+        """Alias for class_to_index"""
         return self.class_to_index()
 
     def powerset(self):

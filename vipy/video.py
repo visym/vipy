@@ -2534,15 +2534,15 @@ class Scene(VideoCategory):
            Montage increases rowwise for n uniformly spaced frames, starting from frame zero and ending on the last frame.  This quicklook is most useful when len(self.activities()==1)
            for generating a quicklook from an activityclip().
         
-           Input:
-              -n:  Number of images in the quicklook
-              -dilate:  The dilation factor for the bounding box prior to crop for display
-              -mindim:  The minimum dimension of each of the elemnets in the montage
-              -fontsize:  The size of the font for the bounding box label
-              -context:  If true, replace the first and last frame in the montage with the full frame annotation, to help show the scale of the scene
-              -animate:  If true, return a video constructed by animating the quicklook into a video by showing dt consecutive frames
-              -dt:  The number of frames for animation
-              -startframe:  The initial frame index to start the n uniformly sampled frames for the quicklook
+           Args:
+               n [int]:  Number of images in the quicklook
+               dilate [float]:  The dilation factor for the bounding box prior to crop for display
+               mindim [int]:  The minimum dimension of each of the elemnets in the montage
+               fontsize [int]:  The size of the font for the bounding box label
+               context [bool]:  If true, replace the first and last frame in the montage with the full frame annotation, to help show the scale of the scene
+               animate [bool]:  If true, return a video constructed by animating the quicklook into a video by showing dt consecutive frames
+               dt [int]:  The number of frames for animation
+               startframe [int]:  The initial frame index to start the n uniformly sampled frames for the quicklook
         """
         if not self.isloaded():
             self.load()  
@@ -3215,7 +3215,7 @@ class Scene(VideoCategory):
         Returns:
             This video object, clipped so that a load() will result in frame=0 equivalent to startframe.  All tracks and activities updated relative to the new startframe.
 
-        .. notes:  
+        .. note:  
             - This return a clone of the video for idempotence
             - This does not load the video.  This updates the ffmpeg filter chain to temporally trim the video.  See self.commandline() for the updated filter chain to run.
         """
