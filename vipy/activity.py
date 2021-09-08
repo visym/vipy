@@ -220,7 +220,7 @@ class Activity(object):
 
     def hastrackoverlap(self, track):
         """is the activity occurring during the interval when the track is occurring?"""
-        assert isinstance(other, Track)
+        assert isinstance(track, Track)
         return self.hastrack(track) and self.temporal_iou(track) > 0
     
     def append(self, newtrack):
