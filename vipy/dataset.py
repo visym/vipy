@@ -19,7 +19,7 @@ import dill
 from vipy.show import colorlist
 import matplotlib.pyplot as plt
 import vipy.metrics
-
+import gc 
 
 class Dataset():
     """vipy.dataset.Dataset() class
@@ -52,8 +52,14 @@ class Dataset():
             yield self._objlist[k]
 
     def __getitem__(self, k):
-        assert k>=0 and k<len(self._objlist), "invalid index"
-        return self._objlist[k]
+        if isinstance(k, int):
+            assert k>=0 and k<len(self._objlist), "invalid index"
+            return self._objlist[k]
+        elif isinstance(k, slice):
+            return self._objlist[k.start:k.stop:k.step]
+        else:
+            raise
+            
 
     def __len__(self):
         return len(self._objlist)
@@ -81,7 +87,7 @@ class Dataset():
     def istype(self, validtype):
         """Return True if all elements in the dataset are of type 'validtype'"""
         return all([any([isinstance(v,t) for t in tolist(validtype)]) for v in self._objlist])
-            
+
     def _isvipy(self):
         """Return True if all elements in the dataset are of type `vipy.video.Video` or `vipy.image.Image`"""        
         return self.istype([vipy.image.Image, vipy.video.Video])
@@ -391,13 +397,14 @@ class Dataset():
             ascompleted: [bool] If true, return elements as they complete
 
         Returns:
-            A `vipy.dataset.Dataset` containing the elements f_transform(v).  This operation is order preserving
+            A `vipy.dataset.Dataset` containing the elements f_transform(v).  This operation is order preserving.
 
         """
         assert callable(f_transform)
         B = Batch(self.list(), strict=strict, as_completed=ascompleted, checkpoint=checkpoint, warnme=False, minscatter=1000000)
-        V = B.map(f_transform).result() if not model else B.scattermap(f_transform, model).result() 
-        return Dataset(V, id=dst if dst is not None else id)
+        V = B.map(f_transform).result() if not model else B.scattermap(f_transform, model).result()
+        D = Dataset(V, id=dst if dst is not None else id)
+        return D
 
     def localmap(self, f):
         self._objlist = [f(v) for v in self._objlist]

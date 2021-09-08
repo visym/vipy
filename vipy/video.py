@@ -478,7 +478,6 @@ class Video(object):
         elif frames is not None and (isinstance(frames, str) and os.path.isdir(frames)):
             self.fromdirectory(frames)
             
-        
     @classmethod
     def cast(cls, v):
         """Cast a conformal video object to a `vipy.video.Video` object.
@@ -517,7 +516,7 @@ class Video(object):
                 endsec=d['_endsec'])
         v._ffmpeg = v._from_ffmpeg_commandline(d['_ffmpeg'])
         return v.filename(d['_filename']) if d['_filename'] is not None else v.nofilename()
-            
+
     def __repr__(self):
         strlist = []
         if self.isloaded():
