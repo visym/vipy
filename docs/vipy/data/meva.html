@@ -1,0 +1,1173 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1" />
+<meta name="generator" content="pdoc 0.9.2" />
+<title>vipy.data.meva API documentation</title>
+<meta name="description" content="" />
+<link rel="preload stylesheet" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/10up-sanitize.css/11.0.1/sanitize.min.css" integrity="sha256-PK9q560IAAa6WVRRh76LtCaI8pjTJ2z11v0miyNNjrs=" crossorigin>
+<link rel="preload stylesheet" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/10up-sanitize.css/11.0.1/typography.min.css" integrity="sha256-7l/o7C8jubJiy74VsKTidCy1yBkRtiUGbVkYBylBqUg=" crossorigin>
+<link rel="stylesheet preload" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/10.1.1/styles/github.min.css" crossorigin>
+<style>:root{--highlight-color:#fe9}.flex{display:flex !important}body{line-height:1.5em}#content{padding:20px}#sidebar{padding:30px;overflow:hidden}#sidebar > *:last-child{margin-bottom:2cm}#lunr-search{width:100%;font-size:1em;padding:6px 9px 5px 9px;border:1px solid silver}.http-server-breadcrumbs{font-size:130%;margin:0 0 15px 0}#footer{font-size:.75em;padding:5px 30px;border-top:1px solid #ddd;text-align:right}#footer p{margin:0 0 0 1em;display:inline-block}#footer p:last-child{margin-right:30px}h1,h2,h3,h4,h5{font-weight:300}h1{font-size:2.5em;line-height:1.1em}h2{font-size:1.75em;margin:1em 0 .50em 0}h3{font-size:1.4em;margin:25px 0 10px 0}h4{margin:0;font-size:105%}h1:target,h2:target,h3:target,h4:target,h5:target,h6:target{background:var(--highlight-color);padding:.2em 0}a{color:#058;text-decoration:none;transition:color .3s ease-in-out}a:hover{color:#e82}.title code{font-weight:bold}h2[id^="header-"]{margin-top:2em}.ident{color:#900}pre code{background:#f8f8f8;font-size:.8em;line-height:1.4em}code{background:#f2f2f1;padding:1px 4px;overflow-wrap:break-word}h1 code{background:transparent}pre{background:#f8f8f8;border:0;border-top:1px solid #ccc;border-bottom:1px solid #ccc;margin:1em 0;padding:1ex}#http-server-module-list{display:flex;flex-flow:column}#http-server-module-list div{display:flex}#http-server-module-list dt{min-width:10%}#http-server-module-list p{margin-top:0}.toc ul,#index{list-style-type:none;margin:0;padding:0}#index code{background:transparent}#index h3{border-bottom:1px solid #ddd}#index ul{padding:0}#index h4{margin-top:.6em;font-weight:bold}@media (min-width:200ex){#index .two-column{column-count:2}}@media (min-width:300ex){#index .two-column{column-count:3}}dl{margin-bottom:2em}dl dl:last-child{margin-bottom:4em}dd{margin:0 0 1em 3em}#header-classes + dl > dd{margin-bottom:3em}dd dd{margin-left:2em}dd p{margin:10px 0}.name{background:#eee;font-weight:bold;font-size:.85em;padding:5px 10px;display:inline-block;min-width:40%}.name:hover{background:#e0e0e0}dt:target .name{background:var(--highlight-color)}.name > span:first-child{white-space:nowrap}.name.class > span:nth-child(2){margin-left:.4em}.inherited{color:#999;border-left:5px solid #eee;padding-left:1em}.inheritance em{font-style:normal;font-weight:bold}.desc h2{font-weight:400;font-size:1.25em}.desc h3{font-size:1em}.desc dt code{background:inherit}.source summary,.git-link-div{color:#666;text-align:right;font-weight:400;font-size:.8em;text-transform:uppercase}.source summary > *{white-space:nowrap;cursor:pointer}.git-link{color:inherit;margin-left:1em}.source pre{max-height:500px;overflow:auto;margin:0}.source pre code{font-size:12px;overflow:visible}.hlist{list-style:none}.hlist li{display:inline}.hlist li:after{content:',\2002'}.hlist li:last-child:after{content:none}.hlist .hlist{display:inline;padding-left:1em}img{max-width:100%}td{padding:0 .5em}.admonition{padding:.1em .5em;margin-bottom:1em}.admonition-title{font-weight:bold}.admonition.note,.admonition.info,.admonition.important{background:#aef}.admonition.todo,.admonition.versionadded,.admonition.tip,.admonition.hint{background:#dfd}.admonition.warning,.admonition.versionchanged,.admonition.deprecated{background:#fd4}.admonition.error,.admonition.danger,.admonition.caution{background:lightpink}</style>
+<style media="screen and (min-width: 700px)">@media screen and (min-width:700px){#sidebar{width:30%;height:100vh;overflow:auto;position:sticky;top:0}#content{width:70%;max-width:100ch;padding:3em 4em;border-left:1px solid #ddd}pre code{font-size:1em}.item .name{font-size:1em}main{display:flex;flex-direction:row-reverse;justify-content:flex-end}.toc ul ul,#index ul{padding-left:1.5em}.toc > ul > li{margin-top:.5em}}</style>
+<style media="print">@media print{#sidebar h1{page-break-before:always}.source{display:none}}@media print{*{background:transparent !important;color:#000 !important;box-shadow:none !important;text-shadow:none !important}a[href]:after{content:" (" attr(href) ")";font-size:90%}a[href][title]:after{content:none}abbr[title]:after{content:" (" attr(title) ")"}.ir a:after,a[href^="javascript:"]:after,a[href^="#"]:after{content:""}pre,blockquote{border:1px solid #999;page-break-inside:avoid}thead{display:table-header-group}tr,img{page-break-inside:avoid}img{max-width:100% !important}@page{margin:0.5cm}p,h2,h3{orphans:3;widows:3}h1,h2,h3,h4,h5,h6{page-break-after:avoid}}</style>
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/10.1.1/highlight.min.js" integrity="sha256-Uv3H6lx7dJmRfRvH8TH6kJD1TSK1aFcwgx+mdg3epi8=" crossorigin></script>
+<script>window.addEventListener('DOMContentLoaded', () => hljs.initHighlighting())</script>
+</head>
+<body>
+<main>
+<article id="content">
+<header>
+<h1 class="title">Module <code>vipy.data.meva</code></h1>
+</header>
+<section id="section-intro">
+<details class="source">
+<summary>
+<span>Expand source code</span>
+<a href="https://github.com/visym/vipy/blob/16fb58544d8c354c3498b37a00d72bebcb91a1fd/vipy/data/meva.py#L0-L436" class="git-link">Browse git</a>
+</summary>
+<pre><code class="python">import os
+from vipy.util import remkdir, readjson, readyaml, findyaml, findvideo, filetail, findjson, filebase, readlist, groupbyasdict, save, flatlist, isstring, tempdir, readcsv, delpath, temphtml, tolist
+from vipy.video import VideoCategory, Scene
+from vipy.object import Track
+from vipy.activity import Activity
+from vipy.geometry import BoundingBox
+from vipy.show import colorlist
+import numpy as np
+import warnings
+import shutil
+import vipy.globals
+
+
+d_category_to_shortlabel = {&#39;person_abandons_package&#39;:&#39;Abandoning&#39;,
+                            &#39;person_closes_facility_door&#39;:&#39;Closing&#39;,
+                            &#39;person_closes_trunk&#39;:&#39;Closing trunk&#39;,
+                            &#39;person_closes_vehicle_door&#39;:&#39;Closing door&#39;,
+                            &#39;person_embraces_person&#39;:&#39;Hugging&#39;,
+                            &#39;person_enters_scene_through_structure&#39;:&#39;Entering&#39;,
+                            &#39;person_enters_vehicle&#39;:&#39;Entering&#39;,
+                            &#39;person_exits_scene_through_structure&#39;:&#39;Exiting&#39;,
+                            &#39;person_exits_vehicle&#39;:&#39;Exiting&#39;,
+                            &#39;hand_interacts_with_person&#39;:&#39;Using hand&#39;,
+                            &#39;person_carries_heavy_object&#39;:&#39;Carrying&#39;,
+                            &#39;person_interacts_with_laptop&#39;:&#39;Using laptop&#39;,
+                            &#39;person_loads_vehicle&#39;:&#39;Loading&#39;,
+                            &#39;person_transfers_object&#39;:&#39;Transferring&#39;,
+                            &#39;person_opens_facility_door&#39;:&#39;Opening door&#39;,
+                            &#39;person_opens_trunk&#39;:&#39;Opening trunk&#39;,
+                            &#39;person_opens_vehicle_door&#39;:&#39;Opening door&#39;,
+                            &#39;person_talks_to_person&#39;:&#39;Talking to&#39;,
+                            &#39;person_picks_up_object&#39;:&#39;Picking up&#39;,
+                            &#39;person_purchases&#39;:&#39;Purchasing&#39;,
+                            &#39;person_reads_document&#39;:&#39;Reading&#39;,
+                            &#39;person_rides_bicycle&#39;:&#39;Riding&#39;,
+                            &#39;person_puts_down_object&#39;:&#39;Putting down&#39;,
+                            &#39;person_sits_down&#39;:&#39;Sitting&#39;,
+                            &#39;person_stands_up&#39;:&#39;Standing&#39;,
+                            &#39;person_talks_on_phone&#39;:&#39;Talking&#39;,
+                            &#39;person_texts_on_phone&#39;:&#39;Texting&#39;,
+                            &#39;person_steals_object&#39;:&#39;Stealing&#39;,
+                            &#39;person_unloads_vehicle&#39;:&#39;Unloading&#39;,
+                            &#39;vehicle_drops_off_person&#39;:&#39;Dropping off&#39;,
+                            &#39;vehicle_picks_up_person&#39;:&#39;Picking up&#39;,
+                            &#39;vehicle_reverses&#39;:&#39;Reversing&#39;,
+                            &#39;vehicle_starts&#39;:&#39;Starting&#39;,
+                            &#39;vehicle_stops&#39;:&#39;Stopping&#39;,
+                            &#39;vehicle_turns_left&#39;:&#39;Turning left&#39;,
+                            &#39;vehicle_turns_right&#39;:&#39;Turning right&#39;,
+                            &#39;vehicle_makes_u_turn&#39;:&#39;Turning around&#39;}
+
+class KF1(object):
+    def __init__(self, videodir, repodir, contrib=False, stride=1, verbose=True, n_videos=None, withprefix=None, d_category_to_shortlabel=None, merge=False, actor=False, disjoint=False, unpad=False):
+        &#34;&#34;&#34;Parse MEVA annotations (http://mevadata.org) for Known Facility 1 dataset into vipy.video.Scene() objects
+       
+        Kwiver packet format: https://gitlab.kitware.com/meva/meva-data-repo/blob/master/documents/KPF-specification-v4.pdf
+
+        Args:
+            videodir: [str]  path to Directory containing &#39;drop-01&#39; 
+            repodir: [str]  path to directory containing clone of https://gitlab.kitware.com/meva/meva-data-repo
+            stride: [int] the integer temporal stride in frames for importing bounding boxes, vipy will do linear interpoluation and boundary handling
+            n_videos: [int] only return an integer number of videos, useful for debugging or for previewing dataset
+            withprefix: [list] only return videos with the filename containing one of the strings in withprefix list, useful for debugging
+            contrib: [bool] include the noisy contrib anntations from DIVA performers
+            d_category_to_shortlabel: [dict] is a dictionary mapping category names to a short displayed label on the video.  The standard for visualization is that tracked objects are displayed with their category label (e.g. &#39;Person&#39;, &#39;Vehicle&#39;), and activities are labeled according to the set of objects that performing the activity.  When an activity occurs, the set of objects are labeled with the same color as &#39;Noun Verbing&#39; (e.g. &#39;Person Entering&#39;, &#39;Person Reading&#39;, &#39;Vehicle Starting&#39;) where &#39;Verbing&#39; is provided by the shortlabel.   This is optional, and will use the default mapping if None
+            verbose: [bool]  Parsing verbosity
+            merge: [bool] deduplicate annotations for each video across YAML files by merging them by mean spatial IoU per track (&gt;0.5) and temporal IoU (&gt;0)
+            actor: [bool]  Include only those activities that include an associated track for the primary actor: &#34;Person&#34; for &#34;person_*&#34; and &#34;hand_*&#34;, else &#34;Vehicle&#34;
+            disjoint: [bool]:  Enforce that overlapping causal activities (open/close, enter/exit, ...) are disjoint for a track
+            unpad: [bool] remove the arbitrary padding assigned during dataset creation
+
+        Returns:
+            a list of `vipy.video.Scene` objects
+
+        &#34;&#34;&#34;
+        
+        self.videodir = videodir
+        self.repodir = repodir
+
+        assert os.path.exists(os.path.join(self.videodir, &#39;drop-01&#39;)), &#34;Invalid input - videodir &#39;%s&#39; must contain the drop-01, drop-02 and drop-03 subdirectories.  See http://mevadata.org/#getting-data&#34; % videodir
+        assert os.path.exists(os.path.join(self.repodir, &#39;annotation&#39;)), &#34;Invalid input - repodir &#39;%s&#39; must contain the clone of https://gitlab.kitware.com/meva/meva-data-repo&#34; % repodir
+
+        # Shortlabels are optional and used for showing labels on videos only
+        self._d_category_to_shortlabel = vipy.data.meva.d_category_to_shortlabel
+        self._d_category_to_shortlabel = {k:v.lower() for (k,v) in self._d_category_to_shortlabel.items()}        
+        self._d_oldcategory_to_newcategory = {k:v for (k,v) in readcsv(os.path.join(self.repodir, &#39;documents&#39;, &#39;activity-name-mapping.csv&#39;))[1:]}
+
+        d_category_to_shortlabel = d_category_to_shortlabel if d_category_to_shortlabel is not None else self._d_category_to_shortlabel
+        d_videoname_to_path = {filebase(f):f for f in self._get_videos()}
+        yamlfiles = zip(self._get_types_yaml(), self._get_geom_yaml(), self._get_activities_yaml())
+        yamlfiles = [y for y in yamlfiles if contrib is True or &#39;contrib&#39; not in y[0]]
+        yamlfiles = list(yamlfiles)[0:n_videos] if n_videos is not None else list(yamlfiles)
+        if withprefix is not None:            
+            yamlfiles = [y for y in yamlfiles if any([(p in y[0]) for p in tolist(withprefix)])]  
+
+        if verbose:
+            print(&#39;[vipy.data.meva.KF1]: Loading %d YAML files&#39; % len(yamlfiles))
+            if len(yamlfiles) &gt; 100 and vipy.globals.parallel() &lt;= 1:
+                print(&#39;[vipy.data.meva.KF1]: This takes a while since parsing YAML files in python is painfully slow, consider calling &#34;vipy.globals.parallel(n)&#34; for n&gt;1 before loading the dataset for parallel parsing&#39;)
+
+        # Parallel video annotation:  set vipy.globals.parallel(n) for n parallel workers for the Batch() processing
+        from vipy.batch import Batch  # requires Dask, Distributed
+        self._vidlist = Batch(list(yamlfiles)).map(lambda tga: self._parse_video(d_videoname_to_path, d_category_to_shortlabel, tga[0], tga[1], tga[2], stride=stride, verbose=verbose, actor=actor)).result()
+        self._vidlist = [v for v in self._vidlist if v is not None]
+
+        # Merge and dedupe activities and tracks across YAML files for same video, using temporal and spatial IoU association.
+        #   The MEVA dataset is &#34;activity-centric&#34; so that each activity is labeled independently.  There may be tracks in the dataset
+        #   that are the same instance in the video, but are different track IDs in the dataset.  The result is disjoint activity labels 
+        #   in a non-disjoint activity in a video.  Yuck..  Try to merge them.  This is experimental, since it tries to use IoU for merging, 
+        #   which does not work in general.  This requires global track correspondence.  
+        if merge:
+            print(&#39;[vipy.data.meva.KF1]: merging videos ...&#39;)
+            V = list(groupbyasdict([a for vid in self._vidlist for a in vid.activitysplit()], lambda s: s.filename()).values())
+            self._vidlist = Batch(V).map(lambda v: v[0].clone().union(v[1:])).result()
+
+        # Enforce disjoint causal activities
+        #   Due to the arbitrary temporal padding in the annotation definitions, merged causal activiites can overlap
+        #   Enforce that causal activities (open/close, enter/exit, pickup/putdown, load/unload) for the same track are disjoint
+        if disjoint:
+            V = self._vidlist
+            V = [v.activitymap(lambda a: a.disjoint([sa for sa in v.activitylist() if sa.category() == &#39;person_closes_vehicle_door&#39;]) if a.category() == &#39;person_opens_vehicle_door&#39; else a) for v in V]  
+            V = [v.activitymap(lambda a: a.disjoint([sa for sa in v.activitylist() if sa.category() == &#39;person_closes_vehicle_trunk&#39;]) if a.category() == &#39;person_opens_vehicle_trunk&#39; else a) for v in V]  
+            V = [v.activitymap(lambda a: a.disjoint([sa for sa in v.activitylist() if sa.category() == &#39;person_exits_vehicle&#39;]) if a.category() == &#39;person_enters_vehicle&#39; else a) for v in V]  
+            V = [v.activitymap(lambda a: a.disjoint([sa for sa in v.activitylist() if sa.category() == &#39;person_enters_scene_through_structure&#39;]) if a.category() == &#39;person_exits_scene_through_structure&#39; else a) for v in V]  
+            V = [v.activitymap(lambda a: a.disjoint([sa for sa in v.activitylist() if sa.category() == &#39;person_closes_facility_door&#39;]) if a.category() == &#39;person_opens_facility_door&#39; else a) for v in V]  
+            V = [v.activitymap(lambda a: a.disjoint([sa for sa in v.activitylist() if sa.category() == &#39;person_unloads_vehicle&#39;]) if a.category() == &#39;person_loads_vehicle&#39; else a) for v in V]  
+            V = [v.activitymap(lambda a: a.disjoint([sa for sa in v.activitylist() if sa.category() == &#39;person_puts_down_object&#39;]) if a.category() == &#39;person_picks_up_object&#39; else a) for v in V]  
+            V = [v.activityfilter(lambda a: len(a)&gt;0) for v in V]  # some activities may be zero length after disjoint
+            self._vidlist = V
+
+        # Remove the arbitrary temporal padding applied during dataset creation
+        if unpad:
+            # MEVA annotations assumptions:  https://docs.google.com/spreadsheets/d/19I3C5Zb6RHS0QC30nFT_m0ymArzjvlPLfb5SSRQYLUQ/edit#gid=0
+            # Pad one second before, zero seconds after
+            before1after0 = set([&#39;person_opens_facility_door&#39;, &#39;person_closes_facility_door&#39;, &#39;person_opens_vehicle_door&#39;, &#39;person_closes_vehicle_door&#39;, 
+                                 &#39;person_opens_trunk&#39;, &#39;person_closes_trunk&#39;, &#39;vehicle_stops&#39;, &#39;person_interacts_with_laptop&#39;])        
+            V = [v.activitymap(lambda a: a.temporalpad( (-v.framerate()*1.0, 0) ) if a.category() in before1after0 else a) for v in self._vidlist]
+
+            # pad one second before, one second after, up to maximum of two seconds
+            before1after1max2 = set([&#39;person_enters_scene_through_structure&#39;])
+            V = [v.activitymap(lambda a: a.temporalpad(max(0, -v.framerate()*1.0)) if a.category() in before1after1max2 else a) for v in V]
+
+            # person_exits_scene_through_structure:  Pad one second before person_opens_facility_door label (if door collection), and ends with enough padding to make this minimum two seconds
+            V = [v.activitymap(lambda a: a.temporalpad( (-v.framerate()*1.0, 0) ) if a.category() == &#39;person_exits_scene_through_structure&#39; else a) for v in V]        
+        
+            # person_enters_vehicle: Starts one second before person_opens_vehicle_door activity label and ends at the end of person_closes_vehicle_door activity
+            V = [v.activitymap(lambda a: a.temporalpad( (-v.framerate()*1.0, 0) ) if a.category() == &#39;person_enters_vehicle&#39; else a) for v in V]        
+
+            # person_exits_vehicle:  Starts one second before person_opens_vehicle_door, and ends at person_exits_vehicle with enough padding to make this minimum two seconds
+            V = [v.activitymap(lambda a: a.temporalpad( (-v.framerate()*1.0, 0) ) if a.category() == &#39;person_exits_vehicle&#39; else a) for v in V]        
+
+            # person_unloads_vehicle:  one second of padding before cargo starts to move
+            V = [v.activitymap(lambda a: a.temporalpad( (-v.framerate()*1.0, 0) ) if a.category() == &#39;person_unloads_vehicle&#39; else a) for v in V]        
+
+            # person_talks_to_person:  Equal padding to minimum of five seconds            
+            # person_texting_on_phone:  Equal padding to minimum of two seconds
+
+            # Pad one second before, one second after
+            before1after1 = set([&#39;vehicle_turns_left&#39;, &#39;vehicle_turns_right&#39;, &#39;person_transfers_object&#39;,
+                                 &#39;person_sets_down_object&#39;, &#39;hand_interacts_with_person&#39;, &#39;person_embraces_person&#39;, &#39;person_purchases&#39;,
+                                 &#39;vehicle_picks_up_person&#39;, &#39;vehicle_drops_off_person&#39;])
+            V = [v.activitymap(lambda a: a.temporalpad(-v.framerate()*1.0) if a.category() in before1after1 else a) for v in V]
+
+            # Pad zero second before, one second after
+            before0after1 = set([&#39;vehicle_makes_u_turn&#39;, &#39;person_picks_up_object&#39;])
+            V = [v.activitymap(lambda a: a.temporalpad( (0, -v.framerate()*1.0) ) if a.category() in before0after1 else a) for v in V]
+
+            # person_abandons_package:  two seconds before, two seconds after
+            V = [v.activitymap(lambda a: a.temporalpad(-v.framerate()*2.0) if a.category() == &#39;person_abandons_package&#39; else a) for v in V]            
+            self._vidlist = V
+
+        # Remove empty tracks and activities
+        self._vidlist = [v.trackfilter(lambda t: len(t) &gt; 0) for v in self._vidlist]
+        self._vidlist = [v.activityfilter(lambda a: len(a) &gt; 0) for v in self._vidlist]
+
+    def __getitem__(self, k):
+        return self._vidlist[k]
+
+    def __iter__(self):
+        for v in self._vidlist:
+            yield v
+
+    def __len__(self):
+        return len(self._vidlist)
+                
+    def __repr__(self):
+        return str(&#39;&lt;vipy.data.meva.KF1: videos=%d, videodir=&#34;%s&#34;, annotationdir=&#34;%s&#34;&gt;&#39; % (len(self), self.videodir, self.repodir))
+
+    def _activities_to_required_objects(self):
+        &#34;&#34;&#34;Return a dictionary of activity keys to set of required objects.  This is currently wrong.&#34;&#34;&#34;
+        raise ValueError(&#39;This mapping is currently wrong in the Kitware repository&#39;)
+        d = readjson(os.path.join(self.repodir, &#39;annotation&#39;, &#39;DIVA-phase-2&#39;, &#39;activity-index.json&#39;))
+        return {a:set([x.replace(&#39;Construction_Vehicle&#39;, &#39;Vehicle&#39;) for x in d[a][&#39;objectTypes&#39;]]) for a in self.activities()}        
+
+    def _get_activities_yaml(self):
+        return sorted([x for x in findyaml(self.repodir) if &#39;activities.yml&#39; in x])
+
+    def _get_geom_yaml(self):
+        return sorted([x for x in findyaml(self.repodir) if &#39;geom.yml&#39; in x])
+
+    def _get_types_yaml(self):
+        return sorted([x for x in findyaml(self.repodir) if &#39;types.yml&#39; in x])
+
+    def _get_fileindex_json(self):
+        return sorted([x for x in findjson(self.repodir) if &#39;file-index.json&#39; in x])
+
+    def _get_activities_json(self):
+        return sorted([x for x in findjson(self.repodir) if &#39;activities.json&#39; in x])
+        
+    def _get_videos(self):
+        return sorted([x for x in findvideo(self.videodir)])
+    
+    def _parse_video(self, d_videoname_to_path, d_category_to_shortlabel, types_yamlfile, geom_yamlfile, act_yamlfile, stride=1, verbose=False, actor=False):
+        &#34;&#34;&#34;Reference: https://gitlab.kitware.com/meva/meva-data-repo/-/blob/master/documents/KPF-specification-v4.pdf&#34;&#34;&#34;
+        
+        # Read YAML
+        if verbose:
+            print(&#39;[vipy.data.meva.KF1]: Parsing &#34;%s&#34;&#39; % (act_yamlfile))
+        geom_yaml = readyaml(geom_yamlfile)
+        types_yaml = readyaml(types_yamlfile)
+        act_yaml = readyaml(act_yamlfile)
+
+        # Sanity check
+        assert act_yamlfile.split(&#39;.&#39;)[:-2] == geom_yamlfile.split(&#39;.&#39;)[:-2], &#34;Unmatched activity and geom yaml file&#34;
+        assert &#39;meta&#39; not in types_yaml[0] or len(set([types_yaml[0][&#39;meta&#39;], geom_yaml[0][&#39;meta&#39;], act_yaml[0][&#39;meta&#39;]]))==1, &#34;Mismatched video name for &#39;%s&#39;&#34; % act_yamlfile
+        try:
+            videoname = act_yaml[0][&#39;meta&#39;] if act_yaml[0][&#39;meta&#39;][-4:] != &#39;.avi&#39; else act_yaml[0][&#39;meta&#39;][0:-4]  # strip .avi 
+        except:
+            videoname = vipy.util.filetail(act_yamlfile.split(&#39;activities.yml&#39;)[0][0:-1])  # /path/to/filebase-activities.yml or /path/to/filebase.activities.yml  [YUCK, necessary for newer drops in Spring 2021]
+
+        if videoname not in d_videoname_to_path:
+            if verbose:
+                print(&#39;[vipy.data.meva.KF1]: Invalid MEVA video &#34;%s&#34; in &#34;%s&#34; - Ignoring&#39; % (videoname, filebase(act_yamlfile)))
+            return None
+
+        # Parse video
+        framerate = 30.0  # All videos are universally 30Hz (from Roddy)
+        vid = Scene(filename=d_videoname_to_path[videoname], framerate=framerate)
+
+
+        # Parse tracks        
+        d_id1_to_category = {}
+        for t in types_yaml:
+            if &#39;types&#39; in t:
+                d_id1_to_category[t[&#39;types&#39;][&#39;id1&#39;]] = list(t[&#39;types&#39;][&#39;cset3&#39;].keys())[0]
+
+        d_id1_to_track = {}
+        d_geom_yaml = groupbyasdict([x[&#39;geom&#39;] for x in geom_yaml if &#39;geom&#39; in x], lambda v: v[&#39;id1&#39;])
+        assert stride &gt;= 1, &#34;Invalid stride&#34;
+        for (id1, geom_yaml) in d_geom_yaml.items():
+            geom_yaml = sorted(geom_yaml, key=lambda x: int(x[&#39;ts0&#39;]))  # increasing
+            for (k_geom, v) in enumerate(geom_yaml):
+                if stride &gt; 1 and k_geom &gt; 0 and (k_geom &lt; (len(geom_yaml)-stride)) and (k_geom % stride != 0):
+                    continue  # Use vipy track interpolation to speed up parsing
+                keyframe = int(v[&#39;ts0&#39;])
+                bb = [int(x) for x in v[&#39;g0&#39;].split(&#39; &#39;)]
+                bbox = BoundingBox(xmin=bb[0], ymin=bb[1], xmax=bb[2], ymax=bb[3])
+                if not bbox.isvalid():
+                    if verbose:
+                        print(&#39;[vipy.data.meva.KF1]: Invalid bounding box: id1=%s, bbox=&#34;%s&#34;, file=&#34;%s&#34; - Ignoring&#39; % (str(v[&#39;id1&#39;]), str(bbox), delpath(self.repodir, geom_yamlfile)))
+                elif v[&#39;id1&#39;] not in d_id1_to_track:
+                    d_id1_to_track[v[&#39;id1&#39;]] = Track(category=d_id1_to_category[v[&#39;id1&#39;]], framerate=framerate, keyframes=[keyframe], boxes=[bbox], boundary=&#39;strict&#39;)
+                else:
+                    d_id1_to_track[v[&#39;id1&#39;]].add(keyframe=keyframe, bbox=bbox)
+                
+        # Add tracks to scene
+        for (k,v) in d_id1_to_track.items():
+            try:
+                vid.add(v, rangecheck=True)  # throw exception if all tracks are outside the image rectangle
+            except Exception as e:
+                print(&#39;[vipy.data.meva.KF1]: track import error &#34;%s&#34; for trackid=%s, track=%s - SKIPPING&#39; % (str(e), k, str(v)))
+
+        # Category to actor:  This defines the primary role for the activity (for tube based representations)
+        f_activity_to_actor = lambda c: &#39;Person&#39; if (c.split(&#39;_&#39;)[0] == &#39;person&#39; or &#39;hand&#39; in c) else &#39;Vehicle&#39;
+        
+        # Parse activities
+        for v in act_yaml:
+            if &#39;act&#39; in v:
+                if &#39;act2&#39; in v[&#39;act&#39;]:
+                    act2 = v[&#39;act&#39;][&#39;act2&#39;]
+                    if isinstance(act2, set):
+                        category = list(act2)[0]
+                        v[&#39;act&#39;][&#39;act2&#39;] = list(act2)  # for JSON serialization
+                    elif isinstance(act2, dict):
+                        category = list(act2.keys())[0]
+                    else:
+                        raise ValueError(&#39;YAML parsing error for &#34;%s&#34;&#39; % str(act2))
+                elif &#39;act3&#39; in v[&#39;act&#39;]:
+                    act3 = v[&#39;act&#39;][&#39;act3&#39;]
+                    if isinstance(act3, set):
+                        category = list(act3)[0]
+                        v[&#39;act&#39;][&#39;act3&#39;] = list(act3)  # for JSON serialization
+                    elif isinstance(act3, dict):
+                        category = list(act3.keys())[0]
+                    else:
+                        raise ValueError(&#39;YAML parsing error for &#34;%s&#34;&#39; % str(act3))
+                else:
+                    raise ValueError(&#39;Invalid activity YAML - act2 or act3 must be specified&#39;)
+                assert len(v[&#39;act&#39;][&#39;timespan&#39;]) == 1, &#34;Multi-span activities not parsed&#34;
+
+                if category not in self.categories():
+                    if category in self._d_oldcategory_to_newcategory:
+                        category = self._d_oldcategory_to_newcategory[category]  # rationalize
+                    else:
+                        raise ValueError(&#39;undefined category &#34;%s&#34;&#39; % category)
+                
+                startframe = int(v[&#39;act&#39;][&#39;timespan&#39;][0][&#39;tsr0&#39;][0])
+                endframe = int(v[&#39;act&#39;][&#39;timespan&#39;][0][&#39;tsr0&#39;][1])                
+                actorid = [x[&#39;id1&#39;] for x in v[&#39;act&#39;][&#39;actors&#39;]]   
+                if True:                    
+                    nounid = [d_id1_to_track[a].id() for a in actorid if (a in d_id1_to_track) and (f_activity_to_actor(category).lower() == d_id1_to_track[a].category().lower())]
+                    if len(nounid) == 0 and actor:
+                        print(&#39;[vipy.data.meva.KF1]: Warning - activity &#34;%s&#34; without a required primary actor &#34;%s&#34; - SKIPPING&#39; % (category, f_activity_to_actor(category)))
+                        continue  # skip it
+                    elif len(nounid) == 0:
+                        print(&#39;[vipy.data.meva.KF1]: Warning - activity &#34;%s&#34; without a required primary actor &#34;%s&#34;&#39; % (category, f_activity_to_actor(category)))
+                    nounid = nounid[0] if len(nounid) &gt; 0 else None   # first track in activity of required object class for this category is assumed to be the performer/actor/noun
+
+                for aid in actorid:
+                    if not aid in d_id1_to_track:
+                        print(&#39;[vipy.data.meva.KF1]: ActorID %d referenced in activity yaml &#34;%s&#34; not found in geom yaml &#34;%s&#34; - Skipping&#39; % (aid, delpath(self.repodir, act_yamlfile), delpath(self.repodir, geom_yamlfile)))
+                
+                # Add activity to scene:  include YAML file details in activity attributes for provenance if there are labeling bugs
+                tracks = {d_id1_to_track[aid].id():d_id1_to_track[aid] for aid in actorid if aid in d_id1_to_track}  # order preserving (python 3.6)
+                if len(tracks) &gt; 0:
+                    try:
+                        vid.add(Activity(category=category, shortlabel=d_category_to_shortlabel[category], actorid=nounid if actor else None,
+                                         startframe=startframe, endframe=endframe, tracks=tracks, framerate=framerate, 
+                                         attributes={&#39;act&#39;:str(v[&#39;act&#39;]), &#39;act_yaml&#39;:act_yamlfile, &#39;geom_yaml&#39;:geom_yamlfile}), rangecheck=True)
+                    except Exception as e:
+                        print(&#39;[vipy.data.meva.KF1]: activity import error &#34;%s&#34; for activity=&#34;%s&#34; - SKIPPING&#39; % (str(e), str(v)))
+            
+        return vid
+
+
+    def videos(self):
+        &#34;&#34;&#34;Return list of activity videos&#34;&#34;&#34;
+        return [v for v in self._vidlist if v is not None]
+
+    def tolist(self):
+        return self.videos()
+
+    def instances(self, padframes=0):
+        &#34;&#34;&#34;Return list of activity instances&#34;&#34;&#34;
+        if vipy.globals.max_workers() &gt; 1:
+            return [a for A in Batch(self.videos()).activityclip(padframes=padframes).result() for a in A]
+        else:
+            warnings.warn(&#39;Consider setting vipy.globals.max_workers(n) for n&gt;1 to speed this up&#39;)
+            return [a for v in self.videos() for a in v.activityclip(padframes=padframes)]
+        
+
+    def categories(self):
+        &#34;&#34;&#34;Return a list of activity categories&#34;&#34;&#34;
+        return sorted(list(self._d_category_to_shortlabel.keys()))
+        
+    def analysis(self, outdir=None):
+        &#34;&#34;&#34;Analyze the MEVA dataset to return helpful statistics and plots&#34;&#34;&#34;
+        import matplotlib.pyplot as plt        
+        import vipy.metrics
+        
+        videos = self._vidlist
+        scenes = flatlist([m.activityclip() for m in videos if m is not None])
+        activities = flatlist([s.activities().values() for s in scenes])
+        tracks = flatlist([s.tracks().values() for s in scenes])
+        outdir = tempdir() if outdir is None else outdir
+        
+        # Category distributions
+        d = {}
+        d[&#39;activity_categories&#39;] = set([a.category() for a in activities])
+        d[&#39;object_categories&#39;] = set([t.category() for t in tracks])
+        d[&#39;videos&#39;] = set([v.filename() for v in videos if v is not None])
+        d[&#39;num_activities&#39;] = sorted([(k,len(v)) for (k,v) in groupbyasdict(activities, lambda a: a.category()).items()], key=lambda x: x[1])
+        d[&#39;video_density&#39;] = sorted([(v.filename(),len(v.activities())) for v in videos if v is not None], key=lambda x: x[1])
+        
+        # Histogram of instances
+        (categories, freq) = zip(*reversed(d[&#39;num_activities&#39;]))
+        barcolors = [&#39;blue&#39; if not &#39;vehicle&#39; in c else &#39;green&#39; for c in categories]
+        d[&#39;num_activities_histogram&#39;] = vipy.metrics.histogram(freq, categories, barcolors=barcolors, outfile=os.path.join(outdir, &#39;num_activities_histogram.pdf&#39;), ylabel=&#39;Instances&#39;)
+        colors = colorlist()
+
+        # Scatterplot of people and vehicles box sizes
+        (x, y) = zip(*[(t.meanshape()[1], t.meanshape()[0]) for t in tracks])
+        plt.clf()
+        plt.figure()
+        plt.grid(True)
+        d_category_to_color = {&#39;person&#39;:&#39;blue&#39;, &#39;vehicle&#39;:&#39;green&#39;}
+        for c in [&#39;person&#39;, &#39;vehicle&#39;]:
+            (xc, yc) = zip(*[(t.meanshape()[1], t.meanshape()[0]) for t in tracks if t.category() == c])
+            plt.scatter(xc, yc, c=d_category_to_color[c], label=c)
+        plt.xlabel(&#39;bounding box (width)&#39;)
+        plt.ylabel(&#39;bounding box (height)&#39;)
+        plt.axis([0, 1000, 0, 1000])                
+        plt.legend()
+        plt.gca().set_axisbelow(True)        
+        d[&#39;object_bounding_box_scatterplot&#39;] = os.path.join(outdir, &#39;object_bounding_box_scatterplot.pdf&#39;)
+        plt.savefig(d[&#39;object_bounding_box_scatterplot&#39;])
+        
+        # 2D histogram of people and vehicles box sizes
+        for c in [&#39;person&#39;, &#39;vehicle&#39;]:
+            (xc, yc) = zip(*[(t.meanshape()[1], t.meanshape()[0]) for t in tracks if t.category() == c])
+            plt.clf()
+            plt.figure()
+            plt.hist2d(xc, yc, bins=10)
+            plt.xlabel(&#39;Bounding box (width)&#39;)
+            plt.ylabel(&#39;Bounding box (height)&#39;)
+            
+            d[&#39;2D_%s_bounding_box_histogram&#39; % c] = os.path.join(outdir, &#39;2D_%s_bounding_box_histogram.pdf&#39; % c)
+            plt.savefig(d[&#39;2D_%s_bounding_box_histogram&#39; % c])
+
+        # Mean track size per activity category
+        d_category_to_xy = {k:np.mean([t.meanshape() for v in vlist for t in v.tracklist()], axis=0) for (k,vlist) in groupbyasdict(scenes, lambda v: v.category()).items()}        
+        plt.clf()
+        plt.figure()
+        plt.grid(True)
+        d_category_to_color = {c:colors[k % len(colors)] for (k,c) in enumerate(d_category_to_xy.keys())}
+        for c in d_category_to_xy.keys():
+            (xc, yc) = d_category_to_xy[c]
+            plt.scatter(xc, yc, c=d_category_to_color[c], label=c)
+        plt.xlabel(&#39;bounding box (width)&#39;)
+        plt.ylabel(&#39;bounding box (height)&#39;)
+        plt.axis([0, 600, 0, 600])                
+        plt.gca().set_axisbelow(True)        
+        lgd = plt.legend(bbox_to_anchor=(1.05, 1), loc=&#39;upper left&#39;, borderaxespad=0.)
+        d[&#39;activity_bounding_box_scatterplot&#39;] = os.path.join(outdir, &#39;activity_bounding_box_scatterplot.pdf&#39;)
+        plt.savefig(d[&#39;activity_bounding_box_scatterplot&#39;], bbox_extra_artists=(lgd,), bbox_inches=&#39;tight&#39;)
+    
+        return d
+
+    def review(self, outfile=None, mindim=512):        
+        &#34;&#34;&#34;Generate a standalone HTML file containing quicklooks for each annotated activity in dataset, along with some helpful provenance information for where the annotation came from&#34;&#34;&#34;
+        if vipy.globals.max_workers() == 1:
+            warnings.warn(&#34;Generating review HTML is very time consuming, consider setting vipy.global.max_workers(n) for n &gt; 1 for parallel video processing&#34;)
+        quicklist = Batch(self._vidlist).map(lambda v: [(c.load().quicklook(context=True), c.flush()) for c in v.mindim(512).activityclip()]).result()
+        quicklooks = [imq for q in quicklist for (imq, c) in q]  # for HTML display purposes
+        provenance = [{&#39;clip&#39;:str(c), &#39;activities&#39;:str(&#39;;&#39;.join([str(a) for a in c.activitylist()])), &#39;category&#39;:c.category(), &#39;yamlfile&#39;:c.activitylist()[0].attributes[&#39;act_yaml&#39;]} for q in quicklist for (imq, c) in q]
+        (quicklooks, provenance) = zip(*sorted([(q,p) for (q,p) in zip(quicklooks, provenance)], key=lambda x: x[1][&#39;category&#39;]))  # sorted in category order
+        return vipy.visualize.tohtml(quicklooks, provenance, title=&#39;MEVA-KF1 annotation quicklooks&#39;, outfile=outfile, mindim=mindim)</code></pre>
+</details>
+</section>
+<section>
+</section>
+<section>
+</section>
+<section>
+</section>
+<section>
+<h2 class="section-title" id="header-classes">Classes</h2>
+<dl>
+<dt id="vipy.data.meva.KF1"><code class="flex name class">
+<span>class <span class="ident">KF1</span></span>
+<span>(</span><span>videodir, repodir, contrib=False, stride=1, verbose=True, n_videos=None, withprefix=None, d_category_to_shortlabel=None, merge=False, actor=False, disjoint=False, unpad=False)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Parse MEVA annotations (<a href="http://mevadata.org">http://mevadata.org</a>) for Known Facility 1 dataset into vipy.video.Scene() objects</p>
+<p>Kwiver packet format: <a href="https://gitlab.kitware.com/meva/meva-data-repo/blob/master/documents/KPF-specification-v4.pdf">https://gitlab.kitware.com/meva/meva-data-repo/blob/master/documents/KPF-specification-v4.pdf</a></p>
+<h2 id="args">Args</h2>
+<dl>
+<dt><strong><code>videodir</code></strong></dt>
+<dd>[str]
+path to Directory containing 'drop-01' </dd>
+<dt><strong><code>repodir</code></strong></dt>
+<dd>[str]
+path to directory containing clone of <a href="https://gitlab.kitware.com/meva/meva-data-repo">https://gitlab.kitware.com/meva/meva-data-repo</a></dd>
+<dt><strong><code>stride</code></strong></dt>
+<dd>[int] the integer temporal stride in frames for importing bounding boxes, vipy will do linear interpoluation and boundary handling</dd>
+<dt><strong><code>n_videos</code></strong></dt>
+<dd>[int] only return an integer number of videos, useful for debugging or for previewing dataset</dd>
+<dt><strong><code>withprefix</code></strong></dt>
+<dd>[list] only return videos with the filename containing one of the strings in withprefix list, useful for debugging</dd>
+<dt><strong><code>contrib</code></strong></dt>
+<dd>[bool] include the noisy contrib anntations from DIVA performers</dd>
+<dt><strong><code>d_category_to_shortlabel</code></strong></dt>
+<dd>[dict] is a dictionary mapping category names to a short displayed label on the video.
+The standard for visualization is that tracked objects are displayed with their category label (e.g. 'Person', 'Vehicle'), and activities are labeled according to the set of objects that performing the activity.
+When an activity occurs, the set of objects are labeled with the same color as 'Noun Verbing' (e.g. 'Person Entering', 'Person Reading', 'Vehicle Starting') where 'Verbing' is provided by the shortlabel.
+This is optional, and will use the default mapping if None</dd>
+<dt><strong><code>verbose</code></strong></dt>
+<dd>[bool]
+Parsing verbosity</dd>
+<dt><strong><code>merge</code></strong></dt>
+<dd>[bool] deduplicate annotations for each video across YAML files by merging them by mean spatial IoU per track (&gt;0.5) and temporal IoU (&gt;0)</dd>
+<dt><strong><code>actor</code></strong></dt>
+<dd>[bool]
+Include only those activities that include an associated track for the primary actor: "Person" for "person_<em>" and "hand_</em>", else "Vehicle"</dd>
+<dt><strong><code>disjoint</code></strong></dt>
+<dd>[bool]:
+Enforce that overlapping causal activities (open/close, enter/exit, &hellip;) are disjoint for a track</dd>
+<dt><strong><code>unpad</code></strong></dt>
+<dd>[bool] remove the arbitrary padding assigned during dataset creation</dd>
+</dl>
+<h2 id="returns">Returns</h2>
+<p>a list of <code><a title="vipy.video.Scene" href="../video.html#vipy.video.Scene">Scene</a></code> objects</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+<a href="https://github.com/visym/vipy/blob/16fb58544d8c354c3498b37a00d72bebcb91a1fd/vipy/data/meva.py#L52-L437" class="git-link">Browse git</a>
+</summary>
+<pre><code class="python">class KF1(object):
+    def __init__(self, videodir, repodir, contrib=False, stride=1, verbose=True, n_videos=None, withprefix=None, d_category_to_shortlabel=None, merge=False, actor=False, disjoint=False, unpad=False):
+        &#34;&#34;&#34;Parse MEVA annotations (http://mevadata.org) for Known Facility 1 dataset into vipy.video.Scene() objects
+       
+        Kwiver packet format: https://gitlab.kitware.com/meva/meva-data-repo/blob/master/documents/KPF-specification-v4.pdf
+
+        Args:
+            videodir: [str]  path to Directory containing &#39;drop-01&#39; 
+            repodir: [str]  path to directory containing clone of https://gitlab.kitware.com/meva/meva-data-repo
+            stride: [int] the integer temporal stride in frames for importing bounding boxes, vipy will do linear interpoluation and boundary handling
+            n_videos: [int] only return an integer number of videos, useful for debugging or for previewing dataset
+            withprefix: [list] only return videos with the filename containing one of the strings in withprefix list, useful for debugging
+            contrib: [bool] include the noisy contrib anntations from DIVA performers
+            d_category_to_shortlabel: [dict] is a dictionary mapping category names to a short displayed label on the video.  The standard for visualization is that tracked objects are displayed with their category label (e.g. &#39;Person&#39;, &#39;Vehicle&#39;), and activities are labeled according to the set of objects that performing the activity.  When an activity occurs, the set of objects are labeled with the same color as &#39;Noun Verbing&#39; (e.g. &#39;Person Entering&#39;, &#39;Person Reading&#39;, &#39;Vehicle Starting&#39;) where &#39;Verbing&#39; is provided by the shortlabel.   This is optional, and will use the default mapping if None
+            verbose: [bool]  Parsing verbosity
+            merge: [bool] deduplicate annotations for each video across YAML files by merging them by mean spatial IoU per track (&gt;0.5) and temporal IoU (&gt;0)
+            actor: [bool]  Include only those activities that include an associated track for the primary actor: &#34;Person&#34; for &#34;person_*&#34; and &#34;hand_*&#34;, else &#34;Vehicle&#34;
+            disjoint: [bool]:  Enforce that overlapping causal activities (open/close, enter/exit, ...) are disjoint for a track
+            unpad: [bool] remove the arbitrary padding assigned during dataset creation
+
+        Returns:
+            a list of `vipy.video.Scene` objects
+
+        &#34;&#34;&#34;
+        
+        self.videodir = videodir
+        self.repodir = repodir
+
+        assert os.path.exists(os.path.join(self.videodir, &#39;drop-01&#39;)), &#34;Invalid input - videodir &#39;%s&#39; must contain the drop-01, drop-02 and drop-03 subdirectories.  See http://mevadata.org/#getting-data&#34; % videodir
+        assert os.path.exists(os.path.join(self.repodir, &#39;annotation&#39;)), &#34;Invalid input - repodir &#39;%s&#39; must contain the clone of https://gitlab.kitware.com/meva/meva-data-repo&#34; % repodir
+
+        # Shortlabels are optional and used for showing labels on videos only
+        self._d_category_to_shortlabel = vipy.data.meva.d_category_to_shortlabel
+        self._d_category_to_shortlabel = {k:v.lower() for (k,v) in self._d_category_to_shortlabel.items()}        
+        self._d_oldcategory_to_newcategory = {k:v for (k,v) in readcsv(os.path.join(self.repodir, &#39;documents&#39;, &#39;activity-name-mapping.csv&#39;))[1:]}
+
+        d_category_to_shortlabel = d_category_to_shortlabel if d_category_to_shortlabel is not None else self._d_category_to_shortlabel
+        d_videoname_to_path = {filebase(f):f for f in self._get_videos()}
+        yamlfiles = zip(self._get_types_yaml(), self._get_geom_yaml(), self._get_activities_yaml())
+        yamlfiles = [y for y in yamlfiles if contrib is True or &#39;contrib&#39; not in y[0]]
+        yamlfiles = list(yamlfiles)[0:n_videos] if n_videos is not None else list(yamlfiles)
+        if withprefix is not None:            
+            yamlfiles = [y for y in yamlfiles if any([(p in y[0]) for p in tolist(withprefix)])]  
+
+        if verbose:
+            print(&#39;[vipy.data.meva.KF1]: Loading %d YAML files&#39; % len(yamlfiles))
+            if len(yamlfiles) &gt; 100 and vipy.globals.parallel() &lt;= 1:
+                print(&#39;[vipy.data.meva.KF1]: This takes a while since parsing YAML files in python is painfully slow, consider calling &#34;vipy.globals.parallel(n)&#34; for n&gt;1 before loading the dataset for parallel parsing&#39;)
+
+        # Parallel video annotation:  set vipy.globals.parallel(n) for n parallel workers for the Batch() processing
+        from vipy.batch import Batch  # requires Dask, Distributed
+        self._vidlist = Batch(list(yamlfiles)).map(lambda tga: self._parse_video(d_videoname_to_path, d_category_to_shortlabel, tga[0], tga[1], tga[2], stride=stride, verbose=verbose, actor=actor)).result()
+        self._vidlist = [v for v in self._vidlist if v is not None]
+
+        # Merge and dedupe activities and tracks across YAML files for same video, using temporal and spatial IoU association.
+        #   The MEVA dataset is &#34;activity-centric&#34; so that each activity is labeled independently.  There may be tracks in the dataset
+        #   that are the same instance in the video, but are different track IDs in the dataset.  The result is disjoint activity labels 
+        #   in a non-disjoint activity in a video.  Yuck..  Try to merge them.  This is experimental, since it tries to use IoU for merging, 
+        #   which does not work in general.  This requires global track correspondence.  
+        if merge:
+            print(&#39;[vipy.data.meva.KF1]: merging videos ...&#39;)
+            V = list(groupbyasdict([a for vid in self._vidlist for a in vid.activitysplit()], lambda s: s.filename()).values())
+            self._vidlist = Batch(V).map(lambda v: v[0].clone().union(v[1:])).result()
+
+        # Enforce disjoint causal activities
+        #   Due to the arbitrary temporal padding in the annotation definitions, merged causal activiites can overlap
+        #   Enforce that causal activities (open/close, enter/exit, pickup/putdown, load/unload) for the same track are disjoint
+        if disjoint:
+            V = self._vidlist
+            V = [v.activitymap(lambda a: a.disjoint([sa for sa in v.activitylist() if sa.category() == &#39;person_closes_vehicle_door&#39;]) if a.category() == &#39;person_opens_vehicle_door&#39; else a) for v in V]  
+            V = [v.activitymap(lambda a: a.disjoint([sa for sa in v.activitylist() if sa.category() == &#39;person_closes_vehicle_trunk&#39;]) if a.category() == &#39;person_opens_vehicle_trunk&#39; else a) for v in V]  
+            V = [v.activitymap(lambda a: a.disjoint([sa for sa in v.activitylist() if sa.category() == &#39;person_exits_vehicle&#39;]) if a.category() == &#39;person_enters_vehicle&#39; else a) for v in V]  
+            V = [v.activitymap(lambda a: a.disjoint([sa for sa in v.activitylist() if sa.category() == &#39;person_enters_scene_through_structure&#39;]) if a.category() == &#39;person_exits_scene_through_structure&#39; else a) for v in V]  
+            V = [v.activitymap(lambda a: a.disjoint([sa for sa in v.activitylist() if sa.category() == &#39;person_closes_facility_door&#39;]) if a.category() == &#39;person_opens_facility_door&#39; else a) for v in V]  
+            V = [v.activitymap(lambda a: a.disjoint([sa for sa in v.activitylist() if sa.category() == &#39;person_unloads_vehicle&#39;]) if a.category() == &#39;person_loads_vehicle&#39; else a) for v in V]  
+            V = [v.activitymap(lambda a: a.disjoint([sa for sa in v.activitylist() if sa.category() == &#39;person_puts_down_object&#39;]) if a.category() == &#39;person_picks_up_object&#39; else a) for v in V]  
+            V = [v.activityfilter(lambda a: len(a)&gt;0) for v in V]  # some activities may be zero length after disjoint
+            self._vidlist = V
+
+        # Remove the arbitrary temporal padding applied during dataset creation
+        if unpad:
+            # MEVA annotations assumptions:  https://docs.google.com/spreadsheets/d/19I3C5Zb6RHS0QC30nFT_m0ymArzjvlPLfb5SSRQYLUQ/edit#gid=0
+            # Pad one second before, zero seconds after
+            before1after0 = set([&#39;person_opens_facility_door&#39;, &#39;person_closes_facility_door&#39;, &#39;person_opens_vehicle_door&#39;, &#39;person_closes_vehicle_door&#39;, 
+                                 &#39;person_opens_trunk&#39;, &#39;person_closes_trunk&#39;, &#39;vehicle_stops&#39;, &#39;person_interacts_with_laptop&#39;])        
+            V = [v.activitymap(lambda a: a.temporalpad( (-v.framerate()*1.0, 0) ) if a.category() in before1after0 else a) for v in self._vidlist]
+
+            # pad one second before, one second after, up to maximum of two seconds
+            before1after1max2 = set([&#39;person_enters_scene_through_structure&#39;])
+            V = [v.activitymap(lambda a: a.temporalpad(max(0, -v.framerate()*1.0)) if a.category() in before1after1max2 else a) for v in V]
+
+            # person_exits_scene_through_structure:  Pad one second before person_opens_facility_door label (if door collection), and ends with enough padding to make this minimum two seconds
+            V = [v.activitymap(lambda a: a.temporalpad( (-v.framerate()*1.0, 0) ) if a.category() == &#39;person_exits_scene_through_structure&#39; else a) for v in V]        
+        
+            # person_enters_vehicle: Starts one second before person_opens_vehicle_door activity label and ends at the end of person_closes_vehicle_door activity
+            V = [v.activitymap(lambda a: a.temporalpad( (-v.framerate()*1.0, 0) ) if a.category() == &#39;person_enters_vehicle&#39; else a) for v in V]        
+
+            # person_exits_vehicle:  Starts one second before person_opens_vehicle_door, and ends at person_exits_vehicle with enough padding to make this minimum two seconds
+            V = [v.activitymap(lambda a: a.temporalpad( (-v.framerate()*1.0, 0) ) if a.category() == &#39;person_exits_vehicle&#39; else a) for v in V]        
+
+            # person_unloads_vehicle:  one second of padding before cargo starts to move
+            V = [v.activitymap(lambda a: a.temporalpad( (-v.framerate()*1.0, 0) ) if a.category() == &#39;person_unloads_vehicle&#39; else a) for v in V]        
+
+            # person_talks_to_person:  Equal padding to minimum of five seconds            
+            # person_texting_on_phone:  Equal padding to minimum of two seconds
+
+            # Pad one second before, one second after
+            before1after1 = set([&#39;vehicle_turns_left&#39;, &#39;vehicle_turns_right&#39;, &#39;person_transfers_object&#39;,
+                                 &#39;person_sets_down_object&#39;, &#39;hand_interacts_with_person&#39;, &#39;person_embraces_person&#39;, &#39;person_purchases&#39;,
+                                 &#39;vehicle_picks_up_person&#39;, &#39;vehicle_drops_off_person&#39;])
+            V = [v.activitymap(lambda a: a.temporalpad(-v.framerate()*1.0) if a.category() in before1after1 else a) for v in V]
+
+            # Pad zero second before, one second after
+            before0after1 = set([&#39;vehicle_makes_u_turn&#39;, &#39;person_picks_up_object&#39;])
+            V = [v.activitymap(lambda a: a.temporalpad( (0, -v.framerate()*1.0) ) if a.category() in before0after1 else a) for v in V]
+
+            # person_abandons_package:  two seconds before, two seconds after
+            V = [v.activitymap(lambda a: a.temporalpad(-v.framerate()*2.0) if a.category() == &#39;person_abandons_package&#39; else a) for v in V]            
+            self._vidlist = V
+
+        # Remove empty tracks and activities
+        self._vidlist = [v.trackfilter(lambda t: len(t) &gt; 0) for v in self._vidlist]
+        self._vidlist = [v.activityfilter(lambda a: len(a) &gt; 0) for v in self._vidlist]
+
+    def __getitem__(self, k):
+        return self._vidlist[k]
+
+    def __iter__(self):
+        for v in self._vidlist:
+            yield v
+
+    def __len__(self):
+        return len(self._vidlist)
+                
+    def __repr__(self):
+        return str(&#39;&lt;vipy.data.meva.KF1: videos=%d, videodir=&#34;%s&#34;, annotationdir=&#34;%s&#34;&gt;&#39; % (len(self), self.videodir, self.repodir))
+
+    def _activities_to_required_objects(self):
+        &#34;&#34;&#34;Return a dictionary of activity keys to set of required objects.  This is currently wrong.&#34;&#34;&#34;
+        raise ValueError(&#39;This mapping is currently wrong in the Kitware repository&#39;)
+        d = readjson(os.path.join(self.repodir, &#39;annotation&#39;, &#39;DIVA-phase-2&#39;, &#39;activity-index.json&#39;))
+        return {a:set([x.replace(&#39;Construction_Vehicle&#39;, &#39;Vehicle&#39;) for x in d[a][&#39;objectTypes&#39;]]) for a in self.activities()}        
+
+    def _get_activities_yaml(self):
+        return sorted([x for x in findyaml(self.repodir) if &#39;activities.yml&#39; in x])
+
+    def _get_geom_yaml(self):
+        return sorted([x for x in findyaml(self.repodir) if &#39;geom.yml&#39; in x])
+
+    def _get_types_yaml(self):
+        return sorted([x for x in findyaml(self.repodir) if &#39;types.yml&#39; in x])
+
+    def _get_fileindex_json(self):
+        return sorted([x for x in findjson(self.repodir) if &#39;file-index.json&#39; in x])
+
+    def _get_activities_json(self):
+        return sorted([x for x in findjson(self.repodir) if &#39;activities.json&#39; in x])
+        
+    def _get_videos(self):
+        return sorted([x for x in findvideo(self.videodir)])
+    
+    def _parse_video(self, d_videoname_to_path, d_category_to_shortlabel, types_yamlfile, geom_yamlfile, act_yamlfile, stride=1, verbose=False, actor=False):
+        &#34;&#34;&#34;Reference: https://gitlab.kitware.com/meva/meva-data-repo/-/blob/master/documents/KPF-specification-v4.pdf&#34;&#34;&#34;
+        
+        # Read YAML
+        if verbose:
+            print(&#39;[vipy.data.meva.KF1]: Parsing &#34;%s&#34;&#39; % (act_yamlfile))
+        geom_yaml = readyaml(geom_yamlfile)
+        types_yaml = readyaml(types_yamlfile)
+        act_yaml = readyaml(act_yamlfile)
+
+        # Sanity check
+        assert act_yamlfile.split(&#39;.&#39;)[:-2] == geom_yamlfile.split(&#39;.&#39;)[:-2], &#34;Unmatched activity and geom yaml file&#34;
+        assert &#39;meta&#39; not in types_yaml[0] or len(set([types_yaml[0][&#39;meta&#39;], geom_yaml[0][&#39;meta&#39;], act_yaml[0][&#39;meta&#39;]]))==1, &#34;Mismatched video name for &#39;%s&#39;&#34; % act_yamlfile
+        try:
+            videoname = act_yaml[0][&#39;meta&#39;] if act_yaml[0][&#39;meta&#39;][-4:] != &#39;.avi&#39; else act_yaml[0][&#39;meta&#39;][0:-4]  # strip .avi 
+        except:
+            videoname = vipy.util.filetail(act_yamlfile.split(&#39;activities.yml&#39;)[0][0:-1])  # /path/to/filebase-activities.yml or /path/to/filebase.activities.yml  [YUCK, necessary for newer drops in Spring 2021]
+
+        if videoname not in d_videoname_to_path:
+            if verbose:
+                print(&#39;[vipy.data.meva.KF1]: Invalid MEVA video &#34;%s&#34; in &#34;%s&#34; - Ignoring&#39; % (videoname, filebase(act_yamlfile)))
+            return None
+
+        # Parse video
+        framerate = 30.0  # All videos are universally 30Hz (from Roddy)
+        vid = Scene(filename=d_videoname_to_path[videoname], framerate=framerate)
+
+
+        # Parse tracks        
+        d_id1_to_category = {}
+        for t in types_yaml:
+            if &#39;types&#39; in t:
+                d_id1_to_category[t[&#39;types&#39;][&#39;id1&#39;]] = list(t[&#39;types&#39;][&#39;cset3&#39;].keys())[0]
+
+        d_id1_to_track = {}
+        d_geom_yaml = groupbyasdict([x[&#39;geom&#39;] for x in geom_yaml if &#39;geom&#39; in x], lambda v: v[&#39;id1&#39;])
+        assert stride &gt;= 1, &#34;Invalid stride&#34;
+        for (id1, geom_yaml) in d_geom_yaml.items():
+            geom_yaml = sorted(geom_yaml, key=lambda x: int(x[&#39;ts0&#39;]))  # increasing
+            for (k_geom, v) in enumerate(geom_yaml):
+                if stride &gt; 1 and k_geom &gt; 0 and (k_geom &lt; (len(geom_yaml)-stride)) and (k_geom % stride != 0):
+                    continue  # Use vipy track interpolation to speed up parsing
+                keyframe = int(v[&#39;ts0&#39;])
+                bb = [int(x) for x in v[&#39;g0&#39;].split(&#39; &#39;)]
+                bbox = BoundingBox(xmin=bb[0], ymin=bb[1], xmax=bb[2], ymax=bb[3])
+                if not bbox.isvalid():
+                    if verbose:
+                        print(&#39;[vipy.data.meva.KF1]: Invalid bounding box: id1=%s, bbox=&#34;%s&#34;, file=&#34;%s&#34; - Ignoring&#39; % (str(v[&#39;id1&#39;]), str(bbox), delpath(self.repodir, geom_yamlfile)))
+                elif v[&#39;id1&#39;] not in d_id1_to_track:
+                    d_id1_to_track[v[&#39;id1&#39;]] = Track(category=d_id1_to_category[v[&#39;id1&#39;]], framerate=framerate, keyframes=[keyframe], boxes=[bbox], boundary=&#39;strict&#39;)
+                else:
+                    d_id1_to_track[v[&#39;id1&#39;]].add(keyframe=keyframe, bbox=bbox)
+                
+        # Add tracks to scene
+        for (k,v) in d_id1_to_track.items():
+            try:
+                vid.add(v, rangecheck=True)  # throw exception if all tracks are outside the image rectangle
+            except Exception as e:
+                print(&#39;[vipy.data.meva.KF1]: track import error &#34;%s&#34; for trackid=%s, track=%s - SKIPPING&#39; % (str(e), k, str(v)))
+
+        # Category to actor:  This defines the primary role for the activity (for tube based representations)
+        f_activity_to_actor = lambda c: &#39;Person&#39; if (c.split(&#39;_&#39;)[0] == &#39;person&#39; or &#39;hand&#39; in c) else &#39;Vehicle&#39;
+        
+        # Parse activities
+        for v in act_yaml:
+            if &#39;act&#39; in v:
+                if &#39;act2&#39; in v[&#39;act&#39;]:
+                    act2 = v[&#39;act&#39;][&#39;act2&#39;]
+                    if isinstance(act2, set):
+                        category = list(act2)[0]
+                        v[&#39;act&#39;][&#39;act2&#39;] = list(act2)  # for JSON serialization
+                    elif isinstance(act2, dict):
+                        category = list(act2.keys())[0]
+                    else:
+                        raise ValueError(&#39;YAML parsing error for &#34;%s&#34;&#39; % str(act2))
+                elif &#39;act3&#39; in v[&#39;act&#39;]:
+                    act3 = v[&#39;act&#39;][&#39;act3&#39;]
+                    if isinstance(act3, set):
+                        category = list(act3)[0]
+                        v[&#39;act&#39;][&#39;act3&#39;] = list(act3)  # for JSON serialization
+                    elif isinstance(act3, dict):
+                        category = list(act3.keys())[0]
+                    else:
+                        raise ValueError(&#39;YAML parsing error for &#34;%s&#34;&#39; % str(act3))
+                else:
+                    raise ValueError(&#39;Invalid activity YAML - act2 or act3 must be specified&#39;)
+                assert len(v[&#39;act&#39;][&#39;timespan&#39;]) == 1, &#34;Multi-span activities not parsed&#34;
+
+                if category not in self.categories():
+                    if category in self._d_oldcategory_to_newcategory:
+                        category = self._d_oldcategory_to_newcategory[category]  # rationalize
+                    else:
+                        raise ValueError(&#39;undefined category &#34;%s&#34;&#39; % category)
+                
+                startframe = int(v[&#39;act&#39;][&#39;timespan&#39;][0][&#39;tsr0&#39;][0])
+                endframe = int(v[&#39;act&#39;][&#39;timespan&#39;][0][&#39;tsr0&#39;][1])                
+                actorid = [x[&#39;id1&#39;] for x in v[&#39;act&#39;][&#39;actors&#39;]]   
+                if True:                    
+                    nounid = [d_id1_to_track[a].id() for a in actorid if (a in d_id1_to_track) and (f_activity_to_actor(category).lower() == d_id1_to_track[a].category().lower())]
+                    if len(nounid) == 0 and actor:
+                        print(&#39;[vipy.data.meva.KF1]: Warning - activity &#34;%s&#34; without a required primary actor &#34;%s&#34; - SKIPPING&#39; % (category, f_activity_to_actor(category)))
+                        continue  # skip it
+                    elif len(nounid) == 0:
+                        print(&#39;[vipy.data.meva.KF1]: Warning - activity &#34;%s&#34; without a required primary actor &#34;%s&#34;&#39; % (category, f_activity_to_actor(category)))
+                    nounid = nounid[0] if len(nounid) &gt; 0 else None   # first track in activity of required object class for this category is assumed to be the performer/actor/noun
+
+                for aid in actorid:
+                    if not aid in d_id1_to_track:
+                        print(&#39;[vipy.data.meva.KF1]: ActorID %d referenced in activity yaml &#34;%s&#34; not found in geom yaml &#34;%s&#34; - Skipping&#39; % (aid, delpath(self.repodir, act_yamlfile), delpath(self.repodir, geom_yamlfile)))
+                
+                # Add activity to scene:  include YAML file details in activity attributes for provenance if there are labeling bugs
+                tracks = {d_id1_to_track[aid].id():d_id1_to_track[aid] for aid in actorid if aid in d_id1_to_track}  # order preserving (python 3.6)
+                if len(tracks) &gt; 0:
+                    try:
+                        vid.add(Activity(category=category, shortlabel=d_category_to_shortlabel[category], actorid=nounid if actor else None,
+                                         startframe=startframe, endframe=endframe, tracks=tracks, framerate=framerate, 
+                                         attributes={&#39;act&#39;:str(v[&#39;act&#39;]), &#39;act_yaml&#39;:act_yamlfile, &#39;geom_yaml&#39;:geom_yamlfile}), rangecheck=True)
+                    except Exception as e:
+                        print(&#39;[vipy.data.meva.KF1]: activity import error &#34;%s&#34; for activity=&#34;%s&#34; - SKIPPING&#39; % (str(e), str(v)))
+            
+        return vid
+
+
+    def videos(self):
+        &#34;&#34;&#34;Return list of activity videos&#34;&#34;&#34;
+        return [v for v in self._vidlist if v is not None]
+
+    def tolist(self):
+        return self.videos()
+
+    def instances(self, padframes=0):
+        &#34;&#34;&#34;Return list of activity instances&#34;&#34;&#34;
+        if vipy.globals.max_workers() &gt; 1:
+            return [a for A in Batch(self.videos()).activityclip(padframes=padframes).result() for a in A]
+        else:
+            warnings.warn(&#39;Consider setting vipy.globals.max_workers(n) for n&gt;1 to speed this up&#39;)
+            return [a for v in self.videos() for a in v.activityclip(padframes=padframes)]
+        
+
+    def categories(self):
+        &#34;&#34;&#34;Return a list of activity categories&#34;&#34;&#34;
+        return sorted(list(self._d_category_to_shortlabel.keys()))
+        
+    def analysis(self, outdir=None):
+        &#34;&#34;&#34;Analyze the MEVA dataset to return helpful statistics and plots&#34;&#34;&#34;
+        import matplotlib.pyplot as plt        
+        import vipy.metrics
+        
+        videos = self._vidlist
+        scenes = flatlist([m.activityclip() for m in videos if m is not None])
+        activities = flatlist([s.activities().values() for s in scenes])
+        tracks = flatlist([s.tracks().values() for s in scenes])
+        outdir = tempdir() if outdir is None else outdir
+        
+        # Category distributions
+        d = {}
+        d[&#39;activity_categories&#39;] = set([a.category() for a in activities])
+        d[&#39;object_categories&#39;] = set([t.category() for t in tracks])
+        d[&#39;videos&#39;] = set([v.filename() for v in videos if v is not None])
+        d[&#39;num_activities&#39;] = sorted([(k,len(v)) for (k,v) in groupbyasdict(activities, lambda a: a.category()).items()], key=lambda x: x[1])
+        d[&#39;video_density&#39;] = sorted([(v.filename(),len(v.activities())) for v in videos if v is not None], key=lambda x: x[1])
+        
+        # Histogram of instances
+        (categories, freq) = zip(*reversed(d[&#39;num_activities&#39;]))
+        barcolors = [&#39;blue&#39; if not &#39;vehicle&#39; in c else &#39;green&#39; for c in categories]
+        d[&#39;num_activities_histogram&#39;] = vipy.metrics.histogram(freq, categories, barcolors=barcolors, outfile=os.path.join(outdir, &#39;num_activities_histogram.pdf&#39;), ylabel=&#39;Instances&#39;)
+        colors = colorlist()
+
+        # Scatterplot of people and vehicles box sizes
+        (x, y) = zip(*[(t.meanshape()[1], t.meanshape()[0]) for t in tracks])
+        plt.clf()
+        plt.figure()
+        plt.grid(True)
+        d_category_to_color = {&#39;person&#39;:&#39;blue&#39;, &#39;vehicle&#39;:&#39;green&#39;}
+        for c in [&#39;person&#39;, &#39;vehicle&#39;]:
+            (xc, yc) = zip(*[(t.meanshape()[1], t.meanshape()[0]) for t in tracks if t.category() == c])
+            plt.scatter(xc, yc, c=d_category_to_color[c], label=c)
+        plt.xlabel(&#39;bounding box (width)&#39;)
+        plt.ylabel(&#39;bounding box (height)&#39;)
+        plt.axis([0, 1000, 0, 1000])                
+        plt.legend()
+        plt.gca().set_axisbelow(True)        
+        d[&#39;object_bounding_box_scatterplot&#39;] = os.path.join(outdir, &#39;object_bounding_box_scatterplot.pdf&#39;)
+        plt.savefig(d[&#39;object_bounding_box_scatterplot&#39;])
+        
+        # 2D histogram of people and vehicles box sizes
+        for c in [&#39;person&#39;, &#39;vehicle&#39;]:
+            (xc, yc) = zip(*[(t.meanshape()[1], t.meanshape()[0]) for t in tracks if t.category() == c])
+            plt.clf()
+            plt.figure()
+            plt.hist2d(xc, yc, bins=10)
+            plt.xlabel(&#39;Bounding box (width)&#39;)
+            plt.ylabel(&#39;Bounding box (height)&#39;)
+            
+            d[&#39;2D_%s_bounding_box_histogram&#39; % c] = os.path.join(outdir, &#39;2D_%s_bounding_box_histogram.pdf&#39; % c)
+            plt.savefig(d[&#39;2D_%s_bounding_box_histogram&#39; % c])
+
+        # Mean track size per activity category
+        d_category_to_xy = {k:np.mean([t.meanshape() for v in vlist for t in v.tracklist()], axis=0) for (k,vlist) in groupbyasdict(scenes, lambda v: v.category()).items()}        
+        plt.clf()
+        plt.figure()
+        plt.grid(True)
+        d_category_to_color = {c:colors[k % len(colors)] for (k,c) in enumerate(d_category_to_xy.keys())}
+        for c in d_category_to_xy.keys():
+            (xc, yc) = d_category_to_xy[c]
+            plt.scatter(xc, yc, c=d_category_to_color[c], label=c)
+        plt.xlabel(&#39;bounding box (width)&#39;)
+        plt.ylabel(&#39;bounding box (height)&#39;)
+        plt.axis([0, 600, 0, 600])                
+        plt.gca().set_axisbelow(True)        
+        lgd = plt.legend(bbox_to_anchor=(1.05, 1), loc=&#39;upper left&#39;, borderaxespad=0.)
+        d[&#39;activity_bounding_box_scatterplot&#39;] = os.path.join(outdir, &#39;activity_bounding_box_scatterplot.pdf&#39;)
+        plt.savefig(d[&#39;activity_bounding_box_scatterplot&#39;], bbox_extra_artists=(lgd,), bbox_inches=&#39;tight&#39;)
+    
+        return d
+
+    def review(self, outfile=None, mindim=512):        
+        &#34;&#34;&#34;Generate a standalone HTML file containing quicklooks for each annotated activity in dataset, along with some helpful provenance information for where the annotation came from&#34;&#34;&#34;
+        if vipy.globals.max_workers() == 1:
+            warnings.warn(&#34;Generating review HTML is very time consuming, consider setting vipy.global.max_workers(n) for n &gt; 1 for parallel video processing&#34;)
+        quicklist = Batch(self._vidlist).map(lambda v: [(c.load().quicklook(context=True), c.flush()) for c in v.mindim(512).activityclip()]).result()
+        quicklooks = [imq for q in quicklist for (imq, c) in q]  # for HTML display purposes
+        provenance = [{&#39;clip&#39;:str(c), &#39;activities&#39;:str(&#39;;&#39;.join([str(a) for a in c.activitylist()])), &#39;category&#39;:c.category(), &#39;yamlfile&#39;:c.activitylist()[0].attributes[&#39;act_yaml&#39;]} for q in quicklist for (imq, c) in q]
+        (quicklooks, provenance) = zip(*sorted([(q,p) for (q,p) in zip(quicklooks, provenance)], key=lambda x: x[1][&#39;category&#39;]))  # sorted in category order
+        return vipy.visualize.tohtml(quicklooks, provenance, title=&#39;MEVA-KF1 annotation quicklooks&#39;, outfile=outfile, mindim=mindim)</code></pre>
+</details>
+<h3>Methods</h3>
+<dl>
+<dt id="vipy.data.meva.KF1.analysis"><code class="name flex">
+<span>def <span class="ident">analysis</span></span>(<span>self, outdir=None)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Analyze the MEVA dataset to return helpful statistics and plots</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+<a href="https://github.com/visym/vipy/blob/16fb58544d8c354c3498b37a00d72bebcb91a1fd/vipy/data/meva.py#L356-L427" class="git-link">Browse git</a>
+</summary>
+<pre><code class="python">def analysis(self, outdir=None):
+    &#34;&#34;&#34;Analyze the MEVA dataset to return helpful statistics and plots&#34;&#34;&#34;
+    import matplotlib.pyplot as plt        
+    import vipy.metrics
+    
+    videos = self._vidlist
+    scenes = flatlist([m.activityclip() for m in videos if m is not None])
+    activities = flatlist([s.activities().values() for s in scenes])
+    tracks = flatlist([s.tracks().values() for s in scenes])
+    outdir = tempdir() if outdir is None else outdir
+    
+    # Category distributions
+    d = {}
+    d[&#39;activity_categories&#39;] = set([a.category() for a in activities])
+    d[&#39;object_categories&#39;] = set([t.category() for t in tracks])
+    d[&#39;videos&#39;] = set([v.filename() for v in videos if v is not None])
+    d[&#39;num_activities&#39;] = sorted([(k,len(v)) for (k,v) in groupbyasdict(activities, lambda a: a.category()).items()], key=lambda x: x[1])
+    d[&#39;video_density&#39;] = sorted([(v.filename(),len(v.activities())) for v in videos if v is not None], key=lambda x: x[1])
+    
+    # Histogram of instances
+    (categories, freq) = zip(*reversed(d[&#39;num_activities&#39;]))
+    barcolors = [&#39;blue&#39; if not &#39;vehicle&#39; in c else &#39;green&#39; for c in categories]
+    d[&#39;num_activities_histogram&#39;] = vipy.metrics.histogram(freq, categories, barcolors=barcolors, outfile=os.path.join(outdir, &#39;num_activities_histogram.pdf&#39;), ylabel=&#39;Instances&#39;)
+    colors = colorlist()
+
+    # Scatterplot of people and vehicles box sizes
+    (x, y) = zip(*[(t.meanshape()[1], t.meanshape()[0]) for t in tracks])
+    plt.clf()
+    plt.figure()
+    plt.grid(True)
+    d_category_to_color = {&#39;person&#39;:&#39;blue&#39;, &#39;vehicle&#39;:&#39;green&#39;}
+    for c in [&#39;person&#39;, &#39;vehicle&#39;]:
+        (xc, yc) = zip(*[(t.meanshape()[1], t.meanshape()[0]) for t in tracks if t.category() == c])
+        plt.scatter(xc, yc, c=d_category_to_color[c], label=c)
+    plt.xlabel(&#39;bounding box (width)&#39;)
+    plt.ylabel(&#39;bounding box (height)&#39;)
+    plt.axis([0, 1000, 0, 1000])                
+    plt.legend()
+    plt.gca().set_axisbelow(True)        
+    d[&#39;object_bounding_box_scatterplot&#39;] = os.path.join(outdir, &#39;object_bounding_box_scatterplot.pdf&#39;)
+    plt.savefig(d[&#39;object_bounding_box_scatterplot&#39;])
+    
+    # 2D histogram of people and vehicles box sizes
+    for c in [&#39;person&#39;, &#39;vehicle&#39;]:
+        (xc, yc) = zip(*[(t.meanshape()[1], t.meanshape()[0]) for t in tracks if t.category() == c])
+        plt.clf()
+        plt.figure()
+        plt.hist2d(xc, yc, bins=10)
+        plt.xlabel(&#39;Bounding box (width)&#39;)
+        plt.ylabel(&#39;Bounding box (height)&#39;)
+        
+        d[&#39;2D_%s_bounding_box_histogram&#39; % c] = os.path.join(outdir, &#39;2D_%s_bounding_box_histogram.pdf&#39; % c)
+        plt.savefig(d[&#39;2D_%s_bounding_box_histogram&#39; % c])
+
+    # Mean track size per activity category
+    d_category_to_xy = {k:np.mean([t.meanshape() for v in vlist for t in v.tracklist()], axis=0) for (k,vlist) in groupbyasdict(scenes, lambda v: v.category()).items()}        
+    plt.clf()
+    plt.figure()
+    plt.grid(True)
+    d_category_to_color = {c:colors[k % len(colors)] for (k,c) in enumerate(d_category_to_xy.keys())}
+    for c in d_category_to_xy.keys():
+        (xc, yc) = d_category_to_xy[c]
+        plt.scatter(xc, yc, c=d_category_to_color[c], label=c)
+    plt.xlabel(&#39;bounding box (width)&#39;)
+    plt.ylabel(&#39;bounding box (height)&#39;)
+    plt.axis([0, 600, 0, 600])                
+    plt.gca().set_axisbelow(True)        
+    lgd = plt.legend(bbox_to_anchor=(1.05, 1), loc=&#39;upper left&#39;, borderaxespad=0.)
+    d[&#39;activity_bounding_box_scatterplot&#39;] = os.path.join(outdir, &#39;activity_bounding_box_scatterplot.pdf&#39;)
+    plt.savefig(d[&#39;activity_bounding_box_scatterplot&#39;], bbox_extra_artists=(lgd,), bbox_inches=&#39;tight&#39;)
+
+    return d</code></pre>
+</details>
+</dd>
+<dt id="vipy.data.meva.KF1.categories"><code class="name flex">
+<span>def <span class="ident">categories</span></span>(<span>self)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Return a list of activity categories</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+<a href="https://github.com/visym/vipy/blob/16fb58544d8c354c3498b37a00d72bebcb91a1fd/vipy/data/meva.py#L352-L354" class="git-link">Browse git</a>
+</summary>
+<pre><code class="python">def categories(self):
+    &#34;&#34;&#34;Return a list of activity categories&#34;&#34;&#34;
+    return sorted(list(self._d_category_to_shortlabel.keys()))</code></pre>
+</details>
+</dd>
+<dt id="vipy.data.meva.KF1.instances"><code class="name flex">
+<span>def <span class="ident">instances</span></span>(<span>self, padframes=0)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Return list of activity instances</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+<a href="https://github.com/visym/vipy/blob/16fb58544d8c354c3498b37a00d72bebcb91a1fd/vipy/data/meva.py#L343-L349" class="git-link">Browse git</a>
+</summary>
+<pre><code class="python">def instances(self, padframes=0):
+    &#34;&#34;&#34;Return list of activity instances&#34;&#34;&#34;
+    if vipy.globals.max_workers() &gt; 1:
+        return [a for A in Batch(self.videos()).activityclip(padframes=padframes).result() for a in A]
+    else:
+        warnings.warn(&#39;Consider setting vipy.globals.max_workers(n) for n&gt;1 to speed this up&#39;)
+        return [a for v in self.videos() for a in v.activityclip(padframes=padframes)]</code></pre>
+</details>
+</dd>
+<dt id="vipy.data.meva.KF1.review"><code class="name flex">
+<span>def <span class="ident">review</span></span>(<span>self, outfile=None, mindim=512)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Generate a standalone HTML file containing quicklooks for each annotated activity in dataset, along with some helpful provenance information for where the annotation came from</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+<a href="https://github.com/visym/vipy/blob/16fb58544d8c354c3498b37a00d72bebcb91a1fd/vipy/data/meva.py#L429-L437" class="git-link">Browse git</a>
+</summary>
+<pre><code class="python">def review(self, outfile=None, mindim=512):        
+    &#34;&#34;&#34;Generate a standalone HTML file containing quicklooks for each annotated activity in dataset, along with some helpful provenance information for where the annotation came from&#34;&#34;&#34;
+    if vipy.globals.max_workers() == 1:
+        warnings.warn(&#34;Generating review HTML is very time consuming, consider setting vipy.global.max_workers(n) for n &gt; 1 for parallel video processing&#34;)
+    quicklist = Batch(self._vidlist).map(lambda v: [(c.load().quicklook(context=True), c.flush()) for c in v.mindim(512).activityclip()]).result()
+    quicklooks = [imq for q in quicklist for (imq, c) in q]  # for HTML display purposes
+    provenance = [{&#39;clip&#39;:str(c), &#39;activities&#39;:str(&#39;;&#39;.join([str(a) for a in c.activitylist()])), &#39;category&#39;:c.category(), &#39;yamlfile&#39;:c.activitylist()[0].attributes[&#39;act_yaml&#39;]} for q in quicklist for (imq, c) in q]
+    (quicklooks, provenance) = zip(*sorted([(q,p) for (q,p) in zip(quicklooks, provenance)], key=lambda x: x[1][&#39;category&#39;]))  # sorted in category order
+    return vipy.visualize.tohtml(quicklooks, provenance, title=&#39;MEVA-KF1 annotation quicklooks&#39;, outfile=outfile, mindim=mindim)</code></pre>
+</details>
+</dd>
+<dt id="vipy.data.meva.KF1.tolist"><code class="name flex">
+<span>def <span class="ident">tolist</span></span>(<span>self)</span>
+</code></dt>
+<dd>
+<div class="desc"></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+<a href="https://github.com/visym/vipy/blob/16fb58544d8c354c3498b37a00d72bebcb91a1fd/vipy/data/meva.py#L340-L341" class="git-link">Browse git</a>
+</summary>
+<pre><code class="python">def tolist(self):
+    return self.videos()</code></pre>
+</details>
+</dd>
+<dt id="vipy.data.meva.KF1.videos"><code class="name flex">
+<span>def <span class="ident">videos</span></span>(<span>self)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Return list of activity videos</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+<a href="https://github.com/visym/vipy/blob/16fb58544d8c354c3498b37a00d72bebcb91a1fd/vipy/data/meva.py#L336-L338" class="git-link">Browse git</a>
+</summary>
+<pre><code class="python">def videos(self):
+    &#34;&#34;&#34;Return list of activity videos&#34;&#34;&#34;
+    return [v for v in self._vidlist if v is not None]</code></pre>
+</details>
+</dd>
+</dl>
+</dd>
+</dl>
+</section>
+</article>
+<nav id="sidebar">
+<header>
+<a class="homelink" rel="home" title="Vipy" href="https://github.com/visym/vipy/">
+<img src="https://www.visym.com/labs/images/visym_logo_black_notext.png" alt="" width="150"> <p> </p>
+</a>
+</header>
+<form>
+<input id="lunr-search" name="q" placeholder="🔎 Search ..." aria-label="Search"
+disabled minlength="2">
+</form>
+<link rel="preload stylesheet" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/tingle/0.15.3/tingle.min.css" integrity="sha512-j1u8eUJ4f23xPPxwOrLUPQaCD2dwzNqqmDDcWS4deWsMv2ohLqmXXuP3hU7g8TyzbMSakP/mMqoNBYWj8AEIFg==" crossorigin>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/tingle/0.15.3/tingle.min.js" integrity="sha512-plGUER9JkeEWPPqQBE4sdLqBoQug5Ap+BCGMc7bJ8BXkm+VVj6QzkpBz5Yv2yPkkq+cqg9IpkBaGCas6uDbW8g==" crossorigin></script>
+<style>
+.modal-dialog iframe {
+width: 100vw;
+height: calc(100vh - 80px);
+}
+@media screen and (min-width: 700px) {
+.modal-dialog iframe {
+width: 70vw;
+height: 80vh;
+}
+}
+.modal-dialog .tingle-modal-box {width: auto;}
+.modal-dialog .tingle-modal-box__content {padding: 0;}
+</style>
+<script>
+const input = document.getElementById('lunr-search');
+input.disabled = false;
+input.form.addEventListener('submit', (ev) => {
+ev.preventDefault();
+const url = new URL(window.location);
+url.searchParams.set('q', input.value);
+history.replaceState({}, null, url.toString());
+search(input.value);
+});
+const query = new URL(window.location).searchParams.get('q');
+if (query)
+search(query);
+function search(query) {
+const url = '../../doc-search.html#' + encodeURIComponent(query);
+new tingle.modal({
+cssClass: ['modal-dialog'],
+onClose: () => {
+const url = new URL(window.location);
+url.searchParams.delete('q');
+history.replaceState({}, null, url.toString());
+setTimeout(() => input.focus(), 100);
+}
+}).setContent('<iframe src="' + url + '"></iframe>').open();
+}
+</script>
+<h1>Index</h1>
+<div class="toc">
+<ul></ul>
+</div>
+<ul id="index">
+<li><h3>Super-module</h3>
+<ul>
+<li><code><a title="vipy.data" href="index.html">vipy.data</a></code></li>
+</ul>
+</li>
+<li><h3><a href="#header-classes">Classes</a></h3>
+<ul>
+<li>
+<h4><code><a title="vipy.data.meva.KF1" href="#vipy.data.meva.KF1">KF1</a></code></h4>
+<ul class="two-column">
+<li><code><a title="vipy.data.meva.KF1.analysis" href="#vipy.data.meva.KF1.analysis">analysis</a></code></li>
+<li><code><a title="vipy.data.meva.KF1.categories" href="#vipy.data.meva.KF1.categories">categories</a></code></li>
+<li><code><a title="vipy.data.meva.KF1.instances" href="#vipy.data.meva.KF1.instances">instances</a></code></li>
+<li><code><a title="vipy.data.meva.KF1.review" href="#vipy.data.meva.KF1.review">review</a></code></li>
+<li><code><a title="vipy.data.meva.KF1.tolist" href="#vipy.data.meva.KF1.tolist">tolist</a></code></li>
+<li><code><a title="vipy.data.meva.KF1.videos" href="#vipy.data.meva.KF1.videos">videos</a></code></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</nav>
+</main>
+<footer id="footer">
+<p>Generated by <a href="https://pdoc3.github.io/pdoc" title="pdoc: Python API documentation generator"><cite>pdoc</cite> 0.9.2</a>.</p>
+</footer>
+</body>
+</html>

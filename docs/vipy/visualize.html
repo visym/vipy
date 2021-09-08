@@ -25,7 +25,7 @@
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/79ed718b6ef766053d0c0f9c386fccc01e093301/vipy/visualize.py#L0-L348" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/16fb58544d8c354c3498b37a00d72bebcb91a1fd/vipy/visualize.py#L0-L349" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">import os
 import numpy as np
@@ -314,6 +314,7 @@ def imagelist(list_of_image_files, outdir, title=&#39;Image Visualization&#39;, 
     k_divid = k_divid + 1
 
     # Generate images and html
+    assert all([os.path.exists(f) and vipy.util.isimg(f) for f in list_of_image_files])
     for (k, imsrc) in enumerate(list_of_image_files):
         shutil.copyfile(imsrc, os.path.join(outdir, filetail(imsrc)))
         imdst = filetail(imsrc)
@@ -393,7 +394,7 @@ def imagetuplelist(list_of_tuples_of_image_files, outdir, title=&#39;Image Visua
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/79ed718b6ef766053d0c0f9c386fccc01e093301/vipy/visualize.py#L260-L303" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/16fb58544d8c354c3498b37a00d72bebcb91a1fd/vipy/visualize.py#L260-L304" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def imagelist(list_of_image_files, outdir, title=&#39;Image Visualization&#39;, imagewidth=64):
     &#34;&#34;&#34;Given a list of image filenames wth absolute paths, copy to outdir, and create an index.html file that visualizes each.    
@@ -423,6 +424,7 @@ def imagetuplelist(list_of_tuples_of_image_files, outdir, title=&#39;Image Visua
     k_divid = k_divid + 1
 
     # Generate images and html
+    assert all([os.path.exists(f) and vipy.util.isimg(f) for f in list_of_image_files])
     for (k, imsrc) in enumerate(list_of_image_files):
         shutil.copyfile(imsrc, os.path.join(outdir, filetail(imsrc)))
         imdst = filetail(imsrc)
@@ -449,7 +451,7 @@ def imagetuplelist(list_of_tuples_of_image_files, outdir, title=&#39;Image Visua
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/79ed718b6ef766053d0c0f9c386fccc01e093301/vipy/visualize.py#L306-L349" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/16fb58544d8c354c3498b37a00d72bebcb91a1fd/vipy/visualize.py#L307-L350" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def imagetuplelist(list_of_tuples_of_image_files, outdir, title=&#39;Image Visualization&#39;, imagewidth=64):
     &#34;&#34;&#34;Imagelist but put tuples on same row&#34;&#34;&#34;
@@ -544,7 +546,7 @@ display optional verbose messages</dd>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/79ed718b6ef766053d0c0f9c386fccc01e093301/vipy/visualize.py#L17-L95" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/16fb58544d8c354c3498b37a00d72bebcb91a1fd/vipy/visualize.py#L17-L95" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def montage(imlist, imgheight, imgwidth, gridrows=None, gridcols=None, aspectratio=1, crop=False, skip=True, border=1, border_bgr=(128,128,128), do_flush=False, verbose=False):
     &#34;&#34;&#34;Create a montage image from the of provided list of vipy.image.Image objects.
@@ -652,7 +654,7 @@ display optional verbose messages</dd>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/79ed718b6ef766053d0c0f9c386fccc01e093301/vipy/visualize.py#L193-L257" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/16fb58544d8c354c3498b37a00d72bebcb91a1fd/vipy/visualize.py#L193-L257" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def tohtml(imlist, imdict=None, title=&#39;Image Visualization&#39;, mindim=1024, outfile=None, display=False):
     &#34;&#34;&#34;Given a list of vipy.image.Image objects, show the images along with the dictionary contents of imdict (one per image) in a single standalone HTML file
@@ -742,7 +744,7 @@ display optional verbose messages</dd>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/79ed718b6ef766053d0c0f9c386fccc01e093301/vipy/visualize.py#L136-L189" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/16fb58544d8c354c3498b37a00d72bebcb91a1fd/vipy/visualize.py#L136-L189" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def urls(urllist, title=&#39;URL Visualization&#39;, imagewidth=1024, outfile=None, display=False):
     &#34;&#34;&#34;Given a list of public image URLs, create a stand-alone HTML page to show them all.
@@ -816,6 +818,9 @@ All of the input videos are resampled to this common frame rate</dd>
 <dt><strong><code>max_duration</code></strong></dt>
 <dd>[float] If not None, the maximum diuration of any element in the montage before it cycles</dd>
 </dl>
+<h2 id="returns">Returns</h2>
+<p>An video file in outfile that shows each video tiled into a montage.
+<Like <a href="https://www.youtube.com/watch?v=HjNa7_T-Xkc">https://www.youtube.com/watch?v=HjNa7_T-Xkc</a>></p>
 <div class="admonition warning">
 <p class="admonition-title">Warning</p>
 <ul>
@@ -826,7 +831,7 @@ All of the input videos are resampled to this common frame rate</dd>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/79ed718b6ef766053d0c0f9c386fccc01e093301/vipy/visualize.py#L98-L133" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/16fb58544d8c354c3498b37a00d72bebcb91a1fd/vipy/visualize.py#L98-L133" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def videomontage(vidlist, imgheight, imgwidth, gridrows=None, gridcols=None, aspectratio=1, crop=False, skip=True, border=1, border_bgr=(128,128,128), do_flush=False, verbose=True, framerate=30.0, max_duration=None):
     &#34;&#34;&#34;Generate a video montage for the provided videos by creating a image montage for every frame.  
