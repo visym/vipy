@@ -5,7 +5,6 @@ import vipy.videosearch
 import vipy.object
 from vipy.util import tempjpg, tempdir, Failed, isurl, rmdir, totempdir, tempMP4
 from vipy.geometry import BoundingBox
-import pdb
 from vipy.data.kinetics import Kinetics400, Kinetics600, Kinetics700
 from vipy.data.activitynet import ActivityNet
 from vipy.data.lfw import LFW
@@ -16,6 +15,7 @@ import shutil
 
 mp4file = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'Video.mp4')
 mp4url = 'https://www.youtube.com/watch?v=C0DPdy98e4c'
+
 
 def test_stream():
     v = vipy.video.Video(mp4file)
@@ -174,7 +174,7 @@ def _test_video():
     vc.attributes['clonetest'] = False
     assert vc.attributes['clonetest'] != v.attributes['clonetest']
 
-    v = vipy.video.RandomScene()
+    v = vipy.video.RandomScene(64,64,32)
     vc = v.clone()
     vc.activitymap(lambda a: a.category('clonetest'))
     assert all([a.category() != ac.category() for (a,ac) in zip(v.activitylist(), vc.activitylist())])
@@ -192,7 +192,7 @@ def _test_video():
     print('[test_video.scene]: json serialization PASSED')
 
     # Casting
-    v_down = vipy.video.Video.cast(vipy.video.RandomScene())
+    v_down = vipy.video.Video.cast(vipy.video.RandomScene(64,64,32))
     v_up = vipy.video.Scene.cast(v_down)
     print('[test_video.scene]: video casting PASSED')    
 
@@ -478,7 +478,7 @@ def test_clip():
     assert np.mean(vc.frame(60-31-2).array().flatten()) > 128
     assert np.mean(vc.frame(61-31-2).array().flatten()) < 128    
 
-    v = vipy.video.RandomScene()
+    v = vipy.video.RandomScene(64,64,64)
     im = v.frame(10)
     vc = v.saveas(outfile).clip(10,60).load()
     imc = vc.frame(0)
