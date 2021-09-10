@@ -3022,7 +3022,12 @@ class Scene(VideoCategory):
         tracks = [ [t.clone() for (tid, t) in vid.tracks().items() if a.hastrack(t)] for a in activities]  # tracks associated with each activity (may be empty)
         vid._activities = {}  # for faster clone
         vid._tracks = {}      # for faster clone
-        return [vid.clone().setattribute('activityindex', k).activities(pa).tracks(t).setactorid(pa.actorid()) for (k,(pa,t)) in enumerate(zip(activities, tracks)) if idx is None or k in tolist(idx)]
+        return [vid.clone()
+                .setattribute('_instance_id', ('%s_%d' % (vid.videoid(), k)) if not vid.hasattribute('_instance_id') else vid.getattribute('_instance_id'))
+                .activities(pa)
+                .tracks(t)
+                .setactorid(pa.actorid())
+                for (k,(pa,t)) in enumerate(zip(activities, tracks)) if idx is None or k in tolist(idx)]
 
     def tracksplit(self):
         """Split the scene into k separate scenes, one for each track.  Each scene starts at frame 0 and is a shallow copy of self containing exactly one track.  
@@ -3076,7 +3081,7 @@ class Scene(VideoCategory):
                 .clip(startframe=max(pa.startframe()-prepad, 0), endframe=(pa.endframe()+postpad))
                 .category(pa.category())
                 .setactorid(pa.actorid())  # actor is actor of primary activity
-                .setattribute('activityindex',k).setattribute('_instance_id', '%s_%d' % (vid.videoid(), k))
+                .setattribute('_instance_id', ('%s_%d' % (vid.videoid(), k)) if not vid.hasattribute('_instance_id') else vid.getattribute('_instance_id'))
                 for (k,(pa,sa,t,(prepad,postpad))) in enumerate(zip(primary_activities, secondary_activities, tracks, padframelist))
                 if (idx is None or k in tolist(idx))]
 
