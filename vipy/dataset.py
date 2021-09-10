@@ -104,7 +104,7 @@ class Dataset():
         """Return a deep copy of the dataset"""
         return copy.deepcopy(self)
 
-    def archive(self, tarfile, delprefix, mediadir='', format='json', castas=vipy.video.Scene, verbose=False, extrafiles=None, novideos=False):
+    def archive(self, tarfile, delprefix, mediadir='', format='json', castas=vipy.video.Scene, verbose=False, extrafiles=None, novideos=False, md5=True):
         """Create a archive file for this dataset.  This will be archived as:
 
            /path/to/tarfile.{tar.gz|.tgz|.bz2}
@@ -120,6 +120,9 @@ class Dataset():
               - delprefix:  the absolute file path contained in the media filenames to be removed.  If a video has a delprefix='/a/b' then videos with path /a/b/c/d.mp4' -> 'c/d.mp4', and {JSON|PKL} will be saved with relative paths to mediadir
               - mediadir:  the subdirectory name of the media to be contained in the archive.  Usually "videos".             
               - extrafiles: list of tuples or singletons [(abspath, filename_in_archive_relative_to_root), 'file_in_root_and_in_pwd', ...], 
+              - novideos [bool]:  generate a tarball without linking videos, just annotations
+              - md5 [bool]:  If True, generate the MD5 hash of the tarball using the system "md5sum", or if md5='vipy' use a slower python only md5 hash 
+              - castas [class]:  This should be a vipy class that the vipy objects should be cast to prior to archive.  This is useful for converting priveledged superclasses to a base class prior to export.
 
             Example:  
 
@@ -135,7 +138,7 @@ class Dataset():
         assert self.countby(lambda v: delprefix in v.filename()) == len(self), "all media objects must have the same delprefix for relative path construction"
         assert vipy.util.istgz(tarfile) or vipy.util.isbz2(tarfile), "Allowable extensions are .tar.gz, .tgz or .bz2"
         assert shutil.which('tar') is not None, "tar not found on path"        
-
+        
         D = self.clone()
         stagedir = remkdir(os.path.join(tempdir(), filefull(filetail(tarfile))))
         print('[vipy.dataset]: creating staging directory "%s"' % stagedir)        
@@ -162,7 +165,14 @@ class Dataset():
         os.system(cmd)  # too slow to use python "tarfile" package
         print('[vipy.dataset]: deleting staging directory "%s"' % stagedir)        
         shutil.rmtree(stagedir)
-        print('[vipy.dataset]: %s, MD5=%s' % (tarfile, vipy.downloader.generate_md5(tarfile)))
+
+        if md5:
+            if shutil.which('md5sum') is not None:
+                cmd = 'md5sum %s' % tarfile
+                print('[vipy.dataset]: executing "%s"' % cmd)        
+                os.system(cmd)  # too slow to use python "vipy.downloader.generate_md5(tarball)" for huge datasets
+            else:
+                print('[vipy.dataset]: %s, MD5=%s' % (tarfile, vipy.downloader.generate_md5(tarfile)))  # too slow for large datasets, but does not require md5sum on path
         return tarfile
         
     def save(self, outfile, nourl=False, castas=None, relpath=False, sanitize=True, strict=True, significant_digits=2, noemail=True, flush=True):
