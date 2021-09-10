@@ -2178,7 +2178,7 @@ INDEX=[
 {
 "ref":"vipy.util.load",
 "url":9,
-"doc":"Load variables from a relocatable archive file format, either Dill Pickle or JSON. Loading is performed by attemping the following: 1. load the pickle or json file 2. if abspath=true, then convert relative paths to absolute paths for object when loaded 3. If the loaded object is a vipy object (or iterable) and the relocatable path /$PATH is present, try to repath it to the directory containing this archive (this has been deprecated) 4. If the resulting files are not found, throw a warning 5. If a large number of objects are loaded, disable garbage collection.",
+"doc":"Load variables from a relocatable archive file format, either Dill Pickle or JSON. Loading is performed by attemping the following: 1. load the pickle or json file 2. if abspath=true, then convert relative paths to absolute paths for object when loaded 3. If the loaded object is a vipy object (or iterable) and the relocatable path /$PATH is present, try to repath it to the directory containing this archive (this has been deprecated) 4. If the resulting first filename is not found, throw a warning",
 "func":1
 },
 {
@@ -3073,37 +3073,37 @@ INDEX=[
 {
 "ref":"vipy.dataset.Dataset.id",
 "url":10,
-"doc":"",
+"doc":"Set or return the dataset id",
 "func":1
 },
 {
 "ref":"vipy.dataset.Dataset.list",
 "url":10,
-"doc":"",
+"doc":"Return the dataset as a list",
 "func":1
 },
 {
 "ref":"vipy.dataset.Dataset.tolist",
 "url":10,
-"doc":"",
+"doc":"Alias for self.list()",
 "func":1
 },
 {
 "ref":"vipy.dataset.Dataset.flatten",
 "url":10,
-"doc":"",
+"doc":"Convert dataset stored as a list of lists into a flat list",
 "func":1
 },
 {
 "ref":"vipy.dataset.Dataset.istype",
 "url":10,
-"doc":"",
+"doc":"Return True if all elements in the dataset are of type 'validtype'",
 "func":1
 },
 {
 "ref":"vipy.dataset.Dataset.clone",
 "url":10,
-"doc":"",
+"doc":"Return a deep copy of the dataset",
 "func":1
 },
 {
@@ -3115,61 +3115,61 @@ INDEX=[
 {
 "ref":"vipy.dataset.Dataset.save",
 "url":10,
-"doc":"",
+"doc":"Save the dataset to the provided output filename stored as pkl or json Args: outfile [str]: The /path/to/out.pkl or /path/to/out.json nourl [bool]: If true, remove all URLs from the media (if present) castas [type]: Cast all media to the provided type. This is useful for downcasting to  vipy.video.Scene from superclasses relpath [bool]: If true, define all file paths in objects relative to the /path/to in /path/to/out.json sanitize [bool]: If trye, call sanitize() on all objects to remove all private attributes with prepended '__' strict [bool]: Unused significant_digits [int]: Assign the requested number of significant digits to all bounding boxes in all tracks. This requires dataset of  vipy.video.Scene noemail [bool]: If true, scrub the attributes for emails and replace with a hash flush [bool]: If true, flush the object buffers prior to save Returns: This dataset that is quivalent to vipy.dataset.Dataset('/path/to/outfile.json')",
 "func":1
 },
 {
 "ref":"vipy.dataset.Dataset.classlist",
 "url":10,
-"doc":"",
+"doc":"Return a sorted list of categories in the dataset",
 "func":1
 },
 {
 "ref":"vipy.dataset.Dataset.classes",
 "url":10,
-"doc":"",
+"doc":"Alias for classlist",
 "func":1
 },
 {
 "ref":"vipy.dataset.Dataset.categories",
 "url":10,
-"doc":"",
+"doc":"Alias for classlist",
 "func":1
 },
 {
 "ref":"vipy.dataset.Dataset.num_classes",
 "url":10,
-"doc":"",
+"doc":"Return the number of unique categories in this dataset",
 "func":1
 },
 {
 "ref":"vipy.dataset.Dataset.num_labels",
 "url":10,
-"doc":"",
+"doc":"Alias for num_classes",
 "func":1
 },
 {
 "ref":"vipy.dataset.Dataset.num_categories",
 "url":10,
-"doc":"",
+"doc":"Alias for num_classes",
 "func":1
 },
 {
 "ref":"vipy.dataset.Dataset.class_to_index",
 "url":10,
-"doc":"",
+"doc":"Return a dictionary mapping the unique classes to an integer index. This is useful for defining a softmax index ordering for categorization",
 "func":1
 },
 {
 "ref":"vipy.dataset.Dataset.index_to_class",
 "url":10,
-"doc":"",
+"doc":"Return a dictionary mapping an integer index to the unique class names. This is the inverse of class_to_index, swapping keys and values",
 "func":1
 },
 {
 "ref":"vipy.dataset.Dataset.label_to_index",
 "url":10,
-"doc":"",
+"doc":"Alias for class_to_index",
 "func":1
 },
 {
@@ -3289,7 +3289,7 @@ INDEX=[
 {
 "ref":"vipy.dataset.Dataset.map",
 "url":10,
-"doc":"Distributed map. To perform this in parallel across four processes: >>> with vipy.globals.parallel(4): >>> self.map(lambda v:  .) Args: f_transform: [lambda] The lambda function to apply in parallel to all elements in the dataset model: [torch.nn.Module] The model to scatter to all workers dst: [str] The ID to give to the resulting dataset id: [str] The ID to give to the resulting dataset (parameter alias for dst) checkpoint: [bool] If trye, checkpoint the map operation strict: [bool] If true, raise exception on map failures, otherwise the map will return None for failed elements ascompleted: [bool] If true, return elements as they complete Returns: A  vipy.dataset.Dataset containing the elements f_transform(v). This operation is order preserving",
+"doc":"Distributed map. To perform this in parallel across four processes: >>> with vipy.globals.parallel(4): >>> self.map(lambda v:  .) Args: f_transform: [lambda] The lambda function to apply in parallel to all elements in the dataset model: [torch.nn.Module] The model to scatter to all workers dst: [str] The ID to give to the resulting dataset id: [str] The ID to give to the resulting dataset (parameter alias for dst) checkpoint: [bool] If trye, checkpoint the map operation strict: [bool] If true, raise exception on map failures, otherwise the map will return None for failed elements ascompleted: [bool] If true, return elements as they complete Returns: A  vipy.dataset.Dataset containing the elements f_transform(v). This operation is order preserving.",
 "func":1
 },
 {
@@ -3769,6 +3769,12 @@ INDEX=[
 "ref":"vipy.activity.Activity.hastrack",
 "url":13,
 "doc":"Is the track part of the activity?",
+"func":1
+},
+{
+"ref":"vipy.activity.Activity.hastrackoverlap",
+"url":13,
+"doc":"is the activity occurring during the interval when the track is occurring?",
 "func":1
 },
 {
@@ -8518,7 +8524,7 @@ INDEX=[
 {
 "ref":"vipy.video.Scene.quicklook",
 "url":15,
-"doc":"Generate a montage of n uniformly spaced annotated frames centered on the union of the labeled boxes in the current frame to show the activity ocurring in this scene at a glance Montage increases rowwise for n uniformly spaced frames, starting from frame zero and ending on the last frame. This quicklook is most useful when len(self.activities() 1) for generating a quicklook from an activityclip(). Input: -n: Number of images in the quicklook -dilate: The dilation factor for the bounding box prior to crop for display -mindim: The minimum dimension of each of the elemnets in the montage -fontsize: The size of the font for the bounding box label -context: If true, replace the first and last frame in the montage with the full frame annotation, to help show the scale of the scene -animate: If true, return a video constructed by animating the quicklook into a video by showing dt consecutive frames -dt: The number of frames for animation -startframe: The initial frame index to start the n uniformly sampled frames for the quicklook",
+"doc":"Generate a montage of n uniformly spaced annotated frames centered on the union of the labeled boxes in the current frame to show the activity ocurring in this scene at a glance Montage increases rowwise for n uniformly spaced frames, starting from frame zero and ending on the last frame. This quicklook is most useful when len(self.activities() 1) for generating a quicklook from an activityclip(). Args: n [int]: Number of images in the quicklook dilate [float]: The dilation factor for the bounding box prior to crop for display mindim [int]: The minimum dimension of each of the elemnets in the montage fontsize [int]: The size of the font for the bounding box label context [bool]: If true, replace the first and last frame in the montage with the full frame annotation, to help show the scale of the scene animate [bool]: If true, return a video constructed by animating the quicklook into a video by showing dt consecutive frames dt [int]: The number of frames for animation startframe [int]: The initial frame index to start the n uniformly sampled frames for the quicklook",
 "func":1
 },
 {
@@ -8645,6 +8651,12 @@ INDEX=[
 "ref":"vipy.video.Scene.rekey",
 "url":15,
 "doc":"Change the track and activity IDs to randomly assigned UUIDs. Useful for cloning unique scenes",
+"func":1
+},
+{
+"ref":"vipy.video.Scene.annotation",
+"url":15,
+"doc":"Return an iterator over annotations in each frame. >>> for y in self.annotation(): >>> for (bb,a) in y: >>> print bb,a Yields: for each frame yield the tuple: ( ( vipy.object.Detection , (tuple of  vipy.activity.Activity performed by the actor in this bounding box ,  . )  note The preferred method for accessing annotations is a frame iterator, which includes pixels. However, this method provides access to just the annotations without pixels.",
 "func":1
 },
 {
@@ -8860,7 +8872,7 @@ INDEX=[
 {
 "ref":"vipy.video.Scene.clip",
 "url":15,
-"doc":"Clip the video to between (startframe, endframe). This clip is relative to clip() shown by __repr__(). Args: startframe: [int] the start frame relative to the video framerate() for the clip endframe: [int] the end frame relative to the video framerate for the clip, may be none Returns: This video object, clipped so that a load() will result in frame=0 equivalent to startframe. All tracks and activities updated relative to the new startframe.  notes: - This return a clone of the video for idempotence - This does not load the video. This updates the ffmpeg filter chain to temporally trim the video. See self.commandline() for the updated filter chain to run.",
+"doc":"Clip the video to between (startframe, endframe). This clip is relative to clip() shown by __repr__(). Args: startframe: [int] the start frame relative to the video framerate() for the clip endframe: [int] the end frame relative to the video framerate for the clip, may be none Returns: This video object, clipped so that a load() will result in frame=0 equivalent to startframe. All tracks and activities updated relative to the new startframe.  note: - This return a clone of the video for idempotence - This does not load the video. This updates the ffmpeg filter chain to temporally trim the video. See self.commandline() for the updated filter chain to run.",
 "func":1
 },
 {
