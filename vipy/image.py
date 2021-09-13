@@ -1771,8 +1771,9 @@ class Scene(ImageCategory):
         
     def union(self, other, miniou=None):
         """Combine the objects of the scene with other and self with no duplicate checking unless miniou is not None"""
-        assert isinstance(other, Scene), "Invalid input"
-        return self.objects(self.objects()+other.objects())
+        if isinstance(other, Scene):
+            self.objects(self.objects()+other.objects())
+        return self
 
     def uncrop(self, bb, shape):
         """Uncrop a previous crop(bb) called with the supplied bb=BoundingBox(), and zeropad to shape=(H,W)"""

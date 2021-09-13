@@ -60,7 +60,6 @@ class Stream(object):
     def __init__(self, v, bufsize, write, overwrite):
         self._video = v   # do not clone
         self._write_pipe = None
-        self._frame_index = 0
         self._vcodec = 'libx264'
         self._framerate = self._video.framerate()
         self._outfile = self._video.filename()
@@ -88,7 +87,7 @@ class Stream(object):
                   .global_args('-cpuflags', '0', '-loglevel', 'quiet' if not vipy.globals.isdebug() else 'debug'))
             self._write_pipe = fo.run_async(pipe_stdin=True)
                     
-        self._frame_index = 0
+        self._video._currentframe = 0
         return self
             
     def __exit__(self, type, value, tb):
@@ -123,11 +122,11 @@ class Stream(object):
     
     def __iter__(self):
         """Stream individual video frames"""
-                
         if self._video.isloaded():
             # For loaded video, just use the existing iterator for in-memory video
-            for im in self._video.__iter__():
-                yield im
+            for k in range(len(self._video)): 
+                self._video._currentframe = k               
+                yield self._video[k]
         else:
             p = self._read_pipe()
             q = queue.Queue(self._queuesize)
@@ -153,12 +152,12 @@ class Stream(object):
             t = threading.Thread(target=_f_threadloop, args=(p, q, h, w, e), daemon=True)
             t.start()
 
-            frameindex = 0
+            self._video._currentframe = 0
             while True:                        
                 img = q.get()
                 if img is not None:
-                    im = self._video.frame(frameindex, img)
-                    frameindex += 1
+                    im = self._video.frame(self._video._currentframe, img)
+                    self._video._currentframe += 1
                     yield im
                 else:
                     e.set()
@@ -183,8 +182,8 @@ class Stream(object):
             self._write_pipe.stdin.flush()  # do we need this?
         if isinstance(im, vipy.image.Scene) and len(im.objects()) > 0 and isinstance(self._video, vipy.video.Scene):
             for obj in im.objects():
-                self._video.add(obj, frame=self._frame_index, rangecheck=False)
-        self._frame_index += 1  # assumes that the source image is at the appropriate frame rate for this video
+                self._video.add(obj, frame=self._video._currentframe, rangecheck=False)
+        self._video._currentframe += 1  # assumes that the source image is at the appropriate frame rate for this video
 
     def clip(self, n, m=1, continuous=False, tracks=True, activities=True, delay=0):
         """Stream clips of length n such that the yielded video clip contains frame(0+delay) to frame(n+delay), and next contains frame(m+delay) to frame(n+m+delay). 
@@ -220,13 +219,13 @@ class Stream(object):
         def _f_threadloop(pipe, queue, height, width, video, n, m, continuous, event):
             assert self._video.isloaded() or pipe is not None, "invalid pipe"
             assert queue is not None, "invalid queue"
-            frameindex = 0
+            self._video._currentframe = 0
             frames = []
             
             while True:
                 if self._video.isloaded():
-                    if frameindex < len(self._video):
-                        frames.append(self._video[frameindex].array())
+                    if self._video._currentframe < len(self._video):
+                        frames.append(self._video[self._video._currentframe].array())
                     else:
                         queue.put( (None, None) )
                         event.wait()                                
@@ -246,14 +245,14 @@ class Stream(object):
 
                 if len(frames) > n:
                     frames.pop(0)
-                if ((frameindex+1-delay) % m) == 0 and len(frames) >= n:
+                if ((self._video._currentframe + 1 - delay) % m) == 0 and len(frames) >= n:
                     # Use frameindex+1 so that we include (0,1), (1,2), (2,3), ... for n=2, m=1
                     # The delay shifts the clip +delay frames (1,2,3), (3,4,5), ... for n=3, m=2, delay=1
-                    queue.put( (frameindex, video.clear().clone(shallow=True).array(np.stack(frames[-n:]))))  # requires copy, expensive operation                            
+                    queue.put( (self._video._currentframe, video.clear().clone(shallow=True).array(np.stack(frames[-n:]))))  # requires copy, expensive operation                            
                 elif continuous:
-                    queue.put((frameindex, None))
+                    queue.put((self._video._currentframe, None))
                             
-                frameindex += 1
+                self._video._currentframe += 1
 
         p = self._read_pipe()
         q = queue.Queue(self._queuesize)
@@ -289,16 +288,16 @@ class Stream(object):
         def _f_threadloop(pipe, queue, height, width, video, n, event):
             assert self._video.isloaded() or pipe is not None, "invalid pipe"
             assert queue is not None, "invalid queue"
-            frameindex = 0
+            self._video._currentframe = 0
             frames = []
             
             while True:
                 if self._video.isloaded():
-                    if frameindex < len(self._video):
-                        frames.append(self._video[frameindex].array())
+                    if self._video._currentframe < len(self._video):
+                        frames.append(self._video[self._video._currentframe].array())
                     else:
                         if len(frames) > 0:
-                            queue.put((frameindex, video.clear().clone(shallow=True).array(np.stack(frames))))                                
+                            queue.put((self._video._currentframe, video.clear().clone(shallow=True).array(np.stack(frames))))                                
                         queue.put( (None, None) )
                         event.wait()                                
                         break
@@ -306,7 +305,7 @@ class Stream(object):
                     in_bytes = pipe.stdout.read(height * width * 3)
                     if not in_bytes:
                         if len(frames) > 0:
-                            queue.put((frameindex, video.clear().clone(shallow=True).array(np.stack(frames))))
+                            queue.put((self._video._currentframe, video.clear().clone(shallow=True).array(np.stack(frames))))
                         queue.put((None, None))
                         pipe.poll()
                         if pipe.returncode != 0:
@@ -318,10 +317,10 @@ class Stream(object):
                         frames.append(np.frombuffer(in_bytes, np.uint8).reshape([height, width, 3]))
                             
                 if len(frames) == n:
-                    queue.put( (frameindex, video.clear().clone(shallow=True).array(np.stack(frames))) )  # requires copy, expensive operation                            
+                    queue.put( (self._video._currentframe, video.clear().clone(shallow=True).array(np.stack(frames))) )  # requires copy, expensive operation                            
                     frames = []
                             
-                frameindex += 1
+                self._video._currentframe += 1
 
         p = self._read_pipe()
         q = queue.Queue(self._queuesize)
@@ -343,10 +342,12 @@ class Stream(object):
         """Stream individual frames of video with negative offset n to the stream head. If n=-30, this will return a frame 30 frames ago"""
         assert isinstance(n, int) and n<=0, "Frame offset must be non-positive integer"
         frames = []
+        self._video._currentframe = 0
         for (k,im) in enumerate(self):
             frames.append( (k,im) )                    
             (kout, imout) = frames[0]
             frames.pop(0) if len(frames) == abs(n) else None
+            self._video._currentframe = k
             yield self._video.frame(kout, imout.array()) if n < 0 else imout   # refetch for track interpolation
                                           
 
@@ -592,23 +593,14 @@ class Video(object):
         return Image(array=img if img is not None else (self._array[k] if self.isloaded() else self.preview(k).array()), colorspace=self.colorspace())       
         
     def __iter__(self):
-        """Iterate over loaded video, yielding mutable frames.
+        """Iterate over video, yielding read only frames.
         
-        FIXME: this should really be replaced by default with:
-        
-        >>> for in im self.stream():
-        >>>     pass
-
-        This is much more efficient, and will be migrated to the default for frame iterators.
+        >>> for im in vipy.video.RandomScene():
+        >>>     print(im)
 
         """
-        self.load().numpy()  # triggers load and copy of read-only video buffer, mutable
-        with np.nditer(self._array, op_flags=['readwrite']) as it:
-            for k in range(0, len(self)):
-                self._currentframe = k    # used only for incremental add()                
-                yield self.__getitem__(k)
-            self._currentframe = None    # used only for incremental add()
-
+        return self.stream().__iter__()
+        
     def store(self):
         """Store the current video file as an attribute of this object.  
 
@@ -1182,8 +1174,19 @@ class Video(object):
         """Alias for numpy()"""
         return self.numpy()
 
+    def mutable(self):
+        """Return a video object with a writeable mutable frame array.  Video must be loaded, triggers copy of underlying numpy array if the buffer is not writeable.  
+        
+        Returns:
+            This object with a mutable frame buffer in self.array() or self.numpy().
+        """
+        assert self.isloaded()
+        self._array = np.copy(self._array) if not self._array.flags['WRITEABLE'] else self._array  # triggers copy
+        self._array.setflags(write=True)  # mutable iterators, torch conversion
+        return self        
+        
     def numpy(self):
-        """Convert the video to a writeable numpy array, triggers a load() and copy() as needed"""
+        """Convert the video to a writeable numpy array, triggers a load() and copy() as needed.  Returns the numpy array."""
         self.load()
         self._array = np.copy(self._array) if not self._array.flags['WRITEABLE'] else self._array  # triggers copy
         self._array.setflags(write=True)  # mutable iterators, torch conversion
@@ -3621,35 +3624,36 @@ class Scene(VideoCategory):
     
     def pixelmask(self, pixelsize=8):
         """Replace all pixels in foreground boxes with pixelation"""
-        for im in self: 
+        for im in self.mutable():  # convert to writeable numpy array, triggers writeable copy          
             im.pixelmask(pixelsize)  # shared numpy array
         return self
 
     def binarymask(self):
-        """Replace all pixels in foreground boxes with white, zero in background"""        
-        for im in self:
+        """Replace all pixels in foreground boxes with white, zero in background"""
+        for im in self.mutable():  # convert to writeable numpy array, triggers writeable copy  
             im.binarymask()  # shared numpy array
         return self
 
     def asfloatmask(self, fg=1.0, bg=0.0):
         """Replace all pixels in foreground boxes with fg, and bg in background, return a copy"""
+        assert self.isloaded()
+        self.numpy()  # convert to writeable numpy array, triggers writeable copy        
         array = np.full( (len(self.load()), self.height(), self.width(), 1), dtype=np.float32, fill_value=bg)
         for (k,im) in enumerate(self):
             for bb in im.objects():
                 if bb.hasintersection(im.imagebox()):
                     array[k, int(round(bb._ymin)):int(round(bb._ymax)), int(round(bb._xmin)):int(round(bb._xmax))] = fg   # does not need imclip
         return vipy.video.Video(array=array, framerate=self.framerate(), colorspace='float')
-
     
     def meanmask(self):
-        """Replace all pixels in foreground boxes with mean color"""        
-        for im in self:
+        """Replace all pixels in foreground boxes with mean color"""
+        for im in self.mutable():  # convert to writeable numpy array, triggers writeable copy                  
             im.meanmask()  # shared numpy array
         return self
 
     def fgmask(self):
-        """Replace all pixels in foreground boxes with zero"""        
-        for im in self:
+        """Replace all pixels in foreground boxes with zero"""
+        for im in self.mutable():  # convert to writeable numpy array, triggers writeable copy                          
             im.fgmask()  # shared numpy array
         return self
 
@@ -3658,8 +3662,8 @@ class Scene(VideoCategory):
         return self.fgmask()
     
     def blurmask(self, radius=7):
-        """Replace all pixels in foreground boxes with gaussian blurred foreground"""        
-        for im in self:
+        """Replace all pixels in foreground boxes with gaussian blurred foreground"""
+        for im in self.mutable():  # convert to writeable numpy array, triggers writeable copy                                  
             im.blurmask(radius)  # shared numpy array
         return self
 

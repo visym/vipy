@@ -381,27 +381,32 @@ def _test_scene():
     assert np.sum(v.array()[0]) != 0    
     print('[test_video.scene]: array by reference  PASSED')
 
-    # Mutable iterator
-    frames = np.random.rand(2,2,2,3).astype(np.float32)
-    v = vipy.video.Video(array=frames)
-    for im in v:
-        im.numpy()[:,:] = 0
-    assert np.sum(v.array().flatten()) == 0
-    frames = np.random.rand(2,2,2,3).astype(np.float32)
-    v = vipy.video.Video(array=frames)
-    for im in v.numpy():
-        im[:,:] = 0
-    assert np.sum(v.array().flatten()) == 0
-    v = vipy.video.Video(mp4file).clip(0,10).load()
-    for im in v.numpy():
-        im[:,:] = 0
-    assert np.sum(v.array().flatten()) == 0
-    v = vipy.video.Video(mp4file).clip(0,10).load()
-    for im in v:
-        img = im.numpy()
-        img[:,:] = 0
-    assert np.sum(v.array().flatten()) == 0
-    print('[test_video.scene]: mutable iterator  PASSED')    
+    # Mutable iterator:
+    # 
+    #   - This is deprecated in favor of modifying videos using an output write stream (maybe using a self.stream().mutable() iterator?)
+    #   - Also need to update demos
+    #   - fix frameindex iterator (self._currentframe)
+    # 
+    #frames = np.random.rand(2,2,2,3).astype(np.float32)
+    #v = vipy.video.Video(array=frames)
+    #for im in v:
+    #    im.numpy()[:,:] = 0
+    #assert np.sum(v.array().flatten()) == 0
+    #frames = np.random.rand(2,2,2,3).astype(np.float32)
+    #v = vipy.video.Video(array=frames)
+    #for im in v.numpy():
+    #    im[:,:] = 0
+    #assert np.sum(v.array().flatten()) == 0
+    #v = vipy.video.Video(mp4file).clip(0,10).load()
+    #for im in v.numpy():
+    #    im[:,:] = 0
+    #assert np.sum(v.array().flatten()) == 0
+    #v = vipy.video.Video(mp4file).clip(0,10).load()
+    #for im in v:
+    #    img = im.numpy()
+    #    img[:,:] = 0
+    #assert np.sum(v.array().flatten()) == 0
+    #print('[test_video.scene]: mutable iterator  PASSED')    
 
     # Scene iterator
     frames = np.random.rand(2,2,2,3).astype(np.float32)
