@@ -51,13 +51,12 @@ ffplay_exe = shutil.which('ffplay')
 has_ffplay = ffplay_exe is not None and os.path.exists(ffplay_exe)
 
 
-
 class Stream(object):
     """vipy.video.Stream class. 
 
     * This is designed to be accessed as `vipy.video.Video.stream`.
     """
-    def __init__(self, v, bufsize, write, overwrite):
+    def __init__(self, v, queuesize, write, overwrite, framebuffer=128):
         self._video = v   # do not clone
         self._write_pipe = None
         self._vcodec = 'libx264'
@@ -69,7 +68,10 @@ class Stream(object):
             os.remove(self._outfile)                
         self._shape = self._video.shape() if (not self._write) or (self._write and self._video.canload()) else None  # shape for write can be defined by first frame
         assert (write is True or overwrite is True) or self._shape is not None, "Invalid video '%s'" % (str(v))
-        self._queuesize = bufsize
+        self._queuesize = queuesize
+        self._framebuffer = framebuffer
+        assert framebuffer >= 1
+        
         
     def __enter__(self):
         """Write pipe context manager"""
@@ -122,47 +124,78 @@ class Stream(object):
     
     def __iter__(self):
         """Stream individual video frames"""
-        if self._video.isloaded():
-            # For loaded video, just use the existing iterator for in-memory video
-            for k in range(len(self._video)): 
-                self._video._currentframe = k               
-                yield self._video[k]
-        else:
-            p = self._read_pipe()
-            q = queue.Queue(self._queuesize)
-            (h, w) = self._shape
+        try:
+            if self._video.isloaded() and not self._video.hasattribute('framebuffer'):
+                # For loaded video, just use the existing iterator for in-memory video
+                self._video.attributes['framebuffer'] = self._video._array  # by reference
+                for k in range(len(self._video)): 
+                    self._video._currentframe = k   # current frame owned by first iterator
+                    yield self._video[k]
+                self._video.delattribute('framebuffer')
+
+            elif not self._video.isloaded() and not self._video.hasattribute('framebuffer'):
+                # First stream iterator: read from video and store in framebuffer for all other iterators to access
+                if self._framebuffer > 0:
+                    self._video.attributes['framebuffer'] = [None for k in range(self._framebuffer)]
                     
-            def _f_threadloop(pipe, queue, height, width, event):
-                assert pipe is not None, "Invalid pipe"
-                assert queue is not None, "invalid queue"
+                p = self._read_pipe()
+                q = queue.Queue(self._queuesize)
+                (h, w) = self._shape
+                
+                def _f_threadloop(pipe, queue, height, width, event):
+                    assert pipe is not None, "Invalid pipe"
+                    assert queue is not None, "invalid queue"
+                    while True:
+                        in_bytes = pipe.stdout.read(height * width * 3)
+                        if not in_bytes:
+                            queue.put(None)
+                            pipe.poll()
+                            pipe.wait()
+                            if pipe.returncode != 0:
+                                self._video.delattribute('framebuffer')   # reset
+                                raise ValueError('Stream iterator exited with returncode %d' % (pipe.returncode))
+                            event.wait()
+                            break
+                        else:
+                            queue.put(np.frombuffer(in_bytes, np.uint8).reshape([height, width, 3]))
+
+                e = threading.Event()                                
+                t = threading.Thread(target=_f_threadloop, args=(p, q, h, w, e), daemon=True)
+                t.start()
+                
+                self._video._currentframe = 0
+                while True:                        
+                    img = q.get()
+                    if img is not None:
+                        if self._framebuffer > 0:
+                            self._video.attributes['framebuffer'][self._video._currentframe % len(self._video.attributes['framebuffer'])] = img   # reference
+                        im = self._video.frame(self._video._currentframe, img)
+                        self._video._currentframe += 1  # current frame owned by first iterator 
+                        yield im
+                    else:
+                        e.set()
+                        self._video.delattribute('framebuffer')  # reset me
+                        break            
+
+            elif self._video.hasattribute('framebuffer'):
+                (k,F) = (0, self._video.attributes['framebuffer'])
                 while True:
-                    in_bytes = pipe.stdout.read(height * width * 3)
-                    if not in_bytes:
-                        queue.put(None)
-                        pipe.poll()
-                        pipe.wait()
-                        if pipe.returncode != 0:
-                            raise ValueError('Stream iterator failed with returncode %d - error "%s"' % (pipe.returncode, str(pipe.stderr.readlines())))
-                        event.wait()
+                    if k <= self._video._currentframe:
+                        yield self._video.frame(self._video._currentframe, F[k % len(F)])
+                        k += 1                    
+                    elif not self._video.hasattribute('framebuffer'):
                         break
                     else:
-                        queue.put(np.frombuffer(in_bytes, np.uint8).reshape([height, width, 3]))
+                        time.sleep(0.005)
+            else:
+                raise  # should never get here    
 
-            e = threading.Event()                                
-            t = threading.Thread(target=_f_threadloop, args=(p, q, h, w, e), daemon=True)
-            t.start()
-
-            self._video._currentframe = 0
-            while True:                        
-                img = q.get()
-                if img is not None:
-                    im = self._video.frame(self._video._currentframe, img)
-                    self._video._currentframe += 1
-                    yield im
-                else:
-                    e.set()
-                    break
-                        
+        except StopIteration:
+            self._video.delattribute('framebuffer')  # reset me
+        finally:
+            self._video.delattribute('framebuffer')  # reset me            
+            
+        
     def __getitem__(self, k):
         """Retrieve individual frame index - this is inefficient, use __iter__ instead"""
         return self._video.preview(frame=k)  # this is inefficient
@@ -215,129 +248,47 @@ class Stream(object):
         assert isinstance(n, int) and n>0, "Clip length must be a positive integer"
         assert isinstance(m, int) and m>0, "Clip stride must be a positive integer"
         assert isinstance(delay, int) and delay >= 0 and delay < n, "Clip delay must be a positive integer less than n"
+        vc = self._video.clone(flushfilter=True).clear().nourl().nofilename()    
+        
+        frames = []
+        for (k,im) in enumerate(self):
+            frames.append(im)
             
-        def _f_threadloop(pipe, queue, height, width, video, n, m, continuous, event):
-            assert self._video.isloaded() or pipe is not None, "invalid pipe"
-            assert queue is not None, "invalid queue"
-            self._video._currentframe = 0
-            frames = []
-            
-            while True:
-                if self._video.isloaded():
-                    if self._video._currentframe < len(self._video):
-                        frames.append(self._video[self._video._currentframe].array())
-                    else:
-                        queue.put( (None, None) )
-                        event.wait()                                
-                        break
-                else:
-                    in_bytes = pipe.stdout.read(height * width * 3)
-                    if not in_bytes:
-                        queue.put( (None, None) )
-                        pipe.poll()
-                        if pipe.returncode != 0:
-                            #raise ValueError('Clip stream iterator exited')
-                            pass
-                        event.wait()
-                        break
-                    else:
-                        frames.append(np.frombuffer(in_bytes, np.uint8).reshape([height, width, 3]))
-
-                if len(frames) > n:
-                    frames.pop(0)
-                if ((self._video._currentframe + 1 - delay) % m) == 0 and len(frames) >= n:
-                    # Use frameindex+1 so that we include (0,1), (1,2), (2,3), ... for n=2, m=1
-                    # The delay shifts the clip +delay frames (1,2,3), (3,4,5), ... for n=3, m=2, delay=1
-                    queue.put( (self._video._currentframe, video.clear().clone(shallow=True).array(np.stack(frames[-n:]))))  # requires copy, expensive operation                            
-                elif continuous:
-                    queue.put((self._video._currentframe, None))
-                            
-                self._video._currentframe += 1
-
-        p = self._read_pipe()
-        q = queue.Queue(self._queuesize)
-        (h, w) = self._shape                        
-        v = self._video.clone(flushfilter=True).clear().nourl().nofilename()
-        e = threading.Event()                
-        t = threading.Thread(target=_f_threadloop, args=(p, q, h, w, v, n, m, continuous, e), daemon=True)
-        t.start()
-
-        while True:
-            (k,vc) = q.get()
-            if k is not None:
-                # Yield clip such that activities and tracks are relative to frame 0 if the clip
-                # - self._video is shared and contains the current activities and tracks
-                # - The frameindex (k) is the frame index in self._video that corresponds to the last frame in the clip.
-                # - The clip contains n frames from (k-(n-1), k), recall k is zero indexed, n is length which is one indexed so subtract n-1 
-                # - Offset all activities and tracks by -(k-(n-1)) so that they are relative to frame 0 of clip
-                # - Truncate is inclusive, so use n-1 as the last frame
+            if len(frames) > n:
+                frames.pop(0)
+            if ((k + 1 - delay) % m) == 0 and len(frames) >= n:                    
+                # Use frameindex+1 so that we include (0,1), (1,2), (2,3), ... for n=2, m=1
+                # The delay shifts the clip +delay frames (1,2,3), (3,4,5), ... for n=3, m=2, delay=1
+                vc = vc.clear().clone(shallow=True).fromframes(frames[-n:])   # requires copy, expensive operation                            
                 yield ((vc.activities([a.clone().offset(-(k-(n-1))).truncate(0,n-1) for (ak,a) in self._video.activities().items() if a.during_interval(k-(n-1), k, inclusive=False)] if activities else []) 
                         .tracks([t.clone(k-(n-1), k).offset(-(k-(n-1))).truncate(0,n-1) for (tk,t) in self._video.tracks().items() if t.during_interval(k-(n-1), k)] if tracks else []))
                        if (vc is not None and isinstance(vc, vipy.video.Scene)) else vc)
-            else:
-                e.set()
-                break
-                    
-    def batch(self, n):
+            elif continuous:
+                yield None
+
+                
+    def batch(self, n, continuous=False):
         """Stream batches of length n such that each batch contains frames [0,n], [n+1, 2n], ...  Last batch will be ragged.
             
         .. warning:: Unlike clip(), this method currently does not support activities and tracks.  The batch will contain pixels only. 
         """
         assert isinstance(n, int) and n>0, "batch length must be a positive integer"
 
-        def _f_threadloop(pipe, queue, height, width, video, n, event):
-            assert self._video.isloaded() or pipe is not None, "invalid pipe"
-            assert queue is not None, "invalid queue"
-            self._video._currentframe = 0
-            frames = []
+        vc = self._video.clone(flushfilter=True).clear().nourl().nofilename()  
+        frames = []
+        for (k,im) in enumerate(self):
+            frames.append(im)
+            if len(frames) == n:                                                                                                                                                                                                                                                                                 
+                vc = vc.clear().clone(shallow=True).fromframes(frames)  # requires copy, expensive operation                                                                                                                                                        
+                frames = []  
+                yield vc  # FIXME: should clone shift and truncate activities/tracks
+            elif continuous:
+                yield None                
+        if len(frames) > 0:
+            vc = vc.clear().clone(shallow=True).fromframes(frames)
+            yield vc
+
             
-            while True:
-                if self._video.isloaded():
-                    if self._video._currentframe < len(self._video):
-                        frames.append(self._video[self._video._currentframe].array())
-                    else:
-                        if len(frames) > 0:
-                            queue.put((self._video._currentframe, video.clear().clone(shallow=True).array(np.stack(frames))))                                
-                        queue.put( (None, None) )
-                        event.wait()                                
-                        break
-                else:                            
-                    in_bytes = pipe.stdout.read(height * width * 3)
-                    if not in_bytes:
-                        if len(frames) > 0:
-                            queue.put((self._video._currentframe, video.clear().clone(shallow=True).array(np.stack(frames))))
-                        queue.put((None, None))
-                        pipe.poll()
-                        if pipe.returncode != 0:
-                            #raise ValueError('Batch stream iterator exited')
-                            pass
-                        event.wait()
-                        break
-                    else:
-                        frames.append(np.frombuffer(in_bytes, np.uint8).reshape([height, width, 3]))
-                            
-                if len(frames) == n:
-                    queue.put( (self._video._currentframe, video.clear().clone(shallow=True).array(np.stack(frames))) )  # requires copy, expensive operation                            
-                    frames = []
-                            
-                self._video._currentframe += 1
-
-        p = self._read_pipe()
-        q = queue.Queue(self._queuesize)
-        (h, w) = self._shape                        
-        v = self._video.clone(flushfilter=True).clear().nourl().nofilename()
-        e = threading.Event()
-        t = threading.Thread(target=_f_threadloop, args=(p, q, h, w, v, n, e), daemon=True)
-        t.start()
-                
-        while True:
-            (k,vb) = q.get()
-            if k is not None:
-                yield vb  # FIXME: should clone shift and truncate activities/tracks
-            else:
-                e.set()
-                break
-
     def frame(self, n=0):
         """Stream individual frames of video with negative offset n to the stream head. If n=-30, this will return a frame 30 frames ago"""
         assert isinstance(n, int) and n<=0, "Frame offset must be non-positive integer"
@@ -416,7 +367,8 @@ class Video(object):
         self.attributes = attributes if attributes is not None else {}
         assert isinstance(self.attributes, dict), "Attributes must be a python dictionary"
         assert filename is not None or url is not None or array is not None or frames is not None, 'Invalid constructor - Requires "filename", "url" or "array" or "frames"'
-
+        assert not isurl(filename)
+        
         # FFMPEG installed?
         if not has_ffmpeg:
             warnings.warn('"ffmpeg" executable not found on path, this is required for vipy.video - Install from http://ffmpeg.org/download.html')
@@ -674,7 +626,7 @@ class Video(object):
         return vo
     
 
-    def stream(self, write=False, overwrite=False, bufsize=1024):
+    def stream(self, write=False, overwrite=False, queuesize=1024):
         """Iterator to yield groups of frames streaming from video.
 
         A video stream is a real time iterator to read or write from a video.  Streams are useful to group together frames into clips that are operated on as a group.
@@ -725,7 +677,7 @@ class Video(object):
         ..note:: Using this iterator may affect PDB debugging due to stdout/stdin redirection.  Use ipdb instead.
 
         """
-        return Stream(self, bufsize=bufsize, write=write, overwrite=overwrite)  # do not clone
+        return Stream(self, queuesize=queuesize, write=write, overwrite=overwrite)  # do not clone
 
 
     def clear(self):
@@ -1178,7 +1130,7 @@ class Video(object):
         """Return a video object with a writeable mutable frame array.  Video must be loaded, triggers copy of underlying numpy array if the buffer is not writeable.  
         
         Returns:
-            This object with a mutable frame buffer in self.array() or self.numpy().
+            This object with a mutable frame buffer in self.array() or self.numpy()
         """
         assert self.isloaded()
         self._array = np.copy(self._array) if not self._array.flags['WRITEABLE'] else self._array  # triggers copy

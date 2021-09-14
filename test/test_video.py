@@ -19,14 +19,14 @@ mp4url = 'https://www.youtube.com/watch?v=C0DPdy98e4c'
 
 def test_stream():
     v = vipy.video.Video(mp4file)
-    for (k,im) in enumerate(v.stream(bufsize=8)):
+    for (k,im) in enumerate(v.stream(queuesize=8)):
         if k == 0:
             break
     assert im.shape() == v.shape()
     print('[test_video.video]: stream read  PASSED')
         
     try:
-        with v.stream(bufsize=8) as s:
+        with v.stream(queuesize=8) as s:
             im = v.preview()
             s.write(im)
         raise Failed()        
@@ -43,18 +43,18 @@ def test_stream():
     print('[test_video.video]: stream write   PASSED')       
 
     v = vipy.video.Video(mp4file)
-    for (k,vb) in enumerate(v.stream(bufsize=8).batch(8)):
+    for (k,vb) in enumerate(v.stream(queuesize=8).batch(8)):
         if k == 0:
             break
-    for (k,vc) in enumerate(v.stream(bufsize=8).clip(8,1)):
+    for (k,vc) in enumerate(v.stream(queuesize=8).clip(8,1)):
         if k == 0:
             break
     assert np.allclose(vb.array(), vc.array())
 
-    for (k,vb) in enumerate(v.stream(bufsize=8).batch(8)):
+    for (k,vb) in enumerate(v.stream(queuesize=8).batch(8)):
         if k == 1:
             break
-    for (k,vc) in enumerate(v.stream(bufsize=8).clip(8,1)):
+    for (k,vc) in enumerate(v.stream(queuesize=8).clip(8,1)):
         if k == 8:
             break
     assert np.allclose(vb.array(), vc.array())
@@ -62,10 +62,10 @@ def test_stream():
     print('[test_video.video]: stream batch   PASSED')
     print('[test_video.video]: stream clip  PASSED')               
     
-    for (k,vb) in enumerate(v.stream(bufsize=8).batch(8)):
+    for (k,vb) in enumerate(v.stream(queuesize=8).batch(8)):
         if k == 1:
             break
-    for (k,vc) in enumerate(v.load().stream(bufsize=8).clip(8,1)):
+    for (k,vc) in enumerate(v.load().stream(queuesize=8).clip(8,1)):
         if k == 8:
             break
 

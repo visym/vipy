@@ -1948,7 +1948,8 @@ class Scene(ImageCategory):
         mask = self.rectangular_mask() if self.channels() == 1 else np.expand_dims(self.rectangular_mask(), axis=2)
         img = self.numpy()
         img[:] = np.multiply(img, 1.0-mask)  # in-place update
-        return self  
+        return self
+    
     def setzero(self):
         return self.fgmask()
     
