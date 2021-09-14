@@ -56,10 +56,11 @@ class Stream(object):
 
     * This is designed to be accessed as `vipy.video.Video.stream`.
     """
-    def __init__(self, v, queuesize, write, overwrite, framebuffer=128):
+    def __init__(self, v, queuesize, write, overwrite, framebuffer=128, bitrate=None):
         self._video = v   # do not clone
         self._write_pipe = None
         self._vcodec = 'libx264'
+        self._bitrate = bitrate  # e.g. '2000k', recommended settings for live streaming
         self._framerate = self._video.framerate()
         self._outfile = self._video.filename()
         self._write = write or overwrite               
@@ -84,7 +85,13 @@ class Stream(object):
             fiv = (ffmpeg.input('pipe:', format='rawvideo', pix_fmt='rgb24', s='{}x{}'.format(width, height), r=self._video.framerate()) 
                    .filter('pad', 'ceil(iw/2)*2', 'ceil(ih/2)*2'))
             fi = ffmpeg.concat(fiv.filter('fps', fps=30, round='up'), ffmpeg.input('anullsrc', f='lavfi'), v=1, a=1) if isRTMPurl(outfile) else fiv  # empty audio for youtube-live
-            fo = (fi.output(filename=self._outfile if self._outfile is not None else self._url, pix_fmt='yuv420p', vcodec=self._vcodec, f='flv' if vipy.util.isRTMPurl(outfile) else vipy.util.fileext(outfile, withdot=False), g=2*outrate)
+            kwargs = {'video_bitrate':self._bitrate} if self._bitrate is not None else {}
+            fo = (fi.output(filename=self._outfile if self._outfile is not None else self._url,
+                            pix_fmt='yuv420p',
+                            vcodec=self._vcodec,
+                            f='flv' if vipy.util.isRTMPurl(outfile) else vipy.util.fileext(outfile, withdot=False),
+                            g=2*outrate,
+                            **kwargs)                              
                   .overwrite_output() 
                   .global_args('-cpuflags', '0', '-loglevel', 'quiet' if not vipy.globals.isdebug() else 'debug'))
             self._write_pipe = fo.run_async(pipe_stdin=True)
@@ -258,7 +265,7 @@ class Stream(object):
                 frames.pop(0)
             if ((k + 1 - delay) % m) == 0 and len(frames) >= n:                    
                 # Use frameindex+1 so that we include (0,1), (1,2), (2,3), ... for n=2, m=1
-                # The delay shifts the clip +delay frames (1,2,3), (3,4,5), ... for n=3, m=2, delay=1
+                # The delay shifts the clip +delay frames (1,2,3), (3,4,5), ... for n=3, m=2, delay=1                
                 vc = vc.clear().clone(shallow=True).fromframes(frames[-n:])   # requires copy, expensive operation                            
                 yield ((vc.activities([a.clone().offset(-(k-(n-1))).truncate(0,n-1) for (ak,a) in self._video.activities().items() if a.during_interval(k-(n-1), k, inclusive=False)] if activities else []) 
                         .tracks([t.clone(k-(n-1), k).offset(-(k-(n-1))).truncate(0,n-1) for (tk,t) in self._video.tracks().items() if t.during_interval(k-(n-1), k)] if tracks else []))
@@ -278,7 +285,7 @@ class Stream(object):
         frames = []
         for (k,im) in enumerate(self):
             frames.append(im)
-            if len(frames) == n:                                                                                                                                                                                                                                                                                 
+            if len(frames) == n:
                 vc = vc.clear().clone(shallow=True).fromframes(frames)  # requires copy, expensive operation                                                                                                                                                        
                 frames = []  
                 yield vc  # FIXME: should clone shift and truncate activities/tracks
@@ -626,7 +633,7 @@ class Video(object):
         return vo
     
 
-    def stream(self, write=False, overwrite=False, queuesize=1024):
+    def stream(self, write=False, overwrite=False, queuesize=1024, bitrate=None):
         """Iterator to yield groups of frames streaming from video.
 
         A video stream is a real time iterator to read or write from a video.  Streams are useful to group together frames into clips that are operated on as a group.
@@ -677,7 +684,7 @@ class Video(object):
         ..note:: Using this iterator may affect PDB debugging due to stdout/stdin redirection.  Use ipdb instead.
 
         """
-        return Stream(self, queuesize=queuesize, write=write, overwrite=overwrite)  # do not clone
+        return Stream(self, queuesize=queuesize, write=write, overwrite=overwrite, bitrate=bitrate)  # do not clone
 
 
     def clear(self):
