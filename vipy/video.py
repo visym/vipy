@@ -84,7 +84,12 @@ class Stream(object):
             fiv = (ffmpeg.input('pipe:', format='rawvideo', pix_fmt='rgb24', s='{}x{}'.format(width, height), r=self._video.framerate()) 
                    .filter('pad', 'ceil(iw/2)*2', 'ceil(ih/2)*2'))
             fi = ffmpeg.concat(fiv.filter('fps', fps=30, round='up'), ffmpeg.input('anullsrc', f='lavfi'), v=1, a=1) if isRTMPurl(outfile) else fiv  # empty audio for youtube-live
-            fo = (fi.output(filename=self._outfile if self._outfile is not None else self._url, pix_fmt='yuv420p', vcodec=self._vcodec, f='flv' if vipy.util.isRTMPurl(outfile) else vipy.util.fileext(outfile, withdot=False), g=2*outrate)
+            fo = (fi.output(filename=self._outfile if self._outfile is not None else self._url,
+                            pix_fmt='yuv420p',
+                            vcodec=self._vcodec,
+                            video_bitrate='2000k',
+                            f='flv' if vipy.util.isRTMPurl(outfile) else vipy.util.fileext(outfile, withdot=False),
+                            g=2*outrate)
                   .overwrite_output() 
                   .global_args('-cpuflags', '0', '-loglevel', 'quiet' if not vipy.globals.isdebug() else 'debug'))
             self._write_pipe = fo.run_async(pipe_stdin=True)
@@ -829,7 +834,7 @@ class Video(object):
             return self.attributes['__duration_in_seconds_of_videofile']['duration']
         else:
             d = float(self.probe()['format']['duration'])
-            self.attributes['__duration_in_seconds_of_videofile'] = {'duration':d, 'filehash':filehash}  # for next time
+            self.attributes['__duration_in_seconds_of_videofile'] = {'duration':d, 'filehash':filehash}  # for next time, private attribute
             return d
 
     def duration_in_frames_of_videofile(self):
