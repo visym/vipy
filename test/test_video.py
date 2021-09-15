@@ -72,6 +72,10 @@ def test_stream():
     assert np.allclose(vb.array(), vc.array(), atol=15)
     print('[test_video.video]: stream clip (loaded) PASSED')                   
     
+
+    # Buffered stream
+    
+
     
     
 def _test_video():

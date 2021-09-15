@@ -57,7 +57,7 @@ class Stream(object):
 
     * This is designed to be accessed as `vipy.video.Video.stream`.
     """
-    def __init__(self, v, queuesize, write, overwrite, bitrate=None, buffered=False, bufsize=256, rebuffered=False):
+    def __init__(self, v, queuesize, write, overwrite, bitrate=None, buffered=False, buflen=16, rebuffered=False):
         self._video = v   # do not clone
         self._write_pipe = None
         self._vcodec = 'libx264'
@@ -71,9 +71,10 @@ class Stream(object):
         self._shape = self._video.shape() if (not self._write) or (self._write and self._video.canload()) else None  # shape for write can be defined by first frame
         assert (write is True or overwrite is True) or self._shape is not None, "Invalid video '%s'" % (str(v))
         self._queuesize = queuesize
-        self._bufsize = bufsize
+        self._bufsize = int(buflen*v.framerate())
         self._buffered = buffered
-        self._rebuffered = rebuffered        
+        self._rebuffered = rebuffered
+        self._bufowner = False                            
         assert self._bufsize >= 1
         
     def __enter__(self):
@@ -137,13 +138,13 @@ class Stream(object):
             if self._video.isloaded():
                 # For loaded video, just use the existing iterator for in-memory video
                 for k in range(len(self._video)): 
-                    #self._video._currentframe = k   # current frame owned by first iterator
                     yield self._video[k]
 
             elif not self._buffered or self._rebuffered or (self._buffered and not self._video.hasattribute('__stream_buffer')):
-                # First stream iterator: read from video and store in framebuffer for all other iterators to access
+                # First stream iterator: read from video and store in stream buffer for all other iterators to access
                 if self._rebuffered or (self._buffered and not self._video.hasattribute('__stream_buffer')):
                     self._video.attributes['__stream_buffer'] = []
+                    self._bufowner = True  # track which iterator created the stream buffer for cleanup in 'finally'
                 
                 p = self._read_pipe()
                 q = queue.Queue(self._queuesize)
@@ -169,40 +170,47 @@ class Stream(object):
                 t = threading.Thread(target=_f_threadloop, args=(p, q, h, w, e), daemon=True)
                 t.start()
                 
-                #self._video._currentframe = 0
                 k = 0
                 b = self._video.attributes['__stream_buffer'] if (self._buffered or self._rebuffered) else None
-                while True:                        
-                    img = q.get()
-                    if img is not None:
-                        if self._buffered or self._rebuffered:
-                            b.append( (k,img) ) 
-                        if b is not None and len(b) >= self._bufsize:
-                            b.pop(0)                           
-                        im = self._video.frame(k, img)
-                        yield im
-                        #self._video._currentframe += 1  # current frame owned by first iterator
+                while True:
+                    if b is not None:
+                        while len(b) < self._bufsize and ((len(b) == 0) or (len(b) > 0 and b[-1][1] is not None)):
+                            b.append( (k, q.get()) )  # re-fill stream buffer
+                            k += 1
+                        (f,img) = b[0]  # read oldest element 
+                    else:
+                        (f,img) = (k,q.get())  # read from thread queue, unbuffered
                         k += 1
+                        
+                    if img is not None:
+                        yield self._video.frame(f, img)
+                        
+                        if b is not None:
+                            b.pop(0)   # remove from filled buffer after other iterators have seen it
                     else:
                         e.set()
-                        break            
-
+                        break
+                    
             elif self._buffered and self._video.hasattribute('__stream_buffer'):
-                i = -1 
-                while self._video.hasattribute('__stream_buffer'):
-                    (j,img) = self._video.attributes['__stream_buffer'][-1]
-                    if i < j:
-                        yield self._video.frame(j, img)
-                        i = j
-                    else:
-                        time.sleep(0.01)  # yuck, can't use Queue.get() because objects in self._video must be pickleable
+                k = 0  
+                while '__stream_buffer' in self._video.attributes and len(self._video.attributes['__stream_buffer']) > 0:
+                    for (f, img) in self._video.attributes['__stream_buffer']:                        
+                        if f == k and img is not None:
+                            yield self._video.frame(f, img)
+                            k += 1
+                            break
+                        elif f ==k and img is None:
+                            return                        
+                    time.sleep(0.01)  # release GIL, yuck ... 
             else:
                 raise  # should never get here    
 
-        except StopIteration:
-            self._video.delattribute('__stream_buffer')  # reset me
+        except:
+            raise
+        
         finally:
-            self._video.delattribute('__stream_buffer')  # reset me            
+            if self._bufowner:
+                self._video.delattribute('__stream_buffer')  # cleanup
             
         
     def __getitem__(self, k):
@@ -263,8 +271,7 @@ class Stream(object):
                                                   .activities([a.clone().offset(-(k-(n-1))).truncate(0,n-1) for (ak,a) in self._video.activities().items() if a.during_interval(k-(n-1), k, inclusive=False)] if activities else [])
                                                   .tracks([t.clone(k-(n-1), k).offset(-(k-(n-1))).truncate(0,n-1) for (tk,t) in self._video.tracks().items() if t.during_interval(k-(n-1), k)] if tracks else [])
                                                   if (v is not None and isinstance(v, vipy.video.Scene)) else
-                                                  v.clear().clone(shallow=True).fromframes(fr))
-        
+                                                  v.clear().clone(shallow=True).fromframes(fr))        
         (frames, newframes) = ([], [])
         for (k,im) in enumerate(self):
             newframes.append(im)            
@@ -274,7 +281,6 @@ class Stream(object):
                 frames.extend(newframes)
                 (frames, newframes) = (frames[-n:], [])
                 yield f_copy_annotations(vc, frames, k, n)
-                
             elif continuous:
                 yield None
 
@@ -299,7 +305,6 @@ class Stream(object):
             frames.append( (k,im) )
             (kout, imout) = frames[0]
             frames.pop(0) if len(frames) > abs(n) else None
-            #self._video._currentframe = k
             i = k
             yield self._video.frame(kout, imout.array()) if len(frames) == delay  else None   # refetch for track interpolation
             
