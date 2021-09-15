@@ -2090,6 +2090,9 @@ class Video(object):
         .. note:: Cloning videos is an expensive operation and can slow down real time code. Use sparingly. 
 
         """
+        if sanitize:
+            a = self.attributes  # copy reference to attributes to restore 
+            self.attributes = {}  # remove attributes on self for fast clone() since private attributes will be filtered anyway
         if flush or (flushforward and flushbackward):
             self._array = None  # flushes buffer on object and clone
             #self._previewhash = None
@@ -2133,6 +2136,8 @@ class Video(object):
         if flushfile:
             v.nofilename().nourl()
         if sanitize:
+            self.attributes = a  # restore attributes            
+            v.attributes = {k:v for (k,v) in self.attributes.items()}  # shallow copy
             v.sanitize()  # remove private attributes
         return v
 
