@@ -227,7 +227,7 @@ class Stream(object):
                 self._video.add(obj, frame=self._writeindex, rangecheck=False)
         self._writeindex += 1  # assumes that the source image is at the appropriate frame rate for this video
 
-    def clip(self, n, m=1, continuous=False, tracks=True, activities=True, delay=0):
+    def clip(self, n, m=1, continuous=False, tracks=True, activities=True, delay=0, ragged=False):
         """Stream clips of length n such that the yielded video clip contains frame(0+delay) to frame(n+delay), and next contains frame(m+delay) to frame(n+m+delay). 
             
         Usage examples:
@@ -258,30 +258,35 @@ class Stream(object):
         assert isinstance(m, int) and m>0, "Clip stride must be a positive integer"
         assert isinstance(delay, int) and delay >= 0 and delay < n, "Clip delay must be a positive integer less than n"
         vc = self._video.clone(flushfilter=True).clear().nourl().nofilename()    
+
+        f_copy_annotations = lambda v, fr, k, n: (v.clear().clone(shallow=True).fromframes(fr)
+                                                  .activities([a.clone().offset(-(k-(n-1))).truncate(0,n-1) for (ak,a) in self._video.activities().items() if a.during_interval(k-(n-1), k, inclusive=False)] if activities else [])
+                                                  .tracks([t.clone(k-(n-1), k).offset(-(k-(n-1))).truncate(0,n-1) for (tk,t) in self._video.tracks().items() if t.during_interval(k-(n-1), k)] if tracks else [])
+                                                  if (v is not None and isinstance(v, vipy.video.Scene)) else
+                                                  v.clear().clone(shallow=True).fromframes(fr))
         
-        frames = []
+        (frames, newframes) = ([], [])
         for (k,im) in enumerate(self):
-            frames.append(im)
-            
-            if len(frames) > n:
-                frames.pop(0)
-            if ((k + 1 - delay) % m) == 0 and len(frames) >= n:                    
+            newframes.append(im)            
+            if len(newframes) >= m and len(frames)+len(newframes) >= n:                                
                 # Use frameindex+1 so that we include (0,1), (1,2), (2,3), ... for n=2, m=1
                 # The delay shifts the clip +delay frames (1,2,3), (3,4,5), ... for n=3, m=2, delay=1                
-                vc = vc.clear().clone(shallow=True).fromframes(frames[-n:])   # requires copy, expensive operation                            
-                yield ((vc.activities([a.clone().offset(-(k-(n-1))).truncate(0,n-1) for (ak,a) in self._video.activities().items() if a.during_interval(k-(n-1), k, inclusive=False)] if activities else []) 
-                        .tracks([t.clone(k-(n-1), k).offset(-(k-(n-1))).truncate(0,n-1) for (tk,t) in self._video.tracks().items() if t.during_interval(k-(n-1), k)] if tracks else []))
-                       if (vc is not None and isinstance(vc, vipy.video.Scene)) else vc)
+                frames.extend(newframes)
+                (frames, newframes) = (frames[-n:], [])
+                yield f_copy_annotations(vc, frames, k, n)
+                
             elif continuous:
                 yield None
 
+        if ragged and len(newframes) > 0:
+            yield f_copy_annotations(vc, newframes, k, len(newframes))
                 
-    def batch(self, n, continuous=False):
+                
+    def batch(self, n):
         """Stream batches of length n such that each batch contains frames [0,n], [n+1, 2n], ...  Last batch will be ragged.
             
-        .. warning:: Unlike clip(), this method currently does not support activities and tracks.  The batch will contain pixels only. 
         """
-        return self.clip(n=n, m=n, continuous=continuous)
+        return self.clip(n=n, m=n, continuous=False, ragged=True) 
 
 
     def frame(self, delay=0):
