@@ -2275,7 +2275,7 @@ def mutator_show_trackid(n_digits_in_trackid=5):
                                             if o.hasattribute('trackid') else o))
 
 def mutator_show_jointlabel():
-    return lambda im, k=None: im.objectmap(lambda o: o.shortlabel(o.getattribute('jointlabel')) if o.hasattribute('jointlabel') else o)   # from frame interpolation 
+    return lambda im, k=None: im.objectmap(lambda o: o.shortlabel(o.getattribute('__jointlabel')) if o.hasattribute('__jointlabel') else o)   # from frame interpolation 
 
 def mutator_show_trackindex():
     """Mutate the image to show track index appended to the shortlabel as (####)"""
@@ -2299,7 +2299,7 @@ def mutator_show_noun_only(nocaption=False):
     
     ..note:: To color boxes by track rather than noun, use `vipy.image.mutator_show_trackonly`
     """
-    return lambda im, k=None: (im.objectmap(lambda o: o.shortlabel('\n'.join([('__'+n if nocaption else n) for (n,v) in o.attributes['noun verb']])) if o.hasattribute('noun verb') else o))
+    return lambda im, k=None: (im.objectmap(lambda o: o.shortlabel('\n'.join([('__'+n if nocaption else n) for (n,v) in o.attributes['__noun verb']])) if o.hasattribute('__noun verb') else o))
 
 def mutator_show_nounonly(nocaption=False):
     """Alias for `vipy.image.mutator_show_noun_only`"""
@@ -2307,28 +2307,28 @@ def mutator_show_nounonly(nocaption=False):
 
 def mutator_show_verb_only():
     """Mutate the image to show the verb only"""
-    return lambda im, k=None: (im.objectmap(lambda o: o.shortlabel('\n'.join([v for (n,v) in o.attributes['noun verb']])) if o.hasattribute('noun verb') else o))
+    return lambda im, k=None: (im.objectmap(lambda o: o.shortlabel('\n'.join([v for (n,v) in o.attributes['__noun verb']])) if o.hasattribute('__noun verb') else o))
 
 def mutator_show_noun_or_verb():
     """Mutate the image to show the verb only if it is non-zero else noun"""
-    return lambda im: (im.objectmap(lambda o: o.shortlabel('\n'.join([v if len(v)>0 else n for (n,v) in o.attributes['noun verb']])) if o.hasattribute('noun verb') else o))
+    return lambda im: (im.objectmap(lambda o: o.shortlabel('\n'.join([v if len(v)>0 else n for (n,v) in o.attributes['__noun verb']])) if o.hasattribute('__noun verb') else o))
 
 def mutator_capitalize():
     """Mutate the image to show the shortlabel as 'Noun Verb1\nNoun Verb2'"""
-    return lambda im, k=None: (im.objectmap(lambda o: o.shortlabel('\n'.join(['%s %s' % (n.capitalize(), v.capitalize()) for (n,v) in o.attributes['noun verb']])) if o.hasattribute('noun verb') else o))
+    return lambda im, k=None: (im.objectmap(lambda o: o.shortlabel('\n'.join(['%s %s' % (n.capitalize(), v.capitalize()) for (n,v) in o.attributes['__noun verb']])) if o.hasattribute('__noun verb') else o))
     
 def mutator_show_activityonly():
-    return lambda im, k=None: im.objectmap(lambda o: o.shortlabel('') if (len(o.attributes['noun verb']) == 1 and len(o.attributes['noun verb'][0][1]) == 0) else o)
+    return lambda im, k=None: im.objectmap(lambda o: o.shortlabel('') if (len(o.attributes['__noun verb']) == 1 and len(o.attributes['__noun verb'][0][1]) == 0) else o)
 
 def mutator_show_trackindex_activityonly():
     """Mutate the image to show boxes colored by track index, and only show 'noun verb' captions"""
     f = mutator_show_trackindex()
-    return lambda im, k=None, f=f: f(im).objectmap(lambda o: o.shortlabel('__%s' % o.shortlabel()) if (len(o.attributes['noun verb']) == 1 and len(o.attributes['noun verb'][0][1]) == 0) else o)
+    return lambda im, k=None, f=f: f(im).objectmap(lambda o: o.shortlabel('__%s' % o.shortlabel()) if (len(o.attributes['__noun verb']) == 1 and len(o.attributes['__noun verb'][0][1]) == 0) else o)
 
 def mutator_show_trackindex_verbonly(confidence=True, significant_digits=2):
     """Mutate the image to show boxes colored by track index, and only show 'verb' captions with activity confidence"""
     f = mutator_show_trackindex()
-    return lambda im, k=None, f=f: f(im).objectmap(lambda o: o.shortlabel('__%s' % o.shortlabel()) if (len(o.attributes['noun verb']) == 1 and len(o.attributes['noun verb'][0][1]) == 0) else o.shortlabel('\n'.join(['%s %s' % (v, ('(%1.2f)'%float(c)) if (confidence is True and c is not None) else '') for ((n,v),c) in zip(o.attributes['noun verb'], o.attributes['activityconf'])])))
+    return lambda im, k=None, f=f: f(im).objectmap(lambda o: o.shortlabel('__%s' % o.shortlabel()) if (len(o.attributes['__noun verb']) == 1 and len(o.attributes['__noun verb'][0][1]) == 0) else o.shortlabel('\n'.join(['%s %s' % (v, ('(%1.2f)'%float(c)) if (confidence is True and c is not None) else '') for ((n,v),c) in zip(o.attributes['__noun verb'], o.attributes['__activityconf'])])))
 
 
 def RandomImage(rows=None, cols=None):
