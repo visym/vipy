@@ -35,6 +35,7 @@ from pathlib import PurePath
 import queue 
 import threading
 from concurrent.futures import ThreadPoolExecutor
+import collections
 
 
 try:
@@ -56,7 +57,7 @@ class Stream(object):
 
     * This is designed to be accessed as `vipy.video.Video.stream`.
     """
-    def __init__(self, v, queuesize, write, overwrite, framebuffer=128, bitrate=None):
+    def __init__(self, v, queuesize, write, overwrite, bitrate=None, buffered=False, bufsize=256, rebuffered=False):
         self._video = v   # do not clone
         self._write_pipe = None
         self._vcodec = 'libx264'
@@ -70,9 +71,10 @@ class Stream(object):
         self._shape = self._video.shape() if (not self._write) or (self._write and self._video.canload()) else None  # shape for write can be defined by first frame
         assert (write is True or overwrite is True) or self._shape is not None, "Invalid video '%s'" % (str(v))
         self._queuesize = queuesize
-        self._framebuffer = framebuffer
-        assert framebuffer >= 1
-        
+        self._bufsize = bufsize
+        self._buffered = buffered
+        self._rebuffered = rebuffered        
+        assert self._bufsize >= 1
         
     def __enter__(self):
         """Write pipe context manager"""
@@ -96,7 +98,7 @@ class Stream(object):
                   .global_args('-cpuflags', '0', '-loglevel', 'quiet' if not vipy.globals.isdebug() else 'debug'))
             self._write_pipe = fo.run_async(pipe_stdin=True)
                     
-        self._video._currentframe = 0
+        self._writeindex = 0
         return self
             
     def __exit__(self, type, value, tb):
@@ -132,19 +134,17 @@ class Stream(object):
     def __iter__(self):
         """Stream individual video frames"""
         try:
-            if self._video.isloaded() and not self._video.hasattribute('framebuffer'):
+            if self._video.isloaded():
                 # For loaded video, just use the existing iterator for in-memory video
-                self._video.attributes['framebuffer'] = self._video._array  # by reference
                 for k in range(len(self._video)): 
-                    self._video._currentframe = k   # current frame owned by first iterator
+                    #self._video._currentframe = k   # current frame owned by first iterator
                     yield self._video[k]
-                self._video.delattribute('framebuffer')
 
-            elif not self._video.isloaded() and not self._video.hasattribute('framebuffer'):
+            elif not self._buffered or self._rebuffered or (self._buffered and not self._video.hasattribute('__stream_buffer')):
                 # First stream iterator: read from video and store in framebuffer for all other iterators to access
-                if self._framebuffer > 0:
-                    self._video.attributes['framebuffer'] = [None for k in range(self._framebuffer)]
-                    
+                if self._rebuffered or (self._buffered and not self._video.hasattribute('__stream_buffer')):
+                    self._video.attributes['__stream_buffer'] = []
+                
                 p = self._read_pipe()
                 q = queue.Queue(self._queuesize)
                 (h, w) = self._shape
@@ -159,7 +159,6 @@ class Stream(object):
                             pipe.poll()
                             pipe.wait()
                             if pipe.returncode != 0:
-                                self._video.delattribute('framebuffer')   # reset
                                 raise ValueError('Stream iterator exited with returncode %d' % (pipe.returncode))
                             event.wait()
                             break
@@ -170,37 +169,40 @@ class Stream(object):
                 t = threading.Thread(target=_f_threadloop, args=(p, q, h, w, e), daemon=True)
                 t.start()
                 
-                self._video._currentframe = 0
+                #self._video._currentframe = 0
+                k = 0
+                b = self._video.attributes['__stream_buffer'] if (self._buffered or self._rebuffered) else None
                 while True:                        
                     img = q.get()
                     if img is not None:
-                        if self._framebuffer > 0:
-                            self._video.attributes['framebuffer'][self._video._currentframe % len(self._video.attributes['framebuffer'])] = img   # reference
-                        im = self._video.frame(self._video._currentframe, img)
-                        self._video._currentframe += 1  # current frame owned by first iterator 
+                        if self._buffered or self._rebuffered:
+                            b.append( (k,img) ) 
+                        if b is not None and len(b) >= self._bufsize:
+                            b.pop(0)                           
+                        im = self._video.frame(k, img)
                         yield im
+                        #self._video._currentframe += 1  # current frame owned by first iterator
+                        k += 1
                     else:
                         e.set()
-                        self._video.delattribute('framebuffer')  # reset me
                         break            
 
-            elif self._video.hasattribute('framebuffer'):
-                (k,F) = (0, self._video.attributes['framebuffer'])
-                while True:
-                    if k <= self._video._currentframe:
-                        yield self._video.frame(self._video._currentframe, F[k % len(F)])
-                        k += 1                    
-                    elif not self._video.hasattribute('framebuffer'):
-                        break
+            elif self._buffered and self._video.hasattribute('__stream_buffer'):
+                i = -1 
+                while self._video.hasattribute('__stream_buffer'):
+                    (j,img) = self._video.attributes['__stream_buffer'][-1]
+                    if i < j:
+                        yield self._video.frame(j, img)
+                        i = j
                     else:
-                        time.sleep(0.005)
+                        time.sleep(0.01)  # yuck, can't use Queue.get() because objects in self._video must be pickleable
             else:
                 raise  # should never get here    
 
         except StopIteration:
-            self._video.delattribute('framebuffer')  # reset me
+            self._video.delattribute('__stream_buffer')  # reset me
         finally:
-            self._video.delattribute('framebuffer')  # reset me            
+            self._video.delattribute('__stream_buffer')  # reset me            
             
         
     def __getitem__(self, k):
@@ -222,8 +224,8 @@ class Stream(object):
             self._write_pipe.stdin.flush()  # do we need this?
         if isinstance(im, vipy.image.Scene) and len(im.objects()) > 0 and isinstance(self._video, vipy.video.Scene):
             for obj in im.objects():
-                self._video.add(obj, frame=self._video._currentframe, rangecheck=False)
-        self._video._currentframe += 1  # assumes that the source image is at the appropriate frame rate for this video
+                self._video.add(obj, frame=self._writeindex, rangecheck=False)
+        self._writeindex += 1  # assumes that the source image is at the appropriate frame rate for this video
 
     def clip(self, n, m=1, continuous=False, tracks=True, activities=True, delay=0):
         """Stream clips of length n such that the yielded video clip contains frame(0+delay) to frame(n+delay), and next contains frame(m+delay) to frame(n+m+delay). 
@@ -279,35 +281,23 @@ class Stream(object):
             
         .. warning:: Unlike clip(), this method currently does not support activities and tracks.  The batch will contain pixels only. 
         """
-        assert isinstance(n, int) and n>0, "batch length must be a positive integer"
+        return self.clip(n=n, m=n, continuous=continuous)
 
-        vc = self._video.clone(flushfilter=True).clear().nourl().nofilename()  
-        frames = []
-        for (k,im) in enumerate(self):
-            frames.append(im)
-            if len(frames) == n:
-                vc = vc.clear().clone(shallow=True).fromframes(frames)  # requires copy, expensive operation                                                                                                                                                        
-                frames = []  
-                yield vc  # FIXME: should clone shift and truncate activities/tracks
-            elif continuous:
-                yield None                
-        if len(frames) > 0:
-            vc = vc.clear().clone(shallow=True).fromframes(frames)
-            yield vc
 
-            
-    def frame(self, n=0):
+    def frame(self, delay=0):
         """Stream individual frames of video with negative offset n to the stream head. If n=-30, this will return a frame 30 frames ago"""
-        assert isinstance(n, int) and n<=0, "Frame offset must be non-positive integer"
+        assert isinstance(delay, int) and delay >= 0, "Frame delay must be non-positive integer"        
+        n = -delay
         frames = []
-        self._video._currentframe = 0
+        i = 0
         for (k,im) in enumerate(self):
-            frames.append( (k,im) )                    
+            frames.append( (k,im) )
             (kout, imout) = frames[0]
-            frames.pop(0) if len(frames) == abs(n) else None
-            self._video._currentframe = k
-            yield self._video.frame(kout, imout.array()) if n < 0 else imout   # refetch for track interpolation
-                                          
+            frames.pop(0) if len(frames) > abs(n) else None
+            #self._video._currentframe = k
+            i = k
+            yield self._video.frame(kout, imout.array()) if len(frames) == delay  else None   # refetch for track interpolation
+            
 
 
 class Video(object):
@@ -347,6 +337,8 @@ class Video(object):
     >>> vipy.video.Scene(url='rtsp://127.0.0.1:8554/live.sdp').show()
     >>> for im in vipy.video.Scene(url='rtsp://127.0.0.1:8554/live.sdp').stream():
     >>>     print(im)
+
+    See also 'pip install heyvi' 
 
     Args:
         filename: [str] The path to a video file.  
@@ -521,7 +513,8 @@ class Video(object):
         >>> assert self.setattribute('__mykey', 1).sanitize().hasattribute('__mykey') == False
 
         """
-        self.attributes = {k:v for (k,v) in self.attributes.items() if not k.startswith('__')} if isinstance(self.attributes, dict) else self.attributes
+        if self._has_private_attribute():
+            self.attributes = {k:v for (k,v) in self.attributes.items() if not k.startswith('__')}
         return self
         
         
@@ -633,7 +626,7 @@ class Video(object):
         return vo
     
 
-    def stream(self, write=False, overwrite=False, queuesize=1024, bitrate=None):
+    def stream(self, write=False, overwrite=False, queuesize=1024, bitrate=None, buffered=False, rebuffered=False):
         """Iterator to yield groups of frames streaming from video.
 
         A video stream is a real time iterator to read or write from a video.  Streams are useful to group together frames into clips that are operated on as a group.
@@ -665,18 +658,19 @@ class Video(object):
         >>>     for im in vi.stream():
         >>>         s.write(im)  # manipulate pixels of im, if desired
 
-        Create a YouTube live stream from an RTSP camera at 5Hz 
+        Create a 480p YouTube live stream from an RTSP camera at 5Hz 
         
         >>> vo = vipy.video.Scene(url='rtmp://a.rtmp.youtube.com/live2/$SECRET_STREAM_KEY')
         >>> vi = vipy.video.Scene(url='rtsp://URL').framerate(5)
-        >>> with vo.framerate(5).stream(write=True) as s:
-        >>>     for im in vi.framerate(5).stream():
-        >>>         s.write(im.mindim(256))
+        >>> with vo.framerate(5).stream(write=True, bitrate='1000k') as s:
+        >>>     for im in vi.framerate(5).resize(cols=854, rows=480):
+        >>>         s.write(im)
 
         Args:
             write: [bool]  If true, create a write stream
             overwrite: [bool]  If true, and the video output filename already exists, overwrite it
             bufsize: [int]  The maximum queue size for the pipe thread.  
+            bitrate: [str] The ffmpeg bitrate of the output encoder for writing, written like '2000k'
 
         Returns:
             A Stream object
@@ -684,7 +678,7 @@ class Video(object):
         ..note:: Using this iterator may affect PDB debugging due to stdout/stdin redirection.  Use ipdb instead.
 
         """
-        return Stream(self, queuesize=queuesize, write=write, overwrite=overwrite, bitrate=bitrate)  # do not clone
+        return Stream(self, queuesize=queuesize, write=write, overwrite=overwrite, bitrate=bitrate, buffered=buffered, rebuffered=rebuffered)  # do not clone
 
 
     def clear(self):
@@ -1597,8 +1591,13 @@ class Video(object):
         self._ffmpeg = self._ffmpeg.filter('scale', 'iw*%1.6f' % float(np.ceil(s*1e6)/1e6), 'ih*%1.6f' % float(np.ceil(s*1e6)/1e6))  # ceil last significant digit to avoid off by one
         return self
 
-    def resize(self, rows=None, cols=None):
+    def resize(self, rows=None, cols=None, width=None, height=None):
         """Resize the video to be (rows=height, cols=width)"""
+        assert not (rows is not None and height is not None)
+        assert not (cols is not None and width is not None)
+        rows = rows if rows is not None else height
+        cols = cols if cols is not None else width
+                
         newshape = (rows if rows is not None else int(np.round(self.height()*(cols/self.width()))),
                     cols if cols is not None else int(np.round(self.width()*(rows/self.height()))))
                             
@@ -2058,7 +2057,7 @@ class Video(object):
         else:
             return t
 
-    def clone(self, flushforward=False, flushbackward=False, flush=False, flushfilter=False, rekey=False, flushfile=False, shallow=False, sharedarray=False):
+    def clone(self, flushforward=False, flushbackward=False, flush=False, flushfilter=False, rekey=False, flushfile=False, shallow=False, sharedarray=False, sanitize=True):
         """Create deep copy of video object, flushing the original buffer if requested and returning the cloned object.
 
         Flushing is useful for distributed memory management to free the buffer from this object, and pass along a cloned 
@@ -2073,6 +2072,7 @@ class Video(object):
             rekey: Generate new unique track ID and activity ID keys for this scene
             shallow:  shallow copy everything (copy by reference), except for ffmpeg object.  attributes dictionary is shallow copied
             sharedarray:  deep copy of everything, except for pixel buffer which is shared.  Changing the pixel buffer on self is reflected in the clone.
+            sanitize:  remove private attributes from self.attributes dictionary.  A private attribute is any key with two leading underscores '__' which should not be propagated to clone
 
         Returns:
             A deepcopy of the video object such that changes to self are not reflected in the copy
@@ -2122,6 +2122,8 @@ class Video(object):
             v.rekey()
         if flushfile:
             v.nofilename().nourl()
+        if sanitize:
+            v.sanitize()  # remove private attributes
         return v
 
     def flush(self):
@@ -2192,7 +2194,12 @@ class Video(object):
         self.attributes[k] = v
         return self
 
+    def _has_private_attribute(self):
+        """Does the attributes dictionary contain any private attributes (e.g. those keys prepended with '__')"""
+        return isinstance(self.attributes, dict) and any([k.startswith('__') for k in self.attributes.keys()])      
+    
     def hasattribute(self, k):
+        """Does the attributes dictionary (self.attributes) contain the provided key"""
         return isinstance(self.attributes, dict) and k in self.attributes
 
     def delattribute(self, k):
@@ -2313,7 +2320,7 @@ class Scene(VideoCategory):
             assert all([isinstance(a, vipy.activity.Activity) for a in activities]), "Invalid activity input; activities=[vipy.activity.Activity(), ...]"
             self._activities = {a.id():a for a in activities}
 
-        self._currentframe = None  # used during iteration only
+        self._currentframe = None  # deprecated
 
     @classmethod
     def cast(cls, v, flush=False):
@@ -2455,9 +2462,9 @@ class Scene(VideoCategory):
                     d.attributes['activityid'].append(a.id())  # for activity correspondence (if desired)
 
             # For display purposes
-            d.attributes['jointlabel'] = '\n'.join([('%s %s' % (n,v)).strip() for (n,v) in jointlabel[0 if len(jointlabel)==1 else 1:]])
-            d.attributes['noun verb'] = jointlabel[0 if len(jointlabel)==1 else 1:]
-            d.attributes['activityconf'] = activityconf[0 if len(jointlabel)==1 else 1:]
+            d.attributes['__jointlabel'] = '\n'.join([('%s %s' % (n,v)).strip() for (n,v) in jointlabel[0 if len(jointlabel)==1 else 1:]])
+            d.attributes['__noun verb'] = jointlabel[0 if len(jointlabel)==1 else 1:]
+            d.attributes['__activityconf'] = activityconf[0 if len(jointlabel)==1 else 1:]
         dets.sort(key=lambda d: (d.confidence() if d.confidence() is not None else 0, d.shortlabel()))   # layering in video is ordered by decreasing track confidence and alphabetical shortlabel
         return vipy.image.Scene(array=img, colorspace=self.colorspace(), objects=dets, category=self.category())  
                 
@@ -2473,9 +2480,9 @@ class Scene(VideoCategory):
         """Iterate over frames, yielding tuples (activity+object labelset in scene, vipy.image.Scene())"""
         self.load()
         for k in range(0, len(self)):
-            self._currentframe = k    # used only for incremental add()
+            #self._currentframe = k    # used only for incremental add()
             yield (self.labels(k), self.__getitem__(k))
-        self._currentframe = None
+        #self._currentframe = None
         
 
     def framecomposite(self, n=2, dt=10, mindim=256):
@@ -2829,8 +2836,8 @@ class Scene(VideoCategory):
 
         """        
         if isinstance(obj, vipy.object.Detection):
-            assert frame is not None or self._currentframe is not None, "add() for vipy.object.Detection() must be added during frame iteration (e.g. for im in video: )"
-            k = frame if frame is not None else self._currentframe
+            assert frame is not None, "add() for vipy.object.Detection() must be added during frame iteration (e.g. for im in video: )"
+            k = frame
             if obj.hasattribute('trackid') and obj.attributes['trackid'] in self.tracks():
                 # The attribute "trackid" is set for a detection when interpolating a track at a frame.  This is useful for reconstructing a track from previously enumerated detections
                 trackid = obj.attributes['trackid']
@@ -2856,8 +2863,8 @@ class Scene(VideoCategory):
             self.activities()[obj.id()] = obj  # by-reference, activity may have no tracks
             return obj.id() if not fluent else self
         elif (istuple(obj) or islist(obj)) and len(obj) == 4 and isnumber(obj[0]):
-            assert self._currentframe is not None, "add() for obj=xywh must be added during frame iteration (e.g. for im in video: )"
-            t = vipy.object.Track(category=category, keyframes=[self._currentframe], boxes=[vipy.geometry.BoundingBox(xywh=obj)], boundary='strict', attributes=attributes, framerate=self.framerate())
+            assert frame is not None, "add() for obj=xywh must be added at a specific frame"
+            t = vipy.object.Track(category=category, keyframes=[frame], boxes=[vipy.geometry.BoundingBox(xywh=obj)], boundary='strict', attributes=attributes, framerate=self.framerate())
             if rangecheck and not t.boundingbox().isinside(vipy.geometry.imagebox(self.shape())):
                 t = t.imclip(self.width(), self.height())  # try to clip it, will throw exception if all are bad 
                 warnings.warn('Clipping track "%s" to image rectangle' % (str(t)))
@@ -2870,14 +2877,12 @@ class Scene(VideoCategory):
         """Delete a given track or activity by id, if present"""
         return self.trackfilter(lambda t: t.id() != id).activityfilter(lambda a: a.id() != id)
             
-    def addframe(self, im, frame=None):
+    def addframe(self, im, frame):
         """Add im=vipy.image.Scene() into vipy.video.Scene() at given frame. The input image must have been generated using im=self[k] for this to be meaningful, so that trackid can be associated"""
         assert isinstance(im, vipy.image.Scene), "Invalid input - Must be vipy.image.Scene()"
-        assert frame is not None or self._currentframe is not None, "Must provide a frame number"
         assert im.shape() == self.shape(), "Frame input (shape=%s) must be same shape as video (shape=%s)" % (str(im.shape()), str(self.shape()))
         
         # Copy framewise vipy.image.Scene() into vipy.video.Scene(). 
-        frame = frame if frame is not None else self._currentframe  # if iterator        
         self.numpy()[frame] = im.array()  # will trigger copy        
         for bb in im.objects():
             self.trackmap(lambda t: t.update(frame, bb) if bb.attributes['trackid'] == t.id() else t) 
@@ -3146,11 +3151,11 @@ class Scene(VideoCategory):
         frames = [im.padcrop(im.boundingbox().maxsquare().dilate(dilate).int()).resize(maxdim, maxdim) for im in vid if im.boundingbox() is not None]  # track interpolation, for frames with boxes only
         if len(frames) != len(vid):
             warnings.warn('[vipy.video.activitytube]: Removed %d frames with no spatial bounding boxes' % (len(vid) - len(frames)))
-            vid.attributes['activtytube'] = {'truncated':len(vid) - len(frames)}  # provenance to reject
+            vid.attributes['__activtytube'] = {'truncated':len(vid) - len(frames)}  # provenance to reject
         if len(frames) == 0:
             warnings.warn('[vipy.video.activitytube]: Resulting video is empty!  Setting activitytube to zero')
             frames = [ vid[0].resize(maxdim, maxdim).zeros() ]  # empty frame
-            vid.attributes['activitytube'] = {'empty':True}   # provenance to reject 
+            vid.attributes['__activitytube'] = {'empty':True}   # provenance to reject 
         vid._tracks = {ti:vipy.object.Track(keyframes=[f for (f,im) in enumerate(frames) for d in im.objects() if d.attributes['trackid'] == ti],
                                             boxes=[d for (f,im) in enumerate(frames) for d in im.objects() if d.attributes['trackid'] == ti],
                                             category=t.category(), trackid=ti, framerate=self.framerate())
@@ -3173,7 +3178,7 @@ class Scene(VideoCategory):
             if not strict:
                 warnings.warn('[vipy.video.actortube]: Empty track for trackid="%s" - Setting actortube to zero' % trackid)
                 frames = [ vid[0].resize(maxdim, maxdim).zeros() ]  # empty frame
-                vid.attributes['actortube'] = {'empty':True}   # provenance to reject             
+                vid.attributes['__actortube'] = {'empty':True}   # provenance to reject             
             else:
                 raise ValueError('[vipy.video.actortube]: Empty track for track=%s, trackid=%s' % (str(t), trackid))
         vid._tracks = {ti:vipy.object.Track(keyframes=[f for (f,im) in enumerate(frames) for d in im.objects() if d.attributes['trackid'] == ti],  # keyframes zero indexed, relative to [frames]
@@ -3278,8 +3283,13 @@ class Scene(VideoCategory):
         super().rot90cw()
         return self
 
-    def resize(self, rows=None, cols=None):
+    def resize(self, rows=None, cols=None, width=None, height=None):
         """Resize the video to (rows, cols), preserving the aspect ratio if only rows or cols is provided"""
+        assert not (rows is not None and height is not None)  # cannot be both
+        assert not (cols is not None and width is not None)   # cannot be both
+        rows = rows if rows is not None else height
+        cols = cols if cols is not None else width        
+        
         assert rows is not None or cols is not None, "Invalid input"
         (H,W) = self.shape()  # yuck, need to get image dimensions before filter, manually set this prior to calling resize if known
         sy = rows / float(H) if rows is not None else cols / float(W)
