@@ -72,33 +72,36 @@ def is_downloadable_url(path):
 def youtube(tag, n_pages=1, channel=False, video_limit=None):
     """Return a list of YouTube URLs for the given tag and optional channel"""
     if channel:
-        url = 'http://www.youtube.com/user/%s/videos'
-        # url = 'http://www.youtube.com/user/%s/videos?sort=dd&view=0&flow=list&live_view=500'
+        url_template = 'http://www.youtube.com/user/%s/videos'
+        # url_template = 'http://www.youtube.com/user/%s/videos?sort=dd&view=0&flow=list&live_view=500'
     else:
-        url = 'http://www.youtube.com/results?search_query=%s&page=%d'
+        url_template = 'http://www.youtube.com/results?search_query=%s&page=%d'
     vidlist = []
     for k in range(0, n_pages):
         user_agent = random.choice(common_user_agents)
         headers = {'User-Agent':user_agent}
         if channel:
-            search_request = urllib.request.Request(url % (tag.replace(' ','+')), None, headers)
+            url = url_template % (tag.replace(' ','+'))
+            search_request = urllib.request.Request(url, None, headers)
         else:
-            search_request = urllib.request.Request(url % (tag.replace(' ','+'), k + 1), None, headers)
+            url = url_template % (tag.replace(' ','+'), k + 1)
+            search_request = urllib.request.Request(url, None, headers)
         try:
             gcontext = ssl.SSLContext(ssl.PROTOCOL_TLSv1)  # to avoid [SSL: CERTIFICATE_VERIFY_FAILED] exception
             search_results = urllib.request.urlopen(search_request, context=gcontext)
         except AttributeError:
             search_results = urllib.request.urlopen(search_request)
         except:
-            print('[vipy.videosearch.youtube]: URL 404: %s' % (url % (tag.replace(' ','+'))))
-            url = 'http://www.youtube.com/channel/%s/videos'
-            search_request = urllib.request.Request(url % (tag.replace(' ','+')), None, headers)
+            print('[vipy.videosearch.youtube]: URL 404: %s' % (url))
+            url_template = 'http://www.youtube.com/channel/%s/videos'
+            url = url_template% (tag.replace(' ','+'))
+            search_request = urllib.request.Request(url, None, headers)
             try:
                 search_results = urllib.request.urlopen(search_request, context=gcontext)
             except AttributeError:
                 search_results = urllib.request.urlopen(search_request)
             except:
-                print('[vipy.videosearch.youtube]: URL 404: %s' % (url % (tag.replace(' ','+'))))
+                print('[vipy.videosearch.youtube]: URL 404: %s' % (url))
                 return ([None], [None])
         search_data = str(search_results.read())
 

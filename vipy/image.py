@@ -1771,8 +1771,9 @@ class Scene(ImageCategory):
         
     def union(self, other, miniou=None):
         """Combine the objects of the scene with other and self with no duplicate checking unless miniou is not None"""
-        assert isinstance(other, Scene), "Invalid input"
-        return self.objects(self.objects()+other.objects())
+        if isinstance(other, Scene):
+            self.objects(self.objects()+other.objects())
+        return self
 
     def uncrop(self, bb, shape):
         """Uncrop a previous crop(bb) called with the supplied bb=BoundingBox(), and zeropad to shape=(H,W)"""
@@ -1805,9 +1806,14 @@ class Scene(ImageCategory):
         self._objectlist = [bb.rescale(scale) for bb in self._objectlist]
         return self
 
-    def resize(self, cols=None, rows=None, interp='bilinear'):
+    def resize(self, cols=None, rows=None, height=None, width=None, interp='bilinear'):
         """Resize image buffer to (height=rows, width=cols) and transform all bounding boxes accordingly.  If cols or rows is None, then scale isotropically"""
+        assert not (cols is not None and width is not None), "Define either width or cols"
+        assert not (rows is not None and height is not None), "Define either height or rows"
+        rows = rows if height is None else height
+        cols = cols if width is None else width        
         assert cols is not None or rows is not None, "Invalid input"
+        
         sx = (float(cols) / self.width()) if cols is not None else None
         sy = (float(rows) / self.height()) if rows is not None else None
         sx = sy if sx is None else sx
@@ -1947,7 +1953,8 @@ class Scene(ImageCategory):
         mask = self.rectangular_mask() if self.channels() == 1 else np.expand_dims(self.rectangular_mask(), axis=2)
         img = self.numpy()
         img[:] = np.multiply(img, 1.0-mask)  # in-place update
-        return self  
+        return self
+    
     def setzero(self):
         return self.fgmask()
     
@@ -2026,24 +2033,24 @@ class Scene(ImageCategory):
         return vipy.image.Image.perceptualhash_distance(self.bghash(bits=bits), im.bghash(bits=bits)) < threshold 
     
         
-    def show(self, categories=None, figure=1, nocaption=False, nocaption_withstring=[], fontsize=10, boxalpha=0.25, d_category2color={'Person':'green', 'Vehicle':'blue', 'Object':'red'}, captionoffset=(0,0), nowindow=False, textfacecolor='white', textfacealpha=1.0, shortlabel=True, timestamp=None, timestampcolor='black', timestampfacecolor='white', mutator=None):
+    def show(self, categories=None, figure=1, nocaption=False, nocaption_withstring=[], fontsize=10, boxalpha=0.25, d_category2color={'Person':'green', 'Vehicle':'blue', 'Object':'red'}, captionoffset=(0,0), nowindow=False, textfacecolor='white', textfacealpha=1.0, shortlabel=True, timestamp=None, timestampcolor='black', timestampfacecolor='white', mutator=None, timestampoffset=(0,0)):
         """Show scene detection 
 
         Args:
-            categories: [list]  List of category (or shortlabel) names in the scene to show
-            fontsize: [int] or [str]: Size of the font, fontsize=int for points, fontsize='NN:scaled' to scale the font relative to the image size
-            figure: [int] Figure number, show the image in the provided figure=int numbered window
-            nocaption: [bool]  Show or do not show the text caption in the upper left of the box 
-            nocaption_withstring: [list]:  Do not show captions for those detection categories (or shortlabels) containing any of the strings in the provided list
-           * boxalpha (float, [0,1]):  Set the text box background to be semi-transparent with an alpha
-           * d_category2color (dict):  Define a dictionary of required mapping of specific category() to box colors.  Non-specified categories are assigned a random named color from vipy.show.colorlist()
-           * caption_offset (int, int): The relative position of the caption to the upper right corner of the box.
-           * nowindow (bool):  Display or not display the image
-           * textfacecolor (str): One of the named colors from vipy.show.colorlist() for the color of the textbox background
-           * textfacealpha (float, [0,1]):  The textbox background transparency
-           * shortlabel (bool):  Whether to show the shortlabel or the full category name in the caption
-           * mutator (lambda):  A lambda function with signature lambda im: f(im) which will modify this image prior to show.  Useful for changing labels on the fly
-
+           - categories: [list]  List of category (or shortlabel) names in the scene to show
+           - fontsize: [int] or [str]: Size of the font, fontsize=int for points, fontsize='NN:scaled' to scale the font relative to the image size
+           - figure: [int] Figure number, show the image in the provided figure=int numbered window
+           - nocaption: [bool]  Show or do not show the text caption in the upper left of the box 
+           - nocaption_withstring: [list]:  Do not show captions for those detection categories (or shortlabels) containing any of the strings in the provided list
+           - boxalpha (float, [0,1]):  Set the text box background to be semi-transparent with an alpha
+           - d_category2color (dict):  Define a dictionary of required mapping of specific category() to box colors.  Non-specified categories are assigned a random named color from vipy.show.colorlist()
+           - caption_offset (int, int): The relative position of the caption to the upper right corner of the box.
+           - nowindow (bool):  Display or not display the image
+           - textfacecolor (str): One of the named colors from vipy.show.colorlist() for the color of the textbox background
+           - textfacealpha (float, [0,1]):  The textbox background transparency
+           - shortlabel (bool):  Whether to show the shortlabel or the full category name in the caption
+           - mutator (lambda):  A lambda function with signature lambda im: f(im) which will modify this image prior to show.  Useful for changing labels on the fly
+           - timestampoffset (tuple): (x,y) coordinate offsets to shift the upper left corner timestamp
         """
         colors = vipy.show.colorlist()
         im = self.clone() if not mutator else mutator(self.clone())
@@ -2058,10 +2065,10 @@ class Scene(ImageCategory):
         fontsize_scaled = float(fontsize.split(':')[0])*(min(imdisplay.shape())/640.0) if isstring(fontsize) else fontsize
         imdisplay = mutator(imdisplay) if mutator is not None else imdisplay        
         vipy.show.imdetection(imdisplay._array, valid_detections, bboxcolor=detection_color, textcolor=detection_color, fignum=figure, do_caption=(nocaption==False), facealpha=boxalpha, fontsize=fontsize_scaled,
-                              captionoffset=captionoffset, nowindow=nowindow, textfacecolor=textfacecolor, textfacealpha=textfacealpha, timestamp=timestamp, timestampcolor=timestampcolor, timestampfacecolor=timestampfacecolor)
+                              captionoffset=captionoffset, nowindow=nowindow, textfacecolor=textfacecolor, textfacealpha=textfacealpha, timestamp=timestamp, timestampcolor=timestampcolor, timestampfacecolor=timestampfacecolor, timestampoffset=timestampoffset)
         return self
 
-    def annotate(self, outfile=None, categories=None, figure=1, nocaption=False, fontsize=10, boxalpha=0.25, d_category2color={'person':'green', 'vehicle':'blue', 'object':'red'}, captionoffset=(0,0), dpi=200, textfacecolor='white', textfacealpha=1.0, shortlabel=True, nocaption_withstring=[], timestamp=None, timestampcolor='black', timestampfacecolor='white', mutator=None):
+    def annotate(self, outfile=None, categories=None, figure=1, nocaption=False, fontsize=10, boxalpha=0.25, d_category2color={'person':'green', 'vehicle':'blue', 'object':'red'}, captionoffset=(0,0), dpi=200, textfacecolor='white', textfacealpha=1.0, shortlabel=True, nocaption_withstring=[], timestamp=None, timestampcolor='black', timestampfacecolor='white', mutator=None, timestampoffset=(0,0)):
         """Alias for savefig"""
         return self.savefig(outfile=outfile, 
                             categories=categories, 
@@ -2078,15 +2085,16 @@ class Scene(ImageCategory):
                             nocaption_withstring=nocaption_withstring, 
                             timestamp=timestamp, 
                             timestampcolor=timestampcolor, 
-                            timestampfacecolor=timestampfacecolor, 
+                            timestampfacecolor=timestampfacecolor,
+                            timestampoffset=timestampoffset,
                             mutator=mutator)
 
-    def savefig(self, outfile=None, categories=None, figure=1, nocaption=False, fontsize=10, boxalpha=0.25, d_category2color={'person':'green', 'vehicle':'blue', 'object':'red'}, captionoffset=(0,0), dpi=200, textfacecolor='white', textfacealpha=1.0, shortlabel=True, nocaption_withstring=[], timestamp=None, timestampcolor='black', timestampfacecolor='white', mutator=None):
+    def savefig(self, outfile=None, categories=None, figure=1, nocaption=False, fontsize=10, boxalpha=0.25, d_category2color={'person':'green', 'vehicle':'blue', 'object':'red'}, captionoffset=(0,0), dpi=200, textfacecolor='white', textfacealpha=1.0, shortlabel=True, nocaption_withstring=[], timestamp=None, timestampcolor='black', timestampfacecolor='white', mutator=None, timestampoffset=(0,0)):
         """Save show() output to given file or return buffer without popping up a window"""
         fignum = figure if figure is not None else 1        
         self.show(categories=categories, figure=fignum, nocaption=nocaption, fontsize=fontsize, boxalpha=boxalpha, 
                   d_category2color=d_category2color, captionoffset=captionoffset, nowindow=True, textfacecolor=textfacecolor, 
-                  textfacealpha=textfacealpha, shortlabel=shortlabel, nocaption_withstring=nocaption_withstring, timestamp=timestamp, timestampcolor=timestampcolor, timestampfacecolor=timestampfacecolor, mutator=mutator)
+                  textfacealpha=textfacealpha, shortlabel=shortlabel, nocaption_withstring=nocaption_withstring, timestamp=timestamp, timestampcolor=timestampcolor, timestampfacecolor=timestampfacecolor, mutator=mutator, timestampoffset=timestampoffset)
         
         if outfile is None:
             buf = io.BytesIO()
@@ -2273,7 +2281,7 @@ def mutator_show_trackid(n_digits_in_trackid=5):
                                             if o.hasattribute('trackid') else o))
 
 def mutator_show_jointlabel():
-    return lambda im, k=None: im.objectmap(lambda o: o.shortlabel(o.getattribute('jointlabel')) if o.hasattribute('jointlabel') else o)   # from frame interpolation 
+    return lambda im, k=None: im.objectmap(lambda o: o.shortlabel(o.getattribute('__jointlabel')) if o.hasattribute('__jointlabel') else o)   # from frame interpolation 
 
 def mutator_show_trackindex():
     """Mutate the image to show track index appended to the shortlabel as (####)"""
@@ -2297,7 +2305,7 @@ def mutator_show_noun_only(nocaption=False):
     
     ..note:: To color boxes by track rather than noun, use `vipy.image.mutator_show_trackonly`
     """
-    return lambda im, k=None: (im.objectmap(lambda o: o.shortlabel('\n'.join([('__'+n if nocaption else n) for (n,v) in o.attributes['noun verb']])) if o.hasattribute('noun verb') else o))
+    return lambda im, k=None: (im.objectmap(lambda o: o.shortlabel('\n'.join([('__'+n if nocaption else n) for (n,v) in o.attributes['__noun verb']])) if o.hasattribute('__noun verb') else o))
 
 def mutator_show_nounonly(nocaption=False):
     """Alias for `vipy.image.mutator_show_noun_only`"""
@@ -2305,28 +2313,28 @@ def mutator_show_nounonly(nocaption=False):
 
 def mutator_show_verb_only():
     """Mutate the image to show the verb only"""
-    return lambda im, k=None: (im.objectmap(lambda o: o.shortlabel('\n'.join([v for (n,v) in o.attributes['noun verb']])) if o.hasattribute('noun verb') else o))
+    return lambda im, k=None: (im.objectmap(lambda o: o.shortlabel('\n'.join([v for (n,v) in o.attributes['__noun verb']])) if o.hasattribute('__noun verb') else o))
 
 def mutator_show_noun_or_verb():
     """Mutate the image to show the verb only if it is non-zero else noun"""
-    return lambda im: (im.objectmap(lambda o: o.shortlabel('\n'.join([v if len(v)>0 else n for (n,v) in o.attributes['noun verb']])) if o.hasattribute('noun verb') else o))
+    return lambda im: (im.objectmap(lambda o: o.shortlabel('\n'.join([v if len(v)>0 else n for (n,v) in o.attributes['__noun verb']])) if o.hasattribute('__noun verb') else o))
 
 def mutator_capitalize():
     """Mutate the image to show the shortlabel as 'Noun Verb1\nNoun Verb2'"""
-    return lambda im, k=None: (im.objectmap(lambda o: o.shortlabel('\n'.join(['%s %s' % (n.capitalize(), v.capitalize()) for (n,v) in o.attributes['noun verb']])) if o.hasattribute('noun verb') else o))
+    return lambda im, k=None: (im.objectmap(lambda o: o.shortlabel('\n'.join(['%s %s' % (n.capitalize(), v.capitalize()) for (n,v) in o.attributes['__noun verb']])) if o.hasattribute('__noun verb') else o))
     
 def mutator_show_activityonly():
-    return lambda im, k=None: im.objectmap(lambda o: o.shortlabel('') if (len(o.attributes['noun verb']) == 1 and len(o.attributes['noun verb'][0][1]) == 0) else o)
+    return lambda im, k=None: im.objectmap(lambda o: o.shortlabel('') if (len(o.attributes['__noun verb']) == 1 and len(o.attributes['__noun verb'][0][1]) == 0) else o)
 
 def mutator_show_trackindex_activityonly():
     """Mutate the image to show boxes colored by track index, and only show 'noun verb' captions"""
     f = mutator_show_trackindex()
-    return lambda im, k=None, f=f: f(im).objectmap(lambda o: o.shortlabel('__%s' % o.shortlabel()) if (len(o.attributes['noun verb']) == 1 and len(o.attributes['noun verb'][0][1]) == 0) else o)
+    return lambda im, k=None, f=f: f(im).objectmap(lambda o: o.shortlabel('__%s' % o.shortlabel()) if (len(o.attributes['__noun verb']) == 1 and len(o.attributes['__noun verb'][0][1]) == 0) else o)
 
 def mutator_show_trackindex_verbonly(confidence=True, significant_digits=2):
     """Mutate the image to show boxes colored by track index, and only show 'verb' captions with activity confidence"""
     f = mutator_show_trackindex()
-    return lambda im, k=None, f=f: f(im).objectmap(lambda o: o.shortlabel('__%s' % o.shortlabel()) if (len(o.attributes['noun verb']) == 1 and len(o.attributes['noun verb'][0][1]) == 0) else o.shortlabel('\n'.join(['%s %s' % (v, ('(%1.2f)'%float(c)) if (confidence is True and c is not None) else '') for ((n,v),c) in zip(o.attributes['noun verb'], o.attributes['activityconf'])])))
+    return lambda im, k=None, f=f: f(im).objectmap(lambda o: o.shortlabel('__%s' % o.shortlabel()) if (len(o.attributes['__noun verb']) == 1 and len(o.attributes['__noun verb'][0][1]) == 0) else o.shortlabel('\n'.join(['%s %s' % (v, ('(%1.2f)'%float(c)) if (confidence is True and c is not None) else '') for ((n,v),c) in zip(o.attributes['__noun verb'], o.attributes['__activityconf'])])))
 
 
 def RandomImage(rows=None, cols=None):
