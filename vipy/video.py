@@ -2662,6 +2662,8 @@ class Scene(VideoCategory):
         - The actor ID is the track ID of the primary actor in the scene.  This is useful for assigning a role for activities that are performed by the actor.
         - The actor ID is the first track is in the tracklist
         
+        Not to be confused with biometric subject id, which can be retrieved via the `metadata()` method (e.g. `vid.metadata()['subject_ids']`).
+        
         Args:
             id: [str] if not None, then use this track ID as the actor
             fluent: [bool] If true, always return self. This is useful for those cases where the actorid being set is None.
