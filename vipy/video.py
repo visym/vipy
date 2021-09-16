@@ -342,6 +342,18 @@ class Stream(object):
     def batch(self, n):
         """Stream batches of length n such that each batch contains frames [0,n], [n+1, 2n], ...  Last batch will be ragged.
             
+        The primary use case for batch() is to provide a mechanism for parallel batch processing on a GPU.
+        
+        >>> for (im, im_gpu) in zip(vi, myfunc(vi.stream().batch(16))):
+        >>>
+        >>> def myfunc(gen):
+        >>>     for vb in gen:
+        >>>         # process the batch vb (length n) in parallel by encoding on a GPU with batchsize=n
+        >>>         for im in f_gpu(vb):
+        >>>             yield im_gpu:
+        
+        This will then yield the GPU batched processed image im_gpu zipped with the original image im.  
+        
         """
         return self.clip(n=n, m=n, continuous=False, ragged=True) 
 
