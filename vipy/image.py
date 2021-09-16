@@ -1806,9 +1806,14 @@ class Scene(ImageCategory):
         self._objectlist = [bb.rescale(scale) for bb in self._objectlist]
         return self
 
-    def resize(self, cols=None, rows=None, interp='bilinear'):
+    def resize(self, cols=None, rows=None, height=None, width=None, interp='bilinear'):
         """Resize image buffer to (height=rows, width=cols) and transform all bounding boxes accordingly.  If cols or rows is None, then scale isotropically"""
+        assert not (cols is not None and width is not None), "Define either width or cols"
+        assert not (rows is not None and height is not None), "Define either height or rows"
+        rows = rows if height is None else height
+        cols = cols if width is None else width        
         assert cols is not None or rows is not None, "Invalid input"
+        
         sx = (float(cols) / self.width()) if cols is not None else None
         sy = (float(rows) / self.height()) if rows is not None else None
         sx = sy if sx is None else sx
@@ -2028,24 +2033,24 @@ class Scene(ImageCategory):
         return vipy.image.Image.perceptualhash_distance(self.bghash(bits=bits), im.bghash(bits=bits)) < threshold 
     
         
-    def show(self, categories=None, figure=1, nocaption=False, nocaption_withstring=[], fontsize=10, boxalpha=0.25, d_category2color={'Person':'green', 'Vehicle':'blue', 'Object':'red'}, captionoffset=(0,0), nowindow=False, textfacecolor='white', textfacealpha=1.0, shortlabel=True, timestamp=None, timestampcolor='black', timestampfacecolor='white', mutator=None):
+    def show(self, categories=None, figure=1, nocaption=False, nocaption_withstring=[], fontsize=10, boxalpha=0.25, d_category2color={'Person':'green', 'Vehicle':'blue', 'Object':'red'}, captionoffset=(0,0), nowindow=False, textfacecolor='white', textfacealpha=1.0, shortlabel=True, timestamp=None, timestampcolor='black', timestampfacecolor='white', mutator=None, timestampoffset=(0,0)):
         """Show scene detection 
 
         Args:
-            categories: [list]  List of category (or shortlabel) names in the scene to show
-            fontsize: [int] or [str]: Size of the font, fontsize=int for points, fontsize='NN:scaled' to scale the font relative to the image size
-            figure: [int] Figure number, show the image in the provided figure=int numbered window
-            nocaption: [bool]  Show or do not show the text caption in the upper left of the box 
-            nocaption_withstring: [list]:  Do not show captions for those detection categories (or shortlabels) containing any of the strings in the provided list
-           * boxalpha (float, [0,1]):  Set the text box background to be semi-transparent with an alpha
-           * d_category2color (dict):  Define a dictionary of required mapping of specific category() to box colors.  Non-specified categories are assigned a random named color from vipy.show.colorlist()
-           * caption_offset (int, int): The relative position of the caption to the upper right corner of the box.
-           * nowindow (bool):  Display or not display the image
-           * textfacecolor (str): One of the named colors from vipy.show.colorlist() for the color of the textbox background
-           * textfacealpha (float, [0,1]):  The textbox background transparency
-           * shortlabel (bool):  Whether to show the shortlabel or the full category name in the caption
-           * mutator (lambda):  A lambda function with signature lambda im: f(im) which will modify this image prior to show.  Useful for changing labels on the fly
-
+           - categories: [list]  List of category (or shortlabel) names in the scene to show
+           - fontsize: [int] or [str]: Size of the font, fontsize=int for points, fontsize='NN:scaled' to scale the font relative to the image size
+           - figure: [int] Figure number, show the image in the provided figure=int numbered window
+           - nocaption: [bool]  Show or do not show the text caption in the upper left of the box 
+           - nocaption_withstring: [list]:  Do not show captions for those detection categories (or shortlabels) containing any of the strings in the provided list
+           - boxalpha (float, [0,1]):  Set the text box background to be semi-transparent with an alpha
+           - d_category2color (dict):  Define a dictionary of required mapping of specific category() to box colors.  Non-specified categories are assigned a random named color from vipy.show.colorlist()
+           - caption_offset (int, int): The relative position of the caption to the upper right corner of the box.
+           - nowindow (bool):  Display or not display the image
+           - textfacecolor (str): One of the named colors from vipy.show.colorlist() for the color of the textbox background
+           - textfacealpha (float, [0,1]):  The textbox background transparency
+           - shortlabel (bool):  Whether to show the shortlabel or the full category name in the caption
+           - mutator (lambda):  A lambda function with signature lambda im: f(im) which will modify this image prior to show.  Useful for changing labels on the fly
+           - timestampoffset (tuple): (x,y) coordinate offsets to shift the upper left corner timestamp
         """
         colors = vipy.show.colorlist()
         im = self.clone() if not mutator else mutator(self.clone())
@@ -2060,10 +2065,10 @@ class Scene(ImageCategory):
         fontsize_scaled = float(fontsize.split(':')[0])*(min(imdisplay.shape())/640.0) if isstring(fontsize) else fontsize
         imdisplay = mutator(imdisplay) if mutator is not None else imdisplay        
         vipy.show.imdetection(imdisplay._array, valid_detections, bboxcolor=detection_color, textcolor=detection_color, fignum=figure, do_caption=(nocaption==False), facealpha=boxalpha, fontsize=fontsize_scaled,
-                              captionoffset=captionoffset, nowindow=nowindow, textfacecolor=textfacecolor, textfacealpha=textfacealpha, timestamp=timestamp, timestampcolor=timestampcolor, timestampfacecolor=timestampfacecolor)
+                              captionoffset=captionoffset, nowindow=nowindow, textfacecolor=textfacecolor, textfacealpha=textfacealpha, timestamp=timestamp, timestampcolor=timestampcolor, timestampfacecolor=timestampfacecolor, timestampoffset=timestampoffset)
         return self
 
-    def annotate(self, outfile=None, categories=None, figure=1, nocaption=False, fontsize=10, boxalpha=0.25, d_category2color={'person':'green', 'vehicle':'blue', 'object':'red'}, captionoffset=(0,0), dpi=200, textfacecolor='white', textfacealpha=1.0, shortlabel=True, nocaption_withstring=[], timestamp=None, timestampcolor='black', timestampfacecolor='white', mutator=None):
+    def annotate(self, outfile=None, categories=None, figure=1, nocaption=False, fontsize=10, boxalpha=0.25, d_category2color={'person':'green', 'vehicle':'blue', 'object':'red'}, captionoffset=(0,0), dpi=200, textfacecolor='white', textfacealpha=1.0, shortlabel=True, nocaption_withstring=[], timestamp=None, timestampcolor='black', timestampfacecolor='white', mutator=None, timestampoffset=(0,0)):
         """Alias for savefig"""
         return self.savefig(outfile=outfile, 
                             categories=categories, 
@@ -2080,15 +2085,16 @@ class Scene(ImageCategory):
                             nocaption_withstring=nocaption_withstring, 
                             timestamp=timestamp, 
                             timestampcolor=timestampcolor, 
-                            timestampfacecolor=timestampfacecolor, 
+                            timestampfacecolor=timestampfacecolor,
+                            timestampoffset=timestampoffset,
                             mutator=mutator)
 
-    def savefig(self, outfile=None, categories=None, figure=1, nocaption=False, fontsize=10, boxalpha=0.25, d_category2color={'person':'green', 'vehicle':'blue', 'object':'red'}, captionoffset=(0,0), dpi=200, textfacecolor='white', textfacealpha=1.0, shortlabel=True, nocaption_withstring=[], timestamp=None, timestampcolor='black', timestampfacecolor='white', mutator=None):
+    def savefig(self, outfile=None, categories=None, figure=1, nocaption=False, fontsize=10, boxalpha=0.25, d_category2color={'person':'green', 'vehicle':'blue', 'object':'red'}, captionoffset=(0,0), dpi=200, textfacecolor='white', textfacealpha=1.0, shortlabel=True, nocaption_withstring=[], timestamp=None, timestampcolor='black', timestampfacecolor='white', mutator=None, timestampoffset=(0,0)):
         """Save show() output to given file or return buffer without popping up a window"""
         fignum = figure if figure is not None else 1        
         self.show(categories=categories, figure=fignum, nocaption=nocaption, fontsize=fontsize, boxalpha=boxalpha, 
                   d_category2color=d_category2color, captionoffset=captionoffset, nowindow=True, textfacecolor=textfacecolor, 
-                  textfacealpha=textfacealpha, shortlabel=shortlabel, nocaption_withstring=nocaption_withstring, timestamp=timestamp, timestampcolor=timestampcolor, timestampfacecolor=timestampfacecolor, mutator=mutator)
+                  textfacealpha=textfacealpha, shortlabel=shortlabel, nocaption_withstring=nocaption_withstring, timestamp=timestamp, timestampcolor=timestampcolor, timestampfacecolor=timestampfacecolor, mutator=mutator, timestampoffset=timestampoffset)
         
         if outfile is None:
             buf = io.BytesIO()
