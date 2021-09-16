@@ -133,7 +133,43 @@ class Stream(object):
         return self._video.framerate()
     
     def __iter__(self):
-        """Stream individual video frames"""
+        """Stream individual video frames.
+
+        This iterator is the primary mechanism for streaming frames and clips from long videos or live video streams.
+
+        - The stream is constructed from a shared underlying video in self._video.  
+        - As the video is updated with annotations, the stream can generate frames and clips that contain these annotations
+        - The shared underlying video allows for multiple iterators all sourced from the same video, iterating over different frames and rates
+        - The iterator leverages a pipe to FFMPEG, reading numpy frames from the video filter chain.  
+        - The pipe is written from a thread which is dedicated to reading frames from ffmpeg
+        - Each numpy frame is added to a queue, with a null termintor when end of stream is reached
+        - The iterator then reads from the queue, and returns annotated frames
+        
+        This iterator can also be used as a buffered stream.  Buffered streams have a primary iterator which saves a fixed stream buffer
+        of frames so that subsequent iterators can pull temporally aligned frames.  This is useful to avoid having multiple FFMPEG pipes 
+        open simultaneously, and can allow for synchronized access to video streams without timestamping.  
+
+        - The primary iterator is the first iterator over the video with stream(buffered=True)
+        - The primary iterator creates a private attribute self._video.attributes['__stream_buffer'] which caches frames
+        - The stream buffer saves numpy arrays from the iterator with a fixed buffer length (number of frames)
+        - The secondary iterator (e.g. any iterator that accesses the video after the primary iterator is initially created) will read from the stream buffer
+        - All iterators share the underlying self._video object in the stream so that if the video annotations are updated by an iterator, the annotated frames are accessible in the iterators
+        - The secondary iterators are synchronized to the stream buffer that is read by the primary iterator.  This is useful for synchronizing streams for live camera streams without absolute timestamps.
+        - There can be an unlimited number of secondary iterators, without incurring a penalty on frame access
+
+        This iterator can iterate over clips, frames or batches.  
+        
+        - A clip is a sequence of frames such that each clip is separated by a fixed number of frames.  
+        - Clips are useful for temporal encoding of short atomic activities
+        - A batch is a sequence of n frames with a stride of n.  
+        - A batch is useful for iterating over groups of frames that are operated in parallel on a GPU
+
+        >>> for (im1, im2, v3) in zip(v.stream(buffered=True), v.stream(buffered=True).frame(delay=30), v.stream(buffered=True).clip(n=16,m-1):
+        >>>     # im1: `vipy.image.Scene` at frame index k
+        >>>     # im2: `vipy.image.Scene` at frame index k-30
+        >>>     # v3: `vipy.video.Scene` at frame range [k, k-16]
+        
+        """
         try:
             if self._video.isloaded():
                 # For loaded video, just use the existing iterator for in-memory video
@@ -145,7 +181,10 @@ class Stream(object):
                 if self._rebuffered or (self._buffered and not self._video.hasattribute('__stream_buffer')):
                     self._video.attributes['__stream_buffer'] = []
                     self._bufowner = True  # track which iterator created the stream buffer for cleanup in 'finally'
-                
+
+
+                # Video pipe thread:  read numpy frames from the ffmpeg filter chain via a pipe
+                # stre the resulting frames in a queue with a null terminated frame when the stream ends                
                 p = self._read_pipe()
                 q = queue.Queue(self._queuesize)
                 (h, w) = self._shape
@@ -169,7 +208,13 @@ class Stream(object):
                 e = threading.Event()                                
                 t = threading.Thread(target=_f_threadloop, args=(p, q, h, w, e), daemon=True)
                 t.start()
-                
+
+
+                # Primary iterator:
+                # -read frames from the queue and store in the stream buffer
+                # -Frames are also yielded for the primary iterator
+                # -The stream buffer is always n frames long, and if the newest frame from the pipe is frame k, the oldest frame is k-n which is yielded first
+                # -If the stream is unbuffered, just read from the queue directory and yield the numpy frame
                 k = 0
                 b = self._video.attributes['__stream_buffer'] if (self._buffered or self._rebuffered) else None
                 while True:
@@ -183,20 +228,26 @@ class Stream(object):
                         k += 1
                         
                     if img is not None:
-                        yield self._video.frame(f, img)
+                        yield self._video.frame(f, img)  # yield a vipy.image.Scene object with annotations at frame f, using the latest anntoation from the shared video object
                         
                         if b is not None:
-                            b.pop(0)   # remove from filled buffer after other iterators have seen it
+                            b.pop(0)   # remove from filled buffer after secondary iterators have seen it
                     else:
                         e.set()
-                        break
+                        break  # termination
                     
             elif self._buffered and self._video.hasattribute('__stream_buffer'):
+                # Secondary iterators: read frames from the stream buffer
+                # -The stream buffer is a simple list stored in the self._video as a private attribute.  This is is so that the video can be serialized (e.g. no Queues)
+                # -The secondary iterators search the stream buffer for a matching frame index to yield.
+                # -The stream buffer is filled by the primary iterator, so that index 0 is the oldest frame and index n is the newest frame
+                # -The secondary iterators sleep in order to release the GIL before searching the frame buffer for the next frame to yield.
+                # -This is a bit ugly, but is a compromise to preserve pickleability of the stream buffer.                
                 k = 0  
                 while '__stream_buffer' in self._video.attributes and len(self._video.attributes['__stream_buffer']) > 0:
                     for (f, img) in self._video.attributes['__stream_buffer']:                        
                         if f == k and img is not None:
-                            yield self._video.frame(f, img)
+                            yield self._video.frame(f, img)  # yield a vipy.image.Scene object with annotations at frame f, using the latest annotations from the shared video object
                             k += 1
                             break
                         elif f ==k and img is None:
@@ -210,7 +261,7 @@ class Stream(object):
         
         finally:
             if self._bufowner:
-                self._video.delattribute('__stream_buffer')  # cleanup
+                self._video.delattribute('__stream_buffer')  # cleanup, or force a reinitialization by passing the rebuffered=True to the primary iterator
             
         
     def __getitem__(self, k):
@@ -296,7 +347,7 @@ class Stream(object):
 
 
     def frame(self, delay=0):
-        """Stream individual frames of video with negative offset n to the stream head. If n=-30, this will return a frame 30 frames ago"""
+        """Stream individual frames of video with negative offset n frames to the stream head. If delay=30, this will return a frame 30 frames ago"""
         assert isinstance(delay, int) and delay >= 0, "Frame delay must be non-positive integer"        
         n = -delay
         frames = []
