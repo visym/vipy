@@ -74,8 +74,16 @@ def test_stream():
     
 
     # Buffered stream
+    for (im1,im2) in zip(v.stream(buffered=True, rebuffered=True), v.stream(buffered=True)):
+        break
+    assert np.allclose(im1.array(), im2.array(), atol=15)
     
+    for (k,(im1,im2,vb)) in enumerate(zip(v.stream(rebuffered=True), v.stream(buffered=True), v.stream(buffered=True).clip(3,1))):
+        if k>3:
+            break
 
+    assert np.allclose(im1.array(), vb[0].array(), atol=15)
+    print('[test_video.video]: buffered stream PASSED')                   
     
     
 def _test_video():
