@@ -2663,9 +2663,7 @@ class Scene(VideoCategory):
         """Return or set the actor ID for the video.
 
         - The actor ID is the track ID of the primary actor in the scene.  This is useful for assigning a role for activities that are performed by the actor.
-        - The actor ID is the first track is in the tracklist
-        
-        Not to be confused with biometric subject id, which can be retrieved via the `metadata()` method (e.g. `vid.metadata()['subject_ids']`).
+        - The actor ID is the first track is in the tracklist       
         
         Args:
             id: [str] if not None, then use this track ID as the actor
@@ -2674,6 +2672,8 @@ class Scene(VideoCategory):
         Returns:
             [id=None, fluent=False] the actor ID
             [id is not None] The video with the actor ID set, only if the ID is found in the tracklist
+
+        .. note:: Not to be confused with biometric subject id.  For videos collected with Visym Collector platform (https://visym.com/collector), the biometric subbject ID can be retrieved via `vipy.video.metadata` (e.g. self.metadata()['subject_ids']).
         """
         if id is None:
             return next(iter(self.tracks().keys())) if not fluent else self  # Python >=3.6
