@@ -1151,6 +1151,9 @@ class Video(object):
         """Is the url returned from `vipy.video.Video.url` a well formed url?"""
         return self._url is not None and isurl(self._url)
 
+    def islive(self):
+        return self.hasurl() and (isRTSPurl(self._url) or isRTMPurl(self._url))
+    
     def array(self, array=None, copy=False):
         """Set or return the video buffer as a numpy array.
         
