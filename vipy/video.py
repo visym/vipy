@@ -1202,7 +1202,7 @@ class Video(object):
         return self
 
     def filename(self, newfile=None, copy=False, symlink=False):
-        """Update video Filename with optional copy from existing file to new file"""
+        """Update video Filename with optional copy or symlink from existing file (self.filename()) to new file"""
         if newfile is None:
             return self._filename
         newfile = os.path.normpath(os.path.expanduser(newfile))

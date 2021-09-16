@@ -117,7 +117,7 @@ class Dataset():
         
             Inputs:
               - tarfile: /path/to/tarfilename.tar.gz
-              - delprefix:  the absolute file path contained in the media filenames to be removed.  If a video has a delprefix='/a/b' then videos with path /a/b/c/d.mp4' -> 'c/d.mp4', and {JSON|PKL} will be saved with relative paths to mediadir
+              - delprefix:  the absolute file path contained in the media filenames to be removed.  If a video has a delprefix='/a/b' then videos with path /a/b/c/d.mp4' -> 'c/d.mp4', and {JSON|PKL} will be saved with relative paths to mediadir.  This may be a list of delprefixes.
               - mediadir:  the subdirectory name of the media to be contained in the archive.  Usually "videos".             
               - extrafiles: list of tuples or singletons [(abspath, filename_in_archive_relative_to_root), 'file_in_root_and_in_pwd', ...], 
               - novideos [bool]:  generate a tarball without linking videos, just annotations
@@ -134,15 +134,15 @@ class Dataset():
         """
         assert self._isvipy(), "Source dataset must contain vipy objects for staging"
         assert all([os.path.isabs(v.filename()) for v in self]), "Input dataset must have only absolute media paths"
-        assert self.countby(lambda v: delprefix in v.filename()) > 0, "delprefix not found"
-        assert self.countby(lambda v: delprefix in v.filename()) == len(self), "all media objects must have the same delprefix for relative path construction"
+        assert len([v for v in self if any([d in v.filename() for d in tolist(delprefix)])]) == len(self), "all media objects must have a provided delprefix for relative path construction"
         assert vipy.util.istgz(tarfile) or vipy.util.isbz2(tarfile), "Allowable extensions are .tar.gz, .tgz or .bz2"
         assert shutil.which('tar') is not None, "tar not found on path"        
         
         D = self.clone()
         stagedir = remkdir(os.path.join(tempdir(), filefull(filetail(tarfile))))
-        print('[vipy.dataset]: creating staging directory "%s"' % stagedir)        
-        D._objlist = [v.filename(v.filename().replace(os.path.normpath(delprefix), os.path.normpath(os.path.join(stagedir, mediadir))), symlink=not novideos) for v in D.list()]
+        print('[vipy.dataset]: creating staging directory "%s"' % stagedir)
+        delprefix = [[d for d in tolist(delprefix) if d in v.filename()][0] for v in self]  # select the delprefix per video
+        D._objlist = [v.filename(v.filename().replace(os.path.normpath(p), os.path.normpath(os.path.join(stagedir, mediadir))), symlink=not novideos) for (p,v) in zip(delprefix,D.list())]
         pklfile = os.path.join(stagedir, '%s.%s' % (filetail(filefull(tarfile)), format))
         D.save(pklfile, relpath=True, nourl=True, sanitize=True, castas=castas, significant_digits=2, noemail=True, flush=True)
     
@@ -278,7 +278,7 @@ class Dataset():
 
     def union(self, other, key=None):
         assert isinstance(other, Dataset), "invalid input"
-        self._objlist = self._objlist + other._objlist
+        self._objlist = self._objlist + other._objlist  # shallow copy, there may now be two objects points to the same memory if other overlaps self
         return self.dedupe(key) if key is not None else self
     
     def difference(self, other, key):
