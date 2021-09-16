@@ -57,7 +57,7 @@ class Stream(object):
 
     * This is designed to be accessed as `vipy.video.Video.stream`.
     """
-    def __init__(self, v, queuesize, write, overwrite, bitrate=None, buffered=False, bufsize=256, rebuffered=False):
+    def __init__(self, v, queuesize, write, overwrite, bitrate=None, buffered=False, buflen=16, rebuffered=False):
         self._video = v   # do not clone
         self._write_pipe = None
         self._vcodec = 'libx264'
@@ -71,9 +71,10 @@ class Stream(object):
         self._shape = self._video.shape() if (not self._write) or (self._write and self._video.canload()) else None  # shape for write can be defined by first frame
         assert (write is True or overwrite is True) or self._shape is not None, "Invalid video '%s'" % (str(v))
         self._queuesize = queuesize
-        self._bufsize = bufsize
+        self._bufsize = int(buflen*v.framerate())
         self._buffered = buffered
-        self._rebuffered = rebuffered        
+        self._rebuffered = rebuffered
+        self._bufowner = False                            
         assert self._bufsize >= 1
         
     def __enter__(self):
@@ -132,19 +133,58 @@ class Stream(object):
         return self._video.framerate()
     
     def __iter__(self):
-        """Stream individual video frames"""
+        """Stream individual video frames.
+
+        This iterator is the primary mechanism for streaming frames and clips from long videos or live video streams.
+
+        - The stream is constructed from a shared underlying video in self._video.  
+        - As the video is updated with annotations, the stream can generate frames and clips that contain these annotations
+        - The shared underlying video allows for multiple iterators all sourced from the same video, iterating over different frames and rates
+        - The iterator leverages a pipe to FFMPEG, reading numpy frames from the video filter chain.  
+        - The pipe is written from a thread which is dedicated to reading frames from ffmpeg
+        - Each numpy frame is added to a queue, with a null termintor when end of stream is reached
+        - The iterator then reads from the queue, and returns annotated frames
+        
+        This iterator can also be used as a buffered stream.  Buffered streams have a primary iterator which saves a fixed stream buffer
+        of frames so that subsequent iterators can pull temporally aligned frames.  This is useful to avoid having multiple FFMPEG pipes 
+        open simultaneously, and can allow for synchronized access to video streams without timestamping.  
+
+        - The primary iterator is the first iterator over the video with stream(buffered=True)
+        - The primary iterator creates a private attribute self._video.attributes['__stream_buffer'] which caches frames
+        - The stream buffer saves numpy arrays from the iterator with a fixed buffer length (number of frames)
+        - The secondary iterator (e.g. any iterator that accesses the video after the primary iterator is initially created) will read from the stream buffer
+        - All iterators share the underlying self._video object in the stream so that if the video annotations are updated by an iterator, the annotated frames are accessible in the iterators
+        - The secondary iterators are synchronized to the stream buffer that is read by the primary iterator.  This is useful for synchronizing streams for live camera streams without absolute timestamps.
+        - There can be an unlimited number of secondary iterators, without incurring a penalty on frame access
+
+        This iterator can iterate over clips, frames or batches.  
+        
+        - A clip is a sequence of frames such that each clip is separated by a fixed number of frames.  
+        - Clips are useful for temporal encoding of short atomic activities
+        - A batch is a sequence of n frames with a stride of n.  
+        - A batch is useful for iterating over groups of frames that are operated in parallel on a GPU
+
+        >>> for (im1, im2, v3) in zip(v.stream(buffered=True), v.stream(buffered=True).frame(delay=30), v.stream(buffered=True).clip(n=16,m-1):
+        >>>     # im1: `vipy.image.Scene` at frame index k
+        >>>     # im2: `vipy.image.Scene` at frame index k-30
+        >>>     # v3: `vipy.video.Scene` at frame range [k, k-16]
+        
+        """
         try:
             if self._video.isloaded():
                 # For loaded video, just use the existing iterator for in-memory video
                 for k in range(len(self._video)): 
-                    #self._video._currentframe = k   # current frame owned by first iterator
                     yield self._video[k]
 
             elif not self._buffered or self._rebuffered or (self._buffered and not self._video.hasattribute('__stream_buffer')):
-                # First stream iterator: read from video and store in framebuffer for all other iterators to access
+                # First stream iterator: read from video and store in stream buffer for all other iterators to access
                 if self._rebuffered or (self._buffered and not self._video.hasattribute('__stream_buffer')):
                     self._video.attributes['__stream_buffer'] = []
-                
+                    self._bufowner = True  # track which iterator created the stream buffer for cleanup in 'finally'
+
+
+                # Video pipe thread:  read numpy frames from the ffmpeg filter chain via a pipe
+                # stre the resulting frames in a queue with a null terminated frame when the stream ends                
                 p = self._read_pipe()
                 q = queue.Queue(self._queuesize)
                 (h, w) = self._shape
@@ -168,41 +208,60 @@ class Stream(object):
                 e = threading.Event()                                
                 t = threading.Thread(target=_f_threadloop, args=(p, q, h, w, e), daemon=True)
                 t.start()
-                
-                #self._video._currentframe = 0
+
+
+                # Primary iterator:
+                # -read frames from the queue and store in the stream buffer
+                # -Frames are also yielded for the primary iterator
+                # -The stream buffer is always n frames long, and if the newest frame from the pipe is frame k, the oldest frame is k-n which is yielded first
+                # -If the stream is unbuffered, just read from the queue directory and yield the numpy frame
                 k = 0
                 b = self._video.attributes['__stream_buffer'] if (self._buffered or self._rebuffered) else None
-                while True:                        
-                    img = q.get()
-                    if img is not None:
-                        if self._buffered or self._rebuffered:
-                            b.append( (k,img) ) 
-                        if b is not None and len(b) >= self._bufsize:
-                            b.pop(0)                           
-                        im = self._video.frame(k, img)
-                        yield im
-                        #self._video._currentframe += 1  # current frame owned by first iterator
+                while True:
+                    if b is not None:
+                        while len(b) < self._bufsize and ((len(b) == 0) or (len(b) > 0 and b[-1][1] is not None)):
+                            b.append( (k, q.get()) )  # re-fill stream buffer
+                            k += 1
+                        (f,img) = b[0]  # read oldest element 
+                    else:
+                        (f,img) = (k,q.get())  # read from thread queue, unbuffered
                         k += 1
+                        
+                    if img is not None:
+                        yield self._video.frame(f, img)  # yield a vipy.image.Scene object with annotations at frame f, using the latest anntoation from the shared video object
+                        
+                        if b is not None:
+                            b.pop(0)   # remove from filled buffer after secondary iterators have seen it
                     else:
                         e.set()
-                        break            
-
+                        break  # termination
+                    
             elif self._buffered and self._video.hasattribute('__stream_buffer'):
-                i = -1 
-                while self._video.hasattribute('__stream_buffer'):
-                    (j,img) = self._video.attributes['__stream_buffer'][-1]
-                    if i < j:
-                        yield self._video.frame(j, img)
-                        i = j
-                    else:
-                        time.sleep(0.01)  # yuck, can't use Queue.get() because objects in self._video must be pickleable
+                # Secondary iterators: read frames from the stream buffer
+                # -The stream buffer is a simple list stored in the self._video as a private attribute.  This is is so that the video can be serialized (e.g. no Queues)
+                # -The secondary iterators search the stream buffer for a matching frame index to yield.
+                # -The stream buffer is filled by the primary iterator, so that index 0 is the oldest frame and index n is the newest frame
+                # -The secondary iterators sleep in order to release the GIL before searching the frame buffer for the next frame to yield.
+                # -This is a bit ugly, but is a compromise to preserve pickleability of the stream buffer.                
+                k = 0  
+                while '__stream_buffer' in self._video.attributes and len(self._video.attributes['__stream_buffer']) > 0:
+                    for (f, img) in self._video.attributes['__stream_buffer']:                        
+                        if f == k and img is not None:
+                            yield self._video.frame(f, img)  # yield a vipy.image.Scene object with annotations at frame f, using the latest annotations from the shared video object
+                            k += 1
+                            break
+                        elif f ==k and img is None:
+                            return                        
+                    time.sleep(0.01)  # release GIL, yuck ... 
             else:
                 raise  # should never get here    
 
-        except StopIteration:
-            self._video.delattribute('__stream_buffer')  # reset me
+        except:
+            raise
+        
         finally:
-            self._video.delattribute('__stream_buffer')  # reset me            
+            if self._bufowner:
+                self._video.delattribute('__stream_buffer')  # cleanup, or force a reinitialization by passing the rebuffered=True to the primary iterator
             
         
     def __getitem__(self, k):
@@ -227,7 +286,7 @@ class Stream(object):
                 self._video.add(obj, frame=self._writeindex, rangecheck=False)
         self._writeindex += 1  # assumes that the source image is at the appropriate frame rate for this video
 
-    def clip(self, n, m=1, continuous=False, tracks=True, activities=True, delay=0):
+    def clip(self, n, m=1, continuous=False, tracks=True, activities=True, delay=0, ragged=False):
         """Stream clips of length n such that the yielded video clip contains frame(0+delay) to frame(n+delay), and next contains frame(m+delay) to frame(n+m+delay). 
             
         Usage examples:
@@ -258,34 +317,49 @@ class Stream(object):
         assert isinstance(m, int) and m>0, "Clip stride must be a positive integer"
         assert isinstance(delay, int) and delay >= 0 and delay < n, "Clip delay must be a positive integer less than n"
         vc = self._video.clone(flushfilter=True).clear().nourl().nofilename()    
-        
-        frames = []
+
+        f_copy_annotations = lambda v, fr, k, n: (v.clear().clone(shallow=True).fromframes(fr)
+                                                  .activities([a.clone().offset(-(k-(n-1))).truncate(0,n-1) for (ak,a) in self._video.activities().items() if a.during_interval(k-(n-1), k, inclusive=False)] if activities else [])
+                                                  .tracks([t.clone(k-(n-1), k).offset(-(k-(n-1))).truncate(0,n-1) for (tk,t) in self._video.tracks().items() if t.during_interval(k-(n-1), k)] if tracks else [])
+                                                  if (v is not None and isinstance(v, vipy.video.Scene)) else
+                                                  v.clear().clone(shallow=True).fromframes(fr))        
+        (frames, newframes) = ([], [])
         for (k,im) in enumerate(self):
-            frames.append(im)
-            
-            if len(frames) > n:
-                frames.pop(0)
-            if ((k + 1 - delay) % m) == 0 and len(frames) >= n:                    
+            newframes.append(im)            
+            if len(newframes) >= m and len(frames)+len(newframes) >= n:                                
                 # Use frameindex+1 so that we include (0,1), (1,2), (2,3), ... for n=2, m=1
                 # The delay shifts the clip +delay frames (1,2,3), (3,4,5), ... for n=3, m=2, delay=1                
-                vc = vc.clear().clone(shallow=True).fromframes(frames[-n:])   # requires copy, expensive operation                            
-                yield ((vc.activities([a.clone().offset(-(k-(n-1))).truncate(0,n-1) for (ak,a) in self._video.activities().items() if a.during_interval(k-(n-1), k, inclusive=False)] if activities else []) 
-                        .tracks([t.clone(k-(n-1), k).offset(-(k-(n-1))).truncate(0,n-1) for (tk,t) in self._video.tracks().items() if t.during_interval(k-(n-1), k)] if tracks else []))
-                       if (vc is not None and isinstance(vc, vipy.video.Scene)) else vc)
+                frames.extend(newframes)
+                (frames, newframes) = (frames[-n:], [])
+                yield f_copy_annotations(vc, frames, k, n)
             elif continuous:
                 yield None
 
+        if ragged and len(newframes) > 0:
+            yield f_copy_annotations(vc, newframes, k, len(newframes))
                 
-    def batch(self, n, continuous=False):
+                
+    def batch(self, n):
         """Stream batches of length n such that each batch contains frames [0,n], [n+1, 2n], ...  Last batch will be ragged.
             
-        .. warning:: Unlike clip(), this method currently does not support activities and tracks.  The batch will contain pixels only. 
+        The primary use case for batch() is to provide a mechanism for parallel batch processing on a GPU.
+        
+        >>> for (im, im_gpu) in zip(vi, myfunc(vi.stream().batch(16))):
+        >>>
+        >>> def myfunc(gen):
+        >>>     for vb in gen:
+        >>>         # process the batch vb (length n) in parallel by encoding on a GPU with batchsize=n
+        >>>         for im in f_gpu(vb):
+        >>>             yield im_gpu:
+        
+        This will then yield the GPU batched processed image im_gpu zipped with the original image im.  
+        
         """
-        return self.clip(n=n, m=n, continuous=continuous)
+        return self.clip(n=n, m=n, continuous=False, ragged=True) 
 
 
     def frame(self, delay=0):
-        """Stream individual frames of video with negative offset n to the stream head. If n=-30, this will return a frame 30 frames ago"""
+        """Stream individual frames of video with negative offset n frames to the stream head. If delay=30, this will return a frame 30 frames ago"""
         assert isinstance(delay, int) and delay >= 0, "Frame delay must be non-positive integer"        
         n = -delay
         frames = []
@@ -294,7 +368,6 @@ class Stream(object):
             frames.append( (k,im) )
             (kout, imout) = frames[0]
             frames.pop(0) if len(frames) > abs(n) else None
-            #self._video._currentframe = k
             i = k
             yield self._video.frame(kout, imout.array()) if len(frames) == delay  else None   # refetch for track interpolation
             
@@ -2080,6 +2153,9 @@ class Video(object):
         .. note:: Cloning videos is an expensive operation and can slow down real time code. Use sparingly. 
 
         """
+        if sanitize:
+            a = self.attributes  # copy reference to attributes to restore 
+            self.attributes = {}  # remove attributes on self for fast clone() since private attributes will be filtered anyway
         if flush or (flushforward and flushbackward):
             self._array = None  # flushes buffer on object and clone
             #self._previewhash = None
@@ -2123,6 +2199,8 @@ class Video(object):
         if flushfile:
             v.nofilename().nourl()
         if sanitize:
+            self.attributes = a  # restore attributes            
+            v.attributes = {k:v for (k,v) in self.attributes.items()}  # shallow copy
             v.sanitize()  # remove private attributes
         return v
 

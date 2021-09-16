@@ -72,6 +72,18 @@ def test_stream():
     assert np.allclose(vb.array(), vc.array(), atol=15)
     print('[test_video.video]: stream clip (loaded) PASSED')                   
     
+
+    # Buffered stream
+    for (im1,im2) in zip(v.stream(buffered=True, rebuffered=True), v.stream(buffered=True)):
+        break
+    assert np.allclose(im1.array(), im2.array(), atol=15)
+    
+    for (k,(im1,im2,vb)) in enumerate(zip(v.stream(rebuffered=True), v.stream(buffered=True), v.stream(buffered=True).clip(3,1))):
+        if k>3:
+            break
+
+    assert np.allclose(im1.array(), vb[0].array(), atol=15)
+    print('[test_video.video]: buffered stream PASSED')                   
     
     
 def _test_video():
@@ -386,31 +398,26 @@ def _test_scene():
     print('[test_video.scene]: array by reference  PASSED')
 
     # Mutable iterator:
-    # 
-    #   - This is deprecated in favor of modifying videos using an output write stream (maybe using a self.stream().mutable() iterator?)
-    #   - Also need to update demos
-    #   - fix frameindex iterator (self._currentframe)
-    # 
-    #frames = np.random.rand(2,2,2,3).astype(np.float32)
-    #v = vipy.video.Video(array=frames)
-    #for im in v:
-    #    im.numpy()[:,:] = 0
-    #assert np.sum(v.array().flatten()) == 0
-    #frames = np.random.rand(2,2,2,3).astype(np.float32)
-    #v = vipy.video.Video(array=frames)
-    #for im in v.numpy():
-    #    im[:,:] = 0
-    #assert np.sum(v.array().flatten()) == 0
-    #v = vipy.video.Video(mp4file).clip(0,10).load()
-    #for im in v.numpy():
-    #    im[:,:] = 0
-    #assert np.sum(v.array().flatten()) == 0
-    #v = vipy.video.Video(mp4file).clip(0,10).load()
-    #for im in v:
-    #    img = im.numpy()
-    #    img[:,:] = 0
-    #assert np.sum(v.array().flatten()) == 0
-    #print('[test_video.scene]: mutable iterator  PASSED')    
+    frames = np.random.rand(2,2,2,3).astype(np.float32)
+    v = vipy.video.Video(array=frames)
+    for im in v.mutable():
+        im.numpy()[:,:] = 0
+    assert np.sum(v.array().flatten()) == 0
+    frames = np.random.rand(2,2,2,3).astype(np.float32)
+    v = vipy.video.Video(array=frames)
+    for im in v.mutable().numpy():
+        im[:,:] = 0
+    assert np.sum(v.array().flatten()) == 0
+    v = vipy.video.Video(mp4file).clip(0,10).load()
+    for im in v.mutable().numpy():
+        im[:,:] = 0
+    assert np.sum(v.array().flatten()) == 0
+    v = vipy.video.Video(mp4file).clip(0,10).load()
+    for im in v.mutable():
+        img = im.numpy()
+        img[:,:] = 0
+    assert np.sum(v.array().flatten()) == 0
+    print('[test_video.scene]: mutable iterator  PASSED')    
 
     # Scene iterator
     frames = np.random.rand(2,2,2,3).astype(np.float32)
