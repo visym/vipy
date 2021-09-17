@@ -1959,13 +1959,13 @@ class Scene(ImageCategory):
         return self.fgmask()
     
     def pixelmask(self, pixelsize=8):
-        """Replace pixels within all foreground objects with a privacy preserving pixelated foreground with larger pixels"""
+        """Replace pixels within all foreground objects with a privacy preserving pixelated foreground with larger pixels (e.g. like privacy glass)"""
         assert pixelsize > 1, "Pixelsize is a scale factor such that pixels within the foreground are pixelsize times larger than the background"
         (img, mask) = (self.numpy(), self.rectangular_mask())  # force writeable
         img[mask > 0] = self.clone().rescale(1.0/pixelsize, interp='nearest').resize_like(self, interp='nearest').numpy()[mask > 0]  # in-place update
         return self
 
-    def pixelize(self, radius=8):
+    def pixelize(self, radius=16):
         """Alias for pixelmask"""
         return self.pixelmask(pixelsize=radius)
     

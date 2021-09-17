@@ -3675,11 +3675,15 @@ class Scene(VideoCategory):
         return Flow(flowdim=flowdim, gpu=gpu).stabilize(self.clone(), residual=True)
     
     def pixelmask(self, pixelsize=8):
-        """Replace all pixels in foreground boxes with pixelation"""
+        """Replace all pixels in foreground boxes with pixelation (e.g. bigger pixels, like privacy glass)"""
         for im in self.mutable():  # convert to writeable numpy array, triggers writeable copy          
             im.pixelmask(pixelsize)  # shared numpy array
         return self
 
+    def pixelize(self, radius=16):
+        """Alias for pixelmask()"""
+        return self.pixelmask(pixelsize=radius)
+    
     def binarymask(self):
         """Replace all pixels in foreground boxes with white, zero in background"""
         for im in self.mutable():  # convert to writeable numpy array, triggers writeable copy  
