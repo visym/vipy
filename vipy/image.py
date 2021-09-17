@@ -1965,6 +1965,10 @@ class Scene(ImageCategory):
         img[mask > 0] = self.clone().rescale(1.0/pixelsize, interp='nearest').resize_like(self, interp='nearest').numpy()[mask > 0]  # in-place update
         return self
 
+    def pixelize(self, radius=8):
+        """Alias for pixelmask"""
+        return self.pixelmask(pixelsize=radius)
+    
     def blurmask(self, radius=7):
         """Replace pixels within all foreground objects with a privacy preserving blurred foreground"""
         assert radius > 1, "Pixelsize is a scale factor such that pixels within the foreground are pixelsize times larger than the background"
