@@ -1968,6 +1968,10 @@ class Scene(ImageCategory):
     def pixelize(self, radius=16):
         """Alias for pixelmask"""
         return self.pixelmask(pixelsize=radius)
+    def pixelate(self, radius=16):
+        """Alias for pixelmask"""
+        return self.pixelmask(pixelsize=radius)
+        
     
     def blurmask(self, radius=7):
         """Replace pixels within all foreground objects with a privacy preserving blurred foreground"""

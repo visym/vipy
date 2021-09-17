@@ -3683,6 +3683,9 @@ class Scene(VideoCategory):
     def pixelize(self, radius=16):
         """Alias for pixelmask()"""
         return self.pixelmask(pixelsize=radius)
+    def pixelate(self, radius=16):
+        """Alias for pixelmask()"""
+        return self.pixelmask(pixelsize=radius)
     
     def binarymask(self):
         """Replace all pixels in foreground boxes with white, zero in background"""
