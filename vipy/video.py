@@ -655,6 +655,7 @@ class Video(object):
             f.write(self.attributes['__video__'])
         return self.filename(filename)                
 
+    
     @classmethod
     def concatenate(cls, videos, outfile, framerate=30, youtube_chapters=None):
         """Temporally concatenate a sequence of videos into a single video stored in outfile.
