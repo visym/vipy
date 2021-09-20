@@ -14,6 +14,30 @@ import pathlib
 import html
 
 
+def mosaic(videos):
+    """Create a mosaic iterator from an iterable of videos.
+    
+    A mosaic is a tiling of videos into a grid such that each grid element is one video.  This function returns an iterator that iterates frames in the video mosaic.
+    This mosaic generation can also be performed using ffmpeg, but here we use python iterators to zip a set of videos into a spatial mosaic.  
+
+    >>> for im in vipy.visualize.mosaic( (vipy.video.RandomScene(64,64,32), vipy.video.RandomScene(64,64,32)) )
+    >>>     im.show()
+    
+    Args:
+        videos [iterable of `vipy.video.Video`]
+    
+    Returns:
+        A generator which yields frames of the mosaic.  All videos are at their native frame rates, and all videos are anisotropically resized to the (height, width) of the first video
+
+    .. note:: This is the streaming version of `vipy.visualize.video_montage` which requires all videos to be loadable
+.
+    """
+    assert (isinstance(videos, list) and all([isinstance(v, vipy.video.Video) for v in videos])) or isinstance(videos, tuple)
+    (H,W) = videos[0].shape()
+    for frames in zip(*videos):
+        yield vipy.visualize.montage(frames, H, W)
+
+
 def montage(imlist, imgheight, imgwidth, gridrows=None, gridcols=None, aspectratio=1, crop=False, skip=True, border=1, border_bgr=(128,128,128), do_flush=False, verbose=False):
     """Create a montage image from the of provided list of vipy.image.Image objects.
 
@@ -36,11 +60,11 @@ def montage(imlist, imgheight, imgwidth, gridrows=None, gridcols=None, aspectrat
     
     """
 
-    (m,n) = (imgheight, imgwidth)
+    (n,m) = (imgheight, imgwidth)
     (rows,cols) = (gridrows, gridcols)
     n_imgs = len(imlist)
     M = int(np.ceil(np.sqrt(n_imgs)))
-    N = M
+    N = int(np.ceil(n_imgs/M))
     if aspectratio != 1 and aspectratio is not None:
         x = int(round((aspectratio * N - M) / (1 + aspectratio)))
         N = N - x
@@ -67,9 +91,9 @@ def montage(imlist, imgheight, imgwidth, gridrows=None, gridcols=None, aspectrat
                         else:
                             raise
                     else:
-                        im = imlist[k].rgb().crop().resize(n,m).array()
+                        im = imlist[k].rgb().crop().resize(height=n, width=m).array()
                 else:
-                    im = imlist[k].rgb().resize(n,m).array()
+                    im = imlist[k].rgb().resize(height=n, width=m).array()
 
                 img_montage[sliceN:sliceN + n, sliceM:sliceM + m] = im
 

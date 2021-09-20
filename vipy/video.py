@@ -655,6 +655,7 @@ class Video(object):
             f.write(self.attributes['__video__'])
         return self.filename(filename)                
 
+    
     @classmethod
     def concatenate(cls, videos, outfile, framerate=30, youtube_chapters=None):
         """Temporally concatenate a sequence of videos into a single video stored in outfile.
@@ -3432,11 +3433,11 @@ class Scene(VideoCategory):
         self.trackfilter(lambda t: t.id() not in deleted)  # remove duplicate tracks
         return self
 
-    def combine(self, other, tracks=True, activities=True):
+    def combine(self, other, tracks=True, activities=True, rekey=True):
         """Combine the activities and tracks from both scenes into self"""
         assert isinstance(other, Scene), "Invalid input - must be vipy.video.Scene() object and not type=%s" % str(type(other))
         assert self.framerate() == other.framerate()
-        o = other.clone(rekey=True)   # make sure keys are unique
+        o = other.clone(rekey=True) if rekey else other   # make sure keys are unique
         if activities:
             self.activities().update(o.activities())
         if tracks:
@@ -3675,11 +3676,18 @@ class Scene(VideoCategory):
         return Flow(flowdim=flowdim, gpu=gpu).stabilize(self.clone(), residual=True)
     
     def pixelmask(self, pixelsize=8):
-        """Replace all pixels in foreground boxes with pixelation"""
+        """Replace all pixels in foreground boxes with pixelation (e.g. bigger pixels, like privacy glass)"""
         for im in self.mutable():  # convert to writeable numpy array, triggers writeable copy          
             im.pixelmask(pixelsize)  # shared numpy array
         return self
 
+    def pixelize(self, radius=16):
+        """Alias for pixelmask()"""
+        return self.pixelmask(pixelsize=radius)
+    def pixelate(self, radius=16):
+        """Alias for pixelmask()"""
+        return self.pixelmask(pixelsize=radius)
+    
     def binarymask(self):
         """Replace all pixels in foreground boxes with white, zero in background"""
         for im in self.mutable():  # convert to writeable numpy array, triggers writeable copy  
