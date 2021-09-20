@@ -492,6 +492,10 @@ class Track(object):
         """
         return self.during(k_start, k_end)
 
+    def within(self, starframe, endframe):
+        """Is the track within the frame range (startframe, endframe)?"""
+        return self.startframe() >= startframe and self.endframe() <= endframe
+    
     def offset(self, dt=0, dx=0, dy=0):
         """Apply a temporal shift of dt frames, and a spatial shift of (dx, dy) pixels.
         

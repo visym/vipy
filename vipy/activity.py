@@ -360,3 +360,8 @@ class Activity(object):
         """Return the temporal distance in frames between self and other which is the minimum frame difference between the end of one to the start of the other, or zero if they overlap"""
         assert isinstance(other, Activity), "Invalid input - must be vipy.activity.Activity()"
         return (max(self.startframe(), other.startframe()) - min(self.endframe(), other.endframe())) if self.temporal_iou(other) == 0 else 0
+
+    def within(self, startframe, endframe):
+        """Is the activity within the frame rate (startframe, endframe)?"""
+        return self.startframe() >= startframe and self.endframe() <= endframe
+    

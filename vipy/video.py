@@ -3433,11 +3433,11 @@ class Scene(VideoCategory):
         self.trackfilter(lambda t: t.id() not in deleted)  # remove duplicate tracks
         return self
 
-    def combine(self, other, tracks=True, activities=True):
+    def combine(self, other, tracks=True, activities=True, rekey=True):
         """Combine the activities and tracks from both scenes into self"""
         assert isinstance(other, Scene), "Invalid input - must be vipy.video.Scene() object and not type=%s" % str(type(other))
         assert self.framerate() == other.framerate()
-        o = other.clone(rekey=True)   # make sure keys are unique
+        o = other.clone(rekey=True) if rekey else other   # make sure keys are unique
         if activities:
             self.activities().update(o.activities())
         if tracks:
