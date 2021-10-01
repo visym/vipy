@@ -2,7 +2,7 @@ import os
 import numpy as np
 import shutil
 from vipy.globals import print
-from vipy.util import remkdir, imlist, filetail, istuple, islist, isnumpy, filebase, temphtml, isurl
+from vipy.util import remkdir, imlist, filetail, istuple, islist, isnumpy, filebase, temphtml, isurl, fileext
 from vipy.image import Image
 from vipy.show import savefig
 from collections import defaultdict
@@ -280,6 +280,47 @@ def tohtml(imlist, imdict=None, title='Image Visualization', mindim=1024, outfil
         
     return filename
 
+
+def videolist(vidlist, viddict=None, title='Video Visualization', outfile=None, display=False):
+    """Create a standalone HTML file that will visualize the set of videos in vidlist using HTML5 video player"""
+    assert all([isinstance(v, vipy.video.Video) for v in vidlist])
+        
+    # Create summary page to show downloaded videos
+    filename = outfile if outfile is not None else temphtml()
+    f = open(filename,'w')
+    f.write('<!DOCTYPE html>\n')
+    f.write('<html>\n')
+    f.write('<body>\n')
+    f.write('<div id="container" style="width:2048px">\n')
+    f.write('<div id="header">\n')
+    f.write('<h1 style="margin-bottom:0;">%s</h1><br>\n' % title)
+    f.write('Summary HTML generated on %s<br>\n' % time.strftime("%Y-%m-%d %H:%M:%S",time.localtime(time.time())))
+    f.write('Number of videos: %d<br>\n' % len(vidlist))
+    f.write('</div>\n')
+    f.write('<br>\n')
+    f.write('<hr>\n')
+    f.write('<div id="%04d" style="float:left;">\n' % 0)
+
+    # Generate images and html
+    for (k,v) in enumerate(vidlist):
+        f.write('<p> <video width="%d" heigh="%d" controls="true"> <source src="%s" type="video/%s"></source>  You need an HTML5 capable browser. </video> </p>\n' % (v.downloadif().width(), v.height(), v.filename(), fileext(v.filename(), withdot=False)))
+        f.write('<p>%s</p>\n' % html.escape(str(v)))
+        f.write('<hr>\n')        
+
+    f.write('</div>\n')
+    f.write('</body>\n')
+    f.write('</html>\n')
+    f.close()
+
+    # Display?
+    if display:
+        url = pathlib.Path(filename).as_uri()
+        print('[vipy.visualize.videolist]: Opening "%s" in default browser' % url)
+        webbrowser.open(url)
+        
+    return filename
+
+    
     
 def imagelist(list_of_image_files, outdir, title='Image Visualization', imagewidth=64):
     """Given a list of image filenames wth absolute paths, copy to outdir, and create an index.html file that visualizes each.    
