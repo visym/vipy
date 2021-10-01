@@ -899,7 +899,7 @@ class Video(object):
         
         .. notes:: This is the duration of the source video and NOT the duration of the filter chain.  If you load(), this may be different duration depending on clip() or framerate() directives.
         """
-        filehash = hashlib.md5(str(self.filename()).encode()).hexdigest()            
+        filehash = hashlib.md5(str(self.downloadif().filename()).encode()).hexdigest()            
         if self.hasattribute('_duration_in_seconds_of_videofile') and self.attributes['__duration_in_seconds_of_videofile']['filehash'] == filehash:
             return self.attributes['__duration_in_seconds_of_videofile']['duration']
         else:
@@ -925,7 +925,7 @@ class Video(object):
     def framerate_of_videofile(self):
         """Return video framerate in frames per second of the source video file (NOT the filter chain), requires ffprobe.
         """
-        p = self.probe()
+        p = self.probe()        
         assert 'streams' in p and len(['streams']) > 0
         fps = p['streams'][0]['avg_frame_rate']
         return float(fps) if '/' not in fps else (float(fps.split('/')[0]) / float(fps.split('/')[1]))  # fps='30/1' or fps='30.0'
@@ -942,7 +942,7 @@ class Video(object):
         """Run ffprobe on the filename and return the result as a dictionary"""
         if not has_ffprobe:
             raise ValueError('"ffprobe" executable not found on path, this is optional for vipy.video - Install from http://ffmpeg.org/download.html')            
-        assert self.hasfilename(), "Invalid video file '%s' for ffprobe" % self.filename() 
+        assert self.downloadif().hasfilename(), "Invalid video file '%s' for ffprobe" % self.filename() 
         return ffmpeg.probe(self.filename())
 
     def print(self, prefix='', verbose=True, sleep=None):
@@ -2513,6 +2513,7 @@ class Scene(VideoCategory):
             - 'jointlabel' of this detection, used for visualization
             - 'noun verb' of this detection, used for visualization
         
+
         Args:
             k: [int >=- 0] The frame index requested.  This is relative to the current frame rate of the video.
             img: [numpy]  An optional image to be used for this frame.  This is useful to construct frames efficiently for videos if the pixel buffer is available from a stream rather than a preview.
@@ -2521,7 +2522,9 @@ class Scene(VideoCategory):
             A `vipy.image.Scene` object for frame k containing all objects in this frame
         
         .. notes::
-            -Modifying this frame will not affect the source video
+            - Modifying this frame will not affect the source video
+            - If multiple objects are associated with an activity and a primary actor is defined, then only the primary actor is displayed as "Noun Verbing", objects are shown as "Noun" with the activityid in the attribute
+            - If noun is associated with more than one activity, then this is shown as "Noun Verbing1\nNoun Verbing2", with a newline separator
 
         """
         assert isinstance(k, int) and k>=0, "Frame index must be non-negative integer"
@@ -2531,14 +2534,16 @@ class Scene(VideoCategory):
         dets = [t[k].clone(deep=True).setattribute('trackindex', j) for (j, t) in enumerate(self.tracks().values()) if len(t)>0 and (t.during(k) or t.boundary()=='extend')]  # track interpolation (cloned) with boundary handling
         for d in dets:
             d.attributes['activityid'] = []  # reset
-            jointlabel = [(d.shortlabel(),'')]  # [(Noun, Verbing1), (Noun, Verbing2), ...]
+            jointlabel = [(d.shortlabel(),'')]  # [(Noun, Verbing1), (Noun, Verbing2), ...], initialized with empty verbs as [(Noun, ""), ... ]
             activityconf = [None]   # for display 
 
             for (aid, a) in self.activities().items():  # insertion order:  First activity is primary, next is secondary (not in confidence order) 
                 if a.hastrack(d.attributes['trackid']) and a.during(k):
-                    # Jointlabel is always displayed as "Noun Verbing" during activity (e.g. Person Carrying, Vehicle Turning) using noun=track shortlabel, verb=activity shortlabel
-                    # If noun is associated with more than one activity, then this is shown as "Noun Verbing1\nNoun Verbing2", with a newline separator 
-                    if not any([a.shortlabel() == v for (n,v) in jointlabel]):
+                    # Display assumptions:
+                    # - Jointlabel is always displayed as "Noun Verbing" during activity (e.g. Person Carrying, Vehicle Turning) using noun=track shortlabel, verb=activity shortlabel
+                    # - If noun is associated with more than one activity, then this is shown as "Noun Verbing1\nNoun Verbing2", with a newline separator
+                    # - If multiple objects are associated with an activity and a primary actor is defined, then only the primary actor is displayed as "Noun Verbing", objects are shown as "Noun" with the activityid in the attributes
+                    if (a.actorid() is None or (a.actorid() == d.attributes['trackid'])) and not any([a.shortlabel() == v for (n,v) in jointlabel]):
                         jointlabel.append( (d.shortlabel(), a.shortlabel()) )  # only show each activity once (even if repeated)
                         activityconf.append(a.confidence())
                     d.attributes['activityid'].append(a.id())  # for activity correspondence (if desired)
