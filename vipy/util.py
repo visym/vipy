@@ -481,7 +481,7 @@ def _json_class_registry():
 
 def saveas(vars, outfile=None, format='dill'):
     """Save variables as a dill pickled file"""
-    outfile = temppickle() if outfile is None else outfile
+    outfile = temppickle() if outfile is None else os.path.abspath(os.path.expanduser(outfile))
 
     remkdir(filepath(outfile))
     if format in ['dill']:
