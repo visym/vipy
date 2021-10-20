@@ -35,7 +35,7 @@ class Activity(object):
             tracks = [v for (k,v) in tracks.items()] if isinstance(tracks, dict) else tracks  # backwards compatible, track dictionary input
             assert (all([isstring(t) for t in tracks]) or all([isinstance(t, Track) for t in tracks])), "Invalid track input"
             if all([isinstance(t, Track) for t in tracks]):
-                assert all([any([t.during(f) for f in range(startframe, endframe)]) for t in tracks]), "All tracks must be be present in at least one frame when this activity occurs"
+                assert any([any([t.during(f) for f in range(startframe, endframe)]) for t in tracks]), "At least one track must be be present in at least one frame when this activity occurs"
                 tracks = [t.id() for t in tracks]  
         trackid = set(tracks) if tracks is not None else (set([actorid]) if actorid is not None else set([]))  # only store IDs, not tracks
         
