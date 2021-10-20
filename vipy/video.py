@@ -922,6 +922,10 @@ class Video(object):
         frames = frames if frames is not None else ((int(seconds*self.framerate()) if seconds is not None else 0) + (int(minutes*60*self.framerate()) if minutes is not None else 0))
         return self.clip(0, frames)
 
+    def duration_in_frames(self):
+        """Return the duration of the video filter chain in frames, equal to round(self.duration()*self.framerate())"""
+        return int(round(self.duration()*self.framerate()))
+    
     def framerate_of_videofile(self):
         """Return video framerate in frames per second of the source video file (NOT the filter chain), requires ffprobe.
         """

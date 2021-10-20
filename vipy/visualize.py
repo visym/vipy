@@ -2,7 +2,7 @@ import os
 import numpy as np
 import shutil
 from vipy.globals import print
-from vipy.util import remkdir, imlist, filetail, istuple, islist, isnumpy, filebase, temphtml, isurl, fileext
+from vipy.util import remkdir, imlist, filetail, istuple, islist, isnumpy, filebase, temphtml, isurl, fileext, tolist
 from vipy.image import Image
 from vipy.show import savefig
 from collections import defaultdict
@@ -168,7 +168,8 @@ def urls(urllist, title='URL Visualization', imagewidth=1024, outfile=None, disp
         display: [bool] open the html file in the default system viewer when complete
     
     """
-    assert all([isurl(url) for url in urls])
+    urllist = tolist(urllist)
+    assert all([isurl(url) for url in urllist])
 
     # Create summary page to show precomputed images
     k_divid = 0    
