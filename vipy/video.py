@@ -3112,7 +3112,7 @@ class Scene(VideoCategory):
             padframes: [list[tuples]] [(int, int), ...] for activity specific asymmetric padding
             multilabel: [bool] include overlapping multilabel secondary activities in each activityclip
             idx: [int], [tuple], [list].  The indexes of the activities to return, where the index is the integer index order of the activity in the video.
-            padto: [int] for padding so that each activity clip is at least padto frames long.  
+            padto: [int] for padding so that each activity clip is at least padto frames long, with symmetric padding around the activity.  
 
         Returns:
             A list of `vipy.video.Scene` each cloned from the source video and clipped on one activity in the scene
@@ -3138,8 +3138,9 @@ class Scene(VideoCategory):
         vid._tracks = {}      # for faster clone
         maxframes = self.duration_in_frames() if (padframes != 0 or padto is not None) else None                    
         if padto is not None:
-            padframelist = [(sf-int(np.ceil(((padto-(ef-sf))/2))), ef+int(np.ceil(((padto-(ef-sf))/2)))) if (ef-sf)<padto else (sf,ef) for (sf,ef) in padframelist]  # padding may be beyond video boundary
-            padframelist = [(0,ef+(-sf)) if (sf<0) else ((sf-(maxframes-ef), maxframes) if (ef>maxframes) else (sf,ef))  for (sf,ef) in padframelist]  # truncate to video boundary
+            cliplist = [(a.startframe(), a.endframe()) for a in primary_activities]
+            padframelist = [(sp+int(np.ceil(((padto-(ef-sf))/2))), ep+int(np.ceil(((padto-(ef-sf))/2)))) if (ef-sf)<padto else (sp,ep) for ((sp,ep),(sf,ef)) in zip(padframelist, cliplist)]  
+            padframelist = [(0,ep+(-sp)) if (sp<0) else ((sp+(maxframes-ef), 0) if ((ef+ep)>maxframes) else (sp,ep)) for ((sp,ep),(sf,ef)) in zip(padframelist, cliplist)]  # truncate to video boundary
             
         return [vid.clone()
                 .activities([pa]+sa)  # primary activity first
