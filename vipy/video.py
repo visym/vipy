@@ -923,7 +923,7 @@ class Video(object):
         return self.clip(0, frames)
 
     def duration_in_frames(self):
-        """Return the duration of the video filter chain in frames, equal to round(self.duration()*self.framerate())"""
+        """Return the duration of the video filter chain in frames, equal to round(self.duration()*self.framerate()).  Requires a probe() of the video to get duration"""
         return int(round(self.duration()*self.framerate()))
     
     def framerate_of_videofile(self):
@@ -3109,10 +3109,10 @@ class Scene(VideoCategory):
         Args:
             padframes: [int] for symmetric padding same before and after
             padframes: [tuple] (int, int) for asymmetric padding before and after
-            padframes: [list[tuples]] [(int, int), ...] for activity specific asymmetric padding
+            padframes: [list[tuples]] [(int, int), ...] for activity specific asymmetric padding.  See also padto.
             multilabel: [bool] include overlapping multilabel secondary activities in each activityclip
-            idx: [int], [tuple], [list].  The indexes of the activities to return, where the index is the integer index order of the activity in the video.
-            padto: [int] for padding so that each activity clip is at least padto frames long, with symmetric padding around the activity.  
+            idx: [int], [tuple], [list].  The indexes of the activities to return, where the index is the integer index order of the activity in the video.  Useful for complex videos.
+            padto: [int] padding so that each activity clip is at least padto frames long, with symmetric padding around the activity.  
 
         Returns:
             A list of `vipy.video.Scene` each cloned from the source video and clipped on one activity in the scene
@@ -3145,7 +3145,7 @@ class Scene(VideoCategory):
         return [vid.clone()
                 .activities([pa]+sa)  # primary activity first
                 .tracks(t)
-                .clip(startframe=max(pa.startframe()-prepad, 0), endframe=min(pa.endframe()+postpad, (maxframes if maxframes is not None  else pa.endframe()+postpad)))
+                .clip(startframe=max(pa.startframe()-prepad, 0), endframe=min(pa.endframe()+postpad, (maxframes if maxframes is not None else pa.endframe()+postpad)))
                 .category(pa.category())
                 .setactorid(pa.actorid())  # actor is actor of primary activity
                 .setattribute('_instance_id', ('%s_%d' % (vid.videoid(), k)) if not vid.hasattribute('_instance_id') else vid.getattribute('_instance_id'))
