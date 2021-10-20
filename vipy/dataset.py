@@ -297,15 +297,19 @@ class Dataset():
         self._objlist = [v if key(v) not in d else d[key(v)] for v in self._objlist]
         return self
 
-    def merge(self, other, outdir, selfdir, otherdir):
-        assert isinstance(other, Dataset), "invalid input"
-        (selfdir, otherdir, outdir) = (os.path.normpath(selfdir), os.path.normpath(otherdir), vipy.util.remkdir(os.path.normpath(outdir)))
-        assert all([selfdir in v.filename() for v in self._objlist])
-        assert all([otherdir in v.filename() for v in other._objlist])
+    def merge(self, outdir):
+        """Merge a dataset union into a single subdirectory with symlinked media ready to be archived.
 
-        D1 = self.clone().localmap(lambda v: v.filename(v.filename().replace(selfdir, outdir), copy=False, symlink=True))
-        D2 = other.clone().localmap(lambda v: v.filename(v.filename().replace(otherdir, outdir), copy=False, symlink=True))
-        return D1.union(D2)
+        >>> D1 = vipy.dataset.Dataset('/path1/dataset.json')
+        >>> D2 = vipy.dataset.Dataset('/path2/dataset.json')
+        >>> D3 = D1.union(D2).merge(outdir='/path3')
+
+        Media in D1 are in /path1, media in D2 are in /path2, media in D3 are all symlinked to /path3.
+        We can now create a tarball for D3 with all of the media files in the same relative path.
+        """
+        
+        outdir = vipy.util.remkdir(os.path.abspath(os.path.normpath(outdir)))
+        return self.clone().localmap(lambda v: v.filename(os.path.join(outdir, filetail(v.filename())), copy=False, symlink=True))
 
     def augment(self, f, n_augmentations):
         assert n_augmentations >= 1
@@ -601,7 +605,7 @@ class Dataset():
         import vipy.torch
         return vipy.torch.TorchDataset(f_video_to_tensor, self)
 
-    def to_torch_tensordir(self, f_video_to_tensor, outdir, n_augmentations=20, n_chunks=512):
+    def to_torch_tensordir(self, f_video_to_tensor, outdir, n_augmentations=20):
         """Return a TorchTensordir dataset that will load a pkl.bz2 file that contains one of n_augmentations (tensor, label) pairs.
         
         This is useful for fast loading of datasets that contain many videos.
@@ -610,7 +614,7 @@ class Dataset():
         import vipy.torch
         assert self.is_vipy_scene()
         outdir = vipy.util.remkdir(outdir)
-        B = vipy.util.chunklist(self._objlist, n_chunks)
+        B = vipy.util.chunklist(self._objlist, n_chunks=2048)
         vipy.batch.Batch(B, as_completed=True, minscatter=1).map(lambda V, f=f_video_to_tensor, outdir=outdir, n_augmentations=n_augmentations: [vipy.util.bz2pkl(os.path.join(outdir, '%s.pkl.bz2' % v.instanceid()), [f(v.clone()) for k in range(0, n_augmentations)]) for v in V])
         return vipy.torch.TorchTensordir(outdir)
 

@@ -3131,10 +3131,11 @@ class Scene(VideoCategory):
         secondary_activities = [sa if multilabel else [] for sa in secondary_activities]  
         vid._activities = {}  # for faster clone
         vid._tracks = {}      # for faster clone
+        maxframes = self.duration_in_frames() if padframes != 0 else None
         return [vid.clone()
                 .activities([pa]+sa)  # primary activity first
                 .tracks(t)
-                .clip(startframe=max(pa.startframe()-prepad, 0), endframe=(pa.endframe()+postpad))
+                .clip(startframe=max(pa.startframe()-prepad, 0), endframe=min(pa.endframe()+postpad, (maxframes if postpad != 0 else pa.endframe())))
                 .category(pa.category())
                 .setactorid(pa.actorid())  # actor is actor of primary activity
                 .setattribute('_instance_id', ('%s_%d' % (vid.videoid(), k)) if not vid.hasattribute('_instance_id') else vid.getattribute('_instance_id'))
