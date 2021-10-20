@@ -3099,7 +3099,7 @@ class Scene(VideoCategory):
         """Split the scene into k separate scenes, one for each track.  Each scene starts and ends when the track starts and ends"""
         return [t.setattribute('_instance_id', '%s_%d' % (t.actorid(), k)).clip(t.track(t.actorid()).startframe(), t.track(t.actorid()).endframe()) for (k,t) in enumerate(self.tracksplit())]
     
-    def activityclip(self, padframes=0, multilabel=True, idx=None):
+    def activityclip(self, padframes=0, multilabel=True, idx=None, padto=None):
         """Return a list of `vipy.video.Scene` objects each clipped to be temporally centered on a single activity, with an optional padframes before and after.  
 
         Args:
@@ -3108,6 +3108,7 @@ class Scene(VideoCategory):
             padframes: [list[tuples]] [(int, int), ...] for activity specific asymmetric padding
             multilabel: [bool] include overlapping multilabel secondary activities in each activityclip
             idx: [int], [tuple], [list].  The indexes of the activities to return, where the index is the integer index order of the activity in the video.
+            padto: [int] for padding so that each activity clip is at least padto frames long.  
 
         Returns:
             A list of `vipy.video.Scene` each cloned from the source video and clipped on one activity in the scene
@@ -3131,11 +3132,15 @@ class Scene(VideoCategory):
         secondary_activities = [sa if multilabel else [] for sa in secondary_activities]  
         vid._activities = {}  # for faster clone
         vid._tracks = {}      # for faster clone
-        maxframes = self.duration_in_frames() if padframes != 0 else None
+        maxframes = self.duration_in_frames() if (padframes != 0 or padto is not None) else None                    
+        if padto is not None:
+            padframelist = [(sf-int(np.ceil(((padto-(ef-sf))/2))), ef+int(np.ceil(((padto-(ef-sf))/2)))) if (ef-sf)<padto else (sf,ef) for (sf,ef) in padframelist]  # padding may be beyond video boundary
+            padframelist = [(0,ef+(-sf)) if (sf<0) else ((sf-(maxframes-ef), maxframes) if (ef>maxframes) else (sf,ef))  for (sf,ef) in padframelist]  # truncate to video boundary
+            
         return [vid.clone()
                 .activities([pa]+sa)  # primary activity first
                 .tracks(t)
-                .clip(startframe=max(pa.startframe()-prepad, 0), endframe=min(pa.endframe()+postpad, (maxframes if postpad != 0 else pa.endframe())))
+                .clip(startframe=max(pa.startframe()-prepad, 0), endframe=min(pa.endframe()+postpad, (maxframes if maxframes is not None  else pa.endframe()+postpad)))
                 .category(pa.category())
                 .setactorid(pa.actorid())  # actor is actor of primary activity
                 .setattribute('_instance_id', ('%s_%d' % (vid.videoid(), k)) if not vid.hasattribute('_instance_id') else vid.getattribute('_instance_id'))
