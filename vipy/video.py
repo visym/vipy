@@ -3140,7 +3140,7 @@ class Scene(VideoCategory):
         if padto is not None:
             cliplist = [(a.startframe(), a.endframe()) for a in primary_activities]
             padframelist = [(sp+int(np.ceil(((padto-(ef-sf))/2))), ep+int(np.ceil(((padto-(ef-sf))/2)))) if (ef-sf)<padto else (sp,ep) for ((sp,ep),(sf,ef)) in zip(padframelist, cliplist)]  
-            padframelist = [(0,ep+(-sp)) if (sp<0) else ((sp+(maxframes-ef), 0) if ((ef+ep)>maxframes) else (sp,ep)) for ((sp,ep),(sf,ef)) in zip(padframelist, cliplist)]  # truncate to video boundary
+            padframelist = [(0,ep+(-sp)) if (sp<0) else ((sp+(ep-(maxframes-ef)), maxframes-ef) if ((ef+ep)>maxframes) else (sp,ep)) for ((sp,ep),(sf,ef)) in zip(padframelist, cliplist)]  # truncate to video boundary
             
         return [vid.clone()
                 .activities([pa]+sa)  # primary activity first

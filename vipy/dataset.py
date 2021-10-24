@@ -465,7 +465,7 @@ class Dataset():
 
     def multilabel_inverse_frequency_weight(self):
         """Return an inverse frequency weight for multilabel activities, where label counts are the fractional label likelihood within a clip"""
-        assert self.is_vipy_video()
+        assert self._is_vipy_video()
 
         lbl_likelihood  = {k:0 for k in self.classlist()}
         for v in self.list():
@@ -605,17 +605,16 @@ class Dataset():
         import vipy.torch
         return vipy.torch.TorchDataset(f_video_to_tensor, self)
 
-    def to_torch_tensordir(self, f_video_to_tensor, outdir, n_augmentations=20):
+    def to_torch_tensordir(self, f_video_to_tensor, outdir, n_augmentations=20, sleep=3):
         """Return a TorchTensordir dataset that will load a pkl.bz2 file that contains one of n_augmentations (tensor, label) pairs.
         
         This is useful for fast loading of datasets that contain many videos.
 
         """
         import vipy.torch
-        assert self.is_vipy_scene()
+        assert self._is_vipy_scene()
         outdir = vipy.util.remkdir(outdir)
-        B = vipy.util.chunklist(self._objlist, n_chunks=2048)
-        vipy.batch.Batch(B, as_completed=True, minscatter=1).map(lambda V, f=f_video_to_tensor, outdir=outdir, n_augmentations=n_augmentations: [vipy.util.bz2pkl(os.path.join(outdir, '%s.pkl.bz2' % v.instanceid()), [f(v.clone()) for k in range(0, n_augmentations)]) for v in V])
+        vipy.batch.Batch(self._objlist, as_completed=True).map(lambda v, f=f_video_to_tensor, outdir=outdir, n_augmentations=n_augmentations: vipy.util.bz2pkl(os.path.join(outdir, '%s.pkl.bz2' % v.instanceid()), [f(v.print(sleep=sleep).clone()) for k in range(0, n_augmentations)]))
         return vipy.torch.TorchTensordir(outdir)
 
     def annotate(self, outdir, mindim=512):

@@ -1,6 +1,8 @@
 import vipy
 import numpy as np
 import copy
+import os
+import random
 
 from vipy.util import try_import
 try_import('torch');
