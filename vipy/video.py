@@ -3163,9 +3163,9 @@ class Scene(VideoCategory):
         """
         A = []
         for t in self.tracklist():
-            startframe = t.startframe()
+            (startframe, endframe) = (t.startframe(), t.startframe())
             for k in range(t.startframe(), t.endframe()):
-                if not any([a.hastrack(t) and a.during(k) for a in self.activitylist()]):
+                if not any([a.hastrack(t) and a.during(k) for a in self.activitylist()]) and k < (t.endframe()-1):
                     endframe = k  # background
                 else:
                     if startframe < endframe:
