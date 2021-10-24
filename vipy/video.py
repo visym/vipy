@@ -490,7 +490,6 @@ class Video(object):
             # WARNING: if the user does not supply the correct framerate for the video, then this will be wrong since these are converted to frames 
             self.clip(int(round(startsec/self.framerate())), int(round(endsec/self.framerate())) if endsec is not None else None)
 
-            
         # Array input
         assert not (array is not None and frames is not None)
         if array is not None:
@@ -1819,7 +1818,7 @@ class Video(object):
         assert isinstance(b, bool)
         return self.pkl(pklfile) if b else self
 
-    def webp(self, outfile, pause=3, strict=True, smallest=False, smaller=False):
+    def webp(self, outfile=None, pause=3, strict=True, smallest=False, smaller=False):
         """Save a video to an animated WEBP file, with pause=N seconds on the last frame between loops.  
         
         Args:
@@ -1833,6 +1832,7 @@ class Video(object):
 
         .. warning::  This may be slow for very long or large videos
         """
+        outfile = vipy.util.tempWEBP() if outfile is None else outfile        
         assert strict is False or iswebp(outfile)
         outfile = os.path.normpath(os.path.abspath(os.path.expanduser(outfile)))
         self.load().frame(0).pil().save(outfile, loop=0, save_all=True, method=6 if smallest else 3 if smaller else 0,
@@ -3101,7 +3101,7 @@ class Scene(VideoCategory):
 
     def trackclip(self):
         """Split the scene into k separate scenes, one for each track.  Each scene starts and ends when the track starts and ends"""
-        return [t.setattribute('_instance_id', '%s_%d' % (t.actorid(), k)).clip(t.track(t.actorid()).startframe(), t.track(t.actorid()).endframe()) for (k,t) in enumerate(self.tracksplit())]
+        return [t.setattribute('_instance_id', '%s_%d_trackclip' % (t.actorid(), k)).clip(t.track(t.actorid()).startframe(), t.track(t.actorid()).endframe()) for (k,t) in enumerate(self.tracksplit())]
     
     def activityclip(self, padframes=0, multilabel=True, idx=None, padto=None):
         """Return a list of `vipy.video.Scene` objects each clipped to be temporally centered on a single activity, with an optional padframes before and after.  
@@ -3152,12 +3152,40 @@ class Scene(VideoCategory):
                 for (k,(pa,sa,t,(prepad,postpad))) in enumerate(zip(primary_activities, secondary_activities, tracks, padframelist))
                 if (idx is None or k in tolist(idx))]
 
-    def noactivityclip(self, label=None, strict=True, padframes=0):
+    def noactivitylist(self, label=None, shortlabel=None):
+        """Return a list of `vipy.activity.Activity` which are segments of each track with no associated activities.
+
+        Args:
+            label: [str] The activity label to give the background activities.  Defaults to the track category (lowercase)
+        
+        Returns:
+            A list of `vipy.activity.Activity` such that each activity is associated with a track with temporal support where no activities are performed. The union of activitylist() and noactivitylist() should cover the temporal support of all track
+        """
+        A = []
+        for t in self.tracklist():
+            (startframe, endframe) = (t.startframe(), t.startframe())
+            for k in range(t.startframe(), t.endframe()):
+                if not any([a.hastrack(t) and a.during(k) for a in self.activitylist()]) and k < (t.endframe()-1):
+                    endframe = k  # background
+                else:
+                    if startframe < endframe:
+                        A.append(vipy.activity.Activity(label=t.category() if label is None else label, 
+                                                        shortlabel='' if label is None else (label if shortlabel is None else shortlabel),
+                                                        startframe=startframe,
+                                                        endframe=endframe,
+                                                        actorid=t.id(),
+                                                        framerate=self.framerate(),
+                                                        attributes={'_noactivitylist':True}))
+                    (startframe, endframe) = (k+1,k+1)                        
+        return A
+    
+        
+    def noactivityclip(self, label=None, shortlabel=None, padframes=0):
         """Return a list of vipy.video.Scene() each clipped on a track segment that has no associated activities.  
 
         Args:
-            strict: [bool] True means that background can only occur in frames where no tracks are performing any activities.  This is useful so that background is not constructed from secondary objects. False means that background can only occur in frames where a given track is not performing any activities. 
             label: [str] The activity label to give the background activities.  Defaults to the track category (lowercase)
+            shortlabel: [str] The activity shortlabel to give the background activities when visualized.  Defaults to the track category (lowercase)
             padframes: [int]  The amount of temporal padding to apply to the clips before and after in frames.  See `vipy.video.Scene.activityclip` for options.
         
         Returns:
@@ -3167,19 +3195,9 @@ class Scene(VideoCategory):
             - Each clip will contain exactly one activity "Background" which is the interval for this track where no activities are occurring
             - Each clip will be at least one frame long
         """
-        v = self.clone()
-        for t in v.tracklist():
-            bgframe = [k for k in range(t.startframe(), t.endframe()) if not any([a.hastrack(t) and a.during(k) for a in self.activitylist()])]                
-            while len(bgframe) > 0:
-                (i,j) = (0, np.argwhere(np.diff(bgframe) > 1).flatten()[0] + 1 if len(np.argwhere(np.diff(bgframe) > 1))>0 else len(bgframe)-1)
-                if i < j:
-                    v.add(vipy.activity.Activity(label=t.category() if label is None else label, 
-                                                 shortlabel='' if label is None else label,
-                                                 startframe=bgframe[i], endframe=bgframe[j],
-                                                 actorid=t.id(), framerate=v.framerate(), attributes={'noactivityclip':True}))
-                bgframe = bgframe[j+1:]
-        return v.activityfilter(lambda a: 'noactivityclip' in a.attributes).activityclip(padframes=padframes, multilabel=False)
-
+        A = self.clone().activities(self.noactivitylist(label=label, shortlabel=shortlabel)).activityclip(padframes=padframes, multilabel=False)
+        return [a.setattribute('_instance_id', '%s_bg' % a.getattribute('_instance_id')) for a in A]
+    
     def trackbox(self, dilate=1.0):
         """The trackbox is the union of all track bounding boxes in the video, or None if there are no tracks
         
@@ -3555,7 +3573,7 @@ class Scene(VideoCategory):
         return self        
 
 
-    def annotate(self, outfile=None, fontsize=10, captionoffset=(0,0), textfacecolor='white', textfacealpha=1.0, shortlabel=True, boxalpha=0.25, d_category2color={'Person':'green', 'Vehicle':'blue', 'Object':'red'}, categories=None, nocaption=False, nocaption_withstring=[], mutator=None, timestamp=None, timestampcolor='black', timestampfacecolor='white', verbose=True):
+    def annotate(self, outfile=None, fontsize=10, captionoffset=(0,0), textfacecolor='white', textfacealpha=1.0, shortlabel=True, boxalpha=0.25, d_category2color={'Person':'green', 'Vehicle':'blue', 'Object':'red'}, categories=None, nocaption=False, nocaption_withstring=[], mutator=None, timestamp=None, timestampcolor='black', timestampfacecolor='white', verbose=False):
         """Generate a video visualization of all annotated objects and activities in the video.
         
         The annotation video will be at the resolution and framerate of the underlying video, and pixels in this video will now contain the overlay.

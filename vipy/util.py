@@ -1330,6 +1330,10 @@ def tempMP4():
     """Create a temporary MP4 file in system temp directory"""
     return tempfilename(suffix='.mp4')
 
+def tempWEBP():
+    """Create a temporary WEBP file in system temp directory"""
+    return tempfilename(suffix='.webp')
+
 
 def tmpjpg():
     """Create a temporary JPG file in /tmp"""
