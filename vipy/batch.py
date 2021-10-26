@@ -32,16 +32,16 @@ class Dask(object):
 
         self._num_processes = num_processes
 
-        env={'VIPY_BACKEND':'Agg',  # headless 
-             'PYTHONOPATH':os.environ['PYTHONPATH'] if 'PYTHONPATH' in os.environ else '',
-             'PATH':os.environ['PATH'] if 'PATH' in os.environ else '',
-             #'DASK_DISTRIBUTED__COMM__TIMEOUTS__TCP':"30s",
-             'DASK_DISTRIBUTED__COMM__TIMEOUTS__CONNECT':"30s",
-             #'DASK_DISTRIBUTED__SCHEDULER__WORK_STEALING':'false',
-             #'DASK_DISTRIBUTED__ADMIN__TICK__LIMIT':"30s",
-             #'DASK_DISTRIBUTED__ADMIN__TICK__INTERVAL':"2s",
-             'DASK_DISTRIBUTED__DEPLOY__LOST_WORKER_TIMEOUT':"30s"
-        }
+        os.environ['DASK_LOGGING__DISTRIBUTED'] = 'warning' if not verbose else 'info'
+        env = {'VIPY_BACKEND':'Agg',  # headless 
+               'PYTHONOPATH':os.environ['PYTHONPATH'] if 'PYTHONPATH' in os.environ else '',
+               'PATH':os.environ['PATH'] if 'PATH' in os.environ else '',
+               #'DASK_DISTRIBUTED__COMM__TIMEOUTS__TCP':"30s",
+               'DASK_DISTRIBUTED__COMM__TIMEOUTS__CONNECT':"30s",
+               #'DASK_DISTRIBUTED__SCHEDULER__WORK_STEALING':'false',
+               #'DASK_DISTRIBUTED__ADMIN__TICK__LIMIT':"30s",
+               #'DASK_DISTRIBUTED__ADMIN__TICK__INTERVAL':"2s",
+               'DASK_DISTRIBUTED__DEPLOY__LOST_WORKER_TIMEOUT':"30s"}
 
         dask.config.set({'DISTRIBUTED.COMM.TIMEOUTS.CONNECT'.lower():'30s'})
         dask.config.set({'DISTRIBUTED.COMM.TIMEOUTS.TCP'.lower():'30s'})
@@ -62,7 +62,7 @@ class Dask(object):
                                   n_workers=num_processes, 
                                   env=env,
                                   direct_to_workers=True,
-                                  silence_logs=20 if verbose else 40,  # logging.WARN=30 or logging.ERROR=40 or logging.INFO=20
+                                  #memory_limit='auto',
                                   local_directory=tempfile.mkdtemp())
 
         self._num_gpus = num_gpus
