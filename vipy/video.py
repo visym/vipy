@@ -2738,6 +2738,13 @@ class Scene(VideoCategory):
         return alist[k]
 
     def activitylist(self):
+        """Return a list of activities in the video, returned in insertion order.
+
+        Returns:
+            A list of `vipy.activity.Activity` insertion ordered into the original video
+
+        .. note::  The order of the activitylist() will not match the order of activityclip(), which is sorted by activity startframe.  To match, use sorted(activitylist, key=lambda a: a.startframe())
+        """
         return list(self.activities().values())  # insertion ordered (python >=3.6), triggers shallow copy
         
     def activityfilter(self, f):

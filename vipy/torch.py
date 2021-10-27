@@ -3,7 +3,12 @@ import numpy as np
 import copy
 import os
 import random
+import dill
+import time
+import json
 
+
+import vipy.util
 from vipy.util import try_import
 try_import('torch');
 
@@ -122,7 +127,8 @@ class Foveation(LaplacianPyramid):
 class TorchDataset(torch.utils.data.Dataset):
     """Converter from a pycollector dataset to a torch dataset"""
     def __init__(self, f_transformer, d):
-        assert isinstance(d, Dataset), "Invalid input"
+        import vipy.dataset
+        assert isinstance(d, vipy.dataset.Dataset), "Invalid input"
         assert callable(f_transformer), "Invalid input"
         self._f_transformer = dill.dumps(f_transformer)  # for torch serialization of lambda functions        
         self.dataset = d
@@ -138,9 +144,7 @@ class TorchDataset(torch.utils.data.Dataset):
             
     def __getitem__(self, k):
         """Should return tuple(tensor, index)"""
-        x = self._unpack()._f_transformer(self.dataset[k])
-        assert isinstance(x, tuple) and len(x) == 2 and isinstance(x[0], torch.Tensor) and isinstance(x[1], int)
-        return x
+        return self._unpack()._f_transformer(self.dataset[k])
 
     def __len__(self):
         return len(self.dataset)
@@ -151,11 +155,16 @@ class TorchTensordir(torch.utils.data.Dataset):
     
        This is useful to use the default Dataset loaders in Torch.
     
-    .. note:: Use python random() and not numpy random 
+       Usage:
+        
+       >>> vipy.torch.Tensordir('/path/to')
+       >>> vipy.torch.Tensordir( ('/path/to/1', '/path/to/2') )
+           
+    .. note:: This requires python random() and not numpy random 
     """
     def __init__(self, tensordir, verbose=True, reseed=True):
-        assert os.path.isdir(tensordir)
-        self._dirlist = [s for s in vipy.util.extlist(tensordir, '.pkl.bz2')]
+        assert (isinstance(tensordir, str) and os.path.isdir(tensordir)) or all([os.path.isdir(d) for d in tensordir])
+        self._dirlist = [s for d in vipy.util.tolist(tensordir) for s in vipy.util.extlist(d, '.pkl.bz2')]
         self._verbose = verbose
         self._reseed = reseed
 

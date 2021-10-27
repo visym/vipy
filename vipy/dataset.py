@@ -21,6 +21,7 @@ import matplotlib.pyplot as plt
 import vipy.metrics
 import gc 
 
+
 class Dataset():
     """vipy.dataset.Dataset() class
     
@@ -31,36 +32,63 @@ class Dataset():
     >>>     D = D.map(lambda v: v.frame(0))
     >>> list(D)
 
+    >>> D = vipy.dataset.Dataset([vipy.video.RandomScene(), vipy.video.RandomScene()], id='random_scene')
+    >>> D.tojsondir('/tmp/myjsondir')
+    >>> D = vipy.dataset.Dataset('/tmp/myjsondir')  # lazy loading
+
+    .. notes:: Be warned that using the jsondir constructor will load elements on demand, but there are some methods that require loading the entire dataset into memory, and will happily try to do so
     """
 
-    def __init__(self, objlist_or_filename, id=None, abspath=True):
-        objlist = vipy.util.load(objlist_or_filename, abspath=abspath) if (vipy.util.isjsonfile(objlist_or_filename) or vipy.util.ispklfile(objlist_or_filename)) else objlist_or_filename
-        assert isinstance(objlist, list), "Invalid input"
+    def __init__(self, datasrc, id=None, abspath=True):
+
         self._saveas_ext = ['pkl', 'json']
-        self._id = id if id is not None else (vipy.util.filetail(objlist_or_filename) if isinstance(objlist_or_filename, str) else uuid.uuid4().hex)
-        self._objlist = tolist(objlist)
+        self._id = id if id is not None else uuid.uuid4().hex
+        self._loader = lambda x: x
+        self._istype_strict = True
+
+        if isinstance(datasrc, str) and (vipy.util.isjsonfile(datasrc) or vipy.util.ispklfile(datasrc)):
+            self._objlist = vipy.util.load(datasrc, abspath=abspath)
+            self._id = vipy.util.filetail(datasrc)
+        elif isinstance(datasrc, str) and os.path.isdir(datasrc):
+            if len(vipy.util.listjson(datasrc)) > 0:
+                self._objlist = vipy.util.listjson(datasrc)
+                self._loader = lambda x,b=abspath: vipy.util.load(x, abspath=b) if vipy.util.isjsonfile(x) else x
+                self._id = datasrc
+                self._istype_strict = False
+            elif os.path.isdir(datasrc) and len(vipy.util.listpkl(datasrc)) > 0:
+                self._objlist = vipy.util.listpkl(datasrc)
+                self._loader = lambda x,b=abspath: vipy.util.load(x, abspath=b) if vipy.util.ispkl(x) else x
+                self._id = datasrc
+                self._istype_strict = False
+            else:
+                self._objlist = []
+        else:
+            self._objlist = datasrc
+        
+        self._objlist = tolist(self._objlist)
+        
         assert len(self._objlist) > 0, "Empty dataset"
+        try:
+            self[0]
+        except Exception as e:
+            raise ValueError('Dataset loader failed with exception "%s"' % str(e))
 
     def __repr__(self):
-        if len(self) > 0:
-            return str('<vipy.dataset: id="%s", len=%d, type=%s>' % (self.id(), len(self), str(type(self._objlist[0]))))
-        else:
-            return str('<vipy.dataset: id="%s", len=0>' % (self.id()))
+        return str('<vipy.dataset: id="%s", len=%d, type=%s>' % (self.id(), len(self), str(type(self[0])) if len(self)>0 else 'None'))
 
     def __iter__(self):
         for k in range(len(self)):
-            yield self._objlist[k]
+            yield self[k]
 
     def __getitem__(self, k):
         if isinstance(k, int):
             assert k>=0 and k<len(self._objlist), "invalid index"
-            return self._objlist[k]
+            return self._loader(self._objlist[k])
         elif isinstance(k, slice):
-            return self._objlist[k.start:k.stop:k.step]
+            return [self._loader(x) for x in self._objlist[k.start:k.stop:k.step]]
         else:
             raise
             
-
     def __len__(self):
         return len(self._objlist)
 
@@ -74,10 +102,10 @@ class Dataset():
 
     def list(self):
         """Return the dataset as a list"""
-        return self._objlist
+        return list(self)
     def tolist(self):
         """Alias for self.list()"""
-        return self._objlist
+        return list(self)
 
     def flatten(self):
         """Convert dataset stored as a list of lists into a flat list"""
@@ -85,8 +113,8 @@ class Dataset():
         return self
 
     def istype(self, validtype):
-        """Return True if all elements in the dataset are of type 'validtype'"""
-        return all([any([isinstance(v,t) for t in tolist(validtype)]) for v in self._objlist])
+        """Return True if the all elements (or just the first element if strict=False) in the dataset are of type 'validtype'"""
+        return all([any([isinstance(v,t) for t in tolist(validtype)]) for v in self]) if self._istype_strict else any([isinstance(self[0],t) for t in tolist(validtype)])
 
     def _isvipy(self):
         """Return True if all elements in the dataset are of type `vipy.video.Video` or `vipy.image.Image`"""        
@@ -142,7 +170,7 @@ class Dataset():
         stagedir = remkdir(os.path.join(tempdir(), filefull(filetail(tarfile))))
         print('[vipy.dataset]: creating staging directory "%s"' % stagedir)
         delprefix = [[d for d in tolist(delprefix) if d in v.filename()][0] for v in self]  # select the delprefix per video
-        D._objlist = [v.filename(v.filename().replace(os.path.normpath(p), os.path.normpath(os.path.join(stagedir, mediadir))), symlink=not novideos) for (p,v) in zip(delprefix,D.list())]
+        D._objlist = [v.filename(v.filename().replace(os.path.normpath(p), os.path.normpath(os.path.join(stagedir, mediadir))), symlink=not novideos) for (p,v) in zip(delprefix, D.list())]
         pklfile = os.path.join(stagedir, '%s.%s' % (filetail(filefull(tarfile)), format))
         D.save(pklfile, relpath=True, nourl=True, sanitize=True, castas=castas, significant_digits=2, noemail=True, flush=True)
     
@@ -192,10 +220,10 @@ class Dataset():
         Returns:        
             This dataset that is quivalent to vipy.dataset.Dataset('/path/to/outfile.json')
         """
-        n = len([v for v in self._objlist if v is None])
+        n = len([v for v in self if v is None])
         if n > 0:
             print('[vipy.dataset]: removing %d invalid elements' % n)
-        objlist = [v for v in self._objlist if v is not None]  
+        objlist = [v for v in self if v is not None]  
         if relpath or nourl or sanitize or flush or noemail or (significant_digits is not None):
             assert self._isvipy(), "Invalid input"
         if relpath:
@@ -231,7 +259,7 @@ class Dataset():
     def classlist(self):
         """Return a sorted list of categories in the dataset"""
         assert self._isvipy(), "Invalid input"
-        return sorted(list(set([v.category() for v in self._objlist])))
+        return sorted(list(set(self.map(lambda v: v.category()))))
 
     def classes(self):
         """Alias for classlist"""
@@ -263,38 +291,45 @@ class Dataset():
         return self.class_to_index()
 
     def powerset(self):
-        return list(sorted(set([tuple(sorted(list(a))) for v in self._objlist for a in v.activitylabel() if len(a) > 0])))        
+        return list(sorted(set([tuple(sorted(list(a))) for v in self for a in v.activitylabel() if len(a) > 0])))        
 
     def powerset_to_index(self):        
         assert self._isvipy(), "Invalid input"
         return {c:k for (k,c) in enumerate(self.powerset())}
 
     def dedupe(self, key):
-        self._objlist = list({key(v):v for v in self._objlist}.values())
+        self._objlist = list({key(v):v for v in self}.values())
         return self
         
     def countby(self, f):
-        return len([v for v in self._objlist if f(v)])
+        return len([v for v in self if f(v)])
 
     def union(self, other, key=None):
         assert isinstance(other, Dataset), "invalid input"
-        self._objlist = self._objlist + other._objlist  # shallow copy, there may now be two objects points to the same memory if other overlaps self
+        if len(other) > 0:
+            try:
+                other._loader(self._objlist[0])
+                self._loader(other._objlist[0])
+                self._objlist = self._objlist + other._objlist  # compatible loaders
+            except:
+                self._objlist = self.list() + other.list()  # incompatible loaders
+                self._loader = lambda x: x
         return self.dedupe(key) if key is not None else self
     
     def difference(self, other, key):
         assert isinstance(other, Dataset), "invalid input"
-        idset = set([key(v) for v in self._objlist]).difference([key(v) for v in other._objlist])   # in A but not in B
-        self._objlist = [v for v in self._objlist if key(v) in idset]
+        idset = set([key(v) for v in self]).difference([key(v) for v in other])   # in A but not in B
+        self._objlist = [v for v in self if key(v) in idset]
         return self
         
     def has(self, val, key):
-        return any([key(obj) == val for obj in self._objlist])
+        return any([key(obj) == val for obj in self])
 
     def replace(self, other, key):
         """Replace elements in self with other with equality detemrined by the key lambda function"""
         assert isinstance(other, Dataset), "invalid input"
         d = {key(v):v for v in other}
-        self._objlist = [v if key(v) not in d else d[key(v)] for v in self._objlist]
+        self._objlist = [v if key(v) not in d else d[key(v)] for v in self]
         return self
 
     def merge(self, outdir):
@@ -313,11 +348,12 @@ class Dataset():
 
     def augment(self, f, n_augmentations):
         assert n_augmentations >= 1
-        self._objlist = [f(v.clone()) for v in self._objlist for k in range(n_augmentations)]  # This will remove the originals
+        self._objlist = [f(v.clone()) for v in self for k in range(n_augmentations)]  # This will remove the originals
         return self
 
     def filter(self, f):
-        self._objlist = [v for v in self._objlist if f(v)]
+        """In place filter with lambda function f"""
+        self._objlist = [v for v in self if f(v)]
         return self
 
     def valid(self):
@@ -335,26 +371,29 @@ class Dataset():
             [n=1] Returns singleton element
             [n>1] Returns list of elements of at most n such that each element f(x) is True            
         """
-        objlist = [obj for obj in self._objlist if f(obj)]
+        objlist = [obj for obj in self if f(obj)]
         return [] if (len(objlist) == 0 or n == 0) else (objlist[0] if n==1 else objlist[0:n])
 
-    def to_jsondir(self, outdir):
+    def jsondir(self, outdir, verbose=True, rekey=False):
+        """Export all objects to a directory of JSON files"""
+        assert self._isvipy()
         print('[vipy.dataset]: exporting %d json files to "%s"...' % (len(self), outdir))
         vipy.util.remkdir(outdir)  # to avoid race condition
-        Batch(vipy.util.chunklist([(k,v) for (k,v) in enumerate(self._objlist)], 64), as_completed=True, minscatter=1).map(lambda X: [vipy.util.save(x[1].clone(), os.path.join(outdir, '%s_%d.json' % (x[1].clone().videoid(), x[0]))) for x in X]).result()
+        for (k,v) in enumerate(self):
+            f = vipy.util.save(v, os.path.join(outdir, ('%s.json' % v.instanceid()) if not rekey else '%s_%d.json' % (uuid.uuid4().hex, k)))
+            if verbose:
+                print('[vipy.dataset.Dataset][%d/%d]: %s' % (k, len(self), f))
         return outdir
 
+    def tojsondir(self, outdir, rekey=False, verbose=True):
+        """Alias for jsondir"""
+        return self.jsondir(outdir, verbose=verbose, rekey=rekey)
+    
     def takelist(self, n, category=None, canload=False):
+        """Take n elements of selected category and return list"""
         assert n >= 0, "Invalid length"
-
-        outlist = []
-        objlist = self._objlist if category is None else [v for v in self._objlist if v.category() == category]
-        for k in np.random.permutation(range(0, len(objlist))).tolist():
-            if not canload or objlist[k].isloadable():
-                outlist.append(objlist[k])  # without replacement
-            if len(outlist) == n:
-                break
-        return outlist
+        D = self.clone() if category is None else self.clone().filter(lambda v: v.category() == category())
+        return [D[k] for k in np.random.permutation(range(len(D)))[0:n]]
 
     def take(self, n, category=None, canload=False):
         return Dataset(self.takelist(n, category=category, canload=canload))
@@ -393,7 +432,7 @@ class Dataset():
         csv = [v.csv() for v in self.list]        
         return vipy.util.writecsv(csv, csvfile) if csvfile is not None else (csv[0], csv[1:])
 
-    def map(self, f_transform, model=None, dst=None, id=None, checkpoint=False, strict=False, ascompleted=True):        
+    def map(self, f_transform, model=None, dst=None, id=None, checkpoint=False, strict=False, ascompleted=True, chunks=128):        
         """Distributed map.
 
         To perform this in parallel across four processes:
@@ -415,17 +454,21 @@ class Dataset():
 
         """
         assert callable(f_transform)
-        B = Batch(self.list(), strict=strict, as_completed=ascompleted, checkpoint=checkpoint, warnme=False, minscatter=1000000)
-        V = B.map(f_transform).result() if not model else B.scattermap(f_transform, model).result()
-        D = Dataset(V, id=dst if dst is not None else id)
-        return D
+
+        # Operations must be chunked because each dask task comes with overhead, and lots of small tasks violates best practices
+        # - Each chunk is sent to a worker and processed in parallel
+        # - Chunks are scattered to workers 
+        B = Batch(vipy.util.chunklist(self._objlist, chunks), strict=strict, as_completed=ascompleted, checkpoint=checkpoint, warnme=False, minscatter=chunks)
+        f = lambda x, f_loader=self._loader: f_transform(f_loader(x))  # for closure capture
+        V = B.map(lambda X,f=f: [f(x) for x in X]).result() if not model else B.scattermap(lambda X, f=f: [f(x) for x in X], model).result()
+        return Dataset(V, id=dst if dst is not None else id).flatten()
 
     def localmap(self, f):
-        self._objlist = [f(v) for v in self._objlist]
+        self._objlist = [f(v) for v in self]
         return self
 
     def flatmap(self, f):
-        self._objlist = [x for v in self._objlist for x in f(v)]
+        self._objlist = [x for v in self for x in f(v)]
         return self
     
     def count(self, f=None):
@@ -440,7 +483,7 @@ class Dataset():
         """
         assert self._isvipy()
         assert f is None or callable(f)
-        return vipy.util.countby(self.list(), lambda v: v.category()) if f is None else len([v for v in self if f(v)])
+        return vipy.util.countby(self.classlist(), lambda c: c) if f is None else len([v for v in self if f(v)])
 
     def frequency(self):
         return self.count()
@@ -467,13 +510,23 @@ class Dataset():
         """Return an inverse frequency weight for multilabel activities, where label counts are the fractional label likelihood within a clip"""
         assert self._is_vipy_video()
 
-        lbl_likelihood  = {k:0 for k in self.classlist()}
-        for v in self.list():
+        def _multilabel_inverse_frequency_weight(v):
+            lbl_likelihood = {}
             if len(v.activities()) > 0:
                 (ef, sf) = (max([a.endframe() for a in v.activitylist()]), min([a.startframe() for a in v.activitylist()]))  # clip length 
                 lbl_frequency = vipy.util.countby([a for A in v.activitylabel(sf, ef) for a in A], lambda x: x)  # frequency within clip
                 for (k,f) in lbl_frequency.items():
+                    if k not in lbl_likelihood:
+                        lbl_likelihood[k] = 0
                     lbl_likelihood[k] += f/(ef-sf)
+            return lbl_likelihood
+                    
+        lbl_likelihood  = {}
+        for d in self.map(lambda v: _multilabel_inverse_frequency_weight(v)):
+            for (k,v) in d.items():
+                if k not in lbl_likelihood:
+                    lbl_likelihood[k] = 0
+                lbl_likelihood[k] += v
 
         # Inverse frequency weight on label likelihood per clip
         d = {k:1.0/max(v,1) for (k,v) in lbl_likelihood.items()}
@@ -614,7 +667,7 @@ class Dataset():
         import vipy.torch
         assert self._is_vipy_scene()
         outdir = vipy.util.remkdir(outdir)
-        vipy.batch.Batch(self._objlist, as_completed=True).map(lambda v, f=f_video_to_tensor, outdir=outdir, n_augmentations=n_augmentations: vipy.util.bz2pkl(os.path.join(outdir, '%s.pkl.bz2' % v.instanceid()), [f(v.print(sleep=sleep).clone()) for k in range(0, n_augmentations)]))
+        vipy.batch.Batch(self.list(), as_completed=True).map(lambda v, f=f_video_to_tensor, outdir=outdir, n_augmentations=n_augmentations: vipy.util.bz2pkl(os.path.join(outdir, '%s.pkl.bz2' % v.instanceid()), [f(v.print(sleep=sleep).clone()) for k in range(0, n_augmentations)]))
         return vipy.torch.TorchTensordir(outdir)
 
     def annotate(self, outdir, mindim=512):
@@ -727,6 +780,6 @@ class Dataset():
     def sort(self, key):
         """Sort the dataset in-place using the sortkey lambda function"""
         if key is not None:
-            self._objlist.sort(key=key)
+            self._objlist.sort(key=lambda x: key(self._loader(x)))
         return self
                 
