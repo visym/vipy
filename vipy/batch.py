@@ -42,7 +42,7 @@ class Dask(object):
                #'DASK_DISTRIBUTED__ADMIN__TICK__LIMIT':"30s",
                #'DASK_DISTRIBUTED__ADMIN__TICK__INTERVAL':"2s",
                'DASK_DISTRIBUTED__DEPLOY__LOST_WORKER_TIMEOUT':"30s"}
-
+        
         dask.config.set({'DISTRIBUTED.COMM.TIMEOUTS.CONNECT'.lower():'30s'})
         dask.config.set({'DISTRIBUTED.COMM.TIMEOUTS.TCP'.lower():'30s'})
         dask.config.set({'DISTRIBUTED.DEPLOY.LOST_WORKER_TIMEOUT'.lower():'30s'})
@@ -61,8 +61,9 @@ class Dask(object):
                                   threads_per_worker=1,
                                   n_workers=num_processes, 
                                   env=env,
-                                  direct_to_workers=True,
+                                  direct_to_workers=True, 
                                   #memory_limit='auto',
+                                  #silence_logs=20 if verbose else 40, 
                                   local_directory=tempfile.mkdtemp())
 
         self._num_gpus = num_gpus
@@ -186,7 +187,7 @@ class Batch(Checkpoint):
 
     """    
              
-    def __init__(self, objlist, strict=False, as_completed=False, checkpoint=False, checkpointdir=None, checkpointfrac=0.1, warnme=True, minscatter=None):
+    def __init__(self, objlist, strict=False, as_completed=False, checkpoint=False, checkpointdir=None, checkpointfrac=0.1, warnme=False, minscatter=None):
         """Create a batch of homogeneous vipy.image objects from an iterable that can be operated on with a single parallel function call
         """
         assert isinstance(objlist, list), "Input must be a list"
@@ -203,7 +204,7 @@ class Batch(Checkpoint):
 
         # Move this into map and disable using localmap
         if vipy.globals.dask() is None and warnme:
-            print('[vipy.batch.Batch]: vipy.batch.Batch() is not set to use parallelism.  This is set using:\n    >>> vipy.globals.parallel(n) for multi-processing with n processes\n    >>> vipy.globals.parallel(pct=0.8) for multiprocessing that uses a percentage of the current system resources\n    >>> vipy.globals.dask(address="SCHEDULER:PORT") which connects to a Dask distributed scheduler.\n    >>> vipy.globals.noparallel() to completely disable all parallelism.')
+            print('[vipy.batch.Batch]: vipy.batch.Batch() is not set to use parallelism.  This is set using:\n    >>> with vipy.globals.parallel(n) for multi-processing with n processes\n    >>> vipy.globals.parallel(pct=0.8) for multiprocessing that uses a percentage of the current system resources\n    >>> vipy.globals.dask(address="SCHEDULER:PORT") which connects to a Dask distributed scheduler.\n    >>> vipy.globals.noparallel() to completely disable all parallelism.')
 
         # FIXME: this needs to go into Dask()
         #self._ngpu = ngpu
@@ -335,7 +336,7 @@ class Batch(Checkpoint):
             self._objlist = [f_lambda_ordered(o) for o in self._objlist]  # no parallelism
         else:
             f_lambda_ordered = lambda x,f=f_lambda: (x[0], f(x[1]))            
-            objlist = c.scatter(self._objlist) if (self._minscatter is not None and len(self._objlist) > self._minscatter) else self._objlist
+            objlist = c.scatter(self._objlist) if (self._minscatter is not None and len(self._objlist) >= self._minscatter) else self._objlist
             self._objlist = self._wait(c.map(f_lambda_ordered, objlist))
         return self
 
@@ -375,7 +376,7 @@ class Batch(Checkpoint):
             self._objlist = [f_lambda_ordered(obj, o) for o in self._objlist]  # no parallelism
         else:
             objdist = c.scatter(obj, broadcast=True)        
-            objlist = c.scatter(self._objlist) if (self._minscatter is not None and len(self._objlist) > self._minscatter) else self._objlist
+            objlist = c.scatter(self._objlist) if (self._minscatter is not None and len(self._objlist) >= self._minscatter) else self._objlist
             self._objlist = self._wait([c.submit(f_lambda_ordered, objdist, im) for im in objlist])
         return self
 
