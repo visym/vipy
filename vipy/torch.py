@@ -162,7 +162,7 @@ class TorchTensordir(torch.utils.data.Dataset):
            
     .. note:: This requires python random() and not numpy random 
     """
-    def __init__(self, tensordir, verbose=True, reseed=True):
+    def __init__(self, tensordir, verbose=True, reseed=True, take=None):
         assert (isinstance(tensordir, str) and os.path.isdir(tensordir)) or all([os.path.isdir(d) for d in tensordir])
         self._dirlist = [s for d in vipy.util.tolist(tensordir) for s in vipy.util.extlist(d, '.pkl.bz2')]
         self._verbose = verbose
@@ -188,6 +188,10 @@ class TorchTensordir(torch.utils.data.Dataset):
 
     def __len__(self):
         return len(self._dirlist)
+
+    def take(self, n):
+        self._dirlist = [self._dirlist[k] for k in np.random.permutation(range(len(self._dirlist)))[0:n]]
+        return self
 
     def filter(self, f):
         self._dirlist = [x for x in self._dirlist if f(x)]
