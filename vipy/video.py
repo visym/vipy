@@ -4,7 +4,7 @@ import dill
 from vipy.globals import print
 from vipy.util import remkdir, tempMP4, isurl, \
     isvideourl, templike, tempjpg, filetail, tempdir, isyoutubeurl, try_import, isnumpy, temppng, \
-    istuple, islist, isnumber, tolist, filefull, fileext, isS3url, totempdir, flatlist, tocache, premkdir, writecsv, iswebp, ispng, isgif, filepath, Stopwatch, toextension, isjsonfile, isRTSPurl, isRTMPurl
+    istuple, islist, isnumber, tolist, filefull, fileext, isS3url, totempdir, flatlist, tocache, premkdir, writecsv, iswebp, ispng, isgif, filepath, Stopwatch, toextension, isjsonfile, isRTSPurl, isRTMPurl, iswebp
 from vipy.image import Image
 import vipy.geometry
 import vipy.math
@@ -1318,7 +1318,7 @@ class Video(object):
                 if not self.hasfilename():
                     raise ValueError('Downloaded file not found "%s.*"' % self.filename())
             
-            elif url_scheme in ['http', 'https'] and isvideourl(self._url):
+            elif url_scheme in ['http', 'https'] and (isvideourl(self._url) or iswebp(self._url)):
                 vipy.downloader.download(self._url,
                                          self._filename,
                                          verbose=verbose,
@@ -1356,7 +1356,7 @@ class Video(object):
             elif url_scheme == 'rtsp':
                 # https://ffmpeg.org/ffmpeg-protocols.html#rtsp
                 pass
-            
+
             else:
                 raise NotImplementedError(
                     'Invalid URL scheme "%s" for URL "%s"' %
@@ -1454,7 +1454,9 @@ class Video(object):
             self.download(verbose=True)  
         if not self.hasfilename():
             raise ValueError('Video file not found')
-
+        if iswebp(self.filename()):
+            return self.load().frame(framenum)
+        
         # Convert frame to mjpeg and pipe to stdout, used to get dimensions of video
         #   - The MJPEG encoder will generally output lower quality than H.264 encoded frames
         #   - This means that frame indexing from preview() will generate slightly different images than streaming raw
@@ -1521,14 +1523,22 @@ class Video(object):
         if not self.hasfilename() and ignoreErrors:
             print('[vipy.video.load]: Video file "%s" not found - Ignoring' % self.filename())
             return self
-        if verbose:
-            print('[vipy.video.load]: Loading "%s"' % self.filename())
-
-        # Load the video
+        if iswebp(self.filename()):
+            frames = []
+            pil = PIL.Image.open(self.filename())            
+            for k in range(pil.n_frames):
+                pil.seek(k)
+                frames.append(np.array(pil.convert('RGB')))
+            return self.array(np.stack(frames)).colorspace('RGB')
+                        
+        # Load the video with ffmpeg
         # 
         # [EXCEPTION]:  older ffmpeg versions may segfault on complex crop filter chains
         #    -On some versions of ffmpeg setting -cpuflags=0 fixes it, but the right solution is to rebuild from the head (30APR20)
+        if verbose:
+            print('[vipy.video.load]: Loading "%s"' % self.filename())                    
         try:
+            
             f_prepipe = copy.deepcopy(self._ffmpeg)
             f = self._ffmpeg.output('pipe:', format='rawvideo', pix_fmt='rgb24')\
                             .global_args('-cpuflags', '0', '-loglevel', 'debug' if vipy.globals.isdebug() else 'quiet')

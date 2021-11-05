@@ -1435,15 +1435,18 @@ class Image(object):
         self.clone().rgb().pil().save(buf, format='JPEG')
         return base64.b64encode(buf.getvalue())
         
-    def html(self, alt=None):
+    def html(self, alt=None, id=None, attributes={'loading':'lazy'}):
         """Export a base64 encoding of the image suitable for embedding in an html page, enclosed in <img> tag
            
            Returns:
               -string:  <img src="data:image/jpeg;charset=utf-8;base64,%s" alt="%s" loading="lazy"> containing base64 encoded JPEG and alt text with lazy loading
         """
+        assert isinstance(attributes, dict)
         b = self.base64().decode('ascii')
         alt_text = alt if alt is not None else self.filename()
-        return '<img src="data:image/jpeg;charset=utf-8;base64,%s" alt="%s" loading="lazy">' % (b, str(alt_text))
+        id = id if id is not None else self.filename()
+        attr = ' '.join(['%s="%s"' % (str(k),str(v)) for (k,v) in attributes.items()])
+        return '<img %ssrc="data:image/jpeg;charset=utf-8;base64,%s" alt="%s" %s>' % (('id="%s" ' % id) if id is not None else '', b, str(alt_text), attr)
 
     def annotate(self, timestamp=None, timestampcolor='black', timestampfacecolor='white', mutator=None):
         """Change pixels of this image to include rendered annotation and return an image object"""

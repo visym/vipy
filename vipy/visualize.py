@@ -2,16 +2,151 @@ import os
 import numpy as np
 import shutil
 from vipy.globals import print
-from vipy.util import remkdir, imlist, filetail, istuple, islist, isnumpy, filebase, temphtml, isurl, fileext, tolist
+from vipy.util import remkdir, imlist, filetail, istuple, islist, isnumpy, filebase, temphtml, isurl, fileext, tolist, iswebp, isimage, chunklistbysize, ishtml
 from vipy.image import Image
 from vipy.show import savefig
 from collections import defaultdict
+from datetime import datetime
 import time
 import PIL
 import vipy.video
 import webbrowser
 import pathlib
 import html
+
+
+def hoverpixel(urls, outfile=None, pixelsize=32, sortby='color', loupe=True, hoversize=512, ultext=None, display=False, ultextcolor='white', ultextsize='large'):
+    """Generate a standalone hoverpixel animation.
+
+    Args:
+        urls: a list of urls to publicly accessible images or webp files
+        outfile: an html output file, if None a temp file will be used 
+        pixelsize: the size of the elements in the montage
+        sortby: if 'color' then sort the images rowwise by increasing color brightness
+        loupe: if true, then the magnifier should be a circle
+        hoversize: the diameter of the magnifier
+        ultext: string to include overlay on the upper left.  include <br> tags for line breaks in string, and standard html text string escaping (e.g. &lt, &gt for <>).  if None, nothing is displayed
+        display: if true, then open the html file in the defult browser when done
+        ultextcolor: an html color string (e.g. "white", "black") for the upper left text color
+        ultextsize: an html font-size string (e.g. "large", "x-large") for the upper left text
+    
+    Returns:
+        A standalone html file that renders each url in montage such that hovering over elements in the montage will show the url in a magnifier.  Try to put chrome in fullscreen for best experience.
+
+    """
+
+    assert outfile is None or ishtml(outfile)
+    assert all([isurl(url) and (iswebp(url) or isimage(url)) for url in urls])
+    imlist = [vipy.video.Video(url=url).frame(0).url(url) if vipy.util.iswebp(url) else vipy.image.Image(url=url) for url in urls]
+    if sortby == 'color':
+        imlist = sorted(imlist, key=lambda im: tuple(im.meanchannel()))  # will load images
+        urls = [im.url() for im in imlist]
+        
+    # Create montage image
+    im = montage(imlist, pixelsize, pixelsize, aspectratio=2560/1440, border=1)
+    urlarray = chunklistbysize(urls, im.width()//(pixelsize+1))  # including border
+    
+    # Create HTML visualization that
+    filename = outfile if outfile is not None else temphtml()
+    f = open(filename,'w')
+    f.write('<!DOCTYPE html>\n')
+    f.write('<!--\n    Visym Labs\n    vipy.visualize.hoverpixel (https://visym.github.io/vipy)\n    Generated: %s\n-->\n' % str(datetime.now()))
+    f.write('<html>\n')
+    f.write('<meta name="viewport" content="width=device-width, initial-scale=1.0">\n')
+    style = ('<style>',
+             '* {box-sizing: border-box;}',
+             '.img-hoverpixel-container {',
+             '  position:relative;',
+             '}',
+             '.img-hoverpixel-glass {',
+             '  position: absolute;',
+             '  border: 1px solid #999;',
+             '  border-radius: 50%;' if loupe else '  border-radius: 0%;',
+             '  box-shadow: 2px 2px 6px black;',
+             '  background: rgba(0, 0, 0, 0.25);',
+             '  cursor: crosshair;',
+             '  width: %dpx;' % hoversize,
+             '  height: %spx;' % hoversize,
+             '}',
+             '.upper-left-text {',
+             '  position: absolute;',
+             '  top: 16px;',
+             '  left: 16px;',
+             '  color: %s;' % ultextcolor,
+             '  font-size: %s;' % ultextsize,
+             '  font-family: Arial, Helvetica, sans-serif',
+             '}',
+             '</style>')    
+    f.write('\n'.join(style))
+
+    script = ('<script>',
+              'let pixelsize = %d;' % (pixelsize+1),  # include montage border 
+              'let urls = %s;' % str(urlarray),  # public URLs for each montage element
+              'function hoverpixel(imgID, zoom) {',
+              '  var img, glass, w, h, bw;',
+              '  img = document.getElementById(imgID);',
+              '  glass = document.createElement("DIV");',
+              '  glass.setAttribute("class", "img-hoverpixel-glass");',
+              '  img.parentElement.insertBefore(glass, img);',
+              '  glass.style.backgroundRepeat = "no-repeat";',
+              '  glass.style.backgroundSize = (img.width * zoom) + "px " + (img.height * zoom) + "px";',
+              '  bw = 3;',
+              '  w = glass.offsetWidth / 2;',
+              '  h = glass.offsetHeight / 2;',
+              '  glass.addEventListener("mousemove", moveMagnifier);',
+              '  img.addEventListener("mousemove", moveMagnifier);',
+              '  glass.addEventListener("touchmove", moveMagnifier);',
+              '  img.addEventListener("touchmove", moveMagnifier);',                  
+              '  function getCursorPosition(e) {',
+              '    var a, x = 0, y = 0;',
+              '    e = e || window.event;',
+              '    a = img.getBoundingClientRect();',
+              '    x = e.pageX - a.left;',
+              '    y = e.pageY - a.top;',
+              '    x = x - window.pageXOffset;',
+              '    y = y - window.pageYOffset;',
+              '    return {x : x, y : y};',
+              '  }',
+              '  function moveMagnifier(e) {',
+              '    var pos, x, y;',
+              '    e.preventDefault();',
+              '    pos = getCursorPosition(e);',
+              '    x = pos.x;',
+              '    y = pos.y;',
+              '    i = Math.floor(pos.x / pixelsize);',  
+              '    j = Math.floor(pos.y / pixelsize);'
+              #'    console.log(  x.toString() + " " + y.toString() + " " + i.toString() + " " + j.toString() );',
+              '    if (x > img.width) {x = img.width;}',  # truncate to image boundary
+              '    if (x < 0) {x = 0;}',
+              '    if (y > img.height) {y = img.height;}',
+              '    if (y < 0) {y = 0;}',
+              '    glass.style.left = (x - w) + "px";',
+              '    glass.style.top = (y - h) + "px";',
+              '    glass.style.backgroundPosition = "-" + ((0 * zoom) - w + bw) + "px -" + ((0 * zoom) - h + bw) + "px";',              
+              '    glass.style.backgroundImage = "url(\'" + urls[j][i] + "\')";',                           
+              '    glass.style.backgroundSize = "%d" + "px " + "%d" + "px";' % (hoversize, hoversize),              
+              '  }',
+              '}',
+              '</script>')
+
+    f.write('\n'.join(script))    
+    f.write('<body style="background-color:black;>\n')
+    f.write('<div class="img-hoverpixel-container">\n')
+    f.write(im.html(id="img-hoverpixel", attributes={'width':im.width(), 'height':im.height()}))   # base-64 encoded image with img tag
+    f.write('<div class="upper-left-text">%s</div>\n' % ultext if ultext is not None else '')
+    f.write('</div>\n')
+    f.write('<script>\n')
+    f.write('hoverpixel("img-hoverpixel", 1);\n')
+    f.write('</script>\n')
+    f.write('</body>\n')
+    f.write('</html>\n')
+    f.close()
+
+    if display:
+        print('[vipy.visualize.hoverpixel]: Opening "%s" in default browser' % filename)
+        webbrowser.open('file://%s' % filename)
+
+    return filename
 
 
 def mosaic(videos):
