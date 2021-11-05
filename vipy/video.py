@@ -2714,6 +2714,14 @@ class Scene(VideoCategory):
         """
         return next(iter(self.activities().values())) if len(self._activities)>0 else None  # Python >=3.6        
 
+    def first_activity(self):
+        """Return the first activity of the video with the earliest start frame"""
+        return sorted(self.activitylist(), key=lambda a: a.startframe())[0] if len(self._activities)>0 else None
+
+    def last_activity(self):
+        """Return the last activity of the video with the latest end frame"""
+        return sorted(self.activitylist(), key=lambda a: a.endframe())[-1] if len(self._activities)>0 else None
+    
     def activities(self, activities=None, id=None):
         """Return mutable dictionary of activities.  All temporal alignment is relative to the current clip()."""
         if isinstance(self._activities, tuple):
