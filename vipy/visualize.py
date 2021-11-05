@@ -22,7 +22,7 @@ def hoverpixel(urls, outfile=None, pixelsize=32, sortby='color', loupe=True, hov
         urls: a list of urls to publicly accessible images or webp files
         outfile: an html output file, if None a temp file will be used 
         pixelsize: the size of the elements in the montage
-        sortby: if 'color' then sort the images rowwise by increasing color brightness
+        sortby: if 'color' then sort the images rowwise by increasing hue
         loupe: if true, then the magnifier should be a circle
         hoversize: the diameter of the magnifier
         ultext: string to include overlay on the upper left.  include <br> tags for line breaks in string, and standard html text string escaping (e.g. &lt, &gt for <>).  if None, nothing is displayed
@@ -39,7 +39,7 @@ def hoverpixel(urls, outfile=None, pixelsize=32, sortby='color', loupe=True, hov
     assert all([isurl(url) and (iswebp(url) or isimage(url)) for url in urls])
     imlist = [vipy.video.Video(url=url).frame(0).url(url) if vipy.util.iswebp(url) else vipy.image.Image(url=url) for url in urls]
     if sortby == 'color':
-        imlist = sorted(imlist, key=lambda im: tuple(im.meanchannel()))  # will load images
+        imlist = sorted(imlist, key=lambda im: float(im.hsv().meanchannel(0)))  # will load images
         urls = [im.url() for im in imlist]
         
     # Create montage image
@@ -89,7 +89,6 @@ def hoverpixel(urls, outfile=None, pixelsize=32, sortby='color', loupe=True, hov
               '  glass.setAttribute("class", "img-hoverpixel-glass");',
               '  img.parentElement.insertBefore(glass, img);',
               '  glass.style.backgroundRepeat = "no-repeat";',
-              '  glass.style.backgroundSize = (img.width * zoom) + "px " + (img.height * zoom) + "px";',
               '  bw = 3;',
               '  w = glass.offsetWidth / 2;',
               '  h = glass.offsetHeight / 2;',
@@ -115,7 +114,6 @@ def hoverpixel(urls, outfile=None, pixelsize=32, sortby='color', loupe=True, hov
               '    y = pos.y;',
               '    i = Math.floor(pos.x / pixelsize);',  
               '    j = Math.floor(pos.y / pixelsize);'
-              #'    console.log(  x.toString() + " " + y.toString() + " " + i.toString() + " " + j.toString() );',
               '    if (x > img.width) {x = img.width;}',  # truncate to image boundary
               '    if (x < 0) {x = 0;}',
               '    if (y > img.height) {y = img.height;}',
@@ -311,6 +309,7 @@ def urls(urllist, title='URL Visualization', imagewidth=1024, outfile=None, disp
     filename = outfile if outfile is not None else temphtml()
     f = open(filename,'w')
     f.write('<!DOCTYPE html>\n')
+    f.write('<!--\n    Visym Labs\n    vipy.visualize.urls (https://visym.github.io/vipy)\n    Generated: %s\n-->\n' % str(datetime.now()))    
     f.write('<html>\n')
     f.write('<body>\n')
     f.write('<div id="container" style="width:2400px">\n')
@@ -373,6 +372,7 @@ def tohtml(imlist, imdict=None, title='Image Visualization', mindim=1024, outfil
     filename = outfile if outfile is not None else temphtml()
     f = open(filename,'w')
     f.write('<!DOCTYPE html>\n')
+    f.write('<!--\n    Visym Labs\n    vipy.visualize.tohtml (https://visym.github.io/vipy)\n    Generated: %s\n-->\n' % str(datetime.now()))    
     f.write('<html>\n')
     f.write('<body>\n')
     f.write('<div id="container" style="width:2400px">\n')
@@ -425,6 +425,7 @@ def videolist(vidlist, viddict=None, title='Video Visualization', outfile=None, 
     filename = outfile if outfile is not None else temphtml()
     f = open(filename,'w')
     f.write('<!DOCTYPE html>\n')
+    f.write('<!--\n    Visym Labs\n    vipy.visualize.videolist (https://visym.github.io/vipy)\n    Generated: %s\n-->\n' % str(datetime.now()))    
     f.write('<html>\n')
     f.write('<body>\n')
     f.write('<div id="container" style="width:2048px">\n')
@@ -471,6 +472,7 @@ def imagelist(list_of_image_files, outdir, title='Image Visualization', imagewid
     filename = os.path.join(remkdir(outdir), 'index.html')
     f = open(filename,'w')
     f.write('<!DOCTYPE html>\n')
+    f.write('<!--\n    Visym Labs\n    vipy.visualize.imagelist (https://visym.github.io/vipy)\n    Generated: %s\n-->\n' % str(datetime.now()))    
     f.write('<html>\n')
     f.write('<body>\n')
     f.write('<div id="container" style="width:2400px">\n')
@@ -514,6 +516,7 @@ def imagetuplelist(list_of_tuples_of_image_files, outdir, title='Image Visualiza
     filename = os.path.join(remkdir(outdir), 'index.html')
     f = open(filename,'w')
     f.write('<!DOCTYPE html>\n')
+    f.write('<!--\n    Visym Labs\n    vipy.visualize.imagetuplelist (https://visym.github.io/vipy)\n    Generated: %s\n-->\n' % str(datetime.now()))    
     f.write('<html>\n')
     f.write('<body>\n')
     f.write('<div id="container" style="width:2400px">\n')

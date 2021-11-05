@@ -1363,9 +1363,10 @@ class Image(object):
         """Mean over all pixels"""
         return np.mean(self.load().array().flatten())
 
-    def meanchannel(self):
-        """Mean per channel over all pixels"""
-        return np.mean(self.load().array(), axis=(0, 1)).flatten()
+    def meanchannel(self, k=None):
+        """Mean per channel over all pixels.  If channel k is provided, return just the mean for that channel"""
+        C = np.mean(self.load().array(), axis=(0, 1)).flatten()
+        return C[k] if k is not None else C
     
     def sum(self):
         return np.sum(self.load().array().flatten())
