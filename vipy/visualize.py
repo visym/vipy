@@ -40,6 +40,11 @@ def hoverpixel(urls, outfile=None, pixelsize=32, sortby='color', loupe=True, hov
     Returns:
         A standalone html file that renders each url in montage such that hovering over elements in the montage will show the url in a magnifier.  Try to put chrome in fullscreen for best experience.
 
+    .. note:: 
+        - Use fullscreen browsing for best experience.
+        - Try to zoom out in your browser to see the full montage.
+        - Wrap this HTML output file in an iframe for integration into your website: <iframe src="https://path/to/my/outfile.html" style="width: 1024px; height: 768px; border: 0px;"></iframe>
+
     """
 
     assert outfile is None or ishtml(outfile)
