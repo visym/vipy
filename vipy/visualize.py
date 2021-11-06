@@ -37,7 +37,9 @@ def hoverpixel(urls, outfile=None, pixelsize=32, sortby='color', loupe=True, hov
 
     assert outfile is None or ishtml(outfile)
     assert all([isurl(url) and (iswebp(url) or isimage(url)) for url in urls])
-    imlist = [vipy.video.Video(url=url).frame(0).url(url) if vipy.util.iswebp(url) else vipy.image.Image(url=url) for url in urls]
+    vidlist = [vipy.video.Video(url=url).frame(0).url(url) for url in urls if iswebp(url) and vipy.video.Video(url=url).canload()]
+    imlist  = [vipy.image.Image(url=url) for url in urls if isimage(url)]
+    imlist = imlist + vidlist
     if sortby == 'color':
         imlist = sorted(imlist, key=lambda im: float(im.clone().resize(16,16,interp='nearest').hsv().channel(0).mean()))  # will load images
         urls = [im.url() for im in imlist]
