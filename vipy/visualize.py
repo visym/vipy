@@ -48,7 +48,7 @@ def hoverpixel(urls, outfile=None, pixelsize=32, sortby='color', loupe=True, hov
     im = montage(imlist, pixelsize, pixelsize, aspectratio=2560/1440, border=1)
     urlarray = chunklistbysize(urls, im.width()//(pixelsize+1))  # including border
     
-    # Create HTML visualization that
+    # Create HTML+javascript visualization file
     filename = outfile if outfile is not None else temphtml()
     f = open(filename,'w')
     f.write('<!DOCTYPE html>\n')
