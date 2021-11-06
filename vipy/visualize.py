@@ -15,13 +15,20 @@ import pathlib
 import html
 
 
-def hoverpixel(urls, outfile=None, pixelsize=32, sortby='color', loupe=True, hoversize=512, ultext=None, display=False, ultextcolor='white', ultextsize='large'):
-    """Generate a standalone hoverpixel animation.
+def hoverpixel(urls, outfile=None, pixelsize=32, sortby='color', loupe=True, hoversize=512, ultext=None, display=False, ultextcolor='white', ultextsize='large', aspectratio=2560/1440):
+    """Generate a standalone hoverpixel visualization.
+
+    A hoverpixel visualization is an HTML file that shows a montage such that each pixel in the montage is a video or image.  
+    When the user hovers the mouse over a pixel in the montage, a high resolution magnified popup for the corresponding video or image is displayed.  
+    This is a way to visualize and explore large datasets, showing the entire dataset in a glance, but allowing the user to zoom into specific sections.
+    Each of the magnified media elements must be publicly accessible as a URL.  If the URL is a webp animation, then the magnified media will show 
+    the animation (if the browser supports it).  
 
     Args:
-        urls: a list of urls to publicly accessible images or webp files
+        urls: a list of urls to publicly accessible images or webp files.  These are the URLs that are used to display inside the magnified popup.
         outfile: an html output file, if None a temp file will be used 
-        pixelsize: the size of the elements in the montage
+        pixelsize [int]: the square size of the elements in the montage
+        aspectratio [float]: The ratio of columns/rows in the pixel montage. Set to 1 for square.
         sortby: if 'color' then sort the images rowwise by increasing hue
         loupe: if true, then the magnifier should be a circle
         hoversize: the diameter of the magnifier
@@ -37,15 +44,15 @@ def hoverpixel(urls, outfile=None, pixelsize=32, sortby='color', loupe=True, hov
 
     assert outfile is None or ishtml(outfile)
     assert all([isurl(url) and (iswebp(url) or isimage(url)) for url in urls])
-    vidlist = [vipy.video.Video(url=url).frame(0).url(url) for url in urls if iswebp(url) and vipy.video.Video(url=url).canload()]
-    imlist  = [vipy.image.Image(url=url) for url in urls if isimage(url)]
+    vidlist = [vipy.video.Video(url=url).frame(0).resize(pixelsize, pixelsize).url(url) for url in urls if iswebp(url) and vipy.video.Video(url=url).canload()]  # small frame=0 stored in memory
+    imlist  = [vipy.image.Image(url=url) for url in urls if isimage(url)]  # not loaded
     imlist = imlist + vidlist
     if sortby == 'color':
-        imlist = sorted(imlist, key=lambda im: float(im.clone().resize(16,16,interp='nearest').hsv().channel(0).mean()))  # will load images
+        imlist = sorted(imlist, key=lambda im: float(im.clone().resize(16,16,interp='nearest').hsv().channel(0).mean()))  # will load images (but not store)
         urls = [im.url() for im in imlist]
         
     # Create montage image
-    im = montage(imlist, pixelsize, pixelsize, aspectratio=2560/1440, border=1)
+    im = montage(imlist, pixelsize, pixelsize, aspectratio=aspectratio, border=1, do_flush=True, verbose=True)
     urlarray = chunklistbysize(urls, im.width()//(pixelsize+1))  # including border
     
     # Create HTML+javascript visualization file
@@ -246,7 +253,7 @@ def montage(imlist, imgheight, imgwidth, gridrows=None, gridcols=None, aspectrat
                     raise
 
             if do_flush:
-                imlist[k].clone(flush=True)  # clear memory
+                imlist[k].flush()  # clear memory
             if verbose and ((k % 100) == 0):
                 print('[vipy.visualize.montage][%d/%d] processing...' % (k, n_imgs))
 

@@ -52,7 +52,7 @@ class Dataset():
         elif isinstance(datasrc, str) and os.path.isdir(datasrc):
             if len(vipy.util.listjson(datasrc)) > 0:
                 self._objlist = vipy.util.listjson(datasrc)
-                self._loader = lambda x,b=abspath: vipy.util.load(x, abspath=b) if vipy.util.isjsonfile(x) else x
+                self._loader = lambda x,b=abspath: vipy.util.lad(x, abspath=b) if vipy.util.isjsonfile(x) else x
                 self._id = datasrc
                 self._istype_strict = False
             elif os.path.isdir(datasrc) and len(vipy.util.listpkl(datasrc)) > 0:
@@ -81,13 +81,13 @@ class Dataset():
             yield self[k]
 
     def __getitem__(self, k):
-        if isinstance(k, int):
+        if isinstance(k, int) or isinstance(k, np.uint64):
             assert k>=0 and k<len(self._objlist), "invalid index"
-            return self._loader(self._objlist[k])
+            return self._loader(self._objlist[int(k)])
         elif isinstance(k, slice):
             return [self._loader(x) for x in self._objlist[k.start:k.stop:k.step]]
         else:
-            raise
+            raise ValueError()
             
     def __len__(self):
         return len(self._objlist)
@@ -392,8 +392,8 @@ class Dataset():
     def takelist(self, n, category=None, canload=False):
         """Take n elements of selected category and return list"""
         assert n >= 0, "Invalid length"
-        D = self.clone() if category is None else self.clone().filter(lambda v: v.category() == category())
-        return [D[k] for k in np.random.permutation(range(len(D)))[0:n]]
+        D = self if category is None else self.clone().filter(lambda v: v.category() == category())
+        return [D[int(k)] for k in np.random.permutation(range(len(D)))][0:n]  # native python int
 
     def take(self, n, category=None, canload=False):
         return Dataset(self.takelist(n, category=category, canload=canload))
@@ -483,21 +483,29 @@ class Dataset():
         """
         assert self._isvipy()
         assert f is None or callable(f)
-        return vipy.util.countby(self.classlist(), lambda c: c) if f is None else len([v for v in self if f(v)])
+        return len([v for v in self if f is None or f(v)])
 
+    def countby(self, f=lambda v: v.category()):
+        assert self._isvipy()
+        assert f is None or callable(f)
+        return vipy.util.countby(self, f)
+        
     def frequency(self):
         return self.count()
 
-    def histogram(self, outfile=None, fontsize=6, category_to_barcolor=None):
+    def histogram(self, outfile=None, fontsize=6, category_to_barcolor=None, category_to_xlabel=None):
         assert self._isvipy()
         assert category_to_barcolor is None or all([c in category_to_barcolor for c in self.categories()])
+        assert category_to_xlabel is None or callable(category_to_xlabel) or all([c in category_to_xlabel for c in self.categories()])
+        f_category_to_xlabel = category_to_xlabel if callable(category_to_xlabel) else ((lambda c: category_to_xlabel[c]) if category_to_xlabel is not None else (lambda c: c))
         
-        d = self.count()
+        d = self.countby(lambda v: v.category())
         if outfile is not None:
             from vipy.metrics import histogram            
             (categories, freq) = zip(*reversed(sorted(list(d.items()), key=lambda x: x[1])))  # decreasing frequency
             barcolors = ['blue' if category_to_barcolor is None else category_to_barcolor[c] for c in categories]
-            print('[vipy.dataset]: histogram="%s"' % vipy.metrics.histogram(freq, categories, barcolors=barcolors, outfile=outfile, ylabel='Instances', fontsize=fontsize))
+            xlabels = [f_category_to_xlabel(c) for c in categories]
+            print('[vipy.dataset]: histogram="%s"' % vipy.metrics.histogram(freq, xlabels, barcolors=barcolors, outfile=outfile, ylabel='Instances', fontsize=fontsize))
         return d
     
     def percentage(self):
@@ -564,10 +572,11 @@ class Dataset():
         return d
         
         
-    def density(self, outfile=None):
+    def density(self, outfile=None, max=None):
+        """Compute the frequency that each video ID is represented.  This counts how many activities are in a video, truncated at max"""
         assert self._isvipy()
-        d = [len(v) for (k,v) in groupbyasdict(self.list(), lambda v: v.videoid()).items()]
-        d = vipy.util.countby(d, lambda x: x)
+        d = [len(v) if (max is None or len(v)<= max) else max for (k,v) in groupbyasdict(self.list(), lambda v: v.videoid()).items()]
+        d = {k:v for (k,v) in sorted(vipy.util.countby(d, lambda x: x).items(), key=lambda x: x[1], reverse=True)}
         if outfile is not None:
             from vipy.metrics import histogram
             histogram(d.values(), d.keys(), outfile=outfile, ylabel='Frequency', xlabel='Activities per video', fontsize=6, xrot=None)            
@@ -686,7 +695,7 @@ class Dataset():
 
         dataset = self.list()
         assert all([isinstance(v, vipy.video.Video) for v in dataset])
-        dataset = [dataset[k] for k in np.random.permutation(range(len(dataset)))[0:int(len(dataset)*fraction)]]
+        dataset = [dataset[int(k)] for k in np.random.permutation(range(len(dataset)))[0:int(len(dataset)*fraction)]]
         #dataset = [v for v in dataset if all([len(a) < 15*v.framerate() for a in v.activitylist()])]  # remove extremely long videos
 
         quicklist = vipy.batch.Batch(dataset, strict=False, as_completed=True, minscatter=1).map(lambda v: (v.load().quicklook(), v.flush().print())).result()
