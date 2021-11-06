@@ -37,9 +37,11 @@ def hoverpixel(urls, outfile=None, pixelsize=32, sortby='color', loupe=True, hov
 
     assert outfile is None or ishtml(outfile)
     assert all([isurl(url) and (iswebp(url) or isimage(url)) for url in urls])
-    imlist = [vipy.video.Video(url=url).frame(0).url(url) if vipy.util.iswebp(url) else vipy.image.Image(url=url) for url in urls]
+    vidlist = [vipy.video.Video(url=url).frame(0).url(url) for url in urls if iswebp(url) and vipy.video.Video(url=url).canload()]
+    imlist  = [vipy.image.Image(url=url) for url in urls if isimage(url)]
+    imlist = imlist + vidlist
     if sortby == 'color':
-        imlist = sorted(imlist, key=lambda im: float(im.hsv().meanchannel(0)))  # will load images
+        imlist = sorted(imlist, key=lambda im: float(im.clone().resize(16,16,interp='nearest').hsv().channel(0).mean()))  # will load images
         urls = [im.url() for im in imlist]
         
     # Create montage image
@@ -90,7 +92,7 @@ def hoverpixel(urls, outfile=None, pixelsize=32, sortby='color', loupe=True, hov
               '  img.parentElement.insertBefore(glass, img);',
               '  glass.style.backgroundRepeat = "no-repeat";',
               '  bw = 3;',
-              '  w = glass.offsetWidth / 2;',
+              '  w = glass.offsetWidth / 2;',              
               '  h = glass.offsetHeight / 2;',
               '  glass.addEventListener("mousemove", moveMagnifier);',
               '  img.addEventListener("mousemove", moveMagnifier);',
@@ -120,9 +122,13 @@ def hoverpixel(urls, outfile=None, pixelsize=32, sortby='color', loupe=True, hov
               '    if (y < 0) {y = 0;}',
               '    glass.style.left = (x - w) + "px";',
               '    glass.style.top = (y - h) + "px";',
-              '    glass.style.backgroundPosition = "-" + ((0 * zoom) - w + bw) + "px -" + ((0 * zoom) - h + bw) + "px";',              
+              '    glass.style.backgroundPosition = "-" + ((0 * zoom) - w + bw) + "px -" + ((0 * zoom) - h + bw) + "px";',                            
               '    glass.style.backgroundImage = "url(\'" + urls[j][i] + "\')";',                           
-              '    glass.style.backgroundSize = "%d" + "px " + "%d" + "px";' % (hoversize, hoversize),              
+              '    glass.style.backgroundSize = %d + "px " + %d + "px";' % (hoversize, hoversize),              
+              '    glass.style.transform = "scale(" + 1.0/window.devicePixelRatio + "," + 1.0/window.devicePixelRatio + ")";',
+              '    glass.style.webkitTransform = "scale(" + 1.0/window.devicePixelRatio + "," + 1.0/window.devicePixelRatio + ")";',
+              '    glass.style.mozTransform = "scale(" + 1.0/window.devicePixelRatio + "," + 1.0/window.devicePixelRatio + ")";',                            
+              #'    console.log(window.devicePixelRatio);',
               '  }',
               '}',
               '</script>')
