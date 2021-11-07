@@ -270,10 +270,7 @@ def chunklistbysize(inlist, size_per_chunk):
     containing a sequential chunk of the original list of length
     size_per_chunk"""
     assert size_per_chunk >= 1
-    num_chunks = np.maximum(int(np.ceil(len(inlist) / float(size_per_chunk))),
-                            1)
-    return chunklist(inlist, num_chunks)
-
+    return [inlist[i:i+size_per_chunk] for i in range(0,len(inlist),size_per_chunk)]
 
 def chunklistWithOverlap(inlist, size_per_chunk, overlap_per_chunk):
     """Convert list into a list of lists such that each element is a list
@@ -592,6 +589,10 @@ def load(infile, abspath=True):
         #import gc; gc.disable()
         pass   # do not do this without explicit user authorization
     return obj
+
+def take(inlist, k):
+    """Take k elements at random from inlist"""
+    return [inlist[i] for i in np.random.permutation(range(len(inlist)))[0:k]]
 
 def tryload(infile, abspath=False):
     """Attempt to load a pkl file, and return the value if successful and None if not"""
