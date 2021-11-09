@@ -124,7 +124,6 @@ def hoverpixel(urls, outfile=None, pixelsize=32, sortby='color', loupe=True, hov
                   '  }',
                   '  function moveMagnifier(e) {',
                   '    var pos, x, y;',
-                  '    e.preventDefault();',
                   '    pos = getCursorPosition(e);',
                   '    x = pos.x;',
                   '    y = pos.y;',
