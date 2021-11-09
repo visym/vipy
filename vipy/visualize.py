@@ -147,7 +147,7 @@ def hoverpixel(urls, outfile=None, pixelsize=32, sortby='color', loupe=True, hov
         f.write('\n'.join(script))    
         f.write('<body style="background-color:black;">\n')
         f.write('<div class="img-hoverpixel-container">\n')
-        f.write(im.html(id="img-hoverpixel", attributes={'hoverpixelwidth':im.width(), 'hoverpixelheight':im.height(), 'width':im.width(), 'height':im.height()}))   # base-64 encoded image with img tag, extra attributes for hoverpixel_selector() 
+        f.write(im.html(id="img-hoverpixel", alt='hoverpixel', attributes={'hoverpixelwidth':im.width(), 'hoverpixelheight':im.height(), 'width':im.width(), 'height':im.height()}))   # base-64 encoded image with img tag, extra attributes for hoverpixel_selector() 
         f.write('<div class="upper-left-text">%s</div>\n' % ultext if ultext is not None else '')
         f.write('</div>\n')
         f.write('<script>\n')
@@ -202,8 +202,9 @@ def hoverpixel_selector(htmllist, legendlist, outfile=None, display=False):
         with open(htmllist[0], "r", encoding='utf-8') as h:
             html = h.read()
         assert 'hoverpixelwidth' in html and 'hoverpixelheight' in html
-        (width, height) = (int(html.split('hoverpixelwidth=')[1].split(' ')[0]), int(html.split('hoverpixelheight=')[1].split(' ')[0]))
-        f.write('<iframe id="hoverpixelframe" src="%s" style="width:%dpx; height:%dpx; border: 0px;></iframe>\n' % (htmllist[0], width, height))
+        (width, height) = (int(html.split('hoverpixelwidth=')[1].split(' ')[0].replace('"','')), int(html.split('hoverpixelheight=')[1].split(' ')[0].replace('"','')))  # unique attribute search for <img key="val" key2="val2" key3=...>
+
+        f.write('<iframe id="hoverpixelframe" src="%s" style="width:%dpx; height:%dpx; border:0px; visibility:hidden;" onload="this.style.visibility=\'visible\';"></iframe>\n' % (htmllist[0], width, height))
         f.write('<script>\n')
         f.write("  hide_selector();\n")
         f.write('</script>\n')
