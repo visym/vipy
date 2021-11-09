@@ -168,9 +168,9 @@ def hoverpixel_selector(htmllist, legendlist, outfile=None, display=False, offse
     """Create a dropdown selector of hoverpixel visualizations by legend.
     
     Args:
-        htmllist: a list of HTML files output from hoverpixel which have been created with a specific ordering 
+        htmllist: a list of HTML files output from `vipy.visualize.hoverpixel` which have been created with a specific ordering 
         legendlist: a list of strings describing how the hoverpixel was sorted (e.g. Color, Category, Size, Region)
-        offset (x,y): A tuple of integers (x=right,y=down) for the absolute position in pixel units of the dropdown meny relative to the upper left of the page.
+        offset (x,y): A tuple of integers (x=right,y=down) for the absolute position in pixel units of the dropdown menu relative to the upper left of the page.
     
     Returns:
         An HTML file that loads the hoverpixel HTML in an iframe with an overlaid dropdown menu to select which hoverpixel animation is displayed
@@ -205,8 +205,7 @@ def hoverpixel_selector(htmllist, legendlist, outfile=None, display=False, offse
         f.write('</select>\n')        
 
         html = str(urllib.request.urlopen(htmllist[0]).read())
-        print(html)
-        assert 'hoverpixelwidth' in html and 'hoverpixelheight' in html
+        assert 'hoverpixelwidth' in html and 'hoverpixelheight' in html  # must be vipy.visualize.hoverpixel() output
         (width, height) = (int(html.split('hoverpixelwidth=')[1].split(' ')[0].replace('"','')), int(html.split('hoverpixelheight=')[1].split(' ')[0].replace('"','')))  # unique attribute search for <img key="val" key2="val2" key3=...>
 
         f.write('<iframe id="hoverpixelframe" src="%s" style="width:%dpx; height:%dpx; border:0px; visibility:hidden;" onload="this.style.visibility=\'visible\';"></iframe>\n' % (htmllist[0], width+20, height+20))
