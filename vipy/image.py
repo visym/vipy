@@ -1436,6 +1436,10 @@ class Image(object):
         self.clone().rgb().pil().save(buf, format='JPEG')
         return base64.b64encode(buf.getvalue())
         
+    def ascii(self):
+        """Export a base64 ascii encoding of the image suitable for embedding in an <img> tag"""
+        return self.base64().decode('ascii')
+
     def html(self, alt=None, id=None, attributes={'loading':'lazy'}):
         """Export a base64 encoding of the image suitable for embedding in an html page, enclosed in <img> tag
            

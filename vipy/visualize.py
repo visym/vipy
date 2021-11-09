@@ -29,7 +29,7 @@ def hoverpixel(urls, outfile=None, pixelsize=32, sortby='color', loupe=True, hov
         outfile: an html output file, if None a temp file will be used 
         pixelsize [int]: the square size of the elements in the montage
         aspectratio [float]: The ratio of columns/rows in the pixel montage. Set to 1 for square.
-        sortby: if 'color' then sort the images rowwise by increasing hue
+        sortby: if 'color' then sort the images rowwise by increasing hue, if None, then use provided ordering of URLs
         loupe: if true, then the magnifier should be a circle
         hoversize: the diameter of the magnifier
         ultext: string to include overlay on the upper left.  include <br> tags for line breaks in string, and standard html text string escaping (e.g. &lt, &gt for <>).  if None, nothing is displayed
@@ -59,107 +59,159 @@ def hoverpixel(urls, outfile=None, pixelsize=32, sortby='color', loupe=True, hov
     # Create montage image
     im = montage(imlist, pixelsize, pixelsize, aspectratio=aspectratio, border=1, do_flush=True, verbose=True)
     urlarray = chunklistbysize(urls, im.width()//(pixelsize+1))  # including border
-    
+
     # Create HTML+javascript visualization file
     filename = outfile if outfile is not None else temphtml()
-    f = open(filename,'w')
-    f.write('<!DOCTYPE html>\n')
-    f.write('<!--\n    Visym Labs\n    vipy.visualize.hoverpixel (https://visym.github.io/vipy)\n    Generated: %s\n-->\n' % str(datetime.now()))
-    f.write('<html>\n')
-    f.write('<meta name="viewport" content="width=device-width, initial-scale=1.0">\n')
-    style = ('<style>',
-             '* {box-sizing: border-box;}',
-             '.img-hoverpixel-container {',
-             '  position:relative;',
-             '}',
-             '.img-hoverpixel-glass {',
-             '  position: absolute;',
-             '  border: 1px solid #999;',
-             '  border-radius: 50%;' if loupe else '  border-radius: 0%;',
-             '  box-shadow: 2px 2px 6px black;',
-             '  background: rgba(0, 0, 0, 0.25);',
-             '  cursor: crosshair;',
-             '  width: %dpx;' % hoversize,
-             '  height: %spx;' % hoversize,
-             '}',
-             '.upper-left-text {',
-             '  position: absolute;',
-             '  top: 16px;',
-             '  left: 16px;',
-             '  color: %s;' % ultextcolor,
-             '  font-size: %s;' % ultextsize,
-             '  font-family: Arial, Helvetica, sans-serif',
-             '}',
-             '</style>')    
-    f.write('\n'.join(style))
-
-    script = ('<script>',
-              'let pixelsize = %d;' % (pixelsize+1),  # include montage border 
-              'let urls = %s;' % str(urlarray),  # public URLs for each montage element
-              'function hoverpixel(imgID, zoom) {',
-              '  var img, glass, w, h, bw;',
-              '  img = document.getElementById(imgID);',
-              '  glass = document.createElement("DIV");',
-              '  glass.setAttribute("class", "img-hoverpixel-glass");',
-              '  img.parentElement.insertBefore(glass, img);',
-              '  glass.style.backgroundRepeat = "no-repeat";',
-              '  bw = 3;',
-              '  w = glass.offsetWidth / 2;',              
-              '  h = glass.offsetHeight / 2;',
-              '  glass.addEventListener("mousemove", moveMagnifier);',
-              '  img.addEventListener("mousemove", moveMagnifier);',
-              '  glass.addEventListener("touchmove", moveMagnifier);',
-              '  img.addEventListener("touchmove", moveMagnifier);',                  
-              '  function getCursorPosition(e) {',
-              '    var a, x = 0, y = 0;',
-              '    e = e || window.event;',
-              '    a = img.getBoundingClientRect();',
-              '    x = e.pageX - a.left;',
-              '    y = e.pageY - a.top;',
-              '    x = x - window.pageXOffset;',
-              '    y = y - window.pageYOffset;',
-              '    return {x : x, y : y};',
-              '  }',
-              '  function moveMagnifier(e) {',
-              '    var pos, x, y;',
-              '    e.preventDefault();',
-              '    pos = getCursorPosition(e);',
-              '    x = pos.x;',
-              '    y = pos.y;',
-              '    i = Math.floor(pos.x / pixelsize);',  
-              '    j = Math.floor(pos.y / pixelsize);'
-              '    if (x > img.width) {x = img.width;}',  # truncate to image boundary
-              '    if (x < 0) {x = 0;}',
-              '    if (y > img.height) {y = img.height;}',
-              '    if (y < 0) {y = 0;}',
-              '    glass.style.left = (x - w) + "px";',
-              '    glass.style.top = (y - h) + "px";',
-              '    glass.style.backgroundPosition = "-" + ((0 * zoom) - w + bw) + "px -" + ((0 * zoom) - h + bw) + "px";',                            
-              '    glass.style.backgroundImage = "url(\'" + urls[j][i] + "\')";',                           
-              '    glass.style.backgroundSize = %d + "px " + %d + "px";' % (hoversize, hoversize),              
-              '    glass.style.transform = "scale(" + 1.0/window.devicePixelRatio + "," + 1.0/window.devicePixelRatio + ")";',
-              '    glass.style.webkitTransform = "scale(" + 1.0/window.devicePixelRatio + "," + 1.0/window.devicePixelRatio + ")";',
-              '    glass.style.mozTransform = "scale(" + 1.0/window.devicePixelRatio + "," + 1.0/window.devicePixelRatio + ")";',                            
-              #'    console.log(window.devicePixelRatio);',
-              '  }',
-              '}',
-              '</script>')
-
-    f.write('\n'.join(script))    
-    f.write('<body style="background-color:black;>\n')
-    f.write('<div class="img-hoverpixel-container">\n')
-    f.write(im.html(id="img-hoverpixel", attributes={'width':im.width(), 'height':im.height()}))   # base-64 encoded image with img tag
-    f.write('<div class="upper-left-text">%s</div>\n' % ultext if ultext is not None else '')
-    f.write('</div>\n')
-    f.write('<script>\n')
-    f.write('hoverpixel("img-hoverpixel", 1);\n')
-    f.write('</script>\n')
-    f.write('</body>\n')
-    f.write('</html>\n')
-    f.close()
+    with open(filename, 'w') as f:
+        f.write('<!DOCTYPE html>\n')
+        f.write('<!--\n    Visym Labs\n    vipy.visualize.hoverpixel (https://visym.github.io/vipy)\n    Generated: %s\n-->\n' % str(datetime.now()))
+        f.write('<html>\n')
+        f.write('<meta name="viewport" content="width=device-width, initial-scale=1.0">\n')
+        style = ('<style>',
+                 '* {box-sizing: border-box;}',
+                 '.img-hoverpixel-container {',
+                 '  position:relative;',
+                 '}',
+                 '.img-hoverpixel-glass {',
+                 '  position: absolute;',
+                 '  border: 1px solid #999;',
+                 '  border-radius: 50%;' if loupe else '  border-radius: 0%;',
+                 '  box-shadow: 2px 2px 6px black;',
+                 '  background: rgba(0, 0, 0, 0.25);',
+                 '  cursor: crosshair;',
+                 '  width: %dpx;' % hoversize,
+                 '  height: %spx;' % hoversize,
+                 '}',
+                 '.upper-left-text {',
+                 '  position: absolute;',
+                 '  top: 16px;',
+                 '  left: 16px;',
+                 '  color: %s;' % ultextcolor,
+                 '  font-size: %s;' % ultextsize,
+                 '  font-family: Arial, Helvetica, sans-serif',
+                 '}',
+                 '</style>')    
+        f.write('\n'.join(style))
+        
+        script = ('<script>',
+                  'let pixelsize = %d;' % (pixelsize+1),  # include montage border 
+                  'let urls = %s;' % str(urlarray),  # public URLs for each montage element
+                  'function hoverpixel(imgID, zoom) {',
+                  '  var img, glass, w, h, bw;',
+                  '  img = document.getElementById(imgID);',
+                  '  glass = document.createElement("DIV");',
+                  '  glass.setAttribute("class", "img-hoverpixel-glass");',
+                  '  img.parentElement.insertBefore(glass, img);',
+                  '  glass.style.backgroundRepeat = "no-repeat";',
+                  '  bw = 3;',
+                  '  w = glass.offsetWidth / 2;',              
+                  '  h = glass.offsetHeight / 2;',
+                  '  glass.addEventListener("mousemove", moveMagnifier);',
+                  '  img.addEventListener("mousemove", moveMagnifier);',
+                  '  glass.addEventListener("touchmove", moveMagnifier);',
+                  '  img.addEventListener("touchmove", moveMagnifier);',                  
+                  '  function getCursorPosition(e) {',
+                  '    var a, x = 0, y = 0;',
+                  '    e = e || window.event;',
+                  '    a = img.getBoundingClientRect();',
+                  '    x = e.pageX - a.left;',
+                  '    y = e.pageY - a.top;',
+                  '    x = x - window.pageXOffset;',
+                  '    y = y - window.pageYOffset;',
+                  '    return {x : x, y : y};',
+                  '  }',
+                  '  function moveMagnifier(e) {',
+                  '    var pos, x, y;',
+                  '    e.preventDefault();',
+                  '    pos = getCursorPosition(e);',
+                  '    x = pos.x;',
+                  '    y = pos.y;',
+                  '    i = Math.floor(pos.x / pixelsize);',  
+                  '    j = Math.floor(pos.y / pixelsize);'
+                  '    if (x > img.width) {x = img.width;}',  # truncate to image boundary
+                  '    if (x < 0) {x = 0;}',
+                  '    if (y > img.height) {y = img.height;}',
+                  '    if (y < 0) {y = 0;}',
+                  '    glass.style.left = (x - w) + "px";',
+                  '    glass.style.top = (y - h) + "px";',
+                  '    glass.style.backgroundPosition = "-" + ((0 * zoom) - w + bw) + "px -" + ((0 * zoom) - h + bw) + "px";',                            
+                  '    glass.style.backgroundImage = "url(\'" + urls[j][i] + "\')";',                           
+                  '    glass.style.backgroundSize = %d + "px " + %d + "px";' % (hoversize, hoversize),              
+                  '    glass.style.transform = "scale(" + 1.0/window.devicePixelRatio + "," + 1.0/window.devicePixelRatio + ")";',
+                  '    glass.style.webkitTransform = "scale(" + 1.0/window.devicePixelRatio + "," + 1.0/window.devicePixelRatio + ")";',
+                  '    glass.style.mozTransform = "scale(" + 1.0/window.devicePixelRatio + "," + 1.0/window.devicePixelRatio + ")";',                            
+                  '  }',
+                  '}',
+                  '</script>')
+        
+        f.write('\n'.join(script))    
+        f.write('<body style="background-color:black;">\n')
+        f.write('<div class="img-hoverpixel-container">\n')
+        f.write(im.html(id="img-hoverpixel", attributes={'hoverpixelwidth':im.width(), 'hoverpixelheight':im.height(), 'width':im.width(), 'height':im.height()}))   # base-64 encoded image with img tag, extra attributes for hoverpixel_selector() 
+        f.write('<div class="upper-left-text">%s</div>\n' % ultext if ultext is not None else '')
+        f.write('</div>\n')
+        f.write('<script>\n')
+        f.write('hoverpixel("img-hoverpixel", 1);\n')
+        f.write('</script>\n')
+        f.write('</body>\n')
+        f.write('</html>\n')
 
     if display:
         print('[vipy.visualize.hoverpixel]: Opening "%s" in default browser' % filename)
+        webbrowser.open('file://%s' % filename)
+
+    return filename
+
+
+def hoverpixel_selector(htmllist, legendlist, outfile=None, display=False):
+    """Create a selector of hoverpixel visualizations by legend.
+    
+    Args:
+        htmllist: a list of HTML files output from hoverpixel
+        legendlist: a list of strings describing how the hoverpixel was sorted (e.g. Color, Category, Size, Region)
+    
+    Returns:
+        An HTML file that loads the hoverpixel HTML in an iframe with an overlaid dropdown menu to select which hoverpixel animation is displayed
+    """
+
+    assert len(htmllist) == len(legendlist)
+    assert all([ishtml(h) for h in htmllist])
+
+    filename = outfile if outfile is not None else temphtml()
+    with open(filename, 'w') as f:
+        f.write('<!DOCTYPE html>\n')
+        f.write('<!--\n    Visym Labs\n    vipy.visualize.hoverpixel_selector (https://visym.github.io/vipy)\n    Generated: %s\n-->\n' % str(datetime.now()))
+        f.write('<html>\n')
+
+        f.write('<script>\n')
+        f.write('  function hide_selector() {\n')
+        f.write("    document.getElementById('selector').style.visibility='hidden'; document.getElementById('hoverpixelframe').addEventListener('load', function() { document.getElementById('selector').style.visibility='visible'; });\n")
+        f.write("  }\n")
+        f.write('  function seturl(x) {\n')
+        for (url, legend) in zip(htmllist, legendlist):
+            f.write('    if (x == "%s") { hide_selector(); document.getElementById("hoverpixelframe").src = "%s"; }\n' % (legend, url))
+        f.write('  }\n')
+        f.write('</script>\n')
+
+        f.write('<body style="background-color:black;">\n')
+        f.write('<select id="selector" onchange="seturl(this.value)" style="position: absolute; left:25px; top:70px; padding: 1px 8px; border-radius:4px; visibility:hidden;">\n')
+        for (k,legend) in enumerate(legendlist):
+            f.write('  <option value="%s"%s>%s</option>\n' % (legend, ' selected="selected"' if k==0 else '', legend))
+        f.write('</select>\n')        
+
+        with open(htmllist[0], "r", encoding='utf-8') as h:
+            html = h.read()
+        assert 'hoverpixelwidth' in html and 'hoverpixelheight' in html
+        (width, height) = (int(html.split('hoverpixelwidth=')[1].split(' ')[0]), int(html.split('hoverpixelheight=')[1].split(' ')[0]))
+        f.write('<iframe id="hoverpixelframe" src="%s" style="width:%dpx; height:%dpx; border: 0px;></iframe>\n' % (htmllist[0], width, height))
+        f.write('<script>\n')
+        f.write("  hide_selector();\n")
+        f.write('</script>\n')
+        f.write('</body>\n')
+        f.write('</html>\n')
+
+    if display:
+        print('[vipy.visualize.hoverpixel_selector]: Opening "%s" in default browser' % filename)
         webbrowser.open('file://%s' % filename)
 
     return filename

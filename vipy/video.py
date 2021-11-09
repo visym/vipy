@@ -2655,8 +2655,8 @@ class Scene(VideoCategory):
     def trackidx(self, idx):
         return self.tracklist()[idx]
 
-    def activity(self, id):
-        return self.activities(id=id)
+    def activity(self, id=None):
+        return self.activities(id=id) if id is not None else self.primary_activity()
         
     def next_activity(self, id):
         """Return the next activity just after the given activityid"""
@@ -3128,7 +3128,7 @@ class Scene(VideoCategory):
         """Split the scene into k separate scenes, one for each track.  Each scene starts and ends when the track starts and ends"""
         return [t.setattribute('_instance_id', '%s_%d_trackclip' % (t.actorid(), k)).clip(t.track(t.actorid()).startframe(), t.track(t.actorid()).endframe()) for (k,t) in enumerate(self.tracksplit())]
     
-    def activityclip(self, padframes=0, multilabel=True, idx=None, padto=None):
+    def activityclip(self, padframes=0, multilabel=True, idx=None, padto=None, padtosec=None):
         """Return a list of `vipy.video.Scene` objects each clipped to be temporally centered on a single activity, with an optional padframes before and after.  
 
         Args:
@@ -3138,6 +3138,7 @@ class Scene(VideoCategory):
             multilabel: [bool] include overlapping multilabel secondary activities in each activityclip
             idx: [int], [tuple], [list].  The indexes of the activities to return, where the index is the integer index order of the activity in the video.  Useful for complex videos.
             padto: [int] padding so that each activity clip is at least padto frames long, with symmetric padding around the activity.  
+            padtosec: [float] padding so that each activity clip is at least padtosec seconds long, with symmetric padding around the activity.  
 
         Returns:
             A list of `vipy.video.Scene` each cloned from the source video and clipped on one activity in the scene
@@ -3161,9 +3162,10 @@ class Scene(VideoCategory):
         secondary_activities = [sa if multilabel else [] for sa in secondary_activities]  
         vid._activities = {}  # for faster clone
         vid._tracks = {}      # for faster clone
-        maxframes = self.duration_in_frames() if (padframes != 0 or padto is not None) else None                    
-        if padto is not None:
+        maxframes = self.duration_in_frames() if (padframes != 0 or padto is not None or padtosec is not None) else None                    
+        if padto is not None or padtosec is not None:
             cliplist = [(a.startframe(), a.endframe()) for a in primary_activities]
+            padto = padto if padto is not None else int(round(padtosec*self.framerate()))            
             padframelist = [(sp+int(np.ceil(((padto-(ef-sf))/2))), ep+int(np.ceil(((padto-(ef-sf))/2)))) if (ef-sf)<padto else (sp,ep) for ((sp,ep),(sf,ef)) in zip(padframelist, cliplist)]  
             padframelist = [(0,ep+(-sp)) if (sp<0) else ((sp+(ep-(maxframes-ef)), maxframes-ef) if ((ef+ep)>maxframes) else (sp,ep)) for ((sp,ep),(sf,ef)) in zip(padframelist, cliplist)]  # truncate to video boundary
             
