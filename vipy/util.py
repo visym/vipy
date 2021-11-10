@@ -62,6 +62,9 @@ def hascache():
     """Is the VIPY_CACHE environment variable set?"""
     return 'VIPY_CACHE' in os.environ
 
+def cache():
+    """If the VIPY_CACHE environment variable set, return it otherwise return tempdir()"""
+    return remkdir(os.environ['VIPY_CACHE']) if hascache() else tempdir()
 
 def tocache(filename):
     """If the VIPY_CACHE environment variable is set, then return the filename=/path/to/file.ext in the cache as VIPY_CACHE/file.ext.  Otherwise, return the file in the system temp"""

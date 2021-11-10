@@ -45,7 +45,7 @@ def hoverpixel(urls, outfile=None, pixelsize=32, sortby='color', loupe=True, hov
     .. note:: 
         - Use fullscreen browsing for best experience.
         - Try to zoom out in your browser to see the full montage.
-        - Wrap this HTML output file in an iframe for integration into your website: <iframe src="https://path/to/my/outfile.html" style="width: 1024px; height: 768px; border: 0px;"></iframe>
+        - Wrap this HTML output file in an iframe for integration into your website: <iframe src="https://path/to/my/outfile.html" style="width: 1024px; height: 768px; border: 0px;" allowfullscreen></iframe>
 
     """
 
@@ -164,16 +164,19 @@ def hoverpixel(urls, outfile=None, pixelsize=32, sortby='color', loupe=True, hov
     return filename
 
 
-def hoverpixel_selector(htmllist, legendlist, outfile=None, display=False, offset=(30, 80)):
+def hoverpixel_selector(htmllist, legendlist, outfile=None, display=False, offset=(60, 80), fullscreen=True):
     """Create a dropdown selector of hoverpixel visualizations by legend.
     
     Args:
         htmllist: a list of HTML files output from `vipy.visualize.hoverpixel` which have been created with a specific ordering 
         legendlist: a list of strings describing how the hoverpixel was sorted (e.g. Color, Category, Size, Region)
         offset (x,y): A tuple of integers (x=right,y=down) for the absolute position in pixel units of the dropdown menu relative to the upper left of the page.
-    
+        fullscreen [bool]: If true, include an expand button next to the selector to put the hoverpixel iframe into fullscreen mode.  Be sure to add allowfullscreen to the iframe.
+
     Returns:
         An HTML file that loads the hoverpixel HTML in an iframe with an overlaid dropdown menu to select which hoverpixel animation is displayed
+
+    ..note:: The fullscreen display will not work on iPhone since it is unsupported.
     """
 
     assert len(htmllist) == len(legendlist)
@@ -186,31 +189,36 @@ def hoverpixel_selector(htmllist, legendlist, outfile=None, display=False, offse
     with open(filename, 'w') as f:
         f.write('<!DOCTYPE html>\n')
         f.write('<!--\n    Visym Labs\n    vipy.visualize.hoverpixel_selector (https://visym.github.io/vipy)\n    Generated: %s\n-->\n' % str(datetime.now()))
+        if fullscreen:
+            f.write('<head>\n  <link href="https://use.fontawesome.com/releases/v5.13.0/css/all.css" rel="stylesheet">\n</head>\n')        
         f.write('<html>\n')
 
-        f.write('<script>\n')
-        f.write('  function hide_selector() {\n')
-        f.write("    document.getElementById('selector').style.visibility='hidden'; document.getElementById('hoverpixelframe').addEventListener('load', function() { document.getElementById('selector').style.visibility='visible'; });\n")
-        f.write("  }\n")
-        f.write('  function seturl(x) {\n')
-        for (url, legend) in zip(htmllist, legendlist):
-            f.write('    if (x == "%s") { hide_selector(); document.getElementById("hoverpixelframe").src = "%s"; }\n' % (legend, url))
-        f.write('  }\n')
-        f.write('</script>\n')
-
         f.write('<body style="background-color:black;">\n')
-        f.write('<select id="selector" onchange="seturl(this.value)" style="position: absolute; left:%dpx; top:%dpx; padding: 1px 8px; border-radius:4px; visibility:hidden;">\n' % (offset[0], offset[1]))
-        for (k,legend) in enumerate(legendlist):
-            f.write('  <option value="%s"%s>%s</option>\n' % (legend, ' selected="selected"' if k==0 else '', legend))
-        f.write('</select>\n')        
 
         html = str(urllib.request.urlopen(htmllist[0]).read())
         assert 'hoverpixelwidth' in html and 'hoverpixelheight' in html  # must be vipy.visualize.hoverpixel() output
         (width, height) = (int(html.split('hoverpixelwidth=')[1].split(' ')[0].replace('"','')), int(html.split('hoverpixelheight=')[1].split(' ')[0].replace('"','')))  # unique attribute search for <img key="val" key2="val2" key3=...>
-
-        f.write('<iframe id="hoverpixelframe" src="%s" style="width:%dpx; height:%dpx; border:0px; visibility:hidden;" onload="this.style.visibility=\'visible\';"></iframe>\n' % (htmllist[0], width+20, height+20))
+        f.write('<iframe id="hoverpixelframe" src="%s" style="width:%dpx; height:%dpx; border:0px; visibility:hidden;" onload="this.style.visibility=\'visible\';" allowfullscreen></iframe>\n' % (htmllist[0], width+20, height+20))
+                
+        f.write('<select id="selector" onchange="seturl(this.value)" style="position: absolute; left:%dpx; top:%dpx; padding: 1px 4px; border-radius:4px; visibility:hidden;">\n' % (offset[0], offset[1]))
+        for (k,legend) in enumerate(legendlist):
+            f.write('  <option value="%s"%s>%s</option>\n' % (legend, ' selected="selected"' if k==0 else '', legend))
+        f.write('</select>\n')        
+        f.write('<i title="Fullscreen" id="expand" class="fas fa-expand fa-lg" onclick="tofullscreen()" style="color:white; position:absolute; left:163px; top:83px; visibility:hidden;" onmouseover="this.style.color=\'black\';" onmouseout="this.style.color=\'white\';" ></i>\n')
+            
         f.write('<script>\n')
-        f.write("  hide_selector();\n")
+        f.write("  var iframe = document.getElementById('hoverpixelframe');\n")
+        f.write("  var selector = document.getElementById('selector');\n")
+        f.write("  var expand = document.getElementById('expand');\n")        
+        f.write("  function tofullscreen() { if (iframe.requestFullscreen) {iframe.requestFullscreen();} else if (iframe.webkitRequestFullscreen) {iframe.webkitRequestFullscreen();} }\n")
+        f.write('  function hide_buttons_until_load() {\n')
+        f.write("    selector.style.visibility='hidden'; expand.style.visibility='hidden'; iframe.addEventListener('load', function() { selector.style.visibility='visible'; expand.style.visibility='%s';});\n" % ('visible' if fullscreen else 'hidden'))
+        f.write("  }\n")
+        f.write('  function seturl(x) {\n')
+        for (url, legend) in zip(htmllist, legendlist):
+            f.write('    if (x == "%s") { hide_buttons_until_load(); iframe.src = "%s"; }\n' % (legend, url))
+        f.write('  }\n')
+        f.write("  hide_buttons_until_load();\n")        
         f.write('</script>\n')
         f.write('</body>\n')
         f.write('</html>\n')
