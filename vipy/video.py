@@ -1049,7 +1049,7 @@ class Video(object):
             return self
             
     def colorspace(self, colorspace=None):
-        """Return or set the colorspace as ['rgb', 'bgr', 'lum', 'float']"""
+        """Return or set the colorspace as ['rgb', 'bgr', 'lum', 'float'].  This will not change pixels, only the colorspace interpretation of pixels."""
         if colorspace is None:
             return self._colorspace
         elif self.isloaded():
@@ -1395,8 +1395,10 @@ class Video(object):
     def shape(self, shape=None, probe=False):
         """Return (height, width) of the frames, requires loading a preview frame from the video if the video is not already loaded, or providing the shape=(height,width) by the user"""
         if probe:
+            # Set the shape of the video from the filename by ffprobe, this should be deprecated
             return self.shape(self.probeshape(), probe=False)
         elif shape is not None:
+            # Set the shape of the video using the shape provided by the user (e.g. sometimes the user knows what this will be)
             assert isinstance(shape, tuple), "shape=(height, width) tuple"
             self._shape = shape
             self._channels = self.channels()
@@ -1404,8 +1406,7 @@ class Video(object):
             return self
             
         elif not self.isloaded():
-            #previewhash = hashlib.md5(str(self._ffmpeg_commandline()).encode()).hexdigest()
-            #if not hasattr(self, '_previewhash') or previewhash != self._previewhash:
+            # Preview a frame from the ffmpeg filter chain (more expensive)
             if self._shape is None or len(self._shape) == 0:  # dirty filter chain
                 im = self.preview()  # ffmpeg chain changed, load a single frame of video, triggers fetch
                 self._shape = (im.height(), im.width())  # cache the shape
@@ -1413,8 +1414,13 @@ class Video(object):
                 #self._previewhash = previewhash
             return self._shape
         else:
+            # Frames already loaded - get shape from numpy array
             return (self._array.shape[1], self._array.shape[2])
 
+    def channelshape(self):
+        """Return a tuple (channels, height, width) for the video"""
+        return (self.channels(), self.height(), self.width())
+    
     def issquare(self):
         """Return true if the video has square dimensions (height == width), else false"""
         s = self.shape()
@@ -1423,13 +1429,15 @@ class Video(object):
     def channels(self):
         """Return integer number of color channels"""
         if not self.isloaded():
-            self._channels = 3   # always color video 
+            self._channels = 3   # always color video
+            
             #previewhash = hashlib.md5(str(self._ffmpeg_commandline()).encode()).hexdigest()            
             #if not hasattr(self, '_previewhash') or previewhash != self._previewhash:
             #    im = self.preview()  # ffmpeg chain changed, load a single frame of video
             #    self._shape = (im.height(), im.width())  # cache the shape                
             #    self._channels = im.channels()  # cache
             #    self._previewhash = previewhash
+            
             return self._channels  # cached
         else:
             return 1 if self.load().array().ndim == 3 else self.load().array().shape[3]
