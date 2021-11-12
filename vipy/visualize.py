@@ -17,7 +17,7 @@ import urllib
 import warnings
 
 
-def hoverpixel(urls, outfile=None, pixelsize=32, sortby='color', loupe=True, hoversize=512, ultext=None, display=False, ultextcolor='white', ultextsize='large', aspectratio=2560/1440):
+def hoverpixel(urls, outfile=None, pixelsize=32, sortby='color', loupe=True, hoversize=512, ultext=None, display=False, ultextcolor='white', ultextsize='large', aspectratio=2560/1440, ultextoffset=(16,16)):
     """Generate a standalone hoverpixel visualization.
 
     A hoverpixel visualization is an HTML file that shows a montage such that each pixel in the montage is a video or image.  
@@ -38,7 +38,8 @@ def hoverpixel(urls, outfile=None, pixelsize=32, sortby='color', loupe=True, hov
         display: if true, then open the html file in the defult browser when done
         ultextcolor: an html color string (e.g. "white", "black") for the upper left text color
         ultextsize: an html font-size string (e.g. "large", "x-large") for the upper left text
-    
+        ultextoffset [tuple): An offset in (x=pixels, y=pixels) of the origin of the upper left text
+
     Returns:
         A standalone html file that renders each url in montage such that hovering over elements in the montage will show the url in a magnifier.  
 
@@ -86,8 +87,8 @@ def hoverpixel(urls, outfile=None, pixelsize=32, sortby='color', loupe=True, hov
                  '}',
                  '.upper-left-text {',
                  '  position: absolute;',
-                 '  top: 16px;',
-                 '  left: 16px;',
+                 '  top: %dpx;' % ultextoffset[0],
+                 '  left: %dpx;' % ultextoffset[1],
                  '  color: %s;' % ultextcolor,
                  '  font-size: %s;' % ultextsize,
                  '  font-family: Arial, Helvetica, sans-serif',
@@ -164,7 +165,7 @@ def hoverpixel(urls, outfile=None, pixelsize=32, sortby='color', loupe=True, hov
     return filename
 
 
-def hoverpixel_selector(htmllist, legendlist, outfile=None, display=False, offset=(60, 80), fullscreen=True):
+def hoverpixel_selector(htmllist, legendlist, outfile=None, display=False, offset=(60, 80), fullscreen=True, ultext=None, ultextcolor='white', ultextsize='large', ultextoffset=(16,16)):
     """Create a dropdown selector of hoverpixel visualizations by legend.
     
     Args:
@@ -198,14 +199,15 @@ def hoverpixel_selector(htmllist, legendlist, outfile=None, display=False, offse
         html = str(urllib.request.urlopen(htmllist[0]).read())
         assert 'hoverpixelwidth' in html and 'hoverpixelheight' in html  # must be vipy.visualize.hoverpixel() output
         (width, height) = (int(html.split('hoverpixelwidth=')[1].split(' ')[0].replace('"','')), int(html.split('hoverpixelheight=')[1].split(' ')[0].replace('"','')))  # unique attribute search for <img key="val" key2="val2" key3=...>
-        f.write('<iframe id="hoverpixelframe" src="%s" style="width:%dpx; height:%dpx; border:0px; visibility:hidden;" onload="this.style.visibility=\'visible\';" allowfullscreen></iframe>\n' % (htmllist[0], width+20, height+20))
-                
+        f.write('<iframe id="hoverpixelframe" src="%s" style="width:%dpx; height:%dpx; border:0px; visibility:hidden;" onload="this.style.visibility=\'visible\';" allowfullscreen></iframe>\n' % (htmllist[0], width+20, height+20))               
         f.write('<select id="selector" onchange="seturl(this.value)" style="position: absolute; left:%dpx; top:%dpx; padding: 1px 4px; border-radius:4px; visibility:visible;">\n' % (offset[0], offset[1]))
         for (k,legend) in enumerate(legendlist):
             f.write('  <option value="%s"%s>%s</option>\n' % (legend, ' selected="selected"' if k==0 else '', legend))
         f.write('</select>\n')        
         f.write('<i title="Fullscreen" id="expand" class="fas fa-expand fa-lg" onclick="tofullscreen()" style="color:white; position:absolute; left:163px; top:83px; visibility:%s;" onmouseover="this.style.color=\'black\';" onmouseout="this.style.color=\'white\';" ></i>\n' % ('hidden' if not fullscreen else 'visible'))
         f.write('<i title="Spinner" id="spinner" class="fas fa-spinner fa-spin fa-lg"" style="color:white; position:absolute; left:200px; top:83px; visibility:hidden;"></i>\n')
+        if ultext is not None:
+            f.write('<div style="position:absolute; top:%dpx; left:%dpx; color:%s; font-size:%s; font-family:Arial, Helvetica, sans-serif;">%s</div>\n' % (ultextoffset[0], ultextoffset[1], ultextcolor, ultextsize, ultext))
         f.write('<script>\n')
         f.write("  var iframe = document.getElementById('hoverpixelframe');\n")
         f.write("  var selector = document.getElementById('selector');\n")
