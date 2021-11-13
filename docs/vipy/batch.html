@@ -25,7 +25,7 @@
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/cca43229d5a34248b0f1c6f49fd349ba9d094381/vipy/batch.py#L0-L381" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/42a1d90428b25912fcbd3945dcaed29dd75b313f/vipy/batch.py#L0-L382" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">import os
 import sys
@@ -61,17 +61,17 @@ class Dask(object):
 
         self._num_processes = num_processes
 
-        env={&#39;VIPY_BACKEND&#39;:&#39;Agg&#39;,  # headless 
-             &#39;PYTHONOPATH&#39;:os.environ[&#39;PYTHONPATH&#39;] if &#39;PYTHONPATH&#39; in os.environ else &#39;&#39;,
-             &#39;PATH&#39;:os.environ[&#39;PATH&#39;] if &#39;PATH&#39; in os.environ else &#39;&#39;,
-             #&#39;DASK_DISTRIBUTED__COMM__TIMEOUTS__TCP&#39;:&#34;30s&#34;,
-             &#39;DASK_DISTRIBUTED__COMM__TIMEOUTS__CONNECT&#39;:&#34;30s&#34;,
-             #&#39;DASK_DISTRIBUTED__SCHEDULER__WORK_STEALING&#39;:&#39;false&#39;,
-             #&#39;DASK_DISTRIBUTED__ADMIN__TICK__LIMIT&#39;:&#34;30s&#34;,
-             #&#39;DASK_DISTRIBUTED__ADMIN__TICK__INTERVAL&#39;:&#34;2s&#34;,
-             &#39;DASK_DISTRIBUTED__DEPLOY__LOST_WORKER_TIMEOUT&#39;:&#34;30s&#34;
-        }
-
+        os.environ[&#39;DASK_LOGGING__DISTRIBUTED&#39;] = &#39;warning&#39; if not verbose else &#39;info&#39;
+        env = {&#39;VIPY_BACKEND&#39;:&#39;Agg&#39;,  # headless 
+               &#39;PYTHONOPATH&#39;:os.environ[&#39;PYTHONPATH&#39;] if &#39;PYTHONPATH&#39; in os.environ else &#39;&#39;,
+               &#39;PATH&#39;:os.environ[&#39;PATH&#39;] if &#39;PATH&#39; in os.environ else &#39;&#39;,
+               #&#39;DASK_DISTRIBUTED__COMM__TIMEOUTS__TCP&#39;:&#34;30s&#34;,
+               &#39;DASK_DISTRIBUTED__COMM__TIMEOUTS__CONNECT&#39;:&#34;30s&#34;,
+               #&#39;DASK_DISTRIBUTED__SCHEDULER__WORK_STEALING&#39;:&#39;false&#39;,
+               #&#39;DASK_DISTRIBUTED__ADMIN__TICK__LIMIT&#39;:&#34;30s&#34;,
+               #&#39;DASK_DISTRIBUTED__ADMIN__TICK__INTERVAL&#39;:&#34;2s&#34;,
+               &#39;DASK_DISTRIBUTED__DEPLOY__LOST_WORKER_TIMEOUT&#39;:&#34;30s&#34;}
+        
         dask.config.set({&#39;DISTRIBUTED.COMM.TIMEOUTS.CONNECT&#39;.lower():&#39;30s&#39;})
         dask.config.set({&#39;DISTRIBUTED.COMM.TIMEOUTS.TCP&#39;.lower():&#39;30s&#39;})
         dask.config.set({&#39;DISTRIBUTED.DEPLOY.LOST_WORKER_TIMEOUT&#39;.lower():&#39;30s&#39;})
@@ -90,8 +90,9 @@ class Dask(object):
                                   threads_per_worker=1,
                                   n_workers=num_processes, 
                                   env=env,
-                                  direct_to_workers=True,
-                                  silence_logs=20 if verbose else 40,  # logging.WARN=30 or logging.ERROR=40 or logging.INFO=20
+                                  direct_to_workers=True, 
+                                  #memory_limit=&#39;auto&#39;,
+                                  #silence_logs=20 if verbose else 40, 
                                   local_directory=tempfile.mkdtemp())
 
         self._num_gpus = num_gpus
@@ -215,7 +216,7 @@ class Batch(Checkpoint):
 
     &#34;&#34;&#34;    
              
-    def __init__(self, objlist, strict=False, as_completed=False, checkpoint=False, checkpointdir=None, checkpointfrac=0.1, warnme=True, minscatter=None):
+    def __init__(self, objlist, strict=False, as_completed=False, checkpoint=False, checkpointdir=None, checkpointfrac=0.1, warnme=False, minscatter=None):
         &#34;&#34;&#34;Create a batch of homogeneous vipy.image objects from an iterable that can be operated on with a single parallel function call
         &#34;&#34;&#34;
         assert isinstance(objlist, list), &#34;Input must be a list&#34;
@@ -232,7 +233,7 @@ class Batch(Checkpoint):
 
         # Move this into map and disable using localmap
         if vipy.globals.dask() is None and warnme:
-            print(&#39;[vipy.batch.Batch]: vipy.batch.Batch() is not set to use parallelism.  This is set using:\n    &gt;&gt;&gt; vipy.globals.parallel(n) for multi-processing with n processes\n    &gt;&gt;&gt; vipy.globals.parallel(pct=0.8) for multiprocessing that uses a percentage of the current system resources\n    &gt;&gt;&gt; vipy.globals.dask(address=&#34;SCHEDULER:PORT&#34;) which connects to a Dask distributed scheduler.\n    &gt;&gt;&gt; vipy.globals.noparallel() to completely disable all parallelism.&#39;)
+            print(&#39;[vipy.batch.Batch]: vipy.batch.Batch() is not set to use parallelism.  This is set using:\n    &gt;&gt;&gt; with vipy.globals.parallel(n) for multi-processing with n processes\n    &gt;&gt;&gt; vipy.globals.parallel(pct=0.8) for multiprocessing that uses a percentage of the current system resources\n    &gt;&gt;&gt; vipy.globals.dask(address=&#34;SCHEDULER:PORT&#34;) which connects to a Dask distributed scheduler.\n    &gt;&gt;&gt; vipy.globals.noparallel() to completely disable all parallelism.&#39;)
 
         # FIXME: this needs to go into Dask()
         #self._ngpu = ngpu
@@ -364,7 +365,7 @@ class Batch(Checkpoint):
             self._objlist = [f_lambda_ordered(o) for o in self._objlist]  # no parallelism
         else:
             f_lambda_ordered = lambda x,f=f_lambda: (x[0], f(x[1]))            
-            objlist = c.scatter(self._objlist) if (self._minscatter is not None and len(self._objlist) &gt; self._minscatter) else self._objlist
+            objlist = c.scatter(self._objlist) if (self._minscatter is not None and len(self._objlist) &gt;= self._minscatter) else self._objlist
             self._objlist = self._wait(c.map(f_lambda_ordered, objlist))
         return self
 
@@ -404,7 +405,7 @@ class Batch(Checkpoint):
             self._objlist = [f_lambda_ordered(obj, o) for o in self._objlist]  # no parallelism
         else:
             objdist = c.scatter(obj, broadcast=True)        
-            objlist = c.scatter(self._objlist) if (self._minscatter is not None and len(self._objlist) &gt; self._minscatter) else self._objlist
+            objlist = c.scatter(self._objlist) if (self._minscatter is not None and len(self._objlist) &gt;= self._minscatter) else self._objlist
             self._objlist = self._wait([c.submit(f_lambda_ordered, objdist, im) for im in objlist])
         return self</code></pre>
 </details>
@@ -420,7 +421,7 @@ class Batch(Checkpoint):
 <dl>
 <dt id="vipy.batch.Batch"><code class="flex name class">
 <span>class <span class="ident">Batch</span></span>
-<span>(</span><span>objlist, strict=False, as_completed=False, checkpoint=False, checkpointdir=None, checkpointfrac=0.1, warnme=True, minscatter=None)</span>
+<span>(</span><span>objlist, strict=False, as_completed=False, checkpoint=False, checkpointdir=None, checkpointfrac=0.1, warnme=False, minscatter=None)</span>
 </code></dt>
 <dd>
 <div class="desc"><p>vipy.batch.Batch class</p>
@@ -454,7 +455,7 @@ If so, then an operation on the batch is performed on each of the elements in th
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/cca43229d5a34248b0f1c6f49fd349ba9d094381/vipy/batch.py#L161-L380" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/42a1d90428b25912fcbd3945dcaed29dd75b313f/vipy/batch.py#L162-L381" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">class Batch(Checkpoint):
     &#34;&#34;&#34;vipy.batch.Batch class
@@ -484,7 +485,7 @@ If so, then an operation on the batch is performed on each of the elements in th
 
     &#34;&#34;&#34;    
              
-    def __init__(self, objlist, strict=False, as_completed=False, checkpoint=False, checkpointdir=None, checkpointfrac=0.1, warnme=True, minscatter=None):
+    def __init__(self, objlist, strict=False, as_completed=False, checkpoint=False, checkpointdir=None, checkpointfrac=0.1, warnme=False, minscatter=None):
         &#34;&#34;&#34;Create a batch of homogeneous vipy.image objects from an iterable that can be operated on with a single parallel function call
         &#34;&#34;&#34;
         assert isinstance(objlist, list), &#34;Input must be a list&#34;
@@ -501,7 +502,7 @@ If so, then an operation on the batch is performed on each of the elements in th
 
         # Move this into map and disable using localmap
         if vipy.globals.dask() is None and warnme:
-            print(&#39;[vipy.batch.Batch]: vipy.batch.Batch() is not set to use parallelism.  This is set using:\n    &gt;&gt;&gt; vipy.globals.parallel(n) for multi-processing with n processes\n    &gt;&gt;&gt; vipy.globals.parallel(pct=0.8) for multiprocessing that uses a percentage of the current system resources\n    &gt;&gt;&gt; vipy.globals.dask(address=&#34;SCHEDULER:PORT&#34;) which connects to a Dask distributed scheduler.\n    &gt;&gt;&gt; vipy.globals.noparallel() to completely disable all parallelism.&#39;)
+            print(&#39;[vipy.batch.Batch]: vipy.batch.Batch() is not set to use parallelism.  This is set using:\n    &gt;&gt;&gt; with vipy.globals.parallel(n) for multi-processing with n processes\n    &gt;&gt;&gt; vipy.globals.parallel(pct=0.8) for multiprocessing that uses a percentage of the current system resources\n    &gt;&gt;&gt; vipy.globals.dask(address=&#34;SCHEDULER:PORT&#34;) which connects to a Dask distributed scheduler.\n    &gt;&gt;&gt; vipy.globals.noparallel() to completely disable all parallelism.&#39;)
 
         # FIXME: this needs to go into Dask()
         #self._ngpu = ngpu
@@ -633,7 +634,7 @@ If so, then an operation on the batch is performed on each of the elements in th
             self._objlist = [f_lambda_ordered(o) for o in self._objlist]  # no parallelism
         else:
             f_lambda_ordered = lambda x,f=f_lambda: (x[0], f(x[1]))            
-            objlist = c.scatter(self._objlist) if (self._minscatter is not None and len(self._objlist) &gt; self._minscatter) else self._objlist
+            objlist = c.scatter(self._objlist) if (self._minscatter is not None and len(self._objlist) &gt;= self._minscatter) else self._objlist
             self._objlist = self._wait(c.map(f_lambda_ordered, objlist))
         return self
 
@@ -673,7 +674,7 @@ If so, then an operation on the batch is performed on each of the elements in th
             self._objlist = [f_lambda_ordered(obj, o) for o in self._objlist]  # no parallelism
         else:
             objdist = c.scatter(obj, broadcast=True)        
-            objlist = c.scatter(self._objlist) if (self._minscatter is not None and len(self._objlist) &gt; self._minscatter) else self._objlist
+            objlist = c.scatter(self._objlist) if (self._minscatter is not None and len(self._objlist) &gt;= self._minscatter) else self._objlist
             self._objlist = self._wait([c.submit(f_lambda_ordered, objdist, im) for im in objlist])
         return self</code></pre>
 </details>
@@ -691,7 +692,7 @@ If so, then an operation on the batch is performed on each of the elements in th
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/cca43229d5a34248b0f1c6f49fd349ba9d094381/vipy/batch.py#L342-L354" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/42a1d90428b25912fcbd3945dcaed29dd75b313f/vipy/batch.py#L343-L355" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def filter(self, f_lambda):
     &#34;&#34;&#34;Run the lambda function on each of the elements of the batch and filter based on the provided lambda keeping those elements that return true 
@@ -728,7 +729,7 @@ If it does, construct the lambda with default parameter capture:</p>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/cca43229d5a34248b0f1c6f49fd349ba9d094381/vipy/batch.py#L314-L340" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/42a1d90428b25912fcbd3945dcaed29dd75b313f/vipy/batch.py#L315-L341" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def map(self, f_lambda, args=None):
     &#34;&#34;&#34;Run the lambda function on each of the elements of the batch and return the batch object.
@@ -754,7 +755,7 @@ If it does, construct the lambda with default parameter capture:</p>
         self._objlist = [f_lambda_ordered(o) for o in self._objlist]  # no parallelism
     else:
         f_lambda_ordered = lambda x,f=f_lambda: (x[0], f(x[1]))            
-        objlist = c.scatter(self._objlist) if (self._minscatter is not None and len(self._objlist) &gt; self._minscatter) else self._objlist
+        objlist = c.scatter(self._objlist) if (self._minscatter is not None and len(self._objlist) &gt;= self._minscatter) else self._objlist
         self._objlist = self._wait(c.map(f_lambda_ordered, objlist))
     return self</code></pre>
 </details>
@@ -767,7 +768,7 @@ If it does, construct the lambda with default parameter capture:</p>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/cca43229d5a34248b0f1c6f49fd349ba9d094381/vipy/batch.py#L302-L303" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/42a1d90428b25912fcbd3945dcaed29dd75b313f/vipy/batch.py#L303-L304" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def restore(self):
     return self.checkpoint() if self._checkpoint else None</code></pre>
@@ -781,7 +782,7 @@ If it does, construct the lambda with default parameter capture:</p>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/cca43229d5a34248b0f1c6f49fd349ba9d094381/vipy/batch.py#L305-L308" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/42a1d90428b25912fcbd3945dcaed29dd75b313f/vipy/batch.py#L306-L309" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def result(self):
     &#34;&#34;&#34;Return the result of the batch processing, ordered&#34;&#34;&#34;
@@ -810,7 +811,7 @@ net to take advantage of this GPU rather than using the default cuda:0.</p></div
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/cca43229d5a34248b0f1c6f49fd349ba9d094381/vipy/batch.py#L356-L380" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/42a1d90428b25912fcbd3945dcaed29dd75b313f/vipy/batch.py#L357-L381" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def scattermap(self, f_lambda, obj):
     &#34;&#34;&#34;Scatter obj to all workers, and apply lambda function f(obj, im) to each element in batch
@@ -834,7 +835,7 @@ net to take advantage of this GPU rather than using the default cuda:0.</p></div
         self._objlist = [f_lambda_ordered(obj, o) for o in self._objlist]  # no parallelism
     else:
         objdist = c.scatter(obj, broadcast=True)        
-        objlist = c.scatter(self._objlist) if (self._minscatter is not None and len(self._objlist) &gt; self._minscatter) else self._objlist
+        objlist = c.scatter(self._objlist) if (self._minscatter is not None and len(self._objlist) &gt;= self._minscatter) else self._objlist
         self._objlist = self._wait([c.submit(f_lambda_ordered, objdist, im) for im in objlist])
     return self</code></pre>
 </details>
@@ -858,7 +859,7 @@ net to take advantage of this GPU rather than using the default cuda:0.</p></div
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/cca43229d5a34248b0f1c6f49fd349ba9d094381/vipy/batch.py#L110-L158" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/42a1d90428b25912fcbd3945dcaed29dd75b313f/vipy/batch.py#L111-L159" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">class Checkpoint(object):
     &#34;&#34;&#34;Batch checkpoints for long running jobs&#34;&#34;&#34;
@@ -925,7 +926,7 @@ Useful for recovering from dask crashes for long jobs.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/cca43229d5a34248b0f1c6f49fd349ba9d094381/vipy/batch.py#L120-L127" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/42a1d90428b25912fcbd3945dcaed29dd75b313f/vipy/batch.py#L121-L128" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def checkpoint(self, archiveid=None):
     &#34;&#34;&#34;Return the last checkpointed result.  Useful for recovering from dask crashes for long jobs.&#34;&#34;&#34;
@@ -945,7 +946,7 @@ Useful for recovering from dask crashes for long jobs.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/cca43229d5a34248b0f1c6f49fd349ba9d094381/vipy/batch.py#L129-L131" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/42a1d90428b25912fcbd3945dcaed29dd75b313f/vipy/batch.py#L130-L132" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def last_archive(self):
     archivelist = self._list_archives()
@@ -963,7 +964,7 @@ Useful for recovering from dask crashes for long jobs.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/cca43229d5a34248b0f1c6f49fd349ba9d094381/vipy/batch.py#L25-L105" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/42a1d90428b25912fcbd3945dcaed29dd75b313f/vipy/batch.py#L25-L106" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">class Dask(object):
     def __init__(self, num_processes=None, dashboard=False, verbose=False, address=None, num_gpus=None):
@@ -975,17 +976,17 @@ Useful for recovering from dask crashes for long jobs.</p></div>
 
         self._num_processes = num_processes
 
-        env={&#39;VIPY_BACKEND&#39;:&#39;Agg&#39;,  # headless 
-             &#39;PYTHONOPATH&#39;:os.environ[&#39;PYTHONPATH&#39;] if &#39;PYTHONPATH&#39; in os.environ else &#39;&#39;,
-             &#39;PATH&#39;:os.environ[&#39;PATH&#39;] if &#39;PATH&#39; in os.environ else &#39;&#39;,
-             #&#39;DASK_DISTRIBUTED__COMM__TIMEOUTS__TCP&#39;:&#34;30s&#34;,
-             &#39;DASK_DISTRIBUTED__COMM__TIMEOUTS__CONNECT&#39;:&#34;30s&#34;,
-             #&#39;DASK_DISTRIBUTED__SCHEDULER__WORK_STEALING&#39;:&#39;false&#39;,
-             #&#39;DASK_DISTRIBUTED__ADMIN__TICK__LIMIT&#39;:&#34;30s&#34;,
-             #&#39;DASK_DISTRIBUTED__ADMIN__TICK__INTERVAL&#39;:&#34;2s&#34;,
-             &#39;DASK_DISTRIBUTED__DEPLOY__LOST_WORKER_TIMEOUT&#39;:&#34;30s&#34;
-        }
-
+        os.environ[&#39;DASK_LOGGING__DISTRIBUTED&#39;] = &#39;warning&#39; if not verbose else &#39;info&#39;
+        env = {&#39;VIPY_BACKEND&#39;:&#39;Agg&#39;,  # headless 
+               &#39;PYTHONOPATH&#39;:os.environ[&#39;PYTHONPATH&#39;] if &#39;PYTHONPATH&#39; in os.environ else &#39;&#39;,
+               &#39;PATH&#39;:os.environ[&#39;PATH&#39;] if &#39;PATH&#39; in os.environ else &#39;&#39;,
+               #&#39;DASK_DISTRIBUTED__COMM__TIMEOUTS__TCP&#39;:&#34;30s&#34;,
+               &#39;DASK_DISTRIBUTED__COMM__TIMEOUTS__CONNECT&#39;:&#34;30s&#34;,
+               #&#39;DASK_DISTRIBUTED__SCHEDULER__WORK_STEALING&#39;:&#39;false&#39;,
+               #&#39;DASK_DISTRIBUTED__ADMIN__TICK__LIMIT&#39;:&#34;30s&#34;,
+               #&#39;DASK_DISTRIBUTED__ADMIN__TICK__INTERVAL&#39;:&#34;2s&#34;,
+               &#39;DASK_DISTRIBUTED__DEPLOY__LOST_WORKER_TIMEOUT&#39;:&#34;30s&#34;}
+        
         dask.config.set({&#39;DISTRIBUTED.COMM.TIMEOUTS.CONNECT&#39;.lower():&#39;30s&#39;})
         dask.config.set({&#39;DISTRIBUTED.COMM.TIMEOUTS.TCP&#39;.lower():&#39;30s&#39;})
         dask.config.set({&#39;DISTRIBUTED.DEPLOY.LOST_WORKER_TIMEOUT&#39;.lower():&#39;30s&#39;})
@@ -1004,8 +1005,9 @@ Useful for recovering from dask crashes for long jobs.</p></div>
                                   threads_per_worker=1,
                                   n_workers=num_processes, 
                                   env=env,
-                                  direct_to_workers=True,
-                                  silence_logs=20 if verbose else 40,  # logging.WARN=30 or logging.ERROR=40 or logging.INFO=20
+                                  direct_to_workers=True, 
+                                  #memory_limit=&#39;auto&#39;,
+                                  #silence_logs=20 if verbose else 40, 
                                   local_directory=tempfile.mkdtemp())
 
         self._num_gpus = num_gpus
@@ -1057,7 +1059,7 @@ Useful for recovering from dask crashes for long jobs.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/cca43229d5a34248b0f1c6f49fd349ba9d094381/vipy/batch.py#L104-L105" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/42a1d90428b25912fcbd3945dcaed29dd75b313f/vipy/batch.py#L105-L106" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def client(self):
     return self._client</code></pre>
@@ -1071,7 +1073,7 @@ Useful for recovering from dask crashes for long jobs.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/cca43229d5a34248b0f1c6f49fd349ba9d094381/vipy/batch.py#L91-L92" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/42a1d90428b25912fcbd3945dcaed29dd75b313f/vipy/batch.py#L92-L93" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def dashboard(self):        
     webbrowser.open(self._client.dashboard_link) if len(self._client.dashboard_link)&gt;0 else None</code></pre>
@@ -1085,7 +1087,7 @@ Useful for recovering from dask crashes for long jobs.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/cca43229d5a34248b0f1c6f49fd349ba9d094381/vipy/batch.py#L88-L89" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/42a1d90428b25912fcbd3945dcaed29dd75b313f/vipy/batch.py#L89-L90" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def has_dashboard(self):
     return len(self._client.dashboard_link) &gt; 0 if self._client is not None else False</code></pre>
@@ -1099,7 +1101,7 @@ Useful for recovering from dask crashes for long jobs.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/cca43229d5a34248b0f1c6f49fd349ba9d094381/vipy/batch.py#L85-L86" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/42a1d90428b25912fcbd3945dcaed29dd75b313f/vipy/batch.py#L86-L87" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def num_gpus(self):
     return self._num_gpus</code></pre>
@@ -1113,7 +1115,7 @@ Useful for recovering from dask crashes for long jobs.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/cca43229d5a34248b0f1c6f49fd349ba9d094381/vipy/batch.py#L94-L95" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/42a1d90428b25912fcbd3945dcaed29dd75b313f/vipy/batch.py#L95-L96" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def num_processes(self):
     return len(self._client.nthreads()) if self._client is not None else 0</code></pre>
@@ -1127,7 +1129,7 @@ Useful for recovering from dask crashes for long jobs.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/cca43229d5a34248b0f1c6f49fd349ba9d094381/vipy/batch.py#L97-L102" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/42a1d90428b25912fcbd3945dcaed29dd75b313f/vipy/batch.py#L98-L103" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def shutdown(self):
     self._client.close()

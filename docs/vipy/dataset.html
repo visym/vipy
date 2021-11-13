@@ -25,7 +25,7 @@
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/cca43229d5a34248b0f1c6f49fd349ba9d094381/vipy/dataset.py#L0-L718" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/42a1d90428b25912fcbd3945dcaed29dd75b313f/vipy/dataset.py#L0-L793" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">import os
 import numpy as np
@@ -50,6 +50,7 @@ import matplotlib.pyplot as plt
 import vipy.metrics
 import gc 
 
+
 class Dataset():
     &#34;&#34;&#34;vipy.dataset.Dataset() class
     
@@ -60,36 +61,63 @@ class Dataset():
     &gt;&gt;&gt;     D = D.map(lambda v: v.frame(0))
     &gt;&gt;&gt; list(D)
 
+    &gt;&gt;&gt; D = vipy.dataset.Dataset([vipy.video.RandomScene(), vipy.video.RandomScene()], id=&#39;random_scene&#39;)
+    &gt;&gt;&gt; D.tojsondir(&#39;/tmp/myjsondir&#39;)
+    &gt;&gt;&gt; D = vipy.dataset.Dataset(&#39;/tmp/myjsondir&#39;)  # lazy loading
+
+    .. notes:: Be warned that using the jsondir constructor will load elements on demand, but there are some methods that require loading the entire dataset into memory, and will happily try to do so
     &#34;&#34;&#34;
 
-    def __init__(self, objlist_or_filename, id=None, abspath=True):
-        objlist = vipy.util.load(objlist_or_filename, abspath=abspath) if (vipy.util.isjsonfile(objlist_or_filename) or vipy.util.ispklfile(objlist_or_filename)) else objlist_or_filename
-        assert isinstance(objlist, list), &#34;Invalid input&#34;
+    def __init__(self, datasrc, id=None, abspath=True):
+
         self._saveas_ext = [&#39;pkl&#39;, &#39;json&#39;]
-        self._id = id if id is not None else (vipy.util.filetail(objlist_or_filename) if isinstance(objlist_or_filename, str) else uuid.uuid4().hex)
-        self._objlist = tolist(objlist)
+        self._id = id if id is not None else uuid.uuid4().hex
+        self._loader = lambda x: x
+        self._istype_strict = True
+
+        if isinstance(datasrc, str) and (vipy.util.isjsonfile(datasrc) or vipy.util.ispklfile(datasrc)):
+            self._objlist = vipy.util.load(datasrc, abspath=abspath)
+            self._id = vipy.util.filetail(datasrc)
+        elif isinstance(datasrc, str) and os.path.isdir(datasrc):
+            if len(vipy.util.listjson(datasrc)) &gt; 0:
+                self._objlist = vipy.util.listjson(datasrc)
+                self._loader = lambda x,b=abspath: vipy.util.lad(x, abspath=b) if vipy.util.isjsonfile(x) else x
+                self._id = datasrc
+                self._istype_strict = False
+            elif os.path.isdir(datasrc) and len(vipy.util.listpkl(datasrc)) &gt; 0:
+                self._objlist = vipy.util.listpkl(datasrc)
+                self._loader = lambda x,b=abspath: vipy.util.load(x, abspath=b) if vipy.util.ispkl(x) else x
+                self._id = datasrc
+                self._istype_strict = False
+            else:
+                self._objlist = []
+        else:
+            self._objlist = datasrc
+        
+        self._objlist = tolist(self._objlist)
+        
         assert len(self._objlist) &gt; 0, &#34;Empty dataset&#34;
+        try:
+            self[0]
+        except Exception as e:
+            raise ValueError(&#39;Dataset loader failed with exception &#34;%s&#34;&#39; % str(e))
 
     def __repr__(self):
-        if len(self) &gt; 0:
-            return str(&#39;&lt;vipy.dataset: id=&#34;%s&#34;, len=%d, type=%s&gt;&#39; % (self.id(), len(self), str(type(self._objlist[0]))))
-        else:
-            return str(&#39;&lt;vipy.dataset: id=&#34;%s&#34;, len=0&gt;&#39; % (self.id()))
+        return str(&#39;&lt;vipy.dataset: id=&#34;%s&#34;, len=%d, type=%s&gt;&#39; % (self.id(), len(self), str(type(self[0])) if len(self)&gt;0 else &#39;None&#39;))
 
     def __iter__(self):
         for k in range(len(self)):
-            yield self._objlist[k]
+            yield self[k]
 
     def __getitem__(self, k):
-        if isinstance(k, int):
+        if isinstance(k, int) or isinstance(k, np.uint64):
             assert k&gt;=0 and k&lt;len(self._objlist), &#34;invalid index&#34;
-            return self._objlist[k]
+            return self._loader(self._objlist[int(k)])
         elif isinstance(k, slice):
-            return self._objlist[k.start:k.stop:k.step]
+            return [self._loader(x) for x in self._objlist[k.start:k.stop:k.step]]
         else:
-            raise
+            raise ValueError()
             
-
     def __len__(self):
         return len(self._objlist)
 
@@ -103,10 +131,10 @@ class Dataset():
 
     def list(self):
         &#34;&#34;&#34;Return the dataset as a list&#34;&#34;&#34;
-        return self._objlist
+        return list(self)
     def tolist(self):
         &#34;&#34;&#34;Alias for self.list()&#34;&#34;&#34;
-        return self._objlist
+        return list(self)
 
     def flatten(self):
         &#34;&#34;&#34;Convert dataset stored as a list of lists into a flat list&#34;&#34;&#34;
@@ -114,8 +142,8 @@ class Dataset():
         return self
 
     def istype(self, validtype):
-        &#34;&#34;&#34;Return True if all elements in the dataset are of type &#39;validtype&#39;&#34;&#34;&#34;
-        return all([any([isinstance(v,t) for t in tolist(validtype)]) for v in self._objlist])
+        &#34;&#34;&#34;Return True if the all elements (or just the first element if strict=False) in the dataset are of type &#39;validtype&#39;&#34;&#34;&#34;
+        return all([any([isinstance(v,t) for t in tolist(validtype)]) for v in self]) if self._istype_strict else any([isinstance(self[0],t) for t in tolist(validtype)])
 
     def _isvipy(self):
         &#34;&#34;&#34;Return True if all elements in the dataset are of type `vipy.video.Video` or `vipy.image.Image`&#34;&#34;&#34;        
@@ -133,7 +161,7 @@ class Dataset():
         &#34;&#34;&#34;Return a deep copy of the dataset&#34;&#34;&#34;
         return copy.deepcopy(self)
 
-    def archive(self, tarfile, delprefix, mediadir=&#39;&#39;, format=&#39;json&#39;, castas=vipy.video.Scene, verbose=False, extrafiles=None, novideos=False):
+    def archive(self, tarfile, delprefix, mediadir=&#39;&#39;, format=&#39;json&#39;, castas=vipy.video.Scene, verbose=False, extrafiles=None, novideos=False, md5=True):
         &#34;&#34;&#34;Create a archive file for this dataset.  This will be archived as:
 
            /path/to/tarfile.{tar.gz|.tgz|.bz2}
@@ -146,9 +174,12 @@ class Dataset():
         
             Inputs:
               - tarfile: /path/to/tarfilename.tar.gz
-              - delprefix:  the absolute file path contained in the media filenames to be removed.  If a video has a delprefix=&#39;/a/b&#39; then videos with path /a/b/c/d.mp4&#39; -&gt; &#39;c/d.mp4&#39;, and {JSON|PKL} will be saved with relative paths to mediadir
+              - delprefix:  the absolute file path contained in the media filenames to be removed.  If a video has a delprefix=&#39;/a/b&#39; then videos with path /a/b/c/d.mp4&#39; -&gt; &#39;c/d.mp4&#39;, and {JSON|PKL} will be saved with relative paths to mediadir.  This may be a list of delprefixes.
               - mediadir:  the subdirectory name of the media to be contained in the archive.  Usually &#34;videos&#34;.             
               - extrafiles: list of tuples or singletons [(abspath, filename_in_archive_relative_to_root), &#39;file_in_root_and_in_pwd&#39;, ...], 
+              - novideos [bool]:  generate a tarball without linking videos, just annotations
+              - md5 [bool]:  If True, generate the MD5 hash of the tarball using the system &#34;md5sum&#34;, or if md5=&#39;vipy&#39; use a slower python only md5 hash 
+              - castas [class]:  This should be a vipy class that the vipy objects should be cast to prior to archive.  This is useful for converting priveledged superclasses to a base class prior to export.
 
             Example:  
 
@@ -160,15 +191,15 @@ class Dataset():
         &#34;&#34;&#34;
         assert self._isvipy(), &#34;Source dataset must contain vipy objects for staging&#34;
         assert all([os.path.isabs(v.filename()) for v in self]), &#34;Input dataset must have only absolute media paths&#34;
-        assert self.countby(lambda v: delprefix in v.filename()) &gt; 0, &#34;delprefix not found&#34;
-        assert self.countby(lambda v: delprefix in v.filename()) == len(self), &#34;all media objects must have the same delprefix for relative path construction&#34;
+        assert len([v for v in self if any([d in v.filename() for d in tolist(delprefix)])]) == len(self), &#34;all media objects must have a provided delprefix for relative path construction&#34;
         assert vipy.util.istgz(tarfile) or vipy.util.isbz2(tarfile), &#34;Allowable extensions are .tar.gz, .tgz or .bz2&#34;
         assert shutil.which(&#39;tar&#39;) is not None, &#34;tar not found on path&#34;        
-
+        
         D = self.clone()
         stagedir = remkdir(os.path.join(tempdir(), filefull(filetail(tarfile))))
-        print(&#39;[vipy.dataset]: creating staging directory &#34;%s&#34;&#39; % stagedir)        
-        D._objlist = [v.filename(v.filename().replace(os.path.normpath(delprefix), os.path.normpath(os.path.join(stagedir, mediadir))), symlink=not novideos) for v in D.list()]
+        print(&#39;[vipy.dataset]: creating staging directory &#34;%s&#34;&#39; % stagedir)
+        delprefix = [[d for d in tolist(delprefix) if d in v.filename()][0] for v in self]  # select the delprefix per video
+        D._objlist = [v.filename(v.filename().replace(os.path.normpath(p), os.path.normpath(os.path.join(stagedir, mediadir))), symlink=not novideos) for (p,v) in zip(delprefix, D.list())]
         pklfile = os.path.join(stagedir, &#39;%s.%s&#39; % (filetail(filefull(tarfile)), format))
         D.save(pklfile, relpath=True, nourl=True, sanitize=True, castas=castas, significant_digits=2, noemail=True, flush=True)
     
@@ -191,7 +222,14 @@ class Dataset():
         os.system(cmd)  # too slow to use python &#34;tarfile&#34; package
         print(&#39;[vipy.dataset]: deleting staging directory &#34;%s&#34;&#39; % stagedir)        
         shutil.rmtree(stagedir)
-        print(&#39;[vipy.dataset]: %s, MD5=%s&#39; % (tarfile, vipy.downloader.generate_md5(tarfile)))
+
+        if md5:
+            if shutil.which(&#39;md5sum&#39;) is not None:
+                cmd = &#39;md5sum %s&#39; % tarfile
+                print(&#39;[vipy.dataset]: executing &#34;%s&#34;&#39; % cmd)        
+                os.system(cmd)  # too slow to use python &#34;vipy.downloader.generate_md5(tarball)&#34; for huge datasets
+            else:
+                print(&#39;[vipy.dataset]: %s, MD5=%s&#39; % (tarfile, vipy.downloader.generate_md5(tarfile)))  # too slow for large datasets, but does not require md5sum on path
         return tarfile
         
     def save(self, outfile, nourl=False, castas=None, relpath=False, sanitize=True, strict=True, significant_digits=2, noemail=True, flush=True):
@@ -211,10 +249,10 @@ class Dataset():
         Returns:        
             This dataset that is quivalent to vipy.dataset.Dataset(&#39;/path/to/outfile.json&#39;)
         &#34;&#34;&#34;
-        n = len([v for v in self._objlist if v is None])
+        n = len([v for v in self if v is None])
         if n &gt; 0:
             print(&#39;[vipy.dataset]: removing %d invalid elements&#39; % n)
-        objlist = [v for v in self._objlist if v is not None]  
+        objlist = [v for v in self if v is not None]  
         if relpath or nourl or sanitize or flush or noemail or (significant_digits is not None):
             assert self._isvipy(), &#34;Invalid input&#34;
         if relpath:
@@ -250,7 +288,7 @@ class Dataset():
     def classlist(self):
         &#34;&#34;&#34;Return a sorted list of categories in the dataset&#34;&#34;&#34;
         assert self._isvipy(), &#34;Invalid input&#34;
-        return sorted(list(set([v.category() for v in self._objlist])))
+        return sorted(list(set(self.map(lambda v: v.category()))))
 
     def classes(self):
         &#34;&#34;&#34;Alias for classlist&#34;&#34;&#34;
@@ -282,57 +320,69 @@ class Dataset():
         return self.class_to_index()
 
     def powerset(self):
-        return list(sorted(set([tuple(sorted(list(a))) for v in self._objlist for a in v.activitylabel() if len(a) &gt; 0])))        
+        return list(sorted(set([tuple(sorted(list(a))) for v in self for a in v.activitylabel() if len(a) &gt; 0])))        
 
     def powerset_to_index(self):        
         assert self._isvipy(), &#34;Invalid input&#34;
         return {c:k for (k,c) in enumerate(self.powerset())}
 
     def dedupe(self, key):
-        self._objlist = list({key(v):v for v in self._objlist}.values())
+        self._objlist = list({key(v):v for v in self}.values())
         return self
         
     def countby(self, f):
-        return len([v for v in self._objlist if f(v)])
+        return len([v for v in self if f(v)])
 
     def union(self, other, key=None):
         assert isinstance(other, Dataset), &#34;invalid input&#34;
-        self._objlist = self._objlist + other._objlist
+        if len(other) &gt; 0:
+            try:
+                other._loader(self._objlist[0])
+                self._loader(other._objlist[0])
+                self._objlist = self._objlist + other._objlist  # compatible loaders
+            except:
+                self._objlist = self.list() + other.list()  # incompatible loaders
+                self._loader = lambda x: x
         return self.dedupe(key) if key is not None else self
     
     def difference(self, other, key):
         assert isinstance(other, Dataset), &#34;invalid input&#34;
-        idset = set([key(v) for v in self._objlist]).difference([key(v) for v in other._objlist])   # in A but not in B
-        self._objlist = [v for v in self._objlist if key(v) in idset]
+        idset = set([key(v) for v in self]).difference([key(v) for v in other])   # in A but not in B
+        self._objlist = [v for v in self if key(v) in idset]
         return self
         
     def has(self, val, key):
-        return any([key(obj) == val for obj in self._objlist])
+        return any([key(obj) == val for obj in self])
 
     def replace(self, other, key):
         &#34;&#34;&#34;Replace elements in self with other with equality detemrined by the key lambda function&#34;&#34;&#34;
         assert isinstance(other, Dataset), &#34;invalid input&#34;
         d = {key(v):v for v in other}
-        self._objlist = [v if key(v) not in d else d[key(v)] for v in self._objlist]
+        self._objlist = [v if key(v) not in d else d[key(v)] for v in self]
         return self
 
-    def merge(self, other, outdir, selfdir, otherdir):
-        assert isinstance(other, Dataset), &#34;invalid input&#34;
-        (selfdir, otherdir, outdir) = (os.path.normpath(selfdir), os.path.normpath(otherdir), vipy.util.remkdir(os.path.normpath(outdir)))
-        assert all([selfdir in v.filename() for v in self._objlist])
-        assert all([otherdir in v.filename() for v in other._objlist])
+    def merge(self, outdir):
+        &#34;&#34;&#34;Merge a dataset union into a single subdirectory with symlinked media ready to be archived.
 
-        D1 = self.clone().localmap(lambda v: v.filename(v.filename().replace(selfdir, outdir), copy=False, symlink=True))
-        D2 = other.clone().localmap(lambda v: v.filename(v.filename().replace(otherdir, outdir), copy=False, symlink=True))
-        return D1.union(D2)
+        &gt;&gt;&gt; D1 = vipy.dataset.Dataset(&#39;/path1/dataset.json&#39;)
+        &gt;&gt;&gt; D2 = vipy.dataset.Dataset(&#39;/path2/dataset.json&#39;)
+        &gt;&gt;&gt; D3 = D1.union(D2).merge(outdir=&#39;/path3&#39;)
+
+        Media in D1 are in /path1, media in D2 are in /path2, media in D3 are all symlinked to /path3.
+        We can now create a tarball for D3 with all of the media files in the same relative path.
+        &#34;&#34;&#34;
+        
+        outdir = vipy.util.remkdir(os.path.abspath(os.path.normpath(outdir)))
+        return self.clone().localmap(lambda v: v.filename(os.path.join(outdir, filetail(v.filename())), copy=False, symlink=True))
 
     def augment(self, f, n_augmentations):
         assert n_augmentations &gt;= 1
-        self._objlist = [f(v.clone()) for v in self._objlist for k in range(n_augmentations)]  # This will remove the originals
+        self._objlist = [f(v.clone()) for v in self for k in range(n_augmentations)]  # This will remove the originals
         return self
 
     def filter(self, f):
-        self._objlist = [v for v in self._objlist if f(v)]
+        &#34;&#34;&#34;In place filter with lambda function f&#34;&#34;&#34;
+        self._objlist = [v for v in self if f(v)]
         return self
 
     def valid(self):
@@ -350,26 +400,29 @@ class Dataset():
             [n=1] Returns singleton element
             [n&gt;1] Returns list of elements of at most n such that each element f(x) is True            
         &#34;&#34;&#34;
-        objlist = [obj for obj in self._objlist if f(obj)]
+        objlist = [obj for obj in self if f(obj)]
         return [] if (len(objlist) == 0 or n == 0) else (objlist[0] if n==1 else objlist[0:n])
 
-    def to_jsondir(self, outdir):
+    def jsondir(self, outdir, verbose=True, rekey=False):
+        &#34;&#34;&#34;Export all objects to a directory of JSON files&#34;&#34;&#34;
+        assert self._isvipy()
         print(&#39;[vipy.dataset]: exporting %d json files to &#34;%s&#34;...&#39; % (len(self), outdir))
         vipy.util.remkdir(outdir)  # to avoid race condition
-        Batch(vipy.util.chunklist([(k,v) for (k,v) in enumerate(self._objlist)], 64), as_completed=True, minscatter=1).map(lambda X: [vipy.util.save(x[1].clone(), os.path.join(outdir, &#39;%s_%d.json&#39; % (x[1].clone().videoid(), x[0]))) for x in X]).result()
+        for (k,v) in enumerate(self):
+            f = vipy.util.save(v, os.path.join(outdir, (&#39;%s.json&#39; % v.instanceid()) if not rekey else &#39;%s_%d.json&#39; % (uuid.uuid4().hex, k)))
+            if verbose:
+                print(&#39;[vipy.dataset.Dataset][%d/%d]: %s&#39; % (k, len(self), f))
         return outdir
 
+    def tojsondir(self, outdir, rekey=False, verbose=True):
+        &#34;&#34;&#34;Alias for jsondir&#34;&#34;&#34;
+        return self.jsondir(outdir, verbose=verbose, rekey=rekey)
+    
     def takelist(self, n, category=None, canload=False):
+        &#34;&#34;&#34;Take n elements of selected category and return list&#34;&#34;&#34;
         assert n &gt;= 0, &#34;Invalid length&#34;
-
-        outlist = []
-        objlist = self._objlist if category is None else [v for v in self._objlist if v.category() == category]
-        for k in np.random.permutation(range(0, len(objlist))).tolist():
-            if not canload or objlist[k].isloadable():
-                outlist.append(objlist[k])  # without replacement
-            if len(outlist) == n:
-                break
-        return outlist
+        D = self if category is None else self.clone().filter(lambda v: v.category() == category())
+        return [D[int(k)] for k in np.random.permutation(range(len(D)))][0:n]  # native python int
 
     def take(self, n, category=None, canload=False):
         return Dataset(self.takelist(n, category=category, canload=canload))
@@ -408,7 +461,7 @@ class Dataset():
         csv = [v.csv() for v in self.list]        
         return vipy.util.writecsv(csv, csvfile) if csvfile is not None else (csv[0], csv[1:])
 
-    def map(self, f_transform, model=None, dst=None, id=None, checkpoint=False, strict=False, ascompleted=True):        
+    def map(self, f_transform, model=None, dst=None, id=None, checkpoint=False, strict=False, ascompleted=True, chunks=128):        
         &#34;&#34;&#34;Distributed map.
 
         To perform this in parallel across four processes:
@@ -430,17 +483,21 @@ class Dataset():
 
         &#34;&#34;&#34;
         assert callable(f_transform)
-        B = Batch(self.list(), strict=strict, as_completed=ascompleted, checkpoint=checkpoint, warnme=False, minscatter=1000000)
-        V = B.map(f_transform).result() if not model else B.scattermap(f_transform, model).result()
-        D = Dataset(V, id=dst if dst is not None else id)
-        return D
+
+        # Operations must be chunked because each dask task comes with overhead, and lots of small tasks violates best practices
+        # - Each chunk is sent to a worker and processed in parallel
+        # - Chunks are scattered to workers 
+        B = Batch(vipy.util.chunklist(self._objlist, chunks), strict=strict, as_completed=ascompleted, checkpoint=checkpoint, warnme=False, minscatter=chunks)
+        f = lambda x, f_loader=self._loader: f_transform(f_loader(x))  # for closure capture
+        V = B.map(lambda X,f=f: [f(x) for x in X]).result() if not model else B.scattermap(lambda X, f=f: [f(x) for x in X], model).result()
+        return Dataset(V, id=dst if dst is not None else id).flatten()
 
     def localmap(self, f):
-        self._objlist = [f(v) for v in self._objlist]
+        self._objlist = [f(v) for v in self]
         return self
 
     def flatmap(self, f):
-        self._objlist = [x for v in self._objlist for x in f(v)]
+        self._objlist = [x for v in self for x in f(v)]
         return self
     
     def count(self, f=None):
@@ -455,21 +512,29 @@ class Dataset():
         &#34;&#34;&#34;
         assert self._isvipy()
         assert f is None or callable(f)
-        return vipy.util.countby(self.list(), lambda v: v.category()) if f is None else len([v for v in self if f(v)])
+        return len([v for v in self if f is None or f(v)])
 
+    def countby(self, f=lambda v: v.category()):
+        assert self._isvipy()
+        assert f is None or callable(f)
+        return vipy.util.countby(self, f)
+        
     def frequency(self):
         return self.count()
 
-    def histogram(self, outfile=None, fontsize=6, category_to_barcolor=None):
+    def histogram(self, outfile=None, fontsize=6, category_to_barcolor=None, category_to_xlabel=None):
         assert self._isvipy()
         assert category_to_barcolor is None or all([c in category_to_barcolor for c in self.categories()])
+        assert category_to_xlabel is None or callable(category_to_xlabel) or all([c in category_to_xlabel for c in self.categories()])
+        f_category_to_xlabel = category_to_xlabel if callable(category_to_xlabel) else ((lambda c: category_to_xlabel[c]) if category_to_xlabel is not None else (lambda c: c))
         
-        d = self.count()
+        d = self.countby(lambda v: v.category())
         if outfile is not None:
             from vipy.metrics import histogram            
             (categories, freq) = zip(*reversed(sorted(list(d.items()), key=lambda x: x[1])))  # decreasing frequency
             barcolors = [&#39;blue&#39; if category_to_barcolor is None else category_to_barcolor[c] for c in categories]
-            print(&#39;[vipy.dataset]: histogram=&#34;%s&#34;&#39; % vipy.metrics.histogram(freq, categories, barcolors=barcolors, outfile=outfile, ylabel=&#39;Instances&#39;, fontsize=fontsize))
+            xlabels = [f_category_to_xlabel(c) for c in categories]
+            print(&#39;[vipy.dataset]: histogram=&#34;%s&#34;&#39; % vipy.metrics.histogram(freq, xlabels, barcolors=barcolors, outfile=outfile, ylabel=&#39;Instances&#39;, fontsize=fontsize))
         return d
     
     def percentage(self):
@@ -480,15 +545,25 @@ class Dataset():
 
     def multilabel_inverse_frequency_weight(self):
         &#34;&#34;&#34;Return an inverse frequency weight for multilabel activities, where label counts are the fractional label likelihood within a clip&#34;&#34;&#34;
-        assert self.is_vipy_video()
+        assert self._is_vipy_video()
 
-        lbl_likelihood  = {k:0 for k in self.classlist()}
-        for v in self.list():
+        def _multilabel_inverse_frequency_weight(v):
+            lbl_likelihood = {}
             if len(v.activities()) &gt; 0:
                 (ef, sf) = (max([a.endframe() for a in v.activitylist()]), min([a.startframe() for a in v.activitylist()]))  # clip length 
                 lbl_frequency = vipy.util.countby([a for A in v.activitylabel(sf, ef) for a in A], lambda x: x)  # frequency within clip
                 for (k,f) in lbl_frequency.items():
+                    if k not in lbl_likelihood:
+                        lbl_likelihood[k] = 0
                     lbl_likelihood[k] += f/(ef-sf)
+            return lbl_likelihood
+                    
+        lbl_likelihood  = {}
+        for d in self.map(lambda v: _multilabel_inverse_frequency_weight(v)):
+            for (k,v) in d.items():
+                if k not in lbl_likelihood:
+                    lbl_likelihood[k] = 0
+                lbl_likelihood[k] += v
 
         # Inverse frequency weight on label likelihood per clip
         d = {k:1.0/max(v,1) for (k,v) in lbl_likelihood.items()}
@@ -526,10 +601,11 @@ class Dataset():
         return d
         
         
-    def density(self, outfile=None):
+    def density(self, outfile=None, max=None):
+        &#34;&#34;&#34;Compute the frequency that each video ID is represented.  This counts how many activities are in a video, truncated at max&#34;&#34;&#34;
         assert self._isvipy()
-        d = [len(v) for (k,v) in groupbyasdict(self.list(), lambda v: v.videoid()).items()]
-        d = vipy.util.countby(d, lambda x: x)
+        d = [len(v) if (max is None or len(v)&lt;= max) else max for (k,v) in groupbyasdict(self.list(), lambda v: v.videoid()).items()]
+        d = {k:v for (k,v) in sorted(vipy.util.countby(d, lambda x: x).items(), key=lambda x: x[1], reverse=True)}
         if outfile is not None:
             from vipy.metrics import histogram
             histogram(d.values(), d.keys(), outfile=outfile, ylabel=&#39;Frequency&#39;, xlabel=&#39;Activities per video&#39;, fontsize=6, xrot=None)            
@@ -620,17 +696,16 @@ class Dataset():
         import vipy.torch
         return vipy.torch.TorchDataset(f_video_to_tensor, self)
 
-    def to_torch_tensordir(self, f_video_to_tensor, outdir, n_augmentations=20, n_chunks=512):
+    def to_torch_tensordir(self, f_video_to_tensor, outdir, n_augmentations=20, sleep=3):
         &#34;&#34;&#34;Return a TorchTensordir dataset that will load a pkl.bz2 file that contains one of n_augmentations (tensor, label) pairs.
         
         This is useful for fast loading of datasets that contain many videos.
 
         &#34;&#34;&#34;
         import vipy.torch
-        assert self.is_vipy_scene()
+        assert self._is_vipy_scene()
         outdir = vipy.util.remkdir(outdir)
-        B = vipy.util.chunklist(self._objlist, n_chunks)
-        vipy.batch.Batch(B, as_completed=True, minscatter=1).map(lambda V, f=f_video_to_tensor, outdir=outdir, n_augmentations=n_augmentations: [vipy.util.bz2pkl(os.path.join(outdir, &#39;%s.pkl.bz2&#39; % v.instanceid()), [f(v.clone()) for k in range(0, n_augmentations)]) for v in V])
+        vipy.batch.Batch(self.list(), as_completed=True).map(lambda v, f=f_video_to_tensor, outdir=outdir, n_augmentations=n_augmentations: vipy.util.bz2pkl(os.path.join(outdir, &#39;%s.pkl.bz2&#39; % v.instanceid()), [f(v.print(sleep=sleep).clone()) for k in range(0, n_augmentations)]))
         return vipy.torch.TorchTensordir(outdir)
 
     def annotate(self, outdir, mindim=512):
@@ -649,7 +724,7 @@ class Dataset():
 
         dataset = self.list()
         assert all([isinstance(v, vipy.video.Video) for v in dataset])
-        dataset = [dataset[k] for k in np.random.permutation(range(len(dataset)))[0:int(len(dataset)*fraction)]]
+        dataset = [dataset[int(k)] for k in np.random.permutation(range(len(dataset)))[0:int(len(dataset)*fraction)]]
         #dataset = [v for v in dataset if all([len(a) &lt; 15*v.framerate() for a in v.activitylist()])]  # remove extremely long videos
 
         quicklist = vipy.batch.Batch(dataset, strict=False, as_completed=True, minscatter=1).map(lambda v: (v.load().quicklook(), v.flush().print())).result()
@@ -743,7 +818,7 @@ class Dataset():
     def sort(self, key):
         &#34;&#34;&#34;Sort the dataset in-place using the sortkey lambda function&#34;&#34;&#34;
         if key is not None:
-            self._objlist.sort(key=key)
+            self._objlist.sort(key=lambda x: key(self._loader(x)))
         return self
                 </code></pre>
 </details>
@@ -759,7 +834,7 @@ class Dataset():
 <dl>
 <dt id="vipy.dataset.Dataset"><code class="flex name class">
 <span>class <span class="ident">Dataset</span></span>
-<span>(</span><span>objlist_or_filename, id=None, abspath=True)</span>
+<span>(</span><span>datasrc, id=None, abspath=True)</span>
 </code></dt>
 <dd>
 <div class="desc"><p>vipy.dataset.Dataset() class</p>
@@ -768,11 +843,18 @@ class Dataset():
 &gt;&gt;&gt; with vipy.globals.parallel(2):
 &gt;&gt;&gt;     D = D.map(lambda v: v.frame(0))
 &gt;&gt;&gt; list(D)
-</code></pre></div>
+</code></pre>
+<pre><code class="language-python-repl">&gt;&gt;&gt; D = vipy.dataset.Dataset([vipy.video.RandomScene(), vipy.video.RandomScene()], id='random_scene')
+&gt;&gt;&gt; D.tojsondir('/tmp/myjsondir')
+&gt;&gt;&gt; D = vipy.dataset.Dataset('/tmp/myjsondir')  # lazy loading
+</code></pre>
+<div class="admonition notes">
+<p class="admonition-title">Notes:&ensp;Be warned that using the jsondir constructor will load elements on demand, but there are some methods that require loading the entire dataset into memory, and will happily try to do so</p>
+</div></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/cca43229d5a34248b0f1c6f49fd349ba9d094381/vipy/dataset.py#L24-L718" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/42a1d90428b25912fcbd3945dcaed29dd75b313f/vipy/dataset.py#L25-L793" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">class Dataset():
     &#34;&#34;&#34;vipy.dataset.Dataset() class
@@ -784,36 +866,63 @@ class Dataset():
     &gt;&gt;&gt;     D = D.map(lambda v: v.frame(0))
     &gt;&gt;&gt; list(D)
 
+    &gt;&gt;&gt; D = vipy.dataset.Dataset([vipy.video.RandomScene(), vipy.video.RandomScene()], id=&#39;random_scene&#39;)
+    &gt;&gt;&gt; D.tojsondir(&#39;/tmp/myjsondir&#39;)
+    &gt;&gt;&gt; D = vipy.dataset.Dataset(&#39;/tmp/myjsondir&#39;)  # lazy loading
+
+    .. notes:: Be warned that using the jsondir constructor will load elements on demand, but there are some methods that require loading the entire dataset into memory, and will happily try to do so
     &#34;&#34;&#34;
 
-    def __init__(self, objlist_or_filename, id=None, abspath=True):
-        objlist = vipy.util.load(objlist_or_filename, abspath=abspath) if (vipy.util.isjsonfile(objlist_or_filename) or vipy.util.ispklfile(objlist_or_filename)) else objlist_or_filename
-        assert isinstance(objlist, list), &#34;Invalid input&#34;
+    def __init__(self, datasrc, id=None, abspath=True):
+
         self._saveas_ext = [&#39;pkl&#39;, &#39;json&#39;]
-        self._id = id if id is not None else (vipy.util.filetail(objlist_or_filename) if isinstance(objlist_or_filename, str) else uuid.uuid4().hex)
-        self._objlist = tolist(objlist)
+        self._id = id if id is not None else uuid.uuid4().hex
+        self._loader = lambda x: x
+        self._istype_strict = True
+
+        if isinstance(datasrc, str) and (vipy.util.isjsonfile(datasrc) or vipy.util.ispklfile(datasrc)):
+            self._objlist = vipy.util.load(datasrc, abspath=abspath)
+            self._id = vipy.util.filetail(datasrc)
+        elif isinstance(datasrc, str) and os.path.isdir(datasrc):
+            if len(vipy.util.listjson(datasrc)) &gt; 0:
+                self._objlist = vipy.util.listjson(datasrc)
+                self._loader = lambda x,b=abspath: vipy.util.lad(x, abspath=b) if vipy.util.isjsonfile(x) else x
+                self._id = datasrc
+                self._istype_strict = False
+            elif os.path.isdir(datasrc) and len(vipy.util.listpkl(datasrc)) &gt; 0:
+                self._objlist = vipy.util.listpkl(datasrc)
+                self._loader = lambda x,b=abspath: vipy.util.load(x, abspath=b) if vipy.util.ispkl(x) else x
+                self._id = datasrc
+                self._istype_strict = False
+            else:
+                self._objlist = []
+        else:
+            self._objlist = datasrc
+        
+        self._objlist = tolist(self._objlist)
+        
         assert len(self._objlist) &gt; 0, &#34;Empty dataset&#34;
+        try:
+            self[0]
+        except Exception as e:
+            raise ValueError(&#39;Dataset loader failed with exception &#34;%s&#34;&#39; % str(e))
 
     def __repr__(self):
-        if len(self) &gt; 0:
-            return str(&#39;&lt;vipy.dataset: id=&#34;%s&#34;, len=%d, type=%s&gt;&#39; % (self.id(), len(self), str(type(self._objlist[0]))))
-        else:
-            return str(&#39;&lt;vipy.dataset: id=&#34;%s&#34;, len=0&gt;&#39; % (self.id()))
+        return str(&#39;&lt;vipy.dataset: id=&#34;%s&#34;, len=%d, type=%s&gt;&#39; % (self.id(), len(self), str(type(self[0])) if len(self)&gt;0 else &#39;None&#39;))
 
     def __iter__(self):
         for k in range(len(self)):
-            yield self._objlist[k]
+            yield self[k]
 
     def __getitem__(self, k):
-        if isinstance(k, int):
+        if isinstance(k, int) or isinstance(k, np.uint64):
             assert k&gt;=0 and k&lt;len(self._objlist), &#34;invalid index&#34;
-            return self._objlist[k]
+            return self._loader(self._objlist[int(k)])
         elif isinstance(k, slice):
-            return self._objlist[k.start:k.stop:k.step]
+            return [self._loader(x) for x in self._objlist[k.start:k.stop:k.step]]
         else:
-            raise
+            raise ValueError()
             
-
     def __len__(self):
         return len(self._objlist)
 
@@ -827,10 +936,10 @@ class Dataset():
 
     def list(self):
         &#34;&#34;&#34;Return the dataset as a list&#34;&#34;&#34;
-        return self._objlist
+        return list(self)
     def tolist(self):
         &#34;&#34;&#34;Alias for self.list()&#34;&#34;&#34;
-        return self._objlist
+        return list(self)
 
     def flatten(self):
         &#34;&#34;&#34;Convert dataset stored as a list of lists into a flat list&#34;&#34;&#34;
@@ -838,8 +947,8 @@ class Dataset():
         return self
 
     def istype(self, validtype):
-        &#34;&#34;&#34;Return True if all elements in the dataset are of type &#39;validtype&#39;&#34;&#34;&#34;
-        return all([any([isinstance(v,t) for t in tolist(validtype)]) for v in self._objlist])
+        &#34;&#34;&#34;Return True if the all elements (or just the first element if strict=False) in the dataset are of type &#39;validtype&#39;&#34;&#34;&#34;
+        return all([any([isinstance(v,t) for t in tolist(validtype)]) for v in self]) if self._istype_strict else any([isinstance(self[0],t) for t in tolist(validtype)])
 
     def _isvipy(self):
         &#34;&#34;&#34;Return True if all elements in the dataset are of type `vipy.video.Video` or `vipy.image.Image`&#34;&#34;&#34;        
@@ -857,7 +966,7 @@ class Dataset():
         &#34;&#34;&#34;Return a deep copy of the dataset&#34;&#34;&#34;
         return copy.deepcopy(self)
 
-    def archive(self, tarfile, delprefix, mediadir=&#39;&#39;, format=&#39;json&#39;, castas=vipy.video.Scene, verbose=False, extrafiles=None, novideos=False):
+    def archive(self, tarfile, delprefix, mediadir=&#39;&#39;, format=&#39;json&#39;, castas=vipy.video.Scene, verbose=False, extrafiles=None, novideos=False, md5=True):
         &#34;&#34;&#34;Create a archive file for this dataset.  This will be archived as:
 
            /path/to/tarfile.{tar.gz|.tgz|.bz2}
@@ -870,9 +979,12 @@ class Dataset():
         
             Inputs:
               - tarfile: /path/to/tarfilename.tar.gz
-              - delprefix:  the absolute file path contained in the media filenames to be removed.  If a video has a delprefix=&#39;/a/b&#39; then videos with path /a/b/c/d.mp4&#39; -&gt; &#39;c/d.mp4&#39;, and {JSON|PKL} will be saved with relative paths to mediadir
+              - delprefix:  the absolute file path contained in the media filenames to be removed.  If a video has a delprefix=&#39;/a/b&#39; then videos with path /a/b/c/d.mp4&#39; -&gt; &#39;c/d.mp4&#39;, and {JSON|PKL} will be saved with relative paths to mediadir.  This may be a list of delprefixes.
               - mediadir:  the subdirectory name of the media to be contained in the archive.  Usually &#34;videos&#34;.             
               - extrafiles: list of tuples or singletons [(abspath, filename_in_archive_relative_to_root), &#39;file_in_root_and_in_pwd&#39;, ...], 
+              - novideos [bool]:  generate a tarball without linking videos, just annotations
+              - md5 [bool]:  If True, generate the MD5 hash of the tarball using the system &#34;md5sum&#34;, or if md5=&#39;vipy&#39; use a slower python only md5 hash 
+              - castas [class]:  This should be a vipy class that the vipy objects should be cast to prior to archive.  This is useful for converting priveledged superclasses to a base class prior to export.
 
             Example:  
 
@@ -884,15 +996,15 @@ class Dataset():
         &#34;&#34;&#34;
         assert self._isvipy(), &#34;Source dataset must contain vipy objects for staging&#34;
         assert all([os.path.isabs(v.filename()) for v in self]), &#34;Input dataset must have only absolute media paths&#34;
-        assert self.countby(lambda v: delprefix in v.filename()) &gt; 0, &#34;delprefix not found&#34;
-        assert self.countby(lambda v: delprefix in v.filename()) == len(self), &#34;all media objects must have the same delprefix for relative path construction&#34;
+        assert len([v for v in self if any([d in v.filename() for d in tolist(delprefix)])]) == len(self), &#34;all media objects must have a provided delprefix for relative path construction&#34;
         assert vipy.util.istgz(tarfile) or vipy.util.isbz2(tarfile), &#34;Allowable extensions are .tar.gz, .tgz or .bz2&#34;
         assert shutil.which(&#39;tar&#39;) is not None, &#34;tar not found on path&#34;        
-
+        
         D = self.clone()
         stagedir = remkdir(os.path.join(tempdir(), filefull(filetail(tarfile))))
-        print(&#39;[vipy.dataset]: creating staging directory &#34;%s&#34;&#39; % stagedir)        
-        D._objlist = [v.filename(v.filename().replace(os.path.normpath(delprefix), os.path.normpath(os.path.join(stagedir, mediadir))), symlink=not novideos) for v in D.list()]
+        print(&#39;[vipy.dataset]: creating staging directory &#34;%s&#34;&#39; % stagedir)
+        delprefix = [[d for d in tolist(delprefix) if d in v.filename()][0] for v in self]  # select the delprefix per video
+        D._objlist = [v.filename(v.filename().replace(os.path.normpath(p), os.path.normpath(os.path.join(stagedir, mediadir))), symlink=not novideos) for (p,v) in zip(delprefix, D.list())]
         pklfile = os.path.join(stagedir, &#39;%s.%s&#39; % (filetail(filefull(tarfile)), format))
         D.save(pklfile, relpath=True, nourl=True, sanitize=True, castas=castas, significant_digits=2, noemail=True, flush=True)
     
@@ -915,7 +1027,14 @@ class Dataset():
         os.system(cmd)  # too slow to use python &#34;tarfile&#34; package
         print(&#39;[vipy.dataset]: deleting staging directory &#34;%s&#34;&#39; % stagedir)        
         shutil.rmtree(stagedir)
-        print(&#39;[vipy.dataset]: %s, MD5=%s&#39; % (tarfile, vipy.downloader.generate_md5(tarfile)))
+
+        if md5:
+            if shutil.which(&#39;md5sum&#39;) is not None:
+                cmd = &#39;md5sum %s&#39; % tarfile
+                print(&#39;[vipy.dataset]: executing &#34;%s&#34;&#39; % cmd)        
+                os.system(cmd)  # too slow to use python &#34;vipy.downloader.generate_md5(tarball)&#34; for huge datasets
+            else:
+                print(&#39;[vipy.dataset]: %s, MD5=%s&#39; % (tarfile, vipy.downloader.generate_md5(tarfile)))  # too slow for large datasets, but does not require md5sum on path
         return tarfile
         
     def save(self, outfile, nourl=False, castas=None, relpath=False, sanitize=True, strict=True, significant_digits=2, noemail=True, flush=True):
@@ -935,10 +1054,10 @@ class Dataset():
         Returns:        
             This dataset that is quivalent to vipy.dataset.Dataset(&#39;/path/to/outfile.json&#39;)
         &#34;&#34;&#34;
-        n = len([v for v in self._objlist if v is None])
+        n = len([v for v in self if v is None])
         if n &gt; 0:
             print(&#39;[vipy.dataset]: removing %d invalid elements&#39; % n)
-        objlist = [v for v in self._objlist if v is not None]  
+        objlist = [v for v in self if v is not None]  
         if relpath or nourl or sanitize or flush or noemail or (significant_digits is not None):
             assert self._isvipy(), &#34;Invalid input&#34;
         if relpath:
@@ -974,7 +1093,7 @@ class Dataset():
     def classlist(self):
         &#34;&#34;&#34;Return a sorted list of categories in the dataset&#34;&#34;&#34;
         assert self._isvipy(), &#34;Invalid input&#34;
-        return sorted(list(set([v.category() for v in self._objlist])))
+        return sorted(list(set(self.map(lambda v: v.category()))))
 
     def classes(self):
         &#34;&#34;&#34;Alias for classlist&#34;&#34;&#34;
@@ -1006,57 +1125,69 @@ class Dataset():
         return self.class_to_index()
 
     def powerset(self):
-        return list(sorted(set([tuple(sorted(list(a))) for v in self._objlist for a in v.activitylabel() if len(a) &gt; 0])))        
+        return list(sorted(set([tuple(sorted(list(a))) for v in self for a in v.activitylabel() if len(a) &gt; 0])))        
 
     def powerset_to_index(self):        
         assert self._isvipy(), &#34;Invalid input&#34;
         return {c:k for (k,c) in enumerate(self.powerset())}
 
     def dedupe(self, key):
-        self._objlist = list({key(v):v for v in self._objlist}.values())
+        self._objlist = list({key(v):v for v in self}.values())
         return self
         
     def countby(self, f):
-        return len([v for v in self._objlist if f(v)])
+        return len([v for v in self if f(v)])
 
     def union(self, other, key=None):
         assert isinstance(other, Dataset), &#34;invalid input&#34;
-        self._objlist = self._objlist + other._objlist
+        if len(other) &gt; 0:
+            try:
+                other._loader(self._objlist[0])
+                self._loader(other._objlist[0])
+                self._objlist = self._objlist + other._objlist  # compatible loaders
+            except:
+                self._objlist = self.list() + other.list()  # incompatible loaders
+                self._loader = lambda x: x
         return self.dedupe(key) if key is not None else self
     
     def difference(self, other, key):
         assert isinstance(other, Dataset), &#34;invalid input&#34;
-        idset = set([key(v) for v in self._objlist]).difference([key(v) for v in other._objlist])   # in A but not in B
-        self._objlist = [v for v in self._objlist if key(v) in idset]
+        idset = set([key(v) for v in self]).difference([key(v) for v in other])   # in A but not in B
+        self._objlist = [v for v in self if key(v) in idset]
         return self
         
     def has(self, val, key):
-        return any([key(obj) == val for obj in self._objlist])
+        return any([key(obj) == val for obj in self])
 
     def replace(self, other, key):
         &#34;&#34;&#34;Replace elements in self with other with equality detemrined by the key lambda function&#34;&#34;&#34;
         assert isinstance(other, Dataset), &#34;invalid input&#34;
         d = {key(v):v for v in other}
-        self._objlist = [v if key(v) not in d else d[key(v)] for v in self._objlist]
+        self._objlist = [v if key(v) not in d else d[key(v)] for v in self]
         return self
 
-    def merge(self, other, outdir, selfdir, otherdir):
-        assert isinstance(other, Dataset), &#34;invalid input&#34;
-        (selfdir, otherdir, outdir) = (os.path.normpath(selfdir), os.path.normpath(otherdir), vipy.util.remkdir(os.path.normpath(outdir)))
-        assert all([selfdir in v.filename() for v in self._objlist])
-        assert all([otherdir in v.filename() for v in other._objlist])
+    def merge(self, outdir):
+        &#34;&#34;&#34;Merge a dataset union into a single subdirectory with symlinked media ready to be archived.
 
-        D1 = self.clone().localmap(lambda v: v.filename(v.filename().replace(selfdir, outdir), copy=False, symlink=True))
-        D2 = other.clone().localmap(lambda v: v.filename(v.filename().replace(otherdir, outdir), copy=False, symlink=True))
-        return D1.union(D2)
+        &gt;&gt;&gt; D1 = vipy.dataset.Dataset(&#39;/path1/dataset.json&#39;)
+        &gt;&gt;&gt; D2 = vipy.dataset.Dataset(&#39;/path2/dataset.json&#39;)
+        &gt;&gt;&gt; D3 = D1.union(D2).merge(outdir=&#39;/path3&#39;)
+
+        Media in D1 are in /path1, media in D2 are in /path2, media in D3 are all symlinked to /path3.
+        We can now create a tarball for D3 with all of the media files in the same relative path.
+        &#34;&#34;&#34;
+        
+        outdir = vipy.util.remkdir(os.path.abspath(os.path.normpath(outdir)))
+        return self.clone().localmap(lambda v: v.filename(os.path.join(outdir, filetail(v.filename())), copy=False, symlink=True))
 
     def augment(self, f, n_augmentations):
         assert n_augmentations &gt;= 1
-        self._objlist = [f(v.clone()) for v in self._objlist for k in range(n_augmentations)]  # This will remove the originals
+        self._objlist = [f(v.clone()) for v in self for k in range(n_augmentations)]  # This will remove the originals
         return self
 
     def filter(self, f):
-        self._objlist = [v for v in self._objlist if f(v)]
+        &#34;&#34;&#34;In place filter with lambda function f&#34;&#34;&#34;
+        self._objlist = [v for v in self if f(v)]
         return self
 
     def valid(self):
@@ -1074,26 +1205,29 @@ class Dataset():
             [n=1] Returns singleton element
             [n&gt;1] Returns list of elements of at most n such that each element f(x) is True            
         &#34;&#34;&#34;
-        objlist = [obj for obj in self._objlist if f(obj)]
+        objlist = [obj for obj in self if f(obj)]
         return [] if (len(objlist) == 0 or n == 0) else (objlist[0] if n==1 else objlist[0:n])
 
-    def to_jsondir(self, outdir):
+    def jsondir(self, outdir, verbose=True, rekey=False):
+        &#34;&#34;&#34;Export all objects to a directory of JSON files&#34;&#34;&#34;
+        assert self._isvipy()
         print(&#39;[vipy.dataset]: exporting %d json files to &#34;%s&#34;...&#39; % (len(self), outdir))
         vipy.util.remkdir(outdir)  # to avoid race condition
-        Batch(vipy.util.chunklist([(k,v) for (k,v) in enumerate(self._objlist)], 64), as_completed=True, minscatter=1).map(lambda X: [vipy.util.save(x[1].clone(), os.path.join(outdir, &#39;%s_%d.json&#39; % (x[1].clone().videoid(), x[0]))) for x in X]).result()
+        for (k,v) in enumerate(self):
+            f = vipy.util.save(v, os.path.join(outdir, (&#39;%s.json&#39; % v.instanceid()) if not rekey else &#39;%s_%d.json&#39; % (uuid.uuid4().hex, k)))
+            if verbose:
+                print(&#39;[vipy.dataset.Dataset][%d/%d]: %s&#39; % (k, len(self), f))
         return outdir
 
+    def tojsondir(self, outdir, rekey=False, verbose=True):
+        &#34;&#34;&#34;Alias for jsondir&#34;&#34;&#34;
+        return self.jsondir(outdir, verbose=verbose, rekey=rekey)
+    
     def takelist(self, n, category=None, canload=False):
+        &#34;&#34;&#34;Take n elements of selected category and return list&#34;&#34;&#34;
         assert n &gt;= 0, &#34;Invalid length&#34;
-
-        outlist = []
-        objlist = self._objlist if category is None else [v for v in self._objlist if v.category() == category]
-        for k in np.random.permutation(range(0, len(objlist))).tolist():
-            if not canload or objlist[k].isloadable():
-                outlist.append(objlist[k])  # without replacement
-            if len(outlist) == n:
-                break
-        return outlist
+        D = self if category is None else self.clone().filter(lambda v: v.category() == category())
+        return [D[int(k)] for k in np.random.permutation(range(len(D)))][0:n]  # native python int
 
     def take(self, n, category=None, canload=False):
         return Dataset(self.takelist(n, category=category, canload=canload))
@@ -1132,7 +1266,7 @@ class Dataset():
         csv = [v.csv() for v in self.list]        
         return vipy.util.writecsv(csv, csvfile) if csvfile is not None else (csv[0], csv[1:])
 
-    def map(self, f_transform, model=None, dst=None, id=None, checkpoint=False, strict=False, ascompleted=True):        
+    def map(self, f_transform, model=None, dst=None, id=None, checkpoint=False, strict=False, ascompleted=True, chunks=128):        
         &#34;&#34;&#34;Distributed map.
 
         To perform this in parallel across four processes:
@@ -1154,17 +1288,21 @@ class Dataset():
 
         &#34;&#34;&#34;
         assert callable(f_transform)
-        B = Batch(self.list(), strict=strict, as_completed=ascompleted, checkpoint=checkpoint, warnme=False, minscatter=1000000)
-        V = B.map(f_transform).result() if not model else B.scattermap(f_transform, model).result()
-        D = Dataset(V, id=dst if dst is not None else id)
-        return D
+
+        # Operations must be chunked because each dask task comes with overhead, and lots of small tasks violates best practices
+        # - Each chunk is sent to a worker and processed in parallel
+        # - Chunks are scattered to workers 
+        B = Batch(vipy.util.chunklist(self._objlist, chunks), strict=strict, as_completed=ascompleted, checkpoint=checkpoint, warnme=False, minscatter=chunks)
+        f = lambda x, f_loader=self._loader: f_transform(f_loader(x))  # for closure capture
+        V = B.map(lambda X,f=f: [f(x) for x in X]).result() if not model else B.scattermap(lambda X, f=f: [f(x) for x in X], model).result()
+        return Dataset(V, id=dst if dst is not None else id).flatten()
 
     def localmap(self, f):
-        self._objlist = [f(v) for v in self._objlist]
+        self._objlist = [f(v) for v in self]
         return self
 
     def flatmap(self, f):
-        self._objlist = [x for v in self._objlist for x in f(v)]
+        self._objlist = [x for v in self for x in f(v)]
         return self
     
     def count(self, f=None):
@@ -1179,21 +1317,29 @@ class Dataset():
         &#34;&#34;&#34;
         assert self._isvipy()
         assert f is None or callable(f)
-        return vipy.util.countby(self.list(), lambda v: v.category()) if f is None else len([v for v in self if f(v)])
+        return len([v for v in self if f is None or f(v)])
 
+    def countby(self, f=lambda v: v.category()):
+        assert self._isvipy()
+        assert f is None or callable(f)
+        return vipy.util.countby(self, f)
+        
     def frequency(self):
         return self.count()
 
-    def histogram(self, outfile=None, fontsize=6, category_to_barcolor=None):
+    def histogram(self, outfile=None, fontsize=6, category_to_barcolor=None, category_to_xlabel=None):
         assert self._isvipy()
         assert category_to_barcolor is None or all([c in category_to_barcolor for c in self.categories()])
+        assert category_to_xlabel is None or callable(category_to_xlabel) or all([c in category_to_xlabel for c in self.categories()])
+        f_category_to_xlabel = category_to_xlabel if callable(category_to_xlabel) else ((lambda c: category_to_xlabel[c]) if category_to_xlabel is not None else (lambda c: c))
         
-        d = self.count()
+        d = self.countby(lambda v: v.category())
         if outfile is not None:
             from vipy.metrics import histogram            
             (categories, freq) = zip(*reversed(sorted(list(d.items()), key=lambda x: x[1])))  # decreasing frequency
             barcolors = [&#39;blue&#39; if category_to_barcolor is None else category_to_barcolor[c] for c in categories]
-            print(&#39;[vipy.dataset]: histogram=&#34;%s&#34;&#39; % vipy.metrics.histogram(freq, categories, barcolors=barcolors, outfile=outfile, ylabel=&#39;Instances&#39;, fontsize=fontsize))
+            xlabels = [f_category_to_xlabel(c) for c in categories]
+            print(&#39;[vipy.dataset]: histogram=&#34;%s&#34;&#39; % vipy.metrics.histogram(freq, xlabels, barcolors=barcolors, outfile=outfile, ylabel=&#39;Instances&#39;, fontsize=fontsize))
         return d
     
     def percentage(self):
@@ -1204,15 +1350,25 @@ class Dataset():
 
     def multilabel_inverse_frequency_weight(self):
         &#34;&#34;&#34;Return an inverse frequency weight for multilabel activities, where label counts are the fractional label likelihood within a clip&#34;&#34;&#34;
-        assert self.is_vipy_video()
+        assert self._is_vipy_video()
 
-        lbl_likelihood  = {k:0 for k in self.classlist()}
-        for v in self.list():
+        def _multilabel_inverse_frequency_weight(v):
+            lbl_likelihood = {}
             if len(v.activities()) &gt; 0:
                 (ef, sf) = (max([a.endframe() for a in v.activitylist()]), min([a.startframe() for a in v.activitylist()]))  # clip length 
                 lbl_frequency = vipy.util.countby([a for A in v.activitylabel(sf, ef) for a in A], lambda x: x)  # frequency within clip
                 for (k,f) in lbl_frequency.items():
+                    if k not in lbl_likelihood:
+                        lbl_likelihood[k] = 0
                     lbl_likelihood[k] += f/(ef-sf)
+            return lbl_likelihood
+                    
+        lbl_likelihood  = {}
+        for d in self.map(lambda v: _multilabel_inverse_frequency_weight(v)):
+            for (k,v) in d.items():
+                if k not in lbl_likelihood:
+                    lbl_likelihood[k] = 0
+                lbl_likelihood[k] += v
 
         # Inverse frequency weight on label likelihood per clip
         d = {k:1.0/max(v,1) for (k,v) in lbl_likelihood.items()}
@@ -1250,10 +1406,11 @@ class Dataset():
         return d
         
         
-    def density(self, outfile=None):
+    def density(self, outfile=None, max=None):
+        &#34;&#34;&#34;Compute the frequency that each video ID is represented.  This counts how many activities are in a video, truncated at max&#34;&#34;&#34;
         assert self._isvipy()
-        d = [len(v) for (k,v) in groupbyasdict(self.list(), lambda v: v.videoid()).items()]
-        d = vipy.util.countby(d, lambda x: x)
+        d = [len(v) if (max is None or len(v)&lt;= max) else max for (k,v) in groupbyasdict(self.list(), lambda v: v.videoid()).items()]
+        d = {k:v for (k,v) in sorted(vipy.util.countby(d, lambda x: x).items(), key=lambda x: x[1], reverse=True)}
         if outfile is not None:
             from vipy.metrics import histogram
             histogram(d.values(), d.keys(), outfile=outfile, ylabel=&#39;Frequency&#39;, xlabel=&#39;Activities per video&#39;, fontsize=6, xrot=None)            
@@ -1344,17 +1501,16 @@ class Dataset():
         import vipy.torch
         return vipy.torch.TorchDataset(f_video_to_tensor, self)
 
-    def to_torch_tensordir(self, f_video_to_tensor, outdir, n_augmentations=20, n_chunks=512):
+    def to_torch_tensordir(self, f_video_to_tensor, outdir, n_augmentations=20, sleep=3):
         &#34;&#34;&#34;Return a TorchTensordir dataset that will load a pkl.bz2 file that contains one of n_augmentations (tensor, label) pairs.
         
         This is useful for fast loading of datasets that contain many videos.
 
         &#34;&#34;&#34;
         import vipy.torch
-        assert self.is_vipy_scene()
+        assert self._is_vipy_scene()
         outdir = vipy.util.remkdir(outdir)
-        B = vipy.util.chunklist(self._objlist, n_chunks)
-        vipy.batch.Batch(B, as_completed=True, minscatter=1).map(lambda V, f=f_video_to_tensor, outdir=outdir, n_augmentations=n_augmentations: [vipy.util.bz2pkl(os.path.join(outdir, &#39;%s.pkl.bz2&#39; % v.instanceid()), [f(v.clone()) for k in range(0, n_augmentations)]) for v in V])
+        vipy.batch.Batch(self.list(), as_completed=True).map(lambda v, f=f_video_to_tensor, outdir=outdir, n_augmentations=n_augmentations: vipy.util.bz2pkl(os.path.join(outdir, &#39;%s.pkl.bz2&#39; % v.instanceid()), [f(v.print(sleep=sleep).clone()) for k in range(0, n_augmentations)]))
         return vipy.torch.TorchTensordir(outdir)
 
     def annotate(self, outdir, mindim=512):
@@ -1373,7 +1529,7 @@ class Dataset():
 
         dataset = self.list()
         assert all([isinstance(v, vipy.video.Video) for v in dataset])
-        dataset = [dataset[k] for k in np.random.permutation(range(len(dataset)))[0:int(len(dataset)*fraction)]]
+        dataset = [dataset[int(k)] for k in np.random.permutation(range(len(dataset)))[0:int(len(dataset)*fraction)]]
         #dataset = [v for v in dataset if all([len(a) &lt; 15*v.framerate() for a in v.activitylist()])]  # remove extremely long videos
 
         quicklist = vipy.batch.Batch(dataset, strict=False, as_completed=True, minscatter=1).map(lambda v: (v.load().quicklook(), v.flush().print())).result()
@@ -1467,7 +1623,7 @@ class Dataset():
     def sort(self, key):
         &#34;&#34;&#34;Sort the dataset in-place using the sortkey lambda function&#34;&#34;&#34;
         if key is not None:
-            self._objlist.sort(key=key)
+            self._objlist.sort(key=lambda x: key(self._loader(x)))
         return self</code></pre>
 </details>
 <h3>Methods</h3>
@@ -1480,7 +1636,7 @@ class Dataset():
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/cca43229d5a34248b0f1c6f49fd349ba9d094381/vipy/dataset.py#L607-L610" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/42a1d90428b25912fcbd3945dcaed29dd75b313f/vipy/dataset.py#L682-L685" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def annotate(self, outdir, mindim=512):
     assert self._isvipy()
@@ -1489,7 +1645,7 @@ class Dataset():
 </details>
 </dd>
 <dt id="vipy.dataset.Dataset.archive"><code class="name flex">
-<span>def <span class="ident">archive</span></span>(<span>self, tarfile, delprefix, mediadir='', format='json', castas=vipy.video.Scene, verbose=False, extrafiles=None, novideos=False)</span>
+<span>def <span class="ident">archive</span></span>(<span>self, tarfile, delprefix, mediadir='', format='json', castas=vipy.video.Scene, verbose=False, extrafiles=None, novideos=False, md5=True)</span>
 </code></dt>
 <dd>
 <div class="desc"><p>Create a archive file for this dataset.
@@ -1505,12 +1661,20 @@ extras2.ext</p>
 - tarfile: /path/to/tarfilename.tar.gz
 - delprefix:
 the absolute file path contained in the media filenames to be removed.
-If a video has a delprefix='/a/b' then videos with path /a/b/c/d.mp4' -&gt; 'c/d.mp4', and {JSON|PKL} will be saved with relative paths to mediadir
+If a video has a delprefix='/a/b' then videos with path /a/b/c/d.mp4' -&gt; 'c/d.mp4', and {JSON|PKL} will be saved with relative paths to mediadir.
+This may be a list of delprefixes.
 - mediadir:
 the subdirectory name of the media to be contained in the archive.
 Usually "videos".
 <br>
-- extrafiles: list of tuples or singletons [(abspath, filename_in_archive_relative_to_root), 'file_in_root_and_in_pwd', &hellip;], </p>
+- extrafiles: list of tuples or singletons [(abspath, filename_in_archive_relative_to_root), 'file_in_root_and_in_pwd', &hellip;],
+- novideos [bool]:
+generate a tarball without linking videos, just annotations
+- md5 [bool]:
+If True, generate the MD5 hash of the tarball using the system "md5sum", or if md5='vipy' use a slower python only md5 hash
+- castas [class]:
+This should be a vipy class that the vipy objects should be cast to prior to archive.
+This is useful for converting priveledged superclasses to a base class prior to export.</p>
 <p>Example:
 </p>
 <ul>
@@ -1527,9 +1691,9 @@ Usually "videos".
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/cca43229d5a34248b0f1c6f49fd349ba9d094381/vipy/dataset.py#L107-L166" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/42a1d90428b25912fcbd3945dcaed29dd75b313f/vipy/dataset.py#L135-L204" class="git-link">Browse git</a>
 </summary>
-<pre><code class="python">def archive(self, tarfile, delprefix, mediadir=&#39;&#39;, format=&#39;json&#39;, castas=vipy.video.Scene, verbose=False, extrafiles=None, novideos=False):
+<pre><code class="python">def archive(self, tarfile, delprefix, mediadir=&#39;&#39;, format=&#39;json&#39;, castas=vipy.video.Scene, verbose=False, extrafiles=None, novideos=False, md5=True):
     &#34;&#34;&#34;Create a archive file for this dataset.  This will be archived as:
 
        /path/to/tarfile.{tar.gz|.tgz|.bz2}
@@ -1542,9 +1706,12 @@ Usually "videos".
     
         Inputs:
           - tarfile: /path/to/tarfilename.tar.gz
-          - delprefix:  the absolute file path contained in the media filenames to be removed.  If a video has a delprefix=&#39;/a/b&#39; then videos with path /a/b/c/d.mp4&#39; -&gt; &#39;c/d.mp4&#39;, and {JSON|PKL} will be saved with relative paths to mediadir
+          - delprefix:  the absolute file path contained in the media filenames to be removed.  If a video has a delprefix=&#39;/a/b&#39; then videos with path /a/b/c/d.mp4&#39; -&gt; &#39;c/d.mp4&#39;, and {JSON|PKL} will be saved with relative paths to mediadir.  This may be a list of delprefixes.
           - mediadir:  the subdirectory name of the media to be contained in the archive.  Usually &#34;videos&#34;.             
           - extrafiles: list of tuples or singletons [(abspath, filename_in_archive_relative_to_root), &#39;file_in_root_and_in_pwd&#39;, ...], 
+          - novideos [bool]:  generate a tarball without linking videos, just annotations
+          - md5 [bool]:  If True, generate the MD5 hash of the tarball using the system &#34;md5sum&#34;, or if md5=&#39;vipy&#39; use a slower python only md5 hash 
+          - castas [class]:  This should be a vipy class that the vipy objects should be cast to prior to archive.  This is useful for converting priveledged superclasses to a base class prior to export.
 
         Example:  
 
@@ -1556,15 +1723,15 @@ Usually "videos".
     &#34;&#34;&#34;
     assert self._isvipy(), &#34;Source dataset must contain vipy objects for staging&#34;
     assert all([os.path.isabs(v.filename()) for v in self]), &#34;Input dataset must have only absolute media paths&#34;
-    assert self.countby(lambda v: delprefix in v.filename()) &gt; 0, &#34;delprefix not found&#34;
-    assert self.countby(lambda v: delprefix in v.filename()) == len(self), &#34;all media objects must have the same delprefix for relative path construction&#34;
+    assert len([v for v in self if any([d in v.filename() for d in tolist(delprefix)])]) == len(self), &#34;all media objects must have a provided delprefix for relative path construction&#34;
     assert vipy.util.istgz(tarfile) or vipy.util.isbz2(tarfile), &#34;Allowable extensions are .tar.gz, .tgz or .bz2&#34;
     assert shutil.which(&#39;tar&#39;) is not None, &#34;tar not found on path&#34;        
-
+    
     D = self.clone()
     stagedir = remkdir(os.path.join(tempdir(), filefull(filetail(tarfile))))
-    print(&#39;[vipy.dataset]: creating staging directory &#34;%s&#34;&#39; % stagedir)        
-    D._objlist = [v.filename(v.filename().replace(os.path.normpath(delprefix), os.path.normpath(os.path.join(stagedir, mediadir))), symlink=not novideos) for v in D.list()]
+    print(&#39;[vipy.dataset]: creating staging directory &#34;%s&#34;&#39; % stagedir)
+    delprefix = [[d for d in tolist(delprefix) if d in v.filename()][0] for v in self]  # select the delprefix per video
+    D._objlist = [v.filename(v.filename().replace(os.path.normpath(p), os.path.normpath(os.path.join(stagedir, mediadir))), symlink=not novideos) for (p,v) in zip(delprefix, D.list())]
     pklfile = os.path.join(stagedir, &#39;%s.%s&#39; % (filetail(filefull(tarfile)), format))
     D.save(pklfile, relpath=True, nourl=True, sanitize=True, castas=castas, significant_digits=2, noemail=True, flush=True)
 
@@ -1587,7 +1754,14 @@ Usually "videos".
     os.system(cmd)  # too slow to use python &#34;tarfile&#34; package
     print(&#39;[vipy.dataset]: deleting staging directory &#34;%s&#34;&#39; % stagedir)        
     shutil.rmtree(stagedir)
-    print(&#39;[vipy.dataset]: %s, MD5=%s&#39; % (tarfile, vipy.downloader.generate_md5(tarfile)))
+
+    if md5:
+        if shutil.which(&#39;md5sum&#39;) is not None:
+            cmd = &#39;md5sum %s&#39; % tarfile
+            print(&#39;[vipy.dataset]: executing &#34;%s&#34;&#39; % cmd)        
+            os.system(cmd)  # too slow to use python &#34;vipy.downloader.generate_md5(tarball)&#34; for huge datasets
+        else:
+            print(&#39;[vipy.dataset]: %s, MD5=%s&#39; % (tarfile, vipy.downloader.generate_md5(tarfile)))  # too slow for large datasets, but does not require md5sum on path
     return tarfile</code></pre>
 </details>
 </dd>
@@ -1599,11 +1773,11 @@ Usually "videos".
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/cca43229d5a34248b0f1c6f49fd349ba9d094381/vipy/dataset.py#L300-L303" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/42a1d90428b25912fcbd3945dcaed29dd75b313f/vipy/dataset.py#L349-L352" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def augment(self, f, n_augmentations):
     assert n_augmentations &gt;= 1
-    self._objlist = [f(v.clone()) for v in self._objlist for k in range(n_augmentations)]  # This will remove the originals
+    self._objlist = [f(v.clone()) for v in self for k in range(n_augmentations)]  # This will remove the originals
     return self</code></pre>
 </details>
 </dd>
@@ -1615,7 +1789,7 @@ Usually "videos".
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/cca43229d5a34248b0f1c6f49fd349ba9d094381/vipy/dataset.py#L509-L535" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/42a1d90428b25912fcbd3945dcaed29dd75b313f/vipy/dataset.py#L585-L611" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def boxsize(self, outfile=None, category_to_color=None, categories=None):
     # Scatterplot of object box sizes
@@ -1654,7 +1828,7 @@ Usually "videos".
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/cca43229d5a34248b0f1c6f49fd349ba9d094381/vipy/dataset.py#L537-L561" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/42a1d90428b25912fcbd3945dcaed29dd75b313f/vipy/dataset.py#L613-L637" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def boxsize_by_category(self, outfile=None):
     # Scatterplot of object box sizes
@@ -1691,7 +1865,7 @@ Usually "videos".
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/cca43229d5a34248b0f1c6f49fd349ba9d094381/vipy/dataset.py#L563-L586" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/42a1d90428b25912fcbd3945dcaed29dd75b313f/vipy/dataset.py#L639-L662" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def boxsize_histogram(self, outfile=None):
     # Scatterplot of object box sizes
@@ -1727,7 +1901,7 @@ Usually "videos".
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/cca43229d5a34248b0f1c6f49fd349ba9d094381/vipy/dataset.py#L229-L231" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/42a1d90428b25912fcbd3945dcaed29dd75b313f/vipy/dataset.py#L267-L269" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def categories(self):
     &#34;&#34;&#34;Alias for classlist&#34;&#34;&#34;
@@ -1743,7 +1917,7 @@ This is useful for defining a softmax index ordering for categorization</p></div
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/cca43229d5a34248b0f1c6f49fd349ba9d094381/vipy/dataset.py#L243-L245" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/42a1d90428b25912fcbd3945dcaed29dd75b313f/vipy/dataset.py#L281-L283" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def class_to_index(self):
     &#34;&#34;&#34;Return a dictionary mapping the unique classes to an integer index.  This is useful for defining a softmax index ordering for categorization&#34;&#34;&#34;
@@ -1758,7 +1932,7 @@ This is useful for defining a softmax index ordering for categorization</p></div
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/cca43229d5a34248b0f1c6f49fd349ba9d094381/vipy/dataset.py#L226-L228" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/42a1d90428b25912fcbd3945dcaed29dd75b313f/vipy/dataset.py#L264-L266" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def classes(self):
     &#34;&#34;&#34;Alias for classlist&#34;&#34;&#34;
@@ -1773,12 +1947,12 @@ This is useful for defining a softmax index ordering for categorization</p></div
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/cca43229d5a34248b0f1c6f49fd349ba9d094381/vipy/dataset.py#L221-L224" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/42a1d90428b25912fcbd3945dcaed29dd75b313f/vipy/dataset.py#L259-L262" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def classlist(self):
     &#34;&#34;&#34;Return a sorted list of categories in the dataset&#34;&#34;&#34;
     assert self._isvipy(), &#34;Invalid input&#34;
-    return sorted(list(set([v.category() for v in self._objlist])))</code></pre>
+    return sorted(list(set(self.map(lambda v: v.category()))))</code></pre>
 </details>
 </dd>
 <dt id="vipy.dataset.Dataset.clone"><code class="name flex">
@@ -1789,7 +1963,7 @@ This is useful for defining a softmax index ordering for categorization</p></div
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/cca43229d5a34248b0f1c6f49fd349ba9d094381/vipy/dataset.py#L103-L105" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/42a1d90428b25912fcbd3945dcaed29dd75b313f/vipy/dataset.py#L131-L133" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def clone(self):
     &#34;&#34;&#34;Return a deep copy of the dataset&#34;&#34;&#34;
@@ -1814,7 +1988,7 @@ A length of elements that satisfy f(v) = True [if f is not None]</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/cca43229d5a34248b0f1c6f49fd349ba9d094381/vipy/dataset.py#L417-L429" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/42a1d90428b25912fcbd3945dcaed29dd75b313f/vipy/dataset.py#L474-L486" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def count(self, f=None):
     &#34;&#34;&#34;Counts for each label.  
@@ -1828,21 +2002,23 @@ A length of elements that satisfy f(v) = True [if f is not None]</p></div>
     &#34;&#34;&#34;
     assert self._isvipy()
     assert f is None or callable(f)
-    return vipy.util.countby(self.list(), lambda v: v.category()) if f is None else len([v for v in self if f(v)])</code></pre>
+    return len([v for v in self if f is None or f(v)])</code></pre>
 </details>
 </dd>
 <dt id="vipy.dataset.Dataset.countby"><code class="name flex">
-<span>def <span class="ident">countby</span></span>(<span>self, f)</span>
+<span>def <span class="ident">countby</span></span>(<span>self, f=&lt;function Dataset.&lt;lambda&gt;&gt;)</span>
 </code></dt>
 <dd>
 <div class="desc"></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/cca43229d5a34248b0f1c6f49fd349ba9d094381/vipy/dataset.py#L266-L267" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/42a1d90428b25912fcbd3945dcaed29dd75b313f/vipy/dataset.py#L488-L491" class="git-link">Browse git</a>
 </summary>
-<pre><code class="python">def countby(self, f):
-    return len([v for v in self._objlist if f(v)])</code></pre>
+<pre><code class="python">def countby(self, f=lambda v: v.category()):
+    assert self._isvipy()
+    assert f is None or callable(f)
+    return vipy.util.countby(self, f)</code></pre>
 </details>
 </dd>
 <dt id="vipy.dataset.Dataset.dedupe"><code class="name flex">
@@ -1853,27 +2029,29 @@ A length of elements that satisfy f(v) = True [if f is not None]</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/cca43229d5a34248b0f1c6f49fd349ba9d094381/vipy/dataset.py#L262-L264" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/42a1d90428b25912fcbd3945dcaed29dd75b313f/vipy/dataset.py#L300-L302" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def dedupe(self, key):
-    self._objlist = list({key(v):v for v in self._objlist}.values())
+    self._objlist = list({key(v):v for v in self}.values())
     return self</code></pre>
 </details>
 </dd>
 <dt id="vipy.dataset.Dataset.density"><code class="name flex">
-<span>def <span class="ident">density</span></span>(<span>self, outfile=None)</span>
+<span>def <span class="ident">density</span></span>(<span>self, outfile=None, max=None)</span>
 </code></dt>
 <dd>
-<div class="desc"></div>
+<div class="desc"><p>Compute the frequency that each video ID is represented.
+This counts how many activities are in a video, truncated at max</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/cca43229d5a34248b0f1c6f49fd349ba9d094381/vipy/dataset.py#L500-L507" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/42a1d90428b25912fcbd3945dcaed29dd75b313f/vipy/dataset.py#L575-L583" class="git-link">Browse git</a>
 </summary>
-<pre><code class="python">def density(self, outfile=None):
+<pre><code class="python">def density(self, outfile=None, max=None):
+    &#34;&#34;&#34;Compute the frequency that each video ID is represented.  This counts how many activities are in a video, truncated at max&#34;&#34;&#34;
     assert self._isvipy()
-    d = [len(v) for (k,v) in groupbyasdict(self.list(), lambda v: v.videoid()).items()]
-    d = vipy.util.countby(d, lambda x: x)
+    d = [len(v) if (max is None or len(v)&lt;= max) else max for (k,v) in groupbyasdict(self.list(), lambda v: v.videoid()).items()]
+    d = {k:v for (k,v) in sorted(vipy.util.countby(d, lambda x: x).items(), key=lambda x: x[1], reverse=True)}
     if outfile is not None:
         from vipy.metrics import histogram
         histogram(d.values(), d.keys(), outfile=outfile, ylabel=&#39;Frequency&#39;, xlabel=&#39;Activities per video&#39;, fontsize=6, xrot=None)            
@@ -1888,12 +2066,12 @@ A length of elements that satisfy f(v) = True [if f is not None]</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/cca43229d5a34248b0f1c6f49fd349ba9d094381/vipy/dataset.py#L274-L278" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/42a1d90428b25912fcbd3945dcaed29dd75b313f/vipy/dataset.py#L319-L323" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def difference(self, other, key):
     assert isinstance(other, Dataset), &#34;invalid input&#34;
-    idset = set([key(v) for v in self._objlist]).difference([key(v) for v in other._objlist])   # in A but not in B
-    self._objlist = [v for v in self._objlist if key(v) in idset]
+    idset = set([key(v) for v in self]).difference([key(v) for v in other])   # in A but not in B
+    self._objlist = [v for v in self if key(v) in idset]
     return self</code></pre>
 </details>
 </dd>
@@ -1905,7 +2083,7 @@ A length of elements that satisfy f(v) = True [if f is not None]</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/cca43229d5a34248b0f1c6f49fd349ba9d094381/vipy/dataset.py#L475-L481" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/42a1d90428b25912fcbd3945dcaed29dd75b313f/vipy/dataset.py#L550-L556" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def duration_in_frames(self, outfile=None):
     assert self._isvipy()
@@ -1924,7 +2102,7 @@ A length of elements that satisfy f(v) = True [if f is not None]</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/cca43229d5a34248b0f1c6f49fd349ba9d094381/vipy/dataset.py#L483-L489" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/42a1d90428b25912fcbd3945dcaed29dd75b313f/vipy/dataset.py#L558-L564" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def duration_in_seconds(self, outfile=None, fontsize=6):
     assert self._isvipy()
@@ -1939,14 +2117,15 @@ A length of elements that satisfy f(v) = True [if f is not None]</p></div>
 <span>def <span class="ident">filter</span></span>(<span>self, f)</span>
 </code></dt>
 <dd>
-<div class="desc"></div>
+<div class="desc"><p>In place filter with lambda function f</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/cca43229d5a34248b0f1c6f49fd349ba9d094381/vipy/dataset.py#L305-L307" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/42a1d90428b25912fcbd3945dcaed29dd75b313f/vipy/dataset.py#L354-L357" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def filter(self, f):
-    self._objlist = [v for v in self._objlist if f(v)]
+    &#34;&#34;&#34;In place filter with lambda function f&#34;&#34;&#34;
+    self._objlist = [v for v in self if f(v)]
     return self</code></pre>
 </details>
 </dd>
@@ -1958,10 +2137,10 @@ A length of elements that satisfy f(v) = True [if f is not None]</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/cca43229d5a34248b0f1c6f49fd349ba9d094381/vipy/dataset.py#L413-L415" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/42a1d90428b25912fcbd3945dcaed29dd75b313f/vipy/dataset.py#L470-L472" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def flatmap(self, f):
-    self._objlist = [x for v in self._objlist for x in f(v)]
+    self._objlist = [x for v in self for x in f(v)]
     return self</code></pre>
 </details>
 </dd>
@@ -1973,7 +2152,7 @@ A length of elements that satisfy f(v) = True [if f is not None]</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/cca43229d5a34248b0f1c6f49fd349ba9d094381/vipy/dataset.py#L82-L85" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/42a1d90428b25912fcbd3945dcaed29dd75b313f/vipy/dataset.py#L110-L113" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def flatten(self):
     &#34;&#34;&#34;Convert dataset stored as a list of lists into a flat list&#34;&#34;&#34;
@@ -1989,7 +2168,7 @@ A length of elements that satisfy f(v) = True [if f is not None]</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/cca43229d5a34248b0f1c6f49fd349ba9d094381/vipy/dataset.py#L491-L497" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/42a1d90428b25912fcbd3945dcaed29dd75b313f/vipy/dataset.py#L566-L572" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def framerate(self, outfile=None):
     assert self._isvipy()
@@ -2008,7 +2187,7 @@ A length of elements that satisfy f(v) = True [if f is not None]</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/cca43229d5a34248b0f1c6f49fd349ba9d094381/vipy/dataset.py#L431-L432" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/42a1d90428b25912fcbd3945dcaed29dd75b313f/vipy/dataset.py#L493-L494" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def frequency(self):
     return self.count()</code></pre>
@@ -2022,32 +2201,35 @@ A length of elements that satisfy f(v) = True [if f is not None]</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/cca43229d5a34248b0f1c6f49fd349ba9d094381/vipy/dataset.py#L280-L281" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/42a1d90428b25912fcbd3945dcaed29dd75b313f/vipy/dataset.py#L325-L326" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def has(self, val, key):
-    return any([key(obj) == val for obj in self._objlist])</code></pre>
+    return any([key(obj) == val for obj in self])</code></pre>
 </details>
 </dd>
 <dt id="vipy.dataset.Dataset.histogram"><code class="name flex">
-<span>def <span class="ident">histogram</span></span>(<span>self, outfile=None, fontsize=6, category_to_barcolor=None)</span>
+<span>def <span class="ident">histogram</span></span>(<span>self, outfile=None, fontsize=6, category_to_barcolor=None, category_to_xlabel=None)</span>
 </code></dt>
 <dd>
 <div class="desc"></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/cca43229d5a34248b0f1c6f49fd349ba9d094381/vipy/dataset.py#L434-L444" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/42a1d90428b25912fcbd3945dcaed29dd75b313f/vipy/dataset.py#L496-L509" class="git-link">Browse git</a>
 </summary>
-<pre><code class="python">def histogram(self, outfile=None, fontsize=6, category_to_barcolor=None):
+<pre><code class="python">def histogram(self, outfile=None, fontsize=6, category_to_barcolor=None, category_to_xlabel=None):
     assert self._isvipy()
     assert category_to_barcolor is None or all([c in category_to_barcolor for c in self.categories()])
+    assert category_to_xlabel is None or callable(category_to_xlabel) or all([c in category_to_xlabel for c in self.categories()])
+    f_category_to_xlabel = category_to_xlabel if callable(category_to_xlabel) else ((lambda c: category_to_xlabel[c]) if category_to_xlabel is not None else (lambda c: c))
     
-    d = self.count()
+    d = self.countby(lambda v: v.category())
     if outfile is not None:
         from vipy.metrics import histogram            
         (categories, freq) = zip(*reversed(sorted(list(d.items()), key=lambda x: x[1])))  # decreasing frequency
         barcolors = [&#39;blue&#39; if category_to_barcolor is None else category_to_barcolor[c] for c in categories]
-        print(&#39;[vipy.dataset]: histogram=&#34;%s&#34;&#39; % vipy.metrics.histogram(freq, categories, barcolors=barcolors, outfile=outfile, ylabel=&#39;Instances&#39;, fontsize=fontsize))
+        xlabels = [f_category_to_xlabel(c) for c in categories]
+        print(&#39;[vipy.dataset]: histogram=&#34;%s&#34;&#39; % vipy.metrics.histogram(freq, xlabels, barcolors=barcolors, outfile=outfile, ylabel=&#39;Instances&#39;, fontsize=fontsize))
     return d</code></pre>
 </details>
 </dd>
@@ -2059,7 +2241,7 @@ A length of elements that satisfy f(v) = True [if f is not None]</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/cca43229d5a34248b0f1c6f49fd349ba9d094381/vipy/dataset.py#L67-L73" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/42a1d90428b25912fcbd3945dcaed29dd75b313f/vipy/dataset.py#L95-L101" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def id(self, n=None):
     &#34;&#34;&#34;Set or return the dataset id&#34;&#34;&#34;
@@ -2079,7 +2261,7 @@ This is the inverse of class_to_index, swapping keys and values</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/cca43229d5a34248b0f1c6f49fd349ba9d094381/vipy/dataset.py#L247-L249" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/42a1d90428b25912fcbd3945dcaed29dd75b313f/vipy/dataset.py#L285-L287" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def index_to_class(self):
     &#34;&#34;&#34;Return a dictionary mapping an integer index to the unique class names.  This is the inverse of class_to_index, swapping keys and values&#34;&#34;&#34;
@@ -2095,7 +2277,7 @@ Useful for unbalanced class weighting during training</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/cca43229d5a34248b0f1c6f49fd349ba9d094381/vipy/dataset.py#L469-L473" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/42a1d90428b25912fcbd3945dcaed29dd75b313f/vipy/dataset.py#L544-L548" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def inverse_frequency_weight(self):
     &#34;&#34;&#34;Return inverse frequency weight for categories in dataset.  Useful for unbalanced class weighting during training&#34;&#34;&#34;
@@ -2108,15 +2290,37 @@ Useful for unbalanced class weighting during training</p></div>
 <span>def <span class="ident">istype</span></span>(<span>self, validtype)</span>
 </code></dt>
 <dd>
-<div class="desc"><p>Return True if all elements in the dataset are of type 'validtype'</p></div>
+<div class="desc"><p>Return True if the all elements (or just the first element if strict=False) in the dataset are of type 'validtype'</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/cca43229d5a34248b0f1c6f49fd349ba9d094381/vipy/dataset.py#L87-L89" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/42a1d90428b25912fcbd3945dcaed29dd75b313f/vipy/dataset.py#L115-L117" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def istype(self, validtype):
-    &#34;&#34;&#34;Return True if all elements in the dataset are of type &#39;validtype&#39;&#34;&#34;&#34;
-    return all([any([isinstance(v,t) for t in tolist(validtype)]) for v in self._objlist])</code></pre>
+    &#34;&#34;&#34;Return True if the all elements (or just the first element if strict=False) in the dataset are of type &#39;validtype&#39;&#34;&#34;&#34;
+    return all([any([isinstance(v,t) for t in tolist(validtype)]) for v in self]) if self._istype_strict else any([isinstance(self[0],t) for t in tolist(validtype)])</code></pre>
+</details>
+</dd>
+<dt id="vipy.dataset.Dataset.jsondir"><code class="name flex">
+<span>def <span class="ident">jsondir</span></span>(<span>self, outdir, verbose=True, rekey=False)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Export all objects to a directory of JSON files</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+<a href="https://github.com/visym/vipy/blob/42a1d90428b25912fcbd3945dcaed29dd75b313f/vipy/dataset.py#L377-L386" class="git-link">Browse git</a>
+</summary>
+<pre><code class="python">def jsondir(self, outdir, verbose=True, rekey=False):
+    &#34;&#34;&#34;Export all objects to a directory of JSON files&#34;&#34;&#34;
+    assert self._isvipy()
+    print(&#39;[vipy.dataset]: exporting %d json files to &#34;%s&#34;...&#39; % (len(self), outdir))
+    vipy.util.remkdir(outdir)  # to avoid race condition
+    for (k,v) in enumerate(self):
+        f = vipy.util.save(v, os.path.join(outdir, (&#39;%s.json&#39; % v.instanceid()) if not rekey else &#39;%s_%d.json&#39; % (uuid.uuid4().hex, k)))
+        if verbose:
+            print(&#39;[vipy.dataset.Dataset][%d/%d]: %s&#39; % (k, len(self), f))
+    return outdir</code></pre>
 </details>
 </dd>
 <dt id="vipy.dataset.Dataset.label_to_index"><code class="name flex">
@@ -2127,7 +2331,7 @@ Useful for unbalanced class weighting during training</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/cca43229d5a34248b0f1c6f49fd349ba9d094381/vipy/dataset.py#L251-L253" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/42a1d90428b25912fcbd3945dcaed29dd75b313f/vipy/dataset.py#L289-L291" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def label_to_index(self):
     &#34;&#34;&#34;Alias for class_to_index&#34;&#34;&#34;
@@ -2142,11 +2346,11 @@ Useful for unbalanced class weighting during training</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/cca43229d5a34248b0f1c6f49fd349ba9d094381/vipy/dataset.py#L75-L77" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/42a1d90428b25912fcbd3945dcaed29dd75b313f/vipy/dataset.py#L103-L105" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def list(self):
     &#34;&#34;&#34;Return the dataset as a list&#34;&#34;&#34;
-    return self._objlist</code></pre>
+    return list(self)</code></pre>
 </details>
 </dd>
 <dt id="vipy.dataset.Dataset.localmap"><code class="name flex">
@@ -2157,15 +2361,15 @@ Useful for unbalanced class weighting during training</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/cca43229d5a34248b0f1c6f49fd349ba9d094381/vipy/dataset.py#L409-L411" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/42a1d90428b25912fcbd3945dcaed29dd75b313f/vipy/dataset.py#L466-L468" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def localmap(self, f):
-    self._objlist = [f(v) for v in self._objlist]
+    self._objlist = [f(v) for v in self]
     return self</code></pre>
 </details>
 </dd>
 <dt id="vipy.dataset.Dataset.map"><code class="name flex">
-<span>def <span class="ident">map</span></span>(<span>self, f_transform, model=None, dst=None, id=None, checkpoint=False, strict=False, ascompleted=True)</span>
+<span>def <span class="ident">map</span></span>(<span>self, f_transform, model=None, dst=None, id=None, checkpoint=False, strict=False, ascompleted=True, chunks=128)</span>
 </code></dt>
 <dd>
 <div class="desc"><p>Distributed map.</p>
@@ -2196,9 +2400,9 @@ This operation is order preserving.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/cca43229d5a34248b0f1c6f49fd349ba9d094381/vipy/dataset.py#L382-L407" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/42a1d90428b25912fcbd3945dcaed29dd75b313f/vipy/dataset.py#L435-L464" class="git-link">Browse git</a>
 </summary>
-<pre><code class="python">def map(self, f_transform, model=None, dst=None, id=None, checkpoint=False, strict=False, ascompleted=True):        
+<pre><code class="python">def map(self, f_transform, model=None, dst=None, id=None, checkpoint=False, strict=False, ascompleted=True, chunks=128):        
     &#34;&#34;&#34;Distributed map.
 
     To perform this in parallel across four processes:
@@ -2220,31 +2424,45 @@ This operation is order preserving.</p></div>
 
     &#34;&#34;&#34;
     assert callable(f_transform)
-    B = Batch(self.list(), strict=strict, as_completed=ascompleted, checkpoint=checkpoint, warnme=False, minscatter=1000000)
-    V = B.map(f_transform).result() if not model else B.scattermap(f_transform, model).result()
-    D = Dataset(V, id=dst if dst is not None else id)
-    return D</code></pre>
+
+    # Operations must be chunked because each dask task comes with overhead, and lots of small tasks violates best practices
+    # - Each chunk is sent to a worker and processed in parallel
+    # - Chunks are scattered to workers 
+    B = Batch(vipy.util.chunklist(self._objlist, chunks), strict=strict, as_completed=ascompleted, checkpoint=checkpoint, warnme=False, minscatter=chunks)
+    f = lambda x, f_loader=self._loader: f_transform(f_loader(x))  # for closure capture
+    V = B.map(lambda X,f=f: [f(x) for x in X]).result() if not model else B.scattermap(lambda X, f=f: [f(x) for x in X], model).result()
+    return Dataset(V, id=dst if dst is not None else id).flatten()</code></pre>
 </details>
 </dd>
 <dt id="vipy.dataset.Dataset.merge"><code class="name flex">
-<span>def <span class="ident">merge</span></span>(<span>self, other, outdir, selfdir, otherdir)</span>
+<span>def <span class="ident">merge</span></span>(<span>self, outdir)</span>
 </code></dt>
 <dd>
-<div class="desc"></div>
+<div class="desc"><p>Merge a dataset union into a single subdirectory with symlinked media ready to be archived.</p>
+<pre><code class="language-python-repl">&gt;&gt;&gt; D1 = vipy.dataset.Dataset('/path1/dataset.json')
+&gt;&gt;&gt; D2 = vipy.dataset.Dataset('/path2/dataset.json')
+&gt;&gt;&gt; D3 = D1.union(D2).merge(outdir='/path3')
+</code></pre>
+<p>Media in D1 are in /path1, media in D2 are in /path2, media in D3 are all symlinked to /path3.
+We can now create a tarball for D3 with all of the media files in the same relative path.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/cca43229d5a34248b0f1c6f49fd349ba9d094381/vipy/dataset.py#L290-L298" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/42a1d90428b25912fcbd3945dcaed29dd75b313f/vipy/dataset.py#L335-L347" class="git-link">Browse git</a>
 </summary>
-<pre><code class="python">def merge(self, other, outdir, selfdir, otherdir):
-    assert isinstance(other, Dataset), &#34;invalid input&#34;
-    (selfdir, otherdir, outdir) = (os.path.normpath(selfdir), os.path.normpath(otherdir), vipy.util.remkdir(os.path.normpath(outdir)))
-    assert all([selfdir in v.filename() for v in self._objlist])
-    assert all([otherdir in v.filename() for v in other._objlist])
+<pre><code class="python">def merge(self, outdir):
+    &#34;&#34;&#34;Merge a dataset union into a single subdirectory with symlinked media ready to be archived.
 
-    D1 = self.clone().localmap(lambda v: v.filename(v.filename().replace(selfdir, outdir), copy=False, symlink=True))
-    D2 = other.clone().localmap(lambda v: v.filename(v.filename().replace(otherdir, outdir), copy=False, symlink=True))
-    return D1.union(D2)</code></pre>
+    &gt;&gt;&gt; D1 = vipy.dataset.Dataset(&#39;/path1/dataset.json&#39;)
+    &gt;&gt;&gt; D2 = vipy.dataset.Dataset(&#39;/path2/dataset.json&#39;)
+    &gt;&gt;&gt; D3 = D1.union(D2).merge(outdir=&#39;/path3&#39;)
+
+    Media in D1 are in /path1, media in D2 are in /path2, media in D3 are all symlinked to /path3.
+    We can now create a tarball for D3 with all of the media files in the same relative path.
+    &#34;&#34;&#34;
+    
+    outdir = vipy.util.remkdir(os.path.abspath(os.path.normpath(outdir)))
+    return self.clone().localmap(lambda v: v.filename(os.path.join(outdir, filetail(v.filename())), copy=False, symlink=True))</code></pre>
 </details>
 </dd>
 <dt id="vipy.dataset.Dataset.multilabel_inverse_frequency_weight"><code class="name flex">
@@ -2255,19 +2473,29 @@ This operation is order preserving.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/cca43229d5a34248b0f1c6f49fd349ba9d094381/vipy/dataset.py#L452-L467" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/42a1d90428b25912fcbd3945dcaed29dd75b313f/vipy/dataset.py#L517-L542" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def multilabel_inverse_frequency_weight(self):
     &#34;&#34;&#34;Return an inverse frequency weight for multilabel activities, where label counts are the fractional label likelihood within a clip&#34;&#34;&#34;
-    assert self.is_vipy_video()
+    assert self._is_vipy_video()
 
-    lbl_likelihood  = {k:0 for k in self.classlist()}
-    for v in self.list():
+    def _multilabel_inverse_frequency_weight(v):
+        lbl_likelihood = {}
         if len(v.activities()) &gt; 0:
             (ef, sf) = (max([a.endframe() for a in v.activitylist()]), min([a.startframe() for a in v.activitylist()]))  # clip length 
             lbl_frequency = vipy.util.countby([a for A in v.activitylabel(sf, ef) for a in A], lambda x: x)  # frequency within clip
             for (k,f) in lbl_frequency.items():
+                if k not in lbl_likelihood:
+                    lbl_likelihood[k] = 0
                 lbl_likelihood[k] += f/(ef-sf)
+        return lbl_likelihood
+                
+    lbl_likelihood  = {}
+    for d in self.map(lambda v: _multilabel_inverse_frequency_weight(v)):
+        for (k,v) in d.items():
+            if k not in lbl_likelihood:
+                lbl_likelihood[k] = 0
+            lbl_likelihood[k] += v
 
     # Inverse frequency weight on label likelihood per clip
     d = {k:1.0/max(v,1) for (k,v) in lbl_likelihood.items()}
@@ -2283,7 +2511,7 @@ This operation is order preserving.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/cca43229d5a34248b0f1c6f49fd349ba9d094381/vipy/dataset.py#L238-L240" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/42a1d90428b25912fcbd3945dcaed29dd75b313f/vipy/dataset.py#L276-L278" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def num_categories(self):
     &#34;&#34;&#34;Alias for num_classes&#34;&#34;&#34;
@@ -2298,7 +2526,7 @@ This operation is order preserving.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/cca43229d5a34248b0f1c6f49fd349ba9d094381/vipy/dataset.py#L232-L234" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/42a1d90428b25912fcbd3945dcaed29dd75b313f/vipy/dataset.py#L270-L272" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def num_classes(self):
     &#34;&#34;&#34;Return the number of unique categories in this dataset&#34;&#34;&#34;
@@ -2313,7 +2541,7 @@ This operation is order preserving.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/cca43229d5a34248b0f1c6f49fd349ba9d094381/vipy/dataset.py#L235-L237" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/42a1d90428b25912fcbd3945dcaed29dd75b313f/vipy/dataset.py#L273-L275" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def num_labels(self):
     &#34;&#34;&#34;Alias for num_classes&#34;&#34;&#34;
@@ -2328,7 +2556,7 @@ This operation is order preserving.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/cca43229d5a34248b0f1c6f49fd349ba9d094381/vipy/dataset.py#L446-L450" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/42a1d90428b25912fcbd3945dcaed29dd75b313f/vipy/dataset.py#L511-L515" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def percentage(self):
     &#34;&#34;&#34;Fraction of dataset for each label&#34;&#34;&#34;
@@ -2345,10 +2573,10 @@ This operation is order preserving.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/cca43229d5a34248b0f1c6f49fd349ba9d094381/vipy/dataset.py#L255-L256" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/42a1d90428b25912fcbd3945dcaed29dd75b313f/vipy/dataset.py#L293-L294" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def powerset(self):
-    return list(sorted(set([tuple(sorted(list(a))) for v in self._objlist for a in v.activitylabel() if len(a) &gt; 0])))        </code></pre>
+    return list(sorted(set([tuple(sorted(list(a))) for v in self for a in v.activitylabel() if len(a) &gt; 0])))        </code></pre>
 </details>
 </dd>
 <dt id="vipy.dataset.Dataset.powerset_to_index"><code class="name flex">
@@ -2359,7 +2587,7 @@ This operation is order preserving.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/cca43229d5a34248b0f1c6f49fd349ba9d094381/vipy/dataset.py#L258-L260" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/42a1d90428b25912fcbd3945dcaed29dd75b313f/vipy/dataset.py#L296-L298" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def powerset_to_index(self):        
     assert self._isvipy(), &#34;Invalid input&#34;
@@ -2374,13 +2602,13 @@ This operation is order preserving.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/cca43229d5a34248b0f1c6f49fd349ba9d094381/vipy/dataset.py#L283-L288" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/42a1d90428b25912fcbd3945dcaed29dd75b313f/vipy/dataset.py#L328-L333" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def replace(self, other, key):
     &#34;&#34;&#34;Replace elements in self with other with equality detemrined by the key lambda function&#34;&#34;&#34;
     assert isinstance(other, Dataset), &#34;invalid input&#34;
     d = {key(v):v for v in other}
-    self._objlist = [v if key(v) not in d else d[key(v)] for v in self._objlist]
+    self._objlist = [v if key(v) not in d else d[key(v)] for v in self]
     return self</code></pre>
 </details>
 </dd>
@@ -2410,7 +2638,7 @@ This dataset that is quivalent to vipy.dataset.Dataset('/path/to/outfile.json')<
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/cca43229d5a34248b0f1c6f49fd349ba9d094381/vipy/dataset.py#L168-L219" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/42a1d90428b25912fcbd3945dcaed29dd75b313f/vipy/dataset.py#L206-L257" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def save(self, outfile, nourl=False, castas=None, relpath=False, sanitize=True, strict=True, significant_digits=2, noemail=True, flush=True):
     &#34;&#34;&#34;Save the dataset to the provided output filename stored as pkl or json
@@ -2429,10 +2657,10 @@ This dataset that is quivalent to vipy.dataset.Dataset('/path/to/outfile.json')<
     Returns:        
         This dataset that is quivalent to vipy.dataset.Dataset(&#39;/path/to/outfile.json&#39;)
     &#34;&#34;&#34;
-    n = len([v for v in self._objlist if v is None])
+    n = len([v for v in self if v is None])
     if n &gt; 0:
         print(&#39;[vipy.dataset]: removing %d invalid elements&#39; % n)
-    objlist = [v for v in self._objlist if v is not None]  
+    objlist = [v for v in self if v is not None]  
     if relpath or nourl or sanitize or flush or noemail or (significant_digits is not None):
         assert self._isvipy(), &#34;Invalid input&#34;
     if relpath:
@@ -2474,12 +2702,12 @@ This dataset that is quivalent to vipy.dataset.Dataset('/path/to/outfile.json')<
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/cca43229d5a34248b0f1c6f49fd349ba9d094381/vipy/dataset.py#L714-L718" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/42a1d90428b25912fcbd3945dcaed29dd75b313f/vipy/dataset.py#L789-L793" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def sort(self, key):
     &#34;&#34;&#34;Sort the dataset in-place using the sortkey lambda function&#34;&#34;&#34;
     if key is not None:
-        self._objlist.sort(key=key)
+        self._objlist.sort(key=lambda x: key(self._loader(x)))
     return self</code></pre>
 </details>
 </dd>
@@ -2491,7 +2719,7 @@ This dataset that is quivalent to vipy.dataset.Dataset('/path/to/outfile.json')<
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/cca43229d5a34248b0f1c6f49fd349ba9d094381/vipy/dataset.py#L351-L376" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/42a1d90428b25912fcbd3945dcaed29dd75b313f/vipy/dataset.py#L404-L429" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def split(self, trainfraction=0.9, valfraction=0.1, testfraction=0, seed=42):
     &#34;&#34;&#34;Split the dataset by category by fraction so that video IDs are never in the same set&#34;&#34;&#34;
@@ -2529,7 +2757,7 @@ This dataset that is quivalent to vipy.dataset.Dataset('/path/to/outfile.json')<
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/cca43229d5a34248b0f1c6f49fd349ba9d094381/vipy/dataset.py#L345-L346" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/42a1d90428b25912fcbd3945dcaed29dd75b313f/vipy/dataset.py#L398-L399" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def take(self, n, category=None, canload=False):
     return Dataset(self.takelist(n, category=category, canload=canload))</code></pre>
@@ -2543,7 +2771,7 @@ This dataset that is quivalent to vipy.dataset.Dataset('/path/to/outfile.json')<
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/cca43229d5a34248b0f1c6f49fd349ba9d094381/vipy/dataset.py#L348-L349" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/42a1d90428b25912fcbd3945dcaed29dd75b313f/vipy/dataset.py#L401-L402" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def take_per_category(self, n, id=None, canload=False):
     return Dataset([v for c in self.categories() for v in self.takelist(n, category=c, canload=canload)], id=id)</code></pre>
@@ -2568,7 +2796,7 @@ This dataset that is quivalent to vipy.dataset.Dataset('/path/to/outfile.json')<
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/cca43229d5a34248b0f1c6f49fd349ba9d094381/vipy/dataset.py#L312-L325" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/42a1d90428b25912fcbd3945dcaed29dd75b313f/vipy/dataset.py#L362-L375" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def takefilter(self, f, n=1):
     &#34;&#34;&#34;Apply the lambda function f and return n elements in a list where the filter returns true
@@ -2582,7 +2810,7 @@ This dataset that is quivalent to vipy.dataset.Dataset('/path/to/outfile.json')<
         [n=1] Returns singleton element
         [n&gt;1] Returns list of elements of at most n such that each element f(x) is True            
     &#34;&#34;&#34;
-    objlist = [obj for obj in self._objlist if f(obj)]
+    objlist = [obj for obj in self if f(obj)]
     return [] if (len(objlist) == 0 or n == 0) else (objlist[0] if n==1 else objlist[0:n])</code></pre>
 </details>
 </dd>
@@ -2590,40 +2818,17 @@ This dataset that is quivalent to vipy.dataset.Dataset('/path/to/outfile.json')<
 <span>def <span class="ident">takelist</span></span>(<span>self, n, category=None, canload=False)</span>
 </code></dt>
 <dd>
-<div class="desc"></div>
+<div class="desc"><p>Take n elements of selected category and return list</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/cca43229d5a34248b0f1c6f49fd349ba9d094381/vipy/dataset.py#L333-L343" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/42a1d90428b25912fcbd3945dcaed29dd75b313f/vipy/dataset.py#L392-L396" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def takelist(self, n, category=None, canload=False):
+    &#34;&#34;&#34;Take n elements of selected category and return list&#34;&#34;&#34;
     assert n &gt;= 0, &#34;Invalid length&#34;
-
-    outlist = []
-    objlist = self._objlist if category is None else [v for v in self._objlist if v.category() == category]
-    for k in np.random.permutation(range(0, len(objlist))).tolist():
-        if not canload or objlist[k].isloadable():
-            outlist.append(objlist[k])  # without replacement
-        if len(outlist) == n:
-            break
-    return outlist</code></pre>
-</details>
-</dd>
-<dt id="vipy.dataset.Dataset.to_jsondir"><code class="name flex">
-<span>def <span class="ident">to_jsondir</span></span>(<span>self, outdir)</span>
-</code></dt>
-<dd>
-<div class="desc"></div>
-<details class="source">
-<summary>
-<span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/cca43229d5a34248b0f1c6f49fd349ba9d094381/vipy/dataset.py#L327-L331" class="git-link">Browse git</a>
-</summary>
-<pre><code class="python">def to_jsondir(self, outdir):
-    print(&#39;[vipy.dataset]: exporting %d json files to &#34;%s&#34;...&#39; % (len(self), outdir))
-    vipy.util.remkdir(outdir)  # to avoid race condition
-    Batch(vipy.util.chunklist([(k,v) for (k,v) in enumerate(self._objlist)], 64), as_completed=True, minscatter=1).map(lambda X: [vipy.util.save(x[1].clone(), os.path.join(outdir, &#39;%s_%d.json&#39; % (x[1].clone().videoid(), x[0]))) for x in X]).result()
-    return outdir</code></pre>
+    D = self if category is None else self.clone().filter(lambda v: v.category() == category())
+    return [D[int(k)] for k in np.random.permutation(range(len(D)))][0:n]  # native python int</code></pre>
 </details>
 </dd>
 <dt id="vipy.dataset.Dataset.to_torch"><code class="name flex">
@@ -2634,7 +2839,7 @@ This dataset that is quivalent to vipy.dataset.Dataset('/path/to/outfile.json')<
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/cca43229d5a34248b0f1c6f49fd349ba9d094381/vipy/dataset.py#L589-L592" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/42a1d90428b25912fcbd3945dcaed29dd75b313f/vipy/dataset.py#L665-L668" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def to_torch(self, f_video_to_tensor):
     &#34;&#34;&#34;Return a torch dataset that will apply the lambda function f_video_to_tensor to each element in the dataset on demand&#34;&#34;&#34;
@@ -2643,7 +2848,7 @@ This dataset that is quivalent to vipy.dataset.Dataset('/path/to/outfile.json')<
 </details>
 </dd>
 <dt id="vipy.dataset.Dataset.to_torch_tensordir"><code class="name flex">
-<span>def <span class="ident">to_torch_tensordir</span></span>(<span>self, f_video_to_tensor, outdir, n_augmentations=20, n_chunks=512)</span>
+<span>def <span class="ident">to_torch_tensordir</span></span>(<span>self, f_video_to_tensor, outdir, n_augmentations=20, sleep=3)</span>
 </code></dt>
 <dd>
 <div class="desc"><p>Return a TorchTensordir dataset that will load a pkl.bz2 file that contains one of n_augmentations (tensor, label) pairs.</p>
@@ -2651,19 +2856,18 @@ This dataset that is quivalent to vipy.dataset.Dataset('/path/to/outfile.json')<
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/cca43229d5a34248b0f1c6f49fd349ba9d094381/vipy/dataset.py#L594-L605" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/42a1d90428b25912fcbd3945dcaed29dd75b313f/vipy/dataset.py#L670-L680" class="git-link">Browse git</a>
 </summary>
-<pre><code class="python">def to_torch_tensordir(self, f_video_to_tensor, outdir, n_augmentations=20, n_chunks=512):
+<pre><code class="python">def to_torch_tensordir(self, f_video_to_tensor, outdir, n_augmentations=20, sleep=3):
     &#34;&#34;&#34;Return a TorchTensordir dataset that will load a pkl.bz2 file that contains one of n_augmentations (tensor, label) pairs.
     
     This is useful for fast loading of datasets that contain many videos.
 
     &#34;&#34;&#34;
     import vipy.torch
-    assert self.is_vipy_scene()
+    assert self._is_vipy_scene()
     outdir = vipy.util.remkdir(outdir)
-    B = vipy.util.chunklist(self._objlist, n_chunks)
-    vipy.batch.Batch(B, as_completed=True, minscatter=1).map(lambda V, f=f_video_to_tensor, outdir=outdir, n_augmentations=n_augmentations: [vipy.util.bz2pkl(os.path.join(outdir, &#39;%s.pkl.bz2&#39; % v.instanceid()), [f(v.clone()) for k in range(0, n_augmentations)]) for v in V])
+    vipy.batch.Batch(self.list(), as_completed=True).map(lambda v, f=f_video_to_tensor, outdir=outdir, n_augmentations=n_augmentations: vipy.util.bz2pkl(os.path.join(outdir, &#39;%s.pkl.bz2&#39; % v.instanceid()), [f(v.print(sleep=sleep).clone()) for k in range(0, n_augmentations)]))
     return vipy.torch.TorchTensordir(outdir)</code></pre>
 </details>
 </dd>
@@ -2675,7 +2879,7 @@ This dataset that is quivalent to vipy.dataset.Dataset('/path/to/outfile.json')<
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/cca43229d5a34248b0f1c6f49fd349ba9d094381/vipy/dataset.py#L378-L380" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/42a1d90428b25912fcbd3945dcaed29dd75b313f/vipy/dataset.py#L431-L433" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def tocsv(self, csvfile=None):
     csv = [v.csv() for v in self.list]        
@@ -2690,7 +2894,7 @@ This dataset that is quivalent to vipy.dataset.Dataset('/path/to/outfile.json')<
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/cca43229d5a34248b0f1c6f49fd349ba9d094381/vipy/dataset.py#L612-L631" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/42a1d90428b25912fcbd3945dcaed29dd75b313f/vipy/dataset.py#L687-L706" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def tohtml(self, outfile, mindim=512, title=&#39;Visualization&#39;, fraction=1.0, display=False, clip=True, activities=True, category=True):
     &#34;&#34;&#34;Generate a standalone HTML file containing quicklooks for each annotated activity in dataset, along with some helpful provenance information for where the annotation came from&#34;&#34;&#34;
@@ -2703,7 +2907,7 @@ This dataset that is quivalent to vipy.dataset.Dataset('/path/to/outfile.json')<
 
     dataset = self.list()
     assert all([isinstance(v, vipy.video.Video) for v in dataset])
-    dataset = [dataset[k] for k in np.random.permutation(range(len(dataset)))[0:int(len(dataset)*fraction)]]
+    dataset = [dataset[int(k)] for k in np.random.permutation(range(len(dataset)))[0:int(len(dataset)*fraction)]]
     #dataset = [v for v in dataset if all([len(a) &lt; 15*v.framerate() for a in v.activitylist()])]  # remove extremely long videos
 
     quicklist = vipy.batch.Batch(dataset, strict=False, as_completed=True, minscatter=1).map(lambda v: (v.load().quicklook(), v.flush().print())).result()
@@ -2714,6 +2918,21 @@ This dataset that is quivalent to vipy.dataset.Dataset('/path/to/outfile.json')<
     return vipy.visualize.tohtml(quicklooks, provenance, title=&#39;%s&#39; % title, outfile=outfile, mindim=mindim, display=display)</code></pre>
 </details>
 </dd>
+<dt id="vipy.dataset.Dataset.tojsondir"><code class="name flex">
+<span>def <span class="ident">tojsondir</span></span>(<span>self, outdir, rekey=False, verbose=True)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Alias for jsondir</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+<a href="https://github.com/visym/vipy/blob/42a1d90428b25912fcbd3945dcaed29dd75b313f/vipy/dataset.py#L388-L390" class="git-link">Browse git</a>
+</summary>
+<pre><code class="python">def tojsondir(self, outdir, rekey=False, verbose=True):
+    &#34;&#34;&#34;Alias for jsondir&#34;&#34;&#34;
+    return self.jsondir(outdir, verbose=verbose, rekey=rekey)</code></pre>
+</details>
+</dd>
 <dt id="vipy.dataset.Dataset.tolist"><code class="name flex">
 <span>def <span class="ident">tolist</span></span>(<span>self)</span>
 </code></dt>
@@ -2722,11 +2941,11 @@ This dataset that is quivalent to vipy.dataset.Dataset('/path/to/outfile.json')<
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/cca43229d5a34248b0f1c6f49fd349ba9d094381/vipy/dataset.py#L78-L80" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/42a1d90428b25912fcbd3945dcaed29dd75b313f/vipy/dataset.py#L106-L108" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def tolist(self):
     &#34;&#34;&#34;Alias for self.list()&#34;&#34;&#34;
-    return self._objlist</code></pre>
+    return list(self)</code></pre>
 </details>
 </dd>
 <dt id="vipy.dataset.Dataset.union"><code class="name flex">
@@ -2737,11 +2956,18 @@ This dataset that is quivalent to vipy.dataset.Dataset('/path/to/outfile.json')<
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/cca43229d5a34248b0f1c6f49fd349ba9d094381/vipy/dataset.py#L269-L272" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/42a1d90428b25912fcbd3945dcaed29dd75b313f/vipy/dataset.py#L307-L317" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def union(self, other, key=None):
     assert isinstance(other, Dataset), &#34;invalid input&#34;
-    self._objlist = self._objlist + other._objlist
+    if len(other) &gt; 0:
+        try:
+            other._loader(self._objlist[0])
+            self._loader(other._objlist[0])
+            self._objlist = self._objlist + other._objlist  # compatible loaders
+        except:
+            self._objlist = self.list() + other.list()  # incompatible loaders
+            self._loader = lambda x: x
     return self.dedupe(key) if key is not None else self</code></pre>
 </details>
 </dd>
@@ -2753,7 +2979,7 @@ This dataset that is quivalent to vipy.dataset.Dataset('/path/to/outfile.json')<
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/cca43229d5a34248b0f1c6f49fd349ba9d094381/vipy/dataset.py#L309-L310" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/42a1d90428b25912fcbd3945dcaed29dd75b313f/vipy/dataset.py#L359-L360" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def valid(self):
     return self.filter(lambda v: v is not None)</code></pre>
@@ -2793,8 +3019,6 @@ May be a list of more than one categories</dd>
 <dd>[float] If not None, then set a maximum duration in seconds for elements in the video.
 If None, then the max duration is the duration of the longest element.</dd>
 </dl>
-<h2 id="returns">Returns</h2>
-<p>A clone of the dataset containing the selected videos for the montage, ordered rowwise in the montage</p>
 <div class="admonition notes">
 <p class="admonition-title">Notes</p>
 <ul>
@@ -2805,7 +3029,7 @@ If None, then the max duration is the duration of the longest element.</dd>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/cca43229d5a34248b0f1c6f49fd349ba9d094381/vipy/dataset.py#L634-L690" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/42a1d90428b25912fcbd3945dcaed29dd75b313f/vipy/dataset.py#L709-L765" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def video_montage(self, outfile, gridrows, gridcols, mindim=64, bycategory=False, category=None, annotate=True, trackcrop=False, transpose=False, max_duration=None, framerate=30, fontsize=8):
     &#34;&#34;&#34;30x50 activity montage, each 64x64 elements.
@@ -2890,7 +3114,7 @@ Equivalent to zip(self, other).</p>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/cca43229d5a34248b0f1c6f49fd349ba9d094381/vipy/dataset.py#L692-L712" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/42a1d90428b25912fcbd3945dcaed29dd75b313f/vipy/dataset.py#L767-L787" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def zip(self, other, sortkey=None):
     &#34;&#34;&#34;Zip two datasets.  Equivalent to zip(self, other).
@@ -3016,6 +3240,7 @@ setTimeout(() => input.focus(), 100);
 <li><code><a title="vipy.dataset.Dataset.index_to_class" href="#vipy.dataset.Dataset.index_to_class">index_to_class</a></code></li>
 <li><code><a title="vipy.dataset.Dataset.inverse_frequency_weight" href="#vipy.dataset.Dataset.inverse_frequency_weight">inverse_frequency_weight</a></code></li>
 <li><code><a title="vipy.dataset.Dataset.istype" href="#vipy.dataset.Dataset.istype">istype</a></code></li>
+<li><code><a title="vipy.dataset.Dataset.jsondir" href="#vipy.dataset.Dataset.jsondir">jsondir</a></code></li>
 <li><code><a title="vipy.dataset.Dataset.label_to_index" href="#vipy.dataset.Dataset.label_to_index">label_to_index</a></code></li>
 <li><code><a title="vipy.dataset.Dataset.list" href="#vipy.dataset.Dataset.list">list</a></code></li>
 <li><code><a title="vipy.dataset.Dataset.localmap" href="#vipy.dataset.Dataset.localmap">localmap</a></code></li>
@@ -3036,11 +3261,11 @@ setTimeout(() => input.focus(), 100);
 <li><code><a title="vipy.dataset.Dataset.take_per_category" href="#vipy.dataset.Dataset.take_per_category">take_per_category</a></code></li>
 <li><code><a title="vipy.dataset.Dataset.takefilter" href="#vipy.dataset.Dataset.takefilter">takefilter</a></code></li>
 <li><code><a title="vipy.dataset.Dataset.takelist" href="#vipy.dataset.Dataset.takelist">takelist</a></code></li>
-<li><code><a title="vipy.dataset.Dataset.to_jsondir" href="#vipy.dataset.Dataset.to_jsondir">to_jsondir</a></code></li>
 <li><code><a title="vipy.dataset.Dataset.to_torch" href="#vipy.dataset.Dataset.to_torch">to_torch</a></code></li>
 <li><code><a title="vipy.dataset.Dataset.to_torch_tensordir" href="#vipy.dataset.Dataset.to_torch_tensordir">to_torch_tensordir</a></code></li>
 <li><code><a title="vipy.dataset.Dataset.tocsv" href="#vipy.dataset.Dataset.tocsv">tocsv</a></code></li>
 <li><code><a title="vipy.dataset.Dataset.tohtml" href="#vipy.dataset.Dataset.tohtml">tohtml</a></code></li>
+<li><code><a title="vipy.dataset.Dataset.tojsondir" href="#vipy.dataset.Dataset.tojsondir">tojsondir</a></code></li>
 <li><code><a title="vipy.dataset.Dataset.tolist" href="#vipy.dataset.Dataset.tolist">tolist</a></code></li>
 <li><code><a title="vipy.dataset.Dataset.union" href="#vipy.dataset.Dataset.union">union</a></code></li>
 <li><code><a title="vipy.dataset.Dataset.valid" href="#vipy.dataset.Dataset.valid">valid</a></code></li>

@@ -25,12 +25,19 @@
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/cca43229d5a34248b0f1c6f49fd349ba9d094381/vipy/torch.py#L0-L183" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/42a1d90428b25912fcbd3945dcaed29dd75b313f/vipy/torch.py#L0-L198" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">import vipy
 import numpy as np
 import copy
+import os
+import random
+import dill
+import time
+import json
 
+
+import vipy.util
 from vipy.util import try_import
 try_import(&#39;torch&#39;);
 
@@ -149,7 +156,8 @@ class Foveation(LaplacianPyramid):
 class TorchDataset(torch.utils.data.Dataset):
     &#34;&#34;&#34;Converter from a pycollector dataset to a torch dataset&#34;&#34;&#34;
     def __init__(self, f_transformer, d):
-        assert isinstance(d, Dataset), &#34;Invalid input&#34;
+        import vipy.dataset
+        assert isinstance(d, vipy.dataset.Dataset), &#34;Invalid input&#34;
         assert callable(f_transformer), &#34;Invalid input&#34;
         self._f_transformer = dill.dumps(f_transformer)  # for torch serialization of lambda functions        
         self.dataset = d
@@ -165,9 +173,7 @@ class TorchDataset(torch.utils.data.Dataset):
             
     def __getitem__(self, k):
         &#34;&#34;&#34;Should return tuple(tensor, index)&#34;&#34;&#34;
-        x = self._unpack()._f_transformer(self.dataset[k])
-        assert isinstance(x, tuple) and len(x) == 2 and isinstance(x[0], torch.Tensor) and isinstance(x[1], int)
-        return x
+        return self._unpack()._f_transformer(self.dataset[k])
 
     def __len__(self):
         return len(self.dataset)
@@ -178,11 +184,16 @@ class TorchTensordir(torch.utils.data.Dataset):
     
        This is useful to use the default Dataset loaders in Torch.
     
-    .. note:: Use python random() and not numpy random 
+       Usage:
+        
+       &gt;&gt;&gt; vipy.torch.Tensordir(&#39;/path/to&#39;)
+       &gt;&gt;&gt; vipy.torch.Tensordir( (&#39;/path/to/1&#39;, &#39;/path/to/2&#39;) )
+           
+    .. note:: This requires python random() and not numpy random 
     &#34;&#34;&#34;
-    def __init__(self, tensordir, verbose=True, reseed=True):
-        assert os.path.isdir(tensordir)
-        self._dirlist = [s for s in vipy.util.extlist(tensordir, &#39;.pkl.bz2&#39;)]
+    def __init__(self, tensordir, verbose=True, reseed=True, take=None):
+        assert (isinstance(tensordir, str) and os.path.isdir(tensordir)) or all([os.path.isdir(d) for d in tensordir])
+        self._dirlist = [s for d in vipy.util.tolist(tensordir) for s in vipy.util.extlist(d, &#39;.pkl.bz2&#39;)]
         self._verbose = verbose
         self._reseed = reseed
 
@@ -207,6 +218,10 @@ class TorchTensordir(torch.utils.data.Dataset):
     def __len__(self):
         return len(self._dirlist)
 
+    def take(self, n):
+        self._dirlist = [self._dirlist[k] for k in np.random.permutation(range(len(self._dirlist)))[0:n]]
+        return self
+
     def filter(self, f):
         self._dirlist = [x for x in self._dirlist if f(x)]
         return self
@@ -228,7 +243,7 @@ class TorchTensordir(torch.utils.data.Dataset):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/cca43229d5a34248b0f1c6f49fd349ba9d094381/vipy/torch.py#L13-L21" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/42a1d90428b25912fcbd3945dcaed29dd75b313f/vipy/torch.py#L20-L28" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def fromtorch(x):
     &#34;&#34;&#34;Convert a 1xCxHxW torch.FloatTensor to HxWxC np.float32 numpy array(), returns new Image() instance with an inferred colorspace based on channels and datatype&#34;&#34;&#34;
@@ -255,7 +270,7 @@ class TorchTensordir(torch.utils.data.Dataset):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/cca43229d5a34248b0f1c6f49fd349ba9d094381/vipy/torch.py#L85-L116" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/42a1d90428b25912fcbd3945dcaed29dd75b313f/vipy/torch.py#L92-L123" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">class Foveation(LaplacianPyramid):
     def __init__(self, im, s=0.125, mode=&#39;log-circle&#39;):
@@ -304,7 +319,7 @@ class TorchTensordir(torch.utils.data.Dataset):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/cca43229d5a34248b0f1c6f49fd349ba9d094381/vipy/torch.py#L115-L116" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/42a1d90428b25912fcbd3945dcaed29dd75b313f/vipy/torch.py#L122-L123" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def foveate(self, tx=0, ty=0, sx=1.0, sy=1.0):
     return self.__call__(tx=tx, ty=ty, sx=sx, sy=sy)</code></pre>
@@ -321,7 +336,7 @@ class TorchTensordir(torch.utils.data.Dataset):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/cca43229d5a34248b0f1c6f49fd349ba9d094381/vipy/torch.py#L24-L46" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/42a1d90428b25912fcbd3945dcaed29dd75b313f/vipy/torch.py#L31-L53" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">class GaussianPyramid(object):
     def __init__(self, im=None, tensor=None):
@@ -357,7 +372,7 @@ class TorchTensordir(torch.utils.data.Dataset):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/cca43229d5a34248b0f1c6f49fd349ba9d094381/vipy/torch.py#L49-L82" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/42a1d90428b25912fcbd3945dcaed29dd75b313f/vipy/torch.py#L56-L89" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">class LaplacianPyramid(object):
     def __init__(self, im):
@@ -408,7 +423,7 @@ class TorchTensordir(torch.utils.data.Dataset):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/cca43229d5a34248b0f1c6f49fd349ba9d094381/vipy/torch.py#L74-L82" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/42a1d90428b25912fcbd3945dcaed29dd75b313f/vipy/torch.py#L81-L89" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def reconstruct(self):
     x = self._band[-1]
@@ -432,12 +447,13 @@ class TorchTensordir(torch.utils.data.Dataset):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/cca43229d5a34248b0f1c6f49fd349ba9d094381/vipy/torch.py#L120-L144" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/42a1d90428b25912fcbd3945dcaed29dd75b313f/vipy/torch.py#L127-L150" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">class TorchDataset(torch.utils.data.Dataset):
     &#34;&#34;&#34;Converter from a pycollector dataset to a torch dataset&#34;&#34;&#34;
     def __init__(self, f_transformer, d):
-        assert isinstance(d, Dataset), &#34;Invalid input&#34;
+        import vipy.dataset
+        assert isinstance(d, vipy.dataset.Dataset), &#34;Invalid input&#34;
         assert callable(f_transformer), &#34;Invalid input&#34;
         self._f_transformer = dill.dumps(f_transformer)  # for torch serialization of lambda functions        
         self.dataset = d
@@ -453,9 +469,7 @@ class TorchTensordir(torch.utils.data.Dataset):
             
     def __getitem__(self, k):
         &#34;&#34;&#34;Should return tuple(tensor, index)&#34;&#34;&#34;
-        x = self._unpack()._f_transformer(self.dataset[k])
-        assert isinstance(x, tuple) and len(x) == 2 and isinstance(x[0], torch.Tensor) and isinstance(x[1], int)
-        return x
+        return self._unpack()._f_transformer(self.dataset[k])
 
     def __len__(self):
         return len(self.dataset)</code></pre>
@@ -468,29 +482,43 @@ class TorchTensordir(torch.utils.data.Dataset):
 </dd>
 <dt id="vipy.torch.TorchTensordir"><code class="flex name class">
 <span>class <span class="ident">TorchTensordir</span></span>
-<span>(</span><span>tensordir, verbose=True, reseed=True)</span>
+<span>(</span><span>tensordir, verbose=True, reseed=True, take=None)</span>
 </code></dt>
 <dd>
 <div class="desc"><p>A torch dataset stored as a directory of .pkl.bz2 files each containing a list of [(tensor, str=json.dumps(label)), &hellip;] tuples used for data augmented training.</p>
 <p>This is useful to use the default Dataset loaders in Torch.</p>
+<p>Usage:</p>
+<blockquote>
+<blockquote>
+<blockquote>
+<p>vipy.torch.Tensordir('/path/to')
+vipy.torch.Tensordir( ('/path/to/1', '/path/to/2') )</p>
+</blockquote>
+</blockquote>
+</blockquote>
 <div class="admonition note">
-<p class="admonition-title">Note:&ensp;Use python random() and not numpy random</p>
+<p class="admonition-title">Note:&ensp;This requires python random() and not numpy random</p>
 </div></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/cca43229d5a34248b0f1c6f49fd349ba9d094381/vipy/torch.py#L147-L183" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/42a1d90428b25912fcbd3945dcaed29dd75b313f/vipy/torch.py#L153-L198" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">class TorchTensordir(torch.utils.data.Dataset):
     &#34;&#34;&#34;A torch dataset stored as a directory of .pkl.bz2 files each containing a list of [(tensor, str=json.dumps(label)), ...] tuples used for data augmented training.
     
        This is useful to use the default Dataset loaders in Torch.
     
-    .. note:: Use python random() and not numpy random 
+       Usage:
+        
+       &gt;&gt;&gt; vipy.torch.Tensordir(&#39;/path/to&#39;)
+       &gt;&gt;&gt; vipy.torch.Tensordir( (&#39;/path/to/1&#39;, &#39;/path/to/2&#39;) )
+           
+    .. note:: This requires python random() and not numpy random 
     &#34;&#34;&#34;
-    def __init__(self, tensordir, verbose=True, reseed=True):
-        assert os.path.isdir(tensordir)
-        self._dirlist = [s for s in vipy.util.extlist(tensordir, &#39;.pkl.bz2&#39;)]
+    def __init__(self, tensordir, verbose=True, reseed=True, take=None):
+        assert (isinstance(tensordir, str) and os.path.isdir(tensordir)) or all([os.path.isdir(d) for d in tensordir])
+        self._dirlist = [s for d in vipy.util.tolist(tensordir) for s in vipy.util.extlist(d, &#39;.pkl.bz2&#39;)]
         self._verbose = verbose
         self._reseed = reseed
 
@@ -515,6 +543,10 @@ class TorchTensordir(torch.utils.data.Dataset):
     def __len__(self):
         return len(self._dirlist)
 
+    def take(self, n):
+        self._dirlist = [self._dirlist[k] for k in np.random.permutation(range(len(self._dirlist)))[0:n]]
+        return self
+
     def filter(self, f):
         self._dirlist = [x for x in self._dirlist if f(x)]
         return self</code></pre>
@@ -534,10 +566,25 @@ class TorchTensordir(torch.utils.data.Dataset):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/cca43229d5a34248b0f1c6f49fd349ba9d094381/vipy/torch.py#L181-L183" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/42a1d90428b25912fcbd3945dcaed29dd75b313f/vipy/torch.py#L196-L198" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def filter(self, f):
     self._dirlist = [x for x in self._dirlist if f(x)]
+    return self</code></pre>
+</details>
+</dd>
+<dt id="vipy.torch.TorchTensordir.take"><code class="name flex">
+<span>def <span class="ident">take</span></span>(<span>self, n)</span>
+</code></dt>
+<dd>
+<div class="desc"></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+<a href="https://github.com/visym/vipy/blob/42a1d90428b25912fcbd3945dcaed29dd75b313f/vipy/torch.py#L192-L194" class="git-link">Browse git</a>
+</summary>
+<pre><code class="python">def take(self, n):
+    self._dirlist = [self._dirlist[k] for k in np.random.permutation(range(len(self._dirlist)))[0:n]]
     return self</code></pre>
 </details>
 </dd>
@@ -637,6 +684,7 @@ setTimeout(() => input.focus(), 100);
 <h4><code><a title="vipy.torch.TorchTensordir" href="#vipy.torch.TorchTensordir">TorchTensordir</a></code></h4>
 <ul class="">
 <li><code><a title="vipy.torch.TorchTensordir.filter" href="#vipy.torch.TorchTensordir.filter">filter</a></code></li>
+<li><code><a title="vipy.torch.TorchTensordir.take" href="#vipy.torch.TorchTensordir.take">take</a></code></li>
 </ul>
 </li>
 </ul>

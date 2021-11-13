@@ -25,7 +25,7 @@
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/cca43229d5a34248b0f1c6f49fd349ba9d094381/vipy/show.py#L0-L89" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/42a1d90428b25912fcbd3945dcaed29dd75b313f/vipy/show.py#L0-L89" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">import dill  # first import (do we still need this?)
 import os
@@ -84,14 +84,14 @@ def imbbox(img, xmin, ymin, xmax, ymax, bboxcaption=None, fignum=None, nowindow=
     return h
 
 
-def imdetection(img, detlist, fignum=None, bboxcolor=&#39;green&#39;, facecolor=&#39;white&#39;, facealpha=0.5, do_caption=True, fontsize=10, textcolor=&#39;green&#39;, textfacecolor=&#39;white&#39;, textfacealpha=1.0, captionoffset=(0,0), nowindow=False, timestamp=None, timestampcolor=&#39;black&#39;, timestampfacecolor=None):
+def imdetection(img, detlist, fignum=None, bboxcolor=&#39;green&#39;, facecolor=&#39;white&#39;, facealpha=0.5, do_caption=True, fontsize=10, textcolor=&#39;green&#39;, textfacecolor=&#39;white&#39;, textfacealpha=1.0, captionoffset=(0,0), nowindow=False, timestamp=None, timestampcolor=&#39;black&#39;, timestampfacecolor=None, timestampoffset=(0,0)):
     &#34;&#34;&#34;Show a list of vipy.object.Detections overlayed on img.  Image must be RGB&#34;&#34;&#34;
 
     if nowindow:
         noshow(fignum)
     h = BACKEND.imdetection(img, detlist, fignum=fignum, bboxcolor=bboxcolor, do_caption=do_caption, facecolor=facecolor, facealpha=facealpha, fontsize=fontsize, textcolor=textcolor, captionoffset=captionoffset, textfacecolor=textfacecolor, textfacealpha=textfacealpha)
     if timestamp is not None:
-        text(str(timestamp), 6, 17, fontsize=fontsize, textfacealpha=0.6, facealpha=0.6, alpha=0.8 if timestampfacecolor is not None else 1.0, textcolor=timestampcolor, textfacecolor=timestampfacecolor)       
+        text(str(timestamp), 10+timestampoffset[0], 21+timestampoffset[1], fontsize=fontsize, textfacealpha=0.6, facealpha=0.6, alpha=0.8 if timestampfacecolor is not None else 1.0, textcolor=timestampcolor, textfacecolor=timestampfacecolor, pad=0.75)       
     if not nowindow:
         show(fignum)
         BACKEND.flush() if len(detlist)&gt;0 else BACKEND.imflush()               
@@ -114,8 +114,8 @@ def colorlist():
     return BACKEND.colorlist()
 
 
-def text(caption, xmin, ymin, fignum=None, textcolor=&#39;black&#39;, textfacecolor=None, textfacealpha=1.0, fontsize=10, linewidth=3, facecolor=&#39;white&#39;, facealpha=0.5, alpha=1.0):
-    return BACKEND.text(caption, xmin, ymin, fignum, textcolor, textfacecolor, textfacealpha, fontsize, linewidth, facecolor, facealpha, alpha)
+def text(caption, xmin, ymin, fignum=None, textcolor=&#39;black&#39;, textfacecolor=None, textfacealpha=1.0, fontsize=10, linewidth=3, facecolor=&#39;white&#39;, facealpha=0.5, alpha=1.0, pad=0.5):
+    return BACKEND.text(caption, xmin, ymin, fignum, textcolor, textfacecolor, textfacealpha, fontsize, linewidth, facecolor, facealpha, alpha, pad=pad)
     </code></pre>
 </details>
 </section>
@@ -134,7 +134,7 @@ def text(caption, xmin, ymin, fignum=None, textcolor=&#39;black&#39;, textfaceco
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/cca43229d5a34248b0f1c6f49fd349ba9d094381/vipy/show.py#L17-L18" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/42a1d90428b25912fcbd3945dcaed29dd75b313f/vipy/show.py#L17-L18" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def close(fignum=None):
     return BACKEND.close(fignum)</code></pre>
@@ -148,7 +148,7 @@ def text(caption, xmin, ymin, fignum=None, textcolor=&#39;black&#39;, textfaceco
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/cca43229d5a34248b0f1c6f49fd349ba9d094381/vipy/show.py#L21-L22" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/42a1d90428b25912fcbd3945dcaed29dd75b313f/vipy/show.py#L21-L22" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def closeall():
     return BACKEND.closeall()</code></pre>
@@ -162,7 +162,7 @@ def text(caption, xmin, ymin, fignum=None, textcolor=&#39;black&#39;, textfaceco
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/cca43229d5a34248b0f1c6f49fd349ba9d094381/vipy/show.py#L84-L85" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/42a1d90428b25912fcbd3945dcaed29dd75b313f/vipy/show.py#L84-L85" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def colorlist():
     return BACKEND.colorlist()</code></pre>
@@ -176,7 +176,7 @@ def text(caption, xmin, ymin, fignum=None, textcolor=&#39;black&#39;, textfaceco
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/cca43229d5a34248b0f1c6f49fd349ba9d094381/vipy/show.py#L13-L14" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/42a1d90428b25912fcbd3945dcaed29dd75b313f/vipy/show.py#L13-L14" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def figure(fignum=None):
     return BACKEND.figure(fignum)</code></pre>
@@ -190,7 +190,7 @@ def text(caption, xmin, ymin, fignum=None, textcolor=&#39;black&#39;, textfaceco
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/cca43229d5a34248b0f1c6f49fd349ba9d094381/vipy/show.py#L72-L73" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/42a1d90428b25912fcbd3945dcaed29dd75b313f/vipy/show.py#L72-L73" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def frame(fmr, im=None, color=&#39;b.&#39;, caption=False, markersize=10, fignum=1):
     return BACKEND.frame(fr, im=im, color=color, caption=caption, markersize=markersize, fignum=fignum)</code></pre>
@@ -204,7 +204,7 @@ def text(caption, xmin, ymin, fignum=None, textcolor=&#39;black&#39;, textfaceco
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/cca43229d5a34248b0f1c6f49fd349ba9d094381/vipy/show.py#L47-L55" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/42a1d90428b25912fcbd3945dcaed29dd75b313f/vipy/show.py#L47-L55" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def imbbox(img, xmin, ymin, xmax, ymax, bboxcaption=None, fignum=None, nowindow=False):
     if nowindow:
@@ -218,7 +218,7 @@ def text(caption, xmin, ymin, fignum=None, textcolor=&#39;black&#39;, textfaceco
 </details>
 </dd>
 <dt id="vipy.show.imdetection"><code class="name flex">
-<span>def <span class="ident">imdetection</span></span>(<span>img, detlist, fignum=None, bboxcolor='green', facecolor='white', facealpha=0.5, do_caption=True, fontsize=10, textcolor='green', textfacecolor='white', textfacealpha=1.0, captionoffset=(0, 0), nowindow=False, timestamp=None, timestampcolor='black', timestampfacecolor=None)</span>
+<span>def <span class="ident">imdetection</span></span>(<span>img, detlist, fignum=None, bboxcolor='green', facecolor='white', facealpha=0.5, do_caption=True, fontsize=10, textcolor='green', textfacecolor='white', textfacealpha=1.0, captionoffset=(0, 0), nowindow=False, timestamp=None, timestampcolor='black', timestampfacecolor=None, timestampoffset=(0, 0))</span>
 </code></dt>
 <dd>
 <div class="desc"><p>Show a list of vipy.object.Detections overlayed on img.
@@ -226,16 +226,16 @@ Image must be RGB</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/cca43229d5a34248b0f1c6f49fd349ba9d094381/vipy/show.py#L58-L69" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/42a1d90428b25912fcbd3945dcaed29dd75b313f/vipy/show.py#L58-L69" class="git-link">Browse git</a>
 </summary>
-<pre><code class="python">def imdetection(img, detlist, fignum=None, bboxcolor=&#39;green&#39;, facecolor=&#39;white&#39;, facealpha=0.5, do_caption=True, fontsize=10, textcolor=&#39;green&#39;, textfacecolor=&#39;white&#39;, textfacealpha=1.0, captionoffset=(0,0), nowindow=False, timestamp=None, timestampcolor=&#39;black&#39;, timestampfacecolor=None):
+<pre><code class="python">def imdetection(img, detlist, fignum=None, bboxcolor=&#39;green&#39;, facecolor=&#39;white&#39;, facealpha=0.5, do_caption=True, fontsize=10, textcolor=&#39;green&#39;, textfacecolor=&#39;white&#39;, textfacealpha=1.0, captionoffset=(0,0), nowindow=False, timestamp=None, timestampcolor=&#39;black&#39;, timestampfacecolor=None, timestampoffset=(0,0)):
     &#34;&#34;&#34;Show a list of vipy.object.Detections overlayed on img.  Image must be RGB&#34;&#34;&#34;
 
     if nowindow:
         noshow(fignum)
     h = BACKEND.imdetection(img, detlist, fignum=fignum, bboxcolor=bboxcolor, do_caption=do_caption, facecolor=facecolor, facealpha=facealpha, fontsize=fontsize, textcolor=textcolor, captionoffset=captionoffset, textfacecolor=textfacecolor, textfacealpha=textfacealpha)
     if timestamp is not None:
-        text(str(timestamp), 6, 17, fontsize=fontsize, textfacealpha=0.6, facealpha=0.6, alpha=0.8 if timestampfacecolor is not None else 1.0, textcolor=timestampcolor, textfacecolor=timestampfacecolor)       
+        text(str(timestamp), 10+timestampoffset[0], 21+timestampoffset[1], fontsize=fontsize, textfacealpha=0.6, facealpha=0.6, alpha=0.8 if timestampfacecolor is not None else 1.0, textcolor=timestampcolor, textfacecolor=timestampfacecolor, pad=0.75)       
     if not nowindow:
         show(fignum)
         BACKEND.flush() if len(detlist)&gt;0 else BACKEND.imflush()               
@@ -250,7 +250,7 @@ Image must be RGB</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/cca43229d5a34248b0f1c6f49fd349ba9d094381/vipy/show.py#L76-L77" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/42a1d90428b25912fcbd3945dcaed29dd75b313f/vipy/show.py#L76-L77" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def imframe(img, fr, color=&#39;b&#39;, markersize=20, label=None, fignum=None):
     return BACKEND.imframe(img=img, fr=fr, color=color, markersize=markersize, label=label, fignum=fignum)</code></pre>
@@ -264,7 +264,7 @@ Image must be RGB</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/cca43229d5a34248b0f1c6f49fd349ba9d094381/vipy/show.py#L33-L44" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/42a1d90428b25912fcbd3945dcaed29dd75b313f/vipy/show.py#L33-L44" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def imshow(im, fignum=None, nowindow=False, timestamp=None, timestampcolor=&#39;black&#39;, timestampfacecolor=None, flush=False):
     &#34;&#34;&#34;Show an image in the provided figure number&#34;&#34;&#34;
@@ -288,7 +288,7 @@ Image must be RGB</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/cca43229d5a34248b0f1c6f49fd349ba9d094381/vipy/show.py#L29-L30" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/42a1d90428b25912fcbd3945dcaed29dd75b313f/vipy/show.py#L29-L30" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def noshow(fignum):
     return BACKEND.noshow(fignum)</code></pre>
@@ -302,7 +302,7 @@ Image must be RGB</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/cca43229d5a34248b0f1c6f49fd349ba9d094381/vipy/show.py#L80-L81" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/42a1d90428b25912fcbd3945dcaed29dd75b313f/vipy/show.py#L80-L81" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def savefig(filename=None, fignum=None, pad_inches=0, bbox_inches=&#39;tight&#39;, dpi=None, format=None):
     return BACKEND.savefig(filename, fignum, pad_inches=pad_inches, dpi=dpi, bbox_inches=bbox_inches, format=format)</code></pre>
@@ -316,24 +316,24 @@ Image must be RGB</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/cca43229d5a34248b0f1c6f49fd349ba9d094381/vipy/show.py#L25-L26" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/42a1d90428b25912fcbd3945dcaed29dd75b313f/vipy/show.py#L25-L26" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def show(fignum):
     return BACKEND.show(fignum)</code></pre>
 </details>
 </dd>
 <dt id="vipy.show.text"><code class="name flex">
-<span>def <span class="ident">text</span></span>(<span>caption, xmin, ymin, fignum=None, textcolor='black', textfacecolor=None, textfacealpha=1.0, fontsize=10, linewidth=3, facecolor='white', facealpha=0.5, alpha=1.0)</span>
+<span>def <span class="ident">text</span></span>(<span>caption, xmin, ymin, fignum=None, textcolor='black', textfacecolor=None, textfacealpha=1.0, fontsize=10, linewidth=3, facecolor='white', facealpha=0.5, alpha=1.0, pad=0.5)</span>
 </code></dt>
 <dd>
 <div class="desc"></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/cca43229d5a34248b0f1c6f49fd349ba9d094381/vipy/show.py#L88-L89" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/42a1d90428b25912fcbd3945dcaed29dd75b313f/vipy/show.py#L88-L89" class="git-link">Browse git</a>
 </summary>
-<pre><code class="python">def text(caption, xmin, ymin, fignum=None, textcolor=&#39;black&#39;, textfacecolor=None, textfacealpha=1.0, fontsize=10, linewidth=3, facecolor=&#39;white&#39;, facealpha=0.5, alpha=1.0):
-    return BACKEND.text(caption, xmin, ymin, fignum, textcolor, textfacecolor, textfacealpha, fontsize, linewidth, facecolor, facealpha, alpha)</code></pre>
+<pre><code class="python">def text(caption, xmin, ymin, fignum=None, textcolor=&#39;black&#39;, textfacecolor=None, textfacealpha=1.0, fontsize=10, linewidth=3, facecolor=&#39;white&#39;, facealpha=0.5, alpha=1.0, pad=0.5):
+    return BACKEND.text(caption, xmin, ymin, fignum, textcolor, textfacecolor, textfacealpha, fontsize, linewidth, facecolor, facealpha, alpha, pad=pad)</code></pre>
 </details>
 </dd>
 </dl>
