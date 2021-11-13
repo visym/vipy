@@ -243,15 +243,15 @@ class Stream(object):
                 # -The stream buffer is filled by the primary iterator, so that index 0 is the oldest frame and index n is the newest frame
                 # -The secondary iterators sleep in order to release the GIL before searching the frame buffer for the next frame to yield.
                 # -This is a bit ugly, but is a compromise to preserve pickleability of the stream buffer.                
-                k = 0  
+                k = min([int(f) for (f,img) in self._video.attributes['__stream_buffer']]) if ('__stream_buffer' in self._video.attributes and len(self._video.attributes['__stream_buffer'])>0) else 0  # fast-forward
                 while '__stream_buffer' in self._video.attributes and len(self._video.attributes['__stream_buffer']) > 0:
                     for (f, img) in self._video.attributes['__stream_buffer']:                        
                         if f == k and img is not None:
                             yield self._video.frame(f, img)  # yield a vipy.image.Scene object with annotations at frame f, using the latest annotations from the shared video object
                             k += 1
                             break
-                        elif f ==k and img is None:
-                            return                        
+                        elif f == k and img is None:
+                            return
                     time.sleep(0.01)  # release GIL, yuck ... 
             else:
                 raise  # should never get here    
