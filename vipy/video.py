@@ -109,9 +109,10 @@ class Stream(object):
         self._queuesize = queuesize
         self._bufsize = int(buflen*v.framerate())
         self._buffered = buffered
-        self._rebuffered = rebuffered
-        self._bufowner = False                            
+        self._is_stream_buffer_owner = False                            
         assert self._bufsize >= 1
+        if rebuffered:
+            self._video.attributes.pop("__stream_buffer", None)  # force reinitialization
         
     def __enter__(self):
         """Write pipe context manager"""
@@ -177,94 +178,87 @@ class Stream(object):
                 for k in range(len(self._video)): 
                     yield self._video[k]
 
-            elif not self._buffered or self._rebuffered or (self._buffered and not self._video.hasattribute('__stream_buffer')):
+            else:
                 # First stream iterator: read from video and store in stream buffer for all other iterators to access
-                if self._rebuffered or (self._buffered and not self._video.hasattribute('__stream_buffer')):
-                    self._video.attributes['__stream_buffer'] = {}
-                    self._bufowner = True  # track which iterator created the stream buffer for cleanup in 'finally'
+                if self._buffered and not self._video.hasattribute('__stream_buffer'):
+                    self._video.attributes['__stream_buffer'] = {}  # for synchronized frames with secondary iterator
+                    self._is_stream_buffer_owner = True  # track which iterator created the stream buffer for cleanup in 'finally'
 
-                # Video pipe thread:  read numpy frames from the ffmpeg filter chain via a pipe
-                # store the resulting frames in a queue with a null terminated frame when the stream ends                
-                p = self._read_pipe()
-                q = queue.Queue(self._queuesize)
-                s = threading.Semaphore(value=0)
-                (h, w) = self._shape
-                
-                def _f_threadloop(pipe, queue, height, width, event):
-                    assert pipe is not None, "Invalid pipe"
-                    assert queue is not None, "invalid queue"
-                    while True:
-                        in_bytes = pipe.stdout.read(height * width * 3)
-                        if not in_bytes:
-                            queue.put(None)
-                            s.release()
-                            pipe.poll()
-                            pipe.wait()
-                            if pipe.returncode != 0:
-                                raise ValueError('Stream iterator exited with returncode %d' % (pipe.returncode))
-                            event.wait()
-                            break
-                        else:
-                            queue.put(np.frombuffer(in_bytes, np.uint8).reshape([height, width, 3]))
-                            s.release()                            
+                # Video pipe thread:
+                # - Initialized only if not buffered (the default) or if primary iterator
+                # - read numpy frames from the ffmpeg filter chain via a pipe
+                # - store the resulting frames in a queue with a null terminated frame when the stream ends
+                if not self._buffered or self._is_stream_buffer_owner:
+                    p = self._read_pipe()
+                    q = queue.Queue(self._queuesize)
+                    (h, w) = self._shape
+                    
+                    def _f_threadloop(pipe, queue, height, width, event):
+                        assert pipe is not None, "Invalid pipe"
+                        assert queue is not None, "invalid queue"
+                        f = 0
+                        while True:
+                            in_bytes = pipe.stdout.read(height * width * 3)
+                            if not in_bytes:
+                                queue.put(None)
+                                pipe.poll()
+                                pipe.wait()
+                                if pipe.returncode != 0:
+                                    raise ValueError('Stream iterator exited with returncode %d' % (pipe.returncode))
+                                event.wait()
+                                break
+                            else:
+                                queue.put(np.frombuffer(in_bytes, np.uint8).reshape([height, width, 3]))
 
-                e = threading.Event()                                
-                t = threading.Thread(target=_f_threadloop, args=(p, q, h, w, e), daemon=True)
-                t.start()
+                    e = threading.Event()
+                    t = threading.Thread(target=_f_threadloop, args=(p, q, h, w, e), daemon=True)
+                    t.start()
 
-
-                # Primary iterator:
-                # -read frames from the thread queue and store in the private stream buffer stored as a video attribute with a frame index
+                    
+                # Stream iterator:
+                # -read frames from the thread queue and write to the private stream buffer stored as a video attribute with a frame index
                 # -Frames are also yielded for the primary iterator
-                # -The stream buffer is always n frames long, and if the newest frame from the pipe is frame k, the oldest frame is k-n which is yielded first
+                # -The stream buffer is a dictionary that is n frames long, and if the newest frame from the pipe is frame k, the oldest frame is k-n which is yielded first
                 # -If the stream is unbuffered, just read from the queue directly and yield the numpy frame
-                (i,k,j) = (0,0,0)  # i=oldest frame in buffer, k=current frame, j=newest frame in buffer
-                b = self._video.attributes['__stream_buffer'] if (self._buffered or self._rebuffered) else None
+                b = self._video.attributes['__stream_buffer'] if self._buffered else None  # buffer (if requested)
+                (k, kb) = (min(b.keys()) if b is not None and len(b)>0 else 0, 0)   # current frame, current frame in buffer                
                 while True:
-                    if b is not None:
-                        while len(b) < self._bufsize and ((len(b) == 0) or (len(b) > 0 and b[j] is not None)):
-                            b[k] = q.get()  # re-fill stream buffer
-                            j = k  # newest frame pointer 
+                    if not self._buffered or self._is_stream_buffer_owner:
+                        # Primary iterator: read from thread queue
+                        if b is None:
+                            (f, img) = (k, q.get())  # unbuffered: to yield latest from thread queue directly
+                            k += 1                            
+                        else:
+                            while len(b) < self._bufsize and ((len(b) == 0) or b[kb-1] is not None):
+                                b[kb] = q.get()  # re-fill stream buffer
+                                kb += 1  # next frame pointer
+                            (f, img) = (k, b[k])  # to yield current frame
                             k += 1
-                        (f,img) = (i,b[i])  # read oldest element from buffer
                     else:
-                        (f,img) = (k,q.get())  # read from thread queue directly, unbuffered
-                        k += 1
+                        # Secondary iterator: read from stream buffer
+                        while True:
+                            if k in b:
+                                (f, img) = (k, b[k])  # to yield from stream buffer
+                                k += 1
+                                break
+                            else:
+                                time.sleep(0.001)  # "Event" wait, yuck..
                         
                     if img is not None:
                         yield self._video.frame(f, img)  # yield a vipy.image.Scene object with annotations at frame f, using the latest annotation from the shared video object                        
-                        if b is not None:
-                            del b[i] # remove from filled buffer after secondary iterators have seen it
-                            i += 1  # update oldest frame pointer                            
+                        if b is not None and self._is_stream_buffer_owner:
+                            if k-2 in b:
+                                del b[k-2] # remove from filled buffer after secondary iterators have seen it
                     else:
-                        e.set()
+                        if self._is_stream_buffer_owner:
+                            e.set()
                         break  # termination
                     
-            elif self._buffered and self._video.hasattribute('__stream_buffer'):
-                # Secondary iterators: read frames from the stream buffer
-                # -The stream buffer is a simple list stored in the self._video as a private attribute.  This is is so that the video can be serialized (e.g. no Queues)
-                # -The secondary iterators search the stream buffer for a matching frame index to yield.
-                # -The stream buffer is filled by the primary iterator, so that index 0 is the oldest frame and index n is the newest frame
-                # -The secondary iterators sleep in order to release the GIL before searching the frame buffer for the next frame to yield.
-                # -This is a bit ugly, but is a compromise to preserve pickleability of the stream buffer.                
-                k = min([int(f) for (f,img) in self._video.attributes['__stream_buffer'].items()]) if ('__stream_buffer' in self._video.attributes and len(self._video.attributes['__stream_buffer'])>0) else 0  # fast-forward
-                while '__stream_buffer' in self._video.attributes and len(self._video.attributes['__stream_buffer']) > 0:
-                    img = self._video.attributes['__stream_buffer'][k]
-                    if img is not None:
-                        yield self._video.frame(f, img)  # yield a vipy.image.Scene object with annotations at frame f, using the latest annotations from the shared video object
-                        k += 1
-                    else:
-                        return                            
-                    s.acquire()  # semaphore released by video pipe thread
-                    
-            else:
-                raise  # should never get here    
-
         except:
             raise
         
         finally:
-            if self._bufowner:
+            if self._is_stream_buffer_owner:
                 self._video.delattribute('__stream_buffer')  # cleanup, or force a reinitialization by passing the rebuffered=True to the primary iterator
             
         
@@ -703,7 +697,7 @@ class Video(object):
         return vo
     
 
-    def stream(self, write=False, overwrite=False, queuesize=1024, bitrate=None, buffered=False, rebuffered=False):
+    def stream(self, write=False, overwrite=False, queuesize=1024, bitrate=None, buffered=False, rebuffered=False, buflen=16):
         """Iterator to yield groups of frames streaming from video.
 
         A video stream is a real time iterator to read or write from a video.  Streams are useful to group together frames into clips that are operated on as a group.
@@ -746,8 +740,9 @@ class Video(object):
         Args:
             write: [bool]  If true, create a write stream
             overwrite: [bool]  If true, and the video output filename already exists, overwrite it
-            bufsize: [int]  The maximum queue size for the pipe thread.  
+            bufsize: [int]  The maximum queue size for the ffmpeg pipe thread in the primary iterator.  The queue size is the maximum size of pre-fetched frames from the ffmpeg pip.  This should be big enough that you are never waiting for queue fills
             bitrate: [str] The ffmpeg bitrate of the output encoder for writing, written like '2000k'
+            buflen: [int]  The maximum size of the stream buffer for the secondary iterators.  The stream buffer length should be big enough that you are never waiting for the stream to fill.
 
         Returns:
             A Stream object
@@ -755,7 +750,7 @@ class Video(object):
         ..note:: Using this iterator may affect PDB debugging due to stdout/stdin redirection.  Use ipdb instead.
 
         """
-        return Stream(self, queuesize=queuesize, write=write, overwrite=overwrite, bitrate=bitrate, buffered=buffered, rebuffered=rebuffered)  # do not clone
+        return Stream(self, queuesize=queuesize, write=write, overwrite=overwrite, bitrate=bitrate, buffered=buffered, rebuffered=rebuffered, buflen=buflen)  # do not clone
 
 
     def clear(self):
