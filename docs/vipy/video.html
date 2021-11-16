@@ -25,7 +25,7 @@
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/3199049baa69afc68c84d8ea2c184bce284e9598/vipy/video.py#L0-L3987" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/video.py#L0-L3984" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">import os
 import sys
@@ -122,7 +122,7 @@ class Stream(object):
         - This is designed to be accessed as `vipy.video.Video.stream` and not accessed as a standalone class..
 
     &#34;&#34;&#34;
-    def __init__(self, v, queuesize, write, overwrite, bitrate=None, buffered=False, buflen=16, rebuffered=False):
+    def __init__(self, v, queuesize, write, overwrite, bitrate=None, buffered=False, bufsize=256, rebuffered=False):
         self._video = v   # do not clone
         self._write_pipe = None
         self._vcodec = &#39;libx264&#39;
@@ -136,7 +136,7 @@ class Stream(object):
         self._shape = self._video.shape() if (not self._write) or (self._write and self._video.canload()) else None  # shape for write can be defined by first frame
         assert (write is True or overwrite is True) or self._shape is not None, &#34;Invalid video &#39;%s&#39;&#34; % (str(v))
         self._queuesize = queuesize
-        self._bufsize = int(buflen*v.framerate())
+        self._bufsize = bufsize
         self._buffered = buffered
         self._is_stream_buffer_owner = False                            
         assert self._bufsize &gt;= 1
@@ -250,7 +250,7 @@ class Stream(object):
                 # -The stream buffer is a dictionary that is n frames long, and if the newest frame from the pipe is frame k, the oldest frame is k-n which is yielded first
                 # -If the stream is unbuffered, just read from the queue directly and yield the numpy frame
                 b = self._video.attributes[&#39;__stream_buffer&#39;] if self._buffered else None  # buffer (if requested)
-                (k, kb) = (min(b.keys()) if b is not None and len(b)&gt;0 else 0, 0)   # current frame, current frame in buffer                
+                k = 0   # current frame 
                 while True:
                     if not self._buffered or self._is_stream_buffer_owner:
                         # Primary iterator: read from thread queue
@@ -258,26 +258,23 @@ class Stream(object):
                             (f, img) = (k, q.get())  # unbuffered: to yield latest from thread queue directly
                             k += 1                            
                         else:
-                            while len(b) &lt; self._bufsize and ((len(b) == 0) or b[kb-1] is not None):
-                                b[kb] = q.get()  # re-fill stream buffer
-                                kb += 1  # next frame pointer
-                            (f, img) = (k, b[k])  # to yield current frame
+                            b[k] = q.get()  # add to stream buffer
+                            (f, img) = (k, b[k])  # primary buffer: yield current frame from pipe
                             k += 1
                     else:
                         # Secondary iterator: read from stream buffer
-                        while True:
-                            if k in b:
-                                (f, img) = (k, b[k])  # to yield from stream buffer
-                                k += 1
-                                break
-                            else:
-                                time.sleep(0.001)  # &#34;Event&#34; wait, yuck..
+                        while k not in b:
+                            # &#34;Event&#34; wait: wait for primary iterator to start up and fill buffer, after it starts filling, this sleep should be unnecessary
+                            time.sleep(0.001)  
+                            
+                        (f, img) = (k, b[k])  # secondary buffers: yield from stream buffer
+                        k += 1
                         
                     if img is not None:
                         yield self._video.frame(f, img)  # yield a vipy.image.Scene object with annotations at frame f, using the latest annotation from the shared video object                        
                         if b is not None and self._is_stream_buffer_owner:
-                            if k-2 in b:
-                                del b[k-2] # remove from filled buffer after secondary iterators have seen it
+                            if len(b) &gt; self._bufsize:
+                                del b[min(b.keys())]  # remove oldest frame from stream buffer
                     else:
                         if self._is_stream_buffer_owner:
                             e.set()
@@ -330,12 +327,12 @@ class Stream(object):
         &gt;&gt;&gt;     # then video vc with frames [4,12] ...
 
         Args:
-        n: [int] the length of the clip in frames
-        m: [int] the stride between clips in frames
-        delay: [int] The temporal delay in frames for the clip, must be less than n and &gt;= 0
-        continuous: [bool]  if true, then yield None for the sequential frames not aligned with a stride so that a clip is yielded on every frame
-        activities: [bool]  if false, then activities from the source video are not copied into the clip
-        tracks: [bool]  if false, then tracks from the source video are not copied into the clip
+            n: [int] the length of the clip in frames
+            m: [int] the stride between clips in frames
+            delay: [int] The temporal delay in frames for the clip, must be less than n and &gt;= 0
+            continuous: [bool]  if true, then yield None for the sequential frames not aligned with a stride so that a clip is yielded on every frame
+            activities: [bool]  if false, then activities from the source video are not copied into the clip
+            tracks: [bool]  if false, then tracks from the source video are not copied into the clip
 
         Returns:
             An iterator that yields `vipy.video.Video` objects each of length n with startframe += m, starting at frame=delay, such that each video contains the tracks and activities (if requested) for this clip sourced from the shared stream video.
@@ -726,7 +723,7 @@ class Video(object):
         return vo
     
 
-    def stream(self, write=False, overwrite=False, queuesize=1024, bitrate=None, buffered=False, rebuffered=False, buflen=16):
+    def stream(self, write=False, overwrite=False, queuesize=1024, bitrate=None, buffered=False, rebuffered=False, bufsize=256):
         &#34;&#34;&#34;Iterator to yield groups of frames streaming from video.
 
         A video stream is a real time iterator to read or write from a video.  Streams are useful to group together frames into clips that are operated on as a group.
@@ -771,7 +768,7 @@ class Video(object):
             overwrite: [bool]  If true, and the video output filename already exists, overwrite it
             bufsize: [int]  The maximum queue size for the ffmpeg pipe thread in the primary iterator.  The queue size is the maximum size of pre-fetched frames from the ffmpeg pip.  This should be big enough that you are never waiting for queue fills
             bitrate: [str] The ffmpeg bitrate of the output encoder for writing, written like &#39;2000k&#39;
-            buflen: [int]  The maximum size of the stream buffer for the secondary iterators.  The stream buffer length should be big enough that you are never waiting for the stream to fill.
+            bufsize: [int]  The maximum size of the stream buffer in frames.  The stream buffer length should be big enough so that all iterators can yield before deleting old frames
 
         Returns:
             A Stream object
@@ -779,7 +776,7 @@ class Video(object):
         ..note:: Using this iterator may affect PDB debugging due to stdout/stdin redirection.  Use ipdb instead.
 
         &#34;&#34;&#34;
-        return Stream(self, queuesize=queuesize, write=write, overwrite=overwrite, bitrate=bitrate, buffered=buffered, rebuffered=rebuffered, buflen=buflen)  # do not clone
+        return Stream(self, queuesize=queuesize, write=write, overwrite=overwrite, bitrate=bitrate, buffered=buffered, rebuffered=rebuffered, bufsize=bufsize)  # do not clone
 
 
     def clear(self):
@@ -3066,9 +3063,9 @@ class Scene(VideoCategory):
     def json(self, encode=True):
         &#34;&#34;&#34;Return JSON encoded string of this object.  This may fail if attributes contain non-json encodeable object&#34;&#34;&#34;
         try:
-            json.loads(json.dumps(self.attributes))  # rount trip for the attributes ductionary - this can be any arbitrary object and contents may not be json encodable
+            json.loads(json.dumps(self.attributes))  # round trip for the attributes ductionary - this can be any arbitrary object and contents may not be json encodable
         except:
-            raise ValueError(&#39;Video contains non-JSON encodable object in self.attributes dictionary - Try to clear with self.attributes = {} first&#39;)
+            raise ValueError(&#39;Video contains non-JSON encodable object in self.attributes dictionary - Try self.sanitize() or to clear with self.attributes = {} first&#39;)
 
         d = json.loads(super().json())
         d[&#39;_tracks&#39;] = {k:t.json(encode=True) for (k,t) in self.tracks().items()}
@@ -4032,7 +4029,7 @@ def EmptyScene():
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/3199049baa69afc68c84d8ea2c184bce284e9598/vipy/video.py#L3986-L3988" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/video.py#L3983-L3985" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def EmptyScene():
     &#34;&#34;&#34;Return an empty scene&#34;&#34;&#34; 
@@ -4048,7 +4045,7 @@ def EmptyScene():
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/3199049baa69afc68c84d8ea2c184bce284e9598/vipy/video.py#L3943-L3961" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/video.py#L3940-L3958" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def RandomScene(rows=None, cols=None, frames=None):
     &#34;&#34;&#34;Return a random loaded vipy.video.Scene.
@@ -4080,7 +4077,7 @@ def EmptyScene():
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/3199049baa69afc68c84d8ea2c184bce284e9598/vipy/video.py#L3964-L3984" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/video.py#L3961-L3981" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def RandomSceneActivity(rows=None, cols=None, frames=256):
     &#34;&#34;&#34;Return a random loaded vipy.video.Scene.
@@ -4114,7 +4111,7 @@ def EmptyScene():
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/3199049baa69afc68c84d8ea2c184bce284e9598/vipy/video.py#L3931-L3940" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/video.py#L3928-L3937" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def RandomVideo(rows=None, cols=None, frames=None):
     &#34;&#34;&#34;Return a random loaded vipy.video.video.
@@ -4176,7 +4173,7 @@ Track and activity timing must be relative to the start frame of the Scene() con
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/3199049baa69afc68c84d8ea2c184bce284e9598/vipy/video.py#L2366-L3927" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/video.py#L2363-L3924" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">class Scene(VideoCategory):
     &#34;&#34;&#34; vipy.video.Scene class
@@ -4852,9 +4849,9 @@ Track and activity timing must be relative to the start frame of the Scene() con
     def json(self, encode=True):
         &#34;&#34;&#34;Return JSON encoded string of this object.  This may fail if attributes contain non-json encodeable object&#34;&#34;&#34;
         try:
-            json.loads(json.dumps(self.attributes))  # rount trip for the attributes ductionary - this can be any arbitrary object and contents may not be json encodable
+            json.loads(json.dumps(self.attributes))  # round trip for the attributes ductionary - this can be any arbitrary object and contents may not be json encodable
         except:
-            raise ValueError(&#39;Video contains non-JSON encodable object in self.attributes dictionary - Try to clear with self.attributes = {} first&#39;)
+            raise ValueError(&#39;Video contains non-JSON encodable object in self.attributes dictionary - Try self.sanitize() or to clear with self.attributes = {} first&#39;)
 
         d = json.loads(super().json())
         d[&#39;_tracks&#39;] = {k:t.json(encode=True) for (k,t) in self.tracks().items()}
@@ -5757,7 +5754,7 @@ This is useful for downcast and upcast conversion of video objects.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/3199049baa69afc68c84d8ea2c184bce284e9598/vipy/video.py#L2428-L2437" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/video.py#L2425-L2434" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">@classmethod
 def cast(cls, v, flush=False):
@@ -5782,7 +5779,7 @@ def cast(cls, v, flush=False):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/3199049baa69afc68c84d8ea2c184bce284e9598/vipy/video.py#L2439-L2461" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/video.py#L2436-L2458" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">@classmethod
 def from_json(cls, s):
@@ -5821,7 +5818,7 @@ All temporal alignment is relative to the current clip().</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/3199049baa69afc68c84d8ea2c184bce284e9598/vipy/video.py#L2742-L2757" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/video.py#L2739-L2754" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def activities(self, activities=None, id=None):
     &#34;&#34;&#34;Return mutable dictionary of activities.  All temporal alignment is relative to the current clip().&#34;&#34;&#34;
@@ -5849,7 +5846,7 @@ All temporal alignment is relative to the current clip().</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/3199049baa69afc68c84d8ea2c184bce284e9598/vipy/video.py#L2665-L2666" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/video.py#L2662-L2663" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def activity(self, id=None):
     return self.activities(id=id) if id is not None else self.primary_activity()</code></pre>
@@ -5863,7 +5860,7 @@ All temporal alignment is relative to the current clip().</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/3199049baa69afc68c84d8ea2c184bce284e9598/vipy/video.py#L2901-L2903" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/video.py#L2898-L2900" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def activity_categories(self):
     &#34;&#34;&#34;Alias for activitylabels()&#34;&#34;&#34;
@@ -5880,7 +5877,7 @@ The activitybox is the smallest bounding box that contains all of the boxes from
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/3199049baa69afc68c84d8ea2c184bce284e9598/vipy/video.py#L3272-L3278" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/video.py#L3269-L3275" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def activitybox(self, activityid=None, dilate=1.0):
     &#34;&#34;&#34;The activitybox is the union of all activity bounding boxes in the video, which is the union of all tracks contributing to all activities.  This is most useful after activityclip().
@@ -5934,7 +5931,7 @@ Be careful!</li>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/3199049baa69afc68c84d8ea2c184bce284e9598/vipy/video.py#L3138-L3187" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/video.py#L3135-L3184" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def activityclip(self, padframes=0, multilabel=True, idx=None, padto=None, padtosec=None):
     &#34;&#34;&#34;Return a list of `vipy.video.Scene` objects each clipped to be temporally centered on a single activity, with an optional padframes before and after.  
@@ -5999,7 +5996,7 @@ This crop must be resized such that the maximum dimension is provided since the 
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/3199049baa69afc68c84d8ea2c184bce284e9598/vipy/video.py#L3280-L3288" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/video.py#L3277-L3285" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def activitycuboid(self, activityid=None, dilate=1.0, maxdim=256, bb=None):
     &#34;&#34;&#34;The activitycuboid() is the fixed square spatial crop corresponding to the activitybox (or supplied bounding box), which contains all of the valid activities in the scene.  This is most useful after activityclip().
@@ -6033,7 +6030,7 @@ This crop must be resized such that the maximum dimension is provided since the 
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/3199049baa69afc68c84d8ea2c184bce284e9598/vipy/video.py#L2775-L2793" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/video.py#L2772-L2790" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def activityfilter(self, f):
     &#34;&#34;&#34;Apply boolean lambda function f to each activity and keep activity if function is true, remove activity if function is false
@@ -6064,7 +6061,7 @@ This crop must be resized such that the maximum dimension is provided since the 
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/3199049baa69afc68c84d8ea2c184bce284e9598/vipy/video.py#L2759-L2763" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/video.py#L2756-L2760" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def activityindex(self, k):
     &#34;&#34;&#34;Return the `vipy.activity.Activity` at the requested index order in the video&#34;&#34;&#34;
@@ -6081,7 +6078,7 @@ This crop must be resized such that the maximum dimension is provided since the 
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/3199049baa69afc68c84d8ea2c184bce284e9598/vipy/video.py#L2869-L2875" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/video.py#L2866-L2872" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def activitylabel(self, startframe=None, endframe=None):
     &#34;&#34;&#34;Return an iterator over activity labels in each frame, starting from startframe and ending when there are no more activities&#34;&#34;&#34;        
@@ -6100,7 +6097,7 @@ This crop must be resized such that the maximum dimension is provided since the 
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/3199049baa69afc68c84d8ea2c184bce284e9598/vipy/video.py#L2877-L2886" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/video.py#L2874-L2883" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def activitylabels(self, startframe=None, endframe=None):
     &#34;&#34;&#34;Return a set of all activity categories in this scene, or at startframe, or in range [startframe, endframe]&#34;&#34;&#34;        
@@ -6126,7 +6123,7 @@ To match, use sorted(activitylist, key=lambda a: a.startframe())</p>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/3199049baa69afc68c84d8ea2c184bce284e9598/vipy/video.py#L2765-L2773" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/video.py#L2762-L2770" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def activitylist(self):
     &#34;&#34;&#34;Return a list of activities in the video, returned in insertion order.
@@ -6147,7 +6144,7 @@ To match, use sorted(activitylist, key=lambda a: a.startframe())</p>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/3199049baa69afc68c84d8ea2c184bce284e9598/vipy/video.py#L2825-L2830" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/video.py#L2822-L2827" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def activitymap(self, f):
     &#34;&#34;&#34;Apply lambda function f to each activity&#34;&#34;&#34;
@@ -6176,7 +6173,7 @@ Return only those activities in the provided activity index list, where the acti
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/3199049baa69afc68c84d8ea2c184bce284e9598/vipy/video.py#L3102-L3122" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/video.py#L3099-L3119" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def activitysplit(self, idx=None):
     &#34;&#34;&#34;Split the scene into k separate scenes, one for each activity.  Do not include overlapping activities.  
@@ -6209,7 +6206,7 @@ Return only those activities in the provided activity index list, where the acti
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/3199049baa69afc68c84d8ea2c184bce284e9598/vipy/video.py#L3290-L3293" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/video.py#L3287-L3290" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def activitysquare(self, activityid=None, dilate=1.0, maxdim=256):
     &#34;&#34;&#34;The activity square is the maxsquare activitybox that contains only valid (non-padded) pixels interior to the image&#34;&#34;&#34;
@@ -6230,7 +6227,7 @@ All crops will be resized so that the maximum dimension is maxdim (and square by
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/3199049baa69afc68c84d8ea2c184bce284e9598/vipy/video.py#L3295-L3315" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/video.py#L3292-L3312" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def activitytube(self, activityid=None, dilate=1.0, maxdim=256):
     &#34;&#34;&#34;The activitytube() is a sequence of crops where the spatial box changes on every frame to track the activity.  
@@ -6263,7 +6260,7 @@ All crops will be resized so that the maximum dimension is maxdim (and square by
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/3199049baa69afc68c84d8ea2c184bce284e9598/vipy/video.py#L2719-L2721" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/video.py#L2716-L2718" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def actor(self):
     &#34;&#34;&#34;Return the primary actor (first `vipy.object.Track`) in the video&#34;&#34;&#34;
@@ -6295,7 +6292,7 @@ For videos collected with Visym Collector platform (<a href="https://visym.com/c
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/3199049baa69afc68c84d8ea2c184bce284e9598/vipy/video.py#L2689-L2713" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/video.py#L2686-L2710" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def actorid(self, id=None, fluent=False):
     &#34;&#34;&#34;Return or set the actor ID for the video.
@@ -6336,7 +6333,7 @@ All crops will be resized so that the maximum dimension is maxdim (and square by
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/3199049baa69afc68c84d8ea2c184bce284e9598/vipy/video.py#L3317-L3340" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/video.py#L3314-L3337" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def actortube(self, trackid=None, dilate=1.0, maxdim=256, strict=True):
     &#34;&#34;&#34;The actortube() is a sequence of crops where the spatial box changes on every frame to track the primary actor performing an activity.  
@@ -6417,7 +6414,7 @@ This requires introspecting the video shape using <code><a title="vipy.video.Vid
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/3199049baa69afc68c84d8ea2c184bce284e9598/vipy/video.py#L2924-L2999" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/video.py#L2921-L2996" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def add(self, obj, category=None, attributes=None, rangecheck=True, frame=None, fluent=False):
     &#34;&#34;&#34;Add the object obj to the scene, and return an index to this object for future updates
@@ -6505,7 +6502,7 @@ This requires introspecting the video shape using <code><a title="vipy.video.Vid
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/3199049baa69afc68c84d8ea2c184bce284e9598/vipy/video.py#L3005-L3014" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/video.py#L3002-L3011" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def addframe(self, im, frame):
     &#34;&#34;&#34;Add im=vipy.image.Scene() into vipy.video.Scene() at given frame. The input image must have been generated using im=self[k] for this to be meaningful, so that trackid can be associated&#34;&#34;&#34;
@@ -6581,7 +6578,7 @@ Named colors must be in <code><a title="vipy.gui.using_matplotlib.colorlist" hre
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/3199049baa69afc68c84d8ea2c184bce284e9598/vipy/video.py#L3610-L3684" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/video.py#L3607-L3681" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def annotate(self, outfile=None, fontsize=10, captionoffset=(0,0), textfacecolor=&#39;white&#39;, textfacealpha=1.0, shortlabel=True, boxalpha=0.25, d_category2color={&#39;Person&#39;:&#39;green&#39;, &#39;Vehicle&#39;:&#39;blue&#39;, &#39;Object&#39;:&#39;red&#39;}, categories=None, nocaption=False, nocaption_withstring=[], mutator=None, timestamp=None, timestampcolor=&#39;black&#39;, timestampfacecolor=&#39;white&#39;, verbose=False):
     &#34;&#34;&#34;Generate a video visualization of all annotated objects and activities in the video.
@@ -6681,7 +6678,7 @@ However, this method provides access to just the annotations without pixels.</p>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/3199049baa69afc68c84d8ea2c184bce284e9598/vipy/video.py#L2842-L2857" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/video.py#L2839-L2854" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def annotation(self):
     &#34;&#34;&#34;Return an iterator over annotations in each frame.
@@ -6709,7 +6706,7 @@ However, this method provides access to just the annotations without pixels.</p>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/3199049baa69afc68c84d8ea2c184bce284e9598/vipy/video.py#L3765-L3774" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/video.py#L3762-L3771" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def asfloatmask(self, fg=1.0, bg=0.0):
     &#34;&#34;&#34;Replace all pixels in foreground boxes with fg, and bg in background, return a copy&#34;&#34;&#34;
@@ -6756,7 +6753,7 @@ Useful for low detection framerates if a detection does not overlap with the tra
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/3199049baa69afc68c84d8ea2c184bce284e9598/vipy/video.py#L3824-L3927" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/video.py#L3821-L3924" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def assign(self, frame, dets, minconf=0.2, maxhistory=5, activityiou=0.5, trackcover=0.2, trackconfsamples=4, gate=0, activitymerge=True, activitynms=False):
     &#34;&#34;&#34;Assign a list of vipy.object.Detections at frame k to scene by greedy track association. In-place update.
@@ -6872,7 +6869,7 @@ Useful for low detection framerates if a detection does not overlap with the tra
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/3199049baa69afc68c84d8ea2c184bce284e9598/vipy/video.py#L3759-L3763" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/video.py#L3756-L3760" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def binarymask(self):
     &#34;&#34;&#34;Replace all pixels in foreground boxes with white, zero in background&#34;&#34;&#34;
@@ -6889,7 +6886,7 @@ Useful for low detection framerates if a detection does not overlap with the tra
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/3199049baa69afc68c84d8ea2c184bce284e9598/vipy/video.py#L3792-L3796" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/video.py#L3789-L3793" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def blurmask(self, radius=7):
     &#34;&#34;&#34;Replace all pixels in foreground boxes with gaussian blurred foreground&#34;&#34;&#34;
@@ -6906,7 +6903,7 @@ Useful for low detection framerates if a detection does not overlap with the tra
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/3199049baa69afc68c84d8ea2c184bce284e9598/vipy/video.py#L2897-L2899" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/video.py#L2894-L2896" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def categories(self):
     &#34;&#34;&#34;Alias for labels()&#34;&#34;&#34;
@@ -6921,7 +6918,7 @@ Useful for low detection framerates if a detection does not overlap with the tra
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/3199049baa69afc68c84d8ea2c184bce284e9598/vipy/video.py#L3016-L3020" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/video.py#L3013-L3017" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def clear(self):
     &#34;&#34;&#34;Remove all activities and tracks from this object&#34;&#34;&#34;
@@ -6938,7 +6935,7 @@ Useful for low detection framerates if a detection does not overlap with the tra
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/3199049baa69afc68c84d8ea2c184bce284e9598/vipy/video.py#L3026-L3028" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/video.py#L3023-L3025" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def clearactivities(self):
     self._activities = {}
@@ -6953,7 +6950,7 @@ Useful for low detection framerates if a detection does not overlap with the tra
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/3199049baa69afc68c84d8ea2c184bce284e9598/vipy/video.py#L3022-L3024" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/video.py#L3019-L3021" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def cleartracks(self):
     self._tracks = {}
@@ -6984,7 +6981,7 @@ See self.commandline() for the updated filter chain to run.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/3199049baa69afc68c84d8ea2c184bce284e9598/vipy/video.py#L3349-L3385" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/video.py#L3346-L3382" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def clip(self, startframe, endframe=None):
     &#34;&#34;&#34;Clip the video to between (startframe, endframe).  This clip is relative to clip() shown by __repr__(). 
@@ -7033,7 +7030,7 @@ See self.commandline() for the updated filter chain to run.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/3199049baa69afc68c84d8ea2c184bce284e9598/vipy/video.py#L3504-L3513" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/video.py#L3501-L3510" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def combine(self, other, tracks=True, activities=True, rekey=True):
     &#34;&#34;&#34;Combine the activities and tracks from both scenes into self&#34;&#34;&#34;
@@ -7055,7 +7052,7 @@ See self.commandline() for the updated filter chain to run.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/3199049baa69afc68c84d8ea2c184bce284e9598/vipy/video.py#L3387-L3398" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/video.py#L3384-L3395" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def crop(self, bb, zeropad=True):
     &#34;&#34;&#34;Crop the video using the supplied box, update tracks relative to crop, video is zeropadded if box is outside frame rectangle&#34;&#34;&#34;
@@ -7080,7 +7077,7 @@ If there are no tracks, this will be empty.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/3199049baa69afc68c84d8ea2c184bce284e9598/vipy/video.py#L3062-L3074" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/video.py#L3059-L3071" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def csv(self, outfile=None):
     &#34;&#34;&#34;Export scene to CSV file format with header.  If there are no tracks, this will be empty. &#34;&#34;&#34;
@@ -7111,7 +7108,7 @@ This is the segment IOU.
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/3199049baa69afc68c84d8ea2c184bce284e9598/vipy/video.py#L3483-L3502" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/video.py#L3480-L3499" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def dedupe(self, spatial_iou_threshold=0.8, dt=5):
     &#34;&#34;&#34;Find and delete duplicate tracks by track segmentiou() overlap.
@@ -7143,7 +7140,7 @@ This is the segment IOU.
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/3199049baa69afc68c84d8ea2c184bce284e9598/vipy/video.py#L3001-L3003" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/video.py#L2998-L3000" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def delete(self, id):
     &#34;&#34;&#34;Delete a given track or activity by id, if present&#34;&#34;&#34;
@@ -7158,7 +7155,7 @@ This is the segment IOU.
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/3199049baa69afc68c84d8ea2c184bce284e9598/vipy/video.py#L3798-L3801" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/video.py#L3795-L3798" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def downcast(self):
     &#34;&#34;&#34;Cast the object to a `vipy.video.Video` class&#34;&#34;&#34;
@@ -7174,7 +7171,7 @@ This is the segment IOU.
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/3199049baa69afc68c84d8ea2c184bce284e9598/vipy/video.py#L2580-L2585" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/video.py#L2577-L2582" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def during(self, frameindex):
     try:
@@ -7192,7 +7189,7 @@ This is the segment IOU.
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/3199049baa69afc68c84d8ea2c184bce284e9598/vipy/video.py#L3479-L3481" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/video.py#L3476-L3478" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def extrapolate(self, f, dt=None):
     &#34;&#34;&#34;Extrapolate the video to frame f and add the extrapolated tracks to the video&#34;&#34;&#34;
@@ -7207,7 +7204,7 @@ This is the segment IOU.
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/3199049baa69afc68c84d8ea2c184bce284e9598/vipy/video.py#L3782-L3786" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/video.py#L3779-L3783" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def fgmask(self):
     &#34;&#34;&#34;Replace all pixels in foreground boxes with zero&#34;&#34;&#34;
@@ -7224,7 +7221,7 @@ This is the segment IOU.
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/3199049baa69afc68c84d8ea2c184bce284e9598/vipy/video.py#L2734-L2736" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/video.py#L2731-L2733" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def first_activity(self):
     &#34;&#34;&#34;Return the first activity of the video with the earliest start frame&#34;&#34;&#34;
@@ -7259,7 +7256,7 @@ This is the segment IOU.
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/3199049baa69afc68c84d8ea2c184bce284e9598/vipy/video.py#L2528-L2577" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/video.py#L2525-L2574" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def frame(self, k, img=None):
     &#34;&#34;&#34;Return `vipy.image.Scene` object at frame k
@@ -7324,7 +7321,7 @@ This is the segment IOU.
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/3199049baa69afc68c84d8ea2c184bce284e9598/vipy/video.py#L3248-L3255" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/video.py#L3245-L3252" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def framebox(self):
     &#34;&#34;&#34;Return the bounding box for the image rectangle.
@@ -7344,7 +7341,7 @@ This is the segment IOU.
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/3199049baa69afc68c84d8ea2c184bce284e9598/vipy/video.py#L2596-L2602" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/video.py#L2593-L2599" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def framecomposite(self, n=2, dt=10, mindim=256):
     &#34;&#34;&#34;Generate a single composite image with minimum dimension mindim as the uniformly blended composite of n frames each separated by dt frames&#34;&#34;&#34;
@@ -7366,7 +7363,7 @@ This is the segment IOU.
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/3199049baa69afc68c84d8ea2c184bce284e9598/vipy/video.py#L3077-L3100" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/video.py#L3074-L3097" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def framerate(self, fps=None):
     &#34;&#34;&#34;Change the input framerate for the video and update frame indexes for all annotations.
@@ -7402,7 +7399,7 @@ This is the segment IOU.
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/3199049baa69afc68c84d8ea2c184bce284e9598/vipy/video.py#L2905-L2907" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/video.py#L2902-L2904" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def hasactivities(self):
     &#34;&#34;&#34;Does this video have any activities?&#34;&#34;&#34;
@@ -7417,7 +7414,7 @@ This is the segment IOU.
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/3199049baa69afc68c84d8ea2c184bce284e9598/vipy/video.py#L2909-L2911" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/video.py#L2906-L2908" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def hasactivity(self, activityid):
     &#34;&#34;&#34;Does this video have this activity id?&#34;&#34;&#34;
@@ -7436,7 +7433,7 @@ This is the segment IOU.
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/3199049baa69afc68c84d8ea2c184bce284e9598/vipy/video.py#L2917-L2922" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/video.py#L2914-L2919" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def hastrack(self, trackid):
     &#34;&#34;&#34;Does the video have this trackid?  
@@ -7454,7 +7451,7 @@ This is the segment IOU.
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/3199049baa69afc68c84d8ea2c184bce284e9598/vipy/video.py#L2913-L2915" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/video.py#L2910-L2912" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def hastracks(self):
     &#34;&#34;&#34;Does this video have any tracks?&#34;&#34;&#34;
@@ -7488,7 +7485,7 @@ This is set using INSTANCE_ID=ACTIVITYID_ACTIVITYINDEX or INSTANCEID=TRACKID_TRA
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/3199049baa69afc68c84d8ea2c184bce284e9598/vipy/video.py#L2501-L2526" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/video.py#L2498-L2523" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def instanceid(self, newid=None):
     &#34;&#34;&#34;Return an annotation instance identifier for this video.  
@@ -7526,7 +7523,7 @@ This is set using INSTANCE_ID=ACTIVITYID_ACTIVITYINDEX or INSTANCEID=TRACKID_TRA
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/3199049baa69afc68c84d8ea2c184bce284e9598/vipy/video.py#L2604-L2606" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/video.py#L2601-L2603" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def isdegenerate(self):
     &#34;&#34;&#34;Degenerate scene has empty or malformed tracks&#34;&#34;&#34;
@@ -7542,14 +7539,14 @@ This may fail if attributes contain non-json encodeable object</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/3199049baa69afc68c84d8ea2c184bce284e9598/vipy/video.py#L3037-L3060" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/video.py#L3034-L3057" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def json(self, encode=True):
     &#34;&#34;&#34;Return JSON encoded string of this object.  This may fail if attributes contain non-json encodeable object&#34;&#34;&#34;
     try:
-        json.loads(json.dumps(self.attributes))  # rount trip for the attributes ductionary - this can be any arbitrary object and contents may not be json encodable
+        json.loads(json.dumps(self.attributes))  # round trip for the attributes ductionary - this can be any arbitrary object and contents may not be json encodable
     except:
-        raise ValueError(&#39;Video contains non-JSON encodable object in self.attributes dictionary - Try to clear with self.attributes = {} first&#39;)
+        raise ValueError(&#39;Video contains non-JSON encodable object in self.attributes dictionary - Try self.sanitize() or to clear with self.attributes = {} first&#39;)
 
     d = json.loads(super().json())
     d[&#39;_tracks&#39;] = {k:t.json(encode=True) for (k,t) in self.tracks().items()}
@@ -7578,7 +7575,7 @@ This may fail if attributes contain non-json encodeable object</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/3199049baa69afc68c84d8ea2c184bce284e9598/vipy/video.py#L2859-L2863" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/video.py#L2856-L2860" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def label(self):
     &#34;&#34;&#34;Return an iterator over labels in each frame&#34;&#34;&#34;
@@ -7595,7 +7592,7 @@ This may fail if attributes contain non-json encodeable object</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/3199049baa69afc68c84d8ea2c184bce284e9598/vipy/video.py#L2587-L2592" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/video.py#L2584-L2589" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def labeled_frames(self):
     &#34;&#34;&#34;Iterate over frames, yielding tuples (activity+object labelset in scene, vipy.image.Scene())&#34;&#34;&#34;
@@ -7613,7 +7610,7 @@ This may fail if attributes contain non-json encodeable object</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/3199049baa69afc68c84d8ea2c184bce284e9598/vipy/video.py#L2865-L2867" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/video.py#L2862-L2864" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def labels(self, k=None):
     &#34;&#34;&#34;Return a set of all object and activity labels in this scene, or at frame int(k)&#34;&#34;&#34;
@@ -7628,7 +7625,7 @@ This may fail if attributes contain non-json encodeable object</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/3199049baa69afc68c84d8ea2c184bce284e9598/vipy/video.py#L2738-L2740" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/video.py#L2735-L2737" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def last_activity(self):
     &#34;&#34;&#34;Return the last activity of the video with the latest end frame&#34;&#34;&#34;
@@ -7643,7 +7640,7 @@ This may fail if attributes contain non-json encodeable object</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/3199049baa69afc68c84d8ea2c184bce284e9598/vipy/video.py#L3776-L3780" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/video.py#L3773-L3777" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def meanmask(self):
     &#34;&#34;&#34;Replace all pixels in foreground boxes with mean color&#34;&#34;&#34;
@@ -7667,7 +7664,7 @@ This may fail if attributes contain non-json encodeable object</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/3199049baa69afc68c84d8ea2c184bce284e9598/vipy/video.py#L3803-L3822" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/video.py#L3800-L3819" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def merge_tracks(self, dilate_height=2.0, dilate_width=2.0, framedist=5):
     &#34;&#34;&#34;Merge tracks if a track endpoint dilated by a fraction overlaps exactly one track startpoint, and the endpoint and startpoint are close enough together temporally.
@@ -7699,7 +7696,7 @@ This may fail if attributes contain non-json encodeable object</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/3199049baa69afc68c84d8ea2c184bce284e9598/vipy/video.py#L2668-L2673" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/video.py#L2665-L2670" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def next_activity(self, id):
     &#34;&#34;&#34;Return the next activity just after the given activityid&#34;&#34;&#34;
@@ -7738,7 +7735,7 @@ See <code><a title="vipy.video.Scene.activityclip" href="#vipy.video.Scene.activ
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/3199049baa69afc68c84d8ea2c184bce284e9598/vipy/video.py#L3217-L3233" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/video.py#L3214-L3230" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def noactivityclip(self, label=None, shortlabel=None, padframes=0):
     &#34;&#34;&#34;Return a list of vipy.video.Scene() each clipped on a track segment that has no associated activities.  
@@ -7775,7 +7772,7 @@ Defaults to the track category (lowercase)</dd>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/3199049baa69afc68c84d8ea2c184bce284e9598/vipy/video.py#L3189-L3214" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/video.py#L3186-L3211" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def noactivitylist(self, label=None, shortlabel=None):
     &#34;&#34;&#34;Return a list of `vipy.activity.Activity` which are segments of each track with no associated activities.
@@ -7821,7 +7818,7 @@ If k=None, then all object labels in the video</dd>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/3199049baa69afc68c84d8ea2c184bce284e9598/vipy/video.py#L2888-L2895" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/video.py#L2885-L2892" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def objectlabels(self, k=None, lower=False):
     &#34;&#34;&#34;Return a python set of all activity categories in this scene, or at frame k.
@@ -7841,7 +7838,7 @@ If k=None, then all object labels in the video</dd>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/3199049baa69afc68c84d8ea2c184bce284e9598/vipy/video.py#L2685-L2687" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/video.py#L2682-L2684" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def objects(self, casesensitive=True):
     &#34;&#34;&#34;The objects in a scene are the unique categories of tracks&#34;&#34;&#34;
@@ -7865,7 +7862,7 @@ There is no unpack() method.</li>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/3199049baa69afc68c84d8ea2c184bce284e9598/vipy/video.py#L2463-L2476" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/video.py#L2460-L2473" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def pack(self):
     &#34;&#34;&#34;Packing a scene returns the scene with the annotations JSON serialized.  
@@ -7891,7 +7888,7 @@ There is no unpack() method.</li>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/3199049baa69afc68c84d8ea2c184bce284e9598/vipy/video.py#L3755-L3757" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/video.py#L3752-L3754" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def pixelate(self, radius=16):
     &#34;&#34;&#34;Alias for pixelmask()&#34;&#34;&#34;
@@ -7906,7 +7903,7 @@ There is no unpack() method.</li>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/3199049baa69afc68c84d8ea2c184bce284e9598/vipy/video.py#L3752-L3754" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/video.py#L3749-L3751" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def pixelize(self, radius=16):
     &#34;&#34;&#34;Alias for pixelmask()&#34;&#34;&#34;
@@ -7921,7 +7918,7 @@ There is no unpack() method.</li>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/3199049baa69afc68c84d8ea2c184bce284e9598/vipy/video.py#L3746-L3750" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/video.py#L3743-L3747" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def pixelmask(self, pixelsize=8):
     &#34;&#34;&#34;Replace all pixels in foreground boxes with pixelation (e.g. bigger pixels, like privacy glass)&#34;&#34;&#34;
@@ -7938,7 +7935,7 @@ There is no unpack() method.</li>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/3199049baa69afc68c84d8ea2c184bce284e9598/vipy/video.py#L2675-L2680" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/video.py#L2672-L2677" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def prev_activity(self, id):
     &#34;&#34;&#34;Return the previous activity just before the given activityid&#34;&#34;&#34;
@@ -7963,7 +7960,7 @@ There is no unpack() method.</li>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/3199049baa69afc68c84d8ea2c184bce284e9598/vipy/video.py#L2723-L2732" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/video.py#L2720-L2729" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def primary_activity(self):
     &#34;&#34;&#34;Return the primary activity of the video.
@@ -8005,7 +8002,7 @@ The initial frame index to start the n uniformly sampled frames for the quickloo
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/3199049baa69afc68c84d8ea2c184bce284e9598/vipy/video.py#L2608-L2636" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/video.py#L2605-L2633" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def quicklook(self, n=9, dilate=1.5, mindim=256, fontsize=10, context=False, startframe=0, animate=False, dt=30):
     &#34;&#34;&#34;Generate a montage of n uniformly spaced annotated frames centered on the union of the labeled boxes in the current frame to show the activity ocurring in this scene at a glance
@@ -8047,7 +8044,7 @@ Useful for cloning unique scenes</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/3199049baa69afc68c84d8ea2c184bce284e9598/vipy/video.py#L2832-L2840" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/video.py#L2829-L2837" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def rekey(self):
     &#34;&#34;&#34;Change the track and activity IDs to randomly assigned UUIDs.  Useful for cloning unique scenes&#34;&#34;&#34;
@@ -8068,7 +8065,7 @@ Useful for cloning unique scenes</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/3199049baa69afc68c84d8ea2c184bce284e9598/vipy/video.py#L3030-L3035" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/video.py#L3027-L3032" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def replace(self, other, frame=None):
     &#34;&#34;&#34;Replace tracks and activities with other if activity/track is during frame&#34;&#34;&#34;
@@ -8091,7 +8088,7 @@ Useful for cloning unique scenes</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/3199049baa69afc68c84d8ea2c184bce284e9598/vipy/video.py#L3465-L3474" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/video.py#L3462-L3471" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def rescale(self, s):
     &#34;&#34;&#34;Spatially rescale the scene by a constant scale factor.
@@ -8113,7 +8110,7 @@ Useful for cloning unique scenes</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/3199049baa69afc68c84d8ea2c184bce284e9598/vipy/video.py#L3438-L3452" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/video.py#L3435-L3449" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def resize(self, rows=None, cols=None, width=None, height=None):
     &#34;&#34;&#34;Resize the video to (rows, cols), preserving the aspect ratio if only rows or cols is provided&#34;&#34;&#34;
@@ -8140,7 +8137,7 @@ Useful for cloning unique scenes</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/3199049baa69afc68c84d8ea2c184bce284e9598/vipy/video.py#L2715-L2717" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/video.py#L2712-L2714" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def setactorid(self, id):
     &#34;&#34;&#34;Alias for `vipy.video.Scene.actorid`&#34;&#34;&#34;
@@ -8156,7 +8153,7 @@ This can visualize videos before video rendering is complete, but it cannot guar
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/3199049baa69afc68c84d8ea2c184bce284e9598/vipy/video.py#L3705-L3734" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/video.py#L3702-L3731" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def show(self, outfile=None, verbose=True, fontsize=10, captionoffset=(0,0), textfacecolor=&#39;white&#39;, textfacealpha=1.0, shortlabel=True, boxalpha=0.25, d_category2color={&#39;Person&#39;:&#39;green&#39;, &#39;Vehicle&#39;:&#39;blue&#39;, &#39;Object&#39;:&#39;red&#39;}, categories=None, nocaption=False, nocaption_withstring=[], figure=1, fps=None, timestamp=None, timestampcolor=&#39;black&#39;, timestampfacecolor=&#39;white&#39;, mutator=None):
     &#34;&#34;&#34;Faster show using interative image show for annotated videos.  This can visualize videos before video rendering is complete, but it cannot guarantee frame rates. Large videos with complex scenes will slow this down and will render at lower frame rates.&#34;&#34;&#34;
@@ -8199,7 +8196,7 @@ This will output a video with all frames aligned to the first frame, such that t
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/3199049baa69afc68c84d8ea2c184bce284e9598/vipy/video.py#L3741-L3744" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/video.py#L3738-L3741" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def stabilize(self, flowdim=256, gpu=None):
     &#34;&#34;&#34;Background stablization using flow based stabilization masking foreground region.  This will output a video with all frames aligned to the first frame, such that the background is static.&#34;&#34;&#34;
@@ -8215,7 +8212,7 @@ This will output a video with all frames aligned to the first frame, such that t
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/3199049baa69afc68c84d8ea2c184bce284e9598/vipy/video.py#L3476-L3477" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/video.py#L3473-L3474" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def startframe(self):
     return self._startframe</code></pre>
@@ -8229,7 +8226,7 @@ This will output a video with all frames aligned to the first frame, such that t
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/3199049baa69afc68c84d8ea2c184bce284e9598/vipy/video.py#L3736-L3739" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/video.py#L3733-L3736" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def thumbnail(self, outfile=None, frame=0, fontsize=10, nocaption=False, boxalpha=0.25, dpi=200, textfacecolor=&#39;white&#39;, textfacealpha=1.0):
     &#34;&#34;&#34;Return annotated frame=k of video, save annotation visualization to provided outfile if provided, otherwise return vipy.image.Scene&#34;&#34;&#34;
@@ -8245,7 +8242,7 @@ This will output a video with all frames aligned to the first frame, such that t
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/3199049baa69afc68c84d8ea2c184bce284e9598/vipy/video.py#L2655-L2656" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/video.py#L2652-L2653" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def track(self, id):
     return self.tracks(id=id)</code></pre>
@@ -8267,7 +8264,7 @@ See <code><a title="vipy.geometry.BoundingBox.dilate" href="geometry.html#vipy.g
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/3199049baa69afc68c84d8ea2c184bce284e9598/vipy/video.py#L3235-L3246" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/video.py#L3232-L3243" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def trackbox(self, dilate=1.0):
     &#34;&#34;&#34;The trackbox is the union of all track bounding boxes in the video, or None if there are no tracks
@@ -8292,7 +8289,7 @@ Each scene starts and ends when the track starts and ends</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/3199049baa69afc68c84d8ea2c184bce284e9598/vipy/video.py#L3134-L3136" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/video.py#L3131-L3133" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def trackclip(self):
     &#34;&#34;&#34;Split the scene into k separate scenes, one for each track.  Each scene starts and ends when the track starts and ends&#34;&#34;&#34;
@@ -8319,7 +8316,7 @@ If there are no tracks, return None.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/3199049baa69afc68c84d8ea2c184bce284e9598/vipy/video.py#L3257-L3270" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/video.py#L3254-L3267" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def trackcrop(self, dilate=1.0, maxsquare=False, zeropad=True):
     &#34;&#34;&#34;Return the trackcrop() of the scene which is the crop of the video using the `vipy.video.Scene.trackbox`.
@@ -8358,7 +8355,7 @@ You should follow up with self.activityfilter(lambda a: len(a.trackids()) &gt; 0
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/3199049baa69afc68c84d8ea2c184bce284e9598/vipy/video.py#L2795-L2813" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/video.py#L2792-L2810" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def trackfilter(self, f, activitytrack=True):
     &#34;&#34;&#34;Apply lambda function f to each object and keep if filter is True.  
@@ -8389,7 +8386,7 @@ You should follow up with self.activityfilter(lambda a: len(a.trackids()) &gt; 0
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/3199049baa69afc68c84d8ea2c184bce284e9598/vipy/video.py#L2662-L2663" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/video.py#L2659-L2660" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def trackidx(self, idx):
     return self.tracklist()[idx]</code></pre>
@@ -8403,7 +8400,7 @@ You should follow up with self.activityfilter(lambda a: len(a.trackids()) &gt; 0
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/3199049baa69afc68c84d8ea2c184bce284e9598/vipy/video.py#L2658-L2660" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/video.py#L2655-L2657" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def trackindex(self, id):
     assert id in self.tracks()
@@ -8418,7 +8415,7 @@ You should follow up with self.activityfilter(lambda a: len(a.trackids()) &gt; 0
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/3199049baa69afc68c84d8ea2c184bce284e9598/vipy/video.py#L2682-L2683" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/video.py#L2679-L2680" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def tracklist(self):
     return list(self.tracks().values())  # triggers shallow copy</code></pre>
@@ -8433,7 +8430,7 @@ You should follow up with self.activityfilter(lambda a: len(a.trackids()) &gt; 0
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/3199049baa69afc68c84d8ea2c184bce284e9598/vipy/video.py#L2815-L2823" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/video.py#L2812-L2820" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def trackmap(self, f, strict=True):
     &#34;&#34;&#34;Apply lambda function f to each activity
@@ -8454,7 +8451,7 @@ You should follow up with self.activityfilter(lambda a: len(a.trackids()) &gt; 0
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/3199049baa69afc68c84d8ea2c184bce284e9598/vipy/video.py#L2638-L2653" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/video.py#L2635-L2650" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def tracks(self, tracks=None, id=None):
     &#34;&#34;&#34;Return mutable dictionary of tracks&#34;&#34;&#34;        
@@ -8491,7 +8488,7 @@ Each scene starts at frame 0 and is a shallow copy of self containing exactly on
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/3199049baa69afc68c84d8ea2c184bce284e9598/vipy/video.py#L3124-L3132" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/video.py#L3121-L3129" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def tracksplit(self):
     &#34;&#34;&#34;Split the scene into k separate scenes, one for each track.  Each scene starts at frame 0 and is a shallow copy of self containing exactly one track.  
@@ -8546,7 +8543,7 @@ object or activity detector without running the detector on the high-res scene
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/3199049baa69afc68c84d8ea2c184bce284e9598/vipy/video.py#L3516-L3607" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/video.py#L3513-L3604" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def union(self, other, temporal_iou_threshold=0.5, spatial_iou_threshold=0.6, strict=True, overlap=&#39;average&#39;, percentilecover=0.8, percentilesamples=100, activity=True, track=True):
     &#34;&#34;&#34;Compute the union two scenes as the set of unique activities and tracks.  
@@ -8650,7 +8647,7 @@ object or activity detector without running the detector on the high-res scene
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/3199049baa69afc68c84d8ea2c184bce284e9598/vipy/video.py#L3788-L3790" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/video.py#L3785-L3787" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def zeromask(self):
     &#34;&#34;&#34;Alias for fgmask&#34;&#34;&#34;
@@ -8666,7 +8663,7 @@ Update tracks accordingly.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/3199049baa69afc68c84d8ea2c184bce284e9598/vipy/video.py#L3400-L3409" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/video.py#L3397-L3406" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def zeropad(self, padwidth, padheight):
     &#34;&#34;&#34;Zero pad the video with padwidth columns before and after, and padheight rows before and after
@@ -8784,7 +8781,7 @@ Update tracks accordingly.</p></div>
 </dd>
 <dt id="vipy.video.Stream"><code class="flex name class">
 <span>class <span class="ident">Stream</span></span>
-<span>(</span><span>v, queuesize, write, overwrite, bitrate=None, buffered=False, buflen=16, rebuffered=False)</span>
+<span>(</span><span>v, queuesize, write, overwrite, bitrate=None, buffered=False, bufsize=256, rebuffered=False)</span>
 </code></dt>
 <dd>
 <div class="desc"><p>vipy.video.Stream class. </p>
@@ -8831,7 +8828,7 @@ This iterator can iterate over clips, frames or batches.
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/3199049baa69afc68c84d8ea2c184bce284e9598/vipy/video.py#L55-L370" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/video.py#L55-L367" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">class Stream(object):
     &#34;&#34;&#34;vipy.video.Stream class. 
@@ -8874,7 +8871,7 @@ This iterator can iterate over clips, frames or batches.
         - This is designed to be accessed as `vipy.video.Video.stream` and not accessed as a standalone class..
 
     &#34;&#34;&#34;
-    def __init__(self, v, queuesize, write, overwrite, bitrate=None, buffered=False, buflen=16, rebuffered=False):
+    def __init__(self, v, queuesize, write, overwrite, bitrate=None, buffered=False, bufsize=256, rebuffered=False):
         self._video = v   # do not clone
         self._write_pipe = None
         self._vcodec = &#39;libx264&#39;
@@ -8888,7 +8885,7 @@ This iterator can iterate over clips, frames or batches.
         self._shape = self._video.shape() if (not self._write) or (self._write and self._video.canload()) else None  # shape for write can be defined by first frame
         assert (write is True or overwrite is True) or self._shape is not None, &#34;Invalid video &#39;%s&#39;&#34; % (str(v))
         self._queuesize = queuesize
-        self._bufsize = int(buflen*v.framerate())
+        self._bufsize = bufsize
         self._buffered = buffered
         self._is_stream_buffer_owner = False                            
         assert self._bufsize &gt;= 1
@@ -9002,7 +8999,7 @@ This iterator can iterate over clips, frames or batches.
                 # -The stream buffer is a dictionary that is n frames long, and if the newest frame from the pipe is frame k, the oldest frame is k-n which is yielded first
                 # -If the stream is unbuffered, just read from the queue directly and yield the numpy frame
                 b = self._video.attributes[&#39;__stream_buffer&#39;] if self._buffered else None  # buffer (if requested)
-                (k, kb) = (min(b.keys()) if b is not None and len(b)&gt;0 else 0, 0)   # current frame, current frame in buffer                
+                k = 0   # current frame 
                 while True:
                     if not self._buffered or self._is_stream_buffer_owner:
                         # Primary iterator: read from thread queue
@@ -9010,26 +9007,23 @@ This iterator can iterate over clips, frames or batches.
                             (f, img) = (k, q.get())  # unbuffered: to yield latest from thread queue directly
                             k += 1                            
                         else:
-                            while len(b) &lt; self._bufsize and ((len(b) == 0) or b[kb-1] is not None):
-                                b[kb] = q.get()  # re-fill stream buffer
-                                kb += 1  # next frame pointer
-                            (f, img) = (k, b[k])  # to yield current frame
+                            b[k] = q.get()  # add to stream buffer
+                            (f, img) = (k, b[k])  # primary buffer: yield current frame from pipe
                             k += 1
                     else:
                         # Secondary iterator: read from stream buffer
-                        while True:
-                            if k in b:
-                                (f, img) = (k, b[k])  # to yield from stream buffer
-                                k += 1
-                                break
-                            else:
-                                time.sleep(0.001)  # &#34;Event&#34; wait, yuck..
+                        while k not in b:
+                            # &#34;Event&#34; wait: wait for primary iterator to start up and fill buffer, after it starts filling, this sleep should be unnecessary
+                            time.sleep(0.001)  
+                            
+                        (f, img) = (k, b[k])  # secondary buffers: yield from stream buffer
+                        k += 1
                         
                     if img is not None:
                         yield self._video.frame(f, img)  # yield a vipy.image.Scene object with annotations at frame f, using the latest annotation from the shared video object                        
                         if b is not None and self._is_stream_buffer_owner:
-                            if k-2 in b:
-                                del b[k-2] # remove from filled buffer after secondary iterators have seen it
+                            if len(b) &gt; self._bufsize:
+                                del b[min(b.keys())]  # remove oldest frame from stream buffer
                     else:
                         if self._is_stream_buffer_owner:
                             e.set()
@@ -9082,12 +9076,12 @@ This iterator can iterate over clips, frames or batches.
         &gt;&gt;&gt;     # then video vc with frames [4,12] ...
 
         Args:
-        n: [int] the length of the clip in frames
-        m: [int] the stride between clips in frames
-        delay: [int] The temporal delay in frames for the clip, must be less than n and &gt;= 0
-        continuous: [bool]  if true, then yield None for the sequential frames not aligned with a stride so that a clip is yielded on every frame
-        activities: [bool]  if false, then activities from the source video are not copied into the clip
-        tracks: [bool]  if false, then tracks from the source video are not copied into the clip
+            n: [int] the length of the clip in frames
+            m: [int] the stride between clips in frames
+            delay: [int] The temporal delay in frames for the clip, must be less than n and &gt;= 0
+            continuous: [bool]  if true, then yield None for the sequential frames not aligned with a stride so that a clip is yielded on every frame
+            activities: [bool]  if false, then activities from the source video are not copied into the clip
+            tracks: [bool]  if false, then tracks from the source video are not copied into the clip
 
         Returns:
             An iterator that yields `vipy.video.Video` objects each of length n with startframe += m, starting at frame=delay, such that each video contains the tracks and activities (if requested) for this clip sourced from the shared stream video.
@@ -9171,7 +9165,7 @@ Last batch will be ragged.</p>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/3199049baa69afc68c84d8ea2c184bce284e9598/vipy/video.py#L340-L356" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/video.py#L337-L353" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def batch(self, n):
     &#34;&#34;&#34;Stream batches of length n such that each batch contains frames [0,n], [n+1, 2n], ...  Last batch will be ragged.
@@ -9209,22 +9203,30 @@ Introducing a delay so that the clips start at a temporal offset from v
 &gt;&gt;&gt;     # yields video vc with frames [1,9]
 &gt;&gt;&gt;     # then video vc with frames [4,12] ...
 </code></pre>
-<p>Args:
-n: [int] the length of the clip in frames
-m: [int] the stride between clips in frames
-delay: [int] The temporal delay in frames for the clip, must be less than n and &gt;= 0
-continuous: [bool]
-if true, then yield None for the sequential frames not aligned with a stride so that a clip is yielded on every frame
-activities: [bool]
-if false, then activities from the source video are not copied into the clip
-tracks: [bool]
-if false, then tracks from the source video are not copied into the clip</p>
+<h2 id="args">Args</h2>
+<dl>
+<dt><strong><code>n</code></strong></dt>
+<dd>[int] the length of the clip in frames</dd>
+<dt><strong><code>m</code></strong></dt>
+<dd>[int] the stride between clips in frames</dd>
+<dt><strong><code>delay</code></strong></dt>
+<dd>[int] The temporal delay in frames for the clip, must be less than n and &gt;= 0</dd>
+<dt><strong><code>continuous</code></strong></dt>
+<dd>[bool]
+if true, then yield None for the sequential frames not aligned with a stride so that a clip is yielded on every frame</dd>
+<dt><strong><code>activities</code></strong></dt>
+<dd>[bool]
+if false, then activities from the source video are not copied into the clip</dd>
+<dt><strong><code>tracks</code></strong></dt>
+<dd>[bool]
+if false, then tracks from the source video are not copied into the clip</dd>
+</dl>
 <h2 id="returns">Returns</h2>
 <p>An iterator that yields <code><a title="vipy.video.Video" href="#vipy.video.Video">Video</a></code> objects each of length n with startframe += m, starting at frame=delay, such that each video contains the tracks and activities (if requested) for this clip sourced from the shared stream video.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/3199049baa69afc68c84d8ea2c184bce284e9598/vipy/video.py#L287-L337" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/video.py#L284-L334" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def clip(self, n, m=1, continuous=False, tracks=True, activities=True, delay=0, ragged=False):
     &#34;&#34;&#34;Stream clips of length n such that the yielded video clip contains frame(0+delay) to frame(n+delay), and next contains frame(m+delay) to frame(n+m+delay). 
@@ -9243,12 +9245,12 @@ if false, then tracks from the source video are not copied into the clip</p>
     &gt;&gt;&gt;     # then video vc with frames [4,12] ...
 
     Args:
-    n: [int] the length of the clip in frames
-    m: [int] the stride between clips in frames
-    delay: [int] The temporal delay in frames for the clip, must be less than n and &gt;= 0
-    continuous: [bool]  if true, then yield None for the sequential frames not aligned with a stride so that a clip is yielded on every frame
-    activities: [bool]  if false, then activities from the source video are not copied into the clip
-    tracks: [bool]  if false, then tracks from the source video are not copied into the clip
+        n: [int] the length of the clip in frames
+        m: [int] the stride between clips in frames
+        delay: [int] The temporal delay in frames for the clip, must be less than n and &gt;= 0
+        continuous: [bool]  if true, then yield None for the sequential frames not aligned with a stride so that a clip is yielded on every frame
+        activities: [bool]  if false, then activities from the source video are not copied into the clip
+        tracks: [bool]  if false, then tracks from the source video are not copied into the clip
 
     Returns:
         An iterator that yields `vipy.video.Video` objects each of length n with startframe += m, starting at frame=delay, such that each video contains the tracks and activities (if requested) for this clip sourced from the shared stream video.
@@ -9287,7 +9289,7 @@ if false, then tracks from the source video are not copied into the clip</p>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/3199049baa69afc68c84d8ea2c184bce284e9598/vipy/video.py#L359-L370" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/video.py#L356-L367" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def frame(self, delay=0):
     &#34;&#34;&#34;Stream individual frames of video with negative offset n frames to the stream head. If delay=30, this will return a frame 30 frames ago&#34;&#34;&#34;
@@ -9311,7 +9313,7 @@ if false, then tracks from the source video are not copied into the clip</p>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/3199049baa69afc68c84d8ea2c184bce284e9598/vipy/video.py#L169-L170" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/video.py#L169-L170" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def framerate(self):
     return self._video.framerate()</code></pre>
@@ -9325,7 +9327,7 @@ if false, then tracks from the source video are not copied into the clip</p>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/3199049baa69afc68c84d8ea2c184bce284e9598/vipy/video.py#L269-L285" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/video.py#L266-L282" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def write(self, im, flush=False):
     &#34;&#34;&#34;Write individual frames to write stream&#34;&#34;&#34;
@@ -9425,7 +9427,7 @@ This can speed up loading in some circumstances.</dd>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/3199049baa69afc68c84d8ea2c184bce284e9598/vipy/video.py#L374-L2314" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/video.py#L371-L2311" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">class Video(object):
     &#34;&#34;&#34; vipy.video.Video class
@@ -9753,7 +9755,7 @@ This can speed up loading in some circumstances.</dd>
         return vo
     
 
-    def stream(self, write=False, overwrite=False, queuesize=1024, bitrate=None, buffered=False, rebuffered=False, buflen=16):
+    def stream(self, write=False, overwrite=False, queuesize=1024, bitrate=None, buffered=False, rebuffered=False, bufsize=256):
         &#34;&#34;&#34;Iterator to yield groups of frames streaming from video.
 
         A video stream is a real time iterator to read or write from a video.  Streams are useful to group together frames into clips that are operated on as a group.
@@ -9798,7 +9800,7 @@ This can speed up loading in some circumstances.</dd>
             overwrite: [bool]  If true, and the video output filename already exists, overwrite it
             bufsize: [int]  The maximum queue size for the ffmpeg pipe thread in the primary iterator.  The queue size is the maximum size of pre-fetched frames from the ffmpeg pip.  This should be big enough that you are never waiting for queue fills
             bitrate: [str] The ffmpeg bitrate of the output encoder for writing, written like &#39;2000k&#39;
-            buflen: [int]  The maximum size of the stream buffer for the secondary iterators.  The stream buffer length should be big enough that you are never waiting for the stream to fill.
+            bufsize: [int]  The maximum size of the stream buffer in frames.  The stream buffer length should be big enough so that all iterators can yield before deleting old frames
 
         Returns:
             A Stream object
@@ -9806,7 +9808,7 @@ This can speed up loading in some circumstances.</dd>
         ..note:: Using this iterator may affect PDB debugging due to stdout/stdin redirection.  Use ipdb instead.
 
         &#34;&#34;&#34;
-        return Stream(self, queuesize=queuesize, write=write, overwrite=overwrite, bitrate=bitrate, buffered=buffered, rebuffered=rebuffered, buflen=buflen)  # do not clone
+        return Stream(self, queuesize=queuesize, write=write, overwrite=overwrite, bitrate=bitrate, buffered=buffered, rebuffered=rebuffered, bufsize=bufsize)  # do not clone
 
 
     def clear(self):
@@ -11388,7 +11390,7 @@ This can speed up loading in some circumstances.</dd>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/3199049baa69afc68c84d8ea2c184bce284e9598/vipy/video.py#L503-L515" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/video.py#L500-L512" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">@classmethod
 def cast(cls, v):
@@ -11436,7 +11438,7 @@ Try <code><a title="vipy.video.Video.zeropadlike" href="#vipy.video.Video.zeropa
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/3199049baa69afc68c84d8ea2c184bce284e9598/vipy/video.py#L656-L697" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/video.py#L653-L694" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">@classmethod
 def concatenate(cls, videos, outfile, framerate=30, youtube_chapters=None):
@@ -11494,7 +11496,7 @@ This same operation is used for serialization of all vipy objects to JSON for st
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/3199049baa69afc68c84d8ea2c184bce284e9598/vipy/video.py#L517-L540" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/video.py#L514-L537" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">@classmethod
 def from_json(cls, s):
@@ -11533,7 +11535,7 @@ def from_json(cls, s):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/3199049baa69afc68c84d8ea2c184bce284e9598/vipy/video.py#L1264-L1266" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/video.py#L1261-L1263" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def abspath(self):
     &#34;&#34;&#34;Change the path of the filename from a relative path to an absolute path (not relocatable)&#34;&#34;&#34;
@@ -11559,7 +11561,7 @@ Copied buffers do not share pixels.</dd>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/3199049baa69afc68c84d8ea2c184bce284e9598/vipy/video.py#L1160-L1182" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/video.py#L1157-L1179" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def array(self, array=None, copy=False):
     &#34;&#34;&#34;Set or return the video buffer as a numpy array.
@@ -11594,7 +11596,7 @@ Copied buffers do not share pixels.</dd>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/3199049baa69afc68c84d8ea2c184bce284e9598/vipy/video.py#L1452-L1454" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/video.py#L1449-L1451" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def aspect_ratio(self):
     &#34;&#34;&#34;The width/height of the video expressed as a fraction&#34;&#34;&#34;
@@ -11609,7 +11611,7 @@ Copied buffers do not share pixels.</dd>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/3199049baa69afc68c84d8ea2c184bce284e9598/vipy/video.py#L2270-L2272" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/video.py#L2267-L2269" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def bias(self, b):
     &#34;&#34;&#34;Pixelwise additive bias, such that each pixel p_{ij} = b + p_{ij}&#34;&#34;&#34;
@@ -11624,7 +11626,7 @@ Copied buffers do not share pixels.</dd>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/3199049baa69afc68c84d8ea2c184bce284e9598/vipy/video.py#L760-L765" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/video.py#L757-L762" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def bytes(self):
     &#34;&#34;&#34;Return a bytes representation of the video file&#34;&#34;&#34;
@@ -11648,7 +11650,7 @@ Use <code><a title="vipy.video.Video.isloadable" href="#vipy.video.Video.isloada
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/3199049baa69afc68c84d8ea2c184bce284e9598/vipy/video.py#L1121-L1135" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/video.py#L1118-L1132" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def canload(self, frame=0):
     &#34;&#34;&#34;Return True if the video can be previewed at frame=k successfully.
@@ -11675,7 +11677,7 @@ Use <code><a title="vipy.video.Video.isloadable" href="#vipy.video.Video.isloada
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/3199049baa69afc68c84d8ea2c184bce284e9598/vipy/video.py#L1736-L1741" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/video.py#L1733-L1738" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def centercrop(self, shape, withbox=False):
     &#34;&#34;&#34;Crop the video to shape=(H,W) preserving the integer centroid position, and optionally return the box&#34;&#34;&#34;
@@ -11693,7 +11695,7 @@ Use <code><a title="vipy.video.Video.isloadable" href="#vipy.video.Video.isloada
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/3199049baa69afc68c84d8ea2c184bce284e9598/vipy/video.py#L1743-L1745" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/video.py#L1740-L1742" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def centersquare(self):
     &#34;&#34;&#34;Crop video of size (NxN) in the center, such that N=min(width,height), keeping the video centroid constant&#34;&#34;&#34;
@@ -11708,7 +11710,7 @@ Use <code><a title="vipy.video.Video.isloadable" href="#vipy.video.Video.isloada
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/3199049baa69afc68c84d8ea2c184bce284e9598/vipy/video.py#L2279-L2283" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/video.py#L2276-L2280" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def channel(self, c):
     self.load()
@@ -11725,7 +11727,7 @@ Use <code><a title="vipy.video.Video.isloadable" href="#vipy.video.Video.isloada
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/3199049baa69afc68c84d8ea2c184bce284e9598/vipy/video.py#L1428-L1442" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/video.py#L1425-L1439" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def channels(self):
     &#34;&#34;&#34;Return integer number of color channels&#34;&#34;&#34;
@@ -11752,7 +11754,7 @@ Use <code><a title="vipy.video.Video.isloadable" href="#vipy.video.Video.isloada
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/3199049baa69afc68c84d8ea2c184bce284e9598/vipy/video.py#L1419-L1421" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/video.py#L1416-L1418" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def channelshape(self):
     &#34;&#34;&#34;Return a tuple (channels, height, width) for the video&#34;&#34;&#34;
@@ -11767,7 +11769,7 @@ Use <code><a title="vipy.video.Video.isloadable" href="#vipy.video.Video.isloada
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/3199049baa69afc68c84d8ea2c184bce284e9598/vipy/video.py#L756-L758" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/video.py#L753-L755" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def clear(self):
     &#34;&#34;&#34;no-op for `vipy.video.Video` object, used only for `vipy.video.Scene`&#34;&#34;&#34;
@@ -11782,7 +11784,7 @@ Use <code><a title="vipy.video.Video.isloadable" href="#vipy.video.Video.isloada
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/3199049baa69afc68c84d8ea2c184bce284e9598/vipy/video.py#L1610-L1626" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/video.py#L1607-L1623" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def clip(self, startframe, endframe=None):
     &#34;&#34;&#34;Load a video clip betweeen start and end frames&#34;&#34;&#34;
@@ -11817,7 +11819,7 @@ Use <code><a title="vipy.video.Video.isloadable" href="#vipy.video.Video.isloada
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/3199049baa69afc68c84d8ea2c184bce284e9598/vipy/video.py#L1628-L1642" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/video.py#L1625-L1639" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def cliprange(self):
     &#34;&#34;&#34;Return the planned clip (startframe, endframe) range.
@@ -11878,7 +11880,7 @@ A private attribute is any key with two leading underscores '__' which should no
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/3199049baa69afc68c84d8ea2c184bce284e9598/vipy/video.py#L2158-L2230" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/video.py#L2155-L2227" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def clone(self, flushforward=False, flushbackward=False, flush=False, flushfilter=False, rekey=False, flushfile=False, shallow=False, sharedarray=False, sanitize=True):
     &#34;&#34;&#34;Create deep copy of video object, flushing the original buffer if requested and returning the cloned object.
@@ -11964,7 +11966,7 @@ This will not change pixels, only the colorspace interpretation of pixels.</p></
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/3199049baa69afc68c84d8ea2c184bce284e9598/vipy/video.py#L1050-L1067" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/video.py#L1047-L1064" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def colorspace(self, colorspace=None):
     &#34;&#34;&#34;Return or set the colorspace as [&#39;rgb&#39;, &#39;bgr&#39;, &#39;lum&#39;, &#39;float&#39;].  This will not change pixels, only the colorspace interpretation of pixels.&#34;&#34;&#34;
@@ -11996,7 +11998,7 @@ You can try to run this command line yourself for debugging purposes, by replaci
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/3199049baa69afc68c84d8ea2c184bce284e9598/vipy/video.py#L816-L821" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/video.py#L813-L818" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def commandline(self):
     &#34;&#34;&#34;Return the equivalent ffmpeg command line string that will be used to transcode the video.
@@ -12014,7 +12016,7 @@ You can try to run this command line yourself for debugging purposes, by replaci
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/3199049baa69afc68c84d8ea2c184bce284e9598/vipy/video.py#L1802-L1824" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/video.py#L1799-L1821" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def crop(self, bbi, zeropad=True):
     &#34;&#34;&#34;Spatially crop the video using the supplied vipy.geometry.BoundingBox, can only be applied prior to load().
@@ -12050,7 +12052,7 @@ This is useful for some codecs or filters which require even shape.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/3199049baa69afc68c84d8ea2c184bce284e9598/vipy/video.py#L1747-L1749" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/video.py#L1744-L1746" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def cropeven(self):
     &#34;&#34;&#34;Crop the video to the largest even (width,height) less than or equal to current (width,height).  This is useful for some codecs or filters which require even shape.&#34;&#34;&#34;
@@ -12065,7 +12067,7 @@ This is useful for some codecs or filters which require even shape.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/3199049baa69afc68c84d8ea2c184bce284e9598/vipy/video.py#L2308-L2311" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/video.py#L2305-L2308" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def delattribute(self, k):
     if k in self.attributes:
@@ -12081,7 +12083,7 @@ This is useful for some codecs or filters which require even shape.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/3199049baa69afc68c84d8ea2c184bce284e9598/vipy/video.py#L975-L977" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/video.py#L972-L974" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def dict(self):
     &#34;&#34;&#34;Return a python dictionary containing the relevant serialized attributes suitable for JSON encoding.&#34;&#34;&#34;
@@ -12109,7 +12111,7 @@ This is useful for some codecs or filters which require even shape.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/3199049baa69afc68c84d8ea2c184bce284e9598/vipy/video.py#L1288-L1388" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/video.py#L1285-L1385" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def download(self, ignoreErrors=False, timeout=10, verbose=True, max_filesize=&#39;350m&#39;):
     &#34;&#34;&#34;Download URL to filename provided by constructor, or to temp filename.
@@ -12222,7 +12224,7 @@ This is useful for some codecs or filters which require even shape.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/3199049baa69afc68c84d8ea2c184bce284e9598/vipy/video.py#L1284-L1286" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/video.py#L1281-L1283" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def downloadif(self, ignoreErrors=False, timeout=10, verbose=True, max_filesize=&#39;350m&#39;):
     &#34;&#34;&#34;Download URL to filename if the filename has not already been downloaded&#34;&#34;&#34;
@@ -12238,7 +12240,7 @@ Return duration in seconds if no arguments are provided.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/3199049baa69afc68c84d8ea2c184bce284e9598/vipy/video.py#L915-L921" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/video.py#L912-L918" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def duration(self, frames=None, seconds=None, minutes=None):
     &#34;&#34;&#34;Return a video clipped with frame indexes between (0, frames) or (0,seconds*self.framerate()) or (0,minutes*60*self.framerate().  Return duration in seconds if no arguments are provided.&#34;&#34;&#34;
@@ -12258,7 +12260,7 @@ Requires a probe() of the video to get duration</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/3199049baa69afc68c84d8ea2c184bce284e9598/vipy/video.py#L923-L925" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/video.py#L920-L922" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def duration_in_frames(self):
     &#34;&#34;&#34;Return the duration of the video filter chain in frames, equal to round(self.duration()*self.framerate()).  Requires a probe() of the video to get duration&#34;&#34;&#34;
@@ -12277,7 +12279,7 @@ If you load(), this may be different duration depending on clip() or framerate()
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/3199049baa69afc68c84d8ea2c184bce284e9598/vipy/video.py#L908-L913" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/video.py#L905-L910" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def duration_in_frames_of_videofile(self):
     &#34;&#34;&#34;Return video duration of the source video file (NOT the filter chain) in frames, requires ffprobe.
@@ -12300,7 +12302,7 @@ If you load(), this may be different duration depending on clip() or framerate()
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/3199049baa69afc68c84d8ea2c184bce284e9598/vipy/video.py#L895-L906" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/video.py#L892-L903" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def duration_in_seconds_of_videofile(self):
     &#34;&#34;&#34;Return video duration of the source filename (NOT the filter chain) in seconds, requires ffprobe.  Fetch once and cache.
@@ -12324,7 +12326,7 @@ If you load(), this may be different duration depending on clip() or framerate()
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/3199049baa69afc68c84d8ea2c184bce284e9598/vipy/video.py#L1390-L1392" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/video.py#L1387-L1389" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def fetch(self, ignoreErrors=False):
     &#34;&#34;&#34;Download only if hasfilename() is not found&#34;&#34;&#34;
@@ -12339,7 +12341,7 @@ If you load(), this may be different duration depending on clip() or framerate()
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/3199049baa69afc68c84d8ea2c184bce284e9598/vipy/video.py#L1962-L1968" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/video.py#L1959-L1965" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def ffplay(self):
     &#34;&#34;&#34;Play the video file using ffplay&#34;&#34;&#34;
@@ -12358,7 +12360,7 @@ If you load(), this may be different duration depending on clip() or framerate()
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/3199049baa69afc68c84d8ea2c184bce284e9598/vipy/video.py#L1239-L1262" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/video.py#L1236-L1259" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def filename(self, newfile=None, copy=False, symlink=False):
     &#34;&#34;&#34;Update video Filename with optional copy or symlink from existing file (self.filename()) to new file&#34;&#34;&#34;
@@ -12394,7 +12396,7 @@ If you load(), this may be different duration depending on clip() or framerate()
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/3199049baa69afc68c84d8ea2c184bce284e9598/vipy/video.py#L1280-L1282" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/video.py#L1277-L1279" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def filesize(self):
     &#34;&#34;&#34;Return the size in bytes of the filename(), None if the filename() is invalid&#34;&#34;&#34;
@@ -12409,7 +12411,7 @@ If you load(), this may be different duration depending on clip() or framerate()
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/3199049baa69afc68c84d8ea2c184bce284e9598/vipy/video.py#L1668-L1674" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/video.py#L1665-L1671" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def fliplr(self):
     &#34;&#34;&#34;Mirror the video left/right by flipping horizontally&#34;&#34;&#34;
@@ -12428,7 +12430,7 @@ If you load(), this may be different duration depending on clip() or framerate()
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/3199049baa69afc68c84d8ea2c184bce284e9598/vipy/video.py#L1676-L1680" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/video.py#L1673-L1677" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def flipud(self):
     &#34;&#34;&#34;Rotate the video 90 degrees counter-clockwise, can only be applied prior to load()&#34;&#34;&#34;        
@@ -12445,7 +12447,7 @@ If you load(), this may be different duration depending on clip() or framerate()
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/3199049baa69afc68c84d8ea2c184bce284e9598/vipy/video.py#L2274-L2277" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/video.py#L2271-L2274" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def float(self):
     self.load()
@@ -12461,7 +12463,7 @@ If you load(), this may be different duration depending on clip() or framerate()
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/3199049baa69afc68c84d8ea2c184bce284e9598/vipy/video.py#L2232-L2237" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/video.py#L2229-L2234" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def flush(self):
     &#34;&#34;&#34;Alias for clone(flush=True), returns self not clone&#34;&#34;&#34;
@@ -12479,7 +12481,7 @@ If you load(), this may be different duration depending on clip() or framerate()
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/3199049baa69afc68c84d8ea2c184bce284e9598/vipy/video.py#L2243-L2246" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/video.py#L2240-L2243" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def flush_and_return(self, retval):
     &#34;&#34;&#34;Flush the video and return the parameter supplied, useful for long fluent chains&#34;&#34;&#34;
@@ -12495,7 +12497,7 @@ If you load(), this may be different duration depending on clip() or framerate()
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/3199049baa69afc68c84d8ea2c184bce284e9598/vipy/video.py#L612-L615" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/video.py#L609-L612" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def frame(self, k, img=None):
     &#34;&#34;&#34;Return the kth frame as an `vipy.image Image` object&#34;&#34;&#34;        
@@ -12511,7 +12513,7 @@ If you load(), this may be different duration depending on clip() or framerate()
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/3199049baa69afc68c84d8ea2c184bce284e9598/vipy/video.py#L771-L772" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/video.py#L768-L769" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def framelist(self):
     return list(self.frames())</code></pre>
@@ -12532,7 +12534,7 @@ If you load(), this may be different duration depending on clip() or framerate()
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/3199049baa69afc68c84d8ea2c184bce284e9598/vipy/video.py#L1021-L1048" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/video.py#L1018-L1045" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def framerate(self, fps=None):
     &#34;&#34;&#34;Change the input framerate for the video and update frame indexes for all annotations
@@ -12572,7 +12574,7 @@ If you load(), this may be different duration depending on clip() or framerate()
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/3199049baa69afc68c84d8ea2c184bce284e9598/vipy/video.py#L927-L933" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/video.py#L924-L930" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def framerate_of_videofile(self):
     &#34;&#34;&#34;Return video framerate in frames per second of the source video file (NOT the filter chain), requires ffprobe.
@@ -12591,7 +12593,7 @@ If you load(), this may be different duration depending on clip() or framerate()
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/3199049baa69afc68c84d8ea2c184bce284e9598/vipy/video.py#L767-L769" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/video.py#L764-L766" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def frames(self):
     &#34;&#34;&#34;Alias for __iter__()&#34;&#34;&#34;
@@ -12606,7 +12608,7 @@ If you load(), this may be different duration depending on clip() or framerate()
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/3199049baa69afc68c84d8ea2c184bce284e9598/vipy/video.py#L1184-L1186" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/video.py#L1181-L1183" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def fromarray(self, array):
     &#34;&#34;&#34;Alias for self.array(..., copy=True), which forces the new array to be a copy&#34;&#34;&#34;
@@ -12626,7 +12628,7 @@ framedir/image_0002.jpg</p>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/3199049baa69afc68c84d8ea2c184bce284e9598/vipy/video.py#L1188-L1198" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/video.py#L1185-L1195" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def fromdirectory(self, indir, sortkey=None):
     &#34;&#34;&#34;Create a video from a directory of frames stored as individual image filenames.
@@ -12649,7 +12651,7 @@ framedir/image_0002.jpg</p>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/3199049baa69afc68c84d8ea2c184bce284e9598/vipy/video.py#L1200-L1203" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/video.py#L1197-L1200" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def fromframes(self, framelist, copy=True):
     &#34;&#34;&#34;Create a video from a list of frames&#34;&#34;&#34;
@@ -12665,7 +12667,7 @@ framedir/image_0002.jpg</p>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/3199049baa69afc68c84d8ea2c184bce284e9598/vipy/video.py#L2266-L2268" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/video.py#L2263-L2265" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def gain(self, g):
     &#34;&#34;&#34;Pixelwise multiplicative gain, such that each pixel p_{ij} = g * p_{ij}&#34;&#34;&#34;
@@ -12680,7 +12682,7 @@ framedir/image_0002.jpg</p>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/3199049baa69afc68c84d8ea2c184bce284e9598/vipy/video.py#L2313-L2314" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/video.py#L2310-L2311" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def getattribute(self, k):
     return self.attributes[k]</code></pre>
@@ -12707,7 +12709,7 @@ framedir/image_0002.jpg</p>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/3199049baa69afc68c84d8ea2c184bce284e9598/vipy/video.py#L1860-L1874" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/video.py#L1857-L1871" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def gif(self, outfile, pause=3, smallest=False, smaller=False):
     &#34;&#34;&#34;Save a video to an animated GIF file, with pause=N seconds between loops.  
@@ -12734,7 +12736,7 @@ framedir/image_0002.jpg</p>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/3199049baa69afc68c84d8ea2c184bce284e9598/vipy/video.py#L2304-L2306" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/video.py#L2301-L2303" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def hasattribute(self, k):
     &#34;&#34;&#34;Does the attributes dictionary (self.attributes) contain the provided key&#34;&#34;&#34;
@@ -12749,7 +12751,7 @@ framedir/image_0002.jpg</p>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/3199049baa69afc68c84d8ea2c184bce284e9598/vipy/video.py#L1145-L1147" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/video.py#L1142-L1144" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def hasfilename(self):
     &#34;&#34;&#34;Does the filename returned from `vipy.video.Video.filename` exist?&#34;&#34;&#34;
@@ -12764,7 +12766,7 @@ framedir/image_0002.jpg</p>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/3199049baa69afc68c84d8ea2c184bce284e9598/vipy/video.py#L1153-L1155" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/video.py#L1150-L1152" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def hasurl(self):
     &#34;&#34;&#34;Is the url returned from `vipy.video.Video.url` a well formed url?&#34;&#34;&#34;
@@ -12779,7 +12781,7 @@ framedir/image_0002.jpg</p>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/3199049baa69afc68c84d8ea2c184bce284e9598/vipy/video.py#L1448-L1450" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/video.py#L1445-L1447" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def height(self):
     &#34;&#34;&#34;Height (rows) in pixels of the video for the current filter chain&#34;&#34;&#34;
@@ -12794,7 +12796,7 @@ framedir/image_0002.jpg</p>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/3199049baa69afc68c84d8ea2c184bce284e9598/vipy/video.py#L1137-L1139" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/video.py#L1134-L1136" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def iscolor(self):
     &#34;&#34;&#34;Is the video a three channel color video as returned from `vipy.video.Video.channels`?&#34;&#34;&#34;
@@ -12809,7 +12811,7 @@ framedir/image_0002.jpg</p>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/3199049baa69afc68c84d8ea2c184bce284e9598/vipy/video.py#L1149-L1151" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/video.py#L1146-L1148" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def isdownloaded(self):
     &#34;&#34;&#34;Does the filename returned from `vipy.video.Video.filename` exist, meaning that the url has been downloaded to a local file?&#34;&#34;&#34;
@@ -12824,7 +12826,7 @@ framedir/image_0002.jpg</p>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/3199049baa69afc68c84d8ea2c184bce284e9598/vipy/video.py#L1141-L1143" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/video.py#L1138-L1140" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def isgrayscale(self):
     &#34;&#34;&#34;Is the video a single channel as returned from `vipy.video.Video.channels`?&#34;&#34;&#34;
@@ -12839,7 +12841,7 @@ framedir/image_0002.jpg</p>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/3199049baa69afc68c84d8ea2c184bce284e9598/vipy/video.py#L1157-L1158" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/video.py#L1154-L1155" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def islive(self):
     return self.hasurl() and (isRTSPurl(self._url) or isRTMPurl(self._url))</code></pre>
@@ -12866,7 +12868,7 @@ Try <code><a title="vipy.video.Video.canload" href="#vipy.video.Video.canload">V
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/3199049baa69afc68c84d8ea2c184bce284e9598/vipy/video.py#L1095-L1118" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/video.py#L1092-L1115" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def isloadable(self, flush=True):
     &#34;&#34;&#34;Return True if the video can be loaded successfully.
@@ -12902,7 +12904,7 @@ Try <code><a title="vipy.video.Video.canload" href="#vipy.video.Video.canload">V
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/3199049baa69afc68c84d8ea2c184bce284e9598/vipy/video.py#L1091-L1093" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/video.py#L1088-L1090" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def isloaded(self):
     &#34;&#34;&#34;Return True if the video has been loaded&#34;&#34;&#34;
@@ -12917,7 +12919,7 @@ Try <code><a title="vipy.video.Video.canload" href="#vipy.video.Video.canload">V
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/3199049baa69afc68c84d8ea2c184bce284e9598/vipy/video.py#L1423-L1426" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/video.py#L1420-L1423" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def issquare(self):
     &#34;&#34;&#34;Return true if the video has square dimensions (height == width), else false&#34;&#34;&#34;
@@ -12942,7 +12944,7 @@ Try using <code><a title="vipy.video.Video.store" href="#vipy.video.Video.store"
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/3199049baa69afc68c84d8ea2c184bce284e9598/vipy/video.py#L979-L1004" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/video.py#L976-L1001" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def json(self, encode=True):
     &#34;&#34;&#34;Return a json representation of the video.
@@ -12997,7 +12999,7 @@ Try to call clip() first to extract a video segment to load().</p>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/3199049baa69afc68c84d8ea2c184bce284e9598/vipy/video.py#L1511-L1602" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/video.py#L1508-L1599" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def load(self, verbose=False, ignoreErrors=False, shape=None):
     &#34;&#34;&#34;Load a video using ffmpeg, applying the requested filter chain.  
@@ -13108,7 +13110,7 @@ Change only the pixels, not the shape</p>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/3199049baa69afc68c84d8ea2c184bce284e9598/vipy/video.py#L2248-L2264" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/video.py#L2245-L2261" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def map(self, func):
     &#34;&#34;&#34;Apply lambda function to the loaded numpy array img, changes pixels not shape
@@ -13137,7 +13139,7 @@ Change only the pixels, not the shape</p>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/3199049baa69afc68c84d8ea2c184bce284e9598/vipy/video.py#L1722-L1726" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/video.py#L1719-L1723" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def maxdim(self, dim=None):
     &#34;&#34;&#34;Resize the video so that the maximum of (width,height)=dim, preserving aspect ratio&#34;&#34;&#34;
@@ -13154,7 +13156,7 @@ Change only the pixels, not the shape</p>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/3199049baa69afc68c84d8ea2c184bce284e9598/vipy/video.py#L1771-L1773" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/video.py#L1768-L1770" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def maxmatte(self):
     &#34;&#34;&#34;Return a square video with dimensions (self.maxdim(), self.maxdim()) with zeropadded lack bars or mattes above or below the video forming a letterboxed video.&#34;&#34;&#34;
@@ -13169,7 +13171,7 @@ Change only the pixels, not the shape</p>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/3199049baa69afc68c84d8ea2c184bce284e9598/vipy/video.py#L1751-L1763" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/video.py#L1748-L1760" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def maxsquare(self):
     &#34;&#34;&#34;Pad the video to be square, preserving the upper left corner of the video&#34;&#34;&#34;
@@ -13195,7 +13197,7 @@ Change only the pixels, not the shape</p>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/3199049baa69afc68c84d8ea2c184bce284e9598/vipy/video.py#L571-L576" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/video.py#L568-L573" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def metadata(self):
     &#34;&#34;&#34;Return a dictionary of metadata about this video.
@@ -13213,7 +13215,7 @@ Change only the pixels, not the shape</p>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/3199049baa69afc68c84d8ea2c184bce284e9598/vipy/video.py#L1717-L1720" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/video.py#L1714-L1717" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def mindim(self, dim=None):
     &#34;&#34;&#34;Resize the video so that the minimum of (width,height)=dim, preserving aspect ratio&#34;&#34;&#34;
@@ -13229,7 +13231,7 @@ Change only the pixels, not the shape</p>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/3199049baa69afc68c84d8ea2c184bce284e9598/vipy/video.py#L1765-L1769" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/video.py#L1762-L1766" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def minsquare(self):
     &#34;&#34;&#34;Return a square crop of the video, preserving the upper left corner of the video&#34;&#34;&#34;
@@ -13250,7 +13252,7 @@ Video must be loaded, triggers copy of underlying numpy array if the buffer is n
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/3199049baa69afc68c84d8ea2c184bce284e9598/vipy/video.py#L1209-L1218" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/video.py#L1206-L1215" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def mutable(self):
     &#34;&#34;&#34;Return a video object with a writeable mutable frame array.  Video must be loaded, triggers copy of underlying numpy array if the buffer is not writeable.  
@@ -13272,7 +13274,7 @@ Video must be loaded, triggers copy of underlying numpy array if the buffer is n
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/3199049baa69afc68c84d8ea2c184bce284e9598/vipy/video.py#L1234-L1237" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/video.py#L1231-L1234" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def nofilename(self):
     self._filename = None
@@ -13289,7 +13291,7 @@ All computations float32</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/3199049baa69afc68c84d8ea2c184bce284e9598/vipy/video.py#L2285-L2292" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/video.py#L2282-L2289" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def normalize(self, mean, std, scale=1, bias=0):
     &#34;&#34;&#34;Pixelwise whitening, out = ((scale*in) - mean) / std); triggers load().  All computations float32&#34;&#34;&#34;
@@ -13309,7 +13311,7 @@ All computations float32</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/3199049baa69afc68c84d8ea2c184bce284e9598/vipy/video.py#L1069-L1072" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/video.py#L1066-L1069" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def nourl(self):
     &#34;&#34;&#34;Remove the `vipy.video.Video.url` from the video&#34;&#34;&#34;
@@ -13326,7 +13328,7 @@ Returns the numpy array.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/3199049baa69afc68c84d8ea2c184bce284e9598/vipy/video.py#L1220-L1225" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/video.py#L1217-L1222" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def numpy(self):
     &#34;&#34;&#34;Convert the video to a writeable numpy array, triggers a load() and copy() as needed.  Returns the numpy array.&#34;&#34;&#34;
@@ -13344,7 +13346,7 @@ Returns the numpy array.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/3199049baa69afc68c84d8ea2c184bce284e9598/vipy/video.py#L1790-L1792" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/video.py#L1787-L1789" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def pad(self, padwidth=0, padheight=0):
     &#34;&#34;&#34;Alias for zeropad&#34;&#34;&#34;
@@ -13359,7 +13361,7 @@ Returns the numpy array.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/3199049baa69afc68c84d8ea2c184bce284e9598/vipy/video.py#L1826-L1831" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/video.py#L1823-L1828" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def pkl(self, pklfile=None):
     &#34;&#34;&#34;save the object to a pickle file and return the object, useful for intermediate saving in long fluent chains&#34;&#34;&#34;
@@ -13377,7 +13379,7 @@ Returns the numpy array.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/3199049baa69afc68c84d8ea2c184bce284e9598/vipy/video.py#L1833-L1836" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/video.py#L1830-L1833" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def pklif(self, b, pklfile=None):
     &#34;&#34;&#34;Save the object to the provided pickle file only if b=True. Uuseful for conditional intermediate saving in long fluent chains&#34;&#34;&#34;
@@ -13407,7 +13409,7 @@ To play the original video (indepenedent of the filter chain of this video), use
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/3199049baa69afc68c84d8ea2c184bce284e9598/vipy/video.py#L1970-L2026" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/video.py#L1967-L2023" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def play(self, verbose=False, notebook=False):
     &#34;&#34;&#34;Play the saved video filename in self.filename()
@@ -13477,7 +13479,7 @@ This is useful for previewing the frame shape of a complex filter chain or the f
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/3199049baa69afc68c84d8ea2c184bce284e9598/vipy/video.py#L1456-L1494" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/video.py#L1453-L1491" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def preview(self, framenum=0):
     &#34;&#34;&#34;Return selected frame of filtered video, return vipy.image.Image object.  This is useful for previewing the frame shape of a complex filter chain or the frame contents at a particular location without loading the whole video&#34;&#34;&#34;
@@ -13546,7 +13548,7 @@ The video object after sleeping</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/3199049baa69afc68c84d8ea2c184bce284e9598/vipy/video.py#L950-L969" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/video.py#L947-L966" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def print(self, prefix=&#39;&#39;, verbose=True, sleep=None):
     &#34;&#34;&#34;Print the representation of the video
@@ -13578,7 +13580,7 @@ The video object after sleeping</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/3199049baa69afc68c84d8ea2c184bce284e9598/vipy/video.py#L943-L948" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/video.py#L940-L945" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def probe(self):
     &#34;&#34;&#34;Run ffprobe on the filename and return the result as a dictionary&#34;&#34;&#34;
@@ -13600,7 +13602,7 @@ The shape will be the (height, width) of the underlying video file.</p>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/3199049baa69afc68c84d8ea2c184bce284e9598/vipy/video.py#L886-L893" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/video.py#L883-L890" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def probeshape(self):
     &#34;&#34;&#34;Return the (height, width) of underlying video file as determined from ffprobe
@@ -13635,7 +13637,7 @@ The initial frame index to start the n uniformly sampled frames for the quickloo
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/3199049baa69afc68c84d8ea2c184bce284e9598/vipy/video.py#L2032-L2053" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/video.py#L2029-L2050" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def quicklook(self, n=9, mindim=256, startframe=0, animate=False, dt=30):
     &#34;&#34;&#34;Generate a montage of n uniformly spaced frames.
@@ -13669,7 +13671,7 @@ The initial frame index to start the n uniformly sampled frames for the quickloo
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/3199049baa69afc68c84d8ea2c184bce284e9598/vipy/video.py#L1728-L1734" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/video.py#L1725-L1731" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def randomcrop(self, shape, withbox=False):
     &#34;&#34;&#34;Crop the video to shape=(H,W) with random position such that the crop contains only valid pixels, and optionally return the box&#34;&#34;&#34;
@@ -13688,7 +13690,7 @@ The initial frame index to start the n uniformly sampled frames for the quickloo
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/3199049baa69afc68c84d8ea2c184bce284e9598/vipy/video.py#L1231-L1232" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/video.py#L1228-L1229" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def reload(self):
     return self.clone(flush=True).load()</code></pre>
@@ -13702,7 +13704,7 @@ The initial frame index to start the n uniformly sampled frames for the quickloo
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/3199049baa69afc68c84d8ea2c184bce284e9598/vipy/video.py#L1268-L1272" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/video.py#L1265-L1269" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def relpath(self, parent=None):
     &#34;&#34;&#34;Replace the filename with a relative path to parent (or current working directory if none)&#34;&#34;&#34;
@@ -13719,7 +13721,7 @@ The initial frame index to start the n uniformly sampled frames for the quickloo
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/3199049baa69afc68c84d8ea2c184bce284e9598/vipy/video.py#L1274-L1278" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/video.py#L1271-L1275" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def rename(self, newname):
     &#34;&#34;&#34;Move the underlying video file preserving the absolute path, such that self.filename() == &#39;/a/b/c.ext&#39; and newname=&#39;d.ext&#39;, then self.filename() -&gt; &#39;/a/b/d.ext&#39;, and move the corresponding file&#34;&#34;&#34;
@@ -13736,7 +13738,7 @@ The initial frame index to start the n uniformly sampled frames for the quickloo
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/3199049baa69afc68c84d8ea2c184bce284e9598/vipy/video.py#L1682-L1689" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/video.py#L1679-L1686" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def rescale(self, s):
     &#34;&#34;&#34;Rescale the video by factor s, such that the new dimensions are (s*H, s*W), can only be applied prior to load()&#34;&#34;&#34;
@@ -13756,7 +13758,7 @@ The initial frame index to start the n uniformly sampled frames for the quickloo
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/3199049baa69afc68c84d8ea2c184bce284e9598/vipy/video.py#L1691-L1715" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/video.py#L1688-L1712" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def resize(self, rows=None, cols=None, width=None, height=None):
     &#34;&#34;&#34;Resize the video to be (rows=height, cols=width)&#34;&#34;&#34;
@@ -13793,7 +13795,7 @@ The initial frame index to start the n uniformly sampled frames for the quickloo
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/3199049baa69afc68c84d8ea2c184bce284e9598/vipy/video.py#L935-L941" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/video.py#L932-L938" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def resolution_of_videofile(self):
     &#34;&#34;&#34;Return video resolution in (height, width) in pixels (NOT the filter chain), requires ffprobe.
@@ -13812,7 +13814,7 @@ The initial frame index to start the n uniformly sampled frames for the quickloo
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/3199049baa69afc68c84d8ea2c184bce284e9598/vipy/video.py#L648-L653" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/video.py#L645-L650" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def restore(self, filename):
     &#34;&#34;&#34;Save the currently stored video as set using `vipy.video.Video.store` to filename, and set up filename&#34;&#34;&#34;
@@ -13830,7 +13832,7 @@ The initial frame index to start the n uniformly sampled frames for the quickloo
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/3199049baa69afc68c84d8ea2c184bce284e9598/vipy/video.py#L2239-L2241" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/video.py#L2236-L2238" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def returns(self, r=None):
     &#34;&#34;&#34;Return the provided value, useful for terminating long fluent chains without returning self&#34;&#34;&#34;
@@ -13845,7 +13847,7 @@ The initial frame index to start the n uniformly sampled frames for the quickloo
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/3199049baa69afc68c84d8ea2c184bce284e9598/vipy/video.py#L1661-L1666" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/video.py#L1658-L1663" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def rot90ccw(self):
     &#34;&#34;&#34;Rotate the video 90 degrees counter-clockwise, can only be applied prior to load()&#34;&#34;&#34;        
@@ -13863,7 +13865,7 @@ The initial frame index to start the n uniformly sampled frames for the quickloo
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/3199049baa69afc68c84d8ea2c184bce284e9598/vipy/video.py#L1654-L1659" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/video.py#L1651-L1656" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def rot90cw(self):
     &#34;&#34;&#34;Rotate the video 90 degrees clockwise, can only be applied prior to load()&#34;&#34;&#34;
@@ -13888,7 +13890,7 @@ Users should reserve these keynames for those keys that should be sanitized and 
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/3199049baa69afc68c84d8ea2c184bce284e9598/vipy/video.py#L578-L588" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/video.py#L575-L585" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def sanitize(self):
     &#34;&#34;&#34;Remove all private keys from the attributes dictionary.
@@ -13937,7 +13939,7 @@ If not provided, use framerate of source video</dd>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/3199049baa69afc68c84d8ea2c184bce284e9598/vipy/video.py#L1876-L1953" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/video.py#L1873-L1950" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def saveas(self, outfile=None, framerate=None, vcodec=&#39;libx264&#39;, verbose=False, ignoreErrors=False, flush=False, pause=5):
     &#34;&#34;&#34;Save video to new output video file.  This function does not draw boxes, it saves pixels to a new video file.
@@ -14027,7 +14029,7 @@ If not provided, use framerate of source video</dd>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/3199049baa69afc68c84d8ea2c184bce284e9598/vipy/video.py#L1958-L1960" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/video.py#L1955-L1957" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def savetemp(self):
     &#34;&#34;&#34;Alias for `vipy.video.Video.savetmp`&#34;&#34;&#34;
@@ -14042,7 +14044,7 @@ If not provided, use framerate of source video</dd>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/3199049baa69afc68c84d8ea2c184bce284e9598/vipy/video.py#L1955-L1957" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/video.py#L1952-L1954" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def savetmp(self):
     &#34;&#34;&#34;Call `vipy.video.Video.saveas` using a new temporary video file, and return the video object with this new filename&#34;&#34;&#34;
@@ -14057,7 +14059,7 @@ If not provided, use framerate of source video</dd>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/3199049baa69afc68c84d8ea2c184bce284e9598/vipy/video.py#L2294-L2298" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/video.py#L2291-L2295" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def setattribute(self, k, v=None):
     if self.attributes is None:
@@ -14074,7 +14076,7 @@ If not provided, use framerate of source video</dd>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/3199049baa69afc68c84d8ea2c184bce284e9598/vipy/video.py#L1394-L1417" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/video.py#L1391-L1414" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def shape(self, shape=None, probe=False):
     &#34;&#34;&#34;Return (height, width) of the frames, requires loading a preview frame from the video if the video is not already loaded, or providing the shape=(height,width) by the user&#34;&#34;&#34;
@@ -14110,7 +14112,7 @@ If not provided, use framerate of source video</dd>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/3199049baa69afc68c84d8ea2c184bce284e9598/vipy/video.py#L2028-L2030" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/video.py#L2025-L2027" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def show(self):
     &#34;&#34;&#34;Alias for play&#34;&#34;&#34;
@@ -14126,7 +14128,7 @@ If s=1, this will be the same speed, s=0.5 for half-speed (slower playback), s=2
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/3199049baa69afc68c84d8ea2c184bce284e9598/vipy/video.py#L1604-L1608" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/video.py#L1601-L1605" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def speed(self, s):
     &#34;&#34;&#34;Change the speed by a multiplier s.  If s=1, this will be the same speed, s=0.5 for half-speed (slower playback), s=2 for double-speed (faster playback)&#34;&#34;&#34;
@@ -14155,7 +14157,7 @@ If s=1, this will be the same speed, s=0.5 for half-speed (slower playback), s=2
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/3199049baa69afc68c84d8ea2c184bce284e9598/vipy/video.py#L626-L642" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/video.py#L623-L639" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def store(self):
     &#34;&#34;&#34;Store the current video file as an attribute of this object.  
@@ -14177,7 +14179,7 @@ If s=1, this will be the same speed, s=0.5 for half-speed (slower playback), s=2
 </details>
 </dd>
 <dt id="vipy.video.Video.stream"><code class="name flex">
-<span>def <span class="ident">stream</span></span>(<span>self, write=False, overwrite=False, queuesize=1024, bitrate=None, buffered=False, rebuffered=False, buflen=16)</span>
+<span>def <span class="ident">stream</span></span>(<span>self, write=False, overwrite=False, queuesize=1024, bitrate=None, buffered=False, rebuffered=False, bufsize=256)</span>
 </code></dt>
 <dd>
 <div class="desc"><p>Iterator to yield groups of frames streaming from video.</p>
@@ -14228,10 +14230,10 @@ The queue size is the maximum size of pre-fetched frames from the ffmpeg pip.
 This should be big enough that you are never waiting for queue fills</dd>
 <dt><strong><code>bitrate</code></strong></dt>
 <dd>[str] The ffmpeg bitrate of the output encoder for writing, written like '2000k'</dd>
-<dt><strong><code>buflen</code></strong></dt>
+<dt><strong><code>bufsize</code></strong></dt>
 <dd>[int]
-The maximum size of the stream buffer for the secondary iterators.
-The stream buffer length should be big enough that you are never waiting for the stream to fill.</dd>
+The maximum size of the stream buffer in frames.
+The stream buffer length should be big enough so that all iterators can yield before deleting old frames</dd>
 </dl>
 <div class="admonition note">
 <p class="admonition-title">Note:&ensp;Using this iterator may affect PDB debugging due to stdout/stdin redirection.
@@ -14240,9 +14242,9 @@ Use ipdb instead.</p>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/3199049baa69afc68c84d8ea2c184bce284e9598/vipy/video.py#L700-L753" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/video.py#L697-L750" class="git-link">Browse git</a>
 </summary>
-<pre><code class="python">def stream(self, write=False, overwrite=False, queuesize=1024, bitrate=None, buffered=False, rebuffered=False, buflen=16):
+<pre><code class="python">def stream(self, write=False, overwrite=False, queuesize=1024, bitrate=None, buffered=False, rebuffered=False, bufsize=256):
     &#34;&#34;&#34;Iterator to yield groups of frames streaming from video.
 
     A video stream is a real time iterator to read or write from a video.  Streams are useful to group together frames into clips that are operated on as a group.
@@ -14287,7 +14289,7 @@ Use ipdb instead.</p>
         overwrite: [bool]  If true, and the video output filename already exists, overwrite it
         bufsize: [int]  The maximum queue size for the ffmpeg pipe thread in the primary iterator.  The queue size is the maximum size of pre-fetched frames from the ffmpeg pip.  This should be big enough that you are never waiting for queue fills
         bitrate: [str] The ffmpeg bitrate of the output encoder for writing, written like &#39;2000k&#39;
-        buflen: [int]  The maximum size of the stream buffer for the secondary iterators.  The stream buffer length should be big enough that you are never waiting for the stream to fill.
+        bufsize: [int]  The maximum size of the stream buffer in frames.  The stream buffer length should be big enough so that all iterators can yield before deleting old frames
 
     Returns:
         A Stream object
@@ -14295,7 +14297,7 @@ Use ipdb instead.</p>
     ..note:: Using this iterator may affect PDB debugging due to stdout/stdin redirection.  Use ipdb instead.
 
     &#34;&#34;&#34;
-    return Stream(self, queuesize=queuesize, write=write, overwrite=overwrite, bitrate=bitrate, buffered=buffered, rebuffered=rebuffered, buflen=buflen)  # do not clone</code></pre>
+    return Stream(self, queuesize=queuesize, write=write, overwrite=overwrite, bitrate=bitrate, buffered=buffered, rebuffered=rebuffered, bufsize=bufsize)  # do not clone</code></pre>
 </details>
 </dd>
 <dt id="vipy.video.Video.take"><code class="name flex">
@@ -14315,7 +14317,7 @@ Use with caution.</p>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/3199049baa69afc68c84d8ea2c184bce284e9598/vipy/video.py#L1006-L1019" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/video.py#L1003-L1016" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def take(self, n):
     &#34;&#34;&#34;Return n frames from the clip uniformly spaced as numpy array
@@ -14351,7 +14353,7 @@ Use with caution.</p>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/3199049baa69afc68c84d8ea2c184bce284e9598/vipy/video.py#L1496-L1509" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/video.py#L1493-L1506" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def thumbnail(self, outfile=None, frame=0):
     &#34;&#34;&#34;Return annotated frame=k of video, save annotation visualization to provided outfile.
@@ -14377,7 +14379,7 @@ Use with caution.</p>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/3199049baa69afc68c84d8ea2c184bce284e9598/vipy/video.py#L1205-L1207" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/video.py#L1202-L1204" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def tonumpy(self):
     &#34;&#34;&#34;Alias for numpy()&#34;&#34;&#34;
@@ -14438,7 +14440,7 @@ Optionally return the slice used if withslice=True</li>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/3199049baa69afc68c84d8ea2c184bce284e9598/vipy/video.py#L2055-L2156" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/video.py#L2052-L2153" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def torch(self, startframe=0, endframe=None, length=None, stride=1, take=None, boundary=&#39;repeat&#39;, order=&#39;nchw&#39;, verbose=False, withslice=False, scale=1.0, withlabel=False, nonelabel=False):
     &#34;&#34;&#34;Convert the loaded video of shape NxHxWxC frames to an MxCxHxW torch tensor/
@@ -14552,7 +14554,7 @@ Optionally return the slice used if withslice=True</li>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/3199049baa69afc68c84d8ea2c184bce284e9598/vipy/video.py#L644-L646" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/video.py#L641-L643" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def unstore(self):
     &#34;&#34;&#34;Delete the currently stored video from `vipy.video.Video.store&#34;&#34;&#34;
@@ -14567,7 +14569,7 @@ Optionally return the slice used if withslice=True</li>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/3199049baa69afc68c84d8ea2c184bce284e9598/vipy/video.py#L1074-L1089" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/video.py#L1071-L1086" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def url(self, url=None, username=None, password=None, sha1=None):
     &#34;&#34;&#34;Video URL and URL download properties&#34;&#34;&#34;
@@ -14608,7 +14610,7 @@ Optionally return the slice used if withslice=True</li>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/3199049baa69afc68c84d8ea2c184bce284e9598/vipy/video.py#L591-L609" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/video.py#L588-L606" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def videoid(self, newid=None):
     &#34;&#34;&#34;Return a unique video identifier for this video, as specified in the &#39;video_id&#39; attribute, or by SHA1 hash of the `vipy.video.Video.filename` and `vipy.video.Video.url`.
@@ -14654,7 +14656,7 @@ Optionally return the slice used if withslice=True</li>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/3199049baa69afc68c84d8ea2c184bce284e9598/vipy/video.py#L1838-L1858" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/video.py#L1835-L1855" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def webp(self, outfile=None, pause=3, strict=True, smallest=False, smaller=False):
     &#34;&#34;&#34;Save a video to an animated WEBP file, with pause=N seconds on the last frame between loops.  
@@ -14687,7 +14689,7 @@ Optionally return the slice used if withslice=True</li>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/3199049baa69afc68c84d8ea2c184bce284e9598/vipy/video.py#L1444-L1446" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/video.py#L1441-L1443" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def width(self):
     &#34;&#34;&#34;Width (cols) in pixels of the video for the current filter chain&#34;&#34;&#34;
@@ -14706,7 +14708,7 @@ Optionally return the slice used if withslice=True</li>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/3199049baa69afc68c84d8ea2c184bce284e9598/vipy/video.py#L1775-L1788" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/video.py#L1772-L1785" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def zeropad(self, padwidth, padheight):
     &#34;&#34;&#34;Zero pad the video with padwidth columns before and after, and padheight rows before and after
@@ -14732,7 +14734,7 @@ Optionally return the slice used if withslice=True</li>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/3199049baa69afc68c84d8ea2c184bce284e9598/vipy/video.py#L1794-L1800" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/video.py#L1791-L1797" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def zeropadlike(self, width, height):
     &#34;&#34;&#34;Zero pad the video balancing the border so that the resulting video size is (width, height).&#34;&#34;&#34;
@@ -14751,7 +14753,7 @@ Optionally return the slice used if withslice=True</li>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/3199049baa69afc68c84d8ea2c184bce284e9598/vipy/video.py#L1227-L1229" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/video.py#L1224-L1226" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def zeros(self):
     self._array = 0*self.load()._array
@@ -14772,7 +14774,7 @@ along with the ability to extract a clip based on frames or seconds.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/3199049baa69afc68c84d8ea2c184bce284e9598/vipy/video.py#L2317-L2362" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/video.py#L2314-L2359" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">class VideoCategory(Video):
     &#34;&#34;&#34;vipy.video.VideoCategory class
@@ -14839,7 +14841,7 @@ along with the ability to extract a clip based on frames or seconds.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/3199049baa69afc68c84d8ea2c184bce284e9598/vipy/video.py#L2357-L2362" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/video.py#L2354-L2359" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def category(self, c=None):
     if c is None:
