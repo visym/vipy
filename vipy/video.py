@@ -93,7 +93,7 @@ class Stream(object):
         - This is designed to be accessed as `vipy.video.Video.stream` and not accessed as a standalone class..
 
     """
-    def __init__(self, v, queuesize, write, overwrite, bitrate=None, buffered=False, buflen=16, rebuffered=False):
+    def __init__(self, v, queuesize, write, overwrite, bitrate=None, buffered=False, bufsize=256, rebuffered=False):
         self._video = v   # do not clone
         self._write_pipe = None
         self._vcodec = 'libx264'
@@ -107,7 +107,7 @@ class Stream(object):
         self._shape = self._video.shape() if (not self._write) or (self._write and self._video.canload()) else None  # shape for write can be defined by first frame
         assert (write is True or overwrite is True) or self._shape is not None, "Invalid video '%s'" % (str(v))
         self._queuesize = queuesize
-        self._bufsize = int(buflen*v.framerate())
+        self._bufsize = bufsize
         self._buffered = buffered
         self._is_stream_buffer_owner = False                            
         assert self._bufsize >= 1
@@ -221,7 +221,7 @@ class Stream(object):
                 # -The stream buffer is a dictionary that is n frames long, and if the newest frame from the pipe is frame k, the oldest frame is k-n which is yielded first
                 # -If the stream is unbuffered, just read from the queue directly and yield the numpy frame
                 b = self._video.attributes['__stream_buffer'] if self._buffered else None  # buffer (if requested)
-                (k, kb) = (min(b.keys()) if b is not None and len(b)>0 else 0, 0)   # current frame, current frame in buffer                
+                k = 0   # current frame 
                 while True:
                     if not self._buffered or self._is_stream_buffer_owner:
                         # Primary iterator: read from thread queue
@@ -229,26 +229,23 @@ class Stream(object):
                             (f, img) = (k, q.get())  # unbuffered: to yield latest from thread queue directly
                             k += 1                            
                         else:
-                            while len(b) < self._bufsize and ((len(b) == 0) or b[kb-1] is not None):
-                                b[kb] = q.get()  # re-fill stream buffer
-                                kb += 1  # next frame pointer
-                            (f, img) = (k, b[k])  # to yield current frame
+                            b[k] = q.get()  # add to stream buffer
+                            (f, img) = (k, b[k])  # primary buffer: yield current frame from pipe
                             k += 1
                     else:
                         # Secondary iterator: read from stream buffer
-                        while True:
-                            if k in b:
-                                (f, img) = (k, b[k])  # to yield from stream buffer
-                                k += 1
-                                break
-                            else:
-                                time.sleep(0.001)  # "Event" wait, yuck..
+                        while k not in b:
+                            # "Event" wait: wait for primary iterator to start up and fill buffer, after it starts filling, this sleep should be unnecessary
+                            time.sleep(0.001)  
+                            
+                        (f, img) = (k, b[k])  # secondary buffers: yield from stream buffer
+                        k += 1
                         
                     if img is not None:
                         yield self._video.frame(f, img)  # yield a vipy.image.Scene object with annotations at frame f, using the latest annotation from the shared video object                        
                         if b is not None and self._is_stream_buffer_owner:
-                            if k-2 in b:
-                                del b[k-2] # remove from filled buffer after secondary iterators have seen it
+                            if len(b) > self._bufsize:
+                                del b[min(b.keys())]  # remove oldest frame from stream buffer
                     else:
                         if self._is_stream_buffer_owner:
                             e.set()
@@ -301,12 +298,12 @@ class Stream(object):
         >>>     # then video vc with frames [4,12] ...
 
         Args:
-        n: [int] the length of the clip in frames
-        m: [int] the stride between clips in frames
-        delay: [int] The temporal delay in frames for the clip, must be less than n and >= 0
-        continuous: [bool]  if true, then yield None for the sequential frames not aligned with a stride so that a clip is yielded on every frame
-        activities: [bool]  if false, then activities from the source video are not copied into the clip
-        tracks: [bool]  if false, then tracks from the source video are not copied into the clip
+            n: [int] the length of the clip in frames
+            m: [int] the stride between clips in frames
+            delay: [int] The temporal delay in frames for the clip, must be less than n and >= 0
+            continuous: [bool]  if true, then yield None for the sequential frames not aligned with a stride so that a clip is yielded on every frame
+            activities: [bool]  if false, then activities from the source video are not copied into the clip
+            tracks: [bool]  if false, then tracks from the source video are not copied into the clip
 
         Returns:
             An iterator that yields `vipy.video.Video` objects each of length n with startframe += m, starting at frame=delay, such that each video contains the tracks and activities (if requested) for this clip sourced from the shared stream video.
@@ -697,7 +694,7 @@ class Video(object):
         return vo
     
 
-    def stream(self, write=False, overwrite=False, queuesize=1024, bitrate=None, buffered=False, rebuffered=False, buflen=16):
+    def stream(self, write=False, overwrite=False, queuesize=1024, bitrate=None, buffered=False, rebuffered=False, bufsize=256):
         """Iterator to yield groups of frames streaming from video.
 
         A video stream is a real time iterator to read or write from a video.  Streams are useful to group together frames into clips that are operated on as a group.
@@ -742,7 +739,7 @@ class Video(object):
             overwrite: [bool]  If true, and the video output filename already exists, overwrite it
             bufsize: [int]  The maximum queue size for the ffmpeg pipe thread in the primary iterator.  The queue size is the maximum size of pre-fetched frames from the ffmpeg pip.  This should be big enough that you are never waiting for queue fills
             bitrate: [str] The ffmpeg bitrate of the output encoder for writing, written like '2000k'
-            buflen: [int]  The maximum size of the stream buffer for the secondary iterators.  The stream buffer length should be big enough that you are never waiting for the stream to fill.
+            bufsize: [int]  The maximum size of the stream buffer in frames.  The stream buffer length should be big enough so that all iterators can yield before deleting old frames
 
         Returns:
             A Stream object
@@ -750,7 +747,7 @@ class Video(object):
         ..note:: Using this iterator may affect PDB debugging due to stdout/stdin redirection.  Use ipdb instead.
 
         """
-        return Stream(self, queuesize=queuesize, write=write, overwrite=overwrite, bitrate=bitrate, buffered=buffered, rebuffered=rebuffered, buflen=buflen)  # do not clone
+        return Stream(self, queuesize=queuesize, write=write, overwrite=overwrite, bitrate=bitrate, buffered=buffered, rebuffered=rebuffered, bufsize=bufsize)  # do not clone
 
 
     def clear(self):
@@ -3037,9 +3034,9 @@ class Scene(VideoCategory):
     def json(self, encode=True):
         """Return JSON encoded string of this object.  This may fail if attributes contain non-json encodeable object"""
         try:
-            json.loads(json.dumps(self.attributes))  # rount trip for the attributes ductionary - this can be any arbitrary object and contents may not be json encodable
+            json.loads(json.dumps(self.attributes))  # round trip for the attributes ductionary - this can be any arbitrary object and contents may not be json encodable
         except:
-            raise ValueError('Video contains non-JSON encodable object in self.attributes dictionary - Try to clear with self.attributes = {} first')
+            raise ValueError('Video contains non-JSON encodable object in self.attributes dictionary - Try self.sanitize() or to clear with self.attributes = {} first')
 
         d = json.loads(super().json())
         d['_tracks'] = {k:t.json(encode=True) for (k,t) in self.tracks().items()}
