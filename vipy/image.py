@@ -1519,6 +1519,17 @@ class Image(object):
         assert len(h1) == len(h2)
         return np.sum(np.unpackbits(bytearray().fromhex(h1)) != np.unpackbits(bytearray().fromhex(h2)))
     
+
+    def rot90cw(self):
+        """Rotate the scene 90 degrees clockwise"""
+        self.array(np.rot90(self.numpy(), 3))
+        return self
+
+    def rot90ccw(self):
+        """Rotate the scene 90 degrees counterclockwise"""
+        self.array(np.rot90(self.numpy(), 1))
+        return self
+
     
 class ImageCategory(Image):
     """vipy ImageCategory class

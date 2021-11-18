@@ -200,7 +200,7 @@ def hoverpixel_selector(htmllist, legendlist, outfile=None, display=False, offse
         assert 'hoverpixelwidth' in html and 'hoverpixelheight' in html  # must be vipy.visualize.hoverpixel() output
         (width, height) = (int(html.split('hoverpixelwidth=')[1].split(' ')[0].replace('"','')), int(html.split('hoverpixelheight=')[1].split(' ')[0].replace('"','')))  # unique attribute search for <img key="val" key2="val2" key3=...>
         f.write('<iframe id="hoverpixelframe" src="%s" style="width:%dpx; height:%dpx; border:0px; visibility:hidden;" onload="this.style.visibility=\'visible\';" allowfullscreen></iframe>\n' % (htmllist[0], width+20, height+20))               
-        f.write('<select id="selector" onchange="seturl(this.value)" style="position: absolute; left:%dpx; top:%dpx; padding: 1px 4px; border-radius:4px; visibility:visible;">\n' % (offset[0], offset[1]))
+        f.write('<select title="Sort by" id="selector" onchange="seturl(this.value)" style="position: absolute; left:%dpx; top:%dpx; padding: 1px 4px; border-radius:4px; visibility:visible;">\n' % (offset[0], offset[1]))
         for (k,legend) in enumerate(legendlist):
             f.write('  <option value="%s"%s>%s</option>\n' % (legend, ' selected="selected"' if k==0 else '', legend))
         f.write('</select>\n')        
