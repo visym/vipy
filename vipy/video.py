@@ -188,6 +188,7 @@ class Stream(object):
                 # - Initialized only if not buffered (the default) or if primary iterator
                 # - read numpy frames from the ffmpeg filter chain via a pipe
                 # - store the resulting frames in a queue with a null terminated frame when the stream ends
+                # - Threading is useful here because there is often time to switch when waiting on GPU I/O 
                 if not self._buffered or self._is_stream_buffer_owner:
                     p = self._read_pipe()
                     q = queue.Queue(self._queuesize)
@@ -307,32 +308,47 @@ class Stream(object):
 
         Returns:
             An iterator that yields `vipy.video.Video` objects each of length n with startframe += m, starting at frame=delay, such that each video contains the tracks and activities (if requested) for this clip sourced from the shared stream video.
+
+        .. note:: This iterator runs in a thread to help speed up fetching of frames for GPU I/Oe bound operations
+
         """
         assert isinstance(n, int) and n>0, "Clip length must be a positive integer"
         assert isinstance(m, int) and m>0, "Clip stride must be a positive integer"
         assert isinstance(delay, int) and delay >= 0 and delay < n, "Clip delay must be a positive integer less than n"
-        vc = self._video.clone(flushfilter=True).clear().nourl().nofilename()    
 
-        f_copy_annotations = lambda v, fr, k, n: (v.clear().clone(shallow=True).fromframes(fr)
-                                                  .activities([a.clone().offset(-(k-(n-1))).truncate(0,n-1) for (ak,a) in self._video.activities().items() if a.during_interval(k-(n-1), k, inclusive=False)] if activities else [])
-                                                  .tracks([t.clone(k-(n-1), k).offset(-(k-(n-1))).truncate(0,n-1) for (tk,t) in self._video.tracks().items() if t.during_interval(k-(n-1), k)] if tracks else [])
-                                                  if (v is not None and isinstance(v, vipy.video.Scene)) else
-                                                  v.clear().clone(shallow=True).fromframes(fr))        
-        (frames, newframes) = ([], [])
-        for (k,im) in enumerate(self):
-            newframes.append(im)            
-            if len(newframes) >= m and len(frames)+len(newframes) >= n:                                
-                # Use frameindex+1 so that we include (0,1), (1,2), (2,3), ... for n=2, m=1
-                # The delay shifts the clip +delay frames (1,2,3), (3,4,5), ... for n=3, m=2, delay=1                
-                frames.extend(newframes)
-                (frames, newframes) = (frames[-n:], [])
-                yield f_copy_annotations(vc, frames, k, n)
-            elif continuous:
-                yield None
+        def _f_threadloop(v, streamiter, queue, ragged, m, n):
+            (frames, newframes) = ([], [])            
+            for (k,im) in enumerate(streamiter()):
+                newframes.append(im)            
+                if len(newframes) >= m and len(frames)+len(newframes) >= n:                                
+                    # Use frameindex+1 so that we include (0,1), (1,2), (2,3), ... for n=2, m=1
+                    # The delay shifts the clip +delay frames (1,2,3), (3,4,5), ... for n=3, m=2, delay=1                
+                    frames.extend(newframes)
+                    (frames, newframes) = (frames[-n:], [])
+                    queue.put( (v.clear().clone(shallow=True).fromframes(frames), k) )
+                elif continuous:
+                    queue.put( (None, k) )
+            if ragged and len(newframes) > 0:
+                queue.put( (v.clear().clone(shallow=True).fromframes(newframes), k) )
+            queue.put( (None, None) )
 
-        if ragged and len(newframes) > 0:
-            yield f_copy_annotations(vc, newframes, k, len(newframes))
+        vc = self._video.clone(flushfilter=True).clear().nourl().nofilename()                    
+        q = queue.Queue(self._queuesize)
+        t = threading.Thread(target=_f_threadloop, args=(vc, self.__iter__, q, ragged, m, n), daemon=True)
+        t.start()
+
+        f_copy_annotations = lambda v, k, n: (v.activities([a.clone().offset(-(k-(n-1))).truncate(0,n-1) for (ak,a) in self._video.activities().items() if a.during_interval(k-(n-1), k, inclusive=False)] if activities else [])
+                                              .tracks([t.clone(k-(n-1), k).offset(-(k-(n-1))).truncate(0,n-1) for (tk,t) in self._video.tracks().items() if t.during_interval(k-(n-1), k)] if tracks else [])
+                                              if (v is not None and isinstance(v, vipy.video.Scene)) else v)
                 
+        while True:
+            # The queue can be filled with more expensive copies and clones to speed up iteration when waiting for GPU I/O
+            (v, k) = q.get()
+            if v is not None:
+                # This copy must be done sychronized at frame k with the current state of the annotations in the shared self._video
+                yield f_copy_annotations(v, k, len(v))
+            else:
+                break
                 
     def batch(self, n):
         """Stream batches of length n such that each batch contains frames [0,n], [n+1, 2n], ...  Last batch will be ragged.
@@ -3633,6 +3649,8 @@ class Scene(VideoCategory):
 
         .. note::  In general, this function should not be run on very long videos without the outfile kwarg, as it requires loading the video framewise into memory.  
         """
+        assert outfile is None or vipy.util.isvideofile(outfile), "Invalid filename extension for annotated video"
+        
         if verbose:
             print('[vipy.video.annotate]: Annotating video ...')  
             
