@@ -316,7 +316,7 @@ class Stream(object):
         assert isinstance(m, int) and m>0, "Clip stride must be a positive integer"
         assert isinstance(delay, int) and delay >= 0 and delay < n, "Clip delay must be a positive integer less than n"
 
-        def _f_threadloop(v, streamiter, queue, ragged, m, n):
+        def _f_threadloop(v, streamiter, queue, event, ragged, m, n):
             (frames, newframes) = ([], [])            
             for (k,im) in enumerate(streamiter()):
                 newframes.append(im)            
@@ -331,10 +331,12 @@ class Stream(object):
             if ragged and len(newframes) > 0:
                 queue.put( (v.clear().clone(shallow=True).fromframes(newframes), k) )
             queue.put( (None, None) )
+            event.wait()            
 
         vc = self._video.clone(flushfilter=True).clear().nourl().nofilename()                    
         q = queue.Queue(self._queuesize)
-        t = threading.Thread(target=_f_threadloop, args=(vc, self.__iter__, q, ragged, m, n), daemon=True)
+        e = threading.Event()        
+        t = threading.Thread(target=_f_threadloop, args=(vc, self.__iter__, q, e, ragged, m, n), daemon=True)
         t.start()
 
         f_copy_annotations = lambda v, k, n: (v.activities([a.clone().offset(-(k-(n-1))).truncate(0,n-1) for (ak,a) in self._video.activities().items() if a.during_interval(k-(n-1), k, inclusive=False)] if activities else [])
@@ -344,10 +346,11 @@ class Stream(object):
         while True:
             # The queue can be filled with more expensive copies and clones to speed up iteration when waiting for GPU I/O
             (v, k) = q.get()
-            if v is not None:
+            if k is not None:
                 # This copy must be done sychronized at frame k with the current state of the annotations in the shared self._video
-                yield f_copy_annotations(v, k, len(v))
+                yield f_copy_annotations(v, k, len(v)) if v is not None else None
             else:
+                e.set()
                 break
                 
     def batch(self, n):
