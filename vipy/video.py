@@ -230,7 +230,7 @@ class Stream(object):
                             (f, img) = (k, q.get())  # unbuffered: to yield latest from thread queue directly
                             k += 1                            
                         else:
-                            b[k] = q.get()  # add to stream buffer
+                            b[k] = q.get()  # add to stream buffer, cache frames only, annotations are added synchronously on yield
                             (f, img) = (k, b[k])  # primary buffer: yield current frame from pipe
                             k += 1
                     else:
@@ -248,7 +248,7 @@ class Stream(object):
                             if len(b) > self._bufsize:
                                 del b[min(b.keys())]  # remove oldest frame from stream buffer
                     else:
-                        if self._is_stream_buffer_owner:
+                        if not self._buffered or self._is_stream_buffer_owner:
                             e.set()
                         break  # termination
                     
@@ -334,7 +334,7 @@ class Stream(object):
             event.wait()            
 
         vc = self._video.clone(flushfilter=True).clear().nourl().nofilename()                    
-        q = queue.Queue(self._queuesize)
+        q = queue.Queue(3)  # warning: if this queue size is larger than buffer size, then there can be a deadlock
         e = threading.Event()        
         t = threading.Thread(target=_f_threadloop, args=(vc, self.__iter__, q, e, ragged, m, n), daemon=True)
         t.start()
