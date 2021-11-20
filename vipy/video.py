@@ -315,7 +315,8 @@ class Stream(object):
         assert isinstance(n, int) and n>0, "Clip length must be a positive integer"
         assert isinstance(m, int) and m>0, "Clip stride must be a positive integer"
         assert isinstance(delay, int) and delay >= 0 and delay < n, "Clip delay must be a positive integer less than n"
-
+        assert not self._buffered or 3*n < self._bufsize, "increase buffered stream size (bufsize) from %d to >%d" % (self._bufsize, 3*n)
+        
         def _f_threadloop(v, streamiter, queue, event, ragged, m, n):
             (frames, newframes) = ([], [])            
             for (k,im) in enumerate(streamiter()):
@@ -333,8 +334,8 @@ class Stream(object):
             queue.put( (None, None) )
             event.wait()            
 
-        vc = self._video.clone(flushfilter=True).clear().nourl().nofilename()                    
-        q = queue.Queue(3)  # warning: if this queue size is larger than buffer size, then there can be a deadlock
+        vc = self._video.clone(flushfilter=True).clear().nourl().nofilename()
+        q = queue.Queue(3)  # warning: if this queuesize*n > buffersize, then there can be a deadlock
         e = threading.Event()        
         t = threading.Thread(target=_f_threadloop, args=(vc, self.__iter__, q, e, ragged, m, n), daemon=True)
         t.start()
