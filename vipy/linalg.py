@@ -125,6 +125,16 @@ def normalize(x):
     return x / (np.linalg.norm(x.astype(np.float64)) + 1E-16)
 
 
+def rowvectorize(X):
+    """Alias for `vipy.linalg.rowvector`"""
+    return rowvector(X)
+
+
+def columnvectorize(X):
+    """Alias for `vipy.linalg.columnvector`"""
+    return columnvector(X)
+
+
 def vectorize(X):
     """Convert a tuple X=([1], [2,3], [4,5,6]) to a numpy vector [1,2,3,4,5,6].
     

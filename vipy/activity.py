@@ -75,9 +75,9 @@ class Activity(object):
                    endframe=int(d['_endframe']),
                    framerate=d['_framerate'],
                    category=d['_label'],
-                   shortlabel=d['_shortlabel'],
+                   shortlabel=d['_shortlabel'] if '_shortlabel' in d else None,
                    tracks=d['_trackid'],
-                   attributes=d['attributes'],
+                   attributes=d['attributes'] if 'attributes' in d else None,
                    actorid=d['_actorid'],
                    id=d['_id'] if '_id' in d else None)
                 
@@ -111,7 +111,10 @@ class Activity(object):
         return self.json(s=None, encode=False)
 
     def json(self, encode=True):
-        d = {k:v if k != '_trackid' else tuple(v) for (k,v) in self.__dict__.items()}
+        d = {k:v for (k,v) in self.__dict__.items() if not ((k == '_shortlabel' and v is None) or
+                                                            (k == 'attributes' and (v is None or isinstance(v, dict) and len(v)==0)) or
+                                                            (k == '_id' and v is None))}  # don't bother to store None values
+        d = {k:v if k != '_trackid' else tuple(v) for (k,v) in d.items()}  # sets are non-serializable
         return json.dumps(d) if encode else d
     
     def actorid(self, actorid=None):

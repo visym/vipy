@@ -53,6 +53,11 @@ def iseven(x):
     return x%2 == 0
 
 
+def isodd(x):
+    """is the number x an odd number?"""
+    return x%2 != 0
+
+
 def even(x, greaterthan=False):
     """Return the largest even integer less than or equal (or greater than if greaterthan=True) to the value"""
     x = int(np.round(x))

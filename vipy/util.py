@@ -13,7 +13,6 @@ import sys
 import csv
 import hashlib
 import shutil
-import shelve
 import re
 import uuid
 import dill
@@ -35,6 +34,159 @@ except ImportError:
     import json
 
 
+
+def class_registry():
+    """Return a dictionary mapping str(type(obj)) to a JSON loader for all vipy objects.
+
+    This function is useful for JSON loading of vipy objects to map to the correct deserialization method.
+    """
+
+    import vipy.video
+    import vipy.image
+    registry = {"<class 'vipy.video.Scene'>":vipy.video.Scene.from_json,
+                "<class 'vipy.video.Video'>":vipy.video.Video.from_json,
+                "<class 'vipy.video.VideoCategory'>":vipy.video.VideoCategory.from_json,
+                "<class 'vipy.image.Image'>":vipy.image.Image.from_json,
+                "<class 'vipy.image.ImageCategory'>":vipy.image.ImageCategory.from_json,
+                "<class 'vipy.image.ImageDetection'>":vipy.image.ImageDetection.from_json,            
+                "<class 'vipy.image.Scene'>":vipy.image.Scene.from_json,
+                "<class 'vipy.geometry.BoundingBox'>":vipy.geometry.BoundingBox.from_json,
+                "<class 'vipy.object.Track'>":vipy.object.Track.from_json,
+                "<class 'vipy.object.Detection'>":vipy.object.Detection.from_json,
+                "<class 'vipy.activity.Activity'>":vipy.activity.Activity.from_json}
+    try:
+        import pycollector.video
+        registry.update( {"<class 'pycollector.video.Video'>":pycollector.video.Video.from_json} )
+    except:
+        registry.update( {"<class 'pycollector.video.Video'>":lambda x: exec("raise ValueError(\"<class 'pycollector.video.Video'> not found - Run 'pip install pycollector' \")")})        
+    try:
+        import pycollector.admin.video
+        registry.update( {"<class 'pycollector.admin.video.Video'>":pycollector.admin.video.Video.from_json} )
+    except:
+        registry.update( {"<class 'pycollector.admin.video.Video'>":lambda x: exec("raise ValueError(\"<class 'pycollector.admin.video.Video'> not found - This is for admin use only \")")})        
+
+    registry.update( {None:json.loads} )  # fallback on generic JSON dumps
+    return registry
+            
+
+def save(vars, outfile=None):
+    """Save variables to an archive file.
+
+    This function allows vipy objects to be serialized to disk for later loading.
+
+    >>> im = vipy.image.owl()
+    >>> im = vipy.util.load(vipy.util.save(im))   # round trip
+
+    Args:
+        vars: A python object to save.  This can be any serializable python object
+        outfile:  An output file to save.  Must have extension [.pkl, .json].  If None, will save to a temporary JSON file.
+
+    Returns
+        A path to the saved archive file.  Load using `vipy.util.load`. 
+
+    .. note:: JSON is preferred as an archive format for vipy.  Be sure to install the excellent ultrajson library (pip install ujson) for fast serialization.
+    """
+    allowable = set(['.pkl', '.json'])
+    outfile = tempjson() if outfile is None else outfile
+
+    remkdir(filepath(outfile))
+    if ispkl(outfile):
+        dill.dump(vars, open(outfile, 'wb'))
+
+    elif isjsonfile(outfile):
+        saveobj = vars
+        registry = class_registry()
+        if isinstance(saveobj, list) and all([str(type(d)) in registry for d in saveobj]):
+            j = [{str(type(d)):d.json(encode=False)} for d in saveobj] if isinstance(saveobj, list) else ({str(type(d)):d.json(encode=False)} for d in saveobj)
+        elif str(type(saveobj)) in registry:
+            j = {str(type(saveobj)):saveobj.json(encode=False)}
+        else:
+            j = saveobj
+
+        s = json.dumps(j, ensure_ascii=False)  # load to memory (faster than json.dump), will throw exception if it cannot serialize
+        with open(outfile, 'w') as f:
+            f.write(s)            
+
+    else:
+        raise ValueError('Unknown file extension for save file "%s" - must be in %s' % (fileext(outfile), str(allowable)))
+    
+    return outfile
+
+
+def load(infile, abspath=True, refcycle=True):
+    """Load variables from a relocatable archive file format, either dill pickle or JSON format.
+       
+       Loading is performed by attemping the following:
+
+       1. load the pickle or json file
+       2. if abspath=true, then convert relative paths to absolute paths for object when loaded
+       3. If refcycle=False, then disable the python reference cycle garbage collector for large archive files
+
+       >>> im = vipy.image.owl()
+       >>> f = vipy.util.save(im)
+       >>> im = vipy.util.load(im)
+
+       Args:
+           infile: [str] file saved using `vipy.util.save` with extension [.pkl, .json] 
+           abspath: [bool] If true, then convert all vipy objects with relative paths to absolute paths. If False, then preserve relative paths and warn user.
+           refcycle: [bool] If False, then disable python reference cycle garbage collector.  This is useful for large python objects.
+       
+       Returns:
+           The object in the archive file
+    """
+    infile = os.path.abspath(os.path.expanduser(infile))
+
+    if ispkl(infile):
+        obj = dill.load(open(infile, 'rb'))
+    elif isjsonfile(infile):
+        with open(infile, 'r') as f:
+            loadobj = json.load(f)
+        registry = class_registry()
+        assert isinstance(loadobj, list) or isinstance(loadobj, dict), "invalid vipy JSON serialization format"
+        if isinstance(loadobj, list) and all([isinstance(d, dict) for d in loadobj]) and all([c in registry for d in loadobj for (c,v) in d.items()]):
+            obj = [registry[c](v) for d in loadobj for (c,v) in d.items()]
+        elif isinstance(loadobj, dict) and all([c in registry for (c,d) in loadobj.items()]):
+            obj = [registry[c](v) for (c,v) in loadobj.items()]
+            obj = obj[0] if len(obj) == 1 else obj
+        else:
+            obj = loadobj
+    else:
+        raise ValueError('unknown file type')
+    
+    if len(tolist(obj)) == 0:
+        return obj  
+    testobj = tolist(obj)[0]  
+
+    # Relocatable object?
+    if hasattr(testobj, 'filename') and testobj.filename() is not None:
+        if not os.path.isabs(testobj.filename()):
+            if not abspath:
+                warnings.warn('Loading archive "%s" with relative paths.  Changing directory to "%s".  Disable this warning with vipy.util.load(..., abspath=True).' % (infile, filepath(infile)))
+                os.chdir(filepath(infile))
+            else:
+                # Absolute path?  The loaded archive will no longer be relocatable if you save this to a new archive, and the videos directory cannot be moved
+                pwd = os.getcwd()  # save current directory
+                os.chdir(filepath(infile))  # change to archive directory
+                objout = [o.abspath() if o.filename() is not None else o for o in tolist(obj)]  # set absolute paths relative to archive directory
+                obj = objout if isinstance(obj, list) else objout[0]
+                os.chdir(pwd)  # restore current directory
+        elif not testobj.hasfilename():
+            warnings.warn('Loading "%s" that contains path (e.g. "%s") which does not exist' % (infile, testobj.filename()))
+
+    # Large vipy object?  Disable garbage collection.
+    #   - Python uses reference counting for the primary garbage collection mechanism, but also uses reference cycle checks to search for dependencies between objects.
+    #   - All vipy objects are self contained, and do not have reference cycles.  However, there is no way to mark an individual object which does not participate in reference cycle counting.
+    #   - This means that a large number of vipy objects, garbage collection can take minutes searching for cycles which are never there.  To fix this, globally disable the garbage collector.
+    #   - Note that refernece counting is still performed, we are just disabling reference *cycle* counting using the generational garbage collector.
+    #   - This can be re-enabled at any time by "import gc; gc.enable()"
+    #   - If you use %autoreload iPython magic command, note that this will be very slow.  You should set %sutoreload 0
+    #   - Alternatively, load as JSON and all attributes will be unpacked on demand and stored in a packed format that is not tracked (e.g. tuple of strings) by the reference cycle counter
+    if not refcycle:
+        warnings.warn('Disabling python reference cycle garbage collection.  Re-enable at any time using "import gc; gc.enable()"')
+        import gc; gc.disable()
+    return obj
+
+
 def bz2pkl(filename, obj=None):
     """Read/Write a bz2 compressed pickle file"""
     assert filename[-8:] == '.pkl.bz2', "Invalid filename - must be '*.pkl.bz2'"
@@ -51,7 +203,14 @@ def bz2pkl(filename, obj=None):
         
 
 def mergedict(d1, d2):
-    """Combine keys of two dictionaries and return a dictionary deep copy"""
+    """Combine keys of two dictionaries and return a dictionary deep copy.
+    
+    >>> d1 = {1:2}
+    >>> d2 = {3:4}
+    >>> d3 = mergedict(d1,d2)
+    >>> assert d3 == {1:2, 3:4}
+
+    """
     assert isinstance(d1, dict) and isinstance(d2, dict)
     d = copy.deepcopy(d1)
     d.update(d2)
@@ -125,27 +284,12 @@ def count_images_in_subdirectories(indir):
     return num_files
 
 
-def rowvectorize(X):
-    """Convert a 1D numpy array to a 2D row vector of size (1,N)"""
-    return X.reshape((1, X. size)) if X.ndim == 1 else X
-
-
-def columnvectorize(X):
-    """Convert a 1D numpy array to a 2D column vector of size (N,1)"""
-    return X.reshape((X. size, 1)) if X.ndim == 1 else X
-
-
-def isodd(x):
-    return x % 2 == 0
-
-
 def keymax(d):
     """Return key in dictionary containing maximum value"""
     vmax = max(d.values())
     for (k, v) in d.items():
         if v == vmax:
             return k
-
 
 def keymin(d):
     """Return key in dictionary containing minimum value"""
@@ -218,8 +362,7 @@ def softmax(x, temperature=1.0):
 
 def permutelist(inlist):
     """randomly permute list order"""
-    return [inlist[k] for k in
-            np.random.permutation(list(range(0, len(inlist))))]
+    return [inlist[k] for k in np.random.permutation(list(range(0, len(inlist))))]
 
 
 def flatlist(inlist):
@@ -451,149 +594,6 @@ def loadmat73(matfile, keys=None):
         return np.array(f)
 
 
-def class_registry():
-    """Return a dictionary mapping str(type(obj)) to a JSON loader for all vipy objects."""
-    import vipy.video
-    import vipy.image
-    registry = {"<class 'vipy.video.Scene'>":vipy.video.Scene.from_json,
-                "<class 'vipy.video.Video'>":vipy.video.Video.from_json,
-                "<class 'vipy.video.VideoCategory'>":vipy.video.VideoCategory.from_json,
-                "<class 'vipy.image.Image'>":vipy.image.Image.from_json,
-                "<class 'vipy.image.ImageCategory'>":vipy.image.ImageCategory.from_json,
-                "<class 'vipy.image.ImageDetection'>":vipy.image.ImageDetection.from_json,            
-                "<class 'vipy.image.Scene'>":vipy.image.Scene.from_json,
-                "<class 'vipy.geometry.BoundingBox'>":vipy.geometry.BoundingBox.from_json,
-                "<class 'vipy.object.Track'>":vipy.object.Track.from_json,
-                "<class 'vipy.object.Detection'>":vipy.object.Detection.from_json,
-                "<class 'vipy.activity.Activity'>":vipy.activity.Activity.from_json,
-                None:json.loads}  # fallback on generic JSON dumps
-    try:
-        import pycollector.video
-        registry.update( {"<class 'pycollector.video.Video'>":pycollector.video.Video.from_json} )
-    except:
-        registry.update( {"<class 'pycollector.video.Video'>":lambda x: exec("raise ValueError(\"<class 'pycollector.video.Video'> not found - Run 'pip install pycollector' \")")})        
-    try:
-        import pycollector.admin.video
-        registry.update( {"<class 'pycollector.admin.video.Video'>":pycollector.admin.video.Video.from_json} )
-    except:
-        registry.update( {"<class 'pycollector.admin.video.Video'>":lambda x: exec("raise ValueError(\"<class 'pycollector.admin.video.Video'> not found - This is for admin use only \")")})        
-
-    return registry
-            
-
-def saveas(vars, outfile=None, format='dill'):
-    """Save variables as an archived file of the specified format"""
-    outfile = temppickle() if outfile is None else os.path.abspath(os.path.expanduser(outfile))
-
-    remkdir(filepath(outfile))
-    if format in ['dill']:
-        dill.dump(vars, open(outfile, 'wb'))
-        return outfile
-    
-    elif format == 'json':
-        saveobj = vars
-        registry = class_registry()
-        if isinstance(saveobj, list) and all([str(type(d)) in registry for d in saveobj]):
-            j = [{str(type(d)):d.json(encode=False)} for d in saveobj] if isinstance(saveobj, list) else ({str(type(d)):d.json(encode=False)} for d in saveobj)
-        elif str(type(saveobj)) in registry:
-            j = {str(type(saveobj)):saveobj.json(encode=False)}
-        else:
-            j = saveobj
-
-        s = json.dumps(j, ensure_ascii=False)  # load to memory (faster than json.dump), will throw exception if it cannot serialize
-        with open(outfile, 'w') as f:
-            f.write(s)            
-        return outfile
-        
-    else:
-        raise ValueError('unknown serialization format "%s"' % format)
-
-    return outfile
-
-
-def loadas(infile, format='dill'):
-    """Load variables from a dill pickled file"""
-    
-    if format in ['dill', 'pkl']:
-        return dill.load(open(infile, 'rb'))
-    elif format == 'json':
-        with open(infile, 'r') as f:
-            loadobj = json.load(f)
-        registry = class_registry()
-        assert isinstance(loadobj, list) or isinstance(loadobj, dict), "invalid vipy JSON serialization format"
-        if isinstance(loadobj, list) and all([isinstance(d, dict) for d in loadobj]) and all([c in registry for d in loadobj for (c,v) in d.items()]):
-            return [registry[c](v) for d in loadobj for (c,v) in d.items()]
-        elif isinstance(loadobj, dict) and all([c in registry for (c,d) in loadobj.items()]):
-            obj = [registry[c](v) for (c,v) in loadobj.items()]
-            return obj[0] if len(obj) == 1 else obj
-        else:
-            return loadobj
-    else:
-        raise ValueError('unknown serialization format "%s"' % format)
-
-
-def load(infile, abspath=True):
-    """Load variables from a relocatable archive file format, either Dill Pickle or JSON.
-       
-       Loading is performed by attemping the following:
-
-       1. load the pickle or json file
-       2. if abspath=true, then convert relative paths to absolute paths for object when loaded
-       3. If the loaded object is a vipy object (or iterable) and the relocatable path /$PATH is present, try to repath it to the directory containing this archive (this has been deprecated)
-       4. If the resulting first filename is not found, throw a warning
-
-    """
-    infile = os.path.abspath(os.path.expanduser(infile))
-    if ispkl(infile):
-        format = 'dill'
-    elif isjsonfile(infile):
-        format = 'json'
-    else:
-        raise ValueError('unknown file type')
-    
-    obj = loadas(infile, format=format)
-    try:
-        testobj = tolist(obj)[0]
-    except:
-        raise ValueError('Invalid archive "%s"' % infile)
-
-    # Relocatable object?
-    if hasattr(testobj, 'filename') and testobj.filename() is not None and '/$PATH' in testobj.filename():
-        # 07SEP21: this path is deprecated
-        testobj = repath(copy.deepcopy(testobj), '/$PATH', filepath(os.path.abspath(infile)))  # attempt to rehome /$PATH/to/me.jpg -> /NEWPATH/to/me.jpg where NEWPATH=filepath(infile)
-        if os.path.exists(testobj.filename()):       # file found
-            obj = repath(obj, '/$PATH', filepath(os.path.abspath(infile)))      # rehome everything to the same root path as the pklfile
-        else:
-            warnings.warn('Loading "%s" that contains redistributable paths - Use vipy.util.distload("%s", datapath="/path/to/your/data") to rehome absolute file paths' % (infile, infile))
-    elif hasattr(testobj, 'filename') and testobj.filename() is not None:
-        if not os.path.isabs(testobj.filename()):
-            if not abspath:
-                warnings.warn('Loading archive "%s" with relative paths.  Changing directory to "%s".  Disable this warning with vipy.util.load(..., abspath=True).' % (infile, filepath(infile)))
-                os.chdir(filepath(infile))
-            else:
-                # Absolute path?  The loaded archive will no longer be relocatable if you save this to a new archive, and the videos directory cannot be moved
-                pwd = os.getcwd()  # save current directory
-                os.chdir(filepath(infile))  # change to archive directory
-                objout = [o.abspath() if o.filename() is not None else o for o in tolist(obj)]  # set absolute paths relative to archive directory
-                obj = objout if isinstance(obj, list) else objout[0]
-                os.chdir(pwd)  # restore current directory
-        elif not testobj.hasfilename():
-            warnings.warn('Loading "%s" that contains path (e.g. "%s") which does not exist' % (infile, testobj.filename()))
-
-    # Large vipy object?  Disable garbage collection.
-    #   - Python uses reference counting for the primary garbage collection mechanism, but also uses reference cycle checks to search for dependencies between objects.
-    #   - All vipy objects are self contained, and do not have reference cycles.  However, there is no way to mark an individual object which does not participate in reference cycle counting.
-    #   - This means that a large number of vipy objects, garbage collection can take minutes searching for cycles which are never there.  To fix this, globally disable the garbage collector.
-    #   - Note that refernece counting is still performed, we are just disabling reference *cycle* counting using the generational garbage collector.
-    #   - This can be re-enabled at any time by "import gc; gc.enable()"
-    #   - If you use %autoreload iPython magic command, note that this will be very slow.  You should set %sutoreload 0
-    #   - Alternatively, load as JSON and all attributes will be unpacked on demand and stored in a packed format that is not tracked (e.g. tuple of strings) by the reference cycle counter
-    if hasattr(testobj, 'filename') and len(tolist(obj)) > 100000:
-        # Should we warn the user?  Probably doesn't matter ...
-        #warnings.warn('Loading "%s" that contains a large number of vipy objects - disabling reference cycle checks.  Re-enable at any time using "import gc; gc.enable()"' % (infile))
-        #import gc; gc.disable()
-        pass   # do not do this without explicit user authorization
-    return obj
 
 def take(inlist, k):
     """Take k elements at random from inlist"""
@@ -607,42 +607,14 @@ def tryload(infile, abspath=False):
         return None
 
 def canload(infile):
-    """Attempt to load a pkl file, and return true if it can be successfully loaded, otherwise False"""
+    """Attempt to load an archive file, and return true if it can be successfully loaded, otherwise False"""
     try:
         load(infile, abspath=True)
         return True
     except:
         return False
 
-def save(vars, outfile, mode=None):
-    """Save variables to an archive file"""
-    allowable = set(['.pkl', '.json'])
-    if ispkl(outfile):
-        format = 'dill'
-    elif isjsonfile(outfile):
-        format = 'json'
-    else:
-        raise ValueError('Unknown file extension "%s" - must be in %s' % (fileext(outfile), str(allowable)))
-    
-    outfile = saveas(vars, outfile, format=format)
-    if mode is not None:
-        chmod(outfile, mode)
-    return outfile
 
-
-def distload(infile, datapath, srcpath='/$PATH'):
-    """Load a redistributable pickle file that replaces absolute paths in datapath with srcpath.  See also vipy.util.distsave(),
-       This function has been deprecated, all archives should be distributed with relative paths
-    """
-    return repath(load(infile), srcpath, datapath)
-
-
-def distsave(vars, datapath, outfile=None, mode=None, dstpath='/$PATH'):
-    """Save a archive file for redistribution, where datapath is replaced by dstpath.  Useful for redistribuing pickle files with absolute paths.  See also vipy.util.distload().
-       This function has been deprecated, all archives should be distributed with relative paths       
-    """
-    vars = vars if (datapath is None or not isvipyobject(vars)) else repath(vars, datapath, dstpath) 
-    return save(vars, outfile, mode)
 
 
 def repath(v, srcpath, dstpath):
@@ -859,7 +831,7 @@ def newpathroot(filename, newroot):
     return os.path.join(*path)
 
 def topath(filename, newdir):
-    """Alias for newpath"""
+    """Alias for `vipy.util.newpath`"""
     return newpath(filename, newdir)
 
 
@@ -1077,10 +1049,6 @@ def isRTSPurl(path):
 def isRTMPurl(path):
     return isurl(path) and (path.startswith('rtmp://') or path.startswith('rtmps://'))
 
-def checkerboard(m=8,n=256):
-    """m=number of square by column, n=size of final image"""
-    return np.array(PIL.Image.fromarray(np.uint8(255 * np.random.rand(m,m,3))).resize((n,n), PIL.Image.NEAREST))
-
 
 def islist(x):
     """Is an object a python list"""
@@ -1140,52 +1108,48 @@ def tolist(x):
 
 
 def isimg(path):
-    """Is an object an image with a supported image extension
-    ['.jpg','.jpeg','.png','.tif','.tiff','.pgm','.ppm','.gif','.bmp']?"""
+    """Is an object an image with a supported image extension ['.jpg','.jpeg','.png','.tif','.tiff','.pgm','.ppm','.gif','.bmp']?"""
     (filename, ext) = os.path.splitext(path)
-    if ext.lower() in ['.jpg', '.jpeg', '.png', '.tif', '.tiff',
-                       '.pgm', '.ppm', '.gif', '.bmp']:
+    if ext.lower() in ['.jpg', '.jpeg', '.png', '.tif', '.tiff', '.pgm', '.ppm', '.gif', '.bmp']:
         return True
     else:
         return False
 
 def isimage(path):
-    return isimg(path)
-    
+    """Alias for `vipy.util.isimg`"""
 
 def isvideofile(path):
-    """Equivalent to isvideo()"""
+    """Alias for `vipy.util.isvideo`"""
     return isvideo(path)
 
-
 def isimgfile(path):
-    """Convenience function for isimg"""
+    """Alias for `vipy.util.isimg`"""
     return isimg(path)
 
 
 def isimagefile(path):
-    """Convenience function for isimg"""
+    """Alias for `vipy.util.isimg`"""
     return isimg(path)
 
 
-def isgif(path):
-    return hasextension(path) and fileext(path).lower() == '.gif'
-
-
 def isjpeg(path):
+    """is the file a .jpg or .jpeg extension?"""
     return hasextension(path) and fileext(path).lower() == '.jpg' or fileext(path).lower() == '.jpeg'
 
 def iswebp(path):
+    """is the file a .webp extension?"""
     return hasextension(path) and fileext(path).lower() == '.webp'
 
 def ispng(path):
+    """is the file a .png or .apng extension?"""
     return hasextension(path) and (fileext(path).lower() == '.png' or fileext(path).lower() == '.apng')
 
 def isgif(path):
+    """is the file a .gif extension?"""
     return hasextension(path) and fileext(path).lower() == '.gif'
 
-
 def isjpg(path):
+    """Alias for `vipy.util.isjpeg`"""
     return isjpeg(path)
 
 
@@ -1199,8 +1163,7 @@ def iscsv(path):
 
 
 def isvideo(path):
-    """Is a filename in path a video with a known video extension
-    ['.avi','.mp4','.mov','.wmv','.mpg', 'mkv', 'webm']?"""
+    """Is a filename in path a video with a known video extension ['.avi','.mp4','.mov','.wmv','.mpg', 'mkv', 'webm']?"""
     (filename, ext) = os.path.splitext(path)
     if ext.lower() in ['.avi','.mp4','.mov','.wmv','.mpg', 'mkv', 'webm']:
         return True
@@ -1260,10 +1223,12 @@ def rgb2bgr(im_rgb):
 
 
 def bgr2hsv(im_bgr):
+    """Convert a numpy array in BGR order to HSV"""
     return np.array(PIL.Image.fromarray(bgr2rgb(im_bgr)).convert('HSV'))  # BGR -> RGB -> HSV
 
 
 def gray2hsv(im_gray):
+    """Convert a numpy array in floating point single channel greyscale order to HSV"""
     return np.array(PIL.Image.fromarray(gray2rgb(im_gray)).convert('HSV'))  # Gray -> RGB -> HSV
 
 
@@ -1282,9 +1247,11 @@ def isarchive(filename):
             return False
 
 def istgz(filename):
+    """Is the filename a .tgz or .tar.gz extension?"""
     return filename[-4:] == '.tgz' or filename[-7:] == '.tar.gz'
 
 def isbz2(filename):
+    """Is the filename a .bz2 or .tar.bz2 extension?"""
     return filename[-4:] == '.bz2' or filename[-8:] == '.tar.bz2'
 
 def tempfilename(suffix):
@@ -1407,10 +1374,6 @@ def touch(filename, mystr=''):
     f.close()
 
 
-def isboundingbox(obj):
-    return isinstance(obj, vipy.geometry.BoundingBox)
-
-
 class Stopwatch(object):
     """Return elapsed system time in seconds between calls to enter and exit"""
 
@@ -1455,7 +1418,6 @@ class Timer(object):
        >>> with Timer():
        >>>    [some code]
        
-
     """
     def __enter__(self):
         self._begin = time.time()

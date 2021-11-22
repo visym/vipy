@@ -91,7 +91,11 @@ class Detection(BoundingBox):
         return self.json(s=None, encode=False)
 
     def json(self, encode=True):
-        return json.dumps(self.__dict__) if encode else self.__dict__
+        d = {k:v for (k,v) in self.__dict__.items() if not ((k == '_confidence' and v is None) or
+                                                            (k == '_shortlabel' and v is None) or
+                                                            (k == 'attributes' and (v is None or isinstance(v, dict) and len(v)==0)) or
+                                                            (k == '_label' and v is None))}  # don't bother to store None values
+        return json.dumps(d) if encode else d
                 
     def nocategory(self):
         self._label = None
@@ -428,14 +432,15 @@ class Track(object):
         - If self._boundary='extend', then boxes are repeated if the interpolation is outside the keyframes
         - If self._boundary='strict', then interpolation returns None if the interpolation is outside the keyframes
         
-        .. note::  The returned object is not cloned when possible for speed purposes, be careful when modifying this object.  clone() if necessary
-
+        .. note::  
+            - The returned BoundingBox object is not cloned when possible for speed purposes, be careful when modifying this object.  clone() the returned object if necessary
+            - This means that we return a reference to the underlying keybox upgraded with track properties and cast as `vipy.object.Detection`.  If you modify this object, then the track keybox will be modfied.
         """
         assert len(self._keyboxes) > 0, "Degenerate object for interpolation"   # not self.isempty()
         if len(self._keyboxes) == 1:
             return Detection.cast(self._keyboxes[0].clone(), category=self.category(), shortlabel=self.shortlabel()).noattributes().setattribute('trackid', self.id()) if (self._boundary == 'extend' or self.during(f)) else None
         if f in reversed(self._keyframes):            
-            return Detection.cast(self._keyboxes[self._keyframes.index(f)], category=self.category(), shortlabel=self.shortlabel()).noattributes().setattribute('trackid', self.id())
+            return Detection.cast(self._keyboxes[self._keyframes.index(f)], category=self.category(), shortlabel=self.shortlabel()).noattributes().setattribute('trackid', self.id())  # by reference, do not clone
 
         kf = self._keyframes
         ft = min(max(f, kf[0]), kf[-1])  # truncated frame index

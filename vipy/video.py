@@ -2454,6 +2454,15 @@ class Scene(VideoCategory):
         return v
 
     @classmethod
+    def asjson(cls, s):
+        """Restore an object serialized with self.json().  Alas for `vipy.video.Scene.from_json`.
+        
+           Usage:
+           >>> vs = vipy.video.Scene.asjson(v.json())
+        """
+        return vipy.video.Scene.from_json(s)
+
+    @classmethod
     def from_json(cls, s):
         """Restore an object serialized with self.json()
         
@@ -2473,8 +2482,8 @@ class Scene(VideoCategory):
         #   - This is useful when calling vipy.util.load(...) on archives that contain hundreds of thousands of objects
         #   - Do not access the private attributes self._tracks and self._attributes as they will be packed until needed
         #   - Should install ultrajson (pip install ujson) for super fast parsing
-        v._tracks = tuple([x if isinstance(x, str) else str(json.dumps(x)) for x in d['_tracks'].values()])  # track ID key is embedded in object, legacy unpack of doubly JSON encoded strings
-        v._activities = tuple([x if isinstance(x, str) else str(json.dumps(x)) for x in d['_activities'].values()])  # track ID key is embedded in object, legacy unpack of doubly JSON encoded strings
+        v._tracks = tuple([x if isinstance(x, str) else str(json.dumps(x)) for x in d['_tracks'].values()])  # track ID key is embedded in object, legacy unpack of doubly JSON encoded strings (vipy-1.11.16)
+        v._activities = tuple([x if isinstance(x, str) else str(json.dumps(x)) for x in d['_activities'].values()])  # track ID key is embedded in object, legacy unpack of doubly JSON encoded strings (vipy-1.11.16)
         return v
         
     def pack(self):
@@ -2488,8 +2497,8 @@ class Scene(VideoCategory):
 
         """
         d = json.loads(self.json())
-        self._tracks = tuple(d['_tracks'].values())  # efficient garbage collection: store as a packed string to avoid reference cycle tracking, unpack on demand
-        self._activities = tuple(d['_activities'].values())  # efficient garbage collection: store as a packed string to avoid reference cycle tracking, unpack on demand 
+        self._tracks = tuple([x if isinstance(x, str) else str(json.dumps(x)) for x in d['_tracks'].values()]) # efficient garbage collection: store as a packed string to avoid reference cycle tracking, unpack on demand
+        self._activities = tuple([x if isinstance(x, str) else str(json.dumps(x)) for x in d['_activities'].values()])  # efficient garbage collection: store as a packed string to avoid reference cycle tracking, unpack on demand 
         return self
 
     def __repr__(self):
