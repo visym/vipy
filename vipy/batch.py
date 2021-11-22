@@ -23,6 +23,8 @@ dill.extend(True)  # https://github.com/uqfoundation/dill/issues/383
 
 
 class Dask(object):
+    """Dask distributed client"""
+
     def __init__(self, num_processes=None, dashboard=False, verbose=False, address=None, num_gpus=None):
         assert address is not None or num_processes is not None or num_gpus is not None, "Invalid input"
 
@@ -120,60 +122,7 @@ class Dask(object):
         return self._client
 
 
-
-
-class Checkpoint(object):
-    """Batch checkpoints for long running jobs"""
-    def __init__(self, checkpointdir=None):
-        if checkpointdir is not None:
-            self._checkpointdir = checkpointdir
-        elif vipy.globals.cache() is not None:
-            self._checkpointdir = os.path.join(vipy.globals.cache(), 'batch')
-        else:
-            self._checkpointdir = os.path.join(tempdir(), 'batch')
-
-    def checkpoint(self, archiveid=None):
-        """Return the last checkpointed result.  Useful for recovering from dask crashes for long jobs."""
-        pklfiles = self._list_checkpoints(archiveid)
-        if len(pklfiles) > 0:
-            print('[vipy.batch]: loading %d checkpoints %s' % (len(pklfiles), str(pklfiles)))
-            return [v for f in pklfiles for v in vipy.util.load(f)]
-        else:
-            return None
-
-    def last_archive(self):
-        archivelist = self._list_archives()
-        return archivelist[0] if len(archivelist) > 0 else None
-
-    def _checkpointid(self):
-        assert self._checkpointdir is not None
-        hash_object = hashlib.md5(str(self._checkpointdir).encode())
-        return str(hash_object.hexdigest())
-
-    def _list_checkpoints(self, archiveid=None):
-        cpdir = os.path.join(self._checkpointdir, archiveid) if (archiveid is not None and self._checkpointdir is not None) else self._checkpointdir
-        return sorted([f for f in listpkl(cpdir) if self._checkpointid() in f], key=lambda f: int(filebase(f).split('_')[1])) if cpdir is not None and os.path.isdir(cpdir) else []
-
-    def _list_archives(self):
-        return [filetail(d) for d in vipy.util.dirlist_sorted_bycreation(self._checkpointdir)] if self._checkpointdir is not None else []
-
-    def _flush_checkpoint(self):
-        for f in self._list_checkpoints():
-            if self._checkpointid() in f:
-                os.remove(f)
-        return self
-
-    def _archive_checkpoint(self):
-        archivedir = os.path.join(self._checkpointdir, str(uuid.uuid4().hex))
-        for f in self._list_checkpoints():
-            if self._checkpointid() in f:
-                f_new = os.path.join(remkdir(archivedir), filetail(f))
-                print('[vipy.batch]: archiving checkpoint %s -> %s' % (f, f_new))
-                shutil.copyfile(f, f_new)
-        return self
-
-
-class Batch(Checkpoint):
+class Batch():
     """vipy.batch.Batch class
 
     This class provides a representation of a set of vipy objects.  All of the object types must be the same.  If so, then an operation on the batch is performed on each of the elements in the batch in parallel.
@@ -194,27 +143,21 @@ class Batch(Checkpoint):
     >>> b.map(lambda v: v.download().save())  # will download and clip dataset in parallel
 
     >>> b.result()  # retrieve results after a sequence of map or filter chains
+    >>> list(b)     # equivalent to b.result()
 
     Args:
         strict: [bool] if distributed processing fails, return None for that element and print the exception rather than raise
         as_completed: [bool] Return the objects to the scheduler as they complete, this can introduce instabilities for large complex objects, use with caution
+        ordered: [bool]: If Trye, then preserve the order of objects in objlist in distributed processing
 
     """    
              
-    def __init__(self, objlist, strict=False, as_completed=False, checkpoint=False, checkpointdir=None, checkpointfrac=0.1, warnme=False, minscatter=None):
+    def __init__(self, objlist, strict=False, as_completed=False, warnme=False, minscatter=None, ordered=False):
         """Create a batch of homogeneous vipy.image objects from an iterable that can be operated on with a single parallel function call
         """
         assert isinstance(objlist, list), "Input must be a list"
         self._batchtype = type(objlist[0]) if len(objlist)>0 else type(None)
         assert all([isinstance(im, self._batchtype) for im in objlist]), "Invalid input - Must be homogeneous list of the same type"                
-        self._objlist = [(k,o) for (k,o) in enumerate(objlist)]  # ordered
-
-        assert checkpointfrac > 0.0 and checkpointfrac <= 1.0, "Invalid checkpoint fraction"
-        self._checkpointsize = max(1, int(len(objlist) * checkpointfrac))
-        super().__init__(checkpointdir)
-        self._checkpoint = checkpoint
-        if checkpoint:
-            as_completed = True  # force self._as_completed=True
 
         # Move this into map and disable using localmap
         if vipy.globals.dask() is None and warnme:
@@ -229,6 +172,8 @@ class Batch(Checkpoint):
         self._strict = strict
         self._as_completed = as_completed  # this may introduce instabilities for large complex objects, use with caution
         self._minscatter = minscatter
+        self._ordered = ordered
+        self._objlist = [(k,o) for (k,o) in enumerate(objlist)] if ordered else objlist
 
     def __enter__(self):
         return self
@@ -240,14 +185,12 @@ class Batch(Checkpoint):
         return len(self._objlist)
 
     def __repr__(self):        
-        return str('<vipy.batch: type=%s, len=%d, client=%s>' % (str(self._batchtype), len(self), str(vipy.globals.dask())))
+        return str('<vipy.batch: type=%s, len=%d%s>' % (str(self._batchtype), len(self), (', client=%s' % str(vipy.globals.dask())) if vipy.globals.dask() is not None else ''))
 
     def _client(self):
         return vipy.globals.dask()._client if vipy.globals.dask() is not None else None
 
     def _batch_wait(self, futures):
-        self._archive_checkpoint()._flush_checkpoint()
-        k_checkpoint = 0
         try:
             results = []            
             for (k, batch) in enumerate(as_completed(futures, with_results=True, raise_errors=False).batches()):
@@ -261,16 +204,7 @@ class Batch(Checkpoint):
                         else:
                             print('[vipy.batch]: future %s failed with error "%s" - SKIPPING' % (str(future), str(result)))
                         results.append(None)
-                    k_checkpoint = k_checkpoint + 1
-                    
                     del future, result  # distributed memory cleanup
-
-                # Save intermediate results
-                if self._checkpoint and (k_checkpoint > self._checkpointsize):
-                    pklfile = os.path.join(remkdir(self._checkpointdir), '%s_%d.pkl' % (self._checkpointid(), k))
-                    print('[vipy.batch]: saving checkpoint %s ' % pklfile)
-                    vipy.util.save(results[-k_checkpoint:], pklfile)
-                    k_checkpoint = 0
 
                 # Distributed memory cleanup
                 del batch
@@ -305,6 +239,7 @@ class Batch(Checkpoint):
                         print('[vipy.batch]: future failed')
                     results.append(None)
             return results
+
         except KeyboardInterrupt:
             # warnings.warn('[vipy.batch]: batch cannot be restarted after killing with ctrl-c - You must create a new Batch()')
             #vipy.globals.dask().shutdown()
@@ -314,13 +249,13 @@ class Batch(Checkpoint):
             # warnings.warn('[vipy.batch]: batch cannot be restarted after exception - Recreate Batch()')                
             raise
 
-    def restore(self):
-        return self.checkpoint() if self._checkpoint else None
-
     def result(self):
         """Return the result of the batch processing, ordered"""
-        objlist = {int(v[0]):v[1] for v in self._objlist if v is not None}
-        return [objlist[k] if k in objlist else None for k in range(len(self._objlist))]  # restore order
+        if self._ordered:
+            objlist = {int(v[0]):v[1] for v in self._objlist if v is not None}
+            return [objlist[k] if k in objlist else None for k in range(len(self._objlist))]  # restore order
+        else:
+            return self._objlist
 
     def __iter__(self):
         for x in self.result():
@@ -346,10 +281,10 @@ class Batch(Checkpoint):
         c = self._client()
 
         if c is None:
-            f_lambda_ordered = lambda x,f=f_lambda: (x[0], f(x[1]))                         
+            f_lambda_ordered = (lambda x,f=f_lambda: (x[0], f(x[1]))) if self._ordered else f_lambda
             self._objlist = [f_lambda_ordered(o) for o in self._objlist]  # no parallelism
         else:
-            f_lambda_ordered = lambda x,f=f_lambda: (x[0], f(x[1]))            
+            f_lambda_ordered = (lambda x,f=f_lambda: (x[0], f(x[1]))) if self._ordered else f_lambda
             objlist = c.scatter(self._objlist) if (self._minscatter is not None and len(self._objlist) >= self._minscatter) else self._objlist
             self._objlist = self._wait(c.map(f_lambda_ordered, objlist))
         return self
@@ -358,7 +293,7 @@ class Batch(Checkpoint):
         """Run the lambda function on each of the elements of the batch and filter based on the provided lambda keeping those elements that return true 
         """
         c = self._client()
-        f_lambda_ordered = lambda x,f=f_lambda: (x[0], f(x[1])) 
+        f_lambda_ordered = (lambda x,f=f_lambda: (x[0], f(x[1]))) if self._ordered else f_lambda
 
         if c is None:
             self._objlist = [o for o in self._objlist if f_lambda_ordered(o)[1]]  # no parallelism
@@ -384,7 +319,7 @@ class Batch(Checkpoint):
 
         """
         c = self._client()
-        f_lambda_ordered = lambda net,x,f=f_lambda: (x[0], f(net,x[1])) 
+        f_lambda_ordered = (lambda net,x,f=f_lambda: (x[0], f(net,x[1]))) if self._ordered else (lambda net,x,f=f_lambda: f(net, x))
 
         if c is None:
             self._objlist = [f_lambda_ordered(obj, o) for o in self._objlist]  # no parallelism
