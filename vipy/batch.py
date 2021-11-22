@@ -148,7 +148,7 @@ class Batch():
     Args:
         strict: [bool] if distributed processing fails, return None for that element and print the exception rather than raise
         as_completed: [bool] Return the objects to the scheduler as they complete, this can introduce instabilities for large complex objects, use with caution
-        ordered: [bool]: If Trye, then preserve the order of objects in objlist in distributed processing
+        ordered: [bool]: If True, then preserve the order of objects in objlist in distributed processing
 
     """    
              

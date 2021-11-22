@@ -432,7 +432,7 @@ class Dataset():
         csv = [v.csv() for v in self.list]        
         return vipy.util.writecsv(csv, csvfile) if csvfile is not None else (csv[0], csv[1:])
 
-    def map(self, f_transform, model=None, dst=None, id=None, strict=False, ascompleted=True, chunks=128):        
+    def map(self, f_transform, model=None, dst=None, id=None, strict=False, ascompleted=True, chunks=128, ordered=False):        
         """Distributed map.
 
         To perform this in parallel across four processes:
@@ -448,6 +448,7 @@ class Dataset():
             id: [str] The ID to give to the resulting dataset (parameter alias for dst)
             strict: [bool] If true, raise exception on map failures, otherwise the map will return None for failed elements
             ascompleted: [bool] If true, return elements as they complete
+            ordered: [bool] If true, preserve the order of objects in dataset as returned from distributed processing
 
         Returns:
             A `vipy.dataset.Dataset` containing the elements f_transform(v).  This operation is order preserving.
@@ -471,7 +472,7 @@ class Dataset():
         f_deserialize = lambda x,d=vipy.util.class_registry(): d[x[0]](x[1])  # with closure capture
         f = lambda x, f_loader=self._loader, f_serializer=f_serialize, f_deserializer=f_deserialize: f_serializer(f_transform(f_loader(f_deserializer(x))))  # with closure capture
         S = [f_serialize(v) for v in self._objlist]  # local serialization
-        B = Batch(vipy.util.chunklist(S, chunks), strict=strict, as_completed=ascompleted, warnme=False, minscatter=chunks)
+        B = Batch(vipy.util.chunklist(S, chunks), strict=strict, as_completed=ascompleted, warnme=False, minscatter=chunks, ordered=ordered)
         S = B.map(lambda X,f=f: [f(x) for x in X]).result() if not model else B.scattermap(lambda X, f=f: [f(x) for x in X], model).result()
         V = [f_deserialize(x) for s in S for x in s]  # Local deserialization and chunk flattening
         return Dataset(V, id=dst if dst is not None else id)

@@ -2468,13 +2468,13 @@ class Scene(VideoCategory):
         # Packed attribute storage:
         #   - When loading a large number of vipy objects, the python garbage collector slows down signficantly due to reference cycle counting
         #   - Mutable objects and custom containers are tracked by the garbage collector and the more of them that are loaded the longer GC takes
-        #   - To avoid this, load attributes as tuples of packed strings.  This is an immutable type that is not refernce counted.  Check this with gc.is_tracked()
+        #   - To avoid this, load attributes as tuples of packed strings.  This is an immutable type that is not reference counted.  Check this with gc.is_tracked()
         #   - Then, unpack load the attributes on demand when accessing tracks() or activities().  Then, the nested containers are reference counted (even though they really should not since there are no cycles by construction)
         #   - This is useful when calling vipy.util.load(...) on archives that contain hundreds of thousands of objects
         #   - Do not access the private attributes self._tracks and self._attributes as they will be packed until needed
         #   - Should install ultrajson (pip install ujson) for super fast parsing
-        v._tracks = tuple(d['_tracks'].values())  # efficient garbage collection: store as a packed string to avoid reference cycle tracking, unpack on demand
-        v._activities = tuple(d['_activities'].values())  # efficient garbage collection: store as a packed string to avoid reference cycle tracking, unpack on demand 
+        v._tracks = tuple([x if isinstance(x, str) else str(json.dumps(x)) for x in d['_tracks'].values()])  # track ID key is embedded in object, legacy unpack of doubly JSON encoded strings
+        v._activities = tuple([x if isinstance(x, str) else str(json.dumps(x)) for x in d['_activities'].values()])  # track ID key is embedded in object, legacy unpack of doubly JSON encoded strings
         return v
         
     def pack(self):
@@ -3054,13 +3054,12 @@ class Scene(VideoCategory):
     def json(self, encode=True):
         """Return JSON encoded string of this object.  This may fail if attributes contain non-json encodeable object"""
         try:
-            json.loads(json.dumps(self.attributes))  # round trip for the attributes ductionary - this can be any arbitrary object and contents may not be json encodable
+            json.loads(json.dumps(self.attributes))  # round trip for the attributes dictionary - this can be any arbitrary object and contents may not be json encodable
         except:
             raise ValueError('Video contains non-JSON encodable object in self.attributes dictionary - Try self.sanitize() or to clear with self.attributes = {} first')
-
         d = json.loads(super().json())
-        d['_tracks'] = {k:t.json(encode=True) for (k,t) in self.tracks().items()}
-        d['_activities'] = {k:a.json(encode=True) for (k,a) in self.activities().items()}
+        d['_tracks'] = {k:t.json(encode=False) for (k,t) in self.tracks().items()}
+        d['_activities'] = {k:a.json(encode=False) for (k,a) in self.activities().items()}
         try:
             return json.dumps(d) if encode else d
         except:
