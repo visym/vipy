@@ -18,7 +18,7 @@ GLOBAL = {'VERBOSE': True,       # If False, will silence everything, equivalent
           'LOGGING':False,       # If True, use python logging (handler provided by end-user) intead of print 
           'LOGGER':None,         # The global logger used by vipy.globals.print() and vipy.globals.warn() if LOGGING=True
           'GUI':{'escape':False},
-          'AWS':{'AWS_ACCESS_KEY_ID':os.environ['VIPY_AWS_SECRET_ACCESS_KEY'] if 'VIPY_AWS_ACCESS_KEY_ID' in os.environ else None,
+          'AWS':{'AWS_ACCESS_KEY_ID':os.environ['VIPY_AWS_ACCESS_KEY_ID'] if 'VIPY_AWS_ACCESS_KEY_ID' in os.environ else None,
                  'AWS_SECRET_ACCESS_KEY':os.environ['VIPY_AWS_SECRET_ACCESS_KEY'] if 'VIPY_AWS_SECRET_ACCESS_KEY' in os.environ else None,
                  'AWS_SESSION_TOKEN':os.environ['VIPY_AWS_SESSION_TOKEN'] if 'VIPY_AWS_SESSION_TOKEN' in os.environ else None},
           'LATEX':os.environ['VIPY_LATEX'] if 'VIPY_LATEX' in os.environ else None}

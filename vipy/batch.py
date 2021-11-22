@@ -36,13 +36,16 @@ class Dask(object):
         env = {'VIPY_BACKEND':'Agg',  # headless 
                'PYTHONOPATH':os.environ['PYTHONPATH'] if 'PYTHONPATH' in os.environ else '',
                'PATH':os.environ['PATH'] if 'PATH' in os.environ else '',
-               #'DASK_DISTRIBUTED__COMM__TIMEOUTS__TCP':"30s",
                'DASK_DISTRIBUTED__COMM__TIMEOUTS__CONNECT':"30s",
-               #'DASK_DISTRIBUTED__SCHEDULER__WORK_STEALING':'false',
-               #'DASK_DISTRIBUTED__ADMIN__TICK__LIMIT':"30s",
-               #'DASK_DISTRIBUTED__ADMIN__TICK__INTERVAL':"2s",
                'DASK_DISTRIBUTED__DEPLOY__LOST_WORKER_TIMEOUT':"30s"}
-        
+
+        if 'VIPY_CACHE' in os.environ:
+            env.update({'VIPY_CACHE':os.environ['VIPY_CACHE']})
+        if 'VIPY_AWS_ACCESS_KEY_ID' in os.environ:
+            env.update({'VIPY_AWS_ACCESS_KEY_ID':os.environ['VIPY_AWS_ACCESS_KEY_ID']})            
+        if  'VIPY_AWS_SECRET_ACCESS_KEY' in os.environ:
+            env.update({'VIPY_AWS_SECRET_ACCESS_KEY':os.environ['VIPY_AWS_SECRET_ACCESS_KEY']})        
+                    
         dask.config.set({'DISTRIBUTED.COMM.TIMEOUTS.CONNECT'.lower():'30s'})
         dask.config.set({'DISTRIBUTED.COMM.TIMEOUTS.TCP'.lower():'30s'})
         dask.config.set({'DISTRIBUTED.DEPLOY.LOST_WORKER_TIMEOUT'.lower():'30s'})
@@ -51,6 +54,17 @@ class Dask(object):
         if address is not None:
             # Distributed scheduler
             self._client = Client(name='vipy', address=address)
+
+            # Update key environment variables on remote workers using out of band function (yuck)
+            # Make sure that any environment variables are accessible on all machines!  (e.g. VIPY_CACHE)
+            # If not, then you need to unset these variables from os.environ prior to calling Dask()
+            def _f_setenv_remote(localenv):
+                import os; os.environ.update(localenv)
+
+            localenv = {k:v for (k,v) in os.environ.items() if k.startswith('VIPY_')}
+            localenv.update( {'VIPY_BACKEND':'Agg'} )
+            self._client.run(lambda env=localenv: _f_setenv_remote(env))
+
         else:
             # Local scheduler
             self._client = Client(name='vipy',

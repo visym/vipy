@@ -451,7 +451,8 @@ def loadmat73(matfile, keys=None):
         return np.array(f)
 
 
-def _json_class_registry():
+def class_registry():
+    """Return a dictionary mapping str(type(obj)) to a JSON loader for all vipy objects."""
     import vipy.video
     import vipy.image
     registry = {"<class 'vipy.video.Scene'>":vipy.video.Scene.from_json,
@@ -464,7 +465,8 @@ def _json_class_registry():
                 "<class 'vipy.geometry.BoundingBox'>":vipy.geometry.BoundingBox.from_json,
                 "<class 'vipy.object.Track'>":vipy.object.Track.from_json,
                 "<class 'vipy.object.Detection'>":vipy.object.Detection.from_json,
-                "<class 'vipy.activity.Activity'>":vipy.activity.Activity.from_json}
+                "<class 'vipy.activity.Activity'>":vipy.activity.Activity.from_json,
+                None:json.loads}  # fallback on generic JSON dumps
     try:
         import pycollector.video
         registry.update( {"<class 'pycollector.video.Video'>":pycollector.video.Video.from_json} )
@@ -480,7 +482,7 @@ def _json_class_registry():
             
 
 def saveas(vars, outfile=None, format='dill'):
-    """Save variables as a dill pickled file"""
+    """Save variables as an archived file of the specified format"""
     outfile = temppickle() if outfile is None else os.path.abspath(os.path.expanduser(outfile))
 
     remkdir(filepath(outfile))
@@ -490,10 +492,10 @@ def saveas(vars, outfile=None, format='dill'):
     
     elif format == 'json':
         saveobj = vars
-        class_registry = _json_class_registry()
-        if isinstance(saveobj, list) and all([str(type(d)) in class_registry for d in saveobj]):
+        registry = class_registry()
+        if isinstance(saveobj, list) and all([str(type(d)) in registry for d in saveobj]):
             j = [{str(type(d)):d.json(encode=False)} for d in saveobj] if isinstance(saveobj, list) else ({str(type(d)):d.json(encode=False)} for d in saveobj)
-        elif str(type(saveobj)) in class_registry:
+        elif str(type(saveobj)) in registry:
             j = {str(type(saveobj)):saveobj.json(encode=False)}
         else:
             j = saveobj
@@ -517,12 +519,12 @@ def loadas(infile, format='dill'):
     elif format == 'json':
         with open(infile, 'r') as f:
             loadobj = json.load(f)
-        class_registry = _json_class_registry()
+        registry = class_registry()
         assert isinstance(loadobj, list) or isinstance(loadobj, dict), "invalid vipy JSON serialization format"
-        if isinstance(loadobj, list) and all([isinstance(d, dict) for d in loadobj]) and all([c in class_registry for d in loadobj for (c,v) in d.items()]):
-            return [class_registry[c](v) for d in loadobj for (c,v) in d.items()]
-        elif isinstance(loadobj, dict) and all([c in class_registry for (c,d) in loadobj.items()]):
-            obj = [class_registry[c](v) for (c,v) in loadobj.items()]
+        if isinstance(loadobj, list) and all([isinstance(d, dict) for d in loadobj]) and all([c in registry for d in loadobj for (c,v) in d.items()]):
+            return [registry[c](v) for d in loadobj for (c,v) in d.items()]
+        elif isinstance(loadobj, dict) and all([c in registry for (c,d) in loadobj.items()]):
+            obj = [registry[c](v) for (c,v) in loadobj.items()]
             return obj[0] if len(obj) == 1 else obj
         else:
             return loadobj

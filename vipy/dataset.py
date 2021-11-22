@@ -437,11 +437,12 @@ class Dataset():
 
         To perform this in parallel across four processes:
 
+        >>> D = vipy.dataset.Dataset(...)
         >>> with vipy.globals.parallel(4):
-        >>>     self.map(lambda v: ...)
+        >>>     D.map(lambda v: ...)
 
         Args:
-            f_transform: [lambda] The lambda function to apply in parallel to all elements in the dataset
+            f_transform: [lambda] The lambda function to apply in parallel to all elements in the dataset.  This must return a JSON serializable object
             model: [torch.nn.Module] The model to scatter to all workers
             dst: [str] The ID to give to the resulting dataset
             id: [str] The ID to give to the resulting dataset (parameter alias for dst)
@@ -452,16 +453,29 @@ class Dataset():
         Returns:
             A `vipy.dataset.Dataset` containing the elements f_transform(v).  This operation is order preserving.
 
+        .. note:: 
+            - This dataset must contain vipy objects of types defined in `vipy.util.class_registry` or JSON serializable objects
+            - Serialization of large datasets can take a while, kick it off to a distributed dask scheduler and go get lunch
+            - This method uses dask distributed and `vipy.batch.Batch` operations
+            - All vipy objects are JSON serialized prior to parallel map to avoid reference cycle garbage collection which can introduce instabilities
+            - Operations must be chunked and serialized because each dask task comes with overhead, and lots of small tasks violates best practices
+            - Each object is JSON serialized before sending to avoid dask reference cycle garbage collection which can introduce instabilities
+            - Each serialized chunk is sent to a worker and processed in parallel
+            - Results are serialized by the worker using a class registry to map from the type to the deserializer method
+            - Serialized results are deserialized by the client and returned a a new dataset
         """
         assert callable(f_transform)
+        assert self._isvipy()
 
-        # Operations must be chunked because each dask task comes with overhead, and lots of small tasks violates best practices
-        # - Each chunk is sent to a worker and processed in parallel
-        # - Chunks are scattered to workers 
-        B = Batch(vipy.util.chunklist(self._objlist, chunks), strict=strict, as_completed=ascompleted, checkpoint=checkpoint, warnme=False, minscatter=chunks)
-        f = lambda x, f_loader=self._loader: f_transform(f_loader(x))  # for closure capture
-        V = B.map(lambda X,f=f: [f(x) for x in X]).result() if not model else B.scattermap(lambda X, f=f: [f(x) for x in X], model).result()
-        return Dataset(V, id=dst if dst is not None else id).flatten()
+        # Distributed map using vipy.batch
+        f_serialize = lambda v,d=vipy.util.class_registry(): (str(type(v)), v.json()) if str(type(v)) in d else (None, json.dumps(v, ensure_ascii=False))  # fallback on JSON dumps/loads
+        f_deserialize = lambda x,d=vipy.util.class_registry(): d[x[0]](x[1])  # with closure capture
+        f = lambda x, f_loader=self._loader, f_serializer=f_serialize, f_deserializer=f_deserialize: f_serializer(f_transform(f_loader(f_deserializer(x))))  # with closure capture
+        S = [f_serialize(v) for v in self._objlist]  # local serialization
+        B = Batch(vipy.util.chunklist(S, chunks), strict=strict, as_completed=ascompleted, checkpoint=checkpoint, warnme=False, minscatter=chunks)
+        S = B.map(lambda X,f=f: [f(x) for x in X]).result() if not model else B.scattermap(lambda X, f=f: [f(x) for x in X], model).result()
+        V = [f_deserialize(x) for s in S for x in s]  # Local deserialization and chunk flattening
+        return Dataset(V, id=dst if dst is not None else id)
 
     def localmap(self, f):
         self._objlist = [f(v) for v in self]
@@ -486,6 +500,7 @@ class Dataset():
         return len([v for v in self if f is None or f(v)])
 
     def countby(self, f=lambda v: v.category()):
+        """Count the number of elements that return the same value from the lambda function"""
         assert self._isvipy()
         assert f is None or callable(f)
         return vipy.util.countby(self, f)
