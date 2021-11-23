@@ -394,20 +394,47 @@ class Dataset():
         objlist = [obj for obj in self if f(obj)]
         return [] if (len(objlist) == 0 or n == 0) else (objlist[0] if n==1 else objlist[0:n])
 
-    def jsondir(self, outdir, verbose=True, rekey=False):
-        """Export all objects to a directory of JSON files"""
+    def jsondir(self, outdir=None, verbose=True, rekey=False, bycategory=False, byfilename=False, abspath=True):
+        """Export all objects to a directory of JSON files.
+    
+           Usage:
+
+           >>> D = vipy.dataset.Dataset(...).jsondir('/path/to/jsondir')
+           >>> D = vipy.util.load('/path/to/jsondir')   # recursively discover and lazy load all json files 
+
+           Args:
+               outdir [str]:  The root directory to store the JSON files
+               verbose [bool]: If True, print the save progress
+               rekey [bool] If False, use the instance ID of the vipy object as the filename for the JSON file, otherwise assign a new UUID_dataset-index
+               bycategory [bool]: If True, use the JSON structure '$OUTDIR/$CATEGORY/$INSTANCEID.json'
+               byfilename [bool]: If True, use the JSON structure '$FILENAME.json' where $FILENAME is the underlying media filename of the vipy object
+               abspath [bool]: If true, store absolute paths to media in JSON.  If false, store relative paths to media from JSON directory
+
+           Returns:
+               outdir: The directory containing the JSON files.
+        """
         assert self._isvipy()
-        print('[vipy.dataset]: exporting %d json files to "%s"...' % (len(self), outdir))
-        vipy.util.remkdir(outdir)  # to avoid race condition
-        for (k,v) in enumerate(self):
-            f = vipy.util.save(v, os.path.join(outdir, ('%s.json' % v.instanceid()) if not rekey else '%s_%d.json' % (uuid.uuid4().hex, k)))
+        assert outdir is not None or byfilename 
+        assert not byfilename and bycategory
+
+        if outdir is not None:
+            vipy.util.remkdir(outdir) 
+        if bycategory:
+            tojsonfile = lambda v,k: os.path.join(outdir, v.category(), ('%s.json' % v.instanceid()) if not rekey else ('%s_%d.json' % (uuid.uuid4().hex, k)))
+        elif byfilename:
+            tojsonfile = lambda v,k: vipy.util.toextension(v.filename(), '.json')
+        else:
+            tojsonfile = lambda v,k: os.path.join(outdir, ('%s.json' % v.instanceid()) if not rekey else '%s_%d.json' % (uuid.uuid4().hex, k))
+        
+        for (k,v) in enumerate(self):            
+            f = vipy.util.save(v.clone().relpath(start=filepath(tojsonfile(v,k))) if not abspath else v.clone().abspath(), tojsonfile(v,k))
             if verbose:
                 print('[vipy.dataset.Dataset][%d/%d]: %s' % (k, len(self), f))
         return outdir
 
-    def tojsondir(self, outdir, rekey=False, verbose=True):
-        """Alias for jsondir"""
-        return self.jsondir(outdir, verbose=verbose, rekey=rekey)
+    def tojsondir(self, outdir=None, verbose=True, rekey=False, bycategory=False, byfilename=False, abspath=True):
+        """Alias for `vipy.dataset.jsondir`"""
+        return self.jsondir(outdir, verbose=verbose, rekey=rekey, bycategory=bycategory, byfilename=byfilename, abspath=abspath)
     
     def takelist(self, n, category=None, canload=False):
         """Take n elements of selected category and return list"""

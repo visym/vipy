@@ -1282,11 +1282,31 @@ class Video(object):
         """Change the path of the filename from a relative path to an absolute path (not relocatable)"""
         return self.filename(os.path.normpath(os.path.abspath(os.path.expanduser(self.filename()))))
 
-    def relpath(self, parent=None):
-        """Replace the filename with a relative path to parent (or current working directory if none)"""
-        parent = parent if parent is not None else os.getcwd()
-        assert parent in os.path.expanduser(self.filename()), "Parent path '%s' not found in abspath '%s'" % (parent, self.filename())
-        return self.filename(PurePath(os.path.expanduser(self.filename())).relative_to(parent))
+    def relpath(self, parent=None, start=None):
+        """Replace the filename with a relative path to parent (or current working directory if none).
+        
+        Usage:
+         
+        >>> v = vipy.video.Video(filename='/path/to/dataset/video/category/out.mp4')
+        >>> v.relpath(parent='/path/to/dataset')
+        >>> v.filename() == 'video/category/out.mp4'
+
+        If the current working directory is /path/to/dataset, and v.load() is called, the filename will be loaded.
+
+        Args:
+            parent [str]: A parent path of the current filename to remove and be relative to.  If filename is '/path/to/video.mp4' then filename must start with parent, then parent will be remvoed from filename. 
+            start [str]:  Return a relative filename starting from path start='/path/to/dir' that will create a relative path to this filename.  If start='/a/b/c' and filename='/a/b/d/e/f.ext' then return filename '../d/e/f.ext'
+        Returns:
+            This video object with the filename changed to be a relative path
+
+        """
+        assert parent is not None or start is not None
+        if parent is not None:
+            parent = parent if parent is not None else os.getcwd()
+            assert parent in os.path.expanduser(self.filename()), "Parent path '%s' not found in abspath '%s'" % (parent, self.filename())
+            return self.filename(PurePath(os.path.expanduser(self.filename())).relative_to(parent))
+        elif start is not None: 
+            return self.filename(os.path.join(os.path.relpath(os.path.expanduser(self.filename()), start), filetail(self.filename())))
 
     def rename(self, newname):
         """Move the underlying video file preserving the absolute path, such that self.filename() == '/a/b/c.ext' and newname='d.ext', then self.filename() -> '/a/b/d.ext', and move the corresponding file"""
