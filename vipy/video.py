@@ -2571,7 +2571,7 @@ class Scene(VideoCategory):
             else:
                 return self.videoid()
 
-    def frame(self, k, img=None):
+    def frame(self, k, img=None, noimage=False):
         """Return `vipy.image.Scene` object at frame k
 
         -The attributes of each of the `vipy.image.Scene.objects` in the scene contains helpful metadata for the provenance of the detection, including:  
@@ -2579,16 +2579,16 @@ class Scene(VideoCategory):
             - 'activityid' associated with this detection 
             - 'jointlabel' of this detection, used for visualization
             - 'noun verb' of this detection, used for visualization
-        
 
         Args:
             k: [int >=- 0] The frame index requested.  This is relative to the current frame rate of the video.
-            img: [numpy]  An optional image to be used for this frame.  This is useful to construct frames efficiently for videos if the pixel buffer is available from a stream rather than a preview.
-        
+            img: [numpy, None]  An optional image to be used for this frame.  This is useful to construct frames efficiently for videos if the pixel buffer is already available from a stream rather than a preview.  
+            noimage [bool]:  If True, then return only annotations at frame k with empty frame buffer (e.g. no image pixels in the returned image object)
+
         Return:
-            A `vipy.image.Scene` object for frame k containing all objects in this frame
+            A `vipy.image.Scene` object for frame k containing all objects in this frame and pixels if img != None or preview=True
         
-        .. notes::
+        .. note::
             - Modifying this frame will not affect the source video
             - If multiple objects are associated with an activity and a primary actor is defined, then only the primary actor is displayed as "Noun Verbing", objects are shown as "Noun" with the activityid in the attribute
             - If noun is associated with more than one activity, then this is shown as "Noun Verbing1\nNoun Verbing2", with a newline separator
@@ -2597,7 +2597,7 @@ class Scene(VideoCategory):
         assert isinstance(k, int) and k>=0, "Frame index must be non-negative integer"
         assert img is not None or (self.isloaded() and k<len(self)) or not self.isloaded(), "Invalid frame index %d - Indexing video by frame must be integer within (0, %d)" % (k, len(self)-1)
 
-        img = img if img is not None else (self._array[k] if self.isloaded() else self.preview(k).array())
+        img = img if (img is not None or noimage) else (self._array[k] if self.isloaded() else self.preview(k).array())
         dets = [t[k].clone(deep=True).setattribute('trackindex', j) for (j, t) in enumerate(self.tracks().values()) if len(t)>0 and (t.during(k) or t.boundary()=='extend')]  # track interpolation (cloned) with boundary handling
         for d in dets:
             d.attributes['activityid'] = []  # reset
@@ -2682,7 +2682,17 @@ class Scene(VideoCategory):
         return vipy.visualize.montage(imframes, imgwidth=mindim, imgheight=mindim)
     
     def tracks(self, tracks=None, id=None):
-        """Return mutable dictionary of tracks"""        
+        """Return mutable dictionary of tracks,
+
+        
+           Args:
+               tracks [dict]: If provided, replace track dictionary with provided track dictionary, and return self
+               id [str]: If provided, return just the track associated with the provided track id
+    
+           Returns:
+               This object if tracks!=None, otherwise the requested track (if id!=None) or trackdict (tracks=None)
+
+        """        
         if isinstance(self._tracks, tuple):
             self._tracks = {t.id():t for t in [vipy.object.Track.from_json(json.loads(s)) for s in self._tracks]}  # on-demand unpack (efficient garbage collection for large list of objects)
         if tracks is None and id is None:
@@ -2702,10 +2712,12 @@ class Scene(VideoCategory):
         return self.tracks(id=id)
 
     def trackindex(self, id):
+        """Return the index in the tracklist of the track with the provided track id"""
         assert id in self.tracks()
         return [t.id() for t in self.tracklist()].index(id)
 
     def trackidx(self, idx):
+        """Return the track at the specified index in the tracklist"""
         return self.tracklist()[idx]
 
     def activity(self, id=None):
@@ -2875,12 +2887,29 @@ class Scene(VideoCategory):
         assert all([isinstance(a, vipy.activity.Activity) for a in self.activitylist()]), "Lambda function must return vipy.activity.Activity()"
         return self
 
-    def rekey(self):
-        """Change the track and activity IDs to randomly assigned UUIDs.  Useful for cloning unique scenes"""
-        d_old_to_new = {k:hex(int(uuid.uuid4().hex[0:8], 16))[2:] for (k,a) in self.activities().items()}
-        self._activities = {d_old_to_new[k]:a.id(d_old_to_new[k]) for (k,a) in self.activities().items()}
-        d_old_to_new = {k:hex(int(uuid.uuid4().hex[0:8], 16))[2:] for (k,t) in self.tracks().items()}
-        self._tracks = {d_old_to_new[k]:t.id(d_old_to_new[k]) for (k,t) in self.tracks().items()}
+    def rekey(self, tracks=None, activities=None):
+        """Change the track and activity IDs to randomly assigned UUIDs.  Useful for cloning unique scenes.
+        
+        >>> v = vipy.video.RandomScene()
+        >>> v.rekey()  # randomly rekey all track and activity ID
+        >>> v.rekey(tracks={...})  # rekey tracks (oldkey -> newkey) according to dictionary, randomly rekey activities
+        >>> v.rekey(tracks={...}, activities={})  #  rekey tracks according to dict, no change to activities
+
+        Args:
+            tracks [dict]: If not None, use this dictionary to remap oldkey->newkey for tracks.  If None, use random keys. If empty dict, no change (do not rekey tracks)
+            activities [dict]: If not None, use this dictionary to remap oldkey->newkey for activities.  If None, use random keys.  If empty dict, no change (do not rekey activities)
+        
+        Returns:
+            This object, with all track ID and activity ID rekeyed as specified.  All actor IDs in activities will be updated.  
+        
+        """
+        assert activities is None or isinstance(activities, dict) and all([k in self.activities() for k in activities.keys()])
+        assert tracks is None or isinstance(tracks, dict) and all([k in self.tracks() for k in tracks.keys()])
+
+        d_old_to_new = {k:hex(int(uuid.uuid4().hex[0:8], 16))[2:] for (k,a) in self.activities().items()} if activities is None else activities
+        self._activities = dict([(d_old_to_new[k], a.id(d_old_to_new[k])) if k in d_old_to_new else (k,a) for (k,a) in self.activities().items()])
+        d_old_to_new = {k:hex(int(uuid.uuid4().hex[0:8], 16))[2:] for (k,t) in self.tracks().items()} if tracks is None else tracks
+        self._tracks = dict([(d_old_to_new[k], t.id(d_old_to_new[k])) if k in d_old_to_new else (k,t) for (k,t) in self.tracks().items()])
         for (k,v) in d_old_to_new.items():
             self.activitymap(lambda a: a.replaceid(k,v) )
         return self
