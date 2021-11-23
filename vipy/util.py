@@ -122,8 +122,8 @@ def load(infile, abspath=True, refcycle=True):
        
        Loading is performed by attemping the following:
 
-       1. If the input file is a directory, treat as a JSON directory and return a lazy loaded `vipy.dataset.Dataset`.
-       2. load the pickle or json file
+       1. If the input file is a directory, return a `vipy.dataset.Dataset` with lazy loading of all pkl or json files recursively discovered in this directory.
+       2. If the input file is a pickle or json file, load it
        3. if abspath=true, then convert relative paths to absolute paths for object when loaded
        4. If refcycle=False, then disable the python reference cycle garbage collector for large archive files
     
@@ -132,7 +132,7 @@ def load(infile, abspath=True, refcycle=True):
        >>> im = vipy.util.load(im)
 
        Args:
-           infile: [str] file saved using `vipy.util.save` with extension [.pkl, .json] 
+           infile: [str] file saved using `vipy.util.save` with extension [.pkl, .json].  This may also be a directory tree containing json or pkl files 
            abspath: [bool] If true, then convert all vipy objects with relative paths to absolute paths. If False, then preserve relative paths and warn user.
            refcycle: [bool] If False, then disable python reference cycle garbage collector.  This is useful for large python objects.
        
