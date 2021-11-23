@@ -3,7 +3,6 @@ import matplotlib.pyplot as plt
 from vipy.util import seq, groupby, try_import, temppng
 from vipy.math import interp1d
 from vipy.globals import print
-try_import('sklearn', 'scikit-learn'); import sklearn.metrics
 
 
 def cumulative_match_characteristic(similarityMatrix, gtMatrix):
@@ -106,16 +105,14 @@ def tdr_at_rank(rank=None, tdr=None, y_true=None, y_pred=None, numGallery=None, 
     return f(at)
 
 
-def auroc(y, yhat):
-    return sklearn.metrics.roc_auc_score(y, yhat)
-
-
 def roc(y_true, y_pred):
+    try_import('sklearn', 'scikit-learn'); import sklearn.metrics
     (fpr, tpr, thresholds) = sklearn.metrics.roc_curve(y_true, y_pred, pos_label=1)
     return (fpr, tpr)
 
 
 def roc_per_image(y_true, y_pred, k_imgindex):
+    try_import('sklearn', 'scikit-learn'); import sklearn.metrics
     (fpr, tpr, thresholds) = sklearn.metrics.roc_curve(y_true, y_pred, pos_label=1)
     n_images = len(set(k_imgindex))
     n_fp = len(y_true) - np.sum(y_true)  # total number of false positives
@@ -205,14 +202,6 @@ def mean_average_precision(ap):
     return np.mean(ap)
 
 
-def average_precision(y_true, y_pred):
-    """sklearn wrapper"""
-    return sklearn.metrics.average_precision_score(y_true, y_pred)
-
-
-def f1_score(y_true, y_pred):
-    """sklearn wrapper"""
-    return sklearn.metrics.f1_score(y_true, y_pred)
 
 
 def confusion_matrix(cm, outfile=None, figure=None, fontsize=5, xlabel=None, ylabel=None, normalized=False, classes=None, colorbar=False):
@@ -244,13 +233,6 @@ def confusion_matrix(cm, outfile=None, figure=None, fontsize=5, xlabel=None, yla
     return outfile
     
 
-def categorization_report(Y_true, Y_pred, labels):
-    return sklearn.metrics.classification_report(Y_true, Y_pred, target_names=labels)
-
-
-def precision_recall(y_true, y_pred):
-    (precision, recall, thresholds) = sklearn.metrics.precision_recall_curve(y_true, y_pred)
-    return (precision, recall)
 
 
 def plot_pr(precision, recall, title=None, label='Precision-Recall', outfile=None, figure=None):

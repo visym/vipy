@@ -28,6 +28,7 @@ import warnings
 import copy
 import bz2
 
+
 try:
     import ujson as json  # faster
 except ImportError:
@@ -43,6 +44,8 @@ def class_registry():
 
     import vipy.video
     import vipy.image
+    import vipy.dataset
+
     registry = {"<class 'vipy.video.Scene'>":vipy.video.Scene.from_json,
                 "<class 'vipy.video.Video'>":vipy.video.Video.from_json,
                 "<class 'vipy.video.VideoCategory'>":vipy.video.VideoCategory.from_json,
@@ -53,7 +56,8 @@ def class_registry():
                 "<class 'vipy.geometry.BoundingBox'>":vipy.geometry.BoundingBox.from_json,
                 "<class 'vipy.object.Track'>":vipy.object.Track.from_json,
                 "<class 'vipy.object.Detection'>":vipy.object.Detection.from_json,
-                "<class 'vipy.activity.Activity'>":vipy.activity.Activity.from_json}
+                "<class 'vipy.activity.Activity'>":vipy.activity.Activity.from_json,
+                "<class 'vipy.dataset.Dataset'>":vipy.dataset.Dataset.from_json}
     try:
         import pycollector.video
         registry.update( {"<class 'pycollector.video.Video'>":pycollector.video.Video.from_json} )
@@ -114,14 +118,15 @@ def save(vars, outfile=None):
 
 
 def load(infile, abspath=True, refcycle=True):
-    """Load variables from a relocatable archive file format, either dill pickle or JSON format.
+    """Load variables from a relocatable archive file format, either dill pickle, JSON format or JSON directory format.
        
        Loading is performed by attemping the following:
 
-       1. load the pickle or json file
-       2. if abspath=true, then convert relative paths to absolute paths for object when loaded
-       3. If refcycle=False, then disable the python reference cycle garbage collector for large archive files
-
+       1. If the input file is a directory, treat as a JSON directory and return a lazy loaded `vipy.dataset.Dataset`.
+       2. load the pickle or json file
+       3. if abspath=true, then convert relative paths to absolute paths for object when loaded
+       4. If refcycle=False, then disable the python reference cycle garbage collector for large archive files
+    
        >>> im = vipy.image.owl()
        >>> f = vipy.util.save(im)
        >>> im = vipy.util.load(im)
@@ -150,6 +155,9 @@ def load(infile, abspath=True, refcycle=True):
             obj = obj[0] if len(obj) == 1 else obj
         else:
             obj = loadobj
+    elif os.path.isdir(infile):        
+        import vipy.dataset
+        return vipy.dataset.Dataset(infile)
     else:
         raise ValueError('unknown file type')
     
@@ -300,7 +308,7 @@ def keymin(d):
 
 
 def isjsonfile(filename):
-    return len(filename) > 5 and filename[-5:] == '.json'
+    return isinstance(filename, str) and len(filename) > 5 and filename[-5:] == '.json'
 
 
 def writejson(d, outfile):

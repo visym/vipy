@@ -653,7 +653,7 @@ class Video(object):
         -This method is more efficient than load() followed by pkl(), as it stores the encoded video as a byte string.
         -Useful for creating a single self contained object for distributed processing.  
         """
-        assert self.hasfilename(), "Video file not found"
+        assert self.hasfilename(), "Video file not found.  Try saveas() first to create a video file to store."
         with open(self.filename(), 'rb') as f:
             self.attributes['__video__'] = f.read()
         return self
@@ -1006,7 +1006,7 @@ class Video(object):
         """
         
         if self.isloaded():
-            warnings.warn("JSON serialization of video requires flushed buffers, will not include the loaded video.  Try store()/restore()/unstore() instead to serialize videos as standalone objects efficiently.")
+            warnings.warn("JSON serialization of video requires flushed buffers, will not include the loaded video.  Try store()/restore()/unstore() instead to serialize videos as standalone objects efficiently, or flush() any loaded videos prior to serialization to quiet this warning.")
         d = {'_filename':self._filename,
              '_url':self._url,
              '_framerate':self._framerate,

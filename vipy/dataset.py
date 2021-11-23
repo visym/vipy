@@ -8,9 +8,7 @@ import shutil
 import uuid
 import warnings
 import copy 
-import atexit
 from vipy.util import is_email_address
-from vipy.batch import Batch       
 import hashlib
 import pickle
 import time
@@ -18,8 +16,8 @@ import json
 import dill
 from vipy.show import colorlist
 import matplotlib.pyplot as plt
-import vipy.metrics
 import gc 
+import vipy.metrics
 
 
 class Dataset():
@@ -32,46 +30,54 @@ class Dataset():
     >>>     D = D.map(lambda v: v.frame(0))
     >>> list(D)
 
-    >>> D = vipy.dataset.Dataset([vipy.video.RandomScene(), vipy.video.RandomScene()], id='random_scene')
+    Create dataset and export as a directory of json files 
+
+    >>> D = vipy.dataset.Dataset([vipy.video.RandomScene(), vipy.video.RandomScene()])
     >>> D.tojsondir('/tmp/myjsondir')
+    
+    Create dataset from all json or pkl files recursively discovered in a directory and lazy loaded
+
     >>> D = vipy.dataset.Dataset('/tmp/myjsondir')  # lazy loading
 
+    Create dataset from a list of json or pkl files and lazy loaded
+
+    >>> D = vipy.dataset.Dataset(['/path/to/file1.json', '/path/to/file2.json'])  # lazy loading
+    
     .. notes:: Be warned that using the jsondir constructor will load elements on demand, but there are some methods that require loading the entire dataset into memory, and will happily try to do so
     """
 
-    def __init__(self, datasrc, id=None, abspath=True):
+    def __init__(self, objlist, id=None, abspath=True):
 
         self._saveas_ext = ['pkl', 'json']
-        self._id = id if id is not None else uuid.uuid4().hex
+        self._id = id if id is not None else vipy.util.shortuuid(8)
         self._loader = lambda x: x
         self._istype_strict = True
+        self._lazy_loader = False
+        self._abspath = abspath
 
-        if isinstance(datasrc, str) and (vipy.util.isjsonfile(datasrc) or vipy.util.ispklfile(datasrc)):
-            self._objlist = vipy.util.load(datasrc, abspath=abspath)
-            self._id = vipy.util.filetail(datasrc)
-        elif isinstance(datasrc, str) and os.path.isdir(datasrc):
-            if len(vipy.util.listjson(datasrc)) > 0:
-                self._objlist = vipy.util.listjson(datasrc)
-                self._loader = lambda x,b=abspath: vipy.util.lad(x, abspath=b) if vipy.util.isjsonfile(x) else x
-                self._id = datasrc
-                self._istype_strict = False
-            elif os.path.isdir(datasrc) and len(vipy.util.listpkl(datasrc)) > 0:
-                self._objlist = vipy.util.listpkl(datasrc)
-                self._loader = lambda x,b=abspath: vipy.util.load(x, abspath=b) if vipy.util.ispkl(x) else x
-                self._id = datasrc
-                self._istype_strict = False
-            else:
-                self._objlist = []
+        if isinstance(objlist, str) and (vipy.util.isjsonfile(objlist) or vipy.util.ispklfile(objlist)):
+            self._objlist = vipy.util.load(objlist, abspath=abspath)
+        elif isinstance(objlist, str) and os.path.isdir(objlist):
+            self._objlist = vipy.util.listjson(objlist) + vipy.util.listpkl(objlist)
+            self._loader = lambda x,b=abspath:  vipy.util.load(x, abspath=b) if (vipy.util.ispkl(x) or vipy.util.isjsonfile(x)) else x
+            self._istype_strict = False
+            self._lazy_loader = True
+        elif isinstance(objlist, list) and all([(vipy.util.ispkl(x) or vipy.util.isjsonfile(x)) for x in objlist]):
+            self._objlist = objlist 
+            self._loader = lambda x,b=abspath:  vipy.util.load(x, abspath=b) if (vipy.util.ispkl(x) or vipy.util.isjsonfile(x)) else x            
+            self._istype_strict = False
+            self._lazy_loader = True
         else:
-            self._objlist = datasrc
-        
-        self._objlist = tolist(self._objlist)
-        
+            self._objlist = objlist
+
+        self._objlist = tolist(self._objlist)        
         assert len(self._objlist) > 0, "Empty dataset"
-        try:
-            self[0]
-        except Exception as e:
-            raise ValueError('Dataset loader failed with exception "%s"' % str(e))
+
+        if self._lazy_loader:
+            try:
+                self[0]
+            except Exception as e:
+                raise ValueError('Invalid dataset - Lazy load failed with error "%s"' % str(e))
 
     def __repr__(self):
         return str('<vipy.dataset: id="%s", len=%d, type=%s>' % (self.id(), len(self), str(type(self[0])) if len(self)>0 else 'None'))
@@ -91,6 +97,20 @@ class Dataset():
             
     def __len__(self):
         return len(self._objlist)
+        
+    def json(self, encode=True):
+        r = vipy.util.class_registry()
+        d = {k:v for (k,v) in self.__dict__.items() if not k == '_loader'}
+        d['_objlist'] = [(str(type(v)), v.json(encode=False)) if str(type(v)) in r else v for v in self._objlist]
+        return json.dumps(d) if encode else d
+        
+    @classmethod
+    def from_json(cls, s):
+        r = vipy.util.class_registry()
+        d = json.loads(s) if not isinstance(s, dict) else s  
+        return cls(objlist=[r[x[0]](x[1]) if (isinstance(x, tuple) and x[0] in r) else x for x in d['_objlist']],
+                   id=d['_id'],
+                   abspath=d['_abspath'])                            
 
     def id(self, n=None):
         """Set or return the dataset id"""
@@ -465,7 +485,8 @@ class Dataset():
             - Serialized results are deserialized by the client and returned a a new dataset
         """
         assert callable(f_transform)
-        assert self._isvipy()
+        assert self._isvipy()        
+        from vipy.batch import Batch   # requires pip install vipy[all]
 
         # Distributed map using vipy.batch
         f_serialize = lambda v,d=vipy.util.class_registry(): (str(type(v)), v.json()) if str(type(v)) in d else (None, json.dumps(v, ensure_ascii=False))  # fallback on JSON dumps/loads
@@ -516,7 +537,6 @@ class Dataset():
         
         d = self.countby(lambda v: v.category())
         if outfile is not None:
-            from vipy.metrics import histogram            
             (categories, freq) = zip(*reversed(sorted(list(d.items()), key=lambda x: x[1])))  # decreasing frequency
             barcolors = ['blue' if category_to_barcolor is None else category_to_barcolor[c] for c in categories]
             xlabels = [f_category_to_xlabel(c) for c in categories]
@@ -566,24 +586,21 @@ class Dataset():
         assert self._isvipy()
         d = {k:np.mean([v[1] for v in v]) for (k,v) in groupbyasdict([(a.category(), len(a)) for v in self.list() for a in v.activitylist()], lambda x: x[0]).items()}
         if outfile is not None:
-            from vipy.metrics import histogram
-            histogram(d.values(), d.keys(), outfile=outfile, ylabel='Duration (frames)', fontsize=6)            
+            vipy.metrics.histogram(d.values(), d.keys(), outfile=outfile, ylabel='Duration (frames)', fontsize=6)            
         return d
 
     def duration_in_seconds(self, outfile=None, fontsize=6):
         assert self._isvipy()
         d = {k:np.mean([v[1] for v in v]) for (k,v) in groupbyasdict([(a.category(), len(a)/v.framerate()) for v in self.list() for a in v.activitylist()], lambda x: x[0]).items()}
         if outfile is not None:
-            from vipy.metrics import histogram
-            histogram(d.values(), d.keys(), outfile=outfile, ylabel='Duration (seconds)', fontsize=fontsize)            
+            vipy.metrics.histogram(d.values(), d.keys(), outfile=outfile, ylabel='Duration (seconds)', fontsize=fontsize)            
         return d
 
     def framerate(self, outfile=None):
         assert self._isvipy()
         d = vipy.util.countby([int(round(v.framerate())) for v in self.list()], lambda x: x)
         if outfile is not None:
-            from vipy.metrics import pie
-            pie(d.values(), ['%d fps' % k for k in d.keys()], explode=None, outfile=outfile,  shadow=False)
+            vipy.metrics.pie(d.values(), ['%d fps' % k for k in d.keys()], explode=None, outfile=outfile,  shadow=False)
         return d
         
         
@@ -593,8 +610,7 @@ class Dataset():
         d = [len(v) if (max is None or len(v)<= max) else max for (k,v) in groupbyasdict(self.list(), lambda v: v.videoid()).items()]
         d = {k:v for (k,v) in sorted(vipy.util.countby(d, lambda x: x).items(), key=lambda x: x[1], reverse=True)}
         if outfile is not None:
-            from vipy.metrics import histogram
-            histogram(d.values(), d.keys(), outfile=outfile, ylabel='Frequency', xlabel='Activities per video', fontsize=6, xrot=None)            
+            vipy.metrics.histogram(d.values(), d.keys(), outfile=outfile, ylabel='Frequency', xlabel='Activities per video', fontsize=6, xrot=None)            
         return d
 
     def boxsize(self, outfile=None, category_to_color=None, categories=None):
@@ -688,7 +704,9 @@ class Dataset():
         This is useful for fast loading of datasets that contain many videos.
 
         """
-        import vipy.torch
+        import vipy.torch    # lazy import, requires vipy[all] 
+        from vipy.batch import Batch   # requires pip install vipy[all]
+
         assert self._is_vipy_scene()
         outdir = vipy.util.remkdir(outdir)
         vipy.batch.Batch(self.list(), as_completed=True).map(lambda v, f=f_video_to_tensor, outdir=outdir, n_augmentations=n_augmentations: vipy.util.bz2pkl(os.path.join(outdir, '%s.pkl.bz2' % v.instanceid()), [f(v.print(sleep=sleep).clone()) for k in range(0, n_augmentations)]))

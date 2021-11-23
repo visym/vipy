@@ -117,6 +117,7 @@ import vipy.version
 import vipy.video
 import vipy.videosearch
 import vipy.visualize
+import vipy.dataset
 
 __version__ = vipy.version.VERSION
 
