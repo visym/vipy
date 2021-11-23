@@ -4,7 +4,7 @@ from vipy.util import try_import, islist, tolist, tempdir, remkdir, chunklistbys
 from itertools import repeat
 import dill
 dill.extend(False)  # https://github.com/uqfoundation/dill/issues/383
-try_import('dask', 'dask distributed torch')
+try_import('dask', 'dask distributed')
 from dask.distributed import as_completed, wait
 try_import('torch', 'torch');  import torch
 import dask
