@@ -210,6 +210,15 @@ def bz2pkl(filename, obj=None):
         return obj
         
 
+def catcher(f, *args, **kwargs):
+    """Call the function f with the provided arguments, and return (True, result) on success and (False, exception) if there is any thrown exception.  Useful for parallel processing"""
+    assert callable(f)
+    try:
+        return (True, f(*args, **kwargs))
+    except Exception as e:
+        return (False, str(e))
+
+
 def mergedict(d1, d2):
     """Combine keys of two dictionaries and return a dictionary deep copy.
     
@@ -605,7 +614,7 @@ def loadmat73(matfile, keys=None):
 
 def take(inlist, k):
     """Take k elements at random from inlist"""
-    return [inlist[i] for i in np.random.permutation(range(len(inlist)))[0:k]]
+    return [inlist[i] for i in np.random.permutation(range(len(inlist)))[0:k]] if len(inlist)>k else inlist
 
 def tryload(infile, abspath=False):
     """Attempt to load a pkl file, and return the value if successful and None if not"""

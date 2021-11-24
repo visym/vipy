@@ -448,6 +448,11 @@ class Dataset():
     def take_per_category(self, n, id=None, canload=False):
         return Dataset([v for c in self.categories() for v in self.takelist(n, category=c, canload=canload)], id=id)
     
+    def shuffle(self):
+        """Randomly permute elements in this dataset"""
+        self._objlist.sort(key=lambda x: random.random())  # in place
+        return self
+
     def split(self, trainfraction=0.9, valfraction=0.1, testfraction=0, seed=42):
         """Split the dataset by category by fraction so that video IDs are never in the same set"""
         assert self._isvipy(), "Invalid input"
@@ -479,7 +484,7 @@ class Dataset():
         csv = [v.csv() for v in self.list]        
         return vipy.util.writecsv(csv, csvfile) if csvfile is not None else (csv[0], csv[1:])
 
-    def map(self, f_transform, model=None, dst=None, id=None, strict=False, ascompleted=True, chunks=128, ordered=False):        
+    def map(self, f_map, model=None, dst=None, id=None, strict=False, ascompleted=True, chunks=128, ordered=False):        
         """Distributed map.
 
         To perform this in parallel across four processes:
@@ -489,7 +494,7 @@ class Dataset():
         >>>     D.map(lambda v: ...)
 
         Args:
-            f_transform: [lambda] The lambda function to apply in parallel to all elements in the dataset.  This must return a JSON serializable object
+            f_map: [lambda] The lambda function to apply in parallel to all elements in the dataset.  This must return a JSON serializable object
             model: [torch.nn.Module] The model to scatter to all workers
             dst: [str] The ID to give to the resulting dataset
             id: [str] The ID to give to the resulting dataset (parameter alias for dst)
@@ -498,32 +503,38 @@ class Dataset():
             ordered: [bool] If true, preserve the order of objects in dataset as returned from distributed processing
 
         Returns:
-            A `vipy.dataset.Dataset` containing the elements f_transform(v).  This operation is order preserving.
+            A `vipy.dataset.Dataset` containing the elements f_map(v).  This operation is order preserving.
 
         .. note:: 
             - This dataset must contain vipy objects of types defined in `vipy.util.class_registry` or JSON serializable objects
             - Serialization of large datasets can take a while, kick it off to a distributed dask scheduler and go get lunch
             - This method uses dask distributed and `vipy.batch.Batch` operations
             - All vipy objects are JSON serialized prior to parallel map to avoid reference cycle garbage collection which can introduce instabilities
+            - Due to chunking, all error handling is caught by this method.  Use `vipy.batch.Batch` to leverage dask distributed futures error handling.
             - Operations must be chunked and serialized because each dask task comes with overhead, and lots of small tasks violates best practices
-            - Each object is JSON serialized before sending to avoid dask reference cycle garbage collection which can introduce instabilities
-            - Each serialized chunk is sent to a worker and processed in parallel
-            - Results are serialized by the worker using a class registry to map from the type to the deserializer method
             - Serialized results are deserialized by the client and returned a a new dataset
         """
-        assert callable(f_transform)
-        assert self._isvipy()        
+        assert callable(f_map)
         from vipy.batch import Batch   # requires pip install vipy[all]
 
         # Distributed map using vipy.batch
         f_serialize = lambda v,d=vipy.util.class_registry(): (str(type(v)), v.json()) if str(type(v)) in d else (None, json.dumps(v, ensure_ascii=False))  # fallback on JSON dumps/loads
         f_deserialize = lambda x,d=vipy.util.class_registry(): d[x[0]](x[1])  # with closure capture
-        f = lambda x, f_loader=self._loader, f_serializer=f_serialize, f_deserializer=f_deserialize: f_serializer(f_transform(f_loader(f_deserializer(x))))  # with closure capture
+        f_catcher = vipy.util.catcher  # catch exceptions when executing lambda and return (True, result) or (False, exception)
         S = [f_serialize(v) for v in self._objlist]  # local serialization
-        B = Batch(vipy.util.chunklist(S, chunks), strict=strict, as_completed=ascompleted, warnme=False, minscatter=chunks, ordered=ordered)
-        S = B.map(lambda X,f=f: [f(x) for x in X]).result() if not model else B.scattermap(lambda X, f=f: [f(x) for x in X], model).result()
+        B = Batch(vipy.util.chunklist(S, chunks), strict=strict, as_completed=ascompleted, warnme=False, minscatter=chunks, ordered=ordered)        
+        if model is None:
+            f = lambda x, f_loader=self._loader, f_serializer=f_serialize, f_deserializer=f_deserialize, f_map=f_map, f_catcher=f_catcher: f_serializer(f_catcher(f_map, f_loader(f_deserializer(x))))  # with closure capture
+            S = B.map(lambda X,f=f: [f(x) for x in X]).result()  # chunked, with caught exceptions
+        else:
+            f = lambda net, x, f_loader=self._loader, f_serializer=f_serialize, f_deserializer=f_deserialize, f_map=f_map, f_catcher=f_catcher: f_serializer(f_catcher(f_map, net, f_loader(f_deserializer(x))))  # with closure capture
+            S = B.scattermap((lambda net, X, f=f: [f(net, x) for x in X]), model).result()  # chunked, scattered, caught exceptions
         V = [f_deserialize(x) for s in S for x in s]  # Local deserialization and chunk flattening
-        return Dataset(V, id=dst if dst is not None else id)
+        (good, bad) = ([r for (b,r) in V if b], [r for (b,r) in V if not b])  # catcher returns (True, result) or (False, exception string)
+        if len(bad) > 0:
+            print('[vipy.dataset.Dataset.map]: Exceptions in map distributed processing:\n%s' % (len(bad), len(self), str(bad)))
+            print('[vipy.dataset.Dataset.map]: %d/%d items failed' % (len(bad), len(self)))
+        return Dataset(good, id=dst if dst is not None else id)
 
     def localmap(self, f):
         self._objlist = [f(v) for v in self]

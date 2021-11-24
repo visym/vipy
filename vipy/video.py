@@ -1020,6 +1020,7 @@ class Video(object):
              '_ffmpeg':self._ffmpeg_commandline()}
         return json.dumps(d) if encode else d
     
+
     def take(self, n):
         """Return n frames from the clip uniformly spaced as numpy array
         
@@ -3108,7 +3109,7 @@ class Scene(VideoCategory):
         self.activities([a for a in other.activitylist() if frame is None or a.during(frame)])
         self.tracks([t for t in other.tracklist() if frame is None or t.during(frame)])
         return self
-
+    
     def json(self, encode=True):
         """Return JSON encoded string of this object.  This may fail if attributes contain non-json encodeable object"""
         try:
