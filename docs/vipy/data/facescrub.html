@@ -25,7 +25,7 @@
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/ef58ab1db6404b2fff93fadf8db8c0bf3b13cca9/vipy/data/facescrub.py#L0-L72" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/489feedf634f5333befb0845e16ae649ff109e3d/vipy/data/facescrub.py#L0-L72" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">import os
 from vipy.util import readcsv, remkdir
@@ -120,7 +120,7 @@ class FaceScrub(object):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/ef58ab1db6404b2fff93fadf8db8c0bf3b13cca9/vipy/data/facescrub.py#L7-L73" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/489feedf634f5333befb0845e16ae649ff109e3d/vipy/data/facescrub.py#L7-L73" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">class FaceScrub(object):
     def __init__(self, datadir):
@@ -200,7 +200,7 @@ class FaceScrub(object):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/ef58ab1db6404b2fff93fadf8db8c0bf3b13cca9/vipy/data/facescrub.py#L52-L53" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/489feedf634f5333befb0845e16ae649ff109e3d/vipy/data/facescrub.py#L52-L53" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def dataset(self):
     return self._dataset if len(self) &gt; 0 else self.validate().dataset()</code></pre>
@@ -214,7 +214,7 @@ class FaceScrub(object):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/ef58ab1db6404b2fff93fadf8db8c0bf3b13cca9/vipy/data/facescrub.py#L36-L38" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/489feedf634f5333befb0845e16ae649ff109e3d/vipy/data/facescrub.py#L36-L38" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def download(self):
     &#34;&#34;&#34; Download every URL in dataset and store in provided filename &#34;&#34;&#34;
@@ -229,7 +229,7 @@ class FaceScrub(object):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/ef58ab1db6404b2fff93fadf8db8c0bf3b13cca9/vipy/data/facescrub.py#L18-L34" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/489feedf634f5333befb0845e16ae649ff109e3d/vipy/data/facescrub.py#L18-L34" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def parse(self):
     &#34;&#34;&#34; Return a list of ImageDetections for all URLs in facescrub &#34;&#34;&#34;
@@ -258,7 +258,7 @@ class FaceScrub(object):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/ef58ab1db6404b2fff93fadf8db8c0bf3b13cca9/vipy/data/facescrub.py#L61-L73" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/489feedf634f5333befb0845e16ae649ff109e3d/vipy/data/facescrub.py#L61-L73" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def split(self, valsize=128):
     D = self.dataset()
@@ -283,7 +283,7 @@ class FaceScrub(object):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/ef58ab1db6404b2fff93fadf8db8c0bf3b13cca9/vipy/data/facescrub.py#L55-L56" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/489feedf634f5333befb0845e16ae649ff109e3d/vipy/data/facescrub.py#L55-L56" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def stats(self):
     print(&#39;[vipy.data.facescrub]: %f percent downloaded&#39; % (float(len(self.parse())) / float(len(self.dataset()))))</code></pre>
@@ -297,7 +297,7 @@ class FaceScrub(object):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/ef58ab1db6404b2fff93fadf8db8c0bf3b13cca9/vipy/data/facescrub.py#L58-L59" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/489feedf634f5333befb0845e16ae649ff109e3d/vipy/data/facescrub.py#L58-L59" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def subjects(self):
     return list(set([im.category() for im in self.dataset()]))</code></pre>
@@ -311,7 +311,7 @@ class FaceScrub(object):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/ef58ab1db6404b2fff93fadf8db8c0bf3b13cca9/vipy/data/facescrub.py#L40-L50" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/489feedf634f5333befb0845e16ae649ff109e3d/vipy/data/facescrub.py#L40-L50" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def validate(self):
     &#34;&#34;&#34;Validate downloaded dataset and store cached list of valid bounding boxes and loadable images accessible with dataset()&#34;&#34;&#34;

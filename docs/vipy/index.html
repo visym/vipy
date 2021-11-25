@@ -151,7 +151,7 @@ The core objects for images are:</p>
 <li><a href="activity.html#vipy.activity.Activity">vipy.activity.Activity</a></li>
 </ul>
 <p>See the documentation for each object for how to construct them.
-ALternatively, see our <a href="https://github.com/visym/heyvi">open source visual analytics</a> for construction of vipy objects from activity and object detectors.</p>
+Alternatively, see our <a href="https://github.com/visym/heyvi">open source visual analytics</a> for construction of vipy objects from activity and object detectors.</p>
 <h2 id="export">Export</h2>
 <p>All vipy objects can be imported and exported to JSON for interoperatability with other tool chains.
 This allows for introspection of the vipy object state in an open format providing transparency</p>
@@ -160,7 +160,7 @@ This allows for introspection of the vipy object state in an open format providi
 <h2 id="customization">Customization</h2>
 <p>You can set the following environment variables to customize the output of vipy</p>
 <ul>
-<li><strong>VIPY_CACHE</strong>='/path/to/directory.
+<li><strong>VIPY_CACHE</strong>='/path/to/directory'.
 This directory will contain all of the cached downloaded filenames when downloading URLs.
 For example, the following will download all media to '~/.vipy'.</li>
 </ul>
@@ -168,7 +168,7 @@ For example, the following will download all media to '~/.vipy'.</li>
 vipy.image.Image(url='https://upload.wikimedia.org/wikipedia/commons/thumb/2/23/Bubo_virginianus_06.jpg/1920px-Bubo_virginianus_06.jpg').download()
 </code></pre>
 <p>This will output an image object:</p>
-<pre><code class="language-python">&lt;vipy.image: filename=&quot;/Users/jebyrne/.vipy/1920px-Bubo_virginianus_06.jpg&quot;, filename=&quot;/Users/jebyrne/.vipy/1920px-Bubo_virginianus_06.jpg&quot;, url=&quot;https://upload.wikimedia.org/wikipedia/commons/thumb/2/23/Bubo_virginianus_06.jpg/1920px-Bubo_virginianus_06.jpg&quot;&gt;
+<pre><code class="language-python">&lt;vipy.image: filename=&quot;~/.vipy/1920px-Bubo_virginianus_06.jpg&quot;, filename=&quot;~/.vipy/1920px-Bubo_virginianus_06.jpg&quot;, url=&quot;https://upload.wikimedia.org/wikipedia/commons/thumb/2/23/Bubo_virginianus_06.jpg/1920px-Bubo_virginianus_06.jpg&quot;&gt;
 </code></pre>
 <p>This provides control over where large datasets are cached on your local file system.
 By default, this will be cached to the system temp directory.</p>
@@ -189,7 +189,7 @@ This is the <a href="https://docs.aws.amazon.com/general/latest/gr/aws-sec-cred-
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/ef58ab1db6404b2fff93fadf8db8c0bf3b13cca9/vipy/__init__.py#L0-L196" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/489feedf634f5333befb0845e16ae649ff109e3d/vipy/__init__.py#L0-L196" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">&#34;&#34;&#34;
 VIPY is a python package for representation, transformation and visualization of annotated videos and images.  Annotations are the ground truth provided by labelers (e.g. object bounding boxes, face identities, temporal activity clips), suit\
@@ -322,7 +322,7 @@ The core objects for videos:
 * [vipy.object.Track](object.html#vipy.object.Track)
 * [vipy.activity.Activity](activity.html#vipy.activity.Activity)
 
-See the documentation for each object for how to construct them.  ALternatively, see our [open source visual analytics](https://github.com/visym/heyvi) for construction of vipy objects from activity and object detectors.
+See the documentation for each object for how to construct them.  Alternatively, see our [open source visual analytics](https://github.com/visym/heyvi) for construction of vipy objects from activity and object detectors.
 
 
 ## Export
@@ -337,7 +337,7 @@ vipy.image.owl().json()
 
 You can set the following environment variables to customize the output of vipy
 
-* **VIPY_CACHE**=&#39;/path/to/directory.  This directory will contain all of the cached downloaded filenames when downloading URLs.  For example, the following will download all media to &#39;~/.vipy&#39;.
+* **VIPY_CACHE**=&#39;/path/to/directory&#39;.  This directory will contain all of the cached downloaded filenames when downloading URLs.  For example, the following will download all media to &#39;~/.vipy&#39;.
 
 ```python
 os.environ[&#39;VIPY_CACHE&#39;] = vipy.util.remkdir(&#39;~/.vipy&#39;)
@@ -346,7 +346,7 @@ vipy.image.Image(url=&#39;https://upload.wikimedia.org/wikipedia/commons/thumb/2
 
 This will output an image object:
 ```python
-&lt;vipy.image: filename=&#34;/Users/jebyrne/.vipy/1920px-Bubo_virginianus_06.jpg&#34;, filename=&#34;/Users/jebyrne/.vipy/1920px-Bubo_virginianus_06.jpg&#34;, url=&#34;https://upload.wikimedia.org/wikipedia/commons/thumb/2/23/Bubo_virginianus_06.jpg/1920px-Bubo_virginianus_06.jpg&#34;&gt;
+&lt;vipy.image: filename=&#34;~/.vipy/1920px-Bubo_virginianus_06.jpg&#34;, filename=&#34;~/.vipy/1920px-Bubo_virginianus_06.jpg&#34;, url=&#34;https://upload.wikimedia.org/wikipedia/commons/thumb/2/23/Bubo_virginianus_06.jpg/1920px-Bubo_virginianus_06.jpg&#34;&gt;
 ```
 
 This provides control over where large datasets are cached on your local file system.  By default, this will be cached to the system temp directory.
