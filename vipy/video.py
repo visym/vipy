@@ -627,7 +627,7 @@ class Video(object):
             return self.attributes['video_id'] if 'video_id' in self.attributes else (hashlib.sha1(str(str(self.filename())+str(self.url())).encode("UTF-8")).hexdigest() if (self.filename() is not None or self.url() is not None) else None)
         
 
-    def frame(self, k, img=None):
+    def frame(self, k=0, img=None):
         """Return the kth frame as an `vipy.image Image` object"""        
         assert isinstance(k, int) and k>=0, "Frame index must be non-negative integer"
         return Image(array=img if img is not None else (self._array[k] if self.isloaded() else self.preview(k).array()), colorspace=self.colorspace())       
@@ -2573,7 +2573,7 @@ class Scene(VideoCategory):
             else:
                 return self.videoid()
 
-    def frame(self, k, img=None, noimage=False):
+    def frame(self, k=0, img=None, noimage=False):
         """Return `vipy.image.Scene` object at frame k
 
         -The attributes of each of the `vipy.image.Scene.objects` in the scene contains helpful metadata for the provenance of the detection, including:  
