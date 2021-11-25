@@ -2760,7 +2760,7 @@ class Scene(VideoCategory):
             [id=None, fluent=False] the actor ID
             [id is not None] The video with the actor ID set, only if the ID is found in the tracklist
 
-        .. note:: Not to be confused with biometric subject id.  For videos collected with Visym Collector platform (https://visym.com/collector), the biometric subbject ID can be retrieved via `vipy.video.metadata` (e.g. self.metadata()['subject_ids']).
+        .. note:: Not to be confused with biometric subject id.  For videos collected with Visym Collector platform (https://visym.com/collector), the biometric subbject ID can be retrieved via `vipy.video.Video.metadata` (e.g. self.metadata()['subject_ids']).
         """
         if id is None:
             return next(iter(self.tracks().keys())) if not fluent else self  # Python >=3.6

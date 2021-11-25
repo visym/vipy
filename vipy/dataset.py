@@ -433,7 +433,7 @@ class Dataset():
         return outdir
 
     def tojsondir(self, outdir=None, verbose=True, rekey=False, bycategory=False, byfilename=False, abspath=True):
-        """Alias for `vipy.dataset.jsondir`"""
+        """Alias for `vipy.dataset.Dataset.jsondir`"""
         return self.jsondir(outdir, verbose=verbose, rekey=rekey, bycategory=bycategory, byfilename=byfilename, abspath=abspath)
     
     def takelist(self, n, category=None, canload=False):

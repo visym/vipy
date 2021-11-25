@@ -32,7 +32,7 @@ The VIPY tools are designed for simple and intuitive interaction with videos and
 v = vipy.video.RandomScene()
 ```
 
-Videos are constructed from URLs, AWS S3 links, SSH accessible paths, local filenames, numpy arrays or pytorch tensors.  In this example, we create a random video with tracks and activities.  Videos can be natively iterated:
+Videos are constructed from URLs, YouTube links, AWS S3 links, SSH accessible paths, local filenames, `vipy.image.Image` frame lists, numpy arrays or pytorch tensors.  In this example, we create a random video with tracks and activities.  Videos can be natively iterated:
 
 
 ```python
@@ -50,7 +50,7 @@ for c in v.stream().clip(16):
     print(c.torch())
 ```
        
-This will yield `vipy.video.Scene` objects each containing a clip of length 16 frames.  Each clip overlaps by 15 frames with the next clip, and each clip includes a threaded copy of the pixels.  This is useful to provide clips of a fixed length that are output for every frame of the video.  Each clip contais the tracks and activities within this clip time period.  The method `vipy.video.Video.torch` will output a torch tensor suitable for integration into a pytorch based system.
+This will yield `vipy.video.Scene` objects each containing a `vipy.video.Stream.clip` of length 16 frames.  Each clip overlaps by 15 frames with the next clip, and each clip includes a threaded copy of the pixels.  This is useful to provide clips of a fixed length that are output for every frame of the video.  Each clip contais the tracks and activities within this clip time period.  The method `vipy.video.Video.torch` will output a torch tensor suitable for integration into a pytorch based system.
 
 These python iterators can be combined together in complex ways
 
@@ -59,7 +59,7 @@ for (im, c, imdelay) in (v, v.stream().clip(16), v.stream().frame(delay=10), a_g
     print(im, c.torch(), imdelay)
 ```
 
-This will yield the current frame, a video clip of length 16, a frame 10 frames ago and a batch of 16 frames that is designed for computation and transformation on a GPU.  All of the pixels are copied in threaded processing which is efficiently hidden by GPU I/O bound operations.  For more examples of complex iterators in real world use cases, see the [HeyVi package](https://github.com/visym/heyvi) for open source visual analytics.
+This will yield the current frame, a video `vipy.video.Stream.clip` of length 16, a `vipy.video.Stream.frame` 10 frames ago and a `vipy.video.Stream.batch` of 16 frames that is designed for computation and transformation on a GPU.  All of the pixels are copied in threaded processing which is efficiently hidden by GPU I/O bound operations.  For more examples of complex iterators in real world use cases, see the [HeyVi package](https://github.com/visym/heyvi) for open source visual analytics.
 
 Videos can be transformed in complex ways, and the pixels will always be transformed along with the annotations.
 
@@ -70,7 +70,7 @@ v.mindim(256)       # change the minimum dimension of the video
 v.framerate(10)     # change the framerate of the video 
 ```
 
-The transformation is lazy and is incorporated into the FFMPEG complex filter chain so that the transformation is applied when the pixels are needed.  You can always access the current filter chain using `vipy.video.Video.commmandline` which will output a commmandline string for the ffmpeg executable that you can use to get a deeper underestanding of the transformations that are applied to the video pixels.
+The transformation is lazy and is incorporated into the FFMPEG complex filter chain so that the transformation is applied when the pixels are needed.  You can always access the current filter chain using `vipy.video.Video.commandline` which will output a commandline string for the ffmpeg executable that you can use to get a deeper underestanding of the transformations that are applied to the video pixels.
 
 Finally, annotated videos can be displayed. 
 
@@ -84,11 +84,9 @@ with vipy.video.Video(url='https://youtu.be/...').mindim(512).framerate(5).strea
         s.write(im.annotate().rgb())
 ```
 
-This will show the video live on your desktop, in a jupyter notebook, show the first frame as a static image, annotate the video so that annotations are in the pixels and save the corresponding video, or live stream a 5Hz video to youtube.
+This will `vipy.video.Scene.show` the video live on your desktop, in a jupyter notebook, show the first `vipy.video.Scene.frame` as a static image, `vipy.video.Scene.annotate` the video so that annotations are in the pixels and save the corresponding video, or live stream a 5Hz video to youtube.  All of the show methods can be configured to customize the colors or captions.
 
 See the [demos](https://github.com/visym/vipy/tree/master/demo) for more examples.
-
-
 
 
 ## Parallelization
@@ -113,7 +111,7 @@ with vipy.globals.parallel(scheduler='10.0.0.1:8785'):
     R = D.map(lambda v, outdir='/newpath/to': vipy.util.bz2pkl(os.path.join(outdir, '%s.pkl.bz2' % v.videoid()), v.trackcrop().mindim(128).normalize(mean=(128,128,128)).torch()))
 ```
 
-This will lazy load a directory of JSON files, where each JSON file corresponds to the annotations of a single video, such as those collected by [Visym Collector](https://visym.github.io/collector).   The `vipy.dataset.Dataset.map` method will communicate with a [scheduler](https://docs.dask.org/en/stable/how-to/deploy-dask/ssh.html) at a given IP address and port and will process the lambda function in parallel to the workers tasked by the scheduler.  In this example, the video will be cropped corresponding to the smallest bounding box containing all tracks in the video, resized so this crop is 128 on the smallest side, loaded and normalized to remove the mean, then saved as a torch tensor in a bzipped python pickle file.  This is useful for preprocesssing videos to torch tensors for fast loading of dataset augmentation during training.
+This will lazy load a directory of JSON files, where each JSON file corresponds to the annotations of a single video, such as those collected by [Visym Collector](https://visym.github.io/collector).   The `vipy.dataset.Dataset.map` method will communicate with a [scheduler](https://docs.dask.org/en/stable/how-to/deploy-dask/ssh.html) at a given IP address and port and will process the lambda function in parallel to the workers tasked by the scheduler.  In this example, the video will `vipy.video.Scene.trackcrop` the smallest bounding box containing all tracks in the video, resized so this crop is 128 on the smallest side, loaded and normalized to remove the mean, then saved as a torch tensor in a bzipped python pickle file.  This is useful for preprocesssing videos to torch tensors for fast loading of dataset augmentation during training.
 
 ## Import
 
