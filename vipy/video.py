@@ -84,7 +84,7 @@ class Stream(object):
         - A batch is a sequence of n frames with a stride of n.  
         - A batch is useful for iterating over groups of frames that are operated in parallel on a GPU
 
-        >>> for (im1, im2, v3) in zip(v.stream(buffered=True), v.stream(buffered=True).frame(delay=30), v.stream(buffered=True).clip(n=16,m-1):
+        >>> for (im1, im2, v3) in zip(v.stream(buffered=True), v.stream(buffered=True).frame(delay=30), v.stream(buffered=True).clip(n=16,m=1):
         >>>     # im1: `vipy.image.Scene` at frame index k
         >>>     # im2: `vipy.image.Scene` at frame index k-30
         >>>     # v3: `vipy.video.Scene` at frame range [k, k-16]
@@ -359,7 +359,8 @@ class Stream(object):
             
         The primary use case for batch() is to provide a mechanism for parallel batch processing on a GPU.
         
-        >>> for (im, im_gpu) in zip(vi, myfunc(vi.stream().batch(16))):
+        >>> for im_gpu in myfunc(vi.stream().batch(16))):
+        >>>     print(im_gpu)
         >>>
         >>> def myfunc(gen):
         >>>     for vb in gen:
@@ -367,7 +368,7 @@ class Stream(object):
         >>>         for im in f_gpu(vb):
         >>>             yield im_gpu:
         
-        This will then yield the GPU batched processed image im_gpu zipped with the original image im.  
+        This will then yield the GPU batched processed image im_gpu.
         
         """
         return self.clip(n=n, m=n, continuous=False, ragged=True) 

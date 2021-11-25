@@ -26,7 +26,66 @@ Vipy was created with three design goals.
 
 # Getting started
 
-See the [demos](https://github.com/visym/vipy/tree/master/demo) as a starting point.
+The VIPY tools are designed for simple and intuitive interaction with videos and images.  Try to create a `vipy.video.Scene` object:
+
+```python
+v = vipy.video.RandomScene()
+```
+
+Videos are constructed from URLs, AWS S3 links, SSH accessible paths, local filenames, numpy arrays or pytorch tensors.  In this example, we create a random video with tracks and activities.  Videos can be natively iterated:
+
+
+```python
+for im in v:
+    print(im.numpy())
+```
+
+This will iterate and yield `vipy.image.Image` objects corresponding to each frame of the video.  You can use the `vipy.image.Image.numpy` method to extract the numpy array for this frame.  Long videos are streamed to avoid out of memory errors.  Under the hood, we represent each video as a filter chain to an FFMPEG pipe, which yields frames corresponding to the appropriate filter transform and framerate.  The yielded frames include all of the objects that are present in the video at that frame accessible with the `vipy.image.Scene.objects` method.
+
+VIPY supports more complex iterators.  For example, a common use case for activity detection is iterating over short clips in a video.  You can do this using the stream iterator:
+
+
+```python
+for c in v.stream().clip(16):
+    print(c.torch())
+```
+       
+This will yield `vipy.video.Scene` objects each containing a clip of length 16 frames.  Each clip overlaps by 15 frames with the next clip, and each clip includes a threaded copy of the pixels.  This is useful to provide clips of a fixed length that are output for every frame of the video.  Each clip contais the tracks and activities within this clip time period.  The method `vipy.video.Video.torch` will output a torch tensor suitable for integration into a pytorch based system.
+
+These python iterators can be combined together in complex ways
+
+```python
+for (im, c, imdelay) in (v, v.stream().clip(16), v.stream().frame(delay=10), a_gpu_function(v.stream().batch(16)))
+    print(im, c.torch(), imdelay)
+```
+
+This will yield the current frame, a video clip of length 16, a frame 10 frames ago and a batch of 16 frames that is designed for computation and transformation on a GPU.  All of the pixels are copied in threaded processing which is efficiently hidden by GPU I/O bound operations.  For more examples of complex iterators in real world use cases, see the [HeyVi package](https://github.com/visym/heyvi) for open source visual analytics.
+
+Videos can be transformed in complex ways, and the pixels will always be transformed along with the annotations.
+
+```python
+v.fliplr()          # flip horizontally
+v.zeropad(10, 20)   # zero pad the video horizontally and vertically
+v.mindim(256)       # change the minimum dimension of the video
+v.framerate(10)     # change the framerate of the video 
+```
+
+The transformation is lazy and is incorporated into the FFMPEG complex filter chain so that the transformation is applied when the pixels are needed.  You can always access the current filter chain using `vipy.video.Video.commmandline` which will output a commmandline string for the ffmpeg executable that you can use to get a deeper underestanding of the transformations that are applied to the video pixels.
+
+Finally, annotated videos can be displayed. 
+
+```python
+v.show()
+v.show(notebook=True)
+v.annotate('/path/to/visualization.mp4')
+with vipy.video.Video(url='https://youtu.be/...').mindim(512).framerate(5).stream(write=True) as s:
+    for im in v.framerate(5):
+        s.write(im.annotate().rgb())
+```
+
+This will show the video live on your desktop, in a jupyter notebook, annotate the video so that annotations are in the pixels and save the corresponding video, or live stream a 5Hz video to youtube.
+
+See the [demos](https://github.com/visym/vipy/tree/master/demo) for more examples.
 
 
 ## Import
