@@ -75,12 +75,16 @@ def affine_transform(txy=(0,0), r=0, sx=1, sy=1, kx=0, ky=0):
     
     Usage:
     
-    >>> A = vipy.geometry.affine_transform(r=np.pi/4)
-    >>> vipy.image.Image(array=vipy.geometry.imtransform(im.array(), A), colorspace='float')
+    ```python
+    A = vipy.geometry.affine_transform(r=np.pi/4)
+    vipy.image.Image(array=vipy.geometry.imtransform(im.array(), A), colorspace='float')
+    ```
     
     Equivalently:
 
-    >>> im = vipy.image.RandomImage().affine_transform(A)    
+    ```python
+    im = vipy.image.RandomImage().affine_transform(A)    
+    ```
     
     """
     assert istuple(txy) and len(txy) == 2 and isnumber(r) and isnumber(sx) and isnumber(sy) and isnumber(kx) and isnumber(ky), "Invalid input"

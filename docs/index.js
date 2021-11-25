@@ -567,7 +567,7 @@ INDEX=[
 {
 "ref":"vipy.object.Detection",
 "url":7,
-"doc":"vipy.object.Detection class This class represent a single object detection in the form a bounding box with a label and confidence. The constructor of this class follows a subset of the constructor patterns of vipy.geometry.BoundingBox >>> d = vipy.object.Detection(category='Person', xmin=0, ymin=0, width=50, height=100) >>> d = vipy.object.Detection(label='Person', xmin=0, ymin=0, width=50, height=100)  \"label\" is an alias for \"category\" >>> d = vipy.object.Detection(label='John Doe', shortlabel='Person', xmin=0, ymin=0, width=50, height=100)  shortlabel is displayed >>> d = vipy.object.Detection(label='Person', xywh=[0,0,50,100]) >>> d = vupy.object.Detection( ., id=True)  generate a unique UUID for this detection retrievable with d.id()"
+"doc":"vipy.object.Detection class This class represent a single object detection in the form a bounding box with a label and confidence. The constructor of this class follows a subset of the constructor patterns of vipy.geometry.BoundingBox   d = vipy.object.Detection(category='Person', xmin=0, ymin=0, width=50, height=100) d = vipy.object.Detection(label='Person', xmin=0, ymin=0, width=50, height=100)  \"label\" is an alias for \"category\" d = vipy.object.Detection(label='John Doe', shortlabel='Person', xmin=0, ymin=0, width=50, height=100)  shortlabel is displayed d = vipy.object.Detection(label='Person', xywh=[0,0,50,100]) d = vupy.object.Detection( ., id=True)  generate a unique UUID for this detection retrievable with d.id()  "
 },
 {
 "ref":"vipy.object.Detection.cast",
@@ -1274,7 +1274,7 @@ INDEX=[
 {
 "ref":"vipy.object.Track",
 "url":7,
-"doc":"vipy.object.Track class A track represents one or more labeled bounding boxes of an object instance through time. A track is defined as a finite set of labeled boxes observed at keyframes, which are discrete observations of this instance. Each keyframe has an associated vipy.geometry.BoundingBox() which defines the spatial bounding box of the instance in this keyframe. The kwarg \"interpolation\" defines how the track is interpolated between keyframes, and the kwarg \"boundary\" defines how the track is interpolated outside the (min,max) of the keyframes. Valid constructors are: >>> t = vipy.object.Track(keyframes=[0,100], boxes=[vipy.geometry.BoundingBox(0,0,10,10), vipy.geometry.BoundingBox(0,0,20,20)], label='Person') >>> t = vipy.object.Track(keyframes=[0,100], boxes=[vipy.geometry.BoundingBox(0,0,10,10), vipy.geometry.BoundingBox(0,0,20,20)], label='Person', interpolation='linear') >>> t = vipy.object.Track(keyframes=[10,100], boxes=[vipy.geometry.BoundingBox(0,0,10,10), vipy.geometry.BoundingBox(0,0,20,20)], label='Person', boundary='strict') Tracks can be constructed incrementally: >>> t = vipy.object.Track('Person') >>> t.add(0, vipy.geometry.BoundingBox(0,0,10,10 >>> t.add(100, vipy.geometry.BoundingBox(0,0,20,20 Tracks can be resampled at a new framerate, as long as the framerate is known when the keyframes are extracted >>> t.framerate(newfps)"
+"doc":"vipy.object.Track class A track represents one or more labeled bounding boxes of an object instance through time. A track is defined as a finite set of labeled boxes observed at keyframes, which are discrete observations of this instance. Each keyframe has an associated vipy.geometry.BoundingBox() which defines the spatial bounding box of the instance in this keyframe. The kwarg \"interpolation\" defines how the track is interpolated between keyframes, and the kwarg \"boundary\" defines how the track is interpolated outside the (min,max) of the keyframes. Valid constructors are:   t = vipy.object.Track(keyframes=[0,100], boxes=[vipy.geometry.BoundingBox(0,0,10,10), vipy.geometry.BoundingBox(0,0,20,20)], label='Person') t = vipy.object.Track(keyframes=[0,100], boxes=[vipy.geometry.BoundingBox(0,0,10,10), vipy.geometry.BoundingBox(0,0,20,20)], label='Person', interpolation='linear') t = vipy.object.Track(keyframes=[10,100], boxes=[vipy.geometry.BoundingBox(0,0,10,10), vipy.geometry.BoundingBox(0,0,20,20)], label='Person', boundary='strict')   Tracks can be constructed incrementally:   t = vipy.object.Track('Person') t.add(0, vipy.geometry.BoundingBox(0,0,10,10 t.add(100, vipy.geometry.BoundingBox(0,0,20,20   Tracks can be resampled at a new framerate, as long as the framerate is known when the keyframes are extracted   t.framerate(newfps)  "
 },
 {
 "ref":"vipy.object.Track.from_json",
@@ -1842,13 +1842,13 @@ INDEX=[
 {
 "ref":"vipy.util.save",
 "url":9,
-"doc":"Save variables to an archive file. This function allows vipy objects to be serialized to disk for later loading. >>> im = vipy.image.owl() >>> im = vipy.util.load(vipy.util.save(im  round trip Args: vars: A python object to save. This can be any serializable python object outfile: An output file to save. Must have extension [.pkl, .json]. If None, will save to a temporary JSON file. Returns A path to the saved archive file. Load using  vipy.util.load .  note JSON is preferred as an archive format for vipy. Be sure to install the excellent ultrajson library (pip install ujson) for fast serialization.",
+"doc":"Save variables to an archive file. This function allows vipy objects to be serialized to disk for later loading.   im = vipy.image.owl() im = vipy.util.load(vipy.util.save(im  round trip   Args: vars: A python object to save. This can be any serializable python object outfile: An output file to save. Must have extension [.pkl, .json]. If None, will save to a temporary JSON file. Returns A path to the saved archive file. Load using  vipy.util.load .  note JSON is preferred as an archive format for vipy. Be sure to install the excellent ultrajson library (pip install ujson) for fast serialization.",
 "func":1
 },
 {
 "ref":"vipy.util.load",
 "url":9,
-"doc":"Load variables from a relocatable archive file format, either dill pickle, JSON format or JSON directory format. Loading is performed by attemping the following: 1. If the input file is a directory, return a  vipy.dataset.Dataset with lazy loading of all pkl or json files recursively discovered in this directory. 2. If the input file is a pickle or json file, load it 3. if abspath=true, then convert relative paths to absolute paths for object when loaded 4. If refcycle=False, then disable the python reference cycle garbage collector for large archive files >>> im = vipy.image.owl() >>> f = vipy.util.save(im) >>> im = vipy.util.load(im) Args: infile: [str] file saved using  vipy.util.save with extension [.pkl, .json]. This may also be a directory tree containing json or pkl files abspath: [bool] If true, then convert all vipy objects with relative paths to absolute paths. If False, then preserve relative paths and warn user. refcycle: [bool] If False, then disable python reference cycle garbage collector. This is useful for large python objects. Returns: The object in the archive file",
+"doc":"Load variables from a relocatable archive file format, either dill pickle, JSON format or JSON directory format. Loading is performed by attemping the following: 1. If the input file is a directory, return a  vipy.dataset.Dataset with lazy loading of all pkl or json files recursively discovered in this directory. 2. If the input file is a pickle or json file, load it 3. if abspath=true, then convert relative paths to absolute paths for object when loaded 4. If refcycle=False, then disable the python reference cycle garbage collector for large archive files   im = vipy.image.owl() f = vipy.util.save(im) im = vipy.util.load(im)   Args: infile: [str] file saved using  vipy.util.save with extension [.pkl, .json]. This may also be a directory tree containing json or pkl files abspath: [bool] If true, then convert all vipy objects with relative paths to absolute paths. If False, then preserve relative paths and warn user. refcycle: [bool] If False, then disable python reference cycle garbage collector. This is useful for large python objects. Returns: The object in the archive file",
 "func":1
 },
 {
@@ -1866,7 +1866,7 @@ INDEX=[
 {
 "ref":"vipy.util.mergedict",
 "url":9,
-"doc":"Combine keys of two dictionaries and return a dictionary deep copy. >>> d1 = {1:2} >>> d2 = {3:4} >>> d3 = mergedict(d1,d2) >>> assert d3  {1:2, 3:4}",
+"doc":"Combine keys of two dictionaries and return a dictionary deep copy.   d1 = {1:2} d2 = {3:4} d3 = mergedict(d1,d2) assert d3  {1:2, 3:4}  ",
 "func":1
 },
 {
@@ -2040,7 +2040,7 @@ INDEX=[
 {
 "ref":"vipy.util.chunklist",
 "url":9,
-"doc":"Convert list into a list of lists of length num_chunks, such that each element is a list containing a sequential chunk of the original list. >>> (A,B,C) = vipy.util.chunklist(inlist, num_chunks=3) >>> assert len(A)  len(inlist)  3  note The last chunk will be larger for ragged chunks",
+"doc":"Convert list into a list of lists of length num_chunks, such that each element is a list containing a sequential chunk of the original list.   (A,B,C) = vipy.util.chunklist(inlist, num_chunks=3) assert len(A)  len(inlist)  3    note The last chunk will be larger for ragged chunks",
 "func":1
 },
 {
@@ -2226,7 +2226,7 @@ INDEX=[
 {
 "ref":"vipy.util.isextension",
 "url":9,
-"doc":"Does the filename end with the extension ext? >>> isextension('/path/to/myfile.json', 'json')  True >>> isextension('/path/to/myfile.json', '.json')  True >>> isextension('/path/to/myfile.json', '.pkl')  False",
+"doc":"Does the filename end with the extension ext?   isextension('/path/to/myfile.json', 'json')  True isextension('/path/to/myfile.json', '.json')  True isextension('/path/to/myfile.json', '.pkl')  False  ",
 "func":1
 },
 {
@@ -2879,7 +2879,7 @@ INDEX=[
 {
 "ref":"vipy.util.Timer",
 "url":9,
-"doc":"Pretty print elapsed system time in seconds between calls to enter and exit >>> t = Timer(): >>> [some code] >>> print(t) >>> [some more code] >>> print(t) >>> with Timer(): >>> [some code]"
+"doc":"Pretty print elapsed system time in seconds between calls to enter and exit  python t = Timer(): [some code] print(t) [some more code] print(t) with Timer(): [some code]  "
 },
 {
 "ref":"vipy.util.isfile",
@@ -3020,7 +3020,7 @@ INDEX=[
 {
 "ref":"vipy.dataset.Dataset",
 "url":10,
-"doc":"vipy.dataset.Dataset() class Common class to manipulate large sets of vipy objects in parallel >>> D = vipy.dataset.Dataset([vipy.video.RandomScene(), vipy.video.RandomScene()], id='random_scene') >>> with vipy.globals.parallel(2): >>> D = D.map(lambda v: v.frame(0 >>> list(D) Create dataset and export as a directory of json files >>> D = vipy.dataset.Dataset([vipy.video.RandomScene(), vipy.video.RandomScene()]) >>> D.tojsondir('/tmp/myjsondir') Create dataset from all json or pkl files recursively discovered in a directory and lazy loaded >>> D = vipy.dataset.Dataset('/tmp/myjsondir')  lazy loading Create dataset from a list of json or pkl files and lazy loaded >>> D = vipy.dataset.Dataset(['/path/to/file1.json', '/path/to/file2.json'])  lazy loading  notes Be warned that using the jsondir constructor will load elements on demand, but there are some methods that require loading the entire dataset into memory, and will happily try to do so"
+"doc":"vipy.dataset.Dataset() class Common class to manipulate large sets of vipy objects in parallel   D = vipy.dataset.Dataset([vipy.video.RandomScene(), vipy.video.RandomScene()], id='random_scene') with vipy.globals.parallel(2): D = D.map(lambda v: v.frame(0 list(D)   Create dataset and export as a directory of json files   D = vipy.dataset.Dataset([vipy.video.RandomScene(), vipy.video.RandomScene()]) D.tojsondir('/tmp/myjsondir')   Create dataset from all json or pkl files recursively discovered in a directory and lazy loaded   D = vipy.dataset.Dataset('/tmp/myjsondir')  lazy loading   Create dataset from a list of json or pkl files and lazy loaded   D = vipy.dataset.Dataset(['/path/to/file1.json', '/path/to/file2.json'])  lazy loading    notes Be warned that using the jsondir constructor will load elements on demand, but there are some methods that require loading the entire dataset into memory, and will happily try to do so"
 },
 {
 "ref":"vipy.dataset.Dataset.json",
@@ -3073,13 +3073,13 @@ INDEX=[
 {
 "ref":"vipy.dataset.Dataset.archive",
 "url":10,
-"doc":"Create a archive file for this dataset. This will be archived as: /path/to/tarfile.{tar.gz|.tgz|.bz2} tarfilename tarfilename.{json|pkl} mediadir/ video.mp4 extras1.ext extras2.ext Inputs: - tarfile: /path/to/tarfilename.tar.gz - delprefix: the absolute file path contained in the media filenames to be removed. If a video has a delprefix='/a/b' then videos with path /a/b/c/d.mp4' -> 'c/d.mp4', and {JSON|PKL} will be saved with relative paths to mediadir. This may be a list of delprefixes. - mediadir: the subdirectory name of the media to be contained in the archive. Usually \"videos\". - extrafiles: list of tuples or singletons [(abspath, filename_in_archive_relative_to_root), 'file_in_root_and_in_pwd',  .], - novideos [bool]: generate a tarball without linking videos, just annotations - md5 [bool]: If True, generate the MD5 hash of the tarball using the system \"md5sum\", or if md5='vipy' use a slower python only md5 hash - castas [class]: This should be a vipy class that the vipy objects should be cast to prior to archive. This is useful for converting priveledged superclasses to a base class prior to export. Example: - Input files contain /path/to/oldvideos/category/video.mp4 - Output will contain relative paths videos/category/video.mp4 >>> d.archive('out.tar.gz', delprefix='/path/to/oldvideos', mediadir='videos')",
+"doc":"Create a archive file for this dataset. This will be archived as: /path/to/tarfile.{tar.gz|.tgz|.bz2} tarfilename tarfilename.{json|pkl} mediadir/ video.mp4 extras1.ext extras2.ext Args: tarfile: /path/to/tarfilename.tar.gz delprefix: the absolute file path contained in the media filenames to be removed. If a video has a delprefix='/a/b' then videos with path /a/b/c/d.mp4' -> 'c/d.mp4', and {JSON|PKL} will be saved with relative paths to mediadir. This may be a list of delprefixes. mediadir: the subdirectory name of the media to be contained in the archive. Usually \"videos\". extrafiles: list of tuples or singletons [(abspath, filename_in_archive_relative_to_root), 'file_in_root_and_in_pwd',  .], novideos [bool]: generate a tarball without linking videos, just annotations md5 [bool]: If True, generate the MD5 hash of the tarball using the system \"md5sum\", or if md5='vipy' use a slower python only md5 hash castas [class]: This should be a vipy class that the vipy objects should be cast to prior to archive. This is useful for converting priveledged superclasses to a base class prior to export. Example: - Input files contain /path/to/oldvideos/category/video.mp4 - Output will contain relative paths videos/category/video.mp4   d.archive('out.tar.gz', delprefix='/path/to/oldvideos', mediadir='videos')   Returns: The absolute path to the tarball",
 "func":1
 },
 {
 "ref":"vipy.dataset.Dataset.save",
 "url":10,
-"doc":"Save the dataset to the provided output filename stored as pkl or json Args: outfile [str]: The /path/to/out.pkl or /path/to/out.json nourl [bool]: If true, remove all URLs from the media (if present) castas [type]: Cast all media to the provided type. This is useful for downcasting to  vipy.video.Scene from superclasses relpath [bool]: If true, define all file paths in objects relative to the /path/to in /path/to/out.json sanitize [bool]: If trye, call sanitize() on all objects to remove all private attributes with prepended '__' strict [bool]: Unused significant_digits [int]: Assign the requested number of significant digits to all bounding boxes in all tracks. This requires dataset of  vipy.video.Scene noemail [bool]: If true, scrub the attributes for emails and replace with a hash flush [bool]: If true, flush the object buffers prior to save Returns: This dataset that is quivalent to vipy.dataset.Dataset('/path/to/outfile.json')",
+"doc":"Save the dataset to the provided output filename stored as pkl or json Args: outfile: [str]: The /path/to/out.pkl or /path/to/out.json nourl: [bool]: If true, remove all URLs from the media (if present) castas: [type]: Cast all media to the provided type. This is useful for downcasting to  vipy.video.Scene from superclasses relpath: [bool]: If true, define all file paths in objects relative to the /path/to in /path/to/out.json sanitize: [bool]: If trye, call sanitize() on all objects to remove all private attributes with prepended '__' strict: [bool]: Unused significant_digits: [int]: Assign the requested number of significant digits to all bounding boxes in all tracks. This requires dataset of  vipy.video.Scene noemail: [bool]: If true, scrub the attributes for emails and replace with a hash flush: [bool]: If true, flush the object buffers prior to save Returns: This dataset that is quivalent to vipy.dataset.Dataset('/path/to/outfile.json')",
 "func":1
 },
 {
@@ -3187,7 +3187,7 @@ INDEX=[
 {
 "ref":"vipy.dataset.Dataset.merge",
 "url":10,
-"doc":"Merge a dataset union into a single subdirectory with symlinked media ready to be archived. >>> D1 = vipy.dataset.Dataset('/path1/dataset.json') >>> D2 = vipy.dataset.Dataset('/path2/dataset.json') >>> D3 = D1.union(D2).merge(outdir='/path3') Media in D1 are in /path1, media in D2 are in /path2, media in D3 are all symlinked to /path3. We can now create a tarball for D3 with all of the media files in the same relative path.",
+"doc":"Merge a dataset union into a single subdirectory with symlinked media ready to be archived.   D1 = vipy.dataset.Dataset('/path1/dataset.json') D2 = vipy.dataset.Dataset('/path2/dataset.json') D3 = D1.union(D2).merge(outdir='/path3')   Media in D1 are in /path1, media in D2 are in /path2, media in D3 are all symlinked to /path3. We can now create a tarball for D3 with all of the media files in the same relative path.",
 "func":1
 },
 {
@@ -3217,7 +3217,7 @@ INDEX=[
 {
 "ref":"vipy.dataset.Dataset.jsondir",
 "url":10,
-"doc":"Export all objects to a directory of JSON files. Usage: >>> D = vipy.dataset.Dataset( .).jsondir('/path/to/jsondir') >>> D = vipy.util.load('/path/to/jsondir')  recursively discover and lazy load all json files Args: outdir [str]: The root directory to store the JSON files verbose [bool]: If True, print the save progress rekey [bool] If False, use the instance ID of the vipy object as the filename for the JSON file, otherwise assign a new UUID_dataset-index bycategory [bool]: If True, use the JSON structure '$OUTDIR/$CATEGORY/$INSTANCEID.json' byfilename [bool]: If True, use the JSON structure '$FILENAME.json' where $FILENAME is the underlying media filename of the vipy object abspath [bool]: If true, store absolute paths to media in JSON. If false, store relative paths to media from JSON directory Returns: outdir: The directory containing the JSON files.",
+"doc":"Export all objects to a directory of JSON files. Usage:   D = vipy.dataset.Dataset( .).jsondir('/path/to/jsondir') D = vipy.util.load('/path/to/jsondir')  recursively discover and lazy load all json files   Args: outdir [str]: The root directory to store the JSON files verbose [bool]: If True, print the save progress rekey [bool] If False, use the instance ID of the vipy object as the filename for the JSON file, otherwise assign a new UUID_dataset-index bycategory [bool]: If True, use the JSON structure '$OUTDIR/$CATEGORY/$INSTANCEID.json' byfilename [bool]: If True, use the JSON structure '$FILENAME.json' where $FILENAME is the underlying media filename of the vipy object abspath [bool]: If true, store absolute paths to media in JSON. If false, store relative paths to media from JSON directory Returns: outdir: The directory containing the JSON files.",
 "func":1
 },
 {
@@ -3265,7 +3265,7 @@ INDEX=[
 {
 "ref":"vipy.dataset.Dataset.map",
 "url":10,
-"doc":"Distributed map. To perform this in parallel across four processes: >>> D = vipy.dataset.Dataset( .) >>> with vipy.globals.parallel(4): >>> D.map(lambda v:  .) Args: f_map: [lambda] The lambda function to apply in parallel to all elements in the dataset. This must return a JSON serializable object model: [torch.nn.Module] The model to scatter to all workers dst: [str] The ID to give to the resulting dataset id: [str] The ID to give to the resulting dataset (parameter alias for dst) strict: [bool] If true, raise exception on map failures, otherwise the map will return None for failed elements ascompleted: [bool] If true, return elements as they complete ordered: [bool] If true, preserve the order of objects in dataset as returned from distributed processing Returns: A  vipy.dataset.Dataset containing the elements f_map(v). This operation is order preserving.  note - This dataset must contain vipy objects of types defined in  vipy.util.class_registry or JSON serializable objects - Serialization of large datasets can take a while, kick it off to a distributed dask scheduler and go get lunch - This method uses dask distributed and  vipy.batch.Batch operations - All vipy objects are JSON serialized prior to parallel map to avoid reference cycle garbage collection which can introduce instabilities - Due to chunking, all error handling is caught by this method. Use  vipy.batch.Batch to leverage dask distributed futures error handling. - Operations must be chunked and serialized because each dask task comes with overhead, and lots of small tasks violates best practices - Serialized results are deserialized by the client and returned a a new dataset",
+"doc":"Distributed map. To perform this in parallel across four processes:   D = vipy.dataset.Dataset( .) with vipy.globals.parallel(4): D.map(lambda v:  .)   Args: f_map: [lambda] The lambda function to apply in parallel to all elements in the dataset. This must return a JSON serializable object model: [torch.nn.Module] The model to scatter to all workers dst: [str] The ID to give to the resulting dataset id: [str] The ID to give to the resulting dataset (parameter alias for dst) strict: [bool] If true, raise exception on map failures, otherwise the map will return None for failed elements ascompleted: [bool] If true, return elements as they complete ordered: [bool] If true, preserve the order of objects in dataset as returned from distributed processing Returns: A  vipy.dataset.Dataset containing the elements f_map(v). This operation is order preserving if ordered=True.  note - This dataset must contain vipy objects of types defined in  vipy.util.class_registry or JSON serializable objects - Serialization of large datasets can take a while, kick it off to a distributed dask scheduler and go get lunch - This method uses dask distributed and  vipy.batch.Batch operations - All vipy objects are JSON serialized prior to parallel map to avoid reference cycle garbage collection which can introduce instabilities - Due to chunking, all error handling is caught by this method. Use  vipy.batch.Batch to leverage dask distributed futures error handling. - Operations must be chunked and serialized because each dask task comes with overhead, and lots of small tasks violates best practices - Serialized results are deserialized by the client and returned a a new dataset",
 "func":1
 },
 {
@@ -3391,7 +3391,7 @@ INDEX=[
 {
 "ref":"vipy.dataset.Dataset.zip",
 "url":10,
-"doc":"Zip two datasets. Equivalent to zip(self, other). >>> for (d1,d2) in D1.zip(D2, sortkey=lambda v: v.instanceid( : >>> pass >>> for (d1, d2) in zip(D1, D2): >>> pass Args: other: [ vipy.dataset.Dataset ] sortkey: [lambda] sort both datasets using the provided sortkey lambda. Returns: Generator for the tuple sequence ( (self[0], other[0]), (self[1], other[1]),  . )",
+"doc":"Zip two datasets. Equivalent to zip(self, other).   for (d1,d2) in D1.zip(D2, sortkey=lambda v: v.instanceid( : pass for (d1, d2) in zip(D1, D2): pass   Args: other: [ vipy.dataset.Dataset ] sortkey: [lambda] sort both datasets using the provided sortkey lambda. Returns: Generator for the tuple sequence ( (self[0], other[0]), (self[1], other[1]),  . )",
 "func":1
 },
 {
@@ -3590,7 +3590,7 @@ INDEX=[
 {
 "ref":"vipy.activity.Activity",
 "url":13,
-"doc":"vipy.object.Activity class An activity is a grouping of one or more tracks involved in an activity within a given startframe and endframe. The activity occurs at a given (startframe, endframe), where these frame indexes are extracted at the provided framerate. All objects are passed by reference with a globally unique track ID, for the tracks involved with the activity. This is done since tracks can exist after an activity completes, and that tracks should update the spatial transformation of boxes. The shortlabel defines the string shown on the visualization video. Valid constructors >>> t = vipy.object.Track(category='Person').add( . >>> a = vipy.object.Activity(startframe=0, endframe=10, category='Walking', tracks={t.id():t})"
+"doc":"vipy.object.Activity class An activity is a grouping of one or more tracks involved in an activity within a given startframe and endframe. The activity occurs at a given (startframe, endframe), where these frame indexes are extracted at the provided framerate. All objects are passed by reference with a globally unique track ID, for the tracks involved with the activity. This is done since tracks can exist after an activity completes, and that tracks should update the spatial transformation of boxes. The shortlabel defines the string shown on the visualization video. Valid constructors  python t = vipy.object.Track(category='Person').add( . a = vipy.object.Activity(startframe=0, endframe=10, category='Walking', tracks={t.id():t})  "
 },
 {
 "ref":"vipy.activity.Activity.hasattribute",
@@ -4036,13 +4036,13 @@ INDEX=[
 {
 "ref":"vipy.flow.Video.cast",
 "url":15,
-"doc":"Cast a conformal video object to a  vipy.video.Video object. This is useful for downcasting superclasses. >>> vs = vipy.video.RandomScene() >>> v = vipy.video.Video.cast(vs)",
+"doc":"Cast a conformal video object to a  vipy.video.Video object. This is useful for downcasting superclasses.   vs = vipy.video.RandomScene() v = vipy.video.Video.cast(vs)  ",
 "func":1
 },
 {
 "ref":"vipy.flow.Video.from_json",
 "url":15,
-"doc":"Import a json string as a  vipy.video.Video object. This will perform a round trip from a video to json and back to a video object. This same operation is used for serialization of all vipy objects to JSON for storage. >>> v = vipy.video.Video.from_json(vipy.video.RandomVideo().json( ",
+"doc":"Import a json string as a  vipy.video.Video object. This will perform a round trip from a video to json and back to a video object. This same operation is used for serialization of all vipy objects to JSON for storage.   v = vipy.video.Video.from_json(vipy.video.RandomVideo().json(  ",
 "func":1
 },
 {
@@ -4054,7 +4054,7 @@ INDEX=[
 {
 "ref":"vipy.flow.Video.sanitize",
 "url":15,
-"doc":"Remove all private keys from the attributes dictionary. The attributes dictionary is useful storage for arbitrary (key,value) pairs. However, this storage may contain sensitive information that should be scrubbed from the video before serialization. As a general rule, any key that is of the form '__keyname' prepended by two underscores is a private key. This is analogous to private or reserved attributes in the python lanugage. Users should reserve these keynames for those keys that should be sanitized and removed before any seerialization of this object. >>> assert self.setattribute('__mykey', 1).sanitize().hasattribute('__mykey')  False",
+"doc":"Remove all private keys from the attributes dictionary. The attributes dictionary is useful storage for arbitrary (key,value) pairs. However, this storage may contain sensitive information that should be scrubbed from the video before serialization. As a general rule, any key that is of the form '__keyname' prepended by two underscores is a private key. This is analogous to private or reserved attributes in the python lanugage. Users should reserve these keynames for those keys that should be sanitized and removed before any seerialization of this object.   assert self.setattribute('__mykey', 1).sanitize().hasattribute('__mykey')  False  ",
 "func":1
 },
 {
@@ -4072,7 +4072,7 @@ INDEX=[
 {
 "ref":"vipy.flow.Video.store",
 "url":15,
-"doc":"Store the current video file as an attribute of this object. Useful for archiving an object to be fully self contained without any external references. >>> v  v.store().restore(v.filename(  note -Remove this stored video using unstore() -Unpack this stored video and set up the video chains using restore() -This method is more efficient than load() followed by pkl(), as it stores the encoded video as a byte string. -Useful for creating a single self contained object for distributed processing.",
+"doc":"Store the current video file as an attribute of this object. Useful for archiving an object to be fully self contained without any external references.   v  v.store().restore(v.filename(    note -Remove this stored video using unstore() -Unpack this stored video and set up the video chains using restore() -This method is more efficient than load() followed by pkl(), as it stores the encoded video as a byte string. -Useful for creating a single self contained object for distributed processing.",
 "func":1
 },
 {
@@ -4090,13 +4090,13 @@ INDEX=[
 {
 "ref":"vipy.flow.Video.concatenate",
 "url":15,
-"doc":"Temporally concatenate a sequence of videos into a single video stored in outfile. >>> (v1, v2, v3) = (vipy.video.RandomVideo(128,128,32), vipy.video.RandomVideo(128,128,32), vipy.video.RandomVideo(128,128,32 >>> vc = vipy.video.Video.concatenate v1, v2, v3), 'concatenated.mp4', youtube_chapters=lambda v: v.category( In this example, vc will point to concatenated.mp4 which will contain (v1,v2,v3) concatenated temporally . Input: videos: a single video or an iterable of videos of type  vipy.video.Video or an iterable of video files outfile: the output filename to store the concatenation. youtube_chapters [bool, callable]: If true, output a string that can be used to define the start and end times of chapters if this video is uploaded to youtube. The string output should be copied to the youtube video description in order to enable chapters on playback. This argument will default to the string representation ofo the video, but you may also pass a callable of the form: 'youtube_chapters=lambda v: str(v)' which will output the provided string for each video chapter. A useful lambda is 'youtube_chapters=lambda v: v.category()' framerate [float]: The output frame rate of outfile Returns: A  vipy.video.Video object with filename()=outfile, such that outfile contains the temporal concatenation of pixels in (self, videos).  note -self will not be modified, this will return a new  vipy.video.Video object. -All videos must be the same shape(). If the videos are different shapes, you must pad them to a common size equal to self.shape(). Try  vipy.video.Video.zeropadlike . -The output video will be at the framerate of self.framerate(). -if you want to concatenate annotations, call  vipy.video.Scene.annotate first on the videos to save the annotations into the pixels, then concatenate.",
+"doc":"Temporally concatenate a sequence of videos into a single video stored in outfile.   (v1, v2, v3) = (vipy.video.RandomVideo(128,128,32), vipy.video.RandomVideo(128,128,32), vipy.video.RandomVideo(128,128,32 vc = vipy.video.Video.concatenate v1, v2, v3), 'concatenated.mp4', youtube_chapters=lambda v: v.category(   In this example, vc will point to concatenated.mp4 which will contain (v1,v2,v3) concatenated temporally . Args: videos: a single video or an iterable of videos of type  vipy.video.Video or an iterable of video files outfile: the output filename to store the concatenation. youtube_chapters: [bool, callable]: If true, output a string that can be used to define the start and end times of chapters if this video is uploaded to youtube. The string output should be copied to the youtube video description in order to enable chapters on playback. This argument will default to the string representation ofo the video, but you may also pass a callable of the form: 'youtube_chapters=lambda v: str(v)' which will output the provided string for each video chapter. A useful lambda is 'youtube_chapters=lambda v: v.category()' framerate: [float]: The output frame rate of outfile Returns: A  vipy.video.Video object with filename()=outfile, such that outfile contains the temporal concatenation of pixels in (self, videos).  note - self will not be modified, this will return a new  vipy.video.Video object. - All videos must be the same shape(). If the videos are different shapes, you must pad them to a common size equal to self.shape(). Try  vipy.video.Video.zeropadlike . - The output video will be at the framerate of self.framerate(). - if you want to concatenate annotations, call  vipy.video.Scene.annotate first on the videos to save the annotations into the pixels, then concatenate.",
 "func":1
 },
 {
 "ref":"vipy.flow.Video.stream",
 "url":15,
-"doc":"Iterator to yield groups of frames streaming from video. A video stream is a real time iterator to read or write from a video. Streams are useful to group together frames into clips that are operated on as a group. The following use cases are supported: >>> v = vipy.video.RandomScene() Stream individual video frames lagged by 10 frames and 20 frames >>> for (im1, im2) in zip(v.stream().frame(n=-10), v.stream().frame(n=-20 : >>> print(im1, im2) Stream overlapping clips such that each clip is a video n=16 frames long and starts at frame i, and the next clip is n=16 frames long and starts at frame i=i+m >>> for vc in v.stream().clip(n=16, m=4): >>> print(vc) Stream non-overlapping batches of frames such that each clip is a video of length n and starts at frame i, and the next clip is length n and starts at frame i+n >>> for vb in v.stream().batch(n=16): >>> print(vb) Create a write stream to incrementally add frames to long video. >>> vi = vipy.video.Video(filename='/path/to/output.mp4') >>> vo = vipy.video.Video(filename='/path/to/input.mp4') >>> with vo.stream(write=True) as s: >>> for im in vi.stream(): >>> s.write(im)  manipulate pixels of im, if desired Create a 480p YouTube live stream from an RTSP camera at 5Hz >>> vo = vipy.video.Scene(url='rtmp: a.rtmp.youtube.com/live2/$SECRET_STREAM_KEY') >>> vi = vipy.video.Scene(url='rtsp: URL').framerate(5) >>> with vo.framerate(5).stream(write=True, bitrate='1000k') as s: >>> for im in vi.framerate(5).resize(cols=854, rows=480): >>> s.write(im) Args: write: [bool] If true, create a write stream overwrite: [bool] If true, and the video output filename already exists, overwrite it bufsize: [int] The maximum queue size for the ffmpeg pipe thread in the primary iterator. The queue size is the maximum size of pre-fetched frames from the ffmpeg pip. This should be big enough that you are never waiting for queue fills bitrate: [str] The ffmpeg bitrate of the output encoder for writing, written like '2000k' bufsize: [int] The maximum size of the stream buffer in frames. The stream buffer length should be big enough so that all iterators can yield before deleting old frames Returns: A Stream object  note Using this iterator may affect PDB debugging due to stdout/stdin redirection. Use ipdb instead.",
+"doc":"Iterator to yield groups of frames streaming from video. A video stream is a real time iterator to read or write from a video. Streams are useful to group together frames into clips that are operated on as a group. The following use cases are supported:   v = vipy.video.RandomScene()   Stream individual video frames lagged by 10 frames and 20 frames   for (im1, im2) in zip(v.stream().frame(n=-10), v.stream().frame(n=-20 : print(im1, im2)   Stream overlapping clips such that each clip is a video n=16 frames long and starts at frame i, and the next clip is n=16 frames long and starts at frame i=i+m   for vc in v.stream().clip(n=16, m=4): print(vc)   Stream non-overlapping batches of frames such that each clip is a video of length n and starts at frame i, and the next clip is length n and starts at frame i+n   for vb in v.stream().batch(n=16): print(vb)   Create a write stream to incrementally add frames to long video.   vi = vipy.video.Video(filename='/path/to/output.mp4') vo = vipy.video.Video(filename='/path/to/input.mp4') with vo.stream(write=True) as s: for im in vi.stream(): s.write(im)  manipulate pixels of im, if desired   Create a 480p YouTube live stream from an RTSP camera at 5Hz   vo = vipy.video.Scene(url='rtmp: a.rtmp.youtube.com/live2/$SECRET_STREAM_KEY') vi = vipy.video.Scene(url='rtsp: URL').framerate(5) with vo.framerate(5).stream(write=True, bitrate='1000k') as s: for im in vi.framerate(5).resize(cols=854, rows=480): s.write(im)   Args: write: [bool] If true, create a write stream overwrite: [bool] If true, and the video output filename already exists, overwrite it bufsize: [int] The maximum queue size for the ffmpeg pipe thread in the primary iterator. The queue size is the maximum size of pre-fetched frames from the ffmpeg pip. This should be big enough that you are never waiting for queue fills bitrate: [str] The ffmpeg bitrate of the output encoder for writing, written like '2000k' bufsize: [int] The maximum size of the stream buffer in frames. The stream buffer length should be big enough so that all iterators can yield before deleting old frames Returns: A Stream object  note Using this iterator may affect PDB debugging due to stdout/stdin redirection. Use ipdb instead.",
 "func":1
 },
 {
@@ -4276,7 +4276,7 @@ INDEX=[
 {
 "ref":"vipy.flow.Video.fromdirectory",
 "url":15,
-"doc":"Create a video from a directory of frames stored as individual image filenames. Given a directory with files: framedir/image_0001.jpg framedir/image_0002.jpg >>> vipy.video.Video(frames='/path/to/framedir')",
+"doc":"Create a video from a directory of frames stored as individual image filenames. Given a directory with files: framedir/image_0001.jpg framedir/image_0002.jpg   vipy.video.Video(frames='/path/to/framedir')  ",
 "func":1
 },
 {
@@ -4318,7 +4318,7 @@ INDEX=[
 {
 "ref":"vipy.flow.Video.relpath",
 "url":15,
-"doc":"Replace the filename with a relative path to parent (or current working directory if none). Usage: >>> v = vipy.video.Video(filename='/path/to/dataset/video/category/out.mp4') >>> v.relpath(parent='/path/to/dataset') >>> v.filename()  'video/category/out.mp4' If the current working directory is /path/to/dataset, and v.load() is called, the filename will be loaded. Args: parent [str]: A parent path of the current filename to remove and be relative to. If filename is '/path/to/video.mp4' then filename must start with parent, then parent will be remvoed from filename. start [str]: Return a relative filename starting from path start='/path/to/dir' that will create a relative path to this filename. If start='/a/b/c' and filename='/a/b/d/e/f.ext' then return filename ' /d/e/f.ext' Returns: This video object with the filename changed to be a relative path",
+"doc":"Replace the filename with a relative path to parent (or current working directory if none). Usage:   v = vipy.video.Video(filename='/path/to/dataset/video/category/out.mp4') v.relpath(parent='/path/to/dataset') v.filename()  'video/category/out.mp4'   If the current working directory is /path/to/dataset, and v.load() is called, the filename will be loaded. Args: parent [str]: A parent path of the current filename to remove and be relative to. If filename is '/path/to/video.mp4' then filename must start with parent, then parent will be remvoed from filename. start [str]: Return a relative filename starting from path start='/path/to/dir' that will create a relative path to this filename. If start='/a/b/c' and filename='/a/b/d/e/f.ext' then return filename ' /d/e/f.ext' Returns: This video object with the filename changed to be a relative path",
 "func":1
 },
 {
@@ -4414,7 +4414,7 @@ INDEX=[
 {
 "ref":"vipy.flow.Video.cliprange",
 "url":15,
-"doc":"Return the planned clip (startframe, endframe) range. This is useful for introspection of the planned clip() before load(), such as for data augmentation purposes without triggering a load. Returns: (startframe, endframe) of the video() such that after load(), the pixel buffer will contain frame=0 equivalent to startframe in the source video, and frame=endframe-startframe-1 equivalent to endframe in the source video. (0, None) If a video does not have a clip() (e.g. clip() was never called, the filter chain does not include a 'trim')  notes The endframe can be retrieved (inefficiently) using: >>> int(round(self.duration_in_frames_of_videofile()  (self.framerate() / self.framerate_of_videofile(  ",
+"doc":"Return the planned clip (startframe, endframe) range. This is useful for introspection of the planned clip() before load(), such as for data augmentation purposes without triggering a load. Returns: (startframe, endframe) of the video() such that after load(), the pixel buffer will contain frame=0 equivalent to startframe in the source video, and frame=endframe-startframe-1 equivalent to endframe in the source video. (0, None) If a video does not have a clip() (e.g. clip() was never called, the filter chain does not include a 'trim')  notes The endframe can be retrieved (inefficiently) using:   int(round(self.duration_in_frames_of_videofile()  (self.framerate() / self.framerate_of_videofile(   ",
 "func":1
 },
 {
@@ -4588,7 +4588,7 @@ INDEX=[
 {
 "ref":"vipy.flow.Video.quicklook",
 "url":15,
-"doc":"Generate a montage of n uniformly spaced frames. Montage increases rowwise for n uniformly spaced frames, starting from frame zero and ending on the last frame. Input: -n: Number of images in the quicklook -mindim: The minimum dimension of each of the elements in the montage -animate: If true, return a video constructed by animating the quicklook into a video by showing dt consecutive frames -dt: The number of frames for animation -startframe: The initial frame index to start the n uniformly sampled frames for the quicklook  note The first frame in the upper left is guaranteed to be the start frame of the labeled activity, but the last frame in the bottom right may not be precisely the end frame and may be off by at most len(video)/9.",
+"doc":"Generate a montage of n uniformly spaced frames. Montage increases rowwise for n uniformly spaced frames, starting from frame zero and ending on the last frame. Input: n: Number of images in the quicklook mindim: The minimum dimension of each of the elements in the montage animate: If true, return a video constructed by animating the quicklook into a video by showing dt consecutive frames dt: The number of frames for animation startframe: The initial frame index to start the n uniformly sampled frames for the quicklook  note The first frame in the upper left is guaranteed to be the start frame of the labeled activity, but the last frame in the bottom right may not be precisely the end frame and may be off by at most len(video)/9.",
 "func":1
 },
 {
@@ -5063,7 +5063,7 @@ INDEX=[
 {
 "ref":"vipy.geometry.affine_transform",
 "url":8,
-"doc":"Compose and return a 3x3 affine transformation for translation txy=(0,0), rotation r (radians), scalex=sx, scaley=sy, shearx=kx, sheary=ky. Usage: >>> A = vipy.geometry.affine_transform(r=np.pi/4) >>> vipy.image.Image(array=vipy.geometry.imtransform(im.array(), A), colorspace='float') Equivalently: >>> im = vipy.image.RandomImage().affine_transform(A)",
+"doc":"Compose and return a 3x3 affine transformation for translation txy=(0,0), rotation r (radians), scalex=sx, scaley=sy, shearx=kx, sheary=ky. Usage:   A = vipy.geometry.affine_transform(r=np.pi/4) vipy.image.Image(array=vipy.geometry.imtransform(im.array(), A), colorspace='float')   Equivalently:   im = vipy.image.RandomImage().affine_transform(A)  ",
 "func":1
 },
 {
@@ -7143,7 +7143,7 @@ INDEX=[
 {
 "ref":"vipy.video.Stream",
 "url":15,
-"doc":"vipy.video.Stream class. This class is the primary mechanism for streaming frames and clips from long videos or live video streams. - The stream is constructed from a shared underlying video in self._video. - As the shared video is updated with annotations, the stream can generate frames and clips that contain these annotations - The shared video allows for multiple concurrent iterators all sourced from the same video, iterating over different frames, clips and rates - The iterator leverages a pipe to FFMPEG, reading numpy frames from the video filter chain. - The pipe is written from a thread which is dedicated to reading frames from ffmpeg - Each numpy frame is added to a queue, with a null termintor when end of stream is reached - The iterator then reads from the queue, and returns annotated frames This iterator can also be used as a buffered stream. Buffered streams have a primary iterator which saves a fixed stream buffer of frames so that subsequent iterators can pull temporally aligned frames. This is useful to avoid having multiple FFMPEG pipes open simultaneously, and can allow for synchronized access to live video streams without timestamping. - The primary iterator is the first iterator over the video with stream(buffered=True) - The primary iterator creates a private attribute self._video.attributes['__stream_buffer'] which caches frames - The stream buffer saves numpy arrays from the iterator with a fixed buffer length (number of frames) - The secondary iterator (e.g. any iterator that accesses the video after the primary iterator is initially created) will read from the stream buffer - All iterators share the underlying self._video object in the stream so that if the video annotations are updated by an iterator, the annotated frames are accessible in the iterators - The secondary iterators are synchronized to the stream buffer that is read by the primary iterator. This is useful for synchronizing streams for live camera streams without absolute timestamps. - There can be an unlimited number of secondary iterators, without incurring a penalty on frame access This iterator can iterate over clips, frames or batches. - A clip is a sequence of frames such that each clip is separated by a fixed number of frames. - Clips are useful for temporal encoding of short atomic activities - A batch is a sequence of n frames with a stride of n. - A batch is useful for iterating over groups of frames that are operated in parallel on a GPU >>> for (im1, im2, v3) in zip(v.stream(buffered=True), v.stream(buffered=True).frame(delay=30), v.stream(buffered=True).clip(n=16,m=1): >>>  im1:  vipy.image.Scene at frame index k >>>  im2:  vipy.image.Scene at frame index k-30 >>>  v3:  vipy.video.Scene at frame range [k, k-16]  note - This is designed to be accessed as  vipy.video.Video.stream and not accessed as a standalone class "
+"doc":"vipy.video.Stream class. This class is the primary mechanism for streaming frames and clips from long videos or live video streams. - The stream is constructed from a shared underlying video in self._video. - As the shared video is updated with annotations, the stream can generate frames and clips that contain these annotations - The shared video allows for multiple concurrent iterators all sourced from the same video, iterating over different frames, clips and rates - The iterator leverages a pipe to FFMPEG, reading numpy frames from the video filter chain. - The pipe is written from a thread which is dedicated to reading frames from ffmpeg - Each numpy frame is added to a queue, with a null termintor when end of stream is reached - The iterator then reads from the queue, and returns annotated frames This iterator can also be used as a buffered stream. Buffered streams have a primary iterator which saves a fixed stream buffer of frames so that subsequent iterators can pull temporally aligned frames. This is useful to avoid having multiple FFMPEG pipes open simultaneously, and can allow for synchronized access to live video streams without timestamping. - The primary iterator is the first iterator over the video with stream(buffered=True) - The primary iterator creates a private attribute self._video.attributes['__stream_buffer'] which caches frames - The stream buffer saves numpy arrays from the iterator with a fixed buffer length (number of frames) - The secondary iterator (e.g. any iterator that accesses the video after the primary iterator is initially created) will read from the stream buffer - All iterators share the underlying self._video object in the stream so that if the video annotations are updated by an iterator, the annotated frames are accessible in the iterators - The secondary iterators are synchronized to the stream buffer that is read by the primary iterator. This is useful for synchronizing streams for live camera streams without absolute timestamps. - There can be an unlimited number of secondary iterators, without incurring a penalty on frame access This iterator can iterate over clips, frames or batches. - A clip is a sequence of frames such that each clip is separated by a fixed number of frames. - Clips are useful for temporal encoding of short atomic activities - A batch is a sequence of n frames with a stride of n. - A batch is useful for iterating over groups of frames that are operated in parallel on a GPU   for (im1, im2, v3) in zip(v.stream(buffered=True), v.stream(buffered=True).frame(delay=30), v.stream(buffered=True).clip(n=16,m=1):  im1:  vipy.image.Scene at frame index k  im2:  vipy.image.Scene at frame index k-30  v3:  vipy.video.Scene at frame range [k, k-16]    note - This is designed to be accessed as  vipy.video.Video.stream and not accessed as a standalone class "
 },
 {
 "ref":"vipy.video.Stream.framerate",
@@ -7160,13 +7160,13 @@ INDEX=[
 {
 "ref":"vipy.video.Stream.clip",
 "url":15,
-"doc":"Stream clips of length n such that the yielded video clip contains frame(0+delay) to frame(n+delay), and next contains frame(m+delay) to frame(n+m+delay). Usage examples: >>> for vc in v.stream().clip(n=16, m=2): >>>  yields video vc with frames [0,16] from v >>>  then video vc with frames [2,18] from v >>>   . finally video with frames [len(v)-n-1, len(v)-1] Introducing a delay so that the clips start at a temporal offset from v >>> for vc in v.stream().clip(n=8, m=3, delay=1): >>>  yields video vc with frames [1,9] >>>  then video vc with frames [4,12]  . Args: n: [int] the length of the clip in frames m: [int] the stride between clips in frames delay: [int] The temporal delay in frames for the clip, must be less than n and >= 0 continuous: [bool] if true, then yield None for the sequential frames not aligned with a stride so that a clip is yielded on every frame activities: [bool] if false, then activities from the source video are not copied into the clip tracks: [bool] if false, then tracks from the source video are not copied into the clip Returns: An iterator that yields  vipy.video.Video objects each of length n with startframe += m, starting at frame=delay, such that each video contains the tracks and activities (if requested) for this clip sourced from the shared stream video.  note This iterator runs in a thread to help speed up fetching of frames for GPU I/Oe bound operations",
+"doc":"Stream clips of length n such that the yielded video clip contains frame(0+delay) to frame(n+delay), and next contains frame(m+delay) to frame(n+m+delay). Usage examples:  python for vc in v.stream().clip(n=16, m=2):  yields video vc with frames [0,16] from v  then video vc with frames [2,18] from v   . finally video with frames [len(v)-n-1, len(v)-1]   Introducing a delay so that the clips start at a temporal offset from v   for vc in v.stream().clip(n=8, m=3, delay=1):  yields video vc with frames [1,9]  then video vc with frames [4,12]  .   Args: n: [int] the length of the clip in frames m: [int] the stride between clips in frames delay: [int] The temporal delay in frames for the clip, must be less than n and >= 0 continuous: [bool] if true, then yield None for the sequential frames not aligned with a stride so that a clip is yielded on every frame activities: [bool] if false, then activities from the source video are not copied into the clip tracks: [bool] if false, then tracks from the source video are not copied into the clip Returns: An iterator that yields  vipy.video.Video objects each of length n with startframe += m, starting at frame=delay, such that each video contains the tracks and activities (if requested) for this clip sourced from the shared stream video.  note This iterator runs in a thread to help speed up fetching of frames for GPU I/Oe bound operations",
 "func":1
 },
 {
 "ref":"vipy.video.Stream.batch",
 "url":15,
-"doc":"Stream batches of length n such that each batch contains frames [0,n], [n+1, 2n],  . Last batch will be ragged. The primary use case for batch() is to provide a mechanism for parallel batch processing on a GPU. >>> for im_gpu in myfunc(vi.stream().batch(16 ): >>> print(im_gpu) >>> >>> def myfunc(gen): >>> for vb in gen: >>>  process the batch vb (length n) in parallel by encoding on a GPU with batchsize=n >>> for im in f_gpu(vb): >>> yield im_gpu: This will then yield the GPU batched processed image im_gpu.",
+"doc":"Stream batches of length n such that each batch contains frames [0,n], [n+1, 2n],  . Last batch will be ragged. The primary use case for batch() is to provide a mechanism for parallel batch processing on a GPU.   for im_gpu in myfunc(vi.stream().batch(16 ): print(im_gpu) def myfunc(gen): for vb in gen:  process the batch vb (length n) in parallel by encoding on a GPU with batchsize=n for im in f_gpu(vb): yield im_gpu:   This will then yield the GPU batched processed image im_gpu.",
 "func":1
 },
 {
@@ -7178,18 +7178,18 @@ INDEX=[
 {
 "ref":"vipy.video.Video",
 "url":15,
-"doc":"vipy.video.Video class The vipy.video class provides a fluent, lazy interface for representing, transforming and visualizing videos. The following constructors are supported: >>> vid = vipy.video.Video(filename='/path/to/video.ext') Valid video extensions are those that are supported by ffmpeg ['.avi','.mp4','.mov','.wmv','.mpg', 'mkv', 'webm']. >>> vid = vipy.video.Video(url='https: www.youtube.com/watch?v=MrIN959JuV8') >>> vid = vipy.video.Video(url='http: path/to/video.ext', filename='/path/to/video.ext') Youtube URLs are downloaded to a temporary filename, retrievable as vid.download().filename(). If the environment variable 'VIPY_CACHE' is defined, then videos are saved to this directory rather than the system temporary directory. If a filename is provided to the constructor, then that filename will be used instead of a temp or cached filename. URLs can be defined as an absolute URL to a video file, or to a site supported by 'youtube-dl' (https: ytdl-org.github.io/youtube-dl/supportedsites.html) >>> vid = vipy.video.Video(url='s3: BUCKET.s3.amazonaws.com/PATH/video.ext') If you set the environment variables VIPY_AWS_ACCESS_KEY_ID and VIPY_AWS_SECRET_ACCESS_KEY, then this will download videos directly from S3 using boto3 and store in VIPY_CACHE. Note that the URL protocol should be 's3' and not 'http' to enable keyed downloads. >>> vid = vipy.video.Video(array=array, colorspace='rgb') The input 'array' is an NxHxWx3 numpy array corresponding to an N-length list of HxWx3 uint8 numpy array which is a single frame of pre-loaded video Note that some video transformations are only available prior to load(), and the array() is assumed immutable after load(). >>> frames = [im for im in vipy.video.RandomVideo()] >>> vid = vipy.video.Video(frames=frames) The input can be an RTSP video stream. Note that streaming is most efficiently performed using  vipy.video.Scene . The URL must contain the 'rtsp: ' url scheme. You can experiment with this using the free Periscope H.264 RTSP App (https: apps.apple.com/us/app/periscope-hd-h-264-rtsp-cam/id1095600218) >>> vipy.video.Scene(url='rtsp: 127.0.0.1:8554/live.sdp').show() >>> for im in vipy.video.Scene(url='rtsp: 127.0.0.1:8554/live.sdp').stream(): >>> print(im) See also 'pip install heyvi' Args: filename: [str] The path to a video file. url: [str] The URL to a video file. If filename is not provided, then a random filename is assigned in VIPY_CACHE on download framerate: [float] The framerate of the video file. This is required. You can introspect this using ffprobe. attributes: [dict] A user supplied dictionary of metadata about this video. colorspace: [str] Must be in ['rgb', 'float'] array: [numpy] An NxHxWxC numpy array for N frames each HxWxC shape startframe: [int] A start frame to clip the video endframe: [int] An end frame to clip the video startsec: [float] A start time in seconds to clip the video (this requires setting framerate) endsec: [float] An end time in seconds to clip the video (this requires setting framerate) frames: [list of  vipy.image.Image ] A list of frames in the video probeshape: [bool] If true, then probe the shape of the video from ffprobe to avoid an explicit preview later. This can speed up loading in some circumstances."
+"doc":"vipy.video.Video class The vipy.video class provides a fluent, lazy interface for representing, transforming and visualizing videos. The following constructors are supported:   vid = vipy.video.Video(filename='/path/to/video.ext')   Valid video extensions are those that are supported by ffmpeg ['.avi','.mp4','.mov','.wmv','.mpg', 'mkv', 'webm'].   vid = vipy.video.Video(url='https: www.youtube.com/watch?v=MrIN959JuV8') vid = vipy.video.Video(url='http: path/to/video.ext', filename='/path/to/video.ext')   Youtube URLs are downloaded to a temporary filename, retrievable as vid.download().filename(). If the environment variable 'VIPY_CACHE' is defined, then videos are saved to this directory rather than the system temporary directory. If a filename is provided to the constructor, then that filename will be used instead of a temp or cached filename. URLs can be defined as an absolute URL to a video file, or to a site supported by 'youtube-dl' (https: ytdl-org.github.io/youtube-dl/supportedsites.html)   vid = vipy.video.Video(url='s3: BUCKET.s3.amazonaws.com/PATH/video.ext')   If you set the environment variables VIPY_AWS_ACCESS_KEY_ID and VIPY_AWS_SECRET_ACCESS_KEY, then this will download videos directly from S3 using boto3 and store in VIPY_CACHE. Note that the URL protocol should be 's3' and not 'http' to enable keyed downloads.   vid = vipy.video.Video(array=array, colorspace='rgb')   The input 'array' is an NxHxWx3 numpy array corresponding to an N-length list of HxWx3 uint8 numpy array which is a single frame of pre-loaded video Note that some video transformations are only available prior to load(), and the array() is assumed immutable after load().   frames = [im for im in vipy.video.RandomVideo()] vid = vipy.video.Video(frames=frames)   The input can be an RTSP video stream. Note that streaming is most efficiently performed using  vipy.video.Scene . The URL must contain the 'rtsp: ' url scheme. You can experiment with this using the free Periscope H.264 RTSP App (https: apps.apple.com/us/app/periscope-hd-h-264-rtsp-cam/id1095600218)   vipy.video.Scene(url='rtsp: 127.0.0.1:8554/live.sdp').show() for im in vipy.video.Scene(url='rtsp: 127.0.0.1:8554/live.sdp').stream(): print(im)   See also 'pip install heyvi' Args: filename: [str] The path to a video file. url: [str] The URL to a video file. If filename is not provided, then a random filename is assigned in VIPY_CACHE on download framerate: [float] The framerate of the video file. This is required. You can introspect this using ffprobe. attributes: [dict] A user supplied dictionary of metadata about this video. colorspace: [str] Must be in ['rgb', 'float'] array: [numpy] An NxHxWxC numpy array for N frames each HxWxC shape startframe: [int] A start frame to clip the video endframe: [int] An end frame to clip the video startsec: [float] A start time in seconds to clip the video (this requires setting framerate) endsec: [float] An end time in seconds to clip the video (this requires setting framerate) frames: [list of  vipy.image.Image ] A list of frames in the video probeshape: [bool] If true, then probe the shape of the video from ffprobe to avoid an explicit preview later. This can speed up loading in some circumstances."
 },
 {
 "ref":"vipy.video.Video.cast",
 "url":15,
-"doc":"Cast a conformal video object to a  vipy.video.Video object. This is useful for downcasting superclasses. >>> vs = vipy.video.RandomScene() >>> v = vipy.video.Video.cast(vs)",
+"doc":"Cast a conformal video object to a  vipy.video.Video object. This is useful for downcasting superclasses.   vs = vipy.video.RandomScene() v = vipy.video.Video.cast(vs)  ",
 "func":1
 },
 {
 "ref":"vipy.video.Video.from_json",
 "url":15,
-"doc":"Import a json string as a  vipy.video.Video object. This will perform a round trip from a video to json and back to a video object. This same operation is used for serialization of all vipy objects to JSON for storage. >>> v = vipy.video.Video.from_json(vipy.video.RandomVideo().json( ",
+"doc":"Import a json string as a  vipy.video.Video object. This will perform a round trip from a video to json and back to a video object. This same operation is used for serialization of all vipy objects to JSON for storage.   v = vipy.video.Video.from_json(vipy.video.RandomVideo().json(  ",
 "func":1
 },
 {
@@ -7201,7 +7201,7 @@ INDEX=[
 {
 "ref":"vipy.video.Video.sanitize",
 "url":15,
-"doc":"Remove all private keys from the attributes dictionary. The attributes dictionary is useful storage for arbitrary (key,value) pairs. However, this storage may contain sensitive information that should be scrubbed from the video before serialization. As a general rule, any key that is of the form '__keyname' prepended by two underscores is a private key. This is analogous to private or reserved attributes in the python lanugage. Users should reserve these keynames for those keys that should be sanitized and removed before any seerialization of this object. >>> assert self.setattribute('__mykey', 1).sanitize().hasattribute('__mykey')  False",
+"doc":"Remove all private keys from the attributes dictionary. The attributes dictionary is useful storage for arbitrary (key,value) pairs. However, this storage may contain sensitive information that should be scrubbed from the video before serialization. As a general rule, any key that is of the form '__keyname' prepended by two underscores is a private key. This is analogous to private or reserved attributes in the python lanugage. Users should reserve these keynames for those keys that should be sanitized and removed before any seerialization of this object.   assert self.setattribute('__mykey', 1).sanitize().hasattribute('__mykey')  False  ",
 "func":1
 },
 {
@@ -7219,7 +7219,7 @@ INDEX=[
 {
 "ref":"vipy.video.Video.store",
 "url":15,
-"doc":"Store the current video file as an attribute of this object. Useful for archiving an object to be fully self contained without any external references. >>> v  v.store().restore(v.filename(  note -Remove this stored video using unstore() -Unpack this stored video and set up the video chains using restore() -This method is more efficient than load() followed by pkl(), as it stores the encoded video as a byte string. -Useful for creating a single self contained object for distributed processing.",
+"doc":"Store the current video file as an attribute of this object. Useful for archiving an object to be fully self contained without any external references.   v  v.store().restore(v.filename(    note -Remove this stored video using unstore() -Unpack this stored video and set up the video chains using restore() -This method is more efficient than load() followed by pkl(), as it stores the encoded video as a byte string. -Useful for creating a single self contained object for distributed processing.",
 "func":1
 },
 {
@@ -7237,13 +7237,13 @@ INDEX=[
 {
 "ref":"vipy.video.Video.concatenate",
 "url":15,
-"doc":"Temporally concatenate a sequence of videos into a single video stored in outfile. >>> (v1, v2, v3) = (vipy.video.RandomVideo(128,128,32), vipy.video.RandomVideo(128,128,32), vipy.video.RandomVideo(128,128,32 >>> vc = vipy.video.Video.concatenate v1, v2, v3), 'concatenated.mp4', youtube_chapters=lambda v: v.category( In this example, vc will point to concatenated.mp4 which will contain (v1,v2,v3) concatenated temporally . Input: videos: a single video or an iterable of videos of type  vipy.video.Video or an iterable of video files outfile: the output filename to store the concatenation. youtube_chapters [bool, callable]: If true, output a string that can be used to define the start and end times of chapters if this video is uploaded to youtube. The string output should be copied to the youtube video description in order to enable chapters on playback. This argument will default to the string representation ofo the video, but you may also pass a callable of the form: 'youtube_chapters=lambda v: str(v)' which will output the provided string for each video chapter. A useful lambda is 'youtube_chapters=lambda v: v.category()' framerate [float]: The output frame rate of outfile Returns: A  vipy.video.Video object with filename()=outfile, such that outfile contains the temporal concatenation of pixels in (self, videos).  note -self will not be modified, this will return a new  vipy.video.Video object. -All videos must be the same shape(). If the videos are different shapes, you must pad them to a common size equal to self.shape(). Try  vipy.video.Video.zeropadlike . -The output video will be at the framerate of self.framerate(). -if you want to concatenate annotations, call  vipy.video.Scene.annotate first on the videos to save the annotations into the pixels, then concatenate.",
+"doc":"Temporally concatenate a sequence of videos into a single video stored in outfile.   (v1, v2, v3) = (vipy.video.RandomVideo(128,128,32), vipy.video.RandomVideo(128,128,32), vipy.video.RandomVideo(128,128,32 vc = vipy.video.Video.concatenate v1, v2, v3), 'concatenated.mp4', youtube_chapters=lambda v: v.category(   In this example, vc will point to concatenated.mp4 which will contain (v1,v2,v3) concatenated temporally . Args: videos: a single video or an iterable of videos of type  vipy.video.Video or an iterable of video files outfile: the output filename to store the concatenation. youtube_chapters: [bool, callable]: If true, output a string that can be used to define the start and end times of chapters if this video is uploaded to youtube. The string output should be copied to the youtube video description in order to enable chapters on playback. This argument will default to the string representation ofo the video, but you may also pass a callable of the form: 'youtube_chapters=lambda v: str(v)' which will output the provided string for each video chapter. A useful lambda is 'youtube_chapters=lambda v: v.category()' framerate: [float]: The output frame rate of outfile Returns: A  vipy.video.Video object with filename()=outfile, such that outfile contains the temporal concatenation of pixels in (self, videos).  note - self will not be modified, this will return a new  vipy.video.Video object. - All videos must be the same shape(). If the videos are different shapes, you must pad them to a common size equal to self.shape(). Try  vipy.video.Video.zeropadlike . - The output video will be at the framerate of self.framerate(). - if you want to concatenate annotations, call  vipy.video.Scene.annotate first on the videos to save the annotations into the pixels, then concatenate.",
 "func":1
 },
 {
 "ref":"vipy.video.Video.stream",
 "url":15,
-"doc":"Iterator to yield groups of frames streaming from video. A video stream is a real time iterator to read or write from a video. Streams are useful to group together frames into clips that are operated on as a group. The following use cases are supported: >>> v = vipy.video.RandomScene() Stream individual video frames lagged by 10 frames and 20 frames >>> for (im1, im2) in zip(v.stream().frame(n=-10), v.stream().frame(n=-20 : >>> print(im1, im2) Stream overlapping clips such that each clip is a video n=16 frames long and starts at frame i, and the next clip is n=16 frames long and starts at frame i=i+m >>> for vc in v.stream().clip(n=16, m=4): >>> print(vc) Stream non-overlapping batches of frames such that each clip is a video of length n and starts at frame i, and the next clip is length n and starts at frame i+n >>> for vb in v.stream().batch(n=16): >>> print(vb) Create a write stream to incrementally add frames to long video. >>> vi = vipy.video.Video(filename='/path/to/output.mp4') >>> vo = vipy.video.Video(filename='/path/to/input.mp4') >>> with vo.stream(write=True) as s: >>> for im in vi.stream(): >>> s.write(im)  manipulate pixels of im, if desired Create a 480p YouTube live stream from an RTSP camera at 5Hz >>> vo = vipy.video.Scene(url='rtmp: a.rtmp.youtube.com/live2/$SECRET_STREAM_KEY') >>> vi = vipy.video.Scene(url='rtsp: URL').framerate(5) >>> with vo.framerate(5).stream(write=True, bitrate='1000k') as s: >>> for im in vi.framerate(5).resize(cols=854, rows=480): >>> s.write(im) Args: write: [bool] If true, create a write stream overwrite: [bool] If true, and the video output filename already exists, overwrite it bufsize: [int] The maximum queue size for the ffmpeg pipe thread in the primary iterator. The queue size is the maximum size of pre-fetched frames from the ffmpeg pip. This should be big enough that you are never waiting for queue fills bitrate: [str] The ffmpeg bitrate of the output encoder for writing, written like '2000k' bufsize: [int] The maximum size of the stream buffer in frames. The stream buffer length should be big enough so that all iterators can yield before deleting old frames Returns: A Stream object  note Using this iterator may affect PDB debugging due to stdout/stdin redirection. Use ipdb instead.",
+"doc":"Iterator to yield groups of frames streaming from video. A video stream is a real time iterator to read or write from a video. Streams are useful to group together frames into clips that are operated on as a group. The following use cases are supported:   v = vipy.video.RandomScene()   Stream individual video frames lagged by 10 frames and 20 frames   for (im1, im2) in zip(v.stream().frame(n=-10), v.stream().frame(n=-20 : print(im1, im2)   Stream overlapping clips such that each clip is a video n=16 frames long and starts at frame i, and the next clip is n=16 frames long and starts at frame i=i+m   for vc in v.stream().clip(n=16, m=4): print(vc)   Stream non-overlapping batches of frames such that each clip is a video of length n and starts at frame i, and the next clip is length n and starts at frame i+n   for vb in v.stream().batch(n=16): print(vb)   Create a write stream to incrementally add frames to long video.   vi = vipy.video.Video(filename='/path/to/output.mp4') vo = vipy.video.Video(filename='/path/to/input.mp4') with vo.stream(write=True) as s: for im in vi.stream(): s.write(im)  manipulate pixels of im, if desired   Create a 480p YouTube live stream from an RTSP camera at 5Hz   vo = vipy.video.Scene(url='rtmp: a.rtmp.youtube.com/live2/$SECRET_STREAM_KEY') vi = vipy.video.Scene(url='rtsp: URL').framerate(5) with vo.framerate(5).stream(write=True, bitrate='1000k') as s: for im in vi.framerate(5).resize(cols=854, rows=480): s.write(im)   Args: write: [bool] If true, create a write stream overwrite: [bool] If true, and the video output filename already exists, overwrite it bufsize: [int] The maximum queue size for the ffmpeg pipe thread in the primary iterator. The queue size is the maximum size of pre-fetched frames from the ffmpeg pip. This should be big enough that you are never waiting for queue fills bitrate: [str] The ffmpeg bitrate of the output encoder for writing, written like '2000k' bufsize: [int] The maximum size of the stream buffer in frames. The stream buffer length should be big enough so that all iterators can yield before deleting old frames Returns: A Stream object  note Using this iterator may affect PDB debugging due to stdout/stdin redirection. Use ipdb instead.",
 "func":1
 },
 {
@@ -7441,7 +7441,7 @@ INDEX=[
 {
 "ref":"vipy.video.Video.fromdirectory",
 "url":15,
-"doc":"Create a video from a directory of frames stored as individual image filenames. Given a directory with files: framedir/image_0001.jpg framedir/image_0002.jpg >>> vipy.video.Video(frames='/path/to/framedir')",
+"doc":"Create a video from a directory of frames stored as individual image filenames. Given a directory with files: framedir/image_0001.jpg framedir/image_0002.jpg   vipy.video.Video(frames='/path/to/framedir')  ",
 "func":1
 },
 {
@@ -7501,7 +7501,7 @@ INDEX=[
 {
 "ref":"vipy.video.Video.relpath",
 "url":15,
-"doc":"Replace the filename with a relative path to parent (or current working directory if none). Usage: >>> v = vipy.video.Video(filename='/path/to/dataset/video/category/out.mp4') >>> v.relpath(parent='/path/to/dataset') >>> v.filename()  'video/category/out.mp4' If the current working directory is /path/to/dataset, and v.load() is called, the filename will be loaded. Args: parent [str]: A parent path of the current filename to remove and be relative to. If filename is '/path/to/video.mp4' then filename must start with parent, then parent will be remvoed from filename. start [str]: Return a relative filename starting from path start='/path/to/dir' that will create a relative path to this filename. If start='/a/b/c' and filename='/a/b/d/e/f.ext' then return filename ' /d/e/f.ext' Returns: This video object with the filename changed to be a relative path",
+"doc":"Replace the filename with a relative path to parent (or current working directory if none). Usage:   v = vipy.video.Video(filename='/path/to/dataset/video/category/out.mp4') v.relpath(parent='/path/to/dataset') v.filename()  'video/category/out.mp4'   If the current working directory is /path/to/dataset, and v.load() is called, the filename will be loaded. Args: parent [str]: A parent path of the current filename to remove and be relative to. If filename is '/path/to/video.mp4' then filename must start with parent, then parent will be remvoed from filename. start [str]: Return a relative filename starting from path start='/path/to/dir' that will create a relative path to this filename. If start='/a/b/c' and filename='/a/b/d/e/f.ext' then return filename ' /d/e/f.ext' Returns: This video object with the filename changed to be a relative path",
 "func":1
 },
 {
@@ -7609,7 +7609,7 @@ INDEX=[
 {
 "ref":"vipy.video.Video.cliprange",
 "url":15,
-"doc":"Return the planned clip (startframe, endframe) range. This is useful for introspection of the planned clip() before load(), such as for data augmentation purposes without triggering a load. Returns: (startframe, endframe) of the video() such that after load(), the pixel buffer will contain frame=0 equivalent to startframe in the source video, and frame=endframe-startframe-1 equivalent to endframe in the source video. (0, None) If a video does not have a clip() (e.g. clip() was never called, the filter chain does not include a 'trim')  notes The endframe can be retrieved (inefficiently) using: >>> int(round(self.duration_in_frames_of_videofile()  (self.framerate() / self.framerate_of_videofile(  ",
+"doc":"Return the planned clip (startframe, endframe) range. This is useful for introspection of the planned clip() before load(), such as for data augmentation purposes without triggering a load. Returns: (startframe, endframe) of the video() such that after load(), the pixel buffer will contain frame=0 equivalent to startframe in the source video, and frame=endframe-startframe-1 equivalent to endframe in the source video. (0, None) If a video does not have a clip() (e.g. clip() was never called, the filter chain does not include a 'trim')  notes The endframe can be retrieved (inefficiently) using:   int(round(self.duration_in_frames_of_videofile()  (self.framerate() / self.framerate_of_videofile(   ",
 "func":1
 },
 {
@@ -7789,7 +7789,7 @@ INDEX=[
 {
 "ref":"vipy.video.Video.quicklook",
 "url":15,
-"doc":"Generate a montage of n uniformly spaced frames. Montage increases rowwise for n uniformly spaced frames, starting from frame zero and ending on the last frame. Input: -n: Number of images in the quicklook -mindim: The minimum dimension of each of the elements in the montage -animate: If true, return a video constructed by animating the quicklook into a video by showing dt consecutive frames -dt: The number of frames for animation -startframe: The initial frame index to start the n uniformly sampled frames for the quicklook  note The first frame in the upper left is guaranteed to be the start frame of the labeled activity, but the last frame in the bottom right may not be precisely the end frame and may be off by at most len(video)/9.",
+"doc":"Generate a montage of n uniformly spaced frames. Montage increases rowwise for n uniformly spaced frames, starting from frame zero and ending on the last frame. Input: n: Number of images in the quicklook mindim: The minimum dimension of each of the elements in the montage animate: If true, return a video constructed by animating the quicklook into a video by showing dt consecutive frames dt: The number of frames for animation startframe: The initial frame index to start the n uniformly sampled frames for the quicklook  note The first frame in the upper left is guaranteed to be the start frame of the labeled activity, but the last frame in the bottom right may not be precisely the end frame and may be off by at most len(video)/9.",
 "func":1
 },
 {
@@ -7890,7 +7890,7 @@ INDEX=[
 {
 "ref":"vipy.video.VideoCategory.from_json",
 "url":15,
-"doc":"Import a json string as a  vipy.video.Video object. This will perform a round trip from a video to json and back to a video object. This same operation is used for serialization of all vipy objects to JSON for storage. >>> v = vipy.video.Video.from_json(vipy.video.RandomVideo().json( ",
+"doc":"Import a json string as a  vipy.video.Video object. This will perform a round trip from a video to json and back to a video object. This same operation is used for serialization of all vipy objects to JSON for storage.   v = vipy.video.Video.from_json(vipy.video.RandomVideo().json(  ",
 "func":1
 },
 {
@@ -7908,7 +7908,7 @@ INDEX=[
 {
 "ref":"vipy.video.VideoCategory.cast",
 "url":15,
-"doc":"Cast a conformal video object to a  vipy.video.Video object. This is useful for downcasting superclasses. >>> vs = vipy.video.RandomScene() >>> v = vipy.video.Video.cast(vs)",
+"doc":"Cast a conformal video object to a  vipy.video.Video object. This is useful for downcasting superclasses.   vs = vipy.video.RandomScene() v = vipy.video.Video.cast(vs)  ",
 "func":1
 },
 {
@@ -7920,7 +7920,7 @@ INDEX=[
 {
 "ref":"vipy.video.VideoCategory.sanitize",
 "url":15,
-"doc":"Remove all private keys from the attributes dictionary. The attributes dictionary is useful storage for arbitrary (key,value) pairs. However, this storage may contain sensitive information that should be scrubbed from the video before serialization. As a general rule, any key that is of the form '__keyname' prepended by two underscores is a private key. This is analogous to private or reserved attributes in the python lanugage. Users should reserve these keynames for those keys that should be sanitized and removed before any seerialization of this object. >>> assert self.setattribute('__mykey', 1).sanitize().hasattribute('__mykey')  False",
+"doc":"Remove all private keys from the attributes dictionary. The attributes dictionary is useful storage for arbitrary (key,value) pairs. However, this storage may contain sensitive information that should be scrubbed from the video before serialization. As a general rule, any key that is of the form '__keyname' prepended by two underscores is a private key. This is analogous to private or reserved attributes in the python lanugage. Users should reserve these keynames for those keys that should be sanitized and removed before any seerialization of this object.   assert self.setattribute('__mykey', 1).sanitize().hasattribute('__mykey')  False  ",
 "func":1
 },
 {
@@ -7938,7 +7938,7 @@ INDEX=[
 {
 "ref":"vipy.video.VideoCategory.store",
 "url":15,
-"doc":"Store the current video file as an attribute of this object. Useful for archiving an object to be fully self contained without any external references. >>> v  v.store().restore(v.filename(  note -Remove this stored video using unstore() -Unpack this stored video and set up the video chains using restore() -This method is more efficient than load() followed by pkl(), as it stores the encoded video as a byte string. -Useful for creating a single self contained object for distributed processing.",
+"doc":"Store the current video file as an attribute of this object. Useful for archiving an object to be fully self contained without any external references.   v  v.store().restore(v.filename(    note -Remove this stored video using unstore() -Unpack this stored video and set up the video chains using restore() -This method is more efficient than load() followed by pkl(), as it stores the encoded video as a byte string. -Useful for creating a single self contained object for distributed processing.",
 "func":1
 },
 {
@@ -7956,13 +7956,13 @@ INDEX=[
 {
 "ref":"vipy.video.VideoCategory.concatenate",
 "url":15,
-"doc":"Temporally concatenate a sequence of videos into a single video stored in outfile. >>> (v1, v2, v3) = (vipy.video.RandomVideo(128,128,32), vipy.video.RandomVideo(128,128,32), vipy.video.RandomVideo(128,128,32 >>> vc = vipy.video.Video.concatenate v1, v2, v3), 'concatenated.mp4', youtube_chapters=lambda v: v.category( In this example, vc will point to concatenated.mp4 which will contain (v1,v2,v3) concatenated temporally . Input: videos: a single video or an iterable of videos of type  vipy.video.Video or an iterable of video files outfile: the output filename to store the concatenation. youtube_chapters [bool, callable]: If true, output a string that can be used to define the start and end times of chapters if this video is uploaded to youtube. The string output should be copied to the youtube video description in order to enable chapters on playback. This argument will default to the string representation ofo the video, but you may also pass a callable of the form: 'youtube_chapters=lambda v: str(v)' which will output the provided string for each video chapter. A useful lambda is 'youtube_chapters=lambda v: v.category()' framerate [float]: The output frame rate of outfile Returns: A  vipy.video.Video object with filename()=outfile, such that outfile contains the temporal concatenation of pixels in (self, videos).  note -self will not be modified, this will return a new  vipy.video.Video object. -All videos must be the same shape(). If the videos are different shapes, you must pad them to a common size equal to self.shape(). Try  vipy.video.Video.zeropadlike . -The output video will be at the framerate of self.framerate(). -if you want to concatenate annotations, call  vipy.video.Scene.annotate first on the videos to save the annotations into the pixels, then concatenate.",
+"doc":"Temporally concatenate a sequence of videos into a single video stored in outfile.   (v1, v2, v3) = (vipy.video.RandomVideo(128,128,32), vipy.video.RandomVideo(128,128,32), vipy.video.RandomVideo(128,128,32 vc = vipy.video.Video.concatenate v1, v2, v3), 'concatenated.mp4', youtube_chapters=lambda v: v.category(   In this example, vc will point to concatenated.mp4 which will contain (v1,v2,v3) concatenated temporally . Args: videos: a single video or an iterable of videos of type  vipy.video.Video or an iterable of video files outfile: the output filename to store the concatenation. youtube_chapters: [bool, callable]: If true, output a string that can be used to define the start and end times of chapters if this video is uploaded to youtube. The string output should be copied to the youtube video description in order to enable chapters on playback. This argument will default to the string representation ofo the video, but you may also pass a callable of the form: 'youtube_chapters=lambda v: str(v)' which will output the provided string for each video chapter. A useful lambda is 'youtube_chapters=lambda v: v.category()' framerate: [float]: The output frame rate of outfile Returns: A  vipy.video.Video object with filename()=outfile, such that outfile contains the temporal concatenation of pixels in (self, videos).  note - self will not be modified, this will return a new  vipy.video.Video object. - All videos must be the same shape(). If the videos are different shapes, you must pad them to a common size equal to self.shape(). Try  vipy.video.Video.zeropadlike . - The output video will be at the framerate of self.framerate(). - if you want to concatenate annotations, call  vipy.video.Scene.annotate first on the videos to save the annotations into the pixels, then concatenate.",
 "func":1
 },
 {
 "ref":"vipy.video.VideoCategory.stream",
 "url":15,
-"doc":"Iterator to yield groups of frames streaming from video. A video stream is a real time iterator to read or write from a video. Streams are useful to group together frames into clips that are operated on as a group. The following use cases are supported: >>> v = vipy.video.RandomScene() Stream individual video frames lagged by 10 frames and 20 frames >>> for (im1, im2) in zip(v.stream().frame(n=-10), v.stream().frame(n=-20 : >>> print(im1, im2) Stream overlapping clips such that each clip is a video n=16 frames long and starts at frame i, and the next clip is n=16 frames long and starts at frame i=i+m >>> for vc in v.stream().clip(n=16, m=4): >>> print(vc) Stream non-overlapping batches of frames such that each clip is a video of length n and starts at frame i, and the next clip is length n and starts at frame i+n >>> for vb in v.stream().batch(n=16): >>> print(vb) Create a write stream to incrementally add frames to long video. >>> vi = vipy.video.Video(filename='/path/to/output.mp4') >>> vo = vipy.video.Video(filename='/path/to/input.mp4') >>> with vo.stream(write=True) as s: >>> for im in vi.stream(): >>> s.write(im)  manipulate pixels of im, if desired Create a 480p YouTube live stream from an RTSP camera at 5Hz >>> vo = vipy.video.Scene(url='rtmp: a.rtmp.youtube.com/live2/$SECRET_STREAM_KEY') >>> vi = vipy.video.Scene(url='rtsp: URL').framerate(5) >>> with vo.framerate(5).stream(write=True, bitrate='1000k') as s: >>> for im in vi.framerate(5).resize(cols=854, rows=480): >>> s.write(im) Args: write: [bool] If true, create a write stream overwrite: [bool] If true, and the video output filename already exists, overwrite it bufsize: [int] The maximum queue size for the ffmpeg pipe thread in the primary iterator. The queue size is the maximum size of pre-fetched frames from the ffmpeg pip. This should be big enough that you are never waiting for queue fills bitrate: [str] The ffmpeg bitrate of the output encoder for writing, written like '2000k' bufsize: [int] The maximum size of the stream buffer in frames. The stream buffer length should be big enough so that all iterators can yield before deleting old frames Returns: A Stream object  note Using this iterator may affect PDB debugging due to stdout/stdin redirection. Use ipdb instead.",
+"doc":"Iterator to yield groups of frames streaming from video. A video stream is a real time iterator to read or write from a video. Streams are useful to group together frames into clips that are operated on as a group. The following use cases are supported:   v = vipy.video.RandomScene()   Stream individual video frames lagged by 10 frames and 20 frames   for (im1, im2) in zip(v.stream().frame(n=-10), v.stream().frame(n=-20 : print(im1, im2)   Stream overlapping clips such that each clip is a video n=16 frames long and starts at frame i, and the next clip is n=16 frames long and starts at frame i=i+m   for vc in v.stream().clip(n=16, m=4): print(vc)   Stream non-overlapping batches of frames such that each clip is a video of length n and starts at frame i, and the next clip is length n and starts at frame i+n   for vb in v.stream().batch(n=16): print(vb)   Create a write stream to incrementally add frames to long video.   vi = vipy.video.Video(filename='/path/to/output.mp4') vo = vipy.video.Video(filename='/path/to/input.mp4') with vo.stream(write=True) as s: for im in vi.stream(): s.write(im)  manipulate pixels of im, if desired   Create a 480p YouTube live stream from an RTSP camera at 5Hz   vo = vipy.video.Scene(url='rtmp: a.rtmp.youtube.com/live2/$SECRET_STREAM_KEY') vi = vipy.video.Scene(url='rtsp: URL').framerate(5) with vo.framerate(5).stream(write=True, bitrate='1000k') as s: for im in vi.framerate(5).resize(cols=854, rows=480): s.write(im)   Args: write: [bool] If true, create a write stream overwrite: [bool] If true, and the video output filename already exists, overwrite it bufsize: [int] The maximum queue size for the ffmpeg pipe thread in the primary iterator. The queue size is the maximum size of pre-fetched frames from the ffmpeg pip. This should be big enough that you are never waiting for queue fills bitrate: [str] The ffmpeg bitrate of the output encoder for writing, written like '2000k' bufsize: [int] The maximum size of the stream buffer in frames. The stream buffer length should be big enough so that all iterators can yield before deleting old frames Returns: A Stream object  note Using this iterator may affect PDB debugging due to stdout/stdin redirection. Use ipdb instead.",
 "func":1
 },
 {
@@ -8142,7 +8142,7 @@ INDEX=[
 {
 "ref":"vipy.video.VideoCategory.fromdirectory",
 "url":15,
-"doc":"Create a video from a directory of frames stored as individual image filenames. Given a directory with files: framedir/image_0001.jpg framedir/image_0002.jpg >>> vipy.video.Video(frames='/path/to/framedir')",
+"doc":"Create a video from a directory of frames stored as individual image filenames. Given a directory with files: framedir/image_0001.jpg framedir/image_0002.jpg   vipy.video.Video(frames='/path/to/framedir')  ",
 "func":1
 },
 {
@@ -8184,7 +8184,7 @@ INDEX=[
 {
 "ref":"vipy.video.VideoCategory.relpath",
 "url":15,
-"doc":"Replace the filename with a relative path to parent (or current working directory if none). Usage: >>> v = vipy.video.Video(filename='/path/to/dataset/video/category/out.mp4') >>> v.relpath(parent='/path/to/dataset') >>> v.filename()  'video/category/out.mp4' If the current working directory is /path/to/dataset, and v.load() is called, the filename will be loaded. Args: parent [str]: A parent path of the current filename to remove and be relative to. If filename is '/path/to/video.mp4' then filename must start with parent, then parent will be remvoed from filename. start [str]: Return a relative filename starting from path start='/path/to/dir' that will create a relative path to this filename. If start='/a/b/c' and filename='/a/b/d/e/f.ext' then return filename ' /d/e/f.ext' Returns: This video object with the filename changed to be a relative path",
+"doc":"Replace the filename with a relative path to parent (or current working directory if none). Usage:   v = vipy.video.Video(filename='/path/to/dataset/video/category/out.mp4') v.relpath(parent='/path/to/dataset') v.filename()  'video/category/out.mp4'   If the current working directory is /path/to/dataset, and v.load() is called, the filename will be loaded. Args: parent [str]: A parent path of the current filename to remove and be relative to. If filename is '/path/to/video.mp4' then filename must start with parent, then parent will be remvoed from filename. start [str]: Return a relative filename starting from path start='/path/to/dir' that will create a relative path to this filename. If start='/a/b/c' and filename='/a/b/d/e/f.ext' then return filename ' /d/e/f.ext' Returns: This video object with the filename changed to be a relative path",
 "func":1
 },
 {
@@ -8292,7 +8292,7 @@ INDEX=[
 {
 "ref":"vipy.video.VideoCategory.cliprange",
 "url":15,
-"doc":"Return the planned clip (startframe, endframe) range. This is useful for introspection of the planned clip() before load(), such as for data augmentation purposes without triggering a load. Returns: (startframe, endframe) of the video() such that after load(), the pixel buffer will contain frame=0 equivalent to startframe in the source video, and frame=endframe-startframe-1 equivalent to endframe in the source video. (0, None) If a video does not have a clip() (e.g. clip() was never called, the filter chain does not include a 'trim')  notes The endframe can be retrieved (inefficiently) using: >>> int(round(self.duration_in_frames_of_videofile()  (self.framerate() / self.framerate_of_videofile(  ",
+"doc":"Return the planned clip (startframe, endframe) range. This is useful for introspection of the planned clip() before load(), such as for data augmentation purposes without triggering a load. Returns: (startframe, endframe) of the video() such that after load(), the pixel buffer will contain frame=0 equivalent to startframe in the source video, and frame=endframe-startframe-1 equivalent to endframe in the source video. (0, None) If a video does not have a clip() (e.g. clip() was never called, the filter chain does not include a 'trim')  notes The endframe can be retrieved (inefficiently) using:   int(round(self.duration_in_frames_of_videofile()  (self.framerate() / self.framerate_of_videofile(   ",
 "func":1
 },
 {
@@ -8472,7 +8472,7 @@ INDEX=[
 {
 "ref":"vipy.video.VideoCategory.quicklook",
 "url":15,
-"doc":"Generate a montage of n uniformly spaced frames. Montage increases rowwise for n uniformly spaced frames, starting from frame zero and ending on the last frame. Input: -n: Number of images in the quicklook -mindim: The minimum dimension of each of the elements in the montage -animate: If true, return a video constructed by animating the quicklook into a video by showing dt consecutive frames -dt: The number of frames for animation -startframe: The initial frame index to start the n uniformly sampled frames for the quicklook  note The first frame in the upper left is guaranteed to be the start frame of the labeled activity, but the last frame in the bottom right may not be precisely the end frame and may be off by at most len(video)/9.",
+"doc":"Generate a montage of n uniformly spaced frames. Montage increases rowwise for n uniformly spaced frames, starting from frame zero and ending on the last frame. Input: n: Number of images in the quicklook mindim: The minimum dimension of each of the elements in the montage animate: If true, return a video constructed by animating the quicklook into a video by showing dt consecutive frames dt: The number of frames for animation startframe: The initial frame index to start the n uniformly sampled frames for the quicklook  note The first frame in the upper left is guaranteed to be the start frame of the labeled activity, but the last frame in the bottom right may not be precisely the end frame and may be off by at most len(video)/9.",
 "func":1
 },
 {
@@ -8538,7 +8538,7 @@ INDEX=[
 {
 "ref":"vipy.video.Scene",
 "url":15,
-"doc":"vipy.video.Scene class The vipy.video.Scene class provides a fluent, lazy interface for representing, transforming and visualizing annotated videos. The following constructors are supported: >>> vid = vipy.video.Scene(filename='/path/to/video.ext') Valid video extensions are those that are supported by ffmpeg ['.avi','.mp4','.mov','.wmv','.mpg', 'mkv', 'webm']. >>> vid = vipy.video.Scene(url='https: www.youtube.com/watch?v=MrIN959JuV8') >>> vid = vipy.video.Scene(url='http: path/to/video.ext', filename='/path/to/video.ext') Youtube URLs are downloaded to a temporary filename, retrievable as vid.download().filename(). If the environment variable 'VIPY_CACHE' is defined, then videos are saved to this directory rather than the system temporary directory. If a filename is provided to the constructor, then that filename will be used instead of a temp or cached filename. URLs can be defined as an absolute URL to a video file, or to a site supported by 'youtube-dl' [https: ytdl-org.github.io/youtube-dl/supportedsites.html] >>> vid = vipy.video.Scene(array=frames, colorspace='rgb') The input 'frames' is an NxHxWx3 numpy array corresponding to an N-length list of HxWx3 uint8 numpy array which is a single frame of pre-loaded video Note that the video transformations (clip, resize, rescale, rotate) are only available prior to load(), and the array() is assumed immutable after load(). >>> vid = vipy.video.Scene(array=greyframes, colorspace='lum') The input 'greyframes' is an NxHxWx1 numpy array corresponding to an N-length list of HxWx3 uint8 numpy array which is a single frame of pre-loaded video This corresponds to the luminance of an RGB colorspace >>> vid = vipy.video.Scene(array=greyframes, colorspace='lum', tracks=tracks, activities=activities)  tracks = [vipy.object.Track(),  .]  activities = [vipy.object.Activity(),  .] The inputs are lists of tracks and/or activities. An object is a spatial bounding box with a category label. A track is a spatiotemporal bounding box with a category label, such that the box contains the same instance of an object. An activity is one or more tracks with a start and end frame for an activity performed by the object instances. Track and activity timing must be relative to the start frame of the Scene() constructor."
+"doc":"vipy.video.Scene class The vipy.video.Scene class provides a fluent, lazy interface for representing, transforming and visualizing annotated videos. The following constructors are supported:   vid = vipy.video.Scene(filename='/path/to/video.ext')   Valid video extensions are those that are supported by ffmpeg ['.avi','.mp4','.mov','.wmv','.mpg', 'mkv', 'webm'].   vid = vipy.video.Scene(url='https: www.youtube.com/watch?v=MrIN959JuV8') vid = vipy.video.Scene(url='http: path/to/video.ext', filename='/path/to/video.ext')   Youtube URLs are downloaded to a temporary filename, retrievable as vid.download().filename(). If the environment variable 'VIPY_CACHE' is defined, then videos are saved to this directory rather than the system temporary directory. If a filename is provided to the constructor, then that filename will be used instead of a temp or cached filename. URLs can be defined as an absolute URL to a video file, or to a site supported by 'youtube-dl' [https: ytdl-org.github.io/youtube-dl/supportedsites.html]   vid = vipy.video.Scene(array=frames, colorspace='rgb')   The input 'frames' is an NxHxWx3 numpy array corresponding to an N-length list of HxWx3 uint8 numpy array which is a single frame of pre-loaded video Note that the video transformations (clip, resize, rescale, rotate) are only available prior to load(), and the array() is assumed immutable after load().   vid = vipy.video.Scene(array=greyframes, colorspace='lum')   The input 'greyframes' is an NxHxWx1 numpy array corresponding to an N-length list of HxWx3 uint8 numpy array which is a single frame of pre-loaded video This corresponds to the luminance of an RGB colorspace   vid = vipy.video.Scene(array=greyframes, colorspace='lum', tracks=tracks, activities=activities)   - tracks = [vipy.object.Track(),  .] - activities = [vipy.object.Activity(),  .] The inputs are lists of tracks and/or activities. An object is a spatial bounding box with a category label. A track is a spatiotemporal bounding box with a category label, such that the box contains the same instance of an object. An activity is one or more tracks with a start and end frame for an activity performed by the object instances. Track and activity timing must be relative to the start frame of the Scene() constructor."
 },
 {
 "ref":"vipy.video.Scene.cast",
@@ -8549,13 +8549,13 @@ INDEX=[
 {
 "ref":"vipy.video.Scene.asjson",
 "url":15,
-"doc":"Restore an object serialized with self.json(). Alas for  vipy.video.Scene.from_json . Usage: >>> vs = vipy.video.Scene.asjson(v.json( ",
+"doc":"Restore an object serialized with self.json(). Alas for  vipy.video.Scene.from_json . Usage:   vs = vipy.video.Scene.asjson(v.json(  ",
 "func":1
 },
 {
 "ref":"vipy.video.Scene.from_json",
 "url":15,
-"doc":"Restore an object serialized with self.json() Usage: >>> vs = vipy.video.Scene.from_json(v.json( ",
+"doc":"Restore an object serialized with self.json() Usage:   vs = vipy.video.Scene.from_json(v.json(  ",
 "func":1
 },
 {
@@ -8603,7 +8603,7 @@ INDEX=[
 {
 "ref":"vipy.video.Scene.quicklook",
 "url":15,
-"doc":"Generate a montage of n uniformly spaced annotated frames centered on the union of the labeled boxes in the current frame to show the activity ocurring in this scene at a glance Montage increases rowwise for n uniformly spaced frames, starting from frame zero and ending on the last frame. This quicklook is most useful when len(self.activities() 1) for generating a quicklook from an activityclip(). Args: n [int]: Number of images in the quicklook dilate [float]: The dilation factor for the bounding box prior to crop for display mindim [int]: The minimum dimension of each of the elemnets in the montage fontsize [int]: The size of the font for the bounding box label context [bool]: If true, replace the first and last frame in the montage with the full frame annotation, to help show the scale of the scene animate [bool]: If true, return a video constructed by animating the quicklook into a video by showing dt consecutive frames dt [int]: The number of frames for animation startframe [int]: The initial frame index to start the n uniformly sampled frames for the quicklook",
+"doc":"Generate a montage of n uniformly spaced annotated frames centered on the union of the labeled boxes in the current frame to show the activity ocurring in this scene at a glance Montage increases rowwise for n uniformly spaced frames, starting from frame zero and ending on the last frame. This quicklook is most useful when len(self.activities() 1) for generating a quicklook from an activityclip(). Args: n: [int]: Number of images in the quicklook dilate: [float]: The dilation factor for the bounding box prior to crop for display mindim: [int]: The minimum dimension of each of the elemnets in the montage fontsize: [int]: The size of the font for the bounding box label context: [bool]: If true, replace the first and last frame in the montage with the full frame annotation, to help show the scale of the scene animate: [bool]: If true, return a video constructed by animating the quicklook into a video by showing dt consecutive frames dt: [int]: The number of frames for animation startframe: [int]: The initial frame index to start the n uniformly sampled frames for the quicklook",
 "func":1
 },
 {
@@ -8663,7 +8663,7 @@ INDEX=[
 {
 "ref":"vipy.video.Scene.actorid",
 "url":15,
-"doc":"Return or set the actor ID for the video. - The actor ID is the track ID of the primary actor in the scene. This is useful for assigning a role for activities that are performed by the actor. - The actor ID is the first track is in the tracklist Args: id: [str] if not None, then use this track ID as the actor fluent: [bool] If true, always return self. This is useful for those cases where the actorid being set is None. Returns: [id=None, fluent=False] the actor ID [id is not None] The video with the actor ID set, only if the ID is found in the tracklist  note Not to be confused with biometric subject id. For videos collected with Visym Collector platform (https: visym.com/collector), the biometric subbject ID can be retrieved via  vipy.video.Video.metadata (e.g. self.metadata()['subject_ids']).",
+"doc":"Return or set the actor ID for the video. - The actor ID is the track ID of the primary actor in the scene. This is useful for assigning a role for activities that are performed by the actor. - The actor ID is the first track is in the tracklist Args: id: [str] if not None, then use this track ID as the actor fluent: [bool] If true, always return self. This is useful for those cases where the actorid being set is None. Returns: [id=None, fluent=False] the actor ID [id is not None] The video with the actor ID set, only if the ID is found in the tracklist  note Not to be confused with biometric subject id. For videos collected with Visym Collector platform (https: visym.com/collector), the biometric subject ID can be retrieved via  vipy.video.Video.metadata (e.g. self.metadata()['subject_ids']).",
 "func":1
 },
 {
@@ -8717,7 +8717,7 @@ INDEX=[
 {
 "ref":"vipy.video.Scene.activityfilter",
 "url":15,
-"doc":"Apply boolean lambda function f to each activity and keep activity if function is true, remove activity if function is false Filter out all activities longer than 128 frames >>> vid = vid.activityfilter(lambda a: len(a) >> vid = vid.activityfilter(lambda a: a.category() in set(['category1', 'category2'] Args: f: [lambda] a lambda function that takes an activity and returns a boolean Returns: This video with the activities f(a) False removed.",
+"doc":"Apply boolean lambda function f to each activity and keep activity if function is true, remove activity if function is false Filter out all activities longer than 128 frames   vid = vid.activityfilter(lambda a: len(a)<128)   Filter out activities with category in set   vid = vid.activityfilter(lambda a: a.category() in set(['category1', 'category2']   Args: f: [lambda] a lambda function that takes an activity and returns a boolean Returns: This video with the activities f(a) False removed.",
 "func":1
 },
 {
@@ -8741,13 +8741,13 @@ INDEX=[
 {
 "ref":"vipy.video.Scene.rekey",
 "url":15,
-"doc":"Change the track and activity IDs to randomly assigned UUIDs. Useful for cloning unique scenes. >>> v = vipy.video.RandomScene() >>> v.rekey()  randomly rekey all track and activity ID >>> v.rekey(tracks={ .})  rekey tracks (oldkey -> newkey) according to dictionary, randomly rekey activities >>> v.rekey(tracks={ .}, activities={})  rekey tracks according to dict, no change to activities Args: tracks [dict]: If not None, use this dictionary to remap oldkey->newkey for tracks. If None, use random keys. If empty dict, no change (do not rekey tracks) activities [dict]: If not None, use this dictionary to remap oldkey->newkey for activities. If None, use random keys. If empty dict, no change (do not rekey activities) Returns: This object, with all track ID and activity ID rekeyed as specified. All actor IDs in activities will be updated.",
+"doc":"Change the track and activity IDs to randomly assigned UUIDs. Useful for cloning unique scenes.   v = vipy.video.RandomScene() v.rekey()  randomly rekey all track and activity ID v.rekey(tracks={ .})  rekey tracks (oldkey -> newkey) according to dictionary, randomly rekey activities v.rekey(tracks={ .}, activities={})  rekey tracks according to dict, no change to activities   Args: tracks [dict]: If not None, use this dictionary to remap oldkey->newkey for tracks. If None, use random keys. If empty dict, no change (do not rekey tracks) activities [dict]: If not None, use this dictionary to remap oldkey->newkey for activities. If None, use random keys. If empty dict, no change (do not rekey activities) Returns: This object, with all track ID and activity ID rekeyed as specified. All actor IDs in activities will be updated.",
 "func":1
 },
 {
 "ref":"vipy.video.Scene.annotation",
 "url":15,
-"doc":"Return an iterator over annotations in each frame. >>> for y in self.annotation(): >>> for (bb,a) in y: >>> print bb,a Yields: for each frame yield the tuple: ( ( vipy.object.Detection , (tuple of  vipy.activity.Activity performed by the actor in this bounding box ,  . )  note The preferred method for accessing annotations is a frame iterator, which includes pixels. However, this method provides access to just the annotations without pixels.",
+"doc":"Return an iterator over annotations in each frame.   for y in self.annotation(): for (bb,a) in y: print bb,a   Yields: for each frame yield the tuple: ( ( vipy.object.Detection , (tuple of  vipy.activity.Activity performed by the actor in this bounding box ,  . )  note The preferred method for accessing annotations is a frame iterator, which includes pixels. However, this method provides access to just the annotations without pixels.",
 "func":1
 },
 {
@@ -8819,7 +8819,7 @@ INDEX=[
 {
 "ref":"vipy.video.Scene.add",
 "url":15,
-"doc":"Add the object obj to the scene, and return an index to this object for future updates This function is used to incrementally build up a scene frame by frame. Obj can be one of the following types: - obj = vipy.object.Detection(), this must be called from within a frame iterator (e.g. for im in video) to get the current frame index - obj = vipy.object.Track() - obj = vipy.activity.Activity() - obj = [xmin, ymin, width, height], with associated category kwarg, this must be called from within a frame iterator to get the current frame index It is recomended that the objects are added as follows. For a v=vipy.video.Scene(): >>> for im in v: >>>  Do some processing on frame im to detect objects >>> (object_labels, xywh) = object_detection(im) >>> >>>  Add them to the scene, note that each object instance is independent in each frame, use tracks for object correspondence >>> for (lbl,bb) in zip(object_labels, xywh): >>> v.add(bb, lbl) >>> >>>  Do some correspondences to track objects >>> t2 = v.add( vipy.object.Track( .) ) >>> >>>  Update a previous track to add a keyframe >>> v.track(t2).add(  . ) The frame iterator will keep track of the current frame in the video and add the objects in the appropriate place. Alternatively, >>> v.add(vipy.object.Track( ), frame=k) Args: obj: A conformal python object to add to the scene ( vipy.object.Detection ,  vipy.object.Track ,  vipy.activity.Activity , [xmin, ymin, width, height] category: Used if obj is an xywh tuple attributes: Used only if obj is an xywh tuple frame: [int] The frame to add the object rangecheck: [bool] If true, check if the object is within the image rectangle and throw an exception if not. This requires introspecting the video shape using  vipy.video.Video.shape . fluent: [bool] If true, return self instead of the object index",
+"doc":"Add the object obj to the scene, and return an index to this object for future updates This function is used to incrementally build up a scene frame by frame. Obj can be one of the following types: - obj = vipy.object.Detection(), this must be called from within a frame iterator (e.g. for im in video) to get the current frame index - obj = vipy.object.Track() - obj = vipy.activity.Activity() - obj = [xmin, ymin, width, height], with associated category kwarg, this must be called from within a frame iterator to get the current frame index It is recomended that the objects are added as follows. For a v=vipy.video.Scene():   for im in v:  Do some processing on frame im to detect objects (object_labels, xywh) = object_detection(im)  Add them to the scene, note that each object instance is independent in each frame, use tracks for object correspondence for (lbl,bb) in zip(object_labels, xywh): v.add(bb, lbl)  Do some correspondences to track objects t2 = v.add( vipy.object.Track( .) )  Update a previous track to add a keyframe v.track(t2).add(  . )   The frame iterator will keep track of the current frame in the video and add the objects in the appropriate place. Alternatively,   v.add(vipy.object.Track( ), frame=k)   Args: obj: A conformal python object to add to the scene ( vipy.object.Detection ,  vipy.object.Track ,  vipy.activity.Activity , [xmin, ymin, width, height] category: Used if obj is an xywh tuple attributes: Used only if obj is an xywh tuple frame: [int] The frame to add the object rangecheck: [bool] If true, check if the object is within the image rectangle and throw an exception if not. This requires introspecting the video shape using  vipy.video.Video.shape . fluent: [bool] If true, return self instead of the object index",
 "func":1
 },
 {
@@ -8873,7 +8873,7 @@ INDEX=[
 {
 "ref":"vipy.video.Scene.framerate",
 "url":15,
-"doc":"Change the input framerate for the video and update frame indexes for all annotations. >>> fps = self.framerate() >>> self.framerate(fps=15.0)",
+"doc":"Change the input framerate for the video and update frame indexes for all annotations.   fps = self.framerate() self.framerate(fps=15.0)  ",
 "func":1
 },
 {
@@ -9059,7 +9059,7 @@ INDEX=[
 {
 "ref":"vipy.video.Scene.union",
 "url":15,
-"doc":"Compute the union two scenes as the set of unique activities and tracks. A pair of activities or tracks are non-unique if they overlap spatially and temporally by a given IoU threshold. Merge overlapping tracks. Tracks are merged by considering the mean IoU at the overlapping segment of two tracks with the same category greater than the provided spatial_iou_threshold threshold Activities are merged by considering the temporal IoU of the activities of the same class greater than the provided temporal_iou_threshold threshold Input: -Other: Scene or list of scenes for union. Other may be a clip of self at a different framerate, spatial isotropic scake, clip offset -spatial_iou_threshold: The intersection over union threshold for the mean of the two segments of an overlapping track, Disable by setting to 1.0 -temporal_iou_threshold: The intersection over union threshold for a temporal bounding box for a pair of activities to be declared duplicates. Disable by setting to 1.0 -strict: Require both scenes to share the same underlying video filename -overlap=['average', 'replace', 'keep'] -average: Merge two tracks by averaging the boxes (average=True) if overlapping -replace: merge two tracks by replacing overlapping boxes with other (discard self) -keep: merge two tracks by keeping overlapping boxes with other (discard other) -percentilecover [0,1]: When determining the assignment of two tracks, compute the percentilecover of two tracks by ranking the cover in the overlapping segment and computing the mean of the top-k assignments, where k=len(segment) percentilecover. -percentilesamples [>1]: the number of samples along the overlapping scemgne for computing percentile cover -activity [bool]: union() of activities only -track [bool]: union() of tracks only Output: -Updates this scene to include the non-overlapping activities from other. By default, it takes the strict union of all activities and tracks. Notes: -This is useful for merging scenes computed using a lower resolution/framerate/clipped object or activity detector without running the detector on the high-res scene -This function will preserve the invariance for v  v.clear().union(v.rescale(0.5).framerate(5).activityclip( , to within the quantization error of framerate() downsampling. -percentileiou is a robust method of track assignment when boxes for two tracks (e.g. ground truth and detections) where one track may deform due to occlusion.",
+"doc":"Compute the union two scenes as the set of unique activities and tracks. A pair of activities or tracks are non-unique if they overlap spatially and temporally by a given IoU threshold. Merge overlapping tracks. Tracks are merged by considering the mean IoU at the overlapping segment of two tracks with the same category greater than the provided spatial_iou_threshold threshold Activities are merged by considering the temporal IoU of the activities of the same class greater than the provided temporal_iou_threshold threshold Args: Other: Scene or list of scenes for union. Other may be a clip of self at a different framerate, spatial isotropic scake, clip offset spatial_iou_threshold: The intersection over union threshold for the mean of the two segments of an overlapping track, Disable by setting to 1.0 temporal_iou_threshold: The intersection over union threshold for a temporal bounding box for a pair of activities to be declared duplicates. Disable by setting to 1.0 strict: Require both scenes to share the same underlying video filename overlap=['average', 'replace', 'keep'] - average: Merge two tracks by averaging the boxes (average=True) if overlapping - replace: merge two tracks by replacing overlapping boxes with other (discard self) - keep: merge two tracks by keeping overlapping boxes with other (discard other) percentilecover: [0,1]: When determining the assignment of two tracks, compute the percentilecover of two tracks by ranking the cover in the overlapping segment and computing the mean of the top-k assignments, where k=len(segment) percentilecover. percentilesamples: [>1]: the number of samples along the overlapping scemgne for computing percentile cover activity: [bool]: union() of activities only track: [bool]: union() of tracks only Returns: Updates this scene to include the non-overlapping activities from other. By default, it takes the strict union of all activities and tracks.  note - This is useful for merging scenes computed using a lower resolution/framerate/clipped object or activity detector without running the detector on the high-res scene - This function will preserve the invariance for v  v.clear().union(v.rescale(0.5).framerate(5).activityclip( , to within the quantization error of framerate() downsampling. - percentileiou is a robust method of track assignment when boxes for two tracks (e.g. ground truth and detections) where one track may deform due to occlusion.",
 "func":1
 },
 {
@@ -9167,7 +9167,7 @@ INDEX=[
 {
 "ref":"vipy.video.Scene.sanitize",
 "url":15,
-"doc":"Remove all private keys from the attributes dictionary. The attributes dictionary is useful storage for arbitrary (key,value) pairs. However, this storage may contain sensitive information that should be scrubbed from the video before serialization. As a general rule, any key that is of the form '__keyname' prepended by two underscores is a private key. This is analogous to private or reserved attributes in the python lanugage. Users should reserve these keynames for those keys that should be sanitized and removed before any seerialization of this object. >>> assert self.setattribute('__mykey', 1).sanitize().hasattribute('__mykey')  False",
+"doc":"Remove all private keys from the attributes dictionary. The attributes dictionary is useful storage for arbitrary (key,value) pairs. However, this storage may contain sensitive information that should be scrubbed from the video before serialization. As a general rule, any key that is of the form '__keyname' prepended by two underscores is a private key. This is analogous to private or reserved attributes in the python lanugage. Users should reserve these keynames for those keys that should be sanitized and removed before any seerialization of this object.   assert self.setattribute('__mykey', 1).sanitize().hasattribute('__mykey')  False  ",
 "func":1
 },
 {
@@ -9179,7 +9179,7 @@ INDEX=[
 {
 "ref":"vipy.video.Scene.store",
 "url":15,
-"doc":"Store the current video file as an attribute of this object. Useful for archiving an object to be fully self contained without any external references. >>> v  v.store().restore(v.filename(  note -Remove this stored video using unstore() -Unpack this stored video and set up the video chains using restore() -This method is more efficient than load() followed by pkl(), as it stores the encoded video as a byte string. -Useful for creating a single self contained object for distributed processing.",
+"doc":"Store the current video file as an attribute of this object. Useful for archiving an object to be fully self contained without any external references.   v  v.store().restore(v.filename(    note -Remove this stored video using unstore() -Unpack this stored video and set up the video chains using restore() -This method is more efficient than load() followed by pkl(), as it stores the encoded video as a byte string. -Useful for creating a single self contained object for distributed processing.",
 "func":1
 },
 {
@@ -9197,13 +9197,13 @@ INDEX=[
 {
 "ref":"vipy.video.Scene.concatenate",
 "url":15,
-"doc":"Temporally concatenate a sequence of videos into a single video stored in outfile. >>> (v1, v2, v3) = (vipy.video.RandomVideo(128,128,32), vipy.video.RandomVideo(128,128,32), vipy.video.RandomVideo(128,128,32 >>> vc = vipy.video.Video.concatenate v1, v2, v3), 'concatenated.mp4', youtube_chapters=lambda v: v.category( In this example, vc will point to concatenated.mp4 which will contain (v1,v2,v3) concatenated temporally . Input: videos: a single video or an iterable of videos of type  vipy.video.Video or an iterable of video files outfile: the output filename to store the concatenation. youtube_chapters [bool, callable]: If true, output a string that can be used to define the start and end times of chapters if this video is uploaded to youtube. The string output should be copied to the youtube video description in order to enable chapters on playback. This argument will default to the string representation ofo the video, but you may also pass a callable of the form: 'youtube_chapters=lambda v: str(v)' which will output the provided string for each video chapter. A useful lambda is 'youtube_chapters=lambda v: v.category()' framerate [float]: The output frame rate of outfile Returns: A  vipy.video.Video object with filename()=outfile, such that outfile contains the temporal concatenation of pixels in (self, videos).  note -self will not be modified, this will return a new  vipy.video.Video object. -All videos must be the same shape(). If the videos are different shapes, you must pad them to a common size equal to self.shape(). Try  vipy.video.Video.zeropadlike . -The output video will be at the framerate of self.framerate(). -if you want to concatenate annotations, call  vipy.video.Scene.annotate first on the videos to save the annotations into the pixels, then concatenate.",
+"doc":"Temporally concatenate a sequence of videos into a single video stored in outfile.   (v1, v2, v3) = (vipy.video.RandomVideo(128,128,32), vipy.video.RandomVideo(128,128,32), vipy.video.RandomVideo(128,128,32 vc = vipy.video.Video.concatenate v1, v2, v3), 'concatenated.mp4', youtube_chapters=lambda v: v.category(   In this example, vc will point to concatenated.mp4 which will contain (v1,v2,v3) concatenated temporally . Args: videos: a single video or an iterable of videos of type  vipy.video.Video or an iterable of video files outfile: the output filename to store the concatenation. youtube_chapters: [bool, callable]: If true, output a string that can be used to define the start and end times of chapters if this video is uploaded to youtube. The string output should be copied to the youtube video description in order to enable chapters on playback. This argument will default to the string representation ofo the video, but you may also pass a callable of the form: 'youtube_chapters=lambda v: str(v)' which will output the provided string for each video chapter. A useful lambda is 'youtube_chapters=lambda v: v.category()' framerate: [float]: The output frame rate of outfile Returns: A  vipy.video.Video object with filename()=outfile, such that outfile contains the temporal concatenation of pixels in (self, videos).  note - self will not be modified, this will return a new  vipy.video.Video object. - All videos must be the same shape(). If the videos are different shapes, you must pad them to a common size equal to self.shape(). Try  vipy.video.Video.zeropadlike . - The output video will be at the framerate of self.framerate(). - if you want to concatenate annotations, call  vipy.video.Scene.annotate first on the videos to save the annotations into the pixels, then concatenate.",
 "func":1
 },
 {
 "ref":"vipy.video.Scene.stream",
 "url":15,
-"doc":"Iterator to yield groups of frames streaming from video. A video stream is a real time iterator to read or write from a video. Streams are useful to group together frames into clips that are operated on as a group. The following use cases are supported: >>> v = vipy.video.RandomScene() Stream individual video frames lagged by 10 frames and 20 frames >>> for (im1, im2) in zip(v.stream().frame(n=-10), v.stream().frame(n=-20 : >>> print(im1, im2) Stream overlapping clips such that each clip is a video n=16 frames long and starts at frame i, and the next clip is n=16 frames long and starts at frame i=i+m >>> for vc in v.stream().clip(n=16, m=4): >>> print(vc) Stream non-overlapping batches of frames such that each clip is a video of length n and starts at frame i, and the next clip is length n and starts at frame i+n >>> for vb in v.stream().batch(n=16): >>> print(vb) Create a write stream to incrementally add frames to long video. >>> vi = vipy.video.Video(filename='/path/to/output.mp4') >>> vo = vipy.video.Video(filename='/path/to/input.mp4') >>> with vo.stream(write=True) as s: >>> for im in vi.stream(): >>> s.write(im)  manipulate pixels of im, if desired Create a 480p YouTube live stream from an RTSP camera at 5Hz >>> vo = vipy.video.Scene(url='rtmp: a.rtmp.youtube.com/live2/$SECRET_STREAM_KEY') >>> vi = vipy.video.Scene(url='rtsp: URL').framerate(5) >>> with vo.framerate(5).stream(write=True, bitrate='1000k') as s: >>> for im in vi.framerate(5).resize(cols=854, rows=480): >>> s.write(im) Args: write: [bool] If true, create a write stream overwrite: [bool] If true, and the video output filename already exists, overwrite it bufsize: [int] The maximum queue size for the ffmpeg pipe thread in the primary iterator. The queue size is the maximum size of pre-fetched frames from the ffmpeg pip. This should be big enough that you are never waiting for queue fills bitrate: [str] The ffmpeg bitrate of the output encoder for writing, written like '2000k' bufsize: [int] The maximum size of the stream buffer in frames. The stream buffer length should be big enough so that all iterators can yield before deleting old frames Returns: A Stream object  note Using this iterator may affect PDB debugging due to stdout/stdin redirection. Use ipdb instead.",
+"doc":"Iterator to yield groups of frames streaming from video. A video stream is a real time iterator to read or write from a video. Streams are useful to group together frames into clips that are operated on as a group. The following use cases are supported:   v = vipy.video.RandomScene()   Stream individual video frames lagged by 10 frames and 20 frames   for (im1, im2) in zip(v.stream().frame(n=-10), v.stream().frame(n=-20 : print(im1, im2)   Stream overlapping clips such that each clip is a video n=16 frames long and starts at frame i, and the next clip is n=16 frames long and starts at frame i=i+m   for vc in v.stream().clip(n=16, m=4): print(vc)   Stream non-overlapping batches of frames such that each clip is a video of length n and starts at frame i, and the next clip is length n and starts at frame i+n   for vb in v.stream().batch(n=16): print(vb)   Create a write stream to incrementally add frames to long video.   vi = vipy.video.Video(filename='/path/to/output.mp4') vo = vipy.video.Video(filename='/path/to/input.mp4') with vo.stream(write=True) as s: for im in vi.stream(): s.write(im)  manipulate pixels of im, if desired   Create a 480p YouTube live stream from an RTSP camera at 5Hz   vo = vipy.video.Scene(url='rtmp: a.rtmp.youtube.com/live2/$SECRET_STREAM_KEY') vi = vipy.video.Scene(url='rtsp: URL').framerate(5) with vo.framerate(5).stream(write=True, bitrate='1000k') as s: for im in vi.framerate(5).resize(cols=854, rows=480): s.write(im)   Args: write: [bool] If true, create a write stream overwrite: [bool] If true, and the video output filename already exists, overwrite it bufsize: [int] The maximum queue size for the ffmpeg pipe thread in the primary iterator. The queue size is the maximum size of pre-fetched frames from the ffmpeg pip. This should be big enough that you are never waiting for queue fills bitrate: [str] The ffmpeg bitrate of the output encoder for writing, written like '2000k' bufsize: [int] The maximum size of the stream buffer in frames. The stream buffer length should be big enough so that all iterators can yield before deleting old frames Returns: A Stream object  note Using this iterator may affect PDB debugging due to stdout/stdin redirection. Use ipdb instead.",
 "func":1
 },
 {
@@ -9371,7 +9371,7 @@ INDEX=[
 {
 "ref":"vipy.video.Scene.fromdirectory",
 "url":15,
-"doc":"Create a video from a directory of frames stored as individual image filenames. Given a directory with files: framedir/image_0001.jpg framedir/image_0002.jpg >>> vipy.video.Video(frames='/path/to/framedir')",
+"doc":"Create a video from a directory of frames stored as individual image filenames. Given a directory with files: framedir/image_0001.jpg framedir/image_0002.jpg   vipy.video.Video(frames='/path/to/framedir')  ",
 "func":1
 },
 {
@@ -9413,7 +9413,7 @@ INDEX=[
 {
 "ref":"vipy.video.Scene.relpath",
 "url":15,
-"doc":"Replace the filename with a relative path to parent (or current working directory if none). Usage: >>> v = vipy.video.Video(filename='/path/to/dataset/video/category/out.mp4') >>> v.relpath(parent='/path/to/dataset') >>> v.filename()  'video/category/out.mp4' If the current working directory is /path/to/dataset, and v.load() is called, the filename will be loaded. Args: parent [str]: A parent path of the current filename to remove and be relative to. If filename is '/path/to/video.mp4' then filename must start with parent, then parent will be remvoed from filename. start [str]: Return a relative filename starting from path start='/path/to/dir' that will create a relative path to this filename. If start='/a/b/c' and filename='/a/b/d/e/f.ext' then return filename ' /d/e/f.ext' Returns: This video object with the filename changed to be a relative path",
+"doc":"Replace the filename with a relative path to parent (or current working directory if none). Usage:   v = vipy.video.Video(filename='/path/to/dataset/video/category/out.mp4') v.relpath(parent='/path/to/dataset') v.filename()  'video/category/out.mp4'   If the current working directory is /path/to/dataset, and v.load() is called, the filename will be loaded. Args: parent [str]: A parent path of the current filename to remove and be relative to. If filename is '/path/to/video.mp4' then filename must start with parent, then parent will be remvoed from filename. start [str]: Return a relative filename starting from path start='/path/to/dir' that will create a relative path to this filename. If start='/a/b/c' and filename='/a/b/d/e/f.ext' then return filename ' /d/e/f.ext' Returns: This video object with the filename changed to be a relative path",
 "func":1
 },
 {
@@ -9503,7 +9503,7 @@ INDEX=[
 {
 "ref":"vipy.video.Scene.cliprange",
 "url":15,
-"doc":"Return the planned clip (startframe, endframe) range. This is useful for introspection of the planned clip() before load(), such as for data augmentation purposes without triggering a load. Returns: (startframe, endframe) of the video() such that after load(), the pixel buffer will contain frame=0 equivalent to startframe in the source video, and frame=endframe-startframe-1 equivalent to endframe in the source video. (0, None) If a video does not have a clip() (e.g. clip() was never called, the filter chain does not include a 'trim')  notes The endframe can be retrieved (inefficiently) using: >>> int(round(self.duration_in_frames_of_videofile()  (self.framerate() / self.framerate_of_videofile(  ",
+"doc":"Return the planned clip (startframe, endframe) range. This is useful for introspection of the planned clip() before load(), such as for data augmentation purposes without triggering a load. Returns: (startframe, endframe) of the video() such that after load(), the pixel buffer will contain frame=0 equivalent to startframe in the source video, and frame=endframe-startframe-1 equivalent to endframe in the source video. (0, None) If a video does not have a clip() (e.g. clip() was never called, the filter chain does not include a 'trim')  notes The endframe can be retrieved (inefficiently) using:   int(round(self.duration_in_frames_of_videofile()  (self.framerate() / self.framerate_of_videofile(   ",
 "func":1
 },
 {
@@ -9706,24 +9706,24 @@ INDEX=[
 {
 "ref":"vipy.image.Image",
 "url":49,
-"doc":"vipy.image.Image class The vipy image class provides a fluent, lazy interface for representing, transforming and visualizing images. The following constructors are supported: >>> im = vipy.image.Image(filename=\"/path/to/image.ext\") All image file formats that are readable by PIL are supported here. >>> im = vipy.image.Image(url=\"http: domain.com/path/to/image.ext\") The image will be downloaded from the provided url and saved to a temporary filename. The environment variable VIPY_CACHE controls the location of the directory used for saving images, otherwise this will be saved to the system temp directory. >>> im = vipy.image.Image(url=\"http: domain.com/path/to/image.ext\", filename=\"/path/to/new/image.ext\") The image will be downloaded from the provided url and saved to the provided filename. The url() method provides optional basic authentication set for username and password >>> im = vipy.image.Image(array=img, colorspace='rgb') The image will be constructed from a provided numpy array 'img', with an associated colorspace. The numpy array and colorspace can be one of the following combinations: - 'rgb': uint8, three channel (red, green, blue) - 'rgba': uint8, four channel (rgb + alpha) - 'bgr': uint8, three channel (blue, green, red), such as is returned from cv2.imread() - 'bgra': uint8, four channel - 'hsv': uint8, three channel (hue, saturation, value) - 'lum;: uint8, one channel, luminance (8 bit grey level) - 'grey': float32, one channel in range [0,1] (32 bit intensity) - 'float': float32, any channel in range [-inf, +inf] The most general colorspace is 'float' which is used to manipulate images prior to network encoding, such as applying bias. Args: filename: a path to an image file that is readable by PIL url: a url string to an image file that is readable by PIL array: a numpy array of type uint8 or float32 of shape HxWxC=height x width x channels colorspace: a string in ['rgb', 'rgba', 'bgr', 'bgra', 'hsv', 'float', 'grey', 'lum'] attributes: a python dictionary that is passed by reference to the image. This is useful for encoding metadata about the image. Accessible as im.attributes Returns: A  vipy.image.Image object"
+"doc":"vipy.image.Image class The vipy image class provides a fluent, lazy interface for representing, transforming and visualizing images. The following constructors are supported:   im = vipy.image.Image(filename=\"/path/to/image.ext\")   All image file formats that are readable by PIL are supported here.   im = vipy.image.Image(url=\"http: domain.com/path/to/image.ext\")   The image will be downloaded from the provided url and saved to a temporary filename. The environment variable VIPY_CACHE controls the location of the directory used for saving images, otherwise this will be saved to the system temp directory.   im = vipy.image.Image(url=\"http: domain.com/path/to/image.ext\", filename=\"/path/to/new/image.ext\")   The image will be downloaded from the provided url and saved to the provided filename. The url() method provides optional basic authentication set for username and password   im = vipy.image.Image(array=img, colorspace='rgb')   The image will be constructed from a provided numpy array 'img', with an associated colorspace. The numpy array and colorspace can be one of the following combinations: - 'rgb': uint8, three channel (red, green, blue) - 'rgba': uint8, four channel (rgb + alpha) - 'bgr': uint8, three channel (blue, green, red), such as is returned from cv2.imread() - 'bgra': uint8, four channel - 'hsv': uint8, three channel (hue, saturation, value) - 'lum;: uint8, one channel, luminance (8 bit grey level) - 'grey': float32, one channel in range [0,1] (32 bit intensity) - 'float': float32, any channel in range [-inf, +inf] The most general colorspace is 'float' which is used to manipulate images prior to network encoding, such as applying bias. Args: filename: a path to an image file that is readable by PIL url: a url string to an image file that is readable by PIL array: a numpy array of type uint8 or float32 of shape HxWxC=height x width x channels colorspace: a string in ['rgb', 'rgba', 'bgr', 'bgra', 'hsv', 'float', 'grey', 'lum'] attributes: a python dictionary that is passed by reference to the image. This is useful for encoding metadata about the image. Accessible as im.attributes Returns: A  vipy.image.Image object"
 },
 {
 "ref":"vipy.image.Image.cast",
 "url":49,
-"doc":"Typecast the conformal vipy.image object im as  vipy.image.Image . This is useful for downcasting  vipy.image.Scene or  vipy.image.ImageDetection down to an image. >>> ims = vipy.image.RandomScene() >>> im = vipy.image.Image.cast(im)",
+"doc":"Typecast the conformal vipy.image object im as  vipy.image.Image . This is useful for downcasting  vipy.image.Scene or  vipy.image.ImageDetection down to an image.   ims = vipy.image.RandomScene() im = vipy.image.Image.cast(im)  ",
 "func":1
 },
 {
 "ref":"vipy.image.Image.from_json",
 "url":49,
-"doc":"Import the JSON string s as an  vipy.image.Image object. This will perform a round trip such that im1  im2 >>> im1 = vupy.image.RandomImage() >>> im2 = vipy.image.Image.from_json(im1.json( >>> assert im1  im2",
+"doc":"Import the JSON string s as an  vipy.image.Image object. This will perform a round trip such that im1  im2   im1 = vupy.image.RandomImage() im2 = vipy.image.Image.from_json(im1.json( assert im1  im2  ",
 "func":1
 },
 {
 "ref":"vipy.image.Image.sanitize",
 "url":49,
-"doc":"Remove all private keys from the attributes dictionary. The attributes dictionary is useful storage for arbitrary (key,value) pairs. However, this storage may contain sensitive information that should be scrubbed from the media before serialization. As a general rule, any key that is of the form '__keyname' prepended by two underscores is a private key. This is analogous to private or reserved attributes in the python lanugage. Users should reserve these keynames for those keys that should be sanitized and removed before any serialization of this object. >>> assert self.setattribute('__mykey', 1).sanitize().hasattribute('__mykey')  False",
+"doc":"Remove all private keys from the attributes dictionary. The attributes dictionary is useful storage for arbitrary (key,value) pairs. However, this storage may contain sensitive information that should be scrubbed from the media before serialization. As a general rule, any key that is of the form '__keyname' prepended by two underscores is a private key. This is analogous to private or reserved attributes in the python lanugage. Users should reserve these keynames for those keys that should be sanitized and removed before any serialization of this object.   assert self.setattribute('__mykey', 1).sanitize().hasattribute('__mykey')  False  ",
 "func":1
 },
 {
@@ -9747,13 +9747,13 @@ INDEX=[
 {
 "ref":"vipy.image.Image.untile",
 "url":49,
-"doc":"Undo an image tiling and recreate the original image. >>> tiles = im.tile(im.width()/2, im.height()/2, 0, 0) >>> imdst = vipy.image.Image.untile(tiles) >>> assert imdst  im Args: imlist: this must be the output of  vipy.image.Image.tile Returns: A new  vipy.image.Image object reconstructed from the tiling, such that this is equivalent to the input to vipy.image.Image.tile  note All annotations are updated properly for each tile, when the source image is  vipy.image.Scene ",
+"doc":"Undo an image tiling and recreate the original image.   tiles = im.tile(im.width()/2, im.height()/2, 0, 0) imdst = vipy.image.Image.untile(tiles) assert imdst  im   Args: imlist: this must be the output of  vipy.image.Image.tile Returns: A new  vipy.image.Image object reconstructed from the tiling, such that this is equivalent to the input to vipy.image.Image.tile  note All annotations are updated properly for each tile, when the source image is  vipy.image.Scene ",
 "func":1
 },
 {
 "ref":"vipy.image.Image.uncrop",
 "url":49,
-"doc":"Uncrop using provided bounding box and zeropad to shape=(Height, Width). An uncrop is the inverse operation for a crop, which preserves the cropped portion of the image in the correct location and replaces the rest with zeros out to shape. >>> im = vipy.image.RandomImage(128, 128) >>> bb = vipy.geometry.BoundingBox(xmin=0, ymin=0, width=64, height=64) >>> uncrop = im.crop(bb).uncrop(bb, shape=(128,128 Args: bb: [ vipy.geometry.BoundingBox ] the bounding box used to crop the image in self shape: [tuple] (height, width) of the uncropped image Returns: this  vipy.image.Image object with the pixels uncropped.  note NOT idempotent. This will generate different results if run more than once.",
+"doc":"Uncrop using provided bounding box and zeropad to shape=(Height, Width). An uncrop is the inverse operation for a crop, which preserves the cropped portion of the image in the correct location and replaces the rest with zeros out to shape.   im = vipy.image.RandomImage(128, 128) bb = vipy.geometry.BoundingBox(xmin=0, ymin=0, width=64, height=64) uncrop = im.crop(bb).uncrop(bb, shape=(128,128   Args: bb: [ vipy.geometry.BoundingBox ] the bounding box used to crop the image in self shape: [tuple] (height, width) of the uncropped image Returns: this  vipy.image.Image object with the pixels uncropped.  note NOT idempotent. This will generate different results if run more than once.",
 "func":1
 },
 {
@@ -9765,7 +9765,7 @@ INDEX=[
 {
 "ref":"vipy.image.Image.store",
 "url":49,
-"doc":"Store the current image file as an attribute of this object. Useful for archiving an object to be fully self contained without any external references. -Remove this stored image using unstore() -Unpack this stored image and set up the filename using restore() -This method is more efficient than load() followed by pkl(), as it stores the encoded image as a byte string. -Useful for creating a single self contained object for distributed processing. >>> v  v.store().restore(v.filename( ",
+"doc":"Store the current image file as an attribute of this object. Useful for archiving an object to be fully self contained without any external references. -Remove this stored image using unstore() -Unpack this stored image and set up the filename using restore() -This method is more efficient than load() followed by pkl(), as it stores the encoded image as a byte string. -Useful for creating a single self contained object for distributed processing.   v  v.store().restore(v.filename(  ",
 "func":1
 },
 {
@@ -9945,25 +9945,25 @@ INDEX=[
 {
 "ref":"vipy.image.Image.channel",
 "url":49,
-"doc":"Return a cloned Image() object for the kth channel, or return an iterator over channels if k=None. Iterate over channels as single channel luminance images: >>> for c in self.channel(): >>> print(c) Return the kth channel as a single channel luminance image: >>> c = self.channel(k=0)",
+"doc":"Return a cloned Image() object for the kth channel, or return an iterator over channels if k=None. Iterate over channels as single channel luminance images:   for c in self.channel(): print(c)   Return the kth channel as a single channel luminance image:   c = self.channel(k=0)  ",
 "func":1
 },
 {
 "ref":"vipy.image.Image.red",
 "url":49,
-"doc":"Return red channel as a cloned single channel  vipy.image.Image object. These are equivalent operations if the colorspace is 'rgb' or 'rgba': >>> self.red()  self.channel(0) These are equivalent operations if the colorspace is 'bgr' or 'bgra': >>> self.red()  self.channel(3)  note OpenCV returns images in BGR colorspace. Use this method to always return the desired channel by color.",
+"doc":"Return red channel as a cloned single channel  vipy.image.Image object. These are equivalent operations if the colorspace is 'rgb' or 'rgba':   self.red()  self.channel(0)   These are equivalent operations if the colorspace is 'bgr' or 'bgra':   self.red()  self.channel(3)    note OpenCV returns images in BGR colorspace. Use this method to always return the desired channel by color.",
 "func":1
 },
 {
 "ref":"vipy.image.Image.green",
 "url":49,
-"doc":"Return green channel as a cloned single channel  vipy.image.Image object. These are equivalent operations if the colorspace is 'rgb' or 'rgba': >>> self.green()  self.channel(1) These are equivalent operations if the colorspace is 'bgr' or 'bgra': >>> self.green()  self.channel(1)  note OpenCV returns images in BGR colorspace. Use this method to always return the desired channel by color.",
+"doc":"Return green channel as a cloned single channel  vipy.image.Image object. These are equivalent operations if the colorspace is 'rgb' or 'rgba':   self.green()  self.channel(1)   These are equivalent operations if the colorspace is 'bgr' or 'bgra':   self.green()  self.channel(1)    note OpenCV returns images in BGR colorspace. Use this method to always return the desired channel by color.",
 "func":1
 },
 {
 "ref":"vipy.image.Image.blue",
 "url":49,
-"doc":"Return blue channel as a cloned single channel  vipy.image.Image object. These are equivalent operations if the colorspace is 'rgb' or 'rgba': >>> self.vlue()  self.channel(2) These are equivalent operations if the colorspace is 'bgr' or 'bgra': >>> self.blue()  self.channel(0)  note OpenCV returns images in BGR colorspace. Use this method to always return the desired channel by color.",
+"doc":"Return blue channel as a cloned single channel  vipy.image.Image object. These are equivalent operations if the colorspace is 'rgb' or 'rgba':   self.vlue()  self.channel(2)   These are equivalent operations if the colorspace is 'bgr' or 'bgra':   self.blue()  self.channel(0)    note OpenCV returns images in BGR colorspace. Use this method to always return the desired channel by color.",
 "func":1
 },
 {
@@ -9975,7 +9975,7 @@ INDEX=[
 {
 "ref":"vipy.image.Image.zeros",
 "url":49,
-"doc":"Set the pixel buffer to all zeros of the same shape and datatype as this  vipy.image.Image object. These are equivalent operations for the resulting buffer shape: >>> import numpy as np >>> np.zeros( (self.width(), self.height(), self.channels( )  self.zeros().array() Returns: This  vipy.image.Image object.  note Triggers load() if the pixel buffer has not been loaded yet.",
+"doc":"Set the pixel buffer to all zeros of the same shape and datatype as this  vipy.image.Image object. These are equivalent operations for the resulting buffer shape:   import numpy as np np.zeros( (self.width(), self.height(), self.channels( )  self.zeros().array()   Returns: This  vipy.image.Image object.  note Triggers load() if the pixel buffer has not been loaded yet.",
 "func":1
 },
 {
@@ -10347,7 +10347,7 @@ INDEX=[
 {
 "ref":"vipy.image.Image.normalize",
 "url":49,
-"doc":"Apply a multiplicative gain g and additive bias b, such that self.array()  gain self.array() + bias. This is useful for applying a normalization of an image prior to calling  vipy.image.Image.torch . The following operations are equivalent. >>> im = vipy.image.RandomImage() >>> im.normalize(1/255.0, 0.5)  im.gain(1/255.0).bias(-0.5)  note This will force the colorspace to 'float'",
+"doc":"Apply a multiplicative gain g and additive bias b, such that self.array()  gain self.array() + bias. This is useful for applying a normalization of an image prior to calling  vipy.image.Image.torch . The following operations are equivalent.   im = vipy.image.RandomImage() im.normalize(1/255.0, 0.5)  im.gain(1/255.0).bias(-0.5)    note This will force the colorspace to 'float'",
 "func":1
 },
 {
@@ -10509,18 +10509,18 @@ INDEX=[
 {
 "ref":"vipy.image.ImageCategory",
 "url":49,
-"doc":"vipy ImageCategory class This class provides a representation of a vipy.image.Image with a category. Valid constructors include all provided by vipy.image.Image with the additional kwarg 'category' (or alias 'label') >>> im = vipy.image.ImageCategory(filename='/path/to/dog_image.ext', category='dog') >>> im = vipy.image.ImageCategory(url='http: path/to/dog_image.ext', category='dog') >>> im = vipy.image.ImageCategory(array=dog_img, colorspace='rgb', category='dog')"
+"doc":"vipy ImageCategory class This class provides a representation of a vipy.image.Image with a category. Valid constructors include all provided by vipy.image.Image with the additional kwarg 'category' (or alias 'label')   im = vipy.image.ImageCategory(filename='/path/to/dog_image.ext', category='dog') im = vipy.image.ImageCategory(url='http: path/to/dog_image.ext', category='dog') im = vipy.image.ImageCategory(array=dog_img, colorspace='rgb', category='dog')  "
 },
 {
 "ref":"vipy.image.ImageCategory.cast",
 "url":49,
-"doc":"Typecast the conformal vipy.image object im as  vipy.image.Image . This is useful for downcasting  vipy.image.Scene or  vipy.image.ImageDetection down to an image. >>> ims = vipy.image.RandomScene() >>> im = vipy.image.Image.cast(im)",
+"doc":"Typecast the conformal vipy.image object im as  vipy.image.Image . This is useful for downcasting  vipy.image.Scene or  vipy.image.ImageDetection down to an image.   ims = vipy.image.RandomScene() im = vipy.image.Image.cast(im)  ",
 "func":1
 },
 {
 "ref":"vipy.image.ImageCategory.from_json",
 "url":49,
-"doc":"Import the JSON string s as an  vipy.image.Image object. This will perform a round trip such that im1  im2 >>> im1 = vupy.image.RandomImage() >>> im2 = vipy.image.Image.from_json(im1.json( >>> assert im1  im2",
+"doc":"Import the JSON string s as an  vipy.image.Image object. This will perform a round trip such that im1  im2   im1 = vupy.image.RandomImage() im2 = vipy.image.Image.from_json(im1.json( assert im1  im2  ",
 "func":1
 },
 {
@@ -10574,7 +10574,7 @@ INDEX=[
 {
 "ref":"vipy.image.ImageCategory.sanitize",
 "url":49,
-"doc":"Remove all private keys from the attributes dictionary. The attributes dictionary is useful storage for arbitrary (key,value) pairs. However, this storage may contain sensitive information that should be scrubbed from the media before serialization. As a general rule, any key that is of the form '__keyname' prepended by two underscores is a private key. This is analogous to private or reserved attributes in the python lanugage. Users should reserve these keynames for those keys that should be sanitized and removed before any serialization of this object. >>> assert self.setattribute('__mykey', 1).sanitize().hasattribute('__mykey')  False",
+"doc":"Remove all private keys from the attributes dictionary. The attributes dictionary is useful storage for arbitrary (key,value) pairs. However, this storage may contain sensitive information that should be scrubbed from the media before serialization. As a general rule, any key that is of the form '__keyname' prepended by two underscores is a private key. This is analogous to private or reserved attributes in the python lanugage. Users should reserve these keynames for those keys that should be sanitized and removed before any serialization of this object.   assert self.setattribute('__mykey', 1).sanitize().hasattribute('__mykey')  False  ",
 "func":1
 },
 {
@@ -10598,13 +10598,13 @@ INDEX=[
 {
 "ref":"vipy.image.ImageCategory.untile",
 "url":49,
-"doc":"Undo an image tiling and recreate the original image. >>> tiles = im.tile(im.width()/2, im.height()/2, 0, 0) >>> imdst = vipy.image.Image.untile(tiles) >>> assert imdst  im Args: imlist: this must be the output of  vipy.image.Image.tile Returns: A new  vipy.image.Image object reconstructed from the tiling, such that this is equivalent to the input to vipy.image.Image.tile  note All annotations are updated properly for each tile, when the source image is  vipy.image.Scene ",
+"doc":"Undo an image tiling and recreate the original image.   tiles = im.tile(im.width()/2, im.height()/2, 0, 0) imdst = vipy.image.Image.untile(tiles) assert imdst  im   Args: imlist: this must be the output of  vipy.image.Image.tile Returns: A new  vipy.image.Image object reconstructed from the tiling, such that this is equivalent to the input to vipy.image.Image.tile  note All annotations are updated properly for each tile, when the source image is  vipy.image.Scene ",
 "func":1
 },
 {
 "ref":"vipy.image.ImageCategory.uncrop",
 "url":49,
-"doc":"Uncrop using provided bounding box and zeropad to shape=(Height, Width). An uncrop is the inverse operation for a crop, which preserves the cropped portion of the image in the correct location and replaces the rest with zeros out to shape. >>> im = vipy.image.RandomImage(128, 128) >>> bb = vipy.geometry.BoundingBox(xmin=0, ymin=0, width=64, height=64) >>> uncrop = im.crop(bb).uncrop(bb, shape=(128,128 Args: bb: [ vipy.geometry.BoundingBox ] the bounding box used to crop the image in self shape: [tuple] (height, width) of the uncropped image Returns: this  vipy.image.Image object with the pixels uncropped.  note NOT idempotent. This will generate different results if run more than once.",
+"doc":"Uncrop using provided bounding box and zeropad to shape=(Height, Width). An uncrop is the inverse operation for a crop, which preserves the cropped portion of the image in the correct location and replaces the rest with zeros out to shape.   im = vipy.image.RandomImage(128, 128) bb = vipy.geometry.BoundingBox(xmin=0, ymin=0, width=64, height=64) uncrop = im.crop(bb).uncrop(bb, shape=(128,128   Args: bb: [ vipy.geometry.BoundingBox ] the bounding box used to crop the image in self shape: [tuple] (height, width) of the uncropped image Returns: this  vipy.image.Image object with the pixels uncropped.  note NOT idempotent. This will generate different results if run more than once.",
 "func":1
 },
 {
@@ -10616,7 +10616,7 @@ INDEX=[
 {
 "ref":"vipy.image.ImageCategory.store",
 "url":49,
-"doc":"Store the current image file as an attribute of this object. Useful for archiving an object to be fully self contained without any external references. -Remove this stored image using unstore() -Unpack this stored image and set up the filename using restore() -This method is more efficient than load() followed by pkl(), as it stores the encoded image as a byte string. -Useful for creating a single self contained object for distributed processing. >>> v  v.store().restore(v.filename( ",
+"doc":"Store the current image file as an attribute of this object. Useful for archiving an object to be fully self contained without any external references. -Remove this stored image using unstore() -Unpack this stored image and set up the filename using restore() -This method is more efficient than load() followed by pkl(), as it stores the encoded image as a byte string. -Useful for creating a single self contained object for distributed processing.   v  v.store().restore(v.filename(  ",
 "func":1
 },
 {
@@ -10790,25 +10790,25 @@ INDEX=[
 {
 "ref":"vipy.image.ImageCategory.channel",
 "url":49,
-"doc":"Return a cloned Image() object for the kth channel, or return an iterator over channels if k=None. Iterate over channels as single channel luminance images: >>> for c in self.channel(): >>> print(c) Return the kth channel as a single channel luminance image: >>> c = self.channel(k=0)",
+"doc":"Return a cloned Image() object for the kth channel, or return an iterator over channels if k=None. Iterate over channels as single channel luminance images:   for c in self.channel(): print(c)   Return the kth channel as a single channel luminance image:   c = self.channel(k=0)  ",
 "func":1
 },
 {
 "ref":"vipy.image.ImageCategory.red",
 "url":49,
-"doc":"Return red channel as a cloned single channel  vipy.image.Image object. These are equivalent operations if the colorspace is 'rgb' or 'rgba': >>> self.red()  self.channel(0) These are equivalent operations if the colorspace is 'bgr' or 'bgra': >>> self.red()  self.channel(3)  note OpenCV returns images in BGR colorspace. Use this method to always return the desired channel by color.",
+"doc":"Return red channel as a cloned single channel  vipy.image.Image object. These are equivalent operations if the colorspace is 'rgb' or 'rgba':   self.red()  self.channel(0)   These are equivalent operations if the colorspace is 'bgr' or 'bgra':   self.red()  self.channel(3)    note OpenCV returns images in BGR colorspace. Use this method to always return the desired channel by color.",
 "func":1
 },
 {
 "ref":"vipy.image.ImageCategory.green",
 "url":49,
-"doc":"Return green channel as a cloned single channel  vipy.image.Image object. These are equivalent operations if the colorspace is 'rgb' or 'rgba': >>> self.green()  self.channel(1) These are equivalent operations if the colorspace is 'bgr' or 'bgra': >>> self.green()  self.channel(1)  note OpenCV returns images in BGR colorspace. Use this method to always return the desired channel by color.",
+"doc":"Return green channel as a cloned single channel  vipy.image.Image object. These are equivalent operations if the colorspace is 'rgb' or 'rgba':   self.green()  self.channel(1)   These are equivalent operations if the colorspace is 'bgr' or 'bgra':   self.green()  self.channel(1)    note OpenCV returns images in BGR colorspace. Use this method to always return the desired channel by color.",
 "func":1
 },
 {
 "ref":"vipy.image.ImageCategory.blue",
 "url":49,
-"doc":"Return blue channel as a cloned single channel  vipy.image.Image object. These are equivalent operations if the colorspace is 'rgb' or 'rgba': >>> self.vlue()  self.channel(2) These are equivalent operations if the colorspace is 'bgr' or 'bgra': >>> self.blue()  self.channel(0)  note OpenCV returns images in BGR colorspace. Use this method to always return the desired channel by color.",
+"doc":"Return blue channel as a cloned single channel  vipy.image.Image object. These are equivalent operations if the colorspace is 'rgb' or 'rgba':   self.vlue()  self.channel(2)   These are equivalent operations if the colorspace is 'bgr' or 'bgra':   self.blue()  self.channel(0)    note OpenCV returns images in BGR colorspace. Use this method to always return the desired channel by color.",
 "func":1
 },
 {
@@ -10820,7 +10820,7 @@ INDEX=[
 {
 "ref":"vipy.image.ImageCategory.zeros",
 "url":49,
-"doc":"Set the pixel buffer to all zeros of the same shape and datatype as this  vipy.image.Image object. These are equivalent operations for the resulting buffer shape: >>> import numpy as np >>> np.zeros( (self.width(), self.height(), self.channels( )  self.zeros().array() Returns: This  vipy.image.Image object.  note Triggers load() if the pixel buffer has not been loaded yet.",
+"doc":"Set the pixel buffer to all zeros of the same shape and datatype as this  vipy.image.Image object. These are equivalent operations for the resulting buffer shape:   import numpy as np np.zeros( (self.width(), self.height(), self.channels( )  self.zeros().array()   Returns: This  vipy.image.Image object.  note Triggers load() if the pixel buffer has not been loaded yet.",
 "func":1
 },
 {
@@ -11144,7 +11144,7 @@ INDEX=[
 {
 "ref":"vipy.image.ImageCategory.normalize",
 "url":49,
-"doc":"Apply a multiplicative gain g and additive bias b, such that self.array()  gain self.array() + bias. This is useful for applying a normalization of an image prior to calling  vipy.image.Image.torch . The following operations are equivalent. >>> im = vipy.image.RandomImage() >>> im.normalize(1/255.0, 0.5)  im.gain(1/255.0).bias(-0.5)  note This will force the colorspace to 'float'",
+"doc":"Apply a multiplicative gain g and additive bias b, such that self.array()  gain self.array() + bias. This is useful for applying a normalization of an image prior to calling  vipy.image.Image.torch . The following operations are equivalent.   im = vipy.image.RandomImage() im.normalize(1/255.0, 0.5)  im.gain(1/255.0).bias(-0.5)    note This will force the colorspace to 'float'",
 "func":1
 },
 {
@@ -11282,18 +11282,18 @@ INDEX=[
 {
 "ref":"vipy.image.Scene",
 "url":49,
-"doc":"vipy.image.Scene class This class provides a representation of a vipy.image.ImageCategory with one or more vipy.object.Detections. The goal of this class is to provide a unified representation for all objects in a scene. Valid constructors include all provided by vipy.image.Image() and vipy.image.ImageCategory() with the additional kwarg 'objects', which is a list of vipy.object.Detections() >>> im = vipy.image.Scene(filename='/path/to/city_image.ext', category='city', objects=[vipy.object.Detection(category='vehicle', xmin=0, ymin=0, width=100, height=100)]) >>> im = vipy.image.Scene(filename='/path/to/city_image.ext', category='city').objects([vipy.object.Detection(category='vehicle', xmin=0, ymin=0, width=100, height=100)]) >>> im = vipy.image.Scene(filename='/path/to/city_image.ext', category='office', boxlabels='face', xywh=[0,0,100,100]) >>> im = vipy.image.Scene(filename='/path/to/city_image.ext', category='office', boxlabels='face', xywh= 0,0,100,100], [100,100,200,200 ) >>> im = vipy.image.Scene(filename='/path/to/city_image.ext', category='office', boxlabels=['face', 'desk'] xywh= 0,0,100,100], [200,200,300,300 )"
+"doc":"vipy.image.Scene class This class provides a representation of a vipy.image.ImageCategory with one or more vipy.object.Detections. The goal of this class is to provide a unified representation for all objects in a scene. Valid constructors include all provided by vipy.image.Image() and vipy.image.ImageCategory() with the additional kwarg 'objects', which is a list of vipy.object.Detections()   im = vipy.image.Scene(filename='/path/to/city_image.ext', category='city', objects=[vipy.object.Detection(category='vehicle', xmin=0, ymin=0, width=100, height=100)]) im = vipy.image.Scene(filename='/path/to/city_image.ext', category='city').objects([vipy.object.Detection(category='vehicle', xmin=0, ymin=0, width=100, height=100)]) im = vipy.image.Scene(filename='/path/to/city_image.ext', category='office', boxlabels='face', xywh=[0,0,100,100]) im = vipy.image.Scene(filename='/path/to/city_image.ext', category='office', boxlabels='face', xywh= 0,0,100,100], [100,100,200,200 ) im = vipy.image.Scene(filename='/path/to/city_image.ext', category='office', boxlabels=['face', 'desk'] xywh= 0,0,100,100], [200,200,300,300 )  "
 },
 {
 "ref":"vipy.image.Scene.cast",
 "url":49,
-"doc":"Typecast the conformal vipy.image object im as  vipy.image.Image . This is useful for downcasting  vipy.image.Scene or  vipy.image.ImageDetection down to an image. >>> ims = vipy.image.RandomScene() >>> im = vipy.image.Image.cast(im)",
+"doc":"Typecast the conformal vipy.image object im as  vipy.image.Image . This is useful for downcasting  vipy.image.Scene or  vipy.image.ImageDetection down to an image.   ims = vipy.image.RandomScene() im = vipy.image.Image.cast(im)  ",
 "func":1
 },
 {
 "ref":"vipy.image.Scene.from_json",
 "url":49,
-"doc":"Import the JSON string s as an  vipy.image.Image object. This will perform a round trip such that im1  im2 >>> im1 = vupy.image.RandomImage() >>> im2 = vipy.image.Image.from_json(im1.json( >>> assert im1  im2",
+"doc":"Import the JSON string s as an  vipy.image.Image object. This will perform a round trip such that im1  im2   im1 = vupy.image.RandomImage() im2 = vipy.image.Image.from_json(im1.json( assert im1  im2  ",
 "func":1
 },
 {
@@ -11623,7 +11623,7 @@ INDEX=[
 {
 "ref":"vipy.image.Scene.sanitize",
 "url":49,
-"doc":"Remove all private keys from the attributes dictionary. The attributes dictionary is useful storage for arbitrary (key,value) pairs. However, this storage may contain sensitive information that should be scrubbed from the media before serialization. As a general rule, any key that is of the form '__keyname' prepended by two underscores is a private key. This is analogous to private or reserved attributes in the python lanugage. Users should reserve these keynames for those keys that should be sanitized and removed before any serialization of this object. >>> assert self.setattribute('__mykey', 1).sanitize().hasattribute('__mykey')  False",
+"doc":"Remove all private keys from the attributes dictionary. The attributes dictionary is useful storage for arbitrary (key,value) pairs. However, this storage may contain sensitive information that should be scrubbed from the media before serialization. As a general rule, any key that is of the form '__keyname' prepended by two underscores is a private key. This is analogous to private or reserved attributes in the python lanugage. Users should reserve these keynames for those keys that should be sanitized and removed before any serialization of this object.   assert self.setattribute('__mykey', 1).sanitize().hasattribute('__mykey')  False  ",
 "func":1
 },
 {
@@ -11641,7 +11641,7 @@ INDEX=[
 {
 "ref":"vipy.image.Scene.untile",
 "url":49,
-"doc":"Undo an image tiling and recreate the original image. >>> tiles = im.tile(im.width()/2, im.height()/2, 0, 0) >>> imdst = vipy.image.Image.untile(tiles) >>> assert imdst  im Args: imlist: this must be the output of  vipy.image.Image.tile Returns: A new  vipy.image.Image object reconstructed from the tiling, such that this is equivalent to the input to vipy.image.Image.tile  note All annotations are updated properly for each tile, when the source image is  vipy.image.Scene ",
+"doc":"Undo an image tiling and recreate the original image.   tiles = im.tile(im.width()/2, im.height()/2, 0, 0) imdst = vipy.image.Image.untile(tiles) assert imdst  im   Args: imlist: this must be the output of  vipy.image.Image.tile Returns: A new  vipy.image.Image object reconstructed from the tiling, such that this is equivalent to the input to vipy.image.Image.tile  note All annotations are updated properly for each tile, when the source image is  vipy.image.Scene ",
 "func":1
 },
 {
@@ -11653,7 +11653,7 @@ INDEX=[
 {
 "ref":"vipy.image.Scene.store",
 "url":49,
-"doc":"Store the current image file as an attribute of this object. Useful for archiving an object to be fully self contained without any external references. -Remove this stored image using unstore() -Unpack this stored image and set up the filename using restore() -This method is more efficient than load() followed by pkl(), as it stores the encoded image as a byte string. -Useful for creating a single self contained object for distributed processing. >>> v  v.store().restore(v.filename( ",
+"doc":"Store the current image file as an attribute of this object. Useful for archiving an object to be fully self contained without any external references. -Remove this stored image using unstore() -Unpack this stored image and set up the filename using restore() -This method is more efficient than load() followed by pkl(), as it stores the encoded image as a byte string. -Useful for creating a single self contained object for distributed processing.   v  v.store().restore(v.filename(  ",
 "func":1
 },
 {
@@ -11827,25 +11827,25 @@ INDEX=[
 {
 "ref":"vipy.image.Scene.channel",
 "url":49,
-"doc":"Return a cloned Image() object for the kth channel, or return an iterator over channels if k=None. Iterate over channels as single channel luminance images: >>> for c in self.channel(): >>> print(c) Return the kth channel as a single channel luminance image: >>> c = self.channel(k=0)",
+"doc":"Return a cloned Image() object for the kth channel, or return an iterator over channels if k=None. Iterate over channels as single channel luminance images:   for c in self.channel(): print(c)   Return the kth channel as a single channel luminance image:   c = self.channel(k=0)  ",
 "func":1
 },
 {
 "ref":"vipy.image.Scene.red",
 "url":49,
-"doc":"Return red channel as a cloned single channel  vipy.image.Image object. These are equivalent operations if the colorspace is 'rgb' or 'rgba': >>> self.red()  self.channel(0) These are equivalent operations if the colorspace is 'bgr' or 'bgra': >>> self.red()  self.channel(3)  note OpenCV returns images in BGR colorspace. Use this method to always return the desired channel by color.",
+"doc":"Return red channel as a cloned single channel  vipy.image.Image object. These are equivalent operations if the colorspace is 'rgb' or 'rgba':   self.red()  self.channel(0)   These are equivalent operations if the colorspace is 'bgr' or 'bgra':   self.red()  self.channel(3)    note OpenCV returns images in BGR colorspace. Use this method to always return the desired channel by color.",
 "func":1
 },
 {
 "ref":"vipy.image.Scene.green",
 "url":49,
-"doc":"Return green channel as a cloned single channel  vipy.image.Image object. These are equivalent operations if the colorspace is 'rgb' or 'rgba': >>> self.green()  self.channel(1) These are equivalent operations if the colorspace is 'bgr' or 'bgra': >>> self.green()  self.channel(1)  note OpenCV returns images in BGR colorspace. Use this method to always return the desired channel by color.",
+"doc":"Return green channel as a cloned single channel  vipy.image.Image object. These are equivalent operations if the colorspace is 'rgb' or 'rgba':   self.green()  self.channel(1)   These are equivalent operations if the colorspace is 'bgr' or 'bgra':   self.green()  self.channel(1)    note OpenCV returns images in BGR colorspace. Use this method to always return the desired channel by color.",
 "func":1
 },
 {
 "ref":"vipy.image.Scene.blue",
 "url":49,
-"doc":"Return blue channel as a cloned single channel  vipy.image.Image object. These are equivalent operations if the colorspace is 'rgb' or 'rgba': >>> self.vlue()  self.channel(2) These are equivalent operations if the colorspace is 'bgr' or 'bgra': >>> self.blue()  self.channel(0)  note OpenCV returns images in BGR colorspace. Use this method to always return the desired channel by color.",
+"doc":"Return blue channel as a cloned single channel  vipy.image.Image object. These are equivalent operations if the colorspace is 'rgb' or 'rgba':   self.vlue()  self.channel(2)   These are equivalent operations if the colorspace is 'bgr' or 'bgra':   self.blue()  self.channel(0)    note OpenCV returns images in BGR colorspace. Use this method to always return the desired channel by color.",
 "func":1
 },
 {
@@ -11857,7 +11857,7 @@ INDEX=[
 {
 "ref":"vipy.image.Scene.zeros",
 "url":49,
-"doc":"Set the pixel buffer to all zeros of the same shape and datatype as this  vipy.image.Image object. These are equivalent operations for the resulting buffer shape: >>> import numpy as np >>> np.zeros( (self.width(), self.height(), self.channels( )  self.zeros().array() Returns: This  vipy.image.Image object.  note Triggers load() if the pixel buffer has not been loaded yet.",
+"doc":"Set the pixel buffer to all zeros of the same shape and datatype as this  vipy.image.Image object. These are equivalent operations for the resulting buffer shape:   import numpy as np np.zeros( (self.width(), self.height(), self.channels( )  self.zeros().array()   Returns: This  vipy.image.Image object.  note Triggers load() if the pixel buffer has not been loaded yet.",
 "func":1
 },
 {
@@ -12115,7 +12115,7 @@ INDEX=[
 {
 "ref":"vipy.image.Scene.normalize",
 "url":49,
-"doc":"Apply a multiplicative gain g and additive bias b, such that self.array()  gain self.array() + bias. This is useful for applying a normalization of an image prior to calling  vipy.image.Image.torch . The following operations are equivalent. >>> im = vipy.image.RandomImage() >>> im.normalize(1/255.0, 0.5)  im.gain(1/255.0).bias(-0.5)  note This will force the colorspace to 'float'",
+"doc":"Apply a multiplicative gain g and additive bias b, such that self.array()  gain self.array() + bias. This is useful for applying a normalization of an image prior to calling  vipy.image.Image.torch . The following operations are equivalent.   im = vipy.image.RandomImage() im.normalize(1/255.0, 0.5)  im.gain(1/255.0).bias(-0.5)    note This will force the colorspace to 'float'",
 "func":1
 },
 {
@@ -12217,12 +12217,12 @@ INDEX=[
 {
 "ref":"vipy.image.ImageDetection",
 "url":49,
-"doc":"vipy.image.ImageDetection class This class provides a representation of a vipy.image.Image with a single object detection with a category and a vipy.geometry.BoundingBox This class inherits all methods of Scene and BoundingBox. Be careful with overloaded methods clone(), width() and height() which will correspond to these methods for Scene() and not BoundingBox(). Use bbclone(), bbwidth() or bbheight() to access the subclass. Valid constructors include all provided by vipy.image.Image with the additional kwarg 'category' (or alias 'label'), and BoundingBox coordinates >>> im = vipy.image.ImageDetection(filename='/path/to/dog_image.ext', category='dog', xmin=0, ymin=0, width=100, height=100) >>> im = vipy.image.ImageDetection(filename='/path/to/dog_image.ext', category='dog', xmin=0, ymin=0, xmax=100, ymax=100) >>> im = vipy.image.ImageDetection(filename='/path/to/dog_image.ext', category='dog', xcentroid=50, ycentroid=50, width=100, height=100) >>> im = vipy.image.ImageDetection(filename='/path/to/dog_image.ext', category='dog', bbox=vipy.geometry.BoundingBox(xmin=0, ymin=0, width=100, height=100 >>> im = vipy.image.ImageCategory(url='http: path/to/dog_image.ext', category='dog').boundingbox(xmin=0, ymin=0, width=100, height=100) >>> im = vipy.image.ImageCategory(array=dog_img, colorspace='rgb', category='dog', xmin=0, ymin=0, width=100, height=100)"
+"doc":"vipy.image.ImageDetection class This class provides a representation of a vipy.image.Image with a single object detection with a category and a vipy.geometry.BoundingBox This class inherits all methods of Scene and BoundingBox. Be careful with overloaded methods clone(), width() and height() which will correspond to these methods for Scene() and not BoundingBox(). Use bbclone(), bbwidth() or bbheight() to access the subclass. Valid constructors include all provided by vipy.image.Image with the additional kwarg 'category' (or alias 'label'), and BoundingBox coordinates   im = vipy.image.ImageDetection(filename='/path/to/dog_image.ext', category='dog', xmin=0, ymin=0, width=100, height=100) im = vipy.image.ImageDetection(filename='/path/to/dog_image.ext', category='dog', xmin=0, ymin=0, xmax=100, ymax=100) im = vipy.image.ImageDetection(filename='/path/to/dog_image.ext', category='dog', xcentroid=50, ycentroid=50, width=100, height=100) im = vipy.image.ImageDetection(filename='/path/to/dog_image.ext', category='dog', bbox=vipy.geometry.BoundingBox(xmin=0, ymin=0, width=100, height=100 im = vipy.image.ImageCategory(url='http: path/to/dog_image.ext', category='dog').boundingbox(xmin=0, ymin=0, width=100, height=100) im = vipy.image.ImageCategory(array=dog_img, colorspace='rgb', category='dog', xmin=0, ymin=0, width=100, height=100)  "
 },
 {
 "ref":"vipy.image.ImageDetection.cast",
 "url":49,
-"doc":"Typecast the conformal vipy.image object im as  vipy.image.Image . This is useful for downcasting  vipy.image.Scene or  vipy.image.ImageDetection down to an image. >>> ims = vipy.image.RandomScene() >>> im = vipy.image.Image.cast(im)",
+"doc":"Typecast the conformal vipy.image object im as  vipy.image.Image . This is useful for downcasting  vipy.image.Scene or  vipy.image.ImageDetection down to an image.   ims = vipy.image.RandomScene() im = vipy.image.Image.cast(im)  ",
 "func":1
 },
 {
@@ -12276,7 +12276,7 @@ INDEX=[
 {
 "ref":"vipy.image.ImageDetection.from_json",
 "url":49,
-"doc":"Import the JSON string s as an  vipy.image.Image object. This will perform a round trip such that im1  im2 >>> im1 = vupy.image.RandomImage() >>> im2 = vipy.image.Image.from_json(im1.json( >>> assert im1  im2",
+"doc":"Import the JSON string s as an  vipy.image.Image object. This will perform a round trip such that im1  im2   im1 = vupy.image.RandomImage() im2 = vipy.image.Image.from_json(im1.json( assert im1  im2  ",
 "func":1
 },
 {
@@ -12570,7 +12570,7 @@ INDEX=[
 {
 "ref":"vipy.image.ImageDetection.sanitize",
 "url":49,
-"doc":"Remove all private keys from the attributes dictionary. The attributes dictionary is useful storage for arbitrary (key,value) pairs. However, this storage may contain sensitive information that should be scrubbed from the media before serialization. As a general rule, any key that is of the form '__keyname' prepended by two underscores is a private key. This is analogous to private or reserved attributes in the python lanugage. Users should reserve these keynames for those keys that should be sanitized and removed before any serialization of this object. >>> assert self.setattribute('__mykey', 1).sanitize().hasattribute('__mykey')  False",
+"doc":"Remove all private keys from the attributes dictionary. The attributes dictionary is useful storage for arbitrary (key,value) pairs. However, this storage may contain sensitive information that should be scrubbed from the media before serialization. As a general rule, any key that is of the form '__keyname' prepended by two underscores is a private key. This is analogous to private or reserved attributes in the python lanugage. Users should reserve these keynames for those keys that should be sanitized and removed before any serialization of this object.   assert self.setattribute('__mykey', 1).sanitize().hasattribute('__mykey')  False  ",
 "func":1
 },
 {
@@ -12588,7 +12588,7 @@ INDEX=[
 {
 "ref":"vipy.image.ImageDetection.untile",
 "url":49,
-"doc":"Undo an image tiling and recreate the original image. >>> tiles = im.tile(im.width()/2, im.height()/2, 0, 0) >>> imdst = vipy.image.Image.untile(tiles) >>> assert imdst  im Args: imlist: this must be the output of  vipy.image.Image.tile Returns: A new  vipy.image.Image object reconstructed from the tiling, such that this is equivalent to the input to vipy.image.Image.tile  note All annotations are updated properly for each tile, when the source image is  vipy.image.Scene ",
+"doc":"Undo an image tiling and recreate the original image.   tiles = im.tile(im.width()/2, im.height()/2, 0, 0) imdst = vipy.image.Image.untile(tiles) assert imdst  im   Args: imlist: this must be the output of  vipy.image.Image.tile Returns: A new  vipy.image.Image object reconstructed from the tiling, such that this is equivalent to the input to vipy.image.Image.tile  note All annotations are updated properly for each tile, when the source image is  vipy.image.Scene ",
 "func":1
 },
 {
@@ -12600,7 +12600,7 @@ INDEX=[
 {
 "ref":"vipy.image.ImageDetection.store",
 "url":49,
-"doc":"Store the current image file as an attribute of this object. Useful for archiving an object to be fully self contained without any external references. -Remove this stored image using unstore() -Unpack this stored image and set up the filename using restore() -This method is more efficient than load() followed by pkl(), as it stores the encoded image as a byte string. -Useful for creating a single self contained object for distributed processing. >>> v  v.store().restore(v.filename( ",
+"doc":"Store the current image file as an attribute of this object. Useful for archiving an object to be fully self contained without any external references. -Remove this stored image using unstore() -Unpack this stored image and set up the filename using restore() -This method is more efficient than load() followed by pkl(), as it stores the encoded image as a byte string. -Useful for creating a single self contained object for distributed processing.   v  v.store().restore(v.filename(  ",
 "func":1
 },
 {
@@ -12774,25 +12774,25 @@ INDEX=[
 {
 "ref":"vipy.image.ImageDetection.channel",
 "url":49,
-"doc":"Return a cloned Image() object for the kth channel, or return an iterator over channels if k=None. Iterate over channels as single channel luminance images: >>> for c in self.channel(): >>> print(c) Return the kth channel as a single channel luminance image: >>> c = self.channel(k=0)",
+"doc":"Return a cloned Image() object for the kth channel, or return an iterator over channels if k=None. Iterate over channels as single channel luminance images:   for c in self.channel(): print(c)   Return the kth channel as a single channel luminance image:   c = self.channel(k=0)  ",
 "func":1
 },
 {
 "ref":"vipy.image.ImageDetection.red",
 "url":49,
-"doc":"Return red channel as a cloned single channel  vipy.image.Image object. These are equivalent operations if the colorspace is 'rgb' or 'rgba': >>> self.red()  self.channel(0) These are equivalent operations if the colorspace is 'bgr' or 'bgra': >>> self.red()  self.channel(3)  note OpenCV returns images in BGR colorspace. Use this method to always return the desired channel by color.",
+"doc":"Return red channel as a cloned single channel  vipy.image.Image object. These are equivalent operations if the colorspace is 'rgb' or 'rgba':   self.red()  self.channel(0)   These are equivalent operations if the colorspace is 'bgr' or 'bgra':   self.red()  self.channel(3)    note OpenCV returns images in BGR colorspace. Use this method to always return the desired channel by color.",
 "func":1
 },
 {
 "ref":"vipy.image.ImageDetection.green",
 "url":49,
-"doc":"Return green channel as a cloned single channel  vipy.image.Image object. These are equivalent operations if the colorspace is 'rgb' or 'rgba': >>> self.green()  self.channel(1) These are equivalent operations if the colorspace is 'bgr' or 'bgra': >>> self.green()  self.channel(1)  note OpenCV returns images in BGR colorspace. Use this method to always return the desired channel by color.",
+"doc":"Return green channel as a cloned single channel  vipy.image.Image object. These are equivalent operations if the colorspace is 'rgb' or 'rgba':   self.green()  self.channel(1)   These are equivalent operations if the colorspace is 'bgr' or 'bgra':   self.green()  self.channel(1)    note OpenCV returns images in BGR colorspace. Use this method to always return the desired channel by color.",
 "func":1
 },
 {
 "ref":"vipy.image.ImageDetection.blue",
 "url":49,
-"doc":"Return blue channel as a cloned single channel  vipy.image.Image object. These are equivalent operations if the colorspace is 'rgb' or 'rgba': >>> self.vlue()  self.channel(2) These are equivalent operations if the colorspace is 'bgr' or 'bgra': >>> self.blue()  self.channel(0)  note OpenCV returns images in BGR colorspace. Use this method to always return the desired channel by color.",
+"doc":"Return blue channel as a cloned single channel  vipy.image.Image object. These are equivalent operations if the colorspace is 'rgb' or 'rgba':   self.vlue()  self.channel(2)   These are equivalent operations if the colorspace is 'bgr' or 'bgra':   self.blue()  self.channel(0)    note OpenCV returns images in BGR colorspace. Use this method to always return the desired channel by color.",
 "func":1
 },
 {
@@ -12804,7 +12804,7 @@ INDEX=[
 {
 "ref":"vipy.image.ImageDetection.zeros",
 "url":49,
-"doc":"Set the pixel buffer to all zeros of the same shape and datatype as this  vipy.image.Image object. These are equivalent operations for the resulting buffer shape: >>> import numpy as np >>> np.zeros( (self.width(), self.height(), self.channels( )  self.zeros().array() Returns: This  vipy.image.Image object.  note Triggers load() if the pixel buffer has not been loaded yet.",
+"doc":"Set the pixel buffer to all zeros of the same shape and datatype as this  vipy.image.Image object. These are equivalent operations for the resulting buffer shape:   import numpy as np np.zeros( (self.width(), self.height(), self.channels( )  self.zeros().array()   Returns: This  vipy.image.Image object.  note Triggers load() if the pixel buffer has not been loaded yet.",
 "func":1
 },
 {
@@ -13062,7 +13062,7 @@ INDEX=[
 {
 "ref":"vipy.image.ImageDetection.normalize",
 "url":49,
-"doc":"Apply a multiplicative gain g and additive bias b, such that self.array()  gain self.array() + bias. This is useful for applying a normalization of an image prior to calling  vipy.image.Image.torch . The following operations are equivalent. >>> im = vipy.image.RandomImage() >>> im.normalize(1/255.0, 0.5)  im.gain(1/255.0).bias(-0.5)  note This will force the colorspace to 'float'",
+"doc":"Apply a multiplicative gain g and additive bias b, such that self.array()  gain self.array() + bias. This is useful for applying a normalization of an image prior to calling  vipy.image.Image.torch . The following operations are equivalent.   im = vipy.image.RandomImage() im.normalize(1/255.0, 0.5)  im.gain(1/255.0).bias(-0.5)    note This will force the colorspace to 'float'",
 "func":1
 },
 {
@@ -13758,7 +13758,7 @@ INDEX=[
 {
 "ref":"vipy.image.show",
 "url":49,
-"doc":"Fast visualization of a numpy array img >>> im = vipy.image.show(np.random.rand(16,16,3 ",
+"doc":"Fast visualization of a numpy array img   im = vipy.image.show(np.random.rand(16,16,3  ",
 "func":1
 },
 {

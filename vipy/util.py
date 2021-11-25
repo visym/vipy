@@ -78,8 +78,10 @@ def save(vars, outfile=None):
 
     This function allows vipy objects to be serialized to disk for later loading.
 
-    >>> im = vipy.image.owl()
-    >>> im = vipy.util.load(vipy.util.save(im))   # round trip
+    ```python
+    im = vipy.image.owl()
+    im = vipy.util.load(vipy.util.save(im))   # round trip
+    ```
 
     Args:
         vars: A python object to save.  This can be any serializable python object
@@ -127,9 +129,11 @@ def load(infile, abspath=True, refcycle=True):
        3. if abspath=true, then convert relative paths to absolute paths for object when loaded
        4. If refcycle=False, then disable the python reference cycle garbage collector for large archive files
     
-       >>> im = vipy.image.owl()
-       >>> f = vipy.util.save(im)
-       >>> im = vipy.util.load(im)
+    ```python
+    im = vipy.image.owl()
+    f = vipy.util.save(im)
+    im = vipy.util.load(im)
+    ```
 
        Args:
            infile: [str] file saved using `vipy.util.save` with extension [.pkl, .json].  This may also be a directory tree containing json or pkl files 
@@ -222,10 +226,12 @@ def catcher(f, *args, **kwargs):
 def mergedict(d1, d2):
     """Combine keys of two dictionaries and return a dictionary deep copy.
     
-    >>> d1 = {1:2}
-    >>> d2 = {3:4}
-    >>> d3 = mergedict(d1,d2)
-    >>> assert d3 == {1:2, 3:4}
+    ```python
+    d1 = {1:2}
+    d2 = {3:4}
+    d3 = mergedict(d1,d2)
+    assert d3 == {1:2, 3:4}
+    ```
 
     """
     assert isinstance(d1, dict) and isinstance(d2, dict)
@@ -419,8 +425,10 @@ def dividelist(inlist, fractions):
 def chunklist(inlist, num_chunks):
     """Convert list into a list of lists of length num_chunks, such that each element is a list containing a sequential chunk of the original list.
     
-    >>> (A,B,C) = vipy.util.chunklist(inlist, num_chunks=3)
-    >>> assert len(A) == len(inlist) // 3
+    ```python
+    (A,B,C) = vipy.util.chunklist(inlist, num_chunks=3)
+    assert len(A) == len(inlist) // 3
+    ```
 
     .. note::  The last chunk will be larger for ragged chunks
     """
@@ -759,9 +767,11 @@ def isinstalled(cmd):
 def isextension(filename, ext):
     """Does the filename end with the extension ext? 
     
-    >>> isextension('/path/to/myfile.json', 'json') == True
-    >>> isextension('/path/to/myfile.json', '.json') == True
-    >>> isextension('/path/to/myfile.json', '.pkl') == False
+    ```python
+    isextension('/path/to/myfile.json', 'json') == True
+    isextension('/path/to/myfile.json', '.json') == True
+    isextension('/path/to/myfile.json', '.pkl') == False
+    ```
 
     """
     return filename.endswith(ext)
@@ -1425,15 +1435,17 @@ class Stopwatch(object):
     
 class Timer(object):
     """Pretty print elapsed system time in seconds between calls to enter and exit
+    
+    ```python 
+       t = Timer():
+       [some code]
+       print(t)
+       [some more code]
+       print(t)
 
-       >>> t = Timer():
-       >>> [some code]
-       >>> print(t)
-       >>> [some more code]
-       >>> print(t)
-
-       >>> with Timer():
-       >>>    [some code]
+       with Timer():
+          [some code]
+    ```
        
     """
     def __enter__(self):
