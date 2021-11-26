@@ -655,24 +655,54 @@ def repath(v, srcpath, dstpath):
     return vc
     
 
-def scpsave(V):
+def scpsave(V, username=None):
+    """Save an archive file to load via SCP.
+
+    Use case:
+
+    - This archive format is useful to allow access to videos and images that are accessible behind a remote server for which you have access via SSH key-based authentication.
+    - You create this archive on the remote server, and all vipy objects are replaced with references to remote media.
+    - Every video or image is replaced with a URL of the format 'scp://USER@HOST:/path/to.mp4'.  
+    - Vipy will use your SSH keys to SCP these media files from USER@HOST on demand, so that the videos are cached for you on your local machine when you need them.
+    - This is useful for transparently visualizing large datasets that are hidden behind an SSH-only accessible server
+
+    Usage:
+    
+    ```python
+    outfile = vipy.util.scpsave([vipy.video.Video(filename='/path/to.mp4)])  # run on remote machine that you have SSH key access
+    V = vipy.util.scpload(outfile)  # run on local machine that has SSH key access to remote machine
+    V[0].load()  # this will SCP the videos from 'scp:///path/to.mp4' to $VIPY_CACHE/to.mp4 transparently and on demand
+    ```
+
+    Args:
+        V: [vipy objects] A list of vipy objects or `vipy.dataset.Dataset`
+        username: [str] Your username on the remote machine to select the proper SSH key
+
+    Returns:
+        A temp archive file stored on the remote machine that will be downloaded and loaded via SCP
+
+    """
+    
     import vipy.image
     import vipy.video
-    if (isinstance(V, vipy.image.Image) or isinstance(V, vipy.video.Video)) and V.hasfilename():        
-        v = V
-        v = v.clone().url('scp://%s:%s' % (socket.gethostname(), v.filename())).nofilename()
+
+    if isinstance(V, vipy.dataset.Dataset) and V._isvipy():
+        v = V.localmap(lambda v: v.clone().url('scp://%s%s:%s' % (('%s@' % username) if username is not None else '', socket.gethostname(), v.filename())).nofilename())
+    elif (isinstance(V, vipy.image.Image) or isinstance(V, vipy.video.Video)) and V.hasfilename():        
+        v = V.clone().url('scp://%s%s:%s' % (('%s@' % username) if username is not None else '', socket.gethostname(), v.filename())).nofilename()
     elif islist(V) and all([isinstance(v, vipy.image.Image) or isinstance(v, vipy.video.Video) for v in V]):
-        v = [v.clone().url('scp://%s:%s' % (socket.gethostname(), v.abspath().filename())).nofilename() for v in V]
+        v = [v.clone().url('scp://%s%s:%s' % (('%s@' % username) if username is not None else '', socket.gethostname(), v.abspath().filename())).nofilename() for v in V]
     else:
         v = V # no vipy objects
 
-    pklfile = 'scp://%s:%s' % (socket.gethostname(), save(v, temppkl()))
+    pklfile = 'scp://%s%s:%s' % (('%s@' % username) if username is not None else '', socket.gethostname(), save(v, temppkl()))
     cmd = "V = vipy.util.scpload('%s')" % pklfile
     print('[vipy.util.scpsave]: On a remote machine where you have public key ssh access to this machine run:\n>>> %s\n' % cmd)
     return pklfile
 
 
 def scpload(url):
+    """Load an archive file saved using `vipy.util.scpsave`"""
     import vipy.downloader
     return load(vipy.downloader.scp(url, templike(url)))
 
