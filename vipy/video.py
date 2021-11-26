@@ -361,7 +361,7 @@ class Stream(object):
                 break
                 
     def batch(self, n):
-        """Stream batches of length n such that each batch contains frames [0,n], [n+1, 2n], ...  Last batch will be ragged.
+        """Stream batches of length n such that each batch contains frames [0, n-1], [n, 2n-1], ...  Last batch will be ragged.
             
         The primary use case for batch() is to provide a mechanism for parallel batch processing on a GPU.
         
