@@ -32,7 +32,7 @@ The VIPY tools are designed for simple and intuitive interaction with videos and
 v = vipy.video.RandomScene()
 ```
 
-Videos are constructed from URLs, YouTube links, AWS S3 links, SSH accessible paths, local filenames, `vipy.image.Image` frame lists, numpy arrays or pytorch tensors.  In this example, we create a random video with tracks and activities.  Videos can be natively iterated:
+Videos are constructed from URLs (e.g. RTSP/RTMP live camera streams, YouTube videos, public or keyed AWS S3 links), SSH accessible paths, local filenames, `vipy.image.Image` frame lists, numpy arrays or pytorch tensors.  In this example, we create a random video with tracks and activities.  Videos can be natively iterated:
 
 
 ```python
@@ -79,7 +79,7 @@ v.show()
 v.show(notebook=True)
 v.frame().show()
 v.annotate('/path/to/visualization.mp4')
-with vipy.video.Video(url='https://youtu.be/...').mindim(512).framerate(5).stream(write=True) as s:
+with vipy.video.Video(url='rtmp://a.rtmp.youtube.com/...').mindim(512).framerate(5).stream(write=True) as s:
     for im in v.framerate(5):
         s.write(im.annotate().rgb())
 ```

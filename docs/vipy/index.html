@@ -63,7 +63,7 @@ Furthermore, loading of media is delayed until explicitly requested by the user 
 Try to create a <code><a title="vipy.video.Scene" href="video.html#vipy.video.Scene">Scene</a></code> object:</p>
 <pre><code class="language-python">v = vipy.video.RandomScene()
 </code></pre>
-<p>Videos are constructed from URLs, YouTube links, AWS S3 links, SSH accessible paths, local filenames, <code><a title="vipy.image.Image" href="image.html#vipy.image.Image">Image</a></code> frame lists, numpy arrays or pytorch tensors.
+<p>Videos are constructed from URLs (e.g. RTSP/RTMP live camera streams, YouTube videos, public or keyed AWS S3 links), SSH accessible paths, local filenames, <code><a title="vipy.image.Image" href="image.html#vipy.image.Image">Image</a></code> frame lists, numpy arrays or pytorch tensors.
 In this example, we create a random video with tracks and activities.
 Videos can be natively iterated:</p>
 <pre><code class="language-python">for im in v:
