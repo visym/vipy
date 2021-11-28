@@ -55,40 +55,42 @@ has_ffplay = ffplay_exe is not None and os.path.exists(ffplay_exe)
 class Stream(object):
     """vipy.video.Stream class. 
 
-        This class is the primary mechanism for streaming frames and clips from long videos or live video streams.
+    This class is the primary mechanism for streaming frames and clips from long videos or live video streams.
     
-        - The stream is constructed from a shared underlying video in self._video.  
-        - As the shared video is updated with annotations, the stream can generate frames and clips that contain these annotations
-        - The shared video allows for multiple concurrent iterators all sourced from the same video, iterating over different frames, clips and rates
-        - The iterator leverages a pipe to FFMPEG, reading numpy frames from the video filter chain.  
-        - The pipe is written from a thread which is dedicated to reading frames from ffmpeg
-        - Each numpy frame is added to a queue, with a null termintor when end of stream is reached
-        - The iterator then reads from the queue, and returns annotated frames
+    - The stream is constructed from a shared underlying video in self._video.  
+    - As the shared video is updated with annotations, the stream can generate frames and clips that contain these annotations
+    - The shared video allows for multiple concurrent iterators all sourced from the same video, iterating over different frames, clips and rates
+    - The iterator leverages a pipe to FFMPEG, reading numpy frames from the video filter chain.  
+    - The pipe is written from a thread which is dedicated to reading frames from ffmpeg
+    - Each numpy frame is added to a queue, with a null termintor when end of stream is reached
+    - The iterator then reads from the queue, and returns annotated frames
         
-        This iterator can also be used as a buffered stream.  Buffered streams have a primary iterator which saves a fixed stream buffer
-        of frames so that subsequent iterators can pull temporally aligned frames.  This is useful to avoid having multiple FFMPEG pipes 
-        open simultaneously, and can allow for synchronized access to live video streams without timestamping.  
+    This iterator can also be used as a buffered stream.  Buffered streams have a primary iterator which saves a fixed stream buffer
+    of frames so that subsequent iterators can pull temporally aligned frames.  This is useful to avoid having multiple FFMPEG pipes 
+    open simultaneously, and can allow for synchronized access to live video streams without timestamping.  
 
-        - The primary iterator is the first iterator over the video with stream(buffered=True)
-        - The primary iterator creates a private attribute self._video.attributes['__stream_buffer'] which caches frames
-        - The stream buffer saves numpy arrays from the iterator with a fixed buffer length (number of frames)
-        - The secondary iterator (e.g. any iterator that accesses the video after the primary iterator is initially created) will read from the stream buffer
-        - All iterators share the underlying self._video object in the stream so that if the video annotations are updated by an iterator, the annotated frames are accessible in the iterators
-        - The secondary iterators are synchronized to the stream buffer that is read by the primary iterator.  This is useful for synchronizing streams for live camera streams without absolute timestamps.
-        - There can be an unlimited number of secondary iterators, without incurring a penalty on frame access
+    - The primary iterator is the first iterator over the video with stream(buffered=True)
+    - The primary iterator creates a private attribute self._video.attributes['__stream_buffer'] which caches frames
+    - The stream buffer saves numpy arrays from the iterator with a fixed buffer length (number of frames)
+    - The secondary iterator (e.g. any iterator that accesses the video after the primary iterator is initially created) will read from the stream buffer
+    - All iterators share the underlying self._video object in the stream so that if the video annotations are updated by an iterator, the annotated frames are accessible in the iterators
+    - The secondary iterators are synchronized to the stream buffer that is read by the primary iterator.  This is useful for synchronizing streams for live camera streams without absolute timestamps.
+    - There can be an unlimited number of secondary iterators, without incurring a penalty on frame access
 
-        This iterator can iterate over clips, frames or batches.  
+    This iterator can iterate over clips, frames or batches.  
         
-        - A clip is a sequence of frames such that each clip is separated by a fixed number of frames.  
-        - Clips are useful for temporal encoding of short atomic activities
-        - A batch is a sequence of n frames with a stride of n.  
-        - A batch is useful for iterating over groups of frames that are operated in parallel on a GPU
+    - A clip is a sequence of frames such that each clip is separated by a fixed number of frames.  
+    - Clips are useful for temporal encoding of short atomic activities
+    - A batch is a sequence of n frames with a stride of n.  
+    - A batch is useful for iterating over groups of frames that are operated in parallel on a GPU
 
-        >>> for (im1, im2, v3) in zip(v.stream(buffered=True), v.stream(buffered=True).frame(delay=30), v.stream(buffered=True).clip(n=16,m-1):
-        >>>     # im1: `vipy.image.Scene` at frame index k
-        >>>     # im2: `vipy.image.Scene` at frame index k-30
-        >>>     # v3: `vipy.video.Scene` at frame range [k, k-16]
-        
+    ```python
+    for (im1, im2, v3) in zip(v.stream(buffered=True), v.stream(buffered=True).frame(delay=30), v.stream(buffered=True).clip(n=16,m=1):
+        # im1: `vipy.image.Scene` at frame index k
+        # im2: `vipy.image.Scene` at frame index k-30
+        # v3: `vipy.video.Scene` at frame range [k, k-16]
+    ```
+
     .. note::
         - This is designed to be accessed as `vipy.video.Video.stream` and not accessed as a standalone class..
 
@@ -286,17 +288,21 @@ class Stream(object):
         """Stream clips of length n such that the yielded video clip contains frame(0+delay) to frame(n+delay), and next contains frame(m+delay) to frame(n+m+delay). 
             
         Usage examples:
-                
-        >>> for vc in v.stream().clip(n=16, m=2):
-        >>>     # yields video vc with frames [0,16] from v
-        >>>     # then video vc with frames [2,18] from v
-        >>>     # ... finally video with frames [len(v)-n-1, len(v)-1]
+           
+        ```python 
+        for vc in v.stream().clip(n=16, m=2):
+            # yields video vc with frames [0,16] from v
+            # then video vc with frames [2,18] from v
+            # ... finally video with frames [len(v)-n-1, len(v)-1]
+        ```
             
         Introducing a delay so that the clips start at a temporal offset from v
 
-        >>> for vc in v.stream().clip(n=8, m=3, delay=1):
-        >>>     # yields video vc with frames [1,9]
-        >>>     # then video vc with frames [4,12] ...
+        ```python
+        for vc in v.stream().clip(n=8, m=3, delay=1):
+            # yields video vc with frames [1,9]
+            # then video vc with frames [4,12] ...
+        ```
 
         Args:
             n: [int] the length of the clip in frames
@@ -355,19 +361,22 @@ class Stream(object):
                 break
                 
     def batch(self, n):
-        """Stream batches of length n such that each batch contains frames [0,n], [n+1, 2n], ...  Last batch will be ragged.
+        """Stream batches of length n such that each batch contains frames [0, n-1], [n, 2n-1], ...  Last batch will be ragged.
             
         The primary use case for batch() is to provide a mechanism for parallel batch processing on a GPU.
         
-        >>> for (im, im_gpu) in zip(vi, myfunc(vi.stream().batch(16))):
-        >>>
-        >>> def myfunc(gen):
-        >>>     for vb in gen:
-        >>>         # process the batch vb (length n) in parallel by encoding on a GPU with batchsize=n
-        >>>         for im in f_gpu(vb):
-        >>>             yield im_gpu:
+        ```python
+        for im_gpu in myfunc(vi.stream().batch(16))):
+            print(im_gpu)
         
-        This will then yield the GPU batched processed image im_gpu zipped with the original image im.  
+        def myfunc(gen):
+            for vb in gen:
+                # process the batch vb (length n) in parallel by encoding on a GPU with batchsize=n
+                for im in f_gpu(vb):
+                    yield im_gpu:
+        ```
+        
+        This will then yield the GPU batched processed image im_gpu.
         
         """
         return self.clip(n=n, m=n, continuous=False, ragged=True) 
@@ -394,37 +403,49 @@ class Video(object):
     The vipy.video class provides a fluent, lazy interface for representing, transforming and visualizing videos.
     The following constructors are supported:
 
-    >>> vid = vipy.video.Video(filename='/path/to/video.ext')
+    ```python
+    vid = vipy.video.Video(filename='/path/to/video.ext')
+    ```
 
     Valid video extensions are those that are supported by ffmpeg ['.avi','.mp4','.mov','.wmv','.mpg', 'mkv', 'webm'].
 
-    >>> vid = vipy.video.Video(url='https://www.youtube.com/watch?v=MrIN959JuV8')
-    >>> vid = vipy.video.Video(url='http://path/to/video.ext', filename='/path/to/video.ext')
+    ```python
+    vid = vipy.video.Video(url='https://www.youtube.com/watch?v=MrIN959JuV8')
+    vid = vipy.video.Video(url='http://path/to/video.ext', filename='/path/to/video.ext')
+    ```
 
     Youtube URLs are downloaded to a temporary filename, retrievable as vid.download().filename().  If the environment
     variable 'VIPY_CACHE' is defined, then videos are saved to this directory rather than the system temporary directory.
     If a filename is provided to the constructor, then that filename will be used instead of a temp or cached filename.
     URLs can be defined as an absolute URL to a video file, or to a site supported by 'youtube-dl' (https://ytdl-org.github.io/youtube-dl/supportedsites.html)
 
-    >>> vid = vipy.video.Video(url='s3://BUCKET.s3.amazonaws.com/PATH/video.ext')
+    ```python
+    vid = vipy.video.Video(url='s3://BUCKET.s3.amazonaws.com/PATH/video.ext')
+    ```
 
     If you set the environment variables VIPY_AWS_ACCESS_KEY_ID and VIPY_AWS_SECRET_ACCESS_KEY, then this will download videos directly from S3 using boto3 and store in VIPY_CACHE.
     Note that the URL protocol should be 's3' and not 'http' to enable keyed downloads.  
 
-    >>> vid = vipy.video.Video(array=array, colorspace='rgb')
+    ```python
+    vid = vipy.video.Video(array=array, colorspace='rgb')
+    ```
     
     The input 'array' is an NxHxWx3 numpy array corresponding to an N-length list of HxWx3 uint8 numpy array which is a single frame of pre-loaded video
     Note that some video transformations are only available prior to load(), and the array() is assumed immutable after load().
 
-    >>> frames = [im for im in vipy.video.RandomVideo()]
-    >>> vid = vipy.video.Video(frames=frames)
+    ```python
+    frames = [im for im in vipy.video.RandomVideo()]
+    vid = vipy.video.Video(frames=frames)
+    ```
 
     The input can be an RTSP video stream.  Note that streaming is most efficiently performed using `vipy.video.Scene`.  The URL must contain the 'rtsp://' url scheme.  
     You can experiment with this using the free Periscope H.264 RTSP App (https://apps.apple.com/us/app/periscope-hd-h-264-rtsp-cam/id1095600218)
 
-    >>> vipy.video.Scene(url='rtsp://127.0.0.1:8554/live.sdp').show()
-    >>> for im in vipy.video.Scene(url='rtsp://127.0.0.1:8554/live.sdp').stream():
-    >>>     print(im)
+    ```python
+    vipy.video.Scene(url='rtsp://127.0.0.1:8554/live.sdp').show()
+    for im in vipy.video.Scene(url='rtsp://127.0.0.1:8554/live.sdp').stream():
+        print(im)
+    ```
 
     See also 'pip install heyvi' 
 
@@ -523,8 +544,10 @@ class Video(object):
         
         This is useful for downcasting superclasses.
 
-        >>> vs = vipy.video.RandomScene()
-        >>> v = vipy.video.Video.cast(vs)
+        ```python
+        vs = vipy.video.RandomScene()
+        v = vipy.video.Video.cast(vs)
+        ```
 
         """
         assert isinstance(v, vipy.video.Video), "Invalid input - must be derived from vipy.video.Video"
@@ -538,7 +561,9 @@ class Video(object):
         This will perform a round trip from a video to json and back to a video object.
         This same operation is used for serialization of all vipy objects to JSON for storage.
 
-        >>> v = vipy.video.Video.from_json(vipy.video.RandomVideo().json())
+        ```python
+        v = vipy.video.Video.from_json(vipy.video.RandomVideo().json())
+        ```
 
         """
         
@@ -597,7 +622,9 @@ class Video(object):
         
         The attributes dictionary is useful storage for arbitrary (key,value) pairs.  However, this storage may contain sensitive information that should be scrubbed from the video before serialization.  As a general rule, any key that is of the form '__keyname' prepended by two underscores is a private key.  This is analogous to private or reserved attributes in the python lanugage.  Users should reserve these keynames for those keys that should be sanitized and removed before any seerialization of this object.
         
-        >>> assert self.setattribute('__mykey', 1).sanitize().hasattribute('__mykey') == False
+        ```python
+        assert self.setattribute('__mykey', 1).sanitize().hasattribute('__mykey') == False
+        ```
 
         """
         if self._has_private_attribute():
@@ -626,7 +653,7 @@ class Video(object):
             return self.attributes['video_id'] if 'video_id' in self.attributes else (hashlib.sha1(str(str(self.filename())+str(self.url())).encode("UTF-8")).hexdigest() if (self.filename() is not None or self.url() is not None) else None)
         
 
-    def frame(self, k, img=None):
+    def frame(self, k=0, img=None):
         """Return the kth frame as an `vipy.image Image` object"""        
         assert isinstance(k, int) and k>=0, "Frame index must be non-negative integer"
         return Image(array=img if img is not None else (self._array[k] if self.isloaded() else self.preview(k).array()), colorspace=self.colorspace())       
@@ -634,8 +661,10 @@ class Video(object):
     def __iter__(self):
         """Iterate over video, yielding read only frames.
         
-        >>> for im in vipy.video.RandomScene():
-        >>>     print(im)
+        ```python
+        for im in vipy.video.RandomScene():
+            print(im)
+        ```
 
         """
         return self.stream().__iter__()
@@ -645,7 +674,9 @@ class Video(object):
 
         Useful for archiving an object to be fully self contained without any external references.  
 
-        >>> v == v.store().restore(v.filename()) 
+        ```python
+        v == v.store().restore(v.filename()) 
+        ```
         
         .. note::
         -Remove this stored video using unstore()
@@ -674,25 +705,27 @@ class Video(object):
     def concatenate(cls, videos, outfile, framerate=30, youtube_chapters=None):
         """Temporally concatenate a sequence of videos into a single video stored in outfile.
         
-        >>> (v1, v2, v3) = (vipy.video.RandomVideo(128,128,32), vipy.video.RandomVideo(128,128,32), vipy.video.RandomVideo(128,128,32))
-        >>> vc = vipy.video.Video.concatenate((v1, v2, v3), 'concatenated.mp4', youtube_chapters=lambda v: v.category())
+        ```python
+        (v1, v2, v3) = (vipy.video.RandomVideo(128,128,32), vipy.video.RandomVideo(128,128,32), vipy.video.RandomVideo(128,128,32))
+        vc = vipy.video.Video.concatenate((v1, v2, v3), 'concatenated.mp4', youtube_chapters=lambda v: v.category())
+        ```
 
         In this example, vc will point to concatenated.mp4 which will contain (v1,v2,v3) concatenated temporally .  
 
-        Input:
+        Args:
             videos: a single video or an iterable of videos of type `vipy.video.Video` or an iterable of video files
             outfile: the output filename to store the concatenation. 
-            youtube_chapters [bool, callable]:  If true, output a string that can be used to define the start and end times of chapters if this video is uploaded to youtube.  The string output should be copied to the youtube video description in order to enable chapters on playback.  This argument will default to the string representation ofo the video, but you may also pass a callable of the form: 'youtube_chapters=lambda v: str(v)' which will output the provided string for each video chapter.  A useful lambda is 'youtube_chapters=lambda v: v.category()'
-            framerate [float]: The output frame rate of outfile
+            youtube_chapters: [bool, callable]:  If true, output a string that can be used to define the start and end times of chapters if this video is uploaded to youtube.  The string output should be copied to the youtube video description in order to enable chapters on playback.  This argument will default to the string representation ofo the video, but you may also pass a callable of the form: 'youtube_chapters=lambda v: str(v)' which will output the provided string for each video chapter.  A useful lambda is 'youtube_chapters=lambda v: v.category()'
+            framerate: [float]: The output frame rate of outfile
 
         Returns:
             A `vipy.video.Video` object with filename()=outfile, such that outfile contains the temporal concatenation of pixels in (self, videos).
         
         .. note::
-        -self will not be modified, this will return a new `vipy.video.Video` object.
-        -All videos must be the same shape().  If the videos are different shapes, you must pad them to a common size equal to self.shape().  Try `vipy.video.Video.zeropadlike`.
-        -The output video will be at the framerate of self.framerate().
-        -if you want to concatenate annotations, call `vipy.video.Scene.annotate` first on the videos to save the annotations into the pixels, then concatenate.
+            - self will not be modified, this will return a new `vipy.video.Video` object.
+            - All videos must be the same shape().  If the videos are different shapes, you must pad them to a common size equal to self.shape().  Try `vipy.video.Video.zeropadlike`.
+            - The output video will be at the framerate of self.framerate().
+            - if you want to concatenate annotations, call `vipy.video.Scene.annotate` first on the videos to save the annotations into the pixels, then concatenate.
         """
 
         assert len(tolist(videos))>0 and (all([isinstance(v, vipy.video.Video) for v in tolist(videos)]) or all([os.path.exists(f) and vipy.util.isvideofile(f) for f in tolist(videos)]))
@@ -720,39 +753,51 @@ class Video(object):
         A video stream is a real time iterator to read or write from a video.  Streams are useful to group together frames into clips that are operated on as a group.
 
         The following use cases are supported:
-
-        >>> v = vipy.video.RandomScene()
+        
+        ```python
+        v = vipy.video.RandomScene()
+        ```
 
         Stream individual video frames lagged by 10 frames and 20 frames
 
-        >>> for (im1, im2) in zip(v.stream().frame(n=-10), v.stream().frame(n=-20)):
-        >>>     print(im1, im2)
+        ```python
+        for (im1, im2) in zip(v.stream().frame(n=-10), v.stream().frame(n=-20)):
+            print(im1, im2)
+        ```
         
         Stream overlapping clips such that each clip is a video n=16 frames long and starts at frame i, and the next clip is n=16 frames long and starts at frame i=i+m
 
-        >>> for vc in v.stream().clip(n=16, m=4):
-        >>>     print(vc)
+        ```python
+        for vc in v.stream().clip(n=16, m=4):
+            print(vc)
+        ```
 
         Stream non-overlapping batches of frames such that each clip is a video of length n and starts at frame i, and the next clip is length n and starts at frame i+n
 
-        >>> for vb in v.stream().batch(n=16):
-        >>>     print(vb)        
+        ```python
+        for vb in v.stream().batch(n=16):
+            print(vb)        
+        ```
 
         Create a write stream to incrementally add frames to long video.  
 
-        >>> vi = vipy.video.Video(filename='/path/to/output.mp4')
-        >>> vo = vipy.video.Video(filename='/path/to/input.mp4')
-        >>> with vo.stream(write=True) as s:
-        >>>     for im in vi.stream():
-        >>>         s.write(im)  # manipulate pixels of im, if desired
+        ```python
+        vi = vipy.video.Video(filename='/path/to/output.mp4')
+        vo = vipy.video.Video(filename='/path/to/input.mp4')
+        with vo.stream(write=True) as s:
+            for im in vi.stream():
+                s.write(im)  # manipulate pixels of im, if desired
+        ```
 
         Create a 480p YouTube live stream from an RTSP camera at 5Hz 
         
-        >>> vo = vipy.video.Scene(url='rtmp://a.rtmp.youtube.com/live2/$SECRET_STREAM_KEY')
-        >>> vi = vipy.video.Scene(url='rtsp://URL').framerate(5)
-        >>> with vo.framerate(5).stream(write=True, bitrate='1000k') as s:
-        >>>     for im in vi.framerate(5).resize(cols=854, rows=480):
-        >>>         s.write(im)
+        ```python
+        vo = vipy.video.Scene(url='rtmp://a.rtmp.youtube.com/live2/$SECRET_STREAM_KEY')
+        vi = vipy.video.Scene(url='rtsp://URL').framerate(5)
+        with vo.framerate(5).stream(write=True, bitrate='1000k') as s:
+            for im in vi.framerate(5).resize(cols=854, rows=480):
+                s.write(im)
+        ```
 
         Args:
             write: [bool]  If true, create a write stream
@@ -1211,7 +1256,10 @@ class Video(object):
         framedir/image_0001.jpg
         framedir/image_0002.jpg
         
-        >>> vipy.video.Video(frames='/path/to/framedir')
+        ```python
+        vipy.video.Video(frames='/path/to/framedir')
+        ```
+
         """
         return self.fromframes([vipy.image.Image(filename=f) for f in sorted(vipy.util.imlist(indir), key=sortkey)])
                                 
@@ -1288,9 +1336,11 @@ class Video(object):
         
         Usage:
          
-        >>> v = vipy.video.Video(filename='/path/to/dataset/video/category/out.mp4')
-        >>> v.relpath(parent='/path/to/dataset')
-        >>> v.filename() == 'video/category/out.mp4'
+        ```python
+        v = vipy.video.Video(filename='/path/to/dataset/video/category/out.mp4')
+        v.relpath(parent='/path/to/dataset')
+        v.filename() == 'video/category/out.mp4'
+        ```
 
         If the current working directory is /path/to/dataset, and v.load() is called, the filename will be loaded.
 
@@ -1674,7 +1724,9 @@ class Video(object):
 
         .. notes:: The endframe can be retrieved (inefficiently) using:
 
-        >>> int(round(self.duration_in_frames_of_videofile() * (self.framerate() / self.framerate_of_videofile())))
+        ```python
+        int(round(self.duration_in_frames_of_videofile() * (self.framerate() / self.framerate_of_videofile())))
+        ```
 
         """
         return (self._startframe if self._startframe is not None else 0, self._endframe)
@@ -2072,11 +2124,11 @@ class Video(object):
            Montage increases rowwise for n uniformly spaced frames, starting from frame zero and ending on the last frame.
         
            Input:
-              -n:  Number of images in the quicklook
-              -mindim:  The minimum dimension of each of the elements in the montage
-              -animate:  If true, return a video constructed by animating the quicklook into a video by showing dt consecutive frames
-              -dt:  The number of frames for animation
-              -startframe:  The initial frame index to start the n uniformly sampled frames for the quicklook
+               n:  Number of images in the quicklook
+               mindim:  The minimum dimension of each of the elements in the montage
+               animate:  If true, return a video constructed by animating the quicklook into a video by showing dt consecutive frames
+               dt:  The number of frames for animation
+               startframe:  The initial frame index to start the n uniformly sampled frames for the quicklook
 
            ..note:: The first frame in the upper left is guaranteed to be the start frame of the labeled activity, but the last frame in the bottom right may not be precisely the end frame and may be off by at most len(video)/9.
         """
@@ -2407,12 +2459,16 @@ class Scene(VideoCategory):
     The vipy.video.Scene class provides a fluent, lazy interface for representing, transforming and visualizing annotated videos.
     The following constructors are supported:
 
-    >>> vid = vipy.video.Scene(filename='/path/to/video.ext')
+    ```python
+    vid = vipy.video.Scene(filename='/path/to/video.ext')
+    ```
 
     Valid video extensions are those that are supported by ffmpeg ['.avi','.mp4','.mov','.wmv','.mpg', 'mkv', 'webm'].
 
-    >>> vid = vipy.video.Scene(url='https://www.youtube.com/watch?v=MrIN959JuV8')
-    >>> vid = vipy.video.Scene(url='http://path/to/video.ext', filename='/path/to/video.ext')
+    ```python
+    vid = vipy.video.Scene(url='https://www.youtube.com/watch?v=MrIN959JuV8')
+    vid = vipy.video.Scene(url='http://path/to/video.ext', filename='/path/to/video.ext')
+    ```
 
     Youtube URLs are downloaded to a temporary filename, retrievable as vid.download().filename().  If the environment
     variable 'VIPY_CACHE' is defined, then videos are saved to this directory rather than the system temporary directory.
@@ -2420,20 +2476,26 @@ class Scene(VideoCategory):
     URLs can be defined as an absolute URL to a video file, or to a site supported by 'youtube-dl' 
     [https://ytdl-org.github.io/youtube-dl/supportedsites.html]
 
-    >>> vid = vipy.video.Scene(array=frames, colorspace='rgb')
+    ```python
+    vid = vipy.video.Scene(array=frames, colorspace='rgb')
+    ```
     
     The input 'frames' is an NxHxWx3 numpy array corresponding to an N-length list of HxWx3 uint8 numpy array which is a single frame of pre-loaded video
     Note that the video transformations (clip, resize, rescale, rotate) are only available prior to load(), and the array() is assumed immutable after load().
 
-    >>> vid = vipy.video.Scene(array=greyframes, colorspace='lum')
+    ```python
+    vid = vipy.video.Scene(array=greyframes, colorspace='lum')
+    ```
     
     The input 'greyframes' is an NxHxWx1 numpy array corresponding to an N-length list of HxWx3 uint8 numpy array which is a single frame of pre-loaded video
     This corresponds to the luminance of an RGB colorspace
 
-    >>> vid = vipy.video.Scene(array=greyframes, colorspace='lum', tracks=tracks, activities=activities)
+    ```python
+    vid = vipy.video.Scene(array=greyframes, colorspace='lum', tracks=tracks, activities=activities)
+    ```
 
-         * tracks = [vipy.object.Track(), ...]
-         * activities = [vipy.object.Activity(), ...]
+    - tracks = [vipy.object.Track(), ...]
+    - activities = [vipy.object.Activity(), ...]
  
     The inputs are lists of tracks and/or activities.  An object is a spatial bounding box with a category label.  A track is a spatiotemporal bounding 
     box with a category label, such that the box contains the same instance of an object.  An activity is one or more tracks with a start and end frame for an 
@@ -2478,8 +2540,12 @@ class Scene(VideoCategory):
     def asjson(cls, s):
         """Restore an object serialized with self.json().  Alas for `vipy.video.Scene.from_json`.
         
-           Usage:
-           >>> vs = vipy.video.Scene.asjson(v.json())
+        Usage:
+
+        ```python
+        vs = vipy.video.Scene.asjson(v.json())
+        ```
+
         """
         return vipy.video.Scene.from_json(s)
 
@@ -2487,8 +2553,11 @@ class Scene(VideoCategory):
     def from_json(cls, s):
         """Restore an object serialized with self.json()
         
-           Usage:
-           >>> vs = vipy.video.Scene.from_json(v.json())
+        Usage:
+        
+        ```python
+        vs = vipy.video.Scene.from_json(v.json())
+        ```
 
         """
 
@@ -2572,7 +2641,7 @@ class Scene(VideoCategory):
             else:
                 return self.videoid()
 
-    def frame(self, k, img=None, noimage=False):
+    def frame(self, k=0, img=None, noimage=False):
         """Return `vipy.image.Scene` object at frame k
 
         -The attributes of each of the `vipy.image.Scene.objects` in the scene contains helpful metadata for the provenance of the detection, including:  
@@ -2658,14 +2727,14 @@ class Scene(VideoCategory):
            for generating a quicklook from an activityclip().
         
            Args:
-               n [int]:  Number of images in the quicklook
-               dilate [float]:  The dilation factor for the bounding box prior to crop for display
-               mindim [int]:  The minimum dimension of each of the elemnets in the montage
-               fontsize [int]:  The size of the font for the bounding box label
-               context [bool]:  If true, replace the first and last frame in the montage with the full frame annotation, to help show the scale of the scene
-               animate [bool]:  If true, return a video constructed by animating the quicklook into a video by showing dt consecutive frames
-               dt [int]:  The number of frames for animation
-               startframe [int]:  The initial frame index to start the n uniformly sampled frames for the quicklook
+               n: [int]:  Number of images in the quicklook
+               dilate: [float]:  The dilation factor for the bounding box prior to crop for display
+               mindim: [int]:  The minimum dimension of each of the elemnets in the montage
+               fontsize: [int]:  The size of the font for the bounding box label
+               context: [bool]:  If true, replace the first and last frame in the montage with the full frame annotation, to help show the scale of the scene
+               animate: [bool]:  If true, return a video constructed by animating the quicklook into a video by showing dt consecutive frames
+               dt: [int]:  The number of frames for animation
+               startframe: [int]:  The initial frame index to start the n uniformly sampled frames for the quicklook
         """
         if not self.isloaded():
             self.load()  
@@ -2759,7 +2828,7 @@ class Scene(VideoCategory):
             [id=None, fluent=False] the actor ID
             [id is not None] The video with the actor ID set, only if the ID is found in the tracklist
 
-        .. note:: Not to be confused with biometric subject id.  For videos collected with Visym Collector platform (https://visym.com/collector), the biometric subbject ID can be retrieved via `vipy.video.metadata` (e.g. self.metadata()['subject_ids']).
+        .. note:: Not to be confused with biometric subject id.  For videos collected with Visym Collector platform (https://visym.com/collector), the biometric subject ID can be retrieved via `vipy.video.Video.metadata` (e.g. self.metadata()['subject_ids']).
         """
         if id is None:
             return next(iter(self.tracks().keys())) if not fluent else self  # Python >=3.6
@@ -2835,10 +2904,16 @@ class Scene(VideoCategory):
         """Apply boolean lambda function f to each activity and keep activity if function is true, remove activity if function is false
         
         Filter out all activities longer than 128 frames 
-        >>> vid = vid.activityfilter(lambda a: len(a)<128)
+
+        ```python
+        vid = vid.activityfilter(lambda a: len(a)<128)
+        ```
 
         Filter out activities with category in set
-        >>> vid = vid.activityfilter(lambda a: a.category() in set(['category1', 'category2']))
+
+        ```python
+        vid = vid.activityfilter(lambda a: a.category() in set(['category1', 'category2']))
+        ```
        
         Args:
             f: [lambda] a lambda function that takes an activity and returns a boolean
@@ -2891,10 +2966,13 @@ class Scene(VideoCategory):
     def rekey(self, tracks=None, activities=None):
         """Change the track and activity IDs to randomly assigned UUIDs.  Useful for cloning unique scenes.
         
-        >>> v = vipy.video.RandomScene()
-        >>> v.rekey()  # randomly rekey all track and activity ID
-        >>> v.rekey(tracks={...})  # rekey tracks (oldkey -> newkey) according to dictionary, randomly rekey activities
-        >>> v.rekey(tracks={...}, activities={})  #  rekey tracks according to dict, no change to activities
+        
+        ```python
+        v = vipy.video.RandomScene()
+        v.rekey()  # randomly rekey all track and activity ID
+        v.rekey(tracks={...})  # rekey tracks (oldkey -> newkey) according to dictionary, randomly rekey activities
+        v.rekey(tracks={...}, activities={})  #  rekey tracks according to dict, no change to activities
+        ```
 
         Args:
             tracks [dict]: If not None, use this dictionary to remap oldkey->newkey for tracks.  If None, use random keys. If empty dict, no change (do not rekey tracks)
@@ -2918,9 +2996,11 @@ class Scene(VideoCategory):
     def annotation(self):
         """Return an iterator over annotations in each frame.
         
-        >>> for y in self.annotation():
-        >>>     for (bb,a) in y:
-        >>>         print((bb,a))
+        ```python
+        for y in self.annotation():
+            for (bb,a) in y:
+                print((bb,a))
+        ```
 
         Yields:
             for each frame yield the tuple:  ( (`vipy.object.Detection`, (tuple of `vipy.activity.Activity` performed by the actor in this bounding box)), ... )
@@ -3008,24 +3088,28 @@ class Scene(VideoCategory):
         - obj = [xmin, ymin, width, height], with associated category kwarg, this must be called from within a frame iterator to get the current frame index
         
         It is recomended that the objects are added as follows.  For a v=vipy.video.Scene():
-            
-        >>>    for im in v:
-        >>>        # Do some processing on frame im to detect objects
-        >>>        (object_labels, xywh) = object_detection(im)
-        >>>
-        >>>        # Add them to the scene, note that each object instance is independent in each frame, use tracks for object correspondence
-        >>>        for (lbl,bb) in zip(object_labels, xywh):
-        >>>            v.add(bb, lbl)
-        >>>
-        >>>        # Do some correspondences to track objects
-        >>>        t2 = v.add( vipy.object.Track(...) )
-        >>>
-        >>>        # Update a previous track to add a keyframe
-        >>>        v.track(t2).add( ... )
+           
+        ```python
+            for im in v:
+                # Do some processing on frame im to detect objects
+                (object_labels, xywh) = object_detection(im)
+        
+                # Add them to the scene, note that each object instance is independent in each frame, use tracks for object correspondence
+                for (lbl,bb) in zip(object_labels, xywh):
+                    v.add(bb, lbl)
+        
+                # Do some correspondences to track objects
+                t2 = v.add( vipy.object.Track(...) )
+        
+                # Update a previous track to add a keyframe
+                v.track(t2).add( ... )
+        ```
         
         The frame iterator will keep track of the current frame in the video and add the objects in the appropriate place.  Alternatively,
 
-        >>>    v.add(vipy.object.Track(..), frame=k)
+        ```python
+            v.add(vipy.object.Track(..), frame=k)
+        ```
 
         Args:
             obj: A conformal python object to add to the scene (`vipy.object.Detection`, `vipy.object.Track`, `vipy.activity.Activity`, [xmin, ymin, width, height]
@@ -3152,8 +3236,10 @@ class Scene(VideoCategory):
     def framerate(self, fps=None):
         """Change the input framerate for the video and update frame indexes for all annotations.
 
-        >>> fps = self.framerate()
-        >>> self.framerate(fps=15.0)
+        ```python
+        fps = self.framerate()
+        self.framerate(fps=15.0)
+        ```
 
         """
         
@@ -3598,27 +3684,27 @@ class Scene(VideoCategory):
            Tracks are merged by considering the mean IoU at the overlapping segment of two tracks with the same category greater than the provided spatial_iou_threshold threshold
            Activities are merged by considering the temporal IoU of the activities of the same class greater than the provided temporal_iou_threshold threshold
   
-           Input:
-             -Other: Scene or list of scenes for union.  Other may be a clip of self at a different framerate, spatial isotropic scake, clip offset
-             -spatial_iou_threshold:  The intersection over union threshold for the mean of the two segments of an overlapping track, Disable by setting to 1.0
-             -temporal_iou_threshold:  The intersection over union threshold for a temporal bounding box for a pair of activities to be declared duplicates.  Disable by setting to 1.0
-             -strict:  Require both scenes to share the same underlying video filename
-             -overlap=['average', 'replace', 'keep']
-                -average: Merge two tracks by averaging the boxes (average=True) if overlapping
-                -replace:  merge two tracks by replacing overlapping boxes with other (discard self)
-                -keep: merge two tracks by keeping overlapping boxes with other (discard other)
-             -percentilecover [0,1]:  When determining the assignment of two tracks, compute the percentilecover of two tracks by ranking the cover in the overlapping segment and computing the mean of the top-k assignments, where k=len(segment)*percentilecover.
-             -percentilesamples [>1]:  the number of samples along the overlapping scemgne for computing percentile cover
-             -activity [bool]: union() of activities only
-             -track [bool]: union() of tracks only
+           Args:
+               Other: Scene or list of scenes for union.  Other may be a clip of self at a different framerate, spatial isotropic scake, clip offset
+               spatial_iou_threshold:  The intersection over union threshold for the mean of the two segments of an overlapping track, Disable by setting to 1.0
+               temporal_iou_threshold:  The intersection over union threshold for a temporal bounding box for a pair of activities to be declared duplicates.  Disable by setting to 1.0
+               strict:  Require both scenes to share the same underlying video filename
+               overlap=['average', 'replace', 'keep']
+                   - average: Merge two tracks by averaging the boxes (average=True) if overlapping
+                   - replace:  merge two tracks by replacing overlapping boxes with other (discard self)
+                   - keep: merge two tracks by keeping overlapping boxes with other (discard other)
+               percentilecover: [0,1]:  When determining the assignment of two tracks, compute the percentilecover of two tracks by ranking the cover in the overlapping segment and computing the mean of the top-k assignments, where k=len(segment)*percentilecover.
+               percentilesamples: [>1]:  the number of samples along the overlapping scemgne for computing percentile cover
+               activity: [bool]: union() of activities only
+               track: [bool]: union() of tracks only
 
-           Output:
-             -Updates this scene to include the non-overlapping activities from other.  By default, it takes the strict union of all activities and tracks. 
+           Returns:
+               Updates this scene to include the non-overlapping activities from other.  By default, it takes the strict union of all activities and tracks. 
 
-           Notes:
-             -This is useful for merging scenes computed using a lower resolution/framerate/clipped  object or activity detector without running the detector on the high-res scene
-             -This function will preserve the invariance for v == v.clear().union(v.rescale(0.5).framerate(5).activityclip()), to within the quantization error of framerate() downsampling.
-             -percentileiou is a robust method of track assignment when boxes for two tracks (e.g. ground truth and detections) where one track may deform due to occlusion.
+           .. note::
+               - This is useful for merging scenes computed using a lower resolution/framerate/clipped  object or activity detector without running the detector on the high-res scene
+               - This function will preserve the invariance for v == v.clear().union(v.rescale(0.5).framerate(5).activityclip()), to within the quantization error of framerate() downsampling.
+               - percentileiou is a robust method of track assignment when boxes for two tracks (e.g. ground truth and detections) where one track may deform due to occlusion.
         """
         assert overlap in ['average', 'replace', 'keep'], "Invalid input - 'overlap' must be in [average, replace, keep]"
         assert spatial_iou_threshold >= 0 and spatial_iou_threshold <= 1, "invalid spatial_iou_threshold, must be between [0,1]"

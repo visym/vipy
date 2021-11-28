@@ -19,11 +19,13 @@ class Detection(BoundingBox):
     This class represent a single object detection in the form a bounding box with a label and confidence.
     The constructor of this class follows a subset of the constructor patterns of vipy.geometry.BoundingBox
 
-    >>> d = vipy.object.Detection(category='Person', xmin=0, ymin=0, width=50, height=100)
-    >>> d = vipy.object.Detection(label='Person', xmin=0, ymin=0, width=50, height=100)  # "label" is an alias for "category"
-    >>> d = vipy.object.Detection(label='John Doe', shortlabel='Person', xmin=0, ymin=0, width=50, height=100)  # shortlabel is displayed
-    >>> d = vipy.object.Detection(label='Person', xywh=[0,0,50,100])
-    >>> d = vupy.object.Detection(..., id=True)  # generate a unique UUID for this detection retrievable with d.id()
+    ```python
+    d = vipy.object.Detection(category='Person', xmin=0, ymin=0, width=50, height=100)
+    d = vipy.object.Detection(label='Person', xmin=0, ymin=0, width=50, height=100)  # "label" is an alias for "category"
+    d = vipy.object.Detection(label='John Doe', shortlabel='Person', xmin=0, ymin=0, width=50, height=100)  # shortlabel is displayed
+    d = vipy.object.Detection(label='Person', xywh=[0,0,50,100])
+    d = vupy.object.Detection(..., id=True)  # generate a unique UUID for this detection retrievable with d.id()
+    ```
 
     """
 
@@ -172,19 +174,25 @@ class Track(object):
 
     Valid constructors are:
 
-    >>> t = vipy.object.Track(keyframes=[0,100], boxes=[vipy.geometry.BoundingBox(0,0,10,10), vipy.geometry.BoundingBox(0,0,20,20)], label='Person')
-    >>> t = vipy.object.Track(keyframes=[0,100], boxes=[vipy.geometry.BoundingBox(0,0,10,10), vipy.geometry.BoundingBox(0,0,20,20)], label='Person', interpolation='linear')
-    >>> t = vipy.object.Track(keyframes=[10,100], boxes=[vipy.geometry.BoundingBox(0,0,10,10), vipy.geometry.BoundingBox(0,0,20,20)], label='Person', boundary='strict')
+    ```python
+    t = vipy.object.Track(keyframes=[0,100], boxes=[vipy.geometry.BoundingBox(0,0,10,10), vipy.geometry.BoundingBox(0,0,20,20)], label='Person')
+    t = vipy.object.Track(keyframes=[0,100], boxes=[vipy.geometry.BoundingBox(0,0,10,10), vipy.geometry.BoundingBox(0,0,20,20)], label='Person', interpolation='linear')
+    t = vipy.object.Track(keyframes=[10,100], boxes=[vipy.geometry.BoundingBox(0,0,10,10), vipy.geometry.BoundingBox(0,0,20,20)], label='Person', boundary='strict')
+    ```
 
     Tracks can be constructed incrementally:
 
-    >>> t = vipy.object.Track('Person')
-    >>> t.add(0, vipy.geometry.BoundingBox(0,0,10,10))
-    >>> t.add(100, vipy.geometry.BoundingBox(0,0,20,20))
+    ```python
+    t = vipy.object.Track('Person')
+    t.add(0, vipy.geometry.BoundingBox(0,0,10,10))
+    t.add(100, vipy.geometry.BoundingBox(0,0,20,20))
+    ```
 
     Tracks can be resampled at a new framerate, as long as the framerate is known when the keyframes are extracted
 
-    >>> t.framerate(newfps)
+    ```python
+    t.framerate(newfps)
+    ```
 
     """
 

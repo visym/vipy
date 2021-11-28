@@ -24,8 +24,10 @@ class Activity(object):
 
     Valid constructors
 
-    >>> t = vipy.object.Track(category='Person').add(...))
-    >>> a = vipy.object.Activity(startframe=0, endframe=10, category='Walking', tracks={t.id():t})
+    ```python 
+    t = vipy.object.Track(category='Person').add(...))
+    a = vipy.object.Activity(startframe=0, endframe=10, category='Walking', tracks={t.id():t})
+    ```
 
     """
     def __init__(self, startframe, endframe, framerate=None, label=None, shortlabel=None, category=None, tracks=None, attributes=None, actorid=None, confidence=None, id=None):

@@ -48,21 +48,29 @@ class Image(object):
     The vipy image class provides a fluent, lazy interface for representing, transforming and visualizing images.
     The following constructors are supported:
 
-    >>> im = vipy.image.Image(filename="/path/to/image.ext")
+    ```python
+    im = vipy.image.Image(filename="/path/to/image.ext")
+    ```
     
     All image file formats that are readable by PIL are supported here.
 
-    >>> im = vipy.image.Image(url="http://domain.com/path/to/image.ext")
+    ```python
+    im = vipy.image.Image(url="http://domain.com/path/to/image.ext")
+    ```
     
     The image will be downloaded from the provided url and saved to a temporary filename.
     The environment variable VIPY_CACHE controls the location of the directory used for saving images, otherwise this will be saved to the system temp directory.
 
-    >>> im = vipy.image.Image(url="http://domain.com/path/to/image.ext", filename="/path/to/new/image.ext")
+    ```python
+    im = vipy.image.Image(url="http://domain.com/path/to/image.ext", filename="/path/to/new/image.ext")
+    ```
 
     The image will be downloaded from the provided url and saved to the provided filename.
     The url() method provides optional basic authentication set for username and password
 
-    >>> im = vipy.image.Image(array=img, colorspace='rgb')
+    ```python
+    im = vipy.image.Image(array=img, colorspace='rgb')
+    ```
 
     The image will be constructed from a provided numpy array 'img', with an associated colorspace.  The numpy array and colorspace can be one of the following combinations:
 
@@ -126,8 +134,10 @@ class Image(object):
         
         This is useful for downcasting `vipy.image.Scene` or `vipy.image.ImageDetection` down to an image.
 
-        >>> ims = vipy.image.RandomScene()
-        >>> im = vipy.image.Image.cast(im)
+        ```python
+        ims = vipy.image.RandomScene()
+        im = vipy.image.Image.cast(im)
+        ```
 
         """
         assert isinstance(im, vipy.image.Image), "Invalid input - must derive from vipy.image.Image"
@@ -140,9 +150,11 @@ class Image(object):
         
         This will perform a round trip such that im1 == im2
 
-        >>> im1 = vupy.image.RandomImage()
-        >>> im2 = vipy.image.Image.from_json(im1.json())
-        >>> assert im1 == im2
+        ```python
+        im1 = vupy.image.RandomImage()
+        im2 = vipy.image.Image.from_json(im1.json())
+        assert im1 == im2
+        ```
         
         """
         d = json.loads(s)        
@@ -190,7 +202,9 @@ class Image(object):
         
         The attributes dictionary is useful storage for arbitrary (key,value) pairs.  However, this storage may contain sensitive information that should be scrubbed from the media before serialization.  As a general rule, any key that is of the form '__keyname' prepended by two underscores is a private key.  This is analogous to private or reserved attributes in the python lanugage.  Users should reserve these keynames for those keys that should be sanitized and removed before any serialization of this object.
         
-        >>> assert self.setattribute('__mykey', 1).sanitize().hasattribute('__mykey') == False
+        ```python
+        assert self.setattribute('__mykey', 1).sanitize().hasattribute('__mykey') == False
+        ```
 
         """
         self.attributes = {k:v for (k,v) in self.attributes.items() if not k.startswith('__')} if isinstance(self.atttributes, dict) else self.attributes
@@ -242,9 +256,11 @@ class Image(object):
     def untile(cls, imlist):
         """Undo an image tiling and recreate the original image.
 
-        >>> tiles = im.tile(im.width()/2, im.height()/2, 0, 0)
-        >>> imdst = vipy.image.Image.untile(tiles)
-        >>> assert imdst == im
+        ```python
+        tiles = im.tile(im.width()/2, im.height()/2, 0, 0)
+        imdst = vipy.image.Image.untile(tiles)
+        assert imdst == im
+        ```
 
         Args:
             imlist: this must be the output of `vipy.image.Image.tile`
@@ -270,9 +286,11 @@ class Image(object):
 
         An uncrop is the inverse operation for a crop, which preserves the cropped portion of the image in the correct location and replaces the rest with zeros out to shape.
     
-        >>> im = vipy.image.RandomImage(128, 128)
-        >>> bb = vipy.geometry.BoundingBox(xmin=0, ymin=0, width=64, height=64)
-        >>> uncrop = im.crop(bb).uncrop(bb, shape=(128,128))
+        ```python
+        im = vipy.image.RandomImage(128, 128)
+        bb = vipy.geometry.BoundingBox(xmin=0, ymin=0, width=64, height=64)
+        uncrop = im.crop(bb).uncrop(bb, shape=(128,128))
+        ```
 
         Args:
             bb: [`vipy.geometry.BoundingBox`] the bounding box used to crop the image in self
@@ -307,7 +325,9 @@ class Image(object):
            -This method is more efficient than load() followed by pkl(), as it stores the encoded image as a byte string.
            -Useful for creating a single self contained object for distributed processing.  
 
-           >>> v == v.store().restore(v.filename()) 
+        ```python
+        v == v.store().restore(v.filename()) 
+        ```
 
         """
         assert self.hasfilename(), "Image file not found"
@@ -666,12 +686,16 @@ class Image(object):
 
         Iterate over channels as single channel luminance images:
 
-        >>> for c in self.channel():
-        >>>     print(c)
+        ```python
+        for c in self.channel():
+            print(c)
+        ```
 
         Return the kth channel as a single channel luminance image:
 
-        >>> c = self.channel(k=0)
+        ```python
+        c = self.channel(k=0)
+        ```
 
         """
         if k is None:
@@ -689,12 +713,16 @@ class Image(object):
         """Return red channel as a cloned single channel `vipy.image.Image` object.
 
         These are equivalent operations if the colorspace is 'rgb' or 'rgba':
-
-        >>> self.red() == self.channel(0) 
+        
+        ```python
+        self.red() == self.channel(0) 
+        ```
 
         These are equivalent operations if the colorspace is 'bgr' or 'bgra':
 
-        >>> self.red() == self.channel(3) 
+        ```python
+        self.red() == self.channel(3) 
+        ```
 
         .. note:: OpenCV returns images in BGR colorspace.  Use this method to always return the desired channel by color.
         """
@@ -711,11 +739,15 @@ class Image(object):
 
         These are equivalent operations if the colorspace is 'rgb' or 'rgba':
 
-        >>> self.green() == self.channel(1) 
+        ```python
+        self.green() == self.channel(1) 
+        ```
 
         These are equivalent operations if the colorspace is 'bgr' or 'bgra':
 
-        >>> self.green() == self.channel(1) 
+        ```python
+        self.green() == self.channel(1) 
+        ```
 
         .. note:: OpenCV returns images in BGR colorspace.  Use this method to always return the desired channel by color.
         """
@@ -732,11 +764,15 @@ class Image(object):
 
         These are equivalent operations if the colorspace is 'rgb' or 'rgba':
 
-        >>> self.vlue() == self.channel(2) 
+        ```python
+        self.vlue() == self.channel(2) 
+        ```
 
         These are equivalent operations if the colorspace is 'bgr' or 'bgra':
 
-        >>> self.blue() == self.channel(0) 
+        ```python
+        self.blue() == self.channel(0) 
+        ```
 
         .. note:: OpenCV returns images in BGR colorspace.  Use this method to always return the desired channel by color.
         """
@@ -757,9 +793,11 @@ class Image(object):
         """Set the pixel buffer to all zeros of the same shape and datatype as this `vipy.image.Image` object.
         
         These are equivalent operations for the resulting buffer shape: 
-
-        >>> import numpy as np
-        >>> np.zeros( (self.width(), self.height(), self.channels()) ) == self.zeros().array()
+        
+        ```python
+        import numpy as np
+        np.zeros( (self.width(), self.height(), self.channels()) ) == self.zeros().array()
+        ```
 
         Returns:
            This `vipy.image.Image` object.
@@ -1335,8 +1373,10 @@ class Image(object):
 
         The following operations are equivalent.
 
-        >>> im = vipy.image.RandomImage()
-        >>> im.normalize(1/255.0, 0.5) == im.gain(1/255.0).bias(-0.5)
+        ```python
+        im = vipy.image.RandomImage()
+        im.normalize(1/255.0, 0.5) == im.gain(1/255.0).bias(-0.5)
+        ```
         
         .. note:: This will force the colorspace to 'float'
         """
@@ -1538,9 +1578,11 @@ class ImageCategory(Image):
 
     Valid constructors include all provided by vipy.image.Image with the additional kwarg 'category' (or alias 'label')
 
-    >>> im = vipy.image.ImageCategory(filename='/path/to/dog_image.ext', category='dog')
-    >>> im = vipy.image.ImageCategory(url='http://path/to/dog_image.ext', category='dog')
-    >>> im = vipy.image.ImageCategory(array=dog_img, colorspace='rgb', category='dog')
+    ```python
+    im = vipy.image.ImageCategory(filename='/path/to/dog_image.ext', category='dog')
+    im = vipy.image.ImageCategory(url='http://path/to/dog_image.ext', category='dog')
+    im = vipy.image.ImageCategory(array=dog_img, colorspace='rgb', category='dog')
+    ```
 
     """
     
@@ -1644,11 +1686,13 @@ class Scene(ImageCategory):
 
     Valid constructors include all provided by vipy.image.Image() and vipy.image.ImageCategory() with the additional kwarg 'objects', which is a list of vipy.object.Detections()
 
-    >>> im = vipy.image.Scene(filename='/path/to/city_image.ext', category='city', objects=[vipy.object.Detection(category='vehicle', xmin=0, ymin=0, width=100, height=100)])
-    >>> im = vipy.image.Scene(filename='/path/to/city_image.ext', category='city').objects([vipy.object.Detection(category='vehicle', xmin=0, ymin=0, width=100, height=100)])
-    >>> im = vipy.image.Scene(filename='/path/to/city_image.ext', category='office', boxlabels='face', xywh=[0,0,100,100])
-    >>> im = vipy.image.Scene(filename='/path/to/city_image.ext', category='office', boxlabels='face', xywh=[[0,0,100,100], [100,100,200,200]])
-    >>> im = vipy.image.Scene(filename='/path/to/city_image.ext', category='office', boxlabels=['face', 'desk'] xywh=[[0,0,100,100], [200,200,300,300]])
+    ```python
+    im = vipy.image.Scene(filename='/path/to/city_image.ext', category='city', objects=[vipy.object.Detection(category='vehicle', xmin=0, ymin=0, width=100, height=100)])
+    im = vipy.image.Scene(filename='/path/to/city_image.ext', category='city').objects([vipy.object.Detection(category='vehicle', xmin=0, ymin=0, width=100, height=100)])
+    im = vipy.image.Scene(filename='/path/to/city_image.ext', category='office', boxlabels='face', xywh=[0,0,100,100])
+    im = vipy.image.Scene(filename='/path/to/city_image.ext', category='office', boxlabels='face', xywh=[[0,0,100,100], [100,100,200,200]])
+    im = vipy.image.Scene(filename='/path/to/city_image.ext', category='office', boxlabels=['face', 'desk'] xywh=[[0,0,100,100], [200,200,300,300]])
+    ```
 
     """
     def __init__(self, filename=None, url=None, category=None, attributes=None, objects=None, xywh=None, boxlabels=None, array=None, colorspace=None):
@@ -2146,12 +2190,14 @@ class ImageDetection(Scene, BoundingBox):
 
     Valid constructors include all provided by vipy.image.Image with the additional kwarg 'category' (or alias 'label'), and BoundingBox coordinates
 
-    >>> im = vipy.image.ImageDetection(filename='/path/to/dog_image.ext', category='dog', xmin=0, ymin=0, width=100, height=100)
-    >>> im = vipy.image.ImageDetection(filename='/path/to/dog_image.ext', category='dog', xmin=0, ymin=0, xmax=100, ymax=100)
-    >>> im = vipy.image.ImageDetection(filename='/path/to/dog_image.ext', category='dog', xcentroid=50, ycentroid=50, width=100, height=100)
-    >>> im = vipy.image.ImageDetection(filename='/path/to/dog_image.ext', category='dog', bbox=vipy.geometry.BoundingBox(xmin=0, ymin=0, width=100, height=100))
-    >>> im = vipy.image.ImageCategory(url='http://path/to/dog_image.ext', category='dog').boundingbox(xmin=0, ymin=0, width=100, height=100)
-    >>> im = vipy.image.ImageCategory(array=dog_img, colorspace='rgb', category='dog',  xmin=0, ymin=0, width=100, height=100)
+    ```python
+    im = vipy.image.ImageDetection(filename='/path/to/dog_image.ext', category='dog', xmin=0, ymin=0, width=100, height=100)
+    im = vipy.image.ImageDetection(filename='/path/to/dog_image.ext', category='dog', xmin=0, ymin=0, xmax=100, ymax=100)
+    im = vipy.image.ImageDetection(filename='/path/to/dog_image.ext', category='dog', xcentroid=50, ycentroid=50, width=100, height=100)
+    im = vipy.image.ImageDetection(filename='/path/to/dog_image.ext', category='dog', bbox=vipy.geometry.BoundingBox(xmin=0, ymin=0, width=100, height=100))
+    im = vipy.image.ImageCategory(url='http://path/to/dog_image.ext', category='dog').boundingbox(xmin=0, ymin=0, width=100, height=100)
+    im = vipy.image.ImageCategory(array=dog_img, colorspace='rgb', category='dog',  xmin=0, ymin=0, width=100, height=100)
+    ```
 
     """
     
@@ -2419,7 +2465,9 @@ def people():
 def show(img, mindim=512, figure=1):
     """Fast visualization of a numpy array img
         
-    >>> im = vipy.image.show(np.random.rand(16,16,3))
+    ```python
+    im = vipy.image.show(np.random.rand(16,16,3))
+    ```
 
     """
     assert isnumpy(img)

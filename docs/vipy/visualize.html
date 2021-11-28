@@ -25,7 +25,7 @@
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/visualize.py#L0-L639" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/199328c3b46817bed59809e2e08f6e14b772c479/vipy/visualize.py#L0-L639" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">import os
 import numpy as np
@@ -229,7 +229,7 @@ def hoverpixel_selector(htmllist, legendlist, outfile=None, display=False, offse
         assert &#39;hoverpixelwidth&#39; in html and &#39;hoverpixelheight&#39; in html  # must be vipy.visualize.hoverpixel() output
         (width, height) = (int(html.split(&#39;hoverpixelwidth=&#39;)[1].split(&#39; &#39;)[0].replace(&#39;&#34;&#39;,&#39;&#39;)), int(html.split(&#39;hoverpixelheight=&#39;)[1].split(&#39; &#39;)[0].replace(&#39;&#34;&#39;,&#39;&#39;)))  # unique attribute search for &lt;img key=&#34;val&#34; key2=&#34;val2&#34; key3=...&gt;
         f.write(&#39;&lt;iframe id=&#34;hoverpixelframe&#34; src=&#34;%s&#34; style=&#34;width:%dpx; height:%dpx; border:0px; visibility:hidden;&#34; onload=&#34;this.style.visibility=\&#39;visible\&#39;;&#34; allowfullscreen&gt;&lt;/iframe&gt;\n&#39; % (htmllist[0], width+20, height+20))               
-        f.write(&#39;&lt;select id=&#34;selector&#34; onchange=&#34;seturl(this.value)&#34; style=&#34;position: absolute; left:%dpx; top:%dpx; padding: 1px 4px; border-radius:4px; visibility:visible;&#34;&gt;\n&#39; % (offset[0], offset[1]))
+        f.write(&#39;&lt;select title=&#34;Sort by&#34; id=&#34;selector&#34; onchange=&#34;seturl(this.value)&#34; style=&#34;position: absolute; left:%dpx; top:%dpx; padding: 1px 4px; border-radius:4px; visibility:visible;&#34;&gt;\n&#39; % (offset[0], offset[1]))
         for (k,legend) in enumerate(legendlist):
             f.write(&#39;  &lt;option value=&#34;%s&#34;%s&gt;%s&lt;/option&gt;\n&#39; % (legend, &#39; selected=&#34;selected&#34;&#39; if k==0 else &#39;&#39;, legend))
         f.write(&#39;&lt;/select&gt;\n&#39;)        
@@ -277,7 +277,7 @@ def mosaic(videos):
     Returns:
         A generator which yields frames of the mosaic.  All videos are at their native frame rates, and all videos are anisotropically resized to the (height, width) of the first video
 
-    .. note:: This is the streaming version of `vipy.visualize.video_montage` which requires all videos to be loadable
+    .. note:: This is the streaming version of `vipy.visualize.videomontage` which requires all videos to be loadable
 .
     &#34;&#34;&#34;
     assert (isinstance(videos, list) and all([isinstance(v, vipy.video.Video) for v in videos])) or isinstance(videos, tuple)
@@ -715,6 +715,9 @@ if None, nothing is displayed</dd>
 <dd>an html font-size string (e.g. "large", "x-large") for the upper left text</dd>
 </dl>
 <p>ultextoffset [tuple): An offset in (x=pixels, y=pixels) of the origin of the upper left text</p>
+<h2 id="returns">Returns</h2>
+<p>A standalone html file that renders each url in montage such that hovering over elements in the montage will show the url in a magnifier.
+</p>
 <div class="admonition note">
 <p class="admonition-title">Note</p>
 <ul>
@@ -726,7 +729,7 @@ if None, nothing is displayed</dd>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/visualize.py#L20-L165" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/199328c3b46817bed59809e2e08f6e14b772c479/vipy/visualize.py#L20-L165" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def hoverpixel(urls, outfile=None, pixelsize=32, sortby=&#39;color&#39;, loupe=True, hoversize=512, ultext=None, display=False, ultextcolor=&#39;white&#39;, ultextsize=&#39;large&#39;, aspectratio=2560/1440, ultextoffset=(16,16)):
     &#34;&#34;&#34;Generate a standalone hoverpixel visualization.
@@ -892,13 +895,15 @@ if None, nothing is displayed</dd>
 </dl>
 <p>fullscreen [bool]: If true, include an expand button next to the selector to put the hoverpixel iframe into fullscreen mode.
 Be sure to add allowfullscreen to the iframe.</p>
+<h2 id="returns">Returns</h2>
+<p>An HTML file that loads the hoverpixel HTML in an iframe with an overlaid dropdown menu to select which hoverpixel animation is displayed</p>
 <div class="admonition note">
 <p class="admonition-title">Note:&ensp;The fullscreen display will not work on iPhone since it is unsupported.</p>
 </div></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/visualize.py#L168-L233" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/199328c3b46817bed59809e2e08f6e14b772c479/vipy/visualize.py#L168-L233" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def hoverpixel_selector(htmllist, legendlist, outfile=None, display=False, offset=(60, 80), fullscreen=True, ultext=None, ultextcolor=&#39;white&#39;, ultextsize=&#39;large&#39;, ultextoffset=(16,16)):
     &#34;&#34;&#34;Create a dropdown selector of hoverpixel visualizations by legend.
@@ -935,7 +940,7 @@ Be sure to add allowfullscreen to the iframe.</p>
         assert &#39;hoverpixelwidth&#39; in html and &#39;hoverpixelheight&#39; in html  # must be vipy.visualize.hoverpixel() output
         (width, height) = (int(html.split(&#39;hoverpixelwidth=&#39;)[1].split(&#39; &#39;)[0].replace(&#39;&#34;&#39;,&#39;&#39;)), int(html.split(&#39;hoverpixelheight=&#39;)[1].split(&#39; &#39;)[0].replace(&#39;&#34;&#39;,&#39;&#39;)))  # unique attribute search for &lt;img key=&#34;val&#34; key2=&#34;val2&#34; key3=...&gt;
         f.write(&#39;&lt;iframe id=&#34;hoverpixelframe&#34; src=&#34;%s&#34; style=&#34;width:%dpx; height:%dpx; border:0px; visibility:hidden;&#34; onload=&#34;this.style.visibility=\&#39;visible\&#39;;&#34; allowfullscreen&gt;&lt;/iframe&gt;\n&#39; % (htmllist[0], width+20, height+20))               
-        f.write(&#39;&lt;select id=&#34;selector&#34; onchange=&#34;seturl(this.value)&#34; style=&#34;position: absolute; left:%dpx; top:%dpx; padding: 1px 4px; border-radius:4px; visibility:visible;&#34;&gt;\n&#39; % (offset[0], offset[1]))
+        f.write(&#39;&lt;select title=&#34;Sort by&#34; id=&#34;selector&#34; onchange=&#34;seturl(this.value)&#34; style=&#34;position: absolute; left:%dpx; top:%dpx; padding: 1px 4px; border-radius:4px; visibility:visible;&#34;&gt;\n&#39; % (offset[0], offset[1]))
         for (k,legend) in enumerate(legendlist):
             f.write(&#39;  &lt;option value=&#34;%s&#34;%s&gt;%s&lt;/option&gt;\n&#39; % (legend, &#39; selected=&#34;selected&#34;&#39; if k==0 else &#39;&#39;, legend))
         f.write(&#39;&lt;/select&gt;\n&#39;)        
@@ -976,7 +981,7 @@ Be sure to add allowfullscreen to the iframe.</p>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/visualize.py#L548-L593" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/199328c3b46817bed59809e2e08f6e14b772c479/vipy/visualize.py#L548-L593" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def imagelist(list_of_image_files, outdir, title=&#39;Image Visualization&#39;, imagewidth=64):
     &#34;&#34;&#34;Given a list of image filenames wth absolute paths, copy to outdir, and create an index.html file that visualizes each.    
@@ -1034,7 +1039,7 @@ Be sure to add allowfullscreen to the iframe.</p>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/visualize.py#L596-L640" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/199328c3b46817bed59809e2e08f6e14b772c479/vipy/visualize.py#L596-L640" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def imagetuplelist(list_of_tuples_of_image_files, outdir, title=&#39;Image Visualization&#39;, imagewidth=64):
     &#34;&#34;&#34;Imagelist but put tuples on same row&#34;&#34;&#34;
@@ -1130,7 +1135,7 @@ display optional verbose messages</dd>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/visualize.py#L260-L338" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/199328c3b46817bed59809e2e08f6e14b772c479/vipy/visualize.py#L260-L338" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def montage(imlist, imgheight, imgwidth, gridrows=None, gridcols=None, aspectratio=1, crop=False, skip=True, border=1, border_bgr=(128,128,128), do_flush=False, verbose=False):
     &#34;&#34;&#34;Create a montage image from the of provided list of vipy.image.Image objects.
@@ -1230,13 +1235,13 @@ Args:
 Returns:
     A generator which yields frames of the mosaic.  All videos are at their native frame rates, and all videos are anisotropically resized to the (height, width) of the first video
 
-!!! note "Note:&amp;ensp;This is the streaming version of &lt;code&gt;vipy.visualize.video\_montage&lt;/code&gt; which requires all videos to be loadable"
+!!! note "Note:&amp;ensp;This is the streaming version of &lt;code&gt;&lt;a title="vipy.visualize.videomontage" href="#vipy.visualize.videomontage"&gt;videomontage()&lt;/a&gt;&lt;/code&gt; which requires all videos to be loadable"
 </code></pre>
 <p>.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/visualize.py#L236-L257" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/199328c3b46817bed59809e2e08f6e14b772c479/vipy/visualize.py#L236-L257" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def mosaic(videos):
     &#34;&#34;&#34;Create a mosaic iterator from an iterable of videos.
@@ -1253,7 +1258,7 @@ Returns:
     Returns:
         A generator which yields frames of the mosaic.  All videos are at their native frame rates, and all videos are anisotropically resized to the (height, width) of the first video
 
-    .. note:: This is the streaming version of `vipy.visualize.video_montage` which requires all videos to be loadable
+    .. note:: This is the streaming version of `vipy.visualize.videomontage` which requires all videos to be loadable
 .
     &#34;&#34;&#34;
     assert (isinstance(videos, list) and all([isinstance(v, vipy.video.Video) for v in videos])) or isinstance(videos, tuple)
@@ -1287,7 +1292,7 @@ Returns:
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/visualize.py#L438-L503" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/199328c3b46817bed59809e2e08f6e14b772c479/vipy/visualize.py#L438-L503" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def tohtml(imlist, imdict=None, title=&#39;Image Visualization&#39;, mindim=1024, outfile=None, display=False):
     &#34;&#34;&#34;Given a list of vipy.image.Image objects, show the images along with the dictionary contents of imdict (one per image) in a single standalone HTML file
@@ -1378,7 +1383,7 @@ Returns:
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/visualize.py#L379-L434" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/199328c3b46817bed59809e2e08f6e14b772c479/vipy/visualize.py#L379-L434" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def urls(urllist, title=&#39;URL Visualization&#39;, imagewidth=1024, outfile=None, display=False):
     &#34;&#34;&#34;Given a list of public image URLs, create a stand-alone HTML page to show them all.
@@ -1446,7 +1451,7 @@ Returns:
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/visualize.py#L506-L544" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/199328c3b46817bed59809e2e08f6e14b772c479/vipy/visualize.py#L506-L544" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def videolist(vidlist, viddict=None, title=&#39;Video Visualization&#39;, outfile=None, display=False):
     &#34;&#34;&#34;Create a standalone HTML file that will visualize the set of videos in vidlist using HTML5 video player&#34;&#34;&#34;
@@ -1505,6 +1510,9 @@ All of the input videos are resampled to this common frame rate</dd>
 <dt><strong><code>max_duration</code></strong></dt>
 <dd>[float] If not None, the maximum diuration of any element in the montage before it cycles</dd>
 </dl>
+<h2 id="returns">Returns</h2>
+<p>An video file in outfile that shows each video tiled into a montage.
+<Like <a href="https://www.youtube.com/watch?v=HjNa7_T-Xkc">https://www.youtube.com/watch?v=HjNa7_T-Xkc</a>></p>
 <div class="admonition warning">
 <p class="admonition-title">Warning</p>
 <ul>
@@ -1515,7 +1523,7 @@ All of the input videos are resampled to this common frame rate</dd>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/visualize.py#L341-L376" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/199328c3b46817bed59809e2e08f6e14b772c479/vipy/visualize.py#L341-L376" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def videomontage(vidlist, imgheight, imgwidth, gridrows=None, gridcols=None, aspectratio=1, crop=False, skip=True, border=1, border_bgr=(128,128,128), do_flush=False, verbose=True, framerate=30.0, max_duration=None):
     &#34;&#34;&#34;Generate a video montage for the provided videos by creating a image montage for every frame.  

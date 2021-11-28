@@ -25,23 +25,31 @@ class Dataset():
     
     Common class to manipulate large sets of vipy objects in parallel
 
-    >>> D = vipy.dataset.Dataset([vipy.video.RandomScene(), vipy.video.RandomScene()], id='random_scene')
-    >>> with vipy.globals.parallel(2):
-    >>>     D = D.map(lambda v: v.frame(0))
-    >>> list(D)
+    ```python
+    D = vipy.dataset.Dataset([vipy.video.RandomScene(), vipy.video.RandomScene()], id='random_scene')
+    with vipy.globals.parallel(2):
+        D = D.map(lambda v: v.frame(0))
+    list(D)
+    ```
 
     Create dataset and export as a directory of json files 
 
-    >>> D = vipy.dataset.Dataset([vipy.video.RandomScene(), vipy.video.RandomScene()])
-    >>> D.tojsondir('/tmp/myjsondir')
+    ```python
+    D = vipy.dataset.Dataset([vipy.video.RandomScene(), vipy.video.RandomScene()])
+    D.tojsondir('/tmp/myjsondir')
+    ```
     
     Create dataset from all json or pkl files recursively discovered in a directory and lazy loaded
 
-    >>> D = vipy.dataset.Dataset('/tmp/myjsondir')  # lazy loading
+    ```python
+    D = vipy.dataset.Dataset('/tmp/myjsondir')  # lazy loading
+    ```
 
     Create dataset from a list of json or pkl files and lazy loaded
 
-    >>> D = vipy.dataset.Dataset(['/path/to/file1.json', '/path/to/file2.json'])  # lazy loading
+    ```python
+    D = vipy.dataset.Dataset(['/path/to/file1.json', '/path/to/file2.json'])  # lazy loading
+    ```
     
     .. notes:: Be warned that using the jsondir constructor will load elements on demand, but there are some methods that require loading the entire dataset into memory, and will happily try to do so
     """
@@ -163,22 +171,27 @@ class Dataset():
                  extras1.ext
                  extras2.ext
         
-            Inputs:
-              - tarfile: /path/to/tarfilename.tar.gz
-              - delprefix:  the absolute file path contained in the media filenames to be removed.  If a video has a delprefix='/a/b' then videos with path /a/b/c/d.mp4' -> 'c/d.mp4', and {JSON|PKL} will be saved with relative paths to mediadir.  This may be a list of delprefixes.
-              - mediadir:  the subdirectory name of the media to be contained in the archive.  Usually "videos".             
-              - extrafiles: list of tuples or singletons [(abspath, filename_in_archive_relative_to_root), 'file_in_root_and_in_pwd', ...], 
-              - novideos [bool]:  generate a tarball without linking videos, just annotations
-              - md5 [bool]:  If True, generate the MD5 hash of the tarball using the system "md5sum", or if md5='vipy' use a slower python only md5 hash 
-              - castas [class]:  This should be a vipy class that the vipy objects should be cast to prior to archive.  This is useful for converting priveledged superclasses to a base class prior to export.
+            Args:
+                tarfile: /path/to/tarfilename.tar.gz
+                delprefix:  the absolute file path contained in the media filenames to be removed.  If a video has a delprefix='/a/b' then videos with path /a/b/c/d.mp4' -> 'c/d.mp4', and {JSON|PKL} will be saved with relative paths to mediadir.  This may be a list of delprefixes.
+                mediadir:  the subdirectory name of the media to be contained in the archive.  Usually "videos".             
+                extrafiles: list of tuples or singletons [(abspath, filename_in_archive_relative_to_root), 'file_in_root_and_in_pwd', ...], 
+                novideos [bool]:  generate a tarball without linking videos, just annotations
+                md5 [bool]:  If True, generate the MD5 hash of the tarball using the system "md5sum", or if md5='vipy' use a slower python only md5 hash 
+                castas [class]:  This should be a vipy class that the vipy objects should be cast to prior to archive.  This is useful for converting priveledged superclasses to a base class prior to export.
 
             Example:  
 
               - Input files contain /path/to/oldvideos/category/video.mp4
               - Output will contain relative paths videos/category/video.mp4
 
-              >>> d.archive('out.tar.gz', delprefix='/path/to/oldvideos', mediadir='videos')
+        ```python
+        d.archive('out.tar.gz', delprefix='/path/to/oldvideos', mediadir='videos')
+        ```
         
+            Returns:
+
+                The absolute path to the tarball 
         """
         assert self._isvipy(), "Source dataset must contain vipy objects for staging"
         assert all([os.path.isabs(v.filename()) for v in self]), "Input dataset must have only absolute media paths"
@@ -227,15 +240,15 @@ class Dataset():
         """Save the dataset to the provided output filename stored as pkl or json
         
         Args:
-            outfile [str]: The /path/to/out.pkl or /path/to/out.json
-            nourl [bool]: If true, remove all URLs from the media (if present)
-            castas [type]:  Cast all media to the provided type.  This is useful for downcasting to `vipy.video.Scene` from superclasses
-            relpath [bool]: If true, define all file paths in objects relative to the /path/to in /path/to/out.json
-            sanitize [bool]:  If trye, call sanitize() on all objects to remove all private attributes with prepended '__' 
-            strict [bool]: Unused
-            significant_digits [int]: Assign the requested number of significant digits to all bounding boxes in all tracks.  This requires dataset of `vipy.video.Scene`
-            noemail [bool]: If true, scrub the attributes for emails and replace with a hash
-            flush [bool]:  If true, flush the object buffers prior to save
+            outfile: [str]: The /path/to/out.pkl or /path/to/out.json
+            nourl: [bool]: If true, remove all URLs from the media (if present)
+            castas: [type]:  Cast all media to the provided type.  This is useful for downcasting to `vipy.video.Scene` from superclasses
+            relpath: [bool]: If true, define all file paths in objects relative to the /path/to in /path/to/out.json
+            sanitize: [bool]:  If trye, call sanitize() on all objects to remove all private attributes with prepended '__' 
+            strict: [bool]: Unused
+            significant_digits: [int]: Assign the requested number of significant digits to all bounding boxes in all tracks.  This requires dataset of `vipy.video.Scene`
+            noemail: [bool]: If true, scrub the attributes for emails and replace with a hash
+            flush: [bool]:  If true, flush the object buffers prior to save
 
         Returns:        
             This dataset that is quivalent to vipy.dataset.Dataset('/path/to/outfile.json')
@@ -355,9 +368,11 @@ class Dataset():
     def merge(self, outdir):
         """Merge a dataset union into a single subdirectory with symlinked media ready to be archived.
 
-        >>> D1 = vipy.dataset.Dataset('/path1/dataset.json')
-        >>> D2 = vipy.dataset.Dataset('/path2/dataset.json')
-        >>> D3 = D1.union(D2).merge(outdir='/path3')
+        ```python
+        D1 = vipy.dataset.Dataset('/path1/dataset.json')
+        D2 = vipy.dataset.Dataset('/path2/dataset.json')
+        D3 = D1.union(D2).merge(outdir='/path3')
+        ```
 
         Media in D1 are in /path1, media in D2 are in /path2, media in D3 are all symlinked to /path3.
         We can now create a tarball for D3 with all of the media files in the same relative path.
@@ -399,10 +414,13 @@ class Dataset():
     
            Usage:
 
-           >>> D = vipy.dataset.Dataset(...).jsondir('/path/to/jsondir')
-           >>> D = vipy.util.load('/path/to/jsondir')   # recursively discover and lazy load all json files 
+        ```python
+        D = vipy.dataset.Dataset(...).jsondir('/path/to/jsondir')
+        D = vipy.util.load('/path/to/jsondir')   # recursively discover and lazy load all json files 
+        ```
 
            Args:
+
                outdir [str]:  The root directory to store the JSON files
                verbose [bool]: If True, print the save progress
                rekey [bool] If False, use the instance ID of the vipy object as the filename for the JSON file, otherwise assign a new UUID_dataset-index
@@ -433,7 +451,7 @@ class Dataset():
         return outdir
 
     def tojsondir(self, outdir=None, verbose=True, rekey=False, bycategory=False, byfilename=False, abspath=True):
-        """Alias for `vipy.dataset.jsondir`"""
+        """Alias for `vipy.dataset.Dataset.jsondir`"""
         return self.jsondir(outdir, verbose=verbose, rekey=rekey, bycategory=bycategory, byfilename=byfilename, abspath=abspath)
     
     def takelist(self, n, category=None, canload=False):
@@ -489,9 +507,11 @@ class Dataset():
 
         To perform this in parallel across four processes:
 
-        >>> D = vipy.dataset.Dataset(...)
-        >>> with vipy.globals.parallel(4):
-        >>>     D.map(lambda v: ...)
+        ```python
+        D = vipy.dataset.Dataset(...)
+        with vipy.globals.parallel(4):
+            D.map(lambda v: ...)
+        ```
 
         Args:
             f_map: [lambda] The lambda function to apply in parallel to all elements in the dataset.  This must return a JSON serializable object
@@ -503,7 +523,7 @@ class Dataset():
             ordered: [bool] If true, preserve the order of objects in dataset as returned from distributed processing
 
         Returns:
-            A `vipy.dataset.Dataset` containing the elements f_map(v).  This operation is order preserving.
+            A `vipy.dataset.Dataset` containing the elements f_map(v).  This operation is order preserving if ordered=True.
 
         .. note:: 
             - This dataset must contain vipy objects of types defined in `vipy.util.class_registry` or JSON serializable objects
@@ -838,11 +858,13 @@ class Dataset():
     def zip(self, other, sortkey=None):
         """Zip two datasets.  Equivalent to zip(self, other).
 
-        >>> for (d1,d2) in D1.zip(D2, sortkey=lambda v: v.instanceid()):
-        >>>     pass
+        ```python
+        for (d1,d2) in D1.zip(D2, sortkey=lambda v: v.instanceid()):
+            pass
         
-        >>> for (d1, d2) in zip(D1, D2):
-        >>>     pass
+        for (d1, d2) in zip(D1, D2):
+            pass
+        ```
 
         Args:
             other: [`vipy.dataset.Dataset`] 

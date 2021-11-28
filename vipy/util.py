@@ -78,8 +78,10 @@ def save(vars, outfile=None):
 
     This function allows vipy objects to be serialized to disk for later loading.
 
-    >>> im = vipy.image.owl()
-    >>> im = vipy.util.load(vipy.util.save(im))   # round trip
+    ```python
+    im = vipy.image.owl()
+    im = vipy.util.load(vipy.util.save(im))   # round trip
+    ```
 
     Args:
         vars: A python object to save.  This can be any serializable python object
@@ -127,9 +129,11 @@ def load(infile, abspath=True, refcycle=True):
        3. if abspath=true, then convert relative paths to absolute paths for object when loaded
        4. If refcycle=False, then disable the python reference cycle garbage collector for large archive files
     
-       >>> im = vipy.image.owl()
-       >>> f = vipy.util.save(im)
-       >>> im = vipy.util.load(im)
+    ```python
+    im = vipy.image.owl()
+    f = vipy.util.save(im)
+    im = vipy.util.load(im)
+    ```
 
        Args:
            infile: [str] file saved using `vipy.util.save` with extension [.pkl, .json].  This may also be a directory tree containing json or pkl files 
@@ -222,10 +226,12 @@ def catcher(f, *args, **kwargs):
 def mergedict(d1, d2):
     """Combine keys of two dictionaries and return a dictionary deep copy.
     
-    >>> d1 = {1:2}
-    >>> d2 = {3:4}
-    >>> d3 = mergedict(d1,d2)
-    >>> assert d3 == {1:2, 3:4}
+    ```python
+    d1 = {1:2}
+    d2 = {3:4}
+    d3 = mergedict(d1,d2)
+    assert d3 == {1:2, 3:4}
+    ```
 
     """
     assert isinstance(d1, dict) and isinstance(d2, dict)
@@ -419,8 +425,10 @@ def dividelist(inlist, fractions):
 def chunklist(inlist, num_chunks):
     """Convert list into a list of lists of length num_chunks, such that each element is a list containing a sequential chunk of the original list.
     
-    >>> (A,B,C) = vipy.util.chunklist(inlist, num_chunks=3)
-    >>> assert len(A) == len(inlist) // 3
+    ```python
+    (A,B,C) = vipy.util.chunklist(inlist, num_chunks=3)
+    assert len(A) == len(inlist) // 3
+    ```
 
     .. note::  The last chunk will be larger for ragged chunks
     """
@@ -647,24 +655,54 @@ def repath(v, srcpath, dstpath):
     return vc
     
 
-def scpsave(V):
+def scpsave(V, username=None):
+    """Save an archive file to load via SCP.
+
+    Use case:
+
+    - This archive format is useful to allow access to videos and images that are accessible behind a remote server for which you have access via SSH key-based authentication.
+    - You create this archive on the remote server, and all vipy objects are replaced with references to remote media.
+    - Every video or image is replaced with a URL of the format 'scp://USER@HOST:/path/to.mp4'.  
+    - Vipy will use your SSH keys to SCP these media files from USER@HOST on demand, so that the videos are cached for you on your local machine when you need them.
+    - This is useful for transparently visualizing large datasets that are hidden behind an SSH-only accessible server
+
+    Usage:
+    
+    ```python
+    outfile = vipy.util.scpsave([vipy.video.Video(filename='/path/to.mp4)])  # run on remote machine that you have SSH key access
+    V = vipy.util.scpload(outfile)  # run on local machine that has SSH key access to remote machine
+    V[0].load()  # this will SCP the videos from 'scp:///path/to.mp4' to $VIPY_CACHE/to.mp4 transparently and on demand
+    ```
+
+    Args:
+        V: [vipy objects] A list of vipy objects or `vipy.dataset.Dataset`
+        username: [str] Your username on the remote machine to select the proper SSH key
+
+    Returns:
+        A temp archive file stored on the remote machine that will be downloaded and loaded via SCP
+
+    """
+    
     import vipy.image
     import vipy.video
-    if (isinstance(V, vipy.image.Image) or isinstance(V, vipy.video.Video)) and V.hasfilename():        
-        v = V
-        v = v.clone().url('scp://%s:%s' % (socket.gethostname(), v.filename())).nofilename()
+
+    if isinstance(V, vipy.dataset.Dataset) and V._isvipy():
+        v = V.localmap(lambda v: v.clone().url('scp://%s%s:%s' % (('%s@' % username) if username is not None else '', socket.gethostname(), v.filename())).nofilename())
+    elif (isinstance(V, vipy.image.Image) or isinstance(V, vipy.video.Video)) and V.hasfilename():        
+        v = V.clone().url('scp://%s%s:%s' % (('%s@' % username) if username is not None else '', socket.gethostname(), v.filename())).nofilename()
     elif islist(V) and all([isinstance(v, vipy.image.Image) or isinstance(v, vipy.video.Video) for v in V]):
-        v = [v.clone().url('scp://%s:%s' % (socket.gethostname(), v.abspath().filename())).nofilename() for v in V]
+        v = [v.clone().url('scp://%s%s:%s' % (('%s@' % username) if username is not None else '', socket.gethostname(), v.abspath().filename())).nofilename() for v in V]
     else:
         v = V # no vipy objects
 
-    pklfile = 'scp://%s:%s' % (socket.gethostname(), save(v, temppkl()))
+    pklfile = 'scp://%s%s:%s' % (('%s@' % username) if username is not None else '', socket.gethostname(), save(v, temppkl()))
     cmd = "V = vipy.util.scpload('%s')" % pklfile
     print('[vipy.util.scpsave]: On a remote machine where you have public key ssh access to this machine run:\n>>> %s\n' % cmd)
     return pklfile
 
 
 def scpload(url):
+    """Load an archive file saved using `vipy.util.scpsave`"""
     import vipy.downloader
     return load(vipy.downloader.scp(url, templike(url)))
 
@@ -759,9 +797,11 @@ def isinstalled(cmd):
 def isextension(filename, ext):
     """Does the filename end with the extension ext? 
     
-    >>> isextension('/path/to/myfile.json', 'json') == True
-    >>> isextension('/path/to/myfile.json', '.json') == True
-    >>> isextension('/path/to/myfile.json', '.pkl') == False
+    ```python
+    isextension('/path/to/myfile.json', 'json') == True
+    isextension('/path/to/myfile.json', '.json') == True
+    isextension('/path/to/myfile.json', '.pkl') == False
+    ```
 
     """
     return filename.endswith(ext)
@@ -1425,15 +1465,17 @@ class Stopwatch(object):
     
 class Timer(object):
     """Pretty print elapsed system time in seconds between calls to enter and exit
+    
+    ```python 
+       t = Timer():
+       [some code]
+       print(t)
+       [some more code]
+       print(t)
 
-       >>> t = Timer():
-       >>> [some code]
-       >>> print(t)
-       >>> [some more code]
-       >>> print(t)
-
-       >>> with Timer():
-       >>>    [some code]
+       with Timer():
+          [some code]
+    ```
        
     """
     def __enter__(self):

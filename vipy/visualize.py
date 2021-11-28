@@ -248,7 +248,7 @@ def mosaic(videos):
     Returns:
         A generator which yields frames of the mosaic.  All videos are at their native frame rates, and all videos are anisotropically resized to the (height, width) of the first video
 
-    .. note:: This is the streaming version of `vipy.visualize.video_montage` which requires all videos to be loadable
+    .. note:: This is the streaming version of `vipy.visualize.videomontage` which requires all videos to be loadable
 .
     """
     assert (isinstance(videos, list) and all([isinstance(v, vipy.video.Video) for v in videos])) or isinstance(videos, tuple)

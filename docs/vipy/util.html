@@ -25,7 +25,7 @@
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/util.py#L0-L1629" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/199328c3b46817bed59809e2e08f6e14b772c479/vipy/util.py#L0-L1622" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">import urllib.request
 import urllib.parse
@@ -42,7 +42,6 @@ import sys
 import csv
 import hashlib
 import shutil
-import shelve
 import re
 import uuid
 import dill
@@ -58,10 +57,175 @@ import warnings
 import copy
 import bz2
 
+
 try:
     import ujson as json  # faster
 except ImportError:
     import json
+
+
+
+def class_registry():
+    &#34;&#34;&#34;Return a dictionary mapping str(type(obj)) to a JSON loader for all vipy objects.
+
+    This function is useful for JSON loading of vipy objects to map to the correct deserialization method.
+    &#34;&#34;&#34;
+
+    import vipy.video
+    import vipy.image
+    import vipy.dataset
+
+    registry = {&#34;&lt;class &#39;vipy.video.Scene&#39;&gt;&#34;:vipy.video.Scene.from_json,
+                &#34;&lt;class &#39;vipy.video.Video&#39;&gt;&#34;:vipy.video.Video.from_json,
+                &#34;&lt;class &#39;vipy.video.VideoCategory&#39;&gt;&#34;:vipy.video.VideoCategory.from_json,
+                &#34;&lt;class &#39;vipy.image.Image&#39;&gt;&#34;:vipy.image.Image.from_json,
+                &#34;&lt;class &#39;vipy.image.ImageCategory&#39;&gt;&#34;:vipy.image.ImageCategory.from_json,
+                &#34;&lt;class &#39;vipy.image.ImageDetection&#39;&gt;&#34;:vipy.image.ImageDetection.from_json,            
+                &#34;&lt;class &#39;vipy.image.Scene&#39;&gt;&#34;:vipy.image.Scene.from_json,
+                &#34;&lt;class &#39;vipy.geometry.BoundingBox&#39;&gt;&#34;:vipy.geometry.BoundingBox.from_json,
+                &#34;&lt;class &#39;vipy.object.Track&#39;&gt;&#34;:vipy.object.Track.from_json,
+                &#34;&lt;class &#39;vipy.object.Detection&#39;&gt;&#34;:vipy.object.Detection.from_json,
+                &#34;&lt;class &#39;vipy.activity.Activity&#39;&gt;&#34;:vipy.activity.Activity.from_json,
+                &#34;&lt;class &#39;vipy.dataset.Dataset&#39;&gt;&#34;:vipy.dataset.Dataset.from_json}
+    try:
+        import pycollector.video
+        registry.update( {&#34;&lt;class &#39;pycollector.video.Video&#39;&gt;&#34;:pycollector.video.Video.from_json} )
+    except:
+        registry.update( {&#34;&lt;class &#39;pycollector.video.Video&#39;&gt;&#34;:lambda x: exec(&#34;raise ValueError(\&#34;&lt;class &#39;pycollector.video.Video&#39;&gt; not found - Run &#39;pip install pycollector&#39; \&#34;)&#34;)})        
+    try:
+        import pycollector.admin.video
+        registry.update( {&#34;&lt;class &#39;pycollector.admin.video.Video&#39;&gt;&#34;:pycollector.admin.video.Video.from_json} )
+    except:
+        registry.update( {&#34;&lt;class &#39;pycollector.admin.video.Video&#39;&gt;&#34;:lambda x: exec(&#34;raise ValueError(\&#34;&lt;class &#39;pycollector.admin.video.Video&#39;&gt; not found - This is for admin use only \&#34;)&#34;)})        
+
+    registry.update( {None:json.loads} )  # fallback on generic JSON dumps
+    return registry
+            
+
+def save(vars, outfile=None):
+    &#34;&#34;&#34;Save variables to an archive file.
+
+    This function allows vipy objects to be serialized to disk for later loading.
+
+    ```python
+    im = vipy.image.owl()
+    im = vipy.util.load(vipy.util.save(im))   # round trip
+    ```
+
+    Args:
+        vars: A python object to save.  This can be any serializable python object
+        outfile:  An output file to save.  Must have extension [.pkl, .json].  If None, will save to a temporary JSON file.
+
+    Returns
+        A path to the saved archive file.  Load using `vipy.util.load`. 
+
+    .. note:: JSON is preferred as an archive format for vipy.  Be sure to install the excellent ultrajson library (pip install ujson) for fast serialization.
+    &#34;&#34;&#34;
+    allowable = set([&#39;.pkl&#39;, &#39;.json&#39;])
+    outfile = tempjson() if outfile is None else outfile
+
+    remkdir(filepath(outfile))
+    if ispkl(outfile):
+        dill.dump(vars, open(outfile, &#39;wb&#39;))
+
+    elif isjsonfile(outfile):
+        saveobj = vars
+        registry = class_registry()
+        if isinstance(saveobj, list) and all([str(type(d)) in registry for d in saveobj]):
+            j = [{str(type(d)):d.json(encode=False)} for d in saveobj] if isinstance(saveobj, list) else ({str(type(d)):d.json(encode=False)} for d in saveobj)
+        elif str(type(saveobj)) in registry:
+            j = {str(type(saveobj)):saveobj.json(encode=False)}
+        else:
+            j = saveobj
+
+        s = json.dumps(j, ensure_ascii=False)  # load to memory (faster than json.dump), will throw exception if it cannot serialize
+        with open(outfile, &#39;w&#39;) as f:
+            f.write(s)            
+
+    else:
+        raise ValueError(&#39;Unknown file extension for save file &#34;%s&#34; - must be in %s&#39; % (fileext(outfile), str(allowable)))
+    
+    return outfile
+
+
+def load(infile, abspath=True, refcycle=True):
+    &#34;&#34;&#34;Load variables from a relocatable archive file format, either dill pickle, JSON format or JSON directory format.
+       
+       Loading is performed by attemping the following:
+
+       1. If the input file is a directory, return a `vipy.dataset.Dataset` with lazy loading of all pkl or json files recursively discovered in this directory.
+       2. If the input file is a pickle or json file, load it
+       3. if abspath=true, then convert relative paths to absolute paths for object when loaded
+       4. If refcycle=False, then disable the python reference cycle garbage collector for large archive files
+    
+    ```python
+    im = vipy.image.owl()
+    f = vipy.util.save(im)
+    im = vipy.util.load(im)
+    ```
+
+       Args:
+           infile: [str] file saved using `vipy.util.save` with extension [.pkl, .json].  This may also be a directory tree containing json or pkl files 
+           abspath: [bool] If true, then convert all vipy objects with relative paths to absolute paths. If False, then preserve relative paths and warn user.
+           refcycle: [bool] If False, then disable python reference cycle garbage collector.  This is useful for large python objects.
+       
+       Returns:
+           The object in the archive file
+    &#34;&#34;&#34;
+    infile = os.path.abspath(os.path.expanduser(infile))
+
+    if ispkl(infile):
+        obj = dill.load(open(infile, &#39;rb&#39;))
+    elif isjsonfile(infile):
+        with open(infile, &#39;r&#39;) as f:
+            loadobj = json.load(f)
+        registry = class_registry()
+        assert isinstance(loadobj, list) or isinstance(loadobj, dict), &#34;invalid vipy JSON serialization format&#34;
+        if isinstance(loadobj, list) and all([isinstance(d, dict) for d in loadobj]) and all([c in registry for d in loadobj for (c,v) in d.items()]):
+            obj = [registry[c](v) for d in loadobj for (c,v) in d.items()]
+        elif isinstance(loadobj, dict) and all([c in registry for (c,d) in loadobj.items()]):
+            obj = [registry[c](v) for (c,v) in loadobj.items()]
+            obj = obj[0] if len(obj) == 1 else obj
+        else:
+            obj = loadobj
+    elif os.path.isdir(infile):        
+        import vipy.dataset
+        return vipy.dataset.Dataset(infile)
+    else:
+        raise ValueError(&#39;unknown file type&#39;)
+    
+    if len(tolist(obj)) == 0:
+        return obj  
+    testobj = tolist(obj)[0]  
+
+    # Relocatable object?
+    if hasattr(testobj, &#39;filename&#39;) and testobj.filename() is not None:
+        if not os.path.isabs(testobj.filename()):
+            if not abspath:
+                warnings.warn(&#39;Loading archive &#34;%s&#34; with relative paths.  Changing directory to &#34;%s&#34;.  Disable this warning with vipy.util.load(..., abspath=True).&#39; % (infile, filepath(infile)))
+                os.chdir(filepath(infile))
+            else:
+                # Absolute path?  The loaded archive will no longer be relocatable if you save this to a new archive, and the videos directory cannot be moved
+                pwd = os.getcwd()  # save current directory
+                os.chdir(filepath(infile))  # change to archive directory
+                objout = [o.abspath() if o.filename() is not None else o for o in tolist(obj)]  # set absolute paths relative to archive directory
+                obj = objout if isinstance(obj, list) else objout[0]
+                os.chdir(pwd)  # restore current directory
+        elif not testobj.hasfilename():
+            warnings.warn(&#39;Loading &#34;%s&#34; that contains path (e.g. &#34;%s&#34;) which does not exist&#39; % (infile, testobj.filename()))
+
+    # Large vipy object?  Disable garbage collection.
+    #   - Python uses reference counting for the primary garbage collection mechanism, but also uses reference cycle checks to search for dependencies between objects.
+    #   - All vipy objects are self contained, and do not have reference cycles.  However, there is no way to mark an individual object which does not participate in reference cycle counting.
+    #   - This means that a large number of vipy objects, garbage collection can take minutes searching for cycles which are never there.  To fix this, globally disable the garbage collector.
+    #   - Note that refernece counting is still performed, we are just disabling reference *cycle* counting using the generational garbage collector.
+    #   - This can be re-enabled at any time by &#34;import gc; gc.enable()&#34;
+    #   - If you use %autoreload iPython magic command, note that this will be very slow.  You should set %sutoreload 0
+    #   - Alternatively, load as JSON and all attributes will be unpacked on demand and stored in a packed format that is not tracked (e.g. tuple of strings) by the reference cycle counter
+    if not refcycle:
+        warnings.warn(&#39;Disabling python reference cycle garbage collection.  Re-enable at any time using &#34;import gc; gc.enable()&#34;&#39;)
+        import gc; gc.disable()
+    return obj
 
 
 def bz2pkl(filename, obj=None):
@@ -79,8 +243,26 @@ def bz2pkl(filename, obj=None):
         return obj
         
 
+def catcher(f, *args, **kwargs):
+    &#34;&#34;&#34;Call the function f with the provided arguments, and return (True, result) on success and (False, exception) if there is any thrown exception.  Useful for parallel processing&#34;&#34;&#34;
+    assert callable(f)
+    try:
+        return (True, f(*args, **kwargs))
+    except Exception as e:
+        return (False, str(e))
+
+
 def mergedict(d1, d2):
-    &#34;&#34;&#34;Combine keys of two dictionaries and return a dictionary deep copy&#34;&#34;&#34;
+    &#34;&#34;&#34;Combine keys of two dictionaries and return a dictionary deep copy.
+    
+    ```python
+    d1 = {1:2}
+    d2 = {3:4}
+    d3 = mergedict(d1,d2)
+    assert d3 == {1:2, 3:4}
+    ```
+
+    &#34;&#34;&#34;
     assert isinstance(d1, dict) and isinstance(d2, dict)
     d = copy.deepcopy(d1)
     d.update(d2)
@@ -154,27 +336,12 @@ def count_images_in_subdirectories(indir):
     return num_files
 
 
-def rowvectorize(X):
-    &#34;&#34;&#34;Convert a 1D numpy array to a 2D row vector of size (1,N)&#34;&#34;&#34;
-    return X.reshape((1, X. size)) if X.ndim == 1 else X
-
-
-def columnvectorize(X):
-    &#34;&#34;&#34;Convert a 1D numpy array to a 2D column vector of size (N,1)&#34;&#34;&#34;
-    return X.reshape((X. size, 1)) if X.ndim == 1 else X
-
-
-def isodd(x):
-    return x % 2 == 0
-
-
 def keymax(d):
     &#34;&#34;&#34;Return key in dictionary containing maximum value&#34;&#34;&#34;
     vmax = max(d.values())
     for (k, v) in d.items():
         if v == vmax:
             return k
-
 
 def keymin(d):
     &#34;&#34;&#34;Return key in dictionary containing minimum value&#34;&#34;&#34;
@@ -185,7 +352,7 @@ def keymin(d):
 
 
 def isjsonfile(filename):
-    return len(filename) &gt; 5 and filename[-5:] == &#39;.json&#39;
+    return isinstance(filename, str) and len(filename) &gt; 5 and filename[-5:] == &#39;.json&#39;
 
 
 def writejson(d, outfile):
@@ -247,8 +414,7 @@ def softmax(x, temperature=1.0):
 
 def permutelist(inlist):
     &#34;&#34;&#34;randomly permute list order&#34;&#34;&#34;
-    return [inlist[k] for k in
-            np.random.permutation(list(range(0, len(inlist))))]
+    return [inlist[k] for k in np.random.permutation(list(range(0, len(inlist))))]
 
 
 def flatlist(inlist):
@@ -288,8 +454,10 @@ def dividelist(inlist, fractions):
 def chunklist(inlist, num_chunks):
     &#34;&#34;&#34;Convert list into a list of lists of length num_chunks, such that each element is a list containing a sequential chunk of the original list.
     
-    &gt;&gt;&gt; (A,B,C) = vipy.util.chunklist(inlist, num_chunks=3)
-    &gt;&gt;&gt; assert len(A) == len(inlist) // 3
+    ```python
+    (A,B,C) = vipy.util.chunklist(inlist, num_chunks=3)
+    assert len(A) == len(inlist) // 3
+    ```
 
     .. note::  The last chunk will be larger for ragged chunks
     &#34;&#34;&#34;
@@ -480,151 +648,10 @@ def loadmat73(matfile, keys=None):
         return np.array(f)
 
 
-def _json_class_registry():
-    import vipy.video
-    import vipy.image
-    registry = {&#34;&lt;class &#39;vipy.video.Scene&#39;&gt;&#34;:vipy.video.Scene.from_json,
-                &#34;&lt;class &#39;vipy.video.Video&#39;&gt;&#34;:vipy.video.Video.from_json,
-                &#34;&lt;class &#39;vipy.video.VideoCategory&#39;&gt;&#34;:vipy.video.VideoCategory.from_json,
-                &#34;&lt;class &#39;vipy.image.Image&#39;&gt;&#34;:vipy.image.Image.from_json,
-                &#34;&lt;class &#39;vipy.image.ImageCategory&#39;&gt;&#34;:vipy.image.ImageCategory.from_json,
-                &#34;&lt;class &#39;vipy.image.ImageDetection&#39;&gt;&#34;:vipy.image.ImageDetection.from_json,            
-                &#34;&lt;class &#39;vipy.image.Scene&#39;&gt;&#34;:vipy.image.Scene.from_json,
-                &#34;&lt;class &#39;vipy.geometry.BoundingBox&#39;&gt;&#34;:vipy.geometry.BoundingBox.from_json,
-                &#34;&lt;class &#39;vipy.object.Track&#39;&gt;&#34;:vipy.object.Track.from_json,
-                &#34;&lt;class &#39;vipy.object.Detection&#39;&gt;&#34;:vipy.object.Detection.from_json,
-                &#34;&lt;class &#39;vipy.activity.Activity&#39;&gt;&#34;:vipy.activity.Activity.from_json}
-    try:
-        import pycollector.video
-        registry.update( {&#34;&lt;class &#39;pycollector.video.Video&#39;&gt;&#34;:pycollector.video.Video.from_json} )
-    except:
-        registry.update( {&#34;&lt;class &#39;pycollector.video.Video&#39;&gt;&#34;:lambda x: exec(&#34;raise ValueError(\&#34;&lt;class &#39;pycollector.video.Video&#39;&gt; not found - Run &#39;pip install pycollector&#39; \&#34;)&#34;)})        
-    try:
-        import pycollector.admin.video
-        registry.update( {&#34;&lt;class &#39;pycollector.admin.video.Video&#39;&gt;&#34;:pycollector.admin.video.Video.from_json} )
-    except:
-        registry.update( {&#34;&lt;class &#39;pycollector.admin.video.Video&#39;&gt;&#34;:lambda x: exec(&#34;raise ValueError(\&#34;&lt;class &#39;pycollector.admin.video.Video&#39;&gt; not found - This is for admin use only \&#34;)&#34;)})        
-
-    return registry
-            
-
-def saveas(vars, outfile=None, format=&#39;dill&#39;):
-    &#34;&#34;&#34;Save variables as a dill pickled file&#34;&#34;&#34;
-    outfile = temppickle() if outfile is None else os.path.abspath(os.path.expanduser(outfile))
-
-    remkdir(filepath(outfile))
-    if format in [&#39;dill&#39;]:
-        dill.dump(vars, open(outfile, &#39;wb&#39;))
-        return outfile
-    
-    elif format == &#39;json&#39;:
-        saveobj = vars
-        class_registry = _json_class_registry()
-        if isinstance(saveobj, list) and all([str(type(d)) in class_registry for d in saveobj]):
-            j = [{str(type(d)):d.json(encode=False)} for d in saveobj] if isinstance(saveobj, list) else ({str(type(d)):d.json(encode=False)} for d in saveobj)
-        elif str(type(saveobj)) in class_registry:
-            j = {str(type(saveobj)):saveobj.json(encode=False)}
-        else:
-            j = saveobj
-
-        s = json.dumps(j, ensure_ascii=False)  # load to memory (faster than json.dump), will throw exception if it cannot serialize
-        with open(outfile, &#39;w&#39;) as f:
-            f.write(s)            
-        return outfile
-        
-    else:
-        raise ValueError(&#39;unknown serialization format &#34;%s&#34;&#39; % format)
-
-    return outfile
-
-
-def loadas(infile, format=&#39;dill&#39;):
-    &#34;&#34;&#34;Load variables from a dill pickled file&#34;&#34;&#34;
-    
-    if format in [&#39;dill&#39;, &#39;pkl&#39;]:
-        return dill.load(open(infile, &#39;rb&#39;))
-    elif format == &#39;json&#39;:
-        with open(infile, &#39;r&#39;) as f:
-            loadobj = json.load(f)
-        class_registry = _json_class_registry()
-        assert isinstance(loadobj, list) or isinstance(loadobj, dict), &#34;invalid vipy JSON serialization format&#34;
-        if isinstance(loadobj, list) and all([isinstance(d, dict) for d in loadobj]) and all([c in class_registry for d in loadobj for (c,v) in d.items()]):
-            return [class_registry[c](v) for d in loadobj for (c,v) in d.items()]
-        elif isinstance(loadobj, dict) and all([c in class_registry for (c,d) in loadobj.items()]):
-            obj = [class_registry[c](v) for (c,v) in loadobj.items()]
-            return obj[0] if len(obj) == 1 else obj
-        else:
-            return loadobj
-    else:
-        raise ValueError(&#39;unknown serialization format &#34;%s&#34;&#39; % format)
-
-
-def load(infile, abspath=True):
-    &#34;&#34;&#34;Load variables from a relocatable archive file format, either Dill Pickle or JSON.
-       
-       Loading is performed by attemping the following:
-
-       1. load the pickle or json file
-       2. if abspath=true, then convert relative paths to absolute paths for object when loaded
-       3. If the loaded object is a vipy object (or iterable) and the relocatable path /$PATH is present, try to repath it to the directory containing this archive (this has been deprecated)
-       4. If the resulting first filename is not found, throw a warning
-
-    &#34;&#34;&#34;
-    infile = os.path.abspath(os.path.expanduser(infile))
-    if ispkl(infile):
-        format = &#39;dill&#39;
-    elif isjsonfile(infile):
-        format = &#39;json&#39;
-    else:
-        raise ValueError(&#39;unknown file type&#39;)
-    
-    obj = loadas(infile, format=format)
-    try:
-        testobj = tolist(obj)[0]
-    except:
-        raise ValueError(&#39;Invalid archive &#34;%s&#34;&#39; % infile)
-
-    # Relocatable object?
-    if hasattr(testobj, &#39;filename&#39;) and testobj.filename() is not None and &#39;/$PATH&#39; in testobj.filename():
-        # 07SEP21: this path is deprecated
-        testobj = repath(copy.deepcopy(testobj), &#39;/$PATH&#39;, filepath(os.path.abspath(infile)))  # attempt to rehome /$PATH/to/me.jpg -&gt; /NEWPATH/to/me.jpg where NEWPATH=filepath(infile)
-        if os.path.exists(testobj.filename()):       # file found
-            obj = repath(obj, &#39;/$PATH&#39;, filepath(os.path.abspath(infile)))      # rehome everything to the same root path as the pklfile
-        else:
-            warnings.warn(&#39;Loading &#34;%s&#34; that contains redistributable paths - Use vipy.util.distload(&#34;%s&#34;, datapath=&#34;/path/to/your/data&#34;) to rehome absolute file paths&#39; % (infile, infile))
-    elif hasattr(testobj, &#39;filename&#39;) and testobj.filename() is not None:
-        if not os.path.isabs(testobj.filename()):
-            if not abspath:
-                warnings.warn(&#39;Loading archive &#34;%s&#34; with relative paths.  Changing directory to &#34;%s&#34;.  Disable this warning with vipy.util.load(..., abspath=True).&#39; % (infile, filepath(infile)))
-                os.chdir(filepath(infile))
-            else:
-                # Absolute path?  The loaded archive will no longer be relocatable if you save this to a new archive, and the videos directory cannot be moved
-                pwd = os.getcwd()  # save current directory
-                os.chdir(filepath(infile))  # change to archive directory
-                objout = [o.abspath() if o.filename() is not None else o for o in tolist(obj)]  # set absolute paths relative to archive directory
-                obj = objout if isinstance(obj, list) else objout[0]
-                os.chdir(pwd)  # restore current directory
-        elif not testobj.hasfilename():
-            warnings.warn(&#39;Loading &#34;%s&#34; that contains path (e.g. &#34;%s&#34;) which does not exist&#39; % (infile, testobj.filename()))
-
-    # Large vipy object?  Disable garbage collection.
-    #   - Python uses reference counting for the primary garbage collection mechanism, but also uses reference cycle checks to search for dependencies between objects.
-    #   - All vipy objects are self contained, and do not have reference cycles.  However, there is no way to mark an individual object which does not participate in reference cycle counting.
-    #   - This means that a large number of vipy objects, garbage collection can take minutes searching for cycles which are never there.  To fix this, globally disable the garbage collector.
-    #   - Note that refernece counting is still performed, we are just disabling reference *cycle* counting using the generational garbage collector.
-    #   - This can be re-enabled at any time by &#34;import gc; gc.enable()&#34;
-    #   - If you use %autoreload iPython magic command, note that this will be very slow.  You should set %sutoreload 0
-    #   - Alternatively, load as JSON and all attributes will be unpacked on demand and stored in a packed format that is not tracked (e.g. tuple of strings) by the reference cycle counter
-    if hasattr(testobj, &#39;filename&#39;) and len(tolist(obj)) &gt; 100000:
-        # Should we warn the user?  Probably doesn&#39;t matter ...
-        #warnings.warn(&#39;Loading &#34;%s&#34; that contains a large number of vipy objects - disabling reference cycle checks.  Re-enable at any time using &#34;import gc; gc.enable()&#34;&#39; % (infile))
-        #import gc; gc.disable()
-        pass   # do not do this without explicit user authorization
-    return obj
 
 def take(inlist, k):
     &#34;&#34;&#34;Take k elements at random from inlist&#34;&#34;&#34;
-    return [inlist[i] for i in np.random.permutation(range(len(inlist)))[0:k]]
+    return [inlist[i] for i in np.random.permutation(range(len(inlist)))[0:k]] if len(inlist)&gt;k else inlist
 
 def tryload(infile, abspath=False):
     &#34;&#34;&#34;Attempt to load a pkl file, and return the value if successful and None if not&#34;&#34;&#34;
@@ -634,42 +661,14 @@ def tryload(infile, abspath=False):
         return None
 
 def canload(infile):
-    &#34;&#34;&#34;Attempt to load a pkl file, and return true if it can be successfully loaded, otherwise False&#34;&#34;&#34;
+    &#34;&#34;&#34;Attempt to load an archive file, and return true if it can be successfully loaded, otherwise False&#34;&#34;&#34;
     try:
         load(infile, abspath=True)
         return True
     except:
         return False
 
-def save(vars, outfile, mode=None):
-    &#34;&#34;&#34;Save variables to an archive file&#34;&#34;&#34;
-    allowable = set([&#39;.pkl&#39;, &#39;.json&#39;])
-    if ispkl(outfile):
-        format = &#39;dill&#39;
-    elif isjsonfile(outfile):
-        format = &#39;json&#39;
-    else:
-        raise ValueError(&#39;Unknown file extension &#34;%s&#34; - must be in %s&#39; % (fileext(outfile), str(allowable)))
-    
-    outfile = saveas(vars, outfile, format=format)
-    if mode is not None:
-        chmod(outfile, mode)
-    return outfile
 
-
-def distload(infile, datapath, srcpath=&#39;/$PATH&#39;):
-    &#34;&#34;&#34;Load a redistributable pickle file that replaces absolute paths in datapath with srcpath.  See also vipy.util.distsave(),
-       This function has been deprecated, all archives should be distributed with relative paths
-    &#34;&#34;&#34;
-    return repath(load(infile), srcpath, datapath)
-
-
-def distsave(vars, datapath, outfile=None, mode=None, dstpath=&#39;/$PATH&#39;):
-    &#34;&#34;&#34;Save a archive file for redistribution, where datapath is replaced by dstpath.  Useful for redistribuing pickle files with absolute paths.  See also vipy.util.distload().
-       This function has been deprecated, all archives should be distributed with relative paths       
-    &#34;&#34;&#34;
-    vars = vars if (datapath is None or not isvipyobject(vars)) else repath(vars, datapath, dstpath) 
-    return save(vars, outfile, mode)
 
 
 def repath(v, srcpath, dstpath):
@@ -797,9 +796,11 @@ def isinstalled(cmd):
 def isextension(filename, ext):
     &#34;&#34;&#34;Does the filename end with the extension ext? 
     
-    &gt;&gt;&gt; isextension(&#39;/path/to/myfile.json&#39;, &#39;json&#39;) == True
-    &gt;&gt;&gt; isextension(&#39;/path/to/myfile.json&#39;, &#39;.json&#39;) == True
-    &gt;&gt;&gt; isextension(&#39;/path/to/myfile.json&#39;, &#39;.pkl&#39;) == False
+    ```python
+    isextension(&#39;/path/to/myfile.json&#39;, &#39;json&#39;) == True
+    isextension(&#39;/path/to/myfile.json&#39;, &#39;.json&#39;) == True
+    isextension(&#39;/path/to/myfile.json&#39;, &#39;.pkl&#39;) == False
+    ```
 
     &#34;&#34;&#34;
     return filename.endswith(ext)
@@ -886,7 +887,7 @@ def newpathroot(filename, newroot):
     return os.path.join(*path)
 
 def topath(filename, newdir):
-    &#34;&#34;&#34;Alias for newpath&#34;&#34;&#34;
+    &#34;&#34;&#34;Alias for `vipy.util.newpath`&#34;&#34;&#34;
     return newpath(filename, newdir)
 
 
@@ -1104,10 +1105,6 @@ def isRTSPurl(path):
 def isRTMPurl(path):
     return isurl(path) and (path.startswith(&#39;rtmp://&#39;) or path.startswith(&#39;rtmps://&#39;))
 
-def checkerboard(m=8,n=256):
-    &#34;&#34;&#34;m=number of square by column, n=size of final image&#34;&#34;&#34;
-    return np.array(PIL.Image.fromarray(np.uint8(255 * np.random.rand(m,m,3))).resize((n,n), PIL.Image.NEAREST))
-
 
 def islist(x):
     &#34;&#34;&#34;Is an object a python list&#34;&#34;&#34;
@@ -1167,52 +1164,48 @@ def tolist(x):
 
 
 def isimg(path):
-    &#34;&#34;&#34;Is an object an image with a supported image extension
-    [&#39;.jpg&#39;,&#39;.jpeg&#39;,&#39;.png&#39;,&#39;.tif&#39;,&#39;.tiff&#39;,&#39;.pgm&#39;,&#39;.ppm&#39;,&#39;.gif&#39;,&#39;.bmp&#39;]?&#34;&#34;&#34;
+    &#34;&#34;&#34;Is an object an image with a supported image extension [&#39;.jpg&#39;,&#39;.jpeg&#39;,&#39;.png&#39;,&#39;.tif&#39;,&#39;.tiff&#39;,&#39;.pgm&#39;,&#39;.ppm&#39;,&#39;.gif&#39;,&#39;.bmp&#39;]?&#34;&#34;&#34;
     (filename, ext) = os.path.splitext(path)
-    if ext.lower() in [&#39;.jpg&#39;, &#39;.jpeg&#39;, &#39;.png&#39;, &#39;.tif&#39;, &#39;.tiff&#39;,
-                       &#39;.pgm&#39;, &#39;.ppm&#39;, &#39;.gif&#39;, &#39;.bmp&#39;]:
+    if ext.lower() in [&#39;.jpg&#39;, &#39;.jpeg&#39;, &#39;.png&#39;, &#39;.tif&#39;, &#39;.tiff&#39;, &#39;.pgm&#39;, &#39;.ppm&#39;, &#39;.gif&#39;, &#39;.bmp&#39;]:
         return True
     else:
         return False
 
 def isimage(path):
-    return isimg(path)
-    
+    &#34;&#34;&#34;Alias for `vipy.util.isimg`&#34;&#34;&#34;
 
 def isvideofile(path):
-    &#34;&#34;&#34;Equivalent to isvideo()&#34;&#34;&#34;
+    &#34;&#34;&#34;Alias for `vipy.util.isvideo`&#34;&#34;&#34;
     return isvideo(path)
 
-
 def isimgfile(path):
-    &#34;&#34;&#34;Convenience function for isimg&#34;&#34;&#34;
+    &#34;&#34;&#34;Alias for `vipy.util.isimg`&#34;&#34;&#34;
     return isimg(path)
 
 
 def isimagefile(path):
-    &#34;&#34;&#34;Convenience function for isimg&#34;&#34;&#34;
+    &#34;&#34;&#34;Alias for `vipy.util.isimg`&#34;&#34;&#34;
     return isimg(path)
 
 
-def isgif(path):
-    return hasextension(path) and fileext(path).lower() == &#39;.gif&#39;
-
-
 def isjpeg(path):
+    &#34;&#34;&#34;is the file a .jpg or .jpeg extension?&#34;&#34;&#34;
     return hasextension(path) and fileext(path).lower() == &#39;.jpg&#39; or fileext(path).lower() == &#39;.jpeg&#39;
 
 def iswebp(path):
+    &#34;&#34;&#34;is the file a .webp extension?&#34;&#34;&#34;
     return hasextension(path) and fileext(path).lower() == &#39;.webp&#39;
 
 def ispng(path):
+    &#34;&#34;&#34;is the file a .png or .apng extension?&#34;&#34;&#34;
     return hasextension(path) and (fileext(path).lower() == &#39;.png&#39; or fileext(path).lower() == &#39;.apng&#39;)
 
 def isgif(path):
+    &#34;&#34;&#34;is the file a .gif extension?&#34;&#34;&#34;
     return hasextension(path) and fileext(path).lower() == &#39;.gif&#39;
 
-
 def isjpg(path):
+    &#34;&#34;&#34;Alias for `vipy.util.isjpeg`&#34;&#34;&#34;
     return isjpeg(path)
 
 
@@ -1226,8 +1219,7 @@ def iscsv(path):
 
 
 def isvideo(path):
-    &#34;&#34;&#34;Is a filename in path a video with a known video extension
-    [&#39;.avi&#39;,&#39;.mp4&#39;,&#39;.mov&#39;,&#39;.wmv&#39;,&#39;.mpg&#39;, &#39;mkv&#39;, &#39;webm&#39;]?&#34;&#34;&#34;
+    &#34;&#34;&#34;Is a filename in path a video with a known video extension [&#39;.avi&#39;,&#39;.mp4&#39;,&#39;.mov&#39;,&#39;.wmv&#39;,&#39;.mpg&#39;, &#39;mkv&#39;, &#39;webm&#39;]?&#34;&#34;&#34;
     (filename, ext) = os.path.splitext(path)
     if ext.lower() in [&#39;.avi&#39;,&#39;.mp4&#39;,&#39;.mov&#39;,&#39;.wmv&#39;,&#39;.mpg&#39;, &#39;mkv&#39;, &#39;webm&#39;]:
         return True
@@ -1287,10 +1279,12 @@ def rgb2bgr(im_rgb):
 
 
 def bgr2hsv(im_bgr):
+    &#34;&#34;&#34;Convert a numpy array in BGR order to HSV&#34;&#34;&#34;
     return np.array(PIL.Image.fromarray(bgr2rgb(im_bgr)).convert(&#39;HSV&#39;))  # BGR -&gt; RGB -&gt; HSV
 
 
 def gray2hsv(im_gray):
+    &#34;&#34;&#34;Convert a numpy array in floating point single channel greyscale order to HSV&#34;&#34;&#34;
     return np.array(PIL.Image.fromarray(gray2rgb(im_gray)).convert(&#39;HSV&#39;))  # Gray -&gt; RGB -&gt; HSV
 
 
@@ -1309,9 +1303,11 @@ def isarchive(filename):
             return False
 
 def istgz(filename):
+    &#34;&#34;&#34;Is the filename a .tgz or .tar.gz extension?&#34;&#34;&#34;
     return filename[-4:] == &#39;.tgz&#39; or filename[-7:] == &#39;.tar.gz&#39;
 
 def isbz2(filename):
+    &#34;&#34;&#34;Is the filename a .bz2 or .tar.bz2 extension?&#34;&#34;&#34;
     return filename[-4:] == &#39;.bz2&#39; or filename[-8:] == &#39;.tar.bz2&#39;
 
 def tempfilename(suffix):
@@ -1434,10 +1430,6 @@ def touch(filename, mystr=&#39;&#39;):
     f.close()
 
 
-def isboundingbox(obj):
-    return isinstance(obj, vipy.geometry.BoundingBox)
-
-
 class Stopwatch(object):
     &#34;&#34;&#34;Return elapsed system time in seconds between calls to enter and exit&#34;&#34;&#34;
 
@@ -1472,17 +1464,18 @@ class Stopwatch(object):
     
 class Timer(object):
     &#34;&#34;&#34;Pretty print elapsed system time in seconds between calls to enter and exit
+    
+    ```python 
+       t = Timer():
+       [some code]
+       print(t)
+       [some more code]
+       print(t)
 
-       &gt;&gt;&gt; t = Timer():
-       &gt;&gt;&gt; [some code]
-       &gt;&gt;&gt; print(t)
-       &gt;&gt;&gt; [some more code]
-       &gt;&gt;&gt; print(t)
-
-       &gt;&gt;&gt; with Timer():
-       &gt;&gt;&gt;    [some code]
+       with Timer():
+          [some code]
+    ```
        
-
     &#34;&#34;&#34;
     def __enter__(self):
         self._begin = time.time()
@@ -1674,7 +1667,7 @@ def string_to_pil_interpolation(interp):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/util.py#L1236-L1238" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/199328c3b46817bed59809e2e08f6e14b772c479/vipy/util.py#L1228-L1230" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def bgr2gray(im_bgr):
     &#34;&#34;&#34;Wrapper for numpy uint8 BGR image to uint8 numpy grayscale&#34;&#34;&#34;
@@ -1685,13 +1678,14 @@ def string_to_pil_interpolation(interp):
 <span>def <span class="ident">bgr2hsv</span></span>(<span>im_bgr)</span>
 </code></dt>
 <dd>
-<div class="desc"></div>
+<div class="desc"><p>Convert a numpy array in BGR order to HSV</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/util.py#L1260-L1261" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/199328c3b46817bed59809e2e08f6e14b772c479/vipy/util.py#L1252-L1254" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def bgr2hsv(im_bgr):
+    &#34;&#34;&#34;Convert a numpy array in BGR order to HSV&#34;&#34;&#34;
     return np.array(PIL.Image.fromarray(bgr2rgb(im_bgr)).convert(&#39;HSV&#39;))  # BGR -&gt; RGB -&gt; HSV</code></pre>
 </details>
 </dd>
@@ -1703,7 +1697,7 @@ def string_to_pil_interpolation(interp):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/util.py#L1250-L1252" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/199328c3b46817bed59809e2e08f6e14b772c479/vipy/util.py#L1242-L1244" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def bgr2rgb(im_bgr):
     &#34;&#34;&#34;Wrapper for numpy BGR uint8 to numpy RGB uint8&#34;&#34;&#34;
@@ -1718,7 +1712,7 @@ def string_to_pil_interpolation(interp):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/util.py#L38-L50" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/199328c3b46817bed59809e2e08f6e14b772c479/vipy/util.py#L202-L214" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def bz2pkl(filename, obj=None):
     &#34;&#34;&#34;Read/Write a bz2 compressed pickle file&#34;&#34;&#34;
@@ -1743,7 +1737,7 @@ def string_to_pil_interpolation(interp):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/util.py#L65-L67" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/199328c3b46817bed59809e2e08f6e14b772c479/vipy/util.py#L247-L249" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def cache():
     &#34;&#34;&#34;If the VIPY_CACHE environment variable set, return it otherwise return tempdir()&#34;&#34;&#34;
@@ -1758,7 +1752,7 @@ def string_to_pil_interpolation(interp):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/util.py#L1303-L1308" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/199328c3b46817bed59809e2e08f6e14b772c479/vipy/util.py#L1299-L1304" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def cached(filename):
     &#34;&#34;&#34;Create a new filename in the cache, or tempdir if not found&#34;&#34;&#34;
@@ -1772,14 +1766,14 @@ def string_to_pil_interpolation(interp):
 <span>def <span class="ident">canload</span></span>(<span>infile)</span>
 </code></dt>
 <dd>
-<div class="desc"><p>Attempt to load a pkl file, and return true if it can be successfully loaded, otherwise False</p></div>
+<div class="desc"><p>Attempt to load an archive file, and return true if it can be successfully loaded, otherwise False</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/util.py#L607-L613" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/199328c3b46817bed59809e2e08f6e14b772c479/vipy/util.py#L634-L640" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def canload(infile):
-    &#34;&#34;&#34;Attempt to load a pkl file, and return true if it can be successfully loaded, otherwise False&#34;&#34;&#34;
+    &#34;&#34;&#34;Attempt to load an archive file, and return true if it can be successfully loaded, otherwise False&#34;&#34;&#34;
     try:
         load(infile, abspath=True)
         return True
@@ -1787,19 +1781,24 @@ def string_to_pil_interpolation(interp):
         return False</code></pre>
 </details>
 </dd>
-<dt id="vipy.util.checkerboard"><code class="name flex">
-<span>def <span class="ident">checkerboard</span></span>(<span>m=8, n=256)</span>
+<dt id="vipy.util.catcher"><code class="name flex">
+<span>def <span class="ident">catcher</span></span>(<span>f, *args, **kwargs)</span>
 </code></dt>
 <dd>
-<div class="desc"><p>m=number of square by column, n=size of final image</p></div>
+<div class="desc"><p>Call the function f with the provided arguments, and return (True, result) on success and (False, exception) if there is any thrown exception.
+Useful for parallel processing</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/util.py#L1078-L1080" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/199328c3b46817bed59809e2e08f6e14b772c479/vipy/util.py#L217-L223" class="git-link">Browse git</a>
 </summary>
-<pre><code class="python">def checkerboard(m=8,n=256):
-    &#34;&#34;&#34;m=number of square by column, n=size of final image&#34;&#34;&#34;
-    return np.array(PIL.Image.fromarray(np.uint8(255 * np.random.rand(m,m,3))).resize((n,n), PIL.Image.NEAREST))</code></pre>
+<pre><code class="python">def catcher(f, *args, **kwargs):
+    &#34;&#34;&#34;Call the function f with the provided arguments, and return (True, result) on success and (False, exception) if there is any thrown exception.  Useful for parallel processing&#34;&#34;&#34;
+    assert callable(f)
+    try:
+        return (True, f(*args, **kwargs))
+    except Exception as e:
+        return (False, str(e))</code></pre>
 </details>
 </dd>
 <dt id="vipy.util.chunklist"><code class="name flex">
@@ -1807,8 +1806,8 @@ def string_to_pil_interpolation(interp):
 </code></dt>
 <dd>
 <div class="desc"><p>Convert list into a list of lists of length num_chunks, such that each element is a list containing a sequential chunk of the original list.</p>
-<pre><code class="language-python-repl">&gt;&gt;&gt; (A,B,C) = vipy.util.chunklist(inlist, num_chunks=3)
-&gt;&gt;&gt; assert len(A) == len(inlist) // 3
+<pre><code class="language-python">(A,B,C) = vipy.util.chunklist(inlist, num_chunks=3)
+assert len(A) == len(inlist) // 3
 </code></pre>
 <div class="admonition note">
 <p class="admonition-title">Note:&ensp;The last chunk will be larger for ragged chunks</p>
@@ -1816,13 +1815,15 @@ def string_to_pil_interpolation(interp):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/util.py#L259-L268" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/199328c3b46817bed59809e2e08f6e14b772c479/vipy/util.py#L425-L436" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def chunklist(inlist, num_chunks):
     &#34;&#34;&#34;Convert list into a list of lists of length num_chunks, such that each element is a list containing a sequential chunk of the original list.
     
-    &gt;&gt;&gt; (A,B,C) = vipy.util.chunklist(inlist, num_chunks=3)
-    &gt;&gt;&gt; assert len(A) == len(inlist) // 3
+    ```python
+    (A,B,C) = vipy.util.chunklist(inlist, num_chunks=3)
+    assert len(A) == len(inlist) // 3
+    ```
 
     .. note::  The last chunk will be larger for ragged chunks
     &#34;&#34;&#34;
@@ -1840,7 +1841,7 @@ size_per_chunk</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/util.py#L278-L283" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/199328c3b46817bed59809e2e08f6e14b772c479/vipy/util.py#L446-L451" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def chunklistWithOverlap(inlist, size_per_chunk, overlap_per_chunk):
     &#34;&#34;&#34;Convert list into a list of lists such that each element is a list
@@ -1860,7 +1861,7 @@ size_per_chunk</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/util.py#L271-L276" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/199328c3b46817bed59809e2e08f6e14b772c479/vipy/util.py#L439-L444" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def chunklistbysize(inlist, size_per_chunk):
     &#34;&#34;&#34;Convert list into a list of lists such that each element is a list
@@ -1878,11 +1879,59 @@ size_per_chunk</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/util.py#L286-L288" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/199328c3b46817bed59809e2e08f6e14b772c479/vipy/util.py#L454-L456" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def chunklistwithoverlap(inlist, size_per_chunk, overlap_per_chunk):
     &#34;&#34;&#34;Alias for chunklistWithOverlap&#34;&#34;&#34;
     return chunklistWithOverlap(inlist, size_per_chunk, overlap_per_chunk)</code></pre>
+</details>
+</dd>
+<dt id="vipy.util.class_registry"><code class="name flex">
+<span>def <span class="ident">class_registry</span></span>(<span>)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Return a dictionary mapping str(type(obj)) to a JSON loader for all vipy objects.</p>
+<p>This function is useful for JSON loading of vipy objects to map to the correct deserialization method.</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+<a href="https://github.com/visym/vipy/blob/199328c3b46817bed59809e2e08f6e14b772c479/vipy/util.py#L39-L73" class="git-link">Browse git</a>
+</summary>
+<pre><code class="python">def class_registry():
+    &#34;&#34;&#34;Return a dictionary mapping str(type(obj)) to a JSON loader for all vipy objects.
+
+    This function is useful for JSON loading of vipy objects to map to the correct deserialization method.
+    &#34;&#34;&#34;
+
+    import vipy.video
+    import vipy.image
+    import vipy.dataset
+
+    registry = {&#34;&lt;class &#39;vipy.video.Scene&#39;&gt;&#34;:vipy.video.Scene.from_json,
+                &#34;&lt;class &#39;vipy.video.Video&#39;&gt;&#34;:vipy.video.Video.from_json,
+                &#34;&lt;class &#39;vipy.video.VideoCategory&#39;&gt;&#34;:vipy.video.VideoCategory.from_json,
+                &#34;&lt;class &#39;vipy.image.Image&#39;&gt;&#34;:vipy.image.Image.from_json,
+                &#34;&lt;class &#39;vipy.image.ImageCategory&#39;&gt;&#34;:vipy.image.ImageCategory.from_json,
+                &#34;&lt;class &#39;vipy.image.ImageDetection&#39;&gt;&#34;:vipy.image.ImageDetection.from_json,            
+                &#34;&lt;class &#39;vipy.image.Scene&#39;&gt;&#34;:vipy.image.Scene.from_json,
+                &#34;&lt;class &#39;vipy.geometry.BoundingBox&#39;&gt;&#34;:vipy.geometry.BoundingBox.from_json,
+                &#34;&lt;class &#39;vipy.object.Track&#39;&gt;&#34;:vipy.object.Track.from_json,
+                &#34;&lt;class &#39;vipy.object.Detection&#39;&gt;&#34;:vipy.object.Detection.from_json,
+                &#34;&lt;class &#39;vipy.activity.Activity&#39;&gt;&#34;:vipy.activity.Activity.from_json,
+                &#34;&lt;class &#39;vipy.dataset.Dataset&#39;&gt;&#34;:vipy.dataset.Dataset.from_json}
+    try:
+        import pycollector.video
+        registry.update( {&#34;&lt;class &#39;pycollector.video.Video&#39;&gt;&#34;:pycollector.video.Video.from_json} )
+    except:
+        registry.update( {&#34;&lt;class &#39;pycollector.video.Video&#39;&gt;&#34;:lambda x: exec(&#34;raise ValueError(\&#34;&lt;class &#39;pycollector.video.Video&#39;&gt; not found - Run &#39;pip install pycollector&#39; \&#34;)&#34;)})        
+    try:
+        import pycollector.admin.video
+        registry.update( {&#34;&lt;class &#39;pycollector.admin.video.Video&#39;&gt;&#34;:pycollector.admin.video.Video.from_json} )
+    except:
+        registry.update( {&#34;&lt;class &#39;pycollector.admin.video.Video&#39;&gt;&#34;:lambda x: exec(&#34;raise ValueError(\&#34;&lt;class &#39;pycollector.admin.video.Video&#39;&gt; not found - This is for admin use only \&#34;)&#34;)})        
+
+    registry.update( {None:json.loads} )  # fallback on generic JSON dumps
+    return registry</code></pre>
 </details>
 </dd>
 <dt id="vipy.util.clockstamp"><code class="name flex">
@@ -1893,26 +1942,11 @@ size_per_chunk</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/util.py#L1499-L1501" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/199328c3b46817bed59809e2e08f6e14b772c479/vipy/util.py#L1492-L1494" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def clockstamp():
     &#34;&#34;&#34;Datetime stamp in local timezone with second resolution with format Year-Month-Day Hour:Minute:Second&#34;&#34;&#34;    
     return datetime.now().strftime(&#34;%Y-%m-%d %H:%M:%S&#34;)    </code></pre>
-</details>
-</dd>
-<dt id="vipy.util.columnvectorize"><code class="name flex">
-<span>def <span class="ident">columnvectorize</span></span>(<span>X)</span>
-</code></dt>
-<dd>
-<div class="desc"><p>Convert a 1D numpy array to a 2D column vector of size (N,1)</p></div>
-<details class="source">
-<summary>
-<span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/util.py#L133-L135" class="git-link">Browse git</a>
-</summary>
-<pre><code class="python">def columnvectorize(X):
-    &#34;&#34;&#34;Convert a 1D numpy array to a 2D column vector of size (N,1)&#34;&#34;&#34;
-    return X.reshape((X. size, 1)) if X.ndim == 1 else X</code></pre>
 </details>
 </dd>
 <dt id="vipy.util.count_images_in_subdirectories"><code class="name flex">
@@ -1923,7 +1957,7 @@ size_per_chunk</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/util.py#L120-L125" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/199328c3b46817bed59809e2e08f6e14b772c479/vipy/util.py#L302-L307" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def count_images_in_subdirectories(indir):
     &#34;&#34;&#34;Count the total number of images in indir/subdir1, indir/subdir2, go down only one level and no further...&#34;&#34;&#34;
@@ -1941,7 +1975,7 @@ size_per_chunk</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/util.py#L200-L202" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/199328c3b46817bed59809e2e08f6e14b772c479/vipy/util.py#L367-L369" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def countby(inset, keyfunc=lambda x: x):
     &#34;&#34;&#34;Return dictionary of keys and group sizes for a grouping of the input list by keyfunc lambda function, sorted by increasing count&#34;&#34;&#34; 
@@ -1956,7 +1990,7 @@ size_per_chunk</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/util.py#L208-L210" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/199328c3b46817bed59809e2e08f6e14b772c479/vipy/util.py#L375-L377" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def countbyasdict(inset, keyfunc):
     &#34;&#34;&#34;Alias for `vipy.util.countby`&#34;&#34;&#34;
@@ -1971,7 +2005,7 @@ size_per_chunk</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/util.py#L997-L1000" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/199328c3b46817bed59809e2e08f6e14b772c479/vipy/util.py#L998-L1001" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def csvlist(imdir):
     &#34;&#34;&#34;Return a list of absolute paths of *.csv files in current directory&#34;&#34;&#34;
@@ -1987,7 +2021,7 @@ size_per_chunk</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/util.py#L1508-L1510" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/199328c3b46817bed59809e2e08f6e14b772c479/vipy/util.py#L1501-L1503" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def datestamp():
     &#34;&#34;&#34;Return date and time string in form DDMMMYY&#34;&#34;&#34;
@@ -2002,7 +2036,7 @@ size_per_chunk</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/util.py#L825-L829" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/199328c3b46817bed59809e2e08f6e14b772c479/vipy/util.py#L826-L830" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def delpath(indir, filename):
     &#34;&#34;&#34;Return c/d.ext for filename /a/b/c/d.ext and indir /a/b&#34;&#34;&#34;
@@ -2019,7 +2053,7 @@ size_per_chunk</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/util.py#L898-L903" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/199328c3b46817bed59809e2e08f6e14b772c479/vipy/util.py#L899-L904" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def dirlist(indir):
     &#34;&#34;&#34;return list of directories in a directory&#34;&#34;&#34;
@@ -2037,51 +2071,11 @@ size_per_chunk</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/util.py#L906-L908" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/199328c3b46817bed59809e2e08f6e14b772c479/vipy/util.py#L907-L909" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def dirlist_sorted_bycreation(indir):
     &#34;&#34;&#34;Sort the directory list from newest first to oldest last by creation date&#34;&#34;&#34;
     return sorted(dirlist(indir), key=lambda d: os.stat(d).st_ctime, reverse=True)</code></pre>
-</details>
-</dd>
-<dt id="vipy.util.distload"><code class="name flex">
-<span>def <span class="ident">distload</span></span>(<span>infile, datapath, srcpath='/$PATH')</span>
-</code></dt>
-<dd>
-<div class="desc"><p>Load a redistributable pickle file that replaces absolute paths in datapath with srcpath.
-See also vipy.util.distsave(),
-This function has been deprecated, all archives should be distributed with relative paths</p></div>
-<details class="source">
-<summary>
-<span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/util.py#L631-L635" class="git-link">Browse git</a>
-</summary>
-<pre><code class="python">def distload(infile, datapath, srcpath=&#39;/$PATH&#39;):
-    &#34;&#34;&#34;Load a redistributable pickle file that replaces absolute paths in datapath with srcpath.  See also vipy.util.distsave(),
-       This function has been deprecated, all archives should be distributed with relative paths
-    &#34;&#34;&#34;
-    return repath(load(infile), srcpath, datapath)</code></pre>
-</details>
-</dd>
-<dt id="vipy.util.distsave"><code class="name flex">
-<span>def <span class="ident">distsave</span></span>(<span>vars, datapath, outfile=None, mode=None, dstpath='/$PATH')</span>
-</code></dt>
-<dd>
-<div class="desc"><p>Save a archive file for redistribution, where datapath is replaced by dstpath.
-Useful for redistribuing pickle files with absolute paths.
-See also vipy.util.distload().
-This function has been deprecated, all archives should be distributed with relative paths</p></div>
-<details class="source">
-<summary>
-<span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/util.py#L638-L643" class="git-link">Browse git</a>
-</summary>
-<pre><code class="python">def distsave(vars, datapath, outfile=None, mode=None, dstpath=&#39;/$PATH&#39;):
-    &#34;&#34;&#34;Save a archive file for redistribution, where datapath is replaced by dstpath.  Useful for redistribuing pickle files with absolute paths.  See also vipy.util.distload().
-       This function has been deprecated, all archives should be distributed with relative paths       
-    &#34;&#34;&#34;
-    vars = vars if (datapath is None or not isvipyobject(vars)) else repath(vars, datapath, dstpath) 
-    return save(vars, outfile, mode)</code></pre>
 </details>
 </dd>
 <dt id="vipy.util.dividelist"><code class="name flex">
@@ -2101,7 +2095,7 @@ An iterable of fractions that must be non-negative and sum to one</dd>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/util.py#L241-L257" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/199328c3b46817bed59809e2e08f6e14b772c479/vipy/util.py#L407-L423" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def dividelist(inlist, fractions):
     &#34;&#34;&#34;Divide inlist into a list of lists such that the size of each sublist is the requseted fraction of the original list. 
@@ -2131,7 +2125,7 @@ the provided extension (with the prepended dot, ext='.mp4')</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/util.py#L911-L917" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/199328c3b46817bed59809e2e08f6e14b772c479/vipy/util.py#L912-L918" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def extlist(indir, ext):
     &#34;&#34;&#34;return list of files with absolute path in a directory that have
@@ -2153,7 +2147,7 @@ the provided extension (with the prepended dot, ext='.mp4')</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/util.py#L807-L814" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/199328c3b46817bed59809e2e08f6e14b772c479/vipy/util.py#L808-L815" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def filebase(filename):
     &#34;&#34;&#34;Return c for filename /a/b/c.ext
@@ -2175,7 +2169,7 @@ If withdot=False, return 'ext'</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/util.py#L1567-L1582" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/199328c3b46817bed59809e2e08f6e14b772c479/vipy/util.py#L1560-L1575" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def fileext(filename, multidot=True, withdot=True):
     &#34;&#34;&#34;Given filename /a/b/c.ext return &#39;.ext&#39;, or /a/b/c.tar.gz return &#39;.tar.gz&#39;.   If multidot=False, then return &#39;.gz&#39;.  If withdot=False, return &#39;ext&#39;&#34;&#34;&#34;
@@ -2203,7 +2197,7 @@ If withdot=False, return 'ext'</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/util.py#L864-L867" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/199328c3b46817bed59809e2e08f6e14b772c479/vipy/util.py#L865-L868" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def filefull(f):
     &#34;&#34;&#34;Return /a/b/c for filename /a/b/c.ext&#34;&#34;&#34;
@@ -2219,7 +2213,7 @@ If withdot=False, return 'ext'</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/util.py#L817-L822" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/199328c3b46817bed59809e2e08f6e14b772c479/vipy/util.py#L818-L823" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def filepath(filename, depth=0):
     &#34;&#34;&#34;Return /a/b/c for filename /a/b/c/d.ext, /a/b for filename /a/b/c/d.ext if depth=1, etc&#34;&#34;&#34;
@@ -2237,7 +2231,7 @@ If withdot=False, return 'ext'</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/util.py#L870-L873" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/199328c3b46817bed59809e2e08f6e14b772c479/vipy/util.py#L871-L874" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def filetail(filename):
     &#34;&#34;&#34;Return c.ext for filename /a/b/c.ext&#34;&#34;&#34;
@@ -2253,7 +2247,7 @@ If withdot=False, return 'ext'</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/util.py#L103-L105" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/199328c3b46817bed59809e2e08f6e14b772c479/vipy/util.py#L285-L287" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def findimage(basedir):
     &#34;&#34;&#34;Return a list of absolute paths to image files recursively discovered by walking the directory tree rooted at basedir&#34;&#34;&#34;
@@ -2268,7 +2262,7 @@ If withdot=False, return 'ext'</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/util.py#L99-L101" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/199328c3b46817bed59809e2e08f6e14b772c479/vipy/util.py#L281-L283" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def findjson(basedir):
     &#34;&#34;&#34;Return a list of absolute paths to json files recursively discovered by walking the directory tree rooted at basedir&#34;&#34;&#34;
@@ -2283,7 +2277,7 @@ If withdot=False, return 'ext'</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/util.py#L94-L96" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/199328c3b46817bed59809e2e08f6e14b772c479/vipy/util.py#L276-L278" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def findpkl(basedir):
     &#34;&#34;&#34;Return a list of absolute paths to pkl files recursively discovered by walking the directory tree rooted at basedir&#34;&#34;&#34;
@@ -2298,7 +2292,7 @@ If withdot=False, return 'ext'</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/util.py#L107-L109" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/199328c3b46817bed59809e2e08f6e14b772c479/vipy/util.py#L289-L291" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def findvideo(basedir):
     &#34;&#34;&#34;Return a list of absolute paths to video files recursively discovered by walking the directory tree rooted at basedir&#34;&#34;&#34;
@@ -2313,7 +2307,7 @@ If withdot=False, return 'ext'</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/util.py#L89-L91" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/199328c3b46817bed59809e2e08f6e14b772c479/vipy/util.py#L271-L273" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def findyaml(basedir):
     &#34;&#34;&#34;Return a list of absolute paths to yaml files recursively discovered by walking the directory tree rooted at basedir&#34;&#34;&#34;
@@ -2328,7 +2322,7 @@ If withdot=False, return 'ext'</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/util.py#L225-L231" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/199328c3b46817bed59809e2e08f6e14b772c479/vipy/util.py#L391-L397" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def flatlist(inlist):
     &#34;&#34;&#34;Convert list of tuples into a list expanded by concatenating tuples&#34;&#34;&#34;
@@ -2347,7 +2341,7 @@ If withdot=False, return 'ext'</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/util.py#L1241-L1243" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/199328c3b46817bed59809e2e08f6e14b772c479/vipy/util.py#L1233-L1235" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def gray2bgr(im_gray):
     &#34;&#34;&#34;Wrapper for numpy float32 gray image to uint8 numpy BGR&#34;&#34;&#34;
@@ -2358,13 +2352,14 @@ If withdot=False, return 'ext'</p></div>
 <span>def <span class="ident">gray2hsv</span></span>(<span>im_gray)</span>
 </code></dt>
 <dd>
-<div class="desc"></div>
+<div class="desc"><p>Convert a numpy array in floating point single channel greyscale order to HSV</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/util.py#L1264-L1265" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/199328c3b46817bed59809e2e08f6e14b772c479/vipy/util.py#L1257-L1259" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def gray2hsv(im_gray):
+    &#34;&#34;&#34;Convert a numpy array in floating point single channel greyscale order to HSV&#34;&#34;&#34;
     return np.array(PIL.Image.fromarray(gray2rgb(im_gray)).convert(&#39;HSV&#39;))  # Gray -&gt; RGB -&gt; HSV</code></pre>
 </details>
 </dd>
@@ -2376,7 +2371,7 @@ If withdot=False, return 'ext'</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/util.py#L394-L398" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/199328c3b46817bed59809e2e08f6e14b772c479/vipy/util.py#L562-L566" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def gray2jet(img):
     &#34;&#34;&#34;[0,1] grayscale to [0.255] RGB&#34;&#34;&#34;
@@ -2393,7 +2388,7 @@ If withdot=False, return 'ext'</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/util.py#L1246-L1247" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/199328c3b46817bed59809e2e08f6e14b772c479/vipy/util.py#L1238-L1239" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def gray2rgb(im_gray):
     return bgr2rgb(gray2bgr(im_gray))</code></pre>
@@ -2407,7 +2402,7 @@ If withdot=False, return 'ext'</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/util.py#L177-L179" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/199328c3b46817bed59809e2e08f6e14b772c479/vipy/util.py#L344-L346" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def groupby(inset, keyfunc):
     &#34;&#34;&#34;groupby on unsorted inset&#34;&#34;&#34;
@@ -2431,7 +2426,7 @@ If withdot=False, return 'ext'</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/util.py#L187-L198" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/199328c3b46817bed59809e2e08f6e14b772c479/vipy/util.py#L354-L365" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def groupbyasdict(togroup, keyfunc):
     &#34;&#34;&#34;Return dictionary of keys and lists from groupby on unsorted inset, where keyfunc is a lambda function on elements in inset
@@ -2455,7 +2450,7 @@ If withdot=False, return 'ext'</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/util.py#L61-L63" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/199328c3b46817bed59809e2e08f6e14b772c479/vipy/util.py#L243-L245" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def hascache():
     &#34;&#34;&#34;Is the VIPY_CACHE environment variable set?&#34;&#34;&#34;
@@ -2470,7 +2465,7 @@ If withdot=False, return 'ext'</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/util.py#L1562-L1564" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/199328c3b46817bed59809e2e08f6e14b772c479/vipy/util.py#L1555-L1557" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def hasextension(filename):
     &#34;&#34;&#34;Does the provided filename have a file extension (e.g. /path/to/file.ext) or not (e.g. /path/to/file)&#34;&#34;&#34;
@@ -2485,7 +2480,7 @@ If withdot=False, return 'ext'</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/util.py#L1610-L1612" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/199328c3b46817bed59809e2e08f6e14b772c479/vipy/util.py#L1603-L1605" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def imcrop(img, bbox):
     &#34;&#34;&#34;Crop a 2D or 3D numpy image given a vipy.geometry.BoundingBox&#34;&#34;&#34;
@@ -2500,7 +2495,7 @@ If withdot=False, return 'ext'</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/util.py#L884-L888" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/199328c3b46817bed59809e2e08f6e14b772c479/vipy/util.py#L885-L889" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def imlist(imdir):
     &#34;&#34;&#34;return list of images with absolute path in a directory&#34;&#34;&#34;
@@ -2517,7 +2512,7 @@ If withdot=False, return 'ext'</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/util.py#L1019-L1022" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/199328c3b46817bed59809e2e08f6e14b772c479/vipy/util.py#L1020-L1023" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def imlistidx(filelist, idx_in_filename):
     &#34;&#34;&#34;Return index in list of filename containing index number&#34;&#34;&#34;
@@ -2534,7 +2529,7 @@ BGR!</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/util.py#L1386-L1389" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/199328c3b46817bed59809e2e08f6e14b772c479/vipy/util.py#L1382-L1385" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def imread(imfile):
     &#34;&#34;&#34;Wrapper for opencv imread. Note that color images are imported as
@@ -2550,7 +2545,7 @@ BGR!</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/util.py#L1392-L1394" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/199328c3b46817bed59809e2e08f6e14b772c479/vipy/util.py#L1388-L1390" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def imrescale(im, scale):
     (height, width) = (im.shape[0], im.shape[1])
@@ -2565,7 +2560,7 @@ BGR!</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/util.py#L1397-L1398" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/199328c3b46817bed59809e2e08f6e14b772c479/vipy/util.py#L1393-L1394" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def imresize(im, rows, cols):
     return np.array(PIL.Image.fromarray(im).resize((rows, cols), PIL.Image.BILINEAR))</code></pre>
@@ -2580,7 +2575,7 @@ line containing absolute path to image</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/util.py#L991-L994" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/199328c3b46817bed59809e2e08f6e14b772c479/vipy/util.py#L992-L995" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def imsavelist(imdir, outfile):
     &#34;&#34;&#34;Write out all images in a directory to a provided file with each
@@ -2597,7 +2592,7 @@ rgb or bgr</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/util.py#L343-L380" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/199328c3b46817bed59809e2e08f6e14b772c479/vipy/util.py#L511-L548" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def imwrite(img, imfile=None, writeas=None):
     &#34;&#34;&#34;Write a floating point 2D numpy image as jet or gray, 3D numpy as
@@ -2647,7 +2642,7 @@ rgb or bgr</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/util.py#L324-L340" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/199328c3b46817bed59809e2e08f6e14b772c479/vipy/util.py#L492-L508" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def imwritegray(img, imfile=None):
     &#34;&#34;&#34;Write a floating point grayscale numpy image in [0,1] as [0,255] grayscale&#34;&#34;&#34;
@@ -2677,7 +2672,7 @@ given file</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/util.py#L290-L304" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/199328c3b46817bed59809e2e08f6e14b772c479/vipy/util.py#L458-L472" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def imwritejet(img, imfile=None):
     &#34;&#34;&#34;Write a grayscale numpy image as a jet colormapped image to the
@@ -2704,7 +2699,7 @@ given file</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/util.py#L1075-L1076" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/199328c3b46817bed59809e2e08f6e14b772c479/vipy/util.py#L1076-L1077" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def isRTMPurl(path):
     return isurl(path) and (path.startswith(&#39;rtmp://&#39;) or path.startswith(&#39;rtmps://&#39;))</code></pre>
@@ -2718,7 +2713,7 @@ given file</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/util.py#L1072-L1073" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/199328c3b46817bed59809e2e08f6e14b772c479/vipy/util.py#L1073-L1074" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def isRTSPurl(path):
     return isurl(path) and path.startswith(&#39;rtsp://&#39;)</code></pre>
@@ -2732,7 +2727,7 @@ given file</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/util.py#L1063-L1065" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/199328c3b46817bed59809e2e08f6e14b772c479/vipy/util.py#L1064-L1066" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def isS3url(path):
     &#34;&#34;&#34;Is a path a URL for an S3 object?&#34;&#34;&#34;
@@ -2747,7 +2742,7 @@ given file</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/util.py#L409-L412" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/199328c3b46817bed59809e2e08f6e14b772c479/vipy/util.py#L577-L580" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def is_email_address(email):
     &#34;&#34;&#34;Is the provided string an email address?&#34;&#34;&#34;
@@ -2763,7 +2758,7 @@ given file</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/util.py#L415-L417" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/199328c3b46817bed59809e2e08f6e14b772c479/vipy/util.py#L583-L585" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def is_hiddenfile(filename):
     &#34;&#34;&#34;Does the filename start with a period?&#34;&#34;&#34;
@@ -2778,7 +2773,7 @@ given file</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/util.py#L1268-L1280" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/199328c3b46817bed59809e2e08f6e14b772c479/vipy/util.py#L1262-L1274" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def isarchive(filename):
     &#34;&#34;&#34;Is filename a zip or gzip compressed tar archive?&#34;&#34;&#34;
@@ -2795,31 +2790,18 @@ given file</p></div>
             return False</code></pre>
 </details>
 </dd>
-<dt id="vipy.util.isboundingbox"><code class="name flex">
-<span>def <span class="ident">isboundingbox</span></span>(<span>obj)</span>
-</code></dt>
-<dd>
-<div class="desc"></div>
-<details class="source">
-<summary>
-<span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/util.py#L1408-L1409" class="git-link">Browse git</a>
-</summary>
-<pre><code class="python">def isboundingbox(obj):
-    return isinstance(obj, vipy.geometry.BoundingBox)</code></pre>
-</details>
-</dd>
 <dt id="vipy.util.isbz2"><code class="name flex">
 <span>def <span class="ident">isbz2</span></span>(<span>filename)</span>
 </code></dt>
 <dd>
-<div class="desc"></div>
+<div class="desc"><p>Is the filename a .bz2 or .tar.bz2 extension?</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/util.py#L1285-L1286" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/199328c3b46817bed59809e2e08f6e14b772c479/vipy/util.py#L1280-L1282" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def isbz2(filename):
+    &#34;&#34;&#34;Is the filename a .bz2 or .tar.bz2 extension?&#34;&#34;&#34;
     return filename[-4:] == &#39;.bz2&#39; or filename[-8:] == &#39;.tar.bz2&#39;</code></pre>
 </details>
 </dd>
@@ -2831,7 +2813,7 @@ given file</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/util.py#L1190-L1196" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/199328c3b46817bed59809e2e08f6e14b772c479/vipy/util.py#L1183-L1189" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def iscsv(path):
     &#34;&#34;&#34;Is a file a CSV file extension?&#34;&#34;&#34;
@@ -2850,7 +2832,7 @@ given file</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/util.py#L758-L760" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/199328c3b46817bed59809e2e08f6e14b772c479/vipy/util.py#L757-L759" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def isexe(filename):
     &#34;&#34;&#34;Is the file an executable binary?&#34;&#34;&#34;
@@ -2862,21 +2844,23 @@ given file</p></div>
 </code></dt>
 <dd>
 <div class="desc"><p>Does the filename end with the extension ext? </p>
-<pre><code class="language-python-repl">&gt;&gt;&gt; isextension('/path/to/myfile.json', 'json') == True
-&gt;&gt;&gt; isextension('/path/to/myfile.json', '.json') == True
-&gt;&gt;&gt; isextension('/path/to/myfile.json', '.pkl') == False
+<pre><code class="language-python">isextension('/path/to/myfile.json', 'json') == True
+isextension('/path/to/myfile.json', '.json') == True
+isextension('/path/to/myfile.json', '.pkl') == False
 </code></pre></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/util.py#L768-L776" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/199328c3b46817bed59809e2e08f6e14b772c479/vipy/util.py#L767-L777" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def isextension(filename, ext):
     &#34;&#34;&#34;Does the filename end with the extension ext? 
     
-    &gt;&gt;&gt; isextension(&#39;/path/to/myfile.json&#39;, &#39;json&#39;) == True
-    &gt;&gt;&gt; isextension(&#39;/path/to/myfile.json&#39;, &#39;.json&#39;) == True
-    &gt;&gt;&gt; isextension(&#39;/path/to/myfile.json&#39;, &#39;.pkl&#39;) == False
+    ```python
+    isextension(&#39;/path/to/myfile.json&#39;, &#39;json&#39;) == True
+    isextension(&#39;/path/to/myfile.json&#39;, &#39;.json&#39;) == True
+    isextension(&#39;/path/to/myfile.json&#39;, &#39;.pkl&#39;) == False
+    ```
 
     &#34;&#34;&#34;
     return filename.endswith(ext)</code></pre>
@@ -2890,7 +2874,7 @@ given file</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/util.py#L1485-L1487" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/199328c3b46817bed59809e2e08f6e14b772c479/vipy/util.py#L1478-L1480" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def isfile(path):
     &#34;&#34;&#34;Wrapper for os.path.isfile&#34;&#34;&#34;
@@ -2905,7 +2889,7 @@ given file</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/util.py#L315-L321" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/199328c3b46817bed59809e2e08f6e14b772c479/vipy/util.py#L483-L489" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def isfloat(x):
     &#34;&#34;&#34;Is the input a float or a string that can be converted to float?&#34;&#34;&#34;
@@ -2920,13 +2904,14 @@ given file</p></div>
 <span>def <span class="ident">isgif</span></span>(<span>path)</span>
 </code></dt>
 <dd>
-<div class="desc"></div>
+<div class="desc"><p>is the file a .gif extension?</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/util.py#L1182-L1183" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/199328c3b46817bed59809e2e08f6e14b772c479/vipy/util.py#L1174-L1176" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def isgif(path):
+    &#34;&#34;&#34;is the file a .gif extension?&#34;&#34;&#34;
     return hasextension(path) and fileext(path).lower() == &#39;.gif&#39;</code></pre>
 </details>
 </dd>
@@ -2938,7 +2923,7 @@ given file</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/util.py#L796-L804" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/199328c3b46817bed59809e2e08f6e14b772c479/vipy/util.py#L797-L805" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def ishdf5(path):
     &#34;&#34;&#34;Is the file an HDF5 file?&#34;&#34;&#34;
@@ -2959,7 +2944,7 @@ given file</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/util.py#L787-L789" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/199328c3b46817bed59809e2e08f6e14b772c479/vipy/util.py#L788-L790" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def ishtml(filename):
     &#34;&#34;&#34;Is the file an HTMLfile&#34;&#34;&#34;
@@ -2970,28 +2955,28 @@ given file</p></div>
 <span>def <span class="ident">isimage</span></span>(<span>path)</span>
 </code></dt>
 <dd>
-<div class="desc"></div>
+<div class="desc"><p>Alias for <code><a title="vipy.util.isimg" href="#vipy.util.isimg">isimg()</a></code></p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/util.py#L1150-L1151" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/199328c3b46817bed59809e2e08f6e14b772c479/vipy/util.py#L1145-L1146" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def isimage(path):
-    return isimg(path)</code></pre>
+    &#34;&#34;&#34;Alias for `vipy.util.isimg`&#34;&#34;&#34;</code></pre>
 </details>
 </dd>
 <dt id="vipy.util.isimagefile"><code class="name flex">
 <span>def <span class="ident">isimagefile</span></span>(<span>path)</span>
 </code></dt>
 <dd>
-<div class="desc"><p>Convenience function for isimg</p></div>
+<div class="desc"><p>Alias for <code><a title="vipy.util.isimg" href="#vipy.util.isimg">isimg()</a></code></p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/util.py#L1164-L1166" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/199328c3b46817bed59809e2e08f6e14b772c479/vipy/util.py#L1157-L1159" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def isimagefile(path):
-    &#34;&#34;&#34;Convenience function for isimg&#34;&#34;&#34;
+    &#34;&#34;&#34;Alias for `vipy.util.isimg`&#34;&#34;&#34;
     return isimg(path)</code></pre>
 </details>
 </dd>
@@ -3003,7 +2988,7 @@ given file</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/util.py#L1098-L1102" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/199328c3b46817bed59809e2e08f6e14b772c479/vipy/util.py#L1095-L1099" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def isimageobject(x):
     &#34;&#34;&#34;Is an object a vipy.image class Image, ImageCategory, ImageDetection?&#34;&#34;&#34;
@@ -3020,7 +3005,7 @@ given file</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/util.py#L1053-L1055" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/199328c3b46817bed59809e2e08f6e14b772c479/vipy/util.py#L1054-L1056" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def isimageurl(path):
     &#34;&#34;&#34;Is a path a URL with image extension?&#34;&#34;&#34;
@@ -3031,19 +3016,16 @@ given file</p></div>
 <span>def <span class="ident">isimg</span></span>(<span>path)</span>
 </code></dt>
 <dd>
-<div class="desc"><p>Is an object an image with a supported image extension
-['.jpg','.jpeg','.png','.tif','.tiff','.pgm','.ppm','.gif','.bmp']?</p></div>
+<div class="desc"><p>Is an object an image with a supported image extension ['.jpg','.jpeg','.png','.tif','.tiff','.pgm','.ppm','.gif','.bmp']?</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/util.py#L1140-L1148" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/199328c3b46817bed59809e2e08f6e14b772c479/vipy/util.py#L1137-L1143" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def isimg(path):
-    &#34;&#34;&#34;Is an object an image with a supported image extension
-    [&#39;.jpg&#39;,&#39;.jpeg&#39;,&#39;.png&#39;,&#39;.tif&#39;,&#39;.tiff&#39;,&#39;.pgm&#39;,&#39;.ppm&#39;,&#39;.gif&#39;,&#39;.bmp&#39;]?&#34;&#34;&#34;
+    &#34;&#34;&#34;Is an object an image with a supported image extension [&#39;.jpg&#39;,&#39;.jpeg&#39;,&#39;.png&#39;,&#39;.tif&#39;,&#39;.tiff&#39;,&#39;.pgm&#39;,&#39;.ppm&#39;,&#39;.gif&#39;,&#39;.bmp&#39;]?&#34;&#34;&#34;
     (filename, ext) = os.path.splitext(path)
-    if ext.lower() in [&#39;.jpg&#39;, &#39;.jpeg&#39;, &#39;.png&#39;, &#39;.tif&#39;, &#39;.tiff&#39;,
-                       &#39;.pgm&#39;, &#39;.ppm&#39;, &#39;.gif&#39;, &#39;.bmp&#39;]:
+    if ext.lower() in [&#39;.jpg&#39;, &#39;.jpeg&#39;, &#39;.png&#39;, &#39;.tif&#39;, &#39;.tiff&#39;, &#39;.pgm&#39;, &#39;.ppm&#39;, &#39;.gif&#39;, &#39;.bmp&#39;]:
         return True
     else:
         return False</code></pre>
@@ -3053,14 +3035,14 @@ given file</p></div>
 <span>def <span class="ident">isimgfile</span></span>(<span>path)</span>
 </code></dt>
 <dd>
-<div class="desc"><p>Convenience function for isimg</p></div>
+<div class="desc"><p>Alias for <code><a title="vipy.util.isimg" href="#vipy.util.isimg">isimg()</a></code></p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/util.py#L1159-L1161" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/199328c3b46817bed59809e2e08f6e14b772c479/vipy/util.py#L1152-L1154" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def isimgfile(path):
-    &#34;&#34;&#34;Convenience function for isimg&#34;&#34;&#34;
+    &#34;&#34;&#34;Alias for `vipy.util.isimg`&#34;&#34;&#34;
     return isimg(path)</code></pre>
 </details>
 </dd>
@@ -3072,7 +3054,7 @@ given file</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/util.py#L763-L765" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/199328c3b46817bed59809e2e08f6e14b772c479/vipy/util.py#L762-L764" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def isinstalled(cmd):
     &#34;&#34;&#34;Is the command is available on the path&#34;&#34;&#34;
@@ -3083,13 +3065,14 @@ given file</p></div>
 <span>def <span class="ident">isjpeg</span></span>(<span>path)</span>
 </code></dt>
 <dd>
-<div class="desc"></div>
+<div class="desc"><p>is the file a .jpg or .jpeg extension?</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/util.py#L1173-L1174" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/199328c3b46817bed59809e2e08f6e14b772c479/vipy/util.py#L1162-L1164" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def isjpeg(path):
+    &#34;&#34;&#34;is the file a .jpg or .jpeg extension?&#34;&#34;&#34;
     return hasextension(path) and fileext(path).lower() == &#39;.jpg&#39; or fileext(path).lower() == &#39;.jpeg&#39;</code></pre>
 </details>
 </dd>
@@ -3097,13 +3080,14 @@ given file</p></div>
 <span>def <span class="ident">isjpg</span></span>(<span>path)</span>
 </code></dt>
 <dd>
-<div class="desc"></div>
+<div class="desc"><p>Alias for <code><a title="vipy.util.isjpeg" href="#vipy.util.isjpeg">isjpeg()</a></code></p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/util.py#L1186-L1187" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/199328c3b46817bed59809e2e08f6e14b772c479/vipy/util.py#L1178-L1180" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def isjpg(path):
+    &#34;&#34;&#34;Alias for `vipy.util.isjpeg`&#34;&#34;&#34;
     return isjpeg(path)</code></pre>
 </details>
 </dd>
@@ -3115,10 +3099,10 @@ given file</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/util.py#L158-L159" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/199328c3b46817bed59809e2e08f6e14b772c479/vipy/util.py#L325-L326" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def isjsonfile(filename):
-    return len(filename) &gt; 5 and filename[-5:] == &#39;.json&#39;</code></pre>
+    return isinstance(filename, str) and len(filename) &gt; 5 and filename[-5:] == &#39;.json&#39;</code></pre>
 </details>
 </dd>
 <dt id="vipy.util.islinux"><code class="name flex">
@@ -3129,7 +3113,7 @@ given file</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/util.py#L1594-L1597" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/199328c3b46817bed59809e2e08f6e14b772c479/vipy/util.py#L1587-L1590" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def islinux():
     &#34;&#34;&#34;is the current platform Linux?&#34;&#34;&#34;
@@ -3145,7 +3129,7 @@ given file</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/util.py#L1083-L1085" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/199328c3b46817bed59809e2e08f6e14b772c479/vipy/util.py#L1080-L1082" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def islist(x):
     &#34;&#34;&#34;Is an object a python list&#34;&#34;&#34;
@@ -3160,7 +3144,7 @@ given file</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/util.py#L1088-L1090" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/199328c3b46817bed59809e2e08f6e14b772c479/vipy/util.py#L1085-L1087" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def islistoflists(x):
     &#34;&#34;&#34;Is an object a python list of lists x=[[1,2], [3,4]]&#34;&#34;&#34;
@@ -3175,7 +3159,7 @@ given file</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/util.py#L1588-L1591" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/199328c3b46817bed59809e2e08f6e14b772c479/vipy/util.py#L1581-L1584" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def ismacosx():
     &#34;&#34;&#34;Is the current platform MacOSX?&#34;&#34;&#34;
@@ -3191,7 +3175,7 @@ given file</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/util.py#L310-L312" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/199328c3b46817bed59809e2e08f6e14b772c479/vipy/util.py#L478-L480" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def isnumber(x):
     &#34;&#34;&#34;Is the input a python type of a number or a string containing a number?&#34;&#34;&#34;
@@ -3206,7 +3190,7 @@ given file</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/util.py#L1209-L1211" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/199328c3b46817bed59809e2e08f6e14b772c479/vipy/util.py#L1201-L1203" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def isnumpy(obj):
     &#34;&#34;&#34;Is a python object a numpy object?&#34;&#34;&#34;
@@ -3221,25 +3205,11 @@ given file</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/util.py#L1213-L1215" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/199328c3b46817bed59809e2e08f6e14b772c479/vipy/util.py#L1205-L1207" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def isnumpyarray(obj):
     &#34;&#34;&#34;Is a python object a numpy array?&#34;&#34;&#34;
     return isnumpy(obj) and &#39;numpy.ndarray&#39; in str(type(obj))</code></pre>
-</details>
-</dd>
-<dt id="vipy.util.isodd"><code class="name flex">
-<span>def <span class="ident">isodd</span></span>(<span>x)</span>
-</code></dt>
-<dd>
-<div class="desc"></div>
-<details class="source">
-<summary>
-<span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/util.py#L138-L139" class="git-link">Browse git</a>
-</summary>
-<pre><code class="python">def isodd(x):
-    return x % 2 == 0</code></pre>
 </details>
 </dd>
 <dt id="vipy.util.ispickle"><code class="name flex">
@@ -3250,7 +3220,7 @@ given file</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/util.py#L791-L793" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/199328c3b46817bed59809e2e08f6e14b772c479/vipy/util.py#L792-L794" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def ispickle(filename):
     &#34;&#34;&#34;Is the file a pickle archive file&#34;&#34;&#34;
@@ -3265,7 +3235,7 @@ given file</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/util.py#L778-L781" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/199328c3b46817bed59809e2e08f6e14b772c479/vipy/util.py#L779-L782" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def ispkl(filename):
     &#34;&#34;&#34;Is the file a pickle archive file&#34;&#34;&#34;
@@ -3281,7 +3251,7 @@ given file</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/util.py#L783-L785" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/199328c3b46817bed59809e2e08f6e14b772c479/vipy/util.py#L784-L786" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def ispklfile(filename):
     &#34;&#34;&#34;Is the file a pickle archive file&#34;&#34;&#34;
@@ -3292,13 +3262,14 @@ given file</p></div>
 <span>def <span class="ident">ispng</span></span>(<span>path)</span>
 </code></dt>
 <dd>
-<div class="desc"></div>
+<div class="desc"><p>is the file a .png or .apng extension?</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/util.py#L1179-L1180" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/199328c3b46817bed59809e2e08f6e14b772c479/vipy/util.py#L1170-L1172" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def ispng(path):
+    &#34;&#34;&#34;is the file a .png or .apng extension?&#34;&#34;&#34;
     return hasextension(path) and (fileext(path).lower() == &#39;.png&#39; or fileext(path).lower() == &#39;.apng&#39;)</code></pre>
 </details>
 </dd>
@@ -3310,7 +3281,7 @@ given file</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/util.py#L1490-L1492" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/199328c3b46817bed59809e2e08f6e14b772c479/vipy/util.py#L1483-L1485" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def isstring(s):
     &#34;&#34;&#34;Is an object a python string or unicode string?&#34;&#34;&#34;
@@ -3325,7 +3296,7 @@ given file</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/util.py#L1218-L1224" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/199328c3b46817bed59809e2e08f6e14b772c479/vipy/util.py#L1210-L1216" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def istextfile(path):
     &#34;&#34;&#34;Is the given file a text file?&#34;&#34;&#34;
@@ -3340,13 +3311,14 @@ given file</p></div>
 <span>def <span class="ident">istgz</span></span>(<span>filename)</span>
 </code></dt>
 <dd>
-<div class="desc"></div>
+<div class="desc"><p>Is the filename a .tgz or .tar.gz extension?</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/util.py#L1282-L1283" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/199328c3b46817bed59809e2e08f6e14b772c479/vipy/util.py#L1276-L1278" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def istgz(filename):
+    &#34;&#34;&#34;Is the filename a .tgz or .tar.gz extension?&#34;&#34;&#34;
     return filename[-4:] == &#39;.tgz&#39; or filename[-7:] == &#39;.tar.gz&#39;</code></pre>
 </details>
 </dd>
@@ -3358,7 +3330,7 @@ given file</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/util.py#L1123-L1125" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/199328c3b46817bed59809e2e08f6e14b772c479/vipy/util.py#L1120-L1122" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def istuple(x):
     &#34;&#34;&#34;Is an object a python tuple?&#34;&#34;&#34;
@@ -3373,7 +3345,7 @@ given file</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/util.py#L1093-L1095" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/199328c3b46817bed59809e2e08f6e14b772c479/vipy/util.py#L1090-L1092" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def istupleoftuples(x):
     &#34;&#34;&#34;Is an object a python list of lists x=[[1,2], [3,4]]&#34;&#34;&#34;
@@ -3388,7 +3360,7 @@ given file</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/util.py#L307-L308" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/199328c3b46817bed59809e2e08f6e14b772c479/vipy/util.py#L475-L476" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def isuint8(img):
     return isnumpy(img) and img.dtype == np.dtype(&#39;uint8&#39;)</code></pre>
@@ -3402,7 +3374,7 @@ given file</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/util.py#L1040-L1046" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/199328c3b46817bed59809e2e08f6e14b772c479/vipy/util.py#L1041-L1047" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def isurl(path):
     &#34;&#34;&#34;Is a path a URL?&#34;&#34;&#34;
@@ -3417,16 +3389,14 @@ given file</p></div>
 <span>def <span class="ident">isvideo</span></span>(<span>path)</span>
 </code></dt>
 <dd>
-<div class="desc"><p>Is a filename in path a video with a known video extension
-['.avi','.mp4','.mov','.wmv','.mpg', 'mkv', 'webm']?</p></div>
+<div class="desc"><p>Is a filename in path a video with a known video extension ['.avi','.mp4','.mov','.wmv','.mpg', 'mkv', 'webm']?</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/util.py#L1199-L1206" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/199328c3b46817bed59809e2e08f6e14b772c479/vipy/util.py#L1192-L1198" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def isvideo(path):
-    &#34;&#34;&#34;Is a filename in path a video with a known video extension
-    [&#39;.avi&#39;,&#39;.mp4&#39;,&#39;.mov&#39;,&#39;.wmv&#39;,&#39;.mpg&#39;, &#39;mkv&#39;, &#39;webm&#39;]?&#34;&#34;&#34;
+    &#34;&#34;&#34;Is a filename in path a video with a known video extension [&#39;.avi&#39;,&#39;.mp4&#39;,&#39;.mov&#39;,&#39;.wmv&#39;,&#39;.mpg&#39;, &#39;mkv&#39;, &#39;webm&#39;]?&#34;&#34;&#34;
     (filename, ext) = os.path.splitext(path)
     if ext.lower() in [&#39;.avi&#39;,&#39;.mp4&#39;,&#39;.mov&#39;,&#39;.wmv&#39;,&#39;.mpg&#39;, &#39;mkv&#39;, &#39;webm&#39;]:
         return True
@@ -3438,14 +3408,14 @@ given file</p></div>
 <span>def <span class="ident">isvideofile</span></span>(<span>path)</span>
 </code></dt>
 <dd>
-<div class="desc"><p>Equivalent to isvideo()</p></div>
+<div class="desc"><p>Alias for <code><a title="vipy.util.isvideo" href="#vipy.util.isvideo">isvideo()</a></code></p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/util.py#L1154-L1156" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/199328c3b46817bed59809e2e08f6e14b772c479/vipy/util.py#L1148-L1150" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def isvideofile(path):
-    &#34;&#34;&#34;Equivalent to isvideo()&#34;&#34;&#34;
+    &#34;&#34;&#34;Alias for `vipy.util.isvideo`&#34;&#34;&#34;
     return isvideo(path)</code></pre>
 </details>
 </dd>
@@ -3457,7 +3427,7 @@ given file</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/util.py#L1111-L1112" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/199328c3b46817bed59809e2e08f6e14b772c479/vipy/util.py#L1108-L1109" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def isvideoobject(x):
     return isvideotype(x)</code></pre>
@@ -3471,7 +3441,7 @@ given file</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/util.py#L1105-L1109" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/199328c3b46817bed59809e2e08f6e14b772c479/vipy/util.py#L1102-L1106" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def isvideotype(x):
     &#34;&#34;&#34;Is an object a vipy.video class Video, VideoCategory, Scene?&#34;&#34;&#34;
@@ -3488,7 +3458,7 @@ given file</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/util.py#L1058-L1060" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/199328c3b46817bed59809e2e08f6e14b772c479/vipy/util.py#L1059-L1061" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def isvideourl(path):
     &#34;&#34;&#34;Is a path a URL with video extension?&#34;&#34;&#34;
@@ -3503,7 +3473,7 @@ given file</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/util.py#L1115-L1120" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/199328c3b46817bed59809e2e08f6e14b772c479/vipy/util.py#L1112-L1117" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def isvipyobject(x):
     import vipy.image
@@ -3517,13 +3487,14 @@ given file</p></div>
 <span>def <span class="ident">iswebp</span></span>(<span>path)</span>
 </code></dt>
 <dd>
-<div class="desc"></div>
+<div class="desc"><p>is the file a .webp extension?</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/util.py#L1176-L1177" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/199328c3b46817bed59809e2e08f6e14b772c479/vipy/util.py#L1166-L1168" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def iswebp(path):
+    &#34;&#34;&#34;is the file a .webp extension?&#34;&#34;&#34;
     return hasextension(path) and fileext(path).lower() == &#39;.webp&#39;</code></pre>
 </details>
 </dd>
@@ -3535,7 +3506,7 @@ given file</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/util.py#L1227-L1233" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/199328c3b46817bed59809e2e08f6e14b772c479/vipy/util.py#L1219-L1225" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def isxml(path):
     &#34;&#34;&#34;Is the given file an xml file?&#34;&#34;&#34;
@@ -3554,7 +3525,7 @@ given file</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/util.py#L1068-L1070" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/199328c3b46817bed59809e2e08f6e14b772c479/vipy/util.py#L1069-L1071" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def isyoutubeurl(path):
     &#34;&#34;&#34;Is a path a youtube URL?&#34;&#34;&#34;
@@ -3569,7 +3540,7 @@ given file</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/util.py#L401-L406" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/199328c3b46817bed59809e2e08f6e14b772c479/vipy/util.py#L569-L574" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def jet(n, bgr=False):
     &#34;&#34;&#34;jet colormap&#34;&#34;&#34;
@@ -3587,7 +3558,7 @@ given file</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/util.py#L923-L928" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/199328c3b46817bed59809e2e08f6e14b772c479/vipy/util.py#L924-L929" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def jsonlist(indir):
     &#34;&#34;&#34;return list of fJSON iles with absolute path in a directory&#34;&#34;&#34;
@@ -3605,7 +3576,7 @@ given file</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/util.py#L142-L147" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/199328c3b46817bed59809e2e08f6e14b772c479/vipy/util.py#L310-L315" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def keymax(d):
     &#34;&#34;&#34;Return key in dictionary containing maximum value&#34;&#34;&#34;
@@ -3623,7 +3594,7 @@ given file</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/util.py#L150-L155" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/199328c3b46817bed59809e2e08f6e14b772c479/vipy/util.py#L317-L322" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def keymin(d):
     &#34;&#34;&#34;Return key in dictionary containing minimum value&#34;&#34;&#34;
@@ -3641,7 +3612,7 @@ given file</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/util.py#L1600-L1607" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/199328c3b46817bed59809e2e08f6e14b772c479/vipy/util.py#L1593-L1600" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def linuxversion():
     &#34;&#34;&#34;Return linux version&#34;&#34;&#34;
@@ -3661,7 +3632,7 @@ given file</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/util.py#L919-L921" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/199328c3b46817bed59809e2e08f6e14b772c479/vipy/util.py#L920-L922" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def listext(indir, ext):
     &#34;&#34;&#34;Alias for extlist&#34;&#34;&#34;
@@ -3676,7 +3647,7 @@ given file</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/util.py#L930-L932" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/199328c3b46817bed59809e2e08f6e14b772c479/vipy/util.py#L931-L933" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def listjson(indir):
     &#34;&#34;&#34;Alias for jsonlist&#34;&#34;&#34;
@@ -3691,7 +3662,7 @@ given file</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/util.py#L1007-L1010" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/199328c3b46817bed59809e2e08f6e14b772c479/vipy/util.py#L1008-L1011" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def listpkl(indir):
     &#34;&#34;&#34;Return a list of absolute paths of *.pk files in current directory&#34;&#34;&#34;
@@ -3700,56 +3671,86 @@ given file</p></div>
 </details>
 </dd>
 <dt id="vipy.util.load"><code class="name flex">
-<span>def <span class="ident">load</span></span>(<span>infile, abspath=True)</span>
+<span>def <span class="ident">load</span></span>(<span>infile, abspath=True, refcycle=True)</span>
 </code></dt>
 <dd>
-<div class="desc"><p>Load variables from a relocatable archive file format, either Dill Pickle or JSON.</p>
+<div class="desc"><p>Load variables from a relocatable archive file format, either dill pickle, JSON format or JSON directory format.</p>
 <p>Loading is performed by attemping the following:</p>
 <ol>
-<li>load the pickle or json file</li>
+<li>If the input file is a directory, return a <code><a title="vipy.dataset.Dataset" href="dataset.html#vipy.dataset.Dataset">Dataset</a></code> with lazy loading of all pkl or json files recursively discovered in this directory.</li>
+<li>If the input file is a pickle or json file, load it</li>
 <li>if abspath=true, then convert relative paths to absolute paths for object when loaded</li>
-<li>If the loaded object is a vipy object (or iterable) and the relocatable path /$PATH is present, try to repath it to the directory containing this archive (this has been deprecated)</li>
-<li>If the resulting first filename is not found, throw a warning</li>
-</ol></div>
+<li>If refcycle=False, then disable the python reference cycle garbage collector for large archive files</li>
+</ol>
+<pre><code class="language-python">im = vipy.image.owl()
+f = vipy.util.save(im)
+im = vipy.util.load(im)
+</code></pre>
+<p>Args:
+infile: [str] file saved using <code><a title="vipy.util.save" href="#vipy.util.save">save()</a></code> with extension [.pkl, .json].
+This may also be a directory tree containing json or pkl files
+abspath: [bool] If true, then convert all vipy objects with relative paths to absolute paths. If False, then preserve relative paths and warn user.
+refcycle: [bool] If False, then disable python reference cycle garbage collector.
+This is useful for large python objects.</p>
+<p>Returns:
+The object in the archive file</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/util.py#L533-L594" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/199328c3b46817bed59809e2e08f6e14b772c479/vipy/util.py#L122-L199" class="git-link">Browse git</a>
 </summary>
-<pre><code class="python">def load(infile, abspath=True):
-    &#34;&#34;&#34;Load variables from a relocatable archive file format, either Dill Pickle or JSON.
+<pre><code class="python">def load(infile, abspath=True, refcycle=True):
+    &#34;&#34;&#34;Load variables from a relocatable archive file format, either dill pickle, JSON format or JSON directory format.
        
        Loading is performed by attemping the following:
 
-       1. load the pickle or json file
-       2. if abspath=true, then convert relative paths to absolute paths for object when loaded
-       3. If the loaded object is a vipy object (or iterable) and the relocatable path /$PATH is present, try to repath it to the directory containing this archive (this has been deprecated)
-       4. If the resulting first filename is not found, throw a warning
+       1. If the input file is a directory, return a `vipy.dataset.Dataset` with lazy loading of all pkl or json files recursively discovered in this directory.
+       2. If the input file is a pickle or json file, load it
+       3. if abspath=true, then convert relative paths to absolute paths for object when loaded
+       4. If refcycle=False, then disable the python reference cycle garbage collector for large archive files
+    
+    ```python
+    im = vipy.image.owl()
+    f = vipy.util.save(im)
+    im = vipy.util.load(im)
+    ```
 
+       Args:
+           infile: [str] file saved using `vipy.util.save` with extension [.pkl, .json].  This may also be a directory tree containing json or pkl files 
+           abspath: [bool] If true, then convert all vipy objects with relative paths to absolute paths. If False, then preserve relative paths and warn user.
+           refcycle: [bool] If False, then disable python reference cycle garbage collector.  This is useful for large python objects.
+       
+       Returns:
+           The object in the archive file
     &#34;&#34;&#34;
     infile = os.path.abspath(os.path.expanduser(infile))
+
     if ispkl(infile):
-        format = &#39;dill&#39;
+        obj = dill.load(open(infile, &#39;rb&#39;))
     elif isjsonfile(infile):
-        format = &#39;json&#39;
+        with open(infile, &#39;r&#39;) as f:
+            loadobj = json.load(f)
+        registry = class_registry()
+        assert isinstance(loadobj, list) or isinstance(loadobj, dict), &#34;invalid vipy JSON serialization format&#34;
+        if isinstance(loadobj, list) and all([isinstance(d, dict) for d in loadobj]) and all([c in registry for d in loadobj for (c,v) in d.items()]):
+            obj = [registry[c](v) for d in loadobj for (c,v) in d.items()]
+        elif isinstance(loadobj, dict) and all([c in registry for (c,d) in loadobj.items()]):
+            obj = [registry[c](v) for (c,v) in loadobj.items()]
+            obj = obj[0] if len(obj) == 1 else obj
+        else:
+            obj = loadobj
+    elif os.path.isdir(infile):        
+        import vipy.dataset
+        return vipy.dataset.Dataset(infile)
     else:
         raise ValueError(&#39;unknown file type&#39;)
     
-    obj = loadas(infile, format=format)
-    try:
-        testobj = tolist(obj)[0]
-    except:
-        raise ValueError(&#39;Invalid archive &#34;%s&#34;&#39; % infile)
+    if len(tolist(obj)) == 0:
+        return obj  
+    testobj = tolist(obj)[0]  
 
     # Relocatable object?
-    if hasattr(testobj, &#39;filename&#39;) and testobj.filename() is not None and &#39;/$PATH&#39; in testobj.filename():
-        # 07SEP21: this path is deprecated
-        testobj = repath(copy.deepcopy(testobj), &#39;/$PATH&#39;, filepath(os.path.abspath(infile)))  # attempt to rehome /$PATH/to/me.jpg -&gt; /NEWPATH/to/me.jpg where NEWPATH=filepath(infile)
-        if os.path.exists(testobj.filename()):       # file found
-            obj = repath(obj, &#39;/$PATH&#39;, filepath(os.path.abspath(infile)))      # rehome everything to the same root path as the pklfile
-        else:
-            warnings.warn(&#39;Loading &#34;%s&#34; that contains redistributable paths - Use vipy.util.distload(&#34;%s&#34;, datapath=&#34;/path/to/your/data&#34;) to rehome absolute file paths&#39; % (infile, infile))
-    elif hasattr(testobj, &#39;filename&#39;) and testobj.filename() is not None:
+    if hasattr(testobj, &#39;filename&#39;) and testobj.filename() is not None:
         if not os.path.isabs(testobj.filename()):
             if not abspath:
                 warnings.warn(&#39;Loading archive &#34;%s&#34; with relative paths.  Changing directory to &#34;%s&#34;.  Disable this warning with vipy.util.load(..., abspath=True).&#39; % (infile, filepath(infile)))
@@ -3772,11 +3773,9 @@ given file</p></div>
     #   - This can be re-enabled at any time by &#34;import gc; gc.enable()&#34;
     #   - If you use %autoreload iPython magic command, note that this will be very slow.  You should set %sutoreload 0
     #   - Alternatively, load as JSON and all attributes will be unpacked on demand and stored in a packed format that is not tracked (e.g. tuple of strings) by the reference cycle counter
-    if hasattr(testobj, &#39;filename&#39;) and len(tolist(obj)) &gt; 100000:
-        # Should we warn the user?  Probably doesn&#39;t matter ...
-        #warnings.warn(&#39;Loading &#34;%s&#34; that contains a large number of vipy objects - disabling reference cycle checks.  Re-enable at any time using &#34;import gc; gc.enable()&#34;&#39; % (infile))
-        #import gc; gc.disable()
-        pass   # do not do this without explicit user authorization
+    if not refcycle:
+        warnings.warn(&#39;Disabling python reference cycle garbage collection.  Re-enable at any time using &#34;import gc; gc.enable()&#34;&#39;)
+        import gc; gc.disable()
     return obj</code></pre>
 </details>
 </dd>
@@ -3788,42 +3787,11 @@ given file</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/util.py#L681-L683" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/199328c3b46817bed59809e2e08f6e14b772c479/vipy/util.py#L680-L682" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def load_opencv_yaml(yamlfile):
     &#34;&#34;&#34;Load a numpy array from YAML file exported from OpenCV&#34;&#34;&#34;
     return np.squeeze(np.array(cv.Load(yamlfile)))</code></pre>
-</details>
-</dd>
-<dt id="vipy.util.loadas"><code class="name flex">
-<span>def <span class="ident">loadas</span></span>(<span>infile, format='dill')</span>
-</code></dt>
-<dd>
-<div class="desc"><p>Load variables from a dill pickled file</p></div>
-<details class="source">
-<summary>
-<span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/util.py#L512-L530" class="git-link">Browse git</a>
-</summary>
-<pre><code class="python">def loadas(infile, format=&#39;dill&#39;):
-    &#34;&#34;&#34;Load variables from a dill pickled file&#34;&#34;&#34;
-    
-    if format in [&#39;dill&#39;, &#39;pkl&#39;]:
-        return dill.load(open(infile, &#39;rb&#39;))
-    elif format == &#39;json&#39;:
-        with open(infile, &#39;r&#39;) as f:
-            loadobj = json.load(f)
-        class_registry = _json_class_registry()
-        assert isinstance(loadobj, list) or isinstance(loadobj, dict), &#34;invalid vipy JSON serialization format&#34;
-        if isinstance(loadobj, list) and all([isinstance(d, dict) for d in loadobj]) and all([c in class_registry for d in loadobj for (c,v) in d.items()]):
-            return [class_registry[c](v) for d in loadobj for (c,v) in d.items()]
-        elif isinstance(loadobj, dict) and all([c in class_registry for (c,d) in loadobj.items()]):
-            obj = [class_registry[c](v) for (c,v) in loadobj.items()]
-            return obj[0] if len(obj) == 1 else obj
-        else:
-            return loadobj
-    else:
-        raise ValueError(&#39;unknown serialization format &#34;%s&#34;&#39; % format)</code></pre>
 </details>
 </dd>
 <dt id="vipy.util.loadh5"><code class="name flex">
@@ -3834,7 +3802,7 @@ given file</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/util.py#L429-L437" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/199328c3b46817bed59809e2e08f6e14b772c479/vipy/util.py#L597-L605" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def loadh5(filename):
     &#34;&#34;&#34;Load an HDF5 file&#34;&#34;&#34;
@@ -3857,7 +3825,7 @@ Returned as numpy array</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/util.py#L441-L451" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/199328c3b46817bed59809e2e08f6e14b772c479/vipy/util.py#L609-L619" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def loadmat73(matfile, keys=None):
     &#34;&#34;&#34;Matlab 7.3 format, keys should be a list of keys to access HDF5
@@ -3880,7 +3848,7 @@ Returned as numpy array</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/util.py#L1025-L1032" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/199328c3b46817bed59809e2e08f6e14b772c479/vipy/util.py#L1026-L1033" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def mat2gray(img, min=None, max=None):
     &#34;&#34;&#34;Convert numpy array to float32 with 1.0=max and 0=min&#34;&#34;&#34;
@@ -3901,7 +3869,7 @@ Return numpy array</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/util.py#L876-L881" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/199328c3b46817bed59809e2e08f6e14b772c479/vipy/util.py#L877-L882" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def matread(txtfile, delimiter=&#39; &#39;):
     &#34;&#34;&#34;Whitespace separated values defining columns, lines define rows.
@@ -3920,7 +3888,7 @@ variable names</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/util.py#L686-L716" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/199328c3b46817bed59809e2e08f6e14b772c479/vipy/util.py#L685-L715" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def matrix_to_opencv_yaml(yamlfile, mtxlist, mtxname=None):
     &#34;&#34;&#34;Write list of matrices to OpenCV yaml file format with given
@@ -3963,7 +3931,7 @@ variable names</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/util.py#L1035-L1037" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/199328c3b46817bed59809e2e08f6e14b772c479/vipy/util.py#L1036-L1038" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def mdlist(m, n):
     &#34;&#34;&#34;Preallocate 2D list of size MxN&#34;&#34;&#34;
@@ -3978,7 +3946,7 @@ variable names</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/util.py#L1584-L1586" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/199328c3b46817bed59809e2e08f6e14b772c479/vipy/util.py#L1577-L1579" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def mediaextension(filename):
     &#34;&#34;&#34;Return &#39;.mp4&#39; for filename=&#39;/a/b/c.mp4&#39;&#34;&#34;&#34;
@@ -3989,14 +3957,28 @@ variable names</p></div>
 <span>def <span class="ident">mergedict</span></span>(<span>d1, d2)</span>
 </code></dt>
 <dd>
-<div class="desc"><p>Combine keys of two dictionaries and return a dictionary deep copy</p></div>
+<div class="desc"><p>Combine keys of two dictionaries and return a dictionary deep copy.</p>
+<pre><code class="language-python">d1 = {1:2}
+d2 = {3:4}
+d3 = mergedict(d1,d2)
+assert d3 == {1:2, 3:4}
+</code></pre></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/util.py#L53-L58" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/199328c3b46817bed59809e2e08f6e14b772c479/vipy/util.py#L226-L240" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def mergedict(d1, d2):
-    &#34;&#34;&#34;Combine keys of two dictionaries and return a dictionary deep copy&#34;&#34;&#34;
+    &#34;&#34;&#34;Combine keys of two dictionaries and return a dictionary deep copy.
+    
+    ```python
+    d1 = {1:2}
+    d2 = {3:4}
+    d3 = mergedict(d1,d2)
+    assert d3 == {1:2, 3:4}
+    ```
+
+    &#34;&#34;&#34;
     assert isinstance(d1, dict) and isinstance(d2, dict)
     d = copy.deepcopy(d1)
     d.update(d2)
@@ -4011,7 +3993,7 @@ variable names</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/util.py#L1503-L1505" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/199328c3b46817bed59809e2e08f6e14b772c479/vipy/util.py#L1496-L1498" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def minutestamp():
     &#34;&#34;&#34;Return date and time string in form DDMMMYY_HHMM&#34;&#34;&#34;
@@ -4026,7 +4008,7 @@ variable names</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/util.py#L1376-L1378" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/199328c3b46817bed59809e2e08f6e14b772c479/vipy/util.py#L1372-L1374" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def mktemp(ext):
     &#34;&#34;&#34;Create a temporary file with extension .ext&#34;&#34;&#34;
@@ -4041,7 +4023,7 @@ variable names</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/util.py#L204-L206" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/199328c3b46817bed59809e2e08f6e14b772c479/vipy/util.py#L371-L373" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def most_frequent(inset):
     &#34;&#34;&#34;Return the most frequent element as determined by element equality&#34;&#34;&#34;
@@ -4056,7 +4038,7 @@ variable names</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/util.py#L1535-L1537" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/199328c3b46817bed59809e2e08f6e14b772c479/vipy/util.py#L1528-L1530" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def newbase(filename, base):
     &#34;&#34;&#34;Convert filename=/a/b/c.ext base=d -&gt; /a/b/d.ext&#34;&#34;&#34;
@@ -4071,7 +4053,7 @@ variable names</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/util.py#L832-L835" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/199328c3b46817bed59809e2e08f6e14b772c479/vipy/util.py#L833-L836" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def newpath(filename, newdir):
     &#34;&#34;&#34;Return /d/e/c.ext for filename /a/b/c.ext and newdir /d/e/&#34;&#34;&#34;
@@ -4087,7 +4069,7 @@ variable names</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/util.py#L842-L846" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/199328c3b46817bed59809e2e08f6e14b772c479/vipy/util.py#L843-L847" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def newpathdir(filename, olddir, newdir, n=1):
     &#34;&#34;&#34;Return /a/b/n/d/e.ext for filename=/a/b/c/d/e.ext, olddir=c, newdir=n&#34;&#34;&#34;
@@ -4104,7 +4086,7 @@ variable names</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/util.py#L849-L857" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/199328c3b46817bed59809e2e08f6e14b772c479/vipy/util.py#L850-L858" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def newpathroot(filename, newroot):
     &#34;&#34;&#34;Return /r/b/c.ext for filename /a/b/c.ext and new root directory r&#34;&#34;&#34;
@@ -4125,7 +4107,7 @@ variable names</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/util.py#L837-L840" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/199328c3b46817bed59809e2e08f6e14b772c479/vipy/util.py#L838-L841" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def newprefix(filename, newprefix, depth=0):
     &#34;&#34;&#34;Return /a/b/c/h/i.ext for filename /f/g/h/i.ext and prefix /a/b/c and depth=1&#34;&#34;&#34;
@@ -4141,12 +4123,11 @@ variable names</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/util.py#L219-L222" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/199328c3b46817bed59809e2e08f6e14b772c479/vipy/util.py#L386-L388" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def permutelist(inlist):
     &#34;&#34;&#34;randomly permute list order&#34;&#34;&#34;
-    return [inlist[k] for k in
-            np.random.permutation(list(range(0, len(inlist))))]</code></pre>
+    return [inlist[k] for k in np.random.permutation(list(range(0, len(inlist))))]</code></pre>
 </details>
 </dd>
 <dt id="vipy.util.pklist"><code class="name flex">
@@ -4157,7 +4138,7 @@ variable names</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/util.py#L1003-L1005" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/199328c3b46817bed59809e2e08f6e14b772c479/vipy/util.py#L1004-L1006" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def pklist(indir):
     &#34;&#34;&#34;Return a list of absolute paths of *.pk files in current directory&#34;&#34;&#34;
@@ -4172,7 +4153,7 @@ variable names</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/util.py#L1529-L1532" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/199328c3b46817bed59809e2e08f6e14b772c479/vipy/util.py#L1522-L1525" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def premkdir(filename):
     &#34;&#34;&#34;pre-create directory /path/to/subdir using `vipy.util.remkdir` if it does not exist for outfile=/path/to/subdir/file.ext, and return filename&#34;&#34;&#34;
@@ -4188,7 +4169,7 @@ variable names</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/util.py#L383-L385" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/199328c3b46817bed59809e2e08f6e14b772c479/vipy/util.py#L551-L553" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def print_and_return(x):
     print(x)
@@ -4203,7 +4184,7 @@ variable names</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/util.py#L972-L977" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/199328c3b46817bed59809e2e08f6e14b772c479/vipy/util.py#L973-L978" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def readcsv(infile, separator=&#39;,&#39;, ignoreheader=False):
     &#34;&#34;&#34;Read a csv file into a list of lists&#34;&#34;&#34;
@@ -4221,7 +4202,7 @@ variable names</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/util.py#L980-L988" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/199328c3b46817bed59809e2e08f6e14b772c479/vipy/util.py#L981-L989" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def readcsvwithheader(infile, separator=&#39;,&#39;):
     &#34;&#34;&#34;Read a csv file into a list of lists&#34;&#34;&#34;
@@ -4242,7 +4223,7 @@ variable names</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/util.py#L168-L174" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/199328c3b46817bed59809e2e08f6e14b772c479/vipy/util.py#L335-L341" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def readjson(jsonfile, strict=True):
     &#34;&#34;&#34;Read jsonfile=/path/to/file.json and return the json parsed object, issue warning if jsonfile does not have .json extension and strict=True&#34;&#34;&#34;
@@ -4261,7 +4242,7 @@ variable names</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/util.py#L944-L948" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/199328c3b46817bed59809e2e08f6e14b772c479/vipy/util.py#L945-L949" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def readlist(infile):
     &#34;&#34;&#34;Read each row of file as an element of the list&#34;&#34;&#34;
@@ -4278,7 +4259,7 @@ variable names</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/util.py#L951-L953" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/199328c3b46817bed59809e2e08f6e14b772c479/vipy/util.py#L952-L954" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def readtxt(infile):
     &#34;&#34;&#34;Read a text file one string per row&#34;&#34;&#34;
@@ -4293,7 +4274,7 @@ variable names</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/util.py#L112-L117" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/199328c3b46817bed59809e2e08f6e14b772c479/vipy/util.py#L294-L299" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def readyaml(yamlfile):
     &#34;&#34;&#34;Read a yaml file and return a parsed dictionary, this is slow for large yaml files&#34;&#34;&#34;
@@ -4311,7 +4292,7 @@ variable names</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/util.py#L1514-L1521" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/199328c3b46817bed59809e2e08f6e14b772c479/vipy/util.py#L1507-L1514" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def remkdir(path, flush=False):
     &#34;&#34;&#34;Create a given directory if not already exists&#34;&#34;&#34;
@@ -4331,7 +4312,7 @@ variable names</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/util.py#L646-L656" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/199328c3b46817bed59809e2e08f6e14b772c479/vipy/util.py#L645-L655" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def repath(v, srcpath, dstpath):
     &#34;&#34;&#34;Change the filename with prefix srcpath to dstpath, for any element in v that supports the filename() api&#34;&#34;&#34;
@@ -4354,7 +4335,7 @@ variable names</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/util.py#L1524-L1526" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/199328c3b46817bed59809e2e08f6e14b772c479/vipy/util.py#L1517-L1519" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def rermdir(path):
     &#34;&#34;&#34;Recursively delete a given directory (if exists), and remake it&#34;&#34;&#34;
@@ -4369,7 +4350,7 @@ variable names</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/util.py#L1255-L1257" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/199328c3b46817bed59809e2e08f6e14b772c479/vipy/util.py#L1247-L1249" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def rgb2bgr(im_rgb):
     &#34;&#34;&#34;same as bgr2rgb&#34;&#34;&#34;
@@ -4385,7 +4366,7 @@ exists)</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/util.py#L234-L239" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/199328c3b46817bed59809e2e08f6e14b772c479/vipy/util.py#L400-L405" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def rmdir(indir):
     &#34;&#34;&#34;Recursively remove directory and all contents (if the directory
@@ -4395,44 +4376,80 @@ exists)</p></div>
     return indir</code></pre>
 </details>
 </dd>
-<dt id="vipy.util.rowvectorize"><code class="name flex">
-<span>def <span class="ident">rowvectorize</span></span>(<span>X)</span>
-</code></dt>
-<dd>
-<div class="desc"><p>Convert a 1D numpy array to a 2D row vector of size (1,N)</p></div>
-<details class="source">
-<summary>
-<span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/util.py#L128-L130" class="git-link">Browse git</a>
-</summary>
-<pre><code class="python">def rowvectorize(X):
-    &#34;&#34;&#34;Convert a 1D numpy array to a 2D row vector of size (1,N)&#34;&#34;&#34;
-    return X.reshape((1, X. size)) if X.ndim == 1 else X</code></pre>
-</details>
-</dd>
 <dt id="vipy.util.save"><code class="name flex">
-<span>def <span class="ident">save</span></span>(<span>vars, outfile, mode=None)</span>
+<span>def <span class="ident">save</span></span>(<span>vars, outfile=None)</span>
 </code></dt>
 <dd>
-<div class="desc"><p>Save variables to an archive file</p></div>
+<div class="desc"><p>Save variables to an archive file.</p>
+<p>This function allows vipy objects to be serialized to disk for later loading.</p>
+<pre><code class="language-python">im = vipy.image.owl()
+im = vipy.util.load(vipy.util.save(im))   # round trip
+</code></pre>
+<h2 id="args">Args</h2>
+<dl>
+<dt><strong><code>vars</code></strong></dt>
+<dd>A python object to save.
+This can be any serializable python object</dd>
+<dt><strong><code>outfile</code></strong></dt>
+<dd>An output file to save.
+Must have extension [.pkl, .json].
+If None, will save to a temporary JSON file.</dd>
+</dl>
+<p>Returns
+A path to the saved archive file.
+Load using <code><a title="vipy.util.load" href="#vipy.util.load">load()</a></code>. </p>
+<div class="admonition note">
+<p class="admonition-title">Note:&ensp;JSON is preferred as an archive format for vipy.
+Be sure to install the excellent ultrajson library (pip install ujson) for fast serialization.</p>
+</div></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/util.py#L615-L628" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/199328c3b46817bed59809e2e08f6e14b772c479/vipy/util.py#L76-L119" class="git-link">Browse git</a>
 </summary>
-<pre><code class="python">def save(vars, outfile, mode=None):
-    &#34;&#34;&#34;Save variables to an archive file&#34;&#34;&#34;
+<pre><code class="python">def save(vars, outfile=None):
+    &#34;&#34;&#34;Save variables to an archive file.
+
+    This function allows vipy objects to be serialized to disk for later loading.
+
+    ```python
+    im = vipy.image.owl()
+    im = vipy.util.load(vipy.util.save(im))   # round trip
+    ```
+
+    Args:
+        vars: A python object to save.  This can be any serializable python object
+        outfile:  An output file to save.  Must have extension [.pkl, .json].  If None, will save to a temporary JSON file.
+
+    Returns
+        A path to the saved archive file.  Load using `vipy.util.load`. 
+
+    .. note:: JSON is preferred as an archive format for vipy.  Be sure to install the excellent ultrajson library (pip install ujson) for fast serialization.
+    &#34;&#34;&#34;
     allowable = set([&#39;.pkl&#39;, &#39;.json&#39;])
+    outfile = tempjson() if outfile is None else outfile
+
+    remkdir(filepath(outfile))
     if ispkl(outfile):
-        format = &#39;dill&#39;
+        dill.dump(vars, open(outfile, &#39;wb&#39;))
+
     elif isjsonfile(outfile):
-        format = &#39;json&#39;
+        saveobj = vars
+        registry = class_registry()
+        if isinstance(saveobj, list) and all([str(type(d)) in registry for d in saveobj]):
+            j = [{str(type(d)):d.json(encode=False)} for d in saveobj] if isinstance(saveobj, list) else ({str(type(d)):d.json(encode=False)} for d in saveobj)
+        elif str(type(saveobj)) in registry:
+            j = {str(type(saveobj)):saveobj.json(encode=False)}
+        else:
+            j = saveobj
+
+        s = json.dumps(j, ensure_ascii=False)  # load to memory (faster than json.dump), will throw exception if it cannot serialize
+        with open(outfile, &#39;w&#39;) as f:
+            f.write(s)            
+
     else:
-        raise ValueError(&#39;Unknown file extension &#34;%s&#34; - must be in %s&#39; % (fileext(outfile), str(allowable)))
+        raise ValueError(&#39;Unknown file extension for save file &#34;%s&#34; - must be in %s&#39; % (fileext(outfile), str(allowable)))
     
-    outfile = saveas(vars, outfile, format=format)
-    if mode is not None:
-        chmod(outfile, mode)
     return outfile</code></pre>
 </details>
 </dd>
@@ -4444,7 +4461,7 @@ exists)</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/util.py#L719-L745" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/199328c3b46817bed59809e2e08f6e14b772c479/vipy/util.py#L718-L744" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def save_opencv_yaml(yamlfile, mat):
     &#34;&#34;&#34;Save a numpy array to YAML file importable by OpenCV&#34;&#34;&#34;
@@ -4475,46 +4492,6 @@ exists)</p></div>
     return yamlfile</code></pre>
 </details>
 </dd>
-<dt id="vipy.util.saveas"><code class="name flex">
-<span>def <span class="ident">saveas</span></span>(<span>vars, outfile=None, format='dill')</span>
-</code></dt>
-<dd>
-<div class="desc"><p>Save variables as a dill pickled file</p></div>
-<details class="source">
-<summary>
-<span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/util.py#L482-L509" class="git-link">Browse git</a>
-</summary>
-<pre><code class="python">def saveas(vars, outfile=None, format=&#39;dill&#39;):
-    &#34;&#34;&#34;Save variables as a dill pickled file&#34;&#34;&#34;
-    outfile = temppickle() if outfile is None else os.path.abspath(os.path.expanduser(outfile))
-
-    remkdir(filepath(outfile))
-    if format in [&#39;dill&#39;]:
-        dill.dump(vars, open(outfile, &#39;wb&#39;))
-        return outfile
-    
-    elif format == &#39;json&#39;:
-        saveobj = vars
-        class_registry = _json_class_registry()
-        if isinstance(saveobj, list) and all([str(type(d)) in class_registry for d in saveobj]):
-            j = [{str(type(d)):d.json(encode=False)} for d in saveobj] if isinstance(saveobj, list) else ({str(type(d)):d.json(encode=False)} for d in saveobj)
-        elif str(type(saveobj)) in class_registry:
-            j = {str(type(saveobj)):saveobj.json(encode=False)}
-        else:
-            j = saveobj
-
-        s = json.dumps(j, ensure_ascii=False)  # load to memory (faster than json.dump), will throw exception if it cannot serialize
-        with open(outfile, &#39;w&#39;) as f:
-            f.write(s)            
-        return outfile
-        
-    else:
-        raise ValueError(&#39;unknown serialization format &#34;%s&#34;&#39; % format)
-
-    return outfile</code></pre>
-</details>
-</dd>
 <dt id="vipy.util.savetemp"><code class="name flex">
 <span>def <span class="ident">savetemp</span></span>(<span>img)</span>
 </code></dt>
@@ -4523,7 +4500,7 @@ exists)</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/util.py#L388-L391" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/199328c3b46817bed59809e2e08f6e14b772c479/vipy/util.py#L556-L559" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def savetemp(img):
     f = &#39;/tmp/%s.png&#39; % uuid.uuid1().hex
@@ -4539,7 +4516,7 @@ exists)</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/util.py#L676-L678" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/199328c3b46817bed59809e2e08f6e14b772c479/vipy/util.py#L675-L677" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def scpload(url):
     import vipy.downloader
@@ -4554,7 +4531,7 @@ exists)</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/util.py#L659-L673" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/199328c3b46817bed59809e2e08f6e14b772c479/vipy/util.py#L658-L672" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def scpsave(V):
     import vipy.image
@@ -4582,7 +4559,7 @@ If sec=121, then return '02:01'.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/util.py#L73-L76" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/199328c3b46817bed59809e2e08f6e14b772c479/vipy/util.py#L255-L258" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def seconds_to_MMSS_colon_notation(sec):
     &#34;&#34;&#34;Convert integer seconds into MM:SS colon format.  If sec=121, then return &#39;02:01&#39;. &#34;&#34;&#34;
@@ -4598,7 +4575,7 @@ If sec=121, then return '02:01'.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/util.py#L420-L426" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/199328c3b46817bed59809e2e08f6e14b772c479/vipy/util.py#L588-L594" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def seq(start, stop, step=1):
     &#34;&#34;&#34;Equivalent to matlab [start:step:stop]&#34;&#34;&#34;
@@ -4617,7 +4594,7 @@ If sec=121, then return '02:01'.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/util.py#L1048-L1050" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/199328c3b46817bed59809e2e08f6e14b772c479/vipy/util.py#L1049-L1051" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def shortuuid(n=16):
     &#34;&#34;&#34;Generate a short UUID with n hex digits&#34;&#34;&#34;
@@ -4632,7 +4609,7 @@ If sec=121, then return '02:01'.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/util.py#L212-L216" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/199328c3b46817bed59809e2e08f6e14b772c479/vipy/util.py#L379-L383" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def softmax(x, temperature=1.0):
     &#34;&#34;&#34;Row-wise softmax&#34;&#34;&#34;
@@ -4649,7 +4626,7 @@ If sec=121, then return '02:01'.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/util.py#L1550-L1559" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/199328c3b46817bed59809e2e08f6e14b772c479/vipy/util.py#L1543-L1552" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def splitextension(filename):
     &#34;&#34;&#34;Given /a/b/c.ext return tuple of strings (&#39;/a/b/c&#39;, &#39;.ext&#39;)&#34;&#34;&#34;
@@ -4671,7 +4648,7 @@ If sec=121, then return '02:01'.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/util.py#L1620-L1630" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/199328c3b46817bed59809e2e08f6e14b772c479/vipy/util.py#L1613-L1623" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def string_to_pil_interpolation(interp):
     &#34;&#34;&#34;Internal function to convert interp string to interp object&#34;&#34;&#34;
@@ -4694,11 +4671,11 @@ If sec=121, then return '02:01'.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/util.py#L596-L598" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/199328c3b46817bed59809e2e08f6e14b772c479/vipy/util.py#L623-L625" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def take(inlist, k):
     &#34;&#34;&#34;Take k elements at random from inlist&#34;&#34;&#34;
-    return [inlist[i] for i in np.random.permutation(range(len(inlist)))[0:k]]</code></pre>
+    return [inlist[i] for i in np.random.permutation(range(len(inlist)))[0:k]] if len(inlist)&gt;k else inlist</code></pre>
 </details>
 </dd>
 <dt id="vipy.util.tempMP4"><code class="name flex">
@@ -4709,7 +4686,7 @@ If sec=121, then return '02:01'.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/util.py#L1333-L1335" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/199328c3b46817bed59809e2e08f6e14b772c479/vipy/util.py#L1329-L1331" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def tempMP4():
     &#34;&#34;&#34;Create a temporary MP4 file in system temp directory&#34;&#34;&#34;
@@ -4724,7 +4701,7 @@ If sec=121, then return '02:01'.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/util.py#L1337-L1339" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/199328c3b46817bed59809e2e08f6e14b772c479/vipy/util.py#L1333-L1335" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def tempWEBP():
     &#34;&#34;&#34;Create a temporary WEBP file in system temp directory&#34;&#34;&#34;
@@ -4739,7 +4716,7 @@ If sec=121, then return '02:01'.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/util.py#L1347-L1349" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/199328c3b46817bed59809e2e08f6e14b772c479/vipy/util.py#L1343-L1345" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def tempcsv():
     &#34;&#34;&#34;Create a temporary CSV file&#34;&#34;&#34;
@@ -4754,7 +4731,7 @@ If sec=121, then return '02:01'.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/util.py#L1381-L1383" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/199328c3b46817bed59809e2e08f6e14b772c479/vipy/util.py#L1377-L1379" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def tempdir():
     &#34;&#34;&#34;Wrapper around tempfile, because I can never remember the syntax&#34;&#34;&#34;
@@ -4769,7 +4746,7 @@ If sec=121, then return '02:01'.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/util.py#L1288-L1290" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/199328c3b46817bed59809e2e08f6e14b772c479/vipy/util.py#L1284-L1286" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def tempfilename(suffix):
     &#34;&#34;&#34;Create a temporary filename $TEMPDIR/$UUID.suffix, suffix should include the dot such as suffix=&#39;.jpg&#39;, &#34;&#34;&#34;
@@ -4784,7 +4761,7 @@ If sec=121, then return '02:01'.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/util.py#L1351-L1353" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/199328c3b46817bed59809e2e08f6e14b772c479/vipy/util.py#L1347-L1349" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def temphtml():
     &#34;&#34;&#34;Create a temporary HTMLfile&#34;&#34;&#34;
@@ -4799,7 +4776,7 @@ If sec=121, then return '02:01'.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/util.py#L1311-L1315" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/199328c3b46817bed59809e2e08f6e14b772c479/vipy/util.py#L1307-L1311" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def tempimage(ext=&#39;jpg&#39;):
     &#34;&#34;&#34;Create a temporary image with the given extension&#34;&#34;&#34;
@@ -4816,7 +4793,7 @@ If sec=121, then return '02:01'.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/util.py#L1328-L1330" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/199328c3b46817bed59809e2e08f6e14b772c479/vipy/util.py#L1324-L1326" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def tempjpg():
     &#34;&#34;&#34;Create a temporary JPG file in system temp directory&#34;&#34;&#34;
@@ -4831,7 +4808,7 @@ If sec=121, then return '02:01'.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/util.py#L1366-L1368" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/199328c3b46817bed59809e2e08f6e14b772c479/vipy/util.py#L1362-L1364" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def tempjson():
     &#34;&#34;&#34;Create a temporary JSON file&#34;&#34;&#34;
@@ -4846,7 +4823,7 @@ If sec=121, then return '02:01'.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/util.py#L1298-L1300" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/199328c3b46817bed59809e2e08f6e14b772c479/vipy/util.py#L1294-L1296" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def templike(filename):
     &#34;&#34;&#34;Create a new temporary filename with the same extension as filename&#34;&#34;&#34;
@@ -4861,7 +4838,7 @@ If sec=121, then return '02:01'.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/util.py#L1371-L1373" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/199328c3b46817bed59809e2e08f6e14b772c479/vipy/util.py#L1367-L1369" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def temppdf():
     &#34;&#34;&#34;Create a temporary PDF file&#34;&#34;&#34;
@@ -4876,7 +4853,7 @@ If sec=121, then return '02:01'.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/util.py#L1323-L1325" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/199328c3b46817bed59809e2e08f6e14b772c479/vipy/util.py#L1319-L1321" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def temppickle():
     &#34;&#34;&#34;Create a temporary pickle file&#34;&#34;&#34;
@@ -4891,7 +4868,7 @@ If sec=121, then return '02:01'.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/util.py#L1356-L1358" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/199328c3b46817bed59809e2e08f6e14b772c479/vipy/util.py#L1352-L1354" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def temppkl():
     &#34;&#34;&#34;Create a temporary pickle file&#34;&#34;&#34;
@@ -4906,7 +4883,7 @@ If sec=121, then return '02:01'.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/util.py#L1318-L1320" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/199328c3b46817bed59809e2e08f6e14b772c479/vipy/util.py#L1314-L1316" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def temppng():
     &#34;&#34;&#34;Create a temporay PNG file&#34;&#34;&#34;
@@ -4921,7 +4898,7 @@ If sec=121, then return '02:01'.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/util.py#L1361-L1363" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/199328c3b46817bed59809e2e08f6e14b772c479/vipy/util.py#L1357-L1359" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def tempyaml():
     &#34;&#34;&#34;Create a temporary YAML file&#34;&#34;&#34;
@@ -4936,7 +4913,7 @@ If sec=121, then return '02:01'.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/util.py#L1495-L1497" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/199328c3b46817bed59809e2e08f6e14b772c479/vipy/util.py#L1488-L1490" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def timestamp():
     &#34;&#34;&#34;Return date and time string in form DDMMMYY_HHMMSS&#34;&#34;&#34;
@@ -4951,7 +4928,7 @@ If sec=121, then return '02:01'.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/util.py#L1342-L1344" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/199328c3b46817bed59809e2e08f6e14b772c479/vipy/util.py#L1338-L1340" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def tmpjpg():
     &#34;&#34;&#34;Create a temporary JPG file in /tmp&#34;&#34;&#34;
@@ -4967,7 +4944,7 @@ Otherwise, return the file in the system temp</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/util.py#L69-L71" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/199328c3b46817bed59809e2e08f6e14b772c479/vipy/util.py#L251-L253" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def tocache(filename):
     &#34;&#34;&#34;If the VIPY_CACHE environment variable is set, then return the filename=/path/to/file.ext in the cache as VIPY_CACHE/file.ext.  Otherwise, return the file in the system temp&#34;&#34;&#34;
@@ -4982,7 +4959,7 @@ Otherwise, return the file in the system temp</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/util.py#L1539-L1544" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/199328c3b46817bed59809e2e08f6e14b772c479/vipy/util.py#L1532-L1537" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def toextension(filename, newext):
     &#34;&#34;&#34;Convert filename=&#39;/path/to/myfile.ext&#39; to /path/to/myfile.xyz, such that newext=&#39;xyz&#39; or newext=&#39;.xyz&#39;&#34;&#34;&#34;
@@ -5001,7 +4978,7 @@ replacing invalid chars</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/util.py#L748-L755" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/199328c3b46817bed59809e2e08f6e14b772c479/vipy/util.py#L747-L754" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def tofilename(s, hyphen=True):
     &#34;&#34;&#34;Convert arbitrary string to valid filename with underscores
@@ -5021,7 +4998,7 @@ replacing invalid chars</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/util.py#L1128-L1137" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/199328c3b46817bed59809e2e08f6e14b772c479/vipy/util.py#L1125-L1134" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def tolist(x):
     &#34;&#34;&#34;Convert a python tuple or singleton object to a list if not already a list &#34;&#34;&#34;
@@ -5039,14 +5016,14 @@ replacing invalid chars</p></div>
 <span>def <span class="ident">topath</span></span>(<span>filename, newdir)</span>
 </code></dt>
 <dd>
-<div class="desc"><p>Alias for newpath</p></div>
+<div class="desc"><p>Alias for <code><a title="vipy.util.newpath" href="#vipy.util.newpath">newpath()</a></code></p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/util.py#L859-L861" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/199328c3b46817bed59809e2e08f6e14b772c479/vipy/util.py#L860-L862" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def topath(filename, newdir):
-    &#34;&#34;&#34;Alias for newpath&#34;&#34;&#34;
+    &#34;&#34;&#34;Alias for `vipy.util.newpath`&#34;&#34;&#34;
     return newpath(filename, newdir)</code></pre>
 </details>
 </dd>
@@ -5058,7 +5035,7 @@ replacing invalid chars</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/util.py#L1546-L1548" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/199328c3b46817bed59809e2e08f6e14b772c479/vipy/util.py#L1539-L1541" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def topkl(filename):
     &#34;&#34;&#34;Convert filename=&#39;/path/to/myfile.ext&#39; to /path/to/myfile.pkl&#34;&#34;&#34;
@@ -5073,7 +5050,7 @@ replacing invalid chars</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/util.py#L1293-L1295" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/199328c3b46817bed59809e2e08f6e14b772c479/vipy/util.py#L1289-L1291" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def totempdir(filename):
     &#34;&#34;&#34;Convert a filename &#39;/patj/to/filename.ext&#39; to &#39;/tempdir/filename.ext&#39;&#34;&#34;&#34;
@@ -5088,7 +5065,7 @@ replacing invalid chars</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/util.py#L1401-L1405" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/199328c3b46817bed59809e2e08f6e14b772c479/vipy/util.py#L1397-L1401" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def touch(filename, mystr=&#39;&#39;):
     &#34;&#34;&#34;Create an empty file containing mystr&#34;&#34;&#34;
@@ -5105,7 +5082,7 @@ replacing invalid chars</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/util.py#L78-L86" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/199328c3b46817bed59809e2e08f6e14b772c479/vipy/util.py#L260-L268" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def try_import(package, pipname=None, message=None):
     &#34;&#34;&#34;Show a helpful error message for missing optional packages&#34;&#34;&#34;
@@ -5126,7 +5103,7 @@ replacing invalid chars</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/util.py#L600-L605" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/199328c3b46817bed59809e2e08f6e14b772c479/vipy/util.py#L627-L632" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def tryload(infile, abspath=False):
     &#34;&#34;&#34;Attempt to load a pkl file, and return the value if successful and None if not&#34;&#34;&#34;
@@ -5144,7 +5121,7 @@ replacing invalid chars</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/util.py#L1013-L1016" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/199328c3b46817bed59809e2e08f6e14b772c479/vipy/util.py#L1014-L1017" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def txtlist(imdir):
     &#34;&#34;&#34;Return a list of absolute paths of *.txt files in current directory&#34;&#34;&#34;
@@ -5160,7 +5137,7 @@ replacing invalid chars</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/util.py#L891-L895" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/199328c3b46817bed59809e2e08f6e14b772c479/vipy/util.py#L892-L896" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def videolist(videodir):
     &#34;&#34;&#34;return list of videos with absolute path in a directory&#34;&#34;&#34;
@@ -5177,7 +5154,7 @@ replacing invalid chars</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/util.py#L182-L184" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/199328c3b46817bed59809e2e08f6e14b772c479/vipy/util.py#L349-L351" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def vipy_groupby(inset, keyfunc):
     &#34;&#34;&#34;groupby on unsorted inset&#34;&#34;&#34;
@@ -5193,7 +5170,7 @@ on a row and tuple elements separated by comma</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/util.py#L956-L969" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/199328c3b46817bed59809e2e08f6e14b772c479/vipy/util.py#L957-L970" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def writecsv(list_of_tuples, outfile, mode=&#39;w&#39;, separator=&#39;,&#39;):
     &#34;&#34;&#34;Write list of tuples to an output csv file with each list element
@@ -5219,7 +5196,7 @@ on a row and tuple elements separated by comma</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/util.py#L162-L165" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/199328c3b46817bed59809e2e08f6e14b772c479/vipy/util.py#L329-L332" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def writejson(d, outfile):
     with open(outfile, &#39;w&#39;) as f:
@@ -5236,7 +5213,7 @@ the list</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/util.py#L934-L941" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/199328c3b46817bed59809e2e08f6e14b772c479/vipy/util.py#L935-L942" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def writelist(mylist, outfile, mode=&#39;w&#39;):
     &#34;&#34;&#34;Write list of strings to an output file with each row an element of
@@ -5262,7 +5239,7 @@ the list</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/util.py#L1615-L1617" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/199328c3b46817bed59809e2e08f6e14b772c479/vipy/util.py#L1608-L1610" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">class Failed(Exception):
     &#34;&#34;&#34;Raised when unit test fails to throw an exception&#34;&#34;&#34;
@@ -5282,7 +5259,7 @@ the list</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/util.py#L1412-L1441" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/199328c3b46817bed59809e2e08f6e14b772c479/vipy/util.py#L1404-L1433" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">class Stopwatch(object):
     &#34;&#34;&#34;Return elapsed system time in seconds between calls to enter and exit&#34;&#34;&#34;
@@ -5325,7 +5302,7 @@ the list</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/util.py#L1439-L1441" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/199328c3b46817bed59809e2e08f6e14b772c479/vipy/util.py#L1431-L1433" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def duration(self):
     &#34;&#34;&#34;Time in seconds since last reset&#34;&#34;&#34;
@@ -5340,7 +5317,7 @@ the list</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/util.py#L1434-L1437" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/199328c3b46817bed59809e2e08f6e14b772c479/vipy/util.py#L1426-L1429" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def reset(self):
     self.start = time.time()
@@ -5356,7 +5333,7 @@ the list</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/util.py#L1427-L1432" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/199328c3b46817bed59809e2e08f6e14b772c479/vipy/util.py#L1419-L1424" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def since(self, start=False):
     &#34;&#34;&#34;Return seconds since start or last call to this method&#34;&#34;&#34;
@@ -5374,33 +5351,34 @@ the list</p></div>
 </code></dt>
 <dd>
 <div class="desc"><p>Pretty print elapsed system time in seconds between calls to enter and exit</p>
-<pre><code class="language-python-repl">&gt;&gt;&gt; t = Timer():
-&gt;&gt;&gt; [some code]
-&gt;&gt;&gt; print(t)
-&gt;&gt;&gt; [some more code]
-&gt;&gt;&gt; print(t)
-</code></pre>
-<pre><code class="language-python-repl">&gt;&gt;&gt; with Timer():
-&gt;&gt;&gt;    [some code]
+<pre><code class="language-python">   t = Timer():
+   [some code]
+   print(t)
+   [some more code]
+   print(t)
+
+   with Timer():
+      [some code]
 </code></pre></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/18e3e7d1e8fbbf0e93c2227ad50b3c083a84788f/vipy/util.py#L1444-L1482" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/199328c3b46817bed59809e2e08f6e14b772c479/vipy/util.py#L1436-L1475" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">class Timer(object):
     &#34;&#34;&#34;Pretty print elapsed system time in seconds between calls to enter and exit
+    
+    ```python 
+       t = Timer():
+       [some code]
+       print(t)
+       [some more code]
+       print(t)
 
-       &gt;&gt;&gt; t = Timer():
-       &gt;&gt;&gt; [some code]
-       &gt;&gt;&gt; print(t)
-       &gt;&gt;&gt; [some more code]
-       &gt;&gt;&gt; print(t)
-
-       &gt;&gt;&gt; with Timer():
-       &gt;&gt;&gt;    [some code]
+       with Timer():
+          [some code]
+    ```
        
-
     &#34;&#34;&#34;
     def __enter__(self):
         self._begin = time.time()
@@ -5503,13 +5481,13 @@ setTimeout(() => input.focus(), 100);
 <li><code><a title="vipy.util.cache" href="#vipy.util.cache">cache</a></code></li>
 <li><code><a title="vipy.util.cached" href="#vipy.util.cached">cached</a></code></li>
 <li><code><a title="vipy.util.canload" href="#vipy.util.canload">canload</a></code></li>
-<li><code><a title="vipy.util.checkerboard" href="#vipy.util.checkerboard">checkerboard</a></code></li>
+<li><code><a title="vipy.util.catcher" href="#vipy.util.catcher">catcher</a></code></li>
 <li><code><a title="vipy.util.chunklist" href="#vipy.util.chunklist">chunklist</a></code></li>
 <li><code><a title="vipy.util.chunklistWithOverlap" href="#vipy.util.chunklistWithOverlap">chunklistWithOverlap</a></code></li>
 <li><code><a title="vipy.util.chunklistbysize" href="#vipy.util.chunklistbysize">chunklistbysize</a></code></li>
 <li><code><a title="vipy.util.chunklistwithoverlap" href="#vipy.util.chunklistwithoverlap">chunklistwithoverlap</a></code></li>
+<li><code><a title="vipy.util.class_registry" href="#vipy.util.class_registry">class_registry</a></code></li>
 <li><code><a title="vipy.util.clockstamp" href="#vipy.util.clockstamp">clockstamp</a></code></li>
-<li><code><a title="vipy.util.columnvectorize" href="#vipy.util.columnvectorize">columnvectorize</a></code></li>
 <li><code><a title="vipy.util.count_images_in_subdirectories" href="#vipy.util.count_images_in_subdirectories">count_images_in_subdirectories</a></code></li>
 <li><code><a title="vipy.util.countby" href="#vipy.util.countby">countby</a></code></li>
 <li><code><a title="vipy.util.countbyasdict" href="#vipy.util.countbyasdict">countbyasdict</a></code></li>
@@ -5518,8 +5496,6 @@ setTimeout(() => input.focus(), 100);
 <li><code><a title="vipy.util.delpath" href="#vipy.util.delpath">delpath</a></code></li>
 <li><code><a title="vipy.util.dirlist" href="#vipy.util.dirlist">dirlist</a></code></li>
 <li><code><a title="vipy.util.dirlist_sorted_bycreation" href="#vipy.util.dirlist_sorted_bycreation">dirlist_sorted_bycreation</a></code></li>
-<li><code><a title="vipy.util.distload" href="#vipy.util.distload">distload</a></code></li>
-<li><code><a title="vipy.util.distsave" href="#vipy.util.distsave">distsave</a></code></li>
 <li><code><a title="vipy.util.dividelist" href="#vipy.util.dividelist">dividelist</a></code></li>
 <li><code><a title="vipy.util.extlist" href="#vipy.util.extlist">extlist</a></code></li>
 <li><code><a title="vipy.util.filebase" href="#vipy.util.filebase">filebase</a></code></li>
@@ -5557,7 +5533,6 @@ setTimeout(() => input.focus(), 100);
 <li><code><a title="vipy.util.is_email_address" href="#vipy.util.is_email_address">is_email_address</a></code></li>
 <li><code><a title="vipy.util.is_hiddenfile" href="#vipy.util.is_hiddenfile">is_hiddenfile</a></code></li>
 <li><code><a title="vipy.util.isarchive" href="#vipy.util.isarchive">isarchive</a></code></li>
-<li><code><a title="vipy.util.isboundingbox" href="#vipy.util.isboundingbox">isboundingbox</a></code></li>
 <li><code><a title="vipy.util.isbz2" href="#vipy.util.isbz2">isbz2</a></code></li>
 <li><code><a title="vipy.util.iscsv" href="#vipy.util.iscsv">iscsv</a></code></li>
 <li><code><a title="vipy.util.isexe" href="#vipy.util.isexe">isexe</a></code></li>
@@ -5584,7 +5559,6 @@ setTimeout(() => input.focus(), 100);
 <li><code><a title="vipy.util.isnumber" href="#vipy.util.isnumber">isnumber</a></code></li>
 <li><code><a title="vipy.util.isnumpy" href="#vipy.util.isnumpy">isnumpy</a></code></li>
 <li><code><a title="vipy.util.isnumpyarray" href="#vipy.util.isnumpyarray">isnumpyarray</a></code></li>
-<li><code><a title="vipy.util.isodd" href="#vipy.util.isodd">isodd</a></code></li>
 <li><code><a title="vipy.util.ispickle" href="#vipy.util.ispickle">ispickle</a></code></li>
 <li><code><a title="vipy.util.ispkl" href="#vipy.util.ispkl">ispkl</a></code></li>
 <li><code><a title="vipy.util.ispklfile" href="#vipy.util.ispklfile">ispklfile</a></code></li>
@@ -5615,7 +5589,6 @@ setTimeout(() => input.focus(), 100);
 <li><code><a title="vipy.util.listpkl" href="#vipy.util.listpkl">listpkl</a></code></li>
 <li><code><a title="vipy.util.load" href="#vipy.util.load">load</a></code></li>
 <li><code><a title="vipy.util.load_opencv_yaml" href="#vipy.util.load_opencv_yaml">load_opencv_yaml</a></code></li>
-<li><code><a title="vipy.util.loadas" href="#vipy.util.loadas">loadas</a></code></li>
 <li><code><a title="vipy.util.loadh5" href="#vipy.util.loadh5">loadh5</a></code></li>
 <li><code><a title="vipy.util.loadmat73" href="#vipy.util.loadmat73">loadmat73</a></code></li>
 <li><code><a title="vipy.util.mat2gray" href="#vipy.util.mat2gray">mat2gray</a></code></li>
@@ -5647,10 +5620,8 @@ setTimeout(() => input.focus(), 100);
 <li><code><a title="vipy.util.rermdir" href="#vipy.util.rermdir">rermdir</a></code></li>
 <li><code><a title="vipy.util.rgb2bgr" href="#vipy.util.rgb2bgr">rgb2bgr</a></code></li>
 <li><code><a title="vipy.util.rmdir" href="#vipy.util.rmdir">rmdir</a></code></li>
-<li><code><a title="vipy.util.rowvectorize" href="#vipy.util.rowvectorize">rowvectorize</a></code></li>
 <li><code><a title="vipy.util.save" href="#vipy.util.save">save</a></code></li>
 <li><code><a title="vipy.util.save_opencv_yaml" href="#vipy.util.save_opencv_yaml">save_opencv_yaml</a></code></li>
-<li><code><a title="vipy.util.saveas" href="#vipy.util.saveas">saveas</a></code></li>
 <li><code><a title="vipy.util.savetemp" href="#vipy.util.savetemp">savetemp</a></code></li>
 <li><code><a title="vipy.util.scpload" href="#vipy.util.scpload">scpload</a></code></li>
 <li><code><a title="vipy.util.scpsave" href="#vipy.util.scpsave">scpsave</a></code></li>
