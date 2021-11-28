@@ -105,7 +105,7 @@ You can always access the current filter chain using <code><a title="vipy.video.
 v.show(notebook=True)
 v.frame().show()
 v.annotate('/path/to/visualization.mp4')
-with vipy.video.Video(url='rtmpss://youtu.be/...').mindim(512).framerate(5).stream(write=True) as s:
+with vipy.video.Video(url='rtmps://youtu.be/...').mindim(512).framerate(5).stream(write=True) as s:
     for im in v.framerate(5):
         s.write(im.annotate().rgb())
 </code></pre>
