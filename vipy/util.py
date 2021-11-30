@@ -1098,7 +1098,7 @@ def isS3url(path):
 
 def isyoutubeurl(path):
     """Is a path a youtube URL?"""
-    return isurl(path) and 'youtube.com' in path
+    return isurl(path) and ('youtube.com' in path or 'youtu.be' in path)
 
 def isRTSPurl(path):
     return isurl(path) and path.startswith('rtsp://')

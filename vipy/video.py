@@ -502,7 +502,7 @@ class Video(object):
             elif isvideourl(self._url):
                 self._filename = templike(self._url)
             elif isyoutubeurl(self._url):
-                self._filename = os.path.join(tempdir(), '%s' % self._url.split('?')[1].split('&')[0])
+                self._filename = os.path.join(tempdir(), '%s' % (self._url.split('?')[1].split('&')[0] if '?' in self._url else self._url.split('/')[-1]))
             else:
                 self._filename = totempdir(self._url)  
             if vipy.globals.cache() is not None and self._filename is not None and not isRTSPurl(self._filename) and not isRTMPurl(self._filename):
