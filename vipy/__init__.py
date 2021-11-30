@@ -79,7 +79,7 @@ v.show()
 v.show(notebook=True)
 v.frame().show()
 v.annotate('/path/to/visualization.mp4')
-with vipy.video.Video(url='rtmp://a.rtmp.youtube.com/...').mindim(512).framerate(5).stream(write=True) as s:
+with vipy.video.Video(url='rtmps://youtu.be/...').mindim(512).framerate(5).stream(write=True) as s:
     for im in v.framerate(5):
         s.write(im.annotate().rgb())
 ```

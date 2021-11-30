@@ -3663,7 +3663,10 @@ class Scene(VideoCategory):
         return self
 
     def combine(self, other, tracks=True, activities=True, rekey=True):
-        """Combine the activities and tracks from both scenes into self"""
+        """Combine the activities and tracks from both scenes into self. 
+        
+        .. note:: This does not perform a union, it simply combines dictionaries.  For deduplication, see `vipy.video.union`
+        """
         assert isinstance(other, Scene), "Invalid input - must be vipy.video.Scene() object and not type=%s" % str(type(other))
         assert self.framerate() == other.framerate()
         o = other.clone(rekey=True) if rekey else other   # make sure keys are unique
@@ -3990,7 +3993,7 @@ class Scene(VideoCategory):
         Args:
             miniou: [float] the minimum temporal IOU for activity assignment
             minconf: [float] the minimum confidence for a detection to be considered as a new track
-            maxhistory: [int]  the maximum propagation length of a track with no measurements, the frame history ised for velocity estimates  
+            maxhistory: [int]  the maximum propagation length of a track with no measurements, the frame history used for velocity estimates  
             trackconfsamples: [int]  the number of uniformly spaced samples along a track to compute a track confidence
             gate: [int] the gating distance in pixels used for assignment of fast moving detections.  Useful for low detection framerates if a detection does not overlap with the track.
             trackcover: [float] the minimum cover necessary for assignment of a detection to a track

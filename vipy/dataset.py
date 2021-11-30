@@ -552,7 +552,7 @@ class Dataset():
         V = [f_deserialize(x) for s in S for x in s]  # Local deserialization and chunk flattening
         (good, bad) = ([r for (b,r) in V if b], [r for (b,r) in V if not b])  # catcher returns (True, result) or (False, exception string)
         if len(bad) > 0:
-            print('[vipy.dataset.Dataset.map]: Exceptions in map distributed processing:\n%s' % (len(bad), len(self), str(bad)))
+            print('[vipy.dataset.Dataset.map]: Exceptions in map distributed processing:\n%s' % str(bad))
             print('[vipy.dataset.Dataset.map]: %d/%d items failed' % (len(bad), len(self)))
         return Dataset(good, id=dst if dst is not None else id)
 
