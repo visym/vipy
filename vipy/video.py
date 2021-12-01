@@ -2753,7 +2753,6 @@ class Scene(VideoCategory):
     
     def tracks(self, tracks=None, id=None):
         """Return mutable dictionary of tracks,
-
         
            Args:
                tracks [dict]: If provided, replace track dictionary with provided track dictionary, and return self
@@ -3988,20 +3987,31 @@ class Scene(VideoCategory):
         return self
 
     def assign(self, frame, dets, minconf=0.2, maxhistory=5, activityiou=0.5, trackcover=0.2, trackconfsamples=4, gate=0, activitymerge=True, activitynms=False):
-        """Assign a list of vipy.object.Detections at frame k to scene by greedy track association. In-place update.
+        """Assign a list of `vipy.object.Detection` object detections and `vipy.activity.Activity` activity detections at frame k to scene tracks and activities by greedy assignment. In-place update.
         
+        Approach:
+
+            - This approach is equivalent to greedy, constant velocity SORT tracking (https://arxiv.org/abs/1602.00763) 
+            - Individual detections are assigned to tracks using a greedy velocity only track propagation, sorted by `vipy.geometry.BoundingBox.maxcover` and detection confidence within a spatial tracking gate 
+            - New tracks are created if the detection is unassigned and above a minimum confidence 
+            - Updated tracks resulting from assignment are stored in `vipy.video.tracks` 
+
         Args:
+        
+            frame: [int] The frame index to assign the detections into the scene
+            dets: [list] A list of `vipy.object.Detection` or `vipy.activity.Activity` objects as returned from a detector 
             miniou: [float] the minimum temporal IOU for activity assignment
             minconf: [float] the minimum confidence for a detection to be considered as a new track
             maxhistory: [int]  the maximum propagation length of a track with no measurements, the frame history used for velocity estimates  
-            trackconfsamples: [int]  the number of uniformly spaced samples along a track to compute a track confidence
+            trackconfsamples: [int]  the number of uniformly spaced samples along a track to compute a mean track confidence
             gate: [int] the gating distance in pixels used for assignment of fast moving detections.  Useful for low detection framerates if a detection does not overlap with the track.
             trackcover: [float] the minimum cover necessary for assignment of a detection to a track
             activitymerge: [bool] if true, then merge overlapping activity detections of the same track and category, otherwise each activity detection is added as a new detection
             activitynms: [bool] if true, then perform non-maximum suppression of activity detections of the same actor and category that overlap more than activityiou
 
         Returns:
-            This video object with each det assigned to correpsonding track or activity.
+
+            This video object with each det assigned to corresponding track or activity.
 
         """
         assert dets is None or all([isinstance(d, vipy.object.Detection) or isinstance(d, vipy.activity.Activity) for d in tolist(dets)]), "invalid input"
@@ -4027,7 +4037,7 @@ class Scene(VideoCategory):
             # Track assignment:
             #   - Each track is assigned at most one detection
             #   - Each detection is assigned to at most one track.  
-            #   - Assignment is the highest confidence maximum overlapping detection within tracking gate
+            #   - Assignment is the highest confidence maximum overlapping detection by cover within tracking gate
             trackconf = {t.id():t.confidence(samples=trackconfsamples) for (t, ti) in t_ref}
             assignments = [(t, d.confidence(), d.iou(ti, area=detarea[j], otherarea=trackarea[i]), d.shapeiou(ti, area=detarea[j], otherarea=trackarea[i]), d.maxcover(ti, area=detarea[j], otherarea=trackarea[i]), d)
                            for (i, (t, ti)) in enumerate(t_ref)
@@ -4040,7 +4050,7 @@ class Scene(VideoCategory):
             posconf = min([d.confidence() for d in objdets]) if len(objdets)>0 else 0
             assignments.sort(key=lambda x: (x[1]+posconf)*(x[2]+x[3]+x[4])+trackconf[x[0].id()], reverse=True)  # in-place
             for (t, conf, iou, shapeiou, cover, d) in assignments:
-                if cover > (trackcover if len(t)>1 else 0):  # the highest confidence detection within the iou gate (or any overlap if not yet enough history for velocity estimate) 
+                if cover > (trackcover if len(t)>1 else 0):  # the highest confidence detection within the assignment gate (or any overlap if not yet enough history for velocity estimate) 
                     if (t.id() not in assigned and d.id() not in assigned):  # not assigned yet, assign it!
                         self.track(t.id()).update(frame, d.clone())  # track assignment! (clone required)
                         assigned.add(t.id())  # cannot assign again to this track
