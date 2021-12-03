@@ -233,7 +233,7 @@ def hoverpixel_selector(htmllist, legendlist, outfile=None, display=False, offse
     return filename
 
 
-def mosaic(videos):
+def mosaic(videos, gridrows=None, gridcols=None):
     """Create a mosaic iterator from an iterable of videos.
     
     A mosaic is a tiling of videos into a grid such that each grid element is one video.  This function returns an iterator that iterates frames in the video mosaic.
@@ -253,8 +253,19 @@ def mosaic(videos):
     """
     assert (isinstance(videos, list) and all([isinstance(v, vipy.video.Video) for v in videos])) or isinstance(videos, tuple)
     (H,W) = videos[0].shape()
-    for frames in zip(*videos):
-        yield vipy.visualize.montage(frames, H, W)
+    for frames in zip(*videos):        
+        yield vipy.visualize.montage(frames, H, W, gridrows=gridrows, gridcols=gridcols)
+
+        
+def videomosaic(videos, gridrows=None, gridcols=None):
+    """Return a mosaic video from an iterable of videos.  
+
+    A mosaic will output a video montage such that all videos are exactly the same length, without cycling.  This assumes that the videos are showing the same timestamps like in a security mosaic view.  
+
+    .. note:: This will generate a framewise videomontage, and large videos can result in out of memory condition.
+
+    """
+    return vipy.video.Video(frames=list(mosaic(videos, gridrows=gridrows, gridcols=gridcols)), framerate=videos[0].framerate())
 
 
 def montage(imlist, imgheight, imgwidth, gridrows=None, gridcols=None, aspectratio=1, crop=False, skip=True, border=1, border_bgr=(128,128,128), do_flush=False, verbose=False):
