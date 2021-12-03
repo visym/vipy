@@ -568,7 +568,15 @@ class BoundingBox(object):
         return self.area() + bb.area() - self.area_of_intersection(bb)
         
     def cover(self, bb):
-        """Fraction of this bounding box intersected by other bbox (bb)"""
+        """Fraction of this bounding box intersected by other bbox (bb).
+
+        .. note:: 
+        
+            - Cover is often more useful than `vipy.geometry.BoundingBox.iou` as a measure of overlap due to bounding box distortion from partially occluded object proposals.  
+            - For example, an object proposal of a person may generate a smaller box (e.g. just the torso) when the lower body is occluded whereas a track will have the full body box.  
+            - `vipy.geometry.BoundingBox.maxcover` is a better measure of assignment in this case.  
+
+        """
         a = float(self.area())
         return (self.area_of_intersection(bb) / a) if a>0 else 0
 
