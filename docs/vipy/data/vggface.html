@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1" />
-<meta name="generator" content="pdoc 0.9.2" />
+<meta name="generator" content="pdoc 0.10.0" />
 <title>vipy.data.vggface API documentation</title>
 <meta name="description" content="" />
 <link rel="preload stylesheet" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/10up-sanitize.css/11.0.1/sanitize.min.css" integrity="sha256-PK9q560IAAa6WVRRh76LtCaI8pjTJ2z11v0miyNNjrs=" crossorigin>
@@ -25,7 +25,7 @@
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/199328c3b46817bed59809e2e08f6e14b772c479/vipy/data/vggface.py#L0-L90" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/e53bd3dcd3455d4f4cfae64e674e6cd7e2aaec12/vipy/data/vggface.py#L1-L91" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">import os
 import numpy as np
@@ -138,7 +138,7 @@ class VGGFace(object):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/199328c3b46817bed59809e2e08f6e14b772c479/vipy/data/vggface.py#L42-L91" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/e53bd3dcd3455d4f4cfae64e674e6cd7e2aaec12/vipy/data/vggface.py#L42-L91" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">class VGGFace(object):
     def __init__(self, datadir=&#39;/proj/janus3/vgg-face/vgg-face-janus&#39;):
@@ -201,7 +201,7 @@ class VGGFace(object):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/199328c3b46817bed59809e2e08f6e14b772c479/vipy/data/vggface.py#L88-L91" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/e53bd3dcd3455d4f4cfae64e674e6cd7e2aaec12/vipy/data/vggface.py#L88-L91" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def by_subject(self, wordnetid):
     d = os.path.join(self.datadir, &#39;images&#39;, wordnetid)
@@ -217,7 +217,7 @@ class VGGFace(object):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/199328c3b46817bed59809e2e08f6e14b772c479/vipy/data/vggface.py#L60-L67" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/e53bd3dcd3455d4f4cfae64e674e6cd7e2aaec12/vipy/data/vggface.py#L60-L67" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def dataset(self):
     &#34;&#34;&#34;Return a generator to iterate over dataset&#34;&#34;&#34;
@@ -237,7 +237,7 @@ class VGGFace(object):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/199328c3b46817bed59809e2e08f6e14b772c479/vipy/data/vggface.py#L69-L74" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/e53bd3dcd3455d4f4cfae64e674e6cd7e2aaec12/vipy/data/vggface.py#L69-L74" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def fastset(self):
     &#34;&#34;&#34;Return a generator to iterate over dataset&#34;&#34;&#34;
@@ -255,7 +255,7 @@ class VGGFace(object):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/199328c3b46817bed59809e2e08f6e14b772c479/vipy/data/vggface.py#L50-L53" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/e53bd3dcd3455d4f4cfae64e674e6cd7e2aaec12/vipy/data/vggface.py#L50-L53" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def subjects(self):
     if self._subjects is None:
@@ -271,7 +271,7 @@ class VGGFace(object):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/199328c3b46817bed59809e2e08f6e14b772c479/vipy/data/vggface.py#L76-L86" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/e53bd3dcd3455d4f4cfae64e674e6cd7e2aaec12/vipy/data/vggface.py#L76-L86" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def take(self, n):
     S = np.random.choice(self.subjects(), n)
@@ -294,7 +294,7 @@ class VGGFace(object):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/199328c3b46817bed59809e2e08f6e14b772c479/vipy/data/vggface.py#L55-L58" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/e53bd3dcd3455d4f4cfae64e674e6cd7e2aaec12/vipy/data/vggface.py#L55-L58" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def wordnetid_to_name(self):
     wnid = [str(x[0]) for x in loadmat(&#39;/proj/janus3/vgg-face/vgg-face-janus/vgg_face_wordnetid.mat&#39;)[&#39;name&#39;][0]]
@@ -313,7 +313,7 @@ class VGGFace(object):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/199328c3b46817bed59809e2e08f6e14b772c479/vipy/data/vggface.py#L9-L39" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/e53bd3dcd3455d4f4cfae64e674e6cd7e2aaec12/vipy/data/vggface.py#L9-L39" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">class VGGFaceURL(object):
     def __init__(self, datadir=&#39;/proj/janus3/vgg-face/curated/vgg_face_dataset&#39;):
@@ -357,7 +357,7 @@ class VGGFace(object):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/199328c3b46817bed59809e2e08f6e14b772c479/vipy/data/vggface.py#L22-L28" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/e53bd3dcd3455d4f4cfae64e674e6cd7e2aaec12/vipy/data/vggface.py#L22-L28" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def dataset(self):
     &#34;&#34;&#34;Return a generator to iterate over dataset&#34;&#34;&#34;
@@ -376,7 +376,7 @@ class VGGFace(object):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/199328c3b46817bed59809e2e08f6e14b772c479/vipy/data/vggface.py#L17-L20" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/e53bd3dcd3455d4f4cfae64e674e6cd7e2aaec12/vipy/data/vggface.py#L17-L20" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def subjects(self):
     if self._subjects is None:
@@ -392,7 +392,7 @@ class VGGFace(object):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/199328c3b46817bed59809e2e08f6e14b772c479/vipy/data/vggface.py#L30-L39" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/e53bd3dcd3455d4f4cfae64e674e6cd7e2aaec12/vipy/data/vggface.py#L30-L39" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def take(self, n):
     &#34;&#34;&#34;Randomly select n frames from dataset&#34;&#34;&#34;
@@ -500,7 +500,7 @@ setTimeout(() => input.focus(), 100);
 </nav>
 </main>
 <footer id="footer">
-<p>Generated by <a href="https://pdoc3.github.io/pdoc" title="pdoc: Python API documentation generator"><cite>pdoc</cite> 0.9.2</a>.</p>
+<p>Generated by <a href="https://pdoc3.github.io/pdoc" title="pdoc: Python API documentation generator"><cite>pdoc</cite> 0.10.0</a>.</p>
 </footer>
 </body>
 </html>

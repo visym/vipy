@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1" />
-<meta name="generator" content="pdoc 0.9.2" />
+<meta name="generator" content="pdoc 0.10.0" />
 <title>vipy.camera API documentation</title>
 <meta name="description" content="" />
 <link rel="preload stylesheet" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/10up-sanitize.css/11.0.1/sanitize.min.css" integrity="sha256-PK9q560IAAa6WVRRh76LtCaI8pjTJ2z11v0miyNNjrs=" crossorigin>
@@ -25,7 +25,7 @@
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/199328c3b46817bed59809e2e08f6e14b772c479/vipy/camera.py#L0-L127" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/e53bd3dcd3455d4f4cfae64e674e6cd7e2aaec12/vipy/camera.py#L1-L128" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">import urllib
 import timeit
@@ -174,7 +174,7 @@ class Ipcam(Camera):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/199328c3b46817bed59809e2e08f6e14b772c479/vipy/camera.py#L11-L18" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/e53bd3dcd3455d4f4cfae64e674e6cd7e2aaec12/vipy/camera.py#L11-L18" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">class Camera(object):
     CAM = None
@@ -224,7 +224,7 @@ class Ipcam(Camera):
 </dd>
 <dt id="vipy.camera.Ipcam"><code class="flex name class">
 <span>class <span class="ident">Ipcam</span></span>
-<span>(</span><span>url, imfile='/var/folders/sn/6n34qjp513742_5y3lvmhnlw0000gn/T/2bd195070c0445fa.jpg')</span>
+<span>(</span><span>url, imfile='/tmp/8b081dcd2b58e86c.jpg')</span>
 </code></dt>
 <dd>
 <div class="desc"><p>Create a IPcam object that will yield <code><a title="vipy.image.Image" href="image.html#vipy.image.Image">Image</a></code> frames.</p>
@@ -238,7 +238,7 @@ class Ipcam(Camera):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/199328c3b46817bed59809e2e08f6e14b772c479/vipy/camera.py#L103-L128" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/e53bd3dcd3455d4f4cfae64e674e6cd7e2aaec12/vipy/camera.py#L103-L128" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">class Ipcam(Camera):
     &#34;&#34;&#34;Create a IPcam object that will yield `vipy.image.Image` frames.
@@ -288,7 +288,7 @@ class Ipcam(Camera):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/199328c3b46817bed59809e2e08f6e14b772c479/vipy/camera.py#L126-L128" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/e53bd3dcd3455d4f4cfae64e674e6cd7e2aaec12/vipy/camera.py#L126-L128" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def next(self):
     urllib.urlretrieve(self.CAM, self.TMPFILE)
@@ -325,7 +325,7 @@ The camera index to open</dd>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/199328c3b46817bed59809e2e08f6e14b772c479/vipy/camera.py#L21-L100" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/e53bd3dcd3455d4f4cfae64e674e6cd7e2aaec12/vipy/camera.py#L21-L100" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">class Webcam(Camera):
     &#34;&#34;&#34;Create a webcam object that will yield `vipy.image.Image` frames.
@@ -422,7 +422,7 @@ The camera index to open</dd>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/199328c3b46817bed59809e2e08f6e14b772c479/vipy/camera.py#L64-L66" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/e53bd3dcd3455d4f4cfae64e674e6cd7e2aaec12/vipy/camera.py#L64-L66" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def current(self):
     &#34;&#34;&#34;Alias for `vipy.camera.Webcam.next`&#34;&#34;&#34;
@@ -437,7 +437,7 @@ The camera index to open</dd>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/199328c3b46817bed59809e2e08f6e14b772c479/vipy/camera.py#L87-L89" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/e53bd3dcd3455d4f4cfae64e674e6cd7e2aaec12/vipy/camera.py#L87-L89" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def frame(self):
     &#34;&#34;&#34;Alias for `vipy.camera.Webcam.next`&#34;&#34;&#34;
@@ -452,7 +452,7 @@ The camera index to open</dd>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/199328c3b46817bed59809e2e08f6e14b772c479/vipy/camera.py#L68-L85" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/e53bd3dcd3455d4f4cfae64e674e6cd7e2aaec12/vipy/camera.py#L68-L85" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def next(self):
     &#34;&#34;&#34;Return a `vipy.image.Image` from the camera&#34;&#34;&#34;
@@ -482,7 +482,7 @@ The camera index to open</dd>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/199328c3b46817bed59809e2e08f6e14b772c479/vipy/camera.py#L91-L100" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/e53bd3dcd3455d4f4cfae64e674e6cd7e2aaec12/vipy/camera.py#L91-L100" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def video(self, n, framerate=30):
     &#34;&#34;&#34;Return a `vipy.video.Video` with n frames, constructed using the provided framerate (defaults to 30Hz)&#34;&#34;&#34;
@@ -599,7 +599,7 @@ setTimeout(() => input.focus(), 100);
 </nav>
 </main>
 <footer id="footer">
-<p>Generated by <a href="https://pdoc3.github.io/pdoc" title="pdoc: Python API documentation generator"><cite>pdoc</cite> 0.9.2</a>.</p>
+<p>Generated by <a href="https://pdoc3.github.io/pdoc" title="pdoc: Python API documentation generator"><cite>pdoc</cite> 0.10.0</a>.</p>
 </footer>
 </body>
 </html>

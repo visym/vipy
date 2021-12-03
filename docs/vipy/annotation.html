@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1" />
-<meta name="generator" content="pdoc 0.9.2" />
+<meta name="generator" content="pdoc 0.10.0" />
 <title>vipy.annotation API documentation</title>
 <meta name="description" content="" />
 <link rel="preload stylesheet" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/10up-sanitize.css/11.0.1/sanitize.min.css" integrity="sha256-PK9q560IAAa6WVRRh76LtCaI8pjTJ2z11v0miyNNjrs=" crossorigin>
@@ -25,7 +25,7 @@
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/199328c3b46817bed59809e2e08f6e14b772c479/vipy/annotation.py#L0-L106" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/e53bd3dcd3455d4f4cfae64e674e6cd7e2aaec12/vipy/annotation.py#L1-L66" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">import urllib
 import os
@@ -37,10 +37,16 @@ import tempfile
 import numpy as np
 from vipy.downloader import common_user_agents
 from vipy.globals import print
+import warnings
 
 
 def googlesearch(tag):
     &#34;&#34;&#34;Return a list of image URLs from google image search associated with the provided tag&#34;&#34;&#34;
+    raise ValueError(&#39;no longer unsupported&#39;)
+    
+    try_import(&#39;bs4&#39;, &#39;BeautifulSoup4&#39;);  
+    from bs4 import BeautifulSoup
+    
     url = &#39;https://www.google.com/search?tbm=isch&amp;q=%s&#39; % tag.replace(&#39; &#39;,&#39;+&#39;)
     user_agent = random.choice(common_user_agents)
     headers = {&#39;User-Agent&#39;:user_agent}
@@ -48,12 +54,12 @@ def googlesearch(tag):
     search_results = urllib.request.urlopen(search_request)
     search_data = str(search_results.read())
 
-    # FIXME: support for gstatic.com URLs
-    datalist = search_data.split(&#39;http&#39;)
-    imlist = [re.findall(&#34;^http[s]?://.*\.(?:jpg|gif|png)&#34;, str(&#39;http&#39; + d)) for d in datalist]
-    imlist = [im[0] for im in imlist if len(im) &gt; 0]
-    imlist_clean = [im for im in imlist if im.find(&#39;File:&#39;) == -1]
-    return [url for url in imlist_clean if isurl(url) and &#39;gb/images/silhouette&#39; not in url]
+    soup = BeautifulSoup(search_data, features=&#34;html.parser&#34;)
+    links = soup.find_all(&#39;a&#39;)    
+    urls = [tag.get(&#39;href&#39;,None) for tag in links if tag.get(&#39;href&#39;,None) is not None]
+    urls = [u.replace(&#39;/url?q=http&#39;,&#39;http&#39;) if u.startswith(&#39;/url?q=http&#39;) else u for u in urls]
+    urls = [u for u in urls if u.startswith(&#39;http&#39;) and not u.startswith(&#39;https://www.google.com&#39;)]
+    return urls
 
 
 def basic_level_categories():
@@ -61,9 +67,10 @@ def basic_level_categories():
     try_import(&#39;nltk&#39;); import nltk
     nltkdir = remkdir(os.path.join(os.environ[&#39;VIPY_CACHE&#39;], &#39;nltk&#39;)) if &#39;VIPY_CACHE&#39; in os.environ else tempfile.gettempdir()
     os.environ[&#39;NLTK_DATA&#39;] = nltkdir
-    print(&#39;[vipy.annotation.basic_level_categories]: Downloading wordnet to &#34;%s&#34;&#39; % tempfile.gettempdir())
-    nltk.download(&#39;wordnet&#39;, tempfile.gettempdir())
-
+    print(&#39;[vipy.annotation.basic_level_categories]: Downloading wordnet to &#34;%s&#34;&#39; % nltkdir)
+    nltk.download(&#39;wordnet&#39;, nltkdir)
+    nltk.data.path.append(nltkdir)
+    
     from nltk.corpus import wordnet
     nouns = []
     allowed_lexnames = [&#39;noun.animal&#39;, &#39;noun.artifact&#39;, &#39;noun.body&#39;, &#39;noun.food&#39;, &#39;noun.object&#39;, &#39;noun.plant&#39;]
@@ -79,60 +86,11 @@ def verbs():
     try_import(&#39;nltk&#39;); import nltk
     nltkdir = remkdir(os.path.join(os.environ[&#39;VIPY_CACHE&#39;], &#39;nltk&#39;)) if &#39;VIPY_CACHE&#39; in os.environ else tempfile.gettempdir()
     os.environ[&#39;NLTK_DATA&#39;] = nltkdir
-    print(&#39;[vipy.annotation.verbs]: Downloading verbnet to &#34;%s&#34;&#39; % tempfile.gettempdir())
-    nltk.download(&#39;verbnet&#39;, tempfile.gettempdir())
+    print(&#39;[vipy.annotation.verbs]: Downloading verbnet to &#34;%s&#34;&#39; % nltkdir)    
+    nltk.download(&#39;verbnet&#39;, nltkdir)
+    nltk.data.path.append(nltkdir)
     from nltk.corpus import verbnet
-    return verbnet.lemmas()
-
-
-def facebookprofilerange(fbid, numid, outdir=&#39;./imgs&#39;, cleanup=True, hierarchical=False, redownload=False):
-    for x in range(fbid, fbid + numid):
-        facebookprofile(x, outdir, cleanup, hierarchical, redownload)
-
-
-def facebookprofile(fbid, outdir=&#39;./imgs&#39;, cleanup=True, hierarchical=False, redownload=False):
-    if hierarchical:
-        subdir = remkdir(os.path.join(outdir, str(int(float(fbid) / 1E4))))  # 10000 images per directory
-        outfile = os.path.join(subdir, &#39;%d.jpg&#39; % int(fbid))  # outdir/1000/10000001.jpg
-    else:
-        outfile = os.path.join(outdir, &#39;%d.jpg&#39; % int(fbid))
-
-    url = &#34;http://graph.facebook.com/picture?id=&#34; + str(fbid) + &#34;&amp;width=800&#34;
-    if not os.path.exists(outfile) or redownload:
-        try:
-            print(&#39;[facebookprofile.download]: Downloading &#34;%s&#34; to &#34;%s&#34;&#39; % (url, outfile))
-
-            user_agent = np.random.choice(common_user_agents)
-            headers = {&#39;User-Agent&#39;:user_agent}
-            req = urllib.request.Request(url, None, headers)
-            imgfile = urllib.request.urlopen(req)
-            total_size = int(imgfile.info().getheader(&#39;Content-Length&#39;).strip())
-            downloaded = 0
-            CHUNK = 256 * 10240
-            with open(outfile, &#39;wb&#39;) as fp:
-                while True:
-                    chunk = imgfile.read(CHUNK)
-                    downloaded += len(chunk)
-                    # print math.floor( (downloaded / total_size) * 100 )
-                    if not chunk:
-                        break
-                    fp.write(chunk)
-
-            # urllib.urlretrieve(url, outfile)
-
-            s = os.path.getsize(outfile)
-            if cleanup and (s &lt; 11000 or s == 10626 or s == 10491):
-                print(&#39;[facebookprofile.download]: deleting invalid file &#34;%s&#34;&#39; % outfile)
-                os.remove(outfile)
-
-        except (urllib.request.HTTPError):
-            print(&#39;[fb_image.download]: Skipping &#34;%s&#34;&#39; % (url))
-        except (urllib.request.URLError):
-            print(&#39;[fb_image.download]: Skipping &#34;%s&#34;&#39; % (url))
-        except KeyboardInterrupt:
-            raise
-        except:
-            raise</code></pre>
+    return verbnet.lemmas()</code></pre>
 </details>
 </section>
 <section>
@@ -150,16 +108,17 @@ def facebookprofile(fbid, outdir=&#39;./imgs&#39;, cleanup=True, hierarchical=Fa
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/199328c3b46817bed59809e2e08f6e14b772c479/vipy/annotation.py#L30-L45" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/e53bd3dcd3455d4f4cfae64e674e6cd7e2aaec12/vipy/annotation.py#L36-L52" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def basic_level_categories():
     &#34;&#34;&#34;Return a list of nouns from wordnet that can be used as an initial list of basic level object categories&#34;&#34;&#34;
     try_import(&#39;nltk&#39;); import nltk
     nltkdir = remkdir(os.path.join(os.environ[&#39;VIPY_CACHE&#39;], &#39;nltk&#39;)) if &#39;VIPY_CACHE&#39; in os.environ else tempfile.gettempdir()
     os.environ[&#39;NLTK_DATA&#39;] = nltkdir
-    print(&#39;[vipy.annotation.basic_level_categories]: Downloading wordnet to &#34;%s&#34;&#39; % tempfile.gettempdir())
-    nltk.download(&#39;wordnet&#39;, tempfile.gettempdir())
-
+    print(&#39;[vipy.annotation.basic_level_categories]: Downloading wordnet to &#34;%s&#34;&#39; % nltkdir)
+    nltk.download(&#39;wordnet&#39;, nltkdir)
+    nltk.data.path.append(nltkdir)
+    
     from nltk.corpus import wordnet
     nouns = []
     allowed_lexnames = [&#39;noun.animal&#39;, &#39;noun.artifact&#39;, &#39;noun.body&#39;, &#39;noun.food&#39;, &#39;noun.object&#39;, &#39;noun.plant&#39;]
@@ -170,76 +129,6 @@ def facebookprofile(fbid, outdir=&#39;./imgs&#39;, cleanup=True, hierarchical=Fa
     return nouns</code></pre>
 </details>
 </dd>
-<dt id="vipy.annotation.facebookprofile"><code class="name flex">
-<span>def <span class="ident">facebookprofile</span></span>(<span>fbid, outdir='./imgs', cleanup=True, hierarchical=False, redownload=False)</span>
-</code></dt>
-<dd>
-<div class="desc"></div>
-<details class="source">
-<summary>
-<span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/199328c3b46817bed59809e2e08f6e14b772c479/vipy/annotation.py#L64-L106" class="git-link">Browse git</a>
-</summary>
-<pre><code class="python">def facebookprofile(fbid, outdir=&#39;./imgs&#39;, cleanup=True, hierarchical=False, redownload=False):
-    if hierarchical:
-        subdir = remkdir(os.path.join(outdir, str(int(float(fbid) / 1E4))))  # 10000 images per directory
-        outfile = os.path.join(subdir, &#39;%d.jpg&#39; % int(fbid))  # outdir/1000/10000001.jpg
-    else:
-        outfile = os.path.join(outdir, &#39;%d.jpg&#39; % int(fbid))
-
-    url = &#34;http://graph.facebook.com/picture?id=&#34; + str(fbid) + &#34;&amp;width=800&#34;
-    if not os.path.exists(outfile) or redownload:
-        try:
-            print(&#39;[facebookprofile.download]: Downloading &#34;%s&#34; to &#34;%s&#34;&#39; % (url, outfile))
-
-            user_agent = np.random.choice(common_user_agents)
-            headers = {&#39;User-Agent&#39;:user_agent}
-            req = urllib.request.Request(url, None, headers)
-            imgfile = urllib.request.urlopen(req)
-            total_size = int(imgfile.info().getheader(&#39;Content-Length&#39;).strip())
-            downloaded = 0
-            CHUNK = 256 * 10240
-            with open(outfile, &#39;wb&#39;) as fp:
-                while True:
-                    chunk = imgfile.read(CHUNK)
-                    downloaded += len(chunk)
-                    # print math.floor( (downloaded / total_size) * 100 )
-                    if not chunk:
-                        break
-                    fp.write(chunk)
-
-            # urllib.urlretrieve(url, outfile)
-
-            s = os.path.getsize(outfile)
-            if cleanup and (s &lt; 11000 or s == 10626 or s == 10491):
-                print(&#39;[facebookprofile.download]: deleting invalid file &#34;%s&#34;&#39; % outfile)
-                os.remove(outfile)
-
-        except (urllib.request.HTTPError):
-            print(&#39;[fb_image.download]: Skipping &#34;%s&#34;&#39; % (url))
-        except (urllib.request.URLError):
-            print(&#39;[fb_image.download]: Skipping &#34;%s&#34;&#39; % (url))
-        except KeyboardInterrupt:
-            raise
-        except:
-            raise</code></pre>
-</details>
-</dd>
-<dt id="vipy.annotation.facebookprofilerange"><code class="name flex">
-<span>def <span class="ident">facebookprofilerange</span></span>(<span>fbid, numid, outdir='./imgs', cleanup=True, hierarchical=False, redownload=False)</span>
-</code></dt>
-<dd>
-<div class="desc"></div>
-<details class="source">
-<summary>
-<span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/199328c3b46817bed59809e2e08f6e14b772c479/vipy/annotation.py#L59-L61" class="git-link">Browse git</a>
-</summary>
-<pre><code class="python">def facebookprofilerange(fbid, numid, outdir=&#39;./imgs&#39;, cleanup=True, hierarchical=False, redownload=False):
-    for x in range(fbid, fbid + numid):
-        facebookprofile(x, outdir, cleanup, hierarchical, redownload)</code></pre>
-</details>
-</dd>
 <dt id="vipy.annotation.googlesearch"><code class="name flex">
 <span>def <span class="ident">googlesearch</span></span>(<span>tag)</span>
 </code></dt>
@@ -248,10 +137,15 @@ def facebookprofile(fbid, outdir=&#39;./imgs&#39;, cleanup=True, hierarchical=Fa
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/199328c3b46817bed59809e2e08f6e14b772c479/vipy/annotation.py#L13-L27" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/e53bd3dcd3455d4f4cfae64e674e6cd7e2aaec12/vipy/annotation.py#L14-L33" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def googlesearch(tag):
     &#34;&#34;&#34;Return a list of image URLs from google image search associated with the provided tag&#34;&#34;&#34;
+    raise ValueError(&#39;no longer unsupported&#39;)
+    
+    try_import(&#39;bs4&#39;, &#39;BeautifulSoup4&#39;);  
+    from bs4 import BeautifulSoup
+    
     url = &#39;https://www.google.com/search?tbm=isch&amp;q=%s&#39; % tag.replace(&#39; &#39;,&#39;+&#39;)
     user_agent = random.choice(common_user_agents)
     headers = {&#39;User-Agent&#39;:user_agent}
@@ -259,12 +153,12 @@ def facebookprofile(fbid, outdir=&#39;./imgs&#39;, cleanup=True, hierarchical=Fa
     search_results = urllib.request.urlopen(search_request)
     search_data = str(search_results.read())
 
-    # FIXME: support for gstatic.com URLs
-    datalist = search_data.split(&#39;http&#39;)
-    imlist = [re.findall(&#34;^http[s]?://.*\.(?:jpg|gif|png)&#34;, str(&#39;http&#39; + d)) for d in datalist]
-    imlist = [im[0] for im in imlist if len(im) &gt; 0]
-    imlist_clean = [im for im in imlist if im.find(&#39;File:&#39;) == -1]
-    return [url for url in imlist_clean if isurl(url) and &#39;gb/images/silhouette&#39; not in url]</code></pre>
+    soup = BeautifulSoup(search_data, features=&#34;html.parser&#34;)
+    links = soup.find_all(&#39;a&#39;)    
+    urls = [tag.get(&#39;href&#39;,None) for tag in links if tag.get(&#39;href&#39;,None) is not None]
+    urls = [u.replace(&#39;/url?q=http&#39;,&#39;http&#39;) if u.startswith(&#39;/url?q=http&#39;) else u for u in urls]
+    urls = [u for u in urls if u.startswith(&#39;http&#39;) and not u.startswith(&#39;https://www.google.com&#39;)]
+    return urls</code></pre>
 </details>
 </dd>
 <dt id="vipy.annotation.verbs"><code class="name flex">
@@ -275,15 +169,16 @@ def facebookprofile(fbid, outdir=&#39;./imgs&#39;, cleanup=True, hierarchical=Fa
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/199328c3b46817bed59809e2e08f6e14b772c479/vipy/annotation.py#L48-L56" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/e53bd3dcd3455d4f4cfae64e674e6cd7e2aaec12/vipy/annotation.py#L55-L64" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def verbs():
     &#34;&#34;&#34;Return a list of verbs from verbnet that can be used to define a set of activities&#34;&#34;&#34;
     try_import(&#39;nltk&#39;); import nltk
     nltkdir = remkdir(os.path.join(os.environ[&#39;VIPY_CACHE&#39;], &#39;nltk&#39;)) if &#39;VIPY_CACHE&#39; in os.environ else tempfile.gettempdir()
     os.environ[&#39;NLTK_DATA&#39;] = nltkdir
-    print(&#39;[vipy.annotation.verbs]: Downloading verbnet to &#34;%s&#34;&#39; % tempfile.gettempdir())
-    nltk.download(&#39;verbnet&#39;, tempfile.gettempdir())
+    print(&#39;[vipy.annotation.verbs]: Downloading verbnet to &#34;%s&#34;&#39; % nltkdir)    
+    nltk.download(&#39;verbnet&#39;, nltkdir)
+    nltk.data.path.append(nltkdir)
     from nltk.corpus import verbnet
     return verbnet.lemmas()</code></pre>
 </details>
@@ -358,8 +253,6 @@ setTimeout(() => input.focus(), 100);
 <li><h3><a href="#header-functions">Functions</a></h3>
 <ul class="">
 <li><code><a title="vipy.annotation.basic_level_categories" href="#vipy.annotation.basic_level_categories">basic_level_categories</a></code></li>
-<li><code><a title="vipy.annotation.facebookprofile" href="#vipy.annotation.facebookprofile">facebookprofile</a></code></li>
-<li><code><a title="vipy.annotation.facebookprofilerange" href="#vipy.annotation.facebookprofilerange">facebookprofilerange</a></code></li>
 <li><code><a title="vipy.annotation.googlesearch" href="#vipy.annotation.googlesearch">googlesearch</a></code></li>
 <li><code><a title="vipy.annotation.verbs" href="#vipy.annotation.verbs">verbs</a></code></li>
 </ul>
@@ -368,7 +261,7 @@ setTimeout(() => input.focus(), 100);
 </nav>
 </main>
 <footer id="footer">
-<p>Generated by <a href="https://pdoc3.github.io/pdoc" title="pdoc: Python API documentation generator"><cite>pdoc</cite> 0.9.2</a>.</p>
+<p>Generated by <a href="https://pdoc3.github.io/pdoc" title="pdoc: Python API documentation generator"><cite>pdoc</cite> 0.10.0</a>.</p>
 </footer>
 </body>
 </html>
