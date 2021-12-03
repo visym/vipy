@@ -66,7 +66,7 @@ class Dataset():
         if isinstance(objlist, str) and (vipy.util.isjsonfile(objlist) or vipy.util.ispklfile(objlist)):
             self._objlist = vipy.util.load(objlist, abspath=abspath)
         elif isinstance(objlist, str) and os.path.isdir(objlist):
-            self._objlist = vipy.util.listjson(objlist) + vipy.util.listpkl(objlist)
+            self._objlist = vipy.util.findjson(objlist) + vipy.util.findpkl(objlist)  # recursive
             self._loader = lambda x,b=abspath:  vipy.util.load(x, abspath=b) if (vipy.util.ispkl(x) or vipy.util.isjsonfile(x)) else x
             self._istype_strict = False
             self._lazy_loader = True
@@ -460,6 +460,12 @@ class Dataset():
         D = self if category is None else self.clone().filter(lambda v: v.category() == category())
         return [D[int(k)] for k in np.random.permutation(range(len(D)))][0:n]  # native python int
 
+    def load(self):
+        """Load the entire dataset into memory.  This is useful for creating in-memory datasets from lazy load datasets"""
+        self._objlist = self.list()
+        self._loader = lambda x: x
+        return self
+
     def take(self, n, category=None, canload=False):
         return Dataset(self.takelist(n, category=category, canload=canload))
 
@@ -478,11 +484,10 @@ class Dataset():
         assert valfraction >=0 and valfraction <= 1
         assert testfraction >=0 and testfraction <= 1
         assert trainfraction + valfraction + testfraction == 1.0
-
-        np.random.seed(seed)
-        A = self.list()
+        np.random.seed(seed)  # deterministic
         
         # Video ID assignment
+        A = self.list()
         videoid = list(set([a.videoid() for a in A]))
         np.random.shuffle(videoid)
         (testid, valid, trainid) = vipy.util.dividelist(videoid, (testfraction, valfraction, trainfraction))        
@@ -492,10 +497,11 @@ class Dataset():
                                        d['testset'] if 'testset' in d else [], 
                                        d['valset'] if 'valset' in d else [])
 
-        print('[vipy.dataset]: trainset=%d (%1.1f)' % (len(trainset), trainfraction))
-        print('[vipy.dataset]: valset=%d (%1.1f)' % (len(valset), valfraction))
-        print('[vipy.dataset]: testset=%d (%1.1f)' % (len(testset), testfraction))
-        
+        print('[vipy.dataset]: trainset=%d (%1.2f)' % (len(trainset), trainfraction))
+        print('[vipy.dataset]: valset=%d (%1.2f)' % (len(valset), valfraction))
+        print('[vipy.dataset]: testset=%d (%1.2f)' % (len(testset), testfraction))
+        np.random.seed()  # re-initialize seed
+
         return (Dataset(trainset, id='trainset'), Dataset(valset, id='valset'), Dataset(testset, id='testset') if len(testset)>0 else None)
 
     def tocsv(self, csvfile=None):
@@ -538,7 +544,7 @@ class Dataset():
         from vipy.batch import Batch   # requires pip install vipy[all]
 
         # Distributed map using vipy.batch
-        f_serialize = lambda v,d=vipy.util.class_registry(): (str(type(v)), v.json()) if str(type(v)) in d else (None, json.dumps(v, ensure_ascii=False))  # fallback on JSON dumps/loads
+        f_serialize = lambda v,d=vipy.util.class_registry(): (str(type(v)), v.json()) if str(type(v)) in d else (None, pickle.dumps(v))  # fallback on PKL dumps/loads
         f_deserialize = lambda x,d=vipy.util.class_registry(): d[x[0]](x[1])  # with closure capture
         f_catcher = vipy.util.catcher  # catch exceptions when executing lambda and return (True, result) or (False, exception)
         S = [f_serialize(v) for v in self._objlist]  # local serialization
@@ -768,7 +774,7 @@ class Dataset():
         assert self._is_vipy_scene()
         outdir = vipy.util.remkdir(outdir)
         vipy.batch.Batch(self.list(), as_completed=True).map(lambda v, f=f_video_to_tensor, outdir=outdir, n_augmentations=n_augmentations: vipy.util.bz2pkl(os.path.join(outdir, '%s.pkl.bz2' % v.instanceid()), [f(v.print(sleep=sleep).clone()) for k in range(0, n_augmentations)]))
-        return vipy.torch.TorchTensordir(outdir)
+        return vipy.torch.Tensordir(outdir)
 
     def annotate(self, outdir, mindim=512):
         assert self._isvipy()

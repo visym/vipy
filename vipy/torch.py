@@ -150,16 +150,17 @@ class TorchDataset(torch.utils.data.Dataset):
         return len(self.dataset)
 
 
-class TorchTensordir(torch.utils.data.Dataset):
+class Tensordir(torch.utils.data.Dataset):
     """A torch dataset stored as a directory of .pkl.bz2 files each containing a list of [(tensor, str=json.dumps(label)), ...] tuples used for data augmented training.
     
-       This is useful to use the default Dataset loaders in Torch.
+    This is useful to use the default Dataset loaders in Torch.
     
-       Usage:
-        
-       >>> vipy.torch.Tensordir('/path/to')
-       >>> vipy.torch.Tensordir( ('/path/to/1', '/path/to/2') )
-           
+    Usage:
+
+    ```python
+    vipy.torch.Tensordir('/path/to')
+    vipy.torch.Tensordir( ('/path/to/1', '/path/to/2') )
+    ```
     .. note:: This requires python random() and not numpy random 
     """
     def __init__(self, tensordir, verbose=True, reseed=True, take=None):
@@ -194,6 +195,10 @@ class TorchTensordir(torch.utils.data.Dataset):
         return self
 
     def filter(self, f):
+        """Keep elements that lambda evaluates true. The lambda operates on the *filename* for the tensordir and not the contents"""
+        assert callable(f)
         self._dirlist = [x for x in self._dirlist if f(x)]
         return self
     
+class TorchTensordir(Tensordir):
+    pass  # alias for backwards compatibility

@@ -69,7 +69,7 @@ def class_registry():
     except:
         registry.update( {"<class 'pycollector.admin.video.Video'>":lambda x: exec("raise ValueError(\"<class 'pycollector.admin.video.Video'> not found - This is for admin use only \")")})        
 
-    registry.update( {None:json.loads} )  # fallback on generic JSON dumps
+    registry.update( {None: cPickle.loads} )  # fallback on generic pickel dumps
     return registry
             
 
