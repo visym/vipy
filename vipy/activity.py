@@ -50,7 +50,7 @@ class Activity(object):
             self._id = id  # use provided
         self._startframe = int(startframe)
         self._endframe = int(endframe)
-        self._framerate = framerate
+        self._framerate = float(framerate)
         self._label = category if category is not None else label        
         self._shortlabel = self._label if shortlabel is None else shortlabel
         self._trackid = trackid
@@ -147,7 +147,7 @@ class Activity(object):
 
     def _set_framerate(self, fps):
         """Override framerate conversion and just set the framerate attribute.  This should really be set only in constructor.  Use with caution!"""
-        self._framerate = fps
+        self._framerate = float(fps)
         return self
 
     def framerate(self, fps=None, speed=None):
@@ -161,9 +161,9 @@ class Activity(object):
             assert fps is None or fps > 0, "Invalid framerate"
             assert self._framerate is not None, "Framerate conversion requires that the framerate is known for current activities.  This must be provided to the vipy.object.Activity() constructor."
 
-            fps = fps if fps is not None else (1.0/speed)*self._framerate            
+            fps = float(fps) if fps is not None else (1.0/speed)*self._framerate            
             (self._startframe, self._endframe) = [int(np.round(f*(fps/float(self._framerate)))) for f in (self._startframe, self._endframe)]
-            self._framerate = fps
+            self._framerate = float(fps)
             return self
     
     def category(self, label=None, shortlabel=None):

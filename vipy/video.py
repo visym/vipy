@@ -1085,7 +1085,7 @@ class Video(object):
         """Change the input framerate for the video and update frame indexes for all annotations
 
         Args:
-            fps: Float frames per second to process the underlying video
+            fps: [Float] frames per second to process the underlying video
 
         Returns:
             If fps is None, return the current framerate, otherwise set the framerate to fps
@@ -1093,21 +1093,21 @@ class Video(object):
         """
         if fps is None:
             return self._framerate
-        elif fps == self._framerate:
+        elif float(fps) == self._framerate:
             return self
         else:            
             assert not self.isloaded(), "Filters can only be applied prior to load()"
             if 'fps=' in self._ffmpeg_commandline():
-                self._update_ffmpeg('fps', fps)  # replace fps filter, do not add to it
+                self._update_ffmpeg('fps', float(fps))  # replace fps filter, do not add to it
             else:
-                self._ffmpeg = self._ffmpeg.filter('fps', fps=fps, round='up')  # create fps filter first time
+                self._ffmpeg = self._ffmpeg.filter('fps', fps=float(fps), round='up')  # create fps filter first time
         
             # if '-ss' in self._ffmpeg_commandline():
             #     No change is needed here.  The seek is in seconds and is independent of the framerate
             # if 'trim' in self._ffmpeg_commandline():
             #     No change is needed here.  The trim is in units of seconds which is independent of the framerate
 
-            self._framerate = fps
+            self._framerate = float(fps)
             return self
             
     def colorspace(self, colorspace=None):
@@ -3241,13 +3241,13 @@ class Scene(VideoCategory):
         ```
 
         """
-        
         if fps is None:
             return self._framerate
-        elif fps == self._framerate:
+        elif float(fps) == self._framerate:
             return self
         else:
             assert not self.isloaded(), "Filters can only be applied prior to load() - Try calling flush() first"
+            fps = float(fps)
             self._startframe = int(round(self._startframe * (fps/self._framerate))) if self._startframe is not None else self._startframe  # __repr__ only
             self._endframe = int(round(self._endframe * (fps/self._framerate))) if self._endframe is not None else self._endframe  # __repr__only
             self._tracks = {k:t.framerate(fps) for (k,t) in self.tracks().items()}

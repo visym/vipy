@@ -390,7 +390,7 @@ class Track(object):
 
         .. warning::  This should really only be set by the user in the constructor and is included here as an admin override for some legacy JSON that did not contain framerates.  Use with caution!
         """
-        self._framerate = fps
+        self._framerate = float(fps)
         return self
 
     def framerate(self, fps=None, speed=None):
@@ -412,7 +412,7 @@ class Track(object):
         assert not (fps is not None and speed is not None), "Invalid input"
         assert speed is None or speed > 0, "Invalid speed, must specify speed multiplier s=1, s=2 for 2x faster, s=0.5 for half slower"
         
-        fps = fps if fps is not None else (1.0/speed)*self._framerate
+        fps = float(fps) if fps is not None else (1.0/speed)*self._framerate
         self._keyframes = [int(np.round(f*(fps/float(self._framerate)))) for f in self._keyframes]
         self._framerate = fps
         return self
