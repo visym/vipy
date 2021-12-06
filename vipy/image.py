@@ -116,7 +116,7 @@ class Image(object):
         self._url = url
         if array is not None:
             assert isnumpy(array), 'Invalid Array - Type "%s" must be np.array()' % (str(type(array)))
-        self.array(array)
+        self.array(array)  # shallow copy
 
         # Guess RGB colorspace if three channel uint8 if colorspace is not provided
         colorspace = 'rgb' if (self.isloaded() and self.channels() == 3 and self._array.dtype == np.uint8 and colorspace is None) else colorspace

@@ -245,7 +245,7 @@ class Stream(object):
                         k += 1
                         
                     if img is not None:
-                        yield self._video.frame(f, img)  # yield a vipy.image.Scene object with annotations at frame f, using the latest annotation from the shared video object                        
+                        yield self._video.frame(f, img)  # yield a vipy.image.Scene object with annotations at frame f, using the latest annotation from the shared video object and shallow copy of img
                         if b is not None and self._is_stream_buffer_owner:
                             if len(b) > self._bufsize:
                                 del b[min(b.keys())]  # remove oldest frame from stream buffer
@@ -332,11 +332,11 @@ class Stream(object):
                     # The delay shifts the clip +delay frames (1,2,3), (3,4,5), ... for n=3, m=2, delay=1                
                     frames.extend(newframes)
                     (frames, newframes) = (frames[-n:], [])
-                    queue.put( (v.clear().clone(shallow=True).fromframes(frames), k) )
+                    queue.put( (v.clear().clone(shallow=True).fromframes(frames), k) )  # fromframes() triggers array copy of frames
                 elif continuous:
                     queue.put( (None, k) )
             if ragged and len(newframes) > 0:
-                queue.put( (v.clear().clone(shallow=True).fromframes(newframes), k) )
+                queue.put( (v.clear().clone(shallow=True).fromframes(newframes), k) )  # fromframes() triggers array copy of newframes
             queue.put( (None, None) )
             event.wait()            
 
@@ -1891,6 +1891,8 @@ class Video(object):
     
     def crop(self, bbi, zeropad=True):
         """Spatially crop the video using the supplied vipy.geometry.BoundingBox, can only be applied prior to load().
+        
+        .. note:: Crop is performed in place overwriting pixels of self.array().  Clone() before crop() if array() must be preserved.
         """
         assert isinstance(bbi, vipy.geometry.BoundingBox), "Invalid input"
         bbc = bbi.clone().imclipshape(self.width(), self.height()).int()  # clipped box to image rectangle
