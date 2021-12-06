@@ -212,7 +212,7 @@ class Track(object):
         self._id = uuid.uuid4().hex if trackid is None else trackid
         self._label = category if category is not None else label
         self._shortlabel = self._label if shortlabel is None else shortlabel
-        self._framerate = framerate
+        self._framerate = float(framerate) if framerate is not None else framerate
         self._interpolation = interpolation
         self._boundary = boundary
         self.attributes = attributes.copy() if attributes is not None else {}  # shallow copy

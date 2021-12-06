@@ -50,7 +50,7 @@ class Activity(object):
             self._id = id  # use provided
         self._startframe = int(startframe)
         self._endframe = int(endframe)
-        self._framerate = float(framerate)
+        self._framerate = float(framerate) if framerate is not None else framerate
         self._label = category if category is not None else label        
         self._shortlabel = self._label if shortlabel is None else shortlabel
         self._trackid = trackid
