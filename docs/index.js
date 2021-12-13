@@ -4845,19 +4845,9 @@ INDEX=[
 "doc":"Converter from a pycollector dataset to a torch dataset"
 },
 {
-"ref":"vipy.torch.TorchDataset.functions",
-"url":7,
-"doc":""
-},
-{
 "ref":"vipy.torch.Tensordir",
 "url":7,
 "doc":"A torch dataset stored as a directory of .pkl.bz2 files each containing a list of [(tensor, str=json.dumps(label ,  .] tuples used for data augmented training. This is useful to use the default Dataset loaders in Torch. Usage:   vipy.torch.Tensordir('/path/to') vipy.torch.Tensordir( ('/path/to/1', '/path/to/2') )    note This requires python random() and not numpy random"
-},
-{
-"ref":"vipy.torch.Tensordir.functions",
-"url":7,
-"doc":""
 },
 {
 "ref":"vipy.torch.Tensordir.take",
@@ -4875,11 +4865,6 @@ INDEX=[
 "ref":"vipy.torch.TorchTensordir",
 "url":7,
 "doc":"A torch dataset stored as a directory of .pkl.bz2 files each containing a list of [(tensor, str=json.dumps(label ,  .] tuples used for data augmented training. This is useful to use the default Dataset loaders in Torch. Usage:   vipy.torch.Tensordir('/path/to') vipy.torch.Tensordir( ('/path/to/1', '/path/to/2') )    note This requires python random() and not numpy random"
-},
-{
-"ref":"vipy.torch.TorchTensordir.functions",
-"url":7,
-"doc":""
 },
 {
 "ref":"vipy.torch.TorchTensordir.filter",
@@ -5103,7 +5088,7 @@ INDEX=[
 {
 "ref":"vipy.video.Video.framerate",
 "url":8,
-"doc":"Change the input framerate for the video and update frame indexes for all annotations Args: fps: Float frames per second to process the underlying video Returns: If fps is None, return the current framerate, otherwise set the framerate to fps",
+"doc":"Change the input framerate for the video and update frame indexes for all annotations Args: fps: [Float] frames per second to process the underlying video Returns: If fps is None, return the current framerate, otherwise set the framerate to fps",
 "func":1
 },
 {
@@ -5475,7 +5460,7 @@ INDEX=[
 {
 "ref":"vipy.video.Video.crop",
 "url":8,
-"doc":"Spatially crop the video using the supplied vipy.geometry.BoundingBox, can only be applied prior to load().",
+"doc":"Spatially crop the video using the supplied vipy.geometry.BoundingBox, can only be applied prior to load().  note Crop is performed in place overwriting pixels of self.array(). Clone() before crop() if array() must be preserved.",
 "func":1
 },
 {
@@ -5810,7 +5795,7 @@ INDEX=[
 {
 "ref":"vipy.video.VideoCategory.framerate",
 "url":8,
-"doc":"Change the input framerate for the video and update frame indexes for all annotations Args: fps: Float frames per second to process the underlying video Returns: If fps is None, return the current framerate, otherwise set the framerate to fps",
+"doc":"Change the input framerate for the video and update frame indexes for all annotations Args: fps: [Float] frames per second to process the underlying video Returns: If fps is None, return the current framerate, otherwise set the framerate to fps",
 "func":1
 },
 {
@@ -6158,7 +6143,7 @@ INDEX=[
 {
 "ref":"vipy.video.VideoCategory.crop",
 "url":8,
-"doc":"Spatially crop the video using the supplied vipy.geometry.BoundingBox, can only be applied prior to load().",
+"doc":"Spatially crop the video using the supplied vipy.geometry.BoundingBox, can only be applied prior to load().  note Crop is performed in place overwriting pixels of self.array(). Clone() before crop() if array() must be preserved.",
 "func":1
 },
 {
@@ -13125,7 +13110,7 @@ INDEX=[
 {
 "ref":"vipy.flow.Video.framerate",
 "url":8,
-"doc":"Change the input framerate for the video and update frame indexes for all annotations Args: fps: Float frames per second to process the underlying video Returns: If fps is None, return the current framerate, otherwise set the framerate to fps",
+"doc":"Change the input framerate for the video and update frame indexes for all annotations Args: fps: [Float] frames per second to process the underlying video Returns: If fps is None, return the current framerate, otherwise set the framerate to fps",
 "func":1
 },
 {
@@ -13461,7 +13446,7 @@ INDEX=[
 {
 "ref":"vipy.flow.Video.crop",
 "url":8,
-"doc":"Spatially crop the video using the supplied vipy.geometry.BoundingBox, can only be applied prior to load().",
+"doc":"Spatially crop the video using the supplied vipy.geometry.BoundingBox, can only be applied prior to load().  note Crop is performed in place overwriting pixels of self.array(). Clone() before crop() if array() must be preserved.",
 "func":1
 },
 {

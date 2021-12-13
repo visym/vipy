@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1" />
-<meta name="generator" content="pdoc 0.10.0" />
+<meta name="generator" content="pdoc 0.9.2" />
 <title>vipy.visualize API documentation</title>
 <meta name="description" content="" />
 <link rel="preload stylesheet" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/10up-sanitize.css/11.0.1/sanitize.min.css" integrity="sha256-PK9q560IAAa6WVRRh76LtCaI8pjTJ2z11v0miyNNjrs=" crossorigin>
@@ -25,7 +25,7 @@
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/dd3a42650ca0dedfbd29c0f2538d5c4b0c7f2af8/vipy/visualize.py#L1-L651" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/7ab10d19b1ec59cb8060aa8445299b8f68d25e25/vipy/visualize.py#L0-L650" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">import os
 import numpy as np
@@ -726,9 +726,6 @@ if None, nothing is displayed</dd>
 <dd>an html font-size string (e.g. "large", "x-large") for the upper left text</dd>
 </dl>
 <p>ultextoffset [tuple): An offset in (x=pixels, y=pixels) of the origin of the upper left text</p>
-<h2 id="returns">Returns</h2>
-<p>A standalone html file that renders each url in montage such that hovering over elements in the montage will show the url in a magnifier.
-</p>
 <div class="admonition note">
 <p class="admonition-title">Note</p>
 <ul>
@@ -740,7 +737,7 @@ if None, nothing is displayed</dd>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/dd3a42650ca0dedfbd29c0f2538d5c4b0c7f2af8/vipy/visualize.py#L20-L165" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/7ab10d19b1ec59cb8060aa8445299b8f68d25e25/vipy/visualize.py#L20-L165" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def hoverpixel(urls, outfile=None, pixelsize=32, sortby=&#39;color&#39;, loupe=True, hoversize=512, ultext=None, display=False, ultextcolor=&#39;white&#39;, ultextsize=&#39;large&#39;, aspectratio=2560/1440, ultextoffset=(16,16)):
     &#34;&#34;&#34;Generate a standalone hoverpixel visualization.
@@ -906,15 +903,13 @@ if None, nothing is displayed</dd>
 </dl>
 <p>fullscreen [bool]: If true, include an expand button next to the selector to put the hoverpixel iframe into fullscreen mode.
 Be sure to add allowfullscreen to the iframe.</p>
-<h2 id="returns">Returns</h2>
-<p>An HTML file that loads the hoverpixel HTML in an iframe with an overlaid dropdown menu to select which hoverpixel animation is displayed</p>
 <div class="admonition note">
 <p class="admonition-title">Note:&ensp;The fullscreen display will not work on iPhone since it is unsupported.</p>
 </div></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/dd3a42650ca0dedfbd29c0f2538d5c4b0c7f2af8/vipy/visualize.py#L168-L233" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/7ab10d19b1ec59cb8060aa8445299b8f68d25e25/vipy/visualize.py#L168-L233" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def hoverpixel_selector(htmllist, legendlist, outfile=None, display=False, offset=(60, 80), fullscreen=True, ultext=None, ultextcolor=&#39;white&#39;, ultextsize=&#39;large&#39;, ultextoffset=(16,16)):
     &#34;&#34;&#34;Create a dropdown selector of hoverpixel visualizations by legend.
@@ -992,7 +987,7 @@ Be sure to add allowfullscreen to the iframe.</p>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/dd3a42650ca0dedfbd29c0f2538d5c4b0c7f2af8/vipy/visualize.py#L559-L604" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/7ab10d19b1ec59cb8060aa8445299b8f68d25e25/vipy/visualize.py#L559-L604" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def imagelist(list_of_image_files, outdir, title=&#39;Image Visualization&#39;, imagewidth=64):
     &#34;&#34;&#34;Given a list of image filenames wth absolute paths, copy to outdir, and create an index.html file that visualizes each.    
@@ -1050,7 +1045,7 @@ Be sure to add allowfullscreen to the iframe.</p>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/dd3a42650ca0dedfbd29c0f2538d5c4b0c7f2af8/vipy/visualize.py#L607-L651" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/7ab10d19b1ec59cb8060aa8445299b8f68d25e25/vipy/visualize.py#L607-L651" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def imagetuplelist(list_of_tuples_of_image_files, outdir, title=&#39;Image Visualization&#39;, imagewidth=64):
     &#34;&#34;&#34;Imagelist but put tuples on same row&#34;&#34;&#34;
@@ -1146,7 +1141,7 @@ display optional verbose messages</dd>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/dd3a42650ca0dedfbd29c0f2538d5c4b0c7f2af8/vipy/visualize.py#L271-L349" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/7ab10d19b1ec59cb8060aa8445299b8f68d25e25/vipy/visualize.py#L271-L349" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def montage(imlist, imgheight, imgwidth, gridrows=None, gridcols=None, aspectratio=1, crop=False, skip=True, border=1, border_bgr=(128,128,128), do_flush=False, verbose=False):
     &#34;&#34;&#34;Create a montage image from the of provided list of vipy.image.Image objects.
@@ -1252,7 +1247,7 @@ Returns:
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/dd3a42650ca0dedfbd29c0f2538d5c4b0c7f2af8/vipy/visualize.py#L236-L257" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/7ab10d19b1ec59cb8060aa8445299b8f68d25e25/vipy/visualize.py#L236-L257" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def mosaic(videos, gridrows=None, gridcols=None):
     &#34;&#34;&#34;Create a mosaic iterator from an iterable of videos.
@@ -1303,7 +1298,7 @@ Returns:
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/dd3a42650ca0dedfbd29c0f2538d5c4b0c7f2af8/vipy/visualize.py#L449-L514" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/7ab10d19b1ec59cb8060aa8445299b8f68d25e25/vipy/visualize.py#L449-L514" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def tohtml(imlist, imdict=None, title=&#39;Image Visualization&#39;, mindim=1024, outfile=None, display=False):
     &#34;&#34;&#34;Given a list of vipy.image.Image objects, show the images along with the dictionary contents of imdict (one per image) in a single standalone HTML file
@@ -1394,7 +1389,7 @@ Returns:
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/dd3a42650ca0dedfbd29c0f2538d5c4b0c7f2af8/vipy/visualize.py#L390-L445" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/7ab10d19b1ec59cb8060aa8445299b8f68d25e25/vipy/visualize.py#L390-L445" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def urls(urllist, title=&#39;URL Visualization&#39;, imagewidth=1024, outfile=None, display=False):
     &#34;&#34;&#34;Given a list of public image URLs, create a stand-alone HTML page to show them all.
@@ -1462,7 +1457,7 @@ Returns:
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/dd3a42650ca0dedfbd29c0f2538d5c4b0c7f2af8/vipy/visualize.py#L517-L555" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/7ab10d19b1ec59cb8060aa8445299b8f68d25e25/vipy/visualize.py#L517-L555" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def videolist(vidlist, viddict=None, title=&#39;Video Visualization&#39;, outfile=None, display=False):
     &#34;&#34;&#34;Create a standalone HTML file that will visualize the set of videos in vidlist using HTML5 video player&#34;&#34;&#34;
@@ -1521,9 +1516,6 @@ All of the input videos are resampled to this common frame rate</dd>
 <dt><strong><code>max_duration</code></strong></dt>
 <dd>[float] If not None, the maximum diuration of any element in the montage before it cycles</dd>
 </dl>
-<h2 id="returns">Returns</h2>
-<p>An video file in outfile that shows each video tiled into a montage.
-<Like <a href="https://www.youtube.com/watch?v=HjNa7_T-Xkc">https://www.youtube.com/watch?v=HjNa7_T-Xkc</a>></p>
 <div class="admonition warning">
 <p class="admonition-title">Warning</p>
 <ul>
@@ -1534,7 +1526,7 @@ All of the input videos are resampled to this common frame rate</dd>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/dd3a42650ca0dedfbd29c0f2538d5c4b0c7f2af8/vipy/visualize.py#L352-L387" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/7ab10d19b1ec59cb8060aa8445299b8f68d25e25/vipy/visualize.py#L352-L387" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def videomontage(vidlist, imgheight, imgwidth, gridrows=None, gridcols=None, aspectratio=1, crop=False, skip=True, border=1, border_bgr=(128,128,128), do_flush=False, verbose=True, framerate=30.0, max_duration=None):
     &#34;&#34;&#34;Generate a video montage for the provided videos by creating a image montage for every frame.  
@@ -1589,7 +1581,7 @@ This assumes that the videos are showing the same timestamps like in a security 
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/dd3a42650ca0dedfbd29c0f2538d5c4b0c7f2af8/vipy/visualize.py#L260-L268" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/7ab10d19b1ec59cb8060aa8445299b8f68d25e25/vipy/visualize.py#L260-L268" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def videomosaic(videos, gridrows=None, gridcols=None):
     &#34;&#34;&#34;Return a mosaic video from an iterable of videos.  
@@ -1688,7 +1680,7 @@ setTimeout(() => input.focus(), 100);
 </nav>
 </main>
 <footer id="footer">
-<p>Generated by <a href="https://pdoc3.github.io/pdoc" title="pdoc: Python API documentation generator"><cite>pdoc</cite> 0.10.0</a>.</p>
+<p>Generated by <a href="https://pdoc3.github.io/pdoc" title="pdoc: Python API documentation generator"><cite>pdoc</cite> 0.9.2</a>.</p>
 </footer>
 </body>
 </html>
