@@ -747,7 +747,7 @@ class Video(object):
         return vo
     
 
-    def stream(self, write=False, overwrite=False, queuesize=1024, bitrate=None, buffered=False, rebuffered=False, bufsize=256):
+    def stream(self, write=False, overwrite=False, queuesize=512, bitrate=None, buffered=False, rebuffered=False, bufsize=256):
         """Iterator to yield groups of frames streaming from video.
 
         A video stream is a real time iterator to read or write from a video.  Streams are useful to group together frames into clips that are operated on as a group.
