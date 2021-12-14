@@ -35,11 +35,19 @@ class Dask(object):
         self._num_processes = num_processes
 
         os.environ['DASK_LOGGING__DISTRIBUTED'] = 'warning' if not verbose else 'info'
-        env = {'VIPY_BACKEND':'Agg',  # headless 
+        os.environ['DASK_DISTRIBUTED__COMM__TIMEOUTS__CONNECT'] = "30s"
+        os.environ['DASK_DISTRIBUTED__COMM__TIMEOUTS__TCP'] = "30s"
+        os.environ['DASK_DISTRIBUTED__DEPLOY__LOST_WORKER_TIMEOUT'] = "30s"
+
+        dask.config.set({'DISTRIBUTED.COMM.TIMEOUTS.CONNECT'.lower():os.environ['DASK_DISTRIBUTED__COMM__TIMEOUTS__CONNECT']})
+        dask.config.set({'DISTRIBUTED.COMM.TIMEOUTS.TCP'.lower():os.environ['DASK_DISTRIBUTED__COMM__TIMEOUTS__TCP']})
+        dask.config.set({'DISTRIBUTED.DEPLOY.LOST_WORKER_TIMEOUT'.lower():os.environ['DASK_DISTRIBUTED__DEPLOY__LOST_WORKER_TIMEOUT']})
+        dask.config.refresh()
+
+        # Worker env
+        env = {'VIPY_BACKEND':'Agg',  # headless in workers
                'PYTHONOPATH':os.environ['PYTHONPATH'] if 'PYTHONPATH' in os.environ else '',
-               'PATH':os.environ['PATH'] if 'PATH' in os.environ else '',
-               'DASK_DISTRIBUTED__COMM__TIMEOUTS__CONNECT':"30s",
-               'DASK_DISTRIBUTED__DEPLOY__LOST_WORKER_TIMEOUT':"30s"}
+               'PATH':os.environ['PATH'] if 'PATH' in os.environ else ''}
 
         if 'VIPY_CACHE' in os.environ:
             env.update({'VIPY_CACHE':os.environ['VIPY_CACHE']})
@@ -48,11 +56,10 @@ class Dask(object):
         if  'VIPY_AWS_SECRET_ACCESS_KEY' in os.environ:
             env.update({'VIPY_AWS_SECRET_ACCESS_KEY':os.environ['VIPY_AWS_SECRET_ACCESS_KEY']})        
                     
-        dask.config.set({'DISTRIBUTED.COMM.TIMEOUTS.CONNECT'.lower():'30s'})
-        dask.config.set({'DISTRIBUTED.COMM.TIMEOUTS.TCP'.lower():'30s'})
-        dask.config.set({'DISTRIBUTED.DEPLOY.LOST_WORKER_TIMEOUT'.lower():'30s'})
-        dask.config.refresh()
-
+        for (k,v) in os.environ.items():
+            if k.startswith('DASK_'):
+                env[k] = v
+    
         if address is not None:
             # Distributed scheduler
             self._client = Client(name='vipy', address=address)
