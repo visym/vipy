@@ -350,14 +350,17 @@ class Flow(object):
         (x2, y2) = (x1 + fx, y1 + fy)  # destination coordinates
         return (np.stack((x1,y1)), np.stack((x2,y2)))
         
-    def stabilize(self, v, keystep=20, padheightfrac=0.125, padwidthfrac=0.25, padheightpx=None, padwidthpx=None, border=0.1, dilate=1.0, contrast=16.0/255.0, rigid=False, affine=True, verbose=True, strict=True, residual=False, maxflow=None, outfile=None, preload=True): 
+    def stabilize(self, v, keystep=20, padheightfrac=0.125, padwidthfrac=0.25, padheightpx=None, padwidthpx=None, border=0.1, dilate=1.0, contrast=16.0/255.0, rigid=False, affine=True, verbose=True, strict=True, residual=False, maxflow=None, outfile=None, preload=True, framerate=5): 
         """Affine stabilization to frame zero using multi-scale optical flow correspondence with foreground object keepouts.  
 
-        Recommended usage:
+        Recommended usage:  use the `vipy.video.Scene.stabilize` method on a `vipy.video.Video` object.
 
-        >>> v = vipy.video.Scene(filename='/path/to/my/video.mp4').stabilize()
+        ```python
+        v = vipy.video.Scene(filename='/path/to/my/video.mp4').stabilize()
+        ```
 
         Args:
+
             v: [`vipy.video.Scene`]:  The input video to stabilize, should be resized to mindim=256
             keystep: [int]  The local stabilization step between keyframes (should be <= 30)
             padheightfrac: [float] The height padding (relative to video height) to be applied to output video to allow for vertical stabilization
@@ -372,9 +375,11 @@ class Flow(object):
             verbose: [bool]  This takes a while to run so show some progress ...
             strict: [bool]  If true, throw an exception on error, otherwise return the original video and set v.hasattribute('unstabilized'), useful for large scale stabilization
             outfile: [str] the file path to the stabilized output video
-            preload [bool]: If true, load the input video into memory before stabilizing.  Fasterm but requires video to fit into memory.
+            preload [bool]: If true, load the input video into memory before stabilizing.  Faster, but requires video to fit into memory.
+            framerate [float]: The framerate at which to compute the stabilization.  Videos will be stabilized at the native framerate of the input video, but will be linearly interpolated between keyframes aligned at this framerate
 
         Returns:
+
             A cloned `vipy.video.Scene` with filename=outfile, such that pixels and tracks are background stabilized.
 
         .. notes::
@@ -382,29 +387,29 @@ class Flow(object):
             - If the video contains objects, the object boxes will be transformed along with the stabilization 
             - This requires loading videos entirely into memory.  Be careful with stabilizing long videos.
             - The returned video has the attribute 'stabilize' which contains the mean and median residual of the flow field relative to the motion model. This can be used for stabilization quality filtering.
-    
+            - Higher framerates result in more accurate stabilization, but take significantly longer. 
+
         """
         vc = v.clone()  # clone to avoid memory leaks in distributed processing
         vc = vc.saveas(tempMP4()) if vc.isloaded() else vc  # dump to temp file if loaded
         
-        assert isinstance(vc, vipy.video.Scene), "Invalid input - Must be vipy.video.Scene() with foreground object keepouts for background stabilization"
-        if verbose and vc.framerate() != 5:  # stabilization optimized for framerate=5.0Hz
-            warnings.warn('Optimal framerate for vipy.flow.stabilize is 5.0 Hz.  Set this with v.framerate(5).')
-            if vc.framerate() > 5:
-                warnings.warn('High framerate for stabilization - this will take a while ...')
-                    
+        assert isinstance(vc, vipy.video.Scene), "Invalid input - Must be vipy.video.Scene() with foreground objects which provide keepouts for background stabilization"
+        assert framerate>0 and framerate <= vc.framerate(), "Invalid framerate"
+        vc = vc.framerate(framerate)  # resample to lower framerate
+
         # Prepare videos
         vv = vc.cropeven()  # make even for zero pad
         (padwidth, padheight) = (int(vv.width()*padwidthfrac) if padwidthpx is None else padwidthpx, int(vv.height()*padheightfrac) if padheightpx is None else padheightpx)  # width() height() triggers single frame fetch
         outfile = premkdir(outfile if outfile is not None else tempMP4())
-        vs = vv.clone(flushforward=True, flushfilter=True).filename(outfile if outfile is not None else tempMP4()).nourl().cleartracks()   # does not trigger load
+        vs = vv.clone(flushforward=True, flushfilter=True).filename(outfile if outfile is not None else tempMP4()).nourl().cleartracks().framerate(v.framerate())   # stabilized video, does not trigger load, at input framerate
+        vic = v.clone().cropeven()  # input video 
         s = vv.mindim() / float(self._mindim)  # for upsample
         vvd = vv.clone().mindim(self._mindim)  # downsampled for flow correspondence        
         if preload:
-            (vv, vvd) = (vv.load(), vvd.load())  # Faster, but requires lots of memory, replace with stream, replace all frame() calls
+            (vv, vvd) = (vv.load(), vvd.load())  # Faster for random frame access, but requires lots of memory
         assert preload, "preload=True is required for now"
 
-        # Stabilization
+        # Stabilization parameters
         assert rigid is True or affine is True, "Projective stabilization is disabled"
         (A, T) = (np.array([ [1,0,0],[0,1,0],[0,0,1] ]).astype(np.float64), np.array([[1,0,padwidth],[0,1,padheight],[0,0,1]]).astype(np.float64))        
         f_estimate_coarse = ((lambda s, *args, **kw: np.vstack( (cv2.estimateAffinePartial2D(s, *args, **kw)[0], [0,0,1])).astype(np.float64)) if rigid else
@@ -415,57 +420,68 @@ class Flow(object):
         f_transform_coarse = (lambda A: A[0:2,:])
         f_transform_fine = (lambda A: A[0:2,:]) if (rigid or affine) else (lambda A: A)
         imstabilized = vv.preview(0).rgb().zeropad(padwidth, padheight)  # single frame fetch
-        duration = vv.duration_in_frames_of_videofile() if not preload else len(vv)  # FIXME: this may be off if the video filter chain has a different framerate
+        duration = len(vv)  # requires preload, duration computed at stabilization framerate
         if duration < keystep:
             print('[vipy.flow.stabilize]: ERROR - video not long enough for stabilization, returning original video "%s"' % str(v))
             return vc.setattribute('unstabilized')
         r_coarse = []
         frames = []                        
+        vs.setattribute('stabilize', {})
 
-        with vs.stream(overwrite=True) as vss:      # Create write stream for stabilized video to avoid pre-allocating large video in memory
-            for k in range(0, duration):  # stream original video to avoid pre-loading large video into memory
-                if verbose and k==0:
-                    print('[vipy.flow.stabilize]: %s coarse to fine stabilization ...' % ('Euclidean' if rigid else 'Affine' if affine else 'Projective'))                
+        # Stabilization
+        for k in range(0, duration):  
+            if verbose and k==0:
+                print('[vipy.flow.stabilize]: %s coarse to fine stabilization ...' % ('Euclidean' if rigid else 'Affine' if affine else 'Projective'))                
 
-                # Optical flow (3x): use downsampled video, do not precompute to save on memory, requires random access to downsampled video
-                im = vv.frame(k)                    
-                imf = self.videoflowframe(vvd, k, duration=duration, framestep=1, flowstep=1)
-                imfk1 = self.keyflowframe(vvd, k, duration=duration, keystep=keystep)
-                imfk2 = self.keyflowframe(vvd, k, duration=duration, keystep=duration//2)
+            # Optical flow (3x): use downsampled video, do not precompute to save on memory, requires random access to downsampled video
+            im = vv.frame(k)  # native resolution
+            imf = self.videoflowframe(vvd, k, duration=duration, framestep=1, flowstep=1)
+            imfk1 = self.keyflowframe(vvd, k, duration=duration, keystep=keystep)
+            imfk2 = self.keyflowframe(vvd, k, duration=duration, keystep=duration//2)
             
-                # Coarse alignment 
-                imd = im.clone().rescale(1.0 / s)  # downsample
-                (xy_src_k0, xy_dst_k0) = self._correspondence(imf, imd, border=border, dilate=dilate, contrast=contrast, maxflow=maxflow)
-                (xy_src_k1, xy_dst_k1) = self._correspondence(imfk1, imd, border=border, dilate=dilate, contrast=contrast, maxflow=maxflow)
-                (xy_src_k2, xy_dst_k2) = self._correspondence(imfk2, imd, border=border, dilate=dilate, contrast=contrast, maxflow=maxflow)
-                (xy_src, xy_dst) = (np.hstack( (xy_src_k0, xy_src_k1, xy_src_k2) ).transpose(), np.hstack( (xy_dst_k0, xy_dst_k1, xy_dst_k2) ).transpose())  # Nx3
-                try:            
-                    M = f_estimate_coarse(s*xy_src, s*xy_dst, method=cv2.RANSAC, confidence=0.99999, ransacReprojThreshold=0.1, refineIters=16, maxIters=3000)   # upsampled correspondences
-                    r_coarse.append(np.mean(np.sqrt(np.sum(np.square(M.dot(homogenize(xy_src[::8].transpose())) - homogenize(xy_dst[::8].transpose())), axis=0))) if (residual and len(xy_src)>8) else 0)
-                except Exception as e:
-                    if not strict:
-                        print('[vipy.flow.stabilize]: ERROR - coarse alignment failed with error "%s", returning original video "%s"' % (str(e), str(v)))
-                        return vc.setattribute('unstabilized')  # for provenance
-                    raise
+            # Coarse alignment 
+            imd = im.clone().rescale(1.0 / s)  # downsample
+            (xy_src_k0, xy_dst_k0) = self._correspondence(imf, imd, border=border, dilate=dilate, contrast=contrast, maxflow=maxflow)
+            (xy_src_k1, xy_dst_k1) = self._correspondence(imfk1, imd, border=border, dilate=dilate, contrast=contrast, maxflow=maxflow)
+            (xy_src_k2, xy_dst_k2) = self._correspondence(imfk2, imd, border=border, dilate=dilate, contrast=contrast, maxflow=maxflow)
+            (xy_src, xy_dst) = (np.hstack( (xy_src_k0, xy_src_k1, xy_src_k2) ).transpose(), np.hstack( (xy_dst_k0, xy_dst_k1, xy_dst_k2) ).transpose())  # Nx3
+            try:            
+                M = f_estimate_coarse(s*xy_src, s*xy_dst, method=cv2.RANSAC, confidence=0.99999, ransacReprojThreshold=0.1, refineIters=16, maxIters=3000)   # upsampled correspondences
+                r_coarse.append(np.mean(np.sqrt(np.sum(np.square(M.dot(homogenize(xy_src[::8].transpose())) - homogenize(xy_dst[::8].transpose())), axis=0))) if (residual and len(xy_src)>8) else 0)
+            except Exception as e:
+                if not strict:
+                    print('[vipy.flow.stabilize]: ERROR - coarse alignment failed with error "%s", returning original video "%s"' % (str(e), str(v)))
+                    return vc.setattribute('unstabilized')  # for provenance
+                raise
 
-                # Fine alignment
-                A = A.dot(M)  # update coarse reference frame
-                imfine = im.clone().array(f_warp_coarse(im.numpy(), dst=imstabilized.clone().numpy(), M=f_transform_coarse(T.dot(A)), dsize=(imstabilized.width(), imstabilized.height()), borderMode=cv2.BORDER_TRANSPARENT), copy=True).objectmap(lambda o: o.projective(T.dot(A)))
-                imfinemask = f_warp_coarse(np.ones_like(im.clone().greyscale().numpy()), dst=np.zeros_like(imstabilized.numpy()), M=f_transform_coarse(T.dot(A)), dsize=(imstabilized.width(), imstabilized.height()), borderMode=cv2.BORDER_TRANSPARENT) > 0
-                imfineflow = self.imageflow(imfine, imstabilized)
-                (xy_src, xy_dst) = self._correspondence(imfineflow, imfine, border=None, dilate=dilate, contrast=contrast, validmask=imfinemask)
-                try:
-                    F = f_estimate_fine(xy_src.transpose()-np.array([padwidth, padheight]), xy_dst.transpose()-np.array([padwidth, padheight]), method=cv2.RANSAC, confidence=0.99999, ransacReprojThreshold=0.1, refineIters=64, maxIters=3000)  
-                except Exception as e:
-                    if not strict:
-                        print('[vipy.flow.stabilize]: ERROR - finealignment failed with error "%s", returning original video "%s"' % (str(e), str(v)))                    
-                        return vc.setattribute('unstabilized')  # for provenance
-                    raise
+            # Fine alignment
+            A = A.dot(M)  # update coarse reference frame
+            imfine = im.clone().array(f_warp_coarse(im.numpy(), dst=imstabilized.clone().numpy(), M=f_transform_coarse(T.dot(A)), dsize=(imstabilized.width(), imstabilized.height()), borderMode=cv2.BORDER_TRANSPARENT), copy=True).objectmap(lambda o: o.projective(T.dot(A)))
+            imfinemask = f_warp_coarse(np.ones_like(im.clone().greyscale().numpy()), dst=np.zeros_like(imstabilized.numpy()), M=f_transform_coarse(T.dot(A)), dsize=(imstabilized.width(), imstabilized.height()), borderMode=cv2.BORDER_TRANSPARENT) > 0
+            imfineflow = self.imageflow(imfine, imstabilized)
+            (xy_src, xy_dst) = self._correspondence(imfineflow, imfine, border=None, dilate=dilate, contrast=contrast, validmask=imfinemask)
+            try:
+                F = f_estimate_fine(xy_src.transpose()-np.array([padwidth, padheight]), xy_dst.transpose()-np.array([padwidth, padheight]), method=cv2.RANSAC, confidence=0.99999, ransacReprojThreshold=0.1, refineIters=64, maxIters=3000)  
+            except Exception as e:
+                if not strict:
+                    print('[vipy.flow.stabilize]: ERROR - finealignment failed with error "%s", returning original video "%s"' % (str(e), str(v)))                    
+                    return vc.setattribute('unstabilized')  # for provenance
+                raise
         
-                # Render coarse to fine stabilized frame with aligned objects
-                A = F.dot(A)  # update fine reference frame            
-                f_warp_fine(im.numpy(), dst=imstabilized._array, M=f_transform_fine(T.dot(A)), dsize=(imstabilized.width(), imstabilized.height()), borderMode=cv2.BORDER_TRANSPARENT)
-                im = im.objectmap(lambda o: o.projective(T.dot(A)))  # apply object transformation
+            # Transform for interpolated rendering 
+            A = F.dot(A)
+            f_warp_fine(im.numpy(), dst=imstabilized._array, M=f_transform_fine(T.dot(A)), dsize=(imstabilized.width(), imstabilized.height()), borderMode=cv2.BORDER_TRANSPARENT)
+            vs.attributes['stabilize'][k] = T.dot(A)  # at stabilization framerate
+
+        # Interpolated Rendering: export video at source framerate by interpolating transformation matrices at stabilization frameratex
+        with vs.stream(overwrite=True) as vss:      # Create write stream for stabilized video to avoid pre-allocating large video in memory
+            transforms = list(vs.attributes['stabilize'].values())    # transform matrices at stabilization framerate
+            imstabilized = vv.preview(0).rgb().zeropad(padwidth, padheight)  # single frame fetch
+            f_interpolate = lambda fi,R: (1-(fi-int(fi)))*R[int(fi)] + (fi-int(fi))*R[min(len(R)-1, int(fi)+1)]  # linear interpolation between transform matrices
+            for (k,im) in enumerate(vic):
+                R = f_interpolate(framerate*(k / vic.framerate()), transforms)  # interpolated transform matrix at source framerate
+                f_warp_fine(im.numpy(), dst=imstabilized._array, M=f_transform_fine(R), dsize=(imstabilized.width(), imstabilized.height()), borderMode=cv2.BORDER_TRANSPARENT)
+                im = im.objectmap(lambda o: o.projective(R))  # apply object transformation
                 if any([not o.isvalid() for o in im.objects()]):  
                     if not strict:
                         print('[vipy.flow.stabilize]: ERROR - object alignment returned degenerate bounding box, returning original video "%s"' % str(v))
@@ -474,7 +490,4 @@ class Flow(object):
                         raise ValueError('[vipy.flow.stabilize]: ERROR - object alignment returned degenerate bounding box for video "%s"' % str(v))                    
                 vss.write( im.array(imstabilized.array()) )  # assign detections to tracks in stabilized video (vs) output
 
-        vs = vs.setattribute('stabilize', {'mean residual':float(np.mean(r_coarse)), 'median residual':float(np.median(r_coarse))}) if residual else vs
-        return vs
-            
-
+        return vs.setattribute('stabilize', {'mean residual':float(np.mean(r_coarse)), 'median residual':float(np.median(r_coarse))}) if residual else vs
