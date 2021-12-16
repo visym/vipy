@@ -1987,6 +1987,7 @@ class Video(object):
         outfile = tocache(tempMP4()) if outfile is None else os.path.normpath(os.path.abspath(os.path.expanduser(outfile)))
         premkdir(outfile)  # create output directory for this file if not exists
         framerate = framerate if framerate is not None else self._framerate
+        assert vipy.util.isvideofile(outfile), "Invalid filename extension for video filename"
 
         if verbose:
             print('[vipy.video.saveas]: Saving video "%s" ...' % outfile)                      

@@ -239,6 +239,10 @@ class Flow(object):
                 warnings.warn('OpenCV not CUDA enabled - GPU acceleration is unavailable')
                 self._gpu = None
 
+        self._sparse_matcher = lambda x,y,m=cv2.BFMatcher(cv2.NORM_HAMMING).match: m(x,y)  # matcher on desc
+        self._sparse_features = lambda img, f=cv2.ORB_create().detectAndCompute: f(img,None)  # returns (kp, desc), must be greyscale
+        
+
     def __call__(self, im, imprev=None, flowstep=1, framestep=1):
         return self.videoflow(im, flowstep, framestep) if imprev is None else self.imageflow(im, imprev)
 
@@ -350,6 +354,14 @@ class Flow(object):
         (x2, y2) = (x1 + fx, y1 + fy)  # destination coordinates
         return (np.stack((x1,y1)), np.stack((x2,y2)))
         
+    def _sparse_correspondence(self, img1, img2, radius=32):
+        (kp1, desc1) = self._sparse_features(img1)
+        (kp2, desc2) = self._sparse_features(img2)
+        good_matches = [m for m in self._sparse_matcher(desc1, desc2) if (np.abs(kp1[m.queryIdx].pt[0] - kp2[m.trainIdx].pt[0]) < radius and
+                                                                          np.abs(kp1[m.queryIdx].pt[1] - kp2[m.trainIdx].pt[1]) < radius)]
+        return (np.float32([ kp1[m.queryIdx].pt for m in good_matches ]).reshape(-1,2).transpose(),
+                np.float32([ kp2[m.trainIdx].pt for m in good_matches ]).reshape(-1,2).transpose())
+
     def stabilize(self, v, keystep=20, padheightfrac=0.125, padwidthfrac=0.25, padheightpx=None, padwidthpx=None, border=0.1, dilate=1.0, contrast=16.0/255.0, rigid=False, affine=True, verbose=True, strict=True, residual=False, maxflow=None, outfile=None, preload=True, framerate=5): 
         """Affine stabilization to frame zero using multi-scale optical flow correspondence with foreground object keepouts.  
 
@@ -456,7 +468,7 @@ class Flow(object):
 
             # Fine alignment
             A = A.dot(M)  # update coarse reference frame
-            imfine = im.clone().array(f_warp_coarse(im.numpy(), dst=imstabilized.clone().numpy(), M=f_transform_coarse(T.dot(A)), dsize=(imstabilized.width(), imstabilized.height()), borderMode=cv2.BORDER_TRANSPARENT), copy=True).objectmap(lambda o: o.projective(T.dot(A)))
+            imfine = im.clone().array(f_warp_coarse(im.numpy(), dst=np.zeros_like(imstabilized.numpy()), M=f_transform_coarse(T.dot(A)), dsize=(imstabilized.width(), imstabilized.height()), borderMode=cv2.BORDER_TRANSPARENT), copy=True).objectmap(lambda o: o.projective(T.dot(A)))
             imfinemask = f_warp_coarse(np.ones_like(im.clone().greyscale().numpy()), dst=np.zeros_like(imstabilized.numpy()), M=f_transform_coarse(T.dot(A)), dsize=(imstabilized.width(), imstabilized.height()), borderMode=cv2.BORDER_TRANSPARENT) > 0
             imfineflow = self.imageflow(imfine, imstabilized)
             (xy_src, xy_dst) = self._correspondence(imfineflow, imfine, border=None, dilate=dilate, contrast=contrast, validmask=imfinemask)
@@ -464,24 +476,45 @@ class Flow(object):
                 F = f_estimate_fine(xy_src.transpose()-np.array([padwidth, padheight]), xy_dst.transpose()-np.array([padwidth, padheight]), method=cv2.RANSAC, confidence=0.99999, ransacReprojThreshold=0.1, refineIters=64, maxIters=3000)  
             except Exception as e:
                 if not strict:
-                    print('[vipy.flow.stabilize]: ERROR - finealignment failed with error "%s", returning original video "%s"' % (str(e), str(v)))                    
+                    print('[vipy.flow.stabilize]: ERROR - fine alignment failed with error "%s", returning original video "%s"' % (str(e), str(v)))                    
                     return vc.setattribute('unstabilized')  # for provenance
-                raise
+                else:
+                    raise ValueError('[vipy.flow.stabilize]: ERROR - fine alignment failed due to correspondence error')
         
             # Transform for interpolated rendering 
             A = F.dot(A)
             f_warp_fine(im.numpy(), dst=imstabilized._array, M=f_transform_fine(T.dot(A)), dsize=(imstabilized.width(), imstabilized.height()), borderMode=cv2.BORDER_TRANSPARENT)
-            vs.attributes['stabilize'][k] = T.dot(A)  # at stabilization framerate
+            vs.attributes['stabilize'][k] = A.copy()  # at stabilization framerate
 
-        # Interpolated Rendering: export video at source framerate by interpolating transformation matrices at stabilization frameratex
+
+        # Rendering: export video at source framerate
         with vs.stream(overwrite=True) as vss:      # Create write stream for stabilized video to avoid pre-allocating large video in memory
             transforms = list(vs.attributes['stabilize'].values())    # transform matrices at stabilization framerate
             imstabilized = vv.preview(0).rgb().zeropad(padwidth, padheight)  # single frame fetch
+            imref = vv.preview(0).rgb().zeropad(padwidth, padheight)  # single frame fetch
             f_interpolate = lambda fi,R: (1-(fi-int(fi)))*R[int(fi)] + (fi-int(fi))*R[min(len(R)-1, int(fi)+1)]  # linear interpolation between transform matrices
+            kref = None
+
             for (k,im) in enumerate(vic):
-                R = f_interpolate(framerate*(k / vic.framerate()), transforms)  # interpolated transform matrix at source framerate
-                f_warp_fine(im.numpy(), dst=imstabilized._array, M=f_transform_fine(R), dsize=(imstabilized.width(), imstabilized.height()), borderMode=cv2.BORDER_TRANSPARENT)
-                im = im.objectmap(lambda o: o.projective(R))  # apply object transformation
+                ki = framerate*(k / vic.framerate())  # interpolated frame
+                kr = min(int(round(ki)), len(transforms)-1)  # reference stabilization frame
+                A = transforms[kr]  # reference stabilization transform
+
+                # Refined alignment at source framerate
+                if vic.framerate() != framerate:
+                    if kref != kr:
+                        f_warp_fine(vv.frame(kr).numpy(), dst=imref._array, M=f_transform_fine(T.dot(A)), dsize=(imref.width(), imref.height()), borderMode=cv2.BORDER_TRANSPARENT) 
+                        kref = kr  # to avoid rewarping
+                    Ai = f_interpolate(ki, transforms)  # interpolated transform matrix at source framerate
+                    imfine = im.clone().array(f_warp_coarse(im.numpy(), dst=np.zeros_like(imref.numpy()), M=f_transform_coarse(T.dot(Ai)), dsize=(imref.width(), imref.height()), borderMode=cv2.BORDER_TRANSPARENT), copy=True).objectmap(lambda o: o.projective(T.dot(Ai)))
+                    imfinemask = f_warp_coarse(np.ones_like(im.clone().greyscale().numpy()), dst=np.zeros_like(imref.numpy()), M=f_transform_coarse(T.dot(Ai)), dsize=(imref.width(), imref.height()), borderMode=cv2.BORDER_TRANSPARENT) > 0
+                    imfineflow = self.imageflow(imfine, imref)  
+                    (xy_src, xy_dst) = self._correspondence(imfineflow, imfine, border=None, dilate=dilate, contrast=contrast, validmask=imfinemask)
+                    F = f_estimate_fine(xy_src.transpose()-np.array([padwidth, padheight]), xy_dst.transpose()-np.array([padwidth, padheight]), method=cv2.RANSAC, confidence=0.99999, ransacReprojThreshold=0.1, refineIters=64, maxIters=3000)  
+                    A = F.dot(Ai)  # alignment of source frame to reference stabilization
+                    
+                f_warp_fine(im.numpy(), dst=imstabilized._array, M=f_transform_fine(T.dot(A)), dsize=(imstabilized.width(), imstabilized.height()), borderMode=cv2.BORDER_TRANSPARENT)
+                im = im.objectmap(lambda o: o.projective(T.dot(A)))  # apply object transformation
                 if any([not o.isvalid() for o in im.objects()]):  
                     if not strict:
                         print('[vipy.flow.stabilize]: ERROR - object alignment returned degenerate bounding box, returning original video "%s"' % str(v))
