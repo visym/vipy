@@ -174,6 +174,29 @@ class Activity(object):
         else:
             return self._label
 
+    def categoryif(self, ifcategory, tocategory=None):
+        """If the current category is equal to ifcategory, then change it to newcategory.
+
+        Args:
+            
+            ifcategory [dict, str]: May be a dictionary {ifcategory:tocategory}, or just an ifcategory
+            tocategory [str]:  the target category 
+
+        Returns:
+        
+            this object with the category changed.
+
+        .. note:: This is useful for converting synonyms such as self.categoryif('person_sits', 'person_sitting')
+        """
+        assert (isinstance(ifcategory, dict) and tocategory is None) or tocategory is not None
+
+        if isinstance(ifcategory, dict):
+            for (k,v) in ifcategory.items():
+                self.categoryif(k, v)
+        elif self.category() == ifcategory:
+            self.category(tocategory, shortlabel=None)
+        return self
+
     def label(self, label=None, shortlabel=None):
         """Alias for category"""
         return self.category(label, shortlabel=shortlabel)

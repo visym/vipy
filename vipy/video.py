@@ -36,8 +36,6 @@ import queue
 import threading
 from concurrent.futures import ThreadPoolExecutor
 import collections
-
-
 try:
     import ujson as json  # faster
 except ImportError:
@@ -2671,7 +2669,7 @@ class Scene(VideoCategory):
         assert img is not None or (self.isloaded() and k<len(self)) or not self.isloaded(), "Invalid frame index %d - Indexing video by frame must be integer within (0, %d)" % (k, len(self)-1)
 
         img = img if (img is not None or noimage) else (self._array[k] if self.isloaded() else self.preview(k).array())
-        dets = [t[k].clone(deep=True).setattribute('trackindex', j) for (j, t) in enumerate(self.tracks().values()) if len(t)>0 and (t.during(k) or t.boundary()=='extend')]  # track interpolation (cloned) with boundary handling
+        dets = [t[k].clone(deep=True).setattribute('trackindex', j) for (j, t) in enumerate(self.tracklist()) if len(t)>0 and (t.during(k) or t.boundary()=='extend')]  # track interpolation (cloned) with boundary handling
         for d in dets:
             d.attributes['activityid'] = []  # reset
             jointlabel = [(d.shortlabel(),'')]  # [(Noun, Verbing1), (Noun, Verbing2), ...], initialized with empty verbs as [(Noun, ""), ... ]
@@ -3906,7 +3904,7 @@ class Scene(VideoCategory):
         im = self.frame(frame, img=self.preview(framenum=frame).array())
         return im.savefig(outfile=outfile, fontsize=fontsize, nocaption=nocaption, boxalpha=boxalpha, dpi=dpi, textfacecolor=textfacecolor, textfacealpha=textfacealpha) if outfile is not None else im
     
-    def stabilize(self, padheightfrac=0.125, padwidthfrac=0.25, padheightpx=None, padwidthpx=None, gpu=None):
+    def stabilize(self, padheightfrac=0.125, padwidthfrac=0.25, padheightpx=None, padwidthpx=None, gpu=None, outfile=None):
         """Background stablization using flow based stabilization masking foreground region.  
         
         - This will output a video with all frames aligned to the first frame, such that the background is static.
@@ -3919,6 +3917,7 @@ class Scene(VideoCategory):
             padheightpx: [int]  The height padding to be applied to output video to allow for vertical stabilization.  Overrides padheight.
             padwidthpx: [int]  The width padding to be applied to output video to allow for horizontal stabilization.  Overrides padwidth.
             gpu: [int] The GPU index to use, if opencv has been compiled with GPU support (this is rare)
+            outfile: [str]  The output filename to store the stabilized video
 
         Returns:
         
@@ -3931,7 +3930,7 @@ class Scene(VideoCategory):
 
         """
         from vipy.flow import Flow  # requires opencv
-        return Flow(flowdim=256, gpu=gpu).stabilize(self.clone(), residual=True, padheightfrac=padheightfrac, padwidthfrac=padwidthfrac, padheightpx=padheightpx, padwidthpx=padwidthpx)
+        return Flow(flowdim=256, gpu=gpu).stabilize(self.clone(), residual=True, strict=True, padheightfrac=padheightfrac, padwidthfrac=padwidthfrac, padheightpx=padheightpx, padwidthpx=padwidthpx, outfile=outfile)
     
     def pixelmask(self, pixelsize=8):
         """Replace all pixels in foreground boxes with pixelation (e.g. bigger pixels, like privacy glass)"""

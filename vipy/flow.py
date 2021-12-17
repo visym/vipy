@@ -435,7 +435,7 @@ class Flow(object):
         duration = len(vv)  # requires preload, duration computed at stabilization framerate
         if duration < keystep:
             print('[vipy.flow.stabilize]: ERROR - video not long enough for stabilization, returning original video "%s"' % str(v))
-            return vc.setattribute('unstabilized')
+            return v.clone().setattribute('unstabilized')
         r_coarse = []
         frames = []                        
         vs.setattribute('stabilize', {})
@@ -463,7 +463,7 @@ class Flow(object):
             except Exception as e:
                 if not strict:
                     print('[vipy.flow.stabilize]: ERROR - coarse alignment failed with error "%s", returning original video "%s"' % (str(e), str(v)))
-                    return vc.setattribute('unstabilized')  # for provenance
+                    return v.clone().setattribute('unstabilized')  # for provenance
                 raise
 
             # Fine alignment
@@ -477,7 +477,7 @@ class Flow(object):
             except Exception as e:
                 if not strict:
                     print('[vipy.flow.stabilize]: ERROR - fine alignment failed with error "%s", returning original video "%s"' % (str(e), str(v)))                    
-                    return vc.setattribute('unstabilized')  # for provenance
+                    return v.clone().setattribute('unstabilized')  # for provenance
                 else:
                     raise ValueError('[vipy.flow.stabilize]: ERROR - fine alignment failed due to correspondence error')
         
@@ -518,7 +518,7 @@ class Flow(object):
                 if any([not o.isvalid() for o in im.objects()]):  
                     if not strict:
                         print('[vipy.flow.stabilize]: ERROR - object alignment returned degenerate bounding box, returning original video "%s"' % str(v))
-                        return vc.setattribute('unstabilized')  # for provenance
+                        return v.clone().setattribute('unstabilized')  # for provenance
                     else:
                         raise ValueError('[vipy.flow.stabilize]: ERROR - object alignment returned degenerate bounding box for video "%s"' % str(v))                    
                 vss.write( im.array(imstabilized.array()) )  # assign detections to tracks in stabilized video (vs) output

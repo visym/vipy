@@ -107,9 +107,36 @@ class Detection(BoundingBox):
         self._shortlabel = None
         return self
         
-    def category(self, category=None, shortlabel=True):
+    def categoryif(self, ifcategory, tocategory=None):
+        """If the current category is equal to ifcategory, then change it to newcategory.
+
+        Args:
+            
+            ifcategory [dict, str]: May be a dictionary {ifcategory:tocategory}, or just an ifcategory
+            tocategory [str]:  the target category 
+
+        Returns:
+        
+            this object with the category changed.
+
+        .. note:: This is useful for converting synonyms such as self.categoryif('motorbike', 'motorcycle')
+        """
+        assert (isinstance(ifcategory, dict) and tocategory is None) or tocategory is not None
+
+        if isinstance(ifcategory, dict):
+            for (k,v) in ifcategory.items():
+                self.categoryif(k, v)
+        elif self.category() == ifcategory:
+            self.category(tocategory, shortlabel=False, capitalize=False)
+        return self
+
+    def category(self, category=None, shortlabel=True, capitalize=False):
         """Update the category and shortlabel (optional) of the detection"""
-        if category is None:
+        if capitalize:
+            self._label = self._label.capitalize()
+            self._shortlabel = self._shortlabel.capitalize() if shortlabel else self._shortlabel
+            return self
+        elif category is None:
             return self._label
         else:
             self._label = str(category)  # coerce to string
@@ -479,6 +506,29 @@ class Track(object):
         else:
             return self._label
     
+    def categoryif(self, ifcategory, tocategory=None):
+        """If the current category is equal to ifcategory, then change it to newcategory.
+
+        Args:
+            
+            ifcategory [dict, str]: May be a dictionary {ifcategory:tocategory}, or just an ifcategory
+            tocategory [str]:  the target category 
+
+        Returns:
+        
+            this object with the category changed.
+
+        .. note:: This is useful for converting synonyms such as self.categoryif('motorbike', 'motorcycle')
+        """
+        assert (isinstance(ifcategory, dict) and tocategory is None) or tocategory is not None
+
+        if isinstance(ifcategory, dict):
+            for (k,v) in ifcategory.items():
+                self.categoryif(k, v)
+        elif self.category() == ifcategory:
+            self.category(tocategory, shortlabel=False)
+        return self
+
     def label(self, label):
         """Alias for category"""
         return self.category(label, shortlabel=True)

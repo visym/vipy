@@ -116,7 +116,7 @@ def save(vars, outfile=None):
     else:
         raise ValueError('Unknown file extension for save file "%s" - must be in %s' % (fileext(outfile), str(allowable)))
     
-    return outfile
+    return os.path.abspath(outfile)
 
 
 def load(infile, abspath=True, refcycle=True):
@@ -221,6 +221,15 @@ def catcher(f, *args, **kwargs):
         return (True, f(*args, **kwargs))
     except Exception as e:
         return (False, str(e))
+
+
+def nonecatcher(f, *args, **kwargs):
+    """Call the function f with the provided arguments, and return (result) on success and (None) if there is any thrown exception.  Useful for parallel processing"""
+    assert callable(f)
+    try:
+        return f(*args, **kwargs)
+    except Exception as e:
+        return None
 
 
 def mergedict(d1, d2):
