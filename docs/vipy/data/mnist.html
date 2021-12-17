@@ -25,7 +25,7 @@
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/7ab10d19b1ec59cb8060aa8445299b8f68d25e25/vipy/data/mnist.py#L0-L99" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/ba8ec00e70840be23edd22f6bed770a9023c93b8/vipy/data/mnist.py#L0-L99" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">import os
 import numpy as np
@@ -147,7 +147,7 @@ class MNIST(object):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/7ab10d19b1ec59cb8060aa8445299b8f68d25e25/vipy/data/mnist.py#L20-L100" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/ba8ec00e70840be23edd22f6bed770a9023c93b8/vipy/data/mnist.py#L20-L100" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">class MNIST(object):
     def __init__(self, outdir):
@@ -245,7 +245,7 @@ class MNIST(object):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/7ab10d19b1ec59cb8060aa8445299b8f68d25e25/vipy/data/mnist.py#L99-L100" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/ba8ec00e70840be23edd22f6bed770a9023c93b8/vipy/data/mnist.py#L99-L100" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def imtestset(self):
     return [vipy.image.ImageCategory(array=img, category=str(y), colorspace=&#39;lum&#39;) for (y,img) in zip(*self.testset())]</code></pre>
@@ -259,7 +259,7 @@ class MNIST(object):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/7ab10d19b1ec59cb8060aa8445299b8f68d25e25/vipy/data/mnist.py#L81-L82" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/ba8ec00e70840be23edd22f6bed770a9023c93b8/vipy/data/mnist.py#L81-L82" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def imtrainset(self):
     return [vipy.image.ImageCategory(array=img, category=str(y), colorspace=&#39;lum&#39;) for (y,img) in zip(*self.trainset())]</code></pre>
@@ -273,7 +273,7 @@ class MNIST(object):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/7ab10d19b1ec59cb8060aa8445299b8f68d25e25/vipy/data/mnist.py#L84-L97" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/ba8ec00e70840be23edd22f6bed770a9023c93b8/vipy/data/mnist.py#L84-L97" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def testset(self):
     y_test = self._labels(os.path.join(self.outdir, &#39;t10k-labels-idx1-ubyte.gz&#39;)).tolist()
@@ -299,7 +299,7 @@ class MNIST(object):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/7ab10d19b1ec59cb8060aa8445299b8f68d25e25/vipy/data/mnist.py#L66-L79" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/ba8ec00e70840be23edd22f6bed770a9023c93b8/vipy/data/mnist.py#L66-L79" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def trainset(self):
     y_train = self._labels(os.path.join(self.outdir, &#39;train-labels-idx1-ubyte.gz&#39;)).tolist()

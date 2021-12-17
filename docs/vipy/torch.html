@@ -25,7 +25,7 @@
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/7ab10d19b1ec59cb8060aa8445299b8f68d25e25/vipy/torch.py#L0-L203" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/ba8ec00e70840be23edd22f6bed770a9023c93b8/vipy/torch.py#L0-L203" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">import vipy
 import numpy as np
@@ -248,7 +248,7 @@ class TorchTensordir(Tensordir):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/7ab10d19b1ec59cb8060aa8445299b8f68d25e25/vipy/torch.py#L20-L28" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/ba8ec00e70840be23edd22f6bed770a9023c93b8/vipy/torch.py#L20-L28" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def fromtorch(x):
     &#34;&#34;&#34;Convert a 1xCxHxW torch.FloatTensor to HxWxC np.float32 numpy array(), returns new Image() instance with an inferred colorspace based on channels and datatype&#34;&#34;&#34;
@@ -275,7 +275,7 @@ class TorchTensordir(Tensordir):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/7ab10d19b1ec59cb8060aa8445299b8f68d25e25/vipy/torch.py#L92-L123" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/ba8ec00e70840be23edd22f6bed770a9023c93b8/vipy/torch.py#L92-L123" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">class Foveation(LaplacianPyramid):
     def __init__(self, im, s=0.125, mode=&#39;log-circle&#39;):
@@ -324,7 +324,7 @@ class TorchTensordir(Tensordir):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/7ab10d19b1ec59cb8060aa8445299b8f68d25e25/vipy/torch.py#L122-L123" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/ba8ec00e70840be23edd22f6bed770a9023c93b8/vipy/torch.py#L122-L123" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def foveate(self, tx=0, ty=0, sx=1.0, sy=1.0):
     return self.__call__(tx=tx, ty=ty, sx=sx, sy=sy)</code></pre>
@@ -341,7 +341,7 @@ class TorchTensordir(Tensordir):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/7ab10d19b1ec59cb8060aa8445299b8f68d25e25/vipy/torch.py#L31-L53" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/ba8ec00e70840be23edd22f6bed770a9023c93b8/vipy/torch.py#L31-L53" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">class GaussianPyramid(object):
     def __init__(self, im=None, tensor=None):
@@ -377,7 +377,7 @@ class TorchTensordir(Tensordir):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/7ab10d19b1ec59cb8060aa8445299b8f68d25e25/vipy/torch.py#L56-L89" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/ba8ec00e70840be23edd22f6bed770a9023c93b8/vipy/torch.py#L56-L89" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">class LaplacianPyramid(object):
     def __init__(self, im):
@@ -428,7 +428,7 @@ class TorchTensordir(Tensordir):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/7ab10d19b1ec59cb8060aa8445299b8f68d25e25/vipy/torch.py#L81-L89" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/ba8ec00e70840be23edd22f6bed770a9023c93b8/vipy/torch.py#L81-L89" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def reconstruct(self):
     x = self._band[-1]
@@ -460,7 +460,7 @@ vipy.torch.Tensordir( ('/path/to/1', '/path/to/2') )
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/7ab10d19b1ec59cb8060aa8445299b8f68d25e25/vipy/torch.py#L153-L201" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/ba8ec00e70840be23edd22f6bed770a9023c93b8/vipy/torch.py#L153-L201" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">class Tensordir(torch.utils.data.Dataset):
     &#34;&#34;&#34;A torch dataset stored as a directory of .pkl.bz2 files each containing a list of [(tensor, str=json.dumps(label)), ...] tuples used for data augmented training.
@@ -531,7 +531,7 @@ vipy.torch.Tensordir( ('/path/to/1', '/path/to/2') )
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/7ab10d19b1ec59cb8060aa8445299b8f68d25e25/vipy/torch.py#L197-L201" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/ba8ec00e70840be23edd22f6bed770a9023c93b8/vipy/torch.py#L197-L201" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def filter(self, f):
     &#34;&#34;&#34;Keep elements that lambda evaluates true. The lambda operates on the *filename* for the tensordir and not the contents&#34;&#34;&#34;
@@ -548,7 +548,7 @@ vipy.torch.Tensordir( ('/path/to/1', '/path/to/2') )
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/7ab10d19b1ec59cb8060aa8445299b8f68d25e25/vipy/torch.py#L193-L195" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/ba8ec00e70840be23edd22f6bed770a9023c93b8/vipy/torch.py#L193-L195" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def take(self, n):
     self._dirlist = [self._dirlist[k] for k in np.random.permutation(range(len(self._dirlist)))[0:n]]
@@ -566,7 +566,7 @@ vipy.torch.Tensordir( ('/path/to/1', '/path/to/2') )
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/7ab10d19b1ec59cb8060aa8445299b8f68d25e25/vipy/torch.py#L127-L150" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/ba8ec00e70840be23edd22f6bed770a9023c93b8/vipy/torch.py#L127-L150" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">class TorchDataset(torch.utils.data.Dataset):
     &#34;&#34;&#34;Converter from a pycollector dataset to a torch dataset&#34;&#34;&#34;
@@ -616,7 +616,7 @@ vipy.torch.Tensordir( ('/path/to/1', '/path/to/2') )
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/7ab10d19b1ec59cb8060aa8445299b8f68d25e25/vipy/torch.py#L203-L204" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/ba8ec00e70840be23edd22f6bed770a9023c93b8/vipy/torch.py#L203-L204" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">class TorchTensordir(Tensordir):
     pass  # alias for backwards compatibility</code></pre>
