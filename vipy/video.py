@@ -3906,10 +3906,32 @@ class Scene(VideoCategory):
         im = self.frame(frame, img=self.preview(framenum=frame).array())
         return im.savefig(outfile=outfile, fontsize=fontsize, nocaption=nocaption, boxalpha=boxalpha, dpi=dpi, textfacecolor=textfacecolor, textfacealpha=textfacealpha) if outfile is not None else im
     
-    def stabilize(self, flowdim=256, gpu=None):
-        """Background stablization using flow based stabilization masking foreground region.  This will output a video with all frames aligned to the first frame, such that the background is static."""
+    def stabilize(self, padheightfrac=0.125, padwidthfrac=0.25, padheightpx=None, padwidthpx=None, gpu=None):
+        """Background stablization using flow based stabilization masking foreground region.  
+        
+        - This will output a video with all frames aligned to the first frame, such that the background is static.
+        - This uses the flow based approach described in `vipy.flow.Flow.stabilize`
+
+        Args:
+        
+            padheightfrac: [float] The height padding (relative to video height) to be applied to output video to allow for vertical stabilization
+            padwidthfrac: [float]  The width padding (relative to video width) to be applied to output video to allow for horizontal stabilization
+            padheightpx: [int]  The height padding to be applied to output video to allow for vertical stabilization.  Overrides padheight.
+            padwidthpx: [int]  The width padding to be applied to output video to allow for horizontal stabilization.  Overrides padwidth.
+            gpu: [int] The GPU index to use, if opencv has been compiled with GPU support (this is rare)
+
+        Returns:
+        
+            A clone of this video with background pixels stabilized to the first frame.  
+
+        .. note::
+        
+            - If the camera pans outside the image rectangle, increase the padheight or padwidth to make sure that the actor stays inside the stabilized image rectangle
+            - If there are moving actors in the scene, include bounding boxes for each and these boxes are ignored as keeyouts in the flow stabilization
+
+        """
         from vipy.flow import Flow  # requires opencv
-        return Flow(flowdim=flowdim, gpu=gpu).stabilize(self.clone(), residual=True)
+        return Flow(flowdim=256, gpu=gpu).stabilize(self.clone(), residual=True, padheightfrac=padheightfrac, padwidthfrac=padwidthfrac, padheightpx=padheightpx, padwidthpx=padwidthpx)
     
     def pixelmask(self, pixelsize=8):
         """Replace all pixels in foreground boxes with pixelation (e.g. bigger pixels, like privacy glass)"""

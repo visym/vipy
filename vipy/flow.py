@@ -501,7 +501,7 @@ class Flow(object):
                 A = transforms[kr]  # reference stabilization transform
 
                 # Refined alignment at source framerate
-                if vic.framerate() != framerate:
+                if vic.framerate() != framerate and ki != kr:
                     if kref != kr:
                         f_warp_fine(vv.frame(kr).numpy(), dst=imref._array, M=f_transform_fine(T.dot(A)), dsize=(imref.width(), imref.height()), borderMode=cv2.BORDER_TRANSPARENT) 
                         kref = kr  # to avoid rewarping
