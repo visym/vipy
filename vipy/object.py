@@ -493,6 +493,7 @@ class Track(object):
                       shortlabel=self.shortlabel(),
                       id=id)
         d.attributes['trackid'] = self.id()  # for correspondence of detections to tracks
+        d.attributes['__trackid'] = d.attributes['trackid'] # trackid to be deprecated
         return d if self._boundary == 'extend' or self.during(f) else None
 
     def category(self, label=None, shortlabel=True):

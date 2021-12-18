@@ -2687,9 +2687,14 @@ class Scene(VideoCategory):
                     d.attributes['activityid'].append(a.id())  # for activity correspondence (if desired)
 
             # For display purposes
-            d.attributes['__jointlabel'] = '\n'.join([('%s %s' % (n,v)).strip() for (n,v) in jointlabel[0 if len(jointlabel)==1 else 1:]])
+            # - See `vipy.image.mutator_show_trackindex_verbonly`
+            # - Double prepended underscore attributes are private and cleaned using `vipy.image.Image.sanitize`
+            d.attributes['__jointlabel'] = '\n'.join([('%s %s' % (n,v)).strip() for (n,v) in jointlabel[0 if len(jointlabel)==1 else 1:]])  # to be deprecated
             d.attributes['__noun verb'] = jointlabel[0 if len(jointlabel)==1 else 1:]
             d.attributes['__activityconf'] = activityconf[0 if len(jointlabel)==1 else 1:]
+            d.attributes['__trackindex'] = d.attributes['trackindex']  # trackindex to be replaced with __trackindex
+            d.attributes['__trackid'] = d.attributes['trackid']  # trackid to be replaced with __trackid
+            d.attributes['__activityid'] = d.attributes['activityid']  # activityid to be replaced with __activityid            
         dets.sort(key=lambda d: (d.confidence() if d.confidence() is not None else 0, d.shortlabel()))   # layering in video is ordered by decreasing track confidence and alphabetical shortlabel
         return vipy.image.Scene(array=img, colorspace=self.colorspace(), objects=dets, category=self.category())  
                 
