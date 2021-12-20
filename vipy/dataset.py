@@ -550,7 +550,7 @@ class Dataset():
         # Distributed map using vipy.batch
         f_serialize = lambda v,d=vipy.util.class_registry(): (str(type(v)), v.json()) if str(type(v)) in d else (None, pickle.dumps(v))  # fallback on PKL dumps/loads
         f_deserialize = lambda x,d=vipy.util.class_registry(): d[x[0]](x[1])  # with closure capture
-        f_catcher = vipy.util.catcher  # catch exceptions when executing lambda and return (True, result) or (False, exception)
+        f_catcher = lambda f, *args, **kwargs: vipy.util.loudcatcher(f, '[vipy.dataset.Dataset.map]: ', *args, **kwargs)  # catch exceptions when executing lambda, print errors and return (True, result) or (False, exception)
         S = [f_serialize(v) for v in self._objlist]  # local serialization
         B = Batch(vipy.util.chunklist(S, chunks), strict=strict, as_completed=ascompleted, warnme=False, minscatter=chunks, ordered=ordered)        
         if model is None:

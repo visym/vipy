@@ -222,6 +222,15 @@ def catcher(f, *args, **kwargs):
     except Exception as e:
         return (False, str(e))
 
+def loudcatcher(f, prepend, *args, **kwargs):
+    """Call the function f with the provided arguments, and return (True, result) on success and (False, exception) if there is any thrown exception.  Print the exception immediately.  Useful for parallel processing"""
+    assert callable(f)
+    try:
+        return (True, f(*args, **kwargs))
+    except Exception as e:
+        print('%s%s' % (prepend, str(e)))
+        return (False, str(e))
+
 
 def nonecatcher(f, *args, **kwargs):
     """Call the function f with the provided arguments, and return (result) on success and (None) if there is any thrown exception.  Useful for parallel processing"""
