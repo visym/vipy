@@ -116,7 +116,7 @@ class Image(object):
         self._url = url
         if array is not None:
             assert isnumpy(array), 'Invalid Array - Type "%s" must be np.array()' % (str(type(array)))
-        self.array(array)
+        self.array(array)  # shallow copy
 
         # Guess RGB colorspace if three channel uint8 if colorspace is not provided
         colorspace = 'rgb' if (self.isloaded() and self.channels() == 3 and self._array.dtype == np.uint8 and colorspace is None) else colorspace
@@ -2354,15 +2354,16 @@ class ImageDetection(Scene, BoundingBox):
 
 def mutator_show_trackid(n_digits_in_trackid=5):
     """Mutate the image to show track ID with a fixed number of digits appended to the shortlabel as (####)"""
-    return lambda im, k=None: (im.objectmap(lambda o: o.shortlabel('%s (%s)' % (o.shortlabel(), o.attributes['trackid'][0:n_digits_in_trackid]))
-                                            if o.hasattribute('trackid') else o))
+    return lambda im, k=None: (im.objectmap(lambda o: o.shortlabel('%s (%s)' % (o.shortlabel(), o.attributes['__trackid'][0:n_digits_in_trackid]))
+                                            if o.hasattribute('__trackid') else o))
 
 def mutator_show_jointlabel():
-    return lambda im, k=None: im.objectmap(lambda o: o.shortlabel(o.getattribute('__jointlabel')) if o.hasattribute('__jointlabel') else o)   # from frame interpolation 
+    """Deprecated"""
+    return mutator_capitalize()
 
 def mutator_show_trackindex():
     """Mutate the image to show track index appended to the shortlabel as (####)"""
-    return lambda im, k=None: (im.objectmap(lambda o: o.shortlabel('%s (%d)' % (o.shortlabel(), int(o.attributes['trackindex']))) if o.hasattribute('trackindex') else o))
+    return lambda im, k=None: (im.objectmap(lambda o: o.shortlabel('%s (%d)' % (o.shortlabel(), int(o.attributes['__trackindex']))) if o.hasattribute('__trackindex') else o))
 
 def mutator_show_trackonly():
     """Mutate the image to show track as a consistently colored box with no shortlabels"""
@@ -2409,9 +2410,9 @@ def mutator_show_trackindex_activityonly():
     return lambda im, k=None, f=f: f(im).objectmap(lambda o: o.shortlabel('__%s' % o.shortlabel()) if (len(o.attributes['__noun verb']) == 1 and len(o.attributes['__noun verb'][0][1]) == 0) else o)
 
 def mutator_show_trackindex_verbonly(confidence=True, significant_digits=2):
-    """Mutate the image to show boxes colored by track index, and only show 'verb' captions with activity confidence"""
+    """Mutate the image to show boxes colored by track index, and only show 'verb' captions with activity confidence, sorted in decreasing order"""
     f = mutator_show_trackindex()
-    return lambda im, k=None, f=f: f(im).objectmap(lambda o: o.shortlabel('__%s' % o.shortlabel()) if (len(o.attributes['__noun verb']) == 1 and len(o.attributes['__noun verb'][0][1]) == 0) else o.shortlabel('\n'.join(['%s %s' % (v, ('(%1.2f)'%float(c)) if (confidence is True and c is not None) else '') for ((n,v),c) in zip(o.attributes['__noun verb'], o.attributes['__activityconf'])])))
+    return lambda im, k=None, f=f: f(im).objectmap(lambda o: o.shortlabel('__%s' % o.shortlabel()) if (len(o.attributes['__noun verb']) == 1 and len(o.attributes['__noun verb'][0][1]) == 0) else o.shortlabel('\n'.join(['%s %s' % (v, ('(%1.2f)'%float(c)) if (confidence is True and c is not None) else '') for ((n,v),c) in sorted(zip(o.attributes['__noun verb'], o.attributes['__activityconf']), key=lambda x: float(x[1]), reverse=True)])))
 
 
 def RandomImage(rows=None, cols=None):

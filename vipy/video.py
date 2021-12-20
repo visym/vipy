@@ -36,8 +36,6 @@ import queue
 import threading
 from concurrent.futures import ThreadPoolExecutor
 import collections
-
-
 try:
     import ujson as json  # faster
 except ImportError:
@@ -245,7 +243,7 @@ class Stream(object):
                         k += 1
                         
                     if img is not None:
-                        yield self._video.frame(f, img)  # yield a vipy.image.Scene object with annotations at frame f, using the latest annotation from the shared video object                        
+                        yield self._video.frame(f, img)  # yield a vipy.image.Scene object with annotations at frame f, using the latest annotation from the shared video object and shallow copy of img
                         if b is not None and self._is_stream_buffer_owner:
                             if len(b) > self._bufsize:
                                 del b[min(b.keys())]  # remove oldest frame from stream buffer
@@ -332,11 +330,11 @@ class Stream(object):
                     # The delay shifts the clip +delay frames (1,2,3), (3,4,5), ... for n=3, m=2, delay=1                
                     frames.extend(newframes)
                     (frames, newframes) = (frames[-n:], [])
-                    queue.put( (v.clear().clone(shallow=True).fromframes(frames), k) )
+                    queue.put( (v.clear().clone(shallow=True).fromframes(frames), k) )  # fromframes() triggers array copy of frames
                 elif continuous:
                     queue.put( (None, k) )
             if ragged and len(newframes) > 0:
-                queue.put( (v.clear().clone(shallow=True).fromframes(newframes), k) )
+                queue.put( (v.clear().clone(shallow=True).fromframes(newframes), k) )  # fromframes() triggers array copy of newframes
             queue.put( (None, None) )
             event.wait()            
 
@@ -747,7 +745,7 @@ class Video(object):
         return vo
     
 
-    def stream(self, write=False, overwrite=False, queuesize=1024, bitrate=None, buffered=False, rebuffered=False, bufsize=256):
+    def stream(self, write=False, overwrite=False, queuesize=512, bitrate=None, buffered=False, rebuffered=False, bufsize=256):
         """Iterator to yield groups of frames streaming from video.
 
         A video stream is a real time iterator to read or write from a video.  Streams are useful to group together frames into clips that are operated on as a group.
@@ -1085,7 +1083,7 @@ class Video(object):
         """Change the input framerate for the video and update frame indexes for all annotations
 
         Args:
-            fps: Float frames per second to process the underlying video
+            fps: [Float] frames per second to process the underlying video
 
         Returns:
             If fps is None, return the current framerate, otherwise set the framerate to fps
@@ -1093,21 +1091,21 @@ class Video(object):
         """
         if fps is None:
             return self._framerate
-        elif fps == self._framerate:
+        elif float(fps) == self._framerate:
             return self
         else:            
             assert not self.isloaded(), "Filters can only be applied prior to load()"
             if 'fps=' in self._ffmpeg_commandline():
-                self._update_ffmpeg('fps', fps)  # replace fps filter, do not add to it
+                self._update_ffmpeg('fps', float(fps))  # replace fps filter, do not add to it
             else:
-                self._ffmpeg = self._ffmpeg.filter('fps', fps=fps, round='up')  # create fps filter first time
+                self._ffmpeg = self._ffmpeg.filter('fps', fps=float(fps), round='up')  # create fps filter first time
         
             # if '-ss' in self._ffmpeg_commandline():
             #     No change is needed here.  The seek is in seconds and is independent of the framerate
             # if 'trim' in self._ffmpeg_commandline():
             #     No change is needed here.  The trim is in units of seconds which is independent of the framerate
 
-            self._framerate = fps
+            self._framerate = float(fps)
             return self
             
     def colorspace(self, colorspace=None):
@@ -1891,6 +1889,8 @@ class Video(object):
     
     def crop(self, bbi, zeropad=True):
         """Spatially crop the video using the supplied vipy.geometry.BoundingBox, can only be applied prior to load().
+        
+        .. note:: Crop is performed in place overwriting pixels of self.array().  Clone() before crop() if array() must be preserved.
         """
         assert isinstance(bbi, vipy.geometry.BoundingBox), "Invalid input"
         bbc = bbi.clone().imclipshape(self.width(), self.height()).int()  # clipped box to image rectangle
@@ -1985,6 +1985,7 @@ class Video(object):
         outfile = tocache(tempMP4()) if outfile is None else os.path.normpath(os.path.abspath(os.path.expanduser(outfile)))
         premkdir(outfile)  # create output directory for this file if not exists
         framerate = framerate if framerate is not None else self._framerate
+        assert vipy.util.isvideofile(outfile), "Invalid filename extension for video filename"
 
         if verbose:
             print('[vipy.video.saveas]: Saving video "%s" ...' % outfile)                      
@@ -2668,7 +2669,7 @@ class Scene(VideoCategory):
         assert img is not None or (self.isloaded() and k<len(self)) or not self.isloaded(), "Invalid frame index %d - Indexing video by frame must be integer within (0, %d)" % (k, len(self)-1)
 
         img = img if (img is not None or noimage) else (self._array[k] if self.isloaded() else self.preview(k).array())
-        dets = [t[k].clone(deep=True).setattribute('trackindex', j) for (j, t) in enumerate(self.tracks().values()) if len(t)>0 and (t.during(k) or t.boundary()=='extend')]  # track interpolation (cloned) with boundary handling
+        dets = [t[k].clone(deep=True).setattribute('trackindex', j) for (j, t) in enumerate(self.tracklist()) if len(t)>0 and (t.during(k) or t.boundary()=='extend')]  # track interpolation (cloned) with boundary handling
         for d in dets:
             d.attributes['activityid'] = []  # reset
             jointlabel = [(d.shortlabel(),'')]  # [(Noun, Verbing1), (Noun, Verbing2), ...], initialized with empty verbs as [(Noun, ""), ... ]
@@ -2686,9 +2687,14 @@ class Scene(VideoCategory):
                     d.attributes['activityid'].append(a.id())  # for activity correspondence (if desired)
 
             # For display purposes
-            d.attributes['__jointlabel'] = '\n'.join([('%s %s' % (n,v)).strip() for (n,v) in jointlabel[0 if len(jointlabel)==1 else 1:]])
+            # - See `vipy.image.mutator_show_trackindex_verbonly`
+            # - Double prepended underscore attributes are private and cleaned using `vipy.image.Image.sanitize`
+            d.attributes['__jointlabel'] = '\n'.join([('%s %s' % (n,v)).strip() for (n,v) in jointlabel[0 if len(jointlabel)==1 else 1:]])  # to be deprecated
             d.attributes['__noun verb'] = jointlabel[0 if len(jointlabel)==1 else 1:]
             d.attributes['__activityconf'] = activityconf[0 if len(jointlabel)==1 else 1:]
+            d.attributes['__trackindex'] = d.attributes['trackindex']  # trackindex to be replaced with __trackindex
+            d.attributes['__trackid'] = d.attributes['trackid']  # trackid to be replaced with __trackid
+            d.attributes['__activityid'] = d.attributes['activityid']  # activityid to be replaced with __activityid            
         dets.sort(key=lambda d: (d.confidence() if d.confidence() is not None else 0, d.shortlabel()))   # layering in video is ordered by decreasing track confidence and alphabetical shortlabel
         return vipy.image.Scene(array=img, colorspace=self.colorspace(), objects=dets, category=self.category())  
                 
@@ -3241,13 +3247,13 @@ class Scene(VideoCategory):
         ```
 
         """
-        
         if fps is None:
             return self._framerate
-        elif fps == self._framerate:
+        elif float(fps) == self._framerate:
             return self
         else:
             assert not self.isloaded(), "Filters can only be applied prior to load() - Try calling flush() first"
+            fps = float(fps)
             self._startframe = int(round(self._startframe * (fps/self._framerate))) if self._startframe is not None else self._startframe  # __repr__ only
             self._endframe = int(round(self._endframe * (fps/self._framerate))) if self._endframe is not None else self._endframe  # __repr__only
             self._tracks = {k:t.framerate(fps) for (k,t) in self.tracks().items()}
@@ -3903,10 +3909,33 @@ class Scene(VideoCategory):
         im = self.frame(frame, img=self.preview(framenum=frame).array())
         return im.savefig(outfile=outfile, fontsize=fontsize, nocaption=nocaption, boxalpha=boxalpha, dpi=dpi, textfacecolor=textfacecolor, textfacealpha=textfacealpha) if outfile is not None else im
     
-    def stabilize(self, flowdim=256, gpu=None):
-        """Background stablization using flow based stabilization masking foreground region.  This will output a video with all frames aligned to the first frame, such that the background is static."""
+    def stabilize(self, padheightfrac=0.125, padwidthfrac=0.25, padheightpx=None, padwidthpx=None, gpu=None, outfile=None):
+        """Background stablization using flow based stabilization masking foreground region.  
+        
+        - This will output a video with all frames aligned to the first frame, such that the background is static.
+        - This uses the flow based approach described in `vipy.flow.Flow.stabilize`
+
+        Args:
+        
+            padheightfrac: [float] The height padding (relative to video height) to be applied to output video to allow for vertical stabilization
+            padwidthfrac: [float]  The width padding (relative to video width) to be applied to output video to allow for horizontal stabilization
+            padheightpx: [int]  The height padding to be applied to output video to allow for vertical stabilization.  Overrides padheight.
+            padwidthpx: [int]  The width padding to be applied to output video to allow for horizontal stabilization.  Overrides padwidth.
+            gpu: [int] The GPU index to use, if opencv has been compiled with GPU support (this is rare)
+            outfile: [str]  The output filename to store the stabilized video
+
+        Returns:
+        
+            A clone of this video with background pixels stabilized to the first frame.  
+
+        .. note::
+        
+            - If the camera pans outside the image rectangle, increase the padheight or padwidth to make sure that the actor stays inside the stabilized image rectangle
+            - If there are moving actors in the scene, include bounding boxes for each and these boxes are ignored as keeyouts in the flow stabilization
+
+        """
         from vipy.flow import Flow  # requires opencv
-        return Flow(flowdim=flowdim, gpu=gpu).stabilize(self.clone(), residual=True)
+        return Flow(flowdim=256, gpu=gpu).stabilize(self.clone(), residual=True, strict=True, padheightfrac=padheightfrac, padwidthfrac=padwidthfrac, padheightpx=padheightpx, padwidthpx=padwidthpx, outfile=outfile)
     
     def pixelmask(self, pixelsize=8):
         """Replace all pixels in foreground boxes with pixelation (e.g. bigger pixels, like privacy glass)"""

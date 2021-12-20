@@ -152,9 +152,13 @@ class Dataset():
         """Return True if all elements in the dataset are of type `vipy.video.Video`"""                
         return self.istype([vipy.video.Video])
 
-    def _is_vipy_scene(self):
+    def _is_vipy_video_scene(self):
         """Return True if all elements in the dataset are of type `vipy.video.Scene`"""                        
         return self.istype([vipy.video.Scene])
+
+    def _is_vipy_image_scene(self):
+        """Return True if all elements in the dataset are of type `vipy.video.Scene`"""                        
+        return self.istype([vipy.image.Scene])
 
     def clone(self):
         """Return a deep copy of the dataset"""
@@ -273,7 +277,7 @@ class Dataset():
             print('[vipy.dataset]: casting as "%s"' % (str(castas)))
             objlist = [castas.cast(v) for v in objlist]                     
         if significant_digits is not None:
-            assert self._is_vipy_scene()
+            assert self._is_vipy_video_scene()
             assert isinstance(significant_digits, int) and significant_digits >= 1, "Invalid input"
             objlist = [o.trackmap(lambda t: t.significant_digits(significant_digits)) if o is not None else o for o in objlist]
         if noemail:
@@ -546,7 +550,7 @@ class Dataset():
         # Distributed map using vipy.batch
         f_serialize = lambda v,d=vipy.util.class_registry(): (str(type(v)), v.json()) if str(type(v)) in d else (None, pickle.dumps(v))  # fallback on PKL dumps/loads
         f_deserialize = lambda x,d=vipy.util.class_registry(): d[x[0]](x[1])  # with closure capture
-        f_catcher = vipy.util.catcher  # catch exceptions when executing lambda and return (True, result) or (False, exception)
+        f_catcher = lambda f, *args, **kwargs: vipy.util.loudcatcher(f, '[vipy.dataset.Dataset.map]: ', *args, **kwargs)  # catch exceptions when executing lambda, print errors and return (True, result) or (False, exception)
         S = [f_serialize(v) for v in self._objlist]  # local serialization
         B = Batch(vipy.util.chunklist(S, chunks), strict=strict, as_completed=ascompleted, warnme=False, minscatter=chunks, ordered=ordered)        
         if model is None:
@@ -592,6 +596,17 @@ class Dataset():
         
     def frequency(self):
         return self.count()
+
+    def synonym(self, synonymdict):
+        """Convert all categories in the dataset using the provided synonym dictionary mapping"""
+        assert self._isvipy()
+        assert isinstance(synonymdict, dict)
+        
+        if self._is_vipy_video_scene():
+            return self.localmap(lambda v: v.trackmap(lambda t: t.categoryif(synonymdict)).activitymap(lambda a: a.categoryif(synonymdict)))
+        elif self._is_vipy_image_scene():
+            return self.localmap(lambda v: v.objectmap(lambda o: o.categoryif(synonymdict)))
+        return self
 
     def histogram(self, outfile=None, fontsize=6, category_to_barcolor=None, category_to_xlabel=None):
         assert self._isvipy()
@@ -771,7 +786,7 @@ class Dataset():
         import vipy.torch    # lazy import, requires vipy[all] 
         from vipy.batch import Batch   # requires pip install vipy[all]
 
-        assert self._is_vipy_scene()
+        assert self._is_vipy_video_scene()
         outdir = vipy.util.remkdir(outdir)
         vipy.batch.Batch(self.list(), as_completed=True).map(lambda v, f=f_video_to_tensor, outdir=outdir, n_augmentations=n_augmentations: vipy.util.bz2pkl(os.path.join(outdir, '%s.pkl.bz2' % v.instanceid()), [f(v.print(sleep=sleep).clone()) for k in range(0, n_augmentations)]))
         return vipy.torch.Tensordir(outdir)

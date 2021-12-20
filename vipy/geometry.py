@@ -931,12 +931,18 @@ class BoundingBox(object):
         return np.abs(self.bbwidth()-other.bbwidth())  + np.abs(self.bbheight()-other.bbheight())
 
     def affine(self, A):
-        """Apply an 2x3 affine transformation to the box centroid.  This operation preserves an axis aligned bounding box for an arbitrary affine transform."""
+        """Apply an 2x3 affine transformation to the box centroid.  
+
+        .. note::  This transformation is performed on the centroid and not the box corners, so the box will still be rectilinear after the transform
+        """
         assert isnumpy(A) and A.shape == (2,3), "A must be a 2x3 affine transformation matrix"
         return self.centroid(np.dot(A, homogenize(np.array(self.centroid()))))
 
     def projective(self, A):
-        """Apply an 3x3 affine transformation to the box centroid.  This operation preserves an axis aligned bounding box for an arbitrary affine transform."""
+        """Apply an 3x3 projective transformation to the box centroid.  
+        
+        .. note:: This transformation is performed on the centroid and not the box corners, so the box will still be rectilinear after the transform
+        """
         assert isnumpy(A) and A.shape == (3,3), "A must be a 3x3 affine transformation matrix"
         return self.centroid(dehomogenize(np.dot(A, homogenize(np.array(self.centroid())))))
     

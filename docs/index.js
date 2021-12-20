@@ -548,6 +548,12 @@ INDEX=[
 "func":1
 },
 {
+"ref":"vipy.dataset.Dataset.synonym",
+"url":3,
+"doc":"Convert all categories in the dataset using the provided synonym dictionary mapping",
+"func":1
+},
+{
 "ref":"vipy.dataset.Dataset.histogram",
 "url":3,
 "doc":"",
@@ -4577,13 +4583,13 @@ INDEX=[
 {
 "ref":"vipy.image.ImageDetection.affine",
 "url":5,
-"doc":"Apply an 2x3 affine transformation to the box centroid. This operation preserves an axis aligned bounding box for an arbitrary affine transform.",
+"doc":"Apply an 2x3 affine transformation to the box centroid.  note This transformation is performed on the centroid and not the box corners, so the box will still be rectilinear after the transform",
 "func":1
 },
 {
 "ref":"vipy.image.ImageDetection.projective",
 "url":5,
-"doc":"Apply an 3x3 affine transformation to the box centroid. This operation preserves an axis aligned bounding box for an arbitrary affine transform.",
+"doc":"Apply an 3x3 projective transformation to the box centroid.  note This transformation is performed on the centroid and not the box corners, so the box will still be rectilinear after the transform",
 "func":1
 },
 {
@@ -4845,19 +4851,9 @@ INDEX=[
 "doc":"Converter from a pycollector dataset to a torch dataset"
 },
 {
-"ref":"vipy.torch.TorchDataset.functions",
-"url":7,
-"doc":""
-},
-{
 "ref":"vipy.torch.Tensordir",
 "url":7,
 "doc":"A torch dataset stored as a directory of .pkl.bz2 files each containing a list of [(tensor, str=json.dumps(label ,  .] tuples used for data augmented training. This is useful to use the default Dataset loaders in Torch. Usage:   vipy.torch.Tensordir('/path/to') vipy.torch.Tensordir( ('/path/to/1', '/path/to/2') )    note This requires python random() and not numpy random"
-},
-{
-"ref":"vipy.torch.Tensordir.functions",
-"url":7,
-"doc":""
 },
 {
 "ref":"vipy.torch.Tensordir.take",
@@ -4875,11 +4871,6 @@ INDEX=[
 "ref":"vipy.torch.TorchTensordir",
 "url":7,
 "doc":"A torch dataset stored as a directory of .pkl.bz2 files each containing a list of [(tensor, str=json.dumps(label ,  .] tuples used for data augmented training. This is useful to use the default Dataset loaders in Torch. Usage:   vipy.torch.Tensordir('/path/to') vipy.torch.Tensordir( ('/path/to/1', '/path/to/2') )    note This requires python random() and not numpy random"
-},
-{
-"ref":"vipy.torch.TorchTensordir.functions",
-"url":7,
-"doc":""
 },
 {
 "ref":"vipy.torch.TorchTensordir.filter",
@@ -5103,7 +5094,7 @@ INDEX=[
 {
 "ref":"vipy.video.Video.framerate",
 "url":8,
-"doc":"Change the input framerate for the video and update frame indexes for all annotations Args: fps: Float frames per second to process the underlying video Returns: If fps is None, return the current framerate, otherwise set the framerate to fps",
+"doc":"Change the input framerate for the video and update frame indexes for all annotations Args: fps: [Float] frames per second to process the underlying video Returns: If fps is None, return the current framerate, otherwise set the framerate to fps",
 "func":1
 },
 {
@@ -5475,7 +5466,7 @@ INDEX=[
 {
 "ref":"vipy.video.Video.crop",
 "url":8,
-"doc":"Spatially crop the video using the supplied vipy.geometry.BoundingBox, can only be applied prior to load().",
+"doc":"Spatially crop the video using the supplied vipy.geometry.BoundingBox, can only be applied prior to load().  note Crop is performed in place overwriting pixels of self.array(). Clone() before crop() if array() must be preserved.",
 "func":1
 },
 {
@@ -5810,7 +5801,7 @@ INDEX=[
 {
 "ref":"vipy.video.VideoCategory.framerate",
 "url":8,
-"doc":"Change the input framerate for the video and update frame indexes for all annotations Args: fps: Float frames per second to process the underlying video Returns: If fps is None, return the current framerate, otherwise set the framerate to fps",
+"doc":"Change the input framerate for the video and update frame indexes for all annotations Args: fps: [Float] frames per second to process the underlying video Returns: If fps is None, return the current framerate, otherwise set the framerate to fps",
 "func":1
 },
 {
@@ -6158,7 +6149,7 @@ INDEX=[
 {
 "ref":"vipy.video.VideoCategory.crop",
 "url":8,
-"doc":"Spatially crop the video using the supplied vipy.geometry.BoundingBox, can only be applied prior to load().",
+"doc":"Spatially crop the video using the supplied vipy.geometry.BoundingBox, can only be applied prior to load().  note Crop is performed in place overwriting pixels of self.array(). Clone() before crop() if array() must be preserved.",
 "func":1
 },
 {
@@ -6835,7 +6826,7 @@ INDEX=[
 {
 "ref":"vipy.video.Scene.stabilize",
 "url":8,
-"doc":"Background stablization using flow based stabilization masking foreground region. This will output a video with all frames aligned to the first frame, such that the background is static.",
+"doc":"Background stablization using flow based stabilization masking foreground region. - This will output a video with all frames aligned to the first frame, such that the background is static. - This uses the flow based approach described in  vipy.flow.Flow.stabilize Args: padheightfrac: [float] The height padding (relative to video height) to be applied to output video to allow for vertical stabilization padwidthfrac: [float] The width padding (relative to video width) to be applied to output video to allow for horizontal stabilization padheightpx: [int] The height padding to be applied to output video to allow for vertical stabilization. Overrides padheight. padwidthpx: [int] The width padding to be applied to output video to allow for horizontal stabilization. Overrides padwidth. gpu: [int] The GPU index to use, if opencv has been compiled with GPU support (this is rare) outfile: [str] The output filename to store the stabilized video Returns: A clone of this video with background pixels stabilized to the first frame.  note - If the camera pans outside the image rectangle, increase the padheight or padwidth to make sure that the actor stays inside the stabilized image rectangle - If there are moving actors in the scene, include bounding boxes for each and these boxes are ignored as keeyouts in the flow stabilization",
 "func":1
 },
 {
@@ -7483,6 +7474,12 @@ INDEX=[
 "ref":"vipy.util.catcher",
 "url":9,
 "doc":"Call the function f with the provided arguments, and return (True, result) on success and (False, exception) if there is any thrown exception. Useful for parallel processing",
+"func":1
+},
+{
+"ref":"vipy.util.nonecatcher",
+"url":9,
+"doc":"Call the function f with the provided arguments, and return (result) on success and (None) if there is any thrown exception. Useful for parallel processing",
 "func":1
 },
 {
@@ -10259,6 +10256,12 @@ INDEX=[
 "func":1
 },
 {
+"ref":"vipy.activity.Activity.categoryif",
+"url":42,
+"doc":"If the current category is equal to ifcategory, then change it to newcategory. Args: ifcategory [dict, str]: May be a dictionary {ifcategory:tocategory}, or just an ifcategory tocategory [str]: the target category Returns: this object with the category changed.  note This is useful for converting synonyms such as self.categoryif('person_sits', 'person_sitting')",
+"func":1
+},
+{
 "ref":"vipy.activity.Activity.label",
 "url":42,
 "doc":"Alias for category",
@@ -10464,6 +10467,12 @@ INDEX=[
 "ref":"vipy.object.Detection.noshortlabel",
 "url":43,
 "doc":"",
+"func":1
+},
+{
+"ref":"vipy.object.Detection.categoryif",
+"url":43,
+"doc":"If the current category is equal to ifcategory, then change it to newcategory. Args: ifcategory [dict, str]: May be a dictionary {ifcategory:tocategory}, or just an ifcategory tocategory [str]: the target category Returns: this object with the category changed.  note This is useful for converting synonyms such as self.categoryif('motorbike', 'motorcycle')",
 "func":1
 },
 {
@@ -11111,13 +11120,13 @@ INDEX=[
 {
 "ref":"vipy.object.Detection.affine",
 "url":5,
-"doc":"Apply an 2x3 affine transformation to the box centroid. This operation preserves an axis aligned bounding box for an arbitrary affine transform.",
+"doc":"Apply an 2x3 affine transformation to the box centroid.  note This transformation is performed on the centroid and not the box corners, so the box will still be rectilinear after the transform",
 "func":1
 },
 {
 "ref":"vipy.object.Detection.projective",
 "url":5,
-"doc":"Apply an 3x3 affine transformation to the box centroid. This operation preserves an axis aligned bounding box for an arbitrary affine transform.",
+"doc":"Apply an 3x3 projective transformation to the box centroid.  note This transformation is performed on the centroid and not the box corners, so the box will still be rectilinear after the transform",
 "func":1
 },
 {
@@ -11261,6 +11270,12 @@ INDEX=[
 "ref":"vipy.object.Track.category",
 "url":43,
 "doc":"Set the track category to label, and update thte shortlabel also. Updates all keyboxes",
+"func":1
+},
+{
+"ref":"vipy.object.Track.categoryif",
+"url":43,
+"doc":"If the current category is equal to ifcategory, then change it to newcategory. Args: ifcategory [dict, str]: May be a dictionary {ifcategory:tocategory}, or just an ifcategory tocategory [str]: the target category Returns: this object with the category changed.  note This is useful for converting synonyms such as self.categoryif('motorbike', 'motorcycle')",
 "func":1
 },
 {
@@ -12661,13 +12676,13 @@ INDEX=[
 {
 "ref":"vipy.geometry.BoundingBox.affine",
 "url":5,
-"doc":"Apply an 2x3 affine transformation to the box centroid. This operation preserves an axis aligned bounding box for an arbitrary affine transform.",
+"doc":"Apply an 2x3 affine transformation to the box centroid.  note This transformation is performed on the centroid and not the box corners, so the box will still be rectilinear after the transform",
 "func":1
 },
 {
 "ref":"vipy.geometry.BoundingBox.projective",
 "url":5,
-"doc":"Apply an 3x3 affine transformation to the box centroid. This operation preserves an axis aligned bounding box for an arbitrary affine transform.",
+"doc":"Apply an 3x3 projective transformation to the box centroid.  note This transformation is performed on the centroid and not the box corners, so the box will still be rectilinear after the transform",
 "func":1
 },
 {
@@ -13125,7 +13140,7 @@ INDEX=[
 {
 "ref":"vipy.flow.Video.framerate",
 "url":8,
-"doc":"Change the input framerate for the video and update frame indexes for all annotations Args: fps: Float frames per second to process the underlying video Returns: If fps is None, return the current framerate, otherwise set the framerate to fps",
+"doc":"Change the input framerate for the video and update frame indexes for all annotations Args: fps: [Float] frames per second to process the underlying video Returns: If fps is None, return the current framerate, otherwise set the framerate to fps",
 "func":1
 },
 {
@@ -13461,7 +13476,7 @@ INDEX=[
 {
 "ref":"vipy.flow.Video.crop",
 "url":8,
-"doc":"Spatially crop the video using the supplied vipy.geometry.BoundingBox, can only be applied prior to load().",
+"doc":"Spatially crop the video using the supplied vipy.geometry.BoundingBox, can only be applied prior to load().  note Crop is performed in place overwriting pixels of self.array(). Clone() before crop() if array() must be preserved.",
 "func":1
 },
 {
@@ -13634,7 +13649,7 @@ INDEX=[
 {
 "ref":"vipy.flow.Flow.stabilize",
 "url":46,
-"doc":"Affine stabilization to frame zero using multi-scale optical flow correspondence with foreground object keepouts. Recommended usage: >>> v = vipy.video.Scene(filename='/path/to/my/video.mp4').stabilize() Args: v: [ vipy.video.Scene ]: The input video to stabilize, should be resized to mindim=256 keystep: [int] The local stabilization step between keyframes (should be <= 30) padheightfrac: [float] The height padding (relative to video height) to be applied to output video to allow for vertical stabilization padwidthfrac: [float] The width padding (relative to video width) to be applied to output video to allow for horizontal stabilization padheightpx: [int] The height padding to be applied to output video to allow for vertical stabilization. Overrides padheight. padwidthpx: [int] The width padding to be applied to output video to allow for horizontal stabilization. Overrides padwidth. border: [float] The border keepout fraction to ignore during flow correspondence. This should be proportional to the maximum frame to frame flow dilate: [float] The dilation to apply to the foreground object boxes to define a foregroun keepout for flow computation contrast: [float] The minimum gradient necessary for flow correspondence, to avoid flow on low contrast regions rigid: [bool] Euclidean stabilization affine: [bool] Affine stabilization verbose: [bool] This takes a while to run so show some progress  . strict: [bool] If true, throw an exception on error, otherwise return the original video and set v.hasattribute('unstabilized'), useful for large scale stabilization outfile: [str] the file path to the stabilized output video preload [bool]: If true, load the input video into memory before stabilizing. Fasterm but requires video to fit into memory. Returns: A cloned  vipy.video.Scene with filename=outfile, such that pixels and tracks are background stabilized.  notes - The remaining distortion after stabilization is due to: rolling shutter distortion, perspective distortion and non-keepout moving objects in background - If the video contains objects, the object boxes will be transformed along with the stabilization - This requires loading videos entirely into memory. Be careful with stabilizing long videos. - The returned video has the attribute 'stabilize' which contains the mean and median residual of the flow field relative to the motion model. This can be used for stabilization quality filtering.",
+"doc":"Affine stabilization to frame zero using multi-scale optical flow correspondence with foreground object keepouts. Recommended usage: use the  vipy.video.Scene.stabilize method on a  vipy.video.Video object.   v = vipy.video.Scene(filename='/path/to/my/video.mp4').stabilize()   Args: v: [ vipy.video.Scene ]: The input video to stabilize, should be resized to mindim=256 keystep: [int] The local stabilization step between keyframes (should be <= 30) padheightfrac: [float] The height padding (relative to video height) to be applied to output video to allow for vertical stabilization padwidthfrac: [float] The width padding (relative to video width) to be applied to output video to allow for horizontal stabilization padheightpx: [int] The height padding to be applied to output video to allow for vertical stabilization. Overrides padheight. padwidthpx: [int] The width padding to be applied to output video to allow for horizontal stabilization. Overrides padwidth. border: [float] The border keepout fraction to ignore during flow correspondence. This should be proportional to the maximum frame to frame flow dilate: [float] The dilation to apply to the foreground object boxes to define a foregroun keepout for flow computation contrast: [float] The minimum gradient necessary for flow correspondence, to avoid flow on low contrast regions rigid: [bool] Euclidean stabilization affine: [bool] Affine stabilization verbose: [bool] This takes a while to run so show some progress  . strict: [bool] If true, throw an exception on error, otherwise return the original video and set v.hasattribute('unstabilized'), useful for large scale stabilization outfile: [str] the file path to the stabilized output video preload [bool]: If true, load the input video into memory before stabilizing. Faster, but requires video to fit into memory. framerate [float]: The framerate at which to compute the stabilization. Videos will be stabilized at the native framerate of the input video, but will be linearly interpolated between keyframes aligned at this framerate Returns: A cloned  vipy.video.Scene with filename=outfile, such that pixels and tracks are background stabilized.  notes - The remaining distortion after stabilization is due to: rolling shutter distortion, perspective distortion and non-keepout moving objects in background - If the video contains objects, the object boxes will be transformed along with the stabilization - This requires loading videos entirely into memory. Be careful with stabilizing long videos. - The returned video has the attribute 'stabilize' which contains the mean and median residual of the flow field relative to the motion model. This can be used for stabilization quality filtering. - Higher framerates result in more accurate stabilization, but take significantly longer.",
 "func":1
 },
 {
