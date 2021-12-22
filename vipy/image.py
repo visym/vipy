@@ -11,7 +11,7 @@ from vipy.util import isnumpy, isurl, isimageurl, \
     fileext, tempimage, mat2gray, imwrite, imwritegray, \
     tempjpg, filetail, isimagefile, remkdir, hasextension, \
     try_import, tolist, islistoflists, istupleoftuples, isstring, \
-    istuple, islist, isnumber, isnumpyarray, string_to_pil_interpolation, toextension
+    istuple, islist, isnumber, isnumpyarray, string_to_pil_interpolation, toextension, iswebp
 from vipy.geometry import BoundingBox, imagebox
 import vipy.object
 from vipy.object import greedy_assignment
@@ -439,7 +439,10 @@ class Image(object):
                 else:
                     warnings.warn('unknown colorspace for image "%s" - attempting to coerce to colorspace=float' % str(self._filename))
                     self._array = np.float32(self._array)
-                    self.colorspace('float')                    
+                    self.colorspace('float')
+            elif iswebp(self._filename):
+                import vipy.video
+                return vipy.video.Video(self._filename).load()  
             elif hasextension(self._filename):
                 raise ValueError('Non-standard image extensions require a custom loader')
             else:
