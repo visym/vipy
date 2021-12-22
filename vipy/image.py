@@ -120,6 +120,9 @@ class Image(object):
 
         # Guess RGB colorspace if three channel uint8 if colorspace is not provided
         colorspace = 'rgb' if (self.isloaded() and self.channels() == 3 and self._array.dtype == np.uint8 and colorspace is None) else colorspace
+
+        # Guess float colorspace if array is float32 and colorspace is not provided        
+        colorspace = 'float' if (self.isloaded() and self._array.dtype == np.float32 and colorspace is None) else colorspace
         self.colorspace(colorspace)
         
         # Public attributes: passed in as a dictionary
@@ -927,7 +930,6 @@ class Image(object):
             return self.filename()
         else:
             raise ValueError('No URI defined')
-
 
     def setattribute(self, key, value):
         """Set element self.attributes[key]=value"""
