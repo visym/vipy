@@ -462,7 +462,7 @@ class Dataset():
         """Take n elements of selected category and return list"""
         assert n >= 0, "Invalid length"
         D = self if category is None else self.clone().filter(lambda v: v.category() == category())
-        return [D[int(k)] for k in np.random.permutation(range(len(D)))][0:n]  # native python int
+        return [D[int(k)] for k in np.random.permutation(range(len(D)))[0:n]]  # native python int
 
     def load(self):
         """Load the entire dataset into memory.  This is useful for creating in-memory datasets from lazy load datasets"""
