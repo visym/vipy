@@ -3299,7 +3299,7 @@ class Scene(VideoCategory):
 
     def trackclip(self):
         """Split the scene into k separate scenes, one for each track.  Each scene starts and ends when the track starts and ends"""
-        return [t.setattribute('_instance_id', '%s_%d_trackclip' % (t.actorid(), k)).clip(t.track(t.actorid()).startframe(), t.track(t.actorid()).endframe()) for (k,t) in enumerate(self.tracksplit())]
+        return [t.setattribute('_instance_id', '%s_%d_trackclip' % (t.videoid(), k)).clip(t.track(t.actorid()).startframe(), t.track(t.actorid()).endframe()) for (k,t) in enumerate(self.tracksplit())]
     
     def activityclip(self, padframes=0, multilabel=True, idx=None, padto=None, padtosec=None):
         """Return a list of `vipy.video.Scene` objects each clipped to be temporally centered on a single activity, with an optional padframes before and after.  

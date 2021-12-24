@@ -459,6 +459,15 @@ class Track(object):
         """
         return self._keyframes[-1] if len(self._keyframes)>0 else None  # assumes sorted order
 
+    def duration(self):
+        """The length of the track in seconds.
+
+        Returns:
+            The duration in seconds of this track object
+        """
+        assert self.framerate() is not None, "Framerate must be set in constructor"
+        return len(self) / float(self.framerate())
+    
     def linear_interpolation(self, f, id=True):
         """Linear bounding box interpolation at frame=k given observed boxes (x,y,w,h) at keyframes.  
 
