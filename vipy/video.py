@@ -4,7 +4,7 @@ import dill
 from vipy.globals import print
 from vipy.util import remkdir, tempMP4, isurl, \
     isvideourl, templike, tempjpg, filetail, tempdir, isyoutubeurl, try_import, isnumpy, temppng, \
-    istuple, islist, isnumber, tolist, filefull, fileext, isS3url, totempdir, flatlist, tocache, premkdir, writecsv, iswebp, ispng, isgif, filepath, Stopwatch, toextension, isjsonfile, isRTSPurl, isRTMPurl, iswebp
+    istuple, islist, isnumber, tolist, filefull, fileext, isS3url, totempdir, flatlist, tocache, premkdir, writecsv, iswebp, ispng, isgif, filepath, Stopwatch, toextension, isjsonfile, isRTSPurl, isRTMPurl, iswebp, isgif
 from vipy.image import Image
 import vipy.geometry
 import vipy.math
@@ -1547,7 +1547,7 @@ class Video(object):
             self.download(verbose=True)  
         if not self.hasfilename():
             raise ValueError('Video file not found')
-        if iswebp(self.filename()):
+        if iswebp(self.filename()) or isgif(self.filename()):
             return self.load().frame(framenum)
         
         # Convert frame to mjpeg and pipe to stdout, used to get dimensions of video
@@ -1616,9 +1616,10 @@ class Video(object):
         if not self.hasfilename() and ignoreErrors:
             print('[vipy.video.load]: Video file "%s" not found - Ignoring' % self.filename())
             return self
-        if iswebp(self.filename()):
+        if iswebp(self.filename()) or isgif(self.filename()):
             frames = []
-            pil = PIL.Image.open(self.filename())            
+            pil = PIL.Image.open(self.filename())
+            self._framerate = (1000.0 / pil.info['duration']) if 'duration' in pil.info else self._framerate
             for k in range(pil.n_frames):
                 pil.seek(k)
                 frames.append(np.array(pil.convert('RGB')))
@@ -1925,7 +1926,7 @@ class Video(object):
         assert isinstance(b, bool)
         return self.pkl(pklfile) if b else self
 
-    def webp(self, outfile=None, pause=3, strict=True, smallest=False, smaller=False):
+    def webp(self, outfile=None, pause=3, strict=True, smallest=False, smaller=False, framerate=None):
         """Save a video to an animated WEBP file, with pause=N seconds on the last frame between loops.  
         
         Args:
@@ -1933,6 +1934,7 @@ class Video(object):
             pause: Integer seconds to pause between loops of the animation
             smallest:  if true, create the smallest possible file but takes much longer to run
             smaller:  If true, create a smaller file, which takes a little longer to run 
+            framerate [float]:  The output framerate of the webp file.  The default is the framerate of the video. 
 
         Returns:
             The filename of the webp file for this video
@@ -1942,18 +1944,20 @@ class Video(object):
         outfile = vipy.util.tempWEBP() if outfile is None else outfile        
         assert strict is False or iswebp(outfile)
         outfile = os.path.normpath(os.path.abspath(os.path.expanduser(outfile)))
+        framerate = framerate if framerate is not None else self._framerate
         self.load().frame(0).pil().save(outfile, loop=0, save_all=True, method=6 if smallest else 3 if smaller else 0,
                                         append_images=[self.frame(k).pil() for k in range(1, len(self))],
-                                        duration=[int(1000.0/self._framerate) for k in range(0, len(self)-1)] + [pause*1000])
+                                        duration=[int(1000.0/framerate) for k in range(0, len(self)-1)] + [pause*1000])
         return outfile
 
-    def gif(self, outfile, pause=3, smallest=False, smaller=False):
+    def gif(self, outfile, pause=3, smallest=False, smaller=False, framerate=None):
         """Save a video to an animated GIF file, with pause=N seconds between loops.  
 
         Args:
             pause: Integer seconds to pause between loops of the animation
             smallest:  If true, create the smallest possible file but takes much longer to run
             smaller:  if trye, create a smaller file, which takes a little longer to run 
+            framerate [float]:  The output framerate of the webp file.  The default is the framerate of the video. 
 
         Returns:
             The filename of the animated GIF of this video
@@ -1961,7 +1965,7 @@ class Video(object):
         .. warning::  This will be very large for big videos, consider using `vipy.video.Video.webp` instead.
         """        
         assert isgif(outfile)
-        return self.webp(outfile, pause, strict=False, smallest=smallest, smaller=True)
+        return self.webp(outfile, pause, strict=False, smallest=smallest, smaller=True, framerate=framerate)
         
     def saveas(self, outfile=None, framerate=None, vcodec='libx264', verbose=False, ignoreErrors=False, flush=False, pause=5):
         """Save video to new output video file.  This function does not draw boxes, it saves pixels to a new video file.
@@ -2075,7 +2079,9 @@ class Video(object):
 
         if not self.isdownloaded() and self.hasurl():
             self.download()
-        
+        if iswebp(self.filename()) or isgif(self.filename()):
+            self.load()
+            
         if notebook:
             # save to temporary video, this video is not cleaned up and may accumulate            
             try_import("IPython.display", "ipython"); import IPython.display
