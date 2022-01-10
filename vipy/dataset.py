@@ -670,11 +670,12 @@ class Dataset():
             vipy.metrics.histogram(d.values(), d.keys(), outfile=outfile, ylabel='Duration (frames)', fontsize=6)            
         return d
 
-    def duration_in_seconds(self, outfile=None, fontsize=6):
+    def duration_in_seconds(self, outfile=None, fontsize=6, max_duration=None):
         assert self._isvipy()
         d = {k:np.mean([v[1] for v in v]) for (k,v) in groupbyasdict([(a.category(), len(a)/v.framerate()) for v in self.list() for a in v.activitylist()], lambda x: x[0]).items()}
         if outfile is not None:
-            vipy.metrics.histogram(d.values(), d.keys(), outfile=outfile, ylabel='Duration (seconds)', fontsize=fontsize)            
+            max_duration = max(d.values()) if max_duration is None else max_duration
+            vipy.metrics.histogram([min(x, max_duration) for x in d.values()], d.keys(), outfile=outfile, ylabel='Duration (seconds)', fontsize=fontsize)            
         return d
 
     def framerate(self, outfile=None):
