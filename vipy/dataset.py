@@ -51,16 +51,24 @@ class Dataset():
     D = vipy.dataset.Dataset(['/path/to/file1.json', '/path/to/file2.json'])  # lazy loading
     ```
     
+    Args:
+    
+        - abspath [bool]: If true, load all lazy elements with absolute path
+        - loader [lambda]: a callable loader that will process the object .  This is useful for custom deerialization
+        - lazy [bool]: If true, load all pkl or json files using the custom loader when accessed
+
     .. notes:: Be warned that using the jsondir constructor will load elements on demand, but there are some methods that require loading the entire dataset into memory, and will happily try to do so
     """
 
-    def __init__(self, objlist, id=None, abspath=True):
+    def __init__(self, objlist, id=None, abspath=True, loader=None, lazy=False):
+
+        assert loader is None or callable(loader)
 
         self._saveas_ext = ['pkl', 'json']
         self._id = id if id is not None else vipy.util.shortuuid(8)
-        self._loader = lambda x: x
+        self._loader = (lambda x: x) if loader is None else loader
         self._istype_strict = True
-        self._lazy_loader = False
+        self._lazy_loader = lazy
         self._abspath = abspath
 
         if isinstance(objlist, str) and (vipy.util.isjsonfile(objlist) or vipy.util.ispklfile(objlist)):
@@ -70,7 +78,7 @@ class Dataset():
             self._loader = lambda x,b=abspath:  vipy.util.load(x, abspath=b) if (vipy.util.ispkl(x) or vipy.util.isjsonfile(x)) else x
             self._istype_strict = False
             self._lazy_loader = True
-        elif isinstance(objlist, list) and all([(vipy.util.ispkl(x) or vipy.util.isjsonfile(x)) for x in objlist]):
+        elif lazy and (isinstance(objlist, list) and all([(vipy.util.ispkl(x) or vipy.util.isjsonfile(x)) for x in objlist])):
             self._objlist = objlist 
             self._loader = lambda x,b=abspath:  vipy.util.load(x, abspath=b) if (vipy.util.ispkl(x) or vipy.util.isjsonfile(x)) else x            
             self._istype_strict = False
@@ -160,9 +168,16 @@ class Dataset():
         """Return True if all elements in the dataset are of type `vipy.video.Scene`"""                        
         return self.istype([vipy.image.Scene])
 
-    def clone(self):
+    def clone(self, shallow=False):
         """Return a deep copy of the dataset"""
-        return copy.deepcopy(self)
+        if shallow:
+            objlist = self._objlist
+            self._objlist = []  
+            D = copy.deepcopy(self)
+            self._objlist = objlist  # restore
+            return D
+        else:
+            return copy.deepcopy(self)
 
     def archive(self, tarfile, delprefix, mediadir='', format='json', castas=vipy.video.Scene, verbose=False, extrafiles=None, novideos=False, md5=True):
         """Create a archive file for this dataset.  This will be archived as:
@@ -471,15 +486,23 @@ class Dataset():
         return self
 
     def take(self, n, category=None, canload=False):
-        return Dataset(self.takelist(n, category=category, canload=canload))
+        D = self.clone(shallow=True)
+        D._objlist = self.takelist(n, category=category, canload=canload)
+        return D
 
     def take_per_category(self, n, id=None, canload=False):
+        D = self.clone()
         return Dataset([v for c in self.categories() for v in self.takelist(n, category=c, canload=canload)], id=id)
     
     def shuffle(self):
         """Randomly permute elements in this dataset"""
         self._objlist.sort(key=lambda x: random.random())  # in place
         return self
+
+    def chunk(self, n):
+        """Yield n chunks of this dataset.  Last chunk will be ragged"""
+        for (k,V) in enumerate(vipy.util.chunklist(self._objlist, n)):
+            yield Dataset(V, id='%s_%d' % (self.id(), k), loader=self._loader)
 
     def split(self, trainfraction=0.9, valfraction=0.1, testfraction=0, seed=42):
         """Split the dataset by category by fraction so that video IDs are never in the same set"""

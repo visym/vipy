@@ -232,9 +232,10 @@ class Activity(object):
         return set(self._trackid)
 
     def hasoverlap(self, other, threshold=0):
-        assert isinstance(other, Activity), "Invalid input"
+        """Return true if the temporal_iou is greater than the provided threshold between self and other Track or other Activity"""
+        assert isinstance(other, Activity) or isinstance(other, Track), "Invalid input"
         assert threshold >= 0 and threshold <= 1, "Invalid temporal IOU threshold"
-        return (((min(self._endframe, other._endframe) - max(self._startframe, other._startframe)) > 0) if threshold == 0 else
+        return (((min(self._endframe, other.endframe()) - max(self._startframe, other.startframe())) > 0) if threshold == 0 else
                 self.temporal_iou(other) > threshold)
         
     def isneighbor(self, other, framegate=10):
@@ -247,10 +248,10 @@ class Activity(object):
         return trackid in self._trackid
 
     def hastrackoverlap(self, track):
-        """is the activity occurring during the interval when the track is occurring?"""
+        """is the activity occurring during the interval when the track is occurring and is this track assigned to the activity?"""
         assert isinstance(track, Track)
         return self.hastrack(track) and self.temporal_iou(track) > 0
-    
+
     def append(self, newtrack):
         """Append newtrack to this activity and set as actorid()"""
         assert isinstance(newtrack, Track), "Invalid input - must be vipy.object.Track"
