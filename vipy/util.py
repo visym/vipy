@@ -33,9 +33,7 @@ try:
     import ujson as json  # faster
 except ImportError:
     import json
-
-
-
+    
 def class_registry():
     """Return a dictionary mapping str(type(obj)) to a JSON loader for all vipy objects.
 
@@ -1324,6 +1322,10 @@ def isarchive(filename):
 def istgz(filename):
     """Is the filename a .tgz or .tar.gz extension?"""
     return filename[-4:] == '.tgz' or filename[-7:] == '.tar.gz'
+
+def istar(filename):
+    """Is the filename a .tar extension?"""
+    return filename[-4:] == '.tar'
 
 def isbz2(filename):
     """Is the filename a .bz2 or .tar.bz2 extension?"""

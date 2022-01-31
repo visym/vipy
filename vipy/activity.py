@@ -10,7 +10,6 @@ try:
 except ImportError:
     import json
 
-
 ACTIVITY_GUID = int(uuid.uuid4().hex[0:8], 16)  
 
 class Activity(object):

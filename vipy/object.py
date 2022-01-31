@@ -11,6 +11,7 @@ try:
 except ImportError:
     import json
 
+
 DETECTION_GUID = int(uuid.uuid4().hex[0:8], 16)  
 
 class Detection(BoundingBox):

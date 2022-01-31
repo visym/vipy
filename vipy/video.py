@@ -36,11 +36,12 @@ import queue
 import threading
 from concurrent.futures import ThreadPoolExecutor
 import collections
+
 try:
     import ujson as json  # faster
 except ImportError:
     import json
-    
+
     
 ffmpeg_exe = shutil.which('ffmpeg')
 has_ffmpeg = ffmpeg_exe is not None and os.path.exists(ffmpeg_exe)
@@ -1353,10 +1354,11 @@ class Video(object):
         if parent is not None:
             parent = parent if parent is not None else os.getcwd()
             assert parent in os.path.expanduser(self.filename()), "Parent path '%s' not found in abspath '%s'" % (parent, self.filename())
-            return self.filename(PurePath(os.path.expanduser(self.filename())).relative_to(parent))
-        elif start is not None: 
-            return self.filename(os.path.join(os.path.relpath(os.path.expanduser(self.filename()), start), filetail(self.filename())))
-
+            self.filename(PurePath(os.path.expanduser(self.filename())).relative_to(parent))
+        if start is not None: 
+            self.filename(os.path.join(os.path.relpath(os.path.expanduser(filepath(self.filename())), start), filetail(self.filename())))
+        return self
+            
     def rename(self, newname):
         """Move the underlying video file preserving the absolute path, such that self.filename() == '/a/b/c.ext' and newname='d.ext', then self.filename() -> '/a/b/d.ext', and move the corresponding file"""
         newfile = os.path.join(filepath(self.filename()), newname)

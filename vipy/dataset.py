@@ -179,7 +179,7 @@ class Dataset():
         else:
             return copy.deepcopy(self)
 
-    def archive(self, tarfile, delprefix, mediadir='', format='json', castas=vipy.video.Scene, verbose=False, extrafiles=None, novideos=False, md5=True):
+    def archive(self, tarfile, delprefix, mediadir='videos', format='json', castas=vipy.video.Scene, verbose=False, extrafiles=None, novideos=False, md5=True, tmpdir=None, inplace=False, bycategory=False, annotationdir='annotations'):
         """Create a archive file for this dataset.  This will be archived as:
 
            /path/to/tarfile.{tar.gz|.tgz|.bz2}
@@ -198,6 +198,10 @@ class Dataset():
                 novideos [bool]:  generate a tarball without linking videos, just annotations
                 md5 [bool]:  If True, generate the MD5 hash of the tarball using the system "md5sum", or if md5='vipy' use a slower python only md5 hash 
                 castas [class]:  This should be a vipy class that the vipy objects should be cast to prior to archive.  This is useful for converting priveledged superclasses to a base class prior to export.
+                tmpdir:  The path to the temporary directory for construting this dataset.  Defaults to system temp
+                inplace [bool]:  If true, modify the dataset in place to prepare it for archive, else make a copy
+                bycategory [bool]: If true, save the annotations in an annotations/ directory by category
+                annotationdir [str]: The subdirectory name of annotations to be contained in the archive if bycategory=True.  Usually "annotations" or "json".
 
             Example:  
 
@@ -215,16 +219,23 @@ class Dataset():
         assert self._isvipy(), "Source dataset must contain vipy objects for staging"
         assert all([os.path.isabs(v.filename()) for v in self]), "Input dataset must have only absolute media paths"
         assert len([v for v in self if any([d in v.filename() for d in tolist(delprefix)])]) == len(self), "all media objects must have a provided delprefix for relative path construction"
-        assert vipy.util.istgz(tarfile) or vipy.util.isbz2(tarfile), "Allowable extensions are .tar.gz, .tgz or .bz2"
+        assert vipy.util.istgz(tarfile) or vipy.util.isbz2(tarfile) or vipy.util.istar(tarfile), "Allowable extensions are .tar.gz, .tgz, .bz2 or .tar"
         assert shutil.which('tar') is not None, "tar not found on path"        
         
-        D = self.clone()
-        stagedir = remkdir(os.path.join(tempdir(), filefull(filetail(tarfile))))
+        D = self.clone() if not inplace else self   # large memory footprint if inplace=False
+        tmpdir = tempdir() if tmpdir is None else remkdir(tmpdir)
+        stagedir = remkdir(os.path.join(tmpdir, filefull(filetail(tarfile))))
         print('[vipy.dataset]: creating staging directory "%s"' % stagedir)
         delprefix = [[d for d in tolist(delprefix) if d in v.filename()][0] for v in self]  # select the delprefix per video
         D._objlist = [v.filename(v.filename().replace(os.path.normpath(p), os.path.normpath(os.path.join(stagedir, mediadir))), symlink=not novideos) for (p,v) in zip(delprefix, D.list())]
-        pklfile = os.path.join(stagedir, '%s.%s' % (filetail(filefull(tarfile)), format))
-        D.save(pklfile, relpath=True, nourl=True, sanitize=True, castas=castas, significant_digits=2, noemail=True, flush=True)
+
+        # Save annotations:  Split large datasets into annotations grouped by category to help speed up loading         
+        if bycategory:
+            for (c,V) in vipy.util.groupbyasdict(list(D), lambda v: v.category()).items():
+                Dataset(V, id=c).save(os.path.join(stagedir, annotationdir, '%s.%s' % (c, format)), relpath=True, nourl=True, sanitize=True, castas=castas, significant_digits=2, noemail=True, flush=True)
+        else:
+            pklfile = os.path.join(stagedir, '%s.%s' % (filetail(filefull(tarfile)), format))
+            D.save(pklfile, relpath=True, nourl=True, sanitize=True, castas=castas, significant_digits=2, noemail=True, flush=True)
     
         # Copy extras (symlinked) to staging directory
         if extrafiles is not None:
@@ -235,7 +246,7 @@ class Dataset():
                 os.symlink(os.path.abspath(e), os.path.join(stagedir, filetail(e) if a is None else a))
 
         # System command to run tar
-        cmd = ('tar %scvf %s -C %s --dereference %s %s' % ('j' if vipy.util.isbz2(tarfile) else 'z', 
+        cmd = ('tar %scvf %s -C %s --dereference %s %s' % ('j' if vipy.util.isbz2(tarfile) else ('z' if vipy.util.istgz(tarfile) else ''), 
                                                            tarfile,
                                                            filepath(stagedir),
                                                            filetail(stagedir),
@@ -280,7 +291,7 @@ class Dataset():
             assert self._isvipy(), "Invalid input"
         if relpath:
             print('[vipy.dataset]: setting relative paths')
-            objlist = [v.relpath(filepath(outfile)) if os.path.isabs(v.filename()) else v for v in objlist]
+            objlist = [v.relpath(start=filepath(outfile)) if os.path.isabs(v.filename()) else v for v in objlist]
         if nourl: 
             print('[vipy.dataset]: removing URLs')
             objlist = [v.nourl() for v in objlist]           
