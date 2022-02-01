@@ -269,7 +269,7 @@ INDEX=[
 {
 "ref":"vipy.dataset.Dataset",
 "url":3,
-"doc":"vipy.dataset.Dataset() class Common class to manipulate large sets of vipy objects in parallel   D = vipy.dataset.Dataset([vipy.video.RandomScene(), vipy.video.RandomScene()], id='random_scene') with vipy.globals.parallel(2): D = D.map(lambda v: v.frame(0 list(D)   Create dataset and export as a directory of json files   D = vipy.dataset.Dataset([vipy.video.RandomScene(), vipy.video.RandomScene()]) D.tojsondir('/tmp/myjsondir')   Create dataset from all json or pkl files recursively discovered in a directory and lazy loaded   D = vipy.dataset.Dataset('/tmp/myjsondir')  lazy loading   Create dataset from a list of json or pkl files and lazy loaded   D = vipy.dataset.Dataset(['/path/to/file1.json', '/path/to/file2.json'])  lazy loading    notes Be warned that using the jsondir constructor will load elements on demand, but there are some methods that require loading the entire dataset into memory, and will happily try to do so"
+"doc":"vipy.dataset.Dataset() class Common class to manipulate large sets of vipy objects in parallel   D = vipy.dataset.Dataset([vipy.video.RandomScene(), vipy.video.RandomScene()], id='random_scene') with vipy.globals.parallel(2): D = D.map(lambda v: v.frame(0 list(D)   Create dataset and export as a directory of json files   D = vipy.dataset.Dataset([vipy.video.RandomScene(), vipy.video.RandomScene()]) D.tojsondir('/tmp/myjsondir')   Create dataset from all json or pkl files recursively discovered in a directory and lazy loaded   D = vipy.dataset.Dataset('/tmp/myjsondir')  lazy loading   Create dataset from a list of json or pkl files and lazy loaded   D = vipy.dataset.Dataset(['/path/to/file1.json', '/path/to/file2.json'])  lazy loading   Args: - abspath [bool]: If true, load all lazy elements with absolute path - loader [lambda]: a callable loader that will process the object . This is useful for custom deerialization - lazy [bool]: If true, load all pkl or json files using the custom loader when accessed  notes Be warned that using the jsondir constructor will load elements on demand, but there are some methods that require loading the entire dataset into memory, and will happily try to do so"
 },
 {
 "ref":"vipy.dataset.Dataset.json",
@@ -322,7 +322,7 @@ INDEX=[
 {
 "ref":"vipy.dataset.Dataset.archive",
 "url":3,
-"doc":"Create a archive file for this dataset. This will be archived as: /path/to/tarfile.{tar.gz|.tgz|.bz2} tarfilename tarfilename.{json|pkl} mediadir/ video.mp4 extras1.ext extras2.ext Args: tarfile: /path/to/tarfilename.tar.gz delprefix: the absolute file path contained in the media filenames to be removed. If a video has a delprefix='/a/b' then videos with path /a/b/c/d.mp4' -> 'c/d.mp4', and {JSON|PKL} will be saved with relative paths to mediadir. This may be a list of delprefixes. mediadir: the subdirectory name of the media to be contained in the archive. Usually \"videos\". extrafiles: list of tuples or singletons [(abspath, filename_in_archive_relative_to_root), 'file_in_root_and_in_pwd',  .], novideos [bool]: generate a tarball without linking videos, just annotations md5 [bool]: If True, generate the MD5 hash of the tarball using the system \"md5sum\", or if md5='vipy' use a slower python only md5 hash castas [class]: This should be a vipy class that the vipy objects should be cast to prior to archive. This is useful for converting priveledged superclasses to a base class prior to export. Example: - Input files contain /path/to/oldvideos/category/video.mp4 - Output will contain relative paths videos/category/video.mp4   d.archive('out.tar.gz', delprefix='/path/to/oldvideos', mediadir='videos')   Returns: The absolute path to the tarball",
+"doc":"Create a archive file for this dataset. This will be archived as: /path/to/tarfile.{tar.gz|.tgz|.bz2} tarfilename tarfilename.{json|pkl} mediadir/ video.mp4 extras1.ext extras2.ext Args: tarfile: /path/to/tarfilename.tar.gz delprefix: the absolute file path contained in the media filenames to be removed. If a video has a delprefix='/a/b' then videos with path /a/b/c/d.mp4' -> 'c/d.mp4', and {JSON|PKL} will be saved with relative paths to mediadir. This may be a list of delprefixes. mediadir: the subdirectory name of the media to be contained in the archive. Usually \"videos\". extrafiles: list of tuples or singletons [(abspath, filename_in_archive_relative_to_root), 'file_in_root_and_in_pwd',  .], novideos [bool]: generate a tarball without linking videos, just annotations md5 [bool]: If True, generate the MD5 hash of the tarball using the system \"md5sum\", or if md5='vipy' use a slower python only md5 hash castas [class]: This should be a vipy class that the vipy objects should be cast to prior to archive. This is useful for converting priveledged superclasses to a base class prior to export. tmpdir: The path to the temporary directory for construting this dataset. Defaults to system temp inplace [bool]: If true, modify the dataset in place to prepare it for archive, else make a copy bycategory [bool]: If true, save the annotations in an annotations/ directory by category annotationdir [str]: The subdirectory name of annotations to be contained in the archive if bycategory=True. Usually \"annotations\" or \"json\". Example: - Input files contain /path/to/oldvideos/category/video.mp4 - Output will contain relative paths videos/category/video.mp4   d.archive('out.tar.gz', delprefix='/path/to/oldvideos', mediadir='videos')   Returns: The absolute path to the tarball",
 "func":1
 },
 {
@@ -503,6 +503,12 @@ INDEX=[
 "ref":"vipy.dataset.Dataset.shuffle",
 "url":3,
 "doc":"Randomly permute elements in this dataset",
+"func":1
+},
+{
+"ref":"vipy.dataset.Dataset.chunk",
+"url":3,
+"doc":"Yield n chunks of this dataset. Last chunk will be ragged",
 "func":1
 },
 {
@@ -4613,7 +4619,7 @@ INDEX=[
 {
 "ref":"vipy.image.mutator_show_jointlabel",
 "url":4,
-"doc":"",
+"doc":"Deprecated",
 "func":1
 },
 {
@@ -4679,7 +4685,7 @@ INDEX=[
 {
 "ref":"vipy.image.mutator_show_trackindex_verbonly",
 "url":4,
-"doc":"Mutate the image to show boxes colored by track index, and only show 'verb' captions with activity confidence",
+"doc":"Mutate the image to show boxes colored by track index, and only show 'verb' captions with activity confidence, sorted in decreasing order",
 "func":1
 },
 {
@@ -5484,13 +5490,13 @@ INDEX=[
 {
 "ref":"vipy.video.Video.webp",
 "url":8,
-"doc":"Save a video to an animated WEBP file, with pause=N seconds on the last frame between loops. Args: strict: If true, assert that the filename must have an .webp extension pause: Integer seconds to pause between loops of the animation smallest: if true, create the smallest possible file but takes much longer to run smaller: If true, create a smaller file, which takes a little longer to run Returns: The filename of the webp file for this video  warning This may be slow for very long or large videos",
+"doc":"Save a video to an animated WEBP file, with pause=N seconds on the last frame between loops. Args: strict: If true, assert that the filename must have an .webp extension pause: Integer seconds to pause between loops of the animation smallest: if true, create the smallest possible file but takes much longer to run smaller: If true, create a smaller file, which takes a little longer to run framerate [float]: The output framerate of the webp file. The default is the framerate of the video. Returns: The filename of the webp file for this video  warning This may be slow for very long or large videos",
 "func":1
 },
 {
 "ref":"vipy.video.Video.gif",
 "url":8,
-"doc":"Save a video to an animated GIF file, with pause=N seconds between loops. Args: pause: Integer seconds to pause between loops of the animation smallest: If true, create the smallest possible file but takes much longer to run smaller: if trye, create a smaller file, which takes a little longer to run Returns: The filename of the animated GIF of this video  warning This will be very large for big videos, consider using  vipy.video.Video.webp instead.",
+"doc":"Save a video to an animated GIF file, with pause=N seconds between loops. Args: pause: Integer seconds to pause between loops of the animation smallest: If true, create the smallest possible file but takes much longer to run smaller: if trye, create a smaller file, which takes a little longer to run framerate [float]: The output framerate of the webp file. The default is the framerate of the video. Returns: The filename of the animated GIF of this video  warning This will be very large for big videos, consider using  vipy.video.Video.webp instead.",
 "func":1
 },
 {
@@ -6167,13 +6173,13 @@ INDEX=[
 {
 "ref":"vipy.video.VideoCategory.webp",
 "url":8,
-"doc":"Save a video to an animated WEBP file, with pause=N seconds on the last frame between loops. Args: strict: If true, assert that the filename must have an .webp extension pause: Integer seconds to pause between loops of the animation smallest: if true, create the smallest possible file but takes much longer to run smaller: If true, create a smaller file, which takes a little longer to run Returns: The filename of the webp file for this video  warning This may be slow for very long or large videos",
+"doc":"Save a video to an animated WEBP file, with pause=N seconds on the last frame between loops. Args: strict: If true, assert that the filename must have an .webp extension pause: Integer seconds to pause between loops of the animation smallest: if true, create the smallest possible file but takes much longer to run smaller: If true, create a smaller file, which takes a little longer to run framerate [float]: The output framerate of the webp file. The default is the framerate of the video. Returns: The filename of the webp file for this video  warning This may be slow for very long or large videos",
 "func":1
 },
 {
 "ref":"vipy.video.VideoCategory.gif",
 "url":8,
-"doc":"Save a video to an animated GIF file, with pause=N seconds between loops. Args: pause: Integer seconds to pause between loops of the animation smallest: If true, create the smallest possible file but takes much longer to run smaller: if trye, create a smaller file, which takes a little longer to run Returns: The filename of the animated GIF of this video  warning This will be very large for big videos, consider using  vipy.video.Video.webp instead.",
+"doc":"Save a video to an animated GIF file, with pause=N seconds between loops. Args: pause: Integer seconds to pause between loops of the animation smallest: If true, create the smallest possible file but takes much longer to run smaller: if trye, create a smaller file, which takes a little longer to run framerate [float]: The output framerate of the webp file. The default is the framerate of the video. Returns: The filename of the animated GIF of this video  warning This will be very large for big videos, consider using  vipy.video.Video.webp instead.",
 "func":1
 },
 {
@@ -7318,13 +7324,13 @@ INDEX=[
 {
 "ref":"vipy.video.Scene.webp",
 "url":8,
-"doc":"Save a video to an animated WEBP file, with pause=N seconds on the last frame between loops. Args: strict: If true, assert that the filename must have an .webp extension pause: Integer seconds to pause between loops of the animation smallest: if true, create the smallest possible file but takes much longer to run smaller: If true, create a smaller file, which takes a little longer to run Returns: The filename of the webp file for this video  warning This may be slow for very long or large videos",
+"doc":"Save a video to an animated WEBP file, with pause=N seconds on the last frame between loops. Args: strict: If true, assert that the filename must have an .webp extension pause: Integer seconds to pause between loops of the animation smallest: if true, create the smallest possible file but takes much longer to run smaller: If true, create a smaller file, which takes a little longer to run framerate [float]: The output framerate of the webp file. The default is the framerate of the video. Returns: The filename of the webp file for this video  warning This may be slow for very long or large videos",
 "func":1
 },
 {
 "ref":"vipy.video.Scene.gif",
 "url":8,
-"doc":"Save a video to an animated GIF file, with pause=N seconds between loops. Args: pause: Integer seconds to pause between loops of the animation smallest: If true, create the smallest possible file but takes much longer to run smaller: if trye, create a smaller file, which takes a little longer to run Returns: The filename of the animated GIF of this video  warning This will be very large for big videos, consider using  vipy.video.Video.webp instead.",
+"doc":"Save a video to an animated GIF file, with pause=N seconds between loops. Args: pause: Integer seconds to pause between loops of the animation smallest: If true, create the smallest possible file but takes much longer to run smaller: if trye, create a smaller file, which takes a little longer to run framerate [float]: The output framerate of the webp file. The default is the framerate of the video. Returns: The filename of the animated GIF of this video  warning This will be very large for big videos, consider using  vipy.video.Video.webp instead.",
 "func":1
 },
 {
@@ -7474,6 +7480,12 @@ INDEX=[
 "ref":"vipy.util.catcher",
 "url":9,
 "doc":"Call the function f with the provided arguments, and return (True, result) on success and (False, exception) if there is any thrown exception. Useful for parallel processing",
+"func":1
+},
+{
+"ref":"vipy.util.loudcatcher",
+"url":9,
+"doc":"Call the function f with the provided arguments, and return (True, result) on success and (False, exception) if there is any thrown exception. Print the exception immediately. Useful for parallel processing",
 "func":1
 },
 {
@@ -8326,6 +8338,12 @@ INDEX=[
 "ref":"vipy.util.istgz",
 "url":9,
 "doc":"Is the filename a .tgz or .tar.gz extension?",
+"func":1
+},
+{
+"ref":"vipy.util.istar",
+"url":9,
+"doc":"Is the filename a .tar extension?",
 "func":1
 },
 {
@@ -10300,7 +10318,7 @@ INDEX=[
 {
 "ref":"vipy.activity.Activity.hasoverlap",
 "url":42,
-"doc":"",
+"doc":"Return true if the temporal_iou is greater than the provided threshold between self and other Track or other Activity",
 "func":1
 },
 {
@@ -10318,7 +10336,7 @@ INDEX=[
 {
 "ref":"vipy.activity.Activity.hastrackoverlap",
 "url":42,
-"doc":"is the activity occurring during the interval when the track is occurring?",
+"doc":"is the activity occurring during the interval when the track is occurring and is this track assigned to the activity?",
 "func":1
 },
 {
@@ -11258,6 +11276,12 @@ INDEX=[
 "ref":"vipy.object.Track.endframe",
 "url":43,
 "doc":"Return the endframe of the track or None if there are no keyframes. The frame index is relative to the framerate set in the constructor.",
+"func":1
+},
+{
+"ref":"vipy.object.Track.duration",
+"url":43,
+"doc":"The length of the track in seconds. Returns: The duration in seconds of this track object",
 "func":1
 },
 {
@@ -13494,13 +13518,13 @@ INDEX=[
 {
 "ref":"vipy.flow.Video.webp",
 "url":8,
-"doc":"Save a video to an animated WEBP file, with pause=N seconds on the last frame between loops. Args: strict: If true, assert that the filename must have an .webp extension pause: Integer seconds to pause between loops of the animation smallest: if true, create the smallest possible file but takes much longer to run smaller: If true, create a smaller file, which takes a little longer to run Returns: The filename of the webp file for this video  warning This may be slow for very long or large videos",
+"doc":"Save a video to an animated WEBP file, with pause=N seconds on the last frame between loops. Args: strict: If true, assert that the filename must have an .webp extension pause: Integer seconds to pause between loops of the animation smallest: if true, create the smallest possible file but takes much longer to run smaller: If true, create a smaller file, which takes a little longer to run framerate [float]: The output framerate of the webp file. The default is the framerate of the video. Returns: The filename of the webp file for this video  warning This may be slow for very long or large videos",
 "func":1
 },
 {
 "ref":"vipy.flow.Video.gif",
 "url":8,
-"doc":"Save a video to an animated GIF file, with pause=N seconds between loops. Args: pause: Integer seconds to pause between loops of the animation smallest: If true, create the smallest possible file but takes much longer to run smaller: if trye, create a smaller file, which takes a little longer to run Returns: The filename of the animated GIF of this video  warning This will be very large for big videos, consider using  vipy.video.Video.webp instead.",
+"doc":"Save a video to an animated GIF file, with pause=N seconds between loops. Args: pause: Integer seconds to pause between loops of the animation smallest: If true, create the smallest possible file but takes much longer to run smaller: if trye, create a smaller file, which takes a little longer to run framerate [float]: The output framerate of the webp file. The default is the framerate of the video. Returns: The filename of the animated GIF of this video  warning This will be very large for big videos, consider using  vipy.video.Video.webp instead.",
 "func":1
 },
 {
