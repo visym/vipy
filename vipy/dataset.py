@@ -266,7 +266,7 @@ class Dataset():
                 print('[vipy.dataset]: %s, MD5=%s' % (tarfile, vipy.downloader.generate_md5(tarfile)))  # too slow for large datasets, but does not require md5sum on path
         return tarfile
         
-    def save(self, outfile, nourl=False, castas=None, relpath=False, sanitize=True, strict=True, significant_digits=2, noemail=True, flush=True):
+    def save(self, outfile, nourl=False, castas=None, relpath=False, sanitize=True, strict=True, significant_digits=2, noemail=True, flush=True, bycategory=False):
         """Save the dataset to the provided output filename stored as pkl or json
         
         Args:
@@ -279,6 +279,7 @@ class Dataset():
             significant_digits: [int]: Assign the requested number of significant digits to all bounding boxes in all tracks.  This requires dataset of `vipy.video.Scene`
             noemail: [bool]: If true, scrub the attributes for emails and replace with a hash
             flush: [bool]:  If true, flush the object buffers prior to save
+            bycategory [bool[: If trye, then save the dataset to the provided output filename pattern outfile='/path/to/annotations/*.json' where the wildcard is replaced with the category name
 
         Returns:        
             This dataset that is quivalent to vipy.dataset.Dataset('/path/to/outfile.json')
@@ -315,8 +316,14 @@ class Dataset():
         if flush:
             objlist = [o.flush() for o in objlist]  
 
-        print('[vipy.dataset]: Saving %s to "%s"' % (str(self), outfile))
-        vipy.util.save(objlist, outfile)
+        if bycategory:
+            for (c,V) in vipy.util.groupbyasdict(list(self), lambda v: v.category()).items():
+                jsonfile = outfile.replace('*', c)  # outfile="/path/to/annotations/*.json"
+                d = Dataset(V, id=c).save(jsonfile, relpath=relpath, nourl=nourl, sanitize=sanitize, castas=castas, significant_digits=significant_digits, noemail=noemail, flush=flush, bycategory=False)
+                print('[vipy.dataset]: Saving %s by category to "%s"' % (str(d), jsonfile))                
+        else:
+            print('[vipy.dataset]: Saving %s to "%s"' % (str(self), outfile))
+            vipy.util.save(objlist, outfile)
         return self
 
     def classlist(self):
