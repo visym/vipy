@@ -2410,7 +2410,8 @@ class Video(object):
         return self
 
     def getattribute(self, k):
-        return self.attributes[k]
+        """Return the key k in the attributes dictionary (self.attributes) if present, else None"""
+        return self.attributes[k] if k in self.attributes else None
 
     
 class VideoCategory(Video):

@@ -406,22 +406,18 @@ def permutelist(inlist):
 
 def flatlist(inlist):
     """Convert list of tuples into a list expanded by concatenating tuples"""
-    outlist = []
-    for r in inlist:
-        for x in r:
-            outlist.append(x)
-    return outlist
+    return [x for r in inlist for x in r]
 
 
 def rmdir(indir):
-    """Recursively remove directory and all contents (if the directory
-    exists)"""
+    """Recursively remove directory and all contents (if the directory exists)"""
     if os.path.exists(indir) and os.path.isdir(indir):
         shutil.rmtree(indir)
     return indir
 
 def dividelist(inlist, fractions):
     """Divide inlist into a list of lists such that the size of each sublist is the requseted fraction of the original list. 
+
        This operation is deterministic and generates the same division in multiple calls.
        
     Args:

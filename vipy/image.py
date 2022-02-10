@@ -948,11 +948,9 @@ class Image(object):
         self.attributes.update(newattr)
         return self
     
-    def getattribute(self, key):
-        if self.attributes is not None and key in list(self.attributes.keys()):
-            return self.attributes[key]
-        else:
-            return None
+    def getattribute(self, k):
+        """Return the key k in the attributes dictionary (self.attributes) if present, else None"""        
+        return self.attributes[k] if k in self.attributes else None        
 
     def hasattribute(self, key):
         return self.attributes is not None and key in self.attributes

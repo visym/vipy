@@ -491,11 +491,11 @@ class Dataset():
         """Alias for `vipy.dataset.Dataset.jsondir`"""
         return self.jsondir(outdir, verbose=verbose, rekey=rekey, bycategory=bycategory, byfilename=byfilename, abspath=abspath)
     
-    def takelist(self, n, category=None, canload=False):
-        """Take n elements of selected category and return list"""
+    def takelist(self, n, category=None):
+        """Take n elements of selected category and return list.  The elements are not cloned."""
         assert n >= 0, "Invalid length"
-        D = self if category is None else self.clone().filter(lambda v: v.category() == category())
-        return [D[int(k)] for k in np.random.permutation(range(len(D)))[0:n]]  # native python int
+        K = list(range(len(self))) if category is None else [k for (k,v) in enumerate(self) if v.category() == category]
+        return [self[int(k)] for k in np.random.permutation(K)[0:n]]  # native python int
 
     def load(self):
         """Load the entire dataset into memory.  This is useful for creating in-memory datasets from lazy load datasets"""
@@ -505,12 +505,13 @@ class Dataset():
 
     def take(self, n, category=None, canload=False):
         D = self.clone(shallow=True)
-        D._objlist = self.takelist(n, category=category, canload=canload)
+        D._objlist = self.takelist(n, category=category)
         return D
 
     def take_per_category(self, n, id=None, canload=False):
-        D = self.clone()
-        return Dataset([v for c in self.categories() for v in self.takelist(n, category=c, canload=canload)], id=id)
+        D = self.clone(shallow=True)
+        D._objlist = [v for c in self.categories() for v in self.takelist(n, category=c)]
+        return D
     
     def shuffle(self):
         """Randomly permute elements in this dataset"""
