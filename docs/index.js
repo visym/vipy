@@ -328,7 +328,7 @@ INDEX=[
 {
 "ref":"vipy.dataset.Dataset.save",
 "url":3,
-"doc":"Save the dataset to the provided output filename stored as pkl or json Args: outfile: [str]: The /path/to/out.pkl or /path/to/out.json nourl: [bool]: If true, remove all URLs from the media (if present) castas: [type]: Cast all media to the provided type. This is useful for downcasting to  vipy.video.Scene from superclasses relpath: [bool]: If true, define all file paths in objects relative to the /path/to in /path/to/out.json sanitize: [bool]: If trye, call sanitize() on all objects to remove all private attributes with prepended '__' strict: [bool]: Unused significant_digits: [int]: Assign the requested number of significant digits to all bounding boxes in all tracks. This requires dataset of  vipy.video.Scene noemail: [bool]: If true, scrub the attributes for emails and replace with a hash flush: [bool]: If true, flush the object buffers prior to save Returns: This dataset that is quivalent to vipy.dataset.Dataset('/path/to/outfile.json')",
+"doc":"Save the dataset to the provided output filename stored as pkl or json Args: outfile: [str]: The /path/to/out.pkl or /path/to/out.json nourl: [bool]: If true, remove all URLs from the media (if present) castas: [type]: Cast all media to the provided type. This is useful for downcasting to  vipy.video.Scene from superclasses relpath: [bool]: If true, define all file paths in objects relative to the /path/to in /path/to/out.json sanitize: [bool]: If trye, call sanitize() on all objects to remove all private attributes with prepended '__' strict: [bool]: Unused significant_digits: [int]: Assign the requested number of significant digits to all bounding boxes in all tracks. This requires dataset of  vipy.video.Scene noemail: [bool]: If true, scrub the attributes for emails and replace with a hash flush: [bool]: If true, flush the object buffers prior to save bycategory [bool[: If trye, then save the dataset to the provided output filename pattern outfile='/path/to/annotations/ .json' where the wildcard is replaced with the category name Returns: This dataset that is quivalent to vipy.dataset.Dataset('/path/to/outfile.json')",
 "func":1
 },
 {
@@ -478,7 +478,7 @@ INDEX=[
 {
 "ref":"vipy.dataset.Dataset.takelist",
 "url":3,
-"doc":"Take n elements of selected category and return list",
+"doc":"Take n elements of selected category and return list. The elements are not cloned.",
 "func":1
 },
 {
@@ -490,7 +490,7 @@ INDEX=[
 {
 "ref":"vipy.dataset.Dataset.take",
 "url":3,
-"doc":"",
+"doc":"Randomlly Take n elements from the dataset, and return a dataset if n>1, otherwise return the singleton element",
 "func":1
 },
 {
@@ -592,7 +592,13 @@ INDEX=[
 {
 "ref":"vipy.dataset.Dataset.duration_in_seconds",
 "url":3,
-"doc":"",
+"doc":"Duration of activities",
+"func":1
+},
+{
+"ref":"vipy.dataset.Dataset.video_duration_in_seconds",
+"url":3,
+"doc":"Duration of activities",
 "func":1
 },
 {
@@ -1022,7 +1028,7 @@ INDEX=[
 {
 "ref":"vipy.image.Image.getattribute",
 "url":4,
-"doc":"",
+"doc":"Return the key k in the attributes dictionary (self.attributes) if present, else None",
 "func":1
 },
 {
@@ -1850,6 +1856,12 @@ INDEX=[
 "ref":"vipy.image.ImageCategory.setattributes",
 "url":4,
 "doc":"Set many attributes at once by providing a dictionary to be merged with current attributes",
+"func":1
+},
+{
+"ref":"vipy.image.ImageCategory.getattribute",
+"url":4,
+"doc":"Return the key k in the attributes dictionary (self.attributes) if present, else None",
 "func":1
 },
 {
@@ -2890,6 +2902,12 @@ INDEX=[
 "func":1
 },
 {
+"ref":"vipy.image.Scene.getattribute",
+"url":4,
+"doc":"Return the key k in the attributes dictionary (self.attributes) if present, else None",
+"func":1
+},
+{
 "ref":"vipy.image.Scene.clone",
 "url":4,
 "doc":"Create deep copy of object, flushing the original buffer if requested and returning the cloned object. Flushing is useful for distributed memory management to free the buffer from this object, and pass along a cloned object which can be used for encoding and will be garbage collected.  flushforward: copy the object, and set the cloned object array() to None. This flushes the video buffer for the clone, not the object  flushbackward: copy the object, and set the object array() to None. This flushes the video buffer for the object, not the clone.  flush: set the object array() to None and clone the object. This flushes the video buffer for both the clone and the object.",
@@ -3834,6 +3852,12 @@ INDEX=[
 "ref":"vipy.image.ImageDetection.setattributes",
 "url":4,
 "doc":"Set many attributes at once by providing a dictionary to be merged with current attributes",
+"func":1
+},
+{
+"ref":"vipy.image.ImageDetection.getattribute",
+"url":4,
+"doc":"Return the key k in the attributes dictionary (self.attributes) if present, else None",
 "func":1
 },
 {
@@ -4944,7 +4968,7 @@ INDEX=[
 {
 "ref":"vipy.video.Video.metadata",
 "url":8,
-"doc":"Return a dictionary of metadata about this video. This is an alias for the 'attributes' dictionary.",
+"doc":"Return a dictionary of metadata about this video. Args: k [str]: If provided, return just the specified key of the attributes dictionary, otherwise return the attributes dictionary Returns: The 'attributes' dictionary, or just the value for the provided key k if provided",
 "func":1
 },
 {
@@ -5628,7 +5652,7 @@ INDEX=[
 {
 "ref":"vipy.video.Video.getattribute",
 "url":8,
-"doc":"",
+"doc":"Return the key k in the attributes dictionary (self.attributes) if present, else None",
 "func":1
 },
 {
@@ -5663,7 +5687,7 @@ INDEX=[
 {
 "ref":"vipy.video.VideoCategory.metadata",
 "url":8,
-"doc":"Return a dictionary of metadata about this video. This is an alias for the 'attributes' dictionary.",
+"doc":"Return a dictionary of metadata about this video. Args: k [str]: If provided, return just the specified key of the attributes dictionary, otherwise return the attributes dictionary Returns: The 'attributes' dictionary, or just the value for the provided key k if provided",
 "func":1
 },
 {
@@ -6285,6 +6309,12 @@ INDEX=[
 "func":1
 },
 {
+"ref":"vipy.video.VideoCategory.getattribute",
+"url":8,
+"doc":"Return the key k in the attributes dictionary (self.attributes) if present, else None",
+"func":1
+},
+{
 "ref":"vipy.video.Scene",
 "url":8,
 "doc":"vipy.video.Scene class The vipy.video.Scene class provides a fluent, lazy interface for representing, transforming and visualizing annotated videos. The following constructors are supported:   vid = vipy.video.Scene(filename='/path/to/video.ext')   Valid video extensions are those that are supported by ffmpeg ['.avi','.mp4','.mov','.wmv','.mpg', 'mkv', 'webm'].   vid = vipy.video.Scene(url='https: www.youtube.com/watch?v=MrIN959JuV8') vid = vipy.video.Scene(url='http: path/to/video.ext', filename='/path/to/video.ext')   Youtube URLs are downloaded to a temporary filename, retrievable as vid.download().filename(). If the environment variable 'VIPY_CACHE' is defined, then videos are saved to this directory rather than the system temporary directory. If a filename is provided to the constructor, then that filename will be used instead of a temp or cached filename. URLs can be defined as an absolute URL to a video file, or to a site supported by 'youtube-dl' [https: ytdl-org.github.io/youtube-dl/supportedsites.html]   vid = vipy.video.Scene(array=frames, colorspace='rgb')   The input 'frames' is an NxHxWx3 numpy array corresponding to an N-length list of HxWx3 uint8 numpy array which is a single frame of pre-loaded video Note that the video transformations (clip, resize, rescale, rotate) are only available prior to load(), and the array() is assumed immutable after load().   vid = vipy.video.Scene(array=greyframes, colorspace='lum')   The input 'greyframes' is an NxHxWx1 numpy array corresponding to an N-length list of HxWx3 uint8 numpy array which is a single frame of pre-loaded video This corresponds to the luminance of an RGB colorspace   vid = vipy.video.Scene(array=greyframes, colorspace='lum', tracks=tracks, activities=activities)   - tracks = [vipy.object.Track(),  .] - activities = [vipy.object.Activity(),  .] The inputs are lists of tracks and/or activities. An object is a spatial bounding box with a category label. A track is a spatiotemporal bounding box with a category label, such that the box contains the same instance of an object. An activity is one or more tracks with a start and end frame for an activity performed by the object instances. Track and activity timing must be relative to the start frame of the Scene() constructor."
@@ -6796,7 +6826,7 @@ INDEX=[
 {
 "ref":"vipy.video.Scene.dedupe",
 "url":8,
-"doc":"Find and delete duplicate tracks by track segmentiou() overlap. Algorithm - For each pair of tracks with the same category, find the larest temporal segment that contains both tracks. - For this segment, compute the IOU for each box interpolated at a stride of dt frames - Compute the mean IOU for this segment. This is the segment IOU. - If the segment IOU is greater than the threshold, merge the shorter of the two tracks with the current track.",
+"doc":"Find and delete duplicate tracks and activities by overlap. Track deduplication algorithm - For each pair of tracks with the same category, find the larest temporal segment that contains both tracks. - For this segment, compute the IOU for each box interpolated at a stride of dt frames - Compute the mean IOU for this segment. This is the segment IOU. - If the segment IOU is greater than the threshold, merge the shorter of the two tracks with the current track. Activity deduplication algorithm - For each pair of activities in insertion order - If the temporal IOU is greater than the threshold, then merge the older activity (later insertion) with the newer activity (earlier insertion) - Update the actor ID of the merged activity to be that of the newer activity",
 "func":1
 },
 {
@@ -6910,7 +6940,7 @@ INDEX=[
 {
 "ref":"vipy.video.Scene.metadata",
 "url":8,
-"doc":"Return a dictionary of metadata about this video. This is an alias for the 'attributes' dictionary.",
+"doc":"Return a dictionary of metadata about this video. Args: k [str]: If provided, return just the specified key of the attributes dictionary, otherwise return the attributes dictionary Returns: The 'attributes' dictionary, or just the value for the provided key k if provided",
 "func":1
 },
 {
@@ -7424,6 +7454,12 @@ INDEX=[
 "func":1
 },
 {
+"ref":"vipy.video.Scene.getattribute",
+"url":8,
+"doc":"Return the key k in the attributes dictionary (self.attributes) if present, else None",
+"func":1
+},
+{
 "ref":"vipy.video.RandomVideo",
 "url":8,
 "doc":"Return a random loaded vipy.video.video. Useful for unit testing, minimum size (32x32x32) for ffmpeg",
@@ -7543,6 +7579,12 @@ INDEX=[
 "func":1
 },
 {
+"ref":"vipy.util.findpdf",
+"url":9,
+"doc":"Return a list of absolute paths to pdf files recursively discovered by walking the directory tree rooted at basedir",
+"func":1
+},
+{
 "ref":"vipy.util.findjson",
 "url":9,
 "doc":"Return a list of absolute paths to json files recursively discovered by walking the directory tree rooted at basedir",
@@ -7558,6 +7600,12 @@ INDEX=[
 "ref":"vipy.util.findvideo",
 "url":9,
 "doc":"Return a list of absolute paths to video files recursively discovered by walking the directory tree rooted at basedir",
+"func":1
+},
+{
+"ref":"vipy.util.findvideos",
+"url":9,
+"doc":"Alias for  vipy.util.findvideo ",
 "func":1
 },
 {
@@ -8717,6 +8765,12 @@ INDEX=[
 "ref":"vipy.math.normalize",
 "url":11,
 "doc":"Whiten the numpy array arr using the provided mean and standard deviation. - Uses numba acceleration since this is a common operation for preparing tensors. - Computes:  scale arr) - mean / std Args: arr: [numpy] A numpy array mean: [numpy] A broadcastable mean vector std: [numpy] A broadcastable std vector scale: [float] A scale factor to apply to arr before whitening (e.g. to scale from [0,255] to [0,1]) Returns  scale arr) - mean / std  notes Does not check that std > 0",
+"func":1
+},
+{
+"ref":"vipy.math.significant_digits",
+"url":11,
+"doc":"Return the float f rounded to n significant digits",
 "func":1
 },
 {
@@ -10293,6 +10347,12 @@ INDEX=[
 },
 {
 "ref":"vipy.activity.Activity.add",
+"url":42,
+"doc":"Add the track id for the track to this activity, so that if the track is changed externally it is reflected here",
+"func":1
+},
+{
+"ref":"vipy.activity.Activity.addid",
 "url":42,
 "doc":"Add the track id for the track to this activity, so that if the track is changed externally it is reflected here",
 "func":1
@@ -13020,7 +13080,7 @@ INDEX=[
 {
 "ref":"vipy.flow.Video.metadata",
 "url":8,
-"doc":"Return a dictionary of metadata about this video. This is an alias for the 'attributes' dictionary.",
+"doc":"Return a dictionary of metadata about this video. Args: k [str]: If provided, return just the specified key of the attributes dictionary, otherwise return the attributes dictionary Returns: The 'attributes' dictionary, or just the value for the provided key k if provided",
 "func":1
 },
 {
@@ -13621,6 +13681,12 @@ INDEX=[
 "ref":"vipy.flow.Video.hasattribute",
 "url":8,
 "doc":"Does the attributes dictionary (self.attributes) contain the provided key",
+"func":1
+},
+{
+"ref":"vipy.flow.Video.getattribute",
+"url":8,
+"doc":"Return the key k in the attributes dictionary (self.attributes) if present, else None",
 "func":1
 },
 {
