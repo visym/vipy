@@ -609,12 +609,18 @@ class Video(object):
         """Alias for `vipy.video.Video.frame`"""
         return self.frame(k)
 
-    def metadata(self):
-        """Return a dictionary of metadata about this video.
+    def metadata(self, k=None):
+        """Return a dictionary of metadata about this video.  
 
-        This is an alias for the 'attributes' dictionary. 
+        Args:
+        
+            k [str]: If provided, return just the specified key of the attributes dictionary, otherwise return the attributes dictionary
+
+        Returns:
+        
+            The 'attributes' dictionary, or just the value for the provided key k if provided 
         """
-        return self.attributes
+        return self.attributes if k is None else self.attributes[k]
 
     def sanitize(self):
         """Remove all private keys from the attributes dictionary.
@@ -3655,25 +3661,45 @@ class Scene(VideoCategory):
         """Extrapolate the video to frame f and add the extrapolated tracks to the video"""
         return self.trackmap(lambda t: t.add(f, t.linear_extrapolation(f, dt=dt if dt is not None else self.framerate()), strict=False))
         
-    def dedupe(self, spatial_iou_threshold=0.8, dt=5):
-        """Find and delete duplicate tracks by track segmentiou() overlap.
+    def dedupe(self, spatial_iou_threshold=0.8, dt=5, tracks=True, activities=True, temporal_iou_threshold=0.8, verbose=True):
+        """Find and delete duplicate tracks and activities by overlap.
         
-        Algorithm
+        Track deduplication algorithm
+
         - For each pair of tracks with the same category, find the larest temporal segment that contains both tracks.
         - For this segment, compute the IOU for each box interpolated at a stride of dt frames
         - Compute the mean IOU for this segment.  This is the segment IOU. 
         - If the segment IOU is greater than the threshold, merge the shorter of the two tracks with the current track.  
 
+        Activity deduplication algorithm
+
+        - For each pair of activities in insertion order
+        - If the temporal IOU is greater than the threshold, then merge the older activity (later insertion) with the newer activity (earlier insertion)
+        - Update the actor ID of the merged activity to be that of the newer activity
+        
         """
-        deleted = set([])
-        for tj in sorted(self.tracklist(), key=lambda t: len(t), reverse=True):  # longest to shortest
-            for (s, ti) in sorted([(0,t) if (len(tj) < len(t) or t.id() in deleted or t.id() == tj.id() or t.category() != tj.category()) else (tj.fragmentiou(t, dt=dt), t) for t in self.tracklist()], key=lambda x: x[0], reverse=True):
-                if s > spatial_iou_threshold:  # best mean framewise overlap during overlapping segment of two tracks (ti, tj)
-                    print('[vipy.video.dedupe]: merging duplicate track "%s" (id=%s) which overlaps with "%s" (id=%s)' % (ti, ti.id(), tj, tj.id()))
-                    self.tracks()[tj.id()] = tj.union(ti)  # merge
-                    self.activitymap(lambda a: a.replace(ti, tj))  # replace merged track reference in activity
-                    deleted.add(ti.id())
-        self.trackfilter(lambda t: t.id() not in deleted)  # remove duplicate tracks
+        if tracks:
+            deleted = set([])
+            for tj in sorted(self.tracklist(), key=lambda t: len(t), reverse=True):  # longest to shortest
+                for (s, ti) in sorted([(0,t) if (len(tj) < len(t) or t.id() in deleted or t.id() == tj.id() or t.category() != tj.category()) else (tj.fragmentiou(t, dt=dt), t) for t in self.tracklist()], key=lambda x: x[0], reverse=True):
+                    if s > spatial_iou_threshold:  # best mean framewise overlap during overlapping segment of two tracks (ti, tj)
+                        if verbose:
+                            print('[vipy.video.dedupe]: merging duplicate track "%s" (id=%s) which overlaps with "%s" (id=%s)' % (ti, ti.id(), tj, tj.id()))
+                        self.tracks()[tj.id()] = tj.union(ti)  # merge
+                        self.activitymap(lambda a: a.replace(ti, tj))  # replace merged track reference in activity
+                        deleted.add(ti.id())
+            self.trackfilter(lambda t: t.id() not in deleted)  # remove duplicate tracks
+        if activities:
+            deleted = set([])
+            for (j,aj) in enumerate(self.activitylist()):  # preserve insertion order
+                for ai in self.activitylist()[j+1:]:
+                    if aj.hasoverlap(ai, threshold=temporal_iou_threshold) and ai.id() not in deleted:
+                        if verbose:
+                            print('[vipy.video.dedupe]: merging duplicate activity "%s" (id=%s) which overlaps with "%s" (id=%s)' % (ai, ai.id(), aj, aj.id()))
+                        self.activities()[aj.id()] = aj.union(ai.clone().replaceid(ai.actorid(), aj.actorid())).addid(ai.actorid())  # merge two activities into one, with two tracks
+                        deleted.add(ai.id())
+            self.activityfilter(lambda a: a.id() not in deleted)  # remove duplicate activities
+            
         return self
 
     def combine(self, other, tracks=True, activities=True, rekey=True):

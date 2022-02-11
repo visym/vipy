@@ -293,6 +293,10 @@ def findpkl(basedir):
     """Return a list of absolute paths to pkl files recursively discovered by walking the directory tree rooted at basedir"""
     return [str(path.resolve()) for path in pathlib.Path(basedir).rglob('*.pkl')]
 
+def findpdf(basedir):
+    """Return a list of absolute paths to pdf files recursively discovered by walking the directory tree rooted at basedir"""
+    return [str(path.resolve()) for path in pathlib.Path(basedir).rglob('*.pdf')]
+
 
 def findjson(basedir):
     """Return a list of absolute paths to json files recursively discovered by walking the directory tree rooted at basedir"""
@@ -306,6 +310,9 @@ def findvideo(basedir):
     """Return a list of absolute paths to video files recursively discovered by walking the directory tree rooted at basedir"""
     return [str(path.resolve()) for path in pathlib.Path(basedir).rglob('*') if isvideo(str(path.resolve()))]
     
+def findvideos(basedir):
+    """Alias for `vipy.util.findvideo`"""
+    return findvideo(basedir)
 
 def readyaml(yamlfile):
     """Read a yaml file and return a parsed dictionary, this is slow for large yaml files"""

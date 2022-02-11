@@ -47,7 +47,12 @@ def _normalize(arr, mean, std, scale):
     """Whiten the numpy array arr using mean and standard deviation (no parallelization)"""
     return ((np.float32(scale)*arr.astype(np.float32)) - mean.flatten()) / std.flatten() 
     
-    
+
+def significant_digits(f, n):
+    """Return the float f rounded to n significant digits"""
+    assert (isinstance(f, float) or isinstance(f, int)) and isinstance(n, int)
+    return np.round(f*np.power(10,n))/np.power(10, n)
+
 def iseven(x):
     """is the number x an even number?"""
     return x%2 == 0

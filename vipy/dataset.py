@@ -239,10 +239,12 @@ class Dataset():
     
         # Copy extras (symlinked) to staging directory
         if extrafiles is not None:
+            # extrafiles = [("/abs/path/in/filesystem.ext", "rel/path/in/archive.ext"), ... ]
             assert all([((isinstance(e, tuple) or isinstance(e, list)) and len(e) == 2) or isinstance(e, str) for e in extrafiles])
             extrafiles = [e if (isinstance(e, tuple) or isinstance(e, list)) else (e,e) for e in extrafiles]  # tuple-ify files in pwd() and should be put in the tarball root
             for (e, a) in tolist(extrafiles):
                 assert os.path.exists(os.path.abspath(e)), "Invalid extras file '%s' - file not found" % e
+                remkdir(filepath(os.path.join(stagedir, filetail(e) if a is None else a)))    # make directory in stagedir for symlink
                 os.symlink(os.path.abspath(e), os.path.join(stagedir, filetail(e) if a is None else a))
 
         # System command to run tar
@@ -503,12 +505,14 @@ class Dataset():
         self._loader = lambda x: x
         return self
 
-    def take(self, n, category=None, canload=False):
+    def take(self, n=1, category=None, canload=False):
+        """Randomlly Take n elements from the dataset, and return a dataset if n>1, otherwise return the singleton element"""
+        assert isinstance(n, int) and n>0
         D = self.clone(shallow=True)
         D._objlist = self.takelist(n, category=category)
-        return D
+        return D if n>1 else D[0]
 
-    def take_per_category(self, n, id=None, canload=False):
+    def take_per_category(self, n):
         D = self.clone(shallow=True)
         D._objlist = [v for c in self.categories() for v in self.takelist(n, category=c)]
         return D
@@ -713,6 +717,7 @@ class Dataset():
         return d
 
     def duration_in_seconds(self, outfile=None, fontsize=6, max_duration=None):
+        """Duration of activities"""
         assert self._isvipy()
         d = {k:np.mean([v[1] for v in v]) for (k,v) in groupbyasdict([(a.category(), len(a)/v.framerate()) for v in self.list() for a in v.activitylist()], lambda x: x[0]).items()}
         if outfile is not None:
@@ -720,6 +725,15 @@ class Dataset():
             vipy.metrics.histogram([min(x, max_duration) for x in d.values()], d.keys(), outfile=outfile, ylabel='Duration (seconds)', fontsize=fontsize)            
         return d
 
+    def video_duration_in_seconds(self, outfile=None, fontsize=6, max_duration=None):
+        """Duration of activities"""
+        assert self._isvipy()
+        d = {k:np.mean([d for (c,d) in D]) for (k,D) in groupbyasdict([(v.category(), v.duration()) for v in self.list()], lambda x: x[0]).items()}
+        if outfile is not None:
+            max_duration = max(d.values()) if max_duration is None else max_duration
+            vipy.metrics.histogram([min(x, max_duration) for x in d.values()], d.keys(), outfile=outfile, ylabel='Duration (seconds)', fontsize=fontsize)            
+        return d
+    
     def framerate(self, outfile=None):
         assert self._isvipy()
         d = vipy.util.countby([int(round(v.framerate())) for v in self.list()], lambda x: x)
@@ -900,7 +914,7 @@ class Dataset():
             categories = [c for c in requested_categories if D.count()[c] >= num_elements]  # filter those categories that do not have enough
             if set(categories) != set(requested_categories):
                 warnings.warn('[vipy.dataset.video_montage]: removing "%s" without at least %d examples' % (str(set(requested_categories).difference(set(categories))), num_elements))
-            vidlist = sorted(D.filter(lambda v: v.category() in categories).take_per_category(num_elements, canload=True).tolist(), key=lambda v: v.category())
+            vidlist = sorted(D.filter(lambda v: v.category() in categories).take_per_category(num_elements).tolist(), key=lambda v: v.category())
             vidlist = vidlist if not transpose else [vidlist[k] for k in np.array(range(0, len(vidlist))).reshape( (len(categories), num_elements) ).transpose().flatten().tolist()] 
             (gridrows, gridcols) = (len(categories), num_elements) if not transpose else (num_elements, len(categories))
             assert len(vidlist) == gridrows*gridcols

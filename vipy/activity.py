@@ -216,7 +216,14 @@ class Activity(object):
             self._trackid = list(self._trackid)
             self._trackid.append(track.id())
         return self
-        
+
+    def addid(self, trackid):
+        """Add the track id for the track to this activity, so that if the track is changed externally it is reflected here"""
+        if trackid not in self._trackid:
+            self._trackid = list(self._trackid)
+            self._trackid.append(trackid)
+        return self
+    
     def tracks(self):
         """alias for trackids"""
         return self.trackids()
