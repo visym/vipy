@@ -159,7 +159,7 @@ class Filter(Selector):
     ```
     """
     
-    def html(self, jsonfile=None, htmlfile=None, title='Image Filter', num_images_per_row=10, default_opacity=1.0, selected_opacity=0.4, show=False, description="Select the images to remove from each group, download the JSON, then call vipy.annotation.Filter.fromjson()", mindim=None):
+    def html(self, jsonfile=None, htmlfile=None, title='Image Filter', num_images_per_row=10, default_opacity=1.0, selected_opacity=0.5, show=False, description="Select the images to remove from each group, download the JSON, then call vipy.annotation.Filter.fromjson()", mindim=None):
         return super().html(jsonfile=jsonfile, htmlfile=htmlfile, title=title, num_images_per_row=num_images_per_row, default_opacity=default_opacity, selected_opacity=selected_opacity, show=show, description=description, mindim=mindim)
 
     def fromjson(self, jsonfile):    
