@@ -95,17 +95,22 @@ class Selector():
         
         f = open(htmlfile,'w')
         f.write('<!DOCTYPE html>\n')
+        f.write('<!--\n    Visym Labs\n    vipy.annotation.Selector (https://visym.github.io/vipy)\n    Generated: %s\n-->\n' % str(datetime.now()))            
         f.write("<head>\n");
         f.write('  <meta charset="UTF-8">\n')
         f.write("  <title>%s</title>\n" % title)
         f.write('  <link href="https://use.fontawesome.com/releases/v5.13.0/css/all.css" rel="stylesheet">\n')
         f.write("</head>\n")        
-        f.write('<!--\n    Visym Labs\n    vipy.annotation.Selector (https://visym.github.io/vipy)\n    Generated: %s\n-->\n' % str(datetime.now()))    
         f.write('<html>\n')
         f.write('<body>\n')
         f.write('  <script type="text/javascript">\n')
         f.write('    var selected = {};\n');
-        f.write('    function toggle(x) { if (x.getAttribute("selected") == "off") { x.style.opacity=%s; x.setAttribute("selected","on"); selected[x.id]=true; } else { x.style.opacity=%s; x.setAttribute("selected","off"); selected[x.id]=false;}; }\n' % (selected_opacity, default_opacity))
+        f.write('    function set_unselected(x) { x.style.opacity=%s; x.setAttribute("selected","off"); selected[x.id]=false;};\n' % (default_opacity))
+        f.write('    function set_selected(x) { x.style.opacity=%s; x.setAttribute("selected","on"); selected[x.id]=true;};\n' % (selected_opacity))
+        f.write('    function toggle(x) { if (x.getAttribute("selected") == "off") { set_selected(x); } else { set_unselected(x); }; }\n')
+        f.write('    function row_selected(k, n) { for (let i = 0; i < n; i++) { set_selected( document.getElementById(`(${k},${i})`));};}\n')
+        f.write('    function row_unselected(k, n) { for (let i = 0; i < n; i++) { set_unselected( document.getElementById(`(${k},${i})`));};}\n')
+        f.write('    function toggle_row(x,k,n) { if (x.getAttribute("selected") == "off") { row_selected(k,n); x.setAttribute("selected","on"); } else { row_unselected(k,n); x.setAttribute("selected","off");}; }\n')        
         f.write('    function exportJSON(x) { var data = "text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(selected)); x.setAttribute("href", "data:"+data); x.setAttribute("download", "%s"); }\n' % jsonfile)
         f.write('    function set_transparent(x) { x.style.opacity=0.5; };\n')
         f.write('    function set_opaque(x) { x.style.opacity=1.0; };\n')        
@@ -118,7 +123,7 @@ class Selector():
         f.write('Number of image groups: %d<br>\n' % len(imlist))
         f.write('Number of images: %d<br><br>\n' % len([im for iml in imlist for im in iml]))
         f.write('%s<br><br>\n' % description)
-        f.write('<a onclick="exportJSON(this);" class="btn"><button">Download JSON</button></a>\n') 
+        f.write('<a onclick="exportJSON(this);" class="btn"><button>Download JSON</button></a>\n') 
         f.write('</div>\n')
         f.write('<br>\n')
         f.write('<hr>\n')
@@ -135,7 +140,7 @@ class Selector():
             for (j, im) in enumerate(imsrclist):                    
                 im = im if mindim is None else im.clone().mindim(mindim)
                 f.write(im.html(id='(%d,%d)' % (i,j), attributes={'loading':'lazy', 'onclick':"toggle(this)", 'selected':'off', 'style':"opacity:%f" % default_opacity}))   # base-64 encoded image with img tag
-            f.write('<i title="All" onclick="" onmouseover="set_opaque(this)" onmouseout="set_transparent(this)" class="fas fa-thumbs-up fa-2x" id="all-%d" style="opacity:0.5;"></i>' % (i))
+            f.write('<br><i title="Toggle Select All" onclick="toggle_row(this,%d,%d);" selected="on" onmouseover="set_opaque(this)" onmouseout="set_transparent(this)" class="fas fa-recycle fa-3x" id="row-%d" style="opacity:0.5;margin-right: 10px;"></i>' % (i,len(imsrclist),i))
             
             f.write('<p>\n</p>\n')
             f.write('<br>\n')
