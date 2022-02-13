@@ -3,7 +3,7 @@ import os
 import re
 import random
 import math
-from vipy.util import try_import, isurl, remkdir, temphtml, tempjson, filetail, readjson, isjsonfile
+from vipy.util import try_import, isurl, remkdir, temphtml, tempjson, filetail, readjson, isjsonfile, toextension
 import tempfile
 import numpy as np
 from vipy.downloader import common_user_agents
@@ -12,6 +12,7 @@ import warnings
 from datetime import datetime
 import time
 import webbrowser
+import html
             
 
 def googlesearch(tag):
@@ -86,14 +87,19 @@ class Selector():
     def __init__(self, imlist):
         self._imlist = imlist
         
-    def html(self, jsonfile=None, htmlfile=None, title='Image Selector', num_images_per_row=10, default_opacity=0.5, selected_opacity=1.0, show=False, description="Select the images to keep from each group, download the JSON, then call vipy.annotation.Select.fromjson()", mindim=None):
+    def html(self, jsonfile=None, htmlfile=None, imdict=None, title='Image Selector', maxwidth=4096, default_opacity=0.5, selected_opacity=1.0, show=False, description="Select the images to keep from each group, download the JSON, then call vipy.annotation.Select.fromjson()", mindim=None):
         """Given a list of tuples of `vipy.image.Image` objects, create a standalone HTML file that will allow the user to select individual images in the group.  Selected images are output to jsonfile"""
         htmlfile = temphtml() if htmlfile is None else htmlfile
-        jsonfile = filetail(tempjson()) if jsonfile is None else jsonfile
+        jsonfile = filetail(toextension(htmlfile, '.json')) if jsonfile is None else jsonfile
         imlist = self._imlist
         
         f = open(htmlfile,'w')
         f.write('<!DOCTYPE html>\n')
+        f.write("<head>\n");
+        f.write('  <meta charset="UTF-8">\n')
+        f.write("  <title>%s</title>\n" % title)
+        f.write('  <link href="https://use.fontawesome.com/releases/v5.13.0/css/all.css" rel="stylesheet">\n')
+        f.write("</head>\n")        
         f.write('<!--\n    Visym Labs\n    vipy.annotation.Selector (https://visym.github.io/vipy)\n    Generated: %s\n-->\n' % str(datetime.now()))    
         f.write('<html>\n')
         f.write('<body>\n')
@@ -101,8 +107,10 @@ class Selector():
         f.write('    var selected = {};\n');
         f.write('    function toggle(x) { if (x.getAttribute("selected") == "off") { x.style.opacity=%s; x.setAttribute("selected","on"); selected[x.id]=true; } else { x.style.opacity=%s; x.setAttribute("selected","off"); selected[x.id]=false;}; }\n' % (selected_opacity, default_opacity))
         f.write('    function exportJSON(x) { var data = "text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(selected)); x.setAttribute("href", "data:"+data); x.setAttribute("download", "%s"); }\n' % jsonfile)
+        f.write('    function set_transparent(x) { x.style.opacity=0.5; };\n')
+        f.write('    function set_opaque(x) { x.style.opacity=1.0; };\n')        
         f.write('  </script>\n')    
-        f.write('<div id="container" style="width:2400px">\n')
+        f.write('<div id="container" style="width:%dpx">\n' % maxwidth)
         f.write('<div id="header">\n')
         f.write('<h1 style="margin-bottom:0;">%s</h1><br>\n' % title)
         localtime = time.strftime("%Y-%m-%d %H:%M:%S",time.localtime(time.time()))
@@ -110,7 +118,7 @@ class Selector():
         f.write('Number of image groups: %d<br>\n' % len(imlist))
         f.write('Number of images: %d<br><br>\n' % len([im for iml in imlist for im in iml]))
         f.write('%s<br><br>\n' % description)
-        f.write('<a onclick="exportJSON(this);" class="btn"><button onclick="exportJson(this);">Download JSON</button></a>\n') 
+        f.write('<a onclick="exportJSON(this);" class="btn"><button">Download JSON</button></a>\n') 
         f.write('</div>\n')
         f.write('<br>\n')
         f.write('<hr>\n')
@@ -119,11 +127,16 @@ class Selector():
         # Generate embedded images and html
         for (i, imsrclist) in enumerate(imlist):
             f.write('<p>\n</p>\n')
-            for (j, im) in enumerate(imsrclist):
+            if imdict is not None:
+                for (k,v) in imdict[i].items():
+                    f.write('<b>%s</b>: %s<br>\n' % (html.escape(str(k)), html.escape(str(v))))
+                f.write('<p>\n</p>\n')
+                
+            for (j, im) in enumerate(imsrclist):                    
                 im = im if mindim is None else im.clone().mindim(mindim)
                 f.write(im.html(id='(%d,%d)' % (i,j), attributes={'loading':'lazy', 'onclick':"toggle(this)", 'selected':'off', 'style':"opacity:%f" % default_opacity}))   # base-64 encoded image with img tag
-                if j>0 and ((j % num_images_per_row) == 0):
-                    f.write('<p>\n</p>\n')                
+            f.write('<i title="All" onclick="" onmouseover="set_opaque(this)" onmouseout="set_transparent(this)" class="fas fa-thumbs-up fa-2x" id="all-%d" style="opacity:0.5;"></i>' % (i))
+            
             f.write('<p>\n</p>\n')
             f.write('<br>\n')
             f.write('<hr>\n')
@@ -159,8 +172,8 @@ class Filter(Selector):
     ```
     """
     
-    def html(self, jsonfile=None, htmlfile=None, title='Image Filter', num_images_per_row=10, default_opacity=1.0, selected_opacity=0.5, show=False, description="Select the images to remove from each group, download the JSON, then call vipy.annotation.Filter.fromjson()", mindim=None):
-        return super().html(jsonfile=jsonfile, htmlfile=htmlfile, title=title, num_images_per_row=num_images_per_row, default_opacity=default_opacity, selected_opacity=selected_opacity, show=show, description=description, mindim=mindim)
+    def html(self, jsonfile=None, htmlfile=None, imdict=None, title='Image Filter', maxwidth=4096, default_opacity=1.0, selected_opacity=0.5, show=False, description="Select the images to remove from each group, download the JSON, then call vipy.annotation.Filter.fromjson()", mindim=None):
+        return super().html(jsonfile=jsonfile, htmlfile=htmlfile, title=title, default_opacity=default_opacity, selected_opacity=selected_opacity, show=show, description=description, mindim=mindim, imdict=imdict, maxwidth=maxwidth)
 
     def fromjson(self, jsonfile):    
         """Given the JSON file downloader from the HTML selector, return a filter of only those that were *not* selected"""

@@ -1965,6 +1965,11 @@ class Scene(ImageCategory):
         self._objectlist = [bb.translate(-dx, -dy) for bb in self._objectlist]
         return self
 
+    def objectcrop(self, dilate=1.0, maxsquare=False):
+        """Crop image using the `vipy.image.Scene.boundingbox` with dilation factor, setting to maxsquare prior to crop as requested.  Crop will be zeropadded if outside the image rectangle."""
+        bb = self.boundingbox()
+        return self.padcrop(bb.dilate(dilate).maxsquareif(maxsquare)) if bb is not None else self
+    
     def centercrop(self, height, width):
         """Crop image of size (height x width) in the center, keeping the image centroid constant"""
         return self.crop(BoundingBox(xcentroid=float(self.width() / 2.0), ycentroid=float(self.height() / 2.0), width=int(width), height=int(height)))

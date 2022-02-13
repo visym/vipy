@@ -489,8 +489,8 @@ def tohtml(imlist, imdict=None, title='Image Visualization', mindim=1024, outfil
         # Write out associated dictionary (if provided)
         f.write('<p>\n</p>\n')
         if imdict is not None:
-            for (k,v) in imdict[k].items():
-                f.write('<b>%s</b>: %s<br>\n' % (html.escape(str(k)), html.escape(str(v))))
+            for (j,v) in imdict[k].items():
+                f.write('<b>%s</b>: %s<br>\n' % (html.escape(str(j)), html.escape(str(v))))
         f.write('<br>\n')
 
         # Write image as base64 encoded string
