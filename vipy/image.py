@@ -1456,9 +1456,9 @@ class Image(object):
         assert isinstance(b, bool)
         return self.pkl(pklfile) if b else self
 
-    def saveas(self, filename, writeas=None):
-        """Save current buffer (not including drawing overlays) to new filename and return filename"""
-        assert filename is not None, 'Valid filename="/path/to/image.ext" must be provided'
+    def saveas(self, filename=None, writeas=None):
+        """Save current buffer (not including drawing overlays) to new filename and return filename.  If filename is not provided, use a temporary JPEG filename."""
+        filename = tempjpg() if filename is None else filename
         if self.colorspace() in ['gray']:
             imwritegray(self.grayscale()._array, filename)
         elif self.colorspace() != 'float':

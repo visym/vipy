@@ -658,8 +658,9 @@ class Video(object):
             return self.attributes['video_id'] if 'video_id' in self.attributes else (hashlib.sha1(str(str(self.filename())+str(self.url())).encode("UTF-8")).hexdigest() if (self.filename() is not None or self.url() is not None) else None)
         
 
-    def frame(self, k=0, img=None):
-        """Return the kth frame as an `vipy.image Image` object"""        
+    def frame(self, k=0, img=None, t=None):
+        """Return the kth frame as an `vipy.image Image` object"""
+        k = int(self.framerate()*t) if t is not None else k        
         assert isinstance(k, int) and k>=0, "Frame index must be non-negative integer"
         return Image(array=img if img is not None else (self._array[k] if self.isloaded() else self.preview(k).array()), colorspace=self.colorspace())       
         
@@ -2134,7 +2135,7 @@ class Video(object):
         """Alias for play"""
         return self.play()
     
-    def quicklook(self, n=9, mindim=256, startframe=0, animate=False, dt=30):
+    def quicklook(self, n=9, mindim=256, startframe=0, animate=False, dt=30, thumbnail=None):
         """Generate a montage of n uniformly spaced frames.
            Montage increases rowwise for n uniformly spaced frames, starting from frame zero and ending on the last frame.
         
@@ -2144,6 +2145,7 @@ class Video(object):
                animate:  If true, return a video constructed by animating the quicklook into a video by showing dt consecutive frames
                dt:  The number of frames for animation
                startframe:  The initial frame index to start the n uniformly sampled frames for the quicklook
+               thumbnail [`vipy.image.Image`]: If provided, replace the first element in the montage with this thumbnail.  This is useful for showing a high resolution image (e.g. a face, small object) to be contained in the video for review.
 
            ..note:: The first frame in the upper left is guaranteed to be the start frame of the labeled activity, but the last frame in the bottom right may not be precisely the end frame and may be off by at most len(video)/9.
         """
@@ -2155,6 +2157,9 @@ class Video(object):
         imframes = [self.frame(k).maxmatte()  # letterbox or pillarbox
                     for (j,k) in enumerate(framelist)]
         imframes = [im.savefig(figure=1).rgb() for im in imframes]  # temp storage in memory
+        if thumbnail is not None:
+            assert isinstance(thumbnail, vipy.image.Image)
+            imframes[0] = thumbnail.maxmatte().mindim(mindim)        
         return vipy.visualize.montage(imframes, imgwidth=mindim, imgheight=mindim)
 
     def torch(self, startframe=0, endframe=None, length=None, stride=1, take=None, boundary='repeat', order='nchw', verbose=False, withslice=False, scale=1.0, withlabel=False, nonelabel=False):
@@ -2657,7 +2662,7 @@ class Scene(VideoCategory):
             else:
                 return self.videoid()
 
-    def frame(self, k=0, img=None, noimage=False):
+    def frame(self, k=0, img=None, noimage=False, t=None):
         """Return `vipy.image.Scene` object at frame k
 
         -The attributes of each of the `vipy.image.Scene.objects` in the scene contains helpful metadata for the provenance of the detection, including:  
@@ -2667,9 +2672,10 @@ class Scene(VideoCategory):
             - 'noun verb' of this detection, used for visualization
 
         Args:
-            k: [int >=- 0] The frame index requested.  This is relative to the current frame rate of the video.
+            k: [int >= 0] The frame index requested.  This is relative to the current frame rate of the video.
             img: [numpy, None]  An optional image to be used for this frame.  This is useful to construct frames efficiently for videos if the pixel buffer is already available from a stream rather than a preview.  
             noimage [bool]:  If True, then return only annotations at frame k with empty frame buffer (e.g. no image pixels in the returned image object)
+            t: [float >= 0] The frame time requested.  This is converted into a frame index using the current framerate of the video.
 
         Return:
             A `vipy.image.Scene` object for frame k containing all objects in this frame and pixels if img != None or preview=True
@@ -2680,6 +2686,7 @@ class Scene(VideoCategory):
             - If noun is associated with more than one activity, then this is shown as "Noun Verbing1\nNoun Verbing2", with a newline separator
 
         """
+        k = int(self.framerate()*t) if t is not None else k
         assert isinstance(k, int) and k>=0, "Frame index must be non-negative integer"
         assert img is not None or (self.isloaded() and k<len(self)) or not self.isloaded(), "Invalid frame index %d - Indexing video by frame must be integer within (0, %d)" % (k, len(self)-1)
 
@@ -2742,7 +2749,7 @@ class Scene(VideoCategory):
         """Degenerate scene has empty or malformed tracks"""
         return len(self.tracklist()) == 0 or any([t.isempty() or t.isdegenerate() for t in self.tracklist()])
     
-    def quicklook(self, n=9, dilate=1.5, mindim=256, fontsize=10, context=False, startframe=0, animate=False, dt=30):
+    def quicklook(self, n=9, dilate=1.5, mindim=256, fontsize=10, context=False, startframe=0, animate=False, dt=30, thumbnail=None):
         """Generate a montage of n uniformly spaced annotated frames centered on the union of the labeled boxes in the current frame to show the activity ocurring in this scene at a glance
            Montage increases rowwise for n uniformly spaced frames, starting from frame zero and ending on the last frame.  This quicklook is most useful when len(self.activities()==1)
            for generating a quicklook from an activityclip().
@@ -2750,17 +2757,20 @@ class Scene(VideoCategory):
            Args:
                n: [int]:  Number of images in the quicklook
                dilate: [float]:  The dilation factor for the bounding box prior to crop for display
-               mindim: [int]:  The minimum dimension of each of the elemnets in the montage
+               mindim: [int]:  The minimum dimension of each of the elemenets in the montage
                fontsize: [int]:  The size of the font for the bounding box label
                context: [bool]:  If true, replace the first and last frame in the montage with the full frame annotation, to help show the scale of the scene
                animate: [bool]:  If true, return a video constructed by animating the quicklook into a video by showing dt consecutive frames
                dt: [int]:  The number of frames for animation
                startframe: [int]:  The initial frame index to start the n uniformly sampled frames for the quicklook
+               thumbnail [`vipy.image.Image`]: If provided, replace the first element in the montage with this thumbnail.  This is useful for showing a high resolution image (e.g. a face, small object) to be contained in the video for review.
+
         """
         if not self.isloaded():
-            self.load()  
+            self.load()  # triggers load() into memory, user should self.flush() to free
         if animate:
-            return Video(frames=[self.quicklook(n=n, dilate=dilate, mindim=mindim, fontsize=fontsize, context=context, startframe=k, animate=False, dt=dt) for k in range(0, min(dt, len(self)))], framerate=self.framerate())
+            return Video(frames=[self.quicklook(n=n, dilate=dilate, mindim=mindim, fontsize=fontsize, context=context, startframe=k, animate=False, dt=dt, thumbnail=thumbnail) for k in range(0, min(dt, len(self)))], framerate=self.framerate())
+
         f_mutator = vipy.image.mutator_show_jointlabel()
         framelist = [min(int(np.round(f))+startframe, len(self)-1) for f in np.linspace(0, len(self)-1, n)]
         isdegenerate = [self.frame(k).boundingbox() is None or self.frame(k).boundingbox().dilate(dilate).intersection(self.framebox(), strict=False).isdegenerate() for (j,k) in enumerate(framelist)]
@@ -2770,6 +2780,9 @@ class Scene(VideoCategory):
                     for (j,k) in enumerate(framelist)]
         imframes = [f_mutator(im) for im in imframes]  # show jointlabel from frame interpolation
         imframes = [im.savefig(fontsize=fontsize, figure=1).rgb() for im in imframes]  # temp storage in memory
+        if thumbnail is not None:
+            assert isinstance(thumbnail, vipy.image.Image)
+            imframes[0] = thumbnail.maxmatte().mindim(mindim)
         return vipy.visualize.montage(imframes, imgwidth=mindim, imgheight=mindim)
     
     def tracks(self, tracks=None, id=None):

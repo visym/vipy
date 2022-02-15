@@ -1106,6 +1106,9 @@ def shortuuid(n=16):
     """Generate a short UUID with n hex digits"""
     return hashlib.sha256(uuid.uuid1().hex.encode('utf-8')).hexdigest()[0:n] 
 
+def stringhash(s, n=16):
+    """Generate a repeatable hash with n characters for a string s"""
+    return hashlib.sha256(s.encode('utf-8')).hexdigest()[0:n]
 
 def isimageurl(path):
     """Is a path a URL with image extension?"""
