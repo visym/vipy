@@ -65,6 +65,7 @@ setup(
         "ffmpeg-python"
     ],
     extras_require={
+        'fast': ['ujson', 'numba'],
         'all': ['scikit-build', 'scipy', 'opencv-python', 'torch', 'ipython', 'scikit-learn', 'boto3', 'youtube-dl', 'dask', 'distributed', 'h5py', 'nltk', 'bs4', 'pyyaml', 'pytest', 'paramiko', 'scp', 'ujson', 'numba', 'pdoc3', 'dill', 'pillow', 'numpy', 'matplotlib','ffmpeg-python'],
         'complete': ['scikit-build', 'scipy', 'opencv-python', 'torch', 'ipython', 'scikit-learn', 'boto3', 'youtube-dl', 'dask', 'distributed', 'h5py', 'nltk', 'bs4', 'pyyaml', 'pytest', 'paramiko', 'scp', 'ujson', 'numba', 'pdoc3', 'dill', 'pillow', 'numpy', 'matplotlib','ffmpeg-python']
         },

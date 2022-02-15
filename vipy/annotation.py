@@ -86,7 +86,11 @@ class Selector():
        
     def __init__(self, imlist):
         self._imlist = imlist
-        
+
+    def __iter__(self):
+        for im in self._imlist:
+            yield im
+            
     def html(self, jsonfile=None, htmlfile=None, imdict=None, title='Image Selector', maxwidth=4096, default_opacity=0.5, selected_opacity=1.0, show=False, description="Select the images to keep from each group, download the JSON, then call vipy.annotation.Select.fromjson()", mindim=None):
         """Given a list of tuples of `vipy.image.Image` objects, create a standalone HTML file that will allow the user to select individual images in the group.  Selected images are output to jsonfile"""
         htmlfile = temphtml() if htmlfile is None else htmlfile

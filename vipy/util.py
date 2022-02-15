@@ -297,6 +297,9 @@ def findpdf(basedir):
     """Return a list of absolute paths to pdf files recursively discovered by walking the directory tree rooted at basedir"""
     return [str(path.resolve()) for path in pathlib.Path(basedir).rglob('*.pdf')]
 
+def findpng(basedir):
+    """Return a list of absolute paths to png files recursively discovered by walking the directory tree rooted at basedir"""
+    return [str(path.resolve()) for path in pathlib.Path(basedir).rglob('*.png')]
 
 def findjson(basedir):
     """Return a list of absolute paths to json files recursively discovered by walking the directory tree rooted at basedir"""
@@ -305,6 +308,10 @@ def findjson(basedir):
 def findimage(basedir):
     """Return a list of absolute paths to image files recursively discovered by walking the directory tree rooted at basedir"""
     return [str(path.resolve()) for path in pathlib.Path(basedir).rglob('*') if isimage(str(path.resolve()))]
+
+def findimages(basedir):
+    """Alias for `vipy.util.findimage`"""
+    return findimage(basedir)
 
 def findvideo(basedir):
     """Return a list of absolute paths to video files recursively discovered by walking the directory tree rooted at basedir"""
