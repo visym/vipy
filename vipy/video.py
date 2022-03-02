@@ -2095,7 +2095,7 @@ class Video(object):
 
         if not self.isdownloaded() and self.hasurl():
             self.download()
-        if iswebp(self.filename()) or isgif(self.filename()):
+        if not self.isloaded() and (iswebp(self.filename()) or isgif(self.filename())):
             self.load()
             
         if notebook:
