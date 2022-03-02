@@ -331,7 +331,7 @@ class Dataset():
     def classlist(self):
         """Return a sorted list of categories in the dataset"""
         assert self._isvipy(), "Invalid input"
-        return sorted(list(set(self.map(lambda v: v.category()))))
+        return sorted(list(set([v.category() for v in self])))
 
     def classes(self):
         """Alias for classlist"""

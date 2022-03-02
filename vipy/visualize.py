@@ -355,7 +355,7 @@ def videomontage(vidlist, imgheight, imgwidth, gridrows=None, gridcols=None, asp
     Args:
         `vipy.visualize.montage`:  See the args   
         framerate: [float] the framerate of the montage video.  All of the input videos are resampled to this common frame rate
-        max_duration: [float] If not None, the maximum diuration of any element in the montage before it cycles
+        max_duration: [float] If not None, the maximum duration an element in seconds in the montage before it cycles.  If None, then use the duration of the longest video
 
     Returns:
         An video file in outfile that shows each video tiled into a montage.  <Like https://www.youtube.com/watch?v=HjNa7_T-Xkc>

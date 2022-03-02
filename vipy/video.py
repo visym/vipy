@@ -1799,7 +1799,14 @@ class Video(object):
         if (rows is None and cols is None):
             return self  # only if strictly necessary
         if not self.isloaded():
+            # Apply the scale filter:
+            # - Note that multiple calls to resize will process through the filter chain one by one in the order of resizing calls
+            # - This can introduce resizing artifacts if the resize is a downsample followed by an upsample
+            # - One common use case is to downsample a video for tracking, then apply the tracks to the original video
+            # - One approach: downsample the video, track at low resolution, upsample tracks back to the original resolution, then flush the filter chain to load the video at original resolution with no rescaling
+            #   >>> vc = tracker(v.clone().mindim(128)).mindim(v.mindim()).clone(flushfilter=True)              
             self._ffmpeg = self._ffmpeg.filter('scale', cols if cols is not None else -1, rows if rows is not None else -1)
+            
         else:            
             # Do not use self.__iter__() which triggers copy for mutable arrays
             #self.array(np.stack([Image(array=self._array[k]).resize(rows=rows, cols=cols).array() for k in range(len(self))]), copy=False)
@@ -1815,7 +1822,7 @@ class Video(object):
     def mindim(self, dim=None):
         """Resize the video so that the minimum of (width,height)=dim, preserving aspect ratio"""
         (H,W) = self.shape()  # yuck, need to get image dimensions before filter
-        return min(self.shape()) if dim is None else (self if min(H,W)==dim else (self.resize(cols=dim) if W<H else self.resize(rows=dim)))
+        return min(self.shape()) if dim is None else (self if min(H,W) == dim else (self.resize(cols=dim) if W<H else self.resize(rows=dim)))
 
     def maxdim(self, dim=None):
         """Resize the video so that the maximum of (width,height)=dim, preserving aspect ratio"""
@@ -2145,7 +2152,7 @@ class Video(object):
                animate:  If true, return a video constructed by animating the quicklook into a video by showing dt consecutive frames
                dt:  The number of frames for animation
                startframe:  The initial frame index to start the n uniformly sampled frames for the quicklook
-               thumbnail [`vipy.image.Image`]: If provided, replace the first element in the montage with this thumbnail.  This is useful for showing a high resolution image (e.g. a face, small object) to be contained in the video for review.
+               thumbnail [`vipy.image.Image`]: If provided, prepent the first element in the montage with this thumbnail.  This is useful for showing a high resolution image (e.g. a face, small object) to be contained in the video for review.
 
            ..note:: The first frame in the upper left is guaranteed to be the start frame of the labeled activity, but the last frame in the bottom right may not be precisely the end frame and may be off by at most len(video)/9.
         """
@@ -2159,7 +2166,7 @@ class Video(object):
         imframes = [im.savefig(figure=1).rgb() for im in imframes]  # temp storage in memory
         if thumbnail is not None:
             assert isinstance(thumbnail, vipy.image.Image)
-            imframes[0] = thumbnail.maxmatte().mindim(mindim)        
+            imframes = [thumbnail.maxmatte().mindim(mindim)] + imframes  # prepend
         return vipy.visualize.montage(imframes, imgwidth=mindim, imgheight=mindim)
 
     def torch(self, startframe=0, endframe=None, length=None, stride=1, take=None, boundary='repeat', order='nchw', verbose=False, withslice=False, scale=1.0, withlabel=False, nonelabel=False):
@@ -2418,6 +2425,11 @@ class Video(object):
     def delattribute(self, k):
         if k in self.attributes:
             self.attributes.pop(k)
+        return self
+
+    def clearattributes(self):
+        """Remove all attributes"""
+        self.attributes = {}
         return self
 
     def getattribute(self, k):
@@ -2763,7 +2775,7 @@ class Scene(VideoCategory):
                animate: [bool]:  If true, return a video constructed by animating the quicklook into a video by showing dt consecutive frames
                dt: [int]:  The number of frames for animation
                startframe: [int]:  The initial frame index to start the n uniformly sampled frames for the quicklook
-               thumbnail [`vipy.image.Image`]: If provided, replace the first element in the montage with this thumbnail.  This is useful for showing a high resolution image (e.g. a face, small object) to be contained in the video for review.
+               thumbnail [`vipy.image.Image`]: If provided, prepend the first element in the montage with this thumbnail.  This is useful for showing a high resolution image (e.g. a face, small object) to be contained in the video for review.
 
         """
         if not self.isloaded():
@@ -2782,7 +2794,7 @@ class Scene(VideoCategory):
         imframes = [im.savefig(fontsize=fontsize, figure=1).rgb() for im in imframes]  # temp storage in memory
         if thumbnail is not None:
             assert isinstance(thumbnail, vipy.image.Image)
-            imframes[0] = thumbnail.maxmatte().mindim(mindim)
+            imframes = [thumbnail.maxmatte().mindim(mindim)] + imframes
         return vipy.visualize.montage(imframes, imgwidth=mindim, imgheight=mindim)
     
     def tracks(self, tracks=None, id=None):

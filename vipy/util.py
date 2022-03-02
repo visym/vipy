@@ -413,9 +413,14 @@ def softmax(x, temperature=1.0):
     return z / np.sum(z, axis=1).reshape(x.shape[0], 1)
 
 
-def permutelist(inlist):
-    """randomly permute list order"""
-    return [inlist[k] for k in np.random.permutation(list(range(0, len(inlist))))]
+def permutelist(inlist, deterministic=False, seed=42):
+    """randomly permute list order.  Permutation is deterministic (same permutation on multiple calls) if specified"""
+    if deterministic:
+        np.random.seed(seed)  # deterministic        
+    outlist = [inlist[k] for k in np.random.permutation(list(range(0, len(inlist))))]
+    if deterministic:
+        np.random.seed()  # re-init randomness
+    return outlist
 
 
 def flatlist(inlist):
