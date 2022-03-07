@@ -692,7 +692,7 @@ class Dataset():
             return lbl_likelihood
                     
         lbl_likelihood  = {}
-        for d in self.map(lambda v: _multilabel_inverse_frequency_weight(v)):
+        for d in self.map(lambda v: _multilabel_inverse_frequency_weight(v)):  # parallelizable
             for (k,v) in d.items():
                 if k not in lbl_likelihood:
                     lbl_likelihood[k] = 0

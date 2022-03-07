@@ -163,11 +163,14 @@ class Tensordir(torch.utils.data.Dataset):
     ```
     .. note:: This requires python random() and not numpy random 
     """
-    def __init__(self, tensordir, verbose=True, reseed=True, take=None):
+    def __init__(self, tensordir, verbose=True, reseed=True, take=None, mutator=None):
         assert (isinstance(tensordir, str) and os.path.isdir(tensordir)) or all([os.path.isdir(d) for d in tensordir])
+        assert mutator is None or callable(mutator)
+
         self._dirlist = [s for d in vipy.util.tolist(tensordir) for s in vipy.util.extlist(d, '.pkl.bz2')]
         self._verbose = verbose
         self._reseed = reseed
+        self._mutator = mutator 
 
     def __getitem__(self, k):
         if self._reseed:
@@ -180,7 +183,7 @@ class Tensordir(torch.utils.data.Dataset):
                 assert len(obj) > 0, "Invalid augmentation"
                 (t, lbl) = obj[random.randint(0, len(obj))]  # choose one tensor at random
                 assert t is not None and json.loads(lbl) is not None, "Invalid augmentation"  # get another one if the augmentation was invalid
-                return (t, lbl)
+                return (t, lbl if self._mutator is None else json.dumps(self._mutator(json.loads(lbl))))
             except:
                 time.sleep(1)  # try again after a bit if another process is augmenting this .pkl.bz2 in parallel
         if self._verbose:

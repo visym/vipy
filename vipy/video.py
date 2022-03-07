@@ -2876,7 +2876,7 @@ class Scene(VideoCategory):
         .. note:: Not to be confused with biometric subject id.  For videos collected with Visym Collector platform (https://visym.com/collector), the biometric subject ID can be retrieved via `vipy.video.Video.metadata` (e.g. self.metadata()['subject_ids']).
         """
         if id is None:
-            return next(iter(self.tracks().keys())) if not fluent else self  # Python >=3.6
+            return (next(iter(self.tracks().keys())) if len(self._tracks)>0 else None) if not fluent else self  # Python >=3.6
         elif id in self._tracks:
             # Reorder tracks so that id is first
             idlist = [id] + [ti for ti in self.tracks().keys() if ti != id]
