@@ -684,15 +684,17 @@ class Dataset():
             lbl_likelihood = {}
             if len(v.activities()) > 0:
                 (ef, sf) = (max([a.endframe() for a in v.activitylist()]), min([a.startframe() for a in v.activitylist()]))  # clip length 
-                lbl_frequency = vipy.util.countby([a for A in v.activitylabel(sf, ef) for a in A], lambda x: x)  # frequency within clip
-                for (k,f) in lbl_frequency.items():
+                lbl_list = [a for A in v.activitylabel(sf, ef) for a in set(A)]  # list of all labels within clip (labels are unique in each frame)
+                lbl_frequency = vipy.util.countby(lbl_list, lambda x: x)  # frequency of each label within clip
+                lbl_weight = {k:v/float(len(lbl_list)) for (k,v) in lbl_frequency.items()}  # multi-label likelihood within clip, normalized frequency sums to one 
+                for (k,w) in lbl_weight.items():
                     if k not in lbl_likelihood:
                         lbl_likelihood[k] = 0
-                    lbl_likelihood[k] += f/(ef-sf)
+                    lbl_likelihood[k] += w
             return lbl_likelihood
                     
         lbl_likelihood  = {}
-        for d in self.map(lambda v: _multilabel_inverse_frequency_weight(v)):
+        for d in self.map(lambda v: _multilabel_inverse_frequency_weight(v)):  # parallelizable
             for (k,v) in d.items():
                 if k not in lbl_likelihood:
                     lbl_likelihood[k] = 0
