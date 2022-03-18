@@ -650,10 +650,13 @@ def loadmat73(matfile, keys=None):
         return np.array(f)
 
 
-
 def take(inlist, k):
     """Take k elements at random from inlist"""
     return [inlist[i] for i in np.random.permutation(range(len(inlist)))[0:k]] if len(inlist)>k else inlist
+
+def takeone(inlist):
+    """Take one element at random from inlist"""
+    return take(inlist, k=1)[0] if len(inlist)>=1 else None
 
 def tryload(infile, abspath=False):
     """Attempt to load a pkl file, and return the value if successful and None if not"""
