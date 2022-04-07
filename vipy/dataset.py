@@ -198,7 +198,7 @@ class Dataset():
                 novideos [bool]:  generate a tarball without linking videos, just annotations
                 md5 [bool]:  If True, generate the MD5 hash of the tarball using the system "md5sum", or if md5='vipy' use a slower python only md5 hash 
                 castas [class]:  This should be a vipy class that the vipy objects should be cast to prior to archive.  This is useful for converting priveledged superclasses to a base class prior to export.
-                tmpdir:  The path to the temporary directory for construting this dataset.  Defaults to system temp
+                tmpdir:  The path to the temporary directory for construting this dataset.  Defaults to system temp.  This directory will be emptied prior to archive.
                 inplace [bool]:  If true, modify the dataset in place to prepare it for archive, else make a copy
                 bycategory [bool]: If true, save the annotations in an annotations/ directory by category
                 annotationdir [str]: The subdirectory name of annotations to be contained in the archive if bycategory=True.  Usually "annotations" or "json".
@@ -223,7 +223,7 @@ class Dataset():
         assert shutil.which('tar') is not None, "tar not found on path"        
         
         D = self.clone() if not inplace else self   # large memory footprint if inplace=False
-        tmpdir = tempdir() if tmpdir is None else remkdir(tmpdir)
+        tmpdir = tempdir() if tmpdir is None else remkdir(tmpdir, flush=True)
         stagedir = remkdir(os.path.join(tmpdir, filefull(filetail(tarfile))))
         print('[vipy.dataset]: creating staging directory "%s"' % stagedir)
         delprefix = [[d for d in tolist(delprefix) if d in v.filename()][0] for v in self]  # select the delprefix per video
