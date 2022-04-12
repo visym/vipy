@@ -9,7 +9,7 @@ VIPY is a python package for representation, transformation and visualization of
 
 VIPY provides:  
 
-* Representation of videos with labeled activities that can be resized, clipped, rotated, scaled and cropped
+* Representation of videos with labeled activities that can be resized, clipped, rotated, scaled, padded and cropped
 * Representation of images with object bounding boxes that can be manipulated as easily as editing an image
 * Clean visualization of annotated images and videos 
 * Lazy loading of images and videos suitable for distributed procesing (e.g. dask, spark)
