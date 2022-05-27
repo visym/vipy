@@ -289,7 +289,8 @@ def montage(imlist, imgheight, imgwidth, gridrows=None, gridcols=None, aspectrat
         Return a vipy.image.Image montage which is of size (gridrows*(imgheight + 2*border), gridcols*(imgwidth+2*border))
     
     """
-
+    assert isinstance(imlist, list) and len(imlist)>0
+    
     (n,m) = (imgheight, imgwidth)
     (rows,cols) = (gridrows, gridcols)
     n_imgs = len(imlist)
