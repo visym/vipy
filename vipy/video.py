@@ -190,6 +190,7 @@ class Stream(object):
                 # - read numpy frames from the ffmpeg filter chain via a pipe
                 # - store the resulting frames in a queue with a null terminated frame when the stream ends
                 # - Threading is useful here because there is often time to switch when waiting on GPU I/O 
+                (t,q,p) = (None, None,None)
                 if not self._buffered or self._is_stream_buffer_owner:
                     p = self._read_pipe()
                     q = queue.Queue(self._queuesize)
@@ -205,15 +206,16 @@ class Stream(object):
                                 queue.put(None)
                                 pipe.poll()
                                 pipe.wait()
+                                queue.join()
+                                event.wait()
                                 if pipe.returncode != 0:
                                     raise ValueError('Stream iterator exited with returncode %d' % (pipe.returncode))
-                                event.wait()
                                 break
                             else:
                                 queue.put(np.frombuffer(in_bytes, np.uint8).reshape([height, width, 3]))
 
                     e = threading.Event()
-                    t = threading.Thread(target=_f_threadloop, args=(p, q, h, w, e), daemon=True)
+                    t = threading.Thread(target=_f_threadloop, args=(p, q, h, w, e), daemon=True, name='vipy.video.Stream.__iter__')
                     t.start()
 
                     
@@ -229,9 +231,11 @@ class Stream(object):
                         # Primary iterator: read from thread queue
                         if b is None:
                             (f, img) = (k, q.get())  # unbuffered: to yield latest from thread queue directly
+                            q.task_done()
                             k += 1                            
                         else:
                             b[k] = q.get()  # add to stream buffer, cache frames only, annotations are added synchronously on yield
+                            q.task_done()
                             (f, img) = (k, b[k])  # primary buffer: yield current frame from pipe
                             k += 1
                     else:
@@ -252,7 +256,9 @@ class Stream(object):
                         if not self._buffered or self._is_stream_buffer_owner:
                             e.set()
                         break  # termination
-                    
+
+                if t is not None:
+                    del p,q,t
         except:
             raise
         
@@ -336,29 +342,36 @@ class Stream(object):
                     queue.put( (None, k) )
             if ragged and len(newframes) > 0:
                 queue.put( (v.clear().clone(shallow=True).fromframes(newframes), k) )  # fromframes() triggers array copy of newframes
+
             queue.put( (None, None) )
             event.wait()            
+
 
         vc = self._video.clone(flushfilter=True).clear().nourl().nofilename()
         q = queue.Queue(3)  # warning: if this queuesize*n > buffersize, then there can be a deadlock
         e = threading.Event()        
-        t = threading.Thread(target=_f_threadloop, args=(vc, self.__iter__, q, e, ragged, m, n), daemon=True)
+        t = threading.Thread(target=_f_threadloop, args=(vc, self.__iter__, q, e, ragged, m, n), daemon=True, name='vipy.video.Stream.clip')
         t.start()
 
         f_copy_annotations = lambda v, k, n: (v.activities([a.clone().offset(-(k-(n-1))).truncate(0,n-1) for (ak,a) in self._video.activities().items() if a.during_interval(k-(n-1), k, inclusive=False)] if activities else [])
                                               .tracks([t.clone(k-(n-1), k).offset(-(k-(n-1))).truncate(0,n-1) for (tk,t) in self._video.tracks().items() if t.during_interval(k-(n-1), k)] if tracks else [])
                                               if (v is not None and isinstance(v, vipy.video.Scene)) else v)
-                
-        while True:
-            # The queue can be filled with more expensive copies and clones to speed up iteration when waiting for GPU I/O
-            (v, k) = q.get()
-            if k is not None:
-                # This copy must be done sychronized at frame k with the current state of the annotations in the shared self._video
-                yield f_copy_annotations(v, k, len(v)) if v is not None else None
-            else:
-                e.set()
-                break
-                
+        
+        try:
+            while True:
+                # The queue can be filled with more expensive copies and clones to speed up iteration when waiting for GPU I/O
+                (v, k) = q.get()
+                q.task_done()
+                if k is None:
+                    e.set()
+                    break
+                else:
+                    # This copy must be done sychronized at frame k with the current state of the annotations in the shared self._video
+                    yield f_copy_annotations(v, k, len(v)) if v is not None else None
+        finally:
+            e.set()  # thread cleanup on early exit
+        del q,t
+
     def batch(self, n):
         """Stream batches of length n such that each batch contains frames [0, n-1], [n, 2n-1], ...  Last batch will be ragged.
             
@@ -383,7 +396,7 @@ class Stream(object):
 
     def frame(self, delay=0):
         """Stream individual frames of video with negative offset n frames to the stream head. If delay=30, this will return a frame 30 frames ago"""
-        assert isinstance(delay, int) and delay >= 0, "Frame delay must be non-positive integer"        
+        assert isinstance(delay, int) and delay >= 0, "Frame delay must be positive integer"        
         n = -delay
         frames = []
         i = 0
@@ -1035,6 +1048,11 @@ class Video(object):
             assert isinstance(sleep, int) and sleep > 0, "Sleep must be a non-negative integer number of seconds"
             time.sleep(sleep)
         return self
+
+    def printif(self, b, prefix='', verbose=True, sleep=None):
+        """Call `vipy.video.Video.print` if b=True.  Useful for fluent chains to print periodically."""
+        assert isinstance(b, bool)
+        return self.print(prefix=prefix, verbose=b, sleep=sleep) 
 
     def __array__(self):
         """Called on np.array(self) for custom array container, (requires numpy >=1.16)"""
@@ -2349,6 +2367,7 @@ class Video(object):
     def flush(self):
         """Alias for clone(flush=True), returns self not clone"""
         self._array = None  # flushes buffer on object and clone
+        self.delattribute("__stream_buffer")  # remove if present 
         #self._previewhash = None
         self._shape = None
         return self
