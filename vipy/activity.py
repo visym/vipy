@@ -142,6 +142,7 @@ class Activity(object):
             return self
 
     def middleframe(self):
+        """Return the middle frame number of the activity"""
         return int(np.round((self._endframe - self._startframe) / 2.0)) + self._startframe
 
     def _set_framerate(self, fps):

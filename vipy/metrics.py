@@ -204,11 +204,16 @@ def mean_average_precision(ap):
 
 
 
-def confusion_matrix(cm, outfile=None, figure=None, fontsize=5, xlabel=None, ylabel=None, normalized=False, classes=None, colorbar=False):
+def confusion_matrix(cm, outfile=None, figure=None, fontsize=5, xlabel=None, ylabel=None, classes=None, colorbar=False, figsize=None):
+    """Generate a confusion matrix plot for a confusion matrix cm"""
 
     outfile = outfile if outfile is not None else temppng()
     figure = 1 if figure is None else figure
-    plt.figure(figure)
+    
+    if figsize:
+        plt.figure(figure, figsize=figsize)
+    else:
+        plt.figure(figure)
     plt.clf()
     plt.matshow(cm, fignum=figure)
 
@@ -227,7 +232,6 @@ def confusion_matrix(cm, outfile=None, figure=None, fontsize=5, xlabel=None, yla
     for item in ([ax.title, ax.xaxis.label, ax.yaxis.label] + ax.get_xticklabels() + ax.get_yticklabels()):
         item.set_fontsize(fontsize)
 
-    print('[vipy.metric.plot_confusion_matrix]: saving "%s"' % outfile)
     plt.savefig(outfile, bbox_extra_artists=(yl,) if yl is not None else None, bbox_inches='tight', dpi=600)
 
     return outfile

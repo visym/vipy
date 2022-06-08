@@ -493,11 +493,16 @@ class Dataset():
         """Alias for `vipy.dataset.Dataset.jsondir`"""
         return self.jsondir(outdir, verbose=verbose, rekey=rekey, bycategory=bycategory, byfilename=byfilename, abspath=abspath)
     
-    def takelist(self, n, category=None):
+    def takelist(self, n, category=None, seed=None):
         """Take n elements of selected category and return list.  The elements are not cloned."""
         assert n >= 0, "Invalid length"
         K = list(range(len(self))) if category is None else [k for (k,v) in enumerate(self) if v.category() == category]
-        return [self[int(k)] for k in np.random.permutation(K)[0:n]]  # native python int
+        if seed is not None:
+            np.random.seed(seed)            
+        outlist = [self[int(k)] for k in np.random.permutation(K)[0:n]]  # native python int
+        if seed is not None:
+            np.random.seed()
+        return outlist
 
     def load(self):
         """Load the entire dataset into memory.  This is useful for creating in-memory datasets from lazy load datasets"""
@@ -505,11 +510,11 @@ class Dataset():
         self._loader = lambda x: x
         return self
 
-    def take(self, n=1, category=None, canload=False):
-        """Randomlly Take n elements from the dataset, and return a dataset if n>1, otherwise return the singleton element"""
+    def take(self, n=1, category=None, canload=False, seed=None):
+        """Randomlly Take n elements from the dataset, and return a dataset if n>1, otherwise return the singleton element.  If seed=int, take will return the same results each time."""
         assert isinstance(n, int) and n>0
         D = self.clone(shallow=True)
-        D._objlist = self.takelist(n, category=category)
+        D._objlist = self.takelist(n, category=category, seed=seed)
         return D if n>1 else D[0]
 
     def take_per_category(self, n):
@@ -615,7 +620,8 @@ class Dataset():
         return Dataset(good, id=dst if dst is not None else id)
 
     def localmap(self, f):
-        self._objlist = [f(v) for v in self]
+        for (k,v) in enumerate(self):
+            self._objlist[k] = f(v)  # in-place update
         return self
 
     def flatmap(self, f):
@@ -838,7 +844,7 @@ class Dataset():
         import vipy.torch
         return vipy.torch.TorchDataset(f_video_to_tensor, self)
 
-    def to_torch_tensordir(self, f_video_to_tensor, outdir, n_augmentations=20, sleep=3):
+    def to_torch_tensordir(self, f_video_to_tensor, outdir, n_augmentations=20, sleep=None):
         """Return a TorchTensordir dataset that will load a pkl.bz2 file that contains one of n_augmentations (tensor, label) pairs.
         
         This is useful for fast loading of datasets that contain many videos.
@@ -849,7 +855,7 @@ class Dataset():
 
         assert self._is_vipy_video_scene()
         outdir = vipy.util.remkdir(outdir)
-        vipy.batch.Batch(self.list(), as_completed=True).map(lambda v, f=f_video_to_tensor, outdir=outdir, n_augmentations=n_augmentations: vipy.util.bz2pkl(os.path.join(outdir, '%s.pkl.bz2' % v.instanceid()), [f(v.print(sleep=sleep).clone()) for k in range(0, n_augmentations)]))
+        self.map(lambda v, f=f_video_to_tensor, outdir=outdir, n_augmentations=n_augmentations: vipy.util.bz2pkl(os.path.join(outdir, '%s.pkl.bz2' % v.instanceid()), [f(v.print(sleep=sleep).clone()) for k in range(0, n_augmentations)]))
         return vipy.torch.Tensordir(outdir)
 
     def annotate(self, outdir, mindim=512):

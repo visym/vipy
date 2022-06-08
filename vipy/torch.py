@@ -181,14 +181,14 @@ class Tensordir(torch.utils.data.Dataset):
             try:
                 obj = vipy.util.bz2pkl(self._dirlist[k])  # load me
                 assert len(obj) > 0, "Invalid augmentation"
-                (t, lbl) = obj[random.randint(0, len(obj))]  # choose one tensor at random
+                (t, lbl) = obj[random.randint(0, len(obj)-1)]  # choose one tensor at random
                 assert t is not None and json.loads(lbl) is not None, "Invalid augmentation"  # get another one if the augmentation was invalid
                 return (t, lbl if self._mutator is None else json.dumps(self._mutator(json.loads(lbl))))
             except:
                 time.sleep(1)  # try again after a bit if another process is augmenting this .pkl.bz2 in parallel
         if self._verbose:
             print('[vipy.dataset.TorchTensordir][WARNING]: %s corrupted or invalid' % self._dirlist[k])
-        return self.__getitem__(random.randint(0, len(self)))  # maximum retries reached, get another one
+        return self.__getitem__(random.randint(0, len(self)-1))  # maximum retries reached, get another one
 
     def __len__(self):
         return len(self._dirlist)
@@ -198,7 +198,7 @@ class Tensordir(torch.utils.data.Dataset):
         return self
 
     def filter(self, f):
-        """Keep elements that lambda evaluates true. The lambda operates on the *filename* for the tensordir and not the contents"""
+        """Keep elements that lambda evaluates true. The lambda operates on the *absolute path filename* for the tensordir and not the contents.  This is useful for filtering by instanceid in the `vipy.util.filebase`."""
         assert callable(f)
         self._dirlist = [x for x in self._dirlist if f(x)]
         return self

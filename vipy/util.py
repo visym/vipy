@@ -197,6 +197,13 @@ def load(infile, abspath=True, refcycle=True):
     return obj
 
 
+def dedupe(inlist, f):
+    """Deduplicate the list using the provided lambda function which transforms an element to a dedupe key, such that all elements with the same key are duplicates"""
+    assert callable(f)
+    assert isinstance(inlist, list)
+    return list({f(x):x for x in inlist}.values())
+
+
 def bz2pkl(filename, obj=None):
     """Read/Write a bz2 compressed pickle file"""
     assert filename[-8:] == '.pkl.bz2', "Invalid filename - must be '*.pkl.bz2'"
@@ -237,6 +244,18 @@ def nonecatcher(f, *args, **kwargs):
         return f(*args, **kwargs)
     except Exception as e:
         return None
+
+def trycatcher(f, *args, **kwargs):
+    """Call the function f with the provided arguments, and return (result) on success and (None) if there is any thrown exception.  Useful for parallel processing"""
+    assert callable(f)
+    try:
+        return f(*args, **kwargs)
+    except Exception as e:
+        return None
+
+def catchif(f, *args, **kwargs):
+    """Call the function f with the provided arguments, and return (result) on success and (None) if there is any thrown exception.  Useful for parallel processing.  Alias for `vipy.util.trycatecher`"""
+    return trycatcher(f, *args, **kwargs)
 
 
 def mergedict(d1, d2):
@@ -1018,10 +1037,30 @@ def readtxt(infile):
     return readlist(infile)
 
 
-def writecsv(list_of_tuples, outfile, mode='w', separator=','):
-    """Write list of tuples to an output csv file with each list element
-    on a row and tuple elements separated by comma"""
+def writecsv(list_of_tuples, outfile, mode='w', separator=',', header=None, comment='# '):
+    """Write list of tuples to an output csv file with each list element on a row and tuple elements separated by commas.
+
+    Examples:
+    ```python
+    vipy.util.writecsv([(1,2,3), (4,5,6)], '/tmp/out.csv')
+    vipy.util.writecsv([(1,2,3), (4,5,6)], '/tmp/out.csv', separator=';'))
+    vipy.util.writecsv([(1,2,3), (4,5,6)], '/tmp/out.csv', header=('h1','h2','h3'))
+    ```
+
+    Args:
+        list_of_tuples: a list of tuples each tuple is a row
+        outfile: the csv file output
+        mode: 'w' for overwrite, 'a' for append
+        separator: a string specifying the separator between columns.  defaults to ','
+        header: a tuple containing strings to be appended to the first row of the csv file
+        comment:  the comment symbol to be prepended to the header row 
+
+    Returns:
+        the outfile path
+    """
+    
     list_of_tuples = list_of_tuples if not isnumpy(list_of_tuples) else list_of_tuples.tolist()
+    list_of_tuples = list_of_tuples if header is None else [tuple([h if k>0 else comment+h for (k,h) in enumerate(header)])]+list_of_tuples  # prepend header with comment symbol
     outfile = os.path.abspath(os.path.expanduser(outfile))
     with open(outfile, mode) as f:
         for u in list_of_tuples:
@@ -1034,12 +1073,25 @@ def writecsv(list_of_tuples, outfile, mode='w', separator=','):
     return(outfile)
 
 
-def readcsv(infile, separator=',', ignoreheader=False):
-    """Read a csv file into a list of lists"""
+def readcsv(infile, separator=',', ignoreheader=False, comment=None):
+    """Read a csv file into a list of lists, ignore any rows prepended with comment symbol, ignore first row if ignoreheader=True
+
+    Args:
+        infile: the csv file input
+        separator: a string specifying the separator between columns.  defaults to ','
+        ignoreheader: if true, ignore the first row of the csv file
+        comment:  if provided, ignore all rows with this comment symbol prepended
+
+    Returns:
+        a list of lists, each list element containing a list of elements in the corresponding line of the csv file, parsed by separator
+    """
+
     with open(infile, 'r') as f:
         list_of_rows = [[x.strip() for x in r.split(separator)]
                         for r in f.readlines()]
-    return list_of_rows if not ignoreheader else list_of_rows[1:]
+    list_of_rows = list_of_rows if (len(list_of_rows)==0 or not ignoreheader) else list_of_rows[1:]
+    list_of_rows = list_of_rows if comment is None else [r for r in list_of_rows if len(r)==0 or r[0][0] != comment]
+    return list_of_rows
 
 
 def readcsvwithheader(infile, separator=','):
@@ -1606,6 +1658,10 @@ def toextension(filename, newext):
         newext = newext.split('.')[-1]
     (filename, oldext) = splitextension(filename)
     return filename + '.' + str(newext)
+
+def noextension(filename, ext=None):
+    """Convert filename='/path/to/myfile.ext' or filename='/path/to/myfile.ext1.ext2.ext3' to /path/to/myfile with no extension, removing the appended string past the first dot"""
+    return filename.split('.')[0] if ext is None else filename.replace(ext, '')
 
 def topkl(filename):
     """Convert filename='/path/to/myfile.ext' to /path/to/myfile.pkl"""
