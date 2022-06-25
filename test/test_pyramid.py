@@ -11,5 +11,8 @@ def _test_foveation():
         f(tx,ty).show()
         print(tx,ty)
 
-def _test_laplacian():
-    vipy.pyramid.LaplacianPyramid(vipy.image.owl().centersquare()).show()
+        
+def test_laplacian():
+    im = vipy.calibration.imcentersquare().rgb()
+    assert np.allclose(vipy.pyramid.LaplacianPyramid(im).reconstruct().numpy(), im.numpy(), atol=20)
+    assert np.allclose(vipy.pyramid.LaplacianPyramid(im, pad='reflect').reconstruct().numpy(), im.numpy(), atol=40)    

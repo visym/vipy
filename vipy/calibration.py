@@ -158,6 +158,9 @@ def centersquare_image(height=512, width=512, squaresize=256):
     """Returns `vipy.image.Image` for `vipy.calibration.centersquare` numpy array"""
     return vipy.image.Image(array=np.uint8(255*centersquare(height, width, squaresize, channels=1)), colorspace='lum')
 
+def imcentersquare(height=512, width=512, squaresize=256):
+    """alias for `vipy.calibration.centersquare_image`"""
+    return centersquare_image(height, width, squaresize)
 
 def circle(x, y, r, width, height, channels=1):
     """Create a white circle on a black background centered at (x,y) with radius r pixels, of shape (width, height).  

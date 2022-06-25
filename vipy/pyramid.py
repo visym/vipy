@@ -57,21 +57,31 @@ class GaussianPyramid(object):
     
 class LaplacianPyramid(object):
     """vipy.pyramid.LaplacianPyramid() class"""    
-    def __init__(self, im):
+    def __init__(self, im, pad='zero'):
 
-        g = ((1.0/np.sqrt(2*np.pi))*np.exp(-0.5*(np.array([-2,-1,0,1,2])**2))).astype(np.float32)
-        G = torch.from_numpy(np.outer(g,g)).repeat( (3,1,1,1) )
-        
-        self._G = G
+        g = (1.0/np.sqrt(2*np.pi))*np.exp(-0.5*(np.array([-2,-1,0,1,2])**2))
+        G = torch.from_numpy(np.outer(g,g).astype(np.float32))
+
+        self._G = G.repeat( (3,1,1,1) )
+        self._Ce = torch.sum(G[::2,::2])  # filter coefficient sum, even elements only
+        self._Co = torch.sum(G[1::2,1::2]) # filter coefficient sum, odd elements only
         self._band = []
-        self._pad = torch.nn.ReflectionPad2d(2)
+
+        if pad == 'zero':
+            self._pad = torch.nn.ZeroPad2d(2)  # introduces lowpass corner artifact on reconstruction
+            self._gain = 1.6  # rescale to approximately correct boundary artifact
+        elif pad == 'reflect':
+            self._pad = torch.nn.ReflectionPad2d(2)  # introduces lowpass gain artifact on reconstruction
+            self._gain = 1.4  # rescale to approximately correct boundary artifact
+        else:
+            raise ValueError('unknown padding "%s" - must be ["zero", "reflect"]' % pad)
         self._im = im
         
         x = im.float().torch(order='NCHW')
-        for k in range(int(np.log2(im.mindim())-2)):
+        for k in range(int(np.log2(im.mindim())-1)):
             y = torch.nn.functional.conv2d(self._pad(x), self._G, groups=3)  # anti-aliasing
             self._band.append(x-y)  # bandpass
-            x = y[:,:,::2,::2]  # downsample
+            x = y[:,:,::2,::2]  # even downsample
         self._band.append(x)  # lowpass
             
     def __len__(self):
@@ -87,15 +97,16 @@ class LaplacianPyramid(object):
 
     def band(self, k):
         return self[k]
-    
+
     def reconstruct(self):
         x = self._band[-1]
         for b in reversed(self._band[0:-1]):
-            xu = torch.zeros(1, 3, b.shape[2], b.shape[3])
-            xu[:,:,::2,::2] = x
-            x = torch.nn.functional.conv2d(self._pad(xu), 4*self._G, groups=3) + b
-            x[:,:,1::2,1::2] *= float(np.sqrt(5/4))  # compensate for odd padding
-        im = vipy.image.Image.fromtorch(x.clamp(0, 255))
+            xz = torch.zeros(1, b.shape[1], b.shape[2], b.shape[3])
+            xz[:,:,::2,::2] = x  # odd zero interpolate (even signal)
+            xu = torch.nn.functional.conv2d(self._pad(xz), (1.0/self._Ce)*self._G, groups=3)  # upsample, rescale using sum of non-zeroed kernel elements for even locations
+            xu[:,:,1::2,1::2] *= (self._Ce/self._Co)  # upsample, rescale using sum of non-zeroed kernel elements for odd locations
+            x = xu + b  # reconstruction
+        im = vipy.image.Image.fromtorch((x * self._gain).clamp(0, 255))  # final rescale due to padding boundary artifact (can also use im.mat2gray)
         return im.array(im.numpy().astype(np.uint8)).colorspace('rgb')
 
     def show(self, mindim=256):
