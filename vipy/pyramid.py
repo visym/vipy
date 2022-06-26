@@ -148,12 +148,15 @@ class Foveation(LaplacianPyramid):
         (H,W) = (im.height(), im.width())
         allowable_modes = ['gaussian', 'linear-circle', 'linear-square', 'log-circle']
         if mode == 'gaussian':
-            G = np.repeat(vipy.math.gaussian2d([W,H], [s,s], 2*H, 2*W)[:,:,np.newaxis], 3, axis=2)
-            masks = [vipy.image.Image(array=np.array(G>t).astype(np.float32), colorspace='float') for t in np.arange(0, np.max(G), np.max(G)/len(self))]
+            G = vipy.math.gaussian2d([W,H], [s,s], 2*H, 2*W)
+            M = np.repeat(G[:,:,np.newaxis], 3, axis=2)
+            thresholds = G[H//2][0:W//2:((W//2)//len(self))]
+            #thresholds = range(0, int(np.max(G)), len(self))
+            masks = [vipy.image.Image(array=np.array(M>=t).astype(np.float32), colorspace='float') for t in thresholds]
         elif mode == 'linear-circle':
-            masks = [vipy.image.Image(array=vipy.calibration.circle(W,H,s*(d/2),2*W,2*H,3).astype(np.float32), colorspace='float') for d in np.arange(max(H,W), 0, -max(H,W)/len(self))]
+            masks = [vipy.calibration.imcircle(W, H, s*(d/2), 2*W, 2*H, 3).rgb().blur(64).mat2gray(min=0) for d in np.arange(max(H,W), 0, -max(H,W)/len(self))]
         elif mode == 'log-circle':
-            masks = [vipy.image.Image(array=vipy.calibration.circle(W,H,(s*(d/2))**2,2*W,2*H,3).astype(np.float32), colorspace='float') for d in np.arange(max(H,W), 0, -max(H,W)/len(self))]
+            masks = [vipy.calibration.imcircle(W, H, (s*(d/2))**2, 2*W, 2*H, 3).rgb().blur(64).mat2gray(min=0) for d in np.arange(max(H,W), 0, -max(H,W)/len(self))]
         elif mode == 'linear-square':
             masks = [vipy.image.Image(array=vipy.calibration.square(W,H,s*(d/2),2*W,2*H,3).astype(np.float32), colorspace='float') for d in np.arange(max(H,W), 0, -max(H,W)/len(self))]
         else:
@@ -162,14 +165,14 @@ class Foveation(LaplacianPyramid):
         self._masks = [m.torch(order='NCHW') for m in masks]
 
     def __call__(self, tx=0, ty=0, sx=1.0, sy=1.0):
-        (H,W) = (self._im.height(), self._im.width())        
+        (C, H,W) = (self.channels(), self.height(), self.width())        
         theta = torch.FloatTensor([[sx,0,tx],[0,sy,ty]]).repeat( (1, 1, 1) )
-        G = torch.nn.functional.affine_grid(theta, (1, 3, H, W), align_corners=False)
+        G = torch.nn.functional.affine_grid(theta, (1, C, H, W), align_corners=False)
         blend = [GaussianPyramid(tensor=torch.nn.functional.grid_sample(m, G, align_corners=False)) for m in self._masks]        
 
         pyr = copy.deepcopy(self)
         pyr._band[:-1] = [torch.mul(w[k].torch(order='NCHW'), b) for (k, (w,b)) in enumerate(zip(reversed(blend), pyr._band[:-1]))]
         return pyr.reconstruct()
         
-    def foveate(self, tx=0, ty=0, sx=1.0, sy=1.0):
-        return self.__call__(tx=tx, ty=ty, sx=sx, sy=sy)
+    def foveate(self, tx=0, ty=0):
+        return self.__call__(tx=tx, ty=ty, sx=1.0, sy=1.0)

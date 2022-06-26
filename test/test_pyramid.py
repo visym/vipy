@@ -4,8 +4,10 @@ import itertools
 
 
 def _test_foveation():
-    im = vipy.image.vehicles().mindim(512).load()
-    f = vipy.pyramid.Foveation(im)
+    #im = vipy.image.vehicles().mindim(512).load()
+    im = vipy.image.people().mindim(512).load()    
+    f = vipy.pyramid.Foveation(im, s=2, mode='linear-circle')
+    #f = vipy.pyramid.Foveation(im, s=0.15, mode='log-circle')    
 
     for (ty, tx) in itertools.product(list(np.arange(-1,1,1/8)), list(np.arange(-1,1,1/8))):
         f(tx,ty).show()
