@@ -66,7 +66,8 @@ class LaplacianPyramid(object):
         self._Ce = torch.sum(G[::2,::2])  # filter coefficient sum, even elements only
         self._Co = torch.sum(G[1::2,1::2]) # filter coefficient sum, odd elements only
         self._band = []
-
+        self._im = im
+        
         if pad == 'zero':
             self._pad = torch.nn.ZeroPad2d(2)  # introduces lowpass corner artifact on reconstruction
             self._gain = 1.6  # rescale to approximately correct boundary artifact
@@ -75,15 +76,24 @@ class LaplacianPyramid(object):
             self._gain = 1.4  # rescale to approximately correct boundary artifact
         else:
             raise ValueError('unknown padding "%s" - must be ["zero", "reflect"]' % pad)
-        self._im = im
-        
-        x = im.float().torch(order='NCHW')
-        for k in range(int(np.log2(im.mindim())-1)):
-            y = torch.nn.functional.conv2d(self._pad(x), self._G, groups=3)  # anti-aliasing
-            self._band.append(x-y)  # bandpass
-            x = y[:,:,::2,::2]  # even downsample
-        self._band.append(x)  # lowpass
-            
+
+        if isinstance(im, vipy.image.Image):
+            x = im.float().torch(order='NCHW')
+            for k in range(int(np.log2(im.mindim())-1)):
+                y = torch.nn.functional.conv2d(self._pad(x), self._G, groups=3)  # anti-aliasing
+                self._band.append(x-y)  # bandpass
+                x = y[:,:,::2,::2]  # even downsample
+            self._band.append(x)  # lowpass
+        elif isinstance(im, list):
+            assert all([torch.is_tensor(b) for b in im])
+            self._band = im
+            self._im = self[0].clone().zeros()  # no source image available
+        else:
+            raise ValueError('invalid input')
+
+    def __repr__(self):
+        return '<vipy.pyramid.LaplacianPyramid: scales=%d, channels=%d, height=%d, width=%d>' % (self.scales(), self.channels(), self.height(), self.width())
+    
     def __len__(self):
         return len(self._band)
 
@@ -111,7 +121,25 @@ class LaplacianPyramid(object):
 
     def show(self, mindim=256):
         return vipy.visualize.montage([im.maxsquare().resize(mindim, mindim, interp='nearest') for im in self], mindim, mindim).show()
+
+    def height(self):
+        return self._im.height()
+    def width(self):
+        return self._im.width()
+    def channels(self):
+        return self._im.channels()
+    def scales(self):
+        return len(self)
     
+    def tensor(self, interp='nearest'):
+        return torch.stack([im.resize(self.height(), self.width(), interp=interp).torch(order='CHW') for im in self])  # scales() x channels() x height() x width()
+
+    @staticmethod
+    def fromtensor(bands):
+        """Convert a S*CxHxW torch tensor back to LaplacianPyramid"""
+        assert torch.is_tensor(bands) and bands.ndim == 4
+        (S,C,H,W) = bands.shape
+        return LaplacianPyramid([vipy.image.Image.fromtorch(b).resize(H//(2**i), W//(2**i)).torch(order='CHW') for (i,b) in enumerate(bands)])
 
 class Foveation(LaplacianPyramid):
     def __init__(self, im, s=0.125, mode='log-circle'):
