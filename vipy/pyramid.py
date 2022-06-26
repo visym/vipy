@@ -142,22 +142,25 @@ class LaplacianPyramid(object):
         return LaplacianPyramid([vipy.image.Image.fromtorch(b).resize(H//(2**i), W//(2**i)).torch(order='CHW') for (i,b) in enumerate(bands)])
 
 class Foveation(LaplacianPyramid):
-    def __init__(self, im, s=0.125, mode='log-circle'):
+    def __init__(self, im, mode='log-circle', s=None):
         super().__init__(im)
         
         (H,W) = (im.height(), im.width())
         allowable_modes = ['gaussian', 'linear-circle', 'linear-square', 'log-circle']
         if mode == 'gaussian':
+            s = s*(W/2) if s is not None else W/2            
             G = vipy.math.gaussian2d([W,H], [s,s], 2*H, 2*W)
             M = np.repeat(G[:,:,np.newaxis], 3, axis=2)
-            thresholds = G[H//2][0:W//2:((W//2)//len(self))]
-            #thresholds = range(0, int(np.max(G)), len(self))
-            masks = [vipy.image.Image(array=np.array(M>=t).astype(np.float32), colorspace='float') for t in thresholds]
+            thresholds = np.arange(0, float(np.max(G)), np.max(G)/len(self))
+            masks = [vipy.image.Image(array=255*np.array(M>=t).astype(np.uint8)).blur(16).mat2gray(min=0) for t in thresholds]
         elif mode == 'linear-circle':
-            masks = [vipy.calibration.imcircle(W, H, s*(d/2), 2*W, 2*H, 3).rgb().blur(64).mat2gray(min=0) for d in np.arange(max(H,W), 0, -max(H,W)/len(self))]
+            s = s*2.0 if s is not None else 2.0
+            masks = [vipy.calibration.imcircle(W, H, s*(d/2), 2*W, 2*H, 3).rgb().blur(16).mat2gray(min=0) for d in np.arange(max(H,W), 0, -max(H,W)/len(self))]
         elif mode == 'log-circle':
-            masks = [vipy.calibration.imcircle(W, H, (s*(d/2))**2, 2*W, 2*H, 3).rgb().blur(64).mat2gray(min=0) for d in np.arange(max(H,W), 0, -max(H,W)/len(self))]
+            s = s*0.125 if s is not None else 0.125                        
+            masks = [vipy.calibration.imcircle(W, H, (s*(d/2))**2, 2*W, 2*H, 3).rgb().blur(16).mat2gray(min=0) for d in np.arange(max(H,W), 0, -max(H,W)/len(self))]
         elif mode == 'linear-square':
+            s = s*2.0 if s is not None else 2.0                        
             masks = [vipy.image.Image(array=vipy.calibration.square(W,H,s*(d/2),2*W,2*H,3).astype(np.float32), colorspace='float') for d in np.arange(max(H,W), 0, -max(H,W)/len(self))]
         else:
             raise ValueError('invalid mode "%s" - must be in %s' % (mode, str(allowable_modes)))
@@ -175,4 +178,13 @@ class Foveation(LaplacianPyramid):
         return pyr.reconstruct()
         
     def foveate(self, tx=0, ty=0):
+        """Foveate the input image at location (tx, ty) in scaled image coordinates where (0,0) is the center and (1,1) is the upper left"""        
         return self.__call__(tx=tx, ty=ty, sx=1.0, sy=1.0)
+
+    def visualize(self):
+        """Show the fovea density"""
+        imgmask = self._immasks[0].clone().mat2gray().numpy()
+        for (im,c) in zip(self._immasks, range(0, 255, len(self))):
+            img = im.clone().mat2gray(min=0).numpy()
+            imgmask += c*img
+        return vipy.image.Image(array=imgmask)
