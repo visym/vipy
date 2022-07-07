@@ -30,6 +30,8 @@ import warnings
 import base64
 import types
 import hashlib
+import time
+
 
 try:
     import torch  # pre-import
@@ -1268,12 +1270,17 @@ class Image(object):
         See also `vipy.geometry.affine_transform`
 
         .. note:: The image will be loaded and converted to float() prior to applying the affine transformation.  
+        .. note:: This will transform only the pixels
         """
         assert isnumpy(A) or isinstance(img, vipy.image.Image), "invalid input"
         assert A.shape == (3,3), "The affine transformation matrix should be the output of vipy.geometry.affine_transformation"
         self._array = vipy.geometry.imtransform(self.load().float().array(), A.astype(np.float32))
         return self
-        
+
+    def rotate(self, r):
+        """Apply a rotation in radians to the pixels, with origin in upper left """
+        return self.affine_transform(vipy.geometry.affine_transform(r=r))
+    
     def rgb(self):
         """Convert the image buffer to three channel RGB uint8 colorspace"""
         return self._convert('rgb')
@@ -2447,12 +2454,16 @@ def RandomScene(rows=None, cols=None, num_objects=16, url=None):
     
 
 def owl():
-    """Return a suberb owl image for testing"""
+    """Return a superb owl image for testing"""
     return Scene(url='https://upload.wikimedia.org/wikipedia/commons/thumb/2/23/Bubo_virginianus_06.jpg/1920px-Bubo_virginianus_06.jpg',
                  category='Nature',
                  objects=[vipy.object.Detection('Great Horned Owl', xmin=350, ymin=320, width=1400, height=2100),
                           vipy.object.Detection('left eye', xmin=600, ymin=800, width=250, height=250), 
                           vipy.object.Detection('right eye', xmin=1000, ymin=800, width=250, height=250)]).mindim(512)
+
+def squareowl():
+    """Return a superb owl with no objects, cropped square at 512x512 resolution"""
+    return owl().clear().centersquare().mindim(512)
 
 
 def vehicles():

@@ -7,7 +7,7 @@ import pickle
 URL = 'https://www.cs.toronto.edu/~kriz/cifar-10-python.tar.gz'
 
 
-class CIFAR10(MNIST):
+class CIFAR10():
     """vipy.data.cifar.CIFAR10 class
 
     >>> D = vipy.data.cifar.CIFAR10('/path/to/outdir')

@@ -1,24 +1,14 @@
 import vipy
 import numpy as np
 import copy
-import os
-import random
-import dill
-import time
-import json
-
-import vipy.util
-from vipy.util import try_import
-try_import('torch');
-
-import torch
-import torch.utils.data
-from torch.utils.data import DataLoader, random_split
 
 
 class GaussianPyramid(object):
     """vipy.pyramid.GaussianPyramid() class"""
     def __init__(self, im=None, tensor=None):
+        vipy.util.try_import('torch')
+        import torch
+        
         assert im is not None or tensor is not None
         assert im is None or isinstance(im, vipy.image.Image)
         assert tensor is None or (torch.is_tensor(tensor) and tensor.ndim == 4)
@@ -58,7 +48,9 @@ class GaussianPyramid(object):
 class LaplacianPyramid(object):
     """vipy.pyramid.LaplacianPyramid() class"""    
     def __init__(self, im, pad='zero'):
-
+        vipy.util.try_import('torch')
+        import torch
+        
         g = (1.0/np.sqrt(2*np.pi))*np.exp(-0.5*(np.array([-2,-1,0,1,2])**2))
         G = torch.from_numpy(np.outer(g,g).astype(np.float32))
 
@@ -69,10 +61,10 @@ class LaplacianPyramid(object):
         self._im = im
         
         if pad == 'zero':
-            self._pad = torch.nn.ZeroPad2d(2)  # introduces lowpass corner artifact on reconstruction
+            self._pad = torch.nn.ZeroPad2d(2)  # introduces lowpass corner boundary artifact on reconstruction
             self._gain = 1.6  # rescale to approximately correct boundary artifact
         elif pad == 'reflect':
-            self._pad = torch.nn.ReflectionPad2d(2)  # introduces lowpass gain artifact on reconstruction
+            self._pad = torch.nn.ReflectionPad2d(2)  # introduces lowpass gain boundary artifact on reconstruction
             self._gain = 1.4  # rescale to approximately correct boundary artifact
         else:
             raise ValueError('unknown padding "%s" - must be ["zero", "reflect"]' % pad)
@@ -139,7 +131,7 @@ class LaplacianPyramid(object):
         """Convert a S*CxHxW torch tensor back to LaplacianPyramid"""
         assert torch.is_tensor(bands) and bands.ndim == 4
         (S,C,H,W) = bands.shape
-        return LaplacianPyramid([vipy.image.Image.fromtorch(b).resize(H//(2**i), W//(2**i)).torch(order='CHW') for (i,b) in enumerate(bands)])
+        return LaplacianPyramid([vipy.image.Image.fromtorch(b).resize(H//(2**i), W//(2**i), interp='nearest').torch(order='NCHW') for (i,b) in enumerate(bands)])
 
 class Foveation(LaplacianPyramid):
     def __init__(self, im, mode='log-circle', s=None):
