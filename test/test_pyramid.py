@@ -20,7 +20,7 @@ def _show_saccade(im=None):
     return vipy.visualize.montage([f(tx, ty) for (ty, tx) in itertools.product(txy, txy)], 256, 256, 5, 5).show().saveas('_test_saccade.png')
 
         
-def test_laplacian():
+def _test_laplacian():
     im = vipy.calibration.imcentersquare().rgb()
     assert np.allclose(vipy.pyramid.LaplacianPyramid(im).reconstruct().numpy(), im.numpy(), atol=20)
     assert np.allclose(vipy.pyramid.LaplacianPyramid(im, pad='reflect').reconstruct().numpy(), im.numpy(), atol=40)    

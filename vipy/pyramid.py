@@ -133,6 +133,7 @@ class LaplacianPyramid(object):
         (S,C,H,W) = bands.shape
         return LaplacianPyramid([vipy.image.Image.fromtorch(b).resize(H//(2**i), W//(2**i), interp='nearest').torch(order='NCHW') for (i,b) in enumerate(bands)])
 
+    
 class Foveation(LaplacianPyramid):
     def __init__(self, im, mode='log-circle', s=None):
         super().__init__(im)
