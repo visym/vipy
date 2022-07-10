@@ -66,7 +66,7 @@ class Dataset():
 
         self._saveas_ext = ['pkl', 'json']
         self._id = id if id is not None else vipy.util.shortuuid(8)
-        self._loader = (lambda x: x) if loader is None else loader
+        self._loader = loader  # may not be serializable if lambda is provided
         self._istype_strict = True
         self._lazy_loader = lazy
         self._abspath = abspath
@@ -105,9 +105,10 @@ class Dataset():
     def __getitem__(self, k):
         if isinstance(k, int) or isinstance(k, np.uint64):
             assert k>=0 and k<len(self._objlist), "invalid index"
-            return self._loader(self._objlist[int(k)])
+            x = self._objlist[int(k)]
+            return self._loader(x) if self._loader is not None else x
         elif isinstance(k, slice):
-            return [self._loader(x) for x in self._objlist[k.start:k.stop:k.step]]
+            return [self._loader(x) if self._loader is not None else x for x in self._objlist[k.start:k.stop:k.step]]
         else:
             raise ValueError()
             
@@ -380,12 +381,14 @@ class Dataset():
         assert isinstance(other, Dataset), "invalid input"
         if len(other) > 0:
             try:
-                other._loader(self._objlist[0])
-                self._loader(other._objlist[0])
+                if other._loader is not None:
+                    other._loader(self._objlist[0])
+                if self._loader is not None:
+                    self._loader(other._objlist[0])
                 self._objlist = self._objlist + other._objlist  # compatible loaders
             except:
                 self._objlist = self.list() + other.list()  # incompatible loaders
-                self._loader = lambda x: x
+                self._loader = None
         return self.dedupe(key) if key is not None else self
     
     def difference(self, other, key):
@@ -507,7 +510,7 @@ class Dataset():
     def load(self):
         """Load the entire dataset into memory.  This is useful for creating in-memory datasets from lazy load datasets"""
         self._objlist = self.list()
-        self._loader = lambda x: x
+        self._loader = None
         return self
 
     def take(self, n=1, category=None, canload=False, seed=None):

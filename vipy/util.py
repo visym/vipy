@@ -675,7 +675,7 @@ def take(inlist, k):
 
 def takeone(inlist):
     """Take one element at random from inlist"""
-    return take(inlist, k=1)[0] if len(inlist)>=1 else None
+    return take(list(inlist), k=1)[0] if len(inlist)>=1 else None
 
 def tryload(infile, abspath=False):
     """Attempt to load a pkl file, and return the value if successful and None if not"""
