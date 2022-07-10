@@ -268,13 +268,13 @@ def videomosaic(videos, gridrows=None, gridcols=None):
     return vipy.video.Video(frames=list(mosaic(videos, gridrows=gridrows, gridcols=gridcols)), framerate=videos[0].framerate())
 
 
-def montage(imlist, imgheight, imgwidth, gridrows=None, gridcols=None, aspectratio=1, crop=False, skip=True, border=1, border_bgr=(128,128,128), do_flush=False, verbose=False):
+def montage(imlist, imgheight=256, imgwidth=256, gridrows=None, gridcols=None, aspectratio=1, crop=False, skip=True, border=1, border_bgr=(128,128,128), do_flush=False, verbose=False):
     """Create a montage image from the of provided list of vipy.image.Image objects.
 
     Args:
         imlist: [list, tuple] iterable of vipy.image.Image objects which is used to montage rowwise
-        imgheight: [int] The height of each individual image in the grid
-        imgwidth: [int] the width of each individual image in the grid
+        imgheight: [int] The height of each individual image in the grid, defaults to 256 px
+        imgwidth: [int] the width of each individual image in the grid, defaults to 256 px, use im.centersquare() for isotropic scaling
         gridrows: [int]  The number of images per row, and number of images per column.  This defines the montage shape.
         gridcols: [int]  The number of images per row, and number of images per column.  This defines the montage shape.
         aspectratio: [float].  This is an optional parameter which defines the shape of the montage as (gridcols/gridrows) without specifying the gridrows, gridcols input
