@@ -203,5 +203,9 @@ class Tensordir(torch.utils.data.Dataset):
         self._dirlist = [x for x in self._dirlist if f(x)]
         return self
     
+    def clone(self):
+        return copy.deepcopy(self)
+
+
 class TorchTensordir(Tensordir):
     pass  # alias for backwards compatibility

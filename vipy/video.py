@@ -1043,7 +1043,7 @@ class Video(object):
             The video object after sleeping 
         """
         if verbose:
-            print(prefix+self.__repr__())
+            print(prefix+self.__repr__()) 
         if sleep is not None:
             assert isinstance(sleep, int) and sleep > 0, "Sleep must be a non-negative integer number of seconds"
             time.sleep(sleep)

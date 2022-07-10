@@ -54,10 +54,10 @@ def print(s, end='\n'):
         -Printing can be disabled by calling vipy.globals.silent()
         -Printing can be redirected to logging by calling vipy.globals.logging(True)
         -All print() statements in vipy.* are overloaded to call vipy.globals.print() so that it can be redirected to logging
-
+        -System print is flushed for buffered stdout (e.g. tee logging)
     """
     if GLOBAL['VERBOSE']:
-        builtins.print(s, end=end) if (not GLOBAL['LOGGING'] or GLOBAL['LOGGER'] is None) else GLOBAL['LOGGER'].info(s)
+        builtins.print(s, end=end, flush=True) if (not GLOBAL['LOGGING'] or GLOBAL['LOGGER'] is None) else GLOBAL['LOGGER'].info(s)
 
 
 def verbose():

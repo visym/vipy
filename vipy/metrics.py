@@ -239,8 +239,8 @@ def confusion_matrix(cm, outfile=None, figure=None, fontsize=5, xlabel=None, yla
 
 
 
-def plot_pr(precision, recall, title=None, label='Precision-Recall', outfile=None, figure=None):
-    """Plot precision recall curve using matplotlib, with optional figure save"""
+def plot_pr(precision, recall, title=None, label='Precision-Recall', outfile=None, figure=None, fontsize=8, loc='upper right'):
+    """Plot precision recall curve using matplotlib, with optional figure save.  Call this multiple times with same figure number to plot multiple curves."""
 
     if figure is not None:
         plt.figure(figure)
@@ -255,7 +255,7 @@ def plot_pr(precision, recall, title=None, label='Precision-Recall', outfile=Non
     plt.xlim([0.0, 1.0])
     if title is not None:
         plt.title('%s' % (title))
-    plt.legend(loc="lower left")
+    plt.legend(loc=loc, fontsize=fontsize)
     plt.grid(True)
 
     if outfile is not None:
