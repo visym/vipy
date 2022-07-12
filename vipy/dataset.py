@@ -520,9 +520,9 @@ class Dataset():
         D._objlist = self.takelist(n, category=category, seed=seed)
         return D if n>1 else D[0]
 
-    def take_per_category(self, n):
+    def take_per_category(self, n, seed=None):
         D = self.clone(shallow=True)
-        D._objlist = [v for c in self.categories() for v in self.takelist(n, category=c)]
+        D._objlist = [v for c in self.categories() for v in self.takelist(n, category=c, seed=seed)]
         return D
     
     def shuffle(self):
@@ -605,13 +605,14 @@ class Dataset():
         f_serialize = lambda v,d=vipy.util.class_registry(): (str(type(v)), v.json()) if str(type(v)) in d else (None, pickle.dumps(v))  # fallback on PKL dumps/loads
         f_deserialize = lambda x,d=vipy.util.class_registry(): d[x[0]](x[1])  # with closure capture
         f_catcher = lambda f, *args, **kwargs: vipy.util.loudcatcher(f, '[vipy.dataset.Dataset.map]: ', *args, **kwargs)  # catch exceptions when executing lambda, print errors and return (True, result) or (False, exception)
+        f_loader = self._loader if self._loader is not None else lambda x: x
         S = [f_serialize(v) for v in self._objlist]  # local serialization
-        B = Batch(vipy.util.chunklist(S, chunks), strict=strict, as_completed=ascompleted, warnme=False, minscatter=chunks, ordered=ordered)        
+        B = Batch(vipy.util.chunklist(S, chunks), strict=strict, as_completed=ascompleted, warnme=False, minscatter=chunks, ordered=ordered)
         if model is None:
-            f = lambda x, f_loader=self._loader, f_serializer=f_serialize, f_deserializer=f_deserialize, f_map=f_map, f_catcher=f_catcher: f_serializer(f_catcher(f_map, f_loader(f_deserializer(x))))  # with closure capture
-            S = B.map(lambda X,f=f: [f(x) for x in X]).result()  # chunked, with caught exceptions
+            f = lambda x, f_loader=f_loader, f_serializer=f_serialize, f_deserializer=f_deserialize, f_map=f_map, f_catcher=f_catcher: f_serializer(f_catcher(f_map, f_loader(f_deserializer(x))))  # with closure capture
+            S = B.map(lambda X,f=f: [f(x) for x in X]).result()  # chunked, with caught exceptions, may return empty list
         else:
-            f = lambda net, x, f_loader=self._loader, f_serializer=f_serialize, f_deserializer=f_deserialize, f_map=f_map, f_catcher=f_catcher: f_serializer(f_catcher(f_map, net, f_loader(f_deserializer(x))))  # with closure capture
+            f = lambda net, x, f_loader=f_loader, f_serializer=f_serialize, f_deserializer=f_deserialize, f_map=f_map, f_catcher=f_catcher: f_serializer(f_catcher(f_map, net, f_loader(f_deserializer(x))))  # with closure capture
             S = B.scattermap((lambda net, X, f=f: [f(net, x) for x in X]), model).result()  # chunked, scattered, caught exceptions
         if not isinstance(S, list) or any([not isinstance(s, list) for s in S]):
             raise ValueError('Distributed processing error - Batch returned: %s' % (str(S)))
