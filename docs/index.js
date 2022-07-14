@@ -43,14 +43,14 @@ URLS=[
 "vipy/videosearch.html",
 "vipy/calibration.html",
 "vipy/dataset.html",
-"vipy/image.html",
 "vipy/math.html",
 "vipy/pyramid.html",
 "vipy/ssim.html",
 "vipy/util.html",
-"vipy/version.html",
 "vipy/visualize.html",
-"vipy/torch.html"
+"vipy/torch.html",
+"vipy/version.html",
+"vipy/image.html"
 ];
 INDEX=[
 {
@@ -8482,3519 +8482,5206 @@ INDEX=[
 "func":1
 },
 {
-"ref":"vipy.image",
+"ref":"vipy.math",
 "url":44,
 "doc":""
 },
 {
-"ref":"vipy.image.Image",
+"ref":"vipy.math.normalize",
 "url":44,
+"doc":"Whiten the numpy array arr using the provided mean and standard deviation. - Uses numba acceleration since this is a common operation for preparing tensors. - Computes:  scale arr) - mean / std Args: arr: [numpy] A numpy array mean: [numpy] A broadcastable mean vector std: [numpy] A broadcastable std vector scale: [float] A scale factor to apply to arr before whitening (e.g. to scale from [0,255] to [0,1]) Returns  scale arr) - mean / std  notes Does not check that std > 0",
+"func":1
+},
+{
+"ref":"vipy.math.significant_digits",
+"url":44,
+"doc":"Return the float f rounded to n significant digits",
+"func":1
+},
+{
+"ref":"vipy.math.iseven",
+"url":44,
+"doc":"is the number x an even number?",
+"func":1
+},
+{
+"ref":"vipy.math.isodd",
+"url":44,
+"doc":"is the number x an odd number?",
+"func":1
+},
+{
+"ref":"vipy.math.even",
+"url":44,
+"doc":"Return the largest even integer less than or equal (or greater than if greaterthan=True) to the value",
+"func":1
+},
+{
+"ref":"vipy.math.poweroftwo",
+"url":44,
+"doc":"Return the closest power of two smaller than the scalar value. x=511 -> 256, x=512 -> 512",
+"func":1
+},
+{
+"ref":"vipy.math.signsqrt",
+"url":44,
+"doc":"Return the signed square root of elements in numpy array x",
+"func":1
+},
+{
+"ref":"vipy.math.runningmean",
+"url":44,
+"doc":"Compute the running unweighted mean of X row-wise, with a history of n, reducing the history at the start for column indexes < n",
+"func":1
+},
+{
+"ref":"vipy.math.gaussian",
+"url":44,
+"doc":"1D gaussian window with M points. Replication of scipy.signal.gaussian",
+"func":1
+},
+{
+"ref":"vipy.math.gaussian2d",
+"url":44,
+"doc":"2D float32 gaussian image of size (rows=H, cols=W) with mu=[x, y] and std=[stdx, stdy]",
+"func":1
+},
+{
+"ref":"vipy.math.interp1d",
+"url":44,
+"doc":"Replication of scipy.interpolate.interp1d with assume_sorted=True, and constant replication of boundary handling",
+"func":1
+},
+{
+"ref":"vipy.math.find_closest_positive_divisor",
+"url":44,
+"doc":"Return non-trivial positive integer divisor (bh) of (a) closest to (b) in abs(b-bh) such that a % bh  0.  notes This uses exhaustive search, which is inefficient for large a.",
+"func":1
+},
+{
+"ref":"vipy.math.cartesian_to_polar",
+"url":44,
+"doc":"Cartesian (x,y) coordinates to polar (radius, theta_radians) coordinates, theta in radians in [-pi,pi]",
+"func":1
+},
+{
+"ref":"vipy.math.polar_to_cartesian",
+"url":44,
+"doc":"Polar (r=radius, t=theta_radians) coordinates to cartesian (x=right,y=down) coordinates. (0,0) is upper left of image",
+"func":1
+},
+{
+"ref":"vipy.math.rad2deg",
+"url":44,
+"doc":"Radians to degrees",
+"func":1
+},
+{
+"ref":"vipy.pyramid",
+"url":45,
+"doc":""
+},
+{
+"ref":"vipy.pyramid.GaussianPyramid",
+"url":45,
+"doc":"vipy.pyramid.GaussianPyramid() class"
+},
+{
+"ref":"vipy.pyramid.GaussianPyramid.band",
+"url":45,
+"doc":"",
+"func":1
+},
+{
+"ref":"vipy.pyramid.GaussianPyramid.show",
+"url":45,
+"doc":"",
+"func":1
+},
+{
+"ref":"vipy.pyramid.LaplacianPyramid",
+"url":45,
+"doc":"vipy.pyramid.LaplacianPyramid() class"
+},
+{
+"ref":"vipy.pyramid.LaplacianPyramid.band",
+"url":45,
+"doc":"",
+"func":1
+},
+{
+"ref":"vipy.pyramid.LaplacianPyramid.reconstruct",
+"url":45,
+"doc":"",
+"func":1
+},
+{
+"ref":"vipy.pyramid.LaplacianPyramid.show",
+"url":45,
+"doc":"",
+"func":1
+},
+{
+"ref":"vipy.pyramid.LaplacianPyramid.height",
+"url":45,
+"doc":"",
+"func":1
+},
+{
+"ref":"vipy.pyramid.LaplacianPyramid.width",
+"url":45,
+"doc":"",
+"func":1
+},
+{
+"ref":"vipy.pyramid.LaplacianPyramid.channels",
+"url":45,
+"doc":"",
+"func":1
+},
+{
+"ref":"vipy.pyramid.LaplacianPyramid.scales",
+"url":45,
+"doc":"",
+"func":1
+},
+{
+"ref":"vipy.pyramid.LaplacianPyramid.tensor",
+"url":45,
+"doc":"",
+"func":1
+},
+{
+"ref":"vipy.pyramid.LaplacianPyramid.fromtensor",
+"url":45,
+"doc":"Convert a S CxHxW torch tensor back to LaplacianPyramid",
+"func":1
+},
+{
+"ref":"vipy.pyramid.Foveation",
+"url":45,
+"doc":"vipy.pyramid.LaplacianPyramid() class"
+},
+{
+"ref":"vipy.pyramid.Foveation.foveate",
+"url":45,
+"doc":"Foveate the input image at location (tx, ty) in scaled image coordinates where (0,0) is the center and (1,1) is the upper left",
+"func":1
+},
+{
+"ref":"vipy.pyramid.Foveation.visualize",
+"url":45,
+"doc":"Show the fovea density",
+"func":1
+},
+{
+"ref":"vipy.pyramid.Foveation.fromtensor",
+"url":45,
+"doc":"Convert a S CxHxW torch tensor back to LaplacianPyramid",
+"func":1
+},
+{
+"ref":"vipy.ssim",
+"url":46,
+"doc":""
+},
+{
+"ref":"vipy.ssim.SSIM",
+"url":46,
+"doc":"Structural similarity (SSIM) index"
+},
+{
+"ref":"vipy.ssim.SSIM.match",
+"url":46,
+"doc":"Return a set of matching points in img1 (MxN uint8 numpy) and img2 (MxN uint8 numpy) in the form suitable for homography estimation",
+"func":1
+},
+{
+"ref":"vipy.ssim.SSIM.warp",
+"url":46,
+"doc":"Warp an image im_src with points src_pts to align with dst_pts",
+"func":1
+},
+{
+"ref":"vipy.ssim.SSIM.align",
+"url":46,
+"doc":"Return an image which is the warped version of img1 (MxN uint8 numpy) that aligns with img2 (MxN uint8 numpy)",
+"func":1
+},
+{
+"ref":"vipy.ssim.SSIM.rgb2gray",
+"url":46,
+"doc":"Convert RGB image to grayscale; accesory function",
+"func":1
+},
+{
+"ref":"vipy.ssim.SSIM.similarity",
+"url":46,
+"doc":"Compute the Structural Similarity Index (SSIM) score of two images Inputs: 1) I1, image array 2) I2, image array 3) K1, float (optional, default=0.01) - constant 4) K2, float (optional, default=0.03) - constant Outputs: 1) out; float - SSIM score 2) ssim_map; 2-D image array - SSIM map",
+"func":1
+},
+{
+"ref":"vipy.ssim.SSIM.ssim",
+"url":46,
+"doc":"Return structural similarity score when aligning im_degraded to im_reference >>> (ssim, im_aligned) = vipy.ssim.SSIM(do_alignment=True).ssim(vipy.image.squareowl(), vipy.image.squareowl().rotate(0.01), returnAligned=True) >>> print(ssim) >>> im_aligned.show(figure=1) >>> vipy.image.squareowl().rotate(0.01).show(figure=2)",
+"func":1
+},
+{
+"ref":"vipy.ssim.demo",
+"url":46,
+"doc":"Synthetically rotate an image by 4 degrees, and compute structural similarity with and without alignment, return images >>> (image, degraded_image, aligned_image) = vipy.ssim.demo(vipy.image.Image(filename='/path/to/image.jpg' )",
+"func":1
+},
+{
+"ref":"vipy.util",
+"url":47,
+"doc":""
+},
+{
+"ref":"vipy.util.class_registry",
+"url":47,
+"doc":"Return a dictionary mapping str(type(obj to a JSON loader for all vipy objects. This function is useful for JSON loading of vipy objects to map to the correct deserialization method.",
+"func":1
+},
+{
+"ref":"vipy.util.save",
+"url":47,
+"doc":"Save variables to an archive file. This function allows vipy objects to be serialized to disk for later loading.   im = vipy.image.owl() im = vipy.util.load(vipy.util.save(im  round trip   Args: vars: A python object to save. This can be any serializable python object outfile: An output file to save. Must have extension [.pkl, .json]. If None, will save to a temporary JSON file. Returns A path to the saved archive file. Load using  vipy.util.load .  note JSON is preferred as an archive format for vipy. Be sure to install the excellent ultrajson library (pip install ujson) for fast serialization.",
+"func":1
+},
+{
+"ref":"vipy.util.load",
+"url":47,
+"doc":"Load variables from a relocatable archive file format, either dill pickle, JSON format or JSON directory format. Loading is performed by attemping the following: 1. If the input file is a directory, return a  vipy.dataset.Dataset with lazy loading of all pkl or json files recursively discovered in this directory. 2. If the input file is a pickle or json file, load it 3. if abspath=true, then convert relative paths to absolute paths for object when loaded 4. If refcycle=False, then disable the python reference cycle garbage collector for large archive files   im = vipy.image.owl() f = vipy.util.save(im) im = vipy.util.load(im)   Args: infile: [str] file saved using  vipy.util.save with extension [.pkl, .json]. This may also be a directory tree containing json or pkl files abspath: [bool] If true, then convert all vipy objects with relative paths to absolute paths. If False, then preserve relative paths and warn user. refcycle: [bool] If False, then disable python reference cycle garbage collector. This is useful for large python objects. Returns: The object in the archive file",
+"func":1
+},
+{
+"ref":"vipy.util.dedupe",
+"url":47,
+"doc":"Deduplicate the list using the provided lambda function which transforms an element to a dedupe key, such that all elements with the same key are duplicates",
+"func":1
+},
+{
+"ref":"vipy.util.bz2pkl",
+"url":47,
+"doc":"Read/Write a bz2 compressed pickle file",
+"func":1
+},
+{
+"ref":"vipy.util.catcher",
+"url":47,
+"doc":"Call the function f with the provided arguments, and return (True, result) on success and (False, exception) if there is any thrown exception. Useful for parallel processing",
+"func":1
+},
+{
+"ref":"vipy.util.loudcatcher",
+"url":47,
+"doc":"Call the function f with the provided arguments, and return (True, result) on success and (False, exception) if there is any thrown exception. Print the exception immediately. Useful for parallel processing",
+"func":1
+},
+{
+"ref":"vipy.util.nonecatcher",
+"url":47,
+"doc":"Call the function f with the provided arguments, and return (result) on success and (None) if there is any thrown exception. Useful for parallel processing",
+"func":1
+},
+{
+"ref":"vipy.util.trycatcher",
+"url":47,
+"doc":"Call the function f with the provided arguments, and return (result) on success and (None) if there is any thrown exception. Useful for parallel processing",
+"func":1
+},
+{
+"ref":"vipy.util.catchif",
+"url":47,
+"doc":"Call the function f with the provided arguments, and return (result) on success and (None) if there is any thrown exception. Useful for parallel processing. Alias for  vipy.util.trycatcher ",
+"func":1
+},
+{
+"ref":"vipy.util.mergedict",
+"url":47,
+"doc":"Combine keys of two dictionaries and return a dictionary deep copy.   d1 = {1:2} d2 = {3:4} d3 = mergedict(d1,d2) assert d3  {1:2, 3:4}  ",
+"func":1
+},
+{
+"ref":"vipy.util.hascache",
+"url":47,
+"doc":"Is the VIPY_CACHE environment variable set?",
+"func":1
+},
+{
+"ref":"vipy.util.cache",
+"url":47,
+"doc":"If the VIPY_CACHE environment variable set, return it otherwise return tempdir()",
+"func":1
+},
+{
+"ref":"vipy.util.tocache",
+"url":47,
+"doc":"If the VIPY_CACHE environment variable is set, then return the filename=/path/to/file.ext in the cache as VIPY_CACHE/file.ext. Otherwise, return the file in the system temp",
+"func":1
+},
+{
+"ref":"vipy.util.seconds_to_MMSS_colon_notation",
+"url":47,
+"doc":"Convert integer seconds into MM:SS colon format. If sec=121, then return '02:01'.",
+"func":1
+},
+{
+"ref":"vipy.util.try_import",
+"url":47,
+"doc":"Show a helpful error message for missing optional packages",
+"func":1
+},
+{
+"ref":"vipy.util.findyaml",
+"url":47,
+"doc":"Return a list of absolute paths to yaml files recursively discovered by walking the directory tree rooted at basedir",
+"func":1
+},
+{
+"ref":"vipy.util.findpkl",
+"url":47,
+"doc":"Return a list of absolute paths to pkl files recursively discovered by walking the directory tree rooted at basedir",
+"func":1
+},
+{
+"ref":"vipy.util.findpdf",
+"url":47,
+"doc":"Return a list of absolute paths to pdf files recursively discovered by walking the directory tree rooted at basedir",
+"func":1
+},
+{
+"ref":"vipy.util.findpng",
+"url":47,
+"doc":"Return a list of absolute paths to png files recursively discovered by walking the directory tree rooted at basedir",
+"func":1
+},
+{
+"ref":"vipy.util.findjson",
+"url":47,
+"doc":"Return a list of absolute paths to json files recursively discovered by walking the directory tree rooted at basedir",
+"func":1
+},
+{
+"ref":"vipy.util.findimage",
+"url":47,
+"doc":"Return a list of absolute paths to image files recursively discovered by walking the directory tree rooted at basedir",
+"func":1
+},
+{
+"ref":"vipy.util.findimages",
+"url":47,
+"doc":"Alias for  vipy.util.findimage ",
+"func":1
+},
+{
+"ref":"vipy.util.findvideo",
+"url":47,
+"doc":"Return a list of absolute paths to video files recursively discovered by walking the directory tree rooted at basedir",
+"func":1
+},
+{
+"ref":"vipy.util.findvideos",
+"url":47,
+"doc":"Alias for  vipy.util.findvideo ",
+"func":1
+},
+{
+"ref":"vipy.util.readyaml",
+"url":47,
+"doc":"Read a yaml file and return a parsed dictionary, this is slow for large yaml files",
+"func":1
+},
+{
+"ref":"vipy.util.count_images_in_subdirectories",
+"url":47,
+"doc":"Count the total number of images in indir/subdir1, indir/subdir2, go down only one level and no further .",
+"func":1
+},
+{
+"ref":"vipy.util.keymax",
+"url":47,
+"doc":"Return key in dictionary containing maximum value",
+"func":1
+},
+{
+"ref":"vipy.util.keymin",
+"url":47,
+"doc":"Return key in dictionary containing minimum value",
+"func":1
+},
+{
+"ref":"vipy.util.isjsonfile",
+"url":47,
+"doc":"",
+"func":1
+},
+{
+"ref":"vipy.util.writejson",
+"url":47,
+"doc":"",
+"func":1
+},
+{
+"ref":"vipy.util.readjson",
+"url":47,
+"doc":"Read jsonfile=/path/to/file.json and return the json parsed object, issue warning if jsonfile does not have .json extension and strict=True",
+"func":1
+},
+{
+"ref":"vipy.util.groupby",
+"url":47,
+"doc":"groupby on unsorted inset",
+"func":1
+},
+{
+"ref":"vipy.util.vipy_groupby",
+"url":47,
+"doc":"groupby on unsorted inset",
+"func":1
+},
+{
+"ref":"vipy.util.groupbyasdict",
+"url":47,
+"doc":"Return dictionary of keys and lists from groupby on unsorted inset, where keyfunc is a lambda function on elements in inset Args: togroup: a list of elements to group keyfunc: a lambda function to operate on elemenets of togroup such that the value returned from the lambda is the equality key for grouping Returns: A dictionary with unique keys returned from keyfunc, and values are lists of elements in togroup with the same key",
+"func":1
+},
+{
+"ref":"vipy.util.countby",
+"url":47,
+"doc":"Return dictionary of keys and group sizes for a grouping of the input list by keyfunc lambda function, sorted by increasing count",
+"func":1
+},
+{
+"ref":"vipy.util.most_frequent",
+"url":47,
+"doc":"Return the most frequent element as determined by element equality",
+"func":1
+},
+{
+"ref":"vipy.util.countbyasdict",
+"url":47,
+"doc":"Alias for  vipy.util.countby ",
+"func":1
+},
+{
+"ref":"vipy.util.softmax",
+"url":47,
+"doc":"Row-wise softmax",
+"func":1
+},
+{
+"ref":"vipy.util.permutelist",
+"url":47,
+"doc":"randomly permute list order. Permutation is deterministic (same permutation on multiple calls) if specified",
+"func":1
+},
+{
+"ref":"vipy.util.flatlist",
+"url":47,
+"doc":"Convert list of tuples into a list expanded by concatenating tuples",
+"func":1
+},
+{
+"ref":"vipy.util.rmdir",
+"url":47,
+"doc":"Recursively remove directory and all contents (if the directory exists)",
+"func":1
+},
+{
+"ref":"vipy.util.dividelist",
+"url":47,
+"doc":"Divide inlist into a list of lists such that the size of each sublist is the requseted fraction of the original list. This operation is deterministic and generates the same division in multiple calls. Args: inlist: [list] fractions: [tuple] such as (0.1, 0.7, 0.2) An iterable of fractions that must be non-negative and sum to one",
+"func":1
+},
+{
+"ref":"vipy.util.chunklist",
+"url":47,
+"doc":"Convert list into a list of lists of length num_chunks, such that each element is a list containing a sequential chunk of the original list.   (A,B,C) = vipy.util.chunklist(inlist, num_chunks=3) assert len(A)  len(inlist)  3    note The last chunk will be larger for ragged chunks",
+"func":1
+},
+{
+"ref":"vipy.util.chunklistbysize",
+"url":47,
+"doc":"Convert list into a list of lists such that each element is a list containing a sequential chunk of the original list of length size_per_chunk",
+"func":1
+},
+{
+"ref":"vipy.util.chunklistWithOverlap",
+"url":47,
+"doc":"Convert list into a list of lists such that each element is a list containing a sequential chunk of the original list of length size_per_chunk",
+"func":1
+},
+{
+"ref":"vipy.util.chunklistwithoverlap",
+"url":47,
+"doc":"Alias for chunklistWithOverlap",
+"func":1
+},
+{
+"ref":"vipy.util.imwritejet",
+"url":47,
+"doc":"Write a grayscale numpy image as a jet colormapped image to the given file",
+"func":1
+},
+{
+"ref":"vipy.util.isuint8",
+"url":47,
+"doc":"",
+"func":1
+},
+{
+"ref":"vipy.util.isnumber",
+"url":47,
+"doc":"Is the input a python type of a number or a string containing a number?",
+"func":1
+},
+{
+"ref":"vipy.util.isfloat",
+"url":47,
+"doc":"Is the input a float or a string that can be converted to float?",
+"func":1
+},
+{
+"ref":"vipy.util.imwritegray",
+"url":47,
+"doc":"Write a floating point grayscale numpy image in [0,1] as [0,255] grayscale",
+"func":1
+},
+{
+"ref":"vipy.util.imwrite",
+"url":47,
+"doc":"Write a floating point 2D numpy image as jet or gray, 3D numpy as rgb or bgr",
+"func":1
+},
+{
+"ref":"vipy.util.print_and_return",
+"url":47,
+"doc":"",
+"func":1
+},
+{
+"ref":"vipy.util.savetemp",
+"url":47,
+"doc":"",
+"func":1
+},
+{
+"ref":"vipy.util.gray2jet",
+"url":47,
+"doc":"[0,1] grayscale to [0.255] RGB",
+"func":1
+},
+{
+"ref":"vipy.util.jet",
+"url":47,
+"doc":"jet colormap",
+"func":1
+},
+{
+"ref":"vipy.util.is_email_address",
+"url":47,
+"doc":"Is the provided string an email address?",
+"func":1
+},
+{
+"ref":"vipy.util.is_hiddenfile",
+"url":47,
+"doc":"Does the filename start with a period?",
+"func":1
+},
+{
+"ref":"vipy.util.seq",
+"url":47,
+"doc":"Equivalent to matlab [start:step:stop]",
+"func":1
+},
+{
+"ref":"vipy.util.loadh5",
+"url":47,
+"doc":"Load an HDF5 file",
+"func":1
+},
+{
+"ref":"vipy.util.loadmat73",
+"url":47,
+"doc":"Matlab 7.3 format, keys should be a list of keys to access HDF5 file as f[key1][key2] . Returned as numpy array",
+"func":1
+},
+{
+"ref":"vipy.util.take",
+"url":47,
+"doc":"Take k elements at random from inlist",
+"func":1
+},
+{
+"ref":"vipy.util.takeone",
+"url":47,
+"doc":"Take one element at random from inlist",
+"func":1
+},
+{
+"ref":"vipy.util.tryload",
+"url":47,
+"doc":"Attempt to load a pkl file, and return the value if successful and None if not",
+"func":1
+},
+{
+"ref":"vipy.util.canload",
+"url":47,
+"doc":"Attempt to load an archive file, and return true if it can be successfully loaded, otherwise False",
+"func":1
+},
+{
+"ref":"vipy.util.repath",
+"url":47,
+"doc":"Change the filename with prefix srcpath to dstpath, for any element in v that supports the filename() api",
+"func":1
+},
+{
+"ref":"vipy.util.scpsave",
+"url":47,
+"doc":"Save an archive file to load via SCP. Use case: - This archive format is useful to allow access to videos and images that are accessible behind a remote server for which you have access via SSH key-based authentication. - You create this archive on the remote server, and all vipy objects are replaced with references to remote media. - Every video or image is replaced with a URL of the format 'scp: USER@HOST:/path/to.mp4'. - Vipy will use your SSH keys to SCP these media files from USER@HOST on demand, so that the videos are cached for you on your local machine when you need them. - This is useful for transparently visualizing large datasets that are hidden behind an SSH-only accessible server Usage:   outfile = vipy.util.scpsave([vipy.video.Video(filename='/path/to.mp4)])  run on remote machine that you have SSH key access V = vipy.util.scpload(outfile)  run on local machine that has SSH key access to remote machine V[0].load()  this will SCP the videos from 'scp: /path/to.mp4' to $VIPY_CACHE/to.mp4 transparently and on demand   Args: V: [vipy objects] A list of vipy objects or  vipy.dataset.Dataset username: [str] Your username on the remote machine to select the proper SSH key Returns: A temp archive file stored on the remote machine that will be downloaded and loaded via SCP",
+"func":1
+},
+{
+"ref":"vipy.util.scpload",
+"url":47,
+"doc":"Load an archive file saved using  vipy.util.scpsave ",
+"func":1
+},
+{
+"ref":"vipy.util.load_opencv_yaml",
+"url":47,
+"doc":"Load a numpy array from YAML file exported from OpenCV",
+"func":1
+},
+{
+"ref":"vipy.util.matrix_to_opencv_yaml",
+"url":47,
+"doc":"Write list of matrices to OpenCV yaml file format with given variable names",
+"func":1
+},
+{
+"ref":"vipy.util.save_opencv_yaml",
+"url":47,
+"doc":"Save a numpy array to YAML file importable by OpenCV",
+"func":1
+},
+{
+"ref":"vipy.util.tofilename",
+"url":47,
+"doc":"Convert arbitrary string to valid filename with underscores replacing invalid chars",
+"func":1
+},
+{
+"ref":"vipy.util.isexe",
+"url":47,
+"doc":"Is the file an executable binary?",
+"func":1
+},
+{
+"ref":"vipy.util.isinstalled",
+"url":47,
+"doc":"Is the command is available on the path",
+"func":1
+},
+{
+"ref":"vipy.util.isextension",
+"url":47,
+"doc":"Does the filename end with the extension ext?   isextension('/path/to/myfile.json', 'json')  True isextension('/path/to/myfile.json', '.json')  True isextension('/path/to/myfile.json', '.pkl')  False  ",
+"func":1
+},
+{
+"ref":"vipy.util.ispkl",
+"url":47,
+"doc":"Is the file a pickle archive file",
+"func":1
+},
+{
+"ref":"vipy.util.ispklfile",
+"url":47,
+"doc":"Is the file a pickle archive file",
+"func":1
+},
+{
+"ref":"vipy.util.ishtml",
+"url":47,
+"doc":"Is the file an HTMLfile",
+"func":1
+},
+{
+"ref":"vipy.util.ispickle",
+"url":47,
+"doc":"Is the file a pickle archive file",
+"func":1
+},
+{
+"ref":"vipy.util.ishdf5",
+"url":47,
+"doc":"Is the file an HDF5 file?",
+"func":1
+},
+{
+"ref":"vipy.util.filebase",
+"url":47,
+"doc":"Return c for filename /a/b/c.ext  warning Will return /a/b/c.d for multidot filenames like /a/b/c.d.e (e.g. /a/b/filename.tar.gz)",
+"func":1
+},
+{
+"ref":"vipy.util.filepath",
+"url":47,
+"doc":"Return /a/b/c for filename /a/b/c/d.ext, /a/b for filename /a/b/c/d.ext if depth=1, etc",
+"func":1
+},
+{
+"ref":"vipy.util.delpath",
+"url":47,
+"doc":"Return c/d.ext for filename /a/b/c/d.ext and indir /a/b",
+"func":1
+},
+{
+"ref":"vipy.util.newpath",
+"url":47,
+"doc":"Return /d/e/c.ext for filename /a/b/c.ext and newdir /d/e/",
+"func":1
+},
+{
+"ref":"vipy.util.newprefix",
+"url":47,
+"doc":"Return /a/b/c/h/i.ext for filename /f/g/h/i.ext and prefix /a/b/c and depth=1",
+"func":1
+},
+{
+"ref":"vipy.util.newpathdir",
+"url":47,
+"doc":"Return /a/b/n/d/e.ext for filename=/a/b/c/d/e.ext, olddir=c, newdir=n",
+"func":1
+},
+{
+"ref":"vipy.util.newpathroot",
+"url":47,
+"doc":"Return /r/b/c.ext for filename /a/b/c.ext and new root directory r",
+"func":1
+},
+{
+"ref":"vipy.util.topath",
+"url":47,
+"doc":"Alias for  vipy.util.newpath ",
+"func":1
+},
+{
+"ref":"vipy.util.filefull",
+"url":47,
+"doc":"Return /a/b/c for filename /a/b/c.ext",
+"func":1
+},
+{
+"ref":"vipy.util.filetail",
+"url":47,
+"doc":"Return c.ext for filename /a/b/c.ext",
+"func":1
+},
+{
+"ref":"vipy.util.matread",
+"url":47,
+"doc":"Whitespace separated values defining columns, lines define rows. Return numpy array",
+"func":1
+},
+{
+"ref":"vipy.util.imlist",
+"url":47,
+"doc":"return list of images with absolute path in a directory",
+"func":1
+},
+{
+"ref":"vipy.util.videolist",
+"url":47,
+"doc":"return list of videos with absolute path in a directory",
+"func":1
+},
+{
+"ref":"vipy.util.dirlist",
+"url":47,
+"doc":"return list of directories in a directory",
+"func":1
+},
+{
+"ref":"vipy.util.dirlist_sorted_bycreation",
+"url":47,
+"doc":"Sort the directory list from newest first to oldest last by creation date",
+"func":1
+},
+{
+"ref":"vipy.util.extlist",
+"url":47,
+"doc":"return list of files with absolute path in a directory that have the provided extension (with the prepended dot, ext='.mp4')",
+"func":1
+},
+{
+"ref":"vipy.util.listext",
+"url":47,
+"doc":"Alias for extlist",
+"func":1
+},
+{
+"ref":"vipy.util.jsonlist",
+"url":47,
+"doc":"return list of fJSON iles with absolute path in a directory",
+"func":1
+},
+{
+"ref":"vipy.util.listjson",
+"url":47,
+"doc":"Alias for jsonlist",
+"func":1
+},
+{
+"ref":"vipy.util.writelist",
+"url":47,
+"doc":"Write list of strings to an output file with each row an element of the list",
+"func":1
+},
+{
+"ref":"vipy.util.readlist",
+"url":47,
+"doc":"Read each row of file as an element of the list",
+"func":1
+},
+{
+"ref":"vipy.util.readtxt",
+"url":47,
+"doc":"Read a text file one string per row",
+"func":1
+},
+{
+"ref":"vipy.util.writecsv",
+"url":47,
+"doc":"Write list of tuples to an output csv file with each list element on a row and tuple elements separated by commas. Examples:   vipy.util.writecsv([(1,2,3), (4,5,6)], '/tmp/out.csv') vipy.util.writecsv([(1,2,3), (4,5,6)], '/tmp/out.csv', separator=';' vipy.util.writecsv([(1,2,3), (4,5,6)], '/tmp/out.csv', header=('h1','h2','h3'   Args: list_of_tuples: a list of tuples each tuple is a row outfile: the csv file output mode: 'w' for overwrite, 'a' for append separator: a string specifying the separator between columns. defaults to ',' header: a tuple containing strings to be appended to the first row of the csv file comment: the comment symbol to be prepended to the header row Returns: the outfile path",
+"func":1
+},
+{
+"ref":"vipy.util.readcsv",
+"url":47,
+"doc":"Read a csv file into a list of lists, ignore any rows prepended with comment symbol, ignore first row if ignoreheader=True Args: infile: the csv file input separator: a string specifying the separator between columns. defaults to ',' ignoreheader: if true, ignore the first row of the csv file comment: if provided, ignore all rows with this comment symbol prepended Returns: a list of lists, each list element containing a list of elements in the corresponding line of the csv file, parsed by separator",
+"func":1
+},
+{
+"ref":"vipy.util.readcsvwithheader",
+"url":47,
+"doc":"Read a csv file into a list of lists",
+"func":1
+},
+{
+"ref":"vipy.util.imsavelist",
+"url":47,
+"doc":"Write out all images in a directory to a provided file with each line containing absolute path to image",
+"func":1
+},
+{
+"ref":"vipy.util.csvlist",
+"url":47,
+"doc":"Return a list of absolute paths of  .csv files in current directory",
+"func":1
+},
+{
+"ref":"vipy.util.pklist",
+"url":47,
+"doc":"Return a list of absolute paths of  .pk files in current directory",
+"func":1
+},
+{
+"ref":"vipy.util.listpkl",
+"url":47,
+"doc":"Return a list of absolute paths of  .pk files in current directory",
+"func":1
+},
+{
+"ref":"vipy.util.txtlist",
+"url":47,
+"doc":"Return a list of absolute paths of  .txt files in current directory",
+"func":1
+},
+{
+"ref":"vipy.util.imlistidx",
+"url":47,
+"doc":"Return index in list of filename containing index number",
+"func":1
+},
+{
+"ref":"vipy.util.mat2gray",
+"url":47,
+"doc":"Convert numpy array to float32 with 1.0=max and 0=min",
+"func":1
+},
+{
+"ref":"vipy.util.mdlist",
+"url":47,
+"doc":"Preallocate 2D list of size MxN",
+"func":1
+},
+{
+"ref":"vipy.util.isurl",
+"url":47,
+"doc":"Is a path a URL?",
+"func":1
+},
+{
+"ref":"vipy.util.shortuuid",
+"url":47,
+"doc":"Generate a short UUID with n hex digits",
+"func":1
+},
+{
+"ref":"vipy.util.stringhash",
+"url":47,
+"doc":"Generate a repeatable hash with n characters for a string s",
+"func":1
+},
+{
+"ref":"vipy.util.isimageurl",
+"url":47,
+"doc":"Is a path a URL with image extension?",
+"func":1
+},
+{
+"ref":"vipy.util.isvideourl",
+"url":47,
+"doc":"Is a path a URL with video extension?",
+"func":1
+},
+{
+"ref":"vipy.util.isS3url",
+"url":47,
+"doc":"Is a path a URL for an S3 object?",
+"func":1
+},
+{
+"ref":"vipy.util.isyoutubeurl",
+"url":47,
+"doc":"Is a path a youtube URL?",
+"func":1
+},
+{
+"ref":"vipy.util.isRTSPurl",
+"url":47,
+"doc":"",
+"func":1
+},
+{
+"ref":"vipy.util.isRTMPurl",
+"url":47,
+"doc":"",
+"func":1
+},
+{
+"ref":"vipy.util.islist",
+"url":47,
+"doc":"Is an object a python list",
+"func":1
+},
+{
+"ref":"vipy.util.islistoflists",
+"url":47,
+"doc":"Is an object a python list of lists x= 1,2], [3,4 ",
+"func":1
+},
+{
+"ref":"vipy.util.istupleoftuples",
+"url":47,
+"doc":"Is an object a python list of lists x= 1,2], [3,4 ",
+"func":1
+},
+{
+"ref":"vipy.util.isimageobject",
+"url":47,
+"doc":"Is an object a vipy.image class Image, ImageCategory, ImageDetection?",
+"func":1
+},
+{
+"ref":"vipy.util.isvideotype",
+"url":47,
+"doc":"Is an object a vipy.video class Video, VideoCategory, Scene?",
+"func":1
+},
+{
+"ref":"vipy.util.isvideoobject",
+"url":47,
+"doc":"",
+"func":1
+},
+{
+"ref":"vipy.util.isvipyobject",
+"url":47,
+"doc":"",
+"func":1
+},
+{
+"ref":"vipy.util.istuple",
+"url":47,
+"doc":"Is an object a python tuple?",
+"func":1
+},
+{
+"ref":"vipy.util.tolist",
+"url":47,
+"doc":"Convert a python tuple or singleton object to a list if not already a list",
+"func":1
+},
+{
+"ref":"vipy.util.isimg",
+"url":47,
+"doc":"Is an object an image with a supported image extension ['.jpg','.jpeg','.png','.tif','.tiff','.pgm','.ppm','.gif','.bmp']?",
+"func":1
+},
+{
+"ref":"vipy.util.isimage",
+"url":47,
+"doc":"Alias for  vipy.util.isimg ",
+"func":1
+},
+{
+"ref":"vipy.util.isvideofile",
+"url":47,
+"doc":"Alias for  vipy.util.isvideo ",
+"func":1
+},
+{
+"ref":"vipy.util.isimgfile",
+"url":47,
+"doc":"Alias for  vipy.util.isimg ",
+"func":1
+},
+{
+"ref":"vipy.util.isimagefile",
+"url":47,
+"doc":"Alias for  vipy.util.isimg ",
+"func":1
+},
+{
+"ref":"vipy.util.isjpeg",
+"url":47,
+"doc":"is the file a .jpg or .jpeg extension?",
+"func":1
+},
+{
+"ref":"vipy.util.iswebp",
+"url":47,
+"doc":"is the file a .webp extension?",
+"func":1
+},
+{
+"ref":"vipy.util.ispng",
+"url":47,
+"doc":"is the file a .png or .apng extension?",
+"func":1
+},
+{
+"ref":"vipy.util.isgif",
+"url":47,
+"doc":"is the file a .gif extension?",
+"func":1
+},
+{
+"ref":"vipy.util.isjpg",
+"url":47,
+"doc":"Alias for  vipy.util.isjpeg ",
+"func":1
+},
+{
+"ref":"vipy.util.iscsv",
+"url":47,
+"doc":"Is a file a CSV file extension?",
+"func":1
+},
+{
+"ref":"vipy.util.isvideo",
+"url":47,
+"doc":"Is a filename in path a video with a known video extension ['.avi','.mp4','.mov','.wmv','.mpg', 'mkv', 'webm']?",
+"func":1
+},
+{
+"ref":"vipy.util.isnumpy",
+"url":47,
+"doc":"Is a python object a numpy object?",
+"func":1
+},
+{
+"ref":"vipy.util.isnumpyarray",
+"url":47,
+"doc":"Is a python object a numpy array?",
+"func":1
+},
+{
+"ref":"vipy.util.istextfile",
+"url":47,
+"doc":"Is the given file a text file?",
+"func":1
+},
+{
+"ref":"vipy.util.isxml",
+"url":47,
+"doc":"Is the given file an xml file?",
+"func":1
+},
+{
+"ref":"vipy.util.bgr2gray",
+"url":47,
+"doc":"Wrapper for numpy uint8 BGR image to uint8 numpy grayscale",
+"func":1
+},
+{
+"ref":"vipy.util.gray2bgr",
+"url":47,
+"doc":"Wrapper for numpy float32 gray image to uint8 numpy BGR",
+"func":1
+},
+{
+"ref":"vipy.util.gray2rgb",
+"url":47,
+"doc":"",
+"func":1
+},
+{
+"ref":"vipy.util.bgr2rgb",
+"url":47,
+"doc":"Wrapper for numpy BGR uint8 to numpy RGB uint8",
+"func":1
+},
+{
+"ref":"vipy.util.rgb2bgr",
+"url":47,
+"doc":"same as bgr2rgb",
+"func":1
+},
+{
+"ref":"vipy.util.bgr2hsv",
+"url":47,
+"doc":"Convert a numpy array in BGR order to HSV",
+"func":1
+},
+{
+"ref":"vipy.util.gray2hsv",
+"url":47,
+"doc":"Convert a numpy array in floating point single channel greyscale order to HSV",
+"func":1
+},
+{
+"ref":"vipy.util.isarchive",
+"url":47,
+"doc":"Is filename a zip or gzip compressed tar archive?",
+"func":1
+},
+{
+"ref":"vipy.util.istgz",
+"url":47,
+"doc":"Is the filename a .tgz or .tar.gz extension?",
+"func":1
+},
+{
+"ref":"vipy.util.istar",
+"url":47,
+"doc":"Is the filename a .tar extension?",
+"func":1
+},
+{
+"ref":"vipy.util.isbz2",
+"url":47,
+"doc":"Is the filename a .bz2 or .tar.bz2 extension?",
+"func":1
+},
+{
+"ref":"vipy.util.tempfilename",
+"url":47,
+"doc":"Create a temporary filename $TEMPDIR/$UUID.suffix, suffix should include the dot such as suffix='.jpg',",
+"func":1
+},
+{
+"ref":"vipy.util.totempdir",
+"url":47,
+"doc":"Convert a filename '/patj/to/filename.ext' to '/tempdir/filename.ext'",
+"func":1
+},
+{
+"ref":"vipy.util.templike",
+"url":47,
+"doc":"Create a new temporary filename with the same extension as filename",
+"func":1
+},
+{
+"ref":"vipy.util.cached",
+"url":47,
+"doc":"Create a new filename in the cache, or tempdir if not found",
+"func":1
+},
+{
+"ref":"vipy.util.tempimage",
+"url":47,
+"doc":"Create a temporary image with the given extension",
+"func":1
+},
+{
+"ref":"vipy.util.temppng",
+"url":47,
+"doc":"Create a temporay PNG file",
+"func":1
+},
+{
+"ref":"vipy.util.temppickle",
+"url":47,
+"doc":"Create a temporary pickle file",
+"func":1
+},
+{
+"ref":"vipy.util.tempjpg",
+"url":47,
+"doc":"Create a temporary JPG file in system temp directory",
+"func":1
+},
+{
+"ref":"vipy.util.tempMP4",
+"url":47,
+"doc":"Create a temporary MP4 file in system temp directory",
+"func":1
+},
+{
+"ref":"vipy.util.tempWEBP",
+"url":47,
+"doc":"Create a temporary WEBP file in system temp directory",
+"func":1
+},
+{
+"ref":"vipy.util.tmpjpg",
+"url":47,
+"doc":"Create a temporary JPG file in /tmp",
+"func":1
+},
+{
+"ref":"vipy.util.tempcsv",
+"url":47,
+"doc":"Create a temporary CSV file",
+"func":1
+},
+{
+"ref":"vipy.util.temphtml",
+"url":47,
+"doc":"Create a temporary HTMLfile",
+"func":1
+},
+{
+"ref":"vipy.util.temppkl",
+"url":47,
+"doc":"Create a temporary pickle file",
+"func":1
+},
+{
+"ref":"vipy.util.tempyaml",
+"url":47,
+"doc":"Create a temporary YAML file",
+"func":1
+},
+{
+"ref":"vipy.util.tempjson",
+"url":47,
+"doc":"Create a temporary JSON file",
+"func":1
+},
+{
+"ref":"vipy.util.temppdf",
+"url":47,
+"doc":"Create a temporary PDF file",
+"func":1
+},
+{
+"ref":"vipy.util.mktemp",
+"url":47,
+"doc":"Create a temporary file with extension .ext",
+"func":1
+},
+{
+"ref":"vipy.util.tempdir",
+"url":47,
+"doc":"Wrapper around tempfile, because I can never remember the syntax",
+"func":1
+},
+{
+"ref":"vipy.util.imread",
+"url":47,
+"doc":"Wrapper for opencv imread. Note that color images are imported as BGR!",
+"func":1
+},
+{
+"ref":"vipy.util.imrescale",
+"url":47,
+"doc":"",
+"func":1
+},
+{
+"ref":"vipy.util.imresize",
+"url":47,
+"doc":"",
+"func":1
+},
+{
+"ref":"vipy.util.touch",
+"url":47,
+"doc":"Create an empty file containing mystr",
+"func":1
+},
+{
+"ref":"vipy.util.Stopwatch",
+"url":47,
+"doc":"Return elapsed system time in seconds between calls to enter and exit"
+},
+{
+"ref":"vipy.util.Stopwatch.since",
+"url":47,
+"doc":"Return seconds since start or last call to this method",
+"func":1
+},
+{
+"ref":"vipy.util.Stopwatch.reset",
+"url":47,
+"doc":"",
+"func":1
+},
+{
+"ref":"vipy.util.Stopwatch.duration",
+"url":47,
+"doc":"Time in seconds since last reset",
+"func":1
+},
+{
+"ref":"vipy.util.Timer",
+"url":47,
+"doc":"Pretty print elapsed system time in seconds between calls to enter and exit  python t = Timer(): [some code] print(t) [some more code] print(t) with Timer(): [some code]  "
+},
+{
+"ref":"vipy.util.isfile",
+"url":47,
+"doc":"Wrapper for os.path.isfile",
+"func":1
+},
+{
+"ref":"vipy.util.isstring",
+"url":47,
+"doc":"Is an object a python string or unicode string?",
+"func":1
+},
+{
+"ref":"vipy.util.timestamp",
+"url":47,
+"doc":"Return date and time string in form DDMMMYY_HHMMSS",
+"func":1
+},
+{
+"ref":"vipy.util.clockstamp",
+"url":47,
+"doc":"Datetime stamp in local timezone with second resolution with format Year-Month-Day Hour:Minute:Second",
+"func":1
+},
+{
+"ref":"vipy.util.minutestamp",
+"url":47,
+"doc":"Return date and time string in form DDMMMYY_HHMM",
+"func":1
+},
+{
+"ref":"vipy.util.datestamp",
+"url":47,
+"doc":"Return date and time string in form DDMMMYY",
+"func":1
+},
+{
+"ref":"vipy.util.remkdir",
+"url":47,
+"doc":"Create a given directory if not already exists",
+"func":1
+},
+{
+"ref":"vipy.util.rermdir",
+"url":47,
+"doc":"Recursively delete a given directory (if exists), and remake it",
+"func":1
+},
+{
+"ref":"vipy.util.premkdir",
+"url":47,
+"doc":"pre-create directory /path/to/subdir using  vipy.util.remkdir if it does not exist for outfile=/path/to/subdir/file.ext, and return filename",
+"func":1
+},
+{
+"ref":"vipy.util.newbase",
+"url":47,
+"doc":"Convert filename=/a/b/c.ext base=d -> /a/b/d.ext",
+"func":1
+},
+{
+"ref":"vipy.util.toextension",
+"url":47,
+"doc":"Convert filename='/path/to/myfile.ext' to /path/to/myfile.xyz, such that newext='xyz' or newext='.xyz'",
+"func":1
+},
+{
+"ref":"vipy.util.noextension",
+"url":47,
+"doc":"Convert filename='/path/to/myfile.ext' or filename='/path/to/myfile.ext1.ext2.ext3' to /path/to/myfile with no extension, removing the appended string past the first dot",
+"func":1
+},
+{
+"ref":"vipy.util.topkl",
+"url":47,
+"doc":"Convert filename='/path/to/myfile.ext' to /path/to/myfile.pkl",
+"func":1
+},
+{
+"ref":"vipy.util.splitextension",
+"url":47,
+"doc":"Given /a/b/c.ext return tuple of strings ('/a/b/c', '.ext')",
+"func":1
+},
+{
+"ref":"vipy.util.hasextension",
+"url":47,
+"doc":"Does the provided filename have a file extension (e.g. /path/to/file.ext) or not (e.g. /path/to/file)",
+"func":1
+},
+{
+"ref":"vipy.util.fileext",
+"url":47,
+"doc":"Given filename /a/b/c.ext return '.ext', or /a/b/c.tar.gz return '.tar.gz'. If multidot=False, then return '.gz'. If withdot=False, return 'ext'",
+"func":1
+},
+{
+"ref":"vipy.util.mediaextension",
+"url":47,
+"doc":"Return '.mp4' for filename='/a/b/c.mp4'",
+"func":1
+},
+{
+"ref":"vipy.util.ismacosx",
+"url":47,
+"doc":"Is the current platform MacOSX?",
+"func":1
+},
+{
+"ref":"vipy.util.islinux",
+"url":47,
+"doc":"is the current platform Linux?",
+"func":1
+},
+{
+"ref":"vipy.util.linuxversion",
+"url":47,
+"doc":"Return linux version",
+"func":1
+},
+{
+"ref":"vipy.util.imcrop",
+"url":47,
+"doc":"Crop a 2D or 3D numpy image given a vipy.geometry.BoundingBox",
+"func":1
+},
+{
+"ref":"vipy.util.Failed",
+"url":47,
+"doc":"Raised when unit test fails to throw an exception"
+},
+{
+"ref":"vipy.util.string_to_pil_interpolation",
+"url":47,
+"doc":"Internal function to convert interp string to interp object",
+"func":1
+},
+{
+"ref":"vipy.visualize",
+"url":48,
+"doc":""
+},
+{
+"ref":"vipy.visualize.hoverpixel",
+"url":48,
+"doc":"Generate a standalone hoverpixel visualization. A hoverpixel visualization is an HTML file that shows a montage such that each pixel in the montage is a video or image. When the user hovers the mouse over a pixel in the montage, a high resolution magnified popup for the corresponding video or image is displayed. This is a way to visualize and explore large datasets, showing the entire dataset in a glance, but allowing the user to zoom into specific sections. Each of the magnified media elements must be publicly accessible as a URL. If the URL is a webp animation, then the magnified media will show the animation (if the browser supports it). Args: urls: a list of urls to publicly accessible images or webp files. These are the URLs that are used to display inside the magnified popup. outfile: an html output file, if None a temp file will be used pixelsize [int]: the square size of the elements in the montage aspectratio [float]: The ratio of columns/rows in the pixel montage. Set to 1 for square. sortby: if 'color' then sort the images rowwise by increasing hue, if None, then use provided ordering of URLs loupe: if true, then the magnifier should be a circle hoversize: the diameter of the magnifier ultext: string to include overlay on the upper left. include  tags for line breaks in string, and standard html text string escaping (e.g. &lt, &gt for  ). if None, nothing is displayed display: if true, then open the html file in the defult browser when done ultextcolor: an html color string (e.g. \"white\", \"black\") for the upper left text color ultextsize: an html font-size string (e.g. \"large\", \"x-large\") for the upper left text ultextoffset [tuple): An offset in (x=pixels, y=pixels) of the origin of the upper left text Returns: A standalone html file that renders each url in montage such that hovering over elements in the montage will show the url in a magnifier.  note - Use fullscreen browsing for best experience. - Try to zoom out in your browser to see the full montage. - Wrap this HTML output file in an iframe for integration into your website:   ",
+"func":1
+},
+{
+"ref":"vipy.visualize.hoverpixel_selector",
+"url":48,
+"doc":"Create a dropdown selector of hoverpixel visualizations by legend. Args: htmllist: a list of HTML files output from  vipy.visualize.hoverpixel which have been created with a specific ordering legendlist: a list of strings describing how the hoverpixel was sorted (e.g. Color, Category, Size, Region) offset (x,y): A tuple of integers (x=right,y=down) for the absolute position in pixel units of the dropdown menu relative to the upper left of the page. fullscreen [bool]: If true, include an expand button next to the selector to put the hoverpixel iframe into fullscreen mode. Be sure to add allowfullscreen to the iframe. Returns: An HTML file that loads the hoverpixel HTML in an iframe with an overlaid dropdown menu to select which hoverpixel animation is displayed  note The fullscreen display will not work on iPhone since it is unsupported.",
+"func":1
+},
+{
+"ref":"vipy.visualize.mosaic",
+"url":48,
+"doc":"Create a mosaic iterator from an iterable of videos. A mosaic is a tiling of videos into a grid such that each grid element is one video. This function returns an iterator that iterates frames in the video mosaic. This mosaic generation can also be performed using ffmpeg, but here we use python iterators to zip a set of videos into a spatial mosaic. >>> for im in vipy.visualize.mosaic( (vipy.video.RandomScene(64,64,32), vipy.video.RandomScene(64,64,32 ) >>> im.show() Args: videos [iterable of  vipy.video.Video ] Returns: A generator which yields frames of the mosaic. All videos are at their native frame rates, and all videos are anisotropically resized to the (height, width) of the first video  note This is the streaming version of  vipy.visualize.videomontage which requires all videos to be loadable .",
+"func":1
+},
+{
+"ref":"vipy.visualize.videomosaic",
+"url":48,
+"doc":"Return a mosaic video from an iterable of videos. A mosaic will output a video montage such that all videos are exactly the same length, without cycling. This assumes that the videos are showing the same timestamps like in a security mosaic view.  note This will generate a framewise videomontage, and large videos can result in out of memory condition.",
+"func":1
+},
+{
+"ref":"vipy.visualize.montage",
+"url":48,
+"doc":"Create a montage image from the of provided list of  vipy.image.Image objects. Args: imlist: [list, tuple] iterable of  vipy.image.Image objects which is used to montage rowwise imgheight: [int] The height of each individual image in the grid, defaults to 256 px imgwidth: [int] the width of each individual image in the grid, defaults to 256 px, use centersquare() for isotropic scaling gridrows: [int] The number of images per row, and number of images per column. This defines the montage shape. gridcols: [int] The number of images per row, and number of images per column. This defines the montage shape. aspectratio: [float]. This is an optional parameter which defines the shape of the montage as (gridcols/gridrows) without specifying the gridrows, gridcols input crop: [bool] If true, the vipy.image.Image objects should call crop(), which will trigger a load skip: [bool] Whether images should be skipped on failure to load(), useful for lazy downloading border: [int] a border of size in pixels surrounding each image in the grid border_bgr [tuple (r,g,b)]: the border color in a bgr color tuple (b, g, r) in [0,255], uint8 do_flush: [bool] flush the loaded images as garbage collection for large montages verbose: [bool] display optional verbose messages Returns: Return a  vipy.image.Image montage which is of size (gridrows (imgheight + 2 border), gridcols (imgwidth+2 border ",
+"func":1
+},
+{
+"ref":"vipy.visualize.videomontage",
+"url":48,
+"doc":"Generate a video montage for the provided videos by creating a image montage for every frame. Args:  vipy.visualize.montage : See the args framerate: [float] the framerate of the montage video. All of the input videos are resampled to this common frame rate max_duration: [float] If not None, the maximum duration an element in seconds in the montage before it cycles. If None, then use the duration of the longest video Returns: An video file in outfile that shows each video tiled into a montage.   warning - This loads every video into memory, so be careful with large montages! - If max_duration is not set, then this can result in loading very long video elements in the montage, which will make for long videos",
+"func":1
+},
+{
+"ref":"vipy.visualize.urls",
+"url":48,
+"doc":"Given a list of public image URLs, create a stand-alone HTML page to show them all. Args: urllist: [list] A list of urls to display title: [str] The title of the html file imagewidth: [int] The size of the images in the page outfile: [str] The path to the output html file display: [bool] open the html file in the default system viewer when complete",
+"func":1
+},
+{
+"ref":"vipy.visualize.tohtml",
+"url":48,
+"doc":"Given a list of vipy.image.Image objects, show the images along with the dictionary contents of imdict (one per image) in a single standalone HTML file Args: imlist: [list  vipy.image.Image ] imdict: [list of dict] An optional list of dictionaries, such that each dictionary is visualized per image title: [str] The title of the html file imagewidth: [int] The size of the images in the page outfile: [str] The path to the output html file display: [bool] open the html file in the default system viewer when complete Returns: An html file in outfile that contains all the images as a standalone embedded file (no links or external files).",
+"func":1
+},
+{
+"ref":"vipy.visualize.videolist",
+"url":48,
+"doc":"Create a standalone HTML file that will visualize the set of videos in vidlist using HTML5 video player",
+"func":1
+},
+{
+"ref":"vipy.visualize.imagelist",
+"url":48,
+"doc":"Given a list of image filenames wth absolute paths, copy to outdir, and create an index.html file that visualizes each.",
+"func":1
+},
+{
+"ref":"vipy.visualize.imagetuplelist",
+"url":48,
+"doc":"Imagelist but put tuples on same row",
+"func":1
+},
+{
+"ref":"vipy.torch",
+"url":49,
+"doc":""
+},
+{
+"ref":"vipy.torch.TorchDataset",
+"url":49,
+"doc":"Converter from a pycollector dataset to a torch dataset"
+},
+{
+"ref":"vipy.torch.Tensordir",
+"url":49,
+"doc":"A torch dataset stored as a directory of .pkl.bz2 files each containing a list of [(tensor, str=json.dumps(label ,  .] tuples used for data augmented training. This is useful to use the default Dataset loaders in Torch. Usage:   vipy.torch.Tensordir('/path/to') vipy.torch.Tensordir( ('/path/to/1', '/path/to/2') )    note This requires python random() and not numpy random"
+},
+{
+"ref":"vipy.torch.Tensordir.take",
+"url":49,
+"doc":"",
+"func":1
+},
+{
+"ref":"vipy.torch.Tensordir.filter",
+"url":49,
+"doc":"Keep elements that lambda evaluates true. The lambda operates on the  absolute path filename for the tensordir and not the contents. This is useful for filtering by instanceid in the  vipy.util.filebase .",
+"func":1
+},
+{
+"ref":"vipy.torch.Tensordir.clone",
+"url":49,
+"doc":"",
+"func":1
+},
+{
+"ref":"vipy.torch.TorchTensordir",
+"url":49,
+"doc":"A torch dataset stored as a directory of .pkl.bz2 files each containing a list of [(tensor, str=json.dumps(label ,  .] tuples used for data augmented training. This is useful to use the default Dataset loaders in Torch. Usage:   vipy.torch.Tensordir('/path/to') vipy.torch.Tensordir( ('/path/to/1', '/path/to/2') )    note This requires python random() and not numpy random"
+},
+{
+"ref":"vipy.torch.TorchTensordir.filter",
+"url":49,
+"doc":"Keep elements that lambda evaluates true. The lambda operates on the  absolute path filename for the tensordir and not the contents. This is useful for filtering by instanceid in the  vipy.util.filebase .",
+"func":1
+},
+{
+"ref":"vipy.version",
+"url":50,
+"doc":""
+},
+{
+"ref":"vipy.version.num",
+"url":50,
+"doc":"Convert the version string of the form 'X.Y.Z' to an integer 100000 X + 100 Y + Z for version comparison",
+"func":1
+},
+{
+"ref":"vipy.version.split",
+"url":50,
+"doc":"Split the version string 'X.Y.Z' and return tuple (int(X), int(Y), int(Z ",
+"func":1
+},
+{
+"ref":"vipy.version.major",
+"url":50,
+"doc":"Return the major version number int(X) for versionstring 'X.Y.Z'",
+"func":1
+},
+{
+"ref":"vipy.version.minor",
+"url":50,
+"doc":"Return the minor version number int(Y) for versionstring 'X.Y.Z'",
+"func":1
+},
+{
+"ref":"vipy.version.release",
+"url":50,
+"doc":"Return the release version number int(Z) for versionstring 'X.Y.Z'",
+"func":1
+},
+{
+"ref":"vipy.version.at_least_version",
+"url":50,
+"doc":"Is versionstring='X.Y.Z' at least the current version?",
+"func":1
+},
+{
+"ref":"vipy.version.is_at_least",
+"url":50,
+"doc":"Synonym for at_least_version",
+"func":1
+},
+{
+"ref":"vipy.version.is_exactly",
+"url":50,
+"doc":"Is the versionstring = 'X,Y.Z' exactly equal to vipy.__version__",
+"func":1
+},
+{
+"ref":"vipy.version.at_least_major_version",
+"url":50,
+"doc":"is the major version (e.g. X, for version X.Y.Z) greater than or equal to the major version integer supplied?",
+"func":1
+},
+{
+"ref":"vipy.image",
+"url":51,
+"doc":""
+},
+{
+"ref":"vipy.image.Image",
+"url":51,
 "doc":"vipy.image.Image class The vipy image class provides a fluent, lazy interface for representing, transforming and visualizing images. The following constructors are supported:   im = vipy.image.Image(filename=\"/path/to/image.ext\")   All image file formats that are readable by PIL are supported here.   im = vipy.image.Image(url=\"http: domain.com/path/to/image.ext\")   The image will be downloaded from the provided url and saved to a temporary filename. The environment variable VIPY_CACHE controls the location of the directory used for saving images, otherwise this will be saved to the system temp directory.   im = vipy.image.Image(url=\"http: domain.com/path/to/image.ext\", filename=\"/path/to/new/image.ext\")   The image will be downloaded from the provided url and saved to the provided filename. The url() method provides optional basic authentication set for username and password   im = vipy.image.Image(array=img, colorspace='rgb')   The image will be constructed from a provided numpy array 'img', with an associated colorspace. The numpy array and colorspace can be one of the following combinations: - 'rgb': uint8, three channel (red, green, blue) - 'rgba': uint8, four channel (rgb + alpha) - 'bgr': uint8, three channel (blue, green, red), such as is returned from cv2.imread() - 'bgra': uint8, four channel - 'hsv': uint8, three channel (hue, saturation, value) - 'lum;: uint8, one channel, luminance (8 bit grey level) - 'grey': float32, one channel in range [0,1] (32 bit intensity) - 'float': float32, any channel in range [-inf, +inf] The most general colorspace is 'float' which is used to manipulate images prior to network encoding, such as applying bias. Args: filename: a path to an image file that is readable by PIL url: a url string to an image file that is readable by PIL array: a numpy array of type uint8 or float32 of shape HxWxC=height x width x channels colorspace: a string in ['rgb', 'rgba', 'bgr', 'bgra', 'hsv', 'float', 'grey', 'lum'] attributes: a python dictionary that is passed by reference to the image. This is useful for encoding metadata about the image. Accessible as im.attributes Returns: A  vipy.image.Image object"
 },
 {
 "ref":"vipy.image.Image.cast",
-"url":44,
+"url":51,
 "doc":"Typecast the conformal vipy.image object im as  vipy.image.Image . This is useful for downcasting  vipy.image.Scene or  vipy.image.ImageDetection down to an image.   ims = vipy.image.RandomScene() im = vipy.image.Image.cast(im)  ",
 "func":1
 },
 {
 "ref":"vipy.image.Image.from_json",
-"url":44,
+"url":51,
 "doc":"Import the JSON string s as an  vipy.image.Image object. This will perform a round trip such that im1  im2   im1 = vupy.image.RandomImage() im2 = vipy.image.Image.from_json(im1.json( assert im1  im2  ",
 "func":1
 },
 {
 "ref":"vipy.image.Image.sanitize",
-"url":44,
+"url":51,
 "doc":"Remove all private keys from the attributes dictionary. The attributes dictionary is useful storage for arbitrary (key,value) pairs. However, this storage may contain sensitive information that should be scrubbed from the media before serialization. As a general rule, any key that is of the form '__keyname' prepended by two underscores is a private key. This is analogous to private or reserved attributes in the python lanugage. Users should reserve these keynames for those keys that should be sanitized and removed before any serialization of this object.   assert self.setattribute('__mykey', 1).sanitize().hasattribute('__mykey')  False  ",
 "func":1
 },
 {
 "ref":"vipy.image.Image.print",
-"url":44,
+"url":51,
 "doc":"Print the representation of the image and return self with an optional sleep=n seconds Useful for debugging in long fluent chains.",
 "func":1
 },
 {
 "ref":"vipy.image.Image.tile",
-"url":44,
+"url":51,
 "doc":"Generate an image tiling. A tiling is a decomposition of an image into overlapping or non-overlapping rectangular regions. Args: tilewidth: [int] the image width of each tile tileheight: [int] the image height of each tile overlaprows: [int] the number of overlapping rows (height) for each tile overlapcols: [int] the number of overlapping width (width) for each tile Returns: A list of  vipy.image.Image objects such that each image is a single tile and the set of these tiles forms the original image Each image in the returned list contains the 'tile' attribute which encodes the crop used to create the tile.  note -  vipy.image.Image.tile can be undone using  vipy.image.Image.untile - The identity tiling is im.tile(im.widht(), im.height(), overlaprows=0, overlapcols=0) - Ragged tiles outside the image boundary are zero padded - All annotations are updated properly for each tile, when the source image is  vipy.image.Scene ",
 "func":1
 },
 {
 "ref":"vipy.image.Image.union",
-"url":44,
+"url":51,
 "doc":"No-op for  vipy.image.Image ",
 "func":1
 },
 {
 "ref":"vipy.image.Image.untile",
-"url":44,
+"url":51,
 "doc":"Undo an image tiling and recreate the original image.   tiles = im.tile(im.width()/2, im.height()/2, 0, 0) imdst = vipy.image.Image.untile(tiles) assert imdst  im   Args: imlist: this must be the output of  vipy.image.Image.tile Returns: A new  vipy.image.Image object reconstructed from the tiling, such that this is equivalent to the input to vipy.image.Image.tile  note All annotations are updated properly for each tile, when the source image is  vipy.image.Scene ",
 "func":1
 },
 {
 "ref":"vipy.image.Image.uncrop",
-"url":44,
+"url":51,
 "doc":"Uncrop using provided bounding box and zeropad to shape=(Height, Width). An uncrop is the inverse operation for a crop, which preserves the cropped portion of the image in the correct location and replaces the rest with zeros out to shape.   im = vipy.image.RandomImage(128, 128) bb = vipy.geometry.BoundingBox(xmin=0, ymin=0, width=64, height=64) uncrop = im.crop(bb).uncrop(bb, shape=(128,128   Args: bb: [ vipy.geometry.BoundingBox ] the bounding box used to crop the image in self shape: [tuple] (height, width) of the uncropped image Returns: this  vipy.image.Image object with the pixels uncropped.  note NOT idempotent. This will generate different results if run more than once.",
 "func":1
 },
 {
 "ref":"vipy.image.Image.splat",
-"url":44,
+"url":51,
 "doc":"Replace pixels within boundingbox in self with pixels in im",
 "func":1
 },
 {
 "ref":"vipy.image.Image.store",
-"url":44,
+"url":51,
 "doc":"Store the current image file as an attribute of this object. Useful for archiving an object to be fully self contained without any external references. -Remove this stored image using unstore() -Unpack this stored image and set up the filename using restore() -This method is more efficient than load() followed by pkl(), as it stores the encoded image as a byte string. -Useful for creating a single self contained object for distributed processing.   v  v.store().restore(v.filename(  ",
 "func":1
 },
 {
 "ref":"vipy.image.Image.unstore",
-"url":44,
+"url":51,
 "doc":"Delete the currently stored image from store()",
 "func":1
 },
 {
 "ref":"vipy.image.Image.restore",
-"url":44,
+"url":51,
 "doc":"Save the currently stored image to filename, and set up filename",
 "func":1
 },
 {
 "ref":"vipy.image.Image.abspath",
-"url":44,
+"url":51,
 "doc":"Change the path of the filename from a relative path to an absolute path (not relocatable)",
 "func":1
 },
 {
 "ref":"vipy.image.Image.relpath",
-"url":44,
+"url":51,
 "doc":"Replace the filename with a relative path to parent (or current working directory if none)",
 "func":1
 },
 {
 "ref":"vipy.image.Image.canload",
-"url":44,
+"url":51,
 "doc":"Return True if the image can be loaded successfully, useful for filtering bad links or corrupt images",
 "func":1
 },
 {
 "ref":"vipy.image.Image.dict",
-"url":44,
+"url":51,
 "doc":"Return a python dictionary containing the relevant serialized attributes suitable for JSON encoding",
 "func":1
 },
 {
 "ref":"vipy.image.Image.json",
-"url":44,
+"url":51,
 "doc":"",
 "func":1
 },
 {
 "ref":"vipy.image.Image.loader",
-"url":44,
+"url":51,
 "doc":"Lambda function to load an unsupported image filename to a numpy array. This lambda function will be executed during load and the result will be stored in self._array",
 "func":1
 },
 {
 "ref":"vipy.image.Image.load",
-"url":44,
+"url":51,
 "doc":"Load image to cached private '_array' attribute. Args: ignoreErrors: [bool] If true, ignore any exceptions thrown during load and print the corresponding error messages. This is useful for loading images distributed without throwing exceptions when some images may be corrupted. In this case, the _array attribute will be None and  vipy.image.Image.isloaded will return false to determine if the image is loaded, which can be used to filter out corrupted images gracefully. verbose: [bool] If true, show additional useful printed output Returns: This  vipy.image.Image object with the pixels loaded in self._array as a numpy array.  note This loader supports any image file format supported by PIL. A custom loader can be added using  vipy.image.Image.loader .",
 "func":1
 },
 {
 "ref":"vipy.image.Image.download",
-"url":44,
+"url":51,
 "doc":"Download URL to filename provided by constructor, or to temp filename. Args: ignoreErrors: [bool] If true, do not throw an exception if the download of the URL fails for some reason. Instead, print out a reason and return this image object. The function  vipy.image.Image.hasfilename will return false if the downloaded file does not exist and can be used to filter these failed downloads gracefully. timeout: [int] The timeout in seconds for an http or https connection attempt. See also [urllib.request.urlopen](https: docs.python.org/3/library/urllib.request.html). verbose: [bool] If true, output more helpful message. Returns: This  vipy.image.Image object with the URL downloaded to  vipy.image.Image.filename or to a  vipy.util.tempimage filename which can be retrieved with  vipy.image.Image.filename .",
 "func":1
 },
 {
 "ref":"vipy.image.Image.reload",
-"url":44,
+"url":51,
 "doc":"Flush the image buffer to force reloading from file or URL",
 "func":1
 },
 {
 "ref":"vipy.image.Image.isloaded",
-"url":44,
+"url":51,
 "doc":"Return True if  vipy.image.Image.load was successful in reading the image, or if the pixels are present in  vipy.image.Image.array .",
 "func":1
 },
 {
 "ref":"vipy.image.Image.channels",
-"url":44,
+"url":51,
 "doc":"Return integer number of color channels",
 "func":1
 },
 {
 "ref":"vipy.image.Image.iscolor",
-"url":44,
+"url":51,
 "doc":"Color images are three channel or four channel with transparency, float32 or uint8",
 "func":1
 },
 {
 "ref":"vipy.image.Image.istransparent",
-"url":44,
+"url":51,
 "doc":"Transparent images are four channel color images with transparency, float32 or uint8. Return true if this image contains an alpha transparency channel",
 "func":1
 },
 {
 "ref":"vipy.image.Image.isgrey",
-"url":44,
+"url":51,
 "doc":"Grey images are one channel, float32",
 "func":1
 },
 {
 "ref":"vipy.image.Image.isluminance",
-"url":44,
+"url":51,
 "doc":"Luninance images are one channel, uint8",
 "func":1
 },
 {
 "ref":"vipy.image.Image.filesize",
-"url":44,
+"url":51,
 "doc":"Return size of underlying image file, requires fetching metadata from filesystem",
 "func":1
 },
 {
 "ref":"vipy.image.Image.width",
-"url":44,
+"url":51,
 "doc":"Return the width (columns) of the image in integer pixels.  note This triggers a  vipy.image.Image.load if the image is not already loaded.",
 "func":1
 },
 {
 "ref":"vipy.image.Image.height",
-"url":44,
+"url":51,
 "doc":"Return the height (rows) of the image in integer pixels.  note This triggers a  vipy.image.Image.load if the image is not already loaded.",
 "func":1
 },
 {
 "ref":"vipy.image.Image.shape",
-"url":44,
+"url":51,
 "doc":"Return the (height, width) or equivalently (rows, cols) of the image. Returns: A tuple (height=int, width=int) of the image.  note This triggers a  vipy.image.Image.load if the image is not already loaded.",
 "func":1
 },
 {
 "ref":"vipy.image.Image.aspectratio",
-"url":44,
+"url":51,
 "doc":"Return the aspect ratio of the image as (width/height) ratio. Returns: A float equivalent to ( vipy.image.Image.width /  vipy.image.Image.height )  note This triggers a  vipy.image.Image.load if the image is not already loaded.",
 "func":1
 },
 {
 "ref":"vipy.image.Image.area",
-"url":44,
+"url":51,
 "doc":"Return the area of the image as (width  height). Returns: An integer equivalent to ( vipy.image.Image.width   vipy.image.Image.height )  note This triggers a  vipy.image.Image.load if the image is not already loaded.",
 "func":1
 },
 {
 "ref":"vipy.image.Image.centroid",
-"url":44,
+"url":51,
 "doc":"Return the real valued center pixel coordinates of the image (col=x,row=y). The centroid is equivalent to half the  vipy.image.Image.shape . Returns: A tuple (column, row) of the floating point center of the image.",
 "func":1
 },
 {
 "ref":"vipy.image.Image.centerpixel",
-"url":44,
+"url":51,
 "doc":"Return the integer valued center pixel coordinates of the image (col=i,row=j) The centerpixel is equivalent to half the  vipy.image.Image.shape floored to the nearest integer pixel coordinate. Returns: A tuple (int(column), int(row of the integer center of the image.",
 "func":1
 },
 {
 "ref":"vipy.image.Image.array",
-"url":44,
+"url":51,
 "doc":"Replace self._array with provided numpy array Args: np_array: [numpy array] A new array to use as the pixel buffer for this image. copy: [bool] If true, copy the buffer using np.copy(), else use a reference to this buffer. Returns: - If np_array is not None, return the  vipy.image.Image object such that this object points to the provided numpy array as the pixel buffer - If np_array is None, then return the numpy array.  notes - If copy=False, then this  vipy.image.Image object will share the pixel buffer with the owner of np_array. Changes to pixels in this buffer will be shared. - If copy=True, then this will significantly slow down processing for large images. Use referneces wherevery possible.",
 "func":1
 },
 {
 "ref":"vipy.image.Image.fromarray",
-"url":44,
+"url":51,
 "doc":"Alias for  vipy.image.Image.array with copy=True. This will set new numpy array as the pixel buffer with a numpy array copy",
 "func":1
 },
 {
 "ref":"vipy.image.Image.tonumpy",
-"url":44,
+"url":51,
 "doc":"Alias for  vipy.image.Image.numpy",
 "func":1
 },
 {
 "ref":"vipy.image.Image.numpy",
-"url":44,
+"url":51,
 "doc":"Return a mutable numpy array for this  vipy.image.Image .  notes - This will always return a writeable array with the 'WRITEABLE' numpy flag set. This is useful for returning a mutable numpy array as needed while keeping the original non-mutable numpy array (e.g. loaded from a video or PIL) as the underlying pixel buffer for efficiency reasons. - Triggers a  vipy.image.Image.load if the pixel buffer has not been loaded - This will trigger a copy if the ['WRITEABLE' flag](https: numpy.org/doc/stable/reference/generated/numpy.ndarray.flags.html) is not set.",
 "func":1
 },
 {
 "ref":"vipy.image.Image.channel",
-"url":44,
+"url":51,
 "doc":"Return a cloned Image() object for the kth channel, or return an iterator over channels if k=None. Iterate over channels as single channel luminance images:   for c in self.channel(): print(c)   Return the kth channel as a single channel luminance image:   c = self.channel(k=0)  ",
 "func":1
 },
 {
 "ref":"vipy.image.Image.red",
-"url":44,
+"url":51,
 "doc":"Return red channel as a cloned single channel  vipy.image.Image object. These are equivalent operations if the colorspace is 'rgb' or 'rgba':   self.red()  self.channel(0)   These are equivalent operations if the colorspace is 'bgr' or 'bgra':   self.red()  self.channel(3)    note OpenCV returns images in BGR colorspace. Use this method to always return the desired channel by color.",
 "func":1
 },
 {
 "ref":"vipy.image.Image.green",
-"url":44,
+"url":51,
 "doc":"Return green channel as a cloned single channel  vipy.image.Image object. These are equivalent operations if the colorspace is 'rgb' or 'rgba':   self.green()  self.channel(1)   These are equivalent operations if the colorspace is 'bgr' or 'bgra':   self.green()  self.channel(1)    note OpenCV returns images in BGR colorspace. Use this method to always return the desired channel by color.",
 "func":1
 },
 {
 "ref":"vipy.image.Image.blue",
-"url":44,
+"url":51,
 "doc":"Return blue channel as a cloned single channel  vipy.image.Image object. These are equivalent operations if the colorspace is 'rgb' or 'rgba':   self.vlue()  self.channel(2)   These are equivalent operations if the colorspace is 'bgr' or 'bgra':   self.blue()  self.channel(0)    note OpenCV returns images in BGR colorspace. Use this method to always return the desired channel by color.",
 "func":1
 },
 {
 "ref":"vipy.image.Image.alpha",
-"url":44,
+"url":51,
 "doc":"Return alpha (transparency) channel as a cloned single channel  vipy.image.Image object",
 "func":1
 },
 {
 "ref":"vipy.image.Image.zeros",
-"url":44,
+"url":51,
 "doc":"Set the pixel buffer to all zeros of the same shape and datatype as this  vipy.image.Image object. These are equivalent operations for the resulting buffer shape:   import numpy as np np.zeros( (self.width(), self.height(), self.channels( )  self.zeros().array()   Returns: This  vipy.image.Image object.  note Triggers load() if the pixel buffer has not been loaded yet.",
 "func":1
 },
 {
 "ref":"vipy.image.Image.pil",
-"url":44,
+"url":51,
 "doc":"Convert vipy.image.Image to PIL Image. Returns: A [PIL image](https: pillow.readthedocs.io/en/stable/reference/Image.html) object, that shares the pixel buffer by reference",
 "func":1
 },
 {
 "ref":"vipy.image.Image.blur",
-"url":44,
+"url":51,
 "doc":"Apply a Gaussian blur with Gaussian kernel radius=sigma to the pixel buffer. Args: sigma: [float >0] The gaussian blur kernel radius. Returns: This  vipy.image.Image object with the pixel buffer blurred in place.",
 "func":1
 },
 {
 "ref":"vipy.image.Image.torch",
-"url":44,
+"url":51,
 "doc":"Convert the batch of 1 HxWxC images to a CxHxW torch tensor. Args: order: ['CHW', 'HWC', 'NCHW', 'NHWC']. The axis order of the torch tensor (channels, height, width) or (height, width, channels) or (1, channels, height, width) or (1, height, width, channels) Returns: A CxHxW or HxWxC or 1xCxHxW or 1xHxWxC [torch tensor](https: pytorch.org/docs/stable/tensors.html) that shares the pixel buffer of this image object by reference.",
 "func":1
 },
 {
 "ref":"vipy.image.Image.fromtorch",
-"url":44,
+"url":51,
 "doc":"Convert a 1xCxHxW or CxHxW torch tensor (or numpy array with torch channel order) to HxWxC numpy array, returns new  vipy.image.Image with inferred colorspace corresponding to data type in x",
 "func":1
 },
 {
 "ref":"vipy.image.Image.nofilename",
-"url":44,
+"url":51,
 "doc":"",
 "func":1
 },
 {
 "ref":"vipy.image.Image.filename",
-"url":44,
+"url":51,
 "doc":"Return or set image filename",
 "func":1
 },
 {
 "ref":"vipy.image.Image.nourl",
-"url":44,
+"url":51,
 "doc":"",
 "func":1
 },
 {
 "ref":"vipy.image.Image.url",
-"url":44,
+"url":51,
 "doc":"Image URL and URL download properties",
 "func":1
 },
 {
 "ref":"vipy.image.Image.colorspace",
-"url":44,
+"url":51,
 "doc":"Return or set the colorspace as ['rgb', 'rgba', 'bgr', 'bgra', 'hsv', 'float', 'grey', 'lum']",
 "func":1
 },
 {
 "ref":"vipy.image.Image.uri",
-"url":44,
+"url":51,
 "doc":"Return the URI of the image object, either the URL or the filename, raise exception if neither defined",
 "func":1
 },
 {
 "ref":"vipy.image.Image.setattribute",
-"url":44,
+"url":51,
 "doc":"Set element self.attributes[key]=value",
 "func":1
 },
 {
 "ref":"vipy.image.Image.setattributes",
-"url":44,
+"url":51,
 "doc":"Set many attributes at once by providing a dictionary to be merged with current attributes",
 "func":1
 },
 {
 "ref":"vipy.image.Image.getattribute",
-"url":44,
+"url":51,
 "doc":"Return the key k in the attributes dictionary (self.attributes) if present, else None",
 "func":1
 },
 {
 "ref":"vipy.image.Image.hasattribute",
-"url":44,
+"url":51,
 "doc":"",
 "func":1
 },
 {
 "ref":"vipy.image.Image.delattribute",
-"url":44,
+"url":51,
 "doc":"",
 "func":1
 },
 {
 "ref":"vipy.image.Image.hasurl",
-"url":44,
+"url":51,
 "doc":"",
 "func":1
 },
 {
 "ref":"vipy.image.Image.hasfilename",
-"url":44,
+"url":51,
 "doc":"",
 "func":1
 },
 {
 "ref":"vipy.image.Image.clone",
-"url":44,
+"url":51,
 "doc":"Create deep copy of object, flushing the original buffer if requested and returning the cloned object. Flushing is useful for distributed memory management to free the buffer from this object, and pass along a cloned object which can be used for encoding and will be garbage collected.  flushforward: copy the object, and set the cloned object array() to None. This flushes the video buffer for the clone, not the object  flushbackward: copy the object, and set the object array() to None. This flushes the video buffer for the object, not the clone.  flush: set the object array() to None and clone the object. This flushes the video buffer for both the clone and the object.",
 "func":1
 },
 {
 "ref":"vipy.image.Image.flush",
-"url":44,
+"url":51,
 "doc":"Alias for clone(flush=True), returns self not clone",
 "func":1
 },
 {
 "ref":"vipy.image.Image.resize",
-"url":44,
+"url":51,
 "doc":"Resize the image buffer to (rows x cols) with bilinear interpolation. If rows or cols is provided, rescale image maintaining aspect ratio",
 "func":1
 },
 {
 "ref":"vipy.image.Image.resize_like",
-"url":44,
+"url":51,
 "doc":"Resize image buffer to be the same size as the provided vipy.image.Image()",
 "func":1
 },
 {
 "ref":"vipy.image.Image.rescale",
-"url":44,
+"url":51,
 "doc":"Scale the image buffer by the given factor - NOT idempotent",
 "func":1
 },
 {
 "ref":"vipy.image.Image.maxdim",
-"url":44,
+"url":51,
 "doc":"Resize image preserving aspect ratio so that maximum dimension of image = dim, or return maxdim()",
 "func":1
 },
 {
 "ref":"vipy.image.Image.mindim",
-"url":44,
+"url":51,
 "doc":"Resize image preserving aspect ratio so that minimum dimension of image = dim, or return mindim()",
 "func":1
 },
 {
 "ref":"vipy.image.Image.zeropad",
-"url":44,
+"url":51,
 "doc":"Pad image using np.pad constant by adding padwidth on both left and right , or padwidth=(left,right) for different pre/postpadding and padheight on top and bottom or padheight=(top,bottom) for different pre/post padding",
 "func":1
 },
 {
 "ref":"vipy.image.Image.zeropadlike",
-"url":44,
+"url":51,
 "doc":"Zero pad the image balancing the border so that the resulting image size is (width, height)",
 "func":1
 },
 {
 "ref":"vipy.image.Image.meanpad",
-"url":44,
+"url":51,
 "doc":"Pad image using np.pad constant=image mean by adding padwidth on both left and right , or padwidth=(left,right) for different pre/postpadding and padheight on top and bottom or padheight=(top,bottom) for different pre/post padding",
 "func":1
 },
 {
 "ref":"vipy.image.Image.alphapad",
-"url":44,
+"url":51,
 "doc":"Pad image using alpha transparency by adding padwidth on both left and right , or padwidth=(left,right) for different pre/postpadding and padheight on top and bottom or padheight=(top,bottom) for different pre/post padding",
 "func":1
 },
 {
 "ref":"vipy.image.Image.minsquare",
-"url":44,
+"url":51,
 "doc":"Crop image of size (HxW) to (min(H,W), min(H,W , keeping upper left corner constant",
 "func":1
 },
 {
 "ref":"vipy.image.Image.maxsquare",
-"url":44,
+"url":51,
 "doc":"Crop image of size (HxW) to (max(H,W), max(H,W with zeropadding or (S,S) if provided, keeping upper left corner constant",
 "func":1
 },
 {
 "ref":"vipy.image.Image.maxmatte",
-"url":44,
+"url":51,
 "doc":"Crop image of size (HxW) to (max(H,W), max(H,W with balanced zeropadding forming a letterbox with top/bottom matte or pillarbox with left/right matte",
 "func":1
 },
 {
 "ref":"vipy.image.Image.centersquare",
-"url":44,
+"url":51,
 "doc":"Crop image of size (NxN) in the center, such that N=min(width,height), keeping the image centroid constant",
 "func":1
 },
 {
 "ref":"vipy.image.Image.centercrop",
-"url":44,
+"url":51,
 "doc":"Crop image of size (height x width) in the center, keeping the image centroid constant",
 "func":1
 },
 {
 "ref":"vipy.image.Image.cornercrop",
-"url":44,
+"url":51,
 "doc":"Crop image of size (height x width) from the upper left corner",
 "func":1
 },
 {
 "ref":"vipy.image.Image.crop",
-"url":44,
+"url":51,
 "doc":"",
 "func":1
 },
 {
 "ref":"vipy.image.Image.fliplr",
-"url":44,
+"url":51,
 "doc":"Mirror the image buffer about the vertical axis - Not idempotent",
 "func":1
 },
 {
 "ref":"vipy.image.Image.flipud",
-"url":44,
+"url":51,
 "doc":"Mirror the image buffer about the horizontal axis - Not idempotent",
 "func":1
 },
 {
 "ref":"vipy.image.Image.imagebox",
-"url":44,
+"url":51,
 "doc":"Return the bounding box for the image rectangle",
 "func":1
 },
 {
 "ref":"vipy.image.Image.border_mask",
-"url":44,
+"url":51,
 "doc":"Return a binary uint8 image the same size as self, with a border of pad pixels in width or height around the edge",
 "func":1
 },
 {
 "ref":"vipy.image.Image.affine_transform",
-"url":44,
+"url":51,
 "doc":"Apply a 3x3 affine geometric transformation to the image. See also  vipy.geometry.affine_transform  note The image will be loaded and converted to float() prior to applying the affine transformation.  note This will transform only the pixels",
 "func":1
 },
 {
 "ref":"vipy.image.Image.rotate",
-"url":44,
+"url":51,
 "doc":"Apply a rotation in radians to the pixels, with origin in upper left",
 "func":1
 },
 {
 "ref":"vipy.image.Image.rgb",
-"url":44,
+"url":51,
 "doc":"Convert the image buffer to three channel RGB uint8 colorspace",
 "func":1
 },
 {
 "ref":"vipy.image.Image.rgba",
-"url":44,
+"url":51,
 "doc":"Convert the image buffer to four channel RGBA uint8 colorspace",
 "func":1
 },
 {
 "ref":"vipy.image.Image.hsv",
-"url":44,
+"url":51,
 "doc":"Convert the image buffer to three channel HSV uint8 colorspace",
 "func":1
 },
 {
 "ref":"vipy.image.Image.bgr",
-"url":44,
+"url":51,
 "doc":"Convert the image buffer to three channel BGR uint8 colorspace",
 "func":1
 },
 {
 "ref":"vipy.image.Image.bgra",
-"url":44,
+"url":51,
 "doc":"Convert the image buffer to four channel BGR uint8 colorspace",
 "func":1
 },
 {
 "ref":"vipy.image.Image.float",
-"url":44,
+"url":51,
 "doc":"Convert the image buffer to float32",
 "func":1
 },
 {
 "ref":"vipy.image.Image.greyscale",
-"url":44,
+"url":51,
 "doc":"Convert the image buffer to single channel grayscale float32 in range [0,1]",
 "func":1
 },
 {
 "ref":"vipy.image.Image.grayscale",
-"url":44,
+"url":51,
 "doc":"Alias for greyscale()",
 "func":1
 },
 {
 "ref":"vipy.image.Image.grey",
-"url":44,
+"url":51,
 "doc":"Alias for greyscale()",
 "func":1
 },
 {
 "ref":"vipy.image.Image.gray",
-"url":44,
+"url":51,
 "doc":"Alias for greyscale()",
 "func":1
 },
 {
 "ref":"vipy.image.Image.luminance",
-"url":44,
+"url":51,
 "doc":"Convert the image buffer to single channel uint8 in range [0,255] corresponding to the luminance component",
 "func":1
 },
 {
 "ref":"vipy.image.Image.lum",
-"url":44,
+"url":51,
 "doc":"Alias for luminance()",
 "func":1
 },
 {
 "ref":"vipy.image.Image.jet",
-"url":44,
+"url":51,
 "doc":"Apply jet colormap to greyscale image and save as RGB",
 "func":1
 },
 {
 "ref":"vipy.image.Image.rainbow",
-"url":44,
+"url":51,
 "doc":"Apply rainbow colormap to greyscale image and convert to RGB",
 "func":1
 },
 {
 "ref":"vipy.image.Image.hot",
-"url":44,
+"url":51,
 "doc":"Apply hot colormap to greyscale image and convert to RGB",
 "func":1
 },
 {
 "ref":"vipy.image.Image.bone",
-"url":44,
+"url":51,
 "doc":"Apply bone colormap to greyscale image and convert to RGB",
 "func":1
 },
 {
 "ref":"vipy.image.Image.saturate",
-"url":44,
+"url":51,
 "doc":"Saturate the image buffer to be clipped between [min,max], types of min/max are specified by _array type",
 "func":1
 },
 {
 "ref":"vipy.image.Image.intensity",
-"url":44,
+"url":51,
 "doc":"Convert image to float32 with [min,max] to range [0,1], force colormap to be 'float'. Equivalent to self.mat2gray()",
 "func":1
 },
 {
 "ref":"vipy.image.Image.mat2gray",
-"url":44,
+"url":51,
 "doc":"Convert the image buffer so that [min,max] -> [0,1], forces conversion to 'float' colorspace. This does not change the number of color channels",
 "func":1
 },
 {
 "ref":"vipy.image.Image.gain",
-"url":44,
+"url":51,
 "doc":"Elementwise multiply gain to image array, Gain should be broadcastable to array(). This forces the colospace to 'float'",
 "func":1
 },
 {
 "ref":"vipy.image.Image.bias",
-"url":44,
+"url":51,
 "doc":"Add a bias to the image array. Bias should be broadcastable to array(). This forces the colorspace to 'float'",
 "func":1
 },
 {
 "ref":"vipy.image.Image.normalize",
-"url":44,
+"url":51,
 "doc":"Apply a multiplicative gain g and additive bias b, such that self.array()  gain self.array() + bias. This is useful for applying a normalization of an image prior to calling  vipy.image.Image.torch . The following operations are equivalent.   im = vipy.image.RandomImage() im.normalize(1/255.0, 0.5)  im.gain(1/255.0).bias(-0.5)    note This will force the colorspace to 'float'",
 "func":1
 },
 {
 "ref":"vipy.image.Image.stats",
-"url":44,
+"url":51,
 "doc":"",
 "func":1
 },
 {
 "ref":"vipy.image.Image.min",
-"url":44,
+"url":51,
 "doc":"",
 "func":1
 },
 {
 "ref":"vipy.image.Image.max",
-"url":44,
+"url":51,
 "doc":"",
 "func":1
 },
 {
 "ref":"vipy.image.Image.mean",
-"url":44,
+"url":51,
 "doc":"Mean over all pixels",
 "func":1
 },
 {
 "ref":"vipy.image.Image.meanchannel",
-"url":44,
+"url":51,
 "doc":"Mean per channel over all pixels. If channel k is provided, return just the mean for that channel",
 "func":1
 },
 {
 "ref":"vipy.image.Image.sum",
-"url":44,
+"url":51,
 "doc":"",
 "func":1
 },
 {
 "ref":"vipy.image.Image.closeall",
-"url":44,
+"url":51,
 "doc":"Close all open figure windows",
 "func":1
 },
 {
 "ref":"vipy.image.Image.close",
-"url":44,
+"url":51,
 "doc":"Close the requested figure number, or close all of fignum=None",
 "func":1
 },
 {
 "ref":"vipy.image.Image.show",
-"url":44,
+"url":51,
 "doc":"Display image on screen in provided figure number (clone and convert to RGB colorspace to show), return object",
 "func":1
 },
 {
 "ref":"vipy.image.Image.save",
-"url":44,
+"url":51,
 "doc":"Save the current image to a new filename and return the image object",
 "func":1
 },
 {
 "ref":"vipy.image.Image.pkl",
-"url":44,
+"url":51,
 "doc":"save the object to a pickle file and return the object, useful for intermediate saving in long fluent chains",
 "func":1
 },
 {
 "ref":"vipy.image.Image.pklif",
-"url":44,
+"url":51,
 "doc":"Save the object to the provided pickle file only if b=True. Uuseful for conditional intermediate saving in long fluent chains",
 "func":1
 },
 {
 "ref":"vipy.image.Image.saveas",
-"url":44,
+"url":51,
 "doc":"Save current buffer (not including drawing overlays) to new filename and return filename. If filename is not provided, use a temporary JPEG filename.",
 "func":1
 },
 {
 "ref":"vipy.image.Image.saveastmp",
-"url":44,
+"url":51,
 "doc":"Save current buffer to temp JPEG filename and return filename. Alias for savetmp()",
 "func":1
 },
 {
 "ref":"vipy.image.Image.savetmp",
-"url":44,
+"url":51,
 "doc":"Save current buffer to temp JPEG filename and return filename. Alias for saveastmp()",
 "func":1
 },
 {
 "ref":"vipy.image.Image.base64",
-"url":44,
+"url":51,
 "doc":"Export a base64 encoding of the image suitable for embedding in an html page",
 "func":1
 },
 {
 "ref":"vipy.image.Image.ascii",
-"url":44,
+"url":51,
 "doc":"Export a base64 ascii encoding of the image suitable for embedding in an  tag",
 "func":1
 },
 {
 "ref":"vipy.image.Image.html",
-"url":44,
+"url":51,
 "doc":"Export a base64 encoding of the image suitable for embedding in an html page, enclosed in  tag Returns: -string:  containing base64 encoded JPEG and alt text with lazy loading",
 "func":1
 },
 {
 "ref":"vipy.image.Image.annotate",
-"url":44,
+"url":51,
 "doc":"Change pixels of this image to include rendered annotation and return an image object",
 "func":1
 },
 {
 "ref":"vipy.image.Image.savefig",
-"url":44,
+"url":51,
 "doc":"Save last figure output from self.show() with drawing overlays to provided filename and return filename",
 "func":1
 },
 {
 "ref":"vipy.image.Image.map",
-"url":44,
+"url":51,
 "doc":"Apply lambda function to our numpy array img, such that newimg=f(img), then replace newimg -> self.array(). The output of this lambda function must be a numpy array and if the channels or dtype changes, the colorspace is set to 'float'",
 "func":1
 },
 {
 "ref":"vipy.image.Image.downcast",
-"url":44,
+"url":51,
 "doc":"Cast the class to the base class (vipy.image.Image)",
 "func":1
 },
 {
 "ref":"vipy.image.Image.perceptualhash",
-"url":44,
+"url":51,
 "doc":"Perceptual differential hash function This function converts to greyscale, resizes with linear interpolation to small image based on desired bit encoding, compute vertical and horizontal gradient signs. Args: bits: [int] longer hashes have lower TAR (true accept rate, some near dupes are missed), but lower FAR (false accept rate), shorter hashes have higher TAR (fewer near-dupes are missed) but higher FAR (more non-dupes are declared as dupes). asbinary: [bool] If true, return a binary array asbytes: [bool] if true return a byte array Returns: A hash string encoding the perceptual hash such that  vipy.image.Image.perceptualhash_distance can be used to compute a hash distance asbytes: a bytes array asbinary: a numpy binary array  notes - Can be used for near duplicate detection by unpacking the returned hex string to binary and computing hamming distance, or performing hamming based nearest neighbor indexing. Equivalently,  vipy.image.Image.perceptualhash_distance . - The default packed hex output can be converted to binary as: np.unpackbits(bytearray().fromhex(h)",
 "func":1
 },
 {
 "ref":"vipy.image.Image.perceptualhash_distance",
-"url":44,
+"url":51,
 "doc":"Hamming distance between two perceptual hashes",
 "func":1
 },
 {
 "ref":"vipy.image.Image.rot90cw",
-"url":44,
+"url":51,
 "doc":"Rotate the scene 90 degrees clockwise",
 "func":1
 },
 {
 "ref":"vipy.image.Image.rot90ccw",
-"url":44,
+"url":51,
 "doc":"Rotate the scene 90 degrees counterclockwise",
 "func":1
 },
 {
 "ref":"vipy.image.ImageCategory",
-"url":44,
+"url":51,
 "doc":"vipy ImageCategory class This class provides a representation of a vipy.image.Image with a category. Valid constructors include all provided by vipy.image.Image with the additional kwarg 'category' (or alias 'label')   im = vipy.image.ImageCategory(filename='/path/to/dog_image.ext', category='dog') im = vipy.image.ImageCategory(url='http: path/to/dog_image.ext', category='dog') im = vipy.image.ImageCategory(array=dog_img, colorspace='rgb', category='dog')  "
 },
 {
 "ref":"vipy.image.ImageCategory.cast",
-"url":44,
+"url":51,
 "doc":"Typecast the conformal vipy.image object im as  vipy.image.Image . This is useful for downcasting  vipy.image.Scene or  vipy.image.ImageDetection down to an image.   ims = vipy.image.RandomScene() im = vipy.image.Image.cast(im)  ",
 "func":1
 },
 {
 "ref":"vipy.image.ImageCategory.from_json",
-"url":44,
+"url":51,
 "doc":"Import the JSON string s as an  vipy.image.Image object. This will perform a round trip such that im1  im2   im1 = vupy.image.RandomImage() im2 = vipy.image.Image.from_json(im1.json( assert im1  im2  ",
 "func":1
 },
 {
 "ref":"vipy.image.ImageCategory.json",
-"url":44,
+"url":51,
 "doc":"",
 "func":1
 },
 {
 "ref":"vipy.image.ImageCategory.is_",
-"url":44,
+"url":51,
 "doc":"",
 "func":1
 },
 {
 "ref":"vipy.image.ImageCategory.is_not",
-"url":44,
+"url":51,
 "doc":"",
 "func":1
 },
 {
 "ref":"vipy.image.ImageCategory.nocategory",
-"url":44,
+"url":51,
 "doc":"",
 "func":1
 },
 {
 "ref":"vipy.image.ImageCategory.category",
-"url":44,
+"url":51,
 "doc":"Return or update the category",
 "func":1
 },
 {
 "ref":"vipy.image.ImageCategory.label",
-"url":44,
+"url":51,
 "doc":"Alias for category",
 "func":1
 },
 {
 "ref":"vipy.image.ImageCategory.score",
-"url":44,
+"url":51,
 "doc":"Real valued score for categorization, larger is better",
 "func":1
 },
 {
 "ref":"vipy.image.ImageCategory.probability",
-"url":44,
+"url":51,
 "doc":"Real valued probability for categorization, [0,1]",
 "func":1
 },
 {
 "ref":"vipy.image.ImageCategory.sanitize",
-"url":44,
+"url":51,
 "doc":"Remove all private keys from the attributes dictionary. The attributes dictionary is useful storage for arbitrary (key,value) pairs. However, this storage may contain sensitive information that should be scrubbed from the media before serialization. As a general rule, any key that is of the form '__keyname' prepended by two underscores is a private key. This is analogous to private or reserved attributes in the python lanugage. Users should reserve these keynames for those keys that should be sanitized and removed before any serialization of this object.   assert self.setattribute('__mykey', 1).sanitize().hasattribute('__mykey')  False  ",
 "func":1
 },
 {
 "ref":"vipy.image.ImageCategory.print",
-"url":44,
+"url":51,
 "doc":"Print the representation of the image and return self with an optional sleep=n seconds Useful for debugging in long fluent chains.",
 "func":1
 },
 {
 "ref":"vipy.image.ImageCategory.tile",
-"url":44,
+"url":51,
 "doc":"Generate an image tiling. A tiling is a decomposition of an image into overlapping or non-overlapping rectangular regions. Args: tilewidth: [int] the image width of each tile tileheight: [int] the image height of each tile overlaprows: [int] the number of overlapping rows (height) for each tile overlapcols: [int] the number of overlapping width (width) for each tile Returns: A list of  vipy.image.Image objects such that each image is a single tile and the set of these tiles forms the original image Each image in the returned list contains the 'tile' attribute which encodes the crop used to create the tile.  note -  vipy.image.Image.tile can be undone using  vipy.image.Image.untile - The identity tiling is im.tile(im.widht(), im.height(), overlaprows=0, overlapcols=0) - Ragged tiles outside the image boundary are zero padded - All annotations are updated properly for each tile, when the source image is  vipy.image.Scene ",
 "func":1
 },
 {
 "ref":"vipy.image.ImageCategory.union",
-"url":44,
+"url":51,
 "doc":"No-op for  vipy.image.Image ",
 "func":1
 },
 {
 "ref":"vipy.image.ImageCategory.untile",
-"url":44,
+"url":51,
 "doc":"Undo an image tiling and recreate the original image.   tiles = im.tile(im.width()/2, im.height()/2, 0, 0) imdst = vipy.image.Image.untile(tiles) assert imdst  im   Args: imlist: this must be the output of  vipy.image.Image.tile Returns: A new  vipy.image.Image object reconstructed from the tiling, such that this is equivalent to the input to vipy.image.Image.tile  note All annotations are updated properly for each tile, when the source image is  vipy.image.Scene ",
 "func":1
 },
 {
 "ref":"vipy.image.ImageCategory.uncrop",
-"url":44,
+"url":51,
 "doc":"Uncrop using provided bounding box and zeropad to shape=(Height, Width). An uncrop is the inverse operation for a crop, which preserves the cropped portion of the image in the correct location and replaces the rest with zeros out to shape.   im = vipy.image.RandomImage(128, 128) bb = vipy.geometry.BoundingBox(xmin=0, ymin=0, width=64, height=64) uncrop = im.crop(bb).uncrop(bb, shape=(128,128   Args: bb: [ vipy.geometry.BoundingBox ] the bounding box used to crop the image in self shape: [tuple] (height, width) of the uncropped image Returns: this  vipy.image.Image object with the pixels uncropped.  note NOT idempotent. This will generate different results if run more than once.",
 "func":1
 },
 {
 "ref":"vipy.image.ImageCategory.splat",
-"url":44,
+"url":51,
 "doc":"Replace pixels within boundingbox in self with pixels in im",
 "func":1
 },
 {
 "ref":"vipy.image.ImageCategory.store",
-"url":44,
+"url":51,
 "doc":"Store the current image file as an attribute of this object. Useful for archiving an object to be fully self contained without any external references. -Remove this stored image using unstore() -Unpack this stored image and set up the filename using restore() -This method is more efficient than load() followed by pkl(), as it stores the encoded image as a byte string. -Useful for creating a single self contained object for distributed processing.   v  v.store().restore(v.filename(  ",
 "func":1
 },
 {
 "ref":"vipy.image.ImageCategory.unstore",
-"url":44,
+"url":51,
 "doc":"Delete the currently stored image from store()",
 "func":1
 },
 {
 "ref":"vipy.image.ImageCategory.restore",
-"url":44,
+"url":51,
 "doc":"Save the currently stored image to filename, and set up filename",
 "func":1
 },
 {
 "ref":"vipy.image.ImageCategory.abspath",
-"url":44,
+"url":51,
 "doc":"Change the path of the filename from a relative path to an absolute path (not relocatable)",
 "func":1
 },
 {
 "ref":"vipy.image.ImageCategory.relpath",
-"url":44,
+"url":51,
 "doc":"Replace the filename with a relative path to parent (or current working directory if none)",
 "func":1
 },
 {
 "ref":"vipy.image.ImageCategory.canload",
-"url":44,
+"url":51,
 "doc":"Return True if the image can be loaded successfully, useful for filtering bad links or corrupt images",
 "func":1
 },
 {
 "ref":"vipy.image.ImageCategory.dict",
-"url":44,
+"url":51,
 "doc":"Return a python dictionary containing the relevant serialized attributes suitable for JSON encoding",
 "func":1
 },
 {
 "ref":"vipy.image.ImageCategory.loader",
-"url":44,
+"url":51,
 "doc":"Lambda function to load an unsupported image filename to a numpy array. This lambda function will be executed during load and the result will be stored in self._array",
 "func":1
 },
 {
 "ref":"vipy.image.ImageCategory.load",
-"url":44,
+"url":51,
 "doc":"Load image to cached private '_array' attribute. Args: ignoreErrors: [bool] If true, ignore any exceptions thrown during load and print the corresponding error messages. This is useful for loading images distributed without throwing exceptions when some images may be corrupted. In this case, the _array attribute will be None and  vipy.image.Image.isloaded will return false to determine if the image is loaded, which can be used to filter out corrupted images gracefully. verbose: [bool] If true, show additional useful printed output Returns: This  vipy.image.Image object with the pixels loaded in self._array as a numpy array.  note This loader supports any image file format supported by PIL. A custom loader can be added using  vipy.image.Image.loader .",
 "func":1
 },
 {
 "ref":"vipy.image.ImageCategory.download",
-"url":44,
+"url":51,
 "doc":"Download URL to filename provided by constructor, or to temp filename. Args: ignoreErrors: [bool] If true, do not throw an exception if the download of the URL fails for some reason. Instead, print out a reason and return this image object. The function  vipy.image.Image.hasfilename will return false if the downloaded file does not exist and can be used to filter these failed downloads gracefully. timeout: [int] The timeout in seconds for an http or https connection attempt. See also [urllib.request.urlopen](https: docs.python.org/3/library/urllib.request.html). verbose: [bool] If true, output more helpful message. Returns: This  vipy.image.Image object with the URL downloaded to  vipy.image.Image.filename or to a  vipy.util.tempimage filename which can be retrieved with  vipy.image.Image.filename .",
 "func":1
 },
 {
 "ref":"vipy.image.ImageCategory.reload",
-"url":44,
+"url":51,
 "doc":"Flush the image buffer to force reloading from file or URL",
 "func":1
 },
 {
 "ref":"vipy.image.ImageCategory.isloaded",
-"url":44,
+"url":51,
 "doc":"Return True if  vipy.image.Image.load was successful in reading the image, or if the pixels are present in  vipy.image.Image.array .",
 "func":1
 },
 {
 "ref":"vipy.image.ImageCategory.channels",
-"url":44,
+"url":51,
 "doc":"Return integer number of color channels",
 "func":1
 },
 {
 "ref":"vipy.image.ImageCategory.iscolor",
-"url":44,
+"url":51,
 "doc":"Color images are three channel or four channel with transparency, float32 or uint8",
 "func":1
 },
 {
 "ref":"vipy.image.ImageCategory.istransparent",
-"url":44,
+"url":51,
 "doc":"Transparent images are four channel color images with transparency, float32 or uint8. Return true if this image contains an alpha transparency channel",
 "func":1
 },
 {
 "ref":"vipy.image.ImageCategory.isgrey",
-"url":44,
+"url":51,
 "doc":"Grey images are one channel, float32",
 "func":1
 },
 {
 "ref":"vipy.image.ImageCategory.isluminance",
-"url":44,
+"url":51,
 "doc":"Luninance images are one channel, uint8",
 "func":1
 },
 {
 "ref":"vipy.image.ImageCategory.filesize",
-"url":44,
+"url":51,
 "doc":"Return size of underlying image file, requires fetching metadata from filesystem",
 "func":1
 },
 {
 "ref":"vipy.image.ImageCategory.width",
-"url":44,
+"url":51,
 "doc":"Return the width (columns) of the image in integer pixels.  note This triggers a  vipy.image.Image.load if the image is not already loaded.",
 "func":1
 },
 {
 "ref":"vipy.image.ImageCategory.height",
-"url":44,
+"url":51,
 "doc":"Return the height (rows) of the image in integer pixels.  note This triggers a  vipy.image.Image.load if the image is not already loaded.",
 "func":1
 },
 {
 "ref":"vipy.image.ImageCategory.shape",
-"url":44,
+"url":51,
 "doc":"Return the (height, width) or equivalently (rows, cols) of the image. Returns: A tuple (height=int, width=int) of the image.  note This triggers a  vipy.image.Image.load if the image is not already loaded.",
 "func":1
 },
 {
 "ref":"vipy.image.ImageCategory.aspectratio",
-"url":44,
+"url":51,
 "doc":"Return the aspect ratio of the image as (width/height) ratio. Returns: A float equivalent to ( vipy.image.Image.width /  vipy.image.Image.height )  note This triggers a  vipy.image.Image.load if the image is not already loaded.",
 "func":1
 },
 {
 "ref":"vipy.image.ImageCategory.area",
-"url":44,
+"url":51,
 "doc":"Return the area of the image as (width  height). Returns: An integer equivalent to ( vipy.image.Image.width   vipy.image.Image.height )  note This triggers a  vipy.image.Image.load if the image is not already loaded.",
 "func":1
 },
 {
 "ref":"vipy.image.ImageCategory.centroid",
-"url":44,
+"url":51,
 "doc":"Return the real valued center pixel coordinates of the image (col=x,row=y). The centroid is equivalent to half the  vipy.image.Image.shape . Returns: A tuple (column, row) of the floating point center of the image.",
 "func":1
 },
 {
 "ref":"vipy.image.ImageCategory.centerpixel",
-"url":44,
+"url":51,
 "doc":"Return the integer valued center pixel coordinates of the image (col=i,row=j) The centerpixel is equivalent to half the  vipy.image.Image.shape floored to the nearest integer pixel coordinate. Returns: A tuple (int(column), int(row of the integer center of the image.",
 "func":1
 },
 {
 "ref":"vipy.image.ImageCategory.array",
-"url":44,
+"url":51,
 "doc":"Replace self._array with provided numpy array Args: np_array: [numpy array] A new array to use as the pixel buffer for this image. copy: [bool] If true, copy the buffer using np.copy(), else use a reference to this buffer. Returns: - If np_array is not None, return the  vipy.image.Image object such that this object points to the provided numpy array as the pixel buffer - If np_array is None, then return the numpy array.  notes - If copy=False, then this  vipy.image.Image object will share the pixel buffer with the owner of np_array. Changes to pixels in this buffer will be shared. - If copy=True, then this will significantly slow down processing for large images. Use referneces wherevery possible.",
 "func":1
 },
 {
 "ref":"vipy.image.ImageCategory.fromarray",
-"url":44,
+"url":51,
 "doc":"Alias for  vipy.image.Image.array with copy=True. This will set new numpy array as the pixel buffer with a numpy array copy",
 "func":1
 },
 {
 "ref":"vipy.image.ImageCategory.tonumpy",
-"url":44,
+"url":51,
 "doc":"Alias for  vipy.image.Image.numpy",
 "func":1
 },
 {
 "ref":"vipy.image.ImageCategory.numpy",
-"url":44,
+"url":51,
 "doc":"Return a mutable numpy array for this  vipy.image.Image .  notes - This will always return a writeable array with the 'WRITEABLE' numpy flag set. This is useful for returning a mutable numpy array as needed while keeping the original non-mutable numpy array (e.g. loaded from a video or PIL) as the underlying pixel buffer for efficiency reasons. - Triggers a  vipy.image.Image.load if the pixel buffer has not been loaded - This will trigger a copy if the ['WRITEABLE' flag](https: numpy.org/doc/stable/reference/generated/numpy.ndarray.flags.html) is not set.",
 "func":1
 },
 {
 "ref":"vipy.image.ImageCategory.channel",
-"url":44,
+"url":51,
 "doc":"Return a cloned Image() object for the kth channel, or return an iterator over channels if k=None. Iterate over channels as single channel luminance images:   for c in self.channel(): print(c)   Return the kth channel as a single channel luminance image:   c = self.channel(k=0)  ",
 "func":1
 },
 {
 "ref":"vipy.image.ImageCategory.red",
-"url":44,
+"url":51,
 "doc":"Return red channel as a cloned single channel  vipy.image.Image object. These are equivalent operations if the colorspace is 'rgb' or 'rgba':   self.red()  self.channel(0)   These are equivalent operations if the colorspace is 'bgr' or 'bgra':   self.red()  self.channel(3)    note OpenCV returns images in BGR colorspace. Use this method to always return the desired channel by color.",
 "func":1
 },
 {
 "ref":"vipy.image.ImageCategory.green",
-"url":44,
+"url":51,
 "doc":"Return green channel as a cloned single channel  vipy.image.Image object. These are equivalent operations if the colorspace is 'rgb' or 'rgba':   self.green()  self.channel(1)   These are equivalent operations if the colorspace is 'bgr' or 'bgra':   self.green()  self.channel(1)    note OpenCV returns images in BGR colorspace. Use this method to always return the desired channel by color.",
 "func":1
 },
 {
 "ref":"vipy.image.ImageCategory.blue",
-"url":44,
+"url":51,
 "doc":"Return blue channel as a cloned single channel  vipy.image.Image object. These are equivalent operations if the colorspace is 'rgb' or 'rgba':   self.vlue()  self.channel(2)   These are equivalent operations if the colorspace is 'bgr' or 'bgra':   self.blue()  self.channel(0)    note OpenCV returns images in BGR colorspace. Use this method to always return the desired channel by color.",
 "func":1
 },
 {
 "ref":"vipy.image.ImageCategory.alpha",
-"url":44,
+"url":51,
 "doc":"Return alpha (transparency) channel as a cloned single channel  vipy.image.Image object",
 "func":1
 },
 {
 "ref":"vipy.image.ImageCategory.zeros",
-"url":44,
+"url":51,
 "doc":"Set the pixel buffer to all zeros of the same shape and datatype as this  vipy.image.Image object. These are equivalent operations for the resulting buffer shape:   import numpy as np np.zeros( (self.width(), self.height(), self.channels( )  self.zeros().array()   Returns: This  vipy.image.Image object.  note Triggers load() if the pixel buffer has not been loaded yet.",
 "func":1
 },
 {
 "ref":"vipy.image.ImageCategory.pil",
-"url":44,
+"url":51,
 "doc":"Convert vipy.image.Image to PIL Image. Returns: A [PIL image](https: pillow.readthedocs.io/en/stable/reference/Image.html) object, that shares the pixel buffer by reference",
 "func":1
 },
 {
 "ref":"vipy.image.ImageCategory.blur",
-"url":44,
+"url":51,
 "doc":"Apply a Gaussian blur with Gaussian kernel radius=sigma to the pixel buffer. Args: sigma: [float >0] The gaussian blur kernel radius. Returns: This  vipy.image.Image object with the pixel buffer blurred in place.",
 "func":1
 },
 {
 "ref":"vipy.image.ImageCategory.torch",
-"url":44,
+"url":51,
 "doc":"Convert the batch of 1 HxWxC images to a CxHxW torch tensor. Args: order: ['CHW', 'HWC', 'NCHW', 'NHWC']. The axis order of the torch tensor (channels, height, width) or (height, width, channels) or (1, channels, height, width) or (1, height, width, channels) Returns: A CxHxW or HxWxC or 1xCxHxW or 1xHxWxC [torch tensor](https: pytorch.org/docs/stable/tensors.html) that shares the pixel buffer of this image object by reference.",
 "func":1
 },
 {
 "ref":"vipy.image.ImageCategory.fromtorch",
-"url":44,
+"url":51,
 "doc":"Convert a 1xCxHxW or CxHxW torch tensor (or numpy array with torch channel order) to HxWxC numpy array, returns new  vipy.image.Image with inferred colorspace corresponding to data type in x",
 "func":1
 },
 {
 "ref":"vipy.image.ImageCategory.filename",
-"url":44,
+"url":51,
 "doc":"Return or set image filename",
 "func":1
 },
 {
 "ref":"vipy.image.ImageCategory.url",
-"url":44,
+"url":51,
 "doc":"Image URL and URL download properties",
 "func":1
 },
 {
 "ref":"vipy.image.ImageCategory.colorspace",
-"url":44,
+"url":51,
 "doc":"Return or set the colorspace as ['rgb', 'rgba', 'bgr', 'bgra', 'hsv', 'float', 'grey', 'lum']",
 "func":1
 },
 {
 "ref":"vipy.image.ImageCategory.uri",
-"url":44,
+"url":51,
 "doc":"Return the URI of the image object, either the URL or the filename, raise exception if neither defined",
 "func":1
 },
 {
 "ref":"vipy.image.ImageCategory.setattribute",
-"url":44,
+"url":51,
 "doc":"Set element self.attributes[key]=value",
 "func":1
 },
 {
 "ref":"vipy.image.ImageCategory.setattributes",
-"url":44,
+"url":51,
 "doc":"Set many attributes at once by providing a dictionary to be merged with current attributes",
 "func":1
 },
 {
 "ref":"vipy.image.ImageCategory.getattribute",
-"url":44,
+"url":51,
 "doc":"Return the key k in the attributes dictionary (self.attributes) if present, else None",
 "func":1
 },
 {
 "ref":"vipy.image.ImageCategory.clone",
-"url":44,
+"url":51,
 "doc":"Create deep copy of object, flushing the original buffer if requested and returning the cloned object. Flushing is useful for distributed memory management to free the buffer from this object, and pass along a cloned object which can be used for encoding and will be garbage collected.  flushforward: copy the object, and set the cloned object array() to None. This flushes the video buffer for the clone, not the object  flushbackward: copy the object, and set the object array() to None. This flushes the video buffer for the object, not the clone.  flush: set the object array() to None and clone the object. This flushes the video buffer for both the clone and the object.",
 "func":1
 },
 {
 "ref":"vipy.image.ImageCategory.flush",
-"url":44,
+"url":51,
 "doc":"Alias for clone(flush=True), returns self not clone",
 "func":1
 },
 {
 "ref":"vipy.image.ImageCategory.resize",
-"url":44,
+"url":51,
 "doc":"Resize the image buffer to (rows x cols) with bilinear interpolation. If rows or cols is provided, rescale image maintaining aspect ratio",
 "func":1
 },
 {
 "ref":"vipy.image.ImageCategory.resize_like",
-"url":44,
+"url":51,
 "doc":"Resize image buffer to be the same size as the provided vipy.image.Image()",
 "func":1
 },
 {
 "ref":"vipy.image.ImageCategory.rescale",
-"url":44,
+"url":51,
 "doc":"Scale the image buffer by the given factor - NOT idempotent",
 "func":1
 },
 {
 "ref":"vipy.image.ImageCategory.maxdim",
-"url":44,
+"url":51,
 "doc":"Resize image preserving aspect ratio so that maximum dimension of image = dim, or return maxdim()",
 "func":1
 },
 {
 "ref":"vipy.image.ImageCategory.mindim",
-"url":44,
+"url":51,
 "doc":"Resize image preserving aspect ratio so that minimum dimension of image = dim, or return mindim()",
 "func":1
 },
 {
 "ref":"vipy.image.ImageCategory.zeropad",
-"url":44,
+"url":51,
 "doc":"Pad image using np.pad constant by adding padwidth on both left and right , or padwidth=(left,right) for different pre/postpadding and padheight on top and bottom or padheight=(top,bottom) for different pre/post padding",
 "func":1
 },
 {
 "ref":"vipy.image.ImageCategory.zeropadlike",
-"url":44,
+"url":51,
 "doc":"Zero pad the image balancing the border so that the resulting image size is (width, height)",
 "func":1
 },
 {
 "ref":"vipy.image.ImageCategory.meanpad",
-"url":44,
+"url":51,
 "doc":"Pad image using np.pad constant=image mean by adding padwidth on both left and right , or padwidth=(left,right) for different pre/postpadding and padheight on top and bottom or padheight=(top,bottom) for different pre/post padding",
 "func":1
 },
 {
 "ref":"vipy.image.ImageCategory.alphapad",
-"url":44,
+"url":51,
 "doc":"Pad image using alpha transparency by adding padwidth on both left and right , or padwidth=(left,right) for different pre/postpadding and padheight on top and bottom or padheight=(top,bottom) for different pre/post padding",
 "func":1
 },
 {
 "ref":"vipy.image.ImageCategory.minsquare",
-"url":44,
+"url":51,
 "doc":"Crop image of size (HxW) to (min(H,W), min(H,W , keeping upper left corner constant",
 "func":1
 },
 {
 "ref":"vipy.image.ImageCategory.maxsquare",
-"url":44,
+"url":51,
 "doc":"Crop image of size (HxW) to (max(H,W), max(H,W with zeropadding or (S,S) if provided, keeping upper left corner constant",
 "func":1
 },
 {
 "ref":"vipy.image.ImageCategory.maxmatte",
-"url":44,
+"url":51,
 "doc":"Crop image of size (HxW) to (max(H,W), max(H,W with balanced zeropadding forming a letterbox with top/bottom matte or pillarbox with left/right matte",
 "func":1
 },
 {
 "ref":"vipy.image.ImageCategory.centersquare",
-"url":44,
+"url":51,
 "doc":"Crop image of size (NxN) in the center, such that N=min(width,height), keeping the image centroid constant",
 "func":1
 },
 {
 "ref":"vipy.image.ImageCategory.centercrop",
-"url":44,
+"url":51,
 "doc":"Crop image of size (height x width) in the center, keeping the image centroid constant",
 "func":1
 },
 {
 "ref":"vipy.image.ImageCategory.cornercrop",
-"url":44,
+"url":51,
 "doc":"Crop image of size (height x width) from the upper left corner",
 "func":1
 },
 {
 "ref":"vipy.image.ImageCategory.fliplr",
-"url":44,
+"url":51,
 "doc":"Mirror the image buffer about the vertical axis - Not idempotent",
 "func":1
 },
 {
 "ref":"vipy.image.ImageCategory.flipud",
-"url":44,
+"url":51,
 "doc":"Mirror the image buffer about the horizontal axis - Not idempotent",
 "func":1
 },
 {
 "ref":"vipy.image.ImageCategory.imagebox",
-"url":44,
+"url":51,
 "doc":"Return the bounding box for the image rectangle",
 "func":1
 },
 {
 "ref":"vipy.image.ImageCategory.border_mask",
-"url":44,
+"url":51,
 "doc":"Return a binary uint8 image the same size as self, with a border of pad pixels in width or height around the edge",
 "func":1
 },
 {
 "ref":"vipy.image.ImageCategory.affine_transform",
-"url":44,
+"url":51,
 "doc":"Apply a 3x3 affine geometric transformation to the image. See also  vipy.geometry.affine_transform  note The image will be loaded and converted to float() prior to applying the affine transformation.  note This will transform only the pixels",
 "func":1
 },
 {
 "ref":"vipy.image.ImageCategory.rotate",
-"url":44,
+"url":51,
 "doc":"Apply a rotation in radians to the pixels, with origin in upper left",
 "func":1
 },
 {
 "ref":"vipy.image.ImageCategory.rgb",
-"url":44,
+"url":51,
 "doc":"Convert the image buffer to three channel RGB uint8 colorspace",
 "func":1
 },
 {
 "ref":"vipy.image.ImageCategory.rgba",
-"url":44,
+"url":51,
 "doc":"Convert the image buffer to four channel RGBA uint8 colorspace",
 "func":1
 },
 {
 "ref":"vipy.image.ImageCategory.hsv",
-"url":44,
+"url":51,
 "doc":"Convert the image buffer to three channel HSV uint8 colorspace",
 "func":1
 },
 {
 "ref":"vipy.image.ImageCategory.bgr",
-"url":44,
+"url":51,
 "doc":"Convert the image buffer to three channel BGR uint8 colorspace",
 "func":1
 },
 {
 "ref":"vipy.image.ImageCategory.bgra",
-"url":44,
+"url":51,
 "doc":"Convert the image buffer to four channel BGR uint8 colorspace",
 "func":1
 },
 {
 "ref":"vipy.image.ImageCategory.float",
-"url":44,
+"url":51,
 "doc":"Convert the image buffer to float32",
 "func":1
 },
 {
 "ref":"vipy.image.ImageCategory.greyscale",
-"url":44,
+"url":51,
 "doc":"Convert the image buffer to single channel grayscale float32 in range [0,1]",
 "func":1
 },
 {
 "ref":"vipy.image.ImageCategory.grayscale",
-"url":44,
+"url":51,
 "doc":"Alias for greyscale()",
 "func":1
 },
 {
 "ref":"vipy.image.ImageCategory.grey",
-"url":44,
+"url":51,
 "doc":"Alias for greyscale()",
 "func":1
 },
 {
 "ref":"vipy.image.ImageCategory.gray",
-"url":44,
+"url":51,
 "doc":"Alias for greyscale()",
 "func":1
 },
 {
 "ref":"vipy.image.ImageCategory.luminance",
-"url":44,
+"url":51,
 "doc":"Convert the image buffer to single channel uint8 in range [0,255] corresponding to the luminance component",
 "func":1
 },
 {
 "ref":"vipy.image.ImageCategory.lum",
-"url":44,
+"url":51,
 "doc":"Alias for luminance()",
 "func":1
 },
 {
 "ref":"vipy.image.ImageCategory.jet",
-"url":44,
+"url":51,
 "doc":"Apply jet colormap to greyscale image and save as RGB",
 "func":1
 },
 {
 "ref":"vipy.image.ImageCategory.rainbow",
-"url":44,
+"url":51,
 "doc":"Apply rainbow colormap to greyscale image and convert to RGB",
 "func":1
 },
 {
 "ref":"vipy.image.ImageCategory.hot",
-"url":44,
+"url":51,
 "doc":"Apply hot colormap to greyscale image and convert to RGB",
 "func":1
 },
 {
 "ref":"vipy.image.ImageCategory.bone",
-"url":44,
+"url":51,
 "doc":"Apply bone colormap to greyscale image and convert to RGB",
 "func":1
 },
 {
 "ref":"vipy.image.ImageCategory.saturate",
-"url":44,
+"url":51,
 "doc":"Saturate the image buffer to be clipped between [min,max], types of min/max are specified by _array type",
 "func":1
 },
 {
 "ref":"vipy.image.ImageCategory.intensity",
-"url":44,
+"url":51,
 "doc":"Convert image to float32 with [min,max] to range [0,1], force colormap to be 'float'. Equivalent to self.mat2gray()",
 "func":1
 },
 {
 "ref":"vipy.image.ImageCategory.mat2gray",
-"url":44,
+"url":51,
 "doc":"Convert the image buffer so that [min,max] -> [0,1], forces conversion to 'float' colorspace. This does not change the number of color channels",
 "func":1
 },
 {
 "ref":"vipy.image.ImageCategory.gain",
-"url":44,
+"url":51,
 "doc":"Elementwise multiply gain to image array, Gain should be broadcastable to array(). This forces the colospace to 'float'",
 "func":1
 },
 {
 "ref":"vipy.image.ImageCategory.bias",
-"url":44,
+"url":51,
 "doc":"Add a bias to the image array. Bias should be broadcastable to array(). This forces the colorspace to 'float'",
 "func":1
 },
 {
 "ref":"vipy.image.ImageCategory.normalize",
-"url":44,
+"url":51,
 "doc":"Apply a multiplicative gain g and additive bias b, such that self.array()  gain self.array() + bias. This is useful for applying a normalization of an image prior to calling  vipy.image.Image.torch . The following operations are equivalent.   im = vipy.image.RandomImage() im.normalize(1/255.0, 0.5)  im.gain(1/255.0).bias(-0.5)    note This will force the colorspace to 'float'",
 "func":1
 },
 {
 "ref":"vipy.image.ImageCategory.mean",
-"url":44,
+"url":51,
 "doc":"Mean over all pixels",
 "func":1
 },
 {
 "ref":"vipy.image.ImageCategory.meanchannel",
-"url":44,
+"url":51,
 "doc":"Mean per channel over all pixels. If channel k is provided, return just the mean for that channel",
 "func":1
 },
 {
 "ref":"vipy.image.ImageCategory.closeall",
-"url":44,
+"url":51,
 "doc":"Close all open figure windows",
 "func":1
 },
 {
 "ref":"vipy.image.ImageCategory.close",
-"url":44,
+"url":51,
 "doc":"Close the requested figure number, or close all of fignum=None",
 "func":1
 },
 {
 "ref":"vipy.image.ImageCategory.show",
-"url":44,
+"url":51,
 "doc":"Display image on screen in provided figure number (clone and convert to RGB colorspace to show), return object",
 "func":1
 },
 {
 "ref":"vipy.image.ImageCategory.save",
-"url":44,
+"url":51,
 "doc":"Save the current image to a new filename and return the image object",
 "func":1
 },
 {
 "ref":"vipy.image.ImageCategory.pkl",
-"url":44,
+"url":51,
 "doc":"save the object to a pickle file and return the object, useful for intermediate saving in long fluent chains",
 "func":1
 },
 {
 "ref":"vipy.image.ImageCategory.pklif",
-"url":44,
+"url":51,
 "doc":"Save the object to the provided pickle file only if b=True. Uuseful for conditional intermediate saving in long fluent chains",
 "func":1
 },
 {
 "ref":"vipy.image.ImageCategory.saveas",
-"url":44,
+"url":51,
 "doc":"Save current buffer (not including drawing overlays) to new filename and return filename. If filename is not provided, use a temporary JPEG filename.",
 "func":1
 },
 {
 "ref":"vipy.image.ImageCategory.saveastmp",
-"url":44,
+"url":51,
 "doc":"Save current buffer to temp JPEG filename and return filename. Alias for savetmp()",
 "func":1
 },
 {
 "ref":"vipy.image.ImageCategory.savetmp",
-"url":44,
+"url":51,
 "doc":"Save current buffer to temp JPEG filename and return filename. Alias for saveastmp()",
 "func":1
 },
 {
 "ref":"vipy.image.ImageCategory.base64",
-"url":44,
+"url":51,
 "doc":"Export a base64 encoding of the image suitable for embedding in an html page",
 "func":1
 },
 {
 "ref":"vipy.image.ImageCategory.ascii",
-"url":44,
+"url":51,
 "doc":"Export a base64 ascii encoding of the image suitable for embedding in an  tag",
 "func":1
 },
 {
 "ref":"vipy.image.ImageCategory.html",
-"url":44,
+"url":51,
 "doc":"Export a base64 encoding of the image suitable for embedding in an html page, enclosed in  tag Returns: -string:  containing base64 encoded JPEG and alt text with lazy loading",
 "func":1
 },
 {
 "ref":"vipy.image.ImageCategory.annotate",
-"url":44,
+"url":51,
 "doc":"Change pixels of this image to include rendered annotation and return an image object",
 "func":1
 },
 {
 "ref":"vipy.image.ImageCategory.savefig",
-"url":44,
+"url":51,
 "doc":"Save last figure output from self.show() with drawing overlays to provided filename and return filename",
 "func":1
 },
 {
 "ref":"vipy.image.ImageCategory.map",
-"url":44,
+"url":51,
 "doc":"Apply lambda function to our numpy array img, such that newimg=f(img), then replace newimg -> self.array(). The output of this lambda function must be a numpy array and if the channels or dtype changes, the colorspace is set to 'float'",
 "func":1
 },
 {
 "ref":"vipy.image.ImageCategory.downcast",
-"url":44,
+"url":51,
 "doc":"Cast the class to the base class (vipy.image.Image)",
 "func":1
 },
 {
 "ref":"vipy.image.ImageCategory.perceptualhash",
-"url":44,
+"url":51,
 "doc":"Perceptual differential hash function This function converts to greyscale, resizes with linear interpolation to small image based on desired bit encoding, compute vertical and horizontal gradient signs. Args: bits: [int] longer hashes have lower TAR (true accept rate, some near dupes are missed), but lower FAR (false accept rate), shorter hashes have higher TAR (fewer near-dupes are missed) but higher FAR (more non-dupes are declared as dupes). asbinary: [bool] If true, return a binary array asbytes: [bool] if true return a byte array Returns: A hash string encoding the perceptual hash such that  vipy.image.Image.perceptualhash_distance can be used to compute a hash distance asbytes: a bytes array asbinary: a numpy binary array  notes - Can be used for near duplicate detection by unpacking the returned hex string to binary and computing hamming distance, or performing hamming based nearest neighbor indexing. Equivalently,  vipy.image.Image.perceptualhash_distance . - The default packed hex output can be converted to binary as: np.unpackbits(bytearray().fromhex(h)",
 "func":1
 },
 {
 "ref":"vipy.image.ImageCategory.perceptualhash_distance",
-"url":44,
+"url":51,
 "doc":"Hamming distance between two perceptual hashes",
 "func":1
 },
 {
 "ref":"vipy.image.ImageCategory.rot90cw",
-"url":44,
+"url":51,
 "doc":"Rotate the scene 90 degrees clockwise",
 "func":1
 },
 {
 "ref":"vipy.image.ImageCategory.rot90ccw",
-"url":44,
+"url":51,
 "doc":"Rotate the scene 90 degrees counterclockwise",
 "func":1
 },
 {
 "ref":"vipy.image.Scene",
-"url":44,
+"url":51,
 "doc":"vipy.image.Scene class This class provides a representation of a vipy.image.ImageCategory with one or more vipy.object.Detections. The goal of this class is to provide a unified representation for all objects in a scene. Valid constructors include all provided by vipy.image.Image() and vipy.image.ImageCategory() with the additional kwarg 'objects', which is a list of vipy.object.Detections()   im = vipy.image.Scene(filename='/path/to/city_image.ext', category='city', objects=[vipy.object.Detection(category='vehicle', xmin=0, ymin=0, width=100, height=100)]) im = vipy.image.Scene(filename='/path/to/city_image.ext', category='city').objects([vipy.object.Detection(category='vehicle', xmin=0, ymin=0, width=100, height=100)]) im = vipy.image.Scene(filename='/path/to/city_image.ext', category='office', boxlabels='face', xywh=[0,0,100,100]) im = vipy.image.Scene(filename='/path/to/city_image.ext', category='office', boxlabels='face', xywh= 0,0,100,100], [100,100,200,200 ) im = vipy.image.Scene(filename='/path/to/city_image.ext', category='office', boxlabels=['face', 'desk'] xywh= 0,0,100,100], [200,200,300,300 )  "
 },
 {
 "ref":"vipy.image.Scene.cast",
-"url":44,
+"url":51,
 "doc":"Typecast the conformal vipy.image object im as  vipy.image.Image . This is useful for downcasting  vipy.image.Scene or  vipy.image.ImageDetection down to an image.   ims = vipy.image.RandomScene() im = vipy.image.Image.cast(im)  ",
 "func":1
 },
 {
 "ref":"vipy.image.Scene.from_json",
-"url":44,
+"url":51,
 "doc":"Import the JSON string s as an  vipy.image.Image object. This will perform a round trip such that im1  im2   im1 = vupy.image.RandomImage() im2 = vipy.image.Image.from_json(im1.json( assert im1  im2  ",
 "func":1
 },
 {
 "ref":"vipy.image.Scene.json",
-"url":44,
+"url":51,
 "doc":"",
 "func":1
 },
 {
 "ref":"vipy.image.Scene.append",
-"url":44,
+"url":51,
 "doc":"Append the provided vipy.object.Detection object to the scene object list",
 "func":1
 },
 {
 "ref":"vipy.image.Scene.add",
-"url":44,
+"url":51,
 "doc":"Alias for append",
 "func":1
 },
 {
 "ref":"vipy.image.Scene.objects",
-"url":44,
+"url":51,
 "doc":"",
 "func":1
 },
 {
 "ref":"vipy.image.Scene.objectmap",
-"url":44,
+"url":51,
 "doc":"Apply lambda function f to each object. If f is a list of lambda, apply one to one with the objects",
 "func":1
 },
 {
 "ref":"vipy.image.Scene.objectfilter",
-"url":44,
+"url":51,
 "doc":"Apply lambda function f to each object and keep if filter is True",
 "func":1
 },
 {
 "ref":"vipy.image.Scene.nms",
-"url":44,
+"url":51,
 "doc":"Non-maximum supporession of objects() by category based on confidence and spatial IoU and cover thresholds",
 "func":1
 },
 {
 "ref":"vipy.image.Scene.intersection",
-"url":44,
+"url":51,
 "doc":"Return a Scene() containing the objects in both self and other, that overlap by miniou with greedy assignment",
 "func":1
 },
 {
 "ref":"vipy.image.Scene.difference",
-"url":44,
+"url":51,
 "doc":"Return a Scene() containing the objects in self but not other, that overlap by miniou with greedy assignment",
 "func":1
 },
 {
 "ref":"vipy.image.Scene.union",
-"url":44,
+"url":51,
 "doc":"Combine the objects of the scene with other and self with no duplicate checking unless miniou is not None",
 "func":1
 },
 {
 "ref":"vipy.image.Scene.uncrop",
-"url":44,
+"url":51,
 "doc":"Uncrop a previous crop(bb) called with the supplied bb=BoundingBox(), and zeropad to shape=(H,W)",
 "func":1
 },
 {
 "ref":"vipy.image.Scene.clear",
-"url":44,
+"url":51,
 "doc":"Remove all objects from this scene.",
 "func":1
 },
 {
 "ref":"vipy.image.Scene.boundingbox",
-"url":44,
+"url":51,
 "doc":"The boundingbox of a scene is the union of all object bounding boxes, or None if there are no objects",
 "func":1
 },
 {
 "ref":"vipy.image.Scene.categories",
-"url":44,
+"url":51,
 "doc":"Return list of unique object categories in scene",
 "func":1
 },
 {
 "ref":"vipy.image.Scene.imclip",
-"url":44,
+"url":51,
 "doc":"Clip all bounding boxes to the image rectangle, silently rejecting those boxes that are degenerate or outside the image",
 "func":1
 },
 {
 "ref":"vipy.image.Scene.rescale",
-"url":44,
+"url":51,
 "doc":"Rescale image buffer and all bounding boxes - Not idempotent",
 "func":1
 },
 {
 "ref":"vipy.image.Scene.resize",
-"url":44,
+"url":51,
 "doc":"Resize image buffer to (height=rows, width=cols) and transform all bounding boxes accordingly. If cols or rows is None, then scale isotropically",
 "func":1
 },
 {
 "ref":"vipy.image.Scene.centersquare",
-"url":44,
+"url":51,
 "doc":"Crop the image of size (H,W) to be centersquare (min(H,W), min(H,W preserving center, and update bounding boxes",
 "func":1
 },
 {
 "ref":"vipy.image.Scene.fliplr",
-"url":44,
+"url":51,
 "doc":"Mirror buffer and all bounding box around vertical axis",
 "func":1
 },
 {
 "ref":"vipy.image.Scene.flipud",
-"url":44,
+"url":51,
 "doc":"Mirror buffer and all bounding box around vertical axis",
 "func":1
 },
 {
 "ref":"vipy.image.Scene.dilate",
-"url":44,
+"url":51,
 "doc":"Dilate all bounding boxes by scale factor, dilated boxes may be outside image rectangle",
 "func":1
 },
 {
 "ref":"vipy.image.Scene.zeropad",
-"url":44,
+"url":51,
 "doc":"Zero pad image with padwidth cols before and after and padheight rows before and after, then update bounding box offsets",
 "func":1
 },
 {
 "ref":"vipy.image.Scene.meanpad",
-"url":44,
+"url":51,
 "doc":"Mean pad (image color mean) image with padwidth cols before and after and padheight rows before and after, then update bounding box offsets",
 "func":1
 },
 {
 "ref":"vipy.image.Scene.rot90cw",
-"url":44,
+"url":51,
 "doc":"Rotate the scene 90 degrees clockwise, and update objects",
 "func":1
 },
 {
 "ref":"vipy.image.Scene.rot90ccw",
-"url":44,
+"url":51,
 "doc":"Rotate the scene 90 degrees counterclockwise, and update objects",
 "func":1
 },
 {
 "ref":"vipy.image.Scene.maxdim",
-"url":44,
+"url":51,
 "doc":"Resize scene preserving aspect ratio so that maximum dimension of image = dim, update all objects",
 "func":1
 },
 {
 "ref":"vipy.image.Scene.mindim",
-"url":44,
+"url":51,
 "doc":"Resize scene preserving aspect ratio so that minimum dimension of image = dim, update all objects",
 "func":1
 },
 {
 "ref":"vipy.image.Scene.crop",
-"url":44,
+"url":51,
 "doc":"Crop the image buffer using the supplied bounding box object (or the only object if bbox=None), clipping the box to the image rectangle, update all scene objects",
 "func":1
 },
 {
 "ref":"vipy.image.Scene.objectcrop",
-"url":44,
+"url":51,
 "doc":"Crop image using the  vipy.image.Scene.boundingbox with dilation factor, setting to maxsquare prior to crop as requested. Crop will be zeropadded if outside the image rectangle.",
 "func":1
 },
 {
 "ref":"vipy.image.Scene.centercrop",
-"url":44,
+"url":51,
 "doc":"Crop image of size (height x width) in the center, keeping the image centroid constant",
 "func":1
 },
 {
 "ref":"vipy.image.Scene.cornercrop",
-"url":44,
+"url":51,
 "doc":"Crop image of size (height x width) from the upper left corner, returning valid pixels only",
 "func":1
 },
 {
 "ref":"vipy.image.Scene.padcrop",
-"url":44,
+"url":51,
 "doc":"Crop the image buffer using the supplied bounding box object, zero padding if box is outside image rectangle, update all scene objects",
 "func":1
 },
 {
 "ref":"vipy.image.Scene.cornerpadcrop",
-"url":44,
+"url":51,
 "doc":"Crop image of size (height x width) from the upper left corner, returning zero padded result out to (height, width)",
 "func":1
 },
 {
 "ref":"vipy.image.Scene.rectangular_mask",
-"url":44,
+"url":51,
 "doc":"Return a binary array of the same size as the image (or using the provided image width and height (W,H) size to avoid an image load), with ones inside the bounding box",
 "func":1
 },
 {
 "ref":"vipy.image.Scene.binarymask",
-"url":44,
+"url":51,
 "doc":"Alias for rectangular_mask with in-place update",
 "func":1
 },
 {
 "ref":"vipy.image.Scene.bgmask",
-"url":44,
+"url":51,
 "doc":"Set all pixels outside the bounding box to zero",
 "func":1
 },
 {
 "ref":"vipy.image.Scene.fgmask",
-"url":44,
+"url":51,
 "doc":"Set all pixels inside the bounding box to zero",
 "func":1
 },
 {
 "ref":"vipy.image.Scene.setzero",
-"url":44,
+"url":51,
 "doc":"",
 "func":1
 },
 {
 "ref":"vipy.image.Scene.pixelmask",
-"url":44,
+"url":51,
 "doc":"Replace pixels within all foreground objects with a privacy preserving pixelated foreground with larger pixels (e.g. like privacy glass)",
 "func":1
 },
 {
 "ref":"vipy.image.Scene.pixelize",
-"url":44,
+"url":51,
 "doc":"Alias for pixelmask",
 "func":1
 },
 {
 "ref":"vipy.image.Scene.pixelate",
-"url":44,
+"url":51,
 "doc":"Alias for pixelmask",
 "func":1
 },
 {
 "ref":"vipy.image.Scene.blurmask",
-"url":44,
+"url":51,
 "doc":"Replace pixels within all foreground objects with a privacy preserving blurred foreground",
 "func":1
 },
 {
 "ref":"vipy.image.Scene.replace",
-"url":44,
+"url":51,
 "doc":"Set all image values within the bounding box equal to the provided img, triggers load() and imclip()",
 "func":1
 },
 {
 "ref":"vipy.image.Scene.meanmask",
-"url":44,
+"url":51,
 "doc":"Replace pixels within the foreground objects with the mean pixel color",
 "func":1
 },
 {
 "ref":"vipy.image.Scene.perceptualhash",
-"url":44,
+"url":51,
 "doc":"Perceptual differential hash function. This function sets foreground objects to mean color, convert to greyscale, resize with linear interpolation to small image based on desired bit encoding, compute vertical and horizontal gradient signs. Args: bits: [int] longer hashes have lower TAR (true accept rate, some near dupes are missed), but lower FAR (false accept rate), shorter hashes have higher TAR (fewer near-dupes are missed) but higher FAR (more non-dupes are declared as dupes). objmask: [bool] if true, replace the foreground object masks with the mean color prior to computing asbinary: [bool] If true, return a binary array asbytes: [bool] if true return a byte array Returns: A hash string encoding the perceptual hash such that  vipy.image.Image.perceptualhash_distance can be used to compute a hash distance asbytes: a bytes array asbinary: a numpy binary array  notes - Can be used for near duplicate detection of background scenes by unpacking the returned hex string to binary and computing hamming distance, or performing hamming based nearest neighbor indexing. Equivalently,  vipy.image.Image.perceptualhash_distance . - The default packed hex output can be converted to binary as: np.unpackbits(bytearray().fromhex( bghash()  which is equivalent to perceptualhash(asbinary=True)",
 "func":1
 },
 {
 "ref":"vipy.image.Scene.fghash",
-"url":44,
+"url":51,
 "doc":"Perceptual differential hash function, computed for each foreground region independently",
 "func":1
 },
 {
 "ref":"vipy.image.Scene.bghash",
-"url":44,
+"url":51,
 "doc":"Percetual differential hash function, masking out foreground regions",
 "func":1
 },
 {
 "ref":"vipy.image.Scene.isduplicate",
-"url":44,
+"url":51,
 "doc":"Background hash near duplicate detection, returns true if self and im are near duplicate images using bghash",
 "func":1
 },
 {
 "ref":"vipy.image.Scene.show",
-"url":44,
+"url":51,
 "doc":"Show scene detection Args: - categories: [list] List of category (or shortlabel) names in the scene to show - fontsize: [int] or [str]: Size of the font, fontsize=int for points, fontsize='NN:scaled' to scale the font relative to the image size - figure: [int] Figure number, show the image in the provided figure=int numbered window - nocaption: [bool] Show or do not show the text caption in the upper left of the box - nocaption_withstring: [list]: Do not show captions for those detection categories (or shortlabels) containing any of the strings in the provided list - boxalpha (float, [0,1]): Set the text box background to be semi-transparent with an alpha - d_category2color (dict): Define a dictionary of required mapping of specific category() to box colors. Non-specified categories are assigned a random named color from vipy.show.colorlist() - caption_offset (int, int): The relative position of the caption to the upper right corner of the box. - nowindow (bool): Display or not display the image - textfacecolor (str): One of the named colors from vipy.show.colorlist() for the color of the textbox background - textfacealpha (float, [0,1]): The textbox background transparency - shortlabel (bool): Whether to show the shortlabel or the full category name in the caption - mutator (lambda): A lambda function with signature lambda im: f(im) which will modify this image prior to show. Useful for changing labels on the fly - timestampoffset (tuple): (x,y) coordinate offsets to shift the upper left corner timestamp",
 "func":1
 },
 {
 "ref":"vipy.image.Scene.annotate",
-"url":44,
+"url":51,
 "doc":"Alias for savefig",
 "func":1
 },
 {
 "ref":"vipy.image.Scene.savefig",
-"url":44,
+"url":51,
 "doc":"Save show() output to given file or return buffer without popping up a window",
 "func":1
 },
 {
 "ref":"vipy.image.Scene.category",
-"url":44,
+"url":51,
 "doc":"Return or update the category",
 "func":1
 },
 {
 "ref":"vipy.image.Scene.label",
-"url":44,
+"url":51,
 "doc":"Alias for category",
 "func":1
 },
 {
 "ref":"vipy.image.Scene.score",
-"url":44,
+"url":51,
 "doc":"Real valued score for categorization, larger is better",
 "func":1
 },
 {
 "ref":"vipy.image.Scene.probability",
-"url":44,
+"url":51,
 "doc":"Real valued probability for categorization, [0,1]",
 "func":1
 },
 {
 "ref":"vipy.image.Scene.sanitize",
-"url":44,
+"url":51,
 "doc":"Remove all private keys from the attributes dictionary. The attributes dictionary is useful storage for arbitrary (key,value) pairs. However, this storage may contain sensitive information that should be scrubbed from the media before serialization. As a general rule, any key that is of the form '__keyname' prepended by two underscores is a private key. This is analogous to private or reserved attributes in the python lanugage. Users should reserve these keynames for those keys that should be sanitized and removed before any serialization of this object.   assert self.setattribute('__mykey', 1).sanitize().hasattribute('__mykey')  False  ",
 "func":1
 },
 {
 "ref":"vipy.image.Scene.print",
-"url":44,
+"url":51,
 "doc":"Print the representation of the image and return self with an optional sleep=n seconds Useful for debugging in long fluent chains.",
 "func":1
 },
 {
 "ref":"vipy.image.Scene.tile",
-"url":44,
+"url":51,
 "doc":"Generate an image tiling. A tiling is a decomposition of an image into overlapping or non-overlapping rectangular regions. Args: tilewidth: [int] the image width of each tile tileheight: [int] the image height of each tile overlaprows: [int] the number of overlapping rows (height) for each tile overlapcols: [int] the number of overlapping width (width) for each tile Returns: A list of  vipy.image.Image objects such that each image is a single tile and the set of these tiles forms the original image Each image in the returned list contains the 'tile' attribute which encodes the crop used to create the tile.  note -  vipy.image.Image.tile can be undone using  vipy.image.Image.untile - The identity tiling is im.tile(im.widht(), im.height(), overlaprows=0, overlapcols=0) - Ragged tiles outside the image boundary are zero padded - All annotations are updated properly for each tile, when the source image is  vipy.image.Scene ",
 "func":1
 },
 {
 "ref":"vipy.image.Scene.untile",
-"url":44,
+"url":51,
 "doc":"Undo an image tiling and recreate the original image.   tiles = im.tile(im.width()/2, im.height()/2, 0, 0) imdst = vipy.image.Image.untile(tiles) assert imdst  im   Args: imlist: this must be the output of  vipy.image.Image.tile Returns: A new  vipy.image.Image object reconstructed from the tiling, such that this is equivalent to the input to vipy.image.Image.tile  note All annotations are updated properly for each tile, when the source image is  vipy.image.Scene ",
 "func":1
 },
 {
 "ref":"vipy.image.Scene.splat",
-"url":44,
+"url":51,
 "doc":"Replace pixels within boundingbox in self with pixels in im",
 "func":1
 },
 {
 "ref":"vipy.image.Scene.store",
-"url":44,
+"url":51,
 "doc":"Store the current image file as an attribute of this object. Useful for archiving an object to be fully self contained without any external references. -Remove this stored image using unstore() -Unpack this stored image and set up the filename using restore() -This method is more efficient than load() followed by pkl(), as it stores the encoded image as a byte string. -Useful for creating a single self contained object for distributed processing.   v  v.store().restore(v.filename(  ",
 "func":1
 },
 {
 "ref":"vipy.image.Scene.unstore",
-"url":44,
+"url":51,
 "doc":"Delete the currently stored image from store()",
 "func":1
 },
 {
 "ref":"vipy.image.Scene.restore",
-"url":44,
+"url":51,
 "doc":"Save the currently stored image to filename, and set up filename",
 "func":1
 },
 {
 "ref":"vipy.image.Scene.abspath",
-"url":44,
+"url":51,
 "doc":"Change the path of the filename from a relative path to an absolute path (not relocatable)",
 "func":1
 },
 {
 "ref":"vipy.image.Scene.relpath",
-"url":44,
+"url":51,
 "doc":"Replace the filename with a relative path to parent (or current working directory if none)",
 "func":1
 },
 {
 "ref":"vipy.image.Scene.canload",
-"url":44,
+"url":51,
 "doc":"Return True if the image can be loaded successfully, useful for filtering bad links or corrupt images",
 "func":1
 },
 {
 "ref":"vipy.image.Scene.dict",
-"url":44,
+"url":51,
 "doc":"Return a python dictionary containing the relevant serialized attributes suitable for JSON encoding",
 "func":1
 },
 {
 "ref":"vipy.image.Scene.loader",
-"url":44,
+"url":51,
 "doc":"Lambda function to load an unsupported image filename to a numpy array. This lambda function will be executed during load and the result will be stored in self._array",
 "func":1
 },
 {
 "ref":"vipy.image.Scene.load",
-"url":44,
+"url":51,
 "doc":"Load image to cached private '_array' attribute. Args: ignoreErrors: [bool] If true, ignore any exceptions thrown during load and print the corresponding error messages. This is useful for loading images distributed without throwing exceptions when some images may be corrupted. In this case, the _array attribute will be None and  vipy.image.Image.isloaded will return false to determine if the image is loaded, which can be used to filter out corrupted images gracefully. verbose: [bool] If true, show additional useful printed output Returns: This  vipy.image.Image object with the pixels loaded in self._array as a numpy array.  note This loader supports any image file format supported by PIL. A custom loader can be added using  vipy.image.Image.loader .",
 "func":1
 },
 {
 "ref":"vipy.image.Scene.download",
-"url":44,
+"url":51,
 "doc":"Download URL to filename provided by constructor, or to temp filename. Args: ignoreErrors: [bool] If true, do not throw an exception if the download of the URL fails for some reason. Instead, print out a reason and return this image object. The function  vipy.image.Image.hasfilename will return false if the downloaded file does not exist and can be used to filter these failed downloads gracefully. timeout: [int] The timeout in seconds for an http or https connection attempt. See also [urllib.request.urlopen](https: docs.python.org/3/library/urllib.request.html). verbose: [bool] If true, output more helpful message. Returns: This  vipy.image.Image object with the URL downloaded to  vipy.image.Image.filename or to a  vipy.util.tempimage filename which can be retrieved with  vipy.image.Image.filename .",
 "func":1
 },
 {
 "ref":"vipy.image.Scene.reload",
-"url":44,
+"url":51,
 "doc":"Flush the image buffer to force reloading from file or URL",
 "func":1
 },
 {
 "ref":"vipy.image.Scene.isloaded",
-"url":44,
+"url":51,
 "doc":"Return True if  vipy.image.Image.load was successful in reading the image, or if the pixels are present in  vipy.image.Image.array .",
 "func":1
 },
 {
 "ref":"vipy.image.Scene.channels",
-"url":44,
+"url":51,
 "doc":"Return integer number of color channels",
 "func":1
 },
 {
 "ref":"vipy.image.Scene.iscolor",
-"url":44,
+"url":51,
 "doc":"Color images are three channel or four channel with transparency, float32 or uint8",
 "func":1
 },
 {
 "ref":"vipy.image.Scene.istransparent",
-"url":44,
+"url":51,
 "doc":"Transparent images are four channel color images with transparency, float32 or uint8. Return true if this image contains an alpha transparency channel",
 "func":1
 },
 {
 "ref":"vipy.image.Scene.isgrey",
-"url":44,
+"url":51,
 "doc":"Grey images are one channel, float32",
 "func":1
 },
 {
 "ref":"vipy.image.Scene.isluminance",
-"url":44,
+"url":51,
 "doc":"Luninance images are one channel, uint8",
 "func":1
 },
 {
 "ref":"vipy.image.Scene.filesize",
-"url":44,
+"url":51,
 "doc":"Return size of underlying image file, requires fetching metadata from filesystem",
 "func":1
 },
 {
 "ref":"vipy.image.Scene.width",
-"url":44,
+"url":51,
 "doc":"Return the width (columns) of the image in integer pixels.  note This triggers a  vipy.image.Image.load if the image is not already loaded.",
 "func":1
 },
 {
 "ref":"vipy.image.Scene.height",
-"url":44,
+"url":51,
 "doc":"Return the height (rows) of the image in integer pixels.  note This triggers a  vipy.image.Image.load if the image is not already loaded.",
 "func":1
 },
 {
 "ref":"vipy.image.Scene.shape",
-"url":44,
+"url":51,
 "doc":"Return the (height, width) or equivalently (rows, cols) of the image. Returns: A tuple (height=int, width=int) of the image.  note This triggers a  vipy.image.Image.load if the image is not already loaded.",
 "func":1
 },
 {
 "ref":"vipy.image.Scene.aspectratio",
-"url":44,
+"url":51,
 "doc":"Return the aspect ratio of the image as (width/height) ratio. Returns: A float equivalent to ( vipy.image.Image.width /  vipy.image.Image.height )  note This triggers a  vipy.image.Image.load if the image is not already loaded.",
 "func":1
 },
 {
 "ref":"vipy.image.Scene.area",
-"url":44,
+"url":51,
 "doc":"Return the area of the image as (width  height). Returns: An integer equivalent to ( vipy.image.Image.width   vipy.image.Image.height )  note This triggers a  vipy.image.Image.load if the image is not already loaded.",
 "func":1
 },
 {
 "ref":"vipy.image.Scene.centroid",
-"url":44,
+"url":51,
 "doc":"Return the real valued center pixel coordinates of the image (col=x,row=y). The centroid is equivalent to half the  vipy.image.Image.shape . Returns: A tuple (column, row) of the floating point center of the image.",
 "func":1
 },
 {
 "ref":"vipy.image.Scene.centerpixel",
-"url":44,
+"url":51,
 "doc":"Return the integer valued center pixel coordinates of the image (col=i,row=j) The centerpixel is equivalent to half the  vipy.image.Image.shape floored to the nearest integer pixel coordinate. Returns: A tuple (int(column), int(row of the integer center of the image.",
 "func":1
 },
 {
 "ref":"vipy.image.Scene.array",
-"url":44,
+"url":51,
 "doc":"Replace self._array with provided numpy array Args: np_array: [numpy array] A new array to use as the pixel buffer for this image. copy: [bool] If true, copy the buffer using np.copy(), else use a reference to this buffer. Returns: - If np_array is not None, return the  vipy.image.Image object such that this object points to the provided numpy array as the pixel buffer - If np_array is None, then return the numpy array.  notes - If copy=False, then this  vipy.image.Image object will share the pixel buffer with the owner of np_array. Changes to pixels in this buffer will be shared. - If copy=True, then this will significantly slow down processing for large images. Use referneces wherevery possible.",
 "func":1
 },
 {
 "ref":"vipy.image.Scene.fromarray",
-"url":44,
+"url":51,
 "doc":"Alias for  vipy.image.Image.array with copy=True. This will set new numpy array as the pixel buffer with a numpy array copy",
 "func":1
 },
 {
 "ref":"vipy.image.Scene.tonumpy",
-"url":44,
+"url":51,
 "doc":"Alias for  vipy.image.Image.numpy",
 "func":1
 },
 {
 "ref":"vipy.image.Scene.numpy",
-"url":44,
+"url":51,
 "doc":"Return a mutable numpy array for this  vipy.image.Image .  notes - This will always return a writeable array with the 'WRITEABLE' numpy flag set. This is useful for returning a mutable numpy array as needed while keeping the original non-mutable numpy array (e.g. loaded from a video or PIL) as the underlying pixel buffer for efficiency reasons. - Triggers a  vipy.image.Image.load if the pixel buffer has not been loaded - This will trigger a copy if the ['WRITEABLE' flag](https: numpy.org/doc/stable/reference/generated/numpy.ndarray.flags.html) is not set.",
 "func":1
 },
 {
 "ref":"vipy.image.Scene.channel",
-"url":44,
+"url":51,
 "doc":"Return a cloned Image() object for the kth channel, or return an iterator over channels if k=None. Iterate over channels as single channel luminance images:   for c in self.channel(): print(c)   Return the kth channel as a single channel luminance image:   c = self.channel(k=0)  ",
 "func":1
 },
 {
 "ref":"vipy.image.Scene.red",
-"url":44,
+"url":51,
 "doc":"Return red channel as a cloned single channel  vipy.image.Image object. These are equivalent operations if the colorspace is 'rgb' or 'rgba':   self.red()  self.channel(0)   These are equivalent operations if the colorspace is 'bgr' or 'bgra':   self.red()  self.channel(3)    note OpenCV returns images in BGR colorspace. Use this method to always return the desired channel by color.",
 "func":1
 },
 {
 "ref":"vipy.image.Scene.green",
-"url":44,
+"url":51,
 "doc":"Return green channel as a cloned single channel  vipy.image.Image object. These are equivalent operations if the colorspace is 'rgb' or 'rgba':   self.green()  self.channel(1)   These are equivalent operations if the colorspace is 'bgr' or 'bgra':   self.green()  self.channel(1)    note OpenCV returns images in BGR colorspace. Use this method to always return the desired channel by color.",
 "func":1
 },
 {
 "ref":"vipy.image.Scene.blue",
-"url":44,
+"url":51,
 "doc":"Return blue channel as a cloned single channel  vipy.image.Image object. These are equivalent operations if the colorspace is 'rgb' or 'rgba':   self.vlue()  self.channel(2)   These are equivalent operations if the colorspace is 'bgr' or 'bgra':   self.blue()  self.channel(0)    note OpenCV returns images in BGR colorspace. Use this method to always return the desired channel by color.",
 "func":1
 },
 {
 "ref":"vipy.image.Scene.alpha",
-"url":44,
+"url":51,
 "doc":"Return alpha (transparency) channel as a cloned single channel  vipy.image.Image object",
 "func":1
 },
 {
 "ref":"vipy.image.Scene.zeros",
-"url":44,
+"url":51,
 "doc":"Set the pixel buffer to all zeros of the same shape and datatype as this  vipy.image.Image object. These are equivalent operations for the resulting buffer shape:   import numpy as np np.zeros( (self.width(), self.height(), self.channels( )  self.zeros().array()   Returns: This  vipy.image.Image object.  note Triggers load() if the pixel buffer has not been loaded yet.",
 "func":1
 },
 {
 "ref":"vipy.image.Scene.pil",
-"url":44,
+"url":51,
 "doc":"Convert vipy.image.Image to PIL Image. Returns: A [PIL image](https: pillow.readthedocs.io/en/stable/reference/Image.html) object, that shares the pixel buffer by reference",
 "func":1
 },
 {
 "ref":"vipy.image.Scene.blur",
-"url":44,
+"url":51,
 "doc":"Apply a Gaussian blur with Gaussian kernel radius=sigma to the pixel buffer. Args: sigma: [float >0] The gaussian blur kernel radius. Returns: This  vipy.image.Image object with the pixel buffer blurred in place.",
 "func":1
 },
 {
 "ref":"vipy.image.Scene.torch",
-"url":44,
+"url":51,
 "doc":"Convert the batch of 1 HxWxC images to a CxHxW torch tensor. Args: order: ['CHW', 'HWC', 'NCHW', 'NHWC']. The axis order of the torch tensor (channels, height, width) or (height, width, channels) or (1, channels, height, width) or (1, height, width, channels) Returns: A CxHxW or HxWxC or 1xCxHxW or 1xHxWxC [torch tensor](https: pytorch.org/docs/stable/tensors.html) that shares the pixel buffer of this image object by reference.",
 "func":1
 },
 {
 "ref":"vipy.image.Scene.fromtorch",
-"url":44,
+"url":51,
 "doc":"Convert a 1xCxHxW or CxHxW torch tensor (or numpy array with torch channel order) to HxWxC numpy array, returns new  vipy.image.Image with inferred colorspace corresponding to data type in x",
 "func":1
 },
 {
 "ref":"vipy.image.Scene.filename",
-"url":44,
+"url":51,
 "doc":"Return or set image filename",
 "func":1
 },
 {
 "ref":"vipy.image.Scene.url",
-"url":44,
+"url":51,
 "doc":"Image URL and URL download properties",
 "func":1
 },
 {
 "ref":"vipy.image.Scene.colorspace",
-"url":44,
+"url":51,
 "doc":"Return or set the colorspace as ['rgb', 'rgba', 'bgr', 'bgra', 'hsv', 'float', 'grey', 'lum']",
 "func":1
 },
 {
 "ref":"vipy.image.Scene.uri",
-"url":44,
+"url":51,
 "doc":"Return the URI of the image object, either the URL or the filename, raise exception if neither defined",
 "func":1
 },
 {
 "ref":"vipy.image.Scene.setattribute",
-"url":44,
+"url":51,
 "doc":"Set element self.attributes[key]=value",
 "func":1
 },
 {
 "ref":"vipy.image.Scene.setattributes",
-"url":44,
+"url":51,
 "doc":"Set many attributes at once by providing a dictionary to be merged with current attributes",
 "func":1
 },
 {
 "ref":"vipy.image.Scene.getattribute",
-"url":44,
+"url":51,
 "doc":"Return the key k in the attributes dictionary (self.attributes) if present, else None",
 "func":1
 },
 {
 "ref":"vipy.image.Scene.clone",
-"url":44,
+"url":51,
 "doc":"Create deep copy of object, flushing the original buffer if requested and returning the cloned object. Flushing is useful for distributed memory management to free the buffer from this object, and pass along a cloned object which can be used for encoding and will be garbage collected.  flushforward: copy the object, and set the cloned object array() to None. This flushes the video buffer for the clone, not the object  flushbackward: copy the object, and set the object array() to None. This flushes the video buffer for the object, not the clone.  flush: set the object array() to None and clone the object. This flushes the video buffer for both the clone and the object.",
 "func":1
 },
 {
 "ref":"vipy.image.Scene.flush",
-"url":44,
+"url":51,
 "doc":"Alias for clone(flush=True), returns self not clone",
 "func":1
 },
 {
 "ref":"vipy.image.Scene.resize_like",
-"url":44,
+"url":51,
 "doc":"Resize image buffer to be the same size as the provided vipy.image.Image()",
 "func":1
 },
 {
 "ref":"vipy.image.Scene.zeropadlike",
-"url":44,
+"url":51,
 "doc":"Zero pad the image balancing the border so that the resulting image size is (width, height)",
 "func":1
 },
 {
 "ref":"vipy.image.Scene.alphapad",
-"url":44,
+"url":51,
 "doc":"Pad image using alpha transparency by adding padwidth on both left and right , or padwidth=(left,right) for different pre/postpadding and padheight on top and bottom or padheight=(top,bottom) for different pre/post padding",
 "func":1
 },
 {
 "ref":"vipy.image.Scene.minsquare",
-"url":44,
+"url":51,
 "doc":"Crop image of size (HxW) to (min(H,W), min(H,W , keeping upper left corner constant",
 "func":1
 },
 {
 "ref":"vipy.image.Scene.maxsquare",
-"url":44,
+"url":51,
 "doc":"Crop image of size (HxW) to (max(H,W), max(H,W with zeropadding or (S,S) if provided, keeping upper left corner constant",
 "func":1
 },
 {
 "ref":"vipy.image.Scene.maxmatte",
-"url":44,
+"url":51,
 "doc":"Crop image of size (HxW) to (max(H,W), max(H,W with balanced zeropadding forming a letterbox with top/bottom matte or pillarbox with left/right matte",
 "func":1
 },
 {
 "ref":"vipy.image.Scene.imagebox",
-"url":44,
+"url":51,
 "doc":"Return the bounding box for the image rectangle",
 "func":1
 },
 {
 "ref":"vipy.image.Scene.border_mask",
-"url":44,
+"url":51,
 "doc":"Return a binary uint8 image the same size as self, with a border of pad pixels in width or height around the edge",
 "func":1
 },
 {
 "ref":"vipy.image.Scene.affine_transform",
-"url":44,
+"url":51,
 "doc":"Apply a 3x3 affine geometric transformation to the image. See also  vipy.geometry.affine_transform  note The image will be loaded and converted to float() prior to applying the affine transformation.  note This will transform only the pixels",
 "func":1
 },
 {
 "ref":"vipy.image.Scene.rotate",
-"url":44,
+"url":51,
 "doc":"Apply a rotation in radians to the pixels, with origin in upper left",
 "func":1
 },
 {
 "ref":"vipy.image.Scene.rgb",
-"url":44,
+"url":51,
 "doc":"Convert the image buffer to three channel RGB uint8 colorspace",
 "func":1
 },
 {
 "ref":"vipy.image.Scene.rgba",
-"url":44,
+"url":51,
 "doc":"Convert the image buffer to four channel RGBA uint8 colorspace",
 "func":1
 },
 {
 "ref":"vipy.image.Scene.hsv",
-"url":44,
+"url":51,
 "doc":"Convert the image buffer to three channel HSV uint8 colorspace",
 "func":1
 },
 {
 "ref":"vipy.image.Scene.bgr",
-"url":44,
+"url":51,
 "doc":"Convert the image buffer to three channel BGR uint8 colorspace",
 "func":1
 },
 {
 "ref":"vipy.image.Scene.bgra",
-"url":44,
+"url":51,
 "doc":"Convert the image buffer to four channel BGR uint8 colorspace",
 "func":1
 },
 {
 "ref":"vipy.image.Scene.float",
-"url":44,
+"url":51,
 "doc":"Convert the image buffer to float32",
 "func":1
 },
 {
 "ref":"vipy.image.Scene.greyscale",
-"url":44,
+"url":51,
 "doc":"Convert the image buffer to single channel grayscale float32 in range [0,1]",
 "func":1
 },
 {
 "ref":"vipy.image.Scene.grayscale",
-"url":44,
+"url":51,
 "doc":"Alias for greyscale()",
 "func":1
 },
 {
 "ref":"vipy.image.Scene.grey",
-"url":44,
+"url":51,
 "doc":"Alias for greyscale()",
 "func":1
 },
 {
 "ref":"vipy.image.Scene.gray",
-"url":44,
+"url":51,
 "doc":"Alias for greyscale()",
 "func":1
 },
 {
 "ref":"vipy.image.Scene.luminance",
-"url":44,
+"url":51,
 "doc":"Convert the image buffer to single channel uint8 in range [0,255] corresponding to the luminance component",
 "func":1
 },
 {
 "ref":"vipy.image.Scene.lum",
-"url":44,
+"url":51,
 "doc":"Alias for luminance()",
 "func":1
 },
 {
 "ref":"vipy.image.Scene.jet",
-"url":44,
+"url":51,
 "doc":"Apply jet colormap to greyscale image and save as RGB",
 "func":1
 },
 {
 "ref":"vipy.image.Scene.rainbow",
-"url":44,
+"url":51,
 "doc":"Apply rainbow colormap to greyscale image and convert to RGB",
 "func":1
 },
 {
 "ref":"vipy.image.Scene.hot",
-"url":44,
+"url":51,
 "doc":"Apply hot colormap to greyscale image and convert to RGB",
 "func":1
 },
 {
 "ref":"vipy.image.Scene.bone",
-"url":44,
+"url":51,
 "doc":"Apply bone colormap to greyscale image and convert to RGB",
 "func":1
 },
 {
 "ref":"vipy.image.Scene.saturate",
-"url":44,
+"url":51,
 "doc":"Saturate the image buffer to be clipped between [min,max], types of min/max are specified by _array type",
 "func":1
 },
 {
 "ref":"vipy.image.Scene.intensity",
-"url":44,
+"url":51,
 "doc":"Convert image to float32 with [min,max] to range [0,1], force colormap to be 'float'. Equivalent to self.mat2gray()",
 "func":1
 },
 {
 "ref":"vipy.image.Scene.mat2gray",
-"url":44,
+"url":51,
 "doc":"Convert the image buffer so that [min,max] -> [0,1], forces conversion to 'float' colorspace. This does not change the number of color channels",
 "func":1
 },
 {
 "ref":"vipy.image.Scene.gain",
-"url":44,
+"url":51,
 "doc":"Elementwise multiply gain to image array, Gain should be broadcastable to array(). This forces the colospace to 'float'",
 "func":1
 },
 {
 "ref":"vipy.image.Scene.bias",
-"url":44,
+"url":51,
 "doc":"Add a bias to the image array. Bias should be broadcastable to array(). This forces the colorspace to 'float'",
 "func":1
 },
 {
 "ref":"vipy.image.Scene.normalize",
-"url":44,
+"url":51,
 "doc":"Apply a multiplicative gain g and additive bias b, such that self.array()  gain self.array() + bias. This is useful for applying a normalization of an image prior to calling  vipy.image.Image.torch . The following operations are equivalent.   im = vipy.image.RandomImage() im.normalize(1/255.0, 0.5)  im.gain(1/255.0).bias(-0.5)    note This will force the colorspace to 'float'",
 "func":1
 },
 {
 "ref":"vipy.image.Scene.mean",
-"url":44,
+"url":51,
 "doc":"Mean over all pixels",
 "func":1
 },
 {
 "ref":"vipy.image.Scene.meanchannel",
-"url":44,
+"url":51,
 "doc":"Mean per channel over all pixels. If channel k is provided, return just the mean for that channel",
 "func":1
 },
 {
 "ref":"vipy.image.Scene.closeall",
-"url":44,
+"url":51,
 "doc":"Close all open figure windows",
 "func":1
 },
 {
 "ref":"vipy.image.Scene.close",
-"url":44,
+"url":51,
 "doc":"Close the requested figure number, or close all of fignum=None",
 "func":1
 },
 {
 "ref":"vipy.image.Scene.save",
-"url":44,
+"url":51,
 "doc":"Save the current image to a new filename and return the image object",
 "func":1
 },
 {
 "ref":"vipy.image.Scene.pkl",
-"url":44,
+"url":51,
 "doc":"save the object to a pickle file and return the object, useful for intermediate saving in long fluent chains",
 "func":1
 },
 {
 "ref":"vipy.image.Scene.pklif",
-"url":44,
+"url":51,
 "doc":"Save the object to the provided pickle file only if b=True. Uuseful for conditional intermediate saving in long fluent chains",
 "func":1
 },
 {
 "ref":"vipy.image.Scene.saveas",
-"url":44,
+"url":51,
 "doc":"Save current buffer (not including drawing overlays) to new filename and return filename. If filename is not provided, use a temporary JPEG filename.",
 "func":1
 },
 {
 "ref":"vipy.image.Scene.saveastmp",
-"url":44,
+"url":51,
 "doc":"Save current buffer to temp JPEG filename and return filename. Alias for savetmp()",
 "func":1
 },
 {
 "ref":"vipy.image.Scene.savetmp",
-"url":44,
+"url":51,
 "doc":"Save current buffer to temp JPEG filename and return filename. Alias for saveastmp()",
 "func":1
 },
 {
 "ref":"vipy.image.Scene.base64",
-"url":44,
+"url":51,
 "doc":"Export a base64 encoding of the image suitable for embedding in an html page",
 "func":1
 },
 {
 "ref":"vipy.image.Scene.ascii",
-"url":44,
+"url":51,
 "doc":"Export a base64 ascii encoding of the image suitable for embedding in an  tag",
 "func":1
 },
 {
 "ref":"vipy.image.Scene.html",
-"url":44,
+"url":51,
 "doc":"Export a base64 encoding of the image suitable for embedding in an html page, enclosed in  tag Returns: -string:  containing base64 encoded JPEG and alt text with lazy loading",
 "func":1
 },
 {
 "ref":"vipy.image.Scene.map",
-"url":44,
+"url":51,
 "doc":"Apply lambda function to our numpy array img, such that newimg=f(img), then replace newimg -> self.array(). The output of this lambda function must be a numpy array and if the channels or dtype changes, the colorspace is set to 'float'",
 "func":1
 },
 {
 "ref":"vipy.image.Scene.downcast",
-"url":44,
+"url":51,
 "doc":"Cast the class to the base class (vipy.image.Image)",
 "func":1
 },
 {
 "ref":"vipy.image.Scene.perceptualhash_distance",
-"url":44,
+"url":51,
 "doc":"Hamming distance between two perceptual hashes",
 "func":1
 },
 {
 "ref":"vipy.image.ImageDetection",
-"url":44,
+"url":51,
 "doc":"vipy.image.ImageDetection class This class provides a representation of a vipy.image.Image with a single object detection with a category and a vipy.geometry.BoundingBox This class inherits all methods of Scene and BoundingBox. Be careful with overloaded methods clone(), width() and height() which will correspond to these methods for Scene() and not BoundingBox(). Use bbclone(), bbwidth() or bbheight() to access the subclass. Valid constructors include all provided by vipy.image.Image with the additional kwarg 'category' (or alias 'label'), and BoundingBox coordinates   im = vipy.image.ImageDetection(filename='/path/to/dog_image.ext', category='dog', xmin=0, ymin=0, width=100, height=100) im = vipy.image.ImageDetection(filename='/path/to/dog_image.ext', category='dog', xmin=0, ymin=0, xmax=100, ymax=100) im = vipy.image.ImageDetection(filename='/path/to/dog_image.ext', category='dog', xcentroid=50, ycentroid=50, width=100, height=100) im = vipy.image.ImageDetection(filename='/path/to/dog_image.ext', category='dog', bbox=vipy.geometry.BoundingBox(xmin=0, ymin=0, width=100, height=100 im = vipy.image.ImageCategory(url='http: path/to/dog_image.ext', category='dog').boundingbox(xmin=0, ymin=0, width=100, height=100) im = vipy.image.ImageCategory(array=dog_img, colorspace='rgb', category='dog', xmin=0, ymin=0, width=100, height=100)  "
 },
 {
 "ref":"vipy.image.ImageDetection.cast",
-"url":44,
+"url":51,
 "doc":"Typecast the conformal vipy.image object im as  vipy.image.Image . This is useful for downcasting  vipy.image.Scene or  vipy.image.ImageDetection down to an image.   ims = vipy.image.RandomScene() im = vipy.image.Image.cast(im)  ",
 "func":1
 },
 {
 "ref":"vipy.image.ImageDetection.boundingbox",
-"url":44,
+"url":51,
 "doc":"Modify the bounding box using the provided parameters, or return the box if no parameters provided",
 "func":1
 },
 {
 "ref":"vipy.image.ImageDetection.asimage",
-"url":44,
+"url":51,
 "doc":"",
 "func":1
 },
 {
 "ref":"vipy.image.ImageDetection.asbbox",
-"url":44,
+"url":51,
 "doc":"",
 "func":1
 },
 {
 "ref":"vipy.image.ImageDetection.boxmap",
-"url":44,
+"url":51,
 "doc":"Apply the lambda function f to the bounding box, and return the imagedetection",
 "func":1
 },
 {
 "ref":"vipy.image.ImageDetection.crop",
-"url":44,
+"url":51,
 "doc":"Crop the image using the bounding box",
 "func":1
 },
 {
 "ref":"vipy.image.ImageDetection.append",
-"url":44,
+"url":51,
 "doc":"Append the provided vipy.object.Detection object to the scene object list",
 "func":1
 },
 {
 "ref":"vipy.image.ImageDetection.detection",
-"url":44,
+"url":51,
 "doc":"",
 "func":1
 },
 {
 "ref":"vipy.image.ImageDetection.isinterior",
-"url":44,
+"url":51,
 "doc":"Is the bounding box fully within the image rectangle? Use provided image width and height (W,H) to avoid lots of reloads in some conditions",
 "func":1
 },
 {
 "ref":"vipy.image.ImageDetection.from_json",
-"url":44,
+"url":51,
 "doc":"Import the JSON string s as an  vipy.image.Image object. This will perform a round trip such that im1  im2   im1 = vupy.image.RandomImage() im2 = vipy.image.Image.from_json(im1.json( assert im1  im2  ",
 "func":1
 },
 {
 "ref":"vipy.image.ImageDetection.add",
-"url":44,
+"url":51,
 "doc":"Alias for append",
 "func":1
 },
 {
 "ref":"vipy.image.ImageDetection.objectmap",
-"url":44,
+"url":51,
 "doc":"Apply lambda function f to each object. If f is a list of lambda, apply one to one with the objects",
 "func":1
 },
 {
 "ref":"vipy.image.ImageDetection.objectfilter",
-"url":44,
+"url":51,
 "doc":"Apply lambda function f to each object and keep if filter is True",
 "func":1
 },
 {
 "ref":"vipy.image.ImageDetection.nms",
-"url":44,
+"url":51,
 "doc":"Non-maximum supporession of objects() by category based on confidence and spatial IoU and cover thresholds",
 "func":1
 },
 {
 "ref":"vipy.image.ImageDetection.intersection",
-"url":44,
+"url":51,
 "doc":"Return a Scene() containing the objects in both self and other, that overlap by miniou with greedy assignment",
 "func":1
 },
 {
 "ref":"vipy.image.ImageDetection.difference",
-"url":44,
+"url":51,
 "doc":"Return a Scene() containing the objects in self but not other, that overlap by miniou with greedy assignment",
 "func":1
 },
 {
 "ref":"vipy.image.ImageDetection.union",
-"url":44,
+"url":51,
 "doc":"Combine the objects of the scene with other and self with no duplicate checking unless miniou is not None",
 "func":1
 },
 {
 "ref":"vipy.image.ImageDetection.uncrop",
-"url":44,
+"url":51,
 "doc":"Uncrop a previous crop(bb) called with the supplied bb=BoundingBox(), and zeropad to shape=(H,W)",
 "func":1
 },
 {
 "ref":"vipy.image.ImageDetection.clear",
-"url":44,
+"url":51,
 "doc":"Remove all objects from this scene.",
 "func":1
 },
 {
 "ref":"vipy.image.ImageDetection.categories",
-"url":44,
+"url":51,
 "doc":"Return list of unique object categories in scene",
 "func":1
 },
 {
 "ref":"vipy.image.ImageDetection.imclip",
-"url":44,
+"url":51,
 "doc":"Clip all bounding boxes to the image rectangle, silently rejecting those boxes that are degenerate or outside the image",
 "func":1
 },
 {
 "ref":"vipy.image.ImageDetection.rescale",
-"url":44,
+"url":51,
 "doc":"Rescale image buffer and all bounding boxes - Not idempotent",
 "func":1
 },
 {
 "ref":"vipy.image.ImageDetection.resize",
-"url":44,
+"url":51,
 "doc":"Resize image buffer to (height=rows, width=cols) and transform all bounding boxes accordingly. If cols or rows is None, then scale isotropically",
 "func":1
 },
 {
 "ref":"vipy.image.ImageDetection.centersquare",
-"url":44,
+"url":51,
 "doc":"Crop the image of size (H,W) to be centersquare (min(H,W), min(H,W preserving center, and update bounding boxes",
 "func":1
 },
 {
 "ref":"vipy.image.ImageDetection.fliplr",
-"url":44,
+"url":51,
 "doc":"Mirror buffer and all bounding box around vertical axis",
 "func":1
 },
 {
 "ref":"vipy.image.ImageDetection.flipud",
-"url":44,
+"url":51,
 "doc":"Mirror buffer and all bounding box around vertical axis",
 "func":1
 },
 {
 "ref":"vipy.image.ImageDetection.dilate",
-"url":44,
+"url":51,
 "doc":"Dilate all bounding boxes by scale factor, dilated boxes may be outside image rectangle",
 "func":1
 },
 {
 "ref":"vipy.image.ImageDetection.zeropad",
-"url":44,
+"url":51,
 "doc":"Zero pad image with padwidth cols before and after and padheight rows before and after, then update bounding box offsets",
 "func":1
 },
 {
 "ref":"vipy.image.ImageDetection.meanpad",
-"url":44,
+"url":51,
 "doc":"Mean pad (image color mean) image with padwidth cols before and after and padheight rows before and after, then update bounding box offsets",
 "func":1
 },
 {
 "ref":"vipy.image.ImageDetection.rot90cw",
-"url":44,
+"url":51,
 "doc":"Rotate the scene 90 degrees clockwise, and update objects",
 "func":1
 },
 {
 "ref":"vipy.image.ImageDetection.rot90ccw",
-"url":44,
+"url":51,
 "doc":"Rotate the scene 90 degrees counterclockwise, and update objects",
 "func":1
 },
 {
 "ref":"vipy.image.ImageDetection.maxdim",
-"url":44,
+"url":51,
 "doc":"Resize scene preserving aspect ratio so that maximum dimension of image = dim, update all objects",
 "func":1
 },
 {
 "ref":"vipy.image.ImageDetection.mindim",
-"url":44,
+"url":51,
 "doc":"Resize scene preserving aspect ratio so that minimum dimension of image = dim, update all objects",
 "func":1
 },
 {
 "ref":"vipy.image.ImageDetection.objectcrop",
-"url":44,
+"url":51,
 "doc":"Crop image using the  vipy.image.Scene.boundingbox with dilation factor, setting to maxsquare prior to crop as requested. Crop will be zeropadded if outside the image rectangle.",
 "func":1
 },
 {
 "ref":"vipy.image.ImageDetection.centercrop",
-"url":44,
+"url":51,
 "doc":"Crop image of size (height x width) in the center, keeping the image centroid constant",
 "func":1
 },
 {
 "ref":"vipy.image.ImageDetection.cornercrop",
-"url":44,
+"url":51,
 "doc":"Crop image of size (height x width) from the upper left corner, returning valid pixels only",
 "func":1
 },
 {
 "ref":"vipy.image.ImageDetection.padcrop",
-"url":44,
+"url":51,
 "doc":"Crop the image buffer using the supplied bounding box object, zero padding if box is outside image rectangle, update all scene objects",
 "func":1
 },
 {
 "ref":"vipy.image.ImageDetection.cornerpadcrop",
-"url":44,
+"url":51,
 "doc":"Crop image of size (height x width) from the upper left corner, returning zero padded result out to (height, width)",
 "func":1
 },
 {
 "ref":"vipy.image.ImageDetection.rectangular_mask",
-"url":44,
+"url":51,
 "doc":"Return a binary array of the same size as the image (or using the provided image width and height (W,H) size to avoid an image load), with ones inside the bounding box",
 "func":1
 },
 {
 "ref":"vipy.image.ImageDetection.binarymask",
-"url":44,
+"url":51,
 "doc":"Alias for rectangular_mask with in-place update",
 "func":1
 },
 {
 "ref":"vipy.image.ImageDetection.bgmask",
-"url":44,
+"url":51,
 "doc":"Set all pixels outside the bounding box to zero",
 "func":1
 },
 {
 "ref":"vipy.image.ImageDetection.fgmask",
-"url":44,
+"url":51,
 "doc":"Set all pixels inside the bounding box to zero",
 "func":1
 },
 {
 "ref":"vipy.image.ImageDetection.pixelmask",
-"url":44,
+"url":51,
 "doc":"Replace pixels within all foreground objects with a privacy preserving pixelated foreground with larger pixels (e.g. like privacy glass)",
 "func":1
 },
 {
 "ref":"vipy.image.ImageDetection.pixelize",
-"url":44,
+"url":51,
 "doc":"Alias for pixelmask",
 "func":1
 },
 {
 "ref":"vipy.image.ImageDetection.pixelate",
-"url":44,
+"url":51,
 "doc":"Alias for pixelmask",
 "func":1
 },
 {
 "ref":"vipy.image.ImageDetection.blurmask",
-"url":44,
+"url":51,
 "doc":"Replace pixels within all foreground objects with a privacy preserving blurred foreground",
 "func":1
 },
 {
 "ref":"vipy.image.ImageDetection.replace",
-"url":44,
+"url":51,
 "doc":"Set all image values within the bounding box equal to the provided img, triggers load() and imclip()",
 "func":1
 },
 {
 "ref":"vipy.image.ImageDetection.meanmask",
-"url":44,
+"url":51,
 "doc":"Replace pixels within the foreground objects with the mean pixel color",
 "func":1
 },
 {
 "ref":"vipy.image.ImageDetection.perceptualhash",
-"url":44,
+"url":51,
 "doc":"Perceptual differential hash function. This function sets foreground objects to mean color, convert to greyscale, resize with linear interpolation to small image based on desired bit encoding, compute vertical and horizontal gradient signs. Args: bits: [int] longer hashes have lower TAR (true accept rate, some near dupes are missed), but lower FAR (false accept rate), shorter hashes have higher TAR (fewer near-dupes are missed) but higher FAR (more non-dupes are declared as dupes). objmask: [bool] if true, replace the foreground object masks with the mean color prior to computing asbinary: [bool] If true, return a binary array asbytes: [bool] if true return a byte array Returns: A hash string encoding the perceptual hash such that  vipy.image.Image.perceptualhash_distance can be used to compute a hash distance asbytes: a bytes array asbinary: a numpy binary array  notes - Can be used for near duplicate detection of background scenes by unpacking the returned hex string to binary and computing hamming distance, or performing hamming based nearest neighbor indexing. Equivalently,  vipy.image.Image.perceptualhash_distance . - The default packed hex output can be converted to binary as: np.unpackbits(bytearray().fromhex( bghash()  which is equivalent to perceptualhash(asbinary=True)",
 "func":1
 },
 {
 "ref":"vipy.image.ImageDetection.fghash",
-"url":44,
+"url":51,
 "doc":"Perceptual differential hash function, computed for each foreground region independently",
 "func":1
 },
 {
 "ref":"vipy.image.ImageDetection.bghash",
-"url":44,
+"url":51,
 "doc":"Percetual differential hash function, masking out foreground regions",
 "func":1
 },
 {
 "ref":"vipy.image.ImageDetection.isduplicate",
-"url":44,
+"url":51,
 "doc":"Background hash near duplicate detection, returns true if self and im are near duplicate images using bghash",
 "func":1
 },
 {
 "ref":"vipy.image.ImageDetection.show",
-"url":44,
+"url":51,
 "doc":"Show scene detection Args: - categories: [list] List of category (or shortlabel) names in the scene to show - fontsize: [int] or [str]: Size of the font, fontsize=int for points, fontsize='NN:scaled' to scale the font relative to the image size - figure: [int] Figure number, show the image in the provided figure=int numbered window - nocaption: [bool] Show or do not show the text caption in the upper left of the box - nocaption_withstring: [list]: Do not show captions for those detection categories (or shortlabels) containing any of the strings in the provided list - boxalpha (float, [0,1]): Set the text box background to be semi-transparent with an alpha - d_category2color (dict): Define a dictionary of required mapping of specific category() to box colors. Non-specified categories are assigned a random named color from vipy.show.colorlist() - caption_offset (int, int): The relative position of the caption to the upper right corner of the box. - nowindow (bool): Display or not display the image - textfacecolor (str): One of the named colors from vipy.show.colorlist() for the color of the textbox background - textfacealpha (float, [0,1]): The textbox background transparency - shortlabel (bool): Whether to show the shortlabel or the full category name in the caption - mutator (lambda): A lambda function with signature lambda im: f(im) which will modify this image prior to show. Useful for changing labels on the fly - timestampoffset (tuple): (x,y) coordinate offsets to shift the upper left corner timestamp",
 "func":1
 },
 {
 "ref":"vipy.image.ImageDetection.annotate",
-"url":44,
+"url":51,
 "doc":"Alias for savefig",
 "func":1
 },
 {
 "ref":"vipy.image.ImageDetection.savefig",
-"url":44,
+"url":51,
 "doc":"Save show() output to given file or return buffer without popping up a window",
 "func":1
 },
 {
 "ref":"vipy.image.ImageDetection.category",
-"url":44,
+"url":51,
 "doc":"Return or update the category",
 "func":1
 },
 {
 "ref":"vipy.image.ImageDetection.label",
-"url":44,
+"url":51,
 "doc":"Alias for category",
 "func":1
 },
 {
 "ref":"vipy.image.ImageDetection.score",
-"url":44,
+"url":51,
 "doc":"Real valued score for categorization, larger is better",
 "func":1
 },
 {
 "ref":"vipy.image.ImageDetection.probability",
-"url":44,
+"url":51,
 "doc":"Real valued probability for categorization, [0,1]",
 "func":1
 },
 {
 "ref":"vipy.image.ImageDetection.sanitize",
-"url":44,
+"url":51,
 "doc":"Remove all private keys from the attributes dictionary. The attributes dictionary is useful storage for arbitrary (key,value) pairs. However, this storage may contain sensitive information that should be scrubbed from the media before serialization. As a general rule, any key that is of the form '__keyname' prepended by two underscores is a private key. This is analogous to private or reserved attributes in the python lanugage. Users should reserve these keynames for those keys that should be sanitized and removed before any serialization of this object.   assert self.setattribute('__mykey', 1).sanitize().hasattribute('__mykey')  False  ",
 "func":1
 },
 {
 "ref":"vipy.image.ImageDetection.print",
-"url":44,
+"url":51,
 "doc":"Print the representation of the image and return self with an optional sleep=n seconds Useful for debugging in long fluent chains.",
 "func":1
 },
 {
 "ref":"vipy.image.ImageDetection.tile",
-"url":44,
+"url":51,
 "doc":"Generate an image tiling. A tiling is a decomposition of an image into overlapping or non-overlapping rectangular regions. Args: tilewidth: [int] the image width of each tile tileheight: [int] the image height of each tile overlaprows: [int] the number of overlapping rows (height) for each tile overlapcols: [int] the number of overlapping width (width) for each tile Returns: A list of  vipy.image.Image objects such that each image is a single tile and the set of these tiles forms the original image Each image in the returned list contains the 'tile' attribute which encodes the crop used to create the tile.  note -  vipy.image.Image.tile can be undone using  vipy.image.Image.untile - The identity tiling is im.tile(im.widht(), im.height(), overlaprows=0, overlapcols=0) - Ragged tiles outside the image boundary are zero padded - All annotations are updated properly for each tile, when the source image is  vipy.image.Scene ",
 "func":1
 },
 {
 "ref":"vipy.image.ImageDetection.untile",
-"url":44,
+"url":51,
 "doc":"Undo an image tiling and recreate the original image.   tiles = im.tile(im.width()/2, im.height()/2, 0, 0) imdst = vipy.image.Image.untile(tiles) assert imdst  im   Args: imlist: this must be the output of  vipy.image.Image.tile Returns: A new  vipy.image.Image object reconstructed from the tiling, such that this is equivalent to the input to vipy.image.Image.tile  note All annotations are updated properly for each tile, when the source image is  vipy.image.Scene ",
 "func":1
 },
 {
 "ref":"vipy.image.ImageDetection.splat",
-"url":44,
+"url":51,
 "doc":"Replace pixels within boundingbox in self with pixels in im",
 "func":1
 },
 {
 "ref":"vipy.image.ImageDetection.store",
-"url":44,
+"url":51,
 "doc":"Store the current image file as an attribute of this object. Useful for archiving an object to be fully self contained without any external references. -Remove this stored image using unstore() -Unpack this stored image and set up the filename using restore() -This method is more efficient than load() followed by pkl(), as it stores the encoded image as a byte string. -Useful for creating a single self contained object for distributed processing.   v  v.store().restore(v.filename(  ",
 "func":1
 },
 {
 "ref":"vipy.image.ImageDetection.unstore",
-"url":44,
+"url":51,
 "doc":"Delete the currently stored image from store()",
 "func":1
 },
 {
 "ref":"vipy.image.ImageDetection.restore",
-"url":44,
+"url":51,
 "doc":"Save the currently stored image to filename, and set up filename",
 "func":1
 },
 {
 "ref":"vipy.image.ImageDetection.abspath",
-"url":44,
+"url":51,
 "doc":"Change the path of the filename from a relative path to an absolute path (not relocatable)",
 "func":1
 },
 {
 "ref":"vipy.image.ImageDetection.relpath",
-"url":44,
+"url":51,
 "doc":"Replace the filename with a relative path to parent (or current working directory if none)",
 "func":1
 },
 {
 "ref":"vipy.image.ImageDetection.canload",
-"url":44,
+"url":51,
 "doc":"Return True if the image can be loaded successfully, useful for filtering bad links or corrupt images",
 "func":1
 },
 {
 "ref":"vipy.image.ImageDetection.dict",
-"url":44,
+"url":51,
 "doc":"Return a python dictionary containing the relevant serialized attributes suitable for JSON encoding",
 "func":1
 },
 {
 "ref":"vipy.image.ImageDetection.loader",
-"url":44,
+"url":51,
 "doc":"Lambda function to load an unsupported image filename to a numpy array. This lambda function will be executed during load and the result will be stored in self._array",
 "func":1
 },
 {
 "ref":"vipy.image.ImageDetection.load",
-"url":44,
+"url":51,
 "doc":"Load image to cached private '_array' attribute. Args: ignoreErrors: [bool] If true, ignore any exceptions thrown during load and print the corresponding error messages. This is useful for loading images distributed without throwing exceptions when some images may be corrupted. In this case, the _array attribute will be None and  vipy.image.Image.isloaded will return false to determine if the image is loaded, which can be used to filter out corrupted images gracefully. verbose: [bool] If true, show additional useful printed output Returns: This  vipy.image.Image object with the pixels loaded in self._array as a numpy array.  note This loader supports any image file format supported by PIL. A custom loader can be added using  vipy.image.Image.loader .",
 "func":1
 },
 {
 "ref":"vipy.image.ImageDetection.download",
-"url":44,
+"url":51,
 "doc":"Download URL to filename provided by constructor, or to temp filename. Args: ignoreErrors: [bool] If true, do not throw an exception if the download of the URL fails for some reason. Instead, print out a reason and return this image object. The function  vipy.image.Image.hasfilename will return false if the downloaded file does not exist and can be used to filter these failed downloads gracefully. timeout: [int] The timeout in seconds for an http or https connection attempt. See also [urllib.request.urlopen](https: docs.python.org/3/library/urllib.request.html). verbose: [bool] If true, output more helpful message. Returns: This  vipy.image.Image object with the URL downloaded to  vipy.image.Image.filename or to a  vipy.util.tempimage filename which can be retrieved with  vipy.image.Image.filename .",
 "func":1
 },
 {
 "ref":"vipy.image.ImageDetection.reload",
-"url":44,
+"url":51,
 "doc":"Flush the image buffer to force reloading from file or URL",
 "func":1
 },
 {
 "ref":"vipy.image.ImageDetection.isloaded",
-"url":44,
+"url":51,
 "doc":"Return True if  vipy.image.Image.load was successful in reading the image, or if the pixels are present in  vipy.image.Image.array .",
 "func":1
 },
 {
 "ref":"vipy.image.ImageDetection.channels",
-"url":44,
+"url":51,
 "doc":"Return integer number of color channels",
 "func":1
 },
 {
 "ref":"vipy.image.ImageDetection.iscolor",
-"url":44,
+"url":51,
 "doc":"Color images are three channel or four channel with transparency, float32 or uint8",
 "func":1
 },
 {
 "ref":"vipy.image.ImageDetection.istransparent",
-"url":44,
+"url":51,
 "doc":"Transparent images are four channel color images with transparency, float32 or uint8. Return true if this image contains an alpha transparency channel",
 "func":1
 },
 {
 "ref":"vipy.image.ImageDetection.isgrey",
-"url":44,
+"url":51,
 "doc":"Grey images are one channel, float32",
 "func":1
 },
 {
 "ref":"vipy.image.ImageDetection.isluminance",
-"url":44,
+"url":51,
 "doc":"Luninance images are one channel, uint8",
 "func":1
 },
 {
 "ref":"vipy.image.ImageDetection.filesize",
-"url":44,
+"url":51,
 "doc":"Return size of underlying image file, requires fetching metadata from filesystem",
 "func":1
 },
 {
 "ref":"vipy.image.ImageDetection.width",
-"url":44,
+"url":51,
 "doc":"Return the width (columns) of the image in integer pixels.  note This triggers a  vipy.image.Image.load if the image is not already loaded.",
 "func":1
 },
 {
 "ref":"vipy.image.ImageDetection.height",
-"url":44,
+"url":51,
 "doc":"Return the height (rows) of the image in integer pixels.  note This triggers a  vipy.image.Image.load if the image is not already loaded.",
 "func":1
 },
 {
 "ref":"vipy.image.ImageDetection.shape",
-"url":44,
+"url":51,
 "doc":"Return the (height, width) or equivalently (rows, cols) of the image. Returns: A tuple (height=int, width=int) of the image.  note This triggers a  vipy.image.Image.load if the image is not already loaded.",
 "func":1
 },
 {
 "ref":"vipy.image.ImageDetection.aspectratio",
-"url":44,
+"url":51,
 "doc":"Return the aspect ratio of the image as (width/height) ratio. Returns: A float equivalent to ( vipy.image.Image.width /  vipy.image.Image.height )  note This triggers a  vipy.image.Image.load if the image is not already loaded.",
 "func":1
 },
 {
 "ref":"vipy.image.ImageDetection.area",
-"url":44,
+"url":51,
 "doc":"Return the area of the image as (width  height). Returns: An integer equivalent to ( vipy.image.Image.width   vipy.image.Image.height )  note This triggers a  vipy.image.Image.load if the image is not already loaded.",
 "func":1
 },
 {
 "ref":"vipy.image.ImageDetection.centroid",
-"url":44,
+"url":51,
 "doc":"Return the real valued center pixel coordinates of the image (col=x,row=y). The centroid is equivalent to half the  vipy.image.Image.shape . Returns: A tuple (column, row) of the floating point center of the image.",
 "func":1
 },
 {
 "ref":"vipy.image.ImageDetection.centerpixel",
-"url":44,
+"url":51,
 "doc":"Return the integer valued center pixel coordinates of the image (col=i,row=j) The centerpixel is equivalent to half the  vipy.image.Image.shape floored to the nearest integer pixel coordinate. Returns: A tuple (int(column), int(row of the integer center of the image.",
 "func":1
 },
 {
 "ref":"vipy.image.ImageDetection.array",
-"url":44,
+"url":51,
 "doc":"Replace self._array with provided numpy array Args: np_array: [numpy array] A new array to use as the pixel buffer for this image. copy: [bool] If true, copy the buffer using np.copy(), else use a reference to this buffer. Returns: - If np_array is not None, return the  vipy.image.Image object such that this object points to the provided numpy array as the pixel buffer - If np_array is None, then return the numpy array.  notes - If copy=False, then this  vipy.image.Image object will share the pixel buffer with the owner of np_array. Changes to pixels in this buffer will be shared. - If copy=True, then this will significantly slow down processing for large images. Use referneces wherevery possible.",
 "func":1
 },
 {
 "ref":"vipy.image.ImageDetection.fromarray",
-"url":44,
+"url":51,
 "doc":"Alias for  vipy.image.Image.array with copy=True. This will set new numpy array as the pixel buffer with a numpy array copy",
 "func":1
 },
 {
 "ref":"vipy.image.ImageDetection.tonumpy",
-"url":44,
+"url":51,
 "doc":"Alias for  vipy.image.Image.numpy",
 "func":1
 },
 {
 "ref":"vipy.image.ImageDetection.numpy",
-"url":44,
+"url":51,
 "doc":"Return a mutable numpy array for this  vipy.image.Image .  notes - This will always return a writeable array with the 'WRITEABLE' numpy flag set. This is useful for returning a mutable numpy array as needed while keeping the original non-mutable numpy array (e.g. loaded from a video or PIL) as the underlying pixel buffer for efficiency reasons. - Triggers a  vipy.image.Image.load if the pixel buffer has not been loaded - This will trigger a copy if the ['WRITEABLE' flag](https: numpy.org/doc/stable/reference/generated/numpy.ndarray.flags.html) is not set.",
 "func":1
 },
 {
 "ref":"vipy.image.ImageDetection.channel",
-"url":44,
+"url":51,
 "doc":"Return a cloned Image() object for the kth channel, or return an iterator over channels if k=None. Iterate over channels as single channel luminance images:   for c in self.channel(): print(c)   Return the kth channel as a single channel luminance image:   c = self.channel(k=0)  ",
 "func":1
 },
 {
 "ref":"vipy.image.ImageDetection.red",
-"url":44,
+"url":51,
 "doc":"Return red channel as a cloned single channel  vipy.image.Image object. These are equivalent operations if the colorspace is 'rgb' or 'rgba':   self.red()  self.channel(0)   These are equivalent operations if the colorspace is 'bgr' or 'bgra':   self.red()  self.channel(3)    note OpenCV returns images in BGR colorspace. Use this method to always return the desired channel by color.",
 "func":1
 },
 {
 "ref":"vipy.image.ImageDetection.green",
-"url":44,
+"url":51,
 "doc":"Return green channel as a cloned single channel  vipy.image.Image object. These are equivalent operations if the colorspace is 'rgb' or 'rgba':   self.green()  self.channel(1)   These are equivalent operations if the colorspace is 'bgr' or 'bgra':   self.green()  self.channel(1)    note OpenCV returns images in BGR colorspace. Use this method to always return the desired channel by color.",
 "func":1
 },
 {
 "ref":"vipy.image.ImageDetection.blue",
-"url":44,
+"url":51,
 "doc":"Return blue channel as a cloned single channel  vipy.image.Image object. These are equivalent operations if the colorspace is 'rgb' or 'rgba':   self.vlue()  self.channel(2)   These are equivalent operations if the colorspace is 'bgr' or 'bgra':   self.blue()  self.channel(0)    note OpenCV returns images in BGR colorspace. Use this method to always return the desired channel by color.",
 "func":1
 },
 {
 "ref":"vipy.image.ImageDetection.alpha",
-"url":44,
+"url":51,
 "doc":"Return alpha (transparency) channel as a cloned single channel  vipy.image.Image object",
 "func":1
 },
 {
 "ref":"vipy.image.ImageDetection.zeros",
-"url":44,
+"url":51,
 "doc":"Set the pixel buffer to all zeros of the same shape and datatype as this  vipy.image.Image object. These are equivalent operations for the resulting buffer shape:   import numpy as np np.zeros( (self.width(), self.height(), self.channels( )  self.zeros().array()   Returns: This  vipy.image.Image object.  note Triggers load() if the pixel buffer has not been loaded yet.",
 "func":1
 },
 {
 "ref":"vipy.image.ImageDetection.pil",
-"url":44,
+"url":51,
 "doc":"Convert vipy.image.Image to PIL Image. Returns: A [PIL image](https: pillow.readthedocs.io/en/stable/reference/Image.html) object, that shares the pixel buffer by reference",
 "func":1
 },
 {
 "ref":"vipy.image.ImageDetection.blur",
-"url":44,
+"url":51,
 "doc":"Apply a Gaussian blur with Gaussian kernel radius=sigma to the pixel buffer. Args: sigma: [float >0] The gaussian blur kernel radius. Returns: This  vipy.image.Image object with the pixel buffer blurred in place.",
 "func":1
 },
 {
 "ref":"vipy.image.ImageDetection.torch",
-"url":44,
+"url":51,
 "doc":"Convert the batch of 1 HxWxC images to a CxHxW torch tensor. Args: order: ['CHW', 'HWC', 'NCHW', 'NHWC']. The axis order of the torch tensor (channels, height, width) or (height, width, channels) or (1, channels, height, width) or (1, height, width, channels) Returns: A CxHxW or HxWxC or 1xCxHxW or 1xHxWxC [torch tensor](https: pytorch.org/docs/stable/tensors.html) that shares the pixel buffer of this image object by reference.",
 "func":1
 },
 {
 "ref":"vipy.image.ImageDetection.fromtorch",
-"url":44,
+"url":51,
 "doc":"Convert a 1xCxHxW or CxHxW torch tensor (or numpy array with torch channel order) to HxWxC numpy array, returns new  vipy.image.Image with inferred colorspace corresponding to data type in x",
 "func":1
 },
 {
 "ref":"vipy.image.ImageDetection.filename",
-"url":44,
+"url":51,
 "doc":"Return or set image filename",
 "func":1
 },
 {
 "ref":"vipy.image.ImageDetection.url",
-"url":44,
+"url":51,
 "doc":"Image URL and URL download properties",
 "func":1
 },
 {
 "ref":"vipy.image.ImageDetection.colorspace",
-"url":44,
+"url":51,
 "doc":"Return or set the colorspace as ['rgb', 'rgba', 'bgr', 'bgra', 'hsv', 'float', 'grey', 'lum']",
 "func":1
 },
 {
 "ref":"vipy.image.ImageDetection.uri",
-"url":44,
+"url":51,
 "doc":"Return the URI of the image object, either the URL or the filename, raise exception if neither defined",
 "func":1
 },
 {
 "ref":"vipy.image.ImageDetection.setattribute",
-"url":44,
+"url":51,
 "doc":"Set element self.attributes[key]=value",
 "func":1
 },
 {
 "ref":"vipy.image.ImageDetection.setattributes",
-"url":44,
+"url":51,
 "doc":"Set many attributes at once by providing a dictionary to be merged with current attributes",
 "func":1
 },
 {
 "ref":"vipy.image.ImageDetection.getattribute",
-"url":44,
+"url":51,
 "doc":"Return the key k in the attributes dictionary (self.attributes) if present, else None",
 "func":1
 },
 {
 "ref":"vipy.image.ImageDetection.clone",
-"url":44,
+"url":51,
 "doc":"Create deep copy of object, flushing the original buffer if requested and returning the cloned object. Flushing is useful for distributed memory management to free the buffer from this object, and pass along a cloned object which can be used for encoding and will be garbage collected.  flushforward: copy the object, and set the cloned object array() to None. This flushes the video buffer for the clone, not the object  flushbackward: copy the object, and set the object array() to None. This flushes the video buffer for the object, not the clone.  flush: set the object array() to None and clone the object. This flushes the video buffer for both the clone and the object.",
 "func":1
 },
 {
 "ref":"vipy.image.ImageDetection.flush",
-"url":44,
+"url":51,
 "doc":"Alias for clone(flush=True), returns self not clone",
 "func":1
 },
 {
 "ref":"vipy.image.ImageDetection.resize_like",
-"url":44,
+"url":51,
 "doc":"Resize image buffer to be the same size as the provided vipy.image.Image()",
 "func":1
 },
 {
 "ref":"vipy.image.ImageDetection.zeropadlike",
-"url":44,
+"url":51,
 "doc":"Zero pad the image balancing the border so that the resulting image size is (width, height)",
 "func":1
 },
 {
 "ref":"vipy.image.ImageDetection.alphapad",
-"url":44,
+"url":51,
 "doc":"Pad image using alpha transparency by adding padwidth on both left and right , or padwidth=(left,right) for different pre/postpadding and padheight on top and bottom or padheight=(top,bottom) for different pre/post padding",
 "func":1
 },
 {
 "ref":"vipy.image.ImageDetection.minsquare",
-"url":44,
+"url":51,
 "doc":"Crop image of size (HxW) to (min(H,W), min(H,W , keeping upper left corner constant",
 "func":1
 },
 {
 "ref":"vipy.image.ImageDetection.maxsquare",
-"url":44,
+"url":51,
 "doc":"Crop image of size (HxW) to (max(H,W), max(H,W with zeropadding or (S,S) if provided, keeping upper left corner constant",
 "func":1
 },
 {
 "ref":"vipy.image.ImageDetection.maxmatte",
-"url":44,
+"url":51,
 "doc":"Crop image of size (HxW) to (max(H,W), max(H,W with balanced zeropadding forming a letterbox with top/bottom matte or pillarbox with left/right matte",
 "func":1
 },
 {
 "ref":"vipy.image.ImageDetection.imagebox",
-"url":44,
+"url":51,
 "doc":"Return the bounding box for the image rectangle",
 "func":1
 },
 {
 "ref":"vipy.image.ImageDetection.border_mask",
-"url":44,
+"url":51,
 "doc":"Return a binary uint8 image the same size as self, with a border of pad pixels in width or height around the edge",
 "func":1
 },
 {
 "ref":"vipy.image.ImageDetection.affine_transform",
-"url":44,
+"url":51,
 "doc":"Apply a 3x3 affine geometric transformation to the image. See also  vipy.geometry.affine_transform  note The image will be loaded and converted to float() prior to applying the affine transformation.  note This will transform only the pixels",
 "func":1
 },
 {
 "ref":"vipy.image.ImageDetection.rotate",
-"url":44,
+"url":51,
 "doc":"Apply a rotation in radians to the pixels, with origin in upper left",
 "func":1
 },
 {
 "ref":"vipy.image.ImageDetection.rgb",
-"url":44,
+"url":51,
 "doc":"Convert the image buffer to three channel RGB uint8 colorspace",
 "func":1
 },
 {
 "ref":"vipy.image.ImageDetection.rgba",
-"url":44,
+"url":51,
 "doc":"Convert the image buffer to four channel RGBA uint8 colorspace",
 "func":1
 },
 {
 "ref":"vipy.image.ImageDetection.hsv",
-"url":44,
+"url":51,
 "doc":"Convert the image buffer to three channel HSV uint8 colorspace",
 "func":1
 },
 {
 "ref":"vipy.image.ImageDetection.bgr",
-"url":44,
+"url":51,
 "doc":"Convert the image buffer to three channel BGR uint8 colorspace",
 "func":1
 },
 {
 "ref":"vipy.image.ImageDetection.bgra",
-"url":44,
+"url":51,
 "doc":"Convert the image buffer to four channel BGR uint8 colorspace",
 "func":1
 },
 {
 "ref":"vipy.image.ImageDetection.float",
-"url":44,
+"url":51,
 "doc":"Convert the image buffer to float32",
 "func":1
 },
 {
 "ref":"vipy.image.ImageDetection.greyscale",
-"url":44,
+"url":51,
 "doc":"Convert the image buffer to single channel grayscale float32 in range [0,1]",
 "func":1
 },
 {
 "ref":"vipy.image.ImageDetection.grayscale",
-"url":44,
+"url":51,
 "doc":"Alias for greyscale()",
 "func":1
 },
 {
 "ref":"vipy.image.ImageDetection.grey",
-"url":44,
+"url":51,
 "doc":"Alias for greyscale()",
 "func":1
 },
 {
 "ref":"vipy.image.ImageDetection.gray",
-"url":44,
+"url":51,
 "doc":"Alias for greyscale()",
 "func":1
 },
 {
 "ref":"vipy.image.ImageDetection.luminance",
-"url":44,
+"url":51,
 "doc":"Convert the image buffer to single channel uint8 in range [0,255] corresponding to the luminance component",
 "func":1
 },
 {
 "ref":"vipy.image.ImageDetection.lum",
-"url":44,
+"url":51,
 "doc":"Alias for luminance()",
 "func":1
 },
 {
 "ref":"vipy.image.ImageDetection.jet",
-"url":44,
+"url":51,
 "doc":"Apply jet colormap to greyscale image and save as RGB",
 "func":1
 },
 {
 "ref":"vipy.image.ImageDetection.rainbow",
-"url":44,
+"url":51,
 "doc":"Apply rainbow colormap to greyscale image and convert to RGB",
 "func":1
 },
 {
 "ref":"vipy.image.ImageDetection.hot",
-"url":44,
+"url":51,
 "doc":"Apply hot colormap to greyscale image and convert to RGB",
 "func":1
 },
 {
 "ref":"vipy.image.ImageDetection.bone",
-"url":44,
+"url":51,
 "doc":"Apply bone colormap to greyscale image and convert to RGB",
 "func":1
 },
 {
 "ref":"vipy.image.ImageDetection.saturate",
-"url":44,
+"url":51,
 "doc":"Saturate the image buffer to be clipped between [min,max], types of min/max are specified by _array type",
 "func":1
 },
 {
 "ref":"vipy.image.ImageDetection.intensity",
-"url":44,
+"url":51,
 "doc":"Convert image to float32 with [min,max] to range [0,1], force colormap to be 'float'. Equivalent to self.mat2gray()",
 "func":1
 },
 {
 "ref":"vipy.image.ImageDetection.mat2gray",
-"url":44,
+"url":51,
 "doc":"Convert the image buffer so that [min,max] -> [0,1], forces conversion to 'float' colorspace. This does not change the number of color channels",
 "func":1
 },
 {
 "ref":"vipy.image.ImageDetection.gain",
-"url":44,
+"url":51,
 "doc":"Elementwise multiply gain to image array, Gain should be broadcastable to array(). This forces the colospace to 'float'",
 "func":1
 },
 {
 "ref":"vipy.image.ImageDetection.bias",
-"url":44,
+"url":51,
 "doc":"Add a bias to the image array. Bias should be broadcastable to array(). This forces the colorspace to 'float'",
 "func":1
 },
 {
 "ref":"vipy.image.ImageDetection.normalize",
-"url":44,
+"url":51,
 "doc":"Apply a multiplicative gain g and additive bias b, such that self.array()  gain self.array() + bias. This is useful for applying a normalization of an image prior to calling  vipy.image.Image.torch . The following operations are equivalent.   im = vipy.image.RandomImage() im.normalize(1/255.0, 0.5)  im.gain(1/255.0).bias(-0.5)    note This will force the colorspace to 'float'",
 "func":1
 },
 {
 "ref":"vipy.image.ImageDetection.mean",
-"url":44,
+"url":51,
 "doc":"Mean over all pixels",
 "func":1
 },
 {
 "ref":"vipy.image.ImageDetection.meanchannel",
-"url":44,
+"url":51,
 "doc":"Mean per channel over all pixels. If channel k is provided, return just the mean for that channel",
 "func":1
 },
 {
 "ref":"vipy.image.ImageDetection.closeall",
-"url":44,
+"url":51,
 "doc":"Close all open figure windows",
 "func":1
 },
 {
 "ref":"vipy.image.ImageDetection.close",
-"url":44,
+"url":51,
 "doc":"Close the requested figure number, or close all of fignum=None",
 "func":1
 },
 {
 "ref":"vipy.image.ImageDetection.save",
-"url":44,
+"url":51,
 "doc":"Save the current image to a new filename and return the image object",
 "func":1
 },
 {
 "ref":"vipy.image.ImageDetection.pkl",
-"url":44,
+"url":51,
 "doc":"save the object to a pickle file and return the object, useful for intermediate saving in long fluent chains",
 "func":1
 },
 {
 "ref":"vipy.image.ImageDetection.pklif",
-"url":44,
+"url":51,
 "doc":"Save the object to the provided pickle file only if b=True. Uuseful for conditional intermediate saving in long fluent chains",
 "func":1
 },
 {
 "ref":"vipy.image.ImageDetection.saveas",
-"url":44,
+"url":51,
 "doc":"Save current buffer (not including drawing overlays) to new filename and return filename. If filename is not provided, use a temporary JPEG filename.",
 "func":1
 },
 {
 "ref":"vipy.image.ImageDetection.saveastmp",
-"url":44,
+"url":51,
 "doc":"Save current buffer to temp JPEG filename and return filename. Alias for savetmp()",
 "func":1
 },
 {
 "ref":"vipy.image.ImageDetection.savetmp",
-"url":44,
+"url":51,
 "doc":"Save current buffer to temp JPEG filename and return filename. Alias for saveastmp()",
 "func":1
 },
 {
 "ref":"vipy.image.ImageDetection.base64",
-"url":44,
+"url":51,
 "doc":"Export a base64 encoding of the image suitable for embedding in an html page",
 "func":1
 },
 {
 "ref":"vipy.image.ImageDetection.ascii",
-"url":44,
+"url":51,
 "doc":"Export a base64 ascii encoding of the image suitable for embedding in an  tag",
 "func":1
 },
 {
 "ref":"vipy.image.ImageDetection.html",
-"url":44,
+"url":51,
 "doc":"Export a base64 encoding of the image suitable for embedding in an html page, enclosed in  tag Returns: -string:  containing base64 encoded JPEG and alt text with lazy loading",
 "func":1
 },
 {
 "ref":"vipy.image.ImageDetection.map",
-"url":44,
+"url":51,
 "doc":"Apply lambda function to our numpy array img, such that newimg=f(img), then replace newimg -> self.array(). The output of this lambda function must be a numpy array and if the channels or dtype changes, the colorspace is set to 'float'",
 "func":1
 },
 {
 "ref":"vipy.image.ImageDetection.downcast",
-"url":44,
+"url":51,
 "doc":"Cast the class to the base class (vipy.image.Image)",
 "func":1
 },
 {
 "ref":"vipy.image.ImageDetection.perceptualhash_distance",
-"url":44,
+"url":51,
 "doc":"Hamming distance between two perceptual hashes",
 "func":1
 },
@@ -12480,1821 +14167,134 @@ INDEX=[
 },
 {
 "ref":"vipy.image.mutator_show_trackid",
-"url":44,
+"url":51,
 "doc":"Mutate the image to show track ID with a fixed number of digits appended to the shortlabel as ( )",
 "func":1
 },
 {
 "ref":"vipy.image.mutator_show_jointlabel",
-"url":44,
+"url":51,
 "doc":"Deprecated",
 "func":1
 },
 {
 "ref":"vipy.image.mutator_show_trackindex",
-"url":44,
+"url":51,
 "doc":"Mutate the image to show track index appended to the shortlabel as ( )",
 "func":1
 },
 {
 "ref":"vipy.image.mutator_show_trackonly",
-"url":44,
+"url":51,
 "doc":"Mutate the image to show track as a consistently colored box with no shortlabels",
 "func":1
 },
 {
 "ref":"vipy.image.mutator_show_userstring",
-"url":44,
+"url":51,
 "doc":"Mutate the image to show user supplied strings in the shortlabel. The list be the same length oas the number of objects in the image. This is not checked. This is passed to show()",
 "func":1
 },
 {
 "ref":"vipy.image.mutator_show_noun_only",
-"url":44,
+"url":51,
 "doc":"Mutate the image to show the noun only. Args: nocaption: [bool] If true, then do not display the caption, only consistently colored boxes for the noun.  note To color boxes by track rather than noun, use  vipy.image.mutator_show_trackonly ",
 "func":1
 },
 {
 "ref":"vipy.image.mutator_show_nounonly",
-"url":44,
+"url":51,
 "doc":"Alias for  vipy.image.mutator_show_noun_only ",
 "func":1
 },
 {
 "ref":"vipy.image.mutator_show_verb_only",
-"url":44,
+"url":51,
 "doc":"Mutate the image to show the verb only",
 "func":1
 },
 {
 "ref":"vipy.image.mutator_show_noun_or_verb",
-"url":44,
+"url":51,
 "doc":"Mutate the image to show the verb only if it is non-zero else noun",
 "func":1
 },
 {
 "ref":"vipy.image.mutator_capitalize",
-"url":44,
+"url":51,
 "doc":"Mutate the image to show the shortlabel as 'Noun Verb1 Noun Verb2'",
 "func":1
 },
 {
 "ref":"vipy.image.mutator_show_activityonly",
-"url":44,
+"url":51,
 "doc":"",
 "func":1
 },
 {
 "ref":"vipy.image.mutator_show_trackindex_activityonly",
-"url":44,
+"url":51,
 "doc":"Mutate the image to show boxes colored by track index, and only show 'noun verb' captions",
 "func":1
 },
 {
 "ref":"vipy.image.mutator_show_trackindex_verbonly",
-"url":44,
+"url":51,
 "doc":"Mutate the image to show boxes colored by track index, and only show 'verb' captions with activity confidence, sorted in decreasing order",
 "func":1
 },
 {
 "ref":"vipy.image.RandomImage",
-"url":44,
+"url":51,
 "doc":"Return a uniform random color  vipy.image.Image of size (rows, cols)",
 "func":1
 },
 {
 "ref":"vipy.image.RandomImageDetection",
-"url":44,
+"url":51,
 "doc":"Return a uniform random color  vipy.image.ImageDetection of size (rows, cols) with a random bounding box",
 "func":1
 },
 {
 "ref":"vipy.image.RandomScene",
-"url":44,
+"url":51,
 "doc":"Return a uniform random color  vipy.image.Scene of size (rows, cols) with a specified number of vipy.object.Detection objects",
 "func":1
 },
 {
 "ref":"vipy.image.owl",
-"url":44,
+"url":51,
 "doc":"Return a superb owl image for testing",
 "func":1
 },
 {
 "ref":"vipy.image.squareowl",
-"url":44,
+"url":51,
 "doc":"Return a superb owl with no objects, cropped square at 512x512 resolution",
 "func":1
 },
 {
 "ref":"vipy.image.Owl",
-"url":44,
+"url":51,
 "doc":"Return superb owl centersquare, mindim=512",
 "func":1
 },
 {
 "ref":"vipy.image.vehicles",
-"url":44,
+"url":51,
 "doc":"Return a highway scene with the four highest confidence vehicle detections for testing",
 "func":1
 },
 {
 "ref":"vipy.image.people",
-"url":44,
+"url":51,
 "doc":"Return a crowd scene with the four highest confidence person detections for testing",
 "func":1
 },
 {
 "ref":"vipy.image.show",
-"url":44,
+"url":51,
 "doc":"Fast visualization of a numpy array img   im = vipy.image.show(np.random.rand(16,16,3  ",
-"func":1
-},
-{
-"ref":"vipy.math",
-"url":45,
-"doc":""
-},
-{
-"ref":"vipy.math.normalize",
-"url":45,
-"doc":"Whiten the numpy array arr using the provided mean and standard deviation. - Uses numba acceleration since this is a common operation for preparing tensors. - Computes:  scale arr) - mean / std Args: arr: [numpy] A numpy array mean: [numpy] A broadcastable mean vector std: [numpy] A broadcastable std vector scale: [float] A scale factor to apply to arr before whitening (e.g. to scale from [0,255] to [0,1]) Returns  scale arr) - mean / std  notes Does not check that std > 0",
-"func":1
-},
-{
-"ref":"vipy.math.significant_digits",
-"url":45,
-"doc":"Return the float f rounded to n significant digits",
-"func":1
-},
-{
-"ref":"vipy.math.iseven",
-"url":45,
-"doc":"is the number x an even number?",
-"func":1
-},
-{
-"ref":"vipy.math.isodd",
-"url":45,
-"doc":"is the number x an odd number?",
-"func":1
-},
-{
-"ref":"vipy.math.even",
-"url":45,
-"doc":"Return the largest even integer less than or equal (or greater than if greaterthan=True) to the value",
-"func":1
-},
-{
-"ref":"vipy.math.poweroftwo",
-"url":45,
-"doc":"Return the closest power of two smaller than the scalar value. x=511 -> 256, x=512 -> 512",
-"func":1
-},
-{
-"ref":"vipy.math.signsqrt",
-"url":45,
-"doc":"Return the signed square root of elements in numpy array x",
-"func":1
-},
-{
-"ref":"vipy.math.runningmean",
-"url":45,
-"doc":"Compute the running unweighted mean of X row-wise, with a history of n, reducing the history at the start for column indexes < n",
-"func":1
-},
-{
-"ref":"vipy.math.gaussian",
-"url":45,
-"doc":"1D gaussian window with M points. Replication of scipy.signal.gaussian",
-"func":1
-},
-{
-"ref":"vipy.math.gaussian2d",
-"url":45,
-"doc":"2D float32 gaussian image of size (rows=H, cols=W) with mu=[x, y] and std=[stdx, stdy]",
-"func":1
-},
-{
-"ref":"vipy.math.interp1d",
-"url":45,
-"doc":"Replication of scipy.interpolate.interp1d with assume_sorted=True, and constant replication of boundary handling",
-"func":1
-},
-{
-"ref":"vipy.math.find_closest_positive_divisor",
-"url":45,
-"doc":"Return non-trivial positive integer divisor (bh) of (a) closest to (b) in abs(b-bh) such that a % bh  0.  notes This uses exhaustive search, which is inefficient for large a.",
-"func":1
-},
-{
-"ref":"vipy.math.cartesian_to_polar",
-"url":45,
-"doc":"Cartesian (x,y) coordinates to polar (radius, theta_radians) coordinates, theta in radians in [-pi,pi]",
-"func":1
-},
-{
-"ref":"vipy.math.polar_to_cartesian",
-"url":45,
-"doc":"Polar (r=radius, t=theta_radians) coordinates to cartesian (x=right,y=down) coordinates. (0,0) is upper left of image",
-"func":1
-},
-{
-"ref":"vipy.math.rad2deg",
-"url":45,
-"doc":"Radians to degrees",
-"func":1
-},
-{
-"ref":"vipy.pyramid",
-"url":46,
-"doc":""
-},
-{
-"ref":"vipy.pyramid.GaussianPyramid",
-"url":46,
-"doc":"vipy.pyramid.GaussianPyramid() class"
-},
-{
-"ref":"vipy.pyramid.GaussianPyramid.band",
-"url":46,
-"doc":"",
-"func":1
-},
-{
-"ref":"vipy.pyramid.GaussianPyramid.show",
-"url":46,
-"doc":"",
-"func":1
-},
-{
-"ref":"vipy.pyramid.LaplacianPyramid",
-"url":46,
-"doc":"vipy.pyramid.LaplacianPyramid() class"
-},
-{
-"ref":"vipy.pyramid.LaplacianPyramid.band",
-"url":46,
-"doc":"",
-"func":1
-},
-{
-"ref":"vipy.pyramid.LaplacianPyramid.reconstruct",
-"url":46,
-"doc":"",
-"func":1
-},
-{
-"ref":"vipy.pyramid.LaplacianPyramid.show",
-"url":46,
-"doc":"",
-"func":1
-},
-{
-"ref":"vipy.pyramid.LaplacianPyramid.height",
-"url":46,
-"doc":"",
-"func":1
-},
-{
-"ref":"vipy.pyramid.LaplacianPyramid.width",
-"url":46,
-"doc":"",
-"func":1
-},
-{
-"ref":"vipy.pyramid.LaplacianPyramid.channels",
-"url":46,
-"doc":"",
-"func":1
-},
-{
-"ref":"vipy.pyramid.LaplacianPyramid.scales",
-"url":46,
-"doc":"",
-"func":1
-},
-{
-"ref":"vipy.pyramid.LaplacianPyramid.tensor",
-"url":46,
-"doc":"",
-"func":1
-},
-{
-"ref":"vipy.pyramid.LaplacianPyramid.fromtensor",
-"url":46,
-"doc":"Convert a S CxHxW torch tensor back to LaplacianPyramid",
-"func":1
-},
-{
-"ref":"vipy.pyramid.Foveation",
-"url":46,
-"doc":"vipy.pyramid.LaplacianPyramid() class"
-},
-{
-"ref":"vipy.pyramid.Foveation.foveate",
-"url":46,
-"doc":"Foveate the input image at location (tx, ty) in scaled image coordinates where (0,0) is the center and (1,1) is the upper left",
-"func":1
-},
-{
-"ref":"vipy.pyramid.Foveation.visualize",
-"url":46,
-"doc":"Show the fovea density",
-"func":1
-},
-{
-"ref":"vipy.pyramid.Foveation.fromtensor",
-"url":46,
-"doc":"Convert a S CxHxW torch tensor back to LaplacianPyramid",
-"func":1
-},
-{
-"ref":"vipy.ssim",
-"url":47,
-"doc":""
-},
-{
-"ref":"vipy.ssim.SSIM",
-"url":47,
-"doc":"Structural similarity (SSIM) index"
-},
-{
-"ref":"vipy.ssim.SSIM.match",
-"url":47,
-"doc":"Return a set of matching points in img1 (MxN uint8 numpy) and img2 (MxN uint8 numpy) in the form suitable for homography estimation",
-"func":1
-},
-{
-"ref":"vipy.ssim.SSIM.warp",
-"url":47,
-"doc":"Warp an image im_src with points src_pts to align with dst_pts",
-"func":1
-},
-{
-"ref":"vipy.ssim.SSIM.align",
-"url":47,
-"doc":"Return an image which is the warped version of img1 (MxN uint8 numpy) that aligns with img2 (MxN uint8 numpy)",
-"func":1
-},
-{
-"ref":"vipy.ssim.SSIM.rgb2gray",
-"url":47,
-"doc":"Convert RGB image to grayscale; accesory function",
-"func":1
-},
-{
-"ref":"vipy.ssim.SSIM.similarity",
-"url":47,
-"doc":"Compute the Structural Similarity Index (SSIM) score of two images Inputs: 1) I1, image array 2) I2, image array 3) K1, float (optional, default=0.01) - constant 4) K2, float (optional, default=0.03) - constant Outputs: 1) out; float - SSIM score 2) ssim_map; 2-D image array - SSIM map",
-"func":1
-},
-{
-"ref":"vipy.ssim.SSIM.ssim",
-"url":47,
-"doc":"Return structural similarity score when aligning im_degraded to im_reference >>> (ssim, im_aligned) = vipy.ssim.SSIM(do_alignment=True).ssim(vipy.image.squareowl(), vipy.image.squareowl().rotate(0.01), returnAligned=True) >>> print(ssim) >>> im_aligned.show(figure=1) >>> vipy.image.squareowl().rotate(0.01).show(figure=2)",
-"func":1
-},
-{
-"ref":"vipy.ssim.demo",
-"url":47,
-"doc":"Synthetically rotate an image by 4 degrees, and compute structural similarity with and without alignment, return images >>> (image, degraded_image, aligned_image) = vipy.ssim.demo(vipy.image.Image(filename='/path/to/image.jpg' )",
-"func":1
-},
-{
-"ref":"vipy.util",
-"url":48,
-"doc":""
-},
-{
-"ref":"vipy.util.class_registry",
-"url":48,
-"doc":"Return a dictionary mapping str(type(obj to a JSON loader for all vipy objects. This function is useful for JSON loading of vipy objects to map to the correct deserialization method.",
-"func":1
-},
-{
-"ref":"vipy.util.save",
-"url":48,
-"doc":"Save variables to an archive file. This function allows vipy objects to be serialized to disk for later loading.   im = vipy.image.owl() im = vipy.util.load(vipy.util.save(im  round trip   Args: vars: A python object to save. This can be any serializable python object outfile: An output file to save. Must have extension [.pkl, .json]. If None, will save to a temporary JSON file. Returns A path to the saved archive file. Load using  vipy.util.load .  note JSON is preferred as an archive format for vipy. Be sure to install the excellent ultrajson library (pip install ujson) for fast serialization.",
-"func":1
-},
-{
-"ref":"vipy.util.load",
-"url":48,
-"doc":"Load variables from a relocatable archive file format, either dill pickle, JSON format or JSON directory format. Loading is performed by attemping the following: 1. If the input file is a directory, return a  vipy.dataset.Dataset with lazy loading of all pkl or json files recursively discovered in this directory. 2. If the input file is a pickle or json file, load it 3. if abspath=true, then convert relative paths to absolute paths for object when loaded 4. If refcycle=False, then disable the python reference cycle garbage collector for large archive files   im = vipy.image.owl() f = vipy.util.save(im) im = vipy.util.load(im)   Args: infile: [str] file saved using  vipy.util.save with extension [.pkl, .json]. This may also be a directory tree containing json or pkl files abspath: [bool] If true, then convert all vipy objects with relative paths to absolute paths. If False, then preserve relative paths and warn user. refcycle: [bool] If False, then disable python reference cycle garbage collector. This is useful for large python objects. Returns: The object in the archive file",
-"func":1
-},
-{
-"ref":"vipy.util.dedupe",
-"url":48,
-"doc":"Deduplicate the list using the provided lambda function which transforms an element to a dedupe key, such that all elements with the same key are duplicates",
-"func":1
-},
-{
-"ref":"vipy.util.bz2pkl",
-"url":48,
-"doc":"Read/Write a bz2 compressed pickle file",
-"func":1
-},
-{
-"ref":"vipy.util.catcher",
-"url":48,
-"doc":"Call the function f with the provided arguments, and return (True, result) on success and (False, exception) if there is any thrown exception. Useful for parallel processing",
-"func":1
-},
-{
-"ref":"vipy.util.loudcatcher",
-"url":48,
-"doc":"Call the function f with the provided arguments, and return (True, result) on success and (False, exception) if there is any thrown exception. Print the exception immediately. Useful for parallel processing",
-"func":1
-},
-{
-"ref":"vipy.util.nonecatcher",
-"url":48,
-"doc":"Call the function f with the provided arguments, and return (result) on success and (None) if there is any thrown exception. Useful for parallel processing",
-"func":1
-},
-{
-"ref":"vipy.util.trycatcher",
-"url":48,
-"doc":"Call the function f with the provided arguments, and return (result) on success and (None) if there is any thrown exception. Useful for parallel processing",
-"func":1
-},
-{
-"ref":"vipy.util.catchif",
-"url":48,
-"doc":"Call the function f with the provided arguments, and return (result) on success and (None) if there is any thrown exception. Useful for parallel processing. Alias for  vipy.util.trycatcher ",
-"func":1
-},
-{
-"ref":"vipy.util.mergedict",
-"url":48,
-"doc":"Combine keys of two dictionaries and return a dictionary deep copy.   d1 = {1:2} d2 = {3:4} d3 = mergedict(d1,d2) assert d3  {1:2, 3:4}  ",
-"func":1
-},
-{
-"ref":"vipy.util.hascache",
-"url":48,
-"doc":"Is the VIPY_CACHE environment variable set?",
-"func":1
-},
-{
-"ref":"vipy.util.cache",
-"url":48,
-"doc":"If the VIPY_CACHE environment variable set, return it otherwise return tempdir()",
-"func":1
-},
-{
-"ref":"vipy.util.tocache",
-"url":48,
-"doc":"If the VIPY_CACHE environment variable is set, then return the filename=/path/to/file.ext in the cache as VIPY_CACHE/file.ext. Otherwise, return the file in the system temp",
-"func":1
-},
-{
-"ref":"vipy.util.seconds_to_MMSS_colon_notation",
-"url":48,
-"doc":"Convert integer seconds into MM:SS colon format. If sec=121, then return '02:01'.",
-"func":1
-},
-{
-"ref":"vipy.util.try_import",
-"url":48,
-"doc":"Show a helpful error message for missing optional packages",
-"func":1
-},
-{
-"ref":"vipy.util.findyaml",
-"url":48,
-"doc":"Return a list of absolute paths to yaml files recursively discovered by walking the directory tree rooted at basedir",
-"func":1
-},
-{
-"ref":"vipy.util.findpkl",
-"url":48,
-"doc":"Return a list of absolute paths to pkl files recursively discovered by walking the directory tree rooted at basedir",
-"func":1
-},
-{
-"ref":"vipy.util.findpdf",
-"url":48,
-"doc":"Return a list of absolute paths to pdf files recursively discovered by walking the directory tree rooted at basedir",
-"func":1
-},
-{
-"ref":"vipy.util.findpng",
-"url":48,
-"doc":"Return a list of absolute paths to png files recursively discovered by walking the directory tree rooted at basedir",
-"func":1
-},
-{
-"ref":"vipy.util.findjson",
-"url":48,
-"doc":"Return a list of absolute paths to json files recursively discovered by walking the directory tree rooted at basedir",
-"func":1
-},
-{
-"ref":"vipy.util.findimage",
-"url":48,
-"doc":"Return a list of absolute paths to image files recursively discovered by walking the directory tree rooted at basedir",
-"func":1
-},
-{
-"ref":"vipy.util.findimages",
-"url":48,
-"doc":"Alias for  vipy.util.findimage ",
-"func":1
-},
-{
-"ref":"vipy.util.findvideo",
-"url":48,
-"doc":"Return a list of absolute paths to video files recursively discovered by walking the directory tree rooted at basedir",
-"func":1
-},
-{
-"ref":"vipy.util.findvideos",
-"url":48,
-"doc":"Alias for  vipy.util.findvideo ",
-"func":1
-},
-{
-"ref":"vipy.util.readyaml",
-"url":48,
-"doc":"Read a yaml file and return a parsed dictionary, this is slow for large yaml files",
-"func":1
-},
-{
-"ref":"vipy.util.count_images_in_subdirectories",
-"url":48,
-"doc":"Count the total number of images in indir/subdir1, indir/subdir2, go down only one level and no further .",
-"func":1
-},
-{
-"ref":"vipy.util.keymax",
-"url":48,
-"doc":"Return key in dictionary containing maximum value",
-"func":1
-},
-{
-"ref":"vipy.util.keymin",
-"url":48,
-"doc":"Return key in dictionary containing minimum value",
-"func":1
-},
-{
-"ref":"vipy.util.isjsonfile",
-"url":48,
-"doc":"",
-"func":1
-},
-{
-"ref":"vipy.util.writejson",
-"url":48,
-"doc":"",
-"func":1
-},
-{
-"ref":"vipy.util.readjson",
-"url":48,
-"doc":"Read jsonfile=/path/to/file.json and return the json parsed object, issue warning if jsonfile does not have .json extension and strict=True",
-"func":1
-},
-{
-"ref":"vipy.util.groupby",
-"url":48,
-"doc":"groupby on unsorted inset",
-"func":1
-},
-{
-"ref":"vipy.util.vipy_groupby",
-"url":48,
-"doc":"groupby on unsorted inset",
-"func":1
-},
-{
-"ref":"vipy.util.groupbyasdict",
-"url":48,
-"doc":"Return dictionary of keys and lists from groupby on unsorted inset, where keyfunc is a lambda function on elements in inset Args: togroup: a list of elements to group keyfunc: a lambda function to operate on elemenets of togroup such that the value returned from the lambda is the equality key for grouping Returns: A dictionary with unique keys returned from keyfunc, and values are lists of elements in togroup with the same key",
-"func":1
-},
-{
-"ref":"vipy.util.countby",
-"url":48,
-"doc":"Return dictionary of keys and group sizes for a grouping of the input list by keyfunc lambda function, sorted by increasing count",
-"func":1
-},
-{
-"ref":"vipy.util.most_frequent",
-"url":48,
-"doc":"Return the most frequent element as determined by element equality",
-"func":1
-},
-{
-"ref":"vipy.util.countbyasdict",
-"url":48,
-"doc":"Alias for  vipy.util.countby ",
-"func":1
-},
-{
-"ref":"vipy.util.softmax",
-"url":48,
-"doc":"Row-wise softmax",
-"func":1
-},
-{
-"ref":"vipy.util.permutelist",
-"url":48,
-"doc":"randomly permute list order. Permutation is deterministic (same permutation on multiple calls) if specified",
-"func":1
-},
-{
-"ref":"vipy.util.flatlist",
-"url":48,
-"doc":"Convert list of tuples into a list expanded by concatenating tuples",
-"func":1
-},
-{
-"ref":"vipy.util.rmdir",
-"url":48,
-"doc":"Recursively remove directory and all contents (if the directory exists)",
-"func":1
-},
-{
-"ref":"vipy.util.dividelist",
-"url":48,
-"doc":"Divide inlist into a list of lists such that the size of each sublist is the requseted fraction of the original list. This operation is deterministic and generates the same division in multiple calls. Args: inlist: [list] fractions: [tuple] such as (0.1, 0.7, 0.2) An iterable of fractions that must be non-negative and sum to one",
-"func":1
-},
-{
-"ref":"vipy.util.chunklist",
-"url":48,
-"doc":"Convert list into a list of lists of length num_chunks, such that each element is a list containing a sequential chunk of the original list.   (A,B,C) = vipy.util.chunklist(inlist, num_chunks=3) assert len(A)  len(inlist)  3    note The last chunk will be larger for ragged chunks",
-"func":1
-},
-{
-"ref":"vipy.util.chunklistbysize",
-"url":48,
-"doc":"Convert list into a list of lists such that each element is a list containing a sequential chunk of the original list of length size_per_chunk",
-"func":1
-},
-{
-"ref":"vipy.util.chunklistWithOverlap",
-"url":48,
-"doc":"Convert list into a list of lists such that each element is a list containing a sequential chunk of the original list of length size_per_chunk",
-"func":1
-},
-{
-"ref":"vipy.util.chunklistwithoverlap",
-"url":48,
-"doc":"Alias for chunklistWithOverlap",
-"func":1
-},
-{
-"ref":"vipy.util.imwritejet",
-"url":48,
-"doc":"Write a grayscale numpy image as a jet colormapped image to the given file",
-"func":1
-},
-{
-"ref":"vipy.util.isuint8",
-"url":48,
-"doc":"",
-"func":1
-},
-{
-"ref":"vipy.util.isnumber",
-"url":48,
-"doc":"Is the input a python type of a number or a string containing a number?",
-"func":1
-},
-{
-"ref":"vipy.util.isfloat",
-"url":48,
-"doc":"Is the input a float or a string that can be converted to float?",
-"func":1
-},
-{
-"ref":"vipy.util.imwritegray",
-"url":48,
-"doc":"Write a floating point grayscale numpy image in [0,1] as [0,255] grayscale",
-"func":1
-},
-{
-"ref":"vipy.util.imwrite",
-"url":48,
-"doc":"Write a floating point 2D numpy image as jet or gray, 3D numpy as rgb or bgr",
-"func":1
-},
-{
-"ref":"vipy.util.print_and_return",
-"url":48,
-"doc":"",
-"func":1
-},
-{
-"ref":"vipy.util.savetemp",
-"url":48,
-"doc":"",
-"func":1
-},
-{
-"ref":"vipy.util.gray2jet",
-"url":48,
-"doc":"[0,1] grayscale to [0.255] RGB",
-"func":1
-},
-{
-"ref":"vipy.util.jet",
-"url":48,
-"doc":"jet colormap",
-"func":1
-},
-{
-"ref":"vipy.util.is_email_address",
-"url":48,
-"doc":"Is the provided string an email address?",
-"func":1
-},
-{
-"ref":"vipy.util.is_hiddenfile",
-"url":48,
-"doc":"Does the filename start with a period?",
-"func":1
-},
-{
-"ref":"vipy.util.seq",
-"url":48,
-"doc":"Equivalent to matlab [start:step:stop]",
-"func":1
-},
-{
-"ref":"vipy.util.loadh5",
-"url":48,
-"doc":"Load an HDF5 file",
-"func":1
-},
-{
-"ref":"vipy.util.loadmat73",
-"url":48,
-"doc":"Matlab 7.3 format, keys should be a list of keys to access HDF5 file as f[key1][key2] . Returned as numpy array",
-"func":1
-},
-{
-"ref":"vipy.util.take",
-"url":48,
-"doc":"Take k elements at random from inlist",
-"func":1
-},
-{
-"ref":"vipy.util.takeone",
-"url":48,
-"doc":"Take one element at random from inlist",
-"func":1
-},
-{
-"ref":"vipy.util.tryload",
-"url":48,
-"doc":"Attempt to load a pkl file, and return the value if successful and None if not",
-"func":1
-},
-{
-"ref":"vipy.util.canload",
-"url":48,
-"doc":"Attempt to load an archive file, and return true if it can be successfully loaded, otherwise False",
-"func":1
-},
-{
-"ref":"vipy.util.repath",
-"url":48,
-"doc":"Change the filename with prefix srcpath to dstpath, for any element in v that supports the filename() api",
-"func":1
-},
-{
-"ref":"vipy.util.scpsave",
-"url":48,
-"doc":"Save an archive file to load via SCP. Use case: - This archive format is useful to allow access to videos and images that are accessible behind a remote server for which you have access via SSH key-based authentication. - You create this archive on the remote server, and all vipy objects are replaced with references to remote media. - Every video or image is replaced with a URL of the format 'scp: USER@HOST:/path/to.mp4'. - Vipy will use your SSH keys to SCP these media files from USER@HOST on demand, so that the videos are cached for you on your local machine when you need them. - This is useful for transparently visualizing large datasets that are hidden behind an SSH-only accessible server Usage:   outfile = vipy.util.scpsave([vipy.video.Video(filename='/path/to.mp4)])  run on remote machine that you have SSH key access V = vipy.util.scpload(outfile)  run on local machine that has SSH key access to remote machine V[0].load()  this will SCP the videos from 'scp: /path/to.mp4' to $VIPY_CACHE/to.mp4 transparently and on demand   Args: V: [vipy objects] A list of vipy objects or  vipy.dataset.Dataset username: [str] Your username on the remote machine to select the proper SSH key Returns: A temp archive file stored on the remote machine that will be downloaded and loaded via SCP",
-"func":1
-},
-{
-"ref":"vipy.util.scpload",
-"url":48,
-"doc":"Load an archive file saved using  vipy.util.scpsave ",
-"func":1
-},
-{
-"ref":"vipy.util.load_opencv_yaml",
-"url":48,
-"doc":"Load a numpy array from YAML file exported from OpenCV",
-"func":1
-},
-{
-"ref":"vipy.util.matrix_to_opencv_yaml",
-"url":48,
-"doc":"Write list of matrices to OpenCV yaml file format with given variable names",
-"func":1
-},
-{
-"ref":"vipy.util.save_opencv_yaml",
-"url":48,
-"doc":"Save a numpy array to YAML file importable by OpenCV",
-"func":1
-},
-{
-"ref":"vipy.util.tofilename",
-"url":48,
-"doc":"Convert arbitrary string to valid filename with underscores replacing invalid chars",
-"func":1
-},
-{
-"ref":"vipy.util.isexe",
-"url":48,
-"doc":"Is the file an executable binary?",
-"func":1
-},
-{
-"ref":"vipy.util.isinstalled",
-"url":48,
-"doc":"Is the command is available on the path",
-"func":1
-},
-{
-"ref":"vipy.util.isextension",
-"url":48,
-"doc":"Does the filename end with the extension ext?   isextension('/path/to/myfile.json', 'json')  True isextension('/path/to/myfile.json', '.json')  True isextension('/path/to/myfile.json', '.pkl')  False  ",
-"func":1
-},
-{
-"ref":"vipy.util.ispkl",
-"url":48,
-"doc":"Is the file a pickle archive file",
-"func":1
-},
-{
-"ref":"vipy.util.ispklfile",
-"url":48,
-"doc":"Is the file a pickle archive file",
-"func":1
-},
-{
-"ref":"vipy.util.ishtml",
-"url":48,
-"doc":"Is the file an HTMLfile",
-"func":1
-},
-{
-"ref":"vipy.util.ispickle",
-"url":48,
-"doc":"Is the file a pickle archive file",
-"func":1
-},
-{
-"ref":"vipy.util.ishdf5",
-"url":48,
-"doc":"Is the file an HDF5 file?",
-"func":1
-},
-{
-"ref":"vipy.util.filebase",
-"url":48,
-"doc":"Return c for filename /a/b/c.ext  warning Will return /a/b/c.d for multidot filenames like /a/b/c.d.e (e.g. /a/b/filename.tar.gz)",
-"func":1
-},
-{
-"ref":"vipy.util.filepath",
-"url":48,
-"doc":"Return /a/b/c for filename /a/b/c/d.ext, /a/b for filename /a/b/c/d.ext if depth=1, etc",
-"func":1
-},
-{
-"ref":"vipy.util.delpath",
-"url":48,
-"doc":"Return c/d.ext for filename /a/b/c/d.ext and indir /a/b",
-"func":1
-},
-{
-"ref":"vipy.util.newpath",
-"url":48,
-"doc":"Return /d/e/c.ext for filename /a/b/c.ext and newdir /d/e/",
-"func":1
-},
-{
-"ref":"vipy.util.newprefix",
-"url":48,
-"doc":"Return /a/b/c/h/i.ext for filename /f/g/h/i.ext and prefix /a/b/c and depth=1",
-"func":1
-},
-{
-"ref":"vipy.util.newpathdir",
-"url":48,
-"doc":"Return /a/b/n/d/e.ext for filename=/a/b/c/d/e.ext, olddir=c, newdir=n",
-"func":1
-},
-{
-"ref":"vipy.util.newpathroot",
-"url":48,
-"doc":"Return /r/b/c.ext for filename /a/b/c.ext and new root directory r",
-"func":1
-},
-{
-"ref":"vipy.util.topath",
-"url":48,
-"doc":"Alias for  vipy.util.newpath ",
-"func":1
-},
-{
-"ref":"vipy.util.filefull",
-"url":48,
-"doc":"Return /a/b/c for filename /a/b/c.ext",
-"func":1
-},
-{
-"ref":"vipy.util.filetail",
-"url":48,
-"doc":"Return c.ext for filename /a/b/c.ext",
-"func":1
-},
-{
-"ref":"vipy.util.matread",
-"url":48,
-"doc":"Whitespace separated values defining columns, lines define rows. Return numpy array",
-"func":1
-},
-{
-"ref":"vipy.util.imlist",
-"url":48,
-"doc":"return list of images with absolute path in a directory",
-"func":1
-},
-{
-"ref":"vipy.util.videolist",
-"url":48,
-"doc":"return list of videos with absolute path in a directory",
-"func":1
-},
-{
-"ref":"vipy.util.dirlist",
-"url":48,
-"doc":"return list of directories in a directory",
-"func":1
-},
-{
-"ref":"vipy.util.dirlist_sorted_bycreation",
-"url":48,
-"doc":"Sort the directory list from newest first to oldest last by creation date",
-"func":1
-},
-{
-"ref":"vipy.util.extlist",
-"url":48,
-"doc":"return list of files with absolute path in a directory that have the provided extension (with the prepended dot, ext='.mp4')",
-"func":1
-},
-{
-"ref":"vipy.util.listext",
-"url":48,
-"doc":"Alias for extlist",
-"func":1
-},
-{
-"ref":"vipy.util.jsonlist",
-"url":48,
-"doc":"return list of fJSON iles with absolute path in a directory",
-"func":1
-},
-{
-"ref":"vipy.util.listjson",
-"url":48,
-"doc":"Alias for jsonlist",
-"func":1
-},
-{
-"ref":"vipy.util.writelist",
-"url":48,
-"doc":"Write list of strings to an output file with each row an element of the list",
-"func":1
-},
-{
-"ref":"vipy.util.readlist",
-"url":48,
-"doc":"Read each row of file as an element of the list",
-"func":1
-},
-{
-"ref":"vipy.util.readtxt",
-"url":48,
-"doc":"Read a text file one string per row",
-"func":1
-},
-{
-"ref":"vipy.util.writecsv",
-"url":48,
-"doc":"Write list of tuples to an output csv file with each list element on a row and tuple elements separated by commas. Examples:   vipy.util.writecsv([(1,2,3), (4,5,6)], '/tmp/out.csv') vipy.util.writecsv([(1,2,3), (4,5,6)], '/tmp/out.csv', separator=';' vipy.util.writecsv([(1,2,3), (4,5,6)], '/tmp/out.csv', header=('h1','h2','h3'   Args: list_of_tuples: a list of tuples each tuple is a row outfile: the csv file output mode: 'w' for overwrite, 'a' for append separator: a string specifying the separator between columns. defaults to ',' header: a tuple containing strings to be appended to the first row of the csv file comment: the comment symbol to be prepended to the header row Returns: the outfile path",
-"func":1
-},
-{
-"ref":"vipy.util.readcsv",
-"url":48,
-"doc":"Read a csv file into a list of lists, ignore any rows prepended with comment symbol, ignore first row if ignoreheader=True Args: infile: the csv file input separator: a string specifying the separator between columns. defaults to ',' ignoreheader: if true, ignore the first row of the csv file comment: if provided, ignore all rows with this comment symbol prepended Returns: a list of lists, each list element containing a list of elements in the corresponding line of the csv file, parsed by separator",
-"func":1
-},
-{
-"ref":"vipy.util.readcsvwithheader",
-"url":48,
-"doc":"Read a csv file into a list of lists",
-"func":1
-},
-{
-"ref":"vipy.util.imsavelist",
-"url":48,
-"doc":"Write out all images in a directory to a provided file with each line containing absolute path to image",
-"func":1
-},
-{
-"ref":"vipy.util.csvlist",
-"url":48,
-"doc":"Return a list of absolute paths of  .csv files in current directory",
-"func":1
-},
-{
-"ref":"vipy.util.pklist",
-"url":48,
-"doc":"Return a list of absolute paths of  .pk files in current directory",
-"func":1
-},
-{
-"ref":"vipy.util.listpkl",
-"url":48,
-"doc":"Return a list of absolute paths of  .pk files in current directory",
-"func":1
-},
-{
-"ref":"vipy.util.txtlist",
-"url":48,
-"doc":"Return a list of absolute paths of  .txt files in current directory",
-"func":1
-},
-{
-"ref":"vipy.util.imlistidx",
-"url":48,
-"doc":"Return index in list of filename containing index number",
-"func":1
-},
-{
-"ref":"vipy.util.mat2gray",
-"url":48,
-"doc":"Convert numpy array to float32 with 1.0=max and 0=min",
-"func":1
-},
-{
-"ref":"vipy.util.mdlist",
-"url":48,
-"doc":"Preallocate 2D list of size MxN",
-"func":1
-},
-{
-"ref":"vipy.util.isurl",
-"url":48,
-"doc":"Is a path a URL?",
-"func":1
-},
-{
-"ref":"vipy.util.shortuuid",
-"url":48,
-"doc":"Generate a short UUID with n hex digits",
-"func":1
-},
-{
-"ref":"vipy.util.stringhash",
-"url":48,
-"doc":"Generate a repeatable hash with n characters for a string s",
-"func":1
-},
-{
-"ref":"vipy.util.isimageurl",
-"url":48,
-"doc":"Is a path a URL with image extension?",
-"func":1
-},
-{
-"ref":"vipy.util.isvideourl",
-"url":48,
-"doc":"Is a path a URL with video extension?",
-"func":1
-},
-{
-"ref":"vipy.util.isS3url",
-"url":48,
-"doc":"Is a path a URL for an S3 object?",
-"func":1
-},
-{
-"ref":"vipy.util.isyoutubeurl",
-"url":48,
-"doc":"Is a path a youtube URL?",
-"func":1
-},
-{
-"ref":"vipy.util.isRTSPurl",
-"url":48,
-"doc":"",
-"func":1
-},
-{
-"ref":"vipy.util.isRTMPurl",
-"url":48,
-"doc":"",
-"func":1
-},
-{
-"ref":"vipy.util.islist",
-"url":48,
-"doc":"Is an object a python list",
-"func":1
-},
-{
-"ref":"vipy.util.islistoflists",
-"url":48,
-"doc":"Is an object a python list of lists x= 1,2], [3,4 ",
-"func":1
-},
-{
-"ref":"vipy.util.istupleoftuples",
-"url":48,
-"doc":"Is an object a python list of lists x= 1,2], [3,4 ",
-"func":1
-},
-{
-"ref":"vipy.util.isimageobject",
-"url":48,
-"doc":"Is an object a vipy.image class Image, ImageCategory, ImageDetection?",
-"func":1
-},
-{
-"ref":"vipy.util.isvideotype",
-"url":48,
-"doc":"Is an object a vipy.video class Video, VideoCategory, Scene?",
-"func":1
-},
-{
-"ref":"vipy.util.isvideoobject",
-"url":48,
-"doc":"",
-"func":1
-},
-{
-"ref":"vipy.util.isvipyobject",
-"url":48,
-"doc":"",
-"func":1
-},
-{
-"ref":"vipy.util.istuple",
-"url":48,
-"doc":"Is an object a python tuple?",
-"func":1
-},
-{
-"ref":"vipy.util.tolist",
-"url":48,
-"doc":"Convert a python tuple or singleton object to a list if not already a list",
-"func":1
-},
-{
-"ref":"vipy.util.isimg",
-"url":48,
-"doc":"Is an object an image with a supported image extension ['.jpg','.jpeg','.png','.tif','.tiff','.pgm','.ppm','.gif','.bmp']?",
-"func":1
-},
-{
-"ref":"vipy.util.isimage",
-"url":48,
-"doc":"Alias for  vipy.util.isimg ",
-"func":1
-},
-{
-"ref":"vipy.util.isvideofile",
-"url":48,
-"doc":"Alias for  vipy.util.isvideo ",
-"func":1
-},
-{
-"ref":"vipy.util.isimgfile",
-"url":48,
-"doc":"Alias for  vipy.util.isimg ",
-"func":1
-},
-{
-"ref":"vipy.util.isimagefile",
-"url":48,
-"doc":"Alias for  vipy.util.isimg ",
-"func":1
-},
-{
-"ref":"vipy.util.isjpeg",
-"url":48,
-"doc":"is the file a .jpg or .jpeg extension?",
-"func":1
-},
-{
-"ref":"vipy.util.iswebp",
-"url":48,
-"doc":"is the file a .webp extension?",
-"func":1
-},
-{
-"ref":"vipy.util.ispng",
-"url":48,
-"doc":"is the file a .png or .apng extension?",
-"func":1
-},
-{
-"ref":"vipy.util.isgif",
-"url":48,
-"doc":"is the file a .gif extension?",
-"func":1
-},
-{
-"ref":"vipy.util.isjpg",
-"url":48,
-"doc":"Alias for  vipy.util.isjpeg ",
-"func":1
-},
-{
-"ref":"vipy.util.iscsv",
-"url":48,
-"doc":"Is a file a CSV file extension?",
-"func":1
-},
-{
-"ref":"vipy.util.isvideo",
-"url":48,
-"doc":"Is a filename in path a video with a known video extension ['.avi','.mp4','.mov','.wmv','.mpg', 'mkv', 'webm']?",
-"func":1
-},
-{
-"ref":"vipy.util.isnumpy",
-"url":48,
-"doc":"Is a python object a numpy object?",
-"func":1
-},
-{
-"ref":"vipy.util.isnumpyarray",
-"url":48,
-"doc":"Is a python object a numpy array?",
-"func":1
-},
-{
-"ref":"vipy.util.istextfile",
-"url":48,
-"doc":"Is the given file a text file?",
-"func":1
-},
-{
-"ref":"vipy.util.isxml",
-"url":48,
-"doc":"Is the given file an xml file?",
-"func":1
-},
-{
-"ref":"vipy.util.bgr2gray",
-"url":48,
-"doc":"Wrapper for numpy uint8 BGR image to uint8 numpy grayscale",
-"func":1
-},
-{
-"ref":"vipy.util.gray2bgr",
-"url":48,
-"doc":"Wrapper for numpy float32 gray image to uint8 numpy BGR",
-"func":1
-},
-{
-"ref":"vipy.util.gray2rgb",
-"url":48,
-"doc":"",
-"func":1
-},
-{
-"ref":"vipy.util.bgr2rgb",
-"url":48,
-"doc":"Wrapper for numpy BGR uint8 to numpy RGB uint8",
-"func":1
-},
-{
-"ref":"vipy.util.rgb2bgr",
-"url":48,
-"doc":"same as bgr2rgb",
-"func":1
-},
-{
-"ref":"vipy.util.bgr2hsv",
-"url":48,
-"doc":"Convert a numpy array in BGR order to HSV",
-"func":1
-},
-{
-"ref":"vipy.util.gray2hsv",
-"url":48,
-"doc":"Convert a numpy array in floating point single channel greyscale order to HSV",
-"func":1
-},
-{
-"ref":"vipy.util.isarchive",
-"url":48,
-"doc":"Is filename a zip or gzip compressed tar archive?",
-"func":1
-},
-{
-"ref":"vipy.util.istgz",
-"url":48,
-"doc":"Is the filename a .tgz or .tar.gz extension?",
-"func":1
-},
-{
-"ref":"vipy.util.istar",
-"url":48,
-"doc":"Is the filename a .tar extension?",
-"func":1
-},
-{
-"ref":"vipy.util.isbz2",
-"url":48,
-"doc":"Is the filename a .bz2 or .tar.bz2 extension?",
-"func":1
-},
-{
-"ref":"vipy.util.tempfilename",
-"url":48,
-"doc":"Create a temporary filename $TEMPDIR/$UUID.suffix, suffix should include the dot such as suffix='.jpg',",
-"func":1
-},
-{
-"ref":"vipy.util.totempdir",
-"url":48,
-"doc":"Convert a filename '/patj/to/filename.ext' to '/tempdir/filename.ext'",
-"func":1
-},
-{
-"ref":"vipy.util.templike",
-"url":48,
-"doc":"Create a new temporary filename with the same extension as filename",
-"func":1
-},
-{
-"ref":"vipy.util.cached",
-"url":48,
-"doc":"Create a new filename in the cache, or tempdir if not found",
-"func":1
-},
-{
-"ref":"vipy.util.tempimage",
-"url":48,
-"doc":"Create a temporary image with the given extension",
-"func":1
-},
-{
-"ref":"vipy.util.temppng",
-"url":48,
-"doc":"Create a temporay PNG file",
-"func":1
-},
-{
-"ref":"vipy.util.temppickle",
-"url":48,
-"doc":"Create a temporary pickle file",
-"func":1
-},
-{
-"ref":"vipy.util.tempjpg",
-"url":48,
-"doc":"Create a temporary JPG file in system temp directory",
-"func":1
-},
-{
-"ref":"vipy.util.tempMP4",
-"url":48,
-"doc":"Create a temporary MP4 file in system temp directory",
-"func":1
-},
-{
-"ref":"vipy.util.tempWEBP",
-"url":48,
-"doc":"Create a temporary WEBP file in system temp directory",
-"func":1
-},
-{
-"ref":"vipy.util.tmpjpg",
-"url":48,
-"doc":"Create a temporary JPG file in /tmp",
-"func":1
-},
-{
-"ref":"vipy.util.tempcsv",
-"url":48,
-"doc":"Create a temporary CSV file",
-"func":1
-},
-{
-"ref":"vipy.util.temphtml",
-"url":48,
-"doc":"Create a temporary HTMLfile",
-"func":1
-},
-{
-"ref":"vipy.util.temppkl",
-"url":48,
-"doc":"Create a temporary pickle file",
-"func":1
-},
-{
-"ref":"vipy.util.tempyaml",
-"url":48,
-"doc":"Create a temporary YAML file",
-"func":1
-},
-{
-"ref":"vipy.util.tempjson",
-"url":48,
-"doc":"Create a temporary JSON file",
-"func":1
-},
-{
-"ref":"vipy.util.temppdf",
-"url":48,
-"doc":"Create a temporary PDF file",
-"func":1
-},
-{
-"ref":"vipy.util.mktemp",
-"url":48,
-"doc":"Create a temporary file with extension .ext",
-"func":1
-},
-{
-"ref":"vipy.util.tempdir",
-"url":48,
-"doc":"Wrapper around tempfile, because I can never remember the syntax",
-"func":1
-},
-{
-"ref":"vipy.util.imread",
-"url":48,
-"doc":"Wrapper for opencv imread. Note that color images are imported as BGR!",
-"func":1
-},
-{
-"ref":"vipy.util.imrescale",
-"url":48,
-"doc":"",
-"func":1
-},
-{
-"ref":"vipy.util.imresize",
-"url":48,
-"doc":"",
-"func":1
-},
-{
-"ref":"vipy.util.touch",
-"url":48,
-"doc":"Create an empty file containing mystr",
-"func":1
-},
-{
-"ref":"vipy.util.Stopwatch",
-"url":48,
-"doc":"Return elapsed system time in seconds between calls to enter and exit"
-},
-{
-"ref":"vipy.util.Stopwatch.since",
-"url":48,
-"doc":"Return seconds since start or last call to this method",
-"func":1
-},
-{
-"ref":"vipy.util.Stopwatch.reset",
-"url":48,
-"doc":"",
-"func":1
-},
-{
-"ref":"vipy.util.Stopwatch.duration",
-"url":48,
-"doc":"Time in seconds since last reset",
-"func":1
-},
-{
-"ref":"vipy.util.Timer",
-"url":48,
-"doc":"Pretty print elapsed system time in seconds between calls to enter and exit  python t = Timer(): [some code] print(t) [some more code] print(t) with Timer(): [some code]  "
-},
-{
-"ref":"vipy.util.isfile",
-"url":48,
-"doc":"Wrapper for os.path.isfile",
-"func":1
-},
-{
-"ref":"vipy.util.isstring",
-"url":48,
-"doc":"Is an object a python string or unicode string?",
-"func":1
-},
-{
-"ref":"vipy.util.timestamp",
-"url":48,
-"doc":"Return date and time string in form DDMMMYY_HHMMSS",
-"func":1
-},
-{
-"ref":"vipy.util.clockstamp",
-"url":48,
-"doc":"Datetime stamp in local timezone with second resolution with format Year-Month-Day Hour:Minute:Second",
-"func":1
-},
-{
-"ref":"vipy.util.minutestamp",
-"url":48,
-"doc":"Return date and time string in form DDMMMYY_HHMM",
-"func":1
-},
-{
-"ref":"vipy.util.datestamp",
-"url":48,
-"doc":"Return date and time string in form DDMMMYY",
-"func":1
-},
-{
-"ref":"vipy.util.remkdir",
-"url":48,
-"doc":"Create a given directory if not already exists",
-"func":1
-},
-{
-"ref":"vipy.util.rermdir",
-"url":48,
-"doc":"Recursively delete a given directory (if exists), and remake it",
-"func":1
-},
-{
-"ref":"vipy.util.premkdir",
-"url":48,
-"doc":"pre-create directory /path/to/subdir using  vipy.util.remkdir if it does not exist for outfile=/path/to/subdir/file.ext, and return filename",
-"func":1
-},
-{
-"ref":"vipy.util.newbase",
-"url":48,
-"doc":"Convert filename=/a/b/c.ext base=d -> /a/b/d.ext",
-"func":1
-},
-{
-"ref":"vipy.util.toextension",
-"url":48,
-"doc":"Convert filename='/path/to/myfile.ext' to /path/to/myfile.xyz, such that newext='xyz' or newext='.xyz'",
-"func":1
-},
-{
-"ref":"vipy.util.noextension",
-"url":48,
-"doc":"Convert filename='/path/to/myfile.ext' or filename='/path/to/myfile.ext1.ext2.ext3' to /path/to/myfile with no extension, removing the appended string past the first dot",
-"func":1
-},
-{
-"ref":"vipy.util.topkl",
-"url":48,
-"doc":"Convert filename='/path/to/myfile.ext' to /path/to/myfile.pkl",
-"func":1
-},
-{
-"ref":"vipy.util.splitextension",
-"url":48,
-"doc":"Given /a/b/c.ext return tuple of strings ('/a/b/c', '.ext')",
-"func":1
-},
-{
-"ref":"vipy.util.hasextension",
-"url":48,
-"doc":"Does the provided filename have a file extension (e.g. /path/to/file.ext) or not (e.g. /path/to/file)",
-"func":1
-},
-{
-"ref":"vipy.util.fileext",
-"url":48,
-"doc":"Given filename /a/b/c.ext return '.ext', or /a/b/c.tar.gz return '.tar.gz'. If multidot=False, then return '.gz'. If withdot=False, return 'ext'",
-"func":1
-},
-{
-"ref":"vipy.util.mediaextension",
-"url":48,
-"doc":"Return '.mp4' for filename='/a/b/c.mp4'",
-"func":1
-},
-{
-"ref":"vipy.util.ismacosx",
-"url":48,
-"doc":"Is the current platform MacOSX?",
-"func":1
-},
-{
-"ref":"vipy.util.islinux",
-"url":48,
-"doc":"is the current platform Linux?",
-"func":1
-},
-{
-"ref":"vipy.util.linuxversion",
-"url":48,
-"doc":"Return linux version",
-"func":1
-},
-{
-"ref":"vipy.util.imcrop",
-"url":48,
-"doc":"Crop a 2D or 3D numpy image given a vipy.geometry.BoundingBox",
-"func":1
-},
-{
-"ref":"vipy.util.Failed",
-"url":48,
-"doc":"Raised when unit test fails to throw an exception"
-},
-{
-"ref":"vipy.util.string_to_pil_interpolation",
-"url":48,
-"doc":"Internal function to convert interp string to interp object",
-"func":1
-},
-{
-"ref":"vipy.version",
-"url":49,
-"doc":""
-},
-{
-"ref":"vipy.version.num",
-"url":49,
-"doc":"Convert the version string of the form 'X.Y.Z' to an integer 100000 X + 100 Y + Z for version comparison",
-"func":1
-},
-{
-"ref":"vipy.version.split",
-"url":49,
-"doc":"Split the version string 'X.Y.Z' and return tuple (int(X), int(Y), int(Z ",
-"func":1
-},
-{
-"ref":"vipy.version.major",
-"url":49,
-"doc":"Return the major version number int(X) for versionstring 'X.Y.Z'",
-"func":1
-},
-{
-"ref":"vipy.version.minor",
-"url":49,
-"doc":"Return the minor version number int(Y) for versionstring 'X.Y.Z'",
-"func":1
-},
-{
-"ref":"vipy.version.release",
-"url":49,
-"doc":"Return the release version number int(Z) for versionstring 'X.Y.Z'",
-"func":1
-},
-{
-"ref":"vipy.version.at_least_version",
-"url":49,
-"doc":"Is versionstring='X.Y.Z' at least the current version?",
-"func":1
-},
-{
-"ref":"vipy.version.is_at_least",
-"url":49,
-"doc":"Synonym for at_least_version",
-"func":1
-},
-{
-"ref":"vipy.version.is_exactly",
-"url":49,
-"doc":"Is the versionstring = 'X,Y.Z' exactly equal to vipy.__version__",
-"func":1
-},
-{
-"ref":"vipy.version.at_least_major_version",
-"url":49,
-"doc":"is the major version (e.g. X, for version X.Y.Z) greater than or equal to the major version integer supplied?",
-"func":1
-},
-{
-"ref":"vipy.visualize",
-"url":50,
-"doc":""
-},
-{
-"ref":"vipy.visualize.hoverpixel",
-"url":50,
-"doc":"Generate a standalone hoverpixel visualization. A hoverpixel visualization is an HTML file that shows a montage such that each pixel in the montage is a video or image. When the user hovers the mouse over a pixel in the montage, a high resolution magnified popup for the corresponding video or image is displayed. This is a way to visualize and explore large datasets, showing the entire dataset in a glance, but allowing the user to zoom into specific sections. Each of the magnified media elements must be publicly accessible as a URL. If the URL is a webp animation, then the magnified media will show the animation (if the browser supports it). Args: urls: a list of urls to publicly accessible images or webp files. These are the URLs that are used to display inside the magnified popup. outfile: an html output file, if None a temp file will be used pixelsize [int]: the square size of the elements in the montage aspectratio [float]: The ratio of columns/rows in the pixel montage. Set to 1 for square. sortby: if 'color' then sort the images rowwise by increasing hue, if None, then use provided ordering of URLs loupe: if true, then the magnifier should be a circle hoversize: the diameter of the magnifier ultext: string to include overlay on the upper left. include  tags for line breaks in string, and standard html text string escaping (e.g. &lt, &gt for  ). if None, nothing is displayed display: if true, then open the html file in the defult browser when done ultextcolor: an html color string (e.g. \"white\", \"black\") for the upper left text color ultextsize: an html font-size string (e.g. \"large\", \"x-large\") for the upper left text ultextoffset [tuple): An offset in (x=pixels, y=pixels) of the origin of the upper left text Returns: A standalone html file that renders each url in montage such that hovering over elements in the montage will show the url in a magnifier.  note - Use fullscreen browsing for best experience. - Try to zoom out in your browser to see the full montage. - Wrap this HTML output file in an iframe for integration into your website:   ",
-"func":1
-},
-{
-"ref":"vipy.visualize.hoverpixel_selector",
-"url":50,
-"doc":"Create a dropdown selector of hoverpixel visualizations by legend. Args: htmllist: a list of HTML files output from  vipy.visualize.hoverpixel which have been created with a specific ordering legendlist: a list of strings describing how the hoverpixel was sorted (e.g. Color, Category, Size, Region) offset (x,y): A tuple of integers (x=right,y=down) for the absolute position in pixel units of the dropdown menu relative to the upper left of the page. fullscreen [bool]: If true, include an expand button next to the selector to put the hoverpixel iframe into fullscreen mode. Be sure to add allowfullscreen to the iframe. Returns: An HTML file that loads the hoverpixel HTML in an iframe with an overlaid dropdown menu to select which hoverpixel animation is displayed  note The fullscreen display will not work on iPhone since it is unsupported.",
-"func":1
-},
-{
-"ref":"vipy.visualize.mosaic",
-"url":50,
-"doc":"Create a mosaic iterator from an iterable of videos. A mosaic is a tiling of videos into a grid such that each grid element is one video. This function returns an iterator that iterates frames in the video mosaic. This mosaic generation can also be performed using ffmpeg, but here we use python iterators to zip a set of videos into a spatial mosaic. >>> for im in vipy.visualize.mosaic( (vipy.video.RandomScene(64,64,32), vipy.video.RandomScene(64,64,32 ) >>> im.show() Args: videos [iterable of  vipy.video.Video ] Returns: A generator which yields frames of the mosaic. All videos are at their native frame rates, and all videos are anisotropically resized to the (height, width) of the first video  note This is the streaming version of  vipy.visualize.videomontage which requires all videos to be loadable .",
-"func":1
-},
-{
-"ref":"vipy.visualize.videomosaic",
-"url":50,
-"doc":"Return a mosaic video from an iterable of videos. A mosaic will output a video montage such that all videos are exactly the same length, without cycling. This assumes that the videos are showing the same timestamps like in a security mosaic view.  note This will generate a framewise videomontage, and large videos can result in out of memory condition.",
-"func":1
-},
-{
-"ref":"vipy.visualize.montage",
-"url":50,
-"doc":"Create a montage image from the of provided list of  vipy.image.Image objects. Args: imlist: [list, tuple] iterable of  vipy.image.Image objects which is used to montage rowwise imgheight: [int] The height of each individual image in the grid, defaults to 256 px imgwidth: [int] the width of each individual image in the grid, defaults to 256 px, use centersquare() for isotropic scaling gridrows: [int] The number of images per row, and number of images per column. This defines the montage shape. gridcols: [int] The number of images per row, and number of images per column. This defines the montage shape. aspectratio: [float]. This is an optional parameter which defines the shape of the montage as (gridcols/gridrows) without specifying the gridrows, gridcols input crop: [bool] If true, the vipy.image.Image objects should call crop(), which will trigger a load skip: [bool] Whether images should be skipped on failure to load(), useful for lazy downloading border: [int] a border of size in pixels surrounding each image in the grid border_bgr [tuple (r,g,b)]: the border color in a bgr color tuple (b, g, r) in [0,255], uint8 do_flush: [bool] flush the loaded images as garbage collection for large montages verbose: [bool] display optional verbose messages Returns: Return a  vipy.image.Image montage which is of size (gridrows (imgheight + 2 border), gridcols (imgwidth+2 border ",
-"func":1
-},
-{
-"ref":"vipy.visualize.videomontage",
-"url":50,
-"doc":"Generate a video montage for the provided videos by creating a image montage for every frame. Args:  vipy.visualize.montage : See the args framerate: [float] the framerate of the montage video. All of the input videos are resampled to this common frame rate max_duration: [float] If not None, the maximum duration an element in seconds in the montage before it cycles. If None, then use the duration of the longest video Returns: An video file in outfile that shows each video tiled into a montage.   warning - This loads every video into memory, so be careful with large montages! - If max_duration is not set, then this can result in loading very long video elements in the montage, which will make for long videos",
-"func":1
-},
-{
-"ref":"vipy.visualize.urls",
-"url":50,
-"doc":"Given a list of public image URLs, create a stand-alone HTML page to show them all. Args: urllist: [list] A list of urls to display title: [str] The title of the html file imagewidth: [int] The size of the images in the page outfile: [str] The path to the output html file display: [bool] open the html file in the default system viewer when complete",
-"func":1
-},
-{
-"ref":"vipy.visualize.tohtml",
-"url":50,
-"doc":"Given a list of vipy.image.Image objects, show the images along with the dictionary contents of imdict (one per image) in a single standalone HTML file Args: imlist: [list  vipy.image.Image ] imdict: [list of dict] An optional list of dictionaries, such that each dictionary is visualized per image title: [str] The title of the html file imagewidth: [int] The size of the images in the page outfile: [str] The path to the output html file display: [bool] open the html file in the default system viewer when complete Returns: An html file in outfile that contains all the images as a standalone embedded file (no links or external files).",
-"func":1
-},
-{
-"ref":"vipy.visualize.videolist",
-"url":50,
-"doc":"Create a standalone HTML file that will visualize the set of videos in vidlist using HTML5 video player",
-"func":1
-},
-{
-"ref":"vipy.visualize.imagelist",
-"url":50,
-"doc":"Given a list of image filenames wth absolute paths, copy to outdir, and create an index.html file that visualizes each.",
-"func":1
-},
-{
-"ref":"vipy.visualize.imagetuplelist",
-"url":50,
-"doc":"Imagelist but put tuples on same row",
-"func":1
-},
-{
-"ref":"vipy.torch",
-"url":51,
-"doc":""
-},
-{
-"ref":"vipy.torch.TorchDataset",
-"url":51,
-"doc":"Converter from a pycollector dataset to a torch dataset"
-},
-{
-"ref":"vipy.torch.Tensordir",
-"url":51,
-"doc":"A torch dataset stored as a directory of .pkl.bz2 files each containing a list of [(tensor, str=json.dumps(label ,  .] tuples used for data augmented training. This is useful to use the default Dataset loaders in Torch. Usage:   vipy.torch.Tensordir('/path/to') vipy.torch.Tensordir( ('/path/to/1', '/path/to/2') )    note This requires python random() and not numpy random"
-},
-{
-"ref":"vipy.torch.Tensordir.take",
-"url":51,
-"doc":"",
-"func":1
-},
-{
-"ref":"vipy.torch.Tensordir.filter",
-"url":51,
-"doc":"Keep elements that lambda evaluates true. The lambda operates on the  absolute path filename for the tensordir and not the contents. This is useful for filtering by instanceid in the  vipy.util.filebase .",
-"func":1
-},
-{
-"ref":"vipy.torch.Tensordir.clone",
-"url":51,
-"doc":"",
-"func":1
-},
-{
-"ref":"vipy.torch.TorchTensordir",
-"url":51,
-"doc":"A torch dataset stored as a directory of .pkl.bz2 files each containing a list of [(tensor, str=json.dumps(label ,  .] tuples used for data augmented training. This is useful to use the default Dataset loaders in Torch. Usage:   vipy.torch.Tensordir('/path/to') vipy.torch.Tensordir( ('/path/to/1', '/path/to/2') )    note This requires python random() and not numpy random"
-},
-{
-"ref":"vipy.torch.TorchTensordir.filter",
-"url":51,
-"doc":"Keep elements that lambda evaluates true. The lambda operates on the  absolute path filename for the tensordir and not the contents. This is useful for filtering by instanceid in the  vipy.util.filebase .",
 "func":1
 }
 ]
