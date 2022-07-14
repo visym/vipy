@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1" />
-<meta name="generator" content="pdoc 0.9.2" />
+<meta name="generator" content="pdoc 0.10.0" />
 <title>vipy.data.lfw API documentation</title>
 <meta name="description" content="" />
 <link rel="preload stylesheet" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/10up-sanitize.css/11.0.1/sanitize.min.css" integrity="sha256-PK9q560IAAa6WVRRh76LtCaI8pjTJ2z11v0miyNNjrs=" crossorigin>
@@ -25,7 +25,6 @@
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1e7c5a09dbf70eba3e89e986bcc48d2602e3df23/vipy/data/lfw.py#L0-L84" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">import os
 import numpy as np
@@ -132,7 +131,6 @@ class LFW(object):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1e7c5a09dbf70eba3e89e986bcc48d2602e3df23/vipy/data/lfw.py#L15-L85" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">class LFW(object):
     def __init__(self, datadir):
@@ -216,7 +214,6 @@ class LFW(object):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1e7c5a09dbf70eba3e89e986bcc48d2602e3df23/vipy/data/lfw.py#L41-L42" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def dataset(self):
     return [ImageCategory(category=s, filename=f) for s in self.subjects() for f in imlist(os.path.join(self.lfwdir, &#39;lfw&#39;, s))]</code></pre>
@@ -230,7 +227,6 @@ class LFW(object):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1e7c5a09dbf70eba3e89e986bcc48d2602e3df23/vipy/data/lfw.py#L44-L46" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def dictionary(self):
     &#34;&#34;&#34;List of all Images of all subjects&#34;&#34;&#34;
@@ -245,7 +241,6 @@ class LFW(object):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1e7c5a09dbf70eba3e89e986bcc48d2602e3df23/vipy/data/lfw.py#L22-L24" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def download(self, verbose=True):
     vipy.downloader.download_and_unpack(URL, self.lfwdir, verbose=verbose)
@@ -260,7 +255,6 @@ class LFW(object):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1e7c5a09dbf70eba3e89e986bcc48d2602e3df23/vipy/data/lfw.py#L48-L53" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def list(self):
     &#34;&#34;&#34;List of all Images of all subjects&#34;&#34;&#34;
@@ -278,7 +272,6 @@ class LFW(object):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1e7c5a09dbf70eba3e89e986bcc48d2602e3df23/vipy/data/lfw.py#L82-L85" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def pairs(self):
     if not os.path.isfile(os.path.join(self.lfwdir, &#39;lfw&#39;, &#39;pairs.txt&#39;)):
@@ -294,7 +287,6 @@ class LFW(object):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1e7c5a09dbf70eba3e89e986bcc48d2602e3df23/vipy/data/lfw.py#L72-L75" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def pairsDevTest(self):
     if not os.path.isfile(os.path.join(self.lfwdir, &#39;lfw&#39;, &#39;pairsDevTest.txt&#39;)):
@@ -310,7 +302,6 @@ class LFW(object):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1e7c5a09dbf70eba3e89e986bcc48d2602e3df23/vipy/data/lfw.py#L77-L80" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def pairsDevTrain(self):
     if not os.path.isfile(os.path.join(self.lfwdir, &#39;lfw&#39;, &#39;pairsDevTrain.txt&#39;)):
@@ -326,7 +317,6 @@ class LFW(object):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1e7c5a09dbf70eba3e89e986bcc48d2602e3df23/vipy/data/lfw.py#L36-L39" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def subject_images(self, subject):
     &#34;&#34;&#34;List of Images of a subject&#34;&#34;&#34;
@@ -342,7 +332,6 @@ class LFW(object):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1e7c5a09dbf70eba3e89e986bcc48d2602e3df23/vipy/data/lfw.py#L32-L34" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def subjects(self):
     &#34;&#34;&#34;List of all subject names&#34;&#34;&#34;
@@ -357,7 +346,6 @@ class LFW(object):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1e7c5a09dbf70eba3e89e986bcc48d2602e3df23/vipy/data/lfw.py#L55-L57" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def take(self, n=128):
     &#34;&#34;&#34;Return a represenative list of 128 images&#34;&#34;&#34;
@@ -454,7 +442,7 @@ setTimeout(() => input.focus(), 100);
 </nav>
 </main>
 <footer id="footer">
-<p>Generated by <a href="https://pdoc3.github.io/pdoc" title="pdoc: Python API documentation generator"><cite>pdoc</cite> 0.9.2</a>.</p>
+<p>Generated by <a href="https://pdoc3.github.io/pdoc" title="pdoc: Python API documentation generator"><cite>pdoc</cite> 0.10.0</a>.</p>
 </footer>
 </body>
 </html>

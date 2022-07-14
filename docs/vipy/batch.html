@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1" />
-<meta name="generator" content="pdoc 0.9.2" />
+<meta name="generator" content="pdoc 0.10.0" />
 <title>vipy.batch API documentation</title>
 <meta name="description" content="" />
 <link rel="preload stylesheet" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/10up-sanitize.css/11.0.1/sanitize.min.css" integrity="sha256-PK9q560IAAa6WVRRh76LtCaI8pjTJ2z11v0miyNNjrs=" crossorigin>
@@ -25,7 +25,6 @@
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1e7c5a09dbf70eba3e89e986bcc48d2602e3df23/vipy/batch.py#L0-L338" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">import os
 import sys
@@ -414,7 +413,6 @@ If so, then an operation on the batch is performed on each of the elements in th
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1e7c5a09dbf70eba3e89e986bcc48d2602e3df23/vipy/batch.py#L132-L337" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">class Batch():
     &#34;&#34;&#34;vipy.batch.Batch class
@@ -633,7 +631,6 @@ If so, then an operation on the batch is performed on each of the elements in th
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1e7c5a09dbf70eba3e89e986bcc48d2602e3df23/vipy/batch.py#L299-L311" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def filter(self, f_lambda):
     &#34;&#34;&#34;Run the lambda function on each of the elements of the batch and filter based on the provided lambda keeping those elements that return true 
@@ -670,7 +667,6 @@ If it does, construct the lambda with default parameter capture:</p>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1e7c5a09dbf70eba3e89e986bcc48d2602e3df23/vipy/batch.py#L271-L297" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def map(self, f_lambda, args=None):
     &#34;&#34;&#34;Run the lambda function on each of the elements of the batch and return the batch object.
@@ -709,7 +705,6 @@ If it does, construct the lambda with default parameter capture:</p>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1e7c5a09dbf70eba3e89e986bcc48d2602e3df23/vipy/batch.py#L259-L265" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def result(self):
     &#34;&#34;&#34;Return the result of the batch processing, ordered&#34;&#34;&#34;
@@ -741,7 +736,6 @@ net to take advantage of this GPU rather than using the default cuda:0.</p></div
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1e7c5a09dbf70eba3e89e986bcc48d2602e3df23/vipy/batch.py#L313-L337" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def scattermap(self, f_lambda, obj):
     &#34;&#34;&#34;Scatter obj to all workers, and apply lambda function f(obj, im) to each element in batch
@@ -781,7 +775,6 @@ net to take advantage of this GPU rather than using the default cuda:0.</p></div
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1e7c5a09dbf70eba3e89e986bcc48d2602e3df23/vipy/batch.py#L25-L129" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">class Dask(object):
     &#34;&#34;&#34;Dask distributed client&#34;&#34;&#34;
@@ -899,7 +892,6 @@ net to take advantage of this GPU rather than using the default cuda:0.</p></div
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1e7c5a09dbf70eba3e89e986bcc48d2602e3df23/vipy/batch.py#L128-L129" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def client(self):
     return self._client</code></pre>
@@ -913,7 +905,6 @@ net to take advantage of this GPU rather than using the default cuda:0.</p></div
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1e7c5a09dbf70eba3e89e986bcc48d2602e3df23/vipy/batch.py#L115-L116" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def dashboard(self):        
     webbrowser.open(self._client.dashboard_link) if len(self._client.dashboard_link)&gt;0 else None</code></pre>
@@ -927,7 +918,6 @@ net to take advantage of this GPU rather than using the default cuda:0.</p></div
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1e7c5a09dbf70eba3e89e986bcc48d2602e3df23/vipy/batch.py#L112-L113" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def has_dashboard(self):
     return len(self._client.dashboard_link) &gt; 0 if self._client is not None else False</code></pre>
@@ -941,7 +931,6 @@ net to take advantage of this GPU rather than using the default cuda:0.</p></div
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1e7c5a09dbf70eba3e89e986bcc48d2602e3df23/vipy/batch.py#L109-L110" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def num_gpus(self):
     return self._num_gpus</code></pre>
@@ -955,7 +944,6 @@ net to take advantage of this GPU rather than using the default cuda:0.</p></div
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1e7c5a09dbf70eba3e89e986bcc48d2602e3df23/vipy/batch.py#L118-L119" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def num_processes(self):
     return len(self._client.nthreads()) if self._client is not None else 0</code></pre>
@@ -969,7 +957,6 @@ net to take advantage of this GPU rather than using the default cuda:0.</p></div
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1e7c5a09dbf70eba3e89e986bcc48d2602e3df23/vipy/batch.py#L121-L126" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def shutdown(self):
     self._client.close()
@@ -1074,7 +1061,7 @@ setTimeout(() => input.focus(), 100);
 </nav>
 </main>
 <footer id="footer">
-<p>Generated by <a href="https://pdoc3.github.io/pdoc" title="pdoc: Python API documentation generator"><cite>pdoc</cite> 0.9.2</a>.</p>
+<p>Generated by <a href="https://pdoc3.github.io/pdoc" title="pdoc: Python API documentation generator"><cite>pdoc</cite> 0.10.0</a>.</p>
 </footer>
 </body>
 </html>

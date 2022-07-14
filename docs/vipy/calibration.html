@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1" />
-<meta name="generator" content="pdoc 0.9.2" />
+<meta name="generator" content="pdoc 0.10.0" />
 <title>vipy.calibration API documentation</title>
 <meta name="description" content="" />
 <link rel="preload stylesheet" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/10up-sanitize.css/11.0.1/sanitize.min.css" integrity="sha256-PK9q560IAAa6WVRRh76LtCaI8pjTJ2z11v0miyNNjrs=" crossorigin>
@@ -25,7 +25,6 @@
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1e7c5a09dbf70eba3e89e986bcc48d2602e3df23/vipy/calibration.py#L0-L176" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">import numpy as np
 import vipy.image
@@ -187,22 +186,45 @@ def centersquare_image(height=512, width=512, squaresize=256):
     &#34;&#34;&#34;Returns `vipy.image.Image` for `vipy.calibration.centersquare` numpy array&#34;&#34;&#34;
     return vipy.image.Image(array=np.uint8(255*centersquare(height, width, squaresize, channels=1)), colorspace=&#39;lum&#39;)
 
+def imcentersquare(height=512, width=512, squaresize=256):
+    &#34;&#34;&#34;alias for `vipy.calibration.centersquare_image`&#34;&#34;&#34;
+    return centersquare_image(height, width, squaresize)
 
 def circle(x, y, r, width, height, channels=1):
     &#34;&#34;&#34;Create a white circle on a black background centered at (x,y) with radius r pixels, of shape (width, height).  
     
     Returns:
-        numpy array of approproate channels of float32 in [0,1]
+        numpy array of appropriate channels of float32 in [0,1]
     &#34;&#34;&#34;
     img = np.zeros( (height, width, channels), dtype=np.float32 )
     (X,Y) = np.meshgrid(range(width), range(height))
     img[np.sqrt((X-x)**2 + (Y-y)**2) &lt; r] = 1.0
     return img
 
+def imcircle(x, y, r, width, height, channels=1):
+    &#34;&#34;&#34;Create a white circle on a black background centered at (x,y) with radius r pixels, of shape (width, height).  
+    
+    Returns:
+        `vipy.image.Image` object with array defined by `vipy.calibration.circle`
+    &#34;&#34;&#34;    
+    return vipy.image.Image(array=circle(x, y, r, width, height, channels))
+
 def square(x, y, r, width, height, channels=1):
     img = np.zeros( (height, width, channels), dtype=np.float32 )
     img[max(int(y-r), 0):min(height, int(y+r)), max(int(x-r), 0):min(int(x+r), width)] = 1.0
-    return img</code></pre>
+    return img
+
+
+def imstep(width, height):
+    &#34;&#34;&#34;Create a left black/right white step image of size (width, height)
+    
+    Returns:
+        `vipy.image.Image` object
+    &#34;&#34;&#34;    
+    img = np.zeros( (height, width, 1), dtype=np.float32 )
+    img[:, -width//2:] = 1
+    return vipy.image.Image(array=img)
+    </code></pre>
 </details>
 </section>
 <section>
@@ -220,7 +242,6 @@ def square(x, y, r, width, height, channels=1):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1e7c5a09dbf70eba3e89e986bcc48d2602e3df23/vipy/calibration.py#L108-L114" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def bayer(dx, dy, M=16, N=16):
     &#34;&#34;&#34;Return an (M,N) tiled texture pattern of [blue, green, blue, green; green red green red; blue green blue green, green red green red] such that each subblock element is (dx,dy) and the total repeated subblock size is (4*dx, 4*dy)&#34;&#34;&#34;
@@ -239,7 +260,6 @@ def square(x, y, r, width, height, channels=1):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1e7c5a09dbf70eba3e89e986bcc48d2602e3df23/vipy/calibration.py#L117-L119" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def bayer_image(dx, dy, M=16, N=16):
     &#34;&#34;&#34;Return `vipy.calibration.bayer` as `vipy.image.Image`&#34;&#34;&#34;
@@ -256,7 +276,6 @@ def square(x, y, r, width, height, channels=1):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1e7c5a09dbf70eba3e89e986bcc48d2602e3df23/vipy/calibration.py#L28-L35" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def blue_checkerboard_image(dx=16, dy=16, nrows=8, ncols=8):
     &#34;&#34;&#34;Create a 2D color checkerboard pattern with squares of size (dx, dy) and image of size (dx*ncols,dy*nrows) with blue colors.
@@ -276,7 +295,6 @@ def square(x, y, r, width, height, channels=1):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1e7c5a09dbf70eba3e89e986bcc48d2602e3df23/vipy/calibration.py#L101-L105" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def blueblock(dx, dy):
     &#34;&#34;&#34;Return an (dx, dy, 3) numpy array float64 RGB channel image with blue channel=1.0&#34;&#34;&#34;
@@ -295,7 +313,6 @@ def square(x, y, r, width, height, channels=1):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1e7c5a09dbf70eba3e89e986bcc48d2602e3df23/vipy/calibration.py#L146-L155" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def centersquare(height=512, width=512, squaresize=256, channels=1):
     &#34;&#34;&#34;Create a white square on a black background of an image of shape (width, height).
@@ -317,7 +334,6 @@ def square(x, y, r, width, height, channels=1):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1e7c5a09dbf70eba3e89e986bcc48d2602e3df23/vipy/calibration.py#L157-L159" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def centersquare_image(height=512, width=512, squaresize=256):    
     &#34;&#34;&#34;Returns `vipy.image.Image` for `vipy.calibration.centersquare` numpy array&#34;&#34;&#34;
@@ -334,7 +350,6 @@ def square(x, y, r, width, height, channels=1):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1e7c5a09dbf70eba3e89e986bcc48d2602e3df23/vipy/calibration.py#L5-L15" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def checkerboard(dx=16, dy=16, nrows=8, ncols=8):
     &#34;&#34;&#34;Create a 2D checkerboard pattern with squares of size (dx, dy) and image of size (dx*ncols,dy*nrows) with black and white colors with black in upper left and bottom right.
@@ -356,17 +371,16 @@ def square(x, y, r, width, height, channels=1):
 <div class="desc"><p>Create a white circle on a black background centered at (x,y) with radius r pixels, of shape (width, height).
 </p>
 <h2 id="returns">Returns</h2>
-<p>numpy array of approproate channels of float32 in [0,1]</p></div>
+<p>numpy array of appropriate channels of float32 in [0,1]</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1e7c5a09dbf70eba3e89e986bcc48d2602e3df23/vipy/calibration.py#L162-L171" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def circle(x, y, r, width, height, channels=1):
     &#34;&#34;&#34;Create a white circle on a black background centered at (x,y) with radius r pixels, of shape (width, height).  
     
     Returns:
-        numpy array of approproate channels of float32 in [0,1]
+        numpy array of appropriate channels of float32 in [0,1]
     &#34;&#34;&#34;
     img = np.zeros( (height, width, channels), dtype=np.float32 )
     (X,Y) = np.meshgrid(range(width), range(height))
@@ -384,7 +398,6 @@ def square(x, y, r, width, height, channels=1):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1e7c5a09dbf70eba3e89e986bcc48d2602e3df23/vipy/calibration.py#L47-L53" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def color_checkerboard(dx=16, dy=16, nrows=8, ncols=8):
     &#34;&#34;&#34;Create a 2D color checkerboard pattern with squares of size (dx, dy) and image of size (dx*ncols,dy*nrows) with random colors.
@@ -405,7 +418,6 @@ def square(x, y, r, width, height, channels=1):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1e7c5a09dbf70eba3e89e986bcc48d2602e3df23/vipy/calibration.py#L38-L44" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def color_checkerboard_image(dx=16, dy=16, nrows=8, ncols=8):
     &#34;&#34;&#34;Create a 2D color checkerboard pattern with squares of size (dx, dy) and image of size (dx*ncols,dy*nrows) with random colors
@@ -426,7 +438,6 @@ def square(x, y, r, width, height, channels=1):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1e7c5a09dbf70eba3e89e986bcc48d2602e3df23/vipy/calibration.py#L122-L135" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def dots(dx=16, dy=16, nrows=8, ncols=8):
     &#34;&#34;&#34;Create a sequence of dots (e.g. single pixels on black background) separated by strides (dx, dy) with image of size (dx*ncols,dy*nrows)
@@ -452,13 +463,69 @@ def square(x, y, r, width, height, channels=1):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1e7c5a09dbf70eba3e89e986bcc48d2602e3df23/vipy/calibration.py#L87-L91" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def greenblock(dx, dy):
     &#34;&#34;&#34;Return an (dx, dy, 3) numpy array float64 RGB channel image with green channel=1.0&#34;&#34;&#34;        
     img = np.zeros((dx,dy,3))
     img[:,:,1] = 1.0
     return img</code></pre>
+</details>
+</dd>
+<dt id="vipy.calibration.imcentersquare"><code class="name flex">
+<span>def <span class="ident">imcentersquare</span></span>(<span>height=512, width=512, squaresize=256)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>alias for <code><a title="vipy.calibration.centersquare_image" href="#vipy.calibration.centersquare_image">centersquare_image()</a></code></p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def imcentersquare(height=512, width=512, squaresize=256):
+    &#34;&#34;&#34;alias for `vipy.calibration.centersquare_image`&#34;&#34;&#34;
+    return centersquare_image(height, width, squaresize)</code></pre>
+</details>
+</dd>
+<dt id="vipy.calibration.imcircle"><code class="name flex">
+<span>def <span class="ident">imcircle</span></span>(<span>x, y, r, width, height, channels=1)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Create a white circle on a black background centered at (x,y) with radius r pixels, of shape (width, height).
+</p>
+<h2 id="returns">Returns</h2>
+<p><code><a title="vipy.image.Image" href="image.html#vipy.image.Image">Image</a></code> object with array defined by <code><a title="vipy.calibration.circle" href="#vipy.calibration.circle">circle()</a></code></p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def imcircle(x, y, r, width, height, channels=1):
+    &#34;&#34;&#34;Create a white circle on a black background centered at (x,y) with radius r pixels, of shape (width, height).  
+    
+    Returns:
+        `vipy.image.Image` object with array defined by `vipy.calibration.circle`
+    &#34;&#34;&#34;    
+    return vipy.image.Image(array=circle(x, y, r, width, height, channels))</code></pre>
+</details>
+</dd>
+<dt id="vipy.calibration.imstep"><code class="name flex">
+<span>def <span class="ident">imstep</span></span>(<span>width, height)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Create a left black/right white step image of size (width, height)</p>
+<h2 id="returns">Returns</h2>
+<p><code><a title="vipy.image.Image" href="image.html#vipy.image.Image">Image</a></code> object</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def imstep(width, height):
+    &#34;&#34;&#34;Create a left black/right white step image of size (width, height)
+    
+    Returns:
+        `vipy.image.Image` object
+    &#34;&#34;&#34;    
+    img = np.zeros( (height, width, 1), dtype=np.float32 )
+    img[:, -width//2:] = 1
+    return vipy.image.Image(array=img)</code></pre>
 </details>
 </dd>
 <dt id="vipy.calibration.owl"><code class="name flex">
@@ -469,7 +536,6 @@ def square(x, y, r, width, height, channels=1):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1e7c5a09dbf70eba3e89e986bcc48d2602e3df23/vipy/calibration.py#L60-L62" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def owl():
     &#34;&#34;&#34;Return a `vipy.image.Image` object of a superb owl from wikipedia&#34;&#34;&#34;
@@ -484,7 +550,6 @@ def square(x, y, r, width, height, channels=1):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1e7c5a09dbf70eba3e89e986bcc48d2602e3df23/vipy/calibration.py#L64-L67" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def randomimage(m=512, n=512):
     &#34;&#34;&#34;Return a uniform random RGB image as uint8 numpy array of size (m,n,3)&#34;&#34;&#34;
@@ -502,7 +567,6 @@ def square(x, y, r, width, height, channels=1):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1e7c5a09dbf70eba3e89e986bcc48d2602e3df23/vipy/calibration.py#L18-L25" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def red_checkerboard_image(dx=16, dy=16, nrows=8, ncols=8):
     &#34;&#34;&#34;Create a 2D color checkerboard pattern with squares of size (dx, dy) and image of size (dx*ncols,dy*nrows) with red colors.
@@ -522,7 +586,6 @@ def square(x, y, r, width, height, channels=1):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1e7c5a09dbf70eba3e89e986bcc48d2602e3df23/vipy/calibration.py#L94-L98" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def redblock(dx, dy):
     &#34;&#34;&#34;Return an (dx, dy, 3) numpy array float64 RGB channel image with red channel=1.0&#34;&#34;&#34;    
@@ -539,7 +602,6 @@ def square(x, y, r, width, height, channels=1):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1e7c5a09dbf70eba3e89e986bcc48d2602e3df23/vipy/calibration.py#L173-L176" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def square(x, y, r, width, height, channels=1):
     img = np.zeros( (height, width, channels), dtype=np.float32 )
@@ -555,7 +617,6 @@ def square(x, y, r, width, height, channels=1):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1e7c5a09dbf70eba3e89e986bcc48d2602e3df23/vipy/calibration.py#L56-L58" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def testimage():
     &#34;&#34;&#34;Return a `vipy.image.Image` object of a superb owl from wikipedia&#34;&#34;&#34;
@@ -570,7 +631,6 @@ def square(x, y, r, width, height, channels=1):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1e7c5a09dbf70eba3e89e986bcc48d2602e3df23/vipy/calibration.py#L69-L71" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def testimg():
     &#34;&#34;&#34;Return a numpy array for `vipy.calibration.testimage` of a superb owl&#34;&#34;&#34;
@@ -587,7 +647,6 @@ def square(x, y, r, width, height, channels=1):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1e7c5a09dbf70eba3e89e986bcc48d2602e3df23/vipy/calibration.py#L74-L84" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def tile(T, nrows=16, ncols=16):
     &#34;&#34;&#34;Create a 2D tile pattern with texture T repeated (nrows, ncols) times.
@@ -612,7 +671,6 @@ def square(x, y, r, width, height, channels=1):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1e7c5a09dbf70eba3e89e986bcc48d2602e3df23/vipy/calibration.py#L138-L144" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def vertical_gradient(nrows, ncols):
     &#34;&#34;&#34;Create 2D linear ramp image with the ramp increasing from top to bottom.
@@ -704,6 +762,9 @@ setTimeout(() => input.focus(), 100);
 <li><code><a title="vipy.calibration.color_checkerboard_image" href="#vipy.calibration.color_checkerboard_image">color_checkerboard_image</a></code></li>
 <li><code><a title="vipy.calibration.dots" href="#vipy.calibration.dots">dots</a></code></li>
 <li><code><a title="vipy.calibration.greenblock" href="#vipy.calibration.greenblock">greenblock</a></code></li>
+<li><code><a title="vipy.calibration.imcentersquare" href="#vipy.calibration.imcentersquare">imcentersquare</a></code></li>
+<li><code><a title="vipy.calibration.imcircle" href="#vipy.calibration.imcircle">imcircle</a></code></li>
+<li><code><a title="vipy.calibration.imstep" href="#vipy.calibration.imstep">imstep</a></code></li>
 <li><code><a title="vipy.calibration.owl" href="#vipy.calibration.owl">owl</a></code></li>
 <li><code><a title="vipy.calibration.randomimage" href="#vipy.calibration.randomimage">randomimage</a></code></li>
 <li><code><a title="vipy.calibration.red_checkerboard_image" href="#vipy.calibration.red_checkerboard_image">red_checkerboard_image</a></code></li>
@@ -719,7 +780,7 @@ setTimeout(() => input.focus(), 100);
 </nav>
 </main>
 <footer id="footer">
-<p>Generated by <a href="https://pdoc3.github.io/pdoc" title="pdoc: Python API documentation generator"><cite>pdoc</cite> 0.9.2</a>.</p>
+<p>Generated by <a href="https://pdoc3.github.io/pdoc" title="pdoc: Python API documentation generator"><cite>pdoc</cite> 0.10.0</a>.</p>
 </footer>
 </body>
 </html>

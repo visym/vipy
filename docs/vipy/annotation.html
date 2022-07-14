@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1" />
-<meta name="generator" content="pdoc 0.9.2" />
+<meta name="generator" content="pdoc 0.10.0" />
 <title>vipy.annotation API documentation</title>
 <meta name="description" content="" />
 <link rel="preload stylesheet" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/10up-sanitize.css/11.0.1/sanitize.min.css" integrity="sha256-PK9q560IAAa6WVRRh76LtCaI8pjTJ2z11v0miyNNjrs=" crossorigin>
@@ -25,20 +25,23 @@
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1e7c5a09dbf70eba3e89e986bcc48d2602e3df23/vipy/annotation.py#L0-L65" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">import urllib
 import os
 import re
 import random
 import math
-from vipy.util import try_import, isurl, remkdir
+from vipy.util import try_import, isurl, remkdir, temphtml, tempjson, filetail, readjson, isjsonfile, toextension
 import tempfile
 import numpy as np
 from vipy.downloader import common_user_agents
 from vipy.globals import print
 import warnings
-
+from datetime import datetime
+import time
+import webbrowser
+import html
+            
 
 def googlesearch(tag):
     &#34;&#34;&#34;Return a list of image URLs from google image search associated with the provided tag&#34;&#34;&#34;
@@ -90,7 +93,132 @@ def verbs():
     nltk.download(&#39;verbnet&#39;, nltkdir)
     nltk.data.path.append(nltkdir)
     from nltk.corpus import verbnet
-    return verbnet.lemmas()</code></pre>
+    return verbnet.lemmas()
+
+
+class Selector():
+    &#34;&#34;&#34;HTML+javascript based UI for selecting images from a group.  
+
+    * Given a list of lists of `vipy.image.Image` objects, display each image in a standalone HTML file.  
+    * Allow the user to click on desirable images to select them.  
+    * When done, the user selects the Download JSON button to export the selected elements.
+    * The selected elements are stored in a JSON file which is exported back into this object to return only the selected images
+
+    ```python
+    imlist = [[vipy.image.RandomScene(128,128) for k in range(10)] for j in range(5)]
+    s = vipy.annotation.Selector(imlist)
+    s.html(show=True)  # annotate locally in browser by selecting images to keep, then download the resulting jsonfile
+    selected_imlist = s.fromjson(&#39;/path/to/downloaded.json&#39;)  # returns only those images selected in the UI
+    ```
+    &#34;&#34;&#34;
+       
+    def __init__(self, imlist):
+        self._imlist = imlist
+
+    def __iter__(self):
+        for im in self._imlist:
+            yield im
+            
+    def html(self, jsonfile=None, htmlfile=None, imdict=None, title=&#39;Image Selector&#39;, maxwidth=4096, default_opacity=0.5, selected_opacity=1.0, show=False, description=&#34;Select the images to keep from each group, download the JSON, then call vipy.annotation.Select.fromjson()&#34;, mindim=None):
+        &#34;&#34;&#34;Given a list of tuples of `vipy.image.Image` objects, create a standalone HTML file that will allow the user to select individual images in the group.  Selected images are output to jsonfile&#34;&#34;&#34;
+        htmlfile = temphtml() if htmlfile is None else htmlfile
+        jsonfile = filetail(toextension(htmlfile, &#39;.json&#39;)) if jsonfile is None else jsonfile
+        imlist = self._imlist
+        
+        f = open(htmlfile,&#39;w&#39;)
+        f.write(&#39;&lt;!DOCTYPE html&gt;\n&#39;)
+        f.write(&#39;&lt;!--\n    Visym Labs\n    vipy.annotation.Selector (https://visym.github.io/vipy)\n    Generated: %s\n--&gt;\n&#39; % str(datetime.now()))            
+        f.write(&#34;&lt;head&gt;\n&#34;);
+        f.write(&#39;  &lt;meta charset=&#34;UTF-8&#34;&gt;\n&#39;)
+        f.write(&#34;  &lt;title&gt;%s&lt;/title&gt;\n&#34; % title)
+        f.write(&#39;  &lt;link href=&#34;https://use.fontawesome.com/releases/v5.13.0/css/all.css&#34; rel=&#34;stylesheet&#34;&gt;\n&#39;)
+        f.write(&#34;&lt;/head&gt;\n&#34;)        
+        f.write(&#39;&lt;html&gt;\n&#39;)
+        f.write(&#39;&lt;body&gt;\n&#39;)
+        f.write(&#39;  &lt;script type=&#34;text/javascript&#34;&gt;\n&#39;)
+        f.write(&#39;    var selected = {};\n&#39;);
+        f.write(&#39;    function set_unselected(x) { x.style.opacity=%s; x.setAttribute(&#34;selected&#34;,&#34;off&#34;); selected[x.id]=false;};\n&#39; % (default_opacity))
+        f.write(&#39;    function set_selected(x) { x.style.opacity=%s; x.setAttribute(&#34;selected&#34;,&#34;on&#34;); selected[x.id]=true;};\n&#39; % (selected_opacity))
+        f.write(&#39;    function toggle(x) { if (x.getAttribute(&#34;selected&#34;) == &#34;off&#34;) { set_selected(x); } else { set_unselected(x); }; }\n&#39;)
+        f.write(&#39;    function row_selected(k, n) { for (let i = 0; i &lt; n; i++) { set_selected( document.getElementById(`(${k},${i})`));};}\n&#39;)
+        f.write(&#39;    function row_unselected(k, n) { for (let i = 0; i &lt; n; i++) { set_unselected( document.getElementById(`(${k},${i})`));};}\n&#39;)
+        f.write(&#39;    function toggle_row(x,k,n) { if (x.getAttribute(&#34;selected&#34;) == &#34;off&#34;) { row_selected(k,n); x.setAttribute(&#34;selected&#34;,&#34;on&#34;); } else { row_unselected(k,n); x.setAttribute(&#34;selected&#34;,&#34;off&#34;);}; }\n&#39;)        
+        f.write(&#39;    function exportJSON(x) { var data = &#34;text/json;charset=utf-8,&#34; + encodeURIComponent(JSON.stringify(selected)); x.setAttribute(&#34;href&#34;, &#34;data:&#34;+data); x.setAttribute(&#34;download&#34;, &#34;%s&#34;); }\n&#39; % jsonfile)
+        f.write(&#39;    function set_transparent(x) { x.style.opacity=0.5; };\n&#39;)
+        f.write(&#39;    function set_opaque(x) { x.style.opacity=1.0; };\n&#39;)        
+        f.write(&#39;  &lt;/script&gt;\n&#39;)    
+        f.write(&#39;&lt;div id=&#34;container&#34; style=&#34;width:%dpx&#34;&gt;\n&#39; % maxwidth)
+        f.write(&#39;&lt;div id=&#34;header&#34;&gt;\n&#39;)
+        f.write(&#39;&lt;h1 style=&#34;margin-bottom:0;&#34;&gt;%s&lt;/h1&gt;&lt;br&gt;\n&#39; % title)
+        localtime = time.strftime(&#34;%Y-%m-%d %H:%M:%S&#34;,time.localtime(time.time()))
+        f.write(&#39;HTML generated on %s&lt;br&gt;\n\n&#39; % localtime)
+        f.write(&#39;Number of image groups: %d&lt;br&gt;\n&#39; % len(imlist))
+        f.write(&#39;Number of images: %d&lt;br&gt;&lt;br&gt;\n&#39; % len([im for iml in imlist for im in iml]))
+        f.write(&#39;%s&lt;br&gt;&lt;br&gt;\n&#39; % description)
+        f.write(&#39;&lt;a onclick=&#34;exportJSON(this);&#34; class=&#34;btn&#34;&gt;&lt;button&gt;Download JSON&lt;/button&gt;&lt;/a&gt;\n&#39;) 
+        f.write(&#39;&lt;/div&gt;\n&#39;)
+        f.write(&#39;&lt;br&gt;\n&#39;)
+        f.write(&#39;&lt;hr&gt;\n&#39;)
+        f.write(&#39;&lt;div style=&#34;float:left;&#34;&gt;\n&#39;)
+    
+        # Generate embedded images and html
+        for (i, imsrclist) in enumerate(imlist):
+            f.write(&#39;&lt;p&gt;\n&lt;/p&gt;\n&#39;)
+            if imdict is not None:
+                for (k,v) in imdict[i].items():
+                    f.write(&#39;&lt;b&gt;%s&lt;/b&gt;: %s&lt;br&gt;\n&#39; % (html.escape(str(k)), html.escape(str(v))))
+                f.write(&#39;&lt;p&gt;\n&lt;/p&gt;\n&#39;)
+                
+            for (j, im) in enumerate(imsrclist):                    
+                im = im if mindim is None else im.clone().mindim(mindim)
+                f.write(im.html(id=&#39;(%d,%d)&#39; % (i,j), attributes={&#39;loading&#39;:&#39;lazy&#39;, &#39;onclick&#39;:&#34;toggle(this)&#34;, &#39;selected&#39;:&#39;off&#39;, &#39;style&#39;:&#34;opacity:%f&#34; % default_opacity}))   # base-64 encoded image with img tag
+            f.write(&#39;&lt;br&gt;&lt;i title=&#34;Toggle Select All&#34; onclick=&#34;toggle_row(this,%d,%d);&#34; selected=&#34;on&#34; onmouseover=&#34;set_opaque(this)&#34; onmouseout=&#34;set_transparent(this)&#34; class=&#34;fas fa-recycle fa-3x&#34; id=&#34;row-%d&#34; style=&#34;opacity:0.5;margin-right: 10px;&#34;&gt;&lt;/i&gt;&#39; % (i,len(imsrclist),i))
+            
+            f.write(&#39;&lt;p&gt;\n&lt;/p&gt;\n&#39;)
+            f.write(&#39;&lt;br&gt;\n&#39;)
+            f.write(&#39;&lt;hr&gt;\n&#39;)
+        f.write(&#39;&lt;/div&gt;\n&#39;)
+        f.write(&#39;&lt;/body&gt;\n&#39;)
+        f.write(&#39;&lt;/html&gt;\n&#39;)
+        f.close()
+
+        if show:
+            webbrowser.open(&#39;file:///%s&#39; % htmlfile)  # chrome only, will not work in safari
+        return htmlfile
+    
+    def fromjson(self, jsonfile):
+        &#34;&#34;&#34;Given the JSON file downloaded from the HTML selector, return only those that were selected&#34;&#34;&#34;
+        assert isjsonfile(jsonfile)
+        d = readjson(jsonfile)
+        return [[im for (j,im) in enumerate(iml) if &#39;(%d,%d)&#39;%(i,j) in d and d[&#39;(%d,%d)&#39;%(i,j)] == True] for (i,iml) in enumerate(self._imlist)]
+
+    
+class Filter(Selector):
+    &#34;&#34;&#34;HTML+javascript based UI for filtering images from a group.  
+
+    * Given a list of lists of `vipy.image.Image` objects, display each image in a standalone HTML file.  
+    * Allow the user to click on non-desirable images to remove them.  
+    * When done, the user selects the Download JSON button to export the filtered elements.
+    * The filtered elements are stored in a JSON file which is exported back into this object to return all but the filtered images
+
+    ```python
+    imlist = [[vipy.image.RandomScene(128,128) for k in range(10)] for j in range(5)]
+    s = vipy.annotation.Filter(imlist)
+    s.html(show=True)  # annotate locally in browser by selecting images to remove and download the resulting jsonfile
+    filtered_imlist = s.fromjson(&#39;/path/to/downloaded.json&#39;)   # returns images with those selected in the UI removed
+    ```
+    &#34;&#34;&#34;
+    
+    def html(self, jsonfile=None, htmlfile=None, imdict=None, title=&#39;Image Filter&#39;, maxwidth=4096, default_opacity=1.0, selected_opacity=0.5, show=False, description=&#34;Select the images to remove from each group, download the JSON, then call vipy.annotation.Filter.fromjson()&#34;, mindim=None):
+        return super().html(jsonfile=jsonfile, htmlfile=htmlfile, title=title, default_opacity=default_opacity, selected_opacity=selected_opacity, show=show, description=description, mindim=mindim, imdict=imdict, maxwidth=maxwidth)
+
+    def fromjson(self, jsonfile):    
+        &#34;&#34;&#34;Given the JSON file downloader from the HTML selector, return a filter of only those that were *not* selected&#34;&#34;&#34;
+        assert isjsonfile(jsonfile)
+        d = readjson(jsonfile)
+        return [[im for (j,im) in enumerate(iml) if &#39;(%d,%d)&#39;%(i,j) not in d or d[&#39;(%d,%d)&#39;%(i,j)] == False] for (i,iml) in enumerate(self._imlist)]
+            
+    </code></pre>
 </details>
 </section>
 <section>
@@ -108,7 +236,6 @@ def verbs():
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1e7c5a09dbf70eba3e89e986bcc48d2602e3df23/vipy/annotation.py#L36-L52" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def basic_level_categories():
     &#34;&#34;&#34;Return a list of nouns from wordnet that can be used as an initial list of basic level object categories&#34;&#34;&#34;
@@ -137,7 +264,6 @@ def verbs():
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1e7c5a09dbf70eba3e89e986bcc48d2602e3df23/vipy/annotation.py#L14-L33" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def googlesearch(tag):
     &#34;&#34;&#34;Return a list of image URLs from google image search associated with the provided tag&#34;&#34;&#34;
@@ -169,7 +295,6 @@ def verbs():
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1e7c5a09dbf70eba3e89e986bcc48d2602e3df23/vipy/annotation.py#L55-L64" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def verbs():
     &#34;&#34;&#34;Return a list of verbs from verbnet that can be used to define a set of activities&#34;&#34;&#34;
@@ -186,6 +311,312 @@ def verbs():
 </dl>
 </section>
 <section>
+<h2 class="section-title" id="header-classes">Classes</h2>
+<dl>
+<dt id="vipy.annotation.Filter"><code class="flex name class">
+<span>class <span class="ident">Filter</span></span>
+<span>(</span><span>imlist)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>HTML+javascript based UI for filtering images from a group.
+</p>
+<ul>
+<li>Given a list of lists of <code><a title="vipy.image.Image" href="image.html#vipy.image.Image">Image</a></code> objects, display each image in a standalone HTML file.
+</li>
+<li>Allow the user to click on non-desirable images to remove them.
+</li>
+<li>When done, the user selects the Download JSON button to export the filtered elements.</li>
+<li>The filtered elements are stored in a JSON file which is exported back into this object to return all but the filtered images</li>
+</ul>
+<pre><code class="language-python">imlist = [[vipy.image.RandomScene(128,128) for k in range(10)] for j in range(5)]
+s = vipy.annotation.Filter(imlist)
+s.html(show=True)  # annotate locally in browser by selecting images to remove and download the resulting jsonfile
+filtered_imlist = s.fromjson('/path/to/downloaded.json')   # returns images with those selected in the UI removed
+</code></pre></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">class Filter(Selector):
+    &#34;&#34;&#34;HTML+javascript based UI for filtering images from a group.  
+
+    * Given a list of lists of `vipy.image.Image` objects, display each image in a standalone HTML file.  
+    * Allow the user to click on non-desirable images to remove them.  
+    * When done, the user selects the Download JSON button to export the filtered elements.
+    * The filtered elements are stored in a JSON file which is exported back into this object to return all but the filtered images
+
+    ```python
+    imlist = [[vipy.image.RandomScene(128,128) for k in range(10)] for j in range(5)]
+    s = vipy.annotation.Filter(imlist)
+    s.html(show=True)  # annotate locally in browser by selecting images to remove and download the resulting jsonfile
+    filtered_imlist = s.fromjson(&#39;/path/to/downloaded.json&#39;)   # returns images with those selected in the UI removed
+    ```
+    &#34;&#34;&#34;
+    
+    def html(self, jsonfile=None, htmlfile=None, imdict=None, title=&#39;Image Filter&#39;, maxwidth=4096, default_opacity=1.0, selected_opacity=0.5, show=False, description=&#34;Select the images to remove from each group, download the JSON, then call vipy.annotation.Filter.fromjson()&#34;, mindim=None):
+        return super().html(jsonfile=jsonfile, htmlfile=htmlfile, title=title, default_opacity=default_opacity, selected_opacity=selected_opacity, show=show, description=description, mindim=mindim, imdict=imdict, maxwidth=maxwidth)
+
+    def fromjson(self, jsonfile):    
+        &#34;&#34;&#34;Given the JSON file downloader from the HTML selector, return a filter of only those that were *not* selected&#34;&#34;&#34;
+        assert isjsonfile(jsonfile)
+        d = readjson(jsonfile)
+        return [[im for (j,im) in enumerate(iml) if &#39;(%d,%d)&#39;%(i,j) not in d or d[&#39;(%d,%d)&#39;%(i,j)] == False] for (i,iml) in enumerate(self._imlist)]</code></pre>
+</details>
+<h3>Ancestors</h3>
+<ul class="hlist">
+<li><a title="vipy.annotation.Selector" href="#vipy.annotation.Selector">Selector</a></li>
+</ul>
+<h3>Methods</h3>
+<dl>
+<dt id="vipy.annotation.Filter.fromjson"><code class="name flex">
+<span>def <span class="ident">fromjson</span></span>(<span>self, jsonfile)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Given the JSON file downloader from the HTML selector, return a filter of only those that were <em>not</em> selected</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def fromjson(self, jsonfile):    
+    &#34;&#34;&#34;Given the JSON file downloader from the HTML selector, return a filter of only those that were *not* selected&#34;&#34;&#34;
+    assert isjsonfile(jsonfile)
+    d = readjson(jsonfile)
+    return [[im for (j,im) in enumerate(iml) if &#39;(%d,%d)&#39;%(i,j) not in d or d[&#39;(%d,%d)&#39;%(i,j)] == False] for (i,iml) in enumerate(self._imlist)]</code></pre>
+</details>
+</dd>
+</dl>
+<h3>Inherited members</h3>
+<ul class="hlist">
+<li><code><b><a title="vipy.annotation.Selector" href="#vipy.annotation.Selector">Selector</a></b></code>:
+<ul class="hlist">
+<li><code><a title="vipy.annotation.Selector.html" href="#vipy.annotation.Selector.html">html</a></code></li>
+</ul>
+</li>
+</ul>
+</dd>
+<dt id="vipy.annotation.Selector"><code class="flex name class">
+<span>class <span class="ident">Selector</span></span>
+<span>(</span><span>imlist)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>HTML+javascript based UI for selecting images from a group.
+</p>
+<ul>
+<li>Given a list of lists of <code><a title="vipy.image.Image" href="image.html#vipy.image.Image">Image</a></code> objects, display each image in a standalone HTML file.
+</li>
+<li>Allow the user to click on desirable images to select them.
+</li>
+<li>When done, the user selects the Download JSON button to export the selected elements.</li>
+<li>The selected elements are stored in a JSON file which is exported back into this object to return only the selected images</li>
+</ul>
+<pre><code class="language-python">imlist = [[vipy.image.RandomScene(128,128) for k in range(10)] for j in range(5)]
+s = vipy.annotation.Selector(imlist)
+s.html(show=True)  # annotate locally in browser by selecting images to keep, then download the resulting jsonfile
+selected_imlist = s.fromjson('/path/to/downloaded.json')  # returns only those images selected in the UI
+</code></pre></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">class Selector():
+    &#34;&#34;&#34;HTML+javascript based UI for selecting images from a group.  
+
+    * Given a list of lists of `vipy.image.Image` objects, display each image in a standalone HTML file.  
+    * Allow the user to click on desirable images to select them.  
+    * When done, the user selects the Download JSON button to export the selected elements.
+    * The selected elements are stored in a JSON file which is exported back into this object to return only the selected images
+
+    ```python
+    imlist = [[vipy.image.RandomScene(128,128) for k in range(10)] for j in range(5)]
+    s = vipy.annotation.Selector(imlist)
+    s.html(show=True)  # annotate locally in browser by selecting images to keep, then download the resulting jsonfile
+    selected_imlist = s.fromjson(&#39;/path/to/downloaded.json&#39;)  # returns only those images selected in the UI
+    ```
+    &#34;&#34;&#34;
+       
+    def __init__(self, imlist):
+        self._imlist = imlist
+
+    def __iter__(self):
+        for im in self._imlist:
+            yield im
+            
+    def html(self, jsonfile=None, htmlfile=None, imdict=None, title=&#39;Image Selector&#39;, maxwidth=4096, default_opacity=0.5, selected_opacity=1.0, show=False, description=&#34;Select the images to keep from each group, download the JSON, then call vipy.annotation.Select.fromjson()&#34;, mindim=None):
+        &#34;&#34;&#34;Given a list of tuples of `vipy.image.Image` objects, create a standalone HTML file that will allow the user to select individual images in the group.  Selected images are output to jsonfile&#34;&#34;&#34;
+        htmlfile = temphtml() if htmlfile is None else htmlfile
+        jsonfile = filetail(toextension(htmlfile, &#39;.json&#39;)) if jsonfile is None else jsonfile
+        imlist = self._imlist
+        
+        f = open(htmlfile,&#39;w&#39;)
+        f.write(&#39;&lt;!DOCTYPE html&gt;\n&#39;)
+        f.write(&#39;&lt;!--\n    Visym Labs\n    vipy.annotation.Selector (https://visym.github.io/vipy)\n    Generated: %s\n--&gt;\n&#39; % str(datetime.now()))            
+        f.write(&#34;&lt;head&gt;\n&#34;);
+        f.write(&#39;  &lt;meta charset=&#34;UTF-8&#34;&gt;\n&#39;)
+        f.write(&#34;  &lt;title&gt;%s&lt;/title&gt;\n&#34; % title)
+        f.write(&#39;  &lt;link href=&#34;https://use.fontawesome.com/releases/v5.13.0/css/all.css&#34; rel=&#34;stylesheet&#34;&gt;\n&#39;)
+        f.write(&#34;&lt;/head&gt;\n&#34;)        
+        f.write(&#39;&lt;html&gt;\n&#39;)
+        f.write(&#39;&lt;body&gt;\n&#39;)
+        f.write(&#39;  &lt;script type=&#34;text/javascript&#34;&gt;\n&#39;)
+        f.write(&#39;    var selected = {};\n&#39;);
+        f.write(&#39;    function set_unselected(x) { x.style.opacity=%s; x.setAttribute(&#34;selected&#34;,&#34;off&#34;); selected[x.id]=false;};\n&#39; % (default_opacity))
+        f.write(&#39;    function set_selected(x) { x.style.opacity=%s; x.setAttribute(&#34;selected&#34;,&#34;on&#34;); selected[x.id]=true;};\n&#39; % (selected_opacity))
+        f.write(&#39;    function toggle(x) { if (x.getAttribute(&#34;selected&#34;) == &#34;off&#34;) { set_selected(x); } else { set_unselected(x); }; }\n&#39;)
+        f.write(&#39;    function row_selected(k, n) { for (let i = 0; i &lt; n; i++) { set_selected( document.getElementById(`(${k},${i})`));};}\n&#39;)
+        f.write(&#39;    function row_unselected(k, n) { for (let i = 0; i &lt; n; i++) { set_unselected( document.getElementById(`(${k},${i})`));};}\n&#39;)
+        f.write(&#39;    function toggle_row(x,k,n) { if (x.getAttribute(&#34;selected&#34;) == &#34;off&#34;) { row_selected(k,n); x.setAttribute(&#34;selected&#34;,&#34;on&#34;); } else { row_unselected(k,n); x.setAttribute(&#34;selected&#34;,&#34;off&#34;);}; }\n&#39;)        
+        f.write(&#39;    function exportJSON(x) { var data = &#34;text/json;charset=utf-8,&#34; + encodeURIComponent(JSON.stringify(selected)); x.setAttribute(&#34;href&#34;, &#34;data:&#34;+data); x.setAttribute(&#34;download&#34;, &#34;%s&#34;); }\n&#39; % jsonfile)
+        f.write(&#39;    function set_transparent(x) { x.style.opacity=0.5; };\n&#39;)
+        f.write(&#39;    function set_opaque(x) { x.style.opacity=1.0; };\n&#39;)        
+        f.write(&#39;  &lt;/script&gt;\n&#39;)    
+        f.write(&#39;&lt;div id=&#34;container&#34; style=&#34;width:%dpx&#34;&gt;\n&#39; % maxwidth)
+        f.write(&#39;&lt;div id=&#34;header&#34;&gt;\n&#39;)
+        f.write(&#39;&lt;h1 style=&#34;margin-bottom:0;&#34;&gt;%s&lt;/h1&gt;&lt;br&gt;\n&#39; % title)
+        localtime = time.strftime(&#34;%Y-%m-%d %H:%M:%S&#34;,time.localtime(time.time()))
+        f.write(&#39;HTML generated on %s&lt;br&gt;\n\n&#39; % localtime)
+        f.write(&#39;Number of image groups: %d&lt;br&gt;\n&#39; % len(imlist))
+        f.write(&#39;Number of images: %d&lt;br&gt;&lt;br&gt;\n&#39; % len([im for iml in imlist for im in iml]))
+        f.write(&#39;%s&lt;br&gt;&lt;br&gt;\n&#39; % description)
+        f.write(&#39;&lt;a onclick=&#34;exportJSON(this);&#34; class=&#34;btn&#34;&gt;&lt;button&gt;Download JSON&lt;/button&gt;&lt;/a&gt;\n&#39;) 
+        f.write(&#39;&lt;/div&gt;\n&#39;)
+        f.write(&#39;&lt;br&gt;\n&#39;)
+        f.write(&#39;&lt;hr&gt;\n&#39;)
+        f.write(&#39;&lt;div style=&#34;float:left;&#34;&gt;\n&#39;)
+    
+        # Generate embedded images and html
+        for (i, imsrclist) in enumerate(imlist):
+            f.write(&#39;&lt;p&gt;\n&lt;/p&gt;\n&#39;)
+            if imdict is not None:
+                for (k,v) in imdict[i].items():
+                    f.write(&#39;&lt;b&gt;%s&lt;/b&gt;: %s&lt;br&gt;\n&#39; % (html.escape(str(k)), html.escape(str(v))))
+                f.write(&#39;&lt;p&gt;\n&lt;/p&gt;\n&#39;)
+                
+            for (j, im) in enumerate(imsrclist):                    
+                im = im if mindim is None else im.clone().mindim(mindim)
+                f.write(im.html(id=&#39;(%d,%d)&#39; % (i,j), attributes={&#39;loading&#39;:&#39;lazy&#39;, &#39;onclick&#39;:&#34;toggle(this)&#34;, &#39;selected&#39;:&#39;off&#39;, &#39;style&#39;:&#34;opacity:%f&#34; % default_opacity}))   # base-64 encoded image with img tag
+            f.write(&#39;&lt;br&gt;&lt;i title=&#34;Toggle Select All&#34; onclick=&#34;toggle_row(this,%d,%d);&#34; selected=&#34;on&#34; onmouseover=&#34;set_opaque(this)&#34; onmouseout=&#34;set_transparent(this)&#34; class=&#34;fas fa-recycle fa-3x&#34; id=&#34;row-%d&#34; style=&#34;opacity:0.5;margin-right: 10px;&#34;&gt;&lt;/i&gt;&#39; % (i,len(imsrclist),i))
+            
+            f.write(&#39;&lt;p&gt;\n&lt;/p&gt;\n&#39;)
+            f.write(&#39;&lt;br&gt;\n&#39;)
+            f.write(&#39;&lt;hr&gt;\n&#39;)
+        f.write(&#39;&lt;/div&gt;\n&#39;)
+        f.write(&#39;&lt;/body&gt;\n&#39;)
+        f.write(&#39;&lt;/html&gt;\n&#39;)
+        f.close()
+
+        if show:
+            webbrowser.open(&#39;file:///%s&#39; % htmlfile)  # chrome only, will not work in safari
+        return htmlfile
+    
+    def fromjson(self, jsonfile):
+        &#34;&#34;&#34;Given the JSON file downloaded from the HTML selector, return only those that were selected&#34;&#34;&#34;
+        assert isjsonfile(jsonfile)
+        d = readjson(jsonfile)
+        return [[im for (j,im) in enumerate(iml) if &#39;(%d,%d)&#39;%(i,j) in d and d[&#39;(%d,%d)&#39;%(i,j)] == True] for (i,iml) in enumerate(self._imlist)]</code></pre>
+</details>
+<h3>Subclasses</h3>
+<ul class="hlist">
+<li><a title="vipy.annotation.Filter" href="#vipy.annotation.Filter">Filter</a></li>
+</ul>
+<h3>Methods</h3>
+<dl>
+<dt id="vipy.annotation.Selector.fromjson"><code class="name flex">
+<span>def <span class="ident">fromjson</span></span>(<span>self, jsonfile)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Given the JSON file downloaded from the HTML selector, return only those that were selected</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def fromjson(self, jsonfile):
+    &#34;&#34;&#34;Given the JSON file downloaded from the HTML selector, return only those that were selected&#34;&#34;&#34;
+    assert isjsonfile(jsonfile)
+    d = readjson(jsonfile)
+    return [[im for (j,im) in enumerate(iml) if &#39;(%d,%d)&#39;%(i,j) in d and d[&#39;(%d,%d)&#39;%(i,j)] == True] for (i,iml) in enumerate(self._imlist)]</code></pre>
+</details>
+</dd>
+<dt id="vipy.annotation.Selector.html"><code class="name flex">
+<span>def <span class="ident">html</span></span>(<span>self, jsonfile=None, htmlfile=None, imdict=None, title='Image Selector', maxwidth=4096, default_opacity=0.5, selected_opacity=1.0, show=False, description='Select the images to keep from each group, download the JSON, then call vipy.annotation.Select.fromjson()', mindim=None)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Given a list of tuples of <code><a title="vipy.image.Image" href="image.html#vipy.image.Image">Image</a></code> objects, create a standalone HTML file that will allow the user to select individual images in the group.
+Selected images are output to jsonfile</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def html(self, jsonfile=None, htmlfile=None, imdict=None, title=&#39;Image Selector&#39;, maxwidth=4096, default_opacity=0.5, selected_opacity=1.0, show=False, description=&#34;Select the images to keep from each group, download the JSON, then call vipy.annotation.Select.fromjson()&#34;, mindim=None):
+    &#34;&#34;&#34;Given a list of tuples of `vipy.image.Image` objects, create a standalone HTML file that will allow the user to select individual images in the group.  Selected images are output to jsonfile&#34;&#34;&#34;
+    htmlfile = temphtml() if htmlfile is None else htmlfile
+    jsonfile = filetail(toextension(htmlfile, &#39;.json&#39;)) if jsonfile is None else jsonfile
+    imlist = self._imlist
+    
+    f = open(htmlfile,&#39;w&#39;)
+    f.write(&#39;&lt;!DOCTYPE html&gt;\n&#39;)
+    f.write(&#39;&lt;!--\n    Visym Labs\n    vipy.annotation.Selector (https://visym.github.io/vipy)\n    Generated: %s\n--&gt;\n&#39; % str(datetime.now()))            
+    f.write(&#34;&lt;head&gt;\n&#34;);
+    f.write(&#39;  &lt;meta charset=&#34;UTF-8&#34;&gt;\n&#39;)
+    f.write(&#34;  &lt;title&gt;%s&lt;/title&gt;\n&#34; % title)
+    f.write(&#39;  &lt;link href=&#34;https://use.fontawesome.com/releases/v5.13.0/css/all.css&#34; rel=&#34;stylesheet&#34;&gt;\n&#39;)
+    f.write(&#34;&lt;/head&gt;\n&#34;)        
+    f.write(&#39;&lt;html&gt;\n&#39;)
+    f.write(&#39;&lt;body&gt;\n&#39;)
+    f.write(&#39;  &lt;script type=&#34;text/javascript&#34;&gt;\n&#39;)
+    f.write(&#39;    var selected = {};\n&#39;);
+    f.write(&#39;    function set_unselected(x) { x.style.opacity=%s; x.setAttribute(&#34;selected&#34;,&#34;off&#34;); selected[x.id]=false;};\n&#39; % (default_opacity))
+    f.write(&#39;    function set_selected(x) { x.style.opacity=%s; x.setAttribute(&#34;selected&#34;,&#34;on&#34;); selected[x.id]=true;};\n&#39; % (selected_opacity))
+    f.write(&#39;    function toggle(x) { if (x.getAttribute(&#34;selected&#34;) == &#34;off&#34;) { set_selected(x); } else { set_unselected(x); }; }\n&#39;)
+    f.write(&#39;    function row_selected(k, n) { for (let i = 0; i &lt; n; i++) { set_selected( document.getElementById(`(${k},${i})`));};}\n&#39;)
+    f.write(&#39;    function row_unselected(k, n) { for (let i = 0; i &lt; n; i++) { set_unselected( document.getElementById(`(${k},${i})`));};}\n&#39;)
+    f.write(&#39;    function toggle_row(x,k,n) { if (x.getAttribute(&#34;selected&#34;) == &#34;off&#34;) { row_selected(k,n); x.setAttribute(&#34;selected&#34;,&#34;on&#34;); } else { row_unselected(k,n); x.setAttribute(&#34;selected&#34;,&#34;off&#34;);}; }\n&#39;)        
+    f.write(&#39;    function exportJSON(x) { var data = &#34;text/json;charset=utf-8,&#34; + encodeURIComponent(JSON.stringify(selected)); x.setAttribute(&#34;href&#34;, &#34;data:&#34;+data); x.setAttribute(&#34;download&#34;, &#34;%s&#34;); }\n&#39; % jsonfile)
+    f.write(&#39;    function set_transparent(x) { x.style.opacity=0.5; };\n&#39;)
+    f.write(&#39;    function set_opaque(x) { x.style.opacity=1.0; };\n&#39;)        
+    f.write(&#39;  &lt;/script&gt;\n&#39;)    
+    f.write(&#39;&lt;div id=&#34;container&#34; style=&#34;width:%dpx&#34;&gt;\n&#39; % maxwidth)
+    f.write(&#39;&lt;div id=&#34;header&#34;&gt;\n&#39;)
+    f.write(&#39;&lt;h1 style=&#34;margin-bottom:0;&#34;&gt;%s&lt;/h1&gt;&lt;br&gt;\n&#39; % title)
+    localtime = time.strftime(&#34;%Y-%m-%d %H:%M:%S&#34;,time.localtime(time.time()))
+    f.write(&#39;HTML generated on %s&lt;br&gt;\n\n&#39; % localtime)
+    f.write(&#39;Number of image groups: %d&lt;br&gt;\n&#39; % len(imlist))
+    f.write(&#39;Number of images: %d&lt;br&gt;&lt;br&gt;\n&#39; % len([im for iml in imlist for im in iml]))
+    f.write(&#39;%s&lt;br&gt;&lt;br&gt;\n&#39; % description)
+    f.write(&#39;&lt;a onclick=&#34;exportJSON(this);&#34; class=&#34;btn&#34;&gt;&lt;button&gt;Download JSON&lt;/button&gt;&lt;/a&gt;\n&#39;) 
+    f.write(&#39;&lt;/div&gt;\n&#39;)
+    f.write(&#39;&lt;br&gt;\n&#39;)
+    f.write(&#39;&lt;hr&gt;\n&#39;)
+    f.write(&#39;&lt;div style=&#34;float:left;&#34;&gt;\n&#39;)
+
+    # Generate embedded images and html
+    for (i, imsrclist) in enumerate(imlist):
+        f.write(&#39;&lt;p&gt;\n&lt;/p&gt;\n&#39;)
+        if imdict is not None:
+            for (k,v) in imdict[i].items():
+                f.write(&#39;&lt;b&gt;%s&lt;/b&gt;: %s&lt;br&gt;\n&#39; % (html.escape(str(k)), html.escape(str(v))))
+            f.write(&#39;&lt;p&gt;\n&lt;/p&gt;\n&#39;)
+            
+        for (j, im) in enumerate(imsrclist):                    
+            im = im if mindim is None else im.clone().mindim(mindim)
+            f.write(im.html(id=&#39;(%d,%d)&#39; % (i,j), attributes={&#39;loading&#39;:&#39;lazy&#39;, &#39;onclick&#39;:&#34;toggle(this)&#34;, &#39;selected&#39;:&#39;off&#39;, &#39;style&#39;:&#34;opacity:%f&#34; % default_opacity}))   # base-64 encoded image with img tag
+        f.write(&#39;&lt;br&gt;&lt;i title=&#34;Toggle Select All&#34; onclick=&#34;toggle_row(this,%d,%d);&#34; selected=&#34;on&#34; onmouseover=&#34;set_opaque(this)&#34; onmouseout=&#34;set_transparent(this)&#34; class=&#34;fas fa-recycle fa-3x&#34; id=&#34;row-%d&#34; style=&#34;opacity:0.5;margin-right: 10px;&#34;&gt;&lt;/i&gt;&#39; % (i,len(imsrclist),i))
+        
+        f.write(&#39;&lt;p&gt;\n&lt;/p&gt;\n&#39;)
+        f.write(&#39;&lt;br&gt;\n&#39;)
+        f.write(&#39;&lt;hr&gt;\n&#39;)
+    f.write(&#39;&lt;/div&gt;\n&#39;)
+    f.write(&#39;&lt;/body&gt;\n&#39;)
+    f.write(&#39;&lt;/html&gt;\n&#39;)
+    f.close()
+
+    if show:
+        webbrowser.open(&#39;file:///%s&#39; % htmlfile)  # chrome only, will not work in safari
+    return htmlfile</code></pre>
+</details>
+</dd>
+</dl>
+</dd>
+</dl>
 </section>
 </article>
 <nav id="sidebar">
@@ -257,11 +688,28 @@ setTimeout(() => input.focus(), 100);
 <li><code><a title="vipy.annotation.verbs" href="#vipy.annotation.verbs">verbs</a></code></li>
 </ul>
 </li>
+<li><h3><a href="#header-classes">Classes</a></h3>
+<ul>
+<li>
+<h4><code><a title="vipy.annotation.Filter" href="#vipy.annotation.Filter">Filter</a></code></h4>
+<ul class="">
+<li><code><a title="vipy.annotation.Filter.fromjson" href="#vipy.annotation.Filter.fromjson">fromjson</a></code></li>
+</ul>
+</li>
+<li>
+<h4><code><a title="vipy.annotation.Selector" href="#vipy.annotation.Selector">Selector</a></code></h4>
+<ul class="">
+<li><code><a title="vipy.annotation.Selector.fromjson" href="#vipy.annotation.Selector.fromjson">fromjson</a></code></li>
+<li><code><a title="vipy.annotation.Selector.html" href="#vipy.annotation.Selector.html">html</a></code></li>
+</ul>
+</li>
+</ul>
+</li>
 </ul>
 </nav>
 </main>
 <footer id="footer">
-<p>Generated by <a href="https://pdoc3.github.io/pdoc" title="pdoc: Python API documentation generator"><cite>pdoc</cite> 0.9.2</a>.</p>
+<p>Generated by <a href="https://pdoc3.github.io/pdoc" title="pdoc: Python API documentation generator"><cite>pdoc</cite> 0.10.0</a>.</p>
 </footer>
 </body>
 </html>

@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1" />
-<meta name="generator" content="pdoc 0.9.2" />
+<meta name="generator" content="pdoc 0.10.0" />
 <title>vipy.torch API documentation</title>
 <meta name="description" content="" />
 <link rel="preload stylesheet" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/10up-sanitize.css/11.0.1/sanitize.min.css" integrity="sha256-PK9q560IAAa6WVRRh76LtCaI8pjTJ2z11v0miyNNjrs=" crossorigin>
@@ -25,7 +25,6 @@
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1e7c5a09dbf70eba3e89e986bcc48d2602e3df23/vipy/torch.py#L0-L203" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">import vipy
 import numpy as np
@@ -44,113 +43,6 @@ try_import(&#39;torch&#39;);
 import torch
 import torch.utils.data
 from torch.utils.data import DataLoader, random_split
-
-
-def fromtorch(x):
-    &#34;&#34;&#34;Convert a 1xCxHxW torch.FloatTensor to HxWxC np.float32 numpy array(), returns new Image() instance with an inferred colorspace based on channels and datatype&#34;&#34;&#34;
-    assert isinstance(x, torch.Tensor), &#34;Invalid input type &#39;%s&#39;- must be torch.Tensor&#34; % (str(type(x)))
-    assert x.ndim == 4 and x.shape[0] == 1, &#34;Invalid input type - must be torch.Tensor of shape 1xCxHxW&#34;
-    img = np.copy(np.squeeze(x.permute(2,3,1,0).detach().numpy()))  # 1xCxHxW -&gt; HxWxC, copied
-    colorspace = &#39;float&#39; if img.dtype == np.float32 else None
-    colorspace = &#39;rgb&#39; if img.dtype == np.uint8 and img.shape[2] == 3 else colorspace  # assumed
-    colorspace = &#39;lum&#39; if img.dtype == np.uint8 and img.shape[2] == 1 else colorspace        
-    return vipy.image.Image(array=img, colorspace=colorspace)
-
-
-class GaussianPyramid(object):
-    def __init__(self, im=None, tensor=None):
-
-        g = ((1.0/np.sqrt(2*np.pi))*np.exp(-0.5*(np.array([-2,-1,0,1,2])**2))).astype(np.float32)
-        G = torch.from_numpy(np.outer(g,g)).repeat( (3,1,1,1) )
-        
-        self._G = G
-        self._band = []
-        self._pad = torch.nn.ReflectionPad2d(2)
-        
-        x = im.float().torch() if im is not None else tensor
-        for k in range(int(np.log2(min(x.shape[2], x.shape[3]))-2)):
-            y = torch.nn.functional.conv2d(self._pad(x), self._G, groups=3)  # anti-aliasing
-            self._band.append(y)  # lowpass
-            x = y[:,:,::2,::2]  # downsample
-        self._band.append(x)  # lowpass
-
-    def __len__(self):
-        return len(self._band)
-    
-    def __getitem__(self, k):
-        assert k&gt;=0 and k&lt;len(self)
-        return fromtorch(self._band[k])
-
-    
-class LaplacianPyramid(object):
-    def __init__(self, im):
-
-        g = ((1.0/np.sqrt(2*np.pi))*np.exp(-0.5*(np.array([-2,-1,0,1,2])**2))).astype(np.float32)
-        G = torch.from_numpy(np.outer(g,g)).repeat( (3,1,1,1) )
-        
-        self._G = G
-        self._band = []
-        self._pad = torch.nn.ReflectionPad2d(2)
-        self._im = im
-        
-        x = im.float().torch()
-        for k in range(int(np.log2(im.mindim())-2)):
-            y = torch.nn.functional.conv2d(self._pad(x), self._G, groups=3)  # anti-aliasing
-            self._band.append(x-y)  # bandpass
-            x = y[:,:,::2,::2]  # downsample
-        self._band.append(x)  # lowpass
-            
-    def __len__(self):
-        return len(self._band)
-    
-    def __getitem__(self, k):
-        assert k&gt;=0 and k&lt;len(self)
-        return fromtorch(self._band[k])
-
-    def reconstruct(self):
-        x = self._band[-1]
-        for b in reversed(self._band[0:-1]):
-            xu = torch.zeros(1, 3, b.shape[2], b.shape[3])
-            xu[:,:,::2,::2] = x
-            x = torch.nn.functional.conv2d(self._pad(xu), 4*self._G, groups=3) + b
-            x[:,:,1::2,1::2] *= float(np.sqrt(5/4))  # compensate for odd padding
-        im = fromtorch(x.clamp(0, 255))
-        return im.array(im.numpy().astype(np.uint8)).colorspace(&#39;rgb&#39;)
-        
-
-class Foveation(LaplacianPyramid):
-    def __init__(self, im, s=0.125, mode=&#39;log-circle&#39;):
-        super().__init__(im)
-        
-        (H,W) = (im.height(), im.width())
-        allowable_modes = [&#39;gaussian&#39;, &#39;linear-circle&#39;, &#39;linear-square&#39;, &#39;log-circle&#39;]
-        if mode == &#39;gaussian&#39;:
-            G = np.repeat(vipy.math.gaussian2d([W,H], [s,s], 2*H, 2*W)[:,:,np.newaxis], 3, axis=2)
-            masks = [vipy.image.Image(array=np.array(G&gt;t).astype(np.float32), colorspace=&#39;float&#39;) for t in np.arange(0, np.max(G), np.max(G)/len(self))]
-        elif mode == &#39;linear-circle&#39;:
-            masks = [vipy.image.Image(array=vipy.calibration.circle(W,H,s*(d/2),2*W,2*H,3).astype(np.float32), colorspace=&#39;float&#39;) for d in np.arange(max(H,W), 0, -max(H,W)/len(self))]
-        elif mode == &#39;log-circle&#39;:
-            masks = [vipy.image.Image(array=vipy.calibration.circle(W,H,(s*(d/2))**2,2*W,2*H,3).astype(np.float32), colorspace=&#39;float&#39;) for d in np.arange(max(H,W), 0, -max(H,W)/len(self))]
-        elif mode == &#39;linear-square&#39;:
-            masks = [vipy.image.Image(array=vipy.calibration.square(W,H,s*(d/2),2*W,2*H,3).astype(np.float32), colorspace=&#39;float&#39;) for d in np.arange(max(H,W), 0, -max(H,W)/len(self))]
-        else:
-            raise ValueError(&#39;invalid mode &#34;%s&#34; - must be in %s&#39; % (mode, str(allowable_modes)))
-        self._immasks = masks
-        self._masks = [m.torch() for m in masks]
-
-    def __call__(self, tx=0, ty=0, sx=1.0, sy=1.0):
-        (H,W) = (self._im.height(), self._im.width())        
-        theta = torch.FloatTensor([[sx,0,tx],[0,sy,ty]]).repeat( (1, 1, 1) )
-        G = torch.nn.functional.affine_grid(theta, (1, 3, H, W), align_corners=False)
-        blend = [GaussianPyramid(tensor=torch.nn.functional.grid_sample(m, G, align_corners=False)) for m in self._masks]        
-
-        pyr = copy.deepcopy(self)
-        pyr._band[:-1] = [torch.mul(w[k].torch(), b) for (k, (w,b)) in enumerate(zip(reversed(blend), pyr._band[:-1]))]
-        return pyr.reconstruct()
-        
-    def foveate(self, tx=0, ty=0, sx=1.0, sy=1.0):
-        return self.__call__(tx=tx, ty=ty, sx=sx, sy=sy)
-    
 
 
 class TorchDataset(torch.utils.data.Dataset):
@@ -192,11 +84,14 @@ class Tensordir(torch.utils.data.Dataset):
     ```
     .. note:: This requires python random() and not numpy random 
     &#34;&#34;&#34;
-    def __init__(self, tensordir, verbose=True, reseed=True, take=None):
+    def __init__(self, tensordir, verbose=True, reseed=True, take=None, mutator=None):
         assert (isinstance(tensordir, str) and os.path.isdir(tensordir)) or all([os.path.isdir(d) for d in tensordir])
+        assert mutator is None or callable(mutator)
+
         self._dirlist = [s for d in vipy.util.tolist(tensordir) for s in vipy.util.extlist(d, &#39;.pkl.bz2&#39;)]
         self._verbose = verbose
         self._reseed = reseed
+        self._mutator = mutator 
 
     def __getitem__(self, k):
         if self._reseed:
@@ -207,14 +102,14 @@ class Tensordir(torch.utils.data.Dataset):
             try:
                 obj = vipy.util.bz2pkl(self._dirlist[k])  # load me
                 assert len(obj) &gt; 0, &#34;Invalid augmentation&#34;
-                (t, lbl) = obj[random.randint(0, len(obj))]  # choose one tensor at random
+                (t, lbl) = obj[random.randint(0, len(obj)-1)]  # choose one tensor at random
                 assert t is not None and json.loads(lbl) is not None, &#34;Invalid augmentation&#34;  # get another one if the augmentation was invalid
-                return (t, lbl)
+                return (t, lbl if self._mutator is None else json.dumps(self._mutator(json.loads(lbl))))
             except:
                 time.sleep(1)  # try again after a bit if another process is augmenting this .pkl.bz2 in parallel
         if self._verbose:
             print(&#39;[vipy.dataset.TorchTensordir][WARNING]: %s corrupted or invalid&#39; % self._dirlist[k])
-        return self.__getitem__(random.randint(0, len(self)))  # maximum retries reached, get another one
+        return self.__getitem__(random.randint(0, len(self)-1))  # maximum retries reached, get another one
 
     def __len__(self):
         return len(self._dirlist)
@@ -224,11 +119,15 @@ class Tensordir(torch.utils.data.Dataset):
         return self
 
     def filter(self, f):
-        &#34;&#34;&#34;Keep elements that lambda evaluates true. The lambda operates on the *filename* for the tensordir and not the contents&#34;&#34;&#34;
+        &#34;&#34;&#34;Keep elements that lambda evaluates true. The lambda operates on the *absolute path filename* for the tensordir and not the contents.  This is useful for filtering by instanceid in the `vipy.util.filebase`.&#34;&#34;&#34;
         assert callable(f)
         self._dirlist = [x for x in self._dirlist if f(x)]
         return self
     
+    def clone(self):
+        return copy.deepcopy(self)
+
+
 class TorchTensordir(Tensordir):
     pass  # alias for backwards compatibility</code></pre>
 </details>
@@ -238,214 +137,13 @@ class TorchTensordir(Tensordir):
 <section>
 </section>
 <section>
-<h2 class="section-title" id="header-functions">Functions</h2>
-<dl>
-<dt id="vipy.torch.fromtorch"><code class="name flex">
-<span>def <span class="ident">fromtorch</span></span>(<span>x)</span>
-</code></dt>
-<dd>
-<div class="desc"><p>Convert a 1xCxHxW torch.FloatTensor to HxWxC np.float32 numpy array(), returns new Image() instance with an inferred colorspace based on channels and datatype</p></div>
-<details class="source">
-<summary>
-<span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1e7c5a09dbf70eba3e89e986bcc48d2602e3df23/vipy/torch.py#L20-L28" class="git-link">Browse git</a>
-</summary>
-<pre><code class="python">def fromtorch(x):
-    &#34;&#34;&#34;Convert a 1xCxHxW torch.FloatTensor to HxWxC np.float32 numpy array(), returns new Image() instance with an inferred colorspace based on channels and datatype&#34;&#34;&#34;
-    assert isinstance(x, torch.Tensor), &#34;Invalid input type &#39;%s&#39;- must be torch.Tensor&#34; % (str(type(x)))
-    assert x.ndim == 4 and x.shape[0] == 1, &#34;Invalid input type - must be torch.Tensor of shape 1xCxHxW&#34;
-    img = np.copy(np.squeeze(x.permute(2,3,1,0).detach().numpy()))  # 1xCxHxW -&gt; HxWxC, copied
-    colorspace = &#39;float&#39; if img.dtype == np.float32 else None
-    colorspace = &#39;rgb&#39; if img.dtype == np.uint8 and img.shape[2] == 3 else colorspace  # assumed
-    colorspace = &#39;lum&#39; if img.dtype == np.uint8 and img.shape[2] == 1 else colorspace        
-    return vipy.image.Image(array=img, colorspace=colorspace)</code></pre>
-</details>
-</dd>
-</dl>
 </section>
 <section>
 <h2 class="section-title" id="header-classes">Classes</h2>
 <dl>
-<dt id="vipy.torch.Foveation"><code class="flex name class">
-<span>class <span class="ident">Foveation</span></span>
-<span>(</span><span>im, s=0.125, mode='log-circle')</span>
-</code></dt>
-<dd>
-<div class="desc"></div>
-<details class="source">
-<summary>
-<span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1e7c5a09dbf70eba3e89e986bcc48d2602e3df23/vipy/torch.py#L92-L123" class="git-link">Browse git</a>
-</summary>
-<pre><code class="python">class Foveation(LaplacianPyramid):
-    def __init__(self, im, s=0.125, mode=&#39;log-circle&#39;):
-        super().__init__(im)
-        
-        (H,W) = (im.height(), im.width())
-        allowable_modes = [&#39;gaussian&#39;, &#39;linear-circle&#39;, &#39;linear-square&#39;, &#39;log-circle&#39;]
-        if mode == &#39;gaussian&#39;:
-            G = np.repeat(vipy.math.gaussian2d([W,H], [s,s], 2*H, 2*W)[:,:,np.newaxis], 3, axis=2)
-            masks = [vipy.image.Image(array=np.array(G&gt;t).astype(np.float32), colorspace=&#39;float&#39;) for t in np.arange(0, np.max(G), np.max(G)/len(self))]
-        elif mode == &#39;linear-circle&#39;:
-            masks = [vipy.image.Image(array=vipy.calibration.circle(W,H,s*(d/2),2*W,2*H,3).astype(np.float32), colorspace=&#39;float&#39;) for d in np.arange(max(H,W), 0, -max(H,W)/len(self))]
-        elif mode == &#39;log-circle&#39;:
-            masks = [vipy.image.Image(array=vipy.calibration.circle(W,H,(s*(d/2))**2,2*W,2*H,3).astype(np.float32), colorspace=&#39;float&#39;) for d in np.arange(max(H,W), 0, -max(H,W)/len(self))]
-        elif mode == &#39;linear-square&#39;:
-            masks = [vipy.image.Image(array=vipy.calibration.square(W,H,s*(d/2),2*W,2*H,3).astype(np.float32), colorspace=&#39;float&#39;) for d in np.arange(max(H,W), 0, -max(H,W)/len(self))]
-        else:
-            raise ValueError(&#39;invalid mode &#34;%s&#34; - must be in %s&#39; % (mode, str(allowable_modes)))
-        self._immasks = masks
-        self._masks = [m.torch() for m in masks]
-
-    def __call__(self, tx=0, ty=0, sx=1.0, sy=1.0):
-        (H,W) = (self._im.height(), self._im.width())        
-        theta = torch.FloatTensor([[sx,0,tx],[0,sy,ty]]).repeat( (1, 1, 1) )
-        G = torch.nn.functional.affine_grid(theta, (1, 3, H, W), align_corners=False)
-        blend = [GaussianPyramid(tensor=torch.nn.functional.grid_sample(m, G, align_corners=False)) for m in self._masks]        
-
-        pyr = copy.deepcopy(self)
-        pyr._band[:-1] = [torch.mul(w[k].torch(), b) for (k, (w,b)) in enumerate(zip(reversed(blend), pyr._band[:-1]))]
-        return pyr.reconstruct()
-        
-    def foveate(self, tx=0, ty=0, sx=1.0, sy=1.0):
-        return self.__call__(tx=tx, ty=ty, sx=sx, sy=sy)</code></pre>
-</details>
-<h3>Ancestors</h3>
-<ul class="hlist">
-<li><a title="vipy.torch.LaplacianPyramid" href="#vipy.torch.LaplacianPyramid">LaplacianPyramid</a></li>
-</ul>
-<h3>Methods</h3>
-<dl>
-<dt id="vipy.torch.Foveation.foveate"><code class="name flex">
-<span>def <span class="ident">foveate</span></span>(<span>self, tx=0, ty=0, sx=1.0, sy=1.0)</span>
-</code></dt>
-<dd>
-<div class="desc"></div>
-<details class="source">
-<summary>
-<span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1e7c5a09dbf70eba3e89e986bcc48d2602e3df23/vipy/torch.py#L122-L123" class="git-link">Browse git</a>
-</summary>
-<pre><code class="python">def foveate(self, tx=0, ty=0, sx=1.0, sy=1.0):
-    return self.__call__(tx=tx, ty=ty, sx=sx, sy=sy)</code></pre>
-</details>
-</dd>
-</dl>
-</dd>
-<dt id="vipy.torch.GaussianPyramid"><code class="flex name class">
-<span>class <span class="ident">GaussianPyramid</span></span>
-<span>(</span><span>im=None, tensor=None)</span>
-</code></dt>
-<dd>
-<div class="desc"></div>
-<details class="source">
-<summary>
-<span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1e7c5a09dbf70eba3e89e986bcc48d2602e3df23/vipy/torch.py#L31-L53" class="git-link">Browse git</a>
-</summary>
-<pre><code class="python">class GaussianPyramid(object):
-    def __init__(self, im=None, tensor=None):
-
-        g = ((1.0/np.sqrt(2*np.pi))*np.exp(-0.5*(np.array([-2,-1,0,1,2])**2))).astype(np.float32)
-        G = torch.from_numpy(np.outer(g,g)).repeat( (3,1,1,1) )
-        
-        self._G = G
-        self._band = []
-        self._pad = torch.nn.ReflectionPad2d(2)
-        
-        x = im.float().torch() if im is not None else tensor
-        for k in range(int(np.log2(min(x.shape[2], x.shape[3]))-2)):
-            y = torch.nn.functional.conv2d(self._pad(x), self._G, groups=3)  # anti-aliasing
-            self._band.append(y)  # lowpass
-            x = y[:,:,::2,::2]  # downsample
-        self._band.append(x)  # lowpass
-
-    def __len__(self):
-        return len(self._band)
-    
-    def __getitem__(self, k):
-        assert k&gt;=0 and k&lt;len(self)
-        return fromtorch(self._band[k])</code></pre>
-</details>
-</dd>
-<dt id="vipy.torch.LaplacianPyramid"><code class="flex name class">
-<span>class <span class="ident">LaplacianPyramid</span></span>
-<span>(</span><span>im)</span>
-</code></dt>
-<dd>
-<div class="desc"></div>
-<details class="source">
-<summary>
-<span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1e7c5a09dbf70eba3e89e986bcc48d2602e3df23/vipy/torch.py#L56-L89" class="git-link">Browse git</a>
-</summary>
-<pre><code class="python">class LaplacianPyramid(object):
-    def __init__(self, im):
-
-        g = ((1.0/np.sqrt(2*np.pi))*np.exp(-0.5*(np.array([-2,-1,0,1,2])**2))).astype(np.float32)
-        G = torch.from_numpy(np.outer(g,g)).repeat( (3,1,1,1) )
-        
-        self._G = G
-        self._band = []
-        self._pad = torch.nn.ReflectionPad2d(2)
-        self._im = im
-        
-        x = im.float().torch()
-        for k in range(int(np.log2(im.mindim())-2)):
-            y = torch.nn.functional.conv2d(self._pad(x), self._G, groups=3)  # anti-aliasing
-            self._band.append(x-y)  # bandpass
-            x = y[:,:,::2,::2]  # downsample
-        self._band.append(x)  # lowpass
-            
-    def __len__(self):
-        return len(self._band)
-    
-    def __getitem__(self, k):
-        assert k&gt;=0 and k&lt;len(self)
-        return fromtorch(self._band[k])
-
-    def reconstruct(self):
-        x = self._band[-1]
-        for b in reversed(self._band[0:-1]):
-            xu = torch.zeros(1, 3, b.shape[2], b.shape[3])
-            xu[:,:,::2,::2] = x
-            x = torch.nn.functional.conv2d(self._pad(xu), 4*self._G, groups=3) + b
-            x[:,:,1::2,1::2] *= float(np.sqrt(5/4))  # compensate for odd padding
-        im = fromtorch(x.clamp(0, 255))
-        return im.array(im.numpy().astype(np.uint8)).colorspace(&#39;rgb&#39;)</code></pre>
-</details>
-<h3>Subclasses</h3>
-<ul class="hlist">
-<li><a title="vipy.torch.Foveation" href="#vipy.torch.Foveation">Foveation</a></li>
-</ul>
-<h3>Methods</h3>
-<dl>
-<dt id="vipy.torch.LaplacianPyramid.reconstruct"><code class="name flex">
-<span>def <span class="ident">reconstruct</span></span>(<span>self)</span>
-</code></dt>
-<dd>
-<div class="desc"></div>
-<details class="source">
-<summary>
-<span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1e7c5a09dbf70eba3e89e986bcc48d2602e3df23/vipy/torch.py#L81-L89" class="git-link">Browse git</a>
-</summary>
-<pre><code class="python">def reconstruct(self):
-    x = self._band[-1]
-    for b in reversed(self._band[0:-1]):
-        xu = torch.zeros(1, 3, b.shape[2], b.shape[3])
-        xu[:,:,::2,::2] = x
-        x = torch.nn.functional.conv2d(self._pad(xu), 4*self._G, groups=3) + b
-        x[:,:,1::2,1::2] *= float(np.sqrt(5/4))  # compensate for odd padding
-    im = fromtorch(x.clamp(0, 255))
-    return im.array(im.numpy().astype(np.uint8)).colorspace(&#39;rgb&#39;)</code></pre>
-</details>
-</dd>
-</dl>
-</dd>
 <dt id="vipy.torch.Tensordir"><code class="flex name class">
 <span>class <span class="ident">Tensordir</span></span>
-<span>(</span><span>tensordir, verbose=True, reseed=True, take=None)</span>
+<span>(</span><span>tensordir, verbose=True, reseed=True, take=None, mutator=None)</span>
 </code></dt>
 <dd>
 <div class="desc"><p>A torch dataset stored as a directory of .pkl.bz2 files each containing a list of [(tensor, str=json.dumps(label)), &hellip;] tuples used for data augmented training.</p>
@@ -460,7 +158,6 @@ vipy.torch.Tensordir( ('/path/to/1', '/path/to/2') )
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1e7c5a09dbf70eba3e89e986bcc48d2602e3df23/vipy/torch.py#L153-L201" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">class Tensordir(torch.utils.data.Dataset):
     &#34;&#34;&#34;A torch dataset stored as a directory of .pkl.bz2 files each containing a list of [(tensor, str=json.dumps(label)), ...] tuples used for data augmented training.
@@ -475,11 +172,14 @@ vipy.torch.Tensordir( ('/path/to/1', '/path/to/2') )
     ```
     .. note:: This requires python random() and not numpy random 
     &#34;&#34;&#34;
-    def __init__(self, tensordir, verbose=True, reseed=True, take=None):
+    def __init__(self, tensordir, verbose=True, reseed=True, take=None, mutator=None):
         assert (isinstance(tensordir, str) and os.path.isdir(tensordir)) or all([os.path.isdir(d) for d in tensordir])
+        assert mutator is None or callable(mutator)
+
         self._dirlist = [s for d in vipy.util.tolist(tensordir) for s in vipy.util.extlist(d, &#39;.pkl.bz2&#39;)]
         self._verbose = verbose
         self._reseed = reseed
+        self._mutator = mutator 
 
     def __getitem__(self, k):
         if self._reseed:
@@ -490,14 +190,14 @@ vipy.torch.Tensordir( ('/path/to/1', '/path/to/2') )
             try:
                 obj = vipy.util.bz2pkl(self._dirlist[k])  # load me
                 assert len(obj) &gt; 0, &#34;Invalid augmentation&#34;
-                (t, lbl) = obj[random.randint(0, len(obj))]  # choose one tensor at random
+                (t, lbl) = obj[random.randint(0, len(obj)-1)]  # choose one tensor at random
                 assert t is not None and json.loads(lbl) is not None, &#34;Invalid augmentation&#34;  # get another one if the augmentation was invalid
-                return (t, lbl)
+                return (t, lbl if self._mutator is None else json.dumps(self._mutator(json.loads(lbl))))
             except:
                 time.sleep(1)  # try again after a bit if another process is augmenting this .pkl.bz2 in parallel
         if self._verbose:
             print(&#39;[vipy.dataset.TorchTensordir][WARNING]: %s corrupted or invalid&#39; % self._dirlist[k])
-        return self.__getitem__(random.randint(0, len(self)))  # maximum retries reached, get another one
+        return self.__getitem__(random.randint(0, len(self)-1))  # maximum retries reached, get another one
 
     def __len__(self):
         return len(self._dirlist)
@@ -507,10 +207,13 @@ vipy.torch.Tensordir( ('/path/to/1', '/path/to/2') )
         return self
 
     def filter(self, f):
-        &#34;&#34;&#34;Keep elements that lambda evaluates true. The lambda operates on the *filename* for the tensordir and not the contents&#34;&#34;&#34;
+        &#34;&#34;&#34;Keep elements that lambda evaluates true. The lambda operates on the *absolute path filename* for the tensordir and not the contents.  This is useful for filtering by instanceid in the `vipy.util.filebase`.&#34;&#34;&#34;
         assert callable(f)
         self._dirlist = [x for x in self._dirlist if f(x)]
-        return self</code></pre>
+        return self
+    
+    def clone(self):
+        return copy.deepcopy(self)</code></pre>
 </details>
 <h3>Ancestors</h3>
 <ul class="hlist">
@@ -521,20 +224,40 @@ vipy.torch.Tensordir( ('/path/to/1', '/path/to/2') )
 <ul class="hlist">
 <li><a title="vipy.torch.TorchTensordir" href="#vipy.torch.TorchTensordir">TorchTensordir</a></li>
 </ul>
+<h3>Class variables</h3>
+<dl>
+<dt id="vipy.torch.Tensordir.functions"><code class="name">var <span class="ident">functions</span> : Dict[str, Callable]</code></dt>
+<dd>
+<div class="desc"></div>
+</dd>
+</dl>
 <h3>Methods</h3>
 <dl>
+<dt id="vipy.torch.Tensordir.clone"><code class="name flex">
+<span>def <span class="ident">clone</span></span>(<span>self)</span>
+</code></dt>
+<dd>
+<div class="desc"></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def clone(self):
+    return copy.deepcopy(self)</code></pre>
+</details>
+</dd>
 <dt id="vipy.torch.Tensordir.filter"><code class="name flex">
 <span>def <span class="ident">filter</span></span>(<span>self, f)</span>
 </code></dt>
 <dd>
-<div class="desc"><p>Keep elements that lambda evaluates true. The lambda operates on the <em>filename</em> for the tensordir and not the contents</p></div>
+<div class="desc"><p>Keep elements that lambda evaluates true. The lambda operates on the <em>absolute path filename</em> for the tensordir and not the contents.
+This is useful for filtering by instanceid in the <code><a title="vipy.util.filebase" href="util.html#vipy.util.filebase">filebase()</a></code>.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1e7c5a09dbf70eba3e89e986bcc48d2602e3df23/vipy/torch.py#L197-L201" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def filter(self, f):
-    &#34;&#34;&#34;Keep elements that lambda evaluates true. The lambda operates on the *filename* for the tensordir and not the contents&#34;&#34;&#34;
+    &#34;&#34;&#34;Keep elements that lambda evaluates true. The lambda operates on the *absolute path filename* for the tensordir and not the contents.  This is useful for filtering by instanceid in the `vipy.util.filebase`.&#34;&#34;&#34;
     assert callable(f)
     self._dirlist = [x for x in self._dirlist if f(x)]
     return self</code></pre>
@@ -548,7 +271,6 @@ vipy.torch.Tensordir( ('/path/to/1', '/path/to/2') )
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1e7c5a09dbf70eba3e89e986bcc48d2602e3df23/vipy/torch.py#L193-L195" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def take(self, n):
     self._dirlist = [self._dirlist[k] for k in np.random.permutation(range(len(self._dirlist)))[0:n]]
@@ -566,7 +288,6 @@ vipy.torch.Tensordir( ('/path/to/1', '/path/to/2') )
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1e7c5a09dbf70eba3e89e986bcc48d2602e3df23/vipy/torch.py#L127-L150" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">class TorchDataset(torch.utils.data.Dataset):
     &#34;&#34;&#34;Converter from a pycollector dataset to a torch dataset&#34;&#34;&#34;
@@ -598,10 +319,17 @@ vipy.torch.Tensordir( ('/path/to/1', '/path/to/2') )
 <li>torch.utils.data.dataset.Dataset</li>
 <li>typing.Generic</li>
 </ul>
+<h3>Class variables</h3>
+<dl>
+<dt id="vipy.torch.TorchDataset.functions"><code class="name">var <span class="ident">functions</span> : Dict[str, Callable]</code></dt>
+<dd>
+<div class="desc"></div>
+</dd>
+</dl>
 </dd>
 <dt id="vipy.torch.TorchTensordir"><code class="flex name class">
 <span>class <span class="ident">TorchTensordir</span></span>
-<span>(</span><span>tensordir, verbose=True, reseed=True, take=None)</span>
+<span>(</span><span>tensordir, verbose=True, reseed=True, take=None, mutator=None)</span>
 </code></dt>
 <dd>
 <div class="desc"><p>A torch dataset stored as a directory of .pkl.bz2 files each containing a list of [(tensor, str=json.dumps(label)), &hellip;] tuples used for data augmented training.</p>
@@ -616,7 +344,6 @@ vipy.torch.Tensordir( ('/path/to/1', '/path/to/2') )
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1e7c5a09dbf70eba3e89e986bcc48d2602e3df23/vipy/torch.py#L203-L204" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">class TorchTensordir(Tensordir):
     pass  # alias for backwards compatibility</code></pre>
@@ -627,6 +354,13 @@ vipy.torch.Tensordir( ('/path/to/1', '/path/to/2') )
 <li>torch.utils.data.dataset.Dataset</li>
 <li>typing.Generic</li>
 </ul>
+<h3>Class variables</h3>
+<dl>
+<dt id="vipy.torch.TorchTensordir.functions"><code class="name">var <span class="ident">functions</span> : Dict[str, Callable]</code></dt>
+<dd>
+<div class="desc"></div>
+</dd>
+</dl>
 <h3>Inherited members</h3>
 <ul class="hlist">
 <li><code><b><a title="vipy.torch.Tensordir" href="#vipy.torch.Tensordir">Tensordir</a></b></code>:
@@ -701,40 +435,28 @@ setTimeout(() => input.focus(), 100);
 <li><code><a title="vipy" href="index.html">vipy</a></code></li>
 </ul>
 </li>
-<li><h3><a href="#header-functions">Functions</a></h3>
-<ul class="">
-<li><code><a title="vipy.torch.fromtorch" href="#vipy.torch.fromtorch">fromtorch</a></code></li>
-</ul>
-</li>
 <li><h3><a href="#header-classes">Classes</a></h3>
 <ul>
 <li>
-<h4><code><a title="vipy.torch.Foveation" href="#vipy.torch.Foveation">Foveation</a></code></h4>
-<ul class="">
-<li><code><a title="vipy.torch.Foveation.foveate" href="#vipy.torch.Foveation.foveate">foveate</a></code></li>
-</ul>
-</li>
-<li>
-<h4><code><a title="vipy.torch.GaussianPyramid" href="#vipy.torch.GaussianPyramid">GaussianPyramid</a></code></h4>
-</li>
-<li>
-<h4><code><a title="vipy.torch.LaplacianPyramid" href="#vipy.torch.LaplacianPyramid">LaplacianPyramid</a></code></h4>
-<ul class="">
-<li><code><a title="vipy.torch.LaplacianPyramid.reconstruct" href="#vipy.torch.LaplacianPyramid.reconstruct">reconstruct</a></code></li>
-</ul>
-</li>
-<li>
 <h4><code><a title="vipy.torch.Tensordir" href="#vipy.torch.Tensordir">Tensordir</a></code></h4>
 <ul class="">
+<li><code><a title="vipy.torch.Tensordir.clone" href="#vipy.torch.Tensordir.clone">clone</a></code></li>
 <li><code><a title="vipy.torch.Tensordir.filter" href="#vipy.torch.Tensordir.filter">filter</a></code></li>
+<li><code><a title="vipy.torch.Tensordir.functions" href="#vipy.torch.Tensordir.functions">functions</a></code></li>
 <li><code><a title="vipy.torch.Tensordir.take" href="#vipy.torch.Tensordir.take">take</a></code></li>
 </ul>
 </li>
 <li>
 <h4><code><a title="vipy.torch.TorchDataset" href="#vipy.torch.TorchDataset">TorchDataset</a></code></h4>
+<ul class="">
+<li><code><a title="vipy.torch.TorchDataset.functions" href="#vipy.torch.TorchDataset.functions">functions</a></code></li>
+</ul>
 </li>
 <li>
 <h4><code><a title="vipy.torch.TorchTensordir" href="#vipy.torch.TorchTensordir">TorchTensordir</a></code></h4>
+<ul class="">
+<li><code><a title="vipy.torch.TorchTensordir.functions" href="#vipy.torch.TorchTensordir.functions">functions</a></code></li>
+</ul>
 </li>
 </ul>
 </li>
@@ -742,7 +464,7 @@ setTimeout(() => input.focus(), 100);
 </nav>
 </main>
 <footer id="footer">
-<p>Generated by <a href="https://pdoc3.github.io/pdoc" title="pdoc: Python API documentation generator"><cite>pdoc</cite> 0.9.2</a>.</p>
+<p>Generated by <a href="https://pdoc3.github.io/pdoc" title="pdoc: Python API documentation generator"><cite>pdoc</cite> 0.10.0</a>.</p>
 </footer>
 </body>
 </html>
