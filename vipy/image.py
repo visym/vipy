@@ -2457,7 +2457,7 @@ def owl():
     """Return a superb owl image for testing"""
     return Scene(url='https://upload.wikimedia.org/wikipedia/commons/thumb/2/23/Bubo_virginianus_06.jpg/1920px-Bubo_virginianus_06.jpg',
                  category='Nature',
-                 objects=[vipy.object.Detection('Great Horned Owl', xmin=350, ymin=320, width=1400, height=2100)])
+                 objects=[vipy.object.Detection('Great Horned Owl', xmin=350, ymin=320, width=1400, height=2100)]).mindim(512)
 
 def squareowl():
     """Return a superb owl with no objects, cropped square at 512x512 resolution"""
