@@ -254,7 +254,7 @@ def trycatcher(f, *args, **kwargs):
         return None
 
 def catchif(f, *args, **kwargs):
-    """Call the function f with the provided arguments, and return (result) on success and (None) if there is any thrown exception.  Useful for parallel processing.  Alias for `vipy.util.trycatecher`"""
+    """Call the function f with the provided arguments, and return (result) on success and (None) if there is any thrown exception.  Useful for parallel processing.  Alias for `vipy.util.trycatcher`"""
     return trycatcher(f, *args, **kwargs)
 
 

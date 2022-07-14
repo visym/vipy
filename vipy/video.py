@@ -3749,7 +3749,7 @@ class Scene(VideoCategory):
     def combine(self, other, tracks=True, activities=True, rekey=True):
         """Combine the activities and tracks from both scenes into self. 
         
-        .. note:: This does not perform a union, it simply combines dictionaries.  For deduplication, see `vipy.video.union`
+        .. note:: This does not perform a union, it simply combines dictionaries.  For deduplication, see `vipy.video.Scene.union`
         """
         assert isinstance(other, Scene), "Invalid input - must be vipy.video.Scene() object and not type=%s" % str(type(other))
         assert self.framerate() == other.framerate()
@@ -4102,7 +4102,7 @@ class Scene(VideoCategory):
             - This approach is equivalent to greedy, constant velocity SORT tracking (https://arxiv.org/abs/1602.00763) 
             - Individual detections are assigned to tracks using a greedy velocity only track propagation, sorted by `vipy.geometry.BoundingBox.maxcover` and detection confidence within a spatial tracking gate 
             - New tracks are created if the detection is unassigned and above a minimum confidence 
-            - Updated tracks resulting from assignment are stored in `vipy.video.tracks` 
+            - Updated tracks resulting from assignment are stored in `vipy.video.Scene.tracks` 
 
         Args:
         

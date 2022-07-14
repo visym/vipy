@@ -156,7 +156,7 @@ def dask(num_processes=None, num_gpus=None, dashboard=False, address=None, pct=N
 
 
 def parallel(n=None, pct=None, scheduler=None):
-    """Enable parallel processing with n>=1 processes or a percentage of system core (pct \in [0,1]) or a dask scheduler .
+    """Enable parallel processing with n>=1 processes or a percentage of system core (pct in [0,1]) or a dask scheduler .
 
     This can be be used as a context manager
     
