@@ -28,10 +28,14 @@ def escape_to_exit(event):
         vipy.globals._user_hit_escape(True)
     
 def flush():
+    if matplotlib.get_backend() == 'MacOSX':
+        plt.draw()  # YUCK: to flush buffer on video play, will be slow
     plt.pause(0.001)
 
     
 def imflush():
+    if matplotlib.get_backend() == 'MacOSX':
+        plt.draw()  # YUCK: to flush buffer on video play, will be slow
     plt.pause(0.001)
 
     # this is necessary for imshow only, maybe to trigger remove() of child?
