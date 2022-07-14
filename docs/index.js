@@ -14264,19 +14264,9 @@ INDEX=[
 "doc":"Converter from a pycollector dataset to a torch dataset"
 },
 {
-"ref":"vipy.torch.TorchDataset.functions",
-"url":51,
-"doc":""
-},
-{
 "ref":"vipy.torch.Tensordir",
 "url":51,
 "doc":"A torch dataset stored as a directory of .pkl.bz2 files each containing a list of [(tensor, str=json.dumps(label ,  .] tuples used for data augmented training. This is useful to use the default Dataset loaders in Torch. Usage:   vipy.torch.Tensordir('/path/to') vipy.torch.Tensordir( ('/path/to/1', '/path/to/2') )    note This requires python random() and not numpy random"
-},
-{
-"ref":"vipy.torch.Tensordir.functions",
-"url":51,
-"doc":""
 },
 {
 "ref":"vipy.torch.Tensordir.take",
@@ -14300,11 +14290,6 @@ INDEX=[
 "ref":"vipy.torch.TorchTensordir",
 "url":51,
 "doc":"A torch dataset stored as a directory of .pkl.bz2 files each containing a list of [(tensor, str=json.dumps(label ,  .] tuples used for data augmented training. This is useful to use the default Dataset loaders in Torch. Usage:   vipy.torch.Tensordir('/path/to') vipy.torch.Tensordir( ('/path/to/1', '/path/to/2') )    note This requires python random() and not numpy random"
-},
-{
-"ref":"vipy.torch.TorchTensordir.functions",
-"url":51,
-"doc":""
 },
 {
 "ref":"vipy.torch.TorchTensordir.filter",

@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1" />
-<meta name="generator" content="pdoc 0.10.0" />
+<meta name="generator" content="pdoc 0.9.2" />
 <title>vipy.video API documentation</title>
 <meta name="description" content="" />
 <link rel="preload stylesheet" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/10up-sanitize.css/11.0.1/sanitize.min.css" integrity="sha256-PK9q560IAAa6WVRRh76LtCaI8pjTJ2z11v0miyNNjrs=" crossorigin>
@@ -6364,8 +6364,6 @@ Useful for complex videos.</dd>
 <dd>[float] padding so that each activity clip is at least padtosec seconds long, with symmetric padding around the activity.
 </dd>
 </dl>
-<h2 id="returns">Returns</h2>
-<p>A list of <code><a title="vipy.video.Scene" href="#vipy.video.Scene">Scene</a></code> each cloned from the source video and clipped on one activity in the scene</p>
 <div class="admonition notes">
 <p class="admonition-title">Notes</p>
 <ul>
@@ -6566,8 +6564,6 @@ This crop must be resized such that the maximum dimension is provided since the 
 </code></dt>
 <dd>
 <div class="desc"><p>Return a list of activities in the video, returned in insertion order.</p>
-<h2 id="returns">Returns</h2>
-<p>A list of <code><a title="vipy.activity.Activity" href="activity.html#vipy.activity.Activity">Activity</a></code> insertion ordered into the original video</p>
 <div class="admonition note">
 <p class="admonition-title">Note:&ensp;The order of the activitylist() will not match the order of activityclip(), which is sorted by activity startframe.
 To match, use sorted(activitylist, key=lambda a: a.startframe())</p>
@@ -6731,9 +6727,6 @@ This is useful for assigning a role for activities that are performed by the act
 <dt><strong><code>fluent</code></strong></dt>
 <dd>[bool] If true, always return self. This is useful for those cases where the actorid being set is None.</dd>
 </dl>
-<h2 id="returns">Returns</h2>
-<p>[id=None, fluent=False] the actor ID
-[id is not None] The video with the actor ID set, only if the ID is found in the tracklist</p>
 <div class="admonition note">
 <p class="admonition-title">Note:&ensp;Not to be confused with biometric subject id.
 For videos collected with Visym Collector platform (<a href="https://visym.com/collector">https://visym.com/collector</a>), the biometric subject ID can be retrieved via <code><a title="vipy.video.Video.metadata" href="#vipy.video.Video.metadata">Video.metadata()</a></code> (e.g. self.metadata()['subject_ids']).</p>
@@ -7021,10 +7014,6 @@ Named colors must be in <code><a title="vipy.gui.using_matplotlib.colorlist" hre
 <dt><strong><code>verbose</code></strong></dt>
 <dd>[bool] Show more helpful messages if true</dd>
 </dl>
-<h2 id="returns">Returns</h2>
-<p>A <code><a title="vipy.video.Video" href="#vipy.video.Video">Video</a></code> with annotations in the pixels.
-If outfile is provided, then the returned video will be flushed.
-</p>
 <div class="admonition note">
 <p class="admonition-title">Note:&ensp;In general, this function should not be run on very long videos without the outfile kwarg, as it requires loading the video framewise into memory.</p>
 </div></div>
@@ -8210,9 +8199,6 @@ Defaults to the track category (lowercase)</dd>
 The amount of temporal padding to apply to the clips before and after in frames.
 See <code><a title="vipy.video.Scene.activityclip" href="#vipy.video.Scene.activityclip">Scene.activityclip()</a></code> for options.</dd>
 </dl>
-<h2 id="returns">Returns</h2>
-<p>A list of <code><a title="vipy.video.Scene" href="#vipy.video.Scene">Scene</a></code> each cloned from the source video and clipped in the temporal region between activities.
-The union of activityclip() and noactivityclip() should equal the entire video.</p>
 <div class="admonition notes">
 <p class="admonition-title">Notes</p>
 <ul>
@@ -8741,9 +8727,6 @@ Overrides padwidth.</dd>
 <dd>[str]
 The output filename to store the stabilized video</dd>
 </dl>
-<h2 id="returns">Returns</h2>
-<p>A clone of this video with background pixels stabilized to the first frame.
-</p>
 <div class="admonition note">
 <p class="admonition-title">Note</p>
 <ul>
@@ -8922,8 +8905,6 @@ If there are no tracks, return None.</p></div>
 <dd>[lambda]
 The lambda function to apply to each track t, and if f(t) returns True, then keep the track</dd>
 </dl>
-<h2 id="returns">Returns</h2>
-<p>self, with tracks removed in-place</p>
 <div class="admonition note">
 <p class="admonition-title">Note:&ensp;Applying track filter with activitytrack=True may result in activities with no associated tracks.
 You should follow up with self.activityfilter(lambda a: len(a.trackids()) &gt; 0).</p>
@@ -9124,9 +9105,6 @@ the number of samples along the overlapping scemgne for computing percentile cov
 <dt><strong><code>track</code></strong></dt>
 <dd>[bool]: union() of tracks only</dd>
 </dl>
-<h2 id="returns">Returns</h2>
-<p>Updates this scene to include the non-overlapping activities from other.
-By default, it takes the strict union of all activities and tracks. </p>
 <div class="admonition note">
 <p class="admonition-title">Note</p>
 <ul>
@@ -9869,8 +9847,6 @@ if false, then activities from the source video are not copied into the clip</dd
 <dd>[bool]
 if false, then tracks from the source video are not copied into the clip</dd>
 </dl>
-<h2 id="returns">Returns</h2>
-<p>An iterator that yields <code><a title="vipy.video.Video" href="#vipy.video.Video">Video</a></code> objects each of length n with startframe += m, starting at frame=delay, such that each video contains the tracks and activities (if requested) for this clip sourced from the shared stream video.</p>
 <div class="admonition note">
 <p class="admonition-title">Note:&ensp;This iterator runs in a thread to help speed up fetching of frames for GPU I/Oe bound operations</p>
 </div></div>
@@ -12214,8 +12190,6 @@ A useful lambda is 'youtube_chapters=lambda v: v.category()'</dd>
 <dt><strong><code>framerate</code></strong></dt>
 <dd>[float]: The output frame rate of outfile</dd>
 </dl>
-<h2 id="returns">Returns</h2>
-<p>A <code><a title="vipy.video.Video" href="#vipy.video.Video">Video</a></code> object with filename()=outfile, such that outfile contains the temporal concatenation of pixels in (self, videos).</p>
 <div class="admonition note">
 <p class="admonition-title">Note</p>
 <ul>
@@ -12607,9 +12581,6 @@ Use <code><a title="vipy.video.Video.isloadable" href="#vipy.video.Video.isloada
 <dd>
 <div class="desc"><p>Return the planned clip (startframe, endframe) range.</p>
 <p>This is useful for introspection of the planned clip() before load(), such as for data augmentation purposes without triggering a load. </p>
-<h2 id="returns">Returns</h2>
-<p>(startframe, endframe) of the video() such that after load(), the pixel buffer will contain frame=0 equivalent to startframe in the source video, and frame=endframe-startframe-1 equivalent to endframe in the source video.
-(0, None) If a video does not have a clip() (e.g. clip() was never called, the filter chain does not include a 'trim')</p>
 <div class="admonition notes">
 <p class="admonition-title">Notes:&ensp;The endframe can be retrieved (inefficiently) using:</p>
 </div>
@@ -12674,8 +12645,6 @@ Changing the pixel buffer on self is reflected in the clone.</dd>
 <dd>remove private attributes from self.attributes dictionary.
 A private attribute is any key with two leading underscores '__' which should not be propagated to clone</dd>
 </dl>
-<h2 id="returns">Returns</h2>
-<p>A deepcopy of the video object such that changes to self are not reflected in the copy</p>
 <div class="admonition note">
 <p class="admonition-title">Note:&ensp;Cloning videos is an expensive operation and can slow down real time code. Use sparingly.</p>
 </div></div>
@@ -13488,8 +13457,6 @@ framedir/image_0002.jpg</p>
 <p>framerate [float]:
 The output framerate of the webp file.
 The default is the framerate of the video. </p>
-<h2 id="returns">Returns</h2>
-<p>The filename of the animated GIF of this video</p>
 <div class="admonition warning">
 <p class="admonition-title">Warning:&ensp;This will be very large for big videos, consider using <code><a title="vipy.video.Video.webp" href="#vipy.video.Video.webp">Video.webp()</a></code> instead.</p>
 </div></div>
@@ -13638,9 +13605,6 @@ The default is the framerate of the video. </p>
 <dd>[bool] If true, flush the video after it loads.
 This will clear the video pixel buffer</dd>
 </dl>
-<h2 id="returns">Returns</h2>
-<p>True if load() can be called without FFMPEG exception.<br>
-If flush=False, then self will contain the loaded video, which is helpful to avoid load() twice in some conditions</p>
 <div class="admonition warning">
 <p class="admonition-title">Warning:&ensp;This requires loading and flushing the video.
 This is an expensive operation when performed on many videos and may result in out of memory conditions with long videos.
@@ -13716,8 +13680,6 @@ Try <code><a title="vipy.video.Video.canload" href="#vipy.video.Video.canload">V
 <dt><strong><code>encode</code></strong></dt>
 <dd>If true, return a JSON encoded string using json.dumps</dd>
 </dl>
-<h2 id="returns">Returns</h2>
-<p>A JSON encoded string if encode=True, else returns a dictionary object </p>
 <div class="admonition note">
 <p class="admonition-title">Note:&ensp;If the video is loaded, then the JSON will not include the pixels.
 Try using <code><a title="vipy.video.Video.store" href="#vipy.video.Video.store">Video.store()</a></code> to serialize videos, or call <code><a title="vipy.video.Video.flush" href="#vipy.video.Video.flush">Video.flush()</a></code> first.</p>
@@ -13772,8 +13734,6 @@ Be sure to call isloaded() to confirm loading was successful.</dd>
 If provided, use this shape for reading and reshaping the byte stream from ffmpeg.
 This is useful for efficient loading in some scenarios. Knowing the final output shape can speed up loads by avoiding a preview() of the filter chain to get the frame size</dd>
 </dl>
-<h2 id="returns">Returns</h2>
-<p>this video object, with the pixels loaded in self.array()</p>
 <div class="admonition warning">
 <p class="admonition-title">Warning:&ensp;Loading long videos can result in out of memory conditions.
 Try to call clip() first to extract a video segment to load().</p>
@@ -14757,8 +14717,6 @@ If not provided, use framerate of source video</dd>
 <dt><strong><code>pause</code></strong></dt>
 <dd>an integer in seconds to pause between loops of animated images if the outfile is webp or animated gif</dd>
 </dl>
-<h2 id="returns">Returns</h2>
-<p>a new video object with this video filename, and a clean video filter chain</p>
 <div class="admonition note">
 <p class="admonition-title">Note</p>
 <ul>
@@ -15061,8 +15019,6 @@ This should be big enough that you are never waiting for queue fills</dd>
 The maximum size of the stream buffer in frames.
 The stream buffer length should be big enough so that all iterators can yield before deleting old frames</dd>
 </dl>
-<h2 id="returns">Returns</h2>
-<p>A Stream object</p>
 <div class="admonition note">
 <p class="admonition-title">Note:&ensp;Using this iterator may affect PDB debugging due to stdout/stdin redirection.
 Use ipdb instead.</p>
@@ -15149,8 +15105,6 @@ Use ipdb instead.</p>
 <dt><strong><code>n</code></strong></dt>
 <dd>Integer number of uniformly spaced frames to return </dd>
 </dl>
-<h2 id="returns">Returns</h2>
-<p>A numpy array of shape (n,W,H)</p>
 <div class="admonition warning">
 <p class="admonition-title">Warning:&ensp;This assumes that the entire video is loaded into memory (e.g. call <code><a title="vipy.video.Video.load" href="#vipy.video.Video.load">Video.load()</a></code>).
 Use with caution.</p>
@@ -15434,8 +15388,6 @@ Optionally return the slice used if withslice=True</li>
 <dt><strong><code>newid</code></strong></dt>
 <dd>[str] If not None, then update the video_id as newid. </dd>
 </dl>
-<h2 id="returns">Returns</h2>
-<p>The video ID if newid=None else self</p>
 <div class="admonition note">
 <p class="admonition-title">Note</p>
 <ul>
@@ -15489,8 +15441,6 @@ Optionally return the slice used if withslice=True</li>
 <p>framerate [float]:
 The output framerate of the webp file.
 The default is the framerate of the video. </p>
-<h2 id="returns">Returns</h2>
-<p>The filename of the webp file for this video</p>
 <div class="admonition warning">
 <p class="admonition-title">Warning:&ensp;This may be slow for very long or large videos</p>
 </div></div>
@@ -16128,7 +16078,7 @@ setTimeout(() => input.focus(), 100);
 </nav>
 </main>
 <footer id="footer">
-<p>Generated by <a href="https://pdoc3.github.io/pdoc" title="pdoc: Python API documentation generator"><cite>pdoc</cite> 0.10.0</a>.</p>
+<p>Generated by <a href="https://pdoc3.github.io/pdoc" title="pdoc: Python API documentation generator"><cite>pdoc</cite> 0.9.2</a>.</p>
 </footer>
 </body>
 </html>
