@@ -1,0 +1,1518 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1" />
+<meta name="generator" content="pdoc 0.10.0" />
+<meta name="google-site-verification" content="aB8LkQegj94_TJPdrcJm2ldIRWyXY82Jp24Gtkdgyn0" />
+<title>vipy.gui.using_matplotlib API documentation</title>
+<meta name="description" content="" />
+<link rel="preload stylesheet" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/10up-sanitize.css/11.0.1/sanitize.min.css" integrity="sha256-PK9q560IAAa6WVRRh76LtCaI8pjTJ2z11v0miyNNjrs=" crossorigin>
+<link rel="preload stylesheet" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/10up-sanitize.css/11.0.1/typography.min.css" integrity="sha256-7l/o7C8jubJiy74VsKTidCy1yBkRtiUGbVkYBylBqUg=" crossorigin>
+<link rel="stylesheet preload" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/10.1.1/styles/github.min.css" crossorigin>
+<style>:root{--highlight-color:#fe9}.flex{display:flex !important}body{line-height:1.5em}#content{padding:20px}#sidebar{padding:30px;overflow:hidden}#sidebar > *:last-child{margin-bottom:2cm}#lunr-search{width:100%;font-size:1em;padding:6px 9px 5px 9px;border:1px solid silver}.http-server-breadcrumbs{font-size:130%;margin:0 0 15px 0}#footer{font-size:.75em;padding:5px 30px;border-top:1px solid #ddd;text-align:right}#footer p{margin:0 0 0 1em;display:inline-block}#footer p:last-child{margin-right:30px}h1,h2,h3,h4,h5{font-weight:300}h1{font-size:2.5em;line-height:1.1em}h2{font-size:1.75em;margin:1em 0 .50em 0}h3{font-size:1.4em;margin:25px 0 10px 0}h4{margin:0;font-size:105%}h1:target,h2:target,h3:target,h4:target,h5:target,h6:target{background:var(--highlight-color);padding:.2em 0}a{color:#058;text-decoration:none;transition:color .3s ease-in-out}a:hover{color:#e82}.title code{font-weight:bold}h2[id^="header-"]{margin-top:2em}.ident{color:#900}pre code{background:#f8f8f8;font-size:.8em;line-height:1.4em}code{background:#f2f2f1;padding:1px 4px;overflow-wrap:break-word}h1 code{background:transparent}pre{background:#f8f8f8;border:0;border-top:1px solid #ccc;border-bottom:1px solid #ccc;margin:1em 0;padding:1ex}#http-server-module-list{display:flex;flex-flow:column}#http-server-module-list div{display:flex}#http-server-module-list dt{min-width:10%}#http-server-module-list p{margin-top:0}.toc ul,#index{list-style-type:none;margin:0;padding:0}#index code{background:transparent}#index h3{border-bottom:1px solid #ddd}#index ul{padding:0}#index h4{margin-top:.6em;font-weight:bold}@media (min-width:200ex){#index .two-column{column-count:2}}@media (min-width:300ex){#index .two-column{column-count:3}}dl{margin-bottom:2em}dl dl:last-child{margin-bottom:4em}dd{margin:0 0 1em 3em}#header-classes + dl > dd{margin-bottom:3em}dd dd{margin-left:2em}dd p{margin:10px 0}.name{background:#eee;font-weight:bold;font-size:.85em;padding:5px 10px;display:inline-block;min-width:40%}.name:hover{background:#e0e0e0}dt:target .name{background:var(--highlight-color)}.name > span:first-child{white-space:nowrap}.name.class > span:nth-child(2){margin-left:.4em}.inherited{color:#999;border-left:5px solid #eee;padding-left:1em}.inheritance em{font-style:normal;font-weight:bold}.desc h2{font-weight:400;font-size:1.25em}.desc h3{font-size:1em}.desc dt code{background:inherit}.source summary,.git-link-div{color:#666;text-align:right;font-weight:400;font-size:.8em;text-transform:uppercase}.source summary > *{white-space:nowrap;cursor:pointer}.git-link{color:inherit;margin-left:1em}.source pre{max-height:500px;overflow:auto;margin:0}.source pre code{font-size:12px;overflow:visible}.hlist{list-style:none}.hlist li{display:inline}.hlist li:after{content:',\2002'}.hlist li:last-child:after{content:none}.hlist .hlist{display:inline;padding-left:1em}img{max-width:100%}td{padding:0 .5em}.admonition{padding:.1em .5em;margin-bottom:1em}.admonition-title{font-weight:bold}.admonition.note,.admonition.info,.admonition.important{background:#aef}.admonition.todo,.admonition.versionadded,.admonition.tip,.admonition.hint{background:#dfd}.admonition.warning,.admonition.versionchanged,.admonition.deprecated{background:#fd4}.admonition.error,.admonition.danger,.admonition.caution{background:lightpink}</style>
+<style media="screen and (min-width: 700px)">@media screen and (min-width:700px){#sidebar{width:30%;height:100vh;overflow:auto;position:sticky;top:0}#content{width:70%;max-width:100ch;padding:3em 4em;border-left:1px solid #ddd}pre code{font-size:1em}.item .name{font-size:1em}main{display:flex;flex-direction:row-reverse;justify-content:flex-end}.toc ul ul,#index ul{padding-left:1.5em}.toc > ul > li{margin-top:.5em}}</style>
+<style media="print">@media print{#sidebar h1{page-break-before:always}.source{display:none}}@media print{*{background:transparent !important;color:#000 !important;box-shadow:none !important;text-shadow:none !important}a[href]:after{content:" (" attr(href) ")";font-size:90%}a[href][title]:after{content:none}abbr[title]:after{content:" (" attr(title) ")"}.ir a:after,a[href^="javascript:"]:after,a[href^="#"]:after{content:""}pre,blockquote{border:1px solid #999;page-break-inside:avoid}thead{display:table-header-group}tr,img{page-break-inside:avoid}img{max-width:100% !important}@page{margin:0.5cm}p,h2,h3{orphans:3;widows:3}h1,h2,h3,h4,h5,h6{page-break-after:avoid}}</style>
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/10.1.1/highlight.min.js" integrity="sha256-Uv3H6lx7dJmRfRvH8TH6kJD1TSK1aFcwgx+mdg3epi8=" crossorigin></script>
+<script>window.addEventListener('DOMContentLoaded', () => hljs.initHighlighting())</script>
+</head>
+<body>
+<main>
+<article id="content">
+<header>
+<h1 class="title">Module <code>vipy.gui.using_matplotlib</code></h1>
+</header>
+<section id="section-intro">
+<details class="source">
+<summary>
+<span>Expand source code</span>
+<a href="https://github.com/visym/vipy/blob/2fc63b07a3ae3bc1d28d2ccb042d97b6726c972f/vipy/gui/using_matplotlib.py#L1-L454" class="git-link">Browse git</a>
+</summary>
+<pre><code class="python">import os
+import matplotlib
+from matplotlib import pyplot as plt
+import numpy as np
+from vipy.util import islist, temppng
+import sys
+
+
+FIGHANDLE = {}
+matplotlib.rcParams[&#39;toolbar&#39;] = &#39;None&#39;
+
+
+# Optional latex strings in captions
+try:
+    import vipy.globals
+    if vipy.globals.GLOBAL[&#39;LATEX&#39;] is not None:
+        from distutils.spawn import find_executable
+        if not find_executable(&#39;latex&#39;):
+            raise
+        matplotlib.rc(&#39;text&#39;, usetex=True)  # requires latex installed
+except:
+    pass  # ignored if latex is not installed or not wanted
+
+
+def escape_to_exit(event):
+    if event.key == &#39;escape&#39; or event.key == &#39;q&#39; or event.key == &#39;ctrl+c&#39;:
+        import vipy.globals            
+        vipy.globals._user_hit_escape(True)
+    
+def flush():
+    if matplotlib.get_backend() == &#39;MacOSX&#39;:
+        plt.draw()  # YUCK: to flush buffer on video play, will be slow
+    plt.pause(0.001)
+
+    
+def imflush():
+    if matplotlib.get_backend() == &#39;MacOSX&#39;:
+        plt.draw()  # YUCK: to flush buffer on video play, will be slow
+    plt.pause(0.001)
+
+    # this is necessary for imshow only, maybe to trigger remove() of child?
+    # However, this breaks jupyter notebook image show if we use gca()
+    [a.annotate(&#39;&#39;, (0,0)) for i in plt.get_fignums() for a in plt.figure(i).axes]
+    
+    #plt.gca().annotate(&#39;&#39;, (0,0))  
+
+    
+def show(fignum):
+    fig = plt.figure(fignum) 
+    fig.canvas.draw()    
+    plt.ion()
+    plt.show()
+
+    
+def noshow(fignum):
+    plt.ioff()
+
+
+def savefig(filename=None, fignum=None, pad_inches=0, dpi=None, bbox_inches=&#39;tight&#39;, format=None):
+    if fignum is not None:
+        plt.figure(fignum)
+    if filename is None:
+        filename = temppng()
+    plt.savefig(filename, pad_inches=pad_inches, dpi=dpi, bbox_inches=bbox_inches, format=format)
+    return filename
+
+
+def figure(fignum=None):
+    if fignum is not None:
+        plt.figure(fignum)
+    else:
+        plt.figure()
+    return plt
+
+
+def close(fignum):
+    global FIGHANDLE
+    if fignum in FIGHANDLE:
+        plt.close(fignum)
+        FIGHANDLE.pop(fignum, None)
+        return None
+    else:
+        return None
+
+
+def closeall():
+    global FIGHANDLE
+    FIGHANDLE = {}
+    return plt.close(&#39;all&#39;)
+
+
+def _imshow_tight(img, fignum=None, keypress=True):
+    &#34;&#34;&#34;Helper function to show an image in a figure window&#34;&#34;&#34;
+    dpi = 100.0
+    fig = plt.figure(fignum, dpi=dpi, figsize=(img.shape[1] / dpi, img.shape[0] / dpi))
+    plt.clf()
+
+    # Tight axes
+    ax = plt.Axes(fig, [0., 0., 1.0, 1.0], frameon=False)
+    fig.add_axes(ax)
+    for a in plt.gcf().axes:
+        a.get_xaxis().set_visible(False)
+        a.get_yaxis().set_visible(False)
+    imh = plt.imshow(img, animated=True, interpolation=&#39;nearest&#39;, aspect=&#39;equal&#39;)
+
+    if keypress:
+        fig.canvas.mpl_connect(&#39;key_press_event&#39;, escape_to_exit)
+        import vipy.globals    
+        vipy.globals._user_hit_escape(False)
+
+    return (fig.number, imh)
+
+
+def imshow(img, fignum=None):
+    &#34;&#34;&#34;Show an image in a figure window (optionally visible), reuse previous figure if it is the same shape&#34;&#34;&#34;
+    global FIGHANDLE
+
+    if fignum in plt.get_fignums() and fignum in FIGHANDLE and FIGHANDLE[fignum].get_size() == img.shape[0:2]:
+        # Do not delete and recreate the figure, just change the pixels 
+        FIGHANDLE[fignum].set_data(img)
+
+        # Delete all polygon and text overlays from previous drawing so that they can be overwritten on current frame
+        for c in plt.gca().get_children():
+            if &#39;Text&#39; in c.__repr__() or &#39;Polygon&#39; in c.__repr__() or &#39;Circle&#39; in c.__repr__() or &#39;Line&#39; in c.__repr__() or &#39;Patch&#39; in c.__repr__():
+                try:
+                    c.remove()
+                except:
+                    pass
+    else:
+        # Jupyter notebook does not respect fignum.  It is always one when inspecting plt.get_fignums()
+        if fignum in plt.get_fignums() and fignum in FIGHANDLE:
+            close(fignum)
+        (fignum, imh) = _imshow_tight(img, fignum=fignum)
+        FIGHANDLE[fignum] = imh
+    return fignum
+
+
+def text(caption, xmin, ymin, fignum=None, textcolor=&#39;black&#39;, textfacecolor=&#39;white&#39;, textfacealpha=1.0, fontsize=10, linewidth=3, facecolor=&#39;white&#39;, facealpha=0.5, alpha=1.0, pad=0.5):
+    plt.figure(fignum) if fignum is not None else plt.gcf()
+    lw = linewidth  # pull in the boxes by linewidth so that they do not overhang the figure
+
+    newlines = caption.count(&#39;\n&#39;)
+    captionoffset = 15*newlines   # move down a bit if near top of image, shift once per newline in caption    
+    try:
+        # MatplotlibDeprecationWarning: The &#39;s&#39; parameter of annotate() has been renamed &#39;text&#39; since Matplotlib 3.3            
+        handle = plt.annotate(alpha=alpha, text=caption, xy=(xmin,ymin), xytext=(xmin, ymin+captionoffset), xycoords=&#39;data&#39;, color=textcolor, bbox=None if textfacecolor is None else dict(facecolor=textfacecolor, edgecolor=None, alpha=textfacealpha, boxstyle=&#39;square&#39;, pad=pad), fontsize=fontsize, clip_on=True)
+    except:
+        handle = plt.annotate(alpha=alpha, s=caption, xy=(xmin,ymin), xytext=(xmin, ymin+captionoffset), xycoords=&#39;data&#39;, color=textcolor, bbox=None if textfacecolor is None else dict(facecolor=textfacecolor, edgecolor=None, alpha=textfacealpha, boxstyle=&#39;square&#39;, pad=pad), fontsize=fontsize, clip_on=True)        
+
+    return fignum
+
+def boundingbox(img, xmin, ymin, xmax, ymax, bboxcaption=None, fignum=None, bboxcolor=&#39;green&#39;, facecolor=&#39;white&#39;, facealpha=0.5, textcolor=&#39;black&#39;, textfacecolor=&#39;white&#39;, textfacealpha=1.0, fontsize=10, captionoffset=(0,0), linewidth=3):
+    &#34;&#34;&#34;Draw a captioned bounding box on a previously shown image&#34;&#34;&#34;
+    plt.figure(fignum)
+    lw = linewidth  # pull in the boxes by linewidth so that they do not overhang the figure
+    (H,W) = (img.shape[0], img.shape[1])
+    plt.axvspan(max(xmin, lw/2), min(xmax, W-lw/2), ymin=1.0 - np.float32(float(min(ymax, H-lw/2)) / float(H)), ymax=1-np.float32(float(max(ymin, lw/2)) / float(H)), edgecolor=bboxcolor, linewidth=lw, fill=False, alpha=0.6, label=None, capstyle=&#39;round&#39;, joinstyle=&#39;bevel&#39;, clip_on=True)   
+    plt.axvspan(max(xmin, lw/2), min(xmax, W-lw/2), ymin=1.0 - np.float32(float(min(ymax, H-lw/2)) / float(H)), ymax=1-np.float32(float(max(ymin, lw/2)) / float(H)), edgecolor=bboxcolor, facecolor=facecolor, linewidth=lw, fill=True, alpha=facealpha, label=None, clip_on=True, capstyle=&#39;round&#39;, joinstyle=&#39;bevel&#39;)
+
+    # Text string
+    if bboxcaption is not None:
+        # clip_on clips anything outside the image
+        newlines = bboxcaption.count(&#39;\n&#39;)
+        captionoffset = captionoffset if ymin &gt; 15 else (captionoffset[0]+5, captionoffset[1]+(15*(newlines+1)))  # move down a bit if near top of image, shift once per newline in caption
+        try:
+            # MatplotlibDeprecationWarning: The &#39;s&#39; parameter of annotate() has been renamed &#39;text&#39; since Matplotlib 3.3            
+            handle = plt.annotate(text=bboxcaption, xy=(xmin,ymin), xytext=(xmin+captionoffset[0], ymin+captionoffset[1]), xycoords=&#39;data&#39;, color=textcolor, bbox=dict(facecolor=textfacecolor, edgecolor=textcolor, alpha=textfacealpha, boxstyle=&#39;round&#39;), fontsize=fontsize, clip_on=True)
+        except:
+            handle = plt.annotate(s=bboxcaption, xy=(xmin,ymin), xytext=(xmin+captionoffset[0], ymin+captionoffset[1]), xycoords=&#39;data&#39;, color=textcolor, bbox=dict(facecolor=textfacecolor, edgecolor=textcolor, alpha=textfacealpha, boxstyle=&#39;round&#39;), fontsize=fontsize, clip_on=True)            
+
+    return fignum
+
+
+def imdetection(img, detlist, fignum=None, bboxcolor=&#39;green&#39;, do_caption=True, facecolor=&#39;white&#39;, facealpha=0.5, textcolor=&#39;green&#39;, textfacecolor=&#39;white&#39;, textfacealpha=1.0, fontsize=10, captionoffset=(0,0)):
+    &#34;&#34;&#34;Show bounding boxes from a list of vipy.object.Detections on the same image, plotted in list order with optional captions &#34;&#34;&#34;
+
+    # Create image
+    fignum = imshow(img, fignum=fignum) 
+
+    # A better way? https://matplotlib.org/api/_as_gen/matplotlib.animation.FuncAnimation.html
+    
+    # Valid detections
+    for (k,det) in enumerate(detlist):
+        if do_caption and len(det.category()) != 0 and (det.category()[0:2] != &#39;__&#39;):  # prepending category with &#39;__&#39; will disable caption
+            bboxcaption = det.category()
+        else:
+            bboxcaption = None
+
+        if islist(bboxcolor):
+            bboxcolor_ = bboxcolor[k]
+        else:
+            bboxcolor_ = bboxcolor
+
+        if islist(textcolor):
+            textcolor_ = textcolor[k]
+        else:
+            textcolor_ = textcolor
+
+        boundingbox(img, xmin=det.xmin(), ymin=det.ymin(), xmax=det.xmax(), ymax=det.ymax(), bboxcaption=bboxcaption,
+                    fignum=fignum, bboxcolor=bboxcolor_, facecolor=facecolor, facealpha=facealpha, textcolor=textcolor_, textfacecolor=textfacecolor, fontsize=fontsize, captionoffset=captionoffset, textfacealpha=textfacealpha)
+
+    return fignum
+
+
+def imframe(img, fr, color=&#39;b&#39;, markersize=10, label=None, figure=None):
+    &#34;&#34;&#34;Show a scatterplot of fr=[[x1,y1],[x2,y2]...] 2D points overlayed on an image&#34;&#34;&#34;
+    if figure is not None:
+        fig = plt.figure(figure)
+    else:
+        fig = plt.figure()
+
+    figure = plt.gcf().number
+
+    plt.clf()
+
+    ax = plt.Axes(fig, [0., 0., 1., 1.], frameon=False)
+    fig.add_axes(ax)
+
+    plt.axis(&#39;off&#39;)
+    ax.set_axis_off()
+    for a in plt.gcf().axes:
+        a.get_xaxis().set_visible(False)
+        a.get_yaxis().set_visible(False)
+
+    plt.autoscale(tight=True)
+    plt.plot(fr[:,0],fr[:,1],&#39;%s.&#39; % color, markersize=markersize, axes=ax)
+
+    if label is not None:
+        for ((x,y),lbl) in zip(fr, label):
+            ax.text(x, y, lbl, color=&#39;white&#39;)
+
+    return plt
+
+
+def frame(fr, im=None, color=&#39;b.&#39;, markersize=10, figure=None, caption=None):
+    &#34;&#34;&#34;Show a scatterplot of fr=[[x1,y1],[x2,y2]...] 2D points&#34;&#34;&#34;
+    if figure is not None:
+        plt.figure(figure)
+    else:
+        plt.figure()
+        plt.clf()
+
+    plt.axes([0,0,1,1])
+    plt.plot(fr[:,0],fr[:,1],color)
+    plt.axis(&#39;off&#39;)
+    plt.draw()
+
+
+def colorlist():
+    &#34;&#34;&#34;Return a list of named colors that are higher contrast with a white background&#34;&#34;&#34;
+    colorlist = [str(name) for (name, hex) in matplotlib.colors.cnames.items()]
+    primarycolorlist = [&#39;green&#39;,&#39;blue&#39;,&#39;red&#39;,&#39;cyan&#39;,&#39;orange&#39;, &#39;yellow&#39;,&#39;violet&#39;]
+    tableaucolors = [&#39;tab:blue&#39;, &#39;tab:orange&#39;, &#39;tab:green&#39;, &#39;tab:red&#39;, &#39;tab:purple&#39;, &#39;tab:brown&#39;, &#39;tab:pink&#39;, &#39;tab:gray&#39;, &#39;tab:olive&#39;, &#39;tab:cyan&#39;]
+    colors = primarycolorlist + tableaucolors + [c for c in colorlist if c not in set(primarycolorlist).union(tableaucolors)]
+    colors = [x for x in colors if x not in
+              set([&#39;whitesmoke&#39;, &#39;gainsboro&#39;, &#39;w&#39;, &#39;floralwhite&#39;, &#39;lightgoldenrodyellow&#39;, &#39;ghostwhite&#39;, &#39;white&#39;, &#39;mistyrose&#39;,
+                   &#39;seashell&#39;, &#39;ivory&#39;, &#39;honeydew&#39;, &#39;azure&#39;, &#39;lavenderblush&#39;, &#39;beige&#39;, &#39;mintcream&#39;, &#39;lightcyan&#39;,
+                   &#39;snow&#39;, &#39;gainsboro&#39;, &#39;linen&#39;, &#39;antiquewhite&#39;, &#39;papayawhip&#39;, &#39;oldlace&#39;, &#39;cornsilk&#39;, &#39;palegoldenrod&#39;,
+                   &#39;lightyellow&#39;, &#39;aliceblue&#39;, &#39;yellow&#39;, &#39;sandybrown&#39;, &#39;orange&#39;, &#39;moccasin&#39;, &#39;bisque&#39;, &#39;peachpuff&#39;, &#39;blanchedalmond&#39;,
+                   &#39;lemonchiffon&#39;,&#39;navajowhite&#39;,&#39;wheat&#39;, &#39;lavender&#39;, &#39;burlywood&#39; , &#39;palegreen&#39;, &#39;greenyellow&#39;, &#39;lawngreen&#39;, &#39;khaki&#39;, &#39;powderblue&#39;
+                   &#39;paleturquoise&#39;, &#39;aquamarine&#39;])]  # https://matplotlib.org/3.1.0/gallery/color/named_colors.html
+    colors = [x for x in colors if &#39;light&#39; not in x]
+    return colors
+
+
+def edit():
+    import matplotlib.pyplot as plt 
+    from matplotlib.widgets import Slider, Button, RadioButtons   
+    button = Button(resetax, &#39;Reset&#39;, color=axcolor, hovercolor=&#39;0.975&#39;)
+    ax2 = plt.axes([0.1, 0.325, 0.5, 0.05])
+
+    ax2 = plt.axes([0, 0, 0.5, 0.05])
+    ax2.patch.set_alpha(0.5) 
+    Slider(ax2, &#39;Reset2&#39;, facecolor=&#39;red&#39;, alpha=0.5, valmin=0, valmax=10)
+    ax2.patch.alpha = 0.5 
+
+import matplotlib.pyplot as plt
+from matplotlib.patches import Rectangle
+
+class Annotate(object):
+    def __init__(self):
+        self.ax = plt.gca()
+        self.rect = Rectangle((0,0), 1, 1)
+        self.x0 = None
+        self.y0 = None
+        self.x1 = None
+        self.y1 = None
+        self.ax.add_patch(self.rect)
+        self.ax.figure.canvas.mpl_connect(&#39;button_press_event&#39;, self.on_press)
+        self.ax.figure.canvas.mpl_connect(&#39;button_release_event&#39;, self.on_release)
+
+    def on_press(self, event):
+        print (&#39;press&#39;)
+        self.x0 = event.xdata
+        self.y0 = event.ydata
+
+    def on_release(self, event):
+        print (&#39;release&#39;)
+        self.x1 = event.xdata
+        self.y1 = event.ydata
+        self.rect.set_width(self.x1 - self.x0)
+        self.rect.set_height(self.y1 - self.y0)
+        self.rect.set_xy((self.x0, self.y0))
+        self.ax.figure.canvas.draw()
+
+
+class DraggableRectangle(object):
+    def __init__(self, rect):
+        self.rect = rect
+        self.press = None
+
+    def connect(self):
+        &#39;connect to all the events we need&#39;
+        self.cidpress = self.rect.figure.canvas.mpl_connect(
+            &#39;button_press_event&#39;, self.on_press)
+        self.cidrelease = self.rect.figure.canvas.mpl_connect(
+            &#39;button_release_event&#39;, self.on_release)
+        self.cidmotion = self.rect.figure.canvas.mpl_connect(
+            &#39;motion_notify_event&#39;, self.on_motion)
+
+    def on_press(self, event):
+        &#39;on button press we will see if the mouse is over us and store some data&#39;
+        if event.inaxes != self.rect.axes: return
+
+        contains, attrd = self.rect.contains(event)
+        if not contains: return
+        print(&#39;event contains&#39;, self.rect.xy)
+        x0, y0 = self.rect.xy
+        self.press = x0, y0, event.xdata, event.ydata
+
+    def on_motion(self, event):
+        &#39;on motion we will move the rect if the mouse is over us&#39;
+        if self.press is None: return
+        if event.inaxes != self.rect.axes: return
+        x0, y0, xpress, ypress = self.press
+        dx = event.xdata - xpress
+        dy = event.ydata - ypress
+        #print(&#39;x0=%f, xpress=%f, event.xdata=%f, dx=%f, x0+dx=%f&#39; %
+        #      (x0, xpress, event.xdata, dx, x0+dx))
+        self.rect.set_x(x0+dx)
+        self.rect.set_y(y0+dy)
+
+        self.rect.figure.canvas.draw()
+
+
+    def on_release(self, event):
+        &#39;on release we reset the press data&#39;
+        self.press = None
+        self.rect.figure.canvas.draw()
+
+    def disconnect(self):
+        &#39;disconnect all the stored connection ids&#39;
+        self.rect.figure.canvas.mpl_disconnect(self.cidpress)
+        self.rect.figure.canvas.mpl_disconnect(self.cidrelease)
+        self.rect.figure.canvas.mpl_disconnect(self.cidmotion)
+
+        
+    #a = Annotate()
+    #plt.show()    
+
+    #fig = plt.figure()
+    #ax = fig.add_subplot(111)
+    #rects = ax.bar(range(10), 20*np.random.rand(10))
+    #drs = []
+    #for rect in rects:
+    #    dr = DraggableRectangle(rect)
+    #    dr.connect()
+    #    drs.append(dr)
+    #
+    #plt.show()
+
+
+class DraggableRectangleFast(object):
+    lock = None  # only one can be animated at a time
+    def __init__(self, rect):
+        self.rect = rect
+        self.press = None
+        self.background = None
+
+    def connect(self):
+        &#39;connect to all the events we need&#39;
+        self.cidpress = self.rect.figure.canvas.mpl_connect(
+            &#39;button_press_event&#39;, self.on_press)
+        self.cidrelease = self.rect.figure.canvas.mpl_connect(
+            &#39;button_release_event&#39;, self.on_release)
+        self.cidmotion = self.rect.figure.canvas.mpl_connect(
+            &#39;motion_notify_event&#39;, self.on_motion)
+
+    def on_press(self, event):
+        &#39;on button press we will see if the mouse is over us and store some data&#39;
+        if event.inaxes != self.rect.axes: return
+        if DraggableRectangle.lock is not None: return
+        contains, attrd = self.rect.contains(event)
+        if not contains: return
+        print(&#39;event contains&#39;, self.rect.xy)
+        x0, y0 = self.rect.xy
+        self.press = x0, y0, event.xdata, event.ydata
+        DraggableRectangle.lock = self
+
+        # draw everything but the selected rectangle and store the pixel buffer
+        canvas = self.rect.figure.canvas
+        axes = self.rect.axes
+        self.rect.set_animated(True)
+        canvas.draw()
+        self.background = canvas.copy_from_bbox(self.rect.axes.bbox)
+
+        # now redraw just the rectangle
+        axes.draw_artist(self.rect)
+
+        # and blit just the redrawn area
+        canvas.blit(axes.bbox)
+
+    def on_motion(self, event):
+        &#39;on motion we will move the rect if the mouse is over us&#39;
+        if DraggableRectangle.lock is not self:
+            return
+        if event.inaxes != self.rect.axes: return
+        x0, y0, xpress, ypress = self.press
+        dx = event.xdata - xpress
+        dy = event.ydata - ypress
+        self.rect.set_x(x0+dx)
+        self.rect.set_y(y0+dy)
+
+        canvas = self.rect.figure.canvas
+        axes = self.rect.axes
+        # restore the background region
+        canvas.restore_region(self.background)
+
+        # redraw just the current rectangle
+        axes.draw_artist(self.rect)
+
+        # blit just the redrawn area
+        canvas.blit(axes.bbox)
+
+    def on_release(self, event):
+        &#39;on release we reset the press data&#39;
+        if DraggableRectangle.lock is not self:
+            return
+
+        self.press = None
+        DraggableRectangle.lock = None
+
+        # turn off the rect animation property and reset the background
+        self.rect.set_animated(False)
+        self.background = None
+
+        # redraw the full figure
+        self.rect.figure.canvas.draw()
+
+    def disconnect(self):
+        &#39;disconnect all the stored connection ids&#39;
+        self.rect.figure.canvas.mpl_disconnect(self.cidpress)
+        self.rect.figure.canvas.mpl_disconnect(self.cidrelease)
+        self.rect.figure.canvas.mpl_disconnect(self.cidmotion)    </code></pre>
+</details>
+</section>
+<section>
+</section>
+<section>
+</section>
+<section>
+<h2 class="section-title" id="header-functions">Functions</h2>
+<dl>
+<dt id="vipy.gui.using_matplotlib.boundingbox"><code class="name flex">
+<span>def <span class="ident">boundingbox</span></span>(<span>img, xmin, ymin, xmax, ymax, bboxcaption=None, fignum=None, bboxcolor='green', facecolor='white', facealpha=0.5, textcolor='black', textfacecolor='white', textfacealpha=1.0, fontsize=10, captionoffset=(0, 0), linewidth=3)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Draw a captioned bounding box on a previously shown image</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+<a href="https://github.com/visym/vipy/blob/2fc63b07a3ae3bc1d28d2ccb042d97b6726c972f/vipy/gui/using_matplotlib.py#L152-L171" class="git-link">Browse git</a>
+</summary>
+<pre><code class="python">def boundingbox(img, xmin, ymin, xmax, ymax, bboxcaption=None, fignum=None, bboxcolor=&#39;green&#39;, facecolor=&#39;white&#39;, facealpha=0.5, textcolor=&#39;black&#39;, textfacecolor=&#39;white&#39;, textfacealpha=1.0, fontsize=10, captionoffset=(0,0), linewidth=3):
+    &#34;&#34;&#34;Draw a captioned bounding box on a previously shown image&#34;&#34;&#34;
+    plt.figure(fignum)
+    lw = linewidth  # pull in the boxes by linewidth so that they do not overhang the figure
+    (H,W) = (img.shape[0], img.shape[1])
+    plt.axvspan(max(xmin, lw/2), min(xmax, W-lw/2), ymin=1.0 - np.float32(float(min(ymax, H-lw/2)) / float(H)), ymax=1-np.float32(float(max(ymin, lw/2)) / float(H)), edgecolor=bboxcolor, linewidth=lw, fill=False, alpha=0.6, label=None, capstyle=&#39;round&#39;, joinstyle=&#39;bevel&#39;, clip_on=True)   
+    plt.axvspan(max(xmin, lw/2), min(xmax, W-lw/2), ymin=1.0 - np.float32(float(min(ymax, H-lw/2)) / float(H)), ymax=1-np.float32(float(max(ymin, lw/2)) / float(H)), edgecolor=bboxcolor, facecolor=facecolor, linewidth=lw, fill=True, alpha=facealpha, label=None, clip_on=True, capstyle=&#39;round&#39;, joinstyle=&#39;bevel&#39;)
+
+    # Text string
+    if bboxcaption is not None:
+        # clip_on clips anything outside the image
+        newlines = bboxcaption.count(&#39;\n&#39;)
+        captionoffset = captionoffset if ymin &gt; 15 else (captionoffset[0]+5, captionoffset[1]+(15*(newlines+1)))  # move down a bit if near top of image, shift once per newline in caption
+        try:
+            # MatplotlibDeprecationWarning: The &#39;s&#39; parameter of annotate() has been renamed &#39;text&#39; since Matplotlib 3.3            
+            handle = plt.annotate(text=bboxcaption, xy=(xmin,ymin), xytext=(xmin+captionoffset[0], ymin+captionoffset[1]), xycoords=&#39;data&#39;, color=textcolor, bbox=dict(facecolor=textfacecolor, edgecolor=textcolor, alpha=textfacealpha, boxstyle=&#39;round&#39;), fontsize=fontsize, clip_on=True)
+        except:
+            handle = plt.annotate(s=bboxcaption, xy=(xmin,ymin), xytext=(xmin+captionoffset[0], ymin+captionoffset[1]), xycoords=&#39;data&#39;, color=textcolor, bbox=dict(facecolor=textfacecolor, edgecolor=textcolor, alpha=textfacealpha, boxstyle=&#39;round&#39;), fontsize=fontsize, clip_on=True)            
+
+    return fignum</code></pre>
+</details>
+</dd>
+<dt id="vipy.gui.using_matplotlib.close"><code class="name flex">
+<span>def <span class="ident">close</span></span>(<span>fignum)</span>
+</code></dt>
+<dd>
+<div class="desc"></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+<a href="https://github.com/visym/vipy/blob/2fc63b07a3ae3bc1d28d2ccb042d97b6726c972f/vipy/gui/using_matplotlib.py#L76-L83" class="git-link">Browse git</a>
+</summary>
+<pre><code class="python">def close(fignum):
+    global FIGHANDLE
+    if fignum in FIGHANDLE:
+        plt.close(fignum)
+        FIGHANDLE.pop(fignum, None)
+        return None
+    else:
+        return None</code></pre>
+</details>
+</dd>
+<dt id="vipy.gui.using_matplotlib.closeall"><code class="name flex">
+<span>def <span class="ident">closeall</span></span>(<span>)</span>
+</code></dt>
+<dd>
+<div class="desc"></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+<a href="https://github.com/visym/vipy/blob/2fc63b07a3ae3bc1d28d2ccb042d97b6726c972f/vipy/gui/using_matplotlib.py#L86-L89" class="git-link">Browse git</a>
+</summary>
+<pre><code class="python">def closeall():
+    global FIGHANDLE
+    FIGHANDLE = {}
+    return plt.close(&#39;all&#39;)</code></pre>
+</details>
+</dd>
+<dt id="vipy.gui.using_matplotlib.colorlist"><code class="name flex">
+<span>def <span class="ident">colorlist</span></span>(<span>)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Return a list of named colors that are higher contrast with a white background</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+<a href="https://github.com/visym/vipy/blob/2fc63b07a3ae3bc1d28d2ccb042d97b6726c972f/vipy/gui/using_matplotlib.py#L249-L263" class="git-link">Browse git</a>
+</summary>
+<pre><code class="python">def colorlist():
+    &#34;&#34;&#34;Return a list of named colors that are higher contrast with a white background&#34;&#34;&#34;
+    colorlist = [str(name) for (name, hex) in matplotlib.colors.cnames.items()]
+    primarycolorlist = [&#39;green&#39;,&#39;blue&#39;,&#39;red&#39;,&#39;cyan&#39;,&#39;orange&#39;, &#39;yellow&#39;,&#39;violet&#39;]
+    tableaucolors = [&#39;tab:blue&#39;, &#39;tab:orange&#39;, &#39;tab:green&#39;, &#39;tab:red&#39;, &#39;tab:purple&#39;, &#39;tab:brown&#39;, &#39;tab:pink&#39;, &#39;tab:gray&#39;, &#39;tab:olive&#39;, &#39;tab:cyan&#39;]
+    colors = primarycolorlist + tableaucolors + [c for c in colorlist if c not in set(primarycolorlist).union(tableaucolors)]
+    colors = [x for x in colors if x not in
+              set([&#39;whitesmoke&#39;, &#39;gainsboro&#39;, &#39;w&#39;, &#39;floralwhite&#39;, &#39;lightgoldenrodyellow&#39;, &#39;ghostwhite&#39;, &#39;white&#39;, &#39;mistyrose&#39;,
+                   &#39;seashell&#39;, &#39;ivory&#39;, &#39;honeydew&#39;, &#39;azure&#39;, &#39;lavenderblush&#39;, &#39;beige&#39;, &#39;mintcream&#39;, &#39;lightcyan&#39;,
+                   &#39;snow&#39;, &#39;gainsboro&#39;, &#39;linen&#39;, &#39;antiquewhite&#39;, &#39;papayawhip&#39;, &#39;oldlace&#39;, &#39;cornsilk&#39;, &#39;palegoldenrod&#39;,
+                   &#39;lightyellow&#39;, &#39;aliceblue&#39;, &#39;yellow&#39;, &#39;sandybrown&#39;, &#39;orange&#39;, &#39;moccasin&#39;, &#39;bisque&#39;, &#39;peachpuff&#39;, &#39;blanchedalmond&#39;,
+                   &#39;lemonchiffon&#39;,&#39;navajowhite&#39;,&#39;wheat&#39;, &#39;lavender&#39;, &#39;burlywood&#39; , &#39;palegreen&#39;, &#39;greenyellow&#39;, &#39;lawngreen&#39;, &#39;khaki&#39;, &#39;powderblue&#39;
+                   &#39;paleturquoise&#39;, &#39;aquamarine&#39;])]  # https://matplotlib.org/3.1.0/gallery/color/named_colors.html
+    colors = [x for x in colors if &#39;light&#39; not in x]
+    return colors</code></pre>
+</details>
+</dd>
+<dt id="vipy.gui.using_matplotlib.edit"><code class="name flex">
+<span>def <span class="ident">edit</span></span>(<span>)</span>
+</code></dt>
+<dd>
+<div class="desc"></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+<a href="https://github.com/visym/vipy/blob/2fc63b07a3ae3bc1d28d2ccb042d97b6726c972f/vipy/gui/using_matplotlib.py#L266-L275" class="git-link">Browse git</a>
+</summary>
+<pre><code class="python">def edit():
+    import matplotlib.pyplot as plt 
+    from matplotlib.widgets import Slider, Button, RadioButtons   
+    button = Button(resetax, &#39;Reset&#39;, color=axcolor, hovercolor=&#39;0.975&#39;)
+    ax2 = plt.axes([0.1, 0.325, 0.5, 0.05])
+
+    ax2 = plt.axes([0, 0, 0.5, 0.05])
+    ax2.patch.set_alpha(0.5) 
+    Slider(ax2, &#39;Reset2&#39;, facecolor=&#39;red&#39;, alpha=0.5, valmin=0, valmax=10)
+    ax2.patch.alpha = 0.5 </code></pre>
+</details>
+</dd>
+<dt id="vipy.gui.using_matplotlib.escape_to_exit"><code class="name flex">
+<span>def <span class="ident">escape_to_exit</span></span>(<span>event)</span>
+</code></dt>
+<dd>
+<div class="desc"></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+<a href="https://github.com/visym/vipy/blob/2fc63b07a3ae3bc1d28d2ccb042d97b6726c972f/vipy/gui/using_matplotlib.py#L25-L28" class="git-link">Browse git</a>
+</summary>
+<pre><code class="python">def escape_to_exit(event):
+    if event.key == &#39;escape&#39; or event.key == &#39;q&#39; or event.key == &#39;ctrl+c&#39;:
+        import vipy.globals            
+        vipy.globals._user_hit_escape(True)</code></pre>
+</details>
+</dd>
+<dt id="vipy.gui.using_matplotlib.figure"><code class="name flex">
+<span>def <span class="ident">figure</span></span>(<span>fignum=None)</span>
+</code></dt>
+<dd>
+<div class="desc"></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+<a href="https://github.com/visym/vipy/blob/2fc63b07a3ae3bc1d28d2ccb042d97b6726c972f/vipy/gui/using_matplotlib.py#L68-L73" class="git-link">Browse git</a>
+</summary>
+<pre><code class="python">def figure(fignum=None):
+    if fignum is not None:
+        plt.figure(fignum)
+    else:
+        plt.figure()
+    return plt</code></pre>
+</details>
+</dd>
+<dt id="vipy.gui.using_matplotlib.flush"><code class="name flex">
+<span>def <span class="ident">flush</span></span>(<span>)</span>
+</code></dt>
+<dd>
+<div class="desc"></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+<a href="https://github.com/visym/vipy/blob/2fc63b07a3ae3bc1d28d2ccb042d97b6726c972f/vipy/gui/using_matplotlib.py#L30-L33" class="git-link">Browse git</a>
+</summary>
+<pre><code class="python">def flush():
+    if matplotlib.get_backend() == &#39;MacOSX&#39;:
+        plt.draw()  # YUCK: to flush buffer on video play, will be slow
+    plt.pause(0.001)</code></pre>
+</details>
+</dd>
+<dt id="vipy.gui.using_matplotlib.frame"><code class="name flex">
+<span>def <span class="ident">frame</span></span>(<span>fr, im=None, color='b.', markersize=10, figure=None, caption=None)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Show a scatterplot of fr=[[x1,y1],[x2,y2]&hellip;] 2D points</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+<a href="https://github.com/visym/vipy/blob/2fc63b07a3ae3bc1d28d2ccb042d97b6726c972f/vipy/gui/using_matplotlib.py#L235-L246" class="git-link">Browse git</a>
+</summary>
+<pre><code class="python">def frame(fr, im=None, color=&#39;b.&#39;, markersize=10, figure=None, caption=None):
+    &#34;&#34;&#34;Show a scatterplot of fr=[[x1,y1],[x2,y2]...] 2D points&#34;&#34;&#34;
+    if figure is not None:
+        plt.figure(figure)
+    else:
+        plt.figure()
+        plt.clf()
+
+    plt.axes([0,0,1,1])
+    plt.plot(fr[:,0],fr[:,1],color)
+    plt.axis(&#39;off&#39;)
+    plt.draw()</code></pre>
+</details>
+</dd>
+<dt id="vipy.gui.using_matplotlib.imdetection"><code class="name flex">
+<span>def <span class="ident">imdetection</span></span>(<span>img, detlist, fignum=None, bboxcolor='green', do_caption=True, facecolor='white', facealpha=0.5, textcolor='green', textfacecolor='white', textfacealpha=1.0, fontsize=10, captionoffset=(0, 0))</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Show bounding boxes from a list of vipy.object.Detections on the same image, plotted in list order with optional captions</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+<a href="https://github.com/visym/vipy/blob/2fc63b07a3ae3bc1d28d2ccb042d97b6726c972f/vipy/gui/using_matplotlib.py#L174-L202" class="git-link">Browse git</a>
+</summary>
+<pre><code class="python">def imdetection(img, detlist, fignum=None, bboxcolor=&#39;green&#39;, do_caption=True, facecolor=&#39;white&#39;, facealpha=0.5, textcolor=&#39;green&#39;, textfacecolor=&#39;white&#39;, textfacealpha=1.0, fontsize=10, captionoffset=(0,0)):
+    &#34;&#34;&#34;Show bounding boxes from a list of vipy.object.Detections on the same image, plotted in list order with optional captions &#34;&#34;&#34;
+
+    # Create image
+    fignum = imshow(img, fignum=fignum) 
+
+    # A better way? https://matplotlib.org/api/_as_gen/matplotlib.animation.FuncAnimation.html
+    
+    # Valid detections
+    for (k,det) in enumerate(detlist):
+        if do_caption and len(det.category()) != 0 and (det.category()[0:2] != &#39;__&#39;):  # prepending category with &#39;__&#39; will disable caption
+            bboxcaption = det.category()
+        else:
+            bboxcaption = None
+
+        if islist(bboxcolor):
+            bboxcolor_ = bboxcolor[k]
+        else:
+            bboxcolor_ = bboxcolor
+
+        if islist(textcolor):
+            textcolor_ = textcolor[k]
+        else:
+            textcolor_ = textcolor
+
+        boundingbox(img, xmin=det.xmin(), ymin=det.ymin(), xmax=det.xmax(), ymax=det.ymax(), bboxcaption=bboxcaption,
+                    fignum=fignum, bboxcolor=bboxcolor_, facecolor=facecolor, facealpha=facealpha, textcolor=textcolor_, textfacecolor=textfacecolor, fontsize=fontsize, captionoffset=captionoffset, textfacealpha=textfacealpha)
+
+    return fignum</code></pre>
+</details>
+</dd>
+<dt id="vipy.gui.using_matplotlib.imflush"><code class="name flex">
+<span>def <span class="ident">imflush</span></span>(<span>)</span>
+</code></dt>
+<dd>
+<div class="desc"></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+<a href="https://github.com/visym/vipy/blob/2fc63b07a3ae3bc1d28d2ccb042d97b6726c972f/vipy/gui/using_matplotlib.py#L36-L45" class="git-link">Browse git</a>
+</summary>
+<pre><code class="python">def imflush():
+    if matplotlib.get_backend() == &#39;MacOSX&#39;:
+        plt.draw()  # YUCK: to flush buffer on video play, will be slow
+    plt.pause(0.001)
+
+    # this is necessary for imshow only, maybe to trigger remove() of child?
+    # However, this breaks jupyter notebook image show if we use gca()
+    [a.annotate(&#39;&#39;, (0,0)) for i in plt.get_fignums() for a in plt.figure(i).axes]
+    
+    #plt.gca().annotate(&#39;&#39;, (0,0))  </code></pre>
+</details>
+</dd>
+<dt id="vipy.gui.using_matplotlib.imframe"><code class="name flex">
+<span>def <span class="ident">imframe</span></span>(<span>img, fr, color='b', markersize=10, label=None, figure=None)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Show a scatterplot of fr=[[x1,y1],[x2,y2]&hellip;] 2D points overlayed on an image</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+<a href="https://github.com/visym/vipy/blob/2fc63b07a3ae3bc1d28d2ccb042d97b6726c972f/vipy/gui/using_matplotlib.py#L205-L232" class="git-link">Browse git</a>
+</summary>
+<pre><code class="python">def imframe(img, fr, color=&#39;b&#39;, markersize=10, label=None, figure=None):
+    &#34;&#34;&#34;Show a scatterplot of fr=[[x1,y1],[x2,y2]...] 2D points overlayed on an image&#34;&#34;&#34;
+    if figure is not None:
+        fig = plt.figure(figure)
+    else:
+        fig = plt.figure()
+
+    figure = plt.gcf().number
+
+    plt.clf()
+
+    ax = plt.Axes(fig, [0., 0., 1., 1.], frameon=False)
+    fig.add_axes(ax)
+
+    plt.axis(&#39;off&#39;)
+    ax.set_axis_off()
+    for a in plt.gcf().axes:
+        a.get_xaxis().set_visible(False)
+        a.get_yaxis().set_visible(False)
+
+    plt.autoscale(tight=True)
+    plt.plot(fr[:,0],fr[:,1],&#39;%s.&#39; % color, markersize=markersize, axes=ax)
+
+    if label is not None:
+        for ((x,y),lbl) in zip(fr, label):
+            ax.text(x, y, lbl, color=&#39;white&#39;)
+
+    return plt</code></pre>
+</details>
+</dd>
+<dt id="vipy.gui.using_matplotlib.imshow"><code class="name flex">
+<span>def <span class="ident">imshow</span></span>(<span>img, fignum=None)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Show an image in a figure window (optionally visible), reuse previous figure if it is the same shape</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+<a href="https://github.com/visym/vipy/blob/2fc63b07a3ae3bc1d28d2ccb042d97b6726c972f/vipy/gui/using_matplotlib.py#L114-L135" class="git-link">Browse git</a>
+</summary>
+<pre><code class="python">def imshow(img, fignum=None):
+    &#34;&#34;&#34;Show an image in a figure window (optionally visible), reuse previous figure if it is the same shape&#34;&#34;&#34;
+    global FIGHANDLE
+
+    if fignum in plt.get_fignums() and fignum in FIGHANDLE and FIGHANDLE[fignum].get_size() == img.shape[0:2]:
+        # Do not delete and recreate the figure, just change the pixels 
+        FIGHANDLE[fignum].set_data(img)
+
+        # Delete all polygon and text overlays from previous drawing so that they can be overwritten on current frame
+        for c in plt.gca().get_children():
+            if &#39;Text&#39; in c.__repr__() or &#39;Polygon&#39; in c.__repr__() or &#39;Circle&#39; in c.__repr__() or &#39;Line&#39; in c.__repr__() or &#39;Patch&#39; in c.__repr__():
+                try:
+                    c.remove()
+                except:
+                    pass
+    else:
+        # Jupyter notebook does not respect fignum.  It is always one when inspecting plt.get_fignums()
+        if fignum in plt.get_fignums() and fignum in FIGHANDLE:
+            close(fignum)
+        (fignum, imh) = _imshow_tight(img, fignum=fignum)
+        FIGHANDLE[fignum] = imh
+    return fignum</code></pre>
+</details>
+</dd>
+<dt id="vipy.gui.using_matplotlib.noshow"><code class="name flex">
+<span>def <span class="ident">noshow</span></span>(<span>fignum)</span>
+</code></dt>
+<dd>
+<div class="desc"></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+<a href="https://github.com/visym/vipy/blob/2fc63b07a3ae3bc1d28d2ccb042d97b6726c972f/vipy/gui/using_matplotlib.py#L55-L56" class="git-link">Browse git</a>
+</summary>
+<pre><code class="python">def noshow(fignum):
+    plt.ioff()</code></pre>
+</details>
+</dd>
+<dt id="vipy.gui.using_matplotlib.savefig"><code class="name flex">
+<span>def <span class="ident">savefig</span></span>(<span>filename=None, fignum=None, pad_inches=0, dpi=None, bbox_inches='tight', format=None)</span>
+</code></dt>
+<dd>
+<div class="desc"></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+<a href="https://github.com/visym/vipy/blob/2fc63b07a3ae3bc1d28d2ccb042d97b6726c972f/vipy/gui/using_matplotlib.py#L59-L65" class="git-link">Browse git</a>
+</summary>
+<pre><code class="python">def savefig(filename=None, fignum=None, pad_inches=0, dpi=None, bbox_inches=&#39;tight&#39;, format=None):
+    if fignum is not None:
+        plt.figure(fignum)
+    if filename is None:
+        filename = temppng()
+    plt.savefig(filename, pad_inches=pad_inches, dpi=dpi, bbox_inches=bbox_inches, format=format)
+    return filename</code></pre>
+</details>
+</dd>
+<dt id="vipy.gui.using_matplotlib.show"><code class="name flex">
+<span>def <span class="ident">show</span></span>(<span>fignum)</span>
+</code></dt>
+<dd>
+<div class="desc"></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+<a href="https://github.com/visym/vipy/blob/2fc63b07a3ae3bc1d28d2ccb042d97b6726c972f/vipy/gui/using_matplotlib.py#L48-L52" class="git-link">Browse git</a>
+</summary>
+<pre><code class="python">def show(fignum):
+    fig = plt.figure(fignum) 
+    fig.canvas.draw()    
+    plt.ion()
+    plt.show()</code></pre>
+</details>
+</dd>
+<dt id="vipy.gui.using_matplotlib.text"><code class="name flex">
+<span>def <span class="ident">text</span></span>(<span>caption, xmin, ymin, fignum=None, textcolor='black', textfacecolor='white', textfacealpha=1.0, fontsize=10, linewidth=3, facecolor='white', facealpha=0.5, alpha=1.0, pad=0.5)</span>
+</code></dt>
+<dd>
+<div class="desc"></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+<a href="https://github.com/visym/vipy/blob/2fc63b07a3ae3bc1d28d2ccb042d97b6726c972f/vipy/gui/using_matplotlib.py#L138-L150" class="git-link">Browse git</a>
+</summary>
+<pre><code class="python">def text(caption, xmin, ymin, fignum=None, textcolor=&#39;black&#39;, textfacecolor=&#39;white&#39;, textfacealpha=1.0, fontsize=10, linewidth=3, facecolor=&#39;white&#39;, facealpha=0.5, alpha=1.0, pad=0.5):
+    plt.figure(fignum) if fignum is not None else plt.gcf()
+    lw = linewidth  # pull in the boxes by linewidth so that they do not overhang the figure
+
+    newlines = caption.count(&#39;\n&#39;)
+    captionoffset = 15*newlines   # move down a bit if near top of image, shift once per newline in caption    
+    try:
+        # MatplotlibDeprecationWarning: The &#39;s&#39; parameter of annotate() has been renamed &#39;text&#39; since Matplotlib 3.3            
+        handle = plt.annotate(alpha=alpha, text=caption, xy=(xmin,ymin), xytext=(xmin, ymin+captionoffset), xycoords=&#39;data&#39;, color=textcolor, bbox=None if textfacecolor is None else dict(facecolor=textfacecolor, edgecolor=None, alpha=textfacealpha, boxstyle=&#39;square&#39;, pad=pad), fontsize=fontsize, clip_on=True)
+    except:
+        handle = plt.annotate(alpha=alpha, s=caption, xy=(xmin,ymin), xytext=(xmin, ymin+captionoffset), xycoords=&#39;data&#39;, color=textcolor, bbox=None if textfacecolor is None else dict(facecolor=textfacecolor, edgecolor=None, alpha=textfacealpha, boxstyle=&#39;square&#39;, pad=pad), fontsize=fontsize, clip_on=True)        
+
+    return fignum</code></pre>
+</details>
+</dd>
+</dl>
+</section>
+<section>
+<h2 class="section-title" id="header-classes">Classes</h2>
+<dl>
+<dt id="vipy.gui.using_matplotlib.Annotate"><code class="flex name class">
+<span>class <span class="ident">Annotate</span></span>
+</code></dt>
+<dd>
+<div class="desc"></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+<a href="https://github.com/visym/vipy/blob/2fc63b07a3ae3bc1d28d2ccb042d97b6726c972f/vipy/gui/using_matplotlib.py#L280-L304" class="git-link">Browse git</a>
+</summary>
+<pre><code class="python">class Annotate(object):
+    def __init__(self):
+        self.ax = plt.gca()
+        self.rect = Rectangle((0,0), 1, 1)
+        self.x0 = None
+        self.y0 = None
+        self.x1 = None
+        self.y1 = None
+        self.ax.add_patch(self.rect)
+        self.ax.figure.canvas.mpl_connect(&#39;button_press_event&#39;, self.on_press)
+        self.ax.figure.canvas.mpl_connect(&#39;button_release_event&#39;, self.on_release)
+
+    def on_press(self, event):
+        print (&#39;press&#39;)
+        self.x0 = event.xdata
+        self.y0 = event.ydata
+
+    def on_release(self, event):
+        print (&#39;release&#39;)
+        self.x1 = event.xdata
+        self.y1 = event.ydata
+        self.rect.set_width(self.x1 - self.x0)
+        self.rect.set_height(self.y1 - self.y0)
+        self.rect.set_xy((self.x0, self.y0))
+        self.ax.figure.canvas.draw()</code></pre>
+</details>
+<h3>Methods</h3>
+<dl>
+<dt id="vipy.gui.using_matplotlib.Annotate.on_press"><code class="name flex">
+<span>def <span class="ident">on_press</span></span>(<span>self, event)</span>
+</code></dt>
+<dd>
+<div class="desc"></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+<a href="https://github.com/visym/vipy/blob/2fc63b07a3ae3bc1d28d2ccb042d97b6726c972f/vipy/gui/using_matplotlib.py#L292-L295" class="git-link">Browse git</a>
+</summary>
+<pre><code class="python">def on_press(self, event):
+    print (&#39;press&#39;)
+    self.x0 = event.xdata
+    self.y0 = event.ydata</code></pre>
+</details>
+</dd>
+<dt id="vipy.gui.using_matplotlib.Annotate.on_release"><code class="name flex">
+<span>def <span class="ident">on_release</span></span>(<span>self, event)</span>
+</code></dt>
+<dd>
+<div class="desc"></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+<a href="https://github.com/visym/vipy/blob/2fc63b07a3ae3bc1d28d2ccb042d97b6726c972f/vipy/gui/using_matplotlib.py#L297-L304" class="git-link">Browse git</a>
+</summary>
+<pre><code class="python">def on_release(self, event):
+    print (&#39;release&#39;)
+    self.x1 = event.xdata
+    self.y1 = event.ydata
+    self.rect.set_width(self.x1 - self.x0)
+    self.rect.set_height(self.y1 - self.y0)
+    self.rect.set_xy((self.x0, self.y0))
+    self.ax.figure.canvas.draw()</code></pre>
+</details>
+</dd>
+</dl>
+</dd>
+<dt id="vipy.gui.using_matplotlib.DraggableRectangle"><code class="flex name class">
+<span>class <span class="ident">DraggableRectangle</span></span>
+<span>(</span><span>rect)</span>
+</code></dt>
+<dd>
+<div class="desc"></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+<a href="https://github.com/visym/vipy/blob/2fc63b07a3ae3bc1d28d2ccb042d97b6726c972f/vipy/gui/using_matplotlib.py#L307-L370" class="git-link">Browse git</a>
+</summary>
+<pre><code class="python">class DraggableRectangle(object):
+    def __init__(self, rect):
+        self.rect = rect
+        self.press = None
+
+    def connect(self):
+        &#39;connect to all the events we need&#39;
+        self.cidpress = self.rect.figure.canvas.mpl_connect(
+            &#39;button_press_event&#39;, self.on_press)
+        self.cidrelease = self.rect.figure.canvas.mpl_connect(
+            &#39;button_release_event&#39;, self.on_release)
+        self.cidmotion = self.rect.figure.canvas.mpl_connect(
+            &#39;motion_notify_event&#39;, self.on_motion)
+
+    def on_press(self, event):
+        &#39;on button press we will see if the mouse is over us and store some data&#39;
+        if event.inaxes != self.rect.axes: return
+
+        contains, attrd = self.rect.contains(event)
+        if not contains: return
+        print(&#39;event contains&#39;, self.rect.xy)
+        x0, y0 = self.rect.xy
+        self.press = x0, y0, event.xdata, event.ydata
+
+    def on_motion(self, event):
+        &#39;on motion we will move the rect if the mouse is over us&#39;
+        if self.press is None: return
+        if event.inaxes != self.rect.axes: return
+        x0, y0, xpress, ypress = self.press
+        dx = event.xdata - xpress
+        dy = event.ydata - ypress
+        #print(&#39;x0=%f, xpress=%f, event.xdata=%f, dx=%f, x0+dx=%f&#39; %
+        #      (x0, xpress, event.xdata, dx, x0+dx))
+        self.rect.set_x(x0+dx)
+        self.rect.set_y(y0+dy)
+
+        self.rect.figure.canvas.draw()
+
+
+    def on_release(self, event):
+        &#39;on release we reset the press data&#39;
+        self.press = None
+        self.rect.figure.canvas.draw()
+
+    def disconnect(self):
+        &#39;disconnect all the stored connection ids&#39;
+        self.rect.figure.canvas.mpl_disconnect(self.cidpress)
+        self.rect.figure.canvas.mpl_disconnect(self.cidrelease)
+        self.rect.figure.canvas.mpl_disconnect(self.cidmotion)
+
+        
+    #a = Annotate()
+    #plt.show()    
+
+    #fig = plt.figure()
+    #ax = fig.add_subplot(111)
+    #rects = ax.bar(range(10), 20*np.random.rand(10))
+    #drs = []
+    #for rect in rects:
+    #    dr = DraggableRectangle(rect)
+    #    dr.connect()
+    #    drs.append(dr)
+    #
+    #plt.show()</code></pre>
+</details>
+<h3>Methods</h3>
+<dl>
+<dt id="vipy.gui.using_matplotlib.DraggableRectangle.connect"><code class="name flex">
+<span>def <span class="ident">connect</span></span>(<span>self)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>connect to all the events we need</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+<a href="https://github.com/visym/vipy/blob/2fc63b07a3ae3bc1d28d2ccb042d97b6726c972f/vipy/gui/using_matplotlib.py#L312-L319" class="git-link">Browse git</a>
+</summary>
+<pre><code class="python">def connect(self):
+    &#39;connect to all the events we need&#39;
+    self.cidpress = self.rect.figure.canvas.mpl_connect(
+        &#39;button_press_event&#39;, self.on_press)
+    self.cidrelease = self.rect.figure.canvas.mpl_connect(
+        &#39;button_release_event&#39;, self.on_release)
+    self.cidmotion = self.rect.figure.canvas.mpl_connect(
+        &#39;motion_notify_event&#39;, self.on_motion)</code></pre>
+</details>
+</dd>
+<dt id="vipy.gui.using_matplotlib.DraggableRectangle.disconnect"><code class="name flex">
+<span>def <span class="ident">disconnect</span></span>(<span>self)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>disconnect all the stored connection ids</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+<a href="https://github.com/visym/vipy/blob/2fc63b07a3ae3bc1d28d2ccb042d97b6726c972f/vipy/gui/using_matplotlib.py#L351-L355" class="git-link">Browse git</a>
+</summary>
+<pre><code class="python">def disconnect(self):
+    &#39;disconnect all the stored connection ids&#39;
+    self.rect.figure.canvas.mpl_disconnect(self.cidpress)
+    self.rect.figure.canvas.mpl_disconnect(self.cidrelease)
+    self.rect.figure.canvas.mpl_disconnect(self.cidmotion)</code></pre>
+</details>
+</dd>
+<dt id="vipy.gui.using_matplotlib.DraggableRectangle.on_motion"><code class="name flex">
+<span>def <span class="ident">on_motion</span></span>(<span>self, event)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>on motion we will move the rect if the mouse is over us</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+<a href="https://github.com/visym/vipy/blob/2fc63b07a3ae3bc1d28d2ccb042d97b6726c972f/vipy/gui/using_matplotlib.py#L331-L343" class="git-link">Browse git</a>
+</summary>
+<pre><code class="python">def on_motion(self, event):
+    &#39;on motion we will move the rect if the mouse is over us&#39;
+    if self.press is None: return
+    if event.inaxes != self.rect.axes: return
+    x0, y0, xpress, ypress = self.press
+    dx = event.xdata - xpress
+    dy = event.ydata - ypress
+    #print(&#39;x0=%f, xpress=%f, event.xdata=%f, dx=%f, x0+dx=%f&#39; %
+    #      (x0, xpress, event.xdata, dx, x0+dx))
+    self.rect.set_x(x0+dx)
+    self.rect.set_y(y0+dy)
+
+    self.rect.figure.canvas.draw()</code></pre>
+</details>
+</dd>
+<dt id="vipy.gui.using_matplotlib.DraggableRectangle.on_press"><code class="name flex">
+<span>def <span class="ident">on_press</span></span>(<span>self, event)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>on button press we will see if the mouse is over us and store some data</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+<a href="https://github.com/visym/vipy/blob/2fc63b07a3ae3bc1d28d2ccb042d97b6726c972f/vipy/gui/using_matplotlib.py#L321-L329" class="git-link">Browse git</a>
+</summary>
+<pre><code class="python">def on_press(self, event):
+    &#39;on button press we will see if the mouse is over us and store some data&#39;
+    if event.inaxes != self.rect.axes: return
+
+    contains, attrd = self.rect.contains(event)
+    if not contains: return
+    print(&#39;event contains&#39;, self.rect.xy)
+    x0, y0 = self.rect.xy
+    self.press = x0, y0, event.xdata, event.ydata</code></pre>
+</details>
+</dd>
+<dt id="vipy.gui.using_matplotlib.DraggableRectangle.on_release"><code class="name flex">
+<span>def <span class="ident">on_release</span></span>(<span>self, event)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>on release we reset the press data</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+<a href="https://github.com/visym/vipy/blob/2fc63b07a3ae3bc1d28d2ccb042d97b6726c972f/vipy/gui/using_matplotlib.py#L346-L349" class="git-link">Browse git</a>
+</summary>
+<pre><code class="python">def on_release(self, event):
+    &#39;on release we reset the press data&#39;
+    self.press = None
+    self.rect.figure.canvas.draw()</code></pre>
+</details>
+</dd>
+</dl>
+</dd>
+<dt id="vipy.gui.using_matplotlib.DraggableRectangleFast"><code class="flex name class">
+<span>class <span class="ident">DraggableRectangleFast</span></span>
+<span>(</span><span>rect)</span>
+</code></dt>
+<dd>
+<div class="desc"></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+<a href="https://github.com/visym/vipy/blob/2fc63b07a3ae3bc1d28d2ccb042d97b6726c972f/vipy/gui/using_matplotlib.py#L373-L454" class="git-link">Browse git</a>
+</summary>
+<pre><code class="python">class DraggableRectangleFast(object):
+    lock = None  # only one can be animated at a time
+    def __init__(self, rect):
+        self.rect = rect
+        self.press = None
+        self.background = None
+
+    def connect(self):
+        &#39;connect to all the events we need&#39;
+        self.cidpress = self.rect.figure.canvas.mpl_connect(
+            &#39;button_press_event&#39;, self.on_press)
+        self.cidrelease = self.rect.figure.canvas.mpl_connect(
+            &#39;button_release_event&#39;, self.on_release)
+        self.cidmotion = self.rect.figure.canvas.mpl_connect(
+            &#39;motion_notify_event&#39;, self.on_motion)
+
+    def on_press(self, event):
+        &#39;on button press we will see if the mouse is over us and store some data&#39;
+        if event.inaxes != self.rect.axes: return
+        if DraggableRectangle.lock is not None: return
+        contains, attrd = self.rect.contains(event)
+        if not contains: return
+        print(&#39;event contains&#39;, self.rect.xy)
+        x0, y0 = self.rect.xy
+        self.press = x0, y0, event.xdata, event.ydata
+        DraggableRectangle.lock = self
+
+        # draw everything but the selected rectangle and store the pixel buffer
+        canvas = self.rect.figure.canvas
+        axes = self.rect.axes
+        self.rect.set_animated(True)
+        canvas.draw()
+        self.background = canvas.copy_from_bbox(self.rect.axes.bbox)
+
+        # now redraw just the rectangle
+        axes.draw_artist(self.rect)
+
+        # and blit just the redrawn area
+        canvas.blit(axes.bbox)
+
+    def on_motion(self, event):
+        &#39;on motion we will move the rect if the mouse is over us&#39;
+        if DraggableRectangle.lock is not self:
+            return
+        if event.inaxes != self.rect.axes: return
+        x0, y0, xpress, ypress = self.press
+        dx = event.xdata - xpress
+        dy = event.ydata - ypress
+        self.rect.set_x(x0+dx)
+        self.rect.set_y(y0+dy)
+
+        canvas = self.rect.figure.canvas
+        axes = self.rect.axes
+        # restore the background region
+        canvas.restore_region(self.background)
+
+        # redraw just the current rectangle
+        axes.draw_artist(self.rect)
+
+        # blit just the redrawn area
+        canvas.blit(axes.bbox)
+
+    def on_release(self, event):
+        &#39;on release we reset the press data&#39;
+        if DraggableRectangle.lock is not self:
+            return
+
+        self.press = None
+        DraggableRectangle.lock = None
+
+        # turn off the rect animation property and reset the background
+        self.rect.set_animated(False)
+        self.background = None
+
+        # redraw the full figure
+        self.rect.figure.canvas.draw()
+
+    def disconnect(self):
+        &#39;disconnect all the stored connection ids&#39;
+        self.rect.figure.canvas.mpl_disconnect(self.cidpress)
+        self.rect.figure.canvas.mpl_disconnect(self.cidrelease)
+        self.rect.figure.canvas.mpl_disconnect(self.cidmotion)    </code></pre>
+</details>
+<h3>Class variables</h3>
+<dl>
+<dt id="vipy.gui.using_matplotlib.DraggableRectangleFast.lock"><code class="name">var <span class="ident">lock</span></code></dt>
+<dd>
+<div class="desc"></div>
+</dd>
+</dl>
+<h3>Methods</h3>
+<dl>
+<dt id="vipy.gui.using_matplotlib.DraggableRectangleFast.connect"><code class="name flex">
+<span>def <span class="ident">connect</span></span>(<span>self)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>connect to all the events we need</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+<a href="https://github.com/visym/vipy/blob/2fc63b07a3ae3bc1d28d2ccb042d97b6726c972f/vipy/gui/using_matplotlib.py#L380-L387" class="git-link">Browse git</a>
+</summary>
+<pre><code class="python">def connect(self):
+    &#39;connect to all the events we need&#39;
+    self.cidpress = self.rect.figure.canvas.mpl_connect(
+        &#39;button_press_event&#39;, self.on_press)
+    self.cidrelease = self.rect.figure.canvas.mpl_connect(
+        &#39;button_release_event&#39;, self.on_release)
+    self.cidmotion = self.rect.figure.canvas.mpl_connect(
+        &#39;motion_notify_event&#39;, self.on_motion)</code></pre>
+</details>
+</dd>
+<dt id="vipy.gui.using_matplotlib.DraggableRectangleFast.disconnect"><code class="name flex">
+<span>def <span class="ident">disconnect</span></span>(<span>self)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>disconnect all the stored connection ids</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+<a href="https://github.com/visym/vipy/blob/2fc63b07a3ae3bc1d28d2ccb042d97b6726c972f/vipy/gui/using_matplotlib.py#L450-L454" class="git-link">Browse git</a>
+</summary>
+<pre><code class="python">def disconnect(self):
+    &#39;disconnect all the stored connection ids&#39;
+    self.rect.figure.canvas.mpl_disconnect(self.cidpress)
+    self.rect.figure.canvas.mpl_disconnect(self.cidrelease)
+    self.rect.figure.canvas.mpl_disconnect(self.cidmotion)    </code></pre>
+</details>
+</dd>
+<dt id="vipy.gui.using_matplotlib.DraggableRectangleFast.on_motion"><code class="name flex">
+<span>def <span class="ident">on_motion</span></span>(<span>self, event)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>on motion we will move the rect if the mouse is over us</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+<a href="https://github.com/visym/vipy/blob/2fc63b07a3ae3bc1d28d2ccb042d97b6726c972f/vipy/gui/using_matplotlib.py#L413-L433" class="git-link">Browse git</a>
+</summary>
+<pre><code class="python">def on_motion(self, event):
+    &#39;on motion we will move the rect if the mouse is over us&#39;
+    if DraggableRectangle.lock is not self:
+        return
+    if event.inaxes != self.rect.axes: return
+    x0, y0, xpress, ypress = self.press
+    dx = event.xdata - xpress
+    dy = event.ydata - ypress
+    self.rect.set_x(x0+dx)
+    self.rect.set_y(y0+dy)
+
+    canvas = self.rect.figure.canvas
+    axes = self.rect.axes
+    # restore the background region
+    canvas.restore_region(self.background)
+
+    # redraw just the current rectangle
+    axes.draw_artist(self.rect)
+
+    # blit just the redrawn area
+    canvas.blit(axes.bbox)</code></pre>
+</details>
+</dd>
+<dt id="vipy.gui.using_matplotlib.DraggableRectangleFast.on_press"><code class="name flex">
+<span>def <span class="ident">on_press</span></span>(<span>self, event)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>on button press we will see if the mouse is over us and store some data</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+<a href="https://github.com/visym/vipy/blob/2fc63b07a3ae3bc1d28d2ccb042d97b6726c972f/vipy/gui/using_matplotlib.py#L389-L411" class="git-link">Browse git</a>
+</summary>
+<pre><code class="python">def on_press(self, event):
+    &#39;on button press we will see if the mouse is over us and store some data&#39;
+    if event.inaxes != self.rect.axes: return
+    if DraggableRectangle.lock is not None: return
+    contains, attrd = self.rect.contains(event)
+    if not contains: return
+    print(&#39;event contains&#39;, self.rect.xy)
+    x0, y0 = self.rect.xy
+    self.press = x0, y0, event.xdata, event.ydata
+    DraggableRectangle.lock = self
+
+    # draw everything but the selected rectangle and store the pixel buffer
+    canvas = self.rect.figure.canvas
+    axes = self.rect.axes
+    self.rect.set_animated(True)
+    canvas.draw()
+    self.background = canvas.copy_from_bbox(self.rect.axes.bbox)
+
+    # now redraw just the rectangle
+    axes.draw_artist(self.rect)
+
+    # and blit just the redrawn area
+    canvas.blit(axes.bbox)</code></pre>
+</details>
+</dd>
+<dt id="vipy.gui.using_matplotlib.DraggableRectangleFast.on_release"><code class="name flex">
+<span>def <span class="ident">on_release</span></span>(<span>self, event)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>on release we reset the press data</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+<a href="https://github.com/visym/vipy/blob/2fc63b07a3ae3bc1d28d2ccb042d97b6726c972f/vipy/gui/using_matplotlib.py#L435-L448" class="git-link">Browse git</a>
+</summary>
+<pre><code class="python">def on_release(self, event):
+    &#39;on release we reset the press data&#39;
+    if DraggableRectangle.lock is not self:
+        return
+
+    self.press = None
+    DraggableRectangle.lock = None
+
+    # turn off the rect animation property and reset the background
+    self.rect.set_animated(False)
+    self.background = None
+
+    # redraw the full figure
+    self.rect.figure.canvas.draw()</code></pre>
+</details>
+</dd>
+</dl>
+</dd>
+</dl>
+</section>
+</article>
+<nav id="sidebar">
+<header>
+<a class="homelink" rel="home" title="Vipy" href="https://github.com/visym/vipy/">
+<img src="https://www.visym.com/labs/images/visym_logo_black_notext.png" alt="" width="150"> <p> </p>
+</a>
+</header>
+<form>
+<input id="lunr-search" name="q" placeholder="🔎 Search ..." aria-label="Search"
+disabled minlength="2">
+</form>
+<link rel="preload stylesheet" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/tingle/0.15.3/tingle.min.css" integrity="sha512-j1u8eUJ4f23xPPxwOrLUPQaCD2dwzNqqmDDcWS4deWsMv2ohLqmXXuP3hU7g8TyzbMSakP/mMqoNBYWj8AEIFg==" crossorigin>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/tingle/0.15.3/tingle.min.js" integrity="sha512-plGUER9JkeEWPPqQBE4sdLqBoQug5Ap+BCGMc7bJ8BXkm+VVj6QzkpBz5Yv2yPkkq+cqg9IpkBaGCas6uDbW8g==" crossorigin></script>
+<style>
+.modal-dialog iframe {
+width: 100vw;
+height: calc(100vh - 80px);
+}
+@media screen and (min-width: 700px) {
+.modal-dialog iframe {
+width: 70vw;
+height: 80vh;
+}
+}
+.modal-dialog .tingle-modal-box {width: auto;}
+.modal-dialog .tingle-modal-box__content {padding: 0;}
+</style>
+<script>
+const input = document.getElementById('lunr-search');
+input.disabled = false;
+input.form.addEventListener('submit', (ev) => {
+ev.preventDefault();
+const url = new URL(window.location);
+url.searchParams.set('q', input.value);
+history.replaceState({}, null, url.toString());
+search(input.value);
+});
+const query = new URL(window.location).searchParams.get('q');
+if (query)
+search(query);
+function search(query) {
+const url = '../../doc-search.html#' + encodeURIComponent(query);
+new tingle.modal({
+cssClass: ['modal-dialog'],
+onClose: () => {
+const url = new URL(window.location);
+url.searchParams.delete('q');
+history.replaceState({}, null, url.toString());
+setTimeout(() => input.focus(), 100);
+}
+}).setContent('<iframe src="' + url + '"></iframe>').open();
+}
+</script>
+<h1>Index</h1>
+<div class="toc">
+<ul></ul>
+</div>
+<ul id="index">
+<li><h3>Super-module</h3>
+<ul>
+<li><code><a title="vipy.gui" href="index.html">vipy.gui</a></code></li>
+</ul>
+</li>
+<li><h3><a href="#header-functions">Functions</a></h3>
+<ul class="two-column">
+<li><code><a title="vipy.gui.using_matplotlib.boundingbox" href="#vipy.gui.using_matplotlib.boundingbox">boundingbox</a></code></li>
+<li><code><a title="vipy.gui.using_matplotlib.close" href="#vipy.gui.using_matplotlib.close">close</a></code></li>
+<li><code><a title="vipy.gui.using_matplotlib.closeall" href="#vipy.gui.using_matplotlib.closeall">closeall</a></code></li>
+<li><code><a title="vipy.gui.using_matplotlib.colorlist" href="#vipy.gui.using_matplotlib.colorlist">colorlist</a></code></li>
+<li><code><a title="vipy.gui.using_matplotlib.edit" href="#vipy.gui.using_matplotlib.edit">edit</a></code></li>
+<li><code><a title="vipy.gui.using_matplotlib.escape_to_exit" href="#vipy.gui.using_matplotlib.escape_to_exit">escape_to_exit</a></code></li>
+<li><code><a title="vipy.gui.using_matplotlib.figure" href="#vipy.gui.using_matplotlib.figure">figure</a></code></li>
+<li><code><a title="vipy.gui.using_matplotlib.flush" href="#vipy.gui.using_matplotlib.flush">flush</a></code></li>
+<li><code><a title="vipy.gui.using_matplotlib.frame" href="#vipy.gui.using_matplotlib.frame">frame</a></code></li>
+<li><code><a title="vipy.gui.using_matplotlib.imdetection" href="#vipy.gui.using_matplotlib.imdetection">imdetection</a></code></li>
+<li><code><a title="vipy.gui.using_matplotlib.imflush" href="#vipy.gui.using_matplotlib.imflush">imflush</a></code></li>
+<li><code><a title="vipy.gui.using_matplotlib.imframe" href="#vipy.gui.using_matplotlib.imframe">imframe</a></code></li>
+<li><code><a title="vipy.gui.using_matplotlib.imshow" href="#vipy.gui.using_matplotlib.imshow">imshow</a></code></li>
+<li><code><a title="vipy.gui.using_matplotlib.noshow" href="#vipy.gui.using_matplotlib.noshow">noshow</a></code></li>
+<li><code><a title="vipy.gui.using_matplotlib.savefig" href="#vipy.gui.using_matplotlib.savefig">savefig</a></code></li>
+<li><code><a title="vipy.gui.using_matplotlib.show" href="#vipy.gui.using_matplotlib.show">show</a></code></li>
+<li><code><a title="vipy.gui.using_matplotlib.text" href="#vipy.gui.using_matplotlib.text">text</a></code></li>
+</ul>
+</li>
+<li><h3><a href="#header-classes">Classes</a></h3>
+<ul>
+<li>
+<h4><code><a title="vipy.gui.using_matplotlib.Annotate" href="#vipy.gui.using_matplotlib.Annotate">Annotate</a></code></h4>
+<ul class="">
+<li><code><a title="vipy.gui.using_matplotlib.Annotate.on_press" href="#vipy.gui.using_matplotlib.Annotate.on_press">on_press</a></code></li>
+<li><code><a title="vipy.gui.using_matplotlib.Annotate.on_release" href="#vipy.gui.using_matplotlib.Annotate.on_release">on_release</a></code></li>
+</ul>
+</li>
+<li>
+<h4><code><a title="vipy.gui.using_matplotlib.DraggableRectangle" href="#vipy.gui.using_matplotlib.DraggableRectangle">DraggableRectangle</a></code></h4>
+<ul class="">
+<li><code><a title="vipy.gui.using_matplotlib.DraggableRectangle.connect" href="#vipy.gui.using_matplotlib.DraggableRectangle.connect">connect</a></code></li>
+<li><code><a title="vipy.gui.using_matplotlib.DraggableRectangle.disconnect" href="#vipy.gui.using_matplotlib.DraggableRectangle.disconnect">disconnect</a></code></li>
+<li><code><a title="vipy.gui.using_matplotlib.DraggableRectangle.on_motion" href="#vipy.gui.using_matplotlib.DraggableRectangle.on_motion">on_motion</a></code></li>
+<li><code><a title="vipy.gui.using_matplotlib.DraggableRectangle.on_press" href="#vipy.gui.using_matplotlib.DraggableRectangle.on_press">on_press</a></code></li>
+<li><code><a title="vipy.gui.using_matplotlib.DraggableRectangle.on_release" href="#vipy.gui.using_matplotlib.DraggableRectangle.on_release">on_release</a></code></li>
+</ul>
+</li>
+<li>
+<h4><code><a title="vipy.gui.using_matplotlib.DraggableRectangleFast" href="#vipy.gui.using_matplotlib.DraggableRectangleFast">DraggableRectangleFast</a></code></h4>
+<ul class="two-column">
+<li><code><a title="vipy.gui.using_matplotlib.DraggableRectangleFast.connect" href="#vipy.gui.using_matplotlib.DraggableRectangleFast.connect">connect</a></code></li>
+<li><code><a title="vipy.gui.using_matplotlib.DraggableRectangleFast.disconnect" href="#vipy.gui.using_matplotlib.DraggableRectangleFast.disconnect">disconnect</a></code></li>
+<li><code><a title="vipy.gui.using_matplotlib.DraggableRectangleFast.lock" href="#vipy.gui.using_matplotlib.DraggableRectangleFast.lock">lock</a></code></li>
+<li><code><a title="vipy.gui.using_matplotlib.DraggableRectangleFast.on_motion" href="#vipy.gui.using_matplotlib.DraggableRectangleFast.on_motion">on_motion</a></code></li>
+<li><code><a title="vipy.gui.using_matplotlib.DraggableRectangleFast.on_press" href="#vipy.gui.using_matplotlib.DraggableRectangleFast.on_press">on_press</a></code></li>
+<li><code><a title="vipy.gui.using_matplotlib.DraggableRectangleFast.on_release" href="#vipy.gui.using_matplotlib.DraggableRectangleFast.on_release">on_release</a></code></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</nav>
+</main>
+<footer id="footer">
+<p>Generated by <a href="https://pdoc3.github.io/pdoc" title="pdoc: Python API documentation generator"><cite>pdoc</cite> 0.10.0</a>.</p>
+</footer>
+</body>
+</html>
