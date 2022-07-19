@@ -35,7 +35,7 @@ fi
    
 cd ..
 pdoc vipy -o ./docs --html --force --template-dir ./docs/templates
-mv ./docs/vipy/* ./docs
+mv --force ./docs/vipy/* ./docs
 
 if [ ${COMMIT} == 1 ]; then
     git add ./docs/*
