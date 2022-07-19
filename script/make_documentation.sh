@@ -35,9 +35,9 @@ fi
    
 cd ..
 pdoc vipy -o ./docs --html --force --template-dir ./docs/templates
-cp -r ./docs/vipy/* ./docs
-rm -rf ./docs/vipy
-sed -i -- "s|\"vipy/|\"|g" ./docs/index.js
+cp -r ./docs/vipy/* ./docs  # https://domain/vipy/vipy/index.html --> https://domain/vipy/index.html
+rm -rf ./docs/vipy  # cleanup
+sed -i -- "s|\"vipy/|\"|g" ./docs/index.js  # update search to new location
 
 if [ ${COMMIT} == 1 ]; then
     git add ./docs/*
