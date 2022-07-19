@@ -35,6 +35,7 @@ fi
    
 cd ..
 pdoc vipy -o ./docs --html --force --template-dir ./docs/templates
+mv ./docs/vipy/* ./docs
 
 if [ ${COMMIT} == 1 ]; then
     git add ./docs/*
@@ -42,7 +43,7 @@ if [ ${COMMIT} == 1 ]; then
 fi
 
 if [ ${OPEN} == 1 ]; then
-    open ./docs/vipy/index.html
+    open ./docs/index.html
 fi
 	
 cd script
