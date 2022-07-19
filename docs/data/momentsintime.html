@@ -26,7 +26,7 @@
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/ae3c3afbf2b643a94c379b215271360a6cdac3c5/vipy/data/momentsintime.py#L1-L55" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/7b64bf011328bf7a651f2119273a87a245b64194/vipy/data/momentsintime.py#L1-L55" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">import os
 import numpy as np
@@ -113,7 +113,7 @@ class MultiMoments(object):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/ae3c3afbf2b643a94c379b215271360a6cdac3c5/vipy/data/momentsintime.py#L11-L54" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/7b64bf011328bf7a651f2119273a87a245b64194/vipy/data/momentsintime.py#L11-L54" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">class MultiMoments(object):
     def __init__(self, datadir):
@@ -170,7 +170,7 @@ class MultiMoments(object):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/ae3c3afbf2b643a94c379b215271360a6cdac3c5/vipy/data/momentsintime.py#L47-L48" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/7b64bf011328bf7a651f2119273a87a245b64194/vipy/data/momentsintime.py#L47-L48" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def categories(self):
     return {int(r[1]):r[0] for r in readcsv(os.path.join(self.datadir, &#39;moments_categories.txt&#39;))}</code></pre>
@@ -184,7 +184,7 @@ class MultiMoments(object):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/ae3c3afbf2b643a94c379b215271360a6cdac3c5/vipy/data/momentsintime.py#L50-L51" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/7b64bf011328bf7a651f2119273a87a245b64194/vipy/data/momentsintime.py#L50-L51" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def trainset(self):
     return self._dataset(os.path.join(self.datadir, &#39;trainingSet.txt&#39;))  # FIXME: this is too slow due to ffmpeg-python hashing</code></pre>
@@ -198,7 +198,7 @@ class MultiMoments(object):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/ae3c3afbf2b643a94c379b215271360a6cdac3c5/vipy/data/momentsintime.py#L53-L54" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/7b64bf011328bf7a651f2119273a87a245b64194/vipy/data/momentsintime.py#L53-L54" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def valset(self):
     return self._dataset(os.path.join(self.datadir, &#39;validationSet.txt&#39;))        </code></pre>

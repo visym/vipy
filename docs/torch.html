@@ -26,7 +26,7 @@
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/ae3c3afbf2b643a94c379b215271360a6cdac3c5/vipy/torch.py#L1-L104" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/7b64bf011328bf7a651f2119273a87a245b64194/vipy/torch.py#L1-L104" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">import vipy
 import numpy as np
@@ -160,7 +160,7 @@ vipy.torch.Tensordir( ('/path/to/1', '/path/to/2') )
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/ae3c3afbf2b643a94c379b215271360a6cdac3c5/vipy/torch.py#L46-L100" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/7b64bf011328bf7a651f2119273a87a245b64194/vipy/torch.py#L46-L100" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">class Tensordir(torch.utils.data.Dataset):
     &#34;&#34;&#34;A torch dataset stored as a directory of .pkl.bz2 files each containing a list of [(tensor, str=json.dumps(label)), ...] tuples used for data augmented training.
@@ -244,7 +244,7 @@ vipy.torch.Tensordir( ('/path/to/1', '/path/to/2') )
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/ae3c3afbf2b643a94c379b215271360a6cdac3c5/vipy/torch.py#L99-L100" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/7b64bf011328bf7a651f2119273a87a245b64194/vipy/torch.py#L99-L100" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def clone(self):
     return copy.deepcopy(self)</code></pre>
@@ -259,7 +259,7 @@ This is useful for filtering by instanceid in the <code><a title="vipy.util.file
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/ae3c3afbf2b643a94c379b215271360a6cdac3c5/vipy/torch.py#L93-L97" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/7b64bf011328bf7a651f2119273a87a245b64194/vipy/torch.py#L93-L97" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def filter(self, f):
     &#34;&#34;&#34;Keep elements that lambda evaluates true. The lambda operates on the *absolute path filename* for the tensordir and not the contents.  This is useful for filtering by instanceid in the `vipy.util.filebase`.&#34;&#34;&#34;
@@ -276,7 +276,7 @@ This is useful for filtering by instanceid in the <code><a title="vipy.util.file
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/ae3c3afbf2b643a94c379b215271360a6cdac3c5/vipy/torch.py#L89-L91" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/7b64bf011328bf7a651f2119273a87a245b64194/vipy/torch.py#L89-L91" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def take(self, n):
     self._dirlist = [self._dirlist[k] for k in np.random.permutation(range(len(self._dirlist)))[0:n]]
@@ -294,7 +294,7 @@ This is useful for filtering by instanceid in the <code><a title="vipy.util.file
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/ae3c3afbf2b643a94c379b215271360a6cdac3c5/vipy/torch.py#L20-L43" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/7b64bf011328bf7a651f2119273a87a245b64194/vipy/torch.py#L20-L43" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">class TorchDataset(torch.utils.data.Dataset):
     &#34;&#34;&#34;Converter from a pycollector dataset to a torch dataset&#34;&#34;&#34;
@@ -351,7 +351,7 @@ vipy.torch.Tensordir( ('/path/to/1', '/path/to/2') )
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/ae3c3afbf2b643a94c379b215271360a6cdac3c5/vipy/torch.py#L103-L104" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/7b64bf011328bf7a651f2119273a87a245b64194/vipy/torch.py#L103-L104" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">class TorchTensordir(Tensordir):
     pass  # alias for backwards compatibility</code></pre>
