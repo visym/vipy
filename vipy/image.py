@@ -1990,9 +1990,9 @@ class Scene(ImageCategory):
         self.zeropad(bbox.int().width(), bbox.int().height())  # FIXME: this is inefficient
         (dx, dy) = (bbox.width(), bbox.height())
         bbox = bbox.translate(dx, dy)
+        self._objectlist = [bb.translate(-dx, -dy) for bb in self._objectlist]        
         self = super()._crop(bbox)        
         (dx, dy) = (bbox.xmin(), bbox.ymin())
-        self._objectlist = [bb.translate(-dx, -dy) for bb in self._objectlist]
         return self
 
     def cornerpadcrop(self, height, width):
@@ -2340,7 +2340,7 @@ class ImageDetection(Scene, BoundingBox):
     def asbbox(self):
         self._asbbox = True
         return self
-    
+
     def boxmap(self, f):
         """Apply the lambda function f to the bounding box, and return the imagedetection"""
         assert callable(f)

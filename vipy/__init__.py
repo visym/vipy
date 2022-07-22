@@ -167,7 +167,7 @@ To determine what vipy version you are running you can use:
 
 # Tutorials
 
-The following tutorials show simple python one-liners to achieve transformations of annotated images and videos.
+The following tutorials show fluent python chains to achieve transformations of annotated images and videos.
 
 ## Images
 
@@ -206,8 +206,24 @@ vipy.image.owl().centersquare().greyscale().mindim(224).saveas('/path/to/out.jpg
 ### Scenes
 
 ```python
-im = vipy.image.vehicles()
+vipy.image.vehicles().objects()
 ```
+```
+[<vipy.object.detection: category="car", bbox=(xmin=210.2, ymin=263.2, width=41.1, height=32.6)>,
+ <vipy.object.detection: category="car", bbox=(xmin=626.7, ymin=336.0, width=77.9, height=65.5)>,
+ <vipy.object.detection: category="car", bbox=(xmin=140.8, ymin=284.5, width=53.1, height=53.1)>,
+ <vipy.object.detection: category="car", bbox=(xmin=394.2, ymin=396.8, width=99.5, height=87.4)>]
+```
+
+### Object crops
+
+```python
+im = vipy.image.vehicles().show()
+vipy.visualize.montage([o.dilate(1.2).maxsquare().crop() for o in im]).show()
+```
+<img src="https://raw.githubusercontent.com/visym/vipy/master/docs/tutorials/vipy_image_vehicles.png" width="200">
+<img src="https://raw.githubusercontent.com/visym/vipy/master/docs/tutorials/vipy_image_vehicles_objectcrop.png" width="200">
+
 
 ## Videos
 
@@ -215,6 +231,12 @@ im = vipy.image.vehicles()
 
 ```python
 v = vipy.video.Video(url='https://youtu.be/kpBCzzzX6zA')
+```
+
+### FFMPEG command line
+
+```python
+print(vipy.video.Video(filename='/path/to/in.mp4').mindim(512).clip(0, 180).framerate(2).commandline())
 ```
 
 ### Frame export
