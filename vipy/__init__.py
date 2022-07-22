@@ -221,8 +221,8 @@ vipy.image.vehicles().objects()
 im = vipy.image.vehicles().show()
 vipy.visualize.montage([o.dilate(1.2).maxsquare().crop() for o in im]).show()
 ```
-<img src="https://raw.githubusercontent.com/visym/vipy/master/docs/tutorials/vipy_image_vehicles.png" width="200">
-<img src="https://raw.githubusercontent.com/visym/vipy/master/docs/tutorials/vipy_image_vehicles_objectcrop.png" width="200">
+<img src="https://raw.githubusercontent.com/visym/vipy/master/docs/tutorials/vipy_image_vehicles.png" height="300">
+<img src="https://raw.githubusercontent.com/visym/vipy/master/docs/tutorials/vipy_image_vehicles_objectcrop.png" height="300">
 
 
 ## Videos
@@ -236,7 +236,10 @@ v = vipy.video.Video(url='https://youtu.be/kpBCzzzX6zA')
 ### FFMPEG command line
 
 ```python
-print(vipy.video.Video(filename='/path/to/in.mp4').mindim(512).clip(0, 180).framerate(2).commandline())
+print(vipy.video.Video(filename='/path/to/in.mp4').mindim(512).framerate(2).commandline())
+```
+```
+'ffmpeg -i /path/to/in.mp4 -filter_complex "[0]fps=fps=2.0:round=up[s0];[s0]scale=-1:512[s1]" -map "[s1]" dummyfile'
 ```
 
 ### Frame export

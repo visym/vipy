@@ -187,10 +187,11 @@ This is the <a href="https://docs.aws.amazon.com/general/latest/gr/aws-sec-cred-
 &gt;&gt;&gt; vipy.version.is_at_least('1.11.1') 
 </code></pre>
 <h1 id="tutorials">Tutorials</h1>
+<p>The following tutorials show fluent python chains to achieve transformations of annotated images and videos.</p>
 <h2 id="images">Images</h2>
 <h3 id="load-an-image">Load an image</h3>
-<pre><code class="language-python">im = vipy.image.Image(filename='/path/to/my.jpg')  
-im = vipy.image.Image(url='https:///path/to/my.jpg')  
+<pre><code class="language-python">im = vipy.image.Image(filename='/path/to/in.jpg')  
+im = vipy.image.Image(url='https://url/to/in.jpg')  
 im = vipy.image.Image(array=np.random.rand(224,224,3).astype(np.float32))  
 </code></pre>
 <h3 id="transform-an-image">Transform an image</h3>
@@ -206,11 +207,27 @@ im = vipy.image.Image(array=np.random.rand(224,224,3).astype(np.float32))
 <pre><code class="language-python">vipy.image.owl().centersquare().greyscale().mindim(224).saveas('/path/to/out.jpg')
 </code></pre>
 <h3 id="scenes">Scenes</h3>
-<pre><code class="language-python">im = vipy.image.vehicles()
+<pre><code class="language-python">vipy.image.vehicles().objects()
 </code></pre>
+<pre><code>[&lt;vipy.object.detection: category=&quot;car&quot;, bbox=(xmin=210.2, ymin=263.2, width=41.1, height=32.6)&gt;,
+ &lt;vipy.object.detection: category=&quot;car&quot;, bbox=(xmin=626.7, ymin=336.0, width=77.9, height=65.5)&gt;,
+ &lt;vipy.object.detection: category=&quot;car&quot;, bbox=(xmin=140.8, ymin=284.5, width=53.1, height=53.1)&gt;,
+ &lt;vipy.object.detection: category=&quot;car&quot;, bbox=(xmin=394.2, ymin=396.8, width=99.5, height=87.4)&gt;]
+</code></pre>
+<h3 id="object-crops">Object crops</h3>
+<pre><code class="language-python">im = vipy.image.vehicles().show()
+vipy.visualize.montage([o.dilate(1.2).maxsquare().crop() for o in im]).show()
+</code></pre>
+<p><img src="https://raw.githubusercontent.com/visym/vipy/master/docs/tutorials/vipy_image_vehicles.png" height="300">
+<img src="https://raw.githubusercontent.com/visym/vipy/master/docs/tutorials/vipy_image_vehicles_objectcrop.png" height="300"></p>
 <h2 id="videos">Videos</h2>
 <h3 id="youtube">YouTube</h3>
 <pre><code class="language-python">v = vipy.video.Video(url='https://youtu.be/kpBCzzzX6zA')
+</code></pre>
+<h3 id="ffmpeg-command-line">FFMPEG command line</h3>
+<pre><code class="language-python">print(vipy.video.Video(filename='/path/to/in.mp4').mindim(512).framerate(2).commandline())
+</code></pre>
+<pre><code>'ffmpeg -i /path/to/in.mp4 -filter_complex &quot;[0]fps=fps=2.0:round=up[s0];[s0]scale=-1:512[s1]&quot; -map &quot;[s1]&quot; dummyfile'
 </code></pre>
 <h3 id="frame-export">Frame export</h3>
 <pre><code class="language-python">frames = [im for im in v.framerate(1)]   # 1 Hz export
@@ -226,7 +243,7 @@ im = vipy.image.Image(array=np.random.rand(224,224,3).astype(np.float32))
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/5c5faf2aae9fcf185d609f76964445fad8eb82c2/vipy/__init__.py#L1-L263" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/c5532c3ca2d68a051e8bef8c9d1594516ddff602/vipy/__init__.py#L1-L290" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">&#34;&#34;&#34;
 VIPY is a python package for representation, transformation and visualization of annotated videos and images.  Annotations are the ground truth provided by labelers (e.g. object bounding boxes, face identities, temporal activity clips), suitable for training computer vision systems.  VIPY provides tools to easily edit videos and images so that the annotations are transformed along with the pixels.  This enables a clean interface for transforming complex datasets for input to your computer vision training and testing pipeline.
@@ -397,13 +414,15 @@ To determine what vipy version you are running you can use:
 
 # Tutorials
 
+The following tutorials show fluent python chains to achieve transformations of annotated images and videos.
+
 ## Images
 
 ### Load an image
 
 ```python
-im = vipy.image.Image(filename=&#39;/path/to/my.jpg&#39;)  
-im = vipy.image.Image(url=&#39;https:///path/to/my.jpg&#39;)  
+im = vipy.image.Image(filename=&#39;/path/to/in.jpg&#39;)  
+im = vipy.image.Image(url=&#39;https://url/to/in.jpg&#39;)  
 im = vipy.image.Image(array=np.random.rand(224,224,3).astype(np.float32))  
 ```
 
@@ -434,8 +453,24 @@ vipy.image.owl().centersquare().greyscale().mindim(224).saveas(&#39;/path/to/out
 ### Scenes
 
 ```python
-im = vipy.image.vehicles()
+vipy.image.vehicles().objects()
 ```
+```
+[&lt;vipy.object.detection: category=&#34;car&#34;, bbox=(xmin=210.2, ymin=263.2, width=41.1, height=32.6)&gt;,
+ &lt;vipy.object.detection: category=&#34;car&#34;, bbox=(xmin=626.7, ymin=336.0, width=77.9, height=65.5)&gt;,
+ &lt;vipy.object.detection: category=&#34;car&#34;, bbox=(xmin=140.8, ymin=284.5, width=53.1, height=53.1)&gt;,
+ &lt;vipy.object.detection: category=&#34;car&#34;, bbox=(xmin=394.2, ymin=396.8, width=99.5, height=87.4)&gt;]
+```
+
+### Object crops
+
+```python
+im = vipy.image.vehicles().show()
+vipy.visualize.montage([o.dilate(1.2).maxsquare().crop() for o in im]).show()
+```
+&lt;img src=&#34;https://raw.githubusercontent.com/visym/vipy/master/docs/tutorials/vipy_image_vehicles.png&#34; height=&#34;300&#34;&gt;
+&lt;img src=&#34;https://raw.githubusercontent.com/visym/vipy/master/docs/tutorials/vipy_image_vehicles_objectcrop.png&#34; height=&#34;300&#34;&gt;
+
 
 ## Videos
 
@@ -443,6 +478,15 @@ im = vipy.image.vehicles()
 
 ```python
 v = vipy.video.Video(url=&#39;https://youtu.be/kpBCzzzX6zA&#39;)
+```
+
+### FFMPEG command line
+
+```python
+print(vipy.video.Video(filename=&#39;/path/to/in.mp4&#39;).mindim(512).framerate(2).commandline())
+```
+```
+&#39;ffmpeg -i /path/to/in.mp4 -filter_complex &#34;[0]fps=fps=2.0:round=up[s0];[s0]scale=-1:512[s1]&#34; -map &#34;[s1]&#34; dummyfile&#39;
 ```
 
 ### Frame export
@@ -680,10 +724,12 @@ setTimeout(() => input.focus(), 100);
 <li><a href="#display-an-image">Display an image</a></li>
 <li><a href="#save-an-image">Save an image</a></li>
 <li><a href="#scenes">Scenes</a></li>
+<li><a href="#object-crops">Object crops</a></li>
 </ul>
 </li>
 <li><a href="#videos">Videos</a><ul>
 <li><a href="#youtube">YouTube</a></li>
+<li><a href="#ffmpeg-command-line">FFMPEG command line</a></li>
 <li><a href="#frame-export">Frame export</a></li>
 <li><a href="#numpy-export">Numpy export</a></li>
 <li><a href="#webp-animation">Webp animation</a></li>
