@@ -136,7 +136,7 @@ All vipy objects can be imported and exported to JSON for interoperatability wit
 vipy.image.owl().json()
 ```
 
-## Customization
+## Environment variables
 
 You can set the following environment variables to customize the output of vipy
 
@@ -164,6 +164,76 @@ To determine what vipy version you are running you can use:
 
 >>> vipy.__version__
 >>> vipy.version.is_at_least('1.11.1') 
+
+# Tutorials
+
+## Images
+
+### Load an image
+
+```python
+im = vipy.image.Image(filename='/path/to/my.jpg')  
+im = vipy.image.Image(url='https:///path/to/my.jpg')  
+im = vipy.image.Image(array=np.random.rand(224,224,3).astype(np.float32))  
+```
+
+### Transform an image
+
+```python
+im = vipy.image.owl().mindim(512).fliplr().centersquare()
+```
+
+### Export as numpy array
+
+```python
+img = vipy.image.owl().centersquare().greyscale().mindim(224).numpy()
+```
+
+### Display an image
+
+```python
+im = vipy.image.owl().mindim(512).show()
+```
+
+### Save an image
+
+```python
+vipy.image.owl().centersquare().greyscale().mindim(224).saveas('/path/to/out.jpg')
+```
+
+### Scenes
+
+```python
+im = vipy.image.vehicles()
+```
+
+## Videos
+
+### YouTube
+
+```python
+v = vipy.video.Video(url='https://youtu.be/kpBCzzzX6zA')
+```
+
+### Frame export
+
+```python
+frames = [im for im in v.framerate(1)]   # 1 Hz export
+```
+
+### Numpy export
+
+```python
+frames = v.framerate(0.1).numpy()   # 0.1 Hz export
+```
+
+### Webp animation
+
+```python
+v = vipy.video.RandomScene().clip(0,30).webp()
+```
+
+
 
 # Contact
 

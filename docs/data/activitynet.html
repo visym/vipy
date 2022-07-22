@@ -26,7 +26,7 @@
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/7b64bf011328bf7a651f2119273a87a245b64194/vipy/data/activitynet.py#L1-L70" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/5c5faf2aae9fcf185d609f76964445fad8eb82c2/vipy/data/activitynet.py#L1-L70" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">import os
 from vipy.util import filetail, remkdir, readjson, groupbyasdict
@@ -118,7 +118,7 @@ class ActivityNet(object):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/7b64bf011328bf7a651f2119273a87a245b64194/vipy/data/activitynet.py#L12-L70" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/5c5faf2aae9fcf185d609f76964445fad8eb82c2/vipy/data/activitynet.py#L12-L70" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">class ActivityNet(object):
     def __init__(self, datadir):
@@ -190,7 +190,7 @@ class ActivityNet(object):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/7b64bf011328bf7a651f2119273a87a245b64194/vipy/data/activitynet.py#L58-L70" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/5c5faf2aae9fcf185d609f76964445fad8eb82c2/vipy/data/activitynet.py#L58-L70" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def analysis(self):
     C = self.categories()
@@ -215,7 +215,7 @@ class ActivityNet(object):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/7b64bf011328bf7a651f2119273a87a245b64194/vipy/data/activitynet.py#L55-L56" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/5c5faf2aae9fcf185d609f76964445fad8eb82c2/vipy/data/activitynet.py#L55-L56" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def categories(self):
     return set([v.category() for v in self.trainset()])</code></pre>
@@ -229,7 +229,7 @@ class ActivityNet(object):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/7b64bf011328bf7a651f2119273a87a245b64194/vipy/data/activitynet.py#L23-L25" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/5c5faf2aae9fcf185d609f76964445fad8eb82c2/vipy/data/activitynet.py#L23-L25" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def download(self):
     vipy.downloader.download(URL, os.path.join(self.datadir, filetail(URL)))
@@ -244,7 +244,7 @@ class ActivityNet(object):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/7b64bf011328bf7a651f2119273a87a245b64194/vipy/data/activitynet.py#L46-L50" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/5c5faf2aae9fcf185d609f76964445fad8eb82c2/vipy/data/activitynet.py#L46-L50" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def testset(self):
     &#34;&#34;&#34;ActivityNet test set does not include any annotations&#34;&#34;&#34;
@@ -261,7 +261,7 @@ class ActivityNet(object):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/7b64bf011328bf7a651f2119273a87a245b64194/vipy/data/activitynet.py#L43-L44" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/5c5faf2aae9fcf185d609f76964445fad8eb82c2/vipy/data/activitynet.py#L43-L44" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def trainset(self):
     return self._dataset(&#39;training&#39;)</code></pre>
@@ -275,7 +275,7 @@ class ActivityNet(object):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/7b64bf011328bf7a651f2119273a87a245b64194/vipy/data/activitynet.py#L52-L53" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/5c5faf2aae9fcf185d609f76964445fad8eb82c2/vipy/data/activitynet.py#L52-L53" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def valset(self):
     return self._dataset(&#39;validation&#39;)</code></pre>

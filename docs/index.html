@@ -159,7 +159,7 @@ Alternatively, see our <a href="https://github.com/visym/heyvi">open source visu
 This allows for introspection of the vipy object state in an open format providing transparency</p>
 <pre><code class="language-python">vipy.image.owl().json()
 </code></pre>
-<h2 id="customization">Customization</h2>
+<h2 id="environment-variables">Environment variables</h2>
 <p>You can set the following environment variables to customize the output of vipy</p>
 <ul>
 <li><strong>VIPY_CACHE</strong>='/path/to/directory'.
@@ -186,12 +186,47 @@ This is the <a href="https://docs.aws.amazon.com/general/latest/gr/aws-sec-cred-
 <pre><code class="language-python-repl">&gt;&gt;&gt; vipy.__version__
 &gt;&gt;&gt; vipy.version.is_at_least('1.11.1') 
 </code></pre>
+<h1 id="tutorials">Tutorials</h1>
+<h2 id="images">Images</h2>
+<h3 id="load-an-image">Load an image</h3>
+<pre><code class="language-python">im = vipy.image.Image(filename='/path/to/my.jpg')  
+im = vipy.image.Image(url='https:///path/to/my.jpg')  
+im = vipy.image.Image(array=np.random.rand(224,224,3).astype(np.float32))  
+</code></pre>
+<h3 id="transform-an-image">Transform an image</h3>
+<pre><code class="language-python">im = vipy.image.owl().mindim(512).fliplr().centersquare()
+</code></pre>
+<h3 id="export-as-numpy-array">Export as numpy array</h3>
+<pre><code class="language-python">img = vipy.image.owl().centersquare().greyscale().mindim(224).numpy()
+</code></pre>
+<h3 id="display-an-image">Display an image</h3>
+<pre><code class="language-python">im = vipy.image.owl().mindim(512).show()
+</code></pre>
+<h3 id="save-an-image">Save an image</h3>
+<pre><code class="language-python">vipy.image.owl().centersquare().greyscale().mindim(224).saveas('/path/to/out.jpg')
+</code></pre>
+<h3 id="scenes">Scenes</h3>
+<pre><code class="language-python">im = vipy.image.vehicles()
+</code></pre>
+<h2 id="videos">Videos</h2>
+<h3 id="youtube">YouTube</h3>
+<pre><code class="language-python">v = vipy.video.Video(url='https://youtu.be/kpBCzzzX6zA')
+</code></pre>
+<h3 id="frame-export">Frame export</h3>
+<pre><code class="language-python">frames = [im for im in v.framerate(1)]   # 1 Hz export
+</code></pre>
+<h3 id="numpy-export">Numpy export</h3>
+<pre><code class="language-python">frames = v.framerate(0.1).numpy()   # 0.1 Hz export
+</code></pre>
+<h3 id="webp-animation">Webp animation</h3>
+<pre><code class="language-python">v = vipy.video.RandomScene().clip(0,30).webp()
+</code></pre>
 <h1 id="contact">Contact</h1>
 <p>Visym Labs <a href="&#109;&#97;&#105;&#108;&#116;&#111;&#58;&#105;&#110;&#102;&#111;&#64;&#118;&#105;&#115;&#121;&#109;&#46;&#99;&#111;&#109;">&#105;&#110;&#102;&#111;&#64;&#118;&#105;&#115;&#121;&#109;&#46;&#99;&#111;&#109;</a></p>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/7b64bf011328bf7a651f2119273a87a245b64194/vipy/__init__.py#L1-L193" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/5c5faf2aae9fcf185d609f76964445fad8eb82c2/vipy/__init__.py#L1-L263" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">&#34;&#34;&#34;
 VIPY is a python package for representation, transformation and visualization of annotated videos and images.  Annotations are the ground truth provided by labelers (e.g. object bounding boxes, face identities, temporal activity clips), suitable for training computer vision systems.  VIPY provides tools to easily edit videos and images so that the annotations are transformed along with the pixels.  This enables a clean interface for transforming complex datasets for input to your computer vision training and testing pipeline.
@@ -331,7 +366,7 @@ All vipy objects can be imported and exported to JSON for interoperatability wit
 vipy.image.owl().json()
 ```
 
-## Customization
+## Environment variables
 
 You can set the following environment variables to customize the output of vipy
 
@@ -359,6 +394,76 @@ To determine what vipy version you are running you can use:
 
 &gt;&gt;&gt; vipy.__version__
 &gt;&gt;&gt; vipy.version.is_at_least(&#39;1.11.1&#39;) 
+
+# Tutorials
+
+## Images
+
+### Load an image
+
+```python
+im = vipy.image.Image(filename=&#39;/path/to/my.jpg&#39;)  
+im = vipy.image.Image(url=&#39;https:///path/to/my.jpg&#39;)  
+im = vipy.image.Image(array=np.random.rand(224,224,3).astype(np.float32))  
+```
+
+### Transform an image
+
+```python
+im = vipy.image.owl().mindim(512).fliplr().centersquare()
+```
+
+### Export as numpy array
+
+```python
+img = vipy.image.owl().centersquare().greyscale().mindim(224).numpy()
+```
+
+### Display an image
+
+```python
+im = vipy.image.owl().mindim(512).show()
+```
+
+### Save an image
+
+```python
+vipy.image.owl().centersquare().greyscale().mindim(224).saveas(&#39;/path/to/out.jpg&#39;)
+```
+
+### Scenes
+
+```python
+im = vipy.image.vehicles()
+```
+
+## Videos
+
+### YouTube
+
+```python
+v = vipy.video.Video(url=&#39;https://youtu.be/kpBCzzzX6zA&#39;)
+```
+
+### Frame export
+
+```python
+frames = [im for im in v.framerate(1)]   # 1 Hz export
+```
+
+### Numpy export
+
+```python
+frames = v.framerate(0.1).numpy()   # 0.1 Hz export
+```
+
+### Webp animation
+
+```python
+v = vipy.video.RandomScene().clip(0,30).webp()
+```
+
+
 
 # Contact
 
@@ -563,8 +668,27 @@ setTimeout(() => input.focus(), 100);
 <li><a href="#parallelization">Parallelization</a></li>
 <li><a href="#import">Import</a></li>
 <li><a href="#export">Export</a></li>
-<li><a href="#customization">Customization</a></li>
+<li><a href="#environment-variables">Environment variables</a></li>
 <li><a href="#versioning">Versioning</a></li>
+</ul>
+</li>
+<li><a href="#tutorials">Tutorials</a><ul>
+<li><a href="#images">Images</a><ul>
+<li><a href="#load-an-image">Load an image</a></li>
+<li><a href="#transform-an-image">Transform an image</a></li>
+<li><a href="#export-as-numpy-array">Export as numpy array</a></li>
+<li><a href="#display-an-image">Display an image</a></li>
+<li><a href="#save-an-image">Save an image</a></li>
+<li><a href="#scenes">Scenes</a></li>
+</ul>
+</li>
+<li><a href="#videos">Videos</a><ul>
+<li><a href="#youtube">YouTube</a></li>
+<li><a href="#frame-export">Frame export</a></li>
+<li><a href="#numpy-export">Numpy export</a></li>
+<li><a href="#webp-animation">Webp animation</a></li>
+</ul>
+</li>
 </ul>
 </li>
 <li><a href="#contact">Contact</a></li>
