@@ -167,6 +167,8 @@ To determine what vipy version you are running you can use:
 
 # Tutorials
 
+The following tutorials show simple python one-liners to achieve transformations of annotated images and videos.
+
 ## Images
 
 ### Load an image
