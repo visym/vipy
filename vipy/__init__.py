@@ -172,8 +172,8 @@ To determine what vipy version you are running you can use:
 ### Load an image
 
 ```python
-im = vipy.image.Image(filename='/path/to/my.jpg')  
-im = vipy.image.Image(url='https:///path/to/my.jpg')  
+im = vipy.image.Image(filename='/path/to/in.jpg')  
+im = vipy.image.Image(url='https://url/to/in.jpg')  
 im = vipy.image.Image(array=np.random.rand(224,224,3).astype(np.float32))  
 ```
 
