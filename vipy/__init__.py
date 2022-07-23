@@ -203,7 +203,8 @@ im = vipy.image.owl().mindim(512).show()
 vipy.image.owl().centersquare().greyscale().mindim(224).saveas('/path/to/out.jpg')
 ```
 
-### Scenes
+### Visualize complex scenes
+
 
 ```python
 vipy.image.vehicles().objects()
@@ -215,7 +216,7 @@ vipy.image.vehicles().objects()
  <vipy.object.detection: category="car", bbox=(xmin=394.2, ymin=396.8, width=99.5, height=87.4)>]
 ```
 
-### Object crops
+### Crop and resize all objects in a scene
 
 ```python
 im = vipy.image.vehicles().show()
@@ -225,15 +226,34 @@ vipy.visualize.montage([o.dilate(1.2).maxsquare().crop() for o in im]).show()
 <img src="https://raw.githubusercontent.com/visym/vipy/master/docs/tutorials/vipy_image_vehicles_objectcrop.png" height="300">
 
 
+### Find all images in directory
+
+### Image deduplication
+
+### Blurring People and Faces
+
+### Vipy vs. Torchvision
+
+### Create standalone HTML visualizations of images
+
+### Export scene to JSON
+
+### Export scene to CSV
+
+### Image data augmentation for training
+
+### Visualization with SSH 
+
+
 ## Videos
 
-### YouTube
+### Load from YouTube
 
 ```python
 v = vipy.video.Video(url='https://youtu.be/kpBCzzzX6zA')
 ```
 
-### FFMPEG command line
+### Inspect the FFMPEG command line
 
 ```python
 print(vipy.video.Video(filename='/path/to/in.mp4').mindim(512).framerate(2).commandline())
@@ -242,29 +262,66 @@ print(vipy.video.Video(filename='/path/to/in.mp4').mindim(512).framerate(2).comm
 'ffmpeg -i /path/to/in.mp4 -filter_complex "[0]fps=fps=2.0:round=up[s0];[s0]scale=-1:512[s1]" -map "[s1]" dummyfile'
 ```
 
-### Frame export
+### Export frames as vipy images
 
 ```python
 frames = [im for im in v.framerate(1)]   # 1 Hz export
 ```
 
-### Numpy export
+### Export frames as numpy array
 
 ```python
 frames = v.framerate(0.1).numpy()   # 0.1 Hz export
 ```
 
-### Webp animation
+### Generate WEBP animations
 
 ```python
 v = vipy.video.RandomScene().clip(0,30).webp()
 ```
 
+### Find all videos in directory
 
+### Track objects in video
+
+### Import RTSP camera streams
+
+### Detect activities in video
+
+### Blur People and Cars
+
+### Make a video mosaic from many streams
+
+### Split a video into activity clips
+
+### Create quicklooks for fast video watching
+
+### Stabilize background
+
+### Create video thumbnails
+
+### Create compressed and cached tensors for large-scale training
+
+
+### Export to JSON
+
+## Datasets
+
+### Create a dataset
+
+### Resize and crop
+
+### Import to torch 
+
+### Archive to .tar.gz
+
+### Export to JSON
+
+### Video data augmentation for training
 
 # Contact
 
-Visym Labs <info@visym.com>
+Visym Labs <<info@visym.com>>
 
 """
 

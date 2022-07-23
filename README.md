@@ -12,7 +12,7 @@ VIPY provides:
 * Representation of videos with labeled activities that can be resized, clipped, rotated, scaled, padded and cropped
 * Representation of images with object bounding boxes that can be manipulated as easily as editing an image
 * Clean visualization of annotated images and videos 
-* Lazy loading of images and videos suitable for distributed procesing (e.g. dask, spark)
+* Lazy loading of images and videos suitable for distributed processing (e.g. dask, spark)
 * Straightforward integration into machine learning toolchains (e.g. torch, numpy)
 * Fluent interface for chaining operations on videos and images
 * Dataset download, unpack and import (e.g. Charades, AVA, ActivityNet, Kinetics, Moments in Time)
