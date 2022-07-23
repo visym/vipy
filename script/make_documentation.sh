@@ -39,6 +39,7 @@ cp -r ./docs/vipy/* ./docs  # https://domain/vipy/vipy/index.html --> https://do
 rm -rf ./docs/vipy  # cleanup
 sed -i "" "s|\"vipy/|\"|g" ./docs/index.js  # update search to new location
 sed -i "" "s|Package <code>vipy<\/code>|VIPY|g" ./docs/index.html  # update title
+sed -i "" "s|vipy API documentation|vipy documentation|g" ./docs/index.html  # update title
 
 if [ ${COMMIT} == 1 ]; then
     git add ./docs/*
