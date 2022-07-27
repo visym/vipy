@@ -53,4 +53,4 @@ vipy.image.owl().mindim(512).zeropad(padwidth=150, padheight=0).show()
 ```
 <img src="https://raw.githubusercontent.com/visym/vipy/master/docs/vipy_image_owl.jpg" width="700">
 
-The [demos](https://github.com/visym/vipy/tree/master/demo) provide useful notebook tutorials to help you get started.
+The [tutorials](https://visym.github.io/vipy/#tutorials) and [demos](https://github.com/visym/vipy/tree/master/demo) provide useful examples to help you get started.
