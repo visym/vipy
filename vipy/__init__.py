@@ -189,8 +189,8 @@ Images can be transformed so that the annotations are updated along with the pix
 im = vipy.image.owl().mindim(512).fliplr().centersquare().show()
 im = vipy.image.owl().resize(width=512, height=256).show()
 ```
-<img src="https://raw.githubusercontent.com/visym/vipy/master/docs/tutorials/transform_an_image_1.png" height="300">
-<img src="https://raw.githubusercontent.com/visym/vipy/master/docs/tutorials/transform_an_image_2.png" height="300">
+<img src="https://raw.githubusercontent.com/visym/vipy/master/docs/tutorials/transform_an_image_1.jpg" height="250">
+<img src="https://raw.githubusercontent.com/visym/vipy/master/docs/tutorials/transform_an_image_2.jpg" height="250">
 
 
 ### Export as numpy array
@@ -223,16 +223,16 @@ All images can be displayed using the matplotlib library.  Matplotlib is the mos
 ```python
 im = vipy.image.owl().mindim(512).show()
 ```
-<img src="https://raw.githubusercontent.com/visym/vipy/master/docs/tutorials/display_an_image.jpg" height="300">
+<img src="https://raw.githubusercontent.com/visym/vipy/master/docs/tutorials/display_an_image.jpg" height="500">
 
 ### Annotate an image
 
 By default, images and annotations are represented independently.  However, it is sometimes useful to export the annotations into the pixels.  The `vipy.image.Scene.annotate` method will export the same visualization as when the image is displayed, but the pixel buffer will be overwritten with the shown image.  This means that calling `vipy.image.Image.numpy` will return the pixel buffer with boxes and captions in the pixels.
 
 ```python
-vipy.image.owl().mindim(512).maxmatte().saveas('/tmp/annotate_an_image.jpg')
+vipy.image.owl().mindim(512).maxmatte().annotate().rgb().saveas('annotate_an_image.jpg')
 ```
-<img src="https://raw.githubusercontent.com/visym/vipy/master/docs/tutorials/annotate_an_image.jpg" height="300">
+<img src="https://raw.githubusercontent.com/visym/vipy/master/docs/tutorials/annotate_an_image.jpg" height="500">
 
 
 ### Save an image
@@ -240,7 +240,7 @@ vipy.image.owl().mindim(512).maxmatte().saveas('/tmp/annotate_an_image.jpg')
 Images can be saved (without annotations) using the `vipy.image.Image.saveas` method.  Calling this method with no arguments will save to a random temporary image.  In this example, we crop the image, convert from RGB colorspace to BGR colorspace, flip up/down and resize.
 
 ```python
-vipy.image.owl().centersquare().bgr().flipud().mindim(224).saveas('/tmp/save_an_image.jpg')
+vipy.image.owl().centersquare().bgr().flipud().mindim(224).saveas('save_an_image.jpg')
 ```
 <img src="https://raw.githubusercontent.com/visym/vipy/master/docs/tutorials/save_an_image.jpg" height="300">
 
@@ -258,7 +258,7 @@ vipy.image.vehicles().show().objects()
  <vipy.object.detection: category="car", bbox=(xmin=140.8, ymin=284.5, width=53.1, height=53.1)>,
  <vipy.object.detection: category="car", bbox=(xmin=394.2, ymin=396.8, width=99.5, height=87.4)>]
 ```
-<img src="https://raw.githubusercontent.com/visym/vipy/master/docs/tutorials/visualize_complex_scenes.jpg" height="300">
+<img src="https://raw.githubusercontent.com/visym/vipy/master/docs/tutorials/visualize_complex_scenes.jpg" height="500">
 
 ### Crop and resize annotated objects in a scene
 

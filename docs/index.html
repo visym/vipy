@@ -249,15 +249,21 @@ In this example, we crop the image, convert from RGB colorspace to BGR colorspac
 <pre><code class="language-python">vipy.image.owl().centersquare().bgr().flipud().mindim(224).saveas('/tmp/save_an_image.jpg')
 </code></pre>
 <p><img src="https://raw.githubusercontent.com/visym/vipy/master/docs/tutorials/save_an_image.jpg" height="300"></p>
-<h3 id="visualize-complex-scenes">Visualize complex scenes</h3>
-<pre><code class="language-python">vipy.image.vehicles().objects()
+<h3 id="visualize-scenes">Visualize scenes</h3>
+<p>Scenes containing objects can be visualized to display only a subset of objects.
+In this example, we show the demo image <code><a title="vipy.image.vehicles" href="image.html#vipy.image.vehicles">vehicles()</a></code> which contains four annotated vehicles.
+There are many more vehicles in this image, but the end user may be interested in these four in particular.
+Each object is represented internally as a list of <code><a title="vipy.object.Detection" href="object.html#vipy.object.Detection">Detection</a></code> objects which encodes a bounding box and category.
+This can be visualized just as with images with single objects.</p>
+<pre><code class="language-python">vipy.image.vehicles().show().objects()
 </code></pre>
 <pre><code>[&lt;vipy.object.detection: category=&quot;car&quot;, bbox=(xmin=210.2, ymin=263.2, width=41.1, height=32.6)&gt;,
  &lt;vipy.object.detection: category=&quot;car&quot;, bbox=(xmin=626.7, ymin=336.0, width=77.9, height=65.5)&gt;,
  &lt;vipy.object.detection: category=&quot;car&quot;, bbox=(xmin=140.8, ymin=284.5, width=53.1, height=53.1)&gt;,
  &lt;vipy.object.detection: category=&quot;car&quot;, bbox=(xmin=394.2, ymin=396.8, width=99.5, height=87.4)&gt;]
 </code></pre>
-<h3 id="crop-and-resize-all-objects-in-a-scene">Crop and resize all objects in a scene</h3>
+<p><img src="https://raw.githubusercontent.com/visym/vipy/master/docs/tutorials/visualize_complex_scenes.jpg" height="300"></p>
+<h3 id="crop-and-resize-annotated-objects-in-a-scene">Crop and resize annotated objects in a scene</h3>
 <pre><code class="language-python">im = vipy.image.vehicles().show()
 vipy.visualize.montage([o.dilate(1.2).maxsquare().crop() for o in im]).show()
 </code></pre>
@@ -314,7 +320,7 @@ vipy.visualize.montage([o.dilate(1.2).maxsquare().crop() for o in im]).show()
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/3ef909698e29d07d5a98c1abca3c6839b4602f75/vipy/__init__.py#L1-L389" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/e411ea0bdb6b911e155e021dd2d1ac1dffda001d/vipy/__init__.py#L1-L391" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">&#34;&#34;&#34;
 VIPY is a python package for representation, transformation and visualization of annotated videos and images.  Annotations are the ground truth provided by labelers (e.g. object bounding boxes, face identities, temporal activity clips), suitable for training computer vision systems.  VIPY provides tools to easily edit videos and images so that the annotations are transformed along with the pixels.  This enables a clean interface for transforming complex datasets for input to your computer vision training and testing pipeline.
@@ -563,11 +569,12 @@ vipy.image.owl().centersquare().bgr().flipud().mindim(224).saveas(&#39;/tmp/save
 &lt;img src=&#34;https://raw.githubusercontent.com/visym/vipy/master/docs/tutorials/save_an_image.jpg&#34; height=&#34;300&#34;&gt;
 
 
-### Visualize complex scenes
+### Visualize scenes
 
+Scenes containing objects can be visualized to display only a subset of objects.  In this example, we show the demo image `vipy.image.vehicles` which contains four annotated vehicles.  There are many more vehicles in this image, but the end user may be interested in these four in particular.  Each object is represented internally as a list of `vipy.object.Detection` objects which encodes a bounding box and category.  This can be visualized just as with images with single objects.
 
 ```python
-vipy.image.vehicles().objects()
+vipy.image.vehicles().show().objects()
 ```
 ```
 [&lt;vipy.object.detection: category=&#34;car&#34;, bbox=(xmin=210.2, ymin=263.2, width=41.1, height=32.6)&gt;,
@@ -575,8 +582,9 @@ vipy.image.vehicles().objects()
  &lt;vipy.object.detection: category=&#34;car&#34;, bbox=(xmin=140.8, ymin=284.5, width=53.1, height=53.1)&gt;,
  &lt;vipy.object.detection: category=&#34;car&#34;, bbox=(xmin=394.2, ymin=396.8, width=99.5, height=87.4)&gt;]
 ```
+&lt;img src=&#34;https://raw.githubusercontent.com/visym/vipy/master/docs/tutorials/visualize_complex_scenes.jpg&#34; height=&#34;300&#34;&gt;
 
-### Crop and resize all objects in a scene
+### Crop and resize annotated objects in a scene
 
 ```python
 im = vipy.image.vehicles().show()
@@ -895,8 +903,8 @@ setTimeout(() => input.focus(), 100);
 <li><a href="#display-an-image">Display an image</a></li>
 <li><a href="#annotate-an-image">Annotate an image</a></li>
 <li><a href="#save-an-image">Save an image</a></li>
-<li><a href="#visualize-complex-scenes">Visualize complex scenes</a></li>
-<li><a href="#crop-and-resize-all-objects-in-a-scene">Crop and resize all objects in a scene</a></li>
+<li><a href="#visualize-scenes">Visualize scenes</a></li>
+<li><a href="#crop-and-resize-annotated-objects-in-a-scene">Crop and resize annotated objects in a scene</a></li>
 <li><a href="#find-all-images-in-directory">Find all images in directory</a></li>
 <li><a href="#image-deduplication">Image deduplication</a></li>
 <li><a href="#blurring-people-and-faces">Blurring People and Faces</a></li>
