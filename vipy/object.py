@@ -25,7 +25,7 @@ class Detection(BoundingBox):
     d = vipy.object.Detection(label='Person', xmin=0, ymin=0, width=50, height=100)  # "label" is an alias for "category"
     d = vipy.object.Detection(label='John Doe', shortlabel='Person', xmin=0, ymin=0, width=50, height=100)  # shortlabel is displayed
     d = vipy.object.Detection(label='Person', xywh=[0,0,50,100])
-    d = vupy.object.Detection(..., id=True)  # generate a unique UUID for this detection retrievable with d.id()
+    d = vipy.object.Detection(..., id=True)  # generate a unique UUID for this detection retrievable with d.id()
     ```
 
     """

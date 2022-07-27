@@ -52,7 +52,7 @@ setup(
     author_email='info@visym.com',
     version=version,
     packages=find_packages(),
-    description='Visym Python Tools for Visual Dataset Transformation',
+    description='Python Tools for Visual Dataset Transformation',
     long_description=long_description,
     long_description_content_type="text/markdown",
     url='https://github.com/visym/vipy',
