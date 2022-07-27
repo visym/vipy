@@ -190,22 +190,65 @@ This is the <a href="https://docs.aws.amazon.com/general/latest/gr/aws-sec-cred-
 <p>The following tutorials show fluent python chains to achieve transformations of annotated images and videos.</p>
 <h2 id="images">Images</h2>
 <h3 id="load-an-image">Load an image</h3>
+<p>Images can be loaded from URLs, local image files, or numpy arrays.
+The images exhibit lazy loading, so that pixels will not be fetched until they are needed.</p>
 <pre><code class="language-python">im = vipy.image.Image(filename='/path/to/in.jpg')  
 im = vipy.image.Image(url='https://url/to/in.jpg')  
 im = vipy.image.Image(array=np.random.rand(224,224,3).astype(np.float32))  
 </code></pre>
 <h3 id="transform-an-image">Transform an image</h3>
-<pre><code class="language-python">im = vipy.image.owl().mindim(512).fliplr().centersquare()
+<p>Images can be transformed so that the annotations are updated along with the pixels.
+In this example, the <code><a title="vipy.image.owl" href="image.html#vipy.image.owl">owl()</a></code> is a demo image to a wikipedia URL with a bounding box.
+This can be resized and cropped or anisotropically scaled and the box is updated to match the pixels. </p>
+<pre><code class="language-python">im = vipy.image.owl().mindim(512).fliplr().centersquare().show()
+im = vipy.image.owl().resize(width=512, height=256).show()
 </code></pre>
+<p><img src="https://raw.githubusercontent.com/visym/vipy/master/docs/tutorials/transform_an_image_1.png" height="300">
+<img src="https://raw.githubusercontent.com/visym/vipy/master/docs/tutorials/transform_an_image_2.png" height="300"></p>
 <h3 id="export-as-numpy-array">Export as numpy array</h3>
-<pre><code class="language-python">img = vipy.image.owl().centersquare().greyscale().mindim(224).numpy()
+<p>All images are represented internally as a private attribute <code>vipy.image.Image._array</code> which is a numpy array representation of the pixels.
+Image transformations can be chained to operate sequentially on this pixel buffer.
+In this example, the <code><a title="vipy.image.owl" href="image.html#vipy.image.owl">owl()</a></code> test image is cropped to retain the center square, converted from uint8 RGB to float32 greyscale, resized to 224x224 then exported to numpy array.
+</p>
+<pre><code class="language-python">vipy.image.owl().centersquare().greyscale().mindim(224).numpy()
+</code></pre>
+<pre><code>array([[0.11470564, 0.11794835, 0.13006495, ..., 0.15657625, 0.15867704,
+        0.16140679],
+       [0.11835834, 0.11993656, 0.12860955, ..., 0.15611856, 0.15460114,
+        0.15652661],
+       [0.12262769, 0.1245698 , 0.12809968, ..., 0.153694  , 0.15326852,
+        0.15336327],
+       ...,
+       [0.42591274, 0.42745316, 0.4352066 , ..., 0.12994824, 0.13172676,
+        0.13424061],
+       [0.42972928, 0.43847743, 0.45459685, ..., 0.12558977, 0.12820148,
+        0.13141613],
+       [0.44050908, 0.45350933, 0.46908155, ..., 0.12246227, 0.1256479 ,
+        0.12941177]], dtype=float32)
 </code></pre>
 <h3 id="display-an-image">Display an image</h3>
+<p>All images can be displayed using the matplotlib library.
+Matplotlib is the most universally ported GUI library for python, and exhibits minimal dependencies.
+We enable the user to show images using figure window or "matlab style" of image display.
+This will show pixels with overlayed semi-transparent bounding boxes for objects with captions.</p>
 <pre><code class="language-python">im = vipy.image.owl().mindim(512).show()
 </code></pre>
-<h3 id="save-an-image">Save an image</h3>
-<pre><code class="language-python">vipy.image.owl().centersquare().greyscale().mindim(224).saveas('/path/to/out.jpg')
+<p><img src="https://raw.githubusercontent.com/visym/vipy/master/docs/tutorials/display_an_image.jpg" height="300"></p>
+<h3 id="annotate-an-image">Annotate an image</h3>
+<p>By default, images and annotations are represented independently.
+However, it is sometimes useful to export the annotations into the pixels.
+The <code><a title="vipy.image.Scene.annotate" href="image.html#vipy.image.Scene.annotate">Scene.annotate()</a></code> method will export the same visualization as when the image is displayed, but the pixel buffer will be overwritten with the shown image.
+This means that calling <code><a title="vipy.image.Image.numpy" href="image.html#vipy.image.Image.numpy">Image.numpy()</a></code> will return the pixel buffer with boxes and captions in the pixels.</p>
+<pre><code class="language-python">vipy.image.owl().mindim(512).maxmatte().saveas('/tmp/annotate_an_image.jpg')
 </code></pre>
+<p><img src="https://raw.githubusercontent.com/visym/vipy/master/docs/tutorials/annotate_an_image.jpg" height="300"></p>
+<h3 id="save-an-image">Save an image</h3>
+<p>Images can be saved (without annotations) using the <code><a title="vipy.image.Image.saveas" href="image.html#vipy.image.Image.saveas">Image.saveas()</a></code> method.
+Calling this method with no arguments will save to a random temporary image.
+In this example, we crop the image, convert from RGB colorspace to BGR colorspace, flip up/down and resize.</p>
+<pre><code class="language-python">vipy.image.owl().centersquare().bgr().flipud().mindim(224).saveas('/tmp/save_an_image.jpg')
+</code></pre>
+<p><img src="https://raw.githubusercontent.com/visym/vipy/master/docs/tutorials/save_an_image.jpg" height="300"></p>
 <h3 id="visualize-complex-scenes">Visualize complex scenes</h3>
 <pre><code class="language-python">vipy.image.vehicles().objects()
 </code></pre>
@@ -271,7 +314,7 @@ vipy.visualize.montage([o.dilate(1.2).maxsquare().crop() for o in im]).show()
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/2ff555b8a23b3e6299d0a41de1f179f6005da60c/vipy/__init__.py#L1-L347" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/3ef909698e29d07d5a98c1abca3c6839b4602f75/vipy/__init__.py#L1-L389" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">&#34;&#34;&#34;
 VIPY is a python package for representation, transformation and visualization of annotated videos and images.  Annotations are the ground truth provided by labelers (e.g. object bounding boxes, face identities, temporal activity clips), suitable for training computer vision systems.  VIPY provides tools to easily edit videos and images so that the annotations are transformed along with the pixels.  This enables a clean interface for transforming complex datasets for input to your computer vision training and testing pipeline.
@@ -448,6 +491,8 @@ The following tutorials show fluent python chains to achieve transformations of 
 
 ### Load an image
 
+Images can be loaded from URLs, local image files, or numpy arrays.  The images exhibit lazy loading, so that pixels will not be fetched until they are needed.
+
 ```python
 im = vipy.image.Image(filename=&#39;/path/to/in.jpg&#39;)  
 im = vipy.image.Image(url=&#39;https://url/to/in.jpg&#39;)  
@@ -456,27 +501,67 @@ im = vipy.image.Image(array=np.random.rand(224,224,3).astype(np.float32))
 
 ### Transform an image
 
+Images can be transformed so that the annotations are updated along with the pixels.  In this example, the `vipy.image.owl` is a demo image to a wikipedia URL with a bounding box.  This can be resized and cropped or anisotropically scaled and the box is updated to match the pixels. 
+
 ```python
-im = vipy.image.owl().mindim(512).fliplr().centersquare()
+im = vipy.image.owl().mindim(512).fliplr().centersquare().show()
+im = vipy.image.owl().resize(width=512, height=256).show()
 ```
+&lt;img src=&#34;https://raw.githubusercontent.com/visym/vipy/master/docs/tutorials/transform_an_image_1.png&#34; height=&#34;300&#34;&gt;
+&lt;img src=&#34;https://raw.githubusercontent.com/visym/vipy/master/docs/tutorials/transform_an_image_2.png&#34; height=&#34;300&#34;&gt;
+
 
 ### Export as numpy array
 
+All images are represented internally as a private attribute `vipy.image.Image._array` which is a numpy array representation of the pixels.  Image transformations can be chained to operate sequentially on this pixel buffer.  In this example, the `vipy.image.owl` test image is cropped to retain the center square, converted from uint8 RGB to float32 greyscale, resized to 224x224 then exported to numpy array.  
+
 ```python
-img = vipy.image.owl().centersquare().greyscale().mindim(224).numpy()
+vipy.image.owl().centersquare().greyscale().mindim(224).numpy()
+```
+```
+array([[0.11470564, 0.11794835, 0.13006495, ..., 0.15657625, 0.15867704,
+        0.16140679],
+       [0.11835834, 0.11993656, 0.12860955, ..., 0.15611856, 0.15460114,
+        0.15652661],
+       [0.12262769, 0.1245698 , 0.12809968, ..., 0.153694  , 0.15326852,
+        0.15336327],
+       ...,
+       [0.42591274, 0.42745316, 0.4352066 , ..., 0.12994824, 0.13172676,
+        0.13424061],
+       [0.42972928, 0.43847743, 0.45459685, ..., 0.12558977, 0.12820148,
+        0.13141613],
+       [0.44050908, 0.45350933, 0.46908155, ..., 0.12246227, 0.1256479 ,
+        0.12941177]], dtype=float32)
 ```
 
 ### Display an image
 
+All images can be displayed using the matplotlib library.  Matplotlib is the most universally ported GUI library for python, and exhibits minimal dependencies.  We enable the user to show images using figure window or &#34;matlab style&#34; of image display.  This will show pixels with overlayed semi-transparent bounding boxes for objects with captions.
+
 ```python
 im = vipy.image.owl().mindim(512).show()
 ```
+&lt;img src=&#34;https://raw.githubusercontent.com/visym/vipy/master/docs/tutorials/display_an_image.jpg&#34; height=&#34;300&#34;&gt;
+
+### Annotate an image
+
+By default, images and annotations are represented independently.  However, it is sometimes useful to export the annotations into the pixels.  The `vipy.image.Scene.annotate` method will export the same visualization as when the image is displayed, but the pixel buffer will be overwritten with the shown image.  This means that calling `vipy.image.Image.numpy` will return the pixel buffer with boxes and captions in the pixels.
+
+```python
+vipy.image.owl().mindim(512).maxmatte().saveas(&#39;/tmp/annotate_an_image.jpg&#39;)
+```
+&lt;img src=&#34;https://raw.githubusercontent.com/visym/vipy/master/docs/tutorials/annotate_an_image.jpg&#34; height=&#34;300&#34;&gt;
+
 
 ### Save an image
 
+Images can be saved (without annotations) using the `vipy.image.Image.saveas` method.  Calling this method with no arguments will save to a random temporary image.  In this example, we crop the image, convert from RGB colorspace to BGR colorspace, flip up/down and resize.
+
 ```python
-vipy.image.owl().centersquare().greyscale().mindim(224).saveas(&#39;/path/to/out.jpg&#39;)
+vipy.image.owl().centersquare().bgr().flipud().mindim(224).saveas(&#39;/tmp/save_an_image.jpg&#39;)
 ```
+&lt;img src=&#34;https://raw.githubusercontent.com/visym/vipy/master/docs/tutorials/save_an_image.jpg&#34; height=&#34;300&#34;&gt;
+
 
 ### Visualize complex scenes
 
@@ -808,6 +893,7 @@ setTimeout(() => input.focus(), 100);
 <li><a href="#transform-an-image">Transform an image</a></li>
 <li><a href="#export-as-numpy-array">Export as numpy array</a></li>
 <li><a href="#display-an-image">Display an image</a></li>
+<li><a href="#annotate-an-image">Annotate an image</a></li>
 <li><a href="#save-an-image">Save an image</a></li>
 <li><a href="#visualize-complex-scenes">Visualize complex scenes</a></li>
 <li><a href="#crop-and-resize-all-objects-in-a-scene">Crop and resize all objects in a scene</a></li>
