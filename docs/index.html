@@ -196,6 +196,18 @@ The images exhibit lazy loading, so that pixels will not be fetched until they a
 im = vipy.image.Image(url='https://url/to/in.jpg')  
 im = vipy.image.Image(array=np.random.rand(224,224,3).astype(np.float32))  
 </code></pre>
+<h3 id="display-an-image-to-stdout">Display an image to stdout</h3>
+<p>All objects have helpful string representations when printed to stdout.
+This is accessible via the <code><a title="vipy.image.Image.print" href="image.html#vipy.image.Image.print">Image.print()</a></code> method or by using builtin print().
+In this example, an image is created from a wikipedia URL.
+Printing this image object shows the URL, but when it is loaded, the image object shows the size of the image, colorspace and the filename that the URL was downloaded to.
+When in doubt, print!</p>
+<pre><code class="language-python">print(vipy.image.Scene(url='https://upload.wikimedia.org/wikipedia/commons/thumb/2/23/Bubo_virginianus_06.jpg/1920px-Bubo_virginianus_06.jpg'))
+vipy.image.Scene(url='https://upload.wikimedia.org/wikipedia/commons/thumb/2/23/Bubo_virginianus_06.jpg/1920px-Bubo_virginianus_06.jpg').load().print()
+</code></pre>
+<pre><code>&lt;vipy.image.scene: url=https://upload.wikimedia.org/wikipedia/commons/thumb/2/23/Bubo_virginianus_06.jpg/1920px-Bubo_virginianus_06.jpg&gt;
+&lt;vipy.image.scene: height=2400, width=1920, color=rgb, filename=&quot;/tmp/1920px-Bubo_virginianus_06.jpg&quot;, url=https://upload.wikimedia.org/wikipedia/commons/thumb/2/23/Bubo_virginianus_06.jpg/1920px-Bubo_virginianus_06.jpg&gt;
+</code></pre>
 <h3 id="transform-an-image">Transform an image</h3>
 <p>Images can be transformed so that the annotations are updated along with the pixels.
 In this example, the <code><a title="vipy.image.owl" href="image.html#vipy.image.owl">owl()</a></code> is a demo image to a wikipedia URL with a bounding box.
@@ -249,6 +261,14 @@ In this example, we crop the image, convert from RGB colorspace to BGR colorspac
 <pre><code class="language-python">vipy.image.owl().centersquare().bgr().flipud().mindim(224).saveas('save_an_image.jpg')
 </code></pre>
 <p><img src="https://raw.githubusercontent.com/visym/vipy/master/docs/tutorials/save_an_image.jpg" height="300"></p>
+<h3 id="convert-image-colorspace">Convert image colorspace</h3>
+<p>All images can be converted between different colorspaces (e.g. RGB, BGR, RGBA, BGRA, HSV, GREY, LUM, float).
+This will convert the underlying pixel buffer to support the corresponding colorspace.
+</p>
+<pre><code>vipy.image.owl().hsv().saveas('hsv.jpg')
+</code></pre>
+<h3 id="rescale-image">Rescale image</h3>
+<p>All images can be rescaled to a standard range, including the Matlab inspired <code><a title="vipy.image.Image.mat2gray" href="image.html#vipy.image.Image.mat2gray">Image.mat2gray()</a></code>, which will rescale the pixel buffer between [min, max] -&gt; [0, 1]</p>
 <h3 id="visualize-scenes">Visualize scenes</h3>
 <p>Scenes containing objects can be visualized to display only a subset of objects.
 In this example, we show the demo image <code><a title="vipy.image.vehicles" href="image.html#vipy.image.vehicles">vehicles()</a></code> which contains four annotated vehicles.
@@ -270,6 +290,13 @@ vipy.visualize.montage([o.dilate(1.2).maxsquare().crop() for o in im]).show()
 <p><img src="https://raw.githubusercontent.com/visym/vipy/master/docs/tutorials/vipy_image_vehicles.png" height="300">
 <img src="https://raw.githubusercontent.com/visym/vipy/master/docs/tutorials/vipy_image_vehicles_objectcrop.png" height="300"></p>
 <h3 id="find-all-images-in-directory">Find all images in directory</h3>
+<p>Searching for all images recursively from a root directory and lazy load them as <code><a title="vipy.image.Image" href="image.html#vipy.image.Image">Image</a></code> objects.
+This will not trigger loading pixels until the pixel buffers are needed.
+This is helpful for importing large number of images.</p>
+<pre><code class="language-python">[vipy.image.Image(filename=f) for f in vipy.util.findimages('./docs/tutorials')]
+</code></pre>
+<pre><code>[&lt;vipy.image: filename=&quot;/Users/jebyrne/dev/vipy/docs/tutorials/transform_an_image_1.jpg&quot;&gt;, &lt;vipy.image: filename=&quot;/Users/jebyrne/dev/vipy/docs/tutorials/transform_an_image_2.jpg&quot;&gt;, ... 
+</code></pre>
 <h3 id="image-deduplication">Image deduplication</h3>
 <h3 id="blurring-people-and-faces">Blurring People and Faces</h3>
 <h3 id="vipy-vs-torchvision">Vipy vs. Torchvision</h3>
@@ -320,7 +347,7 @@ vipy.visualize.montage([o.dilate(1.2).maxsquare().crop() for o in im]).show()
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/c3e9107b6bf7e96b3db3ea7fb84d284cf0321fe6/vipy/__init__.py#L1-L391" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/7c240c4404566166fec2db44d9a4b55e9d9c177c/vipy/__init__.py#L1-L427" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">&#34;&#34;&#34;
 VIPY is a python package for representation, transformation and visualization of annotated videos and images.  Annotations are the ground truth provided by labelers (e.g. object bounding boxes, face identities, temporal activity clips), suitable for training computer vision systems.  VIPY provides tools to easily edit videos and images so that the annotations are transformed along with the pixels.  This enables a clean interface for transforming complex datasets for input to your computer vision training and testing pipeline.
@@ -505,6 +532,19 @@ im = vipy.image.Image(url=&#39;https://url/to/in.jpg&#39;)
 im = vipy.image.Image(array=np.random.rand(224,224,3).astype(np.float32))  
 ```
 
+### Display an image to stdout
+
+All objects have helpful string representations when printed to stdout.  This is accessible via the `vipy.image.Image.print` method or by using builtin print().  In this example, an image is created from a wikipedia URL.  Printing this image object shows the URL, but when it is loaded, the image object shows the size of the image, colorspace and the filename that the URL was downloaded to.  When in doubt, print!
+
+```python
+print(vipy.image.Scene(url=&#39;https://upload.wikimedia.org/wikipedia/commons/thumb/2/23/Bubo_virginianus_06.jpg/1920px-Bubo_virginianus_06.jpg&#39;))
+vipy.image.Scene(url=&#39;https://upload.wikimedia.org/wikipedia/commons/thumb/2/23/Bubo_virginianus_06.jpg/1920px-Bubo_virginianus_06.jpg&#39;).load().print()
+```
+```
+&lt;vipy.image.scene: url=https://upload.wikimedia.org/wikipedia/commons/thumb/2/23/Bubo_virginianus_06.jpg/1920px-Bubo_virginianus_06.jpg&gt;
+&lt;vipy.image.scene: height=2400, width=1920, color=rgb, filename=&#34;/tmp/1920px-Bubo_virginianus_06.jpg&#34;, url=https://upload.wikimedia.org/wikipedia/commons/thumb/2/23/Bubo_virginianus_06.jpg/1920px-Bubo_virginianus_06.jpg&gt;
+```
+
 ### Transform an image
 
 Images can be transformed so that the annotations are updated along with the pixels.  In this example, the `vipy.image.owl` is a demo image to a wikipedia URL with a bounding box.  This can be resized and cropped or anisotropically scaled and the box is updated to match the pixels. 
@@ -568,6 +608,18 @@ vipy.image.owl().centersquare().bgr().flipud().mindim(224).saveas(&#39;save_an_i
 ```
 &lt;img src=&#34;https://raw.githubusercontent.com/visym/vipy/master/docs/tutorials/save_an_image.jpg&#34; height=&#34;300&#34;&gt;
 
+### Convert image colorspace
+
+All images can be converted between different colorspaces (e.g. RGB, BGR, RGBA, BGRA, HSV, GREY, LUM, float).  This will convert the underlying pixel buffer to support the corresponding colorspace.  
+
+``` 
+vipy.image.owl().hsv().saveas(&#39;hsv.jpg&#39;)
+```
+
+### Rescale image
+
+All images can be rescaled to a standard range, including the Matlab inspired `vipy.image.Image.mat2gray`, which will rescale the pixel buffer between [min, max] -&gt; [0, 1]
+
 
 ### Visualize scenes
 
@@ -596,7 +648,18 @@ vipy.visualize.montage([o.dilate(1.2).maxsquare().crop() for o in im]).show()
 
 ### Find all images in directory
 
+Searching for all images recursively from a root directory and lazy load them as `vipy.image.Image` objects.  This will not trigger loading pixels until the pixel buffers are needed.  This is helpful for importing large number of images.
+
+```python
+[vipy.image.Image(filename=f) for f in vipy.util.findimages(&#39;./docs/tutorials&#39;)]
+```
+```
+[&lt;vipy.image: filename=&#34;/Users/jebyrne/dev/vipy/docs/tutorials/transform_an_image_1.jpg&#34;&gt;, &lt;vipy.image: filename=&#34;/Users/jebyrne/dev/vipy/docs/tutorials/transform_an_image_2.jpg&#34;&gt;, ... 
+```
+
 ### Image deduplication
+
+
 
 ### Blurring People and Faces
 
@@ -898,11 +961,14 @@ setTimeout(() => input.focus(), 100);
 <li><a href="#tutorials">Tutorials</a><ul>
 <li><a href="#images">Images</a><ul>
 <li><a href="#load-an-image">Load an image</a></li>
+<li><a href="#display-an-image-to-stdout">Display an image to stdout</a></li>
 <li><a href="#transform-an-image">Transform an image</a></li>
 <li><a href="#export-as-numpy-array">Export as numpy array</a></li>
 <li><a href="#display-an-image">Display an image</a></li>
 <li><a href="#annotate-an-image">Annotate an image</a></li>
 <li><a href="#save-an-image">Save an image</a></li>
+<li><a href="#convert-image-colorspace">Convert image colorspace</a></li>
+<li><a href="#rescale-image">Rescale image</a></li>
 <li><a href="#visualize-scenes">Visualize scenes</a></li>
 <li><a href="#crop-and-resize-annotated-objects-in-a-scene">Crop and resize annotated objects in a scene</a></li>
 <li><a href="#find-all-images-in-directory">Find all images in directory</a></li>
