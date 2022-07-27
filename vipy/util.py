@@ -1263,7 +1263,8 @@ def isimg(path):
 
 def isimage(path):
     """Alias for `vipy.util.isimg`"""
-
+    return isimg(path)
+    
 def isvideofile(path):
     """Alias for `vipy.util.isvideo`"""
     return isvideo(path)

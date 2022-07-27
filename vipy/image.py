@@ -196,8 +196,6 @@ class Image(object):
             strlist.append('channels=%d' % self.channels())
         if self.filename() is not None:
             strlist.append('filename="%s"' % (self.filename() if self.hasfilename() else '<NOTFOUND>%s</NOTFOUND>' % self.filename()))
-        if self.hasfilename():
-            strlist.append('filename="%s"' % self.filename())
         if self.hasurl():
             strlist.append('url="%s"' % self.url())
         return str('<vipy.image: %s>' % (', '.join(strlist)))

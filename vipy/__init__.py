@@ -181,6 +181,19 @@ im = vipy.image.Image(url='https://url/to/in.jpg')
 im = vipy.image.Image(array=np.random.rand(224,224,3).astype(np.float32))  
 ```
 
+### Display an image to stdout
+
+All objects have helpful string representations when printed to stdout.  This is accessible via the `vipy.image.Image.print` method or by using builtin print().  In this example, an image is created from a wikipedia URL.  Printing this image object shows the URL, but when it is loaded, the image object shows the size of the image, colorspace and the filename that the URL was downloaded to.  When in doubt, print!
+
+```python
+print(vipy.image.Scene(url='https://upload.wikimedia.org/wikipedia/commons/thumb/2/23/Bubo_virginianus_06.jpg/1920px-Bubo_virginianus_06.jpg'))
+vipy.image.Scene(url='https://upload.wikimedia.org/wikipedia/commons/thumb/2/23/Bubo_virginianus_06.jpg/1920px-Bubo_virginianus_06.jpg').load().print()
+```
+```
+<vipy.image.scene: url=https://upload.wikimedia.org/wikipedia/commons/thumb/2/23/Bubo_virginianus_06.jpg/1920px-Bubo_virginianus_06.jpg>
+<vipy.image.scene: height=2400, width=1920, color=rgb, filename="/tmp/1920px-Bubo_virginianus_06.jpg", url=https://upload.wikimedia.org/wikipedia/commons/thumb/2/23/Bubo_virginianus_06.jpg/1920px-Bubo_virginianus_06.jpg>
+```
+
 ### Transform an image
 
 Images can be transformed so that the annotations are updated along with the pixels.  In this example, the `vipy.image.owl` is a demo image to a wikipedia URL with a bounding box.  This can be resized and cropped or anisotropically scaled and the box is updated to match the pixels. 
@@ -244,6 +257,18 @@ vipy.image.owl().centersquare().bgr().flipud().mindim(224).saveas('save_an_image
 ```
 <img src="https://raw.githubusercontent.com/visym/vipy/master/docs/tutorials/save_an_image.jpg" height="300">
 
+### Convert image colorspace
+
+All images can be converted between different colorspaces (e.g. RGB, BGR, RGBA, BGRA, HSV, GREY, LUM, float).  This will convert the underlying pixel buffer to support the corresponding colorspace.  
+
+``` 
+vipy.image.owl().hsv().saveas('hsv.jpg')
+```
+
+### Rescale image
+
+All images can be rescaled to a standard range, including the Matlab inspired `vipy.image.Image.mat2gray`, which will rescale the pixel buffer between [min, max] -> [0, 1]
+
 
 ### Visualize scenes
 
@@ -272,7 +297,18 @@ vipy.visualize.montage([o.dilate(1.2).maxsquare().crop() for o in im]).show()
 
 ### Find all images in directory
 
+Searching for all images recursively from a root directory and lazy load them as `vipy.image.Image` objects.  This will not trigger loading pixels until the pixel buffers are needed.  This is helpful for importing large number of images.
+
+```python
+[vipy.image.Image(filename=f) for f in vipy.util.findimages('./docs/tutorials')]
+```
+```
+[<vipy.image: filename="/Users/jebyrne/dev/vipy/docs/tutorials/transform_an_image_1.jpg">, <vipy.image: filename="/Users/jebyrne/dev/vipy/docs/tutorials/transform_an_image_2.jpg">, ... 
+```
+
 ### Image deduplication
+
+
 
 ### Blurring People and Faces
 
