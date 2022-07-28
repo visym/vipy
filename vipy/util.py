@@ -1037,7 +1037,7 @@ def readtxt(infile):
     return readlist(infile)
 
 
-def writecsv(list_of_tuples, outfile, mode='w', separator=',', header=None, comment='# '):
+def writecsv(list_of_tuples, outfile=None, mode='w', separator=',', header=None, comment='# '):
     """Write list of tuples to an output csv file with each list element on a row and tuple elements separated by commas.
 
     Examples:
@@ -1061,7 +1061,7 @@ def writecsv(list_of_tuples, outfile, mode='w', separator=',', header=None, comm
     
     list_of_tuples = list_of_tuples if not isnumpy(list_of_tuples) else list_of_tuples.tolist()
     list_of_tuples = list_of_tuples if header is None else [tuple([h if k>0 else comment+h for (k,h) in enumerate(header)])]+list_of_tuples  # prepend header with comment symbol
-    outfile = os.path.abspath(os.path.expanduser(outfile))
+    outfile = os.path.abspath(os.path.expanduser(outfile)) if outfile is not None else tempcsv()
     with open(outfile, mode) as f:
         for u in list_of_tuples:
             n = len(u)

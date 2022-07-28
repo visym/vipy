@@ -176,9 +176,9 @@ The following tutorials show fluent python chains to achieve transformations of 
 Images can be loaded from URLs, local image files, or numpy arrays.  The images exhibit lazy loading, so that pixels will not be fetched until they are needed.
 
 ```python
-im = vipy.image.Image(filename='/path/to/in.jpg')  
-im = vipy.image.Image(url='https://url/to/in.jpg')  
-im = vipy.image.Image(array=np.random.rand(224,224,3).astype(np.float32))  
+>>> im = vipy.image.Image(filename='/path/to/in.jpg')  
+>>> im = vipy.image.Image(url='https://url/to/in.jpg')  
+>>> im = vipy.image.Image(array=np.random.rand(224,224,3).astype(np.float32))  
 ```
 
 ### Display an image to stdout
@@ -186,11 +186,10 @@ im = vipy.image.Image(array=np.random.rand(224,224,3).astype(np.float32))
 All objects have helpful string representations when printed to stdout.  This is accessible via the `vipy.image.Image.print` method or by using builtin print().  In this example, an image is created from a wikipedia URL.  Printing this image object shows the URL, but when it is loaded, the image object shows the size of the image, colorspace and the filename that the URL was downloaded to.  When in doubt, print!
 
 ```python
-print(vipy.image.Scene(url='https://upload.wikimedia.org/wikipedia/commons/thumb/2/23/Bubo_virginianus_06.jpg/1920px-Bubo_virginianus_06.jpg'))
-vipy.image.Scene(url='https://upload.wikimedia.org/wikipedia/commons/thumb/2/23/Bubo_virginianus_06.jpg/1920px-Bubo_virginianus_06.jpg').load().print()
-```
-```
+>>> print(vipy.image.Scene(url='https://upload.wikimedia.org/wikipedia/commons/thumb/2/23/Bubo_virginianus_06.jpg/1920px-Bubo_virginianus_06.jpg'))
 <vipy.image.scene: url=https://upload.wikimedia.org/wikipedia/commons/thumb/2/23/Bubo_virginianus_06.jpg/1920px-Bubo_virginianus_06.jpg>
+
+>>> vipy.image.Scene(url='https://upload.wikimedia.org/wikipedia/commons/thumb/2/23/Bubo_virginianus_06.jpg/1920px-Bubo_virginianus_06.jpg').load().print()
 <vipy.image.scene: height=2400, width=1920, color=rgb, filename="/tmp/1920px-Bubo_virginianus_06.jpg", url=https://upload.wikimedia.org/wikipedia/commons/thumb/2/23/Bubo_virginianus_06.jpg/1920px-Bubo_virginianus_06.jpg>
 ```
 
@@ -199,8 +198,8 @@ vipy.image.Scene(url='https://upload.wikimedia.org/wikipedia/commons/thumb/2/23/
 Images can be transformed so that the annotations are updated along with the pixels.  In this example, the `vipy.image.owl` is a demo image to a wikipedia URL with a bounding box.  This can be resized and cropped or anisotropically scaled and the box is updated to match the pixels. 
 
 ```python
-im = vipy.image.owl().mindim(512).fliplr().centersquare().show()
-im = vipy.image.owl().resize(width=512, height=256).show()
+>>> im = vipy.image.owl().mindim(512).fliplr().centersquare().show()
+>>> im = vipy.image.owl().resize(width=512, height=256).show()
 ```
 <img src="https://raw.githubusercontent.com/visym/vipy/master/docs/tutorials/transform_an_image_1.jpg" height="250">
 <img src="https://raw.githubusercontent.com/visym/vipy/master/docs/tutorials/transform_an_image_2.jpg" height="250">
@@ -211,9 +210,7 @@ im = vipy.image.owl().resize(width=512, height=256).show()
 All images are represented internally as a private attribute `vipy.image.Image._array` which is a numpy array representation of the pixels.  Image transformations can be chained to operate sequentially on this pixel buffer.  In this example, the `vipy.image.owl` test image is cropped to retain the center square, converted from uint8 RGB to float32 greyscale, resized to 224x224 then exported to numpy array.  
 
 ```python
-vipy.image.owl().centersquare().greyscale().mindim(224).numpy()
-```
-```
+>>> vipy.image.owl().centersquare().greyscale().mindim(224).numpy()
 array([[0.11470564, 0.11794835, 0.13006495, ..., 0.15657625, 0.15867704,
         0.16140679],
        [0.11835834, 0.11993656, 0.12860955, ..., 0.15611856, 0.15460114,
@@ -234,7 +231,7 @@ array([[0.11470564, 0.11794835, 0.13006495, ..., 0.15657625, 0.15867704,
 All images can be displayed using the matplotlib library.  Matplotlib is the most universally ported GUI library for python, and exhibits minimal dependencies.  We enable the user to show images using figure window or "matlab style" of image display.  This will show pixels with overlayed semi-transparent bounding boxes for objects with captions.
 
 ```python
-im = vipy.image.owl().mindim(512).show()
+>>> im = vipy.image.owl().mindim(512).show()
 ```
 <img src="https://raw.githubusercontent.com/visym/vipy/master/docs/tutorials/display_an_image.jpg" height="500">
 
@@ -243,7 +240,7 @@ im = vipy.image.owl().mindim(512).show()
 By default, images and annotations are represented independently.  However, it is sometimes useful to export the annotations into the pixels.  The `vipy.image.Scene.annotate` method will export the same visualization as when the image is displayed, but the pixel buffer will be overwritten with the shown image.  This means that calling `vipy.image.Image.numpy` will return the pixel buffer with boxes and captions in the pixels.
 
 ```python
-vipy.image.owl().mindim(512).maxmatte().annotate().rgb().saveas('annotate_an_image.jpg')
+>>> vipy.image.owl().mindim(512).maxmatte().annotate().rgb().saveas('out.jpg')
 ```
 <img src="https://raw.githubusercontent.com/visym/vipy/master/docs/tutorials/annotate_an_image.jpg" height="500">
 
@@ -253,7 +250,7 @@ vipy.image.owl().mindim(512).maxmatte().annotate().rgb().saveas('annotate_an_ima
 Images can be saved (without annotations) using the `vipy.image.Image.saveas` method.  Calling this method with no arguments will save to a random temporary image.  In this example, we crop the image, convert from RGB colorspace to BGR colorspace, flip up/down and resize.
 
 ```python
-vipy.image.owl().centersquare().bgr().flipud().mindim(224).saveas('save_an_image.jpg')
+>>> vipy.image.owl().centersquare().bgr().flipud().mindim(224).saveas('save_an_image.jpg')
 ```
 <img src="https://raw.githubusercontent.com/visym/vipy/master/docs/tutorials/save_an_image.jpg" height="300">
 
@@ -262,7 +259,7 @@ vipy.image.owl().centersquare().bgr().flipud().mindim(224).saveas('save_an_image
 All images can be converted between different colorspaces (e.g. RGB, BGR, RGBA, BGRA, HSV, GREY, LUM, float).  This will convert the underlying pixel buffer to support the corresponding colorspace.  
 
 ``` 
-vipy.image.owl().hsv().saveas('hsv.jpg')
+>>> vipy.image.owl().hsv().saveas('hsv.jpg')
 ```
 
 ### Rescale image
@@ -275,9 +272,7 @@ All images can be rescaled to a standard range, including the Matlab inspired `v
 Scenes containing objects can be visualized to display only a subset of objects.  In this example, we show the demo image `vipy.image.vehicles` which contains four annotated vehicles.  There are many more vehicles in this image, but the end user may be interested in these four in particular.  Each object is represented internally as a list of `vipy.object.Detection` objects which encodes a bounding box and category.  This can be visualized just as with images with single objects.
 
 ```python
-vipy.image.vehicles().show().objects()
-```
-```
+>>> vipy.image.vehicles().show().objects()
 [<vipy.object.detection: category="car", bbox=(xmin=210.2, ymin=263.2, width=41.1, height=32.6)>,
  <vipy.object.detection: category="car", bbox=(xmin=626.7, ymin=336.0, width=77.9, height=65.5)>,
  <vipy.object.detection: category="car", bbox=(xmin=140.8, ymin=284.5, width=53.1, height=53.1)>,
@@ -288,8 +283,8 @@ vipy.image.vehicles().show().objects()
 ### Crop and resize annotated objects in a scene
 
 ```python
-im = vipy.image.vehicles().show()
-vipy.visualize.montage([o.dilate(1.2).maxsquare().crop() for o in im]).show()
+>>> im = vipy.image.vehicles().show()
+>>> vipy.visualize.montage([o.dilate(1.2).maxsquare().crop() for o in im]).show()
 ```
 <img src="https://raw.githubusercontent.com/visym/vipy/master/docs/tutorials/vipy_image_vehicles.png" height="300">
 <img src="https://raw.githubusercontent.com/visym/vipy/master/docs/tutorials/vipy_image_vehicles_objectcrop.png" height="300">
@@ -300,29 +295,62 @@ vipy.visualize.montage([o.dilate(1.2).maxsquare().crop() for o in im]).show()
 Searching for all images recursively from a root directory and lazy load them as `vipy.image.Image` objects.  This will not trigger loading pixels until the pixel buffers are needed.  This is helpful for importing large number of images.
 
 ```python
-[vipy.image.Image(filename=f) for f in vipy.util.findimages('./docs/tutorials')]
-```
-```
+>>> [vipy.image.Image(filename=f) for f in vipy.util.findimages('./docs/tutorials')]
 [<vipy.image: filename="/Users/jebyrne/dev/vipy/docs/tutorials/transform_an_image_1.jpg">, <vipy.image: filename="/Users/jebyrne/dev/vipy/docs/tutorials/transform_an_image_2.jpg">, ... 
+```
+
+### Export scene to JSON
+
+All annotated images can be imported and exported to an open JSON format. If images are loaded, then the pixels will be serialized in the JSON output.  If this is not desired, then use the `vipy.image.Image.flush`` method to clear the cached pixel buffer prior to serialization.  This can always be reloaded after deserialization as long as the source image or URL is acessible.
+
+```python
+>>> json = vipy.image.owl().flush().json()
+>>> im = vipy.image.Scene.from_json(json)
+>>> print(json)
+'{"_filename":"\\/Users\\/jebyrne\\/.vipy\\/1920px-Bubo_virginianus_06.jpg","_url":"https:\\/\\/upload.wikimedia.org\\/wikipedia\\/commons\\/thumb\\/2\\/23\\/Bubo_virginianus_06.jpg\\/1920px-Bubo_virginianus_06.jpg","_loader":null,"_array":null,"_colorspace":"rgb","attributes":{},"_category":"Nature","_objectlist":[{"_xmin":93.33333333333333,"_ymin":85.33333333333333,"_xmax":466.6666666666667,"_ymax":645.3333333333334,"_id":"a047e21d","_label":"Great Horned Owl","_shortlabel":"Great Horned Owl"}]}'
+```
+
+### Export scene to CSV
+
+All annotated images can be exported to a CSV format using object iterators.  Object precision can be changed using `vipy.object.Detection.int`.  CSV headers can be added with `vipy.util.writecsv`.
+
+```python
+>>> im = vipy.image.vehicles()
+>>> vipy.util.writecsv([(im.filename(), o.category(), o.xmin(), o.ymin(), o.width(), o.height()) for o in im.objects()], 'out.csv')
+>>> cat out.csv
+/Users/jebyrne/.vipy/I-80_Eastshore_Fwy.jpg,car,210.2222222222222,263.2,41.06666666666666,32.622222222222206
+/Users/jebyrne/.vipy/I-80_Eastshore_Fwy.jpg,car,626.6666666666666,336.0444444444444,77.86666666666667,65.4666666666667
+/Users/jebyrne/.vipy/I-80_Eastshore_Fwy.jpg,car,140.84444444444443,284.4888888888889,53.066666666666634,53.111111111111086
+/Users/jebyrne/.vipy/I-80_Eastshore_Fwy.jpg,car,394.17777777777775,396.84444444444443,99.4666666666667,87.37777777777774
 ```
 
 ### Image deduplication
 
+Vipy provides a 128 bit differential perceptual hashing function which is used for near-duplicate detection.  This is useful for identifying pairs of images that differ slightly due to cropping, resizing, watermarkings.  The binary Hamming distance between two perceptual hashes is a similarity metric that can be used to identify duplicates, such that smaller is more likely to be a duplicate.
 
+```python
+>>> p = vipy.image.vehicles().perceptualhash()  # hex string
+>>> print(p)
+'50515541d545f04101a005e801c25945'
+>>> q = vipy.image.vehicles().greyscale().perceptualhash()
+>>> print(q)
+'50515541d545f04101a905e801c27945'
+>>> vipy.image.Image.perceptualhash_distance(p, q)  # Hamming distance
+3
+```
 
 ### Blurring People and Faces
 
 ### Vipy vs. Torchvision
 
-### Create standalone HTML visualizations of images
 
-### Export scene to JSON
 
-### Export scene to CSV
 
 ### Image data augmentation for training
 
-### Visualization with SSH 
+### Visualization behind SSH 
+
+### Visualization behind AWS S3 
 
 
 ## Videos
@@ -398,6 +426,9 @@ v = vipy.video.RandomScene().clip(0,30).webp()
 ### Export to JSON
 
 ### Video data augmentation for training
+
+### Create standalone HTML visualizations of images
+
 
 # Contact
 

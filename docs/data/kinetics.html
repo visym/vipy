@@ -26,7 +26,7 @@
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/7c240c4404566166fec2db44d9a4b55e9d9c177c/vipy/data/kinetics.py#L1-L78" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/7a1750bc6d53d107f94d07dc555dccc9876a8c36/vipy/data/kinetics.py#L1-L78" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">import os
 from vipy.util import remkdir, readjson, groupbyasdict
@@ -126,7 +126,7 @@ class Kinetics400(Kinetics700):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/7c240c4404566166fec2db44d9a4b55e9d9c177c/vipy/data/kinetics.py#L73-L78" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/7a1750bc6d53d107f94d07dc555dccc9876a8c36/vipy/data/kinetics.py#L73-L78" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">class Kinetics400(Kinetics700):
     def __init__(self, datadir):
@@ -149,7 +149,7 @@ class Kinetics400(Kinetics700):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/7c240c4404566166fec2db44d9a4b55e9d9c177c/vipy/data/kinetics.py#L65-L70" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/7a1750bc6d53d107f94d07dc555dccc9876a8c36/vipy/data/kinetics.py#L65-L70" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">class Kinetics600(Kinetics700):
     def __init__(self, datadir):
@@ -172,7 +172,7 @@ class Kinetics400(Kinetics700):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/7c240c4404566166fec2db44d9a4b55e9d9c177c/vipy/data/kinetics.py#L8-L62" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/7a1750bc6d53d107f94d07dc555dccc9876a8c36/vipy/data/kinetics.py#L8-L62" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">class Kinetics700(object):
     def __init__(self, datadir):
@@ -245,7 +245,7 @@ class Kinetics400(Kinetics700):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/7c240c4404566166fec2db44d9a4b55e9d9c177c/vipy/data/kinetics.py#L50-L62" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/7a1750bc6d53d107f94d07dc555dccc9876a8c36/vipy/data/kinetics.py#L50-L62" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def analysis(self):
     C = self.categories()
@@ -270,7 +270,7 @@ class Kinetics400(Kinetics700):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/7c240c4404566166fec2db44d9a4b55e9d9c177c/vipy/data/kinetics.py#L46-L48" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/7a1750bc6d53d107f94d07dc555dccc9876a8c36/vipy/data/kinetics.py#L46-L48" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def categories(self):
     jsonfile = os.path.join(self.datadir, self._name, &#39;train.json&#39;)
@@ -285,7 +285,7 @@ class Kinetics400(Kinetics700):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/7c240c4404566166fec2db44d9a4b55e9d9c177c/vipy/data/kinetics.py#L20-L22" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/7a1750bc6d53d107f94d07dc555dccc9876a8c36/vipy/data/kinetics.py#L20-L22" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def download(self, verbose=True):
     vipy.downloader.download_and_unpack(self._url, self.datadir, verbose=verbose)
@@ -300,7 +300,7 @@ class Kinetics400(Kinetics700):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/7c240c4404566166fec2db44d9a4b55e9d9c177c/vipy/data/kinetics.py#L24-L26" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/7a1750bc6d53d107f94d07dc555dccc9876a8c36/vipy/data/kinetics.py#L24-L26" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def isdownloaded(self):
     return (os.path.exists(os.path.join(self.datadir, &#39;kinetics700.tar.gz&#39;)) or
@@ -315,7 +315,7 @@ class Kinetics400(Kinetics700):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/7c240c4404566166fec2db44d9a4b55e9d9c177c/vipy/data/kinetics.py#L40-L41" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/7a1750bc6d53d107f94d07dc555dccc9876a8c36/vipy/data/kinetics.py#L40-L41" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def testset(self):
     return self._dataset(os.path.join(self.datadir, self._name, &#39;test.json&#39;))</code></pre>
@@ -329,7 +329,7 @@ class Kinetics400(Kinetics700):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/7c240c4404566166fec2db44d9a4b55e9d9c177c/vipy/data/kinetics.py#L37-L38" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/7a1750bc6d53d107f94d07dc555dccc9876a8c36/vipy/data/kinetics.py#L37-L38" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def trainset(self):
     return self._dataset(os.path.join(self.datadir, self._name, &#39;train.json&#39;))</code></pre>
@@ -343,7 +343,7 @@ class Kinetics400(Kinetics700):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/7c240c4404566166fec2db44d9a4b55e9d9c177c/vipy/data/kinetics.py#L43-L44" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/7a1750bc6d53d107f94d07dc555dccc9876a8c36/vipy/data/kinetics.py#L43-L44" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def valset(self):
     return self._dataset(os.path.join(self.datadir, self._name, &#39;validate.json&#39;))</code></pre>
