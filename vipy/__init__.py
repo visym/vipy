@@ -339,7 +339,16 @@ Vipy provides a 128 bit differential perceptual hashing function which is used f
 3
 ```
 
-### Blurring People and Faces
+### Blur Faces
+
+```python
+>>> im = vipy.image.Image(url='https://upload.wikimedia.org/wikipedia/en/d/d6/Friends_season_one_cast.jpg')
+>>> im.facepixelize().show()
+>>> im.faceblur().show()
+```
+<img src="https://raw.githubusercontent.com/visym/vipy/master/docs/tutorials/blur_faces_1.jpg" height="250">
+<img src="https://raw.githubusercontent.com/visym/vipy/master/docs/tutorials/blur_faces_2.jpg" height="250">
+
 
 ### Vipy vs. Torchvision
 

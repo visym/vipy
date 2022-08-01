@@ -1580,6 +1580,36 @@ class Image(object):
         self.array(np.rot90(self.numpy(), 1))
         return self
 
+    def faceblur(self, radius=4, mindim=256):
+        """Replace pixels for all detected faces with `vipy.image.Scene.blurmask`, add locations of detected faces into attributes.
+
+        Args:
+            radius [int]: The radius of pixels for `vipy.image.Scene.blurmask`
+            mindim [int]: The minimum dimension for downsampling the image for face detection.  Will be upsampled prior to pixelize.
+        
+        Returns:
+            A `vipy.image.Scene` object with a pixel buffer with all faces pixelized, with faceblur attribute set in `vipy.image.Image.metadata` showing the locations of the blurred faces.
+        """
+        
+        import heyvi
+        im = heyvi.detection.FaceDetector()(self.clone().mindim(mindim)).mindim(self.mindim())
+        return im.setattribute('faceblur', [o.int().json() for o in im.objects()]).blurmask(radius=radius).clear()
+    
+    def facepixelize(self, radius=7, mindim=256):
+        """Replace pixels for all detected faces with `vipy.image.Scene.pixelize`, add locations of detected faces into attributes.
+
+        Args:
+            radius [int]: The radius of pixels for `vipy.image.Scene.radius`
+            mindim [int]: The minimum dimension for downsampling the image for face detection.  Will be upsampled prior to pixelize.
+        
+        Returns:
+            A `vipy.image.Image` object with a pixel buffer with all faces pixelized, with facepixelize attribute set in `vipy.image.Image.metadata` showing the locations of the blurred faces.
+
+        """
+        import heyvi
+        im = heyvi.detection.FaceDetector()(self.clone().mindim(mindim)).mindim(self.mindim())
+        return im.setattribute('facepixelize', [o.int().json() for o in im.objects()]).pixelize(radius=radius).clear()
+    
     
 class ImageCategory(Image):
     """vipy ImageCategory class
@@ -2076,6 +2106,7 @@ class Scene(ImageCategory):
         img[self.rectangular_mask() > 0] = self.meanchannel()  # in-place update
         return self
 
+    
     def perceptualhash(self, bits=128, asbinary=False, asbytes=False, objmask=False):
         """Perceptual differential hash function.
 
