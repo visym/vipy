@@ -328,7 +328,13 @@ The binary Hamming distance between two perceptual hashes is a similarity metric
 &gt;&gt;&gt; vipy.image.Image.perceptualhash_distance(p, q)  # Hamming distance
 3
 </code></pre>
-<h3 id="blurring-people-and-faces">Blurring People and Faces</h3>
+<h3 id="blur-faces">Blur Faces</h3>
+<pre><code class="language-python">&gt;&gt;&gt; im = vipy.image.Image(url='https://upload.wikimedia.org/wikipedia/en/d/d6/Friends_season_one_cast.jpg')
+&gt;&gt;&gt; im.facepixelize().show()
+&gt;&gt;&gt; im.faceblur().show()
+</code></pre>
+<p><img src="https://raw.githubusercontent.com/visym/vipy/master/docs/tutorials/blur_faces_1.jpg" height="250">
+<img src="https://raw.githubusercontent.com/visym/vipy/master/docs/tutorials/blur_faces_2.jpg" height="250"></p>
 <h3 id="vipy-vs-torchvision">Vipy vs. Torchvision</h3>
 <h3 id="image-data-augmentation-for-training">Image data augmentation for training</h3>
 <h3 id="visualization-behind-ssh">Visualization behind SSH</h3>
@@ -376,7 +382,7 @@ The binary Hamming distance between two perceptual hashes is a similarity metric
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/456831b99ed2e98acb47bbb434ee0652bb474abf/vipy/__init__.py#L1-L458" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/ad7bf8e2f19790667b8889d5a7fa45219badfcff/vipy/__init__.py#L1-L467" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">&#34;&#34;&#34;
 VIPY is a python package for representation, transformation and visualization of annotated videos and images.  Annotations are the ground truth provided by labelers (e.g. object bounding boxes, face identities, temporal activity clips), suitable for training computer vision systems.  VIPY provides tools to easily edit videos and images so that the annotations are transformed along with the pixels.  This enables a clean interface for transforming complex datasets for input to your computer vision training and testing pipeline.
@@ -719,7 +725,16 @@ Vipy provides a 128 bit differential perceptual hashing function which is used f
 3
 ```
 
-### Blurring People and Faces
+### Blur Faces
+
+```python
+&gt;&gt;&gt; im = vipy.image.Image(url=&#39;https://upload.wikimedia.org/wikipedia/en/d/d6/Friends_season_one_cast.jpg&#39;)
+&gt;&gt;&gt; im.facepixelize().show()
+&gt;&gt;&gt; im.faceblur().show()
+```
+&lt;img src=&#34;https://raw.githubusercontent.com/visym/vipy/master/docs/tutorials/blur_faces_1.jpg&#34; height=&#34;250&#34;&gt;
+&lt;img src=&#34;https://raw.githubusercontent.com/visym/vipy/master/docs/tutorials/blur_faces_2.jpg&#34; height=&#34;250&#34;&gt;
+
 
 ### Vipy vs. Torchvision
 
@@ -1035,7 +1050,7 @@ setTimeout(() => input.focus(), 100);
 <li><a href="#export-scene-to-json">Export scene to JSON</a></li>
 <li><a href="#export-scene-to-csv">Export scene to CSV</a></li>
 <li><a href="#image-deduplication">Image deduplication</a></li>
-<li><a href="#blurring-people-and-faces">Blurring People and Faces</a></li>
+<li><a href="#blur-faces">Blur Faces</a></li>
 <li><a href="#vipy-vs-torchvision">Vipy vs. Torchvision</a></li>
 <li><a href="#image-data-augmentation-for-training">Image data augmentation for training</a></li>
 <li><a href="#visualization-behind-ssh">Visualization behind SSH</a></li>
