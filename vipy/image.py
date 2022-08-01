@@ -960,6 +960,10 @@ class Image(object):
             self.attributes.pop(k)
         return self
 
+    def metadata(self, k=None):
+        """Return metadata associated with this image, stored in the attributes dictionary"""
+        return self.attributes if k is None else self.getattribute(k)
+    
     def hasurl(self):
         return self._url is not None and isurl(self._url)
 
@@ -1589,6 +1593,10 @@ class Image(object):
         
         Returns:
             A `vipy.image.Scene` object with a pixel buffer with all faces pixelized, with faceblur attribute set in `vipy.image.Image.metadata` showing the locations of the blurred faces.
+
+        .. notes::
+            - This method uses a CPU-only pretrained torch network for face detection from the heyvi visual analytics package, which is re-initialized on each call to this method.  
+            - For batch operations on many images, it is preferred to set up the detection network once, then calling many images sequentially.  
         """
         
         import heyvi
@@ -1603,7 +1611,11 @@ class Image(object):
             mindim [int]: The minimum dimension for downsampling the image for face detection.  Will be upsampled prior to pixelize.
         
         Returns:
-            A `vipy.image.Image` object with a pixel buffer with all faces pixelized, with facepixelize attribute set in `vipy.image.Image.metadata` showing the locations of the blurred faces.
+            A `vipy.image.Scene` object with a pixel buffer with all faces pixelized, with facepixelize attribute set in `vipy.image.Image.metadata` showing the locations of the blurred faces.
+
+        .. notes::
+            - This method uses a CPU-only pretrained torch network for face detection from the heyvi visual analytics package, which is re-initialized on each call to this method.  
+            - For batch operations on many images, it is preferred to set up the detection network once, then calling many images sequentially.  
 
         """
         import heyvi
