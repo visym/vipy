@@ -10411,6 +10411,12 @@ INDEX=[
 "func":1
 },
 {
+"ref":"vipy.image.Image.metadata",
+"url":50,
+"doc":"Return metadata associated with this image, stored in the attributes dictionary",
+"func":1
+},
+{
 "ref":"vipy.image.Image.hasurl",
 "url":50,
 "doc":"",
@@ -10857,13 +10863,13 @@ INDEX=[
 {
 "ref":"vipy.image.Image.faceblur",
 "url":50,
-"doc":"Replace pixels for all detected faces with  vipy.image.Scene.blurmask , add locations of detected faces into attributes. Args: radius [int]: The radius of pixels for  vipy.image.Scene.blurmask mindim [int]: The minimum dimension for downsampling the image for face detection. Will be upsampled prior to pixelize. Returns: A  vipy.image.Scene object with a pixel buffer with all faces pixelized, with faceblur attribute set in  vipy.image.Image.metadata showing the locations of the blurred faces.",
+"doc":"Replace pixels for all detected faces with  vipy.image.Scene.blurmask , add locations of detected faces into attributes. Args: radius [int]: The radius of pixels for  vipy.image.Scene.blurmask mindim [int]: The minimum dimension for downsampling the image for face detection. Will be upsampled prior to pixelize. Returns: A  vipy.image.Scene object with a pixel buffer with all faces pixelized, with faceblur attribute set in  vipy.image.Image.metadata showing the locations of the blurred faces.  notes - This method uses a CPU-only pretrained torch network for face detection from the heyvi visual analytics package, which is re-initialized on each call to this method. - For batch operations on many images, it is preferred to set up the detection network once, then calling many images sequentially.",
 "func":1
 },
 {
 "ref":"vipy.image.Image.facepixelize",
 "url":50,
-"doc":"Replace pixels for all detected faces with  vipy.image.Scene.pixelize , add locations of detected faces into attributes. Args: radius [int]: The radius of pixels for  vipy.image.Scene.radius mindim [int]: The minimum dimension for downsampling the image for face detection. Will be upsampled prior to pixelize. Returns: A  vipy.image.Image object with a pixel buffer with all faces pixelized, with facepixelize attribute set in  vipy.image.Image.metadata showing the locations of the blurred faces.",
+"doc":"Replace pixels for all detected faces with  vipy.image.Scene.pixelize , add locations of detected faces into attributes. Args: radius [int]: The radius of pixels for  vipy.image.Scene.radius mindim [int]: The minimum dimension for downsampling the image for face detection. Will be upsampled prior to pixelize. Returns: A  vipy.image.Scene object with a pixel buffer with all faces pixelized, with facepixelize attribute set in  vipy.image.Image.metadata showing the locations of the blurred faces.  notes - This method uses a CPU-only pretrained torch network for face detection from the heyvi visual analytics package, which is re-initialized on each call to this method. - For batch operations on many images, it is preferred to set up the detection network once, then calling many images sequentially.",
 "func":1
 },
 {
@@ -11247,6 +11253,12 @@ INDEX=[
 "ref":"vipy.image.ImageCategory.getattribute",
 "url":50,
 "doc":"Return the key k in the attributes dictionary (self.attributes) if present, else None",
+"func":1
+},
+{
+"ref":"vipy.image.ImageCategory.metadata",
+"url":50,
+"doc":"Return metadata associated with this image, stored in the attributes dictionary",
 "func":1
 },
 {
@@ -11654,13 +11666,13 @@ INDEX=[
 {
 "ref":"vipy.image.ImageCategory.faceblur",
 "url":50,
-"doc":"Replace pixels for all detected faces with  vipy.image.Scene.blurmask , add locations of detected faces into attributes. Args: radius [int]: The radius of pixels for  vipy.image.Scene.blurmask mindim [int]: The minimum dimension for downsampling the image for face detection. Will be upsampled prior to pixelize. Returns: A  vipy.image.Scene object with a pixel buffer with all faces pixelized, with faceblur attribute set in  vipy.image.Image.metadata showing the locations of the blurred faces.",
+"doc":"Replace pixels for all detected faces with  vipy.image.Scene.blurmask , add locations of detected faces into attributes. Args: radius [int]: The radius of pixels for  vipy.image.Scene.blurmask mindim [int]: The minimum dimension for downsampling the image for face detection. Will be upsampled prior to pixelize. Returns: A  vipy.image.Scene object with a pixel buffer with all faces pixelized, with faceblur attribute set in  vipy.image.Image.metadata showing the locations of the blurred faces.  notes - This method uses a CPU-only pretrained torch network for face detection from the heyvi visual analytics package, which is re-initialized on each call to this method. - For batch operations on many images, it is preferred to set up the detection network once, then calling many images sequentially.",
 "func":1
 },
 {
 "ref":"vipy.image.ImageCategory.facepixelize",
 "url":50,
-"doc":"Replace pixels for all detected faces with  vipy.image.Scene.pixelize , add locations of detected faces into attributes. Args: radius [int]: The radius of pixels for  vipy.image.Scene.radius mindim [int]: The minimum dimension for downsampling the image for face detection. Will be upsampled prior to pixelize. Returns: A  vipy.image.Image object with a pixel buffer with all faces pixelized, with facepixelize attribute set in  vipy.image.Image.metadata showing the locations of the blurred faces.",
+"doc":"Replace pixels for all detected faces with  vipy.image.Scene.pixelize , add locations of detected faces into attributes. Args: radius [int]: The radius of pixels for  vipy.image.Scene.radius mindim [int]: The minimum dimension for downsampling the image for face detection. Will be upsampled prior to pixelize. Returns: A  vipy.image.Scene object with a pixel buffer with all faces pixelized, with facepixelize attribute set in  vipy.image.Image.metadata showing the locations of the blurred faces.  notes - This method uses a CPU-only pretrained torch network for face detection from the heyvi visual analytics package, which is re-initialized on each call to this method. - For batch operations on many images, it is preferred to set up the detection network once, then calling many images sequentially.",
 "func":1
 },
 {
@@ -12317,6 +12329,12 @@ INDEX=[
 "func":1
 },
 {
+"ref":"vipy.image.Scene.metadata",
+"url":50,
+"doc":"Return metadata associated with this image, stored in the attributes dictionary",
+"func":1
+},
+{
 "ref":"vipy.image.Scene.clone",
 "url":50,
 "doc":"Create deep copy of object, flushing the original buffer if requested and returning the cloned object. Flushing is useful for distributed memory management to free the buffer from this object, and pass along a cloned object which can be used for encoding and will be garbage collected.  flushforward: copy the object, and set the cloned object array() to None. This flushes the video buffer for the clone, not the object  flushbackward: copy the object, and set the object array() to None. This flushes the video buffer for the object, not the clone.  flush: set the object array() to None and clone the object. This flushes the video buffer for both the clone and the object.",
@@ -12619,13 +12637,13 @@ INDEX=[
 {
 "ref":"vipy.image.Scene.faceblur",
 "url":50,
-"doc":"Replace pixels for all detected faces with  vipy.image.Scene.blurmask , add locations of detected faces into attributes. Args: radius [int]: The radius of pixels for  vipy.image.Scene.blurmask mindim [int]: The minimum dimension for downsampling the image for face detection. Will be upsampled prior to pixelize. Returns: A  vipy.image.Scene object with a pixel buffer with all faces pixelized, with faceblur attribute set in  vipy.image.Image.metadata showing the locations of the blurred faces.",
+"doc":"Replace pixels for all detected faces with  vipy.image.Scene.blurmask , add locations of detected faces into attributes. Args: radius [int]: The radius of pixels for  vipy.image.Scene.blurmask mindim [int]: The minimum dimension for downsampling the image for face detection. Will be upsampled prior to pixelize. Returns: A  vipy.image.Scene object with a pixel buffer with all faces pixelized, with faceblur attribute set in  vipy.image.Image.metadata showing the locations of the blurred faces.  notes - This method uses a CPU-only pretrained torch network for face detection from the heyvi visual analytics package, which is re-initialized on each call to this method. - For batch operations on many images, it is preferred to set up the detection network once, then calling many images sequentially.",
 "func":1
 },
 {
 "ref":"vipy.image.Scene.facepixelize",
 "url":50,
-"doc":"Replace pixels for all detected faces with  vipy.image.Scene.pixelize , add locations of detected faces into attributes. Args: radius [int]: The radius of pixels for  vipy.image.Scene.radius mindim [int]: The minimum dimension for downsampling the image for face detection. Will be upsampled prior to pixelize. Returns: A  vipy.image.Image object with a pixel buffer with all faces pixelized, with facepixelize attribute set in  vipy.image.Image.metadata showing the locations of the blurred faces.",
+"doc":"Replace pixels for all detected faces with  vipy.image.Scene.pixelize , add locations of detected faces into attributes. Args: radius [int]: The radius of pixels for  vipy.image.Scene.radius mindim [int]: The minimum dimension for downsampling the image for face detection. Will be upsampled prior to pixelize. Returns: A  vipy.image.Scene object with a pixel buffer with all faces pixelized, with facepixelize attribute set in  vipy.image.Image.metadata showing the locations of the blurred faces.  notes - This method uses a CPU-only pretrained torch network for face detection from the heyvi visual analytics package, which is re-initialized on each call to this method. - For batch operations on many images, it is preferred to set up the detection network once, then calling many images sequentially.",
 "func":1
 },
 {
@@ -13294,6 +13312,12 @@ INDEX=[
 "func":1
 },
 {
+"ref":"vipy.image.ImageDetection.metadata",
+"url":50,
+"doc":"Return metadata associated with this image, stored in the attributes dictionary",
+"func":1
+},
+{
 "ref":"vipy.image.ImageDetection.clone",
 "url":50,
 "doc":"Create deep copy of object, flushing the original buffer if requested and returning the cloned object. Flushing is useful for distributed memory management to free the buffer from this object, and pass along a cloned object which can be used for encoding and will be garbage collected.  flushforward: copy the object, and set the cloned object array() to None. This flushes the video buffer for the clone, not the object  flushbackward: copy the object, and set the object array() to None. This flushes the video buffer for the object, not the clone.  flush: set the object array() to None and clone the object. This flushes the video buffer for both the clone and the object.",
@@ -13596,13 +13620,13 @@ INDEX=[
 {
 "ref":"vipy.image.ImageDetection.faceblur",
 "url":50,
-"doc":"Replace pixels for all detected faces with  vipy.image.Scene.blurmask , add locations of detected faces into attributes. Args: radius [int]: The radius of pixels for  vipy.image.Scene.blurmask mindim [int]: The minimum dimension for downsampling the image for face detection. Will be upsampled prior to pixelize. Returns: A  vipy.image.Scene object with a pixel buffer with all faces pixelized, with faceblur attribute set in  vipy.image.Image.metadata showing the locations of the blurred faces.",
+"doc":"Replace pixels for all detected faces with  vipy.image.Scene.blurmask , add locations of detected faces into attributes. Args: radius [int]: The radius of pixels for  vipy.image.Scene.blurmask mindim [int]: The minimum dimension for downsampling the image for face detection. Will be upsampled prior to pixelize. Returns: A  vipy.image.Scene object with a pixel buffer with all faces pixelized, with faceblur attribute set in  vipy.image.Image.metadata showing the locations of the blurred faces.  notes - This method uses a CPU-only pretrained torch network for face detection from the heyvi visual analytics package, which is re-initialized on each call to this method. - For batch operations on many images, it is preferred to set up the detection network once, then calling many images sequentially.",
 "func":1
 },
 {
 "ref":"vipy.image.ImageDetection.facepixelize",
 "url":50,
-"doc":"Replace pixels for all detected faces with  vipy.image.Scene.pixelize , add locations of detected faces into attributes. Args: radius [int]: The radius of pixels for  vipy.image.Scene.radius mindim [int]: The minimum dimension for downsampling the image for face detection. Will be upsampled prior to pixelize. Returns: A  vipy.image.Image object with a pixel buffer with all faces pixelized, with facepixelize attribute set in  vipy.image.Image.metadata showing the locations of the blurred faces.",
+"doc":"Replace pixels for all detected faces with  vipy.image.Scene.pixelize , add locations of detected faces into attributes. Args: radius [int]: The radius of pixels for  vipy.image.Scene.radius mindim [int]: The minimum dimension for downsampling the image for face detection. Will be upsampled prior to pixelize. Returns: A  vipy.image.Scene object with a pixel buffer with all faces pixelized, with facepixelize attribute set in  vipy.image.Image.metadata showing the locations of the blurred faces.  notes - This method uses a CPU-only pretrained torch network for face detection from the heyvi visual analytics package, which is re-initialized on each call to this method. - For batch operations on many images, it is preferred to set up the detection network once, then calling many images sequentially.",
 "func":1
 },
 {
