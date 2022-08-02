@@ -1396,7 +1396,19 @@ class Image(object):
         """
         self.array(gain*self.load().float().array() + bias)
         return self.colorspace('float')
-    
+
+    def additive_noise(self, hue=(-15,15), saturation=(-15,15), brightness=(-15,15)):
+        """Apply uniform random additive noise in the given range to the given HSV color channels.  Image will be converted to HSV prior to applying noise."""
+        assert isinstance(hue, tuple) and len(hue) == 2 and hue[1]>=hue[0]
+        assert isinstance(saturation, tuple) and len(saturation) == 2 and saturation[1]>=saturation[0]
+        assert isinstance(brightness, tuple) and len(brightness) == 2 and brightness[1]>=brightness[0]        
+        
+        (H,W,C) = (self.height(), self.width(), self.channels())
+        noise = np.dstack(((hue[1]-hue[0])*np.random.rand(H,W)+hue[0],
+                           (saturation[1]-saturation[0])*np.random.rand(H,W)+saturation[0],
+                           (brightness[1]-brightness[0])*np.random.rand(H,W)+brightness[0]))
+        return self.array( np.minimum(np.maximum(self.hsv().array() + noise, 0), 255).astype(np.uint8) )
+            
     # Image statistics
     def stats(self):
         print(self)

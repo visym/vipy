@@ -26,7 +26,7 @@
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/90eb220420617c9f9e3532f3a2878df742c7a8d3/vipy/visualize.py#L1-L653" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/a3fbf42115c8bbd3bf35bbcd8e76edb6c67bed36/vipy/visualize.py#L1-L656" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">import os
 import numpy as np
@@ -301,8 +301,10 @@ def videomosaic(videos, gridrows=None, gridcols=None):
 def montage(imlist, imgheight=256, imgwidth=256, gridrows=None, gridcols=None, aspectratio=1, crop=False, skip=True, border=1, border_bgr=(128,128,128), do_flush=False, verbose=False):
     &#34;&#34;&#34;Create a montage image from the of provided list of `vipy.image.Image` objects.
 
+    &gt;&gt;&gt; vipy.visualize.montage([[im.crop() for im in vipy.image.vehicles()]]).show()
+
     Args:
-        imlist: [list, tuple] iterable of `vipy.image.Image` objects which is used to montage rowwise
+        imlist: [list, tuple] iterable of `vipy.image.Image` objects which is used to montage rowwise, or a list of lists such that each element defines `vipy.image.Image` objects on a grid row.
         imgheight: [int] The height of each individual image in the grid, defaults to 256 px
         imgwidth: [int] the width of each individual image in the grid, defaults to 256 px, use centersquare() for isotropic scaling
         gridrows: [int]  The number of images per row, and number of images per column.  This defines the montage shape.
@@ -317,13 +319,14 @@ def montage(imlist, imgheight=256, imgwidth=256, gridrows=None, gridcols=None, a
 
     Returns:
         Return a `vipy.image.Image` montage which is of size (gridrows*(imgheight + 2*border), gridcols*(imgwidth+2*border))
-    
+        
     &#34;&#34;&#34;
     assert (isinstance(imlist, list) or isinstance(imlist, tuple)) and len(imlist)&gt;0
-    imlist = list(imlist)
     
+    (rows, cols) = (gridrows, gridcols) if isinstance(imlist[0], vipy.image.Image) else (len(imlist), max([len(r) for r in imlist]))
+    imlist = vipy.util.flatlist(imlist)
     (n,m) = (imgheight, imgwidth)
-    (rows,cols) = (gridrows, gridcols)
+
     n_imgs = len(imlist)
     M = int(np.ceil(np.sqrt(n_imgs)))
     N = int(np.ceil(n_imgs/M))
@@ -743,7 +746,7 @@ if None, nothing is displayed</dd>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/90eb220420617c9f9e3532f3a2878df742c7a8d3/vipy/visualize.py#L20-L165" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/a3fbf42115c8bbd3bf35bbcd8e76edb6c67bed36/vipy/visualize.py#L20-L165" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def hoverpixel(urls, outfile=None, pixelsize=32, sortby=&#39;color&#39;, loupe=True, hoversize=512, ultext=None, display=False, ultextcolor=&#39;white&#39;, ultextsize=&#39;large&#39;, aspectratio=2560/1440, ultextoffset=(16,16)):
     &#34;&#34;&#34;Generate a standalone hoverpixel visualization.
@@ -917,7 +920,7 @@ Be sure to add allowfullscreen to the iframe.</p>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/90eb220420617c9f9e3532f3a2878df742c7a8d3/vipy/visualize.py#L168-L233" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/a3fbf42115c8bbd3bf35bbcd8e76edb6c67bed36/vipy/visualize.py#L168-L233" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def hoverpixel_selector(htmllist, legendlist, outfile=None, display=False, offset=(60, 80), fullscreen=True, ultext=None, ultextcolor=&#39;white&#39;, ultextsize=&#39;large&#39;, ultextoffset=(16,16)):
     &#34;&#34;&#34;Create a dropdown selector of hoverpixel visualizations by legend.
@@ -995,7 +998,7 @@ Be sure to add allowfullscreen to the iframe.</p>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/90eb220420617c9f9e3532f3a2878df742c7a8d3/vipy/visualize.py#L561-L606" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/a3fbf42115c8bbd3bf35bbcd8e76edb6c67bed36/vipy/visualize.py#L564-L609" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def imagelist(list_of_image_files, outdir, title=&#39;Image Visualization&#39;, imagewidth=64):
     &#34;&#34;&#34;Given a list of image filenames wth absolute paths, copy to outdir, and create an index.html file that visualizes each.    
@@ -1053,7 +1056,7 @@ Be sure to add allowfullscreen to the iframe.</p>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/90eb220420617c9f9e3532f3a2878df742c7a8d3/vipy/visualize.py#L609-L653" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/a3fbf42115c8bbd3bf35bbcd8e76edb6c67bed36/vipy/visualize.py#L612-L656" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def imagetuplelist(list_of_tuples_of_image_files, outdir, title=&#39;Image Visualization&#39;, imagewidth=64):
     &#34;&#34;&#34;Imagelist but put tuples on same row&#34;&#34;&#34;
@@ -1107,10 +1110,12 @@ Be sure to add allowfullscreen to the iframe.</p>
 </code></dt>
 <dd>
 <div class="desc"><p>Create a montage image from the of provided list of <code><a title="vipy.image.Image" href="image.html#vipy.image.Image">Image</a></code> objects.</p>
+<pre><code class="language-python-repl">&gt;&gt;&gt; vipy.visualize.montage([[im.crop() for im in vipy.image.vehicles()]]).show()
+</code></pre>
 <h2 id="args">Args</h2>
 <dl>
 <dt><strong><code>imlist</code></strong></dt>
-<dd>[list, tuple] iterable of <code><a title="vipy.image.Image" href="image.html#vipy.image.Image">Image</a></code> objects which is used to montage rowwise</dd>
+<dd>[list, tuple] iterable of <code><a title="vipy.image.Image" href="image.html#vipy.image.Image">Image</a></code> objects which is used to montage rowwise, or a list of lists such that each element defines <code><a title="vipy.image.Image" href="image.html#vipy.image.Image">Image</a></code> objects on a grid row.</dd>
 <dt><strong><code>imgheight</code></strong></dt>
 <dd>[int] The height of each individual image in the grid, defaults to 256 px</dd>
 <dt><strong><code>imgwidth</code></strong></dt>
@@ -1149,13 +1154,15 @@ display optional verbose messages</dd>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/90eb220420617c9f9e3532f3a2878df742c7a8d3/vipy/visualize.py#L271-L351" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/a3fbf42115c8bbd3bf35bbcd8e76edb6c67bed36/vipy/visualize.py#L271-L354" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def montage(imlist, imgheight=256, imgwidth=256, gridrows=None, gridcols=None, aspectratio=1, crop=False, skip=True, border=1, border_bgr=(128,128,128), do_flush=False, verbose=False):
     &#34;&#34;&#34;Create a montage image from the of provided list of `vipy.image.Image` objects.
 
+    &gt;&gt;&gt; vipy.visualize.montage([[im.crop() for im in vipy.image.vehicles()]]).show()
+
     Args:
-        imlist: [list, tuple] iterable of `vipy.image.Image` objects which is used to montage rowwise
+        imlist: [list, tuple] iterable of `vipy.image.Image` objects which is used to montage rowwise, or a list of lists such that each element defines `vipy.image.Image` objects on a grid row.
         imgheight: [int] The height of each individual image in the grid, defaults to 256 px
         imgwidth: [int] the width of each individual image in the grid, defaults to 256 px, use centersquare() for isotropic scaling
         gridrows: [int]  The number of images per row, and number of images per column.  This defines the montage shape.
@@ -1170,13 +1177,14 @@ display optional verbose messages</dd>
 
     Returns:
         Return a `vipy.image.Image` montage which is of size (gridrows*(imgheight + 2*border), gridcols*(imgwidth+2*border))
-    
+        
     &#34;&#34;&#34;
     assert (isinstance(imlist, list) or isinstance(imlist, tuple)) and len(imlist)&gt;0
-    imlist = list(imlist)
     
+    (rows, cols) = (gridrows, gridcols) if isinstance(imlist[0], vipy.image.Image) else (len(imlist), max([len(r) for r in imlist]))
+    imlist = vipy.util.flatlist(imlist)
     (n,m) = (imgheight, imgwidth)
-    (rows,cols) = (gridrows, gridcols)
+
     n_imgs = len(imlist)
     M = int(np.ceil(np.sqrt(n_imgs)))
     N = int(np.ceil(n_imgs/M))
@@ -1257,7 +1265,7 @@ Returns:
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/90eb220420617c9f9e3532f3a2878df742c7a8d3/vipy/visualize.py#L236-L257" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/a3fbf42115c8bbd3bf35bbcd8e76edb6c67bed36/vipy/visualize.py#L236-L257" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def mosaic(videos, gridrows=None, gridcols=None):
     &#34;&#34;&#34;Create a mosaic iterator from an iterable of videos.
@@ -1308,7 +1316,7 @@ Returns:
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/90eb220420617c9f9e3532f3a2878df742c7a8d3/vipy/visualize.py#L451-L516" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/a3fbf42115c8bbd3bf35bbcd8e76edb6c67bed36/vipy/visualize.py#L454-L519" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def tohtml(imlist, imdict=None, title=&#39;Image Visualization&#39;, mindim=1024, outfile=None, display=False):
     &#34;&#34;&#34;Given a list of vipy.image.Image objects, show the images along with the dictionary contents of imdict (one per image) in a single standalone HTML file
@@ -1399,7 +1407,7 @@ Returns:
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/90eb220420617c9f9e3532f3a2878df742c7a8d3/vipy/visualize.py#L392-L447" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/a3fbf42115c8bbd3bf35bbcd8e76edb6c67bed36/vipy/visualize.py#L395-L450" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def urls(urllist, title=&#39;URL Visualization&#39;, imagewidth=1024, outfile=None, display=False):
     &#34;&#34;&#34;Given a list of public image URLs, create a stand-alone HTML page to show them all.
@@ -1467,7 +1475,7 @@ Returns:
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/90eb220420617c9f9e3532f3a2878df742c7a8d3/vipy/visualize.py#L519-L557" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/a3fbf42115c8bbd3bf35bbcd8e76edb6c67bed36/vipy/visualize.py#L522-L560" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def videolist(vidlist, viddict=None, title=&#39;Video Visualization&#39;, outfile=None, display=False):
     &#34;&#34;&#34;Create a standalone HTML file that will visualize the set of videos in vidlist using HTML5 video player&#34;&#34;&#34;
@@ -1540,7 +1548,7 @@ If None, then use the duration of the longest video</dd>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/90eb220420617c9f9e3532f3a2878df742c7a8d3/vipy/visualize.py#L354-L389" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/a3fbf42115c8bbd3bf35bbcd8e76edb6c67bed36/vipy/visualize.py#L357-L392" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def videomontage(vidlist, imgheight, imgwidth, gridrows=None, gridcols=None, aspectratio=1, crop=False, skip=True, border=1, border_bgr=(128,128,128), do_flush=False, verbose=True, framerate=30.0, max_duration=None):
     &#34;&#34;&#34;Generate a video montage for the provided videos by creating a image montage for every frame.  
@@ -1595,7 +1603,7 @@ This assumes that the videos are showing the same timestamps like in a security 
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/90eb220420617c9f9e3532f3a2878df742c7a8d3/vipy/visualize.py#L260-L268" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/a3fbf42115c8bbd3bf35bbcd8e76edb6c67bed36/vipy/visualize.py#L260-L268" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def videomosaic(videos, gridrows=None, gridcols=None):
     &#34;&#34;&#34;Return a mosaic video from an iterable of videos.  

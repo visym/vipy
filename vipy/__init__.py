@@ -360,11 +360,16 @@ Data augmentation is the process of introducing synthetic transformations of a g
 
 ```python
 im = vipy.image.vehicles()
-vipy.visualize.montage([[o.clone().fliplr().crop(), # spatial mirror
-                         o.dilate(1.5).crop()]      # bounding box dilation
-                         for o in im]
+vipy.visualize.montage([[o.crop().fliplr(),                # spatial mirror
+                         o.clone().dilate(1.2).crop(),     # zoom out
+                         o.clone().translate(4,5).crop(),  # translation 
+                         o.clone().translate(-2,9).crop(), # translation 
+                         o.clone().dilate(0.8).crop(),     # zoom in 
+                         o.crop().blur(sigma=1),           # spatial blur
+                         o.crop().additive_noise()]        # chromatic noise 
+                         for o in im])                     # for all objects in the scene
 ```
-
+<img src="https://raw.githubusercontent.com/visym/vipy/master/docs/tutorials/data_augmentation_for_training.jpg" height="250">
 
 
 ### Vipy vs. Torchvision
