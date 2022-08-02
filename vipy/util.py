@@ -443,8 +443,8 @@ def permutelist(inlist, deterministic=False, seed=42):
 
 
 def flatlist(inlist):
-    """Convert list of tuples into a list expanded by concatenating tuples"""
-    return [x for r in inlist for x in r]
+    """Convert list of tuples into a list expanded by concatenating tuples.  If the input is already flat, return it unchanged."""
+    return [x for r in inlist for x in (r if (isinstance(r, list) or isinstance(r, tuple)) else (r,))]
 
 
 def rmdir(indir):
@@ -732,7 +732,7 @@ def scpsave(V, username=None):
         username: [str] Your username on the remote machine to select the proper SSH key
 
     Returns:
-        A temp archive file stored on the remote machine that will be downloaded and loaded via SCP
+        A temp archive file stored on the remote machine that will be downloaded and loaded via SCP, such that each element in the list will be fetched via scp when pixels are loaded.
 
     """
     
@@ -742,7 +742,7 @@ def scpsave(V, username=None):
     if isinstance(V, vipy.dataset.Dataset) and V._isvipy():
         v = V.localmap(lambda v: v.clone().url('scp://%s%s:%s' % (('%s@' % username) if username is not None else '', socket.gethostname(), v.filename())).nofilename())
     elif (isinstance(V, vipy.image.Image) or isinstance(V, vipy.video.Video)) and V.hasfilename():        
-        v = V.clone().url('scp://%s%s:%s' % (('%s@' % username) if username is not None else '', socket.gethostname(), v.filename())).nofilename()
+        v = V.clone().url('scp://%s%s:%s' % (('%s@' % username) if username is not None else '', socket.gethostname(), V.filename())).nofilename()
     elif islist(V) and all([isinstance(v, vipy.image.Image) or isinstance(v, vipy.video.Video) for v in V]):
         v = [v.clone().url('scp://%s%s:%s' % (('%s@' % username) if username is not None else '', socket.gethostname(), v.abspath().filename())).nofilename() for v in V]
     else:
@@ -750,7 +750,7 @@ def scpsave(V, username=None):
 
     pklfile = 'scp://%s%s:%s' % (('%s@' % username) if username is not None else '', socket.gethostname(), save(v, temppkl()))
     cmd = "V = vipy.util.scpload('%s')" % pklfile
-    print('[vipy.util.scpsave]: On a remote machine where you have public key ssh access to this machine run:\n>>> %s\n' % cmd)
+    print('[vipy.util.scpsave]: On a local machine where you have public key ssh access to this remote machine run:\n>>> %s\n' % cmd)
     return pklfile
 
 

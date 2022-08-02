@@ -339,6 +339,9 @@ Vipy provides a 128 bit differential perceptual hashing function which is used f
 3
 ```
 
+The perceptual hash function also allows for ignoring detected objects in the foreground.  A background hash `vipy.image.Scene.bghash` computes the perceptual hash function using only the regions not contained within the foreground bounding boxes.  This is useful for identifying near duplicate background locations where there may be different foreground objects in the scene between images.  If the `vipy.image.Scene` has no associated foreground objects, then the background hash is equivalent to the perceptual hash above.
+
+
 ### Blur Faces
 
 ```python
@@ -350,14 +353,43 @@ Vipy provides a 128 bit differential perceptual hashing function which is used f
 <img src="https://raw.githubusercontent.com/visym/vipy/master/docs/tutorials/blur_faces_2.jpg" height="250">
 
 
+
+### Data augmentation for training
+
+Data augmentation is the process of introducing synthetic transformations of a given image to introduce additional variation during training.  Data augmentation considers scales, crops, translations, mirrors, rotations or chromatic noise which are applied to a source image to generate one or more augmentations.  
+
+```python
+im = vipy.image.vehicles()
+vipy.visualize.montage([[o.clone().fliplr().crop(), # spatial mirror
+                         o.dilate(1.5).crop()]      # bounding box dilation
+                         for o in im]
+```
+
+
+
 ### Vipy vs. Torchvision
 
-
-
-
-### Image data augmentation for training
-
 ### Visualization behind SSH 
+
+Data repositories are often accessed via data storage behind SSH.  You can set up port forwarding to visualize this data, but this may require root access to configure firewall rules.  If you have SSH public key access to your cluster machine, you can do the following:
+
+On a remote machine (e.g. the cluster machine you have accessed via ssh), run:
+
+```python
+remote>>> vipy.util.scpsave(vipy.image.owl())
+[vipy.util.scpsave]: On a local machine where you have public key ssh access to this remote machine run:
+>>> V = vipy.util.scpload('scp://hostname:/var/folders/sn/6n34qjp513742_5y3lvmhnlw0000gn/T/c4237a25a99b776f.pkl')
+```
+
+Then, on your local machine (e.g. your laptop), run the command output above:
+
+```python
+local>>> print(vipy.util.scpload('scp://hostname:/var/folders/sn/6n34qjp513742_5y3lvmhnlw0000gn/T/c4237a25a99b776f.pkl'))
+<vipy.image.scene: height=640, width=512, color=rgb, filename="/Users/jebyrne/.vipy/1920px-Bubo_virginianus_06.jpg", url=https://upload.wikimedia.org/wikipedia/commons/thumb/2/23/Bubo_virginianus_06.jpg/1920px-Bubo_virginianus_06.jpg, category="Nature", objects=1>
+```
+
+The method `vipy.util.scpsave` will save a list of vipy objects to a temporary pickle file, such that the URL of each object is prepended with "scp://".  When calling `vipy.util.scpload` on the local machine, this will fetch the pickle file from the remote machine via scp using the default public key.  Then, when each vipy object is accessed, it will fetch the URL of the media object via scp from the remote machine.  This provides an on-demand fetching of each image from a data storage behind a SSH server without any port forwarding, and uses public key scp.  This allows for visualization of datasets that cannot be copied locally, but can be reduced on the local machine which are then fetched for visualization.
+
 
 ### Visualization behind AWS S3 
 
