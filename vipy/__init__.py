@@ -353,6 +353,17 @@ The perceptual hash function also allows for ignoring detected objects in the fo
 <img src="https://raw.githubusercontent.com/visym/vipy/master/docs/tutorials/blur_faces_2.jpg" height="250">
 
 
+### Detect People
+
+Vipy supports the [HeyVi](https://github.com/visym/heyvi) package for visual analytics to construct annotated videos and images.  This performs person detection on an image, and returns a `vipy.image.Scene` with the detected people objects.  This approach is convenient for person detection in single images, however for real-time performance it is recommended to leveraged batched GPU operations with the full heyvi package.  
+
+```python
+>>> im = vipy.image.Image(url='https://upload.wikimedia.org/wikipedia/en/d/d6/Friends_season_one_cast.jpg')
+>>> im.person_detection().show()
+```
+<img src="https://raw.githubusercontent.com/visym/vipy/master/docs/tutorials/detect_people.jpg" height="300">
+
+
 
 ### Data augmentation for training
 

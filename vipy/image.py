@@ -1596,7 +1596,7 @@ class Image(object):
         self.array(np.rot90(self.numpy(), 1))
         return self
 
-    def face_detection(self, mindim=256, union=False):
+    def face_detection(self, mindim=256, union=False, conf=0.2):
         """Detect faces in the scene, add as objects, return new scene with just faces
         
         Args:
@@ -1604,11 +1604,11 @@ class Image(object):
             union [bool]: Whether to return a scene with just faces or the union of the existing scene and the new faces
 
         Returns
-            A `vipy.image.Scene` object with either faces or the union of faces and all objects in self
+            A `vipy.image.Scene` object with all detected faces or the union of faces and all objects in self
 
         .. note:: This method uses a CPU-only pretrained face detector.  This is convenient, but slow.  See the heyvi package for optimized GPU batch processing for faster operation.
         """
-        import heyvi
+        try_import('heyvi'); import heyvi  # >heyvi-0.2.28 for minconf      
         im = heyvi.detection.FaceDetector()(Scene.cast(self.clone()).mindim(mindim)).mindim(self.mindim())
         return Scene.cast(self).union(im) if union else im
     
@@ -1621,11 +1621,11 @@ class Image(object):
             conf [float]: A real value between [0,1] of the minimum confidence for person detection
 
         Returns
-            A `vipy.image.Scene` object with either people or the union of people and all objects in self
+            A `vipy.image.Scene` object with all detected people or the union of people and all objects in self
         
         .. note:: This method uses a CPU-only pretrained person detector.  This is convenient, but slow.  See the heyvi package for optimized GPU batch processing for faster operation.
         """
-        import heyvi
+        try_import('heyvi'); import heyvi                
         im = heyvi.detection.ObjectDetector()(Scene.cast(self.clone()).mindim(mindim), conf=conf, objects=['person']).mindim(self.mindim())
         return Scene.cast(self).union(im) if union else im        
 
