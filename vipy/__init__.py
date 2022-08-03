@@ -356,7 +356,7 @@ The perceptual hash function also allows for ignoring detected objects in the fo
 
 ### Data augmentation for training
 
-Data augmentation is the process of introducing synthetic transformations of a given image to introduce additional variation during training.  Data augmentation considers scales, crops, translations, mirrors, rotations or chromatic noise which are applied to a source image to generate one or more augmentations.  
+Data augmentation is the process of introducing synthetic transformations of a given image to introduce additional variation during training.  Data augmentation considers scales, crops, translations, mirrors, rotations or chromatic noise which are applied to a source image to generate one or more augmentations.  All pixel buffers are shared by default for speed, so the clone() method will enforce that pixel buffers are copied when needed.
 
 ```python
 im = vipy.image.vehicles()
@@ -369,7 +369,7 @@ vipy.visualize.montage([[o.crop().fliplr(),                # spatial mirror
                          o.crop().additive_noise()]        # chromatic noise 
                          for o in im])                     # for all objects in the scene
 ```
-<img src="https://raw.githubusercontent.com/visym/vipy/master/docs/tutorials/data_augmentation_for_training.jpg" height="250">
+<img src="https://raw.githubusercontent.com/visym/vipy/master/docs/tutorials/data_augmentation_for_training.jpg" height="350">
 
 
 ### Vipy vs. Torchvision

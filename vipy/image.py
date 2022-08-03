@@ -1596,6 +1596,39 @@ class Image(object):
         self.array(np.rot90(self.numpy(), 1))
         return self
 
+    def face_detection(self, mindim=256, union=False):
+        """Detect faces in the scene, add as objects, return new scene with just faces
+        
+        Args:
+            mindim [int]: The minimum dimension for downsampling the image for face detection.  Will be upsampled back to native resolution prior to return
+            union [bool]: Whether to return a scene with just faces or the union of the existing scene and the new faces
+
+        Returns
+            A `vipy.image.Scene` object with either faces or the union of faces and all objects in self
+
+        .. note:: This method uses a CPU-only pretrained face detector.  This is convenient, but slow.  See the heyvi package for optimized GPU batch processing for faster operation.
+        """
+        import heyvi
+        im = heyvi.detection.FaceDetector()(Scene.cast(self.clone()).mindim(mindim)).mindim(self.mindim())
+        return Scene.cast(self).union(im) if union else im
+    
+    def person_detection(self, mindim=256, union=False, conf=0.2):
+        """Detect only people in the scene, add as objects, return new scene with just people
+
+        Args:
+            mindim [int]: The minimum dimension for downsampling the image for person detection.  Will be upsampled back to native resolution prior to return
+            union [bool]: Whether to return a scene with just people or the union of the existing scene and the new people
+            conf [float]: A real value between [0,1] of the minimum confidence for person detection
+
+        Returns
+            A `vipy.image.Scene` object with either people or the union of people and all objects in self
+        
+        .. note:: This method uses a CPU-only pretrained person detector.  This is convenient, but slow.  See the heyvi package for optimized GPU batch processing for faster operation.
+        """
+        import heyvi
+        im = heyvi.detection.ObjectDetector()(Scene.cast(self.clone()).mindim(mindim), conf=conf, objects=['person']).mindim(self.mindim())
+        return Scene.cast(self).union(im) if union else im        
+
     def faceblur(self, radius=4, mindim=256):
         """Replace pixels for all detected faces with `vipy.image.Scene.blurmask`, add locations of detected faces into attributes.
 
@@ -1604,17 +1637,16 @@ class Image(object):
             mindim [int]: The minimum dimension for downsampling the image for face detection.  Will be upsampled prior to pixelize.
         
         Returns:
-            A `vipy.image.Scene` object with a pixel buffer with all faces pixelized, with faceblur attribute set in `vipy.image.Image.metadata` showing the locations of the blurred faces.
+            A `vipy.image.Image` object with a pixel buffer with all faces pixelized, with faceblur attribute set in `vipy.image.Image.metadata` showing the locations of the blurred faces.
 
         .. notes::
             - This method uses a CPU-only pretrained torch network for face detection from the heyvi visual analytics package, which is re-initialized on each call to this method.  
             - For batch operations on many images, it is preferred to set up the detection network once, then calling many images sequentially.  
+            - To retain boxes, use self.face_detection().blurmask()
         """
-        
-        import heyvi
-        im = heyvi.detection.FaceDetector()(self.clone().mindim(mindim)).mindim(self.mindim())
-        return im.setattribute('faceblur', [o.int().json() for o in im.objects()]).blurmask(radius=radius).clear()
-    
+        im = self.face_detection(mindim=mindim, union=False)  # only faces
+        return im.setattribute('faceblur', [o.int().json() for o in im.objects()]).blurmask(radius=radius).downcast()
+
     def facepixelize(self, radius=7, mindim=256):
         """Replace pixels for all detected faces with `vipy.image.Scene.pixelize`, add locations of detected faces into attributes.
 
@@ -1623,16 +1655,15 @@ class Image(object):
             mindim [int]: The minimum dimension for downsampling the image for face detection.  Will be upsampled prior to pixelize.
         
         Returns:
-            A `vipy.image.Scene` object with a pixel buffer with all faces pixelized, with facepixelize attribute set in `vipy.image.Image.metadata` showing the locations of the blurred faces.
+            A `vipy.image.Image` object with a pixel buffer with all faces pixelized, with facepixelize attribute set in `vipy.image.Image.metadata` showing the locations of the blurred faces.
 
         .. notes::
             - This method uses a CPU-only pretrained torch network for face detection from the heyvi visual analytics package, which is re-initialized on each call to this method.  
             - For batch operations on many images, it is preferred to set up the detection network once, then calling many images sequentially.  
-
+            - To retain boxes, use self.face_detection().pixelize()
         """
-        import heyvi
-        im = heyvi.detection.FaceDetector()(self.clone().mindim(mindim)).mindim(self.mindim())
-        return im.setattribute('facepixelize', [o.int().json() for o in im.objects()]).pixelize(radius=radius).clear()
+        im = self.face_detection(mindim=mindim, union=False)          
+        return im.setattribute('facepixelize', [o.int().json() for o in im.objects()]).pixelize(radius=radius).downcast()
     
     
 class ImageCategory(Image):
@@ -2256,6 +2287,7 @@ class Scene(ImageCategory):
             vipy.show.savefig(os.path.abspath(os.path.expanduser(outfile)), figure, dpi=dpi, bbox_inches='tight', pad_inches=0)
             return outfile
 
+        
     
 class ImageDetection(Image, vipy.object.Detection):
     """vipy.image.ImageDetection class
@@ -2343,6 +2375,8 @@ class ImageDetection(Image, vipy.object.Detection):
         """is the bounding box fully within the provided image?"""
         return super().isinterior(self.width(), self.height())
 
+    
+    
     
 class DetectionImage(vipy.object.Detection, Image):
     """vipy.image.DetectionImage class
