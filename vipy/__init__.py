@@ -409,6 +409,19 @@ The method `vipy.util.scpsave` will save a list of vipy objects to a temporary p
 
 ### Visualization behind AWS S3 
 
+Data repositories are often stored with cloud service providers, such as Amazon AWS.  These providers require credentials to access URLs in Simple Storage Service (S3).  Vipy supports accessing AWS S3 URLs with credential restricted access.  Set the following environment variables for the access key and secret access key provided by Amazon AWS.  Follow the links below to get a key:
+
+* **VIPY_AWS_ACCESS_KEY_ID**='MYKEY'.  This is the [AWS key](https://docs.aws.amazon.com/general/latest/gr/aws-sec-cred-types.html) to download urls of the form "s3://".  
+* **VIPY_AWS_SECRET_ACCESS_KEY**='MYKEY'.   This is the [AWS secret key](https://docs.aws.amazon.com/general/latest/gr/aws-sec-cred-types.html) to download urls of the form "s3://".
+
+Then prepend the URL scheme "s3://BUCKET_NAME.s3.amazonaws.com/OBJECT_PATH" when constructing a URL.  Here is an example that we use for [Visym Collector](https://visym.com/collector) to store videos uploaded from around the world:
+
+```python
+>>> vipy.image.Image(url="s3://visym-data-lake140008-visymcprod.s3.amazonaws.com/uploads/Programs/BRIAR/BRIAR Ground/1abd962f-7607-4480-b6c4-cc6d206646533478029165639494950.mp4")
+```
+
+Finally, if the credentials you provide are authorized to access this bucket and object, then this object will be downloaded on-demand when the pixels are needed.  This provides a convenient method of on-demand downloading and caching of large datasets.
+
 
 ## Videos
 

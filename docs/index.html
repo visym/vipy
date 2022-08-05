@@ -383,6 +383,23 @@ Then, when each vipy object is accessed, it will fetch the URL of the media obje
 This provides an on-demand fetching of each image from a data storage behind a SSH server without any port forwarding, and uses public key scp.
 This allows for visualization of datasets that cannot be copied locally, but can be reduced on the local machine which are then fetched for visualization.</p>
 <h3 id="visualization-behind-aws-s3">Visualization behind AWS S3</h3>
+<p>Data repositories are often stored with cloud service providers, such as Amazon AWS.
+These providers require credentials to access URLs in Simple Storage Service (S3).
+Vipy supports accessing AWS S3 URLs with credential restricted access.
+Set the following environment variables for the access key and secret access key provided by Amazon AWS.
+Follow the links below to get a key:</p>
+<ul>
+<li><strong>VIPY_AWS_ACCESS_KEY_ID</strong>='MYKEY'.
+This is the <a href="https://docs.aws.amazon.com/general/latest/gr/aws-sec-cred-types.html">AWS key</a> to download urls of the form "s3://".
+</li>
+<li><strong>VIPY_AWS_SECRET_ACCESS_KEY</strong>='MYKEY'.
+This is the <a href="https://docs.aws.amazon.com/general/latest/gr/aws-sec-cred-types.html">AWS secret key</a> to download urls of the form "s3://".</li>
+</ul>
+<p>Then prepend the URL scheme "s3://BUCKET_NAME.s3.amazonaws.com/OBJECT_PATH" when constructing a URL.
+Here is an example that we use for <a href="https://visym.com/collector">Visym Collector</a> to store videos uploaded from around the world:</p>
+<pre><code class="language-python">&gt;&gt;&gt; vipy.image.Image(url=&quot;s3://visym-data-lake140008-visymcprod.s3.amazonaws.com/uploads/Programs/BRIAR/BRIAR Ground/1abd962f-7607-4480-b6c4-cc6d206646533478029165639494950.mp4&quot;)
+</code></pre>
+<p>Finally, if the credentials you provide are authorized to access this bucket and object, then this object will be downloaded on-demand when the pixels are needed.</p>
 <h2 id="videos">Videos</h2>
 <h3 id="load-from-youtube">Load from YouTube</h3>
 <pre><code class="language-python">v = vipy.video.Video(url='https://youtu.be/kpBCzzzX6zA')
@@ -426,7 +443,7 @@ This allows for visualization of datasets that cannot be copied locally, but can
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/40d726eecc56d93ee9dddda17f962a27b419a656/vipy/__init__.py#L1-L515" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/a40c40f46fec797d1fb6c8e93c884b0c73359d91/vipy/__init__.py#L1-L528" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">&#34;&#34;&#34;
 VIPY is a python package for representation, transformation and visualization of annotated videos and images.  Annotations are the ground truth provided by labelers (e.g. object bounding boxes, face identities, temporal activity clips), suitable for training computer vision systems.  VIPY provides tools to easily edit videos and images so that the annotations are transformed along with the pixels.  This enables a clean interface for transforming complex datasets for input to your computer vision training and testing pipeline.
@@ -838,6 +855,19 @@ The method `vipy.util.scpsave` will save a list of vipy objects to a temporary p
 
 
 ### Visualization behind AWS S3 
+
+Data repositories are often stored with cloud service providers, such as Amazon AWS.  These providers require credentials to access URLs in Simple Storage Service (S3).  Vipy supports accessing AWS S3 URLs with credential restricted access.  Set the following environment variables for the access key and secret access key provided by Amazon AWS.  Follow the links below to get a key:
+
+* **VIPY_AWS_ACCESS_KEY_ID**=&#39;MYKEY&#39;.  This is the [AWS key](https://docs.aws.amazon.com/general/latest/gr/aws-sec-cred-types.html) to download urls of the form &#34;s3://&#34;.  
+* **VIPY_AWS_SECRET_ACCESS_KEY**=&#39;MYKEY&#39;.   This is the [AWS secret key](https://docs.aws.amazon.com/general/latest/gr/aws-sec-cred-types.html) to download urls of the form &#34;s3://&#34;.
+
+Then prepend the URL scheme &#34;s3://BUCKET_NAME.s3.amazonaws.com/OBJECT_PATH&#34; when constructing a URL.  Here is an example that we use for [Visym Collector](https://visym.com/collector) to store videos uploaded from around the world:
+
+```python
+&gt;&gt;&gt; vipy.image.Image(url=&#34;s3://visym-data-lake140008-visymcprod.s3.amazonaws.com/uploads/Programs/BRIAR/BRIAR Ground/1abd962f-7607-4480-b6c4-cc6d206646533478029165639494950.mp4&#34;)
+```
+
+Finally, if the credentials you provide are authorized to access this bucket and object, then this object will be downloaded on-demand when the pixels are needed.
 
 
 ## Videos
