@@ -399,7 +399,8 @@ This is the <a href="https://docs.aws.amazon.com/general/latest/gr/aws-sec-cred-
 Here is an example that we use for <a href="https://visym.com/collector">Visym Collector</a> to store videos uploaded from around the world:</p>
 <pre><code class="language-python">&gt;&gt;&gt; vipy.image.Image(url=&quot;s3://visym-data-lake140008-visymcprod.s3.amazonaws.com/uploads/Programs/BRIAR/BRIAR Ground/1abd962f-7607-4480-b6c4-cc6d206646533478029165639494950.mp4&quot;)
 </code></pre>
-<p>Finally, if the credentials you provide are authorized to access this bucket and object, then this object will be downloaded on-demand when the pixels are needed.</p>
+<p>Finally, if the credentials you provide are authorized to access this bucket and object, then this object will be downloaded on-demand when the pixels are needed.
+This provides a convenient method of on-demand downloading and caching of large datasets.</p>
 <h2 id="videos">Videos</h2>
 <h3 id="load-from-youtube">Load from YouTube</h3>
 <pre><code class="language-python">v = vipy.video.Video(url='https://youtu.be/kpBCzzzX6zA')
@@ -443,7 +444,7 @@ Here is an example that we use for <a href="https://visym.com/collector">Visym C
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/a40c40f46fec797d1fb6c8e93c884b0c73359d91/vipy/__init__.py#L1-L528" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/246f0d16deb2cbe52f54a7ff3656d403d8b80214/vipy/__init__.py#L1-L528" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">&#34;&#34;&#34;
 VIPY is a python package for representation, transformation and visualization of annotated videos and images.  Annotations are the ground truth provided by labelers (e.g. object bounding boxes, face identities, temporal activity clips), suitable for training computer vision systems.  VIPY provides tools to easily edit videos and images so that the annotations are transformed along with the pixels.  This enables a clean interface for transforming complex datasets for input to your computer vision training and testing pipeline.
@@ -867,7 +868,7 @@ Then prepend the URL scheme &#34;s3://BUCKET_NAME.s3.amazonaws.com/OBJECT_PATH&#
 &gt;&gt;&gt; vipy.image.Image(url=&#34;s3://visym-data-lake140008-visymcprod.s3.amazonaws.com/uploads/Programs/BRIAR/BRIAR Ground/1abd962f-7607-4480-b6c4-cc6d206646533478029165639494950.mp4&#34;)
 ```
 
-Finally, if the credentials you provide are authorized to access this bucket and object, then this object will be downloaded on-demand when the pixels are needed.
+Finally, if the credentials you provide are authorized to access this bucket and object, then this object will be downloaded on-demand when the pixels are needed.  This provides a convenient method of on-demand downloading and caching of large datasets.
 
 
 ## Videos
