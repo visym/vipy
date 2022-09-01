@@ -1020,14 +1020,39 @@ class Video(object):
         assert 'streams' in p and len(['streams']) > 0
         (H,W) = (p['streams'][0]['height'], p['streams'][0]['width'])  # (height, width) in pixels
         return (W,H) if ('tags' in p['streams'][0] and 'rotate' in p['streams'][0]['tags'] and p['streams'][0]['tags']['rotate'] in ['90','270']) else (H,W)
-    
-    def probe(self):
-        """Run ffprobe on the filename and return the result as a dictionary"""
+
+    def probe(self, **kwargs):
+        """Run ffprobe on the filename and return the result as a dictionary
+
+        Args:
+            Any keyword arguments supported by python-ffmpeg probe() - these are passed in as-is
+            - for flags, use flag_name=None (e.g., show_frames=None) so that ffmpeg.probe() handles them correctly
+        """
         if not has_ffprobe:
             raise ValueError('"ffprobe" executable not found on path, this is optional for vipy.video - Install from http://ffmpeg.org/download.html')            
-        assert self.downloadif().hasfilename(), "Invalid video file '%s' for ffprobe" % self.filename() 
-        return ffmpeg.probe(self.filename())
+        assert self.downloadif().hasfilename(), "Invalid video file '%s' for ffprobe" % self.filename()
+        return ffmpeg.probe(self.filename(), **kwargs)
 
+    def frame_meta(self, k=None):
+        """Return the frame metadata of the underlying video file using ffprobe for all frames as a list of dicts, each list element corresponding to a frame.  This is useful for extracting frame types (e.g. i-frames).
+        
+        Args:
+            k [int]:  Return only the frame metadata for frame index k (relative to framerate of source videofile, not filter chain)
+
+        Returns:
+            a list of metadata dicts (one per frame) or a single dict for the requested frame.  
+
+        .. notes::  
+            - This will return a large amount of metadata for the entire source video (not the FFMPEG filter chain), use with caution.
+            - To get frame metata for a filter chain use vipy.video.Video.savetemp().frame_meta(), which will save the video to a temporary file prior to extracting frame metadata
+        """
+        d = self.probe(show_frames=None).get('frames')
+        return d if k is None else d[k]
+    
+    def metaframe(self, k=None):
+        """Alias for `vipy.video.Video.frame_meta`"""
+        return self.frame_meta(k)
+        
     def print(self, prefix='', verbose=True, sleep=None):
         """Print the representation of the video
 

@@ -2233,9 +2233,10 @@ class Scene(ImageCategory):
         """
         colors = vipy.show.colorlist()
         im = self.clone() if not mutator else mutator(self.clone())
+
         valid_detections = [obj.clone() for obj in im._objectlist if categories is None or obj.category() in tolist(categories)]  # Detections with valid category
         valid_detections = [obj.imclip(self.numpy()) for obj in valid_detections if obj.hasoverlap(self.numpy())]  # Detections within image rectangle
-        valid_detections = [obj.category(obj.shortlabel()) for obj in valid_detections] if shortlabel else valid_detections  # Display name as shortlabel?               
+        valid_detections = [obj.category(obj.shortlabel()) if obj.shortlabel() is not None else obj for obj in valid_detections] if shortlabel else valid_detections  # Display name as shortlabel?
         d_categories2color = {d.category():colors[int(hashlib.sha1(d.category().split(' ')[-1].encode('utf-8')).hexdigest(), 16) % len(colors)] for d in valid_detections}   # consistent color mapping by category suffix (space separated)
         d_categories2color.update(d_category2color)  # requested color mapping
         detection_color = [d_categories2color[d.category()] for d in valid_detections]                
@@ -2315,7 +2316,7 @@ class ImageDetection(Image, vipy.object.Detection):
     
     def __init__(self, filename=None, url=None, attributes=None, colorspace=None, array=None, 
                  xmin=None, xmax=None, ymin=None, ymax=None, width=None, height=None, 
-                 xcentroid=None, ycentroid=None, category=None, xywh=None):
+                 xcentroid=None, ycentroid=None, category=None, xywh=None, bbox=None):
 
         # vipy.image.Image class inheritance
         Image.__init__(self,
@@ -2335,7 +2336,7 @@ class ImageDetection(Image, vipy.object.Detection):
                                        ymax=ymax,
                                        xcentroid=xcentroid,
                                        ycentroid=ycentroid,
-                                       xywh=xywh,
+                                       xywh=xywh if xywh is not None else (bbox.xywh() if isinstance(bbox, BoundingBox) else None),                                       
                                        category=category)
                 
     def __repr__(self):
@@ -2404,7 +2405,7 @@ class DetectionImage(vipy.object.Detection, Image):
     
     def __init__(self, filename=None, url=None, attributes=None, colorspace=None, array=None, 
                  xmin=None, xmax=None, ymin=None, ymax=None, width=None, height=None, 
-                 xcentroid=None, ycentroid=None, category=None, xywh=None):
+                 xcentroid=None, ycentroid=None, category=None, xywh=None, bbox=None):
 
         # vipy.image.Image class inheritance
         Image.__init__(self,
@@ -2424,7 +2425,7 @@ class DetectionImage(vipy.object.Detection, Image):
                                        ymax=ymax,
                                        xcentroid=xcentroid,
                                        ycentroid=ycentroid,
-                                       xywh=xywh,
+                                       xywh=xywh if xywh is not None else (bbox.xywh() if isinstance(bbox, BoundingBox) else None),
                                        category=category)
                 
     def __repr__(self):

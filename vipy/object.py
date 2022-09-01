@@ -38,7 +38,7 @@ class Detection(BoundingBox):
         else:
             self._id = None if id is False else id
         self._label = category if category is not None else label
-        self._shortlabel = self._label if shortlabel is None else shortlabel
+        self._shortlabel = shortlabel if shortlabel is not None else (self._label if self._label is not None else '__')  # prepended '__' will suppress caption
         self._confidence = float(confidence) if confidence is not None else confidence
         self.attributes = {} if attributes is None else attributes.copy()  # shallow copy
 
