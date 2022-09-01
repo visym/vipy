@@ -1052,7 +1052,16 @@ class Video(object):
     def metaframe(self, k=None):
         """Alias for `vipy.video.Video.frame_meta`"""
         return self.frame_meta(k)
+
+    def iframes(self):
+        """Return a list of i-frame indexes (e.g. intra-frame, a video frame that is independent from other frames for decoding) in this video file.
         
+        .. note:: 
+            - To return the i-frame indexes for the current filter chain use self.saveas().iframes() to save to a temporary file prior to i-frame index extraction.
+            - To extract the i-frame itself, use [self.frame(k) for k in self.iframes()]
+        """
+        return [k for (k,d) in enumerate(self.metaframe()) if d['pict_type'] == 'I']
+    
     def print(self, prefix='', verbose=True, sleep=None):
         """Print the representation of the video
 
