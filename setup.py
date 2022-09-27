@@ -52,7 +52,7 @@ setup(
     author_email='info@visym.com',
     version=version,
     packages=find_packages(),
-    description='Visym Python Tools for Visual Dataset Transformation',
+    description='Python Tools for Visual Dataset Transformation',
     long_description=long_description,
     long_description_content_type="text/markdown",
     url='https://github.com/visym/vipy',
@@ -65,8 +65,9 @@ setup(
         "ffmpeg-python"
     ],
     extras_require={
-        'all': ['scikit-build', 'scipy', 'opencv-python', 'torch', 'ipython', 'scikit-learn', 'boto3', 'youtube-dl', 'dask', 'distributed', 'h5py', 'nltk', 'bs4', 'pyyaml', 'pytest', 'paramiko', 'scp', 'ujson', 'numba', 'pdoc3', 'dill', 'pillow', 'numpy', 'matplotlib','ffmpeg-python'],
-        'complete': ['scikit-build', 'scipy', 'opencv-python', 'torch', 'ipython', 'scikit-learn', 'boto3', 'youtube-dl', 'dask', 'distributed', 'h5py', 'nltk', 'bs4', 'pyyaml', 'pytest', 'paramiko', 'scp', 'ujson', 'numba', 'pdoc3', 'dill', 'pillow', 'numpy', 'matplotlib','ffmpeg-python']
+        'fast': ['ujson', 'numba'],
+        'all': ['scikit-build', 'scipy', 'opencv-python', 'torch', 'ipython', 'scikit-learn', 'boto3', 'youtube-dl', 'dask', 'distributed', 'h5py', 'nltk', 'bs4', 'pyyaml', 'pytest', 'paramiko', 'scp', 'ujson', 'numba', 'pdoc3', 'dill', 'pillow', 'numpy', 'matplotlib','ffmpeg-python','heyvi'],
+        'complete': ['scikit-build', 'scipy', 'opencv-python', 'torch', 'ipython', 'scikit-learn', 'boto3', 'youtube-dl', 'dask', 'distributed', 'h5py', 'nltk', 'bs4', 'pyyaml', 'pytest', 'paramiko', 'scp', 'ujson', 'numba', 'pdoc3', 'dill', 'pillow', 'numpy', 'matplotlib','ffmpeg-python','heyvi']
         },
     keywords=['computer vision machine learning ML CV privacy video image'],    
     classifiers=[

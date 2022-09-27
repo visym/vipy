@@ -367,7 +367,8 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1" />
   <meta name="generator" content="pdoc ${pdoc.__version__}" />
-
+  <meta name="google-site-verification" content="aB8LkQegj94_TJPdrcJm2ldIRWyXY82Jp24Gtkdgyn0" />
+      
 <%
     module_list = 'modules' in context.keys()  # Whether we're showing module list in server mode
 %>

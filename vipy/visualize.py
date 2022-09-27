@@ -268,13 +268,15 @@ def videomosaic(videos, gridrows=None, gridcols=None):
     return vipy.video.Video(frames=list(mosaic(videos, gridrows=gridrows, gridcols=gridcols)), framerate=videos[0].framerate())
 
 
-def montage(imlist, imgheight, imgwidth, gridrows=None, gridcols=None, aspectratio=1, crop=False, skip=True, border=1, border_bgr=(128,128,128), do_flush=False, verbose=False):
-    """Create a montage image from the of provided list of vipy.image.Image objects.
+def montage(imlist, imgheight=256, imgwidth=256, gridrows=None, gridcols=None, aspectratio=1, crop=False, skip=True, border=1, border_bgr=(128,128,128), do_flush=False, verbose=False):
+    """Create a montage image from the of provided list of `vipy.image.Image` objects.
+
+    >>> vipy.visualize.montage([[im.crop() for im in vipy.image.vehicles()]]).show()
 
     Args:
-        imlist: [list, tuple] iterable of vipy.image.Image objects which is used to montage rowwise
-        imgheight: [int] The height of each individual image in the grid
-        imgwidth: [int] the width of each individual image in the grid
+        imlist: [list, tuple] iterable of `vipy.image.Image` objects which is used to montage rowwise, or a list of lists such that each element defines `vipy.image.Image` objects on a grid row.
+        imgheight: [int] The height of each individual image in the grid, defaults to 256 px
+        imgwidth: [int] the width of each individual image in the grid, defaults to 256 px, use centersquare() for isotropic scaling
         gridrows: [int]  The number of images per row, and number of images per column.  This defines the montage shape.
         gridcols: [int]  The number of images per row, and number of images per column.  This defines the montage shape.
         aspectratio: [float].  This is an optional parameter which defines the shape of the montage as (gridcols/gridrows) without specifying the gridrows, gridcols input
@@ -286,12 +288,15 @@ def montage(imlist, imgheight, imgwidth, gridrows=None, gridcols=None, aspectrat
         verbose: [bool]  display optional verbose messages
 
     Returns:
-        Return a vipy.image.Image montage which is of size (gridrows*(imgheight + 2*border), gridcols*(imgwidth+2*border))
-    
+        Return a `vipy.image.Image` montage which is of size (gridrows*(imgheight + 2*border), gridcols*(imgwidth+2*border))
+        
     """
-
+    assert (isinstance(imlist, list) or isinstance(imlist, tuple)) and len(imlist)>0
+    
+    (rows, cols) = (gridrows, gridcols) if isinstance(imlist[0], vipy.image.Image) else (len(imlist), max([len(r) for r in imlist]))
+    imlist = vipy.util.flatlist(imlist)
     (n,m) = (imgheight, imgwidth)
-    (rows,cols) = (gridrows, gridcols)
+
     n_imgs = len(imlist)
     M = int(np.ceil(np.sqrt(n_imgs)))
     N = int(np.ceil(n_imgs/M))
@@ -355,7 +360,7 @@ def videomontage(vidlist, imgheight, imgwidth, gridrows=None, gridcols=None, asp
     Args:
         `vipy.visualize.montage`:  See the args   
         framerate: [float] the framerate of the montage video.  All of the input videos are resampled to this common frame rate
-        max_duration: [float] If not None, the maximum diuration of any element in the montage before it cycles
+        max_duration: [float] If not None, the maximum duration an element in seconds in the montage before it cycles.  If None, then use the duration of the longest video
 
     Returns:
         An video file in outfile that shows each video tiled into a montage.  <Like https://www.youtube.com/watch?v=HjNa7_T-Xkc>
@@ -489,8 +494,8 @@ def tohtml(imlist, imdict=None, title='Image Visualization', mindim=1024, outfil
         # Write out associated dictionary (if provided)
         f.write('<p>\n</p>\n')
         if imdict is not None:
-            for (k,v) in imdict[k].items():
-                f.write('<b>%s</b>: %s<br>\n' % (html.escape(str(k)), html.escape(str(v))))
+            for (j,v) in imdict[k].items():
+                f.write('<b>%s</b>: %s<br>\n' % (html.escape(str(j)), html.escape(str(v))))
         f.write('<br>\n')
 
         # Write image as base64 encoded string

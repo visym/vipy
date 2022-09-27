@@ -47,7 +47,12 @@ def _normalize(arr, mean, std, scale):
     """Whiten the numpy array arr using mean and standard deviation (no parallelization)"""
     return ((np.float32(scale)*arr.astype(np.float32)) - mean.flatten()) / std.flatten() 
     
-    
+
+def significant_digits(f, n):
+    """Return the float f rounded to n significant digits"""
+    assert (isinstance(f, float) or isinstance(f, int)) and isinstance(n, int)
+    return np.round(f*np.power(10,n))/np.power(10, n)
+
 def iseven(x):
     """is the number x an even number?"""
     return x%2 == 0
@@ -101,6 +106,7 @@ def gaussian(M, std=1, sym=True):
         w = w[:-1]
     return w
 
+
 def gaussian2d(mu, std, H, W):
     """2D float32 gaussian image of size (rows=H, cols=W) with mu=[x, y] and std=[stdx, stdy]"""
     img = np.zeros( (H,W), dtype=np.float32)
@@ -108,7 +114,7 @@ def gaussian2d(mu, std, H, W):
     gx = ((1.0/np.sqrt(2*np.pi))*np.exp(-0.5*((np.arange(W)-mu[0])**2 / (std[0]**2)))).astype(np.float32)
     gy = ((1.0/np.sqrt(2*np.pi))*np.exp(-0.5*((np.arange(H)-mu[1])**2) / (std[1]**2))).astype(np.float32)
     return np.outer(gy,gx)
-    
+
 
 def interp1d(x, y):
     """Replication of scipy.interpolate.interp1d with assume_sorted=True, and constant replication of boundary handling"""

@@ -142,6 +142,7 @@ class Activity(object):
             return self
 
     def middleframe(self):
+        """Return the middle frame number of the activity"""
         return int(np.round((self._endframe - self._startframe) / 2.0)) + self._startframe
 
     def _set_framerate(self, fps):
@@ -216,7 +217,14 @@ class Activity(object):
             self._trackid = list(self._trackid)
             self._trackid.append(track.id())
         return self
-        
+
+    def addid(self, trackid):
+        """Add the track id for the track to this activity, so that if the track is changed externally it is reflected here"""
+        if trackid not in self._trackid:
+            self._trackid = list(self._trackid)
+            self._trackid.append(trackid)
+        return self
+    
     def tracks(self):
         """alias for trackids"""
         return self.trackids()

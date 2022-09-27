@@ -190,6 +190,7 @@ class Stream(object):
                 # - read numpy frames from the ffmpeg filter chain via a pipe
                 # - store the resulting frames in a queue with a null terminated frame when the stream ends
                 # - Threading is useful here because there is often time to switch when waiting on GPU I/O 
+                (t,q,p) = (None, None,None)
                 if not self._buffered or self._is_stream_buffer_owner:
                     p = self._read_pipe()
                     q = queue.Queue(self._queuesize)
@@ -205,15 +206,16 @@ class Stream(object):
                                 queue.put(None)
                                 pipe.poll()
                                 pipe.wait()
+                                queue.join()
+                                event.wait()
                                 if pipe.returncode != 0:
                                     raise ValueError('Stream iterator exited with returncode %d' % (pipe.returncode))
-                                event.wait()
                                 break
                             else:
                                 queue.put(np.frombuffer(in_bytes, np.uint8).reshape([height, width, 3]))
 
                     e = threading.Event()
-                    t = threading.Thread(target=_f_threadloop, args=(p, q, h, w, e), daemon=True)
+                    t = threading.Thread(target=_f_threadloop, args=(p, q, h, w, e), daemon=True, name='vipy.video.Stream.__iter__')
                     t.start()
 
                     
@@ -229,9 +231,11 @@ class Stream(object):
                         # Primary iterator: read from thread queue
                         if b is None:
                             (f, img) = (k, q.get())  # unbuffered: to yield latest from thread queue directly
+                            q.task_done()
                             k += 1                            
                         else:
                             b[k] = q.get()  # add to stream buffer, cache frames only, annotations are added synchronously on yield
+                            q.task_done()
                             (f, img) = (k, b[k])  # primary buffer: yield current frame from pipe
                             k += 1
                     else:
@@ -252,7 +256,9 @@ class Stream(object):
                         if not self._buffered or self._is_stream_buffer_owner:
                             e.set()
                         break  # termination
-                    
+
+                if t is not None:
+                    del p,q,t
         except:
             raise
         
@@ -336,29 +342,36 @@ class Stream(object):
                     queue.put( (None, k) )
             if ragged and len(newframes) > 0:
                 queue.put( (v.clear().clone(shallow=True).fromframes(newframes), k) )  # fromframes() triggers array copy of newframes
+
             queue.put( (None, None) )
             event.wait()            
+
 
         vc = self._video.clone(flushfilter=True).clear().nourl().nofilename()
         q = queue.Queue(3)  # warning: if this queuesize*n > buffersize, then there can be a deadlock
         e = threading.Event()        
-        t = threading.Thread(target=_f_threadloop, args=(vc, self.__iter__, q, e, ragged, m, n), daemon=True)
+        t = threading.Thread(target=_f_threadloop, args=(vc, self.__iter__, q, e, ragged, m, n), daemon=True, name='vipy.video.Stream.clip')
         t.start()
 
         f_copy_annotations = lambda v, k, n: (v.activities([a.clone().offset(-(k-(n-1))).truncate(0,n-1) for (ak,a) in self._video.activities().items() if a.during_interval(k-(n-1), k, inclusive=False)] if activities else [])
                                               .tracks([t.clone(k-(n-1), k).offset(-(k-(n-1))).truncate(0,n-1) for (tk,t) in self._video.tracks().items() if t.during_interval(k-(n-1), k)] if tracks else [])
                                               if (v is not None and isinstance(v, vipy.video.Scene)) else v)
-                
-        while True:
-            # The queue can be filled with more expensive copies and clones to speed up iteration when waiting for GPU I/O
-            (v, k) = q.get()
-            if k is not None:
-                # This copy must be done sychronized at frame k with the current state of the annotations in the shared self._video
-                yield f_copy_annotations(v, k, len(v)) if v is not None else None
-            else:
-                e.set()
-                break
-                
+        
+        try:
+            while True:
+                # The queue can be filled with more expensive copies and clones to speed up iteration when waiting for GPU I/O
+                (v, k) = q.get()
+                q.task_done()
+                if k is None:
+                    e.set()
+                    break
+                else:
+                    # This copy must be done sychronized at frame k with the current state of the annotations in the shared self._video
+                    yield f_copy_annotations(v, k, len(v)) if v is not None else None
+        finally:
+            e.set()  # thread cleanup on early exit
+        del q,t
+
     def batch(self, n):
         """Stream batches of length n such that each batch contains frames [0, n-1], [n, 2n-1], ...  Last batch will be ragged.
             
@@ -383,7 +396,7 @@ class Stream(object):
 
     def frame(self, delay=0):
         """Stream individual frames of video with negative offset n frames to the stream head. If delay=30, this will return a frame 30 frames ago"""
-        assert isinstance(delay, int) and delay >= 0, "Frame delay must be non-positive integer"        
+        assert isinstance(delay, int) and delay >= 0, "Frame delay must be positive integer"        
         n = -delay
         frames = []
         i = 0
@@ -609,12 +622,18 @@ class Video(object):
         """Alias for `vipy.video.Video.frame`"""
         return self.frame(k)
 
-    def metadata(self):
-        """Return a dictionary of metadata about this video.
+    def metadata(self, k=None):
+        """Return a dictionary of metadata about this video.  
 
-        This is an alias for the 'attributes' dictionary. 
+        Args:
+        
+            k [str]: If provided, return just the specified key of the attributes dictionary, otherwise return the attributes dictionary
+
+        Returns:
+        
+            The 'attributes' dictionary, or just the value for the provided key k if provided 
         """
-        return self.attributes
+        return self.attributes if k is None else self.attributes[k]
 
     def sanitize(self):
         """Remove all private keys from the attributes dictionary.
@@ -652,8 +671,9 @@ class Video(object):
             return self.attributes['video_id'] if 'video_id' in self.attributes else (hashlib.sha1(str(str(self.filename())+str(self.url())).encode("UTF-8")).hexdigest() if (self.filename() is not None or self.url() is not None) else None)
         
 
-    def frame(self, k=0, img=None):
-        """Return the kth frame as an `vipy.image Image` object"""        
+    def frame(self, k=0, img=None, t=None):
+        """Return the kth frame as an `vipy.image Image` object"""
+        k = int(self.framerate()*t) if t is not None else k        
         assert isinstance(k, int) and k>=0, "Frame index must be non-negative integer"
         return Image(array=img if img is not None else (self._array[k] if self.isloaded() else self.preview(k).array()), colorspace=self.colorspace())       
         
@@ -1000,14 +1020,39 @@ class Video(object):
         assert 'streams' in p and len(['streams']) > 0
         (H,W) = (p['streams'][0]['height'], p['streams'][0]['width'])  # (height, width) in pixels
         return (W,H) if ('tags' in p['streams'][0] and 'rotate' in p['streams'][0]['tags'] and p['streams'][0]['tags']['rotate'] in ['90','270']) else (H,W)
-    
-    def probe(self):
-        """Run ffprobe on the filename and return the result as a dictionary"""
+
+    def probe(self, **kwargs):
+        """Run ffprobe on the filename and return the result as a dictionary
+
+        Args:
+            Any keyword arguments supported by python-ffmpeg probe() - these are passed in as-is
+            - for flags, use flag_name=None (e.g., show_frames=None) so that ffmpeg.probe() handles them correctly
+        """
         if not has_ffprobe:
             raise ValueError('"ffprobe" executable not found on path, this is optional for vipy.video - Install from http://ffmpeg.org/download.html')            
-        assert self.downloadif().hasfilename(), "Invalid video file '%s' for ffprobe" % self.filename() 
-        return ffmpeg.probe(self.filename())
+        assert self.downloadif().hasfilename(), "Invalid video file '%s' for ffprobe" % self.filename()
+        return ffmpeg.probe(self.filename(), **kwargs)
 
+    def frame_meta(self, k=None):
+        """Return the frame metadata of the underlying video file using ffprobe for all frames as a list of dicts, each list element corresponding to a frame.  This is useful for extracting frame types (e.g. i-frames).
+        
+        Args:
+            k [int]:  Return only the frame metadata for frame index k (relative to framerate of source videofile, not filter chain)
+
+        Returns:
+            a list of metadata dicts (one per frame) or a single dict for the requested frame.  
+
+        .. notes::  
+            - This will return a large amount of metadata for the entire source video (not the FFMPEG filter chain), use with caution.
+            - To get frame metata for a filter chain use vipy.video.Video.savetemp().frame_meta(), which will save the video to a temporary file prior to extracting frame metadata
+        """
+        d = self.probe(show_frames=None).get('frames')
+        return d if k is None else d[k]
+    
+    def metaframe(self, k=None):
+        """Alias for `vipy.video.Video.frame_meta`"""
+        return self.frame_meta(k)
+        
     def print(self, prefix='', verbose=True, sleep=None):
         """Print the representation of the video
 
@@ -1023,11 +1068,16 @@ class Video(object):
             The video object after sleeping 
         """
         if verbose:
-            print(prefix+self.__repr__())
+            print(prefix+self.__repr__()) 
         if sleep is not None:
             assert isinstance(sleep, int) and sleep > 0, "Sleep must be a non-negative integer number of seconds"
             time.sleep(sleep)
         return self
+
+    def printif(self, b, prefix='', verbose=True, sleep=None):
+        """Call `vipy.video.Video.print` if b=True.  Useful for fluent chains to print periodically."""
+        assert isinstance(b, bool)
+        return self.print(prefix=prefix, verbose=b, sleep=sleep) 
 
     def __array__(self):
         """Called on np.array(self) for custom array container, (requires numpy >=1.16)"""
@@ -1792,7 +1842,14 @@ class Video(object):
         if (rows is None and cols is None):
             return self  # only if strictly necessary
         if not self.isloaded():
+            # Apply the scale filter:
+            # - Note that multiple calls to resize will process through the filter chain one by one in the order of resizing calls
+            # - This can introduce resizing artifacts if the resize is a downsample followed by an upsample
+            # - One common use case is to downsample a video for tracking, then apply the tracks to the original video
+            # - One approach: downsample the video, track at low resolution, upsample tracks back to the original resolution, then flush the filter chain to load the video at original resolution with no rescaling
+            #   >>> vc = tracker(v.clone().mindim(128)).mindim(v.mindim()).clone(flushfilter=True)              
             self._ffmpeg = self._ffmpeg.filter('scale', cols if cols is not None else -1, rows if rows is not None else -1)
+            
         else:            
             # Do not use self.__iter__() which triggers copy for mutable arrays
             #self.array(np.stack([Image(array=self._array[k]).resize(rows=rows, cols=cols).array() for k in range(len(self))]), copy=False)
@@ -1808,7 +1865,7 @@ class Video(object):
     def mindim(self, dim=None):
         """Resize the video so that the minimum of (width,height)=dim, preserving aspect ratio"""
         (H,W) = self.shape()  # yuck, need to get image dimensions before filter
-        return min(self.shape()) if dim is None else (self if min(H,W)==dim else (self.resize(cols=dim) if W<H else self.resize(rows=dim)))
+        return min(self.shape()) if dim is None else (self if min(H,W) == dim else (self.resize(cols=dim) if W<H else self.resize(rows=dim)))
 
     def maxdim(self, dim=None):
         """Resize the video so that the maximum of (width,height)=dim, preserving aspect ratio"""
@@ -2081,7 +2138,7 @@ class Video(object):
 
         if not self.isdownloaded() and self.hasurl():
             self.download()
-        if iswebp(self.filename()) or isgif(self.filename()):
+        if not self.isloaded() and (iswebp(self.filename()) or isgif(self.filename())):
             self.load()
             
         if notebook:
@@ -2128,7 +2185,7 @@ class Video(object):
         """Alias for play"""
         return self.play()
     
-    def quicklook(self, n=9, mindim=256, startframe=0, animate=False, dt=30):
+    def quicklook(self, n=9, mindim=256, startframe=0, animate=False, dt=30, thumbnail=None):
         """Generate a montage of n uniformly spaced frames.
            Montage increases rowwise for n uniformly spaced frames, starting from frame zero and ending on the last frame.
         
@@ -2138,6 +2195,7 @@ class Video(object):
                animate:  If true, return a video constructed by animating the quicklook into a video by showing dt consecutive frames
                dt:  The number of frames for animation
                startframe:  The initial frame index to start the n uniformly sampled frames for the quicklook
+               thumbnail [`vipy.image.Image`]: If provided, prepent the first element in the montage with this thumbnail.  This is useful for showing a high resolution image (e.g. a face, small object) to be contained in the video for review.
 
            ..note:: The first frame in the upper left is guaranteed to be the start frame of the labeled activity, but the last frame in the bottom right may not be precisely the end frame and may be off by at most len(video)/9.
         """
@@ -2149,6 +2207,9 @@ class Video(object):
         imframes = [self.frame(k).maxmatte()  # letterbox or pillarbox
                     for (j,k) in enumerate(framelist)]
         imframes = [im.savefig(figure=1).rgb() for im in imframes]  # temp storage in memory
+        if thumbnail is not None:
+            assert isinstance(thumbnail, vipy.image.Image)
+            imframes = [thumbnail.maxmatte().mindim(mindim)] + imframes  # prepend
         return vipy.visualize.montage(imframes, imgwidth=mindim, imgheight=mindim)
 
     def torch(self, startframe=0, endframe=None, length=None, stride=1, take=None, boundary='repeat', order='nchw', verbose=False, withslice=False, scale=1.0, withlabel=False, nonelabel=False):
@@ -2331,6 +2392,7 @@ class Video(object):
     def flush(self):
         """Alias for clone(flush=True), returns self not clone"""
         self._array = None  # flushes buffer on object and clone
+        self.delattribute("__stream_buffer")  # remove if present 
         #self._previewhash = None
         self._shape = None
         return self
@@ -2409,8 +2471,14 @@ class Video(object):
             self.attributes.pop(k)
         return self
 
+    def clearattributes(self):
+        """Remove all attributes"""
+        self.attributes = {}
+        return self
+
     def getattribute(self, k):
-        return self.attributes[k]
+        """Return the key k in the attributes dictionary (self.attributes) if present, else None"""
+        return self.attributes[k] if k in self.attributes else None
 
     
 class VideoCategory(Video):
@@ -2650,7 +2718,7 @@ class Scene(VideoCategory):
             else:
                 return self.videoid()
 
-    def frame(self, k=0, img=None, noimage=False):
+    def frame(self, k=0, img=None, noimage=False, t=None):
         """Return `vipy.image.Scene` object at frame k
 
         -The attributes of each of the `vipy.image.Scene.objects` in the scene contains helpful metadata for the provenance of the detection, including:  
@@ -2660,9 +2728,10 @@ class Scene(VideoCategory):
             - 'noun verb' of this detection, used for visualization
 
         Args:
-            k: [int >=- 0] The frame index requested.  This is relative to the current frame rate of the video.
+            k: [int >= 0] The frame index requested.  This is relative to the current frame rate of the video.
             img: [numpy, None]  An optional image to be used for this frame.  This is useful to construct frames efficiently for videos if the pixel buffer is already available from a stream rather than a preview.  
             noimage [bool]:  If True, then return only annotations at frame k with empty frame buffer (e.g. no image pixels in the returned image object)
+            t: [float >= 0] The frame time requested.  This is converted into a frame index using the current framerate of the video.
 
         Return:
             A `vipy.image.Scene` object for frame k containing all objects in this frame and pixels if img != None or preview=True
@@ -2673,6 +2742,7 @@ class Scene(VideoCategory):
             - If noun is associated with more than one activity, then this is shown as "Noun Verbing1\nNoun Verbing2", with a newline separator
 
         """
+        k = int(self.framerate()*t) if t is not None else k
         assert isinstance(k, int) and k>=0, "Frame index must be non-negative integer"
         assert img is not None or (self.isloaded() and k<len(self)) or not self.isloaded(), "Invalid frame index %d - Indexing video by frame must be integer within (0, %d)" % (k, len(self)-1)
 
@@ -2735,7 +2805,7 @@ class Scene(VideoCategory):
         """Degenerate scene has empty or malformed tracks"""
         return len(self.tracklist()) == 0 or any([t.isempty() or t.isdegenerate() for t in self.tracklist()])
     
-    def quicklook(self, n=9, dilate=1.5, mindim=256, fontsize=10, context=False, startframe=0, animate=False, dt=30):
+    def quicklook(self, n=9, dilate=1.5, mindim=256, fontsize=10, context=False, startframe=0, animate=False, dt=30, thumbnail=None):
         """Generate a montage of n uniformly spaced annotated frames centered on the union of the labeled boxes in the current frame to show the activity ocurring in this scene at a glance
            Montage increases rowwise for n uniformly spaced frames, starting from frame zero and ending on the last frame.  This quicklook is most useful when len(self.activities()==1)
            for generating a quicklook from an activityclip().
@@ -2743,17 +2813,20 @@ class Scene(VideoCategory):
            Args:
                n: [int]:  Number of images in the quicklook
                dilate: [float]:  The dilation factor for the bounding box prior to crop for display
-               mindim: [int]:  The minimum dimension of each of the elemnets in the montage
+               mindim: [int]:  The minimum dimension of each of the elemenets in the montage
                fontsize: [int]:  The size of the font for the bounding box label
                context: [bool]:  If true, replace the first and last frame in the montage with the full frame annotation, to help show the scale of the scene
                animate: [bool]:  If true, return a video constructed by animating the quicklook into a video by showing dt consecutive frames
                dt: [int]:  The number of frames for animation
                startframe: [int]:  The initial frame index to start the n uniformly sampled frames for the quicklook
+               thumbnail [`vipy.image.Image`]: If provided, prepend the first element in the montage with this thumbnail.  This is useful for showing a high resolution image (e.g. a face, small object) to be contained in the video for review.
+
         """
         if not self.isloaded():
-            self.load()  
+            self.load()  # triggers load() into memory, user should self.flush() to free
         if animate:
-            return Video(frames=[self.quicklook(n=n, dilate=dilate, mindim=mindim, fontsize=fontsize, context=context, startframe=k, animate=False, dt=dt) for k in range(0, min(dt, len(self)))], framerate=self.framerate())
+            return Video(frames=[self.quicklook(n=n, dilate=dilate, mindim=mindim, fontsize=fontsize, context=context, startframe=k, animate=False, dt=dt, thumbnail=thumbnail) for k in range(0, min(dt, len(self)))], framerate=self.framerate())
+
         f_mutator = vipy.image.mutator_show_jointlabel()
         framelist = [min(int(np.round(f))+startframe, len(self)-1) for f in np.linspace(0, len(self)-1, n)]
         isdegenerate = [self.frame(k).boundingbox() is None or self.frame(k).boundingbox().dilate(dilate).intersection(self.framebox(), strict=False).isdegenerate() for (j,k) in enumerate(framelist)]
@@ -2763,6 +2836,9 @@ class Scene(VideoCategory):
                     for (j,k) in enumerate(framelist)]
         imframes = [f_mutator(im) for im in imframes]  # show jointlabel from frame interpolation
         imframes = [im.savefig(fontsize=fontsize, figure=1).rgb() for im in imframes]  # temp storage in memory
+        if thumbnail is not None:
+            assert isinstance(thumbnail, vipy.image.Image)
+            imframes = [thumbnail.maxmatte().mindim(mindim)] + imframes
         return vipy.visualize.montage(imframes, imgwidth=mindim, imgheight=mindim)
     
     def tracks(self, tracks=None, id=None):
@@ -2844,7 +2920,7 @@ class Scene(VideoCategory):
         .. note:: Not to be confused with biometric subject id.  For videos collected with Visym Collector platform (https://visym.com/collector), the biometric subject ID can be retrieved via `vipy.video.Video.metadata` (e.g. self.metadata()['subject_ids']).
         """
         if id is None:
-            return next(iter(self.tracks().keys())) if not fluent else self  # Python >=3.6
+            return (next(iter(self.tracks().keys())) if len(self._tracks)>0 else None) if not fluent else self  # Python >=3.6
         elif id in self._tracks:
             # Reorder tracks so that id is first
             idlist = [id] + [ti for ti in self.tracks().keys() if ti != id]
@@ -3654,31 +3730,51 @@ class Scene(VideoCategory):
         """Extrapolate the video to frame f and add the extrapolated tracks to the video"""
         return self.trackmap(lambda t: t.add(f, t.linear_extrapolation(f, dt=dt if dt is not None else self.framerate()), strict=False))
         
-    def dedupe(self, spatial_iou_threshold=0.8, dt=5):
-        """Find and delete duplicate tracks by track segmentiou() overlap.
+    def dedupe(self, spatial_iou_threshold=0.8, dt=5, tracks=True, activities=True, temporal_iou_threshold=0.8, verbose=True):
+        """Find and delete duplicate tracks and activities by overlap.
         
-        Algorithm
+        Track deduplication algorithm
+
         - For each pair of tracks with the same category, find the larest temporal segment that contains both tracks.
         - For this segment, compute the IOU for each box interpolated at a stride of dt frames
         - Compute the mean IOU for this segment.  This is the segment IOU. 
         - If the segment IOU is greater than the threshold, merge the shorter of the two tracks with the current track.  
 
+        Activity deduplication algorithm
+
+        - For each pair of activities in insertion order
+        - If the temporal IOU is greater than the threshold, then merge the older activity (later insertion) with the newer activity (earlier insertion)
+        - Update the actor ID of the merged activity to be that of the newer activity
+        
         """
-        deleted = set([])
-        for tj in sorted(self.tracklist(), key=lambda t: len(t), reverse=True):  # longest to shortest
-            for (s, ti) in sorted([(0,t) if (len(tj) < len(t) or t.id() in deleted or t.id() == tj.id() or t.category() != tj.category()) else (tj.fragmentiou(t, dt=dt), t) for t in self.tracklist()], key=lambda x: x[0], reverse=True):
-                if s > spatial_iou_threshold:  # best mean framewise overlap during overlapping segment of two tracks (ti, tj)
-                    print('[vipy.video.dedupe]: merging duplicate track "%s" (id=%s) which overlaps with "%s" (id=%s)' % (ti, ti.id(), tj, tj.id()))
-                    self.tracks()[tj.id()] = tj.union(ti)  # merge
-                    self.activitymap(lambda a: a.replace(ti, tj))  # replace merged track reference in activity
-                    deleted.add(ti.id())
-        self.trackfilter(lambda t: t.id() not in deleted)  # remove duplicate tracks
+        if tracks:
+            deleted = set([])
+            for tj in sorted(self.tracklist(), key=lambda t: len(t), reverse=True):  # longest to shortest
+                for (s, ti) in sorted([(0,t) if (len(tj) < len(t) or t.id() in deleted or t.id() == tj.id() or t.category() != tj.category()) else (tj.fragmentiou(t, dt=dt), t) for t in self.tracklist()], key=lambda x: x[0], reverse=True):
+                    if s > spatial_iou_threshold:  # best mean framewise overlap during overlapping segment of two tracks (ti, tj)
+                        if verbose:
+                            print('[vipy.video.dedupe]: merging duplicate track "%s" (id=%s) which overlaps with "%s" (id=%s)' % (ti, ti.id(), tj, tj.id()))
+                        self.tracks()[tj.id()] = tj.union(ti)  # merge
+                        self.activitymap(lambda a: a.replace(ti, tj))  # replace merged track reference in activity
+                        deleted.add(ti.id())
+            self.trackfilter(lambda t: t.id() not in deleted)  # remove duplicate tracks
+        if activities:
+            deleted = set([])
+            for (j,aj) in enumerate(self.activitylist()):  # preserve insertion order
+                for ai in self.activitylist()[j+1:]:
+                    if aj.hasoverlap(ai, threshold=temporal_iou_threshold) and ai.id() not in deleted:
+                        if verbose:
+                            print('[vipy.video.dedupe]: merging duplicate activity "%s" (id=%s) which overlaps with "%s" (id=%s)' % (ai, ai.id(), aj, aj.id()))
+                        self.activities()[aj.id()] = aj.union(ai.clone().replaceid(ai.actorid(), aj.actorid())).addid(ai.actorid())  # merge two activities into one, with two tracks
+                        deleted.add(ai.id())
+            self.activityfilter(lambda a: a.id() not in deleted)  # remove duplicate activities
+            
         return self
 
     def combine(self, other, tracks=True, activities=True, rekey=True):
         """Combine the activities and tracks from both scenes into self. 
         
-        .. note:: This does not perform a union, it simply combines dictionaries.  For deduplication, see `vipy.video.union`
+        .. note:: This does not perform a union, it simply combines dictionaries.  For deduplication, see `vipy.video.Scene.union`
         """
         assert isinstance(other, Scene), "Invalid input - must be vipy.video.Scene() object and not type=%s" % str(type(other))
         assert self.framerate() == other.framerate()
@@ -4031,7 +4127,7 @@ class Scene(VideoCategory):
             - This approach is equivalent to greedy, constant velocity SORT tracking (https://arxiv.org/abs/1602.00763) 
             - Individual detections are assigned to tracks using a greedy velocity only track propagation, sorted by `vipy.geometry.BoundingBox.maxcover` and detection confidence within a spatial tracking gate 
             - New tracks are created if the detection is unassigned and above a minimum confidence 
-            - Updated tracks resulting from assignment are stored in `vipy.video.tracks` 
+            - Updated tracks resulting from assignment are stored in `vipy.video.Scene.tracks` 
 
         Args:
         

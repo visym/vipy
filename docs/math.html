@@ -1,0 +1,601 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1" />
+<meta name="generator" content="pdoc 0.10.0" />
+<meta name="google-site-verification" content="aB8LkQegj94_TJPdrcJm2ldIRWyXY82Jp24Gtkdgyn0" />
+<title>vipy.math API documentation</title>
+<meta name="description" content="" />
+<link rel="preload stylesheet" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/10up-sanitize.css/11.0.1/sanitize.min.css" integrity="sha256-PK9q560IAAa6WVRRh76LtCaI8pjTJ2z11v0miyNNjrs=" crossorigin>
+<link rel="preload stylesheet" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/10up-sanitize.css/11.0.1/typography.min.css" integrity="sha256-7l/o7C8jubJiy74VsKTidCy1yBkRtiUGbVkYBylBqUg=" crossorigin>
+<link rel="stylesheet preload" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/10.1.1/styles/github.min.css" crossorigin>
+<style>:root{--highlight-color:#fe9}.flex{display:flex !important}body{line-height:1.5em}#content{padding:20px}#sidebar{padding:30px;overflow:hidden}#sidebar > *:last-child{margin-bottom:2cm}#lunr-search{width:100%;font-size:1em;padding:6px 9px 5px 9px;border:1px solid silver}.http-server-breadcrumbs{font-size:130%;margin:0 0 15px 0}#footer{font-size:.75em;padding:5px 30px;border-top:1px solid #ddd;text-align:right}#footer p{margin:0 0 0 1em;display:inline-block}#footer p:last-child{margin-right:30px}h1,h2,h3,h4,h5{font-weight:300}h1{font-size:2.5em;line-height:1.1em}h2{font-size:1.75em;margin:1em 0 .50em 0}h3{font-size:1.4em;margin:25px 0 10px 0}h4{margin:0;font-size:105%}h1:target,h2:target,h3:target,h4:target,h5:target,h6:target{background:var(--highlight-color);padding:.2em 0}a{color:#058;text-decoration:none;transition:color .3s ease-in-out}a:hover{color:#e82}.title code{font-weight:bold}h2[id^="header-"]{margin-top:2em}.ident{color:#900}pre code{background:#f8f8f8;font-size:.8em;line-height:1.4em}code{background:#f2f2f1;padding:1px 4px;overflow-wrap:break-word}h1 code{background:transparent}pre{background:#f8f8f8;border:0;border-top:1px solid #ccc;border-bottom:1px solid #ccc;margin:1em 0;padding:1ex}#http-server-module-list{display:flex;flex-flow:column}#http-server-module-list div{display:flex}#http-server-module-list dt{min-width:10%}#http-server-module-list p{margin-top:0}.toc ul,#index{list-style-type:none;margin:0;padding:0}#index code{background:transparent}#index h3{border-bottom:1px solid #ddd}#index ul{padding:0}#index h4{margin-top:.6em;font-weight:bold}@media (min-width:200ex){#index .two-column{column-count:2}}@media (min-width:300ex){#index .two-column{column-count:3}}dl{margin-bottom:2em}dl dl:last-child{margin-bottom:4em}dd{margin:0 0 1em 3em}#header-classes + dl > dd{margin-bottom:3em}dd dd{margin-left:2em}dd p{margin:10px 0}.name{background:#eee;font-weight:bold;font-size:.85em;padding:5px 10px;display:inline-block;min-width:40%}.name:hover{background:#e0e0e0}dt:target .name{background:var(--highlight-color)}.name > span:first-child{white-space:nowrap}.name.class > span:nth-child(2){margin-left:.4em}.inherited{color:#999;border-left:5px solid #eee;padding-left:1em}.inheritance em{font-style:normal;font-weight:bold}.desc h2{font-weight:400;font-size:1.25em}.desc h3{font-size:1em}.desc dt code{background:inherit}.source summary,.git-link-div{color:#666;text-align:right;font-weight:400;font-size:.8em;text-transform:uppercase}.source summary > *{white-space:nowrap;cursor:pointer}.git-link{color:inherit;margin-left:1em}.source pre{max-height:500px;overflow:auto;margin:0}.source pre code{font-size:12px;overflow:visible}.hlist{list-style:none}.hlist li{display:inline}.hlist li:after{content:',\2002'}.hlist li:last-child:after{content:none}.hlist .hlist{display:inline;padding-left:1em}img{max-width:100%}td{padding:0 .5em}.admonition{padding:.1em .5em;margin-bottom:1em}.admonition-title{font-weight:bold}.admonition.note,.admonition.info,.admonition.important{background:#aef}.admonition.todo,.admonition.versionadded,.admonition.tip,.admonition.hint{background:#dfd}.admonition.warning,.admonition.versionchanged,.admonition.deprecated{background:#fd4}.admonition.error,.admonition.danger,.admonition.caution{background:lightpink}</style>
+<style media="screen and (min-width: 700px)">@media screen and (min-width:700px){#sidebar{width:30%;height:100vh;overflow:auto;position:sticky;top:0}#content{width:70%;max-width:100ch;padding:3em 4em;border-left:1px solid #ddd}pre code{font-size:1em}.item .name{font-size:1em}main{display:flex;flex-direction:row-reverse;justify-content:flex-end}.toc ul ul,#index ul{padding-left:1.5em}.toc > ul > li{margin-top:.5em}}</style>
+<style media="print">@media print{#sidebar h1{page-break-before:always}.source{display:none}}@media print{*{background:transparent !important;color:#000 !important;box-shadow:none !important;text-shadow:none !important}a[href]:after{content:" (" attr(href) ")";font-size:90%}a[href][title]:after{content:none}abbr[title]:after{content:" (" attr(title) ")"}.ir a:after,a[href^="javascript:"]:after,a[href^="#"]:after{content:""}pre,blockquote{border:1px solid #999;page-break-inside:avoid}thead{display:table-header-group}tr,img{page-break-inside:avoid}img{max-width:100% !important}@page{margin:0.5cm}p,h2,h3{orphans:3;widows:3}h1,h2,h3,h4,h5,h6{page-break-after:avoid}}</style>
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/10.1.1/highlight.min.js" integrity="sha256-Uv3H6lx7dJmRfRvH8TH6kJD1TSK1aFcwgx+mdg3epi8=" crossorigin></script>
+<script>window.addEventListener('DOMContentLoaded', () => hljs.initHighlighting())</script>
+</head>
+<body>
+<main>
+<article id="content">
+<header>
+<h1 class="title">Module <code>vipy.math</code></h1>
+</header>
+<section id="section-intro">
+<details class="source">
+<summary>
+<span>Expand source code</span>
+<a href="https://github.com/visym/vipy/blob/246f0d16deb2cbe52f54a7ff3656d403d8b80214/vipy/math.py#L1-L157" class="git-link">Browse git</a>
+</summary>
+<pre><code class="python">import numpy as np
+from vipy.util import isnumpy, chunklistWithOverlap
+
+
+try:
+    from numba import njit, config  
+    config.THREADING_LAYER = &#39;workqueue&#39;    
+    @njit(parallel=True, cache=True, nogil=True, fastmath=True)
+    def normalize(arr, mean, std, scale):
+        &#34;&#34;&#34;Whiten the numpy array arr using the provided mean and standard deviation.
+
+        - Uses numba acceleration since this is a common operation for preparing tensors.
+        - Computes:  ((scale*arr) - mean)) / std
+        
+        Args:
+            arr: [numpy] A numpy array
+            mean: [numpy] A broadcastable mean vector
+            std: [numpy]  A broadcastable std vector
+            scale: [float] A scale factor to apply to arr before whitening (e.g. to scale from [0,255] to [0,1])
+
+        Returns
+            ((scale*arr) - mean)) / std
+
+        .. notes:: Does not check that std &gt; 0
+        &#34;&#34;&#34;
+        return ((np.float32(scale)*arr.astype(np.float32)) - mean.flatten()) / std.flatten() 
+except:
+    def normalize(arr, mean, std, scale):
+        &#34;&#34;&#34;Whiten the numpy array arr using the provided mean and standard deviation.
+
+        Computes:  (scale*(arr - mean)) / std
+
+        Args:
+            arr: [numpy] A numpy array
+            mean: [numpy] A broadcastable mean vector
+            std: [numpy]  A broadcastable std vector
+            scale: [float] A scale factor to apply to arr before whitening (e.g. to scale to [0,1])
+
+        Returns
+            ((scale*arr) - mean)) / std
+
+        .. notes:: Does not check that std &gt; 0
+        &#34;&#34;&#34;
+        return ((np.float32(scale)*arr.astype(np.float32)) - mean.flatten()) / std.flatten() 
+
+def _normalize(arr, mean, std, scale):
+    &#34;&#34;&#34;Whiten the numpy array arr using mean and standard deviation (no parallelization)&#34;&#34;&#34;
+    return ((np.float32(scale)*arr.astype(np.float32)) - mean.flatten()) / std.flatten() 
+    
+
+def significant_digits(f, n):
+    &#34;&#34;&#34;Return the float f rounded to n significant digits&#34;&#34;&#34;
+    assert (isinstance(f, float) or isinstance(f, int)) and isinstance(n, int)
+    return np.round(f*np.power(10,n))/np.power(10, n)
+
+def iseven(x):
+    &#34;&#34;&#34;is the number x an even number?&#34;&#34;&#34;
+    return x%2 == 0
+
+
+def isodd(x):
+    &#34;&#34;&#34;is the number x an odd number?&#34;&#34;&#34;
+    return x%2 != 0
+
+
+def even(x, greaterthan=False):
+    &#34;&#34;&#34;Return the largest even integer less than or equal (or greater than if greaterthan=True) to the value&#34;&#34;&#34;
+    x = int(np.round(x))
+    return x if x%2 == 0 else (x+1 if greaterthan else x-1)
+
+
+def poweroftwo(x):
+    &#34;&#34;&#34;Return the closest power of two smaller than the scalar value. x=511 -&gt; 256, x=512 -&gt; 512&#34;&#34;&#34;
+    assert x&gt;=2 
+    return int(np.power(2, int(np.floor(np.log2(x)/np.log2(2)))))
+
+
+def signsqrt(x):
+    &#34;&#34;&#34;Return the signed square root of elements in numpy array x&#34;&#34;&#34;
+    return np.multiply(np.sign(x), np.sqrt(np.abs(x)))
+
+
+def runningmean(X, n):
+    &#34;&#34;&#34;Compute the running unweighted mean of X row-wise, with a history of n, reducing the history at the start for column indexes &lt; n&#34;&#34;&#34;
+    assert isnumpy(X), &#34;Input must be a np.array()&#34;    
+    return np.array([[np.mean(c) for c in chunklistWithOverlap(x, n, n-1)] for x in X])
+
+
+def gaussian(M, std=1, sym=True):
+    &#34;&#34;&#34;1D gaussian window with M points.
+
+    Replication of scipy.signal.gaussian
+    &#34;&#34;&#34;
+
+    if M &lt; 1:
+        return np.array([])
+    if M == 1:
+        return np.ones(1, &#39;d&#39;)
+    odd = M % 2
+    if not sym and not odd:
+        M = M + 1
+    n = np.arange(0, M) - (M - 1.0) / 2.0
+    sig2 = 2 * std * std
+    w = np.exp(-n ** 2 / sig2)
+    if not sym and not odd:
+        w = w[:-1]
+    return w
+
+
+def gaussian2d(mu, std, H, W):
+    &#34;&#34;&#34;2D float32 gaussian image of size (rows=H, cols=W) with mu=[x, y] and std=[stdx, stdy]&#34;&#34;&#34;
+    img = np.zeros( (H,W), dtype=np.float32)
+    (X,Y) = np.meshgrid(W,H)
+    gx = ((1.0/np.sqrt(2*np.pi))*np.exp(-0.5*((np.arange(W)-mu[0])**2 / (std[0]**2)))).astype(np.float32)
+    gy = ((1.0/np.sqrt(2*np.pi))*np.exp(-0.5*((np.arange(H)-mu[1])**2) / (std[1]**2))).astype(np.float32)
+    return np.outer(gy,gx)
+
+
+def interp1d(x, y):
+    &#34;&#34;&#34;Replication of scipy.interpolate.interp1d with assume_sorted=True, and constant replication of boundary handling&#34;&#34;&#34;
+    def ceil(x, at):
+        k = np.argwhere(np.array(x)-at &gt; 0)
+        return len(x)-1 if len(k) == 0 else int(k[0])
+    
+    assert sorted(x) == x and sorted(y) == y, &#34;Input must be sorted&#34;
+    return lambda at: y[max(0, ceil(x,at)-1)] + float(y[ceil(x,at)] - y[max(0, ceil(x,at)-1)])*((at - x[max(0, ceil(x,at)-1)])/(1E-16+(x[ceil(x,at)] - x[max(0, ceil(x,at)-1)])))
+
+
+def find_closest_positive_divisor(a, b):
+    &#34;&#34;&#34;Return non-trivial positive integer divisor (bh) of (a) closest to (b) in abs(b-bh) such that a % bh == 0.  
+
+    .. notes:: This uses exhaustive search, which is inefficient for large a.
+    &#34;&#34;&#34;
+    assert a&gt;0 and b&gt;0
+    if a&lt;=b:
+        return a
+    for k in range(0, a-b+1):
+        bh = b + k
+        if bh&gt;1 and a % bh == 0:
+            return bh
+        bh = b - k
+        if bh&gt;1 and a % bh == 0:
+            return bh
+    raise  # should never get here, since bh=a is always a solution
+
+def cartesian_to_polar(x, y):
+    &#34;&#34;&#34;Cartesian (x,y) coordinates to polar (radius, theta_radians) coordinates, theta in radians in [-pi,pi]&#34;&#34;&#34;
+    return (np.sqrt(np.array(x)**2 + np.array(y)**2), np.arctan2(y, x))
+
+def polar_to_cartesian(r, t):
+    &#34;&#34;&#34;Polar (r=radius, t=theta_radians) coordinates to cartesian (x=right,y=down) coordinates.  (0,0) is upper left of image&#34;&#34;&#34;
+    return (np.multiply(r, np.cos(t)), np.multiply(r, np.sin(t)))
+            
+def rad2deg(r):
+    &#34;&#34;&#34;Radians to degrees&#34;&#34;&#34;
+    return r*(180.0 / np.pi)</code></pre>
+</details>
+</section>
+<section>
+</section>
+<section>
+</section>
+<section>
+<h2 class="section-title" id="header-functions">Functions</h2>
+<dl>
+<dt id="vipy.math.cartesian_to_polar"><code class="name flex">
+<span>def <span class="ident">cartesian_to_polar</span></span>(<span>x, y)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Cartesian (x,y) coordinates to polar (radius, theta_radians) coordinates, theta in radians in [-pi,pi]</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+<a href="https://github.com/visym/vipy/blob/246f0d16deb2cbe52f54a7ff3656d403d8b80214/vipy/math.py#L146-L148" class="git-link">Browse git</a>
+</summary>
+<pre><code class="python">def cartesian_to_polar(x, y):
+    &#34;&#34;&#34;Cartesian (x,y) coordinates to polar (radius, theta_radians) coordinates, theta in radians in [-pi,pi]&#34;&#34;&#34;
+    return (np.sqrt(np.array(x)**2 + np.array(y)**2), np.arctan2(y, x))</code></pre>
+</details>
+</dd>
+<dt id="vipy.math.even"><code class="name flex">
+<span>def <span class="ident">even</span></span>(<span>x, greaterthan=False)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Return the largest even integer less than or equal (or greater than if greaterthan=True) to the value</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+<a href="https://github.com/visym/vipy/blob/246f0d16deb2cbe52f54a7ff3656d403d8b80214/vipy/math.py#L66-L69" class="git-link">Browse git</a>
+</summary>
+<pre><code class="python">def even(x, greaterthan=False):
+    &#34;&#34;&#34;Return the largest even integer less than or equal (or greater than if greaterthan=True) to the value&#34;&#34;&#34;
+    x = int(np.round(x))
+    return x if x%2 == 0 else (x+1 if greaterthan else x-1)</code></pre>
+</details>
+</dd>
+<dt id="vipy.math.find_closest_positive_divisor"><code class="name flex">
+<span>def <span class="ident">find_closest_positive_divisor</span></span>(<span>a, b)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Return non-trivial positive integer divisor (bh) of (a) closest to (b) in abs(b-bh) such that a % bh == 0.
+</p>
+<div class="admonition notes">
+<p class="admonition-title">Notes:&ensp;This uses exhaustive search, which is inefficient for large a.</p>
+</div></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+<a href="https://github.com/visym/vipy/blob/246f0d16deb2cbe52f54a7ff3656d403d8b80214/vipy/math.py#L129-L144" class="git-link">Browse git</a>
+</summary>
+<pre><code class="python">def find_closest_positive_divisor(a, b):
+    &#34;&#34;&#34;Return non-trivial positive integer divisor (bh) of (a) closest to (b) in abs(b-bh) such that a % bh == 0.  
+
+    .. notes:: This uses exhaustive search, which is inefficient for large a.
+    &#34;&#34;&#34;
+    assert a&gt;0 and b&gt;0
+    if a&lt;=b:
+        return a
+    for k in range(0, a-b+1):
+        bh = b + k
+        if bh&gt;1 and a % bh == 0:
+            return bh
+        bh = b - k
+        if bh&gt;1 and a % bh == 0:
+            return bh
+    raise  # should never get here, since bh=a is always a solution</code></pre>
+</details>
+</dd>
+<dt id="vipy.math.gaussian"><code class="name flex">
+<span>def <span class="ident">gaussian</span></span>(<span>M, std=1, sym=True)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>1D gaussian window with M points.</p>
+<p>Replication of scipy.signal.gaussian</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+<a href="https://github.com/visym/vipy/blob/246f0d16deb2cbe52f54a7ff3656d403d8b80214/vipy/math.py#L89-L107" class="git-link">Browse git</a>
+</summary>
+<pre><code class="python">def gaussian(M, std=1, sym=True):
+    &#34;&#34;&#34;1D gaussian window with M points.
+
+    Replication of scipy.signal.gaussian
+    &#34;&#34;&#34;
+
+    if M &lt; 1:
+        return np.array([])
+    if M == 1:
+        return np.ones(1, &#39;d&#39;)
+    odd = M % 2
+    if not sym and not odd:
+        M = M + 1
+    n = np.arange(0, M) - (M - 1.0) / 2.0
+    sig2 = 2 * std * std
+    w = np.exp(-n ** 2 / sig2)
+    if not sym and not odd:
+        w = w[:-1]
+    return w</code></pre>
+</details>
+</dd>
+<dt id="vipy.math.gaussian2d"><code class="name flex">
+<span>def <span class="ident">gaussian2d</span></span>(<span>mu, std, H, W)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>2D float32 gaussian image of size (rows=H, cols=W) with mu=[x, y] and std=[stdx, stdy]</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+<a href="https://github.com/visym/vipy/blob/246f0d16deb2cbe52f54a7ff3656d403d8b80214/vipy/math.py#L110-L116" class="git-link">Browse git</a>
+</summary>
+<pre><code class="python">def gaussian2d(mu, std, H, W):
+    &#34;&#34;&#34;2D float32 gaussian image of size (rows=H, cols=W) with mu=[x, y] and std=[stdx, stdy]&#34;&#34;&#34;
+    img = np.zeros( (H,W), dtype=np.float32)
+    (X,Y) = np.meshgrid(W,H)
+    gx = ((1.0/np.sqrt(2*np.pi))*np.exp(-0.5*((np.arange(W)-mu[0])**2 / (std[0]**2)))).astype(np.float32)
+    gy = ((1.0/np.sqrt(2*np.pi))*np.exp(-0.5*((np.arange(H)-mu[1])**2) / (std[1]**2))).astype(np.float32)
+    return np.outer(gy,gx)</code></pre>
+</details>
+</dd>
+<dt id="vipy.math.interp1d"><code class="name flex">
+<span>def <span class="ident">interp1d</span></span>(<span>x, y)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Replication of scipy.interpolate.interp1d with assume_sorted=True, and constant replication of boundary handling</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+<a href="https://github.com/visym/vipy/blob/246f0d16deb2cbe52f54a7ff3656d403d8b80214/vipy/math.py#L119-L126" class="git-link">Browse git</a>
+</summary>
+<pre><code class="python">def interp1d(x, y):
+    &#34;&#34;&#34;Replication of scipy.interpolate.interp1d with assume_sorted=True, and constant replication of boundary handling&#34;&#34;&#34;
+    def ceil(x, at):
+        k = np.argwhere(np.array(x)-at &gt; 0)
+        return len(x)-1 if len(k) == 0 else int(k[0])
+    
+    assert sorted(x) == x and sorted(y) == y, &#34;Input must be sorted&#34;
+    return lambda at: y[max(0, ceil(x,at)-1)] + float(y[ceil(x,at)] - y[max(0, ceil(x,at)-1)])*((at - x[max(0, ceil(x,at)-1)])/(1E-16+(x[ceil(x,at)] - x[max(0, ceil(x,at)-1)])))</code></pre>
+</details>
+</dd>
+<dt id="vipy.math.iseven"><code class="name flex">
+<span>def <span class="ident">iseven</span></span>(<span>x)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>is the number x an even number?</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+<a href="https://github.com/visym/vipy/blob/246f0d16deb2cbe52f54a7ff3656d403d8b80214/vipy/math.py#L56-L58" class="git-link">Browse git</a>
+</summary>
+<pre><code class="python">def iseven(x):
+    &#34;&#34;&#34;is the number x an even number?&#34;&#34;&#34;
+    return x%2 == 0</code></pre>
+</details>
+</dd>
+<dt id="vipy.math.isodd"><code class="name flex">
+<span>def <span class="ident">isodd</span></span>(<span>x)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>is the number x an odd number?</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+<a href="https://github.com/visym/vipy/blob/246f0d16deb2cbe52f54a7ff3656d403d8b80214/vipy/math.py#L61-L63" class="git-link">Browse git</a>
+</summary>
+<pre><code class="python">def isodd(x):
+    &#34;&#34;&#34;is the number x an odd number?&#34;&#34;&#34;
+    return x%2 != 0</code></pre>
+</details>
+</dd>
+<dt id="vipy.math.normalize"><code class="name flex">
+<span>def <span class="ident">normalize</span></span>(<span>arr, mean, std, scale)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Whiten the numpy array arr using the provided mean and standard deviation.</p>
+<ul>
+<li>Uses numba acceleration since this is a common operation for preparing tensors.</li>
+<li>Computes:
+((scale*arr) - mean)) / std</li>
+</ul>
+<h2 id="args">Args</h2>
+<dl>
+<dt><strong><code>arr</code></strong></dt>
+<dd>[numpy] A numpy array</dd>
+<dt><strong><code>mean</code></strong></dt>
+<dd>[numpy] A broadcastable mean vector</dd>
+<dt><strong><code>std</code></strong></dt>
+<dd>[numpy]
+A broadcastable std vector</dd>
+<dt><strong><code>scale</code></strong></dt>
+<dd>[float] A scale factor to apply to arr before whitening (e.g. to scale from [0,255] to [0,1])</dd>
+</dl>
+<p>Returns
+((scale*arr) - mean)) / std</p>
+<div class="admonition notes">
+<p class="admonition-title">Notes:&ensp;Does not check that std &gt; 0</p>
+</div></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+<a href="https://github.com/visym/vipy/blob/246f0d16deb2cbe52f54a7ff3656d403d8b80214/vipy/math.py#L8-L26" class="git-link">Browse git</a>
+</summary>
+<pre><code class="python">@njit(parallel=True, cache=True, nogil=True, fastmath=True)
+def normalize(arr, mean, std, scale):
+    &#34;&#34;&#34;Whiten the numpy array arr using the provided mean and standard deviation.
+
+    - Uses numba acceleration since this is a common operation for preparing tensors.
+    - Computes:  ((scale*arr) - mean)) / std
+    
+    Args:
+        arr: [numpy] A numpy array
+        mean: [numpy] A broadcastable mean vector
+        std: [numpy]  A broadcastable std vector
+        scale: [float] A scale factor to apply to arr before whitening (e.g. to scale from [0,255] to [0,1])
+
+    Returns
+        ((scale*arr) - mean)) / std
+
+    .. notes:: Does not check that std &gt; 0
+    &#34;&#34;&#34;
+    return ((np.float32(scale)*arr.astype(np.float32)) - mean.flatten()) / std.flatten() </code></pre>
+</details>
+</dd>
+<dt id="vipy.math.polar_to_cartesian"><code class="name flex">
+<span>def <span class="ident">polar_to_cartesian</span></span>(<span>r, t)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Polar (r=radius, t=theta_radians) coordinates to cartesian (x=right,y=down) coordinates.
+(0,0) is upper left of image</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+<a href="https://github.com/visym/vipy/blob/246f0d16deb2cbe52f54a7ff3656d403d8b80214/vipy/math.py#L150-L152" class="git-link">Browse git</a>
+</summary>
+<pre><code class="python">def polar_to_cartesian(r, t):
+    &#34;&#34;&#34;Polar (r=radius, t=theta_radians) coordinates to cartesian (x=right,y=down) coordinates.  (0,0) is upper left of image&#34;&#34;&#34;
+    return (np.multiply(r, np.cos(t)), np.multiply(r, np.sin(t)))</code></pre>
+</details>
+</dd>
+<dt id="vipy.math.poweroftwo"><code class="name flex">
+<span>def <span class="ident">poweroftwo</span></span>(<span>x)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Return the closest power of two smaller than the scalar value. x=511 -&gt; 256, x=512 -&gt; 512</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+<a href="https://github.com/visym/vipy/blob/246f0d16deb2cbe52f54a7ff3656d403d8b80214/vipy/math.py#L72-L75" class="git-link">Browse git</a>
+</summary>
+<pre><code class="python">def poweroftwo(x):
+    &#34;&#34;&#34;Return the closest power of two smaller than the scalar value. x=511 -&gt; 256, x=512 -&gt; 512&#34;&#34;&#34;
+    assert x&gt;=2 
+    return int(np.power(2, int(np.floor(np.log2(x)/np.log2(2)))))</code></pre>
+</details>
+</dd>
+<dt id="vipy.math.rad2deg"><code class="name flex">
+<span>def <span class="ident">rad2deg</span></span>(<span>r)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Radians to degrees</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+<a href="https://github.com/visym/vipy/blob/246f0d16deb2cbe52f54a7ff3656d403d8b80214/vipy/math.py#L154-L156" class="git-link">Browse git</a>
+</summary>
+<pre><code class="python">def rad2deg(r):
+    &#34;&#34;&#34;Radians to degrees&#34;&#34;&#34;
+    return r*(180.0 / np.pi)</code></pre>
+</details>
+</dd>
+<dt id="vipy.math.runningmean"><code class="name flex">
+<span>def <span class="ident">runningmean</span></span>(<span>X, n)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Compute the running unweighted mean of X row-wise, with a history of n, reducing the history at the start for column indexes &lt; n</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+<a href="https://github.com/visym/vipy/blob/246f0d16deb2cbe52f54a7ff3656d403d8b80214/vipy/math.py#L83-L86" class="git-link">Browse git</a>
+</summary>
+<pre><code class="python">def runningmean(X, n):
+    &#34;&#34;&#34;Compute the running unweighted mean of X row-wise, with a history of n, reducing the history at the start for column indexes &lt; n&#34;&#34;&#34;
+    assert isnumpy(X), &#34;Input must be a np.array()&#34;    
+    return np.array([[np.mean(c) for c in chunklistWithOverlap(x, n, n-1)] for x in X])</code></pre>
+</details>
+</dd>
+<dt id="vipy.math.significant_digits"><code class="name flex">
+<span>def <span class="ident">significant_digits</span></span>(<span>f, n)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Return the float f rounded to n significant digits</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+<a href="https://github.com/visym/vipy/blob/246f0d16deb2cbe52f54a7ff3656d403d8b80214/vipy/math.py#L51-L54" class="git-link">Browse git</a>
+</summary>
+<pre><code class="python">def significant_digits(f, n):
+    &#34;&#34;&#34;Return the float f rounded to n significant digits&#34;&#34;&#34;
+    assert (isinstance(f, float) or isinstance(f, int)) and isinstance(n, int)
+    return np.round(f*np.power(10,n))/np.power(10, n)</code></pre>
+</details>
+</dd>
+<dt id="vipy.math.signsqrt"><code class="name flex">
+<span>def <span class="ident">signsqrt</span></span>(<span>x)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Return the signed square root of elements in numpy array x</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+<a href="https://github.com/visym/vipy/blob/246f0d16deb2cbe52f54a7ff3656d403d8b80214/vipy/math.py#L78-L80" class="git-link">Browse git</a>
+</summary>
+<pre><code class="python">def signsqrt(x):
+    &#34;&#34;&#34;Return the signed square root of elements in numpy array x&#34;&#34;&#34;
+    return np.multiply(np.sign(x), np.sqrt(np.abs(x)))</code></pre>
+</details>
+</dd>
+</dl>
+</section>
+<section>
+</section>
+</article>
+<nav id="sidebar">
+<header>
+<a class="homelink" rel="home" title="VIPY" href="https://github.com/visym/vipy/">
+<img src="https://www.visym.com/labs/images/visym_logo_black_notext.png" alt="" width="60">
+</a>
+<h1 style="font-size:200%;"><b>VIPY:</b> Visual Dataset Transformation</h1>
+</header>
+<form>
+<input id="lunr-search" name="q" placeholder="🔎 Search ..." aria-label="Search"
+disabled minlength="2">
+</form>
+<link rel="preload stylesheet" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/tingle/0.15.3/tingle.min.css" integrity="sha512-j1u8eUJ4f23xPPxwOrLUPQaCD2dwzNqqmDDcWS4deWsMv2ohLqmXXuP3hU7g8TyzbMSakP/mMqoNBYWj8AEIFg==" crossorigin>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/tingle/0.15.3/tingle.min.js" integrity="sha512-plGUER9JkeEWPPqQBE4sdLqBoQug5Ap+BCGMc7bJ8BXkm+VVj6QzkpBz5Yv2yPkkq+cqg9IpkBaGCas6uDbW8g==" crossorigin></script>
+<style>
+.modal-dialog iframe {
+width: 100vw;
+height: calc(100vh - 80px);
+}
+@media screen and (min-width: 700px) {
+.modal-dialog iframe {
+width: 70vw;
+height: 80vh;
+}
+}
+.modal-dialog .tingle-modal-box {width: auto;}
+.modal-dialog .tingle-modal-box__content {padding: 0;}
+</style>
+<script>
+const input = document.getElementById('lunr-search');
+input.disabled = false;
+input.form.addEventListener('submit', (ev) => {
+ev.preventDefault();
+const url = new URL(window.location);
+url.searchParams.set('q', input.value);
+history.replaceState({}, null, url.toString());
+search(input.value);
+});
+const query = new URL(window.location).searchParams.get('q');
+if (query)
+search(query);
+function search(query) {
+const url = './doc-search.html#' + encodeURIComponent(query);
+new tingle.modal({
+cssClass: ['modal-dialog'],
+onClose: () => {
+const url = new URL(window.location);
+url.searchParams.delete('q');
+history.replaceState({}, null, url.toString());
+setTimeout(() => input.focus(), 100);
+}
+}).setContent('<iframe src="' + url + '"></iframe>').open();
+}
+</script>
+<h1>Index</h1>
+<div class="toc">
+<ul></ul>
+</div>
+<ul id="index">
+<li><h3>Super-module</h3>
+<ul>
+<li><code><a title="vipy" href="index.html">vipy</a></code></li>
+</ul>
+</li>
+<li><h3><a href="#header-functions">Functions</a></h3>
+<ul class="">
+<li><code><a title="vipy.math.cartesian_to_polar" href="#vipy.math.cartesian_to_polar">cartesian_to_polar</a></code></li>
+<li><code><a title="vipy.math.even" href="#vipy.math.even">even</a></code></li>
+<li><code><a title="vipy.math.find_closest_positive_divisor" href="#vipy.math.find_closest_positive_divisor">find_closest_positive_divisor</a></code></li>
+<li><code><a title="vipy.math.gaussian" href="#vipy.math.gaussian">gaussian</a></code></li>
+<li><code><a title="vipy.math.gaussian2d" href="#vipy.math.gaussian2d">gaussian2d</a></code></li>
+<li><code><a title="vipy.math.interp1d" href="#vipy.math.interp1d">interp1d</a></code></li>
+<li><code><a title="vipy.math.iseven" href="#vipy.math.iseven">iseven</a></code></li>
+<li><code><a title="vipy.math.isodd" href="#vipy.math.isodd">isodd</a></code></li>
+<li><code><a title="vipy.math.normalize" href="#vipy.math.normalize">normalize</a></code></li>
+<li><code><a title="vipy.math.polar_to_cartesian" href="#vipy.math.polar_to_cartesian">polar_to_cartesian</a></code></li>
+<li><code><a title="vipy.math.poweroftwo" href="#vipy.math.poweroftwo">poweroftwo</a></code></li>
+<li><code><a title="vipy.math.rad2deg" href="#vipy.math.rad2deg">rad2deg</a></code></li>
+<li><code><a title="vipy.math.runningmean" href="#vipy.math.runningmean">runningmean</a></code></li>
+<li><code><a title="vipy.math.significant_digits" href="#vipy.math.significant_digits">significant_digits</a></code></li>
+<li><code><a title="vipy.math.signsqrt" href="#vipy.math.signsqrt">signsqrt</a></code></li>
+</ul>
+</li>
+</ul>
+</nav>
+</main>
+<footer id="footer">
+<p>Generated by <a href="https://pdoc3.github.io/pdoc" title="pdoc: Python API documentation generator"><cite>pdoc</cite> 0.10.0</a>.</p>
+</footer>
+</body>
+</html>

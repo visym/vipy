@@ -66,7 +66,7 @@ class Dataset():
 
         self._saveas_ext = ['pkl', 'json']
         self._id = id if id is not None else vipy.util.shortuuid(8)
-        self._loader = self._default_loader if loader is None else loader
+        self._loader = self._default_loader if loader is None else loader  # may not be serializable if lambda is provided
         self._istype_strict = True
         self._lazy_loader = lazy
         self._abspath = abspath
@@ -109,9 +109,10 @@ class Dataset():
     def __getitem__(self, k):
         if isinstance(k, int) or isinstance(k, np.uint64):
             assert k>=0 and k<len(self._objlist), "invalid index"
-            return self._loader(self._objlist[int(k)])
+            x = self._objlist[int(k)]
+            return self._loader(x) if self._loader is not None else x
         elif isinstance(k, slice):
-            return [self._loader(x) for x in self._objlist[k.start:k.stop:k.step]]
+            return [self._loader(x) if self._loader is not None else x for x in self._objlist[k.start:k.stop:k.step]]
         else:
             raise ValueError()
             
@@ -202,7 +203,7 @@ class Dataset():
                 novideos [bool]:  generate a tarball without linking videos, just annotations
                 md5 [bool]:  If True, generate the MD5 hash of the tarball using the system "md5sum", or if md5='vipy' use a slower python only md5 hash 
                 castas [class]:  This should be a vipy class that the vipy objects should be cast to prior to archive.  This is useful for converting priveledged superclasses to a base class prior to export.
-                tmpdir:  The path to the temporary directory for construting this dataset.  Defaults to system temp
+                tmpdir:  The path to the temporary directory for construting this dataset.  Defaults to system temp.  This directory will be emptied prior to archive.
                 inplace [bool]:  If true, modify the dataset in place to prepare it for archive, else make a copy
                 bycategory [bool]: If true, save the annotations in an annotations/ directory by category
                 annotationdir [str]: The subdirectory name of annotations to be contained in the archive if bycategory=True.  Usually "annotations" or "json".
@@ -227,7 +228,7 @@ class Dataset():
         assert shutil.which('tar') is not None, "tar not found on path"        
         
         D = self.clone() if not inplace else self   # large memory footprint if inplace=False
-        tmpdir = tempdir() if tmpdir is None else remkdir(tmpdir)
+        tmpdir = tempdir() if tmpdir is None else remkdir(tmpdir, flush=True)
         stagedir = remkdir(os.path.join(tmpdir, filefull(filetail(tarfile))))
         print('[vipy.dataset]: creating staging directory "%s"' % stagedir)
         delprefix = [[d for d in tolist(delprefix) if d in v.filename()][0] for v in self]  # select the delprefix per video
@@ -243,10 +244,12 @@ class Dataset():
     
         # Copy extras (symlinked) to staging directory
         if extrafiles is not None:
+            # extrafiles = [("/abs/path/in/filesystem.ext", "rel/path/in/archive.ext"), ... ]
             assert all([((isinstance(e, tuple) or isinstance(e, list)) and len(e) == 2) or isinstance(e, str) for e in extrafiles])
             extrafiles = [e if (isinstance(e, tuple) or isinstance(e, list)) else (e,e) for e in extrafiles]  # tuple-ify files in pwd() and should be put in the tarball root
             for (e, a) in tolist(extrafiles):
                 assert os.path.exists(os.path.abspath(e)), "Invalid extras file '%s' - file not found" % e
+                remkdir(filepath(os.path.join(stagedir, filetail(e) if a is None else a)))    # make directory in stagedir for symlink
                 os.symlink(os.path.abspath(e), os.path.join(stagedir, filetail(e) if a is None else a))
 
         # System command to run tar
@@ -270,7 +273,7 @@ class Dataset():
                 print('[vipy.dataset]: %s, MD5=%s' % (tarfile, vipy.downloader.generate_md5(tarfile)))  # too slow for large datasets, but does not require md5sum on path
         return tarfile
         
-    def save(self, outfile, nourl=False, castas=None, relpath=False, sanitize=True, strict=True, significant_digits=2, noemail=True, flush=True):
+    def save(self, outfile, nourl=False, castas=None, relpath=False, sanitize=True, strict=True, significant_digits=2, noemail=True, flush=True, bycategory=False):
         """Save the dataset to the provided output filename stored as pkl or json
         
         Args:
@@ -283,6 +286,7 @@ class Dataset():
             significant_digits: [int]: Assign the requested number of significant digits to all bounding boxes in all tracks.  This requires dataset of `vipy.video.Scene`
             noemail: [bool]: If true, scrub the attributes for emails and replace with a hash
             flush: [bool]:  If true, flush the object buffers prior to save
+            bycategory [bool[: If trye, then save the dataset to the provided output filename pattern outfile='/path/to/annotations/*.json' where the wildcard is replaced with the category name
 
         Returns:        
             This dataset that is quivalent to vipy.dataset.Dataset('/path/to/outfile.json')
@@ -319,14 +323,20 @@ class Dataset():
         if flush:
             objlist = [o.flush() for o in objlist]  
 
-        print('[vipy.dataset]: Saving %s to "%s"' % (str(self), outfile))
-        vipy.util.save(objlist, outfile)
+        if bycategory:
+            for (c,V) in vipy.util.groupbyasdict(list(self), lambda v: v.category()).items():
+                jsonfile = outfile.replace('*', c)  # outfile="/path/to/annotations/*.json"
+                d = Dataset(V, id=c).save(jsonfile, relpath=relpath, nourl=nourl, sanitize=sanitize, castas=castas, significant_digits=significant_digits, noemail=noemail, flush=flush, bycategory=False)
+                print('[vipy.dataset]: Saving %s by category to "%s"' % (str(d), jsonfile))                
+        else:
+            print('[vipy.dataset]: Saving %s to "%s"' % (str(self), outfile))
+            vipy.util.save(objlist, outfile)
         return self
 
     def classlist(self):
         """Return a sorted list of categories in the dataset"""
         assert self._isvipy(), "Invalid input"
-        return sorted(list(set(self.map(lambda v: v.category()))))
+        return sorted(list(set([v.category() for v in self])))
 
     def classes(self):
         """Alias for classlist"""
@@ -375,12 +385,14 @@ class Dataset():
         assert isinstance(other, Dataset), "invalid input"
         if len(other) > 0:
             try:
-                other._loader(self._objlist[0])
-                self._loader(other._objlist[0])
+                if other._loader is not None:
+                    other._loader(self._objlist[0])
+                if self._loader is not None:
+                    self._loader(other._objlist[0])
                 self._objlist = self._objlist + other._objlist  # compatible loaders
             except:
                 self._objlist = self.list() + other.list()  # incompatible loaders
-                self._loader = lambda x: x
+                self._loader = None
         return self.dedupe(key) if key is not None else self
     
     def difference(self, other, key):
@@ -488,26 +500,34 @@ class Dataset():
         """Alias for `vipy.dataset.Dataset.jsondir`"""
         return self.jsondir(outdir, verbose=verbose, rekey=rekey, bycategory=bycategory, byfilename=byfilename, abspath=abspath)
     
-    def takelist(self, n, category=None, canload=False):
-        """Take n elements of selected category and return list"""
+    def takelist(self, n, category=None, seed=None):
+        """Take n elements of selected category and return list.  The elements are not cloned."""
         assert n >= 0, "Invalid length"
-        D = self if category is None else self.clone().filter(lambda v: v.category() == category())
-        return [D[int(k)] for k in np.random.permutation(range(len(D)))[0:n]]  # native python int
+        K = list(range(len(self))) if category is None else [k for (k,v) in enumerate(self) if v.category() == category]
+        if seed is not None:
+            np.random.seed(seed)            
+        outlist = [self[int(k)] for k in np.random.permutation(K)[0:n]]  # native python int
+        if seed is not None:
+            np.random.seed()
+        return outlist
 
     def load(self):
         """Load the entire dataset into memory.  This is useful for creating in-memory datasets from lazy load datasets"""
         self._objlist = self.list()
-        self._loader = lambda x: x
+        self._loader = None
         return self
 
-    def take(self, n, category=None, canload=False):
+    def take(self, n=1, category=None, canload=False, seed=None):
+        """Randomlly Take n elements from the dataset, and return a dataset if n>1, otherwise return the singleton element.  If seed=int, take will return the same results each time."""
+        assert isinstance(n, int) and n>0
         D = self.clone(shallow=True)
-        D._objlist = self.takelist(n, category=category, canload=canload)
-        return D
+        D._objlist = self.takelist(n, category=category, seed=seed)
+        return D if n>1 else D[0]
 
-    def take_per_category(self, n, id=None, canload=False):
-        D = self.clone()
-        return Dataset([v for c in self.categories() for v in self.takelist(n, category=c, canload=canload)], id=id)
+    def take_per_category(self, n, seed=None):
+        D = self.clone(shallow=True)
+        D._objlist = [v for c in self.categories() for v in self.takelist(n, category=c, seed=seed)]
+        return D
     
     def shuffle(self):
         """Randomly permute elements in this dataset"""
@@ -589,13 +609,14 @@ class Dataset():
         f_serialize = lambda v,d=vipy.util.class_registry(): (str(type(v)), v.json()) if str(type(v)) in d else (None, pickle.dumps(v))  # fallback on PKL dumps/loads
         f_deserialize = lambda x,d=vipy.util.class_registry(): d[x[0]](x[1])  # with closure capture
         f_catcher = lambda f, *args, **kwargs: vipy.util.loudcatcher(f, '[vipy.dataset.Dataset.map]: ', *args, **kwargs)  # catch exceptions when executing lambda, print errors and return (True, result) or (False, exception)
+        f_loader = self._loader if self._loader is not None else lambda x: x
         S = [f_serialize(v) for v in self._objlist]  # local serialization
-        B = Batch(vipy.util.chunklist(S, chunks), strict=strict, as_completed=ascompleted, warnme=False, minscatter=chunks, ordered=ordered)        
+        B = Batch(vipy.util.chunklist(S, chunks), strict=strict, as_completed=ascompleted, warnme=False, minscatter=chunks, ordered=ordered)
         if model is None:
-            f = lambda x, f_loader=self._loader, f_serializer=f_serialize, f_deserializer=f_deserialize, f_map=f_map, f_catcher=f_catcher: f_serializer(f_catcher(f_map, f_loader(f_deserializer(x))))  # with closure capture
-            S = B.map(lambda X,f=f: [f(x) for x in X]).result()  # chunked, with caught exceptions
+            f = lambda x, f_loader=f_loader, f_serializer=f_serialize, f_deserializer=f_deserialize, f_map=f_map, f_catcher=f_catcher: f_serializer(f_catcher(f_map, f_loader(f_deserializer(x))))  # with closure capture
+            S = B.map(lambda X,f=f: [f(x) for x in X]).result()  # chunked, with caught exceptions, may return empty list
         else:
-            f = lambda net, x, f_loader=self._loader, f_serializer=f_serialize, f_deserializer=f_deserialize, f_map=f_map, f_catcher=f_catcher: f_serializer(f_catcher(f_map, net, f_loader(f_deserializer(x))))  # with closure capture
+            f = lambda net, x, f_loader=f_loader, f_serializer=f_serialize, f_deserializer=f_deserialize, f_map=f_map, f_catcher=f_catcher: f_serializer(f_catcher(f_map, net, f_loader(f_deserializer(x))))  # with closure capture
             S = B.scattermap((lambda net, X, f=f: [f(net, x) for x in X]), model).result()  # chunked, scattered, caught exceptions
         if not isinstance(S, list) or any([not isinstance(s, list) for s in S]):
             raise ValueError('Distributed processing error - Batch returned: %s' % (str(S)))
@@ -607,7 +628,8 @@ class Dataset():
         return Dataset(good, id=dst if dst is not None else id)
 
     def localmap(self, f):
-        self._objlist = [f(v) for v in self]
+        for (k,v) in enumerate(self):
+            self._objlist[k] = f(v)  # in-place update
         return self
 
     def flatmap(self, f):
@@ -676,15 +698,17 @@ class Dataset():
             lbl_likelihood = {}
             if len(v.activities()) > 0:
                 (ef, sf) = (max([a.endframe() for a in v.activitylist()]), min([a.startframe() for a in v.activitylist()]))  # clip length 
-                lbl_frequency = vipy.util.countby([a for A in v.activitylabel(sf, ef) for a in A], lambda x: x)  # frequency within clip
-                for (k,f) in lbl_frequency.items():
+                lbl_list = [a for A in v.activitylabel(sf, ef) for a in set(A)]  # list of all labels within clip (labels are unique in each frame)
+                lbl_frequency = vipy.util.countby(lbl_list, lambda x: x)  # frequency of each label within clip
+                lbl_weight = {k:v/float(len(lbl_list)) for (k,v) in lbl_frequency.items()}  # multi-label likelihood within clip, normalized frequency sums to one 
+                for (k,w) in lbl_weight.items():
                     if k not in lbl_likelihood:
                         lbl_likelihood[k] = 0
-                    lbl_likelihood[k] += f/(ef-sf)
+                    lbl_likelihood[k] += w
             return lbl_likelihood
                     
         lbl_likelihood  = {}
-        for d in self.map(lambda v: _multilabel_inverse_frequency_weight(v)):
+        for d in self.map(lambda v: _multilabel_inverse_frequency_weight(v)):  # parallelizable
             for (k,v) in d.items():
                 if k not in lbl_likelihood:
                     lbl_likelihood[k] = 0
@@ -709,6 +733,7 @@ class Dataset():
         return d
 
     def duration_in_seconds(self, outfile=None, fontsize=6, max_duration=None):
+        """Duration of activities"""
         assert self._isvipy()
         d = {k:np.mean([v[1] for v in v]) for (k,v) in groupbyasdict([(a.category(), len(a)/v.framerate()) for v in self.list() for a in v.activitylist()], lambda x: x[0]).items()}
         if outfile is not None:
@@ -716,6 +741,15 @@ class Dataset():
             vipy.metrics.histogram([min(x, max_duration) for x in d.values()], d.keys(), outfile=outfile, ylabel='Duration (seconds)', fontsize=fontsize)            
         return d
 
+    def video_duration_in_seconds(self, outfile=None, fontsize=6, max_duration=None):
+        """Duration of activities"""
+        assert self._isvipy()
+        d = {k:np.mean([d for (c,d) in D]) for (k,D) in groupbyasdict([(v.category(), v.duration()) for v in self.list()], lambda x: x[0]).items()}
+        if outfile is not None:
+            max_duration = max(d.values()) if max_duration is None else max_duration
+            vipy.metrics.histogram([min(x, max_duration) for x in d.values()], d.keys(), outfile=outfile, ylabel='Duration (seconds)', fontsize=fontsize)            
+        return d
+    
     def framerate(self, outfile=None):
         assert self._isvipy()
         d = vipy.util.countby([int(round(v.framerate())) for v in self.list()], lambda x: x)
@@ -818,7 +852,7 @@ class Dataset():
         import vipy.torch
         return vipy.torch.TorchDataset(f_video_to_tensor, self)
 
-    def to_torch_tensordir(self, f_video_to_tensor, outdir, n_augmentations=20, sleep=3):
+    def to_torch_tensordir(self, f_video_to_tensor, outdir, n_augmentations=20, sleep=None):
         """Return a TorchTensordir dataset that will load a pkl.bz2 file that contains one of n_augmentations (tensor, label) pairs.
         
         This is useful for fast loading of datasets that contain many videos.
@@ -829,7 +863,7 @@ class Dataset():
 
         assert self._is_vipy_video_scene()
         outdir = vipy.util.remkdir(outdir)
-        vipy.batch.Batch(self.list(), as_completed=True).map(lambda v, f=f_video_to_tensor, outdir=outdir, n_augmentations=n_augmentations: vipy.util.bz2pkl(os.path.join(outdir, '%s.pkl.bz2' % v.instanceid()), [f(v.print(sleep=sleep).clone()) for k in range(0, n_augmentations)]))
+        self.map(lambda v, f=f_video_to_tensor, outdir=outdir, n_augmentations=n_augmentations: vipy.util.bz2pkl(os.path.join(outdir, '%s.pkl.bz2' % v.instanceid()), [f(v.print(sleep=sleep).clone()) for k in range(0, n_augmentations)]))
         return vipy.torch.Tensordir(outdir)
 
     def annotate(self, outdir, mindim=512):
@@ -896,7 +930,7 @@ class Dataset():
             categories = [c for c in requested_categories if D.count()[c] >= num_elements]  # filter those categories that do not have enough
             if set(categories) != set(requested_categories):
                 warnings.warn('[vipy.dataset.video_montage]: removing "%s" without at least %d examples' % (str(set(requested_categories).difference(set(categories))), num_elements))
-            vidlist = sorted(D.filter(lambda v: v.category() in categories).take_per_category(num_elements, canload=True).tolist(), key=lambda v: v.category())
+            vidlist = sorted(D.filter(lambda v: v.category() in categories).take_per_category(num_elements).tolist(), key=lambda v: v.category())
             vidlist = vidlist if not transpose else [vidlist[k] for k in np.array(range(0, len(vidlist))).reshape( (len(categories), num_elements) ).transpose().flatten().tolist()] 
             (gridrows, gridcols) = (len(categories), num_elements) if not transpose else (num_elements, len(categories))
             assert len(vidlist) == gridrows*gridcols

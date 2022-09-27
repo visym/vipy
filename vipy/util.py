@@ -197,6 +197,13 @@ def load(infile, abspath=True, refcycle=True):
     return obj
 
 
+def dedupe(inlist, f):
+    """Deduplicate the list using the provided lambda function which transforms an element to a dedupe key, such that all elements with the same key are duplicates"""
+    assert callable(f)
+    assert isinstance(inlist, list)
+    return list({f(x):x for x in inlist}.values())
+
+
 def bz2pkl(filename, obj=None):
     """Read/Write a bz2 compressed pickle file"""
     assert filename[-8:] == '.pkl.bz2', "Invalid filename - must be '*.pkl.bz2'"
@@ -237,6 +244,18 @@ def nonecatcher(f, *args, **kwargs):
         return f(*args, **kwargs)
     except Exception as e:
         return None
+
+def trycatcher(f, *args, **kwargs):
+    """Call the function f with the provided arguments, and return (result) on success and (None) if there is any thrown exception.  Useful for parallel processing"""
+    assert callable(f)
+    try:
+        return f(*args, **kwargs)
+    except Exception as e:
+        return None
+
+def catchif(f, *args, **kwargs):
+    """Call the function f with the provided arguments, and return (result) on success and (None) if there is any thrown exception.  Useful for parallel processing.  Alias for `vipy.util.trycatcher`"""
+    return trycatcher(f, *args, **kwargs)
 
 
 def mergedict(d1, d2):
@@ -293,6 +312,13 @@ def findpkl(basedir):
     """Return a list of absolute paths to pkl files recursively discovered by walking the directory tree rooted at basedir"""
     return [str(path.resolve()) for path in pathlib.Path(basedir).rglob('*.pkl')]
 
+def findpdf(basedir):
+    """Return a list of absolute paths to pdf files recursively discovered by walking the directory tree rooted at basedir"""
+    return [str(path.resolve()) for path in pathlib.Path(basedir).rglob('*.pdf')]
+
+def findpng(basedir):
+    """Return a list of absolute paths to png files recursively discovered by walking the directory tree rooted at basedir"""
+    return [str(path.resolve()) for path in pathlib.Path(basedir).rglob('*.png')]
 
 def findjson(basedir):
     """Return a list of absolute paths to json files recursively discovered by walking the directory tree rooted at basedir"""
@@ -302,10 +328,17 @@ def findimage(basedir):
     """Return a list of absolute paths to image files recursively discovered by walking the directory tree rooted at basedir"""
     return [str(path.resolve()) for path in pathlib.Path(basedir).rglob('*') if isimage(str(path.resolve()))]
 
+def findimages(basedir):
+    """Alias for `vipy.util.findimage`"""
+    return findimage(basedir)
+
 def findvideo(basedir):
     """Return a list of absolute paths to video files recursively discovered by walking the directory tree rooted at basedir"""
     return [str(path.resolve()) for path in pathlib.Path(basedir).rglob('*') if isvideo(str(path.resolve()))]
     
+def findvideos(basedir):
+    """Alias for `vipy.util.findvideo`"""
+    return findvideo(basedir)
 
 def readyaml(yamlfile):
     """Read a yaml file and return a parsed dictionary, this is slow for large yaml files"""
@@ -399,29 +432,30 @@ def softmax(x, temperature=1.0):
     return z / np.sum(z, axis=1).reshape(x.shape[0], 1)
 
 
-def permutelist(inlist):
-    """randomly permute list order"""
-    return [inlist[k] for k in np.random.permutation(list(range(0, len(inlist))))]
-
-
-def flatlist(inlist):
-    """Convert list of tuples into a list expanded by concatenating tuples"""
-    outlist = []
-    for r in inlist:
-        for x in r:
-            outlist.append(x)
+def permutelist(inlist, deterministic=False, seed=42):
+    """randomly permute list order.  Permutation is deterministic (same permutation on multiple calls) if specified"""
+    if deterministic:
+        np.random.seed(seed)  # deterministic        
+    outlist = [inlist[k] for k in np.random.permutation(list(range(0, len(inlist))))]
+    if deterministic:
+        np.random.seed()  # re-init randomness
     return outlist
 
 
+def flatlist(inlist):
+    """Convert list of tuples into a list expanded by concatenating tuples.  If the input is already flat, return it unchanged."""
+    return [x for r in inlist for x in (r if (isinstance(r, list) or isinstance(r, tuple)) else (r,))]
+
+
 def rmdir(indir):
-    """Recursively remove directory and all contents (if the directory
-    exists)"""
+    """Recursively remove directory and all contents (if the directory exists)"""
     if os.path.exists(indir) and os.path.isdir(indir):
         shutil.rmtree(indir)
     return indir
 
 def dividelist(inlist, fractions):
     """Divide inlist into a list of lists such that the size of each sublist is the requseted fraction of the original list. 
+
        This operation is deterministic and generates the same division in multiple calls.
        
     Args:
@@ -635,10 +669,13 @@ def loadmat73(matfile, keys=None):
         return np.array(f)
 
 
-
 def take(inlist, k):
     """Take k elements at random from inlist"""
     return [inlist[i] for i in np.random.permutation(range(len(inlist)))[0:k]] if len(inlist)>k else inlist
+
+def takeone(inlist):
+    """Take one element at random from inlist"""
+    return take(list(inlist), k=1)[0] if len(inlist)>=1 else None
 
 def tryload(infile, abspath=False):
     """Attempt to load a pkl file, and return the value if successful and None if not"""
@@ -695,7 +732,7 @@ def scpsave(V, username=None):
         username: [str] Your username on the remote machine to select the proper SSH key
 
     Returns:
-        A temp archive file stored on the remote machine that will be downloaded and loaded via SCP
+        A temp archive file stored on the remote machine that will be downloaded and loaded via SCP, such that each element in the list will be fetched via scp when pixels are loaded.
 
     """
     
@@ -705,7 +742,7 @@ def scpsave(V, username=None):
     if isinstance(V, vipy.dataset.Dataset) and V._isvipy():
         v = V.localmap(lambda v: v.clone().url('scp://%s%s:%s' % (('%s@' % username) if username is not None else '', socket.gethostname(), v.filename())).nofilename())
     elif (isinstance(V, vipy.image.Image) or isinstance(V, vipy.video.Video)) and V.hasfilename():        
-        v = V.clone().url('scp://%s%s:%s' % (('%s@' % username) if username is not None else '', socket.gethostname(), v.filename())).nofilename()
+        v = V.clone().url('scp://%s%s:%s' % (('%s@' % username) if username is not None else '', socket.gethostname(), V.filename())).nofilename()
     elif islist(V) and all([isinstance(v, vipy.image.Image) or isinstance(v, vipy.video.Video) for v in V]):
         v = [v.clone().url('scp://%s%s:%s' % (('%s@' % username) if username is not None else '', socket.gethostname(), v.abspath().filename())).nofilename() for v in V]
     else:
@@ -713,7 +750,7 @@ def scpsave(V, username=None):
 
     pklfile = 'scp://%s%s:%s' % (('%s@' % username) if username is not None else '', socket.gethostname(), save(v, temppkl()))
     cmd = "V = vipy.util.scpload('%s')" % pklfile
-    print('[vipy.util.scpsave]: On a remote machine where you have public key ssh access to this machine run:\n>>> %s\n' % cmd)
+    print('[vipy.util.scpsave]: On a local machine where you have public key ssh access to this remote machine run:\n>>> %s\n' % cmd)
     return pklfile
 
 
@@ -1000,11 +1037,31 @@ def readtxt(infile):
     return readlist(infile)
 
 
-def writecsv(list_of_tuples, outfile, mode='w', separator=','):
-    """Write list of tuples to an output csv file with each list element
-    on a row and tuple elements separated by comma"""
+def writecsv(list_of_tuples, outfile=None, mode='w', separator=',', header=None, comment='# '):
+    """Write list of tuples to an output csv file with each list element on a row and tuple elements separated by commas.
+
+    Examples:
+    ```python
+    vipy.util.writecsv([(1,2,3), (4,5,6)], '/tmp/out.csv')
+    vipy.util.writecsv([(1,2,3), (4,5,6)], '/tmp/out.csv', separator=';'))
+    vipy.util.writecsv([(1,2,3), (4,5,6)], '/tmp/out.csv', header=('h1','h2','h3'))
+    ```
+
+    Args:
+        list_of_tuples: a list of tuples each tuple is a row
+        outfile: the csv file output
+        mode: 'w' for overwrite, 'a' for append
+        separator: a string specifying the separator between columns.  defaults to ','
+        header: a tuple containing strings to be appended to the first row of the csv file
+        comment:  the comment symbol to be prepended to the header row 
+
+    Returns:
+        the outfile path
+    """
+    
     list_of_tuples = list_of_tuples if not isnumpy(list_of_tuples) else list_of_tuples.tolist()
-    outfile = os.path.abspath(os.path.expanduser(outfile))
+    list_of_tuples = list_of_tuples if header is None else [tuple([h if k>0 else comment+h for (k,h) in enumerate(header)])]+list_of_tuples  # prepend header with comment symbol
+    outfile = os.path.abspath(os.path.expanduser(outfile)) if outfile is not None else tempcsv()
     with open(outfile, mode) as f:
         for u in list_of_tuples:
             n = len(u)
@@ -1016,12 +1073,25 @@ def writecsv(list_of_tuples, outfile, mode='w', separator=','):
     return(outfile)
 
 
-def readcsv(infile, separator=',', ignoreheader=False):
-    """Read a csv file into a list of lists"""
+def readcsv(infile, separator=',', ignoreheader=False, comment=None):
+    """Read a csv file into a list of lists, ignore any rows prepended with comment symbol, ignore first row if ignoreheader=True
+
+    Args:
+        infile: the csv file input
+        separator: a string specifying the separator between columns.  defaults to ','
+        ignoreheader: if true, ignore the first row of the csv file
+        comment:  if provided, ignore all rows with this comment symbol prepended
+
+    Returns:
+        a list of lists, each list element containing a list of elements in the corresponding line of the csv file, parsed by separator
+    """
+
     with open(infile, 'r') as f:
         list_of_rows = [[x.strip() for x in r.split(separator)]
                         for r in f.readlines()]
-    return list_of_rows if not ignoreheader else list_of_rows[1:]
+    list_of_rows = list_of_rows if (len(list_of_rows)==0 or not ignoreheader) else list_of_rows[1:]
+    list_of_rows = list_of_rows if comment is None else [r for r in list_of_rows if len(r)==0 or r[0][0] != comment]
+    return list_of_rows
 
 
 def readcsvwithheader(infile, separator=','):
@@ -1096,6 +1166,9 @@ def shortuuid(n=16):
     """Generate a short UUID with n hex digits"""
     return hashlib.sha256(uuid.uuid1().hex.encode('utf-8')).hexdigest()[0:n] 
 
+def stringhash(s, n=16):
+    """Generate a repeatable hash with n characters for a string s"""
+    return hashlib.sha256(s.encode('utf-8')).hexdigest()[0:n]
 
 def isimageurl(path):
     """Is a path a URL with image extension?"""
@@ -1190,7 +1263,8 @@ def isimg(path):
 
 def isimage(path):
     """Alias for `vipy.util.isimg`"""
-
+    return isimg(path)
+    
 def isvideofile(path):
     """Alias for `vipy.util.isvideo`"""
     return isvideo(path)
@@ -1585,6 +1659,10 @@ def toextension(filename, newext):
         newext = newext.split('.')[-1]
     (filename, oldext) = splitextension(filename)
     return filename + '.' + str(newext)
+
+def noextension(filename, ext=None):
+    """Convert filename='/path/to/myfile.ext' or filename='/path/to/myfile.ext1.ext2.ext3' to /path/to/myfile with no extension, removing the appended string past the first dot"""
+    return filename.split('.')[0] if ext is None else filename.replace(ext, '')
 
 def topkl(filename):
     """Convert filename='/path/to/myfile.ext' to /path/to/myfile.pkl"""

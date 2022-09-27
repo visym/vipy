@@ -204,11 +204,16 @@ def mean_average_precision(ap):
 
 
 
-def confusion_matrix(cm, outfile=None, figure=None, fontsize=5, xlabel=None, ylabel=None, normalized=False, classes=None, colorbar=False):
+def confusion_matrix(cm, outfile=None, figure=None, fontsize=5, xlabel=None, ylabel=None, classes=None, colorbar=False, figsize=None):
+    """Generate a confusion matrix plot for a confusion matrix cm"""
 
     outfile = outfile if outfile is not None else temppng()
     figure = 1 if figure is None else figure
-    plt.figure(figure)
+    
+    if figsize:
+        plt.figure(figure, figsize=figsize)
+    else:
+        plt.figure(figure)
     plt.clf()
     plt.matshow(cm, fignum=figure)
 
@@ -227,7 +232,6 @@ def confusion_matrix(cm, outfile=None, figure=None, fontsize=5, xlabel=None, yla
     for item in ([ax.title, ax.xaxis.label, ax.yaxis.label] + ax.get_xticklabels() + ax.get_yticklabels()):
         item.set_fontsize(fontsize)
 
-    print('[vipy.metric.plot_confusion_matrix]: saving "%s"' % outfile)
     plt.savefig(outfile, bbox_extra_artists=(yl,) if yl is not None else None, bbox_inches='tight', dpi=600)
 
     return outfile
@@ -235,8 +239,8 @@ def confusion_matrix(cm, outfile=None, figure=None, fontsize=5, xlabel=None, yla
 
 
 
-def plot_pr(precision, recall, title=None, label='Precision-Recall', outfile=None, figure=None):
-    """Plot precision recall curve using matplotlib, with optional figure save"""
+def plot_pr(precision, recall, title=None, label='Precision-Recall', outfile=None, figure=None, fontsize=8, loc='upper right'):
+    """Plot precision recall curve using matplotlib, with optional figure save.  Call this multiple times with same figure number to plot multiple curves."""
 
     if figure is not None:
         plt.figure(figure)
@@ -251,7 +255,7 @@ def plot_pr(precision, recall, title=None, label='Precision-Recall', outfile=Non
     plt.xlim([0.0, 1.0])
     if title is not None:
         plt.title('%s' % (title))
-    plt.legend(loc="lower left")
+    plt.legend(loc=loc, fontsize=fontsize)
     plt.grid(True)
 
     if outfile is not None:
@@ -330,6 +334,34 @@ def pie(sizes, labels, explode=None, outfile=None, shadow=False, legend=True, fo
     plt.axis('equal')  # Equal aspect ratio ensures that pie is drawn as a circle.
 
     plt.tight_layout()        
+    if outfile is not None:
+        plt.savefig(outfile)
+        plt.clf()        
+        return outfile
+    else:
+        plt.show()
+
+        
+def scatterplot(X, labels, outfile=None):
+    """Generate a scatterplot of 2D points in an Nx2 matrix (X) with provided category labels in list of length N (labels).  Each label will be assigned a unique color.  Scatterplot saved to outfile (if provided).""" 
+    assert isinstance(X, np.ndarray) and X.ndim == 2 and X.shape[1] == 2
+    assert len(X) == len(labels)
+    import vipy.show
+    
+    plt.clf()
+    #plt.figure()
+    plt.grid(True)
+    colors = vipy.show.colorlist()
+    d_label_to_color = {c:colors[k % len(colors)] for (k,c) in enumerate(set(labels))}
+    plt.axis('equal')  
+    for y in sorted(set(labels)):
+        x = np.array([xi for (xi,yi) in zip(X, labels) if yi == y])
+        plt.scatter(x[:,0], x[:,1], c=d_label_to_color[y], label=y)
+    plt.axis([np.min(X), np.max(X), np.min(X), np.max(X)])                
+    plt.legend()
+    plt.gca().set_axisbelow(True)  # grid behind
+
+    plt.tight_layout()
     if outfile is not None:
         plt.savefig(outfile)
         plt.clf()        

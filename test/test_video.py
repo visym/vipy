@@ -11,7 +11,7 @@ from vipy.data.lfw import LFW
 from vipy.object import Detection, Track
 from vipy.activity import Activity
 import shutil
-
+from collections import Counter  
 
 mp4file = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'Video.mp4')
 mp4url = 'https://www.youtube.com/watch?v=C0DPdy98e4c'
@@ -574,6 +574,17 @@ def test_scene_union():
     assert len(vu.activity_categories()) == 2
     print('[test_video.track]: test_scene_union  PASSED')
     
+
+
+def test_get_frame_meta():
+    v = vipy.video.Video(mp4file)
+    meta = v.frame_meta()
+    frame_types = [m['pict_type'] for m in meta]
+    c = Counter(frame_types)
+    assert c['B'] == 132
+    assert c['P'] == 178
+    assert c['I'] == 11
+
     
 if __name__ == "__main__":
     test_stream()
@@ -582,4 +593,4 @@ if __name__ == "__main__":
     test_clip()
     test_track()
     test_scene_union()
-
+    test_get_frame_meta()

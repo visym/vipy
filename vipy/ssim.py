@@ -1,7 +1,10 @@
+import vipy
 from scipy.signal import convolve2d
 from vipy.math import gaussian
 import numpy as np
 from vipy.globals import print
+from vipy.util import try_import
+try_import('cv2', 'opencv-python'); import cv2 
 
 
 class SSIM(object):
@@ -9,8 +12,6 @@ class SSIM(object):
     """Z. Wang, A. Bovik, H. Sheikh, E. Simoncelli, "Image quality assessment: from error visibility to structural similarity". IEEE Transactions on Image Processing. 13 (4): 600–612"""
 
     def __init__(self, do_alignment=True, min_matches_for_alignment=10, num_matches_for_alignment=500, K1=0.01, K2=0.03):
-        try_import('cv2', 'opencv-python'); import cv2  # optional
-
         self.do_alignment = do_alignment
         self.min_matches_for_alignment = min_matches_for_alignment
         self.num_matches_for_alignment = num_matches_for_alignment
@@ -18,10 +19,10 @@ class SSIM(object):
         self.K2 = K2
 
     def __repr__(self):
-        return str('<SSIM: do_alignment=%s, min_matches_for_alignment=%d, num_matches_for_alignment=%d, K1=%f, K2=%f>' % (str(self.do_alignment), self.min_matches_for_alignment, self.num_matches_for_alignment, self.K1, self.K2))
+        return str('<vipy.ssim: do_alignment=%s, min_matches_for_alignment=%d, num_matches_for_alignment=%d, K1=%f, K2=%f>' % (str(self.do_alignment), self.min_matches_for_alignment, self.num_matches_for_alignment, self.K1, self.K2))
 
     def match(self, img1, img2):
-        """Return a set of matching points in img1 and img2 in the form suitable for homography estimation"""
+        """Return a set of matching points in img1 (MxN uint8 numpy) and img2 (MxN uint8 numpy) in the form suitable for homography estimation"""
 
         # Initiate ORB detector
         orb = cv2.ORB_create()
@@ -50,7 +51,7 @@ class SSIM(object):
         return cv2.warpPerspective(im_src, h, (im_src.shape[1], im_src.shape[0]))
 
     def align(self, img1, img2):
-        """Return an image which is the warped version of img1 that aligns with img2"""
+        """Return an image which is the warped version of img1 (MxN uint8 numpy) that aligns with img2 (MxN uint8 numpy)"""
         (p1, p2) = self.match(img1, img2)
         return self.warp(p1, p2, img1)
 
@@ -109,22 +110,44 @@ class SSIM(object):
 
         return (out, ssim_map) if returnMap else out
 
-    def ssim(self, im_reference, im_degraded):
-        """Return structural similarity score when aligning im_degraded to im_reference"""
-        im_degraded_aligned = self.align(im_degraded, im_reference) if self.do_alignment else im_degraded
-        return self.similarity(im_degraded_aligned, im_reference, returnMap=False)
+    
+    def ssim(self, im_reference, im_degraded, returnAligned=False):
+        """Return structural similarity score when aligning im_degraded to im_reference
+
+        >>> (ssim, im_aligned) = vipy.ssim.SSIM(do_alignment=True).ssim(vipy.image.squareowl(), vipy.image.squareowl().rotate(0.01), returnAligned=True)
+        >>> print(ssim)
+        >>> im_aligned.show(figure=1)
+        >>> vipy.image.squareowl().rotate(0.01).show(figure=2)
+        
+        """
+        assert isinstance(im_reference, np.ndarray) or isinstance(im_reference, vipy.image.Image)
+        assert isinstance(im_degraded, np.ndarray) or isinstance(im_degraded, vipy.image.Image)
+        
+        img_degraded = im_degraded.lum().numpy() if isinstance(im_degraded, vipy.image.Image) else im_degraded
+        img_reference = im_reference.lum().numpy() if isinstance(im_reference, vipy.image.Image) else im_reference
+        
+        img_degraded_aligned = self.align(img_degraded, img_reference) if self.do_alignment else im_degraded
+        ssim = self.similarity(img_degraded_aligned, img_reference, returnMap=False)
+        return (ssim, vipy.image.Image(array=img_degraded_aligned, colorspace='lum')) if returnAligned else ssim
 
 
-def demo(imfile):
-    """Synthetically rotate an image by 10 degrees, and compute structural similarity with and without alignment, return images"""
-    img1 = cv2.imread(imfile, 0)
-
-    (num_rows, num_cols) = img1.shape[:2]
-    R = cv2.getRotationMatrix2D((num_cols / 2, num_rows / 2), 10, 1)
-    img1_rotation = cv2.warpAffine(img1, R, (num_cols, num_rows))
-    img2 = img1_rotation
-
-    print('Structural similarity score (aligned): %f' % SSIM(do_alignment=True).ssim(img1, img2))
-    print('Structural similarity score (unaligned): %f' % SSIM(do_alignment=False).ssim(img1, img2))
-
-    return (img1, img2)
+def demo(im=None):
+    """Synthetically rotate an image by 4 degrees, and compute structural similarity with and without alignment, return images
+    
+    >>> (image, degraded_image, aligned_image) = vipy.ssim.demo(vipy.image.Image(filename='/path/to/image.jpg')))
+    
+    """
+    assert im is None or isinstance(im, vipy.image.Image)
+    im = vipy.image.squareowl() if im is None else im
+    
+    # Synthetic degradation: 1-channel uint8
+    (im, im_degraded) = (im.lum(), im.clone().rotate(4*(np.pi/180.0)).lum())
+    
+    # SSIM
+    (ssim_aligned, im_aligned) = SSIM(do_alignment=True).ssim(im.numpy(), im_degraded.numpy(), returnAligned=True)
+    (ssim_unaligned) = SSIM(do_alignment=False).ssim(im.numpy(), im_degraded.numpy())    
+    print('Structural similarity score (aligned): %f' % ssim_aligned)
+    print('Structural similarity score (unaligned): %f' % ssim_unaligned)
+    return (im.show(figure=1),
+            im_degraded.show(figure=2),
+            im_aligned.show(figure=3))
