@@ -66,7 +66,7 @@ class Dataset():
 
         self._saveas_ext = ['pkl', 'json']
         self._id = id if id is not None else vipy.util.shortuuid(8)
-        self._loader = (lambda x: x) if loader is None else loader
+        self._loader = self._default_loader if loader is None else loader
         self._istype_strict = True
         self._lazy_loader = lazy
         self._abspath = abspath
@@ -95,6 +95,10 @@ class Dataset():
             except Exception as e:
                 raise ValueError('Invalid dataset - Lazy load failed with error "%s"' % str(e))
 
+    @staticmethod
+    def _default_loader(x):
+        return x
+    
     def __repr__(self):
         return str('<vipy.dataset: id="%s", len=%d, type=%s>' % (self.id(), len(self), str(type(self[0])) if len(self)>0 else 'None'))
 
