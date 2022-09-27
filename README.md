@@ -27,6 +27,7 @@ python 3.6+
 [ffmpeg](https://ffmpeg.org/download.html) (required for videos)  
 numpy, matplotlib, dill, pillow, ffmpeg-python   
 
+
 Installation
 -------------------
 

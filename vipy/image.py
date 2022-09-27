@@ -826,13 +826,13 @@ class Image(object):
         """Apply a Gaussian blur with Gaussian kernel radius=sigma to the pixel buffer.
         
         Args:
-            sigma: [float >0] The gaussian blur kernel radius.
+            sigma: [float >=0] The gaussian blur kernel radius.
 
         Returns:
             This `vipy.image.Image` object with the pixel buffer blurred in place.
         """
-        assert sigma > 0
-        return self.array(np.array(self.pil().filter(PIL.ImageFilter.GaussianBlur(radius=sigma))))
+        assert sigma >= 0
+        return self.array(np.array(self.pil().filter(PIL.ImageFilter.GaussianBlur(radius=sigma)))) if sigma>0 else self
         
     def torch(self, order='CHW'):
         """Convert the batch of 1 HxWxC images to a CxHxW torch tensor.
@@ -845,19 +845,19 @@ class Image(object):
         """
         try_import('torch'); import torch
         assert order.lower() in ['chw', 'hwc', 'nchw', 'nhwc']
-        img = self.numpy() if self.iscolor() else np.expand_dims(self.numpy(), 2)  # HxW -> HxWx1
+        img = self.numpy() if self.numpy().ndim == 3 else np.expand_dims(self.numpy(), 2)  # HxW -> HxWx1, HxWxC -> HxWxC (unchanged)
         img = img.transpose(2,0,1) if order.lower() in ['chw', 'nchw']  else img   # HxWxC or CxHxW        
         img = np.expand_dims(img,0) if order.lower() in ['nhwc', 'nchw'] else img  # HxWxC -> 1xHxWxC
         return torch.from_numpy(img)  
 
     @staticmethod
-    def fromtorch(x):
+    def fromtorch(x, order='CHW'):
         """Convert a 1xCxHxW or CxHxW torch tensor (or numpy array with torch channel order) to HxWxC numpy array, returns new `vipy.image.Image` with inferred colorspace corresponding to data type in x"""
         try_import('torch'); import torch        
         assert isinstance(x, torch.Tensor) or isinstance(x, np.ndarray), "Invalid input type '%s'- must be torch.Tensor" % (str(type(x)))
         assert (x.ndim == 4 and x.shape[0] == 1) or x.ndim == 3, "Torch tensor must be shape 1xCxHxW or CxHxW"
         x = x.squeeze(0) if (x.ndim == 4 and x.shape[0] == 1) else x
-        img = np.copy(np.squeeze(x.permute(1,2,0).detach().numpy() if torch.is_tensor(x) else x.transpose(1,2,0)))   # CxHxW -> HxWxC, copied
+        img = np.copy(x.permute(1,2,0).detach().numpy() if torch.is_tensor(x) else x.transpose(1,2,0))   # CxHxW -> HxWxC, copied
         colorspace = 'float' if img.dtype == np.float32 else None
         colorspace = 'rgb' if img.dtype == np.uint8 and img.shape[2] == 3 else colorspace  # assumed
         colorspace = 'lum' if img.dtype == np.uint8 and img.shape[2] == 1 else colorspace        
@@ -1266,17 +1266,22 @@ class Image(object):
         self.colorspace(to)
         return self
 
-    def affine_transform(self, A):
+    def affine_transform(self, A, border='zero'):
         """Apply a 3x3 affine geometric transformation to the image. 
 
-        See also `vipy.geometry.affine_transform`
+        Args:        
+            - A [np.ndarray]: 3x3 affine geometric transform from `vipy.geometry.affine_transform`
+            - border [str]:  'zero' or 'replicate' to handle elements outside the image rectangle after transformation
+
+        Returns:
+            - This object with only the array transformed
 
         .. note:: The image will be loaded and converted to float() prior to applying the affine transformation.  
         .. note:: This will transform only the pixels
         """
         assert isnumpy(A) or isinstance(img, vipy.image.Image), "invalid input"
         assert A.shape == (3,3), "The affine transformation matrix should be the output of vipy.geometry.affine_transformation"
-        self._array = vipy.geometry.imtransform(self.load().float().array(), A.astype(np.float32))
+        self._array = vipy.geometry.imtransform(self.load().float().array(), A.astype(np.float32), border=border)
         return self
 
     def rotate(self, r):
@@ -1287,6 +1292,11 @@ class Image(object):
         """Convert the image buffer to three channel RGB uint8 colorspace"""
         return self._convert('rgb')
 
+    def colorspace_like(self, im):
+        """Convert the image buffer to have the same colorspace as the provided image"""
+        assert isinstance(im, vipy.image.Image)
+        return self._convert(im.colorspace())
+    
     def rgba(self):
         """Convert the image buffer to four channel RGBA uint8 colorspace"""
         return self._convert('rgba')
@@ -1420,11 +1430,17 @@ class Image(object):
         print('  channel mean: %s' % str(self.meanchannel()))        
     
     def min(self):
+        return self.minpixel()
+
+    def minpixel(self):
         return np.min(self.load().array().flatten())
-
+    
     def max(self):
-        return np.max(self.load().array().flatten())
+        return self.maxpixel()
 
+    def maxpixel(self):
+        return np.max(self.load().array().flatten())
+    
     def mean(self):
         """Mean over all pixels"""
         return np.mean(self.load().array().flatten())

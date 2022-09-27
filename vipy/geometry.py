@@ -107,14 +107,16 @@ def random_affine_transform(txy=((0,1),(0,1)), r=(0,1), sx=(0.1,1), sy=(0.1,1), 
                             ky=uniform_random_in_range(ky))
 
 
-def imtransform(img, A):
+def imtransform(img, A, border='zero'):
     """Transform an numpy array image (MxNx3) following the affine or similiarity transformation A"""
     assert isnumpy(img) and isnumpy(A), "invalid input"
+    assert border in ['zero', 'replicate']
     try_import('cv2', 'opencv-python'); import cv2
+    borderMode = cv2.BORDER_REPLICATE if border=='replicate' else cv2.BORDER_CONSTANT
     if A.shape == (3,3):
-        return cv2.warpPerspective(img, A, (img.shape[1], img.shape[0]))        
+        return cv2.warpPerspective(img, A, (img.shape[1], img.shape[0]), borderMode=borderMode)        
     else:
-        return cv2.warpAffine(img, A, (img.shape[1], img.shape[0]))        
+        return cv2.warpAffine(img, A, (img.shape[1], img.shape[0]), borderMode=borderMode)        
 
 
 
