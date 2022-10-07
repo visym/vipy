@@ -539,7 +539,7 @@ class Dataset():
         for (k,V) in enumerate(vipy.util.chunklist(self._objlist, n)):
             yield Dataset(V, id='%s_%d' % (self.id(), k), loader=self._loader)
 
-    def split(self, trainfraction=0.9, valfraction=0.1, testfraction=0, seed=42):
+    def split_by_videoid(self, trainfraction=0.9, valfraction=0.1, testfraction=0, seed=42):
         """Split the dataset by category by fraction so that video IDs are never in the same set"""
         assert self._isvipy(), "Invalid input"
         assert trainfraction >=0 and trainfraction <= 1
@@ -559,13 +559,34 @@ class Dataset():
                                        d['testset'] if 'testset' in d else [], 
                                        d['valset'] if 'valset' in d else [])
 
-        print('[vipy.dataset]: trainset=%d (%1.2f)' % (len(trainset), trainfraction))
-        print('[vipy.dataset]: valset=%d (%1.2f)' % (len(valset), valfraction))
-        print('[vipy.dataset]: testset=%d (%1.2f)' % (len(testset), testfraction))
+        #print('[vipy.dataset]: trainset=%d (%1.2f)' % (len(trainset), trainfraction))
+        #print('[vipy.dataset]: valset=%d (%1.2f)' % (len(valset), valfraction))
+        #print('[vipy.dataset]: testset=%d (%1.2f)' % (len(testset), testfraction))
         np.random.seed()  # re-initialize seed
 
         return (Dataset(trainset, id='trainset'), Dataset(valset, id='valset'), Dataset(testset, id='testset') if len(testset)>0 else None)
 
+    def split(self, trainfraction=0.9, valfraction=0.1, testfraction=0, seed=42):
+        """Split the dataset into the video fractions"""
+        assert trainfraction >=0 and trainfraction <= 1
+        assert valfraction >=0 and valfraction <= 1
+        assert testfraction >=0 and testfraction <= 1
+        assert trainfraction + valfraction + testfraction == 1.0
+        
+        # Assignment
+        np.random.seed(seed)  # deterministic        
+        A = self.list()
+        idx = list(range(len(A)))
+        np.random.shuffle(idx)
+        (testid, valid, trainid) = vipy.util.dividelist(idx, (testfraction, valfraction, trainfraction))
+        (testid, valid, trainid) = (set(testid), set(valid), set(trainid))
+        trainset = [a for (k,a) in enumerate(A) if k in trainid]
+        testset = [a for (k,a) in enumerate(A) if k in testid]
+        valset = [a for (k,a) in enumerate(A) if k in valid]        
+        np.random.seed()  # re-initialize seed
+
+        return (Dataset(trainset, id='trainset'), Dataset(valset, id='valset'), Dataset(testset, id='testset') if len(testset)>0 else None)
+    
     def tocsv(self, csvfile=None):
         csv = [v.csv() for v in self.list]        
         return vipy.util.writecsv(csv, csvfile) if csvfile is not None else (csv[0], csv[1:])
