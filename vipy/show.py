@@ -2,7 +2,11 @@ import dill  # first import (do we still need this?)
 import os
 import matplotlib
 
-# Specify the 'Agg' backend for headless operation only 
+# Matplotlib Backend
+# - Specify this environment variable VIPY_BACKEND
+# - Headless operation: 'Agg'
+# - Linux (X11-forwarded): 'TkAgg'
+# - Valid backends: https://matplotlib.org/stable/users/explain/backends.html
 if 'VIPY_BACKEND' in os.environ:    
     matplotlib.use(os.environ['VIPY_BACKEND'])
     

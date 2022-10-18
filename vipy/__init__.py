@@ -156,6 +156,7 @@ This provides control over where large datasets are cached on your local file sy
 
 * **VIPY_AWS_ACCESS_KEY_ID**='MYKEY'.  This is the [AWS key](https://docs.aws.amazon.com/general/latest/gr/aws-sec-cred-types.html) to download urls of the form "s3://".  
 * **VIPY_AWS_SECRET_ACCESS_KEY**='MYKEY'.   This is the [AWS secret key](https://docs.aws.amazon.com/general/latest/gr/aws-sec-cred-types.html) to download urls of the form "s3://".
+* **VIPY_BACKEND**.   This is the [Matplotlib backend](https://matplotlib.org/stable/users/explain/backends.html) to use when rendering figure windows.  'Agg' is recommended for headless operation, and 'TkAgg' is recommended for Linux based X11 forwarding.  In most cases, matplotlib will choose the best backend available by default, and this environment variable does not need to override this choice.
 
 
 ## Versioning

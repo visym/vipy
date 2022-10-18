@@ -2130,7 +2130,7 @@ class Video(object):
         os.system(cmd)
         return self
         
-    def play(self, verbose=False, notebook=False):
+    def play(self, verbose=False, notebook=False, ffplay=True):
         """Play the saved video filename in self.filename()
 
         If there is no filename, try to download it.  If the filter chain is dirty or the pixels are loaded, dump to temp video file first then play it.  This uses 'ffplay' on the PATH if available, otherwise uses a fallback player by showing a sequence of matplotlib frames.
@@ -2139,6 +2139,7 @@ class Video(object):
         Args:
             verbose: If true, show more verbose output 
             notebook:  If true, play in a jupyter notebook
+            ffplay:  If true, use ffplay to display the video (if available)
 
         Returns:
             The unmodified video object
@@ -2158,7 +2159,7 @@ class Video(object):
                 warnings.warn('Saving video to temporary file "%s" for notebook viewer ... ' % v.filename())
                 return IPython.display.Video(v.filename(), embed=True)
             return IPython.display.Video(self.filename(), embed=True)
-        elif has_ffplay:
+        elif ffplay and has_ffplay:
             if self.isloaded() or self._isdirty():
                 f = tempMP4()
                 if verbose:
@@ -2184,15 +2185,15 @@ class Video(object):
             with Stopwatch() as sw:            
                 for (k,im) in enumerate(self.load() if self.isloaded() else self.stream()):
                     time.sleep(max(0, (1.0/self.framerate())*int(np.ceil((self.framerate()/fps))) - sw.since()))                                
-                    im.show(figure=figure)
+                    im.show(figure='video')
                     if vipy.globals._user_hit_escape():
                         break                    
             vipy.show.close(figure)
             return self
 
-    def show(self):
+    def show(self, verbose=False, notebook=False, ffplay=True):
         """Alias for play"""
-        return self.play()
+        return self.play(verbose=verbose, notebook=notebook, ffplay=ffplay)
     
     def quicklook(self, n=9, mindim=256, startframe=0, animate=False, dt=30, thumbnail=None):
         """Generate a montage of n uniformly spaced frames.
