@@ -1381,6 +1381,10 @@ class Image(object):
         return self.colorspace('float')
         return self
 
+    def probability(self):
+        """Return float image in the range [0,1] such that all elements sum to one"""
+        return self.gain(1.0/self.mat2gray().sum())
+    
     def gain(self, g):
         """Elementwise multiply gain to image array, Gain should be broadcastable to array().  This forces the colospace to 'float'"""
         return self.array(np.multiply(self.load().float().array(), g)).colorspace('float') if g != 1 else self
