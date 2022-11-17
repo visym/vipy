@@ -21,6 +21,7 @@ import pickle as cPickle
 import PIL
 import matplotlib.pyplot as plt
 from itertools import groupby as itertools_groupby
+from itertools import tee
 import importlib
 import pathlib
 import socket
@@ -471,6 +472,12 @@ def dividelist(inlist, fractions):
         outlist.append(inlist[0:n])
         inlist = inlist[n:]
     return outlist
+
+def pairwise(iterable):
+    """Equivalent to python-3.10 itertools.pairwise. pairwise('ABCDEFG') --> AB BC CD DE EF FG"""
+    a, b = tee(iterable)
+    next(b, None)
+    return zip(a, b)
 
 def chunklist(inlist, num_chunks):
     """Convert list into a list of lists of length num_chunks, such that each element is a list containing a sequential chunk of the original list.
