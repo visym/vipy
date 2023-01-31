@@ -1,12 +1,17 @@
 import os
+import vipy
 from vipy.util import readcsv, remkdir, filepath, islist
 from vipy.image import ImageDetection, ImageCategory
 
+IMAGENET_21K_RESIZED_URL = 'https://image-net.org/data/imagenet21k_resized.tar.gz'
+
 
 URL = 'http://image-net.org/challenges/LSVRC/2012/dd31405981ef5f776aa17412e1f0c112/ILSVRC2012_img_train.tar'
+# imagenet-1k is 2012
+# https://image-net.org/challenges/LSVRC/2012/2012-downloads.php
 
 
-class ImageNet(object):
+class Imagenet2012(object):
     def __init__(self, datadir):
         """Provide datadir=/path/to/ILSVRC2012"""
         self.datadir = remkdir(datadir)
@@ -57,3 +62,19 @@ class ImageNet(object):
                 yield ImageCategory(filename=imfile, category=objlist[0]['name'])
             else:
                 yield ImageCategory(filename=imfile, category=filepath(subpath))
+
+                
+class Imagenet21k_Resized(vipy.dataset.Dataset):
+    """https://image-net.org/download-images.php"""
+    def __init__(self, datadir):
+        self._datadir = vipy.util.remkdir(datadir)
+        
+        if not os.path.exists(os.path.join(datadir, 'imagenet21k_resized.tar.gz')):
+            print('[vipy.data.imagenet]: downloading Imagenet-21K resized to "%s"' % self._outdir)            
+            vipy.downloader.download_and_unpack(IMAGENET_21K_RESIZED_URL, self._outdir, sha1=None)
+            
+        imlist = [vipy.image.ImageCategory(filename=f, category=vipy.util.filebase(vipy.util.filepath(f))) for f in vipy.util.findimages(os.path.join(datadir, 'imagenet21k_resized'))]
+        super().__init__(imlist, id='imagenet21k')
+
+        
+    
