@@ -526,7 +526,8 @@ class Dataset():
 
     def take_per_category(self, n, seed=None):
         D = self.clone(shallow=True)
-        D._objlist = [v for c in self.categories() for v in self.takelist(n, category=c, seed=seed)]
+        d_category_to_objlist = vipy.util.groupbyasdict(self._objlist, lambda x: x.category())
+        D._objlist = [v for c in self.categories() for v in Dataset(d_category_to_objlist[c]).take(n, seed=seed)]
         return D
     
     def shuffle(self):

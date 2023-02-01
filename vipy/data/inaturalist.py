@@ -17,19 +17,19 @@ class iNaturalist2021(vipy.dataset.Dataset):
     def __init__(self, datadir, imageurl=TRAIN_IMG_2021_URL, imagemd5=TRAIN_IMG_2021_MD5, annourl=TRAIN_ANNO_2021_URL, annomd5=TRAIN_ANNO_2021_MD5, name='inaturalist_train'):
         self._datadir = vipy.util.remkdir(datadir)        
         if not os.path.exists(os.path.join(self._datadir, vipy.util.filetail(imageurl))):
-            vipy.downloader.download_and_unpack(imageurl, self._datadir, md5=None)
+            vipy.downloader.download_and_unpack(imageurl, self._datadir, md5=imagemd5)
         if not os.path.exists(os.path.join(self._datadir, vipy.util.filetail(annourl))):
-            vipy.downloader.download_and_unpack(annourl, self._datadir, md5=None)
+            vipy.downloader.download_and_unpack(annourl, self._datadir, md5=annomd5)
 
-        json = vipy.util.readjson(os.path.join(self._outdir, filetail(annourl)[:-7]))
+        json = vipy.util.readjson(os.path.join(self._datadir, vipy.util.filetail(annourl)[:-7]))  # remove trailing file extension (val.json.tar.gz -> val.json)
 
-        d_imageid_to_filename = {x['id']:os.path.join(self._outdir, x['file_name']) for x in json['images']}
-        d_imageid_to_annotations = vipy.util.groupbyasdict(json['annotations'], lambda x: x['image_id'])
+        d_imageid_to_filename = {x['id']:os.path.join(self._datadir, x['file_name']) for x in json['images']}
+        d_imageid_to_annotation = {iid:a[0] for (iid,a) in vipy.util.groupbyasdict(json['annotations'], lambda x: x['image_id']).items()}  # one annotation per image
         d_categoryid_to_category = {x['id']:x['name'] for x in json['categories']}
         
         imlist = [vipy.image.ImageCategory(filename=f,
-                                           category=d_categoryid_to_category[d_imageid_to_annotations[iid]['category_id']] if iid in d_imageid_to_annotations else None,                                            
-                                           attributes={'category_id': d_imageid_to_annotations[iid]['category_id']} if iid in d_imageid_to_annotations else None)
+                                           category=d_categoryid_to_category[d_imageid_to_annotation[iid]['category_id']] if iid in d_imageid_to_annotation else None,                                            
+                                           attributes={'category_id': d_imageid_to_annotation[iid]['category_id']} if iid in d_imageid_to_annotation else None)
                   for (iid,f) in d_imageid_to_filename.items()]
         
         super().__init__(imlist, id='iNaturalist2021')
@@ -38,6 +38,6 @@ class iNaturalist2021(vipy.dataset.Dataset):
         return self
 
     def valset(self):
-        return iNaturalist(self._datadir, VAL_IMG_2021_URL, VAL_IMG_2021_MD5, VAL_ANNO_2021_URL, VAL_ANNO_2021_MD5, name='inaturalist_val')
+        return iNaturalist2021(self._datadir, VAL_IMG_2021_URL, VAL_IMG_2021_MD5, VAL_ANNO_2021_URL, VAL_ANNO_2021_MD5, name='inaturalist_val')
 
     
