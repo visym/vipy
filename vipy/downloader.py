@@ -237,7 +237,7 @@ def download(url, output_filename, sha1=None, verbose=True, md5=None, timeout=No
     return output_filename
 
 
-def unpack(archive_filename, output_dirname, sha1=None, verbose=True):
+def unpack(archive_filename, output_dirname, sha1=None, verbose=True, passwd=None):
     """Extracts `archive_filename` in `output_dirname`.
 
     Supported archives:
@@ -254,7 +254,7 @@ def unpack(archive_filename, output_dirname, sha1=None, verbose=True):
             print(" SHA-1 verification...")
         verify_sha1(archive_filename, sha1)
     try:
-        extract(archive_filename, output_dirname, verbose=verbose)
+        extract(archive_filename, output_dirname, verbose=verbose, passwd=passwd)
     except UnrecognizedArchiveFormat:
         base, ext = os.path.splitext(archive_filename)
         # Handle non-tar bz2 archives
@@ -270,7 +270,7 @@ def unpack(archive_filename, output_dirname, sha1=None, verbose=True):
             raise
 
 
-def download_and_unpack(url, output_dirname, sha1=None, verbose=True):
+def download_and_unpack(url, output_dirname, sha1=None, verbose=True, md5=None, passwd=None):
     """Downloads and extracts archive in `url` into `output_dirname`.
 
     Note that `output_dirname` has to exist and won't be created by this
@@ -278,17 +278,17 @@ def download_and_unpack(url, output_dirname, sha1=None, verbose=True):
     """
     archive_basename = path.basename(url)
     archive_filename = path.join(output_dirname, archive_basename)
-    download(url, archive_filename, sha1=sha1, verbose=verbose)
-    extract(archive_filename, output_dirname, verbose=verbose)
+    download(url, archive_filename, sha1=sha1, verbose=verbose, md5=md5)
+    extract(archive_filename, output_dirname, verbose=verbose, passwd=passwd)
 
 
 def download_unpack_and_cleanup(url, output_dirname, sha1=None, verbose=True):
-    download_and_extract(url, output_dirname, sha1, verbose)
+    download_and_unpack(url, output_dirname, sha1, verbose)
     os.remove(path.join(output_dirname, path.basename(url)))
 
 
 def unpack_and_cleanup(archive_filename, output_dirname, sha1=None, verbose=True):
-    download_and_extract(url, output_dirname, sha1, verbose)
+    download_and_unpack(url, output_dirname, sha1, verbose)
     os.remove(path.join(output_dirname, path.basename(url)))
 
 
@@ -300,12 +300,12 @@ class UnrecognizedArchiveFormat(ArchiveException):
     """Error raised when passed file is not a recognized archive format."""
 
 
-def extract(archive_filename, output_dirname='./', verbose=True):
+def extract(archive_filename, output_dirname='./', verbose=True, passwd=None):
     """
     Unpack the tar or zip file at the specified `archive_filename` to the
     directory specified by `output_dirname`.
     """
-    Archive(archive_filename).extract(output_dirname)
+    Archive(archive_filename, passwd=passwd).extract(output_dirname)
 
 
 class Archive(object):
@@ -313,8 +313,8 @@ class Archive(object):
     The external API class that encapsulates an archive implementation.
     """
 
-    def __init__(self, file):
-        self._archive = self._archive_cls(file)(file)
+    def __init__(self, file, passwd=None):
+        self._archive = self._archive_cls(file)(file, passwd)
 
     @staticmethod
     def _archive_cls(file):
@@ -379,8 +379,7 @@ class ExtractInterface(object):
                 sys.stdout.flush()
 
 class TarArchive(ExtractInterface, BaseArchive):
-
-    def __init__(self, filename):
+    def __init__(self, filename, passwd=None):
         self._archive = tarfile.open(filename)
 
     def list(self, *args, **kwargs):
@@ -391,10 +390,12 @@ class TarArchive(ExtractInterface, BaseArchive):
 
 
 class ZipArchive(ExtractInterface, BaseArchive):
-
-    def __init__(self, filename):
+    def __init__(self, filename, passwd=None):
+        """Password should be bytes encoded string, (e.g. passwd=b'thepassword')"""
         self._archive = zipfile.ZipFile(filename)
-
+        if passwd is not None:
+            self._archive.setpassword(passwd)
+                    
     def list(self, *args, **kwargs):
         self._archive.printdir(*args, **kwargs)
 
