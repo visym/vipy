@@ -14,17 +14,9 @@ class Food101(vipy.dataset.Dataset):
         self._datadir = vipy.util.remkdir(datadir)        
         if not os.path.exists(os.path.join(self._datadir, 'food-101.tar.gz')):
             vipy.downloader.download_and_unpack(URL, self._datadir, sha1=SHA1)            
-            
-        # Create dataset
-        imlist = []
-        categorydir = os.path.join(self._datadir, 'caltech-101', '101_ObjectCategories')        
-        for (idx_category, category) in enumerate(os.listdir(categorydir)):
-            imdir = os.path.join(categorydir, category)
-            for im in os.listdir(imdir):
-                imlist.append(vipy.image.ImageCategory(filename=os.path.join(categorydir, category, im), category=category))
 
-        super().__init__(imlist, id='caltech-101')
-            
+        imlist = [vipy.image.ImageCategory(filename=f, category=vipy.util.filebase(vipy.util.filepath(f))) for f in vipy.util.findimages(os.path.join(datadir, 'food-101'))]
+        super().__init__(imlist, id='food101')
 
         
 
