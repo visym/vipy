@@ -17,7 +17,7 @@ TEST_LBL_URL = 'http://yann.lecun.com/exdb/mnist/t10k-labels-idx1-ubyte.gz'
 TEST_LBL_SHA1 = '763e7fa3757d93b0cdec073cef058b2004252c17'
 
 
-class MNIST(object):
+class MNIST():
     def __init__(self, outdir):
         """download URLS above to outdir, then run export()"""
         self.outdir = remkdir(outdir)
@@ -42,7 +42,8 @@ class MNIST(object):
         os.system('wget --directory-prefix=%s %s' % (self.outdir, TEST_IMG_URL))
         os.system('wget --directory-prefix=%s %s' % (self.outdir, TEST_LBL_URL))
 
-    def _labels(self, gzfile):
+    @staticmethod
+    def _labels(gzfile):
         with gzip.open(gzfile, 'rb') as file:
             magic, size = struct.unpack(">II", file.read(8))
             if magic != 2049:
@@ -51,7 +52,8 @@ class MNIST(object):
             labels = array("B", file.read())
         return labels
 
-    def _imread(self, dataset, index):
+    @staticmethod
+    def _imread(dataset, index):
         """Read MNIST encoded images, adapted from: https://github.com/sorki/python-mnist/blob/master/mnist/loader.py"""
         gzfile = None
 
@@ -63,38 +65,26 @@ class MNIST(object):
             image = np.asarray(array("B", file.read(rows * cols)).tolist())
             return np.reshape(image, (rows,cols))
 
-    def trainset(self):
-        y_train = self._labels(os.path.join(self.outdir, 'train-labels-idx1-ubyte.gz')).tolist()
-        x_train = []
-        train_img_file = os.path.join(self.outdir, 'train-images-idx3-ubyte.gz')
+    @staticmethod
+    def _dataset(img_gzfile, label_gzfile, N):
+        y = MNIST._labels(label_gzfile).tolist()
+        x = []
+        train_img_file = img_gzfile
         with gzip.open(train_img_file, 'rb') as gzfile:
             magic, size, rows, cols = struct.unpack(">IIII", gzfile.read(16))
             if magic != 2051:
                 raise ValueError('Magic number mismatch, expected 2051, got %d' % magic)
 
-            for k in range(60000):
+            for k in range(N):
                 img = np.asarray(array("B", gzfile.read(rows * cols)).tolist()).reshape((rows, cols)).astype(np.uint8)
-                x_train.append(img)
+                x.append(img)
 
-        return (y_train, np.array(x_train))
+        return (y, np.array(x))
 
-    def imtrainset(self):
-        return [vipy.image.ImageCategory(array=img, category=str(y), colorspace='lum') for (y,img) in zip(*self.trainset())]
-    
+    def trainset(self):
+        (labelfile, imgfile) = (os.path.join(self.outdir, 'train-labels-idx1-ubyte.gz'), os.path.join(self.outdir, 'train-images-idx3-ubyte.gz'))
+        return vipy.dataset.Dataset([vipy.image.ImageCategory(array=img, category=str(y), colorspace='lum') for (y,img) in zip(*self._dataset(imgfile, labelfile, 60000))], 'mnist')
+
     def testset(self):
-        y_test = self._labels(os.path.join(self.outdir, 't10k-labels-idx1-ubyte.gz')).tolist()
-        x_test = []
-        test_img_file = os.path.join(self.outdir, 't10k-images-idx3-ubyte.gz')
-        with gzip.open(test_img_file, 'rb') as gzfile:
-            magic, size, rows, cols = struct.unpack(">IIII", gzfile.read(16))
-            if magic != 2051:
-                raise ValueError('Magic number mismatch, expected 2051, got %d' % magic)
-
-            for k in range(10000):
-                img = np.asarray(array("B", gzfile.read(rows * cols)).tolist()).reshape((rows, cols)).astype(np.uint8)
-                x_test.append(img)
-
-        return (y_test, np.array(x_test))
-
-    def imtestset(self):
-        return [vipy.image.ImageCategory(array=img, category=str(y), colorspace='lum') for (y,img) in zip(*self.testset())]
+        (labelfile, imgfile) = (os.path.join(self.outdir, 't10k-labels-idx1-ubyte.gz'), os.path.join(self.outdir, 't10k-images-idx3-ubyte.gz'))        
+        return vipy.dataset.Dataset([vipy.image.ImageCategory(array=img, category=str(y), colorspace='lum') for (y,img) in zip(*self._dataset(imgfile, labelfile, 10000))], 'mnist_test')
