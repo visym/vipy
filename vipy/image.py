@@ -1900,7 +1900,7 @@ class Scene(ImageCategory):
         """Return the kth object in the scene as a `vipy.image.ImageDetection` object """
         assert isinstance(k, int), "Indexing by object in scene must be integer"
         obj = self._objectlist[k].clone()
-        return (ImageDetection(array=self.array(), filename=self.filename(), url=self.url(), colorspace=self.colorspace(), xmin=obj.xmin(), ymin=obj.ymin(), width=obj.width(), height=obj.height(), category=obj.category(), attributes=obj.attributes))
+        return ImageDetection(array=self.array(), filename=self.filename(), url=self.url(), colorspace=self.colorspace(), xmin=obj.xmin(), ymin=obj.ymin(), width=obj.width(), height=obj.height(), category=obj.category(), attributes=obj.attributes, id=obj.id())
 
     def split(self):
         """Split a scene with K objects into a list of K `vipy.image.ImageDetection` objects, each with one object in the scene.
@@ -2340,7 +2340,7 @@ class ImageDetection(Image, vipy.object.Detection):
     
     def __init__(self, filename=None, url=None, attributes=None, colorspace=None, array=None, 
                  xmin=None, xmax=None, ymin=None, ymax=None, width=None, height=None, 
-                 xcentroid=None, ycentroid=None, category=None, xywh=None, bbox=None):
+                 xcentroid=None, ycentroid=None, category=None, xywh=None, bbox=None, id=True):
 
         # vipy.image.Image class inheritance
         Image.__init__(self,
@@ -2361,7 +2361,8 @@ class ImageDetection(Image, vipy.object.Detection):
                                        xcentroid=xcentroid,
                                        ycentroid=ycentroid,
                                        xywh=xywh if xywh is not None else (bbox.xywh() if isinstance(bbox, BoundingBox) else None),                                       
-                                       category=category)
+                                       category=category,
+                                       id=id)
                 
     def __repr__(self):
         return str('<vipy.image.imagedetection: %s, %s>' % (Image.__repr__(self), vipy.object.Detection.__repr__(self)))
@@ -2429,7 +2430,7 @@ class DetectionImage(vipy.object.Detection, Image):
     
     def __init__(self, filename=None, url=None, attributes=None, colorspace=None, array=None, 
                  xmin=None, xmax=None, ymin=None, ymax=None, width=None, height=None, 
-                 xcentroid=None, ycentroid=None, category=None, xywh=None, bbox=None):
+                 xcentroid=None, ycentroid=None, category=None, xywh=None, bbox=None, id=True):
 
         # vipy.image.Image class inheritance
         Image.__init__(self,
@@ -2450,7 +2451,8 @@ class DetectionImage(vipy.object.Detection, Image):
                                        xcentroid=xcentroid,
                                        ycentroid=ycentroid,
                                        xywh=xywh if xywh is not None else (bbox.xywh() if isinstance(bbox, BoundingBox) else None),
-                                       category=category)
+                                       category=category,
+                                       id=id)
                 
     def __repr__(self):
         return str('<vipy.image.detectionimage: %s, %s>' % (vipy.object.Detection.__repr__(self), Image.__repr__(self)))

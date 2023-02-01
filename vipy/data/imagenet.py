@@ -3,23 +3,31 @@ import vipy
 from vipy.util import readcsv, remkdir, filepath, islist
 from vipy.image import ImageDetection, ImageCategory
 
+
 IMAGENET_21K_RESIZED_URL = 'https://image-net.org/data/imagenet21k_resized.tar.gz'
 
+URLS_2012 = ['https://image-net.org/data/ILSVRC/2012/ILSVRC2012_bbox_val_v3.tgz',
+             'https://image-net.org/data/ILSVRC/2012/ILSVRC2012_img_train.tar',
+             'https://image-net.org/data/ILSVRC/2012/ILSVRC2012_img_val.tar',
+             'https://image-net.org/data/ILSVRC/2012/ILSVRC2012_bbox_train_v2.tar.gz',
+             'https://image-net.org/data/ILSVRC/2012/ILSVRC2012_img_train_t3.tar',
+             'https://image-net.org/data/ILSVRC/2012/ILSVRC2012_bbox_train_dogs.tar.gz',
+             'https://image-net.org/data/ILSVRC/2012/ILSVRC2012_bbox_val_v3.tgz']
 
-URL = 'http://image-net.org/challenges/LSVRC/2012/dd31405981ef5f776aa17412e1f0c112/ILSVRC2012_img_train.tar'
-# imagenet-1k is 2012
-# https://image-net.org/challenges/LSVRC/2012/2012-downloads.php
 
-
-class Imagenet2012(object):
+class Imagenet2012(vipy.dataset.Dataset):
+    """By downloading, you agree to the ImageNet terms: https://image-net.org/download-images.php#term"""
     def __init__(self, datadir):
-        """Provide datadir=/path/to/ILSVRC2012"""
-        self.datadir = remkdir(datadir)
+        self._datadir = remkdir(datadir)
 
+        for url in URLS_2012:
+            if not os.path.exists(os.path.join(datadir, vipy.util.filetail(url))):
+                vipy.downloader.download_and_unpack(url, self._datadir)
+               
     def __repr__(self):
-        return str('<vipy.data.imagenet: %s>' % self.datadir)
+        return str('<vipy.data.imagenet-2012: %s>' % self._datadir)
 
-    def _parse_loc(self, imageset='train'):
+    def localization(self, imageset='train'):
         """ImageNet localization, imageset = {train, val}"""
         import xmltodict
         if imageset == 'train':
@@ -29,21 +37,24 @@ class Imagenet2012(object):
         else:
             raise ValueError('unsupported imageset')
 
-        csv = readcsv(os.path.join(self.datadir, 'ImageSets', 'CLS-LOC', imagesetfile), separator=' ')
+        csv = readcsv(os.path.join(self._datadir, 'ImageSets', 'CLS-LOC', imagesetfile), separator=' ')
+
+        imlist = []
         for (path, k) in csv:
-            xmlfile = '%s.xml' % os.path.join(self.datadir, 'Annotations', 'CLS-LOC', imageset, path)
+            xmlfile = '%s.xml' % os.path.join(self._datadir, 'Annotations', 'CLS-LOC', imageset, path)
             d = xmltodict.parse(open(xmlfile, 'r').read())
-            imfile = '%s.JPEG' % os.path.join(self.datadir, 'Data', 'CLS-LOC', imageset, path)
-            objlist = d['annotation']['object'] if islist(d['annotation']['object']) else [d['annotation']['object']]
-            for obj in objlist:
-                yield ImageDetection(filename=imfile, category=obj['name'],
-                                     xmin=int(obj['bndbox']['xmin']), ymin=int(obj['bndbox']['ymin']),
-                                     xmax=int(obj['bndbox']['xmax']), ymax=int(obj['bndbox']['ymax']))
+            imfile = '%s.JPEG' % os.path.join(self._datadir, 'Data', 'CLS-LOC', imageset, path)            
+            imlist.append(vipy.image.Scene(filename=imfile, objects=[vipy.object.Detection(category=obj['name'],
+                                                                                           xmin=int(obj['bndbox']['xmin']), ymin=int(obj['bndbox']['ymin']),
+                                                                                           xmax=int(obj['bndbox']['xmax']), ymax=int(obj['bndbox']['ymax']))
+                                                                   for obj in vipy.util.tolist(d['annotation']['object'])]))
+                
+        return vipy.dataset.Dataset(imlist, 'imagenet2012_localization_%s' % imageset)
 
     def classes(self):
-        return list(set([im.category() for im in self._parse_cls('val')]))
+        return self.classification().categories()
 
-    def _parse_cls(self, imageset='train'):
+    def classification(self, imageset='train'):
         """ImageNet Classification, imageset = {train, val}"""
         import xmltodict
         if imageset == 'train':
@@ -52,20 +63,25 @@ class Imagenet2012(object):
             imagesetfile = 'val.txt'
         else:
             raise ValueError('unsupported imageset')
-        csv = readcsv(os.path.join(self.datadir, 'ImageSets', 'CLS-LOC', imagesetfile), separator=' ')
+        csv = readcsv(os.path.join(self._datadir, 'ImageSets', 'CLS-LOC', imagesetfile), separator=' ')
+
+        imlist = []
         for (subpath, k) in csv:
-            xmlfile = '%s.xml' % os.path.join(self.datadir, 'Annotations', 'CLS-LOC', imageset, subpath)
-            imfile = '%s.JPEG' % os.path.join(self.datadir, 'Data', 'CLS-LOC', imageset, subpath)
+            xmlfile = '%s.xml' % os.path.join(self._datadir, 'Annotations', 'CLS-LOC', imageset, subpath)
+            imfile = '%s.JPEG' % os.path.join(self._datadir, 'Data', 'CLS-LOC', imageset, subpath)
             if os.path.exists(xmlfile):
                 d = xmltodict.parse(open(xmlfile, 'r').read())
-                objlist = d['annotation']['object'] if islist(d['annotation']['object']) else [d['annotation']['object']]
-                yield ImageCategory(filename=imfile, category=objlist[0]['name'])
+                objlist = vipy.util.tolist(d['annotation']['object'])
+                im = ImageCategory(filename=imfile, category=objlist[0]['name'])
             else:
-                yield ImageCategory(filename=imfile, category=filepath(subpath))
+                im = ImageCategory(filename=imfile, category=filepath(subpath))
+            imlist.append(im)
+
+        return vipy.dataset.Dataset(imlist, 'imagenet2012_classification_%s' % imageset)
 
                 
-class Imagenet21k_Resized(vipy.dataset.Dataset):
-    """https://image-net.org/download-images.php"""
+class Imagenet21K(vipy.dataset.Dataset):
+    """https://image-net.org/download-images.php, imagenet-21K 2021 release (resized)"""
     def __init__(self, datadir):
         self._datadir = vipy.util.remkdir(datadir)
         

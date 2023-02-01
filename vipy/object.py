@@ -33,6 +33,7 @@ class Detection(BoundingBox):
     def __init__(self, label=None, xmin=None, ymin=None, width=None, height=None, xmax=None, ymax=None, confidence=None, xcentroid=None, ycentroid=None, category=None, xywh=None, shortlabel=None, attributes=None, id=True):
         super().__init__(xmin=xmin, ymin=ymin, width=width, height=height, xmax=xmax, ymax=ymax, xcentroid=xcentroid, ycentroid=ycentroid, xywh=xywh)
         assert not (label is not None and category is not None), "Constructor requires either label or category kwargs, not both"
+
         if id is True:
             global DETECTION_GUID; self._id = hex(int(DETECTION_GUID))[2:];  DETECTION_GUID = DETECTION_GUID + 1;  # faster, increment package level UUID4 initialized GUID
         else:
@@ -66,7 +67,8 @@ class Detection(BoundingBox):
                    label=d['_label'] if '_label' in d else None,
                    shortlabel=d['_shortlabel'] if '_shortlabel' in d else None,
                    confidence=d['_confidence'] if '_confidence' in d else None,
-                   attributes=d['attributes'] if 'attributes' in d else None)
+                   attributes=d['attributes'] if 'attributes' in d else None,
+                   id=d['_id'])
         
     def __repr__(self):
         strlist = []
@@ -160,7 +162,7 @@ class Detection(BoundingBox):
         return self._id
 
     def clone(self, deep=False):
-        """Copy the object, if deep=True, then include a deep copy of the attribute dictionary, else a shallow copy"""
+        """Copy the object, if deep=True, then include a deep copy of the attribute dictionary, else a shallow copy.  Cloned object has the same id()"""
         #return copy.deepcopy(self)
         d = Detection.from_json(self.json(encode=False))
         if deep:
