@@ -351,7 +351,7 @@ def montage(imlist, imgheight=256, imgwidth=256, gridrows=None, gridcols=None, a
     if k == 0:
         print('[vipy.visualize.montage] Warning: No images were processed')
 
-    return Image(array=img_montage, colorspace=imlist[0].colorspace())
+    return Image(array=img_montage)
 
 
 def videomontage(vidlist, imgheight, imgwidth, gridrows=None, gridcols=None, aspectratio=1, crop=False, skip=True, border=1, border_bgr=(128,128,128), do_flush=False, verbose=True, framerate=30.0, max_duration=None):

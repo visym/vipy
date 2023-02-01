@@ -98,3 +98,9 @@ class MNIST(object):
 
     def imtestset(self):
         return [vipy.image.ImageCategory(array=img, category=str(y), colorspace='lum') for (y,img) in zip(*self.testset())]
+
+    def dataset(self):
+        return (vipy.dataset.Dataset(self.imtrainset(), 'trainset'), vipy.dataset.Dataset(self.imtestset(), 'testset'))
+
+    def sample(self, n):
+        return vipy.dataset.Dataset(self.imtestset(), 'testset').take(n)

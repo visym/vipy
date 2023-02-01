@@ -539,6 +539,12 @@ class Dataset():
         for (k,V) in enumerate(vipy.util.chunklist(self._objlist, n)):
             yield Dataset(V, id='%s_%d' % (self.id(), k), loader=self._loader)
 
+    def minibatch(self, n):
+        """Yield chunks of size n of this dataset.  Last chunk will be ragged"""
+        for (k,V) in enumerate(vipy.util.chunklistbysize(self._objlist, n)):
+            yield V
+        
+        
     def split_by_videoid(self, trainfraction=0.9, valfraction=0.1, testfraction=0, seed=42):
         """Split the dataset by category by fraction so that video IDs are never in the same set"""
         assert self._isvipy(), "Invalid input"

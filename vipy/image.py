@@ -1292,6 +1292,10 @@ class Image(object):
         """Convert the image buffer to three channel RGB uint8 colorspace"""
         return self._convert('rgb')
 
+    def color_transform(self, colorspace):
+        """Transform the image buffer from the current `vipy.image.Image.colorspace` to the provided colorspace"""
+        return self._convert(colorspace)
+    
     def colorspace_like(self, im):
         """Convert the image buffer to have the same colorspace as the provided image"""
         assert isinstance(im, vipy.image.Image)
