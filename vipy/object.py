@@ -68,7 +68,7 @@ class Detection(BoundingBox):
                    shortlabel=d['_shortlabel'] if '_shortlabel' in d else None,
                    confidence=d['_confidence'] if '_confidence' in d else None,
                    attributes=d['attributes'] if 'attributes' in d else None,
-                   id=d['_id'])
+                   id=d['_id'] if '_id' in d else True)
         
     def __repr__(self):
         strlist = []
