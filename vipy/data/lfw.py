@@ -12,22 +12,19 @@ URL_PAIRS_DEV_TEST = 'http://vis-www.cs.umass.edu/lfw/pairsDevTest.txt'
 URL_PAIRS_VIEW2 = 'http://vis-www.cs.umass.edu/lfw/pairs.txt'
 
 
-class LFW(object):
+class LFW(vipy.dataset.Dataset):
     def __init__(self, datadir):
         """Datadir contains the unpacked contents of LFW from $URL -> /path/to/lfw"""
         self.lfwdir = datadir
         remkdir(os.path.join(self.lfwdir, 'lfw'))
-        self._dataset = self.dataset()
+
+        if not os.path.exists(os.path.join(self.lfwdir, 'lfw.tgz')):
+            self._download()
+        super().__init__(self._dataset(), 'lfw')
         
-    def download(self, verbose=True):
+    def _download(self, verbose=True):
         vipy.downloader.download_and_unpack(URL, self.lfwdir, verbose=verbose)
         return self
-
-    def __getitem__(self, k):
-        return self._dataset[k]
-    
-    def __repr__(self):
-        return str("<vipy.data.lfw: '%s'>" % self.lfwdir)
 
     def subjects(self):
         """List of all subject names"""
@@ -38,23 +35,8 @@ class LFW(object):
         fnames = imlist(os.path.join(self.lfwdir, 'lfw', subject))
         return [ImageCategory(category=subject, filename=f) for f in fnames]
 
-    def dataset(self):
+    def _dataset(self):
         return [ImageCategory(category=s, filename=f) for s in self.subjects() for f in imlist(os.path.join(self.lfwdir, 'lfw', s))]
-
-    def dictionary(self):
-        """List of all Images of all subjects"""
-        return {s:self.subject_images(s) for s in self.subjects()}
-
-    def list(self):
-        """List of all Images of all subjects"""
-        subjectlist = []
-        for (k,v) in self.dictionary().items():
-            subjectlist = subjectlist + v
-        return subjectlist
-
-    def take(self, n=128):
-        """Return a represenative list of 128 images"""
-        return list(np.random.choice(self.list(), n))
 
     def _parse_pairs(self, txtfile):
         pairs = []
@@ -69,17 +51,17 @@ class LFW(object):
                 pass
         return pairs
 
-    def pairsDevTest(self):
+    def _pairsDevTest(self):
         if not os.path.isfile(os.path.join(self.lfwdir, 'lfw', 'pairsDevTest.txt')):
             raise ValueError("Download and save text file to $datadir/pairsDevTest.txt with 'wget %s -O %s'" % (URL_PAIRS_DEV_TRAIN, os.path.join(self.lfwdir, 'lfw' 'pairsDevTest.txt')))
         return self._parse_pairs('pairsDevTest.txt')
 
-    def pairsDevTrain(self):
+    def _pairsDevTrain(self):
         if not os.path.isfile(os.path.join(self.lfwdir, 'lfw', 'pairsDevTrain.txt')):
             raise ValueError("Download and save text file to $datadir/pairsDevTrain.txt with 'wget %s -O %s'" % (URL_PAIRS_DEV_TRAIN, os.path.join(self.lfwdir, 'lfw', 'pairsDevTrain.txt')))
         return self._parse_pairs('pairsDevTrain.txt')
 
-    def pairs(self):
+    def _pairs(self):
         if not os.path.isfile(os.path.join(self.lfwdir, 'lfw', 'pairs.txt')):
             raise ValueError("Download and save text file to $datadir/pairs.txt with 'wget %s -O %s'" % (URL_PAIRS_DEV_TRAIN, os.path.join(self.lfwdir, 'lfw', 'pairs.txt')))
         return self._parse_pairs('pairs.txt')

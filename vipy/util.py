@@ -325,6 +325,10 @@ def findjson(basedir):
     """Return a list of absolute paths to json files recursively discovered by walking the directory tree rooted at basedir"""
     return [str(path.resolve()) for path in pathlib.Path(basedir).rglob('*.json')]
 
+def findtar(basedir):
+    """Return a list of absolute paths to tar files recursively discovered by walking the directory tree rooted at basedir"""
+    return [str(path.resolve()) for path in pathlib.Path(basedir).rglob('*.tar')]
+
 def findimage(basedir):
     """Return a list of absolute paths to image files recursively discovered by walking the directory tree rooted at basedir"""
     return [str(path.resolve()) for path in pathlib.Path(basedir).rglob('*') if isimage(str(path.resolve()))]
@@ -898,10 +902,10 @@ def ishdf5(path):
 def filebase(filename):
     """Return c for filename /a/b/c.ext
     
-    .. warning:: Will return /a/b/c.d for multidot filenames like /a/b/c.d.e (e.g. /a/b/filename.tar.gz)
+    .. warning:: Will return /a/b/c.d for multidot filenames wth more than two trailing dots like /a/b/c.d.e.f (e.g. /a/b/my.filename.tar.gz)
     """
     (head, tail) = os.path.split(filename)
-    (base, ext) = os.path.splitext(tail)
+    (base, ext) = splitext(tail)
     return base
 
 
@@ -987,7 +991,7 @@ def videolist(videodir):
 
 
 def dirlist(indir):
-    """return list of directories in a directory"""
+    """return list of absolute paths to subdirectories in a directory"""
     return [os.path.abspath(os.path.join(indir, item))
             for item in os.listdir(indir)
             if (os.path.isdir(os.path.join(indir, item)) and
@@ -1388,13 +1392,13 @@ def gray2hsv(im_gray):
 
 def isarchive(filename):
     """Is filename a zip or gzip compressed tar archive?"""
-    (filebase, ext) = splitextension(filename)
+    (filebase, ext) = splitext(filename)
     if (ext is not None) and (len(ext) > 0) and (ext.lower() in [
             '.egg', '.jar', '.tar', '.tar.bz2', '.tar.gz',
             '.tgz', '.tz2', '.zip', '.gz']):
         return True
     else:
-        (filebase, ext) = splitextension(ext[1:])
+        (filebase, ext) = splitext(ext[1:])
         if (ext is not None) and (len(ext) > 0) and (ext.lower() in ['.bz2']):
             return True
         else:
@@ -1634,7 +1638,6 @@ def datestamp():
     return str.upper(strftime("%d%b%y", localtime()))
 
 
-
 def remkdir(path, flush=False):
     """Create a given directory if not already exists"""
     if os.path.isdir(path) is False and len(path) > 0:
@@ -1664,7 +1667,7 @@ def toextension(filename, newext):
     """Convert filename='/path/to/myfile.ext' to /path/to/myfile.xyz, such that newext='xyz' or newext='.xyz'"""
     if '.' in newext:
         newext = newext.split('.')[-1]
-    (filename, oldext) = splitextension(filename)
+    (filename, oldext) = splitext(filename)
     return filename + '.' + str(newext)
 
 def noextension(filename, ext=None):
@@ -1675,15 +1678,11 @@ def topkl(filename):
     """Convert filename='/path/to/myfile.ext' to /path/to/myfile.pkl"""
     return toextension(filename, '.pkl')
 
-def splitextension(filename):
-    """Given /a/b/c.ext return tuple of strings ('/a/b/c', '.ext')"""
+def splitext(filename):
+    """Given /a/b/c.ext return tuple of strings ('/a/b/c', '.ext'), handling multi-dot extensions like .tar.gz"""
     (head, tail) = os.path.split(filename)
-    try:
-        (base, ext) = str.rsplit(tail, '.', 1)  # for .tar.gz
-        ext = '.' + ext
-    except:
-        base = tail
-        ext = None
+    ext = fileext(filename, multidot=True, withdot=True)
+    base = tail.replace(ext,'')
     return (os.path.join(head, base), ext)  # for consistency with splitext
 
 
@@ -1693,7 +1692,7 @@ def hasextension(filename):
 
 
 def fileext(filename, multidot=True, withdot=True):
-    """Given filename /a/b/c.ext return '.ext', or /a/b/c.tar.gz return '.tar.gz'.   If multidot=False, then return '.gz'.  If withdot=False, return 'ext'"""
+    """Given filename /a/b/c.ext return '.ext', or /a/b/c.tar.gz return '.tar.gz'.   If multidot=False, then return '.gz'.  If withdot=False, return 'ext'.  Multidot support at most two trailing dots"""
     (head, tail) = os.path.split(filename)
     try:
         parts = str.rsplit(tail, '.', 2)
