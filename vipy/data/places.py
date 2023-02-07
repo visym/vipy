@@ -1,31 +1,30 @@
 import os
 import vipy
+from vipy.util import filebase
+
+MD5 = ['67e186b496a84c929568076ed01a8aa1',
+       '9b71c4993ad89d2d8bcbdc4aef38042f']
+URL = ['http://data.csail.mit.edu/places-private/places365/train_large_places365standard.tar',
+       'http://data.csail.mit.edu/places-private/places365/val_large.tar']
 
 
-TRAIN_MD5 = '67e186b496a84c929568076ed01a8aa1'
-TRAIN_URL = 'http://data.csail.mit.edu/places-private/places365/train_large_places365standard.tar'
-
-VAL_URL = 'http://data.csail.mit.edu/places-private/places365/val_large.tar'
-VAL_MD5 = '9b71c4993ad89d2d8bcbdc4aef38042f'
-
-
-class Places356(vipy.dataset.Dataset):
+class Places356():
     """Project: http://places2.csail.mit.edu/download-private.html"""
-    def __init__(self, datadir, url=TRAIN_URL, md5=TRAIN_mD5, name='places365_train'):
+    def __init__(self, datadir):
+        self._datadir = vipy.util.remkdir(datadir)
+        for (url, md5) in zip(URL, MD5):
+            if not os.path.exists(os.path.join(self._datadir, vipy.util.filetail(url))):
+                vipy.downloader.download_and_unpack(url, os.path.join(self._datadir, filebase(url)), md5=md5)
 
-        # Download
-        self._datadir = vipy.util.remkdir(datadir)        
-        if not os.path.exists(os.path.join(self._datadir, name, vipy.util.filetail(url))):
-            vipy.downloader.download_and_unpack(url, os.path.join(self._datadir, name), md5=md5)            
-
-        imlist = [vipy.image.ImageCategory(filename=f, category=vipy.util.filebase(vipy.util.filepath(f))) for f in vipy.util.findimages(os.path.join(datadir, name))]
-        super().__init__(imlist, id=name)
 
     def trainset(self):
-        return self
+        imlist = [vipy.image.ImageCategory(filename=f, category=filebase(vipy.util.filepath(f))) for f in vipy.util.findimages(os.path.join(self._datadir, 'train_large_places365standard'))]
+        return vipy.dataset.Dataset(imlist, id='places365_train')
+
 
     def valset(self):
-        return Places365(self._datadir, VAL_URL, VAL_MD5, 'places365_val')
+        imlist = [vipy.image.ImageCategory(filename=f, category=filebase(vipy.util.filepath(f))) for f in vipy.util.findimages(os.path.join(self._datadir, 'val_large'))]
+        return vipy.dataset.Dataset(imlist, id='places365_val')
 
     
         

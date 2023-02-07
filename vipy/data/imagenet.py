@@ -16,6 +16,7 @@ URLS_2012 = ['https://image-net.org/data/ILSVRC/2012/ILSVRC2012_bbox_val_v3.tgz'
              'https://image-net.org/data/ILSVRC/2012/ILSVRC2012_bbox_val_v3.tgz']
 URL_SYNSET = 'https://raw.githubusercontent.com/torch/tutorials/master/7_imagenet_classification/synset_words.txt'
 
+IMAGENET21K_URL = 'https://image-net.org/data/winter21_wholetar.gz'
 IMAGENET21K_WORDNET_ID = 'https://storage.googleapis.com/bit_models/imagenet21k_wordnet_ids.txt'
 IMAGENET21K_WORDNET_LEMMAS = 'https://storage.googleapis.com/bit_models/imagenet21k_wordnet_lemmas.txt'
 
@@ -79,7 +80,7 @@ class Imagenet2012():
 
     
                 
-class Imagenet21K(vipy.dataset.Dataset):
+class Imagenet21K_Resized(vipy.dataset.Dataset):
     """https://image-net.org/download-images.php, imagenet-21K 2021 release (resized)"""
     def __init__(self, datadir, aslemma=True):
         self._datadir = vipy.util.remkdir(datadir)
@@ -105,4 +106,36 @@ class Imagenet21K(vipy.dataset.Dataset):
     def synset_to_category(self, s=None):
         return self._synset_to_categorylist if s is None else self._synset_to_categorylist[s]
         
-    
+
+class Imagenet21K(vipy.dataset.Dataset):
+    """https://image-net.org/download-images.php, imagenet-21K 2021 winter release"""
+    def __init__(self, datadir, aslemma=True):
+        self._datadir = vipy.util.remkdir(datadir)
+        
+        if not os.path.exists(os.path.join(datadir, 'winter21_whole.tar.gz')):
+            print('[vipy.data.imagenet]: downloading Imagenet-21K to "%s"' % self._outdir)            
+            vipy.downloader.download_and_unpack(IMAGENET21K_URL, self._outdir, sha1=None)
+
+        for f in vipy.util.findtar(os.path.join(datadir, 'winter21_whole')):
+            if not os.path.exists(filefull(f)):
+                vipy.downloader.unpack(f, filefull(f))
+                os.remove(f)  # cleanup
+                
+        if not os.path.exists(os.path.join(self._datadir, 'wordnet_id.txt')):
+            vipy.downloader.download(IMAGENET21K_WORDNET_ID, os.path.join(self._datadir, 'wordnet_id.txt'))
+        if not os.path.exists(os.path.join(self._datadir, 'wordnet_lemmas.txt')):
+            vipy.downloader.download(IMAGENET21K_WORDNET_LEMMAS, os.path.join(self._datadir, 'wordnet_lemmas.txt'))
+
+        # https://github.com/google-research/big_transfer/issues/7
+        self._synset_to_categorylist = {x:[y.rstrip().lstrip() for y in lemma.split(',')] for (x,lemma) in zip(vipy.util.readtxt(os.path.join(self._datadir, 'wordnet_id.txt')), vipy.util.readtxt(os.path.join(self._datadir, 'wordnet_lemmas.txt')))}
+
+        f_category = lambda c: self._synset_to_categorylist[c][0] if aslemma else c
+        imlist = [vipy.image.ImageCategory(filename=f,
+                                           attributes={'wordnet_id':vipy.util.filebase(vipy.util.filepath(f))},
+                                           category=f_category(vipy.util.filebase(vipy.util.filepath(f)))) for f in vipy.util.findimages(os.path.join(datadir, 'winter21_whole'))]
+        super().__init__(imlist, id='imagenet21k')
+
+    def synset_to_category(self, s=None):
+        return self._synset_to_categorylist if s is None else self._synset_to_categorylist[s]
+         
+   

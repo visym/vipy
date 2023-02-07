@@ -1682,7 +1682,7 @@ def splitext(filename):
     """Given /a/b/c.ext return tuple of strings ('/a/b/c', '.ext'), handling multi-dot extensions like .tar.gz"""
     (head, tail) = os.path.split(filename)
     ext = fileext(filename, multidot=True, withdot=True)
-    base = tail.replace(ext,'')
+    base = tail.replace(ext,'') if ext is not None else tail
     return (os.path.join(head, base), ext)  # for consistency with splitext
 
 
