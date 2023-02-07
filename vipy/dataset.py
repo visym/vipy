@@ -108,7 +108,7 @@ class Dataset():
 
     def __getitem__(self, k):
         if isinstance(k, int) or isinstance(k, np.uint64):
-            assert k>=0 and k<len(self._objlist), "invalid index"
+            assert abs(k) < len(self._objlist), "invalid index"
             x = self._objlist[int(k)]
             return self._loader(x) if self._loader is not None else x
         elif isinstance(k, slice):
@@ -466,7 +466,6 @@ class Dataset():
         ```
 
            Args:
-
                outdir [str]:  The root directory to store the JSON files
                verbose [bool]: If True, print the save progress
                rekey [bool] If False, use the instance ID of the vipy object as the filename for the JSON file, otherwise assign a new UUID_dataset-index
@@ -541,7 +540,7 @@ class Dataset():
             yield Dataset(V, id='%s_%d' % (self.id(), k), loader=self._loader)
 
     def minibatch(self, n):
-        """Yield chunks of size n of this dataset.  Last chunk will be ragged"""
+        """Yield list chunks of size n of this dataset.  Last chunk will be ragged"""
         for (k,V) in enumerate(vipy.util.chunklistbysize(self._objlist, n)):
             yield V
         
@@ -573,15 +572,27 @@ class Dataset():
 
         return (Dataset(trainset, id='trainset'), Dataset(valset, id='valset'), Dataset(testset, id='testset') if len(testset)>0 else None)
 
-    def split(self, trainfraction=0.9, valfraction=0.1, testfraction=0, seed=42):
-        """Split the dataset into the video fractions"""
+    def split(self, trainfraction=0.9, valfraction=0.1, testfraction=0, seed=42, withtest=True):
+        """Split the dataset into the requested fractions.  
+
+        Args:
+            trainfraction [float]: fraction of dataset for training set
+            valfraction [float]: fraction of dataset for validation set
+            testfraction [float]: fraction of dataset for test set
+            seed [int]: random seed for determinism.  Set to None for random.
+            withtest: If true, return (trainset, valset, testset) even if testset is None
+
+        Returns:        
+            (trainset, valset, testset) if withtest=True else (trainset, valest) if testfraction=0
+        """
         assert trainfraction >=0 and trainfraction <= 1
         assert valfraction >=0 and valfraction <= 1
         assert testfraction >=0 and testfraction <= 1
         assert trainfraction + valfraction + testfraction == 1.0
         
         # Assignment
-        np.random.seed(seed)  # deterministic        
+        if seed is not None:
+            np.random.seed(seed)  # deterministic        
         A = self.list()
         idx = list(range(len(A)))
         np.random.shuffle(idx)
@@ -589,10 +600,12 @@ class Dataset():
         (testid, valid, trainid) = (set(testid), set(valid), set(trainid))
         trainset = [a for (k,a) in enumerate(A) if k in trainid]
         testset = [a for (k,a) in enumerate(A) if k in testid]
-        valset = [a for (k,a) in enumerate(A) if k in valid]        
-        np.random.seed()  # re-initialize seed
+        valset = [a for (k,a) in enumerate(A) if k in valid]
+        if seed is not None:
+            np.random.seed()  # re-initialize seed
 
-        return (Dataset(trainset, id='trainset'), Dataset(valset, id='valset'), Dataset(testset, id='testset') if len(testset)>0 else None)
+        (train,val,test) = (Dataset(trainset, id='trainset'), Dataset(valset, id='valset'), Dataset(testset, id='testset') if len(testset)>0 else None)
+        return (train,val,test) if withtest or test is not None else (train,val)
     
     def tocsv(self, csvfile=None):
         csv = [v.csv() for v in self.list]        
