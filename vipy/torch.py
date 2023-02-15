@@ -9,8 +9,7 @@ import json
 
 
 import vipy.util
-from vipy.util import try_import
-try_import('torch');
+vipy.util.try_import('torch');
 
 import torch
 import torch.utils.data

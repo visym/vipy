@@ -2,13 +2,13 @@ import vipy
 import numpy as np
 import copy
 
+vipy.util.try_import('torch')
+import torch
 
-class GaussianPyramid(object):
+
+class GaussianPyramid():
     """vipy.pyramid.GaussianPyramid() class"""
     def __init__(self, im=None, tensor=None):
-        vipy.util.try_import('torch')
-        import torch
-        
         assert im is not None or tensor is not None
         assert im is None or isinstance(im, vipy.image.Image)
         assert tensor is None or (torch.is_tensor(tensor) and tensor.ndim == 4)
@@ -45,11 +45,9 @@ class GaussianPyramid(object):
         return vipy.visualize.montage([im.maxsquare() for im in self], mindim, mindim).show()
 
     
-class LaplacianPyramid(object):
+class LaplacianPyramid():
     """vipy.pyramid.LaplacianPyramid() class"""    
     def __init__(self, im, pad='zero'):
-        vipy.util.try_import('torch')
-        import torch
         
         g = (1.0/np.sqrt(2*np.pi))*np.exp(-0.5*(np.array([-2,-1,0,1,2])**2))
         G = torch.from_numpy(np.outer(g,g).astype(np.float32))
@@ -137,7 +135,7 @@ class LaplacianPyramid(object):
 class Foveation(LaplacianPyramid):
     def __init__(self, im, mode='log-circle', s=None):
         super().__init__(im)
-        
+
         (H,W) = (im.height(), im.width())
         allowable_modes = ['gaussian', 'linear-circle', 'linear-square', 'log-circle']
         if mode == 'gaussian':
