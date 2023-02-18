@@ -21,7 +21,7 @@ import pickle as cPickle
 import PIL
 import matplotlib.pyplot as plt
 from itertools import groupby as itertools_groupby
-from itertools import tee
+from itertools import tee, chain
 import importlib
 import pathlib
 import socket
@@ -478,11 +478,27 @@ def dividelist(inlist, fractions):
     return outlist
 
 def pairwise(iterable):
-    """Equivalent to python-3.10 itertools.pairwise. pairwise('ABCDEFG') --> AB BC CD DE EF FG"""
-    a, b = tee(iterable)
+    """Equivalent to python-3.10 itertools.pairwise. pairwise('ABCD') --> (A,B), (B,C), (C,D)"""
+    a, b = tee(iterable, 2)
     next(b, None)
     return zip(a, b)
 
+
+def pairwise_padded(iterable):
+    """Return an iterable of tuples, such that the tuples are None padded to be the same length as iterable
+    
+        >>> list(padded_pairwise('ABCD'))
+        >>> [(None, A), (A,B), (B,C), (C,D)]
+
+    - Warning: this requires a peek inside the iterator to determine the number of elements to return as None
+    
+    """
+    for (k,(a,b)) in enumerate(pairwise(iterable)):
+        if k == 0:
+            yield (tuple([None for j in range(len(a))]), a)            
+        yield (a,b) 
+    
+    
 def chunklist(inlist, num_chunks):
     """Convert list into a list of lists of length num_chunks, such that each element is a list containing a sequential chunk of the original list.
     
@@ -1262,6 +1278,11 @@ def tolist(x):
         return list(x)
     else:
         return [x]
+
+def tolist_or_singleton(x):
+    """Return list(x) if length of iterator x is not equal to one, else return x or None.  This is useful to return single elements instead of single element lists."""
+    y = tolist(x)
+    return y if len(y)>1 else (y[0] if len(y)==1 else None)
 
 
 def isimg(path):
