@@ -1056,6 +1056,10 @@ class Image(object):
             s = float(dim) / float(np.minimum(self.height(), self.width()))
             return self.rescale(s, interp=interp) if dim is not None else min(self.shape())
 
+    def mindimn(self, dim=None):
+        """Frequently used shortcut for mindim(dim, interp='nearest')"""
+        return self.mindim(dim, interp='nearest')
+    
     def _pad(self, dx, dy, mode='edge'):
         """Pad image using np.pad mode, dx=padwidth, dy=padheight, thin wrapper for numpy.pad"""
         self._array = np.pad(self.load().array(),
@@ -2582,9 +2586,9 @@ def RandomScene(rows=None, cols=None, num_objects=16, url=None):
 
 def owl():
     """Return a superb owl image for testing"""
-    return Scene(url='https://upload.wikimedia.org/wikipedia/commons/thumb/2/23/Bubo_virginianus_06.jpg/1920px-Bubo_virginianus_06.jpg',
+    return Scene(url='https://upload.wikimedia.org/wikipedia/commons/thumb/2/23/Bubo_virginianus_06.jpg/512px-Bubo_virginianus_06.jpg',
                  category='Nature',
-                 objects=[vipy.object.Detection('Great Horned Owl', xmin=350, ymin=320, width=1400, height=2100)]).mindim(512)
+                 objects=[vipy.object.Detection('Great Horned Owl', xmin=93, ymin=85, width=373, height=560)])
 
 def squareowl():
     """Return a superb owl with no objects, cropped square at 512x512 resolution"""

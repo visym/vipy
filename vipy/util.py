@@ -477,28 +477,26 @@ def dividelist(inlist, fractions):
         inlist = inlist[n:]
     return outlist
 
-def pairwise(iterable):
-    """Equivalent to python-3.10 itertools.pairwise. pairwise('ABCD') --> (A,B), (B,C), (C,D)"""
+
+def pairwise(iterable, prepad=False, postpad=False, padval=None):
+    """Equivalent to python-3.10 itertools.pairwise. 
+    
+    >>> pairwise('ABCD') --> (A,B), (B,C), (C,D)
+    >>> pairwise('ABCD', prepad=True, padval=0) --> (0,A), (A,B), (B,C), (C,D)
+    >>> pairwise('ABCD', postpad=True) --> (A,B), (B,C), (C,D), (D,None)
+    >>> pairwise([(1,1),(2,2)], prepad=True, postpad=True, padval=(None,None)) --> [((None, None), (1, 1)), ((1, 1), (2, 2)), ((2, 2), (None, None))]
+    """
+    
     a, b = tee(iterable, 2)
-    next(b, None)
+    if prepad:
+        a = chain([padval], a)
+    else:
+        b0 = next(b, None)
+    if postpad:
+        b = chain(b, [padval])
     return zip(a, b)
 
 
-def pairwise_padded(iterable):
-    """Return an iterable of tuples, such that the tuples are None padded to be the same length as iterable
-    
-        >>> list(padded_pairwise('ABCD'))
-        >>> [(None, A), (A,B), (B,C), (C,D)]
-
-    - Warning: this requires a peek inside the iterator to determine the number of elements to return as None
-    
-    """
-    for (k,(a,b)) in enumerate(pairwise(iterable)):
-        if k == 0:
-            yield (tuple([None for j in range(len(a))]), a)            
-        yield (a,b) 
-    
-    
 def chunklist(inlist, num_chunks):
     """Convert list into a list of lists of length num_chunks, such that each element is a list containing a sequential chunk of the original list.
     
