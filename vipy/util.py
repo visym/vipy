@@ -91,7 +91,7 @@ def save(vars, outfile=None):
 
     .. note:: JSON is preferred as an archive format for vipy.  Be sure to install the excellent ultrajson library (pip install ujson) for fast serialization.
     """
-    allowable = set(['.pkl', '.json'])
+    allowable = set(['.pkl', '.json', '.pkl.bz2'])
     outfile = tempjson() if outfile is None else outfile
 
     remkdir(filepath(outfile))
@@ -112,6 +112,8 @@ def save(vars, outfile=None):
         with open(outfile, 'w') as f:
             f.write(s)            
 
+    elif isbz2(outfile):
+        return bz2pkl(outfile, vars)
     else:
         raise ValueError('Unknown file extension for save file "%s" - must be in %s' % (fileext(outfile), str(allowable)))
     
@@ -158,6 +160,8 @@ def load(infile, abspath=True, refcycle=True):
             obj = obj[0] if len(obj) == 1 else obj
         else:
             obj = loadobj
+    elif isbz2(infile):
+        return bz2pkl(infile)
     elif os.path.isdir(infile):        
         import vipy.dataset
         return vipy.dataset.Dataset(infile)
@@ -1774,3 +1778,10 @@ def string_to_pil_interpolation(interp):
         return PIL.Image.NEAREST
     else:
         raise  # should never get here
+
+def symlink(src, dst, overwrite=False):
+    """Create a symlink from src to dst, overwriting the existing symlink at dst if overwrite=True"""
+    if overwrite and os.path.islink(dst):
+        os.unlink(dst)
+    os.symlink(src, dst)
+    return dst
