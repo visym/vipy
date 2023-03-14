@@ -140,7 +140,7 @@ class Stream(object):
         self._writeindex = 0
         return self
             
-    def __exit__(self, type, value, tb):
+    def __exit__(self, type=None, value=None, tb=None):
         """Write pipe context manager
                 
         ..note:: This is triggered on ctrl-c as the last step for cleanup
@@ -158,6 +158,10 @@ class Stream(object):
         """alias for write()"""
         return self.write(im)
 
+    def __reduce__(self):
+        """When pickling, ignore all open pipes, restore as read-only stream.  User is responsible for restoring the stream after unpickling."""
+        return (self.__class__, (self._video, self._queuesize, False, False, self._bitrate, self._buffered, self._bufsize, True))
+         
     def _read_pipe(self):
         if not self._video.isloaded():
             p = self._video._ffmpeg.output('pipe:', format='rawvideo', pix_fmt='rgb24').global_args('-nostdin', '-loglevel', 'debug' if vipy.globals.isdebug() else 'quiet').run_async(pipe_stdout=True, pipe_stderr=True)
