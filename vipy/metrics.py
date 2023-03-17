@@ -368,3 +368,5 @@ def scatterplot(X, labels, outfile=None):
         return outfile
     else:
         plt.show()
+
+        

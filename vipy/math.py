@@ -122,7 +122,7 @@ def interp1d(x, y):
         k = np.argwhere(np.array(x)-at > 0)
         return len(x)-1 if len(k) == 0 else int(k[0])
     
-    assert sorted(x) == x and sorted(y) == y, "Input must be sorted"
+    assert all(sorted(x) == x) and all(sorted(y) == y), "Input must be sorted"
     return lambda at: y[max(0, ceil(x,at)-1)] + float(y[ceil(x,at)] - y[max(0, ceil(x,at)-1)])*((at - x[max(0, ceil(x,at)-1)])/(1E-16+(x[ceil(x,at)] - x[max(0, ceil(x,at)-1)])))
 
 
