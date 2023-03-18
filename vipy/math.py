@@ -117,12 +117,12 @@ def gaussian2d(mu, std, H, W):
 
 
 def interp1d(x, y):
-    """Replication of scipy.interpolate.interp1d with assume_sorted=True, and constant replication of boundary handling"""
+    """Replication of scipy.interpolate.interp1d with assume_sorted=True, and constant replication of boundary handling.  Input must be sorted."""
     def ceil(x, at):
         k = np.argwhere(np.array(x)-at > 0)
         return len(x)-1 if len(k) == 0 else int(k[0])
     
-    assert all(sorted(x) == x) and all(sorted(y) == y), "Input must be sorted"
+    #assert all(sorted(x) == x) and all(sorted(y) == y), "Input must be sorted"
     return lambda at: y[max(0, ceil(x,at)-1)] + float(y[ceil(x,at)] - y[max(0, ceil(x,at)-1)])*((at - x[max(0, ceil(x,at)-1)])/(1E-16+(x[ceil(x,at)] - x[max(0, ceil(x,at)-1)])))
 
 
