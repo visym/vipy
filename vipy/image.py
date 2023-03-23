@@ -31,6 +31,7 @@ import base64
 import types
 import hashlib
 import time
+import math
 
 
 try:
@@ -1801,16 +1802,16 @@ class ImageCategory(Image):
             return self
     
 
-class ImageMultiCategory(ImageCategory):
-    """vipy ImageMultiCategory class
+class ImageCategories(ImageCategory):
+    """vipy ImageCategories class
 
     This class provides a representation of a vipy.image.ImageCategory with a multi-element category set. 
 
     Valid constructors include all provided by vipy.image.ImageCategory with category as set or string
 
     ```python
-    im = vipy.image.ImageMultiCategory(filename='/path/to/dog_image.ext', category={'dog','canine'})
-    im = vipy.image.ImageMultiCategory(array=dog_img, colorspace='rgb', category='dog')
+    im = vipy.image.ImageCategories(filename='/path/to/dog_image.ext', category={'dog','canine'})
+    im = vipy.image.ImageCategories(array=dog_img, colorspace='rgb', category='dog')
     ```
     """
     def __init__(self, filename=None, url=None, category=None, label=None, attributes=None, array=None, colorspace=None):
@@ -1828,7 +1829,7 @@ class ImageMultiCategory(ImageCategory):
     @classmethod
     def cast(cls, im, flush=False):
         assert isinstance(im, vipy.image.Image)
-        im.__class__ = vipy.image.ImageMultiCategory
+        im.__class__ = vipy.image.ImageCategories
         im._category = set({}) if flush or not hasattr(im, '_category') else vipy.util.toset(im._category)
         im._score = {} if flush or not hasattr(im, '_score') else im._score
         return im
@@ -1854,10 +1855,11 @@ class ImageMultiCategory(ImageCategory):
         raise NotImplementedError
 
     def score(self, category, score=None):
+        """Real valued score for categorization, larger is better"""        
         if score is not None:
             self._score[category] = score
             return self
-        return self._score[category]
+        return self._score[category] if category in self._score else None
 
     def nocategory(self):
         self._category = set({})
@@ -1865,7 +1867,7 @@ class ImageMultiCategory(ImageCategory):
         return self
 
     def categories(self, categories, scored=False):
-        """Add list [category1, category2, ...] or sscored list [(category1, score1), (category2, score2), ...] as multi-categories"""
+        """Add list [category1, category2, ...] or scored list [(category1, score1), (category2, score2), ...] as multi-categories"""
         (C,S) = zip(*categories) if scored else categories
         for (k,c) in enumerate(C):
             self.category(add=c).score(c,S[k] if scored else None)
@@ -1895,12 +1897,31 @@ class ImageMultiCategory(ImageCategory):
             return self
         return self._category
 
+    def ranked_categories(self):
+        """Returned a ranked list of categories in order of decreasing score.  Unscored categories are appended, highest score at index 0"""
+        return sorted(list(self.category()), key=lambda c: self.score(c) or -math.inf, reverse=True)
+
+    def scored_categories(self):
+        return [(self.score(r), r) for r in self.ranked_categories()]
+
+    def category_scores(self):
+        return [(r, self.score(r)) for r in self.ranked_categories()]
+    
     def has_category(self, c):
         return c in self._category
 
     def __repr__(self):
-        return super().__repr__().replace('vipy.image.ImageCategory', 'vipy.image.ImageMultiCategory')
-
+        strlist = []
+        if self.isloaded():
+            strlist.append("height=%d, width=%d, color=%s" % (self.height(), self.width(), self.colorspace()))
+        if self.filename() is not None:
+            strlist.append('filename="%s"' % (self.filename() if self.hasfilename() else '<NOTFOUND>%s</NOTFOUND>' % self.filename()))
+        if self.hasurl():
+            strlist.append('url="%s"' % self.url())
+        if self.category() is not None and len(self.category())>0:
+            strlist.append('categories=%s' % ':'.join(self.ranked_categories()))
+        return str('<vipy.image.ImageCategories: %s>' % ', '.join(strlist))
+    
     
 class Scene(ImageCategory):
     """vipy.image.Scene class
