@@ -1709,8 +1709,7 @@ class ImageCategory(Image):
 
     """
     
-    def __init__(self, filename=None, url=None, category=None, label=None,
-                 attributes=None, array=None, colorspace=None):
+    def __init__(self, filename=None, url=None, category=None, label=None, attributes=None, array=None, colorspace=None):
         # Image class inheritance
         super().__init__(filename=filename,
                          url=url,
@@ -1736,7 +1735,7 @@ class ImageCategory(Image):
     def json(self, s=None, encode=True):
         if s is None:
             d = json.loads(super().json())
-            d['_category'] = self._category
+            d['_category'] = self._category if not isinstance(self._category, set) else list(self._category)
             return json.dumps(d) if encode else d
         else:
             super().json(s)
@@ -1752,15 +1751,15 @@ class ImageCategory(Image):
             strlist.append('filename="%s"' % (self.filename() if self.hasfilename() else '<NOTFOUND>%s</NOTFOUND>' % self.filename()))
         if self.hasurl():
             strlist.append('url="%s"' % self.url())
-        if self.category() is not None:
-            strlist.append('category="%s"' % self.category())
-        return str('<vipy.imagecategory: %s>' % (', '.join(strlist)))
+        if self.category() is not None and len(self.category())>0:
+            strlist.append('category=%s' % self.category())
+        return str('<vipy.image.ImageCategory: %s>' % (', '.join(strlist)))
 
     def __eq__(self, other):
-        return self._category.lower() == other._category.lower() if isinstance(other, ImageCategory) else False
+        return self._category == other._category if isinstance(other, ImageCategory) else False
 
     def __ne__(self, other):
-        return self._category.lower() != other._category.lower()
+        return self._category != other._category
 
     def is_(self, other):
         return self.__eq__(other)
@@ -1802,6 +1801,90 @@ class ImageCategory(Image):
             return self
     
 
+class ImageMultiCategory(ImageCategory):
+    """vipy ImageMultiCategory class
+
+    This class provides a representation of a vipy.image.ImageCategory with a multi-element category set. 
+
+    Valid constructors include all provided by vipy.image.ImageCategory with category as set or string
+
+    ```python
+    im = vipy.image.ImageMultiCategory(filename='/path/to/dog_image.ext', category={'dog','canine'})
+    im = vipy.image.ImageMultiCategory(array=dog_img, colorspace='rgb', category='dog')
+    ```
+    """
+    def __init__(self, filename=None, url=None, category=None, label=None, attributes=None, array=None, colorspace=None):
+        super().__init__(filename=filename,
+                         url=url,
+                         attributes=attributes,
+                         array=array,
+                         colorspace=colorspace,
+                         category=category, label=label)
+
+        assert category is None or isinstance(category, set) or isinstance(category, list) or isinstance(category, str) or isinstance(category, tuple)
+        self._category = vipy.util.toset(self.category()) if self.category() is not None else set({})
+
+    @classmethod
+    def cast(cls, im, flush=False):
+        assert isinstance(im, vipy.image.Image)
+        im.__class__ = vipy.image.ImageMultiCategory
+        im._category = set({}) if flush or not hasattr(im, '_category') else vipy.util.toset(im._category)
+        return im
+
+    @classmethod
+    def from_json(obj, s):        
+        im = super().from_json(s)
+        im._category = vipy.util.toset(json.loads(s)['_category'])
+        return im
+
+    def json(self, s=None, encode=True):
+        if s is None:            
+            d = json.loads(super().json())
+            d['_category'] = list(self._category)
+            return json.dumps(d) if encode else d
+        else:
+            super().json(s)
+            d = json.loads(s)            
+            self._category = vipy.util.toset(d['_category'])
+            return self
+    
+    def probability(self, newprob=None):
+        raise NotImplementedError
+
+    def score(self, newscore=None):
+        raise NotImplementedError
+
+    def nocategory(self):
+        self._category = set({})
+        return self
+
+    def add_category(self, c):
+        if c is not None:
+            self._category.add(c)
+        return self
+    
+    def remove_category(self, c):
+        if c is not None:
+            self._category.discard(c)
+        return self
+    
+    def category(self, newcategory=None, add=None, remove=None):
+        if newcategory is not None:
+            self._category = vipy.util.toset(newcategory)
+            return self
+        if add is not None or remove is not None:
+            self.add_category(add)
+            self.remove_category(remove)            
+            return self
+        return self._category
+
+    def has_category(self, c):
+        return c in self._category
+
+    def __repr__(self):
+        return super().__repr__().replace('vipy.image.ImageCategory', 'vipy.image.ImageMultiCategory')
+
+    
 class Scene(ImageCategory):
     """vipy.image.Scene class
 
