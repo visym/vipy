@@ -426,9 +426,10 @@ def countby(inset, keyfunc=lambda x: x):
     """Return dictionary of keys and group sizes for a grouping of the input list by keyfunc lambda function, sorted by increasing count""" 
     return {k:v for (k,v) in sorted({k:len(v) for (k,v) in groupbyasdict(inset, keyfunc).items()}.items(), key=lambda x: x[1])}
 
-def most_frequent(inset):
+def most_frequent(inset, topk=1):
     """Return the most frequent element as determined by element equality"""
-    return sorted([(k,v) for (k,v) in vipy.util.countby(inset, lambda x: x).items()], key=lambda y: y[1])[-1][0]
+    ranked = list(countby(inset).keys())
+    return ranked[-topk:] if topk is not None else ranked
 
 def countbyasdict(inset, keyfunc):
     """Alias for `vipy.util.countby`"""
@@ -1281,6 +1282,16 @@ def tolist(x):
     else:
         return [x]
 
+def toset(x):
+    """Convert a python iterable to a set of not already a set"""
+    if isinstance(x, set):        
+        return x    
+    elif isinstance(x, list) or isinstance(x, tuple):
+        return set(x)
+    else:
+        return set([x])
+    
+    
 def tolist_or_singleton(x):
     """Return list(x) if length of iterator x is not equal to one, else return x or None.  This is useful to return single elements instead of single element lists."""
     y = tolist(x)
