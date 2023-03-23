@@ -70,7 +70,8 @@ class Dataset():
         self._istype_strict = True
         self._lazy_loader = lazy
         self._abspath = abspath
-
+        self._shuffler = 'uniform'
+        
         if isinstance(objlist, str) and (vipy.util.isjsonfile(objlist) or vipy.util.ispklfile(objlist)):
             self._objlist = vipy.util.load(objlist, abspath=abspath)
         elif isinstance(objlist, str) and os.path.isdir(objlist):
@@ -528,22 +529,47 @@ class Dataset():
         d_category_to_objlist = vipy.util.groupbyasdict(self._objlist, lambda x: x.category())
         D._objlist = [v for c in self.categories() for v in Dataset(d_category_to_objlist[c]).take(n, seed=seed)]
         return D
+
+    def shuffler(self, method=None, uniform=None, pairwise=None):
+        """Specify a shuffler protocol.  
+        
+           >>> D.shuffler('uniform')
+           >>> D.shuffer(uniform=True)
+           >>> D.shuffle()
+
+           Args:
+             uniform [bool]: shuffle element uniformly at random
+             pairwise [bool]:  elements are assumed to be pairwise similarities, such that the category() method returns an id for each positive pair.  Shuffle keeping positive pairs as minibatch neighbors.        
+
+           Returns: self if a new shuffler is requested, otherwise return a lambda function which shuffles a list. This lambda function is not meant to be used directly, rather exercised by shuffle
+        """
+        if method:
+            assert method in ['uniform', 'pairwise'], "unknown shuffler '%s'" % method
+            self._shuffler = method
+        elif pairwise:
+            self._shuffler = 'pairwise'
+        elif uniform:
+            self._shuffler = 'uniform'
+        elif self._shuffler == 'uniform':
+            return lambda y: sorted(y, key=lambda x: random.random())
+        elif self._shuffler == 'pairwise':
+            return lambda y: vipy.util.flatlist(sorted(vipy.util.chunklistbysize(sorted(y, key=lambda x: x.category()), 2), key=lambda x: random.random()))
+        return self
     
     def shuffle(self):
-        """Randomly permute elements in this dataset"""
-        self._objlist.sort(key=lambda x: random.random())  # in place
+        """Randomly permute elements in this dataset according to a shuffler protocol set with shuffler()"""
+        self._objlist = self.shuffler()(self._objlist)  # in-place
         return self
 
     def chunk(self, n):
-        """Yield n chunks of this dataset.  Last chunk will be ragged"""
+        """Yield n chunks as dataset.  Last chunk will be ragged"""
         for (k,V) in enumerate(vipy.util.chunklist(self._objlist, n)):
             yield Dataset(V, id='%s_%d' % (self.id(), k), loader=self._loader)
 
     def minibatch(self, n):
         """Yield list chunks of size n of this dataset.  Last chunk will be ragged"""
         for (k,V) in enumerate(vipy.util.chunklistbysize(self._objlist, n)):
-            yield V
-        
+            yield V        
         
     def split_by_videoid(self, trainfraction=0.9, valfraction=0.1, testfraction=0, seed=42):
         """Split the dataset by category by fraction so that video IDs are never in the same set"""
