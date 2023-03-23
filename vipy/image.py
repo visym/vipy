@@ -1723,7 +1723,7 @@ class ImageCategory(Image):
     def cast(cls, im, flush=False):
         assert isinstance(im, vipy.image.Image)
         im.__class__ = vipy.image.ImageCategory
-        im._category = None if flush or not hasattr(im, '_category') else im._category
+        im._category = None if flush or not hasattr(im, '_category') else str(im._category)
         return im
 
     @classmethod
@@ -1823,12 +1823,14 @@ class ImageMultiCategory(ImageCategory):
 
         assert category is None or isinstance(category, set) or isinstance(category, list) or isinstance(category, str) or isinstance(category, tuple)
         self._category = vipy.util.toset(self.category()) if self.category() is not None else set({})
-
+        self._score = {}
+        
     @classmethod
     def cast(cls, im, flush=False):
         assert isinstance(im, vipy.image.Image)
         im.__class__ = vipy.image.ImageMultiCategory
         im._category = set({}) if flush or not hasattr(im, '_category') else vipy.util.toset(im._category)
+        im._score = {} if flush or not hasattr(im, '_score') else im._score
         return im
 
     @classmethod
@@ -1851,29 +1853,44 @@ class ImageMultiCategory(ImageCategory):
     def probability(self, newprob=None):
         raise NotImplementedError
 
-    def score(self, newscore=None):
-        raise NotImplementedError
+    def score(self, category, score=None):
+        if score is not None:
+            self._score[category] = score
+            return self
+        return self._score[category]
 
     def nocategory(self):
         self._category = set({})
+        self._score = {}
         return self
 
-    def add_category(self, c):
+    def categories(self, categories, scored=False):
+        """Add list [category1, category2, ...] or sscored list [(category1, score1), (category2, score2), ...] as multi-categories"""
+        (C,S) = zip(*categories) if scored else categories
+        for (k,c) in enumerate(C):
+            self.category(add=c).score(c,S[k] if scored else None)
+        return self
+    
+    def add_category(self, c, score=None):
         if c is not None:
             self._category.add(c)
+            if score is not None:
+                self._score[c] = score
         return self
     
     def remove_category(self, c):
         if c is not None:
             self._category.discard(c)
+            self._score.pop(c, None)
         return self
     
-    def category(self, newcategory=None, add=None, remove=None):
+    def category(self, newcategory=None, add=None, remove=None, score=None):
         if newcategory is not None:
             self._category = vipy.util.toset(newcategory)
+            self.score(newcategory, score)
             return self
         if add is not None or remove is not None:
-            self.add_category(add)
+            self.add_category(add, score)
             self.remove_category(remove)            
             return self
         return self._category
