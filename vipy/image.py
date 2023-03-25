@@ -1866,12 +1866,14 @@ class ImageCategories(ImageCategory):
         self._score = {}
         return self
 
-    def categories(self, categories, scored=False):
+    def categories(self, categories=None, scored=False):
         """Add list [category1, category2, ...] or scored list [(category1, score1), (category2, score2), ...] as multi-categories"""
-        (C,S) = zip(*categories) if scored else categories
-        for (k,c) in enumerate(C):
-            self.category(add=c).score(c,S[k] if scored else None)
-        return self
+        if categories is not None:
+            (C,S) = zip(*categories) if scored else categories
+            for (k,c) in enumerate(C):
+                self.category(add=c).score(c,S[k] if scored else None)
+            return self
+        return self.category()
     
     def add_category(self, c, score=None):
         if c is not None:
