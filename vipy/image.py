@@ -227,24 +227,28 @@ class Image(object):
         return self
 
     def exif(self, extended=False):
-        """Return the EXIF meta-data in filename as a dictionary.  Included non-base EXIF data if extended=True.  Returns empty dictionary if no EXIF exists.  Triggers load."""
-        exif = self.load().pil().getexif()
-        d = {PIL.ExifTags.TAGS[k]:v for (k,v) in exif.items() if k in PIL.ExifTags.TAGS} if exif is not None else {}
+        """Return the EXIF meta-data in filename as a dictionary.  Included non-base EXIF data if extended=True.  Returns empty dictionary if no EXIF exists.  Triggers download."""
 
-        if extended:
-            for ifd_id in PIL.ExifTags.IFD:
-                try:
-                    ifd = exif.get_ifd(ifd_id)                    
-                    if ifd_id == PIL.ExifTags.IFD.GPSInfo:
-                        resolve = PIL.ExifTags.GPSTAGS
-                    else:
-                        resolve = PIL.ExifTags.TAGS
-                    
-                        for k, v in ifd.items():
-                            tag = resolve.get(k, k)
-                            d[tag] = v
-                except KeyError:
-                    pass
+        d = {}
+        if self.download().hasfilename():
+            exif = PIL.Image.open(self.filename()).getexif()
+            if exif is not None:
+                d = {PIL.ExifTags.TAGS[k]:v for (k,v) in exif.items() if k in PIL.ExifTags.TAGS}
+
+            if extended:
+                for ifd_id in PIL.ExifTags.IFD:
+                    try:
+                        ifd = exif.get_ifd(ifd_id)                    
+                        if ifd_id == PIL.ExifTags.IFD.GPSInfo:
+                            resolve = PIL.ExifTags.GPSTAGS
+                        else:
+                            resolve = PIL.ExifTags.TAGS
+                            
+                            for k, v in ifd.items():
+                                tag = resolve.get(k, k)
+                                d[tag] = v
+                    except KeyError:
+                        pass
         return d
     
     def tile(self, tilewidth, tileheight, overlaprows=0, overlapcols=0):
