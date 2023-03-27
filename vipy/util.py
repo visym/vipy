@@ -72,7 +72,7 @@ def class_registry():
     return registry
             
 
-def save(vars, outfile=None):
+def save(vars, outfile=None, backup=False):
     """Save variables to an archive file.
 
     This function allows vipy objects to be serialized to disk for later loading.
@@ -84,8 +84,8 @@ def save(vars, outfile=None):
 
     Args:
         vars: A python object to save.  This can be any serializable python object
-        outfile:  An output file to save.  Must have extension [.pkl, .json].  If None, will save to a temporary JSON file.
-
+        outfile:  An output file to save.  Must have extension [.pkl, .json, .pkl.bz2].  If None, will save to a temporary JSON file.
+        backup [bool]:  If true and the outfile already exists, make a copy and save as outfile.bak before overwriting
     Returns
         A path to the saved archive file.  Load using `vipy.util.load`. 
 
@@ -94,6 +94,8 @@ def save(vars, outfile=None):
     allowable = set(['.pkl', '.json', '.pkl.bz2'])
     outfile = tempjson() if outfile is None else outfile
 
+    if backup and os.path.exists(outfile):
+        shutil.copyfile(outfile, outfile+'.bak')
     remkdir(filepath(outfile))
     if ispkl(outfile):
         dill.dump(vars, open(outfile, 'wb'))
@@ -202,6 +204,7 @@ def load(infile, abspath=True, refcycle=True):
     return obj
 
 
+    
 def dedupe(inlist, f):
     """Deduplicate the list using the provided lambda function which transforms an element to a dedupe key, such that all elements with the same key are duplicates"""
     assert callable(f)
@@ -890,8 +893,11 @@ def isextension(filename, ext):
 
 def ispkl(filename):
     """Is the file a pickle archive file"""
-    return filename[-4:] == '.pkl' if isstring(filename) and \
-        len(filename) >= 4 else False
+    return filename[-4:] == '.pkl' if isstring(filename) and len(filename) >= 4 else False
+
+def isbz2pkl(filename):
+    """Is the file a pickle archive file"""
+    return filename[-8:] == '.bz2.pkl' if isstring(filename) and len(filename) >= 8 else False
 
 def ispklfile(filename):
     """Is the file a pickle archive file"""
@@ -1201,7 +1207,7 @@ def stringhash(s, n=16):
 
 def isimageurl(path):
     """Is a path a URL with image extension?"""
-    return isurl(path) and isimg(path)
+    return path is not None and isurl(path) and isimg(path)
 
 
 def isvideourl(path):
@@ -1288,9 +1294,8 @@ def tolist_or_singleton(x):
 
 
 def isimg(path):
-    """Is an object an image with a supported image extension ['.jpg','.jpeg','.png','.tif','.tiff','.pgm','.ppm','.gif','.bmp']?"""
-    (filename, ext) = os.path.splitext(path)
-    if ext.lower() in ['.jpg', '.jpeg', '.png', '.tif', '.tiff', '.pgm', '.ppm', '.gif', '.bmp']:
+    """Is an object an image with a supported image extension ['.jpg','.jpeg','.png','.tif','.tiff','.pgm','.ppm','.gif','.bmp']?"""    
+    if path is not None and os.path.splitext(path)[1].lower() in ['.jpg', '.jpeg', '.png', '.tif', '.tiff', '.pgm', '.ppm', '.gif', '.bmp']:
         return True
     else:
         return False
@@ -1336,17 +1341,16 @@ def isjpg(path):
 
 def iscsv(path):
     """Is a file a CSV file extension?"""
-    (filename, ext) = os.path.splitext(path)
+
+    (filename, ext) = (os.path.splitext(path) if path is not None else ('',''))
     if ext.lower() in ['.csv', '.CSV']:
         return True
     else:
         return False
 
-
 def isvideo(path):
-    """Is a filename in path a video with a known video extension ['.avi','.mp4','.mov','.wmv','.mpg', 'mkv', 'webm']?"""
-    (filename, ext) = os.path.splitext(path)
-    if ext.lower() in ['.avi','.mp4','.mov','.wmv','.mpg', 'mkv', 'webm']:
+    """Is a filename in path a video with a known video extension ['.avi','.mp4','.mov','.wmv','.mpg', 'mkv', 'webm', '3gp']?"""
+    if path is not None and os.path.splitext(path)[1].lower() in ['.avi','.mp4','.mov','.wmv','.mpg', '.mkv', '.webm', '.3gp']:
         return True
     else:
         return False
@@ -1363,7 +1367,7 @@ def isnumpyarray(obj):
 
 def istextfile(path):
     """Is the given file a text file?"""
-    (filename, ext) = os.path.splitext(path)
+    (filename, ext) = (os.path.splitext(path) if path is not None else ('',''))
     if ext.lower() in ['.txt'] and (filename[0] != '.'):
         return True
     else:
