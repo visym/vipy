@@ -226,6 +226,27 @@ class Image(object):
             time.sleep(sleep)
         return self
 
+    def exif(self, extended=False):
+        """Return the EXIF meta-data as a dictionary.  Included non-base EXIF data if extended=True.  Returns empty dictionary if no EXIF exists"""
+        exif = self.pil().getexif()
+        d = {PIL.ExifTags.TAGS[k]:v for (k,v) in exif.items() if k in PIL.ExifTags.TAGS} if exif is not None else {}
+
+        if extended:
+            for ifd_id in PIL.ExifTags.IFD:
+                try:
+                    ifd = exif.get_ifd(ifd_id)                    
+                    if ifd_id == PIL.ExifTags.IFD.GPSInfo:
+                        resolve = PIL.ExifTags.GPSTAGS
+                    else:
+                        resolve = PIL.ExifTags.TAGS
+                    
+                        for k, v in ifd.items():
+                            tag = resolve.get(k, k)
+                            d[tag] = v
+                except KeyError:
+                    pass
+        return d
+    
     def tile(self, tilewidth, tileheight, overlaprows=0, overlapcols=0):
         """Generate an image tiling.
         
@@ -820,9 +841,14 @@ class Image(object):
         Returns:
             A [PIL image](https://pillow.readthedocs.io/en/stable/reference/Image.html) object, that shares the pixel buffer by reference
         """
-        assert self.channels() in [1,3,4] and (self.channels() == 1 or self.colorspace() != 'float'), "Incompatible with PIL"
-        return PIL.Image.fromarray(self.numpy(), mode='RGB' if self.colorspace()=='rgb' else None)  # FIXME: mode='RGB' triggers slow tobytes() conversion, need RGBA or RGBX
-
+        if self.isloaded():
+            assert self.channels() in [1,3,4] and (self.channels() == 1 or self.colorspace() != 'float'), "Incompatible with PIL"
+            return PIL.Image.fromarray(self.numpy(), mode='RGB' if self.colorspace()=='rgb' else None)  # FIXME: mode='RGB' triggers slow tobytes() conversion, need RGBA or RGBX
+        elif self.hasfilename():
+            return PIL.Image.open(self.filename())
+        else:
+            return None
+            
     def blur(self, sigma=3):
         """Apply a Gaussian blur with Gaussian kernel radius=sigma to the pixel buffer.
         
@@ -1292,6 +1318,29 @@ class Image(object):
     def rotate(self, r):
         """Apply a rotation in radians to the pixels, with origin in upper left """
         return self.affine_transform(vipy.geometry.affine_transform(r=r))
+
+    def rotate_by_exif(self):
+        """Apply a rotation as specified in the 'Orientation' field EXIF metadata"""
+        exif = self.exif()
+        orientation = exif['Orientation'] if 'Orientation' in exif else None
+        if orientation is None or orientation == 1:
+            return self
+        elif orientation == 2:
+            return self.fliplr()
+        elif orientation == 3:
+            return self.flipud().fliplr()
+        elif orientation == 4:
+            return self.flipud()
+        elif orientation == 5:
+            return self.rot90cw().fliplr()
+        elif orientation == 6:
+            return self.rot90cw()
+        elif orientation == 7:
+            return self.rot90ccw().fliplr()
+        elif orientation == 8:
+            return self.rot90ccw()
+        else:
+            raise ValueError                        
     
     def rgb(self):
         """Convert the image buffer to three channel RGB uint8 colorspace"""
