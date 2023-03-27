@@ -2126,6 +2126,10 @@ class Video(object):
         """Alias for `vipy.video.Video.savetmp`"""
         return self.savetmp()
 
+    def tocache(self):
+        """Call `vipy.video.Video.saveas` using a new temporary video file in VIPY cache, and return the video object with this new filename"""
+        return self.saveas(outfile=vipy.util.tocache(tempMP4()))
+    
     def ffplay(self):
         """Play the video file using ffplay"""
         assert self.hasfilename() or (self.hasurl() and self.download().hasfilename())  # triggers download if needed

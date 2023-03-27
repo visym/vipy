@@ -1574,6 +1574,10 @@ class Image(object):
         """Save current buffer to temp JPEG filename and return filename.   Alias for saveastmp()"""
         return self.saveastmp()
 
+    def tocache(self):
+        """Save current buffer to temp JPEG filename in the VIPY cache and return filename."""
+        return self.saveas(vipy.util.tocache(tempjpg()))
+    
     def base64(self):
         """Export a base64 encoding of the image suitable for embedding in an html page"""
         buf = io.BytesIO()

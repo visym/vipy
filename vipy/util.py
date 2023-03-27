@@ -890,7 +890,7 @@ def isextension(filename, ext):
     ```
 
     """
-    return filename.endswith(ext)
+    return filename is not None and filename.endswith(ext)
 
 def ispkl(filename):
     """Is the file a pickle archive file"""
