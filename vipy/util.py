@@ -347,7 +347,11 @@ def findimages(basedir):
 def findvideo(basedir):
     """Return a list of absolute paths to video files recursively discovered by walking the directory tree rooted at basedir"""
     return [str(path.resolve()) for path in pathlib.Path(basedir).rglob('*') if isvideo(str(path.resolve()))]
-    
+
+def findwebp(basedir):
+    """Return a list of absolute paths to video files recursively discovered by walking the directory tree rooted at basedir"""
+    return [str(path.resolve()) for path in pathlib.Path(basedir).rglob('*') if iswebp(str(path.resolve()))]
+
 def findvideos(basedir):
     """Alias for `vipy.util.findvideo`"""
     return findvideo(basedir)
@@ -1800,3 +1804,12 @@ def symlink(src, dst, overwrite=False):
         os.unlink(dst)
     os.symlink(src, dst)
     return dst
+
+def cleantmp(tmpdir=tempdir()):
+    """Recursively remove all temporary images, videos, pkl, json and webp files in tmpdir to free up space.  This is useful to manually clean up temp if cron is too infrequent"""
+    for f in findimages(tmpdir)+findvideos(tmpdir)+findpkl(tmpdir)+findjson(tmpdir)+findwebp(tmpdir):
+        try:
+            os.remove(f)
+        except:
+            pass  # not ours
+    
