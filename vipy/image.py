@@ -227,8 +227,8 @@ class Image(object):
         return self
 
     def exif(self, extended=False):
-        """Return the EXIF meta-data as a dictionary.  Included non-base EXIF data if extended=True.  Returns empty dictionary if no EXIF exists"""
-        exif = self.pil().getexif()
+        """Return the EXIF meta-data in filename as a dictionary.  Included non-base EXIF data if extended=True.  Returns empty dictionary if no EXIF exists.  Triggers load."""
+        exif = self.load().pil().getexif()
         d = {PIL.ExifTags.TAGS[k]:v for (k,v) in exif.items() if k in PIL.ExifTags.TAGS} if exif is not None else {}
 
         if extended:
