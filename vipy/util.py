@@ -711,8 +711,12 @@ def take(inlist, k):
     return [inlist[i] for i in np.random.permutation(range(len(inlist)))[0:k]] if len(inlist)>k else inlist
 
 def takeone(inlist):
-    """Take one element at random from inlist"""
+    """Take one element at random from inlist or return None if empty"""
     return take(list(inlist), k=1)[0] if len(inlist)>=1 else None
+
+def takelast(inlist):
+    """Take last element from inlist or return None if empty"""
+    return tolist(inlist)[-1] if len(tolist(inlist))>=1 else None
 
 def tryload(infile, abspath=False):
     """Attempt to load a pkl file, and return the value if successful and None if not"""
@@ -902,7 +906,7 @@ def ispkl(filename):
 
 def isbz2pkl(filename):
     """Is the file a pickle archive file"""
-    return filename[-8:] == '.bz2.pkl' if isstring(filename) and len(filename) >= 8 else False
+    return filename[-8:] == '.pkl.bz2' if isstring(filename) and len(filename) >= 8 else False
 
 def ispklfile(filename):
     """Is the file a pickle archive file"""
@@ -1805,11 +1809,4 @@ def symlink(src, dst, overwrite=False):
     os.symlink(src, dst)
     return dst
 
-def cleantmp(tmpdir=tempdir()):
-    """Recursively remove all temporary images, videos, pkl, json and webp files in tmpdir to free up space.  This is useful to manually clean up temp if cron is too infrequent"""
-    for f in findimages(tmpdir)+findvideos(tmpdir)+findpkl(tmpdir)+findjson(tmpdir)+findwebp(tmpdir):
-        try:
-            os.remove(f)
-        except:
-            pass  # not ours
-    
+

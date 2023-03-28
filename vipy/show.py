@@ -7,8 +7,8 @@ import matplotlib
 # - Headless operation: 'Agg'
 # - Linux (X11-forwarded): 'GTK3Cairo', 'QtAgg', 'TkAgg'
 # - Valid backends: https://matplotlib.org/stable/users/explain/backends.html
-if 'VIPY_BACKEND' in os.environ:    
-    matplotlib.use(os.environ['VIPY_BACKEND'])
+if 'VIPY_BACKEND' in os.environ and 'DISPLAY' in os.environ:
+    matplotlib.use(os.environ['VIPY_BACKEND'])  # 'Agg' is required unless there is a DISPLAY set
     
 import importlib
 BACKEND = importlib.import_module('vipy.gui.using_matplotlib')
