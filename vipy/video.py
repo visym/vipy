@@ -104,8 +104,8 @@ class Stream(object):
         self._write = write or overwrite               
         assert self._write is False or (overwrite is True or not os.path.exists(self._outfile)), "Output file '%s' exists - Writable stream cannot overwrite existing video file unless overwrite=True" % self._outfile
         if overwrite and os.path.exists(self._outfile):
-            os.remove(self._outfile)                
-        self._shape = self._video.shape() if (not self._write) or (self._write and self._video.canload()) else None  # shape for write can be defined by first frame
+            os.remove(self._outfile)            
+        self._shape = self._video.shape() if (not self._write) or (not self._video.isstreaming() and self._video.canload()) else None  # shape for write can be defined by first frame
         assert (write is True or overwrite is True) or self._shape is not None, "Invalid video '%s'" % (str(v))
         self._queuesize = queuesize
         self._bufsize = bufsize
@@ -135,6 +135,7 @@ class Stream(object):
                             **kwargs)                              
                   .overwrite_output() 
                   .global_args('-cpuflags', '0', '-loglevel', 'quiet' if not vipy.globals.isdebug() else 'debug'))
+
             self._write_pipe = fo.run_async(pipe_stdin=True)
                     
         self._writeindex = 0
@@ -1249,6 +1250,7 @@ class Video(object):
         This is useful for filtering bad videos or filtering videos that cannot be loaded using your current FFMPEG version.
 
         .. notes:: This will only try to preview a single frame.  This will not check if the entire video is loadable.  Use `vipy.video.Video.isloadable` in this case
+                   This will hang if calling canload on a streaming URL.
         """
         if not self.isloaded():
             try:
@@ -1263,6 +1265,9 @@ class Video(object):
         """Is the video a three channel color video as returned from `vipy.video.Video.channels`?"""
         return self.channels() == 3
 
+    def isstreaming(self):
+        return isRTSPurl(self._filename) or isRTMPurl(self._filename)
+    
     def isgrayscale(self):
         """Is the video a single channel as returned from `vipy.video.Video.channels`?"""
         return self.channels() == 1
