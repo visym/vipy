@@ -149,10 +149,22 @@ class Image(object):
         assert isinstance(im, vipy.image.Image), "Invalid input - must derive from vipy.image.Image"
         im.__class__ = vipy.image.Image
         return im
+
+    @classmethod
+    def from_dict(cls, d):
+        return cls(filename=d['_filename'],
+                   url=d['_url'],
+                   array=np.array(d['_array'], dtype=np.uint8) if d['_array'] is not None else None,
+                   colorspace=d['_colorspace'],
+                   attributes=d['attributes'])
         
+    
     @classmethod
     def from_json(cls, s):
         """Import the JSON string s as an `vipy.image.Image` object.
+
+        Args:
+            encoded [bool]: If False, assume that the input is a native JSON object, and has not been encoded to a string
         
         This will perform a round trip such that im1 == im2
 
@@ -163,12 +175,7 @@ class Image(object):
         ```
         
         """
-        d = json.loads(s)        
-        return cls(filename=d['_filename'],
-                   url=d['_url'],
-                   array=np.array(d['_array'], dtype=np.uint8) if d['_array'] is not None else None,
-                   colorspace=d['_colorspace'],
-                   attributes=d['attributes'])
+        return cls.from_dict(json.loads(s))
     
     def __eq__(self, other):
         """Images are equivalent if they have the same filename, url and array"""
@@ -2052,6 +2059,13 @@ class Scene(ImageCategory):
             d = json.loads(s)            
             self._objectlist = [vipy.object.Detection.from_json(s) for s in d['_objectlist']]
             return self
+        
+    def prettyjson(self):
+        """return unencoded json representation of this scene without leading underscores"""
+        d = {k.lstrip('_'):v for (k,v) in self.json(encode=False).items()}
+        if 'objectlist' in d:
+            d['objectlist'] = [{k.lstrip('_'):v for (k,v) in o.items()} for o in d['objectlist']]
+        return d
     
     def __eq__(self, other):
         """Scene equality requires equality of all objects in the scene, assumes a total order of objects"""

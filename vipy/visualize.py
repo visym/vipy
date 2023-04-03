@@ -451,7 +451,7 @@ def urls(urllist, title='URL Visualization', imagewidth=1024, outfile=None, disp
 
     
     
-def tohtml(imlist, imdict=None, title='Image Visualization', mindim=1024, outfile=None, display=False):
+def tohtml(imlist, imdict=None, title='Image Visualization', mindim=1024, outfile=None, display=False, maxwidth=2400):
     """Given a list of vipy.image.Image objects, show the images along with the dictionary contents of imdict (one per image) in a single standalone HTML file
     
     Args:
@@ -461,7 +461,8 @@ def tohtml(imlist, imdict=None, title='Image Visualization', mindim=1024, outfil
         imagewidth: [int] The size of the images in the page
         outfile: [str] The path to the output html file
         display: [bool] open the html file in the default system viewer when complete
-
+        maxwidth [int]: the maximum width of the html container in pixels
+    
     Returns:
         An html file in outfile that contains all the images as a standalone embedded file (no links or external files).
     """
@@ -477,7 +478,7 @@ def tohtml(imlist, imdict=None, title='Image Visualization', mindim=1024, outfil
     f.write('<!--\n    Visym Labs\n    vipy.visualize.tohtml (https://visym.github.io/vipy)\n    Generated: %s\n-->\n' % str(datetime.now()))    
     f.write('<html>\n')
     f.write('<body>\n')
-    f.write('<div id="container" style="width:2400px">\n')
+    f.write('<div id="container" style="width:%dpx">\n' % maxwidth)
     f.write('<div id="header">\n')
     f.write('<h1 style="margin-bottom:0;">%s</h1><br>\n' % title)
     localtime = time.strftime("%Y-%m-%d %H:%M:%S",time.localtime(time.time()))
@@ -561,7 +562,7 @@ def videolist(vidlist, viddict=None, title='Video Visualization', outfile=None, 
 
     
     
-def imagelist(list_of_image_files, outdir, title='Image Visualization', imagewidth=64):
+def imagelist(list_of_image_files, outdir, title='Image Visualization', imagewidth=64, maxwidth=2400):
     """Given a list of image filenames wth absolute paths, copy to outdir, and create an index.html file that visualizes each.    
     """
 
@@ -577,7 +578,7 @@ def imagelist(list_of_image_files, outdir, title='Image Visualization', imagewid
     f.write('<!--\n    Visym Labs\n    vipy.visualize.imagelist (https://visym.github.io/vipy)\n    Generated: %s\n-->\n' % str(datetime.now()))    
     f.write('<html>\n')
     f.write('<body>\n')
-    f.write('<div id="container" style="width:2400px">\n')
+    f.write('<div id="container" style="width:%dpx">\n' % maxwidth)
     f.write('<div id="header">\n')
     f.write('<h1 style="margin-bottom:0;">Title: %s</h1><br>\n' % title)
     localtime = time.strftime("%Y-%m-%d %H:%M:%S",time.localtime(time.time()))

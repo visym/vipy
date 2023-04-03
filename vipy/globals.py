@@ -1,6 +1,5 @@
 import os
 import webbrowser
-import dill
 import tempfile
 import vipy.math
 from vipy.util import remkdir, tempdir

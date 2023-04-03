@@ -37,7 +37,7 @@ import vipy.version
 # http://stackoverflow.com/questions/27835619/ssl-certificate-verify-failed-error
 import ssl
 if hasattr(ssl, '_create_unverified_context'):
-    ssl._create_default_https_context = ssl._create_unverified_context
+    ssl._create_default_https_context = ssl._create_unverified_context 
 
 
 def generate_sha1(filename, blocks=128):
