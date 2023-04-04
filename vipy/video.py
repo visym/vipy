@@ -4,21 +4,24 @@ import dill
 from vipy.globals import print
 from vipy.util import remkdir, tempMP4, isurl, \
     isvideourl, templike, tempjpg, filetail, tempdir, isyoutubeurl, try_import, isnumpy, temppng, \
-    istuple, islist, isnumber, tolist, filefull, fileext, isS3url, totempdir, flatlist, tocache, premkdir, writecsv, iswebp, ispng, isgif, filepath, Stopwatch, toextension, isjsonfile, isRTSPurl, isRTMPurl, iswebp, isgif
+    istuple, islist, isnumber, tolist, filefull, fileext, isS3url, totempdir, flatlist, tocache, \
+    premkdir, writecsv, iswebp, ispng, isgif, filepath, Stopwatch, toextension, isjsonfile, isRTSPurl, isRTMPurl, iswebp, isgif
 from vipy.image import Image
 import vipy.geometry
 import vipy.math
 import vipy.image
 import vipy.downloader
+import vipy.globals
+import vipy.activity
 import copy
 import numpy as np
 import ffmpeg
 import urllib.request
 import urllib.error
 import urllib.parse
+from urllib.parse import urlparse, urlunparse
 import http.client as httplib
 import io
-import matplotlib.pyplot as plt
 import PIL.Image
 import warnings
 import shutil
@@ -28,14 +31,12 @@ import platform
 import time
 from io import BytesIO
 import itertools
-import vipy.globals
-import vipy.activity
 import hashlib
 from pathlib import PurePath
 import queue 
 import threading
-from concurrent.futures import ThreadPoolExecutor
 import collections
+
 
 try:
     import ujson as json  # faster
@@ -493,8 +494,10 @@ class Video(object):
         self.attributes = attributes if attributes is not None else {}
         assert isinstance(self.attributes, dict), "Attributes must be a python dictionary"
         assert filename is not None or url is not None or array is not None or frames is not None, 'Invalid constructor - Requires "filename", "url" or "array" or "frames"'
+        if (url is None and isurl(filename)) or (url == filename and (isRTSPurl(url) or isRTMPurl(url))):
+            (url, filename) = (filename, None)  # correct for common typo vipy.video.Video('rtsp://....') 
         assert not isurl(filename)
-        
+
         # FFMPEG installed?
         if not has_ffmpeg:
             warnings.warn('"ffmpeg" executable not found on path, this is required for vipy.video - Install from http://ffmpeg.org/download.html')
@@ -514,8 +517,11 @@ class Video(object):
         elif self._url is not None:
             if isS3url(self._url):
                 self._filename = totempdir(self._url)  # Preserve S3 Object ID
-            elif isRTSPurl(self._url) or isRTMPurl(self._url):
+            elif isRTSPurl(self._url): 
                 # https://ffmpeg.org/ffmpeg-protocols.html#rtsp                
+                self._filename = self._url
+            elif isRTMPurl(self._url):
+                # https://ffmpeg.org/ffmpeg-protocols.html#rtmp                
                 self._filename = self._url                
             elif isvideourl(self._url):
                 self._filename = templike(self._url)
@@ -523,11 +529,18 @@ class Video(object):
                 self._filename = os.path.join(tempdir(), '%s' % (self._url.split('?')[1].split('&')[0] if '?' in self._url else self._url.split('/')[-1]))
             else:
                 self._filename = totempdir(self._url)  
-            if vipy.globals.cache() is not None and self._filename is not None and not isRTSPurl(self._filename) and not isRTMPurl(self._filename):
+            if vipy.globals.cache() is not None and self._filename is not None and not self.isstreaming():
                 self._filename = os.path.join(remkdir(vipy.globals.cache()), filetail(self._filename))
 
         # Initial video shape: useful to avoid preview()
-        self._ffmpeg = ffmpeg.input(self.filename())  # restore, no other filters        
+        if not self.isstreaming():
+            self._ffmpeg = ffmpeg.input(self.filename())
+        elif isRTSPurl(url):
+            self._ffmpeg = ffmpeg.input(self.filename(), rtsp_flags='prefer_tcp')
+        elif isRTMPurl(url):
+            rtmp = urlparse(url)  # rtmp://HOST:PORT/PATH?listen
+            self._ffmpeg = ffmpeg.input(urlunparse( (rtmp.scheme,rtmp.netloc,rtmp.path,None,None,None) ), listen='1') if 'listen' in rtmp.query else ffmpeg.input(self.filename())
+            
         if probeshape and (frames is None and array is None) and has_ffprobe and self.hasfilename():
             self.shape(self.probeshape())
         else:
@@ -555,7 +568,7 @@ class Video(object):
             self.fromframes([vipy.image.Image(filename=f) for f in frames])
         elif frames is not None and (isinstance(frames, str) and os.path.isdir(frames)):
             self.fromdirectory(frames)
-            
+
     @classmethod
     def cast(cls, v):
         """Cast a conformal video object to a `vipy.video.Video` object.
@@ -912,7 +925,7 @@ class Video(object):
         args = copy.copy(cmd).replace(str(self.filename()), 'FILENAME').split(' ')  # filename may contain spaces
         
         assert args[0] == 'ffmpeg', "Invalid FFMEG commmand line '%s'" % cmd
-        assert args[1] == '-i' or (args[3] == '-i' and args[1] == '-ss'), "Invalid FFMEG commmand line '%s'" % cmd
+        assert args[1] == '-i' or (args[3] == '-i' and (args[1] == '-ss' or args[1] == '-rtsp_flags' or args[1] == '-listen')), "Invalid FFMEG commmand line '%s'" % cmd
         assert args[-1] == 'dummyfile', "Invalid FFMEG commmand line '%s'" % cmd
         assert len(args) >= 4, "Invalid FFMEG commmand line '%s'" % cmd
 
@@ -922,9 +935,17 @@ class Video(object):
             args = [args[0]] + args[3:]
             f = ffmpeg.input(args[2].replace('FILENAME', self.filename()), ss=timestamp_in_seconds)   # restore filename, set offset time
             self._startframe = int(round(timestamp_in_seconds*self.framerate()))  # necessary for clip() and __repr__
-        else:
+        elif args[1] == '-rtsp_flags':
+            rtsp_flag = str(args[2])
+            args = [args[0]] + args[3:]
+            f = ffmpeg.input(args[2].replace('FILENAME', self.filename()), rtsp_flags=rtsp_flag)   # restore filename, set rtsp flag
+        elif args[1] == '-listen':
+            listenval = str(args[2])
+            args = [args[0]] + args[3:]
+            f = ffmpeg.input(args[2].replace('FILENAME', self.filename()), listen=listenval)   # restore filename, set RTMP listener
+        else:            
             f = ffmpeg.input(args[2].replace('FILENAME', self.filename()))  # restore filename
-
+        
         if len(args) > 4:
             assert args[3] == '-filter_complex', "Invalid FFMEG commmand line '%s'" % cmd
             assert args[4][0] == '"' and args[4][-1] == '"', "Invalid FFMEG commmand line '%s'" % cmd
@@ -1374,25 +1395,25 @@ class Video(object):
         """Update video Filename with optional copy or symlink from existing file (self.filename()) to new file"""
         if newfile is None:
             return self._filename
-        newfile = os.path.normpath(os.path.expanduser(newfile))
-
-        # Copy or symlink from the old filename to the new filename (if requested)
-        if copy:
-            assert self.hasfilename(), "File not found for copy"
-            remkdir(filepath(newfile))
-            shutil.copyfile(self._filename, newfile)
-        elif symlink:
-            assert self.hasfilename(), "File not found for symlink"
-            remkdir(filepath(newfile))
-            if os.path.islink(newfile) and os.path.abspath(os.readlink(newfile)) == os.path.normpath(os.path.abspath(os.path.expanduser(self.filename()))):
-                pass  # already points to the same place, nothing to do
-            else:
-                os.symlink(self._filename, newfile)                    
+        
+        if not isurl(newfile):
+            # Copy or symlink from the old filename to the new filename (if requested)
+            newfile = os.path.normpath(os.path.expanduser(newfile))        
+            if copy:
+                assert self.hasfilename(), "File not found for copy"
+                remkdir(filepath(newfile))
+                shutil.copyfile(self._filename, newfile)
+            elif symlink:
+                assert self.hasfilename(), "File not found for symlink"
+                remkdir(filepath(newfile))
+                if os.path.islink(newfile) and os.path.abspath(os.readlink(newfile)) == os.path.normpath(os.path.abspath(os.path.expanduser(self.filename()))):
+                    pass  # already points to the same place, nothing to do
+                else:
+                    os.symlink(self._filename, newfile)                    
                     
         # Update ffmpeg filter chain with new input node filename (this file may not exist yet)
         self._update_ffmpeg('filename', newfile)
-        self._filename = newfile
-        
+        self._filename = newfile        
         return self
 
     def abspath(self):

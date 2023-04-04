@@ -1199,10 +1199,10 @@ def mdlist(m, n):
 
 
 def isurl(path):
-    """Is a path a URL?"""
+    """Is a path a URL?  It requires a url scheme and url netloc without any common unallowed characters"""
     try:
-        return urlparse(path).scheme != "" and \
-            '<' not in path and '>' not in path and '"' not in path
+        url = urlparse(path)
+        return not any([c in path for c in ('>','<','"')]) and bool(url.scheme) and bool(url.netloc)
     except:
         return False
 
