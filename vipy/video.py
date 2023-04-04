@@ -2202,7 +2202,7 @@ class Video(object):
                     im.show(figure='video')
                     if vipy.globals._user_hit_escape():
                         break                    
-            vipy.show.close(figure)
+            vipy.show.close('video')
             return self
 
     def show(self, verbose=False, notebook=False, ffplay=False):
