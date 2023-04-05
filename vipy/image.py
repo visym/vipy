@@ -152,10 +152,11 @@ class Image(object):
 
     @classmethod
     def from_dict(cls, d):
-        return cls(filename=d['_filename'],
-                   url=d['_url'],
-                   array=np.array(d['_array'], dtype=np.uint8) if d['_array'] is not None else None,
-                   colorspace=d['_colorspace'],
+        d = {k.lstrip('_'):v for (k,v) in d.items()}  # prettyjson (remove "_" prefix to attributes)                
+        return cls(filename=d['filename'],
+                   url=d['url'],
+                   array=np.array(d['array'], dtype=np.uint8) if d['array'] is not None else None,
+                   colorspace=d['colorspace'],
                    attributes=d['attributes'])
         
     
@@ -409,20 +410,21 @@ class Image(object):
 
     def json(self, s=None, encode=True):
         if s is None:
-            d = {'_filename':self._filename,
-                 '_url':self._url,
-                 '_loader':self._loader,
-                 '_array':self._array.tolist() if self._array is not None else None,
-                 '_colorspace':self._colorspace,
+            d = {'filename':self._filename,
+                 'url':self._url,
+                 'loader':self._loader,
+                 'array':self._array.tolist() if self._array is not None else None,
+                 'colorspace':self._colorspace,
                  'attributes':self.attributes}                        
             return json.dumps(d) if encode else d
         else:
             d = json.loads(s)
-            self._filename = d['_filename']
-            self._url = d['_url']
-            self._loader = d['_loader']
-            self._array = np.array(d['_array'], dtype=np.uint8) if d['_array'] is not None else None
-            self._colorspace = d['_colorspace']
+            d = {k.lstrip('_'):v for (k,v) in d.items()}  # prettyjson (remove "_" prefix to attributes)                            
+            self._filename = d['filename']
+            self._url = d['url']
+            self._loader = d['loader']
+            self._array = np.array(d['array'], dtype=np.uint8) if d['array'] is not None else None
+            self._colorspace = d['colorspace']
             self.attributes = d['attributes']            
             return self
         
@@ -1794,18 +1796,19 @@ class ImageCategory(Image):
     @classmethod
     def from_json(obj, s):
         im = super().from_json(s)
-        im._category = json.loads(s)['_category']
+        d = {k.lstrip('_'):v for (k,v) in json.loads(s).items()}  # prettyjson (remove "_" prefix to attributes)                    
+        im._category = d['category']
         return im
 
     def json(self, s=None, encode=True):
         if s is None:
             d = json.loads(super().json())
-            d['_category'] = self._category if not isinstance(self._category, set) else list(self._category)
+            d['category'] = self._category if not isinstance(self._category, set) else list(self._category)
             return json.dumps(d) if encode else d
         else:
             super().json(s)
             d = json.loads(s)            
-            self._category = d['_category']
+            self._category = d['category'] 
             return self
     
     def __repr__(self):
@@ -1901,18 +1904,19 @@ class ImageCategories(ImageCategory):
     @classmethod
     def from_json(obj, s):        
         im = super().from_json(s)
-        im._category = vipy.util.toset(json.loads(s)['_category'])
+        d = {k.lstrip('_'):v for (k,v) in json.loads(s).items()}  # prettyjson (remove "_" prefix to attributes)                            
+        im._category = vipy.util.toset(d['category'])
         return im
 
     def json(self, s=None, encode=True):
         if s is None:            
             d = json.loads(super().json())
-            d['_category'] = list(self._category)
+            d['category'] = list(self._category)
             return json.dumps(d) if encode else d
         else:
             super().json(s)
             d = json.loads(s)            
-            self._category = vipy.util.toset(d['_category'])
+            self._category = vipy.util.toset(d['category'])
             return self
     
     def probability(self, newprob=None):
@@ -2041,32 +2045,29 @@ class Scene(ImageCategory):
             im._category = None if not hasattr(im, '_category') else im._category
             im._objectlist = [] if not hasattr(im, '_objectlist') else im._objectlist  
         return im
-        
+    
     @classmethod
     def from_json(obj, s):
         im = super().from_json(s)
-        d = json.loads(s)
-        im._objectlist = [vipy.object.Detection.from_json(s) for s in d['_objectlist']]        
+        d = {k.lstrip('_'):v for (k,v) in json.loads(s).items()}  # prettyjson (remove "_" prefix to attributes)                                    
+        im._objectlist = [vipy.object.Detection.from_json(s) for s in d['objectlist']]        
         return im
 
+    def __json__(self):
+        """Serialization method for json package"""
+        return self.json(encode=True)
+    
     def json(self, s=None, encode=True):
         if s is None:
             d = json.loads(super().json())
-            d['_objectlist'] = [bb.json(encode=False) for bb in self._objectlist]
+            d['objectlist'] = [bb.json(encode=False) for bb in self._objectlist]
             return json.dumps(d) if encode else d
         else:
             super().json(s)
             d = json.loads(s)            
-            self._objectlist = [vipy.object.Detection.from_json(s) for s in d['_objectlist']]
+            self._objectlist = [vipy.object.Detection.from_json(s) for s in d['objectlist']]
             return self
         
-    def prettyjson(self):
-        """return unencoded json representation of this scene without leading underscores"""
-        d = {k.lstrip('_'):v for (k,v) in self.json(encode=False).items()}
-        if 'objectlist' in d:
-            d['objectlist'] = [{k.lstrip('_'):v for (k,v) in o.items()} for o in d['objectlist']]
-        return d
-    
     def __eq__(self, other):
         """Scene equality requires equality of all objects in the scene, assumes a total order of objects"""
         return isinstance(other, Scene) and len(self)==len(other) and all([obj1 == obj2 for (obj1, obj2) in zip(self, other)])

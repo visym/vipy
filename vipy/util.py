@@ -114,7 +114,7 @@ def save(vars, outfile=None, backup=False):
         with open(outfile, 'w') as f:
             f.write(s)            
 
-    elif isbz2(outfile):
+    elif ispklbz2(outfile):
         return bz2pkl(outfile, vars)
     else:
         raise ValueError('Unknown file extension for save file "%s" - must be in %s' % (fileext(outfile), str(allowable)))
@@ -204,7 +204,10 @@ def load(infile, abspath=True, refcycle=True):
     return obj
 
 
-    
+def dirload(indir):
+    """Load a directory by recursively searching for loadable archives and loading them into a flat list"""
+    return [x for f in findloadable(indir) for x in load(f)]
+
 def dedupe(inlist, f):
     """Deduplicate the list using the provided lambda function which transforms an element to a dedupe key, such that all elements with the same key are duplicates"""
     assert callable(f)
@@ -212,7 +215,7 @@ def dedupe(inlist, f):
     return list({f(x):x for x in inlist}.values())
 
 
-def bz2pkl(filename, obj=None):
+def pklbz2(filename, obj=None):
     """Read/Write a bz2 compressed pickle file"""
     assert filename[-8:] == '.pkl.bz2', "Invalid filename - must be '*.pkl.bz2'"
     if obj is not None:
@@ -320,6 +323,10 @@ def findpkl(basedir):
     """Return a list of absolute paths to pkl files recursively discovered by walking the directory tree rooted at basedir"""
     return [str(path.resolve()) for path in pathlib.Path(basedir).rglob('*.pkl')]
 
+def findpklbz2(basedir):
+    """Return a list of absolute paths to .pkl.bz2 files recursively discovered by walking the directory tree rooted at basedir"""
+    return [str(path.resolve()) for path in pathlib.Path(basedir).rglob('*.pkl.bz2')]
+
 def findpdf(basedir):
     """Return a list of absolute paths to pdf files recursively discovered by walking the directory tree rooted at basedir"""
     return [str(path.resolve()) for path in pathlib.Path(basedir).rglob('*.pdf')]
@@ -355,6 +362,10 @@ def findwebp(basedir):
 def findvideos(basedir):
     """Alias for `vipy.util.findvideo`"""
     return findvideo(basedir)
+
+def findloadable(basedir):
+    """Return a list of absolute paths to any archive file loadable by `vipy.load` (*.pkl, *.json, *.pkl.bz2).  Recursively search starting from basedir"""
+    return findpkl(basedir) + findjson(basedir) + findpklbz2(basedir)
 
 def readyaml(yamlfile):
     """Read a yaml file and return a parsed dictionary, this is slow for large yaml files"""
@@ -904,7 +915,7 @@ def ispkl(filename):
     """Is the file a pickle archive file"""
     return filename[-4:] == '.pkl' if isstring(filename) and len(filename) >= 4 else False
 
-def isbz2pkl(filename):
+def ispklbz2(filename):
     """Is the file a pickle archive file"""
     return filename[-8:] == '.pkl.bz2' if isstring(filename) and len(filename) >= 8 else False
 
@@ -1117,13 +1128,14 @@ def writecsv(list_of_tuples, outfile=None, mode='w', separator=',', header=None,
     return(outfile)
 
 
-def readcsv(infile, separator=',', ignoreheader=False, comment=None):
+def readcsv(infile, separator=',', ignoreheader=False, comment=None, ignore_header=False):
     """Read a csv file into a list of lists, ignore any rows prepended with comment symbol, ignore first row if ignoreheader=True
 
     Args:
         infile: the csv file input
         separator: a string specifying the separator between columns.  defaults to ','
         ignoreheader: if true, ignore the first row of the csv file
+        ignore_header: if true, ignore the first row of the csv file (argument synonym)
         comment:  if provided, ignore all rows with this comment symbol prepended
 
     Returns:
@@ -1133,7 +1145,7 @@ def readcsv(infile, separator=',', ignoreheader=False, comment=None):
     with open(infile, 'r') as f:
         list_of_rows = [[x.strip() for x in r.split(separator)]
                         for r in f.readlines()]
-    list_of_rows = list_of_rows if (len(list_of_rows)==0 or not ignoreheader) else list_of_rows[1:]
+    list_of_rows = list_of_rows if (len(list_of_rows)==0 or not (ignoreheader or ignore_header)) else list_of_rows[1:]
     list_of_rows = list_of_rows if comment is None else [r for r in list_of_rows if len(r)==0 or r[0][0] != comment]
     return list_of_rows
 
@@ -1458,9 +1470,9 @@ def istar(filename):
     """Is the filename a .tar extension?"""
     return filename[-4:] == '.tar'
 
-def isbz2(filename):
+def istarbz2(filename):
     """Is the filename a .bz2 or .tar.bz2 extension?"""
-    return filename[-4:] == '.bz2' or filename[-8:] == '.tar.bz2'
+    return filename[-8:] == '.tar.bz2'
 
 def tempfilename(suffix):
     """Create a temporary filename $TEMPDIR/$UUID.suffix, suffix should include the dot such as suffix='.jpg', """

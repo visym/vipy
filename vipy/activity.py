@@ -71,16 +71,17 @@ class Activity(object):
     
     @classmethod
     def from_json(obj, s):
-        d = json.loads(s) if not isinstance(s, dict) else s                
-        return obj(startframe=int(d['_startframe']),
-                   endframe=int(d['_endframe']),
-                   framerate=d['_framerate'],
-                   category=d['_label'],
-                   shortlabel=d['_shortlabel'] if '_shortlabel' in d else None,
-                   tracks=d['_trackid'],
+        d = json.loads(s) if not isinstance(s, dict) else s
+        d = {k.lstrip('_'):v for (k,v) in d.items()}  # prettyjson (remove "_" prefix to attributes)                                        
+        return obj(startframe=int(d['startframe']),
+                   endframe=int(d['endframe']),
+                   framerate=d['framerate'],
+                   category=d['label'],
+                   shortlabel=d['shortlabel'] if 'shortlabel' in d else None,
+                   tracks=d['trackid'],
                    attributes=d['attributes'] if 'attributes' in d else None,
-                   actorid=d['_actorid'],
-                   id=d['_id'] if '_id' in d else None)
+                   actorid=d['actorid'],
+                   id=d['id'] if 'id' in d else None)
                 
     def __len__(self):
         """Return activity length in frames, or zero if degenerate"""
@@ -111,11 +112,16 @@ class Activity(object):
         """Return a python dictionary containing the relevant serialized attributes suitable for JSON encoding"""
         return self.json(s=None, encode=False)
 
+    def __json__(self):
+        """Serialization method for json package"""
+        return self.json(encode=True)
+    
     def json(self, encode=True):
         d = {k:v for (k,v) in self.__dict__.items() if not ((k == '_shortlabel' and v is None) or
                                                             (k == 'attributes' and (v is None or isinstance(v, dict) and len(v)==0)) or
                                                             (k == '_id' and v is None))}  # don't bother to store None values
         d = {k:v if k != '_trackid' else tuple(v) for (k,v) in d.items()}  # sets are non-serializable
+        d = {k.lstrip('_'):v for (k,v) in d.items()}  # prettyjson (remove "_" prefix to attributes)                                                
         return json.dumps(d) if encode else d
     
     def actorid(self, actorid=None):
