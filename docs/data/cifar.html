@@ -26,7 +26,7 @@
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/4bcf85ea6e5620da15f65d624a85c5ef5a975e01/vipy/data/cifar.py#L1-L115" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/ff89692b3c3e959f69a2c3403b5bb3d67623195f/vipy/data/cifar.py#L1-L115" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">import os
 import numpy as np
@@ -167,7 +167,7 @@ class CIFAR100(CIFAR10):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/4bcf85ea6e5620da15f65d624a85c5ef5a975e01/vipy/data/cifar.py#L13-L82" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/ff89692b3c3e959f69a2c3403b5bb3d67623195f/vipy/data/cifar.py#L13-L82" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">class CIFAR10():
     &#34;&#34;&#34;vipy.data.cifar.CIFAR10 class
@@ -254,7 +254,7 @@ class CIFAR100(CIFAR10):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/4bcf85ea6e5620da15f65d624a85c5ef5a975e01/vipy/data/cifar.py#L47-L48" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/ff89692b3c3e959f69a2c3403b5bb3d67623195f/vipy/data/cifar.py#L47-L48" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def classes(self):
     return self._classes</code></pre>
@@ -268,7 +268,7 @@ class CIFAR100(CIFAR10):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/4bcf85ea6e5620da15f65d624a85c5ef5a975e01/vipy/data/cifar.py#L53-L54" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/ff89692b3c3e959f69a2c3403b5bb3d67623195f/vipy/data/cifar.py#L53-L54" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def testset(self):
     return vipy.dataset.Dataset([vipy.image.ImageCategory(category=self._classes[y], array=x, colorspace=&#39;rgb&#39;) for (x,y) in zip(self._testset, self._testlabels)], &#39;%s_test&#39; % self._name)</code></pre>
@@ -282,7 +282,7 @@ class CIFAR100(CIFAR10):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/4bcf85ea6e5620da15f65d624a85c5ef5a975e01/vipy/data/cifar.py#L50-L51" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/ff89692b3c3e959f69a2c3403b5bb3d67623195f/vipy/data/cifar.py#L50-L51" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def trainset(self):
     return vipy.dataset.Dataset([vipy.image.ImageCategory(category=self._classes[y], array=x, colorspace=&#39;rgb&#39;) for (x,y) in zip(self._trainset, self._trainlabels)], &#39;%s_train&#39; % self._name)</code></pre>
@@ -303,7 +303,7 @@ class CIFAR100(CIFAR10):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/4bcf85ea6e5620da15f65d624a85c5ef5a975e01/vipy/data/cifar.py#L85-L112" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/ff89692b3c3e959f69a2c3403b5bb3d67623195f/vipy/data/cifar.py#L85-L112" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">class CIFAR100(CIFAR10):
     def __init__(self, datadir, name=&#39;cifar100&#39;, url=CIFAR100_URL, md5=CIFAR100_MD5):        
