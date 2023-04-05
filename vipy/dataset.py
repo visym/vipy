@@ -72,11 +72,11 @@ class Dataset():
         self._abspath = abspath
         self._shuffler = 'uniform'
         
-        if isinstance(objlist, str) and (vipy.util.isjsonfile(objlist) or vipy.util.ispklfile(objlist)):
+        if isinstance(objlist, str) and (vipy.util.isjsonfile(objlist) or vipy.util.ispklfile(objlist) or vipy.util.ispklbz2(objlist)):
             self._objlist = vipy.util.load(objlist, abspath=abspath)
         elif isinstance(objlist, str) and os.path.isdir(objlist):
-            self._objlist = vipy.util.findjson(objlist) + vipy.util.findpkl(objlist)  # recursive
-            self._loader = lambda x,b=abspath:  vipy.util.load(x, abspath=b) if (vipy.util.ispkl(x) or vipy.util.isjsonfile(x)) else x
+            self._objlist = vipy.util.findloadable(objlist) # recursive
+            self._loader = lambda x,b=abspath:  vipy.util.load(x, abspath=b) if (vipy.util.ispkl(x) or vipy.util.isjsonfile(x) or vipy.util.ispklbz2(objlist)) else x
             self._istype_strict = False
             self._lazy_loader = True
         elif lazy and (isinstance(objlist, list) and all([(vipy.util.ispkl(x) or vipy.util.isjsonfile(x)) for x in objlist])):
@@ -145,6 +145,11 @@ class Dataset():
     def list(self):
         """Return the dataset as a list"""
         return list(self)
+
+    def set(self):
+        """Return the dataset as a set"""
+        return set(self.list())
+    
     def tolist(self):
         """Alias for self.list()"""
         return list(self)
@@ -225,7 +230,7 @@ class Dataset():
         assert self._isvipy(), "Source dataset must contain vipy objects for staging"
         assert all([os.path.isabs(v.filename()) for v in self]), "Input dataset must have only absolute media paths"
         assert len([v for v in self if any([d in v.filename() for d in tolist(delprefix)])]) == len(self), "all media objects must have a provided delprefix for relative path construction"
-        assert vipy.util.istgz(tarfile) or vipy.util.isbz2(tarfile) or vipy.util.istar(tarfile), "Allowable extensions are .tar.gz, .tgz, .bz2 or .tar"
+        assert vipy.util.istgz(tarfile) or vipy.util.istarbz2(tarfile) or vipy.util.istar(tarfile), "Allowable extensions are .tar.gz, .tgz, .bz2 or .tar"
         assert shutil.which('tar') is not None, "tar not found on path"        
         
         D = self.clone() if not inplace else self   # large memory footprint if inplace=False
@@ -254,7 +259,7 @@ class Dataset():
                 os.symlink(os.path.abspath(e), os.path.join(stagedir, filetail(e) if a is None else a))
 
         # System command to run tar
-        cmd = ('tar %scvf %s -C %s --dereference %s %s' % ('j' if vipy.util.isbz2(tarfile) else ('z' if vipy.util.istgz(tarfile) else ''), 
+        cmd = ('tar %scvf %s -C %s --dereference %s %s' % ('j' if vipy.util.istarbz2(tarfile) else ('z' if vipy.util.istgz(tarfile) else ''), 
                                                            tarfile,
                                                            filepath(stagedir),
                                                            filetail(stagedir),
@@ -505,6 +510,7 @@ class Dataset():
         assert n >= 0, "Invalid length"
         K = list(range(len(self))) if category is None else [k for (k,v) in enumerate(self) if v.category() == category]
         if seed is not None:
+            assert isinstance(seed, int), "integer required"
             np.random.seed(seed)            
         outlist = [self[int(k)] for k in np.random.permutation(K)[0:n]]  # native python int
         if seed is not None:
@@ -572,7 +578,7 @@ class Dataset():
             if ragged or len(V) == n:
                 yield V 
         
-    def split_by_videoid(self, trainfraction=0.9, valfraction=0.1, testfraction=0, seed=42):
+    def split_by_videoid(self, trainfraction=0.9, valfraction=0.1, testfraction=0, seed=None):
         """Split the dataset by category by fraction so that video IDs are never in the same set"""
         assert self._isvipy(), "Invalid input"
         assert trainfraction >=0 and trainfraction <= 1
@@ -599,7 +605,7 @@ class Dataset():
 
         return (Dataset(trainset, id='trainset'), Dataset(valset, id='valset'), Dataset(testset, id='testset') if len(testset)>0 else None)
 
-    def split(self, trainfraction=0.9, valfraction=0.1, testfraction=0, seed=42, withtest=True):
+    def split(self, trainfraction=0.9, valfraction=0.1, testfraction=0, seed=None, withtest=True):
         """Split the dataset into the requested fractions.  
 
         Args:

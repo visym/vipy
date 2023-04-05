@@ -61,14 +61,15 @@ class Detection(BoundingBox):
         return d
         
     @classmethod
-    def from_json(obj, s):
-        d = json.loads(s) if not isinstance(s, dict) else s        
-        return obj(xmin=d['_xmin'], ymin=d['_ymin'], xmax=d['_xmax'], ymax=d['_ymax'],
-                   label=d['_label'] if '_label' in d else None,
-                   shortlabel=d['_shortlabel'] if '_shortlabel' in d else None,
-                   confidence=d['_confidence'] if '_confidence' in d else None,
+    def from_json(cls, s):
+        d = json.loads(s) if not isinstance(s, dict) else s
+        d = {k.lstrip('_'):v for (k,v) in d.items()}  # prettyjson (remove "_" prefix to attributes)                
+        return cls(xmin=d['xmin'], ymin=d['ymin'], xmax=d['xmax'], ymax=d['ymax'],
+                   label=d['label'] if 'label' in d else None,
+                   shortlabel=d['shortlabel'] if 'shortlabel' in d else None,
+                   confidence=d['confidence'] if 'confidence' in d else None,
                    attributes=d['attributes'] if 'attributes' in d else None,
-                   id=d['_id'] if '_id' in d else True)
+                   id=d['id'] if 'id' in d else True)
         
     def __repr__(self):
         strlist = []
@@ -95,11 +96,16 @@ class Detection(BoundingBox):
         """Return a python dictionary containing the relevant serialized attributes suitable for JSON encoding"""
         return self.json(s=None, encode=False)
 
+    def __json__(self):
+        """Serialization method for json package"""
+        return self.json(encode=True)
+    
     def json(self, encode=True):
         d = {k:v for (k,v) in self.__dict__.items() if not ((k == '_confidence' and v is None) or
                                                             (k == '_shortlabel' and v is None) or
                                                             (k == 'attributes' and (v is None or isinstance(v, dict) and len(v)==0)) or
                                                             (k == '_label' and v is None))}  # don't bother to store None values
+        d = {k.lstrip('_'):v for (k,v) in d.items()}  # prettyjson (remove "_" prefix to attributes)                        
         return json.dumps(d) if encode else d
                 
     def nocategory(self):
@@ -267,19 +273,25 @@ class Track(object):
     @classmethod
     def from_json(cls, s):
         d = json.loads(s) if not isinstance(s, dict) else s
-        return cls(keyframes=tuple(int(f) for f in d['_keyframes']),
-                   boxes=tuple([Detection.from_json(bbs) for bbs in d['_keyboxes']]),
-                   category=d['_label'] if '_label' in d else None,
-                   framerate=d['_framerate'],
-                   interpolation=d['_interpolation'],
-                   boundary=d['_boundary'],
-                   shortlabel=d['_shortlabel'] if '_shortlabel' in d else None,
+        d = {k.lstrip('_'):v for (k,v) in d.items()}  # prettyjson (remove "_" prefix to attributes)                                
+        return cls(keyframes=tuple(int(f) for f in d['keyframes']),
+                   boxes=tuple([Detection.from_json(bbs) for bbs in d['keyboxes']]),
+                   category=d['label'] if 'label' in d else None,
+                   framerate=d['framerate'],
+                   interpolation=d['interpolation'],
+                   boundary=d['boundary'],
+                   shortlabel=d['shortlabel'] if 'shortlabel' in d else None,
                    attributes=d['attributes'],
-                   trackid=d['_id'])
-                   
+                   trackid=d['id'])
+
+    def __json__(self):
+        """Serialization method for json package"""
+        return self.json(encode=True)
+    
     def json(self, encode=True):
         d = {k:v if k != '_keyboxes' else tuple([bb.json(encode=False) for bb in v]) for (k,v) in self.__dict__.items()}
-        d['_keyframes'] = tuple([int(f) for f in self._keyframes])
+        d = {k.lstrip('_'):v for (k,v) in d.items()}  # prettyjson (remove "_" prefix to attributes)                
+        d['keyframes'] = tuple([int(f) for f in self._keyframes])
         return json.dumps(d) if encode else d
 
     def __repr__(self):

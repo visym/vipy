@@ -282,6 +282,13 @@ def test_boundingbox():
 
     BoundingBox(xmin=-20, ymin=-10, width=30, height=40).dict()
     print('[test_geometry.boundingbox]: dict PASSED')
+
+    bb = BoundingBox(xmin=-20, ymin=-10, width=30, height=40)
+    bbc = BoundingBox.from_json(bb.json())
+    assert bb.__dict__ == bbc.__dict__
+    print('[test_geometry.boundingbox]: json PASSED')    
+
+    
     
 def test_intersection():
     bb1 = BoundingBox(xmin=0, ymin=0, width=10, height=20)

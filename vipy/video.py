@@ -596,21 +596,21 @@ class Video(object):
         v = vipy.video.Video.from_json(vipy.video.RandomVideo().json())
         ```
 
-        """
-        
+        """        
         d = json.loads(s) if not isinstance(s, dict) else s
-        v = cls(filename=d['_filename'],
-                url=d['_url'],
-                framerate=d['_framerate'],
-                array=np.array(d['_array']) if d['_array'] is not None else None,
-                colorspace=d['_colorspace'],
+        d = {k.lstrip('_'):v for (k,v) in d.items()}  # prettyjson (remove "_" prefix to attributes)                                            
+        v = cls(filename=d['filename'],
+                url=d['url'],
+                framerate=d['framerate'],
+                array=np.array(d['array']) if d['array'] is not None else None,
+                colorspace=d['colorspace'],
                 attributes=d['attributes'],
-                startframe=d['_startframe'],
-                endframe=d['_endframe'],
-                startsec=d['_startsec'],
-                endsec=d['_endsec'])
-        v._ffmpeg = v._from_ffmpeg_commandline(d['_ffmpeg'])
-        return v.filename(d['_filename']) if d['_filename'] is not None else v.nofilename()
+                startframe=d['startframe'],
+                endframe=d['endframe'],
+                startsec=d['startsec'],
+                endsec=d['endsec'])
+        v._ffmpeg = v._from_ffmpeg_commandline(d['ffmpeg'])
+        return v.filename(d['filename']) if d['filename'] is not None else v.nofilename()
 
     def __repr__(self):
         strlist = []
@@ -1123,6 +1123,10 @@ class Video(object):
         """Return a python dictionary containing the relevant serialized attributes suitable for JSON encoding."""
         return self.json(encode=False)
 
+    def __json__(self):
+        """Serialization method for json package"""
+        return self.json(encode=True)
+    
     def json(self, encode=True):
         """Return a json representation of the video.
         
@@ -1136,18 +1140,18 @@ class Video(object):
         """
         
         if self.isloaded():
-            warnings.warn("JSON serialization of video requires flushed buffers, will not include the loaded video.  Try store()/restore()/unstore() instead to serialize videos as standalone objects efficiently, or flush() any loaded videos prior to serialization to quiet this warning.")
-        d = {'_filename':self._filename,
-             '_url':self._url,
-             '_framerate':self._framerate,
-             '_array':None,
-             '_colorspace':self._colorspace,
+            warnings.warn("JSON serialization of loaded video is inefficient.  Try store()/restore()/unstore() instead to serialize videos as standalone objects efficiently, or flush() any loaded videos prior to serialization to quiet this warning.")
+        d = {'filename':self._filename,
+             'url':self._url,
+             'framerate':self._framerate,
+             'array':None,
+             'colorspace':self._colorspace,
              'attributes':self.attributes,
-             '_startframe':self._startframe,
-             '_endframe':self._endframe,
-             '_endsec':self._endsec,
-             '_startsec':self._startsec,
-             '_ffmpeg':self._ffmpeg_commandline()}
+             'startframe':self._startframe,
+             'endframe':self._endframe,
+             'endsec':self._endsec,
+             'startsec':self._startsec,
+             'ffmpeg':self._ffmpeg_commandline()}
         return json.dumps(d) if encode else d
     
 
@@ -2540,9 +2544,10 @@ class VideoCategory(Video):
 
     @classmethod
     def from_json(cls, s):
-        d = json.loads(s) if not isinstance(s, dict) else s                        
+        d = json.loads(s) if not isinstance(s, dict) else s
+        d = {k.lstrip('_'):v for (k,v) in d.items()}  # prettyjson (remove "_" prefix to attributes)                                            
         v = super().from_json(s)
-        v._category = d['_category']
+        v._category = d['category']
         return v
         
     def __repr__(self):
@@ -2563,7 +2568,7 @@ class VideoCategory(Video):
 
     def json(self, encode=True):
         d = json.loads(super().json())
-        d['_category'] = self._category
+        d['category'] = self._category
         return json.dumps(d) if encode else d
     
     def category(self, c=None):
@@ -2683,7 +2688,8 @@ class Scene(VideoCategory):
 
         """
 
-        d = json.loads(s) if not isinstance(s, dict) else s                                
+        d = json.loads(s) if not isinstance(s, dict) else s
+        d = {k.lstrip('_'):v for (k,v) in d.items()}  # prettyjson (remove "_" prefix to attributes)
         v = super().from_json(s)
 
         # Packed attribute storage:
@@ -2694,8 +2700,8 @@ class Scene(VideoCategory):
         #   - This is useful when calling vipy.util.load(...) on archives that contain hundreds of thousands of objects
         #   - Do not access the private attributes self._tracks and self._attributes as they will be packed until needed
         #   - Should install ultrajson (pip install ujson) for super fast parsing
-        v._tracks = tuple([x if isinstance(x, str) else str(json.dumps(x)) for x in d['_tracks'].values()])  # track ID key is embedded in object, legacy unpack of doubly JSON encoded strings (vipy-1.11.16)
-        v._activities = tuple([x if isinstance(x, str) else str(json.dumps(x)) for x in d['_activities'].values()])  # track ID key is embedded in object, legacy unpack of doubly JSON encoded strings (vipy-1.11.16)
+        v._tracks = tuple([x if isinstance(x, str) else str(json.dumps(x)) for x in d['tracks'].values()])  # track ID key is embedded in object, legacy unpack of doubly JSON encoded strings (vipy-1.11.16)
+        v._activities = tuple([x if isinstance(x, str) else str(json.dumps(x)) for x in d['activities'].values()])  # track ID key is embedded in object, legacy unpack of doubly JSON encoded strings (vipy-1.11.16)
         return v
         
     def pack(self):
@@ -2709,8 +2715,8 @@ class Scene(VideoCategory):
 
         """
         d = json.loads(self.json())
-        self._tracks = tuple([x if isinstance(x, str) else str(json.dumps(x)) for x in d['_tracks'].values()]) # efficient garbage collection: store as a packed string to avoid reference cycle tracking, unpack on demand
-        self._activities = tuple([x if isinstance(x, str) else str(json.dumps(x)) for x in d['_activities'].values()])  # efficient garbage collection: store as a packed string to avoid reference cycle tracking, unpack on demand 
+        self._tracks = tuple([x if isinstance(x, str) else str(json.dumps(x)) for x in d['tracks'].values()]) # efficient garbage collection: store as a packed string to avoid reference cycle tracking, unpack on demand
+        self._activities = tuple([x if isinstance(x, str) else str(json.dumps(x)) for x in d['activities'].values()])  # efficient garbage collection: store as a packed string to avoid reference cycle tracking, unpack on demand 
         return self
 
     def __repr__(self):
@@ -3335,8 +3341,8 @@ class Scene(VideoCategory):
         except:
             raise ValueError('Video contains non-JSON encodable object in self.attributes dictionary - Try self.sanitize() or to clear with self.attributes = {} first')
         d = json.loads(super().json())
-        d['_tracks'] = {k:t.json(encode=False) for (k,t) in self.tracks().items()}
-        d['_activities'] = {k:a.json(encode=False) for (k,a) in self.activities().items()}
+        d['tracks'] = {k:t.json(encode=False) for (k,t) in self.tracks().items()}
+        d['activities'] = {k:a.json(encode=False) for (k,a) in self.activities().items()}
         try:
             return json.dumps(d) if encode else d
         except:

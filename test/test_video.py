@@ -259,9 +259,11 @@ def _test_scene():
     #    assert im.shape() == v.shape()
     #print('[test_video.scene]: __iter__  PASSED')
     
-    
-    vid = vipy.video.Scene(filename=mp4file, framerate=30, tracks=[vipy.object.Track(category='person', keyframes=[0,200], boxes=[BoundingBox(xmin=0,ymin=0,width=200,height=400), BoundingBox(xmin=0,ymin=0,width=400,height=100)]),
-                                                                   vipy.object.Track(category='vehicle', keyframes=[0,200], boxes=[BoundingBox(xmin=100,ymin=200,width=300,height=400), BoundingBox(xmin=400,ymin=300,width=200,height=100)])])
+
+    # mp4file in github repo was shrunk, but resize here on the fly to keep old unit tests
+    mp4bigger = vipy.video.Video(filename=mp4file).resize(cols=1080, rows=1920).savetmp().filename()  
+    vid = vipy.video.Scene(filename=mp4bigger, framerate=30, tracks=[vipy.object.Track(category='person', keyframes=[0,200], boxes=[BoundingBox(xmin=0,ymin=0,width=200,height=400), BoundingBox(xmin=0,ymin=0,width=400,height=100)]),
+                                                                     vipy.object.Track(category='vehicle', keyframes=[0,200], boxes=[BoundingBox(xmin=100,ymin=200,width=300,height=400), BoundingBox(xmin=400,ymin=300,width=200,height=100)])])
 
     # Loader
     v = vid.clone().clip(10,20).load()
@@ -291,14 +293,14 @@ def _test_scene():
     (H,W) = vid.clone().clip(0,21).load(verbose=False).shape()
     v = vid.clone().clip(0,21).resize(cols=100).load(verbose=False)    
     assert v.width() == 100 and len(v) == 21
-    assert np.allclose([im.bbox.height() for im in v[0]], [400*(100.0/W), 400*(100.0/W)])
-    assert np.allclose([im.bbox.width() for im in v[0]], [200*(100.0/W), 300*(100.0/W)])
+    assert np.allclose([im.boundingbox().height() for im in v[0]], [400*(100.0/W), 400*(100.0/W)])
+    assert np.allclose([im.boundingbox().width() for im in v[0]], [200*(100.0/W), 300*(100.0/W)])
     print('[test_video.scene]: resize isotropic  PASSED')
     
     v = vid.clone().resize(cols=100, rows=100).clip(0,11).load(verbose=False)    
     assert v.width() == 100 and v.height() == 100 and len(v) == 11
-    assert np.allclose([im.bbox.height() for im in v[0]], [400*(100.0/H), 400*(100.0/H)])
-    assert np.allclose([im.bbox.width() for im in v[0]], [200*(100.0/W), 300*(100.0/W)])    
+    assert np.allclose([im.boundingbox().height() for im in v[0]], [400*(100.0/H), 400*(100.0/H)])
+    assert np.allclose([im.boundingbox().width() for im in v[0]], [200*(100.0/W), 300*(100.0/W)])    
     print('[test_video.scene]: resize anisotropic   PASSED')
     
     v = vid.clone().clip(0,22).rot90cw().resize(rows=200).load(verbose=False)
@@ -455,7 +457,16 @@ def _test_scene():
     assert v.hasfilename() and os.path.getsize('Video.mp4') != os.path.getsize(v2.filename()) and os.path.getsize('Video.mp4') == os.path.getsize(v.filename())
     print('[test_video.scene]: saveas()  PASSED')    
 
-
+    # JSON
+    v = vipy.video.RandomScene(64,64,64).flush().url('https://none')
+    v._colorspace = None
+    vs = vipy.video.Scene.from_json(v.clone().json())
+    assert v.pack().__dict__ == vs.pack().__dict__
+    print('[test_video.scene]: json serialization PASSED')
+    
+    # Cleanup
+    os.remove(mp4bigger)  
+    
 def test_clip():
     imgframes = np.zeros( (120,112,112,3), dtype=np.uint8)
     imgframes[60] = imgframes[60]+255
@@ -581,9 +592,9 @@ def test_get_frame_meta():
     meta = v.frame_meta()
     frame_types = [m['pict_type'] for m in meta]
     c = Counter(frame_types)
-    assert c['B'] == 132
-    assert c['P'] == 178
-    assert c['I'] == 11
+    assert c['B'] == 236
+    assert c['P'] == 83
+    assert c['I'] == 2
 
     
 if __name__ == "__main__":

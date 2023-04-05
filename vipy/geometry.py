@@ -205,14 +205,20 @@ class BoundingBox(object):
     @classmethod
     def from_json(cls, s):
         d = json.loads(s) if not isinstance(s, dict) else s
+        d = {'_'+k if not k.startswith('_') else k:v for (k,v) in d.items()}  # from prettyjson (add "_" prefix to attributes)                
         return cls(ulbrdict=d)
 
     def dict(self):
         """Return a python dictionary containing the relevant serialized attributes suitable for JSON encoding"""
         return self.json(encode=False)
+
+    def __json__(self):
+        """Serialization method for json package"""
+        return self.json(encode=True)
     
     def json(self, encode=True):
-        return json.dumps(self.__dict__) if encode else self.__dict__
+        d = {k.lstrip('_'):v for (k,v) in self.__dict__.items()}  # prettyjson (remove "_" prefix to attributes)        
+        return json.dumps(d) if encode else d
         
     def clone(self):
         return BoundingBox(xmin=self._xmin, xmax=self._xmax, ymin=self._ymin, ymax=self._ymax)
