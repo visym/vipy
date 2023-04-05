@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1" />
 <meta name="generator" content="pdoc 0.10.0" />
 <meta name="google-site-verification" content="aB8LkQegj94_TJPdrcJm2ldIRWyXY82Jp24Gtkdgyn0" />
-<title>vipy.data.lfw API documentation</title>
+<title>vipy.data.visualgenome API documentation</title>
 <meta name="description" content="" />
 <link rel="preload stylesheet" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/10up-sanitize.css/11.0.1/sanitize.min.css" integrity="sha256-PK9q560IAAa6WVRRh76LtCaI8pjTJ2z11v0miyNNjrs=" crossorigin>
 <link rel="preload stylesheet" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/10up-sanitize.css/11.0.1/typography.min.css" integrity="sha256-7l/o7C8jubJiy74VsKTidCy1yBkRtiUGbVkYBylBqUg=" crossorigin>
@@ -20,81 +20,48 @@
 <main>
 <article id="content">
 <header>
-<h1 class="title">Module <code>vipy.data.lfw</code></h1>
+<h1 class="title">Module <code>vipy.data.visualgenome</code></h1>
 </header>
 <section id="section-intro">
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/4bcf85ea6e5620da15f65d624a85c5ef5a975e01/vipy/data/lfw.py#L1-L67" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/4bcf85ea6e5620da15f65d624a85c5ef5a975e01/vipy/data/visualgenome.py#L1-L34" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">import os
-import numpy as np
-from vipy.util import remkdir, filetail, dirlist, imlist, readcsv
-from vipy.image import ImageCategory
-import vipy.downloader
+import vipy
 
 
-URL = &#39;http://vis-www.cs.umass.edu/lfw/lfw.tgz&#39;
-URL_NAMES = &#39;http://vis-www.cs.umass.edu/lfw/lfw-names.txt&#39;
-URL_PAIRS_DEV_TRAIN = &#39;http://vis-www.cs.umass.edu/lfw/pairsDevTrain.txt&#39;
-URL_PAIRS_DEV_TEST = &#39;http://vis-www.cs.umass.edu/lfw/pairsDevTest.txt&#39;
-URL_PAIRS_VIEW2 = &#39;http://vis-www.cs.umass.edu/lfw/pairs.txt&#39;
+URLS = [&#39;https://cs.stanford.edu/people/rak248/VG_100K_2/images.zip&#39;,
+        &#39;https://cs.stanford.edu/people/rak248/VG_100K_2/images2.zip&#39;,
+        &#39;http://visualgenome.org/static/data/dataset/image_data.json.zip&#39;,
+        &#39;http://visualgenome.org/static/data/dataset/objects.json.zip&#39;,
+        &#39;http://visualgenome.org/static/data/dataset/relationships.json.zip&#39;]
 
 
-class LFW(vipy.dataset.Dataset):
-    def __init__(self, datadir):
-        &#34;&#34;&#34;Datadir contains the unpacked contents of LFW from $URL -&gt; /path/to/lfw&#34;&#34;&#34;
-        self.lfwdir = datadir
-        remkdir(os.path.join(self.lfwdir, &#39;lfw&#39;))
+class VisualGenome(vipy.dataset.Dataset):
+    &#34;&#34;&#34;Project: http://visualgenome.org/, version 1.4-objects&#34;&#34;&#34;
+    def __init__(self, datadir, name=&#39;visualgenome&#39;):
+        self._datadir = vipy.util.remkdir(datadir)
+        for url in URLS:
+            if not os.path.exists(os.path.join(self._datadir, vipy.util.filetail(url))):
+                vipy.downloader.download_and_unpack(url, self._datadir)
 
-        if not os.path.exists(os.path.join(self.lfwdir, &#39;lfw.tgz&#39;)):
-            self._download()
-        super().__init__(self._dataset(), &#39;lfw&#39;)
+        d_imageid_to_filename = {x[&#39;image_id&#39;]:os.path.join(self._datadir, vipy.util.filetail(vipy.util.filepath(x[&#39;url&#39;])), vipy.util.filetail(x[&#39;url&#39;]))
+                                 for x in vipy.util.readjson(os.path.join(self._datadir, &#39;image_data.json&#39;))}
+
+        imlist = []
+        for obj in vipy.util.readjson(os.path.join(self._datadir, &#39;objects.json&#39;)):
+            imlist.append(vipy.image.Scene(filename=d_imageid_to_filename[obj[&#39;image_id&#39;]],
+                                           objects=[vipy.object.Detection(label=o[&#39;names&#39;][0] if len(o[&#39;names&#39;])&gt;0 else o[&#39;object_id&#39;],
+                                                                          xmin = o[&#39;x&#39;], ymin=o[&#39;y&#39;], width=o[&#39;w&#39;], height=o[&#39;h&#39;],
+                                                                          id = o[&#39;object_id&#39;],
+                                                                          attributes={&#39;synsets&#39;:o[&#39;synsets&#39;]})
+                                
+                                                    for o in obj[&#39;objects&#39;]]))
         
-    def _download(self, verbose=True):
-        vipy.downloader.download_and_unpack(URL, self.lfwdir, verbose=verbose)
-        return self
-
-    def subjects(self):
-        &#34;&#34;&#34;List of all subject names&#34;&#34;&#34;
-        return [filetail(d) for d in dirlist(os.path.join(self.lfwdir, &#39;lfw&#39;))]
-
-    def subject_images(self, subject):
-        &#34;&#34;&#34;List of Images of a subject&#34;&#34;&#34;
-        fnames = imlist(os.path.join(self.lfwdir, &#39;lfw&#39;, subject))
-        return [ImageCategory(category=subject, filename=f) for f in fnames]
-
-    def _dataset(self):
-        return [ImageCategory(category=s, filename=f) for s in self.subjects() for f in imlist(os.path.join(self.lfwdir, &#39;lfw&#39;, s))]
-
-    def _parse_pairs(self, txtfile):
-        pairs = []
-        for x in readcsv(os.path.join(self.lfwdir, &#39;lfw&#39;, txtfile), separator=&#39;\t&#39;):
-            if len(x) == 3:
-                pairs.append((ImageCategory(category=x[0], filename=os.path.join(self.lfwdir, &#39;lfw&#39;, x[0], &#39;%s_%04d.jpg&#39; % (x[0], int(x[1])))),
-                              ImageCategory(category=x[0], filename=os.path.join(self.lfwdir, &#39;lfw&#39;, x[0], &#39;%s_%04d.jpg&#39; % (x[0], int(x[2]))))))
-            elif len(x) == 4:
-                pairs.append((ImageCategory(category=x[0], filename=os.path.join(self.lfwdir, &#39;lfw&#39;, x[0], &#39;%s_%04d.jpg&#39; % (x[0], int(x[1])))),
-                              ImageCategory(category=x[2], filename=os.path.join(self.lfwdir, &#39;lfw&#39;, x[2], &#39;%s_%04d.jpg&#39; % (x[2], int(x[3]))))))
-            else:
-                pass
-        return pairs
-
-    def _pairsDevTest(self):
-        if not os.path.isfile(os.path.join(self.lfwdir, &#39;lfw&#39;, &#39;pairsDevTest.txt&#39;)):
-            raise ValueError(&#34;Download and save text file to $datadir/pairsDevTest.txt with &#39;wget %s -O %s&#39;&#34; % (URL_PAIRS_DEV_TRAIN, os.path.join(self.lfwdir, &#39;lfw&#39; &#39;pairsDevTest.txt&#39;)))
-        return self._parse_pairs(&#39;pairsDevTest.txt&#39;)
-
-    def _pairsDevTrain(self):
-        if not os.path.isfile(os.path.join(self.lfwdir, &#39;lfw&#39;, &#39;pairsDevTrain.txt&#39;)):
-            raise ValueError(&#34;Download and save text file to $datadir/pairsDevTrain.txt with &#39;wget %s -O %s&#39;&#34; % (URL_PAIRS_DEV_TRAIN, os.path.join(self.lfwdir, &#39;lfw&#39;, &#39;pairsDevTrain.txt&#39;)))
-        return self._parse_pairs(&#39;pairsDevTrain.txt&#39;)
-
-    def _pairs(self):
-        if not os.path.isfile(os.path.join(self.lfwdir, &#39;lfw&#39;, &#39;pairs.txt&#39;)):
-            raise ValueError(&#34;Download and save text file to $datadir/pairs.txt with &#39;wget %s -O %s&#39;&#34; % (URL_PAIRS_DEV_TRAIN, os.path.join(self.lfwdir, &#39;lfw&#39;, &#39;pairs.txt&#39;)))
-        return self._parse_pairs(&#39;pairs.txt&#39;)</code></pre>
+        super().__init__(imlist, id=name)
+        </code></pre>
 </details>
 </section>
 <section>
@@ -106,136 +73,44 @@ class LFW(vipy.dataset.Dataset):
 <section>
 <h2 class="section-title" id="header-classes">Classes</h2>
 <dl>
-<dt id="vipy.data.lfw.LFW"><code class="flex name class">
-<span>class <span class="ident">LFW</span></span>
-<span>(</span><span>datadir)</span>
+<dt id="vipy.data.visualgenome.VisualGenome"><code class="flex name class">
+<span>class <span class="ident">VisualGenome</span></span>
+<span>(</span><span>datadir, name='visualgenome')</span>
 </code></dt>
 <dd>
-<div class="desc"><p>vipy.dataset.Dataset() class</p>
-<p>Common class to manipulate large sets of vipy objects in parallel</p>
-<pre><code class="language-python">D = vipy.dataset.Dataset([vipy.video.RandomScene(), vipy.video.RandomScene()], id='random_scene')
-with vipy.globals.parallel(2):
-    D = D.map(lambda v: v.frame(0))
-list(D)
-</code></pre>
-<p>Create dataset and export as a directory of json files </p>
-<pre><code class="language-python">D = vipy.dataset.Dataset([vipy.video.RandomScene(), vipy.video.RandomScene()])
-D.tojsondir('/tmp/myjsondir')
-</code></pre>
-<p>Create dataset from all json or pkl files recursively discovered in a directory and lazy loaded</p>
-<pre><code class="language-python">D = vipy.dataset.Dataset('/tmp/myjsondir')  # lazy loading
-</code></pre>
-<p>Create dataset from a list of json or pkl files and lazy loaded</p>
-<pre><code class="language-python">D = vipy.dataset.Dataset(['/path/to/file1.json', '/path/to/file2.json'])  # lazy loading
-</code></pre>
-<h2 id="args">Args</h2>
-<ul>
-<li>abspath [bool]: If true, load all lazy elements with absolute path</li>
-<li>loader [lambda]: a callable loader that will process the object .
-This is useful for custom deerialization</li>
-<li>lazy [bool]: If true, load all pkl or json files using the custom loader when accessed</li>
-</ul>
-<div class="admonition notes">
-<p class="admonition-title">Notes:&ensp;Be warned that using the jsondir constructor will load elements on demand, but there are some methods that require loading the entire dataset into memory, and will happily try to do so</p>
-</div>
-<p>Datadir contains the unpacked contents of LFW from $URL -&gt; /path/to/lfw</p></div>
+<div class="desc"><p>Project: <a href="http://visualgenome.org/,">http://visualgenome.org/,</a> version 1.4-objects</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/4bcf85ea6e5620da15f65d624a85c5ef5a975e01/vipy/data/lfw.py#L15-L67" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/4bcf85ea6e5620da15f65d624a85c5ef5a975e01/vipy/data/visualgenome.py#L12-L33" class="git-link">Browse git</a>
 </summary>
-<pre><code class="python">class LFW(vipy.dataset.Dataset):
-    def __init__(self, datadir):
-        &#34;&#34;&#34;Datadir contains the unpacked contents of LFW from $URL -&gt; /path/to/lfw&#34;&#34;&#34;
-        self.lfwdir = datadir
-        remkdir(os.path.join(self.lfwdir, &#39;lfw&#39;))
+<pre><code class="python">class VisualGenome(vipy.dataset.Dataset):
+    &#34;&#34;&#34;Project: http://visualgenome.org/, version 1.4-objects&#34;&#34;&#34;
+    def __init__(self, datadir, name=&#39;visualgenome&#39;):
+        self._datadir = vipy.util.remkdir(datadir)
+        for url in URLS:
+            if not os.path.exists(os.path.join(self._datadir, vipy.util.filetail(url))):
+                vipy.downloader.download_and_unpack(url, self._datadir)
 
-        if not os.path.exists(os.path.join(self.lfwdir, &#39;lfw.tgz&#39;)):
-            self._download()
-        super().__init__(self._dataset(), &#39;lfw&#39;)
+        d_imageid_to_filename = {x[&#39;image_id&#39;]:os.path.join(self._datadir, vipy.util.filetail(vipy.util.filepath(x[&#39;url&#39;])), vipy.util.filetail(x[&#39;url&#39;]))
+                                 for x in vipy.util.readjson(os.path.join(self._datadir, &#39;image_data.json&#39;))}
+
+        imlist = []
+        for obj in vipy.util.readjson(os.path.join(self._datadir, &#39;objects.json&#39;)):
+            imlist.append(vipy.image.Scene(filename=d_imageid_to_filename[obj[&#39;image_id&#39;]],
+                                           objects=[vipy.object.Detection(label=o[&#39;names&#39;][0] if len(o[&#39;names&#39;])&gt;0 else o[&#39;object_id&#39;],
+                                                                          xmin = o[&#39;x&#39;], ymin=o[&#39;y&#39;], width=o[&#39;w&#39;], height=o[&#39;h&#39;],
+                                                                          id = o[&#39;object_id&#39;],
+                                                                          attributes={&#39;synsets&#39;:o[&#39;synsets&#39;]})
+                                
+                                                    for o in obj[&#39;objects&#39;]]))
         
-    def _download(self, verbose=True):
-        vipy.downloader.download_and_unpack(URL, self.lfwdir, verbose=verbose)
-        return self
-
-    def subjects(self):
-        &#34;&#34;&#34;List of all subject names&#34;&#34;&#34;
-        return [filetail(d) for d in dirlist(os.path.join(self.lfwdir, &#39;lfw&#39;))]
-
-    def subject_images(self, subject):
-        &#34;&#34;&#34;List of Images of a subject&#34;&#34;&#34;
-        fnames = imlist(os.path.join(self.lfwdir, &#39;lfw&#39;, subject))
-        return [ImageCategory(category=subject, filename=f) for f in fnames]
-
-    def _dataset(self):
-        return [ImageCategory(category=s, filename=f) for s in self.subjects() for f in imlist(os.path.join(self.lfwdir, &#39;lfw&#39;, s))]
-
-    def _parse_pairs(self, txtfile):
-        pairs = []
-        for x in readcsv(os.path.join(self.lfwdir, &#39;lfw&#39;, txtfile), separator=&#39;\t&#39;):
-            if len(x) == 3:
-                pairs.append((ImageCategory(category=x[0], filename=os.path.join(self.lfwdir, &#39;lfw&#39;, x[0], &#39;%s_%04d.jpg&#39; % (x[0], int(x[1])))),
-                              ImageCategory(category=x[0], filename=os.path.join(self.lfwdir, &#39;lfw&#39;, x[0], &#39;%s_%04d.jpg&#39; % (x[0], int(x[2]))))))
-            elif len(x) == 4:
-                pairs.append((ImageCategory(category=x[0], filename=os.path.join(self.lfwdir, &#39;lfw&#39;, x[0], &#39;%s_%04d.jpg&#39; % (x[0], int(x[1])))),
-                              ImageCategory(category=x[2], filename=os.path.join(self.lfwdir, &#39;lfw&#39;, x[2], &#39;%s_%04d.jpg&#39; % (x[2], int(x[3]))))))
-            else:
-                pass
-        return pairs
-
-    def _pairsDevTest(self):
-        if not os.path.isfile(os.path.join(self.lfwdir, &#39;lfw&#39;, &#39;pairsDevTest.txt&#39;)):
-            raise ValueError(&#34;Download and save text file to $datadir/pairsDevTest.txt with &#39;wget %s -O %s&#39;&#34; % (URL_PAIRS_DEV_TRAIN, os.path.join(self.lfwdir, &#39;lfw&#39; &#39;pairsDevTest.txt&#39;)))
-        return self._parse_pairs(&#39;pairsDevTest.txt&#39;)
-
-    def _pairsDevTrain(self):
-        if not os.path.isfile(os.path.join(self.lfwdir, &#39;lfw&#39;, &#39;pairsDevTrain.txt&#39;)):
-            raise ValueError(&#34;Download and save text file to $datadir/pairsDevTrain.txt with &#39;wget %s -O %s&#39;&#34; % (URL_PAIRS_DEV_TRAIN, os.path.join(self.lfwdir, &#39;lfw&#39;, &#39;pairsDevTrain.txt&#39;)))
-        return self._parse_pairs(&#39;pairsDevTrain.txt&#39;)
-
-    def _pairs(self):
-        if not os.path.isfile(os.path.join(self.lfwdir, &#39;lfw&#39;, &#39;pairs.txt&#39;)):
-            raise ValueError(&#34;Download and save text file to $datadir/pairs.txt with &#39;wget %s -O %s&#39;&#34; % (URL_PAIRS_DEV_TRAIN, os.path.join(self.lfwdir, &#39;lfw&#39;, &#39;pairs.txt&#39;)))
-        return self._parse_pairs(&#39;pairs.txt&#39;)</code></pre>
+        super().__init__(imlist, id=name)</code></pre>
 </details>
 <h3>Ancestors</h3>
 <ul class="hlist">
 <li><a title="vipy.dataset.Dataset" href="../dataset.html#vipy.dataset.Dataset">Dataset</a></li>
 </ul>
-<h3>Methods</h3>
-<dl>
-<dt id="vipy.data.lfw.LFW.subject_images"><code class="name flex">
-<span>def <span class="ident">subject_images</span></span>(<span>self, subject)</span>
-</code></dt>
-<dd>
-<div class="desc"><p>List of Images of a subject</p></div>
-<details class="source">
-<summary>
-<span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/4bcf85ea6e5620da15f65d624a85c5ef5a975e01/vipy/data/lfw.py#L33-L36" class="git-link">Browse git</a>
-</summary>
-<pre><code class="python">def subject_images(self, subject):
-    &#34;&#34;&#34;List of Images of a subject&#34;&#34;&#34;
-    fnames = imlist(os.path.join(self.lfwdir, &#39;lfw&#39;, subject))
-    return [ImageCategory(category=subject, filename=f) for f in fnames]</code></pre>
-</details>
-</dd>
-<dt id="vipy.data.lfw.LFW.subjects"><code class="name flex">
-<span>def <span class="ident">subjects</span></span>(<span>self)</span>
-</code></dt>
-<dd>
-<div class="desc"><p>List of all subject names</p></div>
-<details class="source">
-<summary>
-<span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/4bcf85ea6e5620da15f65d624a85c5ef5a975e01/vipy/data/lfw.py#L29-L31" class="git-link">Browse git</a>
-</summary>
-<pre><code class="python">def subjects(self):
-    &#34;&#34;&#34;List of all subject names&#34;&#34;&#34;
-    return [filetail(d) for d in dirlist(os.path.join(self.lfwdir, &#39;lfw&#39;))]</code></pre>
-</details>
-</dd>
-</dl>
 <h3>Inherited members</h3>
 <ul class="hlist">
 <li><code><b><a title="vipy.dataset.Dataset" href="../dataset.html#vipy.dataset.Dataset">Dataset</a></b></code>:
@@ -364,11 +239,7 @@ setTimeout(() => input.focus(), 100);
 <li><h3><a href="#header-classes">Classes</a></h3>
 <ul>
 <li>
-<h4><code><a title="vipy.data.lfw.LFW" href="#vipy.data.lfw.LFW">LFW</a></code></h4>
-<ul class="">
-<li><code><a title="vipy.data.lfw.LFW.subject_images" href="#vipy.data.lfw.LFW.subject_images">subject_images</a></code></li>
-<li><code><a title="vipy.data.lfw.LFW.subjects" href="#vipy.data.lfw.LFW.subjects">subjects</a></code></li>
-</ul>
+<h4><code><a title="vipy.data.visualgenome.VisualGenome" href="#vipy.data.visualgenome.VisualGenome">VisualGenome</a></code></h4>
 </li>
 </ul>
 </li>

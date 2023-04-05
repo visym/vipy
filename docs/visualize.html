@@ -26,7 +26,7 @@
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/246f0d16deb2cbe52f54a7ff3656d403d8b80214/vipy/visualize.py#L1-L656" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/4bcf85ea6e5620da15f65d624a85c5ef5a975e01/vipy/visualize.py#L1-L657" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">import os
 import numpy as np
@@ -381,7 +381,7 @@ def montage(imlist, imgheight=256, imgwidth=256, gridrows=None, gridcols=None, a
     if k == 0:
         print(&#39;[vipy.visualize.montage] Warning: No images were processed&#39;)
 
-    return Image(array=img_montage, colorspace=imlist[0].colorspace())
+    return Image(array=img_montage)
 
 
 def videomontage(vidlist, imgheight, imgwidth, gridrows=None, gridcols=None, aspectratio=1, crop=False, skip=True, border=1, border_bgr=(128,128,128), do_flush=False, verbose=True, framerate=30.0, max_duration=None):
@@ -481,7 +481,7 @@ def urls(urllist, title=&#39;URL Visualization&#39;, imagewidth=1024, outfile=No
 
     
     
-def tohtml(imlist, imdict=None, title=&#39;Image Visualization&#39;, mindim=1024, outfile=None, display=False):
+def tohtml(imlist, imdict=None, title=&#39;Image Visualization&#39;, mindim=1024, outfile=None, display=False, maxwidth=2400):
     &#34;&#34;&#34;Given a list of vipy.image.Image objects, show the images along with the dictionary contents of imdict (one per image) in a single standalone HTML file
     
     Args:
@@ -491,7 +491,8 @@ def tohtml(imlist, imdict=None, title=&#39;Image Visualization&#39;, mindim=1024
         imagewidth: [int] The size of the images in the page
         outfile: [str] The path to the output html file
         display: [bool] open the html file in the default system viewer when complete
-
+        maxwidth [int]: the maximum width of the html container in pixels
+    
     Returns:
         An html file in outfile that contains all the images as a standalone embedded file (no links or external files).
     &#34;&#34;&#34;
@@ -507,7 +508,7 @@ def tohtml(imlist, imdict=None, title=&#39;Image Visualization&#39;, mindim=1024
     f.write(&#39;&lt;!--\n    Visym Labs\n    vipy.visualize.tohtml (https://visym.github.io/vipy)\n    Generated: %s\n--&gt;\n&#39; % str(datetime.now()))    
     f.write(&#39;&lt;html&gt;\n&#39;)
     f.write(&#39;&lt;body&gt;\n&#39;)
-    f.write(&#39;&lt;div id=&#34;container&#34; style=&#34;width:2400px&#34;&gt;\n&#39;)
+    f.write(&#39;&lt;div id=&#34;container&#34; style=&#34;width:%dpx&#34;&gt;\n&#39; % maxwidth)
     f.write(&#39;&lt;div id=&#34;header&#34;&gt;\n&#39;)
     f.write(&#39;&lt;h1 style=&#34;margin-bottom:0;&#34;&gt;%s&lt;/h1&gt;&lt;br&gt;\n&#39; % title)
     localtime = time.strftime(&#34;%Y-%m-%d %H:%M:%S&#34;,time.localtime(time.time()))
@@ -591,7 +592,7 @@ def videolist(vidlist, viddict=None, title=&#39;Video Visualization&#39;, outfil
 
     
     
-def imagelist(list_of_image_files, outdir, title=&#39;Image Visualization&#39;, imagewidth=64):
+def imagelist(list_of_image_files, outdir, title=&#39;Image Visualization&#39;, imagewidth=64, maxwidth=2400):
     &#34;&#34;&#34;Given a list of image filenames wth absolute paths, copy to outdir, and create an index.html file that visualizes each.    
     &#34;&#34;&#34;
 
@@ -607,7 +608,7 @@ def imagelist(list_of_image_files, outdir, title=&#39;Image Visualization&#39;, 
     f.write(&#39;&lt;!--\n    Visym Labs\n    vipy.visualize.imagelist (https://visym.github.io/vipy)\n    Generated: %s\n--&gt;\n&#39; % str(datetime.now()))    
     f.write(&#39;&lt;html&gt;\n&#39;)
     f.write(&#39;&lt;body&gt;\n&#39;)
-    f.write(&#39;&lt;div id=&#34;container&#34; style=&#34;width:2400px&#34;&gt;\n&#39;)
+    f.write(&#39;&lt;div id=&#34;container&#34; style=&#34;width:%dpx&#34;&gt;\n&#39; % maxwidth)
     f.write(&#39;&lt;div id=&#34;header&#34;&gt;\n&#39;)
     f.write(&#39;&lt;h1 style=&#34;margin-bottom:0;&#34;&gt;Title: %s&lt;/h1&gt;&lt;br&gt;\n&#39; % title)
     localtime = time.strftime(&#34;%Y-%m-%d %H:%M:%S&#34;,time.localtime(time.time()))
@@ -746,7 +747,7 @@ if None, nothing is displayed</dd>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/246f0d16deb2cbe52f54a7ff3656d403d8b80214/vipy/visualize.py#L20-L165" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/4bcf85ea6e5620da15f65d624a85c5ef5a975e01/vipy/visualize.py#L20-L165" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def hoverpixel(urls, outfile=None, pixelsize=32, sortby=&#39;color&#39;, loupe=True, hoversize=512, ultext=None, display=False, ultextcolor=&#39;white&#39;, ultextsize=&#39;large&#39;, aspectratio=2560/1440, ultextoffset=(16,16)):
     &#34;&#34;&#34;Generate a standalone hoverpixel visualization.
@@ -920,7 +921,7 @@ Be sure to add allowfullscreen to the iframe.</p>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/246f0d16deb2cbe52f54a7ff3656d403d8b80214/vipy/visualize.py#L168-L233" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/4bcf85ea6e5620da15f65d624a85c5ef5a975e01/vipy/visualize.py#L168-L233" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def hoverpixel_selector(htmllist, legendlist, outfile=None, display=False, offset=(60, 80), fullscreen=True, ultext=None, ultextcolor=&#39;white&#39;, ultextsize=&#39;large&#39;, ultextoffset=(16,16)):
     &#34;&#34;&#34;Create a dropdown selector of hoverpixel visualizations by legend.
@@ -991,16 +992,16 @@ Be sure to add allowfullscreen to the iframe.</p>
 </details>
 </dd>
 <dt id="vipy.visualize.imagelist"><code class="name flex">
-<span>def <span class="ident">imagelist</span></span>(<span>list_of_image_files, outdir, title='Image Visualization', imagewidth=64)</span>
+<span>def <span class="ident">imagelist</span></span>(<span>list_of_image_files, outdir, title='Image Visualization', imagewidth=64, maxwidth=2400)</span>
 </code></dt>
 <dd>
 <div class="desc"><p>Given a list of image filenames wth absolute paths, copy to outdir, and create an index.html file that visualizes each.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/246f0d16deb2cbe52f54a7ff3656d403d8b80214/vipy/visualize.py#L564-L609" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/4bcf85ea6e5620da15f65d624a85c5ef5a975e01/vipy/visualize.py#L565-L610" class="git-link">Browse git</a>
 </summary>
-<pre><code class="python">def imagelist(list_of_image_files, outdir, title=&#39;Image Visualization&#39;, imagewidth=64):
+<pre><code class="python">def imagelist(list_of_image_files, outdir, title=&#39;Image Visualization&#39;, imagewidth=64, maxwidth=2400):
     &#34;&#34;&#34;Given a list of image filenames wth absolute paths, copy to outdir, and create an index.html file that visualizes each.    
     &#34;&#34;&#34;
 
@@ -1016,7 +1017,7 @@ Be sure to add allowfullscreen to the iframe.</p>
     f.write(&#39;&lt;!--\n    Visym Labs\n    vipy.visualize.imagelist (https://visym.github.io/vipy)\n    Generated: %s\n--&gt;\n&#39; % str(datetime.now()))    
     f.write(&#39;&lt;html&gt;\n&#39;)
     f.write(&#39;&lt;body&gt;\n&#39;)
-    f.write(&#39;&lt;div id=&#34;container&#34; style=&#34;width:2400px&#34;&gt;\n&#39;)
+    f.write(&#39;&lt;div id=&#34;container&#34; style=&#34;width:%dpx&#34;&gt;\n&#39; % maxwidth)
     f.write(&#39;&lt;div id=&#34;header&#34;&gt;\n&#39;)
     f.write(&#39;&lt;h1 style=&#34;margin-bottom:0;&#34;&gt;Title: %s&lt;/h1&gt;&lt;br&gt;\n&#39; % title)
     localtime = time.strftime(&#34;%Y-%m-%d %H:%M:%S&#34;,time.localtime(time.time()))
@@ -1056,7 +1057,7 @@ Be sure to add allowfullscreen to the iframe.</p>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/246f0d16deb2cbe52f54a7ff3656d403d8b80214/vipy/visualize.py#L612-L656" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/4bcf85ea6e5620da15f65d624a85c5ef5a975e01/vipy/visualize.py#L613-L657" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def imagetuplelist(list_of_tuples_of_image_files, outdir, title=&#39;Image Visualization&#39;, imagewidth=64):
     &#34;&#34;&#34;Imagelist but put tuples on same row&#34;&#34;&#34;
@@ -1154,7 +1155,7 @@ display optional verbose messages</dd>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/246f0d16deb2cbe52f54a7ff3656d403d8b80214/vipy/visualize.py#L271-L354" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/4bcf85ea6e5620da15f65d624a85c5ef5a975e01/vipy/visualize.py#L271-L354" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def montage(imlist, imgheight=256, imgwidth=256, gridrows=None, gridcols=None, aspectratio=1, crop=False, skip=True, border=1, border_bgr=(128,128,128), do_flush=False, verbose=False):
     &#34;&#34;&#34;Create a montage image from the of provided list of `vipy.image.Image` objects.
@@ -1239,7 +1240,7 @@ display optional verbose messages</dd>
     if k == 0:
         print(&#39;[vipy.visualize.montage] Warning: No images were processed&#39;)
 
-    return Image(array=img_montage, colorspace=imlist[0].colorspace())</code></pre>
+    return Image(array=img_montage)</code></pre>
 </details>
 </dd>
 <dt id="vipy.visualize.mosaic"><code class="name flex">
@@ -1265,7 +1266,7 @@ Returns:
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/246f0d16deb2cbe52f54a7ff3656d403d8b80214/vipy/visualize.py#L236-L257" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/4bcf85ea6e5620da15f65d624a85c5ef5a975e01/vipy/visualize.py#L236-L257" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def mosaic(videos, gridrows=None, gridcols=None):
     &#34;&#34;&#34;Create a mosaic iterator from an iterable of videos.
@@ -1292,7 +1293,7 @@ Returns:
 </details>
 </dd>
 <dt id="vipy.visualize.tohtml"><code class="name flex">
-<span>def <span class="ident">tohtml</span></span>(<span>imlist, imdict=None, title='Image Visualization', mindim=1024, outfile=None, display=False)</span>
+<span>def <span class="ident">tohtml</span></span>(<span>imlist, imdict=None, title='Image Visualization', mindim=1024, outfile=None, display=False, maxwidth=2400)</span>
 </code></dt>
 <dd>
 <div class="desc"><p>Given a list of vipy.image.Image objects, show the images along with the dictionary contents of imdict (one per image) in a single standalone HTML file</p>
@@ -1311,14 +1312,15 @@ Returns:
 <dt><strong><code>display</code></strong></dt>
 <dd>[bool] open the html file in the default system viewer when complete</dd>
 </dl>
+<p>maxwidth [int]: the maximum width of the html container in pixels</p>
 <h2 id="returns">Returns</h2>
 <p>An html file in outfile that contains all the images as a standalone embedded file (no links or external files).</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/246f0d16deb2cbe52f54a7ff3656d403d8b80214/vipy/visualize.py#L454-L519" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/4bcf85ea6e5620da15f65d624a85c5ef5a975e01/vipy/visualize.py#L454-L520" class="git-link">Browse git</a>
 </summary>
-<pre><code class="python">def tohtml(imlist, imdict=None, title=&#39;Image Visualization&#39;, mindim=1024, outfile=None, display=False):
+<pre><code class="python">def tohtml(imlist, imdict=None, title=&#39;Image Visualization&#39;, mindim=1024, outfile=None, display=False, maxwidth=2400):
     &#34;&#34;&#34;Given a list of vipy.image.Image objects, show the images along with the dictionary contents of imdict (one per image) in a single standalone HTML file
     
     Args:
@@ -1328,7 +1330,8 @@ Returns:
         imagewidth: [int] The size of the images in the page
         outfile: [str] The path to the output html file
         display: [bool] open the html file in the default system viewer when complete
-
+        maxwidth [int]: the maximum width of the html container in pixels
+    
     Returns:
         An html file in outfile that contains all the images as a standalone embedded file (no links or external files).
     &#34;&#34;&#34;
@@ -1344,7 +1347,7 @@ Returns:
     f.write(&#39;&lt;!--\n    Visym Labs\n    vipy.visualize.tohtml (https://visym.github.io/vipy)\n    Generated: %s\n--&gt;\n&#39; % str(datetime.now()))    
     f.write(&#39;&lt;html&gt;\n&#39;)
     f.write(&#39;&lt;body&gt;\n&#39;)
-    f.write(&#39;&lt;div id=&#34;container&#34; style=&#34;width:2400px&#34;&gt;\n&#39;)
+    f.write(&#39;&lt;div id=&#34;container&#34; style=&#34;width:%dpx&#34;&gt;\n&#39; % maxwidth)
     f.write(&#39;&lt;div id=&#34;header&#34;&gt;\n&#39;)
     f.write(&#39;&lt;h1 style=&#34;margin-bottom:0;&#34;&gt;%s&lt;/h1&gt;&lt;br&gt;\n&#39; % title)
     localtime = time.strftime(&#34;%Y-%m-%d %H:%M:%S&#34;,time.localtime(time.time()))
@@ -1407,7 +1410,7 @@ Returns:
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/246f0d16deb2cbe52f54a7ff3656d403d8b80214/vipy/visualize.py#L395-L450" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/4bcf85ea6e5620da15f65d624a85c5ef5a975e01/vipy/visualize.py#L395-L450" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def urls(urllist, title=&#39;URL Visualization&#39;, imagewidth=1024, outfile=None, display=False):
     &#34;&#34;&#34;Given a list of public image URLs, create a stand-alone HTML page to show them all.
@@ -1475,7 +1478,7 @@ Returns:
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/246f0d16deb2cbe52f54a7ff3656d403d8b80214/vipy/visualize.py#L522-L560" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/4bcf85ea6e5620da15f65d624a85c5ef5a975e01/vipy/visualize.py#L523-L561" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def videolist(vidlist, viddict=None, title=&#39;Video Visualization&#39;, outfile=None, display=False):
     &#34;&#34;&#34;Create a standalone HTML file that will visualize the set of videos in vidlist using HTML5 video player&#34;&#34;&#34;
@@ -1548,7 +1551,7 @@ If None, then use the duration of the longest video</dd>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/246f0d16deb2cbe52f54a7ff3656d403d8b80214/vipy/visualize.py#L357-L392" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/4bcf85ea6e5620da15f65d624a85c5ef5a975e01/vipy/visualize.py#L357-L392" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def videomontage(vidlist, imgheight, imgwidth, gridrows=None, gridcols=None, aspectratio=1, crop=False, skip=True, border=1, border_bgr=(128,128,128), do_flush=False, verbose=True, framerate=30.0, max_duration=None):
     &#34;&#34;&#34;Generate a video montage for the provided videos by creating a image montage for every frame.  
@@ -1603,7 +1606,7 @@ This assumes that the videos are showing the same timestamps like in a security 
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/246f0d16deb2cbe52f54a7ff3656d403d8b80214/vipy/visualize.py#L260-L268" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/4bcf85ea6e5620da15f65d624a85c5ef5a975e01/vipy/visualize.py#L260-L268" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def videomosaic(videos, gridrows=None, gridcols=None):
     &#34;&#34;&#34;Return a mosaic video from an iterable of videos.  

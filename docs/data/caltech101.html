@@ -26,39 +26,43 @@
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/246f0d16deb2cbe52f54a7ff3656d403d8b80214/vipy/data/caltech101.py#L1-L31" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/4bcf85ea6e5620da15f65d624a85c5ef5a975e01/vipy/data/caltech101.py#L1-L35" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">import os
 from vipy.util import remkdir
 import vipy.downloader
+import vipy.dataset
 from vipy.image import ImageCategory
 
-URL = &#39;http://www.vision.caltech.edu/Image_Datasets/Caltech101/101_ObjectCategories.tar.gz&#39;
-SHA1 = &#39;b8ca4fe15bcd0921dfda882bd6052807e63b4c96&#39;
+
+URL = &#39;https://data.caltech.edu/records/mzrjq-6wc02/files/caltech-101.zip&#39;
+SHA1 = &#39;d1cc0e3686b03d5e1a7e9b734c6d04f60857d674&#39;
 
 
-class Caltech101(object):
+class Caltech101(vipy.dataset.Dataset):
+    &#34;&#34;&#34;Caltech-101 dataset: https://data.caltech.edu/records/mzrjq-6wc02&#34;&#34;&#34;
     def __init__(self, datadir):
         &#34;&#34;&#34;Caltech101, provide a datadir=&#39;/path/to/store/caltech101&#39; &#34;&#34;&#34;
-        self.datadir = remkdir(datadir)
 
-    def __repr__(self):
-        return str(&#39;&lt;vipy.data.caltech101: %s&gt;&#39; % self.datadir)
-
-    def download_and_unpack(self):
-        vipy.downloader.download_and_unpack(URL, self.datadir, sha1=SHA1)
-
-    def dataset(self):
-        # Return json or CSV file containing dataset description
-        categorydir = os.path.join(self.datadir, &#39;101_ObjectCategories&#39;)
-
+        # Download
+        self._datadir = remkdir(datadir)        
+        if not os.path.exists(os.path.join(self._datadir, &#39;caltech-101/101_ObjectCategories.tar.gz&#39;)):
+            vipy.downloader.download_and_unpack(URL, self._datadir, sha1=SHA1)            
+        if not os.path.exists(os.path.join(self._datadir, &#39;caltech-101/101_ObjectCategories/&#39;)):
+            vipy.downloader.unpack(os.path.join(self._datadir, &#39;caltech-101/101_ObjectCategories.tar.gz&#39;), os.path.join(self._datadir, &#39;caltech-101&#39;))
+            
+        # Create dataset
         imlist = []
+        categorydir = os.path.join(self._datadir, &#39;caltech-101&#39;, &#39;101_ObjectCategories&#39;)        
         for (idx_category, category) in enumerate(os.listdir(categorydir)):
             imdir = os.path.join(categorydir, category)
             for im in os.listdir(imdir):
                 imlist.append(ImageCategory(filename=os.path.join(categorydir, category, im), category=category))
 
-        return imlist</code></pre>
+        super().__init__(imlist, id=&#39;caltech-101&#39;)
+            
+
+        </code></pre>
 </details>
 </section>
 <section>
@@ -75,75 +79,97 @@ class Caltech101(object):
 <span>(</span><span>datadir)</span>
 </code></dt>
 <dd>
-<div class="desc"><p>Caltech101, provide a datadir='/path/to/store/caltech101'</p></div>
+<div class="desc"><p>Caltech-101 dataset: <a href="https://data.caltech.edu/records/mzrjq-6wc02">https://data.caltech.edu/records/mzrjq-6wc02</a></p>
+<p>Caltech101, provide a datadir='/path/to/store/caltech101'</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/246f0d16deb2cbe52f54a7ff3656d403d8b80214/vipy/data/caltech101.py#L10-L31" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/4bcf85ea6e5620da15f65d624a85c5ef5a975e01/vipy/data/caltech101.py#L12-L32" class="git-link">Browse git</a>
 </summary>
-<pre><code class="python">class Caltech101(object):
+<pre><code class="python">class Caltech101(vipy.dataset.Dataset):
+    &#34;&#34;&#34;Caltech-101 dataset: https://data.caltech.edu/records/mzrjq-6wc02&#34;&#34;&#34;
     def __init__(self, datadir):
         &#34;&#34;&#34;Caltech101, provide a datadir=&#39;/path/to/store/caltech101&#39; &#34;&#34;&#34;
-        self.datadir = remkdir(datadir)
 
-    def __repr__(self):
-        return str(&#39;&lt;vipy.data.caltech101: %s&gt;&#39; % self.datadir)
-
-    def download_and_unpack(self):
-        vipy.downloader.download_and_unpack(URL, self.datadir, sha1=SHA1)
-
-    def dataset(self):
-        # Return json or CSV file containing dataset description
-        categorydir = os.path.join(self.datadir, &#39;101_ObjectCategories&#39;)
-
+        # Download
+        self._datadir = remkdir(datadir)        
+        if not os.path.exists(os.path.join(self._datadir, &#39;caltech-101/101_ObjectCategories.tar.gz&#39;)):
+            vipy.downloader.download_and_unpack(URL, self._datadir, sha1=SHA1)            
+        if not os.path.exists(os.path.join(self._datadir, &#39;caltech-101/101_ObjectCategories/&#39;)):
+            vipy.downloader.unpack(os.path.join(self._datadir, &#39;caltech-101/101_ObjectCategories.tar.gz&#39;), os.path.join(self._datadir, &#39;caltech-101&#39;))
+            
+        # Create dataset
         imlist = []
+        categorydir = os.path.join(self._datadir, &#39;caltech-101&#39;, &#39;101_ObjectCategories&#39;)        
         for (idx_category, category) in enumerate(os.listdir(categorydir)):
             imdir = os.path.join(categorydir, category)
             for im in os.listdir(imdir):
                 imlist.append(ImageCategory(filename=os.path.join(categorydir, category, im), category=category))
 
-        return imlist</code></pre>
+        super().__init__(imlist, id=&#39;caltech-101&#39;)</code></pre>
 </details>
-<h3>Methods</h3>
-<dl>
-<dt id="vipy.data.caltech101.Caltech101.dataset"><code class="name flex">
-<span>def <span class="ident">dataset</span></span>(<span>self)</span>
-</code></dt>
-<dd>
-<div class="desc"></div>
-<details class="source">
-<summary>
-<span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/246f0d16deb2cbe52f54a7ff3656d403d8b80214/vipy/data/caltech101.py#L21-L31" class="git-link">Browse git</a>
-</summary>
-<pre><code class="python">def dataset(self):
-    # Return json or CSV file containing dataset description
-    categorydir = os.path.join(self.datadir, &#39;101_ObjectCategories&#39;)
-
-    imlist = []
-    for (idx_category, category) in enumerate(os.listdir(categorydir)):
-        imdir = os.path.join(categorydir, category)
-        for im in os.listdir(imdir):
-            imlist.append(ImageCategory(filename=os.path.join(categorydir, category, im), category=category))
-
-    return imlist</code></pre>
-</details>
-</dd>
-<dt id="vipy.data.caltech101.Caltech101.download_and_unpack"><code class="name flex">
-<span>def <span class="ident">download_and_unpack</span></span>(<span>self)</span>
-</code></dt>
-<dd>
-<div class="desc"></div>
-<details class="source">
-<summary>
-<span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/246f0d16deb2cbe52f54a7ff3656d403d8b80214/vipy/data/caltech101.py#L18-L19" class="git-link">Browse git</a>
-</summary>
-<pre><code class="python">def download_and_unpack(self):
-    vipy.downloader.download_and_unpack(URL, self.datadir, sha1=SHA1)</code></pre>
-</details>
-</dd>
-</dl>
+<h3>Ancestors</h3>
+<ul class="hlist">
+<li><a title="vipy.dataset.Dataset" href="../dataset.html#vipy.dataset.Dataset">Dataset</a></li>
+</ul>
+<h3>Inherited members</h3>
+<ul class="hlist">
+<li><code><b><a title="vipy.dataset.Dataset" href="../dataset.html#vipy.dataset.Dataset">Dataset</a></b></code>:
+<ul class="hlist">
+<li><code><a title="vipy.dataset.Dataset.archive" href="../dataset.html#vipy.dataset.Dataset.archive">archive</a></code></li>
+<li><code><a title="vipy.dataset.Dataset.categories" href="../dataset.html#vipy.dataset.Dataset.categories">categories</a></code></li>
+<li><code><a title="vipy.dataset.Dataset.chunk" href="../dataset.html#vipy.dataset.Dataset.chunk">chunk</a></code></li>
+<li><code><a title="vipy.dataset.Dataset.class_to_index" href="../dataset.html#vipy.dataset.Dataset.class_to_index">class_to_index</a></code></li>
+<li><code><a title="vipy.dataset.Dataset.classes" href="../dataset.html#vipy.dataset.Dataset.classes">classes</a></code></li>
+<li><code><a title="vipy.dataset.Dataset.classlist" href="../dataset.html#vipy.dataset.Dataset.classlist">classlist</a></code></li>
+<li><code><a title="vipy.dataset.Dataset.clone" href="../dataset.html#vipy.dataset.Dataset.clone">clone</a></code></li>
+<li><code><a title="vipy.dataset.Dataset.count" href="../dataset.html#vipy.dataset.Dataset.count">count</a></code></li>
+<li><code><a title="vipy.dataset.Dataset.countby" href="../dataset.html#vipy.dataset.Dataset.countby">countby</a></code></li>
+<li><code><a title="vipy.dataset.Dataset.density" href="../dataset.html#vipy.dataset.Dataset.density">density</a></code></li>
+<li><code><a title="vipy.dataset.Dataset.duration_in_seconds" href="../dataset.html#vipy.dataset.Dataset.duration_in_seconds">duration_in_seconds</a></code></li>
+<li><code><a title="vipy.dataset.Dataset.filter" href="../dataset.html#vipy.dataset.Dataset.filter">filter</a></code></li>
+<li><code><a title="vipy.dataset.Dataset.flatten" href="../dataset.html#vipy.dataset.Dataset.flatten">flatten</a></code></li>
+<li><code><a title="vipy.dataset.Dataset.id" href="../dataset.html#vipy.dataset.Dataset.id">id</a></code></li>
+<li><code><a title="vipy.dataset.Dataset.index_to_class" href="../dataset.html#vipy.dataset.Dataset.index_to_class">index_to_class</a></code></li>
+<li><code><a title="vipy.dataset.Dataset.inverse_frequency_weight" href="../dataset.html#vipy.dataset.Dataset.inverse_frequency_weight">inverse_frequency_weight</a></code></li>
+<li><code><a title="vipy.dataset.Dataset.istype" href="../dataset.html#vipy.dataset.Dataset.istype">istype</a></code></li>
+<li><code><a title="vipy.dataset.Dataset.jsondir" href="../dataset.html#vipy.dataset.Dataset.jsondir">jsondir</a></code></li>
+<li><code><a title="vipy.dataset.Dataset.label_to_index" href="../dataset.html#vipy.dataset.Dataset.label_to_index">label_to_index</a></code></li>
+<li><code><a title="vipy.dataset.Dataset.list" href="../dataset.html#vipy.dataset.Dataset.list">list</a></code></li>
+<li><code><a title="vipy.dataset.Dataset.load" href="../dataset.html#vipy.dataset.Dataset.load">load</a></code></li>
+<li><code><a title="vipy.dataset.Dataset.map" href="../dataset.html#vipy.dataset.Dataset.map">map</a></code></li>
+<li><code><a title="vipy.dataset.Dataset.merge" href="../dataset.html#vipy.dataset.Dataset.merge">merge</a></code></li>
+<li><code><a title="vipy.dataset.Dataset.minibatch" href="../dataset.html#vipy.dataset.Dataset.minibatch">minibatch</a></code></li>
+<li><code><a title="vipy.dataset.Dataset.multilabel_inverse_frequency_weight" href="../dataset.html#vipy.dataset.Dataset.multilabel_inverse_frequency_weight">multilabel_inverse_frequency_weight</a></code></li>
+<li><code><a title="vipy.dataset.Dataset.num_categories" href="../dataset.html#vipy.dataset.Dataset.num_categories">num_categories</a></code></li>
+<li><code><a title="vipy.dataset.Dataset.num_classes" href="../dataset.html#vipy.dataset.Dataset.num_classes">num_classes</a></code></li>
+<li><code><a title="vipy.dataset.Dataset.num_labels" href="../dataset.html#vipy.dataset.Dataset.num_labels">num_labels</a></code></li>
+<li><code><a title="vipy.dataset.Dataset.percentage" href="../dataset.html#vipy.dataset.Dataset.percentage">percentage</a></code></li>
+<li><code><a title="vipy.dataset.Dataset.replace" href="../dataset.html#vipy.dataset.Dataset.replace">replace</a></code></li>
+<li><code><a title="vipy.dataset.Dataset.save" href="../dataset.html#vipy.dataset.Dataset.save">save</a></code></li>
+<li><code><a title="vipy.dataset.Dataset.set" href="../dataset.html#vipy.dataset.Dataset.set">set</a></code></li>
+<li><code><a title="vipy.dataset.Dataset.shuffle" href="../dataset.html#vipy.dataset.Dataset.shuffle">shuffle</a></code></li>
+<li><code><a title="vipy.dataset.Dataset.shuffler" href="../dataset.html#vipy.dataset.Dataset.shuffler">shuffler</a></code></li>
+<li><code><a title="vipy.dataset.Dataset.sort" href="../dataset.html#vipy.dataset.Dataset.sort">sort</a></code></li>
+<li><code><a title="vipy.dataset.Dataset.split" href="../dataset.html#vipy.dataset.Dataset.split">split</a></code></li>
+<li><code><a title="vipy.dataset.Dataset.split_by_videoid" href="../dataset.html#vipy.dataset.Dataset.split_by_videoid">split_by_videoid</a></code></li>
+<li><code><a title="vipy.dataset.Dataset.synonym" href="../dataset.html#vipy.dataset.Dataset.synonym">synonym</a></code></li>
+<li><code><a title="vipy.dataset.Dataset.take" href="../dataset.html#vipy.dataset.Dataset.take">take</a></code></li>
+<li><code><a title="vipy.dataset.Dataset.take_per_category" href="../dataset.html#vipy.dataset.Dataset.take_per_category">take_per_category</a></code></li>
+<li><code><a title="vipy.dataset.Dataset.takefilter" href="../dataset.html#vipy.dataset.Dataset.takefilter">takefilter</a></code></li>
+<li><code><a title="vipy.dataset.Dataset.takelist" href="../dataset.html#vipy.dataset.Dataset.takelist">takelist</a></code></li>
+<li><code><a title="vipy.dataset.Dataset.takeone" href="../dataset.html#vipy.dataset.Dataset.takeone">takeone</a></code></li>
+<li><code><a title="vipy.dataset.Dataset.to_torch" href="../dataset.html#vipy.dataset.Dataset.to_torch">to_torch</a></code></li>
+<li><code><a title="vipy.dataset.Dataset.to_torch_tensordir" href="../dataset.html#vipy.dataset.Dataset.to_torch_tensordir">to_torch_tensordir</a></code></li>
+<li><code><a title="vipy.dataset.Dataset.tohtml" href="../dataset.html#vipy.dataset.Dataset.tohtml">tohtml</a></code></li>
+<li><code><a title="vipy.dataset.Dataset.tojsondir" href="../dataset.html#vipy.dataset.Dataset.tojsondir">tojsondir</a></code></li>
+<li><code><a title="vipy.dataset.Dataset.tolist" href="../dataset.html#vipy.dataset.Dataset.tolist">tolist</a></code></li>
+<li><code><a title="vipy.dataset.Dataset.video_duration_in_seconds" href="../dataset.html#vipy.dataset.Dataset.video_duration_in_seconds">video_duration_in_seconds</a></code></li>
+<li><code><a title="vipy.dataset.Dataset.video_montage" href="../dataset.html#vipy.dataset.Dataset.video_montage">video_montage</a></code></li>
+<li><code><a title="vipy.dataset.Dataset.zip" href="../dataset.html#vipy.dataset.Dataset.zip">zip</a></code></li>
+</ul>
+</li>
+</ul>
 </dd>
 </dl>
 </section>
@@ -215,10 +241,6 @@ setTimeout(() => input.focus(), 100);
 <ul>
 <li>
 <h4><code><a title="vipy.data.caltech101.Caltech101" href="#vipy.data.caltech101.Caltech101">Caltech101</a></code></h4>
-<ul class="">
-<li><code><a title="vipy.data.caltech101.Caltech101.dataset" href="#vipy.data.caltech101.Caltech101.dataset">dataset</a></code></li>
-<li><code><a title="vipy.data.caltech101.Caltech101.download_and_unpack" href="#vipy.data.caltech101.Caltech101.download_and_unpack">download_and_unpack</a></code></li>
-</ul>
 </li>
 </ul>
 </li>

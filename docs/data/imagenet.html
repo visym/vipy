@@ -26,67 +26,149 @@
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/246f0d16deb2cbe52f54a7ff3656d403d8b80214/vipy/data/imagenet.py#L1-L59" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/4bcf85ea6e5620da15f65d624a85c5ef5a975e01/vipy/data/imagenet.py#L1-L141" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">import os
-from vipy.util import readcsv, remkdir, filepath, islist
+import vipy
+from vipy.util import readcsv, remkdir, filepath, islist, filetail, filebase, filefull
 from vipy.image import ImageDetection, ImageCategory
+import xml.etree.ElementTree as ET
 
 
-URL = &#39;http://image-net.org/challenges/LSVRC/2012/dd31405981ef5f776aa17412e1f0c112/ILSVRC2012_img_train.tar&#39;
+IMAGENET_21K_RESIZED_URL = &#39;https://image-net.org/data/imagenet21k_resized.tar.gz&#39;
+URLS_2012 = [&#39;https://image-net.org/data/ILSVRC/2012/ILSVRC2012_bbox_val_v3.tgz&#39;
+             &#39;https://image-net.org/data/ILSVRC/2012/ILSVRC2012_img_train.tar&#39;,
+             &#39;https://image-net.org/data/ILSVRC/2012/ILSVRC2012_img_val.tar&#39;,
+             &#39;https://image-net.org/data/ILSVRC/2012/ILSVRC2012_bbox_train_v2.tar.gz&#39;,
+             &#39;https://image-net.org/data/ILSVRC/2012/ILSVRC2012_img_train_t3.tar&#39;,
+             &#39;https://image-net.org/data/ILSVRC/2012/ILSVRC2012_bbox_train_dogs.tar.gz&#39;,
+             &#39;https://image-net.org/data/ILSVRC/2012/ILSVRC2012_devkit_t12.tar.gz&#39;,
+             &#39;https://image-net.org/data/ILSVRC/2012/ILSVRC2012_bbox_val_v3.tgz&#39;]
+URL_SYNSET = &#39;https://raw.githubusercontent.com/torch/tutorials/master/7_imagenet_classification/synset_words.txt&#39;
+
+IMAGENET21K_URL = &#39;https://image-net.org/data/winter21_wholetar.gz&#39;
+IMAGENET21K_WORDNET_ID = &#39;https://storage.googleapis.com/bit_models/imagenet21k_wordnet_ids.txt&#39;
+IMAGENET21K_WORDNET_LEMMAS = &#39;https://storage.googleapis.com/bit_models/imagenet21k_wordnet_lemmas.txt&#39;
 
 
-class ImageNet(object):
+class Imagenet2012():
+    &#34;&#34;&#34;By downloading, you agree to the ImageNet terms: https://image-net.org/download-images.php#term&#34;&#34;&#34;
     def __init__(self, datadir):
-        &#34;&#34;&#34;Provide datadir=/path/to/ILSVRC2012&#34;&#34;&#34;
-        self.datadir = remkdir(datadir)
+        self._datadir = remkdir(datadir)
 
-    def __repr__(self):
-        return str(&#39;&lt;vipy.data.imagenet: %s&gt;&#39; % self.datadir)
+        for url in URLS_2012:
+            if not os.path.exists(os.path.join(datadir, vipy.util.filebase(url))):
+                vipy.downloader.download(url, os.path.join(self._datadir, filetail(url)))
+                vipy.downloader.unpack(os.path.join(self._datadir, filetail(url)), remkdir(os.path.join(self._datadir, filebase(url))))
 
-    def _parse_loc(self, imageset=&#39;train&#39;):
-        &#34;&#34;&#34;ImageNet localization, imageset = {train, val}&#34;&#34;&#34;
-        import xmltodict
-        if imageset == &#39;train&#39;:
-            imagesetfile = &#39;train_loc.txt&#39;
-        elif imageset == &#39;val&#39;:
-            imagesetfile = &#39;val.txt&#39;
-        else:
-            raise ValueError(&#39;unsupported imageset&#39;)
+        for f in vipy.util.findtar(os.path.join(self._datadir, &#39;ILSVRC2012_img_train&#39;)):
+            if not os.path.exists(filefull(f)):
+                vipy.downloader.unpack(f, filefull(f))
 
-        csv = readcsv(os.path.join(self.datadir, &#39;ImageSets&#39;, &#39;CLS-LOC&#39;, imagesetfile), separator=&#39; &#39;)
-        for (path, k) in csv:
-            xmlfile = &#39;%s.xml&#39; % os.path.join(self.datadir, &#39;Annotations&#39;, &#39;CLS-LOC&#39;, imageset, path)
-            d = xmltodict.parse(open(xmlfile, &#39;r&#39;).read())
-            imfile = &#39;%s.JPEG&#39; % os.path.join(self.datadir, &#39;Data&#39;, &#39;CLS-LOC&#39;, imageset, path)
-            objlist = d[&#39;annotation&#39;][&#39;object&#39;] if islist(d[&#39;annotation&#39;][&#39;object&#39;]) else [d[&#39;annotation&#39;][&#39;object&#39;]]
-            for obj in objlist:
-                yield ImageDetection(filename=imfile, category=obj[&#39;name&#39;],
-                                     xmin=int(obj[&#39;bndbox&#39;][&#39;xmin&#39;]), ymin=int(obj[&#39;bndbox&#39;][&#39;ymin&#39;]),
-                                     xmax=int(obj[&#39;bndbox&#39;][&#39;xmax&#39;]), ymax=int(obj[&#39;bndbox&#39;][&#39;ymax&#39;]))
+        for f in vipy.util.findtar(os.path.join(self._datadir, &#39;ILSVRC2012_img_train_v3&#39;)):
+            if not os.path.exists(filefull(f)):
+                vipy.downloader.unpack(f, filefull(f))
+                
+        if not os.path.exists(os.path.join(self._datadir, &#39;synset_words.txt&#39;)):
+            vipy.downloader.download(URL_SYNSET, os.path.join(self._datadir, &#39;synset_words.txt&#39;))            
+        self._synset_to_categorylist = {x.split(&#39; &#39;,1)[0]:[y.lstrip().rstrip() for y in x.split(&#39; &#39;, 1)[1].split(&#39;,&#39;)] for x in vipy.util.readtxt(os.path.join(self._datadir, &#39;synset_words.txt&#39;))}            
 
-    def classes(self):
-        return list(set([im.category() for im in self._parse_cls(&#39;val&#39;)]))
+        
+    def synset_to_category(self, s=None):
+        return self._synset_to_categorylist if s is None else self._synset_to_categorylist[s]
+    
+    def classification_trainset(self):
+        &#34;&#34;&#34;ImageNet Classification, trainset&#34;&#34;&#34;
+        imgfiles = vipy.util.findimages(os.path.join(self._datadir, &#39;ILSVRC2012_img_train&#39;))
+        imlist = [vipy.image.ImageCategory(filename=f, category=filetail(filepath(f))) for f in imgfiles]
+        return vipy.dataset.Dataset(imlist, &#39;imagenet2012_classification_train&#39;)
+        
+    def classification_valset(self):
+        imlist = []
+        imgfiles = vipy.util.findimages(os.path.join(self._datadir, &#39;ILSVRC2012_img_val&#39;))
 
-    def _parse_cls(self, imageset=&#39;train&#39;):
-        &#34;&#34;&#34;ImageNet Classification, imageset = {train, val}&#34;&#34;&#34;
-        import xmltodict
-        if imageset == &#39;train&#39;:
-            imagesetfile = &#39;train_cls.txt&#39;
-        elif imageset == &#39;val&#39;:
-            imagesetfile = &#39;val.txt&#39;
-        else:
-            raise ValueError(&#39;unsupported imageset&#39;)
-        csv = readcsv(os.path.join(self.datadir, &#39;ImageSets&#39;, &#39;CLS-LOC&#39;, imagesetfile), separator=&#39; &#39;)
-        for (subpath, k) in csv:
-            xmlfile = &#39;%s.xml&#39; % os.path.join(self.datadir, &#39;Annotations&#39;, &#39;CLS-LOC&#39;, imageset, subpath)
-            imfile = &#39;%s.JPEG&#39; % os.path.join(self.datadir, &#39;Data&#39;, &#39;CLS-LOC&#39;, imageset, subpath)
+        # ground truth is imagenet synset index 1-1000, which is maped in the metadata
+        gt = vipy.util.readtxt(os.path.join(self._datadir, &#39;ILSVRC2012_devkit_t12&#39;, &#39;ILSVRC2012_devkit_t12&#39;, &#39;data&#39;, &#39;ILSVRC2012_validation_ground_truth.txt&#39;))               
+        for (f,y) in zip(sorted(imgfiles), gt):
+            imlist.append(vipy.image.ImageCategory(filename=f, category=y))  
+        return vipy.dataset.Dataset(imlist, &#39;imagenet2012_classification_val&#39;)
+                
+    def localization_trainset(self):
+        &#34;&#34;&#34;ImageNet localization, imageset = {train, val}&#34;&#34;&#34;        
+        imlist = []
+        classification = self.classification_trainset()
+        for im in classification:
+            objects = []            
+            xmlfile = &#39;%s.xml&#39; % filefull(im.filename().replace(&#39;ILSVRC2012_img_train&#39;, &#39;ILSVRC2012_bbox_train_v2&#39;))
             if os.path.exists(xmlfile):
-                d = xmltodict.parse(open(xmlfile, &#39;r&#39;).read())
-                objlist = d[&#39;annotation&#39;][&#39;object&#39;] if islist(d[&#39;annotation&#39;][&#39;object&#39;]) else [d[&#39;annotation&#39;][&#39;object&#39;]]
-                yield ImageCategory(filename=imfile, category=objlist[0][&#39;name&#39;])
-            else:
-                yield ImageCategory(filename=imfile, category=filepath(subpath))</code></pre>
+                d = ET.parse(xmlfile).getroot()
+                (name, xmin, ymin, xmax, ymax) = (d[5][0].text, d[5][4][0].text, d[5][4][1].text, d[5][4][2].text, d[5][4][3].text)
+                objects = [vipy.object.Detection(category=name, xmin=int(xmin), ymin=int(ymin), xmax=int(xmax), ymax=int(ymax))]
+            imlist.append(vipy.image.Scene(filename=im.filename(), category=im.category(), objects=objects))
+                
+        return vipy.dataset.Dataset(imlist, &#39;imagenet2012_localization_train&#39;)
+
+    
+                
+class Imagenet21K_Resized(vipy.dataset.Dataset):
+    &#34;&#34;&#34;https://image-net.org/download-images.php, imagenet-21K 2021 release (resized)&#34;&#34;&#34;
+    def __init__(self, datadir, aslemma=True):
+        self._datadir = vipy.util.remkdir(datadir)
+        
+        if not os.path.exists(os.path.join(datadir, &#39;imagenet21k_resized.tar.gz&#39;)):
+            print(&#39;[vipy.data.imagenet]: downloading Imagenet-21K resized to &#34;%s&#34;&#39; % self._outdir)            
+            vipy.downloader.download_and_unpack(IMAGENET_21K_RESIZED_URL, self._outdir, sha1=None)
+
+        if not os.path.exists(os.path.join(self._datadir, &#39;wordnet_id.txt&#39;)):
+            vipy.downloader.download(IMAGENET21K_WORDNET_ID, os.path.join(self._datadir, &#39;wordnet_id.txt&#39;))
+        if not os.path.exists(os.path.join(self._datadir, &#39;wordnet_lemmas.txt&#39;)):
+            vipy.downloader.download(IMAGENET21K_WORDNET_LEMMAS, os.path.join(self._datadir, &#39;wordnet_lemmas.txt&#39;))
+
+        # https://github.com/google-research/big_transfer/issues/7
+        self._synset_to_categorylist = {x:[y.rstrip().lstrip() for y in lemma.split(&#39;,&#39;)] for (x,lemma) in zip(vipy.util.readtxt(os.path.join(self._datadir, &#39;wordnet_id.txt&#39;)), vipy.util.readtxt(os.path.join(self._datadir, &#39;wordnet_lemmas.txt&#39;)))}
+
+        f_category = lambda c: self._synset_to_categorylist[c][0] if aslemma else c
+        imlist = [vipy.image.ImageCategory(filename=f,
+                                           attributes={&#39;wordnet_id&#39;:vipy.util.filebase(vipy.util.filepath(f))},
+                                           category=f_category(vipy.util.filebase(vipy.util.filepath(f)))) for f in vipy.util.findimages(os.path.join(datadir, &#39;imagenet21k_resized&#39;))]
+        super().__init__(imlist, id=&#39;imagenet21k&#39;)
+
+    def synset_to_category(self, s=None):
+        return self._synset_to_categorylist if s is None else self._synset_to_categorylist[s]
+        
+
+class Imagenet21K(vipy.dataset.Dataset):
+    &#34;&#34;&#34;https://image-net.org/download-images.php, imagenet-21K 2021 winter release&#34;&#34;&#34;
+    def __init__(self, datadir, aslemma=True):
+        self._datadir = vipy.util.remkdir(datadir)
+        
+        if not os.path.exists(os.path.join(datadir, &#39;winter21_whole.tar.gz&#39;)):
+            print(&#39;[vipy.data.imagenet]: downloading Imagenet-21K to &#34;%s&#34;&#39; % self._outdir)            
+            vipy.downloader.download_and_unpack(IMAGENET21K_URL, self._outdir, sha1=None)
+
+        for f in vipy.util.findtar(os.path.join(datadir, &#39;winter21_whole&#39;)):
+            if not os.path.exists(filefull(f)):
+                vipy.downloader.unpack(f, filefull(f))
+                os.remove(f)  # cleanup
+                
+        if not os.path.exists(os.path.join(self._datadir, &#39;wordnet_id.txt&#39;)):
+            vipy.downloader.download(IMAGENET21K_WORDNET_ID, os.path.join(self._datadir, &#39;wordnet_id.txt&#39;))
+        if not os.path.exists(os.path.join(self._datadir, &#39;wordnet_lemmas.txt&#39;)):
+            vipy.downloader.download(IMAGENET21K_WORDNET_LEMMAS, os.path.join(self._datadir, &#39;wordnet_lemmas.txt&#39;))
+
+        # https://github.com/google-research/big_transfer/issues/7
+        self._synset_to_categorylist = {x:[y.rstrip().lstrip() for y in lemma.split(&#39;,&#39;)] for (x,lemma) in zip(vipy.util.readtxt(os.path.join(self._datadir, &#39;wordnet_id.txt&#39;)), vipy.util.readtxt(os.path.join(self._datadir, &#39;wordnet_lemmas.txt&#39;)))}
+
+        f_category = lambda c: self._synset_to_categorylist[c][0] if aslemma else c
+        imlist = [vipy.image.ImageCategory(filename=f,
+                                           attributes={&#39;wordnet_id&#39;:vipy.util.filebase(vipy.util.filepath(f))},
+                                           category=f_category(vipy.util.filebase(vipy.util.filepath(f)))) for f in vipy.util.findimages(os.path.join(datadir, &#39;winter21_whole&#39;))]
+        super().__init__(imlist, id=&#39;imagenet21k&#39;)
+
+    def synset_to_category(self, s=None):
+        return self._synset_to_categorylist if s is None else self._synset_to_categorylist[s]
+         
+   </code></pre>
 </details>
 </section>
 <section>
@@ -98,86 +180,394 @@ class ImageNet(object):
 <section>
 <h2 class="section-title" id="header-classes">Classes</h2>
 <dl>
-<dt id="vipy.data.imagenet.ImageNet"><code class="flex name class">
-<span>class <span class="ident">ImageNet</span></span>
+<dt id="vipy.data.imagenet.Imagenet2012"><code class="flex name class">
+<span>class <span class="ident">Imagenet2012</span></span>
 <span>(</span><span>datadir)</span>
 </code></dt>
 <dd>
-<div class="desc"><p>Provide datadir=/path/to/ILSVRC2012</p></div>
+<div class="desc"><p>By downloading, you agree to the ImageNet terms: <a href="https://image-net.org/download-images.php#term">https://image-net.org/download-images.php#term</a></p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/246f0d16deb2cbe52f54a7ff3656d403d8b80214/vipy/data/imagenet.py#L9-L59" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/4bcf85ea6e5620da15f65d624a85c5ef5a975e01/vipy/data/imagenet.py#L24-L79" class="git-link">Browse git</a>
 </summary>
-<pre><code class="python">class ImageNet(object):
+<pre><code class="python">class Imagenet2012():
+    &#34;&#34;&#34;By downloading, you agree to the ImageNet terms: https://image-net.org/download-images.php#term&#34;&#34;&#34;
     def __init__(self, datadir):
-        &#34;&#34;&#34;Provide datadir=/path/to/ILSVRC2012&#34;&#34;&#34;
-        self.datadir = remkdir(datadir)
+        self._datadir = remkdir(datadir)
 
-    def __repr__(self):
-        return str(&#39;&lt;vipy.data.imagenet: %s&gt;&#39; % self.datadir)
+        for url in URLS_2012:
+            if not os.path.exists(os.path.join(datadir, vipy.util.filebase(url))):
+                vipy.downloader.download(url, os.path.join(self._datadir, filetail(url)))
+                vipy.downloader.unpack(os.path.join(self._datadir, filetail(url)), remkdir(os.path.join(self._datadir, filebase(url))))
 
-    def _parse_loc(self, imageset=&#39;train&#39;):
-        &#34;&#34;&#34;ImageNet localization, imageset = {train, val}&#34;&#34;&#34;
-        import xmltodict
-        if imageset == &#39;train&#39;:
-            imagesetfile = &#39;train_loc.txt&#39;
-        elif imageset == &#39;val&#39;:
-            imagesetfile = &#39;val.txt&#39;
-        else:
-            raise ValueError(&#39;unsupported imageset&#39;)
+        for f in vipy.util.findtar(os.path.join(self._datadir, &#39;ILSVRC2012_img_train&#39;)):
+            if not os.path.exists(filefull(f)):
+                vipy.downloader.unpack(f, filefull(f))
 
-        csv = readcsv(os.path.join(self.datadir, &#39;ImageSets&#39;, &#39;CLS-LOC&#39;, imagesetfile), separator=&#39; &#39;)
-        for (path, k) in csv:
-            xmlfile = &#39;%s.xml&#39; % os.path.join(self.datadir, &#39;Annotations&#39;, &#39;CLS-LOC&#39;, imageset, path)
-            d = xmltodict.parse(open(xmlfile, &#39;r&#39;).read())
-            imfile = &#39;%s.JPEG&#39; % os.path.join(self.datadir, &#39;Data&#39;, &#39;CLS-LOC&#39;, imageset, path)
-            objlist = d[&#39;annotation&#39;][&#39;object&#39;] if islist(d[&#39;annotation&#39;][&#39;object&#39;]) else [d[&#39;annotation&#39;][&#39;object&#39;]]
-            for obj in objlist:
-                yield ImageDetection(filename=imfile, category=obj[&#39;name&#39;],
-                                     xmin=int(obj[&#39;bndbox&#39;][&#39;xmin&#39;]), ymin=int(obj[&#39;bndbox&#39;][&#39;ymin&#39;]),
-                                     xmax=int(obj[&#39;bndbox&#39;][&#39;xmax&#39;]), ymax=int(obj[&#39;bndbox&#39;][&#39;ymax&#39;]))
+        for f in vipy.util.findtar(os.path.join(self._datadir, &#39;ILSVRC2012_img_train_v3&#39;)):
+            if not os.path.exists(filefull(f)):
+                vipy.downloader.unpack(f, filefull(f))
+                
+        if not os.path.exists(os.path.join(self._datadir, &#39;synset_words.txt&#39;)):
+            vipy.downloader.download(URL_SYNSET, os.path.join(self._datadir, &#39;synset_words.txt&#39;))            
+        self._synset_to_categorylist = {x.split(&#39; &#39;,1)[0]:[y.lstrip().rstrip() for y in x.split(&#39; &#39;, 1)[1].split(&#39;,&#39;)] for x in vipy.util.readtxt(os.path.join(self._datadir, &#39;synset_words.txt&#39;))}            
 
-    def classes(self):
-        return list(set([im.category() for im in self._parse_cls(&#39;val&#39;)]))
+        
+    def synset_to_category(self, s=None):
+        return self._synset_to_categorylist if s is None else self._synset_to_categorylist[s]
+    
+    def classification_trainset(self):
+        &#34;&#34;&#34;ImageNet Classification, trainset&#34;&#34;&#34;
+        imgfiles = vipy.util.findimages(os.path.join(self._datadir, &#39;ILSVRC2012_img_train&#39;))
+        imlist = [vipy.image.ImageCategory(filename=f, category=filetail(filepath(f))) for f in imgfiles]
+        return vipy.dataset.Dataset(imlist, &#39;imagenet2012_classification_train&#39;)
+        
+    def classification_valset(self):
+        imlist = []
+        imgfiles = vipy.util.findimages(os.path.join(self._datadir, &#39;ILSVRC2012_img_val&#39;))
 
-    def _parse_cls(self, imageset=&#39;train&#39;):
-        &#34;&#34;&#34;ImageNet Classification, imageset = {train, val}&#34;&#34;&#34;
-        import xmltodict
-        if imageset == &#39;train&#39;:
-            imagesetfile = &#39;train_cls.txt&#39;
-        elif imageset == &#39;val&#39;:
-            imagesetfile = &#39;val.txt&#39;
-        else:
-            raise ValueError(&#39;unsupported imageset&#39;)
-        csv = readcsv(os.path.join(self.datadir, &#39;ImageSets&#39;, &#39;CLS-LOC&#39;, imagesetfile), separator=&#39; &#39;)
-        for (subpath, k) in csv:
-            xmlfile = &#39;%s.xml&#39; % os.path.join(self.datadir, &#39;Annotations&#39;, &#39;CLS-LOC&#39;, imageset, subpath)
-            imfile = &#39;%s.JPEG&#39; % os.path.join(self.datadir, &#39;Data&#39;, &#39;CLS-LOC&#39;, imageset, subpath)
+        # ground truth is imagenet synset index 1-1000, which is maped in the metadata
+        gt = vipy.util.readtxt(os.path.join(self._datadir, &#39;ILSVRC2012_devkit_t12&#39;, &#39;ILSVRC2012_devkit_t12&#39;, &#39;data&#39;, &#39;ILSVRC2012_validation_ground_truth.txt&#39;))               
+        for (f,y) in zip(sorted(imgfiles), gt):
+            imlist.append(vipy.image.ImageCategory(filename=f, category=y))  
+        return vipy.dataset.Dataset(imlist, &#39;imagenet2012_classification_val&#39;)
+                
+    def localization_trainset(self):
+        &#34;&#34;&#34;ImageNet localization, imageset = {train, val}&#34;&#34;&#34;        
+        imlist = []
+        classification = self.classification_trainset()
+        for im in classification:
+            objects = []            
+            xmlfile = &#39;%s.xml&#39; % filefull(im.filename().replace(&#39;ILSVRC2012_img_train&#39;, &#39;ILSVRC2012_bbox_train_v2&#39;))
             if os.path.exists(xmlfile):
-                d = xmltodict.parse(open(xmlfile, &#39;r&#39;).read())
-                objlist = d[&#39;annotation&#39;][&#39;object&#39;] if islist(d[&#39;annotation&#39;][&#39;object&#39;]) else [d[&#39;annotation&#39;][&#39;object&#39;]]
-                yield ImageCategory(filename=imfile, category=objlist[0][&#39;name&#39;])
-            else:
-                yield ImageCategory(filename=imfile, category=filepath(subpath))</code></pre>
+                d = ET.parse(xmlfile).getroot()
+                (name, xmin, ymin, xmax, ymax) = (d[5][0].text, d[5][4][0].text, d[5][4][1].text, d[5][4][2].text, d[5][4][3].text)
+                objects = [vipy.object.Detection(category=name, xmin=int(xmin), ymin=int(ymin), xmax=int(xmax), ymax=int(ymax))]
+            imlist.append(vipy.image.Scene(filename=im.filename(), category=im.category(), objects=objects))
+                
+        return vipy.dataset.Dataset(imlist, &#39;imagenet2012_localization_train&#39;)</code></pre>
 </details>
 <h3>Methods</h3>
 <dl>
-<dt id="vipy.data.imagenet.ImageNet.classes"><code class="name flex">
-<span>def <span class="ident">classes</span></span>(<span>self)</span>
+<dt id="vipy.data.imagenet.Imagenet2012.classification_trainset"><code class="name flex">
+<span>def <span class="ident">classification_trainset</span></span>(<span>self)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>ImageNet Classification, trainset</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+<a href="https://github.com/visym/vipy/blob/4bcf85ea6e5620da15f65d624a85c5ef5a975e01/vipy/data/imagenet.py#L50-L54" class="git-link">Browse git</a>
+</summary>
+<pre><code class="python">def classification_trainset(self):
+    &#34;&#34;&#34;ImageNet Classification, trainset&#34;&#34;&#34;
+    imgfiles = vipy.util.findimages(os.path.join(self._datadir, &#39;ILSVRC2012_img_train&#39;))
+    imlist = [vipy.image.ImageCategory(filename=f, category=filetail(filepath(f))) for f in imgfiles]
+    return vipy.dataset.Dataset(imlist, &#39;imagenet2012_classification_train&#39;)</code></pre>
+</details>
+</dd>
+<dt id="vipy.data.imagenet.Imagenet2012.classification_valset"><code class="name flex">
+<span>def <span class="ident">classification_valset</span></span>(<span>self)</span>
 </code></dt>
 <dd>
 <div class="desc"></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/246f0d16deb2cbe52f54a7ff3656d403d8b80214/vipy/data/imagenet.py#L38-L39" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/4bcf85ea6e5620da15f65d624a85c5ef5a975e01/vipy/data/imagenet.py#L56-L64" class="git-link">Browse git</a>
 </summary>
-<pre><code class="python">def classes(self):
-    return list(set([im.category() for im in self._parse_cls(&#39;val&#39;)]))</code></pre>
+<pre><code class="python">def classification_valset(self):
+    imlist = []
+    imgfiles = vipy.util.findimages(os.path.join(self._datadir, &#39;ILSVRC2012_img_val&#39;))
+
+    # ground truth is imagenet synset index 1-1000, which is maped in the metadata
+    gt = vipy.util.readtxt(os.path.join(self._datadir, &#39;ILSVRC2012_devkit_t12&#39;, &#39;ILSVRC2012_devkit_t12&#39;, &#39;data&#39;, &#39;ILSVRC2012_validation_ground_truth.txt&#39;))               
+    for (f,y) in zip(sorted(imgfiles), gt):
+        imlist.append(vipy.image.ImageCategory(filename=f, category=y))  
+    return vipy.dataset.Dataset(imlist, &#39;imagenet2012_classification_val&#39;)</code></pre>
+</details>
+</dd>
+<dt id="vipy.data.imagenet.Imagenet2012.localization_trainset"><code class="name flex">
+<span>def <span class="ident">localization_trainset</span></span>(<span>self)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>ImageNet localization, imageset = {train, val}</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+<a href="https://github.com/visym/vipy/blob/4bcf85ea6e5620da15f65d624a85c5ef5a975e01/vipy/data/imagenet.py#L66-L79" class="git-link">Browse git</a>
+</summary>
+<pre><code class="python">def localization_trainset(self):
+    &#34;&#34;&#34;ImageNet localization, imageset = {train, val}&#34;&#34;&#34;        
+    imlist = []
+    classification = self.classification_trainset()
+    for im in classification:
+        objects = []            
+        xmlfile = &#39;%s.xml&#39; % filefull(im.filename().replace(&#39;ILSVRC2012_img_train&#39;, &#39;ILSVRC2012_bbox_train_v2&#39;))
+        if os.path.exists(xmlfile):
+            d = ET.parse(xmlfile).getroot()
+            (name, xmin, ymin, xmax, ymax) = (d[5][0].text, d[5][4][0].text, d[5][4][1].text, d[5][4][2].text, d[5][4][3].text)
+            objects = [vipy.object.Detection(category=name, xmin=int(xmin), ymin=int(ymin), xmax=int(xmax), ymax=int(ymax))]
+        imlist.append(vipy.image.Scene(filename=im.filename(), category=im.category(), objects=objects))
+            
+    return vipy.dataset.Dataset(imlist, &#39;imagenet2012_localization_train&#39;)</code></pre>
+</details>
+</dd>
+<dt id="vipy.data.imagenet.Imagenet2012.synset_to_category"><code class="name flex">
+<span>def <span class="ident">synset_to_category</span></span>(<span>self, s=None)</span>
+</code></dt>
+<dd>
+<div class="desc"></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+<a href="https://github.com/visym/vipy/blob/4bcf85ea6e5620da15f65d624a85c5ef5a975e01/vipy/data/imagenet.py#L47-L48" class="git-link">Browse git</a>
+</summary>
+<pre><code class="python">def synset_to_category(self, s=None):
+    return self._synset_to_categorylist if s is None else self._synset_to_categorylist[s]</code></pre>
 </details>
 </dd>
 </dl>
+</dd>
+<dt id="vipy.data.imagenet.Imagenet21K"><code class="flex name class">
+<span>class <span class="ident">Imagenet21K</span></span>
+<span>(</span><span>datadir, aslemma=True)</span>
+</code></dt>
+<dd>
+<div class="desc"><p><a href="https://image-net.org/download-images.php,">https://image-net.org/download-images.php,</a> imagenet-21K 2021 winter release</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+<a href="https://github.com/visym/vipy/blob/4bcf85ea6e5620da15f65d624a85c5ef5a975e01/vipy/data/imagenet.py#L110-L139" class="git-link">Browse git</a>
+</summary>
+<pre><code class="python">class Imagenet21K(vipy.dataset.Dataset):
+    &#34;&#34;&#34;https://image-net.org/download-images.php, imagenet-21K 2021 winter release&#34;&#34;&#34;
+    def __init__(self, datadir, aslemma=True):
+        self._datadir = vipy.util.remkdir(datadir)
+        
+        if not os.path.exists(os.path.join(datadir, &#39;winter21_whole.tar.gz&#39;)):
+            print(&#39;[vipy.data.imagenet]: downloading Imagenet-21K to &#34;%s&#34;&#39; % self._outdir)            
+            vipy.downloader.download_and_unpack(IMAGENET21K_URL, self._outdir, sha1=None)
+
+        for f in vipy.util.findtar(os.path.join(datadir, &#39;winter21_whole&#39;)):
+            if not os.path.exists(filefull(f)):
+                vipy.downloader.unpack(f, filefull(f))
+                os.remove(f)  # cleanup
+                
+        if not os.path.exists(os.path.join(self._datadir, &#39;wordnet_id.txt&#39;)):
+            vipy.downloader.download(IMAGENET21K_WORDNET_ID, os.path.join(self._datadir, &#39;wordnet_id.txt&#39;))
+        if not os.path.exists(os.path.join(self._datadir, &#39;wordnet_lemmas.txt&#39;)):
+            vipy.downloader.download(IMAGENET21K_WORDNET_LEMMAS, os.path.join(self._datadir, &#39;wordnet_lemmas.txt&#39;))
+
+        # https://github.com/google-research/big_transfer/issues/7
+        self._synset_to_categorylist = {x:[y.rstrip().lstrip() for y in lemma.split(&#39;,&#39;)] for (x,lemma) in zip(vipy.util.readtxt(os.path.join(self._datadir, &#39;wordnet_id.txt&#39;)), vipy.util.readtxt(os.path.join(self._datadir, &#39;wordnet_lemmas.txt&#39;)))}
+
+        f_category = lambda c: self._synset_to_categorylist[c][0] if aslemma else c
+        imlist = [vipy.image.ImageCategory(filename=f,
+                                           attributes={&#39;wordnet_id&#39;:vipy.util.filebase(vipy.util.filepath(f))},
+                                           category=f_category(vipy.util.filebase(vipy.util.filepath(f)))) for f in vipy.util.findimages(os.path.join(datadir, &#39;winter21_whole&#39;))]
+        super().__init__(imlist, id=&#39;imagenet21k&#39;)
+
+    def synset_to_category(self, s=None):
+        return self._synset_to_categorylist if s is None else self._synset_to_categorylist[s]</code></pre>
+</details>
+<h3>Ancestors</h3>
+<ul class="hlist">
+<li><a title="vipy.dataset.Dataset" href="../dataset.html#vipy.dataset.Dataset">Dataset</a></li>
+</ul>
+<h3>Methods</h3>
+<dl>
+<dt id="vipy.data.imagenet.Imagenet21K.synset_to_category"><code class="name flex">
+<span>def <span class="ident">synset_to_category</span></span>(<span>self, s=None)</span>
+</code></dt>
+<dd>
+<div class="desc"></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+<a href="https://github.com/visym/vipy/blob/4bcf85ea6e5620da15f65d624a85c5ef5a975e01/vipy/data/imagenet.py#L138-L139" class="git-link">Browse git</a>
+</summary>
+<pre><code class="python">def synset_to_category(self, s=None):
+    return self._synset_to_categorylist if s is None else self._synset_to_categorylist[s]</code></pre>
+</details>
+</dd>
+</dl>
+<h3>Inherited members</h3>
+<ul class="hlist">
+<li><code><b><a title="vipy.dataset.Dataset" href="../dataset.html#vipy.dataset.Dataset">Dataset</a></b></code>:
+<ul class="hlist">
+<li><code><a title="vipy.dataset.Dataset.archive" href="../dataset.html#vipy.dataset.Dataset.archive">archive</a></code></li>
+<li><code><a title="vipy.dataset.Dataset.categories" href="../dataset.html#vipy.dataset.Dataset.categories">categories</a></code></li>
+<li><code><a title="vipy.dataset.Dataset.chunk" href="../dataset.html#vipy.dataset.Dataset.chunk">chunk</a></code></li>
+<li><code><a title="vipy.dataset.Dataset.class_to_index" href="../dataset.html#vipy.dataset.Dataset.class_to_index">class_to_index</a></code></li>
+<li><code><a title="vipy.dataset.Dataset.classes" href="../dataset.html#vipy.dataset.Dataset.classes">classes</a></code></li>
+<li><code><a title="vipy.dataset.Dataset.classlist" href="../dataset.html#vipy.dataset.Dataset.classlist">classlist</a></code></li>
+<li><code><a title="vipy.dataset.Dataset.clone" href="../dataset.html#vipy.dataset.Dataset.clone">clone</a></code></li>
+<li><code><a title="vipy.dataset.Dataset.count" href="../dataset.html#vipy.dataset.Dataset.count">count</a></code></li>
+<li><code><a title="vipy.dataset.Dataset.countby" href="../dataset.html#vipy.dataset.Dataset.countby">countby</a></code></li>
+<li><code><a title="vipy.dataset.Dataset.density" href="../dataset.html#vipy.dataset.Dataset.density">density</a></code></li>
+<li><code><a title="vipy.dataset.Dataset.duration_in_seconds" href="../dataset.html#vipy.dataset.Dataset.duration_in_seconds">duration_in_seconds</a></code></li>
+<li><code><a title="vipy.dataset.Dataset.filter" href="../dataset.html#vipy.dataset.Dataset.filter">filter</a></code></li>
+<li><code><a title="vipy.dataset.Dataset.flatten" href="../dataset.html#vipy.dataset.Dataset.flatten">flatten</a></code></li>
+<li><code><a title="vipy.dataset.Dataset.id" href="../dataset.html#vipy.dataset.Dataset.id">id</a></code></li>
+<li><code><a title="vipy.dataset.Dataset.index_to_class" href="../dataset.html#vipy.dataset.Dataset.index_to_class">index_to_class</a></code></li>
+<li><code><a title="vipy.dataset.Dataset.inverse_frequency_weight" href="../dataset.html#vipy.dataset.Dataset.inverse_frequency_weight">inverse_frequency_weight</a></code></li>
+<li><code><a title="vipy.dataset.Dataset.istype" href="../dataset.html#vipy.dataset.Dataset.istype">istype</a></code></li>
+<li><code><a title="vipy.dataset.Dataset.jsondir" href="../dataset.html#vipy.dataset.Dataset.jsondir">jsondir</a></code></li>
+<li><code><a title="vipy.dataset.Dataset.label_to_index" href="../dataset.html#vipy.dataset.Dataset.label_to_index">label_to_index</a></code></li>
+<li><code><a title="vipy.dataset.Dataset.list" href="../dataset.html#vipy.dataset.Dataset.list">list</a></code></li>
+<li><code><a title="vipy.dataset.Dataset.load" href="../dataset.html#vipy.dataset.Dataset.load">load</a></code></li>
+<li><code><a title="vipy.dataset.Dataset.map" href="../dataset.html#vipy.dataset.Dataset.map">map</a></code></li>
+<li><code><a title="vipy.dataset.Dataset.merge" href="../dataset.html#vipy.dataset.Dataset.merge">merge</a></code></li>
+<li><code><a title="vipy.dataset.Dataset.minibatch" href="../dataset.html#vipy.dataset.Dataset.minibatch">minibatch</a></code></li>
+<li><code><a title="vipy.dataset.Dataset.multilabel_inverse_frequency_weight" href="../dataset.html#vipy.dataset.Dataset.multilabel_inverse_frequency_weight">multilabel_inverse_frequency_weight</a></code></li>
+<li><code><a title="vipy.dataset.Dataset.num_categories" href="../dataset.html#vipy.dataset.Dataset.num_categories">num_categories</a></code></li>
+<li><code><a title="vipy.dataset.Dataset.num_classes" href="../dataset.html#vipy.dataset.Dataset.num_classes">num_classes</a></code></li>
+<li><code><a title="vipy.dataset.Dataset.num_labels" href="../dataset.html#vipy.dataset.Dataset.num_labels">num_labels</a></code></li>
+<li><code><a title="vipy.dataset.Dataset.percentage" href="../dataset.html#vipy.dataset.Dataset.percentage">percentage</a></code></li>
+<li><code><a title="vipy.dataset.Dataset.replace" href="../dataset.html#vipy.dataset.Dataset.replace">replace</a></code></li>
+<li><code><a title="vipy.dataset.Dataset.save" href="../dataset.html#vipy.dataset.Dataset.save">save</a></code></li>
+<li><code><a title="vipy.dataset.Dataset.set" href="../dataset.html#vipy.dataset.Dataset.set">set</a></code></li>
+<li><code><a title="vipy.dataset.Dataset.shuffle" href="../dataset.html#vipy.dataset.Dataset.shuffle">shuffle</a></code></li>
+<li><code><a title="vipy.dataset.Dataset.shuffler" href="../dataset.html#vipy.dataset.Dataset.shuffler">shuffler</a></code></li>
+<li><code><a title="vipy.dataset.Dataset.sort" href="../dataset.html#vipy.dataset.Dataset.sort">sort</a></code></li>
+<li><code><a title="vipy.dataset.Dataset.split" href="../dataset.html#vipy.dataset.Dataset.split">split</a></code></li>
+<li><code><a title="vipy.dataset.Dataset.split_by_videoid" href="../dataset.html#vipy.dataset.Dataset.split_by_videoid">split_by_videoid</a></code></li>
+<li><code><a title="vipy.dataset.Dataset.synonym" href="../dataset.html#vipy.dataset.Dataset.synonym">synonym</a></code></li>
+<li><code><a title="vipy.dataset.Dataset.take" href="../dataset.html#vipy.dataset.Dataset.take">take</a></code></li>
+<li><code><a title="vipy.dataset.Dataset.take_per_category" href="../dataset.html#vipy.dataset.Dataset.take_per_category">take_per_category</a></code></li>
+<li><code><a title="vipy.dataset.Dataset.takefilter" href="../dataset.html#vipy.dataset.Dataset.takefilter">takefilter</a></code></li>
+<li><code><a title="vipy.dataset.Dataset.takelist" href="../dataset.html#vipy.dataset.Dataset.takelist">takelist</a></code></li>
+<li><code><a title="vipy.dataset.Dataset.takeone" href="../dataset.html#vipy.dataset.Dataset.takeone">takeone</a></code></li>
+<li><code><a title="vipy.dataset.Dataset.to_torch" href="../dataset.html#vipy.dataset.Dataset.to_torch">to_torch</a></code></li>
+<li><code><a title="vipy.dataset.Dataset.to_torch_tensordir" href="../dataset.html#vipy.dataset.Dataset.to_torch_tensordir">to_torch_tensordir</a></code></li>
+<li><code><a title="vipy.dataset.Dataset.tohtml" href="../dataset.html#vipy.dataset.Dataset.tohtml">tohtml</a></code></li>
+<li><code><a title="vipy.dataset.Dataset.tojsondir" href="../dataset.html#vipy.dataset.Dataset.tojsondir">tojsondir</a></code></li>
+<li><code><a title="vipy.dataset.Dataset.tolist" href="../dataset.html#vipy.dataset.Dataset.tolist">tolist</a></code></li>
+<li><code><a title="vipy.dataset.Dataset.video_duration_in_seconds" href="../dataset.html#vipy.dataset.Dataset.video_duration_in_seconds">video_duration_in_seconds</a></code></li>
+<li><code><a title="vipy.dataset.Dataset.video_montage" href="../dataset.html#vipy.dataset.Dataset.video_montage">video_montage</a></code></li>
+<li><code><a title="vipy.dataset.Dataset.zip" href="../dataset.html#vipy.dataset.Dataset.zip">zip</a></code></li>
+</ul>
+</li>
+</ul>
+</dd>
+<dt id="vipy.data.imagenet.Imagenet21K_Resized"><code class="flex name class">
+<span>class <span class="ident">Imagenet21K_Resized</span></span>
+<span>(</span><span>datadir, aslemma=True)</span>
+</code></dt>
+<dd>
+<div class="desc"><p><a href="https://image-net.org/download-images.php,">https://image-net.org/download-images.php,</a> imagenet-21K 2021 release (resized)</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+<a href="https://github.com/visym/vipy/blob/4bcf85ea6e5620da15f65d624a85c5ef5a975e01/vipy/data/imagenet.py#L83-L107" class="git-link">Browse git</a>
+</summary>
+<pre><code class="python">class Imagenet21K_Resized(vipy.dataset.Dataset):
+    &#34;&#34;&#34;https://image-net.org/download-images.php, imagenet-21K 2021 release (resized)&#34;&#34;&#34;
+    def __init__(self, datadir, aslemma=True):
+        self._datadir = vipy.util.remkdir(datadir)
+        
+        if not os.path.exists(os.path.join(datadir, &#39;imagenet21k_resized.tar.gz&#39;)):
+            print(&#39;[vipy.data.imagenet]: downloading Imagenet-21K resized to &#34;%s&#34;&#39; % self._outdir)            
+            vipy.downloader.download_and_unpack(IMAGENET_21K_RESIZED_URL, self._outdir, sha1=None)
+
+        if not os.path.exists(os.path.join(self._datadir, &#39;wordnet_id.txt&#39;)):
+            vipy.downloader.download(IMAGENET21K_WORDNET_ID, os.path.join(self._datadir, &#39;wordnet_id.txt&#39;))
+        if not os.path.exists(os.path.join(self._datadir, &#39;wordnet_lemmas.txt&#39;)):
+            vipy.downloader.download(IMAGENET21K_WORDNET_LEMMAS, os.path.join(self._datadir, &#39;wordnet_lemmas.txt&#39;))
+
+        # https://github.com/google-research/big_transfer/issues/7
+        self._synset_to_categorylist = {x:[y.rstrip().lstrip() for y in lemma.split(&#39;,&#39;)] for (x,lemma) in zip(vipy.util.readtxt(os.path.join(self._datadir, &#39;wordnet_id.txt&#39;)), vipy.util.readtxt(os.path.join(self._datadir, &#39;wordnet_lemmas.txt&#39;)))}
+
+        f_category = lambda c: self._synset_to_categorylist[c][0] if aslemma else c
+        imlist = [vipy.image.ImageCategory(filename=f,
+                                           attributes={&#39;wordnet_id&#39;:vipy.util.filebase(vipy.util.filepath(f))},
+                                           category=f_category(vipy.util.filebase(vipy.util.filepath(f)))) for f in vipy.util.findimages(os.path.join(datadir, &#39;imagenet21k_resized&#39;))]
+        super().__init__(imlist, id=&#39;imagenet21k&#39;)
+
+    def synset_to_category(self, s=None):
+        return self._synset_to_categorylist if s is None else self._synset_to_categorylist[s]</code></pre>
+</details>
+<h3>Ancestors</h3>
+<ul class="hlist">
+<li><a title="vipy.dataset.Dataset" href="../dataset.html#vipy.dataset.Dataset">Dataset</a></li>
+</ul>
+<h3>Methods</h3>
+<dl>
+<dt id="vipy.data.imagenet.Imagenet21K_Resized.synset_to_category"><code class="name flex">
+<span>def <span class="ident">synset_to_category</span></span>(<span>self, s=None)</span>
+</code></dt>
+<dd>
+<div class="desc"></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+<a href="https://github.com/visym/vipy/blob/4bcf85ea6e5620da15f65d624a85c5ef5a975e01/vipy/data/imagenet.py#L106-L107" class="git-link">Browse git</a>
+</summary>
+<pre><code class="python">def synset_to_category(self, s=None):
+    return self._synset_to_categorylist if s is None else self._synset_to_categorylist[s]</code></pre>
+</details>
+</dd>
+</dl>
+<h3>Inherited members</h3>
+<ul class="hlist">
+<li><code><b><a title="vipy.dataset.Dataset" href="../dataset.html#vipy.dataset.Dataset">Dataset</a></b></code>:
+<ul class="hlist">
+<li><code><a title="vipy.dataset.Dataset.archive" href="../dataset.html#vipy.dataset.Dataset.archive">archive</a></code></li>
+<li><code><a title="vipy.dataset.Dataset.categories" href="../dataset.html#vipy.dataset.Dataset.categories">categories</a></code></li>
+<li><code><a title="vipy.dataset.Dataset.chunk" href="../dataset.html#vipy.dataset.Dataset.chunk">chunk</a></code></li>
+<li><code><a title="vipy.dataset.Dataset.class_to_index" href="../dataset.html#vipy.dataset.Dataset.class_to_index">class_to_index</a></code></li>
+<li><code><a title="vipy.dataset.Dataset.classes" href="../dataset.html#vipy.dataset.Dataset.classes">classes</a></code></li>
+<li><code><a title="vipy.dataset.Dataset.classlist" href="../dataset.html#vipy.dataset.Dataset.classlist">classlist</a></code></li>
+<li><code><a title="vipy.dataset.Dataset.clone" href="../dataset.html#vipy.dataset.Dataset.clone">clone</a></code></li>
+<li><code><a title="vipy.dataset.Dataset.count" href="../dataset.html#vipy.dataset.Dataset.count">count</a></code></li>
+<li><code><a title="vipy.dataset.Dataset.countby" href="../dataset.html#vipy.dataset.Dataset.countby">countby</a></code></li>
+<li><code><a title="vipy.dataset.Dataset.density" href="../dataset.html#vipy.dataset.Dataset.density">density</a></code></li>
+<li><code><a title="vipy.dataset.Dataset.duration_in_seconds" href="../dataset.html#vipy.dataset.Dataset.duration_in_seconds">duration_in_seconds</a></code></li>
+<li><code><a title="vipy.dataset.Dataset.filter" href="../dataset.html#vipy.dataset.Dataset.filter">filter</a></code></li>
+<li><code><a title="vipy.dataset.Dataset.flatten" href="../dataset.html#vipy.dataset.Dataset.flatten">flatten</a></code></li>
+<li><code><a title="vipy.dataset.Dataset.id" href="../dataset.html#vipy.dataset.Dataset.id">id</a></code></li>
+<li><code><a title="vipy.dataset.Dataset.index_to_class" href="../dataset.html#vipy.dataset.Dataset.index_to_class">index_to_class</a></code></li>
+<li><code><a title="vipy.dataset.Dataset.inverse_frequency_weight" href="../dataset.html#vipy.dataset.Dataset.inverse_frequency_weight">inverse_frequency_weight</a></code></li>
+<li><code><a title="vipy.dataset.Dataset.istype" href="../dataset.html#vipy.dataset.Dataset.istype">istype</a></code></li>
+<li><code><a title="vipy.dataset.Dataset.jsondir" href="../dataset.html#vipy.dataset.Dataset.jsondir">jsondir</a></code></li>
+<li><code><a title="vipy.dataset.Dataset.label_to_index" href="../dataset.html#vipy.dataset.Dataset.label_to_index">label_to_index</a></code></li>
+<li><code><a title="vipy.dataset.Dataset.list" href="../dataset.html#vipy.dataset.Dataset.list">list</a></code></li>
+<li><code><a title="vipy.dataset.Dataset.load" href="../dataset.html#vipy.dataset.Dataset.load">load</a></code></li>
+<li><code><a title="vipy.dataset.Dataset.map" href="../dataset.html#vipy.dataset.Dataset.map">map</a></code></li>
+<li><code><a title="vipy.dataset.Dataset.merge" href="../dataset.html#vipy.dataset.Dataset.merge">merge</a></code></li>
+<li><code><a title="vipy.dataset.Dataset.minibatch" href="../dataset.html#vipy.dataset.Dataset.minibatch">minibatch</a></code></li>
+<li><code><a title="vipy.dataset.Dataset.multilabel_inverse_frequency_weight" href="../dataset.html#vipy.dataset.Dataset.multilabel_inverse_frequency_weight">multilabel_inverse_frequency_weight</a></code></li>
+<li><code><a title="vipy.dataset.Dataset.num_categories" href="../dataset.html#vipy.dataset.Dataset.num_categories">num_categories</a></code></li>
+<li><code><a title="vipy.dataset.Dataset.num_classes" href="../dataset.html#vipy.dataset.Dataset.num_classes">num_classes</a></code></li>
+<li><code><a title="vipy.dataset.Dataset.num_labels" href="../dataset.html#vipy.dataset.Dataset.num_labels">num_labels</a></code></li>
+<li><code><a title="vipy.dataset.Dataset.percentage" href="../dataset.html#vipy.dataset.Dataset.percentage">percentage</a></code></li>
+<li><code><a title="vipy.dataset.Dataset.replace" href="../dataset.html#vipy.dataset.Dataset.replace">replace</a></code></li>
+<li><code><a title="vipy.dataset.Dataset.save" href="../dataset.html#vipy.dataset.Dataset.save">save</a></code></li>
+<li><code><a title="vipy.dataset.Dataset.set" href="../dataset.html#vipy.dataset.Dataset.set">set</a></code></li>
+<li><code><a title="vipy.dataset.Dataset.shuffle" href="../dataset.html#vipy.dataset.Dataset.shuffle">shuffle</a></code></li>
+<li><code><a title="vipy.dataset.Dataset.shuffler" href="../dataset.html#vipy.dataset.Dataset.shuffler">shuffler</a></code></li>
+<li><code><a title="vipy.dataset.Dataset.sort" href="../dataset.html#vipy.dataset.Dataset.sort">sort</a></code></li>
+<li><code><a title="vipy.dataset.Dataset.split" href="../dataset.html#vipy.dataset.Dataset.split">split</a></code></li>
+<li><code><a title="vipy.dataset.Dataset.split_by_videoid" href="../dataset.html#vipy.dataset.Dataset.split_by_videoid">split_by_videoid</a></code></li>
+<li><code><a title="vipy.dataset.Dataset.synonym" href="../dataset.html#vipy.dataset.Dataset.synonym">synonym</a></code></li>
+<li><code><a title="vipy.dataset.Dataset.take" href="../dataset.html#vipy.dataset.Dataset.take">take</a></code></li>
+<li><code><a title="vipy.dataset.Dataset.take_per_category" href="../dataset.html#vipy.dataset.Dataset.take_per_category">take_per_category</a></code></li>
+<li><code><a title="vipy.dataset.Dataset.takefilter" href="../dataset.html#vipy.dataset.Dataset.takefilter">takefilter</a></code></li>
+<li><code><a title="vipy.dataset.Dataset.takelist" href="../dataset.html#vipy.dataset.Dataset.takelist">takelist</a></code></li>
+<li><code><a title="vipy.dataset.Dataset.takeone" href="../dataset.html#vipy.dataset.Dataset.takeone">takeone</a></code></li>
+<li><code><a title="vipy.dataset.Dataset.to_torch" href="../dataset.html#vipy.dataset.Dataset.to_torch">to_torch</a></code></li>
+<li><code><a title="vipy.dataset.Dataset.to_torch_tensordir" href="../dataset.html#vipy.dataset.Dataset.to_torch_tensordir">to_torch_tensordir</a></code></li>
+<li><code><a title="vipy.dataset.Dataset.tohtml" href="../dataset.html#vipy.dataset.Dataset.tohtml">tohtml</a></code></li>
+<li><code><a title="vipy.dataset.Dataset.tojsondir" href="../dataset.html#vipy.dataset.Dataset.tojsondir">tojsondir</a></code></li>
+<li><code><a title="vipy.dataset.Dataset.tolist" href="../dataset.html#vipy.dataset.Dataset.tolist">tolist</a></code></li>
+<li><code><a title="vipy.dataset.Dataset.video_duration_in_seconds" href="../dataset.html#vipy.dataset.Dataset.video_duration_in_seconds">video_duration_in_seconds</a></code></li>
+<li><code><a title="vipy.dataset.Dataset.video_montage" href="../dataset.html#vipy.dataset.Dataset.video_montage">video_montage</a></code></li>
+<li><code><a title="vipy.dataset.Dataset.zip" href="../dataset.html#vipy.dataset.Dataset.zip">zip</a></code></li>
+</ul>
+</li>
+</ul>
 </dd>
 </dl>
 </section>
@@ -248,9 +638,24 @@ setTimeout(() => input.focus(), 100);
 <li><h3><a href="#header-classes">Classes</a></h3>
 <ul>
 <li>
-<h4><code><a title="vipy.data.imagenet.ImageNet" href="#vipy.data.imagenet.ImageNet">ImageNet</a></code></h4>
+<h4><code><a title="vipy.data.imagenet.Imagenet2012" href="#vipy.data.imagenet.Imagenet2012">Imagenet2012</a></code></h4>
 <ul class="">
-<li><code><a title="vipy.data.imagenet.ImageNet.classes" href="#vipy.data.imagenet.ImageNet.classes">classes</a></code></li>
+<li><code><a title="vipy.data.imagenet.Imagenet2012.classification_trainset" href="#vipy.data.imagenet.Imagenet2012.classification_trainset">classification_trainset</a></code></li>
+<li><code><a title="vipy.data.imagenet.Imagenet2012.classification_valset" href="#vipy.data.imagenet.Imagenet2012.classification_valset">classification_valset</a></code></li>
+<li><code><a title="vipy.data.imagenet.Imagenet2012.localization_trainset" href="#vipy.data.imagenet.Imagenet2012.localization_trainset">localization_trainset</a></code></li>
+<li><code><a title="vipy.data.imagenet.Imagenet2012.synset_to_category" href="#vipy.data.imagenet.Imagenet2012.synset_to_category">synset_to_category</a></code></li>
+</ul>
+</li>
+<li>
+<h4><code><a title="vipy.data.imagenet.Imagenet21K" href="#vipy.data.imagenet.Imagenet21K">Imagenet21K</a></code></h4>
+<ul class="">
+<li><code><a title="vipy.data.imagenet.Imagenet21K.synset_to_category" href="#vipy.data.imagenet.Imagenet21K.synset_to_category">synset_to_category</a></code></li>
+</ul>
+</li>
+<li>
+<h4><code><a title="vipy.data.imagenet.Imagenet21K_Resized" href="#vipy.data.imagenet.Imagenet21K_Resized">Imagenet21K_Resized</a></code></h4>
+<ul class="">
+<li><code><a title="vipy.data.imagenet.Imagenet21K_Resized.synset_to_category" href="#vipy.data.imagenet.Imagenet21K_Resized.synset_to_category">synset_to_category</a></code></li>
 </ul>
 </li>
 </ul>
