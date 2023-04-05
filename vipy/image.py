@@ -1722,6 +1722,12 @@ class Image(object):
         im = heyvi.detection.ObjectDetector()(Scene.cast(self.clone()).mindim(mindim), conf=conf, objects=['person']).mindim(self.mindim())
         return Scene.cast(self).union(im) if union else im        
 
+    def qrcode_recognition(self):
+        """Detect and decode one QR code in the current image using OpenCV, and return the string contents of the QR code or None if the detection failed to detect a code.  (Requires OpenCV)"""
+        try_import('cv2'); import cv2
+        (value, corners, rectified) = cv2.QRCodeDetector().detectAndDecode(self.load().array())
+        return value if len(value)>0 else None
+    
     def faceblur(self, radius=4, mindim=256):
         """Replace pixels for all detected faces with `vipy.image.Scene.blurmask`, add locations of detected faces into attributes.
 

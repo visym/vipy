@@ -293,7 +293,7 @@ def montage(imlist, imgheight=256, imgwidth=256, gridrows=None, gridcols=None, a
     """
     assert (isinstance(imlist, list) or isinstance(imlist, tuple)) and len(imlist)>0
     
-    (rows, cols) = (gridrows, gridcols) if isinstance(imlist[0], vipy.image.Image) else (len(imlist), max([len(r) for r in imlist]))
+    (rows, cols) = (gridrows, gridcols) if isinstance(imlist[0], vipy.image.Image) else (len(imlist), max([len(r) if isinstance(r, list) or isinstance(r, tuple) else 1  for r in imlist]))
     imlist = vipy.util.flatlist(imlist)
     (n,m) = (imgheight, imgwidth)
 
