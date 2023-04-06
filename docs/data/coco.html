@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1" />
 <meta name="generator" content="pdoc 0.10.0" />
 <meta name="google-site-verification" content="aB8LkQegj94_TJPdrcJm2ldIRWyXY82Jp24Gtkdgyn0" />
-<title>vipy.data.caltech256 API documentation</title>
+<title>vipy.data.coco API documentation</title>
 <meta name="description" content="" />
 <link rel="preload stylesheet" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/10up-sanitize.css/11.0.1/sanitize.min.css" integrity="sha256-PK9q560IAAa6WVRRh76LtCaI8pjTJ2z11v0miyNNjrs=" crossorigin>
 <link rel="preload stylesheet" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/10up-sanitize.css/11.0.1/typography.min.css" integrity="sha256-7l/o7C8jubJiy74VsKTidCy1yBkRtiUGbVkYBylBqUg=" crossorigin>
@@ -20,43 +20,51 @@
 <main>
 <article id="content">
 <header>
-<h1 class="title">Module <code>vipy.data.caltech256</code></h1>
+<h1 class="title">Module <code>vipy.data.coco</code></h1>
 </header>
 <section id="section-intro">
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/data/caltech256.py#L1-L29" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/data/coco.py#L1-L37" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">import os
+import vipy
 import vipy.downloader
-import vipy.dataset
-from vipy.util import remkdir
-from vipy.image import ImageCategory
 
 
-URL = &#39;https://data.caltech.edu/records/nyy15-4j048/files/256_ObjectCategories.tar&#39;
-SHA1 = None
+COCO_2014_IMAGE_URL = &#39;http://images.cocodataset.org/zips/train2014.zip&#39;
+COCO_2014_ANNO_URL = &#39;http://images.cocodataset.org/annotations/annotations_trainval2014.zip&#39;
 
 
-class Caltech256(vipy.dataset.Dataset):
-    &#34;&#34;&#34;Caltech-256 dataset: https://data.caltech.edu/records/nyy15-4j048&#34;&#34;&#34;
-    def __init__(self, datadir):
-        # Download (if not cached)
-        self._datadir = remkdir(datadir)        
-        if not os.path.exists(os.path.join(self._datadir, &#39;256_ObjectCategories&#39;)):
-            vipy.downloader.download_and_unpack(URL, self._datadir, sha1=SHA1)            
-            
-        # Create dataset
-        imlist = []
-        categorydir = os.path.join(self._datadir, &#39;256_ObjectCategories&#39;)        
-        for (idx_category, category) in enumerate(os.listdir(categorydir)):
-            imdir = os.path.join(categorydir, category)
-            for im in os.listdir(imdir):
-                imlist.append(ImageCategory(filename=os.path.join(categorydir, category, im), category=category))
+class Detection_TrainVal_2014(vipy.dataset.Dataset):
+    &#34;&#34;&#34;Project: https://cocodataset.org&#34;&#34;&#34;
+    def __init__(self, outdir):
+        self._outdir = vipy.util.remkdir(outdir)
+        
+        if not os.path.exists(os.path.join(self._outdir, &#39;train2014.zip&#39;)):
+            print(&#39;[vipy.data.coco]: downloading COCO 2014 train/val images to &#34;%s&#34;&#39; % self._outdir)            
+            vipy.downloader.download_and_unpack(COCO_2014_IMAGE_URL, self._outdir, sha1=None)
 
-        super().__init__(imlist, id=&#39;caltech-256&#39;)
-            </code></pre>
+        if not os.path.exists(os.path.join(self._outdir, &#39;annotations_trainval2014.zip&#39;)):
+            print(&#39;[vipy.data.coco]: downloading COCO 2014 train/val annotations to &#34;%s&#34;&#39; % self._outdir)            
+            vipy.downloader.download_and_unpack(COCO_2014_ANNO_URL, self._outdir, sha1=None)
+
+        json = vipy.util.readjson(os.path.join(self._outdir, &#39;annotations&#39;, &#39;instances_train2014.json&#39;))
+
+        d_imageid_to_filename = {x[&#39;id&#39;]:os.path.join(self._outdir, &#39;train2014&#39;, x[&#39;file_name&#39;]) for x in json[&#39;images&#39;]}
+        d_imageid_to_annotations = vipy.util.groupbyasdict(json[&#39;annotations&#39;], lambda x: x[&#39;image_id&#39;])
+        d_categoryid_to_category = {x[&#39;id&#39;]:x[&#39;name&#39;] for x in json[&#39;categories&#39;]}
+        
+        imlist = [vipy.image.Scene(filename=f,
+                                   objects=[vipy.object.Detection(label=d_categoryid_to_category[x[&#39;category_id&#39;]], xywh=x[&#39;bbox&#39;])
+                                            for x in d_imageid_to_annotations[iid]] if iid in d_imageid_to_annotations else None)
+                  for (iid,f) in d_imageid_to_filename.items()]
+        
+        super().__init__(imlist, id=&#39;coco_2014&#39;)
+
+        
+        </code></pre>
 </details>
 </section>
 <section>
@@ -68,34 +76,42 @@ class Caltech256(vipy.dataset.Dataset):
 <section>
 <h2 class="section-title" id="header-classes">Classes</h2>
 <dl>
-<dt id="vipy.data.caltech256.Caltech256"><code class="flex name class">
-<span>class <span class="ident">Caltech256</span></span>
-<span>(</span><span>datadir)</span>
+<dt id="vipy.data.coco.Detection_TrainVal_2014"><code class="flex name class">
+<span>class <span class="ident">Detection_TrainVal_2014</span></span>
+<span>(</span><span>outdir)</span>
 </code></dt>
 <dd>
-<div class="desc"><p>Caltech-256 dataset: <a href="https://data.caltech.edu/records/nyy15-4j048">https://data.caltech.edu/records/nyy15-4j048</a></p></div>
+<div class="desc"><p>Project: <a href="https://cocodataset.org">https://cocodataset.org</a></p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/data/caltech256.py#L12-L28" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/data/coco.py#L10-L34" class="git-link">Browse git</a>
 </summary>
-<pre><code class="python">class Caltech256(vipy.dataset.Dataset):
-    &#34;&#34;&#34;Caltech-256 dataset: https://data.caltech.edu/records/nyy15-4j048&#34;&#34;&#34;
-    def __init__(self, datadir):
-        # Download (if not cached)
-        self._datadir = remkdir(datadir)        
-        if not os.path.exists(os.path.join(self._datadir, &#39;256_ObjectCategories&#39;)):
-            vipy.downloader.download_and_unpack(URL, self._datadir, sha1=SHA1)            
-            
-        # Create dataset
-        imlist = []
-        categorydir = os.path.join(self._datadir, &#39;256_ObjectCategories&#39;)        
-        for (idx_category, category) in enumerate(os.listdir(categorydir)):
-            imdir = os.path.join(categorydir, category)
-            for im in os.listdir(imdir):
-                imlist.append(ImageCategory(filename=os.path.join(categorydir, category, im), category=category))
+<pre><code class="python">class Detection_TrainVal_2014(vipy.dataset.Dataset):
+    &#34;&#34;&#34;Project: https://cocodataset.org&#34;&#34;&#34;
+    def __init__(self, outdir):
+        self._outdir = vipy.util.remkdir(outdir)
+        
+        if not os.path.exists(os.path.join(self._outdir, &#39;train2014.zip&#39;)):
+            print(&#39;[vipy.data.coco]: downloading COCO 2014 train/val images to &#34;%s&#34;&#39; % self._outdir)            
+            vipy.downloader.download_and_unpack(COCO_2014_IMAGE_URL, self._outdir, sha1=None)
 
-        super().__init__(imlist, id=&#39;caltech-256&#39;)</code></pre>
+        if not os.path.exists(os.path.join(self._outdir, &#39;annotations_trainval2014.zip&#39;)):
+            print(&#39;[vipy.data.coco]: downloading COCO 2014 train/val annotations to &#34;%s&#34;&#39; % self._outdir)            
+            vipy.downloader.download_and_unpack(COCO_2014_ANNO_URL, self._outdir, sha1=None)
+
+        json = vipy.util.readjson(os.path.join(self._outdir, &#39;annotations&#39;, &#39;instances_train2014.json&#39;))
+
+        d_imageid_to_filename = {x[&#39;id&#39;]:os.path.join(self._outdir, &#39;train2014&#39;, x[&#39;file_name&#39;]) for x in json[&#39;images&#39;]}
+        d_imageid_to_annotations = vipy.util.groupbyasdict(json[&#39;annotations&#39;], lambda x: x[&#39;image_id&#39;])
+        d_categoryid_to_category = {x[&#39;id&#39;]:x[&#39;name&#39;] for x in json[&#39;categories&#39;]}
+        
+        imlist = [vipy.image.Scene(filename=f,
+                                   objects=[vipy.object.Detection(label=d_categoryid_to_category[x[&#39;category_id&#39;]], xywh=x[&#39;bbox&#39;])
+                                            for x in d_imageid_to_annotations[iid]] if iid in d_imageid_to_annotations else None)
+                  for (iid,f) in d_imageid_to_filename.items()]
+        
+        super().__init__(imlist, id=&#39;coco_2014&#39;)</code></pre>
 </details>
 <h3>Ancestors</h3>
 <ul class="hlist">
@@ -229,7 +245,7 @@ setTimeout(() => input.focus(), 100);
 <li><h3><a href="#header-classes">Classes</a></h3>
 <ul>
 <li>
-<h4><code><a title="vipy.data.caltech256.Caltech256" href="#vipy.data.caltech256.Caltech256">Caltech256</a></code></h4>
+<h4><code><a title="vipy.data.coco.Detection_TrainVal_2014" href="#vipy.data.coco.Detection_TrainVal_2014">Detection_TrainVal_2014</a></code></h4>
 </li>
 </ul>
 </li>

@@ -26,7 +26,7 @@
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/246f0d16deb2cbe52f54a7ff3656d403d8b80214/vipy/data/mnist.py#L1-L100" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/data/mnist.py#L1-L90" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">import os
 import numpy as np
@@ -47,7 +47,7 @@ TEST_LBL_URL = &#39;http://yann.lecun.com/exdb/mnist/t10k-labels-idx1-ubyte.gz&#
 TEST_LBL_SHA1 = &#39;763e7fa3757d93b0cdec073cef058b2004252c17&#39;
 
 
-class MNIST(object):
+class MNIST():
     def __init__(self, outdir):
         &#34;&#34;&#34;download URLS above to outdir, then run export()&#34;&#34;&#34;
         self.outdir = remkdir(outdir)
@@ -72,7 +72,8 @@ class MNIST(object):
         os.system(&#39;wget --directory-prefix=%s %s&#39; % (self.outdir, TEST_IMG_URL))
         os.system(&#39;wget --directory-prefix=%s %s&#39; % (self.outdir, TEST_LBL_URL))
 
-    def _labels(self, gzfile):
+    @staticmethod
+    def _labels(gzfile):
         with gzip.open(gzfile, &#39;rb&#39;) as file:
             magic, size = struct.unpack(&#34;&gt;II&#34;, file.read(8))
             if magic != 2049:
@@ -81,7 +82,8 @@ class MNIST(object):
             labels = array(&#34;B&#34;, file.read())
         return labels
 
-    def _imread(self, dataset, index):
+    @staticmethod
+    def _imread(dataset, index):
         &#34;&#34;&#34;Read MNIST encoded images, adapted from: https://github.com/sorki/python-mnist/blob/master/mnist/loader.py&#34;&#34;&#34;
         gzfile = None
 
@@ -93,41 +95,29 @@ class MNIST(object):
             image = np.asarray(array(&#34;B&#34;, file.read(rows * cols)).tolist())
             return np.reshape(image, (rows,cols))
 
-    def trainset(self):
-        y_train = self._labels(os.path.join(self.outdir, &#39;train-labels-idx1-ubyte.gz&#39;)).tolist()
-        x_train = []
-        train_img_file = os.path.join(self.outdir, &#39;train-images-idx3-ubyte.gz&#39;)
+    @staticmethod
+    def _dataset(img_gzfile, label_gzfile, N):
+        y = MNIST._labels(label_gzfile).tolist()
+        x = []
+        train_img_file = img_gzfile
         with gzip.open(train_img_file, &#39;rb&#39;) as gzfile:
             magic, size, rows, cols = struct.unpack(&#34;&gt;IIII&#34;, gzfile.read(16))
             if magic != 2051:
                 raise ValueError(&#39;Magic number mismatch, expected 2051, got %d&#39; % magic)
 
-            for k in range(60000):
+            for k in range(N):
                 img = np.asarray(array(&#34;B&#34;, gzfile.read(rows * cols)).tolist()).reshape((rows, cols)).astype(np.uint8)
-                x_train.append(img)
+                x.append(img)
 
-        return (y_train, np.array(x_train))
+        return (y, np.array(x))
 
-    def imtrainset(self):
-        return [vipy.image.ImageCategory(array=img, category=str(y), colorspace=&#39;lum&#39;) for (y,img) in zip(*self.trainset())]
-    
+    def trainset(self):
+        (labelfile, imgfile) = (os.path.join(self.outdir, &#39;train-labels-idx1-ubyte.gz&#39;), os.path.join(self.outdir, &#39;train-images-idx3-ubyte.gz&#39;))
+        return vipy.dataset.Dataset([vipy.image.ImageCategory(array=img, category=str(y), colorspace=&#39;lum&#39;) for (y,img) in zip(*self._dataset(imgfile, labelfile, 60000))], &#39;mnist&#39;)
+
     def testset(self):
-        y_test = self._labels(os.path.join(self.outdir, &#39;t10k-labels-idx1-ubyte.gz&#39;)).tolist()
-        x_test = []
-        test_img_file = os.path.join(self.outdir, &#39;t10k-images-idx3-ubyte.gz&#39;)
-        with gzip.open(test_img_file, &#39;rb&#39;) as gzfile:
-            magic, size, rows, cols = struct.unpack(&#34;&gt;IIII&#34;, gzfile.read(16))
-            if magic != 2051:
-                raise ValueError(&#39;Magic number mismatch, expected 2051, got %d&#39; % magic)
-
-            for k in range(10000):
-                img = np.asarray(array(&#34;B&#34;, gzfile.read(rows * cols)).tolist()).reshape((rows, cols)).astype(np.uint8)
-                x_test.append(img)
-
-        return (y_test, np.array(x_test))
-
-    def imtestset(self):
-        return [vipy.image.ImageCategory(array=img, category=str(y), colorspace=&#39;lum&#39;) for (y,img) in zip(*self.testset())]</code></pre>
+        (labelfile, imgfile) = (os.path.join(self.outdir, &#39;t10k-labels-idx1-ubyte.gz&#39;), os.path.join(self.outdir, &#39;t10k-images-idx3-ubyte.gz&#39;))        
+        return vipy.dataset.Dataset([vipy.image.ImageCategory(array=img, category=str(y), colorspace=&#39;lum&#39;) for (y,img) in zip(*self._dataset(imgfile, labelfile, 10000))], &#39;mnist_test&#39;)</code></pre>
 </details>
 </section>
 <section>
@@ -148,9 +138,9 @@ class MNIST(object):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/246f0d16deb2cbe52f54a7ff3656d403d8b80214/vipy/data/mnist.py#L20-L100" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/data/mnist.py#L20-L90" class="git-link">Browse git</a>
 </summary>
-<pre><code class="python">class MNIST(object):
+<pre><code class="python">class MNIST():
     def __init__(self, outdir):
         &#34;&#34;&#34;download URLS above to outdir, then run export()&#34;&#34;&#34;
         self.outdir = remkdir(outdir)
@@ -175,7 +165,8 @@ class MNIST(object):
         os.system(&#39;wget --directory-prefix=%s %s&#39; % (self.outdir, TEST_IMG_URL))
         os.system(&#39;wget --directory-prefix=%s %s&#39; % (self.outdir, TEST_LBL_URL))
 
-    def _labels(self, gzfile):
+    @staticmethod
+    def _labels(gzfile):
         with gzip.open(gzfile, &#39;rb&#39;) as file:
             magic, size = struct.unpack(&#34;&gt;II&#34;, file.read(8))
             if magic != 2049:
@@ -184,7 +175,8 @@ class MNIST(object):
             labels = array(&#34;B&#34;, file.read())
         return labels
 
-    def _imread(self, dataset, index):
+    @staticmethod
+    def _imread(dataset, index):
         &#34;&#34;&#34;Read MNIST encoded images, adapted from: https://github.com/sorki/python-mnist/blob/master/mnist/loader.py&#34;&#34;&#34;
         gzfile = None
 
@@ -196,72 +188,36 @@ class MNIST(object):
             image = np.asarray(array(&#34;B&#34;, file.read(rows * cols)).tolist())
             return np.reshape(image, (rows,cols))
 
-    def trainset(self):
-        y_train = self._labels(os.path.join(self.outdir, &#39;train-labels-idx1-ubyte.gz&#39;)).tolist()
-        x_train = []
-        train_img_file = os.path.join(self.outdir, &#39;train-images-idx3-ubyte.gz&#39;)
+    @staticmethod
+    def _dataset(img_gzfile, label_gzfile, N):
+        y = MNIST._labels(label_gzfile).tolist()
+        x = []
+        train_img_file = img_gzfile
         with gzip.open(train_img_file, &#39;rb&#39;) as gzfile:
             magic, size, rows, cols = struct.unpack(&#34;&gt;IIII&#34;, gzfile.read(16))
             if magic != 2051:
                 raise ValueError(&#39;Magic number mismatch, expected 2051, got %d&#39; % magic)
 
-            for k in range(60000):
+            for k in range(N):
                 img = np.asarray(array(&#34;B&#34;, gzfile.read(rows * cols)).tolist()).reshape((rows, cols)).astype(np.uint8)
-                x_train.append(img)
+                x.append(img)
 
-        return (y_train, np.array(x_train))
+        return (y, np.array(x))
 
-    def imtrainset(self):
-        return [vipy.image.ImageCategory(array=img, category=str(y), colorspace=&#39;lum&#39;) for (y,img) in zip(*self.trainset())]
-    
+    def trainset(self):
+        (labelfile, imgfile) = (os.path.join(self.outdir, &#39;train-labels-idx1-ubyte.gz&#39;), os.path.join(self.outdir, &#39;train-images-idx3-ubyte.gz&#39;))
+        return vipy.dataset.Dataset([vipy.image.ImageCategory(array=img, category=str(y), colorspace=&#39;lum&#39;) for (y,img) in zip(*self._dataset(imgfile, labelfile, 60000))], &#39;mnist&#39;)
+
     def testset(self):
-        y_test = self._labels(os.path.join(self.outdir, &#39;t10k-labels-idx1-ubyte.gz&#39;)).tolist()
-        x_test = []
-        test_img_file = os.path.join(self.outdir, &#39;t10k-images-idx3-ubyte.gz&#39;)
-        with gzip.open(test_img_file, &#39;rb&#39;) as gzfile:
-            magic, size, rows, cols = struct.unpack(&#34;&gt;IIII&#34;, gzfile.read(16))
-            if magic != 2051:
-                raise ValueError(&#39;Magic number mismatch, expected 2051, got %d&#39; % magic)
-
-            for k in range(10000):
-                img = np.asarray(array(&#34;B&#34;, gzfile.read(rows * cols)).tolist()).reshape((rows, cols)).astype(np.uint8)
-                x_test.append(img)
-
-        return (y_test, np.array(x_test))
-
-    def imtestset(self):
-        return [vipy.image.ImageCategory(array=img, category=str(y), colorspace=&#39;lum&#39;) for (y,img) in zip(*self.testset())]</code></pre>
+        (labelfile, imgfile) = (os.path.join(self.outdir, &#39;t10k-labels-idx1-ubyte.gz&#39;), os.path.join(self.outdir, &#39;t10k-images-idx3-ubyte.gz&#39;))        
+        return vipy.dataset.Dataset([vipy.image.ImageCategory(array=img, category=str(y), colorspace=&#39;lum&#39;) for (y,img) in zip(*self._dataset(imgfile, labelfile, 10000))], &#39;mnist_test&#39;)</code></pre>
 </details>
+<h3>Subclasses</h3>
+<ul class="hlist">
+<li><a title="vipy.data.emnist.EMNIST" href="emnist.html#vipy.data.emnist.EMNIST">EMNIST</a></li>
+</ul>
 <h3>Methods</h3>
 <dl>
-<dt id="vipy.data.mnist.MNIST.imtestset"><code class="name flex">
-<span>def <span class="ident">imtestset</span></span>(<span>self)</span>
-</code></dt>
-<dd>
-<div class="desc"></div>
-<details class="source">
-<summary>
-<span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/246f0d16deb2cbe52f54a7ff3656d403d8b80214/vipy/data/mnist.py#L99-L100" class="git-link">Browse git</a>
-</summary>
-<pre><code class="python">def imtestset(self):
-    return [vipy.image.ImageCategory(array=img, category=str(y), colorspace=&#39;lum&#39;) for (y,img) in zip(*self.testset())]</code></pre>
-</details>
-</dd>
-<dt id="vipy.data.mnist.MNIST.imtrainset"><code class="name flex">
-<span>def <span class="ident">imtrainset</span></span>(<span>self)</span>
-</code></dt>
-<dd>
-<div class="desc"></div>
-<details class="source">
-<summary>
-<span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/246f0d16deb2cbe52f54a7ff3656d403d8b80214/vipy/data/mnist.py#L81-L82" class="git-link">Browse git</a>
-</summary>
-<pre><code class="python">def imtrainset(self):
-    return [vipy.image.ImageCategory(array=img, category=str(y), colorspace=&#39;lum&#39;) for (y,img) in zip(*self.trainset())]</code></pre>
-</details>
-</dd>
 <dt id="vipy.data.mnist.MNIST.testset"><code class="name flex">
 <span>def <span class="ident">testset</span></span>(<span>self)</span>
 </code></dt>
@@ -270,22 +226,11 @@ class MNIST(object):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/246f0d16deb2cbe52f54a7ff3656d403d8b80214/vipy/data/mnist.py#L84-L97" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/data/mnist.py#L88-L90" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def testset(self):
-    y_test = self._labels(os.path.join(self.outdir, &#39;t10k-labels-idx1-ubyte.gz&#39;)).tolist()
-    x_test = []
-    test_img_file = os.path.join(self.outdir, &#39;t10k-images-idx3-ubyte.gz&#39;)
-    with gzip.open(test_img_file, &#39;rb&#39;) as gzfile:
-        magic, size, rows, cols = struct.unpack(&#34;&gt;IIII&#34;, gzfile.read(16))
-        if magic != 2051:
-            raise ValueError(&#39;Magic number mismatch, expected 2051, got %d&#39; % magic)
-
-        for k in range(10000):
-            img = np.asarray(array(&#34;B&#34;, gzfile.read(rows * cols)).tolist()).reshape((rows, cols)).astype(np.uint8)
-            x_test.append(img)
-
-    return (y_test, np.array(x_test))</code></pre>
+    (labelfile, imgfile) = (os.path.join(self.outdir, &#39;t10k-labels-idx1-ubyte.gz&#39;), os.path.join(self.outdir, &#39;t10k-images-idx3-ubyte.gz&#39;))        
+    return vipy.dataset.Dataset([vipy.image.ImageCategory(array=img, category=str(y), colorspace=&#39;lum&#39;) for (y,img) in zip(*self._dataset(imgfile, labelfile, 10000))], &#39;mnist_test&#39;)</code></pre>
 </details>
 </dd>
 <dt id="vipy.data.mnist.MNIST.trainset"><code class="name flex">
@@ -296,22 +241,11 @@ class MNIST(object):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/246f0d16deb2cbe52f54a7ff3656d403d8b80214/vipy/data/mnist.py#L66-L79" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/data/mnist.py#L84-L86" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def trainset(self):
-    y_train = self._labels(os.path.join(self.outdir, &#39;train-labels-idx1-ubyte.gz&#39;)).tolist()
-    x_train = []
-    train_img_file = os.path.join(self.outdir, &#39;train-images-idx3-ubyte.gz&#39;)
-    with gzip.open(train_img_file, &#39;rb&#39;) as gzfile:
-        magic, size, rows, cols = struct.unpack(&#34;&gt;IIII&#34;, gzfile.read(16))
-        if magic != 2051:
-            raise ValueError(&#39;Magic number mismatch, expected 2051, got %d&#39; % magic)
-
-        for k in range(60000):
-            img = np.asarray(array(&#34;B&#34;, gzfile.read(rows * cols)).tolist()).reshape((rows, cols)).astype(np.uint8)
-            x_train.append(img)
-
-    return (y_train, np.array(x_train))</code></pre>
+    (labelfile, imgfile) = (os.path.join(self.outdir, &#39;train-labels-idx1-ubyte.gz&#39;), os.path.join(self.outdir, &#39;train-images-idx3-ubyte.gz&#39;))
+    return vipy.dataset.Dataset([vipy.image.ImageCategory(array=img, category=str(y), colorspace=&#39;lum&#39;) for (y,img) in zip(*self._dataset(imgfile, labelfile, 60000))], &#39;mnist&#39;)</code></pre>
 </details>
 </dd>
 </dl>
@@ -387,8 +321,6 @@ setTimeout(() => input.focus(), 100);
 <li>
 <h4><code><a title="vipy.data.mnist.MNIST" href="#vipy.data.mnist.MNIST">MNIST</a></code></h4>
 <ul class="">
-<li><code><a title="vipy.data.mnist.MNIST.imtestset" href="#vipy.data.mnist.MNIST.imtestset">imtestset</a></code></li>
-<li><code><a title="vipy.data.mnist.MNIST.imtrainset" href="#vipy.data.mnist.MNIST.imtrainset">imtrainset</a></code></li>
 <li><code><a title="vipy.data.mnist.MNIST.testset" href="#vipy.data.mnist.MNIST.testset">testset</a></code></li>
 <li><code><a title="vipy.data.mnist.MNIST.trainset" href="#vipy.data.mnist.MNIST.trainset">trainset</a></code></li>
 </ul>

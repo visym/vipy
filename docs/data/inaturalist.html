@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1" />
 <meta name="generator" content="pdoc 0.10.0" />
 <meta name="google-site-verification" content="aB8LkQegj94_TJPdrcJm2ldIRWyXY82Jp24Gtkdgyn0" />
-<title>vipy.data.caltech256 API documentation</title>
+<title>vipy.data.inaturalist API documentation</title>
 <meta name="description" content="" />
 <link rel="preload stylesheet" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/10up-sanitize.css/11.0.1/sanitize.min.css" integrity="sha256-PK9q560IAAa6WVRRh76LtCaI8pjTJ2z11v0miyNNjrs=" crossorigin>
 <link rel="preload stylesheet" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/10up-sanitize.css/11.0.1/typography.min.css" integrity="sha256-7l/o7C8jubJiy74VsKTidCy1yBkRtiUGbVkYBylBqUg=" crossorigin>
@@ -20,43 +20,57 @@
 <main>
 <article id="content">
 <header>
-<h1 class="title">Module <code>vipy.data.caltech256</code></h1>
+<h1 class="title">Module <code>vipy.data.inaturalist</code></h1>
 </header>
 <section id="section-intro">
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/data/caltech256.py#L1-L29" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/data/inaturalist.py#L1-L43" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">import os
-import vipy.downloader
-import vipy.dataset
-from vipy.util import remkdir
-from vipy.image import ImageCategory
+import vipy
 
 
-URL = &#39;https://data.caltech.edu/records/nyy15-4j048/files/256_ObjectCategories.tar&#39;
-SHA1 = None
+TRAIN_IMG_2021_URL = &#39;https://ml-inat-competition-datasets.s3.amazonaws.com/2021/train.tar.gz&#39;
+TRAIN_IMG_2021_MD5 = &#39;e0526d53c7f7b2e3167b2b43bb2690ed&#39;
+TRAIN_ANNO_2021_URL = &#39;https://ml-inat-competition-datasets.s3.amazonaws.com/2021/train.json.tar.gz&#39;
+TRAIN_ANNO_2021_MD5 = &#39;38a7bb733f7a09214d44293460ec0021&#39;
+VAL_IMG_2021_URL = &#39;https://ml-inat-competition-datasets.s3.amazonaws.com/2021/val.tar.gz&#39;
+VAL_IMG_2021_MD5 = &#39;f6f6e0e242e3d4c9569ba56400938afc&#39;
+VAL_ANNO_2021_URL = &#39;https://ml-inat-competition-datasets.s3.amazonaws.com/2021/val.json.tar.gz&#39;
+VAL_ANNO_2021_MD5 = &#39;4d761e0f6a86cc63e8f7afc91f6a8f0b&#39;
 
 
-class Caltech256(vipy.dataset.Dataset):
-    &#34;&#34;&#34;Caltech-256 dataset: https://data.caltech.edu/records/nyy15-4j048&#34;&#34;&#34;
-    def __init__(self, datadir):
-        # Download (if not cached)
-        self._datadir = remkdir(datadir)        
-        if not os.path.exists(os.path.join(self._datadir, &#39;256_ObjectCategories&#39;)):
-            vipy.downloader.download_and_unpack(URL, self._datadir, sha1=SHA1)            
-            
-        # Create dataset
-        imlist = []
-        categorydir = os.path.join(self._datadir, &#39;256_ObjectCategories&#39;)        
-        for (idx_category, category) in enumerate(os.listdir(categorydir)):
-            imdir = os.path.join(categorydir, category)
-            for im in os.listdir(imdir):
-                imlist.append(ImageCategory(filename=os.path.join(categorydir, category, im), category=category))
+class iNaturalist2021(vipy.dataset.Dataset):
+    &#34;&#34;&#34;Project: https://github.com/visipedia/inat_comp/tree/master/2021&#34;&#34;&#34;
+    def __init__(self, datadir, imageurl=TRAIN_IMG_2021_URL, imagemd5=TRAIN_IMG_2021_MD5, annourl=TRAIN_ANNO_2021_URL, annomd5=TRAIN_ANNO_2021_MD5, name=&#39;inaturalist_train&#39;):
+        self._datadir = vipy.util.remkdir(datadir)        
+        if not os.path.exists(os.path.join(self._datadir, vipy.util.filetail(imageurl))):
+            vipy.downloader.download_and_unpack(imageurl, self._datadir, md5=imagemd5)
+        if not os.path.exists(os.path.join(self._datadir, vipy.util.filetail(annourl))):
+            vipy.downloader.download_and_unpack(annourl, self._datadir, md5=annomd5)
 
-        super().__init__(imlist, id=&#39;caltech-256&#39;)
-            </code></pre>
+        json = vipy.util.readjson(os.path.join(self._datadir, vipy.util.filetail(annourl)[:-7]))  # remove trailing file extension (val.json.tar.gz -&gt; val.json)
+
+        d_imageid_to_filename = {x[&#39;id&#39;]:os.path.join(self._datadir, x[&#39;file_name&#39;]) for x in json[&#39;images&#39;]}
+        d_imageid_to_annotation = {iid:a[0] for (iid,a) in vipy.util.groupbyasdict(json[&#39;annotations&#39;], lambda x: x[&#39;image_id&#39;]).items()}  # one annotation per image
+        d_categoryid_to_category = {x[&#39;id&#39;]:x[&#39;name&#39;] for x in json[&#39;categories&#39;]}
+        
+        imlist = [vipy.image.ImageCategory(filename=f,
+                                           category=d_categoryid_to_category[d_imageid_to_annotation[iid][&#39;category_id&#39;]] if iid in d_imageid_to_annotation else None,                                            
+                                           attributes={&#39;category_id&#39;: d_imageid_to_annotation[iid][&#39;category_id&#39;]} if iid in d_imageid_to_annotation else None)
+                  for (iid,f) in d_imageid_to_filename.items()]
+        
+        super().__init__(imlist, id=&#39;iNaturalist2021&#39;)
+        
+    def trainset(self):
+        return self
+
+    def valset(self):
+        return iNaturalist2021(self._datadir, VAL_IMG_2021_URL, VAL_IMG_2021_MD5, VAL_ANNO_2021_URL, VAL_ANNO_2021_MD5, name=&#39;inaturalist_val&#39;)
+
+    </code></pre>
 </details>
 </section>
 <section>
@@ -68,39 +82,80 @@ class Caltech256(vipy.dataset.Dataset):
 <section>
 <h2 class="section-title" id="header-classes">Classes</h2>
 <dl>
-<dt id="vipy.data.caltech256.Caltech256"><code class="flex name class">
-<span>class <span class="ident">Caltech256</span></span>
-<span>(</span><span>datadir)</span>
+<dt id="vipy.data.inaturalist.iNaturalist2021"><code class="flex name class">
+<span>class <span class="ident">iNaturalist2021</span></span>
+<span>(</span><span>datadir, imageurl='https://ml-inat-competition-datasets.s3.amazonaws.com/2021/train.tar.gz', imagemd5='e0526d53c7f7b2e3167b2b43bb2690ed', annourl='https://ml-inat-competition-datasets.s3.amazonaws.com/2021/train.json.tar.gz', annomd5='38a7bb733f7a09214d44293460ec0021', name='inaturalist_train')</span>
 </code></dt>
 <dd>
-<div class="desc"><p>Caltech-256 dataset: <a href="https://data.caltech.edu/records/nyy15-4j048">https://data.caltech.edu/records/nyy15-4j048</a></p></div>
+<div class="desc"><p>Project: <a href="https://github.com/visipedia/inat_comp/tree/master/2021">https://github.com/visipedia/inat_comp/tree/master/2021</a></p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/data/caltech256.py#L12-L28" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/data/inaturalist.py#L15-L41" class="git-link">Browse git</a>
 </summary>
-<pre><code class="python">class Caltech256(vipy.dataset.Dataset):
-    &#34;&#34;&#34;Caltech-256 dataset: https://data.caltech.edu/records/nyy15-4j048&#34;&#34;&#34;
-    def __init__(self, datadir):
-        # Download (if not cached)
-        self._datadir = remkdir(datadir)        
-        if not os.path.exists(os.path.join(self._datadir, &#39;256_ObjectCategories&#39;)):
-            vipy.downloader.download_and_unpack(URL, self._datadir, sha1=SHA1)            
-            
-        # Create dataset
-        imlist = []
-        categorydir = os.path.join(self._datadir, &#39;256_ObjectCategories&#39;)        
-        for (idx_category, category) in enumerate(os.listdir(categorydir)):
-            imdir = os.path.join(categorydir, category)
-            for im in os.listdir(imdir):
-                imlist.append(ImageCategory(filename=os.path.join(categorydir, category, im), category=category))
+<pre><code class="python">class iNaturalist2021(vipy.dataset.Dataset):
+    &#34;&#34;&#34;Project: https://github.com/visipedia/inat_comp/tree/master/2021&#34;&#34;&#34;
+    def __init__(self, datadir, imageurl=TRAIN_IMG_2021_URL, imagemd5=TRAIN_IMG_2021_MD5, annourl=TRAIN_ANNO_2021_URL, annomd5=TRAIN_ANNO_2021_MD5, name=&#39;inaturalist_train&#39;):
+        self._datadir = vipy.util.remkdir(datadir)        
+        if not os.path.exists(os.path.join(self._datadir, vipy.util.filetail(imageurl))):
+            vipy.downloader.download_and_unpack(imageurl, self._datadir, md5=imagemd5)
+        if not os.path.exists(os.path.join(self._datadir, vipy.util.filetail(annourl))):
+            vipy.downloader.download_and_unpack(annourl, self._datadir, md5=annomd5)
 
-        super().__init__(imlist, id=&#39;caltech-256&#39;)</code></pre>
+        json = vipy.util.readjson(os.path.join(self._datadir, vipy.util.filetail(annourl)[:-7]))  # remove trailing file extension (val.json.tar.gz -&gt; val.json)
+
+        d_imageid_to_filename = {x[&#39;id&#39;]:os.path.join(self._datadir, x[&#39;file_name&#39;]) for x in json[&#39;images&#39;]}
+        d_imageid_to_annotation = {iid:a[0] for (iid,a) in vipy.util.groupbyasdict(json[&#39;annotations&#39;], lambda x: x[&#39;image_id&#39;]).items()}  # one annotation per image
+        d_categoryid_to_category = {x[&#39;id&#39;]:x[&#39;name&#39;] for x in json[&#39;categories&#39;]}
+        
+        imlist = [vipy.image.ImageCategory(filename=f,
+                                           category=d_categoryid_to_category[d_imageid_to_annotation[iid][&#39;category_id&#39;]] if iid in d_imageid_to_annotation else None,                                            
+                                           attributes={&#39;category_id&#39;: d_imageid_to_annotation[iid][&#39;category_id&#39;]} if iid in d_imageid_to_annotation else None)
+                  for (iid,f) in d_imageid_to_filename.items()]
+        
+        super().__init__(imlist, id=&#39;iNaturalist2021&#39;)
+        
+    def trainset(self):
+        return self
+
+    def valset(self):
+        return iNaturalist2021(self._datadir, VAL_IMG_2021_URL, VAL_IMG_2021_MD5, VAL_ANNO_2021_URL, VAL_ANNO_2021_MD5, name=&#39;inaturalist_val&#39;)</code></pre>
 </details>
 <h3>Ancestors</h3>
 <ul class="hlist">
 <li><a title="vipy.dataset.Dataset" href="../dataset.html#vipy.dataset.Dataset">Dataset</a></li>
 </ul>
+<h3>Methods</h3>
+<dl>
+<dt id="vipy.data.inaturalist.iNaturalist2021.trainset"><code class="name flex">
+<span>def <span class="ident">trainset</span></span>(<span>self)</span>
+</code></dt>
+<dd>
+<div class="desc"></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/data/inaturalist.py#L37-L38" class="git-link">Browse git</a>
+</summary>
+<pre><code class="python">def trainset(self):
+    return self</code></pre>
+</details>
+</dd>
+<dt id="vipy.data.inaturalist.iNaturalist2021.valset"><code class="name flex">
+<span>def <span class="ident">valset</span></span>(<span>self)</span>
+</code></dt>
+<dd>
+<div class="desc"></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/data/inaturalist.py#L40-L41" class="git-link">Browse git</a>
+</summary>
+<pre><code class="python">def valset(self):
+    return iNaturalist2021(self._datadir, VAL_IMG_2021_URL, VAL_IMG_2021_MD5, VAL_ANNO_2021_URL, VAL_ANNO_2021_MD5, name=&#39;inaturalist_val&#39;)</code></pre>
+</details>
+</dd>
+</dl>
 <h3>Inherited members</h3>
 <ul class="hlist">
 <li><code><b><a title="vipy.dataset.Dataset" href="../dataset.html#vipy.dataset.Dataset">Dataset</a></b></code>:
@@ -229,7 +284,11 @@ setTimeout(() => input.focus(), 100);
 <li><h3><a href="#header-classes">Classes</a></h3>
 <ul>
 <li>
-<h4><code><a title="vipy.data.caltech256.Caltech256" href="#vipy.data.caltech256.Caltech256">Caltech256</a></code></h4>
+<h4><code><a title="vipy.data.inaturalist.iNaturalist2021" href="#vipy.data.inaturalist.iNaturalist2021">iNaturalist2021</a></code></h4>
+<ul class="">
+<li><code><a title="vipy.data.inaturalist.iNaturalist2021.trainset" href="#vipy.data.inaturalist.iNaturalist2021.trainset">trainset</a></code></li>
+<li><code><a title="vipy.data.inaturalist.iNaturalist2021.valset" href="#vipy.data.inaturalist.iNaturalist2021.valset">valset</a></code></li>
+</ul>
 </li>
 </ul>
 </li>

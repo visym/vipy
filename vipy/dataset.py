@@ -523,14 +523,20 @@ class Dataset():
         self._loader = None
         return self
 
-    def take(self, n=1, category=None, canload=False, seed=None):
-        """Randomlly Take n elements from the dataset, and return a dataset if n>1, otherwise return the singleton element.  If seed=int, take will return the same results each time."""
+    def take(self, n, category=None, canload=False, seed=None):
+        """Randomlly Take n elements from the dataset, and return a dataset.  If seed=int, take will return the same results each time."""
         assert isinstance(n, int) and n>0
         D = self.clone(shallow=True)
         D._objlist = self.takelist(n, category=category, seed=seed)
-        return D if n>1 else D[0]
+        return D
+
+    def takeone(self, category=None, canload=False, seed=None):
+        """Randomly take one element from the dataset and return a singleton"""
+        D = self.take(n=1, category=category, canload=canload, seed=seed)
+        return D[0] if len(D)>0 else None
 
     def take_per_category(self, n, seed=None):
+        """Random;y take n elements per category and return a shallow cloned dataset"""
         D = self.clone(shallow=True)
         d_category_to_objlist = vipy.util.groupbyasdict(self._objlist, lambda x: x.category())
         D._objlist = [v for c in self.categories() for v in Dataset(d_category_to_objlist[c]).take(n, seed=seed)]
@@ -644,7 +650,7 @@ class Dataset():
         csv = [v.csv() for v in self.list]        
         return vipy.util.writecsv(csv, csvfile) if csvfile is not None else (csv[0], csv[1:])
 
-    def map(self, f_map, model=None, dst=None, id=None, strict=False, ascompleted=True, chunks=128, ordered=False):        
+    def map(self, f_map, model=None, dst=None, id=None, strict=False, ascompleted=True, ordered=False):        
         """Distributed map.
 
         To perform this in parallel across four processes:
@@ -663,7 +669,7 @@ class Dataset():
             strict: [bool] If true, raise exception on map failures, otherwise the map will return None for failed elements
             ascompleted: [bool] If true, return elements as they complete
             ordered: [bool] If true, preserve the order of objects in dataset as returned from distributed processing
-
+        
         Returns:
             A `vipy.dataset.Dataset` containing the elements f_map(v).  This operation is order preserving if ordered=True.
 
@@ -685,7 +691,8 @@ class Dataset():
         f_catcher = lambda f, *args, **kwargs: vipy.util.loudcatcher(f, '[vipy.dataset.Dataset.map]: ', *args, **kwargs)  # catch exceptions when executing lambda, print errors and return (True, result) or (False, exception)
         f_loader = self._loader if self._loader is not None else lambda x: x
         S = [f_serialize(v) for v in self._objlist]  # local serialization
-        B = Batch(vipy.util.chunklist(S, chunks), strict=strict, as_completed=ascompleted, warnme=False, minscatter=chunks, ordered=ordered)
+
+        B = Batch(vipy.util.chunklist(S, 128), strict=strict, as_completed=ascompleted, warnme=False, minscatter=128, ordered=ordered)
         if model is None:
             f = lambda x, f_loader=f_loader, f_serializer=f_serialize, f_deserializer=f_deserialize, f_map=f_map, f_catcher=f_catcher: f_serializer(f_catcher(f_map, f_loader(f_deserializer(x))))  # with closure capture
             S = B.map(lambda X,f=f: [f(x) for x in X]).result()  # chunked, with caught exceptions, may return empty list

@@ -26,7 +26,7 @@
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/246f0d16deb2cbe52f54a7ff3656d403d8b80214/vipy/data/lfw.py#L1-L85" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/data/lfw.py#L1-L67" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">import os
 import numpy as np
@@ -42,22 +42,19 @@ URL_PAIRS_DEV_TEST = &#39;http://vis-www.cs.umass.edu/lfw/pairsDevTest.txt&#39;
 URL_PAIRS_VIEW2 = &#39;http://vis-www.cs.umass.edu/lfw/pairs.txt&#39;
 
 
-class LFW(object):
+class LFW(vipy.dataset.Dataset):
     def __init__(self, datadir):
         &#34;&#34;&#34;Datadir contains the unpacked contents of LFW from $URL -&gt; /path/to/lfw&#34;&#34;&#34;
         self.lfwdir = datadir
         remkdir(os.path.join(self.lfwdir, &#39;lfw&#39;))
-        self._dataset = self.dataset()
+
+        if not os.path.exists(os.path.join(self.lfwdir, &#39;lfw.tgz&#39;)):
+            self._download()
+        super().__init__(self._dataset(), &#39;lfw&#39;)
         
-    def download(self, verbose=True):
+    def _download(self, verbose=True):
         vipy.downloader.download_and_unpack(URL, self.lfwdir, verbose=verbose)
         return self
-
-    def __getitem__(self, k):
-        return self._dataset[k]
-    
-    def __repr__(self):
-        return str(&#34;&lt;vipy.data.lfw: &#39;%s&#39;&gt;&#34; % self.lfwdir)
 
     def subjects(self):
         &#34;&#34;&#34;List of all subject names&#34;&#34;&#34;
@@ -68,23 +65,8 @@ class LFW(object):
         fnames = imlist(os.path.join(self.lfwdir, &#39;lfw&#39;, subject))
         return [ImageCategory(category=subject, filename=f) for f in fnames]
 
-    def dataset(self):
+    def _dataset(self):
         return [ImageCategory(category=s, filename=f) for s in self.subjects() for f in imlist(os.path.join(self.lfwdir, &#39;lfw&#39;, s))]
-
-    def dictionary(self):
-        &#34;&#34;&#34;List of all Images of all subjects&#34;&#34;&#34;
-        return {s:self.subject_images(s) for s in self.subjects()}
-
-    def list(self):
-        &#34;&#34;&#34;List of all Images of all subjects&#34;&#34;&#34;
-        subjectlist = []
-        for (k,v) in self.dictionary().items():
-            subjectlist = subjectlist + v
-        return subjectlist
-
-    def take(self, n=128):
-        &#34;&#34;&#34;Return a represenative list of 128 images&#34;&#34;&#34;
-        return list(np.random.choice(self.list(), n))
 
     def _parse_pairs(self, txtfile):
         pairs = []
@@ -99,17 +81,17 @@ class LFW(object):
                 pass
         return pairs
 
-    def pairsDevTest(self):
+    def _pairsDevTest(self):
         if not os.path.isfile(os.path.join(self.lfwdir, &#39;lfw&#39;, &#39;pairsDevTest.txt&#39;)):
             raise ValueError(&#34;Download and save text file to $datadir/pairsDevTest.txt with &#39;wget %s -O %s&#39;&#34; % (URL_PAIRS_DEV_TRAIN, os.path.join(self.lfwdir, &#39;lfw&#39; &#39;pairsDevTest.txt&#39;)))
         return self._parse_pairs(&#39;pairsDevTest.txt&#39;)
 
-    def pairsDevTrain(self):
+    def _pairsDevTrain(self):
         if not os.path.isfile(os.path.join(self.lfwdir, &#39;lfw&#39;, &#39;pairsDevTrain.txt&#39;)):
             raise ValueError(&#34;Download and save text file to $datadir/pairsDevTrain.txt with &#39;wget %s -O %s&#39;&#34; % (URL_PAIRS_DEV_TRAIN, os.path.join(self.lfwdir, &#39;lfw&#39;, &#39;pairsDevTrain.txt&#39;)))
         return self._parse_pairs(&#39;pairsDevTrain.txt&#39;)
 
-    def pairs(self):
+    def _pairs(self):
         if not os.path.isfile(os.path.join(self.lfwdir, &#39;lfw&#39;, &#39;pairs.txt&#39;)):
             raise ValueError(&#34;Download and save text file to $datadir/pairs.txt with &#39;wget %s -O %s&#39;&#34; % (URL_PAIRS_DEV_TRAIN, os.path.join(self.lfwdir, &#39;lfw&#39;, &#39;pairs.txt&#39;)))
         return self._parse_pairs(&#39;pairs.txt&#39;)</code></pre>
@@ -129,28 +111,52 @@ class LFW(object):
 <span>(</span><span>datadir)</span>
 </code></dt>
 <dd>
-<div class="desc"><p>Datadir contains the unpacked contents of LFW from $URL -&gt; /path/to/lfw</p></div>
+<div class="desc"><p>vipy.dataset.Dataset() class</p>
+<p>Common class to manipulate large sets of vipy objects in parallel</p>
+<pre><code class="language-python">D = vipy.dataset.Dataset([vipy.video.RandomScene(), vipy.video.RandomScene()], id='random_scene')
+with vipy.globals.parallel(2):
+    D = D.map(lambda v: v.frame(0))
+list(D)
+</code></pre>
+<p>Create dataset and export as a directory of json files </p>
+<pre><code class="language-python">D = vipy.dataset.Dataset([vipy.video.RandomScene(), vipy.video.RandomScene()])
+D.tojsondir('/tmp/myjsondir')
+</code></pre>
+<p>Create dataset from all json or pkl files recursively discovered in a directory and lazy loaded</p>
+<pre><code class="language-python">D = vipy.dataset.Dataset('/tmp/myjsondir')  # lazy loading
+</code></pre>
+<p>Create dataset from a list of json or pkl files and lazy loaded</p>
+<pre><code class="language-python">D = vipy.dataset.Dataset(['/path/to/file1.json', '/path/to/file2.json'])  # lazy loading
+</code></pre>
+<h2 id="args">Args</h2>
+<ul>
+<li>abspath [bool]: If true, load all lazy elements with absolute path</li>
+<li>loader [lambda]: a callable loader that will process the object .
+This is useful for custom deerialization</li>
+<li>lazy [bool]: If true, load all pkl or json files using the custom loader when accessed</li>
+</ul>
+<div class="admonition notes">
+<p class="admonition-title">Notes:&ensp;Be warned that using the jsondir constructor will load elements on demand, but there are some methods that require loading the entire dataset into memory, and will happily try to do so</p>
+</div>
+<p>Datadir contains the unpacked contents of LFW from $URL -&gt; /path/to/lfw</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/246f0d16deb2cbe52f54a7ff3656d403d8b80214/vipy/data/lfw.py#L15-L85" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/data/lfw.py#L15-L67" class="git-link">Browse git</a>
 </summary>
-<pre><code class="python">class LFW(object):
+<pre><code class="python">class LFW(vipy.dataset.Dataset):
     def __init__(self, datadir):
         &#34;&#34;&#34;Datadir contains the unpacked contents of LFW from $URL -&gt; /path/to/lfw&#34;&#34;&#34;
         self.lfwdir = datadir
         remkdir(os.path.join(self.lfwdir, &#39;lfw&#39;))
-        self._dataset = self.dataset()
+
+        if not os.path.exists(os.path.join(self.lfwdir, &#39;lfw.tgz&#39;)):
+            self._download()
+        super().__init__(self._dataset(), &#39;lfw&#39;)
         
-    def download(self, verbose=True):
+    def _download(self, verbose=True):
         vipy.downloader.download_and_unpack(URL, self.lfwdir, verbose=verbose)
         return self
-
-    def __getitem__(self, k):
-        return self._dataset[k]
-    
-    def __repr__(self):
-        return str(&#34;&lt;vipy.data.lfw: &#39;%s&#39;&gt;&#34; % self.lfwdir)
 
     def subjects(self):
         &#34;&#34;&#34;List of all subject names&#34;&#34;&#34;
@@ -161,23 +167,8 @@ class LFW(object):
         fnames = imlist(os.path.join(self.lfwdir, &#39;lfw&#39;, subject))
         return [ImageCategory(category=subject, filename=f) for f in fnames]
 
-    def dataset(self):
+    def _dataset(self):
         return [ImageCategory(category=s, filename=f) for s in self.subjects() for f in imlist(os.path.join(self.lfwdir, &#39;lfw&#39;, s))]
-
-    def dictionary(self):
-        &#34;&#34;&#34;List of all Images of all subjects&#34;&#34;&#34;
-        return {s:self.subject_images(s) for s in self.subjects()}
-
-    def list(self):
-        &#34;&#34;&#34;List of all Images of all subjects&#34;&#34;&#34;
-        subjectlist = []
-        for (k,v) in self.dictionary().items():
-            subjectlist = subjectlist + v
-        return subjectlist
-
-    def take(self, n=128):
-        &#34;&#34;&#34;Return a represenative list of 128 images&#34;&#34;&#34;
-        return list(np.random.choice(self.list(), n))
 
     def _parse_pairs(self, txtfile):
         pairs = []
@@ -192,133 +183,27 @@ class LFW(object):
                 pass
         return pairs
 
-    def pairsDevTest(self):
+    def _pairsDevTest(self):
         if not os.path.isfile(os.path.join(self.lfwdir, &#39;lfw&#39;, &#39;pairsDevTest.txt&#39;)):
             raise ValueError(&#34;Download and save text file to $datadir/pairsDevTest.txt with &#39;wget %s -O %s&#39;&#34; % (URL_PAIRS_DEV_TRAIN, os.path.join(self.lfwdir, &#39;lfw&#39; &#39;pairsDevTest.txt&#39;)))
         return self._parse_pairs(&#39;pairsDevTest.txt&#39;)
 
-    def pairsDevTrain(self):
+    def _pairsDevTrain(self):
         if not os.path.isfile(os.path.join(self.lfwdir, &#39;lfw&#39;, &#39;pairsDevTrain.txt&#39;)):
             raise ValueError(&#34;Download and save text file to $datadir/pairsDevTrain.txt with &#39;wget %s -O %s&#39;&#34; % (URL_PAIRS_DEV_TRAIN, os.path.join(self.lfwdir, &#39;lfw&#39;, &#39;pairsDevTrain.txt&#39;)))
         return self._parse_pairs(&#39;pairsDevTrain.txt&#39;)
 
-    def pairs(self):
+    def _pairs(self):
         if not os.path.isfile(os.path.join(self.lfwdir, &#39;lfw&#39;, &#39;pairs.txt&#39;)):
             raise ValueError(&#34;Download and save text file to $datadir/pairs.txt with &#39;wget %s -O %s&#39;&#34; % (URL_PAIRS_DEV_TRAIN, os.path.join(self.lfwdir, &#39;lfw&#39;, &#39;pairs.txt&#39;)))
         return self._parse_pairs(&#39;pairs.txt&#39;)</code></pre>
 </details>
+<h3>Ancestors</h3>
+<ul class="hlist">
+<li><a title="vipy.dataset.Dataset" href="../dataset.html#vipy.dataset.Dataset">Dataset</a></li>
+</ul>
 <h3>Methods</h3>
 <dl>
-<dt id="vipy.data.lfw.LFW.dataset"><code class="name flex">
-<span>def <span class="ident">dataset</span></span>(<span>self)</span>
-</code></dt>
-<dd>
-<div class="desc"></div>
-<details class="source">
-<summary>
-<span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/246f0d16deb2cbe52f54a7ff3656d403d8b80214/vipy/data/lfw.py#L41-L42" class="git-link">Browse git</a>
-</summary>
-<pre><code class="python">def dataset(self):
-    return [ImageCategory(category=s, filename=f) for s in self.subjects() for f in imlist(os.path.join(self.lfwdir, &#39;lfw&#39;, s))]</code></pre>
-</details>
-</dd>
-<dt id="vipy.data.lfw.LFW.dictionary"><code class="name flex">
-<span>def <span class="ident">dictionary</span></span>(<span>self)</span>
-</code></dt>
-<dd>
-<div class="desc"><p>List of all Images of all subjects</p></div>
-<details class="source">
-<summary>
-<span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/246f0d16deb2cbe52f54a7ff3656d403d8b80214/vipy/data/lfw.py#L44-L46" class="git-link">Browse git</a>
-</summary>
-<pre><code class="python">def dictionary(self):
-    &#34;&#34;&#34;List of all Images of all subjects&#34;&#34;&#34;
-    return {s:self.subject_images(s) for s in self.subjects()}</code></pre>
-</details>
-</dd>
-<dt id="vipy.data.lfw.LFW.download"><code class="name flex">
-<span>def <span class="ident">download</span></span>(<span>self, verbose=True)</span>
-</code></dt>
-<dd>
-<div class="desc"></div>
-<details class="source">
-<summary>
-<span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/246f0d16deb2cbe52f54a7ff3656d403d8b80214/vipy/data/lfw.py#L22-L24" class="git-link">Browse git</a>
-</summary>
-<pre><code class="python">def download(self, verbose=True):
-    vipy.downloader.download_and_unpack(URL, self.lfwdir, verbose=verbose)
-    return self</code></pre>
-</details>
-</dd>
-<dt id="vipy.data.lfw.LFW.list"><code class="name flex">
-<span>def <span class="ident">list</span></span>(<span>self)</span>
-</code></dt>
-<dd>
-<div class="desc"><p>List of all Images of all subjects</p></div>
-<details class="source">
-<summary>
-<span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/246f0d16deb2cbe52f54a7ff3656d403d8b80214/vipy/data/lfw.py#L48-L53" class="git-link">Browse git</a>
-</summary>
-<pre><code class="python">def list(self):
-    &#34;&#34;&#34;List of all Images of all subjects&#34;&#34;&#34;
-    subjectlist = []
-    for (k,v) in self.dictionary().items():
-        subjectlist = subjectlist + v
-    return subjectlist</code></pre>
-</details>
-</dd>
-<dt id="vipy.data.lfw.LFW.pairs"><code class="name flex">
-<span>def <span class="ident">pairs</span></span>(<span>self)</span>
-</code></dt>
-<dd>
-<div class="desc"></div>
-<details class="source">
-<summary>
-<span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/246f0d16deb2cbe52f54a7ff3656d403d8b80214/vipy/data/lfw.py#L82-L85" class="git-link">Browse git</a>
-</summary>
-<pre><code class="python">def pairs(self):
-    if not os.path.isfile(os.path.join(self.lfwdir, &#39;lfw&#39;, &#39;pairs.txt&#39;)):
-        raise ValueError(&#34;Download and save text file to $datadir/pairs.txt with &#39;wget %s -O %s&#39;&#34; % (URL_PAIRS_DEV_TRAIN, os.path.join(self.lfwdir, &#39;lfw&#39;, &#39;pairs.txt&#39;)))
-    return self._parse_pairs(&#39;pairs.txt&#39;)</code></pre>
-</details>
-</dd>
-<dt id="vipy.data.lfw.LFW.pairsDevTest"><code class="name flex">
-<span>def <span class="ident">pairsDevTest</span></span>(<span>self)</span>
-</code></dt>
-<dd>
-<div class="desc"></div>
-<details class="source">
-<summary>
-<span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/246f0d16deb2cbe52f54a7ff3656d403d8b80214/vipy/data/lfw.py#L72-L75" class="git-link">Browse git</a>
-</summary>
-<pre><code class="python">def pairsDevTest(self):
-    if not os.path.isfile(os.path.join(self.lfwdir, &#39;lfw&#39;, &#39;pairsDevTest.txt&#39;)):
-        raise ValueError(&#34;Download and save text file to $datadir/pairsDevTest.txt with &#39;wget %s -O %s&#39;&#34; % (URL_PAIRS_DEV_TRAIN, os.path.join(self.lfwdir, &#39;lfw&#39; &#39;pairsDevTest.txt&#39;)))
-    return self._parse_pairs(&#39;pairsDevTest.txt&#39;)</code></pre>
-</details>
-</dd>
-<dt id="vipy.data.lfw.LFW.pairsDevTrain"><code class="name flex">
-<span>def <span class="ident">pairsDevTrain</span></span>(<span>self)</span>
-</code></dt>
-<dd>
-<div class="desc"></div>
-<details class="source">
-<summary>
-<span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/246f0d16deb2cbe52f54a7ff3656d403d8b80214/vipy/data/lfw.py#L77-L80" class="git-link">Browse git</a>
-</summary>
-<pre><code class="python">def pairsDevTrain(self):
-    if not os.path.isfile(os.path.join(self.lfwdir, &#39;lfw&#39;, &#39;pairsDevTrain.txt&#39;)):
-        raise ValueError(&#34;Download and save text file to $datadir/pairsDevTrain.txt with &#39;wget %s -O %s&#39;&#34; % (URL_PAIRS_DEV_TRAIN, os.path.join(self.lfwdir, &#39;lfw&#39;, &#39;pairsDevTrain.txt&#39;)))
-    return self._parse_pairs(&#39;pairsDevTrain.txt&#39;)</code></pre>
-</details>
-</dd>
 <dt id="vipy.data.lfw.LFW.subject_images"><code class="name flex">
 <span>def <span class="ident">subject_images</span></span>(<span>self, subject)</span>
 </code></dt>
@@ -327,7 +212,7 @@ class LFW(object):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/246f0d16deb2cbe52f54a7ff3656d403d8b80214/vipy/data/lfw.py#L36-L39" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/data/lfw.py#L33-L36" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def subject_images(self, subject):
     &#34;&#34;&#34;List of Images of a subject&#34;&#34;&#34;
@@ -343,29 +228,72 @@ class LFW(object):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/246f0d16deb2cbe52f54a7ff3656d403d8b80214/vipy/data/lfw.py#L32-L34" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/data/lfw.py#L29-L31" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def subjects(self):
     &#34;&#34;&#34;List of all subject names&#34;&#34;&#34;
     return [filetail(d) for d in dirlist(os.path.join(self.lfwdir, &#39;lfw&#39;))]</code></pre>
 </details>
 </dd>
-<dt id="vipy.data.lfw.LFW.take"><code class="name flex">
-<span>def <span class="ident">take</span></span>(<span>self, n=128)</span>
-</code></dt>
-<dd>
-<div class="desc"><p>Return a represenative list of 128 images</p></div>
-<details class="source">
-<summary>
-<span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/246f0d16deb2cbe52f54a7ff3656d403d8b80214/vipy/data/lfw.py#L55-L57" class="git-link">Browse git</a>
-</summary>
-<pre><code class="python">def take(self, n=128):
-    &#34;&#34;&#34;Return a represenative list of 128 images&#34;&#34;&#34;
-    return list(np.random.choice(self.list(), n))</code></pre>
-</details>
-</dd>
 </dl>
+<h3>Inherited members</h3>
+<ul class="hlist">
+<li><code><b><a title="vipy.dataset.Dataset" href="../dataset.html#vipy.dataset.Dataset">Dataset</a></b></code>:
+<ul class="hlist">
+<li><code><a title="vipy.dataset.Dataset.archive" href="../dataset.html#vipy.dataset.Dataset.archive">archive</a></code></li>
+<li><code><a title="vipy.dataset.Dataset.categories" href="../dataset.html#vipy.dataset.Dataset.categories">categories</a></code></li>
+<li><code><a title="vipy.dataset.Dataset.chunk" href="../dataset.html#vipy.dataset.Dataset.chunk">chunk</a></code></li>
+<li><code><a title="vipy.dataset.Dataset.class_to_index" href="../dataset.html#vipy.dataset.Dataset.class_to_index">class_to_index</a></code></li>
+<li><code><a title="vipy.dataset.Dataset.classes" href="../dataset.html#vipy.dataset.Dataset.classes">classes</a></code></li>
+<li><code><a title="vipy.dataset.Dataset.classlist" href="../dataset.html#vipy.dataset.Dataset.classlist">classlist</a></code></li>
+<li><code><a title="vipy.dataset.Dataset.clone" href="../dataset.html#vipy.dataset.Dataset.clone">clone</a></code></li>
+<li><code><a title="vipy.dataset.Dataset.count" href="../dataset.html#vipy.dataset.Dataset.count">count</a></code></li>
+<li><code><a title="vipy.dataset.Dataset.countby" href="../dataset.html#vipy.dataset.Dataset.countby">countby</a></code></li>
+<li><code><a title="vipy.dataset.Dataset.density" href="../dataset.html#vipy.dataset.Dataset.density">density</a></code></li>
+<li><code><a title="vipy.dataset.Dataset.duration_in_seconds" href="../dataset.html#vipy.dataset.Dataset.duration_in_seconds">duration_in_seconds</a></code></li>
+<li><code><a title="vipy.dataset.Dataset.filter" href="../dataset.html#vipy.dataset.Dataset.filter">filter</a></code></li>
+<li><code><a title="vipy.dataset.Dataset.flatten" href="../dataset.html#vipy.dataset.Dataset.flatten">flatten</a></code></li>
+<li><code><a title="vipy.dataset.Dataset.id" href="../dataset.html#vipy.dataset.Dataset.id">id</a></code></li>
+<li><code><a title="vipy.dataset.Dataset.index_to_class" href="../dataset.html#vipy.dataset.Dataset.index_to_class">index_to_class</a></code></li>
+<li><code><a title="vipy.dataset.Dataset.inverse_frequency_weight" href="../dataset.html#vipy.dataset.Dataset.inverse_frequency_weight">inverse_frequency_weight</a></code></li>
+<li><code><a title="vipy.dataset.Dataset.istype" href="../dataset.html#vipy.dataset.Dataset.istype">istype</a></code></li>
+<li><code><a title="vipy.dataset.Dataset.jsondir" href="../dataset.html#vipy.dataset.Dataset.jsondir">jsondir</a></code></li>
+<li><code><a title="vipy.dataset.Dataset.label_to_index" href="../dataset.html#vipy.dataset.Dataset.label_to_index">label_to_index</a></code></li>
+<li><code><a title="vipy.dataset.Dataset.list" href="../dataset.html#vipy.dataset.Dataset.list">list</a></code></li>
+<li><code><a title="vipy.dataset.Dataset.load" href="../dataset.html#vipy.dataset.Dataset.load">load</a></code></li>
+<li><code><a title="vipy.dataset.Dataset.map" href="../dataset.html#vipy.dataset.Dataset.map">map</a></code></li>
+<li><code><a title="vipy.dataset.Dataset.merge" href="../dataset.html#vipy.dataset.Dataset.merge">merge</a></code></li>
+<li><code><a title="vipy.dataset.Dataset.minibatch" href="../dataset.html#vipy.dataset.Dataset.minibatch">minibatch</a></code></li>
+<li><code><a title="vipy.dataset.Dataset.multilabel_inverse_frequency_weight" href="../dataset.html#vipy.dataset.Dataset.multilabel_inverse_frequency_weight">multilabel_inverse_frequency_weight</a></code></li>
+<li><code><a title="vipy.dataset.Dataset.num_categories" href="../dataset.html#vipy.dataset.Dataset.num_categories">num_categories</a></code></li>
+<li><code><a title="vipy.dataset.Dataset.num_classes" href="../dataset.html#vipy.dataset.Dataset.num_classes">num_classes</a></code></li>
+<li><code><a title="vipy.dataset.Dataset.num_labels" href="../dataset.html#vipy.dataset.Dataset.num_labels">num_labels</a></code></li>
+<li><code><a title="vipy.dataset.Dataset.percentage" href="../dataset.html#vipy.dataset.Dataset.percentage">percentage</a></code></li>
+<li><code><a title="vipy.dataset.Dataset.replace" href="../dataset.html#vipy.dataset.Dataset.replace">replace</a></code></li>
+<li><code><a title="vipy.dataset.Dataset.save" href="../dataset.html#vipy.dataset.Dataset.save">save</a></code></li>
+<li><code><a title="vipy.dataset.Dataset.set" href="../dataset.html#vipy.dataset.Dataset.set">set</a></code></li>
+<li><code><a title="vipy.dataset.Dataset.shuffle" href="../dataset.html#vipy.dataset.Dataset.shuffle">shuffle</a></code></li>
+<li><code><a title="vipy.dataset.Dataset.shuffler" href="../dataset.html#vipy.dataset.Dataset.shuffler">shuffler</a></code></li>
+<li><code><a title="vipy.dataset.Dataset.sort" href="../dataset.html#vipy.dataset.Dataset.sort">sort</a></code></li>
+<li><code><a title="vipy.dataset.Dataset.split" href="../dataset.html#vipy.dataset.Dataset.split">split</a></code></li>
+<li><code><a title="vipy.dataset.Dataset.split_by_videoid" href="../dataset.html#vipy.dataset.Dataset.split_by_videoid">split_by_videoid</a></code></li>
+<li><code><a title="vipy.dataset.Dataset.synonym" href="../dataset.html#vipy.dataset.Dataset.synonym">synonym</a></code></li>
+<li><code><a title="vipy.dataset.Dataset.take" href="../dataset.html#vipy.dataset.Dataset.take">take</a></code></li>
+<li><code><a title="vipy.dataset.Dataset.take_per_category" href="../dataset.html#vipy.dataset.Dataset.take_per_category">take_per_category</a></code></li>
+<li><code><a title="vipy.dataset.Dataset.takefilter" href="../dataset.html#vipy.dataset.Dataset.takefilter">takefilter</a></code></li>
+<li><code><a title="vipy.dataset.Dataset.takelist" href="../dataset.html#vipy.dataset.Dataset.takelist">takelist</a></code></li>
+<li><code><a title="vipy.dataset.Dataset.takeone" href="../dataset.html#vipy.dataset.Dataset.takeone">takeone</a></code></li>
+<li><code><a title="vipy.dataset.Dataset.to_torch" href="../dataset.html#vipy.dataset.Dataset.to_torch">to_torch</a></code></li>
+<li><code><a title="vipy.dataset.Dataset.to_torch_tensordir" href="../dataset.html#vipy.dataset.Dataset.to_torch_tensordir">to_torch_tensordir</a></code></li>
+<li><code><a title="vipy.dataset.Dataset.tohtml" href="../dataset.html#vipy.dataset.Dataset.tohtml">tohtml</a></code></li>
+<li><code><a title="vipy.dataset.Dataset.tojsondir" href="../dataset.html#vipy.dataset.Dataset.tojsondir">tojsondir</a></code></li>
+<li><code><a title="vipy.dataset.Dataset.tolist" href="../dataset.html#vipy.dataset.Dataset.tolist">tolist</a></code></li>
+<li><code><a title="vipy.dataset.Dataset.video_duration_in_seconds" href="../dataset.html#vipy.dataset.Dataset.video_duration_in_seconds">video_duration_in_seconds</a></code></li>
+<li><code><a title="vipy.dataset.Dataset.video_montage" href="../dataset.html#vipy.dataset.Dataset.video_montage">video_montage</a></code></li>
+<li><code><a title="vipy.dataset.Dataset.zip" href="../dataset.html#vipy.dataset.Dataset.zip">zip</a></code></li>
+</ul>
+</li>
+</ul>
 </dd>
 </dl>
 </section>
@@ -437,17 +365,9 @@ setTimeout(() => input.focus(), 100);
 <ul>
 <li>
 <h4><code><a title="vipy.data.lfw.LFW" href="#vipy.data.lfw.LFW">LFW</a></code></h4>
-<ul class="two-column">
-<li><code><a title="vipy.data.lfw.LFW.dataset" href="#vipy.data.lfw.LFW.dataset">dataset</a></code></li>
-<li><code><a title="vipy.data.lfw.LFW.dictionary" href="#vipy.data.lfw.LFW.dictionary">dictionary</a></code></li>
-<li><code><a title="vipy.data.lfw.LFW.download" href="#vipy.data.lfw.LFW.download">download</a></code></li>
-<li><code><a title="vipy.data.lfw.LFW.list" href="#vipy.data.lfw.LFW.list">list</a></code></li>
-<li><code><a title="vipy.data.lfw.LFW.pairs" href="#vipy.data.lfw.LFW.pairs">pairs</a></code></li>
-<li><code><a title="vipy.data.lfw.LFW.pairsDevTest" href="#vipy.data.lfw.LFW.pairsDevTest">pairsDevTest</a></code></li>
-<li><code><a title="vipy.data.lfw.LFW.pairsDevTrain" href="#vipy.data.lfw.LFW.pairsDevTrain">pairsDevTrain</a></code></li>
+<ul class="">
 <li><code><a title="vipy.data.lfw.LFW.subject_images" href="#vipy.data.lfw.LFW.subject_images">subject_images</a></code></li>
 <li><code><a title="vipy.data.lfw.LFW.subjects" href="#vipy.data.lfw.LFW.subjects">subjects</a></code></li>
-<li><code><a title="vipy.data.lfw.LFW.take" href="#vipy.data.lfw.LFW.take">take</a></code></li>
 </ul>
 </li>
 </ul>

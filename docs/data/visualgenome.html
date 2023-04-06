@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1" />
 <meta name="generator" content="pdoc 0.10.0" />
 <meta name="google-site-verification" content="aB8LkQegj94_TJPdrcJm2ldIRWyXY82Jp24Gtkdgyn0" />
-<title>vipy.data.caltech256 API documentation</title>
+<title>vipy.data.visualgenome API documentation</title>
 <meta name="description" content="" />
 <link rel="preload stylesheet" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/10up-sanitize.css/11.0.1/sanitize.min.css" integrity="sha256-PK9q560IAAa6WVRRh76LtCaI8pjTJ2z11v0miyNNjrs=" crossorigin>
 <link rel="preload stylesheet" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/10up-sanitize.css/11.0.1/typography.min.css" integrity="sha256-7l/o7C8jubJiy74VsKTidCy1yBkRtiUGbVkYBylBqUg=" crossorigin>
@@ -20,43 +20,48 @@
 <main>
 <article id="content">
 <header>
-<h1 class="title">Module <code>vipy.data.caltech256</code></h1>
+<h1 class="title">Module <code>vipy.data.visualgenome</code></h1>
 </header>
 <section id="section-intro">
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/data/caltech256.py#L1-L29" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/data/visualgenome.py#L1-L34" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">import os
-import vipy.downloader
-import vipy.dataset
-from vipy.util import remkdir
-from vipy.image import ImageCategory
+import vipy
 
 
-URL = &#39;https://data.caltech.edu/records/nyy15-4j048/files/256_ObjectCategories.tar&#39;
-SHA1 = None
+URLS = [&#39;https://cs.stanford.edu/people/rak248/VG_100K_2/images.zip&#39;,
+        &#39;https://cs.stanford.edu/people/rak248/VG_100K_2/images2.zip&#39;,
+        &#39;http://visualgenome.org/static/data/dataset/image_data.json.zip&#39;,
+        &#39;http://visualgenome.org/static/data/dataset/objects.json.zip&#39;,
+        &#39;http://visualgenome.org/static/data/dataset/relationships.json.zip&#39;]
 
 
-class Caltech256(vipy.dataset.Dataset):
-    &#34;&#34;&#34;Caltech-256 dataset: https://data.caltech.edu/records/nyy15-4j048&#34;&#34;&#34;
-    def __init__(self, datadir):
-        # Download (if not cached)
-        self._datadir = remkdir(datadir)        
-        if not os.path.exists(os.path.join(self._datadir, &#39;256_ObjectCategories&#39;)):
-            vipy.downloader.download_and_unpack(URL, self._datadir, sha1=SHA1)            
-            
-        # Create dataset
+class VisualGenome(vipy.dataset.Dataset):
+    &#34;&#34;&#34;Project: http://visualgenome.org/, version 1.4-objects&#34;&#34;&#34;
+    def __init__(self, datadir, name=&#39;visualgenome&#39;):
+        self._datadir = vipy.util.remkdir(datadir)
+        for url in URLS:
+            if not os.path.exists(os.path.join(self._datadir, vipy.util.filetail(url))):
+                vipy.downloader.download_and_unpack(url, self._datadir)
+
+        d_imageid_to_filename = {x[&#39;image_id&#39;]:os.path.join(self._datadir, vipy.util.filetail(vipy.util.filepath(x[&#39;url&#39;])), vipy.util.filetail(x[&#39;url&#39;]))
+                                 for x in vipy.util.readjson(os.path.join(self._datadir, &#39;image_data.json&#39;))}
+
         imlist = []
-        categorydir = os.path.join(self._datadir, &#39;256_ObjectCategories&#39;)        
-        for (idx_category, category) in enumerate(os.listdir(categorydir)):
-            imdir = os.path.join(categorydir, category)
-            for im in os.listdir(imdir):
-                imlist.append(ImageCategory(filename=os.path.join(categorydir, category, im), category=category))
-
-        super().__init__(imlist, id=&#39;caltech-256&#39;)
-            </code></pre>
+        for obj in vipy.util.readjson(os.path.join(self._datadir, &#39;objects.json&#39;)):
+            imlist.append(vipy.image.Scene(filename=d_imageid_to_filename[obj[&#39;image_id&#39;]],
+                                           objects=[vipy.object.Detection(label=o[&#39;names&#39;][0] if len(o[&#39;names&#39;])&gt;0 else o[&#39;object_id&#39;],
+                                                                          xmin = o[&#39;x&#39;], ymin=o[&#39;y&#39;], width=o[&#39;w&#39;], height=o[&#39;h&#39;],
+                                                                          id = o[&#39;object_id&#39;],
+                                                                          attributes={&#39;synsets&#39;:o[&#39;synsets&#39;]})
+                                
+                                                    for o in obj[&#39;objects&#39;]]))
+        
+        super().__init__(imlist, id=name)
+        </code></pre>
 </details>
 </section>
 <section>
@@ -68,34 +73,39 @@ class Caltech256(vipy.dataset.Dataset):
 <section>
 <h2 class="section-title" id="header-classes">Classes</h2>
 <dl>
-<dt id="vipy.data.caltech256.Caltech256"><code class="flex name class">
-<span>class <span class="ident">Caltech256</span></span>
-<span>(</span><span>datadir)</span>
+<dt id="vipy.data.visualgenome.VisualGenome"><code class="flex name class">
+<span>class <span class="ident">VisualGenome</span></span>
+<span>(</span><span>datadir, name='visualgenome')</span>
 </code></dt>
 <dd>
-<div class="desc"><p>Caltech-256 dataset: <a href="https://data.caltech.edu/records/nyy15-4j048">https://data.caltech.edu/records/nyy15-4j048</a></p></div>
+<div class="desc"><p>Project: <a href="http://visualgenome.org/,">http://visualgenome.org/,</a> version 1.4-objects</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/data/caltech256.py#L12-L28" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/data/visualgenome.py#L12-L33" class="git-link">Browse git</a>
 </summary>
-<pre><code class="python">class Caltech256(vipy.dataset.Dataset):
-    &#34;&#34;&#34;Caltech-256 dataset: https://data.caltech.edu/records/nyy15-4j048&#34;&#34;&#34;
-    def __init__(self, datadir):
-        # Download (if not cached)
-        self._datadir = remkdir(datadir)        
-        if not os.path.exists(os.path.join(self._datadir, &#39;256_ObjectCategories&#39;)):
-            vipy.downloader.download_and_unpack(URL, self._datadir, sha1=SHA1)            
-            
-        # Create dataset
-        imlist = []
-        categorydir = os.path.join(self._datadir, &#39;256_ObjectCategories&#39;)        
-        for (idx_category, category) in enumerate(os.listdir(categorydir)):
-            imdir = os.path.join(categorydir, category)
-            for im in os.listdir(imdir):
-                imlist.append(ImageCategory(filename=os.path.join(categorydir, category, im), category=category))
+<pre><code class="python">class VisualGenome(vipy.dataset.Dataset):
+    &#34;&#34;&#34;Project: http://visualgenome.org/, version 1.4-objects&#34;&#34;&#34;
+    def __init__(self, datadir, name=&#39;visualgenome&#39;):
+        self._datadir = vipy.util.remkdir(datadir)
+        for url in URLS:
+            if not os.path.exists(os.path.join(self._datadir, vipy.util.filetail(url))):
+                vipy.downloader.download_and_unpack(url, self._datadir)
 
-        super().__init__(imlist, id=&#39;caltech-256&#39;)</code></pre>
+        d_imageid_to_filename = {x[&#39;image_id&#39;]:os.path.join(self._datadir, vipy.util.filetail(vipy.util.filepath(x[&#39;url&#39;])), vipy.util.filetail(x[&#39;url&#39;]))
+                                 for x in vipy.util.readjson(os.path.join(self._datadir, &#39;image_data.json&#39;))}
+
+        imlist = []
+        for obj in vipy.util.readjson(os.path.join(self._datadir, &#39;objects.json&#39;)):
+            imlist.append(vipy.image.Scene(filename=d_imageid_to_filename[obj[&#39;image_id&#39;]],
+                                           objects=[vipy.object.Detection(label=o[&#39;names&#39;][0] if len(o[&#39;names&#39;])&gt;0 else o[&#39;object_id&#39;],
+                                                                          xmin = o[&#39;x&#39;], ymin=o[&#39;y&#39;], width=o[&#39;w&#39;], height=o[&#39;h&#39;],
+                                                                          id = o[&#39;object_id&#39;],
+                                                                          attributes={&#39;synsets&#39;:o[&#39;synsets&#39;]})
+                                
+                                                    for o in obj[&#39;objects&#39;]]))
+        
+        super().__init__(imlist, id=name)</code></pre>
 </details>
 <h3>Ancestors</h3>
 <ul class="hlist">
@@ -229,7 +239,7 @@ setTimeout(() => input.focus(), 100);
 <li><h3><a href="#header-classes">Classes</a></h3>
 <ul>
 <li>
-<h4><code><a title="vipy.data.caltech256.Caltech256" href="#vipy.data.caltech256.Caltech256">Caltech256</a></code></h4>
+<h4><code><a title="vipy.data.visualgenome.VisualGenome" href="#vipy.data.visualgenome.VisualGenome">VisualGenome</a></code></h4>
 </li>
 </ul>
 </li>

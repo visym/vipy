@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1" />
 <meta name="generator" content="pdoc 0.10.0" />
 <meta name="google-site-verification" content="aB8LkQegj94_TJPdrcJm2ldIRWyXY82Jp24Gtkdgyn0" />
-<title>vipy documentation</title>
+<title>vipy API documentation</title>
 <meta name="description" content="VIPY is a python package for representation, transformation and visualization of annotated videos and images.
 Annotations are the ground truth …" />
 <link rel="preload stylesheet" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/10up-sanitize.css/11.0.1/sanitize.min.css" integrity="sha256-PK9q560IAAa6WVRRh76LtCaI8pjTJ2z11v0miyNNjrs=" crossorigin>
@@ -21,7 +21,7 @@ Annotations are the ground truth …" />
 <main>
 <article id="content">
 <header>
-<h1 class="title">VIPY</h1>
+<h1 class="title">Package <code>vipy</code></h1>
 </header>
 <section id="section-intro">
 <p>VIPY is a python package for representation, transformation and visualization of annotated videos and images.
@@ -180,6 +180,10 @@ This is the <a href="https://docs.aws.amazon.com/general/latest/gr/aws-sec-cred-
 </li>
 <li><strong>VIPY_AWS_SECRET_ACCESS_KEY</strong>='MYKEY'.
 This is the <a href="https://docs.aws.amazon.com/general/latest/gr/aws-sec-cred-types.html">AWS secret key</a> to download urls of the form "s3://".</li>
+<li><strong>VIPY_BACKEND</strong>.
+This is the <a href="https://matplotlib.org/stable/users/explain/backends.html">Matplotlib backend</a> to use when rendering figure windows.
+'Agg' is recommended for headless operation, and 'TkAgg' is recommended for Linux based X11 forwarding.
+In most cases, matplotlib will choose the best backend available by default, and this environment variable does not need to override this choice.</li>
 </ul>
 <h2 id="versioning">Versioning</h2>
 <p>To determine what vipy version you are running you can use:</p>
@@ -444,7 +448,7 @@ This provides a convenient method of on-demand downloading and caching of large 
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/246f0d16deb2cbe52f54a7ff3656d403d8b80214/vipy/__init__.py#L1-L528" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/__init__.py#L1-L532" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">&#34;&#34;&#34;
 VIPY is a python package for representation, transformation and visualization of annotated videos and images.  Annotations are the ground truth provided by labelers (e.g. object bounding boxes, face identities, temporal activity clips), suitable for training computer vision systems.  VIPY provides tools to easily edit videos and images so that the annotations are transformed along with the pixels.  This enables a clean interface for transforming complex datasets for input to your computer vision training and testing pipeline.
@@ -604,6 +608,7 @@ This provides control over where large datasets are cached on your local file sy
 
 * **VIPY_AWS_ACCESS_KEY_ID**=&#39;MYKEY&#39;.  This is the [AWS key](https://docs.aws.amazon.com/general/latest/gr/aws-sec-cred-types.html) to download urls of the form &#34;s3://&#34;.  
 * **VIPY_AWS_SECRET_ACCESS_KEY**=&#39;MYKEY&#39;.   This is the [AWS secret key](https://docs.aws.amazon.com/general/latest/gr/aws-sec-cred-types.html) to download urls of the form &#34;s3://&#34;.
+* **VIPY_BACKEND**.   This is the [Matplotlib backend](https://matplotlib.org/stable/users/explain/backends.html) to use when rendering figure windows.  &#39;Agg&#39; is recommended for headless operation, and &#39;TkAgg&#39; is recommended for Linux based X11 forwarding.  In most cases, matplotlib will choose the best backend available by default, and this environment variable does not need to override this choice.
 
 
 ## Versioning
@@ -971,6 +976,9 @@ import vipy.video
 import vipy.videosearch
 import vipy.visualize
 import vipy.dataset
+
+# Top level functions
+from vipy.util import save, load
 
 __version__ = vipy.version.VERSION</code></pre>
 </details>

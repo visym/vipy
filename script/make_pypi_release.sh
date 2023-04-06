@@ -14,8 +14,9 @@ git tag $1 -m "vipy-$1"
 git push --tags origin master
 
 # Upload me
-python3 setup.py sdist bdist_wheel
-twine upload dist/*
+python3 -m pip install --upgrade twine build
+python3 -m build
+python3 -m twine upload --repository pypi dist/*
 
 # Cleanup
 rm -rf dist/

@@ -26,7 +26,7 @@
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/246f0d16deb2cbe52f54a7ff3656d403d8b80214/vipy/geometry.py#L1-L1068" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/geometry.py#L1-L1076" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">import math
 import numpy as np
@@ -137,14 +137,16 @@ def random_affine_transform(txy=((0,1),(0,1)), r=(0,1), sx=(0.1,1), sy=(0.1,1), 
                             ky=uniform_random_in_range(ky))
 
 
-def imtransform(img, A):
+def imtransform(img, A, border=&#39;zero&#39;):
     &#34;&#34;&#34;Transform an numpy array image (MxNx3) following the affine or similiarity transformation A&#34;&#34;&#34;
     assert isnumpy(img) and isnumpy(A), &#34;invalid input&#34;
+    assert border in [&#39;zero&#39;, &#39;replicate&#39;]
     try_import(&#39;cv2&#39;, &#39;opencv-python&#39;); import cv2
+    borderMode = cv2.BORDER_REPLICATE if border==&#39;replicate&#39; else cv2.BORDER_CONSTANT
     if A.shape == (3,3):
-        return cv2.warpPerspective(img, A, (img.shape[1], img.shape[0]))        
+        return cv2.warpPerspective(img, A, (img.shape[1], img.shape[0]), borderMode=borderMode)        
     else:
-        return cv2.warpAffine(img, A, (img.shape[1], img.shape[0]))        
+        return cv2.warpAffine(img, A, (img.shape[1], img.shape[0]), borderMode=borderMode)        
 
 
 
@@ -233,14 +235,20 @@ class BoundingBox(object):
     @classmethod
     def from_json(cls, s):
         d = json.loads(s) if not isinstance(s, dict) else s
+        d = {&#39;_&#39;+k if not k.startswith(&#39;_&#39;) else k:v for (k,v) in d.items()}  # from prettyjson (add &#34;_&#34; prefix to attributes)                
         return cls(ulbrdict=d)
 
     def dict(self):
         &#34;&#34;&#34;Return a python dictionary containing the relevant serialized attributes suitable for JSON encoding&#34;&#34;&#34;
         return self.json(encode=False)
+
+    def __json__(self):
+        &#34;&#34;&#34;Serialization method for json package&#34;&#34;&#34;
+        return self.json(encode=True)
     
     def json(self, encode=True):
-        return json.dumps(self.__dict__) if encode else self.__dict__
+        d = {k.lstrip(&#39;_&#39;):v for (k,v) in self.__dict__.items()}  # prettyjson (remove &#34;_&#34; prefix to attributes)        
+        return json.dumps(d) if encode else d
         
     def clone(self):
         return BoundingBox(xmin=self._xmin, xmax=self._xmax, ymin=self._ymin, ymax=self._ymax)
@@ -1113,7 +1121,7 @@ def RandomBox():
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/246f0d16deb2cbe52f54a7ff3656d403d8b80214/vipy/geometry.py#L1066-L1068" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/geometry.py#L1074-L1076" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def RandomBox():
     &#34;&#34;&#34;Return a random `vipy.geometry.BoundindBox` for unit testing&#34;&#34;&#34;
@@ -1135,7 +1143,7 @@ vipy.image.Image(array=vipy.geometry.imtransform(im.array(), A), colorspace='flo
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/246f0d16deb2cbe52f54a7ff3656d403d8b80214/vipy/geometry.py#L73-L95" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/geometry.py#L73-L95" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def affine_transform(txy=(0,0), r=0, sx=1, sy=1, kx=0, ky=0):
     &#34;&#34;&#34;Compose and return a 3x3 affine transformation for translation txy=(0,0), rotation r (radians), scalex=sx, scaley=sy, shearx=kx, sheary=ky.
@@ -1170,7 +1178,7 @@ vipy.image.Image(array=vipy.geometry.imtransform(im.array(), A), colorspace='flo
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/246f0d16deb2cbe52f54a7ff3656d403d8b80214/vipy/geometry.py#L48-L51" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/geometry.py#L48-L51" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def apply_homography(H,p):
     &#34;&#34;&#34;Apply a 3x3 homography H to non-homogenous point p and return a transformed point &#34;&#34;&#34;
@@ -1186,7 +1194,7 @@ vipy.image.Image(array=vipy.geometry.imtransform(im.array(), A), colorspace='flo
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/246f0d16deb2cbe52f54a7ff3656d403d8b80214/vipy/geometry.py#L14-L18" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/geometry.py#L14-L18" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def covariance_to_ellipse(cov):
     &#34;&#34;&#34;2x2 covariance matrix to ellipse (major_axis_length, minor_axis_length, angle_in_radians)&#34;&#34;&#34;
@@ -1203,7 +1211,7 @@ vipy.image.Image(array=vipy.geometry.imtransform(im.array(), A), colorspace='flo
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/246f0d16deb2cbe52f54a7ff3656d403d8b80214/vipy/geometry.py#L21-L32" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/geometry.py#L21-L32" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def dehomogenize(p):
     &#34;&#34;&#34;Convert 3x1 homogenous point (x,y,h) to 2x1 non-homogenous point (x/h, y/h)&#34;&#34;&#34;
@@ -1227,7 +1235,7 @@ vipy.image.Image(array=vipy.geometry.imtransform(im.array(), A), colorspace='flo
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/246f0d16deb2cbe52f54a7ff3656d403d8b80214/vipy/geometry.py#L35-L45" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/geometry.py#L35-L45" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def homogenize(p):
     &#34;&#34;&#34;Convert 2xN non-homogenous points (x,y) to 3xN non-homogenous point (x, y, 1)&#34;&#34;&#34;
@@ -1250,30 +1258,32 @@ vipy.image.Image(array=vipy.geometry.imtransform(im.array(), A), colorspace='flo
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/246f0d16deb2cbe52f54a7ff3656d403d8b80214/vipy/geometry.py#L126-L127" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/geometry.py#L128-L129" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def imagebox(shape):
     return BoundingBox(xmin=0, ymin=0, width=shape[1], height=shape[0])</code></pre>
 </details>
 </dd>
 <dt id="vipy.geometry.imtransform"><code class="name flex">
-<span>def <span class="ident">imtransform</span></span>(<span>img, A)</span>
+<span>def <span class="ident">imtransform</span></span>(<span>img, A, border='zero')</span>
 </code></dt>
 <dd>
 <div class="desc"><p>Transform an numpy array image (MxNx3) following the affine or similiarity transformation A</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/246f0d16deb2cbe52f54a7ff3656d403d8b80214/vipy/geometry.py#L110-L117" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/geometry.py#L110-L119" class="git-link">Browse git</a>
 </summary>
-<pre><code class="python">def imtransform(img, A):
+<pre><code class="python">def imtransform(img, A, border=&#39;zero&#39;):
     &#34;&#34;&#34;Transform an numpy array image (MxNx3) following the affine or similiarity transformation A&#34;&#34;&#34;
     assert isnumpy(img) and isnumpy(A), &#34;invalid input&#34;
+    assert border in [&#39;zero&#39;, &#39;replicate&#39;]
     try_import(&#39;cv2&#39;, &#39;opencv-python&#39;); import cv2
+    borderMode = cv2.BORDER_REPLICATE if border==&#39;replicate&#39; else cv2.BORDER_CONSTANT
     if A.shape == (3,3):
-        return cv2.warpPerspective(img, A, (img.shape[1], img.shape[0]))        
+        return cv2.warpPerspective(img, A, (img.shape[1], img.shape[0]), borderMode=borderMode)        
     else:
-        return cv2.warpAffine(img, A, (img.shape[1], img.shape[0]))        </code></pre>
+        return cv2.warpAffine(img, A, (img.shape[1], img.shape[0]), borderMode=borderMode)        </code></pre>
 </details>
 </dd>
 <dt id="vipy.geometry.normalize"><code class="name flex">
@@ -1284,7 +1294,7 @@ vipy.image.Image(array=vipy.geometry.imtransform(im.array(), A), colorspace='flo
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/246f0d16deb2cbe52f54a7ff3656d403d8b80214/vipy/geometry.py#L121-L124" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/geometry.py#L123-L126" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def normalize(x, eps=1E-16):
     &#34;&#34;&#34;Given a vector x, return the vector unit normalized as float64&#34;&#34;&#34;
@@ -1300,7 +1310,7 @@ vipy.image.Image(array=vipy.geometry.imtransform(im.array(), A), colorspace='flo
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/246f0d16deb2cbe52f54a7ff3656d403d8b80214/vipy/geometry.py#L98-L107" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/geometry.py#L98-L107" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def random_affine_transform(txy=((0,1),(0,1)), r=(0,1), sx=(0.1,1), sy=(0.1,1), kx=(0.1,1), ky=(0.1,1)):
     &#34;&#34;&#34;Return a random 3x3 affine transformation matrix for the provided ranges, inputs must be tuples&#34;&#34;&#34;
@@ -1322,7 +1332,7 @@ vipy.image.Image(array=vipy.geometry.imtransform(im.array(), A), colorspace='flo
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/246f0d16deb2cbe52f54a7ff3656d403d8b80214/vipy/geometry.py#L64-L70" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/geometry.py#L64-L70" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def similarity_transform(txy=(0,0), r=0, s=1):
     &#34;&#34;&#34;Return a 3x3 similarity transformation with translation tuple txy=(x,y), rotation r (radians, scale=s&#34;&#34;&#34;
@@ -1341,7 +1351,7 @@ vipy.image.Image(array=vipy.geometry.imtransform(im.array(), A), colorspace='flo
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/246f0d16deb2cbe52f54a7ff3656d403d8b80214/vipy/geometry.py#L54-L61" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/geometry.py#L54-L61" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def similarity_transform_2x3(c=(0,0), r=0, s=1):
     &#34;&#34;&#34;Return a 2x3 similarity transform with rotation r (radians), scale s and origin c=(x,y)&#34;&#34;&#34;
@@ -1361,7 +1371,7 @@ vipy.image.Image(array=vipy.geometry.imtransform(im.array(), A), colorspace='flo
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/246f0d16deb2cbe52f54a7ff3656d403d8b80214/vipy/geometry.py#L1062-L1064" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/geometry.py#L1070-L1072" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def union(bblist):
     &#34;&#34;&#34;Return the union of a list of vipy.geometry.BoundingBox&#34;&#34;&#34;
@@ -1389,7 +1399,7 @@ bounding rectangle of binary mask image</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/246f0d16deb2cbe52f54a7ff3656d403d8b80214/vipy/geometry.py#L131-L983" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/geometry.py#L133-L991" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">class BoundingBox(object):
     &#34;&#34;&#34;Core bounding box class with flexible constructors in this priority order:
@@ -1466,14 +1476,20 @@ bounding rectangle of binary mask image</p></div>
     @classmethod
     def from_json(cls, s):
         d = json.loads(s) if not isinstance(s, dict) else s
+        d = {&#39;_&#39;+k if not k.startswith(&#39;_&#39;) else k:v for (k,v) in d.items()}  # from prettyjson (add &#34;_&#34; prefix to attributes)                
         return cls(ulbrdict=d)
 
     def dict(self):
         &#34;&#34;&#34;Return a python dictionary containing the relevant serialized attributes suitable for JSON encoding&#34;&#34;&#34;
         return self.json(encode=False)
+
+    def __json__(self):
+        &#34;&#34;&#34;Serialization method for json package&#34;&#34;&#34;
+        return self.json(encode=True)
     
     def json(self, encode=True):
-        return json.dumps(self.__dict__) if encode else self.__dict__
+        d = {k.lstrip(&#39;_&#39;):v for (k,v) in self.__dict__.items()}  # prettyjson (remove &#34;_&#34; prefix to attributes)        
+        return json.dumps(d) if encode else d
         
     def clone(self):
         return BoundingBox(xmin=self._xmin, xmax=self._xmax, ymin=self._ymin, ymax=self._ymax)
@@ -2259,7 +2275,7 @@ bounding rectangle of binary mask image</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/246f0d16deb2cbe52f54a7ff3656d403d8b80214/vipy/geometry.py#L195-L201" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/geometry.py#L197-L203" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">@classmethod
 def cast(cls, bb, flush=False):
@@ -2278,11 +2294,12 @@ def cast(cls, bb, flush=False):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/246f0d16deb2cbe52f54a7ff3656d403d8b80214/vipy/geometry.py#L203-L206" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/geometry.py#L205-L209" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">@classmethod
 def from_json(cls, s):
     d = json.loads(s) if not isinstance(s, dict) else s
+    d = {&#39;_&#39;+k if not k.startswith(&#39;_&#39;) else k:v for (k,v) in d.items()}  # from prettyjson (add &#34;_&#34; prefix to attributes)                
     return cls(ulbrdict=d)</code></pre>
 </details>
 </dd>
@@ -2301,7 +2318,7 @@ def from_json(cls, s):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/246f0d16deb2cbe52f54a7ff3656d403d8b80214/vipy/geometry.py#L948-L954" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/geometry.py#L956-L962" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def affine(self, A):
     &#34;&#34;&#34;Apply an 2x3 affine transformation to the box centroid.  
@@ -2320,7 +2337,7 @@ def from_json(cls, s):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/246f0d16deb2cbe52f54a7ff3656d403d8b80214/vipy/geometry.py#L476-L478" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/geometry.py#L484-L486" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def area(self):
     &#34;&#34;&#34;Return the area=width*height of the bounding box&#34;&#34;&#34;
@@ -2335,7 +2352,7 @@ def from_json(cls, s):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/246f0d16deb2cbe52f54a7ff3656d403d8b80214/vipy/geometry.py#L567-L577" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/geometry.py#L575-L585" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def area_of_intersection(self, bb, strict=True):
     &#34;&#34;&#34;area of intersection&#34;&#34;&#34;
@@ -2358,7 +2375,7 @@ def from_json(cls, s):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/246f0d16deb2cbe52f54a7ff3656d403d8b80214/vipy/geometry.py#L579-L580" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/geometry.py#L587-L588" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def area_of_union(self, bb):
     return self.area() + bb.area() - self.area_of_intersection(bb)</code></pre>
@@ -2372,7 +2389,7 @@ def from_json(cls, s):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/246f0d16deb2cbe52f54a7ff3656d403d8b80214/vipy/geometry.py#L892-L896" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/geometry.py#L900-L904" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def aspectratio(self):
     &#34;&#34;&#34;Return the aspect ratio (width/height) of the box&#34;&#34;&#34;
@@ -2390,7 +2407,7 @@ Other may be a singleton bounding box or a list of bounding boxes</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/246f0d16deb2cbe52f54a7ff3656d403d8b80214/vipy/geometry.py#L922-L925" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/geometry.py#L930-L933" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def average(self, other):
     &#34;&#34;&#34;Compute the average bounding box between self and other, and set self to the average.  Other may be a singleton bounding box or a list of bounding boxes&#34;&#34;&#34;
@@ -2407,7 +2424,7 @@ Other may be a singleton bounding box or a list of bounding boxes</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/246f0d16deb2cbe52f54a7ff3656d403d8b80214/vipy/geometry.py#L927-L933" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/geometry.py#L935-L941" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def averageshape(self, other):
     &#34;&#34;&#34;Compute the average bounding box width and height between self and other.  Other may be a singleton bounding box or a list of bounding boxes&#34;&#34;&#34;
@@ -2426,7 +2443,7 @@ Other may be a singleton bounding box or a list of bounding boxes</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/246f0d16deb2cbe52f54a7ff3656d403d8b80214/vipy/geometry.py#L217-L218" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/geometry.py#L225-L226" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def bbclone(self):
     return BoundingBox(xmin=self._xmin, xmax=self._xmax, ymin=self._ymin, ymax=self._ymax)</code></pre>
@@ -2440,7 +2457,7 @@ Other may be a singleton bounding box or a list of bounding boxes</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/246f0d16deb2cbe52f54a7ff3656d403d8b80214/vipy/geometry.py#L267-L269" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/geometry.py#L275-L277" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def bl(self):
     &#34;&#34;&#34;Bottom left coordinate (x,y), synonym for ll()&#34;&#34;&#34;
@@ -2455,7 +2472,7 @@ Other may be a singleton bounding box or a list of bounding boxes</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/246f0d16deb2cbe52f54a7ff3656d403d8b80214/vipy/geometry.py#L271-L273" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/geometry.py#L279-L281" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def blx(self):
     &#34;&#34;&#34;Bottom left coordinate (x)&#34;&#34;&#34;
@@ -2470,7 +2487,7 @@ Other may be a singleton bounding box or a list of bounding boxes</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/246f0d16deb2cbe52f54a7ff3656d403d8b80214/vipy/geometry.py#L275-L277" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/geometry.py#L283-L285" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def bly(self):
     &#34;&#34;&#34;Bottom left coordinate (y)&#34;&#34;&#34;
@@ -2485,7 +2502,7 @@ Other may be a singleton bounding box or a list of bounding boxes</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/246f0d16deb2cbe52f54a7ff3656d403d8b80214/vipy/geometry.py#L707-L710" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/geometry.py#L715-L718" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def bottom(self, dy):
     &#34;&#34;&#34;Make bottom of box taller (closer to bottom of image) by an offset dy&#34;&#34;&#34;
@@ -2501,7 +2518,7 @@ Other may be a singleton bounding box or a list of bounding boxes</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/246f0d16deb2cbe52f54a7ff3656d403d8b80214/vipy/geometry.py#L314-L316" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/geometry.py#L322-L324" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def bottomleft(self):
     &#34;&#34;&#34;Return the (x,y) lower left corner coordinate of the box&#34;&#34;&#34;
@@ -2516,7 +2533,7 @@ Other may be a singleton bounding box or a list of bounding boxes</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/246f0d16deb2cbe52f54a7ff3656d403d8b80214/vipy/geometry.py#L322-L324" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/geometry.py#L330-L332" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def bottomright(self):
     &#34;&#34;&#34;Return the (x,y) lower right corner coordinate of the box&#34;&#34;&#34;
@@ -2531,7 +2548,7 @@ Other may be a singleton bounding box or a list of bounding boxes</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/246f0d16deb2cbe52f54a7ff3656d403d8b80214/vipy/geometry.py#L283-L285" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/geometry.py#L291-L293" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def br(self):
     &#34;&#34;&#34;Bottom right coordinate (x,y), synonym for lr()&#34;&#34;&#34;
@@ -2546,7 +2563,7 @@ Other may be a singleton bounding box or a list of bounding boxes</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/246f0d16deb2cbe52f54a7ff3656d403d8b80214/vipy/geometry.py#L287-L289" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/geometry.py#L295-L297" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def brx(self):
     &#34;&#34;&#34;Bottom right coordinate (x)&#34;&#34;&#34;
@@ -2561,7 +2578,7 @@ Other may be a singleton bounding box or a list of bounding boxes</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/246f0d16deb2cbe52f54a7ff3656d403d8b80214/vipy/geometry.py#L291-L293" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/geometry.py#L299-L301" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def bry(self):
     &#34;&#34;&#34;Bottom right coordinate (y)&#34;&#34;&#34;
@@ -2576,7 +2593,7 @@ Other may be a singleton bounding box or a list of bounding boxes</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/246f0d16deb2cbe52f54a7ff3656d403d8b80214/vipy/geometry.py#L434-L436" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/geometry.py#L442-L444" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def centroid(self, c=None):
     &#34;&#34;&#34;(x,y) tuple of centroid position of bounding box&#34;&#34;&#34;        
@@ -2591,7 +2608,7 @@ Other may be a singleton bounding box or a list of bounding boxes</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/246f0d16deb2cbe52f54a7ff3656d403d8b80214/vipy/geometry.py#L458-L460" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/geometry.py#L466-L468" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def centroid_x(self):
     &#34;&#34;&#34;Alias for x_centroid()&#34;&#34;&#34;
@@ -2606,7 +2623,7 @@ Other may be a singleton bounding box or a list of bounding boxes</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/246f0d16deb2cbe52f54a7ff3656d403d8b80214/vipy/geometry.py#L468-L470" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/geometry.py#L476-L478" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def centroid_y(self):
     &#34;&#34;&#34;Alias for y_centroid()&#34;&#34;&#34;
@@ -2621,7 +2638,7 @@ Other may be a singleton bounding box or a list of bounding boxes</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/246f0d16deb2cbe52f54a7ff3656d403d8b80214/vipy/geometry.py#L215-L216" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/geometry.py#L223-L224" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def clone(self):
     return BoundingBox(xmin=self._xmin, xmax=self._xmax, ymin=self._ymin, ymax=self._ymax)</code></pre>
@@ -2635,7 +2652,7 @@ Other may be a singleton bounding box or a list of bounding boxes</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/246f0d16deb2cbe52f54a7ff3656d403d8b80214/vipy/geometry.py#L976-L978" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/geometry.py#L984-L986" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def confidence(self):
     &#34;&#34;&#34;Bounding boxes do not have confidences, use vipy.object.Detection()&#34;&#34;&#34;
@@ -2650,7 +2667,7 @@ Other may be a singleton bounding box or a list of bounding boxes</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/246f0d16deb2cbe52f54a7ff3656d403d8b80214/vipy/geometry.py#L884-L890" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/geometry.py#L892-L898" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def convexhull(self, fr):
     &#34;&#34;&#34;Given a set of points [[x1,y1],[x2,xy],...], return the bounding rectangle, typecast to float&#34;&#34;&#34;
@@ -2679,7 +2696,7 @@ Other may be a singleton bounding box or a list of bounding boxes</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/246f0d16deb2cbe52f54a7ff3656d403d8b80214/vipy/geometry.py#L582-L593" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/geometry.py#L590-L601" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def cover(self, bb):
     &#34;&#34;&#34;Fraction of this bounding box intersected by other bbox (bb).
@@ -2704,7 +2721,7 @@ Crop is performed in-place.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/246f0d16deb2cbe52f54a7ff3656d403d8b80214/vipy/geometry.py#L964-L974" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/geometry.py#L972-L982" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def crop(self, img):
     &#34;&#34;&#34;Crop an HxW 2D numpy image, HxWxC 3D numpy image, or NxHxWxC 4D numpy image array using this bounding box applied to HxW dimensions.  Crop is performed in-place. &#34;&#34;&#34;
@@ -2727,7 +2744,7 @@ Crop is performed in-place.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/246f0d16deb2cbe52f54a7ff3656d403d8b80214/vipy/geometry.py#L497-L504" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/geometry.py#L505-L512" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def cxywh(self, cxywh=None):
     &#34;&#34;&#34;Return or set bounding box corners as (centroidx,centroidy,width,height) tuple&#34;&#34;&#34;
@@ -2747,7 +2764,7 @@ Crop is performed in-place.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/246f0d16deb2cbe52f54a7ff3656d403d8b80214/vipy/geometry.py#L208-L210" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/geometry.py#L211-L213" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def dict(self):
     &#34;&#34;&#34;Return a python dictionary containing the relevant serialized attributes suitable for JSON encoding&#34;&#34;&#34;
@@ -2762,7 +2779,7 @@ Crop is performed in-place.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/246f0d16deb2cbe52f54a7ff3656d403d8b80214/vipy/geometry.py#L662-L676" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/geometry.py#L670-L684" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def dilate(self, scale=1):
     &#34;&#34;&#34;Change scale of bounding box keeping centroid constant&#34;&#34;&#34;
@@ -2789,7 +2806,7 @@ Crop is performed in-place.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/246f0d16deb2cbe52f54a7ff3656d403d8b80214/vipy/geometry.py#L686-L692" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/geometry.py#L694-L700" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def dilate_height(self, scale=1):
     &#34;&#34;&#34;Change scale of bounding box in y direction keeping centroid constant&#34;&#34;&#34;
@@ -2808,7 +2825,7 @@ Crop is performed in-place.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/246f0d16deb2cbe52f54a7ff3656d403d8b80214/vipy/geometry.py#L694-L700" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/geometry.py#L702-L708" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def dilate_width(self, scale=1):
     &#34;&#34;&#34;Change scale of bounding box in x direction keeping centroid constant&#34;&#34;&#34;
@@ -2827,7 +2844,7 @@ Crop is performed in-place.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/246f0d16deb2cbe52f54a7ff3656d403d8b80214/vipy/geometry.py#L678-L684" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/geometry.py#L686-L692" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def dilatepx(self, px):
     &#34;&#34;&#34;Dilate by a given pixel amount on all sides, keeping centroid constant&#34;&#34;&#34;
@@ -2846,7 +2863,7 @@ Crop is performed in-place.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/246f0d16deb2cbe52f54a7ff3656d403d8b80214/vipy/geometry.py#L535-L538" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/geometry.py#L543-L546" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def dist(self, bb):
     &#34;&#34;&#34;Distance between centroids of two bounding boxes&#34;&#34;&#34;
@@ -2862,7 +2879,7 @@ Crop is performed in-place.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/246f0d16deb2cbe52f54a7ff3656d403d8b80214/vipy/geometry.py#L522-L524" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/geometry.py#L530-L532" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def dx(self, bb):
     &#34;&#34;&#34;Offset bounding box by same xmin as provided box&#34;&#34;&#34;
@@ -2877,7 +2894,7 @@ Crop is performed in-place.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/246f0d16deb2cbe52f54a7ff3656d403d8b80214/vipy/geometry.py#L526-L528" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/geometry.py#L534-L536" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def dy(self, bb):
     &#34;&#34;&#34;Offset bounding box by ymin of provided box&#34;&#34;&#34;
@@ -2892,7 +2909,7 @@ Crop is performed in-place.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/246f0d16deb2cbe52f54a7ff3656d403d8b80214/vipy/geometry.py#L917-L920" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/geometry.py#L925-L928" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def ellipse(self):
     &#34;&#34;&#34;Convert the boundingbox to a vipy.geometry.Ellipse object&#34;&#34;&#34;
@@ -2909,7 +2926,7 @@ This is helpful for FFMPEG crop filters.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/246f0d16deb2cbe52f54a7ff3656d403d8b80214/vipy/geometry.py#L819-L826" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/geometry.py#L827-L834" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def even(self):
     &#34;&#34;&#34;Force all corners to be even number integers.  This is helpful for FFMPEG crop filters.&#34;&#34;&#34;
@@ -2929,7 +2946,7 @@ This is helpful for FFMPEG crop filters.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/246f0d16deb2cbe52f54a7ff3656d403d8b80214/vipy/geometry.py#L760-L770" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/geometry.py#L768-L778" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def fliplr(self, img=None, width=None):
     &#34;&#34;&#34;Flip the box left/right consistent with fliplr of the provided img (or consistent with the image width)&#34;&#34;&#34;
@@ -2952,7 +2969,7 @@ This is helpful for FFMPEG crop filters.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/246f0d16deb2cbe52f54a7ff3656d403d8b80214/vipy/geometry.py#L772-L782" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/geometry.py#L780-L790" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def flipud(self, img=None, height=None):
     &#34;&#34;&#34;Flip the box up/down consistent with flipud of the provided img (or consistent with the image height)&#34;&#34;&#34;
@@ -2975,7 +2992,7 @@ This is helpful for FFMPEG crop filters.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/246f0d16deb2cbe52f54a7ff3656d403d8b80214/vipy/geometry.py#L345-L351" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/geometry.py#L353-L359" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def float(self):
     &#34;&#34;&#34;Convert corners to float&#34;&#34;&#34;
@@ -2994,7 +3011,7 @@ This is helpful for FFMPEG crop filters.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/246f0d16deb2cbe52f54a7ff3656d403d8b80214/vipy/geometry.py#L980-L983" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/geometry.py#L988-L991" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def grid(self, rows, cols):
     &#34;&#34;&#34;Split a bounding box into the smallest grid of non-overlapping bounding boxes such that the union is the original box&#34;&#34;&#34;
@@ -3011,7 +3028,7 @@ This is a convenience function that allows for shared computation for fast non-m
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/246f0d16deb2cbe52f54a7ff3656d403d8b80214/vipy/geometry.py#L624-L640" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/geometry.py#L632-L648" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def hasintersection(self, bb, iou=None, cover=None, maxcover=None, bbcover=None, area=None, otherarea=None, gate=0):
     &#34;&#34;&#34;Return true if self and bb overlap by any amount, or by the cover threshold (if provided) or the iou threshold (if provided).  This is a convenience function that allows for shared computation for fast non-maximum suppression.&#34;&#34;&#34;
@@ -3040,7 +3057,7 @@ This is a convenience function that allows for shared computation for fast non-m
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/246f0d16deb2cbe52f54a7ff3656d403d8b80214/vipy/geometry.py#L840-L848" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/geometry.py#L848-L856" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def hasoverlap(self, img=None, width=None, height=None):
     &#34;&#34;&#34;Does the bounding box intersect with the provided image rectangle?&#34;&#34;&#34;
@@ -3061,7 +3078,7 @@ This is a convenience function that allows for shared computation for fast non-m
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/246f0d16deb2cbe52f54a7ff3656d403d8b80214/vipy/geometry.py#L428-L429" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/geometry.py#L436-L437" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def height(self):
     return self._ymax - self._ymin</code></pre>
@@ -3075,7 +3092,7 @@ This is a convenience function that allows for shared computation for fast non-m
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/246f0d16deb2cbe52f54a7ff3656d403d8b80214/vipy/geometry.py#L870-L878" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/geometry.py#L878-L886" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def imclip(self, img=None, width=None, height=None):
     &#34;&#34;&#34;Clip bounding box to image rectangle [0,0,width,height] or img.shape=(width, height) and, throw an exception on an invalid box&#34;&#34;&#34;
@@ -3096,7 +3113,7 @@ This is a convenience function that allows for shared computation for fast non-m
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/246f0d16deb2cbe52f54a7ff3656d403d8b80214/vipy/geometry.py#L880-L882" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/geometry.py#L888-L890" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def imclipshape(self, W, H):
     &#34;&#34;&#34;Clip bounding box to image rectangle [0,0,W-1,H-1], throw an exception on an invalid box&#34;&#34;&#34;
@@ -3112,7 +3129,7 @@ Transform is applyed by computing smallest (dx,dy) translation that it is interi
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/246f0d16deb2cbe52f54a7ff3656d403d8b80214/vipy/geometry.py#L859-L868" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/geometry.py#L867-L876" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def iminterior(self, W, H):
     &#34;&#34;&#34;Transform bounding box to be interior to the image rectangle with shape (W,H).  
@@ -3134,7 +3151,7 @@ Transform is applyed by computing smallest (dx,dy) translation that it is interi
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/246f0d16deb2cbe52f54a7ff3656d403d8b80214/vipy/geometry.py#L784-L792" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/geometry.py#L792-L800" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def imscale(self, im):
     &#34;&#34;&#34;Given a vipy.image object im, scale the box to be within [0,1], relative to height and width of image&#34;&#34;&#34;
@@ -3155,7 +3172,7 @@ Transform is applyed by computing smallest (dx,dy) translation that it is interi
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/246f0d16deb2cbe52f54a7ff3656d403d8b80214/vipy/geometry.py#L332-L343" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/geometry.py#L340-L351" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def int(self):
     &#34;&#34;&#34;Convert corners to integer with rounding, in-place update&#34;&#34;&#34;
@@ -3179,7 +3196,7 @@ Transform is applyed by computing smallest (dx,dy) translation that it is interi
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/246f0d16deb2cbe52f54a7ff3656d403d8b80214/vipy/geometry.py#L613-L622" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/geometry.py#L621-L630" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def intersection(self, bb, strict=True):
     &#34;&#34;&#34;Intersection of two bounding boxes, throw an error on degeneracy of intersection result (if strict=True)&#34;&#34;&#34;
@@ -3201,7 +3218,7 @@ Transform is applyed by computing smallest (dx,dy) translation that it is interi
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/246f0d16deb2cbe52f54a7ff3656d403d8b80214/vipy/geometry.py#L563-L565" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/geometry.py#L571-L573" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def intersection_over_union(self, bb):
     &#34;&#34;&#34;Alias for iou&#34;&#34;&#34;
@@ -3216,7 +3233,7 @@ Transform is applyed by computing smallest (dx,dy) translation that it is interi
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/246f0d16deb2cbe52f54a7ff3656d403d8b80214/vipy/geometry.py#L383-L387" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/geometry.py#L391-L395" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def invalid(self):
     &#34;&#34;&#34;Is the box a valid bounding box?&#34;&#34;&#34;
@@ -3233,7 +3250,7 @@ Transform is applyed by computing smallest (dx,dy) translation that it is interi
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/246f0d16deb2cbe52f54a7ff3656d403d8b80214/vipy/geometry.py#L545-L561" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/geometry.py#L553-L569" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def iou(self, bb, area=None, otherarea=None):
     &#34;&#34;&#34;area of intersection / area of union&#34;&#34;&#34;
@@ -3262,7 +3279,7 @@ Transform is applyed by computing smallest (dx,dy) translation that it is interi
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/246f0d16deb2cbe52f54a7ff3656d403d8b80214/vipy/geometry.py#L395-L396" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/geometry.py#L403-L404" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def isdegenerate(self):
     return self.invalid()</code></pre>
@@ -3276,7 +3293,7 @@ Transform is applyed by computing smallest (dx,dy) translation that it is interi
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/246f0d16deb2cbe52f54a7ff3656d403d8b80214/vipy/geometry.py#L812-L817" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/geometry.py#L820-L825" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def iseven(self):
     &#34;&#34;&#34;Are all corners even number integers?&#34;&#34;&#34;
@@ -3294,7 +3311,7 @@ Transform is applyed by computing smallest (dx,dy) translation that it is interi
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/246f0d16deb2cbe52f54a7ff3656d403d8b80214/vipy/geometry.py#L652-L655" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/geometry.py#L660-L663" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def isinside(self, bb):
     &#34;&#34;&#34;Is this boundingbox fully within the provided bounding box?&#34;&#34;&#34;
@@ -3310,7 +3327,7 @@ Transform is applyed by computing smallest (dx,dy) translation that it is interi
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/246f0d16deb2cbe52f54a7ff3656d403d8b80214/vipy/geometry.py#L326-L330" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/geometry.py#L334-L338" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def isinteger(self):
     return (isinstance(self._xmin, int) and
@@ -3332,7 +3349,7 @@ Transform is applyed by computing smallest (dx,dy) translation that it is interi
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/246f0d16deb2cbe52f54a7ff3656d403d8b80214/vipy/geometry.py#L850-L857" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/geometry.py#L858-L865" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def isinterior(self, width, height, border=1.0):
     &#34;&#34;&#34;Is this boundingbox fully within the provided image rectangle?  
@@ -3352,7 +3369,7 @@ Transform is applyed by computing smallest (dx,dy) translation that it is interi
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/246f0d16deb2cbe52f54a7ff3656d403d8b80214/vipy/geometry.py#L398-L402" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/geometry.py#L406-L410" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def isnonnegative(self):
     return (self.xmin() &gt;= 0 and
@@ -3369,7 +3386,7 @@ Transform is applyed by computing smallest (dx,dy) translation that it is interi
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/246f0d16deb2cbe52f54a7ff3656d403d8b80214/vipy/geometry.py#L657-L660" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/geometry.py#L665-L668" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def ispointinside(self, p):
     &#34;&#34;&#34;Is the 2D point p=(x,y) inside this boundingbox, or is the p=boundingbox() inside this bounding box?&#34;&#34;&#34;
@@ -3385,7 +3402,7 @@ Transform is applyed by computing smallest (dx,dy) translation that it is interi
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/246f0d16deb2cbe52f54a7ff3656d403d8b80214/vipy/geometry.py#L809-L810" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/geometry.py#L817-L818" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def issquare(self):
     return np.allclose(self._height(), self._width())</code></pre>
@@ -3399,7 +3416,7 @@ Transform is applyed by computing smallest (dx,dy) translation that it is interi
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/246f0d16deb2cbe52f54a7ff3656d403d8b80214/vipy/geometry.py#L392-L393" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/geometry.py#L400-L401" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def isvalid(self):
     return not self.invalid()</code></pre>
@@ -3413,10 +3430,11 @@ Transform is applyed by computing smallest (dx,dy) translation that it is interi
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/246f0d16deb2cbe52f54a7ff3656d403d8b80214/vipy/geometry.py#L212-L213" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/geometry.py#L219-L221" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def json(self, encode=True):
-    return json.dumps(self.__dict__) if encode else self.__dict__</code></pre>
+    d = {k.lstrip(&#39;_&#39;):v for (k,v) in self.__dict__.items()}  # prettyjson (remove &#34;_&#34; prefix to attributes)        
+    return json.dumps(d) if encode else d</code></pre>
 </details>
 </dd>
 <dt id="vipy.geometry.BoundingBox.left"><code class="name flex">
@@ -3427,7 +3445,7 @@ Transform is applyed by computing smallest (dx,dy) translation that it is interi
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/246f0d16deb2cbe52f54a7ff3656d403d8b80214/vipy/geometry.py#L712-L715" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/geometry.py#L720-L723" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def left(self, dx):
     &#34;&#34;&#34;Make left of box wider (closer to left side of image) by an offset dx&#34;&#34;&#34;
@@ -3443,7 +3461,7 @@ Transform is applyed by computing smallest (dx,dy) translation that it is interi
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/246f0d16deb2cbe52f54a7ff3656d403d8b80214/vipy/geometry.py#L263-L265" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/geometry.py#L271-L273" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def ll(self):
     &#34;&#34;&#34;Lower left coordinate (x,y), synonym for bl()&#34;&#34;&#34;
@@ -3458,7 +3476,7 @@ Transform is applyed by computing smallest (dx,dy) translation that it is interi
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/246f0d16deb2cbe52f54a7ff3656d403d8b80214/vipy/geometry.py#L279-L281" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/geometry.py#L287-L289" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def lr(self):
     &#34;&#34;&#34;Lower right coordinate (x,y), synonym for br()&#34;&#34;&#34;
@@ -3473,7 +3491,7 @@ Transform is applyed by computing smallest (dx,dy) translation that it is interi
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/246f0d16deb2cbe52f54a7ff3656d403d8b80214/vipy/geometry.py#L595-L599" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/geometry.py#L603-L607" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def maxcover(self, bb, area=None, otherarea=None):
     &#34;&#34;&#34;The maximum cover of self to bb and bb to self&#34;&#34;&#34;
@@ -3490,7 +3508,7 @@ Transform is applyed by computing smallest (dx,dy) translation that it is interi
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/246f0d16deb2cbe52f54a7ff3656d403d8b80214/vipy/geometry.py#L913-L915" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/geometry.py#L921-L923" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def maxdim(self):
     &#34;&#34;&#34;Return max(width, height) typecast to float&#34;&#34;&#34;
@@ -3505,7 +3523,7 @@ Transform is applyed by computing smallest (dx,dy) translation that it is interi
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/246f0d16deb2cbe52f54a7ff3656d403d8b80214/vipy/geometry.py#L794-L804" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/geometry.py#L802-L812" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def maxsquare(self):
     &#34;&#34;&#34;Set the bounding box to be square by setting width and height to the maximum dimension of the box, keeping centroid constant&#34;&#34;&#34;
@@ -3528,7 +3546,7 @@ Transform is applyed by computing smallest (dx,dy) translation that it is interi
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/246f0d16deb2cbe52f54a7ff3656d403d8b80214/vipy/geometry.py#L806-L807" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/geometry.py#L814-L815" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def maxsquareif(self, do):
     return self.maxsquare() if do else self</code></pre>
@@ -3543,7 +3561,7 @@ Other may be a singleton bounding box or a list of bounding boxes</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/246f0d16deb2cbe52f54a7ff3656d403d8b80214/vipy/geometry.py#L935-L941" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/geometry.py#L943-L949" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def medianshape(self, other):
     &#34;&#34;&#34;Compute the median bounding box width and height between self and other.  Other may be a singleton bounding box or a list of bounding boxes&#34;&#34;&#34;
@@ -3562,7 +3580,7 @@ Other may be a singleton bounding box or a list of bounding boxes</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/246f0d16deb2cbe52f54a7ff3656d403d8b80214/vipy/geometry.py#L909-L911" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/geometry.py#L917-L919" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def mindim(self):
     &#34;&#34;&#34;Return min(width, height) typecast to float&#34;&#34;&#34;
@@ -3577,7 +3595,7 @@ Other may be a singleton bounding box or a list of bounding boxes</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/246f0d16deb2cbe52f54a7ff3656d403d8b80214/vipy/geometry.py#L905-L907" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/geometry.py#L913-L915" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def mindimension(self):
     &#34;&#34;&#34;Return min(width, height) typecast to float&#34;&#34;&#34;
@@ -3592,7 +3610,7 @@ Other may be a singleton bounding box or a list of bounding boxes</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/246f0d16deb2cbe52f54a7ff3656d403d8b80214/vipy/geometry.py#L828-L838" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/geometry.py#L836-L846" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def minsquare(self):
     &#34;&#34;&#34;Set the bounding box to be square by setting width and height to the minimum dimension of the box, keeping centroid constant&#34;&#34;&#34;
@@ -3615,7 +3633,7 @@ Other may be a singleton bounding box or a list of bounding boxes</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/246f0d16deb2cbe52f54a7ff3656d403d8b80214/vipy/geometry.py#L379-L381" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/geometry.py#L387-L389" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def offset(self, dx=0, dy=0):
     &#34;&#34;&#34;Alias for translate&#34;&#34;&#34;
@@ -3630,7 +3648,7 @@ Other may be a singleton bounding box or a list of bounding boxes</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/246f0d16deb2cbe52f54a7ff3656d403d8b80214/vipy/geometry.py#L540-L543" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/geometry.py#L548-L551" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def pdist(self, bb, sigma=None):
     &#34;&#34;&#34;Normalized Gaussian distance in [0,1] between centroids of two bounding boxes, where 0 is far and 1 is same with sigma=maxdim() of this box&#34;&#34;&#34;
@@ -3650,7 +3668,7 @@ Other may be a singleton bounding box or a list of bounding boxes</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/246f0d16deb2cbe52f54a7ff3656d403d8b80214/vipy/geometry.py#L956-L962" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/geometry.py#L964-L970" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def projective(self, A):
     &#34;&#34;&#34;Apply an 3x3 projective transformation to the box centroid.  
@@ -3669,7 +3687,7 @@ Other may be a singleton bounding box or a list of bounding boxes</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/246f0d16deb2cbe52f54a7ff3656d403d8b80214/vipy/geometry.py#L722-L728" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/geometry.py#L730-L736" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def rescale(self, scale=1):
     &#34;&#34;&#34;Multiply the box corners by a scale factor&#34;&#34;&#34;
@@ -3688,7 +3706,7 @@ Other may be a singleton bounding box or a list of bounding boxes</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/246f0d16deb2cbe52f54a7ff3656d403d8b80214/vipy/geometry.py#L742-L746" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/geometry.py#L750-L754" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def resize(self, width, height):
     &#34;&#34;&#34;Change the aspect ratio width and height of the box&#34;&#34;&#34;
@@ -3705,7 +3723,7 @@ Other may be a singleton bounding box or a list of bounding boxes</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/246f0d16deb2cbe52f54a7ff3656d403d8b80214/vipy/geometry.py#L717-L720" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/geometry.py#L725-L728" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def right(self, dx):
     &#34;&#34;&#34;Make right of box wider (closer to right side of image) by an offset dx&#34;&#34;&#34;
@@ -3721,7 +3739,7 @@ Other may be a singleton bounding box or a list of bounding boxes</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/246f0d16deb2cbe52f54a7ff3656d403d8b80214/vipy/geometry.py#L754-L758" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/geometry.py#L762-L766" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def rot90ccw(self, H, W):
     &#34;&#34;&#34;Rotate a bounding box such that if an image of size (H,W) is rotated 90 deg clockwise, the boxes align&#34;&#34;&#34;
@@ -3738,7 +3756,7 @@ Other may be a singleton bounding box or a list of bounding boxes</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/246f0d16deb2cbe52f54a7ff3656d403d8b80214/vipy/geometry.py#L748-L752" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/geometry.py#L756-L760" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def rot90cw(self, H, W):
     &#34;&#34;&#34;Rotate a bounding box such that if an image of size (H,W) is rotated 90 deg clockwise, the boxes align&#34;&#34;&#34;
@@ -3755,7 +3773,7 @@ Other may be a singleton bounding box or a list of bounding boxes</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/246f0d16deb2cbe52f54a7ff3656d403d8b80214/vipy/geometry.py#L730-L734" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/geometry.py#L738-L742" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def scalex(self, scale=1):
     &#34;&#34;&#34;Multiply the box corners in the x dimension by a scale factor&#34;&#34;&#34;
@@ -3772,7 +3790,7 @@ Other may be a singleton bounding box or a list of bounding boxes</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/246f0d16deb2cbe52f54a7ff3656d403d8b80214/vipy/geometry.py#L736-L740" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/geometry.py#L744-L748" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def scaley(self, scale=1):
     &#34;&#34;&#34;Multiply the box corners in the y dimension by a scale factor&#34;&#34;&#34;
@@ -3789,7 +3807,7 @@ Other may be a singleton bounding box or a list of bounding boxes</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/246f0d16deb2cbe52f54a7ff3656d403d8b80214/vipy/geometry.py#L374-L377" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/geometry.py#L382-L385" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def set_origin(self, other):
     &#34;&#34;&#34;Set the origin of the coordinates of this bounding box to be relative to the upper left of the other bounding box&#34;&#34;&#34;
@@ -3805,7 +3823,7 @@ Other may be a singleton bounding box or a list of bounding boxes</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/246f0d16deb2cbe52f54a7ff3656d403d8b80214/vipy/geometry.py#L419-L426" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/geometry.py#L427-L434" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def setheight(self, h):
     &#34;&#34;&#34;Set new height keeping centroid constant&#34;&#34;&#34;
@@ -3825,7 +3843,7 @@ Other may be a singleton bounding box or a list of bounding boxes</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/246f0d16deb2cbe52f54a7ff3656d403d8b80214/vipy/geometry.py#L410-L417" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/geometry.py#L418-L425" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def setwidth(self, w):
     &#34;&#34;&#34;Set new width keeping centroid constant&#34;&#34;&#34;
@@ -3845,7 +3863,7 @@ Other may be a singleton bounding box or a list of bounding boxes</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/246f0d16deb2cbe52f54a7ff3656d403d8b80214/vipy/geometry.py#L898-L900" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/geometry.py#L906-L908" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def shape(self):
     &#34;&#34;&#34;Return the (height, width) tuple for the box shape&#34;&#34;&#34;
@@ -3860,7 +3878,7 @@ Other may be a singleton bounding box or a list of bounding boxes</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/246f0d16deb2cbe52f54a7ff3656d403d8b80214/vipy/geometry.py#L943-L946" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/geometry.py#L951-L954" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def shapedist(self, other):
     &#34;&#34;&#34;L1 distance between (width,height) of two boxes&#34;&#34;&#34;
@@ -3876,7 +3894,7 @@ Other may be a singleton bounding box or a list of bounding boxes</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/246f0d16deb2cbe52f54a7ff3656d403d8b80214/vipy/geometry.py#L601-L611" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/geometry.py#L609-L619" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def shapeiou(self, bb, area=None, otherarea=None):
     &#34;&#34;&#34;Shape IoU is the IoU with the upper left corners aligned. This measures the deformation of the two boxes by removing the effect of translation&#34;&#34;&#34;
@@ -3899,7 +3917,7 @@ Other may be a singleton bounding box or a list of bounding boxes</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/246f0d16deb2cbe52f54a7ff3656d403d8b80214/vipy/geometry.py#L353-L360" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/geometry.py#L361-L368" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def significant_digits(self, n):
     &#34;&#34;&#34;Convert corners to have at most n significant digits for efficient JSON storage&#34;&#34;&#34;
@@ -3919,7 +3937,7 @@ Other may be a singleton bounding box or a list of bounding boxes</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/246f0d16deb2cbe52f54a7ff3656d403d8b80214/vipy/geometry.py#L530-L533" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/geometry.py#L538-L541" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def sqdist(self, bb):
     &#34;&#34;&#34;Squared Euclidean distance between upper left corners of two bounding boxes&#34;&#34;&#34;
@@ -3935,7 +3953,7 @@ Other may be a singleton bounding box or a list of bounding boxes</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/246f0d16deb2cbe52f54a7ff3656d403d8b80214/vipy/geometry.py#L370-L372" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/geometry.py#L378-L380" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def to_origin(self):
     &#34;&#34;&#34;Translate the bounding box so that (xmin, ymin) = (0,0)&#34;&#34;&#34;
@@ -3950,7 +3968,7 @@ Other may be a singleton bounding box or a list of bounding boxes</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/246f0d16deb2cbe52f54a7ff3656d403d8b80214/vipy/geometry.py#L518-L520" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/geometry.py#L526-L528" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def to_ulbr(self, ulbr=None):
     &#34;&#34;&#34;Alias for ulbr()&#34;&#34;&#34;
@@ -3965,7 +3983,7 @@ Other may be a singleton bounding box or a list of bounding boxes</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/246f0d16deb2cbe52f54a7ff3656d403d8b80214/vipy/geometry.py#L480-L491" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/geometry.py#L488-L499" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def to_xywh(self, xywh=None):
     &#34;&#34;&#34;Return bounding box corners as (x,y,width,height) tuple&#34;&#34;&#34;
@@ -3989,7 +4007,7 @@ Other may be a singleton bounding box or a list of bounding boxes</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/246f0d16deb2cbe52f54a7ff3656d403d8b80214/vipy/geometry.py#L702-L705" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/geometry.py#L710-L713" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def top(self, dy):
     &#34;&#34;&#34;Make top of box taller (closer to top of image) by an offset dy&#34;&#34;&#34;
@@ -4005,7 +4023,7 @@ Other may be a singleton bounding box or a list of bounding boxes</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/246f0d16deb2cbe52f54a7ff3656d403d8b80214/vipy/geometry.py#L362-L368" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/geometry.py#L370-L376" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def translate(self, dx=0, dy=0):
     &#34;&#34;&#34;Translate the bounding box by dx in x and dy in y&#34;&#34;&#34;
@@ -4024,7 +4042,7 @@ Other may be a singleton bounding box or a list of bounding boxes</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/246f0d16deb2cbe52f54a7ff3656d403d8b80214/vipy/geometry.py#L239-L241" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/geometry.py#L247-L249" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def ul(self):
     &#34;&#34;&#34;Upper left coordinate (x,y)&#34;&#34;&#34;
@@ -4039,7 +4057,7 @@ Other may be a singleton bounding box or a list of bounding boxes</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/246f0d16deb2cbe52f54a7ff3656d403d8b80214/vipy/geometry.py#L506-L516" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/geometry.py#L514-L524" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def ulbr(self, ulbr=None):
     &#34;&#34;&#34;Return bounding box corners as upper left, bottom right (xmin, ymin, xmax, ymax)&#34;&#34;&#34;
@@ -4062,7 +4080,7 @@ Other may be a singleton bounding box or a list of bounding boxes</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/246f0d16deb2cbe52f54a7ff3656d403d8b80214/vipy/geometry.py#L243-L245" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/geometry.py#L251-L253" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def ulx(self):
     &#34;&#34;&#34;Upper left coordinate (x)&#34;&#34;&#34;
@@ -4077,7 +4095,7 @@ Other may be a singleton bounding box or a list of bounding boxes</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/246f0d16deb2cbe52f54a7ff3656d403d8b80214/vipy/geometry.py#L247-L249" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/geometry.py#L255-L257" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def uly(self):
     &#34;&#34;&#34;Upper left coordinate (y)&#34;&#34;&#34;
@@ -4092,7 +4110,7 @@ Other may be a singleton bounding box or a list of bounding boxes</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/246f0d16deb2cbe52f54a7ff3656d403d8b80214/vipy/geometry.py#L642-L650" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/geometry.py#L650-L658" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def union(self, bb):
     &#34;&#34;&#34;Union of one or more bounding boxes with this box&#34;&#34;&#34;        
@@ -4113,7 +4131,7 @@ Other may be a singleton bounding box or a list of bounding boxes</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/246f0d16deb2cbe52f54a7ff3656d403d8b80214/vipy/geometry.py#L310-L312" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/geometry.py#L318-L320" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def upperleft(self):
     &#34;&#34;&#34;Return the (x,y) upper left corner coordinate of the box&#34;&#34;&#34;
@@ -4128,7 +4146,7 @@ Other may be a singleton bounding box or a list of bounding boxes</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/246f0d16deb2cbe52f54a7ff3656d403d8b80214/vipy/geometry.py#L318-L320" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/geometry.py#L326-L328" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def upperright(self):
     &#34;&#34;&#34;Return the (x,y) upper right corner coordinate of the box&#34;&#34;&#34;
@@ -4143,7 +4161,7 @@ Other may be a singleton bounding box or a list of bounding boxes</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/246f0d16deb2cbe52f54a7ff3656d403d8b80214/vipy/geometry.py#L251-L253" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/geometry.py#L259-L261" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def ur(self):
     &#34;&#34;&#34;Upper right coordinate (x,y)&#34;&#34;&#34;
@@ -4158,7 +4176,7 @@ Other may be a singleton bounding box or a list of bounding boxes</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/246f0d16deb2cbe52f54a7ff3656d403d8b80214/vipy/geometry.py#L255-L257" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/geometry.py#L263-L265" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def urx(self):
     &#34;&#34;&#34;Upper right coordinate (x)&#34;&#34;&#34;
@@ -4173,7 +4191,7 @@ Other may be a singleton bounding box or a list of bounding boxes</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/246f0d16deb2cbe52f54a7ff3656d403d8b80214/vipy/geometry.py#L259-L261" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/geometry.py#L267-L269" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def ury(self):
     &#34;&#34;&#34;Upper right coordinate (y)&#34;&#34;&#34;
@@ -4188,7 +4206,7 @@ Other may be a singleton bounding box or a list of bounding boxes</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/246f0d16deb2cbe52f54a7ff3656d403d8b80214/vipy/geometry.py#L389-L390" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/geometry.py#L397-L398" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def valid(self):
     return not self.invalid()</code></pre>
@@ -4202,7 +4220,7 @@ Other may be a singleton bounding box or a list of bounding boxes</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/246f0d16deb2cbe52f54a7ff3656d403d8b80214/vipy/geometry.py#L404-L405" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/geometry.py#L412-L413" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def width(self):
     return self._xmax - self._xmin</code></pre>
@@ -4216,7 +4234,7 @@ Other may be a singleton bounding box or a list of bounding boxes</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/246f0d16deb2cbe52f54a7ff3656d403d8b80214/vipy/geometry.py#L452-L453" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/geometry.py#L460-L461" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def x_centroid(self):
     return self._centroid()[0]</code></pre>
@@ -4230,7 +4248,7 @@ Other may be a singleton bounding box or a list of bounding boxes</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/246f0d16deb2cbe52f54a7ff3656d403d8b80214/vipy/geometry.py#L455-L457" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/geometry.py#L463-L465" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def xcentroid(self):
     &#34;&#34;&#34;Alias for x_centroid()&#34;&#34;&#34;
@@ -4245,7 +4263,7 @@ Other may be a singleton bounding box or a list of bounding boxes</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/246f0d16deb2cbe52f54a7ff3656d403d8b80214/vipy/geometry.py#L300-L303" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/geometry.py#L308-L311" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def xmax(self, x=None):
     &#34;&#34;&#34;x coordinate of lower right corner of box, x-axis is image column&#34;&#34;&#34;
@@ -4261,7 +4279,7 @@ Other may be a singleton bounding box or a list of bounding boxes</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/246f0d16deb2cbe52f54a7ff3656d403d8b80214/vipy/geometry.py#L234-L237" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/geometry.py#L242-L245" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def xmin(self, x=None):
     &#34;&#34;&#34;x coordinate of upper left corner of box, x-axis is image column&#34;&#34;&#34;
@@ -4277,7 +4295,7 @@ Other may be a singleton bounding box or a list of bounding boxes</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/246f0d16deb2cbe52f54a7ff3656d403d8b80214/vipy/geometry.py#L493-L495" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/geometry.py#L501-L503" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def xywh(self, xywh_=None):
     &#34;&#34;&#34;Alias for to_xywh&#34;&#34;&#34;
@@ -4292,7 +4310,7 @@ Other may be a singleton bounding box or a list of bounding boxes</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/246f0d16deb2cbe52f54a7ff3656d403d8b80214/vipy/geometry.py#L462-L463" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/geometry.py#L470-L471" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def y_centroid(self):
     return self._centroid()[1]</code></pre>
@@ -4306,7 +4324,7 @@ Other may be a singleton bounding box or a list of bounding boxes</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/246f0d16deb2cbe52f54a7ff3656d403d8b80214/vipy/geometry.py#L465-L467" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/geometry.py#L473-L475" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def ycentroid(self):
     &#34;&#34;&#34;Alias for y_centroid()&#34;&#34;&#34;
@@ -4321,7 +4339,7 @@ Other may be a singleton bounding box or a list of bounding boxes</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/246f0d16deb2cbe52f54a7ff3656d403d8b80214/vipy/geometry.py#L305-L308" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/geometry.py#L313-L316" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def ymax(self, y=None):
     &#34;&#34;&#34;y coordinate of lower right corner of box, y-axis is image row&#34;&#34;&#34;
@@ -4337,7 +4355,7 @@ Other may be a singleton bounding box or a list of bounding boxes</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/246f0d16deb2cbe52f54a7ff3656d403d8b80214/vipy/geometry.py#L295-L298" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/geometry.py#L303-L306" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def ymin(self, y=None):
     &#34;&#34;&#34;y coordinate of upper left corner of box, y-axis is image row, set if provided&#34;&#34;&#34;
@@ -4356,7 +4374,7 @@ Other may be a singleton bounding box or a list of bounding boxes</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/246f0d16deb2cbe52f54a7ff3656d403d8b80214/vipy/geometry.py#L986-L1060" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/geometry.py#L994-L1068" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">class Ellipse():
     __slots__ = [&#39;_major&#39;, &#39;_minor&#39;, &#39;_xcenter&#39;, &#39;_ycenter&#39;, &#39;_phi&#39;]
@@ -4444,7 +4462,7 @@ Other may be a singleton bounding box or a list of bounding boxes</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/246f0d16deb2cbe52f54a7ff3656d403d8b80214/vipy/geometry.py#L1022-L1024" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/geometry.py#L1030-L1032" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def angle(self):
     &#34;&#34;&#34;Return the angle phi (in degrees)&#34;&#34;&#34;
@@ -4459,7 +4477,7 @@ Other may be a singleton bounding box or a list of bounding boxes</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/246f0d16deb2cbe52f54a7ff3656d403d8b80214/vipy/geometry.py#L1002-L1004" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/geometry.py#L1010-L1012" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def area(self):
     &#34;&#34;&#34;Area of ellipse&#34;&#34;&#34;
@@ -4474,7 +4492,7 @@ Other may be a singleton bounding box or a list of bounding boxes</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/246f0d16deb2cbe52f54a7ff3656d403d8b80214/vipy/geometry.py#L1018-L1020" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/geometry.py#L1026-L1028" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def axes(self):
     &#34;&#34;&#34;Return the (major,minor) axis lengths&#34;&#34;&#34;
@@ -4492,7 +4510,7 @@ Note, this does not factor in rotation.
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/246f0d16deb2cbe52f54a7ff3656d403d8b80214/vipy/geometry.py#L1035-L1045" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/geometry.py#L1043-L1053" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def boundingbox(self):
     &#34;&#34;&#34; Estimate an equivalent bounding box based on scaling to a common area.
@@ -4515,7 +4533,7 @@ Note, this does not factor in rotation.
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/246f0d16deb2cbe52f54a7ff3656d403d8b80214/vipy/geometry.py#L1006-L1008" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/geometry.py#L1014-L1016" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def center(self):
     &#34;&#34;&#34;Return centroid&#34;&#34;&#34;
@@ -4530,7 +4548,7 @@ Note, this does not factor in rotation.
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/246f0d16deb2cbe52f54a7ff3656d403d8b80214/vipy/geometry.py#L1010-L1012" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/geometry.py#L1018-L1020" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def centroid(self):
     &#34;&#34;&#34;Alias for center&#34;&#34;&#34;
@@ -4545,7 +4563,7 @@ Note, this does not factor in rotation.
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/246f0d16deb2cbe52f54a7ff3656d403d8b80214/vipy/geometry.py#L999-L1000" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/geometry.py#L1007-L1008" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def dict(self):
     return {&#39;semimajor&#39;:self._major, &#39;semiminor&#39;:self._minor, &#39;xcenter&#39;:self._xcenter, &#39;ycenter&#39;:self._ycenter, &#39;phi&#39;:self._phi}</code></pre>
@@ -4559,7 +4577,7 @@ Note, this does not factor in rotation.
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/246f0d16deb2cbe52f54a7ff3656d403d8b80214/vipy/geometry.py#L1047-L1052" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/geometry.py#L1055-L1060" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def inside(self, x, y=None):
     &#34;&#34;&#34;Return true if a point p=(x,y) is inside the ellipse&#34;&#34;&#34;
@@ -4577,7 +4595,7 @@ Note, this does not factor in rotation.
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/246f0d16deb2cbe52f54a7ff3656d403d8b80214/vipy/geometry.py#L1054-L1060" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/geometry.py#L1062-L1068" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def mask(self):
     &#34;&#34;&#34;Return a binary mask of size equal to the bounding box such that the pixels correspond to the interior of the ellipse&#34;&#34;&#34;
@@ -4596,7 +4614,7 @@ Note, this does not factor in rotation.
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/246f0d16deb2cbe52f54a7ff3656d403d8b80214/vipy/geometry.py#L1026-L1033" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/geometry.py#L1034-L1041" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def rescale(self, scale):
     &#34;&#34;&#34;Scale ellipse by scale factor&#34;&#34;&#34;

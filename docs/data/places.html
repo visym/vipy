@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1" />
 <meta name="generator" content="pdoc 0.10.0" />
 <meta name="google-site-verification" content="aB8LkQegj94_TJPdrcJm2ldIRWyXY82Jp24Gtkdgyn0" />
-<title>vipy.data.msceleb API documentation</title>
+<title>vipy.data.places API documentation</title>
 <meta name="description" content="" />
 <link rel="preload stylesheet" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/10up-sanitize.css/11.0.1/sanitize.min.css" integrity="sha256-PK9q560IAAa6WVRRh76LtCaI8pjTJ2z11v0miyNNjrs=" crossorigin>
 <link rel="preload stylesheet" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/10up-sanitize.css/11.0.1/typography.min.css" integrity="sha256-7l/o7C8jubJiy74VsKTidCy1yBkRtiUGbVkYBylBqUg=" crossorigin>
@@ -20,60 +20,50 @@
 <main>
 <article id="content">
 <header>
-<h1 class="title">Module <code>vipy.data.msceleb</code></h1>
+<h1 class="title">Module <code>vipy.data.places</code></h1>
 </header>
 <section id="section-intro">
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/data/msceleb.py#L1-L46" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/data/places.py#L1-L36" class="git-link">Browse git</a>
 </summary>
-<pre><code class="python">import base64
-import csv
-import os
-from vipy.util import remkdir, writecsv, readcsv
+<pre><code class="python">import os
+import vipy
+from vipy.util import filebase
+
+MD5 = [&#39;67e186b496a84c929568076ed01a8aa1&#39;,
+       &#39;9b71c4993ad89d2d8bcbdc4aef38042f&#39;]
+URL = [&#39;http://data.csail.mit.edu/places-private/places365/train_large_places365standard.tar&#39;,
+       &#39;http://data.csail.mit.edu/places-private/places365/val_large.tar&#39;]
 
 
-def extract(tsvfile, outdir):
-    &#34;&#34;&#34;https://github.com/cmusatyalab/openface/blob/master/data/ms-celeb-1m/extract.py&#34;&#34;&#34;
-    with open(tsvfile, &#39;r&#39;) as tsvF:
-        reader = csv.reader(tsvF, delimiter=&#39;\t&#39;)
-        i = 0
-        for row in reader:
-            MID, imgSearchRank, faceID, data = row[0], row[1], row[4], base64.b64decode(row[-1])
-
-            saveDir = os.path.join(outdir, MID)
-            savePath = os.path.join(saveDir, &#34;{}-{}.jpg&#34;.format(imgSearchRank, faceID))
-
-            remkdir(saveDir)
-            with open(savePath, &#39;wb&#39;) as f:
-                f.write(data)
-
-            i += 1
-
-            if i % 1000 == 0:
-                print(&#34;Extracted {} images.&#34;.format(i))
+class Places356():
+    &#34;&#34;&#34;Project: http://places2.csail.mit.edu/download-private.html&#34;&#34;&#34;
+    def __init__(self, datadir):
+        self._datadir = vipy.util.remkdir(datadir)
+        for (url, md5) in zip(URL, MD5):
+            if not os.path.exists(os.path.join(self._datadir, vipy.util.filetail(url))):
+                vipy.downloader.download_and_unpack(url, os.path.join(self._datadir, filebase(url)), md5=md5)
 
 
-def export(tsvfile, tsvnames, outdir, csvfile):
-    csvlist = []
-    d_mid_to_name = {x[0]:x[1] for x in readcsv(tsvnames, separator=&#39;\t&#39;)}
-    with open(tsvfile, &#39;r&#39;) as tsvF:
-        reader = csv.reader(tsvF, delimiter=&#39;\t&#39;)
-        i = 0
-        for row in reader:
-            MID, imgSearchRank, faceID, data = row[0], row[1], row[4], base64.b64decode(row[-1])
+    def trainset(self):
+        imlist = [vipy.image.ImageCategory(filename=f, category=filebase(vipy.util.filepath(f))) for f in vipy.util.findimages(os.path.join(self._datadir, &#39;train_large_places365standard&#39;))]
+        return vipy.dataset.Dataset(imlist, id=&#39;places365_train&#39;)
 
-            saveDir = os.path.join(outdir, MID)
-            savePath = os.path.join(saveDir, &#34;{}-{}.jpg&#34;.format(imgSearchRank, faceID))
 
-            i += 1
+    def valset(self):
+        imlist = [vipy.image.ImageCategory(filename=f, category=filebase(vipy.util.filepath(f))) for f in vipy.util.findimages(os.path.join(self._datadir, &#39;val_large&#39;))]
+        return vipy.dataset.Dataset(imlist, id=&#39;places365_val&#39;)
 
-            csvlist.append((savePath, d_mid_to_name[MID]))
-            if i % 100 == 0:
-                print(&#34;[msceleb.csv][%d]: Extracting CSV (%s,%s,%s)&#34; % (i,savePath,MID,d_mid_to_name[MID]))
+    
+        
+        
 
-    print(writecsv(csvlist, csvfile))</code></pre>
+
+
+
+    </code></pre>
 </details>
 </section>
 <section>
@@ -81,73 +71,74 @@ def export(tsvfile, tsvnames, outdir, csvfile):
 <section>
 </section>
 <section>
-<h2 class="section-title" id="header-functions">Functions</h2>
+</section>
+<section>
+<h2 class="section-title" id="header-classes">Classes</h2>
 <dl>
-<dt id="vipy.data.msceleb.export"><code class="name flex">
-<span>def <span class="ident">export</span></span>(<span>tsvfile, tsvnames, outdir, csvfile)</span>
+<dt id="vipy.data.places.Places356"><code class="flex name class">
+<span>class <span class="ident">Places356</span></span>
+<span>(</span><span>datadir)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Project: <a href="http://places2.csail.mit.edu/download-private.html">http://places2.csail.mit.edu/download-private.html</a></p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/data/places.py#L11-L27" class="git-link">Browse git</a>
+</summary>
+<pre><code class="python">class Places356():
+    &#34;&#34;&#34;Project: http://places2.csail.mit.edu/download-private.html&#34;&#34;&#34;
+    def __init__(self, datadir):
+        self._datadir = vipy.util.remkdir(datadir)
+        for (url, md5) in zip(URL, MD5):
+            if not os.path.exists(os.path.join(self._datadir, vipy.util.filetail(url))):
+                vipy.downloader.download_and_unpack(url, os.path.join(self._datadir, filebase(url)), md5=md5)
+
+
+    def trainset(self):
+        imlist = [vipy.image.ImageCategory(filename=f, category=filebase(vipy.util.filepath(f))) for f in vipy.util.findimages(os.path.join(self._datadir, &#39;train_large_places365standard&#39;))]
+        return vipy.dataset.Dataset(imlist, id=&#39;places365_train&#39;)
+
+
+    def valset(self):
+        imlist = [vipy.image.ImageCategory(filename=f, category=filebase(vipy.util.filepath(f))) for f in vipy.util.findimages(os.path.join(self._datadir, &#39;val_large&#39;))]
+        return vipy.dataset.Dataset(imlist, id=&#39;places365_val&#39;)</code></pre>
+</details>
+<h3>Methods</h3>
+<dl>
+<dt id="vipy.data.places.Places356.trainset"><code class="name flex">
+<span>def <span class="ident">trainset</span></span>(<span>self)</span>
 </code></dt>
 <dd>
 <div class="desc"></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/data/msceleb.py#L28-L46" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/data/places.py#L20-L22" class="git-link">Browse git</a>
 </summary>
-<pre><code class="python">def export(tsvfile, tsvnames, outdir, csvfile):
-    csvlist = []
-    d_mid_to_name = {x[0]:x[1] for x in readcsv(tsvnames, separator=&#39;\t&#39;)}
-    with open(tsvfile, &#39;r&#39;) as tsvF:
-        reader = csv.reader(tsvF, delimiter=&#39;\t&#39;)
-        i = 0
-        for row in reader:
-            MID, imgSearchRank, faceID, data = row[0], row[1], row[4], base64.b64decode(row[-1])
-
-            saveDir = os.path.join(outdir, MID)
-            savePath = os.path.join(saveDir, &#34;{}-{}.jpg&#34;.format(imgSearchRank, faceID))
-
-            i += 1
-
-            csvlist.append((savePath, d_mid_to_name[MID]))
-            if i % 100 == 0:
-                print(&#34;[msceleb.csv][%d]: Extracting CSV (%s,%s,%s)&#34; % (i,savePath,MID,d_mid_to_name[MID]))
-
-    print(writecsv(csvlist, csvfile))</code></pre>
+<pre><code class="python">def trainset(self):
+    imlist = [vipy.image.ImageCategory(filename=f, category=filebase(vipy.util.filepath(f))) for f in vipy.util.findimages(os.path.join(self._datadir, &#39;train_large_places365standard&#39;))]
+    return vipy.dataset.Dataset(imlist, id=&#39;places365_train&#39;)</code></pre>
 </details>
 </dd>
-<dt id="vipy.data.msceleb.extract"><code class="name flex">
-<span>def <span class="ident">extract</span></span>(<span>tsvfile, outdir)</span>
+<dt id="vipy.data.places.Places356.valset"><code class="name flex">
+<span>def <span class="ident">valset</span></span>(<span>self)</span>
 </code></dt>
 <dd>
-<div class="desc"><p><a href="https://github.com/cmusatyalab/openface/blob/master/data/ms-celeb-1m/extract.py">https://github.com/cmusatyalab/openface/blob/master/data/ms-celeb-1m/extract.py</a></p></div>
+<div class="desc"></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/data/msceleb.py#L7-L25" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/data/places.py#L25-L27" class="git-link">Browse git</a>
 </summary>
-<pre><code class="python">def extract(tsvfile, outdir):
-    &#34;&#34;&#34;https://github.com/cmusatyalab/openface/blob/master/data/ms-celeb-1m/extract.py&#34;&#34;&#34;
-    with open(tsvfile, &#39;r&#39;) as tsvF:
-        reader = csv.reader(tsvF, delimiter=&#39;\t&#39;)
-        i = 0
-        for row in reader:
-            MID, imgSearchRank, faceID, data = row[0], row[1], row[4], base64.b64decode(row[-1])
-
-            saveDir = os.path.join(outdir, MID)
-            savePath = os.path.join(saveDir, &#34;{}-{}.jpg&#34;.format(imgSearchRank, faceID))
-
-            remkdir(saveDir)
-            with open(savePath, &#39;wb&#39;) as f:
-                f.write(data)
-
-            i += 1
-
-            if i % 1000 == 0:
-                print(&#34;Extracted {} images.&#34;.format(i))</code></pre>
+<pre><code class="python">def valset(self):
+    imlist = [vipy.image.ImageCategory(filename=f, category=filebase(vipy.util.filepath(f))) for f in vipy.util.findimages(os.path.join(self._datadir, &#39;val_large&#39;))]
+    return vipy.dataset.Dataset(imlist, id=&#39;places365_val&#39;)</code></pre>
 </details>
 </dd>
 </dl>
-</section>
-<section>
+</dd>
+</dl>
 </section>
 </article>
 <nav id="sidebar">
@@ -213,10 +204,15 @@ setTimeout(() => input.focus(), 100);
 <li><code><a title="vipy.data" href="index.html">vipy.data</a></code></li>
 </ul>
 </li>
-<li><h3><a href="#header-functions">Functions</a></h3>
+<li><h3><a href="#header-classes">Classes</a></h3>
+<ul>
+<li>
+<h4><code><a title="vipy.data.places.Places356" href="#vipy.data.places.Places356">Places356</a></code></h4>
 <ul class="">
-<li><code><a title="vipy.data.msceleb.export" href="#vipy.data.msceleb.export">export</a></code></li>
-<li><code><a title="vipy.data.msceleb.extract" href="#vipy.data.msceleb.extract">extract</a></code></li>
+<li><code><a title="vipy.data.places.Places356.trainset" href="#vipy.data.places.Places356.trainset">trainset</a></code></li>
+<li><code><a title="vipy.data.places.Places356.valset" href="#vipy.data.places.Places356.valset">valset</a></code></li>
+</ul>
+</li>
 </ul>
 </li>
 </ul>

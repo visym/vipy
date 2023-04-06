@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1" />
 <meta name="generator" content="pdoc 0.10.0" />
 <meta name="google-site-verification" content="aB8LkQegj94_TJPdrcJm2ldIRWyXY82Jp24Gtkdgyn0" />
-<title>vipy.data.caltech256 API documentation</title>
+<title>vipy.data.oxford_flowers_102 API documentation</title>
 <meta name="description" content="" />
 <link rel="preload stylesheet" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/10up-sanitize.css/11.0.1/sanitize.min.css" integrity="sha256-PK9q560IAAa6WVRRh76LtCaI8pjTJ2z11v0miyNNjrs=" crossorigin>
 <link rel="preload stylesheet" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/10up-sanitize.css/11.0.1/typography.min.css" integrity="sha256-7l/o7C8jubJiy74VsKTidCy1yBkRtiUGbVkYBylBqUg=" crossorigin>
@@ -20,43 +20,162 @@
 <main>
 <article id="content">
 <header>
-<h1 class="title">Module <code>vipy.data.caltech256</code></h1>
+<h1 class="title">Module <code>vipy.data.oxford_flowers_102</code></h1>
 </header>
 <section id="section-intro">
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/data/caltech256.py#L1-L29" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/data/oxford_flowers_102.py#L1-L148" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">import os
 import vipy.downloader
 import vipy.dataset
 from vipy.util import remkdir
 from vipy.image import ImageCategory
+import scipy.io
 
 
-URL = &#39;https://data.caltech.edu/records/nyy15-4j048/files/256_ObjectCategories.tar&#39;
+IMAGE_URL = &#39;https://www.robots.ox.ac.uk/~vgg/data/flowers/102/102flowers.tgz&#39;
+ANNO_URL = &#39;https://www.robots.ox.ac.uk/~vgg/data/flowers/102/imagelabels.mat&#39;
 SHA1 = None
 
 
-class Caltech256(vipy.dataset.Dataset):
-    &#34;&#34;&#34;Caltech-256 dataset: https://data.caltech.edu/records/nyy15-4j048&#34;&#34;&#34;
+class Flowers102(vipy.dataset.Dataset):
+    &#34;&#34;&#34;Project: https://www.robots.ox.ac.uk/~vgg/data/flowers/102&#34;&#34;&#34;
     def __init__(self, datadir):
         # Download (if not cached)
         self._datadir = remkdir(datadir)        
-        if not os.path.exists(os.path.join(self._datadir, &#39;256_ObjectCategories&#39;)):
-            vipy.downloader.download_and_unpack(URL, self._datadir, sha1=SHA1)            
-            
-        # Create dataset
-        imlist = []
-        categorydir = os.path.join(self._datadir, &#39;256_ObjectCategories&#39;)        
-        for (idx_category, category) in enumerate(os.listdir(categorydir)):
-            imdir = os.path.join(categorydir, category)
-            for im in os.listdir(imdir):
-                imlist.append(ImageCategory(filename=os.path.join(categorydir, category, im), category=category))
+        if not os.path.exists(os.path.join(self._datadir, &#39;102flowers.tgz&#39;)):
+            vipy.downloader.download_and_unpack(IMAGE_URL, self._datadir, sha1=None)            
 
-        super().__init__(imlist, id=&#39;caltech-256&#39;)
-            </code></pre>
+        # Read cached JSON
+        jsonfile = os.path.join(os.path.dirname(os.path.realpath(__file__)), &#39;oxford_flowers_102.json&#39;)
+        if not os.path.exists(jsonfile):
+            self._cache_annotations(jsonfile)
+        self._json = vipy.util.readjson(jsonfile)
+
+        # Create dataset
+        imlist = [vipy.image.ImageCategory(filename=f, category=self._json[&#39;labelindex_to_category&#39;][self._json[&#39;imageindex_to_labelindex&#39;][k]]) for (k,f) in enumerate(sorted(vipy.util.findimages(self._datadir)))]
+        super().__init__(imlist, id=&#39;flowers102&#39;)
+
+
+    def _cache_annotations(self, outjson=&#39;oxford_flowers_102.json&#39;):        
+        if not os.path.exists(os.path.join(self._datadir, &#39;imagelabels.mat&#39;)):
+            vipy.downloader.download(ANNO_URL, os.path.join(self._datadir, &#39;imagelabels.mat&#39;), sha1=None)            
+        
+        # Thanks to: https://gist.githubusercontent.com/JosephKJ/94c7728ed1a8e0cd87fe6a029769cde1/raw/403325f5110cb0f3099734c5edb9f457539c77e9/Oxford-102_Flower_dataset_labels.txt
+        category = [&#39;pink primrose&#39;,
+                    &#39;hard-leaved pocket orchid&#39;,
+                    &#39;canterbury bells&#39;,
+                    &#39;sweet pea&#39;,
+                    &#39;english marigold&#39;,
+                    &#39;tiger lily&#39;,
+                    &#39;moon orchid&#39;,
+                    &#39;bird of paradise&#39;,
+                    &#39;monkshood&#39;,
+                    &#39;globe thistle&#39;,
+                    &#39;snapdragon&#39;,
+                    &#34;colt&#39;s foot&#34;,
+                    &#39;king protea&#39;,
+                    &#39;spear thistle&#39;,
+                    &#39;yellow iris&#39;,
+                    &#39;globe-flower&#39;,
+                    &#39;purple coneflower&#39;,
+                    &#39;peruvian lily&#39;,
+                    &#39;balloon flower&#39;,
+                    &#39;giant white arum lily&#39;,
+                    &#39;fire lily&#39;,
+                    &#39;pincushion flower&#39;,
+                    &#39;fritillary&#39;,
+                    &#39;red ginger&#39;,
+                    &#39;grape hyacinth&#39;,
+                    &#39;corn poppy&#39;,
+                    &#39;prince of wales feathers&#39;,
+                    &#39;stemless gentian&#39;,
+                    &#39;artichoke&#39;,
+                    &#39;sweet william&#39;,
+                    &#39;carnation&#39;,
+                    &#39;garden phlox&#39;,
+                    &#39;love in the mist&#39;,
+                    &#39;mexican aster&#39;,
+                    &#39;alpine sea holly&#39;,
+                    &#39;ruby-lipped cattleya&#39;,
+                    &#39;cape flower&#39;,
+                    &#39;great masterwort&#39;,
+                    &#39;siam tulip&#39;,
+                    &#39;lenten rose&#39;,
+                    &#39;barbeton daisy&#39;,
+                    &#39;daffodil&#39;,
+                    &#39;sword lily&#39;,
+                    &#39;poinsettia&#39;,
+                    &#39;bolero deep blue&#39;,
+                    &#39;wallflower&#39;,
+                    &#39;marigold&#39;,
+                    &#39;buttercup&#39;,
+                    &#39;oxeye daisy&#39;,
+                    &#39;common dandelion&#39;,
+                    &#39;petunia&#39;,
+                    &#39;wild pansy&#39;,
+                    &#39;primula&#39;,
+                    &#39;sunflower&#39;,
+                    &#39;pelargonium&#39;,
+                    &#39;bishop of llandaff&#39;,
+                    &#39;gaura&#39;,
+                    &#39;geranium&#39;,
+                    &#39;orange dahlia&#39;,
+                    &#39;pink-yellow dahlia?&#39;,
+                    &#39;cautleya spicata&#39;,
+                    &#39;japanese anemone&#39;,
+                    &#39;black-eyed susan&#39;,
+                    &#39;silverbush&#39;,
+                    &#39;californian poppy&#39;,
+                    &#39;osteospermum&#39;,
+                    &#39;spring crocus&#39;,
+                    &#39;bearded iris&#39;,
+                    &#39;windflower&#39;,
+                    &#39;tree poppy&#39;,
+                    &#39;gazania&#39;,
+                    &#39;azalea&#39;,
+                    &#39;water lily&#39;,
+                    &#39;rose&#39;,
+                    &#39;thorn apple&#39;,
+                    &#39;morning glory&#39;,
+                    &#39;passion flower&#39;,
+                    &#39;lotus&#39;,
+                    &#39;toad lily&#39;,
+                    &#39;anthurium&#39;,
+                    &#39;frangipani&#39;,
+                    &#39;clematis&#39;,
+                    &#39;hibiscus&#39;,
+                    &#39;columbine&#39;,
+                    &#39;desert-rose&#39;,
+                    &#39;tree mallow&#39;,
+                    &#39;magnolia&#39;,
+                    &#39;cyclamen &#39;,
+                    &#39;watercress&#39;,
+                    &#39;canna lily&#39;,
+                    &#39;hippeastrum &#39;,
+                    &#39;bee balm&#39;,
+                    &#39;ball moss&#39;,
+                    &#39;foxglove&#39;,
+                    &#39;bougainvillea&#39;,
+                    &#39;camellia&#39;,
+                    &#39;mallow&#39;,
+                    &#39;mexican petunia&#39;,
+                    &#39;bromelia&#39;,
+                    &#39;blanket flower&#39;,
+                    &#39;trumpet creeper&#39;,
+                    &#39;blackberry lily&#39;, &#39;102&#39;]
+        
+        labelindex_to_category = {str(k):c for (k,c) in enumerate(category, start=1)}  # one-indexed
+
+        # Import, cache and reuse JSON
+        import scipy.io
+        mat = scipy.io.loadmat(os.path.join(self._datadir, &#39;imagelabels.mat&#39;))
+        imageindex_to_labelindex = [str(c) for c in mat[&#39;labels&#39;][0]]
+
+        return vipy.util.writejson({&#39;imageindex_to_labelindex&#39;: imageindex_to_labelindex, &#39;labelindex_to_category&#39;:labelindex_to_category}, outjson)</code></pre>
 </details>
 </section>
 <section>
@@ -68,34 +187,152 @@ class Caltech256(vipy.dataset.Dataset):
 <section>
 <h2 class="section-title" id="header-classes">Classes</h2>
 <dl>
-<dt id="vipy.data.caltech256.Caltech256"><code class="flex name class">
-<span>class <span class="ident">Caltech256</span></span>
+<dt id="vipy.data.oxford_flowers_102.Flowers102"><code class="flex name class">
+<span>class <span class="ident">Flowers102</span></span>
 <span>(</span><span>datadir)</span>
 </code></dt>
 <dd>
-<div class="desc"><p>Caltech-256 dataset: <a href="https://data.caltech.edu/records/nyy15-4j048">https://data.caltech.edu/records/nyy15-4j048</a></p></div>
+<div class="desc"><p>Project: <a href="https://www.robots.ox.ac.uk/~vgg/data/flowers/102">https://www.robots.ox.ac.uk/~vgg/data/flowers/102</a></p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/data/caltech256.py#L12-L28" class="git-link">Browse git</a>
+<a href="https://github.com/visym/vipy/blob/1085015ce080ed650f75533d9770b9f1e6622a3d/vipy/data/oxford_flowers_102.py#L14-L148" class="git-link">Browse git</a>
 </summary>
-<pre><code class="python">class Caltech256(vipy.dataset.Dataset):
-    &#34;&#34;&#34;Caltech-256 dataset: https://data.caltech.edu/records/nyy15-4j048&#34;&#34;&#34;
+<pre><code class="python">class Flowers102(vipy.dataset.Dataset):
+    &#34;&#34;&#34;Project: https://www.robots.ox.ac.uk/~vgg/data/flowers/102&#34;&#34;&#34;
     def __init__(self, datadir):
         # Download (if not cached)
         self._datadir = remkdir(datadir)        
-        if not os.path.exists(os.path.join(self._datadir, &#39;256_ObjectCategories&#39;)):
-            vipy.downloader.download_and_unpack(URL, self._datadir, sha1=SHA1)            
-            
-        # Create dataset
-        imlist = []
-        categorydir = os.path.join(self._datadir, &#39;256_ObjectCategories&#39;)        
-        for (idx_category, category) in enumerate(os.listdir(categorydir)):
-            imdir = os.path.join(categorydir, category)
-            for im in os.listdir(imdir):
-                imlist.append(ImageCategory(filename=os.path.join(categorydir, category, im), category=category))
+        if not os.path.exists(os.path.join(self._datadir, &#39;102flowers.tgz&#39;)):
+            vipy.downloader.download_and_unpack(IMAGE_URL, self._datadir, sha1=None)            
 
-        super().__init__(imlist, id=&#39;caltech-256&#39;)</code></pre>
+        # Read cached JSON
+        jsonfile = os.path.join(os.path.dirname(os.path.realpath(__file__)), &#39;oxford_flowers_102.json&#39;)
+        if not os.path.exists(jsonfile):
+            self._cache_annotations(jsonfile)
+        self._json = vipy.util.readjson(jsonfile)
+
+        # Create dataset
+        imlist = [vipy.image.ImageCategory(filename=f, category=self._json[&#39;labelindex_to_category&#39;][self._json[&#39;imageindex_to_labelindex&#39;][k]]) for (k,f) in enumerate(sorted(vipy.util.findimages(self._datadir)))]
+        super().__init__(imlist, id=&#39;flowers102&#39;)
+
+
+    def _cache_annotations(self, outjson=&#39;oxford_flowers_102.json&#39;):        
+        if not os.path.exists(os.path.join(self._datadir, &#39;imagelabels.mat&#39;)):
+            vipy.downloader.download(ANNO_URL, os.path.join(self._datadir, &#39;imagelabels.mat&#39;), sha1=None)            
+        
+        # Thanks to: https://gist.githubusercontent.com/JosephKJ/94c7728ed1a8e0cd87fe6a029769cde1/raw/403325f5110cb0f3099734c5edb9f457539c77e9/Oxford-102_Flower_dataset_labels.txt
+        category = [&#39;pink primrose&#39;,
+                    &#39;hard-leaved pocket orchid&#39;,
+                    &#39;canterbury bells&#39;,
+                    &#39;sweet pea&#39;,
+                    &#39;english marigold&#39;,
+                    &#39;tiger lily&#39;,
+                    &#39;moon orchid&#39;,
+                    &#39;bird of paradise&#39;,
+                    &#39;monkshood&#39;,
+                    &#39;globe thistle&#39;,
+                    &#39;snapdragon&#39;,
+                    &#34;colt&#39;s foot&#34;,
+                    &#39;king protea&#39;,
+                    &#39;spear thistle&#39;,
+                    &#39;yellow iris&#39;,
+                    &#39;globe-flower&#39;,
+                    &#39;purple coneflower&#39;,
+                    &#39;peruvian lily&#39;,
+                    &#39;balloon flower&#39;,
+                    &#39;giant white arum lily&#39;,
+                    &#39;fire lily&#39;,
+                    &#39;pincushion flower&#39;,
+                    &#39;fritillary&#39;,
+                    &#39;red ginger&#39;,
+                    &#39;grape hyacinth&#39;,
+                    &#39;corn poppy&#39;,
+                    &#39;prince of wales feathers&#39;,
+                    &#39;stemless gentian&#39;,
+                    &#39;artichoke&#39;,
+                    &#39;sweet william&#39;,
+                    &#39;carnation&#39;,
+                    &#39;garden phlox&#39;,
+                    &#39;love in the mist&#39;,
+                    &#39;mexican aster&#39;,
+                    &#39;alpine sea holly&#39;,
+                    &#39;ruby-lipped cattleya&#39;,
+                    &#39;cape flower&#39;,
+                    &#39;great masterwort&#39;,
+                    &#39;siam tulip&#39;,
+                    &#39;lenten rose&#39;,
+                    &#39;barbeton daisy&#39;,
+                    &#39;daffodil&#39;,
+                    &#39;sword lily&#39;,
+                    &#39;poinsettia&#39;,
+                    &#39;bolero deep blue&#39;,
+                    &#39;wallflower&#39;,
+                    &#39;marigold&#39;,
+                    &#39;buttercup&#39;,
+                    &#39;oxeye daisy&#39;,
+                    &#39;common dandelion&#39;,
+                    &#39;petunia&#39;,
+                    &#39;wild pansy&#39;,
+                    &#39;primula&#39;,
+                    &#39;sunflower&#39;,
+                    &#39;pelargonium&#39;,
+                    &#39;bishop of llandaff&#39;,
+                    &#39;gaura&#39;,
+                    &#39;geranium&#39;,
+                    &#39;orange dahlia&#39;,
+                    &#39;pink-yellow dahlia?&#39;,
+                    &#39;cautleya spicata&#39;,
+                    &#39;japanese anemone&#39;,
+                    &#39;black-eyed susan&#39;,
+                    &#39;silverbush&#39;,
+                    &#39;californian poppy&#39;,
+                    &#39;osteospermum&#39;,
+                    &#39;spring crocus&#39;,
+                    &#39;bearded iris&#39;,
+                    &#39;windflower&#39;,
+                    &#39;tree poppy&#39;,
+                    &#39;gazania&#39;,
+                    &#39;azalea&#39;,
+                    &#39;water lily&#39;,
+                    &#39;rose&#39;,
+                    &#39;thorn apple&#39;,
+                    &#39;morning glory&#39;,
+                    &#39;passion flower&#39;,
+                    &#39;lotus&#39;,
+                    &#39;toad lily&#39;,
+                    &#39;anthurium&#39;,
+                    &#39;frangipani&#39;,
+                    &#39;clematis&#39;,
+                    &#39;hibiscus&#39;,
+                    &#39;columbine&#39;,
+                    &#39;desert-rose&#39;,
+                    &#39;tree mallow&#39;,
+                    &#39;magnolia&#39;,
+                    &#39;cyclamen &#39;,
+                    &#39;watercress&#39;,
+                    &#39;canna lily&#39;,
+                    &#39;hippeastrum &#39;,
+                    &#39;bee balm&#39;,
+                    &#39;ball moss&#39;,
+                    &#39;foxglove&#39;,
+                    &#39;bougainvillea&#39;,
+                    &#39;camellia&#39;,
+                    &#39;mallow&#39;,
+                    &#39;mexican petunia&#39;,
+                    &#39;bromelia&#39;,
+                    &#39;blanket flower&#39;,
+                    &#39;trumpet creeper&#39;,
+                    &#39;blackberry lily&#39;, &#39;102&#39;]
+        
+        labelindex_to_category = {str(k):c for (k,c) in enumerate(category, start=1)}  # one-indexed
+
+        # Import, cache and reuse JSON
+        import scipy.io
+        mat = scipy.io.loadmat(os.path.join(self._datadir, &#39;imagelabels.mat&#39;))
+        imageindex_to_labelindex = [str(c) for c in mat[&#39;labels&#39;][0]]
+
+        return vipy.util.writejson({&#39;imageindex_to_labelindex&#39;: imageindex_to_labelindex, &#39;labelindex_to_category&#39;:labelindex_to_category}, outjson)</code></pre>
 </details>
 <h3>Ancestors</h3>
 <ul class="hlist">
@@ -229,7 +466,7 @@ setTimeout(() => input.focus(), 100);
 <li><h3><a href="#header-classes">Classes</a></h3>
 <ul>
 <li>
-<h4><code><a title="vipy.data.caltech256.Caltech256" href="#vipy.data.caltech256.Caltech256">Caltech256</a></code></h4>
+<h4><code><a title="vipy.data.oxford_flowers_102.Flowers102" href="#vipy.data.oxford_flowers_102.Flowers102">Flowers102</a></code></h4>
 </li>
 </ul>
 </li>
