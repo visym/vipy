@@ -115,7 +115,7 @@ def save(vars, outfile=None, backup=False):
             f.write(s)            
 
     elif ispklbz2(outfile):
-        return bz2pkl(outfile, vars)
+        return pklbz2(outfile, vars)
     else:
         raise ValueError('Unknown file extension for save file "%s" - must be in %s' % (fileext(outfile), str(allowable)))
     
@@ -162,8 +162,8 @@ def load(infile, abspath=True, refcycle=True):
             obj = obj[0] if len(obj) == 1 else obj
         else:
             obj = loadobj
-    elif isbz2(infile):
-        return bz2pkl(infile)
+    elif ispklbz2(infile):
+        return pklbz2(infile)
     elif os.path.isdir(infile):        
         import vipy.dataset
         return vipy.dataset.Dataset(infile)
@@ -1545,6 +1545,10 @@ def temphtml():
 def temppkl():
     """Create a temporary pickle file"""
     return temppickle()
+
+def temppklbz2():
+    """Create a temporary .pkl.bz2 file"""
+    return temppickle()+'.bz2'
 
 
 def tempyaml():
