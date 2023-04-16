@@ -1907,10 +1907,14 @@ class Video(object):
         return self
 
     def mindim(self, dim=None):
-        """Resize the video so that the minimum of (width,height)=dim, preserving aspect ratio"""
+        """Resize the video so that the minimum of (width,height)=dim, preserving aspect ratio, return the minimum dimension if dim=None"""
         (H,W) = self.shape()  # yuck, need to get image dimensions before filter
         return min(self.shape()) if dim is None else (self if min(H,W) == dim else (self.resize(cols=dim) if W<H else self.resize(rows=dim)))
 
+    def set_mindim(self, dim):
+        """Resize the video so that the minimum of (width,height)=dim, preserving aspect ratio, do nothing if dim=None"""
+        return self.mindim(dim=dim) if dim is not None else self
+    
     def maxdim(self, dim=None):
         """Resize the video so that the maximum of (width,height)=dim, preserving aspect ratio"""
         assert not self.isloaded(), "Filters can only be applied prior to load() - Try calling flush() first"
@@ -2169,7 +2173,7 @@ class Video(object):
         os.system(cmd)
         return self
         
-    def play(self, verbose=False, notebook=False, ffplay=True):
+    def play(self, verbose=False, notebook=False, ffplay=True, figure='video'):
         """Play the saved video filename in self.filename()
 
         If there is no filename, try to download it.  If the filter chain is dirty or the pixels are loaded, dump to temp video file first then play it.  This uses 'ffplay' on the PATH if available, otherwise uses a fallback player by showing a sequence of matplotlib frames.
@@ -2224,15 +2228,15 @@ class Video(object):
             with Stopwatch() as sw:            
                 for (k,im) in enumerate(self.load() if self.isloaded() else self.stream()):
                     time.sleep(max(0, (1.0/self.framerate())*int(np.ceil((self.framerate()/fps))) - sw.since()))                                
-                    im.show(figure='video')
+                    im.show(figure=figure)
                     if vipy.globals._user_hit_escape():
                         break                    
             vipy.show.close('video')
             return self
 
-    def show(self, verbose=False, notebook=False, ffplay=False):
+    def show(self, verbose=False, notebook=False, ffplay=False, figure='video'):
         """Alias for play"""
-        return self.play(verbose=verbose, notebook=notebook, ffplay=ffplay)
+        return self.play(verbose=verbose, notebook=notebook, ffplay=ffplay, figure=figure)
     
     def quicklook(self, n=9, mindim=256, startframe=0, animate=False, dt=30, thumbnail=None):
         """Generate a montage of n uniformly spaced frames.
@@ -3753,10 +3757,10 @@ class Scene(VideoCategory):
         return self
 
     def mindim(self, dim=None):
-        """Resize the video so that the minimum of (width,height)=dim, preserving aspect ratio"""
+        """Resize the video so that the minimum of (width,height)=dim, preserving aspect ratio, return the minimum dimension if dim=None"""
         (H,W) = self.shape()  # yuck, need to get image dimensions before filter
         return min(self.shape()) if dim is None else (self if min(H,W) == dim else (self.resize(cols=dim) if W<H else self.resize(rows=dim)))
-
+        
     def maxdim(self, dim=None):
         """Resize the video so that the maximum of (width,height)=dim, preserving aspect ratio"""
         assert not self.isloaded(), "Filters can only be applied prior to load() - Try calling flush() first"                

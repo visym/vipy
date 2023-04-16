@@ -264,6 +264,15 @@ def trycatcher(f, *args, **kwargs):
     except Exception as e:
         return None
 
+def caught(f, *args, **kwargs):
+    """Run the function f with the supplied *args and **kwargs, and return True if we caught an exception, otherwise return False (no exceptions were caught, the callable returned without error)"""
+    assert callable(f)
+    try:
+        f(*args, **kwargs)
+        return False
+    except:
+        return True
+    
 def catchif(f, *args, **kwargs):
     """Call the function f with the provided arguments, and return (result) on success and (None) if there is any thrown exception.  Useful for parallel processing.  Alias for `vipy.util.trycatcher`"""
     return trycatcher(f, *args, **kwargs)
