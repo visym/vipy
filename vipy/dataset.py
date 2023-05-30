@@ -18,6 +18,7 @@ from vipy.show import colorlist
 import matplotlib.pyplot as plt
 import gc 
 import vipy.metrics
+import itertools
 
 
 class Dataset():
@@ -583,6 +584,11 @@ class Dataset():
         for (k,V) in enumerate(vipy.util.chunklistbysize(self._objlist, n)):
             if ragged or len(V) == n:
                 yield V 
+
+    def pairwise(self):
+        """Yield unique pairwise permutations of this dataset"""
+        for (i,j) in itertools.permutations(self._objlist, 2):
+            yield (i,j)
         
     def split_by_videoid(self, trainfraction=0.9, valfraction=0.1, testfraction=0, seed=None):
         """Split the dataset by category by fraction so that video IDs are never in the same set"""

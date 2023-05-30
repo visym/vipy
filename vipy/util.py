@@ -68,7 +68,7 @@ def class_registry():
     except:
         registry.update( {"<class 'pycollector.admin.video.Video'>":lambda x: exec("raise ValueError(\"<class 'pycollector.admin.video.Video'> not found - This is for admin use only \")")})        
 
-    registry.update( {None: cPickle.loads} )  # fallback on generic pickel dumps
+    registry.update( {None: cPickle.loads} )  # fallback on generic pickle dumps
     return registry
             
 
@@ -220,12 +220,12 @@ def pklbz2(filename, obj=None):
     assert filename[-8:] == '.pkl.bz2', "Invalid filename - must be '*.pkl.bz2'"
     if obj is not None:
         f = bz2.BZ2File(filename, 'wb')
-        cPickle.dump(obj, f)
+        dill.dump(obj, f)
         f.close()
         return filename
     else:
         f = bz2.BZ2File(filename, 'rb')
-        obj = cPickle.load(f)
+        obj = dill.load(f)
         f.close()
         return obj
         
@@ -1316,6 +1316,10 @@ def tolist(x):
         return list(x)
     else:
         return [x]
+
+def singletonlist(x):
+    """Convert a singleton list to a singleton, otherwise return the list"""
+    return x[0] if isinstance(x, list) and len(x)==1 else x
 
 def toset(x):
     """Convert a python iterable to a set of not already a set"""

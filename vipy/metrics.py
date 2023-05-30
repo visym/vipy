@@ -367,6 +367,8 @@ def scatterplot(X, labels, outfile=None):
         plt.clf()        
         return outfile
     else:
+        plt.ion()
         plt.show()
+        plt.pause(0.001)
 
         
