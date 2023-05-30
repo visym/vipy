@@ -37,9 +37,16 @@ cd ..
 pdoc vipy -o ./docs --html --force --template-dir ./docs/templates
 cp -r ./docs/vipy/* ./docs  # https://domain/vipy/vipy/index.html --> https://domain/vipy/index.html
 rm -rf ./docs/vipy  # cleanup
-sed -i "" "s|\"vipy/|\"|g" ./docs/index.js  # update search to new location
-sed -i "" "s|Package <code>vipy<\/code>|VIPY|g" ./docs/index.html  # update title
-sed -i "" "s|vipy API documentation|vipy documentation|g" ./docs/index.html  # update title
+
+if [[ "$OSTYPE" == "darwin"* ]]; then
+    sed -i "" "s|\"vipy/|\"|g" ./docs/index.js  # update search to new location
+    sed -i "" "s|Package <code>vipy<\/code>|VIPY|g" ./docs/index.html  # update title
+    sed -i "" "s|vipy API documentation|vipy documentation|g" ./docs/index.html  # update title
+else
+    sed -i "s|\"vipy/|\"|g" ./docs/index.js  # update search to new location
+    sed -i "s|Package <code>vipy<\/code>|VIPY|g" ./docs/index.html  # update title
+    sed -i "s|vipy API documentation|vipy documentation|g" ./docs/index.html  # update title
+fi
 
 if [ ${COMMIT} == 1 ]; then
     git add ./docs/*
