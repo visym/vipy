@@ -1940,12 +1940,19 @@ class ImageCategories(ImageCategory):
         self._score = {}
         return self
 
-    def categories(self, categories=None, scored=False):
-        """Add list [category1, category2, ...] or scored list [(category1, score1), (category2, score2), ...] as multi-categories"""
+    def scored_categories(self, categories=None):
+        """Add list [(score, category),... as multi-categories"""
         if categories is not None:
-            (C,S) = zip(*categories) if scored else categories
-            for (k,c) in enumerate(C):
-                self.category(add=c).score(c,S[k] if scored else None)
+            for (s, c) in categories:
+                self.category(add=c).score(c,s)
+            return self
+        return [(self.score(r), r) for r in self.ranked_categories()]        
+    
+    def categories(self, categories=None):
+        """Add list [category1, category2, ...]  as multi-categories"""
+        if categories is not None:
+            for c in tolist(categories):
+                self.category(add=c)
             return self
         return self.category()
     
@@ -1977,9 +1984,6 @@ class ImageCategories(ImageCategory):
         """Returned a ranked list of categories in order of decreasing score.  Unscored categories are appended, highest score at index 0"""
         return sorted(list(self.category()), key=lambda c: self.score(c) or -math.inf, reverse=True)
 
-    def scored_categories(self):
-        return [(self.score(r), r) for r in self.ranked_categories()]
-
     def category_scores(self):
         return [(r, self.score(r)) for r in self.ranked_categories()]
     
@@ -1995,7 +1999,7 @@ class ImageCategories(ImageCategory):
         if self.hasurl():
             strlist.append('url="%s"' % self.url())
         if self.category() is not None and len(self.category())>0:
-            strlist.append('categories=%s' % ':'.join(self.ranked_categories()))
+            strlist.append('categories=%s' % self.ranked_categories())
         return str('<vipy.image.ImageCategories: %s>' % ', '.join(strlist))
     
     
