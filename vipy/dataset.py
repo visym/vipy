@@ -536,6 +536,11 @@ class Dataset():
         D = self.take(n=1, category=category, canload=canload, seed=seed)
         return D[0] if len(D)>0 else None
 
+    def take_fraction(self, p):
+        """Randomly take a percentage of the dataset"""
+        assert p>0 and p<=1
+        return self.take(n=int(len(self)*p))
+    
     def take_per_category(self, n, seed=None):
         """Random;y take n elements per category and return a shallow cloned dataset"""
         D = self.clone(shallow=True)
