@@ -897,7 +897,15 @@ class Image(object):
         assert isinstance(x, torch.Tensor) or isinstance(x, np.ndarray), "Invalid input type '%s'- must be torch.Tensor" % (str(type(x)))
         assert (x.ndim == 4 and x.shape[0] == 1) or x.ndim == 3, "Torch tensor must be shape 1xCxHxW or CxHxW"
         x = x.squeeze(0) if (x.ndim == 4 and x.shape[0] == 1) else x
-        img = np.copy(x.permute(1,2,0).cpu().detach().numpy() if torch.is_tensor(x) else x.transpose(1,2,0))   # CxHxW -> HxWxC, copied
+
+        if order == 'CHW':
+            x = x.permute(1,2,0).cpu().detach().numpy() if torch.is_tensor(x) else x.transpose(1,2,0)   # CxHxW -> HxWxC, copied            
+        elif order == 'WHC':
+            x = x.permute(1,0,2).cpu().detach().numpy() if torch.is_tensor(x) else x.transpose(1,0,2)   # WxHxC -> HxWxC, copied        
+        else:
+            raise ValueError('unknown axis order "%s"' % order)
+        
+        img = np.copy(x)
         colorspace = 'float' if img.dtype == np.float32 else None
         colorspace = 'rgb' if img.dtype == np.uint8 and img.shape[2] == 3 else colorspace  # assumed
         colorspace = 'lum' if img.dtype == np.uint8 and img.shape[2] == 1 else colorspace        
