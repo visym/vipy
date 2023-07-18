@@ -348,6 +348,10 @@ def findjson(basedir):
     """Return a list of absolute paths to json files recursively discovered by walking the directory tree rooted at basedir"""
     return [str(path.resolve()) for path in pathlib.Path(basedir).rglob('*.json')]
 
+def findtxt(basedir):
+    """Return a list of absolute paths to txt files recursively discovered by walking the directory tree rooted at basedir"""
+    return [str(path.resolve()) for path in pathlib.Path(basedir).rglob('*.txt')]
+
 def findtar(basedir):
     """Return a list of absolute paths to tar files recursively discovered by walking the directory tree rooted at basedir"""
     return [str(path.resolve()) for path in pathlib.Path(basedir).rglob('*.tar')]
