@@ -219,7 +219,7 @@ class Image(object):
         ```
 
         """
-        self.attributes = {k:v for (k,v) in self.attributes.items() if not k.startswith('__')} if isinstance(self.atttributes, dict) else self.attributes
+        self.attributes = {k:v for (k,v) in self.attributes.items() if not k.startswith('__')} if isinstance(self.attributes, dict) else self.attributes
         return self
     
     def print(self, prefix='', verbose=True, sleep=None):
@@ -1008,6 +1008,11 @@ class Image(object):
             self.attributes.pop(k)
         return self
 
+    def delattributes(self, atts):
+        for k in tolist(atts):
+            self.delattribute(k)
+        return self
+    
     def metadata(self, k=None):
         """Return metadata associated with this image, stored in the attributes dictionary"""
         return self.attributes if k is None else self.getattribute(k)

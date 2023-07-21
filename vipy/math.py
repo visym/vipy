@@ -117,7 +117,12 @@ def gaussian2d(mu, std, H, W):
 
 
 def interp1d(x, y):
-    """Replication of scipy.interpolate.interp1d with assume_sorted=True, and constant replication of boundary handling.  Input must be sorted."""
+    """Replication of scipy.interpolate.interp1d with assume_sorted=True, and constant replication of boundary handling.  Input must be sorted.
+
+    Input: 1D numpy arrays y=f(x)
+    Output: Lambda function f that will interpolate f(xi) -> yi
+    
+    """
     def ceil(x, at):
         k = np.argwhere(np.array(x)-at > 0)
         return len(x)-1 if len(k) == 0 else int(k[0])

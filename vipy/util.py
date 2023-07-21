@@ -1372,7 +1372,7 @@ def isjpeg(path):
 
 def iswebp(path):
     """is the file a .webp extension?"""
-    return hasextension(path) and fileext(path).lower() == '.webp'
+    return path is not None and hasextension(path) and fileext(path).lower() == '.webp'
 
 def ispng(path):
     """is the file a .png or .apng extension?"""

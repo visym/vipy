@@ -216,7 +216,10 @@ class Stream(object):
                                 queue.join()
                                 event.wait()
                                 if pipe.returncode != 0:
-                                    raise ValueError('Stream iterator exited with returncode %d' % (pipe.returncode))
+                                    if self._video.hasurl() and not self._video.isdownloaded():
+                                        raise ValueError('Video not downloaded.  Call download() method before streaming')
+                                    else:
+                                        raise ValueError('Stream iterator exited with returncode %d' % (pipe.returncode))
                                 break
                             else:
                                 queue.put(np.frombuffer(in_bytes, np.uint8).reshape([height, width, 3]))
