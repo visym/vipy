@@ -165,7 +165,7 @@ class Image(object):
         """Import the JSON string s as an `vipy.image.Image` object.
 
         Args:
-            encoded [bool]: If False, assume that the input is a native JSON object, and has not been encoded to a string
+            s: json encoded string
         
         This will perform a round trip such that im1 == im2
 
@@ -174,6 +174,8 @@ class Image(object):
         im2 = vipy.image.Image.from_json(im1.json())
         assert im1 == im2
         ```
+
+        Note: to construct from non-encoded json (e.g. a dict prior to dumps), use from_dict
         
         """
         return cls.from_dict(json.loads(s))
@@ -1717,7 +1719,7 @@ class Image(object):
         .. note:: This method uses a CPU-only pretrained face detector.  This is convenient, but slow.  See the heyvi package for optimized GPU batch processing for faster operation.
         """
         try_import('heyvi'); import heyvi  # >heyvi-0.2.28 for minconf      
-        im = heyvi.detection.FaceDetector()(Scene.cast(self.clone()).mindim(mindim)).mindim(self.mindim())
+        im = heyvi.detection.FaceDetector()(Scene.cast(self.clone().clear()).mindim(mindim)).mindim(self.mindim())
         return Scene.cast(self).union(im) if union else im
     
     def person_detection(self, mindim=256, union=False, conf=0.2):
@@ -1734,7 +1736,7 @@ class Image(object):
         .. note:: This method uses a CPU-only pretrained person detector.  This is convenient, but slow.  See the heyvi package for optimized GPU batch processing for faster operation.
         """
         try_import('heyvi'); import heyvi                
-        im = heyvi.detection.ObjectDetector()(Scene.cast(self.clone()).mindim(mindim), conf=conf, objects=['person']).mindim(self.mindim())
+        im = heyvi.detection.ObjectDetector()(Scene.cast(self.clone().clear()).mindim(mindim), conf=conf, objects=['person']).mindim(self.mindim())
         return Scene.cast(self).union(im) if union else im        
 
     def qrcode_recognition(self):
@@ -2487,7 +2489,7 @@ class Scene(ImageCategory):
         d_categories2color.update(d_category2color)  # requested color mapping
         detection_color = [d_categories2color[d.category()] for d in valid_detections]                
         valid_detections = [d if not any([c in d.category() for c in tolist(nocaption_withstring)]) else d.nocategory() for d in valid_detections]  # Detections requested to show without caption
-        imdisplay = self.clone().rgb() if self.colorspace() != 'rgb' else self  # convert to RGB for show() if necessary
+        imdisplay = self.clone().rgb() if self.colorspace() != 'rgb' else self.load()  # convert to RGB for show() if necessary
         fontsize_scaled = float(fontsize.split(':')[0])*(min(imdisplay.shape())/640.0) if isstring(fontsize) else fontsize
         imdisplay = mutator(imdisplay) if mutator is not None else imdisplay        
         vipy.show.imdetection(imdisplay._array, valid_detections, bboxcolor=detection_color, textcolor=detection_color, fignum=figure, do_caption=(nocaption==False), facealpha=boxalpha, fontsize=fontsize_scaled,

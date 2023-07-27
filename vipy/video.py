@@ -2241,7 +2241,7 @@ class Video(object):
         """Alias for play"""
         return self.play(verbose=verbose, notebook=notebook, ffplay=ffplay, figure=figure)
     
-    def quicklook(self, n=9, mindim=256, startframe=0, animate=False, dt=30, thumbnail=None):
+    def quicklook(self, n=9, mindim=256, startframe=0, animate=False, dt=30, thumbnail=None, aspectratio=1):
         """Generate a montage of n uniformly spaced frames.
            Montage increases rowwise for n uniformly spaced frames, starting from frame zero and ending on the last frame.
         
@@ -2252,13 +2252,14 @@ class Video(object):
                dt:  The number of frames for animation
                startframe:  The initial frame index to start the n uniformly sampled frames for the quicklook
                thumbnail [`vipy.image.Image`]: If provided, prepent the first element in the montage with this thumbnail.  This is useful for showing a high resolution image (e.g. a face, small object) to be contained in the video for review.
-
+               aspectratio [float]: the ratio of gridcols/gridrows in vipy.visualize.montage
+        
            ..note:: The first frame in the upper left is guaranteed to be the start frame of the labeled activity, but the last frame in the bottom right may not be precisely the end frame and may be off by at most len(video)/9.
         """
         if not self.isloaded():
             self.load()  
         if animate:
-            return Video(frames=[self.quicklook(n=n, startframe=k, animate=False, dt=dt) for k in range(0, min(dt, len(self)))], framerate=self.framerate())
+            return Video(frames=[self.quicklook(n=n, startframe=k, animate=False, dt=dt, aspectratio=aspectratio) for k in range(0, min(dt, len(self)))], framerate=self.framerate())
         framelist = [min(int(np.round(f))+startframe, len(self)-1) for f in np.linspace(0, len(self)-1, n)]
         imframes = [self.frame(k).maxmatte()  # letterbox or pillarbox
                     for (j,k) in enumerate(framelist)]
@@ -2266,7 +2267,7 @@ class Video(object):
         if thumbnail is not None:
             assert isinstance(thumbnail, vipy.image.Image)
             imframes = [thumbnail.maxmatte().mindim(mindim)] + imframes  # prepend
-        return vipy.visualize.montage(imframes, imgwidth=mindim, imgheight=mindim)
+        return vipy.visualize.montage(imframes, imgwidth=mindim, imgheight=mindim, aspectratio=aspectratio)
 
     def torch(self, startframe=0, endframe=None, length=None, stride=1, take=None, boundary='repeat', order='nchw', verbose=False, withslice=False, scale=1.0, withlabel=False, nonelabel=False):
         """Convert the loaded video of shape NxHxWxC frames to an MxCxHxW torch tensor/
@@ -2863,7 +2864,7 @@ class Scene(VideoCategory):
         """Degenerate scene has empty or malformed tracks"""
         return len(self.tracklist()) == 0 or any([t.isempty() or t.isdegenerate() for t in self.tracklist()])
     
-    def quicklook(self, n=9, dilate=1.5, mindim=256, fontsize=10, context=False, startframe=0, animate=False, dt=30, thumbnail=None):
+    def quicklook(self, n=9, dilate=1.5, mindim=256, fontsize=10, context=False, startframe=0, animate=False, dt=30, thumbnail=None, aspectratio=1):
         """Generate a montage of n uniformly spaced annotated frames centered on the union of the labeled boxes in the current frame to show the activity ocurring in this scene at a glance
            Montage increases rowwise for n uniformly spaced frames, starting from frame zero and ending on the last frame.  This quicklook is most useful when len(self.activities()==1)
            for generating a quicklook from an activityclip().
@@ -2878,12 +2879,12 @@ class Scene(VideoCategory):
                dt: [int]:  The number of frames for animation
                startframe: [int]:  The initial frame index to start the n uniformly sampled frames for the quicklook
                thumbnail [`vipy.image.Image`]: If provided, prepend the first element in the montage with this thumbnail.  This is useful for showing a high resolution image (e.g. a face, small object) to be contained in the video for review.
-
+               aspectratio [float]: the ratio of gridcols/gridrows in vipy.visualize.montage
         """
         if not self.isloaded():
             self.load()  # triggers load() into memory, user should self.flush() to free
         if animate:
-            return Video(frames=[self.quicklook(n=n, dilate=dilate, mindim=mindim, fontsize=fontsize, context=context, startframe=k, animate=False, dt=dt, thumbnail=thumbnail) for k in range(0, min(dt, len(self)))], framerate=self.framerate())
+            return Video(frames=[self.quicklook(n=n, dilate=dilate, mindim=mindim, fontsize=fontsize, context=context, startframe=k, animate=False, dt=dt, thumbnail=thumbnail, aspectratio=aspectratio) for k in range(0, min(dt, len(self)))], framerate=self.framerate())
 
         f_mutator = vipy.image.mutator_show_jointlabel()
         framelist = [min(int(np.round(f))+startframe, len(self)-1) for f in np.linspace(0, len(self)-1, n)]
@@ -2897,7 +2898,7 @@ class Scene(VideoCategory):
         if thumbnail is not None:
             assert isinstance(thumbnail, vipy.image.Image)
             imframes = [thumbnail.maxmatte().mindim(mindim)] + imframes
-        return vipy.visualize.montage(imframes, imgwidth=mindim, imgheight=mindim)
+        return vipy.visualize.montage(imframes, imgwidth=mindim, imgheight=mindim, aspectratio=aspectratio)
     
     def tracks(self, tracks=None, id=None):
         """Return mutable dictionary of tracks,
