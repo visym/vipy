@@ -600,17 +600,17 @@ def isfloat(x):
         return False
 
 
-def imwritegray(img, imfile=None):
+def imwritegray(img, imfile=None, quality=75):
     """Write a floating point grayscale numpy image in [0,1] as [0,255] grayscale"""
     if imfile is None:
         imfile = temppng()
     if isnumpy(img):
         if img.dtype == np.dtype('uint8'):
             # Assume that uint8 is in the range [0,255]
-            PIL.Image.fromarray(img).save(os.path.expanduser(imfile))
+            PIL.Image.fromarray(img).save(os.path.expanduser(imfile), quality=quality)
         elif img.dtype == np.dtype('float32'):
             # Convert [0, 1.0] to uint8 [0,255]
-            PIL.Image.fromarray(np.uint8(img * 255.0)).save(os.path.expanduser(imfile))
+            PIL.Image.fromarray(np.uint8(img * 255.0)).save(os.path.expanduser(imfile), quality=quality)
         else:
             raise ValueError('Unsupported datatype - '
                              'Numpy array must be uint8 or float32')
@@ -619,7 +619,7 @@ def imwritegray(img, imfile=None):
     return imfile
 
 
-def imwrite(img, imfile=None, writeas=None):
+def imwrite(img, imfile=None, writeas=None, quality=75):
     """Write a floating point 2D numpy image as jet or gray, 3D numpy as
     rgb or bgr"""
     if imfile is None:
@@ -641,7 +641,7 @@ def imwrite(img, imfile=None, writeas=None):
         if img.ndim != 3:
             raise ValueError('numpy array must be 3D')
         if img.dtype == np.dtype('uint8'):
-            PIL.Image.fromarray(rgb2bgr(img)).save(imfile)  # convert to BGR
+            PIL.Image.fromarray(rgb2bgr(img)).save(imfile, quality=quality)  # convert to BGR
         elif img.dtype == np.dtype('float32'):
             # convert to uint8 then BGR
             PIL.Image.fromarray(rgb2bgr(np.uint8(255.0 * img))).save(imfile)
@@ -649,10 +649,10 @@ def imwrite(img, imfile=None, writeas=None):
         if img.ndim != 3:
             raise ValueError('numpy array must be 3D')
         if img.dtype == np.dtype('uint8'):
-            PIL.Image.fromarray(img).save(imfile)  # convert to BGR
+            PIL.Image.fromarray(img).save(imfile, quality=quality)  # convert to BGR
         elif img.dtype == np.dtype('float32'):
             # convert to uint8 then BGR
-            PIL.Image.fromarray(np.uint8(255.0 * img)).save(imfile)
+            PIL.Image.fromarray(np.uint8(255.0 * img)).save(imfile, quality=quality)
     else:
         raise ValueError('unsupported writeas')
 

@@ -1564,10 +1564,10 @@ class Image(object):
         vipy.show.imshow(im.rgb().numpy(), fignum=figure, nowindow=nowindow, timestamp=timestamp, timestampfacecolor=timestampfacecolor, flush=True, timestampcolor=timestampcolor)
         return self
 
-    def save(self, filename):
+    def save(self, filename, quality=75):
         """Save the current image to a new filename and return the image object"""
         assert filename is not None, "Invalid filename - must be path to new image filename"
-        return self.filename(self.saveas(filename))
+        return self.filename(self.saveas(filename, quality=quality))
         
         
     # Image export
@@ -1583,13 +1583,13 @@ class Image(object):
         assert isinstance(b, bool)
         return self.pkl(pklfile) if b else self
 
-    def saveas(self, filename=None, writeas=None):
+    def saveas(self, filename=None, writeas=None, quality=75):
         """Save current buffer (not including drawing overlays) to new filename and return filename.  If filename is not provided, use a temporary JPEG filename."""
         filename = tempjpg() if filename is None else filename
         if self.colorspace() in ['gray']:
-            imwritegray(self.grayscale()._array, filename)
+            imwritegray(self.grayscale()._array, filename, quality=quality)
         elif self.colorspace() != 'float':
-            imwrite(self.load().array(), filename, writeas=writeas)
+            imwrite(self.load().array(), filename, writeas=writeas, quality=quality)
         else:
             raise ValueError('Convert float image to RGB or gray first. Try self.mat2gray()')
         return filename
