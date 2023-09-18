@@ -38,7 +38,9 @@ class Dask(object):
         os.environ['DASK_DISTRIBUTED__COMM__TIMEOUTS__CONNECT'] = "30s"
         os.environ['DASK_DISTRIBUTED__COMM__TIMEOUTS__TCP'] = "30s"
         os.environ['DASK_DISTRIBUTED__DEPLOY__LOST_WORKER_TIMEOUT'] = "30s"
+        os.environ['DASK_DISTRIBUTED__COMM__RETRY__COUNT'] = "10"        
 
+        dask.config.set({'DISTRIBUTED.COMM.RETRY.COUNT'.lower():os.environ['DASK_DISTRIBUTED__COMM__RETRY__COUNT']})
         dask.config.set({'DISTRIBUTED.COMM.TIMEOUTS.CONNECT'.lower():os.environ['DASK_DISTRIBUTED__COMM__TIMEOUTS__CONNECT']})
         dask.config.set({'DISTRIBUTED.COMM.TIMEOUTS.TCP'.lower():os.environ['DASK_DISTRIBUTED__COMM__TIMEOUTS__TCP']})
         dask.config.set({'DISTRIBUTED.DEPLOY.LOST_WORKER_TIMEOUT'.lower():os.environ['DASK_DISTRIBUTED__DEPLOY__LOST_WORKER_TIMEOUT']})

@@ -440,22 +440,26 @@ def vipy_groupby(inset, keyfunc):
     return groupby(inset, keyfunc)
 
 
-def groupbyasdict(togroup, keyfunc):
+def groupbyasdict(togroup, keyfunc, valuefunc=lambda x: x):
     """Return dictionary of keys and lists from groupby on unsorted inset, where keyfunc is a lambda function on elements in inset
     
     Args:
         togroup: a list of elements to group
-        keyfunc:  a lambda function to operate on elemenets of togroup such that the value returned from the lambda is the equality key for grouping
-
+        keyfunc:  a lambda function to operate on elements of togroup such that the value returned from the lambda is the equality key for grouping
+        valuefunc: a lambda function to operate on elements of to group such that the value returned from the lambda is a transform of the element to be grouped
     Returns:
         A dictionary with unique keys returned from keyfunc, and values are lists of elements in togroup with the same key
 
     """
-    return {k: list(v) for (k, v) in groupby(togroup, keyfunc)}
+    return {k: list([valuefunc(vi) for vi in v]) for (k, v) in groupby(togroup, keyfunc)}
 
 def countby(inset, keyfunc=lambda x: x):
     """Return dictionary of keys and group sizes for a grouping of the input list by keyfunc lambda function, sorted by increasing count""" 
     return {k:v for (k,v) in sorted({k:len(v) for (k,v) in groupbyasdict(inset, keyfunc).items()}.items(), key=lambda x: x[1])}
+
+def sumby(inlist, keyfunc=lambda x: x[0], valuefunc=lambda x: x[1]):
+    """Given an inlist of tuples [('a',1), ('a',2), ('b',4)], group by the keyfunc, then sum over the values in valuefunc.  Returns ductionary over keys, sum reduced over valuefunc.  Example returns {'a':3,'b':4}."""
+    return {k:sum([valuefunc(vi) for vi in v]) for (k,v) in groupbyasdict(inlist, keyfunc).items()}
 
 def most_frequent(inset, topk=1):
     """Return the most frequent element as determined by element equality"""
