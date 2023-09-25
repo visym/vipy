@@ -181,7 +181,7 @@ def imdetection(img, detlist, fignum=None, bboxcolor='green', do_caption=True, f
     
     # Valid detections
     for (k,det) in enumerate(detlist):
-        if do_caption and len(det.category()) != 0 and (det.category()[0:2] != '__'):  # prepending category with '__' will disable caption
+        if do_caption and det.category() is not None and len(det.category()) != 0 and (det.category()[0:2] != '__'):  # prepending category with '__' will disable caption
             bboxcaption = det.category()
         else:
             bboxcaption = None

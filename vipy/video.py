@@ -1656,7 +1656,7 @@ class Video(object):
         try:
             # FFMPEG frame indexing is inefficient for large framenum.  Need to add "-ss sec.msec" flag before input
             #   - the "ss" option must be provided before the input filename, and is supported by ffmpeg-python as ".input(in_filename, ss=time)"
-            #   - Seek to the frame before the desired frame in order to pipe the next (desired) frame 
+            #   - Seek to the frame before the desired frame in order to pipe the next (desired) frame.  This is why we use (framenum-1)
             timestamp_in_seconds = max(0.0, (framenum-1)/float(self.framerate()))
             f_prepipe = self.clone(shallow=True)._update_ffmpeg_seek(offset=timestamp_in_seconds)._ffmpeg.filter('select', 'gte(n,{})'.format(0))
             f = f_prepipe.output('pipe:', vframes=1, format='image2', vcodec='mjpeg')\
