@@ -344,6 +344,10 @@ def findpng(basedir):
     """Return a list of absolute paths to png files recursively discovered by walking the directory tree rooted at basedir"""
     return [str(path.resolve()) for path in pathlib.Path(basedir).rglob('*.png')]
 
+def findjpg(basedir):
+    """Return a list of absolute paths to jpg files recursively discovered by walking the directory tree rooted at basedir"""
+    return [str(path.resolve()) for path in pathlib.Path(basedir).rglob('*.jpg')]
+
 def findjson(basedir):
     """Return a list of absolute paths to json files recursively discovered by walking the directory tree rooted at basedir"""
     return [str(path.resolve()) for path in pathlib.Path(basedir).rglob('*.json')]
@@ -1157,6 +1161,8 @@ def readcsv(infile, separator=',', ignoreheader=False, comment=None, ignore_head
 
     Returns:
         a list of lists, each list element containing a list of elements in the corresponding line of the csv file, parsed by separator
+
+    .. note:: this parser does not escape delimiters enclosed in double quotes, as may be assumed by some csv writers
     """
 
     with open(infile, 'r') as f:

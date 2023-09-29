@@ -773,7 +773,7 @@ class Dataset():
             (categories, freq) = zip(*reversed(sorted(list(d.items()), key=lambda x: x[1])))  # decreasing frequency
             barcolors = ['blue' if category_to_barcolor is None else category_to_barcolor[c] for c in categories]
             xlabels = [f_category_to_xlabel(c) for c in categories]
-            print('[vipy.dataset]: histogram="%s"' % vipy.metrics.histogram(freq, xlabels, barcolors=barcolors, outfile=outfile, ylabel=ylabel, fontsize=fontsize))
+            vipy.metrics.histogram(freq, xlabels, barcolors=barcolors, outfile=outfile, ylabel=ylabel, fontsize=fontsize)
         return d
     
     def percentage(self):

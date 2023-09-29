@@ -589,6 +589,14 @@ class Image(object):
         """Return True if `vipy.image.Image.load` was successful in reading the image, or if the pixels are present in `vipy.image.Image.array`."""
         return self._array is not None
 
+    def isdownloaded(self):
+        """Does the filename returned from `vipy.image.Image.filename` exist, meaning that the url has been downloaded to a local file?"""
+        return self._filename is not None and os.path.exists(self._filename)
+    
+    def downloadif(self, ignoreErrors=False, timeout=10, verbose=True):
+        """Download URL to filename if the filename has not already been downloaded"""
+        return self.download(ignoreErrors=ignoreErrors, timeout=timeout, verbose=verbose) if self.hasurl() and not self.isdownloaded() else self
+    
     def channels(self):
         """Return integer number of color channels"""
         return 1 if self.load().array().ndim == 2 else self.load().array().shape[2]
@@ -2343,7 +2351,7 @@ class Scene(ImageCategory):
     def rectangular_mask(self, W=None, H=None):
         """Return a binary array of the same size as the image (or using the
         provided image width and height (W,H) size to avoid an image load),
-        with ones inside the bounding box"""
+        with ones inside all bounding boxes"""
         if (W is None or H is None):
             (H, W) = (int(np.round(self.height())),
                       int(np.round(self.width())))
@@ -2400,6 +2408,13 @@ class Scene(ImageCategory):
         img[mask > 0] = self.clone().blur(radius).numpy()[mask > 0]  # in-place update
         return self
 
+    def blurmask_only(self, categories, radius=7):
+        """Replace pixels within all foreground objects with specified category with a privacy preserving blurred foreground"""
+        assert radius > 1, "Pixelsize is a scale factor such that pixels within the foreground are pixelsize times larger than the background"
+
+        objects = self.objects()
+        return self.clone().objects([o for o in objects if o.category() in categories]).blurmask(radius=radius).objects(objects)
+    
     def replace(self, newim, broadcast=False):
         """Set all image values within the bounding box equal to the provided img, triggers load() and imclip()"""
         assert isinstance(newim, vipy.image.Image), "Invalid replacement image - Must be vipy.image.Image"
