@@ -904,13 +904,15 @@ class Image(object):
             x = x.permute(1,2,0).cpu().detach().numpy() if torch.is_tensor(x) else x.transpose(1,2,0)   # CxHxW -> HxWxC, copied            
         elif order == 'WHC':
             x = x.permute(1,0,2).cpu().detach().numpy() if torch.is_tensor(x) else x.transpose(1,0,2)   # WxHxC -> HxWxC, copied        
+        elif order == 'HWC':
+            x = x.cpu().detach().numpy() if torch.is_tensor(x) else x  # HxWxC -> HxWxC, copied        
         else:
             raise ValueError('unknown axis order "%s"' % order)
-        
+
         img = np.copy(x)
         colorspace = 'float' if img.dtype == np.float32 else None
         colorspace = 'rgb' if img.dtype == np.uint8 and img.shape[2] == 3 else colorspace  # assumed
-        colorspace = 'lum' if img.dtype == np.uint8 and img.shape[2] == 1 else colorspace        
+        colorspace = 'lum' if img.dtype == np.uint8 and img.shape[2] == 1 else colorspace
         return Image(array=img, colorspace=colorspace)
     
     def nofilename(self):
@@ -1314,7 +1316,7 @@ class Image(object):
                 self._array = np.uint8(255 * self.array())   # float32 RGB [0,1] -> uint8 RGB [0,255]
                 self.colorspace('rgb')
             else:
-                self._array = (1.0 / 255.0) * np.array(PIL.Image.fromarray(np.uint8(255 * np.squeeze(self.array()))).convert('L')).astype(np.float32)  # float32 RGB [0,1] -> float32 gray [0,1]                
+                self._array = (1.0 / 255.0) * np.array(PIL.Image.fromarray(np.uint8(255 * np.squeeze(self.array(), axis=2))).convert('L')).astype(np.float32)  # float32 RGB [0,1] -> float32 gray [0,1]                
                 self.colorspace('grey')
             self._convert(to)
         elif self.colorspace() is None:
