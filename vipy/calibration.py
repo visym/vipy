@@ -154,6 +154,21 @@ def centersquare(height=512, width=512, squaresize=256, channels=1):
     img[x-s:x+s, y-s:y+s] = 1.0
     return img
 
+def centersquare_border(height=512, width=512, squaresize=256, channels=1, asimage=False):
+    """Create a white square with black interior on a black background of an image of shape (width, height).  The border of the square has width of a single pixel
+
+     Returns:
+         numpy array of appropriate channels of float32 in [0,1]
+         asimage=True: returns a vipy.image.Image object 
+    """
+    img = np.zeros( (height, width, channels), dtype=np.float32)
+    (x,y,s) = (int(height//2), int(width//2), int(squaresize//2))
+    img[x-s, y-s:y+s+1] = 1.0
+    img[x+s, y-s:y+s+1] = 1.0    
+    img[x-s:x+s+1, y-s] = 1.0
+    img[x-s:x+s+1, y+s] = 1.0    
+    return img if not asimage else vipy.image.Image(array=img, colorspace='float')
+
 def centersquare_image(height=512, width=512, squaresize=256):    
     """Returns `vipy.image.Image` for `vipy.calibration.centersquare` numpy array"""
     return vipy.image.Image(array=np.uint8(255*centersquare(height, width, squaresize, channels=1)), colorspace='lum')
@@ -180,11 +195,6 @@ def imcircle(x, y, r, width, height, channels=1):
         `vipy.image.Image` object with array defined by `vipy.calibration.circle`
     """    
     return vipy.image.Image(array=circle(x, y, r, width, height, channels))
-
-def square(x, y, r, width, height, channels=1):
-    img = np.zeros( (height, width, channels), dtype=np.float32 )
-    img[max(int(y-r), 0):min(height, int(y+r)), max(int(x-r), 0):min(int(x+r), width)] = 1.0
-    return img
 
 
 def imstep(width, height):

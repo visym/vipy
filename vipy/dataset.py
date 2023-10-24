@@ -55,7 +55,7 @@ class Dataset():
     Args:
     
         - abspath [bool]: If true, load all lazy elements with absolute path
-        - loader [lambda]: a callable loader that will process the object .  This is useful for custom deerialization
+        - loader [lambda]: a callable loader that will process the object .  This is useful for custom deerialization or on demand transformations
         - lazy [bool]: If true, load all pkl or json files using the custom loader when accessed
 
     .. notes:: Be warned that using the jsondir constructor will load elements on demand, but there are some methods that require loading the entire dataset into memory, and will happily try to do so
@@ -100,6 +100,12 @@ class Dataset():
     @staticmethod
     def _default_loader(x):
         return x
+
+    def loader(self, f):
+        """Overwrite the default loader which is used to pre-process an object when indexed or iterated"""
+        assert f is None or callable(f)
+        self._loader = f  # may no longer be serializable if lambda 
+        return self
     
     def __repr__(self):
         return str('<vipy.dataset: id="%s", len=%d, type=%s>' % (self.id(), len(self), str(type(self[0])) if len(self)>0 else 'None'))
@@ -440,7 +446,7 @@ class Dataset():
         return self
 
     def filter(self, f):
-        """In place filter with lambda function f"""
+        """In place filter with lambda function f, keeping those elements obj where f(obj) evaluates true"""
         self._objlist = [v for v in self if f(v)]
         return self
 
@@ -448,7 +454,7 @@ class Dataset():
         return self.filter(lambda v: v is not None)
 
     def takefilter(self, f, n=1):
-        """Apply the lambda function f and return n elements in a list where the filter returns true
+        """Apply the lambda function f and return n elements in a list where the filter lambda returns true
         
         Args:
             f: [lambda] If f(x) returns true, then keep
@@ -521,7 +527,7 @@ class Dataset():
     def load(self):
         """Load the entire dataset into memory.  This is useful for creating in-memory datasets from lazy load datasets"""
         self._objlist = self.list()
-        self._loader = None
+        self._loader = None  # all preprocessing has been performed
         return self
 
     def take(self, n, category=None, canload=False, seed=None):
@@ -747,7 +753,14 @@ class Dataset():
         assert self._isvipy()
         assert f is None or callable(f)
         return vipy.util.countby(self, f)
-        
+
+    def repeat(self, n):
+        """Clone the elements in this dataset and repeat n times.  The length of the new dataset will be (n+1)*len(self)"""
+        D = self.clone()
+        for k in range(n):
+            D._objlist.extend(self.clone()._objlist)
+        return D
+    
     def frequency(self):
         return self.count()
 
