@@ -1900,133 +1900,61 @@ class ImageCategory(Image):
             return self
     
 
-class ImageCategories(ImageCategory):
-    """vipy ImageCategories class
+class TaggedImage(Image):
+    """vipy.image.TaggedImage class
 
-    This class provides a representation of a vipy.image.ImageCategory with a multi-element category set. 
+    This class provides a representation of a vipy.image.Image with one or more tag labels.
 
-    Valid constructors include all provided by vipy.image.ImageCategory with category as set or string
+    Valid constructors include all provided by vipy.image.Image with tags defined as tuple, list, set or string
 
     ```python
-    im = vipy.image.ImageCategories(filename='/path/to/dog_image.ext', category={'dog','canine'})
-    im = vipy.image.ImageCategories(array=dog_img, colorspace='rgb', category='dog')
+    im = vipy.image.TaggedImage(filename='/path/to/dog_image.ext', tags={'dog','canine'})
+    im = vipy.image.TaggedImage(array=dog_img, colorspace='rgb', tags='dog')
     ```
     """
-    def __init__(self, filename=None, url=None, category=None, label=None, attributes=None, array=None, colorspace=None):
+    def __init__(self, filename=None, url=None, attributes=None, array=None, colorspace=None, tags=None):
         super().__init__(filename=filename,
                          url=url,
                          attributes=attributes,
                          array=array,
-                         colorspace=colorspace,
-                         category=category, label=label)
-
-        assert category is None or isinstance(category, set) or isinstance(category, list) or isinstance(category, str) or isinstance(category, tuple)
-        self._category = vipy.util.toset(self.category()) if self.category() is not None else set({})
-        self._score = {}
+                         colorspace=colorspace)
         
-    @classmethod
-    def cast(cls, im, flush=False):
-        assert isinstance(im, vipy.image.Image)
-        im.__class__ = vipy.image.ImageCategories
-        im._category = set({}) if flush or not hasattr(im, '_category') else vipy.util.toset(im._category)
-        im._score = {} if flush or not hasattr(im, '_score') else im._score
-        return im
-
-    @classmethod
-    def from_json(obj, s):        
-        im = super().from_json(s)
-        d = {k.lstrip('_'):v for (k,v) in json.loads(s).items()}  # prettyjson (remove "_" prefix to attributes)                            
-        im._category = vipy.util.toset(d['category'])
-        return im
-
-    def json(self, s=None, encode=True):
-        if s is None:            
-            d = json.loads(super().json())
-            d['category'] = list(self._category)
-            return json.dumps(d) if encode else d
-        else:
-            super().json(s)
-            d = json.loads(s)            
-            self._category = vipy.util.toset(d['category'])
-            return self
-    
-    def probability(self, newprob=None):
-        raise NotImplementedError
-
-    def score(self, category, score=None):
-        """Real valued score for categorization, larger is better"""        
-        if score is not None:
-            self._score[category] = score
-            return self
-        return self._score[category] if category in self._score else None
-
-    def nocategory(self):
-        self._category = set({})
-        self._score = {}
-        return self
-
-    def scored_categories(self, categories=None):
-        """Add list [(score, category),... as multi-categories"""
-        if categories is not None:
-            for (s, c) in categories:
-                self.category(add=c).score(c,s)
-            return self
-        return [(self.score(r), r) for r in self.ranked_categories()]        
-    
-    def categories(self, categories=None):
-        """Add list [category1, category2, ...]  as multi-categories"""
-        if categories is not None:
-            for c in tolist(categories):
-                self.category(add=c)
-            return self
-        return self.category()
-    
-    def add_category(self, c, score=None):
-        if c is not None:
-            self._category.add(c)
-            if score is not None:
-                self._score[c] = score
-        return self
-    
-    def remove_category(self, c):
-        if c is not None:
-            self._category.discard(c)
-            self._score.pop(c, None)
-        return self
-    
-    def category(self, newcategory=None, add=None, remove=None, score=None):
-        if newcategory is not None:
-            self._category = vipy.util.toset(newcategory)
-            self.score(newcategory, score)
-            return self
-        if add is not None or remove is not None:
-            self.add_category(add, score)
-            self.remove_category(remove)            
-            return self
-        return self._category
-
-    def ranked_categories(self):
-        """Returned a ranked list of categories in order of decreasing score.  Unscored categories are appended, highest score at index 0"""
-        return sorted(list(self.category()), key=lambda c: self.score(c) or -math.inf, reverse=True)
-
-    def category_scores(self):
-        return [(r, self.score(r)) for r in self.ranked_categories()]
-    
-    def has_category(self, c):
-        return c in self._category
+        assert tags is None or isinstance(tags, set) or isinstance(tags, list) or isinstance(tags, str) or isinstance(tags, tuple)
+        if not self.hasattribute('tags'):
+            self.attributes['tags'] = []
+        if tags is not None:
+            for t in vipy.util.tolist(tags):
+                self.add_tag(t)
 
     def __repr__(self):
-        strlist = []
-        if self.isloaded():
-            strlist.append("height=%d, width=%d, color=%s" % (self.height(), self.width(), self.colorspace()))
-        if self.filename() is not None:
-            strlist.append('filename="%s"' % (self.filename() if self.hasfilename() else '<NOTFOUND>%s</NOTFOUND>' % self.filename()))
-        if self.hasurl():
-            strlist.append('url="%s"' % self.url())
-        if self.category() is not None and len(self.category())>0:
-            strlist.append('categories=%s' % self.ranked_categories())
-        return str('<vipy.image.ImageCategories: %s>' % ', '.join(strlist))
+        return super().__repr__().replace('vipy.image','vipy.image.TaggedImage').replace('>', ', tags=%s>' % self.attributes['tags'])
+        
+    @classmethod
+    def cast(cls, im):
+        assert isinstance(im, vipy.image.Image)
+        im.attributes['tags'] = list(im.attributes['tags']) if im.hasattribute('tags') else ([im.category()] if isinstance(im, vipy.image.ImageCategory) else [])        
+        im.__class__ = vipy.image.TaggedImage
+        return im
+
+    def tags(self):
+        return set(self.attributes['tags'])
+
+    def has_tag(self, t):
+        return t in self.tags()
     
+    def add_tag(self, t):
+        T = self.tags() 
+        T.add(t)
+        self.attributes['tags'] = sorted(list(T))
+        return self
+    
+    def del_tag(self, t):
+        T = self.tags() 
+        T.discard(t)
+        self.attributes['tags'] = sorted(list(T))
+        return self
+    
+
     
 class Scene(ImageCategory):
     """vipy.image.Scene class

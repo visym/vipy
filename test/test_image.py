@@ -380,6 +380,15 @@ def _test_image_fileformat(imgfile):
     except:
         pass
     print('[test_image.image]["%s"]:  ImageCategory category conversion PASSED' % imgfile)    
+
+    # TaggedImage
+    imt = vipy.image.TaggedImage(filename=imgfile, tags=['mytag1','mytag2'])
+    assert imt.has_tag('mytag2')
+    imt = vipy.image.TaggedImage.cast(imt.clone()).add_tag('mytag3')
+    assert imt.has_tag('mytag1') and imt.has_tag('mytag3')
+    imt.del_tag('mytag2')
+    assert not vipy.image.TaggedImage.from_json(imt.json()).has_tag('mytag2')
+    print('[test_image.image]["%s"]:  TaggedImage PASSED' % imgfile)
     
     # Random images
     im = vipy.image.RandomImage(128,256)
