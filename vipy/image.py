@@ -1850,7 +1850,7 @@ class ImageCategory(Image):
             strlist.append('filename="%s"' % (self.filename() if self.hasfilename() else '<NOTFOUND>%s</NOTFOUND>' % self.filename()))
         if self.hasurl():
             strlist.append('url="%s"' % self.url())
-        if self.category() is not None and len(self.category())>0:
+        if self.category() is not None and len(str(self.category()))>0:
             strlist.append('category=%s' % self.category())
         return str('<vipy.image.ImageCategory: %s>' % (', '.join(strlist)))
 
@@ -1905,7 +1905,9 @@ class TaggedImage(Image):
 
     This class provides a representation of a vipy.image.Image with one or more tag labels.
 
-    Valid constructors include all provided by vipy.image.Image with tags defined as tuple, list, set or string
+    Valid constructors include all provided by vipy.image.Image with tags defined as tuple, list, set or singleton object.
+
+    Tags are keywords, categories, classes, descriptions, tokens, or other descriptive words or short phrases that provide labels for the content of the image. 
 
     ```python
     im = vipy.image.TaggedImage(filename='/path/to/dog_image.ext', tags={'dog','canine'})
@@ -1919,15 +1921,13 @@ class TaggedImage(Image):
                          array=array,
                          colorspace=colorspace)
         
-        assert tags is None or isinstance(tags, set) or isinstance(tags, list) or isinstance(tags, str) or isinstance(tags, tuple)
         if not self.hasattribute('tags'):
             self.attributes['tags'] = []
         if tags is not None:
-            for t in vipy.util.tolist(tags):
-                self.add_tag(t)
+            self.attributes['tags'] = sorted(list(set(self.attributes['tags'] + vipy.util.tolist(tags))))
 
     def __repr__(self):
-        return super().__repr__().replace('vipy.image','vipy.image.TaggedImage').replace('>', ', tags=%s>' % self.attributes['tags'])
+        return super().__repr__().replace('vipy.image','vipy.image.TaggedImage')[:-1] + ', tags=%s>' % self.attributes['tags']
         
     @classmethod
     def cast(cls, im):

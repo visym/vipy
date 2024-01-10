@@ -108,7 +108,7 @@ class Dataset():
         return self
     
     def __repr__(self):
-        return str('<vipy.dataset: id="%s", len=%d, type=%s>' % (self.id(), len(self), str(type(self[0])) if len(self)>0 else 'None'))
+        return str('<vipy.dataset: len=%d, type=%s>' % (len(self), str(type(self[0])) if len(self)>0 else 'None'))
 
     def __iter__(self):
         for k in range(len(self)):

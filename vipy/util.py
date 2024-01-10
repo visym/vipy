@@ -562,6 +562,11 @@ def chunklistbysize(inlist, size_per_chunk):
     assert size_per_chunk >= 1
     return [inlist[i:i+size_per_chunk] for i in range(0,len(inlist),size_per_chunk)]
 
+def triplets(inlist):
+    """Yield triplets (1,2,3), (4,5,6), ...  from list inlist=[1,2,3,4,5,6,...]"""
+    for k in range(0, len(inlist), 3):
+        yield (inlist[k], inlist[k+1] if (k+1)<len(inlist) else None, inlist[k+2] if (k+2)<len(inlist) else None)
+        
 def chunklistWithOverlap(inlist, size_per_chunk, overlap_per_chunk):
     """Convert list into a list of lists such that each element is a list
     containing a sequential chunk of the original list of length
