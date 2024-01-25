@@ -103,8 +103,8 @@ class Dataset():
 
     def loader(self, f):
         """Overwrite the default loader which is used to pre-process an object when indexed or iterated"""
-        assert f is None or callable(f)
-        self._loader = f  # may no longer be serializable if lambda 
+        assert callable(f)
+        self._loader = f  # may no longer be serializable if f is lambda 
         return self
     
     def __repr__(self):
@@ -512,10 +512,10 @@ class Dataset():
         """Alias for `vipy.dataset.Dataset.jsondir`"""
         return self.jsondir(outdir, verbose=verbose, rekey=rekey, bycategory=bycategory, byfilename=byfilename, abspath=abspath)
     
-    def takelist(self, n, category=None, seed=None):
-        """Take n elements of selected category and return list.  The elements are not cloned."""
+    def takelist(self, n, seed=None):
+        """Take n elements and return list.  The elements are loaded and not cloned."""
         assert n >= 0, "Invalid length"
-        K = list(range(len(self))) if category is None else [k for (k,v) in enumerate(self) if v.category() == category]
+        K = list(range(len(self))) 
         if seed is not None:
             assert isinstance(seed, int), "integer required"
             np.random.seed(seed)            
@@ -530,16 +530,16 @@ class Dataset():
         self._loader = None  # all preprocessing has been performed
         return self
 
-    def take(self, n, category=None, canload=False, seed=None):
+    def take(self, n, seed=None):
         """Randomlly Take n elements from the dataset, and return a dataset.  If seed=int, take will return the same results each time."""
         assert isinstance(n, int) and n>0
         D = self.clone(shallow=True)
-        D._objlist = self.takelist(n, category=category, seed=seed)
+        D._objlist = [self._objlist[int(k)] for k in np.random.permutation(list(range(len(self))))[0:n]]  # do not run loader
         return D
 
-    def takeone(self, category=None, canload=False, seed=None):
+    def takeone(self, seed=None):
         """Randomly take one element from the dataset and return a singleton"""
-        D = self.take(n=1, category=category, canload=canload, seed=seed)
+        D = self.take(n=1, seed=seed)
         return D[0] if len(D)>0 else None
 
     def take_fraction(self, p):
@@ -594,14 +594,9 @@ class Dataset():
         """Yield list chunks of size n of this dataset.  Last chunk will be ragged if ragged=True, else skipped"""
         for (k,V) in enumerate(vipy.util.chunklistbysize(self._objlist, n)):
             if ragged or len(V) == n:
-                yield V 
+                yield Dataset(V, loader=self._loader).list()  # triggers load 
 
-    def pairwise(self):
-        """Yield unique pairwise permutations of this dataset"""
-        for (i,j) in itertools.permutations(self._objlist, 2):
-            yield (i,j)
-        
-    def split_by_videoid(self, trainfraction=0.9, valfraction=0.1, testfraction=0, seed=None):
+    def _split_by_videoid(self, trainfraction=0.9, valfraction=0.1, testfraction=0, seed=None):
         """Split the dataset by category by fraction so that video IDs are never in the same set"""
         assert self._isvipy(), "Invalid input"
         assert trainfraction >=0 and trainfraction <= 1
@@ -628,7 +623,8 @@ class Dataset():
 
         return (Dataset(trainset, id='trainset'), Dataset(valset, id='valset'), Dataset(testset, id='testset') if len(testset)>0 else None)
 
-    def split(self, trainfraction=0.9, valfraction=0.1, testfraction=0, seed=None, withtest=True):
+    
+    def split(self, trainfraction=0.9, valfraction=0.1, testfraction=0, seed=None):
         """Split the dataset into the requested fractions.  
 
         Args:
@@ -636,32 +632,33 @@ class Dataset():
             valfraction [float]: fraction of dataset for validation set
             testfraction [float]: fraction of dataset for test set
             seed [int]: random seed for determinism.  Set to None for random.
-            withtest: If true, return (trainset, valset, testset) even if testset is None
 
         Returns:        
-            (trainset, valset, testset) if withtest=True else (trainset, valest) if testfraction=0
+            (trainset, valset, testset) 
         """
         assert trainfraction >=0 and trainfraction <= 1
         assert valfraction >=0 and valfraction <= 1
         assert testfraction >=0 and testfraction <= 1
         assert trainfraction + valfraction + testfraction == 1.0
         
-        # Assignment
         if seed is not None:
-            np.random.seed(seed)  # deterministic        
-        A = self.list()
-        idx = list(range(len(A)))
+            np.random.seed(seed)  # deterministic
+
+        idx = list(range(len(self)))
         np.random.shuffle(idx)
-        (testid, valid, trainid) = vipy.util.dividelist(idx, (testfraction, valfraction, trainfraction))
-        (testid, valid, trainid) = (set(testid), set(valid), set(trainid))
-        trainset = [a for (k,a) in enumerate(A) if k in trainid]
-        testset = [a for (k,a) in enumerate(A) if k in testid]
-        valset = [a for (k,a) in enumerate(A) if k in valid]
+        (testidx, validx, trainidx) = vipy.util.dividelist(idx, (testfraction, valfraction, trainfraction))
+            
+        trainset = self.clone(shallow=True)
+        trainset._objlist = [self._objlist[int(k)] for k in trainidx]  # do not run loader
+        valset = self.clone(shallow=True)
+        valset._objlist = [self._objlist[int(k)] for k in validx]  # do not run loader
+        testset = self.clone(shallow=True)
+        testset._objlist = [self._objlist[int(k)] for k in testidx]  # do not run loader
+        
         if seed is not None:
             np.random.seed()  # re-initialize seed
 
-        (train,val,test) = (Dataset(trainset, id='trainset'), Dataset(valset, id='valset'), Dataset(testset, id='testset') if len(testset)>0 else None)
-        return (train,val,test) if withtest or test is not None else (train,val)
+        return (trainset,valset,testset)
     
     def tocsv(self, csvfile=None):
         csv = [v.csv() for v in self.list]        

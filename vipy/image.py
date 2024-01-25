@@ -760,6 +760,21 @@ class Image(object):
             im._colorspace = 'lum'
             return im
 
+    def channelmean(self):
+        """Return a cloned Image() object for the mean of all channels followed by returning a single channel float image.
+
+        This is useful for visualizing multichannel images by reducing the channels to one
+
+        ```python
+        vipy.image.Image(array=np.random.rand(3,3,16).astype(np.float32)).channelmean().mat2gray().lum().show()
+        ```
+        
+        """
+        im = self.clone().load()
+        im._array = np.mean(im._array, axis=2, keepdims=True)
+        im._colorspace = 'float'
+        return im
+        
     def red(self):
         """Return red channel as a cloned single channel `vipy.image.Image` object.
 
@@ -1324,7 +1339,8 @@ class Image(object):
                 self._array = np.uint8(255 * self.array())   # float32 RGB [0,1] -> uint8 RGB [0,255]
                 self.colorspace('rgb')
             else:
-                self._array = (1.0 / 255.0) * np.array(PIL.Image.fromarray(np.uint8(255 * np.squeeze(self.array(), axis=2))).convert('L')).astype(np.float32)  # float32 RGB [0,1] -> float32 gray [0,1]                
+                img = np.squeeze(img, axis=2) if img.ndim == 3 else img
+                self._array = (1.0 / 255.0) * np.array(PIL.Image.fromarray(np.uint8(255 * img)).convert('L')).astype(np.float32)  # float32 RGB [0,1] -> float32 gray [0,1]                
                 self.colorspace('grey')
             self._convert(to)
         elif self.colorspace() is None:
