@@ -34,6 +34,7 @@ class Dask(object):
 
         self._num_processes = num_processes
 
+        # Dask configuration: https://docs.dask.org/en/latest/configuration.html
         os.environ['DASK_LOGGING__DISTRIBUTED'] = 'warning' if not verbose else 'info'
         os.environ['DASK_DISTRIBUTED__COMM__TIMEOUTS__CONNECT'] = "30s"
         os.environ['DASK_DISTRIBUTED__COMM__TIMEOUTS__TCP'] = "30s"
