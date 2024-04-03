@@ -433,6 +433,13 @@ def readjson(jsonfile, strict=True):
         data = json.loads(f.read())
     return data
 
+def tryjson(jsonfile):
+    """Attempt to load the json file, return True if loadable, False if not"""
+    try:
+        readjson(jsonfile, strict=False)
+        return True
+    except Exception as e:
+        return false
 
 def groupby(inset, keyfunc):
     """groupby on unsorted inset"""

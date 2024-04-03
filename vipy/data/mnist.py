@@ -74,17 +74,16 @@ class MNIST():
             magic, size, rows, cols = struct.unpack(">IIII", gzfile.read(16))
             if magic != 2051:
                 raise ValueError('Magic number mismatch, expected 2051, got %d' % magic)
-
-            for k in range(N):
-                img = np.asarray(array("B", gzfile.read(rows * cols)).tolist()).reshape((rows, cols)).astype(np.uint8)
-                x.append(img)
-
+            x = [np.asarray(array("B", gzfile.read(rows * cols)).tolist()).reshape((rows, cols)).astype(np.uint8) for k in range(N)]
         return (y, np.array(x))
 
-    def trainset(self):
+    def trainset(self, N=60000):
+        assert N>0 and N<=60000
         (labelfile, imgfile) = (os.path.join(self.outdir, 'train-labels-idx1-ubyte.gz'), os.path.join(self.outdir, 'train-images-idx3-ubyte.gz'))
-        return vipy.dataset.Dataset([vipy.image.ImageCategory(array=img, category=str(y), colorspace='lum') for (y,img) in zip(*self._dataset(imgfile, labelfile, 60000))], 'mnist')
+        return vipy.dataset.Dataset([vipy.image.ImageCategory(array=img, category=str(y), colorspace='lum') for (y,img) in zip(*self._dataset(imgfile, labelfile, N))], 'mnist')
 
-    def testset(self):
+    
+    def testset(self, N=10000):
+        assert N>0 and N<=10000        
         (labelfile, imgfile) = (os.path.join(self.outdir, 't10k-labels-idx1-ubyte.gz'), os.path.join(self.outdir, 't10k-images-idx3-ubyte.gz'))        
-        return vipy.dataset.Dataset([vipy.image.ImageCategory(array=img, category=str(y), colorspace='lum') for (y,img) in zip(*self._dataset(imgfile, labelfile, 10000))], 'mnist_test')
+        return vipy.dataset.Dataset([vipy.image.ImageCategory(array=img, category=str(y), colorspace='lum') for (y,img) in zip(*self._dataset(imgfile, labelfile, N))], 'mnist_test')
