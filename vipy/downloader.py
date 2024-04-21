@@ -91,14 +91,15 @@ def generate_md5(filename, blocks=128):
 
 
 def scp(url, output_filename, verbose=True):
-    """Download using pre-installed SSH keys where hostname is formatted 'scp://hostname.com:/path/to/file.jpg' """        
+    """Download using pre-installed SSH keys where hostname is formatted 'scp://hostname.com/path/to/file.jpg' """        
     try_import('paramiko', 'paramiko scp')
     try_import('scp', 'paramiko scp')    
     import paramiko
     from scp import SCPClient
-        
-    assert 'scp://' in url, "Invalid URL"
-    (hostname, remote_filename) = url.split('scp://')[1].split(':')
+
+    if url.startswith('scp://'):
+        url = url.split('scp://')[1]
+    (hostname, remote_filename) = url.split('/',1)
 
     if verbose:
         print("[vipy.downloader]: Downloading '%s' to '%s'" % (url, output_filename))

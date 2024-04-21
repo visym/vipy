@@ -439,7 +439,7 @@ def tryjson(jsonfile):
         readjson(jsonfile, strict=False)
         return True
     except Exception as e:
-        return false
+        return False
 
 def groupby(inset, keyfunc):
     """groupby on unsorted inset"""
@@ -1284,6 +1284,9 @@ def isRTSPurl(path):
     return isurl(path) and path.startswith('rtsp://')
 
 def isRTMPurl(path):
+    return is_rtmp_url(path)
+
+def is_rtmp_url(path):
     return isurl(path) and (path.startswith('rtmp://') or path.startswith('rtmps://'))
 
 

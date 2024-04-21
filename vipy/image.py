@@ -1745,7 +1745,7 @@ class Image(object):
         .. note:: This method uses a CPU-only pretrained face detector.  This is convenient, but slow.  See the heyvi package for optimized GPU batch processing for faster operation.
         """
         try_import('heyvi'); import heyvi  # >heyvi-0.2.28 for minconf      
-        im = heyvi.detection.FaceDetector()(Scene.cast(self.clone().clear()).mindim(mindim)).mindim(self.mindim())
+        im = heyvi.detection.FaceDetector()(Scene.cast(self.clone()).clear().mindim(mindim)).mindim(self.mindim())
         return Scene.cast(self).union(im) if union else im
     
     def person_detection(self, mindim=256, union=False, conf=0.2):
@@ -1762,7 +1762,7 @@ class Image(object):
         .. note:: This method uses a CPU-only pretrained person detector.  This is convenient, but slow.  See the heyvi package for optimized GPU batch processing for faster operation.
         """
         try_import('heyvi'); import heyvi                
-        im = heyvi.detection.ObjectDetector()(Scene.cast(self.clone().clear()).mindim(mindim), conf=conf, objects=['person']).mindim(self.mindim())
+        im = heyvi.detection.ObjectDetector()(Scene.cast(self.clone()).clear().mindim(mindim), conf=conf, objects=['person']).mindim(self.mindim())
         return Scene.cast(self).union(im) if union else im        
 
     def qrcode_recognition(self):

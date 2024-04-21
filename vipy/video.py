@@ -484,9 +484,9 @@ class Video(object):
         endsec: [float] An end time in seconds to clip the video (this requires setting framerate)
         frames: [list of `vipy.image.Image`] A list of frames in the video
         probeshape: [bool] If true, then probe the shape of the video from ffprobe to avoid an explicit preview later.  This can speed up loading in some circumstances.
-
+        shape: [tuple (rows,cols)] If the shape of the video is known, then this avoids requiring preview or probe.  Useful for some camera streams which may be off at init time.
     """
-    def __init__(self, filename=None, url=None, framerate=30.0, attributes=None, array=None, colorspace=None, startframe=None, endframe=None, startsec=None, endsec=None, frames=None, probeshape=False):
+    def __init__(self, filename=None, url=None, framerate=30.0, attributes=None, array=None, colorspace=None, startframe=None, endframe=None, startsec=None, endsec=None, frames=None, probeshape=False, shape=None):
         self._url = None
         self._filename = None
         self._array = None
@@ -546,6 +546,8 @@ class Video(object):
             
         if probeshape and (frames is None and array is None) and has_ffprobe and self.hasfilename():
             self.shape(self.probeshape())
+        elif shape is not None:
+            self.shape(shape)
         else:
             self._shape = None  # preview() on shape()
             
@@ -1582,13 +1584,12 @@ class Video(object):
             # Set the shape of the video from the filename by ffprobe, this should be deprecated
             return self.shape(self.probeshape(), probe=False)
         elif shape is not None:
-            # Set the shape of the video using the shape provided by the user (e.g. sometimes the user knows what this will be)
-            assert isinstance(shape, tuple), "shape=(height, width) tuple"
+            # Set the shape of the video using the shape provided by the user (e.g. sometimes the user knows what this will be, like with RTSP streams)
+            assert isinstance(shape, tuple) and len(shape) == 2, "shape=(height, width) tuple"
             self._shape = shape
             self._channels = self.channels()
             #self._previewhash = hashlib.md5(str(self._ffmpeg_commandline()).encode()).hexdigest() 
-            return self
-            
+            return self            
         elif not self.isloaded():
             # Preview a frame from the ffmpeg filter chain (more expensive)
             if self._shape is None or len(self._shape) == 0:  # dirty filter chain
@@ -2639,12 +2640,12 @@ class Scene(VideoCategory):
     """
         
     def __init__(self, filename=None, url=None, framerate=30.0, array=None, colorspace=None, category=None, tracks=None, activities=None,
-                 attributes=None, startframe=None, endframe=None, startsec=None, endsec=None):
+                 attributes=None, startframe=None, endframe=None, startsec=None, endsec=None, shape=None):
 
         self._tracks = {}
         self._activities = {}        
         super().__init__(url=url, filename=filename, framerate=framerate, attributes=attributes, array=array, colorspace=colorspace,
-                                    category=category, startframe=startframe, endframe=endframe, startsec=startsec, endsec=endsec)
+                                    category=category, startframe=startframe, endframe=endframe, startsec=startsec, endsec=endsec, shape=shape)
 
         # Tracks must be defined relative to the clip specified by this constructor
         if tracks is not None:
