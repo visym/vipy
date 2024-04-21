@@ -2546,9 +2546,9 @@ class VideoCategory(Video):
     along with the ability to extract a clip based on frames or seconds.
 
     """
-    def __init__(self, filename=None, url=None, framerate=30.0, attributes=None, category=None, array=None, colorspace=None, startframe=None, endframe=None, startsec=None, endsec=None):
+    def __init__(self, filename=None, url=None, framerate=30.0, attributes=None, category=None, array=None, colorspace=None, startframe=None, endframe=None, startsec=None, endsec=None, shape=None):
         super().__init__(url=url, filename=filename, framerate=framerate, attributes=attributes, array=array, colorspace=colorspace,
-                                            startframe=startframe, endframe=endframe, startsec=startsec, endsec=endsec)
+                                            startframe=startframe, endframe=endframe, startsec=startsec, endsec=endsec, shape=shape)
         self._category = category                
 
     @classmethod
