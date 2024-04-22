@@ -1045,8 +1045,13 @@ class Image(object):
         return self.attributes if k is None else self.getattribute(k)
     
     def hasurl(self):
-        return self._url is not None and isurl(self._url)
+        """synonym for `vipy.image.has_url`"""
+        return self.has_url()
 
+    def has_url(self):
+        """Return True if the image has a URL input source"""
+        return self._url is not None and isurl(self._url)
+    
     def hasfilename(self):
         return self._filename is not None and os.path.exists(self._filename)
 

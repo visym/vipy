@@ -6,6 +6,9 @@ import vipy.downloader
 COCO_2014_IMAGE_URL = 'http://images.cocodataset.org/zips/train2014.zip'
 COCO_2014_ANNO_URL = 'http://images.cocodataset.org/annotations/annotations_trainval2014.zip'
 
+# https://github.com/amikelive/coco-labels/blob/master/coco-labels-2014_2017.txt
+labels_2014_2017 = ['person', 'bicycle', 'car', 'motorcycle', 'airplane', 'bus', 'train', 'truck', 'boat', 'traffic light', 'fire hydrant', 'stop sign', 'parking meter', 'bench', 'bird', 'cat', 'dog', 'horse', 'sheep', 'cow', 'elephant', 'bear', 'zebra', 'giraffe', 'backpack', 'umbrella', 'handbag', 'tie', 'suitcase', 'frisbee', 'skis', 'snowboard', 'sports ball', 'kite', 'baseball bat', 'baseball glove', 'skateboard', 'surfboard', 'tennis racket', 'bottle', 'wine glass', 'cup', 'fork', 'knife', 'spoon', 'bowl', 'banana', 'apple', 'sandwich', 'orange', 'broccoli', 'carrot', 'hot dog', 'pizza', 'donut', 'cake', 'chair', 'couch', 'potted plant', 'bed', 'dining table', 'toilet', 'tv', 'laptop', 'mouse', 'remote', 'keyboard', 'cell phone', 'microwave', 'oven', 'toaster', 'sink', 'refrigerator', 'book', 'clock', 'vase', 'scissors', 'teddy bear', 'hair drier', 'toothbrush']
+
 
 class Detection_TrainVal_2014(vipy.dataset.Dataset):
     """Project: https://cocodataset.org"""
