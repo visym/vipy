@@ -21,13 +21,10 @@ import warnings
 def scene_search(im, outfile=None):
     """Generate a standalone scene_search visualization.
 
-    A scene_searchvisualization is an HTML file that shows a single `vipy.image.Scene` object with an interactive search and visualization of all objects in scene
+    A scene_searchvisualization is a standalone HTML file that shows a single `vipy.image.Scene` object with an interactive search and visualization of all objects and attributes
 
     This function is currently a non-functional skeleton
     """
-
-    import vipy.data.coco  # temp
-    
     assert isinstance(im, vipy.image.Scene)
     assert outfile is None or ishtml(outfile)
 
