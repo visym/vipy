@@ -46,7 +46,7 @@ def scene_explorer(im, outfile=None, width=1024, title='Visym Scene Explorer'):
                 '${IMG_WIDTH}':width,                      
                 '${IMG}':img,
                 '${SEARCHBOX_WIDTH}':width // 4,
-                '${CLASSLIST}':str(sorted(set([o.category() for o in keypoints]))),
+                '${CLASSLIST}':str(sorted(set([o.category() for o in keypoints]))),  # assumes that shared class prefix encodes grouping
                 '${KP_X}':str([o.x for o in keypoints]),
                 '${KP_Y}':str([o.y for o in keypoints]),
                 '${KP_R}':str([o.r for o in keypoints]),
