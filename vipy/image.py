@@ -2767,11 +2767,13 @@ def RandomImageDetection(rows=None, cols=None):
                           xmin=np.random.randint(0,cols - 16), ymin=np.random.randint(0,rows - 16),
                           width=np.random.randint(16,cols), height=np.random.randint(16,rows))
 
-def RandomScene(rows=None, cols=None, num_detections=8, num_keypoints=8, url=None):
-    """Return a uniform random color `vipy.image.Scene` of size (rows, cols) with a specified number of vipy.object.Detection` objects"""    
+def RandomScene(rows=None, cols=None, num_detections=8, num_keypoints=8, num_objects=None, url=None):
+    """Return a uniform random color `vipy.image.Scene` of size (rows, cols) with a specified number of vipy.object.Object` objects"""    
     im = Scene(array=RandomImage(rows, cols).array(), category='RandomScene') if url is None else Scene(url=url, category='RandomScene')
     (rows, cols) = im.shape()
     objects = []
+    if num_objects:
+        (num_detection, num_keypoints) = (num_objects//2, num_objects//2)
     if num_detections:
         objects += [vipy.object.Detection('obj%d' % k, xmin=np.random.randint(0,cols - 16), ymin=np.random.randint(0,rows - 16), width=np.random.randint(16,cols), height=np.random.randint(16,rows)) for k in range(num_detections)]
     if num_keypoints:
