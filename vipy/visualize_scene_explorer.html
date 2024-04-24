@@ -127,8 +127,8 @@
 	      circle.classList.add('circle');
 	      circle.style.width = kp_r[i] + 'px'; 
 	      circle.style.height = kp_r[i] + 'px';
-	      circle.style.top = kp_y[i] + 'px'; 
-	      circle.style.left = kp_x[i] + 'px';
+	      circle.style.top = kp_y[i] - kp_r[i]/2 + 'px'; 
+	      circle.style.left = kp_x[i] - kp_r[i]/2 + 'px';
 	      circle.style.backgroundColor = kp_colorlist[i] + 'BB';  // Append alpha
 	      circle.popup_contents = kp_attributelist[i];
 	      imageContainer.appendChild(circle);
@@ -142,17 +142,8 @@
 		      y: circle.offsetTop
 		  };
 		  popupText.textContent = circle.popup_contents;
-		  const popupX = circlePosition.x + circle.offsetWidth/4; 
-		  const popupY = circlePosition.y + 50
-
-		  // Check if popup is off the right side of the viewport
-		  if (popupX + popup.offsetWidth > window.innerWidth) {
-		      //popupX = window.innerWidth - popup.offsetWidth;
-		  }
-		  // Check if popup is off the bottom side of the viewport
-		  //if (popupY + popup.offsetHeight > window.innerHeight) {
-		  //    popupY = window.innerHeight - popup.offsetHeight;
-		  //}
+		  const popupX = circlePosition.x + circle.offsetWidth/8;  
+		  const popupY = circlePosition.y + circle.offsetHeight;
 		  popup.style.top = popupY + 'px';
 		  popup.style.left = popupX + 'px';
 		  popup.style.display = 'block';		  
@@ -275,10 +266,6 @@
 	      }
 	  });
 
-	  // Hide popup when mouse leaves the container
-	  imageContainer.addEventListener('mouseout', function() {
-	      popup.style.display = 'none';
-	  });	
       }
       
       // Call the function when the page is loaded

@@ -215,7 +215,7 @@ def imkeypoints(img, kplist, fignum=None, bordercolor='green', do_caption=True, 
     for (k,p) in enumerate(kplist):
         x.append(p.x)
         y.append(p.y)
-        size.append(max(p.r, 1))
+        size.append(max(p.r, 1)**2)  # size is pts squared
         
         if do_caption and p.category() is not None and len(p.category()) != 0 and (p.category()[0:2] != '__'):  # prepending category with '__' will disable caption
             caption.append(p.category())
@@ -223,10 +223,10 @@ def imkeypoints(img, kplist, fignum=None, bordercolor='green', do_caption=True, 
             caption.append(None)
 
         if islist(bordercolor):
-            color.append(bordercolor[k])
+            color.append(matplotlib.colors.to_hex(bordercolor[k]) + 'BB')  # with alpha
         else:
-            color.append(bordercolor)
-
+            color.append(matplotlib.colors.to_hex(bordercolor) + 'BB')  # with alpha
+            
         if islist(textcolor):
             captioncolor.append(textcolor[k])
         else:
@@ -271,19 +271,19 @@ def imobjects(img, objlist, fignum=None, bordercolor='green', do_caption=True, f
     kplist = [p for p in objlist if isinstance(p, vipy.object.Keypoint2d)]    
 
     if len(kplist) > 0:
-        (x,y,size,color) = ([],[],[],[])    
+        (x,y,size,color) = ([],[],[],[])
         for (k,p) in enumerate(kplist):
             x.append(p.x)
             y.append(p.y)
-            size.append(max(p.r, 1))
+            size.append(max(p.r, 1) ** 2) # size is pts squared
             
             if islist(bordercolor):
-                color.append(bordercolor[k])
+                color.append(matplotlib.colors.to_hex(bordercolor[k]) + 'BB')  # with alpha
             else:
-                color.append(bordercolor)
+                color.append(matplotlib.colors.to_hex(bordercolor) + 'BB')  # with alpha
 
         plt.figure(fignum)
-        plt.scatter(x, y, c=color, s=size)    # no text, points only
+        plt.scatter(x, y, c=color, s=size, linewidths=0)    # no text, points only
     return fignum
 
 

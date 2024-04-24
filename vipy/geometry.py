@@ -1227,6 +1227,7 @@ class Point2d():
     def scalex(self, scale=1):
         """Multiply the x coordinate by a scale factor"""
         self._x = scale * self._x
+        self._r = scale * self._r                           
         return self
 
     def scaley(self, scale=1):
