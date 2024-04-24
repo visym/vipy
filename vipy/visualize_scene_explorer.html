@@ -13,17 +13,21 @@
           position: absolute;
           top: 10px; /* Adjust top position of search bar */
           left: 10px; /* Adjust left position of search bar */
+	  outline: none;
           z-index: 4; /* Ensure the search bar is above the image */
+          box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);	  
       }
       #searchInput {
+          box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);	  	  
 	  width: ${SEARCHBOX_WIDTH}px; /* Set width of search input */
 	  padding: 5px 25px;
+	  opacity: 0.8;
 	  outline: none;
-	  background-image: url("https://img.icons8.com/666666/search");  /* "666666" is hex color */
-	  opacity: 0.8;	  
+	  border: none;
+	  background-image: url("https://img.icons8.com/666666/search");  /* "666666" is hex color */	  
 	  background-repeat:no-repeat;
-	  background-position:left 5px center;outline:0;
-	  background-size: 14px;
+	  background-position:left 5px center;
+	  background-size: 14px;	  
       }
       #searchDropdown {
 	  display: none;
