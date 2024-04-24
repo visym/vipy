@@ -121,7 +121,7 @@ def imshow(img, fignum=None):
 
         # Delete all polygon and text overlays from previous drawing so that they can be overwritten on current frame
         for c in plt.gca().get_children():
-            if 'Text' in c.__repr__() or 'Polygon' in c.__repr__() or 'Circle' in c.__repr__() or 'Line' in c.__repr__() or 'Patch' in c.__repr__():
+            if 'Text' in c.__repr__() or 'Polygon' in c.__repr__() or 'Circle' in c.__repr__() or 'Line' in c.__repr__() or 'Patch' in c.__repr__() or 'PathCollection' in c.__repr__():
                 try:
                     c.remove()
                 except:
@@ -202,8 +202,93 @@ def imdetection(img, detlist, fignum=None, bboxcolor='green', do_caption=True, f
     return fignum
 
 
+def imkeypoints(img, kplist, fignum=None, bordercolor='green', do_caption=True, facecolor='white', facealpha=0.5, textcolor='green', textfacecolor='white', textfacealpha=1.0, fontsize=10, captionoffset=(0,0)):
+    """Show `vipy.object.Keypoint2d` on the same image, plotted in list order with optional captions """
+
+    # Create image
+    fignum = imshow(img, fignum=fignum) 
+
+    # A better way? https://matplotlib.org/api/_as_gen/matplotlib.animation.FuncAnimation.html
+    
+    # Valid keypoints
+    (x,y,size,color,caption,captioncolor) = ([],[],[],[],[],[])
+    for (k,p) in enumerate(kplist):
+        x.append(p.x)
+        y.append(p.y)
+        size.append(max(p.r, 1))
+        
+        if do_caption and p.category() is not None and len(p.category()) != 0 and (p.category()[0:2] != '__'):  # prepending category with '__' will disable caption
+            caption.append(p.category())
+        else:
+            caption.append(None)
+
+        if islist(bordercolor):
+            color.append(bordercolor[k])
+        else:
+            color.append(bordercolor)
+
+        if islist(textcolor):
+            captioncolor.append(textcolor[k])
+        else:
+            captioncolor.append(textcolor)
+
+    plt.figure(fignum)
+    plt.scatter(x, y, c=color, s=size)
+    return fignum
+
+
+def imobjects(img, objlist, fignum=None, bordercolor='green', do_caption=True, facecolor='white', facealpha=0.5, textcolor='green', textfacecolor='white', textfacealpha=1.0, fontsize=10, captionoffset=(0,0)):
+    """Show `vipy.object.Keypoint2d` on the same image, plotted in list order with optional captions """
+
+    # Create image
+    fignum = imshow(img, fignum=fignum) 
+
+    # A better way? https://matplotlib.org/api/_as_gen/matplotlib.animation.FuncAnimation.html
+
+    # Valid detections
+    detlist = [p for p in objlist if isinstance(p, vipy.object.Detection)]
+    if len(detlist) > 0:
+        for (k,det) in enumerate(detlist):
+            if do_caption and det.category() is not None and len(det.category()) != 0 and (det.category()[0:2] != '__'):  # prepending category with '__' will disable caption
+                bboxcaption = det.category()
+            else:
+                bboxcaption = None
+
+            if islist(bordercolor):
+                bboxcolor_ = bordercolor[k]
+            else:
+                bboxcolor_ = bordercolor
+
+            if islist(textcolor):
+                textcolor_ = textcolor[k]
+            else:
+                textcolor_ = textcolor
+
+            boundingbox(img, xmin=det.xmin(), ymin=det.ymin(), xmax=det.xmax(), ymax=det.ymax(), bboxcaption=bboxcaption,
+                        fignum=fignum, bboxcolor=bboxcolor_, facecolor=facecolor, facealpha=facealpha, textcolor=textcolor_, textfacecolor=textfacecolor, fontsize=fontsize, captionoffset=captionoffset, textfacealpha=textfacealpha)
+    
+    # Valid keypoints
+    kplist = [p for p in objlist if isinstance(p, vipy.object.Keypoint2d)]    
+
+    if len(kplist) > 0:
+        (x,y,size,color) = ([],[],[],[])    
+        for (k,p) in enumerate(kplist):
+            x.append(p.x)
+            y.append(p.y)
+            size.append(max(p.r, 1))
+            
+            if islist(bordercolor):
+                color.append(bordercolor[k])
+            else:
+                color.append(bordercolor)
+
+        plt.figure(fignum)
+        plt.scatter(x, y, c=color, s=size)    # no text, points only
+    return fignum
+
+
 def imframe(img, fr, color='b', markersize=10, label=None, figure=None):
-    """Show a scatterplot of fr=[[x1,y1],[x2,y2]...] 2D points overlayed on an image"""
+    """Show a scatterplot of fr=[[x1,y1],[x2,y2]...] 2D points overlayed on an image, all the same color"""
     if figure is not None:
         fig = plt.figure(figure)
     else:
@@ -233,7 +318,7 @@ def imframe(img, fr, color='b', markersize=10, label=None, figure=None):
 
 
 def frame(fr, im=None, color='b.', markersize=10, figure=None, caption=None):
-    """Show a scatterplot of fr=[[x1,y1],[x2,y2]...] 2D points"""
+    """Show a scatterplot of fr=[[x1,y1],[x2,y2]...] 2D points, all the same color"""
     if figure is not None:
         plt.figure(figure)
     else:

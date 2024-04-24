@@ -2,7 +2,7 @@ import os
 import numpy as np
 import vipy.image
 from vipy.image import ImageDetection, Image, ImageCategory, Scene
-from vipy.object import Detection
+from vipy.object import Detection, Keypoint2d
 from vipy.util import tempjpg, temppng, tempdir, Failed
 from vipy.geometry import BoundingBox
 import PIL.Image
@@ -665,7 +665,8 @@ def test_scene():
     (H,W) = im.shape()
     im = im.objects([Detection('obj1',20,50,100,100), Detection('obj2',300,300,200,200)])
     im.append(Detection('obj3',W +1,H +1,200,200))   # invalid box outside image rectancle
-    im.append(Detection('obj4',W -100,H -200,1000,2000))   # invalid box partially outside image rectangle    
+    im.append(Detection('obj4',W -100,H -200,1000,2000))   # invalid box partially outside image rectangle
+    im.append(Keypoint2d('obj5',1,2,3))   
     imscene = im.clone()
     
     
@@ -673,7 +674,7 @@ def test_scene():
     im.__repr__()
     print('[test_image.scene]:  __repr__  PASSED')    
 
-    assert len(im) == 4
+    assert len(im) == 5
     print('[test_image.scene]:  __len__  PASSED')
 
     for obj in im:
@@ -683,7 +684,7 @@ def test_scene():
     print(im[0])
     print(im[1])
     try:
-        im[5]
+        im[6]
         Failed()
     except Failed:
         raise
@@ -760,10 +761,10 @@ def test_scene():
     print('[test_image.scene]: centersquare PASSED')    
     
     # Categories    
-    assert sorted(imscene.categories()) == ['obj1', 'obj2', 'obj3', 'obj4']
+    assert sorted(imscene.categories()) == ['obj1', 'obj2', 'obj3', 'obj4', 'obj5']
     im = imscene.clone()
     im._objectlist[0].translate(1000)  # outside image rectangle
-    assert sorted(im.categories()) == ['obj1', 'obj2', 'obj3', 'obj4']    
+    assert sorted(im.categories()) == ['obj1', 'obj2', 'obj3', 'obj4', 'obj5']    
     print('[test_image.scene]: categories PASSED')
 
     # rot90

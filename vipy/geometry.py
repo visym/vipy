@@ -667,6 +667,10 @@ class BoundingBox(object):
         assert len(p) == 2, "Invalid 2D point=(x,y) input"
         return (p[0] >= self._xmin) and (p[1] >= self._ymin) and (p[0] <= self._xmax) and (p[1] <= self._ymax)
 
+    def is_point_inside(self, p):
+        """synonym for `vipy.geometry.BoundingBox.ispointinside`"""
+        return self.ispointinside(p)
+    
     def dilate(self, scale=1):
         """Change scale of bounding box keeping centroid constant"""
         assert isnumber(scale), "Invalid input"
@@ -760,7 +764,7 @@ class BoundingBox(object):
         return self.xywh((H - bly, blx, h, w))
 
     def rot90ccw(self, H, W):
-        """Rotate a bounding box such that if an image of size (H,W) is rotated 90 deg clockwise, the boxes align"""
+        """Rotate a bounding box such that if an image of size (H,W) is rotated 90 deg counter clockwise, the boxes align"""
         (x,y,w,h) = self.xywh()
         (urx, ury) = self.upperright()
         return self.xywh((ury, W - urx, h, w))
@@ -1074,3 +1078,232 @@ def union(bblist):
 def RandomBox():
     """Return a random `vipy.geometry.BoundindBox` for unit testing"""
     return BoundingBox(xmin=np.random.rand(), ymin=np.random.rand(), width=10*np.random.rand(), height=10*np.random.rand())
+
+
+class Point2d():
+    """vipy.geometry.Point2d class"""
+    def __init__(self, x, y, r=0):
+        """2D point parameterization"""
+        assert math.isfinite(x)
+        assert math.isfinite(y)
+        assert r>=0                        
+        self._x = x
+        self._y = y
+        self._r = r        
+
+    def __repr__(self):
+        return str('<vipy.geometry.Point2d: x=%s, y=%s%s>' % (self._x, self._y, (', r=%s' % self._r) if self._r !=0 else ''))
+
+    @property
+    def x(self):
+        return self._x
+    
+    @property
+    def y(self):
+        return self._y
+
+    @property
+    def r(self):
+        return self._r
+
+    def xmin(self):
+        return self._x - self._r/2
+
+    def ymin(self):
+        return self._y - self._r/2
+
+    def xmax(self):
+        return self._x + self._r/2
+
+    def ymax(self):
+        return self._y + self._r/2
+
+    def width(self):
+        return self._r*2
+    
+    def height(self):
+        return self._r*2
+    
+    @property
+    def coord(self):
+        return (self._x, self._y)
+
+    @classmethod
+    def from_json(cls, s):
+        d = json.loads(s) if not isinstance(s, dict) else s        
+        return cls(d['x'], d['y'], d['r'])
+
+    @classmethod
+    def origin(cls):
+        return Point2d(0,0)
+
+    def boundingbox(self):
+        return BoundingBox(xmin=self.xmin, ymin=self.ymin, xmax=self.xmax, ymax=self.ymax)
+    
+    def __getitem__(self, k):
+        return self.coord[k]
+    
+    def __iter__(self):
+        for c in self.coord:
+            yield c
+                
+    def __sub__(self, p):
+        assert isinstance(p, Point2d), "invalid input"        
+        return Point2d(self.x-p._x, self._y-p._y, self._r)
+
+    def __add__(self, p):
+        assert isinstance(p, Point2d), "invalid input"        
+        return Point2d(self._x+p._x, self._y+p._y, self._r)
+
+    def __neg__(self, p):
+        assert isinstance(p, Point2d), "invalid input"        
+        return Point2d(-self._x, -self._y, self._r)
+    
+    def __gt__(self, p):
+        assert isinstance(p, Point2d), "invalid input"
+        return self._x > p._x and self._y > p._y
+
+    def __lt__(self, p):
+        assert isinstance(p, Point2d), "invalid input"
+        return self._x < p._x and self._y < p._y
+
+    def __eq__(self, p):
+        assert isinstance(p, Point2d), "invalid input"
+        return self._x == p._x and self._y == p._y 
+
+    def __len__(self):
+        return len(self.coord)
+
+    def dict(self):
+        return {'x':self._x, 'y':self._y, 'r':self._r}
+
+    def json(self):
+        return json.dumps(self.dict())
+    
+    def is_positive(self):
+        return self._x>0 and self._y>0
+    
+    def is_inside_boundingbox(self, bb):
+        assert isinstance(bb, BoundingBox), "invalid input"
+        return bb.is_point_inside(self.coord)
+
+    def dist(self, p):
+        assert isinstance(p, Point2d), "invalid input"
+        return math.sqrt((self.x-p.x)**2 + (self.y-p.y)**2)
+    
+    def is_inside_radius(self, p):
+        assert isinstance(p, Point2d), "invalid input"
+        return self.dist(p) <= self.r
+    
+    def is_inside_imagebox(self, width, height):
+        return self.is_inside_boundingbox(BoundingBox(xmin=0, ymin=0, width=width, height=height))
+
+    def significant_digits(self, n):
+        """Convert corners to have at most n significant digits for efficient JSON storage"""
+        assert isinstance(n, int) and n>=0
+        self._x = round(self._x, n)
+        self._y = round(self._y, n)
+        self._r = round(self._r, n)                   
+        return self
+        
+    def translate(self, dx=0, dy=0):
+        """Translate the coordinates by dx in x and dy in y"""
+        self._x = self._x + dx
+        self._y = self._y + dy
+        return self
+
+    def offset(self, dx=0, dy=0):
+        """Alias for translate"""
+        return self.translate(dx, dy)
+
+    
+    def rescale(self, scale=1):
+        """Multiply the coordinates by a scale factor"""
+        self._x = scale * self._x
+        self._y = scale * self._y
+        self._r = scale * self._r                   
+        return self
+
+    def scalex(self, scale=1):
+        """Multiply the x coordinate by a scale factor"""
+        self._x = scale * self._x
+        return self
+
+    def scaley(self, scale=1):
+        """Multiply the y coordinate by a scale factor"""
+        self._y = scale * self._y
+        return self
+
+
+    def isinteger(self):
+        return (isinstance(self._x, int) and
+                isinstance(self._y, int))
+                
+    def int(self):
+        """Convert coords to integer with rounding, in-place update"""
+        self._x = int(np.round(self._x))
+        self._y = int(np.round(self._y))
+        return self
+
+    def float(self):
+        """Convert coords to float"""
+        self._x = float(self._x)
+        self._y = float(self._y)
+        return self
+
+    def fliplr(self, img=None, width=None):
+        """Flip the x coordinate left/right consistent with fliplr of the provided img (or consistent with the image width)"""
+        if img is not None:
+            assert isnumpy(img), "Invalid numpy image input"
+            width = img.shape[1]
+        else:
+            assert isnumber(width), "Invalid width"
+        self._x = width - self._x
+        return self
+
+    def flipud(self, img=None, height=None):
+        """Flip the y coordinate up/down consistent with flipud of the provided img (or consistent with the image height)"""
+        if img is not None:
+            assert isnumpy(img), "Invalid numpy image input"
+            height = img.shape[0]
+        else:
+            assert height is not None and isnumber(height), "Invalid height"
+        self._y = height - self._y
+        return self
+  
+    def dilate(self, scale=1):
+        self._r = scale*self._r
+        return self
+
+    def clone(self):
+        return Point2d(self._x, self._y, self._r)
+        
+    def rot90cw(self, H, W):
+        """Rotate a point such that if an image of size (H,W) is rotated 90 deg clockwise, the point rotates with the image"""        
+        (x,y) = self.coord
+        p = self.clone()
+        p._x = H - y
+        p._y = x
+        return p
+
+    def rot90ccw(self, H, W):
+        """Rotate a point such that if an image of size (H,W) is rotated 90 deg counter clockwise, the point rotates with the image"""
+        (x, y) = self.coord
+        p = self.clone()
+        p._x = y
+        p._y = W-x
+        return p
+
+    def hasoverlap(self, img=None, width=None, height=None):
+        """Does the point inside with the provided image rectangle?"""
+        if img is not None:
+            assert isnumpy(img), "Invalid image input"
+            (width, height) = (img.shape[1], img.shape[0])
+        return self.is_inside_imagebox(width, height)
+
+    def imclip(self, img=None, width=None, height=None):
+        """clip does not apply to points"""
+        return self
+    
+def RandomPoint2d(xmax=256, ymax=256):
+    return Point2d(float(xmax*np.random.rand()), float(ymax*np.random.rand()))

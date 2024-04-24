@@ -1,5 +1,5 @@
 import numpy as np
-from vipy.geometry import BoundingBox
+from vipy.geometry import BoundingBox, Point2d
 from vipy.util import isstring, tolist, chunklistwithoverlap, try_import, Timer
 import uuid
 import copy
@@ -12,9 +12,18 @@ except ImportError:
     import json
 
 
-DETECTION_GUID = int(uuid.uuid4().hex[0:8], 16)  
+OBJECT_GUID = int(uuid.uuid4().hex[0:8], 16)  
 
-class Detection(BoundingBox):
+
+class Object():
+    def __init__(self):
+        self._id = None
+        
+    def id(self):
+        return self._id
+
+    
+class Detection(BoundingBox, Object):
     """vipy.object.Detection class
     
     This class represent a single object detection in the form a bounding box with a label and confidence.
@@ -35,7 +44,7 @@ class Detection(BoundingBox):
         assert not (label is not None and category is not None), "Constructor requires either label or category kwargs, not both"
 
         if id is True:
-            global DETECTION_GUID; self._id = hex(int(DETECTION_GUID))[2:];  DETECTION_GUID = DETECTION_GUID + 1;  # faster, increment package level UUID4 initialized GUID
+            global OBJECT_GUID; self._id = hex(int(OBJECT_GUID))[2:];  OBJECT_GUID = OBJECT_GUID + 1;  # faster, increment package level UUID4 initialized GUID
         else:
             self._id = None if id is False else id
         self._label = category if category is not None else label
@@ -48,7 +57,7 @@ class Detection(BoundingBox):
         assert isinstance(d, BoundingBox)
         if d.__class__ != Detection or flush:
             d.__class__ = Detection
-            global DETECTION_GUID; newid = hex(int(DETECTION_GUID))[2:];  DETECTION_GUID = DETECTION_GUID + 1;  
+            global OBJECT_GUID; newid = hex(int(OBJECT_GUID))[2:];  OBJECT_GUID = OBJECT_GUID + 1;  
             d._id = newid if flush or not hasattr(d, '_id') else d._id
             d._shortlabel = None if flush or not hasattr(d, '_shortlabel') else d._shortlabel
             d._confidence = None if flush or not hasattr(d, '_confidence') else d._confidence
@@ -200,6 +209,7 @@ class Detection(BoundingBox):
         self.attributes = {}
         return self
 
+    
 class Track(object):
     """vipy.object.Track class
     
@@ -712,7 +722,7 @@ class Track(object):
         #return copy.deepcopy(self)  
         t = Track.from_json(self.json(encode=False)) if (startframe is None and endframe is None) else self.clone_during(startframe, endframe)  # 2x faster than deepcopy
         if rekey:
-            global DETECTION_GUID; t.id(newid=hex(int(DETECTION_GUID))[2:]);  DETECTION_GUID = DETECTION_GUID + 1;  # faster, increment package level UUID4 initialized GUID
+            global OBJECT_GUID; t.id(newid=hex(int(OBJECT_GUID))[2:]);  OBJECT_GUID = OBJECT_GUID + 1;  # faster, increment package level UUID4 initialized GUID
         return t
     
     def clone_during(self, startframe, endframe):
@@ -1225,3 +1235,92 @@ def RandomDetection(W=640, H=480):
     return Detection(xmin=np.random.rand()*W, ymin=np.random.rand()*H, width=np.random.rand()*100, height=np.random.rand()*100, category=str(np.random.rand()), confidence=np.random.rand())
 
 
+class Keypoint2d(Point2d, Object):
+    """vipy.object.Keypoint2d class"""
+    
+    def __init__(self, category, x, y, radius=1, attributes=None, confidence=None, id=None, shortlabel=None):
+        super().__init__(x, y, r=radius)
+        
+        self.attributes = attributes if attributes is not None else {}
+        
+        if category is not None:
+            self._label = category
+            self._shortlabel = category            
+
+        if shortlabel is not None:
+            self._shortlabel = shortlabel
+            
+        if confidence is not None:
+            self.attributes['confidence'] = confidence
+            
+        if radius is not None:
+            self.attributes['radius'] = radius
+
+        if id is True:
+            global OBJECT_GUID; id = hex(int(OBJECT_GUID))[2:];  OBJECT_GUID = OBJECT_GUID + 1;  # faster, increment package level UUID4 initialized GUID
+        if id is not None:
+            self._id = id
+
+    @property
+    def confidence(self):
+        return self.attributes['confidence'] if 'confidence' in self.attributes else None
+
+    def clone(self, deep=False):
+        """Copy the object, if deep=True, then include a deep copy of the attribute dictionary, else a shallow copy.  Cloned object has the same id()"""
+        #return copy.deepcopy(self)
+        d = Keypoint2d.from_json(self.json(encode=False))
+        if deep:
+            d.attributes = copy.deepcopy(self.attributes)
+        return d
+    
+    def category(self, category=None, shortlabel=True, capitalize=False):
+        """Update the category and shortlabel (optional) of the detection"""
+        if capitalize:
+            self._label = self._label.capitalize()
+            self._shortlabel = self._shortlabel.capitalize() if shortlabel else self._shortlabel
+            return self
+        elif category is None:
+            return self._label
+        else:
+            self._label = str(category)  # coerce to string
+            self._shortlabel = str(category) if shortlabel else self._shortlabel  # coerce to string            
+            return self
+
+    def shortlabel(self, label=None):
+        """A optional shorter label string to show in the visualizations, defaults to category()"""        
+        if label is not None:
+            self._shortlabel = str(label)  # coerce to string
+            return self
+        else:
+            return self._shortlabel if self._shortlabel is not None else self.category()
+        
+    @property
+    def radius(self):
+        return self.attributes['radius'] if 'radius' in self.attributes else 1        
+    
+    @property
+    def guid(self):
+        return self._id
+    
+    def __repr__(self):
+        return '<vipy.object.Keypoint2d: x=%s, y=%s, category=%s>' % (self.x, self.y, self.category())
+
+    @classmethod
+    def from_json(cls, s):
+        d = json.loads(s) if not isinstance(s, dict) else s
+        d = {k.lstrip('_'):v for (k,v) in d.items()}  # prettyjson (remove "_" prefix to attributes)                
+        return cls(x=d['x'], y=d['y'], radius=d['r'],
+                   category=d['label'] if 'label' in d else None,
+                   shortlabel=d['shortlabel'] if 'shortlabel' in d else None,
+                   attributes=d['attributes'] if 'attributes' in d else None,
+                   id=d['id'] if 'id' in d else True)
+    
+    def json(self, encode=True):
+        d = {k:v for (k,v) in self.__dict__.items() if not ((k == '_confidence' and v is None) or
+                                                            (k == '_shortlabel' and v is None) or
+                                                            (k == 'attributes' and (v is None or isinstance(v, dict) and len(v)==0)) or
+                                                            (k == '_label' and v is None))}  # don't bother to store None values
+        d.update( {'x':self.x, 'y':self.y, 'r':self.r} )
+        d = {k.lstrip('_'):v for (k,v) in d.items()}  # prettyjson (remove "_" prefix to attributes)                        
+        return json.dumps(d) if encode else d
+                

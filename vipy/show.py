@@ -72,6 +72,33 @@ def imdetection(img, detlist, fignum=None, bboxcolor='green', facecolor='white',
         BACKEND.flush() if len(detlist)>0 else BACKEND.imflush()               
     return h
 
+def imkeypoints(img, kplist, fignum=None, bordercolor='green', facecolor='white', facealpha=0.5, do_caption=True, fontsize=10, textcolor='green', textfacecolor='white', textfacealpha=1.0, captionoffset=(0,0), nowindow=False, timestamp=None, timestampcolor='black', timestampfacecolor=None, timestampoffset=(0,0)):
+
+    if nowindow:
+        noshow(fignum)
+    h = BACKEND.imkeypoints(img, kplist, fignum=fignum, bordercolor=bordercolor, do_caption=do_caption, facecolor=facecolor, facealpha=facealpha, fontsize=fontsize, textcolor=textcolor, captionoffset=captionoffset, textfacecolor=textfacecolor, textfacealpha=textfacealpha)
+    if timestamp is not None:
+        text(str(timestamp), 10+timestampoffset[0], 21+timestampoffset[1], fontsize=fontsize, textfacealpha=0.6, facealpha=0.6, alpha=0.8 if timestampfacecolor is not None else 1.0, textcolor=timestampcolor, textfacecolor=timestampfacecolor, pad=0.75)       
+    if not nowindow:
+        show(fignum)
+        BACKEND.flush() if len(kplist)>0 else BACKEND.imflush()               
+    return h
+
+def imobjects(img, objlist, fignum=None, bordercolor='green', facecolor='white', facealpha=0.5, do_caption=True, fontsize=10, textcolor='green', textfacecolor='white', textfacealpha=1.0, captionoffset=(0,0), nowindow=False, timestamp=None, timestampcolor='black', timestampfacecolor=None, timestampoffset=(0,0)):
+
+    if nowindow:
+        noshow(fignum)
+    h = BACKEND.imobjects(img, objlist, fignum=fignum, bordercolor=bordercolor, do_caption=do_caption, facecolor=facecolor, facealpha=facealpha, fontsize=fontsize, textcolor=textcolor, captionoffset=captionoffset, textfacecolor=textfacecolor, textfacealpha=textfacealpha)
+    if timestamp is not None:
+        text(str(timestamp), 10+timestampoffset[0], 21+timestampoffset[1], fontsize=fontsize, textfacealpha=0.6, facealpha=0.6, alpha=0.8 if timestampfacecolor is not None else 1.0, textcolor=timestampcolor, textfacecolor=timestampfacecolor, pad=0.75)       
+    if not nowindow:
+        show(fignum)
+        BACKEND.flush() if len(objlist)>0 else BACKEND.imflush()               
+    return h
+
+
+def impoints(img, objlist, fignum=None, bboxcolor='green', facecolor='white', facealpha=0.5, do_caption=True, fontsize=10, textcolor='green', textfacecolor='white', textfacealpha=1.0, captionoffset=(0,0), nowindow=False, timestamp=None, timestampcolor='black', timestampfacecolor=None, timestampoffset=(0,0)):
+    pass
 
 def frame(fmr, im=None, color='b.', caption=False, markersize=10, fignum=1):
     return BACKEND.frame(fr, im=im, color=color, caption=caption, markersize=markersize, fignum=fignum)

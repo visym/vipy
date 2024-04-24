@@ -1,5 +1,5 @@
 import numpy as np
-from vipy.geometry import BoundingBox
+from vipy.geometry import BoundingBox, Point2d
 from vipy.image import ImageDetection
 import vipy.geometry
 import vipy.linalg
@@ -53,6 +53,27 @@ def test_geometry():
     assert np.allclose(np.linalg.norm(vipy.geometry.normalize(np.random.rand(4))), 1.0)
     print('[test_geometry.normalize]: passed')
 
+def test_point2d():
+    try:
+        p = Point2d()
+        raise Failed()
+    except Failed:
+        raise
+    except:
+        pass
+
+    p = Point2d(1,2,3)
+    q = Point2d(2,3,0)
+    r = Point2d(200,300,0)        
+    
+    assert p == Point2d.from_json(p.json())
+    assert p.dist(p) == 0
+    assert p.dist(p.clone().translate(0,1)) == 1
+    assert p.is_inside_radius(q)
+    assert not p.is_inside_radius(r)     
+
+    print('[test_point2d]: passed')
+    
 
 def test_boundingbox():
     # Constructors
@@ -331,4 +352,4 @@ if __name__ == "__main__":
     test_boundingbox()
     test_ellipse()
     test_intersection()
-    
+    test_point2d()

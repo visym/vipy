@@ -41,9 +41,9 @@ except:
 
 try:
     import ujson as json  # faster
-except ImportError:
-    import json
-
+except ImportError:        
+    import json  # fastish
+    
 
 class Image(object):
     """vipy.image.Image class
@@ -1980,9 +1980,9 @@ class TaggedImage(Image):
 class Scene(ImageCategory):
     """vipy.image.Scene class
 
-    This class provides a representation of a vipy.image.ImageCategory with one or more vipy.object.Detections.  The goal of this class is to provide a unified representation for all objects in a scene.
+    This class provides a representation of a vipy.image.ImageCategory with one or more vipy.object.Object.  The goal of this class is to provide a unified representation for all objects in a scene.
 
-    Valid constructors include all provided by vipy.image.Image() and vipy.image.ImageCategory() with the additional kwarg 'objects', which is a list of vipy.object.Detections()
+    Valid constructors include all provided by vipy.image.Image() and vipy.image.ImageCategory() with the additional kwarg 'objects', which is a list of vipy.object.Object()
 
     ```python
     im = vipy.image.Scene(filename='/path/to/city_image.ext', category='city', objects=[vipy.object.Detection(category='vehicle', xmin=0, ymin=0, width=100, height=100)])
@@ -1998,8 +1998,8 @@ class Scene(ImageCategory):
         self._objectlist = []
 
         if objects is not None:
-            if not (isinstance(objects, list) and all([isinstance(bb, vipy.object.Detection) for bb in objects])):
-                raise ValueError("Invalid object list - Input must be [vipy.object.Detection(), ...]")
+            if not (isinstance(objects, list) and all([isinstance(bb, vipy.object.Object) for bb in objects])):
+                raise ValueError("Invalid object list - Input must be [vipy.object.Object, ...]")
             self._objectlist = objects
 
         detlist = []
@@ -2033,8 +2033,13 @@ class Scene(ImageCategory):
     @classmethod
     def from_json(obj, s):
         im = super().from_json(s)
-        d = {k.lstrip('_'):v for (k,v) in json.loads(s).items()}  # prettyjson (remove "_" prefix to attributes)                                    
-        im._objectlist = [vipy.object.Detection.from_json(s) for s in d['objectlist']]        
+        d = {k.lstrip('_'):v for (k,v) in json.loads(s).items()}  # prettyjson (remove "_" prefix to attributes)
+        if isinstance(d['objectlist'], dict):
+            # Version 1.15.1: expanded serialization to support multiple object types
+            im._objectlist = [vipy.object.Detection.from_json(s) for s in d['objectlist']['Detection']] + [vipy.object.Point2d.from_json(s) for s in d['objectlist']['Point2d']]
+        else:
+            # Legacy support: 
+            im._objectlist = [vipy.object.Detection.from_json(s) for s in d['objectlist']]            
         return im
 
     def __json__(self):
@@ -2044,12 +2049,13 @@ class Scene(ImageCategory):
     def json(self, s=None, encode=True):
         if s is None:
             d = json.loads(super().json())
-            d['objectlist'] = [bb.json(encode=False) for bb in self._objectlist]
+            d['objectlist'] = {'Detection': [bb.json(encode=False) for bb in self._objectlist if isinstance(bb, vipy.object.Detection)],
+                               'Point2d': [p.dict() for p in self._objectlist if isinstance(p, vipy.object.Point2d)]}            
             return json.dumps(d) if encode else d
         else:
             super().json(s)
             d = json.loads(s)            
-            self._objectlist = [vipy.object.Detection.from_json(s) for s in d['objectlist']]
+            self._objectlist = [vipy.object.Detection.from_json(s) for s in d['objectlist']['Detection']] + [vipy.object.Point2d.from_json(s) for s in d['objectlist']['Point2d']]
             return self
         
     def __eq__(self, other):
@@ -2094,7 +2100,7 @@ class Scene(ImageCategory):
     
     def append(self, imdet):
         """Append the provided vipy.object.Detection object to the scene object list"""
-        assert isinstance(imdet, vipy.object.Detection), "Invalid input"
+        assert isinstance(imdet, vipy.object.Object), "Invalid input"
         self._objectlist.append(imdet)
         return self
 
@@ -2106,7 +2112,7 @@ class Scene(ImageCategory):
         if objectlist is None:
             return self._objectlist
         else:
-            assert isinstance(objectlist, list) and (len(objectlist) == 0 or all([isinstance(bb, vipy.object.Detection) for bb in objectlist])), "Invalid object list"
+            assert isinstance(objectlist, list) and (len(objectlist) == 0 or all([isinstance(bb, vipy.object.Object) for bb in objectlist])), "Invalid object list"
             self._objectlist = objectlist
             return self
 
@@ -2114,7 +2120,7 @@ class Scene(ImageCategory):
         """Apply lambda function f to each object.  If f is a list of lambda, apply one to one with the objects"""
         assert callable(f)
         self._objectlist = [f(obj)  for obj in self._objectlist] if not isinstance(f, list) else [g(obj) for (g,obj) in zip(f, self._objectlist)]
-        assert all([isinstance(a, vipy.object.Detection) for a in self.objects()]), "Lambda function must return vipy.object.Detection"
+        assert all([isinstance(a, vipy.object.Object) for a in self.objects()]), "Lambda function must return vipy.object.Detection"
         return self
 
     def objectfilter(self, f):
@@ -2158,7 +2164,7 @@ class Scene(ImageCategory):
     
     def boundingbox(self):
         """The boundingbox of a scene is the union of all object bounding boxes, or None if there are no objects"""
-        boxes = self.objects()
+        boxes = [bb for bb in self.objects() if isinstance(bb, vipy.geometry.BoundingBox)]
         bb = boxes[0].clone() if len(boxes) >= 1 else None
         return bb.union(boxes[1:]) if len(boxes) >= 2 else bb
 
@@ -2169,7 +2175,7 @@ class Scene(ImageCategory):
     # Spatial transformation
     def imclip(self):
         """Clip all bounding boxes to the image rectangle, silently rejecting those boxes that are degenerate or outside the image"""
-        self._objectlist = [bb.imclip(self.numpy()) for bb in self._objectlist if bb.hasoverlap(self.numpy())]
+        self._objectlist = [o.imclip(self.numpy()) if isinstance(o, vipy.geometry.BoundingBox) else o for o in self._objectlist if not isinstance(o, vipy.geometry.BoundingBox) or o.hasoverlap(self.numpy())]
         return self
 
     def rescale(self, scale=1, interp='bilinear'):
@@ -2263,7 +2269,7 @@ class Scene(ImageCategory):
     def crop(self, bbox=None):
         """Crop the image buffer using the supplied bounding box object (or the only object if bbox=None), clipping the box to the image rectangle, update all scene objects"""
         assert bbox is not None or (len(self) == 1), "Bounding box must be provided if number of objects != 1"
-        bbox = bbox if bbox is not None else self._objectlist[0]
+        bbox = bbox if bbox is not None else [o for o in self._objectlist if isinstance(o, vipy.geometry.BoundingBox)][0]
         self = super()._crop(bbox)        
         (dx, dy) = (bbox.xmin(), bbox.ymin())
         self._objectlist = [bb.translate(-dx, -dy) for bb in self._objectlist]
@@ -2306,7 +2312,7 @@ class Scene(ImageCategory):
                       int(np.round(self.width())))
         immask = np.zeros((H, W)).astype(np.uint8)
         for bb in self._objectlist:
-            if bb.hasoverlap(immask):
+            if isinstance(bb, vipy.geometry.BoundingBox) and bb.hasoverlap(immask):
                 bbm = bb.clone().imclip(self.numpy()).int()
                 immask[bbm.ymin():bbm.ymax(), bbm.xmin():bbm.xmax()] = 1
         return immask
@@ -2434,7 +2440,7 @@ class Scene(ImageCategory):
            - fontsize: [int] or [str]: Size of the font, fontsize=int for points, fontsize='NN:scaled' to scale the font relative to the image size
            - figure: [int] Figure number, show the image in the provided figure=int numbered window
            - nocaption: [bool]  Show or do not show the text caption in the upper left of the box 
-           - nocaption_withstring: [list]:  Do not show captions for those detection categories (or shortlabels) containing any of the strings in the provided list
+           - nocaption_withstring: [list]:  Do not show captions for those object categories (or shortlabels) containing any of the strings in the provided list
            - boxalpha (float, [0,1]):  Set the text box background to be semi-transparent with an alpha
            - d_category2color (dict):  Define a dictionary of required mapping of specific category() to box colors.  Non-specified categories are assigned a random named color from vipy.show.colorlist()
            - caption_offset (int, int): The relative position of the caption to the upper right corner of the box.
@@ -2448,18 +2454,18 @@ class Scene(ImageCategory):
         colors = vipy.show.colorlist()
         im = self.clone() if not mutator else mutator(self.clone())
 
-        valid_detections = [obj.clone() for obj in im._objectlist if categories is None or obj.category() in tolist(categories)]  # Detections with valid category
-        valid_detections = [obj.imclip(self.numpy()) for obj in valid_detections if obj.hasoverlap(self.numpy())]  # Detections within image rectangle
-        valid_detections = [obj.category(obj.shortlabel()) if obj.shortlabel() is not None else obj for obj in valid_detections] if shortlabel else valid_detections  # Display name as shortlabel?
-        d_categories2color = {d.category():colors[int(hashlib.sha1(d.category().split(' ')[-1].encode('utf-8')).hexdigest(), 16) % len(colors)] for d in valid_detections}   # consistent color mapping by category suffix (space separated)
+        valid_objects = [obj.clone() for obj in im._objectlist if categories is None or obj.category() in tolist(categories)]  # Objects with valid category
+        valid_objects = [obj.imclip(self.numpy()) for obj in valid_objects if obj.hasoverlap(self.numpy())]  # Objects within image rectangle
+        valid_objects = [obj.category(obj.shortlabel()) if obj.shortlabel() is not None else obj for obj in valid_objects] if shortlabel else valid_objects  # Display name as shortlabel?
+        d_categories2color = {d.category():colors[int(hashlib.sha1(d.category().split(' ')[-1].encode('utf-8')).hexdigest(), 16) % len(colors)] for d in valid_objects}   # consistent color mapping by category suffix (space separated)
         d_categories2color.update(d_category2color)  # requested color mapping
-        detection_color = [d_categories2color[d.category()] for d in valid_detections]                
-        valid_detections = [d if not any([c in d.category() for c in tolist(nocaption_withstring)]) else d.nocategory() for d in valid_detections]  # Detections requested to show without caption
+        object_color = [d_categories2color[d.category()] for d in valid_objects]                
+        valid_objects  = [d if not any([c in d.category() for c in tolist(nocaption_withstring)]) else d.nocategory() for d in valid_objects]  # Objects requested to show without caption
         imdisplay = self.clone().rgb() if self.colorspace() != 'rgb' else self.load()  # convert to RGB for show() if necessary
         fontsize_scaled = float(fontsize.split(':')[0])*(min(imdisplay.shape())/640.0) if isstring(fontsize) else fontsize
-        imdisplay = mutator(imdisplay) if mutator is not None else imdisplay        
-        vipy.show.imdetection(imdisplay._array, valid_detections, bboxcolor=detection_color, textcolor=detection_color, fignum=figure, do_caption=(nocaption==False), facealpha=boxalpha, fontsize=fontsize_scaled,
-                              captionoffset=captionoffset, nowindow=nowindow, textfacecolor=textfacecolor, textfacealpha=textfacealpha, timestamp=timestamp, timestampcolor=timestampcolor, timestampfacecolor=timestampfacecolor, timestampoffset=timestampoffset)
+        imdisplay = mutator(imdisplay) if mutator is not None else imdisplay
+        vipy.show.imobjects(imdisplay._array, valid_objects, bordercolor=object_color, textcolor=object_color, fignum=figure, do_caption=(nocaption==False), facealpha=boxalpha, fontsize=fontsize_scaled,
+                            captionoffset=captionoffset, nowindow=nowindow, textfacecolor=textfacecolor, textfacealpha=textfacealpha, timestamp=timestamp, timestampcolor=timestampcolor, timestampfacecolor=timestampfacecolor, timestampoffset=timestampoffset)
         return self
 
     def annotate(self, outfile=None, categories=None, figure=1, nocaption=False, fontsize=10, boxalpha=0.25, d_category2color={'person':'green', 'vehicle':'blue', 'object':'red'}, captionoffset=(0,0), dpi=200, textfacecolor='white', textfacealpha=1.0, shortlabel=True, nocaption_withstring=[], timestamp=None, timestampcolor='black', timestampfacecolor='white', mutator=None, timestampoffset=(0,0)):
@@ -2488,7 +2494,8 @@ class Scene(ImageCategory):
         fignum = figure if figure is not None else 1        
         self.show(categories=categories, figure=fignum, nocaption=nocaption, fontsize=fontsize, boxalpha=boxalpha, 
                   d_category2color=d_category2color, captionoffset=captionoffset, nowindow=True, textfacecolor=textfacecolor, 
-                  textfacealpha=textfacealpha, shortlabel=shortlabel, nocaption_withstring=nocaption_withstring, timestamp=timestamp, timestampcolor=timestampcolor, timestampfacecolor=timestampfacecolor, mutator=mutator, timestampoffset=timestampoffset)
+                  textfacealpha=textfacealpha, shortlabel=shortlabel, nocaption_withstring=nocaption_withstring, timestamp=timestamp,
+                  timestampcolor=timestampcolor, timestampfacecolor=timestampfacecolor, mutator=mutator, timestampoffset=timestampoffset)
         
         if outfile is None:
             buf = io.BytesIO()
@@ -2764,10 +2771,12 @@ def RandomScene(rows=None, cols=None, num_objects=16, url=None):
     """Return a uniform random color `vipy.image.Scene` of size (rows, cols) with a specified number of vipy.object.Detection` objects"""    
     im = RandomImage(rows, cols) if url is None else Image(url=url)
     (rows, cols) = im.shape()
-    ims = Scene(array=im.array(), colorspace='rgb', category='scene', objects=[vipy.object.Detection('obj%d' % k, xmin=np.random.randint(0,cols - 16), ymin=np.random.randint(0,rows - 16),
-                                                                                                     width=np.random.randint(16,cols), height=np.random.randint(16,rows))
-                                                                               for k in range(0,num_objects)])
-    return ims
+    return Scene(array=im.array(),
+                 colorspace='rgb',
+                 category='scene',
+                 objects=[vipy.object.Detection('obj%d' % k, xmin=np.random.randint(0,cols - 16), ymin=np.random.randint(0,rows - 16), width=np.random.randint(16,cols), height=np.random.randint(16,rows)) if k<=num_objects//2 else
+                          vipy.object.Keypoint2d(category='kp%d' % k, x=np.random.randint(0,cols - 16), y=np.random.randint(0,rows - 16), radius=np.random.randint(16,cols))
+                          for k in range(0,num_objects)])
     
 
 def owl():
