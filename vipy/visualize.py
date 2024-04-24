@@ -17,23 +17,35 @@ import html
 import urllib
 import warnings
 from pathlib import Path
-   
+import hashlib
+import matplotlib
 
-def scenezoom(im, outfile=None):
-    """Generate a standalone scenezoom visualization.
 
-    A scenezoomvisualization is a standalone HTML file that shows a single `vipy.image.Scene` object with an interactive search and visualization of all objects and attributes
+def scene_explorer(im, outfile=None):
+    """Generate a standalone scene_explorer visualization.
+
+    A scene_explorervisualization is a standalone HTML file that shows a single `vipy.image.Scene` object with an interactive search and visualization of all objects and attributes
 
     This function is currently a non-functional skeleton
     """
     assert isinstance(im, vipy.image.Scene)
     assert outfile is None or ishtml(outfile)
 
-    html = Path(Path(__file__).parent.resolve() / 'visualize_scenezoom.html').read_text()
+    colors = [matplotlib.colors.to_hex(c) for c in vipy.show.colorlist()]
+    keypoints = [o for o in im.objects() if isinstance(o, vipy.object.Keypoint2d)]    
+    d_category_to_color = {o.category():colors[int(hashlib.sha1(o.category().split(' ')[-1].encode('utf-8')).hexdigest(), 16) % len(colors)] for o in keypoints}   # consistent color mapping by category suffix (space separated)
+    
+    html = Path(Path(__file__).parent.resolve() / 'visualize_scene_explorer.html').read_text()
     keywords = {'${IMG_WIDTH}':1024,                      
                 '${IMG}':im.url() if im.has_url() else 'data:image/jpeg;charset=utf-8;base64,%s' % im.resize(width=1024).base64().decode('ascii'),
                 '${SEARCHBOX_WIDTH}':768 // 4,
-                '${CLASSLIST}':str(sorted(set([o.category() for o in im.objects()])))}    
+                '${CLASSLIST}':str(sorted(set([o.category() for o in keypoints]))),
+                '${KP_X}':str([o.x for o in keypoints]),
+                '${KP_Y}':str([o.y for o in keypoints]),
+                '${KP_R}':str([o.r for o in keypoints]),
+                '${KP_CLASSLIST}':str([o.category() for o in keypoints]),
+                '${KP_ATTRIBUTELIST}':str([o.json() for o in keypoints]),
+                '${KP_COLORLIST}':str([d_category_to_color[o.category()] for o in keypoints])}    
     for (k,v) in keywords.items():
         html = html.replace(k,str(v))
 

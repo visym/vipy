@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8"> 
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">   
+    <title>Scene Explorer</title>
+    <style>
+      #imageContainer {
+          position: relative;
+          width: ${IMG_WIDTH}px; /* Set width of image container */
+      } 
+      #searchBar {
+          position: absolute;
+          top: 10px; /* Adjust top position of search bar */
+          left: 10px; /* Adjust left position of search bar */
+          z-index: 4; /* Ensure the search bar is above the image */
+      }
+      #searchInput {
+	  width: ${SEARCHBOX_WIDTH}px; /* Set width of search input */
+	  padding: 5px 25px;
+	  outline: none;
+	  background-image: url("https://img.icons8.com/666666/search");  /* "666666" is hex color */
+	  opacity: 0.8;	  
+	  background-repeat:no-repeat;
+	  background-position:left 5px center;outline:0;
+	  background-size: 14px;
+      }
+      #searchDropdown {
+	  display: none;
+	  position: absolute;
+	  background-color: #ffffff;
+	  min-width: ${SEARCHBOX_WIDTH}px;
+	  overflow-y: auto;
+	  border: 1px solid #ddd;
+	  z-index: 5; /* Ensure the dropdown is above the image */
+	  opacity: 0.8;
+      }
+      #searchDropdown li {
+	  padding: 0px;
+	  cursor: pointer;
+      }
+      #searchDropdown li:hover {
+	  background-color: #ddd;
+      }
+      .highlighted {
+	  background-color: #ddd;
+      }    
+      .annotationPopup {
+          display: none;
+	  position: absolute;
+	  background-color: #fff;
+	  border: 1px solid #aaa;
+	  width: auto; /* Set width of popup */
+	  height: auto; /* Let height adjust based on content */
+	  padding: 10px;
+	  z-index: 3; /* Ensure the popup is above the image */
+	  display: none; /* Hide popup by default */
+	  opacity: 0.7;
+          border-radius: 5px; /* Rounded corners */
+          box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
+      }      
+      ul {
+	  list-style-type: none;  /* removes bullets */
+	  margin: 0;
+	  padding: 5px;
+      }
+      .logo {
+	  position: absolute;
+	  bottom: 10px;
+	  right: 10px;
+	  width: 50px;
+	  height: auto;
+      }
+      .circle {
+	  position: absolute;
+	  border-radius: 50%;
+	  cursor: pointer;
+	  z-index: 1;
+      }
+      .circle:hover {
+	  z-index: 2;
+      }
+    </style>
+  </head>
+  <body>
+    
+    <div id="imageContainer">
+      <img id="mainImage" src="${IMG}" alt="Main Image" width="${IMG_WIDTH}" > 
+      <div id="searchBar">
+        <input type="text" id="searchInput" placeholder="Search...">
+        <ul id="searchDropdown"></ul>    
+      </div>
+      <div id="popup" class="annotationPopup"><p id="popupText"></p></div>      
+      <a href="https://visym.com" target="_blank" class="logo">
+	<img src="https://cdn.statically.io/img/visym.com/images/visym_logo_white_notext.png" alt="Logo" class="logo">
+      </a>
+    </div>
+    
+    <script>
+      function overlaySearchBar() {
+	  // Get references to image container and search bar
+	  var imageContainer = document.getElementById('imageContainer');
+	  var mainImage = document.getElementById('mainImage');    
+	  var searchBar = document.getElementById('searchBar');
+	  var searchInput = document.getElementById('searchInput');
+	  var searchDropdown = document.getElementById('searchDropdown');
+	  var popup = document.getElementById('popup');
+	  const popupText = document.getElementById('popupText');
+	  var circlelist = [];	  
+	  let currentCircle = null;
+	  
+	  var kp_classlist = ${KP_CLASSLIST};
+	  var kp_attributelist = ${KP_ATTRIBUTELIST};
+	  var kp_colorlist = ${KP_COLORLIST};	  	  
+	  var kp_x = ${KP_X};
+	  var kp_y = ${KP_Y};
+	  var kp_r = ${KP_R};
+	  
+	  // Create circles and append them to the container
+	  for (let i = 0; i < kp_classlist.length; i++) {
+	      const circle = document.createElement('div');
+	      circle.id = 'circle' + i;
+	      circle.classList.add('circle');
+	      circle.style.width = kp_r[i] + 'px'; 
+	      circle.style.height = kp_r[i] + 'px';
+	      circle.style.top = kp_y[i] + 'px'; 
+	      circle.style.left = kp_x[i] + 'px';
+	      circle.style.backgroundColor = kp_colorlist[i] + 'BB';  // Append alpha
+	      circle.popup_contents = kp_attributelist[i];
+	      imageContainer.appendChild(circle);
+	      circlelist.push(document.getElementById('circle' + i));
+		  
+	      // Show popup when mouse is over the circle
+	      circle.addEventListener('mouseover', function() {
+		  currentCircle = circle;
+		  const circlePosition = {
+		      x: circle.offsetLeft,
+		      y: circle.offsetTop
+		  };
+		  popupText.textContent = circle.popup_contents;
+		  const popupX = circlePosition.x + circle.offsetWidth/4; 
+		  const popupY = circlePosition.y + 50
+
+		  // Check if popup is off the right side of the viewport
+		  if (popupX + popup.offsetWidth > window.innerWidth) {
+		      //popupX = window.innerWidth - popup.offsetWidth;
+		  }
+		  // Check if popup is off the bottom side of the viewport
+		  //if (popupY + popup.offsetHeight > window.innerHeight) {
+		  //    popupY = window.innerHeight - popup.offsetHeight;
+		  //}
+		  popup.style.top = popupY + 'px';
+		  popup.style.left = popupX + 'px';
+		  popup.style.display = 'block';		  
+	      });
+	      
+	      // Hide popup when mouse leaves the circle
+	      circle.addEventListener('mouseout', function() {
+		  if (currentCircle === circle) {
+		      popup.style.display = 'none';
+		  }
+	      });
+	  }
+	  
+	  // Populate dropdown with options 
+	  var classlist = ${CLASSLIST};
+	  classlist.forEach(function(option) {
+              var listItem = document.createElement('li');
+              listItem.textContent = option;
+              listItem.addEventListener('click', function() {
+		  searchInput.value = option;
+		  searchDropdown.style.display = 'none';
+
+		  // Highlight selected only
+		  var dropdownItems = searchDropdown.querySelectorAll('li');
+		  dropdownItems.forEach(function(item) {
+		      item.className = ''
+		  });
+		  this.className = 'highlighted';		  
+
+		  // Show selected keypoints
+		  for (let i = 0; i < circlelist.length; i++) {
+		      if (kp_attributelist[i].includes(option)) {
+			  circlelist[i].style.display = 'block';
+		      }
+		      else {
+			  circlelist[i].style.display = 'none';
+		      }
+		  }
+	      });		      		      
+              searchDropdown.appendChild(listItem);
+	  });
+	  var dropdownItems = searchDropdown.querySelectorAll('li');
+	  
+	  // Show search dropdown on input focus
+	  searchInput.addEventListener('focus', function() {
+              searchDropdown.style.display = 'block';
+	  });
+
+	  // Hide search dropdown on input blur
+	  searchInput.addEventListener('blur', function() {
+              setTimeout(function() {
+		  searchDropdown.style.display = 'none';
+              }, 200); // Delay hiding dropdown to allow click event on dropdown items
+	  });
+	  
+	  // Filter search dropdown based on input value
+	  searchInput.addEventListener('input', function() {
+	      var searchTerm = this.value.toLowerCase();
+	      dropdownItems.forEach(function(item) {
+		  var text = item.textContent.toLowerCase();
+		  if (text.includes(searchTerm)) {
+		      item.style.display = 'block';
+		  } else {
+		      item.style.display = 'none';
+		  }
+	      });
+	      for (let i = 0; i < circlelist.length; i++) {
+		  if (kp_attributelist[i].includes(searchTerm)) {
+		      circlelist[i].style.display = 'block';
+		  }
+		  else {
+		      circlelist[i].style.display = 'none';
+		  }
+	      }		      		      
+	  });
+
+	  // Handle keyboard navigation for dropdown list
+	  searchInput.addEventListener('keydown', function(e) {
+	      var highlightedItem = searchDropdown.querySelector('.highlighted');
+	      //var filteredItems = searchDropdown.querySelector('style="display: block"');    
+	      if (e.key === 'ArrowDown' || e.key === 'Down') {
+		  if (highlightedItem) {
+		      var nextItem = highlightedItem.nextElementSibling;
+		      while (nextItem != null && nextItem.style.display == 'none') {
+			  nextItem = nextItem.nextElementSibling;
+		      }     
+		      if (nextItem) {
+			  highlightedItem.className = '';
+			  nextItem.className = 'highlighted';
+		      }
+		  } else {
+		      dropdownItems[0].className = 'highlighted';
+		  }
+	      } else if (e.key === 'ArrowUp' || e.key === 'Up') {
+		  if (highlightedItem) {
+		      var prevItem = highlightedItem.previousElementSibling;
+		      while (prevItem != null &&prevItem.style.display == 'none') {
+			  prevItem = prevItem.previousElementSibling;
+		      } 
+		      if (prevItem) {
+			  highlightedItem.className = '';
+			  prevItem.className = 'highlighted';
+		      }
+		  }
+	      } else if (e.key === 'Enter') {
+		  if (highlightedItem) {
+		      searchInput.value = highlightedItem.textContent;
+		      searchDropdown.style.display = 'none';
+		  }
+
+		  // Show only item selected
+		  for (let i = 0; i < circlelist.length; i++) {
+		      if (kp_attributelist[i].includes(searchInput.value)) {
+			  circlelist[i].style.display = 'block'
+		      }
+		      else {
+			  circlelist[i].style.display = 'none';
+		      }
+		  }		      		      		  		  
+	      }
+	  });
+
+	  // Hide popup when mouse leaves the container
+	  imageContainer.addEventListener('mouseout', function() {
+	      popup.style.display = 'none';
+	  });	
+      }
+      
+      // Call the function when the page is loaded
+      window.onload = overlaySearchBar;
+    </script>
+    
+  </body>
+</html>

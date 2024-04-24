@@ -2767,16 +2767,16 @@ def RandomImageDetection(rows=None, cols=None):
                           xmin=np.random.randint(0,cols - 16), ymin=np.random.randint(0,rows - 16),
                           width=np.random.randint(16,cols), height=np.random.randint(16,rows))
 
-def RandomScene(rows=None, cols=None, num_objects=16, url=None):
+def RandomScene(rows=None, cols=None, num_detections=8, num_keypoints=8, url=None):
     """Return a uniform random color `vipy.image.Scene` of size (rows, cols) with a specified number of vipy.object.Detection` objects"""    
-    im = RandomImage(rows, cols) if url is None else Image(url=url)
+    im = Scene(array=RandomImage(rows, cols).array(), category='RandomScene') if url is None else Scene(url=url, category='RandomScene')
     (rows, cols) = im.shape()
-    return Scene(array=im.array(),
-                 colorspace='rgb',
-                 category='scene',
-                 objects=[vipy.object.Detection('obj%d' % k, xmin=np.random.randint(0,cols - 16), ymin=np.random.randint(0,rows - 16), width=np.random.randint(16,cols), height=np.random.randint(16,rows)) if k<=num_objects//2 else
-                          vipy.object.Keypoint2d(category='kp%d' % k, x=np.random.randint(0,cols - 16), y=np.random.randint(0,rows - 16), radius=np.random.randint(16,cols))
-                          for k in range(0,num_objects)])
+    objects = []
+    if num_detections:
+        objects += [vipy.object.Detection('obj%d' % k, xmin=np.random.randint(0,cols - 16), ymin=np.random.randint(0,rows - 16), width=np.random.randint(16,cols), height=np.random.randint(16,rows)) for k in range(num_detections)]
+    if num_keypoints:
+        objects += [vipy.object.Keypoint2d(category='kp%d' % k, x=np.random.randint(0,cols - 16), y=np.random.randint(0,rows - 16), radius=np.random.randint(16,cols)) for k in range(num_keypoints)]
+    return im.objects(objects)
     
 
 def owl():
