@@ -2,8 +2,11 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8"> 
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">   
-    <title>Scene Explorer</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta property="og:title" content="${TITLE}">
+    ${META_OG_IMAGE}
+    
+    <title>${TITLE}</title>
     <style>
       #imageContainer {
           position: relative;
@@ -94,7 +97,7 @@
         <input type="text" id="searchInput" placeholder="Search...">
         <ul id="searchDropdown"></ul>    
       </div>
-      <div id="popup" class="annotationPopup"><p id="popupText"></p></div>      
+      <div id="popup" class="annotationPopup"><pre id="popupText"></pre></div>      
       <a href="https://visym.com" target="_blank" class="logo">
 	<img src="https://cdn.statically.io/img/visym.com/images/visym_logo_white_notext.png" alt="Logo" class="logo">
       </a>
@@ -130,7 +133,7 @@
 	      circle.style.top = kp_y[i] - kp_r[i]/2 + 'px'; 
 	      circle.style.left = kp_x[i] - kp_r[i]/2 + 'px';
 	      circle.style.backgroundColor = kp_colorlist[i] + 'BB';  // Append alpha
-	      circle.popup_contents = kp_attributelist[i];
+	      circle.popup_contents = JSON.stringify(JSON.parse(kp_attributelist[i]),null,2);  // prettyprint
 	      imageContainer.appendChild(circle);
 	      circlelist.push(document.getElementById('circle' + i));
 		  

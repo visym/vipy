@@ -22,13 +22,13 @@ import matplotlib
 import warnings
 
 
-def scene_explorer(im, outfile=None, width=1024):
+def scene_explorer(im, outfile=None, width=1024, title='Visym Scene Explorer'):
     """Generate a standalone scene_explorer visualization.
 
     A scene_explorer visualization is a standalone HTML file that shows a single `vipy.image.Scene` object with an interactive search and visualization of all objects and attributes
 
     Current support for `vipy.object.Keypoint2d` only, showing the JSON string for the object
-    
+
     """
     assert isinstance(im, vipy.image.Scene)
     assert outfile is None or ishtml(outfile)
@@ -41,7 +41,9 @@ def scene_explorer(im, outfile=None, width=1024):
     d_category_to_color = {o.category():colors[int(hashlib.sha1(o.category().split(' ')[-1].encode('utf-8')).hexdigest(), 16) % len(colors)] for o in keypoints}   # consistent color mapping by category suffix (space separated)
     
     html = Path(Path(__file__).parent.resolve() / 'visualize_scene_explorer.html').read_text()
-    keywords = {'${IMG_WIDTH}':width,                      
+    keywords = {'${TITLE}': title,
+                '${META_OG_IMAGE}':'',  # '<meta property="og:image" content="https://path/to/pubic/image">, useful for social/text previews showing im.annotate()
+                '${IMG_WIDTH}':width,                      
                 '${IMG}':img,
                 '${SEARCHBOX_WIDTH}':width // 4,
                 '${CLASSLIST}':str(sorted(set([o.category() for o in keypoints]))),

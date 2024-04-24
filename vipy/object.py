@@ -1253,9 +1253,6 @@ class Keypoint2d(Point2d, Object):
         if confidence is not None:
             self.attributes['confidence'] = confidence
             
-        if radius is not None:
-            self.attributes['radius'] = radius
-
         if id is True:
             global OBJECT_GUID; id = hex(int(OBJECT_GUID))[2:];  OBJECT_GUID = OBJECT_GUID + 1;  # faster, increment package level UUID4 initialized GUID
         if id is not None:
