@@ -44,14 +44,16 @@ def sun397():
     
     configs = ['standard-part1-120k', 'standard-part2-120k', 'standard-part3-120k', 'standard-part4-120k', 'standard-part5-120k', 'standard-part6-120k', 'standard-part7-120k', 'standard-part8-120k', 'standard-part9-120k', 'standard-part10-120k']    
     D = load_dataset("HuggingFaceM4/sun397", 'standard-part1-120k', trust_remote_code=True)
-    loader = lambda r, d_idx_to_category=d_idx_to_category: vipy.image.ImageCategory(array=np.array(r['img']), category=d_idx_to_category[str(r['label'])])
+    loader = lambda r, d_idx_to_category=d_idx_to_category: vipy.image.ImageCategory(array=np.array(r['image']), category=d_idx_to_category[str(r['label'])])
     return (vipy.dataset.Dataset(D['train'], id='sun397_train', loader=loader, strict=False), 
             vipy.dataset.Dataset(D['test'], id='sun397_test', loader=loader, strict=False),
             vipy.dataset.Dataset(D['other'], id='sun397_other', loader=loader, strict=False))            
 
 def flickr30k():
     """http://shannon.cs.illinois.edu/DenotationGraph/data/index.html"""
-    D = load_dataset("HuggingFaceM4/flickr30k", data_dir=vipy.util.tocache('flickr30k/flickr30k-images.tar.gz'))
+    D = load_dataset("lmms-lab/flickr30k")
+    loader = lambda r: vipy.image.ImageCategory(array=np.array(r['image']), category=str(r['caption'][0]), attributes={'caption':(r['caption']), 'sentid':r['sentids']})
+    return vipy.dataset.Dataset(D['test'], id='flickr30k', loader=loader, strict=False)
 
     
 def oxford_fgvc_aircraft():
