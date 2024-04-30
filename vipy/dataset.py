@@ -22,7 +22,6 @@ import itertools
 
 
 
-
 class Dataset():
     """vipy.dataset.Dataset() class
     
@@ -35,16 +34,22 @@ class Dataset():
 
     """
 
-    def __init__(self, objlist, id=None, loader=None, strict=True):
+    def __init__(self, dataset, id=None, loader=None, strict=True):
         assert loader is None or callable(loader)
-        assert strict is False or isinstance(objlist, (list, tuple, dict, set))
 
         self._id = id
-        self._loader = self._default_loader if loader is None else loader  # may not be serializable if lambda is provided        
-        self._objlist = objlist
+        self._ds = dataset
+        self._idx = list(range(len(dataset)))
+        self._loader = self._default_loader if loader is None else loader  # may not be serializable if lambda is provided                
 
+        if strict:
+            try:
+                self._ds[0]  # must be an object that supports indexing
+            except Exception as e:
+                raise ValueError('invalid dataset type')
+        
     def id(self, n=None):
-        """Set or return the dataset id"""
+        """Set or return the dataset id, useful for showing the name/split of the dataset in the representation string"""
         if n is None:
             return self._id
         else:
@@ -64,27 +69,26 @@ class Dataset():
 
     def __getitem__(self, k):
         if isinstance(k, int) or isinstance(k, np.uint64):
-            assert abs(k) < len(self._objlist), "invalid index"
-            x = self._objlist[int(k)]
-            return self._loader(x) if self._loader is not None else x
+            assert abs(k) < len(self._ds), "invalid index"
+            x = self._ds[self._idx[int(k)]]
+            return self._loader(x)
         elif isinstance(k, slice):
-            return [self._loader(x) if self._loader is not None else x for x in self._objlist[k.start:k.stop:k.step]]
+            return [self._loader(self._ds[k]) for k in self._idx[k.start:k.stop:k.step]]
         else:
             raise ValueError()
             
     def __len__(self):
-        return len(self._objlist)
+        return len(self._idx)
         
-        
-
+    def shuffle(self, seed=None):
+        """Permute elements in this dataset uniformly at random"""
+        self._idx = vipy.util.permutelist(self._idx, seed=seed)
+        return self
+    
     def list(self):
-        """Return the dataset as a list"""
+        """Return the dataset as a list, loading the entire dataset into memory"""
         return list(self)
 
-    def set(self):
-        """Return the dataset as a set"""
-        return set(self.list())
-    
     def tolist(self):
         """Alias for self.list()"""
         return list(self)
@@ -92,145 +96,83 @@ class Dataset():
     def to_list(self):
         """Alias for self.list()"""
         return list(self)
-        
-    def flatten(self):
-        """Convert dataset stored as a list of lists into a flat list"""
-        self._objlist = [o for objlist in self._objlist for o in vipy.util.tolist(objlist)]
-        return self
-
-    def istype(self, validtype):
-        """Return True if the all elements (or just the first element if strict=False) in the dataset are of type 'validtype'"""
-        return all([any([isinstance(v,t) for t in tolist(validtype)]) for v in self]) if self._istype_strict else any([isinstance(self[0],t) for t in tolist(validtype)])
-
+    
+    def set(self):
+        """Return the dataset as a set"""
+        return set(self.list())            
 
     def clone(self, shallow=False):
         """Return a deep copy of the dataset"""
         if shallow:
-            objlist = self._objlist
-            self._objlist = []  
+            ds = self._ds
+            self._ds = []  
             D = copy.deepcopy(self)
-            self._objlist = objlist  # restore
+            self._ds = ds  # restore
+            D._ds = ds  # shared dataset object reference
             return D
         else:
             return copy.deepcopy(self)
-
         
-    def countby(self, f):
+    def count(self, f):
+        """Counts for each element for which lamba returns true.  
+        
+        Args:
+            f: [lambda] if provided, count the number of elements that return true.  This is the same as len(self.filter(f)) without modifying the dataset.
+
+        Returns:
+            A dictionary of counts per category [if f is None]
+            A length of elements that satisfy f(v) = True [if f is not None]
+        """
         assert callable(f)
-        return len([v for v in self if f(v)])
+        return len([k for k in self._idx if f(self[k])])
 
-    def dedupe(self, key):
-        assert callable(key)
-        self._objlist = list({key(v):v for v in self}.values())
-        return self
+    def countby(self, f):
+        """alias for self.count"""
+        return self.count(f)
     
-    def union(self, other, key=None):
-        assert isinstance(other, Dataset), "invalid input"
-        if len(other) > 0:
-            try:
-                if other._loader is not None:
-                    other._loader(self._objlist[0])
-                if self._loader is not None:
-                    self._loader(other._objlist[0])
-                self._objlist = self._objlist + other._objlist  # compatible loaders
-            except:
-                self._objlist = self.list() + other.list()  # incompatible loaders
-                self._loader = None
-        return self.dedupe(key) if key is not None else self
-    
-    def difference(self, other, key):
-        assert isinstance(other, Dataset), "invalid input"
-        idset = set([key(v) for v in self]).difference([key(v) for v in other])   # in A but not in B
-        self._objlist = [v for v in self if key(v) in idset]
-        return self
-        
-    def has(self, val, key):
-        assert callable(key)
-        return any([key(obj) == val for obj in self])
-
-    def replace(self, other, key):
-        """Replace elements in self with other with equality detemrined by the key lambda function"""
-        assert isinstance(other, Dataset), "invalid input"
-        assert callable(key)
-        d = {key(v):v for v in other}
-        self._objlist = [v if key(v) not in d else d[key(v)] for v in self]
-        return self
 
     def filter(self, f):
         """In place filter with lambda function f, keeping those elements obj where f(obj) evaluates true"""
         assert callable(f)
-        self._objlist = [v for v in self if f(v)]
-        return self
-
-    def valid(self):
-        return self.filter(lambda v: v is not None)
-
-    def takefilter(self, f, n=1):
-        """Apply the lambda function f and return n elements in a list where the filter lambda returns true
-        
-        Args:
-            f: [lambda] If f(x) returns true, then keep
-            n: [int >= 0] The number of elements to take
-        
-        Returns:
-            [n=0] Returns empty list
-            [n=1] Returns singleton element
-            [n>1] Returns list of elements of at most n such that each element f(x) is True            
-        """
-        objlist = [obj for obj in self if f(obj)]
-        return [] if (len(objlist) == 0 or n == 0) else (objlist[0] if n==1 else objlist[0:n])
-
-    def takelist(self, n, seed=None):
-        """Take n elements and return list.  The elements are loaded and not cloned."""
-        assert n >= 0, "Invalid length"
-        K = list(range(len(self))) 
-        if seed is not None:
-            assert isinstance(seed, int), "integer required"
-            np.random.seed(seed)            
-        outlist = [self[int(k)] for k in np.random.permutation(K)[0:n]]  # native python int
-        if seed is not None:
-            np.random.seed()
-        return outlist
-
-    def load(self):
-        """Load the entire dataset into memory.  This is useful for creating in-memory datasets from lazy load datasets"""
-        self._objlist = self.list()
-        self._loader = None  # all preprocessing has been performed
+        self._idx = [k for k in self._idx if f(self[k])]
         return self
 
     def take(self, n, seed=None):
         """Randomlly Take n elements from the dataset, and return a dataset.  If seed=int, take will return the same results each time."""
         assert isinstance(n, int) and n>0
         D = self.clone(shallow=True)
-        D._objlist = [self._objlist[int(k)] for k in np.random.permutation(list(range(len(self))))[0:n]]  # do not run loader
+        D._idx = vipy.util.permutelist(self._idx, seed=seed)[0:n]  # do not run loader
         return D
+    
+    def takelist(self, n, seed=None):
+        """Take n elements and return list.  The elements are loaded and not cloned."""
+        return self.take(n, seed).list()
 
     def takeone(self, seed=None):
         """Randomly take one element from the dataset and return a singleton"""
-        D = self.take(n=1, seed=seed)
-        return D[0] if len(D)>0 else None
+        return self.takelist(n=1, seed=seed)[0] if len(D)>0 else None
 
     def take_fraction(self, p):
         """Randomly take a percentage of the dataset"""
-        assert p>0 and p<=1
+        assert p>=0 and p<=1
         return self.take(n=int(len(self)*p))
     
-    def shuffle(self):
-        """Permute elements in this dataset uniformly at random"""
-        self._objlist = vipy.util.permutelist(self._objlist)
-        return self
+    def load(self):
+        """Load the entire dataset into memory.  This is useful for creating in-memory datasets from lazy load datasets"""
+        self._ds = self.list()
+        self._loader = self._default_loader  # all preprocessing has been performed
+        return self    
 
     def chunk(self, n):
         """Yield n chunks as dataset.  Last chunk will be ragged"""
-        for (k,V) in enumerate(vipy.util.chunkgen(self._objlist, n)):
-            yield Dataset(V, loader=self._loader)
+        for (k,V) in enumerate(vipy.util.chunkgen(self, n)):
+            yield Dataset(V, id=('%s_%d' % (self.id(), k)) if self.id() is not None else None)  # loaded
 
     def minibatch(self, n, ragged=True):
         """Yield list chunks of size n of this dataset.  Last chunk will be ragged if ragged=True, else skipped"""
-        for (k,V) in enumerate(vipy.util.chunkgenbysize(self._objlist, n)):
+        for (k,V) in enumerate(vipy.util.chunkgenbysize(self, n)):
             if ragged or len(V) == n:
-                yield Dataset(V, loader=self._loader).list()  # triggers load 
-
+                yield Dataset(V, id=('%s_%d' % (self.id(), k)) if self.id() is not None else None)
     
     def split(self, trainfraction=0.9, valfraction=0.1, testfraction=0, seed=None):
         """Split the dataset into the requested fractions.  
@@ -249,23 +191,21 @@ class Dataset():
         assert testfraction >=0 and testfraction <= 1
         assert trainfraction + valfraction + testfraction == 1.0
         
-        if seed is not None:
-            np.random.seed(seed)  # deterministic
-
-        idx = list(range(len(self)))
-        np.random.shuffle(idx)
+        idx = vipy.util.permutelist(range(len(self)), seed=seed)
         (testidx, validx, trainidx) = vipy.util.dividelist(idx, (testfraction, valfraction, trainfraction))
             
         trainset = self.clone(shallow=True)
-        trainset._objlist = [self._objlist[int(k)] for k in trainidx]  # do not run loader
-        valset = self.clone(shallow=True)
-        valset._objlist = [self._objlist[int(k)] for k in validx]  # do not run loader
-        testset = self.clone(shallow=True)
-        testset._objlist = [self._objlist[int(k)] for k in testidx]  # do not run loader
+        trainset._idx = trainidx
+        trainset.id('%s_train' % self.id() if self.id() is not None else None)
         
-        if seed is not None:
-            np.random.seed()  # re-initialize seed
-
+        valset = self.clone(shallow=True)
+        valset._idx = validx
+        valset.id('%s_val' % self.id() if self.id() is not None else None)
+        
+        testset = self.clone(shallow=True)
+        testset._idx = testidx
+        testset.id('%s_test' % self.id() if self.id() is not None else None)
+        
         return (trainset,valset,testset)
 
     def map(self, f_map, id=None, strict=False, ascompleted=True, ordered=False):        
@@ -302,10 +242,9 @@ class Dataset():
         f_serialize = lambda v: v
         f_deserialize = lambda x: x
         f_catcher = lambda f, *args, **kwargs: vipy.util.loudcatcher(f, '[vipy.dataset.Dataset.map]: ', *args, **kwargs)  # catch exceptions when executing lambda, print errors and return (True, result) or (False, exception)
-        f_loader = self._loader if self._loader is not None else lambda x: x
-        S = [f_serialize(v) for v in self._objlist]  # local serialization
+        S = [f_serialize(v) for v in self]  # local load and serialization
         B = Batch(vipy.util.chunklist(S, 128), strict=strict, as_completed=ascompleted, warnme=False, minscatter=128, ordered=ordered)
-        f = lambda x, f_loader=f_loader, f_serializer=f_serialize, f_deserializer=f_deserialize, f_map=f_map, f_catcher=f_catcher: f_serializer(f_catcher(f_map, f_loader(f_deserializer(x))))  # with closure capture
+        f = lambda x, f_serializer=f_serialize, f_deserializer=f_deserialize, f_map=f_map, f_catcher=f_catcher: f_serializer(f_catcher(f_map, f_deserializer(x)))  # with closure capture
         S = B.map(lambda X,f=f: [f(x) for x in X]).result()  # chunked, with caught exceptions, may return empty list
 
         # Error handling
@@ -319,43 +258,12 @@ class Dataset():
         return Dataset(good, id=id)
     
     def localmap(self, f):
-        for (k,v) in enumerate(self):
-            self._objlist[k] = f(v)  # in-place update
-        return self
-
-    def flatmap(self, f):
-        self._objlist = [x for v in self for x in f(v)]
+        self._ds = [f(x) for x in self]  # triggers load, replaces dataset with in-memory transformed list
+        self._loader = self._default_loader
         return self
     
-    def count(self, f):
-        """Counts for each element for which lamba returns true.  
-        
-        Args:
-            f: [lambda] if provided, count the number of elements that return true.  This is the same as len(self.filter(f)) without modifying the dataset.
-
-        Returns:
-            A dictionary of counts per category [if f is None]
-            A length of elements that satisfy f(v) = True [if f is not None]
-        """
-        assert f is None or callable(f)
-        return len([v for v in self if f is None or f(v)])
-
-    def countby(self, f):
-        """Count the number of elements that return the same value from the lambda function"""
-        return self.count(f)
-
-    def repeat(self, n):
-        """Clone the elements in this dataset and repeat n times.  The length of the new dataset will be (n+1)*len(self)"""
-        D = self.clone()
-        for k in range(n):
-            D._objlist.extend(self.clone()._objlist)
-        return D
-    
-    def frequency(self, f):
-        """synonym for self.count"""
-        return self.count(f)
-              
-    def zip(self, other, sortkey=None):
+                 
+    def zip(self, other):
         """Zip two datasets.  Equivalent to zip(self, other).
 
         ```python
@@ -376,16 +284,94 @@ class Dataset():
         assert isinstance(other, Dataset)
         assert len(self) == len(other)
 
-        for (vi, vj) in zip(self.sort(sortkey), other.sort(sortkey)):
+        for (vi, vj) in zip(self, other):
             yield (vi, vj)
 
-    def sort(self, key):
+    def sort(self, f):
         """Sort the dataset in-place using the sortkey lambda function"""
-        if key is not None:
-            self._objlist.sort(key=lambda x: key(self._loader(x)))
+        if f is not None:
+            self._idx = sorted(self._idx, key=lambda k: f(self[k]))
         return self
                 
 
+class Union():
+    """vipy.dataset.Union() class
+    
+    Common class to manipulate groups of vipy.dataset.Dataset objects in parallel
+
+    Usage:
+    
+        >>> vipy.dataset.Union(D1, D2, D3, id='union')
+
+    """
+    
+    def __init__(self, *args, **kwargs):
+        assert all([isinstance(d, Dataset) for d in args])
+        self._ds = args
+        self._idx = [(i,j) for (i,d) in enumerate(self._ds) for j in range(len(d))]
+        self._id = kwargs['id'] if 'id' in kwargs else None
+        
+    def __len__(self):
+        return len(self._idx)
+
+    def __iter__(self):
+        for (i,j) in self._idx:
+            yield self._ds[i][j]
+
+    def __getitem__(self, k):
+        (i,j) = self._idx[k]
+        return self._ds[i][j]
+
+    def clone(self, shallow=False):
+        """Return a deep copy of the dataset"""
+        if shallow:
+            ds = self._ds
+            self._ds = []  
+            D = copy.deepcopy(self)
+            self._ds = ds  # restore
+            D._ds = ds  # shared dataset object reference
+            return D
+        else:
+            return copy.deepcopy(self)
+    
+    def __repr__(self):
+        return str('<vipy.dataset.Union: %slen=%d>' % (('id=%s, ' % self.id()) if self.id() is not None else '', len(self)))
+    
+    def id(self, n=None):
+        """Set or return the dataset id, useful for showing the name/split of the dataset in the representation string"""
+        if n is not None:
+            self._id = n
+            return self
+        return self._id
+    
+    def shuffle(self, seed=None):
+        self._idx = vipy.util.permutelist(self._idx, seed=seed)
+        return self
+
+    def list(self):
+        return list(self)
+    
+    def take(self, n, seed=None):
+        """Randomlly Take n elements from the dataset, and return a dataset.  If seed=int, take will return the same results each time."""
+        assert isinstance(n, int) and n>0
+        D = self.clone(shallow=True)
+        D._idx = vipy.util.permutelist(self._idx, seed=seed)[0:n]  # do not run loader
+        return D
+    
+    def minibatch(self, n, ragged=True):
+        """Yield list chunks of size n of this dataset.  Last chunk will be ragged if ragged=True, else skipped"""
+        for (k,V) in enumerate(vipy.util.chunkgenbysize(self, n)):
+            if ragged or len(V) == n:
+                yield Dataset(V, id=('%s_%d' % (self.id(), k)) if self.id() is not None else None)
+
+    def takeone(self):
+        return self[random.randint(0,len(self))]
+
+    def sample(self):
+        return self.takeone()
+
+    
+    
 class Vipyset(Dataset):
     """vipy.dataset.Vipyset() class
     
@@ -424,6 +410,8 @@ class Vipyset(Dataset):
         - lazy [bool]: If true, load all pkl or json files using the custom loader when accessed
 
     .. notes:: Be warned that using the jsondir constructor will load elements on demand, but there are some methods that require loading the entire dataset into memory, and will happily try to do so
+    .. notes:: This class may be deprecated in the future
+    
     """
 
     def __init__(self, objlist, id=None, loader=None, lazy=False):
@@ -436,6 +424,7 @@ class Vipyset(Dataset):
         self._lazy_loader = lazy
         #self._abspath = abspath
         #self._shuffler = 'uniform'
+        self._idx = list(range(len(objlist)))
         
         if isinstance(objlist, str) and (vipy.util.isjsonfile(objlist) or vipy.util.ispklfile(objlist) or vipy.util.ispklbz2(objlist)):
             self._objlist = vipy.util.load(objlist, abspath=abspath)
@@ -461,6 +450,10 @@ class Vipyset(Dataset):
             except Exception as e:
                 raise ValueError('Invalid dataset - Lazy load failed with error "%s"' % str(e))
 
+
+    def istype(self, validtype):
+        """Return True if the all elements (or just the first element if strict=False) in the dataset are of type 'validtype'"""
+        return all([any([isinstance(v,t) for t in tolist(validtype)]) for v in self]) if self._istype_strict else any([isinstance(self[0],t) for t in tolist(validtype)])
             
     def _isvipy(self):
         """Return True if all elements in the dataset are of type `vipy.video.Video` or `vipy.image.Image`"""        
@@ -1167,3 +1160,77 @@ class Vipyset(Dataset):
         vipy.visualize.videomontage(vidlist, mindim, mindim, gridrows=gridrows, gridcols=gridcols, framerate=framerate, max_duration=max_duration).saveas(outfile)
         return montage        
     
+    def dedupe(self, key):
+        assert callable(key)
+        self._ds = list({key(v):v for v in self}.values())
+        return self
+    
+    def union(self, other, key=None):
+        assert isinstance(other, Dataset), "invalid input"
+        if len(other) > 0:
+            try:
+                if other._loader is not None:
+                    other._loader(self._ds[0])
+                if self._loader is not None:
+                    self._loader(other._ds[0])
+                self._ds = self._ds + other._ds  # compatible loaders
+            except:
+                self._ds = self.list() + other.list()  # incompatible loaders
+                self._loader = None
+        return self.dedupe(key) if key is not None else self
+    
+    def difference(self, other, key):
+        assert isinstance(other, Dataset), "invalid input"
+        idset = set([key(v) for v in self]).difference([key(v) for v in other])   # in A but not in B
+        self._ds = [v for v in self if key(v) in idset]
+        return self
+        
+    def has(self, val, key):
+        assert callable(key)
+        return any([key(obj) == val for obj in self])
+
+    def replace(self, other, key):
+        """Replace elements in self with other with equality detemrined by the key lambda function"""
+        assert isinstance(other, Dataset), "invalid input"
+        assert callable(key)
+        d = {key(v):v for v in other}
+        self._ds = [v if key(v) not in d else d[key(v)] for v in self]
+        return self
+    
+    def valid(self):
+        return self.filter(lambda v: v is not None)
+
+    def takefilter(self, f, n):
+        """Apply the lambda function f and return n elements in a list where the filter lambda returns true
+        
+        Args:
+            f: [lambda] If f(x) returns true, then keep
+            n: [int >= 0] The number of elements to take
+        
+        Returns:
+            [n=0] Returns empty list
+            [n=1] Returns singleton element
+            [n>1] Returns list of elements of at most n such that each element f(x) is True            
+        """
+        objlist = [obj for obj in self if f(obj)]
+        return [] if (len(objlist) == 0 or n == 0) else (objlist[0] if n==1 else objlist[0:n])
+    
+    def flatmap(self, f):
+        self._ds = [x for v in self for x in f(v)]
+        return self
+
+    def repeat(self, n):
+        """Clone the elements in this dataset and repeat n times.  The length of the new dataset will be (n+1)*len(self)"""
+        D = self.clone()
+        for k in range(n):
+            D._ds.extend(self.clone()._ds)
+        return D
+
+    def frequency(self, f):
+        """synonym for self.count"""
+        return self.count(f)
+    
+    #def flatten(self):
+    #    """Convert dataset stored as a list of lists into a flat list"""
+    #    self._ds = [o for objlist in self._ds for o in vipy.util.tolist(objlist)]
+    #    return self

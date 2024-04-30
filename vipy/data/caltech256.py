@@ -1,17 +1,17 @@
 import os
 import vipy.downloader
 import vipy.dataset
-from vipy.util import remkdir
+from vipy.util import remkdir, tocache
 from vipy.image import ImageCategory
 
 
 URL = 'https://data.caltech.edu/records/nyy15-4j048/files/256_ObjectCategories.tar'
-SHA1 = None
+SHA1 = '2195e9a478cf78bd23a1fe51f4dabe1c33744a1c'
 
 
 class Caltech256(vipy.dataset.Dataset):
     """Caltech-256 dataset: https://data.caltech.edu/records/nyy15-4j048"""
-    def __init__(self, datadir):
+    def __init__(self, datadir=tocache('caltech256')):
         # Download (if not cached)
         self._datadir = remkdir(datadir)        
         if not os.path.exists(os.path.join(self._datadir, '256_ObjectCategories')):

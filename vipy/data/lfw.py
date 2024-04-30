@@ -1,6 +1,6 @@
 import os
 import numpy as np
-from vipy.util import remkdir, filetail, dirlist, imlist, readcsv
+from vipy.util import remkdir, filetail, dirlist, imlist, readcsv, tocache
 from vipy.image import ImageCategory
 import vipy.downloader
 
@@ -13,9 +13,9 @@ URL_PAIRS_VIEW2 = 'http://vis-www.cs.umass.edu/lfw/pairs.txt'
 
 
 class LFW(vipy.dataset.Dataset):
-    def __init__(self, datadir):
+    def __init__(self, datadir=tocache('lfw')):
         """Datadir contains the unpacked contents of LFW from $URL -> /path/to/lfw"""
-        self.lfwdir = remkdir(datadir)
+        self.lfwdir = remkdir(os.path.expanduser(datadir))
 
         if not os.path.exists(os.path.join(self.lfwdir, 'lfw.tgz')):
             self._download()

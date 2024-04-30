@@ -9,7 +9,7 @@ URLS = ['http://ai.stanford.edu/~jkrause/car196/cars_train.tgz',
 
 class StanfordCars(vipy.dataset.Dataset):
     """Project: https://ai.stanford.edu/~jkrause/cars/car_dataset.html"""
-    def __init__(self, datadir):
+    def __init__(self, datadir=vipy.util.tocache('stanford_cars')):
         self._datadir = vipy.util.remkdir(datadir)
 
         for url in URLS:

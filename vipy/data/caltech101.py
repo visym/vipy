@@ -1,5 +1,5 @@
 import os
-from vipy.util import remkdir
+from vipy.util import remkdir, tocache
 import vipy.downloader
 import vipy.dataset
 from vipy.image import ImageCategory
@@ -11,7 +11,7 @@ SHA1 = 'd1cc0e3686b03d5e1a7e9b734c6d04f60857d674'
 
 class Caltech101(vipy.dataset.Dataset):
     """Caltech-101 dataset: https://data.caltech.edu/records/mzrjq-6wc02"""
-    def __init__(self, datadir):
+    def __init__(self, datadir=tocache('caltech101')):
         """Caltech101, provide a datadir='/path/to/store/caltech101' """
 
         # Download

@@ -3,12 +3,12 @@ import vipy
 
 
 URL = 'http://data.vision.ee.ethz.ch/cvl/food-101.tar.gz'
-SHA1 = None
+SHA1 = 'ed21dfefc61fbe39294b9441739f7ac91b343882'
 
 
 class Food101(vipy.dataset.Dataset):
     """Project: https://data.vision.ee.ethz.ch/cvl/datasets_extra/food-101/"""
-    def __init__(self, datadir):
+    def __init__(self, datadir=vipy.util.tocache('food101')):
 
         # Download
         self._datadir = vipy.util.remkdir(datadir)        

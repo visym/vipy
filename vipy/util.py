@@ -301,11 +301,11 @@ def hascache():
 
 def cache():
     """If the VIPY_CACHE environment variable set, return it otherwise return tempdir()"""
-    return remkdir(os.environ['VIPY_CACHE']) if hascache() else tempdir()
+    return remkdir(os.path.expanduser(os.environ['VIPY_CACHE'])) if hascache() else tempdir()
 
 def tocache(filename):
     """If the VIPY_CACHE environment variable is set, then return the filename=/path/to/file.ext in the cache as VIPY_CACHE/file.ext.  Otherwise, return the file in the system temp"""
-    return os.path.join(remkdir(os.environ['VIPY_CACHE']) if hascache() else tempdir(), filetail(filename))
+    return os.path.join(cache(), filetail(filename))
 
 def seconds_to_MMSS_colon_notation(sec):
     """Convert integer seconds into MM:SS colon format.  If sec=121, then return '02:01'. """
@@ -488,12 +488,12 @@ def softmax(x, temperature=1.0):
     return z / np.sum(z, axis=1).reshape(x.shape[0], 1)
 
 
-def permutelist(inlist, deterministic=False, seed=42):
+def permutelist(inlist, seed=None):
     """randomly permute list order.  Permutation is deterministic (same permutation on multiple calls) if specified"""
-    if deterministic:
+    if seed is not None:
         np.random.seed(seed)  # deterministic        
     outlist = [inlist[k] for k in np.random.permutation(list(range(0, len(inlist))))]
-    if deterministic:
+    if seed is not None:
         np.random.seed()  # re-init randomness
     return outlist
 

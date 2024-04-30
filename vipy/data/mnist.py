@@ -1,6 +1,6 @@
 import os
 import numpy as np
-from vipy.util import remkdir
+from vipy.util import remkdir, tocache
 import gzip
 import struct
 from array import array
@@ -18,9 +18,9 @@ TEST_LBL_SHA1 = '763e7fa3757d93b0cdec073cef058b2004252c17'
 
 
 class MNIST():
-    def __init__(self, outdir):
+    def __init__(self, outdir=tocache('mnist')):
         """download URLS above to outdir, then run export()"""
-        self.outdir = remkdir(outdir)
+        self.outdir = remkdir(os.path.expanduser(outdir))
         if not self._downloaded():
             print('[vipy.data.mnist]: downloading MNIST to "%s"' % self.outdir)
             self._wget()

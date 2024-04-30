@@ -1,14 +1,14 @@
 import os
-from vipy.util import remkdir, readjson, groupbyasdict
+from vipy.util import remkdir, readjson, groupbyasdict, tocache
 import vipy.downloader
 from vipy.video import VideoCategory
 import numpy as np
 
 
 class Kinetics700(object):
-    def __init__(self, datadir):
+    def __init__(self, datadir=tocache('kinetics700')):
         """Kinetics, provide a datadir='/path/to/store/kinetics' """
-        self.datadir = remkdir(datadir)
+        self.datadir = remkdir(os.path.expanduser(datadir))
         self._url = 'https://storage.googleapis.com/deepmind-media/Datasets/kinetics700.tar.gz'
         self._name = 'kinetics700'
         if not self.isdownloaded():
@@ -63,16 +63,16 @@ class Kinetics700(object):
 
         
 class Kinetics600(Kinetics700):
-    def __init__(self, datadir):
+    def __init__(self, datadir=tocache('kinetics600')):
         """Kinetics, provide a datadir='/path/to/store/kinetics' """
-        self.datadir = remkdir(datadir)
+        self.datadir = remkdir(os.path.expanduser(datadir))
         self._url = 'https://storage.googleapis.com/deepmind-media/Datasets/kinetics600.tar.gz'
         self._name = 'kinetics600'
 
 
 class Kinetics400(Kinetics700):
-    def __init__(self, datadir):
+    def __init__(self, datadir=tocache('kinetics400')):
         """Kinetics, provide a datadir='/path/to/store/kinetics' """
-        self.datadir = remkdir(datadir)
+        self.datadir = remkdir(os.path.expanduser(datadir))
         self._url = 'https://storage.googleapis.com/deepmind-media/Datasets/kinetics400.tar.gz'
         self._name = 'kinetics400'
