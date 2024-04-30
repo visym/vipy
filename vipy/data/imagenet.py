@@ -1,6 +1,6 @@
 import os
 import vipy
-from vipy.util import readcsv, remkdir, filepath, islist, filetail, filebase, filefull
+from vipy.util import readcsv, remkdir, filepath, islist, filetail, filebase, filefull, tocache
 from vipy.image import ImageDetection, ImageCategory
 import xml.etree.ElementTree as ET
 
@@ -23,7 +23,7 @@ IMAGENET21K_WORDNET_LEMMAS = 'https://storage.googleapis.com/bit_models/imagenet
 
 class Imagenet2012():
     """By downloading, you agree to the ImageNet terms: https://image-net.org/download-images.php#term"""
-    def __init__(self, datadir):
+    def __init__(self, datadir=tocache('imagenet2012')):
         self._datadir = remkdir(datadir)
 
         for url in URLS_2012:
@@ -82,7 +82,7 @@ class Imagenet2012():
                 
 class Imagenet21K_Resized(vipy.dataset.Dataset):
     """https://image-net.org/download-images.php, imagenet-21K 2021 release (resized)"""
-    def __init__(self, datadir, aslemma=True):
+    def __init__(self, datadir=tocache('imagenet21k_resized'), aslemma=True):
         self._datadir = vipy.util.remkdir(datadir)
         
         if not os.path.exists(os.path.join(datadir, 'imagenet21k_resized.tar.gz')):
@@ -101,7 +101,7 @@ class Imagenet21K_Resized(vipy.dataset.Dataset):
         imlist = [vipy.image.ImageCategory(filename=f,
                                            attributes={'wordnet_id':vipy.util.filebase(vipy.util.filepath(f))},
                                            category=f_category(vipy.util.filebase(vipy.util.filepath(f)))) for f in vipy.util.findimages(os.path.join(datadir, 'imagenet21k_resized'))]
-        super().__init__(imlist, id='imagenet21k')
+        super().__init__(imlist, id='imagenet21k_resized')
 
     def synset_to_category(self, s=None):
         return self._synset_to_categorylist if s is None else self._synset_to_categorylist[s]
@@ -109,7 +109,7 @@ class Imagenet21K_Resized(vipy.dataset.Dataset):
 
 class Imagenet21K(vipy.dataset.Dataset):
     """https://image-net.org/download-images.php, imagenet-21K 2021 winter release"""
-    def __init__(self, datadir, aslemma=True):
+    def __init__(self, datadir=tocache('imagenet21k'), aslemma=True):
         self._datadir = vipy.util.remkdir(datadir)
         
         if not os.path.exists(os.path.join(datadir, 'winter21_whole.tar.gz')):

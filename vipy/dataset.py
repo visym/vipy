@@ -34,13 +34,15 @@ class Dataset():
 
     """
 
-    def __init__(self, dataset, id=None, loader=None, strict=True):
+    def __init__(self, dataset, id=None, loader=None, strict=True, preprocessor=None):
         assert loader is None or callable(loader)
+        assert preprocessor is None or callable(preprocessor)        
 
         self._id = id
         self._ds = dataset
         self._idx = list(range(len(dataset)))
-        self._loader = self._default_loader if loader is None else loader  # may not be serializable if lambda is provided                
+        self._loader = loader  # may not be serializable if lambda is provided
+        self._preprocessor = preprocessor
 
         if strict:
             try:
@@ -55,11 +57,12 @@ class Dataset():
         else:
             self._id = n
             return self
-        
-    @staticmethod
-    def _default_loader(x):
-        return x
 
+    def preprocessor(self, f):
+        assert callable(f)
+        self._preprocessor = f
+        return self
+    
     def __repr__(self):
         return str('<vipy.dataset.Dataset: %slen=%d, type=%s>' % (('id=%s, ' % self.id()) if self.id() is not None else '', len(self), str(type(self[0])) if len(self)>0 else 'None'))
 
@@ -71,9 +74,14 @@ class Dataset():
         if isinstance(k, int) or isinstance(k, np.uint64):
             assert abs(k) < len(self._ds), "invalid index"
             x = self._ds[self._idx[int(k)]]
-            return self._loader(x)
+            x = self._loader(x) if self._loader is not None else x
+            x = self._preprocessor(x) if self._preprocessor is not None else x
+            return x
         elif isinstance(k, slice):
-            return [self._loader(self._ds[k]) for k in self._idx[k.start:k.stop:k.step]]
+            X = [self._ds[k] for k in self._idx[k.start:k.stop:k.step]]
+            X = [self._loader(x) for x in X] if self._loader is not None else X
+            X = [self._preprocessor(x) for x in X] if self._preprocessor is not None else X
+            return X
         else:
             raise ValueError()
             
@@ -160,7 +168,8 @@ class Dataset():
     def load(self):
         """Load the entire dataset into memory.  This is useful for creating in-memory datasets from lazy load datasets"""
         self._ds = self.list()
-        self._loader = self._default_loader  # all preprocessing has been performed
+        self._loader = None   # all done
+        self._preprocessor = None  # all done
         return self    
 
     def chunk(self, n):
@@ -196,15 +205,12 @@ class Dataset():
             
         trainset = self.clone(shallow=True)
         trainset._idx = trainidx
-        trainset.id('%s_train' % self.id() if self.id() is not None else None)
         
         valset = self.clone(shallow=True)
         valset._idx = validx
-        valset.id('%s_val' % self.id() if self.id() is not None else None)
         
         testset = self.clone(shallow=True)
         testset._idx = testidx
-        testset.id('%s_test' % self.id() if self.id() is not None else None)
         
         return (trainset,valset,testset)
 
@@ -239,10 +245,10 @@ class Dataset():
         from vipy.batch import Batch   # requires pip install vipy[all]
 
         # Distributed map using vipy.batch
-        f_serialize = lambda v: v
+        f_serialize = lambda x: x
         f_deserialize = lambda x: x
         f_catcher = lambda f, *args, **kwargs: vipy.util.loudcatcher(f, '[vipy.dataset.Dataset.map]: ', *args, **kwargs)  # catch exceptions when executing lambda, print errors and return (True, result) or (False, exception)
-        S = [f_serialize(v) for v in self]  # local load and serialization
+        S = [f_serialize(v) for v in self]  # local load, preprocess and serialize
         B = Batch(vipy.util.chunklist(S, 128), strict=strict, as_completed=ascompleted, warnme=False, minscatter=128, ordered=ordered)
         f = lambda x, f_serializer=f_serialize, f_deserializer=f_deserialize, f_map=f_map, f_catcher=f_catcher: f_serializer(f_catcher(f_map, f_deserializer(x)))  # with closure capture
         S = B.map(lambda X,f=f: [f(x) for x in X]).result()  # chunked, with caught exceptions, may return empty list
@@ -259,10 +265,10 @@ class Dataset():
     
     def localmap(self, f):
         self._ds = [f(x) for x in self]  # triggers load, replaces dataset with in-memory transformed list
-        self._loader = self._default_loader
+        self._loader = None  # all done
+        self._preprocssor = None   # all done
         return self
-    
-                 
+                     
     def zip(self, other):
         """Zip two datasets.  Equivalent to zip(self, other).
 
@@ -343,6 +349,10 @@ class Union():
             self._id = n
             return self
         return self._id
+
+    def datasets(self):
+        """Return the dataset union elements, useful for generating unions of unions"""
+        return list(self._ds)
     
     def shuffle(self, seed=None):
         self._idx = vipy.util.permutelist(self._idx, seed=seed)

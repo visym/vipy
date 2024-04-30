@@ -1,7 +1,7 @@
 import os
 import vipy.downloader
 import vipy.dataset
-from vipy.util import remkdir
+from vipy.util import remkdir, tocache
 from vipy.image import ImageCategory
 import scipy.io
 
@@ -13,7 +13,7 @@ SHA1 = None
 
 class Flowers102(vipy.dataset.Dataset):
     """Project: https://www.robots.ox.ac.uk/~vgg/data/flowers/102"""
-    def __init__(self, datadir):
+    def __init__(self, datadir=tocache('flowers102')):
         # Download (if not cached)
         self._datadir = remkdir(datadir)        
         if not os.path.exists(os.path.join(self._datadir, '102flowers.tgz')):

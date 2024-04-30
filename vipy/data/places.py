@@ -10,7 +10,7 @@ URL = ['http://data.csail.mit.edu/places-private/places365/train_large_places365
 
 class Places356():
     """Project: http://places2.csail.mit.edu/download-private.html"""
-    def __init__(self, datadir):
+    def __init__(self, datadir=vipy.util.tocache('places365')):
         self._datadir = vipy.util.remkdir(datadir)
         for (url, md5) in zip(URL, MD5):
             if not os.path.exists(os.path.join(self._datadir, vipy.util.filetail(url))):

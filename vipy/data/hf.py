@@ -1,3 +1,4 @@
+import os
 import vipy
 import numpy as np
 import json
@@ -28,14 +29,64 @@ def cifar100():
             vipy.dataset.Dataset(D['test'], id='cifar100_test', loader=loader, strict=False))
     
 
+def oxford_pets():
+    """https://www.robots.ox.ac.uk/~vgg/data/pets/"""
+    D = load_dataset("visual-layer/vl-oxford-iiit-pets")
+    loader = lambda r: vipy.image.ImageCategory(array=np.array(r['image']), category=str(r['label']), attributes={'dog':bool(r['dog']), 'cat':not bool(r['dog'])})
+    return vipy.dataset.Dataset(D['train'], id='oxford_pets', loader=loader, strict=False)
+
     
 def sun397():
-    """Sub-397 dataset: https://vision.princeton.edu/projects/2010/SUN/"""
+    """Sun-397 dataset: https://vision.princeton.edu/projects/2010/SUN/"""
 
-    configs = ['standard-part1-120k', 'standard-part2-120k', 'standard-part3-120k', 'standard-part4-120k', 'standard-part5-120k', 'standard-part6-120k', 'standard-part7-120k', 'standard-part8-120k', 'standard-part9-120k', 'standard-part10-120k']
+    jsonfile = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'sun397.json')
+    d_idx_to_category = vipy.util.readjson(jsonfile)
     
+    configs = ['standard-part1-120k', 'standard-part2-120k', 'standard-part3-120k', 'standard-part4-120k', 'standard-part5-120k', 'standard-part6-120k', 'standard-part7-120k', 'standard-part8-120k', 'standard-part9-120k', 'standard-part10-120k']    
     D = load_dataset("HuggingFaceM4/sun397", 'standard-part1-120k', trust_remote_code=True)
-    loader = lambda r: vipy.image.ImageCategory(array=np.array(r['img']), category=r['label'])
+    loader = lambda r, d_idx_to_category=d_idx_to_category: vipy.image.ImageCategory(array=np.array(r['img']), category=d_idx_to_category[str(r['label'])])
     return (vipy.dataset.Dataset(D['train'], id='sun397_train', loader=loader, strict=False), 
-            vipy.dataset.Dataset(D['test'], id='sun397_test', loader=loader, strict=False))
+            vipy.dataset.Dataset(D['test'], id='sun397_test', loader=loader, strict=False),
+            vipy.dataset.Dataset(D['other'], id='sun397_other', loader=loader, strict=False))            
+
+def flickr30k():
+    """http://shannon.cs.illinois.edu/DenotationGraph/data/index.html"""
+    D = load_dataset("HuggingFaceM4/flickr30k", data_dir=vipy.util.tocache('flickr30k/flickr30k-images.tar.gz'))
+
     
+def oxford_fgvc_aircraft():
+    """https://www.robots.ox.ac.uk/~vgg/data/fgvc-aircraft/"""
+    jsonfile = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'oxford_fgvc_aircraft.json')
+    d_idx_to_category = vipy.util.readjson(jsonfile)
+    
+    D = load_dataset("HuggingFaceM4/FGVC-Aircraft", trust_remote_code=True)
+    loader = lambda r, d_idx_to_category=d_idx_to_category: vipy.image.ImageDetection(array=np.array(r['image']),
+                                                                                      category=d_idx_to_category['family'][str(r['family'])],
+                                                                                      xmin=r['bbox']['xmin'], ymin=r['bbox']['ymin'], xmax=r['bbox']['xmax'], ymax=r['bbox']['ymax'],
+                                                                                      attributes={'manufacturer':d_idx_to_category['manufacturer'][str(r['manufacturer'])], 'variant':d_idx_to_category['variant'][str(r['variant'])]})
+    return vipy.dataset.Dataset(D['train'], id='oxford_fgvc_aircraft', loader=loader, strict=False)
+
+
+def pascal_voc():
+    """http://host.robots.ox.ac.uk/pascal/VOC/"""
+    D = load_dataset("HuggingFaceM4/pascal_voc")
+
+def imagenet():
+    jsonfile = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'imagenet.json')
+    d_idx_to_category = vipy.util.readjson(jsonfile)['index']
+    D = load_dataset("imagenet-1k", trust_remote_code=True)
+    loader = lambda r, d_idx_to_category=d_idx_to_category: vipy.image.ImageCategory(array=np.array(r['img']), category=d_idx_to_category[str(r['label'])])
+    return (vipy.dataset.Dataset(D['train'], id='imagenet-1k_train', loader=loader, strict=False), 
+            vipy.dataset.Dataset(D['test'], id='imagenet-1k_test', loader=loader, strict=False))
+    
+def yfcc100m():
+    """https://multimediacommons.wordpress.com/yfcc100m-core-dataset/"""
+    dataset = load_dataset("dalle-mini/YFCC100M_OpenAI_subset")
+    
+
+def open_images_v7():
+    """https://storage.googleapis.com/openimages/web/download_v7.html"""
+
+    # https://github.com/cvdfoundation/open-images-dataset#download-full-dataset-with-google-storage-transfer
+    # https://github.com/Tencent/tencent-ml-images?tab=readme-ov-file#download-images    
+    dataset = load_dataset("dalle-mini/open-images")

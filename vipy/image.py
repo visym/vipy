@@ -2539,14 +2539,6 @@ class ImageDetection(Image, vipy.object.Detection):
                  xmin=None, xmax=None, ymin=None, ymax=None, width=None, height=None, 
                  xcentroid=None, ycentroid=None, category=None, xywh=None, bbox=None, id=True):
 
-        # vipy.image.Image class inheritance
-        Image.__init__(self,
-                       filename=filename,
-                       url=url,
-                       attributes=attributes,
-                       array=array,
-                       colorspace=colorspace)
-        
         # vipy.object.Detection inheritance
         vipy.object.Detection.__init__(self,
                                        xmin=xmin,
@@ -2559,8 +2551,17 @@ class ImageDetection(Image, vipy.object.Detection):
                                        ycentroid=ycentroid,
                                        xywh=xywh if xywh is not None else (bbox.xywh() if isinstance(bbox, BoundingBox) else None),                                       
                                        category=category,
+                                       attributes=attributes,
                                        id=id)
-                
+
+        # vipy.image.Image class inheritance
+        Image.__init__(self,
+                       filename=filename,
+                       url=url,
+                       attributes=attributes,
+                       array=array,
+                       colorspace=colorspace)
+        
     def __repr__(self):
         return str('<vipy.image.imagedetection: %s, %s>' % (Image.__repr__(self), vipy.object.Detection.__repr__(self)))
         

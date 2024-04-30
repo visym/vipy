@@ -304,8 +304,8 @@ def cache():
     return remkdir(os.path.expanduser(os.environ['VIPY_CACHE'])) if hascache() else tempdir()
 
 def tocache(filename):
-    """If the VIPY_CACHE environment variable is set, then return the filename=/path/to/file.ext in the cache as VIPY_CACHE/file.ext.  Otherwise, return the file in the system temp"""
-    return os.path.join(cache(), filetail(filename))
+    """If the VIPY_CACHE environment variable is set, then return the filename=subpath/to/file.ext in the cache as VIPY_CACHE/subpath/to/file.ext.  Otherwise, return the file in the system temp"""
+    return os.path.join(cache(), filename)
 
 def seconds_to_MMSS_colon_notation(sec):
     """Convert integer seconds into MM:SS colon format.  If sec=121, then return '02:01'. """
