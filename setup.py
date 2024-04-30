@@ -66,8 +66,8 @@ setup(
     ],
     extras_require={
         'fast': ['ujson', 'numba'],
-        'all': ['scikit-build', 'scipy', 'opencv-python', 'torch', 'ipython', 'scikit-learn', 'boto3', 'youtube-dl', 'dask', 'distributed', 'h5py', 'nltk', 'bs4', 'pyyaml', 'pytest', 'paramiko', 'scp', 'ujson', 'pdoc3', 'dill', 'pillow', 'numpy', 'matplotlib','ffmpeg-python','heyvi'],
-        'complete': ['scikit-build', 'scipy', 'opencv-python', 'torch', 'ipython', 'scikit-learn', 'boto3', 'youtube-dl', 'dask', 'distributed', 'h5py', 'nltk', 'bs4', 'pyyaml', 'pytest', 'paramiko', 'scp', 'ujson', 'numba', 'pdoc3', 'dill', 'pillow', 'numpy', 'matplotlib','ffmpeg-python','heyvi']
+        'all': ['scikit-build', 'scipy', 'opencv-python', 'torch', 'ipython', 'scikit-learn', 'boto3', 'youtube-dl', 'dask', 'distributed', 'h5py', 'nltk', 'bs4', 'pyyaml', 'pytest', 'paramiko', 'scp', 'ujson', 'pdoc3', 'dill', 'pillow', 'numpy', 'matplotlib','ffmpeg-python','heyvi','datasets'],
+        'complete': ['scikit-build', 'scipy', 'opencv-python', 'torch', 'ipython', 'scikit-learn', 'boto3', 'youtube-dl', 'dask', 'distributed', 'h5py', 'nltk', 'bs4', 'pyyaml', 'pytest', 'paramiko', 'scp', 'ujson', 'numba', 'pdoc3', 'dill', 'pillow', 'numpy', 'matplotlib','ffmpeg-python','heyvi','datasets']
         },
     keywords=['computer vision machine learning ML CV privacy video image'],    
     classifiers=[

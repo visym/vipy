@@ -441,9 +441,9 @@ def tryjson(jsonfile):
     except Exception as e:
         return False
 
-def groupby(inset, keyfunc):
-    """groupby on unsorted inset"""
-    return itertools_groupby(sorted(inset, key=keyfunc), keyfunc)
+def groupby(initer, keyfunc):
+    """groupby on unsorted input iterable (initer)"""
+    return itertools_groupby(sorted(initer, key=keyfunc), keyfunc)
 
 
 def vipy_groupby(inset, keyfunc):
@@ -455,31 +455,31 @@ def groupbyasdict(togroup, keyfunc, valuefunc=lambda x: x):
     """Return dictionary of keys and lists from groupby on unsorted inset, where keyfunc is a lambda function on elements in inset
     
     Args:
-        togroup: a list of elements to group
+        togroup: an iteraable of elements to group
         keyfunc:  a lambda function to operate on elements of togroup such that the value returned from the lambda is the equality key for grouping
         valuefunc: a lambda function to operate on elements of to group such that the value returned from the lambda is a transform of the element to be grouped
     Returns:
         A dictionary with unique keys returned from keyfunc, and values are lists of elements in togroup with the same key
 
     """
-    return {k: list([valuefunc(vi) for vi in v]) for (k, v) in groupby(togroup, keyfunc)}
+    return {k: [valuefunc(vi) for vi in v] for (k, v) in groupby(togroup, keyfunc)}
 
-def countby(inset, keyfunc=lambda x: x):
+def countby(inlist, keyfunc=lambda x: x):
     """Return dictionary of keys and group sizes for a grouping of the input list by keyfunc lambda function, sorted by increasing count""" 
-    return {k:v for (k,v) in sorted({k:len(v) for (k,v) in groupbyasdict(inset, keyfunc).items()}.items(), key=lambda x: x[1])}
+    return {k:v for (k,v) in sorted({k:len(v) for (k,v) in groupbyasdict(inlist, keyfunc).items()}.items(), key=lambda x: x[1])}
 
 def sumby(inlist, keyfunc=lambda x: x[0], valuefunc=lambda x: x[1]):
     """Given an inlist of tuples [('a',1), ('a',2), ('b',4)], group by the keyfunc, then sum over the values in valuefunc.  Returns ductionary over keys, sum reduced over valuefunc.  Example returns {'a':3,'b':4}."""
     return {k:sum([valuefunc(vi) for vi in v]) for (k,v) in groupbyasdict(inlist, keyfunc).items()}
 
-def most_frequent(inset, topk=1):
+def most_frequent(inlist, topk=1):
     """Return the most frequent element as determined by element equality"""
-    ranked = list(countby(inset).keys())
+    ranked = list(countby(inlist).keys())
     return ranked[-topk:] if topk is not None else ranked
 
-def countbyasdict(inset, keyfunc):
+def countbyasdict(inlist, keyfunc):
     """Alias for `vipy.util.countby`"""
-    return countby(inset, keyfunc)
+    return countby(inlist, keyfunc)
 
 def softmax(x, temperature=1.0):
     """Row-wise softmax"""
@@ -562,12 +562,34 @@ def chunklist(inlist, num_chunks):
     return [inlist[i * n:min(i * n + n, len(inlist))] for i in range(0, m)]
 
 
+def chunkgen(inlist, num_chunks):
+    """Yield a list of lists of length num_chunks, such that each element is a list containing a sequential chunk of the original list.
+    
+    ```python
+    A = next(vipy.util.chunkgen(inlist, num_chunks=3))
+    assert len(A) == len(inlist) // 3
+    ```
+    .. note::  The last chunk will be larger for ragged chunks
+    """
+    (m, n) = (num_chunks, int(np.ceil(float(len(inlist)) / float(num_chunks))))
+    for i in range(0,m):
+        yield inlist[i * n:min(i * n + n, len(inlist))]
+
+
 def chunklistbysize(inlist, size_per_chunk):
     """Convert list into a list of lists such that each element is a list
     containing a sequential chunk of the original list of length
     size_per_chunk"""
     assert size_per_chunk >= 1
     return [inlist[i:i+size_per_chunk] for i in range(0,len(inlist),size_per_chunk)]
+
+def chunkgenbysize(inlist, size_per_chunk):
+    """Yield a list of lists such that each element is a list
+    containing a sequential chunk of the original list of length
+    size_per_chunk"""
+    assert size_per_chunk >= 1
+    for i in range(0,len(inlist),size_per_chunk):
+        yield [inlist[i:i+size_per_chunk]] 
 
 def triplets(inlist):
     """Yield triplets (1,2,3), (4,5,6), ...  from list inlist=[1,2,3,4,5,6,...]"""

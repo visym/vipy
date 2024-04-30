@@ -22,7 +22,7 @@ import matplotlib
 import warnings
 
 
-def scene_explorer(im, outfile=None, width=1024, title='Visym Scene Explorer'):
+def scene_explorer(im, outfile=None, width=1024, title='Scene Explorer', previewurl=None, keypoint_alpha=0.7, popup_alpha=0.8):
     """Generate a standalone scene_explorer visualization.
 
     A scene_explorer visualization is a standalone HTML file that shows a single `vipy.image.Scene` object with an interactive search and visualization of all objects and attributes
@@ -32,24 +32,31 @@ def scene_explorer(im, outfile=None, width=1024, title='Visym Scene Explorer'):
     """
     assert isinstance(im, vipy.image.Scene)
     assert outfile is None or ishtml(outfile)
+    assert previewurl is None or isurl(previewurl)
+    assert keypoint_alpha >=0 and keypoint_alpha <=1
+    assert popup_alpha >=0 and popup_alpha <=1    
     if not all([isinstance(o, vipy.object.Keypoint2d) for o in im.objects()]):
         warnings.warn('Scene explorer supports vipy.object.Keypoint2d only - all other vipy.object elements ignored')
     
     colors = [matplotlib.colors.to_hex(c) for c in vipy.show.colorlist()]
-    img = 'data:image/jpeg;charset=utf-8;base64,%s' % im.resize(width=width).base64().decode('ascii')
+    img = 'data:image/jpeg;charset=utf-8;base64,%s' % im.load().resize(width=width).base64().decode('ascii')
     keypoints = [o for o in im.objects() if isinstance(o, vipy.object.Keypoint2d)]
     d_category_to_color = {o.category():colors[int(hashlib.sha1(o.category().split(' ')[-1].encode('utf-8')).hexdigest(), 16) % len(colors)] for o in keypoints}   # consistent color mapping by category suffix (space separated)
     
     html = Path(Path(__file__).parent.resolve() / 'visualize_scene_explorer.html').read_text()
     keywords = {'${TITLE}': title,
-                '${META_OG_IMAGE}':'',  # '<meta property="og:image" content="https://path/to/pubic/image">, useful for social/text previews showing im.annotate()
-                '${IMG_WIDTH}':width,                      
+                '${META_OG_IMAGE}': ('<meta property="og:image" content="%s">' % previewurl) if previewurl is not None else '',  # useful for website preview in text/social
+                '${IMG_WIDTH}':im.width(),
+                '${IMG_HEIGHT}':im.height(),                                      
                 '${IMG}':img,
+                '${IMG_ATTRIBUTES}':str(im.flush().clear().json()),
                 '${SEARCHBOX_WIDTH}':width // 4,
+                '${POPUP_ALPHA}': popup_alpha,
                 '${CLASSLIST}':str(sorted(set([o.category() for o in keypoints]))),  # assumes that shared class prefix encodes grouping
                 '${KP_X}':str([o.x for o in keypoints]),
                 '${KP_Y}':str([o.y for o in keypoints]),
                 '${KP_R}':str([o.r for o in keypoints]),
+                '${KP_ALPHA_HEX}':format(int(keypoint_alpha*255), '02x'),  # keypoint face alpha = [0,255] -> [00, FF]
                 '${KP_CLASSLIST}':str([o.category() for o in keypoints]),
                 '${KP_ATTRIBUTELIST}':str([o.json() for o in keypoints]),
                 '${KP_COLORLIST}':str([d_category_to_color[o.category()] for o in keypoints])}    

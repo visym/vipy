@@ -21,13 +21,378 @@ import vipy.metrics
 import itertools
 
 
+
+
 class Dataset():
     """vipy.dataset.Dataset() class
+    
+    Common class to manipulate large sets of objects in parallel
+
+    Args:
+        - objlist [list, tuple, set, dict): a python built-in type that supports indexing
+        - loader [lambda]: a callable loader that will process the object .  This is useful for custom deerialization or on demand transformations
+        - strict [bool]: If true, throw an error if the type of objlist is not a python built-in type.  This is useful for loading dataset objects that can be indexed.
+
+    """
+
+    def __init__(self, objlist, id=None, loader=None, strict=True):
+        assert loader is None or callable(loader)
+        assert strict is False or isinstance(objlist, (list, tuple, dict, set))
+
+        self._id = id
+        self._loader = self._default_loader if loader is None else loader  # may not be serializable if lambda is provided        
+        self._objlist = objlist
+
+    def id(self, n=None):
+        """Set or return the dataset id"""
+        if n is None:
+            return self._id
+        else:
+            self._id = n
+            return self
+        
+    @staticmethod
+    def _default_loader(x):
+        return x
+
+    def __repr__(self):
+        return str('<vipy.dataset.Dataset: %slen=%d, type=%s>' % (('id=%s, ' % self.id()) if self.id() is not None else '', len(self), str(type(self[0])) if len(self)>0 else 'None'))
+
+    def __iter__(self):
+        for k in range(len(self)):
+            yield self[k]
+
+    def __getitem__(self, k):
+        if isinstance(k, int) or isinstance(k, np.uint64):
+            assert abs(k) < len(self._objlist), "invalid index"
+            x = self._objlist[int(k)]
+            return self._loader(x) if self._loader is not None else x
+        elif isinstance(k, slice):
+            return [self._loader(x) if self._loader is not None else x for x in self._objlist[k.start:k.stop:k.step]]
+        else:
+            raise ValueError()
+            
+    def __len__(self):
+        return len(self._objlist)
+        
+        
+
+    def list(self):
+        """Return the dataset as a list"""
+        return list(self)
+
+    def set(self):
+        """Return the dataset as a set"""
+        return set(self.list())
+    
+    def tolist(self):
+        """Alias for self.list()"""
+        return list(self)
+
+    def to_list(self):
+        """Alias for self.list()"""
+        return list(self)
+        
+    def flatten(self):
+        """Convert dataset stored as a list of lists into a flat list"""
+        self._objlist = [o for objlist in self._objlist for o in vipy.util.tolist(objlist)]
+        return self
+
+    def istype(self, validtype):
+        """Return True if the all elements (or just the first element if strict=False) in the dataset are of type 'validtype'"""
+        return all([any([isinstance(v,t) for t in tolist(validtype)]) for v in self]) if self._istype_strict else any([isinstance(self[0],t) for t in tolist(validtype)])
+
+
+    def clone(self, shallow=False):
+        """Return a deep copy of the dataset"""
+        if shallow:
+            objlist = self._objlist
+            self._objlist = []  
+            D = copy.deepcopy(self)
+            self._objlist = objlist  # restore
+            return D
+        else:
+            return copy.deepcopy(self)
+
+        
+    def countby(self, f):
+        assert callable(f)
+        return len([v for v in self if f(v)])
+
+    def dedupe(self, key):
+        assert callable(key)
+        self._objlist = list({key(v):v for v in self}.values())
+        return self
+    
+    def union(self, other, key=None):
+        assert isinstance(other, Dataset), "invalid input"
+        if len(other) > 0:
+            try:
+                if other._loader is not None:
+                    other._loader(self._objlist[0])
+                if self._loader is not None:
+                    self._loader(other._objlist[0])
+                self._objlist = self._objlist + other._objlist  # compatible loaders
+            except:
+                self._objlist = self.list() + other.list()  # incompatible loaders
+                self._loader = None
+        return self.dedupe(key) if key is not None else self
+    
+    def difference(self, other, key):
+        assert isinstance(other, Dataset), "invalid input"
+        idset = set([key(v) for v in self]).difference([key(v) for v in other])   # in A but not in B
+        self._objlist = [v for v in self if key(v) in idset]
+        return self
+        
+    def has(self, val, key):
+        assert callable(key)
+        return any([key(obj) == val for obj in self])
+
+    def replace(self, other, key):
+        """Replace elements in self with other with equality detemrined by the key lambda function"""
+        assert isinstance(other, Dataset), "invalid input"
+        assert callable(key)
+        d = {key(v):v for v in other}
+        self._objlist = [v if key(v) not in d else d[key(v)] for v in self]
+        return self
+
+    def filter(self, f):
+        """In place filter with lambda function f, keeping those elements obj where f(obj) evaluates true"""
+        assert callable(f)
+        self._objlist = [v for v in self if f(v)]
+        return self
+
+    def valid(self):
+        return self.filter(lambda v: v is not None)
+
+    def takefilter(self, f, n=1):
+        """Apply the lambda function f and return n elements in a list where the filter lambda returns true
+        
+        Args:
+            f: [lambda] If f(x) returns true, then keep
+            n: [int >= 0] The number of elements to take
+        
+        Returns:
+            [n=0] Returns empty list
+            [n=1] Returns singleton element
+            [n>1] Returns list of elements of at most n such that each element f(x) is True            
+        """
+        objlist = [obj for obj in self if f(obj)]
+        return [] if (len(objlist) == 0 or n == 0) else (objlist[0] if n==1 else objlist[0:n])
+
+    def takelist(self, n, seed=None):
+        """Take n elements and return list.  The elements are loaded and not cloned."""
+        assert n >= 0, "Invalid length"
+        K = list(range(len(self))) 
+        if seed is not None:
+            assert isinstance(seed, int), "integer required"
+            np.random.seed(seed)            
+        outlist = [self[int(k)] for k in np.random.permutation(K)[0:n]]  # native python int
+        if seed is not None:
+            np.random.seed()
+        return outlist
+
+    def load(self):
+        """Load the entire dataset into memory.  This is useful for creating in-memory datasets from lazy load datasets"""
+        self._objlist = self.list()
+        self._loader = None  # all preprocessing has been performed
+        return self
+
+    def take(self, n, seed=None):
+        """Randomlly Take n elements from the dataset, and return a dataset.  If seed=int, take will return the same results each time."""
+        assert isinstance(n, int) and n>0
+        D = self.clone(shallow=True)
+        D._objlist = [self._objlist[int(k)] for k in np.random.permutation(list(range(len(self))))[0:n]]  # do not run loader
+        return D
+
+    def takeone(self, seed=None):
+        """Randomly take one element from the dataset and return a singleton"""
+        D = self.take(n=1, seed=seed)
+        return D[0] if len(D)>0 else None
+
+    def take_fraction(self, p):
+        """Randomly take a percentage of the dataset"""
+        assert p>0 and p<=1
+        return self.take(n=int(len(self)*p))
+    
+    def shuffle(self):
+        """Permute elements in this dataset uniformly at random"""
+        self._objlist = vipy.util.permutelist(self._objlist)
+        return self
+
+    def chunk(self, n):
+        """Yield n chunks as dataset.  Last chunk will be ragged"""
+        for (k,V) in enumerate(vipy.util.chunkgen(self._objlist, n)):
+            yield Dataset(V, loader=self._loader)
+
+    def minibatch(self, n, ragged=True):
+        """Yield list chunks of size n of this dataset.  Last chunk will be ragged if ragged=True, else skipped"""
+        for (k,V) in enumerate(vipy.util.chunkgenbysize(self._objlist, n)):
+            if ragged or len(V) == n:
+                yield Dataset(V, loader=self._loader).list()  # triggers load 
+
+    
+    def split(self, trainfraction=0.9, valfraction=0.1, testfraction=0, seed=None):
+        """Split the dataset into the requested fractions.  
+
+        Args:
+            trainfraction [float]: fraction of dataset for training set
+            valfraction [float]: fraction of dataset for validation set
+            testfraction [float]: fraction of dataset for test set
+            seed [int]: random seed for determinism.  Set to None for random.
+
+        Returns:        
+            (trainset, valset, testset) 
+        """
+        assert trainfraction >=0 and trainfraction <= 1
+        assert valfraction >=0 and valfraction <= 1
+        assert testfraction >=0 and testfraction <= 1
+        assert trainfraction + valfraction + testfraction == 1.0
+        
+        if seed is not None:
+            np.random.seed(seed)  # deterministic
+
+        idx = list(range(len(self)))
+        np.random.shuffle(idx)
+        (testidx, validx, trainidx) = vipy.util.dividelist(idx, (testfraction, valfraction, trainfraction))
+            
+        trainset = self.clone(shallow=True)
+        trainset._objlist = [self._objlist[int(k)] for k in trainidx]  # do not run loader
+        valset = self.clone(shallow=True)
+        valset._objlist = [self._objlist[int(k)] for k in validx]  # do not run loader
+        testset = self.clone(shallow=True)
+        testset._objlist = [self._objlist[int(k)] for k in testidx]  # do not run loader
+        
+        if seed is not None:
+            np.random.seed()  # re-initialize seed
+
+        return (trainset,valset,testset)
+
+    def map(self, f_map, id=None, strict=False, ascompleted=True, ordered=False):        
+        """Distributed map.
+
+        To perform this in parallel across four processes:
+
+        ```python
+        D = vipy.dataset.Dataset(...)
+        with vipy.globals.parallel(4):
+            D.map(lambda v: ...)
+        ```
+
+        Args:
+            f_map: [lambda] The lambda function to apply in parallel to all elements in the dataset.  This must return a JSON serializable object
+            id: [str] The ID to give to the resulting dataset
+            strict: [bool] If true, raise exception on map failures, otherwise the map will return None for failed elements
+            ascompleted: [bool] If true, return elements as they complete
+            ordered: [bool] If true, preserve the order of objects in dataset as returned from distributed processing
+        
+        Returns:
+            A `vipy.dataset.Dataset` containing the elements f_map(v).  This operation is order preserving if ordered=True.
+
+        .. note:: 
+            - This method uses dask distributed and `vipy.batch.Batch` operations
+            - Due to chunking, all error handling is caught by this method.  Use `vipy.batch.Batch` to leverage dask distributed futures error handling.
+            - Operations must be chunked and serialized because each dask task comes with overhead, and lots of small tasks violates best practices
+            - Serialized results are deserialized by the client and returned a a new dataset
+        """
+        assert callable(f_map)
+        from vipy.batch import Batch   # requires pip install vipy[all]
+
+        # Distributed map using vipy.batch
+        f_serialize = lambda v: v
+        f_deserialize = lambda x: x
+        f_catcher = lambda f, *args, **kwargs: vipy.util.loudcatcher(f, '[vipy.dataset.Dataset.map]: ', *args, **kwargs)  # catch exceptions when executing lambda, print errors and return (True, result) or (False, exception)
+        f_loader = self._loader if self._loader is not None else lambda x: x
+        S = [f_serialize(v) for v in self._objlist]  # local serialization
+        B = Batch(vipy.util.chunklist(S, 128), strict=strict, as_completed=ascompleted, warnme=False, minscatter=128, ordered=ordered)
+        f = lambda x, f_loader=f_loader, f_serializer=f_serialize, f_deserializer=f_deserialize, f_map=f_map, f_catcher=f_catcher: f_serializer(f_catcher(f_map, f_loader(f_deserializer(x))))  # with closure capture
+        S = B.map(lambda X,f=f: [f(x) for x in X]).result()  # chunked, with caught exceptions, may return empty list
+
+        # Error handling
+        if not isinstance(S, list) or any([not isinstance(s, list) for s in S]):
+            raise ValueError('Distributed processing error - Batch returned: %s' % (str(S)))
+        V = [f_deserialize(x) for s in S for x in s]  # Local deserialization and chunk flattening
+        (good, bad) = ([r for (b,r) in V if b], [r for (b,r) in V if not b])  # catcher returns (True, result) or (False, exception string)
+        if len(bad) > 0:
+            print('[vipy.dataset.Dataset.map]: Exceptions in map distributed processing:\n%s' % str(bad))
+            print('[vipy.dataset.Dataset.map]: %d/%d items failed' % (len(bad), len(self)))
+        return Dataset(good, id=id)
+    
+    def localmap(self, f):
+        for (k,v) in enumerate(self):
+            self._objlist[k] = f(v)  # in-place update
+        return self
+
+    def flatmap(self, f):
+        self._objlist = [x for v in self for x in f(v)]
+        return self
+    
+    def count(self, f):
+        """Counts for each element for which lamba returns true.  
+        
+        Args:
+            f: [lambda] if provided, count the number of elements that return true.  This is the same as len(self.filter(f)) without modifying the dataset.
+
+        Returns:
+            A dictionary of counts per category [if f is None]
+            A length of elements that satisfy f(v) = True [if f is not None]
+        """
+        assert f is None or callable(f)
+        return len([v for v in self if f is None or f(v)])
+
+    def countby(self, f):
+        """Count the number of elements that return the same value from the lambda function"""
+        return self.count(f)
+
+    def repeat(self, n):
+        """Clone the elements in this dataset and repeat n times.  The length of the new dataset will be (n+1)*len(self)"""
+        D = self.clone()
+        for k in range(n):
+            D._objlist.extend(self.clone()._objlist)
+        return D
+    
+    def frequency(self, f):
+        """synonym for self.count"""
+        return self.count(f)
+              
+    def zip(self, other, sortkey=None):
+        """Zip two datasets.  Equivalent to zip(self, other).
+
+        ```python
+        for (d1,d2) in D1.zip(D2, sortkey=lambda v: v.instanceid()):
+            pass
+        
+        for (d1, d2) in zip(D1, D2):
+            pass
+        ```
+
+        Args:
+            other: [`vipy.dataset.Dataset`] 
+            sortkey: [lambda] sort both datasets using the provided sortkey lambda.
+        
+        Returns:
+            Generator for the tuple sequence ( (self[0], other[0]), (self[1], other[1]), ... )
+        """ 
+        assert isinstance(other, Dataset)
+        assert len(self) == len(other)
+
+        for (vi, vj) in zip(self.sort(sortkey), other.sort(sortkey)):
+            yield (vi, vj)
+
+    def sort(self, key):
+        """Sort the dataset in-place using the sortkey lambda function"""
+        if key is not None:
+            self._objlist.sort(key=lambda x: key(self._loader(x)))
+        return self
+                
+
+class Vipyset(Dataset):
+    """vipy.dataset.Vipyset() class
     
     Common class to manipulate large sets of vipy objects in parallel
 
     ```python
-    D = vipy.dataset.Dataset([vipy.video.RandomScene(), vipy.video.RandomScene()], id='random_scene')
+    D = vipy.dataset.Vipyset([vipy.video.RandomScene(), vipy.video.RandomScene()], id='random_scene')
     with vipy.globals.parallel(2):
         D = D.map(lambda v: v.frame(0))
     list(D)
@@ -36,20 +401,20 @@ class Dataset():
     Create dataset and export as a directory of json files 
 
     ```python
-    D = vipy.dataset.Dataset([vipy.video.RandomScene(), vipy.video.RandomScene()])
+    D = vipy.dataset.Vipyset([vipy.video.RandomScene(), vipy.video.RandomScene()])
     D.tojsondir('/tmp/myjsondir')
     ```
     
     Create dataset from all json or pkl files recursively discovered in a directory and lazy loaded
 
     ```python
-    D = vipy.dataset.Dataset('/tmp/myjsondir')  # lazy loading
+    D = vipy.dataset.Vipyset('/tmp/myjsondir')  # lazy loading
     ```
 
     Create dataset from a list of json or pkl files and lazy loaded
 
     ```python
-    D = vipy.dataset.Dataset(['/path/to/file1.json', '/path/to/file2.json'])  # lazy loading
+    D = vipy.dataset.Vipyset(['/path/to/file1.json', '/path/to/file2.json'])  # lazy loading
     ```
     
     Args:
@@ -61,17 +426,16 @@ class Dataset():
     .. notes:: Be warned that using the jsondir constructor will load elements on demand, but there are some methods that require loading the entire dataset into memory, and will happily try to do so
     """
 
-    def __init__(self, objlist, id=None, abspath=True, loader=None, lazy=False):
-
+    def __init__(self, objlist, id=None, loader=None, lazy=False):
+        
         assert loader is None or callable(loader)
 
-        self._saveas_ext = ['pkl', 'json']
-        self._id = id if id is not None else vipy.util.shortuuid(8)
+        self._id = id
         self._loader = self._default_loader if loader is None else loader  # may not be serializable if lambda is provided
-        self._istype_strict = True
+        #self._istype_strict = True
         self._lazy_loader = lazy
-        self._abspath = abspath
-        self._shuffler = 'uniform'
+        #self._abspath = abspath
+        #self._shuffler = 'uniform'
         
         if isinstance(objlist, str) and (vipy.util.isjsonfile(objlist) or vipy.util.ispklfile(objlist) or vipy.util.ispklbz2(objlist)):
             self._objlist = vipy.util.load(objlist, abspath=abspath)
@@ -97,79 +461,7 @@ class Dataset():
             except Exception as e:
                 raise ValueError('Invalid dataset - Lazy load failed with error "%s"' % str(e))
 
-    @staticmethod
-    def _default_loader(x):
-        return x
-
-    def loader(self, f):
-        """Overwrite the default loader which is used to pre-process an object when indexed or iterated"""
-        assert callable(f)
-        self._loader = f  # may no longer be serializable if f is lambda 
-        return self
-    
-    def __repr__(self):
-        return str('<vipy.dataset: len=%d, type=%s>' % (len(self), str(type(self[0])) if len(self)>0 else 'None'))
-
-    def __iter__(self):
-        for k in range(len(self)):
-            yield self[k]
-
-    def __getitem__(self, k):
-        if isinstance(k, int) or isinstance(k, np.uint64):
-            assert abs(k) < len(self._objlist), "invalid index"
-            x = self._objlist[int(k)]
-            return self._loader(x) if self._loader is not None else x
-        elif isinstance(k, slice):
-            return [self._loader(x) if self._loader is not None else x for x in self._objlist[k.start:k.stop:k.step]]
-        else:
-            raise ValueError()
             
-    def __len__(self):
-        return len(self._objlist)
-        
-    def json(self, encode=True):
-        r = vipy.util.class_registry()
-        d = {k:v for (k,v) in self.__dict__.items() if not k == '_loader'}
-        d['_objlist'] = [(str(type(v)), v.json(encode=False)) if str(type(v)) in r else v for v in self._objlist]
-        return json.dumps(d) if encode else d
-        
-    @classmethod
-    def from_json(cls, s):
-        r = vipy.util.class_registry()
-        d = json.loads(s) if not isinstance(s, dict) else s  
-        return cls(objlist=[r[x[0]](x[1]) if (isinstance(x, tuple) and x[0] in r) else x for x in d['_objlist']],
-                   id=d['_id'],
-                   abspath=d['_abspath'])                            
-
-    def id(self, n=None):
-        """Set or return the dataset id"""
-        if n is None:
-            return self._id
-        else:
-            self._id = n
-            return self
-
-    def list(self):
-        """Return the dataset as a list"""
-        return list(self)
-
-    def set(self):
-        """Return the dataset as a set"""
-        return set(self.list())
-    
-    def tolist(self):
-        """Alias for self.list()"""
-        return list(self)
-
-    def flatten(self):
-        """Convert dataset stored as a list of lists into a flat list"""
-        self._objlist = [o for objlist in self._objlist for o in vipy.util.tolist(objlist)]
-        return self
-
-    def istype(self, validtype):
-        """Return True if the all elements (or just the first element if strict=False) in the dataset are of type 'validtype'"""
-        return all([any([isinstance(v,t) for t in tolist(validtype)]) for v in self]) if self._istype_strict else any([isinstance(self[0],t) for t in tolist(validtype)])
-
     def _isvipy(self):
         """Return True if all elements in the dataset are of type `vipy.video.Video` or `vipy.image.Image`"""        
         return self.istype([vipy.image.Image, vipy.video.Video])
@@ -186,17 +478,20 @@ class Dataset():
         """Return True if all elements in the dataset are of type `vipy.video.Scene`"""                        
         return self.istype([vipy.image.Scene])
 
-    def clone(self, shallow=False):
-        """Return a deep copy of the dataset"""
-        if shallow:
-            objlist = self._objlist
-            self._objlist = []  
-            D = copy.deepcopy(self)
-            self._objlist = objlist  # restore
-            return D
-        else:
-            return copy.deepcopy(self)
+    def json(self, encode=True):
+        r = vipy.util.class_registry()
+        d = {k:v for (k,v) in self.__dict__.items() if not k == '_loader'}
+        d['_objlist'] = [(str(type(v)), v.json(encode=False)) if str(type(v)) in r else v for v in self._objlist]
+        return json.dumps(d) if encode else d
 
+    @classmethod
+    def from_json(cls, s):
+        r = vipy.util.class_registry()
+        d = json.loads(s) if not isinstance(s, dict) else s  
+        return cls(objlist=[r[x[0]](x[1]) if (isinstance(x, tuple) and x[0] in r) else x for x in d['_objlist']],
+                   id=d['_id'],
+                   abspath=d['_abspath'])                            
+    
     def archive(self, tarfile, delprefix, mediadir='videos', format='json', castas=vipy.video.Scene, verbose=False, extrafiles=None, novideos=False, md5=True, tmpdir=None, inplace=False, bycategory=False, annotationdir='annotations'):
         """Create a archive file for this dataset.  This will be archived as:
 
@@ -302,7 +597,7 @@ class Dataset():
             bycategory [bool[: If trye, then save the dataset to the provided output filename pattern outfile='/path/to/annotations/*.json' where the wildcard is replaced with the category name
 
         Returns:        
-            This dataset that is quivalent to vipy.dataset.Dataset('/path/to/outfile.json')
+            This dataset that is quivalent to vipy.dataset.Vipyset('/path/to/outfile.json')
         """
         n = len([v for v in self if v is None])
         if n > 0:
@@ -387,49 +682,12 @@ class Dataset():
         assert self._isvipy(), "Invalid input"
         return {c:k for (k,c) in enumerate(self.powerset())}
 
-    def dedupe(self, key):
-        self._objlist = list({key(v):v for v in self}.values())
-        return self
-        
-    def countby(self, f):
-        return len([v for v in self if f(v)])
-
-    def union(self, other, key=None):
-        assert isinstance(other, Dataset), "invalid input"
-        if len(other) > 0:
-            try:
-                if other._loader is not None:
-                    other._loader(self._objlist[0])
-                if self._loader is not None:
-                    self._loader(other._objlist[0])
-                self._objlist = self._objlist + other._objlist  # compatible loaders
-            except:
-                self._objlist = self.list() + other.list()  # incompatible loaders
-                self._loader = None
-        return self.dedupe(key) if key is not None else self
-    
-    def difference(self, other, key):
-        assert isinstance(other, Dataset), "invalid input"
-        idset = set([key(v) for v in self]).difference([key(v) for v in other])   # in A but not in B
-        self._objlist = [v for v in self if key(v) in idset]
-        return self
-        
-    def has(self, val, key):
-        return any([key(obj) == val for obj in self])
-
-    def replace(self, other, key):
-        """Replace elements in self with other with equality detemrined by the key lambda function"""
-        assert isinstance(other, Dataset), "invalid input"
-        d = {key(v):v for v in other}
-        self._objlist = [v if key(v) not in d else d[key(v)] for v in self]
-        return self
-
     def merge(self, outdir):
         """Merge a dataset union into a single subdirectory with symlinked media ready to be archived.
 
         ```python
-        D1 = vipy.dataset.Dataset('/path1/dataset.json')
-        D2 = vipy.dataset.Dataset('/path2/dataset.json')
+        D1 = vipy.dataset.Vipyset('/path1/dataset.json')
+        D2 = vipy.dataset.Vipyset('/path2/dataset.json')
         D3 = D1.union(D2).merge(outdir='/path3')
         ```
 
@@ -445,36 +703,13 @@ class Dataset():
         self._objlist = [f(v.clone()) for v in self for k in range(n_augmentations)]  # This will remove the originals
         return self
 
-    def filter(self, f):
-        """In place filter with lambda function f, keeping those elements obj where f(obj) evaluates true"""
-        self._objlist = [v for v in self if f(v)]
-        return self
-
-    def valid(self):
-        return self.filter(lambda v: v is not None)
-
-    def takefilter(self, f, n=1):
-        """Apply the lambda function f and return n elements in a list where the filter lambda returns true
-        
-        Args:
-            f: [lambda] If f(x) returns true, then keep
-            n: [int >= 0] The number of elements to take
-        
-        Returns:
-            [n=0] Returns empty list
-            [n=1] Returns singleton element
-            [n>1] Returns list of elements of at most n such that each element f(x) is True            
-        """
-        objlist = [obj for obj in self if f(obj)]
-        return [] if (len(objlist) == 0 or n == 0) else (objlist[0] if n==1 else objlist[0:n])
-
     def jsondir(self, outdir=None, verbose=True, rekey=False, bycategory=False, byfilename=False, abspath=True):
         """Export all objects to a directory of JSON files.
     
            Usage:
 
         ```python
-        D = vipy.dataset.Dataset(...).jsondir('/path/to/jsondir')
+        D = vipy.dataset.Vipyset(...).jsondir('/path/to/jsondir')
         D = vipy.util.load('/path/to/jsondir')   # recursively discover and lazy load all json files 
         ```
 
@@ -505,47 +740,12 @@ class Dataset():
         for (k,v) in enumerate(self):            
             f = vipy.util.save(v.clone().relpath(start=filepath(tojsonfile(v,k))) if not abspath else v.clone().abspath(), tojsonfile(v,k))
             if verbose:
-                print('[vipy.dataset.Dataset][%d/%d]: %s' % (k, len(self), f))
+                print('[vipy.dataset.Vipyset][%d/%d]: %s' % (k, len(self), f))
         return outdir
 
     def tojsondir(self, outdir=None, verbose=True, rekey=False, bycategory=False, byfilename=False, abspath=True):
-        """Alias for `vipy.dataset.Dataset.jsondir`"""
+        """Alias for `vipy.dataset.Vipyset.jsondir`"""
         return self.jsondir(outdir, verbose=verbose, rekey=rekey, bycategory=bycategory, byfilename=byfilename, abspath=abspath)
-    
-    def takelist(self, n, seed=None):
-        """Take n elements and return list.  The elements are loaded and not cloned."""
-        assert n >= 0, "Invalid length"
-        K = list(range(len(self))) 
-        if seed is not None:
-            assert isinstance(seed, int), "integer required"
-            np.random.seed(seed)            
-        outlist = [self[int(k)] for k in np.random.permutation(K)[0:n]]  # native python int
-        if seed is not None:
-            np.random.seed()
-        return outlist
-
-    def load(self):
-        """Load the entire dataset into memory.  This is useful for creating in-memory datasets from lazy load datasets"""
-        self._objlist = self.list()
-        self._loader = None  # all preprocessing has been performed
-        return self
-
-    def take(self, n, seed=None):
-        """Randomlly Take n elements from the dataset, and return a dataset.  If seed=int, take will return the same results each time."""
-        assert isinstance(n, int) and n>0
-        D = self.clone(shallow=True)
-        D._objlist = [self._objlist[int(k)] for k in np.random.permutation(list(range(len(self))))[0:n]]  # do not run loader
-        return D
-
-    def takeone(self, seed=None):
-        """Randomly take one element from the dataset and return a singleton"""
-        D = self.take(n=1, seed=seed)
-        return D[0] if len(D)>0 else None
-
-    def take_fraction(self, p):
-        """Randomly take a percentage of the dataset"""
-        assert p>0 and p<=1
-        return self.take(n=int(len(self)*p))
     
     def take_per_category(self, n, seed=None):
         """Random;y take n elements per category and return a shallow cloned dataset"""
@@ -584,18 +784,7 @@ class Dataset():
         """Randomly permute elements in this dataset according to a shuffler protocol set with shuffler()"""
         self._objlist = self.shuffler()(self._objlist)  # in-place
         return self
-
-    def chunk(self, n):
-        """Yield n chunks as dataset.  Last chunk will be ragged"""
-        for (k,V) in enumerate(vipy.util.chunklist(self._objlist, n)):
-            yield Dataset(V, id='%s_%d' % (self.id(), k), loader=self._loader)
-
-    def minibatch(self, n, ragged=True):
-        """Yield list chunks of size n of this dataset.  Last chunk will be ragged if ragged=True, else skipped"""
-        for (k,V) in enumerate(vipy.util.chunklistbysize(self._objlist, n)):
-            if ragged or len(V) == n:
-                yield Dataset(V, loader=self._loader).list()  # triggers load 
-
+    
     def _split_by_videoid(self, trainfraction=0.9, valfraction=0.1, testfraction=0, seed=None):
         """Split the dataset by category by fraction so that video IDs are never in the same set"""
         assert self._isvipy(), "Invalid input"
@@ -623,46 +812,10 @@ class Dataset():
 
         return (Dataset(trainset, id='trainset'), Dataset(valset, id='valset'), Dataset(testset, id='testset') if len(testset)>0 else None)
 
-    
-    def split(self, trainfraction=0.9, valfraction=0.1, testfraction=0, seed=None):
-        """Split the dataset into the requested fractions.  
-
-        Args:
-            trainfraction [float]: fraction of dataset for training set
-            valfraction [float]: fraction of dataset for validation set
-            testfraction [float]: fraction of dataset for test set
-            seed [int]: random seed for determinism.  Set to None for random.
-
-        Returns:        
-            (trainset, valset, testset) 
-        """
-        assert trainfraction >=0 and trainfraction <= 1
-        assert valfraction >=0 and valfraction <= 1
-        assert testfraction >=0 and testfraction <= 1
-        assert trainfraction + valfraction + testfraction == 1.0
-        
-        if seed is not None:
-            np.random.seed(seed)  # deterministic
-
-        idx = list(range(len(self)))
-        np.random.shuffle(idx)
-        (testidx, validx, trainidx) = vipy.util.dividelist(idx, (testfraction, valfraction, trainfraction))
-            
-        trainset = self.clone(shallow=True)
-        trainset._objlist = [self._objlist[int(k)] for k in trainidx]  # do not run loader
-        valset = self.clone(shallow=True)
-        valset._objlist = [self._objlist[int(k)] for k in validx]  # do not run loader
-        testset = self.clone(shallow=True)
-        testset._objlist = [self._objlist[int(k)] for k in testidx]  # do not run loader
-        
-        if seed is not None:
-            np.random.seed()  # re-initialize seed
-
-        return (trainset,valset,testset)
-    
     def tocsv(self, csvfile=None):
         csv = [v.csv() for v in self.list]        
         return vipy.util.writecsv(csv, csvfile) if csvfile is not None else (csv[0], csv[1:])
+
 
     def map(self, f_map, model=None, dst=None, id=None, strict=False, ascompleted=True, ordered=False):        
         """Distributed map.
@@ -670,7 +823,7 @@ class Dataset():
         To perform this in parallel across four processes:
 
         ```python
-        D = vipy.dataset.Dataset(...)
+        D = vipy.dataset.Vipyset(...)
         with vipy.globals.parallel(4):
             D.map(lambda v: ...)
         ```
@@ -685,7 +838,7 @@ class Dataset():
             ordered: [bool] If true, preserve the order of objects in dataset as returned from distributed processing
         
         Returns:
-            A `vipy.dataset.Dataset` containing the elements f_map(v).  This operation is order preserving if ordered=True.
+            A `vipy.dataset.Vipyset` containing the elements f_map(v).  This operation is order preserving if ordered=True.
 
         .. note:: 
             - This dataset must contain vipy objects of types defined in `vipy.util.class_registry` or JSON serializable objects
@@ -702,7 +855,7 @@ class Dataset():
         # Distributed map using vipy.batch
         f_serialize = lambda v,d=vipy.util.class_registry(): (str(type(v)), v.json()) if str(type(v)) in d else (None, pickle.dumps(v))  # fallback on PKL dumps/loads
         f_deserialize = lambda x,d=vipy.util.class_registry(): d[x[0]](x[1])  # with closure capture
-        f_catcher = lambda f, *args, **kwargs: vipy.util.loudcatcher(f, '[vipy.dataset.Dataset.map]: ', *args, **kwargs)  # catch exceptions when executing lambda, print errors and return (True, result) or (False, exception)
+        f_catcher = lambda f, *args, **kwargs: vipy.util.loudcatcher(f, '[vipy.dataset.Vipyset.map]: ', *args, **kwargs)  # catch exceptions when executing lambda, print errors and return (True, result) or (False, exception)
         f_loader = self._loader if self._loader is not None else lambda x: x
         S = [f_serialize(v) for v in self._objlist]  # local serialization
 
@@ -718,49 +871,10 @@ class Dataset():
         V = [f_deserialize(x) for s in S for x in s]  # Local deserialization and chunk flattening
         (good, bad) = ([r for (b,r) in V if b], [r for (b,r) in V if not b])  # catcher returns (True, result) or (False, exception string)
         if len(bad) > 0:
-            print('[vipy.dataset.Dataset.map]: Exceptions in map distributed processing:\n%s' % str(bad))
-            print('[vipy.dataset.Dataset.map]: %d/%d items failed' % (len(bad), len(self)))
+            print('[vipy.dataset.Vipyset.map]: Exceptions in map distributed processing:\n%s' % str(bad))
+            print('[vipy.dataset.Vipyset.map]: %d/%d items failed' % (len(bad), len(self)))
         return Dataset(good, id=dst if dst is not None else id)
-
-    def localmap(self, f):
-        for (k,v) in enumerate(self):
-            self._objlist[k] = f(v)  # in-place update
-        return self
-
-    def flatmap(self, f):
-        self._objlist = [x for v in self for x in f(v)]
-        return self
     
-    def count(self, f=None):
-        """Counts for each label.  
-        
-        Args:
-            f: [lambda] if provided, count the number of elements that return true.  This is the same as len(self.filter(f)) without modifying the dataset.
-
-        Returns:
-            A dictionary of counts per category [if f is None]
-            A length of elements that satisfy f(v) = True [if f is not None]
-        """
-        assert self._isvipy()
-        assert f is None or callable(f)
-        return len([v for v in self if f is None or f(v)])
-
-    def countby(self, f=lambda v: v.category()):
-        """Count the number of elements that return the same value from the lambda function"""
-        assert self._isvipy()
-        assert f is None or callable(f)
-        return vipy.util.countby(self, f)
-
-    def repeat(self, n):
-        """Clone the elements in this dataset and repeat n times.  The length of the new dataset will be (n+1)*len(self)"""
-        D = self.clone()
-        for k in range(n):
-            D._objlist.extend(self.clone()._objlist)
-        return D
-    
-    def frequency(self):
-        return self.count()
-
     def synonym(self, synonymdict):
         """Convert all categories in the dataset using the provided synonym dictionary mapping"""
         assert self._isvipy()
@@ -785,12 +899,13 @@ class Dataset():
             xlabels = [f_category_to_xlabel(c) for c in categories]
             vipy.metrics.histogram(freq, xlabels, barcolors=barcolors, outfile=outfile, ylabel=ylabel, fontsize=fontsize)
         return d
-    
+
     def percentage(self):
         """Fraction of dataset for each label"""
-        d = self.count()
+        d = self.count(lambda v: v.category())
         n = sum(d.values())
         return {k:v/float(n) for (k,v) in d.items()}
+
 
     def multilabel_inverse_frequency_weight(self):
         """Return an inverse frequency weight for multilabel activities, where label counts are the fractional label likelihood within a clip"""
@@ -948,7 +1063,6 @@ class Dataset():
                     plt.savefig(outfile % c)
         return d
 
-    
     def to_torch(self, f_video_to_tensor):
         """Return a torch dataset that will apply the lambda function f_video_to_tensor to each element in the dataset on demand"""
         import vipy.torch
@@ -1052,35 +1166,4 @@ class Dataset():
             
         vipy.visualize.videomontage(vidlist, mindim, mindim, gridrows=gridrows, gridcols=gridcols, framerate=framerate, max_duration=max_duration).saveas(outfile)
         return montage        
-        
-    def zip(self, other, sortkey=None):
-        """Zip two datasets.  Equivalent to zip(self, other).
-
-        ```python
-        for (d1,d2) in D1.zip(D2, sortkey=lambda v: v.instanceid()):
-            pass
-        
-        for (d1, d2) in zip(D1, D2):
-            pass
-        ```
-
-        Args:
-            other: [`vipy.dataset.Dataset`] 
-            sortkey: [lambda] sort both datasets using the provided sortkey lambda.
-        
-        Returns:
-            Generator for the tuple sequence ( (self[0], other[0]), (self[1], other[1]), ... )
-        """ 
-        assert isinstance(other, Dataset)
-        assert len(self) == len(other)
-
-        for (vi, vj) in zip(self.sort(sortkey), other.sort(sortkey)):
-            yield (vi, vj)
-
-    def sort(self, key):
-        """Sort the dataset in-place using the sortkey lambda function"""
-        if key is not None:
-            self._objlist.sort(key=lambda x: key(self._loader(x)))
-        return self
-                
-
+    

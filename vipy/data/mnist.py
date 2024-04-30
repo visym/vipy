@@ -80,10 +80,10 @@ class MNIST():
     def trainset(self, N=60000):
         assert N>0 and N<=60000
         (labelfile, imgfile) = (os.path.join(self.outdir, 'train-labels-idx1-ubyte.gz'), os.path.join(self.outdir, 'train-images-idx3-ubyte.gz'))
-        return vipy.dataset.Dataset([vipy.image.ImageCategory(array=img, category=str(y), colorspace='lum') for (y,img) in zip(*self._dataset(imgfile, labelfile, N))], 'mnist')
+        return vipy.dataset.Dataset([vipy.image.ImageCategory(array=img, category=str(y), colorspace='lum') for (y,img) in zip(*self._dataset(imgfile, labelfile, N))], id='mnist')
 
     
     def testset(self, N=10000):
         assert N>0 and N<=10000        
         (labelfile, imgfile) = (os.path.join(self.outdir, 't10k-labels-idx1-ubyte.gz'), os.path.join(self.outdir, 't10k-images-idx3-ubyte.gz'))        
-        return vipy.dataset.Dataset([vipy.image.ImageCategory(array=img, category=str(y), colorspace='lum') for (y,img) in zip(*self._dataset(imgfile, labelfile, N))], 'mnist_test')
+        return vipy.dataset.Dataset([vipy.image.ImageCategory(array=img, category=str(y), colorspace='lum') for (y,img) in zip(*self._dataset(imgfile, labelfile, N))], id='mnist_test')

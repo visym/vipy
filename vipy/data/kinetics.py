@@ -11,7 +11,7 @@ class Kinetics700(object):
         self.datadir = remkdir(datadir)
         self._url = 'https://storage.googleapis.com/deepmind-media/Datasets/kinetics700.tar.gz'
         self._name = 'kinetics700'
-        if not self._isdownloaded():
+        if not self.isdownloaded():
             self.download()
         
     def __repr__(self):
@@ -25,23 +25,23 @@ class Kinetics700(object):
         return (os.path.exists(os.path.join(self.datadir, 'kinetics700.tar.gz')) or
                 os.path.exists(os.path.join(self.datadir, self._name, 'train.json')))
     
-    def _dataset(self, jsonfile):
+    def _dataset(self, jsonfile, id=None):
         assert self.isdownloaded(), "Dataset not downloaded.  download() first or manually download '%s' to '%s' and unpack the tarball there" % (self._url, self.datadir)
-        return [VideoCategory(url=v['url'],
-                              filename=os.path.join(self.datadir, self._name, youtubeid),
-                              category=v['annotations']['label'],
-                              startsec=float(v['annotations']['segment'][0]),
-                              endsec=float(v['annotations']['segment'][1]))
-                for (youtubeid, v) in readjson(jsonfile).items()]
+        return vipy.dataset.Dataset([VideoCategory(url=v['url'],
+                                                   filename=os.path.join(self.datadir, self._name, youtubeid),
+                                                   category=v['annotations']['label'],
+                                                   startsec=float(v['annotations']['segment'][0]),
+                                                   endsec=float(v['annotations']['segment'][1]))
+                                     for (youtubeid, v) in readjson(jsonfile).items()], id=id)
 
     def trainset(self):
-        return self._dataset(os.path.join(self.datadir, self._name, 'train.json'))
+        return self._dataset(os.path.join(self.datadir, self._name, 'train.json'), self._name + '_train')
 
     def testset(self):
-        return self._dataset(os.path.join(self.datadir, self._name, 'test.json'))
+        return self._dataset(os.path.join(self.datadir, self._name, 'test.json'), self._name + '_test')
 
     def valset(self):
-        return self._dataset(os.path.join(self.datadir, self._name, 'validate.json'))
+        return self._dataset(os.path.join(self.datadir, self._name, 'validate.json'), self._name + '_val')
 
     def categories(self):
         jsonfile = os.path.join(self.datadir, self._name, 'train.json')
