@@ -70,18 +70,43 @@ def oxford_fgvc_aircraft():
     return vipy.dataset.Dataset(D['train'], id='oxford_fgvc_aircraft', loader=loader, strict=False)
 
 
-def pascal_voc():
+def pascal_voc_2007():
     """http://host.robots.ox.ac.uk/pascal/VOC/"""
-    D = load_dataset("HuggingFaceM4/pascal_voc")
-    raise
+    D = load_dataset("HuggingFaceM4/pascal_voc", 'voc2007_main', trust_remote_code=True)
+
+    # https://huggingface.co/datasets/HuggingFaceM4/pascal_voc/blob/main/pascal_voc.py
+    CLASS_INFOS = [('aeroplane', 0, 0, (128, 0, 0)),
+                   ('bicycle', 1, 1, (0, 128, 0)),
+                   ('bird', 2, 2, (128, 128, 0)),
+                   ('boat', 3, 3, (0, 0, 128)),
+                   ('bottle', 4, 4, (128, 0, 128)),
+                   ('bus', 5, 5, (0, 128, 128)),
+                   ('car', 6, 6, (128, 128, 128)),
+                   ('cat', 7, 7, (64, 0, 0)),
+                   ('chair', 8, 8, (192, 0, 0)),
+                   ('cow', 9, 9, (64, 128, 0)),
+                   ('diningtable', 10, 10, (192, 128, 0)),
+                   ('dog', 11, 11, (64, 0, 128)),
+                   ('horse', 12, 12, (192, 0, 128)),
+                   ('motorbike', 13, 13, (64, 128, 128)),
+                   ('person', 14, 14, (192, 128, 128)),
+                   ('pottedplant', 15, 15, (0, 64, 0)),
+                   ('sheep', 16, 16, (128, 64, 0)),
+                   ('sofa', 17, 17, (0, 192, 0)),
+                   ('train', 18, 18, (128, 192, 0)),
+                   ('tvmonitor', 19, 19, (0, 64, 128)),
+                   ('background', 20, 20, (0, 0, 0)),
+                   ('borderingregion', 255, 21, (224, 224, 192))]
     
-def imagenet():
-    jsonfile = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'imagenet.json')
-    d_idx_to_category = vipy.util.readjson(jsonfile)['index']
-    D = load_dataset("imagenet-1k", trust_remote_code=True)
-    loader = lambda r, d_idx_to_category=d_idx_to_category: vipy.image.ImageCategory(array=np.array(r['img']), category=d_idx_to_category[str(r['label'])])
-    return (vipy.dataset.Dataset(D['train'], id='imagenet-1k_train', loader=loader, strict=False), 
-            vipy.dataset.Dataset(D['test'], id='imagenet-1k_test', loader=loader, strict=False))
+    d_index_to_class = {v[2]:v[0] for v in CLASS_INFOS}
+    loader = lambda r, d_index_to_class=d_index_to_class: vipy.image.Scene(array=np.array(r['image']),
+                                        category=','.join([d_index_to_class[c] for c in r['classes']]),
+                                        objects=[vipy.object.Detection(category=d_index_to_class[c], xmin=xmin, ymin=ymin, xmax=xmax, ymax=ymax) for (c, (xmin,ymin,xmax,ymax)) in zip(r['objects']['classes'], r['objects']['bboxes'])])
+    
+    return (vipy.dataset.Dataset(D['train'], id='pascal_voc_2007_train', loader=loader, strict=False),
+            vipy.dataset.Dataset(D['validation'], id='pascal_voc_2007_val', loader=loader, strict=False),
+            vipy.dataset.Dataset(D['test'], id='pascal_voc_2007_test', loader=loader, strict=False))
+    
     
 def yfcc100m():
     """https://multimediacommons.wordpress.com/yfcc100m-core-dataset/"""
