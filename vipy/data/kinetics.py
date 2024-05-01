@@ -6,12 +6,12 @@ import numpy as np
 
 
 class Kinetics700():
-    def __init__(self, datadir=tocache('kinetics700')):
+    def __init__(self, datadir=tocache('kinetics700'), redownload=False):
         """Kinetics, provide a datadir='/path/to/store/kinetics' """
         self.datadir = remkdir(os.path.expanduser(datadir))
         self._url = 'https://storage.googleapis.com/deepmind-media/Datasets/kinetics700.tar.gz'
         self._name = 'kinetics700'
-        if not self.isdownloaded():
+        if redownload or not self.isdownloaded():
             self.download()
         
     def __repr__(self):

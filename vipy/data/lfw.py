@@ -13,11 +13,11 @@ URL_PAIRS_VIEW2 = 'http://vis-www.cs.umass.edu/lfw/pairs.txt'
 
 
 class LFW(vipy.dataset.Dataset):
-    def __init__(self, datadir=tocache('lfw')):
+    def __init__(self, datadir=tocache('lfw'), redownload=False):
         """Datadir contains the unpacked contents of LFW from $URL -> /path/to/lfw"""
         self.lfwdir = remkdir(os.path.expanduser(datadir))
 
-        if not os.path.exists(os.path.join(self.lfwdir, 'lfw.tgz')):
+        if redownload or not os.path.exists(os.path.join(self.lfwdir, 'lfw.tgz')):
             self._download()
 
         loader = lambda x: ImageCategory(category=x[0], filename=x[1])

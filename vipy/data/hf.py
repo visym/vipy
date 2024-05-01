@@ -3,6 +3,7 @@ import vipy
 import numpy as np
 import json
 
+# Huggingface datasets
 vipy.util.try_import('datasets'); from datasets import load_dataset
 
 
@@ -72,7 +73,8 @@ def oxford_fgvc_aircraft():
 def pascal_voc():
     """http://host.robots.ox.ac.uk/pascal/VOC/"""
     D = load_dataset("HuggingFaceM4/pascal_voc")
-
+    raise
+    
 def imagenet():
     jsonfile = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'imagenet.json')
     d_idx_to_category = vipy.util.readjson(jsonfile)['index']
@@ -84,7 +86,7 @@ def imagenet():
 def yfcc100m():
     """https://multimediacommons.wordpress.com/yfcc100m-core-dataset/"""
     dataset = load_dataset("dalle-mini/YFCC100M_OpenAI_subset")
-    
+    raise
 
 def open_images_v7():
     """https://storage.googleapis.com/openimages/web/download_v7.html"""
@@ -92,3 +94,4 @@ def open_images_v7():
     # https://github.com/cvdfoundation/open-images-dataset#download-full-dataset-with-google-storage-transfer
     # https://github.com/Tencent/tencent-ml-images?tab=readme-ov-file#download-images    
     dataset = load_dataset("dalle-mini/open-images")
+    raise

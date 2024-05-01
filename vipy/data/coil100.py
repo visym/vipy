@@ -10,12 +10,11 @@ SHA1 = '402d86b63cf3ace831f2af03bc9889e5e5c3dd1a'
 
 
 class COIL100(vipy.dataset.Dataset):
-    """IndoorSceneRecognition dataset: https://web.mit.edu/torralba/www/indoor.html"""
-    def __init__(self, datadir=tocache('coil_100')):
+    def __init__(self, datadir=tocache('coil_100'), redownload=False):
 
         # Download
         self._datadir = remkdir(datadir)        
-        if not os.path.exists(os.path.join(self._datadir, 'coil-100.zip')):
+        if redownload or not os.path.exists(os.path.join(self._datadir, 'coil-100.zip')):
             vipy.downloader.download_and_unpack(URL, self._datadir, sha1=SHA1)            
             
         # Create dataset

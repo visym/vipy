@@ -10,11 +10,11 @@ URL = 'http://ec2-52-25-205-214.us-west-2.compute.amazonaws.com/files/activity_n
 
 
 class ActivityNet(object):
-    def __init__(self, datadir=vipy.util.tocache('activitynet')):
+    def __init__(self, datadir=vipy.util.tocache('activitynet'), redownload=False):
         """Activitynet, provide a datadir='/path/to/store/activitynet' """
         self._url = URL
         self.datadir = remkdir(datadir)
-        if not self._isdownloaded():
+        if redownload or not self._isdownloaded():
             self.download()
         
     def __repr__(self):

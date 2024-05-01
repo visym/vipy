@@ -2,6 +2,7 @@ import os
 import vipy
 
 
+# URLs are broken
 URLS = ['http://ai.stanford.edu/~jkrause/car196/cars_train.tgz',
         'http://ai.stanford.edu/~jkrause/car196/cars_test.tgz',
         'https://ai.stanford.edu/~jkrause/cars/car_devkit.tgz']
@@ -9,11 +10,11 @@ URLS = ['http://ai.stanford.edu/~jkrause/car196/cars_train.tgz',
 
 class StanfordCars(vipy.dataset.Dataset):
     """Project: https://ai.stanford.edu/~jkrause/cars/car_dataset.html"""
-    def __init__(self, datadir=vipy.util.tocache('stanford_cars')):
+    def __init__(self, datadir=vipy.util.tocache('stanford_cars'), redownload=False):
         self._datadir = vipy.util.remkdir(datadir)
 
         for url in URLS:
-            if not os.path.exists(os.path.join(datadir, vipy.util.filetail(url))):
+            if redownload or not os.path.exists(os.path.join(datadir, vipy.util.filetail(url))):
                 vipy.downloader.download_and_unpack(url, self._datadir)
 
         # Read cached JSON
@@ -21,7 +22,6 @@ class StanfordCars(vipy.dataset.Dataset):
         if not os.path.exists(jsonfile):
             self._cache_annotations(jsonfile)
         self._json = vipy.util.readjson(jsonfile)
-
         
         imlist = [(os.path.join(self._datadir, 'cars_train', f), 
                    d['xmin'], d['ymin'], d['xmax'], d['ymax'],

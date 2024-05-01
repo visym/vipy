@@ -21,10 +21,10 @@ EMNIST_URL = 'https://biometrics.nist.gov/cs_links/EMNIST/gzip.zip'
 
 
 class MNIST():
-    def __init__(self, outdir=tocache('mnist')):
+    def __init__(self, outdir=tocache('mnist'), redownload=False):
         """download URLS above to outdir, then run export()"""
         self.outdir = remkdir(os.path.expanduser(outdir))
-        if not self._downloaded():
+        if redownload or not self._downloaded():
             print('[vipy.data.mnist]: downloading MNIST to "%s"' % self.outdir)
             self._wget()
 
@@ -92,9 +92,9 @@ class MNIST():
 
     
 class EMNIST(MNIST):
-    def __init__(self, datadir=tocache('emnist')):
+    def __init__(self, datadir=tocache('emnist'), redownload=False):
         self._datadir = vipy.util.remkdir(datadir)        
-        if not os.path.exists(os.path.join(self._datadir, vipy.util.filetail(EMNIST_URL))):
+        if redownload or not os.path.exists(os.path.join(self._datadir, vipy.util.filetail(EMNIST_URL))):
             vipy.downloader.download_and_unpack(EMNIST_URL, self._datadir)        
         super().__init__(datadir)
 

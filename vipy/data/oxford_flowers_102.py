@@ -13,10 +13,10 @@ SHA1 = 'f5b09dbcd82e3eb09ef97f265ff6d0ae95b75a80'
 
 class Flowers102(vipy.dataset.Dataset):
     """Project: https://www.robots.ox.ac.uk/~vgg/data/flowers/102"""
-    def __init__(self, datadir=tocache('flowers102')):
+    def __init__(self, datadir=tocache('flowers102'), redownload=False):
         # Download (if not cached)
         self._datadir = remkdir(datadir)        
-        if not os.path.exists(os.path.join(self._datadir, '102flowers.tgz')):
+        if redownload or not os.path.exists(os.path.join(self._datadir, '102flowers.tgz')):
             vipy.downloader.download_and_unpack(IMAGE_URL, self._datadir, sha1=None)            
 
         # Read cached JSON

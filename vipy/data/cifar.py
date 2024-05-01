@@ -19,11 +19,11 @@ class CIFAR10():
 
     """
     
-    def __init__(self, outdir=vipy.util.tocache('cifar10'), name='cifar10', url=CIFAR10_URL, md5=CIFAR10_MD5):        
+    def __init__(self, outdir=vipy.util.tocache('cifar10'), name='cifar10', url=CIFAR10_URL, md5=CIFAR10_MD5, redownload=False):        
         self._datadir = vipy.util.remkdir(outdir)
 
         self._subdir = 'cifar-10-batches-py'
-        if not os.path.exists(os.path.join(outdir, self._subdir, 'data_batch_1')):
+        if redownload or not os.path.exists(os.path.join(outdir, self._subdir, 'data_batch_1')):
             print('[vipy.data.cifar10]: downloading CIFAR-10 to "%s"' % self._datadir)
             vipy.downloader.download_and_unpack(url, self._datadir, md5=md5)
 
@@ -85,12 +85,12 @@ class CIFAR10():
             
             
 class CIFAR100(CIFAR10):
-    def __init__(self, datadir=vipy.util.tocache('cifar100'), name='cifar100', url=CIFAR100_URL, md5=CIFAR100_MD5):        
+    def __init__(self, datadir=vipy.util.tocache('cifar100'), name='cifar100', url=CIFAR100_URL, md5=CIFAR100_MD5, redownload=False):        
 
         self._name = name
         self._datadir = vipy.util.remkdir(datadir)
         self._subdir = 'cifar-100-python'
-        if not os.path.exists(os.path.join(datadir, self._subdir, 'train')):
+        if redownload or not os.path.exists(os.path.join(datadir, self._subdir, 'train')):
             print('[vipy.data.cifar10]: downloading CIFAR-100 to "%s"' % self._datadir)
             vipy.downloader.download_and_unpack(url, self._datadir, md5=md5)
 

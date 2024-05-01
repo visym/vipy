@@ -12,14 +12,14 @@ labels_2014_2017 = ['person', 'bicycle', 'car', 'motorcycle', 'airplane', 'bus',
 
 class Detection_TrainVal_2014(vipy.dataset.Dataset):
     """Project: https://cocodataset.org"""
-    def __init__(self, outdir=vipy.util.tocache('coco2014')):
+    def __init__(self, outdir=vipy.util.tocache('coco2014'), redownload=False):
         self._outdir = vipy.util.remkdir(outdir)
         
-        if not os.path.exists(os.path.join(self._outdir, 'train2014.zip')):
+        if redownload or not os.path.exists(os.path.join(self._outdir, 'train2014.zip')):
             print('[vipy.data.coco]: downloading COCO 2014 train/val images to "%s"' % self._outdir)            
             vipy.downloader.download_and_unpack(COCO_2014_IMAGE_URL, self._outdir, sha1=None)
 
-        if not os.path.exists(os.path.join(self._outdir, 'annotations_trainval2014.zip')):
+        if redownload or not os.path.exists(os.path.join(self._outdir, 'annotations_trainval2014.zip')):
             print('[vipy.data.coco]: downloading COCO 2014 train/val annotations to "%s"' % self._outdir)            
             vipy.downloader.download_and_unpack(COCO_2014_ANNO_URL, self._outdir, sha1=None)
 

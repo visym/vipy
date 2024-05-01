@@ -8,10 +8,10 @@ MD5 = [None, None]
 
 class Places356():
     """Project: http://places2.csail.mit.edu/download-private.html"""
-    def __init__(self, datadir=vipy.util.tocache('places365')):
+    def __init__(self, datadir=vipy.util.tocache('places365'), redownload=False):
         self._datadir = vipy.util.remkdir(datadir)
         for (url, md5) in zip(URL, MD5):
-            if not os.path.exists(os.path.join(self._datadir, vipy.util.filetail(url))):
+            if redownload or not os.path.exists(os.path.join(self._datadir, vipy.util.filetail(url))):
                 vipy.downloader.download_and_unpack(url, self._datadir, md5=md5)
 
     def trainset(self):
