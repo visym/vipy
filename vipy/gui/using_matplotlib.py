@@ -278,12 +278,12 @@ def imobjects(img, objlist, fignum=None, bordercolor='green', do_caption=True, f
             size.append(max(p.r, 1) ** 2) # size is pts squared
             
             if islist(bordercolor):
-                color.append(matplotlib.colors.to_hex(bordercolor[k]) + 'BB')  # with alpha
+                color.append(matplotlib.colors.to_hex(bordercolor[k]) + format(int(255*(1-facealpha)), '02X'))  # with alpha
             else:
-                color.append(matplotlib.colors.to_hex(bordercolor) + 'BB')  # with alpha
+                color.append(matplotlib.colors.to_hex(bordercolor) + format(int(255*(1-facealpha)), '02X'))  # with alpha
 
         plt.figure(fignum)
-        plt.scatter(x, y, c=color, s=size, linewidths=0)    # no text, points only
+        plt.scatter(x, y, c=color, s=size, linewidths=0.5, edgecolors='silver')    # no text, points only
     return fignum
 
 

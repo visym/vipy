@@ -209,7 +209,11 @@ class Detection(BoundingBox, Object):
         self.attributes = {}
         return self
 
-    
+    def to_keypoint2d(self, radius=0.5):
+        """Convert bounding box centroid to `vipy.object.Keypoint2d` with radius equal to the half minimum dimension of the box"""
+        return Keypoint2d(x=self.centroid_x(), y=self.centroid_y(), radius=radius*min(self.width(), self.height()), category=self.category(), attributes=self.attributes, id=self.id(), confidence=self.confidence(), shortlabel=self.shortlabel())
+
+                          
 class Track(object):
     """vipy.object.Track class
     

@@ -4,7 +4,7 @@ from vipy.util import isnumber
 
 def random_positive_semidefinite_matrix(N):
     """Return a randomly generated numpy float64 positive semidefinite matrix of size NxN"""
-    assert isnumber(N), "Invalid input"""
+    assert isnumber(N), "Invalid input"
     A = np.random.rand(N,N)
     return np.dot(A,A.transpose())
 

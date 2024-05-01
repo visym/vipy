@@ -72,7 +72,7 @@ class Dataset():
 
     def __getitem__(self, k):
         if isinstance(k, int) or isinstance(k, np.uint64):
-            assert abs(k) < len(self._ds), "invalid index"
+            assert abs(k) < len(self._idx), "invalid index"
             x = self._ds[self._idx[int(k)]]
             x = self._loader(x) if self._loader is not None else x
             x = self._preprocessor(x) if self._preprocessor is not None else x
@@ -132,7 +132,7 @@ class Dataset():
             A length of elements that satisfy f(v) = True [if f is not None]
         """
         assert callable(f)
-        return len([k for k in self._idx if f(self[k])])
+        return len([k for (j,k) in enumerate(self._idx) if f(self[j])])
 
     def countby(self, f):
         """alias for self.count"""
@@ -142,7 +142,7 @@ class Dataset():
     def filter(self, f):
         """In place filter with lambda function f, keeping those elements obj where f(obj) evaluates true"""
         assert callable(f)
-        self._idx = [k for k in self._idx if f(self[k])]
+        self._idx = [k for (j,k) in enumerate(self._idx) if f(self[j])]
         return self
 
     def take(self, n, seed=None):
@@ -181,7 +181,7 @@ class Dataset():
         """Yield list chunks of size n of this dataset.  Last chunk will be ragged if ragged=True, else skipped"""
         for (k,V) in enumerate(vipy.util.chunkgenbysize(self, n)):
             if ragged or len(V) == n:
-                yield Dataset(V, id=('%s_%d' % (self.id(), k)) if self.id() is not None else None)
+                yield Dataset(V, id=('%s_%d' % (self.id(), k)) if self.id() is not None else None)  # loaded
     
     def split(self, trainfraction=0.9, valfraction=0.1, testfraction=0, seed=None):
         """Split the dataset into the requested fractions.  
@@ -296,7 +296,7 @@ class Dataset():
     def sort(self, f):
         """Sort the dataset in-place using the sortkey lambda function"""
         if f is not None:
-            self._idx = sorted(self._idx, key=lambda k: f(self[k]))
+            self._idx = [self._idx[j] for j in sorted(range(len(self)), key=lambda k: f(self[k]))]
         return self
                 
 

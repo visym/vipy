@@ -589,7 +589,7 @@ def chunkgenbysize(inlist, size_per_chunk):
     size_per_chunk"""
     assert size_per_chunk >= 1
     for i in range(0,len(inlist),size_per_chunk):
-        yield [inlist[i:i+size_per_chunk]] 
+        yield inlist[i:i+size_per_chunk] 
 
 def triplets(inlist):
     """Yield triplets (1,2,3), (4,5,6), ...  from list inlist=[1,2,3,4,5,6,...]"""
@@ -1848,16 +1848,6 @@ def islinux():
     """is the current platform Linux?"""
     (sysname, nodename, release, version, machine) = os.uname()
     return sysname == 'Linux'
-
-
-def linuxversion():
-    """Return linux version"""
-    if islinux():
-        with open('/etc/redhat-release') as f:
-            v = f.readlines()
-            m = re.match('[a-zA-Z ]+([0-9]+\.[0-9]+)', v[0])
-            return m.groups(1)[0]
-    return None
 
 
 def imcrop(img, bbox):

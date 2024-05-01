@@ -37,19 +37,20 @@ def scene_explorer(im, outfile=None, width=1024, title='Scene Explorer', preview
     assert popup_alpha >=0 and popup_alpha <=1    
     if not all([isinstance(o, vipy.object.Keypoint2d) for o in im.objects()]):
         warnings.warn('Scene explorer supports vipy.object.Keypoint2d only - all other vipy.object elements ignored')
-    
+
+    imc = im.clone()
     colors = [matplotlib.colors.to_hex(c) for c in vipy.show.colorlist()]
-    img = 'data:image/jpeg;charset=utf-8;base64,%s' % im.load().resize(width=width).base64().decode('ascii')
-    keypoints = [o for o in im.objects() if isinstance(o, vipy.object.Keypoint2d)]
+    img = 'data:image/jpeg;charset=utf-8;base64,%s' % imc.load().resize(width=width).base64().decode('ascii')
+    keypoints = [o for o in imc.objects() if isinstance(o, vipy.object.Keypoint2d)]
     d_category_to_color = {o.category():colors[int(hashlib.sha1(o.category().split(' ')[-1].encode('utf-8')).hexdigest(), 16) % len(colors)] for o in keypoints}   # consistent color mapping by category suffix (space separated)
     
     html = Path(Path(__file__).parent.resolve() / 'visualize_scene_explorer.html').read_text()
     keywords = {'${TITLE}': title,
                 '${META_OG_IMAGE}': ('<meta property="og:image" content="%s">' % previewurl) if previewurl is not None else '',  # useful for website preview in text/social
-                '${IMG_WIDTH}':im.width(),
-                '${IMG_HEIGHT}':im.height(),                                      
+                '${IMG_WIDTH}':imc.width(),
+                '${IMG_HEIGHT}':imc.height(),                                      
                 '${IMG}':img,
-                '${IMG_ATTRIBUTES}':str(im.flush().clear().json()),
+                '${IMG_ATTRIBUTES}':str(imc.clone().flush().clear().json()),
                 '${SEARCHBOX_WIDTH}':width // 4,
                 '${POPUP_ALPHA}': popup_alpha,
                 '${CLASSLIST}':str(sorted(set([o.category() for o in keypoints]))),  # assumes that shared class prefix encodes grouping

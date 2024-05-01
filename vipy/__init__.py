@@ -526,6 +526,7 @@ import vipy.visualize
 import vipy.dataset
 
 # Top level functions
+# >>> vipy.save(...)
 from vipy.util import save, load
 
 __version__ = vipy.version.VERSION
