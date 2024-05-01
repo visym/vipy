@@ -22,8 +22,9 @@ class Caltech256(vipy.dataset.Dataset):
         categorydir = os.path.join(self._datadir, '256_ObjectCategories')        
         for (idx_category, category) in enumerate(os.listdir(categorydir)):
             imdir = os.path.join(categorydir, category)
-            for im in os.listdir(imdir):
-                imlist.append(ImageCategory(filename=os.path.join(categorydir, category, im), category=category))
+            for imf in os.listdir(imdir):
+                imlist.append((category.split('.')[1], os.path.join(categorydir, category, imf)))
 
-        super().__init__(imlist, id='caltech-256')
+        loader = lambda x, categorydir=categorydir: ImageCategory(filename=x[1], category=x[0])
+        super().__init__(imlist, id='caltech-256', loader=loader)
             

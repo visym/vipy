@@ -24,9 +24,10 @@ class MIT67(vipy.dataset.Dataset):
         for category in os.listdir(categorydir):
             imdir = os.path.join(categorydir, category)
             for im in os.listdir(imdir):
-                imlist.append(ImageCategory(filename=os.path.join(categorydir, category, im), category=category))
+                imlist.append( (os.path.join(categorydir, category, im), category) )
 
-        super().__init__(imlist, id='mit67')
+        loader = lambda x: ImageCategory(filename=x[0], category=x[1])
+        super().__init__(imlist, id='mit67', loader=loader)
             
 
         

@@ -14,7 +14,7 @@ VAL_ANNO_2021_MD5 = '4d761e0f6a86cc63e8f7afc91f6a8f0b'
 
 class iNaturalist2021(vipy.dataset.Dataset):
     """Project: https://github.com/visipedia/inat_comp/tree/master/2021"""
-    def __init__(self, datadir, imageurl=TRAIN_IMG_2021_URL, imagemd5=TRAIN_IMG_2021_MD5, annourl=TRAIN_ANNO_2021_URL, annomd5=TRAIN_ANNO_2021_MD5, name='inaturalist_train'):
+    def __init__(self, datadir, imageurl=TRAIN_IMG_2021_URL, imagemd5=TRAIN_IMG_2021_MD5, annourl=TRAIN_ANNO_2021_URL, annomd5=TRAIN_ANNO_2021_MD5, name='inaturalist'):
         self._datadir = vipy.util.remkdir(datadir)        
         if not os.path.exists(os.path.join(self._datadir, vipy.util.filetail(imageurl))):
             vipy.downloader.download_and_unpack(imageurl, self._datadir, md5=imagemd5)
@@ -27,12 +27,13 @@ class iNaturalist2021(vipy.dataset.Dataset):
         d_imageid_to_annotation = {iid:a[0] for (iid,a) in vipy.util.groupbyasdict(json['annotations'], lambda x: x['image_id']).items()}  # one annotation per image
         d_categoryid_to_category = {x['id']:x['name'] for x in json['categories']}
         
-        imlist = [vipy.image.ImageCategory(filename=f,
-                                           category=d_categoryid_to_category[d_imageid_to_annotation[iid]['category_id']] if iid in d_imageid_to_annotation else None,                                            
-                                           attributes={'category_id': d_imageid_to_annotation[iid]['category_id']} if iid in d_imageid_to_annotation else None)
-                  for (iid,f) in d_imageid_to_filename.items()]
-        
-        super().__init__(imlist, id='iNaturalist2021')
+        imlist = [(f,iid) for (iid,f) in d_imageid_to_filename.items()]
+
+        loader = lambda x,d_imageid_to_annotation=d_imageid_to_annotation, d_categoryid_to_category=d_categoryid_to_category: vipy.image.ImageCategory(filename=x[0],
+                                                    category=d_categoryid_to_category[d_imageid_to_annotation[x[1]]['category_id']] if x[1] in d_imageid_to_annotation else None,
+                                                    attributes={'category_id': d_imageid_to_annotation[x[1]]['category_id']} if x[1] in d_imageid_to_annotation else None)
+                                                    
+        super().__init__(imlist, id=name, loader=loader)
         
     def trainset(self):
         return self

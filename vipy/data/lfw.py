@@ -19,8 +19,10 @@ class LFW(vipy.dataset.Dataset):
 
         if not os.path.exists(os.path.join(self.lfwdir, 'lfw.tgz')):
             self._download()
+
+        loader = lambda x: ImageCategory(category=x[0], filename=x[1])
         
-        super().__init__([ImageCategory(category=s, filename=f) for s in self.subjects() for f in imlist(os.path.join(self.lfwdir, 'lfw', s))], id='lfw')
+        super().__init__([(s, f) for s in self.subjects() for f in imlist(os.path.join(self.lfwdir, 'lfw', s))], id='lfw', loader=loader)
         
     def _download(self, verbose=True):
         vipy.downloader.download_and_unpack(URL, self.lfwdir, verbose=verbose)

@@ -22,12 +22,14 @@ class StanfordCars(vipy.dataset.Dataset):
             self._cache_annotations(jsonfile)
         self._json = vipy.util.readjson(jsonfile)
 
-        imlist = [vipy.image.ImageDetection(filename=os.path.join(self._datadir, 'cars_train', f), 
-                                            xmin=d['xmin'], ymin=d['ymin'], xmax=d['xmax'], ymax=d['ymax'],
-                                            category=self._json['classidx_to_classname'][str(d['classidx'])])
-                  for (f,d) in self._json['filename_to_annotation'].items()]
         
-        super().__init__(imlist, 'stanford_cars')
+        imlist = [(os.path.join(self._datadir, 'cars_train', f), 
+                   d['xmin'], d['ymin'], d['xmax'], d['ymax'],
+                   self._json['classidx_to_classname'][str(d['classidx'])])
+                  for (f,d) in self._json['filename_to_annotation'].items()]
+
+        loader = lambda x: vipy.image.ImageDetection(filename=x[0], xmin=x[1], ymin=x[2], xmax=x[3], ymax=x[4], category=x[5]) 
+        super().__init__(imlist, id='stanford_cars', loader=loader)
                           
     def _cache_annotations(self, outjson='stanford_cars.json'):        
         assert os.path.exists(os.path.join(self._datadir, 'cars_annos.mat'))
@@ -41,6 +43,7 @@ class StanfordCars(vipy.dataset.Dataset):
         return vipy.util.writejson({'classidx_to_classname':d_classidx_to_classname,
                                     'filename_to_annotation':{str(x[5][0]):{'xmin':int(x[0][0][0]), 'ymin':int(x[1][0][0]), 'xmax':int(x[2][0][0]), 'ymax':int(x[3][0][0]), 'classidx':int(x[4][0][0])} for x in mat_train['annotations'][0]}}, outjson)
 
-    def testset(self):        
-        return vipy.dataset.Dataset([vipy.image.Image(filename=f) for f in vipy.util.findimages(os.path.join(self._datadir, 'cars_test'))], 'stanford_cars_test')
+    def testset(self):
+        loader = lambda x: vipy.image.Image(filename=x)
+        return vipy.dataset.Dataset(vipy.util.findimages(os.path.join(self._datadir, 'cars_test')), id='stanford_cars_test', loader=loader)
     

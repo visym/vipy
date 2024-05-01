@@ -382,13 +382,13 @@ class Union():
 
     
     
-class Vipyset(Dataset):
-    """vipy.dataset.Vipyset() class
+class Collector(Dataset):
+    """vipy.dataset.Collector() class
     
-    Common class to manipulate large sets of vipy objects in parallel
+    Common class to manipulate Visym Collector datasets 
 
     ```python
-    D = vipy.dataset.Vipyset([vipy.video.RandomScene(), vipy.video.RandomScene()], id='random_scene')
+    D = vipy.dataset.Collector([vipy.video.RandomScene(), vipy.video.RandomScene()], id='random_scene')
     with vipy.globals.parallel(2):
         D = D.map(lambda v: v.frame(0))
     list(D)
@@ -397,20 +397,20 @@ class Vipyset(Dataset):
     Create dataset and export as a directory of json files 
 
     ```python
-    D = vipy.dataset.Vipyset([vipy.video.RandomScene(), vipy.video.RandomScene()])
+    D = vipy.dataset.Collector([vipy.video.RandomScene(), vipy.video.RandomScene()])
     D.tojsondir('/tmp/myjsondir')
     ```
     
     Create dataset from all json or pkl files recursively discovered in a directory and lazy loaded
 
     ```python
-    D = vipy.dataset.Vipyset('/tmp/myjsondir')  # lazy loading
+    D = vipy.dataset.Collector('/tmp/myjsondir')  # lazy loading
     ```
 
     Create dataset from a list of json or pkl files and lazy loaded
 
     ```python
-    D = vipy.dataset.Vipyset(['/path/to/file1.json', '/path/to/file2.json'])  # lazy loading
+    D = vipy.dataset.Collector(['/path/to/file1.json', '/path/to/file2.json'])  # lazy loading
     ```
     
     Args:
@@ -600,7 +600,7 @@ class Vipyset(Dataset):
             bycategory [bool[: If trye, then save the dataset to the provided output filename pattern outfile='/path/to/annotations/*.json' where the wildcard is replaced with the category name
 
         Returns:        
-            This dataset that is quivalent to vipy.dataset.Vipyset('/path/to/outfile.json')
+            This dataset that is quivalent to vipy.dataset.Collector('/path/to/outfile.json')
         """
         n = len([v for v in self if v is None])
         if n > 0:
@@ -689,8 +689,8 @@ class Vipyset(Dataset):
         """Merge a dataset union into a single subdirectory with symlinked media ready to be archived.
 
         ```python
-        D1 = vipy.dataset.Vipyset('/path1/dataset.json')
-        D2 = vipy.dataset.Vipyset('/path2/dataset.json')
+        D1 = vipy.dataset.Collector('/path1/dataset.json')
+        D2 = vipy.dataset.Collector('/path2/dataset.json')
         D3 = D1.union(D2).merge(outdir='/path3')
         ```
 
@@ -712,7 +712,7 @@ class Vipyset(Dataset):
            Usage:
 
         ```python
-        D = vipy.dataset.Vipyset(...).jsondir('/path/to/jsondir')
+        D = vipy.dataset.Collector(...).jsondir('/path/to/jsondir')
         D = vipy.util.load('/path/to/jsondir')   # recursively discover and lazy load all json files 
         ```
 
@@ -743,11 +743,11 @@ class Vipyset(Dataset):
         for (k,v) in enumerate(self):            
             f = vipy.util.save(v.clone().relpath(start=filepath(tojsonfile(v,k))) if not abspath else v.clone().abspath(), tojsonfile(v,k))
             if verbose:
-                print('[vipy.dataset.Vipyset][%d/%d]: %s' % (k, len(self), f))
+                print('[vipy.dataset.Collector][%d/%d]: %s' % (k, len(self), f))
         return outdir
 
     def tojsondir(self, outdir=None, verbose=True, rekey=False, bycategory=False, byfilename=False, abspath=True):
-        """Alias for `vipy.dataset.Vipyset.jsondir`"""
+        """Alias for `vipy.dataset.Collector.jsondir`"""
         return self.jsondir(outdir, verbose=verbose, rekey=rekey, bycategory=bycategory, byfilename=byfilename, abspath=abspath)
     
     def take_per_category(self, n, seed=None):
@@ -826,7 +826,7 @@ class Vipyset(Dataset):
         To perform this in parallel across four processes:
 
         ```python
-        D = vipy.dataset.Vipyset(...)
+        D = vipy.dataset.Collector(...)
         with vipy.globals.parallel(4):
             D.map(lambda v: ...)
         ```
@@ -841,7 +841,7 @@ class Vipyset(Dataset):
             ordered: [bool] If true, preserve the order of objects in dataset as returned from distributed processing
         
         Returns:
-            A `vipy.dataset.Vipyset` containing the elements f_map(v).  This operation is order preserving if ordered=True.
+            A `vipy.dataset.Collector` containing the elements f_map(v).  This operation is order preserving if ordered=True.
 
         .. note:: 
             - This dataset must contain vipy objects of types defined in `vipy.util.class_registry` or JSON serializable objects
@@ -858,7 +858,7 @@ class Vipyset(Dataset):
         # Distributed map using vipy.batch
         f_serialize = lambda v,d=vipy.util.class_registry(): (str(type(v)), v.json()) if str(type(v)) in d else (None, pickle.dumps(v))  # fallback on PKL dumps/loads
         f_deserialize = lambda x,d=vipy.util.class_registry(): d[x[0]](x[1])  # with closure capture
-        f_catcher = lambda f, *args, **kwargs: vipy.util.loudcatcher(f, '[vipy.dataset.Vipyset.map]: ', *args, **kwargs)  # catch exceptions when executing lambda, print errors and return (True, result) or (False, exception)
+        f_catcher = lambda f, *args, **kwargs: vipy.util.loudcatcher(f, '[vipy.dataset.Collector.map]: ', *args, **kwargs)  # catch exceptions when executing lambda, print errors and return (True, result) or (False, exception)
         f_loader = self._loader if self._loader is not None else lambda x: x
         S = [f_serialize(v) for v in self._objlist]  # local serialization
 
@@ -874,8 +874,8 @@ class Vipyset(Dataset):
         V = [f_deserialize(x) for s in S for x in s]  # Local deserialization and chunk flattening
         (good, bad) = ([r for (b,r) in V if b], [r for (b,r) in V if not b])  # catcher returns (True, result) or (False, exception string)
         if len(bad) > 0:
-            print('[vipy.dataset.Vipyset.map]: Exceptions in map distributed processing:\n%s' % str(bad))
-            print('[vipy.dataset.Vipyset.map]: %d/%d items failed' % (len(bad), len(self)))
+            print('[vipy.dataset.Collector.map]: Exceptions in map distributed processing:\n%s' % str(bad))
+            print('[vipy.dataset.Collector.map]: %d/%d items failed' % (len(bad), len(self)))
         return Dataset(good, id=dst if dst is not None else id)
     
     def synonym(self, synonymdict):

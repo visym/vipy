@@ -12,6 +12,7 @@ class Objectnet(vipy.dataset.Dataset):
         if not os.path.exists(os.path.join(self._datadir, vipy.util.filetail(url))):
             vipy.downloader.download_and_unpack(url, self._datadir, md5=None, passwd=passwd)
 
-        imlist = [vipy.image.ImageCategory(filename=f, category=vipy.util.filebase(vipy.util.filepath(f))) for f in vipy.util.findimages(os.path.join(datadir, vipy.util.filebase(url)))]
-        super().__init__(imlist, id=name)
+        imlist = vipy.util.findimages(os.path.join(datadir, vipy.util.filebase(url)))
+        loader = lambda f: vipy.image.ImageCategory(filename=f, category=vipy.util.filebase(vipy.util.filepath(f)))
+        super().__init__(imlist, id=name, loader=loader)
 

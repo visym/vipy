@@ -19,7 +19,7 @@ class CIFAR10():
 
     """
     
-    def __init__(self, outdir, name='cifar10', url=CIFAR10_URL, md5=CIFAR10_MD5):        
+    def __init__(self, outdir=vipy.util.tocache('cifar10'), name='cifar10', url=CIFAR10_URL, md5=CIFAR10_MD5):        
         self._datadir = vipy.util.remkdir(outdir)
 
         self._subdir = 'cifar-10-batches-py'
@@ -48,10 +48,12 @@ class CIFAR10():
         return self._classes
 
     def trainset(self):
-        return vipy.dataset.Dataset([vipy.image.ImageCategory(category=self._classes[y], array=x, colorspace='rgb') for (x,y) in zip(self._trainset, self._trainlabels)], '%s_train' % self._name)
+        loader = lambda x, classes=self._classes: vipy.image.ImageCategory(array=x[0], category=classes[x[1]], colorspace='rgb')
+        return vipy.dataset.Dataset([(x,y) for (x,y) in zip(self._trainset, self._trainlabels)], '%s_train' % self._name, loader=loader)
     
     def testset(self):
-        return vipy.dataset.Dataset([vipy.image.ImageCategory(category=self._classes[y], array=x, colorspace='rgb') for (x,y) in zip(self._testset, self._testlabels)], '%s_test' % self._name)
+        loader = lambda x, classes=self._classes: vipy.image.ImageCategory(array=x[0], category=classes[x[1]], colorspace='rgb')
+        return vipy.dataset.Dataset([(x,y) for (x,y) in zip(self._testset, self._testlabels)], '%s_test' % self._name, loader=loader)        
     
     def _trainset(self, labelkey=b'labels'):
         (data, labels) = ([], [])
@@ -83,7 +85,7 @@ class CIFAR10():
             
             
 class CIFAR100(CIFAR10):
-    def __init__(self, datadir, name='cifar100', url=CIFAR100_URL, md5=CIFAR100_MD5):        
+    def __init__(self, datadir=vipy.util.tocache('cifar100'), name='cifar100', url=CIFAR100_URL, md5=CIFAR100_MD5):        
 
         self._name = name
         self._datadir = vipy.util.remkdir(datadir)

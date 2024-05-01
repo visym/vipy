@@ -5,7 +5,7 @@ from vipy.video import VideoCategory
 import numpy as np
 
 
-class Kinetics700(object):
+class Kinetics700():
     def __init__(self, datadir=tocache('kinetics700')):
         """Kinetics, provide a datadir='/path/to/store/kinetics' """
         self.datadir = remkdir(os.path.expanduser(datadir))
@@ -27,12 +27,14 @@ class Kinetics700(object):
     
     def _dataset(self, jsonfile, id=None):
         assert self.isdownloaded(), "Dataset not downloaded.  download() first or manually download '%s' to '%s' and unpack the tarball there" % (self._url, self.datadir)
-        return vipy.dataset.Dataset([VideoCategory(url=v['url'],
-                                                   filename=os.path.join(self.datadir, self._name, youtubeid),
-                                                   category=v['annotations']['label'],
-                                                   startsec=float(v['annotations']['segment'][0]),
-                                                   endsec=float(v['annotations']['segment'][1]))
-                                     for (youtubeid, v) in readjson(jsonfile).items()], id=id)
+
+        loader = lambda x: VideoCategory(url=x[0], filename=x[1], category=x[2], startsec=x[3], endsec=x[4])
+        return vipy.dataset.Dataset([(v['url'],
+                                      os.path.join(self.datadir, self._name, youtubeid),
+                                      v['annotations']['label'],
+                                      float(v['annotations']['segment'][0]),
+                                      float(v['annotations']['segment'][1]))
+                                     for (youtubeid, v) in readjson(jsonfile).items()], loader=loader, id=id)
 
     def trainset(self):
         return self._dataset(os.path.join(self.datadir, self._name, 'train.json'), self._name + '_train')

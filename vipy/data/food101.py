@@ -15,8 +15,9 @@ class Food101(vipy.dataset.Dataset):
         if not os.path.exists(os.path.join(self._datadir, 'food-101.tar.gz')):
             vipy.downloader.download_and_unpack(URL, self._datadir, sha1=SHA1)            
 
-        imlist = [vipy.image.ImageCategory(filename=f, category=vipy.util.filebase(vipy.util.filepath(f))) for f in vipy.util.findimages(os.path.join(datadir, 'food-101'))]
-        super().__init__(imlist, id='food101')
+        loader = lambda f: vipy.image.ImageCategory(filename=f, category=vipy.util.filebase(vipy.util.filepath(f)))
+        imlist = vipy.util.findimages(os.path.join(datadir, 'food-101'))
+        super().__init__(imlist, id='food101', loader=loader)
 
         
 

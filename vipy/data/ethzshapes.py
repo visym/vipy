@@ -1,27 +1,24 @@
 import os
+import vipy
 from vipy.util import remkdir, isjpg
 from vipy.image import ImageDetection
 import vipy.downloader
 
 
-URL = 'http://www.vision.ee.ethz.ch/datasets_extra/ethz_shape_classes_v12.tgz'
+URL = 'https://ethz.ch/content/dam/ethz/special-interest/itet/cvl/vision-dam/datasets/Dataset-information/ethz_shape_classes_v12.tgz'
 SHA1 = 'ae9b8fad2d170e098e5126ea9181d0843505a84b'
 SUBDIR = 'ETHZShapeClasses-V1.2'
 LABELS = ['Applelogos','Bottles','Giraffes','Mugs','Swans']
 
 
-class ETHZShapes(object):
-    def __init__(self, datadir):
+class ETHZShapes(vipy.dataset.Dataset):
+    def __init__(self, datadir=vipy.util.tocache('ethzshapes')):
         """ETHZShapes, provide a datadir='/path/to/store/ethzshapes' """
         self.datadir = remkdir(datadir)
 
-    def __repr__(self):
-        return str('<vipy.data.ethzshapes: "%s">' % self.datadir)
-
-    def download_and_unpack(self):
-        vipy.downloader.download_and_unpack(URL, self.datadir, sha1=SHA1)
-
-    def dataset(self):
+        if not os.path.exists(os.path.join(self.datadir, vipy.util.filetail(URL))):
+            vipy.downloader.download_and_unpack(URL, self.datadir, sha1=SHA1)
+        
         categorydir = LABELS
         imlist = []
         for (idx_category, category) in enumerate(categorydir):
@@ -39,6 +36,7 @@ class ETHZShapes(object):
                         if line.strip() == '':
                             continue
                         (xmin,ymin,xmax,ymax) = line.strip().split()
-                        imlist.append(ImageDetection(filename=im, category=category, xmin=xmin, ymin=ymin, xmax=xmax, ymax=ymax))
+                        imlist.append( (im, category, xmin, ymin, xmax, ymax) )
 
-        return imlist
+        loader = lambda x: ImageDetection(filename=x[0], category=x[1], xmin=x[2], ymin=x[3], xmax=x[4], ymax=x[5])
+        super().__init__(imlist, id='ethzshapes', loader=loader)

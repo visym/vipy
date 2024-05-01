@@ -8,7 +8,7 @@ import scipy.io
 
 IMAGE_URL = 'https://www.robots.ox.ac.uk/~vgg/data/flowers/102/102flowers.tgz'
 ANNO_URL = 'https://www.robots.ox.ac.uk/~vgg/data/flowers/102/imagelabels.mat'
-SHA1 = None
+SHA1 = 'f5b09dbcd82e3eb09ef97f265ff6d0ae95b75a80'
 
 
 class Flowers102(vipy.dataset.Dataset):
@@ -26,8 +26,9 @@ class Flowers102(vipy.dataset.Dataset):
         self._json = vipy.util.readjson(jsonfile)
 
         # Create dataset
-        imlist = [vipy.image.ImageCategory(filename=f, category=self._json['labelindex_to_category'][self._json['imageindex_to_labelindex'][k]]) for (k,f) in enumerate(sorted(vipy.util.findimages(self._datadir)))]
-        super().__init__(imlist, id='flowers102')
+        imlist = [(f, self._json['labelindex_to_category'][self._json['imageindex_to_labelindex'][k]]) for (k,f) in enumerate(sorted(vipy.util.findimages(self._datadir)))]
+        loader = lambda x: vipy.image.ImageCategory(filename=x[0], category=x[1])
+        super().__init__(imlist, id='flowers102', loader=loader)
 
 
     def _cache_annotations(self, outjson='oxford_flowers_102.json'):        
