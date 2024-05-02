@@ -49,11 +49,11 @@ class CIFAR10():
 
     def trainset(self):
         loader = lambda x, classes=self._classes: vipy.image.ImageCategory(array=x[0], category=classes[x[1]], colorspace='rgb')
-        return vipy.dataset.Dataset([(x,y) for (x,y) in zip(self._trainset, self._trainlabels)], '%s_train' % self._name, loader=loader)
+        return vipy.dataset.Dataset(tuple((x,y) for (x,y) in zip(self._trainset, self._trainlabels)), '%s_train' % self._name, loader=loader)
     
     def testset(self):
         loader = lambda x, classes=self._classes: vipy.image.ImageCategory(array=x[0], category=classes[x[1]], colorspace='rgb')
-        return vipy.dataset.Dataset([(x,y) for (x,y) in zip(self._testset, self._testlabels)], '%s_test' % self._name, loader=loader)        
+        return vipy.dataset.Dataset(tuple((x,y) for (x,y) in zip(self._testset, self._testlabels)), '%s_test' % self._name, loader=loader)        
     
     def _trainset(self, labelkey=b'labels'):
         (data, labels) = ([], [])

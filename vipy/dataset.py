@@ -28,7 +28,7 @@ class Dataset():
     Common class to manipulate large sets of objects in parallel
 
     Args:
-        - objlist [list, tuple, set, dict): a python built-in type that supports indexing
+        - objlist [list, tuple, set): a python built-in type that supports indexing
         - loader [lambda]: a callable loader that will process the object .  This is useful for custom deerialization or on demand transformations
         - strict [bool]: If true, throw an error if the type of objlist is not a python built-in type.  This is useful for loading dataset objects that can be indexed.
 
@@ -39,7 +39,7 @@ class Dataset():
         assert preprocessor is None or callable(preprocessor)        
 
         self._id = id
-        self._ds = dataset
+        self._ds = dataset if not isinstance(dataset, (list, set, tuple)) else tuple(dataset)  # force immutable
         self._idx = list(range(len(dataset)))
         self._loader = loader  # may not be serializable if lambda is provided
         self._preprocessor = preprocessor

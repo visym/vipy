@@ -26,7 +26,7 @@ class Flowers102(vipy.dataset.Dataset):
         self._json = vipy.util.readjson(jsonfile)
 
         # Create dataset
-        imlist = [(f, self._json['labelindex_to_category'][self._json['imageindex_to_labelindex'][k]]) for (k,f) in enumerate(sorted(vipy.util.findimages(self._datadir)))]
+        imlist = tuple((f, self._json['labelindex_to_category'][self._json['imageindex_to_labelindex'][k]]) for (k,f) in enumerate(sorted(vipy.util.findimages(self._datadir))))
         loader = lambda x: vipy.image.ImageCategory(filename=x[0], category=x[1])
         super().__init__(imlist, id='flowers102', loader=loader)
 

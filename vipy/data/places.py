@@ -15,13 +15,13 @@ class Places356():
                 vipy.downloader.download_and_unpack(url, self._datadir, md5=md5)
 
     def trainset(self):
-        imlist = [(f, vipy.util.filebase(vipy.util.filepath(f))) for f in vipy.util.findimages(os.path.join(self._datadir, 'train_256_places365standard'))]
+        imlist = tuple((f, vipy.util.filebase(vipy.util.filepath(f))) for f in vipy.util.findimages(os.path.join(self._datadir, 'train_256_places365standard')))
         loader = lambda x: vipy.image.ImageCategory(filename=x[0], category=x[1])
         return vipy.dataset.Dataset(imlist, id='places365_train', loader=loader)
 
 
     def valset(self):
-        imlist = [(f, vipy.util.filebase(vipy.util.filepath(f))) for f in vipy.util.findimages(os.path.join(self._datadir, 'val_256'))]
+        imlist = tuple((f, vipy.util.filebase(vipy.util.filepath(f))) for f in vipy.util.findimages(os.path.join(self._datadir, 'val_256')))
         loader = lambda x: vipy.image.ImageCategory(filename=x[0], category=x[1])        
         return vipy.dataset.Dataset(imlist, id='places365_val', loader=loader)
 

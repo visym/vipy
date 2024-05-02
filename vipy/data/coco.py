@@ -29,11 +29,11 @@ class Detection_TrainVal_2014(vipy.dataset.Dataset):
         d_imageid_to_annotations = vipy.util.groupbyasdict(json['annotations'], lambda x: x['image_id'])
         d_categoryid_to_category = {x['id']:x['name'] for x in json['categories']}
         
-        imlist = [(f,iid) for (iid,f) in d_imageid_to_filename.items()]
+        imtuple = tuple((f,iid) for (iid,f) in d_imageid_to_filename.items())
         loader = lambda x, d_categoryid_to_category=d_categoryid_to_category, d_imageid_to_annotations=d_imageid_to_annotations: vipy.image.Scene(filename=x[0],
                                             objects=[vipy.object.Detection(label=d_categoryid_to_category[o['category_id']], xywh=o['bbox'])
                                                      for o in d_imageid_to_annotations[x[1]]] if x[1] in d_imageid_to_annotations else None)
-        super().__init__(imlist, id='coco_2014', loader=loader)
+        super().__init__(imtuple, id='coco_2014', loader=loader)
 
         
         

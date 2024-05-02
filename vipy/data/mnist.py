@@ -78,7 +78,7 @@ class MNIST():
             if magic != 2051:
                 raise ValueError('Magic number mismatch, expected 2051, got %d' % magic)
             x = [np.asarray(array("B", gzfile.read(rows * cols)).tolist(), dtype=np.uint8).reshape((rows, cols)) for k in range(N)]
-        return [(xi,yi) for (xi,yi) in zip(x,y)]
+        return tuple((xi,yi) for (xi,yi) in zip(x,y))
 
     def trainset(self):
         (labelfile, imgfile, N) = (os.path.join(self.outdir, 'train-labels-idx1-ubyte.gz'), os.path.join(self.outdir, 'train-images-idx3-ubyte.gz'), 60000)
