@@ -98,7 +98,8 @@ def save(vars, outfile=None, backup=False):
         shutil.copyfile(outfile, outfile+'.bak')
     remkdir(filepath(outfile))
     if ispkl(outfile):
-        dill.dump(vars, open(outfile, 'wb'))
+        with open(outfile, 'wb') as f:
+            dill.dump(vars, f)
 
     elif isjsonfile(outfile):
         saveobj = vars
@@ -122,7 +123,7 @@ def save(vars, outfile=None, backup=False):
     return os.path.abspath(outfile)
 
 
-def load(infile, abspath=True, refcycle=True):
+def load(infile, abspath=True, refcycle=True, relocatable=True):
     """Load variables from a relocatable archive file format, either dill pickle, JSON format or JSON directory format.
        
        Loading is performed by attemping the following:
@@ -142,14 +143,15 @@ def load(infile, abspath=True, refcycle=True):
            infile: [str] file saved using `vipy.util.save` with extension [.pkl, .json].  This may also be a directory tree containing json or pkl files 
            abspath: [bool] If true, then convert all vipy objects with relative paths to absolute paths. If False, then preserve relative paths and warn user.
            refcycle: [bool] If False, then disable python reference cycle garbage collector.  This is useful for large python objects.
-       
+           relocatable: [bool] If True, then perform relocatable relative and absolute paths for vipy objects containing filenames
        Returns:
            The object in the archive file
     """
     infile = os.path.abspath(os.path.expanduser(infile))
 
     if ispkl(infile):
-        obj = dill.load(open(infile, 'rb'))
+        with open(infile, 'rb') as f:
+            obj = dill.load(f)
     elif isjsonfile(infile):
         with open(infile, 'r') as f:
             loadobj = json.load(f)
@@ -170,12 +172,9 @@ def load(infile, abspath=True, refcycle=True):
     else:
         raise ValueError('unknown file type')
     
-    if len(tolist(obj)) == 0:
-        return obj  
-    testobj = tolist(obj)[0]  
-
-    # Relocatable object?
-    if hasattr(testobj, 'filename') and testobj.filename() is not None:
+    # Relocatable vipy object?
+    testobj = tolist(obj)[0] if len(tolist(obj)) > 0 else None
+    if relocatable and testobj is not None and hasattr(testobj, 'filename') and testobj.filename() is not None:
         if not os.path.isabs(testobj.filename()):
             if not abspath:
                 warnings.warn('Loading archive "%s" with relative paths.  Changing directory to "%s".  Disable this warning with vipy.util.load(..., abspath=True).' % (infile, filepath(infile)))
