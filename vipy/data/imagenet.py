@@ -3,11 +3,12 @@ import vipy
 from vipy.util import readcsv, remkdir, filepath, islist, filetail, filebase, filefull, tocache
 from vipy.image import ImageDetection, ImageCategory
 import xml.etree.ElementTree as ET
+import scipy.io
 
 
 URLS_2012 = ['https://image-net.org/data/ILSVRC/2012/ILSVRC2012_img_train.tar',
              'https://image-net.org/data/ILSVRC/2012/ILSVRC2012_img_val.tar',             
-             'https://image-net.org/data/ILSVRC/2012/ILSVRC2012_bbox_val_v3.tgz'
+             'https://image-net.org/data/ILSVRC/2012/ILSVRC2012_bbox_val_v3.tgz',
              'https://image-net.org/data/ILSVRC/2012/ILSVRC2012_bbox_train_v2.tar.gz',
              'https://image-net.org/data/ILSVRC/2012/ILSVRC2012_img_train_t3.tar',
              'https://image-net.org/data/ILSVRC/2012/ILSVRC2012_bbox_train_dogs.tar.gz',
@@ -27,19 +28,22 @@ class Imagenet2012():
         self._datadir = remkdir(datadir)
 
         for url in URLS_2012:
-            if redownload or not os.path.exists(os.path.join(datadir, vipy.util.filebase(url))):
+            if redownload or not os.path.exists(os.path.join(datadir, vipy.util.filetail(url))):
                 vipy.downloader.download(url, os.path.join(self._datadir, filetail(url)))
+
+        for url in URLS_2012:
+            if redownload or not os.path.exists(os.path.join(datadir, vipy.util.filebase(url))):            
                 vipy.downloader.unpack(os.path.join(self._datadir, filetail(url)), remkdir(os.path.join(self._datadir, filebase(url))))
 
         for f in vipy.util.findtar(os.path.join(self._datadir, 'ILSVRC2012_img_train')):
-            if not os.path.exists(filefull(f)):
+            if redownload or not os.path.exists(filefull(f)):
                 vipy.downloader.unpack(f, filefull(f))
 
         for f in vipy.util.findtar(os.path.join(self._datadir, 'ILSVRC2012_img_train_v3')):
-            if not os.path.exists(filefull(f)):
+            if redownload or not os.path.exists(filefull(f)):
                 vipy.downloader.unpack(f, filefull(f))
                 
-        if not os.path.exists(os.path.join(self._datadir, 'synset_words.txt')):
+        if redownload or not os.path.exists(os.path.join(self._datadir, 'synset_words.txt')):
             vipy.downloader.download(URL_SYNSET, os.path.join(self._datadir, 'synset_words.txt'))            
         self._synset_to_categorylist = {x.split(' ',1)[0]:[y.lstrip().rstrip() for y in x.split(' ', 1)[1].split(',')] for x in vipy.util.readtxt(os.path.join(self._datadir, 'synset_words.txt'))}            
 
@@ -50,34 +54,42 @@ class Imagenet2012():
     def classification_trainset(self):
         """ImageNet Classification, trainset"""
         imgfiles = vipy.util.findimages(os.path.join(self._datadir, 'ILSVRC2012_img_train'))
-        loader = lambda f: vipy.image.ImageCategory(filename=f, category=filetail(filepath(f)))
+        loader = lambda f, synset_to_category=self.synset_to_category: vipy.image.ImageCategory(filename=f, category=','.join(synset_to_category(filetail(filepath(f)))))
         return vipy.dataset.Dataset(imgfiles, 'imagenet2012_classification_train', loader=loader)
         
     def classification_valset(self):
         imlist = []
         imgfiles = vipy.util.findimages(os.path.join(self._datadir, 'ILSVRC2012_img_val'))
-
-        # ground truth is imagenet synset index 1-1000, which is maped in the metadata
-        gt = vipy.util.readtxt(os.path.join(self._datadir, 'ILSVRC2012_devkit_t12', 'ILSVRC2012_devkit_t12', 'data', 'ILSVRC2012_validation_ground_truth.txt'))               
+                    
+        # ground truth is imagenet synset index 1-1000
+        gt = vipy.util.readtxt(os.path.join(self._datadir, 'ILSVRC2012_devkit_t12', 'ILSVRC2012_devkit_t12', 'data', 'ILSVRC2012_validation_ground_truth.txt'))
         for (f,y) in zip(sorted(imgfiles), gt):
             imlist.append( (f, y) )
-        loader = lambda x: vipy.image.ImageCategory(filename=x[0], category=x[1])
+
+        # Index mapping is in mat file (yuck)
+        synsets = self.synset_to_category()
+        d_idx_to_category = {str(k):self.synset_to_category(r[0][1][0]) for (k,r) in enumerate(scipy.io.loadmat(os.path.join(self._datadir, 'ILSVRC2012_devkit_t12/ILSVRC2012_devkit_t12/data/meta.mat'))['synsets'], start=1) if r[0][1][0] in synsets}
+        loader = lambda x, d_idx_to_category=d_idx_to_category: vipy.image.ImageCategory(filename=x[0], category=','.join(d_idx_to_category[x[1]]))
         return vipy.dataset.Dataset(imlist, 'imagenet2012_classification_val', loader=loader)
                 
     def localization_trainset(self):
-        """ImageNet localization, imageset = {train, val}"""        
+        """ImageNet localization, imageset = {train, val}, this takes a long time to read the XML files, load and cache"""        
         imlist = []
         classification = self.classification_trainset()
-        for (f,y) in classification._ds:
+        synsets = self.synset_to_category()
+        for f in classification._ds:
+            
             objects = []            
             xmlfile = '%s.xml' % filefull(f.replace('ILSVRC2012_img_train', 'ILSVRC2012_bbox_train_v2'))
             if os.path.exists(xmlfile):
                 d = ET.parse(xmlfile).getroot()
                 (name, xmin, ymin, xmax, ymax) = (d[5][0].text, d[5][4][0].text, d[5][4][1].text, d[5][4][2].text, d[5][4][3].text)
-                objects.append( (name, xmin, ymin, xmax, ymax) )
-            imlist.append( (f,y,objects) )
+                objects.append( (','.join(synsets[name]) if name in synsets else name, xmin, ymin, xmax, ymax) )
+            imlist.append( (f,tuple(objects)) )
 
-        loader = lambda x: vipy.image.Scene(filename=x[0], category=x[1], objects=[vipy.object.Detection(category=o[0], xmin=int(o[1]), ymin=int(o[2]), xmax=int(o[3]), ymax=int(o[4])) for o in x[2]])
+        loader = lambda x, synset_to_category=self.synset_to_category: vipy.image.Scene(filename=x[0],
+                                                                                        category=','.join(synset_to_category(filetail(filepath(x[0])))),
+                                                                                        objects=[vipy.object.Detection(category=o[0], xmin=int(o[1]), ymin=int(o[2]), xmax=int(o[3]), ymax=int(o[4])) for o in x[1]])
         return vipy.dataset.Dataset(imlist, 'imagenet2012_localization_train', loader=loader)
 
     
