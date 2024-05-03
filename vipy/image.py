@@ -178,7 +178,7 @@ class Image(object):
         Note: to construct from non-encoded json (e.g. a dict prior to dumps), use from_dict
         
         """
-        return cls.from_dict(json.loads(s))
+        return cls.from_dict(json.loads(s) if not isinstance(s, dict) else s)
     
     def __eq__(self, other):
         """Images are equivalent if they have the same filename, url and array"""
@@ -1848,7 +1848,7 @@ class ImageCategory(Image):
     @classmethod
     def from_json(obj, s):
         im = super().from_json(s)
-        d = {k.lstrip('_'):v for (k,v) in json.loads(s).items()}  # prettyjson (remove "_" prefix to attributes)                    
+        d = {k.lstrip('_'):v for (k,v) in (json.loads(s) if not isinstance(s, dict) else s).items()}  # prettyjson (remove "_" prefix to attributes)                    
         im._category = d['category']
         return im
 
@@ -2033,7 +2033,7 @@ class Scene(ImageCategory):
     @classmethod
     def from_json(obj, s):
         im = super().from_json(s)
-        d = {k.lstrip('_'):v for (k,v) in json.loads(s).items()}  # prettyjson (remove "_" prefix to attributes)
+        d = {k.lstrip('_'):v for (k,v) in (json.loads(s) if not isinstance(s, dict) else s).items()}  # prettyjson (remove "_" prefix to attributes)
         if isinstance(d['objectlist'], dict):
             # Version 1.15.1: expanded serialization to support multiple object types
             im._objectlist = [vipy.object.Detection.from_json(s) for s in d['objectlist']['Detection']] + [vipy.object.Point2d.from_json(s) for s in d['objectlist']['Point2d']]

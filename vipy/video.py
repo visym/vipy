@@ -1505,14 +1505,16 @@ class Video(object):
                     raise ValueError('Downloaded file not found "%s.*"' % self.filename())
             
             elif url_scheme in ['http', 'https'] and (isvideourl(self._url) or iswebp(self._url)):
+                filename = self._filename if self._filename is not None else vipy.util.tempMP4()
                 vipy.downloader.download(self._url,
-                                         self._filename,
+                                         filename,
                                          verbose=verbose,
                                          timeout=timeout,
                                          sha1=None,
                                          username=None,
                                          password=None)
-                                
+                if self._filename is None:
+                    self.filename(filename)  # update with temp filename
             elif url_scheme == 'file':
                 shutil.copyfile(self._url, self._filename)
             elif url_scheme == 's3':
