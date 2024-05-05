@@ -1351,10 +1351,16 @@ def isvipyobject(x):
             or (isinstance(x, dict) and all([isinstance(v, vipy.image.Image) or isinstance(v, vipy.video.Video) for (k,v) in x.items()])))
 
 
-def istuple(x):
-    """Is an object a python tuple?"""
-    return isinstance(x, tuple)
-
+def totuple(x):
+    """Convert an object to a python tuple?"""
+    if isinstance(x, list):
+        return tuple(x)
+    elif isinstance(x, tuple):        
+        return x
+    elif isinstance(x, set):        
+        return tuple(x)
+    else:
+        return (x,)
 
 def tolist(x):
     """Convert a python tuple or singleton object to a list if not already a list """

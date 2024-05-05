@@ -3,7 +3,7 @@ import vipy
 import numpy as np
 import shutil
 from vipy.globals import print
-from vipy.util import remkdir, imlist, filetail, istuple, islist, isnumpy, filebase, temphtml, isurl, fileext, tolist, iswebp, isimage, chunklistbysize, ishtml
+from vipy.util import remkdir, imlist, filetail, filebase, temphtml, isurl, fileext, tolist, iswebp, isimage, chunklistbysize, ishtml
 from vipy.image import Image
 from vipy.show import savefig
 from collections import defaultdict

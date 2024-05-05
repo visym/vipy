@@ -11,7 +11,7 @@ from vipy.util import isnumpy, isurl, isimageurl, \
     fileext, tempimage, mat2gray, imwrite, imwritegray, \
     tempjpg, filetail, isimagefile, remkdir, hasextension, \
     try_import, tolist, islistoflists, istupleoftuples, isstring, \
-    istuple, islist, isnumber, isnumpyarray, string_to_pil_interpolation, toextension, iswebp
+    islist, isnumber, isnumpyarray, string_to_pil_interpolation, toextension, iswebp
 from vipy.geometry import BoundingBox, imagebox
 import vipy.object
 from vipy.object import greedy_assignment
@@ -2006,7 +2006,7 @@ class Scene(ImageCategory):
         if xywh is not None:
             if (islistoflists(xywh) or istupleoftuples(xywh)) and all([len(bb)==4 for bb in xywh]):
                 detlist = [vipy.object.Detection(category=None, xywh=bb) for bb in xywh]
-            elif (islist(xywh) or istuple(xywh)) and len(xywh)==4 and all([isnumber(bb) for bb in xywh]):
+            elif (islist(xywh) or isinstance(xywh, tuple)) and len(xywh)==4 and all([isnumber(bb) for bb in xywh]):
                 detlist = [vipy.object.Detection(category=None, xywh=xywh)]
             else:
                 raise ValueError("Invalid xywh list - Input must be [[x1,y1,w1,h1], ...")            
@@ -2014,7 +2014,7 @@ class Scene(ImageCategory):
             if isstring(boxlabels):
                 label = boxlabels
                 detlist = [d.category(label) for d in detlist]
-            elif (istuple(boxlabels) or islist(boxlabels)) and len(boxlabels) == len(xywh):
+            elif (isinstance(boxlabels, tuple) or islist(boxlabels)) and len(boxlabels) == len(xywh):
                 detlist = [d.category(label) for (d,label) in zip(detlist, boxlabels)]
             else:
                 raise ValueError("Invalid boxlabels list - len(boxlabels) must be len(xywh) with corresponding labels for each xywh box  [label1, label2, ...]")
