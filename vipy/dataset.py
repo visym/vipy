@@ -88,9 +88,9 @@ class Dataset():
     def __len__(self):
         return len(self._idx)
         
-    def shuffle(self, seed=None):
-        """Permute elements in this dataset uniformly at random"""
-        self._idx = vipy.util.permutelist(self._idx, seed=seed)
+    def shuffle(self):
+        """Permute elements in this dataset uniformly at random in place"""
+        random.shuffle(self._idx)  
         return self
     
     def list(self):
@@ -314,13 +314,15 @@ class Union():
     Usage:
     
         >>> vipy.dataset.Union(D1, D2, D3, id='union')
+        >>> vipy.dataset.Union( (D1, D2, D3) )
 
     """
     
     def __init__(self, *args, **kwargs):
-        assert all([isinstance(d, Dataset) for d in args])
-        self._ds = args
-        self._idx = [(i,j) for (i,d) in enumerate(self._ds) for j in range(len(d))]
+        datasets = args[0] if isinstance(args[0], (tuple, list)) else args
+        assert all([isinstance(d, Dataset) for d in datasets])
+        self._ds = datasets
+        self._idx = [(i,j) for (i,d) in enumerate(self._ds) for j in range(len(d))]  # (dataset index, element index) tuples 
         self._id = kwargs['id'] if 'id' in kwargs else None
         
     def __len__(self):
@@ -335,7 +337,7 @@ class Union():
         return self._ds[i][j]
 
     def clone(self, shallow=False):
-        """Return a deep copy of the dataset"""
+        """Return a deep or shallow copy of the dataset"""
         if shallow:
             ds = self._ds
             self._ds = []  
@@ -360,8 +362,9 @@ class Union():
         """Return the dataset union elements, useful for generating unions of unions"""
         return list(self._ds)
     
-    def shuffle(self, seed=None):
-        self._idx = vipy.util.permutelist(self._idx, seed=seed)
+    def shuffle(self):
+        """Permute elements in this dataset uniformly at random in place"""        
+        random.shuffle(self._idx)
         return self
 
     def list(self):

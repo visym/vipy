@@ -120,3 +120,13 @@ def open_images_v7():
     # https://github.com/Tencent/tencent-ml-images?tab=readme-ov-file#download-images    
     dataset = load_dataset("dalle-mini/open-images")
     raise
+
+def tiny_imagenet():
+    D = load_dataset("zh-plus/tiny-imagenet")
+    labels = vipy.util.readjson(os.path.join(os.path.dirname(os.path.realpath(__file__)), 'tiny_imagenet.json'))    
+    d_idx_to_category = {k: labels['wnid_to_category'][wnid]  for (k,wnid) in enumerate(labels['idx_to_wnid'])}    
+    loader = lambda r, d_idx_to_category=d_idx_to_category: vipy.image.ImageCategory(array=np.array(r['image']), category=d_idx_to_category[int(r['label'])])    
+    return (vipy.dataset.Dataset(D['train'], id='tiny_imagenet_train', loader=loader, strict=False),
+            vipy.dataset.Dataset(D['valid'], id='tiny_imagenet_val', loader=loader, strict=False))
+
+    
