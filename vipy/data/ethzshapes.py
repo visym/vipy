@@ -12,26 +12,29 @@ LABELS = ['Applelogos','Bottles','Giraffes','Mugs','Swans']
 
 
 class ETHZShapes(vipy.dataset.Dataset):
-    def __init__(self, datadir=vipy.util.tocache('ethzshapes')):
+    def __init__(self, datadir=None, redownload=False):
         """ETHZShapes, provide a datadir='/path/to/store/ethzshapes' """
-        self.datadir = remkdir(datadir)
 
-        if not os.path.exists(os.path.join(self.datadir, vipy.util.filetail(URL))):
-            vipy.downloader.download_and_unpack(URL, self.datadir, sha1=SHA1)
+        datadir = tocache('ethzshapes') if datadir is None else datadir
+        
+        self._datadir = remkdir(datadir)
+
+        if redownload or not os.path.exists(os.path.join(self._datadir, '.complete')):
+            vipy.downloader.download_and_unpack(URL, self._datadir, sha1=SHA1)
         
         categorydir = LABELS
         imlist = []
         for (idx_category, category) in enumerate(categorydir):
-            imdir = os.path.join(self.datadir, SUBDIR, category)
+            imdir = os.path.join(self._datadir, SUBDIR, category)
             for filename in os.listdir(imdir):
                 if isjpg(filename) and not filename.startswith('.'):
                     # Write image
-                    im = os.path.join(self.datadir, SUBDIR, category, filename)
+                    im = os.path.join(self._datadir, SUBDIR, category, filename)
 
                     # Write detections
-                    gtfile = os.path.join(self.datadir, SUBDIR, category, os.path.splitext(os.path.basename(filename))[0] + '_' + category.lower() + '.groundtruth')
+                    gtfile = os.path.join(self._datadir, SUBDIR, category, os.path.splitext(os.path.basename(filename))[0] + '_' + category.lower() + '.groundtruth')
                     if not os.path.isfile(gtfile):
-                        gtfile = os.path.join(self.datadir, SUBDIR, category, os.path.splitext(os.path.basename(filename))[0] + '_' + category.lower() + 's.groundtruth')  # plural hack
+                        gtfile = os.path.join(self._datadir, SUBDIR, category, os.path.splitext(os.path.basename(filename))[0] + '_' + category.lower() + 's.groundtruth')  # plural hack
                     for line in open(gtfile,'r'):
                         if line.strip() == '':
                             continue
@@ -40,3 +43,5 @@ class ETHZShapes(vipy.dataset.Dataset):
 
         loader = lambda x: ImageDetection(filename=x[0], category=x[1], xmin=x[2], ymin=x[3], xmax=x[4], ymax=x[5])
         super().__init__(imlist, id='ethzshapes', loader=loader)
+
+        open(os.path.join(self._datadir, '.complete'), 'a').close()

@@ -10,11 +10,13 @@ SHA1 = '402d86b63cf3ace831f2af03bc9889e5e5c3dd1a'
 
 
 class COIL100(vipy.dataset.Dataset):
-    def __init__(self, datadir=tocache('coil_100'), redownload=False):
+    def __init__(self, datadir=None, redownload=False):
 
+        datadir = tocache('coil100') if datadir is None else datadir
+        
         # Download
         self._datadir = remkdir(datadir)        
-        if redownload or not os.path.exists(os.path.join(self._datadir, 'coil-100.zip')):
+        if redownload or not os.path.exists(os.path.join(self._datadir, '.complete')):
             vipy.downloader.download_and_unpack(URL, self._datadir, sha1=SHA1)            
             
         # Create dataset
@@ -28,6 +30,7 @@ class COIL100(vipy.dataset.Dataset):
         super().__init__(imlist, id='coil-100', loader=loader)
             
 
+        open(os.path.join(self._datadir, '.complete'), 'a').close()
         
 
 

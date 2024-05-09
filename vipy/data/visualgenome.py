@@ -11,10 +11,12 @@ URLS = ['https://cs.stanford.edu/people/rak248/VG_100K_2/images.zip',
 
 class VisualGenome(vipy.dataset.Dataset):
     """Project: http://visualgenome.org/, version 1.4-objects"""
-    def __init__(self, datadir, name='visualgenome', redownload=False):
+    def __init__(self, datadir=None, name='visualgenome', redownload=False):
+        datadir = vipy.util.tocache('visualgenome') if datadir is None else datadir
+        
         self._datadir = vipy.util.remkdir(datadir)
         for url in URLS:
-            if redownload or not os.path.exists(os.path.join(self._datadir, vipy.util.filetail(url))):
+            if redownload or not os.path.exists(os.path.join(self._datadir, '.complete')):
                 vipy.downloader.download_and_unpack(url, self._datadir)
 
         d_imageid_to_filename = {x['image_id']:os.path.join(self._datadir, vipy.util.filetail(vipy.util.filepath(x['url'])), vipy.util.filetail(x['url']))
@@ -31,3 +33,5 @@ class VisualGenome(vipy.dataset.Dataset):
                                                                            attributes={'synsets':o['synsets']}) for o in x[1]])
         super().__init__(imlist, id=name, loader=loader)
         
+
+        open(os.path.join(self._datadir, '.complete'), 'a').close()

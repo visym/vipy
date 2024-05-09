@@ -214,7 +214,7 @@ class Dataset():
         
         return (trainset,valset,testset)
 
-    def map(self, f_map, id=None, strict=False, ascompleted=True, ordered=False):        
+    def map(self, f_map, id=None, strict=False, ascompleted=True, ordered=False, oneway=False):        
         """Distributed map.
 
         To perform this in parallel across four processes:
@@ -231,6 +231,7 @@ class Dataset():
             strict: [bool] If true, raise exception on map failures, otherwise the map will return None for failed elements
             ascompleted: [bool] If true, return elements as they complete
             ordered: [bool] If true, preserve the order of objects in dataset as returned from distributed processing
+            oneway: [bool] If true, do not pass back results unless exception
         
         Returns:
             A `vipy.dataset.Dataset` containing the elements f_map(v).  This operation is order preserving if ordered=True.
@@ -247,10 +248,11 @@ class Dataset():
         # Distributed map using vipy.batch
         f_serialize = lambda x: x
         f_deserialize = lambda x: x
-        f_catcher = lambda f, *args, **kwargs: vipy.util.loudcatcher(f, '[vipy.dataset.Dataset.map]: ', *args, **kwargs)  # catch exceptions when executing lambda, print errors and return (True, result) or (False, exception)
+        f_oneway = lambda x, oneway=oneway: x if not x[0] or not oneway else (x[0], None)
+        f_catcher = lambda f, *args, **kwargs: vipy.util.catcher(f, *args, **kwargs)  # catch exceptions when executing lambda, return (True, result) or (False, exception)
         S = [f_serialize(v) for v in self]  # local load, preprocess and serialize
         B = Batch(vipy.util.chunklist(S, 128), strict=strict, as_completed=ascompleted, warnme=False, minscatter=128, ordered=ordered)
-        f = lambda x, f_serializer=f_serialize, f_deserializer=f_deserialize, f_map=f_map, f_catcher=f_catcher: f_serializer(f_catcher(f_map, f_deserializer(x)))  # with closure capture
+        f = lambda x, f_serializer=f_serialize, f_deserializer=f_deserialize, f_map=f_map, f_catcher=f_catcher, f_oneway=f_oneway: f_serializer(f_oneway(f_catcher(f_map, f_deserializer(x))))  # with closure capture
         S = B.map(lambda X,f=f: [f(x) for x in X]).result()  # chunked, with caught exceptions, may return empty list
 
         # Error handling
@@ -259,11 +261,11 @@ class Dataset():
         V = [f_deserialize(x) for s in S for x in s]  # Local deserialization and chunk flattening
         (good, bad) = ([r for (b,r) in V if b], [r for (b,r) in V if not b])  # catcher returns (True, result) or (False, exception string)
         if len(bad) > 0:
-            print('[vipy.dataset.Dataset.map]: Exceptions in map distributed processing:\n%s' % str(bad))
-            print('[vipy.dataset.Dataset.map]: %d/%d items failed' % (len(bad), len(self)))
-        return Dataset(good, id=id)
+            raise ValueError('Exceptions in distributed processing:\n%s\n\n[vipy.dataset.Dataset.map]: %d/%d items failed' % (str(bad), len(bad), len(self)))
+        return Dataset(good, id=id) if not oneway else None
     
     def localmap(self, f):
+        assert callable(f), "invalid map function"
         self._ds = [f(x) for x in self]  # triggers load, replaces dataset with in-memory transformed list
         self._loader = None  # all done
         self._preprocssor = None   # all done
