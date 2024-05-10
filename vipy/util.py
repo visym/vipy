@@ -56,7 +56,7 @@ def class_registry():
                 "<class 'vipy.object.Track'>":vipy.object.Track.from_json,
                 "<class 'vipy.object.Detection'>":vipy.object.Detection.from_json,
                 "<class 'vipy.activity.Activity'>":vipy.activity.Activity.from_json,
-                "<class 'vipy.dataset.Dataset'>":vipy.dataset.Dataset.from_json}
+                "<class 'vipy.dataset.Collector'>":vipy.dataset.Collector.from_json}
     try:
         import pycollector.video
         registry.update( {"<class 'pycollector.video.Video'>":pycollector.video.Video.from_json} )

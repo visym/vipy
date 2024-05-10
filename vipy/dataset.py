@@ -460,7 +460,10 @@ class Collector(Dataset):
             except Exception as e:
                 raise ValueError('Invalid dataset - Lazy load failed with error "%s"' % str(e))
 
-
+    @staticmethod
+    def _default_loader(x):
+        return x
+    
     def istype(self, validtype):
         """Return True if the all elements (or just the first element if strict=False) in the dataset are of type 'validtype'"""
         return all([any([isinstance(v,t) for t in tolist(validtype)]) for v in self]) if self._istype_strict else any([isinstance(self[0],t) for t in tolist(validtype)])
