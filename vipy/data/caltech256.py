@@ -11,10 +11,12 @@ SHA1 = '2195e9a478cf78bd23a1fe51f4dabe1c33744a1c'
 
 class Caltech256(vipy.dataset.Dataset):
     """Caltech-256 dataset: https://data.caltech.edu/records/nyy15-4j048"""
-    def __init__(self, datadir=tocache('caltech256'), redownload=False):
+    def __init__(self, datadir=None, redownload=False):
+        datadir = tocache('caltech256') if datadir is None else datadir
+        
         # Download (if not cached)
         self._datadir = remkdir(datadir)        
-        if redownload or not os.path.exists(os.path.join(self._datadir, '256_ObjectCategories')):
+        if redownload or not os.path.exists(os.path.join(self._datadir, '.complete')):
             vipy.downloader.download_and_unpack(URL, self._datadir, sha1=SHA1)            
             
         # Create dataset
@@ -28,3 +30,6 @@ class Caltech256(vipy.dataset.Dataset):
         loader = lambda x, categorydir=categorydir: ImageCategory(filename=x[1], category=x[0])
         super().__init__(imlist, id='caltech-256', loader=loader)
             
+        # Done
+        open(os.path.join(self._datadir, '.complete'), 'a').close()
+        

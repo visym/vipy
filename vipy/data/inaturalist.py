@@ -14,11 +14,13 @@ VAL_ANNO_2021_MD5 = '4d761e0f6a86cc63e8f7afc91f6a8f0b'
 
 class iNaturalist2021(vipy.dataset.Dataset):
     """Project: https://github.com/visipedia/inat_comp/tree/master/2021"""
-    def __init__(self, datadir, imageurl=TRAIN_IMG_2021_URL, imagemd5=TRAIN_IMG_2021_MD5, annourl=TRAIN_ANNO_2021_URL, annomd5=TRAIN_ANNO_2021_MD5, name='inaturalist', redownload=False):
+    def __init__(self, datadir=None, imageurl=TRAIN_IMG_2021_URL, imagemd5=TRAIN_IMG_2021_MD5, annourl=TRAIN_ANNO_2021_URL, annomd5=TRAIN_ANNO_2021_MD5, name='inaturalist', redownload=False):
+
+        datadir = vipy.util.tocache('iNaturalist2021') if datadir is None else datadir
+        
         self._datadir = vipy.util.remkdir(datadir)        
-        if redownload or not os.path.exists(os.path.join(self._datadir, vipy.util.filetail(imageurl))):
+        if redownload or not os.path.exists(os.path.join(self._datadir, '.complete')):
             vipy.downloader.download_and_unpack(imageurl, self._datadir, md5=imagemd5)
-        if redownload or not os.path.exists(os.path.join(self._datadir, vipy.util.filetail(annourl))):
             vipy.downloader.download_and_unpack(annourl, self._datadir, md5=annomd5)
 
         json = vipy.util.readjson(os.path.join(self._datadir, vipy.util.filetail(annourl)[:-7]))  # remove trailing file extension (val.json.tar.gz -> val.json)
@@ -34,6 +36,8 @@ class iNaturalist2021(vipy.dataset.Dataset):
                                                     attributes={'category_id': d_imageid_to_annotation[x[1]]['category_id']} if x[1] in d_imageid_to_annotation else None)
                                                     
         super().__init__(imlist, id=name, loader=loader)
+
+        open(os.path.join(self._datadir, '.complete'), 'a').close()
         
     def trainset(self):
         return self

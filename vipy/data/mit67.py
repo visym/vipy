@@ -11,11 +11,13 @@ SHA1 = '0b252516e746ba428b96af408d2e8162d9b08ac5'
 
 class MIT67(vipy.dataset.Dataset):
     """IndoorSceneRecognition dataset: https://web.mit.edu/torralba/www/indoor.html"""
-    def __init__(self, datadir=tocache('mit67')):
+    def __init__(self, datadir=None, redownload=False):
 
+        datadir = tocache('mit67') if datadir is None else datadir
+        
         # Download
         self._datadir = remkdir(datadir)        
-        if not os.path.exists(os.path.join(self._datadir, 'indoorCVPR_09.tar')):
+        if redownload or not os.path.exists(os.path.join(self._datadir, '.complete')):
             vipy.downloader.download_and_unpack(URL, self._datadir, sha1=SHA1)            
             
         # Create dataset
@@ -29,5 +31,5 @@ class MIT67(vipy.dataset.Dataset):
         loader = lambda x: ImageCategory(filename=x[0], category=x[1])
         super().__init__(imlist, id='mit67', loader=loader)
             
-
+        open(os.path.join(self._datadir, '.complete'), 'a').close()
         

@@ -44,7 +44,7 @@ class Dataset():
         self._loader = loader  # may not be serializable if lambda is provided
         self._preprocessor = preprocessor
 
-        if strict:
+        if strict and len(self._ds)>0:
             try:
                 self._ds[0]  # must be an object that supports indexing
             except Exception as e:
@@ -88,9 +88,9 @@ class Dataset():
     def __len__(self):
         return len(self._idx)
         
-    def shuffle(self, seed=None):
-        """Permute elements in this dataset uniformly at random"""
-        self._idx = vipy.util.permutelist(self._idx, seed=seed)
+    def shuffle(self):
+        """Permute elements in this dataset uniformly at random in place"""
+        random.shuffle(self._idx)  
         return self
     
     def list(self):
@@ -214,7 +214,7 @@ class Dataset():
         
         return (trainset,valset,testset)
 
-    def map(self, f_map, id=None, strict=False, ascompleted=True, ordered=False):        
+    def map(self, f_map, id=None, strict=True, ascompleted=True, ordered=False, oneway=False):        
         """Distributed map.
 
         To perform this in parallel across four processes:
@@ -226,11 +226,12 @@ class Dataset():
         ```
 
         Args:
-            f_map: [lambda] The lambda function to apply in parallel to all elements in the dataset.  This must return a JSON serializable object
+            f_map: [lambda] The lambda function to apply in parallel to all elements in the dataset.  This must return a JSON serializable object (or set oneway=True)
             id: [str] The ID to give to the resulting dataset
-            strict: [bool] If true, raise exception on map failures, otherwise the map will return None for failed elements
+            strict: [bool] If true, raise exception on map failures, otherwise the map will return None for failed elements and print exceptions
             ascompleted: [bool] If true, return elements as they complete
             ordered: [bool] If true, preserve the order of objects in dataset as returned from distributed processing
+            oneway: [bool] If true, do not pass back results unless exception
         
         Returns:
             A `vipy.dataset.Dataset` containing the elements f_map(v).  This operation is order preserving if ordered=True.
@@ -247,10 +248,11 @@ class Dataset():
         # Distributed map using vipy.batch
         f_serialize = lambda x: x
         f_deserialize = lambda x: x
-        f_catcher = lambda f, *args, **kwargs: vipy.util.loudcatcher(f, '[vipy.dataset.Dataset.map]: ', *args, **kwargs)  # catch exceptions when executing lambda, print errors and return (True, result) or (False, exception)
+        f_oneway = lambda x, oneway=oneway: x if not x[0] or not oneway else (x[0], None)
+        f_catcher = lambda f, *args, **kwargs: vipy.util.catcher(f, *args, **kwargs)  # catch exceptions when executing lambda, return (True, result) or (False, exception)
         S = [f_serialize(v) for v in self]  # local load, preprocess and serialize
-        B = Batch(vipy.util.chunklist(S, 128), strict=strict, as_completed=ascompleted, warnme=False, minscatter=128, ordered=ordered)
-        f = lambda x, f_serializer=f_serialize, f_deserializer=f_deserialize, f_map=f_map, f_catcher=f_catcher: f_serializer(f_catcher(f_map, f_deserializer(x)))  # with closure capture
+        B = Batch(vipy.util.chunklist(S, 128), strict=False, as_completed=ascompleted, warnme=False, minscatter=128, ordered=ordered)
+        f = lambda x, f_serializer=f_serialize, f_deserializer=f_deserialize, f_map=f_map, f_catcher=f_catcher, f_oneway=f_oneway: f_serializer(f_oneway(f_catcher(f_map, f_deserializer(x))))  # with closure capture
         S = B.map(lambda X,f=f: [f(x) for x in X]).result()  # chunked, with caught exceptions, may return empty list
 
         # Error handling
@@ -259,11 +261,15 @@ class Dataset():
         V = [f_deserialize(x) for s in S for x in s]  # Local deserialization and chunk flattening
         (good, bad) = ([r for (b,r) in V if b], [r for (b,r) in V if not b])  # catcher returns (True, result) or (False, exception string)
         if len(bad) > 0:
-            print('[vipy.dataset.Dataset.map]: Exceptions in map distributed processing:\n%s' % str(bad))
-            print('[vipy.dataset.Dataset.map]: %d/%d items failed' % (len(bad), len(self)))
-        return Dataset(good, id=id)
+            errors = '[vipy.dataset.Dataset.map]: Exceptions in distributed processing:\n%s\n\n[vipy.dataset.Dataset.map]: %d/%d items failed' % (str(bad), len(bad), len(self))
+            if strict:
+                raise ValueError(errors)
+            else:
+                print(errors)
+        return Dataset(good, id=id) if not oneway else None
     
     def localmap(self, f):
+        assert callable(f), "invalid map function"
         self._ds = [f(x) for x in self]  # triggers load, replaces dataset with in-memory transformed list
         self._loader = None  # all done
         self._preprocssor = None   # all done
@@ -308,13 +314,15 @@ class Union():
     Usage:
     
         >>> vipy.dataset.Union(D1, D2, D3, id='union')
+        >>> vipy.dataset.Union( (D1, D2, D3) )
 
     """
     
     def __init__(self, *args, **kwargs):
-        assert all([isinstance(d, Dataset) for d in args])
-        self._ds = args
-        self._idx = [(i,j) for (i,d) in enumerate(self._ds) for j in range(len(d))]
+        datasets = args[0] if isinstance(args[0], (tuple, list)) else args
+        assert all([isinstance(d, Dataset) for d in datasets])
+        self._ds = datasets
+        self._idx = [(i,j) for (i,d) in enumerate(self._ds) for j in range(len(d))]  # (dataset index, element index) tuples 
         self._id = kwargs['id'] if 'id' in kwargs else None
         
     def __len__(self):
@@ -329,7 +337,7 @@ class Union():
         return self._ds[i][j]
 
     def clone(self, shallow=False):
-        """Return a deep copy of the dataset"""
+        """Return a deep or shallow copy of the dataset"""
         if shallow:
             ds = self._ds
             self._ds = []  
@@ -354,8 +362,9 @@ class Union():
         """Return the dataset union elements, useful for generating unions of unions"""
         return list(self._ds)
     
-    def shuffle(self, seed=None):
-        self._idx = vipy.util.permutelist(self._idx, seed=seed)
+    def shuffle(self):
+        """Permute elements in this dataset uniformly at random in place"""        
+        random.shuffle(self._idx)
         return self
 
     def list(self):

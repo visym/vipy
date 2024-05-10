@@ -4,7 +4,7 @@ import dill
 from vipy.globals import print
 from vipy.util import remkdir, tempMP4, isurl, \
     isvideourl, templike, tempjpg, filetail, tempdir, isyoutubeurl, try_import, isnumpy, temppng, \
-    istuple, islist, isnumber, tolist, filefull, fileext, isS3url, totempdir, flatlist, tocache, \
+    islist, isnumber, tolist, filefull, fileext, isS3url, totempdir, flatlist, tocache, \
     premkdir, writecsv, iswebp, ispng, isgif, filepath, Stopwatch, toextension, isjsonfile, isRTSPurl, isRTMPurl, iswebp, isgif
 from vipy.image import Image
 import vipy.geometry
@@ -1505,14 +1505,16 @@ class Video(object):
                     raise ValueError('Downloaded file not found "%s.*"' % self.filename())
             
             elif url_scheme in ['http', 'https'] and (isvideourl(self._url) or iswebp(self._url)):
+                filename = self._filename if self._filename is not None else vipy.util.tempMP4()
                 vipy.downloader.download(self._url,
-                                         self._filename,
+                                         filename,
                                          verbose=verbose,
                                          timeout=timeout,
                                          sha1=None,
                                          username=None,
                                          password=None)
-                                
+                if self._filename is None:
+                    self.filename(filename)  # update with temp filename
             elif url_scheme == 'file':
                 shutil.copyfile(self._url, self._filename)
             elif url_scheme == 's3':
@@ -3296,7 +3298,7 @@ class Scene(VideoCategory):
                 raise ValueError("Activity '%s' has invalid (startframe, endframe)=(%d, %d)" % (str(obj), obj.startframe(), obj.endframe()))
             self.activities()[obj.id()] = obj  # by-reference, activity may have no tracks
             return obj.id() if not fluent else self
-        elif (istuple(obj) or islist(obj)) and len(obj) == 4 and isnumber(obj[0]):
+        elif (isinstance(obj, tuple) or islist(obj)) and len(obj) == 4 and isnumber(obj[0]):
             assert frame is not None, "add() for obj=xywh must be added at a specific frame"
             t = vipy.object.Track(category=category, keyframes=[frame], boxes=[vipy.geometry.BoundingBox(xywh=obj)], boundary='strict', attributes=attributes, framerate=self.framerate())
             if rangecheck and not t.boundingbox().isinside(vipy.geometry.imagebox(self.shape())):
@@ -3467,13 +3469,13 @@ class Scene(VideoCategory):
            - Each activityclip() is associated with each activity in the scene, and includes all other secondary activities that the objects in the primary activity also perform (if multilabel=True).  See activityclip().labels(). 
            - Calling activityclip() on activityclip(multilabel=True) will duplicate activities, due to the overlapping secondary activities being included in each clip with an overlap.  Be careful!
         """
-        assert isinstance(padframes, int) or istuple(padframes) or islist(padframes)
+        assert isinstance(padframes, (int, tuple, list))
 
         vid = self.clone(flushforward=True)
         if any([(a.endframe()-a.startframe()) <= 0 for a in vid.activities().values()]):
             warnings.warn('Filtering invalid activity clips with degenerate lengths: %s' % str([a for a in vid.activities().values() if (a.endframe()-a.startframe()) <= 0]))
         primary_activities = sorted([a.clone() for a in vid.activities().values() if (a.endframe()-a.startframe()) > 0], key=lambda a: a.startframe())   # only activities with at least one frame, sorted in temporal order
-        padframelist = [padframes if istuple(padframes) else (padframes, padframes) for k in range(len(primary_activities))] if not islist(padframes) else padframes                    
+        padframelist = [padframes if isinstance(padframes, tuple) else (padframes, padframes) for k in range(len(primary_activities))] if not islist(padframes) else padframes                    
         tracks = [ [t.clone() for (tid, t) in vid.tracks().items() if a.hastrackoverlap(t)] for a in primary_activities]  # tracks associated with and temporally overlapping each primary activity (may be empty)
         secondary_activities = [[sa.clone() for sa in primary_activities if (sa.id() != pa.id() and pa.clone().temporalpad((prepad, postpad)).hasoverlap(sa) and (len(T)==0 or any([sa.hastrack(t) for t in T])))] for (pa, T, (prepad,postpad)) in zip(primary_activities, tracks, padframelist)]  # overlapping secondary activities that includes any track in the primary activity
         secondary_activities = [sa if multilabel else [] for sa in secondary_activities]  

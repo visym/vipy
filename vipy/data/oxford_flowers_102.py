@@ -13,10 +13,12 @@ SHA1 = 'f5b09dbcd82e3eb09ef97f265ff6d0ae95b75a80'
 
 class Flowers102(vipy.dataset.Dataset):
     """Project: https://www.robots.ox.ac.uk/~vgg/data/flowers/102"""
-    def __init__(self, datadir=tocache('flowers102'), redownload=False):
+    def __init__(self, datadir=None, redownload=False):
         # Download (if not cached)
+        datadir = tocache('flowers102') if datadir is None else datadir
+        
         self._datadir = remkdir(datadir)        
-        if redownload or not os.path.exists(os.path.join(self._datadir, '102flowers.tgz')):
+        if redownload or not os.path.exists(os.path.join(self._datadir, '.complete')):
             vipy.downloader.download_and_unpack(IMAGE_URL, self._datadir, sha1=None)            
 
         # Read cached JSON
@@ -30,7 +32,8 @@ class Flowers102(vipy.dataset.Dataset):
         loader = lambda x: vipy.image.ImageCategory(filename=x[0], category=x[1])
         super().__init__(imlist, id='flowers102', loader=loader)
 
-
+        open(os.path.join(self._datadir, '.complete'), 'a').close()
+        
     def _cache_annotations(self, outjson='oxford_flowers_102.json'):        
         if not os.path.exists(os.path.join(self._datadir, 'imagelabels.mat')):
             vipy.downloader.download(ANNO_URL, os.path.join(self._datadir, 'imagelabels.mat'), sha1=None)            

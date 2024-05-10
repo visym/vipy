@@ -1,7 +1,7 @@
 import math
 import numpy as np
 from itertools import product
-from vipy.util import try_import, istuple, isnumpy, isnumber, tolist
+from vipy.util import try_import, isnumpy, isnumber, tolist
 from vipy.linalg import columnvector
 import warnings
 
@@ -53,7 +53,7 @@ def apply_homography(H,p):
 
 def similarity_transform_2x3(c=(0,0), r=0, s=1):
     """Return a 2x3 similarity transform with rotation r (radians), scale s and origin c=(x,y)"""
-    assert istuple(c) and len(c) == 2 and isnumber(r) and isnumber(s), "Invalid input"
+    assert isinstance(c, tuple) and len(c) == 2 and isnumber(r) and isnumber(s), "Invalid input"
     deg = r * 180. / math.pi
     a = s * np.cos(r)
     b = s * np.sin(r)
@@ -63,7 +63,7 @@ def similarity_transform_2x3(c=(0,0), r=0, s=1):
 
 def similarity_transform(txy=(0,0), r=0, s=1):
     """Return a 3x3 similarity transformation with translation tuple txy=(x,y), rotation r (radians, scale=s"""
-    assert istuple(txy) and len(txy) == 2 and isnumber(r) and isnumber(s), "Invalid input"
+    assert isinstance(txy, tuple) and len(txy) == 2 and isnumber(r) and isnumber(s), "Invalid input"
     R = np.mat([[np.cos(r), -np.sin(r), 0], [np.sin(r), np.cos(r), 0], [0,0,1]])
     S = np.mat([[s,0,0], [0, s, 0], [0,0,1]])
     T = np.mat([[0,0,txy[0]], [0,0,txy[1]], [0,0,0]])
@@ -87,7 +87,7 @@ def affine_transform(txy=(0,0), r=0, sx=1, sy=1, kx=0, ky=0):
     ```
     
     """
-    assert istuple(txy) and len(txy) == 2 and isnumber(r) and isnumber(sx) and isnumber(sy) and isnumber(kx) and isnumber(ky), "Invalid input"
+    assert isinstance(txy, tuple) and len(txy) == 2 and isnumber(r) and isnumber(sx) and isnumber(sy) and isnumber(kx) and isnumber(ky), "Invalid input"
     R = np.mat([[np.cos(r), -np.sin(r), 0], [np.sin(r), np.cos(r), 0], [0,0,1]])
     S = np.mat([[sx,0,0], [0, sy, 0], [0,0,1]])
     K = np.mat([[1,ky,0], [kx,1,0], [0,0,1]])
@@ -97,7 +97,7 @@ def affine_transform(txy=(0,0), r=0, sx=1, sy=1, kx=0, ky=0):
 
 def random_affine_transform(txy=((0,1),(0,1)), r=(0,1), sx=(0.1,1), sy=(0.1,1), kx=(0.1,1), ky=(0.1,1)):
     """Return a random 3x3 affine transformation matrix for the provided ranges, inputs must be tuples"""
-    assert istuple(txy) and istuple(txy[0]) and istuple(txy[1]) and istuple(r) and istuple(sx) and istuple(sy) and istuple(kx) and istuple(ky), "Invalid input"
+    assert isinstance(txy, tuple) and isinstance(txy[0], tuple) and isinstance(txy[1], tuple) and isinstance(r, tuple) and isinstance(sx, tuple) and isinstance(sy, tuple) and isinstance(kx, tuple) and isinstance(ky, tuple), "Invalid input"
     uniform_random_in_range = lambda t: np.random.uniform(t[0], t[1])
     return affine_transform(txy=(uniform_random_in_range(txy[0]), uniform_random_in_range(txy[1])),
                             r=uniform_random_in_range(r),

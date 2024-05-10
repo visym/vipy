@@ -21,29 +21,22 @@ EMNIST_URL = 'https://biometrics.nist.gov/cs_links/EMNIST/gzip.zip'
 
 
 class MNIST():
-    def __init__(self, outdir=tocache('mnist'), redownload=False):
+    def __init__(self, datadir=None, redownload=False):
         """download URLS above to outdir, then run export()"""
-        self.outdir = remkdir(os.path.expanduser(outdir))
-        if redownload or not self._downloaded():
-            print('[vipy.data.mnist]: downloading MNIST to "%s"' % self.outdir)
+        outdir = tocache('mnist') if datadir is None else datadir
+        
+        self._datadir = remkdir(os.path.expanduser(outdir))
+        if redownload or not os.path.exists(os.path.join(self._datadir, '.complete')):
+            print('[vipy.data.mnist]: downloading MNIST to "%s"' % self._datadir)
             self._wget()
 
-    def _downloaded(self):
-        gzip_downloaded = (os.path.exists(os.path.join(self.outdir, 'train-images-idx3-ubyte.gz'))
-                           and os.path.exists(os.path.join(self.outdir, 'train-labels-idx1-ubyte.gz'))
-                           and os.path.exists(os.path.join(self.outdir, 't10k-images-idx3-ubyte.gz'))
-                           and os.path.exists(os.path.join(self.outdir, 't10k-labels-idx1-ubyte.gz')))
-        unpacked_downloaded = (os.path.exists(os.path.join(self.outdir, 'train-images-idx3-ubyte'))
-                               and os.path.exists(os.path.join(self.outdir, 'train-labels-idx1-ubyte'))
-                               and os.path.exists(os.path.join(self.outdir, 't10k-images-idx3-ubyte'))
-                               and os.path.exists(os.path.join(self.outdir, 't10k-labels-idx1-ubyte')))
-        return (unpacked_downloaded or gzip_downloaded)
-
+        open(os.path.join(self._datadir, '.complete'), 'a').close()
+            
     def _wget(self):
-        os.system('wget --directory-prefix=%s %s' % (self.outdir, TRAIN_IMG_URL))
-        os.system('wget --directory-prefix=%s %s' % (self.outdir, TRAIN_LBL_URL))
-        os.system('wget --directory-prefix=%s %s' % (self.outdir, TEST_IMG_URL))
-        os.system('wget --directory-prefix=%s %s' % (self.outdir, TEST_LBL_URL))
+        os.system('wget --directory-prefix=%s %s' % (self._datadir, TRAIN_IMG_URL))
+        os.system('wget --directory-prefix=%s %s' % (self._datadir, TRAIN_LBL_URL))
+        os.system('wget --directory-prefix=%s %s' % (self._datadir, TEST_IMG_URL))
+        os.system('wget --directory-prefix=%s %s' % (self._datadir, TEST_LBL_URL))
 
     @staticmethod
     def _labels(gzfile):
@@ -81,36 +74,37 @@ class MNIST():
         return tuple((xi,yi) for (xi,yi) in zip(x,y))
 
     def trainset(self):
-        (labelfile, imgfile, N) = (os.path.join(self.outdir, 'train-labels-idx1-ubyte.gz'), os.path.join(self.outdir, 'train-images-idx3-ubyte.gz'), 60000)
+        (labelfile, imgfile, N) = (os.path.join(self._datadir, 'train-labels-idx1-ubyte.gz'), os.path.join(self._datadir, 'train-images-idx3-ubyte.gz'), 60000)
         return vipy.dataset.Dataset(self._dataset(imgfile, labelfile, N=N), loader=lambda z: vipy.image.ImageCategory(array=z[0], category=str(z[1]), colorspace='lum'), id='mnist')
     
     def testset(self):
-        (labelfile, imgfile, N) = (os.path.join(self.outdir, 't10k-labels-idx1-ubyte.gz'), os.path.join(self.outdir, 't10k-images-idx3-ubyte.gz'), 10000)                
+        (labelfile, imgfile, N) = (os.path.join(self._datadir, 't10k-labels-idx1-ubyte.gz'), os.path.join(self._datadir, 't10k-images-idx3-ubyte.gz'), 10000)                
         return vipy.dataset.Dataset(self._dataset(imgfile, labelfile, N=N), loader=lambda z: vipy.image.ImageCategory(array=z[0], category=str(z[1]), colorspace='lum'), id='mnist_test')
 
 
 
     
 class EMNIST(MNIST):
-    def __init__(self, datadir=tocache('emnist'), redownload=False):
+    def __init__(self, datadir=None, redownload=False):
+        datadir = tocache('emnist') if datadir is None else datadir
+        
         self._datadir = vipy.util.remkdir(datadir)        
-        if redownload or not os.path.exists(os.path.join(self._datadir, vipy.util.filetail(EMNIST_URL))):
+        if redownload or not os.path.exists(os.path.join(self._datadir, '.complete')):
             vipy.downloader.download_and_unpack(EMNIST_URL, self._datadir)        
         super().__init__(datadir)
 
-    def _downloaded(self):
-        return True
-
+        open(os.path.join(self._datadir, '.complete'), 'a').close()
+        
     def _wget(self):
         return self
 
     def letters_train(self):
-        (imgfile, labelfile) = (os.path.join(self.outdir, 'gzip/emnist-letters-train-images-idx3-ubyte.gz'), os.path.join(self.outdir, 'gzip/emnist-letters-train-labels-idx1-ubyte.gz'))
+        (imgfile, labelfile) = (os.path.join(self._datadir, 'gzip/emnist-letters-train-images-idx3-ubyte.gz'), os.path.join(self._datadir, 'gzip/emnist-letters-train-labels-idx1-ubyte.gz'))
         d_categoryidx_to_category = {str(k):x for (k,x) in enumerate(string.ascii_lowercase, start=1)}        
         return vipy.dataset.Dataset(self._dataset(imgfile, labelfile, N=124800), loader=lambda z: vipy.image.ImageCategory(array=z[0], category=d_categoryidx_to_category[str(z[1])], colorspace='lum'), id='emnist_letters_train')
 
     def letters_test(self):
-        (imgfile, labelfile) = (os.path.join(self.outdir, 'gzip/emnist-letters-test-images-idx3-ubyte.gz'), os.path.join(self.outdir, 'gzip/emnist-letters-test-labels-idx1-ubyte.gz'))
+        (imgfile, labelfile) = (os.path.join(self._datadir, 'gzip/emnist-letters-test-images-idx3-ubyte.gz'), os.path.join(self._datadir, 'gzip/emnist-letters-test-labels-idx1-ubyte.gz'))
         d_categoryidx_to_category = {str(k):x for (k,x) in enumerate(string.ascii_lowercase, start=1)} 
         return vipy.dataset.Dataset(self._dataset(imgfile, labelfile, N=145600-124800), loader=lambda z: vipy.image.ImageCategory(array=z[0], category=d_categoryidx_to_category[str(z[1])], colorspace='lum'), id='emnist_letters_test')       
 
@@ -118,11 +112,11 @@ class EMNIST(MNIST):
         return (self.letters_train(), self.letters_test())
 
     def digits_train(self):
-        (imgfile, labelfile) = (os.path.join(self.outdir, 'gzip/emnist-digits-train-images-idx3-ubyte.gz'), os.path.join(self.outdir, 'gzip/emnist-digits-train-labels-idx1-ubyte.gz')) 
+        (imgfile, labelfile) = (os.path.join(self._datadir, 'gzip/emnist-digits-train-images-idx3-ubyte.gz'), os.path.join(self._datadir, 'gzip/emnist-digits-train-labels-idx1-ubyte.gz')) 
         return vipy.dataset.Dataset(self._dataset(imgfile, labelfile, N=240000), loader=lambda z: vipy.image.ImageCategory(array=z[0], category=str(z[1]), colorspace='lum'), id='emnist_digits_train')              
 
     def digits_test(self):
-        (imgfile, labelfile) = (os.path.join(self.outdir, 'gzip/emnist-digits-test-images-idx3-ubyte.gz'), os.path.join(self.outdir, 'gzip/emnist-digits-test-labels-idx1-ubyte.gz'))
+        (imgfile, labelfile) = (os.path.join(self._datadir, 'gzip/emnist-digits-test-images-idx3-ubyte.gz'), os.path.join(self._datadir, 'gzip/emnist-digits-test-labels-idx1-ubyte.gz'))
         return vipy.dataset.Dataset(self._dataset(imgfile, labelfile, N=280000-240000), loader=lambda z: vipy.image.ImageCategory(array=z[0], category=str(z[1]), colorspace='lum'), id='emnist_digits_test')                      
 
     def digits(self):

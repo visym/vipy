@@ -12,20 +12,22 @@ labels_2014_2017 = ['person', 'bicycle', 'car', 'motorcycle', 'airplane', 'bus',
 
 class Detection_TrainVal_2014(vipy.dataset.Dataset):
     """Project: https://cocodataset.org"""
-    def __init__(self, outdir=vipy.util.tocache('coco2014'), redownload=False):
-        self._outdir = vipy.util.remkdir(outdir)
+    def __init__(self, datadir=None, redownload=False):
+
+        outdir = tocache('coco2014') if datadir is None else datadir
         
-        if redownload or not os.path.exists(os.path.join(self._outdir, 'train2014.zip')):
-            print('[vipy.data.coco]: downloading COCO 2014 train/val images to "%s"' % self._outdir)            
-            vipy.downloader.download_and_unpack(COCO_2014_IMAGE_URL, self._outdir, sha1=None)
+        self._datadir = vipy.util.remkdir(outdir)
+        
+        if redownload or not os.path.exists(os.path.join(self._datadir, '.complete')):
+            print('[vipy.data.coco]: downloading COCO 2014 train/val images to "%s"' % self._datadir)            
+            vipy.downloader.download_and_unpack(COCO_2014_IMAGE_URL, self._datadir, sha1=None)
 
-        if redownload or not os.path.exists(os.path.join(self._outdir, 'annotations_trainval2014.zip')):
-            print('[vipy.data.coco]: downloading COCO 2014 train/val annotations to "%s"' % self._outdir)            
-            vipy.downloader.download_and_unpack(COCO_2014_ANNO_URL, self._outdir, sha1=None)
+            print('[vipy.data.coco]: downloading COCO 2014 train/val annotations to "%s"' % self._datadir)            
+            vipy.downloader.download_and_unpack(COCO_2014_ANNO_URL, self._datadir, sha1=None)
 
-        json = vipy.util.readjson(os.path.join(self._outdir, 'annotations', 'instances_train2014.json'))
+        json = vipy.util.readjson(os.path.join(self._datadir, 'annotations', 'instances_train2014.json'))
 
-        d_imageid_to_filename = {x['id']:os.path.join(self._outdir, 'train2014', x['file_name']) for x in json['images']}
+        d_imageid_to_filename = {x['id']:os.path.join(self._datadir, 'train2014', x['file_name']) for x in json['images']}
         d_imageid_to_annotations = vipy.util.groupbyasdict(json['annotations'], lambda x: x['image_id'])
         d_categoryid_to_category = {x['id']:x['name'] for x in json['categories']}
         
@@ -35,5 +37,5 @@ class Detection_TrainVal_2014(vipy.dataset.Dataset):
                                                      for o in d_imageid_to_annotations[x[1]]] if x[1] in d_imageid_to_annotations else None)
         super().__init__(imtuple, id='coco_2014', loader=loader)
 
-        
+        open(os.path.join(self._datadir, '.complete'), 'a').close()        
         
