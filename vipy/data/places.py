@@ -2,6 +2,7 @@ import os
 import vipy
 
 
+# 10May24: tar file is truncated
 URL = ['http://data.csail.mit.edu/places/places365/train_256_places365standard.tar',
        'http://data.csail.mit.edu/places/places365/val_256.tar']
 MD5 = [None, None]

@@ -23,9 +23,9 @@ class iNaturalist2021(vipy.dataset.Dataset):
             vipy.downloader.download_and_unpack(imageurl, self._datadir, md5=imagemd5)
             vipy.downloader.download_and_unpack(annourl, self._datadir, md5=annomd5)
 
-        json = vipy.util.readjson(os.path.join(self._datadir, vipy.util.filetail(annourl)[:-7]))  # remove trailing file extension (val.json.tar.gz -> val.json)
+        json = vipy.util.readjson(os.path.join(self._datadir, '2021', vipy.util.filetail(annourl)[:-7]))  # remove trailing file extension (val.json.tar.gz -> val.json)
 
-        d_imageid_to_filename = {x['id']:os.path.join(self._datadir, x['file_name']) for x in json['images']}
+        d_imageid_to_filename = {x['id']:os.path.join(self._datadir, '2021', x['file_name']) for x in json['images']}
         d_imageid_to_annotation = {iid:a[0] for (iid,a) in vipy.util.groupbyasdict(json['annotations'], lambda x: x['image_id']).items()}  # one annotation per image
         d_categoryid_to_category = {x['id']:x['name'] for x in json['categories']}
         

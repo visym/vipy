@@ -4,6 +4,7 @@ from vipy.util import readcsv, remkdir, filepath, islist, filetail, filebase, fi
 from vipy.image import ImageDetection, ImageCategory
 import xml.etree.ElementTree as ET
 import scipy.io
+import numpy as np
 
 
 URLS_2012 = ['https://image-net.org/data/ILSVRC/2012/ILSVRC2012_img_train.tar',
@@ -49,10 +50,18 @@ class Imagenet2012():
             vipy.downloader.download(URL_SYNSET, os.path.join(self._datadir, 'synset_words.txt'))            
         self._synset_to_categorylist = {x.split(' ',1)[0]:[y.lstrip().rstrip() for y in x.split(' ', 1)[1].split(',')] for x in vipy.util.readtxt(os.path.join(self._datadir, 'synset_words.txt'))}            
 
+        metadata = scipy.io.loadmat(os.path.join(self._datadir, 'ILSVRC2012_devkit_t12/ILSVRC2012_devkit_t12/data/meta.mat'), struct_as_record=False)
+        synsets = np.squeeze(metadata['synsets'])
+        ids = np.squeeze(np.array([s.ILSVRC2012_ID for s in synsets]))
+        wnids = np.squeeze(np.array([s.WNID for s in synsets]))
+        words = np.squeeze(np.array([s.words for s in synsets]))
+
+        self._wnid_to_categorylist = {wnid:[c.strip() for c in category.split(',')] for (wnid,category) in zip(wnids, words)}
+                                    
         open(os.path.join(self._datadir, '.complete'), 'a').close()        
         
     def synset_to_category(self, s=None):
-        return self._synset_to_categorylist if s is None else self._synset_to_categorylist[s]
+        return self._wnid_to_categorylist if s is None else self._wnid_to_categorylist[s]
     
     def classification_trainset(self):
         """ImageNet Classification, trainset"""
@@ -106,8 +115,8 @@ class Imagenet21K_Resized(vipy.dataset.Dataset):
         self._datadir = vipy.util.remkdir(datadir)
         
         if redownload or not os.path.exists(os.path.join(self._datadir, '.complete')):
-            print('[vipy.data.imagenet]: downloading Imagenet-21K resized to "%s"' % self._outdir)            
-            vipy.downloader.download_and_unpack(IMAGENET21K_RESIZED_URL, self._outdir, sha1=None)
+            print('[vipy.data.imagenet]: downloading Imagenet-21K resized to "%s"' % self._datadir)            
+            vipy.downloader.download_and_unpack(IMAGENET21K_RESIZED_URL, self._datadir, sha1=None)
 
         if redownload or not os.path.exists(os.path.join(self._datadir, '.complete')):
             vipy.downloader.download(IMAGENET21K_WORDNET_ID, os.path.join(self._datadir, 'wordnet_id.txt'))
@@ -139,8 +148,8 @@ class Imagenet21K(vipy.dataset.Dataset):
         self._datadir = vipy.util.remkdir(datadir)
         
         if redownload or not os.path.exists(os.path.join(self._datadir, '.complete')):
-            print('[vipy.data.imagenet]: downloading Imagenet-21K to "%s"' % self._outdir)            
-            vipy.downloader.download_and_unpack(IMAGENET21K_URL, self._outdir, sha1=None)
+            print('[vipy.data.imagenet]: downloading Imagenet-21K to "%s"' % self._datadir)            
+            vipy.downloader.download_and_unpack(IMAGENET21K_URL, self._datadir, sha1=None)
 
         for f in vipy.util.findtar(os.path.join(datadir, 'winter21_whole')):
             if not os.path.exists(filefull(f)):
