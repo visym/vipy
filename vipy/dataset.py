@@ -158,7 +158,7 @@ class Dataset():
 
     def takeone(self, seed=None):
         """Randomly take one element from the dataset and return a singleton"""
-        return self.takelist(n=1, seed=seed)[0] if len(D)>0 else None
+        return self.takelist(n=1, seed=seed)[0] if len(self)>0 else None
 
     def take_fraction(self, p):
         """Randomly take a percentage of the dataset"""

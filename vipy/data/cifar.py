@@ -46,7 +46,7 @@ class CIFAR10():
         self._name = name
 
         open(os.path.join(self._datadir, '.complete'), 'a').close()
-        
+
     def __repr__(self):
         return '<vipy.data.%s: %s>' % (self._name, self._datadir)
     
