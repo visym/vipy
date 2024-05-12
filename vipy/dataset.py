@@ -58,6 +58,12 @@ class Dataset():
             self._id = n
             return self
 
+    def raw(self):
+        """Remove the loader and preprocessor, useful for cloned direct access of raw data in large datasets without loading every one"""
+        self._loader = None
+        self._preprocessor = None
+        return self
+    
     def preprocessor(self, f):
         assert callable(f)
         self._preprocessor = f
@@ -92,22 +98,15 @@ class Dataset():
         """Permute elements in this dataset uniformly at random in place"""
         random.shuffle(self._idx)  
         return self
-    
-    def list(self):
-        """Return the dataset as a list, loading the entire dataset into memory"""
-        return list(self)
 
-    def tolist(self):
-        """Alias for self.list()"""
-        return list(self)
-
-    def to_list(self):
-        """Alias for self.list()"""
-        return list(self)
+    def list(self, mapper=None):
+        """Return the dataset as a list, loading the entire dataset into memory, applying the optional lambda"""
+        assert mapper is None or callable(mapper)
+        return [mapper(x) if mapper else x for x in self]
     
-    def set(self):
+    def set(self, mapper=None):
         """Return the dataset as a set"""
-        return set(self.list())            
+        return set(self.list(mapper))            
 
     def clone(self, shallow=False):
         """Return a deep copy of the dataset"""
@@ -120,7 +119,12 @@ class Dataset():
             return D
         else:
             return copy.deepcopy(self)
-        
+
+    def frequency(self, f):
+        """Frequency counts for which lamba returns the same value"""
+        assert callable(f)
+        return vipy.util.countby(self, f)
+
     def count(self, f):
         """Counts for each element for which lamba returns true.  
         
@@ -134,11 +138,7 @@ class Dataset():
         assert callable(f)
         return len([k for (j,k) in enumerate(self._idx) if f(self[j])])
 
-    def countby(self, f):
-        """alias for self.count"""
-        return self.count(f)
     
-
     def filter(self, f):
         """In place filter with lambda function f, keeping those elements obj where f(obj) evaluates true"""
         assert callable(f)
