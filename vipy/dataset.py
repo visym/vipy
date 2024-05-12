@@ -29,9 +29,9 @@ class Dataset():
 
     Args:
         - objlist [list, tuple, set): a python built-in type that supports indexing
-        - loader [lambda]: a callable loader that will process the object .  This is useful for custom deerialization or on demand transformations
+        - loader [lambda]: a callable loader that will construct the object from a raw data representation.  This is useful for custom deerialization or on demand transformations
         - strict [bool]: If true, throw an error if the type of objlist is not a python built-in type.  This is useful for loading dataset objects that can be indexed.
-
+        - preprocessor [lambda]:  a callable preprocessing function that will preprocess the object. This is useful for implementing on-demand data loaders
     """
 
     def __init__(self, dataset, id=None, loader=None, strict=True, preprocessor=None):
@@ -43,7 +43,7 @@ class Dataset():
         self._idx = list(range(len(dataset)))
         self._loader = loader  # may not be serializable if lambda is provided
         self._preprocessor = preprocessor
-
+        
         if strict and len(self._ds)>0:
             try:
                 self._ds[0]  # must be an object that supports indexing
@@ -67,6 +67,10 @@ class Dataset():
     def preprocessor(self, f):
         assert callable(f)
         self._preprocessor = f
+        return self
+
+    def no_preprocessor(self):
+        self._preprocessor = None
         return self
     
     def __repr__(self):
@@ -178,11 +182,12 @@ class Dataset():
             yield Dataset(V, id=('%s_%d' % (self.id(), k)) if self.id() is not None else None)  # loaded
 
     def minibatch(self, n, ragged=True):
-        """Yield list chunks of size n of this dataset.  Last chunk will be ragged if ragged=True, else skipped"""
-        for (k,V) in enumerate(vipy.util.chunkgenbysize(self, n)):
+        """Yield list chunks of size n of this dataset.  Last chunk will be ragged if ragged=True, else skipped.  Minibatch is not preprocessed"""
+        dataset = self.clone(shallow=True).no_preprocessor()
+        for (k,V) in enumerate(vipy.util.chunkgenbysize(dataset, n)):
             if ragged or len(V) == n:
-                yield Dataset(V, id=('%s_%d' % (self.id(), k)) if self.id() is not None else None)  # loaded
-    
+                yield Dataset(V, preprocessor=self._preprocessor, id=('%s_%d' % (self.id(), k)) if self.id() is not None else None)  # Checked, Loaded, Not-preprocessed
+        
     def split(self, trainfraction=0.9, valfraction=0.1, testfraction=0, seed=None):
         """Split the dataset into the requested fractions.  
 

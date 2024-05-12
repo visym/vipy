@@ -399,7 +399,10 @@ class Image(object):
         """Return True if the image can be loaded successfully, useful for filtering bad links or corrupt images"""
         if not self.isloaded():
             try:
-                self.load()  # try to load
+                if isimagefile(self._filename) and os.path.exists(self._filename):
+                    PIL.Image.open(self._filename).verify()  # faster, throws exception on corrupted image
+                else:
+                    self.load().flush()  # fallback, load it and flush to avoid memory leak (expensive)
                 return True
             except:
                 return False
