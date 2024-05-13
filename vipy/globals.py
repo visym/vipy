@@ -144,12 +144,12 @@ def dask(num_processes=None, num_gpus=None, dashboard=False, address=None, pct=N
     Returns:
         The `vipy.batch.Dask` object pointing to the Dask Distrbuted object
     """
-    from vipy.batch import Dask
     if pct is not None:
         assert pct > 0 and pct <= 1
         import multiprocessing
         num_processes = vipy.math.poweroftwo(pct*multiprocessing.cpu_count())        
     if (address is not None or (num_processes is not None and (GLOBAL['DASK_CLIENT'] is None or GLOBAL['DASK_CLIENT'].num_processes() != num_processes)) or num_gpus is not None):
+        from vipy.batch import Dask        
         GLOBAL['DASK_CLIENT'] = Dask(num_processes, dashboard=dashboard, verbose=isverbose(), address=address, num_gpus=num_gpus)        
     return GLOBAL['DASK_CLIENT']
 
