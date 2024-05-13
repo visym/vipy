@@ -199,7 +199,7 @@ class Batch():
 
     def _client(self):
         return vipy.globals.dask()._client if vipy.globals.dask() is not None else None
-
+    
     def _batch_wait(self, futures):
         try:
             results = []            

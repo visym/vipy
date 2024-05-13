@@ -40,7 +40,7 @@ class Dataset():
 
         self._id = id
         self._ds = dataset if not isinstance(dataset, (list, set, tuple)) else tuple(dataset)  # force immutable
-        self._idx = list(range(len(dataset)))
+        self._idx = list(range(len(self._ds)))
         self._loader = loader  # may not be serializable if lambda is provided
         self._preprocessor = preprocessor
         
@@ -181,13 +181,62 @@ class Dataset():
         for (k,V) in enumerate(vipy.util.chunkgen(self, n)):
             yield Dataset(V, id=('%s_%d' % (self.id(), k)) if self.id() is not None else None)  # loaded
 
-    def minibatch(self, n, ragged=True):
-        """Yield list chunks of size n of this dataset.  Last chunk will be ragged if ragged=True, else skipped.  Minibatch is not preprocessed"""
+    def minibatch(self, n, ragged=True, distributed=False):
+        """Yield Minibatchess of size n of this dataset.
+
+        To yield chunks of this dataset, suitable for minibatch training/testing
+
+        ```python
+        D = vipy.dataset.Dataset(...)
+        for b in D.minibatch(n):
+           print(b)
+        ```
+        
+        To perform minibatch preprocessing in parallel across four processes with the context manager:
+
+        ```python
+        D = vipy.dataset.Dataset(...)
+        with vipy.globals.parallel(4):
+            for b in D.minibatch(n, distributed=True):
+                print(b)
+        ```
+
+        To perform minibatch preprocessing in parallel across four processes with distributed client:
+
+        ```python
+        D = vipy.dataset.Dataset(...)
+        vipy.globals.parallel(4)    
+        for b in D.minibatch(n, distributed=True):
+           print(b)
+        ```
+        
+        Args:
+            n [int]: The size of the minibatch
+            ragged [bool]: If ragged=true, then the last chunk will be ragged with len(chunk)<n, else skipped
+            distributed: If true, preprocess minibatches in parallel 
+
+        Returns:        
+            Iterator over `vipy.dataset.Dataset` elements of length n.  Minibatches will be preprocessed if distributed=True, else not-preprocessed
+
+        ..note:: The distributed iterator is not order preserving over minibatches and yields minibatches as completed, but the index of the minibatch is appended to the minibatch.id()
+        """
+        
+        return (self._minibatch_distributed_iterator if distributed else self._minibatch_iterator)(n, ragged)
+
+    def _minibatch_iterator(self, n, ragged=True, distributed=False):
+        """Yield list chunks of size n of this dataset.  Last chunk will be ragged if ragged=True, else skipped.  Minibatch is not preprocessed"""        
         dataset = self.clone(shallow=True).no_preprocessor()
         for (k,V) in enumerate(vipy.util.chunkgenbysize(dataset, n)):
             if ragged or len(V) == n:
                 yield Dataset(V, preprocessor=self._preprocessor, id=('%s_%d' % (self.id(), k)) if self.id() is not None else None)  # Checked, Loaded, Not-preprocessed
+
+    def _minibatch_distributed_iterator(self, n, ragged=True):        
+        assert vipy.globals.dask() is not None, "vipy.globals.parallel(n) must be set - Try setting this then rerunning the minibatch iterator: '>>> vipy.globals.parallel(n=4)'"
         
+        from dask.distributed import as_completed
+        for b in as_completed(vipy.globals.dask().client().map(lambda b: b.load(), list(self._minibatch_iterator(n, ragged)))):
+            yield b.result()  # not order preserving
+    
     def split(self, trainfraction=0.9, valfraction=0.1, testfraction=0, seed=None):
         """Split the dataset into the requested fractions.  
 
@@ -272,7 +321,12 @@ class Dataset():
             else:
                 print(errors)
         return Dataset(good, id=id) if not oneway else None
-    
+
+    def mapfilter(self, f):
+        """Apply the callable f to each element, and keep those that return true.  This can be applied in parallel and is useful for finding dataset errors"""
+        F = self.map(f, ordered=True)  # return ordered list of boolean filter
+        return Dataset([i for (f,i) in zip(F, self._ds) if f == True], loader=self._loader, preprocessor=self._preprocessor, id=self.id(), strict=False)
+        
     def localmap(self, f):
         assert callable(f), "invalid map function"
         self._ds = [f(x) for x in self]  # triggers load, replaces dataset with in-memory transformed list
@@ -280,29 +334,6 @@ class Dataset():
         self._preprocssor = None   # all done
         return self
                      
-    def zip(self, other):
-        """Zip two datasets.  Equivalent to zip(self, other).
-
-        ```python
-        for (d1,d2) in D1.zip(D2, sortkey=lambda v: v.instanceid()):
-            pass
-        
-        for (d1, d2) in zip(D1, D2):
-            pass
-        ```
-
-        Args:
-            other: [`vipy.dataset.Dataset`] 
-            sortkey: [lambda] sort both datasets using the provided sortkey lambda.
-        
-        Returns:
-            Generator for the tuple sequence ( (self[0], other[0]), (self[1], other[1]), ... )
-        """ 
-        assert isinstance(other, Dataset)
-        assert len(self) == len(other)
-
-        for (vi, vj) in zip(self, other):
-            yield (vi, vj)
 
     def sort(self, f):
         """Sort the dataset in-place using the sortkey lambda function"""
@@ -1261,3 +1292,28 @@ class Collector(Dataset):
     #    """Convert dataset stored as a list of lists into a flat list"""
     #    self._ds = [o for objlist in self._ds for o in vipy.util.tolist(objlist)]
     #    return self
+
+    def zip(self, other):
+        """Zip two datasets.  Equivalent to zip(self, other).
+
+        ```python
+        for (d1,d2) in D1.zip(D2, sortkey=lambda v: v.instanceid()):
+            pass
+        
+        for (d1, d2) in zip(D1, D2):
+            pass
+        ```
+
+        Args:
+            other: [`vipy.dataset.Dataset`] 
+            sortkey: [lambda] sort both datasets using the provided sortkey lambda.
+        
+        Returns:
+            Generator for the tuple sequence ( (self[0], other[0]), (self[1], other[1]), ... )
+        """ 
+        assert isinstance(other, Dataset)
+        assert len(self) == len(other)
+
+        for (vi, vj) in zip(self, other):
+            yield (vi, vj)
+    
