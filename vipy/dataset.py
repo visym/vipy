@@ -1,6 +1,6 @@
 import os
 import numpy as np
-from vipy.util import findpkl, toextension, filepath, filebase, jsonlist, ishtml, ispkl, filetail, temphtml, listpkl, listext, templike, tempdir, remkdir, tolist, fileext, writelist, tempcsv, newpathroot, listjson, extlist, filefull, tempdir, groupbyasdict
+from vipy.util import findpkl, toextension, filepath, filebase, jsonlist, ishtml, ispkl, filetail, temphtml, listpkl, listext, templike, tempdir, remkdir, tolist, fileext, writelist, tempcsv, newpathroot, listjson, extlist, filefull, tempdir, groupbyasdict, try_import
 import random
 import vipy
 import vipy.util
@@ -221,20 +221,21 @@ class Dataset():
         ..note:: The distributed iterator is not order preserving over minibatches and yields minibatches as completed, but the index of the minibatch is appended to the minibatch.id()
         """
         
-        return (self._minibatch_distributed_iterator if distributed else self._minibatch_iterator)(n, ragged)
+        return (self._minibatch_iterator if not distributed else self._distributed_minibatch_iterator)(n, ragged)
 
-    def _minibatch_iterator(self, n, ragged=True, distributed=False):
+    def _minibatch_iterator(self, n, ragged=True):
         """Yield list chunks of size n of this dataset.  Last chunk will be ragged if ragged=True, else skipped.  Minibatch is not preprocessed"""        
         dataset = self.clone(shallow=True).no_preprocessor()
         for (k,V) in enumerate(vipy.util.chunkgenbysize(dataset, n)):
             if ragged or len(V) == n:
                 yield Dataset(V, preprocessor=self._preprocessor, id=('%s_%d' % (self.id(), k)) if self.id() is not None else None)  # Checked, Loaded, Not-preprocessed
 
-    def _minibatch_distributed_iterator(self, n, ragged=True):        
-        assert vipy.globals.dask() is not None, "vipy.globals.parallel(n) must be set - Try setting this then rerunning the minibatch iterator: '>>> vipy.globals.parallel(n=4)'"
+    def _distributed_minibatch_iterator(self, n, ragged=True):
+        try_import('dask', 'dask distributed'); from dask.distributed import as_completed        
+        assert vipy.globals.dask() is not None, "distributed processing not enabled - Try: '>>> vipy.globals.parallel(n=4)'"
         
-        from dask.distributed import as_completed
-        for b in as_completed(vipy.globals.dask().client().map(lambda b: b.load(), list(self._minibatch_iterator(n, ragged)))):
+        c = vipy.globals.dask().client()        
+        for b in as_completed((c.submit(lambda b: b.load(), b) for b in self._minibatch_iterator(n, ragged))):
             yield b.result()  # not order preserving
     
     def split(self, trainfraction=0.9, valfraction=0.1, testfraction=0, seed=None):
@@ -900,7 +901,7 @@ class Collector(Dataset):
             - Operations must be chunked and serialized because each dask task comes with overhead, and lots of small tasks violates best practices
             - Serialized results are deserialized by the client and returned a a new dataset
         """
-        assert callable(f_map)
+        assert callable(f_map)    
         from vipy.batch import Batch   # requires pip install vipy[all]
 
         # Distributed map using vipy.batch
