@@ -910,6 +910,8 @@ class Image(object):
 
         Returns:
             A CxHxW or HxWxC or 1xCxHxW or 1xHxWxC [torch tensor](https://pytorch.org/docs/stable/tensors.html) that shares the pixel buffer of this image object by reference.
+
+        .. note:: This supports numpy types and does not support bfloat16
         """
         try_import('torch'); import torch
         assert order.lower() in ['chw', 'hwc', 'nchw', 'nhwc']

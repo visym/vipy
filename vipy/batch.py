@@ -19,6 +19,8 @@ import vipy.globals
 import hashlib
 import uuid
 import shutil
+import webbrowser
+
 dill.extend(True)  # https://github.com/uqfoundation/dill/issues/383
 
 
@@ -115,7 +117,8 @@ class Dask(object):
     def has_dashboard(self):
         return len(self._client.dashboard_link) > 0 if self._client is not None else False
 
-    def dashboard(self):        
+    def dashboard(self):
+        """Open a web dashboard for dask client.  As of 2024, this appears to be broken returning 404"""
         webbrowser.open(self._client.dashboard_link) if len(self._client.dashboard_link)>0 else None
     
     def num_processes(self):

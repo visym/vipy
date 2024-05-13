@@ -232,11 +232,13 @@ class Dataset():
 
     def _distributed_minibatch_iterator(self, n, ragged=True):
         try_import('dask', 'dask distributed'); from dask.distributed import as_completed        
-        assert vipy.globals.dask() is not None, "distributed processing not enabled - Try: '>>> vipy.globals.parallel(n=4)'"
+        assert vipy.globals.dask() is not None, "distributed processing not enabled - Try setting: '>>> vipy.globals.parallel(n=4)'"
         
         c = vipy.globals.dask().client()        
-        for b in as_completed((c.submit(lambda b: b.load(), b) for b in self._minibatch_iterator(n, ragged))):
-            yield b.result()  # not order preserving
+        for (future, b) in as_completed((c.submit(lambda b: b.load(), b) for b in self._minibatch_iterator(n, ragged)), with_results=True):
+            if future.status != 'error':  # skip distributed errors
+                yield b  # not order preserving
+
     
     def split(self, trainfraction=0.9, valfraction=0.1, testfraction=0, seed=None):
         """Split the dataset into the requested fractions.  
