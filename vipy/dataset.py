@@ -64,10 +64,12 @@ class Dataset():
         self._preprocessor = None
         return self
     
-    def preprocessor(self, f):
-        assert callable(f)
-        self._preprocessor = f
-        return self
+    def preprocessor(self, f=None):
+        if f is not None:
+            assert callable(f)
+            self._preprocessor = f
+            return self
+        return self._preprocessor
 
     def no_preprocessor(self):
         self._preprocessor = None
@@ -81,7 +83,7 @@ class Dataset():
             yield self[k]
 
     def __getitem__(self, k):
-        if isinstance(k, int) or isinstance(k, np.uint64):
+        if isinstance(k, (int, np.uint64)):
             assert abs(k) < len(self._idx), "invalid index"
             x = self._ds[self._idx[int(k)]]
             x = self._loader(x) if self._loader is not None else x
@@ -93,7 +95,7 @@ class Dataset():
             X = [self._preprocessor(x) for x in X] if self._preprocessor is not None else X
             return X
         else:
-            raise ValueError()
+            raise ValueError('invalid index type "%s"' % type(k))            
             
     def __len__(self):
         return len(self._idx)
@@ -108,10 +110,11 @@ class Dataset():
         assert mapper is None or callable(mapper)
         return [mapper(x) if mapper else x for x in self]
     
-    def set(self, mapper=None):
-        """Return the dataset as a set"""
-        return set(self.list(mapper))            
-
+    def set(self, mapper):
+        """Return the dataset as a set.  Mapper must be a lambda function that returns a hashable type"""
+        assert callable(mapper)
+        return {mapper(x) for x in self}
+        
     def clone(self, shallow=False):
         """Return a deep copy of the dataset"""
         if shallow:
@@ -227,11 +230,12 @@ class Dataset():
         return (self._minibatch_iterator if not distributed else self._distributed_minibatch_iterator)(n, ragged)
 
     def _minibatch_iterator(self, n, ragged=True):
-        """Yield list chunks of size n of this dataset.  Last chunk will be ragged if ragged=True, else skipped.  Minibatch is not preprocessed"""        
+        """Yield list chunks of size n of this dataset.  Last chunk will be ragged if ragged=True, else skipped.  Minibatch is not preprocessed"""
+        preprocessor = self.preprocessor()
         dataset = self.clone(shallow=True).no_preprocessor()
         for (k,V) in enumerate(vipy.util.chunkgenbysize(dataset, n)):
             if ragged or len(V) == n:
-                yield Dataset(V, preprocessor=self._preprocessor, id=('%s_%d' % (self.id(), k)) if self.id() is not None else None)  # Checked, Loaded, Not-preprocessed
+                yield Dataset(V, preprocessor=preprocessor, id=('%s_%d' % (self.id(), k)) if self.id() is not None else None)  # Checked, Loaded, Not-preprocessed
 
     def _distributed_minibatch_iterator(self, n, ragged=True):
         try_import('dask', 'dask distributed'); from dask.distributed import as_completed        
@@ -243,7 +247,7 @@ class Dataset():
                 yield b  # not order preserving
 
     
-    def split(self, trainfraction=0.9, valfraction=0.1, testfraction=0, seed=None):
+    def split(self, trainfraction=0.9, valfraction=0.1, testfraction=0, seed=None, trainsuffix=':train', valsuffix=':val', testsuffix=':test'):
         """Split the dataset into the requested fractions.  
 
         Args:
@@ -251,7 +255,10 @@ class Dataset():
             valfraction [float]: fraction of dataset for validation set
             testfraction [float]: fraction of dataset for test set
             seed [int]: random seed for determinism.  Set to None for random.
-
+            trainsuffix: If not None, append this string the to trainset ID
+            valsuffix: If not None, append this string the to valset ID
+            testsuffix: If not None, append this string the to testset ID        
+        
         Returns:        
             (trainset, valset, testset) 
         """
@@ -265,13 +272,19 @@ class Dataset():
             
         trainset = self.clone(shallow=True)
         trainset._idx = trainidx
+        if trainsuffix and trainset.id():
+            trainset.id(trainset.id() + trainsuffix)
         
         valset = self.clone(shallow=True)
         valset._idx = validx
+        if valsuffix and valset.id():
+            valset.id(valset.id() + valsuffix)
         
         testset = self.clone(shallow=True)
         testset._idx = testidx
-        
+        if testsuffix and testset.id():
+            testset.id(testset.id() + testsuffix)
+                
         return (trainset,valset,testset)
 
     def map(self, f_map, distributed=True, strict=True, ordered=False, oneway=False):        
@@ -288,7 +301,7 @@ class Dataset():
         Args:
             f_map: [lambda] The lambda function to apply in parallel to all elements in the dataset.  This must return a JSON serializable object (or set oneway=True)
             distributed [bool]: If true and vipy.globals.dask() is not None, distribute map over workers, else local map only
-            strict: [bool] If true, raise exception on map failures, otherwise the map will return None for failed elements and print exceptions
+            strict: [bool] If true, raise exception on map failures, otherwise the map will return only those that succeeded
             ordered: [bool] If true, preserve the order of objects in dataset as returned from distributed processing
             oneway: [bool] If true, do not pass back results unless exception
         
@@ -318,19 +331,13 @@ class Dataset():
         S = [f_serialize(v) for v in self]  # local load, preprocess and serialize
         B = Batch(vipy.util.chunklist(S, 128), strict=False, warnme=False, minscatter=128, ordered=ordered)
         S = B.map(lambda X,f=f: [f(x) for x in X]).result()  # chunked, with caught exceptions, may return empty list
-
-        # Error handling
-        if not isinstance(S, list) or any([not isinstance(s, list) for s in S]):
-            raise ValueError('Distributed processing error - Batch returned: %s' % (str(S)))
         V = [f_deserialize(x) for s in S for x in s]  # Local deserialization and chunk flattening
+        
+        # Error handling
         (good, bad) = ([r for (b,r) in V if b], [r for (b,r) in V if not b])  # catcher returns (True, result) or (False, exception string)
-        if len(bad) > 0:
-            errors = '[vipy.dataset.Dataset.map]: Exceptions in distributed processing:\n%s\n\n[vipy.dataset.Dataset.map]: %d/%d items failed' % (str(bad), len(bad), len(self))
-            if strict:
-                raise ValueError(errors)
-            else:
-                print(errors)
-        return Dataset(good) if not oneway else None
+        if strict and len(bad)>0:
+            raise ValueError('[vipy.dataset.Dataset.map]: Exceptions in distributed processing:\n%s\n\n[vipy.dataset.Dataset.map]: %d/%d items failed' % (str(bad), len(bad), len(self)))
+        return Dataset(good, id=self.id()) if not oneway else None
 
     def localmap(self, f):
         return self.map(f, distributed=False)
@@ -363,28 +370,41 @@ class Union(Dataset):
     def __init__(self, *args, **kwargs):
         datasets = args[0] if isinstance(args[0], (tuple, list)) else args
         assert all([isinstance(d, Dataset) for d in datasets])
-        self._ds = datasets
+        self._ds = datasets  
         self._idx = [(i,j) for (i,d) in enumerate(self._ds) for j in range(len(d))]  # (dataset index, element index) tuples 
         self._id = kwargs['id'] if 'id' in kwargs else None
-        
+
+        assert all([d.preprocessor() is None for d in self._ds]), "dataset preprocessors must be the same - Remove preprocessors from each dataset, then add a common preprocessor to the union"
 
     def __iter__(self):
         for (i,j) in self._idx:
             yield self._ds[i][j]
 
     def __getitem__(self, k):
-        if isinstance(k, int) or isinstance(k, np.uint64):
+        if isinstance(k, (int, np.uint64)):
             assert abs(k) < len(self._idx), "invalid index"
             (i,j) = self._idx[int(k)]            
             return self._ds[i][j]
         elif isinstance(k, slice):
             return [self._ds[i][j] for (i,j) in self._idx[k.start:k.stop:k.step]]
         else:
-            raise ValueError()
+            raise ValueError('invalid index type "%s"' % type(k))
 
     def __repr__(self):
         return str('<vipy.dataset.Union: %slen=%d, datasets=%d>' % (('id=%s, ' % self.id()) if self.id() is not None else '', len(self), len(self._ds)))
-        
+
+    def clone(self, shallow=False):
+        """Return a deep copy of the dataset"""
+        if shallow:
+            ds = self._ds
+            self._ds = []  
+            D = copy.deepcopy(self)  # all but datasets
+            self._ds = ds  # restore
+            D._ds = [d.clone(shallow=shallow) for d in self._ds]  # shared dataset object reference
+            return D
+        else:
+            return copy.deepcopy(self)
+    
     def load(self):
         """Load the entire dataset into memory.  This is useful for creating in-memory datasets from lazy load datasets"""
         return Dataset(self.list(), id=self.id())
@@ -394,14 +414,17 @@ class Union(Dataset):
         return list(self._ds)
     
     def raw(self):
-        raise ValueError('unsupported')    
-
-    def preprocessor(self, f):
-        assert callable(f)
-        for d in self._ds:
-            d.preprocessor(f)        
+        self._ds = [d.raw() for d in self._ds]  # in-place, clone() first 
         return self
 
+    def preprocessor(self, f=None):
+        if f is not None:
+            assert callable(f)
+            for d in self._ds:
+                d.preprocessor(f)        
+            return self
+        return self._ds[0].preprocessor()  # forced identical by constructor
+    
     def no_preprocessor(self):
         for d in self._ds:
             d.no_preprocessor()
