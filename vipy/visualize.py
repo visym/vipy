@@ -2,7 +2,7 @@ import os
 import vipy
 import numpy as np
 import shutil
-from vipy.globals import print
+from vipy.globals import log
 from vipy.util import remkdir, imlist, filetail, filebase, temphtml, isurl, fileext, tolist, iswebp, isimage, chunklistbysize, ishtml
 from vipy.image import Image
 from vipy.show import savefig
@@ -212,7 +212,7 @@ def hoverpixel(urls, outfile=None, pixelsize=32, sortby='color', loupe=True, hov
         f.write('</html>\n')
 
     if display:
-        print('[vipy.visualize.hoverpixel]: Opening "%s" in default browser' % filename)
+        log.info('[vipy.visualize.hoverpixel]: Opening "%s" in default browser' % filename)
         webbrowser.open('file://%s' % filename)
 
     return filename
@@ -280,7 +280,7 @@ def hoverpixel_selector(htmllist, legendlist, outfile=None, display=False, offse
         f.write('</html>\n')
 
     if display:
-        print('[vipy.visualize.hoverpixel_selector]: Opening "%s" in default browser' % filename)
+        log.info('[vipy.visualize.hoverpixel_selector]: Opening "%s" in default browser' % filename)
         webbrowser.open('file://%s' % filename)
 
     return filename
@@ -372,9 +372,9 @@ def montage(imlist, imgheight=256, imgwidth=256, gridrows=None, gridcols=None, a
             try:
                 if crop:
                     if imlist[k].bbox.valid() is False:
-                        print('[vipy.visualize.montage] invalid bounding box "%s" ' % str(imlist[k].bbox))
+                        log.warning('[vipy.visualize.montage] invalid bounding box "%s" ' % str(imlist[k].bbox))
                         if skip is False:
-                            print('[vipy.visualize.montage] using original image')
+                            log.warning('[vipy.visualize.montage] using original image')
                             im = imlist[k].rgb().resize(n,m).array()
                         else:
                             raise
@@ -388,21 +388,21 @@ def montage(imlist, imgheight=256, imgwidth=256, gridrows=None, gridcols=None, a
             except KeyboardInterrupt:
                 raise
             except Exception as exception:
-                print('[vipy.visualize.montage][%d/%d]: skipping "%s"' % (k+1, len(imlist), str(imlist[k])))
+                log.warning('[vipy.visualize.montage][%d/%d]: skipping "%s"' % (k+1, len(imlist), str(imlist[k])))
                 if skip:
-                    print('[vipy.visualize.montage][%d/%d]: "%s"' % (k+1, len(imlist), str(exception)))
+                    log.warning('[vipy.visualize.montage][%d/%d]: "%s"' % (k+1, len(imlist), str(exception)))
                 else:
                     raise
 
             if do_flush:
                 imlist[k].flush()  # clear memory
             if verbose and ((k % 100) == 0):
-                print('[vipy.visualize.montage][%d/%d] processing...' % (k, n_imgs))
+                log.info('[vipy.visualize.montage][%d/%d] processing...' % (k, n_imgs))
 
             k += 1
 
     if k == 0:
-        print('[vipy.visualize.montage] Warning: No images were processed')
+        log.warning('[vipy.visualize.montage] No images were processed')
 
     return Image(array=img_montage)
 
@@ -427,14 +427,14 @@ def videomontage(vidlist, imgheight, imgwidth, gridrows=None, gridcols=None, asp
     assert framerate > 0
 
     if verbose:
-        print('[vipy.visualize.videomontage]: Loading %d videos' % len(vidlist))
+        log.info('[vipy.visualize.videomontage]: Loading %d videos' % len(vidlist))
 
     vidlist = [v.framerate(framerate) for v in vidlist]  # resample to a common framerate, this must occur prior to load
     vidlist = [v.load() for v in vidlist]  # triggers load, make sure that the vidlist videos have a reasonably small frames
     max_length = max([len(v) for v in vidlist]) if max_duration is None else int(round(max_duration * framerate))   
     
     if verbose:
-        print('[vipy.visualize.videomontage]: Maximum video length (frames) = %d' % (max_length))
+        log.info('[vipy.visualize.videomontage]: Maximum video length (frames) = %d' % (max_length))
 
     # FIXME: use stream here:
     # with Video(outfile).stream(write=True) as s:
@@ -497,7 +497,7 @@ def urls(urllist, title='URL Visualization', imagewidth=1024, outfile=None, disp
     # Display?
     if display:
         url = pathlib.Path(filename).as_uri()
-        print('[vipy.visualize.urls]: Opening "%s" in default browser' % url)
+        log.info('[vipy.visualize.urls]: Opening "%s" in default browser' % url)
         webbrowser.open(url)
         
     return filename
@@ -567,7 +567,7 @@ def tohtml(imlist, imdict=None, title='Image Visualization', mindim=1024, outfil
     # Display?
     if display:
         url = pathlib.Path(filename).as_uri()
-        print('[vipy.visualize.tohtml]: Opening "%s" in default browser' % url)
+        log.info('[vipy.visualize.tohtml]: Opening "%s" in default browser' % url)
         webbrowser.open(url)
         
     return filename
@@ -608,7 +608,7 @@ def videolist(vidlist, viddict=None, title='Video Visualization', outfile=None, 
     # Display?
     if display:
         url = pathlib.Path(filename).as_uri()
-        print('[vipy.visualize.videolist]: Opening "%s" in default browser' % url)
+        log.info('[vipy.visualize.videolist]: Opening "%s" in default browser' % url)
         webbrowser.open(url)
         
     return filename

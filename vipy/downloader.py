@@ -28,7 +28,7 @@ try:
 except:
     pass
 from vipy.util import isS3url, filetail
-from vipy.globals import print
+from vipy.globals import log
 import vipy.version
 
 
@@ -102,10 +102,10 @@ def scp(url, output_filename, verbose=True):
     (hostname, remote_filename) = url.split('/',1)
 
     if verbose:
-        print("[vipy.downloader]: Downloading '%s' to '%s'" % (url, output_filename))
+        log.info("Downloading '%s' to '%s'" % (url, output_filename))
         
     def progress(filename, size, sent):
-        sys.stdout.write("[vipy.downloader]: %s ... %.2f%%   \r" % (filename, float(sent)/float(size)*100) )
+        sys.stdout.write("%s ... %.2f%%   \r" % (filename, float(sent)/float(size)*100) )
     
     ssh = paramiko.SSHClient()
     ssh.load_system_host_keys()
@@ -137,7 +137,7 @@ def s3(url, output_filename, verbose=True):
     object_name = urllib.parse.urlparse(url).path[1:]
 
     if verbose:
-        print('[vipy.downloader.s3]: Downloading "%s" -> "%s"' % (url, output_filename))
+        log.info('[vipy.downloader.s3]: Downloading "%s" -> "%s"' % (url, output_filename))
     s3.download_file(bucket_name, object_name, output_filename)
     return output_filename
 
@@ -186,7 +186,7 @@ def download(url, output_filename, sha1=None, verbose=True, md5=None, timeout=No
     dl_size = 0
 
     if verbose:
-        print("[vipy.downloader]: Downloading '%s' to '%s'" % (url, output_filename))
+        log.info("Downloading '%s' -> '%s'" % (url, output_filename))
 
     # display  progress only if we know the length
     if 'content-length' in page_info and verbose:
@@ -249,10 +249,10 @@ def unpack(archive_filename, output_dirname, sha1=None, verbose=True, passwd=Non
     * non-tar .bz2
     """
     if verbose:
-        print("[vipy.downloader.extract]: Extracting '%s' to '%s'" % (archive_filename, output_dirname))
+        log.info("[vipy.downloader.extract]: Extracting '%s' -> '%s'" % (archive_filename, output_dirname))
     if sha1 is not None:
         if verbose:
-            print(" SHA-1 verification...")
+            log.info("SHA-1 verification...")
         verify_sha1(archive_filename, sha1)
     try:
         extract(archive_filename, output_dirname, verbose=verbose, passwd=passwd)

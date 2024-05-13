@@ -28,6 +28,7 @@ import socket
 import warnings
 import copy
 import bz2
+#from vipy.globals import log
 
 
 try:
@@ -243,7 +244,7 @@ def loudcatcher(f, prepend, *args, **kwargs):
     try:
         return (True, f(*args, **kwargs))
     except Exception as e:
-        print('%s%s' % (prepend, str(e)))
+        log.error('%s%s' % (prepend, str(e)))
         return (False, str(e))
 
 def oneway_catcher(f, *args, **kwargs):
@@ -252,7 +253,7 @@ def oneway_catcher(f, *args, **kwargs):
     try:
         return (True, f(*args, **kwargs))
     except Exception as e:
-        print('%s%s' % (prepend, str(e)))
+        log.error('%s%s' % (prepend, str(e)))
         return (False, str(e))
     
 
@@ -711,7 +712,7 @@ def imwrite(img, imfile=None, writeas=None, quality=75):
 
 
 def print_and_return(x):
-    print(x)
+    log.info(x)
     return x
 
 
@@ -866,7 +867,7 @@ def scpsave(V, username=None):
 
     pklfile = 'scp://%s%s:%s' % (('%s@' % username) if username is not None else '', socket.gethostname(), save(v, temppkl()))
     cmd = "V = vipy.util.scpload('%s')" % pklfile
-    print('[vipy.util.scpsave]: On a local machine where you have public key ssh access to this remote machine run:\n>>> %s\n' % cmd)
+    log.info('[vipy.util.scpsave]: On a local machine where you have public key ssh access to this remote machine run:\n>>> %s\n' % cmd)
     return pklfile
 
 
@@ -1730,7 +1731,7 @@ class Timer(object):
         return self
         
     def __exit__(self, *args):
-        print(self.__repr__())
+        log.info(self.__repr__())
 
     def __init__(self, sprintf_next=None, sprintf_first=None):
         self._sprintf_next = '[vipy.util.timer]: elapsed=%1.6fs, total=%1.6fs' if sprintf_next is None else sprintf_next

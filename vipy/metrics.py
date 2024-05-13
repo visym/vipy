@@ -2,7 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from vipy.util import seq, groupby, try_import, temppng
 from vipy.math import interp1d
-from vipy.globals import print
+from vipy.globals import log
 
 
 def cumulative_match_characteristic(similarityMatrix, gtMatrix):
@@ -72,7 +72,7 @@ def plot_cmc(rank=None, tdr=None, similarityMatrix=None, truthMatrix=None, label
     plt.gcf().set_tight_layout(True)
 
     if outfile is not None:
-        print('[vipy.metric.plot_cmc]: saving "%s"' % outfile)
+        log.info('[vipy.metric.plot_cmc]: saving "%s"' % outfile)
         plt.savefig(outfile)
 
     else:
@@ -191,7 +191,7 @@ def plot_roc(y_true=None, y_pred=None, fpr=None, tpr=None, label=None, title=Non
     plt.ylim([0.0, 1.0])
 
     if outfile is not None:
-        print('[vipy.metric.plot_roc]: saving "%s"' % outfile)
+        log.info('[vipy.metric.plot_roc]: saving "%s"' % outfile)
         plt.savefig(outfile)
     else:
         plt.show()
@@ -259,7 +259,7 @@ def plot_pr(precision, recall, title=None, label='Precision-Recall', outfile=Non
     plt.grid(True)
 
     if outfile is not None:
-        print('[vipy.metric.plot_pr]: saving "%s"' % outfile)
+        log.info('[vipy.metric.plot_pr]: saving "%s"' % outfile)
         plt.savefig(outfile)
     else:
         plt.show()
@@ -276,7 +276,7 @@ def plot_ap(ap, categories, title=None, outfile=None):
     if title is not None:
         plt.title('%s' % (title))
     if outfile is not None:
-        print('[vipy.metric.plot_ap]: saving "%s"' % outfile)
+        log.info('[vipy.metric.plot_ap]: saving "%s"' % outfile)
         plt.savefig(outfile)
     else:
         plt.show()

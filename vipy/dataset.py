@@ -1,6 +1,8 @@
 import os
 import numpy as np
-from vipy.util import findpkl, toextension, filepath, filebase, jsonlist, ishtml, ispkl, filetail, temphtml, listpkl, listext, templike, tempdir, remkdir, tolist, fileext, writelist, tempcsv, newpathroot, listjson, extlist, filefull, tempdir, groupbyasdict, try_import
+from vipy.util import findpkl, toextension, filepath, filebase, jsonlist, ishtml, ispkl, filetail, temphtml
+from vipy.util import listpkl, listext, templike, tempdir, remkdir, tolist, fileext, writelist, tempcsv
+from vipy.util import newpathroot, listjson, extlist, filefull, tempdir, groupbyasdict, try_import
 import random
 import vipy
 import vipy.util

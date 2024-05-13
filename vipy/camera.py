@@ -2,7 +2,7 @@ import urllib
 import timeit
 from vipy.util import tempimage, try_import, isurl
 from vipy.image import Image
-from vipy.globals import print
+from vipy.globals import log
 
 try_import("cv2", "opencv-python")
 import cv2
@@ -79,7 +79,7 @@ class Webcam(Camera):
             raise ValueError('Invalid Frame')
         if self.FRAMERATE:
             self.TOC = timeit.default_timer()
-            print('[vipy.camera]: frame rate = ' + str(round(1.0 / (self.TOC - self.TIC),1)) + ' Hz')
+            log.info('[vipy.camera]: frame rate = ' + str(round(1.0 / (self.TOC - self.TIC),1)) + ' Hz')
             self.TIC = self.TOC
 
         return Image(array=im, colorspace='bgr')

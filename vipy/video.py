@@ -1,7 +1,7 @@
 import os
 import sys
 import dill
-from vipy.globals import print
+from vipy.globals import log
 from vipy.util import remkdir, tempMP4, isurl, \
     isvideourl, templike, tempjpg, filetail, tempdir, isyoutubeurl, try_import, isnumpy, temppng, \
     islist, isnumber, tolist, filefull, fileext, isS3url, totempdir, flatlist, tocache, \
@@ -135,7 +135,7 @@ class Stream(object):
                             g=2*outrate,
                             **kwargs)                              
                   .overwrite_output()                  
-                  .global_args('-cpuflags', '0', '-loglevel', 'quiet' if not vipy.globals.isdebug() else 'debug'))
+                  .global_args('-cpuflags', '0', '-loglevel', 'quiet' if not vipy.globals.GLOBAL['DEBUG'] else 'debug'))
 
             self._write_pipe = fo.run_async(pipe_stdin=True)
             
@@ -167,7 +167,7 @@ class Stream(object):
          
     def _read_pipe(self):
         if not self._video.isloaded():
-            p = self._video._ffmpeg.output('pipe:', format='rawvideo', pix_fmt='rgb24').global_args('-nostdin', '-loglevel', 'debug' if vipy.globals.isdebug() else 'quiet').run_async(pipe_stdout=True, pipe_stderr=True)
+            p = self._video._ffmpeg.output('pipe:', format='rawvideo', pix_fmt='rgb24').global_args('-nostdin', '-loglevel', 'debug' if vipy.globals.GLOBAL['DEBUG'] else 'quiet').run_async(pipe_stdout=True, pipe_stderr=True)
             assert p is not None, "Invalid read pipe"
             p.poll()
             return p
@@ -783,8 +783,8 @@ class Video(object):
 
         if youtube_chapters is not None:        
             f = youtube_chapters if callable(youtube_chapters) else lambda v: str(v).replace('<','').replace('>','')  # angle brackets not allowed
-            print('[vipy.video.concatenate]: Copy the following into the video Description after uploading the videofile "%s" to YouTube to enable chapters on playback.\n' % outfile)
-            print('\n'.join(['%s  %s' % (vipy.util.seconds_to_MMSS_colon_notation(int(s)), str(f(v))) for (s,v) in zip(np.cumsum([0] + [v.duration() for v in vi][:-1]), vi)])); print('\n')
+            log.info('[vipy.video.concatenate]: Copy the following into the video Description after uploading the videofile "%s" to YouTube to enable chapters on playback.\n' % outfile)
+            log.info('\n'.join(['%s  %s' % (vipy.util.seconds_to_MMSS_colon_notation(int(s)), str(f(v))) for (s,v) in zip(np.cumsum([0] + [v.duration() for v in vi][:-1]), vi)])); log.info('\n')
             if any([v.duration() < 10 for v in vi]):
                 warnings.warn('YouTube chapters must be a minimum duration of 10 seconds')
         return vo
@@ -1109,7 +1109,7 @@ class Video(object):
             The video object after sleeping 
         """
         if verbose:
-            print(prefix+self.__repr__()) 
+            log.info(prefix+self.__repr__()) 
         if sleep is not None:
             assert isinstance(sleep, int) and sleep > 0, "Sleep must be a non-negative integer number of seconds"
             time.sleep(sleep)
@@ -1663,7 +1663,7 @@ class Video(object):
             timestamp_in_seconds = max(0.0, (framenum-1)/float(self.framerate()))
             f_prepipe = self.clone(shallow=True)._update_ffmpeg_seek(offset=timestamp_in_seconds)._ffmpeg.filter('select', 'gte(n,{})'.format(0))
             f = f_prepipe.output('pipe:', vframes=1, format='image2', vcodec='mjpeg')\
-                         .global_args('-cpuflags', '0', '-loglevel', 'debug' if vipy.globals.isdebug() else 'error')
+                         .global_args('-cpuflags', '0', '-loglevel', 'debug' if vipy.globals.GLOBAL['DEBUG'] else 'error')
             (out, err) = f.run(capture_stdout=True, capture_stderr=True)
         except Exception as e:            
             raise ValueError('[vipy.video.load]: Video preview failed with error "%s"\n  - Video: "%s"\n  - FFMPEG command: \'sh> %s\'\n  - Try manually running this ffmpeg command to see errors.  This error usually means that the video is corrupted.' % (str(e), str(self), str(self._ffmpeg_commandline(f_prepipe.output('preview.jpg', vframes=1)))))
@@ -1672,13 +1672,13 @@ class Video(object):
         try:
             return Image(array=np.array(PIL.Image.open(BytesIO(out))))
         except Exception as e:
-            print('[vipy.video.Video.preview][ERROR]:  %s' % str(e))
-            print('  - FFMPEG attempted to extract a single frame from the following video and failed:\n    %s' % str(self))
-            print('  - This may occur after calling clip() with too short a duration, try increasing the clip to be > 1 sec')
-            print('  - This may occur after calling clip() with a startframe or endframe outside the duration of the video')
-            print('  - This may occur if requesting a frame number greater than the length of the video.  At this point, we do not know the video length, and cannot fail gracefully')
-            print('  - This may occur when the framerate of the video from ffprobe (tbr) does not match that passed to fps filter, resulting in a zero length image preview piped to stdout')
-            print('  - This may occur if the filter chain fails for some unknown reason on this video.  Try running this ffmpeg command manually and inspect the FFMPEG console output:\n     sh> %s' % str(self._ffmpeg_commandline(f_prepipe.output('preview.jpg', vframes=1))))
+            log.error('[vipy.video.Video.preview][ERROR]:  %s' % str(e))
+            log.error('  - FFMPEG attempted to extract a single frame from the following video and failed:\n    %s' % str(self))
+            log.error('  - This may occur after calling clip() with too short a duration, try increasing the clip to be > 1 sec')
+            log.error('  - This may occur after calling clip() with a startframe or endframe outside the duration of the video')
+            log.error('  - This may occur if requesting a frame number greater than the length of the video.  At this point, we do not know the video length, and cannot fail gracefully')
+            log.error('  - This may occur when the framerate of the video from ffprobe (tbr) does not match that passed to fps filter, resulting in a zero length image preview piped to stdout')
+            log.error('  - This may occur if the filter chain fails for some unknown reason on this video.  Try running this ffmpeg command manually and inspect the FFMPEG console output:\n     sh> %s' % str(self._ffmpeg_commandline(f_prepipe.output('preview.jpg', vframes=1))))
             raise
 
     def thumbnail(self, outfile=None, frame=0):
@@ -1716,7 +1716,7 @@ class Video(object):
         elif not self.hasfilename() and not ignoreErrors:
             raise ValueError('Invalid input - load() requires a valid URL, filename or array')
         if not self.hasfilename() and ignoreErrors:
-            print('[vipy.video.load]: Video file "%s" not found - Ignoring' % self.filename())
+            log.warning('[vipy.video.load]: Video file "%s" not found - Ignoring' % self.filename())
             return self
         if iswebp(self.filename()) or isgif(self.filename()):
             frames = []
@@ -1732,12 +1732,12 @@ class Video(object):
         # [EXCEPTION]:  older ffmpeg versions may segfault on complex crop filter chains
         #    -On some versions of ffmpeg setting -cpuflags=0 fixes it, but the right solution is to rebuild from the head (30APR20)
         if verbose:
-            print('[vipy.video.load]: Loading "%s"' % self.filename())                    
+            log.info('[vipy.video.load]: Loading "%s"' % self.filename())                    
         try:
             
             f_prepipe = copy.deepcopy(self._ffmpeg)
             f = self._ffmpeg.output('pipe:', format='rawvideo', pix_fmt='rgb24')\
-                            .global_args('-cpuflags', '0', '-loglevel', 'debug' if vipy.globals.isdebug() else 'quiet')
+                            .global_args('-cpuflags', '0', '-loglevel', 'debug' if vipy.globals.GLOBAL['DEBUG'] else 'quiet')
             (out, err) = f.run(capture_stdout=True, capture_stderr=True)
         except Exception as e:
             if not ignoreErrors:
@@ -2105,7 +2105,7 @@ class Video(object):
         assert vipy.util.isvideofile(outfile), "Invalid filename extension for video filename"
 
         if verbose:
-            print('[vipy.video.saveas]: Saving video "%s" ...' % outfile)                      
+            log.info('[vipy.video.saveas]: Saving video "%s" ...' % outfile)                      
         try:
             if iswebp(outfile):
                 return self.webp(outfile, pause)
@@ -2122,7 +2122,7 @@ class Video(object):
                                 .filter('pad', 'ceil(iw/2)*2', 'ceil(ih/2)*2') \
                                 .output(filename=outfile, pix_fmt='yuv420p', vcodec=vcodec) \
                                 .overwrite_output() \
-                                .global_args('-cpuflags', '0', '-loglevel', 'quiet' if not vipy.globals.isdebug() else 'debug') \
+                                .global_args('-cpuflags', '0', '-loglevel', 'quiet' if not vipy.globals.GLOBAL['DEBUG'] else 'debug') \
                                 .run_async(pipe_stdin=True)                
                 for frame in self._array:
                     process.stdin.write(frame.astype(np.uint8).tobytes())
@@ -2136,7 +2136,7 @@ class Video(object):
                 self._ffmpeg.filter('pad', 'ceil(iw/2)*2', 'ceil(ih/2)*2') \
                             .output(filename=tmpfile, pix_fmt='yuv420p', vcodec=vcodec, r=framerate) \
                             .overwrite_output() \
-                            .global_args('-cpuflags', '0', '-loglevel', 'quiet' if not vipy.globals.isdebug() else 'debug') \
+                            .global_args('-cpuflags', '0', '-loglevel', 'quiet' if not vipy.globals.GLOBAL['DEBUG'] else 'debug') \
                             .run()
                 if outfile == self.filename():
                     if os.path.exists(self.filename()):
@@ -2153,7 +2153,7 @@ class Video(object):
         except Exception as e:
             if ignoreErrors:
                 # useful for saving a large number of videos in parallel where some failed download
-                print('[vipy.video.saveas]:  Failed with error "%s" - Returning empty video' % str(repr(e)))
+                log.error('[vipy.video.saveas]:  Failed with error "%s" - Returning empty video' % str(repr(e)))
             else:
                 raise
 
@@ -2175,7 +2175,7 @@ class Video(object):
         """Play the video file using ffplay"""
         assert self.hasfilename() or (self.hasurl() and self.download().hasfilename())  # triggers download if needed
         cmd = 'ffplay "%s"' % self.filename()
-        print('[vipy.video.play]: Executing "%s"' % cmd)
+        log.info('[vipy.video.play]: Executing "%s"' % cmd)
         os.system(cmd)
         return self
         
@@ -2216,10 +2216,10 @@ class Video(object):
                 v = self.saveas(f)
                 cmd = 'ffplay "%s"' % v.filename()
                 if verbose:
-                    print('[vipy.video.play]: Executing "%s"' % cmd)
+                    log.info('[vipy.video.play]: Executing "%s"' % cmd)
                 os.system(cmd)
                 if verbose:
-                    print('[vipy.video.play]:  Removing temporary file "%s"' % v.filename())                    
+                    log.info('[vipy.video.play]:  Removing temporary file "%s"' % v.filename())                    
                 os.remove(v.filename())  # cleanup
             elif self.hasfilename() or (self.hasurl() and self.download().hasfilename()):  # triggers download
                 self.ffplay()
@@ -2341,7 +2341,7 @@ class Video(object):
                 frames = np.concatenate( (frames, np.expand_dims(frames[j % len(frames)], 0) ))
         assert j <= len(frames), "invalid slice=%s for frame shape=%s" % (str((i,j,k)), str(frames.shape))
         if verbose:
-            print('[vipy.video.torch]: slice (start,end,step)=%s for frame shape (N,C,H,W)=%s' % (str((i,j,k)), str(frames.shape)))
+            log.info('[vipy.video.torch]: slice (start,end,step)=%s for frame shape (N,C,H,W)=%s' % (str((i,j,k)), str(frames.shape)))
 
         # Slice and transpose to torch tensor axis ordering
         t = torch.from_numpy(frames[i:j:k] if (k!=1 or i!=0 or j!=len(frames)) else frames)  # do not copy - This shares the numpy buffer of the video, be careful!
@@ -3815,7 +3815,7 @@ class Scene(VideoCategory):
                 for (s, ti) in sorted([(0,t) if (len(tj) < len(t) or t.id() in deleted or t.id() == tj.id() or t.category() != tj.category()) else (tj.fragmentiou(t, dt=dt), t) for t in self.tracklist()], key=lambda x: x[0], reverse=True):
                     if s > spatial_iou_threshold:  # best mean framewise overlap during overlapping segment of two tracks (ti, tj)
                         if verbose:
-                            print('[vipy.video.dedupe]: merging duplicate track "%s" (id=%s) which overlaps with "%s" (id=%s)' % (ti, ti.id(), tj, tj.id()))
+                            log.info('[vipy.video.dedupe]: merging duplicate track "%s" (id=%s) which overlaps with "%s" (id=%s)' % (ti, ti.id(), tj, tj.id()))
                         self.tracks()[tj.id()] = tj.union(ti)  # merge
                         self.activitymap(lambda a: a.replace(ti, tj))  # replace merged track reference in activity
                         deleted.add(ti.id())
@@ -3826,7 +3826,7 @@ class Scene(VideoCategory):
                 for ai in self.activitylist()[j+1:]:
                     if aj.hasoverlap(ai, threshold=temporal_iou_threshold) and ai.id() not in deleted:
                         if verbose:
-                            print('[vipy.video.dedupe]: merging duplicate activity "%s" (id=%s) which overlaps with "%s" (id=%s)' % (ai, ai.id(), aj, aj.id()))
+                            log.info('[vipy.video.dedupe]: merging duplicate activity "%s" (id=%s) which overlaps with "%s" (id=%s)' % (ai, ai.id(), aj, aj.id()))
                         self.activities()[aj.id()] = aj.union(ai.clone().replaceid(ai.actorid(), aj.actorid())).addid(ai.actorid())  # merge two activities into one, with two tracks
                         deleted.add(ai.id())
             self.activityfilter(lambda a: a.id() not in deleted)  # remove duplicate activities
@@ -3894,10 +3894,10 @@ class Scene(VideoCategory):
 
             # Key collision?
             if len(set(sc.tracks().keys()).intersection(set(oc.tracks().keys()))) > 0:
-                print('[vipy.video.union]: track key collision - Rekeying other... Use other.rekey() to suppress this warning.')
+                log.warning('[vipy.video.union]: track key collision - Rekeying other... Use other.rekey() to suppress this warning.')
                 oc.rekey()
             if len(set(sc.activities().keys()).intersection(set(oc.activities().keys()))) > 0:
-                print('[vipy.video.union]: activity key collision - Rekeying other... Use other.rekey() to suppress this warning.')                
+                log.warning('[vipy.video.union]: activity key collision - Rekeying other... Use other.rekey() to suppress this warning.')                
                 oc.rekey()
 
             # Similarity transform?  Other may differ from self by a temporal scale (framerate), temporal translation (clip) or spatial isotropic scale (rescale)
@@ -3918,7 +3918,7 @@ class Scene(VideoCategory):
                     if ti.category() == tj.category() and (tj.id() not in merged) and tj.segment_percentilecover(sc.track(ti.id()), percentile=percentilecover, samples=percentilesamples) > spatial_iou_threshold:  # mean framewise overlap during overlapping segment of two tracks
                         sc.tracks()[ti.id()] = sc.track(ti.id()).union(tj, overlap=overlap)  # merge duplicate/fragmented tracks from other into self, union() returns clone
                         merged[tj.id()] = ti.id()  
-                        print('[vipy.video.union]: merging track "%s"(id=%s) + "%s"(id=%s) for scene "%s"' % (str(ti), str(ti.id()), str(tj), str(tj.id()), str(sc)))                        
+                        log.info('[vipy.video.union]: merging track "%s"(id=%s) + "%s"(id=%s) for scene "%s"' % (str(ti), str(ti.id()), str(tj), str(tj.id()), str(sc)))                        
             oc.trackfilter(lambda t: t.id() not in merged, activitytrack=False)  # remove duplicate other track for final union
 
             # Merge other activities into selfclone: one-to-one mapping
@@ -3974,7 +3974,7 @@ class Scene(VideoCategory):
         assert outfile is None or vipy.util.isvideofile(outfile), "Invalid filename extension for annotated video"
         
         if verbose:
-            print('[vipy.video.annotate]: Annotating video ...')  
+            log.info('[vipy.video.annotate]: Annotating video ...')  
             
         f_mutator = mutator if mutator is not None else vipy.image.mutator_show_jointlabel()
         f_timestamp = (lambda k: '%s %d' % (vipy.util.clockstamp(), k)) if timestamp is True else timestamp

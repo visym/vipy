@@ -1,4 +1,4 @@
-from vipy.globals import print
+from vipy.globals import log
 from vipy.util import mat2gray, try_import, string_to_pil_interpolation, Stopwatch, isnumpy, clockstamp, tempMP4, premkdir
 try_import('cv2', 'opencv-python opencv-contrib-python'); import cv2
 import vipy.image
@@ -151,7 +151,7 @@ class Image(object):
         return copy.deepcopy(self)
 
     def print(self, outstring=None):
-        print(outstring if outstring is not None else str(self))
+        log.info(outstring if outstring is not None else str(self))
         return self
 
     
@@ -217,7 +217,7 @@ class Video(vipy.video.Video):
         return self.colorflow().show()
 
     def print(self, outstring=None):
-        print(outstring if outstring is not None else str(self))
+        log.info(outstring if outstring is not None else str(self))
         return self
 
     
@@ -434,7 +434,7 @@ class Flow(object):
         imstabilized = vv.preview(0).rgb().zeropad(padwidth, padheight)  # single frame fetch
         duration = len(vv)  # requires preload, duration computed at stabilization framerate
         if duration < keystep:
-            print('[vipy.flow.stabilize]: ERROR - video not long enough for stabilization, returning original video "%s"' % str(v))
+            log.warning('[vipy.flow.stabilize]: video not long enough for stabilization, returning original video "%s"' % str(v))
             return v.clone().setattribute('unstabilized')
         r_coarse = []
         frames = []                        
@@ -443,7 +443,7 @@ class Flow(object):
         # Stabilization
         for k in range(0, duration):  
             if verbose and k==0:
-                print('[vipy.flow.stabilize]: %s coarse to fine stabilization ...' % ('Euclidean' if rigid else 'Affine' if affine else 'Projective'))                
+                log.info('[vipy.flow.stabilize]: %s coarse to fine stabilization ...' % ('Euclidean' if rigid else 'Affine' if affine else 'Projective'))                
 
             # Optical flow (3x): use downsampled video, do not precompute to save on memory, requires random access to downsampled video
             im = vv.frame(k)  # native resolution
@@ -462,7 +462,7 @@ class Flow(object):
                 r_coarse.append(np.mean(np.sqrt(np.sum(np.square(M.dot(homogenize(xy_src[::8].transpose())) - homogenize(xy_dst[::8].transpose())), axis=0))) if (residual and len(xy_src)>8) else 0)
             except Exception as e:
                 if not strict:
-                    print('[vipy.flow.stabilize]: ERROR - coarse alignment failed with error "%s", returning original video "%s"' % (str(e), str(v)))
+                    log.warning('[vipy.flow.stabilize]: coarse alignment failed with error "%s", returning original video "%s"' % (str(e), str(v)))
                     return v.clone().setattribute('unstabilized')  # for provenance
                 raise
 
@@ -476,7 +476,7 @@ class Flow(object):
                 F = f_estimate_fine(xy_src.transpose()-np.array([padwidth, padheight]), xy_dst.transpose()-np.array([padwidth, padheight]), method=cv2.RANSAC, confidence=0.99999, ransacReprojThreshold=0.1, refineIters=64, maxIters=3000)  
             except Exception as e:
                 if not strict:
-                    print('[vipy.flow.stabilize]: ERROR - fine alignment failed with error "%s", returning original video "%s"' % (str(e), str(v)))                    
+                    log.warning('[vipy.flow.stabilize]: fine alignment failed with error "%s", returning original video "%s"' % (str(e), str(v)))                    
                     return v.clone().setattribute('unstabilized')  # for provenance
                 else:
                     raise ValueError('[vipy.flow.stabilize]: ERROR - fine alignment failed due to correspondence error')
@@ -517,7 +517,7 @@ class Flow(object):
                 im = im.objectmap(lambda o: o.projective(T.dot(A)))  # apply object transformation
                 if any([not o.isvalid() for o in im.objects()]):  
                     if not strict:
-                        print('[vipy.flow.stabilize]: ERROR - object alignment returned degenerate bounding box, returning original video "%s"' % str(v))
+                        log.warning('[vipy.flow.stabilize]: object alignment returned degenerate bounding box, returning original video "%s"' % str(v))
                         return v.clone().setattribute('unstabilized')  # for provenance
                     else:
                         raise ValueError('[vipy.flow.stabilize]: ERROR - object alignment returned degenerate bounding box for video "%s"' % str(v))                    

@@ -4,6 +4,7 @@ from matplotlib import pyplot as plt
 import numpy as np
 from vipy.util import islist, temppng
 import sys
+from vipy.globals import log
 
 
 FIGHANDLE = {}
@@ -409,7 +410,7 @@ class DraggableRectangle(object):
 
         contains, attrd = self.rect.contains(event)
         if not contains: return
-        print('event contains', self.rect.xy)
+        log.info('event contains', self.rect.xy)
         x0, y0 = self.rect.xy
         self.press = x0, y0, event.xdata, event.ydata
 
@@ -420,7 +421,7 @@ class DraggableRectangle(object):
         x0, y0, xpress, ypress = self.press
         dx = event.xdata - xpress
         dy = event.ydata - ypress
-        #print('x0=%f, xpress=%f, event.xdata=%f, dx=%f, x0+dx=%f' %
+        #log.info('x0=%f, xpress=%f, event.xdata=%f, dx=%f, x0+dx=%f' %
         #      (x0, xpress, event.xdata, dx, x0+dx))
         self.rect.set_x(x0+dx)
         self.rect.set_y(y0+dy)
@@ -477,7 +478,7 @@ class DraggableRectangleFast(object):
         if DraggableRectangle.lock is not None: return
         contains, attrd = self.rect.contains(event)
         if not contains: return
-        print('event contains', self.rect.xy)
+        log.info('event contains', self.rect.xy)
         x0, y0 = self.rect.xy
         self.press = x0, y0, event.xdata, event.ydata
         DraggableRectangle.lock = self

@@ -16,123 +16,13 @@ import numpy as np
 import tempfile
 import warnings
 import vipy.globals
+from vipy.globals import log
 import hashlib
 import uuid
 import shutil
 import webbrowser
 
 dill.extend(True)  # https://github.com/uqfoundation/dill/issues/383
-
-
-class Dask(object):
-    """Dask distributed client"""
-
-    def __init__(self, num_processes=None, dashboard=False, verbose=False, address=None, num_gpus=None):
-        assert address is not None or num_processes is not None or num_gpus is not None, "Invalid input"
-
-        if num_gpus is not None:
-            assert num_processes is None, "Cannot specify both num_gpus and num_processes"
-            num_processes = num_gpus   # coercing
-
-        self._num_processes = num_processes
-
-        # Dask configuration: https://docs.dask.org/en/latest/configuration.html
-        os.environ['DASK_LOGGING__DISTRIBUTED'] = 'warning' if not verbose else 'info'
-        os.environ['DASK_DISTRIBUTED__COMM__TIMEOUTS__CONNECT'] = "30s"
-        os.environ['DASK_DISTRIBUTED__COMM__TIMEOUTS__TCP'] = "30s"
-        os.environ['DASK_DISTRIBUTED__DEPLOY__LOST_WORKER_TIMEOUT'] = "30s"
-        os.environ['DASK_DISTRIBUTED__COMM__RETRY__COUNT'] = "10"        
-
-        dask.config.set({'DISTRIBUTED.COMM.RETRY.COUNT'.lower():os.environ['DASK_DISTRIBUTED__COMM__RETRY__COUNT']})
-        dask.config.set({'DISTRIBUTED.COMM.TIMEOUTS.CONNECT'.lower():os.environ['DASK_DISTRIBUTED__COMM__TIMEOUTS__CONNECT']})
-        dask.config.set({'DISTRIBUTED.COMM.TIMEOUTS.TCP'.lower():os.environ['DASK_DISTRIBUTED__COMM__TIMEOUTS__TCP']})
-        dask.config.set({'DISTRIBUTED.DEPLOY.LOST_WORKER_TIMEOUT'.lower():os.environ['DASK_DISTRIBUTED__DEPLOY__LOST_WORKER_TIMEOUT']})
-        dask.config.refresh()
-
-        # Worker env
-        env = {'VIPY_BACKEND':'Agg',  # headless in workers
-               'PYTHONOPATH':os.environ['PYTHONPATH'] if 'PYTHONPATH' in os.environ else '',
-               'PATH':os.environ['PATH'] if 'PATH' in os.environ else ''}
-
-        if 'VIPY_CACHE' in os.environ:
-            env.update({'VIPY_CACHE':os.environ['VIPY_CACHE']})
-        if 'VIPY_AWS_ACCESS_KEY_ID' in os.environ:
-            env.update({'VIPY_AWS_ACCESS_KEY_ID':os.environ['VIPY_AWS_ACCESS_KEY_ID']})            
-        if  'VIPY_AWS_SECRET_ACCESS_KEY' in os.environ:
-            env.update({'VIPY_AWS_SECRET_ACCESS_KEY':os.environ['VIPY_AWS_SECRET_ACCESS_KEY']})        
-                    
-        for (k,v) in os.environ.items():
-            if k.startswith('DASK_'):
-                env[k] = v
-    
-        if address is not None:
-            # Distributed scheduler
-            self._client = Client(name='vipy', address=address)
-
-            # Update key environment variables on remote workers using out of band function (yuck)
-            # Make sure that any environment variables are accessible on all machines!  (e.g. VIPY_CACHE)
-            # If not, then you need to unset these variables from os.environ prior to calling Dask()
-            def _f_setenv_remote(localenv):
-                import os; os.environ.update(localenv)
-
-            localenv = {k:v for (k,v) in os.environ.items() if k.startswith('VIPY_')}
-            localenv.update( {'VIPY_BACKEND':'Agg'} )
-            self._client.run(lambda env=localenv: _f_setenv_remote(env))
-
-        else:
-            # Local scheduler
-            self._client = Client(name='vipy',
-                                  address=address,  # to connect to distributed scheduler HOSTNAME:PORT
-                                  scheduler_port=0,   # random
-                                  dashboard_address=None if not dashboard else ':0',  # random port
-                                  processes=True, 
-                                  threads_per_worker=1,
-                                  n_workers=num_processes, 
-                                  env=env,
-                                  direct_to_workers=True, 
-                                  #memory_limit='auto',
-                                  #silence_logs=20 if verbose else 40, 
-                                  local_directory=tempfile.mkdtemp())
-
-        self._num_gpus = num_gpus
-        if self._num_gpus is not None:
-            assert isinstance(self._num_gpus, int) and self._num_gpus > 0, "Number of GPUs must be >= 0 not '%s'" % (str(self._num_gpus))
-            assert self._num_gpus == self._num_processes
-            wait([self._client.submit(vipy.globals.gpuindex, k, workers=wid) for (k, wid) in enumerate(self._client.scheduler_info()['workers'].keys())])
-
-
-    def __repr__(self):
-        if self._num_processes is not None or self._num_gpus is not None:
-            # Local 
-            return str('<vipy.globals.dask: %s%s>' % ('gpus=%d' % self.num_gpus() if self.num_gpus() is not None else 'processes=%d' % self.num_processes(), ', dashboard="%s"' % str(self._client.dashboard_link) if self.has_dashboard() else ''))
-        elif self._client is not None:
-            # Distributed
-            return str('<vipy.globals.dask: %s>' % (str(self._client)))
-        else:
-            return str('<vipy.globals.dask: shutdown')
-
-    def num_gpus(self):
-        return self._num_gpus
-
-    def has_dashboard(self):
-        return len(self._client.dashboard_link) > 0 if self._client is not None else False
-
-    def dashboard(self):
-        """Open a web dashboard for dask client.  As of 2024, this appears to be broken returning 404"""
-        webbrowser.open(self._client.dashboard_link) if len(self._client.dashboard_link)>0 else None
-    
-    def num_processes(self):
-        return len(self._client.nthreads()) if self._client is not None else 0
-
-    def shutdown(self):
-        self._client.close()
-        self._num_processes = None
-        self._num_gpus = None
-        vipy.globals.GLOBAL['DASK_CLIENT'] = None        
-        return self
-
-    def client(self):
-        return self._client
 
 
 class Batch():
@@ -174,13 +64,7 @@ class Batch():
 
         # Move this into map and disable using localmap
         if vipy.globals.dask() is None and warnme:
-            print('[vipy.batch.Batch]: vipy.batch.Batch() is not set to use parallelism.  This is set using:\n    >>> with vipy.globals.parallel(n) for multi-processing with n processes\n    >>> vipy.globals.parallel(pct=0.8) for multiprocessing that uses a percentage of the current system resources\n    >>> vipy.globals.dask(address="SCHEDULER:PORT") which connects to a Dask distributed scheduler.\n    >>> vipy.globals.noparallel() to completely disable all parallelism.')
-
-        # FIXME: this needs to go into Dask()
-        #self._ngpu = ngpu
-        #if ngpu is not None:
-        #    assert isinstance(ngpu, int) and ngpu > 0, "Number of GPUs must be >= 0 not '%s'" % (str(ngpu))
-        #    wait([self._client.submit(vipy.globals.gpuindex, k, workers=wid) for (k, wid) in enumerate(self._client.scheduler_info()['workers'].keys())])
+            log.info('[vipy.batch.Batch]: vipy.batch.Batch() is not set to use parallelism.  This is set using:\n    >>> with vipy.globals.parallel(n) for multi-processing with n processes\n    >>> vipy.globals.parallel(pct=0.8) for multiprocessing that uses a percentage of the current system resources\n    >>> vipy.globals.dask(address="SCHEDULER:PORT") which connects to a Dask distributed scheduler.\n    >>> vipy.globals.noparallel() to completely disable all parallelism.')
 
         self._strict = strict
         self._as_completed = as_completed  # this may introduce instabilities for large complex objects, use with caution
@@ -215,7 +99,7 @@ class Batch():
                             typ, exc, tb = result
                             raise exc.with_traceback(tb)
                         else:
-                            print('[vipy.batch]: future %s failed with error "%s" - SKIPPING' % (str(future), str(result)))
+                            log.warning('[vipy.batch]: future %s failed with error "%s" - SKIPPING' % (str(future), str(result)))
                         results.append(None)
                     del future, result  # distributed memory cleanup
 
@@ -247,9 +131,9 @@ class Batch():
                     if self._strict:
                         raise
                     try:
-                        print('[vipy.batch]: future %s failed with error "%s" for batch "%s"' % (str(f), str(f.exception()), str(self)))
+                        log.error('[vipy.batch]: future %s failed with error "%s" for batch "%s"' % (str(f), str(f.exception()), str(self)))
                     except:
-                        print('[vipy.batch]: future failed')
+                        log.error('[vipy.batch]: future failed')
                     results.append(None)
             return results
 

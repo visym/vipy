@@ -2,7 +2,7 @@ import vipy
 from scipy.signal import convolve2d
 from vipy.math import gaussian
 import numpy as np
-from vipy.globals import print
+from vipy.globals import log
 from vipy.util import try_import
 try_import('cv2', 'opencv-python'); import cv2 
 
@@ -146,8 +146,8 @@ def demo(im=None):
     # SSIM
     (ssim_aligned, im_aligned) = SSIM(do_alignment=True).ssim(im.numpy(), im_degraded.numpy(), returnAligned=True)
     (ssim_unaligned) = SSIM(do_alignment=False).ssim(im.numpy(), im_degraded.numpy())    
-    print('Structural similarity score (aligned): %f' % ssim_aligned)
-    print('Structural similarity score (unaligned): %f' % ssim_unaligned)
+    log.info('Structural similarity score (aligned): %f' % ssim_aligned)
+    log.info('Structural similarity score (unaligned): %f' % ssim_unaligned)
     return (im.show(figure=1),
             im_degraded.show(figure=2),
             im_aligned.show(figure=3))

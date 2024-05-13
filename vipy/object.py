@@ -5,6 +5,7 @@ import uuid
 import copy
 import warnings
 from itertools import islice
+from vipy.globals import log
 
 try:
     import ujson as json  # faster
@@ -988,7 +989,7 @@ class Track(object):
             (self._keyframes, self._keyboxes) = zip(*[(k, BoundingBox(xmin=float(f_xmin(k)), ymin=float(f_ymin(k)), xmax=float(f_xmax(k)), ymax=float(f_ymax(k)))) for k in range(startframe, endframe)])
         except Exception as e:
             if not strict:
-                print('[vipy.object.track]: spline smoothing failed with error "%s" - Returning unsmoothed track' % (str(e)))
+                log.warning('[vipy.object.track]: spline smoothing failed with error "%s" - Returning unsmoothed track' % (str(e)))
                 return self
             else:
                 raise

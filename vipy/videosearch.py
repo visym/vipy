@@ -5,7 +5,7 @@ import urllib
 import json
 import re
 import random
-from vipy.globals import print
+from vipy.globals import log
 from vipy.downloader import common_user_agents, complete_user_agents
 from vipy.util import tofilename, remkdir, filepath, filebase, isurl, try_import
 import glob
@@ -92,7 +92,7 @@ def youtube(tag, n_pages=1, channel=False, video_limit=None):
         except AttributeError:
             search_results = urllib.request.urlopen(search_request)
         except:
-            print('[vipy.videosearch.youtube]: URL 404: %s' % (url))
+            log.info('[vipy.videosearch.youtube]: URL 404: %s' % (url))
             url_template = 'http://www.youtube.com/channel/%s/videos'
             url = url_template% (tag.replace(' ','+'))
             search_request = urllib.request.Request(url, None, headers)
@@ -101,7 +101,7 @@ def youtube(tag, n_pages=1, channel=False, video_limit=None):
             except AttributeError:
                 search_results = urllib.request.urlopen(search_request)
             except:
-                print('[vipy.videosearch.youtube]: URL 404: %s' % (url))
+                log.info('[vipy.videosearch.youtube]: URL 404: %s' % (url))
                 return ([None], [None])
         search_data = str(search_results.read())
 
@@ -137,12 +137,12 @@ def download(vidurl, vidfile, skip=False, writeurlfile=True, max_filesize='350m'
     if not has_youtube_dl:
         raise ImportError('Optional package "youtube-dl" not installed -  Run "pip install youtube-dl"')
     try:
-        print('[vipy.videosearch.download]: saving "%s" to "%s"' % (vidurl, vidfile))
+        log.info('[vipy.videosearch.download]: saving "%s" to "%s"' % (vidurl, vidfile))
         for f in glob.glob("%s*" % vidfile):
             os.remove(f)  # youtube-dl will not overwrite, so we force it
         cmd = '%s %s "%s" -o "%s" --no-check-certificate --max-filesize="%s" --user-agent="%s"' % (youtube_dl_exe, '-q' if not verbose else '', vidurl, vidfile, max_filesize, user_agent)  # must be on path            
         if verbose:
-            print('[vipy.videosearch.download]: executing \'%s\'' % cmd)
+            log.info('[vipy.videosearch.download]: executing \'%s\'' % cmd)
         erno = os.system(cmd)
         if erno != 0:
             raise ValueError('youtube-dl returned %d' % erno)
@@ -153,14 +153,14 @@ def download(vidurl, vidfile, skip=False, writeurlfile=True, max_filesize='350m'
                     f.write(vidurl + '\n')
         if remove_parts and os.path.isfile(vidfile + '.part'):
             partfile = vidfile + '.part'
-            print('[vipy.youtube.download]: removing partial file: %s' % partfile)
+            log.info('[vipy.youtube.download]: removing partial file: %s' % partfile)
             os.remove(partfile)
     except KeyboardInterrupt:
         raise
     except Exception as exception:
-        print(exception)
+        log.warning(exception)
         # http://rg3.github.io/youtube-dl/supportedsites.html
-        print('[vipy.videosearch.download]: download failed - skipping')
+        log.warning('[vipy.videosearch.download]: download failed - skipping')
         return None
 
     if erno == 256:

@@ -6,7 +6,7 @@ import random
 import dill
 import time
 import json
-
+from vipy.globals import log
 
 import vipy.util
 vipy.util.try_import('torch');
@@ -79,7 +79,7 @@ class Tensordir(torch.utils.data.Dataset):
             except:
                 time.sleep(1)  # try again after a bit if another process is augmenting this .pkl.bz2 in parallel
         if self._verbose:
-            print('[vipy.dataset.TorchTensordir][WARNING]: %s corrupted or invalid' % self._dirlist[k])
+            log.warning('[vipy.dataset.TorchTensordir]: %s corrupted or invalid' % self._dirlist[k])
         return self.__getitem__(random.randint(0, len(self)-1))  # maximum retries reached, get another one
 
     def __len__(self):

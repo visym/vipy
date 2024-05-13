@@ -7,7 +7,7 @@ from vipy.util import try_import, isurl, remkdir, temphtml, tempjson, filetail, 
 import tempfile
 import numpy as np
 from vipy.downloader import common_user_agents
-from vipy.globals import print
+from vipy.globals import log
 import warnings
 from datetime import datetime
 import time
@@ -42,7 +42,7 @@ def basic_level_categories():
     try_import('nltk'); import nltk
     nltkdir = remkdir(os.path.join(os.environ['VIPY_CACHE'], 'nltk')) if 'VIPY_CACHE' in os.environ else tempfile.gettempdir()
     os.environ['NLTK_DATA'] = nltkdir
-    print('[vipy.annotation.basic_level_categories]: Downloading wordnet to "%s"' % nltkdir)
+    log.info('[vipy.annotation.basic_level_categories]: Downloading wordnet to "%s"' % nltkdir)
     nltk.download('wordnet', nltkdir)
     nltk.data.path.append(nltkdir)
     
@@ -61,7 +61,7 @@ def verbs():
     try_import('nltk'); import nltk
     nltkdir = remkdir(os.path.join(os.environ['VIPY_CACHE'], 'nltk')) if 'VIPY_CACHE' in os.environ else tempfile.gettempdir()
     os.environ['NLTK_DATA'] = nltkdir
-    print('[vipy.annotation.verbs]: Downloading verbnet to "%s"' % nltkdir)    
+    log.info('[vipy.annotation.verbs]: Downloading verbnet to "%s"' % nltkdir)    
     nltk.download('verbnet', nltkdir)
     nltk.data.path.append(nltkdir)
     from nltk.corpus import verbnet

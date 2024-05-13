@@ -6,7 +6,7 @@ import platform
 import dill
 import vipy.show
 import vipy.globals
-from vipy.globals import print
+from vipy.globals import log
 from vipy.util import isnumpy, isurl, isimageurl, \
     fileext, tempimage, mat2gray, imwrite, imwritegray, \
     tempjpg, filetail, isimagefile, remkdir, hasextension, \
@@ -230,7 +230,7 @@ class Image(object):
         Useful for debugging in long fluent chains.
         """
         if verbose:
-            print(prefix+self.__repr__())
+            log.info(prefix+self.__repr__())
         if sleep is not None:
             assert isinstance(sleep, int) and sleep > 0, "Sleep must be a non-negative integer number of seconds"
             time.sleep(sleep)
@@ -1547,13 +1547,13 @@ class Image(object):
             
     # Image statistics
     def stats(self):
-        print(self)
-        print('  Channels: %d' % self.channels())
-        print('  Shape: %s' % str(self.shape()))
-        print('  min: %s' % str(self.min()))
-        print('  max: %s' % str(self.max()))
-        print('  mean: %s' % str(self.mean()))
-        print('  channel mean: %s' % str(self.meanchannel()))        
+        log.info(self)
+        log.info('  Channels: %d' % self.channels())
+        log.info('  Shape: %s' % str(self.shape()))
+        log.info('  min: %s' % str(self.min()))
+        log.info('  max: %s' % str(self.max()))
+        log.info('  mean: %s' % str(self.mean()))
+        log.info('  channel mean: %s' % str(self.meanchannel()))        
     
     def min(self):
         return self.minpixel()

@@ -3,7 +3,6 @@ import numpy as np
 from itertools import product
 from vipy.util import try_import, isnumpy, isnumber, tolist
 from vipy.linalg import columnvector
-import warnings
 
 try:
     import ujson as json  # faster
