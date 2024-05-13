@@ -1553,7 +1553,7 @@ def istarbz2(filename):
     """Is the filename a .bz2 or .tar.bz2 extension?"""
     return filename[-8:] == '.tar.bz2'
 
-def tempfilename(suffix):
+def tempfilename(suffix=''):
     """Create a temporary filename $TEMPDIR/$UUID.suffix, suffix should include the dot such as suffix='.jpg', """
     return os.path.join(tempfile.gettempdir(), '%s%s' % (shortuuid(), suffix))
 
