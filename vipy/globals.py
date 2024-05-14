@@ -36,18 +36,30 @@ class Dask(object):
         self._num_processes = num_processes
 
         # Dask configuration: https://docs.dask.org/en/latest/configuration.html
-        os.environ['DASK_LOGGING__DISTRIBUTED'] = 'warning' if not verbose else 'info'
-        os.environ['DASK_DISTRIBUTED__COMM__TIMEOUTS__CONNECT'] = "30s"
-        os.environ['DASK_DISTRIBUTED__COMM__TIMEOUTS__TCP'] = "30s"
-        os.environ['DASK_DISTRIBUTED__DEPLOY__LOST_WORKER_TIMEOUT'] = "30s"
-        os.environ['DASK_DISTRIBUTED__COMM__RETRY__COUNT'] = "10"        
+        # - when using vipy.dataset.Dataset minibatch iterator, large minibatches can result in a warning about large graphs
+        # - The end user can set these environemnt variables, and will only be overwritten with defaults here if not provided
+        if 'DASK_LOGGING__DISTRIBUTED' not in os.environ:
+            os.environ['DASK_LOGGING__DISTRIBUTED'] = 'warning' if not verbose else 'info'
+        if 'DASK_DISTRIBUTED__COMM__TIMEOUTS__CONNECT' not in os.environ:
+            os.environ['DASK_DISTRIBUTED__COMM__TIMEOUTS__CONNECT'] = "30s"
+        if 'DASK_DISTRIBUTED__COMM__TIMEOUTS__TCP' not in os.environ:
+            os.environ['DASK_DISTRIBUTED__COMM__TIMEOUTS__TCP'] = "30s"
+        if 'DASK_DISTRIBUTED__DEPLOY__LOST_WORKER_TIMEOUT' not in os.environ:
+            os.environ['DASK_DISTRIBUTED__DEPLOY__LOST_WORKER_TIMEOUT'] = "30s"
+        if 'DASK_DISTRIBUTED__COMM__RETRY__COUNT' not in os.environ:
+            os.environ['DASK_DISTRIBUTED__COMM__RETRY__COUNT'] = "10"        
+        if 'DASK_ADMIN_LARGE_GRAPH_WARNING_THREHSOLD' not in os.environ:
+            os.environ['DASK_ADMIN_LARGE_GRAPH_WARNING_THREHSOLD'] = "50MB"        
 
-        dask.config.set({'DISTRIBUTED.COMM.RETRY.COUNT'.lower():os.environ['DASK_DISTRIBUTED__COMM__RETRY__COUNT']})
+        dask.config.refresh()
+        
+        dask.config.set({'DISTRIBUTED.COMM.RETRY.COUNT'.lower():int(os.environ['DASK_DISTRIBUTED__COMM__RETRY__COUNT'])})
         dask.config.set({'DISTRIBUTED.COMM.TIMEOUTS.CONNECT'.lower():os.environ['DASK_DISTRIBUTED__COMM__TIMEOUTS__CONNECT']})
         dask.config.set({'DISTRIBUTED.COMM.TIMEOUTS.TCP'.lower():os.environ['DASK_DISTRIBUTED__COMM__TIMEOUTS__TCP']})
-        dask.config.set({'DISTRIBUTED.DEPLOY.LOST_WORKER_TIMEOUT'.lower():os.environ['DASK_DISTRIBUTED__DEPLOY__LOST_WORKER_TIMEOUT']})
-        dask.config.refresh()
-
+        dask.config.set({'DISTRIBUTED.DEPLOY.LOST_WORKER_TIMEOUT'.lower():os.environ['DASK_DISTRIBUTED__DEPLOY__LOST_WORKER_TIMEOUT']})        
+        dask.config.set({"distributed.admin.large-graph-warning-threshold": os.environ['DASK_ADMIN_LARGE_GRAPH_WARNING_THREHSOLD']})
+        
+        
         # Worker env
         env = {'VIPY_BACKEND':'Agg',  # headless in workers
                'PYTHONOPATH':os.environ['PYTHONPATH'] if 'PYTHONPATH' in os.environ else '',
@@ -57,7 +69,7 @@ class Dask(object):
             env.update({'VIPY_CACHE':os.environ['VIPY_CACHE']})
         if 'VIPY_AWS_ACCESS_KEY_ID' in os.environ:
             env.update({'VIPY_AWS_ACCESS_KEY_ID':os.environ['VIPY_AWS_ACCESS_KEY_ID']})            
-        if  'VIPY_AWS_SECRET_ACCESS_KEY' in os.environ:
+        if 'VIPY_AWS_SECRET_ACCESS_KEY' in os.environ:
             env.update({'VIPY_AWS_SECRET_ACCESS_KEY':os.environ['VIPY_AWS_SECRET_ACCESS_KEY']})        
                     
         for (k,v) in os.environ.items():

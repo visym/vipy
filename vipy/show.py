@@ -13,6 +13,12 @@ if 'VIPY_BACKEND' in os.environ and 'DISPLAY' in os.environ:
 import importlib
 BACKEND = importlib.import_module('vipy.gui.using_matplotlib')
 
+try:
+    import matplotlib.style as mplstyle
+    mplstyle.use('fast')
+except:
+    pass
+
 
 def figure(fignum=None):
     return BACKEND.figure(fignum)
