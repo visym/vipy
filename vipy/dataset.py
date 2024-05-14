@@ -248,12 +248,13 @@ class Dataset():
         assert vipy.globals.dask() is not None, "distributed processing not enabled - Try setting: '>>> vipy.globals.parallel(n=4)'"
 
         c = vipy.globals.dask().client()
-        for big in self.minibatch(1024*n, ragged):  # iterate bigbatch chunks
-            for (future, small) in as_completed((c.submit(lambda b: b.load(), b) for b in big.minibatch(32*n, ragged)), with_results=True):  # submit minibatch chunks of bigbatch
+        for big in self.minibatch(1024*n, ragged=True):  # iterate bigbatch chunks
+            for (future, small) in as_completed((c.submit(lambda b: b.load(), b) for b in big.minibatch(32*n, ragged=True)), with_results=True):  # submit minibatch chunks of bigbatch
                 if future.status != 'error':  # skip distributed errors
-                    for b in small.minibatch(n, ragged):
+                    for b in small.minibatch(n, ragged=ragged):
                         yield b  # minibatch, not order preserving                    
-        
+                else:
+                    raise ValueError(future)    
     
     def split(self, trainfraction=0.9, valfraction=0.1, testfraction=0, seed=None, trainsuffix=':train', valsuffix=':val', testsuffix=':test'):
         """Split the dataset into the requested fractions.  

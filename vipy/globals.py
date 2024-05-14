@@ -8,6 +8,7 @@ import logging
 
 # Global mutable dictionary
 GLOBAL = {'DASK_CLIENT': None,   # Global Dask() client for distributed processing
+          'PARALLEL':None,  # Parallel processing context manager
           'CACHE':os.environ['VIPY_CACHE'] if 'VIPY_CACHE' in os.environ else None,   # Cache directory for vipy.video and vipy.image donwloads
           'LOGGER':logging.getLogger('vipy'),     # The global logger
           'DEBUG':False, # globally enable debugging flags
@@ -195,7 +196,7 @@ def parallel(n=None, pct=None, scheduler=None):
     
     To check the current parallelism level:
     
-    >>> num_processes = vipy.globals.parallel()
+    >>> num_processes = vipy.globals.parallel().num_processes()
 
     To run with a dask scheduler:
     
@@ -214,7 +215,7 @@ def parallel(n=None, pct=None, scheduler=None):
             assert sum([x is not None for x in (n, pct, scheduler)]) == 1, "Exactly one"
             assert n is None or (isinstance(n, int) and n>=1)
             assert pct is None or (pct > 0 and pct <= 1)
-            dask(num_processes=n, pct=pct, address=scheduler)
+            dask(num_processes=n, pct=pct, address=scheduler, dashboard=True)
             self._n = n
             self._pct = pct
             self._scheduler = scheduler
@@ -226,13 +227,27 @@ def parallel(n=None, pct=None, scheduler=None):
             if self._scheduler is None:
                 noparallel()
 
+        def __repr__(self):
+            return '<vipy.globals.parallel: dask=%s>' % GLOBAL['DASK_CLIENT']
+        
+        def client(self):
+            return GLOBAL['DASK_CLIENT']
+
+        def shutdown(self):
+            noparallel()
+            GLOBAL['PARALLEL'] = None
+            
+        def num_processes(self):
+            return GLOBAL['DASK_CLIENT'].num_processes() if GLOBAL['DASK_CLIENT'] else 0
+
     if n is None and pct is None and scheduler is None:
-        return GLOBAL['DASK_CLIENT'].num_processes() if  GLOBAL['DASK_CLIENT'] is not None else 0
+        return GLOBAL['PARALLEL']
     else:
         assert n is not None or pct is not None or scheduler is not None
         assert sum([x is not None for x in (n, pct, scheduler)]) == 1, "Exactly one"
-        return Parallel(n=n, pct=pct, scheduler=scheduler) 
-
+        GLOBAL['PARALLEL'] = Parallel(n=n, pct=pct, scheduler=scheduler)
+        GLOBAL['LOGGER'].info('Parallel executor initialized %s' % GLOBAL['PARALLEL'] )
+        return GLOBAL['PARALLEL']
 
 
 def noparallel():
@@ -241,7 +256,14 @@ def noparallel():
         GLOBAL['DASK_CLIENT'].shutdown()
         del GLOBAL['DASK_CLIENT']
     GLOBAL['DASK_CLIENT'] = None 
-
+    GLOBAL['PARALLEL'] = None
+    GLOBAL['LOGGER'].info('Parallel executor shutdown')
+    
 def nodask():
     """Alias for `vipy.globals.noparallel`"""
     return noparallel()
+    
+def shutdown():
+    """Alias for `vipy.globals.noparallel`"""    
+    return noparallel()
+

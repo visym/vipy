@@ -129,4 +129,22 @@ def tiny_imagenet():
     return (vipy.dataset.Dataset(D['train'], id='tiny_imagenet_train', loader=loader, strict=False),
             vipy.dataset.Dataset(D['valid'], id='tiny_imagenet_val', loader=loader, strict=False))
 
+
+def the_cauldron():
+    """https://huggingface.co/datasets/HuggingFaceM4/the_cauldron"""
+    ds = load_dataset("HuggingFaceM4/the_cauldron", "ai2d")
+
+    #>>> ds['train'][0]
+    #{'images': [<PIL.PngImagePlugin.PngImageFile image mode=RGB size=299x227>],
+    #  'texts': [{'user': 'Question: What do respiration and combustion give out\nChoices:\nA. Oxygen\nB. Carbon dioxide\nC. Nitrogen\nD. Heat\nAnswer with the letter.',
+    #                'assistant': 'Answer: B',
+    #                'source': 'AI2D'}]}
     
+
+def imageinwords():
+    """https://huggingface.co/datasets/google/imageinwords"""
+    dataset = load_dataset('google/imageinwords', token=None, name="IIW-400", trust_remote_code=True)
+
+def docci():
+    """https://huggingface.co/datasets/google/docci"""
+    dataset = load_dataset("google/docci")
