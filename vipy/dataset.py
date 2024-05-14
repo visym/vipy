@@ -52,6 +52,10 @@ class Dataset():
             except Exception as e:
                 raise ValueError('invalid dataset type')
 
+    def __or__(self, other):
+        assert isinstance(other, Dataset)
+        return Union((self, other), id=self.id())
+    
     def id(self, n=None):
         """Set or return the dataset id, useful for showing the name/split of the dataset in the representation string"""
         if n is None:
