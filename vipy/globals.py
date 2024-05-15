@@ -8,6 +8,7 @@ import logging
 
 # Global mutable dictionary
 GLOBAL = {'DASK_CLIENT': None,   # Global Dask() client for distributed processing
+          'PARALLEL':None,  # Parallel processing context manager
           'CACHE':os.environ['VIPY_CACHE'] if 'VIPY_CACHE' in os.environ else None,   # Cache directory for vipy.video and vipy.image donwloads
           'LOGGER':logging.getLogger('vipy'),     # The global logger
           'DEBUG':False, # globally enable debugging flags
@@ -35,18 +36,30 @@ class Dask(object):
         self._num_processes = num_processes
 
         # Dask configuration: https://docs.dask.org/en/latest/configuration.html
-        os.environ['DASK_LOGGING__DISTRIBUTED'] = 'warning' if not verbose else 'info'
-        os.environ['DASK_DISTRIBUTED__COMM__TIMEOUTS__CONNECT'] = "30s"
-        os.environ['DASK_DISTRIBUTED__COMM__TIMEOUTS__TCP'] = "30s"
-        os.environ['DASK_DISTRIBUTED__DEPLOY__LOST_WORKER_TIMEOUT'] = "30s"
-        os.environ['DASK_DISTRIBUTED__COMM__RETRY__COUNT'] = "10"        
+        # - when using vipy.dataset.Dataset minibatch iterator, large minibatches can result in a warning about large graphs
+        # - The end user can set these environemnt variables, and will only be overwritten with defaults here if not provided
+        if 'DASK_LOGGING__DISTRIBUTED' not in os.environ:
+            os.environ['DASK_LOGGING__DISTRIBUTED'] = 'warning' if not verbose else 'info'
+        if 'DASK_DISTRIBUTED__COMM__TIMEOUTS__CONNECT' not in os.environ:
+            os.environ['DASK_DISTRIBUTED__COMM__TIMEOUTS__CONNECT'] = "30s"
+        if 'DASK_DISTRIBUTED__COMM__TIMEOUTS__TCP' not in os.environ:
+            os.environ['DASK_DISTRIBUTED__COMM__TIMEOUTS__TCP'] = "30s"
+        if 'DASK_DISTRIBUTED__DEPLOY__LOST_WORKER_TIMEOUT' not in os.environ:
+            os.environ['DASK_DISTRIBUTED__DEPLOY__LOST_WORKER_TIMEOUT'] = "30s"
+        if 'DASK_DISTRIBUTED__COMM__RETRY__COUNT' not in os.environ:
+            os.environ['DASK_DISTRIBUTED__COMM__RETRY__COUNT'] = "10"        
+        if 'DASK_ADMIN_LARGE_GRAPH_WARNING_THREHSOLD' not in os.environ:
+            os.environ['DASK_ADMIN_LARGE_GRAPH_WARNING_THREHSOLD'] = "50MB"        
 
-        dask.config.set({'DISTRIBUTED.COMM.RETRY.COUNT'.lower():os.environ['DASK_DISTRIBUTED__COMM__RETRY__COUNT']})
+        dask.config.refresh()
+        
+        dask.config.set({'DISTRIBUTED.COMM.RETRY.COUNT'.lower():int(os.environ['DASK_DISTRIBUTED__COMM__RETRY__COUNT'])})
         dask.config.set({'DISTRIBUTED.COMM.TIMEOUTS.CONNECT'.lower():os.environ['DASK_DISTRIBUTED__COMM__TIMEOUTS__CONNECT']})
         dask.config.set({'DISTRIBUTED.COMM.TIMEOUTS.TCP'.lower():os.environ['DASK_DISTRIBUTED__COMM__TIMEOUTS__TCP']})
-        dask.config.set({'DISTRIBUTED.DEPLOY.LOST_WORKER_TIMEOUT'.lower():os.environ['DASK_DISTRIBUTED__DEPLOY__LOST_WORKER_TIMEOUT']})
-        dask.config.refresh()
-
+        dask.config.set({'DISTRIBUTED.DEPLOY.LOST_WORKER_TIMEOUT'.lower():os.environ['DASK_DISTRIBUTED__DEPLOY__LOST_WORKER_TIMEOUT']})        
+        dask.config.set({"distributed.admin.large-graph-warning-threshold": os.environ['DASK_ADMIN_LARGE_GRAPH_WARNING_THREHSOLD']})
+        
+        
         # Worker env
         env = {'VIPY_BACKEND':'Agg',  # headless in workers
                'PYTHONOPATH':os.environ['PYTHONPATH'] if 'PYTHONPATH' in os.environ else '',
@@ -56,7 +69,7 @@ class Dask(object):
             env.update({'VIPY_CACHE':os.environ['VIPY_CACHE']})
         if 'VIPY_AWS_ACCESS_KEY_ID' in os.environ:
             env.update({'VIPY_AWS_ACCESS_KEY_ID':os.environ['VIPY_AWS_ACCESS_KEY_ID']})            
-        if  'VIPY_AWS_SECRET_ACCESS_KEY' in os.environ:
+        if 'VIPY_AWS_SECRET_ACCESS_KEY' in os.environ:
             env.update({'VIPY_AWS_SECRET_ACCESS_KEY':os.environ['VIPY_AWS_SECRET_ACCESS_KEY']})        
                     
         for (k,v) in os.environ.items():
@@ -195,7 +208,7 @@ def parallel(n=None, pct=None, scheduler=None):
     
     To check the current parallelism level:
     
-    >>> num_processes = vipy.globals.parallel()
+    >>> num_processes = vipy.globals.parallel().num_processes()
 
     To run with a dask scheduler:
     
@@ -214,7 +227,7 @@ def parallel(n=None, pct=None, scheduler=None):
             assert sum([x is not None for x in (n, pct, scheduler)]) == 1, "Exactly one"
             assert n is None or (isinstance(n, int) and n>=1)
             assert pct is None or (pct > 0 and pct <= 1)
-            dask(num_processes=n, pct=pct, address=scheduler)
+            dask(num_processes=n, pct=pct, address=scheduler, dashboard=True)
             self._n = n
             self._pct = pct
             self._scheduler = scheduler
@@ -226,13 +239,27 @@ def parallel(n=None, pct=None, scheduler=None):
             if self._scheduler is None:
                 noparallel()
 
+        def __repr__(self):
+            return '<vipy.globals.parallel: dask=%s>' % GLOBAL['DASK_CLIENT']
+        
+        def client(self):
+            return GLOBAL['DASK_CLIENT']
+
+        def shutdown(self):
+            noparallel()
+            GLOBAL['PARALLEL'] = None
+            
+        def num_processes(self):
+            return GLOBAL['DASK_CLIENT'].num_processes() if GLOBAL['DASK_CLIENT'] else 0
+
     if n is None and pct is None and scheduler is None:
-        return GLOBAL['DASK_CLIENT'].num_processes() if  GLOBAL['DASK_CLIENT'] is not None else 0
+        return GLOBAL['PARALLEL']
     else:
         assert n is not None or pct is not None or scheduler is not None
         assert sum([x is not None for x in (n, pct, scheduler)]) == 1, "Exactly one"
-        return Parallel(n=n, pct=pct, scheduler=scheduler) 
-
+        GLOBAL['PARALLEL'] = Parallel(n=n, pct=pct, scheduler=scheduler)
+        GLOBAL['LOGGER'].info('Parallel executor initialized %s' % GLOBAL['PARALLEL'] )
+        return GLOBAL['PARALLEL']
 
 
 def noparallel():
@@ -241,7 +268,14 @@ def noparallel():
         GLOBAL['DASK_CLIENT'].shutdown()
         del GLOBAL['DASK_CLIENT']
     GLOBAL['DASK_CLIENT'] = None 
-
+    GLOBAL['PARALLEL'] = None
+    GLOBAL['LOGGER'].info('Parallel executor shutdown')
+    
 def nodask():
     """Alias for `vipy.globals.noparallel`"""
     return noparallel()
+    
+def shutdown():
+    """Alias for `vipy.globals.noparallel`"""    
+    return noparallel()
+

@@ -243,17 +243,18 @@ class Dataset():
             if ragged or len(V) == n:
                 yield Dataset(V, preprocessor=preprocessor, id=('%s_%d' % (self.id(), k)) if self.id() is not None else None)  # Checked, Loaded, Not-preprocessed
 
-    def _distributed_minibatch_iterator(self, n, ragged=True):
+    def _distributed_minibatch_iterator(self, n, ragged=True, bigbatch=1024, smallbach=32):
         try_import('dask', 'dask distributed'); from dask.distributed import as_completed        
         assert vipy.globals.dask() is not None, "distributed processing not enabled - Try setting: '>>> vipy.globals.parallel(n=4)'"
 
         c = vipy.globals.dask().client()
-        for big in self.minibatch(1024*n, ragged):  # iterate bigbatch chunks
-            for (future, small) in as_completed((c.submit(lambda b: b.load(), b) for b in big.minibatch(32*n, ragged)), with_results=True):  # submit minibatch chunks of bigbatch
+        for big in self.minibatch(bigbatch*n, ragged=True):  # iterate bigbatch chunks
+            for (future, small) in as_completed((c.submit(lambda b: b.load(), b) for b in big.minibatch(smallbatch*n, ragged=True)), with_results=True):  # submit minibatch chunks of bigbatch
                 if future.status != 'error':  # skip distributed errors
-                    for b in small.minibatch(n, ragged):
+                    for b in small.minibatch(n, ragged=ragged):
                         yield b  # minibatch, not order preserving                    
-        
+                else:
+                    raise ValueError(future)    
     
     def split(self, trainfraction=0.9, valfraction=0.1, testfraction=0, seed=None, trainsuffix=':train', valsuffix=':val', testsuffix=':test'):
         """Split the dataset into the requested fractions.  
