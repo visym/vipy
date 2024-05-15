@@ -5,7 +5,7 @@ import matplotlib
 # Matplotlib Backend
 # - Specify this environment variable VIPY_BACKEND
 # - Headless operation: 'Agg'
-# - Linux (X11-forwarded): 'GTK3Cairo', 'QtAgg', 'TkAgg'
+# - Linux (X11-forwarded): 'TkAgg', 'GTK3Cairo', 'QtAgg'
 # - Valid backends: https://matplotlib.org/stable/users/explain/backends.html
 if 'VIPY_BACKEND' in os.environ and 'DISPLAY' in os.environ:
     matplotlib.use(os.environ['VIPY_BACKEND'])  # 'Agg' is required unless there is a DISPLAY set
