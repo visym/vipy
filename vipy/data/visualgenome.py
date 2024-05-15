@@ -27,7 +27,7 @@ class VisualGenome(vipy.dataset.Dataset):
             imlist.append( (d_imageid_to_filename[obj['image_id']], obj['objects']) )
 
         loader = lambda x: vipy.image.Scene(filename=x[0],
-                                            objects=[vipy.object.Detection(label=o['names'][0] if len(o['names'])>0 else o['object_id'],
+                                            objects=[vipy.object.Detection(label=sorted(o['names']),
                                                                            xmin = o['x'], ymin=o['y'], width=o['w'], height=o['h'],
                                                                            id = o['object_id'],
                                                                            attributes={'synsets':o['synsets']}) for o in x[1]])

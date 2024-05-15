@@ -66,7 +66,7 @@ class Imagenet2012():
     def classification_trainset(self):
         """ImageNet Classification, trainset"""
         imgfiles = vipy.util.findimages(os.path.join(self._datadir, 'ILSVRC2012_img_train'))
-        loader = lambda f, synset_to_category=self.synset_to_category: vipy.image.ImageCategory(filename=f, category=','.join(synset_to_category(filetail(filepath(f)))))
+        loader = lambda f, synset_to_category=self.synset_to_category: vipy.image.ImageCategory(filename=f, category=synset_to_category(filetail(filepath(f))))
         return vipy.dataset.Dataset(imgfiles, 'imagenet2012_classification_train', loader=loader)
         
     def classification_valset(self):
@@ -81,7 +81,7 @@ class Imagenet2012():
         # Index mapping is in mat file (yuck)
         synsets = self.synset_to_category()
         d_idx_to_category = {str(k):self.synset_to_category(r[0][1][0]) for (k,r) in enumerate(scipy.io.loadmat(os.path.join(self._datadir, 'ILSVRC2012_devkit_t12/ILSVRC2012_devkit_t12/data/meta.mat'))['synsets'], start=1) if r[0][1][0] in synsets}
-        loader = lambda x, d_idx_to_category=d_idx_to_category: vipy.image.ImageCategory(filename=x[0], category=','.join(d_idx_to_category[x[1]]))
+        loader = lambda x, d_idx_to_category=d_idx_to_category: vipy.image.ImageCategory(filename=x[0], category=d_idx_to_category[x[1]])
         return vipy.dataset.Dataset(imlist, 'imagenet2012_classification_val', loader=loader)
                 
     def localization_trainset(self):
@@ -96,11 +96,11 @@ class Imagenet2012():
             if os.path.exists(xmlfile):
                 d = ET.parse(xmlfile).getroot()
                 (name, xmin, ymin, xmax, ymax) = (d[5][0].text, d[5][4][0].text, d[5][4][1].text, d[5][4][2].text, d[5][4][3].text)
-                objects.append( (','.join(synsets[name]) if name in synsets else name, xmin, ymin, xmax, ymax) )
+                objects.append( (synsets[name] if name in synsets else name, xmin, ymin, xmax, ymax) )
             imlist.append( (f,tuple(objects)) )
 
         loader = lambda x, synset_to_category=self.synset_to_category: vipy.image.Scene(filename=x[0],
-                                                                                        category=','.join(synset_to_category(filetail(filepath(x[0])))),
+                                                                                        category=synset_to_category(filetail(filepath(x[0]))),
                                                                                         objects=[vipy.object.Detection(category=o[0], xmin=int(o[1]), ymin=int(o[2]), xmax=int(o[3]), ymax=int(o[4])) for o in x[1]])
         return vipy.dataset.Dataset(imlist, 'imagenet2012_localization_train', loader=loader)
 

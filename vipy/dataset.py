@@ -44,7 +44,7 @@ class Dataset():
         
         self._id = id
         self._ds = dataset if not isinstance(dataset, (list, set, tuple)) else tuple(dataset)  # force immutable (if possible)
-        self._idx = tuple(range(len(self._ds)) if not index else index)  # force immutable 
+        self._idx = list(range(len(self._ds)) if not index else index)   
         self._loader = loader  # not serializable if lambda is provided
         self._preprocessor = preprocessor
         
