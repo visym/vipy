@@ -442,7 +442,7 @@ class Union(Dataset):
 class Collector(Dataset):
     """vipy.dataset.Collector() class
     
-    Common class to manipulate Visym Collector datasets 
+    Common class to manipulate datasets of vipy objects curated using Visym Collector
 
     ```python
     D = vipy.dataset.Collector([vipy.video.RandomScene(), vipy.video.RandomScene()], id='random_scene')
@@ -706,7 +706,6 @@ class Collector(Dataset):
 
     def classlist(self):
         """Return a sorted list of categories in the dataset"""
-        assert self._isvipy(), "Invalid input"
         return sorted(list(set([v.category() for v in self])))
 
     def classes(self):
@@ -742,7 +741,6 @@ class Collector(Dataset):
         return list(sorted(set([tuple(sorted(list(a))) for v in self for a in v.activitylabel() if len(a) > 0])))        
 
     def powerset_to_index(self):        
-        assert self._isvipy(), "Invalid input"
         return {c:k for (k,c) in enumerate(self.powerset())}
 
     def merge(self, outdir):
@@ -787,7 +785,6 @@ class Collector(Dataset):
            Returns:
                outdir: The directory containing the JSON files.
         """
-        assert self._isvipy()
         assert outdir is not None or byfilename 
         assert not byfilename and bycategory
 
@@ -850,7 +847,6 @@ class Collector(Dataset):
     
     def _split_by_videoid(self, trainfraction=0.9, valfraction=0.1, testfraction=0, seed=None):
         """Split the dataset by category by fraction so that video IDs are never in the same set"""
-        assert self._isvipy(), "Invalid input"
         assert trainfraction >=0 and trainfraction <= 1
         assert valfraction >=0 and valfraction <= 1
         assert testfraction >=0 and testfraction <= 1
@@ -940,7 +936,6 @@ class Collector(Dataset):
     
     def synonym(self, synonymdict):
         """Convert all categories in the dataset using the provided synonym dictionary mapping"""
-        assert self._isvipy()
         assert isinstance(synonymdict, dict)
         
         if self._is_vipy_video_scene():
@@ -950,7 +945,6 @@ class Collector(Dataset):
         return self
 
     def histogram(self, outfile=None, fontsize=6, category_to_barcolor=None, category_to_xlabel=None, ylabel='Instances'):
-        assert self._isvipy()
         assert category_to_barcolor is None or all([c in category_to_barcolor for c in self.categories()])
         assert category_to_xlabel is None or callable(category_to_xlabel) or all([c in category_to_xlabel for c in self.categories()])
         f_category_to_xlabel = category_to_xlabel if callable(category_to_xlabel) else ((lambda c: category_to_xlabel[c]) if category_to_xlabel is not None else (lambda c: c))
@@ -1006,7 +1000,6 @@ class Collector(Dataset):
         return {k:len(d)*(v/float(n)) for (k,v) in d.items()}
 
     def duration_in_frames(self, outfile=None):
-        assert self._isvipy()
         d = {k:np.mean([v[1] for v in v]) for (k,v) in groupbyasdict([(a.category(), len(a)) for v in self.list() for a in v.activitylist()], lambda x: x[0]).items()}
         if outfile is not None:
             vipy.metrics.histogram(d.values(), d.keys(), outfile=outfile, ylabel='Duration (frames)', fontsize=6)            
@@ -1014,7 +1007,6 @@ class Collector(Dataset):
 
     def duration_in_seconds(self, outfile=None, fontsize=6, max_duration=None):
         """Duration of activities"""
-        assert self._isvipy()
         d = {k:np.mean([v[1] for v in v]) for (k,v) in groupbyasdict([(a.category(), len(a)/v.framerate()) for v in self.list() for a in v.activitylist()], lambda x: x[0]).items()}
         if outfile is not None:
             max_duration = max(d.values()) if max_duration is None else max_duration
@@ -1023,7 +1015,6 @@ class Collector(Dataset):
 
     def video_duration_in_seconds(self, outfile=None, fontsize=6, max_duration=None):
         """Duration of activities"""
-        assert self._isvipy()
         d = {k:np.mean([d for (c,d) in D]) for (k,D) in groupbyasdict([(v.category(), v.duration()) for v in self.list()], lambda x: x[0]).items()}
         if outfile is not None:
             max_duration = max(d.values()) if max_duration is None else max_duration
@@ -1031,7 +1022,6 @@ class Collector(Dataset):
         return d
     
     def framerate(self, outfile=None):
-        assert self._isvipy()
         d = vipy.util.countby([int(round(v.framerate())) for v in self.list()], lambda x: x)
         if outfile is not None:
             vipy.metrics.pie(d.values(), ['%d fps' % k for k in d.keys()], explode=None, outfile=outfile,  shadow=False)
@@ -1040,7 +1030,6 @@ class Collector(Dataset):
         
     def density(self, outfile=None, max=None):
         """Compute the frequency that each video ID is represented.  This counts how many activities are in a video, truncated at max"""
-        assert self._isvipy()
         d = [len(v) if (max is None or len(v)<= max) else max for (k,v) in groupbyasdict(self.list(), lambda v: v.videoid()).items()]
         d = {k:v for (k,v) in sorted(vipy.util.countby(d, lambda x: x).items(), key=lambda x: x[1], reverse=True)}
         if outfile is not None:
@@ -1146,7 +1135,6 @@ class Collector(Dataset):
         return vipy.torch.Tensordir(outdir)
 
     def annotate(self, outdir, mindim=512):
-        assert self._isvipy()
         f = lambda v, outdir=outdir, mindim=mindim: v.mindim(mindim).annotate(outfile=os.path.join(outdir, '%s.mp4' % v.videoid())).print()
         return self.map(f, dst='annotate')
 
@@ -1300,10 +1288,10 @@ class Collector(Dataset):
         """synonym for self.count"""
         return self.count(f)
     
-    #def flatten(self):
-    #    """Convert dataset stored as a list of lists into a flat list"""
-    #    self._ds = [o for objlist in self._ds for o in vipy.util.tolist(objlist)]
-    #    return self
+    def flatten(self):
+        """Convert dataset stored as a list of lists into a flat list"""
+        self._ds = [o for objlist in self._ds for o in vipy.util.tolist(objlist)]
+        return self
 
     def zip(self, other):
         """Zip two datasets.  Equivalent to zip(self, other).
