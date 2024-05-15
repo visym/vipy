@@ -34,23 +34,26 @@ class Dataset():
         - loader [lambda]: a callable loader that will construct the object from a raw data representation.  This is useful for custom deerialization or on demand transformations
         - strict [bool]: If true, throw an error if the type of objlist is not a python built-in type.  This is useful for loading dataset objects that can be indexed.
         - preprocessor [lambda]:  a callable preprocessing function that will preprocess the object. This is useful for implementing on-demand data loaders
+        - index [list]: If provided, use this as the initial index into the dataset (e.g. as returned from export_index).  This is useful for preprocessing large datasets to filter out noise.
     """
 
-    def __init__(self, dataset, id=None, loader=None, strict=True, preprocessor=None):
+    def __init__(self, dataset, id=None, loader=None, strict=True, preprocessor=None, index=None):
         assert loader is None or callable(loader)
         assert preprocessor is None or callable(preprocessor)        
-
+        assert index is None or isinstance(index, (list, tuple))
+        
         self._id = id
         self._ds = dataset if not isinstance(dataset, (list, set, tuple)) else tuple(dataset)  # force immutable (if possible)
-        self._idx = list(range(len(self._ds)))
-        self._loader = loader  # may not be serializable if lambda is provided
+        self._idx = tuple(range(len(self._ds)) if not index else index)  # force immutable 
+        self._loader = loader  # not serializable if lambda is provided
         self._preprocessor = preprocessor
         
-        if strict and len(self._ds)>0:
+        if strict:
             try:
-                self._ds[0]  # must be an object that supports indexing
+                self._ds[0]  # must be an object that supports indexing                
+                assert index is None or (len(index)>0 and len(index)<=len(dataset) and max(index)<len(dataset) and min(index)>0)
             except Exception as e:
-                raise ValueError('invalid dataset type')
+                raise ValueError('invalid dataset')
 
     def __or__(self, other):
         assert isinstance(other, Dataset)
@@ -64,6 +67,10 @@ class Dataset():
             self._id = n
             return self
 
+    def export_index(self, outfile):
+        """Return the current index.  This is useful for restoring transformed indexes in the constructed after `vipy.dataset.Dataset.mapfilter` or `vipy.dataset.Dataset.filter` or `vipy.dataset.Dataset.sort`"""
+        return ivy.save(self._idx, outfile)
+    
     def raw(self):
         """Remove the loader and preprocessor, useful for cloned direct access of raw data in large datasets without loading every one"""
         self._loader = None

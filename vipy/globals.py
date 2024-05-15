@@ -225,9 +225,10 @@ def parallel(n=None, pct=None, scheduler=None):
         def __init__(self, n=None, pct=None, scheduler=None):
             assert n is not None or pct is not None or scheduler is not None
             assert sum([x is not None for x in (n, pct, scheduler)]) == 1, "Exactly one"
-            assert n is None or (isinstance(n, int) and n>=1)
+            assert n is None or (isinstance(n, int) and n>=0)
             assert pct is None or (pct > 0 and pct <= 1)
-            dask(num_processes=n, pct=pct, address=scheduler, dashboard=True)
+            if (n is not None and n>0) or (pct is not None and pct>0):
+                dask(num_processes=n, pct=pct, address=scheduler, dashboard=True)
             self._n = n
             self._pct = pct
             self._scheduler = scheduler
@@ -237,7 +238,7 @@ def parallel(n=None, pct=None, scheduler=None):
 
         def __exit__(self, *args):
             if self._scheduler is None:
-                noparallel()
+                self.shutdown()
 
         def __repr__(self):
             return '<vipy.globals.parallel: dask=%s>' % GLOBAL['DASK_CLIENT']
@@ -258,7 +259,8 @@ def parallel(n=None, pct=None, scheduler=None):
         assert n is not None or pct is not None or scheduler is not None
         assert sum([x is not None for x in (n, pct, scheduler)]) == 1, "Exactly one"
         GLOBAL['PARALLEL'] = Parallel(n=n, pct=pct, scheduler=scheduler)
-        GLOBAL['LOGGER'].info('Parallel executor initialized %s' % GLOBAL['PARALLEL'] )
+        if GLOBAL['PARALLEL'].num_processes() > 0:
+            GLOBAL['LOGGER'].info('Parallel executor initialized %s' % GLOBAL['PARALLEL'] )
         return GLOBAL['PARALLEL']
 
 
@@ -267,9 +269,9 @@ def noparallel():
     if GLOBAL['DASK_CLIENT'] is not None:
         GLOBAL['DASK_CLIENT'].shutdown()
         del GLOBAL['DASK_CLIENT']
+        GLOBAL['LOGGER'].info('Parallel executor shutdown')        
     GLOBAL['DASK_CLIENT'] = None 
-    GLOBAL['PARALLEL'] = None
-    GLOBAL['LOGGER'].info('Parallel executor shutdown')
+    GLOBAL['PARALLEL'] = None    
     
 def nodask():
     """Alias for `vipy.globals.noparallel`"""
