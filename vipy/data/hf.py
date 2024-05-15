@@ -41,7 +41,7 @@ def sun397():
     """Sun-397 dataset: https://vision.princeton.edu/projects/2010/SUN/"""
 
     jsonfile = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'sun397.json')
-    d_idx_to_category = vipy.util.readjson(jsonfile)
+    d_idx_to_category = {k:v.split('/') for (k,v) in vipy.util.readjson(jsonfile).items()}
     
     configs = ['standard-part1-120k', 'standard-part2-120k', 'standard-part3-120k', 'standard-part4-120k', 'standard-part5-120k', 'standard-part6-120k', 'standard-part7-120k', 'standard-part8-120k', 'standard-part9-120k', 'standard-part10-120k']    
     D = load_dataset("HuggingFaceM4/sun397", 'standard-part1-120k', trust_remote_code=True)
@@ -53,7 +53,7 @@ def sun397():
 def flickr30k():
     """http://shannon.cs.illinois.edu/DenotationGraph/data/index.html"""
     D = load_dataset("lmms-lab/flickr30k")
-    loader = lambda r: vipy.image.ImageCategory(array=np.array(r['image']), category=str(r['caption'][0]), attributes={'caption':(r['caption']), 'sentid':r['sentids']})
+    loader = lambda r: vipy.image.ImageCategory(array=np.array(r['image']), category=r['caption'], attributes={'sentid':r['sentids']})
     return vipy.dataset.Dataset(D['test'], id='flickr30k', loader=loader, strict=False)
 
     
@@ -100,7 +100,7 @@ def pascal_voc_2007():
     
     d_index_to_class = {v[2]:v[0] for v in CLASS_INFOS}
     loader = lambda r, d_index_to_class=d_index_to_class: vipy.image.Scene(array=np.array(r['image']),
-                                        category=','.join([d_index_to_class[c] for c in r['classes']]),
+                                        category=sorted([d_index_to_class[c] for c in r['classes']]),
                                         objects=[vipy.object.Detection(category=d_index_to_class[c], xmin=xmin, ymin=ymin, xmax=xmax, ymax=ymax) for (c, (xmin,ymin,xmax,ymax)) in zip(r['objects']['classes'], r['objects']['bboxes'])])
     
     return (vipy.dataset.Dataset(D['train'], id='pascal_voc_2007_train', loader=loader, strict=False),
@@ -124,7 +124,7 @@ def open_images_v7():
 def tiny_imagenet():
     D = load_dataset("zh-plus/tiny-imagenet")
     labels = vipy.util.readjson(os.path.join(os.path.dirname(os.path.realpath(__file__)), 'tiny_imagenet.json'))    
-    d_idx_to_category = {k: labels['wnid_to_category'][wnid]  for (k,wnid) in enumerate(labels['idx_to_wnid'])}    
+    d_idx_to_category = {k: sorted([l.strip() for l in labels['wnid_to_category'][wnid].split(',')])  for (k,wnid) in enumerate(labels['idx_to_wnid'])}    
     loader = lambda r, d_idx_to_category=d_idx_to_category: vipy.image.ImageCategory(array=np.array(r['image']), category=d_idx_to_category[int(r['label'])])    
     return (vipy.dataset.Dataset(D['train'], id='tiny_imagenet_train', loader=loader, strict=False),
             vipy.dataset.Dataset(D['valid'], id='tiny_imagenet_val', loader=loader, strict=False))
