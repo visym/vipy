@@ -67,9 +67,9 @@ class Dataset():
             self._id = n
             return self
 
-    def export_index(self, outfile):
-        """Return the current index.  This is useful for restoring transformed indexes in the constructed after `vipy.dataset.Dataset.mapfilter` or `vipy.dataset.Dataset.filter` or `vipy.dataset.Dataset.sort`"""
-        return ivy.save(self._idx, outfile)
+    def export_index(self, pklfile):
+        """Save the current index to the provided pickle file.  This is useful for restoring transformed/selected elements in large datasets after mapfilter, filter or sort.  Pass this index with the constructor"""
+        return vipy.save(self._idx, pklfile)
     
     def raw(self):
         """Remove the loader and preprocessor, useful for cloned direct access of raw data in large datasets without loading every one"""
