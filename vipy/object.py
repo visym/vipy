@@ -84,7 +84,7 @@ class Detection(BoundingBox, Object):
     def __repr__(self):
         strlist = []
         if self.category() is not None:
-            strlist.append('category="%s"' % self.category())
+            strlist.append('category=%s' % (str(self.category())[0:80] + (' ... ' if len(str(self.category()))>80 else '')))                        
         if True:
             strlist.append('bbox=(xmin=%1.1f, ymin=%1.1f, width=%1.1f, height=%1.1f)' %
                            (self.xmin(), self.ymin(),self._width(), self._height()))
@@ -146,19 +146,15 @@ class Detection(BoundingBox, Object):
             for (k,v) in ifcategory.items():
                 self.categoryif(k, v)
         elif self.category() == ifcategory:
-            self.category(tocategory, shortlabel=False, capitalize=False)
+            self.category(tocategory, shortlabel=False)
         return self
 
-    def category(self, category=None, shortlabel=True, capitalize=False):
+    def category(self, category=None, shortlabel=True):
         """Update the category and shortlabel (optional) of the detection"""
-        if capitalize:
-            self._label = self._label.capitalize()
-            self._shortlabel = self._shortlabel.capitalize() if shortlabel else self._shortlabel
-            return self
-        elif category is None:
+        if category is None:
             return self._label
         else:
-            self._label = str(category)  # coerce to string
+            self._label = category
             self._shortlabel = str(category) if shortlabel else self._shortlabel  # coerce to string            
             return self
 
@@ -538,7 +534,7 @@ class Track(object):
     def category(self, label=None, shortlabel=True):
         """Set the track category to label, and update thte shortlabel also.  Updates all keyboxes"""
         if label is not None:
-            self._label = str(label)  # coerce to string
+            self._label = label
             self._shortlabel = str(label) if shortlabel else self._shortlabel  # coerce to string
             self.boxmap(lambda bb: bb.shortlabel(self._shortlabel) if shortlabel and isinstance(bb, Detection) else bb)
             self.boxmap(lambda bb: bb.category(self._label) if isinstance(bb, Detection) else bb)
@@ -1202,7 +1198,7 @@ def greedy_assignment(srclist, dstlist, miniou=0.0, bycategory=False):
     
     assigndict = {}
     for (k, ds) in sorted(enumerate(srclist), key=lambda x: x[1].area(), reverse=True):
-        iou = [ds.iou(d) if (j not in assigndict.values() and (bycategory is False or ds.category().lower() == d.category().lower())) else 0.0 for (j,d) in enumerate(dstlist)]
+        iou = [ds.iou(d) if (j not in assigndict.values() and (bycategory is False or ds.category() == d.category())) else 0.0 for (j,d) in enumerate(dstlist)]
         assigndict[k] = np.argmax(iou) if len(iou) > 0 and max(iou) > miniou else None
     return [assigndict[k] for k in range(0, len(srclist))]
 
@@ -1230,7 +1226,7 @@ def greedy_track_assignment(srclist, dstlist, miniou, bycategory=True, pct=0.5):
     
     assigndict = {}
     for (k, ts) in sorted(enumerate(srclist), key=lambda x: len(x[1]), reverse=True):
-        assignscore = [ts.segment_percentileiou(t, pct) * t.confidence() if (j not in assigndict.values() and (bycategory is False or ts.category().lower() == t.category().lower()) and (miniou == 0 or ts.maxiou(t) > miniou)) else 0.0 for (j,t) in enumerate(dstlist)]
+        assignscore = [ts.segment_percentileiou(t, pct) * t.confidence() if (j not in assigndict.values() and (bycategory is False or ts.category() == t.category()) and (miniou == 0 or ts.maxiou(t) > miniou)) else 0.0 for (j,t) in enumerate(dstlist)]
         assigndict[k] = np.argmax(assignscore) if len(assignscore) > 0 and max(assignscore) > 0 else None
     return [assigndict[k] for k in range(0, len(srclist))]
     
@@ -1275,16 +1271,12 @@ class Keypoint2d(Point2d, Object):
             d.attributes = copy.deepcopy(self.attributes)
         return d
     
-    def category(self, category=None, shortlabel=True, capitalize=False):
+    def category(self, category=None, shortlabel=True):
         """Update the category and shortlabel (optional) of the detection"""
-        if capitalize:
-            self._label = self._label.capitalize()
-            self._shortlabel = self._shortlabel.capitalize() if shortlabel else self._shortlabel
-            return self
-        elif category is None:
+        if category is None:
             return self._label
         else:
-            self._label = str(category)  # coerce to string
+            self._label = category
             self._shortlabel = str(category) if shortlabel else self._shortlabel  # coerce to string            
             return self
 
@@ -1294,7 +1286,7 @@ class Keypoint2d(Point2d, Object):
             self._shortlabel = str(label)  # coerce to string
             return self
         else:
-            return self._shortlabel if self._shortlabel is not None else self.category()
+            return self._shortlabel if self._shortlabel is not None else str(self.category())
         
     @property
     def radius(self):
@@ -1305,7 +1297,8 @@ class Keypoint2d(Point2d, Object):
         return self._id
     
     def __repr__(self):
-        return '<vipy.object.Keypoint2d: x=%s, y=%s, category=%s>' % (self.x, self.y, self.category())
+        category = (str(self.category())[0:80] + (' ... ' if len(str(self.category()))>80 else ''))                    
+        return '<vipy.object.Keypoint2d: x=%s, y=%s, category=%s>' % (self.x, self.y, category)
 
     @classmethod
     def from_json(cls, s):

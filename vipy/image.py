@@ -1847,7 +1847,7 @@ class ImageCategory(Image):
     def cast(cls, im, flush=False):
         assert isinstance(im, vipy.image.Image)
         im.__class__ = vipy.image.ImageCategory
-        im._category = None if flush or not hasattr(im, '_category') else str(im._category)
+        im._category = None if flush or not hasattr(im, '_category') else im._category
         return im
 
     @classmethod
@@ -1860,7 +1860,7 @@ class ImageCategory(Image):
     def json(self, s=None, encode=True):
         if s is None:
             d = json.loads(super().json())
-            d['category'] = self._category if not isinstance(self._category, set) else list(self._category)
+            d['category'] = self._category if not isinstance(self._category, set) else list(self._category)  # coerce set -> list
             return json.dumps(d) if encode else d
         else:
             super().json(s)
@@ -1877,7 +1877,7 @@ class ImageCategory(Image):
         if self.hasurl():
             strlist.append('url="%s"' % self.url())
         if self.category() is not None and len(str(self.category()))>0:
-            strlist.append('category="%s"' % (str(self.category())[0:80] + (' ... ' if len(str(self.category()))>80 else '')))            
+            strlist.append('category=%s' % (str(self.category())[0:80] + (' ... ' if len(str(self.category()))>80 else '')))            
         return str('<vipy.image.ImageCategory: %s>' % (', '.join(strlist)))
 
     def __eq__(self, other):
@@ -2076,7 +2076,7 @@ class Scene(ImageCategory):
         if self.hasurl():
             strlist.append('url=%s' % self.url())
         if self.category() is not None:
-            strlist.append('category="%s"' % (str(self.category())[0:80] + (' ... ' if len(str(self.category()))>80 else '')))
+            strlist.append('category=%s' % (str(self.category())[0:80] + (' ... ' if len(str(self.category()))>80 else '')))
         if len(self.objects()) > 0:
             strlist.append('objects=%d' % len(self.objects()))
         return str('<vipy.image.scene: %s>' % (', '.join(strlist)))

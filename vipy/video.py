@@ -2570,7 +2570,7 @@ class VideoCategory(Video):
         if self.hasurl():
             strlist.append('url="%s"' % self.url())
         if self.category() is not None:
-            strlist.append('category="%s"' % self.category())
+            strlist.append('category=%s' % (str(self.category())[0:80] + (' ... ' if len(str(self.category()))>80 else '')))                        
         if not self.isloaded() and self._startframe is not None and self._endframe is not None:
             strlist.append('clip=(%d,%d)' % (self._startframe, self._endframe))
         if not self.isloaded() and self._startframe is not None and self._endframe is None:
@@ -2745,7 +2745,7 @@ class Scene(VideoCategory):
         if not self.isloaded() and self._startframe is not None and self._endframe is None:
             strlist.append('clip=(%d,)' % (self._startframe))
         if self.category() is not None:
-            strlist.append('category="%s"' % self.category())
+            strlist.append('category=%s' % (str(self.category())[0:80] + (' ... ' if len(str(self.category()))>80 else '')))                        
         if self.hastracks():
             strlist.append('tracks=%d' % len(self._tracks))
         if self.hasactivities():
@@ -2961,9 +2961,9 @@ class Scene(VideoCategory):
     def tracklist(self):
         return list(self.tracks().values())  # triggers shallow copy
 
-    def objects(self, casesensitive=True):
+    def objects(self):
         """The objects in a scene are the unique categories of tracks"""
-        return sorted(list(set([t.category() if casesensitive else t.category().lower() for t in self.tracklist()])))
+        return sorted(list(set([t.category() for t in self.tracklist()])))
     
     def actorid(self, id=None, fluent=False):
         """Return or set the actor ID for the video.
@@ -3192,14 +3192,14 @@ class Scene(VideoCategory):
         else:
             raise ValueError('Invalid input - must specify both startframe and endframe, or only startframe')            
     
-    def objectlabels(self, k=None, lower=False):
+    def objectlabels(self, k=None):
         """Return a python set of all activity categories in this scene, or at frame k.
         
         Args:
             k: [int] The object labels present at frame k.  If k=None, then all object labels in the video
             lower: [bool] If true, return the object labels in alll lower case for case invariant string comparisonsn            
         """
-        return set([t.category() if not lower else t.category().lower() for t in self.tracks().values() if k is None or t.during(k)])        
+        return set([t.category() for t in self.tracks().values() if k is None or t.during(k)])        
 
     def categories(self):
         """Alias for labels()"""
