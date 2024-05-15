@@ -115,7 +115,7 @@ class Imagenet21K_Resized(vipy.dataset.Dataset):
         self._datadir = vipy.util.remkdir(datadir)
         
         if redownload or not os.path.exists(os.path.join(self._datadir, '.complete')):
-            print('[vipy.data.imagenet]: downloading Imagenet-21K resized to "%s"' % self._datadir)            
+            vipy.globals.log.info('[vipy.data.imagenet]: downloading Imagenet-21K resized to "%s"' % self._datadir)            
             vipy.downloader.download_and_unpack(IMAGENET21K_RESIZED_URL, self._datadir, sha1=None)
 
         if redownload or not os.path.exists(os.path.join(self._datadir, '.complete')):
@@ -156,17 +156,15 @@ class Imagenet21K(vipy.dataset.Dataset):
         self._datadir = vipy.util.remkdir(datadir)
         
         if redownload or not os.path.exists(os.path.join(self._datadir, '.complete')):
-            print('[vipy.data.imagenet]: downloading Imagenet-21K to "%s"' % self._datadir)            
+            vipy.globals.log.info('[vipy.data.imagenet]: downloading Imagenet-21K to "%s"' % self._datadir)            
             vipy.downloader.download_and_unpack(IMAGENET21K_URL, self._datadir, sha1=None)
 
-        for f in vipy.util.findtar(os.path.join(datadir, 'winter21_whole')):
-            if not os.path.exists(filefull(f)):
-                vipy.downloader.unpack(f, filefull(f))
-                os.remove(f)  # cleanup
+            for f in vipy.util.findtar(os.path.join(datadir, 'winter21_whole')):
+                if not os.path.exists(filefull(f)):
+                    vipy.downloader.unpack(f, filefull(f))
+                    os.remove(f)  # cleanup
                 
-        if redownload or not os.path.exists(os.path.join(self._datadir, '.complete')):
             vipy.downloader.download(IMAGENET21K_WORDNET_ID, os.path.join(self._datadir, 'imagenet21k_wordnet_ids.txt'))
-        if redownload or not os.path.exists(os.path.join(self._datadir, '.complete')):
             vipy.downloader.download(IMAGENET21K_WORDNET_LEMMAS, os.path.join(self._datadir, 'imagenet21k_wordnet_lemmas.txt'))
 
         cachefile = os.path.join(self._datadir, '.imlist.txt')
@@ -174,9 +172,9 @@ class Imagenet21K(vipy.dataset.Dataset):
             os.remove(cachefile)
             
         # Class names: https://github.com/google-research/big_transfer/issues/7
-        self._synset_to_categorylist = {x:[y.rstrip().lstrip() for y in lemma.split(',')] for (x,lemma) in zip(vipy.util.readtxt(os.path.join(self._datadir, 'imagenet21k_wordnet_ids.txt')), vipy.util.readtxt(os.path.join(self._datadir, 'imagenet21k_wordnet_lemmas.txt')))}
+        self._synset_to_categorylist = {x:sorted([y.rstrip().lstrip() for y in lemma.split(',')]) for (x,lemma) in zip(vipy.util.readtxt(os.path.join(self._datadir, 'imagenet21k_wordnet_ids.txt')), vipy.util.readtxt(os.path.join(self._datadir, 'imagenet21k_wordnet_lemmas.txt')))}
 
-        f_category = lambda c, synset_to_categorylist=self._synset_to_categorylist, aslemma=aslemma: synset_to_categorylist[c][0] if aslemma else c
+        f_category = lambda c, synset_to_categorylist=self._synset_to_categorylist, aslemma=aslemma: synset_to_categorylist[c] if aslemma else c
         imlist = vipy.util.findimages(os.path.join(datadir, 'winter21_whole')) if not os.path.exists(cachefile) else [os.path.join(self._datadir, f) for f in vipy.util.readlist(cachefile)]
         loader = lambda f, f_category=f_category: vipy.image.ImageCategory(filename=f,
                                                                            attributes={'wordnet_id':vipy.util.filebase(vipy.util.filepath(f))},

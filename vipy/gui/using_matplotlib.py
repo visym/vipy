@@ -122,7 +122,8 @@ def imshow(img, fignum=None):
 
         # Delete all polygon and text overlays from previous drawing so that they can be overwritten on current frame
         for c in plt.gca().get_children():
-            if 'Text' in c.__repr__() or 'Polygon' in c.__repr__() or 'Circle' in c.__repr__() or 'Line' in c.__repr__() or 'Patch' in c.__repr__() or 'PathCollection' in c.__repr__():
+            desc = c.__repr__()
+            if 'Text' in desc or 'Polygon' in desc or 'Circle' in desc or 'Line' in desc or 'Patch' in desc or 'PathCollection' in desc:
                 try:
                     c.remove()
                 except:
@@ -130,7 +131,8 @@ def imshow(img, fignum=None):
     else:
         # Jupyter notebook does not respect fignum.  It is always one when inspecting plt.get_fignums()
         if fignum in plt.get_fignums() and fignum in FIGHANDLE:
-            close(fignum)
+            #close(fignum)
+            pass  # don't close unless user requests, this is faster
         (fignum, imh) = _imshow_tight(img, fignum=fignum)
         FIGHANDLE[fignum] = imh
     return fignum
