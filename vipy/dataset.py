@@ -67,9 +67,12 @@ class Dataset():
             self._id = n
             return self
 
-    def export_index(self, pklfile):
-        """Save the current index to the provided pickle file.  This is useful for restoring transformed/selected elements in large datasets after mapfilter, filter or sort.  Pass this index with the constructor"""
-        return vipy.save(self._idx, pklfile)
+    def index(self, index=None):
+        """Update the index, useful for filtering of large datasets"""
+        if index is not None:
+            self._idx = index
+            return self
+        return self._idx
     
     def raw(self):
         """Remove the loader and preprocessor, useful for cloned direct access of raw data in large datasets without loading every one"""
@@ -89,7 +92,8 @@ class Dataset():
         return self
     
     def __repr__(self):
-        return str('<vipy.dataset.Dataset: %slen=%d, type=%s>' % (('id=%s, ' % self.id()) if self.id() is not None else '', len(self), str(type(self[0])) if len(self)>0 else 'None'))
+        shortid = None if not self.id() else ((self.id()[0:80] + ' ... ') if len(self.id())>80 else self.id())
+        return str('<vipy.dataset.Dataset: %slen=%d, type=%s>' % (('id=%s, ' % shortid) if self.id() else '', len(self), str(type(self[0])) if len(self)>0 else 'None'))
 
     def __iter__(self):
         for k in range(len(self)):
@@ -160,17 +164,26 @@ class Dataset():
 
     
     def filter(self, f):
-        """In place filter with lambda function f, keeping those elements obj where f(obj) evaluates true"""
+        """In place filter with lambda function f, keeping those elements obj in-place where f(obj) evaluates true"""
         assert callable(f)
         self._idx = [k for (j,k) in enumerate(self._idx) if f(self[j])]
         return self
 
-    def take(self, n, seed=None):
-        """Randomlly Take n elements from the dataset, and return a dataset.  If seed=int, take will return the same results each time."""
+    def take(self, n, seed=None, inplace=False):
+        """Randomly Take n elements from the dataset, and return a dataset (in-place or cloned).  If seed=int, take will return the same results each time."""
         assert isinstance(n, int) and n>0
-        D = self.clone(shallow=True)
+        D = self.clone(shallow=True) if not inplace else self
         D._idx = vipy.util.permutelist(self._idx, seed=seed)[0:n]  # do not run loader
         return D
+
+    def groupby(self, f):
+        """Group the dataset according to the callable f, returning dictionary of grouped datasets."""
+        assert callable(f)        
+        return {k:self.clone(shallow=True).index([x[1] for x in v]).id('%s:%s' % (self.id(),str(k))) for (k,v) in itertools.groupby(enumerate(self.sort(f)._idx), lambda x: f(self[x[0]]))}
+
+    def takeby(self, f, n):
+        """Group the dataset according to the callable f, take n from each group and return a dictionary of lists"""
+        return {k:v.takelist(n) for (k,v) in self.groupby(f).items()}
     
     def takelist(self, n, seed=None):
         """Take n elements and return list.  The elements are loaded and not cloned."""
@@ -183,10 +196,10 @@ class Dataset():
     def sample(self):
         return self.takeone()
     
-    def take_fraction(self, p):
-        """Randomly take a percentage of the dataset"""
+    def take_fraction(self, p, inplace=False):
+        """Randomly take a percentage of the dataset, returning a clone or in-place"""
         assert p>=0 and p<=1
-        return self.take(n=int(len(self)*p))
+        return self.take(n=int(len(self)*p), inplace=inplace)
     
     def load(self):
         """Load the entire dataset into memory.  This is useful for creating in-memory datasets from lazy load datasets"""
@@ -359,14 +372,15 @@ class Dataset():
         return self.map(f, distributed=False)
     
     def mapfilter(self, f):
-        """Apply the callable f to each element, and keep those that return true.  This can be applied in parallel and is useful for finding dataset errors"""
+        """Apply the callable f to each element, and keep those in-place that return true.  This can be applied in parallel and is useful for finding dataset errors"""
+        assert callable(f)        
         self._idx = [i for (f,i) in zip(self.map(f, ordered=True), self._idx) if f == True]
         return self
         
     def sort(self, f):
         """Sort the dataset in-place using the sortkey lambda function"""
-        if f is not None:
-            self._idx = [self._idx[j] for j in sorted(range(len(self)), key=lambda k: f(self[k]))]
+        assert callable(f)
+        self._idx = [self._idx[j] for j in sorted(range(len(self)), key=lambda k: f(self[k]))]
         return self
 
     
