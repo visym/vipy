@@ -1,6 +1,6 @@
 import os
 import numpy as np
-from vipy.util import remkdir, tocache
+from vipy.util import remkdir, tocache, filetail
 import gzip
 import struct
 from array import array
@@ -22,22 +22,17 @@ EMNIST_URL = 'https://biometrics.nist.gov/cs_links/EMNIST/gzip.zip'
 
 class MNIST():
     def __init__(self, datadir=None, redownload=False):
-        """download URLS above to outdir, then run export()"""
         outdir = tocache('mnist') if datadir is None else datadir
         
         self._datadir = remkdir(os.path.expanduser(outdir))
         if redownload or not os.path.exists(os.path.join(self._datadir, '.complete')):
-            print('[vipy.data.mnist]: downloading MNIST to "%s"' % self._datadir)
-            self._wget()
+            vipy.downloader.download(TRAIN_IMG_URL, os.path.join(self._datadir, filetail(TRAIN_IMG_URL)), sha1=TRAIN_IMG_SHA1)
+            vipy.downloader.download(TRAIN_LBL_URL, os.path.join(self._datadir, filetail(TRAIN_LBL_URL)), sha1=TRAIN_LBL_SHA1)
+            vipy.downloader.download(TEST_IMG_URL, os.path.join(self._datadir, filetail(TEST_IMG_URL)), sha1=TEST_IMG_SHA1)
+            vipy.downloader.download(TEST_LBL_URL, os.path.join(self._datadir, filetail(TEST_LBL_URL)), sha1=TEST_LBL_SHA1)            
 
-        open(os.path.join(self._datadir, '.complete'), 'a').close()
+            open(os.path.join(self._datadir, '.complete'), 'a').close()
             
-    def _wget(self):
-        os.system('wget --directory-prefix=%s %s' % (self._datadir, TRAIN_IMG_URL))
-        os.system('wget --directory-prefix=%s %s' % (self._datadir, TRAIN_LBL_URL))
-        os.system('wget --directory-prefix=%s %s' % (self._datadir, TEST_IMG_URL))
-        os.system('wget --directory-prefix=%s %s' % (self._datadir, TEST_LBL_URL))
-
     @staticmethod
     def _labels(gzfile):
         with gzip.open(gzfile, 'rb') as file:
@@ -95,9 +90,6 @@ class EMNIST(MNIST):
 
         open(os.path.join(self._datadir, '.complete'), 'a').close()
         
-    def _wget(self):
-        return self
-
     def letters_train(self):
         (imgfile, labelfile) = (os.path.join(self._datadir, 'gzip/emnist-letters-train-images-idx3-ubyte.gz'), os.path.join(self._datadir, 'gzip/emnist-letters-train-labels-idx1-ubyte.gz'))
         d_categoryidx_to_category = {str(k):x for (k,x) in enumerate(string.ascii_lowercase, start=1)}        

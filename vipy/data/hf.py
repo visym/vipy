@@ -2,19 +2,30 @@ import os
 import vipy
 import numpy as np
 import json
+import PIL
+import io
+
 
 # Huggingface datasets
 vipy.util.try_import('datasets'); from datasets import load_dataset
 
 
+def mnist():
+    dataset = load_dataset("mnist", trust_remote_code=True)
+
+    loader = lambda r: vipy.image.ImageCategory(array=np.array(r['image']), category=str(r['label']))
+    return (vipy.dataset.Dataset(dataset['train'], id='mnist:train', loader=loader, strict=False), 
+            vipy.dataset.Dataset(dataset['test'], id='mnist:test', loader=loader, strict=False))
+        
+    
 def cifar10():
     """Huggingface wrapper for cifar10, returns (train,test) tuple"""
     
     D = load_dataset('cifar10', trust_remote_code=True)
     d_idx_to_category = {0:'airplane', 1:'automobile', 2:'bird', 3:'cat', 4:'deer', 5:'dog', 6:'frog', 7:'horse', 8:'ship', 9:'truck'}
     loader = lambda r, category=d_idx_to_category: vipy.image.ImageCategory(array=np.array(r['img']), category=category[r['label']])
-    return (vipy.dataset.Dataset(D['train'], id='cifar10_train', loader=loader, strict=False), 
-            vipy.dataset.Dataset(D['test'], id='cifar10_test', loader=loader, strict=False))
+    return (vipy.dataset.Dataset(D['train'], id='cifar10:train', loader=loader, strict=False), 
+            vipy.dataset.Dataset(D['test'], id='cifar10:test', loader=loader, strict=False))
 
 
 def cifar100():
@@ -26,8 +37,8 @@ def cifar100():
     
     D = load_dataset('cifar100', trust_remote_code=True)
     loader = lambda r, fine=d_idx_to_fine, coarse=d_idx_to_coarse: vipy.image.ImageCategory(array=np.array(r['img']), category=fine[r['fine_label']], attributes={'tags':coarse[r['coarse_label']]})
-    return (vipy.dataset.Dataset(D['train'], id='cifar100_train', loader=loader, strict=False), 
-            vipy.dataset.Dataset(D['test'], id='cifar100_test', loader=loader, strict=False))
+    return (vipy.dataset.Dataset(D['train'], id='cifar100:train', loader=loader, strict=False), 
+            vipy.dataset.Dataset(D['test'], id='cifar100:test', loader=loader, strict=False))
     
 
 def oxford_pets():
@@ -46,8 +57,8 @@ def sun397():
     configs = ['standard-part1-120k', 'standard-part2-120k', 'standard-part3-120k', 'standard-part4-120k', 'standard-part5-120k', 'standard-part6-120k', 'standard-part7-120k', 'standard-part8-120k', 'standard-part9-120k', 'standard-part10-120k']    
     D = load_dataset("HuggingFaceM4/sun397", 'standard-part1-120k', trust_remote_code=True)
     loader = lambda r, d_idx_to_category=d_idx_to_category: vipy.image.ImageCategory(array=np.array(r['image']), category=d_idx_to_category[str(r['label'])])
-    return (vipy.dataset.Dataset(D['train'], id='sun397_train', loader=loader, strict=False), 
-            vipy.dataset.Dataset(D['test'], id='sun397_test', loader=loader, strict=False),
+    return (vipy.dataset.Dataset(D['train'], id='sun397:train', loader=loader, strict=False), 
+            vipy.dataset.Dataset(D['test'], id='sun397:test', loader=loader, strict=False),
             vipy.dataset.Dataset(D['other'], id='sun397_other', loader=loader, strict=False))            
 
 def flickr30k():
@@ -103,15 +114,20 @@ def pascal_voc_2007():
                                         category=sorted([d_index_to_class[c] for c in r['classes']]),
                                         objects=[vipy.object.Detection(category=d_index_to_class[c], xmin=xmin, ymin=ymin, xmax=xmax, ymax=ymax) for (c, (xmin,ymin,xmax,ymax)) in zip(r['objects']['classes'], r['objects']['bboxes'])])
     
-    return (vipy.dataset.Dataset(D['train'], id='pascal_voc_2007_train', loader=loader, strict=False),
-            vipy.dataset.Dataset(D['validation'], id='pascal_voc_2007_val', loader=loader, strict=False),
-            vipy.dataset.Dataset(D['test'], id='pascal_voc_2007_test', loader=loader, strict=False))
+    return (vipy.dataset.Dataset(D['train'], id='pascal_voc_2007:train', loader=loader, strict=False),
+            vipy.dataset.Dataset(D['validation'], id='pascal_voc_2007:val', loader=loader, strict=False),
+            vipy.dataset.Dataset(D['test'], id='pascal_voc_2007:test', loader=loader, strict=False))
     
     
 def yfcc100m():
     """https://multimediacommons.wordpress.com/yfcc100m-core-dataset/"""
-    dataset = load_dataset("dalle-mini/YFCC100M_OpenAI_subset")
-    raise
+    dataset = load_dataset("dalle-mini/YFCC100M_OpenAI_subset", trust_remote_code=True)
+
+    loader = lambda r: vipy.image.ImageCategory(array=np.array(PIL.Image.open(io.BytesIO(r['img']))), category=r['description_clean'], attributes={k:v for (k,v) in r.items() if k != 'img'})    
+    return (vipy.dataset.Dataset(dataset['train'], id='yfcc100m:train', loader=loader, strict=False),
+            vipy.dataset.Dataset(dataset['validation'], id='yfcc100m:val', loader=loader, strict=False))
+    
+    
 
 def open_images_v7():
     """https://storage.googleapis.com/openimages/web/download_v7.html"""
@@ -126,8 +142,8 @@ def tiny_imagenet():
     labels = vipy.util.readjson(os.path.join(os.path.dirname(os.path.realpath(__file__)), 'tiny_imagenet.json'))    
     d_idx_to_category = {k: sorted([l.strip() for l in labels['wnid_to_category'][wnid].split(',')])  for (k,wnid) in enumerate(labels['idx_to_wnid'])}    
     loader = lambda r, d_idx_to_category=d_idx_to_category: vipy.image.ImageCategory(array=np.array(r['image']), category=d_idx_to_category[int(r['label'])])    
-    return (vipy.dataset.Dataset(D['train'], id='tiny_imagenet_train', loader=loader, strict=False),
-            vipy.dataset.Dataset(D['valid'], id='tiny_imagenet_val', loader=loader, strict=False))
+    return (vipy.dataset.Dataset(D['train'], id='tiny_imagenet:train', loader=loader, strict=False),
+            vipy.dataset.Dataset(D['valid'], id='tiny_imagenet:val', loader=loader, strict=False))
 
 
 def the_cauldron():

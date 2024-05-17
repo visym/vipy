@@ -116,7 +116,10 @@ class Dataset():
             
     def __len__(self):
         return len(self._idx)
-        
+
+    def shuffleif(self, b):
+        return self.shuffle() if b else self
+    
     def shuffle(self):
         """Permute elements in this dataset uniformly at random in place"""
         random.shuffle(self._idx)  
@@ -161,8 +164,7 @@ class Dataset():
         """
         assert callable(f)
         return len([k for (j,k) in enumerate(self._idx) if f(self[j])])
-
-    
+        
     def filter(self, f):
         """In place filter with lambda function f, keeping those elements obj in-place where f(obj) evaluates true"""
         assert callable(f)
@@ -261,21 +263,67 @@ class Dataset():
         dataset = self.clone(shallow=True).no_preprocessor()
         for (k,V) in enumerate(vipy.util.chunkgenbysize(dataset, n)):
             if ragged or len(V) == n:
-                yield Dataset(V, preprocessor=preprocessor, id=('%s_%d' % (self.id(), k)) if self.id() is not None else None)  # Checked, Loaded, Not-preprocessed
+                yield Dataset(V, preprocessor=preprocessor, id=('%s:%d' % (self.id(), k)) if self.id() is not None else None)  # Checked, Loaded, Not-preprocessed
 
     def _distributed_minibatch_iterator(self, n, ragged=True, bigbatch=1024, smallbach=32):
         try_import('dask', 'dask distributed'); from dask.distributed import as_completed        
         assert vipy.globals.dask() is not None, "distributed processing not enabled - Try setting: '>>> vipy.globals.parallel(n=4)'"
 
         c = vipy.globals.dask().client()
-        for big in self.minibatch(bigbatch*n, ragged=True):  # iterate bigbatch chunks
-            for (future, small) in as_completed((c.submit(lambda b: b.load(), b) for b in big.minibatch(smallbatch*n, ragged=True)), with_results=True):  # submit minibatch chunks of bigbatch
-                if future.status != 'error':  # skip distributed errors
+        for big in self.minibatch(bigbatch*n):  # iterate bigbatch chunks
+            for (future, small) in as_completed((c.submit(lambda b: b.load(), b) for b in big.minibatch(smallbatch*n)), with_results=True):  # submit minibatch chunks of bigbatch
+                if future.status != 'error':  
                     for b in small.minibatch(n, ragged=ragged):
-                        yield b  # minibatch, not order preserving                    
+                        yield b  # minibatch, yielded as completed (not order preserving)
                 else:
                     raise ValueError(future)    
+
+    def shift(self, m):
+        """Circular shift the dataset m elements to the left, so that self[k+m] == self.shift(m)[k].  Circular shift for boundary handling so that self.shift(m)[-1] == self[m-1]"""
+        return self.clone(shallow=True).index(self._idx[m:] + self._idx[0:m])
+
+    def slice(self, start=0, stop=-1, step=1):
+        """Slice the dataset to contain elements defined by slice(start, stop, step)"""
+        return self.clone(shallow=True).index(self._idx[start:stop:step])
+        
+    def truncate(self, m):
+        """Truncate the dataset to contain the first m elements only"""
+        return self.slice(stop=m)
     
+    def pipeline(self, n, d, ragged=True, distributed=False):
+        """Yield pipelined minibatches of size n with depth d.
+
+        A pipelined minibatch is a tuple (head, tail) such that (head, tail) are minibatches at different indexes in the dataset.  
+        Head corresponds to the current minibatch and tail corresponds to the minibatch left shifted by d minibatches.
+
+        This structure is useful for yielding datasets for pipelined training where head contains the minibatch that will complete pipeline training on this iteration, and tail contains the 
+        next minibatch to be inserted into the pipeline on this iteration.
+        
+        ```python
+        D = vipy.dataset.Dataset(...)
+        for (head, tail) in D.pipeline(n, d):
+            assert head == D[0:n]
+            assert tail == D[n*d: n*d+n]
+
+        Args:
+            n [int]: The size of each minibatch
+            d [int]:  The pipeline depth in minibatches
+            ragged [bool]: If ragged=true, then the last chunk will be ragged with len(chunk)<n, else skipped
+            distributed: If true, preprocess minibatches in parallel 
+
+        Returns:        
+            Iterator over tuples (head,tail) of `vipy.dataset.Dataset` elements of length n where tail is left shifted by d*n elements.  Minibatches will be preprocessed if distributed=True, else not-preprocessed
+        
+        .. note::  The distributed iterator is not order preserving over minibatches and yields minibatches as completed, however the tuple (head, tail) is order preserving within the pipeline
+        
+        """
+        pipeline = list(self.truncate(n*d).minibatch(n, distributed=False))  # local pipeline fill
+        for b in self.shift(n*d).minibatch(n, ragged=ragged, distributed=distributed):  # not order preserving
+            pipeline.append(b)  # order preserving within pipeline            
+            yield( (pipeline.pop(0), b) )  # yield (minibatch, shifted minibatch) tuples
+
+        
+        
     def split(self, trainfraction=0.9, valfraction=0.1, testfraction=0, seed=None, trainsuffix=':train', valsuffix=':val', testsuffix=':test'):
         """Split the dataset into the requested fractions.  
 
