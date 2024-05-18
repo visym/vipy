@@ -395,7 +395,7 @@ class Dataset():
 
         # Local map
         if not distributed or vipy.globals.dask() is None:            
-            return Dataset(self.list(f_map), id=self.id())  # triggers load into memory
+            return self.local_map(f_map)
                     
         # Distributed map
         from vipy.batch import Batch   # requires pip install vipy[all]                
@@ -416,8 +416,11 @@ class Dataset():
             raise ValueError('[vipy.dataset.Dataset.map]: Exceptions in distributed processing:\n%s\n\n[vipy.dataset.Dataset.map]: %d/%d items failed' % (str(bad), len(bad), len(self)))
         return Dataset(good, id=self.id()) if not oneway else None
 
-    def localmap(self, f):
-        return self.map(f, distributed=False)
+    def local_map(self, f):
+        return Dataset(self.list(f), id=self.id())  # triggers load into memory        
+
+    def minibatch_map(self, f, n, ragged=True, distributed=False):
+        return Dataset([f(b) for b in self.minibatch(n, ragged, distributed)], id=self.id())
     
     def sort(self, f):
         """Sort the dataset in-place using the sortkey lambda function"""
