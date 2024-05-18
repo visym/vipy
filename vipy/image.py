@@ -947,6 +947,15 @@ class Image(object):
         self._filename = None
         return self
 
+    def unload(self):
+        """Remove cached file and loaded array.  Note that this will delete the underlying file returned by filename() if there is a backing url"""
+        if self.hasurl() and self.hasfilename():
+            os.remove(self._filename)
+            self._filename = None
+        if self.isloaded():
+            self.flush()
+        return self
+    
     def filename(self, newfile=None):
         """Return or set image filename"""
         if newfile is None:
