@@ -441,7 +441,7 @@ class Image(object):
         self._loader = f
         return self
 
-    def load(self, ignoreErrors=False, verbose=False):
+    def load(self, ignoreErrors=False, verbose=True):
         """Load image to cached private '_array' attribute.
 
         Args:
@@ -477,7 +477,7 @@ class Image(object):
                 elif self.isluminance():
                     self.colorspace('lum')
                 else:
-                    warnings.warn('unknown colorspace for image "%s" - attempting to coerce to colorspace=float' % str(self._filename))
+                    log.warning('unknown colorspace for image "%s" - attempting to coerce to colorspace=float' % str(self._filename))
                     self._array = np.float32(self._array)
                     self.colorspace('float')
             elif iswebp(self._filename):
@@ -492,7 +492,7 @@ class Image(object):
         except IOError:
             if self._ignoreErrors or ignoreErrors:
                 if verbose is True:
-                    warnings.warn('[vipy.image][WARNING]: IO error "%s" -> "%s" - Ignoring. ' % (self.url(), self.filename()))
+                    log.warning('[vipy.image]: IO error "%s" -> "%s" ' % (self.url(), self.filename()))
                 self._array = None
             else:
                 raise
@@ -503,14 +503,14 @@ class Image(object):
         except Exception:
             if self._ignoreErrors or ignoreErrors:
                 if verbose is True:
-                    warnings.warn('[vipy.image][WARNING]: Load error for image "%s" - Ignoring' % self.filename())
+                    log.warning('[vipy.image]: Load error for image "%s"' % self.filename())
                 self._array = None
             else:
                 raise
 
         return self
 
-    def download(self, ignoreErrors=False, timeout=10, verbose=False):
+    def download(self, ignoreErrors=False, timeout=10, verbose=True):
         """Download URL to filename provided by constructor, or to temp filename.
 
         Args:
@@ -559,7 +559,7 @@ class Image(object):
                 urllib.error.HTTPError):
             if self._ignoreErrors or ignoreErrors:
                 if verbose is True:
-                    warnings.warn('[vipy.image][WARNING]: download failed - Ignoring image')
+                    log.warning('[vipy.image]: download failed for url "%s"' % self._url)
                 self._array = None
             else:
                 raise
@@ -567,7 +567,7 @@ class Image(object):
         except IOError:
             if self._ignoreErrors or ignoreErrors:
                 if verbose:
-                    warnings.warn('[vipy.image][WARNING]: IO error downloading "%s" -> "%s" - Ignoring' % (self.url(), self.filename()))
+                    log.warning('[vipy.image]: IO error downloading "%s" -> "%s" ' % (self.url(), self.filename()))
                 self._array = None
             else:
                 raise
@@ -578,7 +578,7 @@ class Image(object):
         except Exception:
             if self._ignoreErrors or ignoreErrors:
                 if verbose:
-                    warnings.warn('[vipy.image][WARNING]: load error for image "%s"' % self.filename())
+                    log.warning('[vipy.image]: load error for image "%s"' % self.filename())
             else:
                 raise
 
@@ -1244,7 +1244,7 @@ class Image(object):
             self._array = self.array()[bbox.ymin():bbox.ymax(),
                                        bbox.xmin():bbox.xmax()]
         else:
-            warnings.warn('BoundingBox for crop() does not intersect image rectangle - Ignoring')
+            log.warning('BoundingBox for crop() does not intersect image rectangle')
         return self
 
     def crop(self, bbox):
@@ -1341,7 +1341,7 @@ class Image(object):
         elif self.colorspace() == 'float':
             img = self.load().array()  # float32
             if np.max(img) > 1 or np.min(img) < 0:
-                warnings.warn('Converting float image to "%s" will be rescaled with self.mat2gray() into the range float32 [0,1]' % to)
+                log.warning('Converting float image to "%s" will be rescaled with self.mat2gray() into the range float32 [0,1]' % to)
                 img = self.mat2gray().array()
             if not self.channels() in [1,2,3]:
                 raise ValueError('Float image must be single channel or three channel RGB in the range float32 [0,1] prior to conversion')

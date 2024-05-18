@@ -127,15 +127,15 @@ def yfcc100m():
     return (vipy.dataset.Dataset(dataset['train'], id='yfcc100m:train', loader=loader, strict=False),
             vipy.dataset.Dataset(dataset['validation'], id='yfcc100m:val', loader=loader, strict=False))
     
-    
 
 def open_images_v7():
-    """https://storage.googleapis.com/openimages/web/download_v7.html"""
-
-    # https://github.com/cvdfoundation/open-images-dataset#download-full-dataset-with-google-storage-transfer
-    # https://github.com/Tencent/tencent-ml-images?tab=readme-ov-file#download-images    
     dataset = load_dataset("dalle-mini/open-images")
-    raise
+    loader = lambda r: vipy.image.Image(url=r['url'])  # no labels (use vipy.data.openimages.open_images_v7 instead)
+    return (vipy.dataset.Dataset(dataset['train'], id='open_images_v7:train', loader=loader, strict=False),
+            vipy.dataset.Dataset(dataset['validation'], id='open_images_v7:val', loader=loader, strict=False),
+            vipy.dataset.Dataset(dataset['test'], id='open_images_v7:test', loader=loader, strict=False))        
+
+
 
 def tiny_imagenet():
     D = load_dataset("zh-plus/tiny-imagenet")

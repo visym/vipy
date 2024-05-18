@@ -168,9 +168,9 @@ class Dataset():
     def filter(self, f):
         """In place filter with lambda function f, keeping those elements obj in-place where f(obj) evaluates true"""
         assert callable(f)
-        self._idx = [k for (j,k) in enumerate(self._idx) if f(self[j])]
+        self._idx = [i for (b,i) in zip(self.map(f, ordered=True), self._idx) if b]        
         return self
-
+    
     def take(self, n, seed=None, inplace=False):
         """Randomly Take n elements from the dataset, and return a dataset (in-place or cloned).  If seed=int, take will return the same results each time."""
         assert isinstance(n, int) and n>0
@@ -419,12 +419,6 @@ class Dataset():
     def localmap(self, f):
         return self.map(f, distributed=False)
     
-    def mapfilter(self, f):
-        """Apply the callable f to each element, and keep those in-place that return true.  This can be applied in parallel and is useful for finding dataset errors"""
-        assert callable(f)        
-        self._idx = [i for (f,i) in zip(self.map(f, ordered=True), self._idx) if f == True]
-        return self
-        
     def sort(self, f):
         """Sort the dataset in-place using the sortkey lambda function"""
         assert callable(f)
