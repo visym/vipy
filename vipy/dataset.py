@@ -30,7 +30,7 @@ class Dataset():
     Common class to manipulate large sets of objects in parallel
 
     Args:
-        - objlist [list, tuple, set): a python built-in type that supports indexing
+        - dataset [list, tuple, set, obj]: a python built-in type that supports indexing or a generic object that supports indexing and has a length
         - loader [lambda]: a callable loader that will construct the object from a raw data representation.  This is useful for custom deerialization or on demand transformations
         - strict [bool]: If true, throw an error if the type of objlist is not a python built-in type.  This is useful for loading dataset objects that can be indexed.
         - preprocessor [lambda]:  a callable preprocessing function that will preprocess the object. This is useful for implementing on-demand data loaders
@@ -125,10 +125,17 @@ class Dataset():
         random.shuffle(self._idx)  
         return self
 
-    def list(self, mapper=None):
-        """Return the dataset as a list, loading the entire dataset into memory, applying the optional lambda to return a transformed list"""
+    def list(self, mapper=None, reducer=None):
+        """Return the dataset as a list, loading the entire dataset into memory, applying the optional mapper lambda on each element, and applying the optional reducer lambda on the resulting list"""
         assert mapper is None or callable(mapper)
-        return [mapper(x) if mapper else x for x in self]
+        assert reducer is None or callable(reducer)
+        mapped = [mapper(x) if mapper else x for x in self]
+        reduced = reducer(mapped) if reducer else mapped
+        return reduced
+
+    def flatlist(self, mapper=None):
+        """Return the dataset as a flat list, converting lists of lists into a single flat list"""
+        return self.list(mapper, reducer=lambda mapped: [x for xiter in mapped for x in xiter])
     
     def set(self, mapper):
         """Return the dataset as a set.  Mapper must be a lambda function that returns a hashable type"""
