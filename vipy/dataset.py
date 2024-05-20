@@ -2,7 +2,7 @@ import os
 import numpy as np
 from vipy.util import findpkl, toextension, filepath, filebase, jsonlist, ishtml, ispkl, filetail, temphtml
 from vipy.util import listpkl, listext, templike, tempdir, remkdir, tolist, fileext, writelist, tempcsv
-from vipy.util import newpathroot, listjson, extlist, filefull, tempdir, groupbyasdict, try_import
+from vipy.util import newpathroot, listjson, extlist, filefull, tempdir, groupbyasdict, try_import, permutelist
 import random
 import vipy
 import vipy.util
@@ -92,7 +92,7 @@ class Dataset():
     
     def __repr__(self):
         shortid = None if not self.id() else ((self.id()[0:80] + ' ... ') if len(self.id())>80 else self.id())
-        return str('<vipy.dataset.Dataset: %slen=%d, type=%s>' % (('id=%s, ' % shortid) if self.id() else '', len(self), str(type(self[0])) if len(self)>0 else 'None'))
+        return str('<vipy.dataset.%s: %slen=%d, type=%s>' % (self.__class__.__name__, ('id=%s, ' % shortid) if self.id() else '', len(self), str(type(self[0])) if len(self)>0 else 'None'))
 
     def __iter__(self):
         for k in range(len(self)):
@@ -184,7 +184,7 @@ class Dataset():
         """Randomly Take n elements from the dataset, and return a dataset (in-place or cloned).  If seed=int, take will return the same results each time."""
         assert isinstance(n, int) and n>0
         D = self.clone(shallow=True) if not inplace else self
-        D._idx = vipy.util.permutelist(self._idx, seed=seed)[0:n]  # do not run loader
+        D._idx = permutelist(self._idx, seed=seed)[0:n]  # do not run loader
         return D
 
     def groupby(self, f):
@@ -214,12 +214,8 @@ class Dataset():
     
     def load(self):
         """Load the entire dataset into memory.  This is useful for creating in-memory datasets from lazy load datasets"""
-        self._ds = self.list()
-        self._idx = list(range(len(self._ds)))
-        self._loader = None   # all done
-        self._preprocessor = None  # all done
-        return self    
-
+        return Dataset(self.list(), id=self.id())
+    
     def chunk(self, n):
         """Yield n chunks as dataset.  Last chunk will be ragged.  Batches are not loaded or preprocessed"""
         for (k,V) in enumerate(vipy.util.chunkgen(self._idx, n)):
@@ -270,7 +266,7 @@ class Dataset():
         ..note:: The distributed iterator appends the minibatch index to the minibatch.id()
         """
         mapper = vipy.parallel.map if concurrent and vipy.parallel.executor() else vipy.parallel.localmap
-        for b in mapper(lambda b: b.load(), self.batch(n)):
+        for b in mapper(lambda b: b.load(), self.batch(n)):  # parallel load()
             if ragged or len(b) == n:            
                 yield b
 
@@ -286,7 +282,7 @@ class Dataset():
         """Truncate the dataset to contain the first m elements only"""
         return self.slice(stop=m)
     
-    def pipeline(self, n, m, ragged=True, distributed=False):
+    def pipeline(self, n, m, ragged=True, concurrent=True):
         """Yield pipelined minibatches of size n with pipeline length m.
 
         A pipelined minibatch is a tuple (head, tail) such that (head, tail) are minibatches at different indexes in the dataset.  
@@ -313,10 +309,10 @@ class Dataset():
         .. note::  The distributed iterator is not order preserving over minibatches and yields minibatches as completed, however the tuple (head, tail) is order preserving within the pipeline
         
         """
-        pipeline = list(self.truncate(n*(m-1)).minibatch(n, distributed=False))  # local pipeline fill
-        for b in self.shift(n*(m-1)).minibatch(n, ragged=ragged, distributed=distributed):  # not order preserving
+        pipeline = list(self.truncate(n*(m-1)).minibatch(n, concurrent=False))  # local pipeline fill
+        for b in self.shift(n*(m-1)).minibatch(n, ragged=ragged, concurrent=concurrent):  # not order preserving
             pipeline.append(b)  # order preserving within pipeline            
-            yield( (pipeline.pop(0), b) )  # yield (minibatch, shifted minibatch) tuples
+            yield( (pipeline.pop(0), b) )  # yield deque-like (minibatch, shifted minibatch) tuples
         
         
     def split(self, trainfraction=0.9, valfraction=0.1, testfraction=0, seed=None, trainsuffix=':train', valsuffix=':val', testsuffix=':test'):
@@ -424,6 +420,66 @@ class Dataset():
         return self
 
     
+class Paged(Dataset):
+    """ Paged dataset.
+
+    A paged dataset is a dataset of length N=M*P constructed from M archive files (the pages) each containing P elements (the pagesize).  
+    The paged dataset must be constructed with tuples of (pagesize, filename).  
+    The loader will fetch, load and cache the pages on demand using the loader, preserving the most recently used cachesize pages
+
+    ```python
+    D = vipy.dataset.Paged([(64, 'archive1.pkl'), (64, 'archive2.pkl')], lambda x,y: ivy.load(y))
+    ```
+
+    .. note :: Shuffling this dataset is biased.  Shuffling will be performed to mix the indexes, but not uniformly at random.  The goal is to preserve data locality to minimize cache misses.
+    """
+    
+    def __init__(self, pagelist, loader, id=None, strict=True, preprocessor=None, index=None, cachesize=32, shufflewidth=1.5):
+        super().__init__(pagelist, id, loader=loader, strict=False, preprocessor=preprocessor, index=list(range(sum([p[0] for p in pagelist]))))
+
+        assert callable(loader), "loader required"
+        assert not strict or len(set([x[0] for x in self._ds])) == 1  # pagesizes all the same 
+
+        self._cachesize = cachesize
+        self._pagecache = {}
+        self._ds = list(self._ds)
+        self._shufflewidth = shufflewidth                    
+        self._pagesize = self._ds[0][0]  # (pagesize, pklfile) tuples
+        
+    def __getitem__(self, k):
+        if isinstance(k, (int, np.uint64)):
+            assert abs(k) < len(self._idx), "invalid index"
+            page = self._idx[int(k)] // self._pagesize
+            if page not in self._pagecache:
+                self._pagecache[page] = self._loader(*self._ds[page])  # load and cache new page
+                if len(self._pagecache) > self._cachesize:
+                    self._pagecache.pop(list(self._pagecache.keys())[0])  # remove oldest
+            x = self._pagecache[page][int(k) % self._pagesize]
+            return self._preprocessor(x) if self._preprocessor is not None else x
+        elif isinstance(k, slice):
+            return [self[i] for i in range(len(self))[k.start if k.start else 0:k.stop if k.stop else len(self):k.step if k.step else 1]]  # expensive
+        else:
+            raise ValueError('invalid index type "%s"' % type(k))            
+
+    @classmethod
+    def cast(cls, other):
+        return cls(other._ds, id=other._id, loader=other._loader, preprocessor=other._preprocessor, index=other._idx, strict=False)
+            
+    def shuffle(self):
+        """Permute index preserving page locality"""
+        self._idx = [i for I in permutelist([permutelist(I) for I in vipy.util.chunkgenbysize(self._idx, int(self._shufflewidth*self._pagesize))]) for i in I]
+        return self
+
+    def chunk(self, n):
+        """Yield n chunks as Paged dataset.  Last chunk will be ragged.  Batches are not loaded or preprocessed"""
+        for b in super().chunk(n):
+            yield Paged.cast(b)
+
+    def batch(self, n):
+        """Yield batches of size n as datasets.  Last batch will be ragged.  Batches are not loaded or preprocessed"""
+        for b in super().batch(n):
+            yield Paged.cast(b)            
+                         
 
 class Union(Dataset):
     """vipy.dataset.Union() class
