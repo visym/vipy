@@ -4,11 +4,12 @@ import tempfile
 import vipy.math
 import builtins
 import logging 
+import concurrent.futures 
 
 
 # Global mutable dictionary
 GLOBAL = {'DASK_CLIENT': None,   # Global Dask() client for distributed processing
-          'PARALLEL':None,  # Parallel processing context manager
+          'CONCURRENT_FUTURES':None,  # global futures client 
           'CACHE':os.environ['VIPY_CACHE'] if 'VIPY_CACHE' in os.environ else None,   # Cache directory for vipy.video and vipy.image donwloads
           'LOGGER':logging.getLogger('vipy'),     # The global logger
           'DEBUG':False, # globally enable debugging flags
@@ -27,14 +28,15 @@ def logger():
 class Dask(object):
     """Dask distributed client"""
     
-    def __init__(self, num_processes=None, dashboard=False, verbose=False, address=None):
+    def __init__(self, num_workers=None, threaded=True, dashboard=False, verbose=False, address=None):
         from vipy.util import try_import
         try_import('dask', 'dask distributed'); import dask, dask.distributed;
     
-        assert address is not None or num_processes is not None, "Invalid input"
+        assert address is not None or num_workers is not None, "Invalid input"
 
-        self._num_processes = num_processes
-
+        self._num_workers = num_workers
+        self._has_dashboard = dashboard
+        
         # Dask configuration: https://docs.dask.org/en/latest/configuration.html
         # - when using vipy.dataset.Dataset minibatch iterator, large minibatches can result in a warning about large graphs
         # - The end user can set these environemnt variables, and will only be overwritten with defaults here if not provided
@@ -91,44 +93,36 @@ class Dask(object):
             self._client.run(lambda env=localenv: _f_setenv_remote(env))
 
         else:
+            kwargs = {'name':'vipy',
+                      'address':address,  # to connect to distributed scheduler HOSTNAME:PORT
+                      'scheduler_port':0,   # random
+                      'dashboard_address':None if not dashboard else ':0',  # random port
+                      'processes':not threaded,
+                      'threads_per_worker':1,
+                      'n_workers':num_workers,
+                      'local_directory':tempfile.mkdtemp()}
+            kwargs |= {'env':env, 'direct_to_workers':True} if not threaded else {}
+            
             # Local scheduler
-            self._client = dask.distributed.Client(name='vipy',
-                                                   address=address,  # to connect to distributed scheduler HOSTNAME:PORT
-                                                   scheduler_port=0,   # random
-                                                   dashboard_address=None if not dashboard else ':0',  # random port
-                                                   processes=True, 
-                                                   threads_per_worker=1,
-                                                   n_workers=num_processes, 
-                                                   env=env,
-                                                   direct_to_workers=True, 
-                                                   #memory_limit='auto',
-                                                   #silence_logs=20 if verbose else 40, 
-                                                   local_directory=tempfile.mkdtemp())
-
+            self._client = dask.distributed.Client(**kwargs)
+            
 
     def __repr__(self):
-        if self._num_processes is not None:
+        if self._num_workers is not None:
             # Local 
-            return str('<vipy.globals.dask: %s%s>' % ('processes=%d' % self.num_processes(), ', dashboard="%s"' % str(self._client.dashboard_link) if self.has_dashboard() else ''))
+            return str('<vipy.globals.Dask: %s%s>' % ('workers=%d' % self.num_workers(), ', dashboard=%s' % str(self._client.dashboard_link) if self._has_dashboard else ''))
         elif self._client is not None:
             # Distributed
-            return str('<vipy.globals.dask: %s>' % (str(self._client)))
+            return str('<vipy.globals.Dask: %s>' % (str(self._client)))
         else:
-            return str('<vipy.globals.dask: shutdown')
+            return str('<vipy.globals.Dask: shutdown')
 
-    def has_dashboard(self):
-        return len(self._client.dashboard_link) > 0 if self._client is not None else False
-
-    def dashboard(self):
-        """Open a web dashboard for dask client.  As of 2024, this appears to be broken returning 404"""
-        webbrowser.open(self._client.dashboard_link) if len(self._client.dashboard_link)>0 else None
-    
-    def num_processes(self):
-        return len(self._client.nthreads()) if self._client is not None else 0
+    def num_workers(self):
+        return self._num_workers
 
     def shutdown(self):
         self._client.close()
-        self._num_processes = None
+        self._num_workers = None
         GLOBAL['DASK_CLIENT'] = None        
         return self
 
@@ -169,31 +163,42 @@ def _user_hit_escape(b=None):
         # Set in vipy.gui.using_matplotlib.escape_to_exit()
         assert isinstance(b, bool)
         GLOBAL['GUI']['escape'] = b  
-            
 
-def dask(num_processes=None, dashboard=False, address=None, pct=None):
+        
+def cf(num_workers=None, threaded=True):
+    if num_workers is not None:
+        if GLOBAL['CONCURRENT_FUTURES']:
+            GLOBAL['CONCURRENT_FUTURES'].shutdown()
+        GLOBAL['CONCURRENT_FUTURES'] = (concurrent.futures.ThreadPoolExecutor(max_workers=num_workers, thread_name_prefix='vipy') if threaded else
+                                        concurrent.futures.ProcessPoolExecutor(max_workers=num_workers))
+    return GLOBAL['CONCURRENT_FUTURES']
+                                                 
+    
+def dask(num_workers=None, dashboard=False, address=None, pct=None, threaded=True):
     """Return the current Dask client, can be accessed globally for parallel processing.
     
     Args:
         pct: float in [0,1] the percentage of the current machine to use
         address:  the dask scheduler of the form 'HOSTNAME:PORT'
-        num_processes:  the number of prpcesses to use on the current machine
+        num_workers:  the number of prpcesses to use on the current machine
         dashboard: [bool] whether to inialize the dask client with a web dashboard
+        threaded: [bool] if true, create threaded workers intead of processes
 
     Returns:
         The `vipy.batch.Dask` object pointing to the Dask Distrbuted object
     """
     if pct is not None:
         assert pct > 0 and pct <= 1
-        import multiprocessing
-        num_processes = vipy.math.poweroftwo(pct*multiprocessing.cpu_count())        
-    if (address is not None or (num_processes is not None and (GLOBAL['DASK_CLIENT'] is None or GLOBAL['DASK_CLIENT'].num_processes() != num_processes))):
-        GLOBAL['DASK_CLIENT'] = Dask(num_processes, dashboard=dashboard, verbose=True, address=address)        
+        num_workers = vipy.math.poweroftwo(pct*os.cpu_count())        
+    if address is not None or num_workers is not None:
+        if GLOBAL['DASK_CLIENT']:
+            GLOBAL['DASK_CLIENT'].shutdown()
+        GLOBAL['DASK_CLIENT'] = Dask(num_workers, threaded=threaded, dashboard=dashboard, verbose=False, address=address)        
     return GLOBAL['DASK_CLIENT']
 
 
-def parallel(n=None, pct=None, scheduler=None):
-    """Enable parallel processing with n>=1 processes or a percentage of system core (pct in [0,1]) or a dask scheduler .
+def parallel(n=None, pct=None, threaded=True):
+    """Enable parallel processing with n>=1 processes or a percentage of system core (pct in [0,1])  .
 
     This can be be used as a context manager
     
@@ -208,7 +213,7 @@ def parallel(n=None, pct=None, scheduler=None):
     
     To check the current parallelism level:
     
-    >>> num_processes = vipy.globals.parallel().num_processes()
+    >>> num_workers = vipy.globals.parallel().num_workers()
 
     To run with a dask scheduler:
     
@@ -218,50 +223,40 @@ def parallel(n=None, pct=None, scheduler=None):
     Args:
         n: [int] number of parallel processes
         pct: [float] the percentage [0,1] of system cores to dedicate to parallel processing
-        scheduler: [str]  the dask scheduler of the form 'HOSTNAME:PORT' like '128.0.0.1:8785'.  See <https://docs.dask.org/en/latest/install.html>
+        threaded [bool]: if false, use processes (not recommended, since vipy parallel processing usually releases the GIL)
     """
 
     class Parallel():
-        def __init__(self, n=None, pct=None, scheduler=None):
-            assert n is not None or pct is not None or scheduler is not None
-            assert sum([x is not None for x in (n, pct, scheduler)]) == 1, "Exactly one"
-            assert n is None or (isinstance(n, int) and n>=0)
-            assert pct is None or (pct > 0 and pct <= 1)
-            if (n is not None and n>0) or (pct is not None and pct>0):
-                dask(num_processes=n, pct=pct, address=scheduler, dashboard=True)
+        def __init__(self, n):
             self._n = n
-            self._pct = pct
-            self._scheduler = scheduler
+            self._threaded = threaded
+            self.start()
             
         def __enter__(self):
             pass
-
-        def __exit__(self, *args):
-            if self._scheduler is None:
-                self.shutdown()
-
-        def __repr__(self):
-            return '<vipy.globals.parallel: dask=%s>' % GLOBAL['DASK_CLIENT']
-        
-        def client(self):
-            return GLOBAL['DASK_CLIENT']
-
-        def shutdown(self):
-            noparallel()
-            GLOBAL['PARALLEL'] = None
             
-        def num_processes(self):
-            return GLOBAL['DASK_CLIENT'].num_processes() if GLOBAL['DASK_CLIENT'] else 0
+        def __exit__(self, *args):            
+            self.shutdown()
+            
+        def __repr__(self):
+            return '<vipy.globals.parallel: workers=%d, cf=%s>' % (self.num_workers(), GLOBAL['CONCURRENT_FUTURES'] if GLOBAL['CONCURRENT_FUTURES'] else 'stopped')
 
-    if n is None and pct is None and scheduler is None:
-        return GLOBAL['PARALLEL']
-    else:
-        assert n is not None or pct is not None or scheduler is not None
-        assert sum([x is not None for x in (n, pct, scheduler)]) == 1, "Exactly one"
-        GLOBAL['PARALLEL'] = Parallel(n=n, pct=pct, scheduler=scheduler)
-        if GLOBAL['PARALLEL'].num_processes() > 0:
-            GLOBAL['LOGGER'].info('Parallel executor initialized %s' % GLOBAL['PARALLEL'] )
-        return GLOBAL['PARALLEL']
+        def start(self):
+            if not GLOBAL['CONCURRENT_FUTURES']:                
+                cf(num_workers=self._n, threaded=self._threaded)
+            GLOBAL['LOGGER'].info('Parallel executor initialized %s' % self)
+            return self
+        
+        def shutdown(self):
+            if GLOBAL['CONCURRENT_FUTURES']:
+                GLOBAL['LOGGER'].info('Parallel executor shutdown %s' % self)                            
+                GLOBAL['CONCURRENT_FUTURES'].shutdown()
+            GLOBAL['CONCURRENT_FUTURES'] = None
+        
+        def num_workers(self):
+            return self._n
+
+    return Parallel(n if not pct else vipy.math.poweroftwo(pct*os.cpu_count()))
 
 
 def noparallel():
@@ -269,13 +264,13 @@ def noparallel():
     if GLOBAL['DASK_CLIENT'] is not None:
         GLOBAL['DASK_CLIENT'].shutdown()
         del GLOBAL['DASK_CLIENT']
-        GLOBAL['LOGGER'].info('Parallel executor shutdown')        
+        GLOBAL['LOGGER'].info('Parallel executor shutdown')
+    if GLOBAL['CONCURRENT_FUTURES']:
+        GLOBAL['CONCURRENT_FUTURES'].shutdown()
+        
+    GLOBAL['CONCURRENT_FUTURES'] = None
     GLOBAL['DASK_CLIENT'] = None 
-    GLOBAL['PARALLEL'] = None    
     
-def nodask():
-    """Alias for `vipy.globals.noparallel`"""
-    return noparallel()
     
 def shutdown():
     """Alias for `vipy.globals.noparallel`"""    
