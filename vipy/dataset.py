@@ -33,7 +33,7 @@ class Dataset():
         - loader [lambda]: a callable loader that will construct the object from a raw data representation.  This is useful for custom deerialization or on demand transformations
         - strict [bool]: If true, throw an error if the type of objlist is not a python built-in type.  This is useful for loading dataset objects that can be indexed.
         - preprocessor [lambda]:  a callable preprocessing function that will preprocess the object. This is useful for implementing on-demand data loaders
-        - index [list]: If provided, use this as the initial index into the dataset (e.g. as returned from export_index).  This is useful for preprocessing large datasets to filter out noise.
+        - index [list]: If provided, use this as the initial index into the dataset.  This is useful for preprocessing large datasets to filter out noise.
     """
 
     def __init__(self, dataset, id=None, loader=None, strict=True, preprocessor=None, index=None):
@@ -46,22 +46,19 @@ class Dataset():
         self._idx = list(range(len(self._ds)) if not index else index)   
         self._loader = loader  # not serializable if lambda is provided
         self._preprocessor = preprocessor
+        self._type = None
         
-        if strict:
-            try:
-                self._ds[0]  # must be an object that supports indexing                
-                assert index is None or (len(index)>0 and len(index)<=len(dataset) and max(index)<len(dataset) and min(index)>0)
-            except Exception as e:
-                raise ValueError('invalid dataset')
+        assert not strict or index is None or (len(index)>0 and len(index)<=len(dataset) and max(index)<len(dataset) and min(index)>0)
 
+            
     def __or__(self, other):
         assert isinstance(other, Dataset)
         return Union((self, other), id=self.id())
     
-    def id(self, n=None):
+    def id(self, n=None, truncated=False, maxlen=80):
         """Set or return the dataset id, useful for showing the name/split of the dataset in the representation string"""
         if n is None:
-            return self._id
+            return (self._id[0:maxlex] + ' ... ') if truncated and len(self._id)>maxlen else self._id
         else:
             self._id = n
             return self
@@ -77,22 +74,30 @@ class Dataset():
         """Remove the loader and preprocessor, useful for cloned direct access of raw data in large datasets without loading every one"""
         self._loader = None
         self._preprocessor = None
+        self._type = None
         return self
-    
-    def preprocessor(self, f=None):
+
+    def type(self):
+        if self._type is None and len(self)>0:
+            self._type = str(type(self[0]))  # cached
+        return self._type
+        
+    def preprocessor(self, f=None, remove=False):
         if f is not None:
             assert callable(f)
             self._preprocessor = f
+            self._type = None
+            return self
+        if remove:
+            self._preprocessor = None
             return self
         return self._preprocessor
 
-    def no_preprocessor(self):
-        self._preprocessor = None
-        return self
-    
     def __repr__(self):
-        shortid = None if not self.id() else ((self.id()[0:80] + ' ... ') if len(self.id())>80 else self.id())
-        return str('<vipy.dataset.%s: %slen=%d, type=%s>' % (self.__class__.__name__, ('id=%s, ' % shortid) if self.id() else '', len(self), str(type(self[0])) if len(self)>0 else 'None'))
+        fields = ['id=%s' % self.id(truncated=True, maxlen=80)] if self.id() else []
+        fields += ['len=%d' % len(self)]
+        fields += ['type=%s' % self.type()] if self.type() else []
+        return str('<vipy.dataset.%s: %s>' % (self.__class__.__name__, ', '.join(fields)))
 
     def __iter__(self):
         for k in range(len(self)):
@@ -116,6 +121,18 @@ class Dataset():
     def __len__(self):
         return len(self._idx)
 
+    def clone(self, shallow=False):
+        """Return a copy of the dataset object"""
+        if shallow:
+            (idx, ds) = (self._idx, self._ds)
+            (self._idx, self._ds) = ([], None)  # remove
+            D = copy.copy(self) 
+            (self._idx, self._ds) = (idx, ds)   # restore            
+            (D._idx, D._ds)  = (idx, ds)  # shared index/object reference
+            return D
+        else:
+            return copy.deepcopy(self)
+    
     def shuffleif(self, b):
         return self.shuffle() if b else self
     
@@ -144,17 +161,6 @@ class Dataset():
         assert callable(mapper)
         return {mapper(x) for x in self}
         
-    def clone(self, shallow=False):
-        """Return a deep copy of the dataset"""
-        if shallow:
-            ds = self._ds
-            self._ds = []  
-            D = copy.deepcopy(self)
-            self._ds = ds  # restore
-            D._ds = ds  # shared dataset object reference
-            return D
-        else:
-            return copy.deepcopy(self)
 
     def frequency(self, f):
         """Frequency counts for which lamba returns the same value"""
@@ -219,12 +225,12 @@ class Dataset():
     def chunk(self, n):
         """Yield n chunks as dataset.  Last chunk will be ragged.  Batches are not loaded or preprocessed"""
         for (k,V) in enumerate(vipy.util.chunkgen(self._idx, n)):
-            yield Dataset(self._ds, index=V, id=('%s:%d' % (self.id(), k)) if self.id() else None, preprocessor=self._preprocessor, loader=self._loader, strict=False)            
+            yield self.clone(shallow=True).index(V).id(('%s:%d' % (self.id(), k)) if self.id() else str(k))
 
     def batch(self, n):
         """Yield batches of size n as datasets.  Last batch will be ragged.  Batches are not loaded or preprocessed"""
         for (k,V) in enumerate(vipy.util.chunkgenbysize(self._idx, n)):
-            yield Dataset(self._ds, index=V, id=('%s:%d' % (self.id(), k)) if self.id() else None, preprocessor=self._preprocessor, loader=self._loader, strict=False)
+            yield self.clone(shallow=True).index(V).id(('%s:%d' % (self.id(), k)) if self.id() else str(k))
             
     def minibatch(self, n, ragged=True, concurrent=True):
         """Yield preprocessed minibatches of size n of this dataset.
@@ -338,18 +344,15 @@ class Dataset():
         idx = vipy.util.permutelist(self._idx, seed=seed)
         (testidx, validx, trainidx) = vipy.util.dividelist(idx, (testfraction, valfraction, trainfraction))
             
-        trainset = self.clone(shallow=True)
-        trainset._idx = trainidx
+        trainset = self.clone(shallow=True).index(trainidx)
         if trainsuffix and trainset.id():
             trainset.id(trainset.id() + trainsuffix)
         
-        valset = self.clone(shallow=True)
-        valset._idx = validx
+        valset = self.clone(shallow=True).index(validx)
         if valsuffix and valset.id():
             valset.id(valset.id() + valsuffix)
         
-        testset = self.clone(shallow=True)
-        testset._idx = testidx
+        testset = self.clone(shallow=True).index(testidx)
         if testsuffix and testset.id():
             testset.id(testset.id() + testsuffix)
                 
@@ -410,11 +413,11 @@ class Dataset():
     def local_map(self, f):
         return Dataset(self.list(f), id=self.id())  # triggers load into memory        
 
-    def minibatch_map(self, f, n, ragged=True, distributed=False):
-        return Dataset([f(b) for b in self.minibatch(n, ragged, distributed)], id=self.id())
+    def mapby_minibatch(self, f, n, ragged=True):
+        return Dataset([f(b) for b in self.minibatch(n, ragged)], id=self.id())
     
     def sort(self, f):
-        """Sort the dataset in-place using the sortkey lambda function"""
+        """Sort the dataset in-place using the sortkey lambda function f"""
         assert callable(f)
         self._idx = [self._idx[j] for j in sorted(range(len(self)), key=lambda k: f(self[k]))]
         return self
@@ -435,7 +438,7 @@ class Paged(Dataset):
     """
     
     def __init__(self, pagelist, loader, id=None, strict=True, preprocessor=None, index=None, cachesize=32, shufflewidth=1.5):
-        super().__init__(pagelist, id, loader=loader, strict=False, preprocessor=preprocessor, index=list(range(sum([p[0] for p in pagelist]))))
+        super().__init__(pagelist, id, loader=loader, strict=False, preprocessor=preprocessor, index=index if index else list(range(sum([p[0] for p in pagelist]))))
 
         assert callable(loader), "loader required"
         assert not strict or len(set([x[0] for x in self._ds])) == 1  # pagesizes all the same 
@@ -444,7 +447,7 @@ class Paged(Dataset):
         self._pagecache = {}
         self._ds = list(self._ds)
         self._shufflewidth = shufflewidth                    
-        self._pagesize = self._ds[0][0]  # (pagesize, pklfile) tuples
+        self._pagesize = self._ds[0][0]  # (pagesize, pklfile) tuples        
         
     def __getitem__(self, k):
         if isinstance(k, (int, np.uint64)):
@@ -461,25 +464,11 @@ class Paged(Dataset):
         else:
             raise ValueError('invalid index type "%s"' % type(k))            
 
-    @classmethod
-    def cast(cls, other):
-        return cls(other._ds, id=other._id, loader=other._loader, preprocessor=other._preprocessor, index=other._idx, strict=False)
-            
     def shuffle(self):
         """Permute index preserving page locality"""
         self._idx = [i for I in permutelist([permutelist(I) for I in vipy.util.chunkgenbysize(self._idx, int(self._shufflewidth*self._pagesize))]) for i in I]
         return self
 
-    def chunk(self, n):
-        """Yield n chunks as Paged dataset.  Last chunk will be ragged.  Batches are not loaded or preprocessed"""
-        for b in super().chunk(n):
-            yield Paged.cast(b)
-
-    def batch(self, n):
-        """Yield batches of size n as datasets.  Last batch will be ragged.  Batches are not loaded or preprocessed"""
-        for b in super().batch(n):
-            yield Paged.cast(b)            
-                         
 
 class Union(Dataset):
     """vipy.dataset.Union() class
@@ -496,12 +485,18 @@ class Union(Dataset):
     def __init__(self, *args, **kwargs):
         datasets = args[0] if isinstance(args[0], (tuple, list)) else args
         assert all([isinstance(d, Dataset) for d in datasets])
-        self._ds = datasets  
-        self._idx = [(i,j) for (i,d) in enumerate(self._ds) for j in range(len(d))]  # (dataset index, element index) tuples 
+        self._ds = datasets
+
+        if 'index' in kwargs:
+            self._idx = kwargs['index']
+        else:
+            self._idx = [(i,j) for j in range(max([len(d) for d in datasets])) for (i,d) in enumerate(datasets) if j<len(d)]  # zipped (dataset index, element index) tuples 
         self._id = kwargs['id'] if 'id' in kwargs else None
 
-        assert all([d.preprocessor() is None for d in self._ds]), "dataset preprocessors must be the same - Remove preprocessors from each dataset, then add a common preprocessor to the union"
-
+        self._preprocessor = None
+        self._loader = None
+        self._type = None
+        
     def __iter__(self):
         for (i,j) in self._idx:
             yield self._ds[i][j]
@@ -517,24 +512,17 @@ class Union(Dataset):
             raise ValueError('invalid index type "%s"' % type(k))
 
     def __repr__(self):
-        return str('<vipy.dataset.Union: %slen=%d, datasets=%d>' % (('id=%s, ' % self.id()) if self.id() is not None else '', len(self), len(self._ds)))
-
-    def clone(self, shallow=False):
-        """Return a deep copy of the dataset"""
-        if shallow:
-            ds = self._ds
-            self._ds = []  
-            D = copy.deepcopy(self)  # all but datasets
-            self._ds = ds  # restore
-            D._ds = [d.clone(shallow=shallow) for d in self._ds]  # shared dataset object reference
-            return D
-        else:
-            return copy.deepcopy(self)
-    
-    def load(self):
-        """Load the entire dataset into memory.  This is useful for creating in-memory datasets from lazy load datasets"""
-        return Dataset(self.list(), id=self.id())
+        fields = ['id=%s' % self.id(truncated=True, maxlen=64)] if self.id() else []
+        fields += ['len=%d' % len(self)]
+        fields += ['ids=%s' % [d.id(truncated=True, maxlen=32) for d in self._ds]]
+        return str('<vipy.dataset.%s: %s>' % (self.__class__.__name__, ', '.join(fields)))
         
+    def clone(self, shallow=False):
+        """Return a copy of the dataset object"""
+        D = super().clone(shallow=shallow)
+        D._ds =  [d.clone(shallow=shallow) for d in D._ds]
+        return D
+    
     def datasets(self):
         """Return the dataset union elements, useful for generating unions of unions"""
         return list(self._ds)
@@ -543,19 +531,10 @@ class Union(Dataset):
         self._ds = [d.raw() for d in self._ds]  # in-place, clone() first 
         return self
 
-    def preprocessor(self, f=None):
-        if f is not None:
-            assert callable(f)
-            for d in self._ds:
-                d.preprocessor(f)        
-            return self
-        return self._ds[0].preprocessor()  # forced identical by constructor
+    def preprocessor(self, f=None, remove=None):
+        raise ValueError('unsupported')
     
-    def no_preprocessor(self):
-        for d in self._ds:
-            d.no_preprocessor()
-        return self
-    
+
     
 class Collector(Dataset):
     """vipy.dataset.Collector() class
