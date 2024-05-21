@@ -101,7 +101,7 @@ class Dask(object):
                       'threads_per_worker':1,
                       'n_workers':num_workers,
                       'local_directory':tempfile.mkdtemp()}
-            kwargs.union({'env':env, 'direct_to_workers':True} if not threaded else {})
+            kwargs.update({'env':env, 'direct_to_workers':True} if not threaded else {})
             
             # Local scheduler
             self._client = dask.distributed.Client(**kwargs)
