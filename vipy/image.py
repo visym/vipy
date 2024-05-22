@@ -6,7 +6,7 @@ import platform
 import dill
 import vipy.show
 import vipy.globals
-from vipy.globals import log
+from vipy.globals import log, cache
 from vipy.util import isnumpy, isurl, isimageurl, \
     fileext, tempimage, mat2gray, imwrite, imwritegray, \
     tempjpg, filetail, isimagefile, remkdir, hasextension, \
@@ -26,7 +26,6 @@ import numpy as np
 import shutil
 import io
 import matplotlib.pyplot as plt
-import warnings
 import base64
 import types
 import hashlib
@@ -212,7 +211,7 @@ class Image(object):
         if self.colorspace() == 'float':
             strlist.append('channels=%d' % self.channels())
         if self.filename() is not None:
-            strlist.append('filename="%s"' % (self.filename() if self.hasfilename() else '<NOTFOUND>%s</NOTFOUND>' % self.filename()))
+            strlist.append('filename="%s"' % self.filename())
         if self.hasurl():
             strlist.append('url="%s"' % self.url())
         return str('<vipy.image: %s>' % (', '.join(strlist)))
@@ -464,9 +463,12 @@ class Image(object):
             if self._array is not None:
                 return self
 
-            # Download URL to filename
-            if self._url is not None:
-                self.download(ignoreErrors=ignoreErrors, verbose=verbose)
+            # Download URL to filename if cached filename does not exist
+            if self._url is not None and not self.hasfilename():
+                if self._filename is None and os.path.exists(os.path.join(str(cache()), filetail(self._url))):
+                    self._filename = os.path.join(str(cache()), filetail(self._url))
+                else:
+                    self.download(ignoreErrors=ignoreErrors, verbose=verbose)
 
             # Load filename to numpy array
             if self._loader is not None:
@@ -1888,7 +1890,7 @@ class ImageCategory(Image):
         if self.isloaded():
             strlist.append("height=%d, width=%d, color=%s" % (self.height(), self.width(), self.colorspace()))
         if self.filename() is not None:
-            strlist.append('filename="%s"' % (self.filename() if self.hasfilename() else '<NOTFOUND>%s</NOTFOUND>' % self.filename()))
+            strlist.append('filename="%s"' % (self.filename()))
         if self.hasurl():
             strlist.append('url="%s"' % self.url())
         if self.category() is not None and len(str(self.category()))>0:
@@ -2087,7 +2089,7 @@ class Scene(ImageCategory):
         if self.isloaded():
             strlist.append("height=%d, width=%d, color=%s" % (self.height(), self.width(), self.colorspace()))
         if self.filename() is not None:
-            strlist.append('filename="%s"' % (self.filename() if self.hasfilename() else '<NOTFOUND>%s</NOTFOUND>' % self.filename()))
+            strlist.append('filename="%s"' % (self.filename()))
         if self.hasurl():
             strlist.append('url=%s' % self.url())
         if self.category() is not None:

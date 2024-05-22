@@ -36,9 +36,10 @@ class Dataset():
         - index [list]: If provided, use this as the initial index into the dataset.  This is useful for preprocessing large datasets to filter out noise.
     """
 
-    def __init__(self, dataset, id=None, loader=None, strict=True, preprocessor=None, index=None):
+    def __init__(self, dataset, id=None, loader=None, strict=True, preprocessor=None, shuffler=None, index=None):
         assert loader is None or callable(loader)
-        assert preprocessor is None or callable(preprocessor)        
+        assert preprocessor is None or callable(preprocessor)
+        assert shuffler is None or callable(shuffler)        
         assert index is None or isinstance(index, (list, tuple))
         
         self._id = id
@@ -46,6 +47,7 @@ class Dataset():
         self._idx = list(range(len(self._ds)) if not index else index)   
         self._loader = loader  # not serializable if lambda is provided
         self._preprocessor = preprocessor
+        self._shuffler = shuffler
         self._type = None
         
         assert not strict or index is None or (len(index)>0 and len(index)<=len(dataset) and max(index)<len(dataset) and min(index)>0)
@@ -58,7 +60,7 @@ class Dataset():
     def id(self, n=None, truncated=False, maxlen=80):
         """Set or return the dataset id, useful for showing the name/split of the dataset in the representation string"""
         if n is None:
-            return (self._id[0:maxlex] + ' ... ') if truncated and len(self._id)>maxlen else self._id
+            return (self._id[0:maxlex] + ' ... ') if truncated and self._id and len(self._id)>maxlen else self._id
         else:
             self._id = n
             return self
@@ -79,7 +81,7 @@ class Dataset():
 
     def type(self):
         if self._type is None and len(self)>0:
-            self._type = str(type(self[0]))  # cached
+            self._type = str(type(self[0]))  # peek at first element, cached
         return self._type
         
     def preprocessor(self, f=None, remove=False):
@@ -90,9 +92,21 @@ class Dataset():
             return self
         if remove:
             self._preprocessor = None
+            self._type = None            
             return self
         return self._preprocessor
 
+    def shuffler(self, f=None, remove=False):
+        if f is not None:
+            assert callable(f)
+            self._shuffler = f
+            return self
+        if remove:
+            self._shuffler = None
+            return self
+        return self._shuffler
+
+    
     def __repr__(self):
         fields = ['id=%s' % self.id(truncated=True, maxlen=80)] if self.id() else []
         fields += ['len=%d' % len(self)]
@@ -138,8 +152,7 @@ class Dataset():
     
     def shuffle(self):
         """Permute elements in this dataset uniformly at random in place"""
-        random.shuffle(self._idx)  
-        return self
+        return Dataset.uniform_shuffler(self) if not self._shuffler else self._shuffler(self)
 
     def list(self, mapper=None, reducer=None):
         """Return the dataset as a list, loading the entire dataset into memory, applying the optional mapper lambda on each element, and applying the optional reducer lambda on the resulting list"""
@@ -389,7 +402,7 @@ class Dataset():
 
         # Local map
         if not distributed or vipy.globals.dask() is None:            
-            return self.local_map(f_map)
+            return self.localmap(f_map)
                     
         # Distributed map
         from vipy.batch import Batch   # requires pip install vipy[all]                
@@ -410,7 +423,7 @@ class Dataset():
             raise ValueError('[vipy.dataset.Dataset.map]: Exceptions in distributed processing:\n%s\n\n[vipy.dataset.Dataset.map]: %d/%d items failed' % (str(bad), len(bad), len(self)))
         return Dataset(good, id=self.id()) if not oneway else None
 
-    def local_map(self, f):
+    def localmap(self, f):
         return Dataset(self.list(f), id=self.id())  # triggers load into memory        
 
     def mapby_minibatch(self, f, n, ragged=True):
@@ -421,6 +434,16 @@ class Dataset():
         assert callable(f)
         self._idx = [self._idx[j] for j in sorted(range(len(self)), key=lambda k: f(self[k]))]
         return self
+
+    @staticmethod
+    def uniform_shuffler(D):
+        random.shuffle(D._idx)        
+        return D
+    
+    @staticmethod
+    def identity_shuffler(D):
+        """Shuffler that does nothing"""
+        return D
 
     
 class Paged(Dataset):
@@ -437,8 +460,14 @@ class Paged(Dataset):
     .. note :: Shuffling this dataset is biased.  Shuffling will be performed to mix the indexes, but not uniformly at random.  The goal is to preserve data locality to minimize cache misses.
     """
     
-    def __init__(self, pagelist, loader, id=None, strict=True, preprocessor=None, index=None, cachesize=32, shufflewidth=1.5):
-        super().__init__(pagelist, id, loader=loader, strict=False, preprocessor=preprocessor, index=index if index else list(range(sum([p[0] for p in pagelist]))))
+    def __init__(self, pagelist, loader, id=None, strict=True, preprocessor=None, index=None, cachesize=32, shuffler=None):        
+        super().__init__(dataset=pagelist,
+                         id=id,
+                         loader=loader,
+                         strict=False,
+                         preprocessor=preprocessor,
+                         index=index if index else list(range(sum([p[0] for p in pagelist]))),
+                         shuffler=shuffler)
 
         assert callable(loader), "loader required"
         assert not strict or len(set([x[0] for x in self._ds])) == 1  # pagesizes all the same 
@@ -446,8 +475,11 @@ class Paged(Dataset):
         self._cachesize = cachesize
         self._pagecache = {}
         self._ds = list(self._ds)
-        self._shufflewidth = shufflewidth                    
         self._pagesize = self._ds[0][0]  # (pagesize, pklfile) tuples        
+
+        # Shuffle while preserve page locality to minimize cache misses
+        self._shuffler = shuffler if shuffler else lambda D, chunksize=int(1.5*self._pagesize): Pager.chunk_shuffler(D, chunksize)
+
         
     def __getitem__(self, k):
         if isinstance(k, (int, np.uint64)):
@@ -464,12 +496,20 @@ class Paged(Dataset):
         else:
             raise ValueError('invalid index type "%s"' % type(k))            
 
-    def shuffle(self):
-        """Permute index preserving page locality"""
-        self._idx = [i for I in permutelist([permutelist(I) for I in vipy.util.chunkgenbysize(self._idx, int(self._shufflewidth*self._pagesize))]) for i in I]
+    def flush(self):
+        self._pagecache = {}
         return self
 
+    @staticmethod
+    def chunk_shuffler(D, chunksize=64):
+        """Split dataset into len(D)/chunksize non-overlapping chunks, shuffle chunk order and shuffle within chunks.  
 
+           - This preserves microbatch neighbors when chunksize=batchsize
+           - If chunksize=1 then this is equivalent to uniform_shuffler
+        """        
+        return D.index([i for I in permutelist([permutelist(I) for I in vipy.util.chunkgenbysize(D._idx, chunksize)]) for i in I])
+        
+    
 class Union(Dataset):
     """vipy.dataset.Union() class
     
@@ -495,7 +535,7 @@ class Union(Dataset):
 
         self._preprocessor = None
         self._loader = None
-        self._type = None
+        self._shuffler = kwargs['shuffler'] if 'shuffler' in kwargs else None
         
     def __iter__(self):
         for (i,j) in self._idx:
