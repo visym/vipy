@@ -43,6 +43,8 @@ except:
         """
         return ((np.float32(scale)*arr.astype(np.float32)) - mean.flatten()) / std.flatten() 
 
+
+    
 def _normalize(arr, mean, std, scale):
     """Whiten the numpy array arr using mean and standard deviation (no parallelization)"""
     return ((np.float32(scale)*arr.astype(np.float32)) - mean.flatten()) / std.flatten() 

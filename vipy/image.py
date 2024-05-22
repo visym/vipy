@@ -36,7 +36,7 @@ import math
 try:
     import torch  # pre-import
 except:
-    pass  # lazy load on demand
+    pass  # will throw exception on vipy.image.Image.torch
 
 try:
     import ujson as json  # faster
@@ -921,12 +921,11 @@ class Image(object):
 
         .. note:: This supports numpy types and does not support bfloat16
         """
-        try_import('torch'); import torch
-        assert order.lower() in ['chw', 'hwc', 'nchw', 'nhwc']
-        img = self.numpy() if self.numpy().ndim == 3 else np.expand_dims(self.numpy(), 2)  # HxW -> HxWx1, HxWxC -> HxWxC (unchanged)
-        img = img.transpose(2,0,1) if order.lower() in ['chw', 'nchw']  else img   # HxWxC or CxHxW        
-        img = np.expand_dims(img,0) if order.lower() in ['nhwc', 'nchw'] else img  # HxWxC -> 1xHxWxC
-        return torch.from_numpy(img)  
+        assert order in ['CHW', 'HWC', 'NCHW', 'NHWC']
+        img = self.array() if self.array().ndim == 3 else np.expand_dims(self.array(), 2)  # HxW -> HxWx1, HxWxC -> HxWxC (unchanged)
+        img = img.transpose(2,0,1) if order in ['CHW', 'NCHW']  else img   # HxWxC -> CxHxW
+        img = np.expand_dims(img,0) if order in ['NHWC', 'NCHW'] else img  # HxWxC -> 1xHxWxC or CxHxW -> 1xCxHxW
+        return torch.from_numpy(img)   # pip install torch
 
     @staticmethod
     def fromtorch(x, order='CHW'):
@@ -1525,7 +1524,7 @@ class Image(object):
         return self.gain(1.0/(eps+self.mat2gray().sum()))
     
     def gain(self, g):
-        """Elementwise multiply gain to image array, Gain should be broadcastable to array().  This forces the colospace to 'float'"""
+        """Elementwise multiply gain to image array, Gain should be broadcastable to array().  This forces the colospace to 'float'.  Don't use numba optimization, it is slower than native multiply"""
         return self.array(np.multiply(self.load().float().array(), g)).colorspace('float') if g != 1 else self
 
     def bias(self, b):
