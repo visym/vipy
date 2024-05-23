@@ -212,11 +212,11 @@ class Dataset():
         self._idx = [i for (b,i) in zip(self.map(f, ordered=True), self._idx) if b]        
         return self
     
-    def take(self, n, seed=None, inplace=False):
-        """Randomly Take n elements from the dataset, and return a dataset (in-place or cloned).  If seed=int, take will return the same results each time."""
+    def take(self, n, inplace=False):
+        """Randomly Take n elements from the dataset, and return a dataset (in-place or cloned)."""
         assert isinstance(n, int) and n>0
         D = self.clone(shallow=True) if not inplace else self
-        D._idx = shufflelist(self._idx, seed=seed)[0:n]  # do not run loader
+        D._idx = shufflelist(self._idx)[0:n]  # do not run loader, seed controlled by random.seed()
         return D
 
     def groupby(self, f):
@@ -228,13 +228,13 @@ class Dataset():
         """Group the dataset according to the callable f, take n from each group and return a dictionary of lists"""
         return {k:v.takelist(n) for (k,v) in self.groupby(f).items()}
     
-    def takelist(self, n, seed=None):
+    def takelist(self, n):
         """Take n elements and return list.  The elements are loaded and not cloned."""
-        return self.take(n, seed).list()
+        return self.take(n).list()
 
-    def takeone(self, seed=None):
+    def takeone(self):
         """Randomly take one element from the dataset and return a singleton"""
-        return self.takelist(n=1, seed=seed)[0] if len(self)>0 else None
+        return self.takelist(n=1)[0] if len(self)>0 else None
 
     def sample(self):
         return self.takeone()
@@ -347,14 +347,13 @@ class Dataset():
             yield( (pipeline.pop(0), b) )  # yield deque-like (minibatch, shifted minibatch) tuples
         
         
-    def split(self, trainfraction=0.9, valfraction=0.1, testfraction=0, seed=None, trainsuffix=':train', valsuffix=':val', testsuffix=':test'):
+    def split(self, trainfraction=0.9, valfraction=0.1, testfraction=0, trainsuffix=':train', valsuffix=':val', testsuffix=':test'):
         """Split the dataset into the requested fractions.  
 
         Args:
             trainfraction [float]: fraction of dataset for training set
             valfraction [float]: fraction of dataset for validation set
             testfraction [float]: fraction of dataset for test set
-            seed [int]: random seed for determinism.  Set to None for random.
             trainsuffix: If not None, append this string the to trainset ID
             valsuffix: If not None, append this string the to valset ID
             testsuffix: If not None, append this string the to testset ID        
@@ -367,7 +366,7 @@ class Dataset():
         assert testfraction >=0 and testfraction <= 1
         assert abs(trainfraction + valfraction + testfraction - 1) < 1E-6
         
-        idx = vipy.util.shufflelist(self._idx, seed=seed)
+        idx = vipy.util.shufflelist(self._idx)
         (testidx, validx, trainidx) = vipy.util.dividelist(idx, (testfraction, valfraction, trainfraction))
             
         trainset = self.clone(shallow=True).index(trainidx)
@@ -1001,11 +1000,11 @@ class Collector(Dataset):
         """Alias for `vipy.dataset.Collector.jsondir`"""
         return self.jsondir(outdir, verbose=verbose, rekey=rekey, bycategory=bycategory, byfilename=byfilename, abspath=abspath)
     
-    def take_per_category(self, n, seed=None):
+    def take_per_category(self, n):
         """Random;y take n elements per category and return a shallow cloned dataset"""
         D = self.clone(shallow=True)
         d_category_to_objlist = vipy.util.groupbyasdict(self._objlist, lambda x: x.category())
-        D._objlist = [v for c in self.categories() for v in Dataset(d_category_to_objlist[c]).take(n, seed=seed)]
+        D._objlist = [v for c in self.categories() for v in Dataset(d_category_to_objlist[c]).take(n)]
         return D
 
     def shuffler(self, method=None, uniform=None, pairwise=None):

@@ -111,7 +111,7 @@ def pascal_voc_2007():
     
     d_index_to_class = {v[2]:v[0] for v in CLASS_INFOS}
     loader = lambda r, d_index_to_class=d_index_to_class: vipy.image.Scene(array=np.array(r['image']),
-                                        category=sorted([d_index_to_class[c] for c in r['classes']]),
+                                        category=sorted(set([d_index_to_class[c] for c in r['classes']])),  # scene category may not include all object categories
                                         objects=[vipy.object.Detection(category=d_index_to_class[c], xmin=xmin, ymin=ymin, xmax=xmax, ymax=ymax) for (c, (xmin,ymin,xmax,ymax)) in zip(r['objects']['classes'], r['objects']['bboxes'])])
     
     return (vipy.dataset.Dataset(D['train'], id='pascal_voc_2007:train', loader=loader, strict=False),
