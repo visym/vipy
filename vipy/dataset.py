@@ -2,7 +2,7 @@ import os
 import numpy as np
 from vipy.util import findpkl, toextension, filepath, filebase, jsonlist, ishtml, ispkl, filetail, temphtml
 from vipy.util import listpkl, listext, templike, tempdir, remkdir, tolist, fileext, writelist, tempcsv
-from vipy.util import newpathroot, listjson, extlist, filefull, tempdir, groupbyasdict, try_import, permutelist
+from vipy.util import newpathroot, listjson, extlist, filefull, tempdir, groupbyasdict, try_import, shufflelist
 import random
 import vipy
 import vipy.util
@@ -34,17 +34,19 @@ class Dataset():
         - strict [bool]: If true, throw an error if the type of objlist is not a python built-in type.  This is useful for loading dataset objects that can be indexed.
         - preprocessor [lambda]:  a callable preprocessing function that will preprocess the object. This is useful for implementing on-demand data loaders
         - index [list]: If provided, use this as the initial index into the dataset.  This is useful for preprocessing large datasets to filter out noise.
+        - repeat [int]: Repeat the dataset.  If repeat=0, then there are no repeats. This is useful for generating random preprocessed samples of the same source data.  Repeated datasets are shared, with appended indexes
     """
 
-    def __init__(self, dataset, id=None, loader=None, strict=True, preprocessor=None, shuffler=None, index=None):
+    def __init__(self, dataset, id=None, loader=None, strict=True, preprocessor=None, shuffler=None, index=None, repeat=0):
         assert loader is None or callable(loader)
         assert preprocessor is None or callable(preprocessor)
         assert shuffler is None or callable(shuffler)        
         assert index is None or isinstance(index, (list, tuple))
+        assert repeat >= 0
         
         self._id = id
         self._ds = dataset if not isinstance(dataset, (list, set, tuple)) else tuple(dataset)  # force immutable (if possible)
-        self._idx = list(range(len(self._ds)) if not index else index)   
+        self._idx = list(range(len(self._ds)) if not index else index)*(repeat+1)
         self._loader = loader  # not serializable if lambda is provided
         self._preprocessor = preprocessor
         self._shuffler = shuffler
@@ -56,6 +58,7 @@ class Dataset():
     def __or__(self, other):
         assert isinstance(other, Dataset)
         return Union((self, other), id=self.id())
+
     
     def id(self, n=None, truncated=False, maxlen=80):
         """Set or return the dataset id, useful for showing the name/split of the dataset in the representation string"""
@@ -154,6 +157,16 @@ class Dataset():
         """Permute elements in this dataset uniformly at random in place"""
         return Dataset.uniform_shuffler(self) if not self._shuffler else self._shuffler(self)
 
+    def instanceid(self, k):
+        """The instance ID of element k is the index of this instance in the underlying source dataset"""
+        return self._idx[k]
+    
+    def repeat(self, n):
+        """Repeat the dataset n times.  If n=0, the dataset is unchanged, if n=1 the dataset is doubled in length, etc."""
+        assert n>=0
+        self._idx = self._idx*(n+1)
+        return self
+    
     def list(self, mapper=None, reducer=None):
         """Return the dataset as a list, loading the entire dataset into memory, applying the optional mapper lambda on each element, and applying the optional reducer lambda on the resulting list"""
         assert mapper is None or callable(mapper)
@@ -203,7 +216,7 @@ class Dataset():
         """Randomly Take n elements from the dataset, and return a dataset (in-place or cloned).  If seed=int, take will return the same results each time."""
         assert isinstance(n, int) and n>0
         D = self.clone(shallow=True) if not inplace else self
-        D._idx = permutelist(self._idx, seed=seed)[0:n]  # do not run loader
+        D._idx = shufflelist(self._idx, seed=seed)[0:n]  # do not run loader
         return D
 
     def groupby(self, f):
@@ -354,7 +367,7 @@ class Dataset():
         assert testfraction >=0 and testfraction <= 1
         assert abs(trainfraction + valfraction + testfraction - 1) < 1E-6
         
-        idx = vipy.util.permutelist(self._idx, seed=seed)
+        idx = vipy.util.shufflelist(self._idx, seed=seed)
         (testidx, validx, trainidx) = vipy.util.dividelist(idx, (testfraction, valfraction, trainfraction))
             
         trainset = self.clone(shallow=True).index(trainidx)
@@ -430,11 +443,54 @@ class Dataset():
         return Dataset([f(b) for b in self.minibatch(n, ragged)], id=self.id())
     
     def sort(self, f):
-        """Sort the dataset in-place using the sortkey lambda function f"""
-        assert callable(f)
-        self._idx = [self._idx[j] for j in sorted(range(len(self)), key=lambda k: f(self[k]))]
+        """Sort the dataset in-place using the sortkey lambda function f which is called either with one argument f(instance) or two arguments f(instance, instanceid)
+
+        To perform a sort of the dataset using some property of the instance, such as the object category (e.g. for vipy.image objects) 
+
+        ```python
+        dataset.sort(lambda im: im.category())
+        ```
+
+        To sort the dataset back into the original order by instance id:
+        
+        ```python
+        dataset.sort(lambda im, iid: iid)
+        ```
+
+        To perform a lexicographic sort of the instance id and the object category
+
+        ```python
+        dataset.sort(lambda iid, im: (im.category(), iid))
+        ```
+
+        """
+        assert callable(f) and len(f.__code__.co_varnames) in [1,2]
+        g = (lambda x,y: f(x)) if len(f.__code__.co_varnames)==1 else (lambda x,y: f(x,y)) 
+        self._idx = [self._idx[j] for j in sorted(range(len(self)), key=lambda k: g(self[k], self._idx[k]))]
         return self
 
+    def dedupe(self, f):
+        """Deduplicate the dataset using the key lambda function f which is called either with one argument f(instance) or two arguments f(instance, instanceid)  
+
+        To deduplicate by instance id:
+
+        ```python
+        dataset.dedupe(lambda im, iid: iid)
+        ```
+
+        To deduplicate by identical percetual hash (e.g. for vipy.image objects) with 10 threads:
+
+        ```python
+        with vipy.globals.parallel(workers=10):
+            dataset.dedupe(lambda im: im.perceptualhash())
+        ```
+
+        """
+        assert callable(f) and len(f.__code__.co_varnames) in [1,2]
+        g = (lambda z: f(z[0])) if len(f.__code__.co_varnames)==1 else (lambda z: f(z[0],z[1]))  # unpack lambda tuple args
+        self._idx = list({m:i for (i,m) in zip(self._idx, vipy.parallel.map(g, zip(self, self._idx)))}.values())
+        return self
+        
     @staticmethod
     def uniform_shuffler(D):
         random.shuffle(D._idx)        
@@ -445,6 +501,15 @@ class Dataset():
         """Shuffler that does nothing"""
         return D
 
+    @staticmethod
+    def chunk_shuffler(D, chunksize=64):
+        """Split dataset into len(D)/chunksize non-overlapping chunks, shuffle chunk order and shuffle within chunks.  
+
+           - This preserves microbatch neighbors when chunksize=batchsize
+           - If chunksize=1 then this is equivalent to uniform_shuffler
+        """        
+        return D.index([i for I in shufflelist([shufflelist(I) for I in vipy.util.chunkgenbysize(D._idx, chunksize)]) for i in I])
+    
     
 class Paged(Dataset):
     """ Paged dataset.
@@ -478,7 +543,7 @@ class Paged(Dataset):
         self._pagesize = self._ds[0][0]  # (pagesize, pklfile) tuples        
 
         # Shuffle while preserve page locality to minimize cache misses
-        self._shuffler = shuffler if shuffler else lambda D, chunksize=int(1.5*self._pagesize): Pager.chunk_shuffler(D, chunksize)
+        self._shuffler = shuffler if shuffler else lambda D, chunksize=int(1.5*self._pagesize): Dataset.chunk_shuffler(D, chunksize)
 
         
     def __getitem__(self, k):
@@ -500,14 +565,6 @@ class Paged(Dataset):
         self._pagecache = {}
         return self
 
-    @staticmethod
-    def chunk_shuffler(D, chunksize=64):
-        """Split dataset into len(D)/chunksize non-overlapping chunks, shuffle chunk order and shuffle within chunks.  
-
-           - This preserves microbatch neighbors when chunksize=batchsize
-           - If chunksize=1 then this is equivalent to uniform_shuffler
-        """        
-        return D.index([i for I in permutelist([permutelist(I) for I in vipy.util.chunkgenbysize(D._idx, chunksize)]) for i in I])
         
     
 class Union(Dataset):

@@ -3,8 +3,8 @@ import vipy.batch
 import concurrent.futures as cf
 
 
-def executor(m=None):
-    return vipy.globals.cf(m, threaded=True)
+def executor(workers=None):
+    return vipy.globals.cf(workers, threaded=True)
 
 
 def localmap(f, initer):

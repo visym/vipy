@@ -28,7 +28,9 @@ import socket
 import warnings
 import copy
 import bz2
-#from vipy.globals import log
+import random
+
+from vipy.globals import log
 
 
 try:
@@ -499,7 +501,7 @@ def softmax(x, temperature=1.0):
 
 
 def permutelist(inlist, seed=None):
-    """randomly permute list order.  Permutation is deterministic (same permutation on multiple calls) if specified"""
+    """randomly permute list order.  Permutation is deterministic (same permutation on multiple calls) if specified.  Shuffle is not in place"""
     if seed is not None:
         np.random.seed(seed)  # deterministic        
     outlist = [inlist[k] for k in np.random.permutation(list(range(0, len(inlist))))]
@@ -507,6 +509,9 @@ def permutelist(inlist, seed=None):
         np.random.seed()  # re-init randomness
     return outlist
 
+def shufflelist(inlist):
+    """Randomly shuffle a list, returning the shuffled list. Shuffle is not in-place"""
+    return random.sample(inlist, len(inlist))
 
 def flatlist(inlist):
     """Convert list of tuples into a list expanded by concatenating tuples.  If the input is already flat, return it unchanged."""
@@ -788,7 +793,7 @@ def take(inlist, k):
 
 def takeone(inlist):
     """Take one element at random from inlist or return None if empty"""
-    return take(list(inlist), k=1)[0] if len(inlist)>=1 else None
+    return take(list(inlist), k=1)[0] if len(inlist)>=1 else None   # -> random.sample()?
 
 def takelast(inlist):
     """Take last element from inlist or return None if empty"""

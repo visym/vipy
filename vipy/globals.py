@@ -1,7 +1,6 @@
 import os
 import webbrowser
 import tempfile
-import vipy.math
 import builtins
 import logging 
 import concurrent.futures 
@@ -189,7 +188,7 @@ def dask(num_workers=None, dashboard=False, address=None, pct=None, threaded=Tru
     """
     if pct is not None:
         assert pct > 0 and pct <= 1
-        num_workers = vipy.math.poweroftwo(pct*os.cpu_count())        
+        num_workers = int(pct*os.cpu_count())
     if address is not None or num_workers is not None:
         if GLOBAL['DASK_CLIENT']:
             GLOBAL['DASK_CLIENT'].shutdown()
@@ -197,7 +196,7 @@ def dask(num_workers=None, dashboard=False, address=None, pct=None, threaded=Tru
     return GLOBAL['DASK_CLIENT']
 
 
-def parallel(n=None, pct=None, threaded=True):
+def parallel(workers=None, pct=None, threaded=True):
     """Enable parallel processing with n>=1 processes or a percentage of system core (pct in [0,1])  .
 
     This can be be used as a context manager
@@ -221,14 +220,14 @@ def parallel(n=None, pct=None, threaded=True):
     >>>    vipy.batch.Batch(...)
 
     Args:
-        n: [int] number of parallel processes
+        workers: [int] number of parallel workers
         pct: [float] the percentage [0,1] of system cores to dedicate to parallel processing
         threaded [bool]: if false, use processes (not recommended, since vipy parallel processing usually releases the GIL)
     """
 
     class Parallel():
-        def __init__(self, n):
-            self._n = n
+        def __init__(self, workers):
+            self._workers = workers
             self._threaded = threaded
             self.start()
             
@@ -243,7 +242,7 @@ def parallel(n=None, pct=None, threaded=True):
 
         def start(self):
             if not GLOBAL['CONCURRENT_FUTURES']:                
-                cf(num_workers=self._n, threaded=self._threaded)
+                cf(num_workers=self._workers, threaded=self._threaded)
             GLOBAL['LOGGER'].info('Parallel executor initialized %s' % self)
             return self
         
@@ -254,9 +253,9 @@ def parallel(n=None, pct=None, threaded=True):
             GLOBAL['CONCURRENT_FUTURES'] = None
         
         def num_workers(self):
-            return self._n
+            return self._workers
 
-    return Parallel(n if not pct else vipy.math.poweroftwo(pct*os.cpu_count()))
+    return Parallel(workers if not pct else int(pct*os.cpu_count()))
 
 
 def noparallel():
