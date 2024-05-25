@@ -150,9 +150,6 @@ class Dataset():
         else:
             return copy.deepcopy(self)
     
-    def shuffleif(self, b):
-        return self.shuffle() if b else self
-    
     def shuffle(self):
         """Permute elements in this dataset uniformly at random in place"""
         return Dataset.uniform_shuffler(self) if not self._shuffler else self._shuffler(self)
@@ -258,7 +255,7 @@ class Dataset():
         for (k,V) in enumerate(vipy.util.chunkgenbysize(self._idx, n)):
             yield self.clone(shallow=True).index(V).id(('%s:%d' % (self.id(), k)) if self.id() else str(k))
             
-    def minibatch(self, n, ragged=True, concurrent=True):
+    def minibatch(self, n, ragged=True):
         """Yield preprocessed minibatches of size n of this dataset.
 
         To yield chunks of this dataset, suitable for minibatch training/testing
@@ -290,15 +287,15 @@ class Dataset():
         Args:
             n [int]: The size of the minibatch
             ragged [bool]: If ragged=true, then the last chunk will be ragged with len(chunk)<n, else skipped
-            concurrent: If true and there exists a vipy.parallel.exeuctor(), load and preprocess minibatches in parallel 
 
         Returns:        
-            Iterator over `vipy.dataset.Dataset` elements of length n.  Minibatches will be yielded loaded and preprocessed (processing done concurrently)
+            Iterator over `vipy.dataset.Dataset` elements of length n.  Minibatches will be yielded loaded and preprocessed (processing done concurrently if vipy.parallel.executor() is initialized)
 
-        ..note:: The distributed iterator appends the minibatch index to the minibatch.id()
+        ..note:: The distributed iterator appends the minibatch index to the minibatch.id().  
+        ..note:: If there exists a vipy.parallel.exeuctor(), then loading and preprocessing will be performed concurrently
+
         """
-        mapper = vipy.parallel.map if concurrent and vipy.parallel.executor() else vipy.parallel.localmap
-        for b in mapper(lambda b: b.load(), self.batch(n)):  # parallel load()
+        for b in vipy.parallel.map(lambda b: b.load(), self.batch(n)):  
             if ragged or len(b) == n:            
                 yield b
 
@@ -314,7 +311,7 @@ class Dataset():
         """Truncate the dataset to contain the first m elements only"""
         return self.slice(stop=m)
     
-    def pipeline(self, n, m, ragged=True, concurrent=True):
+    def pipeline(self, n, m, ragged=True):
         """Yield pipelined minibatches of size n with pipeline length m.
 
         A pipelined minibatch is a tuple (head, tail) such that (head, tail) are minibatches at different indexes in the dataset.  
@@ -333,16 +330,16 @@ class Dataset():
             n [int]: The size of each minibatch
             m [int]:  The pipeline length in minibatches
             ragged [bool]: If ragged=true, then the last chunk will be ragged with len(chunk)<n, else skipped
-            distributed: If true, preprocess minibatches in parallel 
 
         Returns:        
-            Iterator over tuples (head,tail) of `vipy.dataset.Dataset` elements of length n where tail is left shifted by n*(m-1) elements.  Minibatches will be preprocessed if distributed=True, else not-preprocessed
+            Iterator over tuples (head,tail) of `vipy.dataset.Dataset` elements of length n where tail is left shifted by n*(m-1) elements. 
         
         .. note::  The distributed iterator is not order preserving over minibatches and yields minibatches as completed, however the tuple (head, tail) is order preserving within the pipeline
+        .. note:: If there exists a vipy.parallel.exeuctor(), then loading and preprocessing will be performed concurrently
         
         """
-        pipeline = list(self.truncate(n*(m-1)).minibatch(n, concurrent=False))  # local pipeline fill
-        for b in self.shift(n*(m-1)).minibatch(n, ragged=ragged, concurrent=concurrent):  # not order preserving
+        pipeline = list(self.truncate(n*(m-1)).minibatch(n))  # local pipeline fill
+        for b in self.shift(n*(m-1)).minibatch(n, ragged=ragged):  # not order preserving
             pipeline.append(b)  # order preserving within pipeline            
             yield( (pipeline.pop(0), b) )  # yield deque-like (minibatch, shifted minibatch) tuples
         
