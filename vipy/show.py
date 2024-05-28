@@ -7,6 +7,19 @@ import matplotlib
 # - Headless operation: 'Agg'
 # - Linux (X11-forwarded): 'TkAgg', 'GTK3Cairo', 'QtAgg'
 # - Valid backends: https://matplotlib.org/stable/users/explain/backends.html
+#
+# Installing TkAgg
+# sh> export VIPY_BACKEND='TkAgg'
+# sh> sudo apt install python3.12-tk  # replace with your python version
+# sh> pip install tk   # virtualenv
+# >>> vipy.image.owl().show()
+
+# Installing QtAgg
+# sh> export VIPY_BACKEND='QtAgg'
+# sh> sudo apt install python3-pyqt5   # replace with your python version
+# sh> pip install pyqt5 opencv-python-headless 
+# >>> vipy.image.owl().show()
+
 if 'VIPY_BACKEND' in os.environ and 'DISPLAY' in os.environ:
     matplotlib.use(os.environ['VIPY_BACKEND'])  # 'Agg' is required unless there is a DISPLAY set
 
