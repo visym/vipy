@@ -537,7 +537,8 @@ class Image(object):
 
         if self._filename is None:
             if vipy.globals.cache() is not None:
-                self._filename = os.path.join(remkdir(vipy.globals.cache()), filetail(self._url))
+                self._filename = os.path.join(remkdir(vipy.globals.cache()), filetail(self._url.split('?')[0]))
+                self._filename = self._filename+'.jpg' if not hasextension(self._filename) else self._filename  # guess JPG for URLs with no file extension  
             elif isimageurl(self._url):
                 self._filename = tempimage(fileext(self._url))
             else:

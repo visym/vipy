@@ -55,6 +55,19 @@ def basic_level_categories():
     nouns.sort()
     return nouns
 
+def nouns():
+    """Return nouns from wordnet as a dictionary of imagenet 'wordnet id' (e.g. n + offset) keys to a list of synset names""" 
+    try_import('nltk'); import nltk
+    nltkdir = remkdir(os.path.join(os.environ['VIPY_CACHE'], 'nltk')) if 'VIPY_CACHE' in os.environ else tempfile.gettempdir()
+    os.environ['NLTK_DATA'] = nltkdir
+    log.info('[vipy.annotation.nouns]: Downloading wordnet to "%s"' % nltkdir)
+    nltk.download('wordnet', nltkdir)
+    nltk.data.path.append(nltkdir)
+
+    from nltk.corpus import wordnet
+    nouns = {'n%d' % s.offset():s.lemma_names() for s in wordnet.all_synsets('n')}
+    return dict(sorted(nouns.items(), key=lambda x: x[0]))
+    
 
 def verbs():
     """Return a list of verbs from verbnet that can be used to define a set of activities"""
