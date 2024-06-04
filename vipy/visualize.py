@@ -321,7 +321,7 @@ def videomosaic(videos, gridrows=None, gridcols=None):
     return vipy.video.Video(frames=list(mosaic(videos, gridrows=gridrows, gridcols=gridcols)), framerate=videos[0].framerate())
 
 
-def montage(imlist, imgheight=256, imgwidth=256, gridrows=None, gridcols=None, aspectratio=1, crop=False, skip=True, border=1, border_bgr=(128,128,128), do_flush=False, verbose=False):
+def montage(imlist, imgheight=256, imgwidth=256, gridrows=None, gridcols=None, aspectratio=1, crop=False, skip=True, border=1, border_rgb=(128,128,128), do_flush=False, verbose=False):
     """Create a montage image from the of provided list of `vipy.image.Image` objects.
 
     >>> vipy.visualize.montage([[im.crop() for im in vipy.image.vehicles()]]).show()
@@ -336,7 +336,7 @@ def montage(imlist, imgheight=256, imgwidth=256, gridrows=None, gridcols=None, a
         crop: [bool]  If true, the vipy.image.Image objects should call crop(), which will trigger a load
         skip: [bool]  Whether images should be skipped on failure to load(), useful for lazy downloading
         border: [int]  a border of size in pixels surrounding each image in the grid
-        border_bgr [tuple (r,g,b)]:  the border color in a bgr color tuple (b, g, r) in [0,255], uint8
+        border_rgb [tuple (r,g,b)]:  the border color in a rgb color tuple (r,g,b) in [0,255], uint8
         do_flush: [bool]  flush the loaded images as garbage collection for large montages
         verbose: [bool]  display optional verbose messages
 
@@ -361,7 +361,7 @@ def montage(imlist, imgheight=256, imgwidth=256, gridrows=None, gridcols=None, a
         N = rows
         M = cols
     size = (M * m + ((M + 1) * border), N * n + ((N + 1) * border))
-    bc = border_bgr
+    bc = border_rgb
     img_montage = np.array(PIL.Image.new(mode='RGB', size=size, color=bc))
     k = 0
     for j in range(N):
@@ -407,7 +407,7 @@ def montage(imlist, imgheight=256, imgwidth=256, gridrows=None, gridcols=None, a
     return Image(array=img_montage)
 
 
-def videomontage(vidlist, imgheight, imgwidth, gridrows=None, gridcols=None, aspectratio=1, crop=False, skip=True, border=1, border_bgr=(128,128,128), do_flush=False, verbose=True, framerate=30.0, max_duration=None):
+def videomontage(vidlist, imgheight, imgwidth, gridrows=None, gridcols=None, aspectratio=1, crop=False, skip=True, border=1, border_rgb=(128,128,128), do_flush=False, verbose=True, framerate=30.0, max_duration=None):
     """Generate a video montage for the provided videos by creating a image montage for every frame.  
 
     Args:
@@ -440,7 +440,7 @@ def videomontage(vidlist, imgheight, imgwidth, gridrows=None, gridcols=None, asp
     # with Video(outfile).stream(write=True) as s:
     #     s.write(montage(...))
     
-    montagelist = [montage([v[k % len(v)].mindim(max(imgheight, imgwidth)).centercrop(imgheight, imgwidth) for v in vidlist], imgheight, imgwidth, gridrows, gridcols, aspectratio, crop, skip, border, border_bgr, do_flush, verbose=False)
+    montagelist = [montage([v[k % len(v)].mindim(max(imgheight, imgwidth)).centercrop(imgheight, imgwidth) for v in vidlist], imgheight, imgwidth, gridrows, gridcols, aspectratio, crop, skip, border, border_rgb, do_flush, verbose=False)
                    for k in range(0, max_length)]
     return vipy.video.Video(array=np.stack([im.array() for im in montagelist]), colorspace='rgb', framerate=framerate)
 
