@@ -229,13 +229,12 @@ class Image(object):
         self.attributes = {k:v for (k,v) in self.attributes.items() if not k.startswith('__')} if isinstance(self.attributes, dict) else self.attributes
         return self
     
-    def print(self, prefix='', verbose=True, sleep=None):
+    def print(self, prefix='', sleep=None):
         """Print the representation of the image and return self with an optional sleep=n seconds
         
         Useful for debugging in long fluent chains.
         """
-        if verbose:
-            log.info(prefix+self.__repr__())
+        print(prefix+self.__repr__())
         if sleep is not None:
             assert isinstance(sleep, int) and sleep > 0, "Sleep must be a non-negative integer number of seconds"
             time.sleep(sleep)
@@ -937,11 +936,11 @@ class Image(object):
         x = x.squeeze(0) if (x.ndim == 4 and x.shape[0] == 1) else x
 
         if order == 'CHW':
-            x = x.permute(1,2,0).cpu().detach().numpy() if torch.is_tensor(x) else x.transpose(1,2,0)   # CxHxW -> HxWxC, copied            
+            x = x.permute(1,2,0).cpu().detach().float().numpy() if torch.is_tensor(x) else x.transpose(1,2,0)   # CxHxW -> HxWxC, copied            
         elif order == 'WHC':
-            x = x.permute(1,0,2).cpu().detach().numpy() if torch.is_tensor(x) else x.transpose(1,0,2)   # WxHxC -> HxWxC, copied        
+            x = x.permute(1,0,2).cpu().detach().float().numpy() if torch.is_tensor(x) else x.transpose(1,0,2)   # WxHxC -> HxWxC, copied        
         elif order == 'HWC':
-            x = x.cpu().detach().numpy() if torch.is_tensor(x) else x  # HxWxC -> HxWxC, copied        
+            x = x.cpu().detach().float().numpy() if torch.is_tensor(x) else x  # HxWxC -> HxWxC, copied        
         else:
             raise ValueError('unknown axis order "%s"' % order)
 

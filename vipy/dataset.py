@@ -194,10 +194,9 @@ class Dataset():
         """Counts for each element for which lamba returns true.  
         
         Args:
-            f: [lambda] if provided, count the number of elements that return true.  This is the same as len(self.filter(f)) without modifying the dataset.
+            f: [lambda] if provided, count the number of elements that return true.  
 
         Returns:
-            A dictionary of counts per category [if f is None]
             A length of elements that satisfy f(v) = True [if f is not None]
         """
         assert callable(f)

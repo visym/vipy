@@ -1094,22 +1094,19 @@ class Video(object):
         """
         return [k for (k,d) in enumerate(self.metaframe()) if d['pict_type'] == 'I']
     
-    def print(self, prefix='', verbose=True, sleep=None):
+    def print(self, prefix='', sleep=None):
         """Print the representation of the video
 
         This is useful for debugging in long fluent chains.  Sleep is useful for adding in a delay for distributed processing.
 
         Args:
             prefix: prepend a string prefix to the video __repr__ when printing.  Useful for logging.
-            verbose:  Print out the video __repr__.  Set verbose=False to just sleep
             sleep:  Integer number of seconds to sleep[ before returning
-            fluent [bool]:  If true, return self else return None.  This is useful for terminating long fluent chains in lambdas that return None
 
         Returns:  
             The video object after sleeping 
         """
-        if verbose:
-            log.info(prefix+self.__repr__()) 
+        print(prefix+self.__repr__()) 
         if sleep is not None:
             assert isinstance(sleep, int) and sleep > 0, "Sleep must be a non-negative integer number of seconds"
             time.sleep(sleep)
