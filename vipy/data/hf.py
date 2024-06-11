@@ -11,7 +11,7 @@ vipy.util.try_import('datasets'); from datasets import load_dataset
 
 
 def mnist():
-    dataset = load_dataset("mnist", trust_remote_code=True)
+    dataset = load_dataset("ylecun/mnist", trust_remote_code=True)
 
     loader = lambda r: vipy.image.ImageCategory(array=np.array(r['image']), category=str(r['label']))
     return (vipy.dataset.Dataset(dataset['train'], id='mnist:train', loader=loader, strict=False), 
