@@ -60,13 +60,15 @@ class Dataset():
         return Union((self, other), id=self.id())
 
     
-    def id(self, n=None, truncated=False, maxlen=80):
+    def id(self, n=None, truncated=False, maxlen=80, suffix=None):
         """Set or return the dataset id, useful for showing the name/split of the dataset in the representation string"""
-        if n is None:
+        if n is None and suffix is None:
             return (self._id[0:maxlex] + ' ... ') if truncated and self._id and len(self._id)>maxlen else self._id
-        else:
+        elif n is None and suffix is not None:
+            self._id = self._id + suffix
+        elif n is not None:
             self._id = n
-            return self
+        return self
 
     def index(self, index=None):
         """Update the index, useful for filtering of large datasets"""
@@ -250,7 +252,7 @@ class Dataset():
             yield self.clone(shallow=True).index(V).id(('%s:%d' % (self.id(), k)) if self.id() else str(k))
 
     def batch(self, n):
-        """Yield batches of size n as datasets.  Last batch will be ragged.  Batches are not loaded or preprocessed"""
+        """Yield batches of size n as datasets.  Last batch will be ragged.  Batches are not loaded or preprocessed.  Batches have appended id equal to the zer-oindexed batch order"""
         for (k,V) in enumerate(vipy.util.chunkgenbysize(self._idx, n)):
             yield self.clone(shallow=True).index(V).id(('%s:%d' % (self.id(), k)) if self.id() else str(k))
             
@@ -310,7 +312,7 @@ class Dataset():
         """Truncate the dataset to contain the first m elements only"""
         return self.slice(stop=m)
     
-    def pipeline(self, n, m, ragged=True):
+    def pipeline(self, n, m, ragged=True, prepad=True, postpad=True):
         """Yield pipelined minibatches of size n with pipeline length m.
 
         A pipelined minibatch is a tuple (head, tail) such that (head, tail) are minibatches at different indexes in the dataset.  
@@ -321,7 +323,7 @@ class Dataset():
         
         ```python
         D = vipy.dataset.Dataset(...)
-        for (head, tail) in D.pipeline(n, m):
+        for (head, tail) in D.pipeline(n, m, prepad=False, postpad=False):
             assert head == D[0:m]
             assert tail == D[n*(m-1): n*(m-1)+n]
 
@@ -329,18 +331,40 @@ class Dataset():
             n [int]: The size of each minibatch
             m [int]:  The pipeline length in minibatches
             ragged [bool]: If ragged=true, then the last chunk will be ragged with len(chunk)<n, else skipped
-
+            prepad: If true, yield (head, tail) == (None, batch) when filling the pipeline
+            postpad: If true, yield (head, tail) == (batch, None) when flushing the pipeline
+        
         Returns:        
             Iterator over tuples (head,tail) of `vipy.dataset.Dataset` elements of length n where tail is left shifted by n*(m-1) elements. 
         
         .. note::  The distributed iterator is not order preserving over minibatches and yields minibatches as completed, however the tuple (head, tail) is order preserving within the pipeline
-        .. note:: If there exists a vipy.parallel.exeuctor(), then loading and preprocessing will be performed concurrently
+        .. note:: If there exists a vipy.parallel.executor(), then loading and preprocessing will be performed concurrently
         
         """
-        pipeline = list(self.truncate(n*(m-1)).minibatch(n))  # local pipeline fill
-        for b in self.shift(n*(m-1)).minibatch(n, ragged=ragged):  # not order preserving
-            pipeline.append(b)  # order preserving within pipeline            
-            yield( (pipeline.pop(0), b) )  # yield deque-like (minibatch, shifted minibatch) tuples
+        pipeline = [] 
+        for (k,b) in enumerate(self.minibatch(n, ragged=ragged)):  # not order preserving
+            pipeline.append(b)  # order preserving within pipeline                        
+            if k < m-1:
+                if prepad:
+                    yield( (None, b) )  
+            else:
+                yield( (pipeline.pop(0), b) )  # yield deque-like (minibatch, shifted minibatch) tuples
+        for p in pipeline:
+            if postpad:
+                yield( (p, None) )
+
+
+    def partition(self, sizes):
+        """Partition the dataset into chunks of size given by the tuple in partitions, and give the dataset suffix if provided"""
+        assert sum(sizes) == len(self)
+
+        i = 0
+        datasets = []
+        for n in sizes:
+            datasets.append(self.clone(shallow=True).index(self._idx[i:i+n]))
+            i += n
+        return datasets
+
         
         
     def split(self, trainfraction=0.9, valfraction=0.1, testfraction=0, trainsuffix=':train', valsuffix=':val', testsuffix=':test'):
@@ -355,14 +379,17 @@ class Dataset():
             testsuffix: If not None, append this string the to testset ID        
         
         Returns:        
-            (trainset, valset, testset) 
+            (trainset, valset, testset) such that trainset is the first trainfraction of the dataset.  
+
+        .. note:: This does not permute the dataset.  To randomize split, shuffle dataset first
+
         """
         assert trainfraction >=0 and trainfraction <= 1
         assert valfraction >=0 and valfraction <= 1
         assert testfraction >=0 and testfraction <= 1
         assert abs(trainfraction + valfraction + testfraction - 1) < 1E-6
         
-        idx = vipy.util.shufflelist(self._idx)
+        idx = self._idx
         (testidx, validx, trainidx) = vipy.util.dividelist(idx, (testfraction, valfraction, trainfraction))
             
         trainset = self.clone(shallow=True).index(trainidx)

@@ -14,7 +14,7 @@ def mnist():
     dataset = load_dataset("ylecun/mnist", trust_remote_code=True)
 
     loader = lambda r: vipy.image.ImageCategory(array=np.array(r['image']), category=str(r['label']))
-    return (vipy.dataset.Dataset(dataset['train'], id='mnist:train', loader=loader, strict=False), 
+    return (vipy.dataset.Dataset(dataset['train'], id='mnist', loader=loader, strict=False), 
             vipy.dataset.Dataset(dataset['test'], id='mnist:test', loader=loader, strict=False))
         
     
@@ -24,7 +24,7 @@ def cifar10():
     D = load_dataset('cifar10', trust_remote_code=True)
     d_idx_to_category = {0:'airplane', 1:'automobile', 2:'bird', 3:'cat', 4:'deer', 5:'dog', 6:'frog', 7:'horse', 8:'ship', 9:'truck'}
     loader = lambda r, category=d_idx_to_category: vipy.image.ImageCategory(array=np.array(r['img']), category=category[r['label']])
-    return (vipy.dataset.Dataset(D['train'], id='cifar10:train', loader=loader, strict=False), 
+    return (vipy.dataset.Dataset(D['train'], id='cifar10', loader=loader, strict=False), 
             vipy.dataset.Dataset(D['test'], id='cifar10:test', loader=loader, strict=False))
 
 

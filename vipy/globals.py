@@ -241,7 +241,7 @@ def parallel(workers=None, pct=None, threaded=True):
             return '<vipy.globals.parallel: workers=%d, cf=%s>' % (self.num_workers(), GLOBAL['CONCURRENT_FUTURES'] if GLOBAL['CONCURRENT_FUTURES'] else 'stopped')
 
         def start(self):
-            if not GLOBAL['CONCURRENT_FUTURES']:                
+            if not GLOBAL['CONCURRENT_FUTURES'] and self._workers>0:                
                 cf(num_workers=self._workers, threaded=self._threaded)
             GLOBAL['LOGGER'].info('Parallel executor initialized %s' % self)
             return self
