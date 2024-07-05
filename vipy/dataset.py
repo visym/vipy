@@ -222,9 +222,13 @@ class Dataset():
         assert callable(f)        
         return {k:self.clone(shallow=True).index([x[1] for x in v]).id('%s:%s' % (self.id(),str(k))) for (k,v) in itertools.groupby(enumerate(self.sort(f)._idx), lambda x: f(self[x[0]]))}
 
-    def takeby(self, f, n):
-        """Group the dataset according to the callable f, take n from each group and return a dictionary of lists"""
+    def takeby_asdict(self, f, n):
+        """Group the dataset according to the callable f, take n from each group and return a dictionary"""
         return {k:v.takelist(n) for (k,v) in self.groupby(f).items()}
+    
+    def takeby(self, f, n):
+        """Group the dataset according to the callable f, take n from each group and return a dataset"""
+        return self.clone(shallow=True).index([i for (k,v) in self.groupby(f).items() for i in vipy.util.take(v._idx, n)])
     
     def takelist(self, n):
         """Take n elements and return list.  The elements are loaded and not cloned."""
@@ -512,7 +516,11 @@ class Dataset():
         g = (lambda z: f(z[0])) if len(f.__code__.co_varnames)==1 else (lambda z: f(z[0],z[1]))  # unpack lambda tuple args
         self._idx = list({m:i for (i,m) in zip(self._idx, vipy.parallel.map(g, zip(self, self._idx)))}.values())
         return self
-        
+
+    def randomize(self):
+        """shuffle uniformly at random"""
+        return Dataset.uniform_shuffler(self)
+    
     @staticmethod
     def uniform_shuffler(D):
         random.shuffle(D._idx)        
@@ -524,13 +532,15 @@ class Dataset():
         return D
 
     @staticmethod
-    def chunk_shuffler(D, chunksize=64):
-        """Split dataset into len(D)/chunksize non-overlapping chunks, shuffle chunk order and shuffle within chunks.  
+    def chunk_shuffler(D, chunker, chunksize=64):
+        """Split dataset into len(D)/chunksize non-overlapping chunks with some common property returned by chunker, shuffle chunk order and shuffle within chunks.  
 
-           - This preserves microbatch neighbors when chunksize=batchsize
            - If chunksize=1 then this is equivalent to uniform_shuffler
-        """        
-        return D.index([i for I in shufflelist([shufflelist(I) for I in vipy.util.chunkgenbysize(D._idx, chunksize)]) for i in I])
+           - chunker must be a callable of some property that is used to group into chunks
+            
+        """
+        assert callable(chunker)
+        return D.randomize().sort(chunker).index([i for I in shufflelist([shufflelist(I) for I in vipy.util.chunkgenbysize(D._idx, chunksize)]) for i in I])
     
     
 class Paged(Dataset):
