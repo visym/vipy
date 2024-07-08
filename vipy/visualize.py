@@ -335,7 +335,7 @@ def montage(imlist, imgheight=256, imgwidth=256, gridrows=None, gridcols=None, a
         aspectratio: [float].  This is an optional parameter which defines the shape of the montage as (gridcols/gridrows) without specifying the gridrows, gridcols input
         crop: [bool]  If true, the vipy.image.Image objects should call crop(), which will trigger a load
         skip: [bool]  Whether images should be skipped on failure to load(), useful for lazy downloading
-        border: [int]  a border of size in pixels surrounding each image in the grid
+        border: [int], (leftright, topbottom)  a border of size in pixels surrounding each image in the grid, may be a tuple specifying top/bottom border and left/right border
         border_rgb [tuple (r,g,b)]:  the border color in a rgb color tuple (r,g,b) in [0,255], uint8
         do_flush: [bool]  flush the loaded images as garbage collection for large montages
         verbose: [bool]  display optional verbose messages
@@ -349,7 +349,8 @@ def montage(imlist, imgheight=256, imgwidth=256, gridrows=None, gridcols=None, a
     (rows, cols) = (gridrows, gridcols) if isinstance(imlist[0], vipy.image.Image) else (len(imlist), max([len(r) if isinstance(r, list) or isinstance(r, tuple) else 1  for r in imlist]))
     imlist = vipy.util.flatlist(imlist)
     (n,m) = (imgheight, imgwidth)
-
+    (ud, lr) = (border) if isinstance(border, (tuple, list)) and len(border)==2 else (border, border)
+    
     n_imgs = len(imlist)
     M = int(np.ceil(np.sqrt(n_imgs)))
     N = int(np.ceil(n_imgs/M))
@@ -360,7 +361,7 @@ def montage(imlist, imgheight=256, imgwidth=256, gridrows=None, gridcols=None, a
     elif rows is not None and cols is not None:
         N = rows
         M = cols
-    size = (M * m + ((M + 1) * border), N * n + ((N + 1) * border))
+    size = (M * m + ((M + 1) * ud), N * n + ((N + 1) * lr))
     bc = border_rgb
     img_montage = np.array(PIL.Image.new(mode='RGB', size=size, color=bc))
     k = 0
@@ -368,7 +369,7 @@ def montage(imlist, imgheight=256, imgwidth=256, gridrows=None, gridcols=None, a
         for i in range(M):
             if k >= n_imgs:
                 break
-            sliceM, sliceN = i * (m + border) + border, j * (n + border) + border
+            sliceM, sliceN = i * (m + ud) + ud, j * (n + lr) + lr
             try:
                 if crop:
                     if imlist[k].bbox.valid() is False:
