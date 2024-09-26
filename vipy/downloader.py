@@ -125,7 +125,41 @@ def s3(url, output_filename, verbose=True):
     try_import('boto3', 'boto3')    
     assert isS3url(url), "Invalid URL - Must be 's3://BUCKETNAME.s3.amazonaws.com/OBJECTNAME.ext'"
     
-    import boto3                        
+    import boto3
+    from botocore.exceptions import ClientError
+    
+    s3 = boto3.client('s3',
+                      aws_access_key_id=os.environ['VIPY_AWS_ACCESS_KEY_ID'],
+                      aws_secret_access_key=os.environ['VIPY_AWS_SECRET_ACCESS_KEY'],
+                      aws_session_token=os.environ['VIPY_AWS_SESSION_TOKEN'] if 'VIPY_AWS_SESSION_TOKEN' in os.environ else None                      
+    )
+    
+    # url format: s3://BUCKETNAME.s3.amazonaws.com/OBJECTNAME.mp4
+    bucket_name = urllib.parse.urlparse(url).netloc.split('.')[0]
+    object_name = urllib.parse.urlparse(url).path[1:]
+    
+    if verbose:
+        log.info('[vipy.downloader.s3]: Downloading "%s" -> "%s"' % (url, output_filename))
+
+    try:
+        s3.download_file(bucket_name, object_name, output_filename)
+    except ClientError as e:
+        # Glacier storage?
+        if e.response['Error']['Code'] == 'InvalidObjectState':
+            log.info('[vipy.downloader.s3][ERROR]: object archived, restore with vipy.downloader.s3_unarchive("%s")' % url)
+        raise e            
+        
+    return output_filename
+
+
+def s3_unarchive(url):
+    # https://aws.amazon.com/blogs/security/how-to-find-update-access-keys-password-mfa-aws-management-console/    
+    assert 'VIPY_AWS_ACCESS_KEY_ID' in os.environ and 'VIPY_AWS_SECRET_ACCESS_KEY' in os.environ, \
+        "AWS access keys not found - You need to create ENVIRONMENT variables ['VIPY_AWS_ACCESS_KEY_ID', 'VIPY_AWS_SECRET_ACCESS_KEY'] with S3 access credentials"   
+    try_import('boto3', 'boto3')    
+    assert isS3url(url), "Invalid URL - Must be 's3://BUCKETNAME.s3.amazonaws.com/OBJECTNAME.ext'"
+    
+    import boto3
     s3 = boto3.client('s3',
                       aws_access_key_id=os.environ['VIPY_AWS_ACCESS_KEY_ID'],
                       aws_secret_access_key=os.environ['VIPY_AWS_SECRET_ACCESS_KEY'],
@@ -136,11 +170,10 @@ def s3(url, output_filename, verbose=True):
     bucket_name = urllib.parse.urlparse(url).netloc.split('.')[0]
     object_name = urllib.parse.urlparse(url).path[1:]
 
-    if verbose:
-        log.info('[vipy.downloader.s3]: Downloading "%s" -> "%s"' % (url, output_filename))
-    s3.download_file(bucket_name, object_name, output_filename)
-    return output_filename
-
+    s3.restore_object(Bucket=bucket_name,Key=object_name, RestoreRequest={'Days': 30,'GlacierJobParameters':{'Tier': 'Standard'}})
+    log.info('[vipy.downloader.s3]: GLACIER restore request complete - may require up to 12 hours for unarchive to complete')
+    return 
+    
 
 def s3_bucket(bucket_name, object_name, output_filename, verbose=True):
     """Thin wrapper for boto3"""
