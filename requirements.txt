@@ -27,3 +27,4 @@ ujson
 numba
 pdoc3
 datasets
+pyrtools
