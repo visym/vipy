@@ -5,6 +5,9 @@ import copy
 vipy.util.try_import('torch')
 import torch
 
+vipy.util.try_import('pyrtools')
+import pyrtools
+
 
 class GaussianPyramid():
     """vipy.pyramid.GaussianPyramid() class"""
@@ -179,3 +182,51 @@ class Foveation(LaplacianPyramid):
             img = im.clone().mat2gray(min=0).numpy()
             imgmask += c*img
         return vipy.image.Image(array=imgmask)
+
+    
+class SteerablePyramid():
+    def __init__(self, im):
+        assert isinstance(im, vipy.image.Image)
+        assert im.mindim() >= 32        
+        #self._channels = [pyrtools.pyramids.SteerablePyramidSpace(imc.load().array().astype(float), height='auto', order=3) for imc in im.channel()]
+        self._channels = [pyrtools.pyramids.SteerablePyramidFreq(imc.load().array().astype(float), height='auto', order=3) for imc in im.channel()]                
+        
+    @property
+    def num_scales(self):
+        return self._channels[0].num_scales
+
+    @property
+    def num_orientations(self):
+        return self._channels[0].num_orientations
+
+    @property
+    def num_channels(self):
+        return len(self._channels)           
+        
+    def bandpass(self, channel):
+        return [self._channels[channel].pyr_coeffs[(s,o)] for s in range(self.num_scales) for o in range(self.num_orientations)]
+    
+    def lowpass(self, channel):
+        return self._channels[channel].pyr_coeffs['residual_lowpass']
+
+    def highpass(self, channel):
+        return self._channels[channel].pyr_coeffs['residual_highpass']        
+    
+    def synthesis(self):        
+        return vipy.image.Image(array=np.stack([pyr.recon_pyr() for pyr in self._channels], axis=2).astype(np.float32)).mat2gray()
+
+    def multichannel(self):
+        """a multichannel image is an image of the same shape as the input, but with channels from pyramid decomposition.  Coefficients are resized using bilinear interpolation."""
+        (H,W) = self.highpass(0).shape
+        resizer = lambda x: np.array(torch.nn.functional.interpolate(torch.tensor(x).view(1,1,x.shape[0],x.shape[1]), size=(H,W), mode='bilinear')).squeeze()            
+        return vipy.image.Image(array=np.stack([resizer(x) for c in range(self.num_channels) for x in self.bandpass(c)+[self.lowpass(c),self.highpass(c)]], axis=2).astype(np.float32))
+
+    def montage(self):
+        """scales by row, orientations by col, channels merged back into color image, last image is lowpass"""
+        imlist = [vipy.image.Image(array=np.stack([self._channels[c].pyr_coeffs[(s,o)] for c in range(self.num_channels)], axis=2).astype(np.float32)) for s in range(self.num_scales) for o in range(self.num_orientations)]
+        imlist += [vipy.image.Image(array=np.stack([self.lowpass(c) for c in range(self.num_channels)], axis=2).astype(np.float32))]
+        imlist += [vipy.image.Image(array=np.stack([self.highpass(c) for c in range(self.num_channels)], axis=2).astype(np.float32))]        
+        return vipy.visualize.montage([im.mat2gray().rgb() for im in imlist], gridrows=self.num_scales+1, gridcols=self.num_orientations)
+
+    
+    

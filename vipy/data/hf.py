@@ -13,19 +13,21 @@ vipy.util.try_import('datasets'); from datasets import load_dataset
 def mnist():
     dataset = load_dataset("ylecun/mnist", trust_remote_code=True)
 
-    loader = lambda r: vipy.image.ImageCategory(array=np.array(r['image']), category=str(r['label']))
-    return (vipy.dataset.Dataset(dataset['train'], id='mnist', loader=loader, strict=False), 
-            vipy.dataset.Dataset(dataset['test'], id='mnist:test', loader=loader, strict=False))
-        
+    loader = lambda r: vipy.image.ImageCategory(category=str(r['label'])).loader(lambda f: r['image']())
+    trainset = vipy.dataset.Dataset([{'label':y, 'image':lambda k=k, ds=dataset['train']: np.uint8(ds[k]['image'])} for (k,y) in enumerate(dataset['train']['label'])], id='mnist', loader=loader, strict=False)
+    testset = vipy.dataset.Dataset([{'label':y, 'image':lambda k=k, ds=dataset['test']: np.uint8(ds[k]['image'])} for (k,y) in enumerate(dataset['test']['label'])], id='mnist:test', loader=loader, strict=False)
+    return (trainset, testset)
     
 def cifar10():
     """Huggingface wrapper for cifar10, returns (train,test) tuple"""
     
-    D = load_dataset('cifar10', trust_remote_code=True)
+    dataset = load_dataset('cifar10', trust_remote_code=True)
     d_idx_to_category = {0:'airplane', 1:'automobile', 2:'bird', 3:'cat', 4:'deer', 5:'dog', 6:'frog', 7:'horse', 8:'ship', 9:'truck'}
-    loader = lambda r, category=d_idx_to_category: vipy.image.ImageCategory(array=np.array(r['img']), category=category[r['label']])
-    return (vipy.dataset.Dataset(D['train'], id='cifar10', loader=loader, strict=False), 
-            vipy.dataset.Dataset(D['test'], id='cifar10:test', loader=loader, strict=False))
+    
+    loader = lambda r, category=d_idx_to_category: vipy.image.ImageCategory(category=category[r['label']]).loader(lambda f: r['image']())
+    trainset = vipy.dataset.Dataset([{'label':y, 'image':lambda k=k, ds=dataset['train']: np.uint8(ds[k]['img'])} for (k,y) in enumerate(dataset['train']['label'])], id='cifar10', loader=loader, strict=False)
+    testset = vipy.dataset.Dataset([{'label':y, 'image':lambda k=k, ds=dataset['test']: np.uint8(ds[k]['img'])} for (k,y) in enumerate(dataset['test']['label'])], id='cifar10:test', loader=loader, strict=False)
+    return (trainset, testset)
 
 
 def cifar100():

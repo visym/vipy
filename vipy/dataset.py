@@ -408,7 +408,7 @@ class Dataset():
         if testsuffix and testset.id():
             testset.id(testset.id() + testsuffix)
                 
-        return (trainset,valset,testset)
+        return (trainset,valset,testset) if testfraction!=0 else (trainset, valset)
 
     def map(self, f_map, distributed=True, strict=True, ordered=False, oneway=False):        
         """Distributed map.
@@ -537,10 +537,12 @@ class Dataset():
 
            - If chunksize=1 then this is equivalent to uniform_shuffler
            - chunker must be a callable of some property that is used to group into chunks
+           - This function temporarily removes any preprocessor applied to speed up the shuffler
             
         """
         assert callable(chunker)
-        return D.randomize().sort(chunker).index([i for I in shufflelist([shufflelist(I) for I in vipy.util.chunkgenbysize(D._idx, chunksize)]) for i in I])
+        preprocessor = D.preprocessor()
+        return D.preprocessor(remove=True).randomize().sort(chunker).index([i for I in shufflelist([shufflelist(I) for I in vipy.util.chunkgenbysize(D._idx, chunksize)]) for i in I]).preprocessor(preprocessor)
     
     
 class Paged(Dataset):

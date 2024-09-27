@@ -445,6 +445,9 @@ class Image(object):
         self._loader = f
         return self
 
+    def has_loader(self):
+        return self._loader is not None
+    
     def load(self, ignoreErrors=False, verbose=True):
         """Load image to cached private '_array' attribute.
 
@@ -471,8 +474,14 @@ class Image(object):
 
             # Load filename to numpy array
             if self._loader is not None:
-                self._array = self._loader(self._filename).astype(np.float32)  # forcing float32
-                self.colorspace('float')
+                self._array = self._loader(self._filename)  
+                if self.isluminance():
+                    self.colorspace('lum')
+                elif self.iscolor():
+                    self.colorspace('rgb')
+                else:
+                    self._array = np.float32(self._array)
+                    self.colorspace('float') 
             elif isimagefile(self._filename):
                 self._array = np.array(PIL.Image.open(self._filename))  # RGB order!
                 if self.istransparent():
@@ -1893,7 +1902,9 @@ class ImageCategory(Image):
         if self.hasurl():
             strlist.append('url="%s"' % self.url())
         if self.category() is not None and len(str(self.category()))>0:
-            strlist.append('category=%s' % (str(self.category())[0:80] + (' ... ' if len(str(self.category()))>80 else '')))            
+            strlist.append('category=%s' % (str(self.category())[0:80] + (' ... ' if len(str(self.category()))>80 else '')))
+        if not self.isloaded() and self.has_loader() is not None:
+            strlist.append('loader=%s' % str(self._loader))
         return str('<vipy.image.ImageCategory: %s>' % (', '.join(strlist)))
 
     def __eq__(self, other):
