@@ -125,7 +125,9 @@ def s3(url, output_filename, verbose=True):
     try_import('boto3', 'boto3')    
     assert isS3url(url), "Invalid URL - Must be 's3://BUCKETNAME.s3.amazonaws.com/OBJECTNAME.ext'"
     
-    import boto3                        
+    import boto3
+    from botocore.exceptions import ClientError
+    
     s3 = boto3.client('s3',
                       aws_access_key_id=os.environ['VIPY_AWS_ACCESS_KEY_ID'],
                       aws_secret_access_key=os.environ['VIPY_AWS_SECRET_ACCESS_KEY'],
@@ -135,12 +137,13 @@ def s3(url, output_filename, verbose=True):
     # url format: s3://BUCKETNAME.s3.amazonaws.com/OBJECTNAME.mp4
     bucket_name = urllib.parse.urlparse(url).netloc.split('.')[0]
     object_name = urllib.parse.urlparse(url).path[1:]
-
+    
     if verbose:
         log.info('[vipy.downloader.s3]: Downloading "%s" -> "%s"' % (url, output_filename))
+
     s3.download_file(bucket_name, object_name, output_filename)
     return output_filename
-
+    
 
 def s3_bucket(bucket_name, object_name, output_filename, verbose=True):
     """Thin wrapper for boto3"""
