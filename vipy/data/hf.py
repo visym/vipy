@@ -13,7 +13,7 @@ vipy.util.try_import('datasets'); from datasets import load_dataset
 def mnist():
     dataset = load_dataset("ylecun/mnist", trust_remote_code=True)
 
-    loader = lambda r: vipy.image.ImageCategory(category=str(r['label'])).loader(lambda f: r['image']())
+    loader = lambda r: vipy.image.LabeledImage(category=str(r['label'])).loader(lambda f: r['image']())
     trainset = vipy.dataset.Dataset([{'label':y, 'image':lambda k=k, ds=dataset['train']: np.uint8(ds[k]['image'])} for (k,y) in enumerate(dataset['train']['label'])], id='mnist', loader=loader, strict=False)
     testset = vipy.dataset.Dataset([{'label':y, 'image':lambda k=k, ds=dataset['test']: np.uint8(ds[k]['image'])} for (k,y) in enumerate(dataset['test']['label'])], id='mnist:test', loader=loader, strict=False)
     return (trainset, testset)
@@ -24,7 +24,7 @@ def cifar10():
     dataset = load_dataset('cifar10', trust_remote_code=True)
     d_idx_to_category = {0:'airplane', 1:'automobile', 2:'bird', 3:'cat', 4:'deer', 5:'dog', 6:'frog', 7:'horse', 8:'ship', 9:'truck'}
     
-    loader = lambda r, category=d_idx_to_category: vipy.image.ImageCategory(category=category[r['label']]).loader(lambda f: r['image']())
+    loader = lambda r, category=d_idx_to_category: vipy.image.LabeledImage(category=category[r['label']]).loader(lambda f: r['image']())
     trainset = vipy.dataset.Dataset([{'label':y, 'image':lambda k=k, ds=dataset['train']: np.uint8(ds[k]['img'])} for (k,y) in enumerate(dataset['train']['label'])], id='cifar10', loader=loader, strict=False)
     testset = vipy.dataset.Dataset([{'label':y, 'image':lambda k=k, ds=dataset['test']: np.uint8(ds[k]['img'])} for (k,y) in enumerate(dataset['test']['label'])], id='cifar10:test', loader=loader, strict=False)
     return (trainset, testset)

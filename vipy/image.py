@@ -1953,61 +1953,112 @@ class ImageCategory(Image):
             return self
     
 
-class TaggedImage(Image):
-    """vipy.image.TaggedImage class
+class LabeledImage(Image):
+    """vipy.image.LabeledImage class
 
-    This class provides a representation of a vipy.image.Image with one or more tag labels.
+    This class provides a representation of a vipy.image.Image with one or more labels.
 
-    Valid constructors include all provided by vipy.image.Image with tags defined as tuple, list, set or singleton object.
+    Valid constructors include all provided by vipy.image.Image with additional labels that provide ground truth for the content of the image. 
 
-    Tags are keywords, categories, classes, descriptions, tokens, or other descriptive words or short phrases that provide labels for the content of the image. 
+    Suppprted labels are tags/keywords, categories, captions, image identifier, wordnet ID, visual Q&A 
 
     ```python
-    im = vipy.image.TaggedImage(filename='/path/to/dog_image.ext', tags={'dog','canine'})
-    im = vipy.image.TaggedImage(array=dog_img, colorspace='rgb', tags='dog')
+    im = vipy.image.LabeledImage(filename='/path/to/dog.jpg', tags={'dog','canine'})
+    im = vipy.image.LabeledImage(filename='/path/to/dog.jpg', caption=['this is a dog.', 'this image contains a canine']))
+    im = vipy.image.LabeledImage(url='https://here.com/dog.jpg', instanceid=0, category='dog', vqa=[{'question':'Is this a dog?', 'answer':'Yes'}])
     ```
     """
-    def __init__(self, filename=None, url=None, attributes=None, array=None, colorspace=None, tags=None):
+    def __init__(self, filename=None, url=None, attributes=None, array=None, colorspace=None, tags=None, caption=None, instanceid=None, category=None, wordnetid=None, vqa=None):
         super().__init__(filename=filename,
                          url=url,
                          attributes=attributes,
                          array=array,
                          colorspace=colorspace)
         
-        if not self.hasattribute('tags'):
-            self.attributes['tags'] = []
+        if not self.hasattribute('label'):
+            self.attributes['label'] = {}
         if tags is not None:
-            self.attributes['tags'] = sorted(list(set(self.attributes['tags'] + vipy.util.tolist(tags))))
-
+            self.attributes['label']['tags'] = sorted(list(set(vipy.util.tolist(tags))))            
+        if caption is not None:
+            self.attributes['label']['caption'] = vipy.util.tolist(caption)
+        if instanceid is not None:
+            self.attributes['label']['instanceid'] = instanceid
+        if category is not None:
+            self.attributes['label']['category'] = category
+        if vqa is not None:
+            assert isinstance(vqa, list) and all([isinstance(q, dict) and 'question' in q and 'answer' in q for q in vqa])
+            self.attributes['label']['vqa'] = vqa
+            
     def __repr__(self):
-        return super().__repr__().replace('vipy.image','vipy.image.TaggedImage')[:-1] + ', tags=%s>' % self.attributes['tags']
+        fields = ["height=%d, width=%d, color=%s" % (self.height(), self.width(), self.colorspace())] if self.isloaded() else []
+        fields += ['filename="%s"' % (self.filename())] if self.filename() is not None else []
+        fields += ['url="%s"' % self.url()] if self.hasurl() else []
+        fields += ['loader=%s' % vipy.util.truncate_string(str(self._loader), 80)] if not self.isloaded() and self.has_loader() is not None else []
+        fields += ['category=%s' % vipy.util.truncate_string(self.category(), 40)] if self.has_category() else []
+        fields += ['iid=%s' % self.instanceid()] if self.has_instanceid() else []
+        fields += ['tags=%s' % vipy.util.truncate_string(str(self.tags()), 40)] if self.has_tags() else []
+        fields += ['caption=%s' % vipy.util.truncate_string(str(self.caption()), 40)] if self.has_caption() else []
+        fields += ['vqa=%s' % vipy.util.truncate_string(str(self.vqa()), 40)] if self.has_vqa() else []
+        return str('<vipy.image.LabeledImage: %s>' % (', '.join(fields)))
         
     @classmethod
-    def cast(cls, im):
+    def cast(cls, im, tags=None, caption=None, instanceid=None, category=None, wordnetid=None, vqa=None):
         assert isinstance(im, vipy.image.Image)
-        im.attributes['tags'] = list(im.attributes['tags']) if im.hasattribute('tags') else ([im.category()] if isinstance(im, vipy.image.ImageCategory) else [])        
-        im.__class__ = vipy.image.TaggedImage
+
+        if not im.hasattribute('label'):
+            im.attributes['label'] = {}
+        if isinstance(im, vipy.image.ImageCategory):
+            im.attributes['label']['category'] = im.category()            
+        if tags is not None:
+            im.attributes['label']['tags'] = sorted(list(set(vipy.util.tolist(tags))))
+        if caption is not None:
+            im.attributes['label']['caption'] = vipy.util.tolist(caption)
+        if instanceid is not None:
+            im.attributes['label']['instanceid'] = instanceid
+        if category is not None:
+            im.attributes['label']['category'] = category
+        if vqa is not None:
+            assert isinstance(vqa, list) and all([isinstance(q, dict) and 'question' in q and 'answer' in q for q in vqa])
+            im.attributes['label']['vqa'] = vqa        
+        im.__class__ = vipy.image.LabeledImage
+        
         return im
 
     def tags(self):
-        return set(self.attributes['tags'])
-
+        return set(self.attributes['label']['tags'])
     def has_tag(self, t):
-        return t in self.tags()
+        return t in self.attributes['label']['tags']
+    def has_tags(self):
+        return 'tags' in self.attributes['label']
     
-    def add_tag(self, t):
-        T = self.tags() 
-        T.add(t)
-        self.attributes['tags'] = sorted(list(T))
-        return self
+    def has_caption(self):
+        return 'caption' in self.attributes['label']
+    def caption(self):
+        return self.attributes['label']['caption'] if self.has_caption() else None
     
-    def del_tag(self, t):
-        T = self.tags() 
-        T.discard(t)
-        self.attributes['tags'] = sorted(list(T))
-        return self
-    
+    def has_instanceid(self):
+        return 'instanceid' in self.attributes['label']
+    def instanceid(self, iid=None):
+        if iid is not None:
+             self.attributes['label']['instanceid'] = iid
+             return self
+        return self.attributes['label']['instanceid'] if self.has_instanceid() else None
 
+    def has_wordnetid(self):
+        return 'wordnetid' in self.attributes['label']
+    def wordnetid(self):
+        return self.attributes['label']['wordnetid'] if self.has_wordnetid() else None
+
+    def has_category(self):
+        return 'category' in self.attributes['label']     
+    def category(self):
+        return self.attributes['label']['category'] if self.has_category() else None 
+
+    def has_vqa(self):
+        return 'vqa' in self.attributes['label']     
+    def vqa(self):
+        return self.attributes['label']['vqa'] if self.has_vqa() else None   
+    
     
 class Scene(ImageCategory):
     """vipy.image.Scene class

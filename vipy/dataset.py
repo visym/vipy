@@ -358,7 +358,7 @@ class Dataset():
                 yield( (p, None) )
 
 
-    def partition(self, sizes):
+    def chunks(self, sizes):
         """Partition the dataset into chunks of size given by the tuple in partitions, and give the dataset suffix if provided"""
         assert sum(sizes) == len(self)
 
@@ -371,8 +371,8 @@ class Dataset():
 
         
         
-    def split(self, trainfraction=0.9, valfraction=0.1, testfraction=0, trainsuffix=':train', valsuffix=':val', testsuffix=':test'):
-        """Split the dataset into the requested fractions.  
+    def partition(self, trainfraction=0.9, valfraction=0.1, testfraction=0, trainsuffix=':train', valsuffix=':val', testsuffix=':test'):
+        """Partition the dataset into the requested (train,val,test) fractions.  
 
         Args:
             trainfraction [float]: fraction of dataset for training set
@@ -410,6 +410,11 @@ class Dataset():
                 
         return (trainset,valset,testset) if testfraction!=0 else (trainset, valset)
 
+    def split(self, size):
+        """Split the dataset into two datasets, one of length size, the other of length len(self)-size"""
+        assert isinstance(size, int) and size>0 and size<len(self)
+        return self.partition(size/len(self), (len(self)-size)/len(self), 0, '', '', '')
+        
     def map(self, f_map, distributed=True, strict=True, ordered=False, oneway=False):        
         """Distributed map.
 
@@ -465,6 +470,9 @@ class Dataset():
     def localmap(self, f):
         return Dataset(self.list(f), id=self.id())  # triggers load into memory        
 
+    def zip(self, f, iter):
+        return Dataset([f(im,i) for (im,i) in zip(self, iter)], id=self.id())  # triggers load into memory        
+    
     def mapby_minibatch(self, f, n, ragged=True):
         return Dataset([f(b) for b in self.minibatch(n, ragged)], id=self.id())
     
@@ -663,7 +671,10 @@ class Union(Dataset):
         return self
 
     def preprocessor(self, f=None, remove=None):
-        raise ValueError('unsupported')
+        """Apply the same preprocessor to all elements in the dataset.  this assumes that all datasets have homogeneous elements"""
+        for d in self._ds:
+            d.preprocessor(f, remove)
+        return self
     
 
     

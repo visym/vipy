@@ -1900,3 +1900,6 @@ def symlink(src, dst, overwrite=False):
     return dst
 
 
+def truncate_string(s, maxlen):
+    """If string s is greater than maxlen, truncate and append an ellipsis"""
+    return s if len(s) <= maxlen else str(s)[0:maxlen]+'...'

@@ -5,8 +5,6 @@ import copy
 vipy.util.try_import('torch')
 import torch
 
-vipy.util.try_import('pyrtools')
-import pyrtools
 
 
 class GaussianPyramid():
@@ -136,7 +134,7 @@ class LaplacianPyramid():
 
     
 class Foveation(LaplacianPyramid):
-    def __init__(self, im, mode='log-circle', s=None):
+    def __init__(self, im, mode='log-circle', s=None):        
         super().__init__(im)
 
         (H,W) = (im.height(), im.width())
@@ -186,9 +184,11 @@ class Foveation(LaplacianPyramid):
     
 class SteerablePyramid():
     def __init__(self, im):
+        vipy.util.try_import('pyrtools')
+        import pyrtools
+        
         assert isinstance(im, vipy.image.Image)
         assert im.mindim() >= 32        
-        #self._channels = [pyrtools.pyramids.SteerablePyramidSpace(imc.load().array().astype(float), height='auto', order=3) for imc in im.channel()]
         self._channels = [pyrtools.pyramids.SteerablePyramidFreq(imc.load().array().astype(float), height='auto', order=3) for imc in im.channel()]                
         
     @property
@@ -229,4 +229,78 @@ class SteerablePyramid():
         return vipy.visualize.montage([im.mat2gray().rgb() for im in imlist], gridrows=self.num_scales+1, gridcols=self.num_orientations)
 
     
+
+class BatchSteerablePyramid():
+    def __init__(self, height, width, channels, device='cpu'):
+        assert height >= 32 and width >= 32
+        vipy.util.try_import('plenoptic')
+        import plenoptic as po
+        
+        self._pyr = po.simulate.SteerablePyramidFreq(height='auto', image_shape=[height, width], order=3, downsample=False).to(device)
+        self._pyr.eval()
+        self._imheight = height
+        self._imwidth = width
+        self._imchannels = channels
+        self._device = device
+        self._pyr_info = None
+        
+    def device(self, d=None):
+        if d is not None:
+            self._device = d  # check device in self._pyr._buffers['lo0mask'], or just store here
+            self._pyr = self._pyr.cpu() if d == 'cpu' else self._pyr.cuda(d)
+            return self
+        return self._device
+                
+    @property
+    def num_scales(self):
+        return self._pyr.num_scales
+
+    @property
+    def num_orientations(self):
+        return self._pyr.num_orientations
+
+    @property
+    def num_channels(self):
+        return (self._pyr.num_orientations*self._pyr.num_scales + 2)*self._imchannels
+
+    def to(self, dev):
+        return self.device(dev)
+    
+    @property
+    def pyr(self):
+        return self._pyr
+    
+    def multichannel_tensor(self, x, scale=None):
+        """a multichannel image is an image of the same shape as the input, but with channels from pyramid decomposition. 
+        The first channel will be the residual highpass and the last will be the residual lowpass. Each band is then a separate channel in (scale, orientation) order
+        """
+        assert torch.is_tensor(x) and x.ndim == 4
+        assert x.shape[2] == self._imheight and x.shape[3] == self._imwidth, "wrong input shape"
+        assert x.shape[1] == self._imchannels, "wrong input channels"
+
+        with torch.no_grad():
+            (tensor, self._pyr_info) = self._pyr.convert_pyr_to_tensor(self._pyr.forward(x.to(self.device())))
+            if scale is not None:
+                tensor = tensor[:,1+scale*self.num_orientations:1+scale*self.num_orientations+self.num_orientations,:,:]
+            return tensor
+
+    def montage(self, im):
+        """scales by row, orientations by col, channels merged back into color image, last row is highpass and owpass"""
+        assert isinstance(im, vipy.image.Image)
+        
+        T = self.multichannel_tensor(im.rgb().torch('NCHW'))
+        (C,N) = (T.shape[1], T.shape[1]//3)
+        return vipy.visualize.montage([vipy.image.Image.fromtorch(T[0,j::N,:,:]).mat2gray().rgb() for j in list(range(1,N-1))+[0,N-1]],
+                                      gridrows=self.num_scales+1, gridcols=self.num_orientations)
+
+    def synthesis(self, x):
+        """Generate a synthesis of the multichannel tensor x"""
+        assert torch.is_tensor(x) and x.ndim == 4
+        assert self._pyr_info is not None, "synthesis first requires decomposition"
+
+        img = self._pyr.recon_pyr(self._pyr.convert_tensor_to_pyr(x, pyr_keys=self._pyr_info[2], num_channels=self._pyr_info[0], split_complex=self._pyr_info[1]))
+        return [vipy.image.Image.fromtorch(t) for t in img]  # one image per batch element
+
+    def __call__(self, x):
+        return self.multichannel_tensor(x)
     
