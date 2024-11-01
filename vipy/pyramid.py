@@ -236,7 +236,7 @@ class BatchSteerablePyramid():
         vipy.util.try_import('plenoptic')
         import plenoptic as po
         
-        self._pyr = po.simulate.SteerablePyramidFreq(height='auto', image_shape=[height, width], order=3, downsample=False).to(device)
+        self._pyr = po.simulate.SteerablePyramidFreq(height='auto', image_shape=[height, width], order=3, downsample=False, is_complex=True).to(device)
         self._pyr.eval()
         self._imheight = height
         self._imwidth = width
@@ -270,8 +270,8 @@ class BatchSteerablePyramid():
     def pyr(self):
         return self._pyr
     
-    def multichannel_tensor(self, x, scale=None):
-        """a multichannel image is an image of the same shape as the input, but with channels from pyramid decomposition. 
+    def tensor(self, x, scale=None):
+        """a pyramid tensor is an NxCxHxW tensor (same shape as the input), but with channels from complex (even, odd) pyramid coefficients
         The first channel will be the residual highpass and the last will be the residual lowpass. Each band is then a separate channel in (scale, orientation) order
         """
         assert torch.is_tensor(x) and x.ndim == 4
@@ -284,15 +284,21 @@ class BatchSteerablePyramid():
                 tensor = tensor[:,1+scale*self.num_orientations:1+scale*self.num_orientations+self.num_orientations,:,:]
             return tensor
 
+    def magnitude(self, x, scale=None):
+        return self.tensor(x, scale=scale).abs()
+
+    def phase(self, x, scale=None):
+        return self.tensor(x, scale=scale).angle()
+    
     def montage(self, im):
         """scales by row, orientations by col, channels merged back into color image, last row is highpass and owpass"""
         assert isinstance(im, vipy.image.Image)
         
-        T = self.multichannel_tensor(im.rgb().torch('NCHW'))
-        (C,N) = (T.shape[1], T.shape[1]//3)
+        T = self.magnitude(im.torch('NCHW'))
+        (C,N) = (T.shape[1], T.shape[1]//self._imchannels)
         return vipy.visualize.montage([vipy.image.Image.fromtorch(T[0,j::N,:,:]).mat2gray().rgb() for j in list(range(1,N-1))+[0,N-1]],
                                       gridrows=self.num_scales+1, gridcols=self.num_orientations)
-
+    
     def synthesis(self, x):
         """Generate a synthesis of the multichannel tensor x"""
         assert torch.is_tensor(x) and x.ndim == 4
@@ -301,6 +307,4 @@ class BatchSteerablePyramid():
         img = self._pyr.recon_pyr(self._pyr.convert_tensor_to_pyr(x, pyr_keys=self._pyr_info[2], num_channels=self._pyr_info[0], split_complex=self._pyr_info[1]))
         return [vipy.image.Image.fromtorch(t) for t in img]  # one image per batch element
 
-    def __call__(self, x):
-        return self.multichannel_tensor(x)
     
