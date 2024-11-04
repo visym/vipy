@@ -1,6 +1,7 @@
 import vipy
 import numpy as np
 import copy
+import math
 
 vipy.util.try_import('torch')
 import torch
@@ -273,6 +274,8 @@ class BatchSteerablePyramid():
     def tensor(self, x, scale=None):
         """a pyramid tensor is an NxCxHxW tensor (same shape as the input), but with channels from complex (even, odd) pyramid coefficients
         The first channel will be the residual highpass and the last will be the residual lowpass. Each band is then a separate channel in (scale, orientation) order
+
+        input is NxCxHxW tensor
         """
         assert torch.is_tensor(x) and x.ndim == 4
         assert x.shape[2] == self._imheight and x.shape[3] == self._imwidth, "wrong input shape"
@@ -285,19 +288,27 @@ class BatchSteerablePyramid():
             return tensor
 
     def magnitude(self, x, scale=None):
+        """return magnitude component of complex steerable pyramid for NxCxHxW input tensor"""
         return self.tensor(x, scale=scale).abs()
 
     def phase(self, x, scale=None):
+        """return phase component of complex steerable pyramid for NxCxHxW input tensor"""        
         return self.tensor(x, scale=scale).angle()
     
-    def montage(self, im):
+    def montage(self, im, phase=False, zerocross=False):
         """scales by row, orientations by col, channels merged back into color image, last row is highpass and owpass"""
         assert isinstance(im, vipy.image.Image)
-        
-        T = self.magnitude(im.torch('NCHW'))
+
+        if phase:
+            T = self.phase(im.torch('NCHW'))
+        elif zerocross:
+            T = torch.abs(self.phase(im.torch('NCHW')))<0.1
+        else:
+            T = self.magnitude(im.torch('NCHW'))
+            
         (C,N) = (T.shape[1], T.shape[1]//self._imchannels)
         return vipy.visualize.montage([vipy.image.Image.fromtorch(T[0,j::N,:,:]).mat2gray().rgb() for j in list(range(1,N-1))+[0,N-1]],
-                                      gridrows=self.num_scales+1, gridcols=self.num_orientations)
+                                       gridrows=self.num_scales+1, gridcols=self.num_orientations)                
     
     def synthesis(self, x):
         """Generate a synthesis of the multichannel tensor x"""
