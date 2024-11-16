@@ -233,10 +233,10 @@ class SteerablePyramid():
 
 class BatchSteerablePyramid():
     def __init__(self, height, width, channels, device='cpu'):
-        assert height >= 32 and width >= 32
         vipy.util.try_import('plenoptic')
         import plenoptic as po
-        
+
+        assert height >= 32 and width >= 32        
         self._pyr = po.simulate.SteerablePyramidFreq(height='auto', image_shape=[height, width], order=3, downsample=False, is_complex=True).to(device)
         self._pyr.eval()
         self._imheight = height
@@ -296,7 +296,7 @@ class BatchSteerablePyramid():
         return self.tensor(x, scale=scale).angle()
     
     def montage(self, im, phase=False, zerocross=False):
-        """scales by row, orientations by col, channels merged back into color image, last row is highpass and owpass"""
+        """return a montage visualization of the pyramid, scales by row, orientations by col, channels merged back into color image, last row is highpass and lowpass"""
         assert isinstance(im, vipy.image.Image)
 
         if phase:
