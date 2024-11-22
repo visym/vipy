@@ -244,6 +244,7 @@ class BatchSteerablePyramid():
         self._imchannels = channels
         self._device = device
         self._pyr_info = None
+        self._tensor = None
         
     def device(self, d=None):
         if d is not None:
@@ -267,55 +268,72 @@ class BatchSteerablePyramid():
     def to(self, dev):
         return self.device(dev)
     
-    @property
-    def pyr(self):
-        return self._pyr
+
+    def forward(self, x):
+        assert (torch.is_tensor(x) and x.ndim == 4) or isinstance(x, vipy.image.Image) or (isinstance(x, (list, tuple)) and all([isinstance(im, vipy.image.Image) for im in x]))
+
+        x = torch.stack([im.torch('CHW') for im in vipy.util.tolist(x)]) if not torch.is_tensor(x) else x
+        assert x.shape[2] == self._imheight and x.shape[3] == self._imwidth, "wrong input shape"
+        assert x.shape[1] == self._imchannels, "wrong input channels"
+
+        with torch.no_grad():        
+            (self._tensor, self._pyr_info) =  self._pyr.convert_pyr_to_tensor(self._pyr.forward(x.to(self.device())))
+        return self
+
+    def forwarded(self):
+        return self._tensor is not None
     
-    def tensor(self, x, scale=None):
+    def tensor(self):
         """a pyramid tensor is an NxCxHxW tensor (same shape as the input), but with channels from complex (even, odd) pyramid coefficients
         The first channel will be the residual highpass and the last will be the residual lowpass. Each band is then a separate channel in (scale, orientation) order
 
         input is NxCxHxW tensor
         """
-        assert torch.is_tensor(x) and x.ndim == 4
-        assert x.shape[2] == self._imheight and x.shape[3] == self._imwidth, "wrong input shape"
-        assert x.shape[1] == self._imchannels, "wrong input channels"
+        assert self.forwarded() 
+        return self._tensor
 
-        with torch.no_grad():
-            (tensor, self._pyr_info) = self._pyr.convert_pyr_to_tensor(self._pyr.forward(x.to(self.device())))
-            if scale is not None:
-                tensor = tensor[:,1+scale*self.num_orientations:1+scale*self.num_orientations+self.num_orientations,:,:]
-            return tensor
+    def band(self, scale, orientation):
+        assert scale <= self.num_scales and orientation <= self.num_orientations
+        return self.tensor()[:, 1+scale*self.num_orientations + orientation,:,:]
 
-    def magnitude(self, x, scale=None):
-        """return magnitude component of complex steerable pyramid for NxCxHxW input tensor"""
-        return self.tensor(x, scale=scale).abs()
+    def lowpass(self):
+        return self.tensor()[:,-1,:,:]
 
-    def phase(self, x, scale=None):
-        """return phase component of complex steerable pyramid for NxCxHxW input tensor"""        
-        return self.tensor(x, scale=scale).angle()
+    def highpass(self):
+        return self.tensor()[:,0,:,:]
     
-    def montage(self, im, phase=False, zerocross=False):
+    def magnitude(self):
+        """return magnitude component of complex steerable pyramid"""
+        return self.tensor().abs()
+
+    def phase(self):
+        """return phase component of complex steerable pyramid"""
+        return self.tensor().angle()        
+    
+    def montage(self, x):
         """return a montage visualization of the pyramid, scales by row, orientations by col, channels merged back into color image, last row is highpass and lowpass"""
-        assert isinstance(im, vipy.image.Image)
-
-        if phase:
-            T = self.phase(im.torch('NCHW'))
-        elif zerocross:
-            T = torch.abs(self.phase(im.torch('NCHW')))<0.1
-        else:
-            T = self.magnitude(im.torch('NCHW'))
-            
-        (C,N) = (T.shape[1], T.shape[1]//self._imchannels)
-        return vipy.visualize.montage([vipy.image.Image.fromtorch(T[0,j::N,:,:]).mat2gray().rgb() for j in list(range(1,N-1))+[0,N-1]],
+        assert self.forwarded()
+        assert torch.is_tensor(x) and x.ndim == 4 and x.shape == self._tensor.shape
+        
+        (C,N) = (x.shape[1], x.shape[1]//self._imchannels)
+        return vipy.visualize.montage([vipy.image.Image.fromtorch(x[0,j::N,:,:]).mat2gray().rgb() for j in list(range(1,N-1))+[0,N-1]],
                                        gridrows=self.num_scales+1, gridcols=self.num_orientations)                
-    
+
+        
     def synthesis(self, x):
         """Generate a synthesis of the multichannel tensor x"""
-        assert torch.is_tensor(x) and x.ndim == 4
-        assert self._pyr_info is not None, "synthesis first requires decomposition"
+        assert self.forwarded()
+        assert torch.is_tensor(x) and x.ndim == 4 and x.shape == self._tensor.shape
 
         img = self._pyr.recon_pyr(self._pyr.convert_tensor_to_pyr(x, pyr_keys=self._pyr_info[2], num_channels=self._pyr_info[0], split_complex=self._pyr_info[1]))
         return [vipy.image.Image.fromtorch(t) for t in img]  # one image per batch element
 
+    
+    def phase_congruency(self, eps=1E-6):
+        (M,P) = (self.magnitude()[:,1:-1,:,:], self.phase()[:,1:-1,:,:])
+        return torch.sum( M * torch.cos(P - ((M*P).sum(dim=1, keepdims=True) / (eps + M.sum(dim=1, keepdims=True)))), dim=1, keepdims=True) / (eps + torch.sum(M, dim=1, keepdims=True))
+
+    def zero_crossing(self, eps=1E-6):
+        (M,P) = (self.magnitude()[:,1:-1,:,:], self.phase()[:,1:-1,:,:])
+        return torch.sum( M*torch.nn.functional.relu(torch.cos(P)), dim=1, keepdims=True)
     
