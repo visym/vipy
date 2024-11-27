@@ -1,14 +1,24 @@
 import os
 import vipy
 import vipy.downloader
+from vipy.util import tocache
 
 
 COCO_2014_IMAGE_URL = 'http://images.cocodataset.org/zips/train2014.zip'
 COCO_2014_ANNO_URL = 'http://images.cocodataset.org/annotations/annotations_trainval2014.zip'
 
+
 # https://github.com/amikelive/coco-labels/blob/master/coco-labels-2014_2017.txt
 labels_2014_2017 = ['person', 'bicycle', 'car', 'motorcycle', 'airplane', 'bus', 'train', 'truck', 'boat', 'traffic light', 'fire hydrant', 'stop sign', 'parking meter', 'bench', 'bird', 'cat', 'dog', 'horse', 'sheep', 'cow', 'elephant', 'bear', 'zebra', 'giraffe', 'backpack', 'umbrella', 'handbag', 'tie', 'suitcase', 'frisbee', 'skis', 'snowboard', 'sports ball', 'kite', 'baseball bat', 'baseball glove', 'skateboard', 'surfboard', 'tennis racket', 'bottle', 'wine glass', 'cup', 'fork', 'knife', 'spoon', 'bowl', 'banana', 'apple', 'sandwich', 'orange', 'broccoli', 'carrot', 'hot dog', 'pizza', 'donut', 'cake', 'chair', 'couch', 'potted plant', 'bed', 'dining table', 'toilet', 'tv', 'laptop', 'mouse', 'remote', 'keyboard', 'cell phone', 'microwave', 'oven', 'toaster', 'sink', 'refrigerator', 'book', 'clock', 'vase', 'scissors', 'teddy bear', 'hair drier', 'toothbrush']
 
+# Common issues:
+# - comprehensive labeling of all books, oranges, broccoli, people, vases, boats in image
+# - multiple books are often merged into "shelves" of books (/COCO_train2014_000000070000.jpg)
+# - crowds are missing people (COCO_train2014_000000043971.jpg), or crowd is grouped as single person (COCO_train2014_000000510239.jpg)
+# - parking lots missing vehicles (COCO_train2014_000000083770.jpg)
+# - backpack/handbag with only strap visible
+# - bed annotation with/without headboard
+# - chairs and tables may be heavily occluded
 
 class Detection_TrainVal_2014(vipy.dataset.Dataset):
     """Project: https://cocodataset.org"""
