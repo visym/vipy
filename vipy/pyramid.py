@@ -232,12 +232,12 @@ class SteerablePyramid():
     
 
 class BatchSteerablePyramid():
-    def __init__(self, height, width, channels, device='cpu'):
+    def __init__(self, height, width, channels, device='cpu', orientations=4):
         vipy.util.try_import('plenoptic')
         import plenoptic as po
 
         assert height >= 32 and width >= 32        
-        self._pyr = po.simulate.SteerablePyramidFreq(height='auto', image_shape=[height, width], order=3, downsample=False, is_complex=True).to(device)
+        self._pyr = po.simulate.SteerablePyramidFreq(height='auto', image_shape=[height, width], twidth=1, order=orientations-1, downsample=False, is_complex=True).to(device)
         self._pyr.eval()
         self._imheight = height
         self._imwidth = width
@@ -249,7 +249,7 @@ class BatchSteerablePyramid():
     def device(self, d=None):
         if d is not None:
             self._device = d  # check device in self._pyr._buffers['lo0mask'], or just store here
-            self._pyr = self._pyr.cpu() if d == 'cpu' else self._pyr.cuda(d)
+            self._pyr = self._pyr.cpu() if d == 'cpu' else self._pyr.to(d)
             return self
         return self._device
                 
