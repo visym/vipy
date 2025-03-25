@@ -32,23 +32,18 @@ class Dataset():
         - dataset [list, tuple, set, obj]: a python built-in type that supports indexing or a generic object that supports indexing and has a length
         - loader [lambda]: a callable loader that will construct the object from a raw data representation.  This is useful for custom deerialization or on demand transformations
         - strict [bool]: If true, throw an error if the type of objlist is not a python built-in type.  This is useful for loading dataset objects that can be indexed.
-        - preprocessor [lambda]:  a callable preprocessing function that will preprocess the object. This is useful for implementing on-demand data loaders
         - index [list]: If provided, use this as the initial index into the dataset.  This is useful for preprocessing large datasets to filter out noise.
-        - repeat [int]: Repeat the dataset.  If repeat=0, then there are no repeats. This is useful for generating random preprocessed samples of the same source data.  Repeated datasets are shared, with appended indexes
     """
 
-    def __init__(self, dataset, id=None, loader=None, strict=True, preprocessor=None, shuffler=None, index=None, repeat=0):
+    def __init__(self, dataset, id=None, loader=None, strict=True, shuffler=None, index=None):
         assert loader is None or callable(loader)
-        assert preprocessor is None or callable(preprocessor)
         assert shuffler is None or callable(shuffler)        
         assert index is None or isinstance(index, (list, tuple))
-        assert repeat >= 0
         
         self._id = id
         self._ds = dataset if not isinstance(dataset, (list, set, tuple)) else tuple(dataset)  # force immutable (if possible)
-        self._idx = list(range(len(self._ds)) if not index else index)*(repeat+1)
+        self._idx = list(range(len(self._ds)) if not index else index)
         self._loader = loader  # not serializable if lambda is provided
-        self._preprocessor = preprocessor
         self._shuffler = shuffler
         self._type = None
         
@@ -77,30 +72,11 @@ class Dataset():
             return self
         return self._idx
     
-    def raw(self):
-        """Remove the loader and preprocessor, useful for cloned direct access of raw data in large datasets without loading every one"""
-        self._loader = None
-        self._preprocessor = None
-        self._type = None
-        return self
-
     def type(self):
         if self._type is None and len(self)>0:
             self._type = str(type(self[0]))  # peek at first element, cached
         return self._type
         
-    def preprocessor(self, f=None, remove=False):
-        if f is not None:
-            assert callable(f)
-            self._preprocessor = f
-            self._type = None
-            return self
-        if remove:
-            self._preprocessor = None
-            self._type = None            
-            return self
-        return self._preprocessor
-
     def shuffler(self, f=None, remove=False):
         if f is not None:
             assert callable(f)
@@ -127,12 +103,10 @@ class Dataset():
             assert abs(k) < len(self._idx), "invalid index"
             x = self._ds[self._idx[int(k)]]
             x = self._loader(x) if self._loader is not None else x
-            x = self._preprocessor(x) if self._preprocessor is not None else x
             return x
         elif isinstance(k, slice):
             X = [self._ds[k] for k in self._idx[k.start:k.stop:k.step]]
             X = [self._loader(x) for x in X] if self._loader is not None else X
-            X = [self._preprocessor(x) for x in X] if self._preprocessor is not None else X
             return X
         else:
             raise ValueError('invalid index type "%s"' % type(k))            
@@ -545,12 +519,10 @@ class Dataset():
 
            - If chunksize=1 then this is equivalent to uniform_shuffler
            - chunker must be a callable of some property that is used to group into chunks
-           - This function temporarily removes any preprocessor applied to speed up the shuffler
             
         """
         assert callable(chunker)
-        preprocessor = D.preprocessor()
-        return D.preprocessor(remove=True).randomize().sort(chunker).index([i for I in shufflelist([shufflelist(I) for I in vipy.util.chunkgenbysize(D._idx, chunksize)]) for i in I]).preprocessor(preprocessor)
+        return D.randomize().sort(chunker).index([i for I in shufflelist([shufflelist(I) for I in vipy.util.chunkgenbysize(D._idx, chunksize)]) for i in I])
     
     
 class Paged(Dataset):
@@ -567,12 +539,11 @@ class Paged(Dataset):
     .. note :: Shuffling this dataset is biased.  Shuffling will be performed to mix the indexes, but not uniformly at random.  The goal is to preserve data locality to minimize cache misses.
     """
     
-    def __init__(self, pagelist, loader, id=None, strict=True, preprocessor=None, index=None, cachesize=32, shuffler=None):        
+    def __init__(self, pagelist, loader, id=None, strict=True, index=None, cachesize=32, shuffler=None):        
         super().__init__(dataset=pagelist,
                          id=id,
                          loader=loader,
                          strict=False,
-                         preprocessor=preprocessor,
                          index=index if index else list(range(sum([p[0] for p in pagelist]))),
                          shuffler=shuffler)
 
@@ -597,7 +568,7 @@ class Paged(Dataset):
                 if len(self._pagecache) > self._cachesize:
                     self._pagecache.pop(list(self._pagecache.keys())[0])  # remove oldest
             x = self._pagecache[page][int(k) % self._pagesize]
-            return self._preprocessor(x) if self._preprocessor is not None else x
+            return x
         elif isinstance(k, slice):
             return [self[i] for i in range(len(self))[k.start if k.start else 0:k.stop if k.stop else len(self):k.step if k.step else 1]]  # expensive
         else:
@@ -606,7 +577,6 @@ class Paged(Dataset):
     def flush(self):
         self._pagecache = {}
         return self
-
         
     
 class Union(Dataset):
@@ -632,7 +602,6 @@ class Union(Dataset):
             self._idx = [(i,j) for j in range(max([len(d) for d in datasets])) for (i,d) in enumerate(datasets) if j<len(d)]  # zipped (dataset index, element index) tuples 
         self._id = kwargs['id'] if 'id' in kwargs else None
 
-        self._preprocessor = None
         self._loader = None
         self._shuffler = kwargs['shuffler'] if 'shuffler' in kwargs else None
         
@@ -666,15 +635,7 @@ class Union(Dataset):
         """Return the dataset union elements, useful for generating unions of unions"""
         return list(self._ds)
     
-    def raw(self):
-        self._ds = [d.raw() for d in self._ds]  # in-place, clone() first 
-        return self
 
-    def preprocessor(self, f=None, remove=None):
-        """Apply the same preprocessor to all elements in the dataset.  this assumes that all datasets have homogeneous elements"""
-        for d in self._ds:
-            d.preprocessor(f, remove)
-        return self
     
 
     
