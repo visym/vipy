@@ -1901,10 +1901,10 @@ class ImageCategory(Image):
             strlist.append('filename="%s"' % (self.filename()))
         if self.hasurl():
             strlist.append('url="%s"' % self.url())
+        if not self.isloaded() and self.has_loader() is not None:
+            strlist.append('loaded=False')            
         if self.category() is not None and len(str(self.category()))>0:
             strlist.append('category=%s' % (str(self.category())[0:80] + (' ... ' if len(str(self.category()))>80 else '')))
-        if not self.isloaded() and self.has_loader() is not None:
-            strlist.append('loader=%s' % str(self._loader))
         return str('<vipy.image.ImageCategory: %s>' % (', '.join(strlist)))
 
     def __eq__(self, other):
@@ -1993,7 +1993,7 @@ class LabeledImage(Image):
         fields = ["height=%d, width=%d, color=%s" % (self.height(), self.width(), self.colorspace())] if self.isloaded() else []
         fields += ['filename="%s"' % (self.filename())] if self.filename() is not None else []
         fields += ['url="%s"' % self.url()] if self.hasurl() else []
-        fields += ['loader=%s' % vipy.util.truncate_string(str(self._loader), 80)] if not self.isloaded() and self.has_loader() is not None else []
+        fields += ['loaded=False'] if not self.isloaded() and self.has_loader() is not None else []
         fields += ['category=%s' % vipy.util.truncate_string(self.category(), 40)] if self.has_category() else []
         fields += ['iid=%s' % self.instanceid()] if self.has_instanceid() else []
         fields += ['tags=%s' % vipy.util.truncate_string(str(self.tags()), 40)] if self.has_tags() else []

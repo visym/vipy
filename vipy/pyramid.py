@@ -266,8 +266,7 @@ class BatchSteerablePyramid():
         return (self._pyr.num_orientations*self._pyr.num_scales + 2)*self._imchannels
 
     def to(self, dev):
-        return self.device(dev)
-    
+        return self.device(dev)    
 
     def forward(self, x):
         assert (torch.is_tensor(x) and x.ndim == 4) or isinstance(x, vipy.image.Image) or (isinstance(x, (list, tuple)) and all([isinstance(im, vipy.image.Image) for im in x]))
@@ -296,12 +295,6 @@ class BatchSteerablePyramid():
         assert scale <= self.num_scales and orientation <= self.num_orientations
         return self.tensor()[:, 1+scale*self.num_orientations + orientation,:,:]
 
-    def lowpass(self):
-        return self.tensor()[:,-1,:,:]
-
-    def highpass(self):
-        return self.tensor()[:,0,:,:]
-    
     def magnitude(self):
         """return magnitude component of complex steerable pyramid"""
         return self.tensor().abs()
