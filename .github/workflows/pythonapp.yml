@@ -9,10 +9,10 @@ jobs:
 
     steps:
     - uses: actions/checkout@v2
-    - name: Set up Python 3.13.2
+    - name: Set up Python 3.13.3
       uses: actions/setup-python@v1
       with:
-        python-version: 3.13.2
+        python-version: 3.13.3
     - name: Setup FFmpeg
       uses: FedericoCarboni/setup-ffmpeg@v1
     - name: Install dependencies

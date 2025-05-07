@@ -567,13 +567,15 @@ class Video(object):
         if array is not None:
             self.array(array)
             self.colorspace(colorspace)
-        elif frames is not None and (isinstance(frames, list) or isinstance(frames, tuple)) and all([isinstance(im, vipy.image.Image) for im in frames]):
+        elif frames is not None and isinstance(frames, (list, tuple)) and all([isinstance(im, vipy.image.Image) for im in frames]):
             self.fromframes(frames)
-        elif frames is not None and (isinstance(frames, list) or isinstance(frames, tuple)) and all([isinstance(im, str) and os.path.exists(im) for im in frames]):
+        elif frames is not None and isinstance(frames, (list, tuple)) and all([isinstance(im, str) and os.path.exists(im) for im in frames]):
             self.fromframes([vipy.image.Image(filename=f) for f in frames])
-        elif frames is not None and (isinstance(frames, str) and os.path.isdir(frames)):
+        elif frames is not None and isinstance(frames, str) and os.path.isdir(frames):
             self.fromdirectory(frames)
-
+        elif frames is not None:
+            raise ValueError('invalid image frame list "%s"' % frames)
+            
     @classmethod
     def cast(cls, v):
         """Cast a conformal video object to a `vipy.video.Video` object.

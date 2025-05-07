@@ -2421,9 +2421,6 @@ class Scene(ImageCategory):
         img[:] = np.multiply(img, 1.0-mask)  # in-place update
         return self
     
-    def setzero(self):
-        return self.fgmask()
-    
     def pixelmask(self, pixelsize=8):
         """Replace pixels within all foreground objects with a privacy preserving pixelated foreground with larger pixels (e.g. like privacy glass)"""
         assert pixelsize > 1, "Pixelsize is a scale factor such that pixels within the foreground are pixelsize times larger than the background"
