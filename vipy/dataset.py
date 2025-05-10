@@ -217,7 +217,7 @@ class Dataset():
     
     def take_fraction(self, p, inplace=False):
         """Randomly take a percentage of the dataset, returning a clone or in-place"""
-        assert p>=0 and p<=1
+        assert p>=0 and p<=1, "invalid fraction '%s'" % p
         return self.take(n=int(len(self)*p), inplace=inplace)
     
     def load(self):
@@ -362,10 +362,10 @@ class Dataset():
         .. note:: This does not permute the dataset.  To randomize split, shuffle dataset first
 
         """
-        assert trainfraction >=0 and trainfraction <= 1
-        assert valfraction >=0 and valfraction <= 1
-        assert testfraction >=0 and testfraction <= 1
-        assert abs(trainfraction + valfraction + testfraction - 1) < 1E-6
+        assert trainfraction >=0 and trainfraction <= 1, "invalid training set fraction '%f'" % trainfraction
+        assert valfraction >=0 and valfraction <= 1, "invalid validation set fraction '%f'" % valfraction
+        assert testfraction >=0 and testfraction <= 1, "invalid test set fraction '%f'" % testfraction
+        assert abs(trainfraction + valfraction + testfraction - 1) < 1E-6, "fractions must sum to one"
         
         idx = self._idx
         (testidx, validx, trainidx) = vipy.util.dividelist(idx, (testfraction, valfraction, trainfraction))
@@ -636,6 +636,20 @@ class Union(Dataset):
         return list(self._ds)
     
 
+
+def registry(name):
+    (trainset, valset, testset) = (None, None, None)
     
+    if name == 'mnist':
+        import vipy.data.hf
+        (trainset, testset) = vipy.data.hf.mnist()
+        
+    elif name == 'cifar10':
+        import vipy.data.hf
+        (trainset, testset) = vipy.data.hf.cifar10()
+        
+    else:
+        raise ValueError('unknown dataset "%s"' % name)
 
     
+    return (trainset, valset, testset)
