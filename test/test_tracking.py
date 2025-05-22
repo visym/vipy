@@ -39,6 +39,6 @@ def _test_tracking():
         
         
 if __name__ == '__main__':
-    _test_tracking()
+    test_interpolation()
 
     
