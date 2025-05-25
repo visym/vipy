@@ -400,7 +400,7 @@ class Dataset():
 
     def split(self, size):
         """Split the dataset into two datasets, one of length size, the other of length len(self)-size"""
-        assert isinstance(size, int) and size>0 and size<len(self)
+        assert isinstance(size, int) and size>=0 and size<len(self)
         return self.partition(size/len(self), (len(self)-size)/len(self), 0, '', '', '')
         
     def map(self, f_map, distributed=True, strict=True, ordered=False, oneway=False):        
