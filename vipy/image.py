@@ -2438,7 +2438,6 @@ class Scene(ImageCategory):
     
     def blurmask(self, radius=7):
         """Replace pixels within all foreground objects with a privacy preserving blurred foreground"""
-        assert radius > 1, "Pixelsize is a scale factor such that pixels within the foreground are pixelsize times larger than the background"
         (img, mask) = (self.numpy(), self.rectangular_mask())  # force writeable
         img[mask > 0] = self.clone().blur(radius).numpy()[mask > 0]  # in-place update
         return self
