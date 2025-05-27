@@ -177,7 +177,10 @@ class Dataset():
         """
         assert callable(f)
         return len([k for (j,k) in enumerate(self._idx) if f(self[j])])
-        
+
+    def countby(self, f):
+        return self.frequency(f)
+    
     def filter(self, f):
         """In place filter with lambda function f, keeping those elements obj in-place where f(obj) evaluates true"""
         assert callable(f)
@@ -210,8 +213,15 @@ class Dataset():
 
     def takeone(self):
         """Randomly take one element from the dataset and return a singleton"""
-        return self.takelist(n=1)[0] if len(self)>0 else None
+        return self[random.randint(0, len(self)-1)]
 
+    def takeoneby(self, f):
+        """Randomly take one element from the dataset and return a singleton if f(element) == True"""
+        for k in shufflelist(self._idx):
+            print(k)
+            if f(self[k]):
+                return self[k]
+    
     def sample(self):
         return self.takeone()
     
@@ -219,6 +229,10 @@ class Dataset():
         """Randomly take a percentage of the dataset, returning a clone or in-place"""
         assert p>=0 and p<=1, "invalid fraction '%s'" % p
         return self.take(n=int(len(self)*p), inplace=inplace)
+
+    def inverse_frequency(self, f):
+        attributes = self.set(f)
+        return {a:(1/len(attributes))*(len(self)/self.count(lambda im: f(im) == a)) for a in attributes}  # (normalized) inverse frequency weight
     
     def load(self):
         """Load the entire dataset into memory.  This is useful for creating in-memory datasets from lazy load datasets"""
@@ -386,7 +400,7 @@ class Dataset():
 
     def split(self, size):
         """Split the dataset into two datasets, one of length size, the other of length len(self)-size"""
-        assert isinstance(size, int) and size>0 and size<len(self)
+        assert isinstance(size, int) and size>=0 and size<len(self)
         return self.partition(size/len(self), (len(self)-size)/len(self), 0, '', '', '')
         
     def map(self, f_map, distributed=True, strict=True, ordered=False, oneway=False):        
@@ -547,7 +561,7 @@ class Paged(Dataset):
                          index=index if index else list(range(sum([p[0] for p in pagelist]))),
                          shuffler=shuffler)
 
-        assert callable(loader), "loader required"
+        assert callable(loader), "page loader required"
         assert not strict or len(set([x[0] for x in self._ds])) == 1  # pagesizes all the same 
 
         self._cachesize = cachesize
@@ -622,7 +636,7 @@ class Union(Dataset):
     def __repr__(self):
         fields = ['id=%s' % self.id(truncated=True, maxlen=64)] if self.id() else []
         fields += ['len=%d' % len(self)]
-        fields += ['ids=%s' % [d.id(truncated=True, maxlen=32) for d in self._ds]]
+        fields += ['union=%s' % str(tuple([d.id(truncated=True, maxlen=32) for d in self._ds]))]
         return str('<vipy.dataset.%s: %s>' % (self.__class__.__name__, ', '.join(fields)))
         
     def clone(self, shallow=False):

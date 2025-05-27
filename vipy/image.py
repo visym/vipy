@@ -101,10 +101,6 @@ class Image(object):
 
     def __init__(self, filename=None, url=None, array=None, colorspace=None, attributes=None):
         # Private attributes
-        self._ignoreErrors = False  # ignore errors during fetch (broken links)
-        self._urluser = None      # basic authentication set with url() method
-        self._urlpassword = None  # basic authentication set with url() method
-        self._urlsha1 = None      # file hash if known
         self._filename = None   # Local filename
         self._url = None        # URL to download
         self._loader = None     # lambda function to load an image, set with loader() method
@@ -506,7 +502,7 @@ class Image(object):
                 self._array = np.array(PIL.Image.open(self._filename))  # RGB order!
 
         except IOError:
-            if self._ignoreErrors or ignoreErrors:
+            if ignoreErrors:
                 if verbose is True:
                     log.warning('[vipy.image]: IO error "%s" -> "%s" ' % (self.url(), self.filename()))
                 self._array = None
@@ -517,7 +513,7 @@ class Image(object):
             raise
 
         except Exception:
-            if self._ignoreErrors or ignoreErrors:
+            if ignoreErrors:
                 if verbose is True:
                     log.warning('[vipy.image]: Load error for image "%s"' % self.filename())
                 self._array = None
@@ -559,9 +555,9 @@ class Image(object):
                                          self._filename,
                                          verbose=verbose,
                                          timeout=timeout,
-                                         sha1=self._urlsha1,
-                                         username=self._urluser,
-                                         password=self._urlpassword)
+                                         sha1=self._urlsha1 if hasattr(self, '_urlsha1') else None,
+                                         username=self._urluser if hasattr(self, '_urluser') else None,
+                                         password=self._urlpassword if hasattr(self, '_urlpassword') else None)
             elif url_scheme == 'file':
                 shutil.copyfile(self._url, self._filename)
             elif url_scheme == 's3':
@@ -574,7 +570,7 @@ class Image(object):
         except (httplib.BadStatusLine,
                 urllib.error.URLError,
                 urllib.error.HTTPError):
-            if self._ignoreErrors or ignoreErrors:
+            if ignoreErrors:
                 if verbose is True:
                     log.warning('[vipy.image]: download failed for url "%s"' % self._url)
                 self._array = None
@@ -582,7 +578,7 @@ class Image(object):
                 raise
 
         except IOError:
-            if self._ignoreErrors or ignoreErrors:
+            if ignoreErrors:
                 if verbose:
                     log.warning('[vipy.image]: IO error downloading "%s" -> "%s" ' % (self.url(), self.filename()))
                 self._array = None
@@ -593,7 +589,7 @@ class Image(object):
             raise
 
         except Exception:
-            if self._ignoreErrors or ignoreErrors:
+            if ignoreErrors:
                 if verbose:
                     log.warning('[vipy.image]: load error for image "%s"' % self.filename())
             else:
@@ -984,7 +980,7 @@ class Image(object):
         self._url = None
         return self
 
-    def url(self, url=None, username=None, password=None, sha1=None, ignoreUrlErrors=None):
+    def url(self, url=None, username=None, password=None, sha1=None):
         """Image URL and URL download properties"""
         if url is not None:
             self._url = url  # this does not change anything else (e.g. the associated filename), better to use constructor 
@@ -994,9 +990,7 @@ class Image(object):
             self._urlpassword = password  # basic authentication
         if sha1 is not None:
             self._urlsha1 = sha1  # file integrity
-        if ignoreUrlErrors is not None:
-            self._ignoreErrors = ignoreUrlErrors
-        if url is None and username is None and password is None and sha1 is None and ignoreUrlErrors is None:
+        if url is None and username is None and password is None and sha1 is None:
             return self._url
         else:
             return self
@@ -2050,14 +2044,25 @@ class LabeledImage(Image):
         return self.attributes['label']['wordnetid'] if self.has_wordnetid() else None
 
     def has_category(self):
-        return 'category' in self.attributes['label']     
-    def category(self):
-        return self.attributes['label']['category'] if self.has_category() else None 
-
+        return 'category' in self.attributes['label'] and self.attributes['label']['category'] is not None    
+    def category(self, new=None):
+        if new is not None:
+            self.attributes['label']['category'] = new
+            return self
+        return self.attributes['label']['category'] if self.has_category() else None
+    
+    def del_category(self):
+        self.attributes['label']['category'] = None
+        return self
+    
+    
     def has_vqa(self):
         return 'vqa' in self.attributes['label']     
     def vqa(self):
         return self.attributes['label']['vqa'] if self.has_vqa() else None   
+
+    def is_unlabeled(self):
+        return len(self.attributes['label']) == 0
     
     
 class Scene(ImageCategory):
@@ -2068,11 +2073,11 @@ class Scene(ImageCategory):
     Valid constructors include all provided by vipy.image.Image() and vipy.image.ImageCategory() with the additional kwarg 'objects', which is a list of vipy.object.Object()
 
     ```python
-    im = vipy.image.Scene(filename='/path/to/city_image.ext', category='city', objects=[vipy.object.Detection(category='vehicle', xmin=0, ymin=0, width=100, height=100)])
-    im = vipy.image.Scene(filename='/path/to/city_image.ext', category='city').objects([vipy.object.Detection(category='vehicle', xmin=0, ymin=0, width=100, height=100)])
-    im = vipy.image.Scene(filename='/path/to/city_image.ext', category='office', boxlabels='face', xywh=[0,0,100,100])
-    im = vipy.image.Scene(filename='/path/to/city_image.ext', category='office', boxlabels='face', xywh=[[0,0,100,100], [100,100,200,200]])
-    im = vipy.image.Scene(filename='/path/to/city_image.ext', category='office', boxlabels=['face', 'desk'] xywh=[[0,0,100,100], [200,200,300,300]])
+    im = vipy.image.Scene(filename='/path/to/city_image.jpg', category='city', objects=[vipy.object.Detection(category='vehicle', xmin=0, ymin=0, width=100, height=100)])
+    im = vipy.image.Scene(filename='/path/to/city_image.jpg', category='city').objects([vipy.object.Detection(category='vehicle', xmin=0, ymin=0, width=100, height=100)])
+    im = vipy.image.Scene(filename='/path/to/city_image.jpg', category='office', boxlabels='face', xywh=[0,0,100,100])
+    im = vipy.image.Scene(filename='/path/to/city_image.jpg', category='office', boxlabels='face', xywh=[[0,0,100,100], [100,100,200,200]])
+    im = vipy.image.Scene(filename='/path/to/city_image.jpg', category='office', boxlabels=['face', 'desk'] xywh=[[0,0,100,100], [200,200,300,300]])
     ```
 
     """
