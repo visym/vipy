@@ -989,8 +989,12 @@ def ispkl(filename):
     return filename[-4:] == '.pkl' if isstring(filename) and len(filename) >= 4 else False
 
 def ispklbz2(filename):
-    """Is the file a pickle archive file"""
+    """Is the file a pickle bz2 archive file"""
     return filename[-8:] == '.pkl.bz2' if isstring(filename) and len(filename) >= 8 else False
+
+def is_pkl_gz(filename):
+    """Is the file a pickle gzip archive file"""
+    return filename[-7:] == '.pkl.gz' if isstring(filename) and len(filename) >= 7 else False
 
 def ispklfile(filename):
     """Is the file a pickle archive file"""

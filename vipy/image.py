@@ -160,6 +160,11 @@ class Image(object):
                    colorspace=d['colorspace'],
                    attributes=d['attributes'])
         
+    @classmethod
+    def from_path(cls, pth):
+        """Create an image object from an absolute file path or url"""
+        assert vipy.util.isurl(pth) or vipy.util.isfile(pth), "invalid path"
+        return cls(url=path if vipy.util.isurl(pth) else None, filename=pth if vipy.util.isfile(pth) else None)            
     
     @classmethod
     def from_json(cls, s):
@@ -470,14 +475,15 @@ class Image(object):
 
             # Load filename to numpy array
             if self._loader is not None:
-                self._array = self._loader(self._filename)  
+                self._array = self._loader(self._filename)
                 if self.isluminance():
                     self.colorspace('lum')
                 elif self.iscolor():
                     self.colorspace('rgb')
                 else:
                     self._array = np.float32(self._array)
-                    self.colorspace('float') 
+                    self.colorspace('float')
+
             elif isimagefile(self._filename):
                 self._array = np.array(PIL.Image.open(self._filename))  # RGB order!
                 if self.istransparent():
@@ -1622,7 +1628,7 @@ class Image(object):
     def save(self, filename, quality=75):
         """Save the current image to a new filename and return the image object"""
         assert filename is not None, "Invalid filename - must be path to new image filename"
-        return self.filename(self.saveas(filename, quality=quality))
+        return self.filename(self.saveas(filename, quality=quality)).loader(None)
         
         
     # Image export
