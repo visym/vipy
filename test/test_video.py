@@ -267,7 +267,7 @@ def _test_scene():
 
     # Loader
     v = vid.clone().clip(10,20).load()
-    assert len(v) == 10
+    assert len(v) == 10  # FIXME: this is off by one frame for macos sequoia 15.5, homebrew ffmpeg-7.1.1 (clang-1700.0.13.3)
     vc = v.clone(flushforward=True).clip(1,4).load()
     assert len(vc) == 3
     assert all([o1 == o2 for (o1, o2) in zip(vc.frame(1).objects(), vid.frame(12).objects())])
@@ -493,8 +493,8 @@ def test_clip():
     assert np.mean(vc.frame(60).array().flatten()) > 128
     assert np.mean(vc.frame(61).array().flatten()) < 128    
 
-    v = vipy.video.Video(frames=[vipy.image.Image(array=img) for img in imgframes])    
-    vc = v.saveas(outfile).clip(31, 90).load()
+    v = vipy.video.Video(frames=[vipy.image.Image(array=img) for img in imgframes], framerate=30)    
+    vc = v.saveas(outfile).clip(31, 90).load()  
     assert np.mean(vc.frame(59-31).array().flatten()) < 128
     assert np.mean(vc.frame(60-31).array().flatten()) > 128
     assert np.mean(vc.frame(61-31).array().flatten()) < 128    

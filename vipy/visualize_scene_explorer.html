@@ -11,11 +11,28 @@
       #imageContainer {
           position: relative;
           width: ${IMG_WIDTH}px; /* Set width of image container */
-      } 
+      }
+
+      #imageLabel {
+          position: absolute;
+          top: 12px; 
+          left: 12px;
+	  width: 28px;
+	  height: 22px;
+	  opacity: 0.8;
+	  background-color: #ffffff;
+	  background-image: url("https://img.icons8.com/666666/image"); 
+	  background-repeat:no-repeat;
+	  background-position:left 0px center;
+          background-size: 28px;
+          z-index: 4;
+          box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);	  	  	  
+      }
+      
       #searchBar {
           position: absolute;
           top: 10px; /* Adjust top position of search bar */
-          left: 10px; /* Adjust left position of search bar */
+          left: 50px; /* Adjust left position of search bar */
 	  outline: none;
           z-index: 4; /* Ensure the search bar is above the image */
           box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);	  
@@ -23,10 +40,9 @@
       #searchInput {
           box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);	  	  
 	  width: ${SEARCHBOX_WIDTH}px; /* Set width of search input */
-	  padding: 5px 25px;
+	  padding: 5px 24px;
 	  opacity: 0.8;
 	  outline: none;
-	  border: none;
 	  background-image: url("https://img.icons8.com/666666/search");  /* "666666" is hex color */	  
 	  background-repeat:no-repeat;
 	  background-position:left 5px center;
@@ -36,7 +52,8 @@
 	  display: none;
 	  position: absolute;
 	  background-color: #ffffff;
-	  min-width: ${SEARCHBOX_WIDTH}px;
+          min-width: ${SEARCHBOX_WIDTH}px;
+          left: 2px;
 	  overflow-y: auto;
 	  border: 1px solid #ddd;
 	  z-index: 5; /* Ensure the dropdown is above the image */
@@ -59,7 +76,7 @@
 	  border: 1px solid #aaa;
 	  width: auto; /* Set width of popup */
 	  height: auto; /* Let height adjust based on content */
-	  padding: 10px;
+	  padding: 10px 24px;
 	  z-index: 3; /* Ensure the popup is above the image */
 	  display: none; /* Hide popup by default */
 	  opacity: ${POPUP_ALPHA};
@@ -76,7 +93,7 @@
 	  position: absolute;
 	  bottom: 10px;
 	  right: 10px;
-	  width: 50px;
+	  width: 100px;
 	  height: auto;
       }
       .circle {
@@ -89,23 +106,138 @@
       .circle:hover {
 	  z-index: 2;
       }
+
+      #hamburgerMenu {
+        position: absolute;
+        top: 10px;
+        left: 10px;
+        width: 30px;
+        height: 24px;
+        cursor: pointer;
+        z-index: 6; /* Ensure it’s above searchBar */
+      }
+      /* Each bar of the hamburger */
+      .hamburger-bar {
+        width: 100%;
+        height: 4px;
+        background-color: #AAAAAA;
+        margin: 4px 0;
+        border-radius: 2px;
+      }
+      /* Dropdown menu that appears when hamburger is clicked */
+      #hamburgerDropdown {
+        position: absolute;
+        top: 47px;  /* Just below the hamburger icon */
+        left: 10px;
+        background-color: #fff;
+	border: 1px solid #ddd;	 
+        box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
+        z-index: 7;
+	outline: none;	
+        border-radius: 0px;
+        min-width: 150px;
+        transform: scaleY(0);
+        opacity: 0;      
+        transform-origin: top;
+        transition: 
+          transform 0.1s ease-in-out, 
+          opacity 0.1s ease-in-out;
+      }
+      
+      #hamburgerDropdown.open {
+        transform: scaleY(1);
+        opacity: 0.8;
+      }      
+      #hamburgerDropdown li {
+      padding: 8px 8px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      }
+      #hamburgerDropdown li:hover {
+        background-color: #f0f0f0;
+      }
+
+      .menu-icon {
+  width: 16px;
+  height: 16px;
+  vertical-align: middle;
+  margin-right: 10px;
+  fill: #333;            /* dark gray color for the icon */
+}
     </style>
   </head>
   <body>
     
     <div id="imageContainer">
-      <img id="mainImage" src="${IMG}" alt="Scene" width="${IMG_WIDTH}" > 
+      <img id="mainImage" src="${IMG}" alt="Scene" width="${IMG_WIDTH}" >
       <div id="searchBar">
-        <input type="text" id="searchInput" placeholder="Search...">
+        <input type="text" id="searchInput" placeholder="Label Search ...">
         <ul id="searchDropdown"></ul>    
       </div>
       <div id="popup" class="annotationPopup"><pre id="popupText"></pre></div>      
       <a href="https://visym.com" target="_blank" class="logo">
 	<img src="https://cdn.statically.io/img/visym.com/images/visym_logo_white_notext.png" alt="Logo" class="logo">
       </a>
+
+      <div id="hamburgerMenu">
+        <div class="hamburger-bar"></div>
+        <div class="hamburger-bar"></div>
+        <div class="hamburger-bar"></div>
+      </div>
+
+      <ul id="hamburgerDropdown">
+        <li id="menuSearch">
+    <svg class="menu-icon" viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg">
+      <!-- Simple magnifying glass path (from Bootstrap's “search” icon) -->
+      <path d="M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001
+               l3.85 3.85a1 1 0 0 0 1.415-1.415l-3.85-3.85zm-5.242
+               1.106a5 5 0 1 1 0-10 5 5 0 0 1 0 10z"/>
+    </svg>
+    Label Search    
+	</li>
+	  <li id="menuAttributes">
+    <svg class="menu-icon" viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg">
+      <!-- Basic “image” icon (from Bootstrap's “image” icon) -->
+      <path d="M14 4.5V12a1 1 0 0 1-1 1H3a1 1 0 0
+               1-1-1V4.5A1.5 1.5 0 0 1 3.5 3h9A1.5 1.5
+               0 0 1 14 4.5zM3.5 2A2.5 2.5 0 0 0 1 4.5v8A2.5
+               2.5 0 0 0 3.5 15h9a2.5 2.5 0 0 0 2.5-2.5v-8A2.5
+               2.5 0 0 0 12.5 2h-9zM4.002 7.002a1.5 1.5 0 1
+               1 2.998 0 1.5 1.5 0 0 1-2.998 0zM2 11.5V12h12v-.5l-3.5-4.5-3
+               3.5-2-2a.5.5 0 0 0-.75.3l-2.75 3.2z"/>
+    </svg>
+    Image Attributes
+  </li>
+  <li id="menuCaption">
+    <svg class="menu-icon" viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg">
+      <!-- Speech‐bubble/text‐box icon -->
+      <path
+      d="M14 1H2a1 1 0 0 0-1 1v8a1 1 0 0 0 1 1h8.586L13 14.414V11h1a1 1 0 0 0 1-1V2a1 1 0 0 0-1-1z"
+      fill="none"
+      stroke="#333"
+      stroke-width="1"
+	/>
+    </svg>
+    Image Caption
+  </li>
+
+  <li id="menuTags">
+    <svg class="menu-icon" viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg">
+      <path
+    d="M8 0 L10.09 5.26 L16 6.09 L11.45 9.74 L12.82 15.5 L8 12.5 L3.18 15.5 L4.55 9.74 L0 6.09 L5.91 5.26 Z"
+    fill="#333"
+  />
+  </svg>
+    Image Tags
+  </li>
+  
+      </ul>
+      
     </div>
     
     <script>
+      
       function overlaySearchBar() {
 	  // Get references to image container and search bar
 	  var imageContainer = document.getElementById('imageContainer');
@@ -115,9 +247,15 @@
 	  var searchDropdown = document.getElementById('searchDropdown');
 	  var popup = document.getElementById('popup');
 	  const popupText = document.getElementById('popupText');
-	  var circlelist = [];	  
-	  let currentCircle = null;
+	  var labels = [];	  
+	  let currentLabel = null;
 	  let is_scene_popup_visible = false; 
+          var hamburgerMenu  = document.getElementById('hamburgerMenu');
+          var hamburgerDropdown   = document.getElementById('hamburgerDropdown');
+          var menuSearch     = document.getElementById('menuSearch');
+          var menuAttributes = document.getElementById('menuAttributes');
+          var menuCaption    = document.getElementById('menuCaption');
+          var menuTags  = document.getElementById('menuTags');	  
 	  
 	  var kp_classlist = ${KP_CLASSLIST};
 	  var kp_attributelist = ${KP_ATTRIBUTELIST};
@@ -125,8 +263,76 @@
 	  var kp_x = ${KP_X};
 	  var kp_y = ${KP_Y};
 	  var kp_r = ${KP_R};
+
+	// Hamburger menu
+        hamburgerMenu.addEventListener('click', function(e) {
+            e.stopPropagation(); // Prevent click from closing menu immediately
+	    hamburgerDropdown.classList.toggle('open');
+        });
+        document.addEventListener('click', function(e) {
+            if (!hamburgerMenu.contains(e.target) && !hamburgerDropdown.contains(e.target)) {
+		hamburgerDropdown.classList.remove('open');
+          }
+        });
+
+        // hamburger menu: show search
+        menuSearch.addEventListener('click', function() {
+          searchBar.classList.remove('hidden');
+          popup.style.display = 'none';
+          is_scene_popup_visible = false;
+	  hamburgerDropdown.classList.remove('open');
+          searchInput.focus();
+        });
+
+        // hamburger menu: image attributes	  
+      menuAttributes.addEventListener('click', function() {
+
+          popup.style.height = Math.floor(${IMG_HEIGHT} / 2) + 'px';
+          popup.style.width = Math.floor(${IMG_WIDTH} / 2) + 'px';
+          popup.style.top = Math.floor(${IMG_HEIGHT} / 4) + 'px';
+          popup.style.left = Math.floor(${IMG_WIDTH} / 4) + 'px';
+          popupText.textContent = JSON.stringify(JSON.parse('${IMG_ATTRIBUTES}'),null,2);  // prettyprint                                                                                                                                 
+          popup.style.display = 'block';
+          is_scene_popup_visible = true;
+
+          searchBar.classList.add('hidden');      
+          popup.style.display = 'block';
+          is_scene_popup_visible = true;
+	  hamburgerDropdown.classList.remove('open');
+        });
+
+      
+        // hamburger menu: caption	  	  
+      menuCaption.addEventListener('click', function() {
+          popup.style.height = Math.floor(${IMG_HEIGHT} / 2) + 'px';
+          popup.style.width = Math.floor(${IMG_WIDTH} / 2) + 'px';
+          popup.style.top = Math.floor(${IMG_HEIGHT} / 4) + 'px';
+          popup.style.left = Math.floor(${IMG_WIDTH} / 4) + 'px';
+          popupText.innerHTML = "${IMG_CAPTION}";
+          popup.style.display = 'block';
+          is_scene_popup_visible = true;
+        searchBar.classList.add('hidden');              
+        popup.style.display = 'block';
+          is_scene_popup_visible = true;
+	  hamburgerDropdown.classList.remove('open');	  
+      });
+
+        // hamburger menu: tags
+      menuTags.addEventListener('click', function() {
+          popup.style.height = Math.floor(${IMG_HEIGHT} / 2) + 'px';
+          popup.style.width = Math.floor(${IMG_WIDTH} / 2) + 'px';
+          popup.style.top = Math.floor(${IMG_HEIGHT} / 4) + 'px';
+          popup.style.left = Math.floor(${IMG_WIDTH} / 4) + 'px';
+          popupText.innerHTML = "${IMG_TAGS}",
+          popup.style.display = 'block';
+          is_scene_popup_visible = true;
+        searchBar.classList.add('hidden');              
+        popup.style.display = 'block';
+          is_scene_popup_visible = true;
+	  hamburgerDropdown.classList.remove('open');	  
+      });
 	  
-	  // Create circles and append them to the container
+	  // Create keypoint circles and append them to the container
 	  for (let i = 0; i < kp_classlist.length; i++) {
 	      const circle = document.createElement('div');
 	      circle.id = 'circle' + i;
@@ -138,11 +344,11 @@
 	      circle.style.backgroundColor = kp_colorlist[i] + "${KP_ALPHA_HEX}";  // Append alpha (without 0x)
 	      circle.popup_contents = JSON.stringify(JSON.parse(kp_attributelist[i]),null,2);  // prettyprint
 	      imageContainer.appendChild(circle);
-	      circlelist.push(document.getElementById('circle' + i));
+	      labels.push(document.getElementById('circle' + i));
 		  
 	      // Show popup when mouse is over the circle (touch on mobile)
 	      circle.addEventListener('mouseover', function() {
-		  currentCircle = circle;
+		  currentLabel = circle;
 		  const circlePosition = {
 		      x: circle.offsetLeft,
 		      y: circle.offsetTop
@@ -161,11 +367,22 @@
 	      
 	      // Hide popup when mouse leaves the circle (never triggered on mobile)
 	      circle.addEventListener('mouseout', function() {
-		  if ((currentCircle === circle) && (is_scene_popup_visible == false)) {
+		  if ((currentLabel === circle) && (is_scene_popup_visible == false)) {
 		      popup.style.display = 'none';
 		  }
 	      });
 	  }
+
+          // Hide the popup if click within popup or anywhere in main image
+          popup.addEventListener('click', function() {
+	      popup.style.display = 'none';
+	      is_scene_popup_visible = false;		  	      
+	  });
+          mainImage.addEventListener('click', function() {
+	      popup.style.display = 'none';
+	      is_scene_popup_visible = false;		  	      
+	  });
+
 	  
 	  // Populate dropdown with options 
 	  var classlist = ${CLASSLIST};
@@ -184,12 +401,12 @@
 		  this.className = 'highlighted';		  
 
 		  // Show selected keypoints
-		  for (let i = 0; i < circlelist.length; i++) {
+		  for (let i = 0; i < labels.length; i++) {
 		      if (kp_attributelist[i].includes(option)) {
-			  circlelist[i].style.display = 'block';
+			  labels[i].style.display = 'block';
 		      }
 		      else {
-			  circlelist[i].style.display = 'none';
+			  labels[i].style.display = 'none';
 		      }
 		  }
 	      });		      		      
@@ -220,12 +437,12 @@
 		      item.style.display = 'none';
 		  }
 	      });
-	      for (let i = 0; i < circlelist.length; i++) {
+	      for (let i = 0; i < labels.length; i++) {
 		  if (kp_attributelist[i].includes(searchTerm)) {
-		      circlelist[i].style.display = 'block';
+		      labels[i].style.display = 'block';
 		  }
 		  else {
-		      circlelist[i].style.display = 'none';
+		      labels[i].style.display = 'none';
 		  }
 	      }		      		      
 	  });
@@ -265,39 +482,17 @@
 		  }
 
 		  // Show only item selected
-		  for (let i = 0; i < circlelist.length; i++) {
+		  for (let i = 0; i < labels.length; i++) {
 		      if (kp_attributelist[i].includes(searchInput.value)) {
-			  circlelist[i].style.display = 'block'
+			  labels[i].style.display = 'block'
 		      }
 		      else {
-			  circlelist[i].style.display = 'none';
+			  labels[i].style.display = 'none';
 		      }
 		  }		      		      		  		  
 	      }
 	  });
 
-          // Show image level attributes when clicking on background
-          mainImage.addEventListener('click', function() {
-	      if (popup.style.display == 'none') {
-		  popup.style.height = Math.floor(${IMG_HEIGHT} / 2) + 'px';	  		  
-		  popup.style.width = Math.floor(${IMG_WIDTH} / 2) + 'px';
-		  popup.style.top = Math.floor(${IMG_HEIGHT} / 4) + 'px';
-		  popup.style.left = Math.floor(${IMG_WIDTH} / 4) + 'px';
-		  popupText.textContent = JSON.stringify(JSON.parse('${IMG_ATTRIBUTES}'),null,2);  // prettyprint      
-		  popup.style.display = 'block';
-		  is_scene_popup_visible = true;
-	      }
-	      else {
-		  // Disable scene level popup by clicking on background
-		  popup.style.display = 'none';
-		  is_scene_popup_visible = false;		  
-	      }
-	  });	  
-          // Hide the popup if click within popup
-          popup.addEventListener('click', function() {
-	      popup.style.display = 'none';
-	      is_scene_popup_visible = false;		  	      
-	  });
       }
       
       // Call the function when the page is loaded

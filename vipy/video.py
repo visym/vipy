@@ -1809,7 +1809,7 @@ class Video(object):
             self._endframe = (self._startframe + (endframe-startframe)) if endframe is not None else endframe  # for __repr__ only
         else:
             endframe = endframe if endframe is not None else len(self._array)
-            self._array = self._array[startframe:endframe]
+            self._array = self._array[startframe:endframe] 
             (self._startframe, self._endframe) = (0, endframe-startframe)
         return self
 
@@ -3689,7 +3689,7 @@ class Scene(VideoCategory):
             # -- end copy
         else:
             endframe = endframe if endframe is not None else len(self._array)
-            v._array = self._array[startframe:endframe]
+            v._array = self._array[startframe:endframe]  
             (v._startframe, v._endframe) = (0, endframe-startframe)
         v._tracks = {k:t.offset(dt=-startframe).truncate(startframe=0, endframe=(endframe-startframe) if endframe is not None else None) for (k,t) in v.tracks().items()}   # may be degenerate
         v._activities = {k:a.offset(dt=-startframe).truncate(startframe=0, endframe=(endframe-startframe) if endframe is not None else None) for (k,a) in v.activities().items()}  # may be degenerate

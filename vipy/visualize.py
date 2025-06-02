@@ -22,10 +22,14 @@ import matplotlib
 import warnings
 
 
-def scene_explorer(im, outfile=None, width=1024, title='Scene Explorer', previewurl=None, keypoint_alpha=0.7, popup_alpha=0.8):
+def scene_explorer(im, outfile=None, width=1024, title='Scene Explorer', previewurl=None, keypoint_alpha=0.7, popup_alpha=0.8,
+                   caption_formatter=lambda im: "<strong>Image Caption</strong>\\n\\n%s" % '\\n\\n'.join(im.captions()),
+                   tag_formatter=lambda im: "<strong>Image Tags</strong>\\n\\n%s" % '\\n'.join(list(im.tags())),
+                   attribute_formatter=lambda im: im.clone().flush().clear().json()):
+    
     """Generate a standalone scene_explorer visualization.
 
-    A scene_explorer visualization is a standalone HTML file that shows a single `vipy.image.Scene` object with an interactive search and visualization of all objects and attributes
+    A scene_explorer visualization is a standalone HTML file that shows a single `vipy.image.Scene` object with an interactive search and visualization of all objects, attributes, captions and tags
 
     Current support for `vipy.object.Keypoint2d` only, showing the JSON string for the object
 
@@ -47,22 +51,24 @@ def scene_explorer(im, outfile=None, width=1024, title='Scene Explorer', preview
     html = Path(Path(__file__).parent.resolve() / 'visualize_scene_explorer.html').read_text()
     keywords = {'${TITLE}': title,
                 '${META_OG_IMAGE}': ('<meta property="og:image" content="%s">' % previewurl) if previewurl is not None else '',  # useful for website preview in text/social
-                '${IMG_WIDTH}':imc.width(),
-                '${IMG_HEIGHT}':imc.height(),                                      
+                '${IMG_WIDTH}':str(imc.width()),
+                '${IMG_HEIGHT}':str(imc.height()),
                 '${IMG}':img,
-                '${IMG_ATTRIBUTES}':str(imc.clone().flush().clear().json()),
-                '${SEARCHBOX_WIDTH}':width // 4,
-                '${POPUP_ALPHA}': popup_alpha,
+                '${IMG_ATTRIBUTES}':attribute_formatter(im),
+                '${IMG_CAPTION}': caption_formatter(im),
+                '${IMG_TAGS}': tag_formatter(im),
+                '${SEARCHBOX_WIDTH}':str(width // 4),
+                '${POPUP_ALPHA}': str(popup_alpha),
                 '${CLASSLIST}':str(sorted(set([o.category() for o in keypoints]))),  # assumes that shared class prefix encodes grouping
                 '${KP_X}':str([o.x for o in keypoints]),
                 '${KP_Y}':str([o.y for o in keypoints]),
                 '${KP_R}':str([o.r for o in keypoints]),
-                '${KP_ALPHA_HEX}':format(int(keypoint_alpha*255), '02x'),  # keypoint face alpha = [0,255] -> [00, FF]
+                '${KP_ALPHA_HEX}':str(format(int(keypoint_alpha*255), '02x')),  # keypoint face alpha = [0,255] -> [00, FF]
                 '${KP_CLASSLIST}':str([o.category() for o in keypoints]),
                 '${KP_ATTRIBUTELIST}':str([o.json() for o in keypoints]),
                 '${KP_COLORLIST}':str([d_category_to_color[o.category()] for o in keypoints])}    
     for (k,v) in keywords.items():
-        html = html.replace(k,str(v))
+        html = html.replace(k,v)
 
     filename = outfile if outfile is not None else temphtml()        
     with open(filename, 'w') as f:
