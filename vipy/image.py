@@ -561,9 +561,9 @@ class Image(object):
                                          self._filename,
                                          verbose=verbose,
                                          timeout=timeout,
-                                         sha1=self._urlsha1 if hasattr(self, '_urlsha1') else None,
-                                         username=self._urluser if hasattr(self, '_urluser') else None,
-                                         password=self._urlpassword if hasattr(self, '_urlpassword') else None)
+                                         sha1=self.getattribute('url_sha1'),
+                                         username=self.getattribute('url_username'),
+                                         password=self.getattribute('url_password'))
             elif url_scheme == 'file':
                 shutil.copyfile(self._url, self._filename)
             elif url_scheme == 's3':
@@ -631,6 +631,13 @@ class Image(object):
         """Transparent images are four channel color images with transparency, float32 or uint8.  Return true if this image contains an alpha transparency channel"""
         return self.channels() == 4
 
+    def blend(self, im, alpha):
+        """alpha blend self and im in-place, such that self = alpha*self + (1-alpha)*im"""
+        assert isinstance(im, Image)
+        assert alpha >=0 and alpha <= 1
+        assert self.colorspace() not in ['float','rgba','bgra'], "convert to rgb first"
+        return self.load().map(lambda arr: np.uint8(alpha * arr + (1-alpha)*im.clone().load()._to_colorspace(self.colorspace()).resize_like(self).array()))
+                
     def isgrey(self):
         """Grey images are one channel, float32"""
         return self.channels() == 1 and self.array().dtype == np.float32
@@ -729,7 +736,7 @@ class Image(object):
         elif isnumpyarray(np_array):
             self._array = np.copy(np_array) if copy else np_array  # reference or copy
             assert self._array.dtype == np.float32 or self._array.dtype == np.uint8, "Invalid input - array() must be type uint8 or float32 and not type='%s'" % (str(self._array.dtype))                        
-            self.colorspace(None)  # must be set with colorspace() after array() but before _convert()
+            self.colorspace(None)  # must be set with colorspace() after array() but before _to_colorspace()
             return self
         else:
             raise ValueError('Invalid input - array() must be numpy array and not "%s"' % (str(type(np_array))))
@@ -938,8 +945,9 @@ class Image(object):
         img = np.expand_dims(img,0) if order in ['NHWC', 'NCHW'] else img  # HxWxC -> 1xHxWxC or CxHxW -> 1xCxHxW
         return torch.from_numpy(img)   # pip install torch
 
+    
     @staticmethod
-    def fromtorch(x, order='CHW'):
+    def from_torch(x, order='CHW'):
         """Convert a 1xCxHxW or CxHxW torch tensor (or numpy array with torch channel order) to HxWxC numpy array, returns new `vipy.image.Image` with inferred colorspace corresponding to data type in x"""
         try_import('torch'); import torch        
         assert isinstance(x, torch.Tensor) or isinstance(x, np.ndarray), "Invalid input type '%s'- must be torch.Tensor" % (str(type(x)))
@@ -960,11 +968,12 @@ class Image(object):
         colorspace = 'rgb' if img.dtype == np.uint8 and img.shape[2] == 3 else colorspace  # assumed
         colorspace = 'lum' if img.dtype == np.uint8 and img.shape[2] == 1 else colorspace
         return Image(array=img, colorspace=colorspace)
-    
-    def nofilename(self):
-        self._filename = None
-        return self
 
+    @staticmethod
+    def fromtorch(x, order='CHW'):
+        """Alias for `vipy.image.Image.from_torch`"""
+        return Image.from_torch(x, order)
+    
     def unload(self):
         """Remove cached file and loaded array.  Note that this will delete the underlying file returned by filename() if there is a backing url"""
         if self.hasurl() and self.hasfilename():
@@ -982,20 +991,16 @@ class Image(object):
             self._filename = newfile
             return self
 
-    def nourl(self):
-        self._url = None
-        return self
-
     def url(self, url=None, username=None, password=None, sha1=None):
         """Image URL and URL download properties"""
         if url is not None:
             self._url = url  # this does not change anything else (e.g. the associated filename), better to use constructor 
         if username is not None:
-            self._urluser = username  # basic authentication
+            self.setattribute('url_username', username)
         if password is not None:
-            self._urlpassword = password  # basic authentication
+            self.setattribute('url_password', password)
         if sha1 is not None:
-            self._urlsha1 = sha1  # file integrity
+            self.setattribute('url_sha1', sha1)
         if url is None and username is None and password is None and sha1 is None:
             return self._url
         else:
@@ -1299,8 +1304,8 @@ class Image(object):
         return img
     
     # Color conversion
-    def _convert(self, to):
-        """Supported colorspaces are rgb, rgbab, bgr, bgra, hsv, grey, lum, float"""
+    def _to_colorspace(self, to):
+        """Supported colorspaces are rgb, rgba, bgr, bgra, hsv, grey, lum, float"""
         to = to if to != 'gray' else 'grey'  # standardize 'gray' -> 'grey' internally
         self.load()
         if self.colorspace() == to:
@@ -1314,13 +1319,13 @@ class Image(object):
             img = np.squeeze(img, axis=2) if img.ndim == 3 and img.shape[2] == 1 else img  # remove singleton channel            
             self._array = np.array(PIL.Image.fromarray(img, mode='L').convert('RGB'))  # uint8 luminance [0,255] -> uint8 RGB
             self.colorspace('rgb')
-            self._convert(to)
+            self._to_colorspace(to)
         elif self.colorspace() in ['gray', 'grey']:
             img = self.load().array()  # single channel float32 [0,1]
             img = np.squeeze(img, axis=2) if img.ndim == 3 and img.shape[2] == 1 else img  # remove singleton channel                        
             self._array = np.array(PIL.Image.fromarray(255.0 * img, mode='F').convert('RGB'))  # float32 gray [0,1] -> float32 gray [0,255] -> uint8 RGB
             self.colorspace('rgb')
-            self._convert(to)
+            self._to_colorspace(to)
         elif self.colorspace() == 'rgba':
             img = self.load().array()  # uint8 RGBA
             if to == 'bgra':
@@ -1331,7 +1336,7 @@ class Image(object):
             else:
                 self._array = self._array[:,:,0:-1]  # uint8 RGBA -> uint8 RGB
                 self.colorspace('rgb')
-                self._convert(to)
+                self._to_colorspace(to)
         elif self.colorspace() == 'rgb':
             img = self.load().array()  # uint8 RGB
             if to in ['grey', 'gray']:
@@ -1351,22 +1356,22 @@ class Image(object):
             img = self.load().array()  # uint8 BGR
             self._array = np.array(img)[:,:,::-1]  # uint8 BGR -> uint8 RGB
             self.colorspace('rgb')
-            self._convert(to)
+            self._to_colorspace(to)
         elif self.colorspace() == 'bgra':
             img = self.load().array()  # uint8 BGRA
             self._array = np.array(img)[:,:,::-1]  # uint8 BGRA -> uint8 ARGB
             self._array = self._array[:,:,[1,2,3,0]]  # uint8 ARGB -> uint8 RGBA
             self.colorspace('rgba')
-            self._convert(to)
+            self._to_colorspace(to)
         elif self.colorspace() == 'hsv':
             img = self.load().array()  # uint8 HSV
             self._array = np.array(PIL.Image.fromarray(img, mode='HSV').convert('RGB'))  # uint8 HSV -> uint8 RGB
             self.colorspace('rgb')
-            self._convert(to)
+            self._to_colorspace(to)
         elif self.colorspace() == 'float':
             img = self.load().array()  # float32
             if np.max(img) > 1 or np.min(img) < 0:
-                log.warning('Converting float image to "%s" will be rescaled with self.mat2gray() into the range float32 [0,1]' % to)
+                #log.warning('Converting float image to "%s" will be rescaled with self.mat2gray() into the range float32 [0,1]' % to)
                 img = self.mat2gray().array()
             if not self.channels() in [1,2,3]:
                 raise ValueError('Float image must be single channel or three channel RGB in the range float32 [0,1] prior to conversion')
@@ -1377,7 +1382,7 @@ class Image(object):
                 img = np.squeeze(img, axis=2) if img.ndim == 3 else img
                 self._array = (1.0 / 255.0) * np.array(PIL.Image.fromarray(np.uint8(255 * img)).convert('L')).astype(np.float32)  # float32 RGB [0,1] -> float32 gray [0,1]                
                 self.colorspace('grey')
-            self._convert(to)
+            self._to_colorspace(to)
         elif self.colorspace() is None:
             raise ValueError('Colorspace must be initialized by constructor or colorspace() to allow for colorspace conversion')
         else:
@@ -1433,40 +1438,40 @@ class Image(object):
     
     def rgb(self):
         """Convert the image buffer to three channel RGB uint8 colorspace"""
-        return self._convert('rgb')
+        return self._to_colorspace('rgb')
 
     def color_transform(self, colorspace):
         """Transform the image buffer from the current `vipy.image.Image.colorspace` to the provided colorspace"""
-        return self._convert(colorspace)
+        return self._to_colorspace(colorspace)
     
     def colorspace_like(self, im):
         """Convert the image buffer to have the same colorspace as the provided image"""
         assert isinstance(im, vipy.image.Image)
-        return self._convert(im.colorspace())
+        return self._to_colorspace(im.colorspace())
     
     def rgba(self):
         """Convert the image buffer to four channel RGBA uint8 colorspace"""
-        return self._convert('rgba')
+        return self._to_colorspace('rgba')
 
     def hsv(self):
         """Convert the image buffer to three channel HSV uint8 colorspace"""
-        return self._convert('hsv')
+        return self._to_colorspace('hsv')
 
     def bgr(self):
         """Convert the image buffer to three channel BGR uint8 colorspace"""
-        return self._convert('bgr')
+        return self._to_colorspace('bgr')
 
     def bgra(self):
         """Convert the image buffer to four channel BGR uint8 colorspace"""
-        return self._convert('bgra')
+        return self._to_colorspace('bgra')
 
     def float(self):
         """Convert the image buffer to float32"""
-        return self._convert('float')
+        return self._to_colorspace('float')
 
     def greyscale(self):
         """Convert the image buffer to single channel grayscale float32 in range [0,1]"""
-        return self._convert('gray')
+        return self._to_colorspace('gray')
 
     def grayscale(self):
         """Alias for greyscale()"""
@@ -1482,11 +1487,11 @@ class Image(object):
 
     def luminance(self):
         """Convert the image buffer to single channel uint8 in range [0,255] corresponding to the luminance component"""
-        return self._convert('lum')
+        return self._to_colorspace('lum')
 
     def lum(self):
         """Alias for luminance()"""
-        return self._convert('lum')
+        return self._to_colorspace('lum')
 
     def _apply_colormap(self, cm):
         """Convert an image to greyscale, then convert to RGB image with matplotlib colormap"""
@@ -1640,7 +1645,7 @@ class Image(object):
         return self
 
     def pklif(self, b, pklfile=None):
-        """Save the object to the provided pickle file only if b=True. Uuseful for conditional intermediate saving in long fluent chains"""
+        """Save the object to the provided pickle file only if b=True. Useful for conditional intermediate saving in long fluent chains"""
         assert isinstance(b, bool)
         return self.pkl(pklfile) if b else self
 
@@ -1919,10 +1924,6 @@ class ImageCategory(Image):
     def is_not(self, other):
         return self.__ne__(other)
 
-    def nocategory(self):
-        self._category = None
-        return self
-
     def category(self, newcategory=None):
         """Return or update the category"""
         if newcategory is None:
@@ -2056,11 +2057,6 @@ class LabeledImage(Image):
             self.attributes['label']['category'] = new
             return self
         return self.attributes['label']['category'] if self.has_category() else None
-    
-    def del_category(self):
-        self.attributes['label']['category'] = None
-        return self
-    
     
     def has_vqa(self):
         return 'vqa' in self.attributes['label']     
