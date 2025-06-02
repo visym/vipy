@@ -25,7 +25,7 @@ import warnings
 def scene_explorer(im, outfile=None, width=1024, title='Scene Explorer', previewurl=None, keypoint_alpha=0.7, popup_alpha=0.8,
                    caption_formatter=lambda im: "<strong>Image Caption</strong>\\n\\n%s" % '\\n\\n'.join(im.captions()),
                    tag_formatter=lambda im: "<strong>Image Tags</strong>\\n\\n%s" % '\\n'.join(list(im.tags())),
-                   attribute_formatter=lambda im: im.clone().flush().clear().json()):
+                   attribute_formatter=lambda im: str(im.filename())):
     
     """Generate a standalone scene_explorer visualization.
 

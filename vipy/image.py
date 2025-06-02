@@ -2832,7 +2832,7 @@ def RandomScene(rows=None, cols=None, num_detections=8, num_keypoints=8, num_obj
     if num_detections:
         objects += [vipy.object.Detection('obj%04d' % k, xmin=np.random.randint(0,cols - 16), ymin=np.random.randint(0,rows - 16), width=np.random.randint(16,cols), height=np.random.randint(16,rows)) for k in range(num_detections)]
     if num_keypoints:
-        objects += [vipy.object.Keypoint2d(category='kp%02d' % (k%20), x=np.random.randint(0,cols - 16), y=np.random.randint(0,rows - 16), radius=np.random.randint(10,50)) for k in range(num_keypoints)]
+        objects += [vipy.object.Keypoint2d(category='kp%02d' % (k%20), x=np.random.randint(0,cols - 16), y=np.random.randint(0,rows - 16), radius=np.random.randint(10,50), confidence=float(np.random.rand())) for k in range(num_keypoints)]
     return im.objects(objects)
     
 

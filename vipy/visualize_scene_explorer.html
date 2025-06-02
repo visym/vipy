@@ -8,6 +8,12 @@
     
     <title>${TITLE}</title>
     <style>
+      
+    pre {
+      font-family: monospace;
+      line-height: 1.2;
+    }
+    
       #imageContainer {
           position: relative;
           width: ${IMG_WIDTH}px; /* Set width of image container */
@@ -291,7 +297,7 @@
           popup.style.width = Math.floor(${IMG_WIDTH} / 2) + 'px';
           popup.style.top = Math.floor(${IMG_HEIGHT} / 4) + 'px';
           popup.style.left = Math.floor(${IMG_WIDTH} / 4) + 'px';
-          popupText.textContent = JSON.stringify(JSON.parse('${IMG_ATTRIBUTES}'),null,2);  // prettyprint                                                                                                                                 
+          popupText.innerHTML = "${IMG_ATTRIBUTES}";
           popup.style.display = 'block';
           is_scene_popup_visible = true;
 
