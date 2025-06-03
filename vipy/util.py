@@ -1385,6 +1385,10 @@ def totuple(x):
     else:
         return (x,)
 
+def to_iterable(x): 
+    """Convert an object to a singleton tuple if not already an itereable"""
+    return x if isinstance(x, (list, tuple, set)) else (x,)
+        
 def tolist(x):
     """Convert a python tuple or singleton object to a list if not already a list """
     if isinstance(x, list):

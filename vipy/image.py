@@ -7,7 +7,7 @@ import dill
 import vipy.show
 import vipy.globals
 from vipy.globals import log, cache
-from vipy.util import isnumpy, isurl, isimageurl, \
+from vipy.util import isnumpy, isurl, isimageurl, to_iterable, tolist,\
     fileext, tempimage, mat2gray, imwrite, imwritegray, \
     tempjpg, filetail, isimagefile, remkdir, hasextension, \
     try_import, tolist, islistoflists, istupleoftuples, isstring, \
@@ -2011,15 +2011,23 @@ class LabeledImage(Image):
         fields += ['url="%s"' % self.url()] if self.hasurl() else []
         fields += ['loaded=False'] if not self.isloaded() and self.has_loader() is not None else []
         fields += ['category=%s' % vipy.util.truncate_string(str(self.category()), 40)] if self.has_category() else []
-        fields += ['confidence=%1.3f' % self.category_confidence()] if self.has_category() else []        
+        fields += ['confidence=%1.3f' % self.category_confidence()] if self.has_category() and self.category_confidence() is not None else []        
         fields += ['tags=%s' % vipy.util.truncate_string(str(self.tags()), 40)] if self.has_tags() and not self.has_category() else []
         fields += ['captions=%s' % vipy.util.truncate_string(str(self.captions()), 40)] if self.has_captions() else []
         return str('<vipy.image.LabeledImage: %s>' % (', '.join(fields)))
 
+    def __or__(self, other):
+        assert isinstance(other, LabeledImage)
+        self.attributes['labels']['tags'] = (self.attributes['labels']['tags'] if self.has_tags() else []) + (other.attributes['labels']['tags'] if other.has_tags() else [])
+        self.attributes['labels']['captions'] = (self.attributes['labels']['captions'] if self.has_captions() else []) + (other.attributes['labels']['captions'] if other.has_captions() else [])        
+        return self
+    
     @classmethod
-    def cast(self, cls, im):
+    def cast(cls, im):
         assert isinstance(im, vipy.image.Image)
         im.__class__ = vipy.image.LabeledImage
+        if not im.hasattribute('labels'):
+            im.attributes['labels'] = {}
         return im
 
     @classmethod
@@ -2035,7 +2043,8 @@ class LabeledImage(Image):
     def tag(self, label, confidence=None):
         if not self.has_tags():
             self.attributes['labels']['tags'] = []
-        self.attributes['labels']['tags'].append( {'label':label, 'confidence':confidence}  )
+        for (l,c) in zip(to_iterable(label), to_iterable(confidence) if confidence is not None else [None]*len(tolist(label))):
+            self.attributes['labels']['tags'].append( {'label':l, 'confidence':c}  )
         return self
 
     def tags(self):
@@ -2071,12 +2080,13 @@ class LabeledImage(Image):
         return 'captions' in self.attributes['labels']
     
     def captions(self):
-        return self.attributes['labels']['captions'] if self.has_caption() else None
+        return self.attributes['labels']['captions'] if self.has_captions() else ()
 
     def caption(self, caption):
         if not self.has_captions():
             self.attributes['labels']['captions'] = []
-        self.attributes['labels']['captions'].append(caption)
+        for c in to_iterable(caption):
+            self.attributes['labels']['captions'].append(c)
         return self
             
     def is_unlabeled(self):
@@ -2259,6 +2269,7 @@ class Scene(LabeledImage):
         return self
 
     def __or__(self, other):
+        super().__or__(other)
         return self.union(other)
     
     def uncrop(self, bb, shape):
@@ -2898,9 +2909,9 @@ def RandomImageDetection(rows=None, cols=None):
                           xmin=np.random.randint(0,cols - 16), ymin=np.random.randint(0,rows - 16),
                           width=np.random.randint(16,cols), height=np.random.randint(16,rows))
 
-def RandomScene(rows=None, cols=None, num_detections=8, num_keypoints=8, num_objects=None, url=None):
+def RandomScene(rows=None, cols=None, num_detections=8, num_keypoints=8, num_tags=None, num_objects=None, url=None):
     """Return a uniform random color `vipy.image.Scene` of size (rows, cols) with a specified number of vipy.object.Object` objects"""    
-    im = Scene(array=RandomImage(rows, cols).array(), category='RandomScene') if url is None else Scene(url=url, category='RandomScene')
+    im = Scene(array=RandomImage(rows, cols).array()) if url is None else Scene(url=url)
     (rows, cols) = im.shape()
     objects = []
     if num_objects:
@@ -2909,6 +2920,9 @@ def RandomScene(rows=None, cols=None, num_detections=8, num_keypoints=8, num_obj
         objects += [vipy.object.Detection('obj%04d' % k, xmin=np.random.randint(0,cols - 16), ymin=np.random.randint(0,rows - 16), width=np.random.randint(16,cols), height=np.random.randint(16,rows), confidence=float(np.random.rand())) for k in range(num_detections)]
     if num_keypoints:
         objects += [vipy.object.Keypoint2d(category='kp%02d' % (k%20), x=np.random.randint(0,cols - 16), y=np.random.randint(0,rows - 16), radius=np.random.randint(0.01*cols, 0.1*cols), confidence=float(np.random.rand())) for k in range(num_keypoints)]
+    if num_tags:
+        im.clear_tags().tag(['tag%d'%k for k in range(num_tags)], [float(np.random.rand()) for k in range(num_tags)])
+            
     return im.objects(objects)
     
 

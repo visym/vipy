@@ -1,7 +1,7 @@
 import os
 import numpy as np
 from vipy.util import findpkl, toextension, filepath, filebase, jsonlist, ishtml, ispkl, filetail, temphtml
-from vipy.util import listpkl, listext, templike, tempdir, remkdir, tolist, fileext, writelist, tempcsv
+from vipy.util import listpkl, listext, templike, tempdir, remkdir, tolist, fileext, writelist, tempcsv, to_iterable
 from vipy.util import newpathroot, listjson, extlist, filefull, tempdir, groupbyasdict, try_import, shufflelist
 import random
 import vipy
@@ -140,31 +140,28 @@ class Dataset():
         self._idx = self._idx*(n+1)
         return self
     
-    def list(self, mapper=None, reducer=None):
-        """Return the dataset as a list, loading the entire dataset into memory, applying the optional mapper lambda on each element, and applying the optional reducer lambda on the resulting list"""
+    def tuple(self, mapper=None, flattener=to_iterable, reducer=None):
+        """Return the dataset as a tuple, applying the optional mapper lambda on each element, applying optional flattener on sequences returned by mapper, and applying the optional reducer lambda on the final tuple, return a generator"""
         assert mapper is None or callable(mapper)
-        assert reducer is None or callable(reducer)
-        mapped = [mapper(x) if mapper else x for x in self]
-        reduced = reducer(mapped) if reducer else mapped
+        assert flattener is None or callable(flattener)
+        assert reducer is None or callable(reducer)        
+        mapped = (mapper(x) if mapper else x for x in self)
+        flattened = (y for x in mapped for y in flattener(x))
+        reduced = reducer(flattened) if reducer else flattened
         return reduced
 
-    def flatten(self):
-        return Dataset(self.flatlist(), id=self.id())
-        
-    def flatlist(self, mapper=None):
-        """Return the dataset as a flat list, converting lists of lists into a single flat list"""
-        return self.list(mapper, reducer=lambda mapped: [x for xiter in mapped for x in xiter])
+    def list(self, mapper=None, flattener=to_iterable, reducer=None):
+        """Return a tuple as a list, loading into memory"""
+        return list(self.tuple(mapper, flattener, reducer))
     
     def set(self, mapper):
         """Return the dataset as a set.  Mapper must be a lambda function that returns a hashable type"""
-        assert callable(mapper)
-        return {mapper(x) for x in self}
+        return self.tuple(mapper=mapper, reducer=set)
         
 
     def frequency(self, f):
         """Frequency counts for which lamba returns the same value"""
-        assert callable(f)
-        return vipy.util.countby(self, f)
+        return vipy.util.countby(self.tuple(mapper=f))
 
     def count(self, f):
         """Counts for each element for which lamba returns true.  
@@ -175,8 +172,7 @@ class Dataset():
         Returns:
             A length of elements that satisfy f(v) = True [if f is not None]
         """
-        assert callable(f)
-        return len([k for (j,k) in enumerate(self._idx) if f(self[j])])
+        return len(self.list(f, flattener=None, reducer=lambda X: [x for x in X if x is True]))
 
     def countby(self, f):
         return self.frequency(f)
@@ -232,7 +228,8 @@ class Dataset():
 
     def inverse_frequency(self, f):
         attributes = self.set(f)
-        return {a:(1/len(attributes))*(len(self)/self.count(lambda im: f(im) == a)) for a in attributes}  # (normalized) inverse frequency weight
+        frequency = self.frequency(f)
+        return {a:(1/len(attributes))*(len(self)/frequency[a]) for a in attributes}  # (normalized) inverse frequency weight
     
     def load(self):
         """Load the entire dataset into memory.  This is useful for creating in-memory datasets from lazy load datasets"""
@@ -465,52 +462,15 @@ class Dataset():
         return Dataset([f(b) for b in self.minibatch(n, ragged)], id=self.id())
     
     def sort(self, f):
-        """Sort the dataset in-place using the sortkey lambda function f which is called either with one argument f(instance) or two arguments f(instance, instanceid)
+        """Sort the dataset in-place using the sortkey lambda function f
 
         To perform a sort of the dataset using some property of the instance, such as the object category (e.g. for vipy.image objects) 
 
         ```python
         dataset.sort(lambda im: im.category())
         ```
-
-        To sort the dataset back into the original order by instance id:
-        
-        ```python
-        dataset.sort(lambda im, iid: iid)
-        ```
-
-        To perform a lexicographic sort of the instance id and the object category
-
-        ```python
-        dataset.sort(lambda iid, im: (im.category(), iid))
-        ```
-
         """
-        assert callable(f) and len(f.__code__.co_varnames) in [1,2]
-        g = (lambda x,y: f(x)) if len(f.__code__.co_varnames)==1 else (lambda x,y: f(x,y)) 
-        self._idx = [self._idx[j] for j in sorted(range(len(self)), key=lambda k: g(self[k], self._idx[k]))]
-        return self
-
-    def dedupe(self, f):
-        """Deduplicate the dataset using the key lambda function f which is called either with one argument f(instance) or two arguments f(instance, instanceid)  
-
-        To deduplicate by instance id:
-
-        ```python
-        dataset.dedupe(lambda im, iid: iid)
-        ```
-
-        To deduplicate by identical percetual hash (e.g. for vipy.image objects) with 10 threads:
-
-        ```python
-        with vipy.globals.parallel(workers=10):
-            dataset.dedupe(lambda im: im.perceptualhash())
-        ```
-
-        """
-        assert callable(f) and len(f.__code__.co_varnames) in [1,2]
-        g = (lambda z: f(z[0])) if len(f.__code__.co_varnames)==1 else (lambda z: f(z[0],z[1]))  # unpack lambda tuple args
-        self._idx = list({m:i for (i,m) in zip(self._idx, vipy.parallel.map(g, zip(self, self._idx)))}.values())
+        self._idx = [self._idx[j] for (j,x) in sorted(zip(range(len(self)), self.tuple(f)), key=lambda x: x[1])]
         return self
 
     def randomize(self):
