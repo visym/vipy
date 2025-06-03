@@ -1972,7 +1972,7 @@ class ImageCategory(Image):
             return self
     
 
-class LabeledImage(ImageCategory):
+class LabeledImage(Image):
     """vipy.image.LabeledImage class
 
     This class provides a representation of a vipy.image.Image with one or more labels.
@@ -1987,23 +1987,33 @@ class LabeledImage(ImageCategory):
     im = vipy.image.LabeledImage(url='https://here.com/dog.jpg', instanceid=0, category='dog', vqa=[{'question':'Is this a dog?', 'answer':'Yes'}])
     ```
     """
-    def __init__(self, filename=None, url=None, attributes=None, array=None, colorspace=None, tags=None, captions=None):
+    def __init__(self, filename=None, url=None, attributes=None, array=None, colorspace=None, tags=None, captions=None, category=None):
         super().__init__(filename=filename,
                          url=url,
                          attributes=attributes,
                          array=array,
-                         colorspace=colorspace,
-                         category=tags)
-        
-        self.label(tags=tags, captions=captions)
-        
+                         colorspace=colorspace)
+
+        if not self.hasattribute('labels'):
+            self.attributes['labels'] = {}
+        if category is not None:
+            self.tag(category)
+        if tags is not None:
+            for t in vipy.util.tolist(tags):
+                self.tag(t)
+        if captions is not None:
+            for c in vipy.util.tolist(captions):
+                self.caption(c)
+            
     def __repr__(self):
         fields = ["height=%d, width=%d, color=%s" % (self.height(), self.width(), self.colorspace())] if self.isloaded() else []
         fields += ['filename="%s"' % (self.filename())] if self.filename() is not None else []
         fields += ['url="%s"' % self.url()] if self.hasurl() else []
         fields += ['loaded=False'] if not self.isloaded() and self.has_loader() is not None else []
-        fields += ['tags=%s' % vipy.util.truncate_string(str(self.tags()), 40)] if self.has_tags() else []
-        fields += ['captions=%s' % vipy.util.truncate_string(str(self.captions()), 40)] if self.has_caption() else []
+        fields += ['category=%s' % vipy.util.truncate_string(str(self.category()), 40)] if self.has_category() else []
+        fields += ['confidence=%1.3f' % self.category_confidence()] if self.has_category() else []        
+        fields += ['tags=%s' % vipy.util.truncate_string(str(self.tags()), 40)] if self.has_tags() and not self.has_category() else []
+        fields += ['captions=%s' % vipy.util.truncate_string(str(self.captions()), 40)] if self.has_captions() else []
         return str('<vipy.image.LabeledImage: %s>' % (', '.join(fields)))
 
     @classmethod
@@ -2011,39 +2021,66 @@ class LabeledImage(ImageCategory):
         assert isinstance(im, vipy.image.Image)
         im.__class__ = vipy.image.LabeledImage
         return im
-        
-    def label(self, tags=None, captions=None):
-        if not self.hasattribute('label'):
-            self.attributes['label'] = {}        
-        if tags is not None:
-            self.attributes['label']['tags'] = tuple(d if isinstance(d, dict) else {'tag':d} for d in vipy.util.tolist(tags))
-        if captions is not None:
-            self.attributes['label']['captions'] = vipy.util.tolist(captions)
+
+    @classmethod
+    def from_json(obj, s):
+        im = super().from_json(s)
+        im.__class__ = vipy.image.LabeledImage
+        return im
+
+    def clear_tags(self):
+        self.attributes['labels']['tags'] = []
+        return self
+    
+    def tag(self, label, confidence=None):
+        if not self.has_tags():
+            self.attributes['labels']['tags'] = []
+        self.attributes['labels']['tags'].append( {'label':label, 'confidence':confidence}  )
         return self
 
-    def has_tags(self):
-        return 'tags' in self.attributes['label']
+    def tags(self):
+        return tuple(t['label'] for t in self.attributes['labels']['tags']) if self.has_tags() else ()
     
-    def has_soft_tags(self):
-        return self.has_tags() and any('confidence' in d for d in self.attributes['label']['tags'])
-        
     def has_tag(self, t):
         return t in self.tags()
-        
-    def tags(self):
-        return tuple(t['tag'] for t in self.attributes['label']['tags'])
 
-    def soft_tags(self):
-        assert self.has_soft_tags()
-        return tuple((t['tag'],t['confidence']) for t in self.attributes['label']['tags'])
-        
-    def has_caption(self):
-        return 'captions' in self.attributes['label']
-    def captions(self):
-        return self.attributes['label']['captions'] if self.has_caption() else None
+    def num_tags(self):
+        return len(self.tags())
     
+    def has_tags(self):
+        return 'tags' in self.attributes['labels']
+    
+    def soft_tags(self):
+        return tuple((t['label'], t['confidence']) for t in self.attributes['labels']['tags']) if self.has_tags() else ()
+
+    def has_category(self):
+        return self.num_tags() == 1
+    
+    def category(self, label=None, confidence=None):
+        if label is not None:
+            self.clear_tags().tag(label, confidence)
+            return self
+        assert self.num_tags() <= 1, "ambiguous category"
+        return self.tags()[0] if self.has_tags() else None
+    
+    def category_confidence(self):
+        assert self.has_category(), "ambiguous category"
+        return self.soft_tags()[0][1]
+    
+    def has_captions(self):
+        return 'captions' in self.attributes['labels']
+    
+    def captions(self):
+        return self.attributes['labels']['captions'] if self.has_caption() else None
+
+    def caption(self, caption):
+        if not self.has_captions():
+            self.attributes['labels']['captions'] = []
+        self.attributes['labels']['captions'].append(caption)
+        return self
+            
     def is_unlabeled(self):
-        return len(self.attributes['label']) == 0
+        return len(self.attributes['labels']) == 0
     
     
 class Scene(LabeledImage):
