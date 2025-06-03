@@ -44,7 +44,7 @@ except ImportError:
     import json  # fastish
     
 
-class Image(object):
+class Image():
     """vipy.image.Image class
     
     The vipy image class provides a fluent, lazy interface for representing, transforming and visualizing images.
@@ -161,10 +161,10 @@ class Image(object):
                    attributes=d['attributes'])
         
     @classmethod
-    def from_path(cls, pth):
+    def from_uri(cls, uri):
         """Create an image object from an absolute file path or url"""
-        assert vipy.util.isurl(pth) or vipy.util.isfile(pth), "invalid path"
-        return cls(url=path if vipy.util.isurl(pth) else None, filename=pth if vipy.util.isfile(pth) else None)            
+        assert vipy.util.isurl(uri) or vipy.util.isfile(uri), "invalid path"
+        return cls(url=uri if vipy.util.isurl(uri) else None, filename=uri if vipy.util.isfile(uri) else None)            
     
     @classmethod
     def from_json(cls, s):
@@ -242,7 +242,7 @@ class Image(object):
         return self
 
     def exif(self, extended=False):
-        """Return the EXIF meta-data in filename as a dictionary.  Included non-base EXIF data if extended=True.  Returns empty dictionary if no EXIF exists.  Triggers download."""
+        """Return the EXIF meta-data in filename as a dictionary.  Included non-base EXIF data if extended=True.  Returns empty dictionary if no EXIF exists.  Triggers download but not load."""
 
         d = {}
         if self.download().hasfilename():
@@ -283,7 +283,7 @@ class Image(object):
 
         .. note:: 
             - `vipy.image.Image.tile` can be undone using `vipy.image.Image.untile`
-            - The identity tiling is im.tile(im.widht(), im.height(), overlaprows=0, overlapcols=0)
+            - The identity tiling is im.tile(im.width(), im.height(), overlaprows=0, overlapcols=0)
             - Ragged tiles outside the image boundary are zero padded
             - All annotations are updated properly for each tile, when the source image is `vipy.image.Scene`
         """
@@ -500,13 +500,18 @@ class Image(object):
                     self.colorspace('float')
             elif iswebp(self._filename):
                 import vipy.video
-                return vipy.video.Video(self._filename).load()  
-            elif hasextension(self._filename):
+                return vipy.video.Video(self._filename).load()
+            elif self.hasfilename() and hasextension(self._filename):
                 raise ValueError('Non-standard image extensions require a custom loader')
-            else:
+            elif self.hasfilename():
                 # Attempting to open it anyway, may be an image file without an extension. Cross your fingers ...
                 self._array = np.array(PIL.Image.open(self._filename))  # RGB order!
-
+            elif not self.hasfilename() and self.hasattribute('__shape__'):
+                self._array = np.zeros( self.getattribute('__shape__') )
+                self.delattribute('__shape__')
+            else:
+                raise ValueError('image file not defined')
+            
         except IOError:
             if ignoreErrors:
                 if verbose is True:
@@ -1074,6 +1079,13 @@ class Image(object):
         for k in tolist(atts):
             self.delattribute(k)
         return self
+
+    def append_attribute(self, key, value):
+        """Append the value to attribute key, creating the key as an empty list if it does not exist"""
+        if key not in self.attributes:
+            self.attributes[key] = []
+        self.attributes[key].append(value)
+        return self
     
     def metadata(self, k=None):
         """Return metadata associated with this image, stored in the attributes dictionary"""
@@ -1090,7 +1102,7 @@ class Image(object):
     def hasfilename(self):
         return self._filename is not None and os.path.exists(self._filename)
 
-    def clone(self, flushforward=False, flushbackward=False, flush=False, shallow=False, attributes=False):
+    def clone(self, flushforward=False, flushbackward=False, flush=False, shallow=False, attributes=False, dereference=False):
         """Create deep copy of object, flushing the original buffer if requested and returning the cloned object.
         Flushing is useful for distributed memory management to free the buffer from this object, and pass along a cloned 
         object which can be used for encoding and will be garbage collected.
@@ -1098,20 +1110,20 @@ class Image(object):
             * flushforward: copy the object, and set the cloned object array() to None.  This flushes the video buffer for the clone, not the object
             * flushbackward:  copy the object, and set the object array() to None.  This flushes the video buffer for the object, not the clone.
             * flush:  set the object array() to None and clone the object.  This flushes the video buffer for both the clone and the object.
-
+            * dereference: remove both the filename and URL (if present) in the cloned object, leaving only the buffer
         """
         if flush or (flushforward and flushbackward):
-            self._array = None  # flushes buffer on object and clone
+            self.flush()  # flushes buffer on object and clone
             im = copy.deepcopy(self)  # object and clone are flushed
         elif flushbackward:
             im = copy.deepcopy(self)  # propagates _array to clone
-            self._array = None   # object flushed, clone not flushed
-        elif flushforward:
+            self.flush()  # object flushed, clone not flushed
+        elif flushforward:            
             array = self._array;
             self._array = None
             im = copy.deepcopy(self)   # does not propagate _array to clone
             self._array = array    # object not flushed
-            im._array = None   # clone flushed
+            im.flush()
         elif shallow:
             im = copy.copy(self)  # shallow copy
             im._array = np.asarray(self._array) if self._array is not None else None  # shared pixels            
@@ -1119,11 +1131,17 @@ class Image(object):
             im = copy.deepcopy(self)
         if attributes:
             im.attributes = copy.deepcopy(self.attributes)
+        if dereference:
+            assert im._array is not None, "image buffer required"
+            im._filename = None
+            im._url = None
         return im
 
     def flush(self):
-        """Alias for clone(flush=True), returns self not clone"""
-        self._array = None  # flushes buffer on object and clone
+        """flush the image buffer in place, alias for self.clone(flush=True)"""        
+        if not (self.hasfilename() or self.hasurl()):
+            self.setattribute('__shape__', (self.height(), self.width(), self.channels()))  # to load zeros
+        self._array = None  # flushes buffer on object
         return self
 
         
@@ -1630,10 +1648,9 @@ class Image(object):
         vipy.show.imshow(im.rgb().numpy(), fignum=figure, nowindow=nowindow, timestamp=timestamp, timestampfacecolor=timestampfacecolor, flush=True, timestampcolor=timestampcolor)
         return self
 
-    def save(self, filename, quality=75):
+    def save(self, filename=None, quality=75):
         """Save the current image to a new filename and return the image object"""
-        assert filename is not None, "Invalid filename - must be path to new image filename"
-        return self.filename(self.saveas(filename, quality=quality)).loader(None)
+        return self.filename(self.saveas(filename if filename	is not None else tempjpg(), quality=quality)).loader(None)
         
         
     # Image export
@@ -1846,7 +1863,8 @@ class Image(object):
         """
         im = self.face_detection(mindim=mindim, union=False)          
         return im.setattribute('facepixelize', [o.int().json() for o in im.objects()]).pixelize(radius=radius).downcast()
-    
+
+
     
 class ImageCategory(Image):
     """vipy ImageCategory class
@@ -1961,7 +1979,7 @@ class LabeledImage(ImageCategory):
 
     Valid constructors include all provided by vipy.image.Image with additional labels that provide ground truth for the content of the image. 
 
-    Suppprted labels are tags/keywords, categories, captions, image identifier, wordnet ID, visual Q&A 
+    Suppprted labels are tags/keywords, categories, captions, image identifier, visual Q&A 
 
     ```python
     im = vipy.image.LabeledImage(filename='/path/to/dog.jpg', tags={'dog','canine'})
@@ -1969,24 +1987,16 @@ class LabeledImage(ImageCategory):
     im = vipy.image.LabeledImage(url='https://here.com/dog.jpg', instanceid=0, category='dog', vqa=[{'question':'Is this a dog?', 'answer':'Yes'}])
     ```
     """
-    def __init__(self, filename=None, url=None, attributes=None, array=None, colorspace=None, tags=None, captions=None, wordnetid=None, vqa=None, category=None):
+    def __init__(self, filename=None, url=None, attributes=None, array=None, colorspace=None, tags=None, captions=None):
         super().__init__(filename=filename,
                          url=url,
                          attributes=attributes,
                          array=array,
                          colorspace=colorspace,
-                         category=category)
+                         category=tags)
         
-        if not self.hasattribute('label'):
-            self.attributes['label'] = {}
-        if tags is not None:
-            self.attributes['label']['tags'] = sorted(list(set(vipy.util.tolist(tags))))            
-        if captions is not None:
-            self.attributes['label']['captions'] = vipy.util.tolist(captions)
-        if vqa is not None:
-            assert isinstance(vqa, list) and all([isinstance(q, dict) and 'question' in q and 'answer' in q for q in vqa])
-            self.attributes['label']['vqa'] = vqa
-            
+        self.label(tags=tags, captions=captions)
+        
     def __repr__(self):
         fields = ["height=%d, width=%d, color=%s" % (self.height(), self.width(), self.colorspace())] if self.isloaded() else []
         fields += ['filename="%s"' % (self.filename())] if self.filename() is not None else []
@@ -1994,45 +2004,44 @@ class LabeledImage(ImageCategory):
         fields += ['loaded=False'] if not self.isloaded() and self.has_loader() is not None else []
         fields += ['tags=%s' % vipy.util.truncate_string(str(self.tags()), 40)] if self.has_tags() else []
         fields += ['captions=%s' % vipy.util.truncate_string(str(self.captions()), 40)] if self.has_caption() else []
-        fields += ['vqa=%s' % vipy.util.truncate_string(str(self.vqa()), 40)] if self.has_vqa() else []
         return str('<vipy.image.LabeledImage: %s>' % (', '.join(fields)))
+
+    @classmethod
+    def cast(self, cls, im):
+        assert isinstance(im, vipy.image.Image)
+        im.__class__ = vipy.image.LabeledImage
+        return im
         
-    def label(self, tags=None, captions=None, category=None, wordnetid=None, vqa=None):
-        if category is not None:
-            self.attributes['label']['category'] = category            
+    def label(self, tags=None, captions=None):
+        if not self.hasattribute('label'):
+            self.attributes['label'] = {}        
         if tags is not None:
-            self.attributes['label']['tags'] = sorted(list(set(vipy.util.tolist(tags))))
+            self.attributes['label']['tags'] = tuple(d if isinstance(d, dict) else {'tag':d} for d in vipy.util.tolist(tags))
         if captions is not None:
             self.attributes['label']['captions'] = vipy.util.tolist(captions)
-        if wordnetid is not None:
-            self.attributes['label']['wordnetid'] = wordnetid
-        if vqa is not None:
-            assert isinstance(vqa, list) and all([isinstance(q, dict) and 'question' in q and 'answer' in q for q in vqa])
-            self.attributes['label']['vqa'] = vqa        
         return self
 
-    def tags(self):
-        return set(self.attributes['label']['tags']) if self.has_tags() else None
-    def has_tag(self, t):
-        return t in self.attributes['label']['tags']
     def has_tags(self):
         return 'tags' in self.attributes['label']
     
+    def has_soft_tags(self):
+        return self.has_tags() and any('confidence' in d for d in self.attributes['label']['tags'])
+        
+    def has_tag(self, t):
+        return t in self.tags()
+        
+    def tags(self):
+        return tuple(t['tag'] for t in self.attributes['label']['tags'])
+
+    def soft_tags(self):
+        assert self.has_soft_tags()
+        return tuple((t['tag'],t['confidence']) for t in self.attributes['label']['tags'])
+        
     def has_caption(self):
         return 'captions' in self.attributes['label']
     def captions(self):
         return self.attributes['label']['captions'] if self.has_caption() else None
     
-    def has_wordnetid(self):
-        return 'wordnetid' in self.attributes['label']
-    def wordnetid(self):
-        return self.attributes['label']['wordnetid'] if self.has_wordnetid() else None
-
-    def has_vqa(self):
-        return 'vqa' in self.attributes['label']     
-    def vqa(self):
-        return self.attributes['label']['vqa'] if self.has_vqa() else None   
-
     def is_unlabeled(self):
         return len(self.attributes['label']) == 0
     
@@ -2054,7 +2063,7 @@ class Scene(LabeledImage):
 
     """
     def __init__(self, filename=None, url=None, category=None, attributes=None, objects=None, xywh=None, boxlabels=None, array=None, colorspace=None):
-        super().__init__(filename=filename, url=url, attributes=attributes, category=category, array=array, colorspace=colorspace)   # ImageCategory class inheritance
+        super().__init__(filename=filename, url=url, attributes=attributes, tags=category, array=array, colorspace=colorspace)   # ImageCategory class inheritance
         self._objectlist = []
 
         if objects is not None:
@@ -2207,10 +2216,14 @@ class Scene(LabeledImage):
         
     def union(self, other, miniou=None):
         """Combine the objects of the scene with other and self with no duplicate checking unless miniou is not None"""
+        assert isinstance(other, Image)
         if isinstance(other, Scene):
             self.objects(self.objects()+other.objects())
         return self
 
+    def __or__(self, other):
+        return self.union(other)
+    
     def uncrop(self, bb, shape):
         """Uncrop a previous crop(bb) called with the supplied bb=BoundingBox(), and zeropad to shape=(H,W)"""
         super().uncrop(bb, shape)
@@ -2231,6 +2244,21 @@ class Scene(LabeledImage):
         return list(set([obj.category() for obj in self._objectlist]))
     
     # Spatial transformation
+    def _history(self, func=None, **kwargs):
+        """The undo history for flush. This is useful for remote processing of images at lower resolutions and square crops without passing around the image buffer"""
+        if func is not None:
+            self.append_attribute('_history', (func, kwargs))
+            return self
+        return self.getattribute('_history')
+
+    def flush(self):
+        """Free the image buffer, and undo all of the object transformations to restore alignment with the reference image filename/url"""
+        if self._history() is not None:
+            for (f,kwargs) in reversed(self._history()):
+                self.objectmap(lambda o: getattr(o,f)(**kwargs))  # undo
+            self.delattribute('_history')
+        return super().flush()
+    
     def imclip(self):
         """Clip all bounding boxes to the image rectangle, silently rejecting those boxes that are degenerate or outside the image"""
         self._objectlist = [o.imclip(self.numpy()) if isinstance(o, vipy.geometry.BoundingBox) else o for o in self._objectlist if not isinstance(o, vipy.geometry.BoundingBox) or o.hasoverlap(self.numpy())]
@@ -2240,10 +2268,11 @@ class Scene(LabeledImage):
         """Rescale image buffer and all bounding boxes - Not idempotent"""
         self = super().rescale(scale, interp=interp)
         self._objectlist = [bb.rescale(scale) for bb in self._objectlist]
+        self._history('rescale', s=1/scale)
         return self
 
     def resize(self, cols=None, rows=None, height=None, width=None, interp='bilinear'):
-        """Resize image buffer to (height=rows, width=cols) and transform all bounding boxes accordingly.  If cols or rows is None, then scale isotropically"""
+        """Resize image buffer to (height=rows, width=cols) and transform all bounding boxes accordingly.  If cols or rows is None, then scale isotropically.  cols is a synonym for width, rows is a synonym for height"""
         assert not (cols is not None and width is not None), "Define either width or cols"
         assert not (rows is not None and height is not None), "Define either height or rows"
         rows = rows if height is None else height
@@ -2254,7 +2283,8 @@ class Scene(LabeledImage):
         sy = (float(rows) / self.height()) if rows is not None else None
         sx = sy if sx is None else sx
         sy = sx if sy is None else sy        
-        self._objectlist = [bb.scalex(sx).scaley(sy) for bb in self._objectlist]        
+        self._objectlist = [bb.scale_x(sx).scale_y(sy) for bb in self._objectlist]
+        self._history('scale_x', s=1/sx)._history('scale_y', s=1/sy)
         if sx == sy:
             self = super().rescale(sx, interp=interp)  # FIXME: if we call resize here, inheritance is screweed up
         else:
@@ -2267,17 +2297,20 @@ class Scene(LabeledImage):
         self = super().centersquare()
         (dy, dx) = ((H - self.height())/2.0, (W - self.width())/2.0)
         self._objectlist = [bb.translate(-dx, -dy) for bb in self._objectlist]
+        self._history('translate', dx=dx, dy=dy)
         return self
     
     def fliplr(self):
         """Mirror buffer and all bounding box around vertical axis"""
         self._objectlist = [bb.fliplr(self.numpy()) for bb in self._objectlist]
+        self._history('fliplr', width=self.width())
         self = super().fliplr()
         return self
 
     def flipud(self):
         """Mirror buffer and all bounding box around vertical axis"""
         self._objectlist = [bb.flipud(self.numpy()) for bb in self._objectlist]
+        self._history('flipud', height=self.height())        
         self = super().flipud()
         return self
     
@@ -2292,6 +2325,7 @@ class Scene(LabeledImage):
         dx = padwidth[0] if isinstance(padwidth, tuple) and len(padwidth) == 2 else padwidth
         dy = padheight[0] if isinstance(padheight, tuple) and len(padheight) == 2 else padheight
         self._objectlist = [bb.translate(dx, dy) for bb in self._objectlist]
+        self._history('translate', dx=-dx, dy=-dy)
         return self
 
     def meanpad(self, padwidth, padheight, mu=None):
@@ -2300,6 +2334,7 @@ class Scene(LabeledImage):
         dx = padwidth[0] if isinstance(padwidth, tuple) and len(padwidth) == 2 else padwidth
         dy = padheight[0] if isinstance(padheight, tuple) and len(padheight) == 2 else padheight
         self._objectlist = [bb.translate(dx, dy) for bb in self._objectlist]
+        self._history('translate', dx=-dx, dy=-dy)
         return self
 
     def rot90cw(self):
@@ -2307,6 +2342,7 @@ class Scene(LabeledImage):
         (H,W) = self.shape()        
         self.array(np.rot90(self.numpy(), 3))
         self._objectlist = [bb.rot90cw(H, W) for bb in self._objectlist]
+        self._history('rot90ccw', H=W, W=H)                
         return self
 
     def rot90ccw(self):
@@ -2314,6 +2350,7 @@ class Scene(LabeledImage):
         (H,W) = self.shape()
         self.array(np.rot90(self.numpy(), 1))
         self._objectlist = [bb.rot90ccw(H, W) for bb in self._objectlist]
+        self._history('rot90cw', H=W, W=H)                        
         return self
 
     def maxdim(self, dim=None, interp='bilinear'):
@@ -2331,6 +2368,7 @@ class Scene(LabeledImage):
         self = super()._crop(bbox)        
         (dx, dy) = (bbox.xmin(), bbox.ymin())
         self._objectlist = [bb.translate(-dx, -dy) for bb in self._objectlist]
+        self._history('translate', dx=dx, dy=dy)                        
         return self
 
     def objectcrop(self, dilate=1.0, maxsquare=False):
@@ -2351,7 +2389,8 @@ class Scene(LabeledImage):
         self.zeropad(bbox.int().width(), bbox.int().height())  # FIXME: this is inefficient
         (dx, dy) = (bbox.width(), bbox.height())
         bbox = bbox.translate(dx, dy)
-        self._objectlist = [bb.translate(-dx, -dy) for bb in self._objectlist]        
+        self._objectlist = [bb.translate(-dx, -dy) for bb in self._objectlist]
+        self._history('translate', dx=dx, dy=dy)                                
         self = super()._crop(bbox)        
         (dx, dy) = (bbox.xmin(), bbox.ymin())
         return self
@@ -2830,9 +2869,9 @@ def RandomScene(rows=None, cols=None, num_detections=8, num_keypoints=8, num_obj
     if num_objects:
         (num_detection, num_keypoints) = (num_objects//2, num_objects//2)
     if num_detections:
-        objects += [vipy.object.Detection('obj%04d' % k, xmin=np.random.randint(0,cols - 16), ymin=np.random.randint(0,rows - 16), width=np.random.randint(16,cols), height=np.random.randint(16,rows)) for k in range(num_detections)]
+        objects += [vipy.object.Detection('obj%04d' % k, xmin=np.random.randint(0,cols - 16), ymin=np.random.randint(0,rows - 16), width=np.random.randint(16,cols), height=np.random.randint(16,rows), confidence=float(np.random.rand())) for k in range(num_detections)]
     if num_keypoints:
-        objects += [vipy.object.Keypoint2d(category='kp%02d' % (k%20), x=np.random.randint(0,cols - 16), y=np.random.randint(0,rows - 16), radius=np.random.randint(10,50), confidence=float(np.random.rand())) for k in range(num_keypoints)]
+        objects += [vipy.object.Keypoint2d(category='kp%02d' % (k%20), x=np.random.randint(0,cols - 16), y=np.random.randint(0,rows - 16), radius=np.random.randint(0.01*cols, 0.1*cols), confidence=float(np.random.rand())) for k in range(num_keypoints)]
     return im.objects(objects)
     
 

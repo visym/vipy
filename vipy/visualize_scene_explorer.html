@@ -41,10 +41,10 @@
           left: 50px; /* Adjust left position of search bar */
 	  outline: none;
           z-index: 4; /* Ensure the search bar is above the image */
-          box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);	  
+          /* box-shadow: 0 0 10px rgba(0, 0, 0, 0.5); */
       }
       #searchInput {
-          box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);	  	  
+          box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
 	  width: ${SEARCHBOX_WIDTH}px; /* Set width of search input */
 	  padding: 5px 24px;
 	  opacity: 0.8;
@@ -52,14 +52,16 @@
 	  background-image: url("https://img.icons8.com/666666/search");  /* "666666" is hex color */	  
 	  background-repeat:no-repeat;
 	  background-position:left 5px center;
-	  background-size: 14px;	  
+	  background-size: 14px;
+	  border-style: solid;
+	  border: 1px solid #ddd;	  
       }
       #searchDropdown {
 	  display: none;
 	  position: absolute;
 	  background-color: #ffffff;
           min-width: ${SEARCHBOX_WIDTH}px;
-          left: 2px;
+          left: 0px;
 	  overflow-y: auto;
 	  border: 1px solid #ddd;
 	  z-index: 5; /* Ensure the dropdown is above the image */
@@ -124,16 +126,17 @@
       }
       /* Each bar of the hamburger */
       .hamburger-bar {
+	box-shadow: 0 0 5px rgba(0, 0, 0, 0.5);	  
         width: 100%;
         height: 4px;
-        background-color: #AAAAAA;
+        background-color: #DDDDDD;
         margin: 4px 0;
         border-radius: 2px;
       }
       /* Dropdown menu that appears when hamburger is clicked */
       #hamburgerDropdown {
         position: absolute;
-        top: 47px;  /* Just below the hamburger icon */
+        top: 45px;  /* Just below the hamburger icon */
         left: 10px;
         background-color: #fff;
 	border: 1px solid #ddd;	 
@@ -456,7 +459,6 @@
 	  // Handle keyboard navigation for dropdown list
 	  searchInput.addEventListener('keydown', function(e) {
 	      var highlightedItem = searchDropdown.querySelector('.highlighted');
-	      //var filteredItems = searchDropdown.querySelector('style="display: block"');    
 	      if (e.key === 'ArrowDown' || e.key === 'Down') {
 		  if (highlightedItem) {
 		      var nextItem = highlightedItem.nextElementSibling;

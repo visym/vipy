@@ -672,14 +672,14 @@ class Track(object):
         """Alias for rescale"""
         return self.rescale(s)
 
-    def scalex(self, sx):
+    def scale_x(self, sx):
         """Rescale track boxes by scale factor sx"""
-        self._keyboxes = [bb.scalex(sx) for bb in self._keyboxes]
+        self._keyboxes = [bb.scale_x(sx) for bb in self._keyboxes]
         return self
 
-    def scaley(self, sy):
+    def scale_y(self, sy):
         """Rescale track boxes by scale factor sx"""
-        self._keyboxes = [bb.scaley(sy) for bb in self._keyboxes]
+        self._keyboxes = [bb.scale_y(sy) for bb in self._keyboxes]
         return self
 
     def dilate(self, s):
@@ -1259,7 +1259,6 @@ class Keypoint2d(Point2d, Object):
         if id is not None:
             self._id = id
 
-    @property
     def confidence(self):
         return self.attributes['confidence'] if 'confidence' in self.attributes else None
 

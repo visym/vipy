@@ -800,6 +800,12 @@ def test_scene():
     assert np.sum(im.bghash(asbinary=True, bits=72) == im.clone().zeropad(10,10).bghash(asbinary=True, bits=72)) >=64
     print('[test_image.scene]: bghash PASSED')
 
+    # Flush history
+    im = vipy.image.RandomScene(url='https://upload.wikimedia.org/wikipedia/commons/1/11/Horned1b.jpg')
+    imc = im.clone().resize(256,256).fliplr().rescale(0.5).centersquare()
+    assert all(o == oc for (o,oc) in zip(im.objects(), imc.flush().objects()))
+    print('[test_image.scene]: flush history  PASSED')    
+
     
 if __name__ == "__main__":
     test_image()

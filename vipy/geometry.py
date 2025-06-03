@@ -730,24 +730,24 @@ class BoundingBox(object):
         self._xmax = self._xmax + dx
         return self
 
-    def rescale(self, scale=1):
+    def rescale(self, s):
         """Multiply the box corners by a scale factor"""
-        self._xmin = scale * self._xmin
-        self._ymin = scale * self._ymin
-        self._xmax = scale * self._xmax
-        self._ymax = scale * self._ymax
+        self._xmin = s * self._xmin
+        self._ymin = s * self._ymin
+        self._xmax = s * self._xmax
+        self._ymax = s * self._ymax
         return self
 
-    def scalex(self, scale=1):
+    def scale_x(self, s):
         """Multiply the box corners in the x dimension by a scale factor"""
-        self._xmin = scale * self._xmin
-        self._xmax = scale * self._xmax
+        self._xmin = s * self._xmin
+        self._xmax = s * self._xmax
         return self
 
-    def scaley(self, scale=1):
+    def scale_y(self, s):
         """Multiply the box corners in the y dimension by a scale factor"""
-        self._ymin = scale * self._ymin
-        self._ymax = scale * self._ymax
+        self._ymin = s * self._ymin
+        self._ymax = s * self._ymax
         return self
 
     def resize(self, width, height):
@@ -1168,7 +1168,7 @@ class Point2d():
 
     def __eq__(self, p):
         assert isinstance(p, Point2d), "invalid input"
-        return self._x == p._x and self._y == p._y 
+        return self.clone().int().coord == p.clone().int().coord
 
     def __len__(self):
         return len(self.coord)
@@ -1216,24 +1216,28 @@ class Point2d():
         return self.translate(dx, dy)
 
     
-    def rescale(self, scale=1):
+    def rescale(self, s):
         """Multiply the coordinates by a scale factor"""
-        self._x = scale * self._x
-        self._y = scale * self._y
-        self._r = scale * self._r                   
+        self._x = s * self._x
+        self._y = s * self._y
+        self._r = s * self._r                   
         return self
 
-    def scalex(self, scale=1):
-        """Multiply the x coordinate by a scale factor"""
-        self._x = scale * self._x
-        self._r = scale * self._r                           
+    def scale_x(self, s=1):
+        """Multiply the x coordinate (and radius) by a scale factor"""
+        self._x = s * self._x
+        self._r = s * self._r
         return self
-
-    def scaley(self, scale=1):
+        
+    def scale_y(self, s=1):
         """Multiply the y coordinate by a scale factor"""
-        self._y = scale * self._y
+        self._y = s * self._y
         return self
-
+        
+    def scale_r(self, s=1):
+        """Multiply the r coordinate by a scale factor"""
+        self._r = s * self._r        
+        return self
 
     def isinteger(self):
         return (isinstance(self._x, int) and

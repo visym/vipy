@@ -3757,8 +3757,8 @@ class Scene(VideoCategory):
         (H,W) = self.shape()  # yuck, need to get image dimensions before filter, manually set this prior to calling resize if known
         sy = rows / float(H) if rows is not None else cols / float(W)
         sx = cols / float(W) if cols is not None else rows / float(H)
-        self._tracks = {k:t.scalex(sx) for (k,t) in self.tracks().items()}
-        self._tracks = {k:t.scaley(sy) for (k,t) in self.tracks().items()}
+        self._tracks = {k:t.scale_x(sx) for (k,t) in self.tracks().items()}
+        self._tracks = {k:t.scale_y(sy) for (k,t) in self.tracks().items()}
         super().resize(rows=rows, cols=cols)        
         return self
 
