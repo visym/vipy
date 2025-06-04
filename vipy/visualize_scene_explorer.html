@@ -16,7 +16,10 @@
     
       #imageContainer {
           position: relative;
-          width: ${IMG_WIDTH}px; /* Set width of image container */
+          /* width: ${IMG_WIDTH}px; */ /* Set width of image container */
+	  width: 100%;
+	  height: 100%;
+	  overflow: hidden; 
       }
 
       #imageLabel {
@@ -179,7 +182,7 @@
   <body>
     
     <div id="imageContainer">
-      <img id="mainImage" src="${IMG}" alt="Scene" width="${IMG_WIDTH}" >
+      <img id="mainImage" src="${IMG}" alt="Scene" width="100%" height="100%" >
       <div id="searchBar">
         <input type="text" id="searchInput" placeholder="Label Search ...">
         <ul id="searchDropdown"></ul>    
@@ -265,6 +268,12 @@
           var menuAttributes = document.getElementById('menuAttributes');
           var menuCaption    = document.getElementById('menuCaption');
           var menuTags  = document.getElementById('menuTags');	  
+	  var imgHeightIntrinsic = ${IMG_HEIGHT};
+	  var imgWidthIntrinsic = ${IMG_WIDTH};
+	  var imgHeight = mainImage.clientHeight;
+	  var imgWidth = mainImage.clientWidth;
+	  var imgHeightScale = imgHeight / imgHeightIntrinsic;
+	  var imgWidthScale = imgWidth / imgWidthIntrinsic;
 	  
 	  var kp_classlist = ${KP_CLASSLIST};
 	  var kp_attributelist = ${KP_ATTRIBUTELIST};
@@ -295,11 +304,11 @@
 
         // hamburger menu: image attributes	  
       menuAttributes.addEventListener('click', function() {
-
-          popup.style.height = Math.floor(${IMG_HEIGHT} / 2) + 'px';
-          popup.style.width = Math.floor(${IMG_WIDTH} / 2) + 'px';
-          popup.style.top = Math.floor(${IMG_HEIGHT} / 4) + 'px';
-          popup.style.left = Math.floor(${IMG_WIDTH} / 4) + 'px';
+          popup.style.height = Math.floor(imgHeight / 2) + 'px';
+          popup.style.width = Math.floor(imgWidth * 6 / 8) + 'px';
+          popup.style.top = Math.floor(imgWidth / 8) + 'px';            
+          popup.style.left = Math.floor(imgWidth / 8) + 'px';
+	      
           popupText.innerHTML = "${IMG_ATTRIBUTES}";
           popup.style.display = 'block';
           is_scene_popup_visible = true;
@@ -313,10 +322,11 @@
       
         // hamburger menu: caption	  	  
       menuCaption.addEventListener('click', function() {
-          popup.style.height = Math.floor(${IMG_HEIGHT} / 2) + 'px';
-          popup.style.width = Math.floor(${IMG_WIDTH} / 2) + 'px';
-          popup.style.top = Math.floor(${IMG_HEIGHT} / 4) + 'px';
-          popup.style.left = Math.floor(${IMG_WIDTH} / 4) + 'px';
+          popup.style.height = Math.floor(imgHeight / 2) + 'px';
+          popup.style.width = Math.floor(imgWidth * 6 / 8) + 'px';
+          popup.style.top = Math.floor(imgWidth / 8) + 'px';      
+          popup.style.left = Math.floor(imgWidth / 8) + 'px';
+	      
           popupText.innerHTML = "${IMG_CAPTION}";
           popup.style.display = 'block';
           is_scene_popup_visible = true;
@@ -328,10 +338,12 @@
 
         // hamburger menu: tags
       menuTags.addEventListener('click', function() {
-          popup.style.height = Math.floor(${IMG_HEIGHT} / 2) + 'px';
-          popup.style.width = Math.floor(${IMG_WIDTH} / 2) + 'px';
-          popup.style.top = Math.floor(${IMG_HEIGHT} / 4) + 'px';
-          popup.style.left = Math.floor(${IMG_WIDTH} / 4) + 'px';
+      
+          popup.style.height = Math.floor(imgHeight / 2) + 'px';
+          popup.style.width = Math.floor(imgWidth * 6 / 8) + 'px';
+          popup.style.top = Math.floor(imgWidth / 8) + 'px';
+          popup.style.left = Math.floor(imgWidth / 8) + 'px';
+
           popupText.innerHTML = "${IMG_TAGS}",
           popup.style.display = 'block';
           is_scene_popup_visible = true;
@@ -340,16 +352,24 @@
           is_scene_popup_visible = true;
 	  hamburgerDropdown.classList.remove('open');	  
       });
-	  
+
+	  function createKeypoints() {
+	      var imgHeightIntrinsic = ${IMG_HEIGHT};
+	      var imgWidthIntrinsic = ${IMG_WIDTH};
+	      var imgHeight = mainImage.clientHeight;
+	      var imgWidth = mainImage.clientWidth;
+	      var imgHeightScale = imgHeight / imgHeightIntrinsic;
+	      var imgWidthScale = imgWidth / imgWidthIntrinsic;
+	      
 	  // Create keypoint circles and append them to the container
-	  for (let i = 0; i < kp_classlist.length; i++) {
+	      for (let i = 0; i < kp_classlist.length; i++) {
 	      const circle = document.createElement('div');
 	      circle.id = 'circle' + i;
 	      circle.classList.add('circle');
-	      circle.style.width = kp_r[i] + 'px'; 
-	      circle.style.height = kp_r[i] + 'px';
-	      circle.style.top = kp_y[i] - kp_r[i]/2 + 'px'; 
-	      circle.style.left = kp_x[i] - kp_r[i]/2 + 'px';
+	      circle.style.width = imgWidthScale*kp_r[i] + 'px'; 
+	      circle.style.height = imgHeightScale*kp_r[i] + 'px';
+	      circle.style.top = imgHeightScale*(kp_y[i] - kp_r[i]/2) + 'px'; 
+	      circle.style.left = imgWidthScale*(kp_x[i] - kp_r[i]/2) + 'px';
 	      circle.style.backgroundColor = kp_colorlist[i] + "${KP_ALPHA_HEX}";  // Append alpha (without 0x)
 	      circle.popup_contents = JSON.stringify(JSON.parse(kp_attributelist[i]),null,2);  // prettyprint
 	      imageContainer.appendChild(circle);
@@ -381,7 +401,25 @@
 		  }
 	      });
 	  }
+	  };
+	  createKeypoints();
+	  
+	  function updateKeypointsAndPopupPosition() {
+	      imgHeight = mainImage.clientHeight;
+	      imgWidth = mainImage.clientWidth;
+	      imgHeightScale = imgHeight / imgHeightIntrinsic;
+	      imgWidthScale = imgWidth / imgWidthIntrinsic;
+	      
+		  for (let i = 0; i < labels.length; i++) {
+		      labels[i].style.width = imgWidthScale*kp_r[i] + 'px'; 
+		      labels[i].style.height = imgHeightScale*kp_r[i] + 'px';
+		      labels[i].style.top = imgHeightScale*(kp_y[i] - kp_r[i]/2) + 'px'; 
+		      labels[i].style.left = imgWidthScale*(kp_x[i] - kp_r[i]/2) + 'px';
+		};
+	      };	      
 
+	  window.addEventListener("resize", updateKeypointsAndPopupPosition);
+				      
           // Hide the popup if click within popup or anywhere in main image
           popup.addEventListener('click', function() {
 	      popup.style.display = 'none';
@@ -505,6 +543,8 @@
       
       // Call the function when the page is loaded
       window.onload = overlaySearchBar;
+
+      
     </script>
     
   </body>
