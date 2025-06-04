@@ -370,8 +370,7 @@ def _test_image_fileformat(imgfile):
     assert ImageCategory(label='1').label() == '1'    
     assert not ImageCategory(category='1').category == '2'
     assert ImageCategory(category='1').category('2').label() == '2' 
-    im.score(1.0)
-    im.probability(1.0)
+
     try:
         ImageCategory(category='1', label='2')
         Failed()
@@ -664,7 +663,7 @@ def test_scene():
     im = im.objects([Detection('obj1',20,50,100,100), Detection('obj2',300,300,200,200)])
     im.append(Detection('obj3',W +1,H +1,200,200))   # invalid box outside image rectancle
     im.append(Detection('obj4',W -100,H -200,1000,2000))   # invalid box partially outside image rectangle
-    im.append(Keypoint2d('obj5',1,2,3))   
+    im.append(Keypoint2d(category='obj5',x=1,y=2,radius=3))   
     imscene = im.clone()
     
     

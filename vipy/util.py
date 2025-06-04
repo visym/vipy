@@ -170,7 +170,7 @@ def load(infile, abspath=True, refcycle=True, relocatable=True):
         return pklbz2(infile)
     elif os.path.isdir(infile):        
         import vipy.dataset
-        return vipy.dataset.Dataset(infile)
+        return vipy.dataset.Dataset.from_directory(infile)
     else:
         raise ValueError('unknown file type')
     

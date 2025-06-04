@@ -49,7 +49,16 @@ class Dataset():
         
         assert not strict or index is None or (len(index)>0 and len(index)<=len(dataset) and max(index)<len(dataset) and min(index)>0)
 
-            
+
+    @classmethod
+    def from_directory(cls, indir, filetype='json'):
+        if filetype == 'json':
+            return cls([x for f in vipy.util.findjson(indir) for x in to_iterable(vipy.load(f))])
+        elif filetype in ['jpg']:
+            return cls([vipy.image.Image(filename=f) for f in vipy.util.findjpeg(indir)])            
+        else:
+            raise ValueError('unsupported file type "%s"' % filetype)
+    
     def __or__(self, other):
         assert isinstance(other, Dataset)
         return Union((self, other), id=self.id())
@@ -153,7 +162,7 @@ class Dataset():
     def list(self, mapper=None, flattener=to_iterable, reducer=None):
         """Return a tuple as a list, loading into memory"""
         return list(self.tuple(mapper, flattener, reducer))
-    
+
     def set(self, mapper):
         """Return the dataset as a set.  Mapper must be a lambda function that returns a hashable type"""
         return self.tuple(mapper=mapper, reducer=set)

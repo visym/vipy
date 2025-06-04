@@ -139,3 +139,17 @@ def colorlist():
 def text(caption, xmin, ymin, fignum=None, textcolor='black', textfacecolor=None, textfacealpha=1.0, fontsize=10, linewidth=3, facecolor='white', facealpha=0.5, alpha=1.0, pad=0.5):
     return BACKEND.text(caption, xmin, ymin, fignum, textcolor, textfacecolor, textfacealpha, fontsize, linewidth, facecolor, facealpha, alpha, pad=pad)
     
+
+def array(img, mindim=512, figure=1):
+    """Fast visualization of a numpy array img
+        
+    ```python
+    vipy.show.array(np.random.rand(16,16,3))
+    ```
+
+    """
+    from vipy.util import isnumpy
+    from vipy.image import Image
+    
+    assert isnumpy(img)
+    return Image(array=np.array(img).astype(np.float32), colorspace='float').mindim(mindim, interp='nearest').show(figure=figure)

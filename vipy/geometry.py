@@ -195,7 +195,8 @@ class BoundingBox(object):
 
     @classmethod
     def cast(cls, bb, flush=False):
-        assert isinstance(bb, BoundingBox)
+        assert isinstance(bb, (BoundingBox, Point2d))
+        bb = bb if isinstance(bb, BoundingBox) else bb.boundingbox()
         bb.__class__ = BoundingBox
         if flush:
             bb.__dict__ = {k:v for (k,v) in bb.__dict__.items() if k in ['_xmin', '_ymin', '_xmax', '_ymax']}        
@@ -1105,6 +1106,10 @@ class Point2d():
     def r(self):
         return self._r
 
+    @property
+    def radius(self):
+        return self._r
+    
     def xmin(self):
         return self._x - self._r/2
 

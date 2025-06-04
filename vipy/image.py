@@ -13,6 +13,7 @@ from vipy.util import isnumpy, isurl, isimageurl, to_iterable, tolist,\
     try_import, tolist, islistoflists, istupleoftuples, isstring, \
     islist, isnumber, isnumpyarray, string_to_pil_interpolation, toextension, iswebp
 from vipy.geometry import BoundingBox, imagebox
+from vipy.label import Label, Category, Tag
 import vipy.object
 from vipy.object import greedy_assignment
 import vipy.downloader
@@ -1099,9 +1100,14 @@ class Image():
         """Return True if the image has a URL input source"""
         return self._url is not None and isurl(self._url)
     
-    def hasfilename(self):
+    def has_filename(self):
+        """Return True if the image has a filename input source and this file exists"""
         return self._filename is not None and os.path.exists(self._filename)
 
+    def hasfilename(self):
+        """synonym for has_filename"""
+        return self.has_filename()
+    
     def clone(self, flushforward=False, flushbackward=False, flush=False, shallow=False, attributes=False, dereference=False):
         """Create deep copy of object, flushing the original buffer if requested and returning the cloned object.
         Flushing is useful for distributed memory management to free the buffer from this object, and pass along a cloned 
@@ -1865,13 +1871,32 @@ class Image():
         return im.setattribute('facepixelize', [o.int().json() for o in im.objects()]).pixelize(radius=radius).downcast()
 
 
+    def viewport(self):
+        """Return the bounding box of the current loaded pixels in the original filename/url/buffer.
+
+        This reverses the chain of geometric transformations applied to the original image to recover the bounding box of the pixels in array().
+
+        This is useful to specify a region of a larger image that was zoomed in for processing.
+        
+        To show this viewport as a bounding box:
+
+        >>> im = vipy.image.vehicles().centercrop(100,100)
+        >>> viewport = vipy.object.Detection.cast(im.viewport())
+        >>> im.flush().append(viewport).show()
+        """
+        bb = self.imagebox()
+        if self._history() is not None:
+            for (f,kwargs) in reversed(self._history()):
+                getattr(bb,f)(**kwargs)
+        return bb
     
-class ImageCategory(Image):
+    
+class ImageCategory(Image, Category):
     """vipy ImageCategory class
 
-    This class provides a representation of a vipy.image.Image with a category. 
+    This class provides a representation of a vipy.image.Image with a category label. 
 
-    Valid constructors include all provided by vipy.image.Image with the additional kwarg 'category' (or alias 'label')
+    Valid constructors include all provided by vipy.image.Image with the additional kwarg 'category' (or alias 'label') and optional confidence
 
     ```python
     im = vipy.image.ImageCategory(filename='/path/to/dog_image.ext', category='dog')
@@ -1881,41 +1906,28 @@ class ImageCategory(Image):
 
     """
     
-    def __init__(self, filename=None, url=None, category=None, label=None, attributes=None, array=None, colorspace=None):
+    def __init__(self, filename=None, url=None, category=None, label=None, attributes=None, array=None, colorspace=None, confidence=None):
         # Image class inheritance
         super().__init__(filename=filename,
                          url=url,
                          attributes=attributes,
                          array=array,
                          colorspace=colorspace)
-        assert not (category is not None and label is not None), "Define either category or label kwarg, not both"
-        self._category = category if category is not None else label
+
+        Category.__init__(self, category=category if category is not None else label, confidence=confidence)
 
     @classmethod
-    def cast(cls, im, flush=False):
+    def cast(cls, im):
         assert isinstance(im, vipy.image.Image)
         im.__class__ = vipy.image.ImageCategory
-        im._category = None if flush or not hasattr(im, '_category') else im._category
         return im
 
     @classmethod
     def from_json(obj, s):
         im = super().from_json(s)
-        d = {k.lstrip('_'):v for (k,v) in (json.loads(s) if not isinstance(s, dict) else s).items()}  # prettyjson (remove "_" prefix to attributes)                    
-        im._category = d['category']
+        im.__class__ = vipy.image.ImageCategory
         return im
 
-    def json(self, s=None, encode=True):
-        if s is None:
-            d = json.loads(super().json())
-            d['category'] = self._category if not isinstance(self._category, set) else list(self._category)  # coerce set -> list
-            return json.dumps(d) if encode else d
-        else:
-            super().json(s)
-            d = json.loads(s)            
-            self._category = d['category'] 
-            return self
-    
     def __repr__(self):
         strlist = []
         if self.isloaded():
@@ -1928,63 +1940,72 @@ class ImageCategory(Image):
             strlist.append('loaded=False')            
         if self.category() is not None and len(str(self.category()))>0:
             strlist.append('category=%s' % (str(self.category())[0:80] + (' ... ' if len(str(self.category()))>80 else '')))
+        if self.has_category() and self.confidence() is not None:
+            strlist.append('confidence=%1.3f' % self.confidence())
         return str('<vipy.image.ImageCategory: %s>' % (', '.join(strlist)))
 
     def __eq__(self, other):
-        return self._category == other._category if isinstance(other, ImageCategory) else False
+        return self.category() == other.category() if isinstance(other, ImageCategory) else False
 
     def __ne__(self, other):
-        return self._category != other._category
+        return self.category() != other.category() if isinstance(other, ImageCategory) else True
 
-    def is_(self, other):
-        return self.__eq__(other)
-
-    def is_not(self, other):
-        return self.__ne__(other)
-
-    def category(self, newcategory=None):
-        """Return or update the category"""
-        if newcategory is None:
-            return self._category
-        else:
-            self._category = newcategory
-            return self
-
-    def label(self, newlabel=None):
-        """Alias for category"""
-        return self.category(newlabel)
     
-    def score(self, newscore=None):
-        """Real valued score for categorization, larger is better"""
-        if newscore is None:
-            return self.getattribute('score')
-        else:
-            self.setattribute('score', newscore)
-            return self
+class TaggedImage(Image, Tag):
+    """vipy.image.TaggedImage class
 
-    def probability(self, newprob=None):
-        """Real valued probability for categorization, [0,1]"""
-        if newprob is None:
-            return self.getattribute('probability')
-        else:
-            self.setattribute('probability', newprob)
-            self.setattribute('RawDetectionProbability', newprob)
-            return self
-    
+    This class provides a representation of a vipy.image.Image with one or more tags.
 
-class LabeledImage(Image):
+    Valid constructors include all provided by vipy.image.Image with additional labels that provide ground truth for the content of the image. 
+
+    ```python
+    im = vipy.image.TaggedImage(filename='/path/to/dog.jpg', tags={'dog','canine'})
+    ```
+    """
+    def __init__(self, filename=None, url=None, attributes=None, array=None, colorspace=None, tags=None, category=None):
+        super().__init__(filename=filename,
+                         url=url,
+                         attributes=attributes,
+                         array=array,
+                         colorspace=colorspace)
+
+        Tag.__init__(self, category=category, tags=tags)
+            
+    def __repr__(self):
+        fields = ["height=%d, width=%d, color=%s" % (self.height(), self.width(), self.colorspace())] if self.isloaded() else []
+        fields += ['filename="%s"' % (self.filename())] if self.filename() is not None else []
+        fields += ['url="%s"' % self.url()] if self.hasurl() else []
+        fields += ['loaded=False'] if not self.isloaded() and self.has_loader() is not None else []
+        fields += ['category=%s' % vipy.util.truncate_string(str(self.category()), 40)] if self.has_category() else []
+        fields += ['confidence=%1.3f' % self.confidence()] if self.has_category() and self.confidence() is not None else []        
+        fields += ['tags=%s' % vipy.util.truncate_string(str(self.tags()), 40)] if self.has_tags() and not self.has_category() else []
+        return str('<vipy.image.LabeledImage: %s>' % (', '.join(fields)))
+
+    @classmethod
+    def cast(cls, im):
+        assert isinstance(im, vipy.image.Image)
+        im.__class__ = vipy.image.TaggedImage
+        return im
+
+    @classmethod
+    def from_json(obj, s):
+        im = super().from_json(s)
+        im.__class__ = vipy.image.TaggedImage
+        return im
+
+
+class LabeledImage(Image, Label):
     """vipy.image.LabeledImage class
 
     This class provides a representation of a vipy.image.Image with one or more labels.
 
     Valid constructors include all provided by vipy.image.Image with additional labels that provide ground truth for the content of the image. 
 
-    Suppprted labels are tags/keywords, categories, captions, image identifier, visual Q&A 
+    Suppprted labels are tags/keywords, categories, captions
 
     ```python
     im = vipy.image.LabeledImage(filename='/path/to/dog.jpg', tags={'dog','canine'})
     im = vipy.image.LabeledImage(filename='/path/to/dog.jpg', caption=['this is a dog.', 'this image contains a canine']))
-    im = vipy.image.LabeledImage(url='https://here.com/dog.jpg', instanceid=0, category='dog', vqa=[{'question':'Is this a dog?', 'answer':'Yes'}])
     ```
     """
     def __init__(self, filename=None, url=None, attributes=None, array=None, colorspace=None, tags=None, captions=None, category=None):
@@ -1994,16 +2015,7 @@ class LabeledImage(Image):
                          array=array,
                          colorspace=colorspace)
 
-        if not self.hasattribute('labels'):
-            self.attributes['labels'] = {}
-        if category is not None:
-            self.tag(category)
-        if tags is not None:
-            for t in vipy.util.tolist(tags):
-                self.tag(t)
-        if captions is not None:
-            for c in vipy.util.tolist(captions):
-                self.caption(c)
+        Label.__init__(self, category=category, tags=tags, captions=captions)
             
     def __repr__(self):
         fields = ["height=%d, width=%d, color=%s" % (self.height(), self.width(), self.colorspace())] if self.isloaded() else []
@@ -2011,23 +2023,15 @@ class LabeledImage(Image):
         fields += ['url="%s"' % self.url()] if self.hasurl() else []
         fields += ['loaded=False'] if not self.isloaded() and self.has_loader() is not None else []
         fields += ['category=%s' % vipy.util.truncate_string(str(self.category()), 40)] if self.has_category() else []
-        fields += ['confidence=%1.3f' % self.category_confidence()] if self.has_category() and self.category_confidence() is not None else []        
+        fields += ['confidence=%1.3f' % self.confidence()] if self.has_category() and self.confidence() is not None else []        
         fields += ['tags=%s' % vipy.util.truncate_string(str(self.tags()), 40)] if self.has_tags() and not self.has_category() else []
         fields += ['captions=%s' % vipy.util.truncate_string(str(self.captions()), 40)] if self.has_captions() else []
         return str('<vipy.image.LabeledImage: %s>' % (', '.join(fields)))
 
-    def __or__(self, other):
-        assert isinstance(other, LabeledImage)
-        self.attributes['labels']['tags'] = (self.attributes['labels']['tags'] if self.has_tags() else []) + (other.attributes['labels']['tags'] if other.has_tags() else [])
-        self.attributes['labels']['captions'] = (self.attributes['labels']['captions'] if self.has_captions() else []) + (other.attributes['labels']['captions'] if other.has_captions() else [])        
-        return self
-    
     @classmethod
     def cast(cls, im):
         assert isinstance(im, vipy.image.Image)
         im.__class__ = vipy.image.LabeledImage
-        if not im.hasattribute('labels'):
-            im.attributes['labels'] = {}
         return im
 
     @classmethod
@@ -2036,62 +2040,7 @@ class LabeledImage(Image):
         im.__class__ = vipy.image.LabeledImage
         return im
 
-    def clear_tags(self):
-        self.attributes['labels']['tags'] = []
-        return self
-    
-    def tag(self, label, confidence=None):
-        if not self.has_tags():
-            self.attributes['labels']['tags'] = []
-        for (l,c) in zip(to_iterable(label), to_iterable(confidence) if confidence is not None else [None]*len(tolist(label))):
-            self.attributes['labels']['tags'].append( {'label':l, 'confidence':c}  )
-        return self
 
-    def tags(self):
-        return tuple(t['label'] for t in self.attributes['labels']['tags']) if self.has_tags() else ()
-    
-    def has_tag(self, t):
-        return t in self.tags()
-
-    def num_tags(self):
-        return len(self.tags())
-    
-    def has_tags(self):
-        return 'tags' in self.attributes['labels']
-    
-    def soft_tags(self):
-        return tuple((t['label'], t['confidence']) for t in self.attributes['labels']['tags']) if self.has_tags() else ()
-
-    def has_category(self):
-        return self.num_tags() == 1
-    
-    def category(self, label=None, confidence=None):
-        if label is not None:
-            self.clear_tags().tag(label, confidence)
-            return self
-        assert self.num_tags() <= 1, "ambiguous category"
-        return self.tags()[0] if self.has_tags() else None
-    
-    def category_confidence(self):
-        assert self.has_category(), "ambiguous category"
-        return self.soft_tags()[0][1]
-    
-    def has_captions(self):
-        return 'captions' in self.attributes['labels']
-    
-    def captions(self):
-        return self.attributes['labels']['captions'] if self.has_captions() else ()
-
-    def caption(self, caption):
-        if not self.has_captions():
-            self.attributes['labels']['captions'] = []
-        for c in to_iterable(caption):
-            self.attributes['labels']['captions'].append(c)
-        return self
-            
-    def is_unlabeled(self):
-        return len(self.attributes['labels']) == 0
-    
     
 class Scene(LabeledImage):
     """vipy.image.Scene class
@@ -2149,10 +2098,11 @@ class Scene(LabeledImage):
     @classmethod
     def from_json(obj, s):
         im = super().from_json(s)
+        im.__class__ = vipy.image.Scene
         d = {k.lstrip('_'):v for (k,v) in (json.loads(s) if not isinstance(s, dict) else s).items()}  # prettyjson (remove "_" prefix to attributes)
         if isinstance(d['objectlist'], dict):
             # Version 1.15.1: expanded serialization to support multiple object types
-            im._objectlist = [vipy.object.Detection.from_json(s) for s in d['objectlist']['Detection']] + [vipy.object.Point2d.from_json(s) for s in d['objectlist']['Point2d']]
+            im._objectlist = [vipy.object.Detection.from_json(s) for s in d['objectlist']['Detection']] + [vipy.object.Keypoint2d.from_json(s) for s in d['objectlist']['Keypoint2d']]
         else:
             # Legacy support: 
             im._objectlist = [vipy.object.Detection.from_json(s) for s in d['objectlist']]            
@@ -2166,12 +2116,12 @@ class Scene(LabeledImage):
         if s is None:
             d = json.loads(super().json())
             d['objectlist'] = {'Detection': [bb.json(encode=False) for bb in self._objectlist if isinstance(bb, vipy.object.Detection)],
-                               'Point2d': [p.dict() for p in self._objectlist if isinstance(p, vipy.object.Point2d)]}            
+                               'Keypoint2d': [p.json(encode=False) for p in self._objectlist if isinstance(p, vipy.object.Keypoint2d)]}            
             return json.dumps(d) if encode else d
         else:
             super().json(s)
             d = json.loads(s)            
-            self._objectlist = [vipy.object.Detection.from_json(s) for s in d['objectlist']['Detection']] + [vipy.object.Point2d.from_json(s) for s in d['objectlist']['Point2d']]
+            self._objectlist = [vipy.object.Detection.from_json(s) for s in d['objectlist']['Detection']] + [vipy.object.Keypoint2d.from_json(s) for s in d['objectlist']['Keypoint2d']]
             return self
         
     def __eq__(self, other):
@@ -2283,7 +2233,7 @@ class Scene(LabeledImage):
     
     def boundingbox(self):
         """The boundingbox of a scene is the union of all object bounding boxes, or None if there are no objects"""
-        boxes = [bb for bb in self.objects() if isinstance(bb, vipy.geometry.BoundingBox)]
+        boxes = [vipy.geometry.BoundingBox.cast(bb) for bb in self.objects()]
         bb = boxes[0].clone() if len(boxes) >= 1 else None
         return bb.union(boxes[1:]) if len(boxes) >= 2 else bb
 
@@ -2309,7 +2259,7 @@ class Scene(LabeledImage):
     
     def imclip(self):
         """Clip all bounding boxes to the image rectangle, silently rejecting those boxes that are degenerate or outside the image"""
-        self._objectlist = [o.imclip(self.numpy()) if isinstance(o, vipy.geometry.BoundingBox) else o for o in self._objectlist if not isinstance(o, vipy.geometry.BoundingBox) or o.hasoverlap(self.numpy())]
+        self._objectlist = [o.imclip(self.numpy()) for o in self._objectlist if o.hasoverlap(self.numpy())]
         return self
 
     def rescale(self, scale=1, interp='bilinear'):
@@ -2573,22 +2523,22 @@ class Scene(LabeledImage):
         return vipy.image.Image.perceptualhash_distance(self.bghash(bits=bits), im.bghash(bits=bits)) < threshold 
     
         
-    def show(self, categories=None, figure=1, nocaption=False, nocaption_withstring=[], fontsize=10, boxalpha=0.25, d_category2color={'Person':'green', 'Vehicle':'blue', 'Object':'red'}, captionoffset=(0,0), nowindow=False, textfacecolor='white', textfacealpha=1.0, shortlabel=True, timestamp=None, timestampcolor='black', timestampfacecolor='white', mutator=None, timestampoffset=(0,0)):
+    def show(self, categories=None, figure=1, nocaption=False, nocaption_withstring=[], fontsize=10, boxalpha=0.25, d_category2color={'Person':'green', 'Vehicle':'blue', 'Object':'red'}, captionoffset=(0,0), nowindow=False, textfacecolor='white', textfacealpha=1.0, shortlabel=None, timestamp=None, timestampcolor='black', timestampfacecolor='white', mutator=None, timestampoffset=(0,0)):
         """Show scene detection 
 
         Args:
-           - categories: [list]  List of category (or shortlabel) names in the scene to show
+           - categories: [list]  List of category names in the scene to show
            - fontsize: [int] or [str]: Size of the font, fontsize=int for points, fontsize='NN:scaled' to scale the font relative to the image size
            - figure: [int] Figure number, show the image in the provided figure=int numbered window
            - nocaption: [bool]  Show or do not show the text caption in the upper left of the box 
-           - nocaption_withstring: [list]:  Do not show captions for those object categories (or shortlabels) containing any of the strings in the provided list
+           - nocaption_withstring: [list]:  Do not show captions for those object categories containing any of the strings in the provided list
            - boxalpha (float, [0,1]):  Set the text box background to be semi-transparent with an alpha
            - d_category2color (dict):  Define a dictionary of required mapping of specific category() to box colors.  Non-specified categories are assigned a random named color from vipy.show.colorlist()
            - caption_offset (int, int): The relative position of the caption to the upper right corner of the box.
            - nowindow (bool):  Display or not display the image
            - textfacecolor (str): One of the named colors from vipy.show.colorlist() for the color of the textbox background
            - textfacealpha (float, [0,1]):  The textbox background transparency
-           - shortlabel (bool):  Whether to show the shortlabel or the full category name in the caption
+           - shortlabel (dict):  An optional dictionary mapping category names to short names easier to display 
            - mutator (lambda):  A lambda function with signature lambda im: f(im) which will modify this image prior to show.  Useful for changing labels on the fly
            - timestampoffset (tuple): (x,y) coordinate offsets to shift the upper left corner timestamp
         """
@@ -2597,7 +2547,7 @@ class Scene(LabeledImage):
 
         valid_objects = [obj.clone() for obj in im._objectlist if categories is None or obj.category() in tolist(categories)]  # Objects with valid category
         valid_objects = [obj.imclip(self.numpy()) for obj in valid_objects if obj.hasoverlap(self.numpy())]  # Objects within image rectangle
-        valid_objects = [obj.category(obj.shortlabel()) if obj.shortlabel() is not None else obj for obj in valid_objects] if shortlabel else valid_objects  # Display name as shortlabel?
+        valid_objects = [obj.category(shortlabel[obj.category()]) for obj in valid_objects] if shortlabel else valid_objects  # Display name as shortlabel?
         d_categories2color = {d.category():colors[int(hashlib.sha1(d.category().split(' ')[-1].encode('utf-8')).hexdigest(), 16) % len(colors)] for d in valid_objects}   # consistent color mapping by category suffix (space separated)
         d_categories2color.update(d_category2color)  # requested color mapping
         object_color = [d_categories2color[d.category()] for d in valid_objects]                
@@ -2609,7 +2559,7 @@ class Scene(LabeledImage):
                             captionoffset=captionoffset, nowindow=nowindow, textfacecolor=textfacecolor, textfacealpha=textfacealpha, timestamp=timestamp, timestampcolor=timestampcolor, timestampfacecolor=timestampfacecolor, timestampoffset=timestampoffset)
         return self
 
-    def annotate(self, outfile=None, categories=None, figure=1, nocaption=False, fontsize=10, boxalpha=0.25, d_category2color={'person':'green', 'vehicle':'blue', 'object':'red'}, captionoffset=(0,0), dpi=200, textfacecolor='white', textfacealpha=1.0, shortlabel=True, nocaption_withstring=[], timestamp=None, timestampcolor='black', timestampfacecolor='white', mutator=None, timestampoffset=(0,0)):
+    def annotate(self, outfile=None, categories=None, figure=1, nocaption=False, fontsize=10, boxalpha=0.25, d_category2color={'person':'green', 'vehicle':'blue', 'object':'red'}, captionoffset=(0,0), dpi=200, textfacecolor='white', textfacealpha=1.0, shortlabel=None, nocaption_withstring=[], timestamp=None, timestampcolor='black', timestampfacecolor='white', mutator=None, timestampoffset=(0,0)):
         """Alias for savefig"""
         return self.savefig(outfile=outfile, 
                             categories=categories, 
@@ -2630,7 +2580,7 @@ class Scene(LabeledImage):
                             timestampoffset=timestampoffset,
                             mutator=mutator)
 
-    def savefig(self, outfile=None, categories=None, figure=1, nocaption=False, fontsize=10, boxalpha=0.25, d_category2color={'person':'green', 'vehicle':'blue', 'object':'red'}, captionoffset=(0,0), dpi=200, textfacecolor='white', textfacealpha=1.0, shortlabel=True, nocaption_withstring=[], timestamp=None, timestampcolor='black', timestampfacecolor='white', mutator=None, timestampoffset=(0,0)):
+    def savefig(self, outfile=None, categories=None, figure=1, nocaption=False, fontsize=10, boxalpha=0.25, d_category2color={'person':'green', 'vehicle':'blue', 'object':'red'}, captionoffset=(0,0), dpi=200, textfacecolor='white', textfacealpha=1.0, shortlabel=None, nocaption_withstring=[], timestamp=None, timestampcolor='black', timestampfacecolor='white', mutator=None, timestampoffset=(0,0)):
         """Save show() output to given file or return buffer without popping up a window"""
         fignum = figure if figure is not None else 1        
         self.show(categories=categories, figure=fignum, nocaption=nocaption, fontsize=fontsize, boxalpha=boxalpha, 
@@ -2702,6 +2652,7 @@ class ImageDetection(Image, vipy.object.Detection):
                        attributes=attributes,
                        array=array,
                        colorspace=colorspace)
+
         
     def __repr__(self):
         return str('<vipy.image.imagedetection: %s, %s>' % (Image.__repr__(self), vipy.object.Detection.__repr__(self)))
@@ -2711,12 +2662,12 @@ class ImageDetection(Image, vipy.object.Detection):
         return self.boundingbox() == other.boundingbox() if isinstance(other, ImageDetection) else False
 
     def boundingbox(self):
-        """Cast this object to a cloned `vipy.object.Detection` object"""
-        return vipy.object.Detection.cast(self.clone())
+        """Cast this object to a cloned `vipy.geometry.BoundingBox` object"""
+        return vipy.geometry.BoundingBox.cast(self.clone())
 
     def scene(self):
         """Cast this object to a cloned `vipy.image.Scene` object"""        
-        return vipy.image.Scene.cast(self.clone()).objects([self.boundingbox()])
+        return vipy.image.Scene.cast(self.clone()).objects([vipy.object.Detection.cast(self)])
     
     def crop(self):
         """Crop the image using the bounding box and return a `vipy.image.Image` for the cropped pixels"""
@@ -2801,12 +2752,12 @@ class DetectionImage(vipy.object.Detection, Image):
         return self.boundingbox() == other.boundingbox() if isinstance(other, ImageDetection) else False
 
     def boundingbox(self):
-        """Cast this object to a cloned `vipy.object.Detection` object"""
-        return vipy.object.Detection.cast(self.clone())
+        """Cast this object to a cloned `vipy.geometry.BoundingBox` object"""
+        return vipy.geometry.BoundingBox.cast(self.clone())
 
     def scene(self):
         """Cast this object to a cloned `vipy.image.Scene` object"""        
-        return vipy.image.Scene.cast(self.clone()).objects([self.boundingbox()])
+        return vipy.image.Scene.cast(self.clone()).objects([vipy.object.Detection.cast(self)])
     
     def crop(self):
         """Crop the image using the bounding box and return a `vipy.image.Image` for the cropped pixels"""
@@ -2832,8 +2783,8 @@ class DetectionImage(vipy.object.Detection, Image):
     
     
 def mutator_show_trackid(n_digits_in_trackid=5):
-    """Mutate the image to show track ID with a fixed number of digits appended to the shortlabel as (####)"""
-    return lambda im, k=None: (im.objectmap(lambda o: o.shortlabel('%s (%s)' % (o.shortlabel(), o.attributes['__trackid'][0:n_digits_in_trackid]))
+    """Mutate the image to show track ID with a fixed number of digits appended to the category as (####)"""
+    return lambda im, k=None: (im.objectmap(lambda o: o.category('%s (%s)' % (o.category(), o.attributes['__trackid'][0:n_digits_in_trackid]))
                                             if o.hasattribute('__trackid') else o))
 
 def mutator_show_jointlabel():
@@ -2841,18 +2792,18 @@ def mutator_show_jointlabel():
     return mutator_capitalize()
 
 def mutator_show_trackindex():
-    """Mutate the image to show track index appended to the shortlabel as (####)"""
-    return lambda im, k=None: (im.objectmap(lambda o: o.shortlabel('%s (%d)' % (o.shortlabel(), int(o.attributes['__trackindex']))) if o.hasattribute('__trackindex') else o))
+    """Mutate the image to show track index appended to the category as (####)"""
+    return lambda im, k=None: (im.objectmap(lambda o: o.category('%s (%d)' % (o.category(), int(o.attributes['__trackindex']))) if o.hasattribute('__trackindex') else o))
 
 def mutator_show_trackonly():
-    """Mutate the image to show track as a consistently colored box with no shortlabels"""
+    """Mutate the image to show track as a consistently colored box with no categories"""
     f = mutator_show_trackindex()
-    return lambda im, k=None, f=f: f(im).objectmap(lambda o: o.shortlabel('__%s' % o.shortlabel()))  # prepending __shortlabel will not show it, but will color boxes correctly
+    return lambda im, k=None, f=f: f(im).objectmap(lambda o: o.category('__%s' % o.category()))  # prepending __ will not show it, but will color boxes correctly
     
 def mutator_show_userstring(strlist):
-    """Mutate the image to show user supplied strings in the shortlabel.  The list be the same length oas the number of objects in the image.  This is not checked.  This is passed to show()"""
+    """Mutate the image to show user supplied strings in the category.  The list be the same length oas the number of objects in the image.  This is not checked.  This is passed to show()"""
     assert isinstance(strlist, list), "Invalid input"
-    return lambda im, k=None, strlist=strlist: im.objectmap([lambda o,s=s: o.shortlabel(s) for s in strlist])
+    return lambda im, k=None, strlist=strlist: im.objectmap([lambda o,s=s: o.category(s) for s in strlist])
 
 def mutator_show_noun_only(nocaption=False):
     """Mutate the image to show the noun only.  
@@ -2862,7 +2813,7 @@ def mutator_show_noun_only(nocaption=False):
     
     ..note:: To color boxes by track rather than noun, use `vipy.image.mutator_show_trackonly`
     """
-    return lambda im, k=None: (im.objectmap(lambda o: o.shortlabel('\n'.join([('__'+n if nocaption else n) for (n,v) in o.attributes['__noun verb']])) if o.hasattribute('__noun verb') else o))
+    return lambda im, k=None: (im.objectmap(lambda o: o.category('\n'.join([('__'+n if nocaption else n) for (n,v) in o.attributes['__noun verb']])) if o.hasattribute('__noun verb') else o))
 
 def mutator_show_nounonly(nocaption=False):
     """Alias for `vipy.image.mutator_show_noun_only`"""
@@ -2870,28 +2821,28 @@ def mutator_show_nounonly(nocaption=False):
 
 def mutator_show_verb_only():
     """Mutate the image to show the verb only"""
-    return lambda im, k=None: (im.objectmap(lambda o: o.shortlabel('\n'.join([v for (n,v) in o.attributes['__noun verb']])) if o.hasattribute('__noun verb') else o))
+    return lambda im, k=None: (im.objectmap(lambda o: o.category('\n'.join([v for (n,v) in o.attributes['__noun verb']])) if o.hasattribute('__noun verb') else o))
 
 def mutator_show_noun_or_verb():
     """Mutate the image to show the verb only if it is non-zero else noun"""
-    return lambda im: (im.objectmap(lambda o: o.shortlabel('\n'.join([v if len(v)>0 else n for (n,v) in o.attributes['__noun verb']])) if o.hasattribute('__noun verb') else o))
+    return lambda im: (im.objectmap(lambda o: o.category('\n'.join([v if len(v)>0 else n for (n,v) in o.attributes['__noun verb']])) if o.hasattribute('__noun verb') else o))
 
 def mutator_capitalize():
-    """Mutate the image to show the shortlabel as 'Noun Verb1\nNoun Verb2'"""
-    return lambda im, k=None: (im.objectmap(lambda o: o.shortlabel('\n'.join(['%s %s' % (n.capitalize(), v.capitalize()) for (n,v) in o.attributes['__noun verb']])) if o.hasattribute('__noun verb') else o))
+    """Mutate the image to show the category as 'Noun Verb1\nNoun Verb2'"""
+    return lambda im, k=None: (im.objectmap(lambda o: o.category('\n'.join(['%s %s' % (n.capitalize(), v.capitalize()) for (n,v) in o.attributes['__noun verb']])) if o.hasattribute('__noun verb') else o))
     
 def mutator_show_activityonly():
-    return lambda im, k=None: im.objectmap(lambda o: o.shortlabel('') if (len(o.attributes['__noun verb']) == 1 and len(o.attributes['__noun verb'][0][1]) == 0) else o)
+    return lambda im, k=None: im.objectmap(lambda o: o.category('') if (len(o.attributes['__noun verb']) == 1 and len(o.attributes['__noun verb'][0][1]) == 0) else o)
 
 def mutator_show_trackindex_activityonly():
     """Mutate the image to show boxes colored by track index, and only show 'noun verb' captions"""
     f = mutator_show_trackindex()
-    return lambda im, k=None, f=f: f(im).objectmap(lambda o: o.shortlabel('__%s' % o.shortlabel()) if (len(o.attributes['__noun verb']) == 1 and len(o.attributes['__noun verb'][0][1]) == 0) else o)
+    return lambda im, k=None, f=f: f(im).objectmap(lambda o: o.category('__%s' % o.category()) if (len(o.attributes['__noun verb']) == 1 and len(o.attributes['__noun verb'][0][1]) == 0) else o)
 
 def mutator_show_trackindex_verbonly(confidence=True, significant_digits=2):
     """Mutate the image to show boxes colored by track index, and only show 'verb' captions with activity confidence, sorted in decreasing order"""
     f = mutator_show_trackindex()
-    return lambda im, k=None, f=f: f(im).objectmap(lambda o: o.shortlabel('__%s' % o.shortlabel()) if (len(o.attributes['__noun verb']) == 1 and len(o.attributes['__noun verb'][0][1]) == 0) else o.shortlabel('\n'.join(['%s %s' % (v, ('(%1.2f)'%float(c)) if (confidence is True and c is not None) else '') for ((n,v),c) in sorted(zip(o.attributes['__noun verb'], o.attributes['__activityconf']), key=lambda x: float(x[1]), reverse=True)])))
+    return lambda im, k=None, f=f: f(im).objectmap(lambda o: o.category('__%s' % o.category()) if (len(o.attributes['__noun verb']) == 1 and len(o.attributes['__noun verb'][0][1]) == 0) else o.category('\n'.join(['%s %s' % (v, ('(%1.2f)'%float(c)) if (confidence is True and c is not None) else '') for ((n,v),c) in sorted(zip(o.attributes['__noun verb'], o.attributes['__activityconf']), key=lambda x: float(x[1]), reverse=True)])))
 
 
 def RandomImage(rows=None, cols=None):
@@ -2959,13 +2910,3 @@ def people():
                           vipy.object.Detection(category="person", xywh=(1902.9, 783.1, 250.8, 825.8)),
                           vipy.object.Detection(category="person", xywh=(228.2, 948.7, 546.8, 688.5))]).mindim(512)
 
-def show(img, mindim=512, figure=1):
-    """Fast visualization of a numpy array img
-        
-    ```python
-    im = vipy.image.show(np.random.rand(16,16,3))
-    ```
-
-    """
-    assert isnumpy(img)
-    return vipy.image.Image(array=np.array(img).astype(np.float32), colorspace='float').mindim(mindim, interp='nearest').show(figure=figure)

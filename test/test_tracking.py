@@ -8,7 +8,7 @@ def test_interpolation():
                                                     BoundingBox(900,1000,1100,1200)])
     assert t.keyboxes()[0] == t[0]
     assert t.keyboxes()[2] == t[8]
-    assert BoundingBox(300,400,500,600) == t[2]
+    assert BoundingBox(300,400,500,600) == BoundingBox.cast(t[2])
     
     t.resample(1)
     assert t.keyboxes()[2] == t[2]

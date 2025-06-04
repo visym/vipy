@@ -1,11 +1,12 @@
 import numpy as np
 from vipy.geometry import BoundingBox, Point2d
-from vipy.util import isstring, tolist, chunklistwithoverlap, try_import, Timer
+from vipy.util import isstring, tolist, chunklistwithoverlap, try_import, Timer, truncate_string
 import uuid
 import copy
 import warnings
 from itertools import islice
 from vipy.globals import log
+from vipy.label import Tag
 
 try:
     import ujson as json  # faster
@@ -13,16 +14,8 @@ except ImportError:
     import json
 
 
-OBJECT_GUID = int(uuid.uuid4().hex[0:8], 16)  
-
-
-class Object():
-    def __init__(self):
-        self._id = None
-        
-    def id(self):
-        return self._id
-
+class Object(Tag):
+    pass
     
 class Detection(BoundingBox, Object):
     """vipy.object.Detection class
@@ -33,51 +26,37 @@ class Detection(BoundingBox, Object):
     ```python
     d = vipy.object.Detection(category='Person', xmin=0, ymin=0, width=50, height=100)
     d = vipy.object.Detection(label='Person', xmin=0, ymin=0, width=50, height=100)  # "label" is an alias for "category"
-    d = vipy.object.Detection(label='John Doe', shortlabel='Person', xmin=0, ymin=0, width=50, height=100)  # shortlabel is displayed
     d = vipy.object.Detection(label='Person', xywh=[0,0,50,100])
     d = vipy.object.Detection(..., id=True)  # generate a unique UUID for this detection retrievable with d.id()
     ```
 
     """
 
-    def __init__(self, label=None, xmin=None, ymin=None, width=None, height=None, xmax=None, ymax=None, confidence=None, xcentroid=None, ycentroid=None, category=None, xywh=None, shortlabel=None, attributes=None, id=True):
+    def __init__(self, category=None, xmin=None, ymin=None, width=None, height=None, xmax=None, ymax=None, confidence=None, xcentroid=None, ycentroid=None, xywh=None, attributes=None, id=None, tags=None):
         super().__init__(xmin=xmin, ymin=ymin, width=width, height=height, xmax=xmax, ymax=ymax, xcentroid=xcentroid, ycentroid=ycentroid, xywh=xywh)
-        assert not (label is not None and category is not None), "Constructor requires either label or category kwargs, not both"
 
-        if id is True:
-            global OBJECT_GUID; self._id = hex(int(OBJECT_GUID))[2:];  OBJECT_GUID = OBJECT_GUID + 1;  # faster, increment package level UUID4 initialized GUID
-        else:
-            self._id = None if id is False else id
-        self._label = category if category is not None else label
-        self._shortlabel = shortlabel if shortlabel is not None else (self._label if self._label is not None else '__')  # prepended '__' will suppress caption
-        self._confidence = float(confidence) if confidence is not None else confidence
+        self._id = uuid.uuid4().hex if id is True else id
         self.attributes = {} if attributes is None else attributes.copy()  # shallow copy
 
-    @classmethod
-    def cast(cls, d, flush=False, category=None, shortlabel=None):
-        assert isinstance(d, BoundingBox)
-        if d.__class__ != Detection or flush:
-            d.__class__ = Detection
-            global OBJECT_GUID; newid = hex(int(OBJECT_GUID))[2:];  OBJECT_GUID = OBJECT_GUID + 1;  
-            d._id = newid if flush or not hasattr(d, '_id') else d._id
-            d._shortlabel = None if flush or not hasattr(d, '_shortlabel') else d._shortlabel
-            d._confidence = None if flush or not hasattr(d, '_confidence') else d._confidence
-            d._label = None if flush or not hasattr(d, '_label') else d._label
-            d.attributes = {} if flush or not hasattr(d, 'attributes') else d.attributes
-        if category is not None:
-            d._label = category  # when casting BoundingBox to Detection, extra args are necessary
-        if shortlabel is not None:
-            d._shortlabel = shortlabel  # when casting BoundingBox to Detection, extra args are necessary
-        return d
+        Tag.__init__(self, category=category, confidence=confidence, tags=tags)
         
+    @classmethod
+    def cast(cls, d):
+        assert isinstance(d, BoundingBox)
+        d.__class__ = Detection
+        if not hasattr(d, 'attributes'):
+            d.attributes = {}            
+        return d
+
+    def downcast(self):
+        self.__class__ = BoundingBox
+        return self
+    
     @classmethod
     def from_json(cls, s):
         d = json.loads(s) if not isinstance(s, dict) else s
         d = {k.lstrip('_'):v for (k,v) in d.items()}  # prettyjson (remove "_" prefix to attributes)                
         return cls(xmin=d['xmin'], ymin=d['ymin'], xmax=d['xmax'], ymax=d['ymax'],
-                   label=d['label'] if 'label' in d else None,
-                   shortlabel=d['shortlabel'] if 'shortlabel' in d else None,
-                   confidence=d['confidence'] if 'confidence' in d else None,
                    attributes=d['attributes'] if 'attributes' in d else None,
                    id=d['id'] if 'id' in d else True)
         
@@ -88,7 +67,7 @@ class Detection(BoundingBox, Object):
         if True:
             strlist.append('bbox=(xmin=%1.1f, ymin=%1.1f, width=%1.1f, height=%1.1f)' %
                            (self.xmin(), self.ymin(),self._width(), self._height()))
-        if self._confidence is not None:
+        if self.has_category() and self.confidence() is not None:
             strlist.append('conf=%1.3f' % self.confidence())
         if self.isdegenerate():
             strlist.append('degenerate')
@@ -96,8 +75,7 @@ class Detection(BoundingBox, Object):
 
     def __eq__(self, other):
         """Detection equality when bounding boxes (integer resolution) and categories are equivalent"""
-        return ((isinstance(other, Detection) and self.clone().int().xywh() == other.clone().int().xywh() and self.category() == other.category()) or
-                isinstance(other, BoundingBox) and self.clone().int().xywh() == other.clone().int().xywh())
+        return isinstance(other, Detection) and self.clone().int().xywh() == other.clone().int().xywh() and self.category() == other.category()
 
     def __str__(self):
         return self.__repr__()
@@ -111,65 +89,10 @@ class Detection(BoundingBox, Object):
         return self.json(encode=True)
     
     def json(self, encode=True):
-        d = {k:v for (k,v) in self.__dict__.items() if not ((k == '_confidence' and v is None) or
-                                                            (k == '_shortlabel' and v is None) or
-                                                            (k == 'attributes' and (v is None or isinstance(v, dict) and len(v)==0)) or
-                                                            (k == '_label' and v is None))}  # don't bother to store None values
+        d = {k:v for (k,v) in self.__dict__.items()}
         d = {k.lstrip('_'):v for (k,v) in d.items()}  # prettyjson (remove "_" prefix to attributes)                        
         return json.dumps(d) if encode else d
                 
-    def nocategory(self):
-        self._label = None
-        return self
-
-    def noshortlabel(self):
-        self._shortlabel = None
-        return self
-        
-    def categoryif(self, ifcategory, tocategory=None):
-        """If the current category is equal to ifcategory, then change it to newcategory.
-
-        Args:
-            
-            ifcategory [dict, str]: May be a dictionary {ifcategory:tocategory}, or just an ifcategory
-            tocategory [str]:  the target category 
-
-        Returns:
-        
-            this object with the category changed.
-
-        .. note:: This is useful for converting synonyms such as self.categoryif('motorbike', 'motorcycle')
-        """
-        assert (isinstance(ifcategory, dict) and tocategory is None) or tocategory is not None
-
-        if isinstance(ifcategory, dict):
-            for (k,v) in ifcategory.items():
-                self.categoryif(k, v)
-        elif self.category() == ifcategory:
-            self.category(tocategory, shortlabel=False)
-        return self
-
-    def category(self, category=None, shortlabel=True):
-        """Update the category and shortlabel (optional) of the detection"""
-        if category is None:
-            return self._label
-        else:
-            self._label = category
-            self._shortlabel = str(category) if shortlabel else self._shortlabel  # coerce to string            
-            return self
-
-    def shortlabel(self, label=None):
-        """A optional shorter label string to show in the visualizations, defaults to category()"""        
-        if label is not None:
-            self._shortlabel = str(label)  # coerce to string
-            return self
-        else:
-            return self._shortlabel if self._shortlabel is not None else self.category()
-
-    def label(self, label):
-        """Alias for category to update both category and shortlabel"""
-        return self.category(label, shortlabel=True)
-
     def id(self):
         return self._id
 
@@ -181,13 +104,6 @@ class Detection(BoundingBox, Object):
             d.attributes = copy.deepcopy(self.attributes)
         return d
 
-    def confidence(self, c=None):
-        if c is None:
-            return self._confidence
-        else:
-            self._confidence = c
-            return self
-
     def hasattribute(self, k):
         return isinstance(self.attributes, dict) and k in self.attributes
 
@@ -198,18 +114,73 @@ class Detection(BoundingBox, Object):
         self.attributes[k] = v
         return self
     
-    def delattribute(self, k):
-        self.attributes.pop(k, None)
-        return self
+    #def delattribute(self, k):
+    #    self.attributes.pop(k, None)
+    #    return self
 
-    def noattributes(self):
-        self.attributes = {}
-        return self
+    #def noattributes(self):
+    #    self.attributes = {}
+    #    return self
 
     def to_keypoint2d(self, radius=0.5):
         """Convert bounding box centroid to `vipy.object.Keypoint2d` with radius equal to the half minimum dimension of the box"""
-        return Keypoint2d(x=self.centroid_x(), y=self.centroid_y(), radius=radius*min(self.width(), self.height()), category=self.category(), attributes=self.attributes, id=self.id(), confidence=self.confidence(), shortlabel=self.shortlabel())
+        return Keypoint2d(x=self.centroid_x(), y=self.centroid_y(), radius=radius*min(self.width(), self.height()), category=self.category(), attributes=self.attributes, id=self.id(), confidence=self.confidence())
 
+
+class Keypoint2d(Point2d, Object):
+    """vipy.object.Keypoint2d class"""
+    
+    def __init__(self, x, y, radius=1, attributes=None, confidence=None, id=None, category=None, tags=None):
+        super().__init__(x, y, r=radius)
+        
+        self.attributes = attributes if attributes is not None else {}
+        self._id = uuid.uuid4().hex if id is True else id
+        
+        Tag.__init__(self, category=category, confidence=confidence, tags=tags)
+
+    def clone(self, deep=False):
+        """Copy the object, if deep=True, then include a deep copy of the attribute dictionary, else a shallow copy.  Cloned object has the same id()"""
+        #return copy.deepcopy(self)
+        d = Keypoint2d.from_json(self.json(encode=False))
+        if deep:
+            d.attributes = copy.deepcopy(self.attributes)
+        return d
+    
+    @property
+    def radius(self):
+        return self.r
+    
+    @property
+    def guid(self):
+        return self._id
+
+    def id(self):
+        return self._id
+
+    def __repr__(self):
+        fields  = ['x=%s' % self.x]
+        fields += ['y=%s' % self.y]
+        fields += ['r=%s' % self.r]        
+        fields += ['category=%s' % truncate_string(str(self.category()), 40)] if self.has_category() else []
+        fields += ['conf=%1.3f' % self.confidence()] if self.has_category() and self.confidence() is not None else []
+        fields += ['tags=%s' % truncate_string(str(self.tags()), 40)] if not self.has_category() else []        
+        return str('<vipy.object.Keypoint2d: %s>' % (', '.join(fields)))
+    
+    @classmethod
+    def from_json(cls, s):
+        d = json.loads(s) if not isinstance(s, dict) else s
+        d = {k.lstrip('_'):v for (k,v) in d.items()}  # prettyjson (remove "_" prefix to attributes)                
+        return cls(x=d['x'], y=d['y'], radius=d['r'],
+                   attributes=d['attributes'] if 'attributes' in d else None,
+                   id=d['id'] if 'id' in d else True)
+    
+    def json(self, encode=True):
+        d = {k:v for (k,v) in self.__dict__.items()}
+        d.update( {'x':self.x, 'y':self.y, 'r':self.r} )
+        d = {k.lstrip('_'):v for (k,v) in d.items()}  # prettyjson (remove "_" prefix to attributes)                        
+        return json.dumps(d) if encode else d
+                
+    
                           
 class Track(object):
     """vipy.object.Track class
@@ -243,7 +214,7 @@ class Track(object):
 
     """
 
-    def __init__(self, keyframes, boxes, category=None, label=None, framerate=None, interpolation='linear', boundary='strict', shortlabel=None, attributes=None, trackid=None, filterbox=False):
+    def __init__(self, keyframes, boxes, category=None, label=None, framerate=None, interpolation='linear', boundary='strict', attributes=None, trackid=None, filterbox=False):
 
         keyframes = tolist(keyframes)
         boxes = tolist(boxes)        
@@ -258,7 +229,6 @@ class Track(object):
                 
         self._id = uuid.uuid4().hex if trackid is None else trackid
         self._label = category if category is not None else label
-        self._shortlabel = self._label if shortlabel is None else shortlabel
         self._framerate = float(framerate) if framerate is not None else framerate
         self._interpolation = interpolation
         self._boundary = boundary
@@ -291,7 +261,6 @@ class Track(object):
                    framerate=d['framerate'],
                    interpolation=d['interpolation'],
                    boundary=d['boundary'],
-                   shortlabel=d['shortlabel'] if 'shortlabel' in d else None,
                    attributes=d['attributes'],
                    trackid=d['id'])
 
@@ -508,9 +477,9 @@ class Track(object):
         """
         assert len(self._keyboxes) > 0, "Degenerate object for interpolation"   # not self.isempty()
         if len(self._keyboxes) == 1:
-            return Detection.cast(self._keyboxes[0].clone(), category=self.category(), shortlabel=self.shortlabel()).noattributes().setattribute('trackid', self.id()) if (self._boundary == 'extend' or self.during(f)) else None
+            return Detection.cast(self._keyboxes[0].clone()).new_category(self.category()).setattribute('__trackid', self.id()) if (self._boundary == 'extend' or self.during(f)) else None
         if f in reversed(self._keyframes):            
-            return Detection.cast(self._keyboxes[self._keyframes.index(f)], category=self.category(), shortlabel=self.shortlabel()).noattributes().setattribute('trackid', self.id())  # by reference, do not clone
+            return Detection.cast(self._keyboxes[self._keyframes.index(f)]).new_category(self.category()).setattribute('__trackid', self.id())  # by reference, do not clone
 
         kf = self._keyframes
         ft = min(max(f, kf[0]), kf[-1])  # truncated frame index
@@ -525,18 +494,14 @@ class Track(object):
                       ymax=bi._ymax + c*(bj._ymax - bi._ymax),   # float(np.interp(k, self._keyframes, [bb._ymax for bb in self._keyboxes])),
                       confidence=bi.confidence(),  # may be None
                       category=self.category(),
-                      shortlabel=self.shortlabel(),
                       id=id)
-        d.attributes['trackid'] = self.id()  # for correspondence of detections to tracks
-        d.attributes['__trackid'] = d.attributes['trackid'] # trackid to be deprecated
+        d.attributes['__trackid'] = self.id()  # for correspondence of detections to tracks
         return d if self._boundary == 'extend' or self.during(f) else None
 
-    def category(self, label=None, shortlabel=True):
-        """Set the track category to label, and update thte shortlabel also.  Updates all keyboxes"""
+    def category(self, label=None):
+        """Set the track category to label.  Updates all keyboxes"""
         if label is not None:
             self._label = label
-            self._shortlabel = str(label) if shortlabel else self._shortlabel  # coerce to string
-            self.boxmap(lambda bb: bb.shortlabel(self._shortlabel) if shortlabel and isinstance(bb, Detection) else bb)
             self.boxmap(lambda bb: bb.category(self._label) if isinstance(bb, Detection) else bb)
             return self
         else:
@@ -562,22 +527,13 @@ class Track(object):
             for (k,v) in ifcategory.items():
                 self.categoryif(k, v)
         elif self.category() == ifcategory:
-            self.category(tocategory, shortlabel=False)
+            self.category(tocategory)
         return self
 
     def label(self, label):
         """Alias for category"""
-        return self.category(label, shortlabel=True)
+        return self.category(label)
         
-    def shortlabel(self, label=None):
-        """A optional shorter label string to show as a caption in visualizations.  Updates all keyboxes"""                
-        if label is not None:
-            self._shortlabel = str(label)  # coerce to string
-            self.boxmap(lambda bb: bb.shortlabel(self._shortlabel) if isinstance(bb, Detection) else bb)
-            return self
-        else:
-            return self._shortlabel
-
     def during(self, k_start, k_end=None):
         """Does the track contain a keyframe during the time interval (startframe, endframe) inclusive?"""        
         k_end = k_start+1 if k_end is None else k_end
@@ -738,7 +694,7 @@ class Track(object):
                                   ([kf for kf in self._keyframes if kf >= endframe][0]) if self.during(endframe, endframe) else endframe)
         kfkb = [(kf,kb.clone()) for (kf,kb) in zip(self._keyframes, self._keyboxes) if ((startframe is None or kf >= startframe) and (endframe is None or kf <= endframe))]
         (kf, kb) = zip(*kfkb) if len(kfkb) > 0 else ([], [])        
-        return Track(keyframes=kf, boxes=kb, category=self._label, framerate=self._framerate, interpolation=self._interpolation, boundary=self._boundary, shortlabel=self._shortlabel, attributes=self.attributes, trackid=self._id)
+        return Track(keyframes=kf, boxes=kb, category=self._label, framerate=self._framerate, interpolation=self._interpolation, boundary=self._boundary, attributes=self.attributes, trackid=self._id)
     
     def boundingbox(self, startframe=None, endframe=None):
         """The bounding box of a track is the smallest spatial box that contains all of the BoundingBoxes of the track  within startframe and endframe, or None if there are no detections.
@@ -1236,85 +1192,3 @@ def RandomDetection(W=640, H=480):
     return Detection(xmin=np.random.rand()*W, ymin=np.random.rand()*H, width=np.random.rand()*100, height=np.random.rand()*100, category=str(np.random.rand()), confidence=np.random.rand())
 
 
-class Keypoint2d(Point2d, Object):
-    """vipy.object.Keypoint2d class"""
-    
-    def __init__(self, category, x, y, radius=1, attributes=None, confidence=None, id=None, shortlabel=None):
-        super().__init__(x, y, r=radius)
-        
-        self.attributes = attributes if attributes is not None else {}
-        
-        if category is not None:
-            self._label = category
-            self._shortlabel = category            
-
-        if shortlabel is not None:
-            self._shortlabel = shortlabel
-            
-        if confidence is not None:
-            self.attributes['confidence'] = confidence
-            
-        if id is True:
-            global OBJECT_GUID; id = hex(int(OBJECT_GUID))[2:];  OBJECT_GUID = OBJECT_GUID + 1;  # faster, increment package level UUID4 initialized GUID
-        if id is not None:
-            self._id = id
-
-    def confidence(self):
-        return self.attributes['confidence'] if 'confidence' in self.attributes else None
-
-    def clone(self, deep=False):
-        """Copy the object, if deep=True, then include a deep copy of the attribute dictionary, else a shallow copy.  Cloned object has the same id()"""
-        #return copy.deepcopy(self)
-        d = Keypoint2d.from_json(self.json(encode=False))
-        if deep:
-            d.attributes = copy.deepcopy(self.attributes)
-        return d
-    
-    def category(self, category=None, shortlabel=True):
-        """Update the category and shortlabel (optional) of the detection"""
-        if category is None:
-            return self._label
-        else:
-            self._label = category
-            self._shortlabel = str(category) if shortlabel else self._shortlabel  # coerce to string            
-            return self
-
-    def shortlabel(self, label=None):
-        """A optional shorter label string to show in the visualizations, defaults to category()"""        
-        if label is not None:
-            self._shortlabel = str(label)  # coerce to string
-            return self
-        else:
-            return self._shortlabel if self._shortlabel is not None else str(self.category())
-        
-    @property
-    def radius(self):
-        return self.attributes['radius'] if 'radius' in self.attributes else 1        
-    
-    @property
-    def guid(self):
-        return self._id
-    
-    def __repr__(self):
-        category = (str(self.category())[0:80] + (' ... ' if len(str(self.category()))>80 else ''))                    
-        return '<vipy.object.Keypoint2d: x=%s, y=%s, category=%s>' % (self.x, self.y, category)
-
-    @classmethod
-    def from_json(cls, s):
-        d = json.loads(s) if not isinstance(s, dict) else s
-        d = {k.lstrip('_'):v for (k,v) in d.items()}  # prettyjson (remove "_" prefix to attributes)                
-        return cls(x=d['x'], y=d['y'], radius=d['r'],
-                   category=d['label'] if 'label' in d else None,
-                   shortlabel=d['shortlabel'] if 'shortlabel' in d else None,
-                   attributes=d['attributes'] if 'attributes' in d else None,
-                   id=d['id'] if 'id' in d else True)
-    
-    def json(self, encode=True):
-        d = {k:v for (k,v) in self.__dict__.items() if not ((k == '_confidence' and v is None) or
-                                                            (k == '_shortlabel' and v is None) or
-                                                            (k == 'attributes' and (v is None or isinstance(v, dict) and len(v)==0)) or
-                                                            (k == '_label' and v is None))}  # don't bother to store None values
-        d.update( {'x':self.x, 'y':self.y, 'r':self.r} )
-        d = {k.lstrip('_'):v for (k,v) in d.items()}  # prettyjson (remove "_" prefix to attributes)                        
-        return json.dumps(d) if encode else d
-                

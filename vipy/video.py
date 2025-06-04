@@ -2808,22 +2808,22 @@ class Scene(VideoCategory):
         assert img is not None or (self.isloaded() and k<len(self)) or not self.isloaded(), "Invalid frame index %d - Indexing video by frame must be integer within (0, %d)" % (k, len(self)-1)
 
         img = img if (img is not None or noimage) else (self._array[k] if self.isloaded() else self.preview(k).array())
-        dets = [t[k].clone(deep=True).setattribute('trackindex', j) for (j, t) in enumerate(self.tracklist()) if len(t)>0 and (t.during(k) or t.boundary()=='extend')]  # track interpolation (cloned) with boundary handling
+        dets = [t[k].clone(deep=True).setattribute('__trackindex', j) for (j, t) in enumerate(self.tracklist()) if len(t)>0 and (t.during(k) or t.boundary()=='extend')]  # track interpolation (cloned) with boundary handling
         for d in dets:
-            d.attributes['activityid'] = []  # reset
-            jointlabel = [(d.shortlabel(),'')]  # [(Noun, Verbing1), (Noun, Verbing2), ...], initialized with empty verbs as [(Noun, ""), ... ]
+            d.attributes['__activityid'] = []  # reset
+            jointlabel = [(d.category(),'')]  # [(Noun, Verbing1), (Noun, Verbing2), ...], initialized with empty verbs as [(Noun, ""), ... ]
             activityconf = [None]   # for display 
 
             for (aid, a) in self.activities().items():  # insertion order:  First activity is primary, next is secondary (not in confidence order) 
-                if a.hastrack(d.attributes['trackid']) and a.during(k):
+                if a.hastrack(d.attributes['__trackid']) and a.during(k):
                     # Display assumptions:
                     # - Jointlabel is always displayed as "Noun Verbing" during activity (e.g. Person Carrying, Vehicle Turning) using noun=track shortlabel, verb=activity shortlabel
                     # - If noun is associated with more than one activity, then this is shown as "Noun Verbing1\nNoun Verbing2", with a newline separator
                     # - If multiple objects are associated with an activity and a primary actor is defined, then only the primary actor is displayed as "Noun Verbing", objects are shown as "Noun" with the activityid in the attributes
-                    if (a.actorid() is None or (a.actorid() == d.attributes['trackid'])) and not any([a.shortlabel() == v for (n,v) in jointlabel]):
-                        jointlabel.append( (d.shortlabel(), a.shortlabel()) )  # only show each activity once (even if repeated)
+                    if (a.actorid() is None or (a.actorid() == d.attributes['__trackid'])) and not any([a.category() == v for (n,v) in jointlabel]):
+                        jointlabel.append( (d.category(), a.category()) )  # only show each activity once (even if repeated)
                         activityconf.append(a.confidence())
-                    d.attributes['activityid'].append(a.id())  # for activity correspondence (if desired)
+                    d.attributes['__activityid'].append(a.id())  # for activity correspondence (if desired)
 
             # For display purposes
             # - See `vipy.image.mutator_show_trackindex_verbonly`
@@ -2831,10 +2831,7 @@ class Scene(VideoCategory):
             d.attributes['__jointlabel'] = '\n'.join([('%s %s' % (n,v)).strip() for (n,v) in jointlabel[0 if len(jointlabel)==1 else 1:]])  # to be deprecated
             d.attributes['__noun verb'] = jointlabel[0 if len(jointlabel)==1 else 1:]
             d.attributes['__activityconf'] = activityconf[0 if len(jointlabel)==1 else 1:]
-            d.attributes['__trackindex'] = d.attributes['trackindex']  # trackindex to be replaced with __trackindex
-            d.attributes['__trackid'] = d.attributes['trackid']  # trackid to be replaced with __trackid
-            d.attributes['__activityid'] = d.attributes['activityid']  # activityid to be replaced with __activityid            
-        dets.sort(key=lambda d: (d.confidence() if d.confidence() is not None else 0, d.shortlabel()))   # layering in video is ordered by decreasing track confidence and alphabetical shortlabel
+        dets.sort(key=lambda d: (d.confidence() if d.confidence() is not None else 0, d.category()))   # layering in video is ordered by decreasing track confidence and alphabetical shortlabel
         return vipy.image.Scene(array=img, colorspace=self.colorspace(), objects=dets, category=self.category())  
                 
         
@@ -3273,13 +3270,13 @@ class Scene(VideoCategory):
         if isinstance(obj, vipy.object.Detection):
             assert frame is not None, "add() for vipy.object.Detection() must be added during frame iteration (e.g. for im in video: )"
             k = frame
-            if obj.hasattribute('trackid') and obj.attributes['trackid'] in self.tracks():
+            if obj.hasattribute('__trackid') and obj.attributes['__trackid'] in self.tracks():
                 # The attribute "trackid" is set for a detection when interpolating a track at a frame.  This is useful for reconstructing a track from previously enumerated detections
-                trackid = obj.attributes['trackid']
-                self.trackmap(lambda t: t.update(k, obj) if obj.attributes['trackid'] == t.id() else t) 
+                trackid = obj.attributes['__trackid']
+                self.trackmap(lambda t: t.update(k, obj) if obj.attributes['__trackid'] == t.id() else t) 
                 return None if not fluent else self
             else:
-                t = vipy.object.Track(category=obj.category(), keyframes=[k], boxes=[obj], boundary='strict', attributes=obj.attributes, trackid=obj.attributes['trackid'] if obj.hasattribute('trackid') else None, framerate=self.framerate())
+                t = vipy.object.Track(category=obj.category(), keyframes=[k], boxes=[obj], boundary='strict', attributes=obj.attributes, trackid=obj.attributes['__trackid'] if obj.hasattribute('__trackid') else None, framerate=self.framerate())
                 if rangecheck and not obj.hasoverlap(width=self.width(), height=self.height()):
                     raise ValueError("Track '%s' does not intersect with frame shape (%d, %d)" % (str(t), self.height(), self.width()))
                 self.tracks()[t.id()] = t  # by-reference
@@ -3320,7 +3317,7 @@ class Scene(VideoCategory):
         # Copy framewise vipy.image.Scene() into vipy.video.Scene(). 
         self.numpy()[frame] = im.array()  # will trigger copy        
         for bb in im.objects():
-            self.trackmap(lambda t: t.update(frame, bb) if bb.attributes['trackid'] == t.id() else t) 
+            self.trackmap(lambda t: t.update(frame, bb) if bb.attributes['__trackid'] == t.id() else t) 
         return self
     
     def clear(self):
@@ -3373,13 +3370,13 @@ class Scene(VideoCategory):
         assert self.load().isloaded()
         csv = [(self.filename(), # video filename
                 k,  # frame number (zero indexed)
-                d.category(), d.shortlabel(), # track category and shortlabel (displayed in caption)
+                d.category(), # track category 
                 ';'.join([self.activities(id=aid).category() for aid in tolist(d.attributes['activityid'])] if 'activityid' in d.attributes else ''), # semicolon separated activity category associated with track
                 d.xmin(), d.ymin(), d.width(), d.height(),   # bounding box
-                d.attributes['trackid'],  # globally unique track ID
+                d.attributes['__trackid'],  # globally unique track ID
                 ';'.join([aid for aid in tolist(d.attributes['activityid'])] if 'activityid' in d.attributes else '')) # semicolon separated activity ID associated with track
                for (k,im) in enumerate(self) for d in im.objects()]
-        csv = [('# video_filename', 'frame_number', 'object_category', 'object_shortlabel', 'activity categories(;)', 'xmin', 'ymin', 'width', 'height', 'track_id', 'activity_ids(;)')] + csv
+        csv = [('# video_filename', 'frame_number', 'object_category', 'activity categories(;)', 'xmin', 'ymin', 'width', 'height', 'track_id', 'activity_ids(;)')] + csv
         return writecsv(csv, outfile) if outfile is not None else csv
 
 
@@ -3497,7 +3494,7 @@ class Scene(VideoCategory):
                 for (k,(pa,sa,t,(prepad,postpad))) in enumerate(zip(primary_activities, secondary_activities, tracks, padframelist))
                 if (idx is None or k in tolist(idx))]
 
-    def noactivitylist(self, label=None, shortlabel=None):
+    def noactivitylist(self, label=None):
         """Return a list of `vipy.activity.Activity` which are segments of each track with no associated activities.
 
         Args:
@@ -3515,7 +3512,6 @@ class Scene(VideoCategory):
                 else:
                     if startframe < endframe:
                         A.append(vipy.activity.Activity(label=t.category() if label is None else label, 
-                                                        shortlabel='' if label is None else (label if shortlabel is None else shortlabel),
                                                         startframe=startframe,
                                                         endframe=endframe,
                                                         actorid=t.id(),
@@ -3525,12 +3521,11 @@ class Scene(VideoCategory):
         return A
     
         
-    def noactivityclip(self, label=None, shortlabel=None, padframes=0):
+    def noactivityclip(self, label=None, padframes=0):
         """Return a list of vipy.video.Scene() each clipped on a track segment that has no associated activities.  
 
         Args:
             label: [str] The activity label to give the background activities.  Defaults to the track category (lowercase)
-            shortlabel: [str] The activity shortlabel to give the background activities when visualized.  Defaults to the track category (lowercase)
             padframes: [int]  The amount of temporal padding to apply to the clips before and after in frames.  See `vipy.video.Scene.activityclip` for options.
         
         Returns:
@@ -3540,7 +3535,7 @@ class Scene(VideoCategory):
             - Each clip will contain exactly one activity "Background" which is the interval for this track where no activities are occurring
             - Each clip will be at least one frame long
         """
-        A = self.clone().activities(self.noactivitylist(label=label, shortlabel=shortlabel)).activityclip(padframes=padframes, multilabel=False)
+        A = self.clone().activities(self.noactivitylist(label=label)).activityclip(padframes=padframes, multilabel=False)
         return [a.setattribute('_instance_id', '%s_bg' % a.getattribute('_instance_id')) for a in A]
     
     def trackbox(self, dilate=1.0):
@@ -3619,8 +3614,8 @@ class Scene(VideoCategory):
             warnings.warn('[vipy.video.activitytube]: Resulting video is empty!  Setting activitytube to zero')
             frames = [ vid[0].resize(maxdim, maxdim).zeros() ]  # empty frame
             vid.attributes['__activitytube'] = {'empty':True}   # provenance to reject 
-        vid._tracks = {ti:vipy.object.Track(keyframes=[f for (f,im) in enumerate(frames) for d in im.objects() if d.attributes['trackid'] == ti],
-                                            boxes=[d for (f,im) in enumerate(frames) for d in im.objects() if d.attributes['trackid'] == ti],
+        vid._tracks = {ti:vipy.object.Track(keyframes=[f for (f,im) in enumerate(frames) for d in im.objects() if d.attributes['__trackid'] == ti],
+                                            boxes=[d for (f,im) in enumerate(frames) for d in im.objects() if d.attributes['__trackid'] == ti],
                                             category=t.category(), trackid=ti, framerate=self.framerate())
                        for (k,(ti,t)) in enumerate(self.tracks().items())}  # replace tracks with boxes relative to tube
         return vid.array(np.stack([im.numpy() for im in frames]))
@@ -3644,8 +3639,8 @@ class Scene(VideoCategory):
                 vid.attributes['__actortube'] = {'empty':True}   # provenance to reject             
             else:
                 raise ValueError('[vipy.video.actortube]: Empty track for track=%s, trackid=%s' % (str(t), trackid))
-        vid._tracks = {ti:vipy.object.Track(keyframes=[f for (f,im) in enumerate(frames) for d in im.objects() if d.attributes['trackid'] == ti],  # keyframes zero indexed, relative to [frames]
-                                            boxes=[d for (f,im) in enumerate(frames) for d in im.objects() if d.attributes['trackid'] == ti],  # one box per frame
+        vid._tracks = {ti:vipy.object.Track(keyframes=[f for (f,im) in enumerate(frames) for d in im.objects() if d.attributes['__trackid'] == ti],  # keyframes zero indexed, relative to [frames]
+                                            boxes=[d for (f,im) in enumerate(frames) for d in im.objects() if d.attributes['__trackid'] == ti],  # one box per frame
                                             category=t.category(), trackid=ti, framerate=self.framerate())  # preserve trackid
                        for (k,(ti,t)) in enumerate(self.tracks().items())}  # replace tracks with interpolated boxes relative to tube defined by actor
         return vid.array(np.stack([im.numpy() for im in frames]))
@@ -3941,7 +3936,7 @@ class Scene(VideoCategory):
         return self        
 
 
-    def annotate(self, outfile=None, fontsize=10, captionoffset=(0,0), textfacecolor='white', textfacealpha=1.0, shortlabel=True, boxalpha=0.25, d_category2color={'Person':'green', 'Vehicle':'blue', 'Object':'red'}, categories=None, nocaption=False, nocaption_withstring=[], mutator=None, timestamp=None, timestampcolor='black', timestampfacecolor='white', verbose=False):
+    def annotate(self, outfile=None, fontsize=10, captionoffset=(0,0), textfacecolor='white', textfacealpha=1.0, shortlabel=None, boxalpha=0.25, d_category2color={'Person':'green', 'Vehicle':'blue', 'Object':'red'}, categories=None, nocaption=False, nocaption_withstring=[], mutator=None, timestamp=None, timestampcolor='black', timestampfacecolor='white', verbose=False):
         """Generate a video visualization of all annotated objects and activities in the video.
         
         The annotation video will be at the resolution and framerate of the underlying video, and pixels in this video will now contain the overlay.
@@ -3953,11 +3948,11 @@ class Scene(VideoCategory):
             captionoffset: (tuple) The (x,y) offset relative to the bounding box to place the caption for each box.
             textfacecolor: [str] The color of the text in the bounding box caption.  Must be in `vipy.gui.using_matplotlib.colorlist`.
             textfacealpha: [float] The transparency of the text in the bounding box caption.  Must be in [0,1], where 0=transparent and 1=opaque.
-            shortlabel: [bool] If true, display the shortlabel for each object in the scene, otherwise show the full category
+            shortlabel: [dict] If provided, convert the label to shortlabel for display
             boxalpha: [float]  The transparency of the box face behind the text.  Must be in [0,1], where 0=transparent and 1=opaque.
             d_category2color: [dict]  A dictionary mapping categories of objects in the scene to their box colors.  Named colors must be in `vipy.gui.using_matplotlib.colorlist`. 
             categories: [list]  Only show these categories, or show them all if None
-            nocaption_withstring: [list]:  Do not show captions for those detection categories (or shortlabels) containing any of the strings in the provided list
+            nocaption_withstring: [list]:  Do not show captions for those detection categories containing any of the strings in the provided list
             nocaption: [bool] If true, do not show any captions, just boxes
             mutator: [lambda] A lambda function that will mutate an image to allow for complex visualizations.  This should be a mutator like `vipy.image.mutator_show_trackid`.
             timestamp: [bool] If true, show a semitransparent timestamp (when the annotation occurs, not when the video was collected) with frame number in the upper left corner of the video
@@ -4020,7 +4015,7 @@ class Scene(VideoCategory):
             return vo
 
 
-    def _show(self, outfile=None, verbose=True, fontsize=10, captionoffset=(0,0), textfacecolor='white', textfacealpha=1.0, shortlabel=True, boxalpha=0.25, d_category2color={'Person':'green', 'Vehicle':'blue', 'Object':'red'}, categories=None, nocaption=False, nocaption_withstring=[], notebook=False, timestamp=None, timestampcolor='black', timestampfacecolor='white'):
+    def _show(self, outfile=None, verbose=True, fontsize=10, captionoffset=(0,0), textfacecolor='white', textfacealpha=1.0, shortlabel=None, boxalpha=0.25, d_category2color={'Person':'green', 'Vehicle':'blue', 'Object':'red'}, categories=None, nocaption=False, nocaption_withstring=[], notebook=False, timestamp=None, timestampcolor='black', timestampfacecolor='white'):
         """Generate an annotation video saved to outfile (or tempfile if outfile=None) and show it using ffplay when it is done exporting.  Do not modify the original video buffer.  Returns a clone of the video with the shown annotation."""
         return self.clone().annotate(verbose=verbose, 
                                      fontsize=fontsize,
@@ -4038,7 +4033,7 @@ class Scene(VideoCategory):
                                      nocaption_withstring=nocaption_withstring).saveas(outfile).play(notebook=notebook)
     
 
-    def show(self, outfile=None, verbose=True, fontsize=10, captionoffset=(0,0), textfacecolor='white', textfacealpha=1.0, shortlabel=True, boxalpha=0.25, d_category2color={'Person':'green', 'Vehicle':'blue', 'Object':'red'}, categories=None, nocaption=False, nocaption_withstring=[], figure=1, fps=None, timestamp=None, timestampcolor='black', timestampfacecolor='white', mutator=None):
+    def show(self, outfile=None, verbose=True, fontsize=10, captionoffset=(0,0), textfacecolor='white', textfacealpha=1.0, shortlabel=None, boxalpha=0.25, d_category2color={'Person':'green', 'Vehicle':'blue', 'Object':'red'}, categories=None, nocaption=False, nocaption_withstring=[], figure=1, fps=None, timestamp=None, timestampcolor='black', timestampfacecolor='white', mutator=None):
         """Faster show using interative image show for annotated videos.  This can visualize videos before video rendering is complete, but it cannot guarantee frame rates. Large videos with complex scenes will slow this down and will render at lower frame rates."""
         fps = min(fps, self.framerate()) if fps is not None else self.framerate()
         assert fps > 0, "Invalid display framerate"
@@ -4317,7 +4312,7 @@ def RandomScene(rows=None, cols=None, frames=None):
     """
     v = RandomVideo(rows, cols, frames)
     (rows, cols) = v.shape()
-    tracks = [vipy.object.Track(label='track%d' % k, shortlabel='t%d' % k,
+    tracks = [vipy.object.Track(label='track%d' % k,
                                 keyframes=[0, np.random.randint(50,100), 150],
                                 framerate=30, 
                                 boxes=[vipy.object.Detection(xmin=np.random.randint(0,cols - 16), ymin=np.random.randint(0,rows - 16),
@@ -4327,7 +4322,7 @@ def RandomScene(rows=None, cols=None, frames=None):
                                        vipy.object.Detection(xmin=np.random.randint(0,cols - 16), ymin=np.random.randint(0,rows - 16),
                                                                  width=np.random.randint(16,cols//2), height=np.random.randint(16,rows//2))]) for k in range(0,32)]
 
-    activities = [vipy.activity.Activity(label='activity%d' % k, shortlabel='a%d' % k, tracks=[tracks[j].id() for j in [np.random.randint(32)]], startframe=np.random.randint(50,99), endframe=np.random.randint(100,150), framerate=30) for k in range(0,32)]   
+    activities = [vipy.activity.Activity(label='activity%d' % k, tracks=[tracks[j].id() for j in [np.random.randint(32)]], startframe=np.random.randint(50,99), endframe=np.random.randint(100,150), framerate=30) for k in range(0,32)]   
     return Scene(array=v.array(), colorspace='rgb', category='scene', tracks=tracks, activities=activities, framerate=30)
 
 
@@ -4338,7 +4333,7 @@ def RandomSceneActivity(rows=None, cols=None, frames=256):
     """    
     v = RandomVideo(rows, cols, frames)
     (rows, cols) = v.shape()
-    tracks = [vipy.object.Track(label=['Person','Vehicle','Object'][k], shortlabel='track%d' % k, boundary='strict', 
+    tracks = [vipy.object.Track(label=['Person','Vehicle','Object'][k], boundary='strict', 
                                 keyframes=[0, np.random.randint(50,100), np.random.randint(50,150)],
                                 framerate=30,
                                 boxes=[vipy.object.Detection(xmin=np.random.randint(0,cols - 16), ymin=np.random.randint(0,rows - 16),
@@ -4348,7 +4343,7 @@ def RandomSceneActivity(rows=None, cols=None, frames=256):
                                        vipy.object.Detection(xmin=np.random.randint(0,cols - 16), ymin=np.random.randint(0,rows - 16),
                                                                  width=np.random.randint(16,cols//2), height=np.random.randint(16,rows//2))]) for k in range(0,3)]
 
-    activities = [vipy.activity.Activity(label='Person Carrying', shortlabel='Carry', tracks=[tracks[0].id(), tracks[1].id()], startframe=np.random.randint(20,50), endframe=np.random.randint(70,100), framerate=30)]   
+    activities = [vipy.activity.Activity(label='Person Carrying', tracks=[tracks[0].id(), tracks[1].id()], startframe=np.random.randint(20,50), endframe=np.random.randint(70,100), framerate=30)]   
     ims = Scene(array=v.array(), colorspace='rgb', category='scene', tracks=tracks, activities=activities, framerate=30)
 
     return ims

@@ -10,7 +10,6 @@ try:
 except ImportError:
     import json
 
-ACTIVITY_GUID = int(uuid.uuid4().hex[0:8], 16)  
 
 class Activity(object):
     """vipy.object.Activity class
@@ -19,8 +18,7 @@ class Activity(object):
     The activity occurs at a given (startframe, endframe), where these frame indexes are extracted at the provided framerate.
     All objects are passed by reference with a globally unique track ID, for the tracks involved with the activity.  This 
     is done since tracks can exist after an activity completes, and that tracks should update the spatial transformation of boxes.
-    The shortlabel defines the string shown on the visualization video.
-
+        
     Valid constructors
 
     ```python 
@@ -28,8 +26,10 @@ class Activity(object):
     a = vipy.object.Activity(startframe=0, endframe=10, category='Walking', tracks={t.id():t})
     ```
 
+    Note.. shortlabel is kepy for backwards compatibility and will be deprecated
+    
     """
-    def __init__(self, startframe, endframe, framerate=None, label=None, shortlabel=None, category=None, tracks=None, attributes=None, actorid=None, confidence=None, id=None):
+    def __init__(self, startframe, endframe, framerate=None, label=None, category=None, tracks=None, attributes=None, actorid=None, confidence=None, id=None, shortlabel=None):
         assert not (label is not None and category is not None), "Activity() Constructor requires either label or category kwargs, not both"
         assert startframe <= endframe, "Start frame must be less than or equal to end frame"
         if tracks:
@@ -43,15 +43,11 @@ class Activity(object):
         if tracks is not None and actorid is not None and actorid not in trackid:
             trackid.add(actorid)
 
-        if id is None:
-            global ACTIVITY_GUID; self._id = hex(int(ACTIVITY_GUID))[2:];  ACTIVITY_GUID = ACTIVITY_GUID + 1;  # faster, increment package level UUID4 initialized GUID
-        else:
-            self._id = id  # use provided
+        self._id = uuid.uuid4().hex if id is True else id  # use provided
         self._startframe = int(startframe)
         self._endframe = int(endframe)
         self._framerate = float(framerate) if framerate is not None else framerate
         self._label = category if category is not None else label        
-        self._shortlabel = self._label if shortlabel is None else shortlabel
         self._trackid = trackid
         self._actorid = actorid
 
@@ -77,7 +73,6 @@ class Activity(object):
                    endframe=int(d['endframe']),
                    framerate=d['framerate'],
                    category=d['label'],
-                   shortlabel=d['shortlabel'] if 'shortlabel' in d else None,
                    tracks=d['trackid'],
                    attributes=d['attributes'] if 'attributes' in d else None,
                    actorid=d['actorid'],
@@ -172,11 +167,11 @@ class Activity(object):
             self._framerate = float(fps)
             return self
     
-    def category(self, label=None, shortlabel=None):
-        """Change the label (and shortlabel) to the new label (and shortlabel)"""
+    def category(self, label=None):
+        """Change the label to the new label """
         if label is not None:
             self._label = label
-            return self.shortlabel(shortlabel) if shortlabel is not None else self
+            return self
         else:
             return self._label
 
@@ -200,20 +195,12 @@ class Activity(object):
             for (k,v) in ifcategory.items():
                 self.categoryif(k, v)
         elif self.category() == ifcategory:
-            self.category(tocategory, shortlabel=None)
+            self.category(tocategory)
         return self
 
-    def label(self, label=None, shortlabel=None):
+    def label(self, label=None):
         """Alias for category"""
-        return self.category(label, shortlabel=shortlabel)
-
-    def shortlabel(self, label=None):
-        """A optional shorter label string to show in the visualizations"""                
-        if label is not None:
-            self._shortlabel = label
-            return self
-        else:
-            return self._shortlabel
+        return self.category(label)
 
     def add(self, track):
         """Add the track id for the track to this activity, so that if the track is changed externally it is reflected here"""
@@ -368,7 +355,7 @@ class Activity(object):
         #a = copy.deepcopy(self)
         a = Activity.from_json(self.json(encode=False))
         if rekey:
-            global ACTIVITY_GUID; a.id(newid=hex(int(ACTIVITY_GUID))[2:]);  ACTIVITY_GUID = ACTIVITY_GUID + 1;  # faster, increment package level UUID4 initialized GUID
+            a.id(newid=uuid.uuid4().hex)
         return a
     
     def temporalpad(self, df):
