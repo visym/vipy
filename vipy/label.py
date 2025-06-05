@@ -1,5 +1,9 @@
-import json
 from vipy.util import to_iterable, truncate_string
+
+try:
+    import ujson as json  # faster
+except ImportError:
+    import json
 
             
 class Tag():
@@ -8,47 +12,44 @@ class Tag():
     A Tag label is one or more strings with optional confidences that provide ground truth or estimated keywords/tags/labels/classes
     """
     def __init__(self, tags=None, category=None, confidence=None):
-        if not hasattr(self, 'attributes'):
-            self.attributes = {}
+        self._tags = []
+        
         if category is not None:
             self.category(category, confidence)
         if tags is not None:
-            for t in to_iterable(tags):
-                self.tag( *((t['tag'], t['confidence']) if isinstance(t, dict) else (t, None)) )        
+            for t in to_iterable(tags):                
+                self.tag(t,None) if not isinstance(t, (tuple,list)) else self.tag(*t)
 
     def __repr__(self):
         fields  = ['category=%s' % truncate_string(str(self.category()), 40)] if self.has_category() else []
-        fields += ['confidence=%1.3f' % self.category_confidence()] if self.has_category() and self.confidence() is not None else []        
+        fields += ['confidence=%1.3f' % self.confidence()] if self.has_category() and self.confidence() is not None else []        
         fields += ['tags=%s' % truncate_string(str(self.tags()), 40)] if self.has_tags() and not self.has_category() else []
         return str('<vipy.label.Tag: %s>' % (', '.join(fields)))
 
     def __or__(self, other):
-        self.attributes['tags'] = ((self.attributes['tags'] if self.has_tags() else []) +
-                                   (other.attributes['tags'] if hasattr(other, 'attributes') and 'tags' in other.attributes else []))
+        self._tags += other._tags if hasattr(other, '_tags') else []
         return self
 
     def dict(self):
-        return {'vipy.label.Tag': self.attributes['tags']}
+        return {'tag': self._tags}
     
     def json(self):
         return json.dumps(self.dict()) 
         
     @classmethod
     def from_json(obj, s):
-        return obj(tags=json.loads(s)['vipy.label.Tag'])
+        return obj(tags=json.loads(s)['tag'])
 
     def clear_tags(self):
-        self.attributes['tags'] = []
+        self._tags = []
         return self
 
     def tag(self, tag, confidence=None):
-        if not self.has_tags():
-            self.attributes['tags'] = []
-        self.attributes['tags'].append( {'tag':tag, 'confidence':confidence}  )
+        self._tags.append( tag if confidence is None else (tag, confidence) )
         return self
 
     def tags(self):
-        return tuple(t['tag'] for t in self.attributes['tags']) if self.has_tags() else ()
+        return tuple(t[0] if isinstance(t, (tuple,list)) else t for t in self._tags)
     
     def has_tag(self, t):
         return t in self.tags()
@@ -57,10 +58,10 @@ class Tag():
         return len(self.tags())
     
     def has_tags(self):
-        return 'tags' in self.attributes
+        return self.num_tags() > 0
     
     def soft_tags(self):
-        return tuple((t['tag'], t['confidence']) for t in self.attributes['tags']) if self.has_tags() else ()
+        return tuple(t if isinstance(t, (tuple,list)) else (t,None) for t in self._tags)        
 
     def first_tag(self):
         return self.tags()[0]
@@ -94,7 +95,7 @@ class Tag():
         return self.category()
     
     def confidence(self):
-        return self.attributes['tags'][0]['confidence'] if self.has_tags() else None
+        return (self._tags[0][1] if isinstance(self._tags[0], (tuple,list)) else None) if self.has_tags() else None
 
     def has_confidence(self):
         return self.confidence() is not None
@@ -124,24 +125,22 @@ class Category(Tag):
     
 class Caption():
     def __init__(self, captions=None):
-        if not hasattr(self, 'attributes'):
-            self.attributes = {}
+        self._captions = []
+
         if captions is not None:
             for c in to_iterable(captions):
-                self.caption( *((c['caption'], c['confidence']) if isinstance(c, dict) else (c, None)) )                        
-                self.caption(c)
+                self.caption(c,None) if not isinstance(c, (tuple,list)) else self.caption(*c)                
             
     def __repr__(self):
         fields = ['captions=%s' % truncate_string(str(self.captions()), 40)] if self.has_captions() else []
         return str('<vipy.label.Caption: %s>' % (', '.join(fields)))
 
     def __or__(self, other):
-        self.attributes['captions'] = ((self.attributes['captions'] if self.has_captions() else []) +
-                                       (other.attributes['captions'] if hasattr(other, 'attributes') and 'captions' in other.attributes else []))
+        self._captions += other._captions if hasattr(other, '_captions') else []
         return self
 
     def dict(self):
-        return {'vipy.label.Caption': self.attributes['captions']}
+        return {'captions': self._captions}
     
     def json(self):
         return json.dumps(self.dict()) 
@@ -149,25 +148,23 @@ class Caption():
         
     @classmethod
     def from_json(obj, s):
-        return obj(captions=json.loads(s)['vipy.label.Caption'])
+        return obj(captions=json.loads(s)['captions'])
 
     def clear_captions(self):
-        self.attributes['captions'] = []
+        self._captions = []
         return self
 
     def num_captions(self):
         return len(self.captions())
     
     def has_captions(self):
-        return 'captions' in self.attributes and len(self.attributes['captions'])>0
+        return self.num_captions() > 0
 
     def captions(self):
-        return tuple(c['caption'] for c in self.attributes['captions']) if self.has_captions() else ()
+        return tuple(c if not isinstancec(c, (tuple,list)) else c[0] for c in self._captions)
     
-    def caption(self, caption, confidence):
-        if not self.has_captions():
-            self.attributes['captions'] = []
-        self.attributes['captions'].append( {'caption':caption, 'confidence':confidence} )
+    def caption(self, caption, confidence=None):
+        self._captions.append( caption if confidence is None else (caption, confidence) )        
         return self
             
     def is_unlabeled(self):
@@ -192,7 +189,7 @@ class Label(Tag, Caption):
         return self
 
     def dict(self):
-        return {'vipy.label.Label': Tag.dict(self) | Caption.dict(self)}
+        return Tag.dict(self) | Caption.dict(self)
 
     def json(self):
         return json.dumps(self.dict()) 
@@ -200,8 +197,7 @@ class Label(Tag, Caption):
     @classmethod
     def from_json(obj, s):
         d = json.loads(s)
-        return obj(captions=d['vipy.label.Label']['vipy.label.Caption'],
-                   tags=d['vipy.label.Label']['vipy.label.Tag'])
+        return obj(captions=d['captions'], tags=d['tags'])
     
     def is_unlabeled(self):
         return Tag.is_unlabeled(self) and Caption.is_unlabeled(self)

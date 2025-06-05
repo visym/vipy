@@ -155,11 +155,11 @@ class Image():
     @classmethod
     def from_dict(cls, d):
         d = {k.lstrip('_'):v for (k,v) in d.items()}  # prettyjson (remove "_" prefix to attributes)                
-        return cls(filename=d['filename'],
-                   url=d['url'],
-                   array=np.array(d['array'], dtype=np.uint8) if d['array'] is not None else None,
-                   colorspace=d['colorspace'],
-                   attributes=d['attributes'])
+        return cls(filename=d['filename'] if 'filename' in d else None,
+                   url=d['url'] if 'url' in d else None,
+                   array=np.array(d['array'], dtype=np.uint8) if 'array' in d and d['array'] is not None else None,
+                   colorspace=d['colorspace'] if 'colorspace' in d else None,
+                   attributes=d['attributes'] if 'attributes' in d else None)
         
     @classmethod
     def from_uri(cls, uri):
@@ -417,27 +417,13 @@ class Image():
         
     def dict(self):
         """Return a python dictionary containing the relevant serialized attributes suitable for JSON encoding"""
-        return self.json(s=None, encode=False)
+        return {k.lstrip('_'):v for (k,v) in self.__dict__.items()}  # prettyjson (remove "_" prefix to attributes)                                    
 
-    def json(self, s=None, encode=True):
-        if s is None:
-            d = {'filename':self._filename,
-                 'url':self._url,
-                 'loader':self._loader,
-                 'array':self._array.tolist() if self._array is not None else None,
-                 'colorspace':self._colorspace,
-                 'attributes':self.attributes}                        
-            return json.dumps(d) if encode else d
-        else:
-            d = json.loads(s)
-            d = {k.lstrip('_'):v for (k,v) in d.items()}  # prettyjson (remove "_" prefix to attributes)                            
-            self._filename = d['filename']
-            self._url = d['url']
-            self._loader = d['loader']
-            self._array = np.array(d['array'], dtype=np.uint8) if d['array'] is not None else None
-            self._colorspace = d['colorspace']
-            self.attributes = d['attributes']            
-            return self
+    def json(self, encode=True):
+        d = self.dict()
+        if 'array' in d and d['array'] is not None:
+            d['array'] = self._array.tolist()
+        return json.dumps(d) if encode else d
         
     def loader(self, f):
         """Lambda function to load an unsupported image filename to a numpy array.
@@ -1920,13 +1906,20 @@ class ImageCategory(Image, Category):
     def cast(cls, im):
         assert isinstance(im, vipy.image.Image)
         im.__class__ = vipy.image.ImageCategory
+        im.clear_tags()
         return im
 
     @classmethod
     def from_json(obj, s):
-        im = super().from_json(s)
-        im.__class__ = vipy.image.ImageCategory
-        return im
+        d = json.loads(s) if not isinstance(s, dict) else s
+        d = {k.lstrip('_'):v for (k,v) in d.items()}  # prettyjson (remove "_" prefix to attributes)                                
+        return cls(filename=d['filename'] if 'filename' in d else None,
+                   url=d['url'] if 'url' in d else None,
+                   category=d['category'] if 'category' in d else None,
+                   attributes=d['attributes'] if 'attributes' in d else None,
+                   colorspace=d['colorspace'] if 'colorspace' in d else None,
+                   array=np.array(d['array'], dtype=np.uint8) if 'array' in d and d['array'] is not None else None,
+                   confidence=d['confidence'] if 'confidence' in d else None)
 
     def __repr__(self):
         strlist = []
@@ -1985,13 +1978,20 @@ class TaggedImage(Image, Tag):
     def cast(cls, im):
         assert isinstance(im, vipy.image.Image)
         im.__class__ = vipy.image.TaggedImage
+        im.clear_tags()
         return im
 
     @classmethod
     def from_json(obj, s):
-        im = super().from_json(s)
-        im.__class__ = vipy.image.TaggedImage
-        return im
+        d = json.loads(s) if not isinstance(s, dict) else s
+        d = {k.lstrip('_'):v for (k,v) in d.items()}  # prettyjson (remove "_" prefix to attributes)                                
+        return cls(filename=d['filename'] if 'filename' in d else None,
+                   url=d['url'] if 'url' in d else None,
+                   category=d['category'] if 'category' in d else None,
+                   attributes=d['attributes'] if 'attributes' in d else None,
+                   colorspace=d['colorspace'] if 'colorspace' in d else None,
+                   array=np.array(d['array'], dtype=np.uint8) if 'array' in d and d['array'] is not None else None,                   
+                   tags=d['tags'] if 'tags' in d else None)
 
 
 class LabeledImage(Image, Label):
@@ -2032,13 +2032,22 @@ class LabeledImage(Image, Label):
     def cast(cls, im):
         assert isinstance(im, vipy.image.Image)
         im.__class__ = vipy.image.LabeledImage
+        im.clear_tags()
+        im.clear_captions()
         return im
 
     @classmethod
-    def from_json(obj, s):
-        im = super().from_json(s)
-        im.__class__ = vipy.image.LabeledImage
-        return im
+    def from_json(cls, s):
+        d = json.loads(s) if not isinstance(s, dict) else s
+        d = {k.lstrip('_'):v for (k,v) in d.items()}  # prettyjson (remove "_" prefix to attributes)                                
+        return cls(filename=d['filename'] if 'filename' in d else None,
+                   url=d['url'] if 'url' in d else None,
+                   category=d['category'] if 'category' in d else None,
+                   attributes=d['attributes'] if 'attributes' in d else None,
+                   colorspace=d['colorspace'] if 'colorspace' in d else None,
+                   array=np.array(d['array'], dtype=np.uint8) if 'array' in d and d['array'] is not None else None,                                      
+                   tags=d['tags'] if 'tags' in d else None,
+                   captions=d['captions'] if 'captions' in d else None)
 
 
     
@@ -2058,8 +2067,8 @@ class Scene(LabeledImage):
     ```
 
     """
-    def __init__(self, filename=None, url=None, category=None, attributes=None, objects=None, xywh=None, boxlabels=None, array=None, colorspace=None):
-        super().__init__(filename=filename, url=url, attributes=attributes, tags=category, array=array, colorspace=colorspace)   # ImageCategory class inheritance
+    def __init__(self, filename=None, url=None, category=None, attributes=None, objects=None, xywh=None, boxlabels=None, array=None, colorspace=None, tags=None, captions=None):
+        super().__init__(filename=filename, url=url, attributes=attributes, tags=tags, category=category, captions=captions, array=array, colorspace=colorspace)  
         self._objectlist = []
 
         if objects is not None:
@@ -2086,6 +2095,7 @@ class Scene(LabeledImage):
 
         self._objectlist = self._objectlist + detlist
 
+        
     @classmethod
     def cast(cls, im):
         assert isinstance(im, vipy.image.Image), "Invalid input - must be derived from vipy.image.Image"
@@ -2112,17 +2122,12 @@ class Scene(LabeledImage):
         """Serialization method for json package"""
         return self.json(encode=True)
     
-    def json(self, s=None, encode=True):
-        if s is None:
-            d = json.loads(super().json())
-            d['objectlist'] = {'Detection': [bb.json(encode=False) for bb in self._objectlist if isinstance(bb, vipy.object.Detection)],
-                               'Keypoint2d': [p.json(encode=False) for p in self._objectlist if isinstance(p, vipy.object.Keypoint2d)]}            
-            return json.dumps(d) if encode else d
-        else:
-            super().json(s)
-            d = json.loads(s)            
-            self._objectlist = [vipy.object.Detection.from_json(s) for s in d['objectlist']['Detection']] + [vipy.object.Keypoint2d.from_json(s) for s in d['objectlist']['Keypoint2d']]
-            return self
+    def json(self, encode=True):
+        d = super().json(encode=False)
+        d['objectlist'] = {'Detection': [bb.json(encode=False) for bb in self._objectlist if isinstance(bb, vipy.object.Detection)],
+                           'Keypoint2d': [p.json(encode=False) for p in self._objectlist if isinstance(p, vipy.object.Keypoint2d)]}            
+        return json.dumps(d) if encode else d
+
         
     def __eq__(self, other):
         """Scene equality requires equality of all objects in the scene, assumes a total order of objects"""
@@ -2162,15 +2167,15 @@ class Scene(LabeledImage):
         """
         return list(self)
     
-    def append(self, imdet):
+    def append_object(self, imdet):
         """Append the provided vipy.object.Detection object to the scene object list"""
         assert isinstance(imdet, vipy.object.Object), "Invalid input"
         self._objectlist.append(imdet)
         return self
 
-    def add(self, imdet):
+    def add_object(self, imdet):
         """Alias for append"""        
-        return self.append(imdet)
+        return self.append_object(imdet)
     
     def objects(self, objectlist=None):
         if objectlist is None:
@@ -2384,13 +2389,14 @@ class Scene(LabeledImage):
     
     def padcrop(self, bbox):
         """Crop the image buffer using the supplied bounding box object, zero padding if box is outside image rectangle, update all scene objects"""
+        bbox = bbox.clone()
         self.zeropad(bbox.int().width(), bbox.int().height())  # FIXME: this is inefficient
         (dx, dy) = (bbox.width(), bbox.height())
         bbox = bbox.translate(dx, dy)
-        self._objectlist = [bb.translate(-dx, -dy) for bb in self._objectlist]
-        self._history('translate', dx=dx, dy=dy)                                
-        self = super()._crop(bbox)        
+        self = super()._crop(bbox)
         (dx, dy) = (bbox.xmin(), bbox.ymin())
+        self._objectlist = [bb.translate(-dx, -dy) for bb in self._objectlist] # after crop        
+        self._history('translate', dx=dx, dy=dy)                                
         return self
 
     def cornerpadcrop(self, height, width):
@@ -2523,7 +2529,7 @@ class Scene(LabeledImage):
         return vipy.image.Image.perceptualhash_distance(self.bghash(bits=bits), im.bghash(bits=bits)) < threshold 
     
         
-    def show(self, categories=None, figure=1, nocaption=False, nocaption_withstring=[], fontsize=10, boxalpha=0.25, d_category2color={'Person':'green', 'Vehicle':'blue', 'Object':'red'}, captionoffset=(0,0), nowindow=False, textfacecolor='white', textfacealpha=1.0, shortlabel=None, timestamp=None, timestampcolor='black', timestampfacecolor='white', mutator=None, timestampoffset=(0,0)):
+    def show(self, categories=None, figure=1, nocaption=False, nocaption_withstring=[], fontsize=10, boxalpha=0.25, d_category2color={'Person':'green', 'Vehicle':'blue', 'Object':'red'}, captionoffset=(3,-10), nowindow=False, textfacecolor='white', textfacealpha=1.0, shortlabel=None, timestamp=None, timestampcolor='black', timestampfacecolor='white', mutator=None, timestampoffset=(0,0)):
         """Show scene detection 
 
         Args:
@@ -2559,7 +2565,7 @@ class Scene(LabeledImage):
                             captionoffset=captionoffset, nowindow=nowindow, textfacecolor=textfacecolor, textfacealpha=textfacealpha, timestamp=timestamp, timestampcolor=timestampcolor, timestampfacecolor=timestampfacecolor, timestampoffset=timestampoffset)
         return self
 
-    def annotate(self, outfile=None, categories=None, figure=1, nocaption=False, fontsize=10, boxalpha=0.25, d_category2color={'person':'green', 'vehicle':'blue', 'object':'red'}, captionoffset=(0,0), dpi=200, textfacecolor='white', textfacealpha=1.0, shortlabel=None, nocaption_withstring=[], timestamp=None, timestampcolor='black', timestampfacecolor='white', mutator=None, timestampoffset=(0,0)):
+    def annotate(self, outfile=None, categories=None, figure=1, nocaption=False, fontsize=10, boxalpha=0.25, d_category2color={'person':'green', 'vehicle':'blue', 'object':'red'}, captionoffset=(3,-10), dpi=200, textfacecolor='white', textfacealpha=1.0, shortlabel=None, nocaption_withstring=[], timestamp=None, timestampcolor='black', timestampfacecolor='white', mutator=None, timestampoffset=(0,0)):
         """Alias for savefig"""
         return self.savefig(outfile=outfile, 
                             categories=categories, 
@@ -2580,7 +2586,7 @@ class Scene(LabeledImage):
                             timestampoffset=timestampoffset,
                             mutator=mutator)
 
-    def savefig(self, outfile=None, categories=None, figure=1, nocaption=False, fontsize=10, boxalpha=0.25, d_category2color={'person':'green', 'vehicle':'blue', 'object':'red'}, captionoffset=(0,0), dpi=200, textfacecolor='white', textfacealpha=1.0, shortlabel=None, nocaption_withstring=[], timestamp=None, timestampcolor='black', timestampfacecolor='white', mutator=None, timestampoffset=(0,0)):
+    def savefig(self, outfile=None, categories=None, figure=1, nocaption=False, fontsize=10, boxalpha=0.25, d_category2color={'person':'green', 'vehicle':'blue', 'object':'red'}, captionoffset=(3,-10), dpi=200, textfacecolor='white', textfacealpha=1.0, shortlabel=None, nocaption_withstring=[], timestamp=None, timestampcolor='black', timestampfacecolor='white', mutator=None, timestampoffset=(0,0)):
         """Save show() output to given file or return buffer without popping up a window"""
         fignum = figure if figure is not None else 1        
         self.show(categories=categories, figure=fignum, nocaption=nocaption, fontsize=fontsize, boxalpha=boxalpha, 
@@ -2591,7 +2597,7 @@ class Scene(LabeledImage):
         if outfile is None:
             buf = io.BytesIO()
             (W,H) = plt.figure(num=fignum).canvas.get_width_height()  # fast(ish)
-            plt.figure(num=fignum).canvas.print_raw(buf)  # fast(ish)
+            plt.figure(num=fignum).canvas.print_raw(buf)  # fast(ish), FIXME: there is a bug here with captions showing behind bboxes on macos
             img = np.frombuffer(buf.getbuffer(), dtype=np.uint8).reshape((H, W, 4))
             if figure is None:
                 vipy.show.close(plt.gcf().number)   # memory cleanup (useful for video annotation on last frame)
@@ -2661,13 +2667,28 @@ class ImageDetection(Image, vipy.object.Detection):
         """ImageDetection equality is defined as equivalent categories and boxes (not pixels)"""
         return self.boundingbox() == other.boundingbox() if isinstance(other, ImageDetection) else False
 
+    @classmethod
+    def from_json(obj, s):
+        d = json.loads(s) if not isinstance(s, dict) else s
+        return cls(filename=d['filename'] if 'filename' in d else None,
+                   url=d['url'] if 'url' in d else None,
+                   category=d['category'] if 'category' in d else None,
+                   attributes=d['attributes'] if 'attributes' in d else None,
+                   colorspace=d['colorspace'] if 'colorspace' in d else None,
+                   array=np.array(d['array'], dtype=np.uint8) if 'array' in d and d['array'] is not None else None,                                                         
+                   xmin=d['xmin'] if 'xmin' in d else None,
+                   ymin=d['ymin'] if 'ymin' in d else None,                   
+                   xmax=d['xmax'] if 'xmax' in d else None,
+                   ymax=d['ymax'] if 'ymax' in d else None,
+                   id=d['id'] if 'id' in d else None)
+
     def boundingbox(self):
         """Cast this object to a cloned `vipy.geometry.BoundingBox` object"""
         return vipy.geometry.BoundingBox.cast(self.clone())
 
     def scene(self):
         """Cast this object to a cloned `vipy.image.Scene` object"""        
-        return vipy.image.Scene.cast(self.clone()).objects([vipy.object.Detection.cast(self)])
+        return vipy.image.Scene.cast(self.clone()).objects([vipy.object.Detection.cast(self.clone()).new_category(self.category())])
     
     def crop(self):
         """Crop the image using the bounding box and return a `vipy.image.Image` for the cropped pixels"""
@@ -2757,7 +2778,7 @@ class DetectionImage(vipy.object.Detection, Image):
 
     def scene(self):
         """Cast this object to a cloned `vipy.image.Scene` object"""        
-        return vipy.image.Scene.cast(self.clone()).objects([vipy.object.Detection.cast(self)])
+        return vipy.image.Scene.cast(self.clone()).objects([vipy.object.Detection.cast(self.clone()).new_category(self.category())])
     
     def crop(self):
         """Crop the image using the bounding box and return a `vipy.image.Image` for the cropped pixels"""
@@ -2780,16 +2801,28 @@ class DetectionImage(vipy.object.Detection, Image):
     def isinterior(self):
         """is the bounding box fully within the provided image?"""
         return super().isinterior(Image.width(self), Image.height(self))
+
+    @classmethod
+    def from_json(obj, s):
+        d = json.loads(s) if not isinstance(s, dict) else s
+        d = {k.lstrip('_'):v for (k,v) in d.items()}  # prettyjson (remove "_" prefix to attributes)                                
+        return cls(filename=d['filename'] if 'filename' in d else None,
+                   url=d['url'] if 'url' in d else None,
+                   category=d['category'] if 'category' in d else None,
+                   attributes=d['attributes'] if 'attributes' in d else None,
+                   colorspace=d['colorspace'] if 'colorspace' in d else None,
+                   array=d['array'] if 'array' in d else None,
+                   xmin=d['xmin'] if 'xmin' in d else None,
+                   ymin=d['ymin'] if 'ymin' in d else None,                   
+                   xmax=d['xmax'] if 'xmax' in d else None,
+                   ymax=d['ymax'] if 'ymax' in d else None,
+                   id=d['id'] if 'id' in d else None)
     
     
 def mutator_show_trackid(n_digits_in_trackid=5):
     """Mutate the image to show track ID with a fixed number of digits appended to the category as (####)"""
     return lambda im, k=None: (im.objectmap(lambda o: o.category('%s (%s)' % (o.category(), o.attributes['__trackid'][0:n_digits_in_trackid]))
                                             if o.hasattribute('__trackid') else o))
-
-def mutator_show_jointlabel():
-    """Deprecated"""
-    return mutator_capitalize()
 
 def mutator_show_trackindex():
     """Mutate the image to show track index appended to the category as (####)"""
@@ -2800,11 +2833,6 @@ def mutator_show_trackonly():
     f = mutator_show_trackindex()
     return lambda im, k=None, f=f: f(im).objectmap(lambda o: o.category('__%s' % o.category()))  # prepending __ will not show it, but will color boxes correctly
     
-def mutator_show_userstring(strlist):
-    """Mutate the image to show user supplied strings in the category.  The list be the same length oas the number of objects in the image.  This is not checked.  This is passed to show()"""
-    assert isinstance(strlist, list), "Invalid input"
-    return lambda im, k=None, strlist=strlist: im.objectmap([lambda o,s=s: o.category(s) for s in strlist])
-
 def mutator_show_noun_only(nocaption=False):
     """Mutate the image to show the noun only.  
     
@@ -2813,7 +2841,7 @@ def mutator_show_noun_only(nocaption=False):
     
     ..note:: To color boxes by track rather than noun, use `vipy.image.mutator_show_trackonly`
     """
-    return lambda im, k=None: (im.objectmap(lambda o: o.category('\n'.join([('__'+n if nocaption else n) for (n,v) in o.attributes['__noun verb']])) if o.hasattribute('__noun verb') else o))
+    return lambda im, k=None: (im.objectmap(lambda o: o.category('\n'.join([('__'+n if nocaption else n) for n in o.attributes['__object_category']])) if o.hasattribute('__object_category') else o))
 
 def mutator_show_nounonly(nocaption=False):
     """Alias for `vipy.image.mutator_show_noun_only`"""
@@ -2821,28 +2849,20 @@ def mutator_show_nounonly(nocaption=False):
 
 def mutator_show_verb_only():
     """Mutate the image to show the verb only"""
-    return lambda im, k=None: (im.objectmap(lambda o: o.category('\n'.join([v for (n,v) in o.attributes['__noun verb']])) if o.hasattribute('__noun verb') else o))
+    return lambda im, k=None: (im.objectmap(lambda o: o.category('\n'.join([v for v in o.attributes['__activity_category']])) if o.hasattribute('__activity_category') else o))
 
 def mutator_show_noun_or_verb():
     """Mutate the image to show the verb only if it is non-zero else noun"""
-    return lambda im: (im.objectmap(lambda o: o.category('\n'.join([v if len(v)>0 else n for (n,v) in o.attributes['__noun verb']])) if o.hasattribute('__noun verb') else o))
+    return lambda im: (im.objectmap(lambda o: o.category('\n'.join([v if len(v)>0 else n for (n,v) in zip(o.attributes['__object_category'], o.attributes['__activity_category'])]))) if o.hasattribute('__object_category') and o.hasattribute('__activity_category') else o)
 
-def mutator_capitalize():
+def mutator_show_noun_verb():
     """Mutate the image to show the category as 'Noun Verb1\nNoun Verb2'"""
-    return lambda im, k=None: (im.objectmap(lambda o: o.category('\n'.join(['%s %s' % (n.capitalize(), v.capitalize()) for (n,v) in o.attributes['__noun verb']])) if o.hasattribute('__noun verb') else o))
+    return lambda im, k=None: (im.objectmap(lambda o: o.category('\n'.join(['%s %s' % (n.capitalize(), v) for (n,v) in zip(o.attributes['__object_category'], o.attributes['__activity_category'])])) if o.hasattribute('__object_category') and o.hasattribute('__activity_category') else o))
     
-def mutator_show_activityonly():
-    return lambda im, k=None: im.objectmap(lambda o: o.category('') if (len(o.attributes['__noun verb']) == 1 and len(o.attributes['__noun verb'][0][1]) == 0) else o)
-
-def mutator_show_trackindex_activityonly():
-    """Mutate the image to show boxes colored by track index, and only show 'noun verb' captions"""
-    f = mutator_show_trackindex()
-    return lambda im, k=None, f=f: f(im).objectmap(lambda o: o.category('__%s' % o.category()) if (len(o.attributes['__noun verb']) == 1 and len(o.attributes['__noun verb'][0][1]) == 0) else o)
-
 def mutator_show_trackindex_verbonly(confidence=True, significant_digits=2):
     """Mutate the image to show boxes colored by track index, and only show 'verb' captions with activity confidence, sorted in decreasing order"""
     f = mutator_show_trackindex()
-    return lambda im, k=None, f=f: f(im).objectmap(lambda o: o.category('__%s' % o.category()) if (len(o.attributes['__noun verb']) == 1 and len(o.attributes['__noun verb'][0][1]) == 0) else o.category('\n'.join(['%s %s' % (v, ('(%1.2f)'%float(c)) if (confidence is True and c is not None) else '') for ((n,v),c) in sorted(zip(o.attributes['__noun verb'], o.attributes['__activityconf']), key=lambda x: float(x[1]), reverse=True)])))
+    return lambda im, k=None, f=f: f(im).objectmap(lambda o: o.category('__%s' % o.category()) if (len(o.attributes['__object_category']) == 1 and len(o.attributes['__activity_category'][0][1]) == 0) else o.category('\n'.join(['%s %s' % (v, ('(%1.2f)'%float(c)) if (confidence is True and c is not None) else '') for (n,v,c) in sorted(zip(o.attributes['__object_category'], o.attributes['__activity_category'], o.attributes['__activityconf']), key=lambda x: float(x[1]), reverse=True)])))
 
 
 def RandomImage(rows=None, cols=None):

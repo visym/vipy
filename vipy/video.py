@@ -2232,7 +2232,7 @@ class Video(object):
             assert fps > 0, "Invalid display framerate"
             with Stopwatch() as sw:            
                 for (k,im) in enumerate(self.load() if self.isloaded() else self.stream()):
-                    time.sleep(max(0, (1.0/self.framerate())*int(np.ceil((self.framerate()/fps))) - sw.since()))                                
+                    time.sleep(max(0, (1.0/self.framerate())*(self.framerate()/fps) - sw.since()))                    
                     im.show(figure=figure)
                     if vipy.globals._user_hit_escape():
                         break                    
@@ -2263,8 +2263,7 @@ class Video(object):
         if animate:
             return Video(frames=[self.quicklook(n=n, startframe=k, animate=False, dt=dt, aspectratio=aspectratio) for k in range(0, min(dt, len(self)))], framerate=self.framerate())
         framelist = [min(int(np.round(f))+startframe, len(self)-1) for f in np.linspace(0, len(self)-1, n)]
-        imframes = [self.frame(k).maxmatte()  # letterbox or pillarbox
-                    for (j,k) in enumerate(framelist)]
+        imframes = [self.frame(k).maxmatte() for (j,k) in enumerate(framelist)]
         imframes = [im.savefig(figure=1).rgb() for im in imframes]  # temp storage in memory
         if thumbnail is not None:
             assert isinstance(thumbnail, vipy.image.Image)
@@ -2785,8 +2784,8 @@ class Scene(VideoCategory):
         -The attributes of each of the `vipy.image.Scene.objects` in the scene contains helpful metadata for the provenance of the detection, including:  
             - 'trackid' of the track this detection
             - 'activityid' associated with this detection 
-            - 'jointlabel' of this detection, used for visualization
-            - 'noun verb' of this detection, used for visualization
+            - 'activity category' of this detection, used for visualization
+            - 'object category' of this detection, used for visualization        
 
         Args:
             k: [int >= 0] The frame index requested.  This is relative to the current frame rate of the video.
@@ -2811,9 +2810,8 @@ class Scene(VideoCategory):
         dets = [t[k].clone(deep=True).setattribute('__trackindex', j) for (j, t) in enumerate(self.tracklist()) if len(t)>0 and (t.during(k) or t.boundary()=='extend')]  # track interpolation (cloned) with boundary handling
         for d in dets:
             d.attributes['__activityid'] = []  # reset
-            jointlabel = [(d.category(),'')]  # [(Noun, Verbing1), (Noun, Verbing2), ...], initialized with empty verbs as [(Noun, ""), ... ]
-            activityconf = [None]   # for display 
-
+            activityconf = []  
+            jointlabel = []
             for (aid, a) in self.activities().items():  # insertion order:  First activity is primary, next is secondary (not in confidence order) 
                 if a.hastrack(d.attributes['__trackid']) and a.during(k):
                     # Display assumptions:
@@ -2825,12 +2823,17 @@ class Scene(VideoCategory):
                         activityconf.append(a.confidence())
                     d.attributes['__activityid'].append(a.id())  # for activity correspondence (if desired)
 
+            if len(jointlabel) == 0:
+                jointlabel = [(d.category(),'')]  # [(Noun, Verbing1), (Noun, Verbing2), ...], initialized with empty verbs as [(Noun, ""), ... ]
+            if len(activityconf) == 0:
+                activityconf = [None]
+                
             # For display purposes
             # - See `vipy.image.mutator_show_trackindex_verbonly`
             # - Double prepended underscore attributes are private and cleaned using `vipy.image.Image.sanitize`
-            d.attributes['__jointlabel'] = '\n'.join([('%s %s' % (n,v)).strip() for (n,v) in jointlabel[0 if len(jointlabel)==1 else 1:]])  # to be deprecated
-            d.attributes['__noun verb'] = jointlabel[0 if len(jointlabel)==1 else 1:]
-            d.attributes['__activityconf'] = activityconf[0 if len(jointlabel)==1 else 1:]
+            d.attributes['__object_category'] = [j[0] for j in jointlabel]
+            d.attributes['__activity_category'] = [j[1] for j in jointlabel]
+            d.attributes['__activityconf'] = activityconf
         dets.sort(key=lambda d: (d.confidence() if d.confidence() is not None else 0, d.category()))   # layering in video is ordered by decreasing track confidence and alphabetical shortlabel
         return vipy.image.Scene(array=img, colorspace=self.colorspace(), objects=dets, category=self.category())  
                 
@@ -2863,7 +2866,7 @@ class Scene(VideoCategory):
         """Degenerate scene has empty or malformed tracks"""
         return len(self.tracklist()) == 0 or any([t.isempty() or t.isdegenerate() for t in self.tracklist()])
     
-    def quicklook(self, n=9, dilate=1.5, mindim=256, fontsize=10, context=False, startframe=0, animate=False, dt=30, thumbnail=None, aspectratio=1):
+    def quicklook(self, n=9, dilate=1.5, mindim=256, fontsize=10, context=False, startframe=0, animate=False, dt=30, thumbnail=None, aspectratio=1, mutator=vipy.image.mutator_show_noun_verb()):
         """Generate a montage of n uniformly spaced annotated frames centered on the union of the labeled boxes in the current frame to show the activity ocurring in this scene at a glance
            Montage increases rowwise for n uniformly spaced frames, starting from frame zero and ending on the last frame.  This quicklook is most useful when len(self.activities()==1)
            for generating a quicklook from an activityclip().
@@ -2885,7 +2888,7 @@ class Scene(VideoCategory):
         if animate:
             return Video(frames=[self.quicklook(n=n, dilate=dilate, mindim=mindim, fontsize=fontsize, context=context, startframe=k, animate=False, dt=dt, thumbnail=thumbnail, aspectratio=aspectratio) for k in range(0, min(dt, len(self)))], framerate=self.framerate())
 
-        f_mutator = vipy.image.mutator_show_jointlabel()
+        f_mutator = mutator
         framelist = [min(int(np.round(f))+startframe, len(self)-1) for f in np.linspace(0, len(self)-1, n)]
         isdegenerate = [self.frame(k).boundingbox() is None or self.frame(k).boundingbox().dilate(dilate).intersection(self.framebox(), strict=False).isdegenerate() for (j,k) in enumerate(framelist)]
         imframes = [self.frame(k).maxmatte()  # letterbox or pillarbox
@@ -3224,7 +3227,7 @@ class Scene(VideoCategory):
         """
         return trackid in self.tracks()
 
-    def add(self, obj, category=None, attributes=None, rangecheck=True, frame=None, fluent=False):
+    def add_object(self, obj, category=None, attributes=None, rangecheck=True, frame=None, fluent=False):
         """Add the object obj to the scene, and return an index to this object for future updates
         
         This function is used to incrementally build up a scene frame by frame.  Obj can be one of the following types:
@@ -3936,7 +3939,7 @@ class Scene(VideoCategory):
         return self        
 
 
-    def annotate(self, outfile=None, fontsize=10, captionoffset=(0,0), textfacecolor='white', textfacealpha=1.0, shortlabel=None, boxalpha=0.25, d_category2color={'Person':'green', 'Vehicle':'blue', 'Object':'red'}, categories=None, nocaption=False, nocaption_withstring=[], mutator=None, timestamp=None, timestampcolor='black', timestampfacecolor='white', verbose=False):
+    def annotate(self, outfile=None, fontsize=10, captionoffset=(0,0), textfacecolor='white', textfacealpha=1.0, shortlabel=None, boxalpha=0.25, d_category2color={'Person':'green', 'Vehicle':'blue', 'Object':'red'}, categories=None, nocaption=False, nocaption_withstring=[], mutator=vipy.image.mutator_show_noun_verb(), timestamp=None, timestampcolor='black', timestampfacecolor='white', verbose=False):
         """Generate a video visualization of all annotated objects and activities in the video.
         
         The annotation video will be at the resolution and framerate of the underlying video, and pixels in this video will now contain the overlay.
@@ -3970,7 +3973,7 @@ class Scene(VideoCategory):
         if verbose:
             log.info('[vipy.video.annotate]: Annotating video ...')  
             
-        f_mutator = mutator if mutator is not None else vipy.image.mutator_show_jointlabel()
+        f_mutator = mutator 
         f_timestamp = (lambda k: '%s %d' % (vipy.util.clockstamp(), k)) if timestamp is True else timestamp
 
         if outfile is None:        
@@ -4033,17 +4036,17 @@ class Scene(VideoCategory):
                                      nocaption_withstring=nocaption_withstring).saveas(outfile).play(notebook=notebook)
     
 
-    def show(self, outfile=None, verbose=True, fontsize=10, captionoffset=(0,0), textfacecolor='white', textfacealpha=1.0, shortlabel=None, boxalpha=0.25, d_category2color={'Person':'green', 'Vehicle':'blue', 'Object':'red'}, categories=None, nocaption=False, nocaption_withstring=[], figure=1, fps=None, timestamp=None, timestampcolor='black', timestampfacecolor='white', mutator=None):
+    def show(self, outfile=None, verbose=True, fontsize=10, captionoffset=(0,0), textfacecolor='white', textfacealpha=1.0, shortlabel=None, boxalpha=0.25, d_category2color={'Person':'green', 'Vehicle':'blue', 'Object':'red'}, categories=None, nocaption=False, nocaption_withstring=[], figure=1, fps=None, timestamp=None, timestampcolor='black', timestampfacecolor='white', mutator=vipy.image.mutator_show_noun_verb()):
         """Faster show using interative image show for annotated videos.  This can visualize videos before video rendering is complete, but it cannot guarantee frame rates. Large videos with complex scenes will slow this down and will render at lower frame rates."""
         fps = min(fps, self.framerate()) if fps is not None else self.framerate()
         assert fps > 0, "Invalid display framerate"
         f_timestamp = (lambda k: '%s %d' % (vipy.util.clockstamp(), k)) if timestamp is True else timestamp
-        f_mutator = mutator if mutator is not None else vipy.image.mutator_show_jointlabel()        
+        f_mutator = mutator 
         if not self.isdownloaded() and self.hasurl():
             self.download()
         with Stopwatch() as sw:            
             for (k,im) in enumerate(self.load() if self.isloaded() else self.stream()):
-                time.sleep(max(0, (1.0/self.framerate())*int(np.ceil((self.framerate()/fps)))))
+                time.sleep(max(0, (1.0/self.framerate())*(self.framerate()/fps) - sw.since()))
                 f_mutator(im,k).show(categories=categories,
                                      figure=figure,
                                      nocaption=nocaption,
@@ -4256,7 +4259,7 @@ class Scene(VideoCategory):
                             assigned.add(gated[0][0].id())
                             assigned.add(d.id())
                         else:
-                            assigned.add(self.add(vipy.object.Track(keyframes=[frame], boxes=[d.clone()], category=d.category(), framerate=self.framerate()), rangecheck=False))  # clone required
+                            assigned.add(self.add_object(vipy.object.Track(keyframes=[frame], boxes=[d.clone()], category=d.category(), framerate=self.framerate()), rangecheck=False))  # clone required
                             assigned.add(d.id())
 
         # Activity assignment
@@ -4287,7 +4290,7 @@ class Scene(VideoCategory):
             # Activity construction from unassigned detections
             for d in activitydets:
                 if d._id not in assigned:
-                    self.add(d.clone())  
+                    self.add_object(d.clone())  
 
         return self
 
@@ -4300,7 +4303,7 @@ def RandomVideo(rows=None, cols=None, frames=None):
     """
     rows = np.random.randint(256, 1024) if rows is None else rows
     cols = np.random.randint(256, 1024) if cols is None else cols
-    frames = np.random.randint(32, 256) if frames is None else frames
+    frames = np.random.randint(128, 256) if frames is None else frames
     assert rows>32 and cols>32 and frames>=32    
     return Video(array=np.uint8(255 * np.random.rand(frames, rows, cols, 3)), colorspace='rgb')
 
@@ -4313,16 +4316,16 @@ def RandomScene(rows=None, cols=None, frames=None):
     v = RandomVideo(rows, cols, frames)
     (rows, cols) = v.shape()
     tracks = [vipy.object.Track(label='track%d' % k,
-                                keyframes=[0, np.random.randint(50,100), 150],
+                                keyframes=[0, np.random.randint(50,100), len(v)],
                                 framerate=30, 
                                 boxes=[vipy.object.Detection(xmin=np.random.randint(0,cols - 16), ymin=np.random.randint(0,rows - 16),
-                                                                 width=np.random.randint(16,cols//2), height=np.random.randint(16,rows//2)),
+                                                             width=np.random.randint(16,cols//2), height=np.random.randint(16,rows//2)),
                                        vipy.object.Detection(xmin=np.random.randint(0,cols - 16), ymin=np.random.randint(0,rows - 16),
-                                                                 width=np.random.randint(16,cols//2), height=np.random.randint(16,rows//2)),
+                                                             width=np.random.randint(16,cols//2), height=np.random.randint(16,rows//2)),
                                        vipy.object.Detection(xmin=np.random.randint(0,cols - 16), ymin=np.random.randint(0,rows - 16),
-                                                                 width=np.random.randint(16,cols//2), height=np.random.randint(16,rows//2))]) for k in range(0,32)]
+                                                             width=np.random.randint(16,cols//2), height=np.random.randint(16,rows//2))]) for k in range(0,32)]
 
-    activities = [vipy.activity.Activity(label='activity%d' % k, tracks=[tracks[j].id() for j in [np.random.randint(32)]], startframe=np.random.randint(50,99), endframe=np.random.randint(100,150), framerate=30) for k in range(0,32)]   
+    activities = [vipy.activity.Activity(label='activity%d' % k, tracks=[tracks[j].id() for j in [np.random.randint(32)]], startframe=np.random.randint(0,99), endframe=np.random.randint(100,len(v)), framerate=30) for k in range(0,32)]   
     return Scene(array=v.array(), colorspace='rgb', category='scene', tracks=tracks, activities=activities, framerate=30)
 
 

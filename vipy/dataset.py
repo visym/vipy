@@ -32,22 +32,20 @@ class Dataset():
         - dataset [list, tuple, set, obj]: a python built-in type that supports indexing or a generic object that supports indexing and has a length
         - loader [lambda]: a callable loader that will construct the object from a raw data representation.  This is useful for custom deerialization or on demand transformations
         - strict [bool]: If true, throw an error if the type of objlist is not a python built-in type.  This is useful for loading dataset objects that can be indexed.
-        - index [list]: If provided, use this as the initial index into the dataset.  This is useful for preprocessing large datasets to filter out noise.
     """
 
-    def __init__(self, dataset, id=None, loader=None, strict=True, shuffler=None, index=None):
+    def __init__(self, dataset, id=None, loader=None, strict=True, shuffler=None):
         assert loader is None or callable(loader)
         assert shuffler is None or callable(shuffler)        
-        assert index is None or isinstance(index, (list, tuple))
         
         self._id = id
         self._ds = dataset if not isinstance(dataset, (list, set, tuple)) else tuple(dataset)  # force immutable (if possible)
-        self._idx = list(range(len(self._ds)) if not index else index)
+        self._idx = list(range(len(self._ds)))
         self._loader = loader  # not serializable if lambda is provided
         self._shuffler = shuffler
         self._type = None
         
-        assert not strict or index is None or (len(index)>0 and len(index)<=len(dataset) and max(index)<len(dataset) and min(index)>0)
+
 
 
     @classmethod
@@ -74,9 +72,10 @@ class Dataset():
             self._id = n
         return self
 
-    def index(self, index=None):
+    def index(self, index=None, strict=False):
         """Update the index, useful for filtering of large datasets"""
         if index is not None:
+            assert not strict or index is None or (len(index)>0 and len(index)<=len(self) and max(index)<len(self) and min(index)>=0)            
             self._idx = index
             return self
         return self._idx
@@ -527,8 +526,7 @@ class Paged(Dataset):
                          id=id,
                          loader=loader,
                          strict=False,
-                         index=index if index else list(range(sum([p[0] for p in pagelist]))),
-                         shuffler=shuffler)
+                         shuffler=shuffler).index(index if index else list(range(sum([p[0] for p in pagelist]))))
 
         assert callable(loader), "page loader required"
         assert not strict or len(set([x[0] for x in self._ds])) == 1  # pagesizes all the same 

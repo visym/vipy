@@ -44,20 +44,30 @@ class Detection(BoundingBox, Object):
     def cast(cls, d):
         assert isinstance(d, BoundingBox)
         d.__class__ = Detection
+        d.clear_tags()
         if not hasattr(d, 'attributes'):
-            d.attributes = {}            
+            d.attributes = {}
         return d
 
     def downcast(self):
         self.__class__ = BoundingBox
         return self
+
+    def __json__(self):
+        """Serialization method for json package"""
+        return self.json(encode=True)
+    
+    def json(self, encode=True):
+        d = {k.lstrip('_'):v for (k,v) in self.__dict__.items()}  # prettyjson (remove "_" prefix to attributes) 
+        return json.dumps(d) if encode else d
     
     @classmethod
     def from_json(cls, s):
         d = json.loads(s) if not isinstance(s, dict) else s
-        d = {k.lstrip('_'):v for (k,v) in d.items()}  # prettyjson (remove "_" prefix to attributes)                
         return cls(xmin=d['xmin'], ymin=d['ymin'], xmax=d['xmax'], ymax=d['ymax'],
                    attributes=d['attributes'] if 'attributes' in d else None,
+                   tags=d['tags'] if 'tags' in d else None,
+                   category=d['category'] if 'category' in d else None,
                    id=d['id'] if 'id' in d else True)
         
     def __repr__(self):
@@ -84,14 +94,6 @@ class Detection(BoundingBox, Object):
         """Return a python dictionary containing the relevant serialized attributes suitable for JSON encoding"""
         return self.json(s=None, encode=False)
 
-    def __json__(self):
-        """Serialization method for json package"""
-        return self.json(encode=True)
-    
-    def json(self, encode=True):
-        d = {k:v for (k,v) in self.__dict__.items()}
-        d = {k.lstrip('_'):v for (k,v) in d.items()}  # prettyjson (remove "_" prefix to attributes)                        
-        return json.dumps(d) if encode else d
                 
     def id(self):
         return self._id
@@ -169,15 +171,15 @@ class Keypoint2d(Point2d, Object):
     @classmethod
     def from_json(cls, s):
         d = json.loads(s) if not isinstance(s, dict) else s
-        d = {k.lstrip('_'):v for (k,v) in d.items()}  # prettyjson (remove "_" prefix to attributes)                
         return cls(x=d['x'], y=d['y'], radius=d['r'],
                    attributes=d['attributes'] if 'attributes' in d else None,
+                   tags=d['tags'] if 'tags' in d else None,
+                   category=d['category'] if 'category' in d else None,
+                   confidence=d['confidence'] if 'confidence' in d else None,                                      
                    id=d['id'] if 'id' in d else True)
     
     def json(self, encode=True):
-        d = {k:v for (k,v) in self.__dict__.items()}
-        d.update( {'x':self.x, 'y':self.y, 'r':self.r} )
-        d = {k.lstrip('_'):v for (k,v) in d.items()}  # prettyjson (remove "_" prefix to attributes)                        
+        d = {k.lstrip('_'):v for (k,v) in self.__dict__.items()} # prettyjson (remove "_" prefix to attributes)  
         return json.dumps(d) if encode else d
                 
     
@@ -215,7 +217,6 @@ class Track(object):
     """
 
     def __init__(self, keyframes, boxes, category=None, label=None, framerate=None, interpolation='linear', boundary='strict', attributes=None, trackid=None, filterbox=False):
-
         keyframes = tolist(keyframes)
         boxes = tolist(boxes)        
         assert isinstance(keyframes, tuple) or isinstance(keyframes, list), "Keyframes are required and must be tuple or list"
@@ -464,7 +465,7 @@ class Track(object):
         return len(self) / float(self.framerate())
     
     def linear_interpolation(self, f, id=True):
-        """Linear bounding box interpolation at frame=k given observed boxes (x,y,w,h) at keyframes.  
+        """Linear bounding box interpolation at frame=f given observed boxes (x,y,w,h) at keyframes.  
 
         This returns a `vipy.object.Detection` which is the interpolation of the `vipy.object.Track` at frame k
 
@@ -679,7 +680,7 @@ class Track(object):
         #return copy.deepcopy(self)  
         t = Track.from_json(self.json(encode=False)) if (startframe is None and endframe is None) else self.clone_during(startframe, endframe)  # 2x faster than deepcopy
         if rekey:
-            global OBJECT_GUID; t.id(newid=hex(int(OBJECT_GUID))[2:]);  OBJECT_GUID = OBJECT_GUID + 1;  # faster, increment package level UUID4 initialized GUID
+            t.id(newid=uuid.uuid4().hex)
         return t
     
     def clone_during(self, startframe, endframe):

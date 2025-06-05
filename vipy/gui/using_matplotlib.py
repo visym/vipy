@@ -29,13 +29,13 @@ def escape_to_exit(event):
         vipy.globals._user_hit_escape(True)
     
 def flush():
-    if matplotlib.get_backend() == 'MacOSX':
+    if matplotlib.get_backend().lower() == 'macosx':
         plt.draw()  # YUCK: to flush buffer on video play, will be slow
     plt.pause(0.001)
 
     
 def imflush():
-    if matplotlib.get_backend() == 'MacOSX':
+    if matplotlib.get_backend().lower() == 'macosx':
         plt.draw()  # YUCK: to flush buffer on video play, will be slow
     plt.pause(0.001)
 
@@ -127,7 +127,12 @@ def imshow(img, fignum=None):
                 try:
                     c.remove()
                 except:
-                    pass
+                    # MacOSX fails with the error: NotImplementedError: cannot remove artist
+                    # fallback on closing figure completely
+                    (fignum, imh) = _imshow_tight(img, fignum=fignum) 
+                    FIGHANDLE[fignum] = imh
+                    return fignum
+
     else:
         # Jupyter notebook does not respect fignum.  It is always one when inspecting plt.get_fignums()
         if fignum in plt.get_fignums() and fignum in FIGHANDLE:
@@ -164,7 +169,7 @@ def boundingbox(img, xmin, ymin, xmax, ymax, bboxcaption=None, fignum=None, bbox
     if bboxcaption is not None:
         # clip_on clips anything outside the image
         newlines = bboxcaption.count('\n')
-        captionoffset = captionoffset if ymin > 15 else (captionoffset[0]+5, captionoffset[1]+(15*(newlines+1)))  # move down a bit if near top of image, shift once per newline in caption
+        #captionoffset = captionoffset if ymin > 15 else (captionoffset[0]+5, captionoffset[1]+(15*(newlines+1)))  # move down a bit if near top of image, shift once per newline in caption
         try:
             # MatplotlibDeprecationWarning: The 's' parameter of annotate() has been renamed 'text' since Matplotlib 3.3            
             handle = plt.annotate(text=bboxcaption, xy=(xmin,ymin), xytext=(xmin+captionoffset[0], ymin+captionoffset[1]), xycoords='data', color=textcolor, bbox=dict(facecolor=textfacecolor, edgecolor=textcolor, alpha=textfacealpha, boxstyle='round'), fontsize=fontsize, clip_on=True)
@@ -178,7 +183,8 @@ def imdetection(img, detlist, fignum=None, bboxcolor='green', do_caption=True, f
     """Show bounding boxes from a list of vipy.object.Detections on the same image, plotted in list order with optional captions """
 
     # Create image
-    fignum = imshow(img, fignum=fignum) 
+    #fignum = imshow(img, fignum=fignum)  # this can fail on some OS, go the slow route instead
+    fignum = _imshow_tight(img, fignum=fignum)     
 
     # A better way? https://matplotlib.org/api/_as_gen/matplotlib.animation.FuncAnimation.html
     

@@ -159,12 +159,11 @@ def test_image():
     img = im.numpy()
     ims = im.clone()
     s = ims.json()
-    assert np.allclose(ims.json(s).numpy(), img)
     assert np.allclose(vipy.image.Image.from_json(s).numpy(), img)
     print('[test_image]: JSON image serialization PASSED')    
 
     im = vipy.image.RandomScene().mindim(64)
-    ims = im.clone().json(im.clone().json())
+    ims = vipy.image.Scene.from_json(im.clone().json())
     assert all([bbs == bb for (bbs, bb) in zip(ims._objectlist, im._objectlist)])
     print('[test_image]: JSON scene serialization PASSED')
 
@@ -661,9 +660,9 @@ def test_scene():
     im = Scene(url=jpegurl, filename=f).load()    
     (H,W) = im.shape()
     im = im.objects([Detection('obj1',20,50,100,100), Detection('obj2',300,300,200,200)])
-    im.append(Detection('obj3',W +1,H +1,200,200))   # invalid box outside image rectancle
-    im.append(Detection('obj4',W -100,H -200,1000,2000))   # invalid box partially outside image rectangle
-    im.append(Keypoint2d(category='obj5',x=1,y=2,radius=3))   
+    im.append_object(Detection('obj3',W +1,H +1,200,200))   # invalid box outside image rectancle
+    im.append_object(Detection('obj4',W -100,H -200,1000,2000))   # invalid box partially outside image rectangle
+    im.append_object(Keypoint2d(category='obj5',x=1,y=2,radius=3))   
     imscene = im.clone()
     
     

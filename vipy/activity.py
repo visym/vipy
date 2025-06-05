@@ -43,7 +43,7 @@ class Activity(object):
         if tracks is not None and actorid is not None and actorid not in trackid:
             trackid.add(actorid)
 
-        self._id = uuid.uuid4().hex if id is True else id  # use provided
+        self._id = uuid.uuid4().hex if id is None else id  # use provided
         self._startframe = int(startframe)
         self._endframe = int(endframe)
         self._framerate = float(framerate) if framerate is not None else framerate
