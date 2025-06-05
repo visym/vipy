@@ -259,11 +259,11 @@ class Track(object):
         return cls(keyframes=tuple(int(f) for f in d['keyframes']),
                    boxes=tuple([Detection.from_json(bbs) for bbs in d['keyboxes']]),
                    category=d['label'] if 'label' in d else None,
-                   framerate=d['framerate'],
-                   interpolation=d['interpolation'],
+                   framerate=d['framerate'] if 'framerate' in d else None,
+                   interpolation=d['interpolation'] if 'interpolation' in d else 'linear',
                    boundary=d['boundary'],
                    attributes=d['attributes'],
-                   trackid=d['id'])
+                   trackid=d['id'] if 'id' in d else None)
 
     def __json__(self):
         """Serialization method for json package"""
