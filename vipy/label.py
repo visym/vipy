@@ -1,4 +1,6 @@
 from vipy.util import to_iterable, truncate_string
+from itertools import zip_longest
+
 
 try:
     import ujson as json  # faster
@@ -45,7 +47,8 @@ class Tag():
         return self
 
     def tag(self, tag, confidence=None):
-        self._tags.append( tag if confidence is None else (tag, confidence) )
+        for (t,c) in zip_longest(to_iterable(tag), to_iterable(confidence)):
+            self._tags.append( t if c is None else (t, float(c)) )
         return self
 
     def tags(self):
@@ -80,13 +83,17 @@ class Tag():
             self.category(new)
         return self
 
-    def new_category(self, category, confidence=None):
-        self.category(category, confidence)
+    def new_category(self, category):
+        self.category(category)
         return self
     
     def category(self, category=None, confidence=None):
         if category is not None or confidence is not None:
-            self.clear_tags().tag(category if category is not None else self.category(), confidence)
+            (tag, conf) = (self.category() if category is None else category, self.confidence() if confidence is None else confidence)
+            if len(self._tags) == 0:
+                self._tags = [(tag, conf)]
+            else:
+                self._tags[0] = (tag, conf)
             return self
         return self.first_tag() if self.has_tags() else None
 
@@ -94,7 +101,7 @@ class Tag():
         """synonym for category"""
         return self.category()
     
-    def confidence(self):
+    def confidence(self, conf=None):
         return (self._tags[0][1] if isinstance(self._tags[0], (tuple,list)) else None) if self.has_tags() else None
 
     def has_confidence(self):
@@ -161,12 +168,14 @@ class Caption():
         return self.num_captions() > 0
 
     def captions(self):
-        return tuple(c if not isinstancec(c, (tuple,list)) else c[0] for c in self._captions)
-    
+        return tuple(c if not isinstance(c, (tuple,list)) else c[0] for c in self._captions)
+
     def caption(self, caption, confidence=None):
-        self._captions.append( caption if confidence is None else (caption, confidence) )        
+        for (t,c) in zip_longest(to_iterable(caption), to_iterable(confidence)):
+            assert c is None or isinstance(c, (int, float))
+            self._captions.append( t if c is None else (t, c) )
         return self
-            
+    
     def is_unlabeled(self):
         return self.num_captions() == 0
 

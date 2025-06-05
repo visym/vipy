@@ -1781,12 +1781,11 @@ class Image():
         self.array(np.rot90(self.numpy(), 1))
         return self
 
-    def face_detection(self, mindim=256, union=False, conf=0.2):
+    def face_detection(self, mindim=256,  conf=0.2):
         """Detect faces in the scene, add as objects, return new scene with just faces
         
         Args:
             mindim [int]: The minimum dimension for downsampling the image for face detection.  Will be upsampled back to native resolution prior to return
-            union [bool]: Whether to return a scene with just faces or the union of the existing scene and the new faces
 
         Returns
             A `vipy.image.Scene` object with all detected faces or the union of faces and all objects in self
@@ -1794,15 +1793,13 @@ class Image():
         .. note:: This method uses a CPU-only pretrained face detector.  This is convenient, but slow.  See the heyvi package for optimized GPU batch processing for faster operation.
         """
         try_import('heyvi'); import heyvi  # >heyvi-0.2.28 for minconf      
-        im = heyvi.detection.FaceDetector()(Scene.cast(self.clone()).clear().mindim(mindim)).mindim(self.mindim())
-        return Scene.cast(self).union(im) if union else im
+        return heyvi.detection.FaceDetector()(Scene.cast(self.clone()).clear().mindim(mindim)).resize_like(self.reload()).flush_array()
     
-    def person_detection(self, mindim=256, union=False, conf=0.2):
+    def person_detection(self, mindim=256, conf=0.2):
         """Detect only people in the scene, add as objects, return new scene with just people
 
         Args:
             mindim [int]: The minimum dimension for downsampling the image for person detection.  Will be upsampled back to native resolution prior to return
-            union [bool]: Whether to return a scene with just people or the union of the existing scene and the new people
             conf [float]: A real value between [0,1] of the minimum confidence for person detection
 
         Returns
@@ -1811,8 +1808,7 @@ class Image():
         .. note:: This method uses a CPU-only pretrained person detector.  This is convenient, but slow.  See the heyvi package for optimized GPU batch processing for faster operation.
         """
         try_import('heyvi'); import heyvi                
-        im = heyvi.detection.ObjectDetector()(Scene.cast(self.clone()).clear().mindim(mindim), conf=conf, objects=['person']).mindim(self.mindim())
-        return Scene.cast(self).union(im) if union else im        
+        return heyvi.detection.ObjectDetector()(Scene.cast(self.clone()).clear().mindim(mindim), conf=conf, objects=['person']).resize_like(self.reload()).flush_array()
 
     def qrcode_recognition(self):
         """Detect and decode one QR code in the current image using OpenCV, and return the string contents of the QR code or None if the detection failed to detect a code.  (Requires OpenCV)"""
@@ -1835,7 +1831,7 @@ class Image():
             - For batch operations on many images, it is preferred to set up the detection network once, then calling many images sequentially.  
             - To retain boxes, use self.face_detection().blurmask()
         """
-        im = self.face_detection(mindim=mindim, union=False)  # only faces
+        im = self.face_detection(mindim=mindim)  # only faces
         return im.setattribute('faceblur', [o.int().json() for o in im.objects()]).blurmask(radius=radius).downcast()
 
     def facepixelize(self, radius=7, mindim=256):
@@ -1853,7 +1849,7 @@ class Image():
             - For batch operations on many images, it is preferred to set up the detection network once, then calling many images sequentially.  
             - To retain boxes, use self.face_detection().pixelize()
         """
-        im = self.face_detection(mindim=mindim, union=False)          
+        im = self.face_detection(mindim=mindim)          
         return im.setattribute('facepixelize', [o.int().json() for o in im.objects()]).pixelize(radius=radius).downcast()
 
 
@@ -2254,12 +2250,15 @@ class Scene(LabeledImage):
             return self
         return self.getattribute('_history')
 
-    def flush(self):
+    def flush_array(self):
+        return self.flush(undo_history=False)
+    
+    def flush(self, undo_history=True):
         """Free the image buffer, and undo all of the object transformations to restore alignment with the reference image filename/url"""
-        if self._history() is not None:
+        if undo_history and self._history() is not None:
             for (f,kwargs) in reversed(self._history()):
                 self.objectmap(lambda o: getattr(o,f)(**kwargs))  # undo
-            self.delattribute('_history')
+        self.delattribute('_history')
         return super().flush()
     
     def imclip(self):

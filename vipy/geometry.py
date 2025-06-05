@@ -985,10 +985,6 @@ class BoundingBox(object):
         else: 
             return img[:, self.ymin():self.ymax(), self.xmin():self.xmax(), :]  # NxHxWxC
 
-    def confidence(self):
-        """Bounding boxes do not have confidences, use vipy.object.Detection()"""
-        return None
-
     def grid(self, rows, cols):
         """Split a bounding box into the smallest grid of non-overlapping bounding boxes such that the union is the original box"""
         (w,h) = (self.width()/cols, self.height()/rows)

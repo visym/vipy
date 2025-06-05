@@ -695,7 +695,7 @@ class Track(object):
                                   ([kf for kf in self._keyframes if kf >= endframe][0]) if self.during(endframe, endframe) else endframe)
         kfkb = [(kf,kb.clone()) for (kf,kb) in zip(self._keyframes, self._keyboxes) if ((startframe is None or kf >= startframe) and (endframe is None or kf <= endframe))]
         (kf, kb) = zip(*kfkb) if len(kfkb) > 0 else ([], [])        
-        return Track(keyframes=kf, boxes=kb, category=self._label, framerate=self._framerate, interpolation=self._interpolation, boundary=self._boundary, attributes=self.attributes, trackid=self._id)
+        return Track(keyframes=kf, boxes=kb, category=self.category(), framerate=self._framerate, interpolation=self._interpolation, boundary=self._boundary, attributes=self.attributes, trackid=self._id)
     
     def boundingbox(self, startframe=None, endframe=None):
         """The bounding box of a track is the smallest spatial box that contains all of the BoundingBoxes of the track  within startframe and endframe, or None if there are no detections.
@@ -1128,7 +1128,7 @@ def non_maximum_suppression(detlist, conf, iou, bycategory=False, cover=None, gr
             continue
         for (j, dj) in enumerate(islice(detlist, i+1, None), start=i+1):  # no-copy, equivalent to detlist[i+1:]
             if ((j not in suppressed) and
-                (bycategory is False or di._label == dj._label) and
+                (bycategory is False or di.category() == dj.category()) and
                 (not bbidx[i].isdisjoint(bbidx[j])) and
                 ((cover is not None and di.hasintersection(dj, maxcover=cover, area=area[i], otherarea=area[j])) or di.hasintersection(dj, iou=iou, area=area[i], otherarea=area[j]))):  
                 suppressed.add(j)
