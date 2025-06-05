@@ -4325,7 +4325,7 @@ def RandomScene(rows=None, cols=None, frames=None):
                                        vipy.object.Detection(xmin=np.random.randint(0,cols - 16), ymin=np.random.randint(0,rows - 16),
                                                              width=np.random.randint(16,cols//2), height=np.random.randint(16,rows//2))]) for k in range(0,32)]
 
-    activities = [vipy.activity.Activity(label='activity%d' % k, tracks=[tracks[j].id() for j in [np.random.randint(32)]], startframe=np.random.randint(0,99), endframe=np.random.randint(100,len(v)), framerate=30) for k in range(0,32)]   
+    activities = [vipy.activity.Activity(label='activity%d' % k, tracks=[tracks[j].id() for j in [np.random.randint(32)]], startframe=np.random.randint(0,len(v)//2), endframe=np.random.randint(1+(len(v)//2),len(v)), framerate=30) for k in range(0,32)]   
     return Scene(array=v.array(), colorspace='rgb', category='scene', tracks=tracks, activities=activities, framerate=30)
 
 
