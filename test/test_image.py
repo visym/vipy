@@ -15,7 +15,7 @@ pngurl = 'https://upload.wikimedia.org/wikipedia/commons/thumb/4/47/PNG_transpar
 greyfile = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'face_grey.jpg')
 rgbfile = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'face_rgb.jpg')
 rgbafile = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'face_rgba.png')
-
+jsonfile = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'Clean the house.json')
                         
 def test_image():
     assert vipy.version.is_at_least('0.7.0')
@@ -808,7 +808,7 @@ def test_scene():
     print('[test_image.scene]: flush history  PASSED')    
 
     # vipy-1.14.4 deserialization (from cap_detection_handheld_val/annotations)
-    v = vipy.load('Clean the house.json')[0]
+    v = vipy.load(jsonfile)[0]
     assert vipy.video.Scene.from_json(v.json()).json() == v.json()
     print('[test_image.scene]: vipy-1.14.4  deserialization  PASSED')
     
