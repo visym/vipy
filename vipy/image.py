@@ -2100,11 +2100,11 @@ class Scene(LabeledImage):
         im = super().from_json(s)
         im.__class__ = vipy.image.Scene
         d = {k.lstrip('_'):v for (k,v) in (json.loads(s) if not isinstance(s, dict) else s).items()}  # prettyjson (remove "_" prefix to attributes)
-        if isinstance(d['objectlist'], dict):
+        if 'objectlist' in d and isinstance(d['objectlist'], dict):
             # Version 1.15.1: expanded serialization to support multiple object types
             im._objectlist = [vipy.object.Detection.from_json(s) for s in d['objectlist']['Detection']] + [vipy.object.Keypoint2d.from_json(s) for s in d['objectlist']['Keypoint2d']]
         else:
-            # Legacy support: 
+            # Legacy support: 1.14.4
             im._objectlist = [vipy.object.Detection.from_json(s) for s in d['objectlist']]            
         return im
 

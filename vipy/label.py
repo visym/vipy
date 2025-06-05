@@ -90,10 +90,7 @@ class Tag():
     def category(self, category=None, confidence=None):
         if category is not None or confidence is not None:
             (tag, conf) = (self.category() if category is None else category, self.confidence() if confidence is None else float(confidence))
-            if len(self._tags) == 0:
-                self._tags = [(tag, conf)]
-            else:
-                self._tags[0] = (tag, conf)
+            self._tags = [(tag, conf)] + self._tags[1:]  # category is always the first tag
             return self
         return self.first_tag() if self.has_tags() else None
 

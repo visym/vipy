@@ -63,9 +63,9 @@ def similarity_transform_2x3(c=(0,0), r=0, s=1):
 def similarity_transform(txy=(0,0), r=0, s=1):
     """Return a 3x3 similarity transformation with translation tuple txy=(x,y), rotation r (radians, scale=s"""
     assert isinstance(txy, tuple) and len(txy) == 2 and isnumber(r) and isnumber(s), "Invalid input"
-    R = np.asmatrix([[np.cos(r), -np.sin(r), 0], [np.sin(r), np.cos(r), 0], [0,0,1]])
-    S = np.asmatrix([[s,0,0], [0, s, 0], [0,0,1]])
-    T = np.asmatrix([[0,0,txy[0]], [0,0,txy[1]], [0,0,0]])
+    R = np.asarray([[np.cos(r), -np.sin(r), 0], [np.sin(r), np.cos(r), 0], [0,0,1]])
+    S = np.asarray([[s,0,0], [0, s, 0], [0,0,1]])
+    T = np.asarray([[0,0,txy[0]], [0,0,txy[1]], [0,0,0]])
     return S * R + T  # composition
 
 
@@ -87,10 +87,10 @@ def affine_transform(txy=(0,0), r=0, sx=1, sy=1, kx=0, ky=0):
     
     """
     assert isinstance(txy, tuple) and len(txy) == 2 and isnumber(r) and isnumber(sx) and isnumber(sy) and isnumber(kx) and isnumber(ky), "Invalid input"
-    R = np.asmatrix([[np.cos(r), -np.sin(r), 0], [np.sin(r), np.cos(r), 0], [0,0,1]])
-    S = np.asmatrix([[sx,0,0], [0, sy, 0], [0,0,1]])
-    K = np.asmatrix([[1,ky,0], [kx,1,0], [0,0,1]])
-    T = np.asmatrix([[0,0,txy[0]], [0,0,txy[1]], [0,0,0]])
+    R = np.asarray([[np.cos(r), -np.sin(r), 0], [np.sin(r), np.cos(r), 0], [0,0,1]])
+    S = np.asarray([[sx,0,0], [0, sy, 0], [0,0,1]])
+    K = np.asarray([[1,ky,0], [kx,1,0], [0,0,1]])
+    T = np.asarray([[0,0,txy[0]], [0,0,txy[1]], [0,0,0]])
     return K * S * R + T  # composition
 
 

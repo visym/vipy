@@ -115,13 +115,16 @@ def test_image():
         raise
     except:
         pass
-    try:
-        Image(array=np.matrix( (10,10) ).astype(np.float32))
-        Failed()  # np.matrix unallowed
-    except Failed:
-        raise
-    except:
-        pass
+
+    # np.matrix pending deprecation of n
+    #try:
+    #    Image(array=np.matrix( (10,10) ).astype(np.float32))
+    #    Failed()  # np.matrix unallowed
+    #except Failed:
+    #    raise
+    #except:
+    #    pass
+    
     try:
         Image(array=np.zeros( (10,10,3), dtype=np.float32), colorspace='rgb')  
         Failed()  # rgb image must be uint8
@@ -804,6 +807,10 @@ def test_scene():
     assert all(o == oc for (o,oc) in zip(im.objects(), imc.flush().objects()))
     print('[test_image.scene]: flush history  PASSED')    
 
+    # vipy-1.14.4 deserialization (from cap_detection_handheld_val/annotations)
+    v = vipy.load('Clean the house.json')[0]
+    assert vipy.video.Scene.from_json(v.json()).json() == v.json()
+    print('[test_image.scene]: vipy-1.14.4  deserialization  PASSED')
     
 if __name__ == "__main__":
     test_image()
