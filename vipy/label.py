@@ -89,7 +89,7 @@ class Tag():
     
     def category(self, category=None, confidence=None):
         if category is not None or confidence is not None:
-            (tag, conf) = (self.category() if category is None else category, self.confidence() if confidence is None else confidence)
+            (tag, conf) = (self.category() if category is None else category, self.confidence() if confidence is None else float(confidence))
             if len(self._tags) == 0:
                 self._tags = [(tag, conf)]
             else:

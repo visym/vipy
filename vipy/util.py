@@ -1297,9 +1297,10 @@ def isurl(path):
     except:
         return False
 
-def shortuuid(n=16):
+def shortuuid(n=8):
     """Generate a short UUID with n hex digits"""
-    return hashlib.sha256(uuid.uuid1().hex.encode('utf-8')).hexdigest()[0:n] 
+    alphabet = "0123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz"
+    return ''.join(random.sample(alphabet, n))
 
 def stringhash(s, n=16):
     """Generate a repeatable hash with n characters for a string s"""

@@ -1,6 +1,6 @@
 import numpy as np
 from vipy.geometry import BoundingBox
-from vipy.util import isstring, tolist
+from vipy.util import isstring, tolist, shortuuid
 import uuid
 import copy
 from vipy.object import Track
@@ -43,7 +43,7 @@ class Activity(object):
         if tracks is not None and actorid is not None and actorid not in trackid:
             trackid.add(actorid)
 
-        self._id = uuid.uuid4().hex if id is None else id  # use provided
+        self._id = shortuuid() if id is None else id  # use provided
         self._startframe = int(startframe)
         self._endframe = int(endframe)
         self._framerate = float(framerate) if framerate is not None else framerate
@@ -355,7 +355,7 @@ class Activity(object):
         #a = copy.deepcopy(self)
         a = Activity.from_json(self.json(encode=False))
         if rekey:
-            a.id(newid=uuid.uuid4().hex)
+            a.id(newid=shortuuid())
         return a
     
     def temporalpad(self, df):

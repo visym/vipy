@@ -420,7 +420,7 @@ class Image():
         return {k.lstrip('_'):v for (k,v) in self.__dict__.items()}  # prettyjson (remove "_" prefix to attributes)                                    
 
     def json(self, encode=True):
-        d = self.dict()
+        d = {k:v for (k,v) in self.dict().items() if v is not None}  # filter empty
         if 'array' in d and d['array'] is not None:
             d['array'] = self._array.tolist()
         return json.dumps(d) if encode else d
@@ -1792,8 +1792,8 @@ class Image():
 
         .. note:: This method uses a CPU-only pretrained face detector.  This is convenient, but slow.  See the heyvi package for optimized GPU batch processing for faster operation.
         """
-        try_import('heyvi'); import heyvi  # >heyvi-0.2.28 for minconf      
-        return heyvi.detection.FaceDetector()(Scene.cast(self.clone()).clear().mindim(mindim)).resize_like(self.reload()).flush_array()
+        try_import('heyvi'); import heyvi  # >= heyvi-0.3.28 for python 3.13
+        return heyvi.detection.FaceDetector()(Scene.cast(self.clone()).clear().mindim(mindim)).flush() 
     
     def person_detection(self, mindim=256, conf=0.2):
         """Detect only people in the scene, add as objects, return new scene with just people
@@ -1807,16 +1807,10 @@ class Image():
         
         .. note:: This method uses a CPU-only pretrained person detector.  This is convenient, but slow.  See the heyvi package for optimized GPU batch processing for faster operation.
         """
-        try_import('heyvi'); import heyvi                
-        return heyvi.detection.ObjectDetector()(Scene.cast(self.clone()).clear().mindim(mindim), conf=conf, objects=['person']).resize_like(self.reload()).flush_array()
+        try_import('heyvi'); import heyvi  # >heyvi-0.3.28 for pyhton 3.13 
+        return heyvi.detection.ObjectDetector()(Scene.cast(self.clone()).clear().mindim(mindim), conf=conf, objects=['person']).flush()
 
-    def qrcode_recognition(self):
-        """Detect and decode one QR code in the current image using OpenCV, and return the string contents of the QR code or None if the detection failed to detect a code.  (Requires OpenCV)"""
-        try_import('cv2'); import cv2
-        (value, corners, rectified) = cv2.QRCodeDetector().detectAndDecode(self.load().array())
-        return value if len(value)>0 else None
-    
-    def faceblur(self, radius=4, mindim=256):
+    def face_blur(self, radius=4, mindim=256):
         """Replace pixels for all detected faces with `vipy.image.Scene.blurmask`, add locations of detected faces into attributes.
 
         Args:
@@ -1832,9 +1826,9 @@ class Image():
             - To retain boxes, use self.face_detection().blurmask()
         """
         im = self.face_detection(mindim=mindim)  # only faces
-        return im.setattribute('faceblur', [o.int().json() for o in im.objects()]).blurmask(radius=radius).downcast()
+        return im.setattribute('face_blur', [o.int().json(encode=False) for o in im.objects()]).blurmask(radius=radius).downcast()
 
-    def facepixelize(self, radius=7, mindim=256):
+    def face_pixelize(self, radius=7, mindim=256):
         """Replace pixels for all detected faces with `vipy.image.Scene.pixelize`, add locations of detected faces into attributes.
 
         Args:
@@ -1850,7 +1844,7 @@ class Image():
             - To retain boxes, use self.face_detection().pixelize()
         """
         im = self.face_detection(mindim=mindim)          
-        return im.setattribute('facepixelize', [o.int().json() for o in im.objects()]).pixelize(radius=radius).downcast()
+        return im.setattribute('face_pixelize', [o.int().json(encode=False) for o in im.objects()]).pixelize(radius=radius).downcast()
 
 
     def viewport(self):
@@ -2818,7 +2812,7 @@ class DetectionImage(vipy.object.Detection, Image):
                    id=d['id'] if 'id' in d else None)
     
     
-def mutator_show_trackid(n_digits_in_trackid=5):
+def mutator_show_trackid(n_digits_in_trackid=4):
     """Mutate the image to show track ID with a fixed number of digits appended to the category as (####)"""
     return lambda im, k=None: (im.objectmap(lambda o: o.category('%s (%s)' % (o.category(), o.attributes['__trackid'][0:n_digits_in_trackid]))
                                             if o.hasattribute('__trackid') else o))
@@ -2827,7 +2821,7 @@ def mutator_show_trackindex():
     """Mutate the image to show track index appended to the category as (####)"""
     return lambda im, k=None: (im.objectmap(lambda o: o.category('%s (%d)' % (o.category(), int(o.attributes['__trackindex']))) if o.hasattribute('__trackindex') else o))
 
-def mutator_show_trackonly():
+def mutator_show_track_only():
     """Mutate the image to show track as a consistently colored box with no categories"""
     f = mutator_show_trackindex()
     return lambda im, k=None, f=f: f(im).objectmap(lambda o: o.category('__%s' % o.category()))  # prepending __ will not show it, but will color boxes correctly
@@ -2842,26 +2836,22 @@ def mutator_show_noun_only(nocaption=False):
     """
     return lambda im, k=None: (im.objectmap(lambda o: o.category('\n'.join([('__'+n if nocaption else n) for n in o.attributes['__object_category']])) if o.hasattribute('__object_category') else o))
 
-def mutator_show_nounonly(nocaption=False):
-    """Alias for `vipy.image.mutator_show_noun_only`"""
-    return mutator_show_noun_only(nocaption=nocaption)
-
 def mutator_show_verb_only():
     """Mutate the image to show the verb only"""
     return lambda im, k=None: (im.objectmap(lambda o: o.category('\n'.join([v for v in o.attributes['__activity_category']])) if o.hasattribute('__activity_category') else o))
 
 def mutator_show_noun_or_verb():
     """Mutate the image to show the verb only if it is non-zero else noun"""
-    return lambda im: (im.objectmap(lambda o: o.category('\n'.join([v if len(v)>0 else n for (n,v) in zip(o.attributes['__object_category'], o.attributes['__activity_category'])]))) if o.hasattribute('__object_category') and o.hasattribute('__activity_category') else o)
+    return lambda im,k=None: (im.objectmap(lambda o: o.category('\n'.join([v if len(v)>0 else n for (n,v) in zip(o.attributes['__object_category'], o.attributes['__activity_category'])])) if o.hasattribute('__object_category') and o.hasattribute('__activity_category') else o))
 
 def mutator_show_noun_verb():
     """Mutate the image to show the category as 'Noun Verb1\nNoun Verb2'"""
-    return lambda im, k=None: (im.objectmap(lambda o: o.category('\n'.join(['%s %s' % (n.capitalize(), v) for (n,v) in zip(o.attributes['__object_category'], o.attributes['__activity_category'])])) if o.hasattribute('__object_category') and o.hasattribute('__activity_category') else o))
+    return lambda im, k=None: (im.objectmap(lambda o: o.category('\n'.join(['%s %s' % (n.capitalize().replace('_',' '), v.replace('%s_'%n.lower(),'',1).replace('_',' ')) for (n,v) in zip(o.attributes['__object_category'], o.attributes['__activity_category'])])) if o.hasattribute('__object_category') and o.hasattribute('__activity_category') else o))
     
 def mutator_show_trackindex_verbonly(confidence=True, significant_digits=2):
     """Mutate the image to show boxes colored by track index, and only show 'verb' captions with activity confidence, sorted in decreasing order"""
     f = mutator_show_trackindex()
-    return lambda im, k=None, f=f: f(im).objectmap(lambda o: o.category('__%s' % o.category()) if (len(o.attributes['__object_category']) == 1 and len(o.attributes['__activity_category'][0][1]) == 0) else o.category('\n'.join(['%s %s' % (v, ('(%1.2f)'%float(c)) if (confidence is True and c is not None) else '') for (n,v,c) in sorted(zip(o.attributes['__object_category'], o.attributes['__activity_category'], o.attributes['__activityconf']), key=lambda x: float(x[1]), reverse=True)])))
+    return lambda im, k=None, f=f: f(im).objectmap(lambda o: o.category('__%s' % o.category()) if (len(o.attributes['__object_category']) == 1 and len(o.attributes['__activity_category'][0]) == 0) else o.category('\n'.join(['%s %s' % (v, ('(%1.2f)'%float(c)) if (confidence is True and c is not None) else '') for (n,v,c) in sorted(zip(o.attributes['__object_category'], o.attributes['__activity_category'], o.attributes['__activityconf']), key=lambda x: float(x[2]) if x[2] else 0, reverse=True)])))
 
 
 def RandomImage(rows=None, cols=None):

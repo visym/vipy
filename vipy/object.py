@@ -1,6 +1,6 @@
 import numpy as np
 from vipy.geometry import BoundingBox, Point2d
-from vipy.util import isstring, tolist, chunklistwithoverlap, try_import, Timer, truncate_string
+from vipy.util import isstring, tolist, chunklistwithoverlap, try_import, Timer, truncate_string, shortuuid
 import uuid
 import copy
 import warnings
@@ -35,7 +35,7 @@ class Detection(BoundingBox, Object):
     def __init__(self, category=None, xmin=None, ymin=None, width=None, height=None, xmax=None, ymax=None, confidence=None, xcentroid=None, ycentroid=None, xywh=None, attributes=None, id=None, tags=None):
         super().__init__(xmin=xmin, ymin=ymin, width=width, height=height, xmax=xmax, ymax=ymax, xcentroid=xcentroid, ycentroid=ycentroid, xywh=xywh)
 
-        self._id = uuid.uuid4().hex if id is True else id
+        self._id = shortuuid() if id is True else id
         self.attributes = {} if attributes is None else attributes.copy()  # shallow copy
 
         Tag.__init__(self, category=category, confidence=confidence, tags=tags)
@@ -58,7 +58,7 @@ class Detection(BoundingBox, Object):
         return self.json(encode=True)
     
     def json(self, encode=True):
-        d = {k.lstrip('_'):v for (k,v) in self.__dict__.items()}  # prettyjson (remove "_" prefix to attributes) 
+        d = {k.lstrip('_'):v for (k,v) in self.__dict__.items() if v is not None}  # prettyjson (remove "_" prefix to attributes) 
         return json.dumps(d) if encode else d
     
     @classmethod
@@ -136,7 +136,7 @@ class Keypoint2d(Point2d, Object):
         super().__init__(x, y, r=radius)
         
         self.attributes = attributes if attributes is not None else {}
-        self._id = uuid.uuid4().hex if id is True else id
+        self._id = shortuuid() if id is True else id
         
         Tag.__init__(self, category=category, confidence=confidence, tags=tags)
 
@@ -179,7 +179,7 @@ class Keypoint2d(Point2d, Object):
                    id=d['id'] if 'id' in d else True)
     
     def json(self, encode=True):
-        d = {k.lstrip('_'):v for (k,v) in self.__dict__.items()} # prettyjson (remove "_" prefix to attributes)  
+        d = {k.lstrip('_'):v for (k,v) in self.__dict__.items() if v is not None} # prettyjson (remove "_" prefix to attributes)  
         return json.dumps(d) if encode else d
                 
     
@@ -228,7 +228,7 @@ class Track(object):
         assert boundary in set(['extend', 'strict']), "Invalid interpolation boundary - Must be ['extend', 'strict']"
         assert interpolation in set(['linear']), "Invalid interpolation - Must be ['linear']"
                 
-        self._id = uuid.uuid4().hex if trackid is None else trackid
+        self._id = shortuuid() if trackid is None else trackid
         self._label = category if category is not None else label
         self._framerate = float(framerate) if framerate is not None else framerate
         self._interpolation = interpolation
@@ -271,7 +271,7 @@ class Track(object):
     
     def json(self, encode=True):
         d = {k:v if k != '_keyboxes' else tuple([bb.json(encode=False) for bb in v]) for (k,v) in self.__dict__.items()}
-        d = {k.lstrip('_'):v for (k,v) in d.items()}  # prettyjson (remove "_" prefix to attributes)                
+        d = {k.lstrip('_'):v for (k,v) in d.items() if v is not None}  # prettyjson (remove "_" prefix to attributes)                
         d['keyframes'] = tuple([int(f) for f in self._keyframes])
         return json.dumps(d) if encode else d
 
@@ -680,7 +680,7 @@ class Track(object):
         #return copy.deepcopy(self)  
         t = Track.from_json(self.json(encode=False)) if (startframe is None and endframe is None) else self.clone_during(startframe, endframe)  # 2x faster than deepcopy
         if rekey:
-            t.id(newid=uuid.uuid4().hex)
+            t.id(newid=shortuuid())
         return t
     
     def clone_during(self, startframe, endframe):
