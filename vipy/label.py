@@ -47,6 +47,7 @@ class Tag():
         return self
 
     def tag(self, tag, confidence=None):
+        assert isinstance(confidence, (tuple, list, float, int, type(None))), "invalid type '%s'" % (type(confidence))                
         for (t,c) in zip_longest(to_iterable(tag), to_iterable(confidence)):
             self._tags.append( t if c is None else (t, float(c)) )
         return self
@@ -66,6 +67,9 @@ class Tag():
     def soft_tags(self):
         return tuple(t if isinstance(t, (tuple,list)) else (t,None) for t in self._tags)        
 
+    def has_soft_tags(self):
+        return all(t[1] is not None for t in self.soft_tags())
+    
     def first_tag(self):
         return self.tags()[0]
     
@@ -89,6 +93,7 @@ class Tag():
     
     def category(self, category=None, confidence=None):
         if category is not None or confidence is not None:
+            assert isinstance(confidence, (float, int, type(None))), "invalid type '%s'" % (type(confidence))                                        
             (tag, conf) = (self.category() if category is None else category, self.confidence() if confidence is None else float(confidence))
             self._tags = [(tag, conf)] + self._tags[1:]  # category is always the first tag
             return self
@@ -168,9 +173,10 @@ class Caption():
         return tuple(c if not isinstance(c, (tuple,list)) else c[0] for c in self._captions)
 
     def caption(self, caption, confidence=None):
+        assert isinstance(confidence, (tuple, list, float, int, type(None))), "invalid type '%s'" % (type(confidence))        
         for (t,c) in zip_longest(to_iterable(caption), to_iterable(confidence)):
             assert c is None or isinstance(c, (int, float))
-            self._captions.append( t if c is None else (t, c) )
+            self._captions.append( t if c is None else (t, float(c)) )
         return self
     
     def is_unlabeled(self):

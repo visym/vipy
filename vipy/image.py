@@ -1707,7 +1707,7 @@ class Image():
     def annotate(self, timestamp=None, timestampcolor='black', timestampfacecolor='white', mutator=None):
         """Change pixels of this image to include rendered annotation and return an image object"""
         # FIXME: for k in range(0,10): self.annotate().show(figure=k), this will result in cumulative figures
-        return self.array(self.savefig(timestamp=timestamp, timestampcolor=timestampcolor, timestampfacecolor=timestampfacecolor, mutator=mutator, fontsize=fontsize).rgb().array()).downcast()
+        return self.array(self.savefig(timestamp=timestamp, timestampcolor=timestampcolor, timestampfacecolor=timestampfacecolor, mutator=mutator).rgb().array()).downcast()
 
     def savefig(self, filename=None, figure=1, timestamp=None, timestampcolor='black', timestampfacecolor='white', mutator=None):
         """Save last figure output from self.show() with drawing overlays to provided filename and return filename"""
@@ -1792,7 +1792,7 @@ class Image():
 
         .. note:: This method uses a CPU-only pretrained face detector.  This is convenient, but slow.  See the heyvi package for optimized GPU batch processing for faster operation.
         """
-        try_import('heyvi'); import heyvi  # >= heyvi-0.3.28 for python 3.13
+        try_import('heyvi'); import heyvi; assert heyvi.version.is_at_least('0.3.28') 
         return heyvi.detection.FaceDetector()(Scene.cast(self.clone()).clear().mindim(mindim)).flush() 
     
     def person_detection(self, mindim=256, conf=0.2):
@@ -1807,7 +1807,7 @@ class Image():
         
         .. note:: This method uses a CPU-only pretrained person detector.  This is convenient, but slow.  See the heyvi package for optimized GPU batch processing for faster operation.
         """
-        try_import('heyvi'); import heyvi  # >heyvi-0.3.28 for pyhton 3.13 
+        try_import('heyvi'); import heyvi; assert heyvi.version.is_at_least('0.3.28')
         return heyvi.detection.ObjectDetector()(Scene.cast(self.clone()).clear().mindim(mindim), conf=conf, objects=['person']).flush()
 
     def face_blur(self, radius=4, mindim=256):

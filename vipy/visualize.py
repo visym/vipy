@@ -3,11 +3,12 @@ import vipy
 import numpy as np
 import shutil
 from vipy.globals import log
-from vipy.util import remkdir, imlist, filetail, filebase, temphtml, isurl, fileext, tolist, iswebp, isimage, chunklistbysize, ishtml
+from vipy.util import remkdir, imlist, filetail, filebase, temphtml, isurl, fileext, tolist, iswebp, isimage, chunklistbysize, ishtml, escape_string_for_innerHTML
 from vipy.image import Image
 from vipy.show import savefig
 from collections import defaultdict
 from datetime import datetime
+from vipy.metrics import ascii_bar_chart
 import time
 import PIL
 import vipy.video
@@ -20,12 +21,14 @@ from pathlib import Path
 import hashlib
 import matplotlib
 import warnings
+import json
+import html
 
 
-def scene_explorer(im, outfile=None, width=1024, title='Scene Explorer', previewurl=None, keypoint_alpha=0.7, popup_alpha=0.8,
-                   caption_formatter=lambda im: "<strong>Image Description</strong>\\n\\n%s" % '\\n\\n'.join(im.captions()),
-                   tag_formatter=lambda im: "<strong>Image Tags</strong>\\n\\n%s" % '\\n'.join(list(im.tags())),
-                   attribute_formatter=lambda im: "<strong>Image Attributes</strong>\\n\\n%s" % str(im.filename())):
+def scene_explorer(im, outfile=None, width=1024, title='Scene Explorer', previewurl=None, keypoint_alpha=0.7, popup_alpha=0.8, embed=True, open_in_browser=False,
+                   caption_formatter=lambda im: "<strong>Image Description</strong><br><br>%s" % '<br><br>'.join(im.captions()),
+                   tag_formatter=lambda im: "<strong>Image Tags</strong><br><br>%s" % ('<br>'.join(im.tags()) if not im.has_soft_tags() else ascii_bar_chart(im.soft_tags(), 64)),
+                   attribute_formatter=lambda im: "<strong>Image Attributes</strong><br><br>%s" % json.dumps(im.clone().flush().json(encode=False), indent=2)):
     
     """Generate a standalone scene_explorer visualization.
 
@@ -38,25 +41,26 @@ def scene_explorer(im, outfile=None, width=1024, title='Scene Explorer', preview
     assert outfile is None or ishtml(outfile)
     assert previewurl is None or isurl(previewurl)
     assert keypoint_alpha >=0 and keypoint_alpha <=1
-    assert popup_alpha >=0 and popup_alpha <=1    
+    assert popup_alpha >=0 and popup_alpha <=1
+    assert embed or im.has_url()
     if not all([isinstance(o, vipy.object.Keypoint2d) for o in im.objects()]):
         warnings.warn('Scene explorer supports vipy.object.Keypoint2d only - all other vipy.object elements ignored')
 
     imc = im.clone()
+    img = ('data:image/jpeg;charset=utf-8;base64,%s' % imc.load().resize(width=width).base64().decode('ascii')) if embed else imc.flush().url()
     colors = [matplotlib.colors.to_hex(c) for c in vipy.show.colorlist()]
-    img = 'data:image/jpeg;charset=utf-8;base64,%s' % imc.load().resize(width=width).base64().decode('ascii')
     keypoints = [o for o in imc.objects() if isinstance(o, vipy.object.Keypoint2d)]
     d_category_to_color = {o.category():colors[int(hashlib.sha1(o.category().split(' ')[-1].encode('utf-8')).hexdigest(), 16) % len(colors)] for o in keypoints}   # consistent color mapping by category suffix (space separated)
     
     html = Path(Path(__file__).parent.resolve() / 'visualize_scene_explorer.html').read_text()
     keywords = {'${TITLE}': title,
-                '${META_OG_IMAGE}': ('<meta property="og:image" content="%s">' % previewurl) if previewurl is not None else '',  # useful for website preview in text/social
+                '${META_OG_IMAGE}': ('<meta property="og:image" content="%s">' % previewurl) if previewurl is not None else '',  # useful to show as a preview of the HTML contents for shared links
                 '${IMG_WIDTH}':str(imc.width()),
                 '${IMG_HEIGHT}':str(imc.height()),
                 '${IMG}':img,
-                '${IMG_ATTRIBUTES}':attribute_formatter(im),
-                '${IMG_CAPTION}': caption_formatter(im),
-                '${IMG_TAGS}': tag_formatter(im),
+                '${IMG_ATTRIBUTES}':escape_string_for_innerHTML(attribute_formatter(im)),
+                '${IMG_CAPTION}': escape_string_for_innerHTML(caption_formatter(im)),
+                '${IMG_TAGS}': escape_string_for_innerHTML(tag_formatter(im)),
                 '${SEARCHBOX_WIDTH}':str(width // 4),
                 '${POPUP_ALPHA}': str(popup_alpha),
                 '${CLASSLIST}':str(sorted(set([o.category() for o in keypoints]))),  # assumes that shared class prefix encodes grouping
@@ -73,6 +77,10 @@ def scene_explorer(im, outfile=None, width=1024, title='Scene Explorer', preview
     filename = outfile if outfile is not None else temphtml()        
     with open(filename, 'w') as f:
         f.write(html)
+
+    if open_in_browser:
+        os.system('open %s' % filename)
+        
     return filename
     
 

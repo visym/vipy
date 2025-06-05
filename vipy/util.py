@@ -1387,7 +1387,7 @@ def totuple(x):
         return (x,)
 
 def to_iterable(x): 
-    """Convert an object to a singleton tuple if not already an itereable"""
+    """Convert an object to a singleton tuple if not already a list, tuple or set iterable"""
     return x if isinstance(x, (list, tuple, set)) else (x,)
         
 def tolist(x):
@@ -1916,3 +1916,23 @@ def symlink(src, dst, overwrite=False):
 def truncate_string(s, maxlen):
     """If string s is greater than maxlen, truncate and append an ellipsis"""
     return s if len(s) <= maxlen else str(s)[0:maxlen]+'...'
+
+def escape_string_for_innerHTML(s, escape=(('\n','<br>'),('{',"&#123;"),('}','"&#125;"'),('"', '&quot;'),("'","&#39;"))):
+    """Convert a string by replacing escape characters with equivalents suitable for copying into an innerHTML element in html.  
+
+    The escaping characters are provided as ((character, replacemant), ...) 
+
+    Given an html file with the format:
+    
+    <html><body><pre>INNER_HTML</pre></body></html>
+    
+    This function converts a string s to an escaped_string such that INNER_HTML replaced with the escaped string will render properly as the string s in-browser.
+
+    This is useful for `vipy.visualize.scene_explorer` to escape json prior to copying into the template
+    
+    This is pretty hacky, there has got to be a better way ...
+    """
+    for (c,e) in escape:
+        s = s.replace(c,e)
+    return s
+    

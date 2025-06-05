@@ -372,3 +372,10 @@ def scatterplot(X, labels, outfile=None):
         plt.pause(0.001)
 
         
+def ascii_bar_chart(soft_labels, bar_width=40, min_conf=0, max_conf=1):
+    """Given a list of soft_labels = [(label, confidence), ...], return an ascii horizontal bar chart for each label sorted by confidence"""
+    cmin = min_conf if min_conf is not None else min(c for (l,c) in soft_labels)
+    cmax = max_conf if max_conf is not None else max(c for (l,c) in soft_labels)
+    num_blocks = lambda c: int(round(((c-cmin)/(cmax-cmin)) * bar_width))      
+    num_dots   = lambda c: int(round((1 - ((c - cmin)/(cmax-cmin))) * bar_width))
+    return '\n'.join(["[%s]  %s (%1.3f)" % ('█' * num_blocks(c) + '.' * num_dots(c), lbl,c) for (lbl,c) in sorted(soft_labels, key=lambda x: x[1], reverse=True)])        
