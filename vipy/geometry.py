@@ -1311,6 +1311,23 @@ class Point2d():
     def has_intersection(self, p):
         return (self.r + p.r) >= self.dist(p)
 
+    def xmin(self):
+        return self.x - self.r
+
+    def xmax(self):
+        return self.x + self.r
+
+    def ymin(self):
+        return self.y - self.r
+
+    def ymax(self):
+        return self.y + self.r
+
+    def width(self):
+        return self.diameter()
+
+    def height(self):
+        return self.diameter()
     
 def RandomPoint2d(xmax=256, ymax=256):
     return Point2d(float(xmax*np.random.rand()), float(ymax*np.random.rand()))
