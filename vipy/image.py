@@ -8,7 +8,7 @@ import vipy.show
 import vipy.globals
 from vipy.globals import log, cache
 from vipy.util import isnumpy, isurl, isimageurl, to_iterable, tolist,\
-    fileext, tempimage, mat2gray, imwrite, imwritegray, \
+    fileext, tempimage, mat2gray, imwrite, imwritegray, mergedict, \
     tempjpg, filetail, isimagefile, remkdir, hasextension, \
     try_import, tolist, islistoflists, istupleoftuples, isstring, \
     islist, isnumber, isnumpyarray, string_to_pil_interpolation, toextension, iswebp
@@ -2522,7 +2522,7 @@ class Scene(LabeledImage):
         return vipy.image.Image.perceptualhash_distance(self.bghash(bits=bits), im.bghash(bits=bits)) < threshold 
     
         
-    def show(self, categories=None, figure=1, nocaption=False, nocaption_withstring=[], fontsize=10, boxalpha=0.25, d_category2color={'Person':'green', 'Vehicle':'blue', 'Object':'red'}, captionoffset=(3,-10), nowindow=False, textfacecolor='white', textfacealpha=1.0, shortlabel=None, timestamp=None, timestampcolor='black', timestampfacecolor='white', mutator=None, timestampoffset=(0,0)):
+    def show(self, categories=None, figure=1, nocaption=False, nocaption_withstring=[], fontsize=10, boxalpha=0.25, d_category2color={'Person':'green', 'Vehicle':'blue', 'Object':'red'}, captionoffset=(3,-10), nowindow=False, textfacecolor='white', textfacealpha=0.8, shortlabel=None, timestamp=None, timestampcolor='black', timestampfacecolor='white', mutator=None, timestampoffset=(0,0)):
         """Show scene detection 
 
         Args:
@@ -2547,18 +2547,16 @@ class Scene(LabeledImage):
         valid_objects = [obj.clone() for obj in im._objectlist if categories is None or obj.category() in tolist(categories)]  # Objects with valid category
         valid_objects = [obj.imclip(self.numpy()) for obj in valid_objects if obj.hasoverlap(self.numpy())]  # Objects within image rectangle
         valid_objects = [obj.category(shortlabel[obj.category()]) for obj in valid_objects] if shortlabel else valid_objects  # Display name as shortlabel?
-        d_categories2color = {d.category():colors[int(hashlib.sha1(d.category().split(' ')[-1].encode('utf-8')).hexdigest(), 16) % len(colors)] for d in valid_objects}   # consistent color mapping by category suffix (space separated)
-        d_categories2color.update(d_category2color)  # requested color mapping
-        object_color = [d_categories2color[d.category()] for d in valid_objects]                
+        d_category2color = mergedict({d.category():colors[int(hashlib.sha1(str(d.category()).encode('utf-8')).hexdigest(), 16) % len(colors)] for d in valid_objects}, d_category2color)  # consistent color mapping by category 
+        object_color = [d_category2color[d.category()] for d in valid_objects]                
         valid_objects  = [d if not any([c in d.category() for c in tolist(nocaption_withstring)]) else d.nocategory() for d in valid_objects]  # Objects requested to show without caption
         imdisplay = self.clone().rgb() if self.colorspace() != 'rgb' else self.load()  # convert to RGB for show() if necessary
         fontsize_scaled = float(fontsize.split(':')[0])*(min(imdisplay.shape())/640.0) if isstring(fontsize) else fontsize
-        imdisplay = mutator(imdisplay) if mutator is not None else imdisplay
         vipy.show.imobjects(imdisplay._array, valid_objects, bordercolor=object_color, textcolor=object_color, fignum=figure, do_caption=(nocaption==False), facealpha=boxalpha, fontsize=fontsize_scaled,
                             captionoffset=captionoffset, nowindow=nowindow, textfacecolor=textfacecolor, textfacealpha=textfacealpha, timestamp=timestamp, timestampcolor=timestampcolor, timestampfacecolor=timestampfacecolor, timestampoffset=timestampoffset)
         return self
 
-    def annotate(self, outfile=None, categories=None, figure=1, nocaption=False, fontsize=10, boxalpha=0.25, d_category2color={'person':'green', 'vehicle':'blue', 'object':'red'}, captionoffset=(3,-10), dpi=200, textfacecolor='white', textfacealpha=1.0, shortlabel=None, nocaption_withstring=[], timestamp=None, timestampcolor='black', timestampfacecolor='white', mutator=None, timestampoffset=(0,0)):
+    def annotate(self, outfile=None, categories=None, figure=1, nocaption=False, fontsize=10, boxalpha=0.25, d_category2color={'person':'green', 'vehicle':'blue', 'object':'red'}, captionoffset=(3,-10), dpi=200, textfacecolor='white', textfacealpha=0.8, shortlabel=None, nocaption_withstring=[], timestamp=None, timestampcolor='black', timestampfacecolor='white', mutator=None, timestampoffset=(0,0)):
         """Alias for savefig"""
         return self.savefig(outfile=outfile, 
                             categories=categories, 
@@ -2579,7 +2577,7 @@ class Scene(LabeledImage):
                             timestampoffset=timestampoffset,
                             mutator=mutator)
 
-    def savefig(self, outfile=None, categories=None, figure=1, nocaption=False, fontsize=10, boxalpha=0.25, d_category2color={'person':'green', 'vehicle':'blue', 'object':'red'}, captionoffset=(3,-10), dpi=200, textfacecolor='white', textfacealpha=1.0, shortlabel=None, nocaption_withstring=[], timestamp=None, timestampcolor='black', timestampfacecolor='white', mutator=None, timestampoffset=(0,0)):
+    def savefig(self, outfile=None, categories=None, figure=1, nocaption=False, fontsize=10, boxalpha=0.25, d_category2color={'person':'green', 'vehicle':'blue', 'object':'red'}, captionoffset=(3,-10), dpi=200, textfacecolor='white', textfacealpha=0.8, shortlabel=None, nocaption_withstring=[], timestamp=None, timestampcolor='black', timestampfacecolor='white', mutator=None, timestampoffset=(0,0)):
         """Save show() output to given file or return buffer without popping up a window"""
         fignum = figure if figure is not None else 1        
         self.show(categories=categories, figure=fignum, nocaption=nocaption, fontsize=fontsize, boxalpha=boxalpha, 
@@ -2846,7 +2844,10 @@ def mutator_show_noun_or_verb():
 
 def mutator_show_noun_verb():
     """Mutate the image to show the category as 'Noun Verb1\nNoun Verb2'"""
-    return lambda im, k=None: (im.objectmap(lambda o: o.category('\n'.join(['%s %s' % (n.capitalize().replace('_',' '), v.replace('%s_'%n.lower(),'',1).replace('_',' ')) for (n,v) in zip(o.attributes['__object_category'], o.attributes['__activity_category'])])) if o.hasattribute('__object_category') and o.hasattribute('__activity_category') else o))
+    return lambda im, k=None: (im.objectmap(lambda o: o.category('\n'.join(['%s %s' % (n.capitalize().replace('_',' '),
+                                                                                       (v.replace('%s_'%n.lower(),'',1) if v.startswith(n) else v).replace('_',' '))
+                                                                            for (n,v) in zip(o.attributes['__object_category'], o.attributes['__activity_category'])]))
+                                            if o.hasattribute('__object_category') and o.hasattribute('__activity_category') else o))
     
 def mutator_show_trackindex_verbonly(confidence=True, significant_digits=2):
     """Mutate the image to show boxes colored by track index, and only show 'verb' captions with activity confidence, sorted in decreasing order"""

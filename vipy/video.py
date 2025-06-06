@@ -3939,7 +3939,7 @@ class Scene(VideoCategory):
         return self        
 
 
-    def annotate(self, outfile=None, fontsize=10, captionoffset=(0,0), textfacecolor='white', textfacealpha=1.0, shortlabel=None, boxalpha=0.25, d_category2color={'Person':'green', 'Vehicle':'blue', 'Object':'red'}, categories=None, nocaption=False, nocaption_withstring=[], mutator=vipy.image.mutator_show_noun_verb(), timestamp=None, timestampcolor='black', timestampfacecolor='white', verbose=False):
+    def annotate(self, outfile=None, fontsize=10, captionoffset=(3,-10), textfacecolor='white', textfacealpha=0.8, shortlabel=None, boxalpha=0.25, d_category2color={'Person':'green', 'Vehicle':'blue', 'Object':'red'}, categories=None, nocaption=False, nocaption_withstring=[], mutator=vipy.image.mutator_show_noun_verb(), timestamp=None, timestampcolor='black', timestampfacecolor='white', verbose=False):
         """Generate a video visualization of all annotated objects and activities in the video.
         
         The annotation video will be at the resolution and framerate of the underlying video, and pixels in this video will now contain the overlay.
@@ -4018,7 +4018,7 @@ class Scene(VideoCategory):
             return vo
 
 
-    def _show(self, outfile=None, verbose=True, fontsize=10, captionoffset=(0,0), textfacecolor='white', textfacealpha=1.0, shortlabel=None, boxalpha=0.25, d_category2color={'Person':'green', 'Vehicle':'blue', 'Object':'red'}, categories=None, nocaption=False, nocaption_withstring=[], notebook=False, timestamp=None, timestampcolor='black', timestampfacecolor='white'):
+    def _show(self, outfile=None, verbose=True, fontsize=10, captionoffset=(3,-10), textfacecolor='white', textfacealpha=0.8, shortlabel=None, boxalpha=0.25, d_category2color={'Person':'green', 'Vehicle':'blue', 'Object':'red'}, categories=None, nocaption=False, nocaption_withstring=[], notebook=False, timestamp=None, timestampcolor='black', timestampfacecolor='white'):
         """Generate an annotation video saved to outfile (or tempfile if outfile=None) and show it using ffplay when it is done exporting.  Do not modify the original video buffer.  Returns a clone of the video with the shown annotation."""
         return self.clone().annotate(verbose=verbose, 
                                      fontsize=fontsize,
@@ -4036,7 +4036,7 @@ class Scene(VideoCategory):
                                      nocaption_withstring=nocaption_withstring).saveas(outfile).play(notebook=notebook)
     
 
-    def show(self, outfile=None, verbose=True, fontsize=10, captionoffset=(0,0), textfacecolor='white', textfacealpha=1.0, shortlabel=None, boxalpha=0.25, d_category2color={'Person':'green', 'Vehicle':'blue', 'Object':'red'}, categories=None, nocaption=False, nocaption_withstring=[], figure=1, fps=None, timestamp=None, timestampcolor='black', timestampfacecolor='white', mutator=vipy.image.mutator_show_noun_verb()):
+    def show(self, outfile=None, verbose=True, fontsize=10, captionoffset=(3,-10), textfacecolor='white', textfacealpha=0.8, shortlabel=None, boxalpha=0.25, d_category2color={'Person':'green', 'Vehicle':'blue', 'Object':'red'}, categories=None, nocaption=False, nocaption_withstring=[], figure=1, fps=None, timestamp=None, timestampcolor='black', timestampfacecolor='white', mutator=vipy.image.mutator_show_noun_verb()):
         """Faster show using interative image show for annotated videos.  This can visualize videos before video rendering is complete, but it cannot guarantee frame rates. Large videos with complex scenes will slow this down and will render at lower frame rates."""
         fps = min(fps, self.framerate()) if fps is not None else self.framerate()
         assert fps > 0, "Invalid display framerate"
@@ -4067,7 +4067,7 @@ class Scene(VideoCategory):
         vipy.show.close(figure)
         return self
 
-    def thumbnail(self, outfile=None, frame=0, fontsize=10, nocaption=False, boxalpha=0.25, dpi=200, textfacecolor='white', textfacealpha=1.0):
+    def thumbnail(self, outfile=None, frame=0, fontsize=10, nocaption=False, boxalpha=0.25, dpi=200, textfacecolor='white', textfacealpha=0.8):
         """Return annotated frame=k of video, save annotation visualization to provided outfile if provided, otherwise return vipy.image.Scene"""
         im = self.frame(frame, img=self.preview(framenum=frame).array())
         return im.savefig(outfile=outfile, fontsize=fontsize, nocaption=nocaption, boxalpha=boxalpha, dpi=dpi, textfacecolor=textfacecolor, textfacealpha=textfacealpha) if outfile is not None else im
@@ -4308,12 +4308,14 @@ def RandomVideo(rows=None, cols=None, frames=None):
     return Video(array=np.uint8(255 * np.random.rand(frames, rows, cols, 3)), colorspace='rgb')
 
 
-def RandomScene(rows=None, cols=None, frames=None):
+def RandomScene(rows=None, cols=None, frames=None, filename=None):
     """Return a random loaded vipy.video.Scene.
     
     Useful for unit testing.
     """
-    v = RandomVideo(rows, cols, frames)
+    v = RandomVideo(rows, cols, frames) if filename is None else Video(filename=filename).load()
+    assert len(v) >= 32
+    
     (rows, cols) = v.shape()
     tracks = [vipy.object.Track(label='track%d' % k,
                                 keyframes=[0, np.random.randint(50,100), len(v)],
@@ -4329,28 +4331,6 @@ def RandomScene(rows=None, cols=None, frames=None):
     return Scene(array=v.array(), colorspace='rgb', category='scene', tracks=tracks, activities=activities, framerate=30)
 
 
-def RandomSceneActivity(rows=None, cols=None, frames=256):
-    """Return a random loaded vipy.video.Scene.
-
-    Useful for unit testing.
-    """    
-    v = RandomVideo(rows, cols, frames)
-    (rows, cols) = v.shape()
-    tracks = [vipy.object.Track(label=['Person','Vehicle','Object'][k], boundary='strict', 
-                                keyframes=[0, np.random.randint(50,100), np.random.randint(50,150)],
-                                framerate=30,
-                                boxes=[vipy.object.Detection(xmin=np.random.randint(0,cols - 16), ymin=np.random.randint(0,rows - 16),
-                                                                 width=np.random.randint(16,cols//2), height=np.random.randint(16,rows//2)),
-                                       vipy.object.Detection(xmin=np.random.randint(0,cols - 16), ymin=np.random.randint(0,rows - 16),
-                                                                 width=np.random.randint(16,cols//2), height=np.random.randint(16,rows//2)),
-                                       vipy.object.Detection(xmin=np.random.randint(0,cols - 16), ymin=np.random.randint(0,rows - 16),
-                                                                 width=np.random.randint(16,cols//2), height=np.random.randint(16,rows//2))]) for k in range(0,3)]
-
-    activities = [vipy.activity.Activity(label='Person Carrying', tracks=[tracks[0].id(), tracks[1].id()], startframe=np.random.randint(20,50), endframe=np.random.randint(70,100), framerate=30)]   
-    ims = Scene(array=v.array(), colorspace='rgb', category='scene', tracks=tracks, activities=activities, framerate=30)
-
-    return ims
-    
 def EmptyScene():
     """Return an empty scene""" 
     return vipy.video.Scene(array=np.zeros((1,1,1,3), dtype=np.uint8))

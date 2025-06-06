@@ -1105,24 +1105,9 @@ class Point2d():
     @property
     def radius(self):
         return self._r
-    
-    def xmin(self):
-        return self._x - self._r/2
 
-    def ymin(self):
-        return self._y - self._r/2
-
-    def xmax(self):
-        return self._x + self._r/2
-
-    def ymax(self):
-        return self._y + self._r/2
-
-    def width(self):
-        return self._r*2
-    
-    def height(self):
-        return self._r*2
+    def diameter(self):
+        return 2*self.r
     
     @property
     def coord(self):
@@ -1138,7 +1123,7 @@ class Point2d():
         return Point2d(0,0)
 
     def boundingbox(self):
-        return BoundingBox(xmin=self.xmin, ymin=self.ymin, xmax=self.xmax, ymax=self.ymax)
+        return BoundingBox(xcentroid=self.x, ycentroid=self.y, width=self.r, height=self.r)
     
     def __getitem__(self, k):
         return self.coord[k]
@@ -1309,6 +1294,23 @@ class Point2d():
     def imclip(self, img=None, width=None, height=None):
         """clip does not apply to points"""
         return self
+
+    def area_of_intersection(self, p):
+        """area of intersection"""
+        return self.boundingbox().area_of_intersection(p.boundingbox())
+
+    def area_of_union(self, p):
+        return self.boundingbox().area_of_union(p.boundingbox())
+
+    def iou(self, p):
+        return self.boundingbox().iou(p.boundingbox())
+    
+    def cover(self, p):
+        return self.boundingbox().cover(p.boundingbox())
+
+    def has_intersection(self, p):
+        return (self.r + p.r) >= self.dist(p)
+
     
 def RandomPoint2d(xmax=256, ymax=256):
     return Point2d(float(xmax*np.random.rand()), float(ymax*np.random.rand()))

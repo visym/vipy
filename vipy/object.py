@@ -64,11 +64,20 @@ class Detection(BoundingBox, Object):
     @classmethod
     def from_json(cls, s):
         d = json.loads(s) if not isinstance(s, dict) else s
-        return cls(xmin=d['xmin'], ymin=d['ymin'], xmax=d['xmax'], ymax=d['ymax'],
-                   attributes=d['attributes'] if 'attributes' in d else None,
-                   tags=d['tags'] if 'tags' in d else None,
-                   category=d['category'] if 'category' in d else None,
-                   id=d['id'] if 'id' in d else True)
+        if any(k.startswith('_') for k in d.keys()):
+            # Legacy support <= vipy 1.14.4
+            return cls(xmin=d['_xmin'], ymin=d['_ymin'], xmax=d['_xmax'], ymax=d['_ymax'],
+                       attributes=d['attributes'] if 'attributes' in d else None,
+                       tags=d['tags'] if 'tags' in d else None,
+                       category=d['_category'] if '_category' in d else None,
+                       id=d['_id'] if '_id' in d else True)
+        else:
+            # vipy-1.16.1            
+            return cls(xmin=d['xmin'], ymin=d['ymin'], xmax=d['xmax'], ymax=d['ymax'],
+                       attributes=d['attributes'] if 'attributes' in d else None,
+                       tags=d['tags'] if 'tags' in d else None,
+                       category=d['category'] if 'category' in d else None,
+                       id=d['id'] if 'id' in d else True)
         
     def __repr__(self):
         strlist = []
@@ -124,9 +133,9 @@ class Detection(BoundingBox, Object):
     #    self.attributes = {}
     #    return self
 
-    def to_keypoint2d(self, radius=0.5):
-        """Convert bounding box centroid to `vipy.object.Keypoint2d` with radius equal to the half minimum dimension of the box"""
-        return Keypoint2d(x=self.centroid_x(), y=self.centroid_y(), radius=radius*min(self.width(), self.height()), category=self.category(), attributes=self.attributes, id=self.id(), confidence=self.confidence())
+    def to_keypoint2d(self):
+        """Convert bounding box centroid to `vipy.object.Keypoint2d` with radius equal to the minimum dimension of the box"""
+        return Keypoint2d(x=self.centroid_x(), y=self.centroid_y(), radius=min(self.width(), self.height())/2, category=self.category(), attributes=self.attributes, id=self.id(), confidence=self.confidence(), tags=self._tags)
 
 
 class Keypoint2d(Point2d, Object):
@@ -147,10 +156,6 @@ class Keypoint2d(Point2d, Object):
         if deep:
             d.attributes = copy.deepcopy(self.attributes)
         return d
-    
-    @property
-    def radius(self):
-        return self.r
     
     @property
     def guid(self):
@@ -479,7 +484,7 @@ class Track(object):
         assert len(self._keyboxes) > 0, "Degenerate object for interpolation"   # not self.isempty()
         if len(self._keyboxes) == 1:
             return Detection.cast(self._keyboxes[0].clone()).new_category(self.category()).setattribute('__trackid', self.id()) if (self._boundary == 'extend' or self.during(f)) else None
-        if f in reversed(self._keyframes):            
+        if f in self._keyframes:            
             return Detection.cast(self._keyboxes[self._keyframes.index(f)]).new_category(self.category()).setattribute('__trackid', self.id())  # by reference, do not clone
 
         kf = self._keyframes
