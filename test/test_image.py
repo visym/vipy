@@ -18,8 +18,8 @@ rgbafile = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'face_rgba.p
 jsonfile = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'Clean the house.json')
                         
 def test_image():
-    assert vipy.version.is_at_least('0.7.0')
-    assert not vipy.version.is_at_least('10.0.0')
+    assert vipy.__version__ >= '0.7.0'
+    assert not vipy.version.VERSION.at_least_version('10.0.0')
     
     # Empty constructor should not raise exception
     im = Image()

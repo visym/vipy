@@ -1078,14 +1078,14 @@ def RandomBox():
 
 class Point2d():
     """vipy.geometry.Point2d class"""
-    def __init__(self, x, y, r=0):
+    def __init__(self, x, y, r=None):
         """2D point parameterization"""
         assert math.isfinite(x)
         assert math.isfinite(y)
         assert r>=0                        
         self._x = x
         self._y = y
-        self._r = r        
+        self._r = r if r is not None else 0       
 
     def __repr__(self):
         return str('<vipy.geometry.Point2d: x=%s, y=%s%s>' % (self._x, self._y, (', r=%s' % self._r) if self._r !=0 else ''))
@@ -1123,7 +1123,7 @@ class Point2d():
         return Point2d(0,0)
 
     def boundingbox(self):
-        return BoundingBox(xcentroid=self.x, ycentroid=self.y, width=self.r, height=self.r)
+        return BoundingBox(xcentroid=self.x, ycentroid=self.y, width=2*self.r, height=2*self.r)
     
     def __getitem__(self, k):
         return self.coord[k]
@@ -1134,7 +1134,7 @@ class Point2d():
                 
     def __sub__(self, p):
         assert isinstance(p, Point2d), "invalid input"        
-        return Point2d(self.x-p._x, self._y-p._y, self._r)
+        return Point2d(self._x-p._x, self._y-p._y, self._r)
 
     def __add__(self, p):
         assert isinstance(p, Point2d), "invalid input"        
@@ -1328,6 +1328,11 @@ class Point2d():
 
     def height(self):
         return self.diameter()
+
+    def union(self, points):
+        bb = self.boundingbox().union( (p.boundingbox() for p in points) )
+        return Point2d(bb.xcentroid(), bb.ycentroid(), max(bb.height(), bb.width())/2)
     
-def RandomPoint2d(xmax=256, ymax=256):
-    return Point2d(float(xmax*np.random.rand()), float(ymax*np.random.rand()))
+    
+def RandomPoint2d(xmax=256, ymax=256, rmax=256):
+    return Point2d(float(xmax*np.random.rand()), float(ymax*np.random.rand()), float(rmax*np.random.rand()) if rmax is not None else None)

@@ -5,10 +5,12 @@ import numpy as np
 from vipy.util import islist, temppng
 import sys
 from vipy.globals import log
+from vipy.version import Version
 
 
 FIGHANDLE = {}
 matplotlib.rcParams['toolbar'] = 'None'
+matplotlib_version_at_least_3p3 = Version.from_string(matplotlib.__version__) >= '3.3'
 
 
 # Optional latex strings in captions
@@ -160,21 +162,55 @@ def text(caption, xmin, ymin, fignum=None, textcolor='black', textfacecolor='whi
 def boundingbox(img, xmin, ymin, xmax, ymax, bboxcaption=None, fignum=None, bboxcolor='green', facecolor='white', facealpha=0.5, textcolor='black', textfacecolor='white', textfacealpha=1.0, fontsize=10, captionoffset=(0,0), linewidth=3):
     """Draw a captioned bounding box on a previously shown image"""
     plt.figure(fignum)
+    ax = plt.gca()
     lw = linewidth  # pull in the boxes by linewidth so that they do not overhang the figure
     (H,W) = (img.shape[0], img.shape[1])
-    plt.axvspan(max(xmin, lw/2), min(xmax, W-lw/2), ymin=1.0 - np.float32(float(min(ymax, H-lw/2)) / float(H)), ymax=1-np.float32(float(max(ymin, lw/2)) / float(H)), edgecolor=bboxcolor, linewidth=lw, fill=False, alpha=0.6, label=None, capstyle='round', joinstyle='bevel', clip_on=True)   
-    plt.axvspan(max(xmin, lw/2), min(xmax, W-lw/2), ymin=1.0 - np.float32(float(min(ymax, H-lw/2)) / float(H)), ymax=1-np.float32(float(max(ymin, lw/2)) / float(H)), edgecolor=bboxcolor, facecolor=facecolor, linewidth=lw, fill=True, alpha=facealpha, label=None, clip_on=True, capstyle='round', joinstyle='bevel')
-
+    
+    ymin_frac = 1.0 - (min(ymax, H - lw/2) / float(H))
+    ymax_frac = 1.0 - (max(ymin, lw/2) / float(H))
+    
+    ax.axvspan(
+        max(xmin, lw/2), min(xmax, W - lw/2),
+        ymin=ymin_frac, ymax=ymin_frac,
+        edgecolor=bboxcolor, linewidth=lw, fill=False, alpha=0.6, clip_on=True, label=None, capstyle='round', joinstyle='bevel', 
+    )
+    ax.axvspan(
+        max(xmin, lw/2), min(xmax, W - lw/2),
+        ymin=ymin_frac, ymax=ymax_frac,
+        edgecolor=bboxcolor, facecolor=facecolor, linewidth=lw, fill=True, alpha=facealpha, clip_on=True, capstyle='round', joinstyle='bevel', label=None
+    )
+            
     # Text string
     if bboxcaption is not None:
-        # clip_on clips anything outside the image
+        # a) Compute x‐fraction: (xmin − x0)/(x1 − x0)
+        x0, x1 = ax.get_xlim()
+        xmin_frac = ((xmin - x0) / (x1 - x0)) #+ (captionoffset[0]/H)
+        
+        # b) y1_frac is already the top of the box in axes‐fraction; add vertical offset
+        ymin_frac_text = ymin_frac #+ (captionoffset[1]/W)
+        ymax_frac = 1.0 - ((max(ymin, lw/2)) / float(H)) 
+        
         newlines = bboxcaption.count('\n')
         #captionoffset = captionoffset if ymin > 15 else (captionoffset[0]+5, captionoffset[1]+(15*(newlines+1)))  # move down a bit if near top of image, shift once per newline in caption
-        try:
-            # MatplotlibDeprecationWarning: The 's' parameter of annotate() has been renamed 'text' since Matplotlib 3.3            
-            handle = plt.annotate(text=bboxcaption, xy=(xmin,ymin), xytext=(xmin+captionoffset[0], ymin+captionoffset[1]), xycoords='data', color=textcolor, bbox=dict(facecolor=textfacecolor, edgecolor=textcolor, alpha=textfacealpha, boxstyle='round'), fontsize=fontsize, clip_on=True)
-        except:
-            handle = plt.annotate(s=bboxcaption, xy=(xmin,ymin), xytext=(xmin+captionoffset[0], ymin+captionoffset[1]), xycoords='data', color=textcolor, bbox=dict(facecolor=textfacecolor, edgecolor=textcolor, alpha=textfacealpha, boxstyle='round'), fontsize=fontsize, clip_on=True)            
+
+        # MatplotlibDeprecationWarning: The 's' parameter of annotate() has been renamed 'text' since Matplotlib 3.3   
+        plt.annotate(**{'text' if matplotlib_version_at_least_3p3 else 's': bboxcaption},
+                     xy=(xmin_frac, ymax_frac),
+                     xytext=(captionoffset[0], -captionoffset[1]),
+                     textcoords='offset pixels',
+                     xycoords='axes fraction',
+                     color=textcolor,
+                     fontsize=fontsize,
+                     bbox=dict(
+                         facecolor=textfacecolor,
+                         edgecolor=textcolor,
+                         alpha=textfacealpha,
+                         boxstyle='round'
+                     ),
+                     horizontalalignment='left',
+                     verticalalignment='top',
+                     clip_on=True
+                     )
 
     return fignum
 
@@ -183,7 +219,7 @@ def imdetection(img, detlist, fignum=None, bboxcolor='green', do_caption=True, f
     """Show bounding boxes from a list of vipy.object.Detections on the same image, plotted in list order with optional captions """
 
     # Create image
-    #fignum = imshow(img, fignum=fignum)  # this can fail on some OS, go the slow route instead
+    #fignum = imshow(img, fignum=fignum)  # this can fail on MacOSX, go the slow route instead
     fignum = _imshow_tight(img, fignum=fignum)     
 
     # A better way? https://matplotlib.org/api/_as_gen/matplotlib.animation.FuncAnimation.html

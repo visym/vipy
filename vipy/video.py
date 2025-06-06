@@ -3939,7 +3939,7 @@ class Scene(VideoCategory):
         return self        
 
 
-    def annotate(self, outfile=None, fontsize=10, captionoffset=(3,-10), textfacecolor='white', textfacealpha=0.8, shortlabel=None, boxalpha=0.25, d_category2color={'Person':'green', 'Vehicle':'blue', 'Object':'red'}, categories=None, nocaption=False, nocaption_withstring=[], mutator=vipy.image.mutator_show_noun_verb(), timestamp=None, timestampcolor='black', timestampfacecolor='white', verbose=False):
+    def annotate(self, outfile=None, fontsize=10, captionoffset=(4,-15), textfacecolor='white', textfacealpha=0.8, shortlabel=None, boxalpha=0.25, d_category2color={'Person':'green', 'Vehicle':'blue', 'Object':'red'}, categories=None, nocaption=False, nocaption_withstring=[], mutator=vipy.image.mutator_show_noun_verb(), timestamp=None, timestampcolor='black', timestampfacecolor='white', verbose=False):
         """Generate a video visualization of all annotated objects and activities in the video.
         
         The annotation video will be at the resolution and framerate of the underlying video, and pixels in this video will now contain the overlay.
@@ -4018,7 +4018,7 @@ class Scene(VideoCategory):
             return vo
 
 
-    def _show(self, outfile=None, verbose=True, fontsize=10, captionoffset=(3,-10), textfacecolor='white', textfacealpha=0.8, shortlabel=None, boxalpha=0.25, d_category2color={'Person':'green', 'Vehicle':'blue', 'Object':'red'}, categories=None, nocaption=False, nocaption_withstring=[], notebook=False, timestamp=None, timestampcolor='black', timestampfacecolor='white'):
+    def _show(self, outfile=None, verbose=True, fontsize=10, captionoffset=(4,-15), textfacecolor='white', textfacealpha=0.8, shortlabel=None, boxalpha=0.25, d_category2color={'Person':'green', 'Vehicle':'blue', 'Object':'red'}, categories=None, nocaption=False, nocaption_withstring=[], notebook=False, timestamp=None, timestampcolor='black', timestampfacecolor='white'):
         """Generate an annotation video saved to outfile (or tempfile if outfile=None) and show it using ffplay when it is done exporting.  Do not modify the original video buffer.  Returns a clone of the video with the shown annotation."""
         return self.clone().annotate(verbose=verbose, 
                                      fontsize=fontsize,
@@ -4036,7 +4036,7 @@ class Scene(VideoCategory):
                                      nocaption_withstring=nocaption_withstring).saveas(outfile).play(notebook=notebook)
     
 
-    def show(self, outfile=None, verbose=True, fontsize=10, captionoffset=(3,-10), textfacecolor='white', textfacealpha=0.8, shortlabel=None, boxalpha=0.25, d_category2color={'Person':'green', 'Vehicle':'blue', 'Object':'red'}, categories=None, nocaption=False, nocaption_withstring=[], figure=1, fps=None, timestamp=None, timestampcolor='black', timestampfacecolor='white', mutator=vipy.image.mutator_show_noun_verb()):
+    def show(self, outfile=None, verbose=True, fontsize=10, captionoffset=(4,-15), textfacecolor='white', textfacealpha=0.8, shortlabel=None, boxalpha=0.25, d_category2color={'Person':'green', 'Vehicle':'blue', 'Object':'red'}, categories=None, nocaption=False, nocaption_withstring=[], figure=1, fps=None, timestamp=None, timestampcolor='black', timestampfacecolor='white', mutator=vipy.image.mutator_show_noun_verb()):
         """Faster show using interative image show for annotated videos.  This can visualize videos before video rendering is complete, but it cannot guarantee frame rates. Large videos with complex scenes will slow this down and will render at lower frame rates."""
         fps = min(fps, self.framerate()) if fps is not None else self.framerate()
         assert fps > 0, "Invalid display framerate"

@@ -2522,7 +2522,7 @@ class Scene(LabeledImage):
         return vipy.image.Image.perceptualhash_distance(self.bghash(bits=bits), im.bghash(bits=bits)) < threshold 
     
         
-    def show(self, categories=None, figure=1, nocaption=False, nocaption_withstring=[], fontsize=10, boxalpha=0.25, d_category2color={'Person':'green', 'Vehicle':'blue', 'Object':'red'}, captionoffset=(3,-10), nowindow=False, textfacecolor='white', textfacealpha=0.8, shortlabel=None, timestamp=None, timestampcolor='black', timestampfacecolor='white', mutator=None, timestampoffset=(0,0)):
+    def show(self, categories=None, figure=1, nocaption=False, nocaption_withstring=[], fontsize=10, boxalpha=0.25, d_category2color={'Person':'green', 'Vehicle':'blue', 'Object':'red'}, captionoffset=(4,-15), nowindow=False, textfacecolor='white', textfacealpha=0.8, shortlabel=None, timestamp=None, timestampcolor='black', timestampfacecolor='white', mutator=None, timestampoffset=(0,0)):
         """Show scene detection 
 
         Args:
@@ -2556,7 +2556,7 @@ class Scene(LabeledImage):
                             captionoffset=captionoffset, nowindow=nowindow, textfacecolor=textfacecolor, textfacealpha=textfacealpha, timestamp=timestamp, timestampcolor=timestampcolor, timestampfacecolor=timestampfacecolor, timestampoffset=timestampoffset)
         return self
 
-    def annotate(self, outfile=None, categories=None, figure=1, nocaption=False, fontsize=10, boxalpha=0.25, d_category2color={'person':'green', 'vehicle':'blue', 'object':'red'}, captionoffset=(3,-10), dpi=200, textfacecolor='white', textfacealpha=0.8, shortlabel=None, nocaption_withstring=[], timestamp=None, timestampcolor='black', timestampfacecolor='white', mutator=None, timestampoffset=(0,0)):
+    def annotate(self, outfile=None, categories=None, figure=1, nocaption=False, fontsize=10, boxalpha=0.25, d_category2color={'person':'green', 'vehicle':'blue', 'object':'red'}, captionoffset=(4,-15), dpi=200, textfacecolor='white', textfacealpha=0.8, shortlabel=None, nocaption_withstring=[], timestamp=None, timestampcolor='black', timestampfacecolor='white', mutator=None, timestampoffset=(0,0)):
         """Alias for savefig"""
         return self.savefig(outfile=outfile, 
                             categories=categories, 
@@ -2577,7 +2577,7 @@ class Scene(LabeledImage):
                             timestampoffset=timestampoffset,
                             mutator=mutator)
 
-    def savefig(self, outfile=None, categories=None, figure=1, nocaption=False, fontsize=10, boxalpha=0.25, d_category2color={'person':'green', 'vehicle':'blue', 'object':'red'}, captionoffset=(3,-10), dpi=200, textfacecolor='white', textfacealpha=0.8, shortlabel=None, nocaption_withstring=[], timestamp=None, timestampcolor='black', timestampfacecolor='white', mutator=None, timestampoffset=(0,0)):
+    def savefig(self, outfile=None, categories=None, figure=1, nocaption=False, fontsize=10, boxalpha=0.25, d_category2color={'person':'green', 'vehicle':'blue', 'object':'red'}, captionoffset=(4,-15), dpi=200, textfacecolor='white', textfacealpha=0.8, shortlabel=None, nocaption_withstring=[], timestamp=None, timestampcolor='black', timestampfacecolor='white', mutator=None, timestampoffset=(0,0)):
         """Save show() output to given file or return buffer without popping up a window"""
         fignum = figure if figure is not None else 1        
         self.show(categories=categories, figure=fignum, nocaption=nocaption, fontsize=fontsize, boxalpha=boxalpha, 
@@ -2845,7 +2845,7 @@ def mutator_show_noun_or_verb():
 def mutator_show_noun_verb():
     """Mutate the image to show the category as 'Noun Verb1\nNoun Verb2'"""
     return lambda im, k=None: (im.objectmap(lambda o: o.category('\n'.join(['%s %s' % (n.capitalize().replace('_',' '),
-                                                                                       (v.replace('%s_'%n.lower(),'',1) if v.startswith(n) else v).replace('_',' '))
+                                                                                       (v.replace('%s_'%n.lower(),'',1) if v.lower().startswith(n.lower()) else v).replace('_',' '))
                                                                             for (n,v) in zip(o.attributes['__object_category'], o.attributes['__activity_category'])]))
                                             if o.hasattribute('__object_category') and o.hasattribute('__activity_category') else o))
     
