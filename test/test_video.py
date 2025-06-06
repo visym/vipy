@@ -224,12 +224,12 @@ def _test_video():
 def _test_scene():
 
     # Activityclip
-    v = vipy.video.RandomSceneActivity(64,64,64)
+    v = vipy.video.RandomScene(64,64,64)
     vc = v.clone(flushforward=True).filename('Video.mp4')
     assert vc._array is None and v._array is not None
     activitylength = [len(a) for a in vc.activities().values()]
     assert all([len(c.activities())==1 for c in vc.activityclip()])    
-    assert all([len(a)==al for (c,al) in zip(vc.activityclip(padframes=0), activitylength) for a in c.activities().values()])
+    assert all([len(vc.activity(ai))==len(a) for (c,al) in zip(vc.activityclip(padframes=0), activitylength) for (ai,a) in c.activities().items()])
     try:
         vc.activityclip(padframes=2)  # will result in startframe < 0
         Failed()
@@ -240,7 +240,7 @@ def _test_scene():
     print('[test_video.scene]: activityclip()  PASSED')    
     
     # Activitycrop
-    v = vipy.video.RandomSceneActivity(64,64,64)
+    v = vipy.video.RandomScene(64,64,64)
     vc = v.clone(flushforward=True).filename('Video.mp4')
     assert vc._array is None and v._array is not None
     a = vc.activitycuboid(bb=vipy.geometry.BoundingBox(1,1,width=33, height=33))
@@ -426,20 +426,20 @@ def _test_scene():
     frames = np.random.rand(2,2,2,3).astype(np.float32)
     v = vipy.video.Scene(array=frames, framerate=30)
     for (k,im) in enumerate(v):
-        v.add(Detection(0, 0, 0, 100, 100), frame=k)
+        v.add_object(Detection(0, 0, 0, 100, 100), frame=k)
         try:
-            v.add(Track(category=1, keyframes=[1], boxes=[BoundingBox(0,0,1,1)]))
+            v.add_object(Track(category=1, keyframes=[1], boxes=[BoundingBox(0,0,1,1)]))
             raise  # framerate is required
         except:
             pass 
-        v.add(Track(category=1, keyframes=[1], boxes=[BoundingBox(0,0,1,1)], framerate=30))
-        v.add([1,2,3,4], category='test', rangecheck=False, frame=k)
+        v.add_object(Track(category=1, keyframes=[1], boxes=[BoundingBox(0,0,1,1)], framerate=30))
+        v.add_object([1,2,3,4], category='test', rangecheck=False, frame=k)
     print('[test_video.scene]: scene iterator  PASSED')
     
     # Random scenes
     v = vipy.video.RandomVideo(64,64,64)
     v = vipy.video.RandomScene(64,64,64)
-    vorig = vipy.video.RandomSceneActivity(64,64,64)
+    vorig = vipy.video.RandomScene(64,64,64)
     print(vorig[0])
     print(vorig[0][0])
     print('[test_video.scene]: random scene  PASSED')

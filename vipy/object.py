@@ -35,7 +35,7 @@ class Detection(BoundingBox, Object):
     def __init__(self, category=None, xmin=None, ymin=None, width=None, height=None, xmax=None, ymax=None, confidence=None, xcentroid=None, ycentroid=None, xywh=None, attributes=None, id=None, tags=None):
         super().__init__(xmin=xmin, ymin=ymin, width=width, height=height, xmax=xmax, ymax=ymax, xcentroid=xcentroid, ycentroid=ycentroid, xywh=xywh)
 
-        self._id = shortuuid() if id is True else id
+        self._id = shortuuid() if id == True else id
         self.attributes = {} if attributes is None else attributes.copy()  # shallow copy
 
         Tag.__init__(self, category=category, confidence=confidence, tags=tags)
@@ -70,14 +70,14 @@ class Detection(BoundingBox, Object):
                        attributes=d['attributes'] if 'attributes' in d else None,
                        tags=d['tags'] if 'tags' in d else None,
                        category=d['_category'] if '_category' in d else None,
-                       id=d['_id'] if '_id' in d else True)
+                       id=d['_id'] if '_id' in d else None)
         else:
             # vipy-1.16.1            
             return cls(xmin=d['xmin'], ymin=d['ymin'], xmax=d['xmax'], ymax=d['ymax'],
                        attributes=d['attributes'] if 'attributes' in d else None,
                        tags=d['tags'] if 'tags' in d else None,
                        category=d['category'] if 'category' in d else None,
-                       id=d['id'] if 'id' in d else True)
+                       id=d['id'] if 'id' in d else None)
         
     def __repr__(self):
         strlist = []
@@ -109,7 +109,6 @@ class Detection(BoundingBox, Object):
 
     def clone(self, deep=False):
         """Copy the object, if deep=True, then include a deep copy of the attribute dictionary, else a shallow copy.  Cloned object has the same id()"""
-        #return copy.deepcopy(self)
         d = Detection.from_json(self.json(encode=False))
         if deep:
             d.attributes = copy.deepcopy(self.attributes)
@@ -125,19 +124,15 @@ class Detection(BoundingBox, Object):
         self.attributes[k] = v
         return self
     
-    #def delattribute(self, k):
-    #    self.attributes.pop(k, None)
-    #    return self
+    def delattribute(self, k):
+        self.attributes.pop(k, None)
+        return self
 
-    #def noattributes(self):
-    #    self.attributes = {}
-    #    return self
+    def clear_attributes(self):
+        self.attributes = {}
+        return self
 
-    def to_keypoint2d(self):
-        """Convert bounding box centroid to `vipy.object.Keypoint2d` with radius equal to the minimum dimension of the box"""
-        return Keypoint2d(x=self.centroid_x(), y=self.centroid_y(), radius=min(self.width(), self.height())/2, category=self.category(), attributes=self.attributes, id=self.id(), confidence=self.confidence(), tags=self._tags)
-
-
+    
 class Keypoint2d(Point2d, Object):
     """vipy.object.Keypoint2d class"""
     
@@ -469,7 +464,7 @@ class Track(object):
         assert self.framerate() is not None, "Framerate must be set in constructor"
         return len(self) / float(self.framerate())
     
-    def linear_interpolation(self, f, id=True):
+    def linear_interpolation(self, f):
         """Linear bounding box interpolation at frame=f given observed boxes (x,y,w,h) at keyframes.  
 
         This returns a `vipy.object.Detection` which is the interpolation of the `vipy.object.Track` at frame k
@@ -498,9 +493,9 @@ class Track(object):
                       ymin=bi._ymin + c*(bj._ymin - bi._ymin),   # float(np.interp(k, self._keyframes, [bb._ymin for bb in self._keyboxes])),
                       xmax=bi._xmax + c*(bj._xmax - bi._xmax),   # float(np.interp(k, self._keyframes, [bb._xmax for bb in self._keyboxes])),
                       ymax=bi._ymax + c*(bj._ymax - bi._ymax),   # float(np.interp(k, self._keyframes, [bb._ymax for bb in self._keyboxes])),
-                      confidence=bi.confidence(),  # may be None
-                      category=self.category(),
-                      id=id)
+                      confidence=bi.confidence() if isinstance(bi, Detection) else None,
+                      category=self.category())
+
         d.attributes['__trackid'] = self.id()  # for correspondence of detections to tracks
         return d if self._boundary == 'extend' or self.during(f) else None
 
@@ -1055,8 +1050,8 @@ class Track(object):
         if len(self) < 2 or not (self.during(f) and self.during(f-dt)) :
             return (0,0)
         
-        kb = [((f-dt), self.linear_interpolation(f-dt, id=False))] + [(kf, bb) for (kf,bb) in zip(self._keyframes, self._keyboxes) if (kf > f-dt) and (kf < f)]
-        (kfe, bbe) = (f, self.linear_interpolation(f, id=False))
+        kb = [((f-dt), self.linear_interpolation(f-dt))] + [(kf, bb) for (kf,bb) in zip(self._keyframes, self._keyboxes) if (kf > f-dt) and (kf < f)]
+        (kfe, bbe) = (f, self.linear_interpolation(f))
         vx = float((1.0/len(kb))*sum([min([(bbe._xmin - bb._xmin), (bbe._xmax - bb._xmax)], key=abs)/float(kfe-kf) for (kf,bb) in kb]))
         vy = float((1.0/len(kb))*sum([min([(bbe._ymin - bb._ymin), (bbe._ymax - bb._ymax)], key=abs)/float(kfe-kf) for (kf,bb) in kb]))
         return (vx, vy)

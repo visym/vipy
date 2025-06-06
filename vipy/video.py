@@ -20,6 +20,7 @@ import urllib.request
 import urllib.error
 import urllib.parse
 from urllib.parse import urlparse, urlunparse
+from collections.abc import ValuesView
 import http.client as httplib
 import io
 import PIL.Image
@@ -677,7 +678,7 @@ class Video(object):
         
         
     def videoid(self, newid=None):
-        """Return a unique video identifier for this video, as specified in the 'video_id' attribute, or by SHA1 hash of the `vipy.video.Video.filename` and `vipy.video.Video.url`.
+        """Return a unique video identifier for this video, as specified in the 'video_id' attribute
 
         Args:
             newid: [str] If not None, then update the video_id as newid. 
@@ -685,16 +686,12 @@ class Video(object):
         Returns:
             The video ID if newid=None else self
 
-        .. note::
-            - If the video filename changes (e.g. from transformation), and video_id is not set in self.attributes, then the video ID will change.
-            - If a video does not have a filename or URL or a video ID in the attributes, then this will return None
-            - To preserve a video ID independent of transformations, set self.setattribute('video_id', ${MY_ID}), or pass in newid
         """
         if newid is not None:
             self.setattribute('video_id', newid)
             return self
         else:
-            return self.attributes['video_id'] if 'video_id' in self.attributes else (hashlib.sha1(str(str(self.filename())+str(self.url())).encode("UTF-8")).hexdigest() if (self.filename() is not None or self.url() is not None) else None)
+            return self.attributes['video_id'] if 'video_id' in self.attributes else None
         
 
     def frame(self, k=0, img=None, t=None):
@@ -2649,13 +2646,13 @@ class Scene(VideoCategory):
 
         # Tracks must be defined relative to the clip specified by this constructor
         if tracks is not None:
-            tracks = tracks if isinstance(tracks, list) or isinstance(tracks, tuple) else [tracks]  # canonicalize
+            tracks = list(tracks) if isinstance(tracks, (list, tuple, ValuesView)) else [tracks]  # canonicalize
             assert all([isinstance(t, vipy.object.Track) for t in tracks]), "Invalid track input; tracks=[vipy.object.Track(), ...]"
             self._tracks = {t.id():t for t in tracks}
 
         # Activities must be defined relative to the clip specified by this constructor            
         if activities is not None:
-            activities = activities if isinstance(activities, list) or isinstance(activities, tuple) else [activities]  # canonicalize            
+            activities = list(activities) if isinstance(activities, (tuple, list, ValuesView)) else [activities]  # canonicalize            
             assert all([isinstance(a, vipy.activity.Activity) for a in activities]), "Invalid activity input; activities=[vipy.activity.Activity(), ...]"
             self._activities = {a.id():a for a in activities}
 
@@ -2751,33 +2748,6 @@ class Scene(VideoCategory):
         return str('<vipy.video.scene: %s>' % (', '.join(strlist)))
 
 
-    def instanceid(self, newid=None):
-        """Return an annotation instance identifier for this video.  
-
-        An instance ID is a unique identifier for a ground truth annotation within a video, either a track or an activity.  More than one instance ID may share the same video ID if they are from the same source videofile.  
-
-        This is useful when calling `vipy.video.Scene.activityclip` or `vipy.video.Scene.activitysplit` to clip a video into segments such that each clip has a unique identifier, but all share the same underlying `vipy.video.Video.videoid`.
-        This is useful when calling `vipy.video.Scene.trackclip` or `vipy.video.Scene.tracksplit` to clip a video into segments such that each clip has a unique identifier, but all share the same underlying `vipy.video.Video.videoid`.
-        
-        Returns:
-            INSTANCEID: if 'instance_id' key is in self.attribute
-            VIDEOID_INSTANCEID: if '_instance_id' key is in self.attribute, as set by activityclip() or trackclip().  This is set using INSTANCE_ID=ACTIVITYID_ACTIVITYINDEX or INSTANCEID=TRACKID_TRACKINDEX, where the index is the temporal order of the annotation in the source video prior to clip().
-            VIDEOID_ACTIVITYINDEX: if 'activityindex' key is in self.attribute, as set by activityclip().  (fallback for legacy datasets).
-            VIDEOID: otherwise 
-        """
-        if newid is not None:
-            self.setattribute('instance_id', newid)
-            return self
-        else:
-            if 'instance_id' in self.attributes:
-                return self.attributes['instance_id']  # set at video creation time (e.g. pycollector)
-            elif '_instance_id' in self.attributes:
-                return self.attributes['_instance_id']  # set at activityclip() time for provenance from clips back to videos
-            elif 'activityindex' in self.attributes:
-                return '%s_%s' % (self.videoid(), str(self.attributes['activityindex']))  # set at activityclip() time for provenance from clips back to videos (deprecated)
-            else:
-                return self.videoid()
-
     def frame(self, k=0, img=None, noimage=False, t=None):
         """Return `vipy.image.Scene` object at frame k
 
@@ -2807,7 +2777,7 @@ class Scene(VideoCategory):
         assert img is not None or (self.isloaded() and k<len(self)) or not self.isloaded(), "Invalid frame index %d - Indexing video by frame must be integer within (0, %d)" % (k, len(self)-1)
 
         img = img if (img is not None or noimage) else (self._array[k] if self.isloaded() else self.preview(k).array())
-        dets = [t[k].clone(deep=True).setattribute('__trackindex', j) for (j, t) in enumerate(self.tracklist()) if len(t)>0 and (t.during(k) or t.boundary()=='extend')]  # track interpolation (cloned) with boundary handling
+        dets = [t[k].clone(deep=True).setattribute('__track_index', j) for (j, t) in enumerate(self.tracklist()) if len(t)>0 and (t.during(k) or t.boundary()=='extend')]  # track interpolation (cloned) with boundary handling
         for d in dets:
             d.attributes['__activityid'] = []  # reset
             activityconf = []  
@@ -2829,11 +2799,10 @@ class Scene(VideoCategory):
                 activityconf = [None]
                 
             # For display purposes
-            # - See `vipy.image.mutator_show_trackindex_verbonly`
             # - Double prepended underscore attributes are private and cleaned using `vipy.image.Image.sanitize`
             d.attributes['__object_category'] = [j[0] for j in jointlabel]
             d.attributes['__activity_category'] = [j[1] for j in jointlabel]
-            d.attributes['__activityconf'] = activityconf
+            d.attributes['__activity_conf'] = activityconf
         dets.sort(key=lambda d: (d.confidence() if d.confidence() is not None else 0, d.category()))   # layering in video is ordered by decreasing track confidence and alphabetical shortlabel
         return vipy.image.Scene(array=img, colorspace=self.colorspace(), objects=dets, category=self.category())  
                 
@@ -3333,7 +3302,15 @@ class Scene(VideoCategory):
         self._tracks = {}
         return self
 
+    def clear_tracks(self):
+        self._tracks = {}
+        return self
+    
     def clearactivities(self):
+        self._activities = {}
+        return self
+    
+    def clear_activities(self):
         self._activities = {}
         return self
     
@@ -3419,17 +3396,15 @@ class Scene(VideoCategory):
         .. note:: This is useful for union()
         """
         vid = self.clone(flushforward=True)
-        if any([(a.endframe()-a.startframe()) <= 0 for a in vid.activities().values()]):
-            warnings.warn('Filtering invalid activity with degenerate lengths: %s' % str([a for a in vid.activities().values() if (a.endframe()-a.startframe()) <= 0]))
-        activities = sorted([a.clone() for a in vid.activities().values() if (a.endframe()-a.startframe()) > 0], key=lambda a: a.startframe())   # only activities with at least one frame, sorted in temporal order
+        activities = sorted([a.clone() for a in vid.activities().values() if (a.endframe()-a.startframe()) > 0], key=lambda a: a.startframe())   # only activities with at least one frame, sorted in temporal order, non-degenerate
         tracks = [ [t.clone() for (tid, t) in vid.tracks().items() if a.hastrack(t)] for a in activities]  # tracks associated with each activity (may be empty)
         vid._activities = {}  # for faster clone
         vid._tracks = {}      # for faster clone
         return [vid.clone()
-                .setattribute('_instance_id', ('%s_%d' % (vid.videoid(), k)) if not vid.hasattribute('_instance_id') else vid.getattribute('_instance_id'))
                 .activities(pa)
                 .tracks(t)
                 .setactorid(pa.actorid())
+                .category(pa.category())
                 for (k,(pa,t)) in enumerate(zip(activities, tracks)) if idx is None or k in tolist(idx)]
 
     def tracksplit(self):
@@ -3440,13 +3415,13 @@ class Scene(VideoCategory):
 
         .. notes:: Use clone() to create a deep copy if needed.
         """
-        return [self.clone(shallow=True).setattribute('_trackindex', k).tracks(t).activityfilter(lambda a: a.hastrack(tk)) for (k,(tk,t)) in enumerate(self.tracks().items())]
+        return [self.clone(shallow=True).tracks(t).activityfilter(lambda a: a.hastrack(tk)) for (k,(tk,t)) in enumerate(self.tracks().items())]
 
     def trackclip(self):
         """Split the scene into k separate scenes, one for each track.  Each scene starts and ends when the track starts and ends"""
-        return [t.setattribute('_instance_id', '%s_%d_trackclip' % (t.videoid(), k)).clip(t.track(t.actorid()).startframe(), t.track(t.actorid()).endframe()) for (k,t) in enumerate(self.tracksplit())]
+        return [t.clip(t.track(t.actorid()).startframe(), t.track(t.actorid()).endframe()) for (k,t) in enumerate(self.tracksplit())]
     
-    def activityclip(self, padframes=0, multilabel=True, idx=None, padto=None, padtosec=None):
+    def activityclip(self, padframes=0, multilabel=False, idx=None, padto=None, padtosec=None):
         """Return a list of `vipy.video.Scene` objects each clipped to be temporally centered on a single activity, with an optional padframes before and after.  
 
         Args:
@@ -3493,7 +3468,6 @@ class Scene(VideoCategory):
                 .clip(startframe=max(pa.startframe()-prepad, 0), endframe=min(pa.endframe()+postpad, (maxframes if maxframes is not None else pa.endframe()+postpad)))
                 .category(pa.category())
                 .setactorid(pa.actorid())  # actor is actor of primary activity
-                .setattribute('_instance_id', ('%s_%d' % (vid.videoid(), k)) if not vid.hasattribute('_instance_id') else vid.getattribute('_instance_id'))
                 for (k,(pa,sa,t,(prepad,postpad))) in enumerate(zip(primary_activities, secondary_activities, tracks, padframelist))
                 if (idx is None or k in tolist(idx))]
 
@@ -3518,8 +3492,7 @@ class Scene(VideoCategory):
                                                         startframe=startframe,
                                                         endframe=endframe,
                                                         actorid=t.id(),
-                                                        framerate=self.framerate(),
-                                                        attributes={'_noactivitylist':True}))
+                                                        framerate=self.framerate()))
                     (startframe, endframe) = (k+1,k+1)                        
         return A
     
@@ -3538,8 +3511,7 @@ class Scene(VideoCategory):
             - Each clip will contain exactly one activity "Background" which is the interval for this track where no activities are occurring
             - Each clip will be at least one frame long
         """
-        A = self.clone().activities(self.noactivitylist(label=label)).activityclip(padframes=padframes, multilabel=False)
-        return [a.setattribute('_instance_id', '%s_bg' % a.getattribute('_instance_id')) for a in A]
+        return self.clone().activities(self.noactivitylist(label=label)).activityclip(padframes=padframes, multilabel=False)
     
     def trackbox(self, dilate=1.0):
         """The trackbox is the union of all track bounding boxes in the video, or None if there are no tracks
@@ -4308,7 +4280,7 @@ def RandomVideo(rows=None, cols=None, frames=None):
     return Video(array=np.uint8(255 * np.random.rand(frames, rows, cols, 3)), colorspace='rgb')
 
 
-def RandomScene(rows=None, cols=None, frames=None, filename=None):
+def RandomScene(rows=None, cols=None, frames=None, filename=None, num_tracks=32, num_activities=32):
     """Return a random loaded vipy.video.Scene.
     
     Useful for unit testing.
@@ -4325,9 +4297,9 @@ def RandomScene(rows=None, cols=None, frames=None, filename=None):
                                        vipy.object.Detection(xmin=np.random.randint(0,cols - 16), ymin=np.random.randint(0,rows - 16),
                                                              width=np.random.randint(16,cols//2), height=np.random.randint(16,rows//2)),
                                        vipy.object.Detection(xmin=np.random.randint(0,cols - 16), ymin=np.random.randint(0,rows - 16),
-                                                             width=np.random.randint(16,cols//2), height=np.random.randint(16,rows//2))]) for k in range(0,32)]
+                                                             width=np.random.randint(16,cols//2), height=np.random.randint(16,rows//2))]) for k in range(0,num_tracks)]
 
-    activities = [vipy.activity.Activity(label='activity%d' % k, tracks=[tracks[j].id() for j in [np.random.randint(32)]], startframe=np.random.randint(0,len(v)//2), endframe=np.random.randint(1+(len(v)//2),len(v)), framerate=30) for k in range(0,32)]   
+    activities = [vipy.activity.Activity(label='activity%d' % k, tracks=[tracks[j].id() for j in [np.random.randint(num_tracks)]], startframe=np.random.randint(0,len(v)//2), endframe=np.random.randint(1+(len(v)//2),len(v)), framerate=30) for k in range(0,num_activities)]   
     return Scene(array=v.array(), colorspace='rgb', category='scene', tracks=tracks, activities=activities, framerate=30)
 
 

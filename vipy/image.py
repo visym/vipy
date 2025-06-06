@@ -2817,7 +2817,7 @@ def mutator_show_trackid(n_digits_in_trackid=4):
 
 def mutator_show_trackindex():
     """Mutate the image to show track index appended to the category as (####)"""
-    return lambda im, k=None: (im.objectmap(lambda o: o.category('%s (%d)' % (o.category(), int(o.attributes['__trackindex']))) if o.hasattribute('__trackindex') else o))
+    return lambda im, k=None: (im.objectmap(lambda o: o.category('%s (%d)' % (o.category(), int(o.attributes['__track_index']))) if o.hasattribute('__track_index') else o))
 
 def mutator_show_track_only():
     """Mutate the image to show track as a consistently colored box with no categories"""
@@ -2852,7 +2852,7 @@ def mutator_show_noun_verb():
 def mutator_show_trackindex_verbonly(confidence=True, significant_digits=2):
     """Mutate the image to show boxes colored by track index, and only show 'verb' captions with activity confidence, sorted in decreasing order"""
     f = mutator_show_trackindex()
-    return lambda im, k=None, f=f: f(im).objectmap(lambda o: o.category('__%s' % o.category()) if (len(o.attributes['__object_category']) == 1 and len(o.attributes['__activity_category'][0]) == 0) else o.category('\n'.join(['%s %s' % (v, ('(%1.2f)'%float(c)) if (confidence is True and c is not None) else '') for (n,v,c) in sorted(zip(o.attributes['__object_category'], o.attributes['__activity_category'], o.attributes['__activityconf']), key=lambda x: float(x[2]) if x[2] else 0, reverse=True)])))
+    return lambda im, k=None, f=f: f(im).objectmap(lambda o: o.category('__%s' % o.category()) if (len(o.attributes['__object_category']) == 1 and len(o.attributes['__activity_category'][0]) == 0) else o.category('\n'.join(['%s %s' % (v, ('(%1.2f)'%float(c)) if (confidence is True and c is not None) else '') for (n,v,c) in sorted(zip(o.attributes['__object_category'], o.attributes['__activity_category'], o.attributes['__activity_conf']), key=lambda x: float(x[2]) if x[2] else 0, reverse=True)])))
 
 
 def RandomImage(rows=None, cols=None):
