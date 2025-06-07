@@ -2522,7 +2522,7 @@ class Scene(LabeledImage):
         return vipy.image.Image.perceptualhash_distance(self.bghash(bits=bits), im.bghash(bits=bits)) < threshold 
     
         
-    def show(self, categories=None, figure=1, nocaption=False, nocaption_withstring=[], fontsize=10, boxalpha=0.25, d_category2color={'Person':'green', 'Vehicle':'blue', 'Object':'red'}, captionoffset=(4,-15), nowindow=False, textfacecolor='white', textfacealpha=0.8, shortlabel=None, timestamp=None, timestampcolor='black', timestampfacecolor='white', mutator=None, timestampoffset=(0,0)):
+    def show(self, categories=None, figure=1, nocaption=False, nocaption_withstring=[], fontsize=10, boxalpha=0.25, d_category2color={'Person':'green', 'Vehicle':'blue', 'Object':'red'}, captionoffset=(4,-15), nowindow=False, textfacecolor='white', textfacealpha=0.85, shortlabel=None, timestamp=None, timestampcolor='black', timestampfacecolor='white', mutator=None, timestampoffset=(0,0)):
         """Show scene detection 
 
         Args:
@@ -2547,7 +2547,7 @@ class Scene(LabeledImage):
         valid_objects = [obj.clone() for obj in im._objectlist if categories is None or obj.category() in tolist(categories)]  # Objects with valid category
         valid_objects = [obj.imclip(self.numpy()) for obj in valid_objects if obj.hasoverlap(self.numpy())]  # Objects within image rectangle
         valid_objects = [obj.category(shortlabel[obj.category()]) for obj in valid_objects] if shortlabel else valid_objects  # Display name as shortlabel?
-        d_category2color = mergedict({d.category():colors[int(hashlib.sha1(str(d.category()).encode('utf-8')).hexdigest(), 16) % len(colors)] for d in valid_objects}, d_category2color)  # consistent color mapping by category 
+        d_category2color = mergedict({d.category():colors[int(hashlib.sha1(str(d.category()).encode('utf-8')).hexdigest(), 16) % len(colors)] for d in valid_objects}, d_category2color)  # consistent color mapping by category
         object_color = [d_category2color[d.category()] for d in valid_objects]                
         valid_objects  = [d if not any([c in d.category() for c in tolist(nocaption_withstring)]) else d.nocategory() for d in valid_objects]  # Objects requested to show without caption
         imdisplay = self.clone().rgb() if self.colorspace() != 'rgb' else self.load()  # convert to RGB for show() if necessary
@@ -2556,7 +2556,7 @@ class Scene(LabeledImage):
                             captionoffset=captionoffset, nowindow=nowindow, textfacecolor=textfacecolor, textfacealpha=textfacealpha, timestamp=timestamp, timestampcolor=timestampcolor, timestampfacecolor=timestampfacecolor, timestampoffset=timestampoffset)
         return self
 
-    def annotate(self, outfile=None, categories=None, figure=1, nocaption=False, fontsize=10, boxalpha=0.25, d_category2color={'person':'green', 'vehicle':'blue', 'object':'red'}, captionoffset=(4,-15), dpi=200, textfacecolor='white', textfacealpha=0.8, shortlabel=None, nocaption_withstring=[], timestamp=None, timestampcolor='black', timestampfacecolor='white', mutator=None, timestampoffset=(0,0)):
+    def annotate(self, outfile=None, categories=None, figure=1, nocaption=False, fontsize=10, boxalpha=0.25, d_category2color={'person':'green', 'vehicle':'blue', 'object':'red'}, captionoffset=(4,-15), dpi=200, textfacecolor='white', textfacealpha=0.85, shortlabel=None, nocaption_withstring=[], timestamp=None, timestampcolor='black', timestampfacecolor='white', mutator=None, timestampoffset=(0,0)):
         """Alias for savefig"""
         return self.savefig(outfile=outfile, 
                             categories=categories, 
@@ -2577,7 +2577,7 @@ class Scene(LabeledImage):
                             timestampoffset=timestampoffset,
                             mutator=mutator)
 
-    def savefig(self, outfile=None, categories=None, figure=1, nocaption=False, fontsize=10, boxalpha=0.25, d_category2color={'person':'green', 'vehicle':'blue', 'object':'red'}, captionoffset=(4,-15), dpi=200, textfacecolor='white', textfacealpha=0.8, shortlabel=None, nocaption_withstring=[], timestamp=None, timestampcolor='black', timestampfacecolor='white', mutator=None, timestampoffset=(0,0)):
+    def savefig(self, outfile=None, categories=None, figure=1, nocaption=False, fontsize=10, boxalpha=0.25, d_category2color={'person':'green', 'vehicle':'blue', 'object':'red'}, captionoffset=(4,-15), dpi=200, textfacecolor='white', textfacealpha=0.85, shortlabel=None, nocaption_withstring=[], timestamp=None, timestampcolor='black', timestampfacecolor='white', mutator=None, timestampoffset=(0,0)):
         """Save show() output to given file or return buffer without popping up a window"""
         fignum = figure if figure is not None else 1        
         self.show(categories=categories, figure=fignum, nocaption=nocaption, fontsize=fontsize, boxalpha=boxalpha, 
@@ -2810,7 +2810,7 @@ class DetectionImage(vipy.object.Detection, Image):
                    id=d['id'] if 'id' in d else None)
     
     
-def mutator_show_trackid(n_digits_in_trackid=4):
+def mutator_show_trackid(n_digits_in_trackid=None):
     """Mutate the image to show track ID with a fixed number of digits appended to the category as (####)"""
     return lambda im, k=None: (im.objectmap(lambda o: o.category('%s (%s)' % (o.category(), o.attributes['__trackid'][0:n_digits_in_trackid]))
                                             if o.hasattribute('__trackid') else o))
@@ -2890,17 +2890,7 @@ def RandomScene(rows=None, cols=None, num_detections=8, num_keypoints=8, num_tag
 def owl():
     """Return a superb owl image for testing"""
     return Scene(url='https://upload.wikimedia.org/wikipedia/commons/thumb/2/23/Bubo_virginianus_06.jpg/512px-Bubo_virginianus_06.jpg',
-                 category='Nature',
                  objects=[vipy.object.Detection('Great Horned Owl', xmin=93, ymin=85, width=373, height=560)])
-
-def squareowl():
-    """Return a superb owl with no objects, cropped square at 512x512 resolution"""
-    return owl().clear().centersquare().mindim(512)
-
-
-def Owl():
-    """Return superb owl centersquare, mindim=512"""
-    return owl().centersquare().mindim(512)
 
 def vehicles():
     """Return a highway scene with the four highest confidence vehicle detections for testing"""

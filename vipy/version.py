@@ -1,6 +1,6 @@
 MAJOR = 1
 MINOR = 16
-RELEASE = 1
+RELEASE = 2
 
 class Version():
     def __init__(self, major, minor, release=0):

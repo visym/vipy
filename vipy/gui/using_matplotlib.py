@@ -387,8 +387,8 @@ def colorlist():
                    'seashell', 'ivory', 'honeydew', 'azure', 'lavenderblush', 'beige', 'mintcream', 'lightcyan',
                    'snow', 'gainsboro', 'linen', 'antiquewhite', 'papayawhip', 'oldlace', 'cornsilk', 'palegoldenrod',
                    'lightyellow', 'aliceblue', 'yellow', 'sandybrown', 'orange', 'moccasin', 'bisque', 'peachpuff', 'blanchedalmond',
-                   'lemonchiffon','navajowhite','wheat', 'lavender', 'burlywood' , 'palegreen', 'greenyellow', 'lawngreen', 'khaki', 'powderblue'
-                   'paleturquoise', 'aquamarine'])]  # https://matplotlib.org/3.1.0/gallery/color/named_colors.html
+                   'lemonchiffon','navajowhite','wheat', 'lavender', 'burlywood' , 'palegreen', 'greenyellow', 'lawngreen', 'khaki', 'powderblue', 'chartreuse',
+                   'aqua','lime','cyan','mediumspringgreen','paleturquoise', 'aquamarine'])]  # https://matplotlib.org/3.1.0/gallery/color/named_colors.html
     colors = [x for x in colors if 'light' not in x]
     return colors
 
