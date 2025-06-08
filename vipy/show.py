@@ -105,10 +105,9 @@ def imkeypoints(img, kplist, fignum=None, bordercolor='green', facecolor='white'
     return h
 
 def imobjects(img, objlist, fignum=None, bordercolor='green', facecolor='white', facealpha=0.5, do_caption=True, fontsize=10, textcolor='green', textfacecolor='white', textfacealpha=1.0, captionoffset=(0,0), nowindow=False, timestamp=None, timestampcolor='black', timestampfacecolor=None, timestampoffset=(0,0), timestamp_alpha=0.6, kp_alpha=0.7):
-
     if nowindow:
         noshow(fignum)
-    h = BACKEND.imobjects(img, objlist, fignum=fignum, bordercolor=bordercolor, do_caption=do_caption, facecolor=facecolor, facealpha=facealpha, fontsize=fontsize, textcolor=textcolor, captionoffset=captionoffset, textfacecolor=textfacecolor, textfacealpha=textfacealpha)
+    h = BACKEND.imobjects(img, objlist, fignum=fignum, bordercolor=bordercolor, do_caption=do_caption, facecolor=facecolor, facealpha=facealpha, fontsize=fontsize, textcolor=textcolor, captionoffset=captionoffset, textfacecolor=textfacecolor, textfacealpha=textfacealpha, kp_alpha=kp_alpha)
     if timestamp is not None:
         text(str(timestamp), 10+timestampoffset[0], 21+timestampoffset[1], fontsize=fontsize, textfacealpha=0.6, facealpha=0.6, alpha=timestamp_alpha, textcolor=timestampcolor, textfacecolor=timestampfacecolor, pad=0.75)       
     if not nowindow:
