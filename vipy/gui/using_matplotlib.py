@@ -289,11 +289,12 @@ def imkeypoints(img, kplist, fignum=None, bordercolor='green', do_caption=True, 
     return fignum
 
 
-def imobjects(img, objlist, fignum=None, bordercolor='green', do_caption=True, facecolor='white', facealpha=0.5, textcolor='green', textfacecolor='white', textfacealpha=1.0, fontsize=10, captionoffset=(0,0)):
+def imobjects(img, objlist, fignum=None, bordercolor='green', do_caption=True, facecolor='white', facealpha=0.5, textcolor='green', textfacecolor='white', textfacealpha=1.0, fontsize=10, captionoffset=(0,0), kp_alpha=0.8):
     """Show `vipy.object.Keypoint2d` on the same image, plotted in list order with optional captions """
 
     # Create image
     fignum = imshow(img, fignum=fignum) 
+    plt.gca().set_autoscale_on(False)
 
     # A better way? https://matplotlib.org/api/_as_gen/matplotlib.animation.FuncAnimation.html
 
@@ -330,12 +331,12 @@ def imobjects(img, objlist, fignum=None, bordercolor='green', do_caption=True, f
             size.append(max(p.r, 1) ** 2) # size is pts squared
             
             if islist(bordercolor):
-                color.append(mcolors.to_hex(bordercolor[k]) + format(int(255*(1-facealpha)), '02X'))  # with alpha
+                color.append(mcolors.to_hex(bordercolor[k]) + format(int(255*kp_alpha), '02X'))  # with alpha
             else:
-                color.append(mcolors.to_hex(bordercolor) + format(int(255*(1-facealpha)), '02X'))  # with alpha
+                color.append(mcolors.to_hex(bordercolor) + format(int(255*(kp_alpha)), '02X'))  # with alpha
 
         plt.figure(fignum)
-        plt.scatter(x, y, c=color, s=size, linewidths=0.5, edgecolors='silver')    # no text, points only
+        plt.scatter(x, y, c=color, s=size, linewidths=0.5, edgecolors='silver', clip_on=True)    # no text, points only
     return fignum
 
 
