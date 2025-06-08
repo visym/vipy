@@ -15,7 +15,8 @@ matplotlib.rcParams['toolbar'] = 'None'
 matplotlib_version_at_least_3p3 = Version.from_string(matplotlib.__version__) >= '3.3'
 
 
-COLORLIST = [str(name) for (name, hex) in mcolors.cnames.items()]
+PRIMARY_COLORLIST = ['green','blue','red','cyan','orange','yellow','violet','white'] + ['tab:blue', 'tab:orange', 'tab:green', 'tab:red', 'tab:purple', 'tab:brown', 'tab:pink', 'tab:gray', 'tab:olive', 'tab:cyan']
+COLORLIST = PRIMARY_COLORLIST + [str(name) for (name, hex) in mcolors.cnames.items() if str(name) not in PRIMARY_COLORLIST]  # use primary colors first
 COLORLIST_LUMINANCE = [(np.array(mcolors.to_rgb(hex)) * np.array([0.2126, 0.7152, 0.0722])).sum() for (name, hex) in mcolors.cnames.items()]
 DARK_COLORLIST = tuple(c for (c,l) in zip(COLORLIST, COLORLIST_LUMINANCE) if l>=0.65)
 LIGHT_COLORLIST = tuple(c for (c,l) in zip(COLORLIST, COLORLIST_LUMINANCE) if l < 0.65)
@@ -198,7 +199,8 @@ def boundingbox(img, xmin, ymin, xmax, ymax, bboxcaption=None, fignum=None, bbox
         ymax_frac = 1.0 - ((max(ymin, lw/2)) / float(H)) 
         
         newlines = bboxcaption.count('\n')
-        #captionoffset = captionoffset if ymin > 15 else (captionoffset[0]+5, captionoffset[1]+(15*(newlines+1)))  # move down a bit if near top of image, shift once per newline in caption
+
+        captionoffset = captionoffset if ymin > 20 else (captionoffset[0], captionoffset[1]+(20*(newlines+1)))  # move down a bit if near top of image, shift once per newline in caption
 
         # MatplotlibDeprecationWarning: The 's' parameter of annotate() has been renamed 'text' since Matplotlib 3.3   
         plt.annotate(**{'text' if matplotlib_version_at_least_3p3 else 's': bboxcaption},
@@ -295,6 +297,7 @@ def imobjects(img, objlist, fignum=None, bordercolor='green', do_caption=True, f
     # Create image
     fignum = imshow(img, fignum=fignum) 
 
+
     # A better way? https://matplotlib.org/api/_as_gen/matplotlib.animation.FuncAnimation.html
 
     # Valid detections
@@ -321,7 +324,8 @@ def imobjects(img, objlist, fignum=None, bordercolor='green', do_caption=True, f
     
     # Valid keypoints
     kplist = [p for p in objlist if isinstance(p, vipy.object.Keypoint2d)]    
-
+    plt.gca().set_autoscale_on(False)
+    
     if len(kplist) > 0:
         (x,y,size,color) = ([],[],[],[])
         for (k,p) in enumerate(kplist):
@@ -335,7 +339,7 @@ def imobjects(img, objlist, fignum=None, bordercolor='green', do_caption=True, f
                 color.append(mcolors.to_hex(bordercolor) + format(int(255*(1-facealpha)), '02X'))  # with alpha
 
         plt.figure(fignum)
-        plt.scatter(x, y, c=color, s=size, linewidths=0.5, edgecolors='silver')    # no text, points only
+        plt.scatter(x, y, c=color, s=size, linewidths=0.5, edgecolors='silver', clip_on=True)    # no text, points only
     return fignum
 
 

@@ -30,11 +30,39 @@ class Dataset():
 
     Args:
         - dataset [list, tuple, set, obj]: a python built-in type that supports indexing or a generic object that supports indexing and has a length
-        - loader [lambda]: a callable loader that will construct the object from a raw data representation.  This is useful for custom deerialization or on demand transformations
-        - strict [bool]: If true, throw an error if the type of objlist is not a python built-in type.  This is useful for loading dataset objects that can be indexed.
+        - id [str]: an optional id of this dataset, which provides a descriptive name of the dataset
+        - loader [callable]: a callable loader that will construct the object from a raw data element in dataset.  This is useful for custom deerialization or on demand transformations
+        - shuffler [callable]:  A callable with argument equal to a dataset, that will shuffle the order in a custom way
+
+    Datasets can be indexed, shuffled, iterated, minibatched, sorted, sampled, partitioned.
+    Datasets constructed of vipy objects are lazy loaded, delaying loading pixels until they are needed
+
+    ```python
+    (trainset, valset, testset) = vipy.dataset.registry('mnist')
+
+    (trainset, valset) = trainset.partition(0.9, 0.1)
+    categories = trainset.set(lambda im: im.category())
+    smaller = testset.take(1024)
+    preprocessed = smaller.map(lambda im: im.resize(32, 32).gain(1/256))
+    
+    for b in preprocessed.minibatch(128):
+        print(b)
+
+    # visualize the dataset 
+    (trainset, valset, testset) = vipy.dataset.registry('pascal_voc_2007')
+    for im in trainset:
+        im.mindim(1024).show().print(sleep=1).close()
+    
+    ```
+
+    Datasets can be constructed from directories of json files or image files (`vipy.dataset.Dataset.from_directory`)
+    Datasets can be constructed from a single json file containing a list of objects (`vipy.dataset.Dataset.from_json`)
+    
+    ..note:: that if a lambda function is provided as loader or shuffler, then this dataset is not serializable
     """
 
-    def __init__(self, dataset, id=None, loader=None, strict=True, shuffler=None):
+    
+    def __init__(self, dataset, id=None, loader=None, shuffler=None):
         assert loader is None or callable(loader)
         assert shuffler is None or callable(shuffler)        
         
@@ -43,20 +71,22 @@ class Dataset():
         self._idx = list(range(len(self._ds)))
         self._loader = loader  # not serializable if lambda is provided
         self._shuffler = shuffler
-        self._type = None
-        
-
-
+        self._type = None        
 
     @classmethod
     def from_directory(cls, indir, filetype='json'):
+        """Recursively search indir for filetype, construct a dataset from all discovered files of that type"""
         if filetype == 'json':
             return cls([x for f in vipy.util.findjson(indir) for x in to_iterable(vipy.load(f))])
         elif filetype in ['jpg']:
             return cls([vipy.image.Image(filename=f) for f in vipy.util.findjpeg(indir)])            
         else:
             raise ValueError('unsupported file type "%s"' % filetype)
-    
+
+    @classmethod
+    def from_json(cls, jsonfile):
+        return cls([x for x in to_iterable(vipy.load(jsonfile))])
+        
     def __or__(self, other):
         assert isinstance(other, Dataset)
         return Union((self, other), id=self.id())
@@ -361,8 +391,6 @@ class Dataset():
             datasets.append(self.clone(shallow=True).index(self._idx[i:i+n]))
             i += n
         return datasets
-
-        
         
     def partition(self, trainfraction=0.9, valfraction=0.1, testfraction=0, trainsuffix=':train', valsuffix=':val', testsuffix=':test'):
         """Partition the dataset into the requested (train,val,test) fractions.  
@@ -525,7 +553,6 @@ class Paged(Dataset):
         super().__init__(dataset=pagelist,
                          id=id,
                          loader=loader,
-                         strict=False,
                          shuffler=shuffler).index(index if index else list(range(sum([p[0] for p in pagelist]))))
 
         assert callable(loader), "page loader required"
@@ -567,7 +594,7 @@ class Union(Dataset):
 
     Usage:
     
-        >>> vipy.dataset.Union(D1, D2, D3, id='union')
+        >>> vipy.dataset.Union(D1, D2, D3, id='D1:D2:D3')
         >>> vipy.dataset.Union( (D1, D2, D3) )
 
     """
@@ -619,18 +646,30 @@ class Union(Dataset):
 
 
 def registry(name):
-    (trainset, valset, testset) = (None, None, None)
+    """Common entry point for loading datasets by name
+
+    Args:
+       name [str]: A string describing the dataset
+
+    Returns:
+       (trainset, valset, testset) tuple where each is a `vipy.dataset.Dataset`
+    """
+
+    import vipy.data
     
+    (trainset, valset, testset) = (None, None, None)    
     if name == 'mnist':
-        import vipy.data.hf
-        (trainset, testset) = vipy.data.hf.mnist()
-        
+        (trainset, testset) = vipy.data.hf.mnist()        
     elif name == 'cifar10':
-        import vipy.data.hf
-        (trainset, testset) = vipy.data.hf.cifar10()
-        
+        (trainset, testset) = vipy.data.hf.cifar10()        
+    elif name == 'cifar100':
+        (trainset, testset) = vipy.data.hf.cifar100()        
+    elif name == 'oxford_pet':
+        trainset = vipy.data.hf.oxford_pets()
+    elif name == 'pascal_voc_2007':
+        (trainset, valset, testset) = vipy.data.hf.pascal_voc_2007()        
+    elif name == 'coco_2014':
+        trainset = vipy.data.coco.Detection_TrainVal_2014()
     else:
         raise ValueError('unknown dataset "%s"' % name)
-
-    
     return (trainset, valset, testset)

@@ -12,6 +12,16 @@ class Tag():
     """vipy.label.Tag class
 
     A Tag label is one or more strings with optional confidences that provide ground truth or estimated keywords/tags/labels/classes
+
+    ```python
+    tag = vipy.label.Tag('person')
+    tag = vipy.label.Tag('person', confidence=0.5)
+    tag = vipy.label.Tag( (('person', 0.5), ('other_person', 0.1)) )
+    ```
+
+    The category of a tag is the first tag
+    The confidence of a tag is the confidence of the first tag
+    
     """
     def __init__(self, tags=None, category=None, confidence=None):
         self._tags = []
@@ -116,7 +126,7 @@ class Tag():
 class Category(Tag):
     """vipy.label.Category class
 
-    A Category is a `vipy.label.Tag` with at most one tag
+    A category label is a tag with at most one tag        
     """
     
     def __init__(self, category=None, confidence=None):
@@ -133,6 +143,16 @@ class Category(Tag):
     
     
 class Caption():
+    """vipy.label.Caption class
+
+    A caption is tag label is one or more natural language strings with optional confidences that provide ground truth or estimated descriptions
+
+    ```python
+    caption = vipy.label.Caption('An image containing a person')
+    caption = vipy.label.Caption((('An image containing a person', 0.99), ('An image containing two people', 0.1)))
+    ```
+    
+    """    
     def __init__(self, captions=None):
         self._captions = []
 
@@ -184,6 +204,12 @@ class Caption():
 
 
 class Label(Tag, Caption):
+    """vipy.label.Label class
+
+    A label is a `vipy.label.Tag` and `vipy.label.Caption`.
+    
+    """
+    
     def __init__(self, tags=None, captions=None, category=None):
         Tag.__init__(self, tags=tags, category=category)
         Caption.__init__(self, captions=captions)

@@ -278,8 +278,11 @@ def mergedict(d1, d2):
     return d
 
 
-def env(var):
-    return os.environ[var] if var.startswith('VIPY_') and var in os.environ else None
+def env(var=None):
+    """Return the VIPY environment variable var, returning None if not present, or all environment variables if var=None.  Var is optionally prepended with 'VIPY_'"""
+    env = {k:v for (k,v) in os.environ.items() if k.startswith('VIPY_')}
+    var = ('VIPY_'+var) if var is not None and not var.startswith('VIPY_') else var
+    return env if var is None else (env[var] if var in env else None)
 
 def hascache():
     """Is the VIPY_CACHE environment variable set?"""

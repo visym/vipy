@@ -373,9 +373,20 @@ def scatterplot(X, labels, outfile=None):
 
         
 def ascii_bar_chart(soft_labels, bar_width=40, min_conf=0, max_conf=1):
-    """Given a list of soft_labels = [(label, confidence), ...], return an ascii horizontal bar chart for each label sorted by confidence"""
+    """Given a list of soft_labels = [(label, confidence), ...], return an ascii horizontal bar chart for each label sorted by confidence.
+
+    Confidences are specied for the provide range (min_conf, max_conf)
+    The bar_width controls how wide the overall bars are in characters
+    
+    >>> print(vipy.metrics.ascii_bar_chart([('A',1), ('B',0.5), ('C',0.1)]))
+    [████████████████████████████████████████]  A (1.000)
+    [████████████████████....................]  B (0.500)
+    [████....................................]  C (0.100)
+
+    """
     cmin = min_conf if min_conf is not None else min(c for (l,c) in soft_labels)
     cmax = max_conf if max_conf is not None else max(c for (l,c) in soft_labels)
     num_blocks = lambda c: int(round(((c-cmin)/(cmax-cmin)) * bar_width))      
     num_dots   = lambda c: int(round((1 - ((c - cmin)/(cmax-cmin))) * bar_width))
     return '\n'.join(["[%s]  %s (%1.3f)" % ('█' * num_blocks(c) + '.' * num_dots(c), lbl,c) for (lbl,c) in sorted(soft_labels, key=lambda x: x[1], reverse=True)])        
+

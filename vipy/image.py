@@ -234,11 +234,11 @@ class Image():
     def print(self, prefix='', sleep=None):
         """Print the representation of the image and return self with an optional sleep=n seconds
         
-        Useful for debugging in long fluent chains.
+        Useful for debugging or sequential visualization in long fluent chains.
         """
         print(prefix+self.__repr__())
         if sleep is not None:
-            assert isinstance(sleep, int) and sleep > 0, "Sleep must be a non-negative integer number of seconds"
+            assert sleep > 0, "Sleep must be a non-negative number of seconds"
             time.sleep(sleep)
         return self
 
@@ -2548,9 +2548,7 @@ class Scene(LabeledImage):
            - boxalpha (float, [0,1]):  Set the text box background to be semi-transparent with an alpha
            - d_category2color (dict):  Define a dictionary of required mapping of specific category() to box colors.  Non-specified categories are assigned a random named color from vipy.show.colorlist()
            - caption_offset (int, int): The relative position of the caption to the upper right corner of the box.
-           - nowindow (bool):  Display or not display the image
-           - textfacecolor (str): One of the named colors from vipy.show.colorlist() for the color of the textbox background
-           - textfacealpha (float, [0,1]):  The textbox background transparency
+           - nowindow (bool):  Display or not display the image, used by `vipy.image.Scene.annotation`
            - shortlabel (dict):  An optional dictionary mapping category names to short names easier to display 
            - mutator (lambda):  A lambda function with signature lambda im: f(im) which will modify this image prior to show.  Useful for changing labels on the fly
            - timestampoffset (tuple): (x,y) coordinate offsets to shift the upper left corner timestamp
@@ -2580,7 +2578,7 @@ class Scene(LabeledImage):
         return self
 
     def annotate(self, outfile=None, categories=None, figure=1, nocaption=False, fontsize=10, boxalpha=0.15, d_category2color={'person':'green', 'vehicle':'blue', 'object':'red'}, captionoffset=(3,-18), dpi=200, shortlabel=None, nocaption_withstring=[], timestamp=None, mutator=None, timestampoffset=(0,0), dark_mode=True, light_mode=False):
-        """Alias for savefig"""
+        """Alias for `vipy.image.Scene.savefig"""
         return self.savefig(outfile=outfile, 
                             categories=categories, 
                             figure=figure, 
@@ -2599,7 +2597,7 @@ class Scene(LabeledImage):
                             mutator=mutator)
 
     def savefig(self, outfile=None, categories=None, figure=1, nocaption=False, fontsize=10, boxalpha=0.15, d_category2color={'person':'green', 'vehicle':'blue', 'object':'red'}, captionoffset=(3,-18), dpi=200, textfacecolor='white', shortlabel=None, nocaption_withstring=[], timestamp=None, mutator=None, timestampoffset=(0,0), dark_mode=True, light_mode=False):
-        """Save show() output to given file or return buffer without popping up a window"""
+        """Save `vipy.image.Scene.show output to given file or return buffer without popping up a window"""
         fignum = figure if figure is not None else 1        
         self.show(categories=categories, figure=fignum, nocaption=nocaption, fontsize=fontsize, boxalpha=boxalpha, 
                   d_category2color=d_category2color, captionoffset=captionoffset, nowindow=True, 
@@ -2706,9 +2704,9 @@ class ImageDetection(Image, vipy.object.Detection):
         """Crop the image using the bounding box and return a `vipy.image.Image` for the cropped pixels"""
         return vipy.image.Image.cast(self.clone())._crop(self.boundingbox())
 
-    def show(self):
+    def show(self, *args, **kwargs):
         """Show this object by casting to `vipy.image.Scene`"""
-        self.scene().show()
+        self.scene().show(*args, **kwargs)
         return self
 
     def clone(self):
@@ -2724,9 +2722,7 @@ class ImageDetection(Image, vipy.object.Detection):
         """is the bounding box fully within the provided image?"""
         return super().isinterior(self.width(), self.height())
 
-    
-    
-    
+           
 class DetectionImage(vipy.object.Detection, Image):
     """vipy.image.DetectionImage class
 
@@ -2796,9 +2792,9 @@ class DetectionImage(vipy.object.Detection, Image):
         """Crop the image using the bounding box and return a `vipy.image.Image` for the cropped pixels"""
         return vipy.image.Image.cast(self.clone())._crop(self.boundingbox())
 
-    def show(self):
+    def show(self, *args, **kwargs):
         """Show this object by casting to `vipy.image.Scene`"""
-        self.scene().show()
+        self.scene().show(*args, **kwargs)
         return self
 
     def clone(self):
@@ -2853,7 +2849,7 @@ def mutator_show_noun_only(nocaption=False):
     
     ..note:: To color boxes by track rather than noun, use `vipy.image.mutator_show_trackonly`
     """
-    return lambda im, k=None: (im.objectmap(lambda o: o.category('\n'.join([('__'+n if nocaption else n) for n in o.attributes['__object_category']])) if o.hasattribute('__object_category') else o))
+    return lambda im, k=None: (im.objectmap(lambda o: o.category('\n'.join([('__'+n if nocaption else n) for n in o.attributes['__track_category']])) if o.hasattribute('__track_category') else o))
 
 def mutator_show_verb_only():
     """Mutate the image to show the verb only"""
@@ -2861,19 +2857,19 @@ def mutator_show_verb_only():
 
 def mutator_show_noun_or_verb():
     """Mutate the image to show the verb only if it is non-zero else noun"""
-    return lambda im,k=None: (im.objectmap(lambda o: o.category('\n'.join([v if len(v)>0 else n for (n,v) in zip(o.attributes['__object_category'], o.attributes['__activity_category'])])) if o.hasattribute('__object_category') and o.hasattribute('__activity_category') else o))
+    return lambda im,k=None: (im.objectmap(lambda o: o.category('\n'.join([v if len(v)>0 else n for (n,v) in zip(o.attributes['__track_category'], o.attributes['__activity_category'])])) if o.hasattribute('__track_category') and o.hasattribute('__activity_category') else o))
 
 def mutator_show_noun_verb():
     """Mutate the image to show the category as 'Noun Verb1\nNoun Verb2'"""
     return lambda im, k=None: (im.objectmap(lambda o: o.category('\n'.join(['%s %s' % (n.capitalize().replace('_',' '),
                                                                                        (v.replace('%s_'%n.lower(),'',1) if v.lower().startswith(n.lower()) else v).replace('_',' '))
-                                                                            for (n,v) in zip(o.attributes['__object_category'], o.attributes['__activity_category'])]))
-                                            if o.hasattribute('__object_category') and o.hasattribute('__activity_category') else o))
+                                                                            for (n,v) in zip(o.attributes['__track_category'], o.attributes['__activity_category'])]))
+                                            if o.hasattribute('__track_category') and o.hasattribute('__activity_category') else o))
     
 def mutator_show_trackindex_verbonly(confidence=True, significant_digits=2):
     """Mutate the image to show boxes colored by track index, and only show 'verb' captions with activity confidence, sorted in decreasing order"""
     f = mutator_show_trackindex()
-    return lambda im, k=None, f=f: f(im).objectmap(lambda o: o.category('__%s' % o.category()) if (len(o.attributes['__object_category']) == 1 and len(o.attributes['__activity_category'][0]) == 0) else o.category('\n'.join(['%s %s' % (v, ('(%1.2f)'%float(c)) if (confidence is True and c is not None) else '') for (n,v,c) in sorted(zip(o.attributes['__object_category'], o.attributes['__activity_category'], o.attributes['__activity_conf']), key=lambda x: float(x[2]) if x[2] else 0, reverse=True)])))
+    return lambda im, k=None, f=f: f(im).objectmap(lambda o: o.category('__%s' % o.category()) if (len(o.attributes['__track_category']) == 1 and len(o.attributes['__activity_category'][0]) == 0) else o.category('\n'.join(['%s %s' % (v, ('(%1.2f)'%float(c)) if (confidence is True and c is not None) else '') for (n,v,c) in sorted(zip(o.attributes['__track_category'], o.attributes['__activity_category'], o.attributes['__activity_conf']), key=lambda x: float(x[2]) if x[2] else 0, reverse=True)])))
 
 
 def RandomImage(rows=None, cols=None):

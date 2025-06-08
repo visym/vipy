@@ -470,8 +470,6 @@ class Video(object):
         print(im)
     ```
 
-    See also 'pip install heyvi' 
-
     Args:
         filename: [str] The path to a video file.  
         url: [str] The URL to a video file.  If filename is not provided, then a random filename is assigned in VIPY_CACHE on download
@@ -2759,10 +2757,12 @@ class Scene(VideoCategory):
         """Return `vipy.image.Scene` object at frame k
 
         -The attributes of each of the `vipy.image.Scene.objects` in the scene contains helpful metadata for the provenance of the detection, including:  
-            - 'trackid' of the track this detection
+            - 'trackid' of the track of this detection
+            - 'track_index' of the track of this detection        
             - 'activityid' associated with this detection 
             - 'activity category' of this detection, used for visualization
-            - 'object category' of this detection, used for visualization        
+            - 'track category' of this detection, used for visualization
+            - 'activity_conf' of this detection, used for visualization                
 
         Args:
             k: [int >= 0] The frame index requested.  This is relative to the current frame rate of the video.
@@ -2807,7 +2807,7 @@ class Scene(VideoCategory):
                 
             # For display purposes
             # - Double prepended underscore attributes are private and cleaned using `vipy.image.Image.sanitize`
-            d.attributes['__object_category'] = [j[0] for j in jointlabel]
+            d.attributes['__track_category'] = [j[0] for j in jointlabel]
             d.attributes['__activity_category'] = [j[1] for j in jointlabel]
             d.attributes['__activity_conf'] = activityconf
         dets.sort(key=lambda d: (d.confidence() if d.confidence() is not None else 0, d.category()))   # layering in video is ordered by decreasing track confidence and alphabetical shortlabel

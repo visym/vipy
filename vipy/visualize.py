@@ -34,8 +34,24 @@ def scene_explorer(im, outfile=None, width=1024, title='Scene Explorer', preview
 
     A scene_explorer visualization is a standalone HTML file that shows a single `vipy.image.Scene` object with an interactive search and visualization of all objects, attributes, captions and tags
 
-    Current support for `vipy.object.Keypoint2d` only, showing the JSON string for the object
+    Args:
+        im: a `vipy.image.Scene` object for visualization
+        outfile: an html output file, if None a temp file with an html extension will be used 
+        title [str]: the title of the html file
+        previewurl [str]: A url containing an image thumbnail of what the html file contains.  Useful for previewing the file contents if shared on social media
+        keypoint_alpha [float]: the keypoint transparency in the range (0,1)
+        popup_alpha [float]: the popup window transparency in the range (0,1)
+        embed [bool]: If true, embed the image as base64 encoded image.  If false, use the provided url in the image
+        open_in_browser [bool]: If true, open the html file in the default browser on the current system
+        caption_formatter [lambda]:  A lambda function with a single argument equal to the input image that returns a HTML string for display in the capton popup. This can be any valid html
+        tag_formatter [lambda]:  A lambda function with a single argument equal to the input image that returns a HTML string for display in the tag popup.  This can be any valid html.
+        attribute_formatter [lambda]:  A lambda function with a single argument equal to the input image that returns a HTML string for display in the attribute popup.  This can be any valie html
 
+    Returns:
+        outfile
+
+    Current support for `vipy.object.Keypoint2d` only, `vipy.object.Detection` are ignored
+    
     """
     assert isinstance(im, vipy.image.Scene)
     assert outfile is None or ishtml(outfile)

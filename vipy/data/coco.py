@@ -20,6 +20,7 @@ labels_2014_2017 = ['person', 'bicycle', 'car', 'motorcycle', 'airplane', 'bus',
 # - bed annotation with/without headboard
 # - chairs and tables may be heavily occluded
 
+
 class Detection_TrainVal_2014(vipy.dataset.Dataset):
     """Project: https://cocodataset.org"""
     def __init__(self, datadir=None, redownload=False):
@@ -43,8 +44,8 @@ class Detection_TrainVal_2014(vipy.dataset.Dataset):
         
         imtuple = tuple((f,iid) for (iid,f) in d_imageid_to_filename.items())
         loader = lambda x, d_categoryid_to_category=d_categoryid_to_category, d_imageid_to_annotations=d_imageid_to_annotations: vipy.image.Scene(filename=x[0],
-                                            objects=[vipy.object.Detection(label=d_categoryid_to_category[o['category_id']], xywh=o['bbox'])
-                                                     for o in d_imageid_to_annotations[x[1]]] if x[1] in d_imageid_to_annotations else None)
+                                                                                                                                                  objects=[vipy.object.Detection(category=d_categoryid_to_category[o['category_id']], xywh=o['bbox'])
+                                                                                                                                                           for o in d_imageid_to_annotations[x[1]]] if x[1] in d_imageid_to_annotations else None)
         super().__init__(imtuple, id='coco_2014', loader=loader)
 
         open(os.path.join(self._datadir, '.complete'), 'a').close()        

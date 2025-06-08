@@ -12,6 +12,7 @@ import vipy.data.ethzshapes
 import vipy.data.facescrub
 import vipy.data.fddb
 import vipy.data.food101
+import vipy.data.hf
 import vipy.data.hmdb
 import vipy.data.imagenet
 import vipy.data.inaturalist

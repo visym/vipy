@@ -32,8 +32,8 @@ class Detection(BoundingBox, Object):
 
     """
 
-    def __init__(self, category=None, xmin=None, ymin=None, width=None, height=None, xmax=None, ymax=None, confidence=None, xcentroid=None, ycentroid=None, xywh=None, attributes=None, id=None, tags=None):
-        super().__init__(xmin=xmin, ymin=ymin, width=width, height=height, xmax=xmax, ymax=ymax, xcentroid=xcentroid, ycentroid=ycentroid, xywh=xywh)
+    def __init__(self, category=None, xmin=None, ymin=None, width=None, height=None, xmax=None, ymax=None, confidence=None, xcentroid=None, ycentroid=None, ulbr=None, xywh=None, attributes=None, id=None, tags=None):
+        super().__init__(xmin=xmin, ymin=ymin, width=width, height=height, xmax=xmax, ymax=ymax, xcentroid=xcentroid, ycentroid=ycentroid, xywh=xywh, ulbr=ulbr)
 
         self._id = shortuuid() if id == True else id
         self.attributes = {} if attributes is None else attributes.copy()  # shallow copy

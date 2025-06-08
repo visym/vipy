@@ -104,7 +104,7 @@ def imkeypoints(img, kplist, fignum=None, bordercolor='green', facecolor='white'
         BACKEND.flush() if len(kplist)>0 else BACKEND.imflush()               
     return h
 
-def imobjects(img, objlist, fignum=None, bordercolor='green', facecolor='white', facealpha=0.5, do_caption=True, fontsize=10, textcolor='green', textfacecolor='white', textfacealpha=1.0, captionoffset=(0,0), nowindow=False, timestamp=None, timestampcolor='black', timestampfacecolor=None, timestampoffset=(0,0), timestamp_alpha=0.6):
+def imobjects(img, objlist, fignum=None, bordercolor='green', facecolor='white', facealpha=0.5, do_caption=True, fontsize=10, textcolor='green', textfacecolor='white', textfacealpha=1.0, captionoffset=(0,0), nowindow=False, timestamp=None, timestampcolor='black', timestampfacecolor=None, timestampoffset=(0,0), timestamp_alpha=0.6, kp_alpha=0.7):
 
     if nowindow:
         noshow(fignum)

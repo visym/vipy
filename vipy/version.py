@@ -2,14 +2,26 @@ MAJOR = 1
 MINOR = 16
 RELEASE = 2
 
+
 class Version():
+    """vipy.version.Version class
+
+    This provides a simple class for comparing version strings similar to packaging.
+
+    >>> ver = vipy.version.Version.from_string('1.2.3')
+    >>> ver = vipy.version.Version(major=1, minor=2, release=3)    
+    >>> ver >= '1.2.2'
+    >>> ver == '1.2.3'
+    
+    """
+    
     def __init__(self, major, minor, release=0):
         self.major = int(major)
         self.minor = int(minor)
         self.release = int(release)
 
     def __repr__(self):
-        return self.version()
+        return '<vipy.version.Version: %s>' % self.version()
 
     def __str__(self):
         return self.version()

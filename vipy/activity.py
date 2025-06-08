@@ -22,8 +22,9 @@ class Activity(object):
     Valid constructors
 
     ```python 
-    t = vipy.object.Track(category='Person').add(...))
-    a = vipy.object.Activity(startframe=0, endframe=10, category='Walking', tracks={t.id():t})
+    t = vipy.object.Track(category='Person')
+    a = vipy.object.Activity(startframe=0, endframe=10, category='Walking', tracks=t.id())
+    a = vipy.object.Activity(startframe=0, endframe=10, category='Walking', tracks=t)    
     ```
 
     Note.. shortlabel is kepy for backwards compatibility and will be deprecated
