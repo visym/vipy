@@ -139,7 +139,6 @@ class BoundingBox(object):
           ulbr=(xmin,ymin,xmax,ymax)
           bounding rectangle of binary mask image"""
 
-    #__slots__ = ['_xmin', '_ymin', '_xmax', '_ymax']  # This is not backwards compatible
     def __init__(self, xmin=None, ymin=None, xmax=None, ymax=None, centroid=None, xcentroid=None, ycentroid=None, width=None, height=None, mask=None, xywh=None, ulbr=None, ulbrdict=None):
 
         if ulbrdict is not None:
@@ -197,10 +196,7 @@ class BoundingBox(object):
     def cast(cls, bb, flush=False):
         assert isinstance(bb, (BoundingBox, Point2d))
         bb = bb if isinstance(bb, BoundingBox) else bb.boundingbox()
-        bb.__class__ = BoundingBox
-        if flush:
-            bb.__dict__ = {k:v for (k,v) in bb.__dict__.items() if k in ['_xmin', '_ymin', '_xmax', '_ymax']}        
-        return bb
+        return cls(xywh=bb.xywh())
     
     @classmethod
     def from_json(cls, s):
@@ -219,7 +215,10 @@ class BoundingBox(object):
     def json(self, encode=True):
         d = {k.lstrip('_'):v for (k,v) in self.__dict__.items()}  # prettyjson (remove "_" prefix to attributes)        
         return json.dumps(d) if encode else d
-        
+
+    def has_normalized_coordinates(self):
+        return all(x >=0 and x <=1 for x in self.ulbr())
+    
     def clone(self):
         return BoundingBox(xmin=self._xmin, xmax=self._xmax, ymin=self._ymin, ymax=self._ymax)
     def bbclone(self):
@@ -1113,6 +1112,9 @@ class Point2d():
     def coord(self):
         return (self._x, self._y)
 
+    def has_normalized_coordinates(self):
+        return all(x >=0 and x <=1 for x in self.coord)
+    
     @classmethod
     def from_json(cls, s):
         d = json.loads(s) if not isinstance(s, dict) else s        

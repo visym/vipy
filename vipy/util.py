@@ -1200,8 +1200,7 @@ def readcsv(infile, separator=',', ignoreheader=False, comment=None, ignore_head
     """
 
     with open(infile, 'r') as f:
-        list_of_rows = [[x.strip() for x in r.split(separator)]
-                        for r in f.readlines()]
+        list_of_rows = [[x.strip() for x in r.split(separator)] for r in f]
     list_of_rows = list_of_rows if (len(list_of_rows)==0 or not (ignoreheader or ignore_header)) else list_of_rows[1:]
     list_of_rows = list_of_rows if comment is None else [r for r in list_of_rows if len(r)==0 or r[0][0] != comment]
     return list_of_rows

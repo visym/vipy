@@ -9,7 +9,7 @@ import vipy.globals
 from vipy.globals import log, cache
 from vipy.util import isnumpy, isurl, isimageurl, to_iterable, tolist,\
     fileext, tempimage, mat2gray, imwrite, imwritegray, mergedict, \
-    tempjpg, filetail, isimagefile, remkdir, hasextension, \
+    tempjpg, filetail, isimagefile, remkdir, hasextension, truncate_string, \
     try_import, tolist, islistoflists, istupleoftuples, isstring, \
     islist, isnumber, isnumpyarray, string_to_pil_interpolation, toextension, iswebp
 from vipy.geometry import BoundingBox, imagebox
@@ -120,10 +120,10 @@ class Image():
         # Colorspace guesses:
         if not colorspace:
             # Guess RGB colorspace if three channel uint8 if colorspace is not provided
-            colorspace = 'rgb' if (self.isloaded() and self.channels() == 3 and self._array.dtype == np.uint8) else colorspace
+            colorspace = 'rgb' if (self.isloaded() and self._array.ndim==3 and self._array.shape[2] == 3 and self._array.dtype == np.uint8) else colorspace
 
             # Guess LUM colorspace if three channel uint8 if colorspace is not provided
-            colorspace = 'lum' if (self.isloaded() and self.channels() == 1 and self._array.dtype == np.uint8) else colorspace
+            colorspace = 'lum' if (self.isloaded() and (self._array.ndim==2 or (self._array.ndim==3 and self._array.shape[2] == 1)) and self._array.dtype == np.uint8) else colorspace
             
             # Guess float colorspace if array is float32 and colorspace is not provided        
             colorspace = 'float' if (self.isloaded() and self._array.dtype == np.float32) else colorspace
@@ -615,7 +615,7 @@ class Image():
     
     def channels(self):
         """Return integer number of color channels"""
-        return 1 if self.load().array().ndim == 2 else self.load().array().shape[2]
+        return self.load().channels() if not self.isloaded() else (self._array.shape[2] if self._array.ndim==3 else 1)
 
     def iscolor(self):
         """Color images are three channel or four channel with transparency, float32 or uint8"""
@@ -2125,6 +2125,9 @@ class Scene(LabeledImage):
     def __json__(self):
         """Serialization method for json package"""
         return self.json(encode=True)
+
+    def num_objects(self):
+        return len(self._objectlist)
     
     def json(self, encode=True):
         d = super().json(encode=False)
@@ -2145,8 +2148,13 @@ class Scene(LabeledImage):
             strlist.append('filename="%s"' % (self.filename()))
         if self.hasurl():
             strlist.append('url=%s' % self.url())
+        if self.has_category():
+            strlist += ['category=%s' % truncate_string(str(self.category()), 40)]
+        elif self.has_tags():
+            strlist += ['tags=%s' % truncate_string(str(self.tags()), 40)]            
         if len(self.objects()) > 0:
             strlist.append('objects=%d' % len(self.objects()))
+            
         return str('<vipy.image.scene: %s>' % (', '.join(strlist)))
 
     def __len__(self):
@@ -2164,6 +2172,12 @@ class Scene(LabeledImage):
         obj = self._objectlist[k].clone()
         return ImageDetection(array=self.array(), filename=self.filename(), url=self.url(), colorspace=self.colorspace(), xmin=obj.xmin(), ymin=obj.ymin(), width=obj.width(), height=obj.height(), category=obj.category(), attributes=obj.attributes, id=obj.id())
 
+    def load(self, ignoreErrors=False, verbose=True):
+        super().load(ignoreErrors=ignoreErrors, verbose=verbose)
+        if self.isloaded() and self.num_objects() > 0 and any(o.has_normalized_coordinates() for o in self.objects()):
+            self.objectmap(lambda o: o.scale_x(self.array().shape[1]).scale_y(self.array().shape[0]) if o.has_normalized_coordinates() else o)
+        return self
+    
     def split(self):
         """Split a scene with K objects into a list of K `vipy.image.ImageDetection` objects, each with one object in the scene.
         
@@ -2611,14 +2625,14 @@ class Scene(LabeledImage):
             img = np.frombuffer(buf.getbuffer(), dtype=np.uint8).reshape((H, W, 4))
             if figure is None:
                 vipy.show.close(plt.gcf().number)   # memory cleanup (useful for video annotation on last frame)
-            return vipy.image.Image(array=img, colorspace='rgba')
+            return vipy.image.Image(array=img, colorspace='rgba').rgb()
         else:
             vipy.show.savefig(os.path.abspath(os.path.expanduser(outfile)), figure, dpi=dpi, bbox_inches='tight', pad_inches=0)
             return outfile
 
         
     
-class ImageDetection(Image, vipy.object.Detection):
+class ImageDetection(Scene):
     """vipy.image.ImageDetection class
 
     This class provides a representation of a `vipy.image.Image` with a single `vipy.object.Detection`.  This is useful for direct bounding box manipulations.
@@ -2646,37 +2660,35 @@ class ImageDetection(Image, vipy.object.Detection):
                  xmin=None, xmax=None, ymin=None, ymax=None, width=None, height=None, 
                  xcentroid=None, ycentroid=None, category=None, xywh=None, bbox=None, id=True):
 
-        # vipy.object.Detection inheritance
-        vipy.object.Detection.__init__(self,
-                                       xmin=xmin,
-                                       ymin=ymin,
-                                       width=width,
-                                       height=height,
-                                       xmax=xmax,
-                                       ymax=ymax,
-                                       xcentroid=xcentroid,
-                                       ycentroid=ycentroid,
-                                       xywh=xywh if xywh is not None else (bbox.xywh() if isinstance(bbox, BoundingBox) else None),                                       
-                                       category=category,
-                                       attributes=attributes,
-                                       id=id)
-
-        # vipy.image.Image class inheritance
-        Image.__init__(self,
-                       filename=filename,
-                       url=url,
-                       attributes=attributes,
-                       array=array,
-                       colorspace=colorspace)
-
+        super().__init__(filename=filename,
+                         url=url,
+                         attributes=attributes,
+                         array=array,
+                         colorspace=colorspace)
+        
+        self.add_object(vipy.object.Detection(xmin=xmin,
+                                              ymin=ymin,
+                                              width=width,
+                                              height=height,
+                                              xmax=xmax,
+                                              ymax=ymax,
+                                              xcentroid=xcentroid,
+                                              ycentroid=ycentroid,
+                                              xywh=xywh if xywh is not None else (bbox.xywh() if isinstance(bbox, BoundingBox) else None),                                       
+                                              category=category,
+                                              attributes=attributes,
+                                              id=id))
         
     def __repr__(self):
-        return str('<vipy.image.imagedetection: %s, %s>' % (Image.__repr__(self), vipy.object.Detection.__repr__(self)))
+        return str('<vipy.image.ImageDetection: %s, %s>' % (super().__repr__(), self._objectlist[0].__repr__()))
         
     def __eq__(self, other):
         """ImageDetection equality is defined as equivalent categories and boxes (not pixels)"""
         return self.boundingbox() == other.boundingbox() if isinstance(other, ImageDetection) else False
 
+    def num_objects(self):
+        return 1
+    
     @classmethod
     def from_json(obj, s):
         d = json.loads(s) if not isinstance(s, dict) else s
@@ -2693,138 +2705,12 @@ class ImageDetection(Image, vipy.object.Detection):
                    id=d['id'] if 'id' in d else None)
 
     def boundingbox(self):
-        """Cast this object to a cloned `vipy.geometry.BoundingBox` object"""
-        return vipy.geometry.BoundingBox.cast(self.clone())
+        return vipy.geometry.BoundingBox(ulbr=self._objectlist[0].ulbr())
 
-    def scene(self):
-        """Cast this object to a cloned `vipy.image.Scene` object"""        
-        return vipy.image.Scene.cast(self.clone()).objects([vipy.object.Detection.cast(self.clone()).new_category(self.category())])
-    
     def crop(self):
         """Crop the image using the bounding box and return a `vipy.image.Image` for the cropped pixels"""
         return vipy.image.Image.cast(self.clone())._crop(self.boundingbox())
 
-    def show(self, *args, **kwargs):
-        """Show this object by casting to `vipy.image.Scene`"""
-        self.scene().show(*args, **kwargs)
-        return self
-
-    def clone(self):
-        """Clone the object, for finer control over clone, cast to `vipy.image.ImageDetection.scene`"""
-        return copy.deepcopy(self)
-
-    def detectionimage(self):
-        """Cast the class to the base class vipy.image.DetectionImage so that bounding box methods have inheritance priority"""
-        self.__class__ = vipy.image.DetectionImage
-        return self
-
-    def isinterior(self):
-        """is the bounding box fully within the provided image?"""
-        return super().isinterior(self.width(), self.height())
-
-           
-class DetectionImage(vipy.object.Detection, Image):
-    """vipy.image.DetectionImage class
-
-    This class provides a representation of a `vipy.image.Image` with a single `vipy.object.Detection`  This is useful for direct bounding box manipulations.
-
-    This class inherits all methods of `vipy.image.Image` and `vipy.object.Detection` (and therefore `vipy.geometry.BoundingBox`).  
-
-    Inheritance priority is for vipy.object.Detection.  Overloaded methods such as rescale() or width() will return values for the bounding box.
-
-    Valid constructors include all provided by vipy.image.Image and BoundingBox coordinates
-
-    ```python
-    im = vipy.image.ImageDetection(filename='/path/to/dog_image.ext', category='dog', xmin=0, ymin=0, width=100, height=100)
-    im = vipy.image.ImageDetection(filename='/path/to/dog_image.ext', category='dog', xmin=0, ymin=0, xmax=100, ymax=100)
-    im = vipy.image.ImageDetection(filename='/path/to/dog_image.ext', category='dog', xcentroid=50, ycentroid=50, width=100, height=100)
-    ```
-
-    .. notes::
-        - The inheritance resolution order will prefer the subclass methods for `vipy.object.Detection`.  For example, the shape() method will return the bounding box shape.
-        - Use `vipy.image.ImageDetection` or `vipy.image.DetectionImage.imagedetection` cast if you prefer overloaded methods to resolve to image manipulation.
-        - All methods in this class will transform the pixels or the box independently.  The use case for this class is to manipulate boxes relative to the image for refinement (e.g. data augmentation).
-        - If you want the pixels to be transformed along with the boxes, use the `vipy.image.DetectionImage.scene` method to cast this to a `vipy.image.Scene` object.
-    """
-    
-    def __init__(self, filename=None, url=None, attributes=None, colorspace=None, array=None, 
-                 xmin=None, xmax=None, ymin=None, ymax=None, width=None, height=None, 
-                 xcentroid=None, ycentroid=None, category=None, xywh=None, bbox=None, id=True):
-
-        # vipy.image.Image class inheritance
-        Image.__init__(self,
-                       filename=filename,
-                       url=url,
-                       attributes=attributes,
-                       array=array,
-                       colorspace=colorspace)
-        
-        # vipy.object.Detection inheritance
-        vipy.object.Detection.__init__(self,
-                                       xmin=xmin,
-                                       ymin=ymin,
-                                       width=width,
-                                       height=height,
-                                       xmax=xmax,
-                                       ymax=ymax,
-                                       xcentroid=xcentroid,
-                                       ycentroid=ycentroid,
-                                       xywh=xywh if xywh is not None else (bbox.xywh() if isinstance(bbox, BoundingBox) else None),
-                                       category=category,
-                                       id=id)
-                
-    def __repr__(self):
-        return str('<vipy.image.detectionimage: %s, %s>' % (vipy.object.Detection.__repr__(self), Image.__repr__(self)))
-        
-    def __eq__(self, other):
-        """Equality is defined as equivalent categories and boxes (not pixels)"""
-        return self.boundingbox() == other.boundingbox() if isinstance(other, ImageDetection) else False
-
-    def boundingbox(self):
-        """Cast this object to a cloned `vipy.geometry.BoundingBox` object"""
-        return vipy.geometry.BoundingBox.cast(self.clone())
-
-    def scene(self):
-        """Cast this object to a cloned `vipy.image.Scene` object"""        
-        return vipy.image.Scene.cast(self.clone()).objects([vipy.object.Detection.cast(self.clone()).new_category(self.category())])
-    
-    def crop(self):
-        """Crop the image using the bounding box and return a `vipy.image.Image` for the cropped pixels"""
-        return vipy.image.Image.cast(self.clone())._crop(self.boundingbox())
-
-    def show(self, *args, **kwargs):
-        """Show this object by casting to `vipy.image.Scene`"""
-        self.scene().show(*args, **kwargs)
-        return self
-
-    def clone(self):
-        """Clone the object, for finer control over clone, cast to `vipy.image.ImageDetection.scene`"""
-        return copy.deepcopy(self)
-
-    def imagedetection(self):
-        """Cast the class to the base class vipy.image.ImageDetection so that image methods have inheritance priority"""
-        self.__class__ = vipy.image.ImageDetection
-        return self
-
-    def isinterior(self):
-        """is the bounding box fully within the provided image?"""
-        return super().isinterior(Image.width(self), Image.height(self))
-
-    @classmethod
-    def from_json(obj, s):
-        d = json.loads(s) if not isinstance(s, dict) else s
-        d = {k.lstrip('_'):v for (k,v) in d.items()}  # prettyjson (remove "_" prefix to attributes)                                
-        return cls(filename=d['filename'] if 'filename' in d else None,
-                   url=d['url'] if 'url' in d else None,
-                   category=d['category'] if 'category' in d else None,
-                   attributes=d['attributes'] if 'attributes' in d else None,
-                   colorspace=d['colorspace'] if 'colorspace' in d else None,
-                   array=d['array'] if 'array' in d else None,
-                   xmin=d['xmin'] if 'xmin' in d else None,
-                   ymin=d['ymin'] if 'ymin' in d else None,                   
-                   xmax=d['xmax'] if 'xmax' in d else None,
-                   ymax=d['ymax'] if 'ymax' in d else None,
-                   id=d['id'] if 'id' in d else None)
     
     
 def mutator_show_trackid(n_digits_in_trackid=None):

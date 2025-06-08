@@ -128,7 +128,6 @@ class Category(Tag):
 
     A category label is a tag with at most one tag        
     """
-    
     def __init__(self, category=None, confidence=None):
         super().__init__(category=category, confidence=confidence)
     
@@ -152,7 +151,8 @@ class Caption():
     caption = vipy.label.Caption((('An image containing a person', 0.99), ('An image containing two people', 0.1)))
     ```
     
-    """    
+    """
+
     def __init__(self, captions=None):
         self._captions = []
 
@@ -209,7 +209,7 @@ class Label(Tag, Caption):
     A label is a `vipy.label.Tag` and `vipy.label.Caption`.
     
     """
-    
+
     def __init__(self, tags=None, captions=None, category=None):
         Tag.__init__(self, tags=tags, category=category)
         Caption.__init__(self, captions=captions)

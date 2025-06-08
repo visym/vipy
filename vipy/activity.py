@@ -30,6 +30,7 @@ class Activity(object):
     Note.. shortlabel is kepy for backwards compatibility and will be deprecated
     
     """
+    __slots__ = ['_id', '_startframe', '_endframe', '_framerate', '_label', '_trackid', '_actorid', 'attributes']
     def __init__(self, startframe, endframe, framerate=None, label=None, category=None, tracks=None, attributes=None, actorid=None, confidence=None, id=None, shortlabel=None):
         assert not (label is not None and category is not None), "Activity() Constructor requires either label or category kwargs, not both"
         assert startframe <= endframe, "Start frame must be less than or equal to end frame"
@@ -113,10 +114,7 @@ class Activity(object):
         return self.json(encode=True)
     
     def json(self, encode=True):
-        d = {k.lstrip('_'):v for (k,v) in self.__dict__.items() if v is not None}  # prettyjson (remove "_" prefix to attributes)                                                        
-        #d = {k:v for (k,v) in self.__dict__.items() if not ((k == '_shortlabel' and v is None) or
-        #                                                    (k == 'attributes' and (v is None or isinstance(v, dict) and len(v)==0)) or
-        #                                                    (k == '_id' and v is None))}  # don't bother to store None values
+        d = {k.lstrip('_'):getattr(self, k) for k in Activity.__slots__ if getattr(self, k) is not None}  # prettyjson (remove "_" prefix to attributes)          
         d = {k:v if k != 'trackid' else tuple(v) for (k,v) in d.items()}  # sets are non-serializable
         return json.dumps(d) if encode else d
     

@@ -256,7 +256,7 @@ def test_boundingbox():
     assert bb.to_xywh() == (0,0,100,100)
     print('[test_geometry.boundingbox.convexhull]: PASSED')
 
-    img = ImageDetection(array=np.zeros((128,256), dtype=np.float32), xmin=10,ymin=20,width=30,height=40).scene().rectangular_mask()
+    img = ImageDetection(array=np.zeros((128,256), dtype=np.float32), xmin=10,ymin=20,width=30,height=40).rectangular_mask()
     im = ImageDetection(array=np.float32(img), colorspace='float', xmin=10,ymin=20,width=30,height=40)
     assert np.sum(img) == np.sum(im.crop().array())
     bb = BoundingBox(xmin=10, ymin=20, width=30, height=40).rot90cw(128, 256)
@@ -270,7 +270,7 @@ def test_boundingbox():
     print('[test_geometry.boundingbox.rot90ccw]: PASSED')
 
     bb = BoundingBox(xmin=10, ymin=20, width=30, height=40)
-    img = ImageDetection(array=np.zeros((128,256), dtype=np.float32), xywh=bb.xywh()).scene().rectangular_mask()
+    img = ImageDetection(array=np.zeros((128,256), dtype=np.float32), xywh=bb.xywh()).rectangular_mask()
     bb = bb.fliplr(img)
     im = ImageDetection(array=np.fliplr(img), xywh=bb.xywh())
     assert np.sum(img) == np.sum(im.crop().array())

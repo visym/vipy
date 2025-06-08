@@ -218,11 +218,6 @@ def _test_image_fileformat(imgfile):
     assert(im._array is None and imc._array is None)
     print('[test_image.image]["%s"]:  Image.clone: PASSED' % imgfile)
 
-    # Downgrade
-    im = ImageDetection(filename=imgfile, xmin=100, ymin=100, width=700, height=1000, category='face')    
-    assert im.xywh() == im.boundingbox().xywh()
-    print('[test_image.image]["%s"]:  ImageDetection downgrade  PASSED' % imgfile)    
-    
     # Saveas
     im = Image(filename=imgfile).load()
     f = temppng()
@@ -457,7 +452,7 @@ def test_imagedetection():
         print('[test_image.imagedetection]: (xmin,ymin,xmax,ymax) bounding box constructor PASSED')
 
     im = ImageDetection(filename=rgbfile, xmin=100, ymin=100, width=200, height=-200, category='face')
-    assert im.invalid()
+    assert im.boundingbox().invalid()
     print('[test_image.imagedetection]: invalid box: PASSED')
     try:
         im.crop()
@@ -473,8 +468,6 @@ def test_imagedetection():
     # boundingbox() methods
     im = ImageDetection(filename=rgbfile, category='face', xmin=-1, ymin=-2, ymax=10, xmax=20)
     assert BoundingBox(-1, -2, 20, 10) == im.boundingbox()
-    assert im.xmin(0).ymin(0).xmax(10).ymax(20).xywh() == BoundingBox(0,0,width=10, height=20).xywh()
-    assert BoundingBox(1,2,3,4).xywh() == im.xmin(1).ymin(2).xmax(3).ymax(4).xywh()
 
     # Crop
     im = ImageDetection(filename=rgbfile, xmin=100, ymin=100, width=200, height=200, category='face')
@@ -487,116 +480,10 @@ def test_imagedetection():
     # Rescale
     im = ImageDetection(filename=rgbfile, xmin=100, ymin=100, width=200, height=200, category='face')
     im = im.rescale(0.5)  # changes images
-    assert(im.boundingbox().width() == 200 and im.boundingbox().height() == 200)
-    assert(im.width() == Image(filename=rgbfile).width()/2 and im.height() == Image(filename=rgbfile).height()/2)
+    assert(im.boundingbox().width() == 100 and im.boundingbox().height() == 100)
     print('[test_image.imagedetection]: rescale  PASSED')
 
-    # Resize
-    imorig = ImageDetection(filename=rgbfile, xmin=100, ymin=100, width=200, height=300, category='face')
-    im = imorig.clone().resize(cols=int(imorig.width() // 2.0), rows=int(imorig.height() // 2.0))  # pixels
-    assert(im.boundingbox().width() == 200 and im.boundingbox().height() == 300)
-    assert(im.width() == imorig.width()//2 and im.height() == imorig.height()//2)
-    assert(im.crop().width() == 200)  # bbox not changed
-    print('[test_image.imagedetection]: resize  PASSED')
-
-    # Isinterior
-    im = ImageDetection(array=np.zeros((10,20), dtype=np.float32), xmin=100, ymin=100, xmax=200, ymax=200, category='face')
-    assert not im.isinterior()
-    im = ImageDetection(array=np.zeros((10,20), dtype=np.float32), xmin=0, ymin=0, width=20, height=10)
-    assert im.isinterior()
-    print('[test_image.imagedetection]: interior  PASSED')
-
-    # Fliplr
-    img = np.random.rand(10,20).astype(np.float32)
-    im = ImageDetection(array=img, xmin=0, ymin=0, xmax=5, ymax=10)
-    assert im.isinterior()
-    assert not np.allclose(im.clone().fliplr().crop().array(), np.fliplr(im.crop().array()))  # pixels separate from bounding box
-    print('[test_image.imagedetection]: fliplr  PASSED')
-
-    # Square crops
-    img = np.random.rand(10,20).astype(np.float32)
-    imid = ImageDetection(array=img, xmin=0, ymin=0, xmax=5, ymax=10)  # image priority
-    imdi = imid.clone().detectionimage()  # detection priority    
-    imorig = imid.clone()    
-    (x,y,w,h) = imid.boundingbox().xywh()
-    (xc,yc) = imid.boundingbox().centroid()  # box centroid
-    assert imdi.clone().minsquare().shape() == (5, 5)
-    assert imid.clone().minsquare().shape() == (10, 10)    
-    assert imdi.clone().minsquare().boundingbox().centroid() == (xc, yc)
-    assert imid.clone().minsquare().boundingbox().shape() == (10, 5)    
-    assert imid.clone().maxsquare().shape() == (20,20)
-    assert imdi.clone().maxsquare().shape() == (10,10)    
-    assert imid.clone().centersquare().shape() == (10,10)
-    assert imid.clone().centersquare().boundingbox().xywh() == (0,0,5,10)
-    assert imdi.clone().centersquare().centroid() == imdi.centroid()
-    
-    #img = np.random.rand(20,10,3).astype(np.float32)
-    #assert ImageDetection(array=img, xmin=0, ymin=0, width=10, height=10).minsquare().crop().shape() == (10,10)
-    #img = np.random.rand(21,9,3).astype(np.float32)
-    #assert ImageDetection(array=img, xmin=0, ymin=0, width=9, height=21).centersquare().crop().shape() == (9,9)
-    #img = np.random.rand(10,11,3).astype(np.float32)
-    #assert ImageDetection(array=img, xmin=0, ymin=0, width=11, height=10).centersquare().crop().shape() == (10,10)
-    
-    print('[test_image.imagedetection]: minsquare PASSED')
-    print('[test_image.imagedetection]: maxsquare PASSED')
-    print('[test_image.imagedetection]: centersquare PASSED')                  
-
-    # Dilate
-    im = ImageDetection(array=img, xmin=1, ymin=0, width=3, height=4)
-    assert im.clone().detectionimage().dilate(2).boundingbox() == BoundingBox(centroid=im.boundingbox().centroid(), width=6, height=8)
-    print('[test_image.imagedetection]: dilate PASSED')
-
-    # Crops
-    img = np.random.rand(10,20).astype(np.float32)
-    im = ImageDetection(array=img, xmin=1, ymin=0, width=3, height=4)
-    assert np.allclose(im.crop().array(), im.array()[0:4,1:4])
-    print('[test_image.imagedetection]: crop PASSED')
-
-    # The following are no longer necessary as of vipy-1.14.1 with the transition to new imagedetection
-    
-    # Pad
-    #img = np.random.rand(20,40).astype(np.float32)
-    #im = ImageDetection(array=img, xmin=0, ymin=0, width=40, height=20)
-    #assert np.allclose(im.clone().zeropad(10,10).crop().array(), img) and (im.clone().zeropad(10,20).shape() == (20 + 20 * 2, 40 + 10 * 2))
-    #img = np.random.rand(20,40).astype(np.float32)
-    #im = ImageDetection(array=img, xmin=0, ymin=0, width=40, height=20)
-    #assert np.allclose(im.clone().meanpad(10,10).crop().array(), img) and (im.clone().meanpad(10,20).shape() == (20 + 20 * 2, 40 + 10 * 2))
-    #imorig = ImageDetection(array=img, xmin=0, ymin=0, width=40, height=20)
-    #im = imorig.clone().meanpad( (0,10), (0,20) )
-    #assert np.allclose(imorig.clone().meanpad( (0,10), (0,20) ).crop().array(), img) and (imorig.clone().meanpad( (0,10), (0,20) ).shape() == (20 + 20, 10 + 40)) and img[0,0] == im.array()[0,0] and im.array()[-1,-1] != 0
-    #im = imorig.clone().zeropad( (0,10), (0,20) )
-    #assert np.allclose(imorig.clone().zeropad( (0,10), (0,20) ).crop().array(), img) and (imorig.clone().zeropad( (0,10), (0,20) ).shape() == (20 + 20, 10 + 40)) and img[0,0] == im.array()[0,0] and im.array()[-1,-1] == 0
-    #im = imorig.clone().zeropadlike(100, 110)
-    #assert im.width() == 100 and im.height() == 110
-    #print('[test_image.imagedetection]: pad  PASSED')
-
-    # imclip
-    #img = np.random.rand(20,10,3).astype(np.float32)
-    #im = ImageDetection(array=img, xmin=0, ymin=0, width=10, height=20)
-    #assert im.clone().imclip().bbox.xywh() == (0,0,10,20)
-    #im = ImageDetection(array=img, xmin=0, ymin=0, width=10, height=200)
-    #assert im.clone().imclip().bbox.xywh() == (0,0,10,20)
-    #im = ImageDetection(array=img, xmin=100, ymin=200, width=10, height=200)
-    #im = ImageDetection(array=img, xmin=-1, ymin=-2, width=100, height=200)
-    #assert im.clone().imclip().bbox.xywh() == (0,0,10,20)
-    #im = ImageDetection(array=img, xmin=1, ymin=1, width=9, height=9)
-    #assert im.clone().imclip().bbox.xywh() == (1,1,9,9)
-    #print('[test_image.imagedetection]: imclip  PASSED')
-
-    # Setzero
-    #img = np.random.rand(20,10,3).astype(np.float32)
-    #assert ImageDetection(array=img, xmin=0, ymin=0, width=2, height=3).setzero().crop().sum() == 0
-    #print('[test_image.imagedetection]: setzero  PASSED')
-
-    # Mask
-    #assert np.sum(ImageDetection(array=img, xmin=-1, ymin=-2, width=2, height=3).rectangular_mask(10,10)) == 1
-    #assert np.sum(ImageDetection(array=img, xmin=0, ymin=0, width=2, height=3).rectangular_mask(10,10)) == 6
-    #print('[test_image.imagedetection]: mask  PASSED')
-
-    # Dict
-    #assert isinstance(ImageDetection(array=img, xmin=0, ymin=0, width=2, height=3).dict(), dict)
-    #print('[test_image.imagedetection]: dict  PASSED')    
-
+    # rest of tests are no longer necessary as of vipy-1.16.2 moving ImageDetection to Scene subclass
     
 def test_scene():
     # Constructors

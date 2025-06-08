@@ -6,8 +6,8 @@ def test_interpolation():
     t = vipy.object.Track(keyframes=[0,4,8], boxes=[BoundingBox(100,200,300,400),
                                                     BoundingBox(500,600,700,800),
                                                     BoundingBox(900,1000,1100,1200)])
-    assert t.keyboxes()[0] == t[0]
-    assert t.keyboxes()[2] == t[8]
+    assert t.keyboxes()[0] == t[0].downcast()
+    assert t.keyboxes()[2] == t[8].downcast()
     assert BoundingBox(300,400,500,600) == BoundingBox.cast(t[2])
     
     t.resample(1)

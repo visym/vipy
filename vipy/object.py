@@ -16,7 +16,8 @@ except ImportError:
 
 class Object(Tag):
     pass
-    
+
+
 class Detection(BoundingBox, Object):
     """vipy.object.Detection class
     
@@ -31,7 +32,7 @@ class Detection(BoundingBox, Object):
     ```
 
     """
-
+    __slots__ = ['_xmin', '_ymin', '_xmax', '_ymax', 'attributes', '_id', '_tags']    
     def __init__(self, category=None, xmin=None, ymin=None, width=None, height=None, xmax=None, ymax=None, confidence=None, xcentroid=None, ycentroid=None, ulbr=None, xywh=None, attributes=None, id=None, tags=None):
         super().__init__(xmin=xmin, ymin=ymin, width=width, height=height, xmax=xmax, ymax=ymax, xcentroid=xcentroid, ycentroid=ycentroid, xywh=xywh, ulbr=ulbr)
 
@@ -43,22 +44,17 @@ class Detection(BoundingBox, Object):
     @classmethod
     def cast(cls, d):
         assert isinstance(d, BoundingBox)
-        d.__class__ = Detection
-        d.clear_tags()
-        if not hasattr(d, 'attributes'):
-            d.attributes = {}
-        return d
+        return cls(xywh=d.xywh())
 
     def downcast(self):
-        self.__class__ = BoundingBox
-        return self
+        return BoundingBox(xywh=self.xywh())
 
     def __json__(self):
         """Serialization method for json package"""
         return self.json(encode=True)
-    
+
     def json(self, encode=True):
-        d = {k.lstrip('_'):v for (k,v) in self.__dict__.items() if v is not None}  # prettyjson (remove "_" prefix to attributes) 
+        d = {k.lstrip('_'):getattr(self, k) for k in Detection.__slots__ if getattr(self, k) is not None}  # prettyjson (remove "_" prefix to attributes)  
         return json.dumps(d) if encode else d
     
     @classmethod
@@ -135,7 +131,8 @@ class Detection(BoundingBox, Object):
     
 class Keypoint2d(Point2d, Object):
     """vipy.object.Keypoint2d class"""
-    
+
+    __slots__ = ['_x', '_y', '_r', 'attributes', '_id', '_tags']        
     def __init__(self, x, y, radius=1, attributes=None, confidence=None, id=None, category=None, tags=None):
         super().__init__(x, y, r=radius)
         
@@ -179,12 +176,12 @@ class Keypoint2d(Point2d, Object):
                    id=d['id'] if 'id' in d else True)
     
     def json(self, encode=True):
-        d = {k.lstrip('_'):v for (k,v) in self.__dict__.items() if v is not None} # prettyjson (remove "_" prefix to attributes)  
+        d = {k.lstrip('_'):getattr(self, k) for k in Keypoint2d.__slots__ if getattr(self, k) is not None}  # prettyjson (remove "_" prefix to attributes)  
         return json.dumps(d) if encode else d
                 
     
                           
-class Track(object):
+class Track():
     """vipy.object.Track class
     
     A track represents one or more labeled bounding boxes of an object instance through time.  A track is defined as a finite set of labeled boxes observed 
@@ -215,7 +212,7 @@ class Track(object):
     ```
 
     """
-
+    __slots__ = ['_id', '_label', '_framerate', '_interpolation', '_boundary', 'attributes', '_keyframes', '_keyboxes']    
     def __init__(self, keyframes, boxes, category=None, label=None, framerate=None, interpolation='linear', boundary='strict', attributes=None, trackid=None, filterbox=False):
         keyframes = tolist(keyframes)
         boxes = tolist(boxes)        
@@ -270,7 +267,7 @@ class Track(object):
         return self.json(encode=True)
     
     def json(self, encode=True):
-        d = {k:v if k != '_keyboxes' else tuple([bb.json(encode=False) for bb in v]) for (k,v) in self.__dict__.items()}
+        d = {k:getattr(self, k) if k != '_keyboxes' else tuple([bb.json(encode=False) for bb in getattr(self, k)]) for k in Track.__slots__}        
         d = {k.lstrip('_'):v for (k,v) in d.items() if v is not None}  # prettyjson (remove "_" prefix to attributes)                
         d['keyframes'] = tuple([int(f) for f in self._keyframes])
         return json.dumps(d) if encode else d
