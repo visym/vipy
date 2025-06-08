@@ -205,6 +205,17 @@ def load(infile, abspath=True, refcycle=True, relocatable=True):
     return obj
 
 
+def is_jsonable(obj):
+    if isinstance(obj, (str, int, float, bool, type(None))):
+        return True  # JSON types
+    elif isinstance(obj, (list, tuple)):
+        return all(is_jsonable(item) for item in obj)
+    elif isinstance(obj, dict):
+        # JSON object keys *must* be strings
+        return all(isinstance(key, str) and is_jsonable(value) for key, value in obj.items())
+    else:
+        return False
+    
 def dirload(indir):
     """Load a directory by recursively searching for loadable archives and loading them into a flat list"""
     return [x for f in findloadable(indir) for x in load(f)]
@@ -232,61 +243,22 @@ def pklbz2(filename, obj=None):
         
 
 def catcher(f, *args, **kwargs):
-    """Call the function f with the provided arguments, and return (True, result) on success and (False, exception) if there is any thrown exception.  Useful for parallel processing"""
+    """Call the function f with the provided arguments, and return (True, result) on success and (False, exception) if there is any thrown exception.
+
+    Useful for parallel processing
+    Useful for wrapping a function where execptions are silent.
+
+    For example, attempting to remove a file where the filename may be None or not present
+
+    >>> vipy.util.catcher(lambda f: os.remove(f), None)
+    >>> vipy.util.catcher(lambda f: os.remove(f), '/path/to/missing.txt'))
+
+    """
     assert callable(f)
     try:
         return (True, f(*args, **kwargs))
     except Exception as e:
         return (False, str(e))
-
-def loudcatcher(f, prepend, *args, **kwargs):
-    """Call the function f with the provided arguments, and return (True, result) on success and (False, exception) if there is any thrown exception.  Print the exception immediately.  Useful for parallel processing"""
-    assert callable(f)
-    try:
-        return (True, f(*args, **kwargs))
-    except Exception as e:
-        log.error('%s%s' % (prepend, str(e)))
-        return (False, str(e))
-
-def oneway_catcher(f, *args, **kwargs):
-    """Call the function f with the provided arguments, and return None on success and (exception) if there is any thrown exception.  Useful for parallel processing"""
-    assert callable(f)
-    try:
-        return (True, f(*args, **kwargs))
-    except Exception as e:
-        log.error('%s%s' % (prepend, str(e)))
-        return (False, str(e))
-    
-
-def nonecatcher(f, *args, **kwargs):
-    """Call the function f with the provided arguments, and return (result) on success and (None) if there is any thrown exception.  Useful for parallel processing"""
-    assert callable(f)
-    try:
-        return f(*args, **kwargs)
-    except Exception as e:
-        return None
-
-    
-def trycatcher(f, *args, **kwargs):
-    """Call the function f with the provided arguments, and return (result) on success and (None) if there is any thrown exception.  Useful for parallel processing"""
-    assert callable(f)
-    try:
-        return f(*args, **kwargs)
-    except Exception as e:
-        return None
-
-def caught(f, *args, **kwargs):
-    """Run the function f with the supplied *args and **kwargs, and return True if we caught an exception, otherwise return False (no exceptions were caught, the callable returned without error)"""
-    assert callable(f)
-    try:
-        f(*args, **kwargs)
-        return False
-    except:
-        return True
-    
-def catchif(f, *args, **kwargs):
-    """Call the function f with the provided arguments, and return (result) on success and (None) if there is any thrown exception.  Useful for parallel processing.  Alias for `vipy.util.trycatcher`"""
-    return trycatcher(f, *args, **kwargs)
 
 
 def mergedict(d1, d2):
@@ -305,6 +277,9 @@ def mergedict(d1, d2):
     d.update(d2)
     return d
 
+
+def env(var):
+    return os.environ[var] if var.startswith('VIPY_') and var in os.environ else None
 
 def hascache():
     """Is the VIPY_CACHE environment variable set?"""

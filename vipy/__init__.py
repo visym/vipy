@@ -527,7 +527,7 @@ import vipy.dataset
 
 # Top level functions
 # >>> vipy.save(...)
-from vipy.util import save, load
+from vipy.util import save, load, env
 
 __version__ = vipy.version.VERSION
 

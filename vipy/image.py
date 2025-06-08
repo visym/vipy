@@ -420,6 +420,8 @@ class Image():
         return {k.lstrip('_'):v for (k,v) in self.__dict__.items()}  # prettyjson (remove "_" prefix to attributes)                                    
 
     def json(self, encode=True):
+        if not vipy.util.is_jsonable(self.attributes):
+            raise ValueError('attributes dictionary contains non-json elements and cannot be serialized.  Try self.clear_attributes() or self.sanitize()')        
         d = {k:v for (k,v) in self.dict().items() if v is not None}  # filter empty
         if 'array' in d and d['array'] is not None:
             d['array'] = self._array.tolist()
@@ -1054,6 +1056,10 @@ class Image():
         """Return the key k in the attributes dictionary (self.attributes) if present, else None"""        
         return self.attributes[k] if k in self.attributes else None        
 
+    def clear_attributes(self):
+        self.attributes = {}
+        return self
+    
     def hasattribute(self, key):
         return self.attributes is not None and key in self.attributes
 
@@ -1633,9 +1639,12 @@ class Image():
             vipy.show.close(fignum)
             return self
     
-    def show(self, figure=1, nowindow=False, timestamp=None, timestampfacecolor='white', timestampcolor='black', mutator=None):
+    def show(self, figure=1, nowindow=False, timestamp=None, mutator=None, dark_mode=True, light_mode=False):
         """Display image on screen in provided figure number (clone and convert to RGB colorspace to show), return object"""
         assert self.load().isloaded(), 'Image not loaded'
+        dark_mode = False if light_mode else dark_mode
+        timestampfacecolor = 'black' if dark_mode else 'white'
+        timestampcolor = 'white' if dark_mode else 'black'
         im = self.clone() if not mutator else mutator(self.clone())        
         vipy.show.imshow(im.rgb().numpy(), fignum=figure, nowindow=nowindow, timestamp=timestamp, timestampfacecolor=timestampfacecolor, flush=True, timestampcolor=timestampcolor)
         return self
@@ -1704,14 +1713,19 @@ class Image():
         attr = ' '.join(['%s="%s"' % (str(k),str(v)) for (k,v) in attributes.items()])
         return '<img %ssrc="data:image/jpeg;charset=utf-8;base64,%s" alt="%s" %s>' % (('id="%s" ' % id) if id is not None else '', b, str(alt_text), attr)
 
-    def annotate(self, timestamp=None, timestampcolor='black', timestampfacecolor='white', mutator=None):
+    def annotate(self, timestamp=None, mutator=None, dark_mode=True):
         """Change pixels of this image to include rendered annotation and return an image object"""
+        timestampfacecolor = 'white' if not dark_mode else 'black'
+        timestampcolor = 'black' if not dark_mode else 'white'
+        
         # FIXME: for k in range(0,10): self.annotate().show(figure=k), this will result in cumulative figures
-        return self.array(self.savefig(timestamp=timestamp, timestampcolor=timestampcolor, timestampfacecolor=timestampfacecolor, mutator=mutator).rgb().array()).downcast()
+        return self.array(self.savefig(timestamp=timestamp, dark_mode=dark_mode, mutator=mutator).rgb().array()).downcast()
 
-    def savefig(self, filename=None, figure=1, timestamp=None, timestampcolor='black', timestampfacecolor='white', mutator=None):
+    def savefig(self, filename=None, figure=1, timestamp=None, dark_mode=True, mutator=None):
         """Save last figure output from self.show() with drawing overlays to provided filename and return filename"""
-        self.show(figure=figure, nowindow=True, timestamp=timestamp, timestampcolor=timestampcolor, timestampfacecolor=timestampfacecolor, mutator=mutator)  # sets figure dimensions, does not display window
+        timestampfacecolor = 'white' if not dark_mode else 'black'
+        timestampcolor = 'black' if not dark_mode else 'white'        
+        self.show(figure=figure, nowindow=True, timestamp=timestamp, dark_mode=dark_mode, mutator=mutator)  # sets figure dimensions, does not display window
         (W,H) = plt.figure(figure).canvas.get_width_height()  # fast
         buf = io.BytesIO()
         plt.figure(1).canvas.print_raw(buf)  # fast
@@ -2522,7 +2536,7 @@ class Scene(LabeledImage):
         return vipy.image.Image.perceptualhash_distance(self.bghash(bits=bits), im.bghash(bits=bits)) < threshold 
     
         
-    def show(self, categories=None, figure=1, nocaption=False, nocaption_withstring=[], fontsize=10, boxalpha=0.25, d_category2color={'Person':'green', 'Vehicle':'blue', 'Object':'red'}, captionoffset=(4,-15), nowindow=False, textfacecolor='white', textfacealpha=0.85, shortlabel=None, timestamp=None, timestampcolor='black', timestampfacecolor='white', mutator=None, timestampoffset=(0,0)):
+    def show(self, categories=None, figure=1, nocaption=False, nocaption_withstring=[], fontsize=10, boxalpha=0.15, d_category2color={'Person':'green', 'Vehicle':'blue', 'Object':'red'}, captionoffset=(3,-18), nowindow=False, shortlabel=None, timestamp=None, mutator=None, timestampoffset=(0,0), dark_mode=True, light_mode=False):
         """Show scene detection 
 
         Args:
@@ -2540,8 +2554,16 @@ class Scene(LabeledImage):
            - shortlabel (dict):  An optional dictionary mapping category names to short names easier to display 
            - mutator (lambda):  A lambda function with signature lambda im: f(im) which will modify this image prior to show.  Useful for changing labels on the fly
            - timestampoffset (tuple): (x,y) coordinate offsets to shift the upper left corner timestamp
+           - dark_mode [bool: If true, visualize captions with dark background and light foreground
+           - light_mode [bool: If true, visualize captions with light background and dark foreground        
         """
-        colors = vipy.show.colorlist()
+        dark_mode = False if light_mode else dark_mode
+        colors = vipy.show.colorlist(dark_mode=dark_mode, light_mode=not dark_mode)
+        textfacecolor = 'black' if dark_mode else 'white'
+        timestampcolor = 'white' if dark_mode else 'black'
+        timestampfacecolor = 'black' if dark_mode else 'white'        
+        textfacealpha = 0.6 if dark_mode else 0.85
+        
         im = self.clone() if not mutator else mutator(self.clone())
 
         valid_objects = [obj.clone() for obj in im._objectlist if categories is None or obj.category() in tolist(categories)]  # Objects with valid category
@@ -2553,10 +2575,11 @@ class Scene(LabeledImage):
         imdisplay = self.clone().rgb() if self.colorspace() != 'rgb' else self.load()  # convert to RGB for show() if necessary
         fontsize_scaled = float(fontsize.split(':')[0])*(min(imdisplay.shape())/640.0) if isstring(fontsize) else fontsize
         vipy.show.imobjects(imdisplay._array, valid_objects, bordercolor=object_color, textcolor=object_color, fignum=figure, do_caption=(nocaption==False), facealpha=boxalpha, fontsize=fontsize_scaled,
-                            captionoffset=captionoffset, nowindow=nowindow, textfacecolor=textfacecolor, textfacealpha=textfacealpha, timestamp=timestamp, timestampcolor=timestampcolor, timestampfacecolor=timestampfacecolor, timestampoffset=timestampoffset)
+                            captionoffset=captionoffset, nowindow=nowindow, textfacecolor=textfacecolor, textfacealpha=textfacealpha, timestamp=timestamp,
+                            timestampcolor=timestampcolor, timestampfacecolor=timestampfacecolor, timestampoffset=timestampoffset)
         return self
 
-    def annotate(self, outfile=None, categories=None, figure=1, nocaption=False, fontsize=10, boxalpha=0.25, d_category2color={'person':'green', 'vehicle':'blue', 'object':'red'}, captionoffset=(4,-15), dpi=200, textfacecolor='white', textfacealpha=0.85, shortlabel=None, nocaption_withstring=[], timestamp=None, timestampcolor='black', timestampfacecolor='white', mutator=None, timestampoffset=(0,0)):
+    def annotate(self, outfile=None, categories=None, figure=1, nocaption=False, fontsize=10, boxalpha=0.15, d_category2color={'person':'green', 'vehicle':'blue', 'object':'red'}, captionoffset=(3,-18), dpi=200, shortlabel=None, nocaption_withstring=[], timestamp=None, mutator=None, timestampoffset=(0,0), dark_mode=True, light_mode=False):
         """Alias for savefig"""
         return self.savefig(outfile=outfile, 
                             categories=categories, 
@@ -2567,23 +2590,21 @@ class Scene(LabeledImage):
                             d_category2color=d_category2color,
                             captionoffset=captionoffset, 
                             dpi=dpi, 
-                            textfacecolor=textfacecolor, 
-                            textfacealpha=textfacealpha, 
                             shortlabel=shortlabel, 
                             nocaption_withstring=nocaption_withstring, 
-                            timestamp=timestamp, 
-                            timestampcolor=timestampcolor, 
-                            timestampfacecolor=timestampfacecolor,
+                            timestamp=timestamp,
+                            dark_mode=dark_mode,
+                            light_mode=light_mode,
                             timestampoffset=timestampoffset,
                             mutator=mutator)
 
-    def savefig(self, outfile=None, categories=None, figure=1, nocaption=False, fontsize=10, boxalpha=0.25, d_category2color={'person':'green', 'vehicle':'blue', 'object':'red'}, captionoffset=(4,-15), dpi=200, textfacecolor='white', textfacealpha=0.85, shortlabel=None, nocaption_withstring=[], timestamp=None, timestampcolor='black', timestampfacecolor='white', mutator=None, timestampoffset=(0,0)):
+    def savefig(self, outfile=None, categories=None, figure=1, nocaption=False, fontsize=10, boxalpha=0.15, d_category2color={'person':'green', 'vehicle':'blue', 'object':'red'}, captionoffset=(3,-18), dpi=200, textfacecolor='white', shortlabel=None, nocaption_withstring=[], timestamp=None, mutator=None, timestampoffset=(0,0), dark_mode=True, light_mode=False):
         """Save show() output to given file or return buffer without popping up a window"""
         fignum = figure if figure is not None else 1        
         self.show(categories=categories, figure=fignum, nocaption=nocaption, fontsize=fontsize, boxalpha=boxalpha, 
-                  d_category2color=d_category2color, captionoffset=captionoffset, nowindow=True, textfacecolor=textfacecolor, 
-                  textfacealpha=textfacealpha, shortlabel=shortlabel, nocaption_withstring=nocaption_withstring, timestamp=timestamp,
-                  timestampcolor=timestampcolor, timestampfacecolor=timestampfacecolor, mutator=mutator, timestampoffset=timestampoffset)
+                  d_category2color=d_category2color, captionoffset=captionoffset, nowindow=True, 
+                  shortlabel=shortlabel, nocaption_withstring=nocaption_withstring, timestamp=timestamp,
+                  mutator=mutator, timestampoffset=timestampoffset, dark_mode=dark_mode, light_mode=light_mode)
         
         if outfile is None:
             buf = io.BytesIO()

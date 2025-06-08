@@ -104,13 +104,13 @@ def imkeypoints(img, kplist, fignum=None, bordercolor='green', facecolor='white'
         BACKEND.flush() if len(kplist)>0 else BACKEND.imflush()               
     return h
 
-def imobjects(img, objlist, fignum=None, bordercolor='green', facecolor='white', facealpha=0.5, do_caption=True, fontsize=10, textcolor='green', textfacecolor='white', textfacealpha=1.0, captionoffset=(0,0), nowindow=False, timestamp=None, timestampcolor='black', timestampfacecolor=None, timestampoffset=(0,0)):
+def imobjects(img, objlist, fignum=None, bordercolor='green', facecolor='white', facealpha=0.5, do_caption=True, fontsize=10, textcolor='green', textfacecolor='white', textfacealpha=1.0, captionoffset=(0,0), nowindow=False, timestamp=None, timestampcolor='black', timestampfacecolor=None, timestampoffset=(0,0), timestamp_alpha=0.6):
 
     if nowindow:
         noshow(fignum)
     h = BACKEND.imobjects(img, objlist, fignum=fignum, bordercolor=bordercolor, do_caption=do_caption, facecolor=facecolor, facealpha=facealpha, fontsize=fontsize, textcolor=textcolor, captionoffset=captionoffset, textfacecolor=textfacecolor, textfacealpha=textfacealpha)
     if timestamp is not None:
-        text(str(timestamp), 10+timestampoffset[0], 21+timestampoffset[1], fontsize=fontsize, textfacealpha=0.6, facealpha=0.6, alpha=0.8 if timestampfacecolor is not None else 1.0, textcolor=timestampcolor, textfacecolor=timestampfacecolor, pad=0.75)       
+        text(str(timestamp), 10+timestampoffset[0], 21+timestampoffset[1], fontsize=fontsize, textfacealpha=0.6, facealpha=0.6, alpha=timestamp_alpha, textcolor=timestampcolor, textfacecolor=timestampfacecolor, pad=0.75)       
     if not nowindow:
         show(fignum)
         BACKEND.flush() if len(objlist)>0 else BACKEND.imflush()               
@@ -132,8 +132,8 @@ def savefig(filename=None, fignum=None, pad_inches=0, bbox_inches='tight', dpi=N
     return BACKEND.savefig(filename, fignum, pad_inches=pad_inches, dpi=dpi, bbox_inches=bbox_inches, format=format)
 
 
-def colorlist():
-    return BACKEND.colorlist()
+def colorlist(dark_mode=False, light_mode=False):
+    return BACKEND.colorlist(dark_mode=dark_mode, light_mode=light_mode)
 
 
 def text(caption, xmin, ymin, fignum=None, textcolor='black', textfacecolor=None, textfacealpha=1.0, fontsize=10, linewidth=3, facecolor='white', facealpha=0.5, alpha=1.0, pad=0.5):

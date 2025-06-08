@@ -1,16 +1,24 @@
 import os
 import matplotlib
 from matplotlib import pyplot as plt
+import matplotlib.colors as mcolors
 import numpy as np
 from vipy.util import islist, temppng
 import sys
 from vipy.globals import log
 from vipy.version import Version
+import numpy as np
 
 
 FIGHANDLE = {}
 matplotlib.rcParams['toolbar'] = 'None'
 matplotlib_version_at_least_3p3 = Version.from_string(matplotlib.__version__) >= '3.3'
+
+
+COLORLIST = [str(name) for (name, hex) in mcolors.cnames.items()]
+COLORLIST_LUMINANCE = [(np.array(mcolors.to_rgb(hex)) * np.array([0.2126, 0.7152, 0.0722])).sum() for (name, hex) in mcolors.cnames.items()]
+DARK_COLORLIST = tuple(c for (c,l) in zip(COLORLIST, COLORLIST_LUMINANCE) if l>=0.65)
+LIGHT_COLORLIST = tuple(c for (c,l) in zip(COLORLIST, COLORLIST_LUMINANCE) if l < 0.65)
 
 
 # Optional latex strings in captions
@@ -150,12 +158,13 @@ def text(caption, xmin, ymin, fignum=None, textcolor='black', textfacecolor='whi
     lw = linewidth  # pull in the boxes by linewidth so that they do not overhang the figure
 
     newlines = caption.count('\n')
-    captionoffset = 15*newlines   # move down a bit if near top of image, shift once per newline in caption    
-    try:
-        # MatplotlibDeprecationWarning: The 's' parameter of annotate() has been renamed 'text' since Matplotlib 3.3            
-        handle = plt.annotate(alpha=alpha, text=caption, xy=(xmin,ymin), xytext=(xmin, ymin+captionoffset), xycoords='data', color=textcolor, bbox=None if textfacecolor is None else dict(facecolor=textfacecolor, edgecolor=None, alpha=textfacealpha, boxstyle='square', pad=pad), fontsize=fontsize, clip_on=True)
-    except:
-        handle = plt.annotate(alpha=alpha, s=caption, xy=(xmin,ymin), xytext=(xmin, ymin+captionoffset), xycoords='data', color=textcolor, bbox=None if textfacecolor is None else dict(facecolor=textfacecolor, edgecolor=None, alpha=textfacealpha, boxstyle='square', pad=pad), fontsize=fontsize, clip_on=True)        
+    captionoffset = 15*newlines   # move down a bit if near top of image, shift once per newline in caption
+    
+    # MatplotlibDeprecationWarning: The 's' parameter of annotate() has been renamed 'text' since Matplotlib 3.3            
+    handle = plt.annotate(**{'text' if matplotlib_version_at_least_3p3 else 's': caption},
+                          alpha=alpha, xy=(xmin,ymin), xytext=(xmin, ymin+captionoffset), xycoords='data',
+                          color=textcolor, bbox=None if textfacecolor is None else dict(facecolor=textfacecolor, edgecolor=None, alpha=textfacealpha, boxstyle='square', pad=pad),
+                          fontsize=fontsize, clip_on=True)
 
     return fignum
 
@@ -169,17 +178,15 @@ def boundingbox(img, xmin, ymin, xmax, ymax, bboxcaption=None, fignum=None, bbox
     ymin_frac = 1.0 - (min(ymax, H - lw/2) / float(H))
     ymax_frac = 1.0 - (max(ymin, lw/2) / float(H))
     
-    ax.axvspan(
-        max(xmin, lw/2), min(xmax, W - lw/2),
-        ymin=ymin_frac, ymax=ymin_frac,
-        edgecolor=bboxcolor, linewidth=lw, fill=False, alpha=0.6, clip_on=True, label=None, capstyle='round', joinstyle='bevel', 
-    )
-    ax.axvspan(
-        max(xmin, lw/2), min(xmax, W - lw/2),
-        ymin=ymin_frac, ymax=ymax_frac,
-        edgecolor=bboxcolor, facecolor=facecolor, linewidth=lw, fill=True, alpha=facealpha, clip_on=True, capstyle='round', joinstyle='bevel', label=None
-    )
-            
+    y0, y1 = ax.get_ylim()                 # data‐coordinates of bottom and top of the axes
+    rect = Rectangle((xmin, ymin), xmax - xmin,  (ymax_frac - ymin_frac) * abs(y1 - y0), 
+                 linewidth=lw,
+                 edgecolor=(*mcolors.to_rgb(bboxcolor),0.4),
+                 facecolor=(*mcolors.to_rgb(facecolor),facealpha),
+                 #alpha=facealpha,
+                 transform=ax.transData, capstyle='round', joinstyle='bevel', clip_on=True)
+    ax.add_patch(rect)
+
     # Text string
     if bboxcaption is not None:
         # a) Compute x‐fraction: (xmin − x0)/(x1 − x0)
@@ -205,7 +212,7 @@ def boundingbox(img, xmin, ymin, xmax, ymax, bboxcaption=None, fignum=None, bbox
                          facecolor=textfacecolor,
                          edgecolor=textcolor,
                          alpha=textfacealpha,
-                         boxstyle='round'
+                         boxstyle='square',
                      ),
                      horizontalalignment='left',
                      verticalalignment='top',
@@ -268,9 +275,9 @@ def imkeypoints(img, kplist, fignum=None, bordercolor='green', do_caption=True, 
             caption.append(None)
 
         if islist(bordercolor):
-            color.append(matplotlib.colors.to_hex(bordercolor[k]) + 'BB')  # with alpha
+            color.append(mcolors.to_hex(bordercolor[k]) + 'BB')  # with alpha
         else:
-            color.append(matplotlib.colors.to_hex(bordercolor) + 'BB')  # with alpha
+            color.append(mcolors.to_hex(bordercolor) + 'BB')  # with alpha
             
         if islist(textcolor):
             captioncolor.append(textcolor[k])
@@ -323,9 +330,9 @@ def imobjects(img, objlist, fignum=None, bordercolor='green', do_caption=True, f
             size.append(max(p.r, 1) ** 2) # size is pts squared
             
             if islist(bordercolor):
-                color.append(matplotlib.colors.to_hex(bordercolor[k]) + format(int(255*(1-facealpha)), '02X'))  # with alpha
+                color.append(mcolors.to_hex(bordercolor[k]) + format(int(255*(1-facealpha)), '02X'))  # with alpha
             else:
-                color.append(matplotlib.colors.to_hex(bordercolor) + format(int(255*(1-facealpha)), '02X'))  # with alpha
+                color.append(mcolors.to_hex(bordercolor) + format(int(255*(1-facealpha)), '02X'))  # with alpha
 
         plt.figure(fignum)
         plt.scatter(x, y, c=color, s=size, linewidths=0.5, edgecolors='silver')    # no text, points only
@@ -376,21 +383,9 @@ def frame(fr, im=None, color='b.', markersize=10, figure=None, caption=None):
     plt.draw()
 
 
-def colorlist():
-    """Return a list of named colors that are higher contrast with a white background"""
-    colorlist = [str(name) for (name, hex) in matplotlib.colors.cnames.items()]
-    primarycolorlist = ['green','blue','red','cyan','orange', 'yellow','violet']
-    tableaucolors = ['tab:blue', 'tab:orange', 'tab:green', 'tab:red', 'tab:purple', 'tab:brown', 'tab:pink', 'tab:gray', 'tab:olive', 'tab:cyan']
-    colors = primarycolorlist + tableaucolors + [c for c in colorlist if c not in set(primarycolorlist).union(tableaucolors)]
-    colors = [x for x in colors if x not in
-              set(['whitesmoke', 'gainsboro', 'w', 'floralwhite', 'lightgoldenrodyellow', 'ghostwhite', 'white', 'mistyrose',
-                   'seashell', 'ivory', 'honeydew', 'azure', 'lavenderblush', 'beige', 'mintcream', 'lightcyan',
-                   'snow', 'gainsboro', 'linen', 'antiquewhite', 'papayawhip', 'oldlace', 'cornsilk', 'palegoldenrod',
-                   'lightyellow', 'aliceblue', 'yellow', 'sandybrown', 'orange', 'moccasin', 'bisque', 'peachpuff', 'blanchedalmond',
-                   'lemonchiffon','navajowhite','wheat', 'lavender', 'burlywood' , 'palegreen', 'greenyellow', 'lawngreen', 'khaki', 'powderblue', 'chartreuse',
-                   'aqua','lime','cyan','mediumspringgreen','paleturquoise', 'aquamarine'])]  # https://matplotlib.org/3.1.0/gallery/color/named_colors.html
-    colors = [x for x in colors if 'light' not in x]
-    return colors
+def colorlist(dark_mode=False, light_mode=False):
+    """Return a list of named colors that are higher contrast with a white background if light_mode, else named colors that are higher contrast with a dark background if dark_mode"""        
+    return DARK_COLORLIST if dark_mode else (LIGHT_COLORLIST if light_mode else COLORLIST)
 
 
 def edit():
