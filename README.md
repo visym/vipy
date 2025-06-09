@@ -1,4 +1,4 @@
-[![PyPI version](https://badge.fury.io/py/vipy.svg)](https://badge.fury.io/py/vipy)  [![CI](https://github.com/visym/vipy/workflows/vipy%20unit%20tests/badge.svg)](https://github.com/visym/vipy/actions?query=workflow%3A%22vipy+unit+tests%22) [![Python 3.6+](https://img.shields.io/badge/python-3.6+-blue.svg)](https://www.python.org/downloads/) [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![PyPI version](https://badge.fury.io/py/vipy.svg)](https://badge.fury.io/py/vipy)  [![CI](https://github.com/visym/vipy/workflows/vipy%20unit%20tests/badge.svg)](https://github.com/visym/vipy/actions?query=workflow%3A%22vipy+unit+tests%22) [![Python 3.7+](https://img.shields.io/badge/python-3.6+-blue.svg)](https://www.python.org/downloads/) [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 VIPY
 ------------------- 
@@ -23,7 +23,7 @@ VIPY provides:
 
 Requirements
 -------------------
-python 3.6+  
+python 3.7+  
 [ffmpeg](https://ffmpeg.org/download.html) (required for videos)  
 numpy, matplotlib, dill, pillow, ffmpeg-python   
 

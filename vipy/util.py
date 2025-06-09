@@ -29,6 +29,7 @@ import warnings
 import copy
 import bz2
 import random
+import gc
 
 from vipy.globals import log
 
@@ -125,7 +126,7 @@ def save(vars, outfile=None, backup=False):
     return os.path.abspath(outfile)
 
 
-def load(infile, abspath=True, refcycle=True, relocatable=True):
+def load(infile, abspath=True, freeze=True, relocatable=True):
     """Load variables from a relocatable archive file format, either dill pickle, JSON format or JSON directory format.
        
        Loading is performed by attemping the following:
@@ -133,7 +134,7 @@ def load(infile, abspath=True, refcycle=True, relocatable=True):
        1. If the input file is a directory, return a `vipy.dataset.Dataset` with lazy loading of all pkl or json files recursively discovered in this directory.
        2. If the input file is a pickle or json file, load it
        3. if abspath=true, then convert relative paths to absolute paths for object when loaded
-       4. If refcycle=False, then disable the python reference cycle garbage collector for large archive files
+       4. If freeze=True, then disable the python reference cycle garbage collector for the object loaded by this file
     
     ```python
     im = vipy.image.owl()
@@ -144,11 +145,14 @@ def load(infile, abspath=True, refcycle=True, relocatable=True):
        Args:
            infile: [str] file saved using `vipy.util.save` with extension [.pkl, .json].  This may also be a directory tree containing json or pkl files 
            abspath: [bool] If true, then convert all vipy objects with relative paths to absolute paths. If False, then preserve relative paths and warn user.
-           refcycle: [bool] If False, then disable python reference cycle garbage collector.  This is useful for large python objects.
+           freeze: [bool] If True, then disable python reference cycle garbage collector for this loaded object. 
            relocatable: [bool] If True, then perform relocatable relative and absolute paths for vipy objects containing filenames
        Returns:
            The object in the archive file
     """
+    if freeze:
+        gc.disable()
+        
     infile = os.path.abspath(os.path.expanduser(infile))
 
     if ispkl(infile):
@@ -199,9 +203,10 @@ def load(infile, abspath=True, refcycle=True, relocatable=True):
     #   - This can be re-enabled at any time by "import gc; gc.enable()"
     #   - If you use %autoreload iPython magic command, note that this will be very slow.  You should set %sutoreload 0
     #   - Alternatively, load as JSON and all attributes will be unpacked on demand and stored in a packed format that is not tracked (e.g. tuple of strings) by the reference cycle counter
-    if not refcycle:
-        warnings.warn('Disabling python reference cycle garbage collection.  Re-enable at any time using "import gc; gc.enable()"')
-        import gc; gc.disable()
+    if freeze:
+        gc.enable()
+        gc.collect()
+        gc.freeze() 
     return obj
 
 

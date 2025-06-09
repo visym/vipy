@@ -645,18 +645,21 @@ class Union(Dataset):
     
 
 
-def registry(name):
+def registry(name, freeze=True):
     """Common entry point for loading datasets by name
 
     Args:
        name [str]: A string describing the dataset
-
-    Returns:
-       (trainset, valset, testset) tuple where each is a `vipy.dataset.Dataset`
-    """
-
-    import vipy.data
+       freeze [bool]:  If true, disable reference cycle counting for the loaded object (which will never contain cycles anyway)
     
+    Returns:
+       (trainset, valset, testset) tuple where each is a `vipy.dataset.Dataset` or None
+    """
+    import vipy.data        
+    
+    if freeze:
+        gc.disable()
+
     (trainset, valset, testset) = (None, None, None)    
     if name == 'mnist':
         (trainset, testset) = vipy.data.hf.mnist()        
@@ -672,4 +675,10 @@ def registry(name):
         trainset = vipy.data.coco.Detection_TrainVal_2014()
     else:
         raise ValueError('unknown dataset "%s"' % name)
+    
+    if freeze:
+        gc.enable()
+        gc.collect()
+        gc.freeze()  # python-3.7
+        
     return (trainset, valset, testset)
