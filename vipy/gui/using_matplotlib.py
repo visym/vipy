@@ -18,8 +18,8 @@ matplotlib_version_at_least_3p3 = Version.from_string(matplotlib.__version__) >=
 PRIMARY_COLORLIST = ['green','blue','red','cyan','orange','yellow','violet','white'] + ['tab:blue', 'tab:orange', 'tab:green', 'tab:red', 'tab:purple', 'tab:brown', 'tab:pink', 'tab:gray', 'tab:olive', 'tab:cyan']
 COLORLIST = PRIMARY_COLORLIST + [str(name) for (name, hex) in mcolors.cnames.items() if str(name) not in PRIMARY_COLORLIST]  # use primary colors first
 COLORLIST_LUMINANCE = [(np.array(mcolors.to_rgb(name)) * np.array([0.2126, 0.7152, 0.0722])).sum() for name in COLORLIST]
-DARK_COLORLIST = tuple(c for (c,l) in zip(COLORLIST, COLORLIST_LUMINANCE) if l>=0.6)  # colors that show well on dark backgrounds
-LIGHT_COLORLIST = tuple(c for (c,l) in zip(COLORLIST, COLORLIST_LUMINANCE) if l<=0.4) # colors that show well on light backgrounds
+DARK_COLORLIST = tuple(c for (c,l) in zip(COLORLIST, COLORLIST_LUMINANCE) if l>=0.5)  # colors that show well on dark backgrounds
+LIGHT_COLORLIST = tuple(c for (c,l) in zip(COLORLIST, COLORLIST_LUMINANCE) if l<=0.5) # colors that show well on light backgrounds
 
 
 # Optional latex strings in captions

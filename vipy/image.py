@@ -2544,6 +2544,7 @@ class Scene(TaggedImage):
            - theme [str]: If 'dark' use dark mode, if 'light' use light mode to visualize captions with high contrast dark or light foregrounds 
         """
         colors = vipy.show.colorlist(theme)
+        all_colors = vipy.show.colorlist()        
         textfacecolor = 'black' if theme=='dark' else 'white'
         timestampcolor = 'white' if theme=='dark'  else 'black'
         timestampfacecolor = 'black' if theme=='dark' else 'white'        
@@ -2555,8 +2556,11 @@ class Scene(TaggedImage):
         valid_objects = [obj.clone() for obj in imdisplay.objects() if categories is None or obj.category() in tolist(categories)]  # Objects with valid category
         valid_objects = [obj.imclip(self.numpy()) for obj in valid_objects if obj.hasoverlap(self.numpy())]  # Objects within image rectangle
         valid_objects = [obj.new_category(shortlabel[obj.category()]) for obj in valid_objects] if shortlabel else valid_objects  # Display name as shortlabel?
-        d_category2color = mergedict({d.category():colors[int(hashlib.sha1(str(d.category()).encode('utf-8')).hexdigest(), 16) % len(colors)] for d in valid_objects}, d_category2color)  # consistent color mapping by category
-        object_color = [d_category2color[d.category()] for d in valid_objects]                
+        d_det_category_to_color = {d.category():colors[int(hashlib.sha1(str(d.category()).encode('utf-8')).hexdigest(), 16) % len(colors)] for d in valid_objects if isinstance(d, vipy.object.Detection)}
+        d_kp_category_to_color = {d.category():all_colors[int(hashlib.sha1(str(d.category()).encode('utf-8')).hexdigest(), 16) % len(all_colors)] for d in valid_objects if isinstance(d, vipy.object.Keypoint2d)}        
+        d_category_to_color = mergedict(d_kp_category_to_color, d_det_category_to_color, d_category2color)
+        
+        object_color = [d_category_to_color[d.category()] for d in valid_objects]                
         valid_objects  = [d if not any([c in d.category() for c in tolist(nocaption_withstring)]) else d.nocategory() for d in valid_objects]  # Objects requested to show without caption
 
         fontsize_scaled = float(fontsize.split(':')[0])*(min(imdisplay.shape())/640.0) if isstring(fontsize) else fontsize

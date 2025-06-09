@@ -267,8 +267,8 @@ def catcher(f, *args, **kwargs):
         return (False, str(e))
 
 
-def mergedict(d1, d2):
-    """Combine keys of two dictionaries and return a dictionary deep copy.
+def mergedict(*args):
+    """Combine keys of two or more dictionaries and return a dictionary deep copy.
     
     ```python
     d1 = {1:2}
@@ -278,9 +278,11 @@ def mergedict(d1, d2):
     ```
 
     """
-    assert isinstance(d1, dict) and isinstance(d2, dict)
-    d = copy.deepcopy(d1)
-    d.update(d2)
+    assert all(isinstance(d, dict) for d in args)
+    assert len(args) > 0
+    d = copy.deepcopy(args[0])
+    for o in args[1:]:
+        d.update(o)
     return d
 
 
