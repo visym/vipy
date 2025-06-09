@@ -657,7 +657,9 @@ def registry(name, freeze=True):
     """
     import vipy.data        
 
-    registry = ['mnist', 'cifar10','oxford_pet','pascal_voc_2007','coco_2014', 'ava', 'activitynet', 'openimages_v7']
+    registry = ['mnist', 'cifar10','oxford_pet','pascal_voc_2007','coco_2014', 'ava',
+                'activitynet', 'openimages_v7', 'imagenet', 'imagenet21k']
+    
     if freeze:
         gc.disable()
 
@@ -682,6 +684,11 @@ def registry(name, freeze=True):
         (trainset, valset, testset) = (activitynet.trainset(), activitynet.valset(), activitynet.testset())
     elif name == 'openimages_v7':
         trainset = vipy.data.openimages.open_images_v7()
+    elif name == 'imagenet':
+        imagenet = vipy.data.imagenet.Imagenet2012()
+        (trainset, valset) = (imagenet.classification_trainset(), imagenet.classification_valset())
+    elif name == 'imagenet21k':
+        trainset = vipy.data.imagenet.Imagenet21K()
     else:
         raise ValueError('unknown dataset "%s" - choose from "%s"' % (name, ', '.join(sorted(registry))))
     

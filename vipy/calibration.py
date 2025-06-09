@@ -183,7 +183,7 @@ def circle(x, y, r, width, height, channels=1):
     Returns:
         numpy array of appropriate channels of float32 in [0,1]
     """
-    img = np.zeros( (height, width, channels), dtype=np.float32 )
+    img = np.zeros( (height, width, channels) if channels!=1 else (height,width), dtype=np.float32 )
     (X,Y) = np.meshgrid(range(width), range(height))
     img[np.sqrt((X-x)**2 + (Y-y)**2) < r] = 1.0
     return img

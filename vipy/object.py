@@ -20,10 +20,8 @@ class Object():
     def category(self):
         return self.get_attribute('tags')[0] if self.has_attribute('tags') else None
 
-    def new_category(self, c):
-        self.attributes['tags'] = [c]
-        self.del_attribute('confidences')
-        return self
+    def new_category(self, category, confidence=None):
+        return self.del_attribute('confidences').del_attribute('tags').add_tag(category, confidence)
     
     def confidence(self):
         return self.get_attribute('confidences')[self.category()] if self.has_attribute('confidences') and self.category() in self.attributes['confidences'] else None

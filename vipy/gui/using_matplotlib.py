@@ -1,6 +1,8 @@
 import os
 import matplotlib
 from matplotlib import pyplot as plt
+from matplotlib.patches import Circle
+from matplotlib.collections import PatchCollection
 import matplotlib.colors as mcolors
 import numpy as np
 from vipy.util import islist, temppng
@@ -326,21 +328,19 @@ def imobjects(img, objlist, fignum=None, bordercolor='green', do_caption=True, f
     # Valid keypoints
     kplist = [p for p in objlist if isinstance(p, vipy.object.Keypoint2d)]    
     plt.gca().set_autoscale_on(False)
-    
+
     if len(kplist) > 0:
-        (x,y,size,color) = ([],[],[],[])
+        (x,y,size,colors,r,patches) = ([],[],[],[],[],[])
         for (k,p) in enumerate(kplist):
             x.append(p.x)
             y.append(p.y)
-            size.append(max(p.r, 1) ** 2) # size is pts squared
+            r.append(p.r)
             
-            if islist(bordercolor):
-                color.append(mcolors.to_hex(bordercolor[k]) + format(int(255*kp_alpha), '02X'))  # with alpha
-            else:
-                color.append(mcolors.to_hex(bordercolor) + format(int(255*(kp_alpha)), '02X'))  # with alpha
+            c = mcolors.to_hex(bordercolor[k] if islist(bordercolor) else bordercolor)
+            colors.append(c + format(int(255*kp_alpha), '02X'))  # with alpha
+            patches.append(Circle((p.x, p.y), p.r))
 
-        plt.figure(fignum)
-        plt.scatter(x, y, c=color, s=size, linewidths=0.5, edgecolors='silver', clip_on=True)    # no text, points only
+        plt.gca().add_collection(PatchCollection(patches, facecolors=colors, edgecolors='silver', clip_on=True, linewidths=0.5))  # scale radius with window size
     return fignum
 
 

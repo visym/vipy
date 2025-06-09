@@ -2408,10 +2408,13 @@ class Scene(TaggedImage):
             (H, W) = (int(np.round(self.height())),
                       int(np.round(self.width())))
         immask = np.zeros((H, W)).astype(np.uint8)
-        for bb in self._objectlist:
-            if isinstance(bb, vipy.geometry.BoundingBox) and bb.hasoverlap(immask):
-                bbm = bb.clone().imclip(self.numpy()).int()
+        for o in self._objectlist:
+            if isinstance(o, vipy.geometry.BoundingBox) and o.hasoverlap(immask):
+                bbm = o.clone().imclip(self.numpy()).int()
                 immask[bbm.ymin():bbm.ymax(), bbm.xmin():bbm.xmax()] = 1
+            if isinstance(o, vipy.geometry.Point2d) and o.boundingbox().hasoverlap(immask):
+                mask = vipy.calibration.circle(o.x, o.y, o.r, W, H)
+                immask[mask>0] = 1
         return immask
 
     def binarymask(self):
