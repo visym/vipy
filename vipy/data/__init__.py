@@ -33,3 +33,5 @@ import vipy.data.vggface
 import vipy.data.vggface2
 import vipy.data.visualgenome
 import vipy.data.youtubefaces
+import vipy.data.openimages
+

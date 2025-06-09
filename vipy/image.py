@@ -1651,12 +1651,11 @@ class Image():
             vipy.show.close(fignum)
             return self
     
-    def show(self, figure=1, nowindow=False, timestamp=None, mutator=None, dark_mode=True, light_mode=False):
+    def show(self, figure=1, nowindow=False, timestamp=None, mutator=None, theme='dark'):
         """Display image on screen in provided figure number (clone and convert to RGB colorspace to show), return object"""
         assert self.load().isloaded(), 'Image not loaded'
-        dark_mode = False if light_mode else dark_mode
-        timestampfacecolor = 'black' if dark_mode else 'white'
-        timestampcolor = 'white' if dark_mode else 'black'
+        timestampfacecolor = 'black' if theme=='dark' else 'white'
+        timestampcolor = 'white' if theme=='dark' else 'black'
         im = self.clone() if not mutator else mutator(self.clone())        
         vipy.show.imshow(im.rgb().numpy(), fignum=figure, nowindow=nowindow, timestamp=timestamp, timestampfacecolor=timestampfacecolor, flush=True, timestampcolor=timestampcolor)
         return self
@@ -1725,19 +1724,14 @@ class Image():
         attr = ' '.join(['%s="%s"' % (str(k),str(v)) for (k,v) in attributes.items()])
         return '<img %ssrc="data:image/jpeg;charset=utf-8;base64,%s" alt="%s" %s>' % (('id="%s" ' % id) if id is not None else '', b, str(alt_text), attr)
 
-    def annotate(self, timestamp=None, mutator=None, dark_mode=True):
+    def annotate(self, timestamp=None, mutator=None, theme='dark'):
         """Change pixels of this image to include rendered annotation and return an image object"""
-        timestampfacecolor = 'white' if not dark_mode else 'black'
-        timestampcolor = 'black' if not dark_mode else 'white'
-        
         # FIXME: for k in range(0,10): self.annotate().show(figure=k), this will result in cumulative figures
-        return self.array(self.savefig(timestamp=timestamp, dark_mode=dark_mode, mutator=mutator).rgb().array()).downcast()
+        return self.array(self.savefig(timestamp=timestamp, theme=theme, mutator=mutator).rgb().array()).downcast()
 
-    def savefig(self, filename=None, figure=1, timestamp=None, dark_mode=True, mutator=None):
+    def savefig(self, filename=None, figure=1, timestamp=None, theme='dark', mutator=None):
         """Save last figure output from self.show() with drawing overlays to provided filename and return filename"""
-        timestampfacecolor = 'white' if not dark_mode else 'black'
-        timestampcolor = 'black' if not dark_mode else 'white'        
-        self.show(figure=figure, nowindow=True, timestamp=timestamp, dark_mode=dark_mode, mutator=mutator)  # sets figure dimensions, does not display window
+        self.show(figure=figure, nowindow=True, timestamp=timestamp, theme=theme, mutator=mutator)  # sets figure dimensions, does not display window
         (W,H) = plt.figure(figure).canvas.get_width_height()  # fast
         buf = io.BytesIO()
         plt.figure(1).canvas.print_raw(buf)  # fast
@@ -2528,7 +2522,7 @@ class Scene(TaggedImage):
         return vipy.image.Image.perceptualhash_distance(self.bghash(bits=bits), im.bghash(bits=bits)) < threshold 
     
         
-    def show(self, categories=None, figure=1, nocaption=False, nocaption_withstring=[], fontsize=10, boxalpha=0.15, d_category2color={'Person':'green', 'Vehicle':'blue', 'Object':'red'}, captionoffset=(3,-18), nowindow=False, shortlabel=None, timestamp=None, mutator=None, timestampoffset=(0,0), dark_mode=True, light_mode=False):
+    def show(self, categories=None, figure=1, nocaption=False, nocaption_withstring=[], fontsize=10, boxalpha=0.15, d_category2color={'Person':'green', 'Vehicle':'blue', 'Object':'red'}, captionoffset=(3,-18), nowindow=False, shortlabel=None, timestamp=None, mutator=None, timestampoffset=(0,0), theme='dark'):
         """Show scene detection 
 
         Args:
@@ -2544,15 +2538,13 @@ class Scene(TaggedImage):
            - shortlabel (dict):  An optional dictionary mapping category names to short names easier to display 
            - mutator (lambda):  A lambda function with signature lambda im: f(im) which will modify this image prior to show.  Useful for changing labels on the fly
            - timestampoffset (tuple): (x,y) coordinate offsets to shift the upper left corner timestamp
-           - dark_mode [bool: If true, visualize captions with dark background and light foreground
-           - light_mode [bool: If true, visualize captions with light background and dark foreground        
+           - theme [str]: If 'dark' use dark mode, if 'light' use light mode to visualize captions with high contrast dark or light foregrounds 
         """
-        dark_mode = False if light_mode else dark_mode
-        colors = vipy.show.colorlist(dark_mode=dark_mode, light_mode=not dark_mode)
-        textfacecolor = 'black' if dark_mode else 'white'
-        timestampcolor = 'white' if dark_mode else 'black'
-        timestampfacecolor = 'black' if dark_mode else 'white'        
-        textfacealpha = 0.6 if dark_mode else 0.85
+        colors = vipy.show.colorlist(theme)
+        textfacecolor = 'black' if theme=='dark' else 'white'
+        timestampcolor = 'white' if theme=='dark'  else 'black'
+        timestampfacecolor = 'black' if theme=='dark' else 'white'        
+        textfacealpha = 0.8 if theme=='dark' else 0.85
         
         im = self.clone() if not mutator else mutator(self.clone())
         imdisplay = im.rgb() if im.colorspace() != 'rgb' else im.load()  # convert to RGB for show() if necessary
@@ -2570,7 +2562,7 @@ class Scene(TaggedImage):
                             timestampcolor=timestampcolor, timestampfacecolor=timestampfacecolor, timestampoffset=timestampoffset)
         return self
 
-    def annotate(self, outfile=None, categories=None, figure=1, nocaption=False, fontsize=10, boxalpha=0.15, d_category2color={'person':'green', 'vehicle':'blue', 'object':'red'}, captionoffset=(3,-18), dpi=200, shortlabel=None, nocaption_withstring=[], timestamp=None, mutator=None, timestampoffset=(0,0), dark_mode=True, light_mode=False):
+    def annotate(self, outfile=None, categories=None, figure=1, nocaption=False, fontsize=10, boxalpha=0.15, d_category2color={'person':'green', 'vehicle':'blue', 'object':'red'}, captionoffset=(3,-18), dpi=200, shortlabel=None, nocaption_withstring=[], timestamp=None, mutator=None, timestampoffset=(0,0), theme='dark'):
         """Alias for `vipy.image.Scene.savefig"""
         return self.savefig(outfile=outfile, 
                             categories=categories, 
@@ -2584,18 +2576,17 @@ class Scene(TaggedImage):
                             shortlabel=shortlabel, 
                             nocaption_withstring=nocaption_withstring, 
                             timestamp=timestamp,
-                            dark_mode=dark_mode,
-                            light_mode=light_mode,
+                            theme=theme,
                             timestampoffset=timestampoffset,
                             mutator=mutator)
 
-    def savefig(self, outfile=None, categories=None, figure=1, nocaption=False, fontsize=10, boxalpha=0.15, d_category2color={'person':'green', 'vehicle':'blue', 'object':'red'}, captionoffset=(3,-18), dpi=200, textfacecolor='white', shortlabel=None, nocaption_withstring=[], timestamp=None, mutator=None, timestampoffset=(0,0), dark_mode=True, light_mode=False):
+    def savefig(self, outfile=None, categories=None, figure=1, nocaption=False, fontsize=10, boxalpha=0.15, d_category2color={'person':'green', 'vehicle':'blue', 'object':'red'}, captionoffset=(3,-18), dpi=200, textfacecolor='white', shortlabel=None, nocaption_withstring=[], timestamp=None, mutator=None, timestampoffset=(0,0), theme='dark'):
         """Save `vipy.image.Scene.show output to given file or return buffer without popping up a window"""
         fignum = figure if figure is not None else 1        
         self.show(categories=categories, figure=fignum, nocaption=nocaption, fontsize=fontsize, boxalpha=boxalpha, 
                   d_category2color=d_category2color, captionoffset=captionoffset, nowindow=True, 
                   shortlabel=shortlabel, nocaption_withstring=nocaption_withstring, timestamp=timestamp,
-                  mutator=mutator, timestampoffset=timestampoffset, dark_mode=dark_mode, light_mode=light_mode)
+                  mutator=mutator, timestampoffset=timestampoffset, theme=theme)
         
         if outfile is None:
             buf = io.BytesIO()

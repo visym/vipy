@@ -26,8 +26,8 @@ class AVA(object):
 
     def download(self):
         zipfile = os.path.join(self.datadir, filetail(URL))
-        vipy.downloader.download(URL, zipfile)
-        vipy.downloader.unpack(zipfile, self.datadir)
+        vipy.downloader.download(URL, zipfile, verbose=False)
+        vipy.downloader.unpack(zipfile, self.datadir, verbose=False)
         return self
 
     def _isdownloaded(self):

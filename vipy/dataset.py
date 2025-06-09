@@ -656,7 +656,8 @@ def registry(name, freeze=True):
        (trainset, valset, testset) tuple where each is a `vipy.dataset.Dataset` or None
     """
     import vipy.data        
-    
+
+    registry = ['mnist', 'cifar10','oxford_pet','pascal_voc_2007','coco_2014', 'ava', 'activitynet', 'openimages_v7']
     if freeze:
         gc.disable()
 
@@ -679,8 +680,10 @@ def registry(name, freeze=True):
     elif name == 'activitynet':
         activitynet = vipy.data.activitynet.ActivityNet()
         (trainset, valset, testset) = (activitynet.trainset(), activitynet.valset(), activitynet.testset())
+    elif name == 'openimages_v7':
+        trainset = vipy.data.openimages.open_images_v7()
     else:
-        raise ValueError('unknown dataset "%s"' % name)
+        raise ValueError('unknown dataset "%s" - choose from "%s"' % (name, ', '.join(sorted(registry))))
     
     if freeze:
         gc.enable()

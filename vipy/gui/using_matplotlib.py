@@ -17,9 +17,9 @@ matplotlib_version_at_least_3p3 = Version.from_string(matplotlib.__version__) >=
 
 PRIMARY_COLORLIST = ['green','blue','red','cyan','orange','yellow','violet','white'] + ['tab:blue', 'tab:orange', 'tab:green', 'tab:red', 'tab:purple', 'tab:brown', 'tab:pink', 'tab:gray', 'tab:olive', 'tab:cyan']
 COLORLIST = PRIMARY_COLORLIST + [str(name) for (name, hex) in mcolors.cnames.items() if str(name) not in PRIMARY_COLORLIST]  # use primary colors first
-COLORLIST_LUMINANCE = [(np.array(mcolors.to_rgb(hex)) * np.array([0.2126, 0.7152, 0.0722])).sum() for (name, hex) in mcolors.cnames.items()]
-DARK_COLORLIST = tuple(c for (c,l) in zip(COLORLIST, COLORLIST_LUMINANCE) if l>=0.5)
-LIGHT_COLORLIST = tuple(c for (c,l) in zip(COLORLIST, COLORLIST_LUMINANCE) if l < 0.5)
+COLORLIST_LUMINANCE = [(np.array(mcolors.to_rgb(name)) * np.array([0.2126, 0.7152, 0.0722])).sum() for name in COLORLIST]
+DARK_COLORLIST = tuple(c for (c,l) in zip(COLORLIST, COLORLIST_LUMINANCE) if l>=0.6)  # colors that show well on dark backgrounds
+LIGHT_COLORLIST = tuple(c for (c,l) in zip(COLORLIST, COLORLIST_LUMINANCE) if l<=0.4) # colors that show well on light backgrounds
 
 
 # Optional latex strings in captions
@@ -388,9 +388,9 @@ def frame(fr, im=None, color='b.', markersize=10, figure=None, caption=None):
     plt.draw()
 
 
-def colorlist(dark_mode=False, light_mode=False):
+def colorlist(theme=None):
     """Return a list of named colors that are higher contrast with a white background if light_mode, else named colors that are higher contrast with a dark background if dark_mode"""        
-    return DARK_COLORLIST if dark_mode else (LIGHT_COLORLIST if light_mode else COLORLIST)
+    return DARK_COLORLIST if theme=='dark' else (LIGHT_COLORLIST if theme=='light' else COLORLIST)
 
 
 def edit():

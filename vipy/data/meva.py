@@ -324,9 +324,9 @@ class KF1(object):
                 tracks = {d_id1_to_track[aid].id():d_id1_to_track[aid] for aid in actorid if aid in d_id1_to_track}  # order preserving (python 3.6)
                 if len(tracks) > 0:
                     try:
-                        vid.add(Activity(category=category, shortlabel=d_category_to_shortlabel[category], actorid=nounid if actor else None,
+                        vid.add(Activity(category=category, actorid=nounid if actor else None,
                                          startframe=startframe, endframe=endframe, tracks=tracks, framerate=framerate, 
-                                         attributes={'act':str(v['act']), 'act_yaml':act_yamlfile, 'geom_yaml':geom_yamlfile}), rangecheck=True)
+                                         attributes={'act':str(v['act']), 'act_yaml':act_yamlfile, 'geom_yaml':geom_yamlfile, 'shortlabel':d_category_to_shortlabel[category]}), rangecheck=True)
                     except Exception as e:
                         print('[vipy.data.meva.KF1]: activity import error "%s" for activity="%s" - SKIPPING' % (str(e), str(v)))
             

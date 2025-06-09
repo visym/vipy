@@ -309,7 +309,7 @@ def extract(archive_filename, output_dirname='./', verbose=True, passwd=None):
     Unpack the tar or zip file at the specified `archive_filename` to the
     directory specified by `output_dirname`.
     """
-    Archive(archive_filename, passwd=passwd).extract(output_dirname)
+    Archive(archive_filename, passwd=passwd).extract(output_dirname, verbose=verbose)
 
 
 class Archive(object):
@@ -341,8 +341,8 @@ class Archive(object):
                 "Path not a recognized archive format: %s" % filename)
         return cls
 
-    def extract(self, output_dirname=''):
-        self._archive.extract(output_dirname)
+    def extract(self, output_dirname='', verbose=True):
+        self._archive.extract(output_dirname, verbose=verbose)
 
     def list(self):
         self._archive.list()
@@ -368,14 +368,12 @@ class ExtractInterface(object):
     """
 
     def extract(self, output_dirname, verbose=True):
-        if not verbose:
-            self._archive.extractall(output_dirname)
-        else:
-            members = self.get_members()
-            n_members = len(members)
-            for mi, member in enumerate(members):
-                self._archive.extract(member, path=output_dirname)
-                extracted = mi + 1
+        members = self.get_members()
+        n_members = len(members)
+        for mi, member in enumerate(members):
+            self._archive.extract(member, path=output_dirname)
+            extracted = mi + 1
+            if verbose:
                 status = (r"Progress: %20i files extracted [%4.1f%%]"
                           % (extracted, extracted * 100. / n_members))
                 status += chr(8) * (len(status) + 1)

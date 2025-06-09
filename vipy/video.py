@@ -479,8 +479,8 @@ class Video():
         array: [numpy] An NxHxWxC numpy array for N frames each HxWxC shape
         startframe: [int]  A start frame to clip the video
         endframe: [int] An end frame to clip the video
-        startsec: [float] A start time in seconds to clip the video (this requires setting framerate)
-        endsec: [float] An end time in seconds to clip the video (this requires setting framerate)
+        startsec: [float] A start time in seconds to clip the video 
+        endsec: [float] An end time in seconds to clip the video 
         frames: [list of `vipy.image.Image`] A list of frames in the video
         probeshape: [bool] If true, then probe the shape of the video from ffprobe to avoid an explicit preview later.  This can speed up loading in some circumstances.
         shape: [tuple (rows,cols)] If the shape of the video is known, then this avoids requiring preview or probe.  Useful for some camera streams which may be off at init time.
@@ -3388,7 +3388,10 @@ class Scene(Video):
 
 
     def framerate(self, fps=None):
-        """Change the input framerate for the video and update frame indexes for all annotations.
+        """Return the current frame rate of change the input framerate for the video and update frame indexes for all annotations.
+
+        The framerate may be None in the constructor if the framerate is not know until a video ois downloaded
+        This function will request the framerate from the video file if it has been downloaded and cache it in _framerate
 
         ```python
         fps = self.framerate()
@@ -3398,7 +3401,7 @@ class Scene(Video):
         """        
         if fps is None:
             if self._framerate is None and self.hasfilename():
-                self._framerate = self.framerate_of_videofile()  
+                self._framerate = self.framerate_of_videofile()  # may only be known after downloading the video
             return self._framerate
         elif float(fps) == self._framerate:
             return self
@@ -3974,7 +3977,7 @@ class Scene(Video):
         return self        
 
 
-    def annotate(self, outfile=None, fontsize=10, captionoffset=(3,-18), shortlabel=None, boxalpha=0.15, d_category2color={'Person':'green', 'Vehicle':'blue', 'Object':'red'}, categories=None, nocaption=False, nocaption_withstring=[], mutator=vipy.image.mutator_show_noun_verb(), timestamp=None, dark_mode=True, light_mode=False, verbose=False):
+    def annotate(self, outfile=None, fontsize=10, captionoffset=(3,-18), shortlabel=None, boxalpha=0.15, d_category2color={'Person':'green', 'Vehicle':'blue', 'Object':'red'}, categories=None, nocaption=False, nocaption_withstring=[], mutator=vipy.image.mutator_show_noun_verb(), timestamp=None, theme='dark', verbose=False):
         """Generate a video visualization of all annotated objects and activities in the video.
         
         The annotation video will be at the resolution and framerate of the underlying video, and pixels in this video will now contain the overlay.
@@ -3992,8 +3995,7 @@ class Scene(Video):
             nocaption: [bool] If true, do not show any captions, just boxes
             mutator: [lambda] A lambda function that will mutate an image to allow for complex visualizations.  This should be a mutator like `vipy.image.mutator_show_trackid`.
             timestamp: [bool] If true, show a semitransparent timestamp (when the annotation occurs, not when the video was collected) with frame number in the upper left corner of the video
-            dark_mode [bool: If true, visualize captions with dark background and light foreground
-            light_mode [bool: If true, visualize captions with light background and dark foreground        
+            theme [str]: If 'dark', visualize captions with darkj background and light foreground, if 'light' visualize captions with light background and dark foreground        
             verbose: [bool] Show more helpful messages if true
 
         Returns:
@@ -4012,17 +4014,16 @@ class Scene(Video):
         if outfile is None:        
             assert self.load().isloaded(), "Load() failed"
             imgs = [f_mutator(self[k].clone(), k).savefig(fontsize=fontsize,
-                                                  captionoffset=captionoffset,
-                                                  shortlabel=shortlabel,
-                                                  boxalpha=boxalpha,
-                                                  d_category2color=d_category2color,
-                                                  categories=categories,
-                                                  nocaption=nocaption,
-                                                  dark_mode=dark_mode,
-                                                  light_mode=light_mode,                                                  
-                                                  timestamp=f_timestamp(k) if timestamp is not None else None,
-                                                  figure=1 if k<(len(self)-1) else None,  # cleanup on last frame
-                                                  nocaption_withstring=nocaption_withstring).numpy() for k in range(0, len(self))]
+                                                          captionoffset=captionoffset,
+                                                          shortlabel=shortlabel,
+                                                          boxalpha=boxalpha,
+                                                          d_category2color=d_category2color,
+                                                          categories=categories,
+                                                          nocaption=nocaption,
+                                                          theme=theme,
+                                                          timestamp=f_timestamp(k) if timestamp is not None else None,
+                                                          figure=1 if k<(len(self)-1) else None,  # cleanup on last frame
+                                                          nocaption_withstring=nocaption_withstring).numpy() for k in range(0, len(self))]
             
             # Replace pixels with annotated pixels and downcast object to vipy.video.Video (since there are no more objects to show)
             return vipy.video.Video(array=np.stack([np.array(PIL.Image.fromarray(img).convert('RGB')) for img in imgs], axis=0), framerate=self.framerate(), attributes=self.attributes)  # slow for large videos
@@ -4033,21 +4034,20 @@ class Scene(Video):
             with vo.stream(overwrite=True) as so:
                 for (k,im) in enumerate(self.stream()):
                     so.write(f_mutator(im.clone(), k).savefig(fontsize=fontsize,
-                                                      captionoffset=captionoffset,
-                                                      shortlabel=shortlabel,
-                                                      boxalpha=boxalpha,
-                                                      d_category2color=d_category2color,
-                                                      categories=categories,
-                                                      nocaption=nocaption,
-                                                      dark_mode=dark_mode,
-                                                      light_mode=light_mode,                                                      
-                                                      timestamp=f_timestamp(k) if timestamp is not None else None,
-                                                      figure=1 if k<(n-1) else None,  # cleanup on last frame
-                                                      nocaption_withstring=nocaption_withstring).rgb())
+                                                              captionoffset=captionoffset,
+                                                              shortlabel=shortlabel,
+                                                              boxalpha=boxalpha,
+                                                              d_category2color=d_category2color,
+                                                              categories=categories,
+                                                              nocaption=nocaption,
+                                                              theme=theme,
+                                                              timestamp=f_timestamp(k) if timestamp is not None else None,
+                                                              figure=1 if k<(n-1) else None,  # cleanup on last frame
+                                                              nocaption_withstring=nocaption_withstring).rgb())
             return vo
 
 
-    def _show(self, outfile=None, verbose=True, fontsize=10, captionoffset=(3,-18), shortlabel=None, boxalpha=0.15, d_category2color={'Person':'green', 'Vehicle':'blue', 'Object':'red'}, categories=None, nocaption=False, nocaption_withstring=[], notebook=False, timestamp=None, dark_mode=True, light_mode=False):
+    def _show(self, outfile=None, verbose=True, fontsize=10, captionoffset=(3,-18), shortlabel=None, boxalpha=0.15, d_category2color={'Person':'green', 'Vehicle':'blue', 'Object':'red'}, categories=None, nocaption=False, nocaption_withstring=[], notebook=False, timestamp=None, theme='dark'):
         """Generate an annotation video saved to outfile (or tempfile if outfile=None) and show it using ffplay when it is done exporting.  Do not modify the original video buffer.  Returns a clone of the video with the shown annotation."""
         return self.clone().annotate(verbose=verbose, 
                                      fontsize=fontsize,
@@ -4057,13 +4057,12 @@ class Scene(Video):
                                      d_category2color=d_category2color,
                                      categories=categories,
                                      nocaption=nocaption,
-                                     dark_mode=dark_mode,
-                                     light_mode=light_mode,                                     
                                      timestamp=timestamp,
+                                     theme=theme,
                                      nocaption_withstring=nocaption_withstring).saveas(outfile).play(notebook=notebook)
     
 
-    def show(self, outfile=None, verbose=True, fontsize=10, captionoffset=(3,-18), shortlabel=None, boxalpha=0.15, d_category2color={'Person':'green', 'Vehicle':'blue', 'Object':'red'}, categories=None, nocaption=False, nocaption_withstring=[], figure=1, fps=None, timestamp=None, mutator=vipy.image.mutator_show_noun_verb(), dark_mode=True, light_mode=False):
+    def show(self, outfile=None, verbose=True, fontsize=10, captionoffset=(3,-18), shortlabel=None, boxalpha=0.15, d_category2color={'Person':'green', 'Vehicle':'blue', 'Object':'red'}, categories=None, nocaption=False, nocaption_withstring=[], figure=1, fps=None, timestamp=None, mutator=vipy.image.mutator_show_noun_verb(), theme='dark'):
         """Faster show using interative image show for annotated videos.  This can visualize videos before video rendering is complete, but it cannot guarantee frame rates. Large videos with complex scenes will slow this down and will render at lower frame rates."""
         if not self.isdownloaded() and self.hasurl():
             self.download()        
@@ -4082,8 +4081,7 @@ class Scene(Video):
                                      boxalpha=boxalpha,
                                      d_category2color=d_category2color,
                                      captionoffset=captionoffset,
-                                     dark_mode=dark_mode,
-                                     light_mode=light_mode,                                     
+                                     theme=theme,
                                      timestamp=f_timestamp(k) if timestamp is not None else None,
                                      shortlabel=shortlabel)
                 

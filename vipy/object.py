@@ -268,7 +268,7 @@ class Track():
         assert len(keyframes) == len(boxes), "Boxes and keyframes must be the same length, there must be a one to one mapping of frames to boxes"
         assert boundary in set(['extend', 'strict']), "Invalid interpolation boundary - Must be ['extend', 'strict']"
         assert interpolation in set(['linear']), "Invalid interpolation - Must be ['linear']"
-        assert framerate is not None, "framerate for keyframes is required for framerate conversion"
+        assert framerate is not None, "initial framerate for keyframes is required for framerate conversion"
         
         self._id = shortuuid() if trackid is None else trackid
         self._label = category if category is not None else label
@@ -787,8 +787,8 @@ class Track():
     def clip(self, start, end):
         """Clip a track to be within (start,end) with strict boundary handling.  
 
-        Start and end may be frame numbers (int) or seconds (float).  Seconds are relative to the current frame rate.
-        
+        Start and end may be frame numbers (int) or seconds (float).  Frames are relative to the current frame rate.
+
         Args:
             start [int|float]:  The start of the clip in frames|seconds
             end [int|float|None]:  The end of the clip in frames|seconds (if provided)
