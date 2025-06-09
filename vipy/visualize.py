@@ -26,9 +26,9 @@ import html
 
 
 def scene_explorer(im, outfile=None, width=1024, title='Scene Explorer', previewurl=None, keypoint_alpha=0.7, popup_alpha=0.8, embed=True, open_in_browser=False,
-                   caption_formatter=lambda im: "<strong>Image Description</strong><br><br>%s" % '<br><br>'.join(im.captions()),
-                   tag_formatter=lambda im: "<strong>Image Tags</strong><br><br>%s" % ('<br>'.join(im.tags()) if not im.has_soft_tags() else ascii_bar_chart(im.soft_tags(), 64)),
-                   attribute_formatter=lambda im: "<strong>Image Attributes</strong><br><br>%s" % json.dumps(im.clone().flush().json(encode=False), indent=2)):
+                   tag_formatter=lambda im: "<strong>Image Tags</strong><br><br>%s" % ('<br>'.join(im.tags()) if not im.has_confidences() else ascii_bar_chart(zip(im.tags(),im.confidences()), 64)),
+                   attribute_formatter=lambda im: "<strong>Image Attributes</strong><br><br>%s" % json.dumps(im.clone().flush().json(encode=False), indent=2),
+                   description_formatter=lambda im: "<strong>Image Description</strong><br><br>%s" % 'None'):                   
     
     """Generate a standalone scene_explorer visualization.
 
@@ -43,9 +43,9 @@ def scene_explorer(im, outfile=None, width=1024, title='Scene Explorer', preview
         popup_alpha [float]: the popup window transparency in the range (0,1)
         embed [bool]: If true, embed the image as base64 encoded image.  If false, use the provided url in the image
         open_in_browser [bool]: If true, open the html file in the default browser on the current system
-        caption_formatter [lambda]:  A lambda function with a single argument equal to the input image that returns a HTML string for display in the capton popup. This can be any valid html
         tag_formatter [lambda]:  A lambda function with a single argument equal to the input image that returns a HTML string for display in the tag popup.  This can be any valid html.
-        attribute_formatter [lambda]:  A lambda function with a single argument equal to the input image that returns a HTML string for display in the attribute popup.  This can be any valie html
+        attribute_formatter [lambda]:  A lambda function with a single argument equal to the input image that returns a HTML string for display in the attribute popup.  This can be any valid html
+        description_formatter [lambda]:  A lambda function with a single argument equal to the input image that returns a HTML string for display in the description popup.  This can be any valid html    
 
     Returns:
         outfile
@@ -75,7 +75,7 @@ def scene_explorer(im, outfile=None, width=1024, title='Scene Explorer', preview
                 '${IMG_HEIGHT}':str(imc.height()),
                 '${IMG}':img,
                 '${IMG_ATTRIBUTES}':escape_string_for_innerHTML(attribute_formatter(im)),
-                '${IMG_CAPTION}': escape_string_for_innerHTML(caption_formatter(im)),
+                '${IMG_DESCRIPTION}': escape_string_for_innerHTML(description_formatter(im)),
                 '${IMG_TAGS}': escape_string_for_innerHTML(tag_formatter(im)),
                 '${SEARCHBOX_WIDTH}':str(width // 4),
                 '${POPUP_ALPHA}': str(popup_alpha),

@@ -2014,6 +2014,9 @@ class TaggedImage(Image):
     
     def confidences(self):
         return tuple(self.attributes['confidences'][t] if t in self.attributes['confidences'] else None for t in self.tags())
+
+    def has_confidences(self):
+        return any(c is not None for c in self.confidences())
     
     def add_tag(self, tag, confidence=None):
         self.append_attribute('tags', tag)
