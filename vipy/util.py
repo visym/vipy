@@ -211,6 +211,7 @@ def load(infile, abspath=True, freeze=True, relocatable=True):
 
 
 def is_jsonable(obj):
+    """Return true if can be successfully converted to json (without actually doing it) by recursive type checking"""
     if isinstance(obj, (str, int, float, bool, type(None))):
         return True  # JSON types
     elif isinstance(obj, (list, tuple)):
