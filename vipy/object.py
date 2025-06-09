@@ -49,7 +49,7 @@ class Object():
         return isinstance(self.attributes, dict) and k in self.attributes
 
     def get_attribute(self, k):
-        return self.attributes[k]
+        return self.attributes[k] if k in self.attributes else None
 
     def set_attribute(self, k, v):
         self.attributes[k] = v
@@ -69,7 +69,9 @@ class Object():
             self.attributes[key] = []
         self.attributes[key].append(value)
         return self
-    
+
+    def has_normalized_coordinates(self):
+        return self.get_attribute('normalized_coordinates') == True
 
     
 class Detection(BoundingBox, Object):
@@ -85,9 +87,13 @@ class Detection(BoundingBox, Object):
     d = vipy.object.Detection(..., id=True)  # generate a unique UUID for this detection retrievable with d.id()
     ```
 
+    Args:
+        - normalized_coordinates [bool]: if True, then all of the (x,y) track coordinates are normalized to [0,1] where (0,0) is the upper left and (1,1) is bottom right. Tracks are converted to pixel coordinates on load().  
+          This is useful for legacy datasets where bounding boxes were stored in a scale invariant manner.  This flag avoids having to probe the image to determine the size in the constructor and delays conversion until pixels are loaded.
+
     """
     __slots__ = ['_xmin', '_ymin', '_xmax', '_ymax', 'attributes', '_id']    
-    def __init__(self, category=None, xmin=None, ymin=None, width=None, height=None, xmax=None, ymax=None, confidence=None, xcentroid=None, ycentroid=None, ulbr=None, xywh=None, attributes=None, id=None, tags=None):
+    def __init__(self, category=None, xmin=None, ymin=None, width=None, height=None, xmax=None, ymax=None, confidence=None, xcentroid=None, ycentroid=None, ulbr=None, xywh=None, attributes=None, id=None, tags=None, normalized_coordinates=False):
         super().__init__(xmin=xmin, ymin=ymin, width=width, height=height, xmax=xmax, ymax=ymax, xcentroid=xcentroid, ycentroid=ycentroid, xywh=xywh, ulbr=ulbr)
 
         self._id = shortuuid() if id == True else id
@@ -98,7 +104,10 @@ class Detection(BoundingBox, Object):
         if tags is not None:
             for t in to_iterator(tags):
                 self.add_tag(t)
-        
+
+        if normalized_coordinates:
+            self.set_attribute('normalized_coordinates', True)
+            
     @classmethod
     def cast(cls, d):
         assert isinstance(d, BoundingBox)
@@ -174,7 +183,7 @@ class Keypoint2d(Point2d, Object):
     """vipy.object.Keypoint2d class"""
 
     __slots__ = ['_x', '_y', '_r', 'attributes', '_id']        
-    def __init__(self, x, y, radius=1, attributes=None, confidence=None, id=None, category=None, tags=None):
+    def __init__(self, x, y, radius=1, attributes=None, confidence=None, id=None, category=None, tags=None, normalized_coordinates=False):
         super().__init__(x, y, r=radius)
         
         self.attributes = attributes if attributes is not None else {}
@@ -186,6 +195,9 @@ class Keypoint2d(Point2d, Object):
             for t in to_iterator(tags):
                 self.add_tag(t)
 
+        if normalized_coordinates:
+            self.set_attribute('normalized_coordinates', True)
+                
     def clone(self, deep=False):
         """Copy the object, if deep=True, then include a deep copy of the attribute dictionary, else a shallow copy.  Cloned object has the same id()"""
         #return copy.deepcopy(self)
@@ -527,6 +539,7 @@ class Track():
                       xmax=bi._xmax + c*(bj._xmax - bi._xmax),   # float(np.interp(k, self._keyframes, [bb._xmax for bb in self._keyboxes])),
                       ymax=bi._ymax + c*(bj._ymax - bi._ymax),   # float(np.interp(k, self._keyframes, [bb._ymax for bb in self._keyboxes])),
                       confidence=bi.confidence() if isinstance(bi, Detection) else None,
+                      attributes=bi.attributes if isinstance(bi, Detection) else None,
                       category=self.category())
 
         d.attributes['__trackid'] = self.id()  # for correspondence of detections to tracks

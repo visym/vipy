@@ -216,9 +216,6 @@ class BoundingBox(object):
         d = {k.lstrip('_'):getattr(self, k) for k in BoundingBox.__slots__}  # prettyjson (remove "_" prefix to attributes)        
         return json.dumps(d) if encode else d
 
-    def has_normalized_coordinates(self):
-        return all(x >=0 and x <=1 for x in self.ulbr())
-    
     def clone(self):
         return BoundingBox(xmin=self._xmin, xmax=self._xmax, ymin=self._ymin, ymax=self._ymax)
     def bbclone(self):
@@ -1114,9 +1111,6 @@ class Point2d():
     def coord(self):
         return (self._x, self._y)
 
-    def has_normalized_coordinates(self):
-        return all(x >=0 and x <=1 for x in self.coord)
-    
     @classmethod
     def from_json(cls, s):
         d = json.loads(s) if not isinstance(s, dict) else s        

@@ -1661,8 +1661,8 @@ class Image():
         return self
 
     def save(self, filename=None, quality=75):
-        """Save the current image to a new filename and return the image object"""
-        return self.filename(self.saveas(filename if filename	is not None else tempjpg(), quality=quality)).loader(None)
+        """Save the current image to a new filename and return the image object.  Resets edit history"""
+        return self.filename(self.saveas(filename if filename	is not None else tempjpg(), quality=quality)).loader(None).flush_array()
         
         
     # Image export
@@ -2040,6 +2040,7 @@ class Scene(TaggedImage):
     im = vipy.image.Scene(filename='/path/to/city_image.jpg', category='office', boxlabels='face', xywh=[[0,0,100,100], [100,100,200,200]])
     im = vipy.image.Scene(filename='/path/to/city_image.jpg', category='office', boxlabels=['face', 'desk'] xywh=[[0,0,100,100], [200,200,300,300]])
     ```
+
     """
     __slots__ = ('_filename', '_url', '_loader', '_array', '_colorspace', 'attributes', '_objectlist')
     
@@ -2123,7 +2124,7 @@ class Scene(TaggedImage):
             strlist.append('filename="%s"' % (self.filename()))
         if self.hasurl():
             strlist.append('url=%s' % self.url())
-        if self.category() is not None:
+        if len(self.tags())==1:
             strlist += ['category=%s' % truncate_string(str(self.category()), 40)]
         elif len(self.tags())>1:
             strlist += ['tags=%s' % truncate_string(str(self.tags()), 40)]            
@@ -2142,19 +2143,19 @@ class Scene(TaggedImage):
             yield self.__getitem__(k)
 
     def __getitem__(self, k):
-        """Return the kth object in the scene as a `vipy.image.ImageDetection` object """
+        """Return the kth object in the scene as a `vipy.image.Scene` object """
         assert isinstance(k, int), "Indexing by object in scene must be integer"
-        obj = self._objectlist[k].clone()
-        return ImageDetection(array=self.array(), filename=self.filename(), url=self.url(), colorspace=self.colorspace(), xmin=obj.xmin(), ymin=obj.ymin(), width=obj.width(), height=obj.height(), category=obj.category(), attributes=obj.attributes, id=obj.id())
+        return self.clone(shallow=True).objects([self._objectlist[k].clone()])
 
     def load(self, ignoreErrors=False, verbose=True):
         super().load(ignoreErrors=ignoreErrors, verbose=verbose)
         if self.isloaded() and self.num_objects() > 0 and any(o.has_normalized_coordinates() for o in self.objects()):
-            self.objectmap(lambda o: o.scale_x(self.array().shape[1]).scale_y(self.array().shape[0]) if o.has_normalized_coordinates() else o)
+            # Normalized coordinates are in the range [0,1] relative to the (height, width) which is not known until load()
+            self.objectmap(lambda o: o.scale_x(self.array().shape[1]).scale_y(self.array().shape[0]).del_attribute('normalized_coordinates') if o.has_normalized_coordinates() else o)
         return self
     
     def split(self):
-        """Split a scene with K objects into a list of K `vipy.image.ImageDetection` objects, each with one object in the scene.
+        """Split a scene with K objects into a list of K `vipy.image.Scene` objects, each with one object in the scene.
         
         .. note:: The pixel buffer is shared between each split.  Use [im.clone() for im in self.split()] for an explicit copy.
         """

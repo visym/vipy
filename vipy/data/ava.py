@@ -4,7 +4,7 @@ from vipy.util import filetail, remkdir, readjson, groupbyasdict, filefull, read
 import vipy.downloader
 from vipy.video import VideoCategory, Video, Scene
 import numpy as np
-from vipy.object import Track, BoundingBox
+from vipy.object import Track, BoundingBox, Detection
 from vipy.activity import Activity
 from vipy.dataset import Dataset
 
@@ -50,7 +50,8 @@ class AVA(object):
         d_category_to_index = self.categories()
         d_index_to_category = {v:k for (k,v) in d_category_to_index.items()}
 
-        videos = [vipy.video.Scene(url='https://www.youtube.com/watch?v=%s' % video_id, framerate=None, filename=os.path.join(self.datadir, video_id)) for (k_video, (video_id, rowlist)) in enumerate(d_videoid_to_rows.items())]                    
+        videos = [vipy.video.Scene(url='https://www.youtube.com/watch?v=%s' % video_id, framerate=None, 
+                                   filename=os.path.join(self.datadir, video_id)) for (k_video, (video_id, rowlist)) in enumerate(d_videoid_to_rows.items())]                    
         for (k_video, (video_id, rowlist)) in enumerate(d_videoid_to_rows.items()):
             v = videos[k_video]
 
@@ -63,7 +64,7 @@ class AVA(object):
             d_tracknum_to_track = {}
 
             for (tracknum, tracklist) in tracks.items():
-                (keyframes, boxes) = zip(*[(((float(x[1]))*dummy_framerate), BoundingBox(xmin=float(x[2]), ymin=float(x[3]), xmax=float(x[4]), ymax=float(x[5]))) for x in tracklist])
+                (keyframes, boxes) = zip(*[(((float(x[1]))*dummy_framerate), Detection(xmin=float(x[2]), ymin=float(x[3]), xmax=float(x[4]), ymax=float(x[5]), normalized_coordinates=True)) for x in tracklist])
                 t = Track(keyframes=keyframes, boxes=boxes, category=tracknum, framerate=dummy_framerate)
                 d_tracknum_to_track[tracknum] = t
                 v.add_object(t, rangecheck=False)

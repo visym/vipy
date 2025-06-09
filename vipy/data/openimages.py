@@ -50,6 +50,6 @@ def open_images_v7(datadir=None):
 
     trainset = [(d_train_imageid_to_url[iid], [(d_label_to_object_category[o[1]], (o[2],o[3],o[4],o[5])) for o in obj if o[1] in d_label_to_object_category])
                 for (iid, obj) in d_train_imageid_to_objects.items()]  # [(url, [(category, ulbr),...]), ...]
-    loader = lambda r: vipy.image.Scene(url=r[0], tags=d_train_url_to_category[r[0]], objects=[vipy.object.Detection(category=c, ulbr=ulbr) for (c,ulbr) in r[1]])
+    loader = lambda r: vipy.image.Scene(url=r[0], tags=d_train_url_to_category[r[0]], objects=[vipy.object.Detection(category=c, ulbr=ulbr, normalized_coordinates=True) for (c,ulbr) in r[1]])
     return vipy.dataset.Dataset(trainset, id='open_images_v7:train', loader=loader)
 
