@@ -2552,14 +2552,15 @@ class Scene(TaggedImage):
         textfacealpha = 0.6 if dark_mode else 0.85
         
         im = self.clone() if not mutator else mutator(self.clone())
-
-        valid_objects = [obj.clone() for obj in im._objectlist if categories is None or obj.category() in tolist(categories)]  # Objects with valid category
+        imdisplay = im.rgb() if im.colorspace() != 'rgb' else im.load()  # convert to RGB for show() if necessary
+        
+        valid_objects = [obj.clone() for obj in imdisplay.objects() if categories is None or obj.category() in tolist(categories)]  # Objects with valid category
         valid_objects = [obj.imclip(self.numpy()) for obj in valid_objects if obj.hasoverlap(self.numpy())]  # Objects within image rectangle
-        valid_objects = [obj.category(shortlabel[obj.category()]) for obj in valid_objects] if shortlabel else valid_objects  # Display name as shortlabel?
+        valid_objects = [obj.new_category(shortlabel[obj.category()]) for obj in valid_objects] if shortlabel else valid_objects  # Display name as shortlabel?
         d_category2color = mergedict({d.category():colors[int(hashlib.sha1(str(d.category()).encode('utf-8')).hexdigest(), 16) % len(colors)] for d in valid_objects}, d_category2color)  # consistent color mapping by category
         object_color = [d_category2color[d.category()] for d in valid_objects]                
         valid_objects  = [d if not any([c in d.category() for c in tolist(nocaption_withstring)]) else d.nocategory() for d in valid_objects]  # Objects requested to show without caption
-        imdisplay = self.clone().rgb() if self.colorspace() != 'rgb' else self.load()  # convert to RGB for show() if necessary
+
         fontsize_scaled = float(fontsize.split(':')[0])*(min(imdisplay.shape())/640.0) if isstring(fontsize) else fontsize
         vipy.show.imobjects(imdisplay._array, valid_objects, bordercolor=object_color, textcolor=object_color, fignum=figure, do_caption=(nocaption==False), facealpha=boxalpha, fontsize=fontsize_scaled,
                             captionoffset=captionoffset, nowindow=nowindow, textfacecolor=textfacecolor, textfacealpha=textfacealpha, timestamp=timestamp,
