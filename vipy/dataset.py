@@ -1,6 +1,6 @@
 import os
 import numpy as np
-from vipy.util import findpkl, toextension, filepath, filebase, jsonlist, ishtml, ispkl, filetail, temphtml
+from vipy.util import findpkl, toextension, filepath, filebase, jsonlist, ishtml, ispkl, filetail, temphtml, env
 from vipy.util import listpkl, listext, templike, tempdir, remkdir, tolist, fileext, writelist, tempcsv, to_iterable
 from vipy.util import newpathroot, listjson, extlist, filefull, tempdir, groupbyasdict, try_import, shufflelist
 import random
@@ -645,13 +645,14 @@ class Union(Dataset):
     
 
 
-def registry(name, freeze=True):
+def registry(name, freeze=True, datadir=env('VIPY_DATASET_REGISTRY_HOME')):
     """Common entry point for loading datasets by name
 
     Args:
        name [str]: A string describing the dataset
        freeze [bool]:  If true, disable reference cycle counting for the loaded object (which will never contain cycles anyway)
-    
+       datadir [str]: A path to a directory to store data.  Defaults to environment variable VIPY_DATASET_REGISTRY_HOME (then VIPY_CACHE if not found).  Also uses HF_HOME for huggingface datasets.
+
     Returns:
        (trainset, valset, testset) tuple where each is a `vipy.dataset.Dataset` or None
     """
@@ -673,22 +674,22 @@ def registry(name, freeze=True):
     elif name == 'oxford_pet':
         trainset = vipy.data.hf.oxford_pets()
     elif name == 'pascal_voc_2007':
-        (trainset, valset, testset) = vipy.data.hf.pascal_voc_2007()        
+        (trainset, valset, testset) = vipy.data.hf.pascal_voc_2007()
     elif name == 'coco_2014':
-        trainset = vipy.data.coco.Detection_TrainVal_2014()
+        trainset = vipy.data.coco.Detection_TrainVal_2014(datadir=os.path.join(datadir, 'coco_2014'))
     elif name == 'ava':
-        ava = vipy.data.ava.AVA(vipy.util.tocache('ava'))
+        ava = vipy.data.ava.AVA(os.path.join(datadir, 'ava'))
         (trainset, valset) = (ava.trainset(), ava.valset())
     elif name == 'activitynet':
-        activitynet = vipy.data.activitynet.ActivityNet()
+        activitynet = vipy.data.activitynet.ActivityNet(datadir=os.path.join(datadir, 'activitynet'))
         (trainset, valset, testset) = (activitynet.trainset(), activitynet.valset(), activitynet.testset())
     elif name == 'openimages_v7':
-        trainset = vipy.data.openimages.open_images_v7()
+        trainset = vipy.data.openimages.open_images_v7(datadir=os.path.join(datadir, 'openimages_v7'))
     elif name == 'imagenet':
-        imagenet = vipy.data.imagenet.Imagenet2012()
+        imagenet = vipy.data.imagenet.Imagenet2012(datadir=os.path.join(datadir, 'imagenet'))
         (trainset, valset) = (imagenet.classification_trainset(), imagenet.classification_valset())
     elif name == 'imagenet21k':
-        trainset = vipy.data.imagenet.Imagenet21K()
+        trainset = vipy.data.imagenet.Imagenet21K(datadir=os.path.join(datadir, 'imagenet21k'))
     else:
         raise ValueError('unknown dataset "%s" - choose from "%s"' % (name, ', '.join(sorted(registry))))
     
