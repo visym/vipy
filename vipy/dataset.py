@@ -673,6 +673,12 @@ def registry(name, freeze=True):
         (trainset, valset, testset) = vipy.data.hf.pascal_voc_2007()        
     elif name == 'coco_2014':
         trainset = vipy.data.coco.Detection_TrainVal_2014()
+    elif name == 'ava':
+        ava = vipy.data.ava.AVA(vipy.util.tocache('ava'))
+        (trainset, valset) = (ava.trainset(), ava.valset())
+    elif name == 'activitynet':
+        activitynet = vipy.data.activitynet.ActivityNet()
+        (trainset, valset, testset) = (activitynet.trainset(), activitynet.valset(), activitynet.testset())
     else:
         raise ValueError('unknown dataset "%s"' % name)
     

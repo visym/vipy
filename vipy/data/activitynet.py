@@ -6,10 +6,11 @@ import numpy as np
 
 
 # http://activity-net.org/download.html
-URL = 'http://ec2-52-25-205-214.us-west-2.compute.amazonaws.com/files/activity_net.v1-3.min.json'
+#URL = 'http://ec2-52-25-205-214.us-west-2.compute.amazonaws.com/files/activity_net.v1-3.min.json'
+URL = 'https://github.com/activitynet/ActivityNet/raw/refs/heads/master/Evaluation/data/activity_net.v1-3.min.json'
 
 
-class ActivityNet(object):
+class ActivityNet():
     def __init__(self, datadir=vipy.util.tocache('activitynet'), redownload=False):
         """Activitynet, provide a datadir='/path/to/store/activitynet' """
         self._url = URL
@@ -42,19 +43,19 @@ class ActivityNet(object):
                 if v['subset'] == subset]
 
     def trainset(self):
-        loader = lambda x: VideoCategory(url=x[0], filename=x[1], category=x[2], startsec=x[3], endsec=x[4])
-        return vipy.dataset.Dataset(self._dataset('training'), id='activitynet', loader=loader)
+        loader = lambda x: VideoCategory(url=x[0], filename=x[1], category=x[2], startsec=x[3], endsec=x[4], framerate=None)
+        return vipy.dataset.Dataset(self._dataset('training'), id='activitynet:train', loader=loader)
 
     def testset(self):
         """ActivityNet test set does not include any annotations"""
         assert self._isdownloaded(), "Dataset not downloaded.  download() first or manually download '%s' into '%s'" % (self._url, self.datadir)        
         json = readjson(os.path.join(self.datadir, filetail(URL)))
-        loader = lambda x: Video(url=x[0], filename=x[1])
-        return vipy.dataset.Dataset([(v['url'], os.path.join(self.datadir, youtubeid)) for (youtubeid, v) in json['database'].items() if v['subset'] == 'testing'], id='activitynet_test', loader=loader)
+        loader = lambda x: Video(url=x[0], filename=x[1], framerate=None)
+        return vipy.dataset.Dataset([(v['url'], os.path.join(self.datadir, youtubeid)) for (youtubeid, v) in json['database'].items() if v['subset'] == 'testing'], id='activitynet:test', loader=loader)
 
     def valset(self):
-        loader = lambda x: VideoCategory(url=x[0], filename=x[1], category=x[2], startsec=x[3], endsec=x[4])
-        return vipy.dataset.Dataset(self._dataset('validation'), id='activitynet_val', loader=loader)
+        loader = lambda x: VideoCategory(url=x[0], filename=x[1], category=x[2], startsec=x[3], endsec=x[4], framerate=None)
+        return vipy.dataset.Dataset(self._dataset('validation'), id='activitynet:val', loader=loader)
         
     def categories(self):
         return set([v.category() for v in self.trainset()])

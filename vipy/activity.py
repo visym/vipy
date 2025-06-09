@@ -31,9 +31,10 @@ class Activity(object):
     
     """
     __slots__ = ['_id', '_startframe', '_endframe', '_framerate', '_label', '_trackid', '_actorid', 'attributes']
-    def __init__(self, startframe, endframe, framerate=None, label=None, category=None, tracks=None, attributes=None, actorid=None, confidence=None, id=None, shortlabel=None):
+    def __init__(self, startframe, endframe, framerate=30, label=None, category=None, tracks=None, attributes=None, actorid=None, confidence=None, id=None, shortlabel=None):
         assert not (label is not None and category is not None), "Activity() Constructor requires either label or category kwargs, not both"
         assert startframe <= endframe, "Start frame must be less than or equal to end frame"
+        assert framerate is not None, "framerate is required for framerate conversion"
         if tracks:
             tracks = [v for (k,v) in tracks.items()] if isinstance(tracks, dict) else tracks  # backwards compatible, track dictionary input
             assert (all([isstring(t) for t in tracks]) or all([isinstance(t, Track) for t in tracks])), "Invalid track input"
@@ -48,7 +49,7 @@ class Activity(object):
         self._id = shortuuid() if id is None else id  # use provided
         self._startframe = int(startframe)
         self._endframe = int(endframe)
-        self._framerate = float(framerate) if framerate is not None else framerate
+        self._framerate = float(framerate)
         self._label = category if category is not None else label        
         self._trackid = trackid
         self._actorid = actorid
@@ -332,12 +333,16 @@ class Activity(object):
         return (t_intersection / t_union) if t_intersection > 0 else 0
     
     def offset(self, dt):
+        dt = dt if isinstance(dt, int) else int(np.round(dt*self.framerate()))
         self._startframe = int(self._startframe + dt)
         self._endframe = int(self._endframe + dt)
         return self
 
-    def truncate(self, startframe=None, endframe=None):
-        """Truncate the activity so that it is between startframe and endframe"""
+    def truncate(self, start=None, end=None):
+        """Truncate the activity so that it is between start and end"""
+        startframe = int(np.round(start*self.framerate())) if isinstance(start, float) else start
+        endframe = int(np.round(end*self.framerate())) if isinstance(end, float) else end        
+        
         self._startframe = self._startframe if startframe is None else max(self._startframe, startframe)
         self._endframe = self._endframe if endframe is None else min(self._endframe, endframe)
         self._endframe = self._endframe if self._endframe > self._startframe else self._startframe  # degenerate truncation

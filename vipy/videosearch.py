@@ -14,7 +14,7 @@ import subprocess
 import shutil
 
 
-youtube_dl_exe = shutil.which('youtube-dl')        
+youtube_dl_exe = shutil.which('yt-dlp')        
 has_youtube_dl = youtube_dl_exe is not None and os.path.exists(youtube_dl_exe)
 
 
@@ -62,9 +62,9 @@ def youtubeuser(tag, n_pages=1):
 
 
 def is_downloadable_url(path):
-    """Check to see if youtube-dl can download the path, this requires exeecuting 'youtube-dl $URL -q -j' to see if the returncode is non-zero"""
+    """Check to see if yt-dlp can download the path, this requires exeecuting 'yt-dlp $URL -q -j' to see if the returncode is non-zero"""
     if not has_youtube_dl:
-        raise ImportError('Optional package "youtube-dl" not installed -  Run "pip install youtube-dl"')    
+        raise ImportError('Optional package "yt-dlp" not installed -  Run "pip install yt-dlp"')    
     retcode = subprocess.call([youtube_dl_exe, '-q', '-j'], stdout=DEVNULL, stderr=STDOUT) if isurl(path) else -1
     return isurl(path) and retcode == 0
 
@@ -130,22 +130,22 @@ def liveleak(tag, n_pages=1):
     return(vidlist)
 
 
-def download(vidurl, vidfile, skip=False, writeurlfile=True, max_filesize='350m', remove_parts=True, verbose=False):
-    """Use youtube-dl to download a video URL to a video file"""
+def download(vidurl, vidfile, skip=False, writeurlfile=True, max_filesize='9999m', remove_parts=True, verbose=False):
+    """Use yt-dlp to download a video URL to a video file"""
 
     user_agent = random.choice(complete_user_agents)    
     if not has_youtube_dl:
-        raise ImportError('Optional package "youtube-dl" not installed -  Run "pip install youtube-dl"')
+        raise ImportError('Optional package "yt-dlp" not installed -  Run "pip install yt-dlp"')
     try:
         log.info('[vipy.videosearch.download]: saving "%s" to "%s"' % (vidurl, vidfile))
         for f in glob.glob("%s*" % vidfile):
-            os.remove(f)  # youtube-dl will not overwrite, so we force it
+            os.remove(f)  # yt-dlp will not overwrite, so we force it
         cmd = '%s %s "%s" -o "%s" --no-check-certificate --max-filesize="%s" --user-agent="%s"' % (youtube_dl_exe, '-q' if not verbose else '', vidurl, vidfile, max_filesize, user_agent)  # must be on path            
         if verbose:
             log.info('[vipy.videosearch.download]: executing \'%s\'' % cmd)
         erno = os.system(cmd)
         if erno != 0:
-            raise ValueError('youtube-dl returned %d' % erno)
+            raise ValueError('yt-dlp returned %d' % erno)
         if os.path.isfile(vidfile):
             if writeurlfile:
                 urlfile = os.path.join(filepath(vidfile), '%s.url' % filebase(vidfile))
@@ -159,7 +159,6 @@ def download(vidurl, vidfile, skip=False, writeurlfile=True, max_filesize='350m'
         raise
     except Exception as exception:
         log.warning(exception)
-        # http://rg3.github.io/youtube-dl/supportedsites.html
         log.warning('[vipy.videosearch.download]: download failed - skipping')
         return None
 
@@ -172,7 +171,7 @@ def download(vidurl, vidfile, skip=False, writeurlfile=True, max_filesize='350m'
 
 
 def bulkdownload(vidurls, outpattern, skip=True, writeurlfile=True, max_filesize='350m', remove_parts=True):
-    """Use youtube-dl to download a list of video URLs to video files using the provided sprintf outpattern=/path/to/out_%d.mp4 where the index is provided by the URL list index"""
+    """Use yt-dlp to download a list of video URLs to video files using the provided sprintf outpattern=/path/to/out_%d.mp4 where the index is provided by the URL list index"""
 
     vidfiles = []
     for (k, vidurl) in enumerate(vidurls):

@@ -6,6 +6,7 @@ from vipy.video import VideoCategory, Video, Scene
 import numpy as np
 from vipy.object import Track, BoundingBox
 from vipy.activity import Activity
+from vipy.dataset import Dataset
 
 
 # https://research.google.com/ava/download.html#ava_actions_download
@@ -32,7 +33,7 @@ class AVA(object):
     def _isdownloaded(self):
         return os.path.exists(os.path.join(self.datadir, 'ava_train_v2.2.csv'))
     
-    def _dataset(self, csvfile, downloaded=False):
+    def _dataset(self, csvfile, downloaded=False, verbose=False):
         # AVA csv format: video_id, middle_frame_timestamp, scaled_person_box (xmin, ymin, xmax, ymax), action_id, person_id
 
         # video_id: YouTube identifier
@@ -49,61 +50,43 @@ class AVA(object):
         d_category_to_index = self.categories()
         d_index_to_category = {v:k for (k,v) in d_category_to_index.items()}
 
-        # Parallel download
-        #
-        # >>> D = vipy.data.ava.AVA('/path/to')
-        # >>> with vipy.globals.parallel(8):
-        # >>>     V = D.valset()
-        #  
-        videos = [vipy.video.Scene(url='https://www.youtube.com/watch?v=%s' % video_id, filename=os.path.join(self.datadir, video_id)) for (k_video, (video_id, rowlist)) in enumerate(d_videoid_to_rows.items())]
-        d = {filebase(f):f for f in vipy.util.findvideo(self.datadir)}  # already downloaded, youtube videos are tricky since we don't know the extension until it is downloaded...
-        videos = [v.filename(d[filebase(v.filename())]) if filebase(v.filename()) in d else v for v in videos]
-        videos = ([v.filename(d[filebase(v.filename())]) if filebase(v.filename()) in d else None for v in videos] if downloaded else   # only the videos that have been downloaded so far
-                  vipy.batch.Batch(videos, warnme=False).map(lambda v: v.download(ignoreErrors=True) if not v.isdownloaded() else v).result())
-                    
+        videos = [vipy.video.Scene(url='https://www.youtube.com/watch?v=%s' % video_id, framerate=None, filename=os.path.join(self.datadir, video_id)) for (k_video, (video_id, rowlist)) in enumerate(d_videoid_to_rows.items())]                    
         for (k_video, (video_id, rowlist)) in enumerate(d_videoid_to_rows.items()):
             v = videos[k_video]
-            if v is None:
-                continue
-            
-            print('[vipy.data.ava][%d/%d]: Parsing "%s" with %d activities' % (k_video, len(d_videoid_to_rows), v.url(), len(rowlist)))            
 
-            # Download or skip
-            if not v.isdownloaded():
-                print('[vipy.data.ava][%d/%d]: Download failed - SKIPPING' % (k_video, len(d_videoid_to_rows)))
-                continue
-
-            framerate = v.framerate_of_videofile()
-            startframe = max(0, framerate*(min([float(x[1]) for x in rowlist])-1.5))
-            endframe = framerate*(max([float(x[1]) for x in rowlist])+1.5)            
-            v = v.framerate(framerate).clip(startframe, endframe)
-            (height, width) = v.shape() 
+            if verbose:
+                print('[vipy.data.ava][%d/%d]: Parsing "%s" with %d activities' % (k_video, len(d_videoid_to_rows), v.url(), len(rowlist)))            
+            dummy_framerate = 30  # placeholder, don't know the true framerate until the video is downloaded
 
             # Tracks are "actor_id" across the video
             tracks = groupbyasdict(rowlist, lambda x: x[7])
             d_tracknum_to_track = {}
-            for (tracknum, tracklist) in tracks.items():
-                (keyframes, boxes) = zip(*[((float(x[1])*framerate)-startframe, BoundingBox(xmin=width*float(x[2]), ymin=height*float(x[3]), xmax=width*float(x[4]), ymax=height*float(x[5]))) for x in tracklist])
-                t = Track(keyframes=keyframes, boxes=boxes, category=tracknum, framerate=framerate)
-                d_tracknum_to_track[tracknum] = t
-                v.add(t)
 
+            for (tracknum, tracklist) in tracks.items():
+                (keyframes, boxes) = zip(*[(((float(x[1]))*dummy_framerate), BoundingBox(xmin=float(x[2]), ymin=float(x[3]), xmax=float(x[4]), ymax=float(x[5]))) for x in tracklist])
+                t = Track(keyframes=keyframes, boxes=boxes, category=tracknum, framerate=dummy_framerate)
+                d_tracknum_to_track[tracknum] = t
+                v.add_object(t, rangecheck=False)
+                
             # Every row is a separate three second long activity centered at startsec involving one actor
             for (video_id, startsec, xmin, ymin, xmax, ymax, activity_id, actor_id) in rowlist:
                 t = d_tracknum_to_track[actor_id]
-                act_startframe = (float(startsec)*framerate)-startframe
                 try:
-                    a = Activity(startframe=max(0, int(np.round((act_startframe-1.5*framerate)))), endframe=int(np.round((act_startframe+1.5*framerate))),
+                    a = Activity(startframe=max(0, int(np.round(((float(startsec)-1.5)*dummy_framerate)))), endframe=int(np.round(((float(startsec)+1.5)*dummy_framerate))),
                                  category=d_index_to_category[int(activity_id)],
-                                 tracks={t.id():t}, framerate=framerate)
-                    v.add(a)
+                                 tracks={t.id():t}, framerate=dummy_framerate)
+                    v.add_object(a, rangecheck=False)
 
                 except KeyboardInterrupt:
                     raise
                 
                 except Exception as e:
                     print('[vipy.data.ava]: actor_id=%s, activity_id=%s, video_id=%s - SKIPPING with error "%s"' % (actor_id, activity_id, video_id, str(e)))                   
-                
+                    raise
+
+            start = float(max(0, (min([float(x[1]) for x in rowlist])-1.5)))
+            end = float(max([float(x[1]) for x in rowlist])+1.5)
+            v = v.clip(start, end)                
             vidlist.append(v)
         return vidlist
 
@@ -122,9 +105,9 @@ class AVA(object):
         return d_category_to_index
 
     def trainset(self):
-        return self._dataset(os.path.join(self.datadir, 'ava_train_v2.2.csv'))
+        return Dataset(self._dataset(os.path.join(self.datadir, 'ava_train_v2.2.csv')), id='ava:train')
 
     def valset(self):
-        return self._dataset(os.path.join(self.datadir, 'ava_val_v2.2.csv'))
+        return Dataset(self._dataset(os.path.join(self.datadir, 'ava_val_v2.2.csv')), id='ava:val')
 
     

@@ -159,7 +159,7 @@ def text(caption, xmin, ymin, fignum=None, textcolor='black', textfacecolor='whi
     lw = linewidth  # pull in the boxes by linewidth so that they do not overhang the figure
 
     newlines = caption.count('\n')
-    captionoffset = 15*newlines   # move down a bit if near top of image, shift once per newline in caption
+    captionoffset = captionoffset if ymin > 20 else (captionoffset[0], captionoffset[1]+(20*(1)))  # move down a bit if near top of image, shift once per newline in caption
     
     # MatplotlibDeprecationWarning: The 's' parameter of annotate() has been renamed 'text' since Matplotlib 3.3            
     handle = plt.annotate(**{'text' if matplotlib_version_at_least_3p3 else 's': caption},
@@ -200,7 +200,7 @@ def boundingbox(img, xmin, ymin, xmax, ymax, bboxcaption=None, fignum=None, bbox
         
         newlines = bboxcaption.count('\n')
 
-        captionoffset = captionoffset if ymin > 20 else (captionoffset[0], captionoffset[1]+(20*(newlines+1)))  # move down a bit if near top of image, shift once per newline in caption
+        captionoffset = captionoffset if ymin > 20 else (captionoffset[0], captionoffset[1]+(20*(1)))  # move down a bit if near top of image, shift once per newline in caption
 
         # MatplotlibDeprecationWarning: The 's' parameter of annotate() has been renamed 'text' since Matplotlib 3.3   
         plt.annotate(**{'text' if matplotlib_version_at_least_3p3 else 's': bboxcaption},
