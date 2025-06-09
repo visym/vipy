@@ -210,12 +210,14 @@ class Image():
         strlist = []
         if self.isloaded():
             strlist.append("height=%d, width=%d, color=%s" % (self._array.shape[0], self._array.shape[1], self.colorspace()))
+        elif self.has_loader():
+            strlist.append('loaded=False')
         if self.colorspace() == 'float':
             strlist.append('channels=%d' % self.channels())
         if self.filename() is not None:
-            strlist.append('filename="%s"' % self.filename())
+            strlist.append('filename=%s' % self.filename())
         if self.hasurl():
-            strlist.append('url="%s"' % self.url())
+            strlist.append('url=%s' % self.url())
         return str('<vipy.image: %s>' % (', '.join(strlist)))
 
     def sanitize(self):
@@ -553,7 +555,7 @@ class Image():
             if url_scheme in ['http', 'https']:
                 vipy.downloader.download(self._url,
                                          self._filename,
-                                         verbose=verbose,
+                                         verbose=False,
                                          timeout=timeout,
                                          sha1=self.getattribute('url_sha1'),
                                          username=self.getattribute('url_username'),
@@ -1903,7 +1905,6 @@ class ImageCategory(Image):
     im = vipy.image.ImageCategory(url='http://path/to/dog_image.ext', category='dog')
     im = vipy.image.ImageCategory(array=dog_img, colorspace='rgb', category='dog')
     ```
-
     """
 
     __slots__ = ('_filename', '_url', '_loader', '_array', '_colorspace', 'attributes')    
@@ -1922,7 +1923,7 @@ class ImageCategory(Image):
     def __repr__(self):
         fields = ['category=%s' % self.category()] if self.category() is not None else []
         fields +=  ['confidence=%1.3f' % self.confidence()] if self.confidence() is not None else []
-        return super().__repr__().replace('vipy.image.Image', 'vipy.image.ImageCategory').replace('>', '%s>' % ','.join(fields))
+        return super().__repr__().replace('vipy.image', 'vipy.image.ImageCategory').replace('>', ', %s>' % ','.join(fields))
 
     def __eq__(self, other):
         return self.category() == other.category() if isinstance(other, ImageCategory) else False
@@ -2119,6 +2120,8 @@ class Scene(TaggedImage):
         strlist = []
         if self.isloaded():
             strlist.append("height=%d, width=%d, color=%s" % (self.height(), self.width(), self.colorspace()))
+        elif self.has_loader():
+            strlist.append('loaded=False')
         if self.filename() is not None:
             strlist.append('filename="%s"' % (self.filename()))
         if self.hasurl():
