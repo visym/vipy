@@ -440,7 +440,7 @@ class Video():
     Youtube URLs are downloaded to a temporary filename, retrievable as vid.download().filename().  If the environment
     variable 'VIPY_CACHE' is defined, then videos are saved to this directory rather than the system temporary directory.
     If a filename is provided to the constructor, then that filename will be used instead of a temp or cached filename.
-    URLs can be defined as an absolute URL to a video file, or to a site supported by 'youtube-dl' (https://ytdl-org.github.io/youtube-dl/supportedsites.html)
+    URLs can be defined as an absolute URL to a video file, or to a site supported by 'yt-dlp' (https://github.com/yt-dlp/yt-dlp?tab=readme-ov-file#installation)
 
     ```python
     vid = vipy.video.Video(url='s3://BUCKET.s3.amazonaws.com/PATH/video.ext')
@@ -479,13 +479,13 @@ class Video():
         array: [numpy] An NxHxWxC numpy array for N frames each HxWxC shape
         startframe: [int]  A start frame to clip the video
         endframe: [int] An end frame to clip the video
-        startsec: [float] A start time in seconds to clip the video (this requires setting framerate)
-        endsec: [float] An end time in seconds to clip the video (this requires setting framerate)
+        startsec: [float] A start time in seconds to clip the video 
+        endsec: [float] An end time in seconds to clip the video 
         frames: [list of `vipy.image.Image`] A list of frames in the video
         probeshape: [bool] If true, then probe the shape of the video from ffprobe to avoid an explicit preview later.  This can speed up loading in some circumstances.
         shape: [tuple (rows,cols)] If the shape of the video is known, then this avoids requiring preview or probe.  Useful for some camera streams which may be off at init time.
     """
-    __slots__ = ('_url', '_filename', '_array', '_colorspace', '_ffmpeg', '_framerate', '_startframe', '_endframe', '_startsec', '_endsec', '_shape', '_channels', 'attributes')
+    __slots__ = ('_url', '_filename', '_array', '_colorspace', '_ffmpeg', '_framerate', '_start', '_end', '_shape', '_channels', 'attributes')
     def __init__(self, filename=None, url=None, framerate=30.0, attributes=None, array=None, colorspace=None, startframe=None, endframe=None, startsec=None, endsec=None, frames=None, probeshape=False, shape=None):
         self._url = None
         self._filename = None
@@ -508,8 +508,7 @@ class Video():
         # Constructor clips
         startframe = startframe if startframe is not None else (0 if endframe is not None else startframe)
         assert (startsec is not None and endsec is not None) or (startsec is None and endsec is None), "Invalid input - (startsec,endsec) are both required"        
-        (self._startframe, self._endframe) = (None, None)  # __repr__ only
-        (self._startsec, self._endsec) = (None, None)  # __repr__ only (legacy, no longer used)
+        (self._start, self._end) = (None, None)  # __repr__ only
 
         # Input filenames
         if url is not None:
@@ -557,10 +556,9 @@ class Video():
                 self.framerate(framerate)
             self._framerate = framerate        
         if startframe is not None:
-            self.clip(startframe, endframe)  
+            self.clip(int(startframe), int(endframe))  
         if startsec is not None:
-            # WARNING: if the user does not supply the correct framerate for the video, then this will be wrong since these are converted to frames 
-            self.clip(int(round(startsec/self.framerate())), int(round(endsec/self.framerate())) if endsec is not None else None)
+            self.clip(float(startsec), float(endsec) if endsec is not None else None)
 
         # Array input
         assert not (array is not None and frames is not None)
@@ -612,8 +610,8 @@ class Video():
                 attributes=d['attributes'],
                 startframe=d['startframe'],
                 endframe=d['endframe'],
-                startsec=d['startsec'],
-                endsec=d['endsec'])
+                startsec=d['startsec'] if 'startsec' in d else None,
+                endsec=d['endsec'] if 'endsec' in d else None)
         v._ffmpeg = v._from_ffmpeg_commandline(d['ffmpeg'])
         return v.filename(d['filename']) if d['filename'] is not None else v.nofilename()
 
@@ -625,10 +623,14 @@ class Video():
             strlist.append('filename="%s"' % self.filename())
         if self.hasurl():
             strlist.append('url="%s"' % self.url())
-        if not self.isloaded() and self._startframe is not None and self._endframe is not None:
-            strlist.append('clip=(%d,%d)' % (self._startframe, self._endframe))
-        if not self.isloaded() and self._startframe is not None and self._endframe is None:
-            strlist.append('clip=(%d,)' % (self._startframe))
+        if not self.isloaded() and self._start is not None and self._end is not None and isinstance(self._start, int):
+            strlist.append('clip=(%d,%d)' % (self._start, self._end))
+        if not self.isloaded() and self._start is not None and self._end is not None and isinstance(self._start, float):
+            strlist.append('clip=(%1.2fs,%1.2fs)' % (self._start, self._end))
+        if not self.isloaded() and self._start is not None and self._end is None and isinstance(self._start, int):
+            strlist.append('clip=(%d,)' % (self._start))
+        if not self.isloaded() and self._start is not None and self._end is None and isinstance(self._start, float):
+            strlist.append('clip=(%1.2f,)' % (self._start))
         if self._framerate is not None:
             strlist.append('fps=%1.1f' % float(self._framerate))
         return str('<vipy.video: %s>' % (', '.join(strlist)))
@@ -935,7 +937,7 @@ class Video():
             timestamp_in_seconds = int(timestamp_in_seconds) if timestamp_in_seconds == 0 else timestamp_in_seconds  # 0.0 -> 0
             args = [args[0]] + args[3:]
             f = ffmpeg.input(args[2].replace('FILENAME', self.filename()), ss=timestamp_in_seconds)   # restore filename, set offset time
-            self._startframe = int(round(timestamp_in_seconds*self.framerate()))  # necessary for clip() and __repr__
+            self._start = int(round(timestamp_in_seconds*self.framerate()))  # necessary for clip() and __repr__
         elif args[1] == '-rtsp_flags':
             rtsp_flag = str(args[2])
             args = [args[0]] + args[3:]
@@ -968,17 +970,17 @@ class Video():
                             a.append(s)
 
                     if 'end' in kw:
-                        self._endframe = (self._startframe if self._startframe is not None else 0) + int(round(float(kw['end'])*self.framerate()))  # for __repr__
+                        self._end = (self._start if self._start is not None else 0) + int(round(float(kw['end'])*self.framerate()))  # for __repr__
                     if 'start' in kw:
                         pass
                     if 'start_frame' in kw or 'end_frame' in kw:
                         f = f.setpts('PTS-STARTPTS')  # reset timestamp to 0 before trim filter in seconds
                         if 'end_frame' in kw:
-                            self._endframe = (self._startframe if self._startframe is not None else 0) + int(kw['end_frame'])  # for __repr__
+                            self._end = (self._start if self._start is not None else 0) + int(kw['end_frame'])  # for __repr__
                             kw['end'] = int(kw['end_frame'])/self.framerate()  # convert end_frame to end (legacy)
                             del kw['end_frame']  # use only end and not end frame
                         if 'start_frame' in kw:
-                            self._startframe = (self._startframe if self._startframe is not None else 0) + int(kw['start_frame'])  # for __repr__
+                            self._start = (self._start if self._start is not None else 0) + int(kw['start_frame'])  # for __repr__
                             kw['start'] = int(kw['start_frame'])/self.framerate()  # convert start_frame to start (legacy)
                             del kw['start_frame']  # use only start and not start_frame
 
@@ -1147,10 +1149,10 @@ class Video():
              'array':None,
              'colorspace':self._colorspace,
              'attributes':self.attributes,
-             'startframe':self._startframe,
-             'endframe':self._endframe,
-             'endsec':self._endsec,
-             'startsec':self._startsec,
+             'startframe':self._start if isinstance(self._start, int) else None,
+             'endframe':self._end if isinstance(self._end, int) else None,
+             'startsec':self._start if isinstance(self._start, float) else None,
+             'endsec':self._end if isinstance(self._end, float) else None,
              'ffmpeg':self._ffmpeg_commandline()}
         return json.dumps(d) if encode else d
     
@@ -1181,6 +1183,8 @@ class Video():
 
         """
         if fps is None:
+            if self._framerate is None and self.hasfilename():
+                self._framerate = self.framerate_of_videofile()              
             return self._framerate
         elif float(fps) == self._framerate:
             return self
@@ -1463,11 +1467,11 @@ class Video():
         """Return the size in bytes of the filename(), None if the filename() is invalid"""
         return os.path.getsize(self.filename()) if self.hasfilename() else None
 
-    def downloadif(self, ignoreErrors=False, timeout=10, verbose=True, max_filesize='350m'):
+    def downloadif(self, ignoreErrors=False, timeout=10, verbose=True, max_filesize='999m'):
         """Download URL to filename if the filename has not already been downloaded"""
         return self.download(ignoreErrors=ignoreErrors, timeout=timeout, verbose=verbose, max_filesize=max_filesize) if self.hasurl() and not self.isdownloaded() else self
     
-    def download(self, ignoreErrors=False, timeout=10, verbose=True, max_filesize='350m'):
+    def download(self, ignoreErrors=False, timeout=10, verbose=True, max_filesize='999m'):
         """Download URL to filename provided by constructor, or to temp filename.
         
         Args:
@@ -1791,22 +1795,48 @@ class Video():
         self._ffmpeg = self._ffmpeg.setpts('%1.3f*PTS' % float(1.0/float(s)))
         return self
         
-    def clip(self, startframe, endframe=None):
-        """Load a video clip betweeen start and end frames"""
-        assert (endframe is None or startframe <= endframe) and startframe >= 0, "Invalid start and end frames (%s, %s)" % (str(startframe), str(endframe))
-        if not self.isloaded():
-            timestamp_in_seconds = ((self._startframe if self._startframe is not None else 0)+startframe)/float(self.framerate())            
+    def clip(self, start, end=None):
+        """Clip the video to between (start, end).  This clip is relative to clip() shown by __repr__(). 
+
+        Args:
+            start: [int|float] the start frame|second relative to the video framerate() for the clip
+            end: [int|float] the end frame|second relative to the video framerate for the clip, may be none
+        
+        Returns:
+            This video object, clipped so that a load() will result in frame=0 equivalent to startframe. 
+
+        .. note:  
+            - This does not load the video.  This updates the ffmpeg filter chain to temporally trim the video.  See self.commandline() for the updated filter chain to run.
+        """
+        
+        assert (end is None or start <= end) and start >= 0, "Invalid start and end for clip (%s, %s)" % (str(start), str(end))
+        assert end is None or type(start) == type(end), "Start and end must both be frame index (int) or times in seconds (float)"
+        
+        if not self.isloaded() and isinstance(start, int):
+            assert self.framerate() is not None, "framerate required"
+            timestamp_in_seconds = ((self._start if self._start is not None else 0)+start)/float(self.framerate())            
             self._update_ffmpeg_seek(timestamp_in_seconds)
-            if endframe is not None:
+            if end is not None:
                 self._ffmpeg = self._ffmpeg.setpts('PTS-STARTPTS')  # reset timestamp to 0 before trim filter            
-                self._ffmpeg = self._ffmpeg.trim(start=0, end=(endframe-startframe)/self.framerate())  # must be in seconds to allow for framerate conversion
+                self._ffmpeg = self._ffmpeg.trim(start=0, end=(end-start)/self.framerate())  # must be in seconds to allow for framerate conversion
             self._ffmpeg = self._ffmpeg.setpts('PTS-STARTPTS')  # reset timestamp to 0 after trim filter            
-            self._startframe = startframe if self._startframe is None else self._startframe + startframe  # for __repr__ only
-            self._endframe = (self._startframe + (endframe-startframe)) if endframe is not None else endframe  # for __repr__ only
+            self._start = start if self._start is None else self._start + start  # for __repr__ only
+            self._end = (self._start + (end-start)) if end is not None else end # for __repr__ only
+        elif not self.isloaded() and isinstance(start, float):
+            assert self._start is None or isinstance(self._start, float), "timestamp must be in seconds"
+            timestamp_in_seconds = (self._start if self._start is not None else 0)+start
+            self._update_ffmpeg_seek(timestamp_in_seconds)
+            if end is not None:
+                self._ffmpeg = self._ffmpeg.setpts('PTS-STARTPTS')  # reset timestamp to 0 before trim filter            
+                self._ffmpeg = self._ffmpeg.trim(start=0, end=(end-start))  # must be in seconds to allow for framerate conversion
+            self._ffmpeg = self._ffmpeg.setpts('PTS-STARTPTS')  # reset timestamp to 0 after trim filter            
+            self._start = start if self._start is None else self._start + start  # for __repr__ only
+            self._end = (self._start + (end-start)) if end is not None else end  # for __repr__ only            
         else:
-            endframe = endframe if endframe is not None else len(self._array)
+            startframe = int(np.round(start*self.framerate())) if isinstance(start, float) else start
+            endframe = (int(np.round(end*self.framerate())) if isinstance(end, float) else end) if end is not None else len(self._array)
             self._array = self._array[startframe:endframe] 
-            (self._startframe, self._endframe) = (0, endframe-startframe)
+            (self._start, self._end) = (0, endframe-startframe)
         return self
 
     def cliprange(self):
@@ -1825,18 +1855,8 @@ class Video():
         ```
 
         """
-        return (self._startframe if self._startframe is not None else 0, self._endframe)
+        return (self._start if self._start is not None else 0, self._end)
 
-    #def cliptime(self, startsec, endsec):
-    #    """Load a video clip betweeen start seconds and end seconds, should be initialized by constructor, which will work but will not set __repr__ correctly"""
-    #    assert startsec <= endsec and startsec >= 0, "Invalid start and end seconds (%s, %s)" % (str(startsec), str(endsec))
-    #    assert not self.isloaded(), "Filters can only be applied prior to load() - Try calling flush() first"
-    #    self._ffmpeg = self._ffmpeg.trim(start=startsec, end=endsec)\
-    #                               .setpts('PTS-STARTPTS')  # reset timestamp to 0 after trim filter
-    #    self._startsec = startsec if self._startsec is None else self._startsec + startsec  # for __repr__ only
-    #    self._endsec = endsec if self._endsec is None else self._startsec + (endsec-startsec)  # for __repr__ only
-    #    return self
-    
     def rot90cw(self):
         """Rotate the video 90 degrees clockwise, can only be applied prior to load()"""
         assert not self.isloaded(), "Filters can only be applied prior to load() - Try calling flush() first"
@@ -2431,8 +2451,7 @@ class Video():
             v._ffmpeg = ffmpeg.input(v.filename())  # no other filters
             #v._previewhash = None
             v._shape = None
-            (v._startframe, v._endframe) = (None, None)
-            (v._startsec, v._endsec) = (None, None)
+            (v._start, v._end) = (None, None)
         if rekey:
             v.rekey()
         if flushfile:
@@ -2547,7 +2566,7 @@ class VideoCategory(Video):
     along with the ability to extract a clip based on frames or seconds.
 
     """
-    __slots__ = ('_url', '_filename', '_array', '_colorspace', '_ffmpeg', '_framerate', '_startframe', '_endframe', '_startsec', '_endsec', '_shape', '_channels', 'attributes')    
+    __slots__ = ('_url', '_filename', '_array', '_colorspace', '_ffmpeg', '_framerate', '_start', '_end', '_shape', '_channels', 'attributes')    
     def __init__(self, filename=None, url=None, framerate=30.0, attributes=None, category=None, array=None, colorspace=None, startframe=None, endframe=None, startsec=None, endsec=None, shape=None):
         super().__init__(url=url, filename=filename, framerate=framerate, attributes=attributes, array=array, colorspace=colorspace,
                                             startframe=startframe, endframe=endframe, startsec=startsec, endsec=endsec, shape=shape)
@@ -2571,10 +2590,14 @@ class VideoCategory(Video):
             strlist.append('url="%s"' % self.url())
         if self.category() is not None:
             strlist.append('category=%s' % (str(self.category())[0:80] + (' ... ' if len(str(self.category()))>80 else '')))                        
-        if not self.isloaded() and self._startframe is not None and self._endframe is not None:
-            strlist.append('clip=(%d,%d)' % (self._startframe, self._endframe))
-        if not self.isloaded() and self._startframe is not None and self._endframe is None:
-            strlist.append('clip=(%d,)' % (self._startframe))
+        if not self.isloaded() and self._start is not None and self._end is not None and isinstance(self._start, int):
+            strlist.append('clip=(%d,%d)' % (self._start, self._end))
+        if not self.isloaded() and self._start is not None and self._end is not None and isinstance(self._start, float):
+            strlist.append('clip=(%1.2fs,%1.2fs)' % (self._start, self._end))
+        if not self.isloaded() and self._start is not None and self._end is None and isinstance(self._start, int):
+            strlist.append('clip=(%d,)' % (self._start))
+        if not self.isloaded() and self._start is not None and self._end is None and isinstance(self._start, float):
+            strlist.append('clip=(%1.2fs,)' % (self._start))
         return str('<vipy.video.VideoCategory: %s>' % (', '.join(strlist)))
 
     def category(self):
@@ -2635,7 +2658,7 @@ class Scene(Video):
 
     """
 
-    __slots__ = ('_url', '_filename', '_array', '_colorspace', '_ffmpeg', '_framerate', '_startframe', '_endframe', '_startsec', '_endsec', '_shape', '_channels', 'attributes', '_tracks', '_activities')        
+    __slots__ = ('_url', '_filename', '_array', '_colorspace', '_ffmpeg', '_framerate', '_start', '_end', '_shape', '_channels', 'attributes', '_tracks', '_activities')        
     def __init__(self, filename=None, url=None, framerate=30.0, array=None, colorspace=None, category=None, tracks=None, activities=None,
                  attributes=None, startframe=None, endframe=None, startsec=None, endsec=None, shape=None, tags=None):
 
@@ -2648,12 +2671,14 @@ class Scene(Video):
         if tracks is not None:
             tracks = list(tracks) if isinstance(tracks, (list, tuple, ValuesView)) else [tracks]  # canonicalize
             assert all([isinstance(t, vipy.object.Track) for t in tracks]), "Invalid track input; tracks=[vipy.object.Track(), ...]"
+            assert framerate is not None or all(t.framerate() is not None for t in tracks), "track framerate must be provided if video framerate is not defined"
             self._tracks = {t.id():t for t in tracks}
 
         # Activities must be defined relative to the clip specified by this constructor            
         if activities is not None:
             activities = list(activities) if isinstance(activities, (tuple, list, ValuesView)) else [activities]  # canonicalize            
             assert all([isinstance(a, vipy.activity.Activity) for a in activities]), "Invalid activity input; activities=[vipy.activity.Activity(), ...]"
+            assert framerate is not None or all(a.framerate() is not None for a in activities), "track framerate must be provided if video framerate is not defined"            
             self._activities = {a.id():a for a in activities}
 
         tags = ([category] if category is not None else []) + (tolist(tags) if tags is not None else [])
@@ -2756,22 +2781,26 @@ class Scene(Video):
         if self.isloaded():
             strlist.append("height=%d, width=%d, frames=%d, color=%s" % (self.height(), self.width(), len(self._array), self.colorspace()))
         if self.filename() is not None:
-            strlist.append('filename="%s"' % (self.filename()))
+            strlist.append('filename=%s' % (self.filename()))
         if self.hasurl():
-            strlist.append('url="%s"' % self.url())
+            strlist.append('url=%s' % self.url())
         if self._framerate is not None:
             strlist.append('fps=%1.1f' % float(self._framerate))
-        if not self.isloaded() and self._startframe is not None and self._endframe is not None:
-            strlist.append('clip=(%d,%d)' % (self._startframe, self._endframe))
-        if not self.isloaded() and self._startframe is not None and self._endframe is None:
-            strlist.append('clip=(%d,)' % (self._startframe))
+        if not self.isloaded() and self._start is not None and self._end is not None and isinstance(self._start, int):
+            strlist.append('clip=(%d,%d)' % (self._start, self._end))
+        if not self.isloaded() and self._start is not None and self._end is not None and isinstance(self._start, float):
+            strlist.append('clip=(%1.2fs,%1.2fs)' % (self._start, self._end))
+        if not self.isloaded() and self._start is not None and self._end is None and isinstance(self._start, int):
+            strlist.append('clip=(%d,)' % (self._start))
+        if not self.isloaded() and self._start is not None and self._end is None and isinstance(self._start, float):
+            strlist.append('clip=(%1.2fs,)' % (self._start))
         if self.category() is not None:
             strlist.append('category=%s' % (str(self.category())[0:80] + (' ... ' if len(str(self.category()))>80 else '')))                        
         if self.hastracks():
             strlist.append('tracks=%d' % len(self._tracks))
         if self.hasactivities():
             strlist.append('activities=%d' % len(self._activities))
-        return str('<vipy.video.scene: %s>' % (', '.join(strlist)))
+        return str('<vipy.video.Scene: %s>' % (', '.join(strlist)))
 
 
     def frame(self, k=0, img=None, noimage=False, t=None):
@@ -2846,11 +2875,8 @@ class Scene(Video):
         """Iterate over frames, yielding tuples (activity+object labelset in scene, vipy.image.Scene())"""
         self.load()
         for k in range(0, len(self)):
-            #self._currentframe = k    # used only for incremental add()
             yield (self.labels(k), self.__getitem__(k))
-        #self._currentframe = None
         
-
     def framecomposite(self, n=2, dt=10, mindim=256):
         """Generate a single composite image with minimum dimension mindim as the uniformly blended composite of n frames each separated by dt frames"""
         if not self.isloaded():
@@ -3224,7 +3250,11 @@ class Scene(Video):
         """
         return trackid in self.tracks()
 
-    def add_object(self, obj, category=None, attributes=None, rangecheck=True, frame=None, fluent=False):
+    def add(self, obj, rangecheck=True, frame=None, fluent=False):
+        """Synomym for `vipu.video.Scene.add_object`"""
+        return self.add_object(obj, rangecheck=rangecheck, frame=frame, fluent=fluent)
+    
+    def add_object(self, obj, rangecheck=True, frame=None, fluent=False):
         """Add the object obj to the scene, and return an index to this object for future updates
         
         This function is used to incrementally build up a scene frame by frame.  Obj can be one of the following types:
@@ -3232,24 +3262,13 @@ class Scene(Video):
         - obj = vipy.object.Detection(), this must be called from within a frame iterator (e.g. for im in video) to get the current frame index
         - obj = vipy.object.Track()  
         - obj = vipy.activity.Activity()
-        - obj = [xmin, ymin, width, height], with associated category kwarg, this must be called from within a frame iterator to get the current frame index
         
         It is recomended that the objects are added as follows.  For a v=vipy.video.Scene():
            
         ```python
             for im in v:
                 # Do some processing on frame im to detect objects
-                (object_labels, xywh) = object_detection(im)
-        
-                # Add them to the scene, note that each object instance is independent in each frame, use tracks for object correspondence
-                for (lbl,bb) in zip(object_labels, xywh):
-                    v.add(bb, lbl)
-        
-                # Do some correspondences to track objects
-                t2 = v.add( vipy.object.Track(...) )
-        
-                # Update a previous track to add a keyframe
-                v.track(t2).add( ... )
+                v.add(object_detection(im))        
         ```
         
         The frame iterator will keep track of the current frame in the video and add the objects in the appropriate place.  Alternatively,
@@ -3259,9 +3278,7 @@ class Scene(Video):
         ```
 
         Args:
-            obj: A conformal python object to add to the scene (`vipy.object.Detection`, `vipy.object.Track`, `vipy.activity.Activity`, [xmin, ymin, width, height]
-            category:  Used if obj is an xywh tuple
-            attributes:  Used only if obj is an xywh tuple
+            obj: A conformal python object to add to the scene (`vipy.object.Detection`, `vipy.object.Track`, `vipy.activity.Activity`
             frame:  [int] The frame to add the object
             rangecheck: [bool] If true, check if the object is within the image rectangle and throw an exception if not.  This requires introspecting the video shape using `vipy.video.Video.shape`.
             fluent: [bool] If true, return self instead of the object index 
@@ -3270,13 +3287,13 @@ class Scene(Video):
         if isinstance(obj, vipy.object.Detection):
             assert frame is not None, "add() for vipy.object.Detection() must be added during frame iteration (e.g. for im in video: )"
             k = frame
-            if obj.hasattribute('__trackid') and obj.attributes['__trackid'] in self.tracks():
+            if obj.has_attribute('__trackid') and obj.attributes['__trackid'] in self.tracks():
                 # The attribute "trackid" is set for a detection when interpolating a track at a frame.  This is useful for reconstructing a track from previously enumerated detections
                 trackid = obj.attributes['__trackid']
                 self.trackmap(lambda t: t.update(k, obj) if obj.attributes['__trackid'] == t.id() else t) 
                 return None if not fluent else self
             else:
-                t = vipy.object.Track(category=obj.category(), keyframes=[k], boxes=[obj], boundary='strict', attributes=obj.attributes, trackid=obj.attributes['__trackid'] if obj.hasattribute('__trackid') else None, framerate=self.framerate())
+                t = vipy.object.Track(category=obj.category(), keyframes=[k], boxes=[obj], boundary='strict', attributes=obj.attributes, trackid=obj.attributes['__trackid'] if obj.has_attribute('__trackid') else None, framerate=self.framerate())
                 if rangecheck and not obj.hasoverlap(width=self.width(), height=self.height()):
                     raise ValueError("Track '%s' does not intersect with frame shape (%d, %d)" % (str(t), self.height(), self.width()))
                 self.tracks()[t.id()] = t  # by-reference
@@ -3294,20 +3311,15 @@ class Scene(Video):
                 raise ValueError("Activity '%s' has invalid (startframe, endframe)=(%d, %d)" % (str(obj), obj.startframe(), obj.endframe()))
             self.activities()[obj.id()] = obj  # by-reference, activity may have no tracks
             return obj.id() if not fluent else self
-        elif (isinstance(obj, tuple) or islist(obj)) and len(obj) == 4 and isnumber(obj[0]):
-            assert frame is not None, "add() for obj=xywh must be added at a specific frame"
-            t = vipy.object.Track(category=category, keyframes=[frame], boxes=[vipy.geometry.BoundingBox(xywh=obj)], boundary='strict', attributes=attributes, framerate=self.framerate())
-            if rangecheck and not t.boundingbox().isinside(vipy.geometry.imagebox(self.shape())):
-                t = t.imclip(self.width(), self.height())  # try to clip it, will throw exception if all are bad 
-                warnings.warn('Clipping track "%s" to image rectangle' % (str(t)))
-            self.tracks()[t.id()] = t  # by-reference
-            return t.id() if not fluent else self
         else:
-            raise ValueError('Undefined object type "%s" to be added to scene - Supported types are obj in ["vipy.object.Detection", "vipy.object.Track", "vipy.activity.Activity", "[xmin, ymin, width, height]"]' % str(type(obj)))
+            raise ValueError('Undefined object type "%s" to be added to scene - Supported types are obj in ["vipy.object.Detection", "vipy.object.Track", "vipy.activity.Activity"]' % str(type(obj)))
 
-    def delete(self, id):
+    def delete_id(self, id):
         """Delete a given track or activity by id, if present"""
         return self.trackfilter(lambda t: t.id() != id).activityfilter(lambda a: a.id() != id)
+        
+    def delete(self, id):
+        """Synonym for `vipy.video.Scene.delete_id`"""
             
     def addframe(self, im, frame):
         """Add im=vipy.image.Scene() into vipy.video.Scene() at given frame. The input image must have been generated using im=self[k] for this to be meaningful, so that trackid can be associated"""
@@ -3327,18 +3339,22 @@ class Scene(Video):
         return self
 
     def cleartracks(self):
+        """Synonym for `vipy.video.Scene.clear_tracks`"""
         self._tracks = {}
         return self
 
     def clear_tracks(self):
+        """Clear all tracks from this object"""        
         self._tracks = {}
         return self
     
     def clearactivities(self):
+        """Synonym for `vipy.video.Scene.clear_activities`"""
         self._activities = {}
         return self
     
     def clear_activities(self):
+        """Clear all activities from this object"""                        
         self._activities = {}
         return self
     
@@ -3372,23 +3388,36 @@ class Scene(Video):
 
 
     def framerate(self, fps=None):
-        """Change the input framerate for the video and update frame indexes for all annotations.
+        """Return the current frame rate of change the input framerate for the video and update frame indexes for all annotations.
+
+        The framerate may be None in the constructor if the framerate is not know until a video ois downloaded
+        This function will request the framerate from the video file if it has been downloaded and cache it in _framerate
 
         ```python
         fps = self.framerate()
         self.framerate(fps=15.0)
         ```
 
-        """
+        """        
         if fps is None:
+            if self._framerate is None and self.hasfilename():
+                self._framerate = self.framerate_of_videofile()  # may only be known after downloading the video
             return self._framerate
         elif float(fps) == self._framerate:
             return self
         else:
             assert not self.isloaded(), "Filters can only be applied prior to load() - Try calling flush() first"
             fps = float(fps)
-            self._startframe = int(round(self._startframe * (fps/self._framerate))) if self._startframe is not None else self._startframe  # __repr__ only
-            self._endframe = int(round(self._endframe * (fps/self._framerate))) if self._endframe is not None else self._endframe  # __repr__only
+
+            if self._start is not None and isinstance(self._start, int):
+                self._start = int(round(self._start * (fps/self._framerate)))  # __repr__ only
+            elif self._start is not None and isinstance(self._start, float):
+                self._start = self._start * (fps/self._framerate)  # __repr__ only
+            if self._end is not None and isinstance(self._end, int):
+                self._end = int(round(self._end * (fps/self._framerate))) # __repr__only
+            elif self._end is not None and isinstnace(self._end, float):
+                self._end = self._end * (fps/self._framerate)  # __repr__ only
+                
             self._tracks = {k:t.framerate(fps) for (k,t) in self.tracks().items()}
             self._activities = {k:a.framerate(fps) for (k,a) in self.activities().items()}        
             if 'fps=' in self._ffmpeg_commandline():
@@ -3476,7 +3505,7 @@ class Scene(Video):
         return [vid.clone()
                 .activities([pa]+sa)  # primary activity first
                 .tracks(t)
-                .clip(startframe=max(pa.startframe()-prepad, 0), endframe=min(pa.endframe()+postpad, (maxframes if maxframes is not None else pa.endframe()+postpad)))
+                .clip(start=max(pa.startframe()-prepad, 0), end=min(pa.endframe()+postpad, (maxframes if maxframes is not None else pa.endframe()+postpad)))
                 .new_category(pa.category())
                 .setactorid(pa.actorid())  # actor is actor of primary activity
                 for (k,(pa,sa,t,(prepad,postpad))) in enumerate(zip(primary_activities, secondary_activities, tracks, padframelist))
@@ -3636,14 +3665,13 @@ class Scene(Video):
         super().speed(s)
         return self.trackmap(lambda t: t.framerate(speed=s)).activitymap(lambda a: a.framerate(speed=s))
         
-
     
-    def clip(self, startframe, endframe=None):
-        """Clip the video to between (startframe, endframe).  This clip is relative to clip() shown by __repr__(). 
+    def clip(self, start, end=None):
+        """Clip the video to between (start, end), relative to the current clip in the source video shown by __repr__(). 
 
         Args:
-            startframe: [int] the start frame relative to the video framerate() for the clip
-            endframe: [int] the end frame relative to the video framerate for the clip, may be none
+            start: [int|float] the start frame|second relative to the video framerate() for the clip
+            end: [int|float] the end frame|second relative to the video framerate for the clip, may be none
         
         Returns:
             This video object, clipped so that a load() will result in frame=0 equivalent to startframe.  All tracks and activities updated relative to the new startframe.
@@ -3652,28 +3680,49 @@ class Scene(Video):
             - This return a clone of the video for idempotence
             - This does not load the video.  This updates the ffmpeg filter chain to temporally trim the video.  See self.commandline() for the updated filter chain to run.
         """
-        assert (endframe is None or startframe <= endframe) and startframe >= 0, "Invalid start and end frames (%s, %s)" % (str(startframe), str(endframe))
-
+        assert (end is None or start <= end) and start >= 0, "Invalid start and end (%s, %s)" % (str(start), str(end))
+        assert isinstance(start, (int, float))
+        assert end is None or type(end) == type(start)
+        
         v = self.clone()
-        if not v.isloaded():
+        
+        if not v.isloaded() and isinstance(start, int):
             # -- Copied from super().clip() to allow for clip on clone (for indempotence)
             # -- This code copy is used to avoid super(Scene, self.clone()) which screws up class inheritance for iPython reload
-            assert not v.isloaded(), "Filters can only be applied prior to load() - Try calling flush() first"            
-            timestamp_in_seconds = ((v._startframe if v._startframe is not None else 0)+startframe)/float(v.framerate())
+            assert not v.isloaded(), "Filters can only be applied prior to load() - Try calling flush() first"
+            assert v._start is None or isinstance(v._start, int), "clip start must be in frames"
+            timestamp_in_seconds = ((v._start if v._start is not None else 0)+start)/float(v.framerate())
             v._update_ffmpeg_seek(timestamp_in_seconds)
-            if endframe is not None:
+            if end is not None:
                 v._ffmpeg = v._ffmpeg.setpts('PTS-STARTPTS')  # reset timestamp to 0 before trim filter            
-                v._ffmpeg = v._ffmpeg.trim(start=0, end=(endframe-startframe)/self.framerate())  # must be in seconds to allow for framerate conversion
+                v._ffmpeg = v._ffmpeg.trim(start=0, end=(end-start)/self.framerate())  # must be in seconds to allow for framerate conversion
             v._ffmpeg = v._ffmpeg.setpts('PTS-STARTPTS')  # reset timestamp to 0 after trim filter            
-            v._startframe = startframe if v._startframe is None else v._startframe + startframe  # for __repr__ only
-            v._endframe = (v._startframe + (endframe-startframe)) if endframe is not None else v._endframe  # for __repr__ only
+            v._start = start if v._start is None else v._start + start  # for __repr__ only
+            v._end = (v._start+ (end-start)) if end is not None else v._end # for __repr__ only
             # -- end copy
-        else:
-            endframe = endframe if endframe is not None else len(self._array)
+        elif not v.isloaded() and isinstance(start, float):
+            # -- Copied from super().clip() to allow for clip on clone (for indempotence)
+            # -- This code copy is used to avoid super(Scene, self.clone()) which screws up class inheritance for iPython reload
+            assert not v.isloaded(), "Filters can only be applied prior to load() - Try calling flush() first"
+            assert v._start is None or isinstance(v._start, float), "clip start must be in seconds"
+            timestamp_in_seconds = (v._start if v._start is not None else 0)+start
+            v._update_ffmpeg_seek(timestamp_in_seconds)
+            if end is not None:
+                v._ffmpeg = v._ffmpeg.setpts('PTS-STARTPTS')  # reset timestamp to 0 before trim filter            
+                v._ffmpeg = v._ffmpeg.trim(start=0, end=(end-start))  # must be in seconds to allow for framerate conversion
+            v._ffmpeg = v._ffmpeg.setpts('PTS-STARTPTS')  # reset timestamp to 0 after trim filter            
+            v._start = start if v._start is None else v._start + start  # for __repr__ only
+            v._end = (v._start+ (end-start)) if end is not None else v._end # for __repr__ only
+            # -- end copy
+        else:            
+            startframe = start if isinstance(start, int) else int(np.round(start*v.framerate()))
+            endframe = (end if isinstance(end, int) else int(np.round(end*v.framerate()))) if end is not None else len(self._array)
             v._array = self._array[startframe:endframe]  
-            (v._startframe, v._endframe) = (0, endframe-startframe)
-        v._tracks = {k:t.offset(dt=-startframe).truncate(startframe=0, endframe=(endframe-startframe) if endframe is not None else None) for (k,t) in v.tracks().items()}   # may be degenerate
-        v._activities = {k:a.offset(dt=-startframe).truncate(startframe=0, endframe=(endframe-startframe) if endframe is not None else None) for (k,a) in v.activities().items()}  # may be degenerate
+            (v._start, v._end) = (0, endframe-startframe)
+
+        # FIXME: tracks aren't in seconds
+        v._tracks = {k:t.offset(dt=-start).truncate(0, (end-start) if end is not None else None) for (k,t) in v.tracks().items()}   # may be degenerate
+        v._activities = {k:a.offset(dt=-start).truncate(0, (end-start) if end is not None else None) for (k,a) in v.activities().items()}  # may be degenerate
         return v.trackfilter(lambda t: len(t)>0).activityfilter(lambda a: len(a)>0)  # remove degenerate tracks and activities
 
     def crop(self, bb, zeropad=True):
@@ -3766,12 +3815,18 @@ class Scene(Video):
         return self
 
     def startframe(self):
-        return self._startframe
+        return self._start if (self._start is None or isinstance(self._start, int)) else int(self._start * self.framerate())
 
     def extrapolate(self, f, dt=None):
         """Extrapolate the video to frame f and add the extrapolated tracks to the video"""
         return self.trackmap(lambda t: t.add(f, t.linear_extrapolation(f, dt=dt if dt is not None else self.framerate()), strict=False))
-        
+
+    def download(self, ignoreErrors=False, timeout=10, verbose=True, max_filesize='999m'):    
+        super().download(verbose=verbose, ignoreErrors=ignoreErrors, timeout=timeout, max_filesize=max_filesize)
+        self.trackmap(lambda t: t.framerate(self.framerate()))  # force framerates to match if video framerate was not known until after download
+        self.activitymap(lambda a: a.framerate(self.framerate()))  # force framerates to match if video framerate was not known until after download
+        return self
+    
     def dedupe(self, spatial_iou_threshold=0.8, dt=5, tracks=True, activities=True, temporal_iou_threshold=0.8, verbose=True):
         """Find and delete duplicate tracks and activities by overlap.
         
@@ -3922,7 +3977,7 @@ class Scene(Video):
         return self        
 
 
-    def annotate(self, outfile=None, fontsize=10, captionoffset=(3,-18), shortlabel=None, boxalpha=0.15, d_category2color={'Person':'green', 'Vehicle':'blue', 'Object':'red'}, categories=None, nocaption=False, nocaption_withstring=[], mutator=vipy.image.mutator_show_noun_verb(), timestamp=None, dark_mode=True, light_mode=False, verbose=False):
+    def annotate(self, outfile=None, fontsize=10, captionoffset=(3,-18), shortlabel=None, boxalpha=0.15, d_category2color={'Person':'green', 'Vehicle':'blue', 'Object':'red'}, categories=None, nocaption=False, nocaption_withstring=[], mutator=vipy.image.mutator_show_noun_verb(), timestamp=None, theme='dark', verbose=False):
         """Generate a video visualization of all annotated objects and activities in the video.
         
         The annotation video will be at the resolution and framerate of the underlying video, and pixels in this video will now contain the overlay.
@@ -3940,8 +3995,7 @@ class Scene(Video):
             nocaption: [bool] If true, do not show any captions, just boxes
             mutator: [lambda] A lambda function that will mutate an image to allow for complex visualizations.  This should be a mutator like `vipy.image.mutator_show_trackid`.
             timestamp: [bool] If true, show a semitransparent timestamp (when the annotation occurs, not when the video was collected) with frame number in the upper left corner of the video
-            dark_mode [bool: If true, visualize captions with dark background and light foreground
-            light_mode [bool: If true, visualize captions with light background and dark foreground        
+            theme [str]: If 'dark', visualize captions with darkj background and light foreground, if 'light' visualize captions with light background and dark foreground        
             verbose: [bool] Show more helpful messages if true
 
         Returns:
@@ -3960,17 +4014,16 @@ class Scene(Video):
         if outfile is None:        
             assert self.load().isloaded(), "Load() failed"
             imgs = [f_mutator(self[k].clone(), k).savefig(fontsize=fontsize,
-                                                  captionoffset=captionoffset,
-                                                  shortlabel=shortlabel,
-                                                  boxalpha=boxalpha,
-                                                  d_category2color=d_category2color,
-                                                  categories=categories,
-                                                  nocaption=nocaption,
-                                                  dark_mode=dark_mode,
-                                                  light_mode=light_mode,                                                  
-                                                  timestamp=f_timestamp(k) if timestamp is not None else None,
-                                                  figure=1 if k<(len(self)-1) else None,  # cleanup on last frame
-                                                  nocaption_withstring=nocaption_withstring).numpy() for k in range(0, len(self))]
+                                                          captionoffset=captionoffset,
+                                                          shortlabel=shortlabel,
+                                                          boxalpha=boxalpha,
+                                                          d_category2color=d_category2color,
+                                                          categories=categories,
+                                                          nocaption=nocaption,
+                                                          theme=theme,
+                                                          timestamp=f_timestamp(k) if timestamp is not None else None,
+                                                          figure=1 if k<(len(self)-1) else None,  # cleanup on last frame
+                                                          nocaption_withstring=nocaption_withstring).numpy() for k in range(0, len(self))]
             
             # Replace pixels with annotated pixels and downcast object to vipy.video.Video (since there are no more objects to show)
             return vipy.video.Video(array=np.stack([np.array(PIL.Image.fromarray(img).convert('RGB')) for img in imgs], axis=0), framerate=self.framerate(), attributes=self.attributes)  # slow for large videos
@@ -3981,21 +4034,20 @@ class Scene(Video):
             with vo.stream(overwrite=True) as so:
                 for (k,im) in enumerate(self.stream()):
                     so.write(f_mutator(im.clone(), k).savefig(fontsize=fontsize,
-                                                      captionoffset=captionoffset,
-                                                      shortlabel=shortlabel,
-                                                      boxalpha=boxalpha,
-                                                      d_category2color=d_category2color,
-                                                      categories=categories,
-                                                      nocaption=nocaption,
-                                                      dark_mode=dark_mode,
-                                                      light_mode=light_mode,                                                      
-                                                      timestamp=f_timestamp(k) if timestamp is not None else None,
-                                                      figure=1 if k<(n-1) else None,  # cleanup on last frame
-                                                      nocaption_withstring=nocaption_withstring).rgb())
+                                                              captionoffset=captionoffset,
+                                                              shortlabel=shortlabel,
+                                                              boxalpha=boxalpha,
+                                                              d_category2color=d_category2color,
+                                                              categories=categories,
+                                                              nocaption=nocaption,
+                                                              theme=theme,
+                                                              timestamp=f_timestamp(k) if timestamp is not None else None,
+                                                              figure=1 if k<(n-1) else None,  # cleanup on last frame
+                                                              nocaption_withstring=nocaption_withstring).rgb())
             return vo
 
 
-    def _show(self, outfile=None, verbose=True, fontsize=10, captionoffset=(3,-18), shortlabel=None, boxalpha=0.15, d_category2color={'Person':'green', 'Vehicle':'blue', 'Object':'red'}, categories=None, nocaption=False, nocaption_withstring=[], notebook=False, timestamp=None, dark_mode=True, light_mode=False):
+    def _show(self, outfile=None, verbose=True, fontsize=10, captionoffset=(3,-18), shortlabel=None, boxalpha=0.15, d_category2color={'Person':'green', 'Vehicle':'blue', 'Object':'red'}, categories=None, nocaption=False, nocaption_withstring=[], notebook=False, timestamp=None, theme='dark'):
         """Generate an annotation video saved to outfile (or tempfile if outfile=None) and show it using ffplay when it is done exporting.  Do not modify the original video buffer.  Returns a clone of the video with the shown annotation."""
         return self.clone().annotate(verbose=verbose, 
                                      fontsize=fontsize,
@@ -4005,20 +4057,19 @@ class Scene(Video):
                                      d_category2color=d_category2color,
                                      categories=categories,
                                      nocaption=nocaption,
-                                     dark_mode=dark_mode,
-                                     light_mode=light_mode,                                     
                                      timestamp=timestamp,
+                                     theme=theme,
                                      nocaption_withstring=nocaption_withstring).saveas(outfile).play(notebook=notebook)
     
 
-    def show(self, outfile=None, verbose=True, fontsize=10, captionoffset=(3,-18), shortlabel=None, boxalpha=0.15, d_category2color={'Person':'green', 'Vehicle':'blue', 'Object':'red'}, categories=None, nocaption=False, nocaption_withstring=[], figure=1, fps=None, timestamp=None, mutator=vipy.image.mutator_show_noun_verb(), dark_mode=True, light_mode=False):
+    def show(self, outfile=None, verbose=True, fontsize=10, captionoffset=(3,-18), shortlabel=None, boxalpha=0.15, d_category2color={'Person':'green', 'Vehicle':'blue', 'Object':'red'}, categories=None, nocaption=False, nocaption_withstring=[], figure=1, fps=None, timestamp=None, mutator=vipy.image.mutator_show_noun_verb(), theme='dark'):
         """Faster show using interative image show for annotated videos.  This can visualize videos before video rendering is complete, but it cannot guarantee frame rates. Large videos with complex scenes will slow this down and will render at lower frame rates."""
+        if not self.isdownloaded() and self.hasurl():
+            self.download()        
         fps = min(fps, self.framerate()) if fps is not None else self.framerate()
         assert fps > 0, "Invalid display framerate"
         f_timestamp = (lambda k: '%s %d' % (vipy.util.clockstamp(), k)) if timestamp is True else timestamp
         f_mutator = mutator 
-        if not self.isdownloaded() and self.hasurl():
-            self.download()
         with Stopwatch() as sw:            
             for (k,im) in enumerate(self.load() if self.isloaded() else self.stream()):
                 time.sleep(max(0, (1.0/self.framerate())*(self.framerate()/fps) - sw.since()))
@@ -4030,8 +4081,7 @@ class Scene(Video):
                                      boxalpha=boxalpha,
                                      d_category2color=d_category2color,
                                      captionoffset=captionoffset,
-                                     dark_mode=dark_mode,
-                                     light_mode=light_mode,                                     
+                                     theme=theme,
                                      timestamp=f_timestamp(k) if timestamp is not None else None,
                                      shortlabel=shortlabel)
                 

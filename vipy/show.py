@@ -131,8 +131,9 @@ def savefig(filename=None, fignum=None, pad_inches=0, bbox_inches='tight', dpi=N
     return BACKEND.savefig(filename, fignum, pad_inches=pad_inches, dpi=dpi, bbox_inches=bbox_inches, format=format)
 
 
-def colorlist(dark_mode=False, light_mode=False):
-    return BACKEND.colorlist(dark_mode=dark_mode, light_mode=light_mode)
+def colorlist(theme=None):
+    assert theme in [None, 'dark', 'light'], "invalid color theme '%s' - choose from [None, 'dark', 'light']" % theme
+    return BACKEND.colorlist(theme=theme)
 
 
 def text(caption, xmin, ymin, fignum=None, textcolor='black', textfacecolor=None, textfacealpha=1.0, fontsize=10, linewidth=3, facecolor='white', facealpha=0.5, alpha=1.0, pad=0.5):

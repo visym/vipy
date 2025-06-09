@@ -11,7 +11,9 @@ import vipy.visualize
 class MultiMoments(object):
     def __init__(self, datadir):
         """Multi-Moments in Time:  http://moments.csail.mit.edu/
-        
+
+          You are required to fill out a license agreement and download the data yourself into datadir
+
           >>> d = MultiMoments('/path/to/dir')
           >>> valset = d.valset()
           >>> valset.categories()           # return the dictionary mapping integer category to string
@@ -25,7 +27,7 @@ class MultiMoments(object):
         """
         self.datadir = datadir
         if not self._isdownloaded():
-            raise ValueError('Not downloaded - datadir="/path/to/dir" such that "/path/to/dir/moments_categories.txt" exists.  See http://moments.csail.mit.edu/')
+            raise ValueError('Not downloaded - datadir="/path/to/dir" such that "/path/to/dir/moments_categories.txt" exists.  See http://moments.csail.mit.edu for license agreement')
             
     def __repr__(self):
         return str('<vipy.data.multimoments: datadir="%s">' % (self.datadir))
@@ -38,7 +40,7 @@ class MultiMoments(object):
         categories = self.categories()        
         vidlist = []
         for r in csv:
-            v = Scene(filename=os.path.join(self.datadir, 'videos', r[0]), category=','.join(sorted(r[1:])))
+            v = Scene(filename=os.path.join(self.datadir, 'videos', r[0]), category=','.join(sorted(r[1:])), framerate=None)
             for a in r[1:]:
                 v.add(Activity(category=categories[int(a)], startframe=0, endframe=30*3))  # FIXME: framerate?
             vidlist.append(v)

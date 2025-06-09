@@ -257,7 +257,7 @@ class Track():
 
     """
     __slots__ = ['_id', '_label', '_framerate', '_interpolation', '_boundary', 'attributes', '_keyframes', '_keyboxes']    
-    def __init__(self, keyframes, boxes, category=None, label=None, framerate=None, interpolation='linear', boundary='strict', attributes=None, trackid=None, filterbox=False):
+    def __init__(self, keyframes, boxes, category=None, label=None, framerate=30, interpolation='linear', boundary='strict', attributes=None, trackid=None, filterbox=False):
         keyframes = tolist(keyframes)
         boxes = tolist(boxes)        
         assert isinstance(keyframes, tuple) or isinstance(keyframes, list), "Keyframes are required and must be tuple or list"
@@ -268,10 +268,11 @@ class Track():
         assert len(keyframes) == len(boxes), "Boxes and keyframes must be the same length, there must be a one to one mapping of frames to boxes"
         assert boundary in set(['extend', 'strict']), "Invalid interpolation boundary - Must be ['extend', 'strict']"
         assert interpolation in set(['linear']), "Invalid interpolation - Must be ['linear']"
-                
+        assert framerate is not None, "initial framerate for keyframes is required for framerate conversion"
+        
         self._id = shortuuid() if trackid is None else trackid
         self._label = category if category is not None else label
-        self._framerate = float(framerate) if framerate is not None else framerate
+        self._framerate = float(framerate) 
         self._interpolation = interpolation
         self._boundary = boundary
         self.attributes = attributes.copy() if attributes is not None else {}  # shallow copy
@@ -449,13 +450,6 @@ class Track():
         return (float(np.mean([(bb._width() - m[0])**2 for bb in self.keyboxes()])), 
                 float(np.mean([(bb._height() - m[1])**2 for bb in self.keyboxes()]))) if m is not None else None
 
-    def _set_framerate(self, fps):
-        """Override framerate conversion and just set the framerate attribute.  
-
-        .. warning::  This should really only be set by the user in the constructor and is included here as an admin override for some legacy JSON that did not contain framerates.  Use with caution!
-        """
-        self._framerate = float(fps)
-        return self
 
     def framerate(self, fps=None, speed=None):
         """Resample keyframes from known original framerate set by constructor to be new framerate fps.
@@ -487,14 +481,14 @@ class Track():
         The frame index is relative to the framerate set in the constructor.
 
         """        
-        return self._keyframes[0] if len(self._keyframes)>0 else None  # assumes sorted order
+        return int(self._keyframes[0]) if len(self._keyframes)>0 else None  # assumes sorted order
 
     def endframe(self):
         """Return the endframe of the track or None if there are no keyframes.
 
         The frame index is relative to the framerate set in the constructor.
         """
-        return self._keyframes[-1] if len(self._keyframes)>0 else None  # assumes sorted order
+        return int(self._keyframes[-1]) if len(self._keyframes)>0 else None  # assumes sorted order
 
     def duration(self):
         """The length of the track in seconds.
@@ -604,8 +598,9 @@ class Track():
         Returns:
             This box updated in place
         """
+        dt = int(np.round(dt*self.framerate())) if isinstance(dt, float) else dt
         self._keyboxes = [bb.offset(dx, dy) for bb in self._keyboxes]
-        self._keyframes = [int(f+dt) for f in self._keyframes]
+        self._keyframes = [(f+dt) for f in self._keyframes]
         return self
 
     def uncrop(self, bb, s=1):
@@ -640,18 +635,21 @@ class Track():
         self._keyboxes = [bb.offset(dx=x, dy=y) for (bb, (x, y)) in zip(self._keyboxes, zip(dx, dy))]
         return self
 
-    def truncate(self, startframe=None, endframe=None):
+    def truncate(self, start=None, end=None):
         """Truncate a track so that any keyframes less than startframe or greater than endframe (inclusive) are removed.  Interpolate keyboxes at (startframe, endframe) endpoints.
 
         Args:
-            startframe: [int] The startframe of the truncation relative to the track framerate.  All keyframes less than or equal to startframe are included.  If the keyframe does not exist at startframe, one is interpolated and added.
-            endframe: [int] The endframe of the truncation relative to the track framerate.  All keyframes greater than or equal to the endframe are included.  If the keyfrmae does not exist at endframe, one is interpolated and added.
+            start: [int|float] The start of the truncation relative to the track framerate.  All keyframes less than or equal to startframe are included.  If the keyframe does not exist at startframe, one is interpolated and added.
+            end: [int|float] The end of the truncation relative to the track framerate.  All keyframes greater than or equal to the endframe are included.  If the keyfrmae does not exist at endframe, one is interpolated and added.
 
         Returns:
             This track such that all keyboxes <= startframe or >= endframe are removed.
 
         .. note::  The startframe and endframe for truncation are inclusive.  
         """
+        startframe = int(np.round(start*self.framerate())) if isinstance(start, float) else start
+        endframe = int(np.round(end*self.framerate())) if isinstance(end, float) else end        
+        
         if startframe is not None and startframe not in self._keyframes and self[startframe] is not None:
             self.add(startframe, self[startframe].clone())  # interpolated boundary condition
         if endframe is not None and endframe not in self._keyframes and self[endframe] is not None:
@@ -786,8 +784,18 @@ class Track():
             self._boundary = b
             return self
         
-    def clip(self, startframe, endframe):
-        """Clip a track to be within (startframe,endframe) with strict boundary handling"""
+    def clip(self, start, end):
+        """Clip a track to be within (start,end) with strict boundary handling.  
+
+        Start and end may be frame numbers (int) or seconds (float).  Frames are relative to the current frame rate.
+
+        Args:
+            start [int|float]:  The start of the clip in frames|seconds
+            end [int|float|None]:  The end of the clip in frames|seconds (if provided)
+        """
+        startframe = int(np.round(start*self.framerate())) if isinstance(start, float) else start
+        endframe = int(np.round(end*self.framerate())) if isinstance(end, float) else start        
+        
         if self[startframe] is not None:
             self.add(startframe, self[startframe])
         if self[endframe] is not None:

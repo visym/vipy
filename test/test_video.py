@@ -433,7 +433,6 @@ def _test_scene():
         except:
             pass 
         v.add_object(Track(category=1, keyframes=[1], boxes=[BoundingBox(0,0,1,1)], framerate=30))
-        v.add_object([1,2,3,4], category='test', rangecheck=False, frame=k)
     print('[test_video.scene]: scene iterator  PASSED')
     
     # Random scenes
@@ -462,7 +461,7 @@ def _test_scene():
     v = vipy.video.RandomScene(64,64,64).flush().url('https://none')
     v._colorspace = None
     vs = vipy.video.Scene.from_json(v.clone().json())
-    assert v.pack().__dict__ == vs.pack().__dict__
+    assert v.flush().pack().json() == vs.flush().pack().json()
     print('[test_video.scene]: json serialization PASSED')
     
     # Cleanup
