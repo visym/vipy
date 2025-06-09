@@ -306,7 +306,7 @@ def test_boundingbox():
 
     bb = BoundingBox(xmin=-20, ymin=-10, width=30, height=40)
     bbc = BoundingBox.from_json(bb.json())
-    assert bb.__dict__ == bbc.__dict__
+    assert bb == bbc
     print('[test_geometry.boundingbox]: json PASSED')    
 
     

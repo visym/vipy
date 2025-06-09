@@ -6,7 +6,7 @@ import copy
 import warnings
 from itertools import islice
 from vipy.globals import log
-from vipy.label import Tag
+from itertools import zip_longest
 
 try:
     import ujson as json  # faster
@@ -14,10 +14,66 @@ except ImportError:
     import json
 
 
-class Object(Tag):
-    pass
+class Object():
+    __slots__ = ()
 
+    def category(self):
+        return self.get_attribute('tags')[0] if self.has_attribute('tags') else None
 
+    def new_category(self, c):
+        self.attributes['tags'] = [c]
+        self.del_attribute('confidences')
+        return self
+    
+    def confidence(self):
+        return self.get_attribute('confidences')[self.category()] if self.has_attribute('confidences') and self.category() in self.attributes['confidences'] else None
+    
+    def tags(self):
+        return tuple(self.get_attribute('tags')) if self.has_attribute('tags') else ()
+    
+    def confidences(self):
+        return tuple(self.attributes['confidences'][t] if t in self.aattributes['confidences'] else None for t in self.tags())
+    
+    def add_tag(self, tag, confidence=None):
+        self.append_attribute('tags', tag)
+        if confidence is not None:
+            if not self.has_attribute('confidences'):
+                self.set_attribute('confidences', {})
+            self.attributes['confidences'][tag] = confidence
+        return self
+
+    def add_tags(self, tags, confidences=[]):
+        for (t,c) in zip_longest(tags, confidences):
+            self.add_tag(t, c)
+        return self
+    
+    def has_attribute(self, k):
+        return isinstance(self.attributes, dict) and k in self.attributes
+
+    def get_attribute(self, k):
+        return self.attributes[k]
+
+    def set_attribute(self, k, v):
+        self.attributes[k] = v
+        return self
+    
+    def del_attribute(self, k):
+        self.attributes.pop(k, None)
+        return self
+
+    def clear_attributes(self):
+        self.attributes = {}
+        return self
+    
+    def append_attribute(self, key, value):
+        """Append the value to attribute key, creating the key as an empty list if it does not exist"""
+        if key not in self.attributes:
+            self.attributes[key] = []
+        self.attributes[key].append(value)
+        return self
+    
+
+    
 class Detection(BoundingBox, Object):
     """vipy.object.Detection class
     
@@ -32,14 +88,18 @@ class Detection(BoundingBox, Object):
     ```
 
     """
-    __slots__ = ['_xmin', '_ymin', '_xmax', '_ymax', 'attributes', '_id', '_tags']    
+    __slots__ = ['_xmin', '_ymin', '_xmax', '_ymax', 'attributes', '_id']    
     def __init__(self, category=None, xmin=None, ymin=None, width=None, height=None, xmax=None, ymax=None, confidence=None, xcentroid=None, ycentroid=None, ulbr=None, xywh=None, attributes=None, id=None, tags=None):
         super().__init__(xmin=xmin, ymin=ymin, width=width, height=height, xmax=xmax, ymax=ymax, xcentroid=xcentroid, ycentroid=ycentroid, xywh=xywh, ulbr=ulbr)
 
         self._id = shortuuid() if id == True else id
         self.attributes = {} if attributes is None else attributes.copy()  # shallow copy
 
-        Tag.__init__(self, category=category, confidence=confidence, tags=tags)
+        if category is not None:
+            self.add_tag(category, confidence)        
+        if tags is not None:
+            for t in to_iterator(tags):
+                self.add_tag(t)
         
     @classmethod
     def cast(cls, d):
@@ -71,8 +131,9 @@ class Detection(BoundingBox, Object):
             # vipy-1.16.1            
             return cls(xmin=d['xmin'], ymin=d['ymin'], xmax=d['xmax'], ymax=d['ymax'],
                        attributes=d['attributes'] if 'attributes' in d else None,
-                       tags=d['tags'] if 'tags' in d else None,
-                       category=d['category'] if 'category' in d else None,
+                       tags=None,  # in attributes
+                       category=None,
+                       confidence=None,
                        id=d['id'] if 'id' in d else None)
         
     def __repr__(self):
@@ -82,7 +143,7 @@ class Detection(BoundingBox, Object):
         if True:
             strlist.append('bbox=(xmin=%1.1f, ymin=%1.1f, width=%1.1f, height=%1.1f)' %
                            (self.xmin(), self.ymin(),self._width(), self._height()))
-        if self.has_category() and self.confidence() is not None:
+        if self.category() is not None and self.confidence() is not None:
             strlist.append('conf=%1.3f' % self.confidence())
         if self.isdegenerate():
             strlist.append('degenerate')
@@ -98,7 +159,6 @@ class Detection(BoundingBox, Object):
     def dict(self):
         """Return a python dictionary containing the relevant serialized attributes suitable for JSON encoding"""
         return self.json(s=None, encode=False)
-
                 
     def id(self):
         return self._id
@@ -110,36 +170,23 @@ class Detection(BoundingBox, Object):
             d.attributes = copy.deepcopy(self.attributes)
         return d
 
-    def hasattribute(self, k):
-        return isinstance(self.attributes, dict) and k in self.attributes
-
-    def getattribute(self, k):
-        return self.attributes[k]
-
-    def setattribute(self, k, v):
-        self.attributes[k] = v
-        return self
-    
-    def delattribute(self, k):
-        self.attributes.pop(k, None)
-        return self
-
-    def clear_attributes(self):
-        self.attributes = {}
-        return self
 
     
 class Keypoint2d(Point2d, Object):
     """vipy.object.Keypoint2d class"""
 
-    __slots__ = ['_x', '_y', '_r', 'attributes', '_id', '_tags']        
+    __slots__ = ['_x', '_y', '_r', 'attributes', '_id']        
     def __init__(self, x, y, radius=1, attributes=None, confidence=None, id=None, category=None, tags=None):
         super().__init__(x, y, r=radius)
         
         self.attributes = attributes if attributes is not None else {}
         self._id = shortuuid() if id is True else id
-        
-        Tag.__init__(self, category=category, confidence=confidence, tags=tags)
+
+        if category is not None:
+            self.add_tag(category, confidence)        
+        if tags is not None:
+            for t in to_iterator(tags):
+                self.add_tag(t)
 
     def clone(self, deep=False):
         """Copy the object, if deep=True, then include a deep copy of the attribute dictionary, else a shallow copy.  Cloned object has the same id()"""
@@ -160,9 +207,9 @@ class Keypoint2d(Point2d, Object):
         fields  = ['x=%s' % self.x]
         fields += ['y=%s' % self.y]
         fields += ['r=%s' % self.r]        
-        fields += ['category=%s' % truncate_string(str(self.category()), 40)] if self.has_category() else []
-        fields += ['conf=%1.3f' % self.confidence()] if self.has_category() and self.confidence() is not None else []
-        fields += ['tags=%s' % truncate_string(str(self.tags()), 40)] if not self.has_category() else []        
+        fields += ['category=%s' % truncate_string(str(self.category()), 40)] if self.category() is not None else []
+        fields += ['conf=%1.3f' % self.confidence()] if self.category() is not None and self.confidence() is not None else []
+        fields += ['tags=%s' % truncate_string(str(self.tags()), 40)] if len(self.tags())>1 else []        
         return str('<vipy.object.Keypoint2d: %s>' % (', '.join(fields)))
     
     @classmethod
@@ -170,9 +217,6 @@ class Keypoint2d(Point2d, Object):
         d = json.loads(s) if not isinstance(s, dict) else s
         return cls(x=d['x'], y=d['y'], radius=d['r'],
                    attributes=d['attributes'] if 'attributes' in d else None,
-                   tags=d['tags'] if 'tags' in d else None,
-                   category=d['category'] if 'category' in d else None,
-                   confidence=d['confidence'] if 'confidence' in d else None,                                      
                    id=d['id'] if 'id' in d else True)
     
     def json(self, encode=True):
@@ -475,9 +519,9 @@ class Track():
         """
         assert len(self._keyboxes) > 0, "Degenerate object for interpolation"   # not self.isempty()
         if len(self._keyboxes) == 1:
-            return Detection.cast(self._keyboxes[0].clone()).new_category(self.category()).setattribute('__trackid', self.id()) if (self._boundary == 'extend' or self.during(f)) else None
+            return Detection.cast(self._keyboxes[0].clone()).new_category(self.category()).set_attribute('__trackid', self.id()) if (self._boundary == 'extend' or self.during(f)) else None
         if f in self._keyframes:            
-            return Detection.cast(self._keyboxes[self._keyframes.index(f)]).new_category(self.category()).setattribute('__trackid', self.id())  # by reference, do not clone
+            return Detection.cast(self._keyboxes[self._keyframes.index(f)]).new_category(self.category()).set_attribute('__trackid', self.id())  # by reference, do not clone
 
         kf = self._keyframes
         ft = min(max(f, kf[0]), kf[-1])  # truncated frame index

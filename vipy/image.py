@@ -13,7 +13,6 @@ from vipy.util import isnumpy, isurl, isimageurl, to_iterable, tolist,\
     try_import, tolist, islistoflists, istupleoftuples, isstring, \
     islist, isnumber, isnumpyarray, string_to_pil_interpolation, toextension, iswebp
 from vipy.geometry import BoundingBox, imagebox
-from vipy.label import Label, Category, Tag
 import vipy.object
 from vipy.object import greedy_assignment
 import vipy.downloader
@@ -32,6 +31,7 @@ import types
 import hashlib
 import time
 import math
+from itertools import zip_longest
 
 
 try:
@@ -99,7 +99,7 @@ class Image():
         A `vipy.image.Image` object
 
     """
-
+    __slots__ = ('_filename', '_url', '_loader', '_array', '_colorspace', 'attributes')
     def __init__(self, filename=None, url=None, array=None, colorspace=None, attributes=None):
         # Private attributes
         self._filename = None   # Local filename
@@ -149,8 +149,8 @@ class Image():
 
         """
         assert isinstance(im, vipy.image.Image), "Invalid input - must derive from vipy.image.Image"
-        im.__class__ = vipy.image.Image
-        return im
+        return cls(filename=im._filename, url=im._url, array=im._array, colorspace=im._colorspace, attributes=im.attributes)
+
 
     @classmethod
     def from_dict(cls, d):
@@ -417,7 +417,7 @@ class Image():
         
     def dict(self):
         """Return a python dictionary containing the relevant serialized attributes suitable for JSON encoding"""
-        return {k.lstrip('_'):v for (k,v) in self.__dict__.items()}  # prettyjson (remove "_" prefix to attributes)                                    
+        return {k.lstrip('_'):getattr(self, k) for k in Image.__slots__}  # prettyjson (remove "_" prefix to attributes)                                    
 
     def json(self, encode=True):
         if not vipy.util.is_jsonable(self.attributes):
@@ -1038,14 +1038,17 @@ class Image():
         else:
             raise ValueError('No URI defined')
 
-    def setattribute(self, key, value):
+    def set_attribute(self, key, value):
         """Set element self.attributes[key]=value"""
         if self.attributes is None:
             self.attributes = {key: value}
         else:
             self.attributes[key] = value
         return self
-
+    
+    def setattribute(self, key, value):
+        return self.set_attribute(key, value)
+        
     def setattributes(self, newattr):
         """Set many attributes at once by providing a dictionary to be merged with current attributes"""
         assert isinstance(newattr, dict), "New attributes must be dictionary"
@@ -1054,8 +1057,12 @@ class Image():
     
     def getattribute(self, k):
         """Return the key k in the attributes dictionary (self.attributes) if present, else None"""        
-        return self.attributes[k] if k in self.attributes else None        
+        return self.get_attribute(k)
 
+    def get_attribute(self, k):
+        """Return the key k in the attributes dictionary (self.attributes) if present, else None"""        
+        return self.attributes[k] if k in self.attributes else None        
+    
     def clear_attributes(self):
         self.attributes = {}
         return self
@@ -1064,10 +1071,13 @@ class Image():
         return self.attributes is not None and key in self.attributes
 
     def delattribute(self, k):
+        return self.del_attribute(k)
+    
+    def del_attribute(self, k):
         if k in self.attributes:
             self.attributes.pop(k)
         return self
-
+        
     def delattributes(self, atts):
         for k in tolist(atts):
             self.delattribute(k)
@@ -1881,7 +1891,7 @@ class Image():
         return bb
     
     
-class ImageCategory(Image, Category):
+class ImageCategory(Image):
     """vipy ImageCategory class
 
     This class provides a representation of a vipy.image.Image with a category label. 
@@ -1895,7 +1905,8 @@ class ImageCategory(Image, Category):
     ```
 
     """
-    
+
+    __slots__ = ('_filename', '_url', '_loader', '_array', '_colorspace', 'attributes')    
     def __init__(self, filename=None, url=None, category=None, label=None, attributes=None, array=None, colorspace=None, confidence=None):
         # Image class inheritance
         super().__init__(filename=filename,
@@ -1904,42 +1915,14 @@ class ImageCategory(Image, Category):
                          array=array,
                          colorspace=colorspace)
 
-        Category.__init__(self, category=category if category is not None else label, confidence=confidence)
-
-    @classmethod
-    def cast(cls, im):
-        assert isinstance(im, vipy.image.Image)
-        im.__class__ = vipy.image.ImageCategory
-        im.clear_tags()
-        return im
-
-    @classmethod
-    def from_json(obj, s):
-        d = json.loads(s) if not isinstance(s, dict) else s
-        d = {k.lstrip('_'):v for (k,v) in d.items()}  # prettyjson (remove "_" prefix to attributes)                                
-        return cls(filename=d['filename'] if 'filename' in d else None,
-                   url=d['url'] if 'url' in d else None,
-                   category=d['category'] if 'category' in d else None,
-                   attributes=d['attributes'] if 'attributes' in d else None,
-                   colorspace=d['colorspace'] if 'colorspace' in d else None,
-                   array=np.array(d['array'], dtype=np.uint8) if 'array' in d and d['array'] is not None else None,
-                   confidence=d['confidence'] if 'confidence' in d else None)
+        self.set_attribute('category', category)
+        if confidence is not None:
+            self.set_attribute('confidence', float(confidence))
 
     def __repr__(self):
-        strlist = []
-        if self.isloaded():
-            strlist.append("height=%d, width=%d, color=%s" % (self.height(), self.width(), self.colorspace()))
-        if self.filename() is not None:
-            strlist.append('filename="%s"' % (self.filename()))
-        if self.hasurl():
-            strlist.append('url="%s"' % self.url())
-        if not self.isloaded() and self.has_loader() is not None:
-            strlist.append('loaded=False')            
-        if self.category() is not None and len(str(self.category()))>0:
-            strlist.append('category=%s' % (str(self.category())[0:80] + (' ... ' if len(str(self.category()))>80 else '')))
-        if self.has_category() and self.confidence() is not None:
-            strlist.append('confidence=%1.3f' % self.confidence())
-        return str('<vipy.image.ImageCategory: %s>' % (', '.join(strlist)))
+        fields = ['category=%s' % self.category()] if self.category() is not None else []
+        fields +=  ['confidence=%1.3f' % self.confidence()] if self.confidence() is not None else []
+        return super().__repr__().replace('vipy.image.Image', 'vipy.image.ImageCategory').replace('>', '%s>' % ','.join(fields))
 
     def __eq__(self, other):
         return self.category() == other.category() if isinstance(other, ImageCategory) else False
@@ -1947,8 +1930,29 @@ class ImageCategory(Image, Category):
     def __ne__(self, other):
         return self.category() != other.category() if isinstance(other, ImageCategory) else True
 
+    @classmethod
+    def from_json(obj, s):
+        d = json.loads(s) if not isinstance(s, dict) else s
+        return cls(filename=d['filename'] if 'filename' in d else None,
+                   url=d['url'] if 'url' in d else None,
+                   category=None,  # will be in attribute
+                   tags=None,      # will be in attributes
+                   confidence=None, 
+                   attributes=d['attributes'] if 'attributes' in d else None,
+                   colorspace=d['colorspace'] if 'colorspace' in d else None,
+                   array=np.array(d['array'], dtype=np.uint8) if 'array' in d and d['array'] is not None else None)
     
-class TaggedImage(Image, Tag):
+    def new_category(self, c):
+        return self.set_attribute('category', c)
+
+    def category(self):
+        return self.get_attribute('category')
+
+    def confidence(self):
+        return self.get_attribute('confidence')        
+    
+    
+class TaggedImage(Image):
     """vipy.image.TaggedImage class
 
     This class provides a representation of a vipy.image.Image with one or more tags.
@@ -1959,103 +1963,72 @@ class TaggedImage(Image, Tag):
     im = vipy.image.TaggedImage(filename='/path/to/dog.jpg', tags={'dog','canine'})
     ```
     """
-    def __init__(self, filename=None, url=None, attributes=None, array=None, colorspace=None, tags=None, category=None):
+    __slots__ = ('_filename', '_url', '_loader', '_array', '_colorspace', 'attributes', '_tags')        
+    def __init__(self, filename=None, url=None, attributes=None, array=None, colorspace=None, tags=None, category=None, confidence=None):
         super().__init__(filename=filename,
                          url=url,
                          attributes=attributes,
                          array=array,
                          colorspace=colorspace)
+        
+        tags = ([category] if category is not None else []) + (tolist(tags) if tags is not None else [])
+        if len(tags) > 0:
+            self.set_attribute('tags', tags)
 
-        Tag.__init__(self, category=category, tags=tags)
-            
     def __repr__(self):
-        fields = ["height=%d, width=%d, color=%s" % (self.height(), self.width(), self.colorspace())] if self.isloaded() else []
-        fields += ['filename="%s"' % (self.filename())] if self.filename() is not None else []
-        fields += ['url="%s"' % self.url()] if self.hasurl() else []
-        fields += ['loaded=False'] if not self.isloaded() and self.has_loader() is not None else []
-        fields += ['category=%s' % vipy.util.truncate_string(str(self.category()), 40)] if self.has_category() else []
-        fields += ['confidence=%1.3f' % self.confidence()] if self.has_category() and self.confidence() is not None else []        
-        fields += ['tags=%s' % vipy.util.truncate_string(str(self.tags()), 40)] if self.has_tags() and not self.has_category() else []
-        return str('<vipy.image.LabeledImage: %s>' % (', '.join(fields)))
-
+        fields  = ['category=%s' % self.category()] if self.category() is not None else []
+        fields +=  ['confidence=%1.3f' % self.confidence()] if self.confidence() is not None else []
+        fields +=  ['tags=%s' % truncate_string(str(self.tags()), 40)] if len(self.tags())>1 else []
+        return super().__repr__().replace('vipy.image.Image', 'vipy.image.TaggedImage').replace('>', '%s>' % ','.join(fields))
+        
     @classmethod
     def cast(cls, im):
         assert isinstance(im, vipy.image.Image)
         im.__class__ = vipy.image.TaggedImage
-        im.clear_tags()
-        return im
-
-    @classmethod
-    def from_json(obj, s):
-        d = json.loads(s) if not isinstance(s, dict) else s
-        d = {k.lstrip('_'):v for (k,v) in d.items()}  # prettyjson (remove "_" prefix to attributes)                                
-        return cls(filename=d['filename'] if 'filename' in d else None,
-                   url=d['url'] if 'url' in d else None,
-                   category=d['category'] if 'category' in d else None,
-                   attributes=d['attributes'] if 'attributes' in d else None,
-                   colorspace=d['colorspace'] if 'colorspace' in d else None,
-                   array=np.array(d['array'], dtype=np.uint8) if 'array' in d and d['array'] is not None else None,                   
-                   tags=d['tags'] if 'tags' in d else None)
-
-
-class LabeledImage(Image, Label):
-    """vipy.image.LabeledImage class
-
-    This class provides a representation of a vipy.image.Image with one or more labels.
-
-    Valid constructors include all provided by vipy.image.Image with additional labels that provide ground truth for the content of the image. 
-
-    Suppprted labels are tags/keywords, categories, captions
-
-    ```python
-    im = vipy.image.LabeledImage(filename='/path/to/dog.jpg', tags={'dog','canine'})
-    im = vipy.image.LabeledImage(filename='/path/to/dog.jpg', caption=['this is a dog.', 'this image contains a canine']))
-    ```
-    """
-    def __init__(self, filename=None, url=None, attributes=None, array=None, colorspace=None, tags=None, captions=None, category=None):
-        super().__init__(filename=filename,
-                         url=url,
-                         attributes=attributes,
-                         array=array,
-                         colorspace=colorspace)
-
-        Label.__init__(self, category=category, tags=tags, captions=captions)
-            
-    def __repr__(self):
-        fields = ["height=%d, width=%d, color=%s" % (self.height(), self.width(), self.colorspace())] if self.isloaded() else []
-        fields += ['filename="%s"' % (self.filename())] if self.filename() is not None else []
-        fields += ['url="%s"' % self.url()] if self.hasurl() else []
-        fields += ['loaded=False'] if not self.isloaded() and self.has_loader() is not None else []
-        fields += ['category=%s' % vipy.util.truncate_string(str(self.category()), 40)] if self.has_category() else []
-        fields += ['confidence=%1.3f' % self.confidence()] if self.has_category() and self.confidence() is not None else []        
-        fields += ['tags=%s' % vipy.util.truncate_string(str(self.tags()), 40)] if self.has_tags() and not self.has_category() else []
-        fields += ['captions=%s' % vipy.util.truncate_string(str(self.captions()), 40)] if self.has_captions() else []
-        return str('<vipy.image.LabeledImage: %s>' % (', '.join(fields)))
-
-    @classmethod
-    def cast(cls, im):
-        assert isinstance(im, vipy.image.Image)
-        im.__class__ = vipy.image.LabeledImage
-        im.clear_tags()
-        im.clear_captions()
+        im.del_attribute('tags')
         return im
 
     @classmethod
     def from_json(cls, s):
         d = json.loads(s) if not isinstance(s, dict) else s
-        d = {k.lstrip('_'):v for (k,v) in d.items()}  # prettyjson (remove "_" prefix to attributes)                                
         return cls(filename=d['filename'] if 'filename' in d else None,
                    url=d['url'] if 'url' in d else None,
-                   category=d['category'] if 'category' in d else None,
+                   category=None,  # will be in attribute
+                   tags=None,      # will be in attributes
                    attributes=d['attributes'] if 'attributes' in d else None,
                    colorspace=d['colorspace'] if 'colorspace' in d else None,
-                   array=np.array(d['array'], dtype=np.uint8) if 'array' in d and d['array'] is not None else None,                                      
-                   tags=d['tags'] if 'tags' in d else None,
-                   captions=d['captions'] if 'captions' in d else None)
+                   array=np.array(d['array'], dtype=np.uint8) if 'array' in d and d['array'] is not None else None)
 
+    def category(self):
+        return self.get_attribute('tags')[0] if self.hasattribute('tags') else None
+
+    def confidence(self):
+        return self.get_attribute('confidences')[self.category()] if self.has_attribute('confidences') and self.category() in self.attributes['confidences'] else None
+
+    def has_tag(self, t):
+        return t in self.tags()
+    
+    def tags(self):
+        return tuple(self.get_attribute('tags')) if self.hasattribute('tags') else ()
+    
+    def confidences(self):
+        return tuple(self.attributes['confidences'][t] if t in self.attributes['confidences'] else None for t in self.tags())
+    
+    def add_tag(self, tag, confidence=None):
+        self.append_attribute('tags', tag)
+        if confidence is not None:
+            if not self.hasattribute('confidences'):
+                self.set_attribute('confidences', {})
+            self.attributes['confidences'][tag] = confidence
+        return self
+
+    def add_tags(self, tags, confidences=[]):
+        for (t,c) in zip_longest(tags, confidences):
+            self.add_tag(t, c)
+        return self
 
     
-class Scene(LabeledImage):
+class Scene(TaggedImage):
     """vipy.image.Scene class
 
     This class provides a representation of a vipy.image.ImageCategory with one or more vipy.object.Object.  The goal of this class is to provide a unified representation for all objects in a scene.
@@ -2069,10 +2042,11 @@ class Scene(LabeledImage):
     im = vipy.image.Scene(filename='/path/to/city_image.jpg', category='office', boxlabels='face', xywh=[[0,0,100,100], [100,100,200,200]])
     im = vipy.image.Scene(filename='/path/to/city_image.jpg', category='office', boxlabels=['face', 'desk'] xywh=[[0,0,100,100], [200,200,300,300]])
     ```
-
     """
-    def __init__(self, filename=None, url=None, category=None, attributes=None, objects=None, xywh=None, boxlabels=None, array=None, colorspace=None, tags=None, captions=None):
-        super().__init__(filename=filename, url=url, attributes=attributes, tags=tags, category=category, captions=captions, array=array, colorspace=colorspace)  
+    __slots__ = ('_filename', '_url', '_loader', '_array', '_colorspace', 'attributes', '_objectlist')
+    
+    def __init__(self, filename=None, url=None, category=None, attributes=None, objects=None, xywh=None, boxlabels=None, array=None, colorspace=None, tags=None):
+        super().__init__(filename=filename, url=url, attributes=attributes, tags=tags, category=category, array=array, colorspace=colorspace)  
         self._objectlist = []
 
         if objects is not None:
@@ -2091,9 +2065,9 @@ class Scene(LabeledImage):
         if boxlabels is not None:
             if isstring(boxlabels):
                 label = boxlabels
-                detlist = [d.category(label) for d in detlist]
+                detlist = [d.new_category(label) for d in detlist]
             elif (isinstance(boxlabels, tuple) or islist(boxlabels)) and len(boxlabels) == len(xywh):
-                detlist = [d.category(label) for (d,label) in zip(detlist, boxlabels)]
+                detlist = [d.new_category(label) for (d,label) in zip(detlist, boxlabels)]
             else:
                 raise ValueError("Invalid boxlabels list - len(boxlabels) must be len(xywh) with corresponding labels for each xywh box  [label1, label2, ...]")
 
@@ -2105,7 +2079,6 @@ class Scene(LabeledImage):
         assert isinstance(im, vipy.image.Image), "Invalid input - must be derived from vipy.image.Image"
         if im.__class__ != vipy.image.Scene:
             im.__class__ = vipy.image.Scene
-            im._category = None if not hasattr(im, '_category') else im._category
             im._objectlist = [] if not hasattr(im, '_objectlist') else im._objectlist  
         return im
     
@@ -2130,9 +2103,11 @@ class Scene(LabeledImage):
         return len(self._objectlist)
     
     def json(self, encode=True):
-        d = super().json(encode=False)
+        d = {k.lstrip('_'):getattr(self, k) for k in Scene.__slots__ if getattr(self, k) is not None}  # prettyjson (remove "_" prefix to attributes)          
         d['objectlist'] = {'Detection': [bb.json(encode=False) for bb in self._objectlist if isinstance(bb, vipy.object.Detection)],
-                           'Keypoint2d': [p.json(encode=False) for p in self._objectlist if isinstance(p, vipy.object.Keypoint2d)]}            
+                           'Keypoint2d': [p.json(encode=False) for p in self._objectlist if isinstance(p, vipy.object.Keypoint2d)]}
+        if 'array' in d and d['array'] is not None:
+            d['array'] = self._array.tolist()        
         return json.dumps(d) if encode else d
 
         
@@ -2148,14 +2123,14 @@ class Scene(LabeledImage):
             strlist.append('filename="%s"' % (self.filename()))
         if self.hasurl():
             strlist.append('url=%s' % self.url())
-        if self.has_category():
+        if self.category() is not None:
             strlist += ['category=%s' % truncate_string(str(self.category()), 40)]
-        elif self.has_tags():
+        elif len(self.tags())>1:
             strlist += ['tags=%s' % truncate_string(str(self.tags()), 40)]            
         if len(self.objects()) > 0:
             strlist.append('objects=%d' % len(self.objects()))
             
-        return str('<vipy.image.scene: %s>' % (', '.join(strlist)))
+        return str('<vipy.image.Scene: %s>' % (', '.join(strlist)))
 
     def __len__(self):
         """The length of a scene is equal to the number of objects present in the scene"""
@@ -2715,17 +2690,17 @@ class ImageDetection(Scene):
     
 def mutator_show_trackid(n_digits_in_trackid=None):
     """Mutate the image to show track ID with a fixed number of digits appended to the category as (####)"""
-    return lambda im, k=None: (im.objectmap(lambda o: o.category('%s (%s)' % (o.category(), o.attributes['__trackid'][0:n_digits_in_trackid]))
-                                            if o.hasattribute('__trackid') else o))
+    return lambda im, k=None: (im.objectmap(lambda o: o.new_category('%s (%s)' % (o.category(), o.attributes['__trackid'][0:n_digits_in_trackid]))
+                                            if o.has_attribute('__trackid') else o))
 
 def mutator_show_trackindex():
     """Mutate the image to show track index appended to the category as (####)"""
-    return lambda im, k=None: (im.objectmap(lambda o: o.category('%s (%d)' % (o.category(), int(o.attributes['__track_index']))) if o.hasattribute('__track_index') else o))
+    return lambda im, k=None: (im.objectmap(lambda o: o.new_category('%s (%d)' % (o.category(), int(o.attributes['__track_index']))) if o.has_attribute('__track_index') else o))
 
 def mutator_show_track_only():
     """Mutate the image to show track as a consistently colored box with no categories"""
     f = mutator_show_trackindex()
-    return lambda im, k=None, f=f: f(im).objectmap(lambda o: o.category('__%s' % o.category()))  # prepending __ will not show it, but will color boxes correctly
+    return lambda im, k=None, f=f: f(im).objectmap(lambda o: o.new_category('__%s' % o.category()))  # prepending __ will not show it, but will color boxes correctly
     
 def mutator_show_noun_only(nocaption=False):
     """Mutate the image to show the noun only.  
@@ -2735,27 +2710,27 @@ def mutator_show_noun_only(nocaption=False):
     
     ..note:: To color boxes by track rather than noun, use `vipy.image.mutator_show_trackonly`
     """
-    return lambda im, k=None: (im.objectmap(lambda o: o.category('\n'.join([('__'+n if nocaption else n) for n in o.attributes['__track_category']])) if o.hasattribute('__track_category') else o))
+    return lambda im, k=None: (im.objectmap(lambda o: o.new_category('\n'.join([('__'+n if nocaption else n) for n in o.attributes['__track_category']])) if o.has_attribute('__track_category') else o))
 
 def mutator_show_verb_only():
     """Mutate the image to show the verb only"""
-    return lambda im, k=None: (im.objectmap(lambda o: o.category('\n'.join([v for v in o.attributes['__activity_category']])) if o.hasattribute('__activity_category') else o))
+    return lambda im, k=None: (im.objectmap(lambda o: o.new_category('\n'.join([v for v in o.attributes['__activity_category']])) if o.has_attribute('__activity_category') else o))
 
 def mutator_show_noun_or_verb():
     """Mutate the image to show the verb only if it is non-zero else noun"""
-    return lambda im,k=None: (im.objectmap(lambda o: o.category('\n'.join([v if len(v)>0 else n for (n,v) in zip(o.attributes['__track_category'], o.attributes['__activity_category'])])) if o.hasattribute('__track_category') and o.hasattribute('__activity_category') else o))
+    return lambda im,k=None: (im.objectmap(lambda o: o.new_category('\n'.join([v if len(v)>0 else n for (n,v) in zip(o.attributes['__track_category'], o.attributes['__activity_category'])])) if o.has_attribute('__track_category') and o.has_attribute('__activity_category') else o))
 
 def mutator_show_noun_verb():
     """Mutate the image to show the category as 'Noun Verb1\nNoun Verb2'"""
-    return lambda im, k=None: (im.objectmap(lambda o: o.category('\n'.join(['%s %s' % (n.capitalize().replace('_',' '),
+    return lambda im, k=None: (im.objectmap(lambda o: o.new_category('\n'.join(['%s %s' % (n.capitalize().replace('_',' '),
                                                                                        (v.replace('%s_'%n.lower(),'',1) if v.lower().startswith(n.lower()) else v).replace('_',' '))
                                                                             for (n,v) in zip(o.attributes['__track_category'], o.attributes['__activity_category'])]))
-                                            if o.hasattribute('__track_category') and o.hasattribute('__activity_category') else o))
+                                            if o.has_attribute('__track_category') and o.has_attribute('__activity_category') else o))
     
 def mutator_show_trackindex_verbonly(confidence=True, significant_digits=2):
     """Mutate the image to show boxes colored by track index, and only show 'verb' captions with activity confidence, sorted in decreasing order"""
     f = mutator_show_trackindex()
-    return lambda im, k=None, f=f: f(im).objectmap(lambda o: o.category('__%s' % o.category()) if (len(o.attributes['__track_category']) == 1 and len(o.attributes['__activity_category'][0]) == 0) else o.category('\n'.join(['%s %s' % (v, ('(%1.2f)'%float(c)) if (confidence is True and c is not None) else '') for (n,v,c) in sorted(zip(o.attributes['__track_category'], o.attributes['__activity_category'], o.attributes['__activity_conf']), key=lambda x: float(x[2]) if x[2] else 0, reverse=True)])))
+    return lambda im, k=None, f=f: f(im).objectmap(lambda o: o.new_category('__%s' % o.category()) if (len(o.attributes['__track_category']) == 1 and len(o.attributes['__activity_category'][0]) == 0) else o.new_category('\n'.join(['%s %s' % (v, ('(%1.2f)'%float(c)) if (confidence is True and c is not None) else '') for (n,v,c) in sorted(zip(o.attributes['__track_category'], o.attributes['__activity_category'], o.attributes['__activity_conf']), key=lambda x: float(x[2]) if x[2] else 0, reverse=True)])))
 
 
 def RandomImage(rows=None, cols=None):
@@ -2773,7 +2748,7 @@ def RandomImageDetection(rows=None, cols=None):
                           xmin=np.random.randint(0,cols - 16), ymin=np.random.randint(0,rows - 16),
                           width=np.random.randint(16,cols), height=np.random.randint(16,rows))
 
-def RandomScene(rows=None, cols=None, num_detections=8, num_keypoints=8, num_tags=None, num_objects=None, url=None):
+def RandomScene(rows=None, cols=None, num_detections=8, num_keypoints=8, num_tags=4, num_objects=None, url=None):
     """Return a uniform random color `vipy.image.Scene` of size (rows, cols) with a specified number of vipy.object.Object` objects"""    
     im = Scene(array=RandomImage(rows, cols).array()) if url is None else Scene(url=url)
     (rows, cols) = im.shape()
@@ -2785,7 +2760,7 @@ def RandomScene(rows=None, cols=None, num_detections=8, num_keypoints=8, num_tag
     if num_keypoints:
         objects += [vipy.object.Keypoint2d(category='kp%02d' % (k%20), x=np.random.randint(0,cols - 16), y=np.random.randint(0,rows - 16), radius=np.random.randint(0.01*cols, 0.1*cols), confidence=float(np.random.rand())) for k in range(num_keypoints)]
     if num_tags:
-        im.clear_tags().tag(['tag%d'%k for k in range(num_tags)], [float(np.random.rand()) for k in range(num_tags)])
+        im.add_tags(['tag%d'%k for k in range(num_tags)], [float(np.random.rand()) for k in range(num_tags)])
             
     return im.objects(objects)
     

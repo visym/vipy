@@ -139,14 +139,14 @@ class BoundingBox(object):
           ulbr=(xmin,ymin,xmax,ymax)
           bounding rectangle of binary mask image"""
 
+    __slots__ = ['_xmin', '_ymin', '_xmax', '_ymax']        
     def __init__(self, xmin=None, ymin=None, xmax=None, ymax=None, centroid=None, xcentroid=None, ycentroid=None, width=None, height=None, mask=None, xywh=None, ulbr=None, ulbrdict=None):
 
         if ulbrdict is not None:
-            self.__dict__ = ulbrdict  # equivalent to (but faster)
-            #self._xmin = ulbrdict['_xmin']
-            #self._ymin = ulbrdict['_ymin']
-            #self._xmax = ulbrdict['_xmax']
-            #self._ymax = ulbrdict['_ymax']                                  
+            self._xmin = ulbrdict['_xmin']
+            self._ymin = ulbrdict['_ymin']
+            self._xmax = ulbrdict['_xmax']
+            self._ymax = ulbrdict['_ymax']                                  
         elif xmin is not None and ymin is not None and xmax is not None and ymax is not None:
             if not (isnumber(xmin) and isnumber(ymin) and isnumber(xmax) and isnumber(ymax)):
                 raise ValueError('Box coordinates must be integers or floats not "%s"' % str(type(xmin)))
@@ -213,7 +213,7 @@ class BoundingBox(object):
         return self.json(encode=True)
     
     def json(self, encode=True):
-        d = {k.lstrip('_'):v for (k,v) in self.__dict__.items()}  # prettyjson (remove "_" prefix to attributes)        
+        d = {k.lstrip('_'):getattr(self, k) for k in BoundingBox.__slots__}  # prettyjson (remove "_" prefix to attributes)        
         return json.dumps(d) if encode else d
 
     def has_normalized_coordinates(self):
@@ -1077,6 +1077,8 @@ def RandomBox():
 
 class Point2d():
     """vipy.geometry.Point2d class"""
+    __slots__ = ['_x', '_y', '_r']
+    
     def __init__(self, x, y, r=None):
         """2D point parameterization"""
         assert math.isfinite(x)

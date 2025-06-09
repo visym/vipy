@@ -364,25 +364,16 @@ def _test_image_fileformat(imgfile):
     assert ImageCategory(category='1') != ImageCategory(category='2')
     print('[test_image.image]["%s"]:  ImageCategory equivalence PASSED' % imgfile)
     assert ImageCategory(category='1').category() == '1'
-    assert ImageCategory(label='1').label() == '1'    
     assert not ImageCategory(category='1').category == '2'
-    assert ImageCategory(category='1').category('2').label() == '2' 
 
-    try:
-        ImageCategory(category='1', label='2')
-        Failed()
-    except Failed:
-        raise
-    except:
-        pass
     print('[test_image.image]["%s"]:  ImageCategory category conversion PASSED' % imgfile)    
 
-    # LabeledImage
-    imt = vipy.image.LabeledImage(filename=imgfile, tags=['mytag1','mytag2'])
+    # TaggedImage
+    imt = vipy.image.TaggedImage(filename=imgfile, tags=['mytag1','mytag2'])
     assert imt.has_tag('mytag2')
     assert imt.has_tag('mytag1') and imt.has_tag('mytag2')
-    assert vipy.image.LabeledImage.from_json(imt.json()).has_tag('mytag2')
-    print('[test_image.image]["%s"]:  LabeledImage PASSED' % imgfile)
+    assert vipy.image.TaggedImage.from_json(imt.json()).has_tag('mytag2')
+    print('[test_image.image]["%s"]:  TaggedImage PASSED' % imgfile)
     
     # Random images
     im = vipy.image.RandomImage(128,256)

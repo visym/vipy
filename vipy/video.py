@@ -420,7 +420,7 @@ class Stream(object):
             
 
 
-class Video(object):
+class Video():
     """ vipy.video.Video class
 
     The vipy.video class provides a fluent, lazy interface for representing, transforming and visualizing videos.
@@ -485,6 +485,7 @@ class Video(object):
         probeshape: [bool] If true, then probe the shape of the video from ffprobe to avoid an explicit preview later.  This can speed up loading in some circumstances.
         shape: [tuple (rows,cols)] If the shape of the video is known, then this avoids requiring preview or probe.  Useful for some camera streams which may be off at init time.
     """
+    __slots__ = ('_url', '_filename', '_array', '_colorspace', '_ffmpeg', '_framerate', '_startframe', '_endframe', '_startsec', '_endsec', '_shape', '_channels', 'attributes')
     def __init__(self, filename=None, url=None, framerate=30.0, attributes=None, array=None, colorspace=None, startframe=None, endframe=None, startsec=None, endsec=None, frames=None, probeshape=False, shape=None):
         self._url = None
         self._filename = None
@@ -588,8 +589,7 @@ class Video(object):
 
         """
         assert isinstance(v, vipy.video.Video), "Invalid input - must be derived from vipy.video.Video"
-        v.__class__ = vipy.video.Video
-        return v
+        return Video.from_json(v.json())
             
     @classmethod
     def from_json(cls, s):
@@ -604,7 +604,6 @@ class Video(object):
 
         """        
         d = json.loads(s) if not isinstance(s, dict) else s
-        d = {k.lstrip('_'):v for (k,v) in d.items()}  # prettyjson (remove "_" prefix to attributes)                                            
         v = cls(filename=d['filename'],
                 url=d['url'],
                 framerate=d['framerate'],
@@ -686,7 +685,7 @@ class Video(object):
 
         """
         if newid is not None:
-            self.setattribute('video_id', newid)
+            self.set_attribute('video_id', newid)
             return self
         else:
             return self.attributes['video_id'] if 'video_id' in self.attributes else None
@@ -1139,7 +1138,7 @@ class Video(object):
         """
         
         if self.isloaded():
-            warnings.warn("JSON serialization of loaded video is inefficient.  Try store()/restore()/unstore() instead to serialize videos as standalone objects efficiently, or flush() any loaded videos prior to serialization to quiet this warning.")
+            raise ValueError("JSON serialization of loaded video is extremely inefficient.  Try store()/restore()/unstore() instead to serialize videos as standalone objects efficiently, or flush() any loaded videos prior to serialization.")
         if not vipy.util.is_jsonable(self.attributes):
             raise ValueError('attributes dictionary contains non-json elements and cannot be serialized.  Try self.clear_attributes() or self.sanitize()')
         d = {'filename':self._filename,
@@ -1221,7 +1220,7 @@ class Video(object):
 
     def nourl(self):
         """Remove the `vipy.video.Video.url` from the video"""
-        (self._url, self._urluser, self._urlpassword, self._urlsha1) = (None, None, None, None)
+        self._url = None
         return self
 
     def url(self, url=None, username=None, password=None, sha1=None):
@@ -1231,11 +1230,11 @@ class Video(object):
         if url is not None and (isRTSPurl(url) or isRTMPurl(url)):
             self.filename(self._url) 
         if username is not None:
-            self._urluser = username  # basic authentication
+            self.set_attribute('__urluser', username)  # basic authentication
         if password is not None:
-            self._urlpassword = password  # basic authentication
+            self.set_attribute('__urlpassword', password)  # basic authentication
         if sha1 is not None:
-            self._urlsha1 = sha1  # file integrity
+            self.set_attribute('__urlsha1', sha1)  # file integrity
         if url is None and username is None and password is None and sha1 is None:
             return self._url
         else:
@@ -1506,9 +1505,9 @@ class Video(object):
                                          filename,
                                          verbose=verbose,
                                          timeout=timeout,
-                                         sha1=None,
-                                         username=None,
-                                         password=None)
+                                         sha1=self.get_attribute('__urlsha1'),
+                                         username=self.get_attribute('__urluser'),
+                                         password=self.get_attribute('__urlpassword'))
                 if self._filename is None:
                     self.filename(filename)  # update with temp filename
             elif url_scheme == 'file':
@@ -2507,7 +2506,7 @@ class Video(object):
             self._array = self._array + np.array(bias, dtype=np.float32)
         return self.colorspace('float')
 
-    def setattribute(self, k, v=None):
+    def set_attribute(self, k, v=None):
         if self.attributes is None:
             self.attributes = {}
         self.attributes[k] = v
@@ -2536,7 +2535,7 @@ class Video(object):
         self.attributes = {}
         return self
     
-    def getattribute(self, k):
+    def get_attribute(self, k):
         """Return the key k in the attributes dictionary (self.attributes) if present, else None"""
         return self.attributes[k] if k in self.attributes else None
 
@@ -2548,17 +2547,18 @@ class VideoCategory(Video):
     along with the ability to extract a clip based on frames or seconds.
 
     """
+    __slots__ = ('_url', '_filename', '_array', '_colorspace', '_ffmpeg', '_framerate', '_startframe', '_endframe', '_startsec', '_endsec', '_shape', '_channels', 'attributes')    
     def __init__(self, filename=None, url=None, framerate=30.0, attributes=None, category=None, array=None, colorspace=None, startframe=None, endframe=None, startsec=None, endsec=None, shape=None):
         super().__init__(url=url, filename=filename, framerate=framerate, attributes=attributes, array=array, colorspace=colorspace,
                                             startframe=startframe, endframe=endframe, startsec=startsec, endsec=endsec, shape=shape)
-        self._category = category                
+
+        if category is not None:
+            self.attributes['category'] = category
 
     @classmethod
     def from_json(cls, s):
-        d = json.loads(s) if not isinstance(s, dict) else s
-        d = {k.lstrip('_'):v for (k,v) in d.items()}  # prettyjson (remove "_" prefix to attributes)                                            
         v = super().from_json(s)
-        v._category = d['category']
+        v.__class__ = VideoCategory
         return v
         
     def __repr__(self):
@@ -2577,21 +2577,15 @@ class VideoCategory(Video):
             strlist.append('clip=(%d,)' % (self._startframe))
         return str('<vipy.video.VideoCategory: %s>' % (', '.join(strlist)))
 
-    def json(self, encode=True):
-        d = json.loads(super().json())
-        d['category'] = self._category
-        return json.dumps(d) if encode else d
+    def category(self):
+        return self.get_attribute('category')
     
-    def category(self, c=None):
-        if c is None:
-            return self._category
-        else:
-            self._category = c
-            return self
+    def new_category(self, category):
+        return self.set_attribute('category', category)
 
 
     
-class Scene(VideoCategory):
+class Scene(Video):
     """ vipy.video.Scene class
 
     The vipy.video.Scene class provides a fluent, lazy interface for representing, transforming and visualizing annotated videos.
@@ -2640,14 +2634,15 @@ class Scene(VideoCategory):
     activity performed by the object instances.  Track and activity timing must be relative to the start frame of the Scene() constructor.  
 
     """
-        
+
+    __slots__ = ('_url', '_filename', '_array', '_colorspace', '_ffmpeg', '_framerate', '_startframe', '_endframe', '_startsec', '_endsec', '_shape', '_channels', 'attributes', '_tracks', '_activities')        
     def __init__(self, filename=None, url=None, framerate=30.0, array=None, colorspace=None, category=None, tracks=None, activities=None,
-                 attributes=None, startframe=None, endframe=None, startsec=None, endsec=None, shape=None):
+                 attributes=None, startframe=None, endframe=None, startsec=None, endsec=None, shape=None, tags=None):
 
         self._tracks = {}
         self._activities = {}        
         super().__init__(url=url, filename=filename, framerate=framerate, attributes=attributes, array=array, colorspace=colorspace,
-                                    category=category, startframe=startframe, endframe=endframe, startsec=startsec, endsec=endsec, shape=shape)
+                         startframe=startframe, endframe=endframe, startsec=startsec, endsec=endsec, shape=shape)
 
         # Tracks must be defined relative to the clip specified by this constructor
         if tracks is not None:
@@ -2661,18 +2656,44 @@ class Scene(VideoCategory):
             assert all([isinstance(a, vipy.activity.Activity) for a in activities]), "Invalid activity input; activities=[vipy.activity.Activity(), ...]"
             self._activities = {a.id():a for a in activities}
 
-        self._currentframe = None  # deprecated
+        tags = ([category] if category is not None else []) + (tolist(tags) if tags is not None else [])
+        if len(tags) > 0:
+            self.set_attribute('tags', tags)
+            
+    def category(self):
+        return self.get_attribute('tags')[0] if self.hasattribute('tags') else None
 
+    def new_category(self, category):
+        return self.set_attribute('tags', [category]).delattribute('confidences')    
+    
+    def confidence(self):
+        return self.get_attribute('confidences')[self.category()] if self.has_attribute('confidences') and self.category() in self.attributes['confidences'] else None
+    
+    def tags(self):
+        return tuple(self.get_attribute('tags')) if self.hasattribute('tags') else ()
+    
+    def confidences(self):
+        return tuple(self.attributes['confidences'][t] if t in self.attributes['confidences'] else None for t in self.tags())
+    
+    def add_tag(self, tag, confidence=None):
+        self.append_attribute('tags', tag)
+        if confidence is not None:
+            if not self.hasattribute('confidences'):
+                self.set_attribute('confidences', {})
+            self.attributes['confidences'][tag] = confidence
+        return self
+
+    def add_tags(self, tags, confidences=[]):
+        for (t,c) in zip_longest(tags, confidences):
+            self.add_tag(t, c)
+        return self
+    
+            
     @classmethod
     def cast(cls, v, flush=False):
         """Cast a conformal vipy object to this class.  This is useful for downcast and upcast conversion of video objects."""
         assert isinstance(v, vipy.video.Video), "Invalid input - must be derived from vipy.video.Video"
-        if v.__class__ != vipy.video.Scene:
-            v.__class__ = vipy.video.Scene            
-            v._tracks = {} if flush or not hasattr(v, '_tracks') else v._tracks
-            v._activities = {} if flush or not hasattr(v, '_activities') else v._activities
-            v._category = None if flush or not hasattr(v, '_category') else v._category
-        return v
+        return Scene.from_json(v.json())
 
     @classmethod
     def asjson(cls, s):
@@ -2711,8 +2732,8 @@ class Scene(VideoCategory):
         #   - This is useful when calling vipy.util.load(...) on archives that contain hundreds of thousands of objects
         #   - Do not access the private attributes self._tracks and self._attributes as they will be packed until needed
         #   - Should install ultrajson (pip install ujson) for super fast parsing
-        v._tracks = tuple([x if isinstance(x, str) else str(json.dumps(x)) for x in d['tracks'].values()])  # track ID key is embedded in object, legacy unpack of doubly JSON encoded strings (vipy-1.11.16)
-        v._activities = tuple([x if isinstance(x, str) else str(json.dumps(x)) for x in d['activities'].values()])  # track ID key is embedded in object, legacy unpack of doubly JSON encoded strings (vipy-1.11.16)
+        v._tracks = tuple([x if isinstance(x, str) else str(json.dumps(x)) for x in d['tracks'].values()]) if 'tracks' in d else ()  # track ID key is embedded in object, legacy unpack of doubly JSON encoded strings (vipy-1.11.16)
+        v._activities = tuple([x if isinstance(x, str) else str(json.dumps(x)) for x in d['activities'].values()]) if 'activities' in d else ()  # track ID key is embedded in object, legacy unpack of doubly JSON encoded strings (vipy-1.11.16)
         return v
         
     def pack(self):
@@ -2784,7 +2805,7 @@ class Scene(VideoCategory):
         assert img is not None or (self.isloaded() and k<len(self)) or not self.isloaded(), "Invalid frame index %d - Indexing video by frame must be integer within (0, %d)" % (k, len(self)-1)
 
         img = img if (img is not None or noimage) else (self._array[k] if self.isloaded() else self.preview(k).array())
-        dets = [t[k].clone(deep=True).setattribute('__track_index', j) for (j, t) in enumerate(self.tracklist()) if len(t)>0 and (t.during(k) or t.boundary()=='extend')]  # track interpolation (cloned) with boundary handling
+        dets = [t[k].clone(deep=True).set_attribute('__track_index', j) for (j, t) in enumerate(self.tracklist()) if len(t)>0 and (t.during(k) or t.boundary()=='extend')]  # track interpolation (cloned) with boundary handling
         for d in dets:
             d.attributes['__activityid'] = []  # reset
             activityconf = []  
@@ -3456,7 +3477,7 @@ class Scene(VideoCategory):
                 .activities([pa]+sa)  # primary activity first
                 .tracks(t)
                 .clip(startframe=max(pa.startframe()-prepad, 0), endframe=min(pa.endframe()+postpad, (maxframes if maxframes is not None else pa.endframe()+postpad)))
-                .category(pa.category())
+                .new_category(pa.category())
                 .setactorid(pa.actorid())  # actor is actor of primary activity
                 for (k,(pa,sa,t,(prepad,postpad))) in enumerate(zip(primary_activities, secondary_activities, tracks, padframelist))
                 if (idx is None or k in tolist(idx))]
