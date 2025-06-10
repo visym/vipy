@@ -218,7 +218,7 @@ class Image():
             strlist.append('filename=%s' % self.filename())
         if self.hasurl():
             strlist.append('url=%s' % self.url())
-        return str('<vipy.image: %s>' % (', '.join(strlist)))
+        return str('<vipy.image.Image: %s>' % (', '.join(strlist)))
 
     def sanitize(self):
         """Remove all private keys from the attributes dictionary.
@@ -1971,10 +1971,10 @@ class TaggedImage(Image):
             self.set_attribute('tags', tags)
 
     def __repr__(self):
-        fields  = ['category=%s' % self.category()] if self.category() is not None else []
-        fields +=  ['confidence=%1.3f' % self.confidence()] if self.confidence() is not None else []
+        fields  = ['category=%s' % self.category()] if len(self.tags())==1 is not None else []
+        fields +=  ['confidence=%1.3f' % self.confidence()] if len(self.tags())==1 and self.confidence() is not None else []
         fields +=  ['tags=%s' % truncate_string(str(self.tags()), 40)] if len(self.tags())>1 else []
-        return super().__repr__().replace('vipy.image.Image', 'vipy.image.TaggedImage').replace('>', '%s>' % ','.join(fields))
+        return super().__repr__().replace('vipy.image.Image', 'vipy.image.TaggedImage').replace('>', ', %s>' % ', '.join(fields))
         
     @classmethod
     def cast(cls, im):
@@ -1998,7 +1998,7 @@ class TaggedImage(Image):
         return self.get_attribute('tags')[0] if self.hasattribute('tags') else None
 
     def confidence(self):
-        return self.get_attribute('confidences')[self.category()] if self.has_attribute('confidences') and self.category() in self.attributes['confidences'] else None
+        return self.get_attribute('confidences')[self.category()] if self.hasattribute('confidences') and self.category() in self.attributes['confidences'] else None
 
     def has_tag(self, t):
         return t in self.tags()

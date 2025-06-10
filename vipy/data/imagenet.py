@@ -18,7 +18,7 @@ URLS_2012 = ['https://image-net.org/data/ILSVRC/2012/ILSVRC2012_img_train.tar',
 URL_SYNSET = 'https://raw.githubusercontent.com/torch/tutorials/master/7_imagenet_classification/synset_words.txt'
 
 IMAGENET21K_RESIZED_URL = 'https://image-net.org/data/imagenet21k_resized.tar.gz'
-IMAGENET21K_URL = 'https://image-net.org/data/winter21_wholetar.gz'
+IMAGENET21K_URL = 'https://image-net.org/data/winter21_whole.tar.gz'
 IMAGENET21K_WORDNET_ID = 'https://storage.googleapis.com/bit_models/imagenet21k_wordnet_ids.txt'
 IMAGENET21K_WORDNET_LEMMAS = 'https://storage.googleapis.com/bit_models/imagenet21k_wordnet_lemmas.txt'
 
@@ -66,7 +66,7 @@ class Imagenet2012():
     def classification_trainset(self):
         """ImageNet Classification, trainset"""
         imgfiles = vipy.util.findimages(os.path.join(self._datadir, 'ILSVRC2012_img_train'))
-        loader = lambda f, synset_to_category=self.synset_to_category: vipy.image.ImageCategory(filename=f, category=synset_to_category(filetail(filepath(f))))
+        loader = lambda f, synset_to_category=self.synset_to_category: vipy.image.TaggedImage(filename=f, tags=synset_to_category(filetail(filepath(f))))
         return vipy.dataset.Dataset(imgfiles, 'imagenet2012_classification:train', loader=loader)
         
     def classification_valset(self):
@@ -81,7 +81,7 @@ class Imagenet2012():
         # Index mapping is in mat file (yuck)
         synsets = self.synset_to_category()
         d_idx_to_category = {str(k):self.synset_to_category(r[0][1][0]) for (k,r) in enumerate(scipy.io.loadmat(os.path.join(self._datadir, 'ILSVRC2012_devkit_t12/ILSVRC2012_devkit_t12/data/meta.mat'))['synsets'], start=1) if r[0][1][0] in synsets}
-        loader = lambda x, d_idx_to_category=d_idx_to_category: vipy.image.ImageCategory(filename=x[0], category=d_idx_to_category[x[1]])
+        loader = lambda x, d_idx_to_category=d_idx_to_category: vipy.image.TaggedImage(filename=x[0], tags=d_idx_to_category[x[1]])
         return vipy.dataset.Dataset(imlist, 'imagenet2012_classification:val', loader=loader)
                 
     def localization_trainset(self):
@@ -148,7 +148,9 @@ class Imagenet21K_Resized(vipy.dataset.Dataset):
         
 
 class Imagenet21K(vipy.dataset.Dataset):
-    """https://image-net.org/download-images.php, imagenet-21K 2021 winter release"""
+    """This requires login at https://image-net.org from the same IP address as the download, and agreeing to the ImageNet terms: https://image-net.org/download-images.php#term    
+       imagenet-21K 2021 winter release
+    """
     def __init__(self, datadir=None, aslemma=True, redownload=False, recache=False):
 
         datadir = tocache('imagenet21k') if datadir is None else datadir

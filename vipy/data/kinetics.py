@@ -37,13 +37,13 @@ class Kinetics700():
                                      for (youtubeid, v) in readjson(jsonfile).items()], loader=loader, id=id)
 
     def trainset(self):
-        return self._dataset(os.path.join(self.datadir, self._name, 'train.json'), self._name + '_train')
+        return self._dataset(os.path.join(self.datadir, self._name, 'train.json'), self._name + ':train')
 
     def testset(self):
-        return self._dataset(os.path.join(self.datadir, self._name, 'test.json'), self._name + '_test')
+        return self._dataset(os.path.join(self.datadir, self._name, 'test.json'), self._name + ':test')
 
     def valset(self):
-        return self._dataset(os.path.join(self.datadir, self._name, 'validate.json'), self._name + '_val')
+        return self._dataset(os.path.join(self.datadir, self._name, 'validate.json'), self._name + ':val')
 
     def categories(self):
         jsonfile = os.path.join(self.datadir, self._name, 'train.json')

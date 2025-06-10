@@ -1,6 +1,6 @@
 import numpy as np
 from vipy.geometry import BoundingBox, Point2d
-from vipy.util import isstring, tolist, chunklistwithoverlap, try_import, Timer, truncate_string, shortuuid
+from vipy.util import isstring, tolist, chunklistwithoverlap, try_import, Timer, truncate_string, shortuuid, to_iterable
 import uuid
 import copy
 import warnings
@@ -102,7 +102,7 @@ class Detection(BoundingBox, Object):
         if category is not None:
             self.add_tag(category, confidence)        
         if tags is not None:
-            for t in to_iterator(tags):
+            for t in to_iterable(tags):
                 self.add_tag(t)
 
         if normalized_coordinates:
@@ -154,7 +154,7 @@ class Detection(BoundingBox, Object):
             strlist.append('conf=%1.3f' % self.confidence())
         if self.isdegenerate():
             strlist.append('degenerate')
-        return str('<vipy.object.detection: %s>' % (', '.join(strlist)))
+        return str('<vipy.object.Detection: %s>' % (', '.join(strlist)))
 
     def __eq__(self, other):
         """Detection equality when bounding boxes (integer resolution) and categories are equivalent"""
@@ -192,7 +192,7 @@ class Keypoint2d(Point2d, Object):
         if category is not None:
             self.add_tag(category, confidence)        
         if tags is not None:
-            for t in to_iterator(tags):
+            for t in to_iterable(tags):
                 self.add_tag(t)
 
         if normalized_coordinates:
@@ -334,7 +334,7 @@ class Track():
         if self.endframe() is not None and self.startframe() is not None:
             strlist.append('startframe=%d, endframe=%d' % (self.startframe(), self.endframe()))
         strlist.append('keyframes=%d' % len(self._keyframes))
-        return str('<vipy.object.track: %s>' % (', '.join(strlist)))
+        return str('<vipy.object.Track: %s>' % (', '.join(strlist)))
 
     def __getitem__(self, k):
         """Interpolate the track at frame k"""

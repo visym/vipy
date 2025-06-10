@@ -14,7 +14,8 @@ URL_DATA = 'http://ai2-website.s3.amazonaws.com/data/Charades_v1.zip'
 
 class Charades(object):
     def __init__(self, datadir, annodir):
-        """Charades, provide paths such that datadir contains the contents of 'http://ai2-website.s3.amazonaws.com/data/Charades_v1.zip' and annodir contains 'http://ai2-website.s3.amazonaws.com/data/Charades.zip'"""
+        """Charades, provide paths such that datadir contains the contents of 'http://ai2-website.s3.amazonaws.com/data/Charades_v1.zip' and annodir contains 'http://ai2-website.s3.amazonaws.com/data/Charades.zip'.  
+        These are license restructed and must be downloaded by the user"""
         self.datadir = datadir
         self.annodir = annodir
         if not self._isdownloaded():

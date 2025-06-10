@@ -230,7 +230,7 @@ class BoundingBox(object):
         return not self.__eq__(other)
 
     def __repr__(self):
-        return str('<vipy.geometry.boundingbox: xmin=%s, ymin=%s, width=%s, height=%s>' % (self.xmin(), self.ymin(), self._width(), self._height()))
+        return str('<vipy.geometry.BoundingBox: xmin=%s, ymin=%s, width=%s, height=%s>' % (self.xmin(), self.ymin(), self._width(), self._height()))
 
     def __str__(self):
         return self.__repr__()
@@ -998,7 +998,7 @@ class Ellipse():
         self._phi = phi
 
     def __repr__(self):
-        return str('<vipy.geometry.ellipse: semimajor=%s, semiminor=%s, xcenter=%s, ycenter=%s, phi=%s (rad)>' % (self._major, self._minor, self._xcenter, self._ycenter, self._phi))
+        return str('<vipy.geometry.Ellipse: semimajor=%s, semiminor=%s, xcenter=%s, ycenter=%s, phi=%s (rad)>' % (self._major, self._minor, self._xcenter, self._ycenter, self._phi))
 
     def dict(self):
         return {'semimajor':self._major, 'semiminor':self._minor, 'xcenter':self._xcenter, 'ycenter':self._ycenter, 'phi':self._phi}

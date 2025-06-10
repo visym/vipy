@@ -30,6 +30,7 @@ class LFW(vipy.dataset.Dataset):
         open(os.path.join(self._datadir, '.complete'), 'a').close()
         
     def _download(self, verbose=True):
+        # Link may be dead ... 
         vipy.downloader.download_and_unpack(URL, self._datadir, verbose=verbose)
         return self
 

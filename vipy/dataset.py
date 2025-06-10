@@ -21,6 +21,7 @@ import matplotlib.pyplot as plt
 import gc 
 import vipy.metrics
 import itertools
+from pathlib import Path
 
 
 class Dataset():
@@ -216,7 +217,7 @@ class Dataset():
         return self.frequency(f)
     
     def filter(self, f):
-        """In place filter with lambda function f, keeping those elements obj in-place where f(obj) evaluates true"""
+        """In place filter with lambda function f, keeping those elements obj in-place where f(obj) evaluates true.  Callable should return bool"""
         assert callable(f)
         self._idx = [i for (b,i) in zip(self.map(f, ordered=True), self._idx) if b]        
         return self
@@ -233,14 +234,10 @@ class Dataset():
         assert callable(f)        
         return {k:self.clone(shallow=True).index([x[1] for x in v]).id('%s:%s' % (self.id(),str(k))) for (k,v) in itertools.groupby(enumerate(self.sort(f)._idx), lambda x: f(self[x[0]]))}
 
-    def takeby_asdict(self, f, n):
-        """Group the dataset according to the callable f, take n from each group and return a dictionary"""
-        return {k:v.takelist(n) for (k,v) in self.groupby(f).items()}
-    
     def takeby(self, f, n):
-        """Group the dataset according to the callable f, take n from each group and return a dataset"""
-        return self.clone(shallow=True).index([i for (k,v) in self.groupby(f).items() for i in vipy.util.take(v._idx, n)])
-    
+        """Filter the dataset according to the callable f, take n from each group and return a dataset.  Callable should return bool"""
+        return self.clone(shallow=True).filter(f).take(n)
+
     def takelist(self, n):
         """Take n elements and return list.  The elements are loaded and not cloned."""
         return self.take(n).list()
@@ -257,6 +254,7 @@ class Dataset():
                 return self[k]
     
     def sample(self):
+        """Return a single element sampled uniformly at random"""
         return self.takeone()
     
     def take_fraction(self, p, inplace=False):
@@ -265,6 +263,7 @@ class Dataset():
         return self.take(n=int(len(self)*p), inplace=inplace)
 
     def inverse_frequency(self, f):
+        """Return the inverse frequency of elements grouped by the callable f.  Returns a dictionary of the callable output to inverse frequency """
         attributes = self.set(f)
         frequency = self.frequency(f)
         return {a:(1/len(attributes))*(len(self)/frequency[a]) for a in attributes}  # (normalized) inverse frequency weight
@@ -274,12 +273,12 @@ class Dataset():
         return Dataset(self.list(), id=self.id())
     
     def chunk(self, n):
-        """Yield n chunks as dataset.  Last chunk will be ragged.  Batches are not loaded or preprocessed"""
+        """Yield n chunks as dataset.  Last chunk will be ragged.  Batches are not loaded"""
         for (k,V) in enumerate(vipy.util.chunkgen(self._idx, n)):
             yield self.clone(shallow=True).index(V).id(('%s:%d' % (self.id(), k)) if self.id() else str(k))
 
     def batch(self, n):
-        """Yield batches of size n as datasets.  Last batch will be ragged.  Batches are not loaded or preprocessed.  Batches have appended id equal to the zer-oindexed batch order"""
+        """Yield batches of size n as datasets.  Last batch will be ragged.  Batches are not loaded.  Batches have appended id equal to the zero-indexed batch order"""
         for (k,V) in enumerate(vipy.util.chunkgenbysize(self._idx, n)):
             yield self.clone(shallow=True).index(V).id(('%s:%d' % (self.id(), k)) if self.id() else str(k))
             
@@ -489,13 +488,12 @@ class Dataset():
         return Dataset(good, id=self.id()) if not oneway else None
 
     def localmap(self, f):
+        """A map performed without any parallel processing"""
         return Dataset(self.list(f), id=self.id())  # triggers load into memory        
 
     def zip(self, f, iter):
+        """Returns a new dataset constructed by applying the callable on elements from zip(self,iter)"""
         return Dataset([f(im,i) for (im,i) in zip(self, iter)], id=self.id())  # triggers load into memory        
-    
-    def mapby_minibatch(self, f, n, ragged=True):
-        return Dataset([f(b) for b in self.minibatch(n, ragged)], id=self.id())
     
     def sort(self, f):
         """Sort the dataset in-place using the sortkey lambda function f
@@ -515,6 +513,7 @@ class Dataset():
     
     @staticmethod
     def uniform_shuffler(D):
+        """A uniform shuffle"""
         random.shuffle(D._idx)        
         return D
     
@@ -645,11 +644,11 @@ class Union(Dataset):
     
 
 
-def registry(name, freeze=True, datadir=env('VIPY_DATASET_REGISTRY_HOME')):
+def registry(name, datadir=env('VIPY_DATASET_REGISTRY_HOME'), freeze=True):
     """Common entry point for loading datasets by name
 
     Args:
-       name [str]: A string describing the dataset
+       name [str]: The string name for the dataset
        freeze [bool]:  If true, disable reference cycle counting for the loaded object (which will never contain cycles anyway)
        datadir [str]: A path to a directory to store data.  Defaults to environment variable VIPY_DATASET_REGISTRY_HOME (then VIPY_CACHE if not found).  Also uses HF_HOME for huggingface datasets.
 
@@ -658,8 +657,12 @@ def registry(name, freeze=True, datadir=env('VIPY_DATASET_REGISTRY_HOME')):
     """
     import vipy.data        
 
-    registry = ['mnist', 'cifar10','oxford_pet','pascal_voc_2007','coco_2014', 'ava',
-                'activitynet', 'openimages_v7', 'imagenet', 'imagenet21k']
+    registry = ['mnist', 'cifar10','cifar100','caltech101','caltech256','oxford_pet','sun397',
+                'flickr30k','oxford_fgvc_aircraft','oxford_flowers_102',
+                'yfcc100m','tiny_imagenet','coyo300m','pascal_voc_2007','coco_2014', 'ava',
+                'activitynet', 'openimages_v7', 'imagenet', 'imagenet21k', 'visualgenome' ,
+                'objectnet','lfw','inaturalist_2021','kinetics','hmdb','places365']
+    basedir = Path(datadir)
     
     if freeze:
         gc.disable()
@@ -671,25 +674,60 @@ def registry(name, freeze=True, datadir=env('VIPY_DATASET_REGISTRY_HOME')):
         (trainset, testset) = vipy.data.hf.cifar10()        
     elif name == 'cifar100':
         (trainset, testset) = vipy.data.hf.cifar100()        
+    elif name == 'caltech101':
+        trainset = vipy.data.caltech101.Caltech101(basedir/'caltech101')        
+    elif name == 'caltech256':
+        trainset = vipy.data.caltech256.Caltech256(basedir/'caltech256')        
     elif name == 'oxford_pet':
         trainset = vipy.data.hf.oxford_pets()
+    elif name == 'sun397':
+        (trainset, valset, testset) = vipy.data.hf.sun397()
+    elif name == 'flickr30k':
+        trainset = vipy.data.hf.flickr30k()
+    elif name == 'oxford_fgvc_aircraft':
+        trainset = vipy.data.hf.oxford_fgvc_aircraft()
+    elif name == 'oxford_flowers_102':
+        trainset = vipy.data.oxford_flowers_102.Flowers102(basedir/'oxford_flowers_102')
+    elif name == 'yfcc100m':
+        (trainset, valset) = vipy.data.hf.yfcc100m()
+    elif name == 'tiny_imagenet':
+        (trainset, valset) = vipy.data.hf.tiny_imagenet()
+    elif name == 'coyo300m':
+        trainset = vipy.data.hf.coyo300m()
     elif name == 'pascal_voc_2007':
         (trainset, valset, testset) = vipy.data.hf.pascal_voc_2007()
     elif name == 'coco_2014':
-        trainset = vipy.data.coco.Detection_TrainVal_2014(datadir=os.path.join(datadir, 'coco_2014'))
+        trainset = vipy.data.coco.Detection_TrainVal_2014(basedir/'coco_2014')
     elif name == 'ava':
-        ava = vipy.data.ava.AVA(os.path.join(datadir, 'ava'))
+        ava = vipy.data.ava.AVA(basedir/'ava')
         (trainset, valset) = (ava.trainset(), ava.valset())
     elif name == 'activitynet':
-        activitynet = vipy.data.activitynet.ActivityNet(datadir=os.path.join(datadir, 'activitynet'))
+        activitynet = vipy.data.activitynet.ActivityNet(basedir/'activitynet')
         (trainset, valset, testset) = (activitynet.trainset(), activitynet.valset(), activitynet.testset())
     elif name == 'openimages_v7':
-        trainset = vipy.data.openimages.open_images_v7(datadir=os.path.join(datadir, 'openimages_v7'))
+        trainset = vipy.data.openimages.open_images_v7(basedir/'openimages_v7')
     elif name == 'imagenet':
-        imagenet = vipy.data.imagenet.Imagenet2012(datadir=os.path.join(datadir, 'imagenet'))
+        imagenet = vipy.data.imagenet.Imagenet2012(basedir/'imagenet')
         (trainset, valset) = (imagenet.classification_trainset(), imagenet.classification_valset())
     elif name == 'imagenet21k':
-        trainset = vipy.data.imagenet.Imagenet21K(datadir=os.path.join(datadir, 'imagenet21k'))
+        trainset = vipy.data.imagenet.Imagenet21K(basedir/'imagenet21k')
+    elif name == 'visualgenome':
+        trainset = vipy.data.visualgenome.VisualGenome(basedir/'visualgenome')
+    elif name == 'objectnet':
+        trainset = vipy.data.objectnet.Objectnet(basedir/'objectnet')
+    elif name == 'lfw':
+        trainset = vipy.data.lfw.LFW(basedir/'lfw')
+    elif name == 'inaturalist_2021':
+        dataset = vipy.data.inaturalist.iNaturalist2021(basedir/'inaturalist_2021')
+        (trainset, valset) = (self, self.valset())
+    elif name == 'kinetics':
+        dataset = vipy.data.kinetics.Kinetics700(basedir/'kinetics')
+        (trainset, valset, testset) = (dataset.trainset(), dataset.valset(), dataset.testset())
+    elif name == 'hmdb':
+        trainset = vipy.dataset.Dataset(vipy.data.hmdb.HMDB(basedir/'hmdb').dataset(), id='hmdb')
+    elif name == 'places365':
+        places = vipy.data.places.Places365(basedir/'places365')
+        (trainset, valset) = (places.trainset(), places.valset())
     else:
         raise ValueError('unknown dataset "%s" - choose from "%s"' % (name, ', '.join(sorted(registry))))
     

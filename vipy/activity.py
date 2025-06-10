@@ -104,7 +104,7 @@ class Activity(object):
                     self.truncate(startframe=self.middleframe()-int(np.ceil(s*self.framerate())//2), endframe=self.middleframe()+int(np.ceil(s*self.framerate())//2)))
         
     def __repr__(self):
-        return str('<vipy.activity: category="%s", frames=(%d,%d), tracks=%s%s>' % (self.category(), self.startframe(), self.endframe(), len(self.trackids()), '' if self.confidence() is None else ', confidence=%1.2f' % self.confidence()))
+        return str('<vipy.activity.Activity: category="%s", frames=(%d,%d), tracks=%s%s>' % (self.category(), self.startframe(), self.endframe(), len(self.trackids()), '' if self.confidence() is None else ', confidence=%1.2f' % self.confidence()))
 
     def dict(self):
         """Return a python dictionary containing the relevant serialized attributes suitable for JSON encoding"""

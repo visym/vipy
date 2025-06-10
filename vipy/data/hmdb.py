@@ -12,6 +12,11 @@ class HMDB(object):
         """Human motion dataset, provide a datadir='/path/to/store/hmdb' """
         self.datadir = remkdir(datadir)
 
+        if not os.path.exists(os.path.join(datadir, filetail(URL))):
+            self.download()
+        if not len(vipy.util.dirlist(datadir)) > 1:
+            self._unpack(os.path.join(self.datadir, filetail(URL)), self.datadir)
+            
     def __repr__(self):
         return str('<vipy.data.hmdb: "%s">' % self.datadir)
 
@@ -26,13 +31,13 @@ class HMDB(object):
             if os.path.isdir(os.path.join(self.datadir, category)):
                 for (idx_video, filename) in enumerate(os.listdir(os.path.join(self.datadir, category))):
                     if isvideo(filename):
-                        vidlist.append(VideoCategory(filename=os.path.join(category, filename), category=category))
+                        vidlist.append(VideoCategory(filename=os.path.join(self.datadir, category, filename), category=category))
         return vidlist
 
     def _unpack(self, rarfile, outdir):
         """Require unrar on command line"""
         if not isinstalled('unrar'):
-            raise ValueError('Unpacking requires the unrar utility on the command line')
+            raise ValueError('Unpacking requires the unrar utility on the command line.  On Ubuntu: "sudo apt install unrar"')
         os.system('unrar e %s %s' % (rarfile, outdir))
         for (idx_category, rarfile) in enumerate(os.listdir(outdir)):
             (category, ext) = os.path.splitext(rarfile)
