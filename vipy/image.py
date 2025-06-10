@@ -1971,7 +1971,7 @@ class TaggedImage(Image):
             self.set_attribute('tags', tags)
 
     def __repr__(self):
-        fields  = ['category=%s' % self.category()] if len(self.tags())==1 is not None else []
+        fields  = ['category=%s' % self.category()] if len(self.tags())==1 else []
         fields +=  ['confidence=%1.3f' % self.confidence()] if len(self.tags())==1 and self.confidence() is not None else []
         fields +=  ['tags=%s' % truncate_string(str(self.tags()), 40)] if len(self.tags())>1 else []
         return super().__repr__().replace('vipy.image.Image', 'vipy.image.TaggedImage').replace('>', ', %s>' % ', '.join(fields))

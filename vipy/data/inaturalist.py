@@ -40,9 +40,9 @@ class iNaturalist2021(vipy.dataset.Dataset):
         open(os.path.join(self._datadir, '.complete'), 'a').close()
         
     def trainset(self):
-        return self
+        return self.id('inaturalist:train')
 
     def valset(self):
-        return iNaturalist2021(self._datadir, VAL_IMG_2021_URL, VAL_IMG_2021_MD5, VAL_ANNO_2021_URL, VAL_ANNO_2021_MD5, name='inaturalist_val')
+        return iNaturalist2021(self._datadir, VAL_IMG_2021_URL, VAL_IMG_2021_MD5, VAL_ANNO_2021_URL, VAL_ANNO_2021_MD5, name='inaturalist:val')
 
     

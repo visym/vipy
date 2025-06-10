@@ -644,13 +644,14 @@ class Union(Dataset):
     
 
 
-def registry(name, datadir=env('VIPY_DATASET_REGISTRY_HOME'), freeze=True):
+def registry(name, datadir=env('VIPY_DATASET_REGISTRY_HOME'), freeze=True, clean=False):
     """Common entry point for loading datasets by name
 
     Args:
        name [str]: The string name for the dataset
        freeze [bool]:  If true, disable reference cycle counting for the loaded object (which will never contain cycles anyway)
        datadir [str]: A path to a directory to store data.  Defaults to environment variable VIPY_DATASET_REGISTRY_HOME (then VIPY_CACHE if not found).  Also uses HF_HOME for huggingface datasets.
+       clean [bool]: If true, force a redownload of the dataset to correct for partial download errors
 
     Returns:
        (trainset, valset, testset) tuple where each is a `vipy.dataset.Dataset` or None
@@ -663,10 +664,13 @@ def registry(name, datadir=env('VIPY_DATASET_REGISTRY_HOME'), freeze=True):
                 'activitynet', 'openimages_v7', 'imagenet', 'imagenet21k', 'visualgenome' ,
                 'objectnet','lfw','inaturalist_2021','kinetics','hmdb','places365']
     basedir = Path(datadir)
-    
+
+    if clean and name in registry and os.path.exists(basedir/name):
+        shutil.rmtree(basedir/name)  # delete cached subtree silently to force redownload ...
+        
     if freeze:
         gc.disable()
-
+        
     (trainset, valset, testset) = (None, None, None)    
     if name == 'mnist':
         (trainset, testset) = vipy.data.hf.mnist()        
@@ -675,9 +679,9 @@ def registry(name, datadir=env('VIPY_DATASET_REGISTRY_HOME'), freeze=True):
     elif name == 'cifar100':
         (trainset, testset) = vipy.data.hf.cifar100()        
     elif name == 'caltech101':
-        trainset = vipy.data.caltech101.Caltech101(basedir/'caltech101')        
+        trainset = vipy.data.caltech101.Caltech101(basedir/name)        
     elif name == 'caltech256':
-        trainset = vipy.data.caltech256.Caltech256(basedir/'caltech256')        
+        trainset = vipy.data.caltech256.Caltech256(basedir/name)
     elif name == 'oxford_pet':
         trainset = vipy.data.hf.oxford_pets()
     elif name == 'sun397':
@@ -687,7 +691,7 @@ def registry(name, datadir=env('VIPY_DATASET_REGISTRY_HOME'), freeze=True):
     elif name == 'oxford_fgvc_aircraft':
         trainset = vipy.data.hf.oxford_fgvc_aircraft()
     elif name == 'oxford_flowers_102':
-        trainset = vipy.data.oxford_flowers_102.Flowers102(basedir/'oxford_flowers_102')
+        trainset = vipy.data.oxford_flowers_102.Flowers102(basedir/name)
     elif name == 'yfcc100m':
         (trainset, valset) = vipy.data.hf.yfcc100m()
     elif name == 'tiny_imagenet':
@@ -697,37 +701,39 @@ def registry(name, datadir=env('VIPY_DATASET_REGISTRY_HOME'), freeze=True):
     elif name == 'pascal_voc_2007':
         (trainset, valset, testset) = vipy.data.hf.pascal_voc_2007()
     elif name == 'coco_2014':
-        trainset = vipy.data.coco.Detection_TrainVal_2014(basedir/'coco_2014')
+        trainset = vipy.data.coco.Detection_TrainVal_2014(basedir/name)
     elif name == 'ava':
-        ava = vipy.data.ava.AVA(basedir/'ava')
+        ava = vipy.data.ava.AVA(basedir/name)
         (trainset, valset) = (ava.trainset(), ava.valset())
     elif name == 'activitynet':
-        activitynet = vipy.data.activitynet.ActivityNet(basedir/'activitynet')
+        activitynet = vipy.data.activitynet.ActivityNet(basedir/name)  # ActivityNet 200
         (trainset, valset, testset) = (activitynet.trainset(), activitynet.valset(), activitynet.testset())
     elif name == 'openimages_v7':
-        trainset = vipy.data.openimages.open_images_v7(basedir/'openimages_v7')
+        trainset = vipy.data.openimages.open_images_v7(basedir/name)
     elif name == 'imagenet':
-        imagenet = vipy.data.imagenet.Imagenet2012(basedir/'imagenet')
+        imagenet = vipy.data.imagenet.Imagenet2012(basedir/name)
         (trainset, valset) = (imagenet.classification_trainset(), imagenet.classification_valset())
     elif name == 'imagenet21k':
-        trainset = vipy.data.imagenet.Imagenet21K(basedir/'imagenet21k')
+        trainset = vipy.data.imagenet.Imagenet21K(basedir/name)
     elif name == 'visualgenome':
-        trainset = vipy.data.visualgenome.VisualGenome(basedir/'visualgenome')
+        trainset = vipy.data.visualgenome.VisualGenome(basedir/name)  # visualgenome-1.4
     elif name == 'objectnet':
-        trainset = vipy.data.objectnet.Objectnet(basedir/'objectnet')
+        trainset = vipy.data.objectnet.Objectnet(basedir/name)
     elif name == 'lfw':
-        trainset = vipy.data.lfw.LFW(basedir/'lfw')
+        trainset = vipy.data.lfw.LFW(basedir/name)
     elif name == 'inaturalist_2021':
-        dataset = vipy.data.inaturalist.iNaturalist2021(basedir/'inaturalist_2021')
-        (trainset, valset) = (self, self.valset())
+        dataset = vipy.data.inaturalist.iNaturalist2021(basedir/name)
+        (trainset, valset) = (dataset.trainset(), dataset.valset())
     elif name == 'kinetics':
-        dataset = vipy.data.kinetics.Kinetics700(basedir/'kinetics')
+        dataset = vipy.data.kinetics.Kinetics700(basedir/name)  # Kinetics700
         (trainset, valset, testset) = (dataset.trainset(), dataset.valset(), dataset.testset())
     elif name == 'hmdb':
-        trainset = vipy.dataset.Dataset(vipy.data.hmdb.HMDB(basedir/'hmdb').dataset(), id='hmdb')
+        trainset = vipy.dataset.Dataset(vipy.data.hmdb.HMDB(basedir/name).dataset(), id='hmdb')
     elif name == 'places365':
-        places = vipy.data.places.Places365(basedir/'places365')
+        places = vipy.data.places.Places365(basedir/name)
         (trainset, valset) = (places.trainset(), places.valset())
+    elif name == 'ucf101':
+        trainset = vipy.data.ucf101.UCF101(basedir/name)
     else:
         raise ValueError('unknown dataset "%s" - choose from "%s"' % (name, ', '.join(sorted(registry))))
     
