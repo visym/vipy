@@ -132,9 +132,9 @@ class Imagenet21K_Resized(vipy.dataset.Dataset):
             
         f_category = lambda c, synset_to_categorylist=self._synset_to_categorylist, aslemma=aslemma: synset_to_categorylist[c][0] if aslemma else c        
         imlist = vipy.util.findimages(os.path.join(datadir, 'imagenet21k_resized')) if not os.path.exists(cachefile) else [os.path.join(self._datadir, f) for f in vipy.util.readlist(cachefile)]
-        loader = lambda f, f_category=f_category: vipy.image.ImageCategory(filename=f,
-                                                                           attributes={'wordnet_id':vipy.util.filebase(vipy.util.filepath(f))},
-                                                                           category=f_category(vipy.util.filebase(vipy.util.filepath(f))))
+        loader = lambda f, f_category=f_category: vipy.image.TaggegdImage(filename=f,
+                                                                          attributes={'wordnet_id':vipy.util.filebase(vipy.util.filepath(f))},
+                                                                          tags=f_category(vipy.util.filebase(vipy.util.filepath(f))))
         super().__init__(imlist, id='imagenet21k_resized', loader=loader)
 
         if not os.path.exists(cachefile):
@@ -178,9 +178,9 @@ class Imagenet21K(vipy.dataset.Dataset):
 
         f_category = lambda c, synset_to_categorylist=self._synset_to_categorylist, aslemma=aslemma: synset_to_categorylist[c] if aslemma else c
         imlist = vipy.util.findimages(os.path.join(datadir, 'winter21_whole')) if not os.path.exists(cachefile) else [os.path.join(self._datadir, f) for f in vipy.util.readlist(cachefile)]
-        loader = lambda f, f_category=f_category: vipy.image.ImageCategory(filename=f,
-                                                                           attributes={'wordnet_id':vipy.util.filebase(vipy.util.filepath(f))},
-                                                                           category=f_category(vipy.util.filebase(vipy.util.filepath(f))))
+        loader = lambda f, f_category=f_category: vipy.image.TaggedImage(filename=f,
+                                                                         attributes={'wordnet_id':vipy.util.filebase(vipy.util.filepath(f))},
+                                                                         tags=f_category(vipy.util.filebase(vipy.util.filepath(f))))
         super().__init__(imlist, id='imagenet21k', loader=loader)
 
         if not os.path.exists(cachefile):

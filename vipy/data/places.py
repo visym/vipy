@@ -2,7 +2,6 @@ import os
 import vipy
 
 
-# 10May24: tar file is truncated
 URL = ['http://data.csail.mit.edu/places/places365/train_256_places365standard.tar',
        'http://data.csail.mit.edu/places/places365/val_256.tar']
 MD5 = [None, None]
@@ -22,10 +21,9 @@ class Places365():
         open(os.path.join(self._datadir, '.complete'), 'a').close()
         
     def trainset(self):
-        imlist = tuple((f, vipy.util.filebase(vipy.util.filepath(f))) for f in vipy.util.findimages(os.path.join(self._datadir, 'train_256_places365standard')))
+        imlist = tuple((f, vipy.util.filebase(vipy.util.filepath(f))) for f in vipy.util.findimages(os.path.join(self._datadir, 'data_256')))
         loader = lambda x: vipy.image.ImageCategory(filename=x[0], category=x[1])
         return vipy.dataset.Dataset(imlist, id='places365:train', loader=loader)
-
 
     def valset(self):
         imlist = tuple((f, vipy.util.filebase(vipy.util.filepath(f))) for f in vipy.util.findimages(os.path.join(self._datadir, 'val_256')))

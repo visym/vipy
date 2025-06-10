@@ -372,7 +372,7 @@ class ExtractInterface(object):
             self._archive.extract(member, path=output_dirname)
             extracted = mi + 1
             if verbose:
-                status = (r"Progress: %20i files extracted [%4.1f%%]"
+                status = (r"Progress: %10i files extracted [%4.1f%%]"
                           % (extracted, extracted * 100. / n_members))
                 status += chr(8) * (len(status) + 1)
                 print(status, end=' ')

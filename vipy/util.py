@@ -504,7 +504,7 @@ def shufflelist(inlist):
 
 def flatlist(inlist):
     """Convert list of tuples into a list expanded by concatenating tuples.  If the input is already flat, return it unchanged."""
-    return [x for r in inlist for x in (r if (isinstance(r, list) or isinstance(r, tuple)) else (r,))]
+    return [x for r in inlist for x in (r if isinstance(r, (list, tuple, set)) else (r,))]
 
 
 def rmdir(indir):

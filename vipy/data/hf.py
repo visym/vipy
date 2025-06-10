@@ -122,28 +122,29 @@ def pascal_voc_2007():
     
     
 def yfcc100m():
-    """https://multimediacommons.wordpress.com/yfcc100m-core-dataset/"""
-    dataset = load_dataset("dalle-mini/YFCC100M_OpenAI_subset", trust_remote_code=True)
-
-    loader = lambda r: vipy.image.ImageCategory(array=np.array(PIL.Image.open(io.BytesIO(r['img']))), category=r['description_clean'], attributes={k:v for (k,v) in r.items() if k != 'img'})    
-    return (vipy.dataset.Dataset(dataset['train'], id='yfcc100m:train', loader=loader),
-            vipy.dataset.Dataset(dataset['validation'], id='yfcc100m:val', loader=loader))
+    """https://multimediacommons.wordpress.com/yfcc100m-core-dataset/
     
+    This dataset loads a bytes array containing an image on each row.  Create a separate dataset that ignores the img column and replaces with the backing URL.  
+    This is useful for fast analysis of the dataset metadata.
+    """
 
-def open_images_v7():
-    dataset = load_dataset("dalle-mini/open-images")
-    loader = lambda r: vipy.image.Image(url=r['url'])  # no labels (use vipy.data.openimages.open_images_v7 instead)
-    return (vipy.dataset.Dataset(dataset['train'], id='open_images_v7:train', loader=loader),
-            vipy.dataset.Dataset(dataset['validation'], id='open_images_v7:val', loader=loader),
-            vipy.dataset.Dataset(dataset['test'], id='open_images_v7:test', loader=loader))        
-
-
+    dataset = load_dataset("dalle-mini/YFCC100M_OpenAI_subset", trust_remote_code=True)
+    
+    loader = lambda r: vipy.image.ImageCategory(category=r['title_clean'], attributes={k:v for (k,v) in r.items() if k != 'img'}, array=np.array(PIL.Image.open(io.BytesIO(r['img']))))
+    loader_url = lambda r: vipy.image.ImageCategory(category=r['title_clean'], attributes={k:v for (k,v) in r.items() if k != 'img'}, url=r['downloadurl'])
+    
+    return (vipy.dataset.Dataset(dataset['train'], id='yfcc100m:train', loader=loader),
+            vipy.dataset.Dataset(dataset['train'].remove_columns(['img']), id='yfcc100m_url:train', loader=loader_url),  # faster loading
+            vipy.dataset.Dataset(dataset['validation'], id='yfcc100m:val', loader=loader),
+            vipy.dataset.Dataset(dataset['validation'].remove_columns(['img']), id='yfcc100m_url:val', loader=loader_url))            
+            
+    
 
 def tiny_imagenet():
     D = load_dataset("zh-plus/tiny-imagenet")
     labels = vipy.util.readjson(os.path.join(os.path.dirname(os.path.realpath(__file__)), 'tiny_imagenet.json'))    
     d_idx_to_category = {k: sorted([l.strip() for l in labels['wnid_to_category'][wnid].split(',')])  for (k,wnid) in enumerate(labels['idx_to_wnid'])}    
-    loader = lambda r, d_idx_to_category=d_idx_to_category: vipy.image.ImageCategory(array=np.array(r['image']), category=d_idx_to_category[int(r['label'])])    
+    loader = lambda r, d_idx_to_category=d_idx_to_category: vipy.image.TaggedImage(tags=d_idx_to_category[int(r['label'])]).loader(lambda x: np.array(r['image']))
     return (vipy.dataset.Dataset(D['train'], id='tiny_imagenet:train', loader=loader),
             vipy.dataset.Dataset(D['valid'], id='tiny_imagenet:val', loader=loader))
 
@@ -174,9 +175,9 @@ def coyo300m(threshold=0.2):
     labels = vipy.util.readjson(os.path.join(os.path.dirname(os.path.realpath(__file__)), 'coyo300m.json'))    
     d_idx_to_category = {k:[c.strip() for c in v.split(',')] for (k,v) in labels['class_description'].items()}
     d_idx_to_wnid = {v:k for (k,v) in labels['class_list'].items()}
-    loader = lambda r, d_idx_to_wnid=d_idx_to_wnid, d_idx_to_category=d_idx_to_category, threshold=threshold: vipy.image.ImageCategory(url=r['url'], 
-                                                                                                                                       category=[d_idx_to_category[str(c)] for (c,p) in zip(r['labels'], r['label_probs']) if float(p)>threshold],
-                                                                                                                                       attributes={'wordnet':[d_idx_to_wnid[c] for (c,p) in zip(r['labels'], r['label_probs']) if float(p)>threshold]})
+    loader = lambda r, d_idx_to_wnid=d_idx_to_wnid, d_idx_to_category=d_idx_to_category, threshold=threshold: vipy.image.TaggedImage(url=r['url'], 
+                                                                                                                                     tags=vipy.util.flatlist([d_idx_to_category[str(c)] for (c,p) in zip(r['labels'], r['label_probs']) if float(p)>threshold]),
+                                                                                                                                     attributes={'wordnet':[d_idx_to_wnid[c] for (c,p) in zip(r['labels'], r['label_probs']) if float(p)>threshold]})
     return vipy.dataset.Dataset(dataset['train'], id='coyo300m', loader=loader)
     
 

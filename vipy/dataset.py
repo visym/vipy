@@ -693,7 +693,7 @@ def registry(name, datadir=env('VIPY_DATASET_REGISTRY_HOME'), freeze=True, clean
     elif name == 'oxford_flowers_102':
         trainset = vipy.data.oxford_flowers_102.Flowers102(basedir/name)
     elif name == 'yfcc100m':
-        (trainset, valset) = vipy.data.hf.yfcc100m()
+        (trainset, trainset_url, valset, valset_url) = vipy.data.hf.yfcc100m()  
     elif name == 'tiny_imagenet':
         (trainset, valset) = vipy.data.hf.tiny_imagenet()
     elif name == 'coyo300m':
