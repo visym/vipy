@@ -497,9 +497,10 @@ class Image():
             elif self.hasfilename():
                 # Attempting to open it anyway, may be an image file without an extension. Cross your fingers ...
                 self._array = np.array(PIL.Image.open(self._filename))  # RGB order!
-            elif not self.hasfilename() and self.hasattribute('__shape__'):
-                self._array = np.zeros( self.getattribute('__shape__') )
-                self.delattribute('__shape__')
+            elif not self.hasfilename() and self.hasattribute('__shape'):
+                # Loading a previously flushed buffer, load zeros so that we can display superclass objects
+                self._array = np.zeros( self.getattribute('__shape') )
+                self.delattribute('__shape')
             else:
                 raise ValueError('image file not defined')
             
@@ -1150,7 +1151,7 @@ class Image():
     def flush(self):
         """flush the image buffer in place, alias for self.clone(flush=True)"""        
         if not (self.hasfilename() or self.hasurl()):
-            self.setattribute('__shape__', (self.height(), self.width(), self.channels()))  # to load zeros
+            self.setattribute('__shape', (self.height(), self.width(), self.channels()))  # to load zeros
         self._array = None  # flushes buffer on object
         return self
 
@@ -1430,7 +1431,7 @@ class Image():
             - This object with only the array transformed
 
         .. note:: The image will be loaded and converted to float() prior to applying the affine transformation.  
-        .. note:: This will transform only the pixels
+        .. note:: This will transform only the pixels, not objects
         """
         assert isnumpy(A) or isinstance(img, vipy.image.Image), "invalid input"
         assert A.shape == (3,3), "The affine transformation matrix should be the output of vipy.geometry.affine_transformation"
@@ -1751,11 +1752,6 @@ class Image():
         self.array(newimg)  # reference
         if newimg.dtype != oldimg.dtype or newimg.shape != oldimg.shape:
             self.colorspace('float')  # unknown colorspace after transformation, set generic
-        return self
-
-    def downcast(self):
-        """Cast the class to the base class (vipy.image.Image)"""
-        self.__class__ = vipy.image.Image
         return self
 
     def perceptualhash(self, bits=128, asbinary=False, asbytes=False):
