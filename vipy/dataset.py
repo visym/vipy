@@ -601,6 +601,8 @@ class Union(Dataset):
     def __init__(self, *args, **kwargs):
         datasets = args[0] if isinstance(args[0], (tuple, list)) else args
         assert all([isinstance(d, Dataset) for d in datasets])
+        
+        datasets = [j for i in datasets for j in (i.datasets() if isinstance(i, Union) else (i,))]  # flatten unions        
         self._ds = datasets
 
         if 'index' in kwargs:
@@ -609,7 +611,7 @@ class Union(Dataset):
             self._idx = [(i,j) for j in range(max([len(d) for d in datasets])) for (i,d) in enumerate(datasets) if j<len(d)]  # zipped (dataset index, element index) tuples 
         self._id = kwargs['id'] if 'id' in kwargs else None
 
-        self._loader = None
+        self._loader = None  # individual datasets have loaders
         self._shuffler = kwargs['shuffler'] if 'shuffler' in kwargs else None
         
     def __iter__(self):
@@ -658,7 +660,7 @@ def registry(name, datadir=env('VIPY_DATASET_REGISTRY_HOME'), freeze=True, clean
     """
     import vipy.data        
 
-    registry = ['mnist', 'cifar10','cifar100','caltech101','caltech256','oxford_pet','sun397',
+    registry = ['mnist', 'cifar10','cifar100','caltech101','caltech256','oxford_pets','sun397',
                 'flickr30k','oxford_fgvc_aircraft','oxford_flowers_102',
                 'yfcc100m','tiny_imagenet','coyo300m','pascal_voc_2007','coco_2014', 'ava',
                 'activitynet', 'openimages_v7', 'imagenet', 'imagenet21k', 'visualgenome' ,
@@ -682,8 +684,8 @@ def registry(name, datadir=env('VIPY_DATASET_REGISTRY_HOME'), freeze=True, clean
         trainset = vipy.data.caltech101.Caltech101(basedir/name)        
     elif name == 'caltech256':
         trainset = vipy.data.caltech256.Caltech256(basedir/name)
-    elif name == 'oxford_pet':
-        trainset = vipy.data.hf.oxford_pets()
+    elif name == 'oxford_pets':
+        (trainset, testset) = vipy.data.hf.oxford_pets()
     elif name == 'sun397':
         (trainset, valset, testset) = vipy.data.hf.sun397()
     elif name == 'flickr30k':

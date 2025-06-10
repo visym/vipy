@@ -323,7 +323,7 @@ def imobjects(img, objlist, fignum=None, bordercolor='green', do_caption=True, f
                 textcolor_ = textcolor
 
             boundingbox(img, xmin=det.xmin(), ymin=det.ymin(), xmax=det.xmax(), ymax=det.ymax(), bboxcaption=bboxcaption,
-                        fignum=fignum, bboxcolor=bboxcolor_, facecolor=facecolor, facealpha=facealpha, textcolor=textcolor_, textfacecolor=textfacecolor, fontsize=fontsize, captionoffset=captionoffset, textfacealpha=textfacealpha)
+                        fignum=fignum, bboxcolor=bboxcolor_, facecolor=bboxcolor_, facealpha=facealpha, textcolor=textcolor_, textfacecolor=textfacecolor, fontsize=fontsize, captionoffset=captionoffset, textfacealpha=textfacealpha)
     
     # Valid keypoints
     kplist = [p for p in objlist if isinstance(p, vipy.object.Keypoint2d)]    
