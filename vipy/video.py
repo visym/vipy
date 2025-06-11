@@ -1524,6 +1524,7 @@ class Video():
                 vipy.downloader.download(self._url,
                                          filename,
                                          verbose=verbose,
+                                         progress=False,
                                          timeout=timeout,
                                          sha1=self.get_attribute('__urlsha1'),
                                          username=self.get_attribute('__urluser'),
@@ -3608,7 +3609,7 @@ class Scene(Video):
 
         """
         bb = self.trackbox(dilate)  # may be None if trackbox is degenerate
-        return self.crop(bb.maxsquareif(maxsquare), zeropad=zeropad) if bb is not None else None  
+        return self.crop(bb.maxsquare() if maxsquare else bb, zeropad=zeropad) if bb is not None else None  
 
     def activitybox(self, activityid=None, dilate=1.0):
         """The activitybox is the union of all activity bounding boxes in the video, which is the union of all tracks contributing to all activities.  This is most useful after activityclip().

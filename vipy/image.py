@@ -440,7 +440,7 @@ class Image():
     def has_loader(self):
         return self._loader is not None
     
-    def load(self, ignoreErrors=False, verbose=True):
+    def load(self, ignoreErrors=False, verbose=False):
         """Load image to cached private '_array' attribute.
 
         Args:
@@ -507,7 +507,7 @@ class Image():
         except IOError:
             if ignoreErrors:
                 if verbose is True:
-                    log.warning('[vipy.image]: IO error "%s" -> "%s" ' % (self.url(), self.filename()))
+                    log.warning('IO error "%s" -> "%s" ' % (self.url(), self.filename()))
                 self._array = None
             else:
                 raise
@@ -518,14 +518,14 @@ class Image():
         except Exception:
             if ignoreErrors:
                 if verbose is True:
-                    log.warning('[vipy.image]: Load error for image "%s"' % self.filename())
+                    log.warning('Load error for image "%s"' % self.filename())
                 self._array = None
             else:
                 raise
 
         return self
 
-    def download(self, ignoreErrors=False, timeout=10, verbose=True):
+    def download(self, ignoreErrors=False, timeout=10, verbose=False):
         """Download URL to filename provided by constructor, or to temp filename.
 
         Args:
@@ -556,7 +556,8 @@ class Image():
             if url_scheme in ['http', 'https']:
                 vipy.downloader.download(self._url,
                                          self._filename,
-                                         verbose=False,
+                                         verbose=verbose,
+                                         progress=False,
                                          timeout=timeout,
                                          sha1=self.getattribute('url_sha1'),
                                          username=self.getattribute('url_username'),
@@ -575,7 +576,7 @@ class Image():
                 urllib.error.HTTPError):
             if ignoreErrors:
                 if verbose is True:
-                    log.warning('[vipy.image]: download failed for url "%s"' % self._url)
+                    log.warning('download failed for url "%s"' % self._url)
                 self._array = None
             else:
                 raise
@@ -583,7 +584,7 @@ class Image():
         except IOError:
             if ignoreErrors:
                 if verbose:
-                    log.warning('[vipy.image]: IO error downloading "%s" -> "%s" ' % (self.url(), self.filename()))
+                    log.warning('IO error downloading "%s" -> "%s" ' % (self.url(), self.filename()))
                 self._array = None
             else:
                 raise
@@ -594,7 +595,7 @@ class Image():
         except Exception:
             if ignoreErrors:
                 if verbose:
-                    log.warning('[vipy.image]: load error for image "%s"' % self.filename())
+                    log.warning('load error for image "%s"' % self.filename())
             else:
                 raise
 
@@ -612,7 +613,7 @@ class Image():
         """Does the filename returned from `vipy.image.Image.filename` exist, meaning that the url has been downloaded to a local file?"""
         return self._filename is not None and os.path.exists(self._filename)
     
-    def downloadif(self, ignoreErrors=False, timeout=10, verbose=True):
+    def downloadif(self, ignoreErrors=False, timeout=10, verbose=False):
         """Download URL to filename if the filename has not already been downloaded"""
         return self.download(ignoreErrors=ignoreErrors, timeout=timeout, verbose=verbose) if self.hasurl() and not self.isdownloaded() else self
     
@@ -1217,6 +1218,10 @@ class Image():
                              mode=mode)
         return self
 
+    def pad(self, padwidth, padheight):
+        """Alias for `vipy.image.Image.zeropad`"""
+        return self.zeropad(padwidth, padheight)
+    
     def zeropad(self, padwidth, padheight):
         """Pad image using np.pad constant by adding padwidth on both left and right , or padwidth=(left,right) for different pre/postpadding,, and padheight on top and bottom or padheight=(top,bottom) for different pre/post padding"""
         if not isinstance(padwidth, tuple):
@@ -1652,7 +1657,7 @@ class Image():
             vipy.show.close(fignum)
             return self
     
-    def show(self, figure=1, nowindow=False, timestamp=None, mutator=None, theme='dark'):
+    def show(self, figure='vipy', nowindow=False, timestamp=None, mutator=None, theme='dark'):
         """Display image on screen in provided figure number (clone and convert to RGB colorspace to show), return object"""
         assert self.load().isloaded(), 'Image not loaded'
         timestampfacecolor = 'black' if theme=='dark' else 'white'
@@ -1730,7 +1735,7 @@ class Image():
         # FIXME: for k in range(0,10): self.annotate().show(figure=k), this will result in cumulative figures
         return self.array(self.savefig(timestamp=timestamp, theme=theme, mutator=mutator).rgb().array()).downcast()
 
-    def savefig(self, filename=None, figure=1, timestamp=None, theme='dark', mutator=None):
+    def savefig(self, filename=None, figure='vipy', timestamp=None, theme='dark', mutator=None):
         """Save last figure output from self.show() with drawing overlays to provided filename and return filename"""
         self.show(figure=figure, nowindow=True, timestamp=timestamp, theme=theme, mutator=mutator)  # sets figure dimensions, does not display window
         (W,H) = plt.figure(figure).canvas.get_width_height()  # fast
@@ -1888,12 +1893,11 @@ class Image():
         dy = int(max(0, max(0-bbox.ymin(), bbox.ymax()-self.height())))
         return self.zeropad(dx,dy)._crop(bbox.translate(dx=dx, dy=dy))
     
-    def recenter(self, x, y):
-        """Recenter the image so that location (x=col, y=row) in the current image is in the middle of the new image, zeropad to (width, height).  
+    def recenter(self, p):
+        """Recenter the image so that point p=(x=col, y=row) in the current image is in the middle of the new image, zeropad to (width, height).  
            This is useful to implement a 'saccade', under the small angle assumption, where a rotation is approximated by a translation
-        """
-        
-        return self.padcrop(self.imagebox().centroid((x,y)))
+        """        
+        return self.padcrop(self.imagebox().centroid(p))
 
     
 class ImageCategory(Image):
@@ -1968,7 +1972,7 @@ class TaggedImage(Image):
     ```
     """
     __slots__ = ('_filename', '_url', '_loader', '_array', '_colorspace', 'attributes', '_tags')        
-    def __init__(self, filename=None, url=None, attributes=None, array=None, colorspace=None, tags=None, category=None, confidence=None):
+    def __init__(self, filename=None, url=None, attributes=None, array=None, colorspace=None, tags=None, category=None, confidence=None, caption=None):
         super().__init__(filename=filename,
                          url=url,
                          attributes=attributes,
@@ -1978,9 +1982,12 @@ class TaggedImage(Image):
         tags = ([category] if category is not None else []) + (tolist(tags) if tags is not None else [])
         if len(tags) > 0:
             self.set_attribute('tags', tags)
-
+        if caption is not None:
+            self.add_caption(caption)
+            
     def __repr__(self):
         fields  = ['category=%s' % self.category()] if len(self.tags())==1 else []
+        fields += ['caption=%s' % truncate_string(self.caption(), 40)] if self.caption() is not None else []        
         fields +=  ['confidence=%1.3f' % self.confidence()] if len(self.tags())==1 and self.confidence() is not None else []
         fields +=  ['tags=%s' % truncate_string(str(self.tags()), 40)] if len(self.tags())>1 else []
         return super().__repr__().replace('vipy.image.Image', 'vipy.image.TaggedImage').replace('>', ', %s>' % ', '.join(fields))
@@ -2029,6 +2036,16 @@ class TaggedImage(Image):
             self.attributes['confidences'][tag] = confidence
         return self
 
+    def add_caption(self, caption):
+        self.append_attribute('captions', caption)
+        return self
+
+    def caption(self):
+        return self.get_attribute('captions')[0] if self.has_attribute('captions') else None
+    
+    def captions(self):
+        return self.get_attribute('captions')
+    
     def add_tags(self, tags, confidences=[]):
         for (t,c) in zip_longest(tags, confidences):
             self.add_tag(t, c)
@@ -2130,7 +2147,7 @@ class Scene(TaggedImage):
         elif self.has_loader():
             strlist.append('loaded=False')
         if self.filename() is not None:
-            strlist.append('filename="%s"' % (self.filename()))
+            strlist.append('filename=%s' % (self.filename()))
         if self.hasurl():
             strlist.append('url=%s' % self.url())
         if len(self.tags())==1:
@@ -2156,7 +2173,7 @@ class Scene(TaggedImage):
         assert isinstance(k, int), "Indexing by object in scene must be integer"
         return self.clone(shallow=True).objects([self._objectlist[k].clone()])
 
-    def load(self, ignoreErrors=False, verbose=True):
+    def load(self, ignoreErrors=False, verbose=False):
         super().load(ignoreErrors=ignoreErrors, verbose=verbose)
         if self.isloaded() and self.num_objects() > 0 and any(o.has_normalized_coordinates() for o in self.objects()):
             # Normalized coordinates are in the range [0,1] relative to the (height, width) which is not known until load()
@@ -2169,6 +2186,13 @@ class Scene(TaggedImage):
         .. note:: The pixel buffer is shared between each split.  Use [im.clone() for im in self.split()] for an explicit copy.
         """
         return list(self)
+
+    def split_and_recenter(self):
+        """Split a scene with K objects into a list of K `vipy.image.Scene` objects, each with one object in the scene, with the scene centered on the object with zeropadding
+        
+        .. note:: The pixel buffer is shared between each split.  Use [im.clone() for im in self.split()] for an explicit copy.
+        """
+        return [im.clone().recenter(im.boundingbox().centroid()) for im in self.split()]
     
     def append_object(self, imdet):
         """Append the provided vipy.object.Detection object to the scene object list"""
@@ -2380,10 +2404,15 @@ class Scene(TaggedImage):
         self._history('translate', dx=dx, dy=dy)                        
         return self
 
-    def objectcrop(self, dilate=1.0, maxsquare=False):
-        """Crop image using the `vipy.image.Scene.boundingbox` with dilation factor, setting to maxsquare prior to crop as requested.  Crop will be zeropadded if outside the image rectangle."""
+    def objectcrop(self, dilate=1.0):
+        """Crop image using the `vipy.image.Scene.boundingbox` with dilation factor.  Crop will be zeropadded if outside the image rectangle."""
         bb = self.boundingbox()
-        return self.padcrop(bb.dilate(dilate).maxsquareif(maxsquare)) if bb is not None else self
+        return self.padcrop(bb.dilate(dilate)) if bb is not None else self
+
+    def objectsquare(self, dilate=1.0):
+        """Crop image using the `vipy.image.Scene.boundingbox` with dilation factor, setting to maxsquare prior to crop.  Crop will be zeropadded if outside the image rectangle."""
+        bb = self.boundingbox()
+        return self.padcrop(bb.dilate(dilate).maxsquare() if maxsquare else bb.dilate(dilate)) if bb is not None else self        
     
     def centercrop(self, height, width):
         """Crop image of size (height x width) in the center, keeping the image centroid constant"""
@@ -2434,14 +2463,14 @@ class Scene(TaggedImage):
         return self
         
     def bgmask(self):
-        """Set all pixels outside the bounding box to zero"""
+        """Set all pixels outside object bounding boxes to zero"""
         mask = self.rectangular_mask() if self.channels() == 1 else np.expand_dims(self.rectangular_mask(), axis=2)
         img = self.numpy()
         img[:] = np.multiply(img, mask)  # in-place update
         return self  
 
     def fgmask(self):
-        """Set all pixels inside the bounding box to zero"""
+        """Set all pixels inside object bounding boxes to zero"""
         mask = self.rectangular_mask() if self.channels() == 1 else np.expand_dims(self.rectangular_mask(), axis=2)
         img = self.numpy()
         img[:] = np.multiply(img, 1.0-mask)  # in-place update
@@ -2537,13 +2566,13 @@ class Scene(TaggedImage):
         return vipy.image.Image.perceptualhash_distance(self.bghash(bits=bits), im.bghash(bits=bits)) < threshold 
     
         
-    def show(self, categories=None, figure=1, nocaption=False, nocaption_withstring=[], fontsize=10, boxalpha=0.15, d_category2color={'Person':'green', 'Vehicle':'blue', 'Object':'red'}, captionoffset=(3,-18), nowindow=False, shortlabel=None, timestamp=None, mutator=None, timestampoffset=(0,0), theme='dark'):
+    def show(self, categories=None, figure='vipy', nocaption=False, nocaption_withstring=[], fontsize=10, boxalpha=0.15, d_category2color={'Person':'green', 'Vehicle':'blue', 'Object':'red'}, captionoffset=(3,-18), nowindow=False, shortlabel=None, timestamp=None, mutator=None, timestampoffset=(0,0), theme='dark'):
         """Show scene detection 
 
         Args:
            - categories: [list]  List of category names in the scene to show
            - fontsize: [int] or [str]: Size of the font, fontsize=int for points, fontsize='NN:scaled' to scale the font relative to the image size
-           - figure: [int] Figure number, show the image in the provided figure=int numbered window
+           - figure: [int|str] Figure number or title, show the image in the provided figure=int numbered window
            - nocaption: [bool]  Show or do not show the text caption in the upper left of the box 
            - nocaption_withstring: [list]:  Do not show captions for those object categories containing any of the strings in the provided list
            - boxalpha (float, [0,1]):  Set the text box background to be semi-transparent with an alpha
@@ -2581,7 +2610,7 @@ class Scene(TaggedImage):
                             timestampcolor=timestampcolor, timestampfacecolor=timestampfacecolor, timestampoffset=timestampoffset)
         return self
 
-    def annotate(self, outfile=None, categories=None, figure=1, nocaption=False, fontsize=10, boxalpha=0.15, d_category2color={'person':'green', 'vehicle':'blue', 'object':'red'}, captionoffset=(3,-18), dpi=200, shortlabel=None, nocaption_withstring=[], timestamp=None, mutator=None, timestampoffset=(0,0), theme='dark'):
+    def annotate(self, outfile=None, categories=None, figure='vipy', nocaption=False, fontsize=10, boxalpha=0.15, d_category2color={'person':'green', 'vehicle':'blue', 'object':'red'}, captionoffset=(3,-18), dpi=200, shortlabel=None, nocaption_withstring=[], timestamp=None, mutator=None, timestampoffset=(0,0), theme='dark'):
         """Alias for `vipy.image.Scene.savefig"""
         return self.savefig(outfile=outfile, 
                             categories=categories, 
@@ -2599,7 +2628,7 @@ class Scene(TaggedImage):
                             timestampoffset=timestampoffset,
                             mutator=mutator)
 
-    def savefig(self, outfile=None, categories=None, figure=1, nocaption=False, fontsize=10, boxalpha=0.15, d_category2color={'person':'green', 'vehicle':'blue', 'object':'red'}, captionoffset=(3,-18), dpi=200, textfacecolor='white', shortlabel=None, nocaption_withstring=[], timestamp=None, mutator=None, timestampoffset=(0,0), theme='dark'):
+    def savefig(self, outfile=None, categories=None, figure='vipy', nocaption=False, fontsize=10, boxalpha=0.15, d_category2color={'person':'green', 'vehicle':'blue', 'object':'red'}, captionoffset=(3,-18), dpi=200, textfacecolor='white', shortlabel=None, nocaption_withstring=[], timestamp=None, mutator=None, timestampoffset=(0,0), theme='dark'):
         """Save `vipy.image.Scene.show output to given file or return buffer without popping up a window"""
         fignum = figure if figure is not None else 1        
         self.show(categories=categories, figure=fignum, nocaption=nocaption, fontsize=fontsize, boxalpha=boxalpha, 

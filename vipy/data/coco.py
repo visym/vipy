@@ -21,8 +21,8 @@ labels_2014_2017 = ['person', 'bicycle', 'car', 'motorcycle', 'airplane', 'bus',
 # - chairs and tables may be heavily occluded
 
 
-class Detection_TrainVal_2014(vipy.dataset.Dataset):
-    """Project: https://cocodataset.org"""
+class COCO_2014(vipy.dataset.Dataset):
+    """Project: https://cocodataset.org Detection_Train_Val_2014"""
     def __init__(self, datadir=None, redownload=False):
 
         outdir = tocache('coco2014') if datadir is None else datadir

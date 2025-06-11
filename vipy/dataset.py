@@ -22,6 +22,7 @@ import gc
 import vipy.metrics
 import itertools
 from pathlib import Path
+from vipy.globals import log
 
 
 class Dataset():
@@ -131,7 +132,7 @@ class Dataset():
         fields = ['id=%s' % self.id(truncated=True, maxlen=80)] if self.id() else []
         fields += ['len=%d' % len(self)]
         fields += ['type=%s' % self.type()] if self.type() else []
-        return str('<vipy.dataset.%s: %s>' % (self.__class__.__name__, ', '.join(fields)))
+        return str('<vipy.dataset.Dataset: %s>' % ', '.join(fields))
 
     def __iter__(self):
         for k in range(len(self)):
@@ -246,13 +247,6 @@ class Dataset():
         """Randomly take one element from the dataset and return a singleton"""
         return self[random.randint(0, len(self)-1)]
 
-    def takeoneby(self, f):
-        """Randomly take one element from the dataset and return a singleton if f(element) == True"""
-        for k in shufflelist(self._idx):
-            print(k)
-            if f(self[k]):
-                return self[k]
-    
     def sample(self):
         """Return a single element sampled uniformly at random"""
         return self.takeone()
@@ -632,7 +626,7 @@ class Union(Dataset):
         fields = ['id=%s' % self.id(truncated=True, maxlen=64)] if self.id() else []
         fields += ['len=%d' % len(self)]
         fields += ['union=%s' % str(tuple([d.id(truncated=True, maxlen=32) for d in self._ds]))]
-        return str('<vipy.dataset.%s: %s>' % (self.__class__.__name__, ', '.join(fields)))
+        return str('<vipy.dataset.Dataset: %s>' % (', '.join(fields)))
         
     def clone(self, shallow=False):
         """Return a copy of the dataset object"""
@@ -646,11 +640,11 @@ class Union(Dataset):
     
 
 
-def registry(name, datadir=env('VIPY_DATASET_REGISTRY_HOME'), freeze=True, clean=False):
-    """Common entry point for loading datasets by name
+def registry(name=None, datadir=env('VIPY_DATASET_REGISTRY_HOME'), freeze=True, clean=False):
+    """Common entry point for loading datasets by name.
 
     Args:
-       name [str]: The string name for the dataset
+       name [str]: The string name for the dataset.  If None, return the list of registered datasets 
        datadir [str]: A path to a directory to store data.  Defaults to environment variable VIPY_DATASET_REGISTRY_HOME (then VIPY_CACHE if not found).  Also uses HF_HOME for huggingface datasets.
        freeze [bool]:  If true, disable reference cycle counting for the loaded object (which will never contain cycles anyway) 
        clean [bool]: If true, force a redownload of the dataset to correct for partial download errors
@@ -660,8 +654,9 @@ def registry(name, datadir=env('VIPY_DATASET_REGISTRY_HOME'), freeze=True, clean
        'flickr30k','oxford_fgvc_aircraft','oxford_flowers_102',
        'yfcc100m','tiny_imagenet','coyo300m','pascal_voc_2007','coco_2014', 'ava',
        'activitynet', 'openimages_v7', 'imagenet', 'imagenet21k', 'visualgenome' ,
-       'objectnet','lfw','inaturalist_2021','kinetics','hmdb','places365','ucf101'
-         
+       'objectnet','lfw','inaturalist_2021','kinetics','hmdb','places365','ucf101','lvis'
+       'imagenet_localization','laion2b'
+
     Returns:
        (trainset, valset, testset) tuple where each is a `vipy.dataset.Dataset` or None
     """
@@ -671,12 +666,18 @@ def registry(name, datadir=env('VIPY_DATASET_REGISTRY_HOME'), freeze=True, clean
                 'flickr30k','oxford_fgvc_aircraft','oxford_flowers_102',
                 'yfcc100m','tiny_imagenet','coyo300m','pascal_voc_2007','coco_2014', 'ava',
                 'activitynet','openimages_v7','imagenet','imagenet21k','visualgenome' ,
-                'objectnet','lfw','inaturalist_2021','kinetics','hmdb','places365','ucf101']  # Add to docstring too...
+                'objectnet','lfw','inaturalist_2021','kinetics','hmdb','places365','ucf101',
+                'lvis','imagenet_localization','laion2b']  # Add to docstring too...
     
-    namedir = Path(datadir)/name
+    if name is None:
+        return sorted(registry)
+    if name not in registry:
+        raise ValueError('unknown dataset "%s" - choose from "%s"' % (name, ', '.join(sorted(registry))))
 
+    namedir = Path(datadir)/name    
     if clean and name in registry and os.path.exists(namedir):
-        shutil.rmtree(namedir)  # delete cached subtree silently to force redownload ...
+        log.info('Removing cached dataset "%s"' % namedir)
+        shutil.rmtree(namedir)  # delete cached subtree to force redownload ...
         
     if freeze:
         gc.disable()
@@ -711,7 +712,7 @@ def registry(name, datadir=env('VIPY_DATASET_REGISTRY_HOME'), freeze=True, clean
     elif name == 'pascal_voc_2007':
         (trainset, valset, testset) = vipy.data.hf.pascal_voc_2007()
     elif name == 'coco_2014':
-        trainset = vipy.data.coco.Detection_TrainVal_2014(namedir)
+        trainset = vipy.data.coco.COCO_2014(namedir)
     elif name == 'ava':
         ava = vipy.data.ava.AVA(namedir)
         (trainset, valset) = (ava.trainset(), ava.valset())
@@ -744,6 +745,13 @@ def registry(name, datadir=env('VIPY_DATASET_REGISTRY_HOME'), freeze=True, clean
         (trainset, valset) = (places.trainset(), places.valset())
     elif name == 'ucf101':
         trainset = vipy.data.ucf101.UCF101(namedir)
+    elif name == 'lvis':
+        lvis = vipy.data.lvis.LVIS(namedir)
+        (trainset, valset) = (lvis.trainset(), lvis.valset())
+    elif name == 'imagenet_localization':
+        trainset = vipy.data.imagenet.Imagenet2012(Path(datadir)/'imagenet').localization_trainset()
+    elif name == 'laion2b':
+        trainset = vipy.data.hf.laion2b()
     else:
         raise ValueError('unknown dataset "%s" - choose from "%s"' % (name, ', '.join(sorted(registry))))
     

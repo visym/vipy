@@ -798,9 +798,6 @@ class BoundingBox():
             self._ymax = c[1] + (dim / 2.0)
         return self
 
-    def maxsquareif(self, do):
-        return self.maxsquare() if do else self
-
     def issquare(self):
         return np.allclose(self.height(), self.width())
 

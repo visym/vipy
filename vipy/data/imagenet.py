@@ -5,6 +5,7 @@ from vipy.image import ImageDetection, ImageCategory
 import xml.etree.ElementTree as ET
 import scipy.io
 import numpy as np
+from vipy.globals import log
 
 
 URLS_2012 = ['https://image-net.org/data/ILSVRC/2012/ILSVRC2012_img_train.tar',
@@ -85,7 +86,9 @@ class Imagenet2012():
         return vipy.dataset.Dataset(imlist, 'imagenet2012_classification:val', loader=loader)
                 
     def localization_trainset(self):
-        """ImageNet localization, imageset = {train, val}, this takes a long time to read the XML files, load and cache"""        
+        """ImageNet localization, imageset = {train, val}, this takes a long time to read the XML files, load and cache"""
+        log.warning('Parsing XML files for imagenet-localization takes a long time...')
+        
         imlist = []
         classification = self.classification_trainset()
         synsets = self.synset_to_category()

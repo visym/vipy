@@ -150,6 +150,24 @@ def tiny_imagenet():
             vipy.dataset.Dataset(D['valid'], id='tiny_imagenet:val', loader=loader))
 
 
+def coyo300m(threshold=0.2):
+    dataset = load_dataset("kakaobrain/coyo-labeled-300m")
+
+    labels = vipy.util.readjson(os.path.join(os.path.dirname(os.path.realpath(__file__)), 'coyo300m.json'))    
+    d_idx_to_category = {k:[c.strip() for c in v.split(',')] for (k,v) in labels['class_description'].items()}
+    d_idx_to_wnid = {v:k for (k,v) in labels['class_list'].items()}
+    loader = lambda r, d_idx_to_wnid=d_idx_to_wnid, d_idx_to_category=d_idx_to_category, threshold=threshold: vipy.image.TaggedImage(url=r['url'], 
+                                                                                                                                     tags=vipy.util.flatlist([d_idx_to_category[str(c)] for (c,p) in zip(r['labels'], r['label_probs']) if float(p)>threshold]),
+                                                                                                                                     attributes={'wordnet':[d_idx_to_wnid[c] for (c,p) in zip(r['labels'], r['label_probs']) if float(p)>threshold]})
+    return vipy.dataset.Dataset(dataset['train'], id='coyo300m', loader=loader)
+
+
+def laion2b():
+    dataset = load_dataset("laion/relaion2B-en-research-safe").select_columns(['url','caption'])
+    loader = lambda r: vipy.image.TaggedImage(url=r['url'], caption=r['caption'])
+    return vipy.dataset.Dataset(dataset['train'], id='laion2b', loader=loader)
+    
+
 def the_cauldron():
     """https://huggingface.co/datasets/HuggingFaceM4/the_cauldron"""
     ds = load_dataset("HuggingFaceM4/the_cauldron", "ai2d")
@@ -170,16 +188,6 @@ def docci():
     dataset = load_dataset("google/docci")
 
 
-def coyo300m(threshold=0.2):
-    dataset = load_dataset("kakaobrain/coyo-labeled-300m")
-
-    labels = vipy.util.readjson(os.path.join(os.path.dirname(os.path.realpath(__file__)), 'coyo300m.json'))    
-    d_idx_to_category = {k:[c.strip() for c in v.split(',')] for (k,v) in labels['class_description'].items()}
-    d_idx_to_wnid = {v:k for (k,v) in labels['class_list'].items()}
-    loader = lambda r, d_idx_to_wnid=d_idx_to_wnid, d_idx_to_category=d_idx_to_category, threshold=threshold: vipy.image.TaggedImage(url=r['url'], 
-                                                                                                                                     tags=vipy.util.flatlist([d_idx_to_category[str(c)] for (c,p) in zip(r['labels'], r['label_probs']) if float(p)>threshold]),
-                                                                                                                                     attributes={'wordnet':[d_idx_to_wnid[c] for (c,p) in zip(r['labels'], r['label_probs']) if float(p)>threshold]})
-    return vipy.dataset.Dataset(dataset['train'], id='coyo300m', loader=loader)
     
 
 def coyo700m():
