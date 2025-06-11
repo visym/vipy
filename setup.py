@@ -41,7 +41,7 @@ from setuptools import setup, find_packages
 d_version = {}
 with open("./vipy/version.py") as fp:
     exec(fp.read(), d_version)
-version = d_version['VERSION']
+version = str(d_version['VERSION'])
 
 with open("README.md", "r") as fh:
     long_description = fh.read()
