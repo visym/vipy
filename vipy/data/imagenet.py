@@ -158,9 +158,8 @@ class Imagenet21K(vipy.dataset.Dataset):
         self._datadir = vipy.util.remkdir(datadir)
         
         if redownload or not os.path.exists(os.path.join(self._datadir, '.complete')):
-            vipy.globals.log.info('[vipy.data.imagenet]: downloading Imagenet-21K to "%s"' % self._datadir)
-
             if isinstalled('wget'):
+                vipy.globals.log.info('downloading "%s" to "%s"' % (IMAGENET21K_URL , self._datadir))                
                 os.system('wget --no-check-certificate --continue --tries=32 -O %s %s ' % (os.path.join(self._datadir, filetail(IMAGENET21K_URL)), IMAGENET21K_URL))  # server fails many times, need smart continue
             else:
                 vipy.downloader.download(IMAGENET21K_URL, os.path.join(self._datadir, filetail(IMAGENET21K_URL)))  # fallback on dumb downloader

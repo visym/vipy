@@ -170,8 +170,8 @@ def _test_video():
 
     # Saveas
     v = vipy.video.Video(url=mp4url)
-    v.saveas(ignoreErrors=True)
-    print('[test_video.video]: saveas(ignoreErrors=True)  PASSED')        
+    v.save(ignoreErrors=True)
+    print('[test_video.video]: save(ignoreErrors=True)  PASSED')        
 
     
     # Clone
@@ -262,7 +262,7 @@ def _test_scene():
     
 
     # mp4file in github repo was shrunk, but resize here on the fly to keep old unit tests
-    mp4bigger = vipy.video.Video(filename=mp4file).resize(cols=1080, rows=1920).savetmp().filename()  
+    mp4bigger = vipy.video.Video(filename=mp4file).resize(cols=1080, rows=1920).savetmp()
     vid = vipy.video.Scene(filename=mp4bigger, framerate=30, tracks=[vipy.object.Track(category='person', keyframes=[0,200], boxes=[BoundingBox(xmin=0,ymin=0,width=200,height=400), BoundingBox(xmin=0,ymin=0,width=400,height=100)]),
                                                                      vipy.object.Track(category='vehicle', keyframes=[0,200], boxes=[BoundingBox(xmin=100,ymin=200,width=300,height=400), BoundingBox(xmin=400,ymin=300,width=200,height=100)])])
 
@@ -395,9 +395,14 @@ def _test_scene():
     img[0,:,:,:] = 0    
     assert np.sum(v.array()[0]) == 0
     img = np.random.rand(2,2,2,3).astype(np.float32)        
-    v = v.fromarray(img)
+    v = vipy.video.Video.from_array(img)
     img[0,:,:,:] = 0
-    assert np.sum(v.array()[0]) != 0    
+    assert np.sum(v.array()[0]) == 0
+
+    img = np.random.rand(2,2,2,3).astype(np.float32)
+    v = v.array(img, copy=True)
+    img[0,:,:,:] = 0
+    assert np.sum(v.array()[0]) != 0        
     print('[test_video.scene]: array by reference  PASSED')
 
     # Mutable iterator:
@@ -453,8 +458,8 @@ def _test_scene():
     outfile = totempdir('Video.mp4')
     shutil.copy('Video.mp4', outfile)
     v = vipy.video.Video(filename=outfile, startframe=0, endframe=10)
-    v2 = v.saveas()
-    assert v.hasfilename() and os.path.getsize('Video.mp4') != os.path.getsize(v2.filename()) and os.path.getsize('Video.mp4') == os.path.getsize(v.filename())
+    f = v.saveas(tempMP4())
+    assert v.hasfilename() and os.path.getsize('Video.mp4') != os.path.getsize(f) and os.path.getsize('Video.mp4') == os.path.getsize(v.filename())
     print('[test_video.scene]: saveas()  PASSED')    
 
     # JSON
@@ -494,26 +499,26 @@ def test_clip():
 
     outfile = totempdir('out.mp4')
     v = vipy.video.Video(frames=[vipy.image.Image(array=img) for img in imgframes])    
-    vc = v.saveas(outfile).load()
+    vc = v.save(outfile).load()
     assert np.mean(vc.frame(59).array().flatten()) < 128
     assert np.mean(vc.frame(60).array().flatten()) > 128
     assert np.mean(vc.frame(61).array().flatten()) < 128    
 
     v = vipy.video.Video(frames=[vipy.image.Image(array=img) for img in imgframes], framerate=30)    
-    vc = v.saveas(outfile).clip(31, 90).load()  
+    vc = v.save(outfile).clip(31, 90).load()  
     assert np.mean(vc.frame(59-31).array().flatten()) < 128
     assert np.mean(vc.frame(60-31).array().flatten()) > 128
     assert np.mean(vc.frame(61-31).array().flatten()) < 128    
     
     v = vipy.video.Video(frames=[vipy.image.Image(array=img) for img in imgframes])    
-    vc = v.saveas(outfile).clip(31, 90).clip(2, 40).load()
+    vc = v.save(outfile).clip(31, 90).clip(2, 40).load()
     assert np.mean(vc.frame(59-31-2).array().flatten()) < 128
     assert np.mean(vc.frame(60-31-2).array().flatten()) > 128
     assert np.mean(vc.frame(61-31-2).array().flatten()) < 128    
 
     v = vipy.video.RandomScene(64,64,64)
     im = v.frame(10)
-    vc = v.saveas(outfile).clip(10,60).load()
+    vc = v.save(outfile).clip(10,60).load()
     imc = vc.frame(0)
     assert all([i == j for (i,j) in zip(im.objects(), imc.objects())])
     vc = vc.clip(5, 50)

@@ -139,7 +139,7 @@ def s3(url, output_filename, verbose=True):
     object_name = urllib.parse.urlparse(url).path[1:]
     
     if verbose:
-        log.info('[vipy.downloader.s3]: Downloading "%s" -> "%s"' % (url, output_filename))
+        log.info('Downloading "%s" -> "%s"' % (url, output_filename))
 
     s3.download_file(bucket_name, object_name, output_filename)
     return output_filename
@@ -250,7 +250,7 @@ def unpack(archive_filename, output_dirname, sha1=None, verbose=True, passwd=Non
     * non-tar .bz2
     """
     if verbose:
-        log.info("[vipy.downloader.extract]: Extracting '%s' -> '%s'" % (archive_filename, output_dirname))
+        log.info("Extracting '%s' -> '%s'" % (archive_filename, output_dirname))
     if sha1 is not None:
         if verbose:
             log.info("SHA-1 verification...")
