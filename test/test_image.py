@@ -675,9 +675,9 @@ def test_scene():
     assert isinstance(im.dict(), dict)
     print('[test_image.scene]: dict PASSED')
 
-    # bghash
-    im = vipy.image.RandomScene(num_objects=1, url='https://upload.wikimedia.org/wikipedia/commons/1/11/Horned1b.jpg')
-    assert np.sum(im.bghash(asbinary=True, bits=72) == im.clone().zeropad(10,10).bghash(asbinary=True, bits=72)) >=64
+    # Perceptual hash
+    im = vipy.image.RandomScene(num_detections=1, url='https://upload.wikimedia.org/wikipedia/commons/1/11/Horned1b.jpg')
+    assert np.sum(im.bghash(asbinary=True, bits=72) == im.clone().zeropad(1,1).bghash(asbinary=True, bits=72)) >=64
     print('[test_image.scene]: bghash PASSED')
 
     # Flush history

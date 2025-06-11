@@ -35,3 +35,4 @@ import vipy.data.visualgenome
 import vipy.data.youtubefaces
 import vipy.data.openimages
 import vipy.data.ucf101
+import vipy.data.lvis

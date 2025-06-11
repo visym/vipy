@@ -90,7 +90,7 @@ def generate_md5(filename, blocks=128):
         return h.hexdigest()
 
 
-def scp(url, output_filename, verbose=True):
+def scp(url, output_filename, verbose=True, progress=True):
     """Download using pre-installed SSH keys where hostname is formatted 'scp://hostname.com/path/to/file.jpg' """        
     try_import('paramiko', 'paramiko scp')
     try_import('scp', 'paramiko scp')    
@@ -104,13 +104,13 @@ def scp(url, output_filename, verbose=True):
     if verbose:
         log.info("Downloading '%s' to '%s'" % (url, output_filename))
         
-    def progress(filename, size, sent):
+    def _progress(filename, size, sent):
         sys.stdout.write("%s ... %.2f%%   \r" % (filename, float(sent)/float(size)*100) )
     
     ssh = paramiko.SSHClient()
     ssh.load_system_host_keys()
     ssh.connect(hostname)
-    scp = SCPClient(ssh.get_transport(), progress=progress if verbose else None)
+    scp = SCPClient(ssh.get_transport(), progress=_progress if progress else None)
     scp.get(remote_filename, output_filename)
     scp.close()
     return output_filename
@@ -139,7 +139,7 @@ def s3(url, output_filename, verbose=True):
     object_name = urllib.parse.urlparse(url).path[1:]
     
     if verbose:
-        log.info('[vipy.downloader.s3]: Downloading "%s" -> "%s"' % (url, output_filename))
+        log.info('Downloading "%s" -> "%s"' % (url, output_filename))
 
     s3.download_file(bucket_name, object_name, output_filename)
     return output_filename
@@ -165,7 +165,7 @@ def downloadif(url, output_filename, sha1):
     """Downloads file at `url` and write it in `output_filename` only if the file does not exist with the provided SHA1 hash"""    
     return output_filename if os.path.exists(output_filename) and verify_sha1(output_filename, sha1) else download(url=url, output_filename=output_filename, sha1=sha1)
 
-def download(url, output_filename, sha1=None, verbose=True, md5=None, timeout=None, username=None, password=None):
+def download(url, output_filename, sha1=None, verbose=True, md5=None, timeout=None, username=None, password=None, progress=True):
     """Downloads file at `url` and write it in `output_filename`"""
     if timeout is None:
         timeout = 10
@@ -191,8 +191,8 @@ def download(url, output_filename, sha1=None, verbose=True, md5=None, timeout=No
     if verbose:
         log.info("Downloading '%s' -> '%s'" % (url, output_filename))
 
-    # display  progress only if we know the length
-    if 'content-length' in page_info and verbose:
+    # display progress only if we know the length
+    if 'content-length' in page_info:
         # file size in Kilobytes
         file_size = int(page_info['content-length']) / 1024.
         while True:
@@ -204,11 +204,13 @@ def download(url, output_filename, sha1=None, verbose=True, md5=None, timeout=No
             percent = min(100, 100. * dl_size / file_size)
             status = r"Progress: %10d KB [%4.1f%%]" % (dl_size, percent)
             status = status + chr(8) * (len(status) + 1)
-            if verbose:
+            if progress:
                 print(status, end=' ')  # space instead of newline
                 sys.stdout.flush()
-        if verbose:
-            print('')
+
+        if progress:
+            print('\n') # new line
+                
     else:
         while True:
             buffer = page.read(block_size)
@@ -219,11 +221,11 @@ def download(url, output_filename, sha1=None, verbose=True, md5=None, timeout=No
             # percent = min(100, 100. * dl_size / file_size)
             status = r"Progress: %10d KB" % (dl_size)
             status = status + chr(8) * (len(status) + 1)
-            if verbose:
+            if progress:
                 print(status, end=' ')  # space instead of newline
                 sys.stdout.flush()
-        if verbose:
-            print('')
+        if progress:
+            print('\n') # new line
         # output_file.write(page.read())
 
     output_file.close()
@@ -239,7 +241,7 @@ def download(url, output_filename, sha1=None, verbose=True, md5=None, timeout=No
     return output_filename
 
 
-def unpack(archive_filename, output_dirname, sha1=None, verbose=True, passwd=None):
+def unpack(archive_filename, output_dirname, sha1=None, verbose=True, passwd=None, progress=True):
     """Extracts `archive_filename` in `output_dirname`.
 
     Supported archives:
@@ -250,13 +252,11 @@ def unpack(archive_filename, output_dirname, sha1=None, verbose=True, passwd=Non
     * non-tar .bz2
     """
     if verbose:
-        log.info("[vipy.downloader.extract]: Extracting '%s' -> '%s'" % (archive_filename, output_dirname))
+        log.info("Extracting '%s' -> '%s'" % (archive_filename, output_dirname))
     if sha1 is not None:
-        if verbose:
-            log.info("SHA-1 verification...")
         verify_sha1(archive_filename, sha1)
     try:
-        extract(archive_filename, output_dirname, verbose=verbose, passwd=passwd)
+        extract(archive_filename, output_dirname, progress=progress, passwd=passwd)
     except UnrecognizedArchiveFormat:
         base, ext = os.path.splitext(archive_filename)
         # Handle non-tar bz2 archives
@@ -272,7 +272,7 @@ def unpack(archive_filename, output_dirname, sha1=None, verbose=True, passwd=Non
             raise
 
 
-def download_and_unpack(url, output_dirname, sha1=None, verbose=True, md5=None, passwd=None):
+def download_and_unpack(url, output_dirname, sha1=None, verbose=True, md5=None, passwd=None, progress=True):
     """Downloads and extracts archive in `url` into `output_dirname`.
 
     Note that `output_dirname` has to exist and won't be created by this
@@ -280,18 +280,20 @@ def download_and_unpack(url, output_dirname, sha1=None, verbose=True, md5=None, 
     """
     archive_basename = path.basename(url)
     archive_filename = path.join(output_dirname, archive_basename)
-    download(url, archive_filename, sha1=sha1, verbose=verbose, md5=md5)
-    extract(archive_filename, output_dirname, verbose=verbose, passwd=passwd)
+    download(url, archive_filename, sha1=sha1, verbose=verbose, md5=md5, progress=progress)
+    unpack(archive_filename, output_dirname, passwd=passwd, progress=progress, verbose=verbose, sha1=sha1)
 
 
-def download_unpack_and_cleanup(url, output_dirname, sha1=None, verbose=True):
-    download_and_unpack(url, output_dirname, sha1, verbose)
+def download_unpack_and_cleanup(url, output_dirname, sha1=None, verbose=True, progress=True):
+    download_and_unpack(url, output_dirname, sha1, verbose, progress=progress)
+    log.info("Deleting '%s'" % path.join(output_dirname, path.basename(url)))    
     os.remove(path.join(output_dirname, path.basename(url)))
 
 
-def unpack_and_cleanup(archive_filename, output_dirname, sha1=None, verbose=True):
-    download_and_unpack(url, output_dirname, sha1, verbose)
-    os.remove(path.join(output_dirname, path.basename(url)))
+def unpack_and_cleanup(archive_filename, output_dirname, sha1=None, verbose=True, progress=True):
+    unpack(archive_filename, output_dirname, sha1, verbose, progress=progress)
+    log.info("Deleting '%s'" % archive_filename)
+    os.remove(archive_filename)
 
 
 class ArchiveException(Exception):
@@ -302,12 +304,12 @@ class UnrecognizedArchiveFormat(ArchiveException):
     """Error raised when passed file is not a recognized archive format."""
 
 
-def extract(archive_filename, output_dirname='./', verbose=True, passwd=None):
+def extract(archive_filename, output_dirname='./', passwd=None, progress=True):
     """
     Unpack the tar or zip file at the specified `archive_filename` to the
     directory specified by `output_dirname`.
     """
-    Archive(archive_filename, passwd=passwd).extract(output_dirname, verbose=verbose)
+    Archive(archive_filename, passwd=passwd).extract(output_dirname, progress=progress)
 
 
 class Archive(object):
@@ -339,8 +341,8 @@ class Archive(object):
                 "Path not a recognized archive format: %s" % filename)
         return cls
 
-    def extract(self, output_dirname='', verbose=True):
-        self._archive.extract(output_dirname, verbose=verbose)
+    def extract(self, output_dirname='', progress=True):
+        self._archive.extract(output_dirname, progress=progress)
 
     def list(self):
         self._archive.list()
@@ -365,19 +367,23 @@ class ExtractInterface(object):
     zipfile).
     """
 
-    def extract(self, output_dirname, verbose=True):
+    def extract(self, output_dirname, progress=True):
         members = self.get_members()
         n_members = len(members)
         for mi, member in enumerate(members):
             self._archive.extract(member, path=output_dirname)
             extracted = mi + 1
-            if verbose:
-                status = (r"Progress: %10i files extracted [%4.1f%%]"
+            if progress:
+                status = (r"Progress: %10i files [%4.1f%%]"
                           % (extracted, extracted * 100. / n_members))
                 status += chr(8) * (len(status) + 1)
                 print(status, end=' ')
                 sys.stdout.flush()
 
+        if progress:
+            print('\n') # new line
+                
+                
 class TarArchive(ExtractInterface, BaseArchive):
     def __init__(self, filename, passwd=None):
         self._archive = tarfile.open(filename)

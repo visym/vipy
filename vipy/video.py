@@ -348,11 +348,11 @@ class Stream(object):
                     # The delay shifts the clip +delay frames (1,2,3), (3,4,5), ... for n=3, m=2, delay=1                
                     frames.extend(newframes)
                     (frames, newframes) = (frames[-n:], [])
-                    queue.put( (v.clear().clone(shallow=True).fromframes(frames), k) )  # fromframes() triggers array copy of frames
+                    queue.put( (v.clear().clone(shallow=True).array(frames, copy=True), k) )  # fromframes() triggers array copy of frames
                 elif continuous:
                     queue.put( (None, k) )
             if ragged and len(newframes) > 0:
-                queue.put( (v.clear().clone(shallow=True).fromframes(newframes), k) )  # fromframes() triggers array copy of newframes
+                queue.put( (v.clear().clone(shallow=True).array(newframes, copy=True), k) )  # fromframes() triggers array copy of newframes
 
             queue.put( (None, None) )
             event.wait()            
@@ -565,12 +565,10 @@ class Video():
         if array is not None:
             self.array(array)
             self.colorspace(colorspace)
-        elif frames is not None and isinstance(frames, (list, tuple)) and all([isinstance(im, vipy.image.Image) for im in frames]):
-            self.fromframes(frames)
-        elif frames is not None and isinstance(frames, (list, tuple)) and all([isinstance(im, str) and os.path.exists(im) for im in frames]):
-            self.fromframes([vipy.image.Image(filename=f) for f in frames])
-        elif frames is not None and isinstance(frames, str) and os.path.isdir(frames):
-            self.fromdirectory(frames)
+        if frames is not None and isinstance(frames, (list, tuple)) and all([isinstance(im, str) and os.path.exists(im) for im in frames]):
+            frames = [vipy.image.Image(filename=f) for f in frames]
+        if frames is not None and isinstance(frames, (list, tuple)) and all([isinstance(im, vipy.image.Image) for im in frames]):
+            self.array(frames, copy=True)
         elif frames is not None:
             raise ValueError('invalid image frame list "%s"' % frames)
             
@@ -1322,10 +1320,11 @@ class Video():
         
         Args:
             array: [np.array] A numpy array of size NxHxWxC = (frames, height, width, channels)  of type uint8 or float32.
+            array: [list] A list of `vipy.image.Image` objects
             copy: [bool] If true, copy the buffer by value instaed of by reference.  Copied buffers do not share pixels.
 
         Returns:
-            if array=None, return a reference to the pixel buffer as a numpy array, otherwise return the video object.
+            if array=None, return a reference to the pixel buffer as a numpy array, otherwise return the video object with the array populated
 
         """
         if array is None:
@@ -1338,14 +1337,23 @@ class Video():
                 self._array.setflags(write=True)  # mutable iterators, triggers copy
             self.colorspace(None)  # must be set with colorspace() after array() before _convert()
             return self
+        elif isinstance(array, (list, tuple)) and all(isinstance(im, vipy.image.Image) for im in array):
+            self._array = np.stack([im.load().array() if im.load().array().ndim == 3 else np.expand_dims(im.load().array(), 2) for im in array])
+            if copy:
+                self._array.setflags(write=True)
+            self.colorspace(array[0].colorspace())
+            return self
         else:
             raise ValueError('Invalid input - array() must be numpy array')            
 
-    def fromarray(self, array):
-        """Alias for self.array(..., copy=True), which forces the new array to be a copy"""
-        return self.array(array, copy=True)
+    @classmethod
+    def from_array(cls, array, framerate=30):
+        """Create a new video from a shared array, Equivalent to self.array(..., copy=False)"""
+        return cls(array=array, framerate=framerate)
 
-    def fromdirectory(self, indir, sortkey=None):
+
+    @classmethod
+    def from_directory(self, indir, sortkey=None, framerate=30.):
         """Create a video from a directory of frames stored as individual image filenames.
         
         Given a directory with files:
@@ -1358,14 +1366,22 @@ class Video():
         ```
 
         """
-        return self.fromframes([vipy.image.Image(filename=f) for f in sorted(vipy.util.imlist(indir), key=sortkey)])
-                                
-    def fromframes(self, framelist, copy=True):
+        assert os.path.isdir(frames)
+        return cls(frames=[vipy.image.Image(filename=f) for f in sorted(vipy.util.findimages(indir), key=sortkey)], framerate=framerate)   
+
+    @classmethod
+    def from_frames(cls, framelist, framerate=30.0):
         """Create a video from a list of frames"""
         assert all([isinstance(im, vipy.image.Image) for im in framelist]), "Invalid input"
-        return self.array(np.stack([im.load().array() if im.load().array().ndim == 3 else np.expand_dims(im.load().array(), 2) for im in framelist]), copy=copy).colorspace(framelist[0].colorspace())
+        return cls(frames=framelist, framerate=framerate)
+
+    @classmethod
+    def from_annotation_sequence(cls, im, framerate=30):
+        """Construct a video from an input image im where each frame is the acculation of annnotated objects in im.  This is useful for visualization of a labeling sequence"""
+        assert isinstance(im, vipy.image.Scene)
+        return cls(frames=[im.clone().clear().objects(im.objects()[0:k]).annotate() for k in range(im.num_objects())], framerate=framerate)
     
-    def tonumpy(self):
+    def to_numpy(self):
         """Alias for numpy()"""
         return self.numpy()
 
@@ -1508,6 +1524,7 @@ class Video():
                 vipy.downloader.download(self._url,
                                          filename,
                                          verbose=verbose,
+                                         progress=False,
                                          timeout=timeout,
                                          sha1=self.get_attribute('__urlsha1'),
                                          username=self.get_attribute('__urluser'),
@@ -2095,7 +2112,7 @@ class Video():
         assert isgif(outfile)
         return self.webp(outfile, pause, strict=False, smallest=smallest, smaller=True, framerate=framerate)
         
-    def saveas(self, outfile=None, framerate=None, vcodec='libx264', verbose=False, ignoreErrors=False, flush=False, pause=5):
+    def save(self, outfile=None, framerate=None, vcodec='libx264', verbose=False, ignoreErrors=False, flush=False, pause=5):
         """Save video to new output video file.  This function does not draw boxes, it saves pixels to a new video file.
 
         Args:
@@ -2114,7 +2131,7 @@ class Video():
             - If outfile==None or outfile==self.filename(), then overwrite the current filename 
 
         """        
-        outfile = tocache(tempMP4()) if outfile is None else os.path.normpath(os.path.abspath(os.path.expanduser(outfile)))
+        outfile = tempMP4() if outfile is None else os.path.normpath(os.path.abspath(os.path.expanduser(outfile)))
         premkdir(outfile)  # create output directory for this file if not exists
         framerate = framerate if framerate is not None else self._framerate
         assert vipy.util.isvideofile(outfile), "Invalid filename extension for video filename"
@@ -2174,17 +2191,14 @@ class Video():
 
         # Return a new video, cloned from this video with the new video file, optionally flush the video we loaded before returning
         return self.clone(flushforward=True, flushfilter=True, flushbackward=flush).filename(outfile).nourl()
+
+    def saveas(self, outfile):
+        """Call `vipy.video.Video.saveas` using a new temporary video file, and return the video object with this new filename"""
+        return self.save(outfile=outfile).filename()
     
     def savetmp(self):
         """Call `vipy.video.Video.saveas` using a new temporary video file, and return the video object with this new filename"""
         return self.saveas(outfile=tempMP4())
-    def savetemp(self):
-        """Alias for `vipy.video.Video.savetmp`"""
-        return self.savetmp()
-
-    def tocache(self):
-        """Call `vipy.video.Video.saveas` using a new temporary video file in VIPY cache, and return the video object with this new filename"""
-        return self.saveas(outfile=vipy.util.tocache(tempMP4()))
     
     def ffplay(self):
         """Play the video file using ffplay"""
@@ -2219,7 +2233,7 @@ class Video():
             # save to temporary video, this video is not cleaned up and may accumulate            
             try_import("IPython.display", "ipython"); import IPython.display
             if not self.hasfilename() or self.isloaded() or self._isdirty():
-                v = self.saveas(tempMP4())                 
+                v = self.save(tempMP4())                 
                 warnings.warn('Saving video to temporary file "%s" for notebook viewer ... ' % v.filename())
                 return IPython.display.Video(v.filename(), embed=True)
             return IPython.display.Video(self.filename(), embed=True)
@@ -2228,7 +2242,7 @@ class Video():
                 f = tempMP4()
                 if verbose:
                     warnings.warn('%s - Saving video to temporary file "%s" for ffplay ... ' % ('Video loaded into memory' if self.isloaded() else 'Dirty FFMPEG filter chain', f))
-                v = self.saveas(f)
+                v = self.save(f)
                 cmd = 'ffplay "%s"' % v.filename()
                 if verbose:
                     log.info('[vipy.video.play]: Executing "%s"' % cmd)
@@ -2660,12 +2674,12 @@ class Scene(Video):
 
     __slots__ = ('_url', '_filename', '_array', '_colorspace', '_ffmpeg', '_framerate', '_start', '_end', '_shape', '_channels', 'attributes', '_tracks', '_activities')        
     def __init__(self, filename=None, url=None, framerate=30.0, array=None, colorspace=None, category=None, tracks=None, activities=None,
-                 attributes=None, startframe=None, endframe=None, startsec=None, endsec=None, shape=None, tags=None):
+                 attributes=None, startframe=None, endframe=None, startsec=None, endsec=None, shape=None, tags=None, frames=None):
 
         self._tracks = {}
         self._activities = {}        
         super().__init__(url=url, filename=filename, framerate=framerate, attributes=attributes, array=array, colorspace=colorspace,
-                         startframe=startframe, endframe=endframe, startsec=startsec, endsec=endsec, shape=shape)
+                         startframe=startframe, endframe=endframe, startsec=startsec, endsec=endsec, shape=shape, frames=frames)
 
         # Tracks must be defined relative to the clip specified by this constructor
         if tracks is not None:
@@ -2760,6 +2774,7 @@ class Scene(Video):
         v._tracks = tuple([x if isinstance(x, str) else str(json.dumps(x)) for x in d['tracks'].values()]) if 'tracks' in d else ()  # track ID key is embedded in object, legacy unpack of doubly JSON encoded strings (vipy-1.11.16)
         v._activities = tuple([x if isinstance(x, str) else str(json.dumps(x)) for x in d['activities'].values()]) if 'activities' in d else ()  # track ID key is embedded in object, legacy unpack of doubly JSON encoded strings (vipy-1.11.16)
         return v
+
         
     def pack(self):
         """Packing a scene returns the scene with the annotations JSON serialized.  
@@ -3390,8 +3405,12 @@ class Scene(Video):
     def framerate(self, fps=None):
         """Return the current frame rate of change the input framerate for the video and update frame indexes for all annotations.
 
-        The framerate may be None in the constructor if the framerate is not know until a video ois downloaded
+        The framerate may be None in the constructor if the framerate is not know until a video is downloaded
         This function will request the framerate from the video file if it has been downloaded and cache it in _framerate
+
+        If the video has not been loaded, the framerate will be changed in the ffmpeg filter chain and will update framerate for tracks/activities
+        If the video has been loaded, the framerate will not be changed, since this requires resampling the image buffer which is an unsupported operation
+        If the framerate is allowed to change after load, then any objects will no longer match the pixels and the framerate will only change the playback speed which is not very useful
 
         ```python
         fps = self.framerate()
@@ -3405,8 +3424,7 @@ class Scene(Video):
             return self._framerate
         elif float(fps) == self._framerate:
             return self
-        else:
-            assert not self.isloaded(), "Filters can only be applied prior to load() - Try calling flush() first"
+        elif not self.isloaded():
             fps = float(fps)
 
             if self._start is not None and isinstance(self._start, int):
@@ -3418,14 +3436,17 @@ class Scene(Video):
             elif self._end is not None and isinstnace(self._end, float):
                 self._end = self._end * (fps/self._framerate)  # __repr__ only
                 
-            self._tracks = {k:t.framerate(fps) for (k,t) in self.tracks().items()}
-            self._activities = {k:a.framerate(fps) for (k,a) in self.activities().items()}        
             if 'fps=' in self._ffmpeg_commandline():
                 self._update_ffmpeg('fps', fps)  # replace fps filter, do not add to it
             else:
                 self._ffmpeg = self._ffmpeg.filter('fps', fps=fps, round='up')  # create fps filter first time
+
+            self._tracks = {k:t.framerate(fps) for (k,t) in self.tracks().items()}
+            self._activities = {k:a.framerate(fps) for (k,a) in self.activities().items()}                        
             self._framerate = fps
             return self
+        else:
+            raise ValueError('framerate must be set in the constructor before load() - Try calling flush() first')
         
     def activitysplit(self, idx=None):
         """Split the scene into k separate scenes, one for each activity.  Do not include overlapping activities.  
@@ -3588,7 +3609,7 @@ class Scene(Video):
 
         """
         bb = self.trackbox(dilate)  # may be None if trackbox is degenerate
-        return self.crop(bb.maxsquareif(maxsquare), zeropad=zeropad) if bb is not None else None  
+        return self.crop(bb.maxsquare() if maxsquare else bb, zeropad=zeropad) if bb is not None else None  
 
     def activitybox(self, activityid=None, dilate=1.0):
         """The activitybox is the union of all activity bounding boxes in the video, which is the union of all tracks contributing to all activities.  This is most useful after activityclip().
@@ -4059,7 +4080,7 @@ class Scene(Video):
                                      nocaption=nocaption,
                                      timestamp=timestamp,
                                      theme=theme,
-                                     nocaption_withstring=nocaption_withstring).saveas(outfile).play(notebook=notebook)
+                                     nocaption_withstring=nocaption_withstring).save(outfile).play(notebook=notebook)
     
 
     def show(self, outfile=None, verbose=True, fontsize=10, captionoffset=(3,-18), shortlabel=None, boxalpha=0.15, d_category2color={'Person':'green', 'Vehicle':'blue', 'Object':'red'}, categories=None, nocaption=False, nocaption_withstring=[], figure=1, fps=None, timestamp=None, mutator=vipy.image.mutator_show_noun_verb(), theme='dark'):
