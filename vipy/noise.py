@@ -12,7 +12,7 @@ vipy.util.try_import('skimage', 'scikit-image'); import skimage.transform
 vipy.util.try_import('cv2', 'opencv-python'); import cv2
 
 
-# <GEOMETRIC>
+# GEOMETRIC
 def left_shear(im, s, border='zero'):
     assert isinstance(im, vipy.image.Image)
     assert s >= 0
@@ -40,25 +40,6 @@ def rotate(im, rad=None, deg=None, border='zero'):
     A = np.dot(vipy.geometry.affine_transform(r=r), T)
     A = np.dot(np.linalg.inv(T), A)
     return im.load().affine_transform(A, border=border).mat2gray(0,255)
-
-def translate(im, dx, dy): 
-    """Translate by (dx,dy) pixels, with zero border handling"""
-    assert isinstance(im, vipy.image.Image)
-    return im.load().padcrop(im.imagebox().translate(dx,dy))
-
-def isotropic_scale(im, s, border='zero'):
-    assert isinstance(im, vipy.image.Image)
-    assert s > 0
-
-    (W,H) = (im.width(), im.height())
-    return im.load().rescale(s).padcrop(vipy.geometry.BoundingBox(centroid=(im.width()/2, im.height()/2), width=W, height=H))
-
-def zoom(im, s, zx=None, zy=None, border='zero'):
-    assert isinstance(im, vipy.image.Image)
-    assert s > 0
-
-    (zx, zy) = ((-im.width()/2) if zx is None else -zx, (-im.height()/2) if zy is None else -zy)    
-    return isotropic_scale(translate(im, zx, zy), s)
 
 def barrel(im):
     assert isinstance(im, vipy.image.Image)    
@@ -103,21 +84,6 @@ def horizontal_mirror(im):
     img[:,i:] = np.fliplr(img[:,0:j])
     return im.array(img)
 
-def fliplr(im):
-    return im.load().fliplr()
-
-def flipud(im):
-    return im.load().flipud()
-
-def rot90cw(im):
-    return im.load().rot90cw()
-
-def rot90ccw(im):
-    return im.load().rot90ccw()
-
-def montage(im, k):
-    return vipy.visualize.montage([im.clone() for i in range(k)]).mindim(512).centercrop(im.height(), im.width())
-
 def vertical_mirror(im):
     assert isinstance(im, vipy.image.Image)            
     img = im.load().array()
@@ -140,16 +106,47 @@ def horizontal_motion_blur(im, kernel_size):
     return im.load().map(lambda img: cv2.filter2D(img, -1, kernel_h)).mat2gray(0,255).colorspace('float')
 
 def ghost(im, txr=5, tyr=5, txg=-5, tyg=-5, txb=5, tyb=-5):
-    assert isinstance(im, vipy.image.Image)    
-    img = im.clone().zeros().load().array()
-    img[:,:,0] = translate(im.red(), txr, tyr).load().array()
-    img[:,:,1] = translate(im.green(), txg, tyg).load().array()
-    img[:,:,2] = translate(im.blue(), txb, tyb).load().array()
-    return zoom(im.array(img), 1.1)
+    assert isinstance(im, vipy.image.Image)
+    (imc,imz) = (im.clone().load(), im.clone().load().zeros())
+    img = imz.numpy()
+    img[:,:,0] = translate(imc.red(), txr, tyr).load().array()
+    img[:,:,1] = translate(imc.green(), txg, tyg).load().array()
+    img[:,:,2] = translate(imc.blue(), txb, tyb).load().array()
+    return imz
 
 def crop(im, s=0.8):
     return im.clone().crop(vipy.geometry.BoundingBox(xmin=random.randint(0, int((1-s)*im.width())), ymin=random.randint(0, int((1-s)*im.height())), width=math.ceil(s*im.width()), height=math.ceil(s*im.height()))).resize(height=im.height(), width=im.width())
-# </GEOMETRIC>
+
+def fliplr(im):
+    return im.load().fliplr()
+
+def flipud(im):
+    return im.load().flipud()
+
+def rot90cw(im):
+    return im.load().rot90cw()
+
+def rot90ccw(im):
+    return im.load().rot90ccw()
+
+def translate(im, dx, dy): 
+    """Translate by (dx,dy) pixels, with zero border handling"""
+    assert isinstance(im, vipy.image.Image)
+    return im.load().padcrop(im.imagebox().translate(dx,dy))
+
+def isotropic_scale(im, s, border='zero'):
+    assert isinstance(im, vipy.image.Image)
+    assert s > 0
+
+    (W,H) = (im.width(), im.height())
+    return im.load().rescale(s).padcrop(vipy.geometry.BoundingBox(centroid=(im.width()/2, im.height()/2), width=W, height=H))
+
+def zoom(im, s, zx=None, zy=None, border='zero'):
+    assert isinstance(im, vipy.image.Image)
+    assert s > 0
+
+    (zx, zy) = ((-im.width()/2) if zx is None else -zx, (-im.height()/2) if zy is None else -zy)    
+    return isotropic_scale(translate(im, zx, zy), s)
 
 
 # <PHOTOMETRIC>
@@ -246,11 +243,10 @@ def additive_gaussian_noise(im, sigma=0.1):
     assert isinstance(im, vipy.image.Image)            
     return im.float().map(lambda img: img + max(sigma*im.maxpixel(), sigma)*np.random.randn(img.shape[0], img.shape[1], im.channels()).astype(np.float32)).saturate(0,255).mat2gray(0,255).colorspace('float')
 
-# </PHOTOMETRIC>
 
 
 class Noise():
-    def __init__(self, magnitude=0.25, provenance=False):
+    def __init__(self, magnitude=0.25, provenance=False, register=None, deregister=['hot','rainbow','vertical_mirror','flipud','rot90cw','rot90ccw']):
 
         n = magnitude
         (shear, dx, dy, rot, z, border, sigma, gain) = (n*0.25, n*0.15, n*0.15, n*25, n*0.2, 'replicate', 1.0, 0.5)
@@ -295,7 +291,6 @@ class Noise():
                           'flipud': lambda im: flipud(im),
                           'rot90cw': lambda im: rot90cw(im),
                           'rot90ccw': lambda im: rot90ccw(im),
-                          'montage': lambda im: montage(im, random.sample([2,4,6,9,12,16],1)[0]),
                           'solarize': lambda im: solarize(im, random.randint(32, 255-32)),
                           'colorjitter': lambda im: colorjitter(im),
                           'autocontrast': lambda im: autocontrast(im),
@@ -303,69 +298,54 @@ class Noise():
                           'gamma': lambda im: gamma(im, random.random()+0.5),
                           'crop': lambda im: crop(im, 1-0.2*random.random()),
                           }
-        
 
-    def distortions(self):
+        if deregister is not None:
+            self._registry = {k:v for (k,v) in self._registry.items() if k not in deregister}                    
+        if register is not None:
+            self._registry = {k:v for (k,v) in self._registry.items() if k in register}        
+
+    def transformations(self):
         return list(self._registry.keys())
 
-    def random_distortion(self, im):
-        return self.transform(im, vipy.util.takeone(self.distortions()))
+    def random_transformation(self, im):
+        return self.transform(im, vipy.util.takeone(self.transformations()))
         
-    def transform(self, im, distortion):
+    def transform(self, im, transform):
         assert isinstance(im, vipy.image.Image)
-        assert distortion in self.distortions()        
+        assert transform in self.transformations()
 
-        imd = self._registry[distortion](im.clone().load())
+        imd = self._registry[transform](im.clone().load())
         if self._provenance:
-            imd.setattribute('vipy.noise', distortion)
+            imd.setattribute('vipy.noise', transform)
         return imd
 
     def montage(self, im):
-        return vipy.visualize.montage([self.transform(im, k) for k in self.distortions()], 256, 256)
+        return vipy.visualize.montage([self.transform(im.clone().centersquare(), k) for k in self.transformations()], 256, 256)
     
     def __call__(self, im):
         assert isinstance(im, vipy.image.Image) or all(isinstance(x, vipy.image.Image) for x in im), "singletons or batches required"
-        return self.random_distortion(im) if isinstance(im, vipy.image.Image) else tuple([self.random_distortion(x) for x in im])
+        return self.random_transformation(im) if isinstance(im, vipy.image.Image) else tuple([self.random_transformation(x) for x in im])
 
 
 class RandomCrop(Noise):
     def __init__(self, magnitude=1, provenance=False):
-        super().__init__(magnitude=magnitude, provenance=provenance)
-
-        geometric = ['translate', 'isotropic_scale', 'crop']
-        
-        self._registry = {k:v for (k,v) in self._registry.items() if k in geometric}
-    
+        super().__init__(magnitude=magnitude, provenance=provenance, register=['translate', 'isotropic_scale', 'crop'])
     
 class Geometric(Noise):
     def __init__(self, magnitude=0.25, provenance=False):
-        super().__init__(magnitude=magnitude, provenance=provenance)
-
-        geometric = ['translate', 'horizontal_motion_blur', 'vertical_motion_blur', 'barrel', 'left_swirl', 'right_swirl','horizontal_mirror',
-                     'vertical_mirror','left_shear','right_shear','rotate','isotropic_scale','flipud','fliplr','rot90cw','rot90ccw',
-                     'montage', 'crop']
-        
-        self._registry = {k:v for (k,v) in self._registry.items() if k in geometric}
-
-        
+        super().__init__(magnitude=magnitude, provenance=provenance,
+                         register=['translate', 'horizontal_motion_blur', 'vertical_motion_blur', 'barrel',
+                                   'left_swirl', 'right_swirl','horizontal_mirror','left_shear','right_shear',
+                                   'rotate','isotropic_scale','fliplr','crop'])
 class Photometric(Noise):
     def __init__(self, magnitude=0.25, provenance=False):
-        super().__init__(magnitude=magnitude, provenance=provenance)
-                         
-        photometric = ['blur', 'salt_and_pepper', 'jpeg_compression', 'greyscale', 'bgr', 'hot','rainbow','saturate','edge','emboss',
-                       'darken','negative','scan_lines','additive_gaussian_noise','bit_depth','permute_color_channels','solarize',
-                       'colorjitter','autocontrast', 'sharpness', 'gamma', 'ghost']
-        
-        self._registry = {k:v for (k,v) in self._registry.items() if k in photometric}        
-
+        super().__init__(magnitude=magnitude, provenance=provenance,
+                         register=['blur', 'salt_and_pepper', 'jpeg_compression', 'greyscale', 'bgr', 'hot','saturate','edge','emboss',
+                                   'darken','negative','scan_lines','additive_gaussian_noise','bit_depth','permute_color_channels','solarize',
+                                   'colorjitter','autocontrast', 'sharpness', 'gamma', 'ghost'])
 class Perturbation(Noise):
     def __init__(self, magnitude=0.5, provenance=False):
-        super().__init__(magnitude=magnitude, provenance=provenance)
-
-        geometric = ['translate', 'isotropic_scale', 'crop']  # no fliplr
-        photometric = ['blur', 'additive_gaussian_noise']  # no saturate, no colorjitter
-        
-        self._registry = {k:v for (k,v) in self._registry.items() if k in photometric+geometric}        
+        super().__init__(magnitude=magnitude, provenance=provenance, register=['translate', 'isotropic_scale', 'crop', 'blur', 'additive_gaussian_noise']) 
         
 
 geometric = Geometric(provenance=True)

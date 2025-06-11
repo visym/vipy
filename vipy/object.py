@@ -149,7 +149,7 @@ class Detection(BoundingBox, Object):
             strlist.append('category=%s' % (str(self.category())[0:80] + (' ... ' if len(str(self.category()))>80 else '')))                        
         if True:
             strlist.append('bbox=(xmin=%1.1f, ymin=%1.1f, width=%1.1f, height=%1.1f)' %
-                           (self.xmin(), self.ymin(),self._width(), self._height()))
+                           (self.xmin(), self.ymin(),self.width(), self.height()))
         if self.category() is not None and self.confidence() is not None:
             strlist.append('conf=%1.3f' % self.confidence())
         if self.isdegenerate():
@@ -457,8 +457,8 @@ class Track():
             (width_variance, height_variance) of the box shape during the track (or None)
         """
         m = self.meanshape()
-        return (float(np.mean([(bb._width() - m[0])**2 for bb in self.keyboxes()])), 
-                float(np.mean([(bb._height() - m[1])**2 for bb in self.keyboxes()]))) if m is not None else None
+        return (float(np.mean([(bb.width() - m[0])**2 for bb in self.keyboxes()])), 
+                float(np.mean([(bb.height() - m[1])**2 for bb in self.keyboxes()]))) if m is not None else None
 
 
     def framerate(self, fps=None, speed=None):
@@ -1129,12 +1129,12 @@ class Track():
     def velocity_w(self, f, dt=30):
         """Return the width velocity at frame f in units of pixels per frame computed by finite difference"""
         assert f >= 0 and dt > 0 and self.during(f)
-        return float(np.mean([(self[f]._width() - self[f-k]._width())/float(k) for k in range(1,dt) if self.during(f-k)])) if self.during(f-1) else 0
+        return float(np.mean([(self[f].width() - self[f-k].width())/float(k) for k in range(1,dt) if self.during(f-k)])) if self.during(f-1) else 0
 
     def velocity_h(self, f, dt=30):
         """Return the height velocity at frame f in units of pixels per frame computed by finite difference"""
         assert f >= 0 and dt > 0 and self.during(f)
-        return float(np.mean([(self[f]._height() - self[f-k]._height())/float(k) for k in range(1,dt) if self.during(f-k)])) if self.during(f-1) else 0
+        return float(np.mean([(self[f].height() - self[f-k].height())/float(k) for k in range(1,dt) if self.during(f-k)])) if self.during(f-1) else 0
     
     def nearest_keyframe(self, f):
         """Nearest keyframe to frame f"""

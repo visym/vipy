@@ -1223,7 +1223,7 @@ class Image():
             padwidth = (padwidth, padwidth)
         if not isinstance(padheight, tuple):
             padheight = (padheight, padheight)
-        if self.iscolor():
+        if self.channels() > 1:
             pad_shape = (padheight, padwidth, (0, 0))
         else:
             pad_shape = (padheight, padwidth)
@@ -1881,7 +1881,20 @@ class Image():
             for (f,kwargs) in reversed(self._history()):
                 getattr(bb,f)(**kwargs)
         return bb
+
+    def padcrop(self, bbox):
+        """Crop the image buffer using the supplied bounding box object, zero padding if box is outside image rectangle, update all scene objects"""
+        dx = int(max(0, max(0-bbox.xmin(), bbox.xmax()-self.width())))
+        dy = int(max(0, max(0-bbox.ymin(), bbox.ymax()-self.height())))
+        return self.zeropad(dx,dy)._crop(bbox.translate(dx=dx, dy=dy))
     
+    def recenter(self, x, y):
+        """Recenter the image so that location (x=col, y=row) in the current image is in the middle of the new image, zeropad to (width, height).  
+           This is useful to implement a 'saccade', under the small angle assumption, where a rotation is approximated by a translation
+        """
+        
+        return self.padcrop(self.imagebox().centroid((x,y)))
+
     
 class ImageCategory(Image):
     """vipy ImageCategory class
@@ -2383,10 +2396,9 @@ class Scene(TaggedImage):
     def padcrop(self, bbox):
         """Crop the image buffer using the supplied bounding box object, zero padding if box is outside image rectangle, update all scene objects"""
         bbox = bbox.clone()
-        self.zeropad(bbox.int().width(), bbox.int().height())  # FIXME: this is inefficient
-        (dx, dy) = (bbox.width(), bbox.height())
-        bbox = bbox.translate(dx, dy)
-        self = super()._crop(bbox)
+        dx = int(max(0, max(0-bbox.xmin(), bbox.xmax()-self.width())))
+        dy = int(max(0, max(0-bbox.ymin(), bbox.ymax()-self.height())))
+        self.zeropad(dx,dy)._crop(bbox.translate(dx=dx, dy=dy))
         (dx, dy) = (bbox.xmin(), bbox.ymin())
         self._objectlist = [bb.translate(-dx, -dy) for bb in self._objectlist] # after crop        
         self._history('translate', dx=dx, dy=dy)                                

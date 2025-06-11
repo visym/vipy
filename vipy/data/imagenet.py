@@ -1,6 +1,6 @@
 import os
 import vipy
-from vipy.util import readcsv, remkdir, filepath, islist, filetail, filebase, filefull, tocache
+from vipy.util import readcsv, remkdir, filepath, islist, filetail, filebase, filefull, tocache, isinstalled
 from vipy.image import ImageDetection, ImageCategory
 import xml.etree.ElementTree as ET
 import scipy.io
@@ -158,8 +158,13 @@ class Imagenet21K(vipy.dataset.Dataset):
         self._datadir = vipy.util.remkdir(datadir)
         
         if redownload or not os.path.exists(os.path.join(self._datadir, '.complete')):
-            vipy.globals.log.info('[vipy.data.imagenet]: downloading Imagenet-21K to "%s"' % self._datadir)            
-            vipy.downloader.download_and_unpack(IMAGENET21K_URL, self._datadir, sha1=None)
+            vipy.globals.log.info('[vipy.data.imagenet]: downloading Imagenet-21K to "%s"' % self._datadir)
+
+            if isinstalled('wget'):
+                os.system('wget --no-check-certificate --continue --tries=32 -O %s %s ' % (os.path.join(self._datadir, filetail(IMAGENET21K_URL)), IMAGENET21K_URL))  # server fails many times, need smart continue
+            else:
+                vipy.downloader.download(IMAGENET21K_URL, os.path.join(self._datadir, filetail(IMAGENET21K_URL)))  # fallback on dumb downloader
+            vipy.downloader.unpack(os.path.join(self._datadir, filetail(IMAGENET21K_URL)), self._datadir)  # fallback on dumb downloader
 
             for f in vipy.util.findtar(os.path.join(datadir, 'winter21_whole')):
                 if not os.path.exists(filefull(f)):
