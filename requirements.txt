@@ -28,3 +28,6 @@ numba
 pdoc3
 datasets
 pyrtools
+scikit-image
+torchvision
+
