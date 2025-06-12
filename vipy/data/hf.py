@@ -69,7 +69,7 @@ def sun397():
 def flickr30k():
     """http://shannon.cs.illinois.edu/DenotationGraph/data/index.html"""
     D = load_dataset("lmms-lab/flickr30k")
-    loader = lambda r: vipy.image.ImageCategory(category=r['caption'], attributes={'sentid':r['sentids']}).loader(lambda f: np.array(r['image']))
+    loader = lambda r: vipy.image.TaggedImage(caption=r['caption'], attributes={'sentid':r['sentids']}).loader(lambda f: np.array(r['image']))
     return vipy.dataset.Dataset(D['test'], id='flickr30k', loader=loader)
 
     

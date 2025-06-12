@@ -458,12 +458,9 @@ class Image():
             if self._array is not None:
                 return self
 
-            # Download URL to filename if cached filename does not exist
+            # Download URL to filename 
             if self._url is not None and not self.hasfilename():
-                if self._filename is None and os.path.exists(os.path.join(str(cache()), filetail(self._url))):
-                    self._filename = os.path.join(str(cache()), filetail(self._url))
-                else:
-                    self.download(ignoreErrors=ignoreErrors, verbose=verbose)
+                self.download(ignoreErrors=ignoreErrors, verbose=verbose)
 
             # Load filename to numpy array
             if self._loader is not None:
@@ -1937,7 +1934,7 @@ class ImageCategory(Image):
     def __repr__(self):
         fields = ['category=%s' % self.category()] if self.category() is not None else []
         fields +=  ['confidence=%1.3f' % self.confidence()] if self.confidence() is not None else []
-        return super().__repr__().replace('vipy.image', 'vipy.image.ImageCategory').replace('>', ', %s>' % ','.join(fields))
+        return super().__repr__().replace('vipy.image.Image', 'vipy.image.ImageCategory').replace('>', ', %s>' % ','.join(fields))
 
     def __eq__(self, other):
         return self.category() == other.category() if isinstance(other, ImageCategory) else False
@@ -1965,7 +1962,10 @@ class ImageCategory(Image):
 
     def confidence(self):
         return self.get_attribute('confidence')        
-    
+
+    def tags(self):
+        return (self.category(), ) if self.category() is not None else ()
+
     
 class TaggedImage(Image):
     """vipy.image.TaggedImage class
@@ -1990,7 +1990,8 @@ class TaggedImage(Image):
         if len(tags) > 0:
             self.set_attribute('tags', tags)
         if caption is not None:
-            self.add_caption(caption)
+            for c in to_iterable(caption):
+                self.add_caption(c)
             
     def __repr__(self):
         fields  = ['category=%s' % self.category()] if len(self.tags())==1 else []
@@ -2051,7 +2052,7 @@ class TaggedImage(Image):
         return self.get_attribute('captions')[0] if self.hasattribute('captions') else None
     
     def captions(self):
-        return self.get_attribute('captions')
+        return self.get_attribute('captions') if self.hasattribute('captions') else []
     
     def add_tags(self, tags, confidences=[]):
         for (t,c) in zip_longest(tags, confidences):
@@ -2062,7 +2063,7 @@ class TaggedImage(Image):
 class Scene(TaggedImage):
     """vipy.image.Scene class
 
-    This class provides a representation of a vipy.image.ImageCategory with one or more vipy.object.Object.  The goal of this class is to provide a unified representation for all objects in a scene.
+    This class provides a representation of a vipy.image.TaggedImage with one or more vipy.object.Object.  The goal of this class is to provide a unified representation for all objects in a scene.
 
     Valid constructors include all provided by vipy.image.Image() and vipy.image.ImageCategory() with the additional kwarg 'objects', which is a list of vipy.object.Object()
 
@@ -2818,23 +2819,26 @@ def RandomScene(rows=None, cols=None, num_detections=8, num_keypoints=8, num_tag
 def owl():
     """Return a superb owl image for testing"""
     return Scene(url='https://upload.wikimedia.org/wikipedia/commons/thumb/2/23/Bubo_virginianus_06.jpg/512px-Bubo_virginianus_06.jpg',
-                 objects=[vipy.object.Detection('Great Horned Owl', xmin=93, ymin=85, width=373, height=560)])
+                 filename=vipy.util.tocache('owl.jpg'), # to avoid redownload 
+                 objects=[vipy.object.Detection('Great Horned Owl', xmin=93, ymin=85, width=373, height=560)]).mindim(1024)
 
 def vehicles():
     """Return a highway scene with the four highest confidence vehicle detections for testing"""
     return Scene(url='https://upload.wikimedia.org/wikipedia/commons/3/3e/I-80_Eastshore_Fwy.jpg',
+                 filename=vipy.util.tocache('vehicles.jpg'), # to avoid redownload                 
                  category='Highway',
                  objects=[vipy.object.Detection(category="car", xywh=(473.0, 592.2, 92.4, 73.4)),
                           vipy.object.Detection(category="car", xywh=(1410.0, 756.1, 175.2, 147.3)),
                           vipy.object.Detection(category="car", xywh=(316.9, 640.1, 119.4, 119.5)),
-                          vipy.object.Detection(category="car", xywh=(886.9, 892.9, 223.8, 196.6))]).mindim(512)
+                          vipy.object.Detection(category="car", xywh=(886.9, 892.9, 223.8, 196.6))]).mindim(1024)
 
 def people():
     """Return a crowd scene with the four highest confidence person detections for testing"""
     return Scene(url='https://upload.wikimedia.org/wikipedia/commons/b/be/July_4_crowd_at_Vienna_Metro_station.jpg',
+                 filename=vipy.util.tocache('people.jpg'), # to avoid redownload
                  category='crowd',
                  objects=[vipy.object.Detection(category="person", xywh=(1.8, 1178.7, 574.1, 548.0)),
                           vipy.object.Detection(category="person", xywh=(1589.4, 828.3, 363.0, 887.7)),
                           vipy.object.Detection(category="person", xywh=(1902.9, 783.1, 250.8, 825.8)),
-                          vipy.object.Detection(category="person", xywh=(228.2, 948.7, 546.8, 688.5))]).mindim(512)
+                          vipy.object.Detection(category="person", xywh=(228.2, 948.7, 546.8, 688.5))]).mindim(1024)
 

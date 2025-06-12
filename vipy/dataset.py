@@ -81,11 +81,16 @@ class Dataset():
         """Recursively search indir for filetype, construct a dataset from all discovered files of that type"""
         if filetype == 'json':
             return cls([x for f in vipy.util.findjson(indir) for x in to_iterable(vipy.load(f))])
-        elif filetype in ['jpg']:
+        elif filetype == 'jpg':
             return cls([vipy.image.Image(filename=f) for f in vipy.util.findjpeg(indir)])            
         else:
             raise ValueError('unsupported file type "%s"' % filetype)
 
+    @classmethod
+    def from_image_urls(cls, urls):
+        """Construct a dataset from a list of image URLs"""
+        return cls([vipy.image.Image(url=url) for url in to_iterable(urls) if vipy.util.isimageurl(url)])
+        
     @classmethod
     def from_json(cls, jsonfile):
         return cls([x for x in to_iterable(vipy.load(jsonfile))])
@@ -181,23 +186,23 @@ class Dataset():
         self._idx = self._idx*(n+1)
         return self
     
-    def tuple(self, mapper=None, flattener=to_iterable, reducer=None):
+    def tuple(self, mapper=None, flattener=None, reducer=None):
         """Return the dataset as a tuple, applying the optional mapper lambda on each element, applying optional flattener on sequences returned by mapper, and applying the optional reducer lambda on the final tuple, return a generator"""
         assert mapper is None or callable(mapper)
-        assert flattener is None or callable(flattener)
-        assert reducer is None or callable(reducer)        
+        assert flattener is None or flattener is True or callable(flattener)
+        assert reducer is None or callable(reducer)
         mapped = (mapper(x) if mapper else x for x in self)
-        flattened = (y for x in mapped for y in flattener(x))
+        flattened = (y for x in mapped for y in (to_iterable if flattener is True else flattener)(x)) if flattener else mapped
         reduced = reducer(flattened) if reducer else flattened
         return reduced
 
-    def list(self, mapper=None, flattener=to_iterable, reducer=None):
+    def list(self, mapper=None, flattener=None, reducer=None):
         """Return a tuple as a list, loading into memory"""
         return list(self.tuple(mapper, flattener, reducer))
 
-    def set(self, mapper):
+    def set(self, mapper=None, flattener=None):
         """Return the dataset as a set.  Mapper must be a lambda function that returns a hashable type"""
-        return self.tuple(mapper=mapper, reducer=set)
+        return self.tuple(mapper=mapper, reducer=set, flattener=flattener)
         
 
     def frequency(self, f):
@@ -430,23 +435,21 @@ class Dataset():
         assert isinstance(size, int) and size>=0 and size<len(self)
         return self.partition(size/len(self), (len(self)-size)/len(self), 0, '', '', '')
         
-    def map(self, f_map, distributed=True, strict=True, ordered=False, oneway=False):        
-        """Distributed map.
+    def map(self, f_map, strict=True, oneway=False, ordered=False):        
+        """Parallel map.
 
-        To perform this in parallel across four processes:
+        To perform this in parallel across four threads:
 
         ```python
         D = vipy.dataset.Dataset(...)
         with vipy.globals.parallel(4):
-            D.map(lambda v: ...)
+            D = D.map(lambda v: ...)
         ```
 
         Args:
             f_map: [lambda] The lambda function to apply in parallel to all elements in the dataset.  This must return a JSON serializable object (or set oneway=True)
-            distributed [bool]: If true and vipy.globals.dask() is not None, distribute map over workers, else local map only
-            strict: [bool] If true, raise exception on map failures, otherwise the map will return only those that succeeded
-            ordered: [bool] If true, preserve the order of objects in dataset as returned from distributed processing
-            oneway: [bool] If true, do not pass back results unless exception
+            strict: [bool] If true, raise exception on distributed map failures, otherwise the map will return only those that succeeded
+            oneway: [bool] If true, do not pass back results unless exception.  This is useful for distributed processing
         
         Returns:
             A `vipy.dataset.Dataset` containing the elements f_map(v).  This operation is order preserving if ordered=True.
@@ -459,29 +462,38 @@ class Dataset():
         """
         assert callable(f_map), "invalid map function"        
 
-        # Local map
-        if not distributed or vipy.globals.dask() is None:            
-            return self.localmap(f_map)
-                    
+        # Parallel map 
+        if vipy.globals.cf() is not None:
+            # This will fail on multiprocessing if dataset contains a loader lambda, or any element in the dataset contains a loader.  Use distributed instead
+            assert ordered == False, "not order preserving, use localmap()"
+            return Dataset(tuple(vipy.parallel.map(f_map, self)), id=self.id()) 
+                                              
         # Distributed map
-        from vipy.batch import Batch   # requires pip install vipy[all]                
-        f_serialize = lambda x: x
-        f_deserialize = lambda x: x
-        f_oneway = lambda x, oneway=oneway: x if not x[0] or not oneway else (x[0], None)
-        f_catcher = lambda f, *args, **kwargs: vipy.util.catcher(f, *args, **kwargs)  # catch exceptions when executing lambda, return (True, result) or (False, exception)
-        f = lambda x, f_serializer=f_serialize, f_deserializer=f_deserialize, f_map=f_map, f_catcher=f_catcher, f_oneway=f_oneway: f_serializer(f_oneway(f_catcher(f_map, f_deserializer(x))))  # with closure capture
+        elif vipy.globals.dask() is not None:
+            from vipy.batch import Batch   # requires pip install vipy[all]                
+            f_serialize = lambda x: x
+            f_deserialize = lambda x: x
+            f_oneway = lambda x, oneway=oneway: x if not x[0] or not oneway else (x[0], None)
+            f_catcher = lambda f, *args, **kwargs: vipy.util.catcher(f, *args, **kwargs)  # catch exceptions when executing lambda, return (True, result) or (False, exception)
+            f = lambda x, f_serializer=f_serialize, f_deserializer=f_deserialize, f_map=f_map, f_catcher=f_catcher, f_oneway=f_oneway: f_serializer(f_oneway(f_catcher(f_map, f_deserializer(x))))  # with closure capture
+            
+            S = [f_serialize(v) for v in self]  # local load, preprocess and serialize
+            B = Batch(vipy.util.chunklist(S, 128), strict=False, warnme=False, minscatter=128)
+            S = B.map(lambda X,f=f: [f(x) for x in X]).result()  # distributed, chunked, with caught exceptions, may return empty list
+            V = [f_deserialize(x) for s in S for x in s]  # Local deserialization and chunk flattening
+            
+            # Error handling
+            (good, bad) = ([r for (b,r) in V if b], [r for (b,r) in V if not b])  # catcher returns (True, result) or (False, exception string)
+            if len(bad)>0:
+                log.warning('Exceptions in distributed processing:\n%s\n\n[vipy.dataset.Dataset.map]: %d/%d items failed' % (str(bad), len(bad), len(self)))
+                if strict:
+                    raise ValueError('exceptions in distributed processing')
+            return Dataset(good, id=self.id()) if not oneway else None
 
-        S = [f_serialize(v) for v in self]  # local load, preprocess and serialize
-        B = Batch(vipy.util.chunklist(S, 128), strict=False, warnme=False, minscatter=128, ordered=ordered)
-        S = B.map(lambda X,f=f: [f(x) for x in X]).result()  # chunked, with caught exceptions, may return empty list
-        V = [f_deserialize(x) for s in S for x in s]  # Local deserialization and chunk flattening
+        # Local map
+        else:
+            return self.localmap(f_map)
         
-        # Error handling
-        (good, bad) = ([r for (b,r) in V if b], [r for (b,r) in V if not b])  # catcher returns (True, result) or (False, exception string)
-        if strict and len(bad)>0:
-            raise ValueError('[vipy.dataset.Dataset.map]: Exceptions in distributed processing:\n%s\n\n[vipy.dataset.Dataset.map]: %d/%d items failed' % (str(bad), len(bad), len(self)))
-        return Dataset(good, id=self.id()) if not oneway else None
-
     def localmap(self, f):
         """A map performed without any parallel processing"""
         return Dataset(self.list(f), id=self.id())  # triggers load into memory        
@@ -493,7 +505,7 @@ class Dataset():
     def sort(self, f):
         """Sort the dataset in-place using the sortkey lambda function f
 
-        To perform a sort of the dataset using some property of the instance, such as the object category (e.g. for vipy.image objects) 
+        To perform a sort of the dataset using some property of the instance, such as the object category (e.g. for vipy.image.ImageCategory) 
 
         ```python
         dataset.sort(lambda im: im.category())
@@ -605,7 +617,7 @@ class Union(Dataset):
                 registry = {k:v for (k,v) in zip(registry, executor.map(vipy.dataset.registry, registry))}
 
         datasets = [d if isinstance(d, Dataset) else registry[d] for d in args]  # order preserving
-        assert all([isinstance(d, Dataset) for d in datasets]), "Invalid datasets '%s'" % str(datasets)
+        assert all([isinstance(d, Dataset) for d in datasets]), "Invalid datasets '%s'" % str([type(d) for d in datasets])
 
         datasets = [j for i in datasets for j in (i.datasets() if isinstance(i, Union) else (i,))]  # flatten unions        
         self._ds = datasets

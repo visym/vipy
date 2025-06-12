@@ -12,11 +12,11 @@ def localmap(f, initer):
         yield f(x)
 
         
-def map(f, initer, strict=False, reducer=None):
+def map(f, initer, reducer=None):
     """Apply the function f to each element in the iterator, returning the results unordered.  If strict=True, require executor"""
-    assert not strict or executor(), "vipy.parallel.executor() required"    
+    assert executor() is not None, "vipy.parallel.executor() required"    
     assert callable(f)    
-    results = executor().map(f, initer) if strict and executor() else localmap(f, initer)   # not order preserving, with fallback
+    results = executor().map(f, initer)  # not order preserving
     return reducer(results) if reducer else results
 
 
