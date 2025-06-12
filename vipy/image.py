@@ -11,7 +11,8 @@ from vipy.util import isnumpy, isurl, isimageurl, to_iterable, tolist,\
     fileext, tempimage, mat2gray, imwrite, imwritegray, mergedict, \
     tempjpg, filetail, isimagefile, remkdir, hasextension, truncate_string, \
     try_import, tolist, islistoflists, istupleoftuples, isstring, \
-    islist, isnumber, isnumpyarray, string_to_pil_interpolation, toextension, iswebp
+    islist, isnumber, isnumpyarray, string_to_pil_interpolation, toextension, \
+    shortuuid, iswebp, has_image_extension
 from vipy.geometry import BoundingBox, imagebox
 import vipy.object
 from vipy.object import greedy_assignment
@@ -507,7 +508,7 @@ class Image():
         except IOError:
             if ignoreErrors:
                 if verbose is True:
-                    log.warning('IO error "%s" -> "%s" ' % (self.url(), self.filename()))
+                    log.warning('IO error loading "%s" ' % self.filename())
                 self._array = None
             else:
                 raise
@@ -544,8 +545,9 @@ class Image():
 
         if self._filename is None:
             if vipy.globals.cache() is not None:
-                self._filename = os.path.join(remkdir(vipy.globals.cache()), filetail(self._url.split('?')[0]))
-                self._filename = self._filename+'.jpg' if not hasextension(self._filename) else self._filename  # guess JPG for URLs with no file extension  
+                # There is a potential race condition here when downloading files with common names like "main.jpg", add a random 2 character subdir (<=3844 subdirs for ext3, max ~32K)
+                self._filename = os.path.join(remkdir(vipy.globals.cache()), shortuuid(2), filetail(self._url.split('?')[0]))  # preserve image filename from url
+                self._filename = self._filename+'.jpg' if not has_image_extension(self._filename) else self._filename  # guess JPG for URLs with no file extension (e.g. php)
             elif isimageurl(self._url):
                 self._filename = tempimage(fileext(self._url))
             else:
@@ -565,7 +567,7 @@ class Image():
             elif url_scheme == 'file':
                 shutil.copyfile(self._url, self._filename)
             elif url_scheme == 's3':
-                raise NotImplementedError('S3 support is in development')                
+                raise NotImplementedError('see vipy.downloader.s3()')                
             else:
                 raise NotImplementedError(
                     'Invalid URL scheme "%s" for URL "%s"' %
@@ -973,13 +975,18 @@ class Image():
         return Image.from_torch(x, order)
     
     def unload(self):
-        """Remove cached file and loaded array.  Note that this will delete the underlying file returned by filename() if there is a backing url"""
+        """Remove cached file and loaded array.  Note that this will delete the underlying file returned by filename() if there is a backing url, cleaning up cached files and forcing re-download"""
         if self.hasurl() and self.hasfilename():
+            log.info('Removing "%s"'% self._filename)
             os.remove(self._filename)
             self._filename = None
         if self.isloaded():
             self.flush()
         return self
+
+    def uncache(self):
+        """Alias for `vipy.image.Image.unload`"""
+        return self.unload()
     
     def filename(self, newfile=None):
         """Return or set image filename"""

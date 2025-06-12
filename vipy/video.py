@@ -2484,6 +2484,22 @@ class Video():
         self._shape = None
         return self
 
+
+    def unload(self):
+        """Remove cached file and loaded array.  Note that this will delete the underlying file returned by filename() if there is a backing url, cleaning up cached files and forcing re-download"""
+        if self.hasurl() and self.hasfilename():
+            log.info('Removing "%s"'% self._filename)
+            os.remove(self._filename)
+            self._filename = None
+        if self.isloaded():
+            self.flush()
+        return self
+
+    def uncache(self):
+        """Alias for `vipy.image.Image.unload`"""
+        return self.unload()
+    
+    
     def returns(self, r=None):
         """Return the provided value, useful for terminating long fluent chains without returning self"""
         return r

@@ -27,7 +27,7 @@ try:
     import bz2  # FIXME: Remove once bz2 is included in CentOS7 vendor baseline release?
 except:
     pass
-from vipy.util import isS3url, filetail
+from vipy.util import isS3url, filetail, premkdir
 from vipy.globals import log
 import vipy.version
 
@@ -182,7 +182,7 @@ def download(url, output_filename, sha1=None, verbose=True, md5=None, timeout=No
 
     page_info = page.info()
 
-    output_file = open(output_filename, 'wb+')  # will raise IOError exception on invalid permissions
+    output_file = open(premkdir(output_filename), 'wb+')  # will raise IOError exception on invalid permissions, parent directory not created
 
     # size of the download unit
     block_size = 2 ** 15

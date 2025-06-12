@@ -149,8 +149,8 @@ def imshow(img, fignum=None):
     else:
         # Jupyter notebook does not respect fignum.  It is always one when inspecting plt.get_fignums()
         if fignum in plt.get_fignums() and fignum in FIGHANDLE:
-            #close(fignum)
-            pass  # don't close unless user requests, this is faster, but window size does not change with image resolution
+            close(fignum)
+            #pass  # don't close unless user requests, this is faster, but window size does not change with image resolution
         (fignum, imh) = _imshow_tight(img, fignum=fignum)
         FIGHANDLE[fignum] = imh
     return fignum

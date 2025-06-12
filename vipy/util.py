@@ -33,6 +33,7 @@ import gc
 
 from vipy.globals import log
 
+ALPHABET = "0123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz"
 
 try:
     import ujson as json  # faster
@@ -1283,9 +1284,8 @@ def isurl(path):
         return False
 
 def shortuuid(n=8):
-    """Generate a short UUID with n hex digits"""
-    alphabet = "0123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz"
-    return ''.join(random.sample(alphabet, n))
+    """Generate a short UUID with n charaters sampled uniformly at random from lowercase|uppercase|numbers"""
+    return ''.join(random.sample(ALPHABET, n))
 
 def stringhash(s, n=16):
     """Generate a repeatable hash with n characters for a string s"""
@@ -1425,6 +1425,9 @@ def isimgfile(path):
     """Alias for `vipy.util.isimg`"""
     return isimg(path)
 
+def has_image_extension(path):
+    """Alias for `vipy.util.isimg`"""
+    return isimg(path)
 
 def isimagefile(path):
     """Alias for `vipy.util.isimg`"""
