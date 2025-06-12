@@ -64,7 +64,7 @@ class Dataset():
     ..note:: that if a lambda function is provided as loader or shuffler, then this dataset is not serializable
     """
 
-    
+    __slots__ = ('_id', '_ds', '_idx', '_loader', '_shuffler', '_type')
     def __init__(self, dataset, id=None, loader=None, shuffler=None):
         assert loader is None or callable(loader)
         assert shuffler is None or callable(shuffler)        
@@ -98,12 +98,11 @@ class Dataset():
     def __or__(self, other):
         assert isinstance(other, Dataset)
         return Union((self, other), id=self.id())
-
     
     def id(self, n=None, truncated=False, maxlen=80, suffix=None):
         """Set or return the dataset id, useful for showing the name/split of the dataset in the representation string"""
         if n is None and suffix is None:
-            return (self._id[0:maxlex] + ' ... ') if truncated and self._id and len(self._id)>maxlen else self._id
+            return (self._id[0:maxlen] + ' ... ') if truncated and self._id and len(self._id)>maxlen else self._id
         elif n is None and suffix is not None:
             self._id = self._id + suffix
         elif n is not None:
@@ -186,23 +185,22 @@ class Dataset():
         self._idx = self._idx*(n+1)
         return self
     
-    def tuple(self, mapper=None, flattener=None, reducer=None):
+    def tuple(self, mapper=None, flatten=False, reducer=None):
         """Return the dataset as a tuple, applying the optional mapper lambda on each element, applying optional flattener on sequences returned by mapper, and applying the optional reducer lambda on the final tuple, return a generator"""
         assert mapper is None or callable(mapper)
-        assert flattener is None or flattener is True or callable(flattener)
         assert reducer is None or callable(reducer)
-        mapped = (mapper(x) if mapper else x for x in self)
-        flattened = (y for x in mapped for y in (to_iterable if flattener is True else flattener)(x)) if flattener else mapped
+        mapped = self.map(mapper) if mapper else self
+        flattened = (y for x in mapped for y in to_iterable(x)) if flatten else mapped
         reduced = reducer(flattened) if reducer else flattened
         return reduced
 
-    def list(self, mapper=None, flattener=None, reducer=None):
+    def list(self, mapper=None, flatten=False, reducer=None):
         """Return a tuple as a list, loading into memory"""
-        return list(self.tuple(mapper, flattener, reducer))
+        return list(self.tuple(mapper, flatten, reducer))
 
-    def set(self, mapper=None, flattener=None):
+    def set(self, mapper=None, flatten=False):
         """Return the dataset as a set.  Mapper must be a lambda function that returns a hashable type"""
-        return self.tuple(mapper=mapper, reducer=set, flattener=flattener)
+        return self.tuple(mapper=mapper, reducer=set, flatten=flatten)
         
 
     def frequency(self, f):
@@ -218,7 +216,7 @@ class Dataset():
         Returns:
             A length of elements that satisfy f(v) = True [if f is not None]
         """
-        return len(self.list(f, flattener=None, reducer=lambda X: [x for x in X if x is True]))
+        return len(self.list(f, flatten=False, reducer=lambda X: [x for x in X if x is True]))
 
     def countby(self, f):
         return self.frequency(f)
@@ -233,7 +231,7 @@ class Dataset():
         """Randomly Take n elements from the dataset, and return a dataset (in-place or cloned)."""
         assert isinstance(n, int) and n>0
         D = self.clone(shallow=True) if not inplace else self
-        D._idx = shufflelist(self._idx)[0:n]  # do not run loader, seed controlled by random.seed()
+        D._idx = list(random.sample(range(0, len(self._idx)), n))  # do not run loader, seed controlled by random.seed()
         return D
 
     def groupby(self, f):
@@ -496,7 +494,7 @@ class Dataset():
         
     def localmap(self, f):
         """A map performed without any parallel processing"""
-        return Dataset(self.list(f), id=self.id())  # triggers load into memory        
+        return Dataset([f(x) for x in self], id=self.id())  # triggers load into memory        
 
     def zip(self, f, iter):
         """Returns a new dataset constructed by applying the callable on elements from zip(self,iter)"""
@@ -607,7 +605,8 @@ class Union(Dataset):
         Datasets or Dataset registry names
 
     """
-    
+
+    __slots__ = ('_id', '_ds', '_idx', '_loader', '_shuffler', '_type')    
     def __init__(self, *args, **kwargs):
         assert all(isinstance(d, (Dataset, str)) for d in args), "invalid datasets"
         
@@ -629,6 +628,7 @@ class Union(Dataset):
 
         self._loader = None  # individual datasets have loaders
         self._shuffler = kwargs['shuffler'] if 'shuffler' in kwargs else None
+        self._type = None
         
     def __iter__(self):
         for (i,j) in self._idx:
@@ -647,7 +647,7 @@ class Union(Dataset):
     def __repr__(self):
         fields = ['id=%s' % self.id(truncated=True, maxlen=64)] if self.id() else []
         fields += ['len=%d' % len(self)]
-        fields += ['union=%s' % str(tuple([d.id(truncated=True, maxlen=32) for d in self._ds]))]
+        fields += ['union=%s' % str(tuple([d.id(truncated=True, maxlen=80) for d in self._ds]))]
         return str('<vipy.dataset.Dataset: %s>' % (', '.join(fields)))
         
     def clone(self, shallow=False):
@@ -674,7 +674,7 @@ def registry(name=None, datadir=None, freeze=True, clean=False):
     Datasets:
        'mnist','cifar10','cifar100','caltech101','caltech256','oxford_pets','sun397',
        'flickr30k','oxford_fgvc_aircraft','oxford_flowers_102',
-       'yfcc100m','tiny_imagenet','coyo300m','coyo700m','pascal_voc_2007','coco_2014', 'ava',
+       'yfcc100m','yfcc100m_url','tiny_imagenet','coyo300m','coyo700m','pascal_voc_2007','coco_2014', 'ava',
        'activitynet', 'openimages_v7', 'imagenet', 'imagenet21k', 'visualgenome' ,
        'objectnet','lfw','inaturalist_2021','kinetics','hmdb','places365','ucf101','lvis'
        'imagenet_localization','laion2b','datacomp_1b'
@@ -686,7 +686,7 @@ def registry(name=None, datadir=None, freeze=True, clean=False):
 
     registry = ['mnist','cifar10','cifar100','caltech101','caltech256','oxford_pets','sun397',
                 'flickr30k','oxford_fgvc_aircraft','oxford_flowers_102',
-                'yfcc100m','tiny_imagenet','coyo300m','coyo700m','pascal_voc_2007','coco_2014', 'ava',
+                'yfcc100m','yfcc100m_url','tiny_imagenet','coyo300m','coyo700m','pascal_voc_2007','coco_2014', 'ava',
                 'activitynet','openimages_v7','imagenet','imagenet21k','visualgenome' ,
                 'objectnet','lfw','inaturalist_2021','kinetics','hmdb','places365','ucf101',
                 'lvis','imagenet_localization','laion2b','datacomp_1b']  # Add to docstring too...
@@ -731,7 +731,9 @@ def registry(name=None, datadir=None, freeze=True, clean=False):
     elif name == 'oxford_flowers_102':
         trainset = vipy.data.oxford_flowers_102.Flowers102(namedir)
     elif name == 'yfcc100m':
-        (trainset, trainset_url, valset, valset_url) = vipy.data.hf.yfcc100m()  
+        (trainset, _, valset, _) = vipy.data.hf.yfcc100m()  
+    elif name == 'yfcc100m_url':
+        (_, trainset, _, valset) = vipy.data.hf.yfcc100m()  
     elif name == 'tiny_imagenet':
         (trainset, valset) = vipy.data.hf.tiny_imagenet()
     elif name == 'coyo300m':

@@ -1963,7 +1963,9 @@ class ImageCategory(Image):
     def confidence(self):
         return self.get_attribute('confidence')        
 
-    def tags(self):
+    def tags(self, tags=None):
+        if tags is not None:
+            return self.set_attribute('category', tolist(tags)[0])                
         return (self.category(), ) if self.category() is not None else ()
 
     
@@ -2027,7 +2029,9 @@ class TaggedImage(Image):
     def has_tag(self, t):
         return t in self.tags()
     
-    def tags(self):
+    def tags(self, tags=None):
+        if tags is not None:
+            return self.set_attribute('tags', tolist(tags))        
         return tuple(self.get_attribute('tags')) if self.hasattribute('tags') else ()
     
     def confidences(self):
@@ -2051,7 +2055,9 @@ class TaggedImage(Image):
     def caption(self):
         return self.get_attribute('captions')[0] if self.hasattribute('captions') else None
     
-    def captions(self):
+    def captions(self, captions=None):
+        if captions is not None:
+            return self.set_attribute('captions', tolist(captions))
         return self.get_attribute('captions') if self.hasattribute('captions') else []
     
     def add_tags(self, tags, confidences=[]):
@@ -2277,9 +2283,9 @@ class Scene(TaggedImage):
         bb = boxes[0].clone() if len(boxes) >= 1 else None
         return bb.union(boxes[1:]) if len(boxes) >= 2 else bb
 
-    def categories(self):
-        """Return list of unique object categories in scene"""
-        return list(set([obj.category() for obj in self._objectlist]))
+    def object_tags(self):
+        """Return list of unique object tags in scene"""
+        return list(dict.fromkeys([t for o in self.objects() for t in o.tags()]))
     
     # Spatial transformation
     def _history(self, func=None, **kwargs):

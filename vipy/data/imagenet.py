@@ -66,13 +66,13 @@ class Imagenet2012():
     
     def classification_trainset(self):
         """ImageNet Classification, trainset"""
-        imgfiles = vipy.util.findimages(os.path.join(self._datadir, 'ILSVRC2012_img_train'))
+        imgfiles = vipy.util.findimages(os.path.join(self._datadir, 'ILSVRC2012_img_train'))  # slow-ish, may be better to cache
         loader = lambda f, synset_to_category=self.synset_to_category: vipy.image.TaggedImage(filename=f, tags=synset_to_category(filetail(filepath(f))))
         return vipy.dataset.Dataset(imgfiles, 'imagenet2012_classification:train', loader=loader)
         
     def classification_valset(self):
         imlist = []
-        imgfiles = vipy.util.findimages(os.path.join(self._datadir, 'ILSVRC2012_img_val'))
+        imgfiles = vipy.util.findimages(os.path.join(self._datadir, 'ILSVRC2012_img_val'))  # slow-ish, may be better to cache
                     
         # ground truth is imagenet synset index 1-1000
         gt = vipy.util.readtxt(os.path.join(self._datadir, 'ILSVRC2012_devkit_t12', 'ILSVRC2012_devkit_t12', 'data', 'ILSVRC2012_validation_ground_truth.txt'))
@@ -191,17 +191,17 @@ class Imagenet21K(vipy.dataset.Dataset):
             os.remove(cachefile)
             
         # Class names: https://github.com/google-research/big_transfer/issues/7
-        self._synset_to_categorylist = {x:sorted([y.rstrip().lstrip() for y in lemma.split(',')]) for (x,lemma) in zip(vipy.util.readtxt(os.path.join(self._datadir, 'imagenet21k_wordnet_ids.txt')), vipy.util.readtxt(os.path.join(self._datadir, 'imagenet21k_wordnet_lemmas.txt')))}
+        self._synset_to_categorylist = {x:[y.rstrip().lstrip() for y in lemma.split(',')] for (x,lemma) in zip(vipy.util.readtxt(os.path.join(self._datadir, 'imagenet21k_wordnet_ids.txt')), vipy.util.readtxt(os.path.join(self._datadir, 'imagenet21k_wordnet_lemmas.txt')))}
 
         f_category = lambda c, synset_to_categorylist=self._synset_to_categorylist, aslemma=aslemma: synset_to_categorylist[c] if aslemma else c
-        imlist = vipy.util.findimages(os.path.join(datadir, 'winter21_whole')) if not os.path.exists(cachefile) else [os.path.join(self._datadir, f) for f in vipy.util.readlist(cachefile)]
+        imlist = vipy.util.findimages(os.path.join(datadir, 'winter21_whole')) if not os.path.exists(cachefile) else vipy.util.readlist(cachefile)
         loader = lambda f, f_category=f_category: vipy.image.TaggedImage(filename=f,
                                                                          attributes={'wordnet_id':vipy.util.filebase(vipy.util.filepath(f))},
                                                                          tags=f_category(vipy.util.filebase(vipy.util.filepath(f))))
         super().__init__(imlist, id='imagenet21k', loader=loader)
 
         if not os.path.exists(cachefile):
-            vipy.util.writelist([f.replace(self._datadir + '/', '') for f in imlist], cachefile)  # cache me for faster loading instead of walking the directory tree
+            vipy.util.writelist(imlist, cachefile)  # cache me for faster loading instead of walking the directory tree, not relocatable
 
         open(os.path.join(self._datadir, '.complete'), 'a').close()
         

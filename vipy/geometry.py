@@ -148,29 +148,24 @@ class BoundingBox():
             self._xmax = ulbrdict['_xmax']
             self._ymax = ulbrdict['_ymax']                                  
         elif xmin is not None and ymin is not None and xmax is not None and ymax is not None:
-            if not (isnumber(xmin) and isnumber(ymin) and isnumber(xmax) and isnumber(ymax)):
-                raise ValueError('Box coordinates must be integers or floats not "%s"' % str(type(xmin)))
+            assert (isnumber(xmin) and isnumber(ymin) and isnumber(xmax) and isnumber(ymax)), 'Box coordinates must be integers or floats not "%s"' % str(type(xmin))
             self._xmin = float(xmin)
             self._ymin = float(ymin)
             self._xmax = float(xmax)
             self._ymax = float(ymax)
         elif xmin is not None and ymin is not None and width is not None and height is not None:
-            if not (isnumber(xmin) and isnumber(ymin) and isnumber(width) and isnumber(height)):
-                raise ValueError('Box coordinates must be integers or floats not "%s"' % str(type(width)))
+            assert (isnumber(xmin) and isnumber(ymin) and isnumber(width) and isnumber(height)), 'Box coordinates must be integers or floats not "%s"' % str(type(width))
             self._xmin = float(xmin)
             self._ymin = float(ymin)
             self._xmax = self._xmin + float(width)
             self._ymax = self._ymin + float(height)
         elif centroid is not None and width is not None and height is not None:
-            if not (len(centroid) == 2 and isnumber(centroid[0]) and isnumber(centroid[1]) and isnumber(width) and isnumber(height)):
-                raise ValueError('Invalid box coordinates')
+            assert (len(centroid) == 2 and isnumber(centroid[0]) and isnumber(centroid[1]) and isnumber(width) and isnumber(height)), 'Invalid box coordinates'
             self._xmin = float(centroid[0]) - float(width) / 2.0
             self._ymin = float(centroid[1]) - float(height) / 2.0
             self._xmax = float(centroid[0]) + float(width) / 2.0
             self._ymax = float(centroid[1]) + float(height) / 2.0
         elif xcentroid is not None and ycentroid is not None and width is not None and height is not None:
-            #if not (isnumber(xcentroid) and isnumber(ycentroid) and isnumber(width) and isnumber(height)):
-            #    raise ValueError('Box coordinates must be integers or floats')
             self._xmin = float(xcentroid) - (float(width) / 2.0)
             self._ymin = float(ycentroid) - (float(height) / 2.0)
             self._xmax = float(xcentroid) + (float(width) / 2.0)

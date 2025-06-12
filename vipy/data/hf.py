@@ -7,15 +7,17 @@ import io
 
 
 # Huggingface datasets
-vipy.util.try_import('datasets'); from datasets import load_dataset
+vipy.util.try_import('datasets');
+from datasets import load_dataset
+from datasets import Image as HFImage
 
 
 def mnist():
     dataset = load_dataset("ylecun/mnist", trust_remote_code=True)
 
-    loader = lambda r: vipy.image.ImageCategory(category=str(r['label'])).loader(lambda f: r['image']())
-    trainset = vipy.dataset.Dataset([{'label':y, 'image':lambda k=k, ds=dataset['train']: np.uint8(ds[k]['image'])} for (k,y) in enumerate(dataset['train']['label'])], id='mnist:train', loader=loader)
-    testset = vipy.dataset.Dataset([{'label':y, 'image':lambda k=k, ds=dataset['test']: np.uint8(ds[k]['image'])} for (k,y) in enumerate(dataset['test']['label'])], id='mnist:test', loader=loader)
+    loader = lambda r: vipy.image.ImageCategory(category=str(r['label'])).loader(lambda f: np.uint8(r['image']))
+    trainset = vipy.dataset.Dataset(dataset['train'], id='mnist:train', loader=loader)
+    testset = vipy.dataset.Dataset(dataset['test'], id='mnist:test', loader=loader)
     return (trainset, testset)
     
 def cifar10():
@@ -24,9 +26,10 @@ def cifar10():
     dataset = load_dataset('cifar10', trust_remote_code=True)
     d_idx_to_category = {0:'airplane', 1:'automobile', 2:'bird', 3:'cat', 4:'deer', 5:'dog', 6:'frog', 7:'horse', 8:'ship', 9:'truck'}
     
-    loader = lambda r, category=d_idx_to_category: vipy.image.ImageCategory(category=category[r['label']]).loader(lambda f: r['image']())
-    trainset = vipy.dataset.Dataset([{'label':y, 'image':lambda k=k, ds=dataset['train']: np.uint8(ds[k]['img'])} for (k,y) in enumerate(dataset['train']['label'])], id='cifar10:train', loader=loader)
-    testset = vipy.dataset.Dataset([{'label':y, 'image':lambda k=k, ds=dataset['test']: np.uint8(ds[k]['img'])} for (k,y) in enumerate(dataset['test']['label'])], id='cifar10:test', loader=loader)
+    loader = lambda r, category=d_idx_to_category: vipy.image.ImageCategory(category=category[r['label']]).loader(lambda f: np.uint8(r['image']))
+    trainset = vipy.dataset.Dataset(dataset['train'], id='cifar10:train', loader=loader)
+    testset = vipy.dataset.Dataset(dataset['test'], id='cifar10:test', loader=loader)
+    
     return (trainset, testset)
 
 
@@ -68,8 +71,8 @@ def sun397():
 
 def flickr30k():
     """http://shannon.cs.illinois.edu/DenotationGraph/data/index.html"""
-    D = load_dataset("lmms-lab/flickr30k")
-    loader = lambda r: vipy.image.TaggedImage(caption=r['caption'], attributes={'sentid':r['sentids']}).loader(lambda f: np.array(r['image']))
+    D = load_dataset("lmms-lab/flickr30k").cast_column("image", HFImage(decode=False))
+    loader = lambda r: vipy.image.TaggedImage(caption=r['caption'], attributes={'sentid':r['sentids']}).loader(lambda f: np.array(PIL.Image.open(io.BytesIO(r["image"]["bytes"]))))
     return vipy.dataset.Dataset(D['test'], id='flickr30k', loader=loader)
 
     
@@ -129,13 +132,13 @@ def yfcc100m():
     This is useful for fast analysis of the dataset metadata.
     """
 
-    dataset = load_dataset("dalle-mini/YFCC100M_OpenAI_subset", trust_remote_code=True)
+    dataset = load_dataset("dalle-mini/YFCC100M_OpenAI_subset", trust_remote_code=True).select_columns(['title_clean','description_clean','downloadurl','img'])
     
-    loader = lambda r: vipy.image.ImageCategory(category=r['title_clean'], attributes={k:v for (k,v) in r.items() if k != 'img'}, array=np.array(PIL.Image.open(io.BytesIO(r['img']))))
-    loader_url = lambda r: vipy.image.ImageCategory(category=r['title_clean'], attributes={k:v for (k,v) in r.items() if k != 'img'}, url=r['downloadurl'])
+    loader = lambda r: vipy.image.TaggedImage(caption=[r['title_clean'],r['description_clean']], url=r['downloadurl']).loader(lambda f: np.array(PIL.Image.open(io.BytesIO(r['img']))))
+    loader_url = lambda r: vipy.image.TaggedImage(caption=[r['title_clean'],r['description_clean']], url=r['downloadurl'])
     
     return (vipy.dataset.Dataset(dataset['train'], id='yfcc100m:train', loader=loader),
-            vipy.dataset.Dataset(dataset['train'].remove_columns(['img']), id='yfcc100m_url:train', loader=loader_url),  # faster loading
+            vipy.dataset.Dataset(dataset['train'].remove_columns(['img']), id='yfcc100m_url:train', loader=loader_url),  # faster loading for metadata analysis
             vipy.dataset.Dataset(dataset['validation'], id='yfcc100m:val', loader=loader),
             vipy.dataset.Dataset(dataset['validation'].remove_columns(['img']), id='yfcc100m_url:val', loader=loader_url))                            
 
@@ -150,7 +153,7 @@ def tiny_imagenet():
 
 def coyo300m(threshold=0.2):
     """https://huggingface.co/datasets/kakaobrain/coyo-labeled-300m  (Machine labeled)"""
-    dataset = load_dataset("kakaobrain/coyo-labeled-300m")
+    dataset = load_dataset("kakaobrain/coyo-labeled-300m").select_columns(['url','labels','label_probs'])
 
     labels = vipy.util.readjson(os.path.join(os.path.dirname(os.path.realpath(__file__)), 'coyo300m.json'))    
     d_idx_to_category = {k:[c.strip() for c in v.split(',')] for (k,v) in labels['class_description'].items()}

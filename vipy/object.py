@@ -26,7 +26,9 @@ class Object():
     def confidence(self):
         return self.get_attribute('confidences')[self.category()] if self.has_attribute('confidences') and self.category() in self.attributes['confidences'] else None
     
-    def tags(self):
+    def tags(self, tags=None):
+        if tags is not None:
+            return self.set_attribute('tags', tolist(tags))
         return tuple(self.get_attribute('tags')) if self.has_attribute('tags') else ()
     
     def confidences(self):
@@ -97,7 +99,7 @@ class Detection(BoundingBox, Object):
         super().__init__(xmin=xmin, ymin=ymin, width=width, height=height, xmax=xmax, ymax=ymax, xcentroid=xcentroid, ycentroid=ycentroid, xywh=xywh, ulbr=ulbr)
 
         self._id = shortuuid() if id == True else id
-        self.attributes = {} if attributes is None else attributes.copy()  # shallow copy
+        self.attributes = {} if attributes is None else attributes  # user must copy if needed
 
         if category is not None:
             self.add_tag(category, confidence)        
@@ -285,7 +287,7 @@ class Track():
         self._framerate = float(framerate) 
         self._interpolation = interpolation
         self._boundary = boundary
-        self.attributes = attributes.copy() if attributes is not None else {}  # shallow copy
+        self.attributes = attributes if attributes is not None else {}  # user must copy if needed
         self._keyframes = [int(np.round(f)) for f in keyframes]  # coerce to int
         self._keyboxes = boxes
         
@@ -539,7 +541,7 @@ class Track():
                       xmax=bi._xmax + c*(bj._xmax - bi._xmax),   # float(np.interp(k, self._keyframes, [bb._xmax for bb in self._keyboxes])),
                       ymax=bi._ymax + c*(bj._ymax - bi._ymax),   # float(np.interp(k, self._keyframes, [bb._ymax for bb in self._keyboxes])),
                       confidence=bi.confidence() if isinstance(bi, Detection) else None,
-                      attributes=bi.attributes if isinstance(bi, Detection) else None,
+                      attributes=bi.attributes if isinstance(bi, Detection) else None,  # shared attributes
                       category=self.category())
 
         d.attributes['__trackid'] = self.id()  # for correspondence of detections to tracks

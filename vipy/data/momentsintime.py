@@ -40,7 +40,7 @@ class MultiMoments(object):
         categories = self.categories()        
         vidlist = []
         for r in csv:
-            v = Scene(filename=os.path.join(self.datadir, 'videos', r[0]), category=','.join(sorted(r[1:])), framerate=None)
+            v = Scene(filename=os.path.join(self.datadir, 'videos', r[0]), category=','.join(r[1:]), framerate=None)
             for a in r[1:]:
                 v.add(Activity(category=categories[int(a)], startframe=0, endframe=30*3))  # FIXME: framerate?
             vidlist.append(v)

@@ -638,12 +638,12 @@ def test_scene():
     assert im.width() == im.height() and im.width() == 100 and im[0].boundingbox().xywh() == (0,0,100,100)
     print('[test_image.scene]: centersquare PASSED')    
     
-    # Categories    
-    assert sorted(imscene.categories()) == ['obj1', 'obj2', 'obj3', 'obj4', 'obj5']
+    # Object tags    
+    assert sorted(imscene.object_tags()) == ['obj1', 'obj2', 'obj3', 'obj4', 'obj5']
     im = imscene.clone()
     im._objectlist[0].translate(1000)  # outside image rectangle
-    assert sorted(im.categories()) == ['obj1', 'obj2', 'obj3', 'obj4', 'obj5']    
-    print('[test_image.scene]: categories PASSED')
+    assert sorted(im.object_tags()) == ['obj1', 'obj2', 'obj3', 'obj4', 'obj5']    
+    print('[test_image.scene]: object_tags()  PASSED')
 
     # rot90
     im = Scene(filename=rgbfile).resize(200, 300).objects([Detection('obj1',50,0,100,20)])    
