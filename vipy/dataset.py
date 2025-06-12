@@ -599,11 +599,12 @@ class Union(Dataset):
     def __init__(self, *args, **kwargs):
         assert all(isinstance(d, (Dataset, str)) for d in args), "invalid datasets"
         
-        datasets = [d for d in args if isinstance(d, Dataset)]
         registry = [d for d in args if not isinstance(d, Dataset)]
         if len(registry) > 0:
             with cf.ThreadPoolExecutor(max_workers=len(registry)) as executor:  # thread parallel, io-bound
-                datasets += list(executor.map(vipy.dataset.registry, registry)) 
+                registry = {k:v for (k,v) in zip(registry, executor.map(vipy.dataset.registry, registry))}
+
+        datasets = [d if isinstance(d, Dataset) else registry[d] for d in args]  # order preserving
         assert all([isinstance(d, Dataset) for d in datasets]), "Invalid datasets '%s'" % str(datasets)
 
         datasets = [j for i in datasets for j in (i.datasets() if isinstance(i, Union) else (i,))]  # flatten unions        
@@ -649,7 +650,7 @@ class Union(Dataset):
     
 
 
-def registry(name=None, datadir=env('VIPY_DATASET_REGISTRY_HOME'), freeze=True, clean=False):
+def registry(name=None, datadir=None, freeze=True, clean=False):
     """Common entry point for loading datasets by name.
 
     Args:
@@ -686,7 +687,8 @@ def registry(name=None, datadir=env('VIPY_DATASET_REGISTRY_HOME'), freeze=True, 
         raise ValueError('unknown dataset "%s" - choose from "%s"' % (name, ', '.join(sorted(registry))))
     if split not in [None, 'train', 'test', 'val']:
         raise ValueError('unknown split "%s" - choose from "%s"' % (split, ', '.join([str(None), 'train', 'test', 'val'])))
-    
+
+    datadir = datadir if datadir is not None else (env('VIPY_DATASET_REGISTRY_HOME') if 'VIPY_DATASET_REGISTRY_HOME' in env() else vipy.util.cache())
     namedir = Path(datadir)/name    
     if clean and name in registry and os.path.exists(namedir):
         log.info('Removing cached dataset "%s"' % namedir)
