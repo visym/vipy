@@ -114,7 +114,7 @@ def pascal_voc_2007():
                    ('borderingregion', 255, 21, (224, 224, 192))]
     
     d_index_to_class = {v[2]:v[0] for v in CLASS_INFOS}
-    loader = lambda r, d_index_to_class=d_index_to_class: vipy.image.Scene(category=sorted(set([d_index_to_class[c] for c in r['classes']])),  # scene category may not include all object categories
+    loader = lambda r, d_index_to_class=d_index_to_class: vipy.image.Scene(tags=[d_index_to_class[c] for c in r['classes']],  # scene category may not include all object categories
                                                                            objects=[vipy.object.Detection(category=d_index_to_class[c], xmin=xmin, ymin=ymin, xmax=xmax, ymax=ymax) for (c, (xmin,ymin,xmax,ymax)) in zip(r['objects']['classes'], r['objects']['bboxes'])]).loader(lambda f: np.array(r['image']))
     
     return (vipy.dataset.Dataset(D['train'], id='pascal_voc_2007:train', loader=loader),
@@ -137,14 +137,12 @@ def yfcc100m():
     return (vipy.dataset.Dataset(dataset['train'], id='yfcc100m:train', loader=loader),
             vipy.dataset.Dataset(dataset['train'].remove_columns(['img']), id='yfcc100m_url:train', loader=loader_url),  # faster loading
             vipy.dataset.Dataset(dataset['validation'], id='yfcc100m:val', loader=loader),
-            vipy.dataset.Dataset(dataset['validation'].remove_columns(['img']), id='yfcc100m_url:val', loader=loader_url))            
-            
-    
+            vipy.dataset.Dataset(dataset['validation'].remove_columns(['img']), id='yfcc100m_url:val', loader=loader_url))                            
 
 def tiny_imagenet():
     D = load_dataset("zh-plus/tiny-imagenet")
     labels = vipy.util.readjson(os.path.join(os.path.dirname(os.path.realpath(__file__)), 'tiny_imagenet.json'))    
-    d_idx_to_category = {k: sorted([l.strip() for l in labels['wnid_to_category'][wnid].split(',')])  for (k,wnid) in enumerate(labels['idx_to_wnid'])}    
+    d_idx_to_category = {k: [l.strip() for l in labels['wnid_to_category'][wnid].split(',')]  for (k,wnid) in enumerate(labels['idx_to_wnid'])}    
     loader = lambda r, d_idx_to_category=d_idx_to_category: vipy.image.TaggedImage(tags=d_idx_to_category[int(r['label'])]).loader(lambda x: np.array(r['image']))
     return (vipy.dataset.Dataset(D['train'], id='tiny_imagenet:train', loader=loader),
             vipy.dataset.Dataset(D['valid'], id='tiny_imagenet:val', loader=loader))
