@@ -87,26 +87,36 @@ class Imagenet2012():
                 
     def localization_trainset(self):
         """ImageNet localization, imageset = {train, val}, this takes a long time to read the XML files, load and cache"""
-        log.warning('Parsing XML files for imagenet-localization takes a long time...')
+
+        cachefile = os.path.join(self._datadir, 'localization_trainset.json')
+        if not os.path.exists(cachefile):
+            log.warning('Initial parsing of XML files for imagenet-localization takes a long time...')
         
-        imlist = []
-        classification = self.classification_trainset()
-        synsets = self.synset_to_category()
-        for f in classification._ds:
+            imlist = []
+            classification = self.classification_trainset()
+            synsets = self.synset_to_category()
+            for f in classification._ds:                
+                objects = []            
+                xmlfile = '%s.xml' % filefull(f.replace('ILSVRC2012_img_train', 'ILSVRC2012_bbox_train_v2'))
+                if os.path.exists(xmlfile):
+                    d = ET.parse(xmlfile).getroot()
+                    (name, xmin, ymin, xmax, ymax) = (d[5][0].text, d[5][4][0].text, d[5][4][1].text, d[5][4][2].text, d[5][4][3].text)
+                    objects.append( (synsets[name] if name in synsets else name, xmin, ymin, xmax, ymax) )
+                    imlist.append( (f,tuple(objects)) )                
+            vipy.save(imlist, cachefile)  # cached
             
-            objects = []            
-            xmlfile = '%s.xml' % filefull(f.replace('ILSVRC2012_img_train', 'ILSVRC2012_bbox_train_v2'))
-            if os.path.exists(xmlfile):
-                d = ET.parse(xmlfile).getroot()
-                (name, xmin, ymin, xmax, ymax) = (d[5][0].text, d[5][4][0].text, d[5][4][1].text, d[5][4][2].text, d[5][4][3].text)
-                objects.append( (synsets[name] if name in synsets else name, xmin, ymin, xmax, ymax) )
-            imlist.append( (f,tuple(objects)) )
-
+        else:
+            try:
+                imlist = vipy.load(cachefile)
+            except:
+                if os.path.exists(cachefile):
+                    os.remove(cachefile)  # force recache on failure
+                return self.localization_trainset()  
+                               
         loader = lambda x, synset_to_category=self.synset_to_category: vipy.image.Scene(filename=x[0],
-                                                                                        category=synset_to_category(filetail(filepath(x[0]))),
-                                                                                        objects=[vipy.object.Detection(category=o[0], xmin=int(o[1]), ymin=int(o[2]), xmax=int(o[3]), ymax=int(o[4])) for o in x[1]])
+                                                                                        tags=synset_to_category(filetail(filepath(x[0]))),
+                                                                                        objects=[vipy.object.Detection(tags=o[0], xmin=int(o[1]), ymin=int(o[2]), xmax=int(o[3]), ymax=int(o[4])) for o in x[1]])
         return vipy.dataset.Dataset(imlist, 'imagenet2012_localization:train', loader=loader)
-
     
                 
 class Imagenet21K_Resized(vipy.dataset.Dataset):
@@ -170,7 +180,7 @@ class Imagenet21K(vipy.dataset.Dataset):
 
             for f in vipy.util.findtar(os.path.join(datadir, 'winter21_whole')):
                 if not os.path.exists(filefull(f)):
-                    vipy.downloader.unpack(f, filefull(f))
+                    vipy.downloader.unpack(f, filefull(f), progress=False)
                     os.remove(f)  # cleanup
                 
             vipy.downloader.download(IMAGENET21K_WORDNET_ID, os.path.join(self._datadir, 'imagenet21k_wordnet_ids.txt'))

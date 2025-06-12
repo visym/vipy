@@ -23,6 +23,7 @@ import vipy.metrics
 import itertools
 from pathlib import Path
 from vipy.globals import log
+import concurrent.futures as cf
 
 
 class Dataset():
@@ -587,18 +588,26 @@ class Union(Dataset):
 
     Usage:
     
-        >>> vipy.dataset.Union(D1, D2, D3, id='D1:D2:D3')
-        >>> vipy.dataset.Union( (D1, D2, D3) )
+        >>> trainset = vipy.dataset.registry('cifar10:train')
+        >>> vipy.dataset.Union(trainset, 'cifar100:train')
+
+    Args:
+        Datasets or Dataset registry names
 
     """
     
     def __init__(self, *args, **kwargs):
-        datasets = args[0] if isinstance(args[0], (tuple, list)) else args
-        assert all([isinstance(d, Dataset) for d in datasets])
+        assert all(isinstance(d, (Dataset, str)) for d in args), "invalid datasets"
         
+        datasets = [d for d in args if isinstance(d, Dataset)]
+        registry = [d for d in args if not isinstance(d, Dataset)]
+        if len(registry) > 0:
+            with cf.ThreadPoolExecutor(max_workers=len(registry)) as executor:  # thread parallel, io-bound
+                datasets += list(executor.map(vipy.dataset.registry, registry)) 
+        assert all([isinstance(d, Dataset) for d in datasets]), "Invalid datasets '%s'" % str(datasets)
+
         datasets = [j for i in datasets for j in (i.datasets() if isinstance(i, Union) else (i,))]  # flatten unions        
         self._ds = datasets
-
         if 'index' in kwargs:
             self._idx = kwargs['index']
         else:
@@ -644,7 +653,7 @@ def registry(name=None, datadir=env('VIPY_DATASET_REGISTRY_HOME'), freeze=True, 
     """Common entry point for loading datasets by name.
 
     Args:
-       name [str]: The string name for the dataset.  If None, return the list of registered datasets 
+       name [str]: The string name for the dataset.  If None, return the list of registered datasets.  Append name:train, name:val, name:test to output the requested split
        datadir [str]: A path to a directory to store data.  Defaults to environment variable VIPY_DATASET_REGISTRY_HOME (then VIPY_CACHE if not found).  Also uses HF_HOME for huggingface datasets.
        freeze [bool]:  If true, disable reference cycle counting for the loaded object (which will never contain cycles anyway) 
        clean [bool]: If true, force a redownload of the dataset to correct for partial download errors
@@ -652,28 +661,32 @@ def registry(name=None, datadir=env('VIPY_DATASET_REGISTRY_HOME'), freeze=True, 
     Datasets:
        'mnist','cifar10','cifar100','caltech101','caltech256','oxford_pets','sun397',
        'flickr30k','oxford_fgvc_aircraft','oxford_flowers_102',
-       'yfcc100m','tiny_imagenet','coyo300m','pascal_voc_2007','coco_2014', 'ava',
+       'yfcc100m','tiny_imagenet','coyo300m','coyo700m','pascal_voc_2007','coco_2014', 'ava',
        'activitynet', 'openimages_v7', 'imagenet', 'imagenet21k', 'visualgenome' ,
        'objectnet','lfw','inaturalist_2021','kinetics','hmdb','places365','ucf101','lvis'
-       'imagenet_localization','laion2b'
+       'imagenet_localization','laion2b','datacomp_1b'
 
     Returns:
-       (trainset, valset, testset) tuple where each is a `vipy.dataset.Dataset` or None
+       (trainset, valset, testset) tuple where each is a `vipy.dataset.Dataset` or None, or a single split if name has a ":SPLIT" suffix
     """
     import vipy.data        
 
     registry = ['mnist','cifar10','cifar100','caltech101','caltech256','oxford_pets','sun397',
                 'flickr30k','oxford_fgvc_aircraft','oxford_flowers_102',
-                'yfcc100m','tiny_imagenet','coyo300m','pascal_voc_2007','coco_2014', 'ava',
+                'yfcc100m','tiny_imagenet','coyo300m','coyo700m','pascal_voc_2007','coco_2014', 'ava',
                 'activitynet','openimages_v7','imagenet','imagenet21k','visualgenome' ,
                 'objectnet','lfw','inaturalist_2021','kinetics','hmdb','places365','ucf101',
-                'lvis','imagenet_localization','laion2b']  # Add to docstring too...
+                'lvis','imagenet_localization','laion2b','datacomp_1b']  # Add to docstring too...
     
     if name is None:
         return sorted(registry)
+
+    (name, split) = name.split(':',1) if name.count(':')>0 else (name, None)
     if name not in registry:
         raise ValueError('unknown dataset "%s" - choose from "%s"' % (name, ', '.join(sorted(registry))))
-
+    if split not in [None, 'train', 'test', 'val']:
+        raise ValueError('unknown split "%s" - choose from "%s"' % (split, ', '.join([str(None), 'train', 'test', 'val'])))
+    
     namedir = Path(datadir)/name    
     if clean and name in registry and os.path.exists(namedir):
         log.info('Removing cached dataset "%s"' % namedir)
@@ -709,6 +722,10 @@ def registry(name=None, datadir=env('VIPY_DATASET_REGISTRY_HOME'), freeze=True, 
         (trainset, valset) = vipy.data.hf.tiny_imagenet()
     elif name == 'coyo300m':
         trainset = vipy.data.hf.coyo300m()
+    elif name == 'coyo700m':
+        trainset = vipy.data.hf.coyo700m()
+    elif name == 'datacomp_1b':
+        trainset = vipy.data.hf.datacomp_1b()
     elif name == 'pascal_voc_2007':
         (trainset, valset, testset) = vipy.data.hf.pascal_voc_2007()
     elif name == 'coco_2014':
@@ -759,5 +776,12 @@ def registry(name=None, datadir=env('VIPY_DATASET_REGISTRY_HOME'), freeze=True, 
         gc.enable()
         gc.collect()
         gc.freeze()  # python-3.7
-        
-    return (trainset, valset, testset)
+
+    if split == 'train':
+        return trainset
+    elif split == 'val':
+        return valset
+    elif split == 'test':
+        return testset
+    else:
+        return (trainset, valset, testset)

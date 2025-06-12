@@ -151,6 +151,7 @@ def tiny_imagenet():
 
 
 def coyo300m(threshold=0.2):
+    """https://huggingface.co/datasets/kakaobrain/coyo-labeled-300m  (Machine labeled)"""
     dataset = load_dataset("kakaobrain/coyo-labeled-300m")
 
     labels = vipy.util.readjson(os.path.join(os.path.dirname(os.path.realpath(__file__)), 'coyo300m.json'))    
@@ -161,23 +162,25 @@ def coyo300m(threshold=0.2):
                                                                                                                                      attributes={'wordnet':[d_idx_to_wnid[c] for (c,p) in zip(r['labels'], r['label_probs']) if float(p)>threshold]})
     return vipy.dataset.Dataset(dataset['train'], id='coyo300m', loader=loader)
 
+def coyo700m():
+    "https://huggingface.co/datasets/kakaobrain/coyo-700m"
+    dataset = load_dataset("kakaobrain/coyo-700m").select_columns(['url','text'])
+    loader = lambda r: vipy.image.TaggedImage(url=r['url'], caption=r['text'])
+    return vipy.dataset.Dataset(dataset['train'], id='coyo700m', loader=loader)
+
 
 def laion2b():
+    """https://huggingface.co/datasets/laion/relaion2B-en-research-safe"""
     dataset = load_dataset("laion/relaion2B-en-research-safe").select_columns(['url','caption'])
     loader = lambda r: vipy.image.TaggedImage(url=r['url'], caption=r['caption'])
     return vipy.dataset.Dataset(dataset['train'], id='laion2b', loader=loader)
-    
 
-def the_cauldron():
-    """https://huggingface.co/datasets/HuggingFaceM4/the_cauldron"""
-    ds = load_dataset("HuggingFaceM4/the_cauldron", "ai2d")
+def datacomp_1b():
+    """https://huggingface.co/datasets/mlfoundations/datacomp_1b"""
+    dataset = load_dataset("mlfoundations/datacomp_1b").select_columns(['url','text'])
+    loader = lambda r: vipy.image.TaggedImage(url=r['url'], caption=r['text'])
+    return vipy.dataset.Dataset(dataset['train'], id='datacomp1b', loader=loader)
 
-    #>>> ds['train'][0]
-    #{'images': [<PIL.PngImagePlugin.PngImageFile image mode=RGB size=299x227>],
-    #  'texts': [{'user': 'Question: What do respiration and combustion give out\nChoices:\nA. Oxygen\nB. Carbon dioxide\nC. Nitrogen\nD. Heat\nAnswer with the letter.',
-    #                'assistant': 'Answer: B',
-    #                'source': 'AI2D'}]}
-    
 
 def imageinwords():
     """https://huggingface.co/datasets/google/imageinwords"""
@@ -187,18 +190,14 @@ def docci():
     """https://huggingface.co/datasets/google/docci"""
     dataset = load_dataset("google/docci")
 
-
-    
-
-def coyo700m():
-    dataset = load_dataset("kakaobrain/coyo-700m")
-
 def as100m():
     dataset = load_dataset("OpenGVLab/AS-100M")
-
+        
 def objects365():
+    raise ValueError('image data no longer available')
+
     dataset = load_dataset("jxu124/objects365")
-    assert os.path.exists(vipy.util.tocache('objects365')), "download image data from https://www.objects365.org to '%s'" % vipy.util.cache()  # probably gone permanently
+    assert os.path.exists(vipy.util.tocache('objects365')), "download image data from https://www.objects365.org to '%s'" % vipy.util.cache() 
     
     loader = lambda r: vipy.image.Scene(filename=os.path.join(vipy.util.tocache('objects365'), r['image_path']),
                                         objects=[vipy.object.Detection(category=d['category'], ulbr=d['bbox']) for d in r['anns_info']])

@@ -1657,7 +1657,7 @@ class Image():
             vipy.show.close(fignum)
             return self
     
-    def show(self, figure='vipy', nowindow=False, timestamp=None, mutator=None, theme='dark'):
+    def show(self, figure=1, nowindow=False, timestamp=None, mutator=None, theme='dark'):
         """Display image on screen in provided figure number (clone and convert to RGB colorspace to show), return object"""
         assert self.load().isloaded(), 'Image not loaded'
         timestampfacecolor = 'black' if theme=='dark' else 'white'
@@ -1735,7 +1735,7 @@ class Image():
         # FIXME: for k in range(0,10): self.annotate().show(figure=k), this will result in cumulative figures
         return self.array(self.savefig(timestamp=timestamp, theme=theme, mutator=mutator).rgb().array()).downcast()
 
-    def savefig(self, filename=None, figure='vipy', timestamp=None, theme='dark', mutator=None):
+    def savefig(self, filename=None, figure=1, timestamp=None, theme='dark', mutator=None):
         """Save last figure output from self.show() with drawing overlays to provided filename and return filename"""
         self.show(figure=figure, nowindow=True, timestamp=timestamp, theme=theme, mutator=mutator)  # sets figure dimensions, does not display window
         (W,H) = plt.figure(figure).canvas.get_width_height()  # fast
@@ -1971,7 +1971,7 @@ class TaggedImage(Image):
     im = vipy.image.TaggedImage(filename='/path/to/dog.jpg', tags={'dog','canine'})
     ```
     """
-    __slots__ = ('_filename', '_url', '_loader', '_array', '_colorspace', 'attributes', '_tags')        
+    __slots__ = ('_filename', '_url', '_loader', '_array', '_colorspace', 'attributes')        
     def __init__(self, filename=None, url=None, attributes=None, array=None, colorspace=None, tags=None, category=None, confidence=None, caption=None):
         super().__init__(filename=filename,
                          url=url,
@@ -2039,9 +2039,9 @@ class TaggedImage(Image):
     def add_caption(self, caption):
         self.append_attribute('captions', caption)
         return self
-
+    
     def caption(self):
-        return self.get_attribute('captions')[0] if self.has_attribute('captions') else None
+        return self.get_attribute('captions')[0] if self.hasattribute('captions') else None
     
     def captions(self):
         return self.get_attribute('captions')
@@ -2566,7 +2566,7 @@ class Scene(TaggedImage):
         return vipy.image.Image.perceptualhash_distance(self.bghash(bits=bits), im.bghash(bits=bits)) < threshold 
     
         
-    def show(self, categories=None, figure='vipy', nocaption=False, nocaption_withstring=[], fontsize=10, boxalpha=0.15, d_category2color={'Person':'green', 'Vehicle':'blue', 'Object':'red'}, captionoffset=(3,-18), nowindow=False, shortlabel=None, timestamp=None, mutator=None, timestampoffset=(0,0), theme='dark'):
+    def show(self, categories=None, figure=1, nocaption=False, nocaption_withstring=[], fontsize=10, boxalpha=0.15, d_category2color={'Person':'green', 'Vehicle':'blue', 'Object':'red'}, captionoffset=(3,-18), nowindow=False, shortlabel=None, timestamp=None, mutator=None, timestampoffset=(0,0), theme='dark'):
         """Show scene detection 
 
         Args:
@@ -2610,7 +2610,7 @@ class Scene(TaggedImage):
                             timestampcolor=timestampcolor, timestampfacecolor=timestampfacecolor, timestampoffset=timestampoffset)
         return self
 
-    def annotate(self, outfile=None, categories=None, figure='vipy', nocaption=False, fontsize=10, boxalpha=0.15, d_category2color={'person':'green', 'vehicle':'blue', 'object':'red'}, captionoffset=(3,-18), dpi=200, shortlabel=None, nocaption_withstring=[], timestamp=None, mutator=None, timestampoffset=(0,0), theme='dark'):
+    def annotate(self, outfile=None, categories=None, figure=1, nocaption=False, fontsize=10, boxalpha=0.15, d_category2color={'person':'green', 'vehicle':'blue', 'object':'red'}, captionoffset=(3,-18), dpi=200, shortlabel=None, nocaption_withstring=[], timestamp=None, mutator=None, timestampoffset=(0,0), theme='dark'):
         """Alias for `vipy.image.Scene.savefig"""
         return self.savefig(outfile=outfile, 
                             categories=categories, 
@@ -2628,7 +2628,7 @@ class Scene(TaggedImage):
                             timestampoffset=timestampoffset,
                             mutator=mutator)
 
-    def savefig(self, outfile=None, categories=None, figure='vipy', nocaption=False, fontsize=10, boxalpha=0.15, d_category2color={'person':'green', 'vehicle':'blue', 'object':'red'}, captionoffset=(3,-18), dpi=200, textfacecolor='white', shortlabel=None, nocaption_withstring=[], timestamp=None, mutator=None, timestampoffset=(0,0), theme='dark'):
+    def savefig(self, outfile=None, categories=None, figure=1, nocaption=False, fontsize=10, boxalpha=0.15, d_category2color={'person':'green', 'vehicle':'blue', 'object':'red'}, captionoffset=(3,-18), dpi=200, textfacecolor='white', shortlabel=None, nocaption_withstring=[], timestamp=None, mutator=None, timestampoffset=(0,0), theme='dark'):
         """Save `vipy.image.Scene.show output to given file or return buffer without popping up a window"""
         fignum = figure if figure is not None else 1        
         self.show(categories=categories, figure=fignum, nocaption=nocaption, fontsize=fontsize, boxalpha=boxalpha, 

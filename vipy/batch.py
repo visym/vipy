@@ -53,6 +53,8 @@ class Batch():
         as_completed: [bool] Return the objects to the scheduler as they complete, this can introduce instabilities for large complex objects, use with caution
         ordered: [bool]: If True, then preserve the order of objects in objlist in distributed processing
 
+    .. notes:: `vipy.dataset.Dataset.map` supports batch processing and is the preferred method for paralle processing of a dataset
+
     """    
              
     def __init__(self, objlist, strict=False, as_completed=False, warnme=False, minscatter=None, ordered=False):
