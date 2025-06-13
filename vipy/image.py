@@ -103,16 +103,14 @@ class Image():
     __slots__ = ('_filename', '_url', '_loader', '_array', '_colorspace', 'attributes')
     def __init__(self, filename=None, url=None, array=None, colorspace=None, attributes=None):
         # Private attributes
-        self._filename = None   # Local filename
-        self._url = None        # URL to download
-        self._loader = None     # lambda function to load an image, set with loader() method
+        self._loader = None     # function to load an image, set with loader() method
         self._array = None
         self._colorspace = None
         
         # Initialization
         self._filename = filename
         if url is not None:
-            assert isurl(url), 'Invalid URL'
+            assert isinstance(url, str) and url.startswith(('http://', 'https://'))  # faster than vipy.util.isurl()
         self._url = url
         if array is not None:
             assert isnumpy(array), 'Invalid Array - Type "%s" must be np.array()' % (str(type(array)))
@@ -430,14 +428,24 @@ class Image():
             d['array'] = self._array.tolist()
         return json.dumps(d) if encode else d
         
-    def loader(self, f):
+    def loader(self, f, x=None):
         """Lambda function to load an unsupported image filename to a numpy array.
         
         This lambda function will be executed during load and the result will be stored in self._array
         """
-        self._loader = f
+        self._loader = (f, x if x is not None else self.filename()) if f is not None else None
         return self
 
+    @staticmethod
+    def bytes_array_loader(x):
+        """Load from a bytes array"""
+        return np.array(PIL.Image.open(io.BytesIO(x)))
+    
+    @staticmethod    
+    def PIL_loader(x):
+        """Load from a PIL image file object"""
+        return np.array(x)
+    
     def has_loader(self):
         return self._loader is not None
     
@@ -464,7 +472,8 @@ class Image():
 
             # Load filename to numpy array
             if self._loader is not None:
-                self._array = self._loader(self._filename)
+                (f,x) = self._loader
+                self._array = f(x)
                 if self.isluminance():
                     self.colorspace('lum')
                 elif self.iscolor():
@@ -608,6 +617,10 @@ class Image():
         """Return True if `vipy.image.Image.load` was successful in reading the image, or if the pixels are present in `vipy.image.Image.array`."""
         return self._array is not None
 
+    def loaded(self):
+        """Alias for `vipy.image.Image.isloaded`"""
+        return self._array is not None
+    
     def isdownloaded(self):
         """Does the filename returned from `vipy.image.Image.filename` exist, meaning that the url has been downloaded to a local file?"""
         return self._filename is not None and os.path.exists(self._filename)
@@ -1108,7 +1121,7 @@ class Image():
 
     def has_url(self):
         """Return True if the image has a URL input source"""
-        return self._url is not None and isurl(self._url)
+        return self._url is not None
     
     def has_filename(self):
         """Return True if the image has a filename input source and this file exists"""
@@ -1678,8 +1691,9 @@ class Image():
     # Image export
     def pkl(self, pklfile=None):
         """save the object to a pickle file and return the object, useful for intermediate saving in long fluent chains"""
+        assert pklfile is not None or self.filename() is not None
         pklfile = pklfile if pklfile is not None else toextension(self.filename(), '.pkl')
-        remkdir(filepath(pklfile))
+        remkdir(vipy.util.filepath(pklfile))
         vipy.util.save(self, pklfile)
         return self
 
@@ -1992,8 +2006,7 @@ class TaggedImage(Image):
         if len(tags) > 0:
             self.set_attribute('tags', tags)
         if caption is not None:
-            for c in to_iterable(caption):
-                self.add_caption(c)
+            self.captions(caption)
             
     def __repr__(self):
         fields  = ['category=%s' % self.category()] if len(self.tags())==1 else []

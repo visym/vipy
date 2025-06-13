@@ -24,6 +24,7 @@ import itertools
 from pathlib import Path
 from vipy.globals import log
 import concurrent.futures as cf
+import vipy.parallel
 
 
 class Dataset():
@@ -70,11 +71,16 @@ class Dataset():
         assert shuffler is None or callable(shuffler)        
         
         self._id = id
-        self._ds = dataset if not isinstance(dataset, (list, set, tuple)) else tuple(dataset)  # force immutable (if possible)
-        self._idx = list(range(len(self._ds)))
+        self._ds = dataset  
+        self._idx = None  # random access on-demand
         self._loader = loader  # not serializable if lambda is provided
         self._shuffler = shuffler
-        self._type = None        
+
+        try:
+            self._type = str(type(self._loader(dataset[0]) if self._loader else dataset[0]))  # peek at first element, cached
+        except:
+            self._type = None
+
 
     @classmethod
     def from_directory(cls, indir, filetype='json'):
@@ -94,10 +100,57 @@ class Dataset():
     @classmethod
     def from_json(cls, jsonfile):
         return cls([x for x in to_iterable(vipy.load(jsonfile))])
+
+    def __repr__(self):
+        fields = ['id=%s' % self.id(truncated=True, maxlen=80)] if self.id() else []
+        fields += ['len=%d' % self.len()] if self.len() is not None else []
+        fields += ['type=%s' % self._type] if self._type else []
+        return str('<vipy.dataset.Dataset: %s>' % ', '.join(fields))
+
+    def __iter__(self):
+        if self.is_streaming():
+            for x in self._ds:
+                yield self._loader(x) if self._loader is not None else x  # iterable access (faster))
+        else:
+            for k in range(len(self)):
+                yield self[k]  # random access (slower)
+
+    def __getitem__(self, k):
+        assert self.len() is not None, "dataset does not support indexing"
         
+        idx = self.index()  # convert to random access on demand
+        if isinstance(k, (int, np.uint64)):
+            assert abs(k) < len(idx), "invalid index"
+            x = self._ds[idx[int(k)]]
+            x = self._loader(x) if self._loader is not None else x
+            return x
+        elif isinstance(k, slice):
+            X = [self._ds[k] for k in idx[k.start:k.stop:k.step]]
+            X = [self._loader(x) for x in X] if self._loader is not None else X
+            return X
+        else:
+            raise ValueError('invalid slice "%s"' % type(k))            
+
+
+    def raw(self):
+        """Return a view of this dataset without the loader"""
+        return Dataset(self._ds, loader=None)
+    
+    def is_streaming(self):
+        return self._idx is None
+
+    def len(self):
+        return len(self._idx) if self._idx is not None else (len(self._ds) if hasattr(self._ds, '__len__') else None)
+
+    def __len__(self):
+        len = self.len()
+        if len is None:
+            raise ValueError('dataset has no length')
+        return len
+    
     def __or__(self, other):
         assert isinstance(other, Dataset)
-        return Union((self, other), id=self.id())
+        return Union(self, other, id=self.id())
     
     def id(self, n=None, truncated=False, maxlen=80, suffix=None):
         """Set or return the dataset id, useful for showing the name/split of the dataset in the representation string"""
@@ -115,55 +168,24 @@ class Dataset():
             assert not strict or index is None or (len(index)>0 and len(index)<=len(self) and max(index)<len(self) and min(index)>=0)            
             self._idx = index
             return self
+        if self._idx is None:
+            self._idx = list(range(len(self._ds)))  # on-demand index, only if underlying dataset has known length
         return self._idx
     
-    def type(self):
-        if self._type is None and len(self)>0:
-            self._type = str(type(self[0]))  # peek at first element, cached
-        return self._type
         
-    def shuffler(self, f=None, remove=False):
+    def shuffler(self, f=None):
         if f is not None:
             assert callable(f)
             self._shuffler = f
             return self
-        if remove:
-            self._shuffler = None
-            return self
         return self._shuffler
 
     
-    def __repr__(self):
-        fields = ['id=%s' % self.id(truncated=True, maxlen=80)] if self.id() else []
-        fields += ['len=%d' % len(self)]
-        fields += ['type=%s' % self.type()] if self.type() else []
-        return str('<vipy.dataset.Dataset: %s>' % ', '.join(fields))
-
-    def __iter__(self):
-        for k in range(len(self)):
-            yield self[k]
-
-    def __getitem__(self, k):
-        if isinstance(k, (int, np.uint64)):
-            assert abs(k) < len(self._idx), "invalid index"
-            x = self._ds[self._idx[int(k)]]
-            x = self._loader(x) if self._loader is not None else x
-            return x
-        elif isinstance(k, slice):
-            X = [self._ds[k] for k in self._idx[k.start:k.stop:k.step]]
-            X = [self._loader(x) for x in X] if self._loader is not None else X
-            return X
-        else:
-            raise ValueError('invalid index type "%s"' % type(k))            
-            
-    def __len__(self):
-        return len(self._idx)
-
     def clone(self, shallow=False):
         """Return a copy of the dataset object"""
         if shallow:
             (idx, ds) = (self._idx, self._ds)
-            (self._idx, self._ds) = ([], None)  # remove
+            (self._idx, self._ds) = (None, None)  # remove
             D = copy.copy(self) 
             (self._idx, self._ds) = (idx, ds)   # restore            
             (D._idx, D._ds)  = (idx, ds)  # shared index/object reference
@@ -173,30 +195,26 @@ class Dataset():
     
     def shuffle(self):
         """Permute elements in this dataset uniformly at random in place"""
-        return Dataset.uniform_shuffler(self) if not self._shuffler else self._shuffler(self)
+        shuffler = self._shuffler if self._shuffler is not None else Dataset.uniform_shuffler
+        return shuffler(self)
 
-    def instanceid(self, k):
-        """The instance ID of element k is the index of this instance in the underlying source dataset"""
-        return self._idx[k]
-    
     def repeat(self, n):
         """Repeat the dataset n times.  If n=0, the dataset is unchanged, if n=1 the dataset is doubled in length, etc."""
         assert n>=0
-        self._idx = self._idx*(n+1)
-        return self
+        return self.index( self.index()*(n+1) )
     
     def tuple(self, mapper=None, flatten=False, reducer=None):
         """Return the dataset as a tuple, applying the optional mapper lambda on each element, applying optional flattener on sequences returned by mapper, and applying the optional reducer lambda on the final tuple, return a generator"""
         assert mapper is None or callable(mapper)
         assert reducer is None or callable(reducer)
         mapped = self.map(mapper) if mapper else self
-        flattened = (y for x in mapped for y in to_iterable(x)) if flatten else mapped
+        flattened = (y for x in mapped for y in to_iterable(x)) if flatten else (x for x in mapped)
         reduced = reducer(flattened) if reducer else flattened
         return reduced
 
-    def list(self, mapper=None, flatten=False, reducer=None):
+    def list(self, mapper=None, flatten=False):
         """Return a tuple as a list, loading into memory"""
-        return list(self.tuple(mapper, flatten, reducer))
+        return self.tuple(mapper, flatten, reducer=list)
 
     def set(self, mapper=None, flatten=False):
         """Return the dataset as a set.  Mapper must be a lambda function that returns a hashable type"""
@@ -216,7 +234,7 @@ class Dataset():
         Returns:
             A length of elements that satisfy f(v) = True [if f is not None]
         """
-        return len(self.list(f, flatten=False, reducer=lambda X: [x for x in X if x is True]))
+        return len(self.tuple(f, reducer=lambda X: [x for x in X if x is True]))
 
     def countby(self, f):
         return self.frequency(f)
@@ -224,20 +242,19 @@ class Dataset():
     def filter(self, f):
         """In place filter with lambda function f, keeping those elements obj in-place where f(obj) evaluates true.  Callable should return bool"""
         assert callable(f)
-        self._idx = [i for (b,i) in zip(self.map(f, ordered=True), self._idx) if b]        
-        return self
+        return self.index( [i for (b,i) in zip(self.map(f, ordered=True), self.index()) if b] )
     
     def take(self, n, inplace=False):
         """Randomly Take n elements from the dataset, and return a dataset (in-place or cloned)."""
         assert isinstance(n, int) and n>0
         D = self.clone(shallow=True) if not inplace else self
-        D._idx = list(random.sample(range(0, len(self._idx)), n))  # do not run loader, seed controlled by random.seed()
-        return D
+        return D.index( list(random.sample(range(0, len(self)), n)) )  # do not run loader, seed controlled by random.seed()
+
 
     def groupby(self, f):
         """Group the dataset according to the callable f, returning dictionary of grouped datasets."""
         assert callable(f)        
-        return {k:self.clone(shallow=True).index([x[1] for x in v]).id('%s:%s' % (self.id(),str(k))) for (k,v) in itertools.groupby(enumerate(self.sort(f)._idx), lambda x: f(self[x[0]]))}
+        return {k:self.clone(shallow=True).index([x[1] for x in v]).id('%s:%s' % (self.id(),str(k))) for (k,v) in itertools.groupby(enumerate(self.sort(f).index()), lambda x: f(self[x[0]]))}
 
     def takeby(self, f, n):
         """Filter the dataset according to the callable f, take n from each group and return a dataset.  Callable should return bool"""
@@ -267,20 +284,25 @@ class Dataset():
         return {a:(1/len(attributes))*(len(self)/frequency[a]) for a in attributes}  # (normalized) inverse frequency weight
     
     def load(self):
-        """Load the entire dataset into memory.  This is useful for creating in-memory datasets from lazy load datasets"""
-        return Dataset(self.list(), id=self.id())
+        """Cache the entire dataset into memory"""
+        if hasattr(self._ds, 'to_list'):
+            self._ds = self._ds.to_list() # load entire dataset into memory as a list (HF only)
+        self._ds = self.list()
+        self._idx = None
+        self._loader = None
+        return self
     
     def chunk(self, n):
         """Yield n chunks as dataset.  Last chunk will be ragged.  Batches are not loaded"""
-        for (k,V) in enumerate(vipy.util.chunkgen(self._idx, n)):
+        for (k,V) in enumerate(vipy.util.chunkgen(self.index(), n)):
             yield self.clone(shallow=True).index(V).id(('%s:%d' % (self.id(), k)) if self.id() else str(k))
 
     def batch(self, n):
         """Yield batches of size n as datasets.  Last batch will be ragged.  Batches are not loaded.  Batches have appended id equal to the zero-indexed batch order"""
-        for (k,V) in enumerate(vipy.util.chunkgenbysize(self._idx, n)):
+        for (k,V) in enumerate(vipy.util.chunkgenbysize(self.index(), n)):
             yield self.clone(shallow=True).index(V).id(('%s:%d' % (self.id(), k)) if self.id() else str(k))
             
-    def minibatch(self, n, ragged=True):
+    def minibatch(self, n, ragged=True, loader=None):
         """Yield preprocessed minibatches of size n of this dataset.
 
         To yield chunks of this dataset, suitable for minibatch training/testing
@@ -320,17 +342,27 @@ class Dataset():
         ..note:: If there exists a vipy.parallel.exeuctor(), then loading and preprocessing will be performed concurrently
 
         """
-        for b in vipy.parallel.map(lambda b: b.load(), self.batch(n)):  
-            if ragged or len(b) == n:            
-                yield b
+        # Parallel
+        if vipy.globals.cf() is not None:
+            for b in vipy.parallel.iter(loader, self.batch(n)): 
+                if ragged or len(b) == n:            
+                    yield b
+
+        # Local
+        else:
+            for b in self.batch(n):
+                if ragged or len(b) == n:            
+                    yield loader(b) if loader is not None else b
+
+                    
 
     def shift(self, m):
         """Circular shift the dataset m elements to the left, so that self[k+m] == self.shift(m)[k].  Circular shift for boundary handling so that self.shift(m)[-1] == self[m-1]"""
-        return self.clone(shallow=True).index(self._idx[m:] + self._idx[0:m])
+        return self.clone(shallow=True).index(self.index()[m:] + self.index()[0:m])
 
     def slice(self, start=0, stop=-1, step=1):
         """Slice the dataset to contain elements defined by slice(start, stop, step)"""
-        return self.clone(shallow=True).index(self._idx[start:stop:step])
+        return self.clone(shallow=True).index(self.index()[start:stop:step])
         
     def truncate(self, m):
         """Truncate the dataset to contain the first m elements only"""
@@ -385,7 +417,7 @@ class Dataset():
         i = 0
         datasets = []
         for n in sizes:
-            datasets.append(self.clone(shallow=True).index(self._idx[i:i+n]))
+            datasets.append(self.clone(shallow=True).index(self.index()[i:i+n]))
             i += n
         return datasets
         
@@ -411,7 +443,7 @@ class Dataset():
         assert testfraction >=0 and testfraction <= 1, "invalid test set fraction '%f'" % testfraction
         assert abs(trainfraction + valfraction + testfraction - 1) < 1E-6, "fractions must sum to one"
         
-        idx = self._idx
+        idx = self.index()
         (testidx, validx, trainidx) = vipy.util.dividelist(idx, (testfraction, valfraction, trainfraction))
             
         trainset = self.clone(shallow=True).index(trainidx)
@@ -458,10 +490,14 @@ class Dataset():
             - Operations must be chunked and serialized because each dask task comes with overhead, and lots of small tasks violates best practices
             - Serialized results are deserialized by the client and returned a a new dataset
         """
-        assert callable(f_map), "invalid map function"        
+        assert f_map is None or callable(f_map), "invalid map function"
+
+        # Identity
+        if f_map is None:
+            return self        
 
         # Parallel map 
-        if vipy.globals.cf() is not None:
+        elif vipy.globals.cf() is not None:
             # This will fail on multiprocessing if dataset contains a loader lambda, or any element in the dataset contains a loader.  Use distributed instead
             assert ordered == False, "not order preserving, use localmap()"
             return Dataset(tuple(vipy.parallel.map(f_map, self)), id=self.id()) 
@@ -496,9 +532,9 @@ class Dataset():
         """A map performed without any parallel processing"""
         return Dataset([f(x) for x in self], id=self.id())  # triggers load into memory        
 
-    def zip(self, f, iter):
+    def zip(self, iter):
         """Returns a new dataset constructed by applying the callable on elements from zip(self,iter)"""
-        return Dataset([f(im,i) for (im,i) in zip(self, iter)], id=self.id())  # triggers load into memory        
+        return Dataset(zip(self,iter))
     
     def sort(self, f):
         """Sort the dataset in-place using the sortkey lambda function f
@@ -509,8 +545,8 @@ class Dataset():
         dataset.sort(lambda im: im.category())
         ```
         """
-        self._idx = [self._idx[j] for (j,x) in sorted(zip(range(len(self)), self.tuple(f)), key=lambda x: x[1])]
-        return self
+        idx = self.index()
+        return self.index( [idx[j] for (j,x) in sorted(zip(range(len(self)), self.tuple(f)), key=lambda x: x[1])] )
 
     def randomize(self):
         """shuffle uniformly at random"""
@@ -518,8 +554,28 @@ class Dataset():
     
     @staticmethod
     def uniform_shuffler(D):
-        """A uniform shuffle"""
-        random.shuffle(D._idx)        
+        """A uniform shuffle on the dataset elements.  Iterable access will be slow due to random access"""
+        idx = D.index()
+        random.shuffle(idx)
+        return D.index(idx)
+
+    @staticmethod
+    def uniform_shuffler_streaming(D):
+        """A uniform shuffle (approximation) on the dataset elements for iterable access only"""
+        assert D._idx is None, "streaming only"
+        
+        try_import('datasets', 'datasets'); from datasets import Dataset as HuggingfaceDataset;
+        
+        if isinstance(D._ds, (list, tuple)):
+            D._ds = list(D._ds)
+            random.shuffle(D._ds)  # in-place shuffle objects
+                
+        elif isinstance(D._ds, HuggingfaceDataset):
+            # Special case: Arrow backed dataset            
+            D._ds = D._ds.to_iterable_dataset()  # no random access
+            D._ds.shuffle()  # approximate shuffling for IterableDataset is much more efficient for __iter__
+        else:
+            raise ValueError('shuffle error')
         return D
     
     @staticmethod
@@ -536,7 +592,7 @@ class Dataset():
             
         """
         assert callable(chunker)
-        return D.randomize().sort(chunker).index([i for I in shufflelist([shufflelist(I) for I in vipy.util.chunkgenbysize(D._idx, chunksize)]) for i in I])
+        return D.randomize().sort(chunker).index([i for I in shufflelist([shufflelist(I) for I in vipy.util.chunkgenbysize(D.index(), chunksize)]) for i in I])
     
     
 class Paged(Dataset):

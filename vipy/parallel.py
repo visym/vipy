@@ -1,39 +1,37 @@
 import vipy
-import vipy.batch
 import concurrent.futures as cf
 
 
-def executor(workers=None):
-    return vipy.globals.cf(workers, threaded=True)
-
-
-def localmap(f, initer):
-    for x in initer:
-        yield f(x)
-
-        
 def map(f, initer, reducer=None):
     """Apply the function f to each element in the iterator, returning the results unordered.  If strict=True, require executor"""
-    assert executor() is not None, "vipy.parallel.executor() required"    
+    assert vipy.globals.cf() is not None, "vipy.globals.cf() executor required - Try 'with vipy.globals.parallel(n=4): vipy.parallel.map(...)' "    
     assert callable(f)    
-    results = executor().map(f, initer)  # not order preserving
+    results = vipy.globals.cf().map(f, initer)  # not order preserving
     return reducer(results) if reducer else results
 
+def identity(x):
+    return x
 
-def streaming_map(f, initer, batchsize=1024):
-    assert executor(), "vipy.parallel.executor() required"    
-    assert callable(f)    
+def iter(f, initer, batchsize=1024, progress=False):
+    assert vipy.globals.cf(), "vipy.globals.cf() executor required - Try 'with vipy.globals.parallel(n=4): result = [x for x in vipy.parallel.iter(...)]' "    
+    assert f is None or callable(f)    
 
-    e = executor()    
-    for batch in vipy.util.chunkgenbysize(initer, batchsize):
-        for b in cf.as_completed((e.submit(f,b) for b in batch)):
-            yield b.result()  # submit batches for ver ong input iterators
+    batches = vipy.util.chunkgenbysize(initer, batchsize)
+    if progress:
+        vipy.util.try_import('tqdm', 'tqdm'); from tqdm import tqdm;
+        total = (len(initer)//batchsize) if hasattr(initer, '__len__') else None
+        batches = tqdm(batches, total=total)
+    
+    e = vipy.globals.cf()        
+    for batch in batches:
+        for b in cf.as_completed((e.submit(f if f is not None else identity, b) for b in batch)):
+            yield b.result()  # submit batches for very long input iterators
     
 
 def ordered_map(f, initer):
     """Apply the function f to each element in the iterator, returning tuples (order, result) results sorted by order"""
-    assert executor(), "vipy.parallel.executor() required"    
+    assert vipy.globals.cf(), "vipy.globals.cf() executor required - Try 'with vipy.globals.parallel(n=4): vipy.parallel.ordered_map(...)' "    
     assert callable(f), "mapper required"    
-    return sorted(executor().map(f, enumerate(initer)), key=lambda x: x[0])  # expensive
+    return sorted(vipy.globals.cf().map(f, enumerate(initer)), key=lambda x: x[0])  # expensive
 
 

@@ -235,7 +235,7 @@ def parallel(workers=None, pct=None, threaded=True):
             pass
             
         def __exit__(self, *args):            
-            self.shutdown()
+            self.shutdown() 
             
         def __repr__(self):
             return '<vipy.globals.parallel: workers=%d, cf=%s>' % (self.num_workers(), GLOBAL['CONCURRENT_FUTURES'] if GLOBAL['CONCURRENT_FUTURES'] else 'stopped')
@@ -248,8 +248,8 @@ def parallel(workers=None, pct=None, threaded=True):
         
         def shutdown(self):
             if GLOBAL['CONCURRENT_FUTURES']:
-                GLOBAL['LOGGER'].info('Parallel executor shutdown %s' % self)                            
-                GLOBAL['CONCURRENT_FUTURES'].shutdown()
+                GLOBAL['LOGGER'].info('Parallel executor shutdown (pending futures completion) %s' % self)                            
+                GLOBAL['CONCURRENT_FUTURES'].shutdown(wait=True)
             GLOBAL['CONCURRENT_FUTURES'] = None
         
         def num_workers(self):

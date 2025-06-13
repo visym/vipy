@@ -63,19 +63,19 @@ class AVA(object):
             tracks = groupbyasdict(rowlist, lambda x: x[7])
             d_tracknum_to_track = {}
 
-            for (tracknum, tracklist) in tracks.items():
+            for (k,(tracknum, tracklist)) in enumerate(tracks.items()):
                 (keyframes, boxes) = zip(*[(((float(x[1]))*dummy_framerate), Detection(xmin=float(x[2]), ymin=float(x[3]), xmax=float(x[4]), ymax=float(x[5]), normalized_coordinates=True)) for x in tracklist])
-                t = Track(keyframes=keyframes, boxes=boxes, category=tracknum, framerate=dummy_framerate)
+                t = Track(keyframes=keyframes, boxes=boxes, category=tracknum, framerate=dummy_framerate, id=k)
                 d_tracknum_to_track[tracknum] = t
                 v.add_object(t, rangecheck=False)
                 
             # Every row is a separate three second long activity centered at startsec involving one actor
-            for (video_id, startsec, xmin, ymin, xmax, ymax, activity_id, actor_id) in rowlist:
+            for (k,(video_id, startsec, xmin, ymin, xmax, ymax, activity_id, actor_id)) in enumerate(rowlist):
                 t = d_tracknum_to_track[actor_id]
                 try:
                     a = Activity(startframe=max(0, int(np.round(((float(startsec)-1.5)*dummy_framerate)))), endframe=int(np.round(((float(startsec)+1.5)*dummy_framerate))),
                                  category=d_index_to_category[int(activity_id)],
-                                 tracks={t.id():t}, framerate=dummy_framerate)
+                                 tracks={t.id():t}, framerate=dummy_framerate, id=k)
                     v.add_object(a, rangecheck=False)
 
                 except KeyboardInterrupt:

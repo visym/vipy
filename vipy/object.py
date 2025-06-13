@@ -98,7 +98,7 @@ class Detection(BoundingBox, Object):
     def __init__(self, category=None, xmin=None, ymin=None, width=None, height=None, xmax=None, ymax=None, confidence=None, xcentroid=None, ycentroid=None, ulbr=None, xywh=None, attributes=None, id=None, tags=None, normalized_coordinates=False):
         super().__init__(xmin=xmin, ymin=ymin, width=width, height=height, xmax=xmax, ymax=ymax, xcentroid=xcentroid, ycentroid=ycentroid, xywh=xywh, ulbr=ulbr)
 
-        self._id = shortuuid() if id == True else id
+        self._id = shortuuid() if id == True else (str(id) if id is not None else id)
         self.attributes = {} if attributes is None else attributes  # user must copy if needed
 
         if category is not None:
@@ -189,7 +189,7 @@ class Keypoint2d(Point2d, Object):
         super().__init__(x, y, r=radius)
         
         self.attributes = attributes if attributes is not None else {}
-        self._id = shortuuid() if id is True else id
+        self._id = shortuuid() if id is True else (str(id) if id is not None else id)
 
         if category is not None:
             self.add_tag(category, confidence)        
@@ -269,7 +269,7 @@ class Track():
 
     """
     __slots__ = ['_id', '_label', '_framerate', '_interpolation', '_boundary', 'attributes', '_keyframes', '_keyboxes']    
-    def __init__(self, keyframes, boxes, category=None, label=None, framerate=30, interpolation='linear', boundary='strict', attributes=None, trackid=None, filterbox=False):
+    def __init__(self, keyframes, boxes, category=None, label=None, framerate=30, interpolation='linear', boundary='strict', attributes=None, id=None, filterbox=False):
         keyframes = tolist(keyframes)
         boxes = tolist(boxes)        
         assert isinstance(keyframes, tuple) or isinstance(keyframes, list), "Keyframes are required and must be tuple or list"
@@ -282,7 +282,7 @@ class Track():
         assert interpolation in set(['linear']), "Invalid interpolation - Must be ['linear']"
         assert framerate is not None, "initial framerate for keyframes is required for framerate conversion"
         
-        self._id = shortuuid() if trackid is None else trackid
+        self._id = shortuuid() if id is None else str(id)
         self._label = category if category is not None else label
         self._framerate = float(framerate) 
         self._interpolation = interpolation
@@ -317,7 +317,7 @@ class Track():
                    interpolation=d['interpolation'] if 'interpolation' in d else 'linear',
                    boundary=d['boundary'],
                    attributes=d['attributes'],
-                   trackid=d['id'] if 'id' in d else None)
+                   id=d['id'] if 'id' in d else None)
 
     def __json__(self):
         """Serialization method for json package"""
@@ -541,7 +541,7 @@ class Track():
                       xmax=bi._xmax + c*(bj._xmax - bi._xmax),   # float(np.interp(k, self._keyframes, [bb._xmax for bb in self._keyboxes])),
                       ymax=bi._ymax + c*(bj._ymax - bi._ymax),   # float(np.interp(k, self._keyframes, [bb._ymax for bb in self._keyboxes])),
                       confidence=bi.confidence() if isinstance(bi, Detection) else None,
-                      attributes=bi.attributes if isinstance(bi, Detection) else None,  # shared attributes
+                      attributes=bi.attributes.copy() if isinstance(bi, Detection) else None,  # unshared attributes (to allow for __trackid)
                       category=self.category())
 
         d.attributes['__trackid'] = self.id()  # for correspondence of detections to tracks
@@ -747,7 +747,7 @@ class Track():
                                   ([kf for kf in self._keyframes if kf >= endframe][0]) if self.during(endframe, endframe) else endframe)
         kfkb = [(kf,kb.clone()) for (kf,kb) in zip(self._keyframes, self._keyboxes) if ((startframe is None or kf >= startframe) and (endframe is None or kf <= endframe))]
         (kf, kb) = zip(*kfkb) if len(kfkb) > 0 else ([], [])        
-        return Track(keyframes=kf, boxes=kb, category=self.category(), framerate=self._framerate, interpolation=self._interpolation, boundary=self._boundary, attributes=self.attributes, trackid=self._id)
+        return Track(keyframes=kf, boxes=kb, category=self.category(), framerate=self._framerate, interpolation=self._interpolation, boundary=self._boundary, attributes=self.attributes, id=self._id)
     
     def boundingbox(self, startframe=None, endframe=None):
         """The bounding box of a track is the smallest spatial box that contains all of the BoundingBoxes of the track  within startframe and endframe, or None if there are no detections.
