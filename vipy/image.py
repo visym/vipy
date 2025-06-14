@@ -12,7 +12,7 @@ from vipy.util import isnumpy, isurl, isimageurl, to_iterable, tolist,\
     tempjpg, filetail, isimagefile, remkdir, hasextension, truncate_string, \
     try_import, tolist, islistoflists, istupleoftuples, isstring, \
     islist, isnumber, isnumpyarray, string_to_pil_interpolation, toextension, \
-    shortuuid, iswebp, has_image_extension
+    shortuuid, iswebp, has_image_extension, tocache
 from vipy.geometry import BoundingBox, imagebox
 import vipy.object
 from vipy.object import greedy_assignment
@@ -2868,29 +2868,43 @@ class Transform():
 
        These are useful for parallel processing of noisy or corrupted images when anonymous functions are not supported (e.g. multiprocessing)
  
-       See also: `vipy.dataset.Dataset.minibatch` for parallel processing of batches of images for downloading, loading, resizing, cropping, augmenting, etc.
+       See also: `vipy.dataset.Dataset.minibatch` for parallel processing of batches of images for downloading, loading, resizing, cropping, augmenting, tensor prep etc.
     """
     @staticmethod
     def load(im):
         try:
-            return im.load()
+            return im.clone().load()
         except:
             return im.flush()
 
     @staticmethod
     def download(im):
         try:
-            return im.download()
+            return im.clone().download()
         except:
             return im.flush()
     
     @staticmethod
-    def mindim256(im):
+    def mindim(im, mindim=256):
         try:
-            return im.load().mindim(256)
+            return im.clone().load().mindim(mindim)
         except:
             return im.flush()
-    
+
+    @staticmethod
+    def thumbnail(im, mindim=64, outfile=None):
+        try:
+            return im.clone().load().mindim(mindim).save(outfile if outfile else tocache(shortuuid(8)+'.jpg'))
+        except:
+            return im.flush()
+
+    @staticmethod
+    def annotate(im, mindim=64, outfile=None):
+        try:
+            return im.clone().load().mindim(mindim).annotate().save(outfile if outfile else tocache(shortuuid(8)+'.jpg'))
+        except:
+            return im.flush()
+        
     @staticmethod
     def centersquare_32x32_normalized(im):
         return im.clone().load().rgb().centersquare().resize(32,32).gain(1/255) if not im.loaded() else im

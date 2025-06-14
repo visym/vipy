@@ -25,7 +25,6 @@ def iter(ingen, mapper=identity, bufsize=1024, progress=False, accepter=None):
     e = vipy.globals.cf()
     q = Queue()
     sem = threading.BoundedSemaphore(bufsize)
-    lock = threading.Lock()
     
     if progress:
         vipy.util.try_import('tqdm','tqdm'); from tqdm import tqdm;
@@ -33,21 +32,15 @@ def iter(ingen, mapper=identity, bufsize=1024, progress=False, accepter=None):
     
     # Producer worker: this is useful for filling the pipeline while waiting on GPU I/O    
     def _producer():
-        futures = set()  
         for i in ingen:
             sem.acquire()  # block when buffer is full
             f = e.submit(mapper, i)
             def _callback(fut, sem=sem, q=q):
                 q.put(fut.result())      
                 sem.release()
-                with lock:
-                    futures.discard(fut)                
             f.add_done_callback(_callback)
-            with lock:
-                futures.add(f)
-        with lock:
-            pending = list(futures)
-        cf.wait(pending, return_when=cf.ALL_COMPLETED)
+        for k in range(bufsize):
+            sem.acquire()
         q.put(None)
         
     threading.Thread(target=_producer, daemon=True).start()
