@@ -67,9 +67,11 @@ def test_image():
     # Invalid URL with ignore and verbose
     im = Image(url='https://a_bad_url.jpg')
     print('[test_image.image]:   Image __desc__: %s' % im)
-    im.load(ignoreErrors=True, verbose=True)
-    print('[test_image.image]:   Image __desc__: %s' % im)
-    print('[test_image.image]: Invalid URL download: PASSED')
+    try:
+        im.load(verbose=True)
+        raise
+    except:
+        print('[test_image.image]: Invalid URL download: PASSED')
 
     # URL with filename
     im = Image(url=jpegurl, filename=tempjpg())

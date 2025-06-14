@@ -448,12 +448,12 @@ class Image():
 
     def has_loader(self):
         return self._loader is not None
+
     
-    def load(self, ignoreErrors=False, verbose=False):
+    def load(self, verbose=False):
         """Load image to cached private '_array' attribute.
 
         Args:
-            ignoreErrors: [bool] If true, ignore any exceptions thrown during load and print the corresponding error messages.  This is useful for loading images distributed without throwing exceptions when some images may be corrupted.  In this case, the _array attribute will be None and `vipy.image.Image.isloaded` will return false to determine if the image is loaded, which can be used to filter out corrupted images gracefully. 
             verbose: [bool] If true, show additional useful printed output
 
         Returns:
@@ -468,7 +468,7 @@ class Image():
 
             # Download URL to filename 
             if self._url is not None and not self.hasfilename():
-                self.download(ignoreErrors=ignoreErrors, verbose=verbose)
+                self.download(verbose=verbose)
 
             # Load filename to numpy array
             if self._loader is not None:
@@ -512,31 +512,26 @@ class Image():
                 raise ValueError('image file not defined')
             
         except IOError:
-            if ignoreErrors:
-                if verbose is True:
-                    log.warning('IO error loading "%s" ' % self.filename())
-                self._array = None
-            else:
-                raise
+            if verbose is True:
+                log.error('IO error loading "%s" ' % self.filename())
+            self._array = None
+            raise
 
         except KeyboardInterrupt:
             raise
 
         except Exception:
-            if ignoreErrors:
-                if verbose is True:
-                    log.warning('Load error for image "%s"' % self.filename())
-                self._array = None
-            else:
-                raise
+            if verbose is True:
+                log.error('Load error for image "%s"' % self.filename())
+            self._array = None
+            raise
 
         return self
 
-    def download(self, ignoreErrors=False, timeout=10, verbose=False):
+    def download(self, timeout=10, verbose=False):
         """Download URL to filename provided by constructor, or to temp filename.
 
         Args:
-            ignoreErrors:  [bool] If true, do not throw an exception if the download of the URL fails for some reason.  Instead, print out a reason and return this image object.  The function `vipy.image.Image.hasfilename` will return false if the downloaded file does not exist and can be used to filter these failed downloads gracefully.
             timeout: [int]  The timeout in seconds for an http or https connection attempt.  See also [urllib.request.urlopen](https://docs.python.org/3/library/urllib.request.html).
             verbose: [bool] If true, output more helpful message.
 
@@ -582,30 +577,25 @@ class Image():
         except (httplib.BadStatusLine,
                 urllib.error.URLError,
                 urllib.error.HTTPError):
-            if ignoreErrors:
-                if verbose is True:
-                    log.warning('download failed for url "%s"' % self._url)
-                self._array = None
-            else:
-                raise
+            if verbose is True:
+                log.error('download failed for url "%s"' % self._url)
+            self._array = None
+            raise
 
         except IOError:
-            if ignoreErrors:
-                if verbose:
-                    log.warning('IO error downloading "%s" -> "%s" ' % (self.url(), self.filename()))
-                self._array = None
-            else:
-                raise
+            if verbose:
+                log.error('IO error downloading "%s" -> "%s" ' % (self.url(), self.filename()))
+            self._array = None
+            raise
 
         except KeyboardInterrupt:
             raise
 
         except Exception:
-            if ignoreErrors:
-                if verbose:
-                    log.warning('load error for image "%s"' % self.filename())
-            else:
-                raise
+            if verbose:
+                log.error('load error for image "%s"' % self.filename())
+            self._array = None
+            raise
 
         return self
 
@@ -620,14 +610,22 @@ class Image():
     def loaded(self):
         """Alias for `vipy.image.Image.isloaded`"""
         return self._array is not None
+
+    def is_loaded(self):
+        """Alias for `vipy.image.Image.isloaded`"""
+        return self._array is not None
     
     def isdownloaded(self):
         """Does the filename returned from `vipy.image.Image.filename` exist, meaning that the url has been downloaded to a local file?"""
         return self._filename is not None and os.path.exists(self._filename)
+
+    def is_downloaded(self):
+        """Alias for ``vipy.image.Image.isdownloaded`"""
+        return self.isdownloaded()
     
-    def downloadif(self, ignoreErrors=False, timeout=10, verbose=False):
+    def downloadif(self, timeout=10, verbose=False):
         """Download URL to filename if the filename has not already been downloaded"""
-        return self.download(ignoreErrors=ignoreErrors, timeout=timeout, verbose=verbose) if self.hasurl() and not self.isdownloaded() else self
+        return self.download(timeout=timeout, verbose=verbose) if self.hasurl() and not self.isdownloaded() else self
     
     def channels(self):
         """Return integer number of color channels"""
@@ -2202,9 +2200,9 @@ class Scene(TaggedImage):
         assert isinstance(k, int), "Indexing by object in scene must be integer"
         return self.clone(shallow=True).objects([self._objectlist[k].clone()])
 
-    def load(self, ignoreErrors=False, verbose=False):
-        super().load(ignoreErrors=ignoreErrors, verbose=verbose)
-        if self.isloaded() and self.num_objects() > 0 and any(o.has_normalized_coordinates() for o in self.objects()):
+    def load(self, verbose=False):
+        super().load(verbose=verbose)
+        if self.is_loaded() and self.num_objects() > 0 and any(o.has_normalized_coordinates() for o in self.objects()):
             # Normalized coordinates are in the range [0,1] relative to the (height, width) which is not known until load()
             self.objectmap(lambda o: o.scale_x(self.array().shape[1]).scale_y(self.array().shape[0]).del_attribute('normalized_coordinates') if o.has_normalized_coordinates() else o)
         return self
@@ -2866,11 +2864,33 @@ def people():
     
     
 class Transform():
-    """Transforms are static methods that implement common transformation patterns used instead of lambda functions in multiprocessing"""
+    """Transforms are static methods that implement common transformation patterns used in distributed processing.  
+
+       These are useful for parallel processing of noisy or corrupted images when anonymous functions are not supported (e.g. multiprocessing)
+ 
+       See also: `vipy.dataset.Dataset.minibatch` for parallel processing of batches of images for downloading, loading, resizing, cropping, augmenting, etc.
+    """
     @staticmethod
     def load(im):
-        return im.load()
+        try:
+            return im.load()
+        except:
+            return im.flush()
 
+    @staticmethod
+    def download(im):
+        try:
+            return im.download()
+        except:
+            return im.flush()
+    
+    @staticmethod
+    def mindim256(im):
+        try:
+            return im.load().mindim(256)
+        except:
+            return im.flush()
+    
     @staticmethod
     def centersquare_32x32_normalized(im):
         return im.clone().load().rgb().centersquare().resize(32,32).gain(1/255) if not im.loaded() else im

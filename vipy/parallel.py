@@ -17,9 +17,10 @@ def identity(x):
     return x
 
 
-def iter(ingen, mapper=identity, bufsize=1024, progress=False):
+def iter(ingen, mapper=identity, bufsize=1024, progress=False, accepter=None):
     assert vipy.globals.cf(), "vipy.globals.cf() executor required - Try 'with vipy.globals.parallel(n=4): result = [x for x in vipy.parallel.iter(...)]' "    
-    assert callable(mapper)    
+    assert callable(mapper)
+    assert accepter is None or callable(accepter)
 
     e = vipy.globals.cf()
     q = Queue()
@@ -56,7 +57,8 @@ def iter(ingen, mapper=identity, bufsize=1024, progress=False):
         res = q.get()
         if res is None:
             break
-        yield res
+        if accepter is None or accepter(res):
+            yield res
     
 
 def ordered_map(f, ingen):

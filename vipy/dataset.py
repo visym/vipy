@@ -107,13 +107,23 @@ class Dataset():
         fields += ['type=%s' % self._type] if self._type else []
         return str('<vipy.dataset.Dataset: %s>' % ', '.join(fields))
 
+    def __acceptance_iter__(self, mapper=None, accepter=None):
+        assert mapper is None or callable(mapper)
+        assert accepter is None or callable(accepter)
+        
+        for x in self.__iter__():
+            x = mapper(x) if mapper is not None else x
+            if accepter is None or accepter(x):
+                yield x  
+        
     def __iter__(self):
         if self.is_streaming():
-            for x in self._ds:
-                yield self._loader(x) if self._loader is not None else x  # iterable access (faster))
+            for x in self._ds:  # iterable access (faster)
+                 yield self._loader(x) if self._loader is not None else x                 
         else:
             for k in range(len(self)):
-                yield self[k]  # random access (slower)
+                yield self[k]   # random access (slower)
+
 
     def __getitem__(self, k):
         assert self.len() is not None, "dataset does not support indexing"
@@ -291,16 +301,16 @@ class Dataset():
         return self
     
     def chunk(self, n):
-        """Yield n chunks as dataset.  Last chunk will be ragged.  Batches are not loaded"""
+        """Yield n chunks as list.  Last chunk will be ragged."""
         for (k,c) in enumerate(vipy.util.chunkgen(self, n)):
-            yield Dataset(c).id('%s:%d' % (self.id() if self.id() else '', k))
+            yield list(c)
 
     def batch(self, n):
         """Yield batches of size n as datasets.  Last batch will be ragged.  Batches are not loaded.  Batches have appended id equal to the zero-indexed batch order"""
-        for (k,b) in enumerate(vipy.util.chunkgenbysize(self, n)):
+        for (k,b) in enumerate(itertools.batched(self, n)):
             yield Dataset(b).id('%s:%d' % (self.id() if self.id() else '', k))
                                 
-    def minibatch(self, n, ragged=True, loader=None, bufsize=1024):
+    def minibatch(self, n, ragged=True, loader=None, bufsize=1024, accepter=None):
         """Yield preprocessed minibatches of size n of this dataset.
 
         To yield chunks of this dataset, suitable for minibatch training/testing
@@ -311,27 +321,20 @@ class Dataset():
            print(b)
         ```
         
-        To perform minibatch preprocessing in parallel across four processes with the context manager:
+        To perform minibatch image downloading in parallel across four processes with the context manager:
 
         ```python
-        D = vipy.dataset.Dataset(...)
+        D = vipy.dataset.registry('yfcc100m_url:train').take(128)
         with vipy.globals.parallel(4):
-            for b in D.minibatch(nm loader=loader):
-                print(b)
+            for b in D.minibatch(16, loader=vipy.image.Transform.download, accepter=lambda im: im.is_downloaded()):
+                print(b)  # complete minibatch that passed accepter
         ```
 
-        To perform minibatch preprocessing in parallel across four processes with distributed client:
-
-        ```python
-        D = vipy.dataset.Dataset(...)
-        vipy.globals.parallel(4)    
-        for b in D.minibatch(n, loader=loader):
-           print(b)
-        ```
-        
         Args:
             n [int]: The size of the minibatch
             ragged [bool]: If ragged=true, then the last chunk will be ragged with len(chunk)<n, else skipped
+            bufsize [int]:  The size of the buffer used in parallel processing of elements.  Useful for parallel loading
+            accepter [callable]:  A callable that returns true|false on an element, where only elements that return true are included in the minibatch.  useful for parallel loading of elements that may fail to download
 
         Returns:        
             Iterator over `vipy.dataset.Dataset` elements of length n.  Minibatches will be yielded loaded and preprocessed (processing done concurrently if vipy.parallel.executor() is initialized)
@@ -340,17 +343,14 @@ class Dataset():
         ..note:: If there exists a vipy.parallel.exeuctor(), then loading and preprocessing will be performed concurrently
 
         """
-        # Parallel iterator 
-        if vipy.globals.cf() is not None:
-            for (k,b) in enumerate(vipy.util.chunkgenbysize(vipy.parallel.iter(self, mapper=loader, bufsize=max(n,bufsize)), n)):                
-                if ragged or len(b) == n:
-                    yield Dataset(b).id('%s:%d' % (self.id() if self.id() else '', k))                    
+        
+        iter = (self.__acceptance_iter__(mapper=loader, accepter=accepter) if vipy.globals.cf() is None else
+                vipy.parallel.iter(self, mapper=loader, bufsize=max(n,bufsize), accepter=accepter))
+                        
+        for (k,b) in enumerate(itertools.batched(iter, n)):                
+            if ragged or len(b) == n:
+                yield Dataset(b).id('%s:%d' % (self.id() if self.id() else '', k))                    
                     
-        # Local iterator
-        else:
-            for b in self.batch(n):
-                if ragged or len(b) == n:            
-                    yield b.localmap(loader) if loader is not None else b
                         
     def shift(self, m):
         """Circular shift the dataset m elements to the left, so that self[k+m] == self.shift(m)[k].  Circular shift for boundary handling so that self.shift(m)[-1] == self[m-1]"""
