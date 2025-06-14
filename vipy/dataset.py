@@ -728,8 +728,8 @@ def registry(name=None, datadir=None, freeze=True, clean=False):
        clean [bool]: If true, force a redownload of the dataset to correct for partial download errors
 
     Datasets:
-       'mnist','cifar10','cifar100','caltech101','caltech256','oxford_pets','sun397',
-       'flickr30k','oxford_fgvc_aircraft','oxford_flowers_102',
+       'mnist','cifar10','cifar100','caltech101','caltech256','oxford_pets','sun397', 'food101','stanford_dogs',
+       'flickr30k','oxford_fgvc_aircraft','oxford_flowers_102','eurosat','d2d','ethzshapes','coil100','kthactions',
        'yfcc100m','yfcc100m_url','tiny_imagenet','coyo300m','coyo700m','pascal_voc_2007','coco_2014', 'ava',
        'activitynet', 'openimages_v7', 'imagenet', 'imagenet21k', 'visualgenome' ,
        'objectnet','lfw','inaturalist_2021','kinetics','hmdb','places365','ucf101','lvis'
@@ -740,10 +740,10 @@ def registry(name=None, datadir=None, freeze=True, clean=False):
     """
     import vipy.data        
 
-    registry = ['mnist','cifar10','cifar100','caltech101','caltech256','oxford_pets','sun397',
-                'flickr30k','oxford_fgvc_aircraft','oxford_flowers_102',
+    registry = ['mnist','cifar10','cifar100','caltech101','caltech256','oxford_pets','sun397', 'stanford_dogs','coil100',
+                'flickr30k','oxford_fgvc_aircraft','oxford_flowers_102', 'food101', 'eurosat','d2d','ethzshapes','kthactions',
                 'yfcc100m','yfcc100m_url','tiny_imagenet','coyo300m','coyo700m','pascal_voc_2007','coco_2014', 'ava',
-                'activitynet','openimages_v7','imagenet','imagenet21k','visualgenome' ,
+                'activitynet','openimages_v7','imagenet','imagenet21k','visualgenome',
                 'objectnet','lfw','inaturalist_2021','kinetics','hmdb','places365','ucf101',
                 'lvis','imagenet_localization','laion2b','datacomp_1b']  # Add to docstring too...
     
@@ -780,6 +780,20 @@ def registry(name=None, datadir=None, freeze=True, clean=False):
         (trainset, testset) = vipy.data.hf.oxford_pets()
     elif name == 'sun397':
         (trainset, valset, testset) = vipy.data.hf.sun397()
+    elif name == 'stanford_dogs':
+        trainset = vipy.data.stanford_dogs.StanfordDogs(namedir)
+    elif name == 'food101':
+        trainset = vipy.data.food101.Food101(namedir)
+    elif name == 'eurosat':
+        trainset = vipy.data.eurosat.EuroSAT(namedir)
+    elif name == 'd2d':
+        trainset = vipy.data.d2d.D2D(namedir)
+    elif name == 'coil100':
+        trainset = vipy.data.coil100.COIL100(namedir)
+    elif name == 'kthactions':
+        (trainset, testset) = vipy.data.kthactions.KTHActions(namedir).split()
+    elif name == 'ethzshapes':
+        trainset = vipy.data.ethzshapes.ETHZShapes(namedir)        
     elif name == 'flickr30k':
         trainset = vipy.data.hf.flickr30k()
     elif name == 'oxford_fgvc_aircraft':

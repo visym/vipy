@@ -1,13 +1,16 @@
+import os
+import vipy.dataset
 from vipy.util import remkdir, filetail, videolist
 import vipy.downloader
 import vipy.video
 
-URLS = ['http://www.nada.kth.se/cvap/actions/walking.zip',
-        'http://www.nada.kth.se/cvap/actions/jogging.zip',
-        'http://www.nada.kth.se/cvap/actions/running.zip',
-        'http://www.nada.kth.se/cvap/actions/boxing.zip',
-        'http://www.nada.kth.se/cvap/actions/handwaving.zip',
-        'http://www.nada.kth.se/cvap/actions/handclapping.zip']
+
+URLS = ['http://www.csc.kth.se/cvap/actions/walking.zip',
+        'http://www.csc.kth.se/cvap/actions/jogging.zip',
+        'http://www.csc.kth.se/cvap/actions/running.zip',
+        'http://www.csc.kth.se/cvap/actions/boxing.zip',
+        'http://www.csc.kth.se/cvap/actions/handwaving.zip',
+        'http://www.csc.kth.se/cvap/actions/handclapping.zip']
 SHA1 = ['a3e81537271a0ab4576591774baa38c2d97b7e3a',
         '21943bdbcef9dad106db0d74661e49eaeaa15a25',
         'da83bb313edfd4455fffdda6263696fa10d43c6f',
@@ -21,7 +24,9 @@ class KTHActions(object):
     def __init__(self, datadir):
         """KTH ACtions dataset, provide a datadir='/path/to/store/kthactions' """
         self.datadir = remkdir(datadir)
-
+        if not os.path.exists(os.path.join(self.datadir, 'handclapping.zip')):
+            self.download_and_unpack()
+        
     def __repr__(self):
         return str('<vipy.data.kthactions: %s>' % self.datadir)
 
@@ -30,10 +35,9 @@ class KTHActions(object):
         videos = self.dataset()
         trainset = [vid for vid in videos if filetail(vid.filename()).split('_')[0] in trainPeople]
         testset = [vid for vid in videos if filetail(vid.filename()).split('_')[0] not in trainPeople]
-        return (trainset, testset)
+        return (vipy.dataset.Dataset(trainset, 'kthactions:train'), vipy.dataset.Dataset(testset, 'kthactions:test'))
 
     def download_and_unpack(self):
-        print('[vipy.data.kthactions][WARNING]: downloads will not show percent progress since content length is unknown')
         for (url, label, sha1) in zip(URLS, LABELS, SHA1):
             vipy.downloader.download_and_unpack(url, self.datadir, sha1=sha1)
 

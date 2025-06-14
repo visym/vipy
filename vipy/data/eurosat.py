@@ -6,7 +6,7 @@ from vipy.util import remkdir, filetail, filepath, tocache
 URL = 'https://madm.dfki.de/files/sentinel/EuroSAT.zip'
 
 
-class Eurosat(vipy.dataset.Dataset):
+class EuroSAT(vipy.dataset.Dataset):
     """https://github.com/phelber/EuroSAT"""
     def __init__(self, datadir=None, redownload=False):
         # Download (if not cached)

@@ -27,7 +27,7 @@ class COIL100(vipy.dataset.Dataset):
                 imlist.append(f)
 
         loader = lambda f, imgdir=imgdir: ImageCategory(filename=os.path.join(imgdir, f), category=f.split('__')[0], attributes={'orientation':filebase(f).split('__')[1]})
-        super().__init__(imlist, id='coil-100', loader=loader)
+        super().__init__(imlist, id='coil100', loader=loader)
             
 
         open(os.path.join(self._datadir, '.complete'), 'a').close()

@@ -8,7 +8,9 @@ import vipy.data.charades
 import vipy.data.cifar
 import vipy.data.coco
 import vipy.data.coil100
+import vipy.data.d2d
 import vipy.data.ethzshapes
+import vipy.data.eurosat
 import vipy.data.facescrub
 import vipy.data.fddb
 import vipy.data.food101
@@ -28,6 +30,7 @@ import vipy.data.msceleb
 import vipy.data.objectnet
 import vipy.data.oxford_flowers_102
 import vipy.data.places
+import vipy.data.stanford_dogs
 import vipy.data.stanford_cars
 import vipy.data.vggface
 import vipy.data.vggface2
