@@ -731,7 +731,7 @@ def registry(name=None, datadir=None, freeze=True, clean=False):
        'mnist','cifar10','cifar100','caltech101','caltech256','oxford_pets','sun397', 'food101','stanford_dogs',
        'flickr30k','oxford_fgvc_aircraft','oxford_flowers_102','eurosat','d2d','ethzshapes','coil100','kthactions',
        'yfcc100m','yfcc100m_url','tiny_imagenet','coyo300m','coyo700m','pascal_voc_2007','coco_2014', 'ava',
-       'activitynet', 'openimages_v7', 'imagenet', 'imagenet21k', 'visualgenome' ,
+       'activitynet', 'openimages_v7', 'imagenet', 'imagenet21k', 'visualgenome' ,'widerface',
        'objectnet','lfw','inaturalist_2021','kinetics','hmdb','places365','ucf101','lvis'
        'imagenet_localization','laion2b','datacomp_1b'
 
@@ -743,7 +743,7 @@ def registry(name=None, datadir=None, freeze=True, clean=False):
     registry = ['mnist','cifar10','cifar100','caltech101','caltech256','oxford_pets','sun397', 'stanford_dogs','coil100',
                 'flickr30k','oxford_fgvc_aircraft','oxford_flowers_102', 'food101', 'eurosat','d2d','ethzshapes','kthactions',
                 'yfcc100m','yfcc100m_url','tiny_imagenet','coyo300m','coyo700m','pascal_voc_2007','coco_2014', 'ava',
-                'activitynet','openimages_v7','imagenet','imagenet21k','visualgenome',
+                'activitynet','openimages_v7','imagenet','imagenet21k','visualgenome','widerface',
                 'objectnet','lfw','inaturalist_2021','kinetics','hmdb','places365','ucf101',
                 'lvis','imagenet_localization','laion2b','datacomp_1b']  # Add to docstring too...
     
@@ -831,6 +831,10 @@ def registry(name=None, datadir=None, freeze=True, clean=False):
         trainset = vipy.data.imagenet.Imagenet21K(namedir)
     elif name == 'visualgenome':
         trainset = vipy.data.visualgenome.VisualGenome(namedir)  # visualgenome-1.4
+    elif name == 'widerface':
+        trainset = vipy.data.widerface.WiderFace(namedir, split='train')
+        valset = vipy.data.widerface.WiderFace(namedir, split='val')
+        testset = vipy.data.widerface.WiderFace(namedir, split='test')                                      
     elif name == 'objectnet':
         trainset = vipy.data.objectnet.Objectnet(namedir)
     elif name == 'lfw':

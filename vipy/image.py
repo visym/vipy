@@ -2149,8 +2149,7 @@ class Scene(TaggedImage):
     def cast(cls, im):
         assert isinstance(im, vipy.image.Image), "Invalid input - must be derived from vipy.image.Image"
         if im.__class__ != vipy.image.Scene:
-            im.__class__ = vipy.image.Scene
-            im._objectlist = [] if not hasattr(im, '_objectlist') else im._objectlist  
+            return cls(filename=im._filename, url=im._url, attributes=im.attributes, array=im._array, colorspace=im._colorspace).loader(*im._loader)
         return im
     
     @classmethod
@@ -2722,7 +2721,7 @@ class ImageDetection(Scene):
     
     def __init__(self, filename=None, url=None, attributes=None, colorspace=None, array=None, 
                  xmin=None, xmax=None, ymin=None, ymax=None, width=None, height=None, 
-                 xcentroid=None, ycentroid=None, category=None, xywh=None, bbox=None, id=True):
+                 xcentroid=None, ycentroid=None, category=None, xywh=None, ulbr=None, bbox=None, id=True):
 
         super().__init__(filename=filename,
                          url=url,
@@ -2738,7 +2737,8 @@ class ImageDetection(Scene):
                                               ymax=ymax,
                                               xcentroid=xcentroid,
                                               ycentroid=ycentroid,
-                                              xywh=xywh if xywh is not None else (bbox.xywh() if isinstance(bbox, BoundingBox) else None),                                       
+                                              xywh=xywh if xywh is not None else (bbox.xywh() if isinstance(bbox, BoundingBox) else None),
+                                              ulbr=ulbr,
                                               category=category,
                                               attributes=attributes,
                                               id=id))
