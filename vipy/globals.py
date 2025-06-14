@@ -248,7 +248,7 @@ def parallel(workers=None, pct=None, threaded=True):
         
         def shutdown(self):
             if GLOBAL['CONCURRENT_FUTURES']:
-                GLOBAL['LOGGER'].info('Parallel executor shutdown (pending futures completion) %s' % self)                            
+                GLOBAL['LOGGER'].info('Parallel executor shutdown %s' % self)                            
                 GLOBAL['CONCURRENT_FUTURES'].shutdown(wait=True)
             GLOBAL['CONCURRENT_FUTURES'] = None
         

@@ -17,28 +17,41 @@ def identity(x):
     return x
 
 
-def iter(ingen, mapper=identity, bufsize=1024):
+def iter(ingen, mapper=identity, bufsize=1024, progress=False):
     assert vipy.globals.cf(), "vipy.globals.cf() executor required - Try 'with vipy.globals.parallel(n=4): result = [x for x in vipy.parallel.iter(...)]' "    
     assert callable(mapper)    
 
     e = vipy.globals.cf()
     q = Queue()
-
-    # Producer thread: this is useful for filling the pipeline while waiting on GPU I/O    
+    sem = threading.BoundedSemaphore(bufsize)
+    lock = threading.Lock()
+    
+    if progress:
+        vipy.util.try_import('tqdm','tqdm'); from tqdm import tqdm;
+        ingen = tqdm(ingen, total=len(ingen) if hasattr(ingen, '__len__') else None)
+    
+    # Producer worker: this is useful for filling the pipeline while waiting on GPU I/O    
     def _producer():
-        futures = set()
+        futures = set()  
         for i in ingen:
-            futures.add(e.submit(mapper, i))
-            if len(futures) >= bufsize:
-                done, futures = cf.wait(futures, return_when=cf.FIRST_COMPLETED)
-                for d in done:
-                    q.put(d.result())
-        for f in futures:
-            q.put(f.result())
-        q.put(None)                
+            sem.acquire()  # block when buffer is full
+            f = e.submit(mapper, i)
+            def _callback(fut, sem=sem, q=q):
+                q.put(fut.result())      
+                sem.release()
+                with lock:
+                    futures.discard(fut)                
+            f.add_done_callback(_callback)
+            with lock:
+                futures.add(f)
+        with lock:
+            pending = list(futures)
+        cf.wait(pending, return_when=cf.ALL_COMPLETED)
+        q.put(None)
+        
     threading.Thread(target=_producer, daemon=True).start()
 
-    # Consumer loop
+    # Consumer loop: yield loaded elements from the producers
     while True:        
         res = q.get()
         if res is None:

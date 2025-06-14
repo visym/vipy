@@ -44,6 +44,29 @@ except:
         return ((np.float32(scale)*arr.astype(np.float32)) - mean.flatten()) / std.flatten() 
 
 
+try:
+    from numba import njit, config  
+    config.THREADING_LAYER = 'workqueue'    
+    @njit(parallel=True, cache=True, nogil=True, fastmath=True)
+    def gain(arr, scale):
+        """Rescale the numpy array arr using the provided gain
+
+        - Uses numba acceleration since this is a common operation for preparing tensors.
+        - Computes:  scale*arr
+        
+        Args:
+            arr: [numpy] A numpy array
+            scale: [float] A scale factor to apply to arr before whitening (e.g. to scale from [0,255] to [0,1])
+
+        Returns
+            (scale*arr)
+
+        """
+        return np.float32(scale)*arr.astype(np.float32)
+except:
+    def gain(arr, scale):
+        return (np.float32(scale)*arr.astype(np.float32))
+    
     
 def _normalize(arr, mean, std, scale):
     """Whiten the numpy array arr using mean and standard deviation (no parallelization)"""

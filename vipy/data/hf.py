@@ -16,10 +16,11 @@ def mnist():
     dataset = load_dataset("ylecun/mnist", trust_remote_code=True)
 
     loader = lambda r: vipy.image.ImageCategory(category=str(r['label'])).loader(vipy.image.Image.PIL_loader, r['image'])
-    trainset = vipy.dataset.Dataset(dataset['train'], id='mnist:train', loader=loader)
+    trainset = vipy.dataset.Dataset(dataset['train'], id='mnist:train', loader=loader).load()  # metadata in arrow, slow if we need to access this multiple times, load it instead
     testset = vipy.dataset.Dataset(dataset['test'], id='mnist:test', loader=loader)
     return (trainset, testset)
-    
+
+
 def cifar10():
     """Huggingface wrapper for cifar10, returns (train,test) tuple"""
     

@@ -139,7 +139,7 @@ def isotropic_scale(im, s, border='zero'):
     assert s > 0
 
     (W,H) = (im.width(), im.height())
-    return im.load().rescale(s).padcrop(vipy.geometry.BoundingBox(centroid=(im.width()/2, im.height()/2), width=W, height=H))
+    return im.load().rescale(s).padcrop(vipy.geometry.BoundingBox(centroid=(im.width()//2, im.height()//2), width=W, height=H))
 
 def zoom(im, s, zx=None, zy=None, border='zero'):
     assert isinstance(im, vipy.image.Image)

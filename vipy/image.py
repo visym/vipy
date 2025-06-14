@@ -445,7 +445,7 @@ class Image():
     def PIL_loader(x):
         """Load from a PIL image file object"""
         return np.array(x)
-    
+
     def has_loader(self):
         return self._loader is not None
     
@@ -1245,7 +1245,7 @@ class Image():
             padwidth = (padwidth, padwidth)
         if not isinstance(padheight, tuple):
             padheight = (padheight, padheight)
-        if self.channels() > 1:
+        if self.channels() > 1 or self._array.ndim == 3:
             pad_shape = (padheight, padwidth, (0, 0))
         else:
             pad_shape = (padheight, padwidth)
@@ -1590,6 +1590,8 @@ class Image():
     
     def gain(self, g):
         """Elementwise multiply gain to image array, Gain should be broadcastable to array().  This forces the colospace to 'float'.  Don't use numba optimization, it is slower than native multiply"""
+        #return self.array(vipy.math.gain(self.load()._array, np.float32(g))).colorspace('float') if g != 1 else self        
+        #return self.array(np.float32(self.load()._array*g)).colorspace('float') if g != 1 else self  # numba not as fast anymore
         return self.array(np.multiply(self.load().float().array(), g)).colorspace('float') if g != 1 else self
 
     def bias(self, b):
@@ -1611,8 +1613,7 @@ class Image():
         
         .. note:: This will force the colorspace to 'float'
         """
-        self.array(gain*self.load().float().array() + bias)
-        return self.colorspace('float')
+        return self.array(gain*self.load().float().array() + bias).colorspace('float')
 
     def additive_noise(self, hue=(-15,15), saturation=(-15,15), brightness=(-15,15)):
         """Apply uniform random additive noise in the given range to the given HSV color channels.  Image will be converted to HSV prior to applying noise."""
@@ -2875,6 +2876,10 @@ class Transform():
         return im.clone().load().rgb().centersquare().resize(32,32).gain(1/255) if not im.loaded() else im
 
     @staticmethod
+    def centersquare_32x32_lum_normalized(im):
+        return im.clone().load().centersquare().lum().resize(32,32).gain(1/255) if not im.loaded() else im
+    
+    @staticmethod
     def centersquare_256x256_normalized(im):
         return im.clone().load().rgb().centersquare().resize(256,256).gain(1/255) if not im.loaded() else im
 
@@ -2887,8 +2892,10 @@ class Transform():
         return im.clone().load().rgb().mindim(256) if not im.loaded() else im
     
     @staticmethod
-    def composer(shape, normalized, mindim):
-        if shape == (32,32) and normalized:
+    def composer(shape, normalized=None, mindim=None, colorspace=None):
+        if shape == (32,32) and normalized and colorspace == 'lum':
+            return Transform.centersquare_32x32_lum_normalized        
+        elif shape == (32,32) and normalized:
             return Transform.centersquare_32x32_normalized
         elif shape == (256,256) and normalized:
             return Transform.centersquare_256x256_normalized

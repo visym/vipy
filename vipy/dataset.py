@@ -300,7 +300,7 @@ class Dataset():
         for (k,b) in enumerate(vipy.util.chunkgenbysize(self, n)):
             yield Dataset(b).id('%s:%d' % (self.id() if self.id() else '', k))
                                 
-    def minibatch(self, n, ragged=True, loader=None, bufsize=4096):
+    def minibatch(self, n, ragged=True, loader=None, bufsize=1024):
         """Yield preprocessed minibatches of size n of this dataset.
 
         To yield chunks of this dataset, suitable for minibatch training/testing
