@@ -285,24 +285,22 @@ class Dataset():
     
     def load(self):
         """Cache the entire dataset into memory"""
-        if hasattr(self._ds, 'to_list'):
-            self._ds = self._ds.to_list() # load entire dataset into memory as a list (HF only)
-        self._ds = self.list()
+        self._ds = [x for x in self]
         self._idx = None
         self._loader = None
         return self
     
     def chunk(self, n):
         """Yield n chunks as dataset.  Last chunk will be ragged.  Batches are not loaded"""
-        for (k,V) in enumerate(vipy.util.chunkgen(self.index(), n)):
-            yield self.clone(shallow=True).index(V).id(('%s:%d' % (self.id(), k)) if self.id() else str(k))
+        for (k,c) in enumerate(vipy.util.chunkgen(self, n)):
+            yield Dataset(c).id('%s:%d' % (self.id() if self.id() else '', k))
 
     def batch(self, n):
         """Yield batches of size n as datasets.  Last batch will be ragged.  Batches are not loaded.  Batches have appended id equal to the zero-indexed batch order"""
-        for (k,V) in enumerate(vipy.util.chunkgenbysize(self.index(), n)):
-            yield self.clone(shallow=True).index(V).id(('%s:%d' % (self.id(), k)) if self.id() else str(k))
-            
-    def minibatch(self, n, ragged=True, loader=None):
+        for (k,b) in enumerate(vipy.util.chunkgenbysize(self, n)):
+            yield Dataset(b).id('%s:%d' % (self.id() if self.id() else '', k))
+                                
+    def minibatch(self, n, ragged=True, loader=None, bufsize=4096):
         """Yield preprocessed minibatches of size n of this dataset.
 
         To yield chunks of this dataset, suitable for minibatch training/testing
@@ -318,7 +316,7 @@ class Dataset():
         ```python
         D = vipy.dataset.Dataset(...)
         with vipy.globals.parallel(4):
-            for b in D.minibatch(n):
+            for b in D.minibatch(nm loader=loader):
                 print(b)
         ```
 
@@ -327,7 +325,7 @@ class Dataset():
         ```python
         D = vipy.dataset.Dataset(...)
         vipy.globals.parallel(4)    
-        for b in D.minibatch(n):
+        for b in D.minibatch(n, loader=loader):
            print(b)
         ```
         
@@ -342,20 +340,18 @@ class Dataset():
         ..note:: If there exists a vipy.parallel.exeuctor(), then loading and preprocessing will be performed concurrently
 
         """
-        # Parallel
+        # Parallel iterator 
         if vipy.globals.cf() is not None:
-            for b in vipy.parallel.iter(loader, self.batch(n)): 
-                if ragged or len(b) == n:            
-                    yield b
-
-        # Local
+            for (k,b) in enumerate(vipy.util.chunkgenbysize(vipy.parallel.iter(self, mapper=loader, bufsize=max(n,bufsize)), n)):                
+                if ragged or len(b) == n:
+                    yield Dataset(b).id('%s:%d' % (self.id() if self.id() else '', k))                    
+                    
+        # Local iterator
         else:
             for b in self.batch(n):
                 if ragged or len(b) == n:            
-                    yield loader(b) if loader is not None else b
-
-                    
-
+                    yield b.localmap(loader) if loader is not None else b
+                        
     def shift(self, m):
         """Circular shift the dataset m elements to the left, so that self[k+m] == self.shift(m)[k].  Circular shift for boundary handling so that self.shift(m)[-1] == self[m-1]"""
         return self.clone(shallow=True).index(self.index()[m:] + self.index()[0:m])
@@ -593,8 +589,8 @@ class Dataset():
         """
         assert callable(chunker)
         return D.randomize().sort(chunker).index([i for I in shufflelist([shufflelist(I) for I in vipy.util.chunkgenbysize(D.index(), chunksize)]) for i in I])
-    
-    
+
+
 class Paged(Dataset):
     """ Paged dataset.
 

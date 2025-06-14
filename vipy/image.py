@@ -1918,6 +1918,7 @@ class Image():
         return self.padcrop(self.imagebox().centroid(p))
 
     
+    
 class ImageCategory(Image):
     """vipy ImageCategory class
 
@@ -2861,3 +2862,35 @@ def people():
                           vipy.object.Detection(category="person", xywh=(1902.9, 783.1, 250.8, 825.8)),
                           vipy.object.Detection(category="person", xywh=(228.2, 948.7, 546.8, 688.5))]).mindim(1024)
 
+    
+    
+class Transform():
+    """Transforms are static methods that implement common transformation patterns used instead of lambda functions in multiprocessing"""
+    @staticmethod
+    def load(im):
+        return im.load()
+
+    @staticmethod
+    def centersquare_32x32_normalized(im):
+        return im.clone().load().rgb().centersquare().resize(32,32).gain(1/255) if not im.loaded() else im
+
+    @staticmethod
+    def centersquare_256x256_normalized(im):
+        return im.clone().load().rgb().centersquare().resize(256,256).gain(1/255) if not im.loaded() else im
+
+    @staticmethod
+    def mindim256_normalized(im):
+        return im.clone().load().rgb().mindim(256).gain(1/255) if not im.loaded() else im
+
+    @staticmethod
+    def mindim256(im):
+        return im.clone().load().rgb().mindim(256) if not im.loaded() else im
+    
+    @staticmethod
+    def composer(shape, normalized, mindim):
+        if shape == (32,32) and normalized:
+            return Transform.centersquare_32x32_normalized
+        elif shape == (256,256) and normalized:
+            return Transform.centersquare_256x256_normalized
+        else:
+            raise

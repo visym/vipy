@@ -21,7 +21,7 @@ import pickle as cPickle
 import PIL
 import matplotlib.pyplot as plt
 from itertools import groupby as itertools_groupby
-from itertools import tee, chain
+from itertools import tee, chain, batched
 import importlib
 import pathlib
 import socket
@@ -588,14 +588,13 @@ def chunklistbysize(inlist, size_per_chunk):
     assert size_per_chunk >= 1
     return [inlist[i:i+size_per_chunk] for i in range(0,len(inlist),size_per_chunk)]
 
-def chunkgenbysize(inlist, size_per_chunk):
+def chunkgenbysize(ingen, size_per_chunk):
     """Yield a list of lists such that each element is a list
     containing a sequential chunk of the original list of length
     size_per_chunk"""
     assert size_per_chunk >= 1
-    for i in range(0,len(inlist),size_per_chunk):
-        yield inlist[i:i+size_per_chunk] 
-
+    return batched(ingen, size_per_chunk)
+    
 def triplets(inlist):
     """Yield triplets (1,2,3), (4,5,6), ...  from list inlist=[1,2,3,4,5,6,...]"""
     for k in range(0, len(inlist), 3):
