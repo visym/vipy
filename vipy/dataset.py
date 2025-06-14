@@ -107,23 +107,26 @@ class Dataset():
         fields += ['type=%s' % self._type] if self._type else []
         return str('<vipy.dataset.Dataset: %s>' % ', '.join(fields))
 
-    def __acceptance_iter__(self, mapper=None, accepter=None):
+    def __parallel_iter__(self, mapper=None, accepter=None, bufsize=1024):       
         assert mapper is None or callable(mapper)
         assert accepter is None or callable(accepter)
-        
-        for x in self.__iter__():
-            x = mapper(x) if mapper is not None else x
-            if accepter is None or accepter(x):
-                yield x  
-        
-    def __iter__(self):
+
+        return (self.__iter__(mapper=mapper, accepter=accepter) if vipy.globals.cf() is None else
+                vipy.parallel.iter(self, mapper=mapper, bufsize=bufsize, accepter=accepter))
+                        
+    def __iter__(self, mapper=None, accepter=None):            
         if self.is_streaming():
             for x in self._ds:  # iterable access (faster)
-                 yield self._loader(x) if self._loader is not None else x                 
+                x = self._loader(x) if self._loader is not None else x                 
+                x = mapper(x) if mapper is not None else x
+                if accepter is None or accepter(x):
+                    yield x  
         else:
             for k in range(len(self)):
-                yield self[k]   # random access (slower)
-
+                x = self[k]   # random access (slower)                
+                x = mapper(x) if mapper is not None else x
+                if accepter is None or accepter(x):
+                    yield x                  
 
     def __getitem__(self, k):
         assert self.len() is not None, "dataset does not support indexing"
@@ -344,10 +347,7 @@ class Dataset():
 
         """
         
-        iter = (self.__acceptance_iter__(mapper=loader, accepter=accepter) if vipy.globals.cf() is None else
-                vipy.parallel.iter(self, mapper=loader, bufsize=max(n,bufsize), accepter=accepter))
-                        
-        for (k,b) in enumerate(itertools.batched(iter, n)):                
+        for (k,b) in enumerate(itertools.batched(self.__parallel_iter__(mapper=loader, accepter=accepter, bufsize=max(bufsize,n)), n)):                
             if ragged or len(b) == n:
                 yield Dataset(b).id('%s:%d' % (self.id() if self.id() else '', k))                    
                     
@@ -460,6 +460,10 @@ class Dataset():
         """Split the dataset into two datasets, one of length size, the other of length len(self)-size"""
         assert isinstance(size, int) and size>=0 and size<len(self)
         return self.partition(size/len(self), (len(self)-size)/len(self), 0, '', '', '')
+
+    def streaming_map(self, mapper, accepter=None, bufsize=1024):
+        """Returns a generator that will apply the mapper and yield only those elements that return True from the accepter.  Performs the map in parallel if used in the vipy.globals.parallel context manager"""
+        return self.__parallel_iter__(mapper=mapper, accepter=accepter, bufsize=bufsize)
         
     def map(self, f_map, strict=True, oneway=False, ordered=False):        
         """Parallel map.

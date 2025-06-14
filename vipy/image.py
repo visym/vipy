@@ -12,7 +12,7 @@ from vipy.util import isnumpy, isurl, isimageurl, to_iterable, tolist,\
     tempjpg, filetail, isimagefile, remkdir, hasextension, truncate_string, \
     try_import, tolist, islistoflists, istupleoftuples, isstring, \
     islist, isnumber, isnumpyarray, string_to_pil_interpolation, toextension, \
-    shortuuid, iswebp, has_image_extension, tocache
+    shortuuid, iswebp, has_image_extension, tocache, stringhash
 from vipy.geometry import BoundingBox, imagebox
 import vipy.object
 from vipy.object import greedy_assignment
@@ -33,6 +33,7 @@ import hashlib
 import time
 import math
 from itertools import zip_longest
+import functools
 
 
 try:
@@ -528,12 +529,13 @@ class Image():
 
         return self
 
-    def download(self, timeout=10, verbose=False):
+    def download(self, timeout=10, verbose=False, cached=False):
         """Download URL to filename provided by constructor, or to temp filename.
 
         Args:
             timeout: [int]  The timeout in seconds for an http or https connection attempt.  See also [urllib.request.urlopen](https://docs.python.org/3/library/urllib.request.html).
             verbose: [bool] If true, output more helpful message.
+            cached: [bool] If true, use the cached previously downloaded file (if it exists)
 
         Returns:
             This `vipy.image.Image` object with the URL downloaded to `vipy.image.Image.filename` or to a `vipy.util.tempimage` filename which can be retrieved with `vipy.image.Image.filename`.
@@ -546,14 +548,17 @@ class Image():
 
         if self._filename is None:
             if vipy.globals.cache() is not None:
-                # There is a potential race condition here when downloading files with common names like "main.jpg", add a random 2 character subdir (<=3844 subdirs for ext3, max ~32K)
-                self._filename = os.path.join(remkdir(vipy.globals.cache()), shortuuid(2), filetail(self._url.split('?')[0]))  # preserve image filename from url
+                # There is a potential race condition here when downloading files with common names like "main.jpg", add a (repeatable, hashed) 3 character subdir (<=4096 subdirs for ext3, max ~32K)
+                self._filename = os.path.join(remkdir(vipy.globals.cache()), stringhash(self._url, 3), filetail(self._url.split('?')[0]))  # preserve image filename from url
                 self._filename = self._filename+'.jpg' if not has_image_extension(self._filename) else self._filename  # guess JPG for URLs with no file extension (e.g. php)
             elif isimageurl(self._url):
                 self._filename = tempimage(fileext(self._url))
             else:
                 self._filename = tempjpg()  # guess JPG for URLs with no file extension
 
+        if cached and self.hasfilename():
+            return self
+            
         try:
             url_scheme = urllib.parse.urlparse(self._url)[0]
             if url_scheme in ['http', 'https']:
@@ -625,8 +630,22 @@ class Image():
     
     def downloadif(self, timeout=10, verbose=False):
         """Download URL to filename if the filename has not already been downloaded"""
-        return self.download(timeout=timeout, verbose=verbose) if self.hasurl() and not self.isdownloaded() else self
-    
+        return self.download(timeout=timeout, verbose=verbose, cached=True) if self.hasurl() else self
+
+    def try_download(self, timeout=10, verbose=False):
+        """Attempt to download URL to filename if the filename has not already been downloaded, return object on failure.  Check `vipy.image.Image.is_downloaded` on returned object for success"""
+        try:
+            return self.downloadif(timeout=timeout, verbose=verbose)
+        except:
+            return self
+
+    def try_load(self):
+        """Attempt to load an image, return the object on failure.  Check `vipy.image.Image.is_loaded` on returned object for success"""
+        try:
+            return self.load()
+        except:
+            return self
+        
     def channels(self):
         """Return integer number of color channels"""
         return self.load().channels() if not self.isloaded() else (self._array.shape[2] if self._array.ndim==3 else 1)
@@ -2870,6 +2889,11 @@ class Transform():
  
        See also: `vipy.dataset.Dataset.minibatch` for parallel processing of batches of images for downloading, loading, resizing, cropping, augmenting, tensor prep etc.
     """
+
+    @staticmethod
+    def is_loaded(im):
+        return im.is_loaded()
+    
     @staticmethod
     def load(im):
         try:
@@ -2891,6 +2915,7 @@ class Transform():
         except:
             return im.flush()
 
+        
     @staticmethod
     def thumbnail(im, mindim=64, outfile=None):
         try:
@@ -2921,17 +2946,36 @@ class Transform():
     def mindim256_normalized(im):
         return im.clone().load().rgb().mindim(256).gain(1/255) if not im.loaded() else im
 
-    @staticmethod
-    def mindim256(im):
-        return im.clone().load().rgb().mindim(256) if not im.loaded() else im
     
     @staticmethod
-    def composer(shape, normalized=None, mindim=None, colorspace=None):
-        if shape == (32,32) and normalized and colorspace == 'lum':
-            return Transform.centersquare_32x32_lum_normalized        
-        elif shape == (32,32) and normalized:
-            return Transform.centersquare_32x32_normalized
-        elif shape == (256,256) and normalized:
-            return Transform.centersquare_256x256_normalized
-        else:
-            raise
+    def tensor(im, shape=None, gain=None, mindim=None, colorspace=None, jitter=None, centersquare=None, torch=None):
+        try:
+            im = im.clone()
+            if colorspace:
+                im = im.colorspace(colorspace)        
+            if centersquare:
+                im = im.centersquare()
+            if shape is not None:
+                im = im.resize(*shape)
+            if mindim:
+                im = im.mindim(mindim)            
+            if jitter:
+                pass  
+            if gain is not None:
+                im = im.gain(gain)
+            if torch:
+                im = im.torch()  # CHW
+            return im
+        except:
+            return im.flush()
+
+    class classproperty:
+        """Allows defining a function as f = vipy.image.Transform.mindim256, then f(im)"""
+        def __init__(self, fget):
+            self.fget = fget
+        def __get__(self, obj, cls):
+            return self.fget(cls)
+        
+    @classproperty        
+    def tensor_32x32(cls):
+        return functools.partial(cls.tensor, shape=(32,32), gain=1/255, colorspace='rgb', centersquare=True, torch=True)

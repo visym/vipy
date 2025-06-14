@@ -18,10 +18,32 @@ def identity(x):
 
 
 def iter(ingen, mapper=identity, bufsize=1024, progress=False, accepter=None):
+    """Return an iterator on the input generator that will apply the mapper to each object and yield only those elements where the accepter is true
+
+    ```python
+    with vipy.globals.parallel(8):
+        for im in vipy.parallel.iter(vipy.dataset.registry('yfcc100m_url:train'), mapper=lambda im: im.try_download(), accepter=lambda im: im.is_downloaded()):
+            print(im)
+    ```
+
+    Most common use cases will use `vipy.dataset.Dataset.minibatch` or `vipy.dataset.Dataset.__parallel_iter__` instead of using this iterator directly
+
+    Args:
+        ingen [generator]:
+        mapper [callable]: A function applied to each element before yielding
+        bufsize [int]: The maximum size of the parallel queue used by producers.  
+        accepter [callable]: A function which returns true or false, such that the iterator only yields elements for which the accepter returns true
+
+    Returns:
+        An iterator that yields mapped and accepted elements from ingen, whre mapping is performed in parallel by vipy.parallel.cf() executor
+
+    """
+    
     assert vipy.globals.cf(), "vipy.globals.cf() executor required - Try 'with vipy.globals.parallel(n=4): result = [x for x in vipy.parallel.iter(...)]' "    
     assert callable(mapper)
     assert accepter is None or callable(accepter)
-
+    assert bufsize>0
+    
     e = vipy.globals.cf()
     q = Queue()
     sem = threading.BoundedSemaphore(bufsize)
@@ -40,7 +62,7 @@ def iter(ingen, mapper=identity, bufsize=1024, progress=False, accepter=None):
                 sem.release()
             f.add_done_callback(_callback)
         for k in range(bufsize):
-            sem.acquire()
+            sem.acquire()  # wait until all callbacks have fired
         q.put(None)
         
     threading.Thread(target=_producer, daemon=True).start()
