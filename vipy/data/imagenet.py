@@ -38,8 +38,9 @@ IMAGENET21K_MD5 = 'ab313ce03179fd803a401b02c651c0a2'
 
 IMAGENET_FACES = 'https://image-net.org/data/face_annotations_ILSVRC.json'
 
+
 class Imagenet2012():
-    """This requires login at https://image-net.org from the same IP address as the download, and agreeing to the ImageNet terms: https://image-net.org/download-images.php#term"""
+    """Imagenet2012 requires login at https://image-net.org from the same IP address as the download, and agreeing to the ImageNet terms: https://image-net.org/download-images.php#term"""
     def __init__(self, datadir=None, redownload=False):
         datadir = tocache('imagenet2012') if datadir is None else datadir
         
@@ -76,12 +77,13 @@ class Imagenet2012():
         return self._wnid_to_categorylist if s is None else self._wnid_to_categorylist[s]
     
     def classification_trainset(self):
-        """ImageNet Classification, trainset"""
+        """ImageNet2012 Classification, trainset"""
         imgfiles = vipy.util.findimages(os.path.join(self._datadir, 'ILSVRC2012_img_train'))  # slow-ish, may be better to cache
         loader = lambda f, synset_to_category=self.synset_to_category: vipy.image.TaggedImage(filename=f, tags=synset_to_category(filetail(filepath(f))))
         return vipy.dataset.Dataset(imgfiles, 'imagenet2012_classification:train', loader=loader)
         
     def classification_valset(self):
+        """ImageNet2012 Classification, valset"""        
         imlist = []
         imgfiles = vipy.util.findimages(os.path.join(self._datadir, 'ILSVRC2012_img_val'))  # slow-ish, may be better to cache
                     
@@ -97,7 +99,9 @@ class Imagenet2012():
         return vipy.dataset.Dataset(imlist, 'imagenet2012_classification:val', loader=loader)
 
     def faces(self):
-        """Return all annotated faces in 2012 train and val sets"""
+        """Return all annotated faces in 2012 train and val sets:
+        https://image-net.org/face-obfuscation/
+        """
 
         cachefile = os.path.join(self._datadir, 'faces.json')
         if not os.path.exists(cachefile):        
@@ -121,7 +125,7 @@ class Imagenet2012():
         return vipy.dataset.Dataset([im for im in imlist if im.num_objects()>0], 'imagenet2012_faces:train')
         
     def localization_trainset(self):
-        """ImageNet localization, imageset = {train, val}, this takes a long time to read the XML files, load and cache"""
+        """ImageNet2012 localization, imageset = {train, val}, this takes a long time to read the XML files, load and cache"""
 
         cachefile = os.path.join(self._datadir, 'localization_trainset.json')
         if not os.path.exists(cachefile):
@@ -159,7 +163,8 @@ class Imagenet2012():
     
                 
 class Imagenet21K_Resized(vipy.dataset.Dataset):
-    """https://image-net.org/download-images.php, imagenet-21K 2021 release ("squish" resized)"""
+    """Imagenet21K_Resized requires login at https://image-net.org from the same IP address as the download, and agreeing to the ImageNet terms: https://image-net.org/download-images.php#term    
+       https://image-net.org/download-images.php, imagenet-21K 2021 release ("squish" resized)"""
     def __init__(self, datadir=None, aslemma=True, redownload=False, recache=False):
 
         datadir = tocache('imagenet21k_resized') if datadir is None else datadir
@@ -197,7 +202,7 @@ class Imagenet21K_Resized(vipy.dataset.Dataset):
         
 
 class Imagenet21K(vipy.dataset.Dataset):
-    """This requires login at https://image-net.org from the same IP address as the download, and agreeing to the ImageNet terms: https://image-net.org/download-images.php#term    
+    """Imagenet21K requires login at https://image-net.org from the same IP address as the download, and agreeing to the ImageNet terms: https://image-net.org/download-images.php#term    
        imagenet-21K 2021 winter release
     """
     def __init__(self, datadir=None, aslemma=True, redownload=False, recache=False):
@@ -247,6 +252,7 @@ class Imagenet21K(vipy.dataset.Dataset):
          
    
 class Imagenet2014_DET():
+    """Imagenet2014_DET requires login at https://image-net.org from the same IP address as the download, and agreeing to the ImageNet terms: https://image-net.org/download-images.php#term"""    
     def __init__(self, datadir=None, redownload=False, recache=False):    
         datadir = tocache('imagenet2014_det') if datadir is None else datadir
         
@@ -358,7 +364,6 @@ class Imagenet2014_DET():
                 return self.trainset()
             
         return vipy.dataset.Dataset(imlist, 'imagenet2014_det:valset')
-
 
 
     def testset(self):

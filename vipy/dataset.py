@@ -718,7 +718,7 @@ class Union(Dataset):
     
 
 
-def registry(name=None, datadir=None, freeze=True, clean=False, split=None):
+def registry(name=None, datadir=None, freeze=True, clean=False, split='train'):
     """Common entry point for loading datasets by name.
 
     Args:
@@ -726,7 +726,7 @@ def registry(name=None, datadir=None, freeze=True, clean=False, split=None):
        datadir [str]: A path to a directory to store data.  Defaults to environment variable VIPY_DATASET_REGISTRY_HOME (then VIPY_CACHE if not found).  Also uses HF_HOME for huggingface datasets.
        freeze [bool]:  If true, disable reference cycle counting for the loaded object (which will never contain cycles anyway) 
        clean [bool]: If true, force a redownload of the dataset to correct for partial download errors
-       split [str]: return 'train', 'val' or 'test' split
+       split [str]: return 'train', 'val' or 'test' split.  If None, return (trainset, valset, testset) tuple
     
     Datasets:
        'mnist','cifar10','cifar100','caltech101','caltech256','oxford_pets','sun397', 'food101','stanford_dogs',
@@ -737,7 +737,7 @@ def registry(name=None, datadir=None, freeze=True, clean=False, split=None):
        'imagenet_localization','laion2b','datacomp_1b','imagenet2014_det','imagenet_faces'
 
     Returns:
-       (trainset, valset, testset) tuple where each is a `vipy.dataset.Dataset` or None, or a single split if name has a ":SPLIT" suffix
+       (trainset, valset, testset) tuple where each is a `vipy.dataset.Dataset` or None, or a single split if name has a ":SPLIT" suffix or split kwarg provided
     """
     import vipy.data        
 

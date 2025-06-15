@@ -6,6 +6,7 @@ from vipy.object import Detection, Keypoint2d
 from vipy.util import tempjpg, temppng, tempdir, Failed
 from vipy.geometry import BoundingBox
 import PIL.Image
+import vipy.calibration
 
 
 # Common Parameters
