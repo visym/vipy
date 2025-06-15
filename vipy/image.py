@@ -1991,7 +1991,7 @@ class ImageCategory(Image):
         return self.set_attribute('category', c)
 
     def category(self):
-        return self.get_attribute('category')
+        return self.attributes['category'] if 'category' in self.attributes else None  # self.attributes.get('category') 
 
     def confidence(self):
         return self.get_attribute('confidence')        
@@ -2053,7 +2053,7 @@ class TaggedImage(Image):
                    array=np.array(d['array'], dtype=np.uint8) if 'array' in d and d['array'] is not None else None)
 
     def category(self):
-        return self.get_attribute('tags')[0] if self.hasattribute('tags') else None
+        return self.attributes['tags'][0] if 'tags' in self.attributes else None
 
     def confidence(self):
         return self.get_attribute('confidences')[self.category()] if self.hasattribute('confidences') and self.category() in self.attributes['confidences'] else None

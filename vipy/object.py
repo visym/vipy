@@ -18,7 +18,7 @@ class Object():
     __slots__ = ()
 
     def category(self):
-        return self.get_attribute('tags')[0] if self.has_attribute('tags') else None
+        return self.attributes['tags'][0] if 'tags' in self.attributes else None
 
     def new_category(self, category, confidence=None):
         return self.del_attribute('confidences').del_attribute('tags').add_tag(category, confidence)
@@ -48,7 +48,7 @@ class Object():
         return self
     
     def has_attribute(self, k):
-        return isinstance(self.attributes, dict) and k in self.attributes
+        return k in self.attributes
 
     def get_attribute(self, k):
         return self.attributes[k] if k in self.attributes else None
