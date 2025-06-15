@@ -362,6 +362,10 @@ def findtar(basedir):
     """Return a list of absolute paths to tar files recursively discovered by walking the directory tree rooted at basedir"""
     return [str(path.resolve()) for path in pathlib.Path(basedir).rglob('*.tar')]
 
+def findtargz(basedir):
+    """Return a list of absolute paths to .pkl.bz2 files recursively discovered by walking the directory tree rooted at basedir"""
+    return [str(path.resolve()) for path in pathlib.Path(basedir).rglob('*.tar.gz')]
+
 def findimage(basedir):
     """Return a list of absolute paths to image files recursively discovered by walking the directory tree rooted at basedir"""
     return [str(path.resolve()) for path in pathlib.Path(basedir).rglob('*') if isimage(str(path.resolve()))]
@@ -377,6 +381,10 @@ def findvideo(basedir):
 def findwebp(basedir):
     """Return a list of absolute paths to video files recursively discovered by walking the directory tree rooted at basedir"""
     return [str(path.resolve()) for path in pathlib.Path(basedir).rglob('*') if iswebp(str(path.resolve()))]
+
+def findxml(basedir):
+    """Return a list of absolute paths to video files recursively discovered by walking the directory tree rooted at basedir"""
+    return [str(path.resolve()) for path in pathlib.Path(basedir).rglob('*.xml')]
 
 def findvideos(basedir):
     """Alias for `vipy.util.findvideo`"""

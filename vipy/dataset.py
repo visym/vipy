@@ -87,8 +87,8 @@ class Dataset():
         """Recursively search indir for filetype, construct a dataset from all discovered files of that type"""
         if filetype == 'json':
             return cls([x for f in vipy.util.findjson(indir) for x in to_iterable(vipy.load(f))])
-        elif filetype == 'jpg':
-            return cls([vipy.image.Image(filename=f) for f in vipy.util.findjpeg(indir)])            
+        elif filetype.lower() in ['jpg','jpeg','images']:
+            return cls([vipy.image.Image(filename=f) for f in vipy.util.findimages(indir)])            
         else:
             raise ValueError('unsupported file type "%s"' % filetype)
 
@@ -718,7 +718,7 @@ class Union(Dataset):
     
 
 
-def registry(name=None, datadir=None, freeze=True, clean=False):
+def registry(name=None, datadir=None, freeze=True, clean=False, split=None):
     """Common entry point for loading datasets by name.
 
     Args:
@@ -726,14 +726,15 @@ def registry(name=None, datadir=None, freeze=True, clean=False):
        datadir [str]: A path to a directory to store data.  Defaults to environment variable VIPY_DATASET_REGISTRY_HOME (then VIPY_CACHE if not found).  Also uses HF_HOME for huggingface datasets.
        freeze [bool]:  If true, disable reference cycle counting for the loaded object (which will never contain cycles anyway) 
        clean [bool]: If true, force a redownload of the dataset to correct for partial download errors
-
+       split [str]: return 'train', 'val' or 'test' split
+    
     Datasets:
        'mnist','cifar10','cifar100','caltech101','caltech256','oxford_pets','sun397', 'food101','stanford_dogs',
        'flickr30k','oxford_fgvc_aircraft','oxford_flowers_102','eurosat','d2d','ethzshapes','coil100','kthactions',
        'yfcc100m','yfcc100m_url','tiny_imagenet','coyo300m','coyo700m','pascal_voc_2007','coco_2014', 'ava',
        'activitynet', 'openimages_v7', 'imagenet', 'imagenet21k', 'visualgenome' ,'widerface',
        'objectnet','lfw','inaturalist_2021','kinetics','hmdb','places365','ucf101','lvis'
-       'imagenet_localization','laion2b','datacomp_1b'
+       'imagenet_localization','laion2b','datacomp_1b','imagenet2014_det','imagenet_faces'
 
     Returns:
        (trainset, valset, testset) tuple where each is a `vipy.dataset.Dataset` or None, or a single split if name has a ":SPLIT" suffix
@@ -745,12 +746,12 @@ def registry(name=None, datadir=None, freeze=True, clean=False):
                 'yfcc100m','yfcc100m_url','tiny_imagenet','coyo300m','coyo700m','pascal_voc_2007','coco_2014', 'ava',
                 'activitynet','openimages_v7','imagenet','imagenet21k','visualgenome','widerface',
                 'objectnet','lfw','inaturalist_2021','kinetics','hmdb','places365','ucf101',
-                'lvis','imagenet_localization','laion2b','datacomp_1b']  # Add to docstring too...
+                'lvis','imagenet_localization','laion2b','datacomp_1b','imagenet2014_det','imagenet_faces']  # Add to docstring too...
     
     if name is None:
         return sorted(registry)
 
-    (name, split) = name.split(':',1) if name.count(':')>0 else (name, None)
+    (name, split) = name.split(':',1) if name.count(':')>0 else (name, split)
     if name not in registry:
         raise ValueError('unknown dataset "%s" - choose from "%s"' % (name, ', '.join(sorted(registry))))
     if split not in [None, 'train', 'test', 'val']:
@@ -827,6 +828,8 @@ def registry(name=None, datadir=None, freeze=True, clean=False):
     elif name == 'imagenet':
         imagenet = vipy.data.imagenet.Imagenet2012(namedir)
         (trainset, valset) = (imagenet.classification_trainset(), imagenet.classification_valset())
+    elif name == 'imagenet_faces':
+        trainset = vipy.data.imagenet.Imagenet2012(Path(datadir)/'imagenet').faces()
     elif name == 'imagenet21k':
         trainset = vipy.data.imagenet.Imagenet21K(namedir)
     elif name == 'visualgenome':
@@ -857,6 +860,9 @@ def registry(name=None, datadir=None, freeze=True, clean=False):
         (trainset, valset) = (lvis.trainset(), lvis.valset())
     elif name == 'imagenet_localization':
         trainset = vipy.data.imagenet.Imagenet2012(Path(datadir)/'imagenet').localization_trainset()
+    elif name == 'imagenet2014_det':
+        imagenet2014_det = vipy.data.imagenet.Imagenet2014_DET(namedir)
+        (trainset, valset, testset) = (imagenet2014_det.trainset(), imagenet2014_det.valset(), imagenet2014_det.testset())
     elif name == 'laion2b':
         trainset = vipy.data.hf.laion2b()
     else:
