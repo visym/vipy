@@ -48,10 +48,15 @@ def open_images_v7(datadir=None):
     d_train_url_to_category = {r[2]:[d_label_to_category[c] for c in d_train_imageid_to_labels[r[0]]]
                                for r in vipy.util.readcsv(os.path.join(labeldir, 'oidv6-train-images-with-labels-with-rotation.csv'), ignoreheader=True) if r[0] in d_train_imageid_to_labels}
 
-    trainset = [(d_train_imageid_to_url[iid], [(d_label_to_object_category[o[1]], (o[2],o[3],o[4],o[5])) for o in obj if o[1] in d_label_to_object_category])
-                for (iid, obj) in d_train_imageid_to_objects.items()]  # [(url, [(category, ulbr),...]), ...]
-    
+    #trainset = [(d_train_imageid_to_url[iid], [(d_label_to_object_category[o[1]], (o[2],o[3],o[4],o[5])) for o in obj if o[1] in d_label_to_object_category])
+    #            for (iid, obj) in d_train_imageid_to_objects.items()]  # [(url, [(category, ulbr),...]), ...]    
     #loader = lambda r: vipy.image.Scene(url=r[0], tags=d_train_url_to_category[r[0]], objects=[vipy.object.Detection(category=c, ulbr=ulbr, normalized_coordinates=True) for (c,ulbr) in r[1]])
-    imlist = [vipy.image.Scene(url=url, tags=d_train_url_to_category[url], objects=[vipy.object.Detection(category=c, ulbr=ulbr, normalized_coordinates=True) for (c,ulbr) in objects]) for (url, objects) in trainset]
+    #return vipy.dataset.Dataset(trainset, id='open_images_v7', loader=loader)
+    
+    imlist = [vipy.image.Scene(url=d_train_imageid_to_url[iid],
+                               tags=d_train_url_to_category[d_train_imageid_to_url[iid]],
+                               objects=[vipy.object.Detection(category=d_label_to_object_category[o[1]], ulbr=(o[2],o[3],o[4],o[5]), normalized_coordinates=True) for o in obj if o[1] in d_label_to_object_category])
+              for (iid, obj) in d_train_imageid_to_objects.items()]  
+    
     return vipy.dataset.Dataset(imlist, id='open_images_v7')
 

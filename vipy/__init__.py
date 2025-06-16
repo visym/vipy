@@ -521,7 +521,7 @@ import vipy.object
 import vipy.util
 import vipy.version
 import vipy.video
-#import vipy.videosearch
+import vipy.videosearch
 import vipy.visualize
 import vipy.dataset
 

@@ -1,6 +1,6 @@
 import os
 import vipy.downloader
-import vipy.dataset
+from vipy.dataset import Dataset
 from vipy.util import remkdir, tocache
 from vipy.image import ImageCategory
 
@@ -9,7 +9,7 @@ URL = 'https://data.caltech.edu/records/nyy15-4j048/files/256_ObjectCategories.t
 SHA1 = '2195e9a478cf78bd23a1fe51f4dabe1c33744a1c'
 
 
-class Caltech256(vipy.dataset.Dataset):
+class Caltech256(Dataset):
     """Caltech-256 dataset: https://data.caltech.edu/records/nyy15-4j048"""
     def __init__(self, datadir=None, redownload=False):
         datadir = tocache('caltech256') if datadir is None else datadir

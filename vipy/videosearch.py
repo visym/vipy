@@ -137,12 +137,12 @@ def download(vidurl, vidfile, skip=False, writeurlfile=True, max_filesize='9999m
     if not has_youtube_dl:
         raise ImportError('Optional package "yt-dlp" not installed -  Run "pip install yt-dlp"')
     try:
-        log.info('[vipy.videosearch.download]: saving "%s" to "%s"' % (vidurl, vidfile))
+        log.info('saving "%s" to "%s"' % (vidurl, vidfile))
         for f in glob.glob("%s*" % vidfile):
             os.remove(f)  # yt-dlp will not overwrite, so we force it
         cmd = '%s %s "%s" -o "%s" --no-check-certificate --max-filesize="%s" --user-agent="%s"' % (youtube_dl_exe, '-q' if not verbose else '', vidurl, vidfile, max_filesize, user_agent)  # must be on path            
         if verbose:
-            log.info('[vipy.videosearch.download]: executing \'%s\'' % cmd)
+            log.info('executing \'%s\'' % cmd)
         erno = os.system(cmd)
         if erno != 0:
             raise ValueError('yt-dlp returned %d' % erno)
@@ -153,13 +153,13 @@ def download(vidurl, vidfile, skip=False, writeurlfile=True, max_filesize='9999m
                     f.write(vidurl + '\n')
         if remove_parts and os.path.isfile(vidfile + '.part'):
             partfile = vidfile + '.part'
-            log.info('[vipy.youtube.download]: removing partial file: %s' % partfile)
+            log.info('removing partial file: %s' % partfile)
             os.remove(partfile)
     except KeyboardInterrupt:
         raise
     except Exception as exception:
         log.warning(exception)
-        log.warning('[vipy.videosearch.download]: download failed - skipping')
+        log.warning('download failed')
         return None
 
     if erno == 256:

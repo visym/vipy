@@ -113,7 +113,7 @@ class Detection(BoundingBox, Object):
     @classmethod
     def cast(cls, d):
         assert isinstance(d, BoundingBox)
-        return cls(xywh=d.xywh())
+        return d if isinstance(d, Detection) else cls(xywh=d.xywh())
 
     def downcast(self):
         return BoundingBox(xywh=self.xywh())
@@ -527,7 +527,7 @@ class Track():
         if len(self._keyboxes) == 1:
             return Detection.cast(self._keyboxes[0].clone()).new_category(self.category()).set_attribute('__trackid', self.id()) if (self._boundary == 'extend' or self.during(f)) else None
         if f in self._keyframes:            
-            return Detection.cast(self._keyboxes[self._keyframes.index(f)]).new_category(self.category()).set_attribute('__trackid', self.id())  # by reference, do not clone
+            return Detection.cast(self._keyboxes[self._keyframes.index(f)].clone()).new_category(self.category()).set_attribute('__trackid', self.id())  # clone requuired to not pollute attributes
 
         kf = self._keyframes
         ft = min(max(f, kf[0]), kf[-1])  # truncated frame index

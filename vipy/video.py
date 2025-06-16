@@ -2888,8 +2888,8 @@ class Scene(Video):
                 
             # For display purposes
             # - Double prepended underscore attributes are private and cleaned using `vipy.image.Image.sanitize`
-            d.attributes['__track_category'] = [j[0] for j in jointlabel]
-            d.attributes['__activity_category'] = [j[1] for j in jointlabel]
+            d.attributes['__track_category'] = [str(j[0]) for j in jointlabel]
+            d.attributes['__activity_category'] = [str(j[1]) for j in jointlabel]
             d.attributes['__activity_conf'] = activityconf
         dets.sort(key=lambda d: (d.confidence() if d.confidence() is not None else 0, d.category()))   # layering in video is ordered by decreasing track confidence and alphabetical shortlabel
         return vipy.image.Scene(array=img, colorspace=self.colorspace(), objects=dets, category=self.category())  
