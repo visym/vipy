@@ -194,15 +194,10 @@ class Dataset():
         return self._shuffler
 
     
-    def clone(self, shallow=False):
+    def clone(self, deep=False):
         """Return a copy of the dataset object"""
-        if shallow:
-            (idx, ds) = (self._idx, self._ds)
-            (self._idx, self._ds) = (None, None)  # remove
-            D = copy.copy(self) 
-            (self._idx, self._ds) = (idx, ds)   # restore            
-            (D._idx, D._ds)  = (idx, ds)  # shared index/object reference
-            return D
+        if not deep:
+            return copy.copy(self) 
         else:
             return copy.deepcopy(self)
     
@@ -255,23 +250,23 @@ class Dataset():
     def filter(self, f):
         """In place filter with lambda function f, keeping those elements obj in-place where f(obj) evaluates true.  Callable should return bool"""
         assert callable(f)
-        return self.index( [i for (b,i) in zip(self.map(f, ordered=True), self.index()) if b] )
+        return self.index( [i for (b,i) in zip(self.localmap(f), self.index()) if b] )
     
     def take(self, n, inplace=False):
         """Randomly Take n elements from the dataset, and return a dataset (in-place or cloned)."""
         assert isinstance(n, int) and n>0
-        D = self.clone(shallow=True) if not inplace else self
-        return D.index( list(random.sample(range(0, len(self)), n)) )  # do not run loader, seed controlled by random.seed()
+        D = self.clone() if not inplace else self
+        return D.index( list(random.sample(D.index(), n)) ) 
 
 
     def groupby(self, f):
         """Group the dataset according to the callable f, returning dictionary of grouped datasets."""
         assert callable(f)        
-        return {k:self.clone(shallow=True).index([x[1] for x in v]).id('%s:%s' % (self.id(),str(k))) for (k,v) in itertools.groupby(enumerate(self.sort(f).index()), lambda x: f(self[x[0]]))}
+        return {k:self.clone().index([x[1] for x in v]).id('%s:%s' % (self.id(),str(k))) for (k,v) in itertools.groupby(enumerate(self.sort(f).index()), lambda x: f(self[x[0]]))}
 
     def takeby(self, f, n):
         """Filter the dataset according to the callable f, take n from each group and return a dataset.  Callable should return bool"""
-        return self.clone(shallow=True).filter(f).take(n)
+        return self.clone().filter(f).take(n)
 
     def takelist(self, n):
         """Take n elements and return list.  The elements are loaded and not cloned."""
@@ -298,10 +293,7 @@ class Dataset():
     
     def load(self):
         """Cache the entire dataset into memory"""
-        self._ds = [x for x in self]
-        self._idx = None
-        self._loader = None
-        return self
+        return Dataset([x for x in self], id=self.id())
     
     def chunk(self, n):
         """Yield n chunks as list.  Last chunk will be ragged."""
@@ -354,11 +346,11 @@ class Dataset():
                         
     def shift(self, m):
         """Circular shift the dataset m elements to the left, so that self[k+m] == self.shift(m)[k].  Circular shift for boundary handling so that self.shift(m)[-1] == self[m-1]"""
-        return self.clone(shallow=True).index(self.index()[m:] + self.index()[0:m])
+        return self.clone().index(self.index()[m:] + self.index()[0:m])
 
     def slice(self, start=0, stop=-1, step=1):
         """Slice the dataset to contain elements defined by slice(start, stop, step)"""
-        return self.clone(shallow=True).index(self.index()[start:stop:step])
+        return self.clone().index(self.index()[start:stop:step])
         
     def truncate(self, m):
         """Truncate the dataset to contain the first m elements only"""
@@ -413,7 +405,7 @@ class Dataset():
         i = 0
         datasets = []
         for n in sizes:
-            datasets.append(self.clone(shallow=True).index(self.index()[i:i+n]))
+            datasets.append(self.clone().index(self.index()[i:i+n]))
             i += n
         return datasets
         
@@ -442,15 +434,15 @@ class Dataset():
         idx = self.index()
         (testidx, validx, trainidx) = vipy.util.dividelist(idx, (testfraction, valfraction, trainfraction))
             
-        trainset = self.clone(shallow=True).index(trainidx)
+        trainset = self.clone().index(trainidx)
         if trainsuffix and trainset.id():
             trainset.id(trainset.id() + trainsuffix)
         
-        valset = self.clone(shallow=True).index(validx)
+        valset = self.clone().index(validx)
         if valsuffix and valset.id():
             valset.id(valset.id() + valsuffix)
         
-        testset = self.clone(shallow=True).index(testidx)
+        testset = self.clone().index(testidx)
         if testsuffix and testset.id():
             testset.id(testset.id() + testsuffix)
                 
@@ -560,7 +552,7 @@ class Dataset():
         return D.index(idx)
 
     @staticmethod
-    def uniform_shuffler_streaming(D):
+    def streaming_shuffler(D):
         """A uniform shuffle (approximation) on the dataset elements for iterable access only"""
         assert D._idx is None, "streaming only"
         
@@ -656,7 +648,7 @@ class Union(Dataset):
     
         >>> trainset = vipy.dataset.registry('cifar10:train')
         >>> vipy.dataset.Union(trainset, 'cifar100:train')
-
+    
     Args:
         Datasets or Dataset registry names
 
@@ -668,6 +660,7 @@ class Union(Dataset):
         
         registry = [d for d in args if not isinstance(d, Dataset)]
         if len(registry) > 0:
+            assert all(r.startswith(vipy.dataset.registry()) for r in registry)
             with cf.ThreadPoolExecutor(max_workers=len(registry)) as executor:  # thread parallel, io-bound
                 registry = {k:v for (k,v) in zip(registry, executor.map(vipy.dataset.registry, registry))}
 
@@ -676,21 +669,44 @@ class Union(Dataset):
 
         datasets = [j for i in datasets for j in (i.datasets() if isinstance(i, Union) else (i,))]  # flatten unions        
         self._ds = datasets
-        if 'index' in kwargs:
-            self._idx = kwargs['index']
-        else:
-            self._idx = [(i,j) for j in range(max([len(d) for d in datasets])) for (i,d) in enumerate(datasets) if j<len(d)]  # zipped (dataset index, element index) tuples 
+        self._idx = None
         self._id = kwargs['id'] if 'id' in kwargs else None
 
         self._loader = None  # individual datasets have loaders
         self._shuffler = kwargs['shuffler'] if 'shuffler' in kwargs else None
         self._type = None
-        
-    def __iter__(self):
-        for (i,j) in self._idx:
-            yield self._ds[i][j]
+
+    def is_streaming(self):
+        return self._idx is None and all(d.is_streaming() for d in self.datasets())
+
+    def __len__(self):
+        return sum(d.__len__() for d in self.datasets()) if self._idx is None else len(self._idx)
+    
+    def __iter__(self, mapper=None, accepter=None):
+        if self.is_streaming():
+            k = -1
+            m = len(self.datasets())
+            iter = [d.__iter__(mapper, accepter) for d in self.datasets()]  # round-robin
+            while m > 0:
+                k = (k + 1) % len(iter)                                    
+                try:
+                    yield next(iter[k])  # assumes ordered
+                except StopIteration:
+                    iter.pop(k)
+                    k -= 1
+                    m -= 1
+
+            
+        else:
+            self.index()  # force random access                    
+            for (i,j) in self._idx:
+                x = self._ds[i][j]  # random access (slower)                
+                x = mapper(x) if mapper is not None else x
+                if accepter is None or accepter(x):
+                    yield x                  
 
     def __getitem__(self, k):
+        self.index()  # force random access        
         if isinstance(k, (int, np.uint64)):
             assert abs(k) < len(self._idx), "invalid index"
             (i,j) = self._idx[int(k)]            
@@ -705,24 +721,50 @@ class Union(Dataset):
         fields += ['len=%d' % len(self)]
         fields += ['union=%s' % str(tuple([d.id(truncated=True, maxlen=80) for d in self._ds]))]
         return str('<vipy.dataset.Dataset: %s>' % (', '.join(fields)))
-        
-    def clone(self, shallow=False):
+
+    def index(self, index=None, strict=False):
+        """Update the index, useful for filtering of large datasets"""
+        if index is not None:
+            self._idx = index
+            return self
+        if self._idx is None:
+            # Index on-demand: zipped (dataset index, element index) tuples, in round-robin dataset order [(0,0),(1,0),...,(0,n),(1,n),...]            
+            lengths = [len(d) for d in self.datasets()]            
+            self._idx = vipy.util.flatlist(zip(*zip(*[[(i,j) for i in range(len(self.datasets()))] for j in range(max(lengths))])))   
+            self._idx = [(i,j) for (i,j) in self._idx if j<lengths[i]]
+        return self._idx
+    
+    def clone(self, deep=False):
         """Return a copy of the dataset object"""
-        D = super().clone(shallow=shallow)
-        D._ds =  [d.clone(shallow=shallow) for d in D._ds]
+        D = super().clone(deep=deep)
+        D._ds =  [d.clone(deep=deep) for d in D._ds]
         return D
     
     def datasets(self):
         """Return the dataset union elements, useful for generating unions of unions"""
         return list(self._ds)
-    
 
+    @staticmethod
+    def streaming_shuffler(D):
+        """A uniform shuffle (approximation) on the dataset elements for iterable access only"""
+        assert D._idx is None, "iterable dataset only"
+        D._ds = [Dataset.streaming_shuffler(d) for d in D._ds]  # shuffle dataset shards
+        random.shuffle(D._ds)  # shuffle union order
+        return D
+    
 
 def registry(name=None, datadir=None, freeze=True, clean=False, split='train'):
     """Common entry point for loading datasets by name.
 
+    Usage:
+    
+        >>> trainset = vipy.dataset.registry('cifar10', split='train')             # return a training split
+        >>> valset = vipy.dataset.registry('cifar10:val', datadir='/tmp/cifar10')  # download to a custom location
+        >>> datasets = vipy.dataset.registry(('cifar10:train','cifar100:train'))   # return a union
+        >>> vipy.dataest.registry()                                                # print allowable datasets
+
     Args:
-       name [str]: The string name for the dataset.  If None, return the list of registered datasets.  Append name:train, name:val, name:test to output the requested split
+       name [str]: The string name for the dataset.  If tuple, return a `vipy.dataset.Union`.  If None, return the list of registered datasets.  Append name:train, name:val, name:test to output the requested split, or use the split keyword.
        datadir [str]: A path to a directory to store data.  Defaults to environment variable VIPY_DATASET_REGISTRY_HOME (then VIPY_CACHE if not found).  Also uses HF_HOME for huggingface datasets.
        freeze [bool]:  If true, disable reference cycle counting for the loaded object (which will never contain cycles anyway) 
        clean [bool]: If true, force a redownload of the dataset to correct for partial download errors
@@ -749,8 +791,10 @@ def registry(name=None, datadir=None, freeze=True, clean=False, split='train'):
                 'lvis','imagenet_localization','laion2b','datacomp_1b','imagenet2014_det','imagenet_faces']  # Add to docstring too...
     
     if name is None:
-        return sorted(registry)
-
+        return tuple(sorted(registry))
+    if isinstance(name, (tuple, list)):
+        return vipy.dataset.Union(*name)
+    
     (name, split) = name.split(':',1) if name.count(':')>0 else (name, split)
     if name not in registry:
         raise ValueError('unknown dataset "%s" - choose from "%s"' % (name, ', '.join(sorted(registry))))

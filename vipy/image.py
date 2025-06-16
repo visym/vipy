@@ -1769,7 +1769,7 @@ class Image():
     def annotate(self, timestamp=None, mutator=None, theme='dark'):
         """Change pixels of this image to include rendered annotation and return an image object"""
         # FIXME: for k in range(0,10): self.annotate().show(figure=k), this will result in cumulative figures
-        return self.array(self.savefig(timestamp=timestamp, theme=theme, mutator=mutator).rgb().array()).downcast()
+        return vipy.image.Image(array=self.savefig(timestamp=timestamp, theme=theme, mutator=mutator).rgb().array(), colorspace='rgb')
 
     def savefig(self, filename=None, figure=1, timestamp=None, theme='dark', mutator=None):
         """Save last figure output from self.show() with drawing overlays to provided filename and return filename"""
@@ -2034,12 +2034,6 @@ class TaggedImage(Image):
         fields +=  ['tags=%s' % truncate_string(str(self.tags()), 40)] if len(self.tags())>1 else []
         return super().__repr__().replace('vipy.image.Image', 'vipy.image.TaggedImage').replace('>', ', %s>' % ', '.join(fields))
         
-    @classmethod
-    def cast(cls, im):
-        assert isinstance(im, vipy.image.Image)
-        im.__class__ = vipy.image.TaggedImage
-        im.del_attribute('tags')
-        return im
 
     @classmethod
     def from_json(cls, s):
@@ -2159,7 +2153,8 @@ class Scene(TaggedImage):
         d = {k.lstrip('_'):v for (k,v) in (json.loads(s) if not isinstance(s, dict) else s).items()}  # prettyjson (remove "_" prefix to attributes)
         if 'objectlist' in d and isinstance(d['objectlist'], dict):
             # Version 1.15.1: expanded serialization to support multiple object types
-            im._objectlist = [vipy.object.Detection.from_json(s) for s in d['objectlist']['Detection']] + [vipy.object.Keypoint2d.from_json(s) for s in d['objectlist']['Keypoint2d']]
+            im._objectlist = [vipy.object.Detection.from_json(s) for s in d['objectlist']['Detection']] if 'Detection' in  d['objectlist'] else []
+            im._objectlist += [vipy.object.Keypoint2d.from_json(s) for s in d['objectlist']['Keypoint2d']] if 'Keypoint2d' in  d['objectlist'] else []
         else:
             # Legacy support: 1.14.4
             im._objectlist = [vipy.object.Detection.from_json(s) for s in d['objectlist']]            
@@ -2176,6 +2171,9 @@ class Scene(TaggedImage):
         d = {k.lstrip('_'):getattr(self, k) for k in Scene.__slots__ if getattr(self, k) is not None}  # prettyjson (remove "_" prefix to attributes)          
         d['objectlist'] = {'Detection': [bb.json(encode=False) for bb in self._objectlist if isinstance(bb, vipy.object.Detection)],
                            'Keypoint2d': [p.json(encode=False) for p in self._objectlist if isinstance(p, vipy.object.Keypoint2d)]}
+        d['objectlist'] = {k:v for (k,v) in  d['objectlist'].items() if len(v) > 0}  # cleanup empty lists
+        if 'attributes' in d and len(d['attributes'])==0:  # cleanup empty attributes
+            del d['attributes']  # will be recreated in from_json
         if 'array' in d and d['array'] is not None:
             d['array'] = self._array.tolist()        
         return json.dumps(d) if encode else d
