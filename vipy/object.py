@@ -3,7 +3,6 @@ from vipy.geometry import BoundingBox, Point2d
 from vipy.util import isstring, tolist, chunklistwithoverlap, try_import, Timer, truncate_string, shortuuid, to_iterable
 import uuid
 import copy
-import warnings
 from itertools import islice
 from vipy.globals import log
 from itertools import zip_longest
@@ -108,7 +107,7 @@ class Detection(BoundingBox, Object):
                 self.add_tag(t)
 
         if normalized_coordinates:
-            self.set_attribute('normalized_coordinates', True)
+            self.attributes['normalized_coordinates'] = True
             
     @classmethod
     def cast(cls, d):
@@ -304,7 +303,7 @@ class Track():
             self._keyframes = list(keyframes)
             self._keyboxes = list(boxes)
             if len(self) == 0:
-                warnings.warn('vipy.object.Track - filtering invalid boxes with filterbox=True resulted in zero length track for track ID %s' % str(self.id()))            
+                log.warning('vipy.object.Track - filtering invalid boxes with filterbox=True resulted in zero length track for track ID %s' % str(self.id()))            
             
     @classmethod
     def from_json(cls, s):
@@ -354,6 +353,9 @@ class Track():
     def isempty(self):
         return self.__len__() == 0
 
+    def has_normalized_coordinates(self):
+        return all(isinstance(bb, Detection) and bb.has_normalized_coordinates() for bb in self.keyboxes())
+    
     def confidence(self, last=None, samples=None):
         """The confidence of a track is the mean confidence of all (or just last=last frames, or samples=samples uniformly spaced) keyboxes (if confidences are available) else 0"""
         if samples is not None:

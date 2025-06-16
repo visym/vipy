@@ -510,7 +510,7 @@ class Video():
         assert (startsec is not None and endsec is not None) or (startsec is None and endsec is None), "Invalid input - (startsec,endsec) are both required"        
         (self._start, self._end) = (None, None)  # __repr__ only
 
-        # Input filenames
+        # Input sources
         if url is not None:
             assert isurl(url), 'Invalid URL "%s" ' % url
             self._url = url
@@ -534,7 +534,6 @@ class Video():
             if vipy.globals.cache() is not None and self._filename is not None and not self.isstreaming():
                 self._filename = os.path.join(remkdir(vipy.globals.cache()), filetail(self._filename))
 
-        # Initial video shape: useful to avoid preview()
         if not self.isstreaming():
             self._ffmpeg = ffmpeg.input(self.filename())
         elif isRTSPurl(url):
@@ -542,7 +541,8 @@ class Video():
         elif isRTMPurl(url):
             rtmp = urlparse(url)  # rtmp://HOST:PORT/PATH?listen
             self._ffmpeg = ffmpeg.input(urlunparse( (rtmp.scheme,rtmp.netloc,rtmp.path,None,None,None) ), listen='1') if 'listen' in rtmp.query else ffmpeg.input(self.filename())
-            
+
+        # Initial video shape: useful to avoid preview() (if known)            
         if probeshape and (frames is None and array is None) and has_ffprobe and self.hasfilename():
             self.shape(self.probeshape())
         elif shape is not None:
@@ -600,6 +600,7 @@ class Video():
 
         """        
         d = json.loads(s) if not isinstance(s, dict) else s
+        d = {k.lstrip('_'):v for (k,v) in d.items()}  # legacy json support
         v = cls(filename=d['filename'],
                 url=d['url'],
                 framerate=d['framerate'],
@@ -1170,11 +1171,12 @@ class Video():
         dt = int(np.round(len(self._array) / float(n)))  # stride
         return self._array[::dt][0:n]
 
-    def framerate(self, fps=None):
+    def framerate(self, fps=None, replace=True):
         """Change the input framerate for the video and update frame indexes for all annotations
 
         Args:
             fps: [Float] frames per second to process the underlying video
+            replace: [bool]  If true, replace the framerate in the filter chain so that there is one framerate in the filter chain.. If false, append framerate conversions in the filter chain
 
         Returns:
             If fps is None, return the current framerate, otherwise set the framerate to fps
@@ -1187,8 +1189,8 @@ class Video():
         elif float(fps) == self._framerate:
             return self
         else:            
-            assert not self.isloaded(), "Filters can only be applied prior to load()"
-            if 'fps=' in self._ffmpeg_commandline():
+            assert not self.isloaded(), "framerate can only be set prior to load()"
+            if replace and self._framerate is not None and 'fps=' in self._ffmpeg_commandline():
                 self._update_ffmpeg('fps', float(fps))  # replace fps filter, do not add to it
             else:
                 self._ffmpeg = self._ffmpeg.filter('fps', fps=float(fps), round='up')  # create fps filter first time
@@ -1200,7 +1202,7 @@ class Video():
 
             self._framerate = float(fps)
             return self
-            
+
     def colorspace(self, colorspace=None):
         """Return or set the colorspace as ['rgb', 'bgr', 'lum', 'float'].  This will not change pixels, only the colorspace interpretation of pixels."""
         if colorspace is None:
@@ -1749,8 +1751,7 @@ class Video():
         #    -On some versions of ffmpeg setting -cpuflags=0 fixes it, but the right solution is to rebuild from the head (30APR20)
         if verbose:
             log.info('[vipy.video.load]: Loading "%s"' % self.filename())                    
-        try:
-            
+        try:            
             f_prepipe = copy.deepcopy(self._ffmpeg)
             f = self._ffmpeg.output('pipe:', format='rawvideo', pix_fmt='rgb24')\
                             .global_args('-cpuflags', '0', '-loglevel', 'debug' if vipy.globals.GLOBAL['DEBUG'] else 'quiet')
@@ -1831,7 +1832,7 @@ class Video():
         
         if not self.isloaded() and isinstance(start, int):
             assert self.framerate() is not None, "framerate required"
-            timestamp_in_seconds = ((self._start if self._start is not None else 0)+start)/float(self.framerate())            
+            timestamp_in_seconds = ((self._start if self._start is not None else 0)+start-1)/float(self.framerate())  # seek to frame before
             self._update_ffmpeg_seek(timestamp_in_seconds)
             if end is not None:
                 self._ffmpeg = self._ffmpeg.setpts('PTS-STARTPTS')  # reset timestamp to 0 before trim filter            
@@ -1841,7 +1842,7 @@ class Video():
             self._end = (self._start + (end-start)) if end is not None else end # for __repr__ only
         elif not self.isloaded() and isinstance(start, float):
             assert self._start is None or isinstance(self._start, float), "timestamp must be in seconds"
-            timestamp_in_seconds = (self._start if self._start is not None else 0)+start
+            timestamp_in_seconds = (self._start if self._start is not None else 0)+start-(1/self.framerate())  # seek to frame before
             self._update_ffmpeg_seek(timestamp_in_seconds)
             if end is not None:
                 self._ffmpeg = self._ffmpeg.setpts('PTS-STARTPTS')  # reset timestamp to 0 before trim filter            
@@ -3418,7 +3419,7 @@ class Scene(Video):
         return writecsv(csv, outfile) if outfile is not None else csv
 
 
-    def framerate(self, fps=None):
+    def framerate(self, fps=None, replace=True):
         """Return the current frame rate of change the input framerate for the video and update frame indexes for all annotations.
 
         The framerate may be None in the constructor if the framerate is not know until a video is downloaded
@@ -3432,6 +3433,10 @@ class Scene(Video):
         fps = self.framerate()
         self.framerate(fps=15.0)
         ```
+
+        Args:
+            fps [float]: the new frames per second
+            replace [bool]: If trye, replace the fps in the filter chain, if false append the fps in the filter chain
 
         """        
         if fps is None:
@@ -3452,7 +3457,7 @@ class Scene(Video):
             elif self._end is not None and isinstnace(self._end, float):
                 self._end = self._end * (fps/self._framerate)  # __repr__ only
                 
-            if 'fps=' in self._ffmpeg_commandline():
+            if replace and 'fps=' in self._ffmpeg_commandline():
                 self._update_ffmpeg('fps', fps)  # replace fps filter, do not add to it
             else:
                 self._ffmpeg = self._ffmpeg.filter('fps', fps=fps, round='up')  # create fps filter first time
@@ -3728,7 +3733,7 @@ class Scene(Video):
             # -- This code copy is used to avoid super(Scene, self.clone()) which screws up class inheritance for iPython reload
             assert not v.isloaded(), "Filters can only be applied prior to load() - Try calling flush() first"
             assert v._start is None or isinstance(v._start, int), "clip start must be in frames"
-            timestamp_in_seconds = ((v._start if v._start is not None else 0)+start)/float(v.framerate())
+            timestamp_in_seconds = ((v._start if v._start is not None else 0)+start-1)/float(v.framerate())  # seek to frame before
             v._update_ffmpeg_seek(timestamp_in_seconds)
             if end is not None:
                 v._ffmpeg = v._ffmpeg.setpts('PTS-STARTPTS')  # reset timestamp to 0 before trim filter            
@@ -3742,7 +3747,7 @@ class Scene(Video):
             # -- This code copy is used to avoid super(Scene, self.clone()) which screws up class inheritance for iPython reload
             assert not v.isloaded(), "Filters can only be applied prior to load() - Try calling flush() first"
             assert v._start is None or isinstance(v._start, float), "clip start must be in seconds"
-            timestamp_in_seconds = (v._start if v._start is not None else 0)+start
+            timestamp_in_seconds = (v._start if v._start is not None else 0)+start-(1/self.framerate())  # seek to frame before
             v._update_ffmpeg_seek(timestamp_in_seconds)
             if end is not None:
                 v._ffmpeg = v._ffmpeg.setpts('PTS-STARTPTS')  # reset timestamp to 0 before trim filter            
@@ -3818,14 +3823,16 @@ class Scene(Video):
         assert not (rows is not None and height is not None)  # cannot be both
         assert not (cols is not None and width is not None)   # cannot be both
         rows = rows if rows is not None else height
-        cols = cols if cols is not None else width        
-        
+        cols = cols if cols is not None else width                
         assert rows is not None or cols is not None, "Invalid input"
-        (H,W) = self.shape()  # yuck, need to get image dimensions before filter, manually set this prior to calling resize if known
-        sy = rows / float(H) if rows is not None else cols / float(W)
-        sx = cols / float(W) if cols is not None else rows / float(H)
-        self._tracks = {k:t.scale_x(sx) for (k,t) in self.tracks().items()}
-        self._tracks = {k:t.scale_y(sy) for (k,t) in self.tracks().items()}
+        
+        if not all(t.has_normalized_coordinates() for t in self.tracklist()):
+            (H,W) = self.shape()  # yuck, need to get image dimensions before filter, manually set this prior to calling resize if known
+            sy = rows / float(H) if rows is not None else cols / float(W)
+            sx = cols / float(W) if cols is not None else rows / float(H)
+            self._tracks = {k:t.scale_x(sx) if not t.has_normalized_coordinates() else t for (k,t) in self.tracks().items()}
+            self._tracks = {k:t.scale_y(sy) if not t.has_normalized_coordinates() else t for (k,t) in self.tracks().items()}
+            
         super().resize(rows=rows, cols=cols)        
         return self
 
@@ -3846,8 +3853,8 @@ class Scene(Video):
         Args:
             s: [float] Scale factor > 0 to isotropically scale the image.
         """
-        assert s == 1 or not self.isloaded(), "Filters can only be applied prior to load() - Try calling flush() first"                
-        self._tracks = {k:t.rescale(s) for (k,t) in self.tracks().items()}
+        assert s == 1 or not self.isloaded(), "Filters can only be applied prior to load() - Try calling flush() first"
+        self._tracks = {k:t.rescale(s) if not t.has_normalized_coordinates() else t for (k,t) in self.tracks().items()}
         super().rescale(s)
         return self
 

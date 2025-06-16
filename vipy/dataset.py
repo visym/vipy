@@ -778,7 +778,7 @@ def registry(name=None, datadir=None, freeze=True, clean=False, download=False, 
         assert all(n.startswith(datasets) for n in name)
         assert split is not None or all(':' in n for n in name)
         if threaded:
-            with cf.ThreadPoolExecutor(max_workers=len(name)) as executor:  # thread parallel, io-bound
+            with cf.ThreadPoolExecutor(max_workers=len(name)) as executor:  # thread parallel, io-bound workloads
                 return Union(*(v for v in executor.map(lambda n: registry(n, datadir=datadir, freeze=freeze, clean=clean, download=download, split=split), name)))
         else:
             return Union(*(registry(n, datadir=datadir, freeze=freeze, clean=clean, download=download, split=split) for n in name))    

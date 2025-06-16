@@ -15,14 +15,19 @@ class YoutubeBB(Dataset):
 
     Usage:
 
+    To show the clips centered on a track at 30Hz
     >>> dataset = vipy.data.youtubeBB.YoutubeBB()
-    >>> v = dataset[0].download()
+    >>> v = dataset.takeone().download()
     >>> for t in v.trackclip():
     >>>     t.show()
 
     To change the framerate to match the 1Hz annotation keyframes:
     >>> dataset = dataset.localmap(lambda v: v.framerate(1))
 
+    To extract the first annotated keyframe at 1Hz:
+    >>> im = dataset.takeone().framerate(1).frame(0)
+    >>> im.show()
+    
     """
     def __init__(self, datadir=None, redownload=False):
         datadir = tocache('youtubeBB') if datadir is None else datadir
