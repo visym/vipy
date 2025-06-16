@@ -58,9 +58,9 @@ class YoutubeBB(Dataset):
         #ymax - (float) a [0.0, 1.0] number indicating the bottom-most location of the bounding box in coordinates relative to the frame size.
 
         # Notes:
-        # (xmin, ymin, xmax, ymax) = (-1,-1,-1,-1) if object_presence == 'absent'
-        # All framerates are defined relative to 30Hz videos
-        # Keyframes are sampled once every second.  Linear interpolation of boxes may be noisy.  
+        # - (xmin, ymin, xmax, ymax) = (-1,-1,-1,-1) if object_presence == 'absent'
+        # - All framerates are defined relative to 30Hz videos
+        # - Keyframes are sampled once every second.  Linear interpolation of boxes may be noisy.  
         
         youtubeids = list(set([x[0] for x in csv]))
         d_youtubeid_to_objectids = {k:set(x[4] for x in v) for (k,v) in groupbyasdict(csv, lambda x: x[0]).items()}

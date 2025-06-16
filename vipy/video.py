@@ -24,7 +24,6 @@ from collections.abc import ValuesView
 import http.client as httplib
 import io
 import PIL.Image
-import warnings
 import shutil
 import types
 import uuid
@@ -44,7 +43,8 @@ try:
 except ImportError:
     import json
 
-    
+# MacOS: on macos sequoia 15.5, homebrew ffmpeg-7.1.1 (clang-1700.0.13.3), there is a bug due to impropver -ss handing.
+# Download pre-built binaries from ffmpeg.org and install in a system-wide directory that is findable by shutil.which (e.g. /usr/local/bin) 
 ffmpeg_exe = shutil.which('ffmpeg')
 has_ffmpeg = ffmpeg_exe is not None and os.path.exists(ffmpeg_exe)
 ffprobe_exe = shutil.which('ffprobe')        
@@ -503,7 +503,7 @@ class Video():
 
         # FFMPEG installed?
         if not has_ffmpeg:
-            warnings.warn('"ffmpeg" executable not found on path, this is required for vipy.video - Install from http://ffmpeg.org/download.html')
+            log.warning('"ffmpeg" executable not found on path, this is required for vipy.video - Install from http://ffmpeg.org/download.html')
 
         # Constructor clips
         startframe = startframe if startframe is not None else (0 if endframe is not None else startframe)
@@ -640,7 +640,7 @@ class Video():
         .. notes:: Do not automatically trigger a load, since this can interact in unexpected ways with other tools that depend on fast __len__()
         """
         if not self.isloaded():
-            warnings.warn('Load() video to see number of frames - Returning zero')  # should this just throw an exception?
+            log.warning('Load() video to see number of frames - Returning zero')  # should this just throw an exception?
         return len(self.array()) if self.isloaded() else 0
 
     def __getitem__(self, k):
@@ -783,7 +783,7 @@ class Video():
             log.info('[vipy.video.concatenate]: Copy the following into the video Description after uploading the videofile "%s" to YouTube to enable chapters on playback.\n' % outfile)
             log.info('\n'.join(['%s  %s' % (vipy.util.seconds_to_MMSS_colon_notation(int(s)), str(f(v))) for (s,v) in zip(np.cumsum([0] + [v.duration() for v in vi][:-1]), vi)])); log.info('\n')
             if any([v.duration() < 10 for v in vi]):
-                warnings.warn('YouTube chapters must be a minimum duration of 10 seconds')
+                log.warning('YouTube chapters must be a minimum duration of 10 seconds')
         return vo
     
 
@@ -1028,7 +1028,7 @@ class Video():
             return self.duration_in_seconds_of_videofile() if not self.isloaded() else (len(self) / self.framerate())
         assert frames is not None or seconds is not None or minutes is not None
         frames = frames if frames is not None else ((int(seconds*self.framerate()) if seconds is not None else 0) + (int(minutes*60*self.framerate()) if minutes is not None else 0))
-        return self.clip(0, frames)
+        return self.clip(int(0), int(frames))
 
     def duration_in_frames(self):
         """Return the duration of the video filter chain in frames, equal to round(self.duration()*self.framerate()).  Requires a probe() of the video to get duration"""
@@ -1572,14 +1572,14 @@ class Video():
                 urllib.error.URLError,
                 urllib.error.HTTPError):
             if ignoreErrors:
-                warnings.warn('[vipy.video][WARNING]: download failed - Ignoring Video')
+                log.warning('[vipy.video][WARNING]: download failed - Ignoring Video')
                 self._array = None
             else:
                 raise
 
         except IOError:
             if ignoreErrors:
-                warnings.warn('[vipy.video][WARNING]: IO error - Invalid video file, url or invalid write permissions "%s" - Ignoring video' % self.filename())
+                log.warning('[vipy.video][WARNING]: IO error - Invalid video file, url or invalid write permissions "%s" - Ignoring video' % self.filename())
                 self._array = None
             else:
                 raise
@@ -1589,7 +1589,7 @@ class Video():
 
         except Exception:
             if ignoreErrors:
-                warnings.warn('[vipy.video][WARNING]: load error for video "%s"' % self.filename())
+                log.warning('[vipy.video][WARNING]: load error for video "%s"' % self.filename())
             else:
                 raise
         return self
@@ -1772,7 +1772,7 @@ class Video():
         #    -Try to correct this manually by searching for a off-by-one-pixel decoding that works.  The right way is to upgrade your FFMPEG version to the FFMPEG head (11JUN20)
         #    -We cannot tell which is the one that the end-user wanted, so we leave it up to the calling function to check dimensions (see self.resize())
         if (len(out) % (height*width*channels)) != 0:
-            #warnings.warn('Your FFMPEG version is triggering a known bug that is being worked around in an inefficient manner.  Consider upgrading your FFMPEG distribution.')
+            #log.warning('Your FFMPEG version is triggering a known bug that is being worked around in an inefficient manner.  Consider upgrading your FFMPEG distribution.')
             if (len(out) % ((height-1)*(width-1)*channels) == 0):
                 (newwidth, newheight) = (width-1, height-1)
             elif (len(out) % ((height-1)*(width)*channels) == 0):
@@ -1832,7 +1832,7 @@ class Video():
         
         if not self.isloaded() and isinstance(start, int):
             assert self.framerate() is not None, "framerate required"
-            timestamp_in_seconds = ((self._start if self._start is not None else 0)+start-1)/float(self.framerate())  # seek to frame before
+            timestamp_in_seconds = ((self._start if self._start is not None else 0)+start-0)/float(self.framerate())  
             self._update_ffmpeg_seek(timestamp_in_seconds)
             if end is not None:
                 self._ffmpeg = self._ffmpeg.setpts('PTS-STARTPTS')  # reset timestamp to 0 before trim filter            
@@ -1842,7 +1842,7 @@ class Video():
             self._end = (self._start + (end-start)) if end is not None else end # for __repr__ only
         elif not self.isloaded() and isinstance(start, float):
             assert self._start is None or isinstance(self._start, float), "timestamp must be in seconds"
-            timestamp_in_seconds = (self._start if self._start is not None else 0)+start-(1/self.framerate())  # seek to frame before
+            timestamp_in_seconds = (self._start if self._start is not None else 0)+start-(0/self.framerate())  
             self._update_ffmpeg_seek(timestamp_in_seconds)
             if end is not None:
                 self._ffmpeg = self._ffmpeg.setpts('PTS-STARTPTS')  # reset timestamp to 0 before trim filter            
@@ -2235,14 +2235,14 @@ class Video():
             try_import("IPython.display", "ipython"); import IPython.display
             if not self.hasfilename() or self.isloaded() or self._isdirty():
                 v = self.save(tempMP4())                 
-                warnings.warn('Saving video to temporary file "%s" for notebook viewer ... ' % v.filename())
+                log.warning('Saving video to temporary file "%s" for notebook viewer ... ' % v.filename())
                 return IPython.display.Video(v.filename(), embed=True)
             return IPython.display.Video(self.filename(), embed=True)
         elif ffplay and has_ffplay:
             if self.isloaded() or self._isdirty():
                 f = tempMP4()
                 if verbose:
-                    warnings.warn('%s - Saving video to temporary file "%s" for ffplay ... ' % ('Video loaded into memory' if self.isloaded() else 'Dirty FFMPEG filter chain', f))
+                    log.warning('%s - Saving video to temporary file "%s" for ffplay ... ' % ('Video loaded into memory' if self.isloaded() else 'Dirty FFMPEG filter chain', f))
                 v = self.save(f)
                 cmd = 'ffplay "%s"' % v.filename()
                 if verbose:
@@ -3042,7 +3042,7 @@ class Scene(Video):
             idlist = [id] + [ti for ti in self.tracks().keys() if ti != id]
             self._tracks = {k:self.track(k) for k in idlist}
         else:
-            warnings.warn('trackid=%s not found in "%s"' % (str(id), str(self)))
+            log.warning('trackid=%s not found in "%s"' % (str(id), str(self)))
         return self
 
     def setactorid(self, id):
@@ -3148,7 +3148,7 @@ class Scene(Video):
         if activitytrack:
             self.activitymap(lambda a: a.trackfilter(lambda ti: ti in self._tracks))  # remove track association in activities
             #if any([len(a.tracks()) == 0 for a in self.activitylist()]):
-            #    warnings.warn('trackfilter(..., activitytrack=True) removed tracks which returned at least one degenerate activity with no tracks')
+            #    log.warning('trackfilter(..., activitytrack=True) removed tracks which returned at least one degenerate activity with no tracks')
         return self
 
     def trackmap(self, f, strict=True):
@@ -3325,7 +3325,7 @@ class Scene(Video):
                 self.trackmap(lambda t: t.update(k, obj) if obj.attributes['__trackid'] == t.id() else t) 
                 return None if not fluent else self
             else:
-                t = vipy.object.Track(category=obj.category(), keyframes=[k], boxes=[obj], boundary='strict', attributes=obj.attributes, trackid=obj.attributes['__trackid'] if obj.has_attribute('__trackid') else None, framerate=self.framerate())
+                t = vipy.object.Track(category=obj.category(), keyframes=[k], boxes=[obj], boundary='strict', attributes=obj.attributes, id=obj.attributes['__trackid'] if obj.has_attribute('__trackid') else None, framerate=self.framerate())
                 if rangecheck and not obj.hasoverlap(width=self.width(), height=self.height()):
                     raise ValueError("Track '%s' does not intersect with frame shape (%d, %d)" % (str(t), self.height(), self.width()))
                 self.tracks()[t.id()] = t  # by-reference
@@ -3333,7 +3333,7 @@ class Scene(Video):
         elif isinstance(obj, vipy.object.Track):
             if rangecheck and not obj.boundingbox().isinside(vipy.geometry.imagebox(self.shape())):
                 obj = obj.imclip(self.width(), self.height())  # try to clip it, will throw exception if all are bad 
-                warnings.warn('[vipy.video.add]: Clipping trackid=%s track="%s" to image rectangle' % (str(obj.id()), str(obj)))
+                log.warning('[vipy.video.add]: Clipping trackid=%s track="%s" to image rectangle' % (str(obj.id()), str(obj)))
             if obj.framerate() != self.framerate():
                 obj.framerate(self.framerate())  # convert framerate of track to framerate of video
             self.tracks()[obj.id()] = obj  # by-reference
@@ -3501,7 +3501,7 @@ class Scene(Video):
 
     def trackclip(self):
         """Split the scene into k separate scenes, one for each track.  Each scene starts and ends when the track starts and ends"""
-        return [t.clip(t.track(t.actorid()).startframe(), t.track(t.actorid()).endframe()) for (k,t) in enumerate(self.tracksplit())]
+        return [v.clip(int(v.track(v.actorid()).startframe()), int(v.track(v.actorid()).endframe())) for (k,v) in enumerate(self.tracksplit())]
     
     def activityclip(self, padframes=0, multilabel=False, idx=None, padto=None, padtosec=None):
         """Return a list of `vipy.video.Scene` objects each clipped to be temporally centered on a single activity, with an optional padframes before and after.  
@@ -3529,7 +3529,7 @@ class Scene(Video):
 
         vid = self.clone(flushforward=True)
         if any([(a.endframe()-a.startframe()) <= 0 for a in vid.activities().values()]):
-            warnings.warn('Filtering invalid activity clips with degenerate lengths: %s' % str([a for a in vid.activities().values() if (a.endframe()-a.startframe()) <= 0]))
+            log.warning('Filtering invalid activity clips with degenerate lengths: %s' % str([a for a in vid.activities().values() if (a.endframe()-a.startframe()) <= 0]))
         primary_activities = sorted([a.clone() for a in vid.activities().values() if (a.endframe()-a.startframe()) > 0], key=lambda a: a.startframe())   # only activities with at least one frame, sorted in temporal order
         padframelist = [padframes if isinstance(padframes, tuple) else (padframes, padframes) for k in range(len(primary_activities))] if not islist(padframes) else padframes                    
         tracks = [ [t.clone() for (tid, t) in vid.tracks().items() if a.hastrackoverlap(t)] for a in primary_activities]  # tracks associated with and temporally overlapping each primary activity (may be empty)
@@ -3547,7 +3547,7 @@ class Scene(Video):
         return [vid.clone()
                 .activities([pa]+sa)  # primary activity first
                 .tracks(t)
-                .clip(start=max(pa.startframe()-prepad, 0), end=min(pa.endframe()+postpad, (maxframes if maxframes is not None else pa.endframe()+postpad)))
+                .clip(start=int(max(pa.startframe()-prepad, 0)), end=int(min(pa.endframe()+postpad, (maxframes if maxframes is not None else pa.endframe()+postpad))))
                 .new_category(pa.category())
                 .setactorid(pa.actorid())  # actor is actor of primary activity
                 for (k,(pa,sa,t,(prepad,postpad))) in enumerate(zip(primary_activities, secondary_activities, tracks, padframelist))
@@ -3665,15 +3665,15 @@ class Scene(Video):
         self.activityfilter(lambda a: activityid is None or a.id() in set(activityid))  # only requested IDs (or all of them)
         frames = [im.padcrop(im.boundingbox().maxsquare().dilate(dilate).int()).resize(maxdim, maxdim) for im in vid if im.boundingbox() is not None]  # track interpolation, for frames with boxes only
         if len(frames) != len(vid):
-            warnings.warn('[vipy.video.activitytube]: Removed %d frames with no spatial bounding boxes' % (len(vid) - len(frames)))
+            log.warning('[vipy.video.activitytube]: Removed %d frames with no spatial bounding boxes' % (len(vid) - len(frames)))
             vid.attributes['__activtytube'] = {'truncated':len(vid) - len(frames)}  # provenance to reject
         if len(frames) == 0:
-            warnings.warn('[vipy.video.activitytube]: Resulting video is empty!  Setting activitytube to zero')
+            log.warning('[vipy.video.activitytube]: Resulting video is empty!  Setting activitytube to zero')
             frames = [ vid[0].resize(maxdim, maxdim).zeros() ]  # empty frame
             vid.attributes['__activitytube'] = {'empty':True}   # provenance to reject 
         vid._tracks = {ti:vipy.object.Track(keyframes=[f for (f,im) in enumerate(frames) for d in im.objects() if d.attributes['__trackid'] == ti],
                                             boxes=[d for (f,im) in enumerate(frames) for d in im.objects() if d.attributes['__trackid'] == ti],
-                                            category=t.category(), trackid=ti, framerate=self.framerate())
+                                            category=t.category(), id=ti, framerate=self.framerate())
                        for (k,(ti,t)) in enumerate(self.tracks().items())}  # replace tracks with boxes relative to tube
         return vid.array(np.stack([im.numpy() for im in frames]))
 
@@ -3691,14 +3691,14 @@ class Scene(Video):
         frames = [im.padcrop(t[k].maxsquare().dilate(dilate).int()).resize(maxdim, maxdim) for (k,im) in enumerate(vid) if t.during(k)] if len(t)>0 else []  # actor interpolation, padding may introduce frames with no tracks
         if len(frames) == 0:
             if not strict:
-                warnings.warn('[vipy.video.actortube]: Empty track for trackid="%s" - Setting actortube to zero' % trackid)
+                log.warning('[vipy.video.actortube]: Empty track for trackid="%s" - Setting actortube to zero' % trackid)
                 frames = [ vid[0].resize(maxdim, maxdim).zeros() ]  # empty frame
                 vid.attributes['__actortube'] = {'empty':True}   # provenance to reject             
             else:
                 raise ValueError('[vipy.video.actortube]: Empty track for track=%s, trackid=%s' % (str(t), trackid))
         vid._tracks = {ti:vipy.object.Track(keyframes=[f for (f,im) in enumerate(frames) for d in im.objects() if d.attributes['__trackid'] == ti],  # keyframes zero indexed, relative to [frames]
                                             boxes=[d for (f,im) in enumerate(frames) for d in im.objects() if d.attributes['__trackid'] == ti],  # one box per frame
-                                            category=t.category(), trackid=ti, framerate=self.framerate())  # preserve trackid
+                                            category=t.category(), id=ti, framerate=self.framerate())  # preserve trackid
                        for (k,(ti,t)) in enumerate(self.tracks().items())}  # replace tracks with interpolated boxes relative to tube defined by actor
         return vid.array(np.stack([im.numpy() for im in frames]))
 
@@ -3733,7 +3733,7 @@ class Scene(Video):
             # -- This code copy is used to avoid super(Scene, self.clone()) which screws up class inheritance for iPython reload
             assert not v.isloaded(), "Filters can only be applied prior to load() - Try calling flush() first"
             assert v._start is None or isinstance(v._start, int), "clip start must be in frames"
-            timestamp_in_seconds = ((v._start if v._start is not None else 0)+start-1)/float(v.framerate())  # seek to frame before
+            timestamp_in_seconds = ((v._start if v._start is not None else 0)+start-0)/float(v.framerate()) 
             v._update_ffmpeg_seek(timestamp_in_seconds)
             if end is not None:
                 v._ffmpeg = v._ffmpeg.setpts('PTS-STARTPTS')  # reset timestamp to 0 before trim filter            
@@ -3747,7 +3747,7 @@ class Scene(Video):
             # -- This code copy is used to avoid super(Scene, self.clone()) which screws up class inheritance for iPython reload
             assert not v.isloaded(), "Filters can only be applied prior to load() - Try calling flush() first"
             assert v._start is None or isinstance(v._start, float), "clip start must be in seconds"
-            timestamp_in_seconds = (v._start if v._start is not None else 0)+start-(1/self.framerate())  # seek to frame before
+            timestamp_in_seconds = (v._start if v._start is not None else 0)+start-(0/self.framerate())  # seek to frame before 
             v._update_ffmpeg_seek(timestamp_in_seconds)
             if end is not None:
                 v._ffmpeg = v._ffmpeg.setpts('PTS-STARTPTS')  # reset timestamp to 0 before trim filter            
@@ -4281,7 +4281,7 @@ class Scene(Video):
         dets = tolist(dets)
 
         if any([d.confidence() is None for d in dets]):
-            warnings.warn('Removing %d detections with no confidence' % len([d.confidence() is None for d in dets]))
+            log.warning('Removing %d detections with no confidence' % len([d.confidence() is None for d in dets]))
             dets = [d for d in dets if d.confidence() is not None]
         objdets = [d for d in dets if isinstance(d, vipy.object.Detection)]
         activitydets = [d for d in dets if isinstance(d, vipy.activity.Activity)]        

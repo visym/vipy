@@ -135,7 +135,15 @@ class Detection(BoundingBox, Object):
                        tags=d['tags'] if 'tags' in d else None,
                        category=d['_category'] if '_category' in d else None,
                        id=d['_id'] if '_id' in d else None)
-        else:
+        elif 'label' in d.keys():
+            # Legacy support <= vipy 1.14.4
+            return cls(xmin=d['xmin'], ymin=d['ymin'], xmax=d['xmax'], ymax=d['ymax'],
+                       attributes=d['attributes'] if 'attributes' in d else None,
+                       tags=None,  # in attributes
+                       category=d['label'] if 'label' in d else None,
+                       confidence=d['confidence'] if 'confidence' in d else None,
+                       id=d['id'] if 'id' in d else None)
+        else:            
             # vipy-1.16.1            
             return cls(xmin=d['xmin'], ymin=d['ymin'], xmax=d['xmax'], ymax=d['ymax'],
                        attributes=d['attributes'] if 'attributes' in d else None,
@@ -176,6 +184,8 @@ class Detection(BoundingBox, Object):
         d = Detection.from_json(self.json(encode=False))
         if deep:
             d.attributes = copy.deepcopy(self.attributes)
+        else:
+            d.attributes = self.attributes.copy()            
         return d
 
 
@@ -205,6 +215,8 @@ class Keypoint2d(Point2d, Object):
         d = Keypoint2d.from_json(self.json(encode=False))
         if deep:
             d.attributes = copy.deepcopy(self.attributes)
+        else:
+            d.attributes = self.attributes.copy()            
         return d
     
     @property
@@ -308,7 +320,7 @@ class Track():
     @classmethod
     def from_json(cls, s):
         d = json.loads(s) if not isinstance(s, dict) else s
-        d = {k.lstrip('_'):v for (k,v) in d.items()}  # prettyjson (remove "_" prefix to attributes)                                
+        d = {k.lstrip('_'):v for (k,v) in d.items()}  # prettyjson (remove "_" prefix to attributes)
         return cls(keyframes=tuple(int(f) for f in d['keyframes']),
                    boxes=tuple([Detection.from_json(bbs) for bbs in d['keyboxes']]),
                    category=d['label'] if 'label' in d else None,
@@ -733,6 +745,7 @@ class Track():
     def clone(self, startframe=None, endframe=None, rekey=False):
         #return copy.deepcopy(self)  
         t = Track.from_json(self.json(encode=False)) if (startframe is None and endframe is None) else self.clone_during(startframe, endframe)  # 2x faster than deepcopy
+        t.attributes = t.attributes.copy()
         if rekey:
             t.id(newid=shortuuid())
         return t
@@ -749,7 +762,7 @@ class Track():
                                   ([kf for kf in self._keyframes if kf >= endframe][0]) if self.during(endframe, endframe) else endframe)
         kfkb = [(kf,kb.clone()) for (kf,kb) in zip(self._keyframes, self._keyboxes) if ((startframe is None or kf >= startframe) and (endframe is None or kf <= endframe))]
         (kf, kb) = zip(*kfkb) if len(kfkb) > 0 else ([], [])        
-        return Track(keyframes=kf, boxes=kb, category=self.category(), framerate=self._framerate, interpolation=self._interpolation, boundary=self._boundary, attributes=self.attributes, id=self._id)
+        return Track(keyframes=kf, boxes=kb, category=self.category(), framerate=self._framerate, interpolation=self._interpolation, boundary=self._boundary, attributes=self.attributes.copy(), id=self._id)
     
     def boundingbox(self, startframe=None, endframe=None):
         """The bounding box of a track is the smallest spatial box that contains all of the BoundingBoxes of the track  within startframe and endframe, or None if there are no detections.

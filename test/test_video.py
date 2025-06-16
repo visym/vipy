@@ -268,7 +268,7 @@ def _test_scene():
 
     # Loader
     v = vid.clone().clip(10,20).load()
-    assert len(v) == 10  # FIXME: this is off by one frame for macos sequoia 15.5, homebrew ffmpeg-7.1.1 (clang-1700.0.13.3)
+    assert len(v) == 10  # FIXME: this is off by one frame for macos sequoia 15.5, homebrew ffmpeg-7.1.1 (clang-1700.0.13.3), due to impropver -ss handing.  download from ffmpeg.org directly
     vc = v.clone(flushforward=True).clip(1,4).load()
     assert len(vc) == 3
     assert all([o1 == o2 for (o1, o2) in zip(vc.frame(1).objects(), vid.frame(12).objects())])

@@ -156,12 +156,11 @@ def imshow(img, fignum=None):
     return fignum
 
 
-def text(caption, xmin, ymin, fignum=None, textcolor='black', textfacecolor='white', textfacealpha=1.0, fontsize=10, linewidth=3, facecolor='white', facealpha=0.5, alpha=1.0, pad=0.5):
+def text(caption, xmin, ymin, fignum=None, textcolor='black', textfacecolor='white', textfacealpha=1.0, fontsize=10, linewidth=3, facecolor='white', facealpha=0.5, alpha=1.0, pad=0.5, captionoffset=0):
     plt.figure(fignum) if fignum is not None else plt.gcf()
     lw = linewidth  # pull in the boxes by linewidth so that they do not overhang the figure
 
     newlines = caption.count('\n')
-    captionoffset = captionoffset if ymin > 20 else (captionoffset[0], captionoffset[1]+(20*(1)))  # move down a bit if near top of image, shift once per newline in caption
     
     # MatplotlibDeprecationWarning: The 's' parameter of annotate() has been renamed 'text' since Matplotlib 3.3            
     handle = plt.annotate(**{'text' if matplotlib_version_at_least_3p3 else 's': caption},
