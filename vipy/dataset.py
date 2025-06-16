@@ -216,7 +216,7 @@ class Dataset():
         assert mapper is None or callable(mapper)
         assert reducer is None or callable(reducer)
         mapped = self.map(mapper) if mapper else self
-        flattened = (y for x in mapped for y in to_iterable(x)) if flatten else (x for x in mapped)
+        flattened = (y for x in mapped for y in x) if flatten else (x for x in mapped)
         reduced = reducer(flattened) if reducer else flattened
         return reduced
 
@@ -661,8 +661,9 @@ class Union(Dataset):
         registry = [d for d in args if not isinstance(d, Dataset)]
         if len(registry) > 0:
             assert all(r.startswith(vipy.dataset.registry()) for r in registry)
-            with cf.ThreadPoolExecutor(max_workers=len(registry)) as executor:  # thread parallel, io-bound
-                registry = {k:v for (k,v) in zip(registry, executor.map(vipy.dataset.registry, registry))}
+            #with cf.ThreadPoolExecutor(max_workers=len(registry)) as executor:  # thread parallel, io-bound
+            #registry = {k:v for (k,v) in zip(registry, executor.map(vipy.dataset.registry, registry))}
+            registry = {k:vipy.dataset.registry(k) for k in registry}
 
         datasets = [d if isinstance(d, Dataset) else registry[d] for d in args]  # order preserving
         assert all([isinstance(d, Dataset) for d in datasets]), "Invalid datasets '%s'" % str([type(d) for d in datasets])
@@ -685,17 +686,16 @@ class Union(Dataset):
     def __iter__(self, mapper=None, accepter=None):
         if self.is_streaming():
             k = -1
-            m = len(self.datasets())
             iter = [d.__iter__(mapper, accepter) for d in self.datasets()]  # round-robin
-            while m > 0:
-                k = (k + 1) % len(iter)                                    
+
+            for m in range(len(self.datasets())):
                 try:
-                    yield next(iter[k])  # assumes ordered
+                    while True:
+                        k = (k + 1) % len(iter)                                    
+                        yield next(iter[k])  # assumes ordered
                 except StopIteration:
                     iter.pop(k)
                     k -= 1
-                    m -= 1
-
             
         else:
             self.index()  # force random access                    
@@ -730,8 +730,7 @@ class Union(Dataset):
         if self._idx is None:
             # Index on-demand: zipped (dataset index, element index) tuples, in round-robin dataset order [(0,0),(1,0),...,(0,n),(1,n),...]            
             lengths = [len(d) for d in self.datasets()]            
-            self._idx = vipy.util.flatlist(zip(*zip(*[[(i,j) for i in range(len(self.datasets()))] for j in range(max(lengths))])))   
-            self._idx = [(i,j) for (i,j) in self._idx if j<lengths[i]]
+            self._idx = [c for r in [[(i,j) for i in range(len(self.datasets()))] for j in range(max(lengths))] for c in r if c[1]<lengths[c[0]]]
         return self._idx
     
     def clone(self, deep=False):
@@ -753,7 +752,7 @@ class Union(Dataset):
         return D
     
 
-def registry(name=None, datadir=None, freeze=True, clean=False, split='train'):
+def registry(name=None, datadir=None, freeze=True, clean=False, download=False, split='train'):
     """Common entry point for loading datasets by name.
 
     Usage:
@@ -768,32 +767,32 @@ def registry(name=None, datadir=None, freeze=True, clean=False, split='train'):
        datadir [str]: A path to a directory to store data.  Defaults to environment variable VIPY_DATASET_REGISTRY_HOME (then VIPY_CACHE if not found).  Also uses HF_HOME for huggingface datasets.
        freeze [bool]:  If true, disable reference cycle counting for the loaded object (which will never contain cycles anyway) 
        clean [bool]: If true, force a redownload of the dataset to correct for partial download errors
+       download [bool]: If true, force a redownload of the dataset to correct for partial download errors
        split [str]: return 'train', 'val' or 'test' split.  If None, return (trainset, valset, testset) tuple
     
     Datasets:
        'mnist','cifar10','cifar100','caltech101','caltech256','oxford_pets','sun397', 'food101','stanford_dogs',
        'flickr30k','oxford_fgvc_aircraft','oxford_flowers_102','eurosat','d2d','ethzshapes','coil100','kthactions',
        'yfcc100m','yfcc100m_url','tiny_imagenet','coyo300m','coyo700m','pascal_voc_2007','coco_2014', 'ava',
-       'activitynet', 'openimages_v7', 'imagenet', 'imagenet21k', 'visualgenome' ,'widerface',
-       'objectnet','lfw','inaturalist_2021','kinetics','hmdb','places365','ucf101','lvis'
+       'activitynet', 'open_images_v7', 'imagenet', 'imagenet21k', 'visualgenome' ,'widerface',
+       'objectnet','lfw','inaturalist_2021','kinetics','hmdb','places365','ucf101','lvis','kitti',
        'imagenet_localization','laion2b','datacomp_1b','imagenet2014_det','imagenet_faces'
 
     Returns:
        (trainset, valset, testset) tuple where each is a `vipy.dataset.Dataset` or None, or a single split if name has a ":SPLIT" suffix or split kwarg provided
     """
-    import vipy.data        
 
     registry = ['mnist','cifar10','cifar100','caltech101','caltech256','oxford_pets','sun397', 'stanford_dogs','coil100',
                 'flickr30k','oxford_fgvc_aircraft','oxford_flowers_102', 'food101', 'eurosat','d2d','ethzshapes','kthactions',
                 'yfcc100m','yfcc100m_url','tiny_imagenet','coyo300m','coyo700m','pascal_voc_2007','coco_2014', 'ava',
-                'activitynet','openimages_v7','imagenet','imagenet21k','visualgenome','widerface',
-                'objectnet','lfw','inaturalist_2021','kinetics','hmdb','places365','ucf101',
+                'activitynet','open_images_v7','imagenet','imagenet21k','visualgenome','widerface',
+                'objectnet','lfw','inaturalist_2021','kinetics','hmdb','places365','ucf101','kitti',
                 'lvis','imagenet_localization','laion2b','datacomp_1b','imagenet2014_det','imagenet_faces']  # Add to docstring too...
     
     if name is None:
         return tuple(sorted(registry))
     if isinstance(name, (tuple, list)):
-        return vipy.dataset.Union(*name)
+        return Union(*name)
     
     (name, split) = name.split(':',1) if name.count(':')>0 else (name, split)
     if name not in registry:
@@ -803,7 +802,7 @@ def registry(name=None, datadir=None, freeze=True, clean=False, split='train'):
 
     datadir = datadir if datadir is not None else (env('VIPY_DATASET_REGISTRY_HOME') if 'VIPY_DATASET_REGISTRY_HOME' in env() else vipy.util.cache())
     namedir = Path(datadir)/name    
-    if clean and name in registry and os.path.exists(namedir):
+    if (clean or download) and name in registry and os.path.exists(namedir):
         log.info('Removing cached dataset "%s"' % namedir)
         shutil.rmtree(namedir)  # delete cached subtree to force redownload ...
         
@@ -812,102 +811,151 @@ def registry(name=None, datadir=None, freeze=True, clean=False, split='train'):
         
     (trainset, valset, testset) = (None, None, None)    
     if name == 'mnist':
+        import vipy.data.hf
         (trainset, testset) = vipy.data.hf.mnist()        
     elif name == 'cifar10':
+        import vipy.data.hf        
         (trainset, testset) = vipy.data.hf.cifar10()        
     elif name == 'cifar100':
+        import vipy.data.hf        
         (trainset, testset) = vipy.data.hf.cifar100()        
     elif name == 'caltech101':
+        import vipy.data.caltech101        
         trainset = vipy.data.caltech101.Caltech101(namedir)        
     elif name == 'caltech256':
+        import vipy.data.caltech256        
         trainset = vipy.data.caltech256.Caltech256(namedir)
     elif name == 'oxford_pets':
+        import vipy.data.hf                
         (trainset, testset) = vipy.data.hf.oxford_pets()
     elif name == 'sun397':
+        import vipy.data.hf                
         (trainset, valset, testset) = vipy.data.hf.sun397()
     elif name == 'stanford_dogs':
+        import vipy.data.stanford_dogs        
         trainset = vipy.data.stanford_dogs.StanfordDogs(namedir)
     elif name == 'food101':
+        import vipy.data.food101        
         trainset = vipy.data.food101.Food101(namedir)
     elif name == 'eurosat':
+        import vipy.data.eurosat        
         trainset = vipy.data.eurosat.EuroSAT(namedir)
     elif name == 'd2d':
+        import vipy.data.d2d                
         trainset = vipy.data.d2d.D2D(namedir)
     elif name == 'coil100':
+        import vipy.data.coil100        
         trainset = vipy.data.coil100.COIL100(namedir)
     elif name == 'kthactions':
+        import vipy.data.kthactions        
         (trainset, testset) = vipy.data.kthactions.KTHActions(namedir).split()
     elif name == 'ethzshapes':
+        import vipy.data.ethzshapes        
         trainset = vipy.data.ethzshapes.ETHZShapes(namedir)        
     elif name == 'flickr30k':
+        import vipy.data.hf        
         trainset = vipy.data.hf.flickr30k()
     elif name == 'oxford_fgvc_aircraft':
+        import vipy.data.hf                
         trainset = vipy.data.hf.oxford_fgvc_aircraft()
     elif name == 'oxford_flowers_102':
+        import vipy.data.oxford_flowers_102        
         trainset = vipy.data.oxford_flowers_102.Flowers102(namedir)
     elif name == 'yfcc100m':
+        import vipy.data.hf                
         (trainset, _, valset, _) = vipy.data.hf.yfcc100m()  
     elif name == 'yfcc100m_url':
+        import vipy.data.hf                
         (_, trainset, _, valset) = vipy.data.hf.yfcc100m()  
     elif name == 'tiny_imagenet':
+        import vipy.data.hf                
         (trainset, valset) = vipy.data.hf.tiny_imagenet()
     elif name == 'coyo300m':
+        import vipy.data.hf                
         trainset = vipy.data.hf.coyo300m()
     elif name == 'coyo700m':
+        import vipy.data.hf                
         trainset = vipy.data.hf.coyo700m()
     elif name == 'datacomp_1b':
+        import vipy.data.hf                
         trainset = vipy.data.hf.datacomp_1b()
     elif name == 'pascal_voc_2007':
+        import vipy.data.hf                
         (trainset, valset, testset) = vipy.data.hf.pascal_voc_2007()
     elif name == 'coco_2014':
+        import vipy.data.coco        
         trainset = vipy.data.coco.COCO_2014(namedir)
     elif name == 'ava':
+        import vipy.data.ava        
         ava = vipy.data.ava.AVA(namedir)
         (trainset, valset) = (ava.trainset(), ava.valset())
     elif name == 'activitynet':
+        import vipy.data.activitynet        
         activitynet = vipy.data.activitynet.ActivityNet(namedir)  # ActivityNet 200
         (trainset, valset, testset) = (activitynet.trainset(), activitynet.valset(), activitynet.testset())
-    elif name == 'openimages_v7':
+    elif name == 'open_images_v7':
+        import vipy.data.openimages        
         trainset = vipy.data.openimages.open_images_v7(namedir)
     elif name == 'imagenet':
+        import vipy.data.imagenet        
         imagenet = vipy.data.imagenet.Imagenet2012(namedir)
         (trainset, valset) = (imagenet.classification_trainset(), imagenet.classification_valset())
     elif name == 'imagenet_faces':
+        import vipy.data.imagenet        
         trainset = vipy.data.imagenet.Imagenet2012(Path(datadir)/'imagenet').faces()
     elif name == 'imagenet21k':
+        import vipy.data.imagenet        
         trainset = vipy.data.imagenet.Imagenet21K(namedir)
     elif name == 'visualgenome':
+        import vipy.data.visualgenome        
         trainset = vipy.data.visualgenome.VisualGenome(namedir)  # visualgenome-1.4
     elif name == 'widerface':
+        import vipy.data.widerface        
         trainset = vipy.data.widerface.WiderFace(namedir, split='train')
         valset = vipy.data.widerface.WiderFace(namedir, split='val')
         testset = vipy.data.widerface.WiderFace(namedir, split='test')                                      
     elif name == 'objectnet':
-        trainset = vipy.data.objectnet.Objectnet(namedir)
+        import vipy.data.objectnet                
+        assert split is None or split == 'test', "objectnet is a test set"
+        testset = vipy.data.objectnet.Objectnet(namedir)
     elif name == 'lfw':
+        import vipy.data.lfw        
         trainset = vipy.data.lfw.LFW(namedir)
     elif name == 'inaturalist_2021':
+        import vipy.data.inaturalist        
         dataset = vipy.data.inaturalist.iNaturalist2021(namedir)
         (trainset, valset) = (dataset.trainset(), dataset.valset())
     elif name == 'kinetics':
+        import vipy.data.kinetics        
         dataset = vipy.data.kinetics.Kinetics700(namedir)  # Kinetics700
         (trainset, valset, testset) = (dataset.trainset(), dataset.valset(), dataset.testset())
     elif name == 'hmdb':
+        import vipy.data.hmdb                
         trainset = vipy.dataset.Dataset(vipy.data.hmdb.HMDB(namedir).dataset(), id='hmdb')
     elif name == 'places365':
+        import vipy.data.places        
         places = vipy.data.places.Places365(namedir)
         (trainset, valset) = (places.trainset(), places.valset())
     elif name == 'ucf101':
+        import vipy.data.ucf101        
         trainset = vipy.data.ucf101.UCF101(namedir)
+    elif name == 'kitti':
+        import vipy.data.kitti        
+        trainset = vipy.data.kitti.KITTI(namedir, split='train')
+        testset = vipy.data.kitti.KITTI(namedir, split='test')                                      
     elif name == 'lvis':
+        import vipy.data.lvis        
         lvis = vipy.data.lvis.LVIS(namedir)
         (trainset, valset) = (lvis.trainset(), lvis.valset())
     elif name == 'imagenet_localization':
+        import vipy.data.imagenet        
         trainset = vipy.data.imagenet.Imagenet2012(Path(datadir)/'imagenet').localization_trainset()
     elif name == 'imagenet2014_det':
+        import vipy.data.imagenet        
         imagenet2014_det = vipy.data.imagenet.Imagenet2014_DET(namedir)
         (trainset, valset, testset) = (imagenet2014_det.trainset(), imagenet2014_det.valset(), imagenet2014_det.testset())
     elif name == 'laion2b':
+        import vipy.data.hf        
         trainset = vipy.data.hf.laion2b()
     else:
         raise ValueError('unknown dataset "%s" - choose from "%s"' % (name, ', '.join(sorted(registry))))

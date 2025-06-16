@@ -29,7 +29,7 @@ class Object():
     def tags(self, tags=None):
         if tags is not None:
             return self.set_attribute('tags', tolist(tags))
-        return tuple(self.get_attribute('tags')) if self.has_attribute('tags') else ()
+        return self.attributes['tags'] if 'tags' in self.attributes else []
     
     def confidences(self):
         return tuple(self.attributes['confidences'][t] if t in self.aattributes['confidences'] else None for t in self.tags())

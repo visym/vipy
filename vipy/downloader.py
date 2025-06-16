@@ -208,7 +208,7 @@ def download(url, output_filename, sha1=None, verbose=True, md5=None, timeout=No
                 print(status, end=' ')  # space instead of newline
                 sys.stdout.flush()
         if progress:
-            print('') # new line
+            print(' '*len(status) + chr(8) * (len(status) + 1)) # erase line
                 
     else:
         while True:
@@ -224,7 +224,7 @@ def download(url, output_filename, sha1=None, verbose=True, md5=None, timeout=No
                 print(status, end=' ')  # space instead of newline
                 sys.stdout.flush()
         if progress:
-            print('') # new line
+            print(' '*len(status) + chr(8) * (len(status) + 1)) # erase line            
         # output_file.write(page.read())
 
     output_file.close()
@@ -379,7 +379,7 @@ class ExtractInterface(object):
                 print(status, end=' ')
                 sys.stdout.flush()
         if progress:
-            print('') # new line
+            print(' '*len(status) + chr(8) * (len(status) + 1)) # erase line                        
                 
                 
 class TarArchive(ExtractInterface, BaseArchive):

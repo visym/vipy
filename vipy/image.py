@@ -2058,7 +2058,7 @@ class TaggedImage(Image):
     def tags(self, tags=None):
         if tags is not None:
             return self.set_attribute('tags', tolist(tags))        
-        return tuple(self.get_attribute('tags')) if self.hasattribute('tags') else ()
+        return self.attributes['tags'] if 'tags' in self.attributes else []
     
     def confidences(self):
         return tuple(self.attributes['confidences'][t] if t in self.attributes['confidences'] else None for t in self.tags())
@@ -2193,10 +2193,10 @@ class Scene(TaggedImage):
             strlist.append('filename=%s' % (self.filename()))
         if self.hasurl():
             strlist.append('url=%s' % self.url())
-        if len(self.tags())==1:
+        if len(self.image_tags())==1:
             strlist += ['category=%s' % truncate_string(str(self.category()), 40)]
-        elif len(self.tags())>1:
-            strlist += ['tags=%s' % truncate_string(str(self.tags()), 40)]            
+        elif len(self.image_tags())>1:
+            strlist += ['tags=%s' % truncate_string(str(self.image_tags()), 40)]            
         if len(self.objects()) > 0:
             strlist.append('objects=%d' % len(self.objects()))
             
@@ -2216,6 +2216,16 @@ class Scene(TaggedImage):
         assert isinstance(k, int), "Indexing by object in scene must be integer"
         return self.clone(shallow=True).objects([self._objectlist[k].clone()])
 
+    def image_tags(self, tags=None):
+        """Return the image level tags of the scene"""
+        return super().tags(tags)
+    
+    def tags(self, tags=None):
+        """Return the image level and object level tags of the scene"""        
+        if tags is not None:
+            return super().tags(tags) 
+        return super().tags() + self.object_tags()
+    
     def load(self, verbose=False):
         super().load(verbose=verbose)
         if self.is_loaded() and self.num_objects() > 0 and any(o.has_normalized_coordinates() for o in self.objects()):
