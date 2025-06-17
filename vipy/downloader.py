@@ -203,12 +203,12 @@ def download(url, output_filename, sha1=None, verbose=True, md5=None, timeout=No
             output_file.write(buffer)
             percent = min(100, 100. * dl_size / file_size)
             status = r"Progress: %10d KB [%4.1f%%]" % (dl_size, percent)
-            status = status + chr(8) * (len(status) + 1)
+            status = status + chr(8) * (len(status) )
             if progress:
                 print(status, end='')  # space instead of newline
                 sys.stdout.flush()
         if progress:
-            print(' '*len(status) + chr(8) * (len(status) + 1), end='') # erase line
+            print(' '*len(status) + chr(8) * (len(status) ), end='') # erase line
                 
     else:
         while True:
@@ -219,12 +219,12 @@ def download(url, output_filename, sha1=None, verbose=True, md5=None, timeout=No
             output_file.write(buffer)
             # percent = min(100, 100. * dl_size / file_size)
             status = r"Progress: %10d KB" % (dl_size)
-            status = status + chr(8) * (len(status) + 1)
+            status = status + chr(8) * (len(status) )
             if progress:
                 print(status, end='')  # space instead of newline
                 sys.stdout.flush()
         if progress:
-            print(' '*len(status) + chr(8) * (len(status) + 1), end='') # erase line            
+            print(' '*len(status) + chr(8) * (len(status) ), end='') # erase line            
         # output_file.write(page.read())
 
     output_file.close()
@@ -375,11 +375,11 @@ class ExtractInterface(object):
             if progress:
                 status = (r"Progress: %10i files [%4.1f%%]"
                           % (extracted, extracted * 100. / n_members))
-                status += chr(8) * (len(status) + 1)
+                status += chr(8) * (len(status) )
                 print(status, end='')
                 sys.stdout.flush()
         if progress:
-            print(' '*len(status) + chr(8) * (len(status) + 1), end='') # erase line                        
+            print(' '*len(status) + chr(8) * (len(status) ), end='') # erase line                        
                 
                 
 class TarArchive(ExtractInterface, BaseArchive):

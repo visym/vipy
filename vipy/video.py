@@ -127,7 +127,7 @@ class Stream(object):
             outrate = 30 if vipy.util.isRTMPurl(outfile) else self._video.framerate()
             fiv = (ffmpeg.input('pipe:', format='rawvideo', pix_fmt='rgb24', s='{}x{}'.format(width, height), r=self._video.framerate()) 
                    .filter('pad', 'ceil(iw/2)*2', 'ceil(ih/2)*2'))
-            fi = ffmpeg.concat(fiv.filter('fps', fps=30, round='up'), ffmpeg.input('anullsrc', f='lavfi'), v=1, a=1)  if isRTMPurl(outfile) else fiv  # empty audio for youtube-live
+            fi = ffmpeg.concat(fiv.filter('fps', fps=30, round='near'), ffmpeg.input('anullsrc', f='lavfi'), v=1, a=1)  if isRTMPurl(outfile) else fiv  # empty audio for youtube-live
             kwargs = {'video_bitrate':self._bitrate} if self._bitrate is not None else {}
             fo = (fi.output(filename=self._outfile if self._outfile is not None else self._url,
                             pix_fmt='yuv420p',
@@ -486,7 +486,7 @@ class Video():
         shape: [tuple (rows,cols)] If the shape of the video is known, then this avoids requiring preview or probe.  Useful for some camera streams which may be off at init time.
     """
     __slots__ = ('_url', '_filename', '_array', '_colorspace', '_ffmpeg', '_framerate', '_start', '_end', '_shape', '_channels', 'attributes')
-    def __init__(self, filename=None, url=None, framerate=30.0, attributes=None, array=None, colorspace=None, startframe=None, endframe=None, startsec=None, endsec=None, frames=None, probeshape=False, shape=None):
+    def __init__(self, filename=None, url=None, framerate=None, attributes=None, array=None, colorspace=None, startframe=None, endframe=None, startsec=None, endsec=None, frames=None, probeshape=False, shape=None):
         self._url = None
         self._filename = None
         self._array = None
@@ -562,12 +562,16 @@ class Video():
 
         # Array input
         assert not (array is not None and frames is not None)
+        
         if array is not None:
+            assert framerate is not None, "framerate is required for array input"
             self.array(array)
             self.colorspace(colorspace)
         if frames is not None and isinstance(frames, (list, tuple)) and all([isinstance(im, str) and os.path.exists(im) for im in frames]):
+            assert framerate is not None, "framerate is required for frames input"            
             frames = [vipy.image.Image(filename=f) for f in frames]
         if frames is not None and isinstance(frames, (list, tuple)) and all([isinstance(im, vipy.image.Image) for im in frames]):
+            assert framerate is not None, "framerate is required for frames input"                        
             self.array(frames, copy=True)
         elif frames is not None:
             raise ValueError('invalid image frame list "%s"' % frames)
@@ -1171,12 +1175,13 @@ class Video():
         dt = int(np.round(len(self._array) / float(n)))  # stride
         return self._array[::dt][0:n]
 
-    def framerate(self, fps=None, replace=True):
+    
+    def framerate(self, fps=None, round='near'):
         """Change the input framerate for the video and update frame indexes for all annotations
 
         Args:
             fps: [Float] frames per second to process the underlying video
-            replace: [bool]  If true, replace the framerate in the filter chain so that there is one framerate in the filter chain.. If false, append framerate conversions in the filter chain
+            round ['up','down','near'] the rounding option for the ffmpeg fps filter 
 
         Returns:
             If fps is None, return the current framerate, otherwise set the framerate to fps
@@ -1190,10 +1195,7 @@ class Video():
             return self
         else:            
             assert not self.isloaded(), "framerate can only be set prior to load()"
-            if replace and self._framerate is not None and 'fps=' in self._ffmpeg_commandline():
-                self._update_ffmpeg('fps', float(fps))  # replace fps filter, do not add to it
-            else:
-                self._ffmpeg = self._ffmpeg.filter('fps', fps=float(fps), round='up')  # create fps filter first time
+            self._ffmpeg = self._ffmpeg.filter('fps', fps=float(fps), round='near' if self._framerate is None else 'up')  # create new fps filter
         
             # if '-ss' in self._ffmpeg_commandline():
             #     No change is needed here.  The seek is in seconds and is independent of the framerate
@@ -1678,13 +1680,13 @@ class Video():
             # FFMPEG frame indexing is inefficient for large framenum.  Need to add "-ss sec.msec" flag before input
             #   - the "ss" option must be provided before the input filename, and is supported by ffmpeg-python as ".input(in_filename, ss=time)"
             #   - Seek to the frame before the desired frame in order to pipe the next (desired) frame.  This is why we use (framenum-1)
-            timestamp_in_seconds = max(0.0, (framenum-1)/float(self.framerate()))
+            timestamp_in_seconds = max(0.0, (framenum-0)/float(self.framerate()))    # TESTING: disable framenum
             f_prepipe = self.clone(shallow=True)._update_ffmpeg_seek(offset=timestamp_in_seconds)._ffmpeg.filter('select', 'gte(n,{})'.format(0))
             f = f_prepipe.output('pipe:', vframes=1, format='image2', vcodec='mjpeg')\
                          .global_args('-cpuflags', '0', '-loglevel', 'debug' if vipy.globals.GLOBAL['DEBUG'] else 'error')
             (out, err) = f.run(capture_stdout=True, capture_stderr=True)
         except Exception as e:            
-            raise ValueError('[vipy.video.load]: Video preview failed with error "%s"\n  - Video: "%s"\n  - FFMPEG command: \'sh> %s\'\n  - Try manually running this ffmpeg command to see errors.  This error usually means that the video is corrupted.' % (str(e), str(self), str(self._ffmpeg_commandline(f_prepipe.output('preview.jpg', vframes=1)))))
+            raise ValueError('Video preview failed with error "%s"\n  - Video: "%s"\n  - FFMPEG command: \'sh> %s\'\n  - Try manually running this ffmpeg command to see errors.  This error usually means that the video is corrupted.' % (str(e), str(self), str(self._ffmpeg_commandline(f_prepipe.output('preview.jpg', vframes=1)))))
 
         # [EXCEPTION]:  UnidentifiedImageError: cannot identify image file, means usually that FFMPEG piped a zero length image
         try:
@@ -1832,7 +1834,7 @@ class Video():
         
         if not self.isloaded() and isinstance(start, int):
             assert self.framerate() is not None, "framerate required"
-            timestamp_in_seconds = ((self._start if self._start is not None else 0)+start-0)/float(self.framerate())  
+            timestamp_in_seconds = ((self._start if self._start is not None else 0)+start-1)/float(self.framerate())   # seek one frame before (test youtubeBB before changing this)
             self._update_ffmpeg_seek(timestamp_in_seconds)
             if end is not None:
                 self._ffmpeg = self._ffmpeg.setpts('PTS-STARTPTS')  # reset timestamp to 0 before trim filter            
@@ -1842,7 +1844,8 @@ class Video():
             self._end = (self._start + (end-start)) if end is not None else end # for __repr__ only
         elif not self.isloaded() and isinstance(start, float):
             assert self._start is None or isinstance(self._start, float), "timestamp must be in seconds"
-            timestamp_in_seconds = (self._start if self._start is not None else 0)+start-(0/self.framerate())  
+            timestamp_in_seconds = (self._start if self._start is not None else 0)+start
+   
             self._update_ffmpeg_seek(timestamp_in_seconds)
             if end is not None:
                 self._ffmpeg = self._ffmpeg.setpts('PTS-STARTPTS')  # reset timestamp to 0 before trim filter            
@@ -2090,7 +2093,7 @@ class Video():
         outfile = vipy.util.tempWEBP() if outfile is None else outfile        
         assert strict is False or iswebp(outfile)
         outfile = os.path.normpath(os.path.abspath(os.path.expanduser(outfile)))
-        framerate = framerate if framerate is not None else self._framerate
+        framerate = framerate if framerate is not None else self.framerate()
         self.load().frame(0).pil().save(outfile, loop=0, save_all=True, method=6 if smallest else 3 if smaller else 0,
                                         append_images=[self.frame(k).pil() for k in range(1, len(self))],
                                         duration=[int(1000.0/framerate) for k in range(0, len(self)-1)] + [pause*1000])
@@ -2134,7 +2137,7 @@ class Video():
         """        
         outfile = tempMP4() if outfile is None else os.path.normpath(os.path.abspath(os.path.expanduser(outfile)))
         premkdir(outfile)  # create output directory for this file if not exists
-        framerate = framerate if framerate is not None else self._framerate
+        framerate = framerate if framerate is not None else self.framerate()
         assert vipy.util.isvideofile(outfile), "Invalid filename extension for video filename"
 
         if verbose:
@@ -2598,7 +2601,7 @@ class VideoCategory(Video):
 
     """
     __slots__ = ('_url', '_filename', '_array', '_colorspace', '_ffmpeg', '_framerate', '_start', '_end', '_shape', '_channels', 'attributes')    
-    def __init__(self, filename=None, url=None, framerate=30.0, attributes=None, category=None, array=None, colorspace=None, startframe=None, endframe=None, startsec=None, endsec=None, shape=None):
+    def __init__(self, filename=None, url=None, framerate=None, attributes=None, category=None, array=None, colorspace=None, startframe=None, endframe=None, startsec=None, endsec=None, shape=None):
         super().__init__(url=url, filename=filename, framerate=framerate, attributes=attributes, array=array, colorspace=colorspace,
                                             startframe=startframe, endframe=endframe, startsec=startsec, endsec=endsec, shape=shape)
 
@@ -2690,7 +2693,7 @@ class Scene(Video):
     """
 
     __slots__ = ('_url', '_filename', '_array', '_colorspace', '_ffmpeg', '_framerate', '_start', '_end', '_shape', '_channels', 'attributes', '_tracks', '_activities')        
-    def __init__(self, filename=None, url=None, framerate=30.0, array=None, colorspace=None, category=None, tracks=None, activities=None,
+    def __init__(self, filename=None, url=None, framerate=None, array=None, colorspace=None, category=None, tracks=None, activities=None,
                  attributes=None, startframe=None, endframe=None, startsec=None, endsec=None, shape=None, tags=None, frames=None):
 
         self._tracks = {}
@@ -3418,8 +3421,8 @@ class Scene(Video):
         csv = [('# video_filename', 'frame_number', 'object_category', 'activity categories(;)', 'xmin', 'ymin', 'width', 'height', 'track_id', 'activity_ids(;)')] + csv
         return writecsv(csv, outfile) if outfile is not None else csv
 
-
-    def framerate(self, fps=None, replace=True):
+    
+    def framerate(self, fps=None, round='near'):
         """Return the current frame rate of change the input framerate for the video and update frame indexes for all annotations.
 
         The framerate may be None in the constructor if the framerate is not know until a video is downloaded
@@ -3436,7 +3439,7 @@ class Scene(Video):
 
         Args:
             fps [float]: the new frames per second
-            replace [bool]: If trye, replace the fps in the filter chain, if false append the fps in the filter chain
+            round ['up','down','near']: The rounding option for ffmpeg fps filter, used for temporal downsampling
 
         """        
         if fps is None:
@@ -3449,18 +3452,15 @@ class Scene(Video):
             fps = float(fps)
 
             if self._start is not None and isinstance(self._start, int):
-                self._start = int(round(self._start * (fps/self._framerate)))  # __repr__ only
+                self._start = int(np.round(self._start * (fps/self._framerate)))  # __repr__ only
             elif self._start is not None and isinstance(self._start, float):
                 self._start = self._start * (fps/self._framerate)  # __repr__ only
             if self._end is not None and isinstance(self._end, int):
-                self._end = int(round(self._end * (fps/self._framerate))) # __repr__only
+                self._end = int(np.round(self._end * (fps/self._framerate))) # __repr__only
             elif self._end is not None and isinstnace(self._end, float):
                 self._end = self._end * (fps/self._framerate)  # __repr__ only
                 
-            if replace and 'fps=' in self._ffmpeg_commandline():
-                self._update_ffmpeg('fps', fps)  # replace fps filter, do not add to it
-            else:
-                self._ffmpeg = self._ffmpeg.filter('fps', fps=fps, round='up')  # create fps filter first time
+            self._ffmpeg = self._ffmpeg.filter('fps', fps=fps, round=round)  # chain to the fps filter
 
             self._tracks = {k:t.framerate(fps) for (k,t) in self.tracks().items()}
             self._activities = {k:a.framerate(fps) for (k,a) in self.activities().items()}                        
@@ -3733,7 +3733,7 @@ class Scene(Video):
             # -- This code copy is used to avoid super(Scene, self.clone()) which screws up class inheritance for iPython reload
             assert not v.isloaded(), "Filters can only be applied prior to load() - Try calling flush() first"
             assert v._start is None or isinstance(v._start, int), "clip start must be in frames"
-            timestamp_in_seconds = ((v._start if v._start is not None else 0)+start-0)/float(v.framerate()) 
+            timestamp_in_seconds = ((v._start if v._start is not None else 0)+start-1)/float(v.framerate())   # seek one frame before (test youtubeBB before changing this)
             v._update_ffmpeg_seek(timestamp_in_seconds)
             if end is not None:
                 v._ffmpeg = v._ffmpeg.setpts('PTS-STARTPTS')  # reset timestamp to 0 before trim filter            
@@ -3747,7 +3747,7 @@ class Scene(Video):
             # -- This code copy is used to avoid super(Scene, self.clone()) which screws up class inheritance for iPython reload
             assert not v.isloaded(), "Filters can only be applied prior to load() - Try calling flush() first"
             assert v._start is None or isinstance(v._start, float), "clip start must be in seconds"
-            timestamp_in_seconds = (v._start if v._start is not None else 0)+start-(0/self.framerate())  # seek to frame before 
+            timestamp_in_seconds = (v._start if v._start is not None else 0)+start  
             v._update_ffmpeg_seek(timestamp_in_seconds)
             if end is not None:
                 v._ffmpeg = v._ffmpeg.setpts('PTS-STARTPTS')  # reset timestamp to 0 before trim filter            
@@ -4363,7 +4363,7 @@ class Scene(Video):
 
     
     
-def RandomVideo(rows=None, cols=None, frames=None):
+def RandomVideo(rows=None, cols=None, frames=None, framerate=30):
     """Return a random loaded vipy.video.video.
     
     Useful for unit testing, minimum size (32x32x32) for ffmpeg
@@ -4372,15 +4372,15 @@ def RandomVideo(rows=None, cols=None, frames=None):
     cols = np.random.randint(256, 1024) if cols is None else cols
     frames = np.random.randint(128, 256) if frames is None else frames
     assert rows>32 and cols>32 and frames>=32    
-    return Video(array=np.uint8(255 * np.random.rand(frames, rows, cols, 3)), colorspace='rgb')
+    return Video(array=np.uint8(255 * np.random.rand(frames, rows, cols, 3)), colorspace='rgb', framerate=framerate)
 
 
-def RandomScene(rows=None, cols=None, frames=None, filename=None, num_tracks=32, num_activities=32):
+def RandomScene(rows=None, cols=None, frames=None, filename=None, num_tracks=32, num_activities=32, framerate=30):
     """Return a random loaded vipy.video.Scene.
     
     Useful for unit testing.
     """
-    v = RandomVideo(rows, cols, frames) if filename is None else Video(filename=filename).load()
+    v = RandomVideo(rows, cols, frames, framerate) if filename is None else Video(filename=filename, framerate=None).load()
     assert len(v) >= 32
     
     (rows, cols) = v.shape()
@@ -4395,9 +4395,9 @@ def RandomScene(rows=None, cols=None, frames=None, filename=None, num_tracks=32,
                                                              width=np.random.randint(16,cols//2), height=np.random.randint(16,rows//2))]) for k in range(0,num_tracks)]
 
     activities = [vipy.activity.Activity(label='activity%d' % k, tracks=[tracks[j].id() for j in [np.random.randint(num_tracks)]], startframe=np.random.randint(0,len(v)//2), endframe=np.random.randint(1+(len(v)//2),len(v)), framerate=30) for k in range(0,num_activities)]   
-    return Scene(array=v.array(), colorspace='rgb', category='scene', tracks=tracks, activities=activities, framerate=30)
+    return Scene(array=v.array(), colorspace='rgb', category='scene', tracks=tracks, activities=activities, framerate=framerate)
 
 
 def EmptyScene():
     """Return an empty scene""" 
-    return vipy.video.Scene(array=np.zeros((1,1,1,3), dtype=np.uint8))
+    return vipy.video.Scene(array=np.zeros((1,1,1,3), dtype=np.uint8), framerate=30)

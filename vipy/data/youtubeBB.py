@@ -67,7 +67,7 @@ class YoutubeBB(Dataset):
         d_youtubeid_objectid_to_bboxes = {k:[(float(x[1]), x[3], (float(x[6]),float(x[8]),float(x[7]),float(x[9]))) for x in v] for (k,v) in groupbyasdict(csv, lambda x: (x[0], x[4])).items()}  # (timestamp_ms, class_name, ulbr)
         
         loader = (lambda ytid, d_youtubeid_to_objectids=d_youtubeid_to_objectids, d_youtubeid_objectid_to_bboxes=d_youtubeid_objectid_to_bboxes:
-                  Scene(url='http://youtu.be/%s' % ytid, framerate=30,
+                  Scene(url='http://youtu.be/%s' % ytid, framerate=30.0,
                         tracks=[Track(category=d_youtubeid_objectid_to_bboxes[(ytid,o)][0][1],
                                       keyframes=[int(float(ts)*(30/1000)) for (ts, c, ulbr) in d_youtubeid_objectid_to_bboxes[(ytid,o)] if ulbr[0]>=0],
                                       boxes=[Detection(category=c, ulbr=ulbr, normalized_coordinates=True) for (ts, c, ulbr) in d_youtubeid_objectid_to_bboxes[(ytid,o)] if ulbr[0]>=0])
