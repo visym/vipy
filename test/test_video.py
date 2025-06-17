@@ -475,9 +475,8 @@ def _test_scene():
 def test_clip():
 
     # FIXME: this fails on macos, off by four frames or so
-    if sys.platform != 'linux':
-        warnings.warn('tests not run for platform "%s"' % sys.platform)
-        return
+    # - there is a bug macos sequoia 15.5, homebrew ffmpeg-7.1.1 (clang-1700.0.13.3), due to impropver -ss handing. 
+    # - this requires download prebuilt binaries from ffmpeg.org for this to pass on macos
     
     imgframes = np.zeros( (120,112,112,3), dtype=np.uint8)
     imgframes[60] = imgframes[60]+255
@@ -504,9 +503,6 @@ def test_clip():
     assert np.mean(vc.frame(60).array().flatten()) > 128
     assert np.mean(vc.frame(61).array().flatten()) < 128    
 
-    # 16Jun25: these are correct, but they fail on some videos and not others
-    # - It appears that some complex filter chains when using the fps filter does generate pixel accurate clips
-    # - Try testing on YoutubeBB data and on CAP data to compare
     v = vipy.video.Video(frames=[vipy.image.Image(array=img) for img in imgframes], framerate=30)    
     vc = v.save(outfile).clip(31, 90).load()  
     assert np.mean(vc.frame(59-31).array().flatten()) < 128  
