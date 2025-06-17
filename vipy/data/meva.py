@@ -53,28 +53,27 @@ d_category_to_shortlabel = {'person_abandons_package':'Abandoning',
                             'vehicle_makes_u_turn':'Turning around'}
 
 class KF1():
-    def __init__(self, videodir, repodir, contrib=False, stride=1, verbose=True, n_videos=None, withprefix=None, d_category_to_shortlabel=None, merge=False, actor=False, disjoint=False, unpad=False):
+    def __init__(self, datadir, contrib=False, stride=1, verbose=True, n_videos=None, withprefix=None, d_category_to_shortlabel=None, merge=False, actor=False, disjoint=False, unpad=False):
         """Parse MEVA annotations (http://mevadata.org) for Known Facility 1 dataset into vipy.video.Scene() objects
 
         To download videos:
         https://mevadata.org/resources/README-meva-kf1-data.html
 
-        sh> cd /path/to/videos/
+        sh> cd /path/to/datadir
         sh> aws s3 sync s3://mevadata-public-01/drops-123-r13 .
 
         To download annotations:
         https://gitlab.kitware.com/meva/meva-data-repo
 
-        sh> cd /path/to/repo
+        sh> cd /path/to/datadir
         sh> git clone https://gitlab.kitware.com/meva/meva-data-repo.git
        
         Then for faster parsing:
         >>> with vipy.globals.multiprocessing(4):
-        >>>      kf1 = vipy.data.meva.KF1('/path/to/videos', '/path/to/repo/meva-data-repo')
+        >>>      kf1 = vipy.data.meva.KF1('/path/to/datadir')
 
         Args:
-            videodir: [str]  path to Directory containing subdirectories of the form '2018-03-05' 
-            repodir: [str]  path to directory containing clone of https://gitlab.kitware.com/meva/meva-data-repo
+            datadir: [str]  path to Directory containing subdirectories of the form '2018-03-05' and clone of https://gitlab.kitware.com/meva/meva-data-repo
             stride: [int] the integer temporal stride in frames for importing bounding boxes, vipy will do linear interpoluation and boundary handling
             n_videos: [int] only return an integer number of videos, useful for debugging or for previewing dataset
             withprefix: [list] only return videos with the filename containing one of the strings in withprefix list, useful for debugging
@@ -93,11 +92,12 @@ class KF1():
 
         """
         
-        self.videodir = videodir
-        self.repodir = repodir
+        self.videodir = datadir
+        self.repodir = os.path.join(datadir, 'meva-data-repo')
 
-        assert os.path.exists(os.path.join(self.videodir, '2018-03-05')), "videodir '%s' must contain the dated subdirectories of videos.  See http://mevadata.org/#getting-data" % videodir
-        assert os.path.exists(os.path.join(self.repodir, 'annotation')), "repodir '%s' must contain the clone of https://gitlab.kitware.com/meva/meva-data-repo" % repodir
+        assert os.path.exists(os.path.join(self.repodir, 'annotation')), "'%s' must contain output of 'git clone https://gitlab.kitware.com/meva/meva-data-repo'" % datadir        
+        assert os.path.exists(os.path.join(self.videodir, '2018-03-05')), "'%s' must contain videos from 'aws s3 sync s3://mevadata-public-01/drops-123-r13 .'.  See http://mevadata.org/#getting-data" % datadir
+
 
         # Shortlabels are optional and used for showing labels on videos only
         self._d_category_to_shortlabel = vipy.data.meva.d_category_to_shortlabel

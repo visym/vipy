@@ -755,7 +755,7 @@ def registry(name=None, datadir=None, freeze=True, clean=False, download=False, 
        'mnist','cifar10','cifar100','caltech101','caltech256','oxford_pets','sun397', 'food101','stanford_dogs',
        'flickr30k','oxford_fgvc_aircraft','oxford_flowers_102','eurosat','d2d','ethzshapes','coil100','kthactions',
        'yfcc100m','yfcc100m_url','tiny_imagenet','coyo300m','coyo700m','pascal_voc_2007','coco_2014', 'ava',
-       'activitynet', 'open_images_v7', 'imagenet', 'imagenet21k', 'visualgenome' ,'widerface',
+       'activitynet', 'open_images_v7', 'imagenet', 'imagenet21k', 'visualgenome' ,'widerface','meva_kf1',
        'objectnet','lfw','inaturalist_2021','kinetics','hmdb','places365','ucf101','lvis','kitti',
        'imagenet_localization','laion2b','datacomp_1b','imagenet2014_det','imagenet_faces','youtubeBB'
 
@@ -769,7 +769,7 @@ def registry(name=None, datadir=None, freeze=True, clean=False, download=False, 
                 'flickr30k','oxford_fgvc_aircraft','oxford_flowers_102', 'food101', 'eurosat','d2d','ethzshapes','kthactions',
                 'yfcc100m','yfcc100m_url','tiny_imagenet','coyo300m','coyo700m','pascal_voc_2007','coco_2014', 'ava',
                 'activitynet','open_images_v7','imagenet','imagenet21k','visualgenome','widerface', 'youtubeBB',
-                'objectnet','lfw','inaturalist_2021','kinetics','hmdb','places365','ucf101','kitti',
+                'objectnet','lfw','inaturalist_2021','kinetics','hmdb','places365','ucf101','kitti','meva_kf1',
                 'lvis','imagenet_localization','laion2b','datacomp_1b','imagenet2014_det','imagenet_faces')  # Add to docstring too...
     
     if name is None:
@@ -903,6 +903,8 @@ def registry(name=None, datadir=None, freeze=True, clean=False, download=False, 
         trainset = vipy.data.hf.laion2b()
     elif name == 'youtubeBB':
         trainset = vipy.data.youtubeBB.YoutubeBB(namedir)
+    elif name == 'meva_kf1':
+        trainset = vipy.data.meva.KF1(namedir).dataset()  # consider using "with vipy.globals.multiprocessing(pct=0.5):"
     else:
         raise ValueError('unknown dataset "%s" - choose from "%s"' % (name, ', '.join(sorted(datasets))))
     
