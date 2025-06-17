@@ -451,7 +451,7 @@ def _test_scene():
     # Video scenes
     v1 = vipy.video.Video('Video.mp4', startframe=50, endframe=100).load()
     v2 = vipy.video.Video('Video.mp4').clip(0,100).load()    
-    assert v1[0] == v2[49]  # this is off by one due to one frame seek  offset in clip. Works in some videos not others.  Why?
+    assert v1[0] == v2[50]  
     print('[test_video.scene]: video scenes  PASSED')    
 
     # Saveas
@@ -504,19 +504,21 @@ def test_clip():
     assert np.mean(vc.frame(60).array().flatten()) > 128
     assert np.mean(vc.frame(61).array().flatten()) < 128    
 
-    # 16Jun25: these are off by one now, not sure why it fails on some videos not others
+    # 16Jun25: these are correct, but they fail on some videos and not others
+    # - It appears that some complex filter chains when using the fps filter does generate pixel accurate clips
+    # - Try testing on YoutubeBB data and on CAP data to compare
     v = vipy.video.Video(frames=[vipy.image.Image(array=img) for img in imgframes], framerate=30)    
     vc = v.save(outfile).clip(31, 90).load()  
-    assert np.mean(vc.frame(59-31).array().flatten()) < 128
-    assert np.mean(vc.frame(60-31).array().flatten()) > 128
-    assert np.mean(vc.frame(61-31).array().flatten()) < 128    
+    assert np.mean(vc.frame(59-31).array().flatten()) < 128  
+    assert np.mean(vc.frame(60-31).array().flatten()) > 128  
+    assert np.mean(vc.frame(61-31).array().flatten()) < 128  
     
-    v = vipy.video.Video(frames=[vipy.image.Image(array=img) for img in imgframes])    
+    v = vipy.video.Video(frames=[vipy.image.Image(array=img) for img in imgframes], framerate=30)    
     vc = v.save(outfile).clip(31, 90).clip(2, 40).load()
-    assert np.mean(vc.frame(59-31-2).array().flatten()) < 128
-    assert np.mean(vc.frame(60-31-2).array().flatten()) > 128
-    assert np.mean(vc.frame(61-31-2).array().flatten()) < 128    
-
+    assert np.mean(vc.frame(59-31-2).array().flatten()) < 128 
+    assert np.mean(vc.frame(60-31-2).array().flatten()) > 128 
+    assert np.mean(vc.frame(61-31-2).array().flatten()) < 128
+    
     v = vipy.video.RandomScene(64,64,64)
     im = v.frame(10)
     vc = v.save(outfile).clip(10,60).load()

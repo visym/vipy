@@ -1680,6 +1680,10 @@ class Video():
             # FFMPEG frame indexing is inefficient for large framenum.  Need to add "-ss sec.msec" flag before input
             #   - the "ss" option must be provided before the input filename, and is supported by ffmpeg-python as ".input(in_filename, ss=time)"
             #   - Seek to the frame before the desired frame in order to pipe the next (desired) frame.  This is why we use (framenum-1)
+            #   - This (framenum-1) has been moved into clip instead, as
+            #   - For example: these show the same frame (test/Video.mp4)
+            #     >>> vipy.video.Scene(filename='Video.mp4').annotate(timestamp=True).frame(60).show(figure=1)
+            #     >>> vipy.video.Scene(filename='Video.mp4').frame(60).show(figure=2)
             timestamp_in_seconds = max(0.0, (framenum-0)/float(self.framerate()))    # TESTING: disable framenum
             f_prepipe = self.clone(shallow=True)._update_ffmpeg_seek(offset=timestamp_in_seconds)._ffmpeg.filter('select', 'gte(n,{})'.format(0))
             f = f_prepipe.output('pipe:', vframes=1, format='image2', vcodec='mjpeg')\
@@ -1834,7 +1838,7 @@ class Video():
         
         if not self.isloaded() and isinstance(start, int):
             assert self.framerate() is not None, "framerate required"
-            timestamp_in_seconds = ((self._start if self._start is not None else 0)+start-1)/float(self.framerate())   # seek one frame before (test youtubeBB before changing this)
+            timestamp_in_seconds = ((self._start if self._start is not None else 0)+start)/float(self.framerate())   # seek zero frame before (test youtubeBB before changing this)
             self._update_ffmpeg_seek(timestamp_in_seconds)
             if end is not None:
                 self._ffmpeg = self._ffmpeg.setpts('PTS-STARTPTS')  # reset timestamp to 0 before trim filter            
@@ -3733,7 +3737,7 @@ class Scene(Video):
             # -- This code copy is used to avoid super(Scene, self.clone()) which screws up class inheritance for iPython reload
             assert not v.isloaded(), "Filters can only be applied prior to load() - Try calling flush() first"
             assert v._start is None or isinstance(v._start, int), "clip start must be in frames"
-            timestamp_in_seconds = ((v._start if v._start is not None else 0)+start-1)/float(v.framerate())   # seek one frame before (test youtubeBB before changing this)
+            timestamp_in_seconds = ((v._start if v._start is not None else 0)+start-0)/float(v.framerate())   # seek zero frame before (test youtubeBB before changing this)
             v._update_ffmpeg_seek(timestamp_in_seconds)
             if end is not None:
                 v._ffmpeg = v._ffmpeg.setpts('PTS-STARTPTS')  # reset timestamp to 0 before trim filter            

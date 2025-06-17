@@ -21,13 +21,25 @@ class YoutubeBB(Dataset):
     >>> for t in v.trackclip():
     >>>     t.show()
 
-    To change the framerate to match the 1Hz annotation keyframes:
-    >>> dataset = dataset.localmap(lambda v: v.framerate(1))
+    To extract the first annotated keyframes at 1Hz:
+    >>> imlist = [t.framerate(1).frame(0) for t in dataset.takeone().trackclip()]
+    >>> imlist[0].show()
 
-    To extract the first annotated keyframe at 1Hz:
-    >>> im = dataset.takeone().framerate(1).frame(0)
-    >>> im.show()
-    
+    To extract all annotated keyframes at 1Hz for each tracked object:
+    >>> framelist = [[im for im in t.framerate(1).load()] for t in dataset.takeone().trackclip()]
+    >>> vipy.visualize.montage([im.centersquare().annotate() for frames in framelist for im in frames]).show()
+
+    The boxes are available as:
+    >>> objectlist = [(o.category(), o.xywh()) for frames in framelist for im in frames for o in im.objects()]
+
+    Notes:
+      - Some videos with a native framerate different from 30Hz may generate non-pixel accurate frames due to rounding errors in the ffmpeg fps filter chain
+      - The videos are loaded with a framerate of 30Hz.  Boxes are annotated at 1Hz.  Objects are linearly interpolated to export at 30Hz
+        but this means that some frames that have interpolated boxes may no longer precisely fall on the object
+      - To recover the precise frame annotated once per second, use v.frame(n).  For example, for the frame at timestamp 2000ms, use v.frame(int(30*(2000/1000)))
+      - Try v.show(timestamp=True) to show the frame index overlay along with the boxes to see which frame is being displayed
+      - Delay the framerate conversion as late in the filter chain as possible (e.g. after trackclip)
+
     """
     def __init__(self, datadir=None, redownload=False):
         datadir = tocache('youtubeBB') if datadir is None else datadir
