@@ -397,9 +397,14 @@ def findloadable(basedir):
 def readyaml(yamlfile):
     """Read a yaml file and return a parsed dictionary, this is slow for large yaml files"""
     try_import('yaml', 'pyyaml')
-    import yaml
+    import yaml    
+    try:
+            from yaml import CLoader as Loader
+    except ImportError:
+            from yaml import Loader
+
     with open(yamlfile, 'r') as f:
-        return yaml.load(f.read(), Loader=yaml.Loader)  # yaml.CLoader is faster, but not installed via pip
+        return yaml.load(f.read(), Loader=Loader)  # yaml.CLoader is faster, but not installed via pip
 
 
 def count_images_in_subdirectories(indir):

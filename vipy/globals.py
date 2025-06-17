@@ -257,6 +257,13 @@ def parallel(workers=None, pct=None, threaded=True):
 
     return Parallel(workers if not pct else int(pct*os.cpu_count()))
 
+def multithreading(n=None, pct=None):
+    """Context manager for concurrent futures multithreaded executor, use with `vipy.dataset.Dataset`"""
+    return parallel(workers=n, pct=pct, threaded=True)
+
+def multiprocessing(n=None, pct=None):
+    """Context manager for concurrent futures multiprocessing executor, use with `vipy.dataset.Dataset`"""    
+    return parallel(workers=n, pct=pct, threaded=False)
 
 def noparallel():
     """Disable all parallel processing"""

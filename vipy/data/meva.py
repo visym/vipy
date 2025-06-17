@@ -9,6 +9,9 @@ import numpy as np
 import warnings
 import shutil
 import vipy.globals
+from vipy.globals import log
+from vipy.dataset import Dataset
+import functools
 
 
 d_category_to_shortlabel = {'person_abandons_package':'Abandoning',
@@ -49,14 +52,28 @@ d_category_to_shortlabel = {'person_abandons_package':'Abandoning',
                             'vehicle_turns_right':'Turning right',
                             'vehicle_makes_u_turn':'Turning around'}
 
-class KF1(object):
+class KF1():
     def __init__(self, videodir, repodir, contrib=False, stride=1, verbose=True, n_videos=None, withprefix=None, d_category_to_shortlabel=None, merge=False, actor=False, disjoint=False, unpad=False):
         """Parse MEVA annotations (http://mevadata.org) for Known Facility 1 dataset into vipy.video.Scene() objects
+
+        To download videos:
+        https://mevadata.org/resources/README-meva-kf1-data.html
+
+        sh> cd /path/to/videos/
+        sh> aws s3 sync s3://mevadata-public-01/drops-123-r13 .
+
+        To download annotations:
+        https://gitlab.kitware.com/meva/meva-data-repo
+
+        sh> cd /path/to/repo
+        sh> git clone https://gitlab.kitware.com/meva/meva-data-repo.git
        
-        Kwiver packet format: https://gitlab.kitware.com/meva/meva-data-repo/blob/master/documents/KPF-specification-v4.pdf
+        Then for faster parsing:
+        >>> with vipy.globals.multiprocessing(4):
+        >>>      kf1 = vipy.data.meva.KF1('/path/to/videos', '/path/to/repo/meva-data-repo')
 
         Args:
-            videodir: [str]  path to Directory containing 'drop-01' 
+            videodir: [str]  path to Directory containing subdirectories of the form '2018-03-05' 
             repodir: [str]  path to directory containing clone of https://gitlab.kitware.com/meva/meva-data-repo
             stride: [int] the integer temporal stride in frames for importing bounding boxes, vipy will do linear interpoluation and boundary handling
             n_videos: [int] only return an integer number of videos, useful for debugging or for previewing dataset
@@ -72,13 +89,15 @@ class KF1(object):
         Returns:
             a list of `vipy.video.Scene` objects
 
+        Kwiver packet format: https://gitlab.kitware.com/meva/meva-data-repo/blob/master/documents/KPF-specification-v4.pdf
+
         """
         
         self.videodir = videodir
         self.repodir = repodir
 
-        assert os.path.exists(os.path.join(self.videodir, 'drop-01')), "Invalid input - videodir '%s' must contain the drop-01, drop-02 and drop-03 subdirectories.  See http://mevadata.org/#getting-data" % videodir
-        assert os.path.exists(os.path.join(self.repodir, 'annotation')), "Invalid input - repodir '%s' must contain the clone of https://gitlab.kitware.com/meva/meva-data-repo" % repodir
+        assert os.path.exists(os.path.join(self.videodir, '2018-03-05')), "videodir '%s' must contain the dated subdirectories of videos.  See http://mevadata.org/#getting-data" % videodir
+        assert os.path.exists(os.path.join(self.repodir, 'annotation')), "repodir '%s' must contain the clone of https://gitlab.kitware.com/meva/meva-data-repo" % repodir
 
         # Shortlabels are optional and used for showing labels on videos only
         self._d_category_to_shortlabel = vipy.data.meva.d_category_to_shortlabel
@@ -94,14 +113,12 @@ class KF1(object):
             yamlfiles = [y for y in yamlfiles if any([(p in y[0]) for p in tolist(withprefix)])]  
 
         if verbose:
-            print('[vipy.data.meva.KF1]: Loading %d YAML files' % len(yamlfiles))
-            if len(yamlfiles) > 100 and vipy.globals.parallel() <= 1:
-                print('[vipy.data.meva.KF1]: This takes a while since parsing YAML files in python is painfully slow, consider calling "vipy.globals.parallel(n)" for n>1 before loading the dataset for parallel parsing')
+            log.info(' Loading %d YAML files' % len(yamlfiles))
 
-        # Parallel video annotation:  set vipy.globals.parallel(n) for n parallel workers for the Batch() processing
-        from vipy.batch import Batch  # requires Dask, Distributed
-        self._vidlist = Batch(list(yamlfiles)).map(lambda tga: self._parse_video(d_videoname_to_path, d_category_to_shortlabel, tga[0], tga[1], tga[2], stride=stride, verbose=verbose, actor=actor)).result()
-        self._vidlist = [v for v in self._vidlist if v is not None]
+        # optional parallel video annotation:  use context manager with vipy.globals.parallel(n, threaded=False): when calling this constructor
+        parser = functools.partial(self._parse_video, d_videoname_to_path=d_videoname_to_path, d_category_to_shortlabel=d_category_to_shortlabel, stride=stride, verbose=verbose, actor=actor)  # no lambdas ...
+        self._vidlist = Dataset(list(yamlfiles)).map(parser).list()
+        self._vidlist = [v for v in self._vidlist if v is not None]  # remove skipped
 
         # Merge and dedupe activities and tracks across YAML files for same video, using temporal and spatial IoU association.
         #   The MEVA dataset is "activity-centric" so that each activity is labeled independently.  There may be tracks in the dataset
@@ -109,9 +126,9 @@ class KF1(object):
         #   in a non-disjoint activity in a video.  Yuck..  Try to merge them.  This is experimental, since it tries to use IoU for merging, 
         #   which does not work in general.  This requires global track correspondence.  
         if merge:
-            print('[vipy.data.meva.KF1]: merging videos ...')
+            log.info(' merging videos ...')
             V = list(groupbyasdict([a for vid in self._vidlist for a in vid.activitysplit()], lambda s: s.filename()).values())
-            self._vidlist = Batch(V).map(lambda v: v[0].clone().union(v[1:])).result()
+            self._vidlist = Dataset(V).localmap(lambda v: v[0].clone().union(v[1:])).list()
 
         # Enforce disjoint causal activities
         #   Due to the arbitrary temporal padding in the annotation definitions, merged causal activiites can overlap
@@ -184,7 +201,7 @@ class KF1(object):
         return len(self._vidlist)
                 
     def __repr__(self):
-        return str('<vipy.data.meva.KF1: videos=%d, videodir="%s", annotationdir="%s">' % (len(self), self.videodir, self.repodir))
+        return str('<vipy.data.meva.KF1: videos=%d, videodir="%s", repodir="%s">' % (len(self), self.videodir, self.repodir))
 
     def _activities_to_required_objects(self):
         """Return a dictionary of activity keys to set of required objects.  This is currently wrong."""
@@ -210,12 +227,14 @@ class KF1(object):
     def _get_videos(self):
         return sorted([x for x in findvideo(self.videodir)])
     
-    def _parse_video(self, d_videoname_to_path, d_category_to_shortlabel, types_yamlfile, geom_yamlfile, act_yamlfile, stride=1, verbose=False, actor=False):
+    def _parse_video(self, yamls, d_videoname_to_path, d_category_to_shortlabel, stride=1, verbose=False, actor=False):
         """Reference: https://gitlab.kitware.com/meva/meva-data-repo/-/blob/master/documents/KPF-specification-v4.pdf"""
+
+        (types_yamlfile, geom_yamlfile, act_yamlfile) = yamls
         
         # Read YAML
         if verbose:
-            print('[vipy.data.meva.KF1]: Parsing "%s"' % (act_yamlfile))
+            log.info(' Parsing "%s"' % (act_yamlfile))
         geom_yaml = readyaml(geom_yamlfile)
         types_yaml = readyaml(types_yamlfile)
         act_yaml = readyaml(act_yamlfile)
@@ -230,7 +249,7 @@ class KF1(object):
 
         if videoname not in d_videoname_to_path:
             if verbose:
-                print('[vipy.data.meva.KF1]: Invalid MEVA video "%s" in "%s" - Ignoring' % (videoname, filebase(act_yamlfile)))
+                log.warning(' MEVA video "%s" not found - Skipping ... ' % (videoname))
             return None
 
         # Parse video
@@ -257,7 +276,7 @@ class KF1(object):
                 bbox = BoundingBox(xmin=bb[0], ymin=bb[1], xmax=bb[2], ymax=bb[3])
                 if not bbox.isvalid():
                     if verbose:
-                        print('[vipy.data.meva.KF1]: Invalid bounding box: id1=%s, bbox="%s", file="%s" - Ignoring' % (str(v['id1']), str(bbox), delpath(self.repodir, geom_yamlfile)))
+                        log.info(' Invalid bounding box: id1=%s, bbox="%s", file="%s" - Ignoring' % (str(v['id1']), str(bbox), delpath(self.repodir, geom_yamlfile)))
                 elif v['id1'] not in d_id1_to_track:
                     d_id1_to_track[v['id1']] = Track(category=d_id1_to_category[v['id1']], framerate=framerate, keyframes=[keyframe], boxes=[bbox], boundary='strict')
                 else:
@@ -268,7 +287,7 @@ class KF1(object):
             try:
                 vid.add(v, rangecheck=True)  # throw exception if all tracks are outside the image rectangle
             except Exception as e:
-                print('[vipy.data.meva.KF1]: track import error "%s" for trackid=%s, track=%s - SKIPPING' % (str(e), k, str(v)))
+                log.error(' track import error "%s" for trackid=%s, track=%s - SKIPPING' % (str(e), k, str(v)))
 
         # Category to actor:  This defines the primary role for the activity (for tube based representations)
         f_activity_to_actor = lambda c: 'Person' if (c.split('_')[0] == 'person' or 'hand' in c) else 'Vehicle'
@@ -310,15 +329,15 @@ class KF1(object):
                 if True:                    
                     nounid = [d_id1_to_track[a].id() for a in actorid if (a in d_id1_to_track) and (f_activity_to_actor(category).lower() == d_id1_to_track[a].category().lower())]
                     if len(nounid) == 0 and actor:
-                        print('[vipy.data.meva.KF1]: Warning - activity "%s" without a required primary actor "%s" - SKIPPING' % (category, f_activity_to_actor(category)))
+                        log.warning(' Warning - activity "%s" without a required primary actor "%s" - SKIPPING' % (category, f_activity_to_actor(category)))
                         continue  # skip it
                     elif len(nounid) == 0:
-                        print('[vipy.data.meva.KF1]: Warning - activity "%s" without a required primary actor "%s"' % (category, f_activity_to_actor(category)))
+                        log.warning(' Warning - activity "%s" without a required primary actor "%s"' % (category, f_activity_to_actor(category)))
                     nounid = nounid[0] if len(nounid) > 0 else None   # first track in activity of required object class for this category is assumed to be the performer/actor/noun
 
                 for aid in actorid:
                     if not aid in d_id1_to_track:
-                        print('[vipy.data.meva.KF1]: ActorID %d referenced in activity yaml "%s" not found in geom yaml "%s" - Skipping' % (aid, delpath(self.repodir, act_yamlfile), delpath(self.repodir, geom_yamlfile)))
+                        log.warning(' ActorID %d referenced in activity yaml "%s" not found in geom yaml "%s" - Skipping' % (aid, delpath(self.repodir, act_yamlfile), delpath(self.repodir, geom_yamlfile)))
                 
                 # Add activity to scene:  include YAML file details in activity attributes for provenance if there are labeling bugs
                 tracks = {d_id1_to_track[aid].id():d_id1_to_track[aid] for aid in actorid if aid in d_id1_to_track}  # order preserving (python 3.6)
@@ -328,7 +347,7 @@ class KF1(object):
                                          startframe=startframe, endframe=endframe, tracks=tracks, framerate=framerate, 
                                          attributes={'act':str(v['act']), 'act_yaml':act_yamlfile, 'geom_yaml':geom_yamlfile, 'shortlabel':d_category_to_shortlabel[category]}), rangecheck=True)
                     except Exception as e:
-                        print('[vipy.data.meva.KF1]: activity import error "%s" for activity="%s" - SKIPPING' % (str(e), str(v)))
+                        log.error(' activity import error "%s" for activity="%s" - SKIPPING' % (str(e), str(v)))
             
         return vid
 
@@ -337,18 +356,16 @@ class KF1(object):
         """Return list of activity videos"""
         return [v for v in self._vidlist if v is not None]
 
+    def dataset(self):
+        return vipy.dataset.Dataset(self.videos(), 'meva_KF1')
+    
     def tolist(self):
         return self.videos()
 
     def instances(self, padframes=0):
         """Return list of activity instances"""
-        if vipy.globals.max_workers() > 1:
-            return [a for A in Batch(self.videos()).activityclip(padframes=padframes).result() for a in A]
-        else:
-            warnings.warn('Consider setting vipy.globals.max_workers(n) for n>1 to speed this up')
-            return [a for v in self.videos() for a in v.activityclip(padframes=padframes)]
+        return [a for v in self.videos() for a in v.activityclip(padframes=padframes)]
         
-
     def categories(self):
         """Return a list of activity categories"""
         return sorted(list(self._d_category_to_shortlabel.keys()))
@@ -430,7 +447,7 @@ class KF1(object):
         """Generate a standalone HTML file containing quicklooks for each annotated activity in dataset, along with some helpful provenance information for where the annotation came from"""
         if vipy.globals.max_workers() == 1:
             warnings.warn("Generating review HTML is very time consuming, consider setting vipy.global.max_workers(n) for n > 1 for parallel video processing")
-        quicklist = Batch(self._vidlist).map(lambda v: [(c.load().quicklook(context=True), c.flush()) for c in v.mindim(512).activityclip()]).result()
+        quicklist = Dataset(self._vidlist).localmap(lambda v: [(c.load().quicklook(context=True), c.flush()) for c in v.mindim(512).activityclip()]).list()
         quicklooks = [imq for q in quicklist for (imq, c) in q]  # for HTML display purposes
         provenance = [{'clip':str(c), 'activities':str(';'.join([str(a) for a in c.activitylist()])), 'category':c.category(), 'yamlfile':c.activitylist()[0].attributes['act_yaml']} for q in quicklist for (imq, c) in q]
         (quicklooks, provenance) = zip(*sorted([(q,p) for (q,p) in zip(quicklooks, provenance)], key=lambda x: x[1]['category']))  # sorted in category order
