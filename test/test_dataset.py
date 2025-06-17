@@ -14,7 +14,16 @@ def _test_registry(name=None):
         vipy.dataset.registry(d)
         print('[test_registry]: %s  PASSED' % d)
 
+def _test_youtubeBB():
 
+    v = vipy.load('youtubeBB_bear_framerate_29p97.json')  # in test/
+    framelist = [[im for im in t.framerate(1).load()] for t in v.clone().trackclip()]    
+    vipy.visualize.montage([im.centersquare().annotate() for frames in framelist for im in frames]).saveas('youtubeBB_bear_framerate_29p97.jpg')
+
+    print('PASSED')
+
+
+    
 def test_union():
     raw = ['d','a','c','a']
     raw_interleaved = [raw[0],raw[2],raw[1],raw[3]]
