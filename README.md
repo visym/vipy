@@ -47,7 +47,7 @@ Quickstart
 -------------------
 ```python
 import vipy
-vipy.image.owl().mindim(512).show()
+vipy.image.owl().minsquare().show()
 ```
 <img src="https://raw.githubusercontent.com/visym/vipy/master/docs/vipy_image_owl.jpg" width="980">
 
