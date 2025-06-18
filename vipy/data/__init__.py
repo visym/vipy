@@ -44,4 +44,5 @@ import vipy.data.kitti
 import vipy.data.youtubeBB
 import vipy.data.pip
 import vipy.data.cap
+import vipy.data.tiny_virat
 

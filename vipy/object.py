@@ -197,7 +197,9 @@ class Keypoint2d(Point2d, Object):
     def __init__(self, x, y, radius=1, attributes=None, confidence=None, id=None, category=None, tags=None, normalized_coordinates=False):
         super().__init__(x, y, r=radius)
         
+        assert attributes is None or isinstance(attributes, dict)        
         self.attributes = attributes if attributes is not None else {}
+        
         self._id = shortuuid() if id is True else (str(id) if id is not None else id)
 
         if category is not None:
@@ -207,7 +209,7 @@ class Keypoint2d(Point2d, Object):
                 self.add_tag(t)
 
         if normalized_coordinates:
-            self.set_attribute('normalized_coordinates', True)
+            self.set_attribute('normalized_coordinates', True)  # updated on load after size is available
                 
     def clone(self, deep=False):
         """Copy the object, if deep=True, then include a deep copy of the attribute dictionary, else a shallow copy.  Cloned object has the same id()"""
@@ -320,11 +322,11 @@ class Track():
     @classmethod
     def from_json(cls, s):
         d = json.loads(s) if not isinstance(s, dict) else s
-        d = {k.lstrip('_'):v for (k,v) in d.items()}  # prettyjson (remove "_" prefix to attributes)
+        d = {k.lstrip('_'):v for (k,v) in d.items()}  # prettyjson (remove "_" prefix to attributes), legacy support
         return cls(keyframes=tuple(int(f) for f in d['keyframes']),
                    boxes=tuple([Detection.from_json(bbs) for bbs in d['keyboxes']]),
                    category=d['label'] if 'label' in d else None,
-                   framerate=d['framerate'] if 'framerate' in d else None,
+                   framerate=d['framerate'] if 'framerate' in d and d['framerate'] is not None else 30,  # legacy support (pip_175k)
                    interpolation=d['interpolation'] if 'interpolation' in d else 'linear',
                    boundary=d['boundary'],
                    attributes=d['attributes'],

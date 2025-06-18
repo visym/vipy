@@ -59,8 +59,8 @@ class Dataset():
         
         self._id = id
         self._ds = dataset if not isinstance(dataset, Dataset) else dataset._ds
-        self._idx = None  # random access on-demand
-        self._loader = loader  # not serializable if lambda is provided
+        self._idx = None if not isinstance(dataset, Dataset) else dataset._idx   # random access on-demand
+        self._loader = loader if not isinstance(dataset, Dataset) else dataset._loader  # not serializable if lambda is provided
 
         try:
             self._type = str(type(self._loader(dataset[0]) if self._loader else dataset[0]))  # peek at first element, cached
@@ -87,6 +87,10 @@ class Dataset():
     def from_json(cls, jsonfile, id=None):
         return cls([x for x in to_iterable(vipy.load(jsonfile))], id=id)
 
+    @classmethod
+    def cast(cls, obj):
+        return cls(obj) if not isinstance(obj, Dataset) else obj
+    
     def __repr__(self):
         fields = ['id=%s' % self.id(truncated=True, maxlen=80)] if self.id() else []
         fields += ['len=%d' % self.len()] if self.len() is not None else []
@@ -751,7 +755,7 @@ def registry(name=None, datadir=None, freeze=True, clean=False, download=False, 
        'activitynet', 'open_images_v7', 'imagenet', 'imagenet21k', 'visualgenome' ,'widerface','meva_kf1',
        'objectnet','lfw','inaturalist_2021','kinetics','hmdb','places365','ucf101','lvis','kitti',
        'imagenet_localization','laion2b','datacomp_1b','imagenet2014_det','imagenet_faces','youtubeBB',
-       'pip_370k','pip_175k','cap','cap_pad','cap_detection'
+       'pip_370k','pip_175k','cap','cap_pad','cap_detection','tiny_virat'
 
     Returns:
        (trainset, valset, testset) tuple where each is a `vipy.dataset.Dataset` or None, or a single split if name has a ":SPLIT" suffix or split kwarg provided
@@ -765,7 +769,7 @@ def registry(name=None, datadir=None, freeze=True, clean=False, download=False, 
                 'activitynet','open_images_v7','imagenet','imagenet21k','visualgenome','widerface', 'youtubeBB',
                 'objectnet','lfw','inaturalist_2021','kinetics','hmdb','places365','ucf101','kitti','meva_kf1',
                 'lvis','imagenet_localization','laion2b','datacomp_1b','imagenet2014_det','imagenet_faces',
-                'pip_175k','pip_370k','cap','cap_pad','cap_detection')  # Add to docstring too...
+                'pip_175k','pip_370k','cap','cap_pad','cap_detection','tiny_virat')  # Add to docstring too...
     
     if name is None:
         return tuple(sorted(datasets))
@@ -899,13 +903,16 @@ def registry(name=None, datadir=None, freeze=True, clean=False, download=False, 
     elif name == 'pip_175k':
         trainset = vipy.data.pip.PIP_175k(namedir)
     elif name == 'pip_370k':
-        trainset = vipy.data.pip.PIP_370k(namedir)
+        trainset = vipy.data.pip.PIP_370k_stabilized(namedir)
     elif name == 'cap':
         trainset = vipy.data.cap.CAP_classification_clip(namedir)
     elif name == 'cap_pad':
         trainset = vipy.data.cap.CAP_classification_pad(namedir)        
     elif name == 'cap_detection':
         trainset = vipy.data.cap.CAP_detection(namedir)
+    elif name == 'tiny_virat':
+        dataset = vipy.data.tiny_virat.TinyVIRAT(namedir)
+        (trainset, valset, testset) = (dataset.trainset(), dataset.valset(), dataset.testset())
     else:
         raise ValueError('unknown dataset "%s" - choose from "%s"' % (name, ', '.join(sorted(datasets))))
     

@@ -2062,12 +2062,6 @@ class TaggedImage(Image):
             return self.set_attribute('tags', tolist(tags))        
         return self.attributes['tags'] if 'tags' in self.attributes else []
     
-    def confidences(self):
-        return tuple(self.attributes['confidences'][t] if t in self.attributes['confidences'] else None for t in self.tags())
-
-    def has_confidences(self):
-        return any(c is not None for c in self.confidences())
-    
     def add_tag(self, tag, confidence=None):
         self.append_attribute('tags', tag)
         if confidence is not None:
@@ -2093,6 +2087,22 @@ class TaggedImage(Image):
             self.add_tag(t, c)
         return self
 
+    def clear_tags(self):        
+        self.set_attribute('tags',[])
+        if 'confidences' in self.attributes:
+            del self.attributes['confidences']
+        return self
+    
+    def add_soft_tags(self, soft_tags):
+        """Soft tags are a list of (tag, confidence) tuples"""
+        for (t,c) in soft_tags:
+            self.add_tag(t, c)
+        return self
+
+    def soft_tags(self):
+        """Soft tags are a list of (tag, confidence) tuples"""
+        return tuple((t, self.attributes['confidences'].get(t) if 'confidences' in self.attributes else None) for t in self.tags())
+    
     
 class Scene(TaggedImage):
     """vipy.image.Scene class

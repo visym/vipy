@@ -7,7 +7,7 @@ class CAP_classification_clip(vipy.dataset.Dataset):
     MD5 = '54315e2ce204f0dbbe298490a63b5b3b'
     def __init__(self, datadir):
         if not os.path.exists(os.path.join(datadir, 'cap_classification_clip', 'README.md')):
-            vipy.downloader.download_and_unpack(CAP_classification_clip.URL, datadir, md5=CAP_classification_clip.MD5)
+            vipy.downloader.download_and_unpack(CAP_classification_clip.URL, datadir)
 
         annotations = os.path.join(datadir, 'cap_classification_clip', 'annotations')
         super().__init__(vipy.dataset.Dataset.from_directory(annotations, filetype='json'), id='cap')
@@ -18,7 +18,7 @@ class CAP_classification_pad(vipy.dataset.Dataset):
     MD5 = 'fbdc75e6ef10b874ddda20ee9765a710'
     def __init__(self, datadir):
         if not os.path.exists(os.path.join(datadir, 'cap_classification_pad', 'README.md')):
-            vipy.downloader.download_and_unpack(CAP_classification_pad.URL, datadir, md5=CAP_classification_pad.MD5)
+            vipy.downloader.download_and_unpack(CAP_classification_pad.URL, datadir)
 
         annotations = os.path.join(datadir, 'cap_classification_pad', 'annotations')
         super().__init__(vipy.dataset.Dataset.from_directory(annotations, filetype='json'), id='cap')

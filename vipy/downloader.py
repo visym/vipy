@@ -284,12 +284,16 @@ def download(url, output_filename, sha1=None, verbose=True, md5=None, timeout=No
     output_file.close()
 
     if sha1 is not None:
+        if verbose:
+            log.info("Verifying sha1 for '%s'" % (output_filename))                
         if not verify_sha1(output_filename, sha1):
             raise IOError('invalid sha1 for "%s"' % output_filename)
 
     if md5 is not None:
+        if verbose:
+            log.info("Verifying md5 for '%s'" % (output_filename))        
         if not verify_md5(output_filename, md5):
-            raise IOError('invalid md5 for "%s"' % output_filename)
+            raise IOError('Invalid md5 for "%s"' % output_filename)
 
     return output_filename
 

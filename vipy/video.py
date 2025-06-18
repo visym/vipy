@@ -221,6 +221,9 @@ class Stream(object):
                                         raise ValueError('Stream iterator exited with returncode %d' % (pipe.returncode))
                                 break
                             else:
+                                if len(in_bytes) != (height*width*3) and (height%2 != 0 or width%2 != 0):                                    
+                                    log.error('Some FFMPEG distributions cannot handle odd crop sizes.  Try to resize from (%d,%d) to the closest even shape with self.resize() before streaming.' % (width, height))
+                                    log.error('Alternatively, force crop bounding boxes to be even(), or if your video can fit into memory, use self.load() which manually corrects for these one off issues without throwing an error')
                                 queue.put(np.frombuffer(in_bytes, np.uint8).reshape([height, width, 3]))
 
                     e = threading.Event()
@@ -2814,8 +2817,10 @@ class Scene(Video):
             strlist.append('clip=(%d,)' % (self._start))
         if not self.isloaded() and self._start is not None and self._end is None and isinstance(self._start, float):
             strlist.append('clip=(%1.2fs,)' % (self._start))
-        if self.category() is not None:
+        if self.category() is not None and len(self.tags())==1:
             strlist.append('category=%s' % (str(self.category())[0:80] + (' ... ' if len(str(self.category()))>80 else '')))                        
+        if len(self.tags())>1:
+            strlist.append('tags=%s' % (str(self.tags())[0:80] + (' ... ' if len(str(self.tags()))>80 else '')))                        
         if self.hastracks():
             strlist.append('tracks=%d' % len(self._tracks))
         if self.hasactivities():
@@ -2936,7 +2941,7 @@ class Scene(Video):
         isdegenerate = [self.frame(k).boundingbox() is None or self.frame(k).boundingbox().dilate(dilate).intersection(self.framebox(), strict=False).isdegenerate() for (j,k) in enumerate(framelist)]
         imframes = [self.frame(k).maxmatte()  # letterbox or pillarbox
                     if (isdegenerate[j] or (context is True and (j == 0 or j == (n-1)))) else
-                    self.frame(k).padcrop(self.frame(k).boundingbox().dilate(dilate).imclipshape(self.width(), self.height()).maxsquare().int()).mindim(mindim, interp='nearest')
+                    self.frame(k).padcrop(self.frame(k).boundingbox().dilate(dilate).imclipshape(self.width(), self.height()).maxsquare().even()).mindim(mindim, interp='nearest')
                     for (j,k) in enumerate(framelist)]
         imframes = [f_mutator(im) for im in imframes]  # show jointlabel from frame interpolation
         imframes = [im.savefig(fontsize=fontsize, figure=1).rgb() for im in imframes]  # temp storage in memory
@@ -3614,8 +3619,8 @@ class Scene(Video):
            A `vipy.video.Scene` object from cropping the video using the trackbox.  If there are no tracks, return None.  
 
         """
-        bb = self.trackbox(dilate)  # may be None if trackbox is degenerate
-        return self.crop(bb.maxsquare() if maxsquare else bb, zeropad=zeropad) if bb is not None else None  
+        bb = self.trackbox(dilate).even()  # may be None if trackbox is degenerate, force even to avoid FFMPEG filter chain degeneracies
+        return self.crop(bb.maxsquare().even() if maxsquare else bb, zeropad=zeropad) if bb is not None else None  
 
     def activitybox(self, activityid=None, dilate=1.0):
         """The activitybox is the union of all activity bounding boxes in the video, which is the union of all tracks contributing to all activities.  This is most useful after activityclip().
@@ -3633,11 +3638,11 @@ class Scene(Video):
         bb = self.activitybox(activityid).maxsquare() if bb is None else bb  
         assert bb is None or isinstance(bb, vipy.geometry.BoundingBox)
         assert bb.issquare(), "Add support for non-square boxes"
-        return self.clone().crop(bb.dilate(dilate).int(), zeropad=True).resize(maxdim, maxdim)  # crop triggers preview()
+        return self.clone().crop(bb.dilate(dilate).even(), zeropad=True).resize(maxdim, maxdim)  # crop triggers preview()
 
     def activitysquare(self, activityid=None, dilate=1.0, maxdim=256):
         """The activity square is the maxsquare activitybox that contains only valid (non-padded) pixels interior to the image"""
-        bb = self.activitybox(activityid).maxsquare().dilate(dilate).int().iminterior(self.width(), self.height()).minsquare()
+        bb = self.activitybox(activityid).maxsquare().dilate(dilate).even().iminterior(self.width(), self.height()).minsquare()
         return self.activitycuboid(activityid, dilate=1.0, maxdim=maxdim, bb=bb)
 
     def activitytube(self, activityid=None, dilate=1.0, maxdim=256):
@@ -3648,7 +3653,7 @@ class Scene(Video):
         """
         vid = self.clone().load()  # triggers load
         self.activityfilter(lambda a: activityid is None or a.id() in set(activityid))  # only requested IDs (or all of them)
-        frames = [im.padcrop(im.boundingbox().maxsquare().dilate(dilate).int()).resize(maxdim, maxdim) for im in vid if im.boundingbox() is not None]  # track interpolation, for frames with boxes only
+        frames = [im.padcrop(im.boundingbox().maxsquare().dilate(dilate).even()).resize(maxdim, maxdim) for im in vid if im.boundingbox() is not None]  # track interpolation, for frames with boxes only
         if len(frames) != len(vid):
             log.warning('[vipy.video.activitytube]: Removed %d frames with no spatial bounding boxes' % (len(vid) - len(frames)))
             vid.attributes['__activtytube'] = {'truncated':len(vid) - len(frames)}  # provenance to reject
@@ -3673,7 +3678,7 @@ class Scene(Video):
         assert self.hastrack(trackid), "Track ID %s not found - Actortube requires a track ID in the scene (tracks=%s)" % (str(trackid), str(self.tracks()))
         vid = self.clone().load()  # triggers load        
         t = vid.tracks(id=trackid)  # actor track
-        frames = [im.padcrop(t[k].maxsquare().dilate(dilate).int()).resize(maxdim, maxdim) for (k,im) in enumerate(vid) if t.during(k)] if len(t)>0 else []  # actor interpolation, padding may introduce frames with no tracks
+        frames = [im.padcrop(t[k].maxsquare().dilate(dilate).even()).resize(maxdim, maxdim) for (k,im) in enumerate(vid) if t.during(k)] if len(t)>0 else []  # actor interpolation, padding may introduce frames with no tracks
         if len(frames) == 0:
             if not strict:
                 log.warning('[vipy.video.actortube]: Empty track for trackid="%s" - Setting actortube to zero' % trackid)
@@ -4094,9 +4099,9 @@ class Scene(Video):
     def show(self, outfile=None, verbose=True, fontsize=10, captionoffset=(3,-18), shortlabel=None, boxalpha=0.15, d_category2color={'Person':'green', 'Vehicle':'blue', 'Object':'red'}, categories=None, nocaption=False, nocaption_withstring=[], figure=1, fps=None, timestamp=None, mutator=vipy.image.mutator_show_noun_verb(), theme='dark'):
         """Faster show using interative image show for annotated videos.  This can visualize videos before video rendering is complete, but it cannot guarantee frame rates. Large videos with complex scenes will slow this down and will render at lower frame rates."""
         if not self.isdownloaded() and self.hasurl():
-            self.download()        
+            self.download()
         fps = min(fps, self.framerate()) if fps is not None else self.framerate()
-        assert fps > 0, "Invalid display framerate"
+        assert fps is not None and fps > 0, "Invalid display framerate"
         f_timestamp = (lambda k: '%s %d' % (vipy.util.clockstamp(), k)) if timestamp is True else timestamp
         f_mutator = mutator 
         with Stopwatch() as sw:            
