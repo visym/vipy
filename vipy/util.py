@@ -15,7 +15,6 @@ import hashlib
 import shutil
 import re
 import uuid
-import dill  
 import builtins
 import pickle as cPickle
 import PIL
@@ -39,6 +38,11 @@ try:
     import ujson as json  # faster
 except ImportError:
     import json
+
+try:
+    import dill as default_pickle
+except:
+    import pickle as default_pickle
     
 def class_registry():
     """Return a dictionary mapping str(type(obj)) to a JSON loader for all vipy objects.
@@ -103,7 +107,7 @@ def save(vars, outfile=None, backup=False):
     remkdir(filepath(outfile))
     if ispkl(outfile):
         with open(outfile, 'wb') as f:
-            dill.dump(vars, f)
+            default_pickle.dump(vars, f)
 
     elif isjsonfile(outfile):
         saveobj = vars
@@ -158,7 +162,7 @@ def load(infile, abspath=True, freeze=True, relocatable=True):
 
     if ispkl(infile):
         with open(infile, 'rb') as f:
-            obj = dill.load(f)
+            obj = default_pickle.load(f)
     elif isjsonfile(infile):
         with open(infile, 'r') as f:
             loadobj = json.load(f)
@@ -239,12 +243,12 @@ def pklbz2(filename, obj=None):
     assert filename[-8:] == '.pkl.bz2', "Invalid filename - must be '*.pkl.bz2'"
     if obj is not None:
         f = bz2.BZ2File(filename, 'wb')
-        dill.dump(obj, f)
+        default_pickle.dump(obj, f)
         f.close()
         return filename
     else:
         f = bz2.BZ2File(filename, 'rb')
-        obj = dill.load(f)
+        obj = default_pickle.load(f)
         f.close()
         return obj
         

@@ -25,7 +25,7 @@ Requirements
 -------------------
 python 3.7+  
 [ffmpeg](https://ffmpeg.org/download.html) (required for videos)  
-numpy, matplotlib, dill, pillow, ffmpeg-python   
+numpy, matplotlib, pillow, ffmpeg-python   
 
 
 Installation

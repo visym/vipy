@@ -1,6 +1,5 @@
 import os
 import sys
-import dill
 from vipy.globals import log
 from vipy.util import remkdir, tempMP4, isurl, \
     isvideourl, templike, tempjpg, filetail, tempdir, isyoutubeurl, try_import, isnumpy, temppng, \
@@ -27,7 +26,6 @@ import PIL.Image
 import shutil
 import types
 import uuid
-import platform
 import time
 from io import BytesIO
 import itertools

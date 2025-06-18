@@ -2,7 +2,12 @@ import os
 import sys
 from vipy.util import try_import, islist, tolist, tempdir, remkdir, chunklistbysize, listpkl, filetail, filebase, tempdir
 from itertools import repeat
-import dill
+import numpy as np
+import vipy.globals
+from vipy.globals import log
+
+
+try_import('dill','dill'); import dill
 dill.extend(False)  # https://github.com/uqfoundation/dill/issues/383
 try_import('dask', 'dask distributed')
 from dask.distributed import as_completed, wait
@@ -11,10 +16,6 @@ import dask.config
 from dask.distributed import Client
 from dask.distributed import as_completed, wait
 from dask.distributed import get_worker         
-import numpy as np
-import vipy.globals
-from vipy.globals import log
-
 dill.extend(True)  # https://github.com/uqfoundation/dill/issues/383
 
 
