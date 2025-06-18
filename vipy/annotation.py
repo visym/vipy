@@ -8,7 +8,6 @@ import tempfile
 import numpy as np
 from vipy.downloader import common_user_agents
 from vipy.globals import log
-import warnings
 from datetime import datetime
 import time
 import webbrowser

@@ -11,7 +11,7 @@ import copy
 import gc 
 import itertools
 from pathlib import Path
-
+import functools
 import concurrent.futures as cf
 import vipy.parallel
 
@@ -25,7 +25,6 @@ class Dataset():
         - dataset [list, tuple, set, obj]: a python built-in type that supports indexing or a generic object that supports indexing and has a length
         - id [str]: an optional id of this dataset, which provides a descriptive name of the dataset
         - loader [callable]: a callable loader that will construct the object from a raw data element in dataset.  This is useful for custom deerialization or on demand transformations
-        - shuffler [callable]:  A callable with argument equal to a dataset, that will shuffle the order in a custom way
 
     Datasets can be indexed, shuffled, iterated, minibatched, sorted, sampled, partitioned.
     Datasets constructed of vipy objects are lazy loaded, delaying loading pixels until they are needed
@@ -51,19 +50,17 @@ class Dataset():
     Datasets can be constructed from directories of json files or image files (`vipy.dataset.Dataset.from_directory`)
     Datasets can be constructed from a single json file containing a list of objects (`vipy.dataset.Dataset.from_json`)
     
-    ..note:: that if a lambda function is provided as loader or shuffler, then this dataset is not serializable
+    ..note:: that if a lambda function is provided as loader then this dataset is not serializable.  Use self.load() then serialize
     """
 
-    __slots__ = ('_id', '_ds', '_idx', '_loader', '_shuffler', '_type')
-    def __init__(self, dataset, id=None, loader=None, shuffler=None):
+    __slots__ = ('_id', '_ds', '_idx', '_loader', '_type')
+    def __init__(self, dataset, id=None, loader=None):
         assert loader is None or callable(loader)
-        assert shuffler is None or callable(shuffler)        
         
         self._id = id
         self._ds = dataset  
         self._idx = None  # random access on-demand
         self._loader = loader  # not serializable if lambda is provided
-        self._shuffler = shuffler
 
         try:
             self._type = str(type(self._loader(dataset[0]) if self._loader else dataset[0]))  # peek at first element, cached
@@ -72,23 +69,23 @@ class Dataset():
 
 
     @classmethod
-    def from_directory(cls, indir, filetype='json'):
+    def from_directory(cls, indir, filetype='json', id=None):
         """Recursively search indir for filetype, construct a dataset from all discovered files of that type"""
         if filetype == 'json':
-            return cls([x for f in findjson(indir) for x in to_iterable(vipy.load(f))])
+            return cls([x for f in findjson(indir) for x in to_iterable(vipy.load(f))], id=id)
         elif filetype.lower() in ['jpg','jpeg','images']:
-            return cls([vipy.image.Image(filename=f) for f in findimages(indir)])            
+            return cls([vipy.image.Image(filename=f) for f in findimages(indir)], id=id)            
         else:
             raise ValueError('unsupported file type "%s"' % filetype)
 
     @classmethod
-    def from_image_urls(cls, urls):
+    def from_image_urls(cls, urls, id=None):
         """Construct a dataset from a list of image URLs"""
-        return cls([vipy.image.Image(url=url) for url in to_iterable(urls) if isimageurl(url)])
+        return cls([vipy.image.Image(url=url) for url in to_iterable(urls) if isimageurl(url)], id=id)
         
     @classmethod
-    def from_json(cls, jsonfile):
-        return cls([x for x in to_iterable(vipy.load(jsonfile))])
+    def from_json(cls, jsonfile, id=None):
+        return cls([x for x in to_iterable(vipy.load(jsonfile))], id=id)
 
     def __repr__(self):
         fields = ['id=%s' % self.id(truncated=True, maxlen=80)] if self.id() else []
@@ -174,13 +171,6 @@ class Dataset():
         return self._idx
     
         
-    def shuffler(self, f=None):
-        if f is not None:
-            assert callable(f)
-            self._shuffler = f
-            return self
-        return self._shuffler
-    
     def clone(self, deep=False):
         """Return a copy of the dataset object"""
         if not deep:
@@ -188,9 +178,12 @@ class Dataset():
         else:
             return copy.deepcopy(self)
     
-    def shuffle(self):
-        """Permute elements in this dataset uniformly at random in place"""
-        shuffler = self._shuffler if self._shuffler is not None else Dataset.uniform_shuffler
+    def shuffle(self, shuffler=None):
+        """Permute elements in this dataset uniformly at random in place using the optimal shuffling strategy for the dataset structure to maximize performance.
+           This method will use either Dataset.streaming_shuffler (for iterable datasets) or Dataset.uniform_shuffler (for random access datasets)
+        """
+        assert shuffler is None or callable(shuffler)
+        shuffler = shuffler if shuffler is not None else (Dataset.streaming_shuffler if self.is_streaming() else Dataset.uniform_shuffler)
         return shuffler(self)
 
     def repeat(self, n):
@@ -526,9 +519,6 @@ class Dataset():
         idx = self.index()
         return self.index( [idx[j] for (j,x) in sorted(zip(range(len(self)), self.tuple(f)), key=lambda x: x[1])] )
 
-    def randomize(self):
-        """shuffle uniformly at random"""
-        return Dataset.uniform_shuffler(self)
     
     @staticmethod
     def uniform_shuffler(D):
@@ -561,17 +551,6 @@ class Dataset():
         """Shuffler that does nothing"""
         return D
 
-    @staticmethod
-    def chunk_shuffler(D, chunker, chunksize=64):
-        """Split dataset into len(D)/chunksize non-overlapping chunks with some common property returned by chunker, shuffle chunk order and shuffle within chunks.  
-
-           - If chunksize=1 then this is equivalent to uniform_shuffler
-           - chunker must be a callable of some property that is used to group into chunks
-            
-        """
-        assert callable(chunker)
-        return D.randomize().sort(chunker).index([i for I in shufflelist([shufflelist(I) for I in chunkgenbysize(D.index(), chunksize)]) for i in I])
-
 
 class Paged(Dataset):
     """ Paged dataset.
@@ -587,11 +566,10 @@ class Paged(Dataset):
     .. note :: Shuffling this dataset is biased.  Shuffling will be performed to mix the indexes, but not uniformly at random.  The goal is to preserve data locality to minimize cache misses.
     """
     
-    def __init__(self, pagelist, loader, id=None, strict=True, index=None, cachesize=32, shuffler=None):        
+    def __init__(self, pagelist, loader, id=None, strict=True, index=None, cachesize=32):        
         super().__init__(dataset=pagelist,
                          id=id,
-                         loader=loader,
-                         shuffler=shuffler).index(index if index else list(range(sum([p[0] for p in pagelist]))))
+                         loader=loader).index(index if index else list(range(sum([p[0] for p in pagelist]))))
 
         assert callable(loader), "page loader required"
         assert not strict or len(set([x[0] for x in self._ds])) == 1  # pagesizes all the same 
@@ -601,9 +579,10 @@ class Paged(Dataset):
         self._ds = list(self._ds)
         self._pagesize = self._ds[0][0]  # (pagesize, pklfile) tuples        
 
-        # Shuffle while preserve page locality to minimize cache misses
-        self._shuffler = shuffler if shuffler else lambda D, chunksize=int(1.5*self._pagesize): Dataset.chunk_shuffler(D, chunksize)
-
+    def shuffle(self, shuffler=None):
+        """Permute elements while preserve page locality to minimize cache misses"""
+        shuffler = shuffler if shuffler is not None else functools.partial(Paged.chunk_shuffler, chunksize=int(1.5*self._pagesize))
+        return shuffler(self)
         
     def __getitem__(self, k):
         if isinstance(k, (int, np.uint64)):
@@ -623,7 +602,18 @@ class Paged(Dataset):
     def flush(self):
         self._pagecache = {}
         return self
-        
+
+    @staticmethod
+    def chunk_shuffler(D, chunker, chunksize=64):
+        """Split dataset into len(D)/chunksize non-overlapping chunks with some common property returned by chunker, shuffle chunk order and shuffle within chunks.  
+
+           - If chunksize=1 then this is equivalent to uniform_shuffler
+           - chunker must be a callable of some property that is used to group into chunks
+            
+        """
+        assert callable(chunker)
+        return D.randomize().sort(chunker).index([i for I in shufflelist([shufflelist(I) for I in chunkgenbysize(D.index(), chunksize)]) for i in I])
+    
     
 class Union(Dataset):
     """vipy.dataset.Union() class
@@ -641,7 +631,7 @@ class Union(Dataset):
         Datasets 
     """
 
-    __slots__ = ('_id', '_ds', '_idx', '_loader', '_shuffler', '_type')    
+    __slots__ = ('_id', '_ds', '_idx', '_loader', '_type')    
     def __init__(self, *args, **kwargs):
         assert all(isinstance(d, (Dataset, )) for d in args), "invalid datasets"
         
@@ -654,7 +644,6 @@ class Union(Dataset):
         self._id = kwargs['id'] if 'id' in kwargs else None
 
         self._loader = None  # individual datasets have loaders
-        self._shuffler = kwargs['shuffler'] if 'shuffler' in kwargs else None
         self._type = None
 
     def is_streaming(self):
@@ -723,6 +712,11 @@ class Union(Dataset):
         """Return the dataset union elements, useful for generating unions of unions"""
         return list(self._ds)
 
+    def shuffle(self, shuffler=None):
+        """Permute elements in this dataset uniformly at random in place using the best shuffler for the dataset structure"""
+        shuffler = shuffler if shuffler is not None else (Union.streaming_shuffler if self.is_streaming() else Dataset.uniform_shuffler)
+        return shuffler(self)
+    
     @staticmethod
     def streaming_shuffler(D):
         """A uniform shuffle (approximation) on the dataset elements for iterable access only"""
@@ -732,7 +726,7 @@ class Union(Dataset):
         return D
     
 
-def registry(name=None, datadir=None, freeze=True, clean=False, download=False, split='train', threaded=False):
+def registry(name=None, datadir=None, freeze=True, clean=False, download=False, split='train'):
     """Common entry point for loading datasets by name.
 
     Usage:
@@ -740,16 +734,15 @@ def registry(name=None, datadir=None, freeze=True, clean=False, download=False, 
         >>> trainset = vipy.dataset.registry('cifar10', split='train')             # return a training split
         >>> valset = vipy.dataset.registry('cifar10:val', datadir='/tmp/cifar10')  # download to a custom location
         >>> datasets = vipy.dataset.registry(('cifar10:train','cifar100:train'))   # return a union
-        >>> vipy.dataest.registry()                                                # print allowable datasets
+        >>> vipy.dataset.registry()                                                # print allowable datasets
 
     Args:
        name [str]: The string name for the dataset.  If tuple, return a `vipy.dataset.Union`.  If None, return the list of registered datasets.  Append name:train, name:val, name:test to output the requested split, or use the split keyword.
-       datadir [str]: A path to a directory to store data.  Defaults to environment variable VIPY_DATASET_REGISTRY_HOME (then VIPY_CACHE if not found).  Also uses HF_HOME for huggingface datasets.
+       datadir [str]: A path to a directory to store data.  Defaults to environment variable VIPY_DATASET_REGISTRY_HOME (then VIPY_CACHE if not found).  Also uses HF_HOME for huggingface datasets.  Datasets will be stored in datadir/name
        freeze [bool]:  If true, disable reference cycle counting for the loaded object (which will never contain cycles anyway) 
        clean [bool]: If true, force a redownload of the dataset to correct for partial download errors
        download [bool]: If true, force a redownload of the dataset to correct for partial download errors
        split [str]: return 'train', 'val' or 'test' split.  If None, return (trainset, valset, testset) tuple
-       threaded [bool]:  If true, load multiple datasets with a multithreaded executor (useful for I/O bound loads)
 
     Datasets:
        'mnist','cifar10','cifar100','caltech101','caltech256','oxford_pets','sun397', 'food101','stanford_dogs',
@@ -777,11 +770,7 @@ def registry(name=None, datadir=None, freeze=True, clean=False, download=False, 
     if isinstance(name, (tuple, list)):
         assert all(n.startswith(datasets) for n in name)
         assert split is not None or all(':' in n for n in name)
-        if threaded:
-            with cf.ThreadPoolExecutor(max_workers=len(name)) as executor:  # thread parallel, io-bound workloads
-                return Union(*(v for v in executor.map(lambda n: registry(n, datadir=datadir, freeze=freeze, clean=clean, download=download, split=split), name)))
-        else:
-            return Union(*(registry(n, datadir=datadir, freeze=freeze, clean=clean, download=download, split=split) for n in name))    
+        return Union(*(registry(n, datadir=datadir, freeze=freeze, clean=clean, download=download, split=split) for n in name))    
     
     (name, split) = name.split(':',1) if name.count(':')>0 else (name, split)
     if name not in datasets:
@@ -789,7 +778,7 @@ def registry(name=None, datadir=None, freeze=True, clean=False, download=False, 
     if split not in [None, 'train', 'test', 'val']:
         raise ValueError('unknown split "%s" - choose from "%s"' % (split, ', '.join([str(None), 'train', 'test', 'val'])))
 
-    datadir = datadir if datadir is not None else (env('VIPY_DATASET_REGISTRY_HOME') if 'VIPY_DATASET_REGISTRY_HOME' in env() else cache())
+    datadir = remkdir(datadir if datadir is not None else (env('VIPY_DATASET_REGISTRY_HOME') if 'VIPY_DATASET_REGISTRY_HOME' in env() else cache()))
     namedir = Path(datadir)/name    
     if (clean or download) and name in datasets and os.path.exists(namedir):
         log.info('Removing cached dataset "%s"' % namedir)

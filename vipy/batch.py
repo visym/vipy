@@ -6,21 +6,14 @@ import dill
 dill.extend(False)  # https://github.com/uqfoundation/dill/issues/383
 try_import('dask', 'dask distributed')
 from dask.distributed import as_completed, wait
-try_import('torch', 'torch');  import torch
 import dask
 import dask.config
 from dask.distributed import Client
 from dask.distributed import as_completed, wait
 from dask.distributed import get_worker         
 import numpy as np
-import tempfile
-import warnings
 import vipy.globals
 from vipy.globals import log
-import hashlib
-import uuid
-import shutil
-import webbrowser
 
 dill.extend(True)  # https://github.com/uqfoundation/dill/issues/383
 

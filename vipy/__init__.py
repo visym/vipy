@@ -512,6 +512,7 @@ import vipy.show  # matplotlib first
 import vipy.activity
 import vipy.annotation
 #import vipy.calibration
+import vipy.dataset
 import vipy.downloader
 import vipy.geometry
 import vipy.image
@@ -521,9 +522,9 @@ import vipy.object
 import vipy.util
 import vipy.version
 import vipy.video
-import vipy.videosearch
+#import vipy.videosearch
 import vipy.visualize
-import vipy.dataset
+
 
 # Top level functions
 # >>> vipy.save(...)

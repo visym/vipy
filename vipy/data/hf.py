@@ -20,7 +20,7 @@ def mnist():
     dataset = load_dataset("ylecun/mnist", trust_remote_code=True)
 
     loader = lambda r: ImageCategory(category=str(r['label'])).loader(Image.PIL_loader, r['image'])
-    trainset = Dataset(dataset['train'], id='mnist:train', loader=loader).load()  # metadata in arrow, slow if we need to access this multiple times, load it instead
+    trainset = Dataset(dataset['train'], id='mnist', loader=loader).load()  # metadata in arrow, slow if we need to access this multiple times, load it instead
     testset = Dataset(dataset['test'], id='mnist:test', loader=loader)
     return (trainset, testset)
 
@@ -32,7 +32,7 @@ def cifar10():
     d_idx_to_category = {0:'airplane', 1:'automobile', 2:'bird', 3:'cat', 4:'deer', 5:'dog', 6:'frog', 7:'horse', 8:'ship', 9:'truck'}
     
     loader = lambda r, category=d_idx_to_category: ImageCategory(category=category[r['label']]).loader(Image.PIL_loader, r['img'])
-    trainset = Dataset(dataset['train'], id='cifar10:train', loader=loader)
+    trainset = Dataset(dataset['train'], id='cifar10', loader=loader).load()
     testset = Dataset(dataset['test'], id='cifar10:test', loader=loader)
     
     return (trainset, testset)
@@ -47,7 +47,7 @@ def cifar100():
     
     D = load_dataset('cifar100', trust_remote_code=True)
     loader = lambda r, fine=d_idx_to_fine, coarse=d_idx_to_coarse: ImageCategory(category=fine[r['fine_label']], attributes={'tags':coarse[r['coarse_label']]}).loader(Image.PIL_loader, r['img'])
-    return (Dataset(D['train'], id='cifar100:train', loader=loader), 
+    return (Dataset(D['train'], id='cifar100', loader=loader), 
             Dataset(D['test'], id='cifar100:test', loader=loader))
     
 
@@ -57,7 +57,7 @@ def oxford_pets():
     loader = lambda r: Scene(category=str(r['label_breed']),
                                         objects=[Detection(xywh=d['bbox'], category=d['label']) for d in r['label_bbox_enriched']] if 'label_bbox_enriched' in r and r['label_bbox_enriched'] is not None else [],
                                         attributes={k:r[k] for k in ('label_cat_dog', 'caption_enriched', 'image_id', 'issues')}).loader(Image.PIL_loader, r['image'])
-    return (Dataset(D['train'], id='oxford_pets:train', loader=loader),
+    return (Dataset(D['train'], id='oxford_pets', loader=loader),
             Dataset(D['test'], id='oxford_pets:test', loader=loader))
 
     

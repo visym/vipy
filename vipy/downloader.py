@@ -30,6 +30,9 @@ except:
 from vipy.util import isS3url, filetail, premkdir
 from vipy.globals import log
 import vipy.version
+import shutil
+import random
+import glob
 
 
 # FIX <urlopen error [SSL: CERTIFICATE_VERIFY_FAILED] certificate
@@ -39,6 +42,57 @@ import ssl
 if hasattr(ssl, '_create_unverified_context'):
     ssl._create_default_https_context = ssl._create_unverified_context 
 
+youtube_dl_exe = shutil.which('yt-dlp')        
+has_youtube_dl = youtube_dl_exe is not None and os.path.exists(youtube_dl_exe)
+    
+
+def youtube(vidurl, vidfile, skip=False, writeurlfile=True, max_filesize='9999m', remove_parts=True, verbose=False):
+    """Use yt-dlp to download a video URL to a video file"""
+    if not has_youtube_dl:
+        raise ImportError('Optional package "yt-dlp" not installed -  Run "pip install yt-dlp"')
+    
+    global complete_user_agents;  # defined later in this file
+    user_agent = random.choice(complete_user_agents)
+    
+    try:
+        log.info('Downloading "%s" to "%s"' % (vidurl, vidfile))
+        for f in glob.glob("%s*" % vidfile):
+            os.remove(f)  # yt-dlp will not overwrite, so we force it
+        cmd = '%s %s "%s" -o "%s" --no-warnings --progress --no-check-certificate --max-filesize="%s" --user-agent="%s"' % (youtube_dl_exe, '-q' if not verbose else '', vidurl, vidfile, max_filesize, user_agent)  
+        if verbose:
+            log.info('executing \'%s\'' % cmd)
+        erno = os.system(cmd)
+        if erno == 2:
+            raise KeyboardInterrupt
+        
+        if erno != 0:
+            raise ValueError('yt-dlp returned %d' % erno)
+        if os.path.isfile(vidfile):
+            if writeurlfile:
+                urlfile = os.path.join(filepath(vidfile), '%s.url' % filebase(vidfile))
+                with open(urlfile, 'w') as f:
+                    f.write(vidurl + '\n')
+        if remove_parts and os.path.isfile(vidfile + '.part'):
+            partfile = vidfile + '.part'
+            log.info('removing partial file: %s' % partfile)
+            os.remove(partfile)
+    except KeyboardInterrupt:
+        raise KeyboardInterrupt
+    
+    except Exception as exception:
+        log.warning(exception)
+        log.warning('download failed')
+        return None
+
+    if erno == 2:
+        raise KeyboardInterrupt
+    elif skip and erno:  # use this if every video on a page fails
+        return None
+    else:
+        return vidfile
+
+    
+    
 
 def generate_sha1(filename, blocks=128):
     """Generate the SHA1 hash of the provided filename.

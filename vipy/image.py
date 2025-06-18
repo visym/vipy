@@ -1,9 +1,7 @@
 import os
-import PIL
 import PIL.Image
 import PIL.ImageFilter
-import platform
-import dill
+import PIL.ExifTags
 import vipy.show
 import vipy.globals
 from vipy.globals import log, cache
@@ -37,7 +35,9 @@ import functools
 
 
 try:
-    import torch  # pre-import
+    from torch import Tensor 
+    from torch import is_tensor
+    from torch import from_numpy
 except:
     pass  # will throw exception on vipy.image.Image.torch
 
@@ -426,6 +426,8 @@ class Image():
             raise ValueError('attributes dictionary contains non-json elements and cannot be serialized.  Try self.clear_attributes() or self.sanitize()')        
         d = {k:v for (k,v) in self.dict().items() if v is not None}  # filter empty
         if 'array' in d and d['array'] is not None:
+            if self.hasfilename() or self.hasurl():
+                log.warning('serializing pixel array to json is inefficient for large images.  Try self.flush() first, then reload the image from backing filename/url after json import')
             d['array'] = self._array.tolist()
         return json.dumps(d) if encode else d
         
@@ -970,23 +972,23 @@ class Image():
         img = self.array() if self.array().ndim == 3 else np.expand_dims(self.array(), 2)  # HxW -> HxWx1, HxWxC -> HxWxC (unchanged)
         img = img.transpose(2,0,1) if order in ['CHW', 'NCHW']  else img   # HxWxC -> CxHxW
         img = np.expand_dims(img,0) if order in ['NHWC', 'NCHW'] else img  # HxWxC -> 1xHxWxC or CxHxW -> 1xCxHxW
-        return torch.from_numpy(img)   # pip install torch
+        return from_numpy(img)   # pip install torch
 
     
     @staticmethod
     def from_torch(x, order='CHW'):
         """Convert a 1xCxHxW or CxHxW torch tensor (or numpy array with torch channel order) to HxWxC numpy array, returns new `vipy.image.Image` with inferred colorspace corresponding to data type in x"""
         try_import('torch'); import torch        
-        assert isinstance(x, torch.Tensor) or isinstance(x, np.ndarray), "Invalid input type '%s'- must be torch.Tensor" % (str(type(x)))
+        assert isinstance(x, Tensor) or isinstance(x, np.ndarray), "Invalid input type '%s'- must be torch.Tensor" % (str(type(x)))
         assert (x.ndim == 4 and x.shape[0] == 1) or x.ndim == 3, "Torch tensor must be shape 1xCxHxW or CxHxW"
         x = x.squeeze(0) if (x.ndim == 4 and x.shape[0] == 1) else x
 
         if order == 'CHW':
-            x = x.permute(1,2,0).cpu().detach().float().numpy() if torch.is_tensor(x) else x.transpose(1,2,0)   # CxHxW -> HxWxC, copied            
+            x = x.permute(1,2,0).cpu().detach().float().numpy() if is_tensor(x) else x.transpose(1,2,0)   # CxHxW -> HxWxC, copied            
         elif order == 'WHC':
-            x = x.permute(1,0,2).cpu().detach().float().numpy() if torch.is_tensor(x) else x.transpose(1,0,2)   # WxHxC -> HxWxC, copied        
+            x = x.permute(1,0,2).cpu().detach().float().numpy() if is_tensor(x) else x.transpose(1,0,2)   # WxHxC -> HxWxC, copied        
         elif order == 'HWC':
-            x = x.cpu().detach().float().numpy() if torch.is_tensor(x) else x  # HxWxC -> HxWxC, copied        
+            x = x.cpu().detach().float().numpy() if is_tensor(x) else x  # HxWxC -> HxWxC, copied        
         else:
             raise ValueError('unknown axis order "%s"' % order)
 
@@ -2175,6 +2177,8 @@ class Scene(TaggedImage):
         if 'attributes' in d and len(d['attributes'])==0:  # cleanup empty attributes
             del d['attributes']  # will be recreated in from_json
         if 'array' in d and d['array'] is not None:
+            if self.hasfilename() or self.hasurl():
+                log.warning('serializing pixel array to json is inefficient for large images.  Try self.flush() or self.save(), then reload the image from backing filename/url after json import')            
             d['array'] = self._array.tolist()        
         return json.dumps(d) if encode else d
 
@@ -2932,6 +2936,13 @@ class Transform():
             return im.flush()
 
     @staticmethod
+    def saveas(im, filename):
+        try:
+            return im.clone().load().saveas(filename)
+        except:
+            return im.flush()
+        
+    @staticmethod
     def annotate(im, mindim=64, outfile=None):
         try:
             return im.clone().load().mindim(mindim).annotate().save(outfile if outfile else tocache(shortuuid(8)+'.jpg'))
@@ -2956,34 +2967,32 @@ class Transform():
 
     
     @staticmethod
-    def tensor(im, shape=None, gain=None, mindim=None, colorspace=None, jitter=None, centersquare=None, torch=None):
+    def tensor(im, shape=None, gain=None, mindim=None, colorspace=None, centersquare=None, torch=None, ignore_errors=True, jitter=None):
         try:
             im = im.clone()
             if colorspace:
-                im = im.colorspace(colorspace)        
+                im = im.colorspace(colorspace)
+            if jitter == 'randomcrop':
+                im = vipy.noise.randomcrop(im)
             if centersquare:
                 im = im.centersquare()
             if shape is not None:
                 im = im.resize(*shape)
             if mindim:
-                im = im.mindim(mindim)            
-            if jitter:
-                pass  
+                im = im.mindim(mindim)
             if gain is not None:
                 im = im.gain(gain)
             if torch:
                 im = im.torch()  # CHW
             return im
+        except KeyboardInterrupt:
+            raise
         except:
+            if not ignore_errors:
+                raise
             return im.flush()
 
-    class classproperty:
-        """Allows defining a function as f = vipy.image.Transform.mindim256, then f(im)"""
-        def __init__(self, fget):
-            self.fget = fget
-        def __get__(self, obj, cls):
-            return self.fget(cls)
-        
-    @classproperty        
-    def tensor_32x32(cls):
-        return functools.partial(cls.tensor, shape=(32,32), gain=1/255, colorspace='rgb', centersquare=True, torch=True)
+    @staticmethod
+    def to_tensor(**kwargs):
+        import vipy.noise
+        return functools.partial(Transform.tensor, **kwargs)

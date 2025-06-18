@@ -4,7 +4,7 @@ import dill
 from vipy.globals import log
 from vipy.util import remkdir, tempMP4, isurl, \
     isvideourl, templike, tempjpg, filetail, tempdir, isyoutubeurl, try_import, isnumpy, temppng, \
-    islist, isnumber, tolist, filefull, fileext, isS3url, totempdir, flatlist, tocache, \
+    islist, isnumber, tolist, filefull, fileext, isS3url, totempdir, flatlist, tocache, stringhash, \
     premkdir, writecsv, iswebp, ispng, isgif, filepath, Stopwatch, toextension, isjsonfile, isRTSPurl, isRTMPurl, iswebp, isgif
 from vipy.image import Image
 import vipy.geometry
@@ -36,7 +36,7 @@ from pathlib import PurePath
 import queue 
 import threading
 import collections
-
+import functools
 
 try:
     import ujson as json  # faster
@@ -1250,6 +1250,10 @@ class Video():
         """Return True if the video has been loaded"""
         return self._array is not None
 
+    def is_loaded(self):
+        """Return True if the video has been loaded"""
+        return self._array is not None
+    
     def isloadable(self, flush=True):
         """Return True if the video can be loaded successfully.
         
@@ -1309,9 +1313,13 @@ class Video():
         return self._filename is not None and (os.path.exists(self._filename) or isRTSPurl(self._filename) or isRTMPurl(self._filename))
 
     def isdownloaded(self):
-        """Does the filename returned from `vipy.video.Video.filename` exist, meaning that the url has been downloaded to a local file?"""
+        """Alias for `vipy.video.Video.is_downloaded`"""
         return self._filename is not None and os.path.exists(self._filename)
 
+    def is_downloaded(self):
+        """Does the filename returned from `vipy.video.Video.filename` exist, meaning that the url has been downloaded to a local file?"""
+        return self._filename is not None and os.path.exists(self._filename)
+    
     def hasurl(self):
         """Is the url returned from `vipy.video.Video.url` a well formed url?"""
         return self._url is not None and isurl(self._url)
@@ -1487,15 +1495,14 @@ class Video():
         """Return the size in bytes of the filename(), None if the filename() is invalid"""
         return os.path.getsize(self.filename()) if self.hasfilename() else None
 
-    def downloadif(self, ignoreErrors=False, timeout=10, verbose=True, max_filesize='999m'):
+    def downloadif(self, timeout=10, verbose=True, max_filesize='999m'):
         """Download URL to filename if the filename has not already been downloaded"""
-        return self.download(ignoreErrors=ignoreErrors, timeout=timeout, verbose=verbose, max_filesize=max_filesize) if self.hasurl() and not self.isdownloaded() else self
+        return self.download(timeout=timeout, verbose=verbose, max_filesize=max_filesize) if self.hasurl() and not self.isdownloaded() else self
     
-    def download(self, ignoreErrors=False, timeout=10, verbose=True, max_filesize='999m'):
+    def download(self, timeout=10, verbose=False, max_filesize='999m'):
         """Download URL to filename provided by constructor, or to temp filename.
         
         Args:
-            ignoreErrors: [bool] If true, show a warning and return the video object, otherwise throw an exception
             timeout: [int] An integer timeout in seconds for the download to connect
             verbose: [bool] If trye, show more verbose console output
             max_filesize: [str] A string of the form 'NNNg' or 'NNNm' for youtube downloads to limit the maximum size of a URL to '350m' 350MB or '12g' for 12GB.
@@ -1514,7 +1521,7 @@ class Video():
             url_scheme = urllib.parse.urlparse(self._url)[0]
             if isyoutubeurl(self._url):
                 f = self._filename if filefull(self._filename) is None else filefull(self._filename)
-                vipy.videosearch.download(self._url, f, writeurlfile=False, skip=ignoreErrors, verbose=verbose, max_filesize=max_filesize)
+                vipy.downloader.youtube(self._url, f, writeurlfile=False, skip=False, verbose=verbose, max_filesize=max_filesize)
                 for ext in ['mkv', 'mp4', 'webm']:
                     f = '%s.%s' % (self.filename(), ext)
                     if os.path.exists(f):
@@ -1551,16 +1558,6 @@ class Video():
                         self.filename(os.path.join(remkdir(vipy.globals.cache()), filetail(self._url)))
                 vipy.downloader.scp(self._url, self.filename(), verbose=verbose)
  
-            elif not isvideourl(self._url) and vipy.videosearch.is_downloadable_url(self._url):
-                vipy.videosearch.download(self._url, filefull(self._filename), writeurlfile=False, skip=ignoreErrors, verbose=verbose, max_filesize=max_filesize)
-                for ext in ['mkv', 'mp4', 'webm']:
-                    f = '%s.%s' % (self.filename(), ext)
-                    if os.path.exists(f):
-                        self.filename(f)
-                        break    
-                if not self.hasfilename():
-                    raise ValueError('Downloaded filenot found "%s.*"' % self.filename())
-
             elif url_scheme == 'rtsp':
                 # https://ffmpeg.org/ffmpeg-protocols.html#rtsp
                 pass
@@ -1573,32 +1570,27 @@ class Video():
         except (httplib.BadStatusLine,
                 urllib.error.URLError,
                 urllib.error.HTTPError):
-            if ignoreErrors:
-                log.warning('[vipy.video][WARNING]: download failed - Ignoring Video')
-                self._array = None
-            else:
-                raise
+            log.error('download failed')
+            self._array = None
+            raise
 
         except IOError:
-            if ignoreErrors:
-                log.warning('[vipy.video][WARNING]: IO error - Invalid video file, url or invalid write permissions "%s" - Ignoring video' % self.filename())
-                self._array = None
-            else:
-                raise
+            log.error('Invalid video file, url or invalid write permissions "%s"' % self.filename())
+            self._array = None
+            raise
 
         except KeyboardInterrupt:
             raise
 
-        except Exception:
-            if ignoreErrors:
-                log.warning('[vipy.video][WARNING]: load error for video "%s"' % self.filename())
-            else:
-                raise
+        except Exception as e:
+            log.error('load error for video "%s" - "%s"' % (self.filename(), str(e)))
+            raise
+                      
         return self
 
-    def fetch(self, ignoreErrors=False):
+    def fetch(self):
         """Download only if hasfilename() is not found"""
-        return self.download(ignoreErrors=ignoreErrors) if not self.hasfilename() else self
+        return self.download() if not self.hasfilename() else self
 
     def shape(self, shape=None, probe=False):
         """Return (height, width) of the frames, requires loading a preview frame from the video if the video is not already loaded, or providing the shape=(height,width) by the user"""
@@ -1720,12 +1712,11 @@ class Video():
         im = self.frame(frame, img=self.preview(frame).array())
         return im.savefig(outfile) if outfile is not None else im
     
-    def load(self, verbose=False, ignoreErrors=False, shape=None):
+    def load(self, verbose=False, shape=None):
         """Load a video using ffmpeg, applying the requested filter chain.  
            
         Args:
             verbose: [bool] if True. then ffmpeg console output will be displayed. 
-            ignoreErrors: [bool] if True, then all load errors are warned and skipped.  Be sure to call isloaded() to confirm loading was successful.
             shape: [tuple (height, width, channels)]  If provided, use this shape for reading and reshaping the byte stream from ffmpeg.  This is useful for efficient loading in some scenarios. Knowing the final output shape can speed up loads by avoiding a preview() of the filter chain to get the frame size
 
         Returns:
@@ -1736,12 +1727,10 @@ class Video():
         if self.isloaded():
             return self
         elif not self.hasfilename() and self.hasurl():
-            self.download(ignoreErrors=ignoreErrors)
-        elif not self.hasfilename() and not ignoreErrors:
+            self.download()
+        elif not self.hasfilename():
             raise ValueError('Invalid input - load() requires a valid URL, filename or array')
-        if not self.hasfilename() and ignoreErrors:
-            log.warning('[vipy.video.load]: Video file "%s" not found - Ignoring' % self.filename())
-            return self
+
         if iswebp(self.filename()) or isgif(self.filename()):
             frames = []
             pil = PIL.Image.open(self.filename())
@@ -1763,10 +1752,7 @@ class Video():
                             .global_args('-cpuflags', '0', '-loglevel', 'debug' if vipy.globals.GLOBAL['DEBUG'] else 'quiet')
             (out, err) = f.run(capture_stdout=True, capture_stderr=True)
         except Exception as e:
-            if not ignoreErrors:
-                raise ValueError('[vipy.video.load]: Load failed with error "%s"\n\n  - Video: "%s"\n  - FFMPEG command: \'sh> %s\'\n  - This error usually means that the video is corrupted or that you need to upgrade your FFMPEG distribution to the latest stable version.\n  - Try running the output of the ffmpeg command for debugging.' % (str(e), str(self), str(self._ffmpeg_commandline(f_prepipe.output('preview.mp4')))))
-            else:
-                return self  # Failed, return immediately, useful for calling canload() 
+            raise ValueError('Load failed with error "%s"\n\n  - Video: "%s"\n  - FFMPEG command: \'sh> %s\'\n  - This error usually means that the video is corrupted or that you need to upgrade your FFMPEG distribution to the latest stable version.\n  - Try running the output of the ffmpeg command for debugging.' % (str(e), str(self), str(self._ffmpeg_commandline(f_prepipe.output('preview.mp4')))))
 
         # Video shape:
         #   - due to complex filter chains, we may not know the final video size without executing it
@@ -1804,7 +1790,7 @@ class Video():
                 im = self.preview()  # get the real shape...
                 (newheight, newwidth, newchannels) = (im.height(), im.width(), im.channels()) 
                         
-            assert is_loadable or ignoreErrors, "Load failed for video '%s', and FFMPEG command line: '%s'" % (str(self), str(self._ffmpeg_commandline(f)))
+            assert is_loadable, "Load failed for video '%s', and FFMPEG command line: '%s'" % (str(self), str(self._ffmpeg_commandline(f)))
             self._array = np.frombuffer(out, np.uint8).reshape([-1, newheight, newwidth, channels]) if is_loadable else None  # read-only                        
             self.colorspace('rgb' if channels == 3 else 'lum')
             self.resize(rows=height, cols=width)  # Very expensive framewise resizing so that the loaded video is identical shape to preview
@@ -2120,12 +2106,11 @@ class Video():
         assert isgif(outfile)
         return self.webp(outfile, pause, strict=False, smallest=smallest, smaller=True, framerate=framerate)
         
-    def save(self, outfile=None, framerate=None, vcodec='libx264', verbose=False, ignoreErrors=False, flush=False, pause=5):
+    def save(self, outfile=None, framerate=None, vcodec='libx264', verbose=False, flush=False, pause=5):
         """Save video to new output video file.  This function does not draw boxes, it saves pixels to a new video file.
 
         Args:
             outfile: the absolute path to the output video file.  This extension can be .mp4 (for video) or [".webp",".gif"]  (for animated image)
-            ignoreErrors:  if True, then exit gracefully without throwing an exception.  Useful for chaining download().saveas() on parallel dataset downloads
             flush:  If true, then flush the buffer for this object right after saving the new video. This is useful for transcoding in parallel
             framerate:  input framerate of the frames in the buffer, or the output framerate of the transcoded video.  If not provided, use framerate of source video
             pause:  an integer in seconds to pause between loops of animated images if the outfile is webp or animated gif
@@ -2191,11 +2176,9 @@ class Video():
             else: 
                 raise ValueError('saveas() failed')
         except Exception as e:
-            if ignoreErrors:
-                # useful for saving a large number of videos in parallel where some failed download
-                log.error('[vipy.video.saveas]:  Failed with error "%s" - Returning empty video' % str(repr(e)))
-            else:
-                raise
+            # useful for saving a large number of videos in parallel where some failed download
+            log.error('[vipy.video.saveas]:  Failed with error "%s" - Returning empty video' % str(repr(e)))
+            raise
 
         # Return a new video, cloned from this video with the new video file, optionally flush the video we loaded before returning
         return self.clone(flushforward=True, flushfilter=True, flushbackward=flush).filename(outfile).nourl()
@@ -3869,8 +3852,8 @@ class Scene(Video):
         """Extrapolate the video to frame f and add the extrapolated tracks to the video"""
         return self.trackmap(lambda t: t.add(f, t.linear_extrapolation(f, dt=dt if dt is not None else self.framerate()), strict=False))
 
-    def download(self, ignoreErrors=False, timeout=10, verbose=True, max_filesize='999m'):    
-        super().download(verbose=verbose, ignoreErrors=ignoreErrors, timeout=timeout, max_filesize=max_filesize)
+    def download(self, timeout=10, verbose=False, max_filesize='999m'):    
+        super().download(verbose=verbose, timeout=timeout, max_filesize=max_filesize)
         self.trackmap(lambda t: t.framerate(self.framerate()))  # force framerates to match if video framerate was not known until after download
         self.activitymap(lambda a: a.framerate(self.framerate()))  # force framerates to match if video framerate was not known until after download
         return self
@@ -4365,6 +4348,7 @@ class Scene(Video):
 
         return self
 
+
     
     
 def RandomVideo(rows=None, cols=None, frames=None, framerate=30):
@@ -4405,3 +4389,45 @@ def RandomScene(rows=None, cols=None, frames=None, filename=None, num_tracks=32,
 def EmptyScene():
     """Return an empty scene""" 
     return vipy.video.Scene(array=np.zeros((1,1,1,3), dtype=np.uint8), framerate=30)
+
+
+class Transform():
+    """Transforms are static methods that implement common transformation patterns used in distributed processing.  
+
+       These are useful for parallel processing of noisy or corrupted videos when anonymous functions are not supported (e.g. multiprocessing)
+
+       These functions are designed for use along with functools.partial
+
+       >>> with vipy.globals.multiprocessing(4):  # to download and save in parallel
+       >>>     vipy.dataset.registry('kinetics').map(vipy.video.Transform.downloader(outdir='/tmp'))
+ 
+       See also: `vipy.dataset.Dataset.minibatch` for parallel processing of batches downloading, loading, resizing, cropping, augmenting, tensor prep etc.
+    """
+
+    @staticmethod
+    def is_loaded(v):
+        return v.is_loaded()
+        
+    @staticmethod
+    def download(v, filename=None, outdir=None, ignore_errors=True, verbose=False):
+        try:
+            assert isinstance(v, Video)
+            filename = filename if filename is not None else os.path.join(outdir, stringhash(v.url(), 12))
+            return (v.clone().filename(filename) if filename is not None else v.clone()).download(verbose=verbose)            
+        except KeyboardInterrupt:
+            raise
+        except:
+            if not ignore_errors:
+                raise
+            return v.flush()
+
+    @staticmethod
+    def downloader(**kwargs):
+        return functools.partial(Transform.download, **kwargs)
+        
+    @staticmethod
+    def load(v):
+        v = Transform.download(v)
+        return v.load() if v.is_downloaded() else v
+
+    

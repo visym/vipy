@@ -162,7 +162,7 @@ def download(vidurl, vidfile, skip=False, writeurlfile=True, max_filesize='9999m
         log.warning('download failed')
         return None
 
-    if erno == 256:
+    if erno == 2:
         raise KeyboardInterrupt
     elif skip and erno:  # use this if every video on a page fails
         return None
